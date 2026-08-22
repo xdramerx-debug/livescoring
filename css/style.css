@@ -38,7 +38,7 @@ img{max-width:100%;height:auto;display:block;}
 .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;text-align:center;padding:100px 20px 60px;background:linear-gradient(135deg,#0b1a0e 0%,#1a472a 40%,#0d2815 70%,#0b1a0e 100%);overflow:hidden;}
 .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(201,168,76,.06) 0%,transparent 60%);}
 .hero-content{position:relative;z-index:1;max-width:640px;}
-.hero-logo{width:180px!important;height:auto!important;max-width:280px!important;max-height:220px!important;margin:0 auto 20px!important;object-fit:contain!important;filter:drop-shadow(0 4px 20px rgba(201,168,76,.3));}
+.hero-logo{width:144px!important;height:auto!important;max-width:224px!important;max-height:176px!important;margin:0 auto 20px!important;object-fit:contain!important;filter:drop-shadow(0 4px 20px rgba(201,168,76,.3));}
 .hero-sub{font-size:14px;color:var(--gold);text-transform:uppercase;letter-spacing:3px;margin-bottom:12px;font-weight:500;}
 .hero-title{font-family:var(--ff);font-size:clamp(32px,7vw,54px);font-weight:800;color:var(--white);line-height:1.15;margin-bottom:16px;}
 .hero-desc{font-size:16px;color:var(--muted);margin-bottom:32px;}
@@ -165,7 +165,7 @@ select.form-input option{background:var(--card);}
 
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;background:linear-gradient(135deg,var(--bg),var(--gr-d),var(--bg));}
 .auth-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:36px 32px;max-width:400px;width:100%;box-shadow:var(--shl);}
-.auth-logo{width:120px!important;height:auto!important;max-width:200px!important;max-height:140px!important;display:block!important;margin:0 auto 12px!important;object-fit:contain!important;}
+.auth-logo{width:96px!important;height:auto!important;max-width:160px!important;max-height:112px!important;display:block!important;margin:0 auto 12px!important;object-fit:contain!important;}
 .auth-title{text-align:center;font-family:var(--ff);font-size:24px;color:var(--gold);margin-bottom:24px;}
 .auth-tabs{display:flex;margin-bottom:24px;background:var(--bg);border-radius:var(--rs);padding:3px;}
 .auth-tab{flex:1;padding:9px;text-align:center;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;border-radius:6px;transition:var(--t);font-family:var(--fb);}
@@ -279,10 +279,10 @@ select.form-input option{background:var(--card);}
     .hero-btns{flex-direction:column;align-items:center;}
     .hero-btns .btn{width:100%;justify-content:center;}
     .hero-logo{
-        width: clamp(220px, 82vw, 340px) !important;
+        width: clamp(176px, 66vw, 272px) !important;
         height: auto !important;
-        max-width: calc(100vw - 32px) !important;
-        max-height: 260px !important;
+        max-width: calc(100vw - 48px) !important;
+        max-height: 208px !important;
         margin: 0 auto 20px !important;
         object-fit: contain !important;
     }
@@ -300,18 +300,18 @@ select.form-input option{background:var(--card);}
     .nav-logo{width:38px!important;height:38px!important;max-width:38px!important;max-height:38px!important;}
     .nav-brand-text{font-size:16px;}
     .hero-logo{
-        width: clamp(200px, 88vw, 320px) !important;
+        width: clamp(160px, 70vw, 256px) !important;
         height: auto !important;
-        max-width: calc(100vw - 20px) !important;
-        max-height: 240px !important;
+        max-width: calc(100vw - 36px) !important;
+        max-height: 192px !important;
         margin: 0 auto 20px !important;
         object-fit: contain !important;
     }
     .auth-logo{
-        width: clamp(160px, 75vw, 240px) !important;
+        width: clamp(128px, 60vw, 192px) !important;
         height: auto !important;
         max-width: calc(100vw - 32px) !important;
-        max-height: 180px !important;
+        max-height: 144px !important;
         margin: 0 auto 16px !important;
         object-fit: contain !important;
     }

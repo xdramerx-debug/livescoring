@@ -3,12 +3,14 @@ var curRoundData = null;
 var registeredUsers = {};
 var availableTournaments = {};
 
+// Переменные активной игры
 var playHole = 1;
 var myUid = null;
-var myTargetUid = null;
+var myTargetUid = null; // За кем я слежу
 var myScore = 0;
 var targetScore = 0;
 var isChanging = false;
+var canEditGroup = false; // Флаг прав на редактирование
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
@@ -24,6 +26,7 @@ function onAuthReady(u, d) {
         myUid = null;
     }
     
+    // Загружаем раунд после того, как подтянулся Auth (чтобы проверить права)
     if (curRid) {
         initRoundView();
     }
@@ -42,6 +45,7 @@ function showGroupSetup() {
     document.getElementById('mode-view').classList.add('hidden');
     document.getElementById('group-setup').classList.remove('hidden');
 
+    // Заполнение списка лунок
     var sel = document.getElementById('g-hole');
     if (sel) {
         sel.innerHTML = '';
@@ -50,17 +54,20 @@ function showGroupSetup() {
         }
     }
 
+    // Текущее время для старта
     var now = new Date();
     var timeInput = document.getElementById('g-time');
     if (timeInput) {
         timeInput.value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
     }
 
+    // Загрузка пользователей
     db.ref('users').once('value').then(function(sn) {
         registeredUsers = sn.val() || {};
         buildPlayerSlots();
     });
 
+    // Загрузка турниров
     db.ref('tournaments').once('value').then(function(sn) {
         availableTournaments = sn.val() || {};
         var tnSel = document.getElementById('g-tournament');
@@ -88,8 +95,14 @@ function onTournamentSelect() {
     }
     var t = availableTournaments[tid];
     if (!t) return;
-    teeSel.innerHTML = ''; (t.tees || ['wh']).forEach(function(tk) { teeSel.innerHTML += '<option value="' + tk + '">' + TEES[tk] + '</option>'; });
-    fmtSel.innerHTML = ''; (t.formats || ['Stroke Play']).forEach(function(f) { fmtSel.innerHTML += '<option value="' + f + '">' + f + '</option>'; });
+    teeSel.innerHTML = ''; 
+    (t.tees || ['wh']).forEach(function(tk) { 
+        teeSel.innerHTML += '<option value="' + tk + '">' + TEES[tk] + '</option>'; 
+    });
+    fmtSel.innerHTML = ''; 
+    (t.formats || ['Stroke Play']).forEach(function(f) { 
+        fmtSel.innerHTML += '<option value="' + f + '">' + f + '</option>'; 
+    });
 }
 
 function buildPlayerSlots() {
@@ -219,6 +232,7 @@ function startGroup() {
         pOrder.push(pid);
     }
 
+    // Автоматическое назначение маркеров по кругу (Игрок 1 следит за Игроком 2 и т.д.)
     var markerAssignments = {};
     for (var i = 0; i < pOrder.length; i++) {
         var markerId = pOrder[i];
@@ -235,6 +249,11 @@ function startGroup() {
     var now = new Date();
     var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
 
+    var creatorId = currentUser ? currentUser.uid : 'guest';
+    
+    // Генерируем уникальный ключ доступа
+    var accessKey = 'group_key_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+
     var data = {
         mode: 'group',
         tee: tee,
@@ -245,20 +264,26 @@ function startGroup() {
         markerAssignments: markerAssignments,
         status: 'active',
         createdAt: Date.now(),
-        createdBy: currentUser ? currentUser.uid : 'guest'
+        createdBy: creatorId,
+        accessKey: accessKey
     };
 
     if (tournamentId) data.tournamentId = tournamentId;
 
     var ref = db.ref('rounds').push();
+    var newRoundId = ref.key;
+    
+    // Сохраняем ключ локально у создателя
+    localStorage.setItem('pestovo_group_key_' + newRoundId, accessKey);
+
     ref.set(data).then(function() {
         toast('🏌️ Раунд начат!');
-        window.location.href = 'live.html?round=' + ref.key;
+        window.location.href = 'live.html?round=' + newRoundId;
     });
 }
 
 // ==========================================
-// ИНИЦИАЛИЗАЦИЯ И ПРОВЕРКА ДОСТУПА
+// ИНИЦИАЛИЗАЦИЯ ЭКРАНА С ПРОВЕРКОЙ ПРАВ
 // ==========================================
 function initRoundView() {
     db.ref('rounds/' + curRid).on('value', function(sn) {
@@ -272,14 +297,27 @@ function initRoundView() {
         var pageSub = document.getElementById('page-sub');
         if (pageSub) pageSub.textContent = curRoundData.format + ' · ТИ: ' + TEES[curRoundData.tee];
 
-        var isParticipant = false;
-        if (myUid && curRoundData.players && curRoundData.players[myUid]) {
-            isParticipant = true;
-        }
+        // ПРОВЕРКА ПРАВ
+        var localKey = localStorage.getItem('pestovo_group_key_' + curRid);
+        
+        // 1. Участник ли это (проверка по Firebase UID)
+        var isParticipantUser = myUid && curRoundData.players && curRoundData.players[myUid];
+        // 2. Создатель ли это (проверка по локальному ключу)
+        var isCreatorKey = localKey && (curRoundData.accessKey === localKey);
 
-        if (isParticipant && curRoundData.status === 'active') {
+        canEditGroup = (isParticipantUser || isCreatorKey) && curRoundData.status === 'active';
+
+        if (canEditGroup) {
+            // ВЛАДЕЛЕЦ / УЧАСТНИК — Показываем форму редактирования
             document.getElementById('active-scoring-view').classList.remove('hidden');
             document.getElementById('group-view').classList.add('hidden');
+
+            // Определяем мой UID (если я гость, но создатель — беру первый ID)
+            if (!isParticipantUser && isCreatorKey) {
+                myUid = curRoundData.createdBy === 'guest' 
+                    ? Object.keys(curRoundData.players)[0] 
+                    : (curRoundData.players[curRoundData.createdBy] ? curRoundData.createdBy : Object.keys(curRoundData.players)[0]);
+            }
 
             if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
                 myTargetUid = curRoundData.markerAssignments[myUid].targetId;
@@ -298,6 +336,7 @@ function initRoundView() {
             renderPlaySummary();
 
         } else {
+            // ЗРИТЕЛЬ (Инкогнито / Постороннее устройство) — ТОЛЬКО ПРОСМОТР!
             document.getElementById('active-scoring-view').classList.add('hidden');
             document.getElementById('group-view').classList.remove('hidden');
 
@@ -324,6 +363,7 @@ function findCurrentHole() {
 // ЛОГИКА ВВОДА СЧЁТА
 // ==========================================
 function buildPlayHolesNav() {
+    if (!canEditGroup) return;
     var el = document.getElementById('play-holes-nav');
     var order = holeOrder(curRoundData.startHole || 1);
     var myScores = (curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
@@ -347,6 +387,7 @@ function buildPlayHolesNav() {
 }
 
 function goPlayHole(h) {
+    if (!canEditGroup) return;
     isChanging = true;
     playHole = h;
     myScore = 0;
@@ -357,6 +398,7 @@ function goPlayHole(h) {
 }
 
 function renderPlayHole() {
+    if (!canEditGroup) return;
     var par = holePar(playHole);
     var dist = holeDist(playHole, curRoundData.tee);
 
@@ -383,6 +425,7 @@ function renderPlayHole() {
 }
 
 function adjScore(who, delta) {
+    if (!canEditGroup) return;
     if (who === 'my') {
         myScore = Math.max(1, Math.min(15, myScore + delta));
         updScoreDisplay('my', myScore);
@@ -409,7 +452,7 @@ function checkPlayVerification() {
     var myMarkerId = curRoundData.players[myUid]?.markedBy;
     var markerS = 0;
 
-    if (myMarkerId && curRoundData.players[myTargetUid]) {
+    if (myMarkerId && curRoundData.players[myMarkerId]) {
         markerS = parseInt(curRoundData.players[myUid]?.markerScores?.[myMarkerId]?.[playHole]) || 0;
     }
 
@@ -425,6 +468,10 @@ function checkPlayVerification() {
 }
 
 function saveHoleScores() {
+    if (!canEditGroup) {
+        toast('Редактирование запрещено', 'error');
+        return;
+    }
     if (myScore < 1 || (myTargetUid && targetScore < 1)) {
         toast('Счёт должен быть ≥ 1', 'error');
         return;
@@ -498,7 +545,11 @@ function renderPlaySummary() {
     el.innerHTML = html;
 }
 
+// ==========================================
+// ВЫЗОВ СУДЬИ / МАРШАЛА
+// ==========================================
 function callOfficial(type) {
+    if (!canEditGroup) return;
     var typeName = type === 'referee' ? 'Судью' : 'Маршала';
     if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + playHole + '?')) return;
 
@@ -518,6 +569,9 @@ function callOfficial(type) {
     });
 }
 
+// ==========================================
+// РЕЖИМ ПРОСМОТРА (ЗРИТЕЛЬ)
+// ==========================================
 function renderGVPlayers(r) {
     var el = document.getElementById('gv-players');
     var order = holeOrder(r.startHole || 1);
@@ -526,22 +580,20 @@ function renderGVPlayers(r) {
     Object.entries(r.players || {}).forEach(function(pe) {
         var p = pe[1];
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-        
-        // ЧЁТКОЕ ОТОБРАЖЕНИЕ ЛУНКИ
-        var thruTxt = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
+        var thruTxt = stats.holesPlayed >= 18 ? 'F' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
 
-        html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">' +
-            '<div><strong style="color:var(--white);">' + (p.name || '—') + '</strong>' +
-            '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + '</div>' +
-            '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stblfd: ' + stats.stablefordField + '</div>' +
-            '</div>' +
-            '<div class="' + scoreClass(stats.toPar) + '" style="font-size:20px;font-weight:800;">' + fmtScore(stats.toPar) + '</div></div>';
+        html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
+        html += '<div><strong style="color:var(--white);">' + (p.name || '—') + '</strong>';
+        html += '<div style="font-size:12px;color:var(--muted);">' + thruTxt + ' · Gross: ' + (stats.gross || '—') +
+                ' · Net: ' + (stats.net || '—') + ' · Stblfd: ' + stats.stablefordField + '</div></div>';
+        html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:20px;font-weight:800;">' + fmtScore(stats.toPar) + '</div></div>';
     });
 
     el.innerHTML = html;
 }
 
 function finishGroupRound() {
+    if (!canEditGroup) return;
     if (!confirm('Завершить раунд для всей группы?')) return;
 
     db.ref('rounds/' + curRid + '/status').set('completed');

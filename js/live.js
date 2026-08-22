@@ -3,10 +3,9 @@ var curRoundData = null;
 var registeredUsers = {};
 var availableTournaments = {};
 
-// Переменные для активного ввода
 var playHole = 1;
 var myUid = null;
-var myTargetUid = null; // ID игрока, за которым следим
+var myTargetUid = null;
 var myScore = 0;
 var targetScore = 0;
 var isChanging = false;
@@ -19,19 +18,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function onAuthReady(u, d) {
     navAuth(u, d);
-    if (u) {
-        myUid = u.uid;
-    }
-    
-    // Загружаем раунд
-    if (curRid) {
-        initRoundView();
-    }
+    if (u) myUid = u.uid;
+    if (curRid) initRoundView();
 }
 
-// ==========================================
-// СОЗДАНИЕ ГРУППЫ
-// ==========================================
 function showGroupSetup() {
     document.getElementById('mode-view').classList.add('hidden');
     document.getElementById('group-setup').classList.remove('hidden');
@@ -97,15 +87,14 @@ function buildPlayerSlots() {
         html += '<div class="form-group"><label>Выбрать из зарегистрированных</label>';
         html += '<select class="form-input" id="pl-select-' + i + '" onchange="fillPlayerFromUser(' + i + ')">';
         html += '<option value="">— Гость / ввести вручную —</option>';
-        
+
         Object.entries(registeredUsers).forEach(function(e) {
             var u = e[1];
-            // БЕЗОПАСНАЯ ПРОВЕРКА: Проверяем существование currentUser перед доступом к .uid
             var isCurrent = (i === 1 && currentUser && e[0] === currentUser.uid);
             var sel = isCurrent ? 'selected' : '';
             html += '<option value="' + e[0] + '" ' + sel + '>' + (u.name || '—') + ' (HCP: ' + (u.handicap != null ? u.handicap : '—') + ')</option>';
         });
-        
+
         html += '</select></div>';
 
         html += '<div class="form-row">';
@@ -129,7 +118,7 @@ function fillPlayerFromUser(idx) {
     var uid = sel.value;
     if (!uid || !registeredUsers[uid]) return;
     var u = registeredUsers[uid];
-    
+
     var nameEl = document.getElementById('pl-name-' + idx);
     var hcpEl = document.getElementById('pl-hcp-' + idx);
     var genderEl = document.getElementById('pl-gender-' + idx);
@@ -137,7 +126,7 @@ function fillPlayerFromUser(idx) {
     if (nameEl) nameEl.value = u.name || '';
     if (hcpEl) hcpEl.value = u.handicap != null ? u.handicap : '';
     if (genderEl && u.gender) genderEl.value = u.gender;
-    
+
     calcPlayerFieldHcp(idx);
 }
 
@@ -145,18 +134,18 @@ function calcPlayerFieldHcp(idx) {
     var hcpEl = document.getElementById('pl-hcp-' + idx);
     var genderEl = document.getElementById('pl-gender-' + idx);
     var teeEl = document.getElementById('g-tee');
-    
+
     if (!hcpEl || !genderEl || !teeEl) return;
     var hcp = hcpEl.value;
     var gender = genderEl.value;
     var tee = teeEl.value;
 
     var fieldEl = document.getElementById('pl-field-' + idx);
-    if (!hcp) { 
-        if (fieldEl) fieldEl.value = ''; 
-        return; 
+    if (!hcp) {
+        if (fieldEl) fieldEl.value = '';
+        return;
     }
-    
+
     var field = getFieldHcp(parseFloat(hcp), tee, gender);
     if (fieldEl) fieldEl.value = field;
 }
@@ -173,9 +162,6 @@ function backToModes() {
     document.getElementById('mode-view').classList.remove('hidden');
 }
 
-// ==========================================
-// СТАРТ И АВТО-МАРКЕРЫ
-// ==========================================
 function startGroup() {
     var timeStr = document.getElementById('g-time').value;
     var startHole = parseInt(document.getElementById('g-hole').value) || 1;
@@ -214,13 +200,12 @@ function startGroup() {
         pOrder.push(pid);
     }
 
-    // Назначаем маркеры по кругу
     var markerAssignments = {};
     for (var i = 0; i < pOrder.length; i++) {
         var markerId = pOrder[i];
         var targetId = pOrder[(i + 1) % pOrder.length];
 
-        players[targetId].markedBy = markerId; 
+        players[targetId].markedBy = markerId;
         markerAssignments[markerId] = {
             targetId: targetId,
             targetName: players[targetId].name
@@ -255,9 +240,6 @@ function startGroup() {
     });
 }
 
-// ==========================================
-// ИНИЦИАЛИЗАЦИЯ И ПРОВЕРКА ДОСТУПА
-// ==========================================
 function initRoundView() {
     db.ref('rounds/' + curRid).on('value', function(sn) {
         curRoundData = sn.val();
@@ -316,9 +298,6 @@ function findCurrentHole() {
     }
 }
 
-// ==========================================
-// ЛОГИКА ВВОДА СЧЁТА
-// ==========================================
 function buildPlayHolesNav() {
     var el = document.getElementById('play-holes-nav');
     var order = holeOrder(curRoundData.startHole || 1);
@@ -494,9 +473,6 @@ function renderPlaySummary() {
     el.innerHTML = html;
 }
 
-// ==========================================
-// ВЫЗОВ СУДЬИ / МАРШАЛА
-// ==========================================
 function callOfficial(type) {
     var typeName = type === 'referee' ? 'Судью' : 'Маршала';
     if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + playHole + '?')) return;
@@ -517,9 +493,6 @@ function callOfficial(type) {
     });
 }
 
-// ==========================================
-// РЕЖИМ ПРОСМОТРА (ЗРИТЕЛЬ)
-// ==========================================
 function renderGVPlayers(r) {
     var el = document.getElementById('gv-players');
     var order = holeOrder(r.startHole || 1);
@@ -528,7 +501,7 @@ function renderGVPlayers(r) {
     Object.entries(r.players || {}).forEach(function(pe) {
         var p = pe[1];
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-        var thruTxt = stats.holesPlayed >= 18 ? 'F' : (stats.currentHole ? 'Лунка ' + stats.currentHole : '—');
+        var thruTxt = stats.holesPlayed >= 18 ? 'F' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
 
         html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">' +
             '<div><strong style="color:var(--white);">' + (p.name || '—') + '</strong>' +

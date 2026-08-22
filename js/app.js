@@ -78,13 +78,15 @@ function loadLiveRounds() {
                 var p = pe[1], scores = p.scores || {};
                 var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(r.startHole || 1));
                 
-                // Отображение лунки
                 var thruText = stats.holesPlayed >= 18 ? 'F' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
 
-                pHtml += '<div class="round-p">' +
-                    '<span class="round-p-n">' + (p.name || '—') + '</span>' +
-                    '<span class="round-p-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
-                    '<span class="round-p-thru" style="font-size:12px;color:var(--gold);font-weight:600;">' + thruText + '</span></div>';
+                pHtml += '<div class="round-p" style="align-items:flex-start;">' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;">' + (p.name || '—') + '</div>' +
+                    '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruText + '</div></div>' +
+                    '<div style="text-align:right;">' +
+                    '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
+                    '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + '</div>' +
+                    '</div></div>';
             });
 
             var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'live.html?round=' + id;

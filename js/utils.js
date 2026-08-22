@@ -27,7 +27,7 @@ const TIMINGS = {1:15,2:15,3:20,4:12,5:15,6:15,7:15,8:12,9:20,10:20,11:15,12:15,
 const TEES = {bk:'Чёрный',bl:'Синий',wh:'Белый',rd:'Красный'};
 const COURSE_RATINGS = {
     men:{bk:{cr:76.0,sr:144},bl:{cr:73.8,sr:137},wh:{cr:72.0,sr:135},rd:{cr:69.2,sr:134}},
-    women:{bl:{cr:80.8,sr:143},wh:{cr:78.6,sr:143},rd:{cr:75.2,sr:136}}
+    women:{bl:{cr:80.8,sr:153},wh:{cr:78.6,sr:143},rd:{cr:75.2,sr:136}}
 };
 
 function holePar(h){return HOLES[h]?HOLES[h].p:4;}
@@ -115,7 +115,7 @@ function generateHcpTable(gender, tee) {
     return rows;
 }
 
-const HCP_TABLE = {
+var HCP_TABLE = {
     get men() {
         return {
             bk: generateHcpTable('men', 'bk'),
@@ -132,6 +132,9 @@ const HCP_TABLE = {
         };
     }
 };
+if (typeof window !== 'undefined') {
+    window.HCP_TABLE = HCP_TABLE;
+}
 
 function stablefordField(strokes,holeNum,fieldHcp){
     if(!strokes||strokes<1)return 0;

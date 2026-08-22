@@ -31,6 +31,7 @@
 <div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-user"></i> Одиночный раунд</h1><p class="page-sub">Играете один — сами вводите счёт</p></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
+    <!-- НАСТРОЙКА (КНОПОК ВЫЗОВА НЕТ) -->
     <div id="setup">
         <div id="guest-banner" class="card hidden" style="background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
             <p style="color:var(--gold);font-size:14px;text-align:center;">
@@ -74,7 +75,18 @@
         </div>
     </div>
 
+    <!-- ИГРА И ВВОД СЧЁТА (КНОПКИ ВЫЗОВА ЕСТЬ) -->
     <div id="game" class="hidden">
+        <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
+                <i class="fas fa-gavel"></i> Вызвать судью
+            </button>
+            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
+                <i class="fas fa-shield-halved"></i> Вызвать маршала
+            </button>
+        </div>
+
         <div class="timing-info" id="round-info"></div>
 
         <div class="card">
@@ -103,6 +115,7 @@
         <div id="timing-notice"></div>
 
         <div class="card"><h2><i class="fas fa-chart-bar"></i> Текущий счёт</h2><div id="live-stats"></div></div>
+
         <div class="card"><h2><i class="fas fa-table"></i> Счётная карточка</h2><div id="mini-card"></div></div>
 
         <button class="btn btn-og btn-block" onclick="finishSolo()"><i class="fas fa-flag-checkered"></i> Завершить раунд</button>

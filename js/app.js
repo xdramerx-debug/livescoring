@@ -53,7 +53,7 @@ function buildCourseCard() {
 }
 
 // =========================================
-// LIVE ROUNDS
+// LIVE ROUNDS ("СЕЙЧАС НА ПОЛЕ")
 // =========================================
 function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
@@ -76,21 +76,15 @@ function loadLiveRounds() {
 
             Object.entries(players).forEach(function(pe) {
                 var p = pe[1], scores = p.scores || {};
-                var total = 0, thru = 0, totalPar = 0;
-
-                for (var h = 1; h <= 18; h++) {
-                    var s = parseInt(scores[h]) || 0;
-                    var par = holePar(h);
-                    if (s > 0) { total += s; totalPar += par; thru++; }
-                }
-
-                var toPar = thru > 0 ? total - totalPar : null;
-                var thruText = thru >= 18 ? 'F' : (thru > 0 ? thru : '—');
+                var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(r.startHole || 1));
+                
+                // Отображение лунки
+                var thruText = stats.holesPlayed >= 18 ? 'F' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
 
                 pHtml += '<div class="round-p">' +
                     '<span class="round-p-n">' + (p.name || '—') + '</span>' +
-                    '<span class="round-p-score ' + scoreClass(toPar) + '">' + fmtScore(toPar) + '</span>' +
-                    '<span class="round-p-thru">' + thruText + '</span></div>';
+                    '<span class="round-p-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
+                    '<span class="round-p-thru" style="font-size:12px;color:var(--gold);font-weight:600;">' + thruText + '</span></div>';
             });
 
             var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'live.html?round=' + id;
@@ -108,7 +102,7 @@ function loadLiveRounds() {
 }
 
 // =========================================
-// RECENT RESULTS (ПОБЕДИТЕЛЬ ТОЛЬКО ПОСЛЕ 18 ЛУНОК)
+// RECENT RESULTS
 // =========================================
 function loadRecentResults() {
     var el = document.getElementById('recent-results');
@@ -136,7 +130,6 @@ function loadRecentResults() {
                     var v = parseInt(s) || 0;
                     if (v >= 1) { total += v; holesPlayed++; }
                 });
-                // ПОБЕДИТЕЛЬ И ЛУЧШИЙ СЧЁТ ОПРЕДЕЛЯЮТСЯ ТОЛЬКО ПРИ 18 ЛУНКАХ!
                 if (holesPlayed === 18 && total > 0 && total < best) {
                     best = total;
                     winner = p.name;
@@ -161,7 +154,7 @@ function loadRecentResults() {
 }
 
 // =========================================
-// CLUB STATS (ЛУЧШИЙ СЧЁТ ТОЛЬКО ПРИ 18 ЛУНКАХ!)
+// CLUB STATS
 // =========================================
 function loadClubStats() {
     var el = document.getElementById('club-stats');
@@ -205,7 +198,6 @@ function loadClubStats() {
                     else if (d === 1) bogeys++;
                 });
 
-                // СТРОГАЯ ПРОВЕРКА: Лучший счёт засчитывается ТОЛЬКО если пройдены ВСЕ 18 ЛУНОК!
                 if (holesPlayed === 18 && gross > 0 && gross < best) {
                     best = gross;
                     bestName = p.name;

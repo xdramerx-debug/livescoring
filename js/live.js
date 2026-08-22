@@ -329,12 +329,11 @@ function initRoundView() {
             renderInviteQRs();
 
         } else {
+            // ЗРИТЕЛЬ / ГОСТЬ — Показываем только просмотр лидерборда и счётную карточку по лункам
             document.getElementById('active-scoring-view').classList.add('hidden');
             document.getElementById('group-view').classList.remove('hidden');
 
-            document.getElementById('gv-info').innerHTML = '<div><b>Старт:</b> ' + fmtTime(curRoundData.startTime) + ' · <b>С лунки:</b> ' + curRoundData.startHole + '</div>';
             renderGVPlayers(curRoundData);
-            renderInviteQRs();
         }
     });
 }
@@ -540,8 +539,9 @@ function renderPlaySummary() {
 // ГЕНЕРАЦИЯ QR ДЛЯ ПОДКЛЮЧЕНИЯ ИГРОКОВ
 // ==========================================
 function renderInviteQRs() {
+    if (!canEditGroup || !curRoundData) return;
     var activeEl = document.getElementById('invite-qrs-grid');
-    var gvEl = document.getElementById('gv-qr-grid');
+    if (!activeEl) return;
     var base = baseUrl();
     var html = '';
 
@@ -557,8 +557,7 @@ function renderInviteQRs() {
         html += '</div>';
     });
 
-    if (activeEl) activeEl.innerHTML = html;
-    if (gvEl) gvEl.innerHTML = html;
+    activeEl.innerHTML = html;
 }
 
 // ==========================================
@@ -590,31 +589,29 @@ function callOfficial(type) {
 // ==========================================
 function renderGVPlayers(r) {
     var el = document.getElementById('gv-players');
-    var scEl = document.getElementById('gv-scorecards');
+    var scCardEl = document.getElementById('gv-scorecard-card');
     var order = holeOrder(r.startHole || 1);
     
-    var html = '';
-    var scHtml = '';
+    if (el) {
+        var html = '';
+        Object.entries(r.players || {}).forEach(function(pe) {
+            var p = pe[1];
+            var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+            var thruTxt = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
 
-    Object.entries(r.players || {}).forEach(function(pe) {
-        var p = pe[1];
-        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-        var thruTxt = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
+            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">' +
+                '<div><strong style="color:var(--white);font-size:16px;">' + (p.name || '—') + '</strong>' +
+                '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + '</div>' +
+                '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stblfd: ' + stats.stablefordField + '</div>' +
+                '</div>' +
+                '<div class="' + scoreClass(stats.toPar) + '" style="font-size:24px;font-weight:800;">' + fmtScore(stats.toPar) + '</div></div>';
+        });
+        el.innerHTML = html;
+    }
 
-        if (typeof generatePestovoScorecardHTML === 'function') {
-            scHtml += generatePestovoScorecardHTML(p, r);
-        }
-
-        html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">' +
-            '<div><strong style="color:var(--white);">' + (p.name || '—') + '</strong>' +
-            '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + '</div>' +
-            '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stblfd: ' + stats.stablefordField + '</div>' +
-            '</div>' +
-            '<div class="' + scoreClass(stats.toPar) + '" style="font-size:20px;font-weight:800;">' + fmtScore(stats.toPar) + '</div></div>';
-    });
-
-    el.innerHTML = html;
-    if (scEl) scEl.innerHTML = scHtml;
+    if (scCardEl) {
+        scCardEl.innerHTML = generateGroupHoleTableHTML(r);
+    }
 }
 
 function finishGroupRound() {

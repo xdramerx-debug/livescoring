@@ -206,6 +206,73 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
     return{played:played,remaining:remaining,holesPlayed:played.length,holesRemaining:remaining.length,currentHole:currentHole,gross:gross,parPlayed:parPlayed,toPar:toPar,net:netTotal,netToPar:netToPar,projected:projected,stablefordField:stblField,stablefordExact:stblExact,birdies:birdies,eagles:eagles,pars:pars,bogeys:bogeys,doubles:doubles,holeInOne:hio};
 }
 
+function generateGroupHoleTableHTML(r) {
+    var players = r.players || {};
+    var playerEntries = Object.entries(players);
+    if (!playerEntries.length) return '';
+
+    var pOut = 0, pIn = 0;
+    for (var i = 1; i <= 9; i++) pOut += holePar(i);
+    for (var i = 10; i <= 18; i++) pIn += holePar(i);
+
+    var html = '<div class="scorecard" style="margin-bottom:12px;"><table>';
+    html += '<tr><th style="text-align:left;padding-left:10px;">Игрок / Лунка</th>';
+    for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
+    html += '<th>Аут</th></tr>';
+
+    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;font-weight:700;">Пар</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + holePar(i) + '</td>';
+    html += '<td style="font-weight:800;">' + pOut + '</td></tr>';
+
+    playerEntries.forEach(function(pe) {
+        var p = pe[1];
+        var sc = p.scores || {};
+        var outG = 0;
+        html += '<tr><td style="text-align:left;padding-left:10px;font-weight:700;color:var(--white);white-space:nowrap;">' + (p.name || '—') + '</td>';
+        for (var i = 1; i <= 9; i++) {
+            var s = parseInt(sc[i]) || 0;
+            var par = holePar(i);
+            var cls = holeResClass(s, par);
+            if (s > 0) outG += s;
+            html += '<td class="' + cls + '"><b>' + (s > 0 ? s : '') + '</b></td>';
+        }
+        html += '<td class="row-total"><b>' + (outG > 0 ? outG : '') + '</b></td></tr>';
+    });
+    html += '</table></div>';
+
+    html += '<div class="scorecard"><table>';
+    html += '<tr><th style="text-align:left;padding-left:10px;">Игрок / Лунка</th>';
+    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
+    html += '<th>Ин</th><th>Итого</th></tr>';
+
+    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;font-weight:700;">Пар</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + holePar(i) + '</td>';
+    html += '<td style="font-weight:800;">' + pIn + '</td><td style="font-weight:800;">' + (pOut + pIn) + '</td></tr>';
+
+    playerEntries.forEach(function(pe) {
+        var p = pe[1];
+        var sc = p.scores || {};
+        var outG = 0, inG = 0;
+        for (var i = 1; i <= 9; i++) { var s = parseInt(sc[i]) || 0; if (s > 0) outG += s; }
+        for (var i = 10; i <= 18; i++) { var s = parseInt(sc[i]) || 0; if (s > 0) inG += s; }
+        var totG = outG + inG;
+
+        html += '<tr><td style="text-align:left;padding-left:10px;font-weight:700;color:var(--white);white-space:nowrap;">' + (p.name || '—') + '</td>';
+        for (var i = 10; i <= 18; i++) {
+            var s = parseInt(sc[i]) || 0;
+            var par = holePar(i);
+            var cls = holeResClass(s, par);
+            if (s > 0) inG += s;
+            html += '<td class="' + cls + '"><b>' + (s > 0 ? s : '') + '</b></td>';
+        }
+        html += '<td class="row-total"><b>' + (inG > 0 ? inG : '') + '</b></td>';
+        html += '<td class="row-total"><b>' + (totG > 0 ? totG : '') + '</b></td></tr>';
+    });
+    html += '</table></div>';
+
+    return html;
+}
+
 // ==========================================
 // СКОРКАРТА ПЕСТОВО (КАК НА ФОТО — 18 ЛУНОК)
 // ==========================================

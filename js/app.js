@@ -47,14 +47,16 @@ function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
     if (!el) return;
 
-    db.ref('rounds').orderByChild('status').equalTo('active').on('value', function(snap) {
+    db.ref('rounds').on('value', function(snap) {
         var data = snap.val() || {};
-        var entries = Object.entries(data);
+        var entries = Object.entries(data).filter(function(e) { return e[1] && e[1].status === 'active'; });
 
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>Сейчас никто не играет</p><a href="live.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> Начать раунд</a></div>';
             return;
         }
+
+        entries.sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
 
         var html = '';
         entries.forEach(function(e) {
@@ -96,14 +98,22 @@ function loadRecentResults() {
     var el = document.getElementById('recent-results');
     if (!el) return;
 
-    db.ref('rounds').orderByChild('status').equalTo('completed').limitToLast(5).on('value', function(snap) {
+    db.ref('rounds').on('value', function(snap) {
         var data = snap.val() || {};
-        var entries = Object.entries(data).reverse();
+        var entries = Object.entries(data).filter(function(e) { return e[1] && e[1].status === 'completed'; });
 
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-clock"></i><p>Пока нет завершённых раундов</p></div>';
             return;
         }
+
+        entries.sort(function(a, b) {
+            var timeA = a[1].completedAt || a[1].createdAt || 0;
+            var timeB = b[1].completedAt || b[1].createdAt || 0;
+            return timeB - timeA;
+        });
+
+        entries = entries.slice(0, 5);
 
         var html = '';
         entries.forEach(function(e) {

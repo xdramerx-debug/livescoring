@@ -329,7 +329,7 @@ function initRoundView() {
             renderInviteQRs();
 
         } else {
-            // ЗРИТЕЛЬ / ГОСТЬ — Показываем только просмотр лидерборда и счётную карточку по лункам
+            // ЗРИТЕЛЬ / ГОСТЬ — Показываем просмотр лидерборда и счётную карточку
             document.getElementById('active-scoring-view').classList.add('hidden');
             document.getElementById('group-view').classList.remove('hidden');
 
@@ -523,8 +523,8 @@ function renderPlaySummary() {
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
         var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(Вы)</span>' : '';
 
-        html += '<div class="list-item" style="padding:10px;">';
-        html += '<div><strong style="color:var(--white);">' + p.name + isMe + '</strong>';
+        html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
+        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + p.name + isMe + '</strong>';
         html += '<div style="font-size:12px;color:var(--muted);">Лунок: ' + stats.holesPlayed + ' / 18</div></div>';
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
@@ -595,21 +595,25 @@ function renderGVPlayers(r) {
     if (el) {
         var html = '';
         Object.entries(r.players || {}).forEach(function(pe) {
-            var p = pe[1];
+            var pid = pe[0], p = pe[1];
             var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
             var thruTxt = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
 
-            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">' +
-                '<div><strong style="color:var(--white);font-size:16px;">' + (p.name || '—') + '</strong>' +
+            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
+                '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</strong>' +
                 '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stblfd: ' + stats.stablefordField + '</div>' +
                 '</div>' +
-                '<div class="' + scoreClass(stats.toPar) + '" style="font-size:24px;font-weight:800;">' + fmtScore(stats.toPar) + '</div></div>';
+                '<div style="text-align:right;">' +
+                '<div class="' + scoreClass(stats.toPar) + '" style="font-size:24px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>' +
+                '<button class="btn btn-og btn-sm" style="margin-top:4px;padding:3px 8px;font-size:10px;"><i class="fas fa-id-card"></i> Карточка</button>' +
+                '</div></div>';
         });
         el.innerHTML = html;
     }
 
     if (scCardEl) {
+        r.roundId = curRid;
         scCardEl.innerHTML = generateGroupHoleTableHTML(r);
     }
 }

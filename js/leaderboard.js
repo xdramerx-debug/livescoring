@@ -6,16 +6,24 @@ document.addEventListener('DOMContentLoaded', function() {
 function onAuthReady(u, d) { navAuth(u, d); }
 
 function loadLB() {
-    var status = document.getElementById('lb-status').value;
-    var ref = db.ref('rounds');
-    if (status !== 'all') ref = ref.orderByChild('status').equalTo(status);
+    var statusSelect = document.getElementById('lb-status');
+    var status = statusSelect ? statusSelect.value : 'all';
 
-    ref.on('value', function(sn) {
+    db.ref('rounds').on('value', function(sn) {
         var data = sn.val() || {};
-        var entries = Object.entries(data).sort(function(a, b) { 
+        var entries = Object.entries(data);
+
+        if (status !== 'all') {
+            entries = entries.filter(function(e) { return e[1] && e[1].status === status; });
+        }
+
+        entries.sort(function(a, b) { 
             return (b[1].createdAt || 0) - (a[1].createdAt || 0); 
         });
+
         var el = document.getElementById('lb-container');
+        if (!el) return;
+
         if (!entries.length) { 
             el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>Нет раундов</p></div>'; 
             return; 
@@ -35,6 +43,7 @@ function renderRound(id, r) {
         var pid = pe[0], p = pe[1], sc = p.scores || {};
         var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
         return {
+            pid: pid,
             name: p.name, 
             gross: stats.gross, 
             toPar: stats.toPar, 
@@ -47,6 +56,7 @@ function renderRound(id, r) {
     });
 
     list.sort(function(a, b) {
+        if (a.toPar === null && b.toPar === null) return 0;
         if (a.toPar === null) return 1;
         if (b.toPar === null) return -1;
         return a.toPar - b.toPar;
@@ -66,13 +76,11 @@ function renderRound(id, r) {
 
     var rows = list.map(function(p) {
         var posCls = p.position <= 3 ? 'lb-' + p.position : '';
-        
-        // Форматирование текущей лунки
         var holeInfo = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? 'лунка №' + p.currentHole : '—');
         
-        return '<tr><td class="lb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</td>' +
+        return '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + p.pid + '\',\'' + id + '\')"><td class="lb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</td>' +
             '<td><div style="display:flex;align-items:center;gap:8px;"><div class="lb-avatar">' + (p.name ? p.name.charAt(0) : '?') + '</div>' +
-            '<div><span class="lb-name">' + p.name + '</span><div style="font-size:11px;color:var(--muted);">' + holeInfo + '</div></div></div></td>' +
+            '<div><span class="lb-name" style="color:var(--gold);">' + p.name + '</span><div style="font-size:11px;color:var(--muted);">' + holeInfo + '</div></div></div></td>' +
             '<td class="lb-score ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</td>' +
             '<td style="text-align:center;">' + (p.gross || '—') + '</td>' +
             '<td style="text-align:center;">' + (p.net || '—') + '</td>' +

@@ -304,10 +304,11 @@ function generateGroupHoleTableHTML(r) {
     html += '<td style="font-weight:800;">' + pOut + '</td></tr>';
 
     playerEntries.forEach(function(pe) {
-        var p = pe[1];
+        var pid = pe[0], p = pe[1];
         var sc = p.scores || {};
         var outG = 0;
-        html += '<tr><td style="text-align:left;padding-left:10px;font-weight:700;color:var(--white);white-space:nowrap;">' + (p.name || '—') + '</td>';
+        html += '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')">';
+        html += '<td style="text-align:left;padding-left:10px;font-weight:700;color:var(--gold);white-space:nowrap;"><i class="fas fa-user"></i> ' + (p.name || '—') + '</td>';
         for (var i = 1; i <= 9; i++) {
             var s = parseInt(sc[i]) || 0;
             var par = holePar(i);
@@ -329,14 +330,15 @@ function generateGroupHoleTableHTML(r) {
     html += '<td style="font-weight:800;">' + pIn + '</td><td style="font-weight:800;">' + (pOut + pIn) + '</td></tr>';
 
     playerEntries.forEach(function(pe) {
-        var p = pe[1];
+        var pid = pe[0], p = pe[1];
         var sc = p.scores || {};
         var outG = 0, inG = 0;
         for (var i = 1; i <= 9; i++) { var s = parseInt(sc[i]) || 0; if (s > 0) outG += s; }
         for (var i = 10; i <= 18; i++) { var s = parseInt(sc[i]) || 0; if (s > 0) inG += s; }
         var totG = outG + inG;
 
-        html += '<tr><td style="text-align:left;padding-left:10px;font-weight:700;color:var(--white);white-space:nowrap;">' + (p.name || '—') + '</td>';
+        html += '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')">';
+        html += '<td style="text-align:left;padding-left:10px;font-weight:700;color:var(--gold);white-space:nowrap;"><i class="fas fa-user"></i> ' + (p.name || '—') + '</td>';
         for (var i = 10; i <= 18; i++) {
             var s = parseInt(sc[i]) || 0;
             var par = holePar(i);
@@ -353,6 +355,120 @@ function generateGroupHoleTableHTML(r) {
 }
 
 // ==========================================
+// УНИВЕРСАЛЬНОЕ МОДАЛЬНОЕ ОКНО ПРОФИЛЯ И СЧЁТНОЙ КАРТОЧКИ
+// ==========================================
+function openPlayerProfileModal(playerId, roundId) {
+    var modalEl = document.getElementById('pmodal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'pmodal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML =
+            '<div class="modal-bg" onclick="closePModal()"></div>' +
+            '<div class="modal-body">' +
+            '<button class="modal-close" onclick="closePModal()">&times;</button>' +
+            '<div id="pmodal-body"><div class="loading"><div class="spinner"></div></div></div>' +
+            '</div>';
+        document.body.appendChild(modalEl);
+    }
+
+    var bodyEl = document.getElementById('pmodal-body');
+    if (bodyEl) bodyEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+    modalEl.classList.remove('hidden');
+
+    if (typeof db === 'undefined') return;
+
+    var userPromise = db.ref('users/' + playerId).once('value').then(function(sn) { return sn.val(); }).catch(function() { return null; });
+    var roundPromise = roundId ? db.ref('rounds/' + roundId).once('value').then(function(sn) { return sn.val(); }).catch(function() { return null; }) : Promise.resolve(null);
+
+    Promise.all([userPromise, roundPromise]).then(function(res) {
+        var u = res[0];
+        var rd = res[1];
+
+        if (!u && rd && rd.players && rd.players[playerId]) {
+            var p = rd.players[playerId];
+            u = {
+                name: p.name || 'Гость',
+                handicap: p.exactHcp || null,
+                gender: p.gender || 'men',
+                isGuest: true,
+                roundsPlayed: 1
+            };
+        }
+
+        if (!u) {
+            if (bodyEl) bodyEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:30px;">Профиль игрока не найден</p>';
+            return;
+        }
+
+        var gIcon = u.gender === 'women' ? '👩' : '👨';
+        var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">ГОСТЬ</span>' : '';
+
+        var html = '<div class="profile-head">';
+        html += '<div class="profile-avatar">' + (u.name ? u.name.charAt(0) : '?') + '</div>';
+        html += '<div><div class="profile-name">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</div>';
+        html += '<div class="profile-meta">';
+        html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
+        html += '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' раундов</span>';
+        if (u.bestGross) html += '<span><i class="fas fa-trophy"></i> Gross (18л): ' + u.bestGross + '</span>';
+        if (u.email) html += '<span><i class="fas fa-envelope"></i> ' + u.email + '</span>';
+        html += '</div></div></div>';
+
+        if (rd && rd.players && rd.players[playerId]) {
+            var roundPlayer = rd.players[playerId];
+            html += '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">';
+            html += '<h3 style="color:var(--gold);margin-bottom:14px;font-family:var(--ff);font-size:18px;">' +
+                    '<i class="fas fa-table"></i> Счётная карточка раунда (' + (rd.format || 'Stroke') + ' · ТИ: ' + TEES[rd.tee] + ')' +
+                    '</h3>';
+            
+            if (typeof generatePestovoScorecardHTML === 'function') {
+                html += generatePestovoScorecardHTML(roundPlayer, rd);
+            }
+            html += '</div>';
+        }
+
+        db.ref('users/' + playerId + '/history').once('value').then(function(hSn) {
+            var history = hSn.val() || {};
+            var rounds = Object.values(history);
+            rounds.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
+
+            if (rounds.length > 0) {
+                html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> История раундов</h3>';
+                rounds.forEach(function(r) {
+                    var isFull = r.holes === 18;
+                    var fullTag = isFull ? ' <span style="color:#2ecc71;font-size:10px;">(18л)</span>' : ' <span style="color:var(--muted);font-size:10px;">(' + r.holes + 'л)</span>';
+
+                    html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
+                    html += '<div style="flex:1;min-width:180px;"><strong style="color:var(--white);">Пестово</strong>' + fullTag;
+                    html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
+                            fmtDate(r.date) + ' · ' + (r.format || 'Stroke') + ' · ТИ: ' + (r.tee ? TEES[r.tee] : '—') +
+                            ' · ' + (r.mode === 'solo' ? '👤' : '👥') + '</div>';
+                    html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' +
+                            (r.holeInOne ? '🎯 ' + r.holeInOne + ' · ' : '') +
+                            '🦅 ' + (r.eagles || 0) + ' · 🐦 ' + (r.birdies || 0) + ' · Par ' + (r.pars || 0) + '</div></div>';
+                    html += '<div style="text-align:right;">';
+                    html += '<div style="font-size:22px;font-weight:800;color:var(--white);">' + r.gross + '</div>';
+                    html += '<div class="' + scoreClass(r.toPar) + '" style="font-size:14px;font-weight:700;">' + fmtScore(r.toPar) + '</div>';
+                    if (r.roundId) {
+                        html += '<button class="btn btn-og btn-sm" style="margin-top:6px;" onclick="event.stopPropagation();downloadScorecard(\'' + r.roundId + '\')"><i class="fas fa-download"></i></button>';
+                    }
+                    html += '</div></div>';
+                });
+            }
+
+            if (bodyEl) bodyEl.innerHTML = html;
+        }).catch(function() {
+            if (bodyEl) bodyEl.innerHTML = html;
+        });
+    });
+}
+
+function closePModal() {
+    var modalEl = document.getElementById('pmodal');
+    if (modalEl) modalEl.classList.add('hidden');
+}
+
+// ==========================================
 // СКОРКАРТА ПЕСТОВО (КАК НА ФОТО — 18 ЛУНОК)
 // ==========================================
 function generatePestovoScorecardHTML(player, roundData) {
@@ -360,9 +476,9 @@ function generatePestovoScorecardHTML(player, roundData) {
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
     var eHcp = p.exactHcp || 0;
-    var fmt = roundData.format || 'Stroke Play';
-    var date = fmtDate(roundData.completedAt || roundData.createdAt);
-    var startTime = fmtTime(roundData.startTime);
+    var fmt = (roundData && roundData.format) || 'Stroke Play';
+    var date = fmtDate((roundData && (roundData.completedAt || roundData.createdAt)) || Date.now());
+    var startTime = fmtTime(roundData && roundData.startTime);
 
     var outG=0,inG=0,outS=0,inS=0;
     for(var i=1;i<=9;i++){var s=parseInt(sc[i])||0;if(s>0){outG+=s;outS+=stablefordField(s,i,fHcp);}}

@@ -66,13 +66,13 @@ function loadLiveRounds() {
             var order = holeOrder(r.startHole || 1);
 
             Object.entries(players).forEach(function(pe) {
-                var p = pe[1], scores = p.scores || {};
+                var pid = pe[0], p = pe[1], scores = p.scores || {};
                 var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
 
                 var thruText = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : 'лунка №' + (parseInt(r.startHole)||1));
 
-                pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;">' + (p.name || '—') + '</div>' +
+                pHtml += '<div class="round-p" style="align-items:flex-start;cursor:pointer;" onclick="event.stopPropagation();openPlayerProfileModal(\'' + pid + '\',\'' + id + '\')">' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + (p.name || '—') + '</div>' +
                     '<div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;">📍 ' + thruText + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
@@ -117,21 +117,23 @@ function loadRecentResults() {
 
         var html = '';
         entries.forEach(function(e) {
-            var r = e[1], players = r.players || {};
-            var bestToPar = Infinity, winner = '—', bestGross = 0, count = 0;
+            var id = e[0], r = e[1], players = r.players || {};
+            var bestToPar = Infinity, winner = '—', winnerPid = '', bestGross = 0, count = 0;
             var order = holeOrder(r.startHole || 1);
 
-            Object.values(players).forEach(function(p) {
+            Object.entries(players).forEach(function(pe) {
                 count++;
+                var pid = pe[0], p = pe[1];
                 var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
                 if (stats.toPar !== null && stats.toPar < bestToPar) {
                     bestToPar = stats.toPar;
                     winner = p.name || 'Игрок';
+                    winnerPid = pid;
                     bestGross = stats.gross;
                 }
             });
 
-            html += '<div class="list-item" style="padding:14px;">' +
+            html += '<div class="list-item" style="padding:14px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + (winnerPid || '') + '\',\'' + id + '\')">' +
                 '<div><strong style="color:var(--white);">Пестово</strong>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
                 '<i class="fas fa-calendar"></i> ' + fmtDate(r.completedAt || r.createdAt) +

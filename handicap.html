@@ -92,7 +92,7 @@ function calcField() {
     var res = document.getElementById('calc-result');
     if (!hcp) { res.classList.add('hidden'); return; }
     var field = getFieldHcp(parseFloat(hcp), tee, gender);
-    document.getElementById('calc-val').textContent = field;
+    document.getElementById('calc-val').textContent = fmtFieldHcp(field);
     res.classList.remove('hidden');
 }
 

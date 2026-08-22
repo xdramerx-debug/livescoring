@@ -61,32 +61,55 @@ function getFieldHcp(exactHcp,tee,gender){
     if(exactHcp===null||exactHcp===undefined||isNaN(exactHcp))return 0;
     gender=gender||'men';tee=tee||'wh';
     var rating=COURSE_RATINGS[gender]&&COURSE_RATINGS[gender][tee];
-    if(!rating)return Math.max(0, Math.round(parseFloat(exactHcp)));
-    var field=(parseFloat(exactHcp)*(rating.sr/113))+(rating.cr-TOTAL_PAR);
-    return Math.max(0, Math.round(field));
+    var val=parseFloat(exactHcp);
+    if(!rating)return Math.round(val);
+    var field=(val*(rating.sr/113))+(rating.cr-TOTAL_PAR);
+    return Math.round(field);
+}
+
+function fmtExactHcp(v) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
+    var num = parseFloat(v);
+    if (num < 0) return '+' + Math.abs(num).toFixed(1);
+    return num.toFixed(1);
+}
+
+function fmtFieldHcp(v) {
+    if (v === null || v === undefined || isNaN(v)) return '0';
+    var num = parseInt(v);
+    if (num < 0) return '+' + Math.abs(num);
+    return '' + num;
 }
 
 function generateHcpTable(gender, tee) {
     var rating = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
     if (!rating) return [];
     var rows = [];
-    var startExact = 0.0;
+    var startExact = -5.0;
     var maxExact = 54.0;
 
     var curStart = startExact;
     var curField = getFieldHcp(curStart, tee, gender);
 
-    for (var x = 0.1; x <= maxExact + 0.05; x += 0.1) {
+    for (var x = -4.9; x <= maxExact + 0.05; x += 0.1) {
         var exactVal = Math.round(x * 10) / 10;
         var f = getFieldHcp(exactVal, tee, gender);
         if (f !== curField) {
             var prevExact = Math.round((exactVal - 0.1) * 10) / 10;
-            rows.push([curStart.toFixed(1), prevExact.toFixed(1), curField]);
+            rows.push([
+                fmtExactHcp(curStart),
+                fmtExactHcp(prevExact),
+                fmtFieldHcp(curField)
+            ]);
             curStart = exactVal;
             curField = f;
         }
     }
-    rows.push([curStart.toFixed(1), maxExact.toFixed(1), curField]);
+    rows.push([
+        fmtExactHcp(curStart),
+        fmtExactHcp(maxExact),
+        fmtFieldHcp(curField)
+    ]);
     return rows;
 }
 
@@ -111,7 +134,12 @@ const HCP_TABLE = {
 function stablefordField(strokes,holeNum,fieldHcp){
     if(!strokes||strokes<1)return 0;
     var par=holePar(holeNum),hcpIdx=holeHcp(holeNum),extra=0;
-    if(fieldHcp>0&&hcpIdx>0){extra=Math.floor(fieldHcp/18);if(hcpIdx<=(fieldHcp%18))extra++;}
+    if(fieldHcp>0&&hcpIdx>0){
+        extra=Math.floor(fieldHcp/18);if(hcpIdx<=(fieldHcp%18))extra++;
+    }else if(fieldHcp<0&&hcpIdx>0){
+        var absHcp=Math.abs(fieldHcp);
+        extra=-Math.floor(absHcp/18);if((19-hcpIdx)<=(absHcp%18))extra--;
+    }
     var nett=strokes-extra,diff=nett-par;
     if(diff<=-3)return 5;if(diff===-2)return 4;if(diff===-1)return 3;if(diff===0)return 2;if(diff===1)return 1;return 0;
 }
@@ -119,7 +147,12 @@ function stablefordField(strokes,holeNum,fieldHcp){
 function stablefordExact(strokes,holeNum,exactHcp){
     if(!strokes||strokes<1)return 0;
     var par=holePar(holeNum),hcpIdx=holeHcp(holeNum),hcp=Math.round(parseFloat(exactHcp)||0),extra=0;
-    if(hcp>0&&hcpIdx>0){extra=Math.floor(hcp/18);if(hcpIdx<=(hcp%18))extra++;}
+    if(hcp>0&&hcpIdx>0){
+        extra=Math.floor(hcp/18);if(hcpIdx<=(hcp%18))extra++;
+    }else if(hcp<0&&hcpIdx>0){
+        var absHcp=Math.abs(hcp);
+        extra=-Math.floor(absHcp/18);if((19-hcpIdx)<=(absHcp%18))extra--;
+    }
     var nett=strokes-extra,diff=nett-par;
     if(diff<=-3)return 5;if(diff===-2)return 4;if(diff===-1)return 3;if(diff===0)return 2;if(diff===1)return 1;return 0;
 }
@@ -127,7 +160,12 @@ function stablefordExact(strokes,holeNum,exactHcp){
 function calcNettScore(strokes,par,hcpIdx,fieldHcp){
     if(!strokes||strokes<1)return 0;
     var extra=0;
-    if(fieldHcp>0&&hcpIdx>0){extra=Math.floor(fieldHcp/18);if(hcpIdx<=(fieldHcp%18))extra++;}
+    if(fieldHcp>0&&hcpIdx>0){
+        extra=Math.floor(fieldHcp/18);if(hcpIdx<=(fieldHcp%18))extra++;
+    }else if(fieldHcp<0&&hcpIdx>0){
+        var absHcp=Math.abs(fieldHcp);
+        extra=-Math.floor(absHcp/18);if((19-hcpIdx)<=(absHcp%18))extra--;
+    }
     return strokes-extra;
 }
 
@@ -183,7 +221,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     // Шапка
     html+='<div class="pc-header">';
     html+='<div class="pc-col"><strong>Игрок:</strong> '+(p.name||'—')+'</div>';
-    html+='<div class="pc-col"><strong>Точный гандикап:</strong> '+(eHcp||'—')+' · <strong>Полевой:</strong> '+fHcp+'</div>';
+    html+='<div class="pc-col"><strong>Точный гандикап:</strong> '+(fmtExactHcp(eHcp))+' · <strong>Полевой:</strong> '+(fmtFieldHcp(fHcp))+'</div>';
     html+='<div class="pc-col"><strong>Формат:</strong> '+fmt+' · <strong>Старт:</strong> '+startTime+' · <strong>Дата:</strong> '+date+'</div>';
     html+='</div>';
 
@@ -209,7 +247,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].bl+'</td>';
     html+='<td class="pc-tot">'+blOut+'</td>';
     for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].bl+'</td>';
-    html+='<td class="pc-tot">'+blIn+'</td><td class="pc-tot">'+(blOut+blIn)+'</td></tr>';
+    html+='<td class="pc-tot">'+bkIn+'</td><td class="pc-tot">'+(blOut+blIn)+'</td></tr>';
 
     // Белый ти
     var whOut=0,whIn=0;for(var i=1;i<=9;i++)whOut+=HOLES[i].wh;for(var i=10;i<=18;i++)whIn+=HOLES[i].wh;

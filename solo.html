@@ -113,7 +113,7 @@
 
         <div id="timing-notice"></div>
         <div class="card"><h2><i class="fas fa-chart-bar"></i> Текущий счёт</h2><div id="live-stats"></div></div>
-        <div class="card"><h2><i class="fas fa-table"></i> Счётная карточка</h2><div id="mini-card"></div></div>
+        <div class="card"><h2><i class="fas fa-table"></i> Счётная карточка по лункам</h2><div id="mini-card"></div></div>
 
         <button class="btn btn-og btn-block" onclick="finishSolo()"><i class="fas fa-flag-checkered"></i> Завершить раунд</button>
     </div>
@@ -122,10 +122,12 @@
     <div id="read-only-view" class="hidden">
         <div class="card" style="background:rgba(90,173,224,0.1);border-color:var(--blue);">
             <p style="color:var(--blue);text-align:center;font-size:14px;margin:0;">
-                <i class="fas fa-eye"></i> Режим просмотра. Редактировать счёт может только игрок, проводящий этот раунд.
+                <i class="fas fa-eye"></i> Режим просмотра.
             </p>
         </div>
+        <div class="timing-info" id="ro-round-info"></div>
         <div class="card"><h2><i class="fas fa-trophy"></i> Счёт раунда</h2><div id="ro-live-stats"></div></div>
+        <div class="card"><h2><i class="fas fa-table"></i> Счётная карточка по лункам</h2><div id="ro-mini-card"></div></div>
     </div>
 </main>
 

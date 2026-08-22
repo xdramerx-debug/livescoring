@@ -380,7 +380,11 @@ function renderMiniCard(targetId) {
     var fieldHcp = p.fieldHcp || 0;
     var exactHcp = p.exactHcp || 0;
 
-    var html = '<div class="scorecard"><table><tr><th>Лунка</th>';
+    var html = '<div style="margin-bottom:12px;font-size:14px;color:var(--gold);font-weight:700;">' +
+        '<i class="fas fa-user"></i> ' + (p.name || 'Игрок') + ' · HCP: ' + fmtExactHcp(exactHcp) + ' (пол. ' + fmtFieldHcp(fieldHcp) + ')' +
+        '</div>';
+
+    html += '<div class="scorecard" style="margin-bottom:12px;"><table><tr><th>Лунка</th>';
     for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
     html += '<th>Аут</th></tr><tr class="row-par"><td>Пар</td>';
     var pO = 0;
@@ -390,9 +394,9 @@ function renderMiniCard(targetId) {
     for (var i = 1; i <= 9; i++) {
         var s = parseInt(scores[i]) || 0, par = holePar(i), cls = holeResClass(s, par);
         if (s >= 1) gO += s;
-        html += '<td class="' + cls + '">' + (s >= 1 ? s : '') + '</td>';
+        html += '<td class="' + cls + '"><b>' + (s >= 1 ? s : '') + '</b></td>';
     }
-    html += '<td class="row-total">' + (gO > 0 ? gO : '') + '</td></tr>';
+    html += '<td class="row-total"><b>' + (gO > 0 ? gO : '') + '</b></td></tr>';
 
     html += '<tr><td>Stblfd пол.</td>';
     var sfO = 0;
@@ -401,7 +405,7 @@ function renderMiniCard(targetId) {
         if (s >= 1) { var pts = stablefordField(s, i, fieldHcp); sfO += pts; html += '<td>' + pts + '</td>'; }
         else html += '<td></td>';
     }
-    html += '<td class="row-total">' + sfO + '</td></tr>';
+    html += '<td class="row-total"><b>' + sfO + '</b></td></tr>';
 
     html += '<tr><td>Stblfd игр.</td>';
     var seO = 0;
@@ -410,7 +414,7 @@ function renderMiniCard(targetId) {
         if (s >= 1) { var pts = stablefordExact(s, i, exactHcp); seO += pts; html += '<td>' + pts + '</td>'; }
         else html += '<td></td>';
     }
-    html += '<td class="row-total">' + seO + '</td></tr></table></div>';
+    html += '<td class="row-total"><b>' + seO + '</b></td></tr></table></div>';
 
     html += '<div class="scorecard"><table><tr><th>Лунка</th>';
     for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
@@ -422,9 +426,9 @@ function renderMiniCard(targetId) {
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(scores[i]) || 0, par = holePar(i), cls = holeResClass(s, par);
         if (s >= 1) gI += s;
-        html += '<td class="' + cls + '">' + (s >= 1 ? s : '') + '</td>';
+        html += '<td class="' + cls + '"><b>' + (s >= 1 ? s : '') + '</b></td>';
     }
-    html += '<td class="row-total">' + (gI > 0 ? gI : '') + '</td><td class="row-total">' + ((gO + gI) > 0 ? (gO + gI) : '') + '</td></tr>';
+    html += '<td class="row-total"><b>' + (gI > 0 ? gI : '') + '</b></td><td class="row-total"><b>' + ((gO + gI) > 0 ? (gO + gI) : '') + '</b></td></tr>';
 
     html += '<tr><td>Stblfd пол.</td>';
     var sfI = 0;
@@ -433,7 +437,7 @@ function renderMiniCard(targetId) {
         if (s >= 1) { var pts = stablefordField(s, i, fieldHcp); sfI += pts; html += '<td>' + pts + '</td>'; }
         else html += '<td></td>';
     }
-    html += '<td class="row-total">' + sfI + '</td><td class="row-total">' + (sfO + sfI) + '</td></tr>';
+    html += '<td class="row-total"><b>' + sfI + '</b></td><td class="row-total"><b>' + (sfO + sfI) + '</b></td></tr>';
 
     html += '<tr><td>Stblfd игр.</td>';
     var seI = 0;
@@ -442,7 +446,7 @@ function renderMiniCard(targetId) {
         if (s >= 1) { var pts = stablefordExact(s, i, exactHcp); seI += pts; html += '<td>' + pts + '</td>'; }
         else html += '<td></td>';
     }
-    html += '<td class="row-total">' + seI + '</td><td class="row-total">' + (seO + seI) + '</td></tr></table></div>';
+    html += '<td class="row-total"><b>' + seI + '</b></td><td class="row-total"><b>' + (seO + seI) + '</b></td></tr></table></div>';
 
     el.innerHTML = html;
 }

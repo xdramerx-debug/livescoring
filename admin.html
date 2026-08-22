@@ -32,8 +32,12 @@
 <div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-shield-halved"></i> Админ-панель</h1></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
+
     <div id="admin-login" class="card" style="max-width:400px;margin:0 auto;">
-        <h2><i class="fas fa-lock"></i> Вход</h2>
+        <h2><i class="fas fa-lock"></i> Вход в админ-панель</h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+            Войдите с мастер-паролем или авторизуйтесь через аккаунт с правами администратора.
+        </p>
         <div class="form-group"><label>Логин</label><input type="text" id="adm-user" class="form-input" placeholder="admin"></div>
         <div class="form-group"><label>Пароль</label><input type="password" id="adm-pass" class="form-input"></div>
         <div id="adm-error" class="form-err hidden"></div>
@@ -45,7 +49,7 @@
             <button class="admin-tab active" onclick="switchTab('rounds',this)">Раунды</button>
             <button class="admin-tab" onclick="switchTab('alerts',this)">Вызовы 🚨</button>
             <button class="admin-tab" onclick="switchTab('tournaments',this)">Турниры</button>
-            <button class="admin-tab" onclick="switchTab('players',this)">Игроки</button>
+            <button class="admin-tab" onclick="switchTab('players',this)">Игроки и роли</button>
             <button class="admin-tab" onclick="switchTab('data',this)">Данные</button>
         </div>
 
@@ -54,31 +58,25 @@
         </div>
 
         <div id="tab-alerts" class="admin-section hidden">
-            <!-- Вкладка Вызовы -->
-<div id="tab-alerts" class="admin-section hidden">
-    <div class="card">
-        <h2><i class="fas fa-bell"></i> Вызовы судей и маршалов</h2>
-        <div id="admin-alerts-list"></div>
-    </div>
-</div>
+            <div class="card"><h2><i class="fas fa-bell"></i> Вызовы судей и маршалов</h2><div id="admin-alerts-list"></div></div>
         </div>
 
         <div id="tab-tournaments" class="admin-section hidden">
             <div class="card">
                 <h2><i class="fas fa-trophy"></i> Создать турнир</h2>
                 <div class="form-row">
-                    <div class="form-group"><label>Название</label><input type="text" id="tn-name" class="form-input" placeholder="Чемпионат"></div>
+                    <div class="form-group"><label>Название</label><input type="text" id="tn-name" class="form-input" placeholder="Чемпионат Пестово"></div>
                     <div class="form-group"><label>Дата</label><input type="date" id="tn-date" class="form-input"></div>
                 </div>
                 <div class="form-group">
-                    <label>Форматы</label>
+                    <label>Доступные форматы</label>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
                         <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-stroke" checked> Stroke Play</label>
                         <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-stbl"> Stableford</label>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>ТИ</label>
+                    <label>Доступные ТИ</label>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
                         <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-bk"> ⬛ Чёрный</label>
                         <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-bl"> 🟦 Синий</label>
@@ -92,18 +90,25 @@
         </div>
 
         <div id="tab-players" class="admin-section hidden">
-            <div class="card"><h2><i class="fas fa-users"></i> Игроки</h2><div id="adm-players"></div></div>
+            <div class="card">
+                <h2><i class="fas fa-users-gear"></i> Управление игроками и ролями</h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+                    Назначайте права Администратора другим игрокам. Администраторы получают полный доступ к этой панели.
+                </p>
+                <div id="adm-players"></div>
+            </div>
         </div>
 
         <div id="tab-data" class="admin-section hidden">
-            <div class="card"><h2><i class="fas fa-database"></i> Данные</h2>
+            <div class="card"><h2><i class="fas fa-database"></i> Управление данными</h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Осторожно — действия необратимы.</p>
                 <button class="btn btn-r" onclick="clearRounds()"><i class="fas fa-trash"></i> Удалить все раунды</button>
             </div>
         </div>
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Пестово</p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Гольф-клуб Пестово</p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>

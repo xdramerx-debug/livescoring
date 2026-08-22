@@ -1,4 +1,8 @@
-document.addEventListener('DOMContentLoaded', function() { initNav(); loadLB(); });
+document.addEventListener('DOMContentLoaded', function() { 
+    initNav(); 
+    loadLB(); 
+});
+
 function onAuthReady(u, d) { navAuth(u, d); }
 
 function loadLB() {
@@ -8,9 +12,14 @@ function loadLB() {
 
     ref.on('value', function(sn) {
         var data = sn.val() || {};
-        var entries = Object.entries(data).sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
+        var entries = Object.entries(data).sort(function(a, b) { 
+            return (b[1].createdAt || 0) - (a[1].createdAt || 0); 
+        });
         var el = document.getElementById('lb-container');
-        if (!entries.length) { el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>Нет раундов</p></div>'; return; }
+        if (!entries.length) { 
+            el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>Нет раундов</p></div>'; 
+            return; 
+        }
         var html = '';
         entries.forEach(function(e) { html += renderRound(e[0], e[1]); });
         el.innerHTML = html;
@@ -26,9 +35,14 @@ function renderRound(id, r) {
         var pid = pe[0], p = pe[1], sc = p.scores || {};
         var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
         return {
-            name: p.name, gross: stats.gross, toPar: stats.toPar, net: stats.net,
-            stblField: stats.stablefordField, stblExact: stats.stablefordExact,
-            holesPlayed: stats.holesPlayed, currentHole: stats.currentHole
+            name: p.name, 
+            gross: stats.gross, 
+            toPar: stats.toPar, 
+            net: stats.net,
+            stblField: stats.stablefordField, 
+            stblExact: stats.stablefordExact,
+            holesPlayed: stats.holesPlayed, 
+            currentHole: stats.currentHole
         };
     });
 
@@ -40,14 +54,22 @@ function renderRound(id, r) {
 
     var pos = 1;
     list.forEach(function(p, i) {
-        if (i > 0 && p.toPar === list[i - 1].toPar) { p.position = list[i - 1].position; p.tied = true; }
-        else { p.position = pos; p.tied = false; }
+        if (i > 0 && p.toPar === list[i - 1].toPar) { 
+            p.position = list[i - 1].position; 
+            p.tied = true; 
+        } else { 
+            p.position = pos; 
+            p.tied = false; 
+        }
         pos++;
     });
 
     var rows = list.map(function(p) {
         var posCls = p.position <= 3 ? 'lb-' + p.position : '';
+        
+        // Форматирование текущей лунки
         var holeInfo = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? 'лунка №' + p.currentHole : '—');
+        
         return '<tr><td class="lb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</td>' +
             '<td><div style="display:flex;align-items:center;gap:8px;"><div class="lb-avatar">' + (p.name ? p.name.charAt(0) : '?') + '</div>' +
             '<div><span class="lb-name">' + p.name + '</span><div style="font-size:11px;color:var(--muted);">' + holeInfo + '</div></div></div></td>' +
@@ -58,8 +80,13 @@ function renderRound(id, r) {
             '<td style="text-align:center;color:var(--muted);">' + p.stblExact + '</td></tr>';
     }).join('');
 
-    var badge = isLive ? '<span class="live-badge"><span class="live-dot" style="width:7px;height:7px;"></span> LIVE</span>' : '<span class="tn-status tn-d">Завершён</span>';
-    var downloadBtn = !isLive ? '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')" style="margin-top:10px;"><i class="fas fa-download"></i> Счётная карточка</button>' : '';
+    var badge = isLive 
+        ? '<span class="live-badge"><span class="live-dot" style="width:7px;height:7px;"></span> LIVE</span>' 
+        : '<span class="tn-status tn-d">Завершён</span>';
+        
+    var downloadBtn = !isLive 
+        ? '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')" style="margin-top:10px;"><i class="fas fa-download"></i> Счётная карточка</button>' 
+        : '';
 
     return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">' +
         '<div><h2 style="margin-bottom:4px;"><i class="fas fa-flag"></i> Пестово · ' + fmtTime(r.startTime) + '</h2>' +

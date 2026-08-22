@@ -3,6 +3,7 @@ var soloRound = null;
 var curHole = 1;
 var curScore = 0;
 var isChanging = false;
+var canEditSolo = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
@@ -102,6 +103,9 @@ function startSolo() {
         parseInt(parts[0]), parseInt(parts[1]), 0);
     var startTime = startDate.getTime();
 
+    // Генерация уникального ключа доступа для устройства создателя
+    var accessKey = 'key_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+
     var playerId;
     var isGuest = !currentUser;
     if (isGuest) {
@@ -124,6 +128,9 @@ function startSolo() {
     var ref = db.ref('rounds').push();
     soloRid = ref.key;
 
+    // Сохраняем токен владения в локальное хранилище браузера
+    localStorage.setItem('pestovo_solo_key_' + soloRid, accessKey);
+
     var roundData = {
         mode: 'solo',
         tee: tee,
@@ -133,7 +140,8 @@ function startSolo() {
         players: players,
         status: 'active',
         createdAt: Date.now(),
-        createdBy: currentUser ? currentUser.uid : 'guest',
+        createdBy: currentUser ? currentUser.uid : playerId,
+        accessKey: accessKey,
         isGuest: isGuest
     };
 
@@ -149,30 +157,51 @@ function loadExistingSolo() {
         if (!soloRound) { toast('Раунд не найден', 'error'); return; }
 
         document.getElementById('setup').classList.add('hidden');
-        document.getElementById('game').classList.remove('hidden');
 
-        var uid = getPlayerId();
-        var player = soloRound.players[uid];
-        if (!player) return;
+        // ПРОВЕРКА ПРАВ НА РЕДАКТИРОВАНИЕ
+        var localKey = localStorage.getItem('pestovo_solo_key_' + soloRid);
+        var isOwnerUser = currentUser && (soloRound.createdBy === currentUser.uid || soloRound.players[currentUser.uid]);
+        var isOwnerKey = localKey && (soloRound.accessKey === localKey);
 
-        var scores = player.scores || {};
-        var order = holeOrder(soloRound.startHole || 1);
+        canEditSolo = (isOwnerUser || isOwnerKey) && soloRound.status === 'active';
 
-        if (!isChanging) {
-            var found = false;
-            for (var i = 0; i < order.length; i++) {
-                var h = order[i];
-                var s = parseInt(scores[h]) || 0;
-                if (s < 1) { curHole = h; found = true; break; }
+        if (canEditSolo) {
+            // ВЛАДЕЛЕЦ — Показываем форму редактирования
+            document.getElementById('game').classList.remove('hidden');
+            document.getElementById('read-only-view').classList.add('hidden');
+
+            var uid = getPlayerId();
+            var player = soloRound.players[uid];
+            if (!player) return;
+
+            var scores = player.scores || {};
+            var order = holeOrder(soloRound.startHole || 1);
+
+            if (!isChanging) {
+                var found = false;
+                for (var i = 0; i < order.length; i++) {
+                    var h = order[i];
+                    var s = parseInt(scores[h]) || 0;
+                    if (s < 1) { curHole = h; found = true; break; }
+                }
+                if (!found) curHole = order[order.length - 1];
             }
-            if (!found) curHole = order[order.length - 1];
-        }
 
-        renderRoundInfo();
-        buildHoles();
-        renderCurrentHole();
-        renderLiveStats();
-        renderMiniCard();
+            renderRoundInfo('round-info');
+            buildHoles();
+            renderCurrentHole();
+            renderLiveStats('live-stats');
+            renderMiniCard('mini-card');
+
+        } else {
+            // ЗРИТЕЛЬ (Инкогнито / Чужое устройство) — ТОЛЬКО ПРОСМОТР!
+            document.getElementById('game').classList.add('hidden');
+            document.getElementById('read-only-view').classList.remove('hidden');
+
+            renderRoundInfo('ro-round-info');
+            renderLiveStats('ro-live-stats');
+            renderMiniCard('ro-mini-card');
+        }
     });
 }
 
@@ -183,8 +212,9 @@ function getPlayerId() {
     return Object.keys(soloRound.players)[0];
 }
 
-function renderRoundInfo() {
-    var el = document.getElementById('round-info');
+function renderRoundInfo(targetId) {
+    var el = document.getElementById(targetId);
+    if (!el) return;
     var uid = getPlayerId();
     var p = soloRound.players[uid];
     var guestBadge = soloRound.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">ГОСТЬ</span>' : '';
@@ -195,6 +225,7 @@ function renderRoundInfo() {
 
 function buildHoles() {
     var el = document.getElementById('g-holes');
+    if (!el) return;
     var uid = getPlayerId();
     var scores = soloRound.players[uid].scores || {};
     var order = holeOrder(soloRound.startHole || 1);
@@ -209,6 +240,7 @@ function buildHoles() {
 }
 
 function goHole(h) {
+    if (!canEditSolo) return;
     isChanging = true;
     curHole = h;
     curScore = 0;
@@ -237,6 +269,7 @@ function renderCurrentHole() {
 }
 
 function adjSolo(delta) {
+    if (!canEditSolo) return;
     curScore = Math.max(1, Math.min(15, curScore + delta));
     vib();
     updateDisplay();
@@ -253,6 +286,10 @@ function updateDisplay() {
 }
 
 function saveSolo() {
+    if (!canEditSolo) {
+        toast('Редактирование запрещено', 'error');
+        return;
+    }
     if (curScore < 1) { toast('Счёт должен быть ≥ 1', 'error'); return; }
 
     isChanging = true;
@@ -290,13 +327,16 @@ function saveSolo() {
 
 function showTimingNotice(hole) {
     var el = document.getElementById('timing-notice');
-    el.innerHTML = buildTimingNotice(soloRound.startTime, soloRound.startHole, hole);
-    var check = checkTiming(soloRound.startTime, soloRound.startHole, hole);
-    if (check.status === 'late') toast('⏰ Отставание ' + check.diff + ' мин.!', 'warn');
+    if (el) {
+        el.innerHTML = buildTimingNotice(soloRound.startTime, soloRound.startHole, hole);
+        var check = checkTiming(soloRound.startTime, soloRound.startHole, hole);
+        if (check.status === 'late') toast('⏰ Отставание ' + check.diff + ' мин.!', 'warn');
+    }
 }
 
-function renderLiveStats() {
-    var el = document.getElementById('live-stats');
+function renderLiveStats(targetId) {
+    var el = document.getElementById(targetId);
+    if (!el) return;
     var uid = getPlayerId();
     var p = soloRound.players[uid];
     var scores = p.scores || {};
@@ -322,8 +362,9 @@ function renderLiveStats() {
     el.innerHTML = html;
 }
 
-function renderMiniCard() {
-    var el = document.getElementById('mini-card');
+function renderMiniCard(targetId) {
+    var el = document.getElementById(targetId);
+    if (!el) return;
     var uid = getPlayerId();
     var p = soloRound.players[uid];
     var scores = p.scores || {};
@@ -398,6 +439,7 @@ function renderMiniCard() {
 }
 
 function finishSolo() {
+    if (!canEditSolo) return;
     if (!confirm('Завершить раунд?')) return;
     db.ref('rounds/' + soloRid + '/status').set('completed');
     db.ref('rounds/' + soloRid + '/completedAt').set(Date.now());
@@ -414,8 +456,8 @@ function finishSolo() {
     }, 1000);
 }
 
-// Вызов судьи/маршала из одиночного раунда
 function callOfficial(type) {
+    if (!canEditSolo) return;
     var typeName = type === 'referee' ? 'Судью' : 'Маршала';
     if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + curHole + '?')) return;
 

@@ -74,15 +74,25 @@ function loadLiveRounds() {
             var players = r.players || {};
             var pHtml = '';
 
+            var startH = parseInt(r.startHole) || 1;
+            var order = holeOrder(startH);
+
             Object.entries(players).forEach(function(pe) {
                 var p = pe[1], scores = p.scores || {};
-                var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(r.startHole || 1));
+                var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
                 
-                var thruText = stats.holesPlayed >= 18 ? 'F' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
+                var thruText = '';
+                if (stats.holesPlayed >= 18) {
+                    thruText = 'Завершил (F)';
+                } else if (stats.currentHole) {
+                    thruText = 'лунка №' + stats.currentHole;
+                } else {
+                    thruText = 'лунка №' + startH;
+                }
 
                 pHtml += '<div class="round-p" style="align-items:flex-start;">' +
                     '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;">' + (p.name || '—') + '</div>' +
-                    '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruText + '</div></div>' +
+                    '<div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;">📍 ' + thruText + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
                     '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + '</div>' +

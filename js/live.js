@@ -18,11 +18,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function onAuthReady(u, d) {
     navAuth(u, d);
-    if (u) myUid = u.uid;
-    if (curRid) initRoundView();
+    if (u) {
+        myUid = u.uid;
+    } else {
+        myUid = null;
+    }
+    
+    if (curRid) {
+        initRoundView();
+    }
 }
 
+// ==========================================
+// СОЗДАНИЕ ГРУППЫ
+// ==========================================
 function showGroupSetup() {
+    if (!currentUser) { 
+        toast('Войдите в аккаунт, чтобы создать раунд', 'error'); 
+        setTimeout(function() { window.location.href = 'auth.html'; }, 1500); 
+        return; 
+    }
+
     document.getElementById('mode-view').classList.add('hidden');
     document.getElementById('group-setup').classList.remove('hidden');
 
@@ -87,14 +103,14 @@ function buildPlayerSlots() {
         html += '<div class="form-group"><label>Выбрать из зарегистрированных</label>';
         html += '<select class="form-input" id="pl-select-' + i + '" onchange="fillPlayerFromUser(' + i + ')">';
         html += '<option value="">— Гость / ввести вручную —</option>';
-
+        
         Object.entries(registeredUsers).forEach(function(e) {
             var u = e[1];
             var isCurrent = (i === 1 && currentUser && e[0] === currentUser.uid);
             var sel = isCurrent ? 'selected' : '';
             html += '<option value="' + e[0] + '" ' + sel + '>' + (u.name || '—') + ' (HCP: ' + (u.handicap != null ? u.handicap : '—') + ')</option>';
         });
-
+        
         html += '</select></div>';
 
         html += '<div class="form-row">';
@@ -118,7 +134,7 @@ function fillPlayerFromUser(idx) {
     var uid = sel.value;
     if (!uid || !registeredUsers[uid]) return;
     var u = registeredUsers[uid];
-
+    
     var nameEl = document.getElementById('pl-name-' + idx);
     var hcpEl = document.getElementById('pl-hcp-' + idx);
     var genderEl = document.getElementById('pl-gender-' + idx);
@@ -126,7 +142,7 @@ function fillPlayerFromUser(idx) {
     if (nameEl) nameEl.value = u.name || '';
     if (hcpEl) hcpEl.value = u.handicap != null ? u.handicap : '';
     if (genderEl && u.gender) genderEl.value = u.gender;
-
+    
     calcPlayerFieldHcp(idx);
 }
 
@@ -134,18 +150,18 @@ function calcPlayerFieldHcp(idx) {
     var hcpEl = document.getElementById('pl-hcp-' + idx);
     var genderEl = document.getElementById('pl-gender-' + idx);
     var teeEl = document.getElementById('g-tee');
-
+    
     if (!hcpEl || !genderEl || !teeEl) return;
     var hcp = hcpEl.value;
     var gender = genderEl.value;
     var tee = teeEl.value;
 
     var fieldEl = document.getElementById('pl-field-' + idx);
-    if (!hcp) {
-        if (fieldEl) fieldEl.value = '';
-        return;
+    if (!hcp) { 
+        if (fieldEl) fieldEl.value = ''; 
+        return; 
     }
-
+    
     var field = getFieldHcp(parseFloat(hcp), tee, gender);
     if (fieldEl) fieldEl.value = field;
 }
@@ -162,6 +178,9 @@ function backToModes() {
     document.getElementById('mode-view').classList.remove('hidden');
 }
 
+// ==========================================
+// СТАРТ И АВТО-МАРКЕРЫ
+// ==========================================
 function startGroup() {
     var timeStr = document.getElementById('g-time').value;
     var startHole = parseInt(document.getElementById('g-hole').value) || 1;
@@ -205,7 +224,7 @@ function startGroup() {
         var markerId = pOrder[i];
         var targetId = pOrder[(i + 1) % pOrder.length];
 
-        players[targetId].markedBy = markerId;
+        players[targetId].markedBy = markerId; 
         markerAssignments[markerId] = {
             targetId: targetId,
             targetName: players[targetId].name
@@ -215,8 +234,6 @@ function startGroup() {
     var parts = timeStr.split(':');
     var now = new Date();
     var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
-
-    var creatorId = currentUser ? currentUser.uid : 'guest';
 
     var data = {
         mode: 'group',
@@ -228,7 +245,7 @@ function startGroup() {
         markerAssignments: markerAssignments,
         status: 'active',
         createdAt: Date.now(),
-        createdBy: creatorId
+        createdBy: currentUser ? currentUser.uid : 'guest'
     };
 
     if (tournamentId) data.tournamentId = tournamentId;
@@ -240,6 +257,9 @@ function startGroup() {
     });
 }
 
+// ==========================================
+// ИНИЦИАЛИЗАЦИЯ И ПРОВЕРКА ДОСТУПА
+// ==========================================
 function initRoundView() {
     db.ref('rounds/' + curRid).on('value', function(sn) {
         curRoundData = sn.val();
@@ -249,13 +269,19 @@ function initRoundView() {
         }
 
         document.getElementById('mode-view').classList.add('hidden');
+        var pageSub = document.getElementById('page-sub');
+        if (pageSub) pageSub.textContent = curRoundData.format + ' · ТИ: ' + TEES[curRoundData.tee];
 
+        // ПРОВЕРКА АВТОРИЗАЦИИ И ПРИСУТСТВИЯ В РАУНДЕ
         var isParticipant = false;
+        
+        // myUid есть только если человек залогинен через Firebase Auth
         if (myUid && curRoundData.players && curRoundData.players[myUid]) {
             isParticipant = true;
         }
 
         if (isParticipant && curRoundData.status === 'active') {
+            // МЫ УЧАСТНИК И РАУНД АКТИВЕН — Показываем форму ввода
             document.getElementById('active-scoring-view').classList.remove('hidden');
             document.getElementById('group-view').classList.add('hidden');
 
@@ -276,6 +302,7 @@ function initRoundView() {
             renderPlaySummary();
 
         } else {
+            // МЫ ЗРИТЕЛЬ (не залогинен, или не участник, или раунд завершен) — Показываем только чтение
             document.getElementById('active-scoring-view').classList.add('hidden');
             document.getElementById('group-view').classList.remove('hidden');
 
@@ -298,6 +325,9 @@ function findCurrentHole() {
     }
 }
 
+// ==========================================
+// ЛОГИКА ВВОДА СЧЁТА
+// ==========================================
 function buildPlayHolesNav() {
     var el = document.getElementById('play-holes-nav');
     var order = holeOrder(curRoundData.startHole || 1);
@@ -473,6 +503,9 @@ function renderPlaySummary() {
     el.innerHTML = html;
 }
 
+// ==========================================
+// ВЫЗОВ СУДЬИ / МАРШАЛА
+// ==========================================
 function callOfficial(type) {
     var typeName = type === 'referee' ? 'Судью' : 'Маршала';
     if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + playHole + '?')) return;
@@ -493,6 +526,9 @@ function callOfficial(type) {
     });
 }
 
+// ==========================================
+// РЕЖИМ ПРОСМОТРА (ЗРИТЕЛЬ)
+// ==========================================
 function renderGVPlayers(r) {
     var el = document.getElementById('gv-players');
     var order = holeOrder(r.startHole || 1);

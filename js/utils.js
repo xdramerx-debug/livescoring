@@ -27,7 +27,7 @@ const TIMINGS = {1:15,2:15,3:20,4:12,5:15,6:15,7:15,8:12,9:20,10:20,11:15,12:15,
 const TEES = {bk:'Чёрный',bl:'Синий',wh:'Белый',rd:'Красный'};
 const COURSE_RATINGS = {
     men:{bk:{cr:76.0,sr:144},bl:{cr:73.8,sr:137},wh:{cr:72.0,sr:135},rd:{cr:69.2,sr:134}},
-    women:{bl:{cr:80.8,sr:143},wh:{cr:78.6,sr:143},rd:{cr:75.2,sr:136}}
+    women:{bl:{cr:80.8,sr:153},wh:{cr:78.6,sr:143},rd:{cr:75.2,sr:136}}
 };
 
 function holePar(h){return HOLES[h]?HOLES[h].p:4;}
@@ -42,7 +42,88 @@ function toast(m,t){t=t||'success';var e=document.createElement('div');e.classNa
 function vib(ms){if(navigator.vibrate)navigator.vibrate(ms||50);}
 function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'});}
 function fmtTime(ts){if(!ts)return'—';var d=new Date(ts),h=d.getHours(),m=d.getMinutes();return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
-function initNav(){var tg=document.getElementById('nav-toggle'),mn=document.getElementById('nav-menu');if(tg&&mn)tg.addEventListener('click',function(){tg.classList.toggle('active');mn.classList.toggle('open');});window.addEventListener('scroll',function(){var n=document.getElementById('main-nav');if(n){if(window.scrollY>50)n.classList.add('nav-scrolled');else n.classList.remove('nav-scrolled');}});}
+function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
+function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
+
+function initNav(){
+    var tg=document.getElementById('nav-toggle');
+    var mn=document.getElementById('nav-menu');
+    var ov=document.getElementById('nav-overlay');
+
+    if(!ov){
+        ov=document.createElement('div');
+        ov.id='nav-overlay';
+        ov.className='nav-overlay';
+        document.body.appendChild(ov);
+    }
+
+    function openNav(){
+        if(tg)tg.classList.add('active');
+        if(mn)mn.classList.add('open');
+        if(ov)ov.classList.add('show');
+    }
+
+    function closeNav(){
+        if(tg)tg.classList.remove('active');
+        if(mn)mn.classList.remove('open');
+        if(ov)ov.classList.remove('show');
+    }
+
+    if(tg&&mn){
+        tg.addEventListener('click',function(e){
+            e.stopPropagation();
+            if(mn.classList.contains('open')){
+                closeNav();
+            }else{
+                openNav();
+            }
+        });
+    }
+
+    if(ov){
+        ov.addEventListener('click',function(){
+            closeNav();
+        });
+    }
+
+    var closeBtn=document.getElementById('nav-menu-close');
+    if(!closeBtn&&mn){
+        closeBtn=document.createElement('button');
+        closeBtn.id='nav-menu-close';
+        closeBtn.className='nav-menu-close';
+        closeBtn.innerHTML='&times;';
+        closeBtn.setAttribute('aria-label','Закрыть меню');
+        if(mn.insertBefore) mn.insertBefore(closeBtn,mn.firstChild);
+    }
+    if(closeBtn){
+        closeBtn.addEventListener('click',function(){
+            closeNav();
+        });
+    }
+
+    if(mn&&mn.querySelectorAll){
+        mn.querySelectorAll('a').forEach(function(link){
+            link.addEventListener('click',function(){
+                closeNav();
+            });
+        });
+    }
+
+    document.addEventListener('keydown',function(e){
+        if(e.key==='Escape'){
+            closeNav();
+        }
+    });
+
+    window.addEventListener('scroll',function(){
+        var n=document.getElementById('main-nav');
+        if(n){
+            if(window.scrollY>50)n.classList.add('nav-scrolled');
+            else n.classList.remove('nav-scrolled');
+        }
+    });
+}
+
 function navAuth(u,d){var e=document.getElementById('nav-auth');if(!e)return;if(u&&d)e.innerHTML='<div class="nav-user"><span class="nav-uname">'+(d.name||'')+'</span><button class="btn btn-og btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button></div>';else e.innerHTML='<a href="auth.html" class="btn btn-g btn-sm">Войти</a>';}
 function doLogout(){auth.signOut().then(function(){window.location.href='auth.html';});}
 function holeOrder(sh){var o=[],h=parseInt(sh)||1;for(var i=0;i<18;i++){o.push(h);h=h>=18?1:h+1;}return o;}
@@ -55,27 +136,111 @@ function buildTimingTable(st,sh){if(!st)return'';var html='<table class="scoreca
 const ADMIN_LOGIN='admin';
 const ADMIN_PASS='pestovo2024';
 
-function getFieldHcp(exactHcp,tee,gender){
-    if(!exactHcp)return 0;
-    gender=gender||'men';tee=tee||'wh';
-    var rating=COURSE_RATINGS[gender]&&COURSE_RATINGS[gender][tee];
-    if(!rating)return Math.round(parseFloat(exactHcp));
-    var field=(parseFloat(exactHcp)*(rating.sr/113))+(rating.cr-TOTAL_PAR);
+function parseExactHcp(val) {
+    if (val === null || val === undefined || val === '') return 0;
+    if (typeof val === 'number') return val;
+    var s = String(val).trim().replace(',', '.');
+    if (s.startsWith('+')) {
+        return -Math.abs(parseFloat(s.substring(1)) || 0);
+    }
+    return parseFloat(s) || 0;
+}
+
+function fmtExactHcp(val) {
+    if (val === null || val === undefined || isNaN(val) || val === '') return '—';
+    var num = parseFloat(val);
+    if (isNaN(num)) return '—';
+    if (num < 0) {
+        return '+' + Math.abs(num).toFixed(1);
+    }
+    return Math.abs(num).toFixed(1);
+}
+
+function fmtFieldHcp(val) {
+    if (val === null || val === undefined || isNaN(val) || val === '') return '0';
+    return String(Math.abs(Math.round(parseFloat(val) || 0)));
+}
+
+function getFieldHcp(exactHcp, tee, gender) {
+    var parsed = parseExactHcp(exactHcp);
+    gender = gender || 'men'; tee = tee || 'wh';
+    var rating = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
+    if (!rating) return Math.round(parsed);
+    var field = (parsed * (rating.sr / 113)) + (rating.cr - TOTAL_PAR);
     return Math.round(field);
+}
+
+function generateHcpTable(gender, tee) {
+    var rating = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
+    if (!rating) return [];
+    var rows = [];
+    var maxPlus = -5.0;
+    var maxHandicap = 54.0;
+
+    var curStart = maxPlus;
+    var curField = getFieldHcp(curStart, tee, gender);
+
+    for (var x = -4.9; x <= maxHandicap + 0.05; x += 0.1) {
+        var exactVal = Math.round(x * 10) / 10;
+        var f = getFieldHcp(exactVal, tee, gender);
+        if (f !== curField) {
+            var prevExact = Math.round((exactVal - 0.1) * 10) / 10;
+            rows.push([fmtExactHcp(curStart), fmtExactHcp(prevExact), fmtFieldHcp(curField)]);
+            curStart = exactVal;
+            curField = f;
+        }
+    }
+    rows.push([fmtExactHcp(curStart), fmtExactHcp(maxHandicap), fmtFieldHcp(curField)]);
+    return rows;
+}
+
+var HCP_TABLE = {
+    get men() {
+        return {
+            bk: generateHcpTable('men', 'bk'),
+            bl: generateHcpTable('men', 'bl'),
+            wh: generateHcpTable('men', 'wh'),
+            rd: generateHcpTable('men', 'rd')
+        };
+    },
+    get women() {
+        return {
+            bl: generateHcpTable('women', 'bl'),
+            wh: generateHcpTable('women', 'wh'),
+            rd: generateHcpTable('women', 'rd')
+        };
+    }
+};
+if (typeof window !== 'undefined') {
+    window.HCP_TABLE = HCP_TABLE;
 }
 
 function stablefordField(strokes,holeNum,fieldHcp){
     if(!strokes||strokes<1)return 0;
     var par=holePar(holeNum),hcpIdx=holeHcp(holeNum),extra=0;
-    if(fieldHcp>0&&hcpIdx>0){extra=Math.floor(fieldHcp/18);if(hcpIdx<=(fieldHcp%18))extra++;}
+    if(fieldHcp>0&&hcpIdx>0){
+        extra=Math.floor(fieldHcp/18);
+        if(hcpIdx<=(fieldHcp%18))extra++;
+    } else if(fieldHcp<0&&hcpIdx>0){
+        var absHcp=Math.abs(fieldHcp);
+        extra=-Math.floor(absHcp/18);
+        if((19-hcpIdx)<=(absHcp%18))extra--;
+    }
     var nett=strokes-extra,diff=nett-par;
     if(diff<=-3)return 5;if(diff===-2)return 4;if(diff===-1)return 3;if(diff===0)return 2;if(diff===1)return 1;return 0;
 }
 
 function stablefordExact(strokes,holeNum,exactHcp){
     if(!strokes||strokes<1)return 0;
-    var par=holePar(holeNum),hcpIdx=holeHcp(holeNum),hcp=Math.round(parseFloat(exactHcp)||0),extra=0;
-    if(hcp>0&&hcpIdx>0){extra=Math.floor(hcp/18);if(hcpIdx<=(hcp%18))extra++;}
+    var par=holePar(holeNum),hcpIdx=holeHcp(holeNum),hcp=Math.round(parseExactHcp(exactHcp)||0),extra=0;
+    if(hcp>0&&hcpIdx>0){
+        extra=Math.floor(hcp/18);
+        if(hcpIdx<=(hcp%18))extra++;
+    } else if(hcp<0&&hcpIdx>0){
+        var absHcp=Math.abs(hcp);
+        extra=-Math.floor(absHcp/18);
+        if((19-hcpIdx)<=(absHcp%18))extra--;
+    }
     var nett=strokes-extra,diff=nett-par;
     if(diff<=-3)return 5;if(diff===-2)return 4;if(diff===-1)return 3;if(diff===0)return 2;if(diff===1)return 1;return 0;
 }
@@ -83,7 +248,14 @@ function stablefordExact(strokes,holeNum,exactHcp){
 function calcNettScore(strokes,par,hcpIdx,fieldHcp){
     if(!strokes||strokes<1)return 0;
     var extra=0;
-    if(fieldHcp>0&&hcpIdx>0){extra=Math.floor(fieldHcp/18);if(hcpIdx<=(fieldHcp%18))extra++;}
+    if(fieldHcp>0&&hcpIdx>0){
+        extra=Math.floor(fieldHcp/18);
+        if(hcpIdx<=(fieldHcp%18))extra++;
+    } else if(fieldHcp<0&&hcpIdx>0){
+        var absHcp=Math.abs(fieldHcp);
+        extra=-Math.floor(absHcp/18);
+        if((19-hcpIdx)<=(absHcp%18))extra--;
+    }
     return strokes-extra;
 }
 
@@ -109,20 +281,203 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
     }
     var toPar=played.length>0?gross-parPlayed:null;
     var netToPar=played.length>0?netTotal-parPlayed:null;
-    return{played:played,remaining:remaining,holesPlayed:played.length,holesRemaining:remaining.length,currentHole:currentHole,gross:gross,parPlayed:parPlayed,toPar:toPar,net:netTotal,netToPar:netToPar,stablefordField:stblField,stablefordExact:stblExact,birdies:birdies,eagles:eagles,pars:pars,bogeys:bogeys,doubles:doubles,holeInOne:hio};
+    var projected=played.length>0?gross+(TOTAL_PAR-parPlayed):null;
+    return{played:played,remaining:remaining,holesPlayed:played.length,holesRemaining:remaining.length,currentHole:currentHole,gross:gross,parPlayed:parPlayed,toPar:toPar,net:netTotal,netToPar:netToPar,projected:projected,stablefordField:stblField,stablefordExact:stblExact,birdies:birdies,eagles:eagles,pars:pars,bogeys:bogeys,doubles:doubles,holeInOne:hio};
+}
+
+function generateGroupHoleTableHTML(r) {
+    var players = r.players || {};
+    var playerEntries = Object.entries(players);
+    if (!playerEntries.length) return '';
+
+    var pOut = 0, pIn = 0;
+    for (var i = 1; i <= 9; i++) pOut += holePar(i);
+    for (var i = 10; i <= 18; i++) pIn += holePar(i);
+
+    var html = '<div class="scorecard" style="margin-bottom:12px;"><table>';
+    html += '<tr><th style="text-align:left;padding-left:10px;">Игрок / Лунка</th>';
+    for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
+    html += '<th>Аут</th></tr>';
+
+    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;font-weight:700;">Пар</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + holePar(i) + '</td>';
+    html += '<td style="font-weight:800;">' + pOut + '</td></tr>';
+
+    playerEntries.forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        var sc = p.scores || {};
+        var outG = 0;
+        html += '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')">';
+        html += '<td style="text-align:left;padding-left:10px;font-weight:700;color:var(--gold);white-space:nowrap;"><i class="fas fa-user"></i> ' + (p.name || '—') + '</td>';
+        for (var i = 1; i <= 9; i++) {
+            var s = parseInt(sc[i]) || 0;
+            var par = holePar(i);
+            var cls = holeResClass(s, par);
+            if (s > 0) outG += s;
+            html += '<td class="' + cls + '"><b>' + (s > 0 ? s : '') + '</b></td>';
+        }
+        html += '<td class="row-total"><b>' + (outG > 0 ? outG : '') + '</b></td></tr>';
+    });
+    html += '</table></div>';
+
+    html += '<div class="scorecard"><table>';
+    html += '<tr><th style="text-align:left;padding-left:10px;">Игрок / Лунка</th>';
+    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
+    html += '<th>Ин</th><th>Итого</th></tr>';
+
+    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;font-weight:700;">Пар</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + holePar(i) + '</td>';
+    html += '<td style="font-weight:800;">' + pIn + '</td><td style="font-weight:800;">' + (pOut + pIn) + '</td></tr>';
+
+    playerEntries.forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        var sc = p.scores || {};
+        var outG = 0, inG = 0;
+        for (var i = 1; i <= 9; i++) { var s = parseInt(sc[i]) || 0; if (s > 0) outG += s; }
+        for (var i = 10; i <= 18; i++) { var s = parseInt(sc[i]) || 0; if (s > 0) inG += s; }
+        var totG = outG + inG;
+
+        html += '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')">';
+        html += '<td style="text-align:left;padding-left:10px;font-weight:700;color:var(--gold);white-space:nowrap;"><i class="fas fa-user"></i> ' + (p.name || '—') + '</td>';
+        for (var i = 10; i <= 18; i++) {
+            var s = parseInt(sc[i]) || 0;
+            var par = holePar(i);
+            var cls = holeResClass(s, par);
+            if (s > 0) inG += s;
+            html += '<td class="' + cls + '"><b>' + (s > 0 ? s : '') + '</b></td>';
+        }
+        html += '<td class="row-total"><b>' + (inG > 0 ? inG : '') + '</b></td>';
+        html += '<td class="row-total"><b>' + (totG > 0 ? totG : '') + '</b></td></tr>';
+    });
+    html += '</table></div>';
+
+    return html;
+}
+
+// ==========================================
+// УНИВЕРСАЛЬНОЕ МОДАЛЬНОЕ ОКНО ПРОФИЛЯ И СЧЁТНОЙ КАРТОЧКИ
+// ==========================================
+function openPlayerProfileModal(playerId, roundId) {
+    var modalEl = document.getElementById('pmodal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'pmodal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML =
+            '<div class="modal-bg" onclick="closePModal()"></div>' +
+            '<div class="modal-body">' +
+            '<button class="modal-close" onclick="closePModal()">&times;</button>' +
+            '<div id="pmodal-body"><div class="loading"><div class="spinner"></div></div></div>' +
+            '</div>';
+        document.body.appendChild(modalEl);
+    }
+
+    var bodyEl = document.getElementById('pmodal-body');
+    if (bodyEl) bodyEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+    modalEl.classList.remove('hidden');
+
+    if (typeof db === 'undefined') return;
+
+    var userPromise = db.ref('users/' + playerId).once('value').then(function(sn) { return sn.val(); }).catch(function() { return null; });
+    var roundPromise = roundId ? db.ref('rounds/' + roundId).once('value').then(function(sn) { return sn.val(); }).catch(function() { return null; }) : Promise.resolve(null);
+
+    Promise.all([userPromise, roundPromise]).then(function(res) {
+        var u = res[0];
+        var rd = res[1];
+
+        if (!u && rd && rd.players && rd.players[playerId]) {
+            var p = rd.players[playerId];
+            u = {
+                name: p.name || 'Гость',
+                handicap: p.exactHcp || null,
+                gender: p.gender || 'men',
+                isGuest: true,
+                roundsPlayed: 1
+            };
+        }
+
+        if (!u) {
+            if (bodyEl) bodyEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:30px;">Профиль игрока не найден</p>';
+            return;
+        }
+
+        var gIcon = u.gender === 'women' ? '👩' : '👨';
+        var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">ГОСТЬ</span>' : '';
+
+        var html = '<div class="profile-head">';
+        html += '<div class="profile-avatar">' + (u.name ? u.name.charAt(0) : '?') + '</div>';
+        html += '<div><div class="profile-name">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</div>';
+        html += '<div class="profile-meta">';
+        html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
+        html += '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' раундов</span>';
+        if (u.bestGross) html += '<span><i class="fas fa-trophy"></i> Gross (18л): ' + u.bestGross + '</span>';
+        html += '</div></div></div>';
+
+        if (rd && rd.players && rd.players[playerId]) {
+            var roundPlayer = rd.players[playerId];
+            html += '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">';
+            html += '<h3 style="color:var(--gold);margin-bottom:14px;font-family:var(--ff);font-size:18px;">' +
+                    '<i class="fas fa-table"></i> Счётная карточка раунда (' + (rd.format || 'Stroke') + ' · ТИ: ' + TEES[rd.tee] + ')' +
+                    '</h3>';
+            
+            if (typeof generatePestovoScorecardHTML === 'function') {
+                html += generatePestovoScorecardHTML(roundPlayer, rd);
+            }
+            html += '</div>';
+        }
+
+        db.ref('users/' + playerId + '/history').once('value').then(function(hSn) {
+            var history = hSn.val() || {};
+            var rounds = Object.values(history);
+            rounds.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
+
+            if (rounds.length > 0) {
+                html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> История раундов</h3>';
+                rounds.forEach(function(r) {
+                    var isFull = r.holes === 18;
+                    var fullTag = isFull ? ' <span style="color:#2ecc71;font-size:10px;">(18л)</span>' : ' <span style="color:var(--muted);font-size:10px;">(' + r.holes + 'л)</span>';
+
+                    html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
+                    html += '<div style="flex:1;min-width:180px;"><strong style="color:var(--white);">Пестово</strong>' + fullTag;
+                    html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
+                            fmtDate(r.date) + ' · ' + (r.format || 'Stroke') + ' · ТИ: ' + (r.tee ? TEES[r.tee] : '—') +
+                            ' · ' + (r.mode === 'solo' ? '👤' : '👥') + '</div>';
+                    html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' +
+                            (r.holeInOne ? '🎯 ' + r.holeInOne + ' · ' : '') +
+                            '🦅 ' + (r.eagles || 0) + ' · 🐦 ' + (r.birdies || 0) + ' · Par ' + (r.pars || 0) + '</div></div>';
+                    html += '<div style="text-align:right;">';
+                    html += '<div style="font-size:22px;font-weight:800;color:var(--white);">' + r.gross + '</div>';
+                    html += '<div class="' + scoreClass(r.toPar) + '" style="font-size:14px;font-weight:700;">' + fmtScore(r.toPar) + '</div>';
+                    if (r.roundId) {
+                        html += '<button class="btn btn-og btn-sm" style="margin-top:6px;" onclick="event.stopPropagation();downloadScorecard(\'' + r.roundId + '\')"><i class="fas fa-download"></i></button>';
+                    }
+                    html += '</div></div>';
+                });
+            }
+
+            if (bodyEl) bodyEl.innerHTML = html;
+        }).catch(function() {
+            if (bodyEl) bodyEl.innerHTML = html;
+        });
+    });
+}
+
+function closePModal() {
+    var modalEl = document.getElementById('pmodal');
+    if (modalEl) modalEl.classList.add('hidden');
 }
 
 // ==========================================
 // СКОРКАРТА ПЕСТОВО (КАК НА ФОТО — 18 ЛУНОК)
 // ==========================================
 function generatePestovoScorecardHTML(player, roundData) {
-    var p = player;
+    var p = player || {};
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
     var eHcp = p.exactHcp || 0;
-    var fmt = roundData.format || 'Stroke Play';
-    var date = fmtDate(roundData.completedAt || roundData.createdAt);
-    var startTime = fmtTime(roundData.startTime);
+    var fmt = (roundData && roundData.format) || 'Stroke Play';
+    var date = fmtDate((roundData && (roundData.completedAt || roundData.createdAt)) || Date.now());
+    var startTime = fmtTime(roundData && roundData.startTime);
 
     var outG=0,inG=0,outS=0,inS=0;
     for(var i=1;i<=9;i++){var s=parseInt(sc[i])||0;if(s>0){outG+=s;outS+=stablefordField(s,i,fHcp);}}
@@ -138,7 +493,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     // Шапка
     html+='<div class="pc-header">';
     html+='<div class="pc-col"><strong>Игрок:</strong> '+(p.name||'—')+'</div>';
-    html+='<div class="pc-col"><strong>Точный гандикап:</strong> '+(eHcp||'—')+' · <strong>Полевой:</strong> '+fHcp+'</div>';
+    html+='<div class="pc-col"><strong>Точный гандикап:</strong> '+(fmtExactHcp(eHcp))+' · <strong>Полевой:</strong> '+(fmtFieldHcp(fHcp))+'</div>';
     html+='<div class="pc-col"><strong>Формат:</strong> '+fmt+' · <strong>Старт:</strong> '+startTime+' · <strong>Дата:</strong> '+date+'</div>';
     html+='</div>';
 
@@ -164,7 +519,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].bl+'</td>';
     html+='<td class="pc-tot">'+blOut+'</td>';
     for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].bl+'</td>';
-    html+='<td class="pc-tot">'+blIn+'</td><td class="pc-tot">'+(blOut+blIn)+'</td></tr>';
+    html+='<td class="pc-tot">'+bkIn+'</td><td class="pc-tot">'+(blOut+blIn)+'</td></tr>';
 
     // Белый ти
     var whOut=0,whIn=0;for(var i=1;i<=9;i++)whOut+=HOLES[i].wh;for(var i=10;i<=18;i++)whIn+=HOLES[i].wh;

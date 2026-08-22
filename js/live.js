@@ -107,7 +107,7 @@ function buildPlayerSlots() {
             var u = e[1];
             var isCurrent = (i === 1 && currentUser && e[0] === currentUser.uid);
             var sel = isCurrent ? 'selected' : '';
-            html += '<option value="' + e[0] + '" ' + sel + '>' + (u.name || '—') + ' (HCP: ' + (u.handicap != null ? u.handicap : '—') + ')</option>';
+            html += '<option value="' + e[0] + '" ' + sel + '>' + (u.name || '—') + ' (HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + ')</option>';
         });
         
         html += '</select></div>';
@@ -118,7 +118,7 @@ function buildPlayerSlots() {
         html += '</div>';
 
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>Точный HCP</label><input type="number" id="pl-hcp-' + i + '" class="form-input" step="0.1" placeholder="12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
+        html += '<div class="form-group"><label>Точный HCP</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 или 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
         html += '<div class="form-group"><label>Полевой (авто)</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly></div>';
         html += '</div></div>';
     }
@@ -139,7 +139,7 @@ function fillPlayerFromUser(idx) {
     var genderEl = document.getElementById('pl-gender-' + idx);
 
     if (nameEl) nameEl.value = u.name || '';
-    if (hcpEl) hcpEl.value = u.handicap != null ? u.handicap : '';
+    if (hcpEl) hcpEl.value = u.handicap != null ? fmtExactHcp(u.handicap) : '';
     if (genderEl && u.gender) genderEl.value = u.gender;
     
     calcPlayerFieldHcp(idx);
@@ -156,13 +156,13 @@ function calcPlayerFieldHcp(idx) {
     var tee = teeEl.value;
 
     var fieldEl = document.getElementById('pl-field-' + idx);
-    if (!hcp) { 
+    if (!hcp && hcp !== '0') { 
         if (fieldEl) fieldEl.value = ''; 
         return; 
     }
     
-    var field = getFieldHcp(parseFloat(hcp), tee, gender);
-    if (fieldEl) fieldEl.value = field;
+    var field = getFieldHcp(hcp, tee, gender);
+    if (fieldEl) fieldEl.value = fmtFieldHcp(field);
 }
 
 document.addEventListener('change', function(e) {
@@ -198,17 +198,18 @@ function startGroup() {
         var uid = selectEl ? selectEl.value : '';
         var nameEl = document.getElementById('pl-name-' + i);
         var name = nameEl ? nameEl.value.trim() : '';
-        var hcp = document.getElementById('pl-hcp-' + i).value;
+        var hcpStr = document.getElementById('pl-hcp-' + i).value;
         var gender = document.getElementById('pl-gender-' + i).value;
 
         if (!name) { toast('Заполните имя игрока #' + i, 'error'); return; }
 
         var pid = uid || 'guest_' + Date.now() + '_' + i;
-        var fieldHcp = hcp ? getFieldHcp(parseFloat(hcp), tee, gender) : 0;
+        var parsedHcp = parseExactHcp(hcpStr);
+        var fieldHcp = hcpStr ? getFieldHcp(parsedHcp, tee, gender) : 0;
 
         players[pid] = {
             name: name,
-            exactHcp: hcp ? parseFloat(hcp) : null,
+            exactHcp: parsedHcp,
             fieldHcp: fieldHcp,
             gender: gender,
             scores: {},
@@ -218,7 +219,6 @@ function startGroup() {
         pOrder.push(pid);
     }
 
-    // Назначаем маркеры по кругу
     var markerAssignments = {};
     for (var i = 0; i < pOrder.length; i++) {
         var markerId = pOrder[i];
@@ -258,7 +258,6 @@ function startGroup() {
     var ref = db.ref('rounds').push();
     var newRoundId = ref.key;
     
-    // Создатель запоминает ключ раунда и свой ID
     localStorage.setItem('pestovo_group_key_' + newRoundId, accessKey);
     localStorage.setItem('pestovo_acting_as_' + newRoundId, pOrder[0]);
 
@@ -274,21 +273,17 @@ function startGroup() {
 function getActingUid() {
     if (!curRoundData || !curRoundData.players) return null;
 
-    // 1. Проверяем токен локального игрока (?as=PID или localStorage)
     var storedUid = localStorage.getItem('pestovo_acting_as_' + curRid);
     if (storedUid && curRoundData.players[storedUid]) {
         return storedUid;
     }
 
-    // 2. Проверяем залогиненного пользователя Firebase Auth
     if (currentUser && curRoundData.players[currentUser.uid]) {
         return currentUser.uid;
     }
 
-    // 3. Проверяем если это создатель через ключ accessKey
     var localKey = localStorage.getItem('pestovo_group_key_' + curRid);
     if (localKey && curRoundData.accessKey === localKey) {
-        // Возвращаем первого игрока раунда
         return Object.keys(curRoundData.players)[0];
     }
 
@@ -297,7 +292,7 @@ function getActingUid() {
 
 function initRoundView() {
     db.ref('rounds/' + curRid).on('value', function(sn) {
-        curRoundData = snap.val() || sn.val();
+        curRoundData = sn.val();
         if (!curRoundData) {
             toast('Раунд не найден', 'error');
             return;
@@ -305,12 +300,10 @@ function initRoundView() {
 
         document.getElementById('mode-view').classList.add('hidden');
 
-        // Определяем кто мы
         myUid = getActingUid();
         canEditGroup = (myUid !== null) && (curRoundData.status === 'active');
 
         if (canEditGroup) {
-            // МЫ УЧАСТНИК — Включаем активный ввод счёта
             document.getElementById('active-scoring-view').classList.remove('hidden');
             document.getElementById('group-view').classList.add('hidden');
 
@@ -319,7 +312,8 @@ function initRoundView() {
 
             if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
                 myTargetUid = curRoundData.markerAssignments[myUid].targetId;
-                document.getElementById('mark-player-name').textContent = curRoundData.players[myTargetUid]?.name || 'Партнёр';
+                var targetPlayer = curRoundData.players[myTargetUid];
+                document.getElementById('mark-player-name').textContent = targetPlayer ? targetPlayer.name : 'Партнёр';
                 document.getElementById('marker-input-container').classList.remove('hidden');
             } else {
                 document.getElementById('marker-input-container').classList.add('hidden');
@@ -335,13 +329,11 @@ function initRoundView() {
             renderInviteQRs();
 
         } else {
-            // ЗРИТЕЛЬ — Показываем только просмотр лидерборда
+            // ЗРИТЕЛЬ / ГОСТЬ — Показываем просмотр лидерборда и счётную карточку
             document.getElementById('active-scoring-view').classList.add('hidden');
             document.getElementById('group-view').classList.remove('hidden');
 
-            document.getElementById('gv-info').innerHTML = '<div><b>Старт:</b> ' + fmtTime(curRoundData.startTime) + ' · <b>С лунки:</b> ' + curRoundData.startHole + '</div>';
             renderGVPlayers(curRoundData);
-            renderInviteQRs();
         }
     });
 }
@@ -405,20 +397,18 @@ function renderPlayHole() {
     document.getElementById('play-par').textContent = par;
     document.getElementById('play-dist').textContent = dist > 0 ? dist : '—';
 
-    // Мой счёт
-    var mySaved = parseInt(curRoundData.players[myUid]?.scores?.[playHole]) || 0;
+    var mySaved = parseInt(curRoundData.players[myUid] && curRoundData.players[myUid].scores && curRoundData.players[myUid].scores[playHole]) || 0;
     myScore = mySaved > 0 ? mySaved : par;
 
-    // Счёт маркируемого игрока
     if (myTargetUid) {
-        var targetSaved = parseInt(curRoundData.players[myTargetUid]?.markerScores?.[myUid]?.[playHole]) || 0;
+        var targetSaved = parseInt(curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].markerScores && curRoundData.players[myTargetUid].markerScores[myUid] && curRoundData.players[myTargetUid].markerScores[myUid][playHole]) || 0;
         targetScore = targetSaved > 0 ? targetSaved : par;
     }
 
     updScoreDisplay('my', myScore);
     updScoreDisplay('mark', targetScore);
 
-    var myFieldHcp = curRoundData.players[myUid]?.fieldHcp || 0;
+    var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
     var net = calcNettScore(myScore, par, holeHcp(playHole), myFieldHcp);
     document.getElementById('my-net-badge').textContent = 'Net: ' + net;
 
@@ -430,7 +420,8 @@ function adjScore(who, delta) {
     if (who === 'my') {
         myScore = Math.max(1, Math.min(15, myScore + delta));
         updScoreDisplay('my', myScore);
-        var net = calcNettScore(myScore, holePar(playHole), holeHcp(playHole), curRoundData.players[myUid]?.fieldHcp || 0);
+        var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
+        var net = calcNettScore(myScore, holePar(playHole), holeHcp(playHole), myFieldHcp);
         document.getElementById('my-net-badge').textContent = 'Net: ' + net;
     } else {
         targetScore = Math.max(1, Math.min(15, targetScore + delta));
@@ -449,12 +440,13 @@ function updScoreDisplay(who, score) {
 
 function checkPlayVerification() {
     var box = document.getElementById('play-verify-status');
-    var myS = parseInt(curRoundData.players[myUid]?.scores?.[playHole]) || 0;
-    var myMarkerId = curRoundData.players[myUid]?.markedBy;
+    var myPlayer = curRoundData.players[myUid];
+    var myS = parseInt(myPlayer && myPlayer.scores && myPlayer.scores[playHole]) || 0;
+    var myMarkerId = myPlayer && myPlayer.markedBy;
     var markerS = 0;
 
     if (myMarkerId && curRoundData.players[myMarkerId]) {
-        markerS = parseInt(curRoundData.players[myUid]?.markerScores?.[myMarkerId]?.[playHole]) || 0;
+        markerS = parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][playHole]) || 0;
     }
 
     if (myS > 0 && markerS > 0 && myS === markerS) {
@@ -476,18 +468,16 @@ function saveHoleScores() {
     var h = playHole;
     var updates = {};
 
-    // 1. Сохраняем мой счёт
     updates['rounds/' + curRid + '/players/' + myUid + '/scores/' + h] = myScore;
 
-    // 2. Сохраняем счёт партнёра
     if (myTargetUid) {
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerScores/' + myUid + '/' + h] = targetScore;
     }
 
-    // 3. Верификация моего счёта
-    var myMarkerId = curRoundData.players[myUid]?.markedBy;
+    var myPlayer = curRoundData.players[myUid];
+    var myMarkerId = myPlayer && myPlayer.markedBy;
     if (myMarkerId) {
-        var myMarkerScore = parseInt(curRoundData.players[myUid]?.markerScores?.[myMarkerId]?.[h]) || 0;
+        var myMarkerScore = parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][h]) || 0;
         if (myMarkerScore > 0 && myMarkerScore === myScore) {
             updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
         } else if (myMarkerScore > 0) {
@@ -495,9 +485,9 @@ function saveHoleScores() {
         }
     }
 
-    // 4. Верификация счёта партнёра
     if (myTargetUid) {
-        var targetSelfScore = parseInt(curRoundData.players[myTargetUid]?.scores?.[h]) || 0;
+        var targetPlayer = curRoundData.players[myTargetUid];
+        var targetSelfScore = parseInt(targetPlayer && targetPlayer.scores && targetPlayer.scores[h]) || 0;
         if (targetSelfScore > 0 && targetSelfScore === targetScore) {
             updates['rounds/' + curRid + '/players/' + myTargetUid + '/verified/' + h] = true;
         } else if (targetSelfScore > 0) {
@@ -524,16 +514,17 @@ function saveHoleScores() {
 
 function renderPlaySummary() {
     var el = document.getElementById('play-group-summary');
+    if (!el) return;
     var order = holeOrder(curRoundData.startHole || 1);
     var html = '';
 
-    Object.entries(curRoundData.players).forEach(function(pe) {
+    Object.entries(curRoundData.players || {}).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
         var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(Вы)</span>' : '';
 
-        html += '<div class="list-item" style="padding:10px;">';
-        html += '<div><strong style="color:var(--white);">' + p.name + isMe + '</strong>';
+        html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
+        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + p.name + isMe + '</strong>';
         html += '<div style="font-size:12px;color:var(--muted);">Лунок: ' + stats.holesPlayed + ' / 18</div></div>';
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
@@ -548,8 +539,9 @@ function renderPlaySummary() {
 // ГЕНЕРАЦИЯ QR ДЛЯ ПОДКЛЮЧЕНИЯ ИГРОКОВ
 // ==========================================
 function renderInviteQRs() {
+    if (!canEditGroup || !curRoundData) return;
     var activeEl = document.getElementById('invite-qrs-grid');
-    var gvEl = document.getElementById('gv-qr-grid');
+    if (!activeEl) return;
     var base = baseUrl();
     var html = '';
 
@@ -565,8 +557,7 @@ function renderInviteQRs() {
         html += '</div>';
     });
 
-    if (activeEl) activeEl.innerHTML = html;
-    if (gvEl) gvEl.innerHTML = html;
+    activeEl.innerHTML = html;
 }
 
 // ==========================================
@@ -577,7 +568,7 @@ function callOfficial(type) {
     var typeName = type === 'referee' ? 'Судью' : 'Маршала';
     if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + playHole + '?')) return;
 
-    var pName = (curRoundData && curRoundData.players[myUid]) ? curRoundData.players[myUid].name : 'Игрок';
+    var pName = (curRoundData && curRoundData.players && curRoundData.players[myUid]) ? curRoundData.players[myUid].name : 'Игрок';
 
     db.ref('alerts').push({
         roundId: curRid,
@@ -598,31 +589,33 @@ function callOfficial(type) {
 // ==========================================
 function renderGVPlayers(r) {
     var el = document.getElementById('gv-players');
-    var scEl = document.getElementById('gv-scorecards');
+    var scCardEl = document.getElementById('gv-scorecard-card');
     var order = holeOrder(r.startHole || 1);
     
-    var html = '';
-    var scHtml = '';
+    if (el) {
+        var html = '';
+        Object.entries(r.players || {}).forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+            var thruTxt = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
 
-    Object.entries(r.players || {}).forEach(function(pe) {
-        var p = pe[1];
-        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-        var thruTxt = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
+            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
+                '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</strong>' +
+                '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + '</div>' +
+                '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stblfd: ' + stats.stablefordField + '</div>' +
+                '</div>' +
+                '<div style="text-align:right;">' +
+                '<div class="' + scoreClass(stats.toPar) + '" style="font-size:24px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>' +
+                '<button class="btn btn-og btn-sm" style="margin-top:4px;padding:3px 8px;font-size:10px;"><i class="fas fa-id-card"></i> Карточка</button>' +
+                '</div></div>';
+        });
+        el.innerHTML = html;
+    }
 
-        if (typeof generatePestovoScorecardHTML === 'function') {
-            scHtml += generatePestovoScorecardHTML(p, r);
-        }
-
-        html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">' +
-            '<div><strong style="color:var(--white);">' + (p.name || '—') + '</strong>' +
-            '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + '</div>' +
-            '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stblfd: ' + stats.stablefordField + '</div>' +
-            '</div>' +
-            '<div class="' + scoreClass(stats.toPar) + '" style="font-size:20px;font-weight:800;">' + fmtScore(stats.toPar) + '</div></div>';
-    });
-
-    el.innerHTML = html;
-    if (scEl) scEl.innerHTML = scHtml;
+    if (scCardEl) {
+        r.roundId = curRid;
+        scCardEl.innerHTML = generateGroupHoleTableHTML(r);
+    }
 }
 
 function finishGroupRound() {

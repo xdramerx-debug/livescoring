@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Пестово">
+    <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/logo.png">
     <title>Гандикапы — Пестово</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -43,7 +47,7 @@
     <div class="card" style="max-width:520px;margin:0 auto 24px;">
         <h2><i class="fas fa-bolt"></i> Быстрый расчёт</h2>
         <div class="form-row">
-            <div class="form-group"><label>Точный HCP</label><input type="number" id="calc-hcp" class="form-input" step="0.1" placeholder="12.4" oninput="calcField()"></div>
+            <div class="form-group"><label>Точный HCP</label><input type="text" id="calc-hcp" class="form-input" placeholder="+2.4 или 12.4" oninput="calcField()"></div>
             <div class="form-group"><label>Пол</label><select id="calc-gender" class="form-input" onchange="calcField()"><option value="men">Мужчина</option><option value="women">Женщина</option></select></div>
             <div class="form-group"><label>ТИ</label><select id="calc-tee" class="form-input" onchange="calcField()"><option value="bk">⬛ Чёрный</option><option value="bl">🟦 Синий</option><option value="wh" selected>⬜ Белый</option><option value="rd">🟥 Красный</option></select></div>
         </div>
@@ -80,7 +84,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils.js?v=2"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() { initNav(); });
 function onAuthReady(u, d) { navAuth(u, d); }
@@ -90,9 +94,9 @@ function calcField() {
     var gender = document.getElementById('calc-gender').value;
     var tee = document.getElementById('calc-tee').value;
     var res = document.getElementById('calc-result');
-    if (!hcp) { res.classList.add('hidden'); return; }
-    var field = getFieldHcp(parseFloat(hcp), tee, gender);
-    document.getElementById('calc-val').textContent = field;
+    if (!hcp && hcp !== '0') { res.classList.add('hidden'); return; }
+    var field = getFieldHcp(hcp, tee, gender);
+    document.getElementById('calc-val').textContent = fmtFieldHcp(field);
     res.classList.remove('hidden');
 }
 
@@ -120,9 +124,9 @@ function showTable() {
     var tee = document.getElementById('tbl-tee').value;
     var el = document.getElementById('hcp-tables');
     if (!gender || !tee) { el.innerHTML = ''; return; }
-    var table = HCP_TABLE[gender] && HCP_TABLE[gender][tee];
+    var table = generateHcpTable(gender, tee);
     var cr = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
-    if (!table || !cr) { el.innerHTML = '<div class="card"><p style="text-align:center;color:var(--muted);">Нет данных</p></div>'; return; }
+    if (!table || !cr || !table.length) { el.innerHTML = '<div class="card"><p style="text-align:center;color:var(--muted);">Нет данных</p></div>'; return; }
     var genderIcon = gender === 'women' ? '👩' : '👨';
     var genderName = gender === 'women' ? 'Женщины' : 'Мужчины';
     var html = '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">';

@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', function() { initNav(); });
 function onAuthReady(user, userData) {
     navAuth(user, userData);
 
-    // Автовход если у пользователя роль admin
     if (document.getElementById('admin-login') && userData && userData.role === 'admin') {
         openAdminPanel();
     }
@@ -18,21 +17,18 @@ function adminLogin() {
     var er = document.getElementById('adm-error');
     er.classList.add('hidden');
 
-    // 1. Мастер-пароль
     if (u === ADMIN_LOGIN && p === ADMIN_PASS) {
         openAdminPanel();
         toast('✅ Вход по мастер-паролю');
         return;
     }
 
-    // 2. Проверка роли из Firebase
     if (currentUserData && currentUserData.role === 'admin') {
         openAdminPanel();
         toast('✅ Вход выполнен (Права администратора)');
         return;
     }
 
-    // Ошибка
     if (currentUserData && currentUserData.role !== 'admin') {
         er.textContent = 'У вашего аккаунта нет прав администратора. Обратитесь к главному админу.';
     } else {
@@ -42,18 +38,44 @@ function adminLogin() {
 }
 
 function openAdminPanel() {
-    document.getElementById('admin-login').classList.add('hidden');
-    document.getElementById('admin-content').classList.remove('hidden');
+    var loginEl = document.getElementById('admin-login');
+    var contentEl = document.getElementById('admin-content');
+    if (loginEl) loginEl.classList.add('hidden');
+    if (contentEl) contentEl.classList.remove('hidden');
     loadAdmRounds();
     loadAdmPlayers();
     loadTournaments();
     listenForAlerts();
+    updateNotifButton();
+}
+
+function enableAdminNotifications() {
+    if (typeof requestNotificationPermission === 'function') {
+        requestNotificationPermission(function(granted) {
+            updateNotifButton();
+        });
+    }
+}
+
+function updateNotifButton() {
+    var btn = document.getElementById('btn-enable-notif');
+    if (!btn) return;
+    if ('Notification' in window && Notification.permission === 'granted') {
+        btn.innerHTML = '<i class="fas fa-bell"></i> Push-уведомления включены ✅';
+        btn.className = 'btn btn-g btn-sm';
+        btn.disabled = true;
+    } else {
+        btn.innerHTML = '<i class="fas fa-bell"></i> Включить Push-уведомления';
+        btn.className = 'btn btn-og btn-sm';
+        btn.disabled = false;
+    }
 }
 
 function switchTab(t, b) {
     document.querySelectorAll('.admin-section').forEach(function(s) { s.classList.add('hidden'); });
     document.querySelectorAll('.admin-tab').forEach(function(x) { x.classList.remove('active'); });
-    document.getElementById('tab-' + t).classList.remove('hidden');
+    var tabEl = document.getElementById('tab-' + t);
+    if (tabEl) tabEl.classList.remove('hidden');
     if (b) b.classList.add('active');
 }
 
@@ -65,6 +87,7 @@ function loadAdmRounds() {
         var data = sn.val() || {};
         var entries = Object.entries(data).sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
         var el = document.getElementById('adm-rounds');
+        if (!el) return;
 
         if (!entries.length) {
             el.innerHTML = '<div class="empty"><i class="fas fa-flag"></i><p>Нет раундов</p></div>';
@@ -122,13 +145,13 @@ function loadAdmPlayers() {
         var data = sn.val() || {};
         var entries = Object.entries(data);
         var el = document.getElementById('adm-players');
+        if (!el) return;
 
         if (!entries.length) {
             el.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>Нет игроков</p></div>';
             return;
         }
 
-        // Сортировка: сначала админы, потом по имени
         entries.sort(function(a, b) {
             var roleA = a[1].role === 'admin' ? 0 : 1;
             var roleB = b[1].role === 'admin' ? 0 : 1;
@@ -151,13 +174,12 @@ function loadAdmPlayers() {
             html += '<div style="flex:1;min-width:200px;">';
             html += '<strong style="color:var(--white);">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">';
-            html += (u.email || 'Без email') + ' · HCP: ' + (u.handicap != null ? u.handicap : '—') + ' · Раундов: ' + (u.roundsPlayed || 0);
+            html += (u.email || 'Без email') + ' · HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + ' · Раундов: ' + (u.roundsPlayed || 0);
             html += '</div></div>';
 
             html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
             html += roleBadge;
 
-            // Не даём изменить роль самому себе (защита от случайного удаления)
             if (!currentUser || id !== currentUser.uid) {
                 if (isAdmin) {
                     html += '<button class="btn btn-og btn-sm" onclick="changeRole(\'' + id + '\',\'player\',\'' + (u.name || '') + '\')">' +
@@ -236,6 +258,7 @@ function loadTournaments() {
         var data = sn.val() || {};
         var entries = Object.entries(data);
         var el = document.getElementById('tn-list');
+        if (!el) return;
 
         if (!entries.length) {
             el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>Нет турниров</p></div>';
@@ -269,50 +292,68 @@ function deleteTn(id) {
 }
 
 // ==========================================
-// ВЫЗОВЫ СУДЕЙ/МАРШАЛОВ
+// ВЫЗОВЫ СУДЕЙ/МАРШАЛОВ И УВЕДОМЛЕНИЯ
 // ==========================================
+var knownAlertIds = {};
+
 function listenForAlerts() {
     db.ref('alerts').orderByChild('status').equalTo('active').on('value', function(sn) {
         var alerts = sn.val() || {};
         var c = document.getElementById('admin-alerts-list');
-        if (!c) return;
-
         var entries = Object.entries(alerts);
 
         if (entries.length === 0) {
-            c.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">Нет активных вызовов</p>';
+            if (c) c.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">Нет активных вызовов</p>';
             return;
         }
 
-        var html = '';
-        entries.sort(function(a, b) { return b[1].time - a[1].time; }).forEach(function(e) {
-            var id = e[0], a = e[1];
-            var icon = a.type === 'referee'
-                ? '<i class="fas fa-gavel" style="color:var(--red);"></i>'
-                : '<i class="fas fa-shield-halved" style="color:var(--blue);"></i>';
-            var title = a.type === 'referee' ? 'СУДЬЯ!' : 'МАРШАЛ!';
+        var hasNewAlert = false;
+        var isFirstRun = Object.keys(knownAlertIds).length === 0;
 
-            html += '<div class="list-item" style="padding:16px;border-left:4px solid var(--red);background:rgba(224,90,74,0.1);flex-wrap:wrap;gap:10px;">';
-            html += '<div style="flex:1;min-width:200px;">';
-            html += '<div style="font-weight:800;font-size:16px;color:var(--white);">' + icon + ' ВЫЗОВ: ' + title + '</div>';
-            html += '<div style="color:var(--gold);font-size:14px;margin:4px 0;">Лунка: <b>' + a.hole + '</b> | Игрок: <b>' + a.playerName + '</b></div>';
-            html += '<div style="font-size:11px;color:var(--muted);">' + fmtTime(a.time) + '</div>';
-            html += '</div>';
-            html += '<button class="btn btn-r btn-sm" onclick="closeAlert(\'' + id + '\')">Закрыть вызов</button>';
-            html += '</div>';
+        entries.forEach(function(e) {
+            var id = e[0], a = e[1];
+            if (!knownAlertIds[id]) {
+                knownAlertIds[id] = true;
+                if (!isFirstRun) {
+                    hasNewAlert = true;
+                    var title = a.type === 'referee' ? '🚨 ВЫЗОВ СУДЬИ!' : '🚨 ВЫЗОВ МАРШАЛА!';
+                    var body = 'Лунка №' + a.hole + ' | Игрок: ' + (a.playerName || 'Игрок') + ' (' + fmtTime(a.time) + ')';
+                    if (typeof showPushNotification === 'function') {
+                        showPushNotification(title, body, 'admin.html');
+                    }
+                }
+            }
         });
 
-        c.innerHTML = html;
-        toast('🚨 ВЫЗОВ НА ПОЛЕ!', 'error');
-        vib([200, 100, 200]);
+        if (c) {
+            var html = '';
+            entries.sort(function(a, b) { return b[1].time - a[1].time; }).forEach(function(e) {
+                var id = e[0], a = e[1];
+                var icon = a.type === 'referee'
+                    ? '<i class="fas fa-gavel" style="color:var(--red);"></i>'
+                    : '<i class="fas fa-shield-halved" style="color:var(--blue);"></i>';
+                var title = a.type === 'referee' ? 'СУДЬЯ!' : 'МАРШАЛ!';
+
+                html += '<div class="list-item" style="padding:16px;border-left:4px solid var(--red);background:rgba(224,90,74,0.1);flex-wrap:wrap;gap:10px;">';
+                html += '<div style="flex:1;min-width:200px;">';
+                html += '<div style="font-weight:800;font-size:16px;color:var(--white);">' + icon + ' ВЫЗОВ: ' + title + '</div>';
+                html += '<div style="color:var(--gold);font-size:14px;margin:4px 0;">Лунка: <b>' + a.hole + '</b> | Игрок: <b>' + a.playerName + '</b></div>';
+                html += '<div style="font-size:11px;color:var(--muted);">' + fmtTime(a.time) + '</div>';
+                html += '</div>';
+                html += '<button class="btn btn-r btn-sm" onclick="closeAlert(\'' + id + '\')">Закрыть вызов</button>';
+                html += '</div>';
+            });
+
+            c.innerHTML = html;
+        }
+
+        if (hasNewAlert) {
+            toast('🚨 ВЫЗОВ НА ПОЛЕ!', 'error');
+            vib([200, 100, 200]);
+        }
     });
 }
 
 function closeAlert(id) {
     db.ref('alerts/' + id + '/status').set('resolved');
-}
-
-// Загрузка маркеров (для совместимости с live.js)
-function loadMkRounds() {
-    // Эта функция может использоваться для дополнительных маркерных фич
 }

@@ -38,7 +38,7 @@ img{max-width:100%;height:auto;display:block;}
 .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;text-align:center;padding:100px 20px 60px;background:linear-gradient(135deg,#0b1a0e 0%,#1a472a 40%,#0d2815 70%,#0b1a0e 100%);overflow:hidden;}
 .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(201,168,76,.06) 0%,transparent 60%);}
 .hero-content{position:relative;z-index:1;max-width:640px;}
-.hero-logo{width:120px!important;height:120px!important;max-width:120px!important;max-height:120px!important;margin:0 auto 20px!important;object-fit:contain!important;filter:drop-shadow(0 4px 20px rgba(201,168,76,.3));}
+.hero-logo{width:144px!important;height:auto!important;max-width:224px!important;max-height:176px!important;margin:0 auto 20px!important;object-fit:contain!important;filter:drop-shadow(0 4px 20px rgba(201,168,76,.3));}
 .hero-sub{font-size:14px;color:var(--gold);text-transform:uppercase;letter-spacing:3px;margin-bottom:12px;font-weight:500;}
 .hero-title{font-family:var(--ff);font-size:clamp(32px,7vw,54px);font-weight:800;color:var(--white);line-height:1.15;margin-bottom:16px;}
 .hero-desc{font-size:16px;color:var(--muted);margin-bottom:32px;}
@@ -165,7 +165,7 @@ select.form-input option{background:var(--card);}
 
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;background:linear-gradient(135deg,var(--bg),var(--gr-d),var(--bg));}
 .auth-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:36px 32px;max-width:400px;width:100%;box-shadow:var(--shl);}
-.auth-logo{width:80px!important;height:80px!important;max-width:80px!important;max-height:80px!important;display:block!important;margin:0 auto 12px!important;object-fit:contain!important;}
+.auth-logo{width:96px!important;height:auto!important;max-width:160px!important;max-height:112px!important;display:block!important;margin:0 auto 12px!important;object-fit:contain!important;}
 .auth-title{text-align:center;font-family:var(--ff);font-size:24px;color:var(--gold);margin-bottom:24px;}
 .auth-tabs{display:flex;margin-bottom:24px;background:var(--bg);border-radius:var(--rs);padding:3px;}
 .auth-tab{flex:1;padding:9px;text-align:center;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;border-radius:6px;transition:var(--t);font-family:var(--fb);}
@@ -244,7 +244,7 @@ select.form-input option{background:var(--card);}
 .dual-header h3{margin:0;font-size:16px;color:var(--white);display:flex;align-items:center;gap:8px;}
 .net-score-badge{background:rgba(46,204,113,0.15);color:#2ecc71;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;}
 
-/* PWA */
+/* PWA & iOS INSTALL BANNER */
 .online-indicator{position:fixed;top:70px;right:20px;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:600;z-index:999;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s;}
 .online-indicator.online{background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid rgba(46,204,113,0.3);}
 .online-indicator.offline{background:rgba(224,90,74,0.15);color:var(--red);border:2px solid var(--red);animation:blink 2s infinite;}
@@ -253,18 +253,39 @@ select.form-input option{background:var(--card);}
 .install-banner.show{bottom:20px;}
 .install-content{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;}
 
+.ios-install-banner{position:fixed;bottom:-300px;left:16px;right:16px;max-width:480px;margin:0 auto;background:var(--card);border:2px solid var(--gold);border-radius:16px;padding:18px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.6);z-index:9999;transition:bottom 0.4s cubic-bezier(0.175,0.885,0.32,1.275);}
+.ios-install-banner.show{bottom:20px;}
+.ios-install-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;position:relative;}
+.ios-install-logo{width:40px!important;height:40px!important;max-width:40px!important;max-height:40px!important;object-fit:contain!important;}
+.ios-install-close{position:absolute;top:-4px;right:0;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
+.ios-install-steps{display:flex;flex-direction:column;gap:8px;background:var(--input);padding:12px;border-radius:var(--rs);border:1px solid var(--border);}
+.ios-step{font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;}
+.ios-num{width:20px;height:20px;border-radius:50%;background:var(--gold);color:var(--bg);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+.nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:998;opacity:0;pointer-events:none;transition:var(--t);}
+.nav-overlay.show{opacity:1;pointer-events:auto;}
+.nav-menu-close{display:none;position:absolute;top:16px;right:16px;background:none;border:none;color:var(--gold);font-size:32px;line-height:1;cursor:pointer;padding:4px 8px;z-index:1001;}
+
 @media(max-width:768px){
     .nav-toggle{display:flex;}
-    .nav-menu{position:fixed;top:0;right:-100%;width:260px;height:100vh;background:var(--card);flex-direction:column;padding:70px 20px 20px;transition:var(--t);border-left:1px solid var(--border);gap:2px;align-items:stretch;z-index:999;}
+    .nav-menu{position:fixed;top:0;right:-100%;width:280px;height:100vh;background:var(--card);flex-direction:column;padding:70px 20px 20px;transition:var(--t);border-left:1px solid var(--border);gap:2px;align-items:stretch;z-index:999;box-shadow:-8px 0 32px rgba(0,0,0,0.5);}
     .nav-menu.open{right:0;}
-    .nav-link{padding:11px 14px;}
-    .nav-auth{margin-left:0;margin-top:10px;}
-    .nav-logo{width:36px!important;height:36px!important;max-width:36px!important;max-height:36px!important;}
+    .nav-menu-close{display:block;}
+    .nav-link{padding:12px 16px;font-size:15px;border-bottom:1px solid rgba(255,255,255,0.05);}
+    .nav-auth{margin-left:0;margin-top:16px;}
+    .nav-logo{width:42px!important;height:42px!important;max-width:42px!important;max-height:42px!important;}
     .hero{padding:90px 16px 40px;}
     .hero-title{font-size:28px;}
     .hero-btns{flex-direction:column;align-items:center;}
     .hero-btns .btn{width:100%;justify-content:center;}
-    .hero-logo{width:100px!important;height:100px!important;max-width:100px!important;max-height:100px!important;}
+    .hero-logo{
+        width: clamp(176px, 66vw, 272px) !important;
+        height: auto !important;
+        max-width: calc(100vw - 48px) !important;
+        max-height: 208px !important;
+        margin: 0 auto 20px !important;
+        object-fit: contain !important;
+    }
     .section{padding:44px 0;}
     .sec-t{font-size:20px;}
     .stats-grid{grid-template-columns:repeat(2,1fr);}
@@ -276,16 +297,49 @@ select.form-input option{background:var(--card);}
     .lb-table th,.lb-table td{padding:10px 6px;font-size:12px;}
 }
 @media(max-width:480px){
-    .nav-logo{width:32px!important;height:32px!important;max-width:32px!important;max-height:32px!important;}
+    .nav-logo{width:38px!important;height:38px!important;max-width:38px!important;max-height:38px!important;}
     .nav-brand-text{font-size:16px;}
-    .hero-logo{width:80px!important;height:80px!important;max-width:80px!important;max-height:80px!important;}
-    .auth-logo{width:60px!important;height:60px!important;max-width:60px!important;max-height:60px!important;}
+    .hero-logo{
+        width: clamp(160px, 70vw, 256px) !important;
+        height: auto !important;
+        max-width: calc(100vw - 36px) !important;
+        max-height: 192px !important;
+        margin: 0 auto 20px !important;
+        object-fit: contain !important;
+    }
+    .auth-logo{
+        width: clamp(128px, 60vw, 192px) !important;
+        height: auto !important;
+        max-width: calc(100vw - 32px) !important;
+        max-height: 144px !important;
+        margin: 0 auto 16px !important;
+        object-fit: contain !important;
+    }
     .stats-grid{grid-template-columns:1fr 1fr;gap:10px;}
     .stat{padding:16px 10px;}
     .hole-nav{grid-template-columns:repeat(6,1fr);gap:3px;}
     .hole-btn{padding:7px 2px;font-size:11px;}
     .mode-cards{grid-template-columns:1fr;}
 }
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+    body {
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .nav {
+        padding-top: max(14px, env(safe-area-inset-top));
+    }
+    .footer {
+        padding-bottom: max(24px, env(safe-area-inset-bottom));
+    }
+    .install-banner, .ios-install-banner {
+        display: none !important;
+    }
+}
+
 /* =========================================
    СКОРКАРТА ПЕСТОВО (ВЕБ-ВИД)
    ========================================= */

@@ -47,14 +47,16 @@ function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
     if (!el) return;
 
-    db.ref('rounds').orderByChild('status').equalTo('active').on('value', function(snap) {
+    db.ref('rounds').on('value', function(snap) {
         var data = snap.val() || {};
-        var entries = Object.entries(data);
+        var entries = Object.entries(data).filter(function(e) { return e[1] && e[1].status === 'active'; });
 
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>Сейчас никто не играет</p><a href="live.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> Начать раунд</a></div>';
             return;
         }
+
+        entries.sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
 
         var html = '';
         entries.forEach(function(e) {
@@ -64,13 +66,13 @@ function loadLiveRounds() {
             var order = holeOrder(r.startHole || 1);
 
             Object.entries(players).forEach(function(pe) {
-                var p = pe[1], scores = p.scores || {};
+                var pid = pe[0], p = pe[1], scores = p.scores || {};
                 var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
 
                 var thruText = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : 'лунка №' + (parseInt(r.startHole)||1));
 
-                pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;">' + (p.name || '—') + '</div>' +
+                pHtml += '<div class="round-p" style="align-items:flex-start;cursor:pointer;" onclick="event.stopPropagation();openPlayerProfileModal(\'' + pid + '\',\'' + id + '\')">' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + (p.name || '—') + '</div>' +
                     '<div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;">📍 ' + thruText + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
@@ -96,35 +98,42 @@ function loadRecentResults() {
     var el = document.getElementById('recent-results');
     if (!el) return;
 
-    db.ref('rounds').orderByChild('status').equalTo('completed').limitToLast(5).on('value', function(snap) {
+    db.ref('rounds').on('value', function(snap) {
         var data = snap.val() || {};
-        var entries = Object.entries(data).reverse();
+        var entries = Object.entries(data).filter(function(e) { return e[1] && e[1].status === 'completed'; });
 
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-clock"></i><p>Пока нет завершённых раундов</p></div>';
             return;
         }
 
+        entries.sort(function(a, b) {
+            var timeA = a[1].completedAt || a[1].createdAt || 0;
+            var timeB = b[1].completedAt || b[1].createdAt || 0;
+            return timeB - timeA;
+        });
+
+        entries = entries.slice(0, 5);
+
         var html = '';
         entries.forEach(function(e) {
-            var r = e[1], players = r.players || {};
-            var best = Infinity, winner = '—', count = 0;
+            var id = e[0], r = e[1], players = r.players || {};
+            var bestToPar = Infinity, winner = '—', winnerPid = '', bestGross = 0, count = 0;
+            var order = holeOrder(r.startHole || 1);
 
-            Object.values(players).forEach(function(p) {
+            Object.entries(players).forEach(function(pe) {
                 count++;
-                var scores = p.scores || {};
-                var total = 0;
-                Object.values(scores).forEach(function(s) {
-                    var v = parseInt(s) || 0;
-                    if (v >= 1) total += v;
-                });
-                if (total > 0 && total < best) {
-                    best = total;
-                    winner = p.name;
+                var pid = pe[0], p = pe[1];
+                var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+                if (stats.toPar !== null && stats.toPar < bestToPar) {
+                    bestToPar = stats.toPar;
+                    winner = p.name || 'Игрок';
+                    winnerPid = pid;
+                    bestGross = stats.gross;
                 }
             });
 
-            html += '<div class="list-item" style="padding:14px;">' +
+            html += '<div class="list-item" style="padding:14px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + (winnerPid || '') + '\',\'' + id + '\')">' +
                 '<div><strong style="color:var(--white);">Пестово</strong>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
                 '<i class="fas fa-calendar"></i> ' + fmtDate(r.completedAt || r.createdAt) +
@@ -133,7 +142,7 @@ function loadRecentResults() {
                 '<div style="text-align:right;">' +
                 '<div style="font-size:11px;color:var(--muted);">Лидер раунда</div>' +
                 '<div style="color:var(--gold);font-weight:600;"><i class="fas fa-trophy"></i> ' + winner + '</div>' +
-                '<div style="font-size:18px;font-weight:800;color:var(--white);">' + (best < Infinity ? best : '—') + '</div>' +
+                '<div style="font-size:18px;font-weight:800;color:var(--white);">' + (bestToPar < Infinity ? fmtScore(bestToPar) + ' (' + bestGross + ')' : '—') + '</div>' +
                 '</div></div>';
         });
 

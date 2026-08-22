@@ -33,7 +33,7 @@ function loadStats() {
             if (r.status === 'completed') {
                 completed++;
                 
-                // Проверка самого быстрого раунда ТОЛЬКО если сыграно 18 лунок
+                // Проверка самого быстрого раунда ТОЛЬКО при 18 лунках!
                 if (r.startTime && r.completedAt) {
                     var dur = (r.completedAt - r.startTime) / 60000;
                     Object.entries(r.players || {}).forEach(function(pe) {
@@ -41,9 +41,7 @@ function loadStats() {
                         var sc = p.scores || {};
                         var cnt = 0;
                         Object.values(sc).forEach(function(s) { if (parseInt(s) >= 1) cnt++; });
-                        
-                        // Если игрок прошёл все 18 лунок
-                        if (cnt === 18 && dur > 30 && dur < fastestTime) { // Защита от багов (слишком быстрых фейк-раундов < 30 мин)
+                        if (cnt === 18 && dur > 30 && dur < fastestTime) {
                             fastestTime = dur;
                             fastestPlayer = p.name;
                         }
@@ -89,7 +87,7 @@ function loadStats() {
                 totalStblFieldSum += stblF;
                 totalStblExactSum += stblE;
 
-                // Запись рекордов ТОЛЬКО если пройдено 18 лунок
+                // СТРОГИЙ УЧЁТ РЕКОРДОВ: ТОЛЬКО ПРИ 18 ЛУНКАХ!
                 if (holesPlayed === 18) {
                     if (gross > 0 && gross < bestGross) {
                         bestGross = gross;
@@ -101,6 +99,7 @@ function loadStats() {
                     }
                 }
 
+                // В средний результат ТОЛЬКО завершённые раунды на 18 лунок
                 if (r.status === 'completed' && holesPlayed === 18) {
                     if (!playerRounds[pid]) playerRounds[pid] = {
                         name: p.name, count: 0, totalGross: 0, totalStbl: 0
@@ -128,12 +127,12 @@ function loadStats() {
             '<div class="stat"><i class="fas fa-circle-dot"></i><div class="stat-n">' + hio + '</div><div class="stat-l">Hole-in-One</div></div>' +
             '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHoles + '</div><div class="stat-l">Лунок сыграно</div></div>';
 
-        // Топ игроков (считаются только полные раунды на 18 лунок)
+        // Топ игроков (только полные раунды)
         var sortedByCount = Object.values(playerRounds).sort(function(a, b) { return b.count - a.count; });
         var topEl = document.getElementById('top-players');
 
         if (sortedByCount.length === 0) {
-            topEl.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>Нет полных раундов (18 лунок)</p></div>';
+            topEl.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>Нет завершённых раундов (18 лунок)</p></div>';
         } else {
             var thtml = '';
             sortedByCount.slice(0, 10).forEach(function(p, i) {
@@ -159,9 +158,7 @@ function loadStats() {
             '<div class="list-item"><span>🎯 Hole-in-One</span><strong>' + hio + '</strong></div>' +
             '<div class="list-item"><span>🦅 Eagles</span><strong>' + eagles + '</strong></div>' +
             '<div class="list-item"><span>🐦 Birdies</span><strong>' + birdies + '</strong></div>' +
-            '<div class="list-item"><span>✅ Pars</span><strong>' + pars + '</strong></div>' +
-            '<div class="list-item"><span>⭐ Всего Stableford (полевой)</span><strong>' + totalStblFieldSum + '</strong></div>' +
-            '<div class="list-item"><span>⭐ Всего Stableford (игровой)</span><strong>' + totalStblExactSum + '</strong></div>';
+            '<div class="list-item"><span>✅ Pars</span><strong>' + pars + '</strong></div>';
 
         // Сложность лунок
         var hHtml = '<div class="scorecard"><table><tr><th>Лунка</th>';

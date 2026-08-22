@@ -286,3 +286,21 @@ select.form-input option{background:var(--card);}
     .hole-btn{padding:7px 2px;font-size:11px;}
     .mode-cards{grid-template-columns:1fr;}
 }
+/* =========================================
+   СКОРКАРТА ПЕСТОВО (ВЕБ-ВИД)
+   ========================================= */
+.pestovo-card-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:20px;overflow-x:auto;}
+.pc-header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--gold);padding-bottom:12px;margin-bottom:12px;min-width:800px;flex-wrap:wrap;gap:8px;}
+.pc-col{font-size:12px;color:var(--muted);}
+.pc-col strong{color:var(--gold);}
+.pc-table-wrap{overflow-x:auto;}
+.pc-table{width:100%;border-collapse:collapse;min-width:900px;font-size:11px;}
+.pc-table th,.pc-table td{border:1px solid var(--border);padding:6px 2px;text-align:center;}
+.pc-table th{background:var(--gr-d);color:var(--gold);}
+.pc-lbl{text-align:left!important;padding-left:8px!important;font-weight:700;width:60px;}
+.pc-tot{background:rgba(201,168,76,0.1);font-weight:700;color:var(--gold);}
+.pc-par{background:rgba(46,107,63,0.15);color:var(--white);}
+.pc-idx{color:var(--muted);font-size:9px;}
+.pc-score-lbl{font-size:13px;text-transform:uppercase;color:var(--white);}
+.pc-score-box{background:var(--input);font-size:14px;color:var(--white);}
+.pc-footer{display:none;}

@@ -124,30 +124,17 @@
         </div>
     </div>
 
-    <!-- ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ) -->
+    <!-- ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ / ГОСТЕЙ) -->
     <div id="group-view" class="hidden">
         <div class="card" style="background:rgba(90,173,224,0.1);border-color:var(--blue);">
             <p style="color:var(--blue);text-align:center;font-size:14px;margin:0;">
                 <i class="fas fa-eye"></i> Режим просмотра. Ввод счёта доступен только участникам раунда.
             </p>
         </div>
-        <div class="timing-info" id="gv-info"></div>
-
-        <div class="card" style="padding: 10px 0; background: transparent; border: none;">
-            <div id="gv-scorecards"></div>
-        </div>
 
         <div class="card">
-            <h2 id="gv-title"><i class="fas fa-users"></i> Лидерборд группы</h2>
+            <h2 id="gv-title"><i class="fas fa-trophy"></i> Счёт раунда</h2>
             <div id="gv-players"></div>
-        </div>
-
-        <div class="card">
-            <h2><i class="fas fa-qrcode"></i> Подключиться к раунду</h2>
-            <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">
-                Если вы участник этой группы — отсканируйте свой QR-код с экрана другого игрока:
-            </p>
-            <div id="gv-qr-grid" class="qr-grid"></div>
         </div>
     </div>
 
@@ -237,7 +224,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils.js?v=2"></script>
 <script src="js/live.js"></script>
 <script src="js/pwa.js"></script>
 </body>

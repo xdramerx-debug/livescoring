@@ -411,7 +411,6 @@ function openPlayerProfileModal(playerId, roundId) {
         html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
         html += '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' раундов</span>';
         if (u.bestGross) html += '<span><i class="fas fa-trophy"></i> Gross (18л): ' + u.bestGross + '</span>';
-        if (u.email) html += '<span><i class="fas fa-envelope"></i> ' + u.email + '</span>';
         html += '</div></div></div>';
 
         if (rd && rd.players && rd.players[playerId]) {

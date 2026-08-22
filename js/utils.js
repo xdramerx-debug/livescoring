@@ -44,7 +44,86 @@ function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleDateString('
 function fmtTime(ts){if(!ts)return'—';var d=new Date(ts),h=d.getHours(),m=d.getMinutes();return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
 function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
 function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
-function initNav(){var tg=document.getElementById('nav-toggle'),mn=document.getElementById('nav-menu');if(tg&&mn)tg.addEventListener('click',function(){tg.classList.toggle('active');mn.classList.toggle('open');});window.addEventListener('scroll',function(){var n=document.getElementById('main-nav');if(n){if(window.scrollY>50)n.classList.add('nav-scrolled');else n.classList.remove('nav-scrolled');}});}
+
+function initNav(){
+    var tg=document.getElementById('nav-toggle');
+    var mn=document.getElementById('nav-menu');
+    var ov=document.getElementById('nav-overlay');
+
+    if(!ov){
+        ov=document.createElement('div');
+        ov.id='nav-overlay';
+        ov.className='nav-overlay';
+        document.body.appendChild(ov);
+    }
+
+    function openNav(){
+        if(tg)tg.classList.add('active');
+        if(mn)mn.classList.add('open');
+        if(ov)ov.classList.add('show');
+    }
+
+    function closeNav(){
+        if(tg)tg.classList.remove('active');
+        if(mn)mn.classList.remove('open');
+        if(ov)ov.classList.remove('show');
+    }
+
+    if(tg&&mn){
+        tg.addEventListener('click',function(e){
+            e.stopPropagation();
+            if(mn.classList.contains('open')){
+                closeNav();
+            }else{
+                openNav();
+            }
+        });
+    }
+
+    if(ov){
+        ov.addEventListener('click',function(){
+            closeNav();
+        });
+    }
+
+    var closeBtn=document.getElementById('nav-menu-close');
+    if(!closeBtn&&mn){
+        closeBtn=document.createElement('button');
+        closeBtn.id='nav-menu-close';
+        closeBtn.className='nav-menu-close';
+        closeBtn.innerHTML='&times;';
+        closeBtn.setAttribute('aria-label','Закрыть меню');
+        mn.insertBefore(closeBtn,mn.firstChild);
+    }
+    if(closeBtn){
+        closeBtn.addEventListener('click',function(){
+            closeNav();
+        });
+    }
+
+    if(mn){
+        mn.querySelectorAll('a').forEach(function(link){
+            link.addEventListener('click',function(){
+                closeNav();
+            });
+        });
+    }
+
+    document.addEventListener('keydown',function(e){
+        if(e.key==='Escape'){
+            closeNav();
+        }
+    });
+
+    window.addEventListener('scroll',function(){
+        var n=document.getElementById('main-nav');
+        if(n){
+            if(window.scrollY>50)n.classList.add('nav-scrolled');
+            else n.classList.remove('nav-scrolled');
+        }
+    });
+}
+
 function navAuth(u,d){var e=document.getElementById('nav-auth');if(!e)return;if(u&&d)e.innerHTML='<div class="nav-user"><span class="nav-uname">'+(d.name||'')+'</span><button class="btn btn-og btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button></div>';else e.innerHTML='<a href="auth.html" class="btn btn-g btn-sm">Войти</a>';}
 function doLogout(){auth.signOut().then(function(){window.location.href='auth.html';});}
 function holeOrder(sh){var o=[],h=parseInt(sh)||1;for(var i=0;i<18;i++){o.push(h);h=h>=18?1:h+1;}return o;}

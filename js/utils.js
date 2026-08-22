@@ -164,7 +164,7 @@ function saveHistoryEntry(userId, roundId, rd, p, stats) {
     var fH = p.fieldHcp || 0;
     var eH = p.exactHcp || 0;
 
-    // Сохраняем раунд в историю в любом случае (даже 9 лунок)
+    // История сохраняется всегда (чтобы игрок видел неполный раунд)
     db.ref('users/' + userId + '/history').push({
         roundId: roundId,
         date: rd.completedAt || Date.now(),
@@ -189,12 +189,11 @@ function saveHistoryEntry(userId, roundId, rd, p, stats) {
         gender: p.gender || 'men'
     });
 
-    // Увеличиваем счетчик сыгранных раундов
     db.ref('users/' + userId + '/roundsPlayed').transaction(function(v) {
         return (v || 0) + 1;
     });
 
-    // ОБНОВЛЯЕМ РЕКОРДЫ ТОЛЬКО ЕСЛИ СЫГРАНО 18 ЛУНОК!
+    // СТРОГАЯ ПРОВЕРКА: Рекорды bestGross и bestStableford переписываем ТОЛЬКО ПРИ 18 ЛУНКАХ!
     if (stats.holesPlayed === 18) {
         db.ref('users/' + userId + '/bestGross').transaction(function(v) {
             if (!v || stats.gross < v) return stats.gross;
@@ -206,7 +205,6 @@ function saveHistoryEntry(userId, roundId, rd, p, stats) {
         });
     }
 }
-
 function saveHistoryEntry(userId,roundId,rd,p,stats){
     db.ref('users/'+userId+'/history').push({roundId:roundId,date:rd.completedAt||Date.now(),tee:rd.tee||'wh',format:rd.format||'Stroke Play',mode:rd.mode||'group',startHole:rd.startHole||1,gross:stats.gross,toPar:stats.toPar,net:stats.net,netToPar:stats.netToPar,stablefordField:stats.stablefordField,stablefordExact:stats.stablefordExact,holes:stats.holesPlayed,scores:p.scores||{},birdies:stats.birdies,eagles:stats.eagles,pars:stats.pars,holeInOne:stats.holeInOne,exactHcp:p.exactHcp||0,fieldHcp:p.fieldHcp||0,gender:p.gender||'men'});
     db.ref('users/'+userId+'/roundsPlayed').transaction(function(v){return(v||0)+1;});

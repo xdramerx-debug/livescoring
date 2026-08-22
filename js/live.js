@@ -107,7 +107,7 @@ function buildPlayerSlots() {
             var u = e[1];
             var isCurrent = (i === 1 && currentUser && e[0] === currentUser.uid);
             var sel = isCurrent ? 'selected' : '';
-            html += '<option value="' + e[0] + '" ' + sel + '>' + (u.name || '—') + ' (HCP: ' + (u.handicap != null ? u.handicap : '—') + ')</option>';
+            html += '<option value="' + e[0] + '" ' + sel + '>' + (u.name || '—') + ' (HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + ')</option>';
         });
         
         html += '</select></div>';
@@ -118,7 +118,7 @@ function buildPlayerSlots() {
         html += '</div>';
 
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>Точный HCP</label><input type="number" id="pl-hcp-' + i + '" class="form-input" step="0.1" placeholder="12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
+        html += '<div class="form-group"><label>Точный HCP</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="12.4 или +2.0" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
         html += '<div class="form-group"><label>Полевой (авто)</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly></div>';
         html += '</div></div>';
     }
@@ -139,7 +139,7 @@ function fillPlayerFromUser(idx) {
     var genderEl = document.getElementById('pl-gender-' + idx);
 
     if (nameEl) nameEl.value = u.name || '';
-    if (hcpEl) hcpEl.value = u.handicap != null ? u.handicap : '';
+    if (hcpEl) hcpEl.value = u.handicap != null ? fmtExactHcp(u.handicap) : '';
     if (genderEl && u.gender) genderEl.value = u.gender;
     
     calcPlayerFieldHcp(idx);
@@ -161,8 +161,8 @@ function calcPlayerFieldHcp(idx) {
         return; 
     }
     
-    var field = getFieldHcp(parseFloat(hcp), tee, gender);
-    if (fieldEl) fieldEl.value = field;
+    var field = getFieldHcp(hcp, tee, gender);
+    if (fieldEl) fieldEl.value = fmtFieldHcp(field);
 }
 
 document.addEventListener('change', function(e) {
@@ -204,11 +204,12 @@ function startGroup() {
         if (!name) { toast('Заполните имя игрока #' + i, 'error'); return; }
 
         var pid = uid || 'guest_' + Date.now() + '_' + i;
-        var fieldHcp = hcp ? getFieldHcp(parseFloat(hcp), tee, gender) : 0;
+        var parsedHcp = parseHcp(hcp);
+        var fieldHcp = parsedHcp !== null ? getFieldHcp(parsedHcp, tee, gender) : 0;
 
         players[pid] = {
             name: name,
-            exactHcp: hcp ? parseFloat(hcp) : null,
+            exactHcp: parsedHcp,
             fieldHcp: fieldHcp,
             gender: gender,
             scores: {},

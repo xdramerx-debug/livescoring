@@ -43,7 +43,7 @@ function onAuthReady(u, d) {
 
         if (d.handicap != null) {
             var hcpEl = document.getElementById('s-exact-hcp');
-            if (hcpEl && !hcpEl.value) hcpEl.value = d.handicap;
+            if (hcpEl && !hcpEl.value) hcpEl.value = fmtExactHcp(d.handicap);
         }
         if (d.gender) {
             var gEl = document.getElementById('s-gender');
@@ -65,8 +65,8 @@ function calcSoloFieldHcp() {
     if (!exact) { document.getElementById('s-field-hcp').value = ''; return; }
     var gender = document.getElementById('s-gender').value;
     var tee = document.getElementById('s-tee').value;
-    var field = getFieldHcp(parseFloat(exact), tee, gender);
-    document.getElementById('s-field-hcp').value = field;
+    var field = getFieldHcp(exact, tee, gender);
+    document.getElementById('s-field-hcp').value = fmtFieldHcp(field);
 }
 
 function updateTimingPreview() {
@@ -88,13 +88,14 @@ function startSolo() {
     var tee = document.getElementById('s-tee').value;
     var format = document.getElementById('s-format').value;
     var gender = document.getElementById('s-gender').value;
-    var exactHcp = document.getElementById('s-exact-hcp').value;
+    var exactHcpStr = document.getElementById('s-exact-hcp').value;
 
     if (!firstName || !lastName) { toast('Укажите имя и фамилию', 'error'); return; }
     if (!timeStr) { toast('Укажите время старта', 'error'); return; }
-    if (!exactHcp) { toast('Укажите точный гандикап', 'error'); return; }
+    if (!exactHcpStr) { toast('Укажите точный гандикап', 'error'); return; }
 
-    var fieldHcp = getFieldHcp(parseFloat(exactHcp), tee, gender);
+    var parsedExact = parseHcp(exactHcpStr);
+    var fieldHcp = getFieldHcp(parsedExact, tee, gender);
     var fullName = lastName + ' ' + firstName;
 
     var parts = timeStr.split(':');
@@ -119,7 +120,7 @@ function startSolo() {
         name: fullName,
         firstName: firstName,
         lastName: lastName,
-        exactHcp: parseFloat(exactHcp),
+        exactHcp: parsedExact,
         fieldHcp: fieldHcp,
         gender: gender,
         scores: {}
@@ -160,7 +161,7 @@ function loadExistingSolo() {
 
         // ПРОВЕРКА ПРАВ НА РЕДАКТИРОВАНИЕ
         var localKey = localStorage.getItem('pestovo_solo_key_' + soloRid);
-        var isOwnerUser = currentUser && (soloRound.createdBy === currentUser.uid || soloRound.players[currentUser.uid]);
+        var isOwnerUser = currentUser && (soloRound.createdBy === currentUser.uid || (soloRound.players && soloRound.players[currentUser.uid]));
         var isOwnerKey = localKey && (soloRound.accessKey === localKey);
 
         canEditSolo = (isOwnerUser || isOwnerKey) && soloRound.status === 'active';
@@ -171,6 +172,7 @@ function loadExistingSolo() {
             document.getElementById('read-only-view').classList.add('hidden');
 
             var uid = getPlayerId();
+            if (!uid) return;
             var player = soloRound.players[uid];
             if (!player) return;
 
@@ -206,6 +208,7 @@ function loadExistingSolo() {
 }
 
 function getPlayerId() {
+    if (!soloRound || !soloRound.players) return null;
     if (currentUser && soloRound.players[currentUser.uid]) {
         return currentUser.uid;
     }
@@ -216,10 +219,12 @@ function renderRoundInfo(targetId) {
     var el = document.getElementById(targetId);
     if (!el) return;
     var uid = getPlayerId();
+    if (!uid) return;
     var p = soloRound.players[uid];
+    if (!p) return;
     var guestBadge = soloRound.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">ГОСТЬ</span>' : '';
     el.innerHTML =
-        '<div><b>' + (p.name || 'Игрок') + '</b>' + guestBadge + ' · <b>HCP:</b> ' + (p.exactHcp || '—') + ' (пол. ' + (p.fieldHcp || 0) + ')</div>' +
+        '<div><b>' + (p.name || 'Игрок') + '</b>' + guestBadge + ' · <b>HCP:</b> ' + (p.exactHcp != null ? fmtExactHcp(p.exactHcp) : '—') + ' (пол. ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
         '<div><b>Старт:</b> ' + fmtTime(soloRound.startTime) + ' · <b>С лунки:</b> ' + soloRound.startHole + ' · <b>ТИ:</b> ' + TEES[soloRound.tee] + ' · <b>Формат:</b> ' + soloRound.format + '</div>';
 }
 
@@ -227,6 +232,7 @@ function buildHoles() {
     var el = document.getElementById('g-holes');
     if (!el) return;
     var uid = getPlayerId();
+    if (!uid || !soloRound.players[uid]) return;
     var scores = soloRound.players[uid].scores || {};
     var order = holeOrder(soloRound.startHole || 1);
     var html = '';
@@ -261,7 +267,7 @@ function renderCurrentHole() {
     document.getElementById('g-deadline').textContent = fmtTime(dl);
 
     var uid = getPlayerId();
-    var scores = soloRound.players[uid].scores || {};
+    var scores = (uid && soloRound.players[uid] && soloRound.players[uid].scores) || {};
     var savedScore = parseInt(scores[curHole]) || 0;
 
     curScore = savedScore > 0 ? savedScore : par;
@@ -296,6 +302,7 @@ function saveSolo() {
     var savedHole = curHole;
 
     var uid = getPlayerId();
+    if (!uid) return;
     var path = 'rounds/' + soloRid + '/players/' + uid + '/scores/' + savedHole;
 
     db.ref(path).set(curScore).then(function() {
@@ -338,6 +345,7 @@ function renderLiveStats(targetId) {
     var el = document.getElementById(targetId);
     if (!el) return;
     var uid = getPlayerId();
+    if (!uid || !soloRound.players[uid]) return;
     var p = soloRound.players[uid];
     var scores = p.scores || {};
     var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(soloRound.startHole));
@@ -366,6 +374,7 @@ function renderMiniCard(targetId) {
     var el = document.getElementById(targetId);
     if (!el) return;
     var uid = getPlayerId();
+    if (!uid || !soloRound.players[uid]) return;
     var p = soloRound.players[uid];
     var scores = p.scores || {};
     var fieldHcp = p.fieldHcp || 0;
@@ -462,7 +471,7 @@ function callOfficial(type) {
     if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + curHole + '?')) return;
 
     var uid = getPlayerId();
-    var pName = (soloRound && soloRound.players[uid]) ? soloRound.players[uid].name : 'Игрок';
+    var pName = (soloRound && soloRound.players && soloRound.players[uid]) ? soloRound.players[uid].name : 'Игрок';
 
     db.ref('alerts').push({
         roundId: soloRid,

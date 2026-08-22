@@ -118,7 +118,7 @@ function buildPlayerSlots() {
         html += '</div>';
 
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>Точный HCP</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="12.4 или +2.0" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
+        html += '<div class="form-group"><label>Точный HCP</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 или 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
         html += '<div class="form-group"><label>Полевой (авто)</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly></div>';
         html += '</div></div>';
     }
@@ -156,7 +156,7 @@ function calcPlayerFieldHcp(idx) {
     var tee = teeEl.value;
 
     var fieldEl = document.getElementById('pl-field-' + idx);
-    if (!hcp) { 
+    if (!hcp && hcp !== '0') { 
         if (fieldEl) fieldEl.value = ''; 
         return; 
     }
@@ -198,14 +198,14 @@ function startGroup() {
         var uid = selectEl ? selectEl.value : '';
         var nameEl = document.getElementById('pl-name-' + i);
         var name = nameEl ? nameEl.value.trim() : '';
-        var hcp = document.getElementById('pl-hcp-' + i).value;
+        var hcpStr = document.getElementById('pl-hcp-' + i).value;
         var gender = document.getElementById('pl-gender-' + i).value;
 
         if (!name) { toast('Заполните имя игрока #' + i, 'error'); return; }
 
         var pid = uid || 'guest_' + Date.now() + '_' + i;
-        var parsedHcp = parseHcp(hcp);
-        var fieldHcp = parsedHcp !== null ? getFieldHcp(parsedHcp, tee, gender) : 0;
+        var parsedHcp = parseExactHcp(hcpStr);
+        var fieldHcp = hcpStr ? getFieldHcp(parsedHcp, tee, gender) : 0;
 
         players[pid] = {
             name: name,
@@ -219,7 +219,6 @@ function startGroup() {
         pOrder.push(pid);
     }
 
-    // Назначаем маркеры по кругу
     var markerAssignments = {};
     for (var i = 0; i < pOrder.length; i++) {
         var markerId = pOrder[i];
@@ -259,7 +258,6 @@ function startGroup() {
     var ref = db.ref('rounds').push();
     var newRoundId = ref.key;
     
-    // Создатель запоминает ключ раунда и свой ID
     localStorage.setItem('pestovo_group_key_' + newRoundId, accessKey);
     localStorage.setItem('pestovo_acting_as_' + newRoundId, pOrder[0]);
 
@@ -275,21 +273,17 @@ function startGroup() {
 function getActingUid() {
     if (!curRoundData || !curRoundData.players) return null;
 
-    // 1. Проверяем токен локального игрока (?as=PID или localStorage)
     var storedUid = localStorage.getItem('pestovo_acting_as_' + curRid);
     if (storedUid && curRoundData.players[storedUid]) {
         return storedUid;
     }
 
-    // 2. Проверяем залогиненного пользователя Firebase Auth
     if (currentUser && curRoundData.players[currentUser.uid]) {
         return currentUser.uid;
     }
 
-    // 3. Проверяем если это создатель через ключ accessKey
     var localKey = localStorage.getItem('pestovo_group_key_' + curRid);
     if (localKey && curRoundData.accessKey === localKey) {
-        // Возвращаем первого игрока раунда
         return Object.keys(curRoundData.players)[0];
     }
 
@@ -306,12 +300,10 @@ function initRoundView() {
 
         document.getElementById('mode-view').classList.add('hidden');
 
-        // Определяем кто мы
         myUid = getActingUid();
         canEditGroup = (myUid !== null) && (curRoundData.status === 'active');
 
         if (canEditGroup) {
-            // МЫ УЧАСТНИК — Включаем активный ввод счёта
             document.getElementById('active-scoring-view').classList.remove('hidden');
             document.getElementById('group-view').classList.add('hidden');
 
@@ -337,7 +329,6 @@ function initRoundView() {
             renderInviteQRs();
 
         } else {
-            // ЗРИТЕЛЬ — Показываем только просмотр лидерборда
             document.getElementById('active-scoring-view').classList.add('hidden');
             document.getElementById('group-view').classList.remove('hidden');
 
@@ -407,11 +398,9 @@ function renderPlayHole() {
     document.getElementById('play-par').textContent = par;
     document.getElementById('play-dist').textContent = dist > 0 ? dist : '—';
 
-    // Мой счёт
     var mySaved = parseInt(curRoundData.players[myUid] && curRoundData.players[myUid].scores && curRoundData.players[myUid].scores[playHole]) || 0;
     myScore = mySaved > 0 ? mySaved : par;
 
-    // Счёт маркируемого игрока
     if (myTargetUid) {
         var targetSaved = parseInt(curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].markerScores && curRoundData.players[myTargetUid].markerScores[myUid] && curRoundData.players[myTargetUid].markerScores[myUid][playHole]) || 0;
         targetScore = targetSaved > 0 ? targetSaved : par;
@@ -480,15 +469,12 @@ function saveHoleScores() {
     var h = playHole;
     var updates = {};
 
-    // 1. Сохраняем мой счёт
     updates['rounds/' + curRid + '/players/' + myUid + '/scores/' + h] = myScore;
 
-    // 2. Сохраняем счёт партнёра
     if (myTargetUid) {
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerScores/' + myUid + '/' + h] = targetScore;
     }
 
-    // 3. Верификация моего счёта
     var myPlayer = curRoundData.players[myUid];
     var myMarkerId = myPlayer && myPlayer.markedBy;
     if (myMarkerId) {
@@ -500,7 +486,6 @@ function saveHoleScores() {
         }
     }
 
-    // 4. Верификация счёта партнёра
     if (myTargetUid) {
         var targetPlayer = curRoundData.players[myTargetUid];
         var targetSelfScore = parseInt(targetPlayer && targetPlayer.scores && targetPlayer.scores[h]) || 0;
@@ -584,7 +569,7 @@ function callOfficial(type) {
     var typeName = type === 'referee' ? 'Судью' : 'Маршала';
     if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + playHole + '?')) return;
 
-    var pName = (curRoundData && curRoundData.players[myUid]) ? curRoundData.players[myUid].name : 'Игрок';
+    var pName = (curRoundData && curRoundData.players && curRoundData.players[myUid]) ? curRoundData.players[myUid].name : 'Игрок';
 
     db.ref('alerts').push({
         roundId: curRid,

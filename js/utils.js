@@ -57,59 +57,61 @@ function buildTimingTable(st,sh){if(!st)return'';var html='<table class="scoreca
 const ADMIN_LOGIN='admin';
 const ADMIN_PASS='pestovo2024';
 
-function getFieldHcp(exactHcp,tee,gender){
-    if(exactHcp===null||exactHcp===undefined||isNaN(exactHcp))return 0;
-    gender=gender||'men';tee=tee||'wh';
-    var rating=COURSE_RATINGS[gender]&&COURSE_RATINGS[gender][tee];
-    var val=parseFloat(exactHcp);
-    if(!rating)return Math.round(val);
-    var field=(val*(rating.sr/113))+(rating.cr-TOTAL_PAR);
+function parseExactHcp(val) {
+    if (val === null || val === undefined || val === '') return 0;
+    if (typeof val === 'number') return val;
+    var s = String(val).trim().replace(',', '.');
+    if (s.startsWith('+')) {
+        return -Math.abs(parseFloat(s.substring(1)) || 0);
+    }
+    return parseFloat(s) || 0;
+}
+
+function fmtExactHcp(val) {
+    if (val === null || val === undefined || isNaN(val) || val === '') return '—';
+    var num = parseFloat(val);
+    if (isNaN(num)) return '—';
+    if (num < 0) {
+        return '+' + Math.abs(num).toFixed(1);
+    }
+    return Math.abs(num).toFixed(1);
+}
+
+function fmtFieldHcp(val) {
+    if (val === null || val === undefined || isNaN(val) || val === '') return '0';
+    return String(Math.abs(Math.round(parseFloat(val) || 0)));
+}
+
+function getFieldHcp(exactHcp, tee, gender) {
+    var parsed = parseExactHcp(exactHcp);
+    gender = gender || 'men'; tee = tee || 'wh';
+    var rating = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
+    if (!rating) return Math.round(parsed);
+    var field = (parsed * (rating.sr / 113)) + (rating.cr - TOTAL_PAR);
     return Math.round(field);
-}
-
-function fmtExactHcp(v) {
-    if (v === null || v === undefined || isNaN(v)) return '—';
-    var num = parseFloat(v);
-    if (num < 0) return '+' + Math.abs(num).toFixed(1);
-    return num.toFixed(1);
-}
-
-function fmtFieldHcp(v) {
-    if (v === null || v === undefined || isNaN(v)) return '0';
-    var num = parseInt(v);
-    if (num < 0) return '+' + Math.abs(num);
-    return '' + num;
 }
 
 function generateHcpTable(gender, tee) {
     var rating = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
     if (!rating) return [];
     var rows = [];
-    var startExact = -5.0;
-    var maxExact = 54.0;
+    var maxPlus = -5.0;
+    var maxHandicap = 54.0;
 
-    var curStart = startExact;
+    var curStart = maxPlus;
     var curField = getFieldHcp(curStart, tee, gender);
 
-    for (var x = -4.9; x <= maxExact + 0.05; x += 0.1) {
+    for (var x = -4.9; x <= maxHandicap + 0.05; x += 0.1) {
         var exactVal = Math.round(x * 10) / 10;
         var f = getFieldHcp(exactVal, tee, gender);
         if (f !== curField) {
             var prevExact = Math.round((exactVal - 0.1) * 10) / 10;
-            rows.push([
-                fmtExactHcp(curStart),
-                fmtExactHcp(prevExact),
-                fmtFieldHcp(curField)
-            ]);
+            rows.push([fmtExactHcp(curStart), fmtExactHcp(prevExact), fmtFieldHcp(curField)]);
             curStart = exactVal;
             curField = f;
         }
     }
-    rows.push([
-        fmtExactHcp(curStart),
-        fmtExactHcp(maxExact),
-        fmtFieldHcp(curField)
-    ]);
+    rows.push([fmtExactHcp(curStart), fmtExactHcp(maxHandicap), fmtFieldHcp(curField)]);
     return rows;
 }
 
@@ -135,10 +137,12 @@ function stablefordField(strokes,holeNum,fieldHcp){
     if(!strokes||strokes<1)return 0;
     var par=holePar(holeNum),hcpIdx=holeHcp(holeNum),extra=0;
     if(fieldHcp>0&&hcpIdx>0){
-        extra=Math.floor(fieldHcp/18);if(hcpIdx<=(fieldHcp%18))extra++;
-    }else if(fieldHcp<0&&hcpIdx>0){
+        extra=Math.floor(fieldHcp/18);
+        if(hcpIdx<=(fieldHcp%18))extra++;
+    } else if(fieldHcp<0&&hcpIdx>0){
         var absHcp=Math.abs(fieldHcp);
-        extra=-Math.floor(absHcp/18);if((19-hcpIdx)<=(absHcp%18))extra--;
+        extra=-Math.floor(absHcp/18);
+        if((19-hcpIdx)<=(absHcp%18))extra--;
     }
     var nett=strokes-extra,diff=nett-par;
     if(diff<=-3)return 5;if(diff===-2)return 4;if(diff===-1)return 3;if(diff===0)return 2;if(diff===1)return 1;return 0;
@@ -146,12 +150,14 @@ function stablefordField(strokes,holeNum,fieldHcp){
 
 function stablefordExact(strokes,holeNum,exactHcp){
     if(!strokes||strokes<1)return 0;
-    var par=holePar(holeNum),hcpIdx=holeHcp(holeNum),hcp=Math.round(parseFloat(exactHcp)||0),extra=0;
+    var par=holePar(holeNum),hcpIdx=holeHcp(holeNum),hcp=Math.round(parseExactHcp(exactHcp)||0),extra=0;
     if(hcp>0&&hcpIdx>0){
-        extra=Math.floor(hcp/18);if(hcpIdx<=(hcp%18))extra++;
-    }else if(hcp<0&&hcpIdx>0){
+        extra=Math.floor(hcp/18);
+        if(hcpIdx<=(hcp%18))extra++;
+    } else if(hcp<0&&hcpIdx>0){
         var absHcp=Math.abs(hcp);
-        extra=-Math.floor(absHcp/18);if((19-hcpIdx)<=(absHcp%18))extra--;
+        extra=-Math.floor(absHcp/18);
+        if((19-hcpIdx)<=(absHcp%18))extra--;
     }
     var nett=strokes-extra,diff=nett-par;
     if(diff<=-3)return 5;if(diff===-2)return 4;if(diff===-1)return 3;if(diff===0)return 2;if(diff===1)return 1;return 0;
@@ -161,10 +167,12 @@ function calcNettScore(strokes,par,hcpIdx,fieldHcp){
     if(!strokes||strokes<1)return 0;
     var extra=0;
     if(fieldHcp>0&&hcpIdx>0){
-        extra=Math.floor(fieldHcp/18);if(hcpIdx<=(fieldHcp%18))extra++;
-    }else if(fieldHcp<0&&hcpIdx>0){
+        extra=Math.floor(fieldHcp/18);
+        if(hcpIdx<=(fieldHcp%18))extra++;
+    } else if(fieldHcp<0&&hcpIdx>0){
         var absHcp=Math.abs(fieldHcp);
-        extra=-Math.floor(absHcp/18);if((19-hcpIdx)<=(absHcp%18))extra--;
+        extra=-Math.floor(absHcp/18);
+        if((19-hcpIdx)<=(absHcp%18))extra--;
     }
     return strokes-extra;
 }

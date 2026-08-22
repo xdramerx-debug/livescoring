@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="theme-color" content="#0b1a0e">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <link rel="apple-touch-icon" href="img/logo.png">
+    <title>Гандикапы — Пестово</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .hcp-tbl{width:100%;border-collapse:collapse;font-size:12px;min-width:400px;}
+        .hcp-tbl th{background:var(--green);color:var(--gold);padding:10px 8px;text-align:center;font-size:11px;border:1px solid var(--border);text-transform:uppercase;}
+        .hcp-tbl td{padding:8px 6px;text-align:center;border:1px solid var(--border);font-size:12px;}
+        .hcp-tbl tr:nth-child(even) td{background:rgba(201,168,76,.03);}
+        .hcp-tbl .tbl-field{font-weight:800;color:var(--gold);font-size:14px;}
+        .hcp-result{margin-top:16px;padding:20px;background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(201,168,76,.15));border:1px solid rgba(201,168,76,.3);border-radius:var(--rs);text-align:center;}
+        .hcp-result-val{font-family:var(--ff);font-size:48px;font-weight:800;color:var(--gold);}
+    </style>
+</head>
+<body>
+<nav class="nav" id="main-nav"><div class="container nav-c">
+    <a href="index.html" class="nav-brand"><img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'"><span class="nav-brand-text">Пестово</span></a>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+    <div class="nav-menu" id="nav-menu">
+        <a href="index.html" class="nav-link">Главная</a>
+        <a href="live.html" class="nav-link">Раунд</a>
+        <a href="leaderboard.html" class="nav-link">Лидерборд</a>
+        <a href="players.html" class="nav-link">Игроки</a>
+        <a href="tournaments.html" class="nav-link">Турниры</a>
+        <a href="stats.html" class="nav-link">Статистика</a>
+        <a href="handicap.html" class="nav-link active">Гандикапы</a>
+        <div class="nav-auth" id="nav-auth"></div>
+    </div>
+</div></nav>
+
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-calculator"></i> Полевые гандикапы</h1><p class="page-sub">Пестово · Пар 72</p></div></div>
+
+<main class="container" style="padding:24px 20px 60px;">
+    <div class="card" style="max-width:520px;margin:0 auto 24px;">
+        <h2><i class="fas fa-bolt"></i> Быстрый расчёт</h2>
+        <div class="form-row">
+            <div class="form-group"><label>Точный HCP</label><input type="number" id="calc-hcp" class="form-input" step="0.1" placeholder="12.4" oninput="calcField()"></div>
+            <div class="form-group"><label>Пол</label><select id="calc-gender" class="form-input" onchange="calcField()"><option value="men">Мужчина</option><option value="women">Женщина</option></select></div>
+            <div class="form-group"><label>ТИ</label><select id="calc-tee" class="form-input" onchange="calcField()"><option value="bk">⬛ Чёрный</option><option value="bl">🟦 Синий</option><option value="wh" selected>⬜ Белый</option><option value="rd">🟥 Красный</option></select></div>
+        </div>
+        <div id="calc-result" class="hcp-result hidden">
+            <div class="hcp-result-val" id="calc-val">—</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:8px;text-transform:uppercase;">Полевой гандикап</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 style="text-align:center;"><i class="fas fa-table"></i> Посмотреть полную таблицу</h2>
+        <p style="color:var(--muted);text-align:center;font-size:13px;margin-bottom:20px;">Выберите пол и ТИ — таблица появится ниже</p>
+        <div class="form-row">
+            <div class="form-group"><label>Пол игрока</label>
+                <select id="tbl-gender" class="form-input" onchange="onGenderChange()">
+                    <option value="">— Выберите пол —</option>
+                    <option value="men">👨 Мужчина</option>
+                    <option value="women">👩 Женщина</option>
+                </select>
+            </div>
+            <div class="form-group"><label>ТИ</label>
+                <select id="tbl-tee" class="form-input" onchange="showTable()" disabled>
+                    <option value="">— Сначала выберите пол —</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="hcp-tables"></div>
+</main>
+
+<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Пестово</p></div></div></footer>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() { initNav(); });
+function onAuthReady(u, d) { navAuth(u, d); }
+
+function calcField() {
+    var hcp = document.getElementById('calc-hcp').value;
+    var gender = document.getElementById('calc-gender').value;
+    var tee = document.getElementById('calc-tee').value;
+    var res = document.getElementById('calc-result');
+    if (!hcp) { res.classList.add('hidden'); return; }
+    var field = getFieldHcp(parseFloat(hcp), tee, gender);
+    document.getElementById('calc-val').textContent = field;
+    res.classList.remove('hidden');
+}
+
+function onGenderChange() {
+    var gender = document.getElementById('tbl-gender').value;
+    var teeSel = document.getElementById('tbl-tee');
+    document.getElementById('hcp-tables').innerHTML = '';
+    if (!gender) { teeSel.innerHTML = '<option value="">— Сначала выберите пол —</option>'; teeSel.disabled = true; return; }
+    teeSel.disabled = false;
+    teeSel.innerHTML = '<option value="">— Выберите ТИ —</option>';
+    if (gender === 'men') {
+        teeSel.innerHTML += '<option value="bk">⬛ Чёрный (CR 76.0 / SR 144)</option>';
+        teeSel.innerHTML += '<option value="bl">🟦 Синий (CR 73.8 / SR 137)</option>';
+        teeSel.innerHTML += '<option value="wh">⬜ Белый (CR 72.0 / SR 135)</option>';
+        teeSel.innerHTML += '<option value="rd">🟥 Красный (CR 69.2 / SR 134)</option>';
+    } else {
+        teeSel.innerHTML += '<option value="bl">🟦 Синий (CR 80.8 / SR 143)</option>';
+        teeSel.innerHTML += '<option value="wh">⬜ Белый (CR 78.6 / SR 143)</option>';
+        teeSel.innerHTML += '<option value="rd">🟥 Красный (CR 75.2 / SR 136)</option>';
+    }
+}
+
+function showTable() {
+    var gender = document.getElementById('tbl-gender').value;
+    var tee = document.getElementById('tbl-tee').value;
+    var el = document.getElementById('hcp-tables');
+    if (!gender || !tee) { el.innerHTML = ''; return; }
+    var table = HCP_TABLE[gender] && HCP_TABLE[gender][tee];
+    var cr = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
+    if (!table || !cr) { el.innerHTML = '<div class="card"><p style="text-align:center;color:var(--muted);">Нет данных</p></div>'; return; }
+    var genderIcon = gender === 'women' ? '👩' : '👨';
+    var genderName = gender === 'women' ? 'Женщины' : 'Мужчины';
+    var html = '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">';
+    html += '<div><div style="font-family:var(--ff);color:var(--gold);font-size:20px;font-weight:700;">' + genderIcon + ' ' + genderName + ' · ' + TEES[tee] + ' ТИ</div>';
+    html += '<div style="color:var(--muted);font-size:13px;">Пар 72 · Значений: ' + table.length + '</div></div>';
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;"><span style="background:rgba(201,168,76,.15);color:var(--gold);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">CR: ' + cr.cr + '</span>';
+    html += '<span style="background:rgba(201,168,76,.15);color:var(--gold);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">SR: ' + cr.sr + '</span></div></div>';
+    html += '<div style="overflow-x:auto;"><table class="hcp-tbl"><tr><th>Показатель от</th><th>Показатель до</th><th>Полевой гандикап</th></tr>';
+    table.forEach(function(row) { html += '<tr><td>' + row[0] + '</td><td>' + row[1] + '</td><td class="tbl-field">' + row[2] + '</td></tr>'; });
+    html += '</table></div></div>';
+    el.innerHTML = html;
+}
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

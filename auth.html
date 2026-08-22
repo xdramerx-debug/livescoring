@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="theme-color" content="#0b1a0e">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <link rel="apple-touch-icon" href="img/logo.png">
+    <title>Вход — Пестово</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body id="auth-page">
+<div class="auth-wrap">
+    <div class="auth-card">
+        <img src="img/logo.png" alt="Пестово" class="auth-logo" onerror="this.style.display='none'">
+        <h1 class="auth-title">Гольф-клуб Пестово</h1>
+        <div class="auth-tabs">
+            <button class="auth-tab active" data-tab="login">Вход</button>
+            <button class="auth-tab" data-tab="register">Регистрация</button>
+        </div>
+
+        <div id="form-login" class="auth-form">
+            <form id="login-form">
+                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="login-email" class="form-input" required></div>
+                <div class="form-group"><label><i class="fas fa-lock"></i> Пароль</label><input type="password" id="login-pass" class="form-input" required></div>
+                <div id="login-error" class="form-err hidden"></div>
+                <button type="submit" id="login-btn" class="btn btn-g btn-block">Войти</button>
+            </form>
+            <div class="auth-guest"><a href="index.html"><i class="fas fa-eye"></i> Продолжить как гость</a></div>
+        </div>
+
+        <div id="form-register" class="auth-form hidden">
+            <form id="register-form">
+                <div class="form-group"><label><i class="fas fa-user"></i> Имя и фамилия</label><input type="text" id="reg-name" class="form-input" required></div>
+                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="reg-email" class="form-input" required></div>
+                <div class="form-row">
+                    <div class="form-group"><label><i class="fas fa-venus-mars"></i> Пол</label><select id="reg-gender" class="form-input"><option value="men">Мужчина</option><option value="women">Женщина</option></select></div>
+                    <div class="form-group"><label><i class="fas fa-golf-ball"></i> Точный HCP</label><input type="number" id="reg-hcp" class="form-input" step="0.1" placeholder="12.4"></div>
+                </div>
+                <div class="form-group"><label><i class="fas fa-lock"></i> Пароль (мин. 6)</label><input type="password" id="reg-pass" class="form-input" required></div>
+                <div class="form-group"><label><i class="fas fa-lock"></i> Повторите пароль</label><input type="password" id="reg-pass2" class="form-input" required></div>
+                <div id="register-error" class="form-err hidden"></div>
+                <button type="submit" id="register-btn" class="btn btn-g btn-block">Создать аккаунт</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

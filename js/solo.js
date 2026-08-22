@@ -1,0 +1,285 @@
+var soloRid = null;
+var soloRound = null;
+var curHole = 1;
+var curScore = 0;
+var isChanging = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initNav();
+    var urlP = new URLSearchParams(window.location.search);
+    var rid = urlP.get('round');
+    if (rid) { soloRid = rid; loadExistingSolo(); return; }
+    var sel = document.getElementById('s-hole');
+    for (var i = 1; i <= 18; i++) sel.innerHTML += '<option value="' + i + '">Лунка ' + i + ' (Пар ' + holePar(i) + ')</option>';
+    var now = new Date();
+    document.getElementById('s-time').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    updateTimingPreview();
+    document.getElementById('s-time').addEventListener('change', updateTimingPreview);
+    document.getElementById('s-hole').addEventListener('change', updateTimingPreview);
+});
+
+function onAuthReady(u, d) {
+    navAuth(u, d);
+    if (u && d) {
+        var name = d.name || '';
+        var parts = name.split(' ');
+        var fn = document.getElementById('s-firstname');
+        var ln = document.getElementById('s-lastname');
+        if (fn && !fn.value) fn.value = parts[0] || '';
+        if (ln && !ln.value) ln.value = parts.slice(1).join(' ') || '';
+        if (d.handicap != null) {
+            var hcpEl = document.getElementById('s-exact-hcp');
+            if (hcpEl && !hcpEl.value) hcpEl.value = d.handicap;
+        }
+        if (d.gender) document.getElementById('s-gender').value = d.gender;
+        calcSoloFieldHcp();
+        var banner = document.getElementById('guest-banner');
+        if (banner) banner.classList.add('hidden');
+    } else {
+        var banner = document.getElementById('guest-banner');
+        if (banner) banner.classList.remove('hidden');
+    }
+}
+
+function calcSoloFieldHcp() {
+    var exact = document.getElementById('s-exact-hcp').value;
+    if (!exact) { document.getElementById('s-field-hcp').value = ''; return; }
+    var gender = document.getElementById('s-gender').value;
+    var tee = document.getElementById('s-tee').value;
+    var field = getFieldHcp(parseFloat(exact), tee, gender);
+    document.getElementById('s-field-hcp').value = field;
+}
+
+function updateTimingPreview() {
+    var timeStr = document.getElementById('s-time').value;
+    var startHole = parseInt(document.getElementById('s-hole').value) || 1;
+    if (!timeStr) return;
+    var parts = timeStr.split(':');
+    var now = new Date();
+    var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
+    document.getElementById('timing-preview').innerHTML = buildTimingTable(startDate.getTime(), startHole);
+}
+
+function startSolo() {
+    var firstName = document.getElementById('s-firstname').value.trim();
+    var lastName = document.getElementById('s-lastname').value.trim();
+    var timeStr = document.getElementById('s-time').value;
+    var startHole = parseInt(document.getElementById('s-hole').value) || 1;
+    var tee = document.getElementById('s-tee').value;
+    var format = document.getElementById('s-format').value;
+    var gender = document.getElementById('s-gender').value;
+    var exactHcp = document.getElementById('s-exact-hcp').value;
+    if (!firstName || !lastName) { toast('Укажите имя и фамилию', 'error'); return; }
+    if (!timeStr) { toast('Укажите время старта', 'error'); return; }
+    if (!exactHcp) { toast('Укажите точный гандикап', 'error'); return; }
+    var fieldHcp = getFieldHcp(parseFloat(exactHcp), tee, gender);
+    var fullName = lastName + ' ' + firstName;
+    var parts = timeStr.split(':');
+    var now = new Date();
+    var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
+    var playerId;
+    var isGuest = !currentUser;
+    if (isGuest) playerId = 'guest_' + Date.now();
+    else playerId = currentUser.uid;
+    var players = {};
+    players[playerId] = {
+        name: fullName, firstName: firstName, lastName: lastName,
+        exactHcp: parseFloat(exactHcp), fieldHcp: fieldHcp,
+        gender: gender, scores: {}
+    };
+    var ref = db.ref('rounds').push();
+    soloRid = ref.key;
+    ref.set({
+        mode: 'solo', tee: tee, format: format,
+        startHole: startHole, startTime: startDate.getTime(),
+        players: players, status: 'active',
+        createdAt: Date.now(), createdBy: currentUser ? currentUser.uid : 'guest',
+        isGuest: isGuest
+    }).then(function() {
+        toast('🏌️ Раунд начат!');
+        window.location.href = 'solo.html?round=' + soloRid;
+    });
+}
+
+function loadExistingSolo() {
+    db.ref('rounds/' + soloRid).on('value', function(sn) {
+        soloRound = sn.val();
+        if (!soloRound) { toast('Раунд не найден', 'error'); return; }
+        document.getElementById('setup').classList.add('hidden');
+        document.getElementById('game').classList.remove('hidden');
+        var uid = getPlayerId();
+        var player = soloRound.players[uid];
+        if (!player) return;
+        var scores = player.scores || {};
+        var order = holeOrder(soloRound.startHole || 1);
+        if (!isChanging) {
+            var found = false;
+            for (var i = 0; i < order.length; i++) {
+                if (!(parseInt(scores[order[i]]) >= 1)) { curHole = order[i]; found = true; break; }
+            }
+            if (!found) curHole = order[order.length - 1];
+        }
+        renderRoundInfo();
+        buildHoles();
+        renderCurrentHole();
+        renderLiveStats();
+        renderMiniCard();
+    });
+}
+
+function getPlayerId() {
+    if (currentUser && soloRound.players[currentUser.uid]) return currentUser.uid;
+    return Object.keys(soloRound.players)[0];
+}
+
+function renderRoundInfo() {
+    var el = document.getElementById('round-info');
+    var uid = getPlayerId();
+    var p = soloRound.players[uid];
+    var guestBadge = soloRound.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">ГОСТЬ</span>' : '';
+    el.innerHTML = '<div><b>' + (p.name || 'Игрок') + '</b>' + guestBadge + ' · <b>HCP:</b> ' + (p.exactHcp || '—') + ' (пол. ' + (p.fieldHcp || 0) + ')</div>' +
+        '<div><b>Старт:</b> ' + fmtTime(soloRound.startTime) + ' · <b>ТИ:</b> ' + TEES[soloRound.tee] + ' · <b>Формат:</b> ' + soloRound.format + '</div>';
+}
+
+function buildHoles() {
+    var el = document.getElementById('g-holes');
+    var uid = getPlayerId();
+    var scores = soloRound.players[uid].scores || {};
+    var order = holeOrder(soloRound.startHole || 1);
+    var html = '';
+    order.forEach(function(h) {
+        var cls = h === curHole ? 'active' : '';
+        var s = parseInt(scores[h]) || 0;
+        if (s >= 1 && h !== curHole) cls += ' done';
+        html += '<button class="hole-btn ' + cls + '" onclick="goHole(' + h + ')">' + h + '</button>';
+    });
+    el.innerHTML = html;
+}
+
+function goHole(h) {
+    isChanging = true;
+    curHole = h; curScore = 0;
+    renderCurrentHole(); buildHoles();
+    setTimeout(function() { isChanging = false; }, 100);
+}
+
+function renderCurrentHole() {
+    var par = holePar(curHole);
+    var dist = holeDist(curHole, soloRound.tee);
+    document.getElementById('g-hole').textContent = curHole;
+    document.getElementById('g-par').textContent = par;
+    document.getElementById('g-dist').textContent = dist > 0 ? dist : '—';
+    var dl = holeDeadline(soloRound.startTime, soloRound.startHole, curHole);
+    document.getElementById('g-deadline').textContent = fmtTime(dl);
+    var uid = getPlayerId();
+    var scores = soloRound.players[uid].scores || {};
+    var savedScore = parseInt(scores[curHole]) || 0;
+    curScore = savedScore > 0 ? savedScore : par;
+    updateDisplay();
+}
+
+function adjSolo(delta) {
+    curScore = Math.max(1, Math.min(15, curScore + delta));
+    vib(); updateDisplay();
+}
+
+function updateDisplay() {
+    var par = holePar(curHole);
+    document.getElementById('g-disp').textContent = curScore;
+    var r = document.getElementById('g-result');
+    r.textContent = holeResName(curScore, par);
+    r.className = 'score-result ' + holeResClass(curScore, par);
+}
+
+function saveSolo() {
+    if (curScore < 1) { toast('Счёт должен быть ≥ 1', 'error'); return; }
+    isChanging = true;
+    var savedHole = curHole;
+    var uid = getPlayerId();
+    var path = 'rounds/' + soloRid + '/players/' + uid + '/scores/' + savedHole;
+    db.ref(path).set(curScore).then(function() {
+        var par = holePar(savedHole);
+        var d = curScore - par;
+        if (curScore === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); }
+        else if (d <= -2) { toast('🦅 EAGLE!', 'info'); vib([80, 50, 80]); }
+        else if (d === -1) { toast('🐦 Birdie!', 'success'); vib([50, 50]); }
+        else if (d === 0) { toast('✅ Par'); vib(); }
+        else if (d === 1) { toast('Bogey'); vib(); }
+        else { toast('Double+', 'warn'); vib(); }
+        showTimingNotice(savedHole);
+        var order = holeOrder(soloRound.startHole);
+        var idx = order.indexOf(savedHole);
+        if (idx >= 0 && idx < order.length - 1) { curHole = order[idx + 1]; curScore = 0; }
+        renderCurrentHole(); buildHoles();
+        setTimeout(function() { isChanging = false; }, 200);
+    });
+}
+
+function showTimingNotice(hole) {
+    var el = document.getElementById('timing-notice');
+    el.innerHTML = buildTimingNotice(soloRound.startTime, soloRound.startHole, hole);
+    var check = checkTiming(soloRound.startTime, soloRound.startHole, hole);
+    if (check.status === 'late') toast('⏰ Отставание ' + check.diff + ' мин.!', 'warn');
+}
+
+function renderLiveStats() {
+    var el = document.getElementById('live-stats');
+    var uid = getPlayerId();
+    var p = soloRound.players[uid];
+    var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(soloRound.startHole));
+    var html = '<div class="stats-grid">';
+    html += '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + stats.holesPlayed + '/18</div><div class="stat-l">Пройдено</div></div>';
+    html += '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + (stats.gross || '—') + '</div><div class="stat-l">Gross</div></div>';
+    html += '<div class="stat"><i class="fas fa-chart-line"></i><div class="stat-n ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</div><div class="stat-l">± Par</div></div>';
+    html += '<div class="stat"><i class="fas fa-calculator"></i><div class="stat-n">' + (stats.net || '—') + '</div><div class="stat-l">Net</div></div>';
+    html += '<div class="stat"><i class="fas fa-star"></i><div class="stat-n" style="color:var(--gold);">' + stats.stablefordField + '</div><div class="stat-l">Stblfd (пол.)</div></div>';
+    html += '<div class="stat"><i class="fas fa-star-half-alt"></i><div class="stat-n">' + stats.stablefordExact + '</div><div class="stat-l">Stblfd (игр.)</div></div>';
+    html += '</div>';
+    el.innerHTML = html;
+}
+
+function renderMiniCard() {
+    var el = document.getElementById('mini-card');
+    var uid = getPlayerId();
+    var scores = soloRound.players[uid].scores || {};
+    var html = '<div class="scorecard"><table><tr><th>Лунка</th>';
+    for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
+    html += '<th>Аут</th></tr><tr class="row-par"><td>Пар</td>';
+    var pO = 0;
+    for (var i = 1; i <= 9; i++) { var pv = holePar(i); pO += pv; html += '<td>' + pv + '</td>'; }
+    html += '<td>' + pO + '</td></tr><tr><td>Счёт</td>';
+    var gO = 0;
+    for (var i = 1; i <= 9; i++) {
+        var s = parseInt(scores[i]) || 0, cls = holeResClass(s, holePar(i));
+        if (s >= 1) gO += s;
+        html += '<td class="' + cls + '">' + (s >= 1 ? s : '') + '</td>';
+    }
+    html += '<td class="row-total">' + (gO > 0 ? gO : '') + '</td></tr></table></div>';
+
+    html += '<div class="scorecard"><table><tr><th>Лунка</th>';
+    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
+    html += '<th>Ин</th><th>Итого</th></tr><tr class="row-par"><td>Пар</td>';
+    var pI = 0;
+    for (var i = 10; i <= 18; i++) { var pv = holePar(i); pI += pv; html += '<td>' + pv + '</td>'; }
+    html += '<td>' + pI + '</td><td>' + (pO + pI) + '</td></tr><tr><td>Счёт</td>';
+    var gI = 0;
+    for (var i = 10; i <= 18; i++) {
+        var s = parseInt(scores[i]) || 0, cls = holeResClass(s, holePar(i));
+        if (s >= 1) gI += s;
+        html += '<td class="' + cls + '">' + (s >= 1 ? s : '') + '</td>';
+    }
+    html += '<td class="row-total">' + (gI > 0 ? gI : '') + '</td><td class="row-total">' + ((gO + gI) > 0 ? (gO + gI) : '') + '</td></tr></table></div>';
+    el.innerHTML = html;
+}
+
+function finishSolo() {
+    if (!confirm('Завершить раунд?')) return;
+    db.ref('rounds/' + soloRid + '/status').set('completed');
+    db.ref('rounds/' + soloRid + '/completedAt').set(Date.now());
+    db.ref('rounds/' + soloRid).once('value').then(function(sn) { if (sn.val()) saveHistory(soloRid, sn.val()); });
+    toast('🏁 Раунд завершён!');
+    setTimeout(function() {
+        if (confirm('Скачать счётную карточку?')) downloadScorecard(soloRid);
+        window.location.href = 'leaderboard.html';
+    }, 1000);
+}

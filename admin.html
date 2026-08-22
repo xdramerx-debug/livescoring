@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="theme-color" content="#0b1a0e">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <link rel="apple-touch-icon" href="img/logo.png">
+    <title>Админ — Пестово</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<nav class="nav" id="main-nav"><div class="container nav-c">
+    <a href="index.html" class="nav-brand"><img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'"><span class="nav-brand-text">Пестово</span></a>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+    <div class="nav-menu" id="nav-menu">
+        <a href="index.html" class="nav-link">Главная</a>
+        <a href="live.html" class="nav-link">Раунд</a>
+        <a href="leaderboard.html" class="nav-link">Лидерборд</a>
+        <a href="players.html" class="nav-link">Игроки</a>
+        <a href="tournaments.html" class="nav-link">Турниры</a>
+        <a href="stats.html" class="nav-link">Статистика</a>
+        <a href="handicap.html" class="nav-link">Гандикапы</a>
+        <a href="admin.html" class="nav-link active">Админ</a>
+        <div class="nav-auth" id="nav-auth"></div>
+    </div>
+</div></nav>
+
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-shield-halved"></i> Админ-панель</h1></div></div>
+
+<main class="container" style="padding:24px 20px 60px;">
+    <div id="admin-login" class="card" style="max-width:400px;margin:0 auto;">
+        <h2><i class="fas fa-lock"></i> Вход</h2>
+        <div class="form-group"><label>Логин</label><input type="text" id="adm-user" class="form-input" placeholder="admin"></div>
+        <div class="form-group"><label>Пароль</label><input type="password" id="adm-pass" class="form-input"></div>
+        <div id="adm-error" class="form-err hidden"></div>
+        <button class="btn btn-g btn-block" onclick="adminLogin()">Войти</button>
+    </div>
+
+    <div id="admin-content" class="hidden">
+        <div class="admin-tabs">
+            <button class="admin-tab active" onclick="switchTab('rounds',this)">Раунды</button>
+            <button class="admin-tab" onclick="switchTab('alerts',this)">Вызовы 🚨</button>
+            <button class="admin-tab" onclick="switchTab('tournaments',this)">Турниры</button>
+            <button class="admin-tab" onclick="switchTab('players',this)">Игроки</button>
+            <button class="admin-tab" onclick="switchTab('data',this)">Данные</button>
+        </div>
+
+        <div id="tab-rounds" class="admin-section">
+            <div class="card"><h2><i class="fas fa-flag"></i> Все раунды</h2><div id="adm-rounds"></div></div>
+        </div>
+
+        <div id="tab-alerts" class="admin-section hidden">
+            <div class="card"><h2><i class="fas fa-bell"></i> Вызовы на поле</h2><div id="admin-alerts-list"></div></div>
+        </div>
+
+        <div id="tab-tournaments" class="admin-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-trophy"></i> Создать турнир</h2>
+                <div class="form-row">
+                    <div class="form-group"><label>Название</label><input type="text" id="tn-name" class="form-input" placeholder="Чемпионат"></div>
+                    <div class="form-group"><label>Дата</label><input type="date" id="tn-date" class="form-input"></div>
+                </div>
+                <div class="form-group">
+                    <label>Форматы</label>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-stroke" checked> Stroke Play</label>
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-stbl"> Stableford</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>ТИ</label>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-bk"> ⬛ Чёрный</label>
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-bl"> 🟦 Синий</label>
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-wh" checked> ⬜ Белый</label>
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-rd"> 🟥 Красный</label>
+                    </div>
+                </div>
+                <button class="btn btn-g" onclick="createTournament()"><i class="fas fa-save"></i> Создать</button>
+            </div>
+            <div class="card"><h2><i class="fas fa-list"></i> Турниры</h2><div id="tn-list"></div></div>
+        </div>
+
+        <div id="tab-players" class="admin-section hidden">
+            <div class="card"><h2><i class="fas fa-users"></i> Игроки</h2><div id="adm-players"></div></div>
+        </div>
+
+        <div id="tab-data" class="admin-section hidden">
+            <div class="card"><h2><i class="fas fa-database"></i> Данные</h2>
+                <button class="btn btn-r" onclick="clearRounds()"><i class="fas fa-trash"></i> Удалить все раунды</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Пестово</p></div></div></footer>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

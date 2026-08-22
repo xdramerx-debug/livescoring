@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="theme-color" content="#0b1a0e">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <link rel="apple-touch-icon" href="img/logo.png">
+    <title>Одиночный раунд — Пестово</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<nav class="nav" id="main-nav"><div class="container nav-c">
+    <a href="index.html" class="nav-brand"><img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'"><span class="nav-brand-text">Пестово</span></a>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+    <div class="nav-menu" id="nav-menu">
+        <a href="index.html" class="nav-link">Главная</a>
+        <a href="live.html" class="nav-link active">Раунд</a>
+        <a href="leaderboard.html" class="nav-link">Лидерборд</a>
+        <a href="players.html" class="nav-link">Игроки</a>
+        <a href="tournaments.html" class="nav-link">Турниры</a>
+        <a href="stats.html" class="nav-link">Статистика</a>
+        <a href="handicap.html" class="nav-link">Гандикапы</a>
+        <div class="nav-auth" id="nav-auth"></div>
+    </div>
+</div></nav>
+
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-user"></i> Одиночный раунд</h1><p class="page-sub">Играете один — сами вводите счёт</p></div></div>
+
+<main class="container" style="padding:24px 20px 60px;">
+    <div id="setup">
+        <div id="guest-banner" class="card hidden" style="background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
+            <p style="color:var(--gold);font-size:14px;text-align:center;">
+                <i class="fas fa-info-circle"></i> Вы играете как гость. <a href="auth.html" style="color:var(--gold);font-weight:700;">Войти в аккаунт</a>, чтобы автоматически подставились данные
+            </p>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-cog"></i> Настройки раунда</h2>
+
+            <h3 style="color:var(--gold);font-size:14px;margin:8px 0 12px;"><i class="fas fa-user"></i> Данные игрока</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Имя</label><input type="text" id="s-firstname" class="form-input" placeholder="Иван"></div>
+                <div class="form-group"><label>Фамилия</label><input type="text" id="s-lastname" class="form-input" placeholder="Петров"></div>
+            </div>
+
+            <h3 style="color:var(--gold);font-size:14px;margin:20px 0 12px;"><i class="fas fa-clock"></i> Время и лунка</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Время старта</label><input type="time" id="s-time" class="form-input"></div>
+                <div class="form-group"><label>Стартовая лунка</label><select id="s-hole" class="form-input"></select></div>
+            </div>
+
+            <h3 style="color:var(--gold);font-size:14px;margin:20px 0 12px;"><i class="fas fa-gamepad"></i> Формат игры</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Пол</label><select id="s-gender" class="form-input" onchange="calcSoloFieldHcp()"><option value="men">Мужчина</option><option value="women">Женщина</option></select></div>
+                <div class="form-group"><label>ТИ</label><select id="s-tee" class="form-input" onchange="calcSoloFieldHcp()"><option value="bk">⬛ Чёрный</option><option value="bl">🟦 Синий</option><option value="wh" selected>⬜ Белый</option><option value="rd">🟥 Красный</option></select></div>
+                <div class="form-group"><label>Формат</label><select id="s-format" class="form-input"><option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option></select></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group"><label>Точный гандикап</label><input type="number" id="s-exact-hcp" class="form-input" step="0.1" placeholder="12.4" oninput="calcSoloFieldHcp()"></div>
+                <div class="form-group"><label>Полевой гандикап</label><input type="text" id="s-field-hcp" class="form-input" readonly placeholder="—"></div>
+            </div>
+
+            <button class="btn btn-g btn-block" onclick="startSolo()" style="margin-top:16px;"><i class="fas fa-play"></i> Начать раунд</button>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-info-circle"></i> Тайминги</h2>
+            <div id="timing-preview"></div>
+        </div>
+    </div>
+
+    <div id="game" class="hidden">
+        <div class="timing-info" id="round-info"></div>
+
+        <div class="card">
+            <div class="hole-display">
+                <div class="hole-box"><div class="hole-lbl">Лунка</div><div class="hole-val" id="g-hole">1</div></div>
+                <div class="hole-box h-par"><div class="hole-lbl">Пар</div><div class="hole-val" id="g-par">4</div></div>
+                <div class="hole-box h-dist"><div class="hole-lbl">Метры</div><div class="hole-val" id="g-dist" style="font-size:24px;">—</div></div>
+                <div class="hole-box"><div class="hole-lbl">Дедлайн</div><div class="hole-val" id="g-deadline" style="font-size:20px;color:var(--gold-l);">—</div></div>
+            </div>
+
+            <div class="hole-nav" id="g-holes"></div>
+
+            <div class="score-area">
+                <div class="score-result" id="g-result"></div>
+                <div class="score-disp" id="g-disp">—</div>
+                <div class="score-btns">
+                    <button class="score-minus" onclick="adjSolo(-1)">−</button>
+                    <button class="score-plus" onclick="adjSolo(1)">+</button>
+                </div>
+                <button class="btn btn-g btn-block" onclick="saveSolo()" style="padding:16px;font-size:15px;">
+                    <i class="fas fa-save"></i> Сохранить
+                </button>
+            </div>
+        </div>
+
+        <div id="timing-notice"></div>
+
+        <div class="card"><h2><i class="fas fa-chart-bar"></i> Текущий счёт</h2><div id="live-stats"></div></div>
+        <div class="card"><h2><i class="fas fa-table"></i> Счётная карточка</h2><div id="mini-card"></div></div>
+
+        <button class="btn btn-og btn-block" onclick="finishSolo()"><i class="fas fa-flag-checkered"></i> Завершить раунд</button>
+    </div>
+</main>
+
+<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Гольф-клуб Пестово</p></div></div></footer>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/solo.js"></script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

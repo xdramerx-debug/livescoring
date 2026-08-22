@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="theme-color" content="#0b1a0e">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <link rel="apple-touch-icon" href="img/logo.png">
+    <title>Лидерборд — Пестово</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<nav class="nav" id="main-nav"><div class="container nav-c">
+    <a href="index.html" class="nav-brand"><img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'"><span class="nav-brand-text">Пестово</span></a>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+    <div class="nav-menu" id="nav-menu">
+        <a href="index.html" class="nav-link">Главная</a>
+        <a href="live.html" class="nav-link">Раунд</a>
+        <a href="leaderboard.html" class="nav-link active">Лидерборд</a>
+        <a href="players.html" class="nav-link">Игроки</a>
+        <a href="tournaments.html" class="nav-link">Турниры</a>
+        <a href="stats.html" class="nav-link">Статистика</a>
+        <a href="handicap.html" class="nav-link">Гандикапы</a>
+        <div class="nav-auth" id="nav-auth"></div>
+    </div>
+</div></nav>
+
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-trophy"></i> Лидерборд</h1></div></div>
+
+<main class="container" style="padding:24px 20px 60px;">
+    <div class="card"><div class="form-row">
+        <div class="form-group"><label>Статус</label><select id="lb-status" class="form-input" onchange="loadLB()">
+            <option value="all" selected>Все</option><option value="active">Live</option><option value="completed">Завершённые</option></select></div>
+    </div></div>
+    <div id="lb-container"><div class="loading"><div class="spinner"></div></div></div>
+</main>
+
+<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Пестово</p></div></div></footer>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/leaderboard.js"></script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

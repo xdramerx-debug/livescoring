@@ -3,35 +3,34 @@ var curRoundData = null;
 var registeredUsers = {};
 var availableTournaments = {};
 
+// Переменные для активного ввода
 var playHole = 1;
 var myUid = null;
+var myTargetUid = null; // За кем я слежу
+var myScore = 0;
+var targetScore = 0;
 var isChanging = false;
 var canEditGroup = false;
-
-// Храним текущие вводимые на экране счета для всех игроков группы
-// Формат: { "pid1": 4, "pid2": 5, "pid3": 4 }
-var currentHoleScores = {};
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
     var p = new URLSearchParams(window.location.search);
     curRid = p.get('round');
+    
+    // Если в ссылке есть параметр ?as=UID, значит игрок отсканировал свой личный QR
+    // Запоминаем в localStorage, под чьим именем он действует в этом раунде
+    var actingAs = p.get('as');
+    if (actingAs && curRid) {
+        localStorage.setItem('pestovo_acting_as_' + curRid, actingAs);
+        // Очищаем URL, чтобы было красиво
+        window.history.replaceState(null, null, window.location.pathname + '?round=' + curRid);
+    }
 });
 
 function onAuthReady(u, d) {
     navAuth(u, d);
-    if (u) {
-        myUid = u.uid;
-    } else {
-        myUid = null;
-    }
-    
-    // Если в URL есть id раунда — инициализируем экран раунда
     if (curRid) {
         initRoundView();
-    } else {
-        // Иначе оставляем экран выбора режима (mode-view)
-        document.getElementById('mode-view').classList.remove('hidden');
     }
 }
 
@@ -57,10 +56,7 @@ function showGroupSetup() {
     }
 
     var now = new Date();
-    var timeInput = document.getElementById('g-time');
-    if (timeInput) {
-        timeInput.value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-    }
+    document.getElementById('g-time').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
 
     db.ref('users').once('value').then(function(sn) {
         registeredUsers = sn.val() || {};
@@ -94,14 +90,8 @@ function onTournamentSelect() {
     }
     var t = availableTournaments[tid];
     if (!t) return;
-    teeSel.innerHTML = ''; 
-    (t.tees || ['wh']).forEach(function(tk) { 
-        teeSel.innerHTML += '<option value="' + tk + '">' + TEES[tk] + '</option>'; 
-    });
-    fmtSel.innerHTML = ''; 
-    (t.formats || ['Stroke Play']).forEach(function(f) { 
-        fmtSel.innerHTML += '<option value="' + f + '">' + f + '</option>'; 
-    });
+    teeSel.innerHTML = ''; (t.tees || ['wh']).forEach(function(tk) { teeSel.innerHTML += '<option value="' + tk + '">' + TEES[tk] + '</option>'; });
+    fmtSel.innerHTML = ''; (t.formats || ['Stroke Play']).forEach(function(f) { fmtSel.innerHTML += '<option value="' + f + '">' + f + '</option>'; });
 }
 
 function buildPlayerSlots() {
@@ -191,7 +181,7 @@ function backToModes() {
 }
 
 // ==========================================
-// СТАРТ И АВТО-МАРКЕРЫ
+// СТАРТ И АВТОНАЗНАЧЕНИЕ МАРКЕРОВ
 // ==========================================
 function startGroup() {
     var timeStr = document.getElementById('g-time').value;
@@ -216,6 +206,7 @@ function startGroup() {
 
         if (!name) { toast('Заполните имя игрока #' + i, 'error'); return; }
 
+        // Если гость - генерируем ID
         var pid = uid || 'guest_' + Date.now() + '_' + i;
         var fieldHcp = hcp ? getFieldHcp(parseFloat(hcp), tee, gender) : 0;
 
@@ -231,7 +222,7 @@ function startGroup() {
         pOrder.push(pid);
     }
 
-    // Автоматическое назначение маркеров по кругу (Игрок 1 следит за Игроком 2 и т.д.)
+    // Авто-маркеры (по кругу)
     var markerAssignments = {};
     for (var i = 0; i < pOrder.length; i++) {
         var markerId = pOrder[i];
@@ -249,8 +240,7 @@ function startGroup() {
     var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
 
     var creatorId = currentUser ? currentUser.uid : 'guest';
-    var accessKey = 'group_key_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-
+    
     var data = {
         mode: 'group',
         tee: tee,
@@ -259,29 +249,43 @@ function startGroup() {
         startTime: startDate.getTime(),
         players: players,
         markerAssignments: markerAssignments,
+        participantsList: pOrder,
         status: 'active',
         createdAt: Date.now(),
-        createdBy: creatorId,
-        accessKey: accessKey,
-        participantsList: pOrder // Сохраняем порядок
+        createdBy: creatorId
     };
 
     if (tournamentId) data.tournamentId = tournamentId;
 
     var ref = db.ref('rounds').push();
-    var newRoundId = ref.key;
     
-    localStorage.setItem('pestovo_group_key_' + newRoundId, accessKey);
+    // Создатель автоматически считается первым в списке, если он не указан явно
+    var myRole = currentUser ? currentUser.uid : pOrder[0];
+    localStorage.setItem('pestovo_acting_as_' + ref.key, myRole);
 
     ref.set(data).then(function() {
         toast('🏌️ Раунд начат!');
-        window.location.href = 'live.html?round=' + newRoundId;
+        window.location.href = 'live.html?round=' + ref.key;
     });
 }
 
 // ==========================================
 // ИНИЦИАЛИЗАЦИЯ ЭКРАНА С ПРОВЕРКОЙ ПРАВ
 // ==========================================
+function getActingUid() {
+    // 1. Проверяем URL/LocalStorage (если отсканировали QR код как гость/конкретный игрок)
+    var storedUid = localStorage.getItem('pestovo_acting_as_' + curRid);
+    if (storedUid && curRoundData.players && curRoundData.players[storedUid]) {
+        return storedUid;
+    }
+    // 2. Проверяем авторизованного пользователя
+    if (currentUser && curRoundData.players && curRoundData.players[currentUser.uid]) {
+        return currentUser.uid;
+    }
+    // 3. Не участник
+    return null;
+}
+
 function initRoundView() {
     db.ref('rounds/' + curRid).on('value', function(sn) {
         curRoundData = sn.val();
@@ -291,42 +295,38 @@ function initRoundView() {
         }
 
         document.getElementById('mode-view').classList.add('hidden');
-        
-        var pageTitle = document.getElementById('page-title');
         var pageSub = document.getElementById('page-sub');
-        if (pageTitle) pageTitle.innerHTML = '<i class="fas fa-flag"></i> ' + (curRoundData.tournamentName || 'Пестово');
-        if (pageSub) pageSub.textContent = curRoundData.format + ' · ТИ: ' + TEES[curRoundData.tee];
+        if (pageSub) pageSub.textContent = (curRoundData.format || 'Stroke Play') + ' · ТИ: ' + TEES[curRoundData.tee];
 
-        var localKey = localStorage.getItem('pestovo_group_key_' + curRid);
-        
-        var isParticipantUser = myUid && curRoundData.players && curRoundData.players[myUid];
-        var isCreatorKey = localKey && (curRoundData.accessKey === localKey);
-
-        canEditGroup = (isParticipantUser || isCreatorKey) && curRoundData.status === 'active';
+        // ОПРЕДЕЛЯЕМ РОЛЬ
+        myUid = getActingUid();
+        canEditGroup = (myUid !== null) && (curRoundData.status === 'active');
 
         if (canEditGroup) {
-            // ВЛАДЕЛЕЦ / УЧАСТНИК — Показываем форму редактирования
+            // МЫ УЧАСТНИК — Показываем форму редактирования (свой счет + таргет)
             document.getElementById('active-scoring-view').classList.remove('hidden');
             document.getElementById('group-view').classList.add('hidden');
 
-            if (!isParticipantUser && isCreatorKey) {
-                myUid = (curRoundData.createdBy && curRoundData.createdBy !== 'guest' && curRoundData.players[curRoundData.createdBy]) 
-                    ? curRoundData.createdBy 
-                    : Object.keys(curRoundData.players)[0];
+            if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
+                myTargetUid = curRoundData.markerAssignments[myUid].targetId;
+                document.getElementById('mark-player-name').textContent = curRoundData.players[myTargetUid].name;
+                document.getElementById('marker-input-container').classList.remove('hidden');
+            } else {
+                var mContainer = document.getElementById('marker-input-container');
+                if (mContainer) mContainer.classList.add('hidden');
             }
 
             if (!isChanging) {
                 findCurrentHole();
             }
 
-            renderAllPlayersScoringBlocks();
             renderPlayHole();
             buildPlayHolesNav();
             renderPlaySummary();
-            renderMyMarkerQR();
+            renderGroupQRsForOthers();
 
         } else {
-            // ЗРИТЕЛЬ — Показываем только чтение
+            // ЗРИТЕЛЬ — Показываем только просмотр (лидерборд и скоркарта)
             document.getElementById('active-scoring-view').classList.add('hidden');
             document.getElementById('group-view').classList.remove('hidden');
 
@@ -349,14 +349,12 @@ function findCurrentHole() {
 }
 
 // ==========================================
-// ЛОГИКА ВВОДА СЧЁТА ДЛЯ ВСЕХ ИГРОКОВ В ГРУППЕ
+// ЛОГИКА ВВОДА СЧЁТА ДЛЯ УЧАСТНИКА
 // ==========================================
 function buildPlayHolesNav() {
     if (!canEditGroup) return;
     var el = document.getElementById('play-holes-nav');
     var order = holeOrder(curRoundData.startHole || 1);
-    
-    // Проверяем заполненность лунки хотя бы для себя
     var myScores = (curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
     var myVerified = (curRoundData.players[myUid] && curRoundData.players[myUid].verified) || {};
 
@@ -371,7 +369,6 @@ function buildPlayHolesNav() {
             else if (v === false) cls += ' mismatch';
             else cls += ' done';
         }
-
         html += '<button class="hole-btn ' + cls + '" onclick="goPlayHole(' + h + ')">' + h + '</button>';
     });
     el.innerHTML = html;
@@ -386,39 +383,6 @@ function goPlayHole(h) {
     setTimeout(function() { isChanging = false; }, 100);
 }
 
-// Рендерит карточки ввода для КАЖДОГО игрока в группе
-function renderAllPlayersScoringBlocks() {
-    var container = document.getElementById('all-players-scoring');
-    var html = '';
-    var pOrder = curRoundData.participantsList || Object.keys(curRoundData.players);
-
-    pOrder.forEach(function(pid) {
-        var p = curRoundData.players[pid];
-        var isMe = (pid === myUid);
-        var titleColor = isMe ? 'var(--gold)' : '#9b59b6';
-        var titleIcon = isMe ? 'fa-user' : 'fa-users';
-        var borderTop = isMe ? '4px solid var(--gold)' : '4px solid #9b59b6';
-        
-        var titleText = isMe ? 'Мой счёт' : p.name;
-        if (isMe) titleText = 'Мой счёт (' + p.name + ')';
-
-        html += '<div class="scoring-dual-block" style="border-top: ' + borderTop + ';">';
-        html += '<div class="dual-header">';
-        html += '<h3 style="color:' + titleColor + '"><i class="fas ' + titleIcon + '"></i> ' + titleText + '</h3>';
-        html += '<span class="net-score-badge" id="net-badge-' + pid + '">Net: —</span>';
-        html += '</div>';
-        html += '<div class="score-area" style="margin:10px 0;">';
-        html += '<div class="score-result" id="res-' + pid + '"></div>';
-        html += '<div class="score-disp" id="disp-' + pid + '">—</div>';
-        html += '<div class="score-btns" style="border-color:' + titleColor + '">';
-        html += '<button class="score-minus" onclick="adjPlayerScore(\'' + pid + '\', -1)">−</button>';
-        html += '<button class="score-plus" onclick="adjPlayerScore(\'' + pid + '\', 1)">+</button>';
-        html += '</div></div></div>';
-    });
-    
-    container.innerHTML = html;
-}
-
 function renderPlayHole() {
     if (!canEditGroup) return;
     var par = holePar(playHole);
@@ -428,54 +392,54 @@ function renderPlayHole() {
     document.getElementById('play-par').textContent = par;
     document.getElementById('play-dist').textContent = dist > 0 ? dist : '—';
 
-    var pOrder = curRoundData.participantsList || Object.keys(curRoundData.players);
-    
-    pOrder.forEach(function(pid) {
-        var savedScore = parseInt(curRoundData.players[pid]?.scores?.[playHole]) || 0;
-        var displayScore = savedScore > 0 ? savedScore : par;
-        
-        currentHoleScores[pid] = displayScore;
-        
-        updPlayerScoreDisplay(pid, displayScore);
-        
-        // Net Score
-        var fieldHcp = curRoundData.players[pid]?.fieldHcp || 0;
-        var net = calcNettScore(displayScore, par, holeHcp(playHole), fieldHcp);
-        document.getElementById('net-badge-' + pid).textContent = 'Net: ' + net;
-    });
+    // Загрузка сохранённого МОЕГО счёта
+    var mySaved = parseInt(curRoundData.players[myUid]?.scores?.[playHole]) || 0;
+    myScore = mySaved > 0 ? mySaved : par;
+
+    // Загрузка сохранённого счёта ИГРОКА ЗА КОТОРЫМ Я СЛЕЖУ
+    if (myTargetUid) {
+        var targetSaved = parseInt(curRoundData.players[myTargetUid]?.markerScores?.[myUid]?.[playHole]) || 0;
+        targetScore = targetSaved > 0 ? targetSaved : par;
+    }
+
+    updScoreDisplay('my', myScore);
+    updScoreDisplay('mark', targetScore);
+
+    // Мой Net Score
+    var myFieldHcp = curRoundData.players[myUid]?.fieldHcp || 0;
+    var net = calcNettScore(myScore, par, holeHcp(playHole), myFieldHcp);
+    document.getElementById('my-net-badge').textContent = 'Net: ' + net;
 
     checkPlayVerification();
 }
 
-function adjPlayerScore(pid, delta) {
+function adjScore(who, delta) {
     if (!canEditGroup) return;
-    currentHoleScores[pid] = Math.max(1, Math.min(15, currentHoleScores[pid] + delta));
-    
-    updPlayerScoreDisplay(pid, currentHoleScores[pid]);
-    
-    var par = holePar(playHole);
-    var fieldHcp = curRoundData.players[pid]?.fieldHcp || 0;
-    var net = calcNettScore(currentHoleScores[pid], par, holeHcp(playHole), fieldHcp);
-    document.getElementById('net-badge-' + pid).textContent = 'Net: ' + net;
-    
+    if (who === 'my') {
+        myScore = Math.max(1, Math.min(15, myScore + delta));
+        updScoreDisplay('my', myScore);
+        var net = calcNettScore(myScore, holePar(playHole), holeHcp(playHole), curRoundData.players[myUid]?.fieldHcp || 0);
+        document.getElementById('my-net-badge').textContent = 'Net: ' + net;
+    } else {
+        targetScore = Math.max(1, Math.min(15, targetScore + delta));
+        updScoreDisplay('mark', targetScore);
+    }
     vib();
 }
 
-function updPlayerScoreDisplay(pid, score) {
+function updScoreDisplay(who, score) {
     var par = holePar(playHole);
-    var dispEl = document.getElementById('disp-' + pid);
-    if (dispEl) dispEl.textContent = score;
-    
-    var resEl = document.getElementById('res-' + pid);
-    if (resEl) {
-        resEl.textContent = holeResName(score, par);
-        resEl.className = 'score-result ' + holeResClass(score, par);
-    }
+    document.getElementById(who + '-disp').textContent = score;
+    var r = document.getElementById(who + '-result');
+    r.textContent = holeResName(score, par);
+    r.className = 'score-result ' + holeResClass(score, par);
 }
 
 function checkPlayVerification() {
     var box = document.getElementById('play-verify-status');
     var myS = parseInt(curRoundData.players[myUid]?.scores?.[playHole]) || 0;
+    
+    // Кто за мной следит?
     var myMarkerId = curRoundData.players[myUid]?.markedBy;
     var markerS = 0;
 
@@ -486,42 +450,50 @@ function checkPlayVerification() {
     if (myS > 0 && markerS > 0 && myS === markerS) {
         box.innerHTML = '<div class="verify-ok">✅ Ваш счёт на лунке ' + playHole + ' подтверждён маркером (' + myS + ' уд.)</div>';
     } else if (myS > 0 && markerS > 0 && myS !== markerS) {
-        box.innerHTML = '<div class="verify-fail">⚠️ НЕСОВПАДЕНИЕ! Вы: ' + myS + ' | Маркер: ' + markerS + '</div>';
+        box.innerHTML = '<div class="verify-fail">⚠️ НЕСОВПАДЕНИЕ С МАРКЕРОМ! Вы: ' + myS + ' | Маркер: ' + markerS + '</div>';
     } else if (myS > 0) {
-        box.innerHTML = '<div class="verify-wait">⏳ Ожидаем подтверждения от вашего маркера...</div>';
+        box.innerHTML = '<div class="verify-wait">⏳ Ожидаем подтверждения вашего счёта...</div>';
     } else {
         box.innerHTML = '';
     }
 }
 
-function saveAllHoleScores() {
+function saveHoleScores() {
     if (!canEditGroup) { toast('Редактирование запрещено', 'error'); return; }
-
-    var pOrder = curRoundData.participantsList || Object.keys(curRoundData.players);
-    var h = playHole;
-    var updates = {};
-    var hasError = false;
-
-    // Проверяем, что все введены >= 1
-    pOrder.forEach(function(pid) {
-        if (currentHoleScores[pid] < 1) hasError = true;
-    });
-
-    if (hasError) { toast('Счёт должен быть ≥ 1 у всех игроков', 'error'); return; }
+    if (myScore < 1 || (myTargetUid && targetScore < 1)) { toast('Счёт должен быть ≥ 1', 'error'); return; }
 
     isChanging = true;
+    var h = playHole;
+    var updates = {};
 
-    pOrder.forEach(function(pid) {
-        // Сохраняем счёт ИГРОКА в основную таблицу
-        updates['rounds/' + curRid + '/players/' + pid + '/scores/' + h] = currentHoleScores[pid];
-        
-        // И сохраняем этот же счёт как "маркерский" (эмулируем, что мы сами всё подтвердили, если играем одной компанией и вводим за всех)
-        // Тот кто заполняет - является маркером для этого счета
-        updates['rounds/' + curRid + '/players/' + pid + '/markerScores/' + myUid + '/' + h] = currentHoleScores[pid];
-        
-        // Автоматически верифицируем, так как мы ввели за всех
-        updates['rounds/' + curRid + '/players/' + pid + '/verified/' + h] = true;
-    });
+    // 1. Мой счёт
+    updates['rounds/' + curRid + '/players/' + myUid + '/scores/' + h] = myScore;
+
+    // 2. Счёт игрока, за которым я слежу
+    if (myTargetUid) {
+        updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerScores/' + myUid + '/' + h] = targetScore;
+    }
+
+    // 3. Верификация МОЕГО счёта (совпадает ли с тем, что ввёл МОЙ маркер)
+    var myMarkerId = curRoundData.players[myUid]?.markedBy;
+    if (myMarkerId) {
+        var myMarkerScore = parseInt(curRoundData.players[myUid]?.markerScores?.[myMarkerId]?.[h]) || 0;
+        if (myMarkerScore > 0 && myMarkerScore === myScore) {
+            updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
+        } else if (myMarkerScore > 0) {
+            updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = false;
+        }
+    }
+
+    // 4. Верификация ТАРГЕТ ИГРОКА (совпадает ли его введённый счёт с тем, что ввёл Я)
+    if (myTargetUid) {
+        var targetSelfScore = parseInt(curRoundData.players[myTargetUid]?.scores?.[h]) || 0;
+        if (targetSelfScore > 0 && targetSelfScore === targetScore) {
+            updates['rounds/' + curRid + '/players/' + myTargetUid + '/verified/' + h] = true;
+        } else if (targetSelfScore > 0) {
+            updates['rounds/' + curRid + '/players/' + myTargetUid + '/verified/' + h] = false;
+        }
+    }
 
     db.ref().update(updates).then(function() {
         toast('✅ Сохранено на лунке ' + h);
@@ -545,35 +517,60 @@ function renderPlaySummary() {
     var order = holeOrder(curRoundData.startHole || 1);
     var html = '';
 
-    Object.entries(curRoundData.players).forEach(function(pe) {
-        var pid = pe[0], p = pe[1];
+    var pOrder = curRoundData.participantsList || Object.keys(curRoundData.players);
+
+    pOrder.forEach(function(pid) {
+        var p = curRoundData.players[pid];
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
         var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(Вы)</span>' : '';
+        
+        var verifiedCount = 0;
+        for (var h=1; h<=18; h++) { if (p.verified && p.verified[h] === true) verifiedCount++; }
 
         html += '<div class="list-item" style="padding:10px;">';
         html += '<div><strong style="color:var(--white);">' + p.name + isMe + '</strong>';
-        html += '<div style="font-size:12px;color:var(--muted);">Лунок: ' + stats.holesPlayed + ' / 18</div></div>';
+        html += '<div style="font-size:12px;color:var(--muted);">Лунок: ' + stats.holesPlayed + ' | Подтв: ' + verifiedCount + '</div></div>';
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
-        html += '<div style="font-size:11px;color:var(--muted);">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div>';
+        html += '<div style="font-size:11px;color:var(--muted);">Gross: ' + (stats.gross || 0) + '</div>';
         html += '</div></div>';
     });
 
     el.innerHTML = html;
 }
 
-// QR код для маркера, если кто-то другой захочет параллельно вбивать (не обязательно, но функция осталась)
-function renderMyMarkerQR() {
-    var myMarkerId = curRoundData.players[myUid]?.markedBy;
-    if (!myMarkerId) return;
+function renderGroupQRsForOthers() {
+    var el = document.getElementById('invite-qrs-grid');
+    if (!el) return;
 
-    var markerName = curRoundData.players[myMarkerId]?.name;
-    document.getElementById('my-marker-name-display').textContent = markerName;
+    var base = baseUrl();
+    var html = '';
+    var count = 0;
 
-    var url = baseUrl() + 'marker.html?round=' + curRid + '&player=' + myUid;
-    document.getElementById('my-marker-qr-code').innerHTML = 
-        '<img src="' + qrUrl(url) + '" style="max-width:180px;background:#fff;padding:8px;border-radius:12px;">' +
-        '<div style="font-size:11px;color:var(--gold);margin-top:8px;">' + url + '</div>';
+    Object.entries(curRoundData.players).forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        // Не показываем QR для самого себя
+        if (pid === myUid) return;
+        
+        count++;
+        // Передаём ?round=X &as=PID 
+        // Таким образом телефон другого человека при сканировании запишет его роль в localStorage
+        var url = base + 'live.html?round=' + curRid + '&as=' + pid;
+        
+        html += '<div class="qr-card" style="border-left: 3px solid var(--gold);">';
+        html += '<div class="qr-name" style="color:var(--white);"><i class="fas fa-mobile-alt"></i> Для: ' + p.name + '</div>';
+        html += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Отсканируй чтобы вводить свой счёт</div>';
+        html += '<img src="' + qrUrl(url) + '" alt="QR">';
+        html += '<div class="qr-url"><a href="' + url + '" target="_blank">Открыть ссылку</a></div>';
+        html += '</div>';
+    });
+    
+    if (count > 0) {
+        el.innerHTML = html;
+        document.getElementById('invite-qrs-card').classList.remove('hidden');
+    } else {
+        document.getElementById('invite-qrs-card').classList.add('hidden');
+    }
 }
 
 // ==========================================

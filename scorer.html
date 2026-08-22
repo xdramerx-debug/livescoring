@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="theme-color" content="#0b1a0e">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <link rel="apple-touch-icon" href="img/logo.png">
+    <title>Ввод счёта — Пестово</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<nav class="nav" id="main-nav"><div class="container nav-c">
+    <a href="index.html" class="nav-brand"><img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'"><span class="nav-brand-text">Пестово</span></a>
+    <div class="nav-menu" id="nav-menu">
+        <a href="index.html" class="nav-link">Главная</a>
+        <a href="live.html" class="nav-link">Раунд</a>
+        <a href="leaderboard.html" class="nav-link">Лидерборд</a>
+    </div>
+</div></nav>
+
+<div class="page-head"><div class="container"><h1 class="page-title" id="sc-title">Ввод счёта</h1><p class="page-sub" id="sc-sub">—</p></div></div>
+
+<main class="container" style="padding:24px 20px 60px;">
+    <div id="sc-err" class="card hidden"><h2 style="color:var(--red);">Ошибка</h2><p>QR-код недействителен.</p><a href="index.html" class="btn btn-g" style="margin-top:12px;">На главную</a></div>
+    
+    <div id="sc-body" class="hidden">
+        <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
+                <i class="fas fa-gavel"></i> Вызвать судью
+            </button>
+            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
+                <i class="fas fa-shield-halved"></i> Вызвать маршала
+            </button>
+        </div>
+
+        <div class="timing-info" id="sc-info"></div>
+        <div id="sc-verify"></div>
+        <div class="card">
+            <div class="hole-display">
+                <div class="hole-box"><div class="hole-lbl">Лунка</div><div class="hole-val" id="sc-hole">1</div></div>
+                <div class="hole-box h-par"><div class="hole-lbl">Пар</div><div class="hole-val" id="sc-par">4</div></div>
+                <div class="hole-box h-dist"><div class="hole-lbl">Метры</div><div class="hole-val" id="sc-dist" style="font-size:24px;">—</div></div>
+                <div class="hole-box"><div class="hole-lbl">Дедлайн</div><div class="hole-val" id="sc-dl" style="font-size:20px;color:var(--gold-l);">—</div></div>
+            </div>
+            <div class="hole-nav" id="sc-holes"></div>
+            <div class="score-area">
+                <div class="score-result" id="sc-result"></div>
+                <div class="score-disp" id="sc-disp">—</div>
+                <div class="score-btns">
+                    <button class="score-minus" onclick="adjSc(-1)">−</button>
+                    <button class="score-plus" onclick="adjSc(1)">+</button>
+                </div>
+                <button class="btn btn-g btn-block" onclick="saveSc()" style="padding:16px;font-size:15px;"><i class="fas fa-save"></i> Сохранить</button>
+            </div>
+        </div>
+        <div id="sc-notice"></div>
+        <div class="card"><h2><i class="fas fa-table"></i> Мой счёт</h2><div id="sc-card"></div></div>
+    </div>
+</main>
+
+<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Пестово</p></div></div></footer>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/scorer.js"></script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

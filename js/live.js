@@ -272,16 +272,12 @@ function initRoundView() {
         var pageSub = document.getElementById('page-sub');
         if (pageSub) pageSub.textContent = curRoundData.format + ' · ТИ: ' + TEES[curRoundData.tee];
 
-        // ПРОВЕРКА АВТОРИЗАЦИИ И ПРИСУТСТВИЯ В РАУНДЕ
         var isParticipant = false;
-        
-        // myUid есть только если человек залогинен через Firebase Auth
         if (myUid && curRoundData.players && curRoundData.players[myUid]) {
             isParticipant = true;
         }
 
         if (isParticipant && curRoundData.status === 'active') {
-            // МЫ УЧАСТНИК И РАУНД АКТИВЕН — Показываем форму ввода
             document.getElementById('active-scoring-view').classList.remove('hidden');
             document.getElementById('group-view').classList.add('hidden');
 
@@ -302,7 +298,6 @@ function initRoundView() {
             renderPlaySummary();
 
         } else {
-            // МЫ ЗРИТЕЛЬ (не залогинен, или не участник, или раунд завершен) — Показываем только чтение
             document.getElementById('active-scoring-view').classList.add('hidden');
             document.getElementById('group-view').classList.remove('hidden');
 
@@ -503,9 +498,6 @@ function renderPlaySummary() {
     el.innerHTML = html;
 }
 
-// ==========================================
-// ВЫЗОВ СУДЬИ / МАРШАЛА
-// ==========================================
 function callOfficial(type) {
     var typeName = type === 'referee' ? 'Судью' : 'Маршала';
     if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + playHole + '?')) return;
@@ -526,9 +518,6 @@ function callOfficial(type) {
     });
 }
 
-// ==========================================
-// РЕЖИМ ПРОСМОТРА (ЗРИТЕЛЬ)
-// ==========================================
 function renderGVPlayers(r) {
     var el = document.getElementById('gv-players');
     var order = holeOrder(r.startHole || 1);
@@ -537,12 +526,15 @@ function renderGVPlayers(r) {
     Object.entries(r.players || {}).forEach(function(pe) {
         var p = pe[1];
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-        var thruTxt = stats.holesPlayed >= 18 ? 'F' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
+        
+        // ЧЁТКОЕ ОТОБРАЖЕНИЕ ЛУНКИ
+        var thruTxt = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
 
         html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">' +
             '<div><strong style="color:var(--white);">' + (p.name || '—') + '</strong>' +
-            '<div style="font-size:12px;color:var(--muted);">' + thruTxt + ' · Gross: ' + (stats.gross || '—') +
-            ' · Net: ' + (stats.net || '—') + ' · Stblfd: ' + stats.stablefordField + '</div></div>' +
+            '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + '</div>' +
+            '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stblfd: ' + stats.stablefordField + '</div>' +
+            '</div>' +
             '<div class="' + scoreClass(stats.toPar) + '" style="font-size:20px;font-weight:800;">' + fmtScore(stats.toPar) + '</div></div>';
     });
 

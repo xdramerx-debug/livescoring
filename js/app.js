@@ -108,19 +108,16 @@ function loadRecentResults() {
         var html = '';
         entries.forEach(function(e) {
             var r = e[1], players = r.players || {};
-            var best = Infinity, winner = '—', count = 0;
+            var bestToPar = Infinity, winner = '—', bestGross = 0, count = 0;
+            var order = holeOrder(r.startHole || 1);
 
             Object.values(players).forEach(function(p) {
                 count++;
-                var scores = p.scores || {};
-                var total = 0;
-                Object.values(scores).forEach(function(s) {
-                    var v = parseInt(s) || 0;
-                    if (v >= 1) total += v;
-                });
-                if (total > 0 && total < best) {
-                    best = total;
-                    winner = p.name;
+                var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+                if (stats.toPar !== null && stats.toPar < bestToPar) {
+                    bestToPar = stats.toPar;
+                    winner = p.name || 'Игрок';
+                    bestGross = stats.gross;
                 }
             });
 
@@ -133,7 +130,7 @@ function loadRecentResults() {
                 '<div style="text-align:right;">' +
                 '<div style="font-size:11px;color:var(--muted);">Лидер раунда</div>' +
                 '<div style="color:var(--gold);font-weight:600;"><i class="fas fa-trophy"></i> ' + winner + '</div>' +
-                '<div style="font-size:18px;font-weight:800;color:var(--white);">' + (best < Infinity ? best : '—') + '</div>' +
+                '<div style="font-size:18px;font-weight:800;color:var(--white);">' + (bestToPar < Infinity ? fmtScore(bestToPar) + ' (' + bestGross + ')' : '—') + '</div>' +
                 '</div></div>';
         });
 

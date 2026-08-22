@@ -9,6 +9,7 @@ function loadPlayers() {
     db.ref('users').on('value', function(sn) {
         var data = sn.val() || {};
         var el = document.getElementById('players-grid');
+        if (!el) return;
         var entries = Object.entries(data);
 
         if (!entries.length) {
@@ -32,13 +33,13 @@ function loadPlayers() {
 
         entries.sort(function(a, b) {
             if (sortBy === 'hcp-asc') {
-                var ha = a[1].handicap != null ? a[1].handicap : 999;
-                var hb = b[1].handicap != null ? b[1].handicap : 999;
+                var ha = a[1].handicap != null ? parseExactHcp(a[1].handicap) : 999;
+                var hb = b[1].handicap != null ? parseExactHcp(b[1].handicap) : 999;
                 return ha - hb;
             }
             if (sortBy === 'hcp-desc') {
-                var ha = a[1].handicap != null ? a[1].handicap : -999;
-                var hb = b[1].handicap != null ? b[1].handicap : -999;
+                var ha = a[1].handicap != null ? parseExactHcp(a[1].handicap) : -999;
+                var hb = b[1].handicap != null ? parseExactHcp(b[1].handicap) : -999;
                 return hb - ha;
             }
             return (b[1].roundsPlayed || 0) - (a[1].roundsPlayed || 0);
@@ -55,7 +56,7 @@ function loadPlayers() {
                 '<div class="lb-avatar" style="width:52px;height:52px;font-size:20px;">' + (u.name ? u.name.charAt(0) : '?') + '</div>' +
                 '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-                'HCP: ' + (u.handicap != null ? u.handicap : '—') +
+                'HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') +
                 ' · Раундов: ' + (u.roundsPlayed || 0) +
                 (u.bestGross ? ' · Gross (18л): ' + u.bestGross : '') +
                 (u.bestStableford ? ' · Stblfd (18л): ' + u.bestStableford : '') +
@@ -78,7 +79,7 @@ function showPlayer(id) {
         html += '<div class="profile-avatar">' + (u.name ? u.name.charAt(0) : '?') + '</div>';
         html += '<div><div class="profile-name">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</div>';
         html += '<div class="profile-meta">';
-        html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? u.handicap : '—') + '</span>';
+        html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
         html += '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' раундов</span>';
         html += '<span><i class="fas fa-trophy"></i> Gross (18л): ' + (u.bestGross || '—') + '</span>';
         html += '<span><i class="fas fa-star"></i> Stblfd (18л): ' + (u.bestStableford || '—') + '</span>';
@@ -160,10 +161,15 @@ function showPlayer(id) {
                 });
             }
 
-            document.getElementById('pmodal-body').innerHTML = html;
-            document.getElementById('pmodal').classList.remove('hidden');
+            var modalBody = document.getElementById('pmodal-body');
+            var modalEl = document.getElementById('pmodal');
+            if (modalBody) modalBody.innerHTML = html;
+            if (modalEl) modalEl.classList.remove('hidden');
         });
     });
 }
 
-function closePModal() { document.getElementById('pmodal').classList.add('hidden'); }
+function closePModal() {
+    var modalEl = document.getElementById('pmodal');
+    if (modalEl) modalEl.classList.add('hidden');
+}

@@ -17,6 +17,22 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100
 .text-center{text-align:center;}
 img{max-width:100%;height:auto;display:block;}
 
+/* SUN MODE (Яркое солнце) */
+body.sun-mode{
+    --bg:#f8faf8;--bg2:#ffffff;--card:#f0f4f1;--card-h:#e2e8e3;--input:#ffffff;
+    --green:#1a472a;--gr-l:#2d6b3f;--gr-d:#e2ebe4;
+    --gold:#9e7a1b;--gold-l:#b89228;
+    --white:#000000;--text:#0b1a0e;--muted:#3a523e;--border:#b0c4b5;
+    --red:#d32f2f;--blue:#1976d2;
+}
+body.sun-mode .nav{background:rgba(248,250,248,.95);border-bottom-color:#b0c4b5;}
+body.sun-mode .hole-btn.active{background:#9e7a1b;color:#ffffff;}
+body.sun-mode .hole-val,body.sun-mode .score-disp{color:#000000;}
+body.sun-mode .list-item{background:#ffffff;border:1px solid #b0c4b5;}
+
+.sun-mode-btn{background:none;border:1px solid var(--border);color:var(--gold);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:var(--t);}
+.sun-mode-btn:hover{background:var(--card-h);}
+
 .nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(11,26,14,.88);backdrop-filter:blur(16px);border-bottom:1px solid transparent;transition:var(--t);padding:14px 0;}
 .nav-scrolled{background:rgba(11,26,14,.97);border-bottom-color:var(--border);padding:8px 0;box-shadow:var(--shd);}
 .nav-c{display:flex;justify-content:space-between;align-items:center;}
@@ -97,11 +113,40 @@ select.form-input option{background:var(--card);}
 .s-un{color:#e05a4a;}
 .s-ov{color:#5aade0;}
 .s-ev{color:var(--muted);}
-.r-eag{background:rgba(224,90,74,.25);color:#ff7b6b;font-weight:800;}
-.r-bir{background:rgba(224,90,74,.12);color:#e05a4a;font-weight:700;}
+
+/* ФИРМЕННЫЕ БЕЙДЖИ РЕЗУЛЬТАТОВ (Score Badges) */
+.badge-eag{background:linear-gradient(135deg, #f39c12, #d35400);color:#fff!important;font-weight:800;box-shadow:0 2px 10px rgba(243,156,18,.4);border-radius:12px;padding:3px 10px;display:inline-block;}
+.badge-bir{background:rgba(46,204,113,.22);color:#2ecc71!important;font-weight:700;border:1px solid rgba(46,204,113,.4);border-radius:12px;padding:3px 10px;display:inline-block;}
+.badge-par{background:rgba(255,255,255,.08);color:var(--text)!important;border:1px solid var(--border);border-radius:12px;padding:3px 10px;display:inline-block;}
+.badge-bog{background:rgba(90,173,224,.18);color:#5aade0!important;font-weight:700;border:1px solid rgba(90,173,224,.3);border-radius:12px;padding:3px 10px;display:inline-block;}
+.badge-dbl{background:rgba(224,90,74,.2);color:#e05a4a!important;font-weight:800;border:1px solid rgba(224,90,74,.4);border-radius:12px;padding:3px 10px;display:inline-block;}
+
+/* БЕЙДЖИ ТИ (Tee Pills) */
+.tee-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;}
+.tee-bk{background:#111;color:#fff;border:1px solid #555;}
+.tee-bl{background:#1e5799;color:#fff;border:1px solid #337ab7;}
+.tee-wh{background:#f5f5f0;color:#111;border:1px solid #c9a84c;}
+.tee-rd{background:#900C3F;color:#fff;border:1px solid #c0392b;}
+
+/* ПРОГРЕСС-БАР РАУНДА */
+.progress-track-wrap{background:var(--input);border:1px solid var(--border);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px;}
+.progress-track-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px;}
+.progress-track-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;position:relative;}
+.progress-track-fill{height:100%;background:linear-gradient(90deg, var(--gold), var(--gold-l));border-radius:4px;transition:width .4s ease;}
+
+/* FLIP & PULSE ANIMATION FOR SCORES */
+.score-pulse{animation:score-bounce .22s cubic-bezier(.175,.885,.32,1.275);}
+@keyframes score-bounce{0%{transform:scale(.82);opacity:.5;}50%{transform:scale(1.15);}100%{transform:scale(1);opacity:1;}}
+
+/* VICTORY CONFETTI PARTICLES */
+.confetti-particle{position:fixed;width:8px;height:12px;background:var(--gold);z-index:99999;pointer-events:none;border-radius:2px;animation:confetti-fall 1.8s cubic-bezier(.25,1,.5,1) forwards;}
+@keyframes confetti-fall{0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);}100%{opacity:0;transform:translate(var(--dx),100vh) rotate(720deg) scale(.4);}}
+
+.r-eag{background:rgba(243,156,18,.25);color:#f39c12;font-weight:800;}
+.r-bir{background:rgba(46,204,113,.18);color:#2ecc71;font-weight:700;}
 .r-par{color:var(--muted);}
-.r-bog{background:rgba(90,173,224,.12);color:#5aade0;font-weight:700;}
-.r-dbl{background:rgba(90,173,224,.25);color:#85c8e9;font-weight:800;}
+.r-bog{background:rgba(90,173,224,.15);color:#5aade0;font-weight:700;}
+.r-dbl{background:rgba(224,90,74,.22);color:#e05a4a;font-weight:800;}
 
 .scorecard{background:var(--card);border-radius:var(--r);overflow-x:auto;margin-bottom:14px;border:1px solid var(--border);}
 .scorecard table{width:100%;border-collapse:collapse;min-width:560px;}

@@ -45,6 +45,114 @@ function fmtTime(ts){if(!ts)return'—';var d=new Date(ts),h=d.getHours(),m=d.ge
 function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
 function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
 
+// ==========================================
+// ДНЕВНОЙ РЕЖИМ «ЯРКОЕ СОЛНЦЕ» (SUN MODE)
+// ==========================================
+function initThemeMode() {
+    var savedTheme = localStorage.getItem('pestovo_theme');
+    if (savedTheme === 'sun' && document.body) {
+        document.body.classList.add('sun-mode');
+    }
+}
+
+function toggleSunMode() {
+    if (!document.body) return;
+    var isSun = document.body.classList.toggle('sun-mode');
+    localStorage.setItem('pestovo_theme', isSun ? 'sun' : 'dark');
+    updateSunModeButtons();
+    if (typeof toast === 'function') {
+        toast(isSun ? '☀️ Включён режим «Яркое солнце»' : '🌙 Включена тёмная тема', 'info');
+    }
+}
+
+function updateSunModeButtons() {
+    var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
+    document.querySelectorAll('.sun-mode-btn').forEach(function(btn) {
+        btn.innerHTML = isSun ? '<i class="fas fa-sun"></i> Солнце ✅' : '<i class="far fa-sun"></i> Солнце';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initThemeMode();
+});
+
+// ==========================================
+// ФИРМЕННЫЕ БЕЙДЖИ РЕЗУЛЬТАТОВ И ТИ
+// ==========================================
+function fmtTeePill(t) {
+    t = t || 'wh';
+    var name = TEES[t] || 'Белый';
+    return '<span class="tee-pill tee-' + t + '">' + name + '</span>';
+}
+
+function fmtScoreBadge(s, p) {
+    if (!s || s < 1 || !p) return '—';
+    var diff = s - p;
+    var name = holeResName(s, p);
+    var cls = 'badge-par';
+    if (diff <= -2 || s === 1) cls = 'badge-eag';
+    else if (diff === -1) cls = 'badge-bir';
+    else if (diff === 0) cls = 'badge-par';
+    else if (diff === 1) cls = 'badge-bog';
+    else cls = 'badge-dbl';
+
+    return '<span class="' + cls + '">' + name + ' (' + s + ')</span>';
+}
+
+// ==========================================
+// ПРОГРЕСС-БАР РАУНДА
+// ==========================================
+function renderHoleProgressBar(targetId, holesPlayed) {
+    var el = document.getElementById(targetId);
+    if (!el) return;
+    var cnt = Math.max(0, Math.min(18, holesPlayed || 0));
+    var pct = Math.round((cnt / 18) * 100);
+    el.innerHTML =
+        '<div class="progress-track-wrap">' +
+        '<div class="progress-track-head"><span><i class="fas fa-flag"></i> Прогресс раунда</span><span>' + cnt + ' / 18 лунок (' + pct + '%)</span></div>' +
+        '<div class="progress-track-bar"><div class="progress-track-fill" style="width:' + pct + '%;"></div></div>' +
+        '</div>';
+}
+
+// ==========================================
+// ВСПЛЕСК КОНФЕТТИ ПРИ BIRDIE / EAGLE / HIO
+// ==========================================
+function triggerVictoryConfetti() {
+    if (typeof document === 'undefined' || !document.body) return;
+    var colors = ['#f39c12', '#c9a84c', '#e0c76a', '#2ecc71', '#ffffff'];
+    for (var i = 0; i < 35; i++) {
+        var p = document.createElement('div');
+        p.className = 'confetti-particle';
+        var dx = (Math.random() * 200 - 100) + 'px';
+        var dur = (1.2 + Math.random() * 0.8) + 's';
+        var color = colors[Math.floor(Math.random() * colors.length)];
+        var left = (Math.random() * 100) + 'vw';
+        
+        p.style.left = left;
+        p.style.top = '-20px';
+        p.style.backgroundColor = color;
+        p.style.animationDuration = dur;
+        if (p.style.setProperty) {
+            p.style.setProperty('--dx', dx);
+        }
+        document.body.appendChild(p);
+        (function(elem) {
+            setTimeout(function() { elem.remove(); }, 2000);
+        })(p);
+    }
+}
+
+// ==========================================
+// FLIP / SPRING ANIMATION FOR SCORES
+// ==========================================
+function animateScoreElement(elId) {
+    var el = document.getElementById(elId);
+    if (!el) return;
+    el.classList.remove('score-pulse');
+    void el.offsetWidth;
+    el.classList.add('score-pulse');
+}
+
 function initNav(){
     var tg=document.getElementById('nav-toggle');
     var mn=document.getElementById('nav-menu');
@@ -54,7 +162,7 @@ function initNav(){
         ov=document.createElement('div');
         ov.id='nav-overlay';
         ov.className='nav-overlay';
-        document.body.appendChild(ov);
+        if(document.body) document.body.appendChild(ov);
     }
 
     function openNav(){
@@ -124,7 +232,15 @@ function initNav(){
     });
 }
 
-function navAuth(u,d){var e=document.getElementById('nav-auth');if(!e)return;if(u&&d)e.innerHTML='<div class="nav-user"><span class="nav-uname">'+(d.name||'')+'</span><button class="btn btn-og btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button></div>';else e.innerHTML='<a href="auth.html" class="btn btn-g btn-sm">Войти</a>';}
+function navAuth(u,d){
+    var e=document.getElementById('nav-auth');
+    if(!e)return;
+    var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
+    var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i> Солнце ✅' : '<i class="far fa-sun"></i> Солнце') + '</button>';
+    if(u&&d)e.innerHTML='<div class="nav-user">'+sunBtn+'<span class="nav-uname">'+(d.name||'')+'</span><button class="btn btn-og btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button></div>';
+    else e.innerHTML='<div style="display:flex;align-items:center;gap:8px;">'+sunBtn+'<a href="auth.html" class="btn btn-g btn-sm">Войти</a></div>';
+}
+
 function doLogout(){auth.signOut().then(function(){window.location.href='auth.html';});}
 function holeOrder(sh){var o=[],h=parseInt(sh)||1;for(var i=0;i<18;i++){o.push(h);h=h>=18?1:h+1;}return o;}
 
@@ -369,7 +485,7 @@ function openPlayerProfileModal(playerId, roundId) {
             '<button class="modal-close" onclick="closePModal()">&times;</button>' +
             '<div id="pmodal-body"><div class="loading"><div class="spinner"></div></div></div>' +
             '</div>';
-        document.body.appendChild(modalEl);
+        if (document.body) document.body.appendChild(modalEl);
     }
 
     var bodyEl = document.getElementById('pmodal-body');
@@ -417,7 +533,7 @@ function openPlayerProfileModal(playerId, roundId) {
             var roundPlayer = rd.players[playerId];
             html += '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">';
             html += '<h3 style="color:var(--gold);margin-bottom:14px;font-family:var(--ff);font-size:18px;">' +
-                    '<i class="fas fa-table"></i> Счётная карточка раунда (' + (rd.format || 'Stroke') + ' · ТИ: ' + TEES[rd.tee] + ')' +
+                    '<i class="fas fa-table"></i> Счётная карточка раунда (' + (rd.format || 'Stroke') + ' · ТИ: ' + fmtTeePill(rd.tee) + ')' +
                     '</h3>';
             
             if (typeof generatePestovoScorecardHTML === 'function') {
@@ -440,7 +556,7 @@ function openPlayerProfileModal(playerId, roundId) {
                     html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
                     html += '<div style="flex:1;min-width:180px;"><strong style="color:var(--white);">Пестово</strong>' + fullTag;
                     html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
-                            fmtDate(r.date) + ' · ' + (r.format || 'Stroke') + ' · ТИ: ' + (r.tee ? TEES[r.tee] : '—') +
+                            fmtDate(r.date) + ' · ' + (r.format || 'Stroke') + ' · ТИ: ' + (r.tee ? fmtTeePill(r.tee) : '—') +
                             ' · ' + (r.mode === 'solo' ? '👤' : '👥') + '</div>';
                     html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' +
                             (r.holeInOne ? '🎯 ' + r.holeInOne + ' · ' : '') +

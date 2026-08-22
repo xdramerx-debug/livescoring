@@ -230,7 +230,7 @@ function renderRoundInfo(targetId) {
     var guestBadge = soloRound.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">ГОСТЬ</span>' : '';
     el.innerHTML =
         '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || 'Игрок') + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (пол. ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
-        '<div><b>Старт:</b> ' + fmtTime(soloRound.startTime) + ' · <b>С лунки:</b> ' + soloRound.startHole + ' · <b>ТИ:</b> ' + TEES[soloRound.tee] + ' · <b>Формат:</b> ' + soloRound.format + '</div>';
+        '<div><b>Старт:</b> ' + fmtTime(soloRound.startTime) + ' · <b>С лунки:</b> ' + soloRound.startHole + ' · <b>ТИ:</b> ' + fmtTeePill(soloRound.tee) + ' · <b>Формат:</b> ' + soloRound.format + '</div>';
 }
 
 function buildHoles() {
@@ -285,6 +285,7 @@ function adjSolo(delta) {
     curScore = Math.max(1, Math.min(15, curScore + delta));
     vib();
     updateDisplay();
+    animateScoreElement('g-disp');
 
     clearTimeout(soloAutoSaveTimer);
     soloAutoSaveTimer = setTimeout(function() {
@@ -320,9 +321,9 @@ function saveSolo(isAuto) {
         var d = curScore - par;
 
         if (!isAuto) {
-            if (curScore === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); }
-            else if (d <= -2) { toast('🦅 EAGLE!', 'info'); vib([80, 50, 80]); }
-            else if (d === -1) { toast('🐦 Birdie!', 'success'); vib([50, 50]); }
+            if (curScore === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); triggerVictoryConfetti(); }
+            else if (d <= -2) { toast('🦅 EAGLE!', 'info'); vib([80, 50, 80]); triggerVictoryConfetti(); }
+            else if (d === -1) { toast('🐦 Birdie!', 'success'); vib([50, 50]); triggerVictoryConfetti(); }
             else if (d === 0) { toast('✅ Par'); vib(); }
             else if (d === 1) { toast('Bogey'); vib(); }
             else { toast('Double+', 'warn'); vib(); }
@@ -333,11 +334,21 @@ function saveSolo(isAuto) {
                 curHole = order[idx + 1];
                 curScore = 0;
             }
+        } else if (curScore === 1 || d <= -1) {
+            triggerVictoryConfetti();
         }
 
         showTimingNotice(savedHole);
         renderCurrentHole();
         buildHoles();
+
+        var p = soloRound.players && soloRound.players[uid];
+        if (p) {
+            p.scores = p.scores || {};
+            p.scores[savedHole] = curScore;
+            var stats = calcRoundStats(p.scores, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(soloRound.startHole));
+            renderHoleProgressBar('solo-progress-bar', stats.holesPlayed);
+        }
 
         setTimeout(function() { isChanging = false; }, 200);
     });
@@ -361,6 +372,8 @@ function renderLiveStats(targetId) {
     if (!p) return;
     var scores = p.scores || {};
     var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(soloRound.startHole));
+
+    renderHoleProgressBar('solo-progress-bar', stats.holesPlayed);
 
     var html = '<div class="stats-grid">';
     html += '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + stats.holesPlayed + '/18</div><div class="stat-l">Пройдено</div></div>';

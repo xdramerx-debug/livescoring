@@ -1,6 +1,9 @@
 if('serviceWorker' in navigator){
     window.addEventListener('load',function(){
-        navigator.serviceWorker.register('sw.js').then(function(reg){console.log('[PWA] SW registered');}).catch(function(err){console.error('[PWA] SW failed',err);});
+        navigator.serviceWorker.register('sw.js').then(function(reg){
+            console.log('[PWA] SW registered');
+            initBackgroundAlertListener();
+        }).catch(function(err){console.error('[PWA] SW failed',err);});
     });
     navigator.serviceWorker.addEventListener('message',function(event){
         if(event.data&&event.data.type==='SYNC_SCORES')syncOfflineScores();
@@ -67,3 +70,71 @@ function installPWA(){if(!deferredPrompt)return;deferredPrompt.prompt();deferred
 function dismissInstall(){localStorage.setItem('pwa_install_dismissed','1');var b=document.getElementById('install-banner');if(b)b.remove();}
 window.installPWA=installPWA;window.dismissInstall=dismissInstall;
 setInterval(function(){if(navigator.onLine)syncOfflineScores();},60000);
+
+// ==========================================
+// ПУШ-УВЕДОМЛЕНИЯ ВЫЗОВОВ (СУДЬЯ / МАРШАЛ)
+// ==========================================
+function requestNotificationPermission(callback) {
+    if (!('Notification' in window)) {
+        if (typeof toast === 'function') toast('Уведомления не поддерживаются браузером', 'warn');
+        if (typeof callback === 'function') callback(false);
+        return;
+    }
+    Notification.requestPermission().then(function(perm) {
+        if (perm === 'granted') {
+            if (typeof toast === 'function') toast('🔔 Пуш-уведомления вызовов включены!', 'success');
+            initBackgroundAlertListener();
+            if (typeof callback === 'function') callback(true);
+        } else {
+            if (typeof toast === 'function') toast('Уведомления отклонены браузером', 'warn');
+            if (typeof callback === 'function') callback(false);
+        }
+    });
+}
+
+function showPushNotification(title, body, targetUrl) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    var options = {
+        body: body || '',
+        icon: 'img/logo.png',
+        badge: 'img/logo.png',
+        vibrate: [200, 100, 200],
+        data: { url: targetUrl || 'admin.html' }
+    };
+
+    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(function(reg) {
+            reg.showNotification(title, options);
+        }).catch(function() {
+            try { new Notification(title, options); } catch(e) {}
+        });
+    } else {
+        try { new Notification(title, options); } catch(e) {}
+    }
+}
+
+var globalAlertsKnown = {};
+var bgAlertsListenerAttached = false;
+
+function initBackgroundAlertListener() {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || typeof db === 'undefined' || bgAlertsListenerAttached) return;
+    bgAlertsListenerAttached = true;
+
+    db.ref('alerts').orderByChild('status').equalTo('active').on('value', function(sn) {
+        var alerts = sn.val() || {};
+        var isFirstRun = Object.keys(globalAlertsKnown).length === 0;
+
+        Object.entries(alerts).forEach(function(e) {
+            var id = e[0], a = e[1];
+            if (!globalAlertsKnown[id]) {
+                globalAlertsKnown[id] = true;
+                if (!isFirstRun) {
+                    var title = a.type === 'referee' ? '🚨 ВЫЗОВ СУДЬИ!' : '🚨 ВЫЗОВ МАРШАЛА!';
+                    var body = 'Лунка №' + a.hole + ' | Игрок: ' + (a.playerName || 'Игрок') + (typeof fmtTime === 'function' ? ' (' + fmtTime(a.time) + ')' : '');
+                    showPushNotification(title, body, 'admin.html');
+                }
+            }
+        });
+    });
+}

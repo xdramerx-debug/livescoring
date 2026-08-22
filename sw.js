@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v2';
+const CACHE_NAME = 'pestovo-v3';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
@@ -44,6 +44,24 @@ self.addEventListener('fetch', function(event) {
                 if (event.request.destination === 'document') return caches.match(OFFLINE_URL);
                 return new Response('', { status: 408 });
             });
+        })
+    );
+});
+
+self.addEventListener('notificationclick', function(event) {
+    event.notification.close();
+    var targetUrl = (event.notification.data && event.notification.data.url) || 'admin.html';
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+            for (var i = 0; i < clientList.length; i++) {
+                var client = clientList[i];
+                if (client.url.indexOf('admin.html') !== -1 && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
         })
     );
 });

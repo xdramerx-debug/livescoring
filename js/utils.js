@@ -159,25 +159,52 @@ function downloadScorecard(roundId){
     });
 }
 
-function saveHistory(roundId,rd){
-    var players=rd.players||{};
-    Object.entries(players).forEach(function(pe){
-        var pid=pe[0],p=pe[1],sc=p.scores||{},fH=p.fieldHcp||0,eH=p.exactHcp||0;
-        var stats=calcRoundStats(sc,fH,eH,holeOrder(rd.startHole));
-        if(stats.gross<=0)return;
-        var isGuestPlayer=pid.indexOf('guest_')===0;
-        if(isGuestPlayer){
-            db.ref('users').orderByChild('name').equalTo(p.name||'Гость').once('value').then(function(usn){
-                var existingId=null,existing=usn.val()||{};
-                Object.entries(existing).forEach(function(ue){if(ue[1].isGuest===true)existingId=ue[0];});
-                if(existingId){saveHistoryEntry(existingId,roundId,rd,p,stats);}
-                else{
-                    var newRef=db.ref('users').push();
-                    newRef.set({name:p.name||'Гость',firstName:p.firstName||'',lastName:p.lastName||'',email:'',role:'guest',gender:p.gender||'men',handicap:eH||null,createdAt:Date.now(),roundsPlayed:0,bestGross:null,bestStableford:null,isGuest:true}).then(function(){saveHistoryEntry(newRef.key,roundId,rd,p,stats);});
-                }
-            });
-        }else{saveHistoryEntry(pid,roundId,rd,p,stats);}
+function saveHistoryEntry(userId, roundId, rd, p, stats) {
+    var sc = p.scores || {};
+    var fH = p.fieldHcp || 0;
+    var eH = p.exactHcp || 0;
+
+    // Сохраняем раунд в историю в любом случае (даже 9 лунок)
+    db.ref('users/' + userId + '/history').push({
+        roundId: roundId,
+        date: rd.completedAt || Date.now(),
+        tee: rd.tee || 'wh',
+        format: rd.format || 'Stroke Play',
+        mode: rd.mode || 'group',
+        startHole: rd.startHole || 1,
+        gross: stats.gross,
+        toPar: stats.toPar,
+        net: stats.net,
+        netToPar: stats.netToPar,
+        stablefordField: stats.stablefordField,
+        stablefordExact: stats.stablefordExact,
+        holes: stats.holesPlayed,
+        scores: sc,
+        birdies: stats.birdies,
+        eagles: stats.eagles,
+        pars: stats.pars,
+        holeInOne: stats.holeInOne,
+        exactHcp: eH,
+        fieldHcp: fH,
+        gender: p.gender || 'men'
     });
+
+    // Увеличиваем счетчик сыгранных раундов
+    db.ref('users/' + userId + '/roundsPlayed').transaction(function(v) {
+        return (v || 0) + 1;
+    });
+
+    // ОБНОВЛЯЕМ РЕКОРДЫ ТОЛЬКО ЕСЛИ СЫГРАНО 18 ЛУНОК!
+    if (stats.holesPlayed === 18) {
+        db.ref('users/' + userId + '/bestGross').transaction(function(v) {
+            if (!v || stats.gross < v) return stats.gross;
+            return v;
+        });
+        db.ref('users/' + userId + '/bestStableford').transaction(function(v) {
+            if (!v || stats.stablefordField > v) return stats.stablefordField;
+            return v;
+        });
+    }
 }
 
 function saveHistoryEntry(userId,roundId,rd,p,stats){

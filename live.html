@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
     <meta name="theme-color" content="#0b1a0e">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -50,12 +49,12 @@
             <a href="solo.html" class="mode-card">
                 <div class="mode-icon"><i class="fas fa-user"></i></div>
                 <div class="mode-title">Одиночный раунд</div>
-                <div class="mode-desc">Играете один. Сами вводите счёт на каждой лунке.</div>
+                <div class="mode-desc">Играете один. Сами вводите свой счёт на каждой лунке.</div>
             </a>
             <a href="#" class="mode-card" onclick="showGroupSetup();return false;">
                 <div class="mode-icon"><i class="fas fa-users"></i></div>
                 <div class="mode-title">Групповой раунд</div>
-                <div class="mode-desc">От 2 до 4 игроков. Взаимный контроль и авто-маркеры.</div>
+                <div class="mode-desc">От 2 до 4 игроков. Двойной ввод (свой счёт + счёт партнёра).</div>
             </a>
         </div>
     </div>
@@ -124,16 +123,15 @@
         </div>
     </div>
 
-    <!-- ТОЛЬКО ПРОСМОТР (ЗРИТЕЛИ) -->
+    <!-- ТОЛЬКО ПРОСМОТР (ДЛЯ ПОСТОРОННИХ ЗРИТЕЛЕЙ) -->
     <div id="group-view" class="hidden">
         <div class="card" style="background:rgba(90,173,224,0.1);border-color:var(--blue);">
             <p style="color:var(--blue);text-align:center;font-size:14px;margin:0;">
-                <i class="fas fa-eye"></i> Режим просмотра. Ввод счёта доступен только участникам группы.
+                <i class="fas fa-eye"></i> Режим зрителя. Вводить счёт могут только участники раунда.
             </p>
         </div>
         <div class="timing-info" id="gv-info"></div>
 
-        <!-- СКОРКАРТА (ВЫШЕ) -->
         <div class="card" style="padding: 10px 0; background: transparent; border: none;">
             <div id="gv-scorecards"></div>
         </div>
@@ -144,7 +142,7 @@
         </div>
     </div>
 
-    <!-- АКТИВНЫЙ ВВОД (ТОЛЬКО УЧАСТНИКИ) -->
+    <!-- АКТИВНЫЙ ВВОД (ДЛЯ УЧАСТНИКОВ РАУНДА) -->
     <div id="active-scoring-view" class="hidden">
         
         <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
@@ -167,26 +165,54 @@
             <div class="hole-nav" id="play-holes-nav"></div>
             <div id="play-verify-status" style="margin-top:16px;"></div>
 
-            <!-- ЗДЕСЬ БУДУТ БЛОКИ ДЛЯ ВСЕХ 4 ИГРОКОВ -->
-            <div id="all-players-scoring"></div>
+            <!-- БЛОК 1: МОЙ СЧЁТ -->
+            <div class="scoring-dual-block my-score-block">
+                <div class="dual-header">
+                    <h3><i class="fas fa-user"></i> Мой счёт</h3>
+                    <span class="net-score-badge" id="my-net-badge">Net: —</span>
+                </div>
+                <div class="score-area" style="margin:10px 0;">
+                    <div class="score-result" id="my-result"></div>
+                    <div class="score-disp" id="my-disp">—</div>
+                    <div class="score-btns">
+                        <button class="score-minus" onclick="adjScore('my', -1)">−</button>
+                        <button class="score-plus" onclick="adjScore('my', 1)">+</button>
+                    </div>
+                </div>
+            </div>
 
-            <button class="btn btn-g btn-block" onclick="saveAllHoleScores()" style="padding:16px;font-size:16px;margin-top:20px;">
+            <!-- БЛОК 2: СЧЁТ ИГРОКА ЗА КОТОРЫМ Я СЛЕЖУ -->
+            <div class="scoring-dual-block marker-score-block" id="marker-input-container">
+                <div class="dual-header">
+                    <h3 style="color:#9b59b6;"><i class="fas fa-eye"></i> Счёт игрока: <span id="mark-player-name">...</span></h3>
+                </div>
+                <div class="score-area" style="margin:10px 0;">
+                    <div class="score-result" id="mark-result"></div>
+                    <div class="score-disp" id="mark-disp">—</div>
+                    <div class="score-btns" style="border-color:#9b59b6;">
+                        <button class="score-minus" onclick="adjScore('mark', -1)">−</button>
+                        <button class="score-plus" onclick="adjScore('mark', 1)">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-g btn-block" onclick="saveHoleScores()" style="padding:16px;font-size:16px;margin-top:20px;">
                 <i class="fas fa-save"></i> Сохранить лунку
             </button>
-        </div>
-
-        <!-- QR КОДЫ МАРКЕРОВ, ЧТОБЫ ПОКАЗАТЬ -->
-        <div class="card" id="show-my-qr-section">
-            <h2><i class="fas fa-eye"></i> Мой маркер</h2>
-            <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">
-                Покажите этот QR-код игроку, который следит за вашим счётом (<span id="my-marker-name-display" style="color:var(--white);font-weight:bold;">...</span>).
-            </p>
-            <div id="my-marker-qr-code" style="text-align:center;"></div>
         </div>
 
         <div class="card">
             <h2><i class="fas fa-table"></i> Сводка группы</h2>
             <div id="play-group-summary"></div>
+        </div>
+
+        <!-- QR КОДЫ ДЛЯ ДРУГИХ ИГРОКОВ -->
+        <div class="card" id="invite-qrs-card">
+            <h2><i class="fas fa-qrcode"></i> Пригласить игроков</h2>
+            <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">
+                Пусть другие игроки отсканируют свой QR-код, чтобы подключиться к раунду со своих телефонов.
+            </p>
+            <div id="invite-qrs-grid" class="qr-grid"></div>
         </div>
 
         <button class="btn btn-og btn-block" onclick="finishGroupRound()">
@@ -197,6 +223,7 @@
 </main>
 
 <footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Гольф-клуб Пестово</p></div></div></footer>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>

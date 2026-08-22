@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0b1a0e">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,65 +14,122 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
-<nav class="nav" id="main-nav"><div class="container nav-c">
-    <a href="index.html" class="nav-brand"><img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'"><span class="nav-brand-text">Пестово</span></a>
-    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
-    <div class="nav-menu" id="nav-menu">
-        <a href="index.html" class="nav-link">Главная</a>
-        <a href="live.html" class="nav-link active">Раунд</a>
-        <a href="leaderboard.html" class="nav-link">Лидерборд</a>
-        <a href="players.html" class="nav-link">Игроки</a>
-        <a href="tournaments.html" class="nav-link">Турниры</a>
-        <a href="stats.html" class="nav-link">Статистика</a>
-        <a href="handicap.html" class="nav-link">Гандикапы</a>
-        <div class="nav-auth" id="nav-auth"></div>
-    </div>
-</div></nav>
 
-<div class="page-head" id="page-head"><div class="container">
-    <h1 class="page-title" id="page-title">Раунд</h1>
-    <p class="page-sub" id="page-sub">Настройка и игра</p>
-</div></div>
+<nav class="nav" id="main-nav">
+    <div class="container nav-c">
+        <a href="index.html" class="nav-brand">
+            <img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'">
+            <span class="nav-brand-text">Пестово</span>
+        </a>
+        <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+        <div class="nav-menu" id="nav-menu">
+            <a href="index.html" class="nav-link">Главная</a>
+            <a href="live.html" class="nav-link active">Раунд</a>
+            <a href="leaderboard.html" class="nav-link">Лидерборд</a>
+            <a href="players.html" class="nav-link">Игроки</a>
+            <a href="tournaments.html" class="nav-link">Турниры</a>
+            <a href="stats.html" class="nav-link">Статистика</a>
+            <a href="handicap.html" class="nav-link">Гандикапы</a>
+            <div class="nav-auth" id="nav-auth"></div>
+        </div>
+    </div>
+</nav>
+
+<div class="page-head" id="page-head">
+    <div class="container">
+        <h1 class="page-title" id="page-title">Начать раунд</h1>
+        <p class="page-sub" id="page-sub">Выберите режим или перейдите к игре</p>
+    </div>
+</div>
 
 <main class="container" style="padding:24px 20px 80px;">
 
+    <!-- ВЫБОР РЕЖИМА -->
     <div id="mode-view">
         <div class="mode-cards">
             <a href="solo.html" class="mode-card">
                 <div class="mode-icon"><i class="fas fa-user"></i></div>
                 <div class="mode-title">Одиночный раунд</div>
-                <div class="mode-desc">Играете один. Сами вводите счёт.</div>
+                <div class="mode-desc">Играете один. Сами вводите счёт на каждой лунке.</div>
             </a>
             <a href="#" class="mode-card" onclick="showGroupSetup();return false;">
                 <div class="mode-icon"><i class="fas fa-users"></i></div>
                 <div class="mode-title">Групповой раунд</div>
-                <div class="mode-desc">От 2 до 4 игроков. Маркеры назначаются автоматически.</div>
+                <div class="mode-desc">От 2 до 4 игроков. Взаимный контроль и авто-маркеры.</div>
             </a>
         </div>
     </div>
 
+    <!-- НАСТРОЙКА ГРУППОВОГО РАУНДА -->
     <div id="group-setup" class="hidden">
-        <button class="btn btn-og btn-sm" onclick="backToModes()" style="margin-bottom:16px;"><i class="fas fa-arrow-left"></i> Назад</button>
+        <button class="btn btn-og btn-sm" onclick="backToModes()" style="margin-bottom:16px;">
+            <i class="fas fa-arrow-left"></i> Назад
+        </button>
+
         <div class="card">
-            <h2><i class="fas fa-users"></i> Групповой раунд</h2>
-            <div class="form-group"><label>Турнир (опционально)</label><select id="g-tournament" class="form-input"><option value="">— Без турнира —</option></select></div>
-            <div class="form-row">
-                <div class="form-group"><label>Время старта</label><input type="time" id="g-time" class="form-input"></div>
-                <div class="form-group"><label>Стартовая лунка</label><select id="g-hole" class="form-input"></select></div>
+            <h2><i class="fas fa-users"></i> Настройка группы</h2>
+
+            <div class="form-group">
+                <label><i class="fas fa-trophy"></i> Турнир (опционально)</label>
+                <select id="g-tournament" class="form-input">
+                    <option value="">— Без турнира —</option>
+                </select>
             </div>
+
             <div class="form-row">
-                <div class="form-group"><label>ТИ</label><select id="g-tee" class="form-input"><option value="bk">⬛ Чёрный</option><option value="bl">🟦 Синий</option><option value="wh" selected>⬜ Белый</option><option value="rd">🟥 Красный</option></select></div>
-                <div class="form-group"><label>Формат</label><select id="g-format" class="form-input"><option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option></select></div>
+                <div class="form-group">
+                    <label><i class="fas fa-clock"></i> Время старта</label>
+                    <input type="time" id="g-time" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-flag"></i> Стартовая лунка</label>
+                    <select id="g-hole" class="form-input"></select>
+                </div>
             </div>
-            <div class="form-group"><label>Количество игроков</label><select id="g-count" class="form-input" onchange="buildPlayerSlots()"><option value="2" selected>2 игрока</option><option value="3">3 игрока</option><option value="4">4 игрока</option></select></div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fas fa-golf-ball-tee"></i> ТИ</label>
+                    <select id="g-tee" class="form-input">
+                        <option value="bk">⬛ Чёрный</option>
+                        <option value="bl">🟦 Синий</option>
+                        <option value="wh" selected>⬜ Белый</option>
+                        <option value="rd">🟥 Красный</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-gamepad"></i> Формат</label>
+                    <select id="g-format" class="form-input">
+                        <option value="Stroke Play">Stroke Play</option>
+                        <option value="Stableford">Stableford</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-hashtag"></i> Количество игроков</label>
+                <select id="g-count" class="form-input" onchange="buildPlayerSlots()">
+                    <option value="1">1 игрок</option>
+                    <option value="2" selected>2 игрока</option>
+                    <option value="3">3 игрока</option>
+                    <option value="4">4 игрока</option>
+                </select>
+            </div>
+
             <div id="player-slots"></div>
-            <button class="btn btn-g btn-block" onclick="startGroup()" style="margin-top:12px;"><i class="fas fa-play"></i> Начать раунд</button>
+
+            <button class="btn btn-g btn-block" onclick="startGroup()" style="margin-top:12px;">
+                <i class="fas fa-play"></i> Начать раунд
+            </button>
         </div>
     </div>
 
+    <!-- ТОЛЬКО ПРОСМОТР (ЗРИТЕЛИ) -->
     <div id="group-view" class="hidden">
         <div class="card" style="background:rgba(90,173,224,0.1);border-color:var(--blue);">
-            <p style="color:var(--blue);text-align:center;font-size:14px;"><i class="fas fa-eye"></i> Режим зрителя. Вы не участвуете в этом раунде.</p>
+            <p style="color:var(--blue);text-align:center;font-size:14px;margin:0;">
+                <i class="fas fa-eye"></i> Режим просмотра. Ввод счёта доступен только участникам группы.
+            </p>
         </div>
         <div class="timing-info" id="gv-info"></div>
         <div class="card">
@@ -80,10 +138,17 @@
         </div>
     </div>
 
+    <!-- АКТИВНЫЙ ВВОД (ТОЛЬКО УЧАСТНИКИ) -->
     <div id="active-scoring-view" class="hidden">
+        
+        <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
         <div style="display:flex;gap:10px;margin-bottom:16px;">
-            <button class="btn btn-r" style="flex:1;font-size:12px;" onclick="callOfficial('referee')"><i class="fas fa-gavel"></i> Вызвать судью</button>
-            <button class="btn btn-ol" style="flex:1;font-size:12px;" onclick="callOfficial('marshal')"><i class="fas fa-shield-halved"></i> Вызвать маршала</button>
+            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
+                <i class="fas fa-gavel"></i> Вызвать судью
+            </button>
+            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
+                <i class="fas fa-shield-halved"></i> Вызвать маршала
+            </button>
         </div>
 
         <div class="card">
@@ -92,11 +157,12 @@
                 <div class="hole-box h-par"><div class="hole-lbl">Пар</div><div class="hole-val" id="play-par">4</div></div>
                 <div class="hole-box h-dist"><div class="hole-lbl">Метры</div><div class="hole-val" id="play-dist" style="font-size:24px;">—</div></div>
             </div>
-            
+
             <div class="hole-nav" id="play-holes-nav"></div>
 
             <div id="play-verify-status" style="margin-top:16px;"></div>
 
+            <!-- БЛОК 1: МОЙ СЧЁТ -->
             <div class="scoring-dual-block my-score-block">
                 <div class="dual-header">
                     <h3><i class="fas fa-user"></i> Мой счёт</h3>
@@ -112,14 +178,15 @@
                 </div>
             </div>
 
-            <div class="scoring-dual-block marker-score-block">
+            <!-- БЛОК 2: СЧЁТ МАРКИРУЕМОГО ИГРОКА -->
+            <div class="scoring-dual-block marker-score-block" id="marker-input-container">
                 <div class="dual-header">
                     <h3 style="color:#9b59b6;"><i class="fas fa-eye"></i> Счёт игрока: <span id="mark-player-name">...</span></h3>
                 </div>
                 <div class="score-area" style="margin:10px 0;">
                     <div class="score-result" id="mark-result"></div>
                     <div class="score-disp" id="mark-disp">—</div>
-                    <div class="score-btns">
+                    <div class="score-btns" style="border-color:#9b59b6;">
                         <button class="score-minus" onclick="adjScore('mark', -1)">−</button>
                         <button class="score-plus" onclick="adjScore('mark', 1)">+</button>
                     </div>
@@ -136,12 +203,15 @@
             <div id="play-group-summary"></div>
         </div>
 
-        <button class="btn btn-og btn-block" onclick="finishGroupRound()"><i class="fas fa-flag-checkered"></i> Завершить раунд</button>
+        <button class="btn btn-og btn-block" onclick="finishGroupRound()">
+            <i class="fas fa-flag-checkered"></i> Завершить раунд
+        </button>
     </div>
 
 </main>
 
 <footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Гольф-клуб Пестово</p></div></div></footer>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>

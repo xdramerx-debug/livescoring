@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0b1a0e">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -123,11 +124,11 @@
         </div>
     </div>
 
-    <!-- ТОЛЬКО ПРОСМОТР (ДЛЯ ПОСТОРОННИХ ЗРИТЕЛЕЙ) -->
+    <!-- ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ) -->
     <div id="group-view" class="hidden">
         <div class="card" style="background:rgba(90,173,224,0.1);border-color:var(--blue);">
             <p style="color:var(--blue);text-align:center;font-size:14px;margin:0;">
-                <i class="fas fa-eye"></i> Режим зрителя. Вводить счёт могут только участники раунда.
+                <i class="fas fa-eye"></i> Режим просмотра. Ввод счёта доступен только участникам раунда.
             </p>
         </div>
         <div class="timing-info" id="gv-info"></div>
@@ -140,9 +141,17 @@
             <h2 id="gv-title"><i class="fas fa-users"></i> Лидерборд группы</h2>
             <div id="gv-players"></div>
         </div>
+
+        <div class="card">
+            <h2><i class="fas fa-qrcode"></i> Подключиться к раунду</h2>
+            <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">
+                Если вы участник этой группы — отсканируйте свой QR-код с экрана другого игрока:
+            </p>
+            <div id="gv-qr-grid" class="qr-grid"></div>
+        </div>
     </div>
 
-    <!-- АКТИВНЫЙ ВВОД (ДЛЯ УЧАСТНИКОВ РАУНДА) -->
+    <!-- АКТИВНЫЙ ВВОД (ТОЛЬКО УЧАСТНИКИ) -->
     <div id="active-scoring-view" class="hidden">
         
         <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
@@ -168,7 +177,7 @@
             <!-- БЛОК 1: МОЙ СЧЁТ -->
             <div class="scoring-dual-block my-score-block">
                 <div class="dual-header">
-                    <h3><i class="fas fa-user"></i> Мой счёт</h3>
+                    <h3><i class="fas fa-user"></i> <span id="my-player-name-title">Мой счёт</span></h3>
                     <span class="net-score-badge" id="my-net-badge">Net: —</span>
                 </div>
                 <div class="score-area" style="margin:10px 0;">
@@ -181,10 +190,10 @@
                 </div>
             </div>
 
-            <!-- БЛОК 2: СЧЁТ ИГРОКА ЗА КОТОРЫМ Я СЛЕЖУ -->
+            <!-- БЛОК 2: СЧЁТ МАРКИРУЕМОГО ИГРОКА -->
             <div class="scoring-dual-block marker-score-block" id="marker-input-container">
                 <div class="dual-header">
-                    <h3 style="color:#9b59b6;"><i class="fas fa-eye"></i> Счёт игрока: <span id="mark-player-name">...</span></h3>
+                    <h3 style="color:#9b59b6;"><i class="fas fa-eye"></i> Маркер для: <span id="mark-player-name">...</span></h3>
                 </div>
                 <div class="score-area" style="margin:10px 0;">
                     <div class="score-result" id="mark-result"></div>
@@ -206,11 +215,11 @@
             <div id="play-group-summary"></div>
         </div>
 
-        <!-- QR КОДЫ ДЛЯ ДРУГИХ ИГРОКОВ -->
+        <!-- QR КОДЫ ДЛЯ ПОДКЛЮЧЕНИЯ ДРУГИХ ИГРОКОВ -->
         <div class="card" id="invite-qrs-card">
-            <h2><i class="fas fa-qrcode"></i> Пригласить игроков</h2>
+            <h2><i class="fas fa-qrcode"></i> Подключение игроков группы</h2>
             <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">
-                Пусть другие игроки отсканируют свой QR-код, чтобы подключиться к раунду со своих телефонов.
+                Дайте отсканировать QR-код другим игрокам, чтобы они открыли счётную карточку со своих телефонов.
             </p>
             <div id="invite-qrs-grid" class="qr-grid"></div>
         </div>

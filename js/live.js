@@ -297,7 +297,7 @@ function getActingUid() {
 
 function initRoundView() {
     db.ref('rounds/' + curRid).on('value', function(sn) {
-        curRoundData = snap.val() || sn.val();
+        curRoundData = sn.val();
         if (!curRoundData) {
             toast('Раунд не найден', 'error');
             return;
@@ -319,7 +319,8 @@ function initRoundView() {
 
             if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
                 myTargetUid = curRoundData.markerAssignments[myUid].targetId;
-                document.getElementById('mark-player-name').textContent = curRoundData.players[myTargetUid]?.name || 'Партнёр';
+                var targetPlayer = curRoundData.players[myTargetUid];
+                document.getElementById('mark-player-name').textContent = targetPlayer ? targetPlayer.name : 'Партнёр';
                 document.getElementById('marker-input-container').classList.remove('hidden');
             } else {
                 document.getElementById('marker-input-container').classList.add('hidden');
@@ -406,19 +407,19 @@ function renderPlayHole() {
     document.getElementById('play-dist').textContent = dist > 0 ? dist : '—';
 
     // Мой счёт
-    var mySaved = parseInt(curRoundData.players[myUid]?.scores?.[playHole]) || 0;
+    var mySaved = parseInt(curRoundData.players[myUid] && curRoundData.players[myUid].scores && curRoundData.players[myUid].scores[playHole]) || 0;
     myScore = mySaved > 0 ? mySaved : par;
 
     // Счёт маркируемого игрока
     if (myTargetUid) {
-        var targetSaved = parseInt(curRoundData.players[myTargetUid]?.markerScores?.[myUid]?.[playHole]) || 0;
+        var targetSaved = parseInt(curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].markerScores && curRoundData.players[myTargetUid].markerScores[myUid] && curRoundData.players[myTargetUid].markerScores[myUid][playHole]) || 0;
         targetScore = targetSaved > 0 ? targetSaved : par;
     }
 
     updScoreDisplay('my', myScore);
     updScoreDisplay('mark', targetScore);
 
-    var myFieldHcp = curRoundData.players[myUid]?.fieldHcp || 0;
+    var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
     var net = calcNettScore(myScore, par, holeHcp(playHole), myFieldHcp);
     document.getElementById('my-net-badge').textContent = 'Net: ' + net;
 
@@ -430,7 +431,8 @@ function adjScore(who, delta) {
     if (who === 'my') {
         myScore = Math.max(1, Math.min(15, myScore + delta));
         updScoreDisplay('my', myScore);
-        var net = calcNettScore(myScore, holePar(playHole), holeHcp(playHole), curRoundData.players[myUid]?.fieldHcp || 0);
+        var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
+        var net = calcNettScore(myScore, holePar(playHole), holeHcp(playHole), myFieldHcp);
         document.getElementById('my-net-badge').textContent = 'Net: ' + net;
     } else {
         targetScore = Math.max(1, Math.min(15, targetScore + delta));
@@ -449,12 +451,13 @@ function updScoreDisplay(who, score) {
 
 function checkPlayVerification() {
     var box = document.getElementById('play-verify-status');
-    var myS = parseInt(curRoundData.players[myUid]?.scores?.[playHole]) || 0;
-    var myMarkerId = curRoundData.players[myUid]?.markedBy;
+    var myPlayer = curRoundData.players[myUid];
+    var myS = parseInt(myPlayer && myPlayer.scores && myPlayer.scores[playHole]) || 0;
+    var myMarkerId = myPlayer && myPlayer.markedBy;
     var markerS = 0;
 
     if (myMarkerId && curRoundData.players[myMarkerId]) {
-        markerS = parseInt(curRoundData.players[myUid]?.markerScores?.[myMarkerId]?.[playHole]) || 0;
+        markerS = parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][playHole]) || 0;
     }
 
     if (myS > 0 && markerS > 0 && myS === markerS) {
@@ -485,9 +488,10 @@ function saveHoleScores() {
     }
 
     // 3. Верификация моего счёта
-    var myMarkerId = curRoundData.players[myUid]?.markedBy;
+    var myPlayer = curRoundData.players[myUid];
+    var myMarkerId = myPlayer && myPlayer.markedBy;
     if (myMarkerId) {
-        var myMarkerScore = parseInt(curRoundData.players[myUid]?.markerScores?.[myMarkerId]?.[h]) || 0;
+        var myMarkerScore = parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][h]) || 0;
         if (myMarkerScore > 0 && myMarkerScore === myScore) {
             updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
         } else if (myMarkerScore > 0) {
@@ -497,7 +501,8 @@ function saveHoleScores() {
 
     // 4. Верификация счёта партнёра
     if (myTargetUid) {
-        var targetSelfScore = parseInt(curRoundData.players[myTargetUid]?.scores?.[h]) || 0;
+        var targetPlayer = curRoundData.players[myTargetUid];
+        var targetSelfScore = parseInt(targetPlayer && targetPlayer.scores && targetPlayer.scores[h]) || 0;
         if (targetSelfScore > 0 && targetSelfScore === targetScore) {
             updates['rounds/' + curRid + '/players/' + myTargetUid + '/verified/' + h] = true;
         } else if (targetSelfScore > 0) {
@@ -524,10 +529,11 @@ function saveHoleScores() {
 
 function renderPlaySummary() {
     var el = document.getElementById('play-group-summary');
+    if (!el) return;
     var order = holeOrder(curRoundData.startHole || 1);
     var html = '';
 
-    Object.entries(curRoundData.players).forEach(function(pe) {
+    Object.entries(curRoundData.players || {}).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
         var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(Вы)</span>' : '';

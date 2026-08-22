@@ -1,14 +1,14 @@
 const CACHE_NAME = 'pestovo-v1';
-const OFFLINE_URL = '/offline.html';
+const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
-    '/', '/index.html', '/live.html', '/solo.html', '/leaderboard.html',
-    '/players.html', '/tournaments.html', '/stats.html', '/handicap.html',
-    '/admin.html', '/auth.html', '/offline.html', '/manifest.json',
-    '/css/style.css', '/js/firebase-config.js', '/js/utils.js',
-    '/js/auth.js', '/js/app.js', '/js/live.js', '/js/solo.js',
-    '/js/leaderboard.js', '/js/players.js', '/js/tournaments.js',
-    '/js/stats.js', '/js/admin.js', '/js/pwa.js', '/img/logo.png'
+    './', 'index.html', 'live.html', 'solo.html', 'leaderboard.html',
+    'players.html', 'tournaments.html', 'stats.html', 'handicap.html',
+    'admin.html', 'auth.html', 'offline.html', 'manifest.json',
+    'css/style.css', 'js/firebase-config.js', 'js/utils.js',
+    'js/auth.js', 'js/app.js', 'js/live.js', 'js/solo.js',
+    'js/leaderboard.js', 'js/players.js', 'js/tournaments.js',
+    'js/stats.js', 'js/admin.js', 'js/pwa.js', 'img/logo.png'
 ];
 
 self.addEventListener('install', function(event) {

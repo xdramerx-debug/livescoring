@@ -1,6 +1,6 @@
 if('serviceWorker' in navigator){
     window.addEventListener('load',function(){
-        navigator.serviceWorker.register('/sw.js').then(function(reg){console.log('[PWA] SW registered');}).catch(function(err){console.error('[PWA] SW failed',err);});
+        navigator.serviceWorker.register('sw.js').then(function(reg){console.log('[PWA] SW registered');}).catch(function(err){console.error('[PWA] SW failed',err);});
     });
     navigator.serviceWorker.addEventListener('message',function(event){
         if(event.data&&event.data.type==='SYNC_SCORES')syncOfflineScores();

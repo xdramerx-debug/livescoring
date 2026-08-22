@@ -42,6 +42,8 @@ function toast(m,t){t=t||'success';var e=document.createElement('div');e.classNa
 function vib(ms){if(navigator.vibrate)navigator.vibrate(ms||50);}
 function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'});}
 function fmtTime(ts){if(!ts)return'—';var d=new Date(ts),h=d.getHours(),m=d.getMinutes();return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
+function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
+function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
 function initNav(){var tg=document.getElementById('nav-toggle'),mn=document.getElementById('nav-menu');if(tg&&mn)tg.addEventListener('click',function(){tg.classList.toggle('active');mn.classList.toggle('open');});window.addEventListener('scroll',function(){var n=document.getElementById('main-nav');if(n){if(window.scrollY>50)n.classList.add('nav-scrolled');else n.classList.remove('nav-scrolled');}});}
 function navAuth(u,d){var e=document.getElementById('nav-auth');if(!e)return;if(u&&d)e.innerHTML='<div class="nav-user"><span class="nav-uname">'+(d.name||'')+'</span><button class="btn btn-og btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button></div>';else e.innerHTML='<a href="auth.html" class="btn btn-g btn-sm">Войти</a>';}
 function doLogout(){auth.signOut().then(function(){window.location.href='auth.html';});}
@@ -56,13 +58,55 @@ const ADMIN_LOGIN='admin';
 const ADMIN_PASS='pestovo2024';
 
 function getFieldHcp(exactHcp,tee,gender){
-    if(!exactHcp)return 0;
+    if(exactHcp===null||exactHcp===undefined||isNaN(exactHcp))return 0;
     gender=gender||'men';tee=tee||'wh';
     var rating=COURSE_RATINGS[gender]&&COURSE_RATINGS[gender][tee];
     if(!rating)return Math.round(parseFloat(exactHcp));
     var field=(parseFloat(exactHcp)*(rating.sr/113))+(rating.cr-TOTAL_PAR);
     return Math.round(field);
 }
+
+function generateHcpTable(gender, tee) {
+    var rating = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
+    if (!rating) return [];
+    var rows = [];
+    var startExact = -5.0;
+    var maxExact = 54.0;
+
+    var curStart = startExact;
+    var curField = getFieldHcp(curStart, tee, gender);
+
+    for (var x = -4.9; x <= maxExact + 0.05; x += 0.1) {
+        var exactVal = Math.round(x * 10) / 10;
+        var f = getFieldHcp(exactVal, tee, gender);
+        if (f !== curField) {
+            var prevExact = Math.round((exactVal - 0.1) * 10) / 10;
+            rows.push([curStart.toFixed(1), prevExact.toFixed(1), curField]);
+            curStart = exactVal;
+            curField = f;
+        }
+    }
+    rows.push([curStart.toFixed(1), maxExact.toFixed(1), curField]);
+    return rows;
+}
+
+const HCP_TABLE = {
+    get men() {
+        return {
+            bk: generateHcpTable('men', 'bk'),
+            bl: generateHcpTable('men', 'bl'),
+            wh: generateHcpTable('men', 'wh'),
+            rd: generateHcpTable('men', 'rd')
+        };
+    },
+    get women() {
+        return {
+            bl: generateHcpTable('women', 'bl'),
+            wh: generateHcpTable('women', 'wh'),
+            rd: generateHcpTable('women', 'rd')
+        };
+    }
+};
 
 function stablefordField(strokes,holeNum,fieldHcp){
     if(!strokes||strokes<1)return 0;
@@ -109,14 +153,15 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
     }
     var toPar=played.length>0?gross-parPlayed:null;
     var netToPar=played.length>0?netTotal-parPlayed:null;
-    return{played:played,remaining:remaining,holesPlayed:played.length,holesRemaining:remaining.length,currentHole:currentHole,gross:gross,parPlayed:parPlayed,toPar:toPar,net:netTotal,netToPar:netToPar,stablefordField:stblField,stablefordExact:stblExact,birdies:birdies,eagles:eagles,pars:pars,bogeys:bogeys,doubles:doubles,holeInOne:hio};
+    var projected=played.length>0?gross+(TOTAL_PAR-parPlayed):null;
+    return{played:played,remaining:remaining,holesPlayed:played.length,holesRemaining:remaining.length,currentHole:currentHole,gross:gross,parPlayed:parPlayed,toPar:toPar,net:netTotal,netToPar:netToPar,projected:projected,stablefordField:stblField,stablefordExact:stblExact,birdies:birdies,eagles:eagles,pars:pars,bogeys:bogeys,doubles:doubles,holeInOne:hio};
 }
 
 // ==========================================
 // СКОРКАРТА ПЕСТОВО (КАК НА ФОТО — 18 ЛУНОК)
 // ==========================================
 function generatePestovoScorecardHTML(player, roundData) {
-    var p = player;
+    var p = player || {};
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
     var eHcp = p.exactHcp || 0;
@@ -164,7 +209,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].bl+'</td>';
     html+='<td class="pc-tot">'+blOut+'</td>';
     for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].bl+'</td>';
-    html+='<td class="pc-tot">'+blIn+'</td><td class="pc-tot">'+(blOut+blIn)+'</td></tr>';
+    html+='<td class="pc-tot">'+bkIn+'</td><td class="pc-tot">'+(blOut+blIn)+'</td></tr>';
 
     // Белый ти
     var whOut=0,whIn=0;for(var i=1;i<=9;i++)whOut+=HOLES[i].wh;for(var i=10;i<=18;i++)whIn+=HOLES[i].wh;

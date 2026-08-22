@@ -93,7 +93,7 @@ function initNav(){
         closeBtn.className='nav-menu-close';
         closeBtn.innerHTML='&times;';
         closeBtn.setAttribute('aria-label','Закрыть меню');
-        mn.insertBefore(closeBtn,mn.firstChild);
+        if(mn.insertBefore) mn.insertBefore(closeBtn,mn.firstChild);
     }
     if(closeBtn){
         closeBtn.addEventListener('click',function(){
@@ -101,7 +101,7 @@ function initNav(){
         });
     }
 
-    if(mn){
+    if(mn&&mn.querySelectorAll){
         mn.querySelectorAll('a').forEach(function(link){
             link.addEventListener('click',function(){
                 closeNav();

@@ -35,12 +35,12 @@
 <section class="hero">
     <div class="hero-content">
         <img src="img/logo.png" alt="Пестово" class="hero-logo" onerror="this.style.display='none'">
-        <p class="hero-sub">Добро пожаловать</p>
-        <h1 class="hero-title">Гольф-клуб Пестово</h1>
-        <p class="hero-desc">18 лунок · Пар 72 · Система лайв-скоринга</p>
+        <p class="hero-sub">Цифровая счётная карточка Пестово</p>
+        <h1 class="hero-title">Лайв-скоринг и электронные карточки Пестово</h1>
+        <p class="hero-desc">18 лунок · Пар 72 · Автоматический расчёт WHS-гандикапов</p>
         <div class="hero-btns">
-            <a href="live.html" class="btn btn-g btn-lg"><i class="fas fa-play"></i> Начать раунд</a>
-            <a href="leaderboard.html" class="btn btn-ol btn-lg"><i class="fas fa-trophy"></i> Лидерборд</a>
+            <a href="live.html" class="btn btn-g btn-lg"><i class="fas fa-play"></i> Начать игру</a>
+            <a href="leaderboard.html" class="btn btn-ol btn-lg"><i class="fas fa-trophy"></i> Смотреть счёт на поле</a>
         </div>
     </div>
 </section>
@@ -49,7 +49,7 @@
     <div class="container">
         <div class="sec-hdr"><h2 class="sec-t"><span class="live-dot"></span> Сейчас на поле</h2>
         <a href="leaderboard.html" class="sec-l">Все раунды <i class="fas fa-arrow-right"></i></a></div>
-        <div id="live-rounds"></div>
+        <div id="live-rounds"><div class="skeleton" style="height:120px;margin-bottom:12px;"></div></div>
     </div>
 </section>
 
@@ -72,7 +72,7 @@
     <div class="container">
         <div class="sec-hdr"><h2 class="sec-t">Последние результаты</h2>
         <a href="leaderboard.html" class="sec-l">Все <i class="fas fa-arrow-right"></i></a></div>
-        <div id="recent-results"></div>
+        <div id="recent-results"><div class="skeleton" style="height:60px;margin-bottom:8px;"></div></div>
     </div>
 </section>
 
@@ -95,7 +95,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils.js?v=2"></script>
 <script src="js/app.js"></script>
 <script src="js/pwa.js"></script>
 </body>

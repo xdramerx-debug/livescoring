@@ -8,16 +8,27 @@ document.addEventListener('DOMContentLoaded', function() {
             tabs.forEach(function(x) { x.classList.remove('active'); });
             t.classList.add('active');
             document.querySelectorAll('.auth-form').forEach(function(f) { f.classList.add('hidden'); });
-            document.getElementById('form-' + t.dataset.tab).classList.remove('hidden');
+            var targetForm = document.getElementById('form-' + t.dataset.tab);
+            if (targetForm) targetForm.classList.remove('hidden');
         });
+    });
+
+    document.querySelectorAll('.form-input').forEach(function(inp) {
+        inp.addEventListener('input', function() { inp.classList.remove('is-invalid'); });
     });
 
     document.getElementById('login-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        var em = document.getElementById('login-email').value.trim();
-        var pw = document.getElementById('login-pass').value;
+        var emInp = document.getElementById('login-email');
+        var pwInp = document.getElementById('login-pass');
+        var em = emInp.value.trim();
+        var pw = pwInp.value;
         var er = document.getElementById('login-error');
         er.classList.add('hidden');
+
+        if (!em) { emInp.classList.add('is-invalid'); er.textContent = 'Укажите email'; er.classList.remove('hidden'); return; }
+        if (!pw) { pwInp.classList.add('is-invalid'); er.textContent = 'Укажите пароль'; er.classList.remove('hidden'); return; }
+
         var btn = document.getElementById('login-btn');
         btn.textContent = 'Загрузка...'; btn.disabled = true;
         auth.signInWithEmailAndPassword(em, pw).then(function() {
@@ -25,29 +36,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }).catch(function(err) {
             er.textContent = authErr(err.code);
             er.classList.remove('hidden');
+            if (err.code && err.code.indexOf('user') !== -1) emInp.classList.add('is-invalid');
+            if (err.code && err.code.indexOf('password') !== -1) pwInp.classList.add('is-invalid');
             btn.textContent = 'Войти'; btn.disabled = false;
         });
     });
 
     document.getElementById('register-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        var nm = document.getElementById('reg-name').value.trim();
-        var em = document.getElementById('reg-email').value.trim();
+        var nmInp = document.getElementById('reg-name');
+        var emInp = document.getElementById('reg-email');
+        var pwInp = document.getElementById('reg-pass');
+        var pw2Inp = document.getElementById('reg-pass2');
+
+        var nm = nmInp.value.trim();
+        var em = emInp.value.trim();
         var hc = document.getElementById('reg-hcp').value;
         var gd = document.getElementById('reg-gender').value;
-        var pw = document.getElementById('reg-pass').value;
-        var pw2 = document.getElementById('reg-pass2').value;
+        var pw = pwInp.value;
+        var pw2 = pw2Inp.value;
         var er = document.getElementById('register-error');
         er.classList.add('hidden');
-        if (!nm || !em || !pw) { er.textContent = 'Заполните все поля'; er.classList.remove('hidden'); return; }
-        if (pw.length < 6) { er.textContent = 'Пароль минимум 6 символов'; er.classList.remove('hidden'); return; }
-        if (pw !== pw2) { er.textContent = 'Пароли не совпадают'; er.classList.remove('hidden'); return; }
+
+        if (!nm) { nmInp.classList.add('is-invalid'); er.textContent = 'Заполните имя'; er.classList.remove('hidden'); return; }
+        if (!em) { emInp.classList.add('is-invalid'); er.textContent = 'Заполните email'; er.classList.remove('hidden'); return; }
+        if (pw.length < 6) { pwInp.classList.add('is-invalid'); er.textContent = 'Пароль минимум 6 символов'; er.classList.remove('hidden'); return; }
+        if (pw !== pw2) { pw2Inp.classList.add('is-invalid'); er.textContent = 'Пароли не совпадают'; er.classList.remove('hidden'); return; }
+
         var btn = document.getElementById('register-btn');
         btn.textContent = 'Загрузка...'; btn.disabled = true;
         auth.createUserWithEmailAndPassword(em, pw).then(function(c) {
             return db.ref('users/' + c.user.uid).set({
                 name: nm, email: em, role: 'player', gender: gd,
-                handicap: hc ? parseFloat(hc) : null,
+                handicap: parseExactHcp(hc),
                 createdAt: Date.now(), roundsPlayed: 0, bestGross: null, bestStableford: null
             });
         }).then(function() {

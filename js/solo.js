@@ -4,6 +4,7 @@ var curHole = 1;
 var curScore = 0;
 var isChanging = false;
 var canEditSolo = false;
+var soloAutoSaveTimer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
@@ -89,18 +90,24 @@ function updateTimingPreview() {
 }
 
 function startSolo() {
-    var firstName = document.getElementById('s-firstname').value.trim();
-    var lastName = document.getElementById('s-lastname').value.trim();
-    var timeStr = document.getElementById('s-time').value;
+    var fnInp = document.getElementById('s-firstname');
+    var lnInp = document.getElementById('s-lastname');
+    var timeInp = document.getElementById('s-time');
+    var hcpInp = document.getElementById('s-exact-hcp');
+
+    var firstName = fnInp.value.trim();
+    var lastName = lnInp.value.trim();
+    var timeStr = timeInp.value;
     var startHole = parseInt(document.getElementById('s-hole').value) || 1;
     var tee = document.getElementById('s-tee').value;
     var format = document.getElementById('s-format').value;
     var gender = document.getElementById('s-gender').value;
-    var exactHcpStr = document.getElementById('s-exact-hcp').value;
+    var exactHcpStr = hcpInp.value;
 
-    if (!firstName || !lastName) { toast('Укажите имя и фамилию', 'error'); return; }
-    if (!timeStr) { toast('Укажите время старта', 'error'); return; }
-    if (!exactHcpStr && exactHcpStr !== '0') { toast('Укажите точный гандикап', 'error'); return; }
+    if (!firstName) { fnInp.classList.add('is-invalid'); toast('Укажите имя', 'error'); return; }
+    if (!lastName) { lnInp.classList.add('is-invalid'); toast('Укажите фамилию', 'error'); return; }
+    if (!timeStr) { timeInp.classList.add('is-invalid'); toast('Укажите время старта', 'error'); return; }
+    if (!exactHcpStr && exactHcpStr !== '0') { hcpInp.classList.add('is-invalid'); toast('Укажите точный гандикап', 'error'); return; }
 
     var parsedExact = parseExactHcp(exactHcpStr);
     var fieldHcp = getFieldHcp(parsedExact, tee, gender);
@@ -222,7 +229,7 @@ function renderRoundInfo(targetId) {
     if (!p) return;
     var guestBadge = soloRound.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">ГОСТЬ</span>' : '';
     el.innerHTML =
-        '<div><b>' + (p.name || 'Игрок') + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (пол. ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
+        '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || 'Игрок') + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (пол. ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
         '<div><b>Старт:</b> ' + fmtTime(soloRound.startTime) + ' · <b>С лунки:</b> ' + soloRound.startHole + ' · <b>ТИ:</b> ' + TEES[soloRound.tee] + ' · <b>Формат:</b> ' + soloRound.format + '</div>';
 }
 
@@ -278,6 +285,11 @@ function adjSolo(delta) {
     curScore = Math.max(1, Math.min(15, curScore + delta));
     vib();
     updateDisplay();
+
+    clearTimeout(soloAutoSaveTimer);
+    soloAutoSaveTimer = setTimeout(function() {
+        saveSolo(true);
+    }, 800);
 }
 
 function updateDisplay() {
@@ -290,12 +302,12 @@ function updateDisplay() {
     r.className = 'score-result ' + cls;
 }
 
-function saveSolo() {
+function saveSolo(isAuto) {
     if (!canEditSolo) {
-        toast('Редактирование запрещено', 'error');
+        if (!isAuto) toast('Редактирование запрещено', 'error');
         return;
     }
-    if (curScore < 1) { toast('Счёт должен быть ≥ 1', 'error'); return; }
+    if (curScore < 1) { if (!isAuto) toast('Счёт должен быть ≥ 1', 'error'); return; }
 
     isChanging = true;
     var savedHole = curHole;
@@ -307,22 +319,23 @@ function saveSolo() {
         var par = holePar(savedHole);
         var d = curScore - par;
 
-        if (curScore === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); }
-        else if (d <= -2) { toast('🦅 EAGLE!', 'info'); vib([80, 50, 80]); }
-        else if (d === -1) { toast('🐦 Birdie!', 'success'); vib([50, 50]); }
-        else if (d === 0) { toast('✅ Par'); vib(); }
-        else if (d === 1) { toast('Bogey'); vib(); }
-        else { toast('Double+', 'warn'); vib(); }
+        if (!isAuto) {
+            if (curScore === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); }
+            else if (d <= -2) { toast('🦅 EAGLE!', 'info'); vib([80, 50, 80]); }
+            else if (d === -1) { toast('🐦 Birdie!', 'success'); vib([50, 50]); }
+            else if (d === 0) { toast('✅ Par'); vib(); }
+            else if (d === 1) { toast('Bogey'); vib(); }
+            else { toast('Double+', 'warn'); vib(); }
 
-        showTimingNotice(savedHole);
-
-        var order = holeOrder(soloRound.startHole);
-        var idx = order.indexOf(savedHole);
-        if (idx >= 0 && idx < order.length - 1) {
-            curHole = order[idx + 1];
-            curScore = 0;
+            var order = holeOrder(soloRound.startHole);
+            var idx = order.indexOf(savedHole);
+            if (idx >= 0 && idx < order.length - 1) {
+                curHole = order[idx + 1];
+                curScore = 0;
+            }
         }
 
+        showTimingNotice(savedHole);
         renderCurrentHole();
         buildHoles();
 
@@ -380,8 +393,8 @@ function renderMiniCard(targetId) {
     var fieldHcp = p.fieldHcp || 0;
     var exactHcp = p.exactHcp || 0;
 
-    var html = '<div style="margin-bottom:12px;font-size:14px;color:var(--gold);font-weight:700;">' +
-        '<i class="fas fa-user"></i> ' + (p.name || 'Игрок') + ' · HCP: ' + fmtExactHcp(exactHcp) + ' (пол. ' + fmtFieldHcp(fieldHcp) + ')' +
+    var html = '<div style="margin-bottom:12px;font-size:14px;color:var(--gold);font-weight:700;cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')">' +
+        '<i class="fas fa-user-circle"></i> ' + (p.name || 'Игрок') + ' · HCP: ' + fmtExactHcp(exactHcp) + ' (пол. ' + fmtFieldHcp(fieldHcp) + ')' +
         '</div>';
 
     html += '<div class="scorecard" style="margin-bottom:12px;"><table><tr><th>Лунка</th>';

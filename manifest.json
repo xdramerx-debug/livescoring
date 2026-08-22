@@ -2,11 +2,12 @@
     "name": "Гольф-клуб Пестово",
     "short_name": "Пестово",
     "description": "Система лайв-скоринга Гольф-клуба Пестово",
-    "start_url": "/index.html",
+    "start_url": "index.html",
+    "scope": "./",
     "display": "standalone",
     "orientation": "portrait",
     "background_color": "#0b1a0e",
-    "theme_color": "#c9a84c",
+    "theme_color": "#0b1a0e",
     "icons": [
         {
             "src": "img/logo.png",

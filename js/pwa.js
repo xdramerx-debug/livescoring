@@ -1,12 +1,25 @@
+function isIOS() {
+    return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isStandalone() {
+    return (window.navigator && window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+}
+
 if('serviceWorker' in navigator){
     window.addEventListener('load',function(){
         navigator.serviceWorker.register('sw.js').then(function(reg){
             console.log('[PWA] SW registered');
             initBackgroundAlertListener();
+            checkPWAInstallPrompt();
         }).catch(function(err){console.error('[PWA] SW failed',err);});
     });
     navigator.serviceWorker.addEventListener('message',function(event){
         if(event.data&&event.data.type==='SYNC_SCORES')syncOfflineScores();
+    });
+} else {
+    window.addEventListener('load', function() {
+        checkPWAInstallPrompt();
     });
 }
 
@@ -55,7 +68,22 @@ function syncOfflineScores(){
 }
 
 var deferredPrompt;
-window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredPrompt=e;setTimeout(function(){if(deferredPrompt)showInstallBanner();},3000);});
+window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault();
+    deferredPrompt=e;
+    if (!isIOS()) {
+        setTimeout(function(){if(deferredPrompt)showInstallBanner();},3000);
+    }
+});
+
+function checkPWAInstallPrompt() {
+    if (localStorage.getItem('pwa_install_dismissed')) return;
+    if (isStandalone()) return;
+
+    if (isIOS()) {
+        setTimeout(showIOSInstallBanner, 2000);
+    }
+}
 
 function showInstallBanner(){
     if(localStorage.getItem('pwa_install_dismissed'))return;
@@ -66,9 +94,33 @@ function showInstallBanner(){
     setTimeout(function(){banner.classList.add('show');},100);
 }
 
+function showIOSInstallBanner() {
+    if (localStorage.getItem('pwa_install_dismissed')) return;
+    if (document.getElementById('ios-install-banner')) return;
+
+    var banner = document.createElement('div');
+    banner.id = 'ios-install-banner';
+    banner.className = 'ios-install-banner';
+    banner.innerHTML =
+        '<div class="ios-install-header">' +
+        '<img src="img/logo.png" alt="Пестово" class="ios-install-logo">' +
+        '<div><strong>📱 Установить на экран «Домой» (iPhone)</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">Необходимо для работы Push-уведомлений на iOS</div></div>' +
+        '<button class="ios-install-close" onclick="dismissIOSInstall()">&times;</button>' +
+        '</div>' +
+        '<div class="ios-install-steps">' +
+        '<div class="ios-step"><span class="ios-num">1</span> Нажмите кнопку <strong>«Поделиться»</strong> <i class="fas fa-arrow-up-from-bracket" style="color:var(--gold);"></i> в Safari</div>' +
+        '<div class="ios-step"><span class="ios-num">2</span> Выберите <strong>«На экран "Домой"»</strong> <i class="far fa-plus-square" style="color:var(--gold);"></i></div>' +
+        '<div class="ios-step"><span class="ios-num">3</span> Нажмите <strong>«Добавить»</strong> и запустите иконку с экрана</div>' +
+        '</div>';
+
+    document.body.appendChild(banner);
+    setTimeout(function() { banner.classList.add('show'); }, 100);
+}
+
 function installPWA(){if(!deferredPrompt)return;deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;var b=document.getElementById('install-banner');if(b)b.remove();});}
 function dismissInstall(){localStorage.setItem('pwa_install_dismissed','1');var b=document.getElementById('install-banner');if(b)b.remove();}
-window.installPWA=installPWA;window.dismissInstall=dismissInstall;
+function dismissIOSInstall(){localStorage.setItem('pwa_install_dismissed','1');var b=document.getElementById('ios-install-banner');if(b)b.remove();}
+window.installPWA=installPWA;window.dismissInstall=dismissInstall;window.dismissIOSInstall=dismissIOSInstall;
 setInterval(function(){if(navigator.onLine)syncOfflineScores();},60000);
 
 // ==========================================
@@ -76,7 +128,7 @@ setInterval(function(){if(navigator.onLine)syncOfflineScores();},60000);
 // ==========================================
 function requestNotificationPermission(callback) {
     if (!('Notification' in window)) {
-        if (typeof toast === 'function') toast('Уведомления не поддерживаются браузером', 'warn');
+        if (typeof toast === 'function') toast('Уведомления поддерживаются при добавлении приложения на экран «Домой»', 'warn');
         if (typeof callback === 'function') callback(false);
         return;
     }

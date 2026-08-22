@@ -244,7 +244,7 @@ select.form-input option{background:var(--card);}
 .dual-header h3{margin:0;font-size:16px;color:var(--white);display:flex;align-items:center;gap:8px;}
 .net-score-badge{background:rgba(46,204,113,0.15);color:#2ecc71;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;}
 
-/* PWA */
+/* PWA & iOS INSTALL BANNER */
 .online-indicator{position:fixed;top:70px;right:20px;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:600;z-index:999;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s;}
 .online-indicator.online{background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid rgba(46,204,113,0.3);}
 .online-indicator.offline{background:rgba(224,90,74,0.15);color:var(--red);border:2px solid var(--red);animation:blink 2s infinite;}
@@ -252,6 +252,15 @@ select.form-input option{background:var(--card);}
 .install-banner{position:fixed;bottom:-100px;left:20px;right:20px;max-width:500px;margin:0 auto;background:var(--card);border:1px solid var(--gold);border-radius:12px;padding:16px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:9998;transition:bottom 0.4s;}
 .install-banner.show{bottom:20px;}
 .install-content{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;}
+
+.ios-install-banner{position:fixed;bottom:-300px;left:16px;right:16px;max-width:480px;margin:0 auto;background:var(--card);border:2px solid var(--gold);border-radius:16px;padding:18px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.6);z-index:9999;transition:bottom 0.4s cubic-bezier(0.175,0.885,0.32,1.275);}
+.ios-install-banner.show{bottom:20px;}
+.ios-install-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;position:relative;}
+.ios-install-logo{width:40px!important;height:40px!important;max-width:40px!important;max-height:40px!important;object-fit:contain!important;}
+.ios-install-close{position:absolute;top:-4px;right:0;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
+.ios-install-steps{display:flex;flex-direction:column;gap:8px;background:var(--input);padding:12px;border-radius:var(--rs);border:1px solid var(--border);}
+.ios-step{font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;}
+.ios-num{width:20px;height:20px;border-radius:50%;background:var(--gold);color:var(--bg);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 
 @media(max-width:768px){
     .nav-toggle{display:flex;}

@@ -80,7 +80,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils.js?v=2"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() { initNav(); });
 function onAuthReady(u, d) { navAuth(u, d); }
@@ -120,9 +120,9 @@ function showTable() {
     var tee = document.getElementById('tbl-tee').value;
     var el = document.getElementById('hcp-tables');
     if (!gender || !tee) { el.innerHTML = ''; return; }
-    var table = HCP_TABLE[gender] && HCP_TABLE[gender][tee];
+    var table = generateHcpTable(gender, tee);
     var cr = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
-    if (!table || !cr) { el.innerHTML = '<div class="card"><p style="text-align:center;color:var(--muted);">Нет данных</p></div>'; return; }
+    if (!table || !cr || !table.length) { el.innerHTML = '<div class="card"><p style="text-align:center;color:var(--muted);">Нет данных</p></div>'; return; }
     var genderIcon = gender === 'women' ? '👩' : '👨';
     var genderName = gender === 'women' ? 'Женщины' : 'Мужчины';
     var html = '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">';

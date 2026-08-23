@@ -11,7 +11,6 @@ var myScore = 0;
 var targetScore = 0;
 var isChanging = false;
 var canEditGroup = false;
-var autoSaveTimer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
@@ -84,7 +83,7 @@ function onTournamentSelect() {
 
     if (!tid) {
         teeSel.innerHTML = '<option value="bk">⬛ ' + t('tee_bk') + '</option><option value="bl">🟦 ' + t('tee_bl') + '</option><option value="wh" selected>⬜ ' + t('tee_wh') + '</option><option value="rd">🟥 ' + t('tee_rd') + '</option>';
-        fmtSel.innerHTML = '<option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option>';
+        fmtSel.innerHTML = '<option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option><option value="Match Play 1v1">' + t('format_match_1v1') + '</option><option value="Match Play 2v2">' + t('format_match_2v2') + '</option><option value="Scramble">' + t('format_scramble') + '</option>';
         return;
     }
     var tVal = availableTournaments[tid];
@@ -221,6 +220,8 @@ function startGroup() {
             isGuest: !uid,
             scores: {},
             markerScores: {},
+            submitted: {},
+            markerSubmitted: {},
             verified: {}
         };
         pOrder.push(pid);
@@ -353,10 +354,11 @@ function initRoundView() {
 
 function findCurrentHole() {
     var order = holeOrder(curRoundData.startHole || 1);
-    var myScores = (curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
+    var myPlayer = (curRoundData.players && curRoundData.players[myUid]) || {};
+    var myVerified = myPlayer.verified || {};
     playHole = order[0];
     for (var i = 0; i < order.length; i++) {
-        if (!(parseInt(myScores[order[i]]) > 0)) {
+        if (myVerified[order[i]] !== true) {
             playHole = order[i];
             break;
         }
@@ -371,19 +373,24 @@ function buildPlayHolesNav() {
     var el = document.getElementById('play-holes-nav');
     if (!el) return;
     var order = holeOrder(curRoundData.startHole || 1);
-    var myScores = (curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
-    var myVerified = (curRoundData.players[myUid] && curRoundData.players[myUid].verified) || {};
+    var myPlayer = curRoundData.players && curRoundData.players[myUid];
+    var myScores = (myPlayer && myPlayer.scores) || {};
+    var mySubmitted = (myPlayer && myPlayer.submitted) || {};
+    var myVerified = (myPlayer && myPlayer.verified) || {};
 
     var html = '';
     order.forEach(function(h) {
         var s = parseInt(myScores[h]) || 0;
+        var sub = mySubmitted[h] === true;
         var v = myVerified[h];
         var cls = h === playHole ? 'active' : '';
 
-        if (s > 0) {
-            if (v === true) cls += ' verified';
-            else if (v === false) cls += ' mismatch';
-            else cls += ' done';
+        if (v === true) {
+            cls += ' verified';
+        } else if (v === false) {
+            cls += ' mismatch';
+        } else if (sub || s > 0) {
+            cls += ' done';
         }
 
         html += '<button class="hole-btn ' + cls + '" onclick="goPlayHole(' + h + ')">' + h + '</button>';
@@ -414,6 +421,22 @@ function renderPlayHole() {
     if (playHoleEl) playHoleEl.textContent = playHole;
     if (playParEl) playParEl.textContent = par;
     if (playDistEl) playDistEl.textContent = dist > 0 ? dist : '—';
+
+    var order = holeOrder(curRoundData.startHole || 1);
+    var isLastHole = (playHole === order[order.length - 1]);
+
+    var btnIcon = document.getElementById('save-hole-btn-icon');
+    var btnText = document.getElementById('save-hole-btn-text');
+
+    if (btnIcon && btnText) {
+        if (isLastHole) {
+            btnIcon.className = 'fas fa-check-double';
+            btnText.textContent = t('confirm_final_hole');
+        } else {
+            btnIcon.className = 'fas fa-arrow-right';
+            btnText.textContent = t('next_hole_btn');
+        }
+    }
 
     var mySaved = parseInt(curRoundData.players[myUid] && curRoundData.players[myUid].scores && curRoundData.players[myUid].scores[playHole]) || 0;
     myScore = mySaved > 0 ? mySaved : par;
@@ -450,11 +473,6 @@ function adjScore(who, delta) {
         animateScoreElement('mark-disp');
     }
     vib();
-
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(function() {
-        saveHoleScores(true);
-    }, 800);
 }
 
 function setParScore(who) {
@@ -474,11 +492,6 @@ function setParScore(who) {
         animateScoreElement('mark-disp');
     }
     vib();
-
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(function() {
-        saveHoleScores(true);
-    }, 800);
 }
 
 function updScoreDisplay(who, score) {
@@ -494,84 +507,111 @@ function updScoreDisplay(who, score) {
 
 function checkPlayVerification() {
     var box = document.getElementById('play-verify-status');
-    if (!box) return;
+    if (!box || !curRoundData || !curRoundData.players) return;
 
     var myPlayer = curRoundData.players[myUid];
-    var myS = parseInt(myPlayer && myPlayer.scores && myPlayer.scores[playHole]) || 0;
-    var myMarkerId = myPlayer && myPlayer.markedBy;
+    if (!myPlayer) return;
+
+    var myS = parseInt(myPlayer.scores && myPlayer.scores[playHole]) || 0;
+    var mySub = myPlayer.submitted && myPlayer.submitted[playHole] === true;
+    var myMarkerId = myPlayer.markedBy;
     var markerS = 0;
+    var markerSub = false;
 
     if (myMarkerId && curRoundData.players[myMarkerId]) {
-        markerS = parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][playHole]) || 0;
+        var mp = curRoundData.players[myMarkerId];
+        markerS = parseInt(mp.markerScores && mp.markerScores[myUid] && mp.markerScores[myUid][playHole]) || 0;
+        if (mp.markerSubmitted && mp.markerSubmitted[myUid] && mp.markerSubmitted[myUid][playHole] === true) {
+            markerSub = true;
+        } else if (markerS > 0 && mp.scores && mp.scores[playHole] > 0) {
+            markerSub = true;
+        }
     }
 
-    if (myS > 0 && markerS > 0 && myS === markerS) {
-        box.innerHTML = '<div class="verify-ok">✅ ' + (currentLang === 'en' ? 'Your score on hole ' + playHole + ' is confirmed by marker (' + myS + ')' : 'Ваш счёт на лунке ' + playHole + ' подтверждён маркером (' + myS + ' уд.)') + '</div>';
+    if (myS > 0 && markerS > 0 && myS === markerS && (mySub || markerSub)) {
+        box.innerHTML = '<div class="verify-ok">✅ ' + (currentLang === 'en' ? 'Hole ' + playHole + ' score confirmed & finalized by both sides (' + myS + ')' : 'Счёт на лунке ' + playHole + ' подтверждён и зафиксирован обеими сторонами (' + myS + ' уд.)') + '</div>';
     } else if (myS > 0 && markerS > 0 && myS !== markerS) {
-        box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (currentLang === 'en' ? 'You: ' : 'Вы: ') + myS + ' | ' + (currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + markerS + '</div>';
-    } else if (myS > 0) {
-        box.innerHTML = '<div class="verify-wait">⏳ ' + (currentLang === 'en' ? 'Waiting for marker confirmation...' : 'Ожидаем подтверждения от вашего маркера...') + '</div>';
+        box.innerHTML = '<div class="verify-fail">⚠️ ' + t('mismatch_error') + ' (' + (currentLang === 'en' ? 'You: ' : 'Вы: ') + myS + ' | ' + (currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + markerS + ')</div>';
+    } else if (mySub || myS > 0) {
+        var markerName = (myMarkerId && curRoundData.players[myMarkerId] && curRoundData.players[myMarkerId].name) || (currentLang === 'en' ? 'marker' : 'маркера');
+        box.innerHTML = '<div class="verify-wait">' + t('waiting_for_marker') + ' (' + markerName + ')</div>';
     } else {
         box.innerHTML = '';
     }
 }
 
-function saveHoleScores(isAuto) {
-    if (!canEditGroup) { if (!isAuto) toast(t('msg_edit_disabled'), 'error'); return; }
-    if (myScore < 1 || (myTargetUid && targetScore < 1)) { if (!isAuto) toast(t('msg_score_min'), 'error'); return; }
+function saveHoleScores() {
+    if (!canEditGroup) { toast(t('msg_edit_disabled'), 'error'); return; }
+    if (myScore < 1 || (myTargetUid && targetScore < 1)) { toast(t('msg_score_min'), 'error'); return; }
 
     isChanging = true;
     var h = playHole;
     var updates = {};
 
     updates['rounds/' + curRid + '/players/' + myUid + '/scores/' + h] = myScore;
+    updates['rounds/' + curRid + '/players/' + myUid + '/submitted/' + h] = true;
 
     if (myTargetUid) {
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerScores/' + myUid + '/' + h] = targetScore;
+        updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerSubmitted/' + myUid + '/' + h] = true;
     }
 
     var myPlayer = curRoundData.players[myUid];
     var myMarkerId = myPlayer && myPlayer.markedBy;
-    if (myMarkerId) {
-        var myMarkerScore = parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][h]) || 0;
-        if (myMarkerScore > 0 && myMarkerScore === myScore) {
-            updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
-        } else if (myMarkerScore > 0) {
-            updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = false;
+
+    var markerS = 0;
+    var markerSub = false;
+
+    if (myMarkerId && curRoundData.players[myMarkerId]) {
+        var mp = curRoundData.players[myMarkerId];
+        markerS = parseInt(mp.markerScores && mp.markerScores[myUid] && mp.markerScores[myUid][h]) || 0;
+        if (mp.markerSubmitted && mp.markerSubmitted[myUid] && mp.markerSubmitted[myUid][h] === true) {
+            markerSub = true;
+        } else if (markerS > 0) {
+            markerSub = true;
         }
     }
 
-    if (myTargetUid) {
-        var targetPlayer = curRoundData.players[myTargetUid];
-        var targetSelfScore = parseInt(targetPlayer && targetPlayer.scores && targetPlayer.scores[h]) || 0;
-        if (targetSelfScore > 0 && targetSelfScore === targetScore) {
-            updates['rounds/' + curRid + '/players/' + myTargetUid + '/verified/' + h] = true;
-        } else if (targetSelfScore > 0) {
-            updates['rounds/' + curRid + '/players/' + myTargetUid + '/verified/' + h] = false;
-        }
+    var bothSubmittedAndMatch = (markerSub && markerS > 0 && markerS === myScore);
+    var bothSubmittedAndMismatch = (markerSub && markerS > 0 && markerS !== myScore);
+
+    if (bothSubmittedAndMatch) {
+        updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
+        if (myMarkerId) updates['rounds/' + curRid + '/players/' + myMarkerId + '/verified/' + h] = true;
+    } else if (bothSubmittedAndMismatch) {
+        updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = false;
+    } else {
+        updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = 'pending';
     }
 
     db.ref().update(updates).then(function() {
-        if (!isAuto) {
-            toast(t('msg_saved_hole') + h);
+        var order = holeOrder(curRoundData.startHole || 1);
+        var idx = order.indexOf(h);
+
+        if (bothSubmittedAndMatch) {
+            toast('✅ ' + t('hole') + ' ' + h + ': ' + t('hole_finalized_both'), 'success');
             var par = holePar(h);
             var d = myScore - par;
             if (myScore === 1 || d <= -1) {
                 triggerVictoryConfetti();
             }
-            var order = holeOrder(curRoundData.startHole || 1);
-            var idx = order.indexOf(h);
             if (idx >= 0 && idx < order.length - 1) {
                 playHole = order[idx + 1];
+                myScore = 0;
+                targetScore = 0;
             }
+        } else if (bothSubmittedAndMismatch) {
+            toast(t('mismatch_error'), 'error');
+            vib([200, 100, 200]);
         } else {
-            var par = holePar(h);
-            var d = myScore - par;
-            if (myScore === 1 || d <= -1) {
-                triggerVictoryConfetti();
+            toast(t('waiting_for_marker'), 'info');
+            vib();
+            if (idx >= 0 && idx < order.length - 1) {
+                playHole = order[idx + 1];
+                myScore = 0;
+                targetScore = 0;
             }
         }
-        vib();
 
         renderPlayHole();
         buildPlayHolesNav();
@@ -585,12 +625,10 @@ function renderPlaySummary() {
     if (!el) return;
     var order = holeOrder(curRoundData.startHole || 1);
     var html = '';
-    var maxPlayed = 0;
 
     Object.entries(curRoundData.players || {}).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-        if (stats.holesPlayed > maxPlayed) maxPlayed = stats.holesPlayed;
         var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
 
         html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
@@ -613,7 +651,6 @@ function renderInviteQRs() {
     var cardEl = document.getElementById('invite-qrs-card');
     var activeEl = document.getElementById('invite-qrs-grid');
     
-    // Показываем блок QR-кодов только для активных участников групповой игры
     if (!canEditGroup || !curRoundData || !activeEl) {
         if (cardEl) cardEl.classList.add('hidden');
         return;

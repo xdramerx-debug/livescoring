@@ -82,24 +82,55 @@
                 <div id="admin-alerts-list"></div>
             </div>
 
+            <!-- TELEGRAM DUAL INTEGRATION: GROUP & CHANNEL -->
             <div class="card">
-                <h2><i class="fab fa-telegram"></i> <span>Интеграция Telegram Bot для Судей и Маршалов</span></h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">
-                    Укажите Telegram Bot Token и Chat ID судейской группы. При вызове судьи или маршала игрок сразу отправит пуш-уведомление в ваш Telegram-чат!
+                <h2><i class="fab fa-telegram"></i> <span>Интеграция Telegram: Группа Судей & Канал Клуба</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+                    Вы можете настроить отправку уведомлений отдельно для <b>Группы Судей/Маршалов</b> и для <b>Канала Клуба</b> (или использовать один и тот же бот).
                 </p>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label><i class="fas fa-key"></i> Telegram Bot Token</label>
-                        <input type="text" id="tg-bot-token" class="form-input" placeholder="7891234567:AAExampleBotToken">
+
+                <!-- 1. TELEGRAM GROUP SETTINGS -->
+                <div class="card" style="background:rgba(255,255,255,0.03);padding:14px;margin-bottom:14px;border:1px solid rgba(201,168,76,0.2);">
+                    <h3 style="color:var(--gold);font-size:14px;margin-bottom:10px;"><i class="fas fa-users"></i> 1. Telegram Группа (Вызовы Судей и Маршалов)</h3>
+                    <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+                        💡 Добавьте бота в группу судей. Chat ID обычно начинается с <code>-100...</code>
+                    </p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><i class="fas fa-key"></i> Group Bot Token</label>
+                            <input type="text" id="tg-group-bot-token" class="form-input" placeholder="7891234567:AAExampleGroupToken">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-users"></i> Group Chat ID</label>
+                            <input type="text" id="tg-group-chat-id" class="form-input" placeholder="-1001234567890">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-users"></i> Telegram Group Chat ID</label>
-                        <input type="text" id="tg-chat-id" class="form-input" placeholder="-1001234567890">
+                    <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+                        <button class="btn btn-g btn-sm" onclick="saveTelegramSettings('group')"><i class="fas fa-save"></i> Сохранить Группу</button>
+                        <button class="btn btn-og btn-sm" onclick="testTelegramGroupAlert()"><i class="fab fa-telegram-plane"></i> Проверить Группу</button>
                     </div>
                 </div>
-                <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
-                    <button class="btn btn-g" onclick="saveTelegramSettings()"><i class="fas fa-save"></i> Сохранить настройки Telegram</button>
-                    <button class="btn btn-og" onclick="testTelegramAlert()"><i class="fab fa-telegram-plane"></i> Проверить отправку в Telegram</button>
+
+                <!-- 2. TELEGRAM CHANNEL SETTINGS -->
+                <div class="card" style="background:rgba(255,255,255,0.03);padding:14px;border:1px solid rgba(201,168,76,0.2);">
+                    <h3 style="color:var(--gold);font-size:14px;margin-bottom:10px;"><i class="fas fa-bullhorn"></i> 2. Telegram Канал (Анонсы и Результаты)</h3>
+                    <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+                        💡 Назначьте бота <b>Администратором канала</b> с правом публикации сообщений. Укажите ID (<code>-100...</code>) или username (<code>@pestovo_golf</code>).
+                    </p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><i class="fas fa-key"></i> Channel Bot Token</label>
+                            <input type="text" id="tg-channel-bot-token" class="form-input" placeholder="7891234567:AAExampleChannelToken">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-bullhorn"></i> Channel ID / Username</label>
+                            <input type="text" id="tg-channel-id" class="form-input" placeholder="@pestovo_golf или -1001987654321">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+                        <button class="btn btn-g btn-sm" onclick="saveTelegramSettings('channel')"><i class="fas fa-save"></i> Сохранить Канал</button>
+                        <button class="btn btn-og btn-sm" onclick="testTelegramChannelAlert()"><i class="fab fa-telegram-plane"></i> Проверить Канал</button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -771,8 +771,63 @@ function saveTelegramSettings(targetMode) {
     }
 }
 
+function testTelegramGroupAlert() {
+    var gTokInp = document.getElementById('tg-group-bot-token');
+    var gChatInp = document.getElementById('tg-group-chat-id');
+    var token = gTokInp ? gTokInp.value.trim() : '';
+    var chatId = gChatInp ? gChatInp.value.trim() : '';
+
+    if (!token || !chatId) {
+        toast('⚠️ Укажите Group Bot Token и Group Chat ID перед проверкой', 'error');
+        return;
+    }
+
+    localStorage.setItem('pestovo_tg_group_token', token);
+    localStorage.setItem('pestovo_tg_group_id', chatId);
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/telegram').update({
+            groupToken: token,
+            groupId: chatId,
+            botToken: token,
+            chatId: chatId,
+            updatedAt: Date.now()
+        });
+    }
+
+    sendTelegramOfficialAlert('referee', 1, 'Администратор Клуба', 'Тестовая проверка Группы', 'group');
+}
+
+function testTelegramChannelAlert() {
+    var cTokInp = document.getElementById('tg-channel-bot-token');
+    var cChatInp = document.getElementById('tg-channel-id');
+    var token = cTokInp ? cTokInp.value.trim() : '';
+    var chatId = cChatInp ? cChatInp.value.trim() : '';
+
+    if (!token || !chatId) {
+        toast('⚠️ Укажите Channel Bot Token и Channel ID перед проверкой', 'error');
+        return;
+    }
+
+    localStorage.setItem('pestovo_tg_channel_token', token);
+    localStorage.setItem('pestovo_tg_channel_id', chatId);
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/telegram').update({
+            channelToken: token,
+            channelId: chatId,
+            updatedAt: Date.now()
+        });
+    }
+
+    sendTelegramOfficialAlert('referee', 1, 'Администратор Клуба', 'Тестовая проверка Канала', 'channel');
+}
+
 function testTelegramAlert(targetMode) {
-    saveTelegramSettings(targetMode);
-    var label = targetMode === 'group' ? 'Группу' : (targetMode === 'channel' ? 'Канал' : 'Telegram');
-    sendTelegramOfficialAlert('referee', 1, 'Тестовый Админ', 'Проверка ' + label, targetMode);
+    if (targetMode === 'group') testTelegramGroupAlert();
+    else if (targetMode === 'channel') testTelegramChannelAlert();
+    else {
+        testTelegramGroupAlert();
+        testTelegramChannelAlert();
+    }
 }

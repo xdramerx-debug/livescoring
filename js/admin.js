@@ -157,8 +157,8 @@ function loadAdmPlayers() {
         }
 
         entries.sort(function(a, b) {
-            var roleA = a[1].role === 'admin' ? 0 : 1;
-            var roleB = b[1].role === 'admin' ? 0 : 1;
+            var roleA = a[1].role === 'admin' ? 0 : a[1].role === 'referee' ? 1 : a[1].role === 'marshal' ? 2 : 3;
+            var roleB = b[1].role === 'admin' ? 0 : b[1].role === 'referee' ? 1 : b[1].role === 'marshal' ? 2 : 3;
             if (roleA !== roleB) return roleA - roleB;
             return (a[1].name || '').localeCompare(b[1].name || '');
         });
@@ -170,11 +170,15 @@ function loadAdmPlayers() {
             var id = e[0], u = e[1];
             var gIcon = u.gender === 'women' ? '👩' : '👨';
             var guestBadge = u.isGuest ? ' <span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 6px;border-radius:8px;font-size:10px;">' + t('guest') + '</span>' : '';
-            var isAdmin = u.role === 'admin';
+            var curRole = u.role || 'player';
 
-            var roleBadge = isAdmin
-                ? '<span style="color:#2ecc71;font-size:12px;font-weight:700;"><i class="fas fa-shield-halved"></i> Admin</span>'
-                : '<span style="color:var(--muted);font-size:12px;">' + (currentLang === 'en' ? 'Player' : 'Игрок') + '</span>';
+            var roleBadge = curRole === 'admin'
+                ? '<span style="color:#2ecc71;font-size:12px;font-weight:700;"><i class="fas fa-shield-halved"></i> ' + t('role_admin') + '</span>'
+                : curRole === 'referee'
+                ? '<span style="color:var(--red);font-size:12px;font-weight:700;"><i class="fas fa-gavel"></i> ' + t('role_referee') + '</span>'
+                : curRole === 'marshal'
+                ? '<span style="color:var(--blue);font-size:12px;font-weight:700;"><i class="fas fa-shield"></i> ' + t('role_marshal') + '</span>'
+                : '<span style="color:var(--muted);font-size:12px;">' + t('role_player') + '</span>';
 
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
             html += '<div style="flex:1;min-width:200px;">';
@@ -187,14 +191,14 @@ function loadAdmPlayers() {
             html += roleBadge;
 
             if (!currentUser || id !== currentUser.uid) {
-                if (isAdmin) {
-                    html += '<button class="btn btn-og btn-sm" onclick="changeRole(\'' + id + '\',\'player\',\'' + (u.name || '') + '\')">' +
-                            '<i class="fas fa-user"></i> ' + (currentLang === 'en' ? 'Make Player' : 'Сделать игроком') + '</button>';
-                } else {
-                    html += '<button class="btn btn-g btn-sm" onclick="changeRole(\'' + id + '\',\'admin\',\'' + (u.name || '') + '\')">' +
-                            '<i class="fas fa-shield-halved"></i> ' + (currentLang === 'en' ? 'Make Admin' : 'Дать Админа') + '</button>';
-                }
-                html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + id + '\',\'' + (u.name || '') + '\')" title="Delete">' +
+                html += '<select class="form-input" style="padding:4px 8px;font-size:11px;width:auto;" onchange="changeRole(\'' + id + '\', this.value, \'' + (u.name || '').replace(/'/g, "\\'") + '\')">';
+                html += '<option value="player" ' + (curRole === 'player' ? 'selected' : '') + '>' + t('role_player') + '</option>';
+                html += '<option value="referee" ' + (curRole === 'referee' ? 'selected' : '') + '>' + t('role_referee') + '</option>';
+                html += '<option value="marshal" ' + (curRole === 'marshal' ? 'selected' : '') + '>' + t('role_marshal') + '</option>';
+                html += '<option value="admin" ' + (curRole === 'admin' ? 'selected' : '') + '>' + t('role_admin') + '</option>';
+                html += '</select>';
+
+                html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="Delete">' +
                         '<i class="fas fa-trash"></i></button>';
             } else {
                 html += '<span style="font-size:11px;color:var(--gold);font-weight:600;">(' + (currentLang === 'en' ? 'You' : 'Это вы') + ')</span>';
@@ -479,4 +483,222 @@ function deleteBroadcast(id) {
     if (confirm(currentLang === 'en' ? 'Delete announcement?' : 'Удалить анонс?')) {
         db.ref('broadcasts/' + id).remove();
     }
+}
+
+// ==========================================
+// АВТОМАТИЧЕСКАЯ РАЗБИВКА НА ФЛАЙТЫ
+// ==========================================
+function openFlightGeneratorModal(tnId) {
+    if (typeof db === 'undefined') return;
+    db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+        var tVal = sn.val();
+        if (!tVal || !tVal.registeredPlayers) {
+            toast(currentLang === 'en' ? 'No registered players for this tournament' : 'Нет зарегистрированных участников для разбивки', 'error');
+            return;
+        }
+
+        var players = Object.values(tVal.registeredPlayers);
+        if (!players.length) return;
+
+        var modalEl = document.getElementById('flight-gen-modal');
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.id = 'flight-gen-modal';
+            modalEl.className = 'modal hidden';
+            modalEl.innerHTML =
+                '<div class="modal-bg" onclick="closeFlightGenModal()"></div>' +
+                '<div class="modal-body" style="max-width:520px;text-align:center;">' +
+                '<button class="modal-close" onclick="closeFlightGenModal()">&times;</button>' +
+                '<div id="flight-gen-modal-body"></div>' +
+                '</div>';
+            if (document.body) document.body.appendChild(modalEl);
+        }
+
+        var bodyEl = document.getElementById('flight-gen-modal-body');
+
+        var html = '<h2 style="color:var(--gold);margin-bottom:8px;"><i class="fas fa-users-gear"></i> ' + (currentLang === 'en' ? 'Flight Generator' : 'Разбивка на Флайты') + '</h2>';
+        html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">' + (currentLang === 'en' ? 'Total Registered: ' : 'Всего участников: ') + '<b>' + players.length + '</b></p>';
+
+        html += '<div class="card" style="background:var(--input);padding:16px;text-align:left;margin-bottom:20px;">';
+        html += '<div class="form-group"><label>' + (currentLang === 'en' ? 'Players per flight:' : 'Игроков во флайте:') + '</label>';
+        html += '<select id="fg-size" class="form-input"><option value="4" selected>4 игрока</option><option value="3">3 игрока</option><option value="2">2 игрока</option></select></div>';
+
+        html += '<div class="form-group"><label>' + (currentLang === 'en' ? 'First Flight Start Time:' : 'Время старта 1-го флайта:') + '</label>';
+        html += '<input type="time" id="fg-time" class="form-input" value="10:00"></div>';
+
+        html += '<div class="form-group"><label>' + (currentLang === 'en' ? 'Interval between flights (min):' : 'Интервал между флайтами (мин):') + '</label>';
+        html += '<input type="number" id="fg-interval" class="form-input" value="10" min="5" max="30"></div>';
+        html += '</div>';
+
+        html += '<div style="display:flex;gap:12px;">';
+        html += '<button class="btn btn-og" style="flex:1;" onclick="closeFlightGenModal()">' + t('cancel_btn') + '</button>';
+        html += '<button class="btn btn-g" style="flex:1;" onclick="confirmFlightGeneration(\'' + tnId + '\')"><i class="fas fa-play"></i> ' + (currentLang === 'en' ? 'Create Flights' : 'Создать флайты') + '</button>';
+        html += '</div>';
+
+        bodyEl.innerHTML = html;
+        modalEl.classList.remove('hidden');
+    });
+}
+
+function closeFlightGenModal() {
+    var modalEl = document.getElementById('flight-gen-modal');
+    if (modalEl) modalEl.classList.add('hidden');
+}
+
+function confirmFlightGeneration(tnId) {
+    db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+        var tVal = sn.val();
+        if (!tVal || !tVal.registeredPlayers) return;
+
+        var players = Object.values(tVal.registeredPlayers);
+        var flightSize = parseInt(document.getElementById('fg-size').value) || 4;
+        var startTimeStr = document.getElementById('fg-time').value || '10:00';
+        var intervalMin = parseInt(document.getElementById('fg-interval').value) || 10;
+
+        var parts = startTimeStr.split(':');
+        var now = new Date(tVal.date || Date.now());
+        var baseStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0).getTime();
+
+        var tournamentTees = tVal.tees || ['wh'];
+        var tournamentFormat = (tVal.formats && tVal.formats[0]) || 'Stroke Play';
+
+        var flightsCreated = 0;
+        var pIdx = 0;
+
+        while (pIdx < players.length) {
+            var chunk = players.slice(pIdx, pIdx + flightSize);
+            pIdx += flightSize;
+
+            var flightStartTime = baseStartTime + (flightsCreated * intervalMin * 60000);
+            var roundPlayers = {};
+            var pOrder = [];
+
+            chunk.forEach(function(rp, idx) {
+                var pid = rp.uid || 'guest_' + Date.now() + '_' + idx;
+                var tee = rp.tee || tournamentTees[0];
+                var gender = rp.gender || 'men';
+                var exactHcp = rp.handicap || 0;
+                var fieldHcp = getFieldHcp(exactHcp, tee, gender);
+
+                roundPlayers[pid] = {
+                    name: rp.name || 'Player',
+                    exactHcp: exactHcp,
+                    fieldHcp: fieldHcp,
+                    gender: gender,
+                    scores: {},
+                    markerScores: {},
+                    submitted: {},
+                    markerSubmitted: {},
+                    verified: {}
+                };
+                pOrder.push(pid);
+            });
+
+            var markerAssignments = {};
+            for (var m = 0; m < pOrder.length; m++) {
+                var mId = pOrder[m];
+                var tId = pOrder[(m + 1) % pOrder.length];
+                roundPlayers[tId].markedBy = mId;
+                markerAssignments[mId] = { targetId: tId, targetName: roundPlayers[tId].name };
+            }
+
+            var roundData = {
+                mode: 'group',
+                tee: tournamentTees[0],
+                format: tournamentFormat,
+                startHole: 1,
+                startTime: flightStartTime,
+                players: roundPlayers,
+                markerAssignments: markerAssignments,
+                participantsList: pOrder,
+                status: 'active',
+                tournamentId: tnId,
+                createdAt: Date.now(),
+                createdBy: currentUser ? currentUser.uid : 'admin',
+                accessKey: 'group_key_' + Math.random().toString(36).substring(2)
+            };
+
+            db.ref('rounds').push(roundData);
+            flightsCreated++;
+        }
+
+        db.ref('tournaments/' + tnId + '/status').set('active');
+        toast((currentLang === 'en' ? '🎉 Created ' : '🎉 Создано ') + flightsCreated + (currentLang === 'en' ? ' active flights!' : ' активных флайтов!'), 'success');
+        closeFlightGenModal();
+        if (typeof loadTournaments === 'function') loadTournaments();
+        if (typeof loadAdmRounds === 'function') loadAdmRounds();
+    });
+}
+
+// ==========================================
+// ПОЛНЫЙ ЭКСПОРТ АРХИВА CSV И JSON БЭКАП
+// ==========================================
+function exportAllRoundsCSV() {
+    if (typeof db === 'undefined') return;
+    db.ref('rounds').once('value').then(function(sn) {
+        var data = sn.val() || {};
+        var rounds = Object.entries(data);
+        if (!rounds.length) { toast(currentLang === 'en' ? 'No rounds to export' : 'Нет раундов для экспорта', 'error'); return; }
+
+        var headers = ['Round ID', 'Date', 'Time', 'Mode', 'Format', 'Tee', 'Status', 'Player Name', 'HCP', 'Gross', 'ToPar', 'Net', 'Stableford'];
+        for (var h = 1; h <= 18; h++) headers.push('Hole ' + h);
+
+        var rows = [headers];
+
+        rounds.forEach(function(e) {
+            var rid = e[0], r = e[1];
+            var dateStr = fmtDate(r.createdAt);
+            var timeStr = fmtTime(r.startTime);
+
+            Object.values(r.players || {}).forEach(function(p) {
+                var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(r.startHole || 1));
+                var row = [
+                    rid,
+                    dateStr,
+                    timeStr,
+                    r.mode || 'group',
+                    r.format || 'Stroke',
+                    r.tee || 'wh',
+                    r.status || 'active',
+                    '"' + (p.name || '').replace(/"/g, '""') + '"',
+                    fmtExactHcp(p.exactHcp),
+                    stats.gross || 0,
+                    fmtScore(stats.toPar),
+                    stats.net || 0,
+                    stats.stablefordField || 0
+                ];
+                for (var h = 1; h <= 18; h++) {
+                    row.push(p.scores && p.scores[h] ? p.scores[h] : '');
+                }
+                rows.push(row);
+            });
+        });
+
+        var csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + rows.map(function(e) { return e.join(','); }).join('\n');
+        var encodedUri = encodeURI(csvContent);
+        var link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'Pestovo_Golf_Full_Archive_' + Date.now() + '.csv');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast('📄 Full CSV archive exported!', 'success');
+    });
+}
+
+function downloadJSONBackup() {
+    if (typeof db === 'undefined') return;
+    db.ref().once('value').then(function(sn) {
+        var fullData = sn.val() || {};
+        var jsonStr = JSON.stringify(fullData, null, 2);
+        var blob = new Blob([jsonStr], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'Pestovo_Database_Backup_' + Date.now() + '.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast('💾 Database JSON backup downloaded!', 'success');
+    });
 }

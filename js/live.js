@@ -61,6 +61,8 @@ function showGroupSetup() {
         teeSel.value = currentUserData.defaultTee;
     }
 
+    updateGroupTimingPreview();
+
     db.ref('users').once('value').then(function(sn) {
         registeredUsers = sn.val() || {};
         buildPlayerSlots();
@@ -176,10 +178,28 @@ function calcPlayerFieldHcp(idx) {
     if (fieldEl) fieldEl.value = fmtFieldHcp(field);
 }
 
+function updateGroupTimingPreview() {
+    var timeEl = document.getElementById('g-time');
+    var holeEl = document.getElementById('g-hole');
+    if (!timeEl || !holeEl) return;
+    var timeStr = timeEl.value;
+    var startHole = parseInt(holeEl.value) || 1;
+    if (!timeStr) return;
+    var parts = timeStr.split(':');
+    var now = new Date();
+    var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
+        parseInt(parts[0]), parseInt(parts[1]), 0);
+    var previewEl = document.getElementById('g-timing-preview');
+    if (previewEl) previewEl.innerHTML = buildTimingTable(startDate.getTime(), startHole);
+}
+
 document.addEventListener('change', function(e) {
     if (e.target.id === 'g-tee') {
         var count = parseInt(document.getElementById('g-count').value) || 2;
         for (var i = 1; i <= count; i++) calcPlayerFieldHcp(i);
+    }
+    if (e.target.id === 'g-time' || e.target.id === 'g-hole') {
+        updateGroupTimingPreview();
     }
 });
 

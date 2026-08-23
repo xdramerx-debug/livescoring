@@ -1048,7 +1048,50 @@ function holeOrder(sh){var o=[],h=parseInt(sh)||1;for(var i=0;i<18;i++){o.push(h
 function holeDeadline(startTime,startHole,targetHole){if(!startTime)return null;var tVal=0,h=parseInt(startHole)||1,c=0;while(c<18){tVal+=holeTiming(h);if(h===targetHole)break;h=h>=18?1:h+1;c++;}return startTime+tVal*60000;}
 function checkTiming(startTime,startHole,holeNum){var dl=holeDeadline(startTime,startHole,holeNum);if(!dl)return{status:'ok',diff:0,deadline:null};var now=Date.now(),d=Math.round((now-dl)/60000);if(d>5)return{status:'late',diff:d,deadline:dl};if(d>0)return{status:'warning',diff:d,deadline:dl};return{status:'ok',diff:d,deadline:dl};}
 function buildTimingNotice(st,sh,ch){var c=checkTiming(st,sh,ch);if(!c.deadline)return'';var dl=fmtTime(c.deadline),nw=fmtTime(Date.now());if(c.status==='late')return'<div class="timing-alert timing-late"><i class="fas fa-exclamation-triangle"></i><div><strong>' + (currentLang === 'en' ? 'Pace Lag!' : 'Отставание!') + '</strong><br>' + t('hole') + ' ' + ch + ': deadline ' + dl + ', now ' + nw + ' (' + c.diff + ' min)</div></div>';if(c.status==='warning')return'<div class="timing-alert timing-warn"><i class="fas fa-clock"></i><div><strong>' + (currentLang === 'en' ? 'Deadline Approaching' : 'Близко к дедлайну') + '</strong><br>' + t('hole') + ' ' + ch + ': ' + dl + '</div></div>';var a=Math.abs(c.diff);return'<div class="timing-alert timing-ok"><i class="fas fa-check-circle"></i><div>' + t('hole') + ' ' + ch + ': ' + (currentLang === 'en' ? 'On Pace' : 'в графике') + (a>0?' (' + (currentLang === 'en' ? 'buffer ' : 'запас ') + a + ' min)':'') + '</div></div>';}
-function buildTimingTable(st,sh){if(!st)return'';var html='<table class="scorecard"><tr><th>' + t('hole') + '</th><th>' + t('par') + '</th><th>Min</th><th>Deadline</th></tr>';var h=parseInt(sh)||1;for(var i=0;i<18;i++){var dl=holeDeadline(st,sh,h);html+='<tr><td style="font-weight:700">'+h+'</td><td>'+holePar(h)+'</td><td>'+holeTiming(h)+'</td><td>'+fmtTime(dl)+'</td></tr>';h=h>=18?1:h+1;}html+='</table>';return html;}
+function buildTimingTable(st, sh) {
+    if (!st) return '';
+    var startHole = parseInt(sh) || 1;
+
+    var hole9Target = (startHole + 8 > 18) ? (startHole + 8 - 18) : (startHole + 8);
+    var dl9 = holeDeadline(st, startHole, hole9Target);
+
+    var hole18Target = (startHole + 17 > 18) ? (startHole + 17 - 18) : (startHole + 17);
+    var dl18 = holeDeadline(st, startHole, hole18Target);
+
+    var totalMin = Math.round((dl18 - st) / 60000);
+    var hrs = Math.floor(totalMin / 60);
+    var mins = totalMin % 60;
+    var durationStr = hrs + (currentLang === 'en' ? 'h ' : 'ч ') + (mins < 10 ? '0' : '') + mins + (currentLang === 'en' ? 'm' : 'мин');
+
+    var startStr = fmtTime(st);
+    var turnStr = fmtTime(dl9);
+    var finishStr = fmtTime(dl18);
+
+    var html = '<div class="timing-summary-card">';
+    html += '<div class="timing-pills-row">';
+    html += '  <div class="timing-pill"><span class="tp-lbl">' + (currentLang === 'en' ? 'Start' : 'Старт') + '</span><span class="tp-val">' + startStr + '</span></div>';
+    html += '  <div class="timing-pill"><span class="tp-lbl">' + (currentLang === 'en' ? 'Turn (9h)' : '9 лунок') + '</span><span class="tp-val">' + turnStr + '</span></div>';
+    html += '  <div class="timing-pill tp-finish"><span class="tp-lbl">' + (currentLang === 'en' ? 'Finish (18h)' : 'Финиш') + '</span><span class="tp-val">' + finishStr + '</span></div>';
+    html += '</div>';
+    html += '<div class="timing-total-badge"><i class="fas fa-clock"></i> ' + (currentLang === 'en' ? 'Pace of Play: ' : 'Норматив раунда: ') + '<b>' + durationStr + '</b></div>';
+
+    html += '<details class="timing-details"><summary><i class="fas fa-list-ol"></i> ' + (currentLang === 'en' ? 'Hole-by-Hole Deadlines' : 'Детализация по 18 лункам') + '</summary>';
+    html += '<div class="timing-grid">';
+
+    var h = startHole;
+    for (var i = 0; i < 18; i++) {
+        var dl = holeDeadline(st, startHole, h);
+        var tMin = holeTiming(h);
+        html += '<div class="timing-grid-item">';
+        html += '  <span class="tg-hole">' + (currentLang === 'en' ? 'Hole ' : 'Л.') + h + ' <small>(P' + holePar(h) + '·' + tMin + 'm)</small></span>';
+        html += '  <span class="tg-time">' + fmtTime(dl) + '</span>';
+        html += '</div>';
+        h = (h >= 18) ? 1 : h + 1;
+    }
+    html += '</div></details>';
+    html += '</div>';
+    return html;
+}
 
 const ADMIN_LOGIN='admin';
 const ADMIN_PASS='pestovo2024';

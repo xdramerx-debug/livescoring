@@ -283,18 +283,55 @@ function loadTournaments() {
             var id = e[0], tVal = e[1];
             var formatsStr = (tVal.formats || []).join(', ') || '—';
             var teesStr = (tVal.tees || []).map(function(k) { return t('tee_' + k); }).join(', ') || '—';
+            var regPlayers = tVal.registeredPlayers || {};
+            var regCount = Object.keys(regPlayers).length;
 
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
             html += '<div style="flex:1;min-width:200px;">';
             html += '<strong style="color:var(--white);">' + (tVal.name || '—') + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-                    fmtDate(new Date(tVal.date).getTime()) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + '</div>';
+                    fmtDate(new Date(tVal.date).getTime()) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + ' · Participants: ' + regCount + '</div>';
             html += '</div>';
+            html += '<div style="display:flex;gap:6px;">';
+            if (regCount > 0) {
+                html += '<button class="btn btn-og btn-sm" onclick="exportTournamentRosterCSV(\'' + id + '\')"><i class="fas fa-file-csv"></i> CSV</button>';
+            }
             html += '<button class="btn btn-r btn-sm" onclick="deleteTn(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
-            html += '</div>';
+            html += '</div></div>';
         });
 
         el.innerHTML = html;
+    });
+}
+
+function exportTournamentRosterCSV(tnId) {
+    if (typeof db === 'undefined') return;
+    db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+        var tVal = sn.val();
+        if (!tVal || !tVal.registeredPlayers) return;
+
+        var rows = [['#', 'Name', 'Handicap', 'Gender', 'Tee', 'Registered Date']];
+        var idx = 1;
+        Object.values(tVal.registeredPlayers).forEach(function(p) {
+            rows.push([
+                idx++,
+                '"' + (p.name || '').replace(/"/g, '""') + '"',
+                p.handicap != null ? fmtExactHcp(p.handicap) : '—',
+                p.gender || 'men',
+                p.tee || 'wh',
+                fmtDate(p.registeredAt)
+            ]);
+        });
+
+        var csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + rows.map(function(e) { return e.join(','); }).join('\n');
+        var encodedUri = encodeURI(csvContent);
+        var link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'Tournament_' + (tVal.name || 'Roster').replace(/\s+/g, '_') + '_Participants.csv');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast('📄 CSV roster exported!', 'success');
     });
 }
 

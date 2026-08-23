@@ -567,10 +567,47 @@ function finishSolo() {
 
         toast(t('msg_round_finished'));
         setTimeout(function() {
-            if (confirm(currentLang === 'en' ? 'Download player scorecard?' : 'Скачать счётную карточку?')) downloadScorecard(soloRid);
-            window.location.href = 'players.html';
+            var fnName = (document.getElementById('s-firstname').value + ' ' + document.getElementById('s-lastname').value).trim() || 'Player';
+            if (confirm(currentLang === 'en' ? 'Download official PDF scorecard?' : 'Скачать официальную PDF-карточку?')) {
+                downloadOfficialScorecardPDF({
+                    playerName: fnName,
+                    markerName: 'Self (Solo)',
+                    createdAt: soloRound ? soloRound.startTime : Date.now(),
+                    tee: curTee,
+                    format: soloRound ? soloRound.format : 'Stroke Play',
+                    exactHandicap: document.getElementById('s-exact-hcp') ? document.getElementById('s-exact-hcp').value : 0,
+                    fieldHandicap: document.getElementById('s-field-hcp') ? document.getElementById('s-field-hcp').value : 0,
+                    scores: scores
+                });
+            }
+            window.location.href = 'leaderboard.html';
         }, 800);
     }
+}
+
+function triggerSoloVoiceInput() {
+    openVoiceAssistantModal(curHole, function(parsed) {
+        if (!parsed) return;
+        if (parsed.hole) curHole = parsed.hole;
+        if (parsed.score) curScore = parsed.score;
+        if (parsed.putts || parsed.fir || parsed.gir) {
+            if (!shotTracking[curHole]) shotTracking[curHole] = {};
+            if (parsed.putts) shotTracking[curHole].putts = parsed.putts;
+            if (parsed.fir) shotTracking[curHole].fir = parsed.fir;
+            if (parsed.gir) shotTracking[curHole].gir = parsed.gir;
+        }
+        renderCurrentHole();
+    });
+}
+
+function openActiveSoloAnalytics() {
+    var fnName = (document.getElementById('s-firstname').value + ' ' + document.getElementById('s-lastname').value).trim() || 'Player';
+    openRoundAnalyticsModal({
+        scores: scores,
+        shotTracking: shotTracking,
+        playerName: fnName,
+        createdAt: currentRoundStartTime || Date.now()
+    });
 }
 
 function callOfficial(type) {

@@ -499,6 +499,20 @@ function renderPlayHole() {
     var netBadge = document.getElementById('my-net-badge');
     if (netBadge) netBadge.textContent = 'Net: ' + net;
 
+    // Render Match Play Tracker if Match Play format
+    var trackerEl = document.getElementById('match-play-tracker-container');
+    if (trackerEl) {
+        if (curRoundData && (curRoundData.format === 'Match Play 1v1' || curRoundData.format === 'Match Play 2v2') && myTargetUid) {
+            var myScoresObj = (curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
+            var targetScoresObj = (curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].scores) || {};
+            var targetName = (curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].name) || 'Opponent';
+            var mStatus = calcMatchPlayStatus(myScoresObj, targetScoresObj, myPlayerName, targetName);
+            trackerEl.innerHTML = renderMatchPlayTrackerHTML(mStatus);
+        } else {
+            trackerEl.innerHTML = '';
+        }
+    }
+
     checkPlayVerification();
 }
 
@@ -813,8 +827,48 @@ function finishGroupRound() {
 
         toast(t('msg_round_finished'));
         setTimeout(function() {
-            if (confirm(currentLang === 'en' ? 'Download player scorecards?' : 'Скачать счётные карточки игроков?')) downloadScorecard(curRid);
+            if (confirm(currentLang === 'en' ? 'Download official PDF scorecard?' : 'Скачать официальную PDF-карточку?')) {
+                downloadOfficialScorecardPDF({
+                    playerName: myPlayerName,
+                    markerName: 'Group Marker',
+                    createdAt: curRoundData.createdAt,
+                    tee: curRoundData.tee,
+                    format: curRoundData.format,
+                    exactHandicap: (curRoundData.players[myUid] && curRoundData.players[myUid].exactHcp) || 0,
+                    fieldHandicap: (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0,
+                    scores: curRoundData.players[myUid] ? curRoundData.players[myUid].scores : {}
+                });
+            }
             window.location.href = 'leaderboard.html';
         }, 800);
     }
+}
+
+function triggerGroupVoiceInput(targetKey) {
+    openVoiceAssistantModal(playHole, function(parsed) {
+        if (!parsed) return;
+        if (parsed.hole) playHole = parsed.hole;
+        if (parsed.score) {
+            if (targetKey === 'my') myScore = parsed.score;
+            else if (targetKey === 'mark') targetScore = parsed.score;
+        }
+        if (parsed.putts || parsed.fir || parsed.gir) {
+            if (!myShotTracking[playHole]) myShotTracking[playHole] = {};
+            if (parsed.putts) myShotTracking[playHole].putts = parsed.putts;
+            if (parsed.fir) myShotTracking[playHole].fir = parsed.fir;
+            if (parsed.gir) myShotTracking[playHole].gir = parsed.gir;
+        }
+        updScoreDisplay('my', myScore);
+        updScoreDisplay('mark', targetScore);
+    });
+}
+
+function openActiveGroupAnalytics() {
+    var pScores = (curRoundData && curRoundData.players && curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
+    openRoundAnalyticsModal({
+        scores: pScores,
+        shotTracking: myShotTracking,
+        playerName: myPlayerName || 'Игрок',
+        createdAt: curRoundData ? curRoundData.createdAt : Date.now()
+    });
 }

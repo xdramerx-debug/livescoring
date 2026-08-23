@@ -173,7 +173,8 @@
             </div>
 
             <div class="hole-nav" id="play-holes-nav"></div>
-            <div id="play-verify-status" style="margin-top:16px;"></div>
+            <div id="match-play-tracker-container" style="margin-top:12px;"></div>
+            <div id="play-verify-status" style="margin-top:12px;"></div>
 
             <!-- БЛОК 1: МОЙ СЧЁТ -->
             <div class="scoring-dual-block my-score-block">
@@ -188,6 +189,12 @@
                         <button class="score-minus" onclick="adjScore('my', -1)">−</button>
                         <button class="score-par-btn" onclick="setParScore('my')">Par</button>
                         <button class="score-plus" onclick="adjScore('my', 1)">+</button>
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:10px;">
+                        <button class="btn btn-og btn-sm" style="flex:1;font-size:11px;padding:6px 4px;" onclick="triggerGroupVoiceInput('my')"><i class="fas fa-microphone"></i> <span data-i18n="voice_score_btn">Голос</span></button>
+                        <button class="btn btn-og btn-sm" style="flex:1;font-size:11px;padding:6px 4px;" onclick="open2DHoleMapModal(playHole, activeGroupData ? activeGroupData.tee : 'wh')"><i class="fas fa-map-location-dot"></i> <span data-i18n="hole_map_btn">2D Схема</span></button>
+                        <button class="btn btn-og btn-sm" style="flex:1;font-size:11px;padding:6px 4px;" onclick="openActiveGroupAnalytics()"><i class="fas fa-chart-pie"></i> <span data-i18n="analytics_title">Аналитика</span></button>
                     </div>
                 </div>
             </div>

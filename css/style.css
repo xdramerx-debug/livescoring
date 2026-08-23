@@ -360,6 +360,15 @@ select.form-input option{background:var(--card);}
     .weather-widget{padding:2px 7px;font-size:10px;gap:4px;border-radius:12px;}
     .weather-icon{font-size:11px;}
     .sun-mode-btn, .lang-btn{padding:4px 8px;font-size:11px;}
+    
+    /* PREVENT iOS SAFARI AUTO-ZOOM ON INPUT FOCUS */
+    .form-input, select.form-input, input[type="text"], input[type="number"], input[type="time"], input[type="password"], input[type="email"] {
+        font-size: 16px !important;
+    }
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
 }
 @media(max-width:480px){
     .container{padding:0 12px;}
@@ -394,18 +403,18 @@ select.form-input option{background:var(--card);}
     .hole-lbl{font-size:10px;}
     .hole-val{font-size:26px;}
     .hole-nav{grid-template-columns:repeat(6,1fr);gap:4px;margin:10px 0;}
-    .hole-btn{padding:8px 2px;font-size:12px;border-radius:6px;}
+    .hole-btn{padding:8px 2px;font-size:12px;border-radius:6px;min-height:38px;}
     
     .score-area{margin:12px 0;}
     .score-disp{font-size:52px;min-height:56px;}
-    .score-btns{gap:10px;margin:12px 0;}
-    .score-minus,.score-plus{width:52px;height:52px;font-size:22px;}
-    .score-par-btn{padding:6px 12px;font-size:12px;}
+    .score-btns{gap:12px;margin:12px 0;}
+    .score-minus,.score-plus{width:56px;height:56px;font-size:24px;}
+    .score-par-btn{padding:8px 14px;font-size:13px;min-height:44px;}
     
     .scoring-dual-block{padding:12px;margin-bottom:12px;border-radius:10px;}
     .dual-header h3{font-size:14px;}
     .list-item{padding:10px;font-size:12px;}
-    .modal-body{padding:20px 14px;border-radius:12px;max-height:88vh;}
+    .modal-body{padding:20px 14px;border-radius:12px;max-height:86vh;margin:0 10px;width:calc(100% - 20px);}
     .mode-cards{grid-template-columns:1fr;gap:12px;}
     .mode-card{padding:22px 16px;}
     .mode-icon{font-size:38px;margin-bottom:10px;}
@@ -415,6 +424,16 @@ select.form-input option{background:var(--card);}
     .weather-desc{display:none;}
     .sun-mode-btn, .lang-btn{padding:3px 6px;font-size:10px;}
     .sun-text{display:none;}
+    .btn-block{min-height:48px;border-radius:10px;}
+}
+
+@media(max-width:360px){
+    .nav-brand-text{font-size:12px;}
+    .weather-widget{padding:1px 4px;font-size:9px;}
+    .sun-mode-btn, .lang-btn{padding:2px 4px;font-size:9px;}
+    .hole-nav{grid-template-columns:repeat(6,1fr);gap:3px;}
+    .hole-box{padding:8px 8px;min-width:60px;}
+    .hole-val{font-size:22px;}
 }
 
 @media (display-mode: standalone), (display-mode: fullscreen) {

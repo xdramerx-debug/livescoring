@@ -90,7 +90,7 @@ function renderRound(id, r) {
         var holeInfo = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? (currentLang === 'en' ? 'Hole #' : 'лунка №') + p.currentHole : '—');
         
         return '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + p.pid + '\',\'' + id + '\')"><td class="lb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</td>' +
-            '<td><div style="display:flex;align-items:center;gap:8px;"><div class="lb-avatar">' + (p.name ? p.name.charAt(0) : '?') + '</div>' +
+            '<td><div style="display:flex;align-items:center;gap:8px;">' + fmtUserAvatar(p, 30) +
             '<div><span class="lb-name" style="color:var(--gold);">' + (p.name || '—') + '</span><div style="font-size:11px;color:var(--muted);">' + holeInfo + '</div></div></div></td>' +
             '<td class="lb-score ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</td>' +
             '<td style="text-align:center;">' + (p.gross || '—') + '</td>' +

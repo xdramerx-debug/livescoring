@@ -65,7 +65,7 @@ function loadPlayers() {
 
             html += '<div class="card" style="cursor:pointer;" onclick="showPlayer(\'' + id + '\')">' +
                 '<div style="display:flex;align-items:center;gap:14px;">' +
-                '<div class="lb-avatar" style="width:52px;height:52px;font-size:20px;">' + (u.name ? u.name.charAt(0) : '?') + '</div>' +
+                fmtUserAvatar(u, 52) +
                 '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                 'HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') +

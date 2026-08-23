@@ -56,6 +56,11 @@ function showGroupSetup() {
         timeInput.value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
     }
 
+    var teeSel = document.getElementById('g-tee');
+    if (teeSel && currentUserData && currentUserData.defaultTee) {
+        teeSel.value = currentUserData.defaultTee;
+    }
+
     db.ref('users').once('value').then(function(sn) {
         registeredUsers = sn.val() || {};
         buildPlayerSlots();

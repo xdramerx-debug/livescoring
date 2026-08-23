@@ -165,6 +165,15 @@ var I18N = {
         sort_rounds: 'По раундам', sort_gross: 'По лучшему Gross', sort_name: 'По имени',
         player_type: 'Тип игрока',
         sort_by: 'Сортировка',
+        edit_profile: 'Редактировать профиль',
+        save_profile: 'Сохранить профиль',
+        cancel_btn: 'Отмена',
+        avatar_label: 'Аватар профиля',
+        upload_photo: 'Загрузить фото',
+        choose_preset: 'Или выберите иконку',
+        phone_label: 'Телефон',
+        default_tee: 'Предпочитаемый ТИ по умолчанию',
+        msg_profile_saved: '✅ Профиль обновлён!',
         search_label: 'Поиск игрока',
         search_placeholder: 'Поиск по имени...',
         page_title_handicaps: 'Полевые гандикапы',
@@ -356,6 +365,15 @@ var I18N = {
         sort_rounds: 'By Rounds', sort_gross: 'By Best Gross', sort_name: 'By Name',
         player_type: 'Player Type',
         sort_by: 'Sort By',
+        edit_profile: 'Edit Profile',
+        save_profile: 'Save Profile',
+        cancel_btn: 'Cancel',
+        avatar_label: 'Profile Avatar',
+        upload_photo: 'Upload Photo',
+        choose_preset: 'Or choose icon preset',
+        phone_label: 'Phone Number',
+        default_tee: 'Default Preferred Tee',
+        msg_profile_saved: '✅ Profile updated!',
         search_label: 'Search Player',
         search_placeholder: 'Search by name...',
         page_title_handicaps: 'Course Handicaps',
@@ -847,15 +865,62 @@ function initNav(){
     loadPestovoWeather('nav-weather-container');
 }
 
-function navAuth(u,d){
-    var e=document.getElementById('nav-auth');
-    if(!e)return;
+function fmtUserAvatar(u, sizePx) {
+    sizePx = sizePx || 40;
+    if (u && u.avatar) {
+        if (u.avatar.startsWith('data:') || u.avatar.startsWith('http') || u.avatar.startsWith('img/')) {
+            return '<img src="' + u.avatar + '" alt="Avatar" class="user-avatar-img" style="width:' + sizePx + 'px;height:' + sizePx + 'px;">';
+        }
+        return '<div class="lb-avatar" style="width:' + sizePx + 'px;height:' + sizePx + 'px;font-size:' + Math.round(sizePx * 0.5) + 'px;">' + u.avatar + '</div>';
+    }
+    var initial = (u && u.name) ? u.name.charAt(0).toUpperCase() : '?';
+    return '<div class="lb-avatar" style="width:' + sizePx + 'px;height:' + sizePx + 'px;font-size:' + Math.round(sizePx * 0.45) + 'px;">' + initial + '</div>';
+}
+
+function handleAvatarFileUpload(fileInputEl, callback) {
+    if (!fileInputEl || !fileInputEl.files || !fileInputEl.files[0]) return;
+    var file = fileInputEl.files[0];
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var maxDim = 160;
+            var w = img.width;
+            var h = img.height;
+            if (w > h) {
+                if (w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+            } else {
+                if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            if (typeof callback === 'function') callback(dataUrl);
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+function navAuth(u, d) {
+    var e = document.getElementById('nav-auth');
+    if (!e) return;
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
     var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i> ' + (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : '<i class="far fa-sun"></i> ' + (currentLang === 'en' ? 'Sun' : 'Солнце')) + '</button>';
     var langBtn = '<button class="lang-btn" onclick="toggleLang()">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
 
-    if(u&&d)e.innerHTML='<div class="nav-user">'+sunBtn+langBtn+'<span class="nav-uname">'+(d.name||'')+'</span><button class="btn btn-og btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button></div>';
-    else e.innerHTML='<div style="display:flex;align-items:center;gap:6px;">'+sunBtn+langBtn+'<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';
+    if (u && d) {
+        var avatarMarkup = fmtUserAvatar(d, 30);
+        e.innerHTML = '<div class="nav-user" style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + u.uid + '\')">' +
+            sunBtn + langBtn + avatarMarkup +
+            '<span class="nav-uname">' + (d.name || '') + '</span>' +
+            '<button class="btn btn-og btn-sm" onclick="event.stopPropagation();doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
+            '</div>';
+    } else {
+        e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + '<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';
+    }
 }
 
 function doLogout(){auth.signOut().then(function(){window.location.href='auth.html';});}
@@ -1136,20 +1201,29 @@ function openPlayerProfileModal(playerId, roundId) {
             return;
         }
 
+        var isMe = (currentUser && currentUser.uid === playerId);
         var gIcon = u.gender === 'women' ? '👩' : '👨';
         var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">' + t('guest') + '</span>' : '';
 
         var roundsWord = currentLang === 'en' ? 'rounds' : 'раундов';
+        var teePillMarkup = u.defaultTee ? fmtTeePill(u.defaultTee) : '';
 
-        var html = '<div class="profile-head">';
-        html += '<div class="profile-avatar">' + (u.name ? u.name.charAt(0) : '?') + '</div>';
-        html += '<div><div class="profile-name">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</div>';
+        var html = '<div class="profile-head" style="margin-bottom:16px;">';
+        html += fmtUserAvatar(u, 80);
+        html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</div>';
         html += '<div class="profile-meta">';
         html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
+        if (teePillMarkup) html += '<span><i class="fas fa-golf-ball-tee"></i> Tee: ' + teePillMarkup + '</span>';
         html += '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' ' + roundsWord + '</span>';
         var hTag = currentLang === 'en' ? 'h' : 'л';
         if (u.bestGross) html += '<span><i class="fas fa-trophy"></i> Gross (18' + hTag + '): ' + u.bestGross + '</span>';
-        html += '</div></div></div>';
+        html += '</div>';
+
+        if (isMe) {
+            html += '<button class="btn btn-og btn-sm" style="margin-top:10px;" onclick="renderProfileEditForm(\'' + playerId + '\')"><i class="fas fa-user-pen"></i> ' + t('edit_profile') + '</button>';
+        }
+
+        html += '</div></div>';
 
         if (rd && rd.players && rd.players[playerId]) {
             var roundPlayer = rd.players[playerId];
@@ -1204,6 +1278,134 @@ function openPlayerProfileModal(playerId, roundId) {
 function closePModal() {
     var modalEl = document.getElementById('pmodal');
     if (modalEl) modalEl.classList.add('hidden');
+}
+
+// ==========================================
+// ФОРМА РЕДАКТИРОВАНИЯ И КАСТОМИЗАЦИИ ПРОФИЛЯ
+// ==========================================
+function renderProfileEditForm(playerId) {
+    var bodyEl = document.getElementById('pmodal-body');
+    if (!bodyEl || typeof db === 'undefined') return;
+
+    db.ref('users/' + playerId).once('value').then(function(sn) {
+        var u = sn.val() || {};
+
+        var firstName = u.firstName || (u.name ? u.name.split(' ')[0] : '');
+        var lastName = u.lastName || (u.name ? u.name.split(' ').slice(1).join(' ') : '');
+        var phone = u.phone || '';
+        var hcp = u.handicap != null ? fmtExactHcp(u.handicap) : '';
+        var gender = u.gender || 'men';
+        var defaultTee = u.defaultTee || 'wh';
+        var currentAvatar = u.avatar || '';
+
+        var html = '<h2 style="color:var(--gold);margin-bottom:16px;"><i class="fas fa-user-gear"></i> ' + t('edit_profile') + '</h2>';
+
+        // Avatar Section
+        html += '<div class="form-group"><label><i class="fas fa-image"></i> ' + t('avatar_label') + '</label>';
+        html += '<div style="display:flex;align-items:center;gap:16px;margin:10px 0;flex-wrap:wrap;">';
+        html += '<div id="edit-avatar-preview">' + fmtUserAvatar(u, 64) + '</div>';
+        html += '<input type="file" id="edit-avatar-file" accept="image/*" style="display:none;" onchange="onAvatarFileSelected(this)">';
+        html += '<button type="button" class="btn btn-og btn-sm" onclick="document.getElementById(\'edit-avatar-file\').click()"><i class="fas fa-upload"></i> ' + t('upload_photo') + '</button>';
+        html += '</div>';
+
+        // Presets
+        html += '<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">' + t('choose_preset') + ':</div>';
+        html += '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">';
+        var presets = ['⛳', '🏆', '🦅', '👑', '⭐', '👤'];
+        presets.forEach(function(icon) {
+            html += '<button type="button" class="preset-avatar-btn" onclick="selectPresetAvatar(\'' + icon + '\')">' + icon + '</button>';
+        });
+        html += '</div></div>';
+
+        // Form Inputs
+        html += '<div class="form-row">';
+        html += '<div class="form-group"><label>' + t('first_name') + '</label><input type="text" id="edit-fn" class="form-input" value="' + firstName + '"></div>';
+        html += '<div class="form-group"><label>' + t('last_name') + '</label><input type="text" id="edit-ln" class="form-input" value="' + lastName + '"></div>';
+        html += '</div>';
+
+        html += '<div class="form-row">';
+        html += '<div class="form-group"><label>' + t('exact_hcp') + '</label><input type="text" id="edit-hcp" class="form-input" value="' + hcp + '" placeholder="+2.4 / 12.4"></div>';
+        html += '<div class="form-group"><label>' + t('gender_label') + '</label><select id="edit-gender" class="form-input">' +
+                '<option value="men" ' + (gender === 'men' ? 'selected' : '') + '>' + t('men') + '</option>' +
+                '<option value="women" ' + (gender === 'women' ? 'selected' : '') + '>' + t('women') + '</option>' +
+                '</select></div>';
+        html += '</div>';
+
+        html += '<div class="form-row">';
+        html += '<div class="form-group"><label>' + t('phone_label') + '</label><input type="text" id="edit-phone" class="form-input" value="' + phone + '" placeholder="+7 (999) 000-00-00"></div>';
+        html += '<div class="form-group"><label>' + t('default_tee') + '</label><select id="edit-tee" class="form-input">' +
+                '<option value="bk" ' + (defaultTee === 'bk' ? 'selected' : '') + '>⬛ ' + t('tee_bk') + '</option>' +
+                '<option value="bl" ' + (defaultTee === 'bl' ? 'selected' : '') + '>🟦 ' + t('tee_bl') + '</option>' +
+                '<option value="wh" ' + (defaultTee === 'wh' ? 'selected' : '') + '>⬜ ' + t('tee_wh') + '</option>' +
+                '<option value="rd" ' + (defaultTee === 'rd' ? 'selected' : '') + '>🟥 ' + t('tee_rd') + '</option>' +
+                '</select></div>';
+        html += '</div>';
+
+        html += '<input type="hidden" id="edit-avatar-val" value="' + currentAvatar + '">';
+
+        html += '<div style="display:flex;gap:12px;margin-top:20px;">';
+        html += '<button type="button" class="btn btn-og" style="flex:1;" onclick="openPlayerProfileModal(\'' + playerId + '\')">' + t('cancel_btn') + '</button>';
+        html += '<button type="button" class="btn btn-g" style="flex:1;" onclick="saveUserProfileData(\'' + playerId + '\')"><i class="fas fa-save"></i> ' + t('save_profile') + '</button>';
+        html += '</div>';
+
+        bodyEl.innerHTML = html;
+    });
+}
+
+function selectPresetAvatar(icon) {
+    var valEl = document.getElementById('edit-avatar-val');
+    if (valEl) valEl.value = icon;
+    var preview = document.getElementById('edit-avatar-preview');
+    if (preview) preview.innerHTML = fmtUserAvatar({ avatar: icon, name: 'User' }, 64);
+}
+
+function onAvatarFileSelected(inp) {
+    handleAvatarFileUpload(inp, function(dataUrl) {
+        var valEl = document.getElementById('edit-avatar-val');
+        if (valEl) valEl.value = dataUrl;
+        var preview = document.getElementById('edit-avatar-preview');
+        if (preview) preview.innerHTML = fmtUserAvatar({ avatar: dataUrl, name: 'User' }, 64);
+    });
+}
+
+function saveUserProfileData(playerId) {
+    var fnInp = document.getElementById('edit-fn');
+    var lnInp = document.getElementById('edit-ln');
+    var hcpInp = document.getElementById('edit-hcp');
+    var genderInp = document.getElementById('edit-gender');
+    var phoneInp = document.getElementById('edit-phone');
+    var teeInp = document.getElementById('edit-tee');
+    var avatarInp = document.getElementById('edit-avatar-val');
+
+    var firstName = fnInp ? fnInp.value.trim() : '';
+    var lastName = lnInp ? lnInp.value.trim() : '';
+    var fullName = (lastName + ' ' + firstName).trim() || 'Player';
+    var exactHcp = hcpInp ? parseExactHcp(hcpInp.value) : 0;
+    var gender = genderInp ? genderInp.value : 'men';
+    var phone = phoneInp ? phoneInp.value.trim() : '';
+    var defaultTee = teeInp ? teeInp.value : 'wh';
+    var avatar = avatarInp ? avatarInp.value : '';
+
+    var updates = {
+        name: fullName,
+        firstName: firstName,
+        lastName: lastName,
+        handicap: exactHcp,
+        gender: gender,
+        phone: phone,
+        defaultTee: defaultTee,
+        avatar: avatar
+    };
+
+    db.ref('users/' + playerId).update(updates).then(function() {
+        if (currentUserData) {
+            Object.assign(currentUserData, updates);
+        }
+        toast(t('msg_profile_saved'), 'success');
+        openPlayerProfileModal(playerId);
+        if (typeof loadPlayers === 'function') loadPlayers();
+        if (typeof loadLB === 'function') loadLB();
+    });
 }
 
 // ==========================================

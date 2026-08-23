@@ -520,3 +520,30 @@ body.sun-mode .lb-table td:first-child {
     pointer-events: none;
 }
 
+/* USER AVATARS & PROFILE CUSTOMIZATION */
+.user-avatar-img {
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--gold);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    flex-shrink: 0;
+}
+.preset-avatar-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--input);
+    border: 2px solid var(--border);
+    font-size: 20px;
+    cursor: pointer;
+    transition: var(--t);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.preset-avatar-btn:hover, .preset-avatar-btn.selected {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.2);
+    transform: scale(1.1);
+}
+

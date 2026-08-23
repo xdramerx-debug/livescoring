@@ -72,6 +72,10 @@ function onAuthReady(u, d) {
             var gEl = document.getElementById('s-gender');
             if (gEl) gEl.value = d.gender;
         }
+        if (d.defaultTee) {
+            var teeEl = document.getElementById('s-tee');
+            if (teeEl) teeEl.value = d.defaultTee;
+        }
 
         calcSoloFieldHcp();
 

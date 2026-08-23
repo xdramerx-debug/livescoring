@@ -22,8 +22,9 @@ function loadSc() {
         document.getElementById('sc-body').classList.remove('hidden');
 
         var pl = scRound.players[scPid];
-        document.getElementById('sc-title').textContent = 'Счёт: ' + (pl.name || 'Игрок');
-        document.getElementById('sc-sub').textContent = (scRound.format || 'Stroke') + ' · ТИ: ' + (TEES[scRound.tee] || 'Белый');
+        var scorePrefix = currentLang === 'en' ? 'Score: ' : 'Счёт: ';
+        document.getElementById('sc-title').textContent = scorePrefix + (pl.name || t('player'));
+        document.getElementById('sc-sub').textContent = (scRound.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(scRound.tee);
         renderInfo();
 
         if (!scChanging) {
@@ -51,9 +52,11 @@ function loadSc() {
 function renderInfo() {
     var el = document.getElementById('sc-info');
     if (!el) return;
+    var startLbl = t('start');
+    var holeLbl = t('hole');
     el.innerHTML =
-        '<div><b>Старт:</b> ' + fmtTime(scRound.startTime) + ' · <b>С лунки:</b> ' + scRound.startHole + '</div>' +
-        '<div><b>ТИ:</b> ' + fmtTeePill(scRound.tee) + '</div>';
+        '<div><b>' + startLbl + ':</b> ' + fmtTime(scRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + scRound.startHole + '</div>' +
+        '<div><b>' + t('tee_select') + ':</b> ' + fmtTeePill(scRound.tee) + '</div>';
 }
 
 function buildHoles() {
@@ -111,14 +114,14 @@ function checkVerify() {
     var box = document.getElementById('sc-verify');
     var scores = scRound.players[scPid].scores || {};
     var ps = parseInt(scores[scHole]) || 0, ms = parseInt(scMarker[scHole]) || 0;
-    if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ Подтверждено маркером: ' + ps + ' уд.</div>';
-    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ НЕСОВПАДЕНИЕ! Вы: ' + ps + ' | Маркер: ' + ms + '</div>';
-    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">⏳ Ждём подтверждение маркера</div>';
+    if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (currentLang === 'en' ? 'Confirmed by marker: ' + ps : 'Подтверждено маркером: ' + ps + ' уд.') + '</div>';
+    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (currentLang === 'en' ? 'You: ' : 'Вы: ') + ps + ' | ' + (currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + ms + '</div>';
+    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">⏳ ' + (currentLang === 'en' ? 'Awaiting marker confirmation...' : 'Ждём подтверждение маркера') + '</div>';
     else box.innerHTML = '';
 }
 
 function saveSc() {
-    if (scScore < 1) { toast('Счёт должен быть ≥ 1', 'error'); return; }
+    if (scScore < 1) { toast(t('msg_score_min'), 'error'); return; }
     scChanging = true;
     var savedHole = scHole;
 
@@ -126,12 +129,12 @@ function saveSc() {
         var ms = parseInt(scMarker[savedHole]) || 0;
         if (ms >= 1 && ms === scScore) {
             db.ref('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole).set(true);
-            toast('✅ Подтверждено!'); vib([50, 50]);
+            toast(currentLang === 'en' ? '✅ Confirmed!' : '✅ Подтверждено!'); vib([50, 50]);
         } else if (ms >= 1 && ms !== scScore) {
             db.ref('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole).set(false);
-            toast('⚠️ Несовпадение!', 'error');
+            toast(currentLang === 'en' ? '⚠️ Mismatch!' : '⚠️ Несовпадение!', 'error');
         } else {
-            toast('⏳ Ждём маркера'); vib();
+            toast(currentLang === 'en' ? '⏳ Waiting for marker...' : '⏳ Ждём маркера'); vib();
         }
 
         var par = holePar(savedHole);
@@ -155,12 +158,19 @@ function renderCard() {
     var scores = scRound.players[scPid].scores || {};
     var verified = scRound.players[scPid].verified || {};
 
-    var html = '<div class="scorecard"><table><tr><th>Лунка</th>';
+    var holeHeader = t('hole');
+    var parHeader = t('par');
+    var scoreHeader = currentLang === 'en' ? 'Score' : 'Счёт';
+    var outHeader = t('out');
+    var inHeader = t('in_side');
+    var totalHeader = t('total');
+
+    var html = '<div class="scorecard"><table><tr><th>' + holeHeader + '</th>';
     for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
-    html += '<th>Аут</th></tr><tr class="row-par"><td>Пар</td>';
+    html += '<th>' + outHeader + '</th></tr><tr class="row-par"><td>' + parHeader + '</td>';
     var pO = 0;
     for (var i = 1; i <= 9; i++) { var pv = holePar(i); pO += pv; html += '<td>' + pv + '</td>'; }
-    html += '<td>' + pO + '</td></tr><tr><td>Счёт</td>';
+    html += '<td>' + pO + '</td></tr><tr><td>' + scoreHeader + '</td>';
     var gO = 0;
     for (var i = 1; i <= 9; i++) {
         var s = parseInt(scores[i]) || 0, cls = holeResClass(s, holePar(i)), v = '';
@@ -170,12 +180,12 @@ function renderCard() {
     }
     html += '<td class="row-total">' + (gO > 0 ? gO : '') + '</td></tr></table></div>';
 
-    html += '<div class="scorecard"><table><tr><th>Лунка</th>';
+    html += '<div class="scorecard"><table><tr><th>' + holeHeader + '</th>';
     for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
-    html += '<th>Ин</th><th>Итого</th></tr><tr class="row-par"><td>Пар</td>';
+    html += '<th>' + inHeader + '</th><th>' + totalHeader + '</th></tr><tr class="row-par"><td>' + parHeader + '</td>';
     var pI = 0;
     for (var i = 10; i <= 18; i++) { var pv = holePar(i); pI += pv; html += '<td>' + pv + '</td>'; }
-    html += '<td>' + pI + '</td><td>' + (pO + pI) + '</td></tr><tr><td>Счёт</td>';
+    html += '<td>' + pI + '</td><td>' + (pO + pI) + '</td></tr><tr><td>' + scoreHeader + '</td>';
     var gI = 0;
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(scores[i]) || 0, cls = holeResClass(s, holePar(i)), v = '';
@@ -188,10 +198,10 @@ function renderCard() {
 }
 
 function callOfficial(type) {
-    var typeName = type === 'referee' ? 'Судью' : 'Маршала';
-    if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + scHole + '?')) return;
+    var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
+    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + scHole + '?')) return;
 
-    var pName = (scRound && scRound.players[scPid]) ? scRound.players[scPid].name : 'Игрок';
+    var pName = (scRound && scRound.players[scPid]) ? scRound.players[scPid].name : 'Player';
 
     db.ref('alerts').push({
         roundId: scRid,
@@ -202,7 +212,7 @@ function callOfficial(type) {
         time: Date.now(),
         status: 'active'
     }).then(function() {
-        toast('🚨 ' + (type === 'referee' ? 'Судья' : 'Маршал') + ' вызван на лунку ' + scHole + '!', 'warn');
+        toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + scHole + '!', 'warn');
         vib([100, 50, 100]);
     });
 }

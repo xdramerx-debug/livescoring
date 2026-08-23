@@ -7,11 +7,11 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <meta name="apple-mobile-web-app-title" content="Pestovo">
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/logo.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/logo.png">
-    <title>Админ — Пестово</title>
+    <title data-i18n="nav_admin">Админ — Пестово</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -20,8 +20,8 @@
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
-            <img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'">
-            <span class="nav-brand-text">Пестово</span>
+            <img src="img/logo.png" alt="Pestovo" class="nav-logo" onerror="this.style.display='none'">
+            <span class="nav-brand-text" data-i18n="brand_name">Пестово</span>
         </a>
         <div id="nav-weather-container"></div>
     </div>
@@ -39,40 +39,40 @@
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-shield-halved"></i> Админ-панель</h1></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-shield-halved"></i> <span data-i18n="admin_panel">Админ-панель</span></h1></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
 
     <div id="admin-login" class="card" style="max-width:400px;margin:0 auto;">
-        <h2><i class="fas fa-lock"></i> Вход в админ-панель</h2>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+        <h2><i class="fas fa-lock"></i> <span data-i18n="admin_login_title">Вход в админ-панель</span></h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="admin_desc">
             Войдите с мастер-паролем или авторизуйтесь через аккаунт с правами администратора.
         </p>
-        <div class="form-group"><label>Логин</label><input type="text" id="adm-user" class="form-input" placeholder="admin"></div>
-        <div class="form-group"><label>Пароль</label><input type="password" id="adm-pass" class="form-input"></div>
+        <div class="form-group"><label data-i18n="username">Логин</label><input type="text" id="adm-user" class="form-input" placeholder="admin"></div>
+        <div class="form-group"><label data-i18n="password">Пароль</label><input type="password" id="adm-pass" class="form-input"></div>
         <div id="adm-error" class="form-err hidden"></div>
-        <button class="btn btn-g btn-block" onclick="adminLogin()">Войти</button>
+        <button class="btn btn-g btn-block" onclick="adminLogin()" data-i18n="login_btn">Войти</button>
     </div>
 
     <div id="admin-content" class="hidden">
         <div class="admin-tabs">
-            <button class="admin-tab active" onclick="switchTab('rounds',this)">Раунды</button>
-            <button class="admin-tab" onclick="switchTab('alerts',this)">Вызовы 🚨</button>
-            <button class="admin-tab" onclick="switchTab('tournaments',this)">Турниры</button>
-            <button class="admin-tab" onclick="switchTab('players',this)">Игроки и роли</button>
-            <button class="admin-tab" onclick="switchTab('data',this)">Данные</button>
+            <button class="admin-tab active" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
+            <button class="admin-tab" onclick="switchTab('alerts',this)" data-i18n="tab_alerts">Вызовы 🚨</button>
+            <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры</button>
+            <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
+            <button class="admin-tab" onclick="switchTab('data',this)" data-i18n="tab_data">Данные</button>
         </div>
 
         <div id="tab-rounds" class="admin-section">
-            <div class="card"><h2><i class="fas fa-flag"></i> Все раунды</h2><div id="adm-rounds"></div></div>
+            <div class="card"><h2><i class="fas fa-flag"></i> <span data-i18n="all_rounds">Все раунды</span></h2><div id="adm-rounds"></div></div>
         </div>
 
         <div id="tab-alerts" class="admin-section hidden">
             <div class="card">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-                    <h2 style="margin:0;"><i class="fas fa-bell"></i> Вызовы судей и маршалов</h2>
+                    <h2 style="margin:0;"><i class="fas fa-bell"></i> <span data-i18n="referee_marshal_calls">Вызовы судей и маршалов</span></h2>
                     <button class="btn btn-og btn-sm" id="btn-enable-notif" onclick="enableAdminNotifications()">
-                        <i class="fas fa-bell"></i> Включить Push-уведомления
+                        <i class="fas fa-bell"></i> <span data-i18n="enable_push_notifications">Включить Push-уведомления</span>
                     </button>
                 </div>
                 <div id="admin-alerts-list"></div>
@@ -81,36 +81,36 @@
 
         <div id="tab-tournaments" class="admin-section hidden">
             <div class="card">
-                <h2><i class="fas fa-trophy"></i> Создать турнир</h2>
+                <h2><i class="fas fa-trophy"></i> <span data-i18n="create_tournament">Создать турнир</span></h2>
                 <div class="form-row">
-                    <div class="form-group"><label>Название</label><input type="text" id="tn-name" class="form-input" placeholder="Чемпионат Пестово"></div>
-                    <div class="form-group"><label>Дата</label><input type="date" id="tn-date" class="form-input"></div>
+                    <div class="form-group"><label data-i18n="tournament_name_label">Название</label><input type="text" id="tn-name" class="form-input" data-i18n-placeholder="placeholder_tn_name" placeholder="Чемпионат Пестово"></div>
+                    <div class="form-group"><label data-i18n="tournament_date_label">Дата</label><input type="date" id="tn-date" class="form-input"></div>
                 </div>
                 <div class="form-group">
-                    <label>Доступные форматы</label>
+                    <label data-i18n="available_formats">Доступные форматы</label>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
                         <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-stroke" checked> Stroke Play</label>
                         <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-stbl"> Stableford</label>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Доступные ТИ</label>
+                    <label data-i18n="available_tees">Доступные ТИ</label>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-bk"> ⬛ Чёрный</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-bl"> 🟦 Синий</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-wh" checked> ⬜ Белый</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-rd"> 🟥 Красный</label>
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-bk" data-i18n="tee_opt_bk"> ⬛ Чёрный</label>
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-bl" data-i18n="tee_opt_bl"> 🟦 Синий</label>
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-wh" checked data-i18n="tee_opt_wh"> ⬜ Белый</label>
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-rd" data-i18n="tee_opt_rd"> 🟥 Красный</label>
                     </div>
                 </div>
-                <button class="btn btn-g" onclick="createTournament()"><i class="fas fa-save"></i> Создать</button>
+                <button class="btn btn-g" onclick="createTournament()"><i class="fas fa-save"></i> <span data-i18n="create_btn">Создать</span></button>
             </div>
-            <div class="card"><h2><i class="fas fa-list"></i> Турниры</h2><div id="tn-list"></div></div>
+            <div class="card"><h2><i class="fas fa-list"></i> <span data-i18n="all_tournaments">Турниры</span></h2><div id="tn-list"></div></div>
         </div>
 
         <div id="tab-players" class="admin-section hidden">
             <div class="card">
-                <h2><i class="fas fa-users-gear"></i> Управление игроками и ролями</h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+                <h2><i class="fas fa-users-gear"></i> <span data-i18n="manage_players_roles">Управление игроками и ролями</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="manage_players_sub">
                     Назначайте права Администратора другим игрокам. Администраторы получают полный доступ к этой панели.
                 </p>
                 <div id="adm-players"></div>
@@ -118,15 +118,15 @@
         </div>
 
         <div id="tab-data" class="admin-section hidden">
-            <div class="card"><h2><i class="fas fa-database"></i> Управление данными</h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Осторожно — действия необратимы.</p>
-                <button class="btn btn-r" onclick="clearRounds()"><i class="fas fa-trash"></i> Удалить все раунды</button>
+            <div class="card"><h2><i class="fas fa-database"></i> <span data-i18n="data_management">Управление данными</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="data_danger_sub">Осторожно — действия необратимы.</p>
+                <button class="btn btn-r" onclick="clearRounds()"><i class="fas fa-trash"></i> <span data-i18n="delete_all_rounds">Удалить все раунды</span></button>
             </div>
         </div>
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Гольф-клуб Пестово</p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>

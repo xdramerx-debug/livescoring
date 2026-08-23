@@ -7,11 +7,11 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <meta name="apple-mobile-web-app-title" content="Pestovo">
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/logo.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/logo.png">
-    <title>Оффлайн — Пестово</title>
+    <title data-i18n="offline_title">Оффлайн — Пестово</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -20,14 +20,15 @@
 <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;">
     <div style="max-width:500px;padding:40px;background:var(--card);border:1px solid var(--border);border-radius:20px;">
         <div style="font-size:64px;color:var(--gold);margin-bottom:20px;"><i class="fas fa-wifi"></i></div>
-        <h1 style="font-family:var(--ff);font-size:28px;color:var(--white);margin-bottom:12px;">Нет соединения</h1>
-        <p style="color:var(--muted);font-size:15px;margin-bottom:24px;line-height:1.6;">
+        <h1 style="font-family:var(--ff);font-size:28px;color:var(--white);margin-bottom:12px;" data-i18n="offline_title">Нет соединения</h1>
+        <p style="color:var(--muted);font-size:15px;margin-bottom:24px;line-height:1.6;" data-i18n="offline_desc">
             Проверьте интернет-соединение.<br>Ваши результаты сохраняются локально.
         </p>
-        <button class="btn btn-g" onclick="window.location.reload()"><i class="fas fa-refresh"></i> Обновить</button>
-        <a href="index.html" class="btn btn-og" style="margin-left:8px;"><i class="fas fa-home"></i> Главная</a>
+        <button class="btn btn-g" onclick="window.location.reload()"><i class="fas fa-refresh"></i> <span data-i18n="refresh_btn">Обновить</span></button>
+        <a href="index.html" class="btn btn-og" style="margin-left:8px;"><i class="fas fa-home"></i> <span data-i18n="nav_home">Главная</span></a>
     </div>
 </div>
+<script src="js/utils.js?v=2"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

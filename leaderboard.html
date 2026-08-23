@@ -7,11 +7,11 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <meta name="apple-mobile-web-app-title" content="Pestovo">
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/logo.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/logo.png">
-    <title>Лидерборд — Пестово</title>
+    <title data-i18n="nav_leaderboard">Лидерборд — Пестово</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -20,8 +20,8 @@
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
-            <img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'">
-            <span class="nav-brand-text">Пестово</span>
+            <img src="img/logo.png" alt="Pestovo" class="nav-logo" onerror="this.style.display='none'">
+            <span class="nav-brand-text" data-i18n="brand_name">Пестово</span>
         </a>
         <div id="nav-weather-container"></div>
     </div>
@@ -38,22 +38,22 @@
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-trophy"></i> Лидерборд</h1></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">Лидерборд</span></h1></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
     <div class="card"><div class="form-row">
-        <div class="form-group"><label>Статус</label><select id="lb-status" class="form-input" onchange="loadLB()">
-            <option value="all" selected>Все</option><option value="active">Live</option><option value="completed">Завершённые</option></select></div>
+        <div class="form-group"><label data-i18n="status_label">Статус</label><select id="lb-status" class="form-input" onchange="loadLB()">
+            <option value="all" selected data-i18n="status_all">Все</option><option value="active" data-i18n="status_active">Live</option><option value="completed" data-i18n="status_completed">Завершённые</option></select></div>
     </div></div>
     <div id="lb-container"><div class="loading"><div class="spinner"></div></div></div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Пестово</p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils.js?v=2"></script>
 <script src="js/leaderboard.js"></script>
 <script src="js/pwa.js"></script>
 </body>

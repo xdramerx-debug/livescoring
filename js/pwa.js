@@ -31,13 +31,13 @@ function updateOnlineStatus(){
     if(!indicator){indicator=document.createElement('div');indicator.id='online-indicator';indicator.className='online-indicator';document.body.appendChild(indicator);}
     if(isOnline){
         indicator.className='online-indicator online';
-        indicator.innerHTML='<i class="fas fa-wifi"></i> Онлайн';
-        if(!wasOnline){if(typeof toast==='function')toast('🌐 Соединение восстановлено','success');syncOfflineScores();}
+        indicator.innerHTML='<i class="fas fa-wifi"></i> ' + (currentLang === 'en' ? 'Online' : 'Онлайн');
+        if(!wasOnline){if(typeof toast==='function')toast(currentLang === 'en' ? '🌐 Connection restored' : '🌐 Соединение восстановлено','success');syncOfflineScores();}
         setTimeout(function(){if(indicator)indicator.classList.add('hide');},3000);
     }else{
         indicator.className='online-indicator offline';
-        indicator.innerHTML='<i class="fas fa-wifi-slash"></i> Оффлайн';
-        if(wasOnline)if(typeof toast==='function')toast('📡 Нет соединения','warn');
+        indicator.innerHTML='<i class="fas fa-wifi-slash"></i> ' + (currentLang === 'en' ? 'Offline' : 'Оффлайн');
+        if(wasOnline)if(typeof toast==='function')toast(currentLang === 'en' ? '📡 Connection lost' : '📡 Нет соединения','warn');
     }
 }
 
@@ -63,7 +63,7 @@ function syncOfflineScores(){
     });
     Promise.all(promises).then(function(){
         localStorage.removeItem(OFFLINE_KEY);
-        if(typeof toast==='function')toast('✅ Синхронизировано '+pending.length+' записей','success');
+        if(typeof toast==='function')toast((currentLang === 'en' ? '✅ Synced ' : '✅ Синхронизировано ') + pending.length + (currentLang === 'en' ? ' records' : ' записей'),'success');
     });
 }
 
@@ -89,7 +89,12 @@ function showInstallBanner(){
     if(localStorage.getItem('pwa_install_dismissed'))return;
     var banner=document.createElement('div');
     banner.id='install-banner';banner.className='install-banner';
-    banner.innerHTML='<div class="install-content"><div><strong>📱 Установить приложение</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">Работает оффлайн</div></div><div style="display:flex;gap:8px;"><button class="btn btn-og btn-sm" onclick="dismissInstall()">Позже</button><button class="btn btn-g btn-sm" onclick="installPWA()">Установить</button></div></div>';
+    var titleStr = currentLang === 'en' ? '📱 Install Web App' : '📱 Установить приложение';
+    var subStr = currentLang === 'en' ? 'Works offline' : 'Работает оффлайн';
+    var laterStr = currentLang === 'en' ? 'Later' : 'Позже';
+    var installStr = currentLang === 'en' ? 'Install' : 'Установить';
+
+    banner.innerHTML='<div class="install-content"><div><strong>' + titleStr + '</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">' + subStr + '</div></div><div style="display:flex;gap:8px;"><button class="btn btn-og btn-sm" onclick="dismissInstall()">' + laterStr + '</button><button class="btn btn-g btn-sm" onclick="installPWA()">' + installStr + '</button></div></div>';
     document.body.appendChild(banner);
     setTimeout(function(){banner.classList.add('show');},100);
 }
@@ -101,16 +106,23 @@ function showIOSInstallBanner() {
     var banner = document.createElement('div');
     banner.id = 'ios-install-banner';
     banner.className = 'ios-install-banner';
+
+    var headerStr = currentLang === 'en' ? '📱 Add to Home Screen (iPhone)' : '📱 Установить на экран «Домой» (iPhone)';
+    var subStr = currentLang === 'en' ? 'Required for Push notifications on iOS' : 'Необходимо для работы Push-уведомлений на iOS';
+    var step1Str = currentLang === 'en' ? 'Tap <strong>"Share"</strong> button <i class="fas fa-arrow-up-from-bracket" style="color:var(--gold);"></i> in Safari' : 'Нажмите кнопку <strong>«Поделиться»</strong> <i class="fas fa-arrow-up-from-bracket" style="color:var(--gold);"></i> в Safari';
+    var step2Str = currentLang === 'en' ? 'Select <strong>"Add to Home Screen"</strong> <i class="far fa-plus-square" style="color:var(--gold);"></i>' : 'Выберите <strong>«На экран "Домой"»</strong> <i class="far fa-plus-square" style="color:var(--gold);"></i>';
+    var step3Str = currentLang === 'en' ? 'Tap <strong>"Add"</strong> and launch icon from Home Screen' : 'Нажмите <strong>«Добавить»</strong> и запустите иконку с экрана';
+
     banner.innerHTML =
         '<div class="ios-install-header">' +
-        '<img src="img/logo.png" alt="Пестово" class="ios-install-logo">' +
-        '<div><strong>📱 Установить на экран «Домой» (iPhone)</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">Необходимо для работы Push-уведомлений на iOS</div></div>' +
+        '<img src="img/logo.png" alt="Pestovo" class="ios-install-logo">' +
+        '<div><strong>' + headerStr + '</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">' + subStr + '</div></div>' +
         '<button class="ios-install-close" onclick="dismissIOSInstall()">&times;</button>' +
         '</div>' +
         '<div class="ios-install-steps">' +
-        '<div class="ios-step"><span class="ios-num">1</span> Нажмите кнопку <strong>«Поделиться»</strong> <i class="fas fa-arrow-up-from-bracket" style="color:var(--gold);"></i> в Safari</div>' +
-        '<div class="ios-step"><span class="ios-num">2</span> Выберите <strong>«На экран "Домой"»</strong> <i class="far fa-plus-square" style="color:var(--gold);"></i></div>' +
-        '<div class="ios-step"><span class="ios-num">3</span> Нажмите <strong>«Добавить»</strong> и запустите иконку с экрана</div>' +
+        '<div class="ios-step"><span class="ios-num">1</span> ' + step1Str + '</div>' +
+        '<div class="ios-step"><span class="ios-num">2</span> ' + step2Str + '</div>' +
+        '<div class="ios-step"><span class="ios-num">3</span> ' + step3Str + '</div>' +
         '</div>';
 
     document.body.appendChild(banner);
@@ -128,17 +140,17 @@ setInterval(function(){if(navigator.onLine)syncOfflineScores();},60000);
 // ==========================================
 function requestNotificationPermission(callback) {
     if (!('Notification' in window)) {
-        if (typeof toast === 'function') toast('Уведомления поддерживаются при добавлении приложения на экран «Домой»', 'warn');
+        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Notifications supported when added to Home Screen' : 'Уведомления поддерживаются при добавлении приложения на экран «Домой»', 'warn');
         if (typeof callback === 'function') callback(false);
         return;
     }
     Notification.requestPermission().then(function(perm) {
         if (perm === 'granted') {
-            if (typeof toast === 'function') toast('🔔 Пуш-уведомления вызовов включены!', 'success');
+            if (typeof toast === 'function') toast(currentLang === 'en' ? '🔔 Call push notifications enabled!' : '🔔 Пуш-уведомления вызовов включены!', 'success');
             initBackgroundAlertListener();
             if (typeof callback === 'function') callback(true);
         } else {
-            if (typeof toast === 'function') toast('Уведомления отклонены браузером', 'warn');
+            if (typeof toast === 'function') toast(currentLang === 'en' ? 'Notifications declined by browser' : 'Уведомления отклонены браузером', 'warn');
             if (typeof callback === 'function') callback(false);
         }
     });
@@ -182,8 +194,8 @@ function initBackgroundAlertListener() {
             if (!globalAlertsKnown[id]) {
                 globalAlertsKnown[id] = true;
                 if (!isFirstRun) {
-                    var title = a.type === 'referee' ? '🚨 ВЫЗОВ СУДЬИ!' : '🚨 ВЫЗОВ МАРШАЛА!';
-                    var body = 'Лунка №' + a.hole + ' | Игрок: ' + (a.playerName || 'Игрок') + (typeof fmtTime === 'function' ? ' (' + fmtTime(a.time) + ')' : '');
+                    var title = a.type === 'referee' ? (currentLang === 'en' ? '🚨 REFEREE CALL!' : '🚨 ВЫЗОВ СУДЬИ!') : (currentLang === 'en' ? '🚨 MARSHAL CALL!' : '🚨 ВЫЗОВ МАРШАЛА!');
+                    var body = (currentLang === 'en' ? 'Hole #' : 'Лунка №') + a.hole + ' | ' + (currentLang === 'en' ? 'Player: ' : 'Игрок: ') + (a.playerName || 'Player') + (typeof fmtTime === 'function' ? ' (' + fmtTime(a.time) + ')' : '');
                     showPushNotification(title, body, 'admin.html');
                 }
             }

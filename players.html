@@ -7,11 +7,11 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <meta name="apple-mobile-web-app-title" content="Pestovo">
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/logo.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/logo.png">
-    <title>Игроки — Пестово</title>
+    <title data-i18n="nav_players">Игроки — Пестово</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -20,8 +20,8 @@
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
-            <img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'">
-            <span class="nav-brand-text">Пестово</span>
+            <img src="img/logo.png" alt="Pestovo" class="nav-logo" onerror="this.style.display='none'">
+            <span class="nav-brand-text" data-i18n="brand_name">Пестово</span>
         </a>
         <div id="nav-weather-container"></div>
     </div>
@@ -38,28 +38,28 @@
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-users"></i> Игроки</h1></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-users"></i> <span data-i18n="nav_players">Игроки</span></h1></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
     <div class="card">
         <div class="form-row">
-            <div class="form-group"><label>Тип игрока</label>
+            <div class="form-group"><label data-i18n="player_type">Тип игрока</label>
                 <select id="filter-type" class="form-input" onchange="loadPlayers()">
-                    <option value="all">Все игроки</option>
-                    <option value="registered">Только зарегистрированные</option>
-                    <option value="guests">Только гости</option>
+                    <option value="all" data-i18n="all_players">Все игроки</option>
+                    <option value="registered" data-i18n="type_registered">Только зарегистрированные</option>
+                    <option value="guests" data-i18n="type_guests">Только гости</option>
                 </select>
             </div>
-            <div class="form-group"><label>Пол</label>
+            <div class="form-group"><label data-i18n="gender_label">Пол</label>
                 <select id="filter-gender" class="form-input" onchange="loadPlayers()">
-                    <option value="all">Все</option>
-                    <option value="men">Мужчины</option>
-                    <option value="women">Женщины</option>
+                    <option value="all" data-i18n="all_genders">Все</option>
+                    <option value="men" data-i18n="men_plural">Мужчины</option>
+                    <option value="women" data-i18n="women_plural">Женщины</option>
                 </select>
             </div>
-            <div class="form-group"><label>Сортировка</label>
+            <div class="form-group"><label data-i18n="sort_by">Сортировка</label>
                 <select id="sort-by" class="form-input" onchange="loadPlayers()">
-                    <option value="rounds">По раундам</option>
+                    <option value="rounds" data-i18n="sort_rounds">По раундам</option>
                     <option value="hcp-asc">HCP ↑</option>
                     <option value="hcp-desc">HCP ↓</option>
                 </select>
@@ -80,12 +80,12 @@
     </div>
 </div>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Пестово</p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils.js?v=2"></script>
 <script src="js/players.js"></script>
 <script src="js/pwa.js"></script>
 </body>

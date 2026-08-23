@@ -18,8 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var sel = document.getElementById('s-hole');
     if (sel) {
+        sel.innerHTML = '';
         for (var i = 1; i <= 18; i++) {
-            sel.innerHTML += '<option value="' + i + '">Лунка ' + i + ' (Пар ' + holePar(i) + ')</option>';
+            sel.innerHTML += '<option value="' + i + '">' + t('hole') + ' ' + i + ' (' + t('par') + ' ' + holePar(i) + ')</option>';
         }
     }
 
@@ -33,6 +34,23 @@ document.addEventListener('DOMContentLoaded', function() {
     if (timeEl) timeEl.addEventListener('change', updateTimingPreview);
     if (sel) sel.addEventListener('change', updateTimingPreview);
 });
+
+function initSoloView() {
+    if (soloRid) {
+        loadExistingSolo();
+    } else {
+        var sel = document.getElementById('s-hole');
+        if (sel) {
+            var curVal = sel.value;
+            sel.innerHTML = '';
+            for (var i = 1; i <= 18; i++) {
+                sel.innerHTML += '<option value="' + i + '">' + t('hole') + ' ' + i + ' (' + t('par') + ' ' + holePar(i) + ')</option>';
+            }
+            if (curVal) sel.value = curVal;
+        }
+        updateTimingPreview();
+    }
+}
 
 function onAuthReady(u, d) {
     navAuth(u, d);
@@ -104,10 +122,10 @@ function startSolo() {
     var gender = document.getElementById('s-gender').value;
     var exactHcpStr = hcpInp.value;
 
-    if (!firstName) { fnInp.classList.add('is-invalid'); toast('Укажите имя', 'error'); return; }
-    if (!lastName) { lnInp.classList.add('is-invalid'); toast('Укажите фамилию', 'error'); return; }
-    if (!timeStr) { timeInp.classList.add('is-invalid'); toast('Укажите время старта', 'error'); return; }
-    if (!exactHcpStr && exactHcpStr !== '0') { hcpInp.classList.add('is-invalid'); toast('Укажите точный гандикап', 'error'); return; }
+    if (!firstName) { fnInp.classList.add('is-invalid'); toast(t('msg_name_req'), 'error'); return; }
+    if (!lastName) { lnInp.classList.add('is-invalid'); toast(t('msg_name_req'), 'error'); return; }
+    if (!timeStr) { timeInp.classList.add('is-invalid'); toast(t('msg_start_time_req'), 'error'); return; }
+    if (!exactHcpStr && exactHcpStr !== '0') { hcpInp.classList.add('is-invalid'); toast(t('msg_exact_hcp_req'), 'error'); return; }
 
     var parsedExact = parseExactHcp(exactHcpStr);
     var fieldHcp = getFieldHcp(parsedExact, tee, gender);
@@ -155,7 +173,7 @@ function startSolo() {
     };
 
     ref.set(roundData).then(function() {
-        toast('🏌️ Раунд начат!');
+        toast(t('msg_round_started'));
         window.location.href = 'solo.html?round=' + soloRid;
     });
 }
@@ -163,7 +181,7 @@ function startSolo() {
 function loadExistingSolo() {
     db.ref('rounds/' + soloRid).on('value', function(sn) {
         soloRound = sn.val();
-        if (!soloRound) { toast('Раунд не найден', 'error'); return; }
+        if (!soloRound) { toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден', 'error'); return; }
 
         document.getElementById('setup').classList.add('hidden');
 
@@ -227,10 +245,15 @@ function renderRoundInfo(targetId) {
     if (!uid || !soloRound || !soloRound.players) return;
     var p = soloRound.players[uid];
     if (!p) return;
-    var guestBadge = soloRound.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">ГОСТЬ</span>' : '';
+    var guestBadge = soloRound.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">' + t('guest') + '</span>' : '';
+
+    var courseHcpLbl = currentLang === 'en' ? 'Course' : 'пол.';
+    var startLbl = t('start');
+    var holeLbl = t('hole');
+
     el.innerHTML =
-        '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || 'Игрок') + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (пол. ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
-        '<div><b>Старт:</b> ' + fmtTime(soloRound.startTime) + ' · <b>С лунки:</b> ' + soloRound.startHole + ' · <b>ТИ:</b> ' + fmtTeePill(soloRound.tee) + ' · <b>Формат:</b> ' + soloRound.format + '</div>';
+        '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || t('player')) + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
+        '<div><b>' + startLbl + ':</b> ' + fmtTime(soloRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + soloRound.startHole + ' · <b>' + t('tee_select') + ':</b> ' + fmtTeePill(soloRound.tee) + ' · <b>' + t('format_select') + ':</b> ' + soloRound.format + '</div>';
 }
 
 function buildHoles() {
@@ -305,10 +328,10 @@ function updateDisplay() {
 
 function saveSolo(isAuto) {
     if (!canEditSolo) {
-        if (!isAuto) toast('Редактирование запрещено', 'error');
+        if (!isAuto) toast(t('msg_edit_disabled'), 'error');
         return;
     }
-    if (curScore < 1) { if (!isAuto) toast('Счёт должен быть ≥ 1', 'error'); return; }
+    if (curScore < 1) { if (!isAuto) toast(t('msg_score_min'), 'error'); return; }
 
     isChanging = true;
     var savedHole = curHole;
@@ -359,7 +382,7 @@ function showTimingNotice(hole) {
     if (el) {
         el.innerHTML = buildTimingNotice(soloRound.startTime, soloRound.startHole, hole);
         var check = checkTiming(soloRound.startTime, soloRound.startHole, hole);
-        if (check.status === 'late') toast('⏰ Отставание ' + check.diff + ' мин.!', 'warn');
+        if (check.status === 'late') toast((currentLang === 'en' ? '⏰ Pace Lag ' : '⏰ Отставание ') + check.diff + ' min!', 'warn');
     }
 }
 
@@ -375,21 +398,27 @@ function renderLiveStats(targetId) {
 
     renderHoleProgressBar('solo-progress-bar', stats.holesPlayed);
 
+    var playedLbl = currentLang === 'en' ? 'Completed' : 'Пройдено';
+    var projLbl = currentLang === 'en' ? 'Projected' : 'Прогноз';
+
     var html = '<div class="stats-grid">';
-    html += '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + stats.holesPlayed + '/18</div><div class="stat-l">Пройдено</div></div>';
+    html += '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + stats.holesPlayed + '/18</div><div class="stat-l">' + playedLbl + '</div></div>';
     html += '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + (stats.gross || '—') + '</div><div class="stat-l">Gross</div></div>';
     html += '<div class="stat"><i class="fas fa-chart-line"></i><div class="stat-n ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</div><div class="stat-l">± Par</div></div>';
     html += '<div class="stat"><i class="fas fa-calculator"></i><div class="stat-n">' + (stats.net || '—') + '</div><div class="stat-l">Net</div></div>';
-    html += '<div class="stat"><i class="fas fa-star"></i><div class="stat-n" style="color:var(--gold);">' + stats.stablefordField + '</div><div class="stat-l">Stblfd (пол.)</div></div>';
-    html += '<div class="stat"><i class="fas fa-star-half-alt"></i><div class="stat-n" style="color:var(--muted);">' + stats.stablefordExact + '</div><div class="stat-l">Stblfd (игр.)</div></div>';
+    html += '<div class="stat"><i class="fas fa-star"></i><div class="stat-n" style="color:var(--gold);">' + stats.stablefordField + '</div><div class="stat-l">' + t('stbl_field') + '</div></div>';
+    html += '<div class="stat"><i class="fas fa-star-half-alt"></i><div class="stat-n" style="color:var(--muted);">' + stats.stablefordExact + '</div><div class="stat-l">' + t('stbl_exact') + '</div></div>';
 
     if (stats.holesRemaining > 0 && stats.holesPlayed > 0) {
-        html += '<div class="stat"><i class="fas fa-chart-bar"></i><div class="stat-n">' + (stats.projected || '—') + '</div><div class="stat-l">Прогноз</div></div>';
+        html += '<div class="stat"><i class="fas fa-chart-bar"></i><div class="stat-n">' + (stats.projected || '—') + '</div><div class="stat-l">' + projLbl + '</div></div>';
     }
     html += '</div>';
 
     if (stats.holesRemaining > 0) {
-        html += '<p style="color:var(--muted);font-size:12px;margin-top:12px;text-align:center;">Осталось: ' + stats.holesRemaining + ' лунок · Прогноз при игре в пар</p>';
+        var subText = currentLang === 'en' 
+            ? 'Remaining: ' + stats.holesRemaining + ' holes · Projected score at par' 
+            : 'Осталось: ' + stats.holesRemaining + ' лунок · Прогноз при игре в пар';
+        html += '<p style="color:var(--muted);font-size:12px;margin-top:12px;text-align:center;">' + subText + '</p>';
     }
 
     el.innerHTML = html;
@@ -406,16 +435,24 @@ function renderMiniCard(targetId) {
     var fieldHcp = p.fieldHcp || 0;
     var exactHcp = p.exactHcp || 0;
 
+    var courseHcpLbl = currentLang === 'en' ? 'Course' : 'пол.';
+    var holeHeader = t('hole');
+    var parHeader = t('par');
+    var scoreHeader = currentLang === 'en' ? 'Score' : 'Счёт';
+    var outHeader = t('out');
+    var inHeader = t('in_side');
+    var totalHeader = t('total');
+
     var html = '<div style="margin-bottom:12px;font-size:14px;color:var(--gold);font-weight:700;cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')">' +
-        '<i class="fas fa-user-circle"></i> ' + (p.name || 'Игрок') + ' · HCP: ' + fmtExactHcp(exactHcp) + ' (пол. ' + fmtFieldHcp(fieldHcp) + ')' +
+        '<i class="fas fa-user-circle"></i> ' + (p.name || t('player')) + ' · HCP: ' + fmtExactHcp(exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + ')' +
         '</div>';
 
-    html += '<div class="scorecard" style="margin-bottom:12px;"><table><tr><th>Лунка</th>';
+    html += '<div class="scorecard" style="margin-bottom:12px;"><table><tr><th>' + holeHeader + '</th>';
     for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
-    html += '<th>Аут</th></tr><tr class="row-par"><td>Пар</td>';
+    html += '<th>' + outHeader + '</th></tr><tr class="row-par"><td>' + parHeader + '</td>';
     var pO = 0;
     for (var i = 1; i <= 9; i++) { var pv = holePar(i); pO += pv; html += '<td>' + pv + '</td>'; }
-    html += '<td>' + pO + '</td></tr><tr><td>Счёт</td>';
+    html += '<td>' + pO + '</td></tr><tr><td>' + scoreHeader + '</td>';
     var gO = 0;
     for (var i = 1; i <= 9; i++) {
         var s = parseInt(scores[i]) || 0, par = holePar(i), cls = holeResClass(s, par);
@@ -424,7 +461,7 @@ function renderMiniCard(targetId) {
     }
     html += '<td class="row-total"><b>' + (gO > 0 ? gO : '') + '</b></td></tr>';
 
-    html += '<tr><td>Stblfd пол.</td>';
+    html += '<tr><td>Stblfd (' + courseHcpLbl + ')</td>';
     var sfO = 0;
     for (var i = 1; i <= 9; i++) {
         var s = parseInt(scores[i]) || 0;
@@ -433,7 +470,7 @@ function renderMiniCard(targetId) {
     }
     html += '<td class="row-total"><b>' + sfO + '</b></td></tr>';
 
-    html += '<tr><td>Stblfd игр.</td>';
+    html += '<tr><td>Stblfd (playing)</td>';
     var seO = 0;
     for (var i = 1; i <= 9; i++) {
         var s = parseInt(scores[i]) || 0;
@@ -442,12 +479,12 @@ function renderMiniCard(targetId) {
     }
     html += '<td class="row-total"><b>' + seO + '</b></td></tr></table></div>';
 
-    html += '<div class="scorecard"><table><tr><th>Лунка</th>';
+    html += '<div class="scorecard"><table><tr><th>' + holeHeader + '</th>';
     for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
-    html += '<th>Ин</th><th>Итого</th></tr><tr class="row-par"><td>Пар</td>';
+    html += '<th>' + inHeader + '</th><th>' + totalHeader + '</th></tr><tr class="row-par"><td>' + parHeader + '</td>';
     var pI = 0;
     for (var i = 10; i <= 18; i++) { var pv = holePar(i); pI += pv; html += '<td>' + pv + '</td>'; }
-    html += '<td>' + pI + '</td><td>' + (pO + pI) + '</td></tr><tr><td>Счёт</td>';
+    html += '<td>' + pI + '</td><td>' + (pO + pI) + '</td></tr><tr><td>' + scoreHeader + '</td>';
     var gI = 0;
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(scores[i]) || 0, par = holePar(i), cls = holeResClass(s, par);
@@ -456,7 +493,7 @@ function renderMiniCard(targetId) {
     }
     html += '<td class="row-total"><b>' + (gI > 0 ? gI : '') + '</b></td><td class="row-total"><b>' + ((gO + gI) > 0 ? (gO + gI) : '') + '</b></td></tr>';
 
-    html += '<tr><td>Stblfd пол.</td>';
+    html += '<tr><td>Stblfd (' + courseHcpLbl + ')</td>';
     var sfI = 0;
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(scores[i]) || 0;
@@ -465,7 +502,7 @@ function renderMiniCard(targetId) {
     }
     html += '<td class="row-total"><b>' + sfI + '</b></td><td class="row-total"><b>' + (sfO + sfI) + '</b></td></tr>';
 
-    html += '<tr><td>Stblfd игр.</td>';
+    html += '<tr><td>Stblfd (playing)</td>';
     var seI = 0;
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(scores[i]) || 0;
@@ -479,7 +516,7 @@ function renderMiniCard(targetId) {
 
 function finishSolo() {
     if (!canEditSolo) return;
-    if (!confirm('Завершить раунд?')) return;
+    if (!confirm(t('msg_finish_confirm'))) return;
     db.ref('rounds/' + soloRid + '/status').set('completed');
     db.ref('rounds/' + soloRid + '/completedAt').set(Date.now());
 
@@ -488,20 +525,20 @@ function finishSolo() {
         if (r) saveHistory(soloRid, r);
     });
 
-    toast('🏁 Раунд завершён!');
+    toast(t('msg_round_finished'));
     setTimeout(function() {
-        if (confirm('Скачать счётную карточку?')) downloadScorecard(soloRid);
+        if (confirm(currentLang === 'en' ? 'Download player scorecard?' : 'Скачать счётную карточку?')) downloadScorecard(soloRid);
         window.location.href = 'players.html';
     }, 1000);
 }
 
 function callOfficial(type) {
     if (!canEditSolo) return;
-    var typeName = type === 'referee' ? 'Судью' : 'Маршала';
-    if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + curHole + '?')) return;
+    var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
+    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + curHole + '?')) return;
 
     var uid = getPlayerId();
-    var pName = (soloRound && soloRound.players && soloRound.players[uid]) ? soloRound.players[uid].name : 'Игрок';
+    var pName = (soloRound && soloRound.players && soloRound.players[uid]) ? soloRound.players[uid].name : 'Player';
 
     db.ref('alerts').push({
         roundId: soloRid,
@@ -512,7 +549,7 @@ function callOfficial(type) {
         time: Date.now(),
         status: 'active'
     }).then(function() {
-        toast('🚨 ' + (type === 'referee' ? 'Судья' : 'Маршал') + ' вызван на лунку ' + curHole + '!', 'warn');
+        toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + curHole + '!', 'warn');
         vib([100, 50, 100]);
     });
 }

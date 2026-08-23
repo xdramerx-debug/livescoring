@@ -100,6 +100,8 @@ function buildPlayerSlots() {
     var el = document.getElementById('player-slots');
     var html = '<h3 style="margin-top:16px;color:var(--gold);"><i class="fas fa-user-plus"></i> ' + t('players_label') + '</h3>';
 
+    var namePlaceholder = currentLang === 'en' ? 'John Doe' : 'Иван Петров';
+
     for (var i = 1; i <= count; i++) {
         html += '<div class="card" style="background:var(--input);padding:16px;margin-bottom:12px;">';
         html += '<h3 style="color:var(--gold);font-size:14px;">' + t('player') + ' #' + i + '</h3>';
@@ -117,7 +119,7 @@ function buildPlayerSlots() {
         html += '</select></div>';
 
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="Name Surname"></div>';
+        html += '<div class="form-group"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"></div>';
         html += '<div class="form-group"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" onchange="calcPlayerFieldHcp(' + i + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
         html += '</div>';
 
@@ -298,7 +300,7 @@ function initRoundView() {
     db.ref('rounds/' + curRid).on('value', function(sn) {
         curRoundData = sn.val();
         if (!curRoundData) {
-            toast('Round not found', 'error');
+            toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден', 'error');
             return;
         }
 
@@ -317,7 +319,7 @@ function initRoundView() {
             if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
                 myTargetUid = curRoundData.markerAssignments[myUid].targetId;
                 var targetPlayer = curRoundData.players[myTargetUid];
-                document.getElementById('mark-player-name').textContent = targetPlayer ? targetPlayer.name : 'Partner';
+                document.getElementById('mark-player-name').textContent = targetPlayer ? targetPlayer.name : (currentLang === 'en' ? 'Partner' : 'Партнёр');
                 document.getElementById('marker-input-container').classList.remove('hidden');
             } else {
                 document.getElementById('marker-input-container').classList.add('hidden');
@@ -460,9 +462,9 @@ function checkPlayVerification() {
     }
 
     if (myS > 0 && markerS > 0 && myS === markerS) {
-        box.innerHTML = '<div class="verify-ok">✅ ' + (currentLang === 'en' ? 'Your score on hole ' + playHole + ' is confirmed (' + myS + ')' : 'Ваш счёт на лунке ' + playHole + ' подтверждён маркером (' + myS + ' уд.)') + '</div>';
+        box.innerHTML = '<div class="verify-ok">✅ ' + (currentLang === 'en' ? 'Your score on hole ' + playHole + ' is confirmed by marker (' + myS + ')' : 'Ваш счёт на лунке ' + playHole + ' подтверждён маркером (' + myS + ' уд.)') + '</div>';
     } else if (myS > 0 && markerS > 0 && myS !== markerS) {
-        box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! You: ' + myS + ' | Marker: ' + markerS + '</div>';
+        box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (currentLang === 'en' ? 'You: ' : 'Вы: ') + myS + ' | ' + (currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + markerS + '</div>';
     } else if (myS > 0) {
         box.innerHTML = '<div class="verify-wait">⏳ ' + (currentLang === 'en' ? 'Waiting for marker confirmation...' : 'Ожидаем подтверждения от вашего маркера...') + '</div>';
     } else {
@@ -545,7 +547,7 @@ function renderPlaySummary() {
         var pid = pe[0], p = pe[1];
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
         if (stats.holesPlayed > maxPlayed) maxPlayed = stats.holesPlayed;
-        var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(You)</span>' : '';
+        var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
 
         html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
         html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + p.name + isMe + '</strong>';
@@ -553,6 +555,7 @@ function renderPlaySummary() {
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '<div style="font-size:11px;color:var(--muted);">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div>';
+        html += '<button class="btn btn-og btn-sm" style="margin-top:4px;padding:2px 6px;font-size:10px;"><i class="fas fa-id-card"></i> ' + (currentLang === 'en' ? 'Card' : 'Карточка') + '</button>';
         html += '</div></div>';
     });
 
@@ -564,9 +567,21 @@ function renderPlaySummary() {
 // ГЕНЕРАЦИЯ QR ДЛЯ ПОДКЛЮЧЕНИЯ ИГРОКОВ
 // ==========================================
 function renderInviteQRs() {
-    if (!canEditGroup || !curRoundData) return;
+    var cardEl = document.getElementById('invite-qrs-card');
     var activeEl = document.getElementById('invite-qrs-grid');
-    if (!activeEl) return;
+    if (!canEditGroup || !curRoundData || !activeEl) {
+        if (cardEl) cardEl.classList.add('hidden');
+        return;
+    }
+
+    var isGuestUser = (!currentUser) || (curRoundData.players && curRoundData.players[myUid] && curRoundData.players[myUid].isGuest);
+    if (isGuestUser) {
+        if (cardEl) cardEl.classList.add('hidden');
+        return;
+    }
+
+    if (cardEl) cardEl.classList.remove('hidden');
+
     var base = baseUrl();
     var html = '';
 
@@ -591,7 +606,7 @@ function renderInviteQRs() {
 function callOfficial(type) {
     if (!canEditGroup) return;
     var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
-    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + 'а на лунку ') + playHole + '?')) return;
+    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + playHole + '?')) return;
 
     var pName = (curRoundData && curRoundData.players && curRoundData.players[myUid]) ? curRoundData.players[myUid].name : 'Player';
 

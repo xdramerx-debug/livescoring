@@ -26,11 +26,11 @@ document.addEventListener('DOMContentLoaded', function() {
         var er = document.getElementById('login-error');
         er.classList.add('hidden');
 
-        if (!em) { emInp.classList.add('is-invalid'); er.textContent = 'Укажите email'; er.classList.remove('hidden'); return; }
-        if (!pw) { pwInp.classList.add('is-invalid'); er.textContent = 'Укажите пароль'; er.classList.remove('hidden'); return; }
+        if (!em) { emInp.classList.add('is-invalid'); er.textContent = currentLang === 'en' ? 'Enter email' : 'Укажите email'; er.classList.remove('hidden'); return; }
+        if (!pw) { pwInp.classList.add('is-invalid'); er.textContent = currentLang === 'en' ? 'Enter password' : 'Укажите пароль'; er.classList.remove('hidden'); return; }
 
         var btn = document.getElementById('login-btn');
-        btn.textContent = 'Загрузка...'; btn.disabled = true;
+        btn.textContent = currentLang === 'en' ? 'Loading...' : 'Загрузка...'; btn.disabled = true;
         auth.signInWithEmailAndPassword(em, pw).then(function() {
             window.location.href = 'index.html';
         }).catch(function(err) {
@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
             er.classList.remove('hidden');
             if (err.code && err.code.indexOf('user') !== -1) emInp.classList.add('is-invalid');
             if (err.code && err.code.indexOf('password') !== -1) pwInp.classList.add('is-invalid');
-            btn.textContent = 'Войти'; btn.disabled = false;
+            btn.textContent = t('login_btn'); btn.disabled = false;
         });
     });
 
@@ -58,13 +58,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var er = document.getElementById('register-error');
         er.classList.add('hidden');
 
-        if (!nm) { nmInp.classList.add('is-invalid'); er.textContent = 'Заполните имя'; er.classList.remove('hidden'); return; }
-        if (!em) { emInp.classList.add('is-invalid'); er.textContent = 'Заполните email'; er.classList.remove('hidden'); return; }
-        if (pw.length < 6) { pwInp.classList.add('is-invalid'); er.textContent = 'Пароль минимум 6 символов'; er.classList.remove('hidden'); return; }
-        if (pw !== pw2) { pw2Inp.classList.add('is-invalid'); er.textContent = 'Пароли не совпадают'; er.classList.remove('hidden'); return; }
+        if (!nm) { nmInp.classList.add('is-invalid'); er.textContent = currentLang === 'en' ? 'Enter full name' : 'Заполните имя'; er.classList.remove('hidden'); return; }
+        if (!em) { emInp.classList.add('is-invalid'); er.textContent = currentLang === 'en' ? 'Enter email' : 'Заполните email'; er.classList.remove('hidden'); return; }
+        if (pw.length < 6) { pwInp.classList.add('is-invalid'); er.textContent = currentLang === 'en' ? 'Password minimum 6 characters' : 'Пароль минимум 6 символов'; er.classList.remove('hidden'); return; }
+        if (pw !== pw2) { pw2Inp.classList.add('is-invalid'); er.textContent = currentLang === 'en' ? 'Passwords do not match' : 'Пароли не совпадают'; er.classList.remove('hidden'); return; }
 
         var btn = document.getElementById('register-btn');
-        btn.textContent = 'Загрузка...'; btn.disabled = true;
+        btn.textContent = currentLang === 'en' ? 'Loading...' : 'Загрузка...'; btn.disabled = true;
         auth.createUserWithEmailAndPassword(em, pw).then(function(c) {
             return db.ref('users/' + c.user.uid).set({
                 name: nm, email: em, role: 'player', gender: gd,
@@ -72,24 +72,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 createdAt: Date.now(), roundsPlayed: 0, bestGross: null, bestStableford: null
             });
         }).then(function() {
-            toast('🎉 Аккаунт создан!');
+            toast(currentLang === 'en' ? '🎉 Account created!' : '🎉 Аккаунт создан!');
             window.location.href = 'index.html';
         }).catch(function(err) {
             er.textContent = authErr(err.code);
             er.classList.remove('hidden');
-            btn.textContent = 'Создать аккаунт'; btn.disabled = false;
+            btn.textContent = t('create_account'); btn.disabled = false;
         });
     });
 });
 
 function authErr(code) {
-    var m = {
+    if (currentLang === 'en') {
+        var mEn = {
+            'auth/user-not-found':'User not found','auth/wrong-password':'Incorrect password',
+            'auth/email-already-in-use':'Email already in use','auth/weak-password':'Weak password',
+            'auth/invalid-email':'Invalid email','auth/too-many-requests':'Too many requests',
+            'auth/invalid-credential':'Invalid email or password','auth/invalid-login-credentials':'Invalid email or password'
+        };
+        return mEn[code] || 'Error: ' + code;
+    }
+    var mRu = {
         'auth/user-not-found':'Пользователь не найден','auth/wrong-password':'Неверный пароль',
         'auth/email-already-in-use':'Email уже зарегистрирован','auth/weak-password':'Слабый пароль',
         'auth/invalid-email':'Некорректный email','auth/too-many-requests':'Слишком много попыток',
         'auth/invalid-credential':'Неверный email или пароль','auth/invalid-login-credentials':'Неверный email или пароль'
     };
-    return m[code] || 'Ошибка: ' + code;
+    return mRu[code] || 'Ошибка: ' + code;
 }
 
 function onAuthReady(u, d) { navAuth(u, d); }

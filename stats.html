@@ -7,11 +7,11 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Пестово">
+    <meta name="apple-mobile-web-app-title" content="Pestovo">
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/logo.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/logo.png">
-    <title>Статистика — Пестово</title>
+    <title data-i18n="nav_stats">Статистика — Пестово</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -20,8 +20,8 @@
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
-            <img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'">
-            <span class="nav-brand-text">Пестово</span>
+            <img src="img/logo.png" alt="Pestovo" class="nav-logo" onerror="this.style.display='none'">
+            <span class="nav-brand-text" data-i18n="brand_name">Пестово</span>
         </a>
         <div id="nav-weather-container"></div>
     </div>
@@ -39,24 +39,24 @@
 </div></nav>
 
 <div class="page-head"><div class="container">
-    <h1 class="page-title"><i class="fas fa-chart-bar"></i> Статистика клуба</h1>
-    <p class="page-sub">Аналитика по всем раундам</p>
+    <h1 class="page-title"><i class="fas fa-chart-bar"></i> <span data-i18n="page_title_stats">Статистика клуба</span></h1>
+    <p class="page-sub" data-i18n="page_sub_stats">Аналитика по всем раундам</p>
 </div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
-    <div class="card"><h2><i class="fas fa-chart-pie"></i> Общая статистика</h2>
+    <div class="card"><h2><i class="fas fa-chart-pie"></i> <span data-i18n="total_stats">Общая статистика</span></h2>
     <div class="stats-grid" id="general-stats"><div class="loading"><div class="spinner"></div></div></div></div>
-    <div class="card"><h2><i class="fas fa-ranking-star"></i> Топ игроков</h2><div id="top-players"></div></div>
-    <div class="card"><h2><i class="fas fa-award"></i> Рекорды клуба</h2><div id="club-records"></div></div>
-    <div class="card"><h2><i class="fas fa-flag"></i> Сложность лунок</h2><div id="hole-difficulty"></div></div>
+    <div class="card"><h2><i class="fas fa-ranking-star"></i> <span data-i18n="top_players">Топ игроков</span></h2><div id="top-players"></div></div>
+    <div class="card"><h2><i class="fas fa-award"></i> <span data-i18n="club_records">Рекорды клуба</span></h2><div id="club-records"></div></div>
+    <div class="card"><h2><i class="fas fa-flag"></i> <span data-i18n="hole_difficulty">Сложность лунок</span></h2><div id="hole-difficulty"></div></div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Пестово</p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils.js?v=2"></script>
 <script src="js/stats.js"></script>
 <script src="js/pwa.js"></script>
 </body>

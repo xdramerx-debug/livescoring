@@ -13,7 +13,7 @@ function loadPlayers() {
         var entries = Object.entries(data);
 
         if (!entries.length) {
-            el.innerHTML = '<div class="empty" style="grid-column:1/-1;"><i class="fas fa-users"></i><p>Нет игроков</p></div>';
+            el.innerHTML = '<div class="empty" style="grid-column:1/-1;"><i class="fas fa-users"></i><p>' + (currentLang === 'en' ? 'No players found' : 'Нет игроков') + '</p></div>';
             return;
         }
 
@@ -45,11 +45,13 @@ function loadPlayers() {
             return (b[1].roundsPlayed || 0) - (a[1].roundsPlayed || 0);
         });
 
+        var roundsWord = currentLang === 'en' ? 'Rounds: ' : 'Раундов: ';
+
         var html = '';
         entries.forEach(function(e) {
             var id = e[0], u = e[1];
             var gIcon = u.gender === 'women' ? '👩' : '👨';
-            var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">ГОСТЬ</span>' : '';
+            var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">' + t('guest') + '</span>' : '';
 
             html += '<div class="card" style="cursor:pointer;" onclick="showPlayer(\'' + id + '\')">' +
                 '<div style="display:flex;align-items:center;gap:14px;">' +
@@ -57,9 +59,9 @@ function loadPlayers() {
                 '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                 'HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') +
-                ' · Раундов: ' + (u.roundsPlayed || 0) +
-                (u.bestGross ? ' · Gross (18л): ' + u.bestGross : '') +
-                (u.bestStableford ? ' · Stblfd (18л): ' + u.bestStableford : '') +
+                ' · ' + roundsWord + (u.roundsPlayed || 0) +
+                (u.bestGross ? ' · Gross (18h): ' + u.bestGross : '') +
+                (u.bestStableford ? ' · Stblfd (18h): ' + u.bestStableford : '') +
                 '</div></div></div></div>';
         });
 

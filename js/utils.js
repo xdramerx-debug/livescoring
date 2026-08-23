@@ -1131,9 +1131,127 @@ function fmtFieldHcp(val) {
     return String(Math.abs(Math.round(parseFloat(val) || 0)));
 }
 
+const PESTOVO_MEN_HCP_TABLE = {
+    bk: [
+        { min: -3.5, max: -2.8, hcp: 0 }, { min: -2.7, max: -2.0, hcp: 1 }, { min: -1.9, max: -1.2, hcp: 2 },
+        { min: -1.1, max: -0.4, hcp: 3 }, { min: -0.3, max: 0.3, hcp: 4 }, { min: 0.4, max: 1.1, hcp: 5 },
+        { min: 1.2, max: 1.9, hcp: 6 }, { min: 2.0, max: 2.7, hcp: 7 }, { min: 2.8, max: 3.5, hcp: 8 },
+        { min: 3.6, max: 4.3, hcp: 9 }, { min: 4.4, max: 5.1, hcp: 10 }, { min: 5.2, max: 5.8, hcp: 11 },
+        { min: 5.9, max: 6.6, hcp: 12 }, { min: 6.7, max: 7.4, hcp: 13 }, { min: 7.5, max: 8.2, hcp: 14 },
+        { min: 8.3, max: 9.0, hcp: 15 }, { min: 9.1, max: 9.8, hcp: 16 }, { min: 9.9, max: 10.5, hcp: 17 },
+        { min: 10.6, max: 11.3, hcp: 18 }, { min: 11.4, max: 12.1, hcp: 19 }, { min: 12.2, max: 12.9, hcp: 20 },
+        { min: 13.0, max: 13.7, hcp: 21 }, { min: 13.8, max: 14.5, hcp: 22 }, { min: 14.6, max: 15.3, hcp: 23 },
+        { min: 15.4, max: 16.0, hcp: 24 }, { min: 16.1, max: 16.8, hcp: 25 }, { min: 16.9, max: 17.6, hcp: 26 },
+        { min: 17.7, max: 18.4, hcp: 27 }, { min: 18.5, max: 19.2, hcp: 28 }, { min: 19.3, max: 20.0, hcp: 29 },
+        { min: 20.1, max: 20.7, hcp: 30 }, { min: 20.8, max: 21.5, hcp: 31 }, { min: 21.6, max: 22.3, hcp: 32 },
+        { min: 22.4, max: 23.1, hcp: 33 }, { min: 23.2, max: 23.9, hcp: 34 }, { min: 24.0, max: 24.7, hcp: 35 },
+        { min: 24.8, max: 25.5, hcp: 36 }, { min: 25.6, max: 26.2, hcp: 37 }, { min: 26.3, max: 27.0, hcp: 38 },
+        { min: 27.1, max: 27.8, hcp: 39 }, { min: 27.9, max: 28.6, hcp: 40 }, { min: 28.7, max: 29.4, hcp: 41 },
+        { min: 29.5, max: 30.2, hcp: 42 }, { min: 30.3, max: 30.9, hcp: 43 }, { min: 31.0, max: 31.7, hcp: 44 },
+        { min: 31.8, max: 32.5, hcp: 45 }, { min: 32.6, max: 33.3, hcp: 46 }, { min: 33.4, max: 34.1, hcp: 47 },
+        { min: 34.2, max: 34.9, hcp: 48 }, { min: 35.0, max: 35.7, hcp: 49 }, { min: 35.8, max: 36.4, hcp: 50 },
+        { min: 36.5, max: 37.2, hcp: 51 }, { min: 37.3, max: 38.0, hcp: 52 }, { min: 38.1, max: 38.8, hcp: 53 },
+        { min: 38.9, max: 39.6, hcp: 54 }, { min: 39.7, max: 40.4, hcp: 55 }, { min: 40.5, max: 41.1, hcp: 56 },
+        { min: 41.2, max: 41.9, hcp: 57 }, { min: 42.0, max: 42.7, hcp: 58 }, { min: 42.8, max: 43.5, hcp: 59 },
+        { min: 43.6, max: 44.3, hcp: 60 }, { min: 44.4, max: 45.1, hcp: 61 }, { min: 45.2, max: 45.9, hcp: 62 },
+        { min: 46.0, max: 46.6, hcp: 63 }, { min: 46.7, max: 47.4, hcp: 64 }, { min: 47.5, max: 48.2, hcp: 65 },
+        { min: 48.3, max: 49.0, hcp: 66 }, { min: 49.1, max: 49.8, hcp: 67 }, { min: 49.9, max: 50.6, hcp: 68 },
+        { min: 50.7, max: 51.3, hcp: 69 }, { min: 51.4, max: 52.1, hcp: 70 }, { min: 52.2, max: 52.9, hcp: 71 },
+        { min: 53.0, max: 53.7, hcp: 72 }, { min: 53.8, max: 54.0, hcp: 73 }
+    ],
+    bl: [
+        { min: -3.5, max: -2.8, hcp: -2 }, { min: -2.7, max: -1.9, hcp: -1 }, { min: -1.8, max: -1.1, hcp: 0 },
+        { min: -1.0, max: -0.3, hcp: 1 }, { min: -0.2, max: 0.5, hcp: 2 }, { min: 0.6, max: 1.4, hcp: 3 },
+        { min: 1.5, max: 2.2, hcp: 4 }, { min: 2.3, max: 3.0, hcp: 5 }, { min: 3.1, max: 3.8, hcp: 6 },
+        { min: 3.9, max: 4.7, hcp: 7 }, { min: 4.8, max: 5.5, hcp: 8 }, { min: 5.6, max: 6.3, hcp: 9 },
+        { min: 6.4, max: 7.1, hcp: 10 }, { min: 7.2, max: 8.0, hcp: 11 }, { min: 8.1, max: 8.8, hcp: 12 },
+        { min: 8.9, max: 9.6, hcp: 13 }, { min: 9.7, max: 10.4, hcp: 14 }, { min: 10.5, max: 11.3, hcp: 15 },
+        { min: 11.4, max: 12.1, hcp: 16 }, { min: 12.2, max: 12.9, hcp: 17 }, { min: 13.0, max: 13.7, hcp: 18 },
+        { min: 13.8, max: 14.5, hcp: 19 }, { min: 14.6, max: 15.4, hcp: 20 }, { min: 15.5, max: 16.2, hcp: 21 },
+        { min: 16.3, max: 17.0, hcp: 22 }, { min: 17.1, max: 17.8, hcp: 23 }, { min: 17.9, max: 18.7, hcp: 24 },
+        { min: 18.8, max: 19.5, hcp: 25 }, { min: 19.6, max: 20.3, hcp: 26 }, { min: 20.4, max: 21.1, hcp: 27 },
+        { min: 21.2, max: 22.0, hcp: 28 }, { min: 22.1, max: 22.8, hcp: 29 }, { min: 22.9, max: 23.6, hcp: 30 },
+        { min: 23.7, max: 24.4, hcp: 31 }, { min: 24.5, max: 25.3, hcp: 32 }, { min: 25.4, max: 26.1, hcp: 33 },
+        { min: 26.2, max: 26.9, hcp: 34 }, { min: 27.0, max: 27.7, hcp: 35 }, { min: 27.8, max: 28.6, hcp: 36 },
+        { min: 28.7, max: 29.4, hcp: 37 }, { min: 29.5, max: 30.2, hcp: 38 }, { min: 30.3, max: 31.0, hcp: 39 },
+        { min: 31.1, max: 31.9, hcp: 40 }, { min: 32.0, max: 32.7, hcp: 41 }, { min: 32.8, max: 33.5, hcp: 42 },
+        { min: 33.6, max: 34.3, hcp: 43 }, { min: 34.4, max: 35.2, hcp: 44 }, { min: 35.3, max: 36.0, hcp: 45 },
+        { min: 36.1, max: 36.8, hcp: 46 }, { min: 36.9, max: 37.6, hcp: 47 }, { min: 37.7, max: 38.5, hcp: 48 },
+        { min: 38.6, max: 39.3, hcp: 49 }, { min: 39.4, max: 40.1, hcp: 50 }, { min: 40.2, max: 40.9, hcp: 51 },
+        { min: 41.0, max: 41.8, hcp: 52 }, { min: 41.9, max: 42.6, hcp: 53 }, { min: 42.7, max: 43.4, hcp: 54 },
+        { min: 43.5, max: 44.2, hcp: 55 }, { min: 44.3, max: 45.1, hcp: 56 }, { min: 45.2, max: 45.9, hcp: 57 },
+        { min: 46.0, max: 46.7, hcp: 58 }, { min: 46.8, max: 47.5, hcp: 59 }, { min: 47.6, max: 48.4, hcp: 60 },
+        { min: 48.5, max: 49.2, hcp: 61 }, { min: 49.3, max: 50.0, hcp: 62 }, { min: 50.1, max: 50.8, hcp: 63 },
+        { min: 50.9, max: 51.7, hcp: 64 }, { min: 51.8, max: 52.5, hcp: 65 }, { min: 52.6, max: 53.3, hcp: 66 },
+        { min: 53.4, max: 54.0, hcp: 67 }
+    ],
+    wh: [
+        { min: -3.7, max: -3.0, hcp: -4 }, { min: -2.9, max: -2.1, hcp: -3 }, { min: -2.0, max: -1.3, hcp: -2 },
+        { min: -1.2, max: -0.5, hcp: -1 }, { min: -0.4, max: 0.4, hcp: 0 }, { min: 0.5, max: 1.2, hcp: 1 },
+        { min: 1.3, max: 2.0, hcp: 2 }, { min: 2.1, max: 2.9, hcp: 3 }, { min: 3.0, max: 3.7, hcp: 4 },
+        { min: 3.8, max: 4.6, hcp: 5 }, { min: 4.7, max: 5.4, hcp: 6 }, { min: 5.5, max: 6.2, hcp: 7 },
+        { min: 6.3, max: 7.1, hcp: 8 }, { min: 7.2, max: 7.9, hcp: 9 }, { min: 8.0, max: 8.7, hcp: 10 },
+        { min: 8.8, max: 9.6, hcp: 11 }, { min: 9.7, max: 10.4, hcp: 12 }, { min: 10.5, max: 11.3, hcp: 13 },
+        { min: 11.4, max: 12.1, hcp: 14 }, { min: 12.2, max: 12.9, hcp: 15 }, { min: 13.0, max: 13.8, hcp: 16 },
+        { min: 13.9, max: 14.6, hcp: 17 }, { min: 14.7, max: 15.4, hcp: 18 }, { min: 15.5, max: 16.3, hcp: 19 },
+        { min: 16.4, max: 17.1, hcp: 20 }, { min: 17.2, max: 17.9, hcp: 21 }, { min: 18.0, max: 18.8, hcp: 22 },
+        { min: 18.9, max: 19.6, hcp: 23 }, { min: 19.7, max: 20.5, hcp: 24 }, { min: 20.6, max: 21.3, hcp: 25 },
+        { min: 21.4, max: 22.1, hcp: 26 }, { min: 22.2, max: 23.0, hcp: 27 }, { min: 23.1, max: 23.8, hcp: 28 },
+        { min: 23.9, max: 24.6, hcp: 29 }, { min: 24.7, max: 25.5, hcp: 30 }, { min: 25.6, max: 26.3, hcp: 31 },
+        { min: 26.4, max: 27.2, hcp: 32 }, { min: 27.3, max: 28.0, hcp: 33 }, { min: 28.1, max: 28.8, hcp: 34 },
+        { min: 28.9, max: 29.7, hcp: 35 }, { min: 29.8, max: 30.5, hcp: 36 }, { min: 30.6, max: 31.3, hcp: 37 },
+        { min: 31.4, max: 32.2, hcp: 38 }, { min: 32.3, max: 33.0, hcp: 39 }, { min: 33.1, max: 33.9, hcp: 40 },
+        { min: 34.0, max: 34.7, hcp: 41 }, { min: 34.8, max: 35.5, hcp: 42 }, { min: 35.6, max: 36.4, hcp: 43 },
+        { min: 36.5, max: 37.2, hcp: 44 }, { min: 37.3, max: 38.0, hcp: 45 }, { min: 38.1, max: 38.9, hcp: 46 },
+        { min: 39.0, max: 39.7, hcp: 47 }, { min: 39.8, max: 40.5, hcp: 48 }, { min: 40.6, max: 41.4, hcp: 49 },
+        { min: 41.5, max: 42.2, hcp: 50 }, { min: 42.3, max: 43.1, hcp: 51 }, { min: 43.2, max: 43.9, hcp: 52 },
+        { min: 44.0, max: 44.7, hcp: 53 }, { min: 44.8, max: 45.6, hcp: 54 }, { min: 45.7, max: 46.4, hcp: 55 },
+        { min: 46.5, max: 47.2, hcp: 56 }, { min: 47.3, max: 48.1, hcp: 57 }, { min: 48.2, max: 48.9, hcp: 58 },
+        { min: 49.0, max: 49.8, hcp: 59 }, { min: 49.9, max: 50.6, hcp: 60 }, { min: 50.7, max: 51.4, hcp: 61 },
+        { min: 51.5, max: 52.3, hcp: 62 }, { min: 52.4, max: 53.1, hcp: 63 }, { min: 53.2, max: 53.9, hcp: 64 },
+        { min: 54.0, max: 54.0, hcp: 65 }
+    ],
+    rd: [
+        { min: -3.1, max: -2.3, hcp: -6 }, { min: -2.2, max: -1.5, hcp: -5 }, { min: -1.4, max: -0.6, hcp: -4 },
+        { min: -0.5, max: 0.2, hcp: -3 }, { min: 0.3, max: 1.0, hcp: -2 }, { min: 1.1, max: 1.9, hcp: -1 },
+        { min: 2.0, max: 2.7, hcp: 0 }, { min: 2.8, max: 3.6, hcp: 1 }, { min: 3.7, max: 4.4, hcp: 2 },
+        { min: 4.5, max: 5.3, hcp: 3 }, { min: 5.4, max: 6.1, hcp: 4 }, { min: 6.2, max: 6.9, hcp: 5 },
+        { min: 7.0, max: 7.8, hcp: 6 }, { min: 7.9, max: 8.6, hcp: 7 }, { min: 8.7, max: 9.5, hcp: 8 },
+        { min: 9.6, max: 10.3, hcp: 9 }, { min: 10.4, max: 11.2, hcp: 10 }, { min: 11.3, max: 12.0, hcp: 11 },
+        { min: 12.1, max: 12.9, hcp: 12 }, { min: 13.0, max: 13.7, hcp: 13 }, { min: 13.8, max: 14.5, hcp: 14 },
+        { min: 14.6, max: 15.4, hcp: 15 }, { min: 15.5, max: 16.2, hcp: 16 }, { min: 16.3, max: 17.1, hcp: 17 },
+        { min: 17.2, max: 17.9, hcp: 18 }, { min: 18.0, max: 18.8, hcp: 19 }, { min: 18.9, max: 19.6, hcp: 20 },
+        { min: 19.7, max: 20.4, hcp: 21 }, { min: 20.5, max: 21.3, hcp: 22 }, { min: 21.4, max: 22.1, hcp: 23 },
+        { min: 22.2, max: 23.0, hcp: 24 }, { min: 23.1, max: 23.8, hcp: 25 }, { min: 23.9, max: 24.7, hcp: 26 },
+        { min: 24.8, max: 25.5, hcp: 27 }, { min: 25.6, max: 26.3, hcp: 28 }, { min: 26.4, max: 27.2, hcp: 29 },
+        { min: 27.3, max: 28.0, hcp: 30 }, { min: 28.1, max: 28.9, hcp: 31 }, { min: 29.0, max: 29.7, hcp: 32 },
+        { min: 29.8, max: 30.6, hcp: 33 }, { min: 30.7, max: 31.4, hcp: 34 }, { min: 31.5, max: 32.2, hcp: 35 },
+        { min: 32.3, max: 33.1, hcp: 36 }, { min: 33.2, max: 33.9, hcp: 37 }, { min: 34.0, max: 34.8, hcp: 38 },
+        { min: 34.9, max: 35.6, hcp: 39 }, { min: 35.7, max: 36.5, hcp: 40 }, { min: 36.6, max: 37.3, hcp: 41 },
+        { min: 37.4, max: 38.2, hcp: 42 }, { min: 38.3, max: 39.0, hcp: 43 }, { min: 39.1, max: 39.8, hcp: 44 },
+        { min: 39.9, max: 40.7, hcp: 45 }, { min: 40.8, max: 41.5, hcp: 46 }, { min: 41.6, max: 42.4, hcp: 47 },
+        { min: 42.5, max: 43.2, hcp: 48 }, { min: 43.3, max: 44.1, hcp: 49 }, { min: 44.2, max: 44.9, hcp: 50 },
+        { min: 45.0, max: 45.7, hcp: 51 }, { min: 45.8, max: 46.6, hcp: 52 }, { min: 46.7, max: 47.4, hcp: 53 },
+        { min: 47.5, max: 48.3, hcp: 54 }, { min: 48.4, max: 49.1, hcp: 55 }, { min: 49.2, max: 50.0, hcp: 56 },
+        { min: 50.1, max: 50.8, hcp: 57 }, { min: 50.9, max: 51.6, hcp: 58 }, { min: 51.7, max: 52.5, hcp: 59 },
+        { min: 52.6, max: 53.3, hcp: 60 }, { min: 53.4, max: 54.0, hcp: 61 }
+    ]
+};
+
 function getFieldHcp(exactHcp, teeCode, gender) {
     var parsed = parseExactHcp(exactHcp);
     gender = gender || 'men'; teeCode = teeCode || 'wh';
+
+    if (gender === 'men' && PESTOVO_MEN_HCP_TABLE[teeCode]) {
+        var list = PESTOVO_MEN_HCP_TABLE[teeCode];
+        for (var i = 0; i < list.length; i++) {
+            var r = list[i];
+            if (parsed >= r.min - 0.001 && parsed <= r.max + 0.001) {
+                return r.hcp;
+            }
+        }
+    }
+
     var rating = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][teeCode];
     if (!rating) return Math.round(parsed);
     var field = (parsed * (rating.sr / 113)) + (rating.cr - TOTAL_PAR);
@@ -1141,6 +1259,14 @@ function getFieldHcp(exactHcp, teeCode, gender) {
 }
 
 function generateHcpTable(gender, teeCode) {
+    gender = gender || 'men'; teeCode = teeCode || 'wh';
+
+    if (gender === 'men' && PESTOVO_MEN_HCP_TABLE[teeCode]) {
+        return PESTOVO_MEN_HCP_TABLE[teeCode].map(function(r) {
+            return [fmtExactHcp(r.min), fmtExactHcp(r.max), fmtFieldHcp(r.hcp)];
+        });
+    }
+
     var rating = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][teeCode];
     if (!rating) return [];
     var rows = [];

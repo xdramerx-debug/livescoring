@@ -11,9 +11,9 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/logo.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/logo.png">
-    <title data-i18n="nav_tournaments">Турниры — Пестово</title>
+    <title data-i18n="nav_predictor">Симулятор WHS — Пестово</title>
     <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
@@ -32,29 +32,31 @@
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
         <a href="guide.html" class="nav-link" data-i18n="nav_guide">Книга поля</a>
         <a href="feed.html" class="nav-link" data-i18n="nav_feed">Лента событий</a>
-        <a href="predictor.html" class="nav-link" data-i18n="nav_predictor">Симулятор WHS</a>
+        <a href="predictor.html" class="nav-link active" data-i18n="nav_predictor">Симулятор WHS</a>
         <a href="order-of-merit.html" class="nav-link" data-i18n="nav_oom">Зачёт сезона</a>
         <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
-        <a href="tournaments.html" class="nav-link active" data-i18n="nav_tournaments">Турниры</a>
+        <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
         <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
         <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-trophy"></i> <span data-i18n="nav_tournaments">Турниры</span></h1></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-calculator"></i> <span data-i18n="nav_predictor">Симулятор и Прогноз WHS</span></h1><p class="page-sub">Расчёт гандикапа WHS и прогноз следующего раунда</p></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
-    <div class="card" style="background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
-        <p style="color:var(--muted);font-size:14px;text-align:center;">
-            <i class="fas fa-info-circle" style="color:var(--gold);"></i>
-            <span data-i18n="admin_only_tournaments">Турниры создаёт только администратор.</span> <a href="admin.html" style="color:var(--gold);" data-i18n="admin_panel_link">Админка</a>
-        </p>
+    <div class="card" style="max-width:540px;margin:0 auto 24px;">
+        <h2><i class="fas fa-user-gear"></i> Данные для прогноза</h2>
+        <div class="form-group"><label>Выберите зарегистрированного игрока:</label>
+            <select id="pred-user-select" class="form-input" onchange="runWHSPredictor()"></select>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Пол:</label><select id="pred-gender" class="form-input" onchange="runWHSPredictor()"><option value="men">Мужчина</option><option value="women">Женщина</option></select></div>
+            <div class="form-group"><label>Планируемый ТИ:</label><select id="pred-tee" class="form-input" onchange="runWHSPredictor()"><option value="bk">⬛ Чёрный</option><option value="bl">🟦 Синий</option><option value="wh" selected>⬜ Белый</option><option value="rd">🟥 Красный</option></select></div>
+        </div>
     </div>
-    <div class="card">
-        <h2><i class="fas fa-list"></i> <span data-i18n="all_tournaments">Все турниры</span></h2>
-        <div id="tn-list"></div>
-    </div>
+
+    <div id="pred-result"></div>
 </main>
 
 <footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p></div></div></footer>
@@ -63,7 +65,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/utils.js?v=2"></script>
-<script src="js/tournaments.js"></script>
+<script src="js/predictor.js"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

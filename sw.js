@@ -1,15 +1,17 @@
-const CACHE_NAME = 'pestovo-v14';
+const CACHE_NAME = 'pestovo-v15';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
     './', 'index.html', 'live.html', 'solo.html', 'leaderboard.html',
+    'guide.html', 'feed.html', 'predictor.html', 'order-of-merit.html', 'tv.html',
     'players.html', 'tournaments.html', 'stats.html', 'handicap.html',
     'admin.html', 'auth.html', 'scorer.html', 'marker.html', 'offline.html',
     'manifest.json', 'css/style.css', 'js/firebase-config.js', 'js/utils.js',
     'js/auth.js', 'js/app.js', 'js/live.js', 'js/solo.js',
     'js/leaderboard.js', 'js/players.js', 'js/tournaments.js',
     'js/stats.js', 'js/handicap.js', 'js/admin.js', 'js/scorer.js',
-    'js/marker.js', 'js/pwa.js', 'img/logo.png'
+    'js/marker.js', 'js/guide.js', 'js/feed.js', 'js/predictor.js',
+    'js/order-of-merit.js', 'js/pwa.js', 'img/logo.png'
 ];
 
 self.addEventListener('install', function(event) {

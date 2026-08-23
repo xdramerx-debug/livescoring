@@ -10,7 +10,17 @@ function loadPlayers() {
         var data = sn.val() || {};
         var el = document.getElementById('players-grid');
         if (!el) return;
-        var entries = Object.entries(data);
+        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+
+        var searchInp = document.getElementById('players-search');
+        var query = searchInp ? searchInp.value.trim().toLowerCase() : '';
+
+        if (query) {
+            entries = entries.filter(function(e) {
+                var u = e[1];
+                return (u.name || '').toLowerCase().includes(query) || (u.email || '').toLowerCase().includes(query);
+            });
+        }
 
         if (!entries.length) {
             el.innerHTML = '<div class="empty" style="grid-column:1/-1;"><i class="fas fa-users"></i><p>' + (currentLang === 'en' ? 'No players found' : 'Нет игроков') + '</p></div>';

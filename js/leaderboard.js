@@ -9,12 +9,23 @@ function loadLB() {
     var statusSelect = document.getElementById('lb-status');
     var status = statusSelect ? statusSelect.value : 'all';
 
+    var searchInput = document.getElementById('lb-search');
+    var query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
     db.ref('rounds').on('value', function(sn) {
         var data = sn.val() || {};
-        var entries = Object.entries(data);
+        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
 
         if (status !== 'all') {
-            entries = entries.filter(function(e) { return e[1] && e[1].status === status; });
+            entries = entries.filter(function(e) { return e[1].status === status; });
+        }
+
+        if (query) {
+            entries = entries.filter(function(e) {
+                var r = e[1];
+                var players = Object.values(r.players || {});
+                return players.some(function(p) { return (p.name || '').toLowerCase().includes(query); });
+            });
         }
 
         entries.sort(function(a, b) { 

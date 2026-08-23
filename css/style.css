@@ -427,3 +427,45 @@ select.form-input option{background:var(--card);}
 .pc-score-lbl{font-size:13px;text-transform:uppercase;color:var(--white);}
 .pc-score-box{background:var(--input);font-size:14px;color:var(--white);}
 .pc-footer{display:none;}
+
+/* STICKY FIRST COLUMN IN SCORECARDS & TABLES */
+.scorecard table th:first-child,
+.scorecard table td:first-child,
+.pc-table th:first-child,
+.pc-table td:first-child,
+.lb-table th:first-child,
+.lb-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background: var(--card);
+    box-shadow: 2px 0 6px rgba(0,0,0,0.25);
+}
+body.sun-mode .scorecard table th:first-child,
+body.sun-mode .scorecard table td:first-child,
+body.sun-mode .pc-table th:first-child,
+body.sun-mode .pc-table td:first-child,
+body.sun-mode .lb-table th:first-child,
+body.sun-mode .lb-table td:first-child {
+    background: var(--card);
+}
+
+/* QUICK PAR BUTTON */
+.score-par-btn{
+    background: rgba(201,168,76,0.15);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: var(--rs);
+    cursor: pointer;
+    transition: var(--t);
+    white-space: nowrap;
+    align-self: center;
+}
+.score-par-btn:hover,.score-par-btn:active{
+    background: var(--gold);
+    color: var(--bg);
+}
+

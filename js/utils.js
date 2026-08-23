@@ -541,13 +541,28 @@ function loadMyActiveRounds(targetId) {
             var teePill = fmtTeePill(r.tee);
             var playersCount = Object.keys(r.players || {}).length;
 
+            var maxPlayed = 0;
+            var order = holeOrder(r.startHole || 1);
+            Object.values(r.players || {}).forEach(function(p) {
+                var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+                if (stats.holesPlayed > maxPlayed) maxPlayed = stats.holesPlayed;
+            });
+            var pct = Math.round((maxPlayed / 18) * 100);
+
             html += '<div class="list-item" style="padding:16px;background:var(--input);border:1px solid var(--border);margin-bottom:10px;flex-wrap:wrap;gap:12px;">';
             html += '<div style="flex:1;min-width:200px;">';
             html += '<div style="font-weight:800;font-size:16px;color:var(--white);"><span class="live-dot" style="width:7px;height:7px;margin-right:6px;"></span> ' + t('brand_name') + ' · ' + modeIcon + '</div>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                     t('start') + ': ' + fmtTime(r.startTime) + ' · ' + t('hole') + ': №' + (r.startHole || 1) + ' · ' + t('tee_select') + ': ' + teePill + ' · ' + t('player') + ': ' + playersCount + '</div>';
+            html += '<div style="margin-top:10px;">';
+            html += '<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--gold);margin-bottom:4px;">';
+            html += '<span><i class="fas fa-flag"></i> ' + t('hole') + ': ' + maxPlayed + ' / 18 (' + pct + '%)</span>';
             html += '</div>';
-            html += '<a href="' + link + '" class="btn btn-g"><i class="fas fa-gamepad"></i> ' + t('btn_start_game') + '</a>';
+            html += '<div class="progress-track-bar" style="height:6px;background:var(--border);border-radius:3px;">';
+            html += '<div class="progress-track-fill" style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-l));border-radius:3px;transition:width 0.3s;"></div>';
+            html += '</div></div>';
+            html += '</div>';
+            html += '<a href="' + link + '" class="btn btn-g" style="align-self:center;"><i class="fas fa-gamepad"></i> ' + t('btn_start_game') + '</a>';
             html += '</div>';
         });
 
@@ -1172,6 +1187,84 @@ function openPlayerProfileModal(playerId, roundId) {
 
 function closePModal() {
     var modalEl = document.getElementById('pmodal');
+    if (modalEl) modalEl.classList.add('hidden');
+}
+
+// ==========================================
+// МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ЗАВЕРШЕНИЯ РАУНДА
+// ==========================================
+function openFinishConfirmModal(roundId, onConfirmCallback) {
+    if (typeof db === 'undefined' || !roundId) return;
+
+    db.ref('rounds/' + roundId).once('value').then(function(sn) {
+        var r = sn.val();
+        if (!r) return;
+
+        var modalEl = document.getElementById('finish-modal');
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.id = 'finish-modal';
+            modalEl.className = 'modal hidden';
+            modalEl.innerHTML =
+                '<div class="modal-bg" onclick="closeFinishModal()"></div>' +
+                '<div class="modal-body" style="max-width:560px;">' +
+                '<button class="modal-close" onclick="closeFinishModal()">&times;</button>' +
+                '<div id="finish-modal-body"></div>' +
+                '</div>';
+            if (document.body) document.body.appendChild(modalEl);
+        }
+
+        var bodyEl = document.getElementById('finish-modal-body');
+        var order = holeOrder(r.startHole || 1);
+        var players = Object.entries(r.players || {});
+
+        var titleStr = currentLang === 'en' ? '🏁 Finish Round Confirmation' : '🏁 Подтверждение завершения раунда';
+        var subStr = currentLang === 'en' ? 'Please review final scores before finishing:' : 'Пожалуйста, проверьте итоговые результаты перед завершением:';
+        var finishBtnStr = currentLang === 'en' ? '🏁 Finish & Save Round' : '🏁 Завершить раунд';
+        var continueBtnStr = currentLang === 'en' ? '← Continue Playing' : '← Продолжить игру';
+
+        var html = '<h2 style="color:var(--gold);font-family:var(--ff);margin-bottom:6px;">' + titleStr + '</h2>';
+        html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">' + subStr + '</p>';
+
+        var hasUnfinishedHoles = false;
+
+        players.forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+            if (stats.holesPlayed < 18) hasUnfinishedHoles = true;
+
+            html += '<div class="list-item" style="padding:14px;margin-bottom:10px;flex-wrap:wrap;gap:8px;">';
+            html += '<div style="flex:1;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</strong>';
+            html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + t('hole') + 's: ' + stats.holesPlayed + ' / 18 · Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div></div>';
+            html += '<div style="text-align:right;"><div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;font-size:18px;">' + fmtScore(stats.toPar) + '</div></div>';
+            html += '</div>';
+        });
+
+        if (hasUnfinishedHoles) {
+            var warnStr = currentLang === 'en' ? '⚠️ Note: Not all 18 holes have scores entered.' : '⚠️ Внимание: Не на всех 18 лунках введён счёт.';
+            html += '<div class="timing-alert timing-warn" style="margin:16px 0;"><i class="fas fa-exclamation-triangle"></i><div>' + warnStr + '</div></div>';
+        }
+
+        html += '<div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">';
+        html += '<button class="btn btn-og" style="flex:1;" onclick="closeFinishModal()">' + continueBtnStr + '</button>';
+        html += '<button class="btn btn-g" style="flex:1;" id="confirm-finish-btn">' + finishBtnStr + '</button>';
+        html += '</div>';
+
+        if (bodyEl) bodyEl.innerHTML = html;
+        modalEl.classList.remove('hidden');
+
+        var confirmBtn = document.getElementById('confirm-finish-btn');
+        if (confirmBtn) {
+            confirmBtn.onclick = function() {
+                closeFinishModal();
+                if (typeof onConfirmCallback === 'function') onConfirmCallback();
+            };
+        }
+    });
+}
+
+function closeFinishModal() {
+    var modalEl = document.getElementById('finish-modal');
     if (modalEl) modalEl.classList.add('hidden');
 }
 

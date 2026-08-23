@@ -42,7 +42,11 @@
 
 <main class="container" style="padding:24px 20px 60px;">
     <div class="card"><div class="form-row">
-        <div class="form-group"><label data-i18n="status_label">Статус</label><select id="lb-status" class="form-input" onchange="loadLB()">
+        <div class="form-group" style="flex:2;min-width:200px;">
+            <label data-i18n="search_label">Поиск игрока</label>
+            <input type="text" id="lb-search" class="form-input" data-i18n-placeholder="search_placeholder" placeholder="Поиск по имени..." oninput="loadLB()">
+        </div>
+        <div class="form-group" style="flex:1;min-width:140px;"><label data-i18n="status_label">Статус</label><select id="lb-status" class="form-input" onchange="loadLB()">
             <option value="all" selected data-i18n="status_all">Все</option><option value="active" data-i18n="status_active">Live</option><option value="completed" data-i18n="status_completed">Завершённые</option></select></div>
     </div></div>
     <div id="lb-container"><div class="loading"><div class="spinner"></div></div></div>

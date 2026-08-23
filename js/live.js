@@ -457,6 +457,30 @@ function adjScore(who, delta) {
     }, 800);
 }
 
+function setParScore(who) {
+    if (!canEditGroup) return;
+    var par = holePar(playHole);
+    if (who === 'my') {
+        myScore = par;
+        updScoreDisplay('my', myScore);
+        animateScoreElement('my-disp');
+        var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
+        var net = calcNettScore(myScore, par, holeHcp(playHole), myFieldHcp);
+        var netBadge = document.getElementById('my-net-badge');
+        if (netBadge) netBadge.textContent = 'Net: ' + net;
+    } else {
+        targetScore = par;
+        updScoreDisplay('mark', targetScore);
+        animateScoreElement('mark-disp');
+    }
+    vib();
+
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(function() {
+        saveHoleScores(true);
+    }, 800);
+}
+
 function updScoreDisplay(who, score) {
     var par = holePar(playHole);
     var dispEl = document.getElementById(who + '-disp');
@@ -678,19 +702,38 @@ function renderGVPlayers(r) {
 
 function finishGroupRound() {
     if (!canEditGroup) return;
-    if (!confirm(t('msg_finish_confirm'))) return;
 
-    db.ref('rounds/' + curRid + '/status').set('completed');
-    db.ref('rounds/' + curRid + '/completedAt').set(Date.now());
+    if (typeof openFinishConfirmModal === 'function') {
+        openFinishConfirmModal(curRid, function() {
+            db.ref('rounds/' + curRid + '/status').set('completed');
+            db.ref('rounds/' + curRid + '/completedAt').set(Date.now());
 
-    db.ref('rounds/' + curRid).once('value').then(function(sn) {
-        var r = sn.val();
-        if (r) saveHistory(curRid, r);
-    });
+            db.ref('rounds/' + curRid).once('value').then(function(sn) {
+                var r = sn.val();
+                if (r) saveHistory(curRid, r);
+            });
 
-    toast(t('msg_round_finished'));
-    setTimeout(function() {
-        if (confirm(currentLang === 'en' ? 'Download player scorecards?' : 'Скачать счётные карточки игроков?')) downloadScorecard(curRid);
-        window.location.href = 'leaderboard.html';
-    }, 1000);
+            toast(t('msg_round_finished'));
+            setTimeout(function() {
+                if (confirm(currentLang === 'en' ? 'Download player scorecards?' : 'Скачать счётные карточки игроков?')) downloadScorecard(curRid);
+                window.location.href = 'leaderboard.html';
+            }, 800);
+        });
+    } else {
+        if (!confirm(t('msg_finish_confirm'))) return;
+
+        db.ref('rounds/' + curRid + '/status').set('completed');
+        db.ref('rounds/' + curRid + '/completedAt').set(Date.now());
+
+        db.ref('rounds/' + curRid).once('value').then(function(sn) {
+            var r = sn.val();
+            if (r) saveHistory(curRid, r);
+        });
+
+        toast(t('msg_round_finished'));
+        setTimeout(function() {
+            if (confirm(currentLang === 'en' ? 'Download player scorecards?' : 'Скачать счётные карточки игроков?')) downloadScorecard(curRid);
+            window.location.href = 'leaderboard.html';
+        }, 800);
+    }
 }

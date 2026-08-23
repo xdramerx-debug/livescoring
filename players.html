@@ -43,6 +43,9 @@
 <main class="container" style="padding:24px 20px 60px;">
     <div class="card">
         <div class="form-row">
+            <div class="form-group" style="flex:2;min-width:200px;"><label data-i18n="search_label">Поиск игрока</label>
+                <input type="text" id="players-search" class="form-input" data-i18n-placeholder="search_placeholder" placeholder="Поиск по имени..." oninput="loadPlayers()">
+            </div>
             <div class="form-group"><label data-i18n="player_type">Тип игрока</label>
                 <select id="filter-type" class="form-input" onchange="loadPlayers()">
                     <option value="all" data-i18n="all_players">Все игроки</option>

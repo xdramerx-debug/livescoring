@@ -316,6 +316,19 @@ function adjSolo(delta) {
     }, 800);
 }
 
+function setParSolo() {
+    if (!canEditSolo) return;
+    curScore = holePar(curHole);
+    vib();
+    updateDisplay();
+    animateScoreElement('g-disp');
+
+    clearTimeout(soloAutoSaveTimer);
+    soloAutoSaveTimer = setTimeout(function() {
+        saveSolo(true);
+    }, 800);
+}
+
 function updateDisplay() {
     var par = holePar(curHole);
     document.getElementById('g-disp').textContent = curScore;
@@ -516,20 +529,39 @@ function renderMiniCard(targetId) {
 
 function finishSolo() {
     if (!canEditSolo) return;
-    if (!confirm(t('msg_finish_confirm'))) return;
-    db.ref('rounds/' + soloRid + '/status').set('completed');
-    db.ref('rounds/' + soloRid + '/completedAt').set(Date.now());
 
-    db.ref('rounds/' + soloRid).once('value').then(function(sn) {
-        var r = sn.val();
-        if (r) saveHistory(soloRid, r);
-    });
+    if (typeof openFinishConfirmModal === 'function') {
+        openFinishConfirmModal(soloRid, function() {
+            db.ref('rounds/' + soloRid + '/status').set('completed');
+            db.ref('rounds/' + soloRid + '/completedAt').set(Date.now());
 
-    toast(t('msg_round_finished'));
-    setTimeout(function() {
-        if (confirm(currentLang === 'en' ? 'Download player scorecard?' : 'Скачать счётную карточку?')) downloadScorecard(soloRid);
-        window.location.href = 'players.html';
-    }, 1000);
+            db.ref('rounds/' + soloRid).once('value').then(function(sn) {
+                var r = sn.val();
+                if (r) saveHistory(soloRid, r);
+            });
+
+            toast(t('msg_round_finished'));
+            setTimeout(function() {
+                if (confirm(currentLang === 'en' ? 'Download player scorecard?' : 'Скачать счётную карточку?')) downloadScorecard(soloRid);
+                window.location.href = 'players.html';
+            }, 800);
+        });
+    } else {
+        if (!confirm(t('msg_finish_confirm'))) return;
+        db.ref('rounds/' + soloRid + '/status').set('completed');
+        db.ref('rounds/' + soloRid + '/completedAt').set(Date.now());
+
+        db.ref('rounds/' + soloRid).once('value').then(function(sn) {
+            var r = sn.val();
+            if (r) saveHistory(soloRid, r);
+        });
+
+        toast(t('msg_round_finished'));
+        setTimeout(function() {
+            if (confirm(currentLang === 'en' ? 'Download player scorecard?' : 'Скачать счётную карточку?')) downloadScorecard(soloRid);
+            window.location.href = 'players.html';
+        }, 800);
+    }
 }
 
 function callOfficial(type) {

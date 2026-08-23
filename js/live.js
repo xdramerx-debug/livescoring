@@ -11,17 +11,21 @@ var myScore = 0;
 var targetScore = 0;
 var isChanging = false;
 var canEditGroup = false;
+var autoSaveTimer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
     var p = new URLSearchParams(window.location.search);
     curRid = p.get('round');
 
-    // Если сканировали личный QR вида ?round=XYZ&as=PLAYER_ID
     var actingAs = p.get('as');
     if (actingAs && curRid) {
         localStorage.setItem('pestovo_acting_as_' + curRid, actingAs);
         window.history.replaceState(null, null, window.location.pathname + '?round=' + curRid);
+    }
+
+    if (typeof loadPestovoWeather === 'function') {
+        loadPestovoWeather('weather-widget-container');
     }
 });
 
@@ -329,7 +333,6 @@ function initRoundView() {
             renderInviteQRs();
 
         } else {
-            // ЗРИТЕЛЬ / ГОСТЬ — Показываем просмотр лидерборда и счётную карточку
             document.getElementById('active-scoring-view').classList.add('hidden');
             document.getElementById('group-view').classList.remove('hidden');
 
@@ -420,14 +423,21 @@ function adjScore(who, delta) {
     if (who === 'my') {
         myScore = Math.max(1, Math.min(15, myScore + delta));
         updScoreDisplay('my', myScore);
+        animateScoreElement('my-disp');
         var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
         var net = calcNettScore(myScore, holePar(playHole), holeHcp(playHole), myFieldHcp);
         document.getElementById('my-net-badge').textContent = 'Net: ' + net;
     } else {
         targetScore = Math.max(1, Math.min(15, targetScore + delta));
         updScoreDisplay('mark', targetScore);
+        animateScoreElement('mark-disp');
     }
     vib();
+
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(function() {
+        saveHoleScores(true);
+    }, 800);
 }
 
 function updScoreDisplay(who, score) {
@@ -460,9 +470,9 @@ function checkPlayVerification() {
     }
 }
 
-function saveHoleScores() {
-    if (!canEditGroup) { toast('Редактирование запрещено', 'error'); return; }
-    if (myScore < 1 || (myTargetUid && targetScore < 1)) { toast('Счёт должен быть ≥ 1', 'error'); return; }
+function saveHoleScores(isAuto) {
+    if (!canEditGroup) { if (!isAuto) toast('Редактирование запрещено', 'error'); return; }
+    if (myScore < 1 || (myTargetUid && targetScore < 1)) { if (!isAuto) toast('Счёт должен быть ≥ 1', 'error'); return; }
 
     isChanging = true;
     var h = playHole;
@@ -496,14 +506,26 @@ function saveHoleScores() {
     }
 
     db.ref().update(updates).then(function() {
-        toast('✅ Сохранено на лунке ' + h);
-        vib();
-
-        var order = holeOrder(curRoundData.startHole || 1);
-        var idx = order.indexOf(h);
-        if (idx >= 0 && idx < order.length - 1) {
-            playHole = order[idx + 1];
+        if (!isAuto) {
+            toast('✅ Сохранено на лунке ' + h);
+            var par = holePar(h);
+            var d = myScore - par;
+            if (myScore === 1 || d <= -1) {
+                triggerVictoryConfetti();
+            }
+            var order = holeOrder(curRoundData.startHole || 1);
+            var idx = order.indexOf(h);
+            if (idx >= 0 && idx < order.length - 1) {
+                playHole = order[idx + 1];
+            }
+        } else {
+            var par = holePar(h);
+            var d = myScore - par;
+            if (myScore === 1 || d <= -1) {
+                triggerVictoryConfetti();
+            }
         }
+        vib();
 
         renderPlayHole();
         buildPlayHolesNav();
@@ -517,10 +539,12 @@ function renderPlaySummary() {
     if (!el) return;
     var order = holeOrder(curRoundData.startHole || 1);
     var html = '';
+    var maxPlayed = 0;
 
     Object.entries(curRoundData.players || {}).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+        if (stats.holesPlayed > maxPlayed) maxPlayed = stats.holesPlayed;
         var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(Вы)</span>' : '';
 
         html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
@@ -532,6 +556,7 @@ function renderPlaySummary() {
         html += '</div></div>';
     });
 
+    renderHoleProgressBar('live-progress-bar', maxPlayed);
     el.innerHTML = html;
 }
 

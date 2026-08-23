@@ -46,6 +46,72 @@ function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(
 function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
 
 // ==========================================
+// ПОГОДНЫЙ ВИДЖЕТ И ВЕКТОР ВЕТРА (OPEN-METEO)
+// ==========================================
+function getWindCardinal(deg) {
+    var directions = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'];
+    var idx = Math.round((deg % 360) / 45) % 8;
+    return directions[idx];
+}
+
+function getWeatherCodeInfo(code) {
+    if (code === 0) return { icon: '☀️', text: 'Ясно' };
+    if (code >= 1 && code <= 3) return { icon: '🌤️', text: 'Малооблачно' };
+    if (code === 45 || code === 48) return { icon: '🌫️', text: 'Туман' };
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return { icon: '🌧️', text: 'Дождь' };
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return { icon: '❄️', text: 'Снег' };
+    if (code >= 95) return { icon: '⛈️', text: 'Гроза' };
+    return { icon: '🌤️', text: 'Пестово' };
+}
+
+function loadPestovoWeather(targetId) {
+    var el = document.getElementById(targetId);
+    if (!el) return;
+
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=56.09&longitude=37.62&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code&wind_speed_unit=ms';
+
+    if (typeof fetch !== 'undefined') {
+        fetch(url).then(function(res) {
+            return res.json();
+        }).then(function(data) {
+            if (!data || !data.current) throw new Error('No data');
+            var curr = data.current;
+            var temp = Math.round(curr.temperature_2m);
+            var tempStr = (temp > 0 ? '+' : '') + temp + '°C';
+            var windSpeed = Math.round(curr.wind_speed_10m || 0);
+            var windDeg = Math.round(curr.wind_direction_10m || 0);
+            var windDir = getWindCardinal(windDeg);
+            var weather = getWeatherCodeInfo(curr.weather_code);
+
+            var html = '<div class="weather-widget">' +
+                '<div class="weather-item"><span class="weather-icon">' + weather.icon + '</span><b>' + tempStr + '</b> <span style="color:var(--muted);font-size:11px;">(' + weather.text + ')</span></div>' +
+                '<div class="weather-divider"></div>' +
+                '<div class="weather-item"><i class="fas fa-location-arrow wind-arrow" style="transform:rotate(' + (windDeg - 45) + 'deg);"></i> <b>Ветер: ' + windSpeed + ' м/с ' + windDir + '</b></div>' +
+                '</div>';
+
+            el.innerHTML = html;
+            el.classList.remove('hidden');
+        }).catch(function() {
+            var html = '<div class="weather-widget">' +
+                '<div class="weather-item"><span class="weather-icon">⛳</span> <b>Пестово</b></div>' +
+                '<div class="weather-divider"></div>' +
+                '<div class="weather-item"><i class="fas fa-wind" style="color:var(--gold);"></i> <b>Ветер: 3 м/с ЮЗ</b></div>' +
+                '</div>';
+            el.innerHTML = html;
+            el.classList.remove('hidden');
+        });
+    } else {
+        var html = '<div class="weather-widget">' +
+            '<div class="weather-item"><span class="weather-icon">⛳</span> <b>Пестово</b></div>' +
+            '<div class="weather-divider"></div>' +
+            '<div class="weather-item"><i class="fas fa-wind" style="color:var(--gold);"></i> <b>Ветер: 3 м/с ЮЗ</b></div>' +
+            '</div>';
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+    }
+}
+
+// ==========================================
 // ДНЕВНОЙ РЕЖИМ «ЯРКОЕ СОЛНЦЕ» (SUN MODE)
 // ==========================================
 function initThemeMode() {

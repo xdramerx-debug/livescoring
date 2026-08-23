@@ -3057,15 +3057,18 @@ function toggleActiveScorecard(panelId) {
 }
 
 // ==========================================
-// TELEGRAM BOT OFFICIAL ALERTS
+// TELEGRAM BOT OFFICIAL ALERTS (GROUP & CHANNEL)
 // ==========================================
-function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, isTest) {
-    var botToken = (localStorage.getItem('pestovo_tg_bot_token') || '').trim();
-    var chatId = (localStorage.getItem('pestovo_tg_chat_id') || '').trim();
+function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetMode) {
+    var groupToken = (localStorage.getItem('pestovo_tg_group_token') || localStorage.getItem('pestovo_tg_bot_token') || '').trim();
+    var groupId = (localStorage.getItem('pestovo_tg_group_id') || localStorage.getItem('pestovo_tg_chat_id') || '').trim();
 
-    var doFetch = function(token, chat) {
+    var channelToken = (localStorage.getItem('pestovo_tg_channel_token') || groupToken || '').trim();
+    var channelId = (localStorage.getItem('pestovo_tg_channel_id') || '').trim();
+
+    var postMessage = function(token, chat, labelName, isExplicitTest) {
         if (!token || !chat) {
-            if (isTest) toast('⚠️ Укажите Telegram Bot Token и Chat ID', 'error');
+            if (isExplicitTest) toast('⚠️ Укажите Bot Token и Chat ID / Username для ' + labelName, 'error');
             return;
         }
 
@@ -3093,34 +3096,43 @@ function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, isTest)
         .then(function(res) { return res.json(); })
         .then(function(data) {
             if (data && data.ok) {
-                console.log('✅ Telegram alert delivered:', data.result);
-                if (isTest) toast(currentLang === 'en' ? '✅ Telegram alert sent successfully!' : '✅ Сообщение Telegram доставлено в чат!', 'success');
+                console.log('✅ Telegram alert delivered to ' + labelName + ':', data.result);
+                if (isExplicitTest) toast('✅ Telegram сообщение доставлено в ' + labelName + '!', 'success');
             } else {
                 var errDesc = (data && data.description) ? data.description : 'Ошибка Telegram API';
-                console.error('❌ Telegram Bot API Error:', errDesc);
-                if (isTest) toast('❌ Ошибка Telegram: ' + errDesc, 'error');
+                console.error('❌ Telegram Bot API Error (' + labelName + '):', errDesc);
+                if (isExplicitTest) toast('❌ Ошибка Telegram (' + labelName + '): ' + errDesc, 'error');
             }
         })
         .catch(function(err) {
-            console.error('❌ Telegram Fetch Error:', err);
-            if (isTest) toast('❌ Не удалось связаться с Telegram: ' + err.message, 'error');
+            console.error('❌ Telegram Fetch Error (' + labelName + '):', err);
+            if (isExplicitTest) toast('❌ Ошибка сети Telegram (' + labelName + '): ' + err.message, 'error');
         });
     };
 
-    if (botToken && chatId) {
-        doFetch(botToken, chatId);
+    var triggerAll = function(gTok, gId, cTok, cId) {
+        if (targetMode === 'group' || !targetMode) {
+            if (gTok && gId) postMessage(gTok, gId, 'Группу', targetMode === 'group');
+            else if (targetMode === 'group') toast('⚠️ Не настроен Bot Token или Chat ID Группы', 'error');
+        }
+        if (targetMode === 'channel' || !targetMode) {
+            if (cTok && cId) postMessage(cTok, cId, 'Канал', targetMode === 'channel');
+            else if (targetMode === 'channel') toast('⚠️ Не настроен Bot Token или ID Канала', 'error');
+        }
+    };
+
+    if (groupToken || channelToken) {
+        triggerAll(groupToken, groupId, channelToken, channelId);
     } else if (typeof db !== 'undefined') {
         db.ref('settings/telegram').once('value').then(function(sn) {
             var tg = sn.val() || {};
-            var token = (tg.botToken || '').trim();
-            var chat = (tg.chatId || '').trim();
-            if (token && chat) {
-                doFetch(token, chat);
-            } else if (isTest) {
-                toast('⚠️ Telegram Bot Token или Chat ID не настроены', 'error');
-            }
+            var gTok = (tg.groupToken || tg.botToken || '').trim();
+            var gId = (tg.groupId || tg.chatId || '').trim();
+            var cTok = (tg.channelToken || gTok || '').trim();
+            var cId = (tg.channelId || '').trim();
+            triggerAll(gTok, gId, cTok, cId);
         });
-    } else if (isTest) {
-        toast('⚠️ Укажите Telegram Bot Token и Chat ID', 'error');
+    } else if (targetMode) {
+        toast('⚠️ Заполните настройки Telegram', 'error');
     }
 }

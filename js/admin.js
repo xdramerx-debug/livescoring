@@ -708,47 +708,71 @@ function downloadJSONBackup() {
 }
 
 // ==========================================
-// TELEGRAM BOT SETTINGS & ALERTS
+// TELEGRAM BOT SETTINGS & ALERTS (GROUP & CHANNEL)
 // ==========================================
 function loadTelegramSettings() {
-    var tokInp = document.getElementById('tg-bot-token');
-    var chatInp = document.getElementById('tg-chat-id');
+    var gTokInp = document.getElementById('tg-group-bot-token');
+    var gChatInp = document.getElementById('tg-group-chat-id');
+    var cTokInp = document.getElementById('tg-channel-bot-token');
+    var cChatInp = document.getElementById('tg-channel-id');
 
-    if (tokInp && localStorage.getItem('pestovo_tg_bot_token')) tokInp.value = localStorage.getItem('pestovo_tg_bot_token');
-    if (chatInp && localStorage.getItem('pestovo_tg_chat_id')) chatInp.value = localStorage.getItem('pestovo_tg_chat_id');
+    if (gTokInp) gTokInp.value = localStorage.getItem('pestovo_tg_group_token') || localStorage.getItem('pestovo_tg_bot_token') || '';
+    if (gChatInp) gChatInp.value = localStorage.getItem('pestovo_tg_group_id') || localStorage.getItem('pestovo_tg_chat_id') || '';
+    if (cTokInp) cTokInp.value = localStorage.getItem('pestovo_tg_channel_token') || localStorage.getItem('pestovo_tg_bot_token') || '';
+    if (cChatInp) cChatInp.value = localStorage.getItem('pestovo_tg_channel_id') || '';
 
     if (typeof db !== 'undefined') {
         db.ref('settings/telegram').once('value').then(function(sn) {
             var tg = sn.val() || {};
-            if (tokInp && tg.botToken) tokInp.value = tg.botToken;
-            if (chatInp && tg.chatId) chatInp.value = tg.chatId;
+            if (gTokInp && (tg.groupToken || tg.botToken)) gTokInp.value = tg.groupToken || tg.botToken;
+            if (gChatInp && (tg.groupId || tg.chatId)) gChatInp.value = tg.groupId || tg.chatId;
+            if (cTokInp && (tg.channelToken || tg.botToken)) cTokInp.value = tg.channelToken || tg.botToken;
+            if (cChatInp && tg.channelId) cChatInp.value = tg.channelId;
         });
     }
 }
 
-function saveTelegramSettings() {
-    var tokInp = document.getElementById('tg-bot-token');
-    var chatInp = document.getElementById('tg-chat-id');
-    var botToken = tokInp ? tokInp.value.trim() : '';
-    var chatId = chatInp ? chatInp.value.trim() : '';
+function saveTelegramSettings(targetMode) {
+    var gTokInp = document.getElementById('tg-group-bot-token');
+    var gChatInp = document.getElementById('tg-group-chat-id');
+    var cTokInp = document.getElementById('tg-channel-bot-token');
+    var cChatInp = document.getElementById('tg-channel-id');
 
-    localStorage.setItem('pestovo_tg_bot_token', botToken);
-    localStorage.setItem('pestovo_tg_chat_id', chatId);
+    var gToken = gTokInp ? gTokInp.value.trim() : '';
+    var gId = gChatInp ? gChatInp.value.trim() : '';
+    var cToken = cTokInp ? cTokInp.value.trim() : '';
+    var cId = cChatInp ? cChatInp.value.trim() : '';
+
+    if (gToken) {
+        localStorage.setItem('pestovo_tg_group_token', gToken);
+        localStorage.setItem('pestovo_tg_bot_token', gToken);
+    }
+    if (gId) {
+        localStorage.setItem('pestovo_tg_group_id', gId);
+        localStorage.setItem('pestovo_tg_chat_id', gId);
+    }
+    if (cToken) localStorage.setItem('pestovo_tg_channel_token', cToken);
+    if (cId) localStorage.setItem('pestovo_tg_channel_id', cId);
 
     if (typeof db !== 'undefined') {
-        db.ref('settings/telegram').set({
-            botToken: botToken,
-            chatId: chatId,
+        db.ref('settings/telegram').update({
+            groupToken: gToken,
+            groupId: gId,
+            channelToken: cToken,
+            channelId: cId,
+            botToken: gToken || cToken,
+            chatId: gId,
             updatedAt: Date.now()
         }).then(function() {
-            toast(currentLang === 'en' ? '✅ Telegram Bot settings saved!' : '✅ Настройки Telegram Bot сохранены!', 'success');
+            toast(currentLang === 'en' ? '✅ Telegram settings saved!' : '✅ Настройки Telegram сохранены!', 'success');
         });
     } else {
         toast(currentLang === 'en' ? '✅ Telegram settings saved locally!' : '✅ Настройки Telegram сохранены локально!', 'success');
     }
 }
 
-function testTelegramAlert() {
-    saveTelegramSettings();
-    sendTelegramOfficialAlert('referee', 1, 'Тестовый Игрок (Админ)', 'Проверка интеграции Telegram', true);
+function testTelegramAlert(targetMode) {
+    saveTelegramSettings(targetMode);
+    var label = targetMode === 'group' ? 'Группу' : (targetMode === 'channel' ? 'Канал' : 'Telegram');
+    sendTelegramOfficialAlert('referee', 1, 'Тестовый Админ', 'Проверка ' + label, targetMode);
 }

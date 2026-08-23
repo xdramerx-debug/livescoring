@@ -2796,3 +2796,21 @@ function renderMatchPlayTrackerHTML(matchStatus) {
     html += '</div></div>';
     return html;
 }
+
+function toggleActiveScorecard(panelId) {
+    var panel = document.getElementById(panelId);
+    var icon = document.getElementById(panelId + '-icon');
+    var txt = document.getElementById(panelId + '-txt');
+    if (!panel) return;
+
+    var isHidden = panel.classList.contains('hidden');
+    if (isHidden) {
+        panel.classList.remove('hidden');
+        if (icon) icon.className = 'fas fa-chevron-up';
+        if (txt) txt.textContent = currentLang === 'en' ? 'Collapse Scorecard' : 'Свернуть счётную карточку';
+    } else {
+        panel.classList.add('hidden');
+        if (icon) icon.className = 'fas fa-chevron-down';
+        if (txt) txt.textContent = currentLang === 'en' ? 'Expand Scorecard' : 'Развернуть счётную карточку';
+    }
+}

@@ -156,9 +156,17 @@
             <div id="gv-players"></div>
         </div>
 
-        <div class="card">
-            <h2><i class="fas fa-table"></i> <span data-i18n="hole_scorecard">Счётная карточка по лункам</span></h2>
-            <div id="gv-scorecard-card"></div>
+        <div class="round-card" style="margin:12px 0;">
+            <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('gv-sc-panel')" style="width:100%;">
+                <i class="fas fa-chevron-down" id="gv-sc-panel-icon"></i> 
+                <span id="gv-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
+            </button>
+            <div id="gv-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+                <div class="card">
+                    <h2><i class="fas fa-table"></i> <span data-i18n="hole_scorecard">Счётная карточка по лункам</span></h2>
+                    <div id="gv-scorecard-card"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -248,9 +256,17 @@
             </button>
         </div>
 
-        <div class="card">
-            <h2><i class="fas fa-table"></i> <span data-i18n="group_summary">Сводка группы</span></h2>
-            <div id="play-group-summary"></div>
+        <div class="round-card" style="margin:12px 0;">
+            <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('group-sc-panel')" style="width:100%;">
+                <i class="fas fa-chevron-down" id="group-sc-panel-icon"></i> 
+                <span id="group-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
+            </button>
+            <div id="group-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+                <div class="card">
+                    <h2><i class="fas fa-table"></i> <span data-i18n="group_summary">Сводка группы</span></h2>
+                    <div id="play-group-summary"></div>
+                </div>
+            </div>
         </div>
 
         <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->

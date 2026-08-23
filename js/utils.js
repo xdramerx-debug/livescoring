@@ -847,84 +847,138 @@ function animateScoreElement(elId) {
 }
 
 function initNav(){
-    var tg=document.getElementById('nav-toggle');
-    var mn=document.getElementById('nav-menu');
-    var ov=document.getElementById('nav-overlay');
+    buildMobileDrawer();
 
-    if(!ov){
-        ov=document.createElement('div');
-        ov.id='nav-overlay';
-        ov.className='nav-overlay';
-        if(document.body) document.body.appendChild(ov);
-    }
-
-    function openNav(){
-        if(tg)tg.classList.add('active');
-        if(mn)mn.classList.add('open');
-        if(ov)ov.classList.add('show');
-    }
-
-    function closeNav(){
-        if(tg)tg.classList.remove('active');
-        if(mn)mn.classList.remove('open');
-        if(ov)ov.classList.remove('show');
-    }
-
-    if(tg&&mn){
-        tg.addEventListener('click',function(e){
+    var tg = document.getElementById('nav-toggle');
+    if (tg) {
+        tg.onclick = function(e) {
             e.stopPropagation();
-            if(mn.classList.contains('open')){
-                closeNav();
-            }else{
-                openNav();
-            }
-        });
+            toggleMobileDrawer();
+        };
     }
 
-    if(ov){
-        ov.addEventListener('click',function(){
-            closeNav();
-        });
-    }
-
-    var closeBtn=document.getElementById('nav-menu-close');
-    if(!closeBtn&&mn){
-        closeBtn=document.createElement('button');
-        closeBtn.id='nav-menu-close';
-        closeBtn.className='nav-menu-close';
-        closeBtn.innerHTML='&times;';
-        closeBtn.setAttribute('aria-label', currentLang === 'en' ? 'Close menu' : 'Закрыть меню');
-        if(mn.insertBefore) mn.insertBefore(closeBtn,mn.firstChild);
-    }
-    if(closeBtn){
-        closeBtn.addEventListener('click',function(){
-            closeNav();
-        });
-    }
-
-    if(mn&&mn.querySelectorAll){
-        mn.querySelectorAll('a').forEach(function(link){
-            link.addEventListener('click',function(){
-                closeNav();
-            });
-        });
-    }
-
-    document.addEventListener('keydown',function(e){
-        if(e.key==='Escape'){
-            closeNav();
-        }
-    });
-
-    window.addEventListener('scroll',function(){
-        var n=document.getElementById('main-nav');
-        if(n){
-            if(window.scrollY>50)n.classList.add('nav-scrolled');
+    window.addEventListener('scroll', function() {
+        var n = document.getElementById('main-nav');
+        if (n) {
+            if (window.scrollY > 50) n.classList.add('nav-scrolled');
             else n.classList.remove('nav-scrolled');
         }
     });
 
     loadPestovoWeather('nav-weather-container');
+}
+
+function buildMobileDrawer() {
+    if (typeof document === 'undefined') return;
+    var container = document.getElementById('mobile-drawer-root');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'mobile-drawer-root';
+        container.className = 'mobile-drawer-container';
+        if (document.body) document.body.appendChild(container);
+    }
+
+    var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
+    var isEn = currentLang === 'en';
+
+    var sunTxt = isSun ? (isEn ? 'Sun ✅' : 'Солнце ✅') : (isEn ? 'Sun' : 'Солнце');
+    var sunIcon = isSun ? 'fa-sun' : 'far fa-sun';
+
+    var authBtnMarkup = '';
+    var isUserLoggedIn = (typeof currentUser !== 'undefined' && currentUser && typeof currentUserData !== 'undefined' && currentUserData);
+
+    if (isUserLoggedIn) {
+        var avatarMarkup = fmtUserAvatar(currentUserData, 32);
+        authBtnMarkup = '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--input);padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;" onclick="closeMobileDrawer();openPlayerProfileModal(\'' + currentUser.uid + '\')">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' + avatarMarkup + '<strong style="color:var(--gold);font-size:14px;">' + (currentUserData.name || '') + '</strong></div>' +
+            '<button class="btn btn-og btn-sm" onclick="event.stopPropagation();doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
+            '</div>';
+    } else {
+        authBtnMarkup = '<a href="auth.html" class="btn btn-g btn-block" onclick="closeMobileDrawer()"><i class="fas fa-sign-in-alt"></i> ' + t('nav_login') + '</a>';
+    }
+
+    var html =
+        '<div class="mobile-drawer-backdrop" onclick="closeMobileDrawer()"></div>' +
+        '<div class="mobile-drawer-panel">' +
+            '<div class="mobile-drawer-header">' +
+                '<div style="display:flex;align-items:center;gap:10px;">' +
+                    '<img src="img/logo.png" alt="Logo" class="nav-logo" onerror="this.style.display=\'none\'">' +
+                    '<span class="nav-brand-text" data-i18n="brand_name">' + t('brand_name') + '</span>' +
+                '</div>' +
+                '<button class="mobile-drawer-close" onclick="closeMobileDrawer()">&times;</button>' +
+            '</div>' +
+
+            '<div class="mobile-drawer-body">' +
+                '<div class="mobile-drawer-group">' +
+                    '<div class="mobile-drawer-group-title">⛳ ' + (isEn ? 'Game & Rounds' : 'Игра и Раунды') + '</div>' +
+                    '<a href="index.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-home"></i> <span data-i18n="nav_home">' + t('nav_home') + '</span></a>' +
+                    '<a href="live.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-gamepad"></i> <span data-i18n="nav_round">' + t('nav_round') + '</span></a>' +
+                    '<a href="leaderboard.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">' + t('nav_leaderboard') + '</span></a>' +
+                '</div>' +
+
+                '<div class="mobile-drawer-group">' +
+                    '<div class="mobile-drawer-group-title">📖 ' + (isEn ? 'Club & Features' : 'Клуб и Сервисы') + '</div>' +
+                    '<a href="guide.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-book-bookmark"></i> <span data-i18n="nav_guide">' + t('nav_guide') + '</span></a>' +
+                    '<a href="feed.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-rss"></i> <span data-i18n="nav_feed">' + t('nav_feed') + '</span></a>' +
+                    '<a href="predictor.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-calculator"></i> <span data-i18n="nav_predictor">' + t('nav_predictor') + '</span></a>' +
+                    '<a href="order-of-merit.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-crown"></i> <span data-i18n="nav_oom">' + t('nav_oom') + '</span></a>' +
+                '</div>' +
+
+                '<div class="mobile-drawer-group">' +
+                    '<div class="mobile-drawer-group-title">👥 ' + (isEn ? 'Community & Stats' : 'Сообщество и Инфо') + '</div>' +
+                    '<a href="players.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-users"></i> <span data-i18n="nav_players">' + t('nav_players') + '</span></a>' +
+                    '<a href="tournaments.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-list"></i> <span data-i18n="nav_tournaments">' + t('nav_tournaments') + '</span></a>' +
+                    '<a href="stats.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_stats">' + t('nav_stats') + '</span></a>' +
+                    '<a href="handicap.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-calculator"></i> <span data-i18n="nav_handicaps">' + t('nav_handicaps') + '</span></a>' +
+                '</div>' +
+            '</div>' +
+
+            '<div class="mobile-drawer-footer">' +
+                '<div style="display:flex;gap:8px;margin-bottom:12px;">' +
+                    '<button class="sun-mode-btn" style="flex:1;justify-content:center;" onclick="toggleSunMode()"><i class="fas ' + sunIcon + '"></i> ' + sunTxt + '</button>' +
+                    '<button class="lang-btn" style="flex:1;justify-content:center;" onclick="toggleLang()">' + (isEn ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>' +
+                    '<button class="lang-btn" style="flex:1;justify-content:center;" onclick="closeMobileDrawer();openToolsMenu();"><i class="fas fa-toolbox"></i> ' + (isEn ? 'Tools' : 'Меню') + '</button>' +
+                '</div>' +
+                '<div id="mobile-drawer-auth">' + authBtnMarkup + '</div>' +
+            '</div>' +
+        '</div>';
+
+    container.innerHTML = html;
+
+    var curPage = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.split('/').pop() || 'index.html' : 'index.html';
+    if (container.querySelectorAll) {
+        container.querySelectorAll('.mobile-drawer-link').forEach(function(link) {
+            if (link.getAttribute('href') === curPage) {
+                link.classList.add('active');
+            }
+        });
+    }
+}
+
+function openMobileDrawer() {
+    buildMobileDrawer();
+    var container = document.getElementById('mobile-drawer-root');
+    var tg = document.getElementById('nav-toggle');
+    if (container) container.classList.add('open');
+    if (tg) tg.classList.add('active');
+    if (typeof document !== 'undefined' && document.body && document.body.style) document.body.style.overflow = 'hidden';
+}
+
+function closeMobileDrawer() {
+    var container = document.getElementById('mobile-drawer-root');
+    var tg = document.getElementById('nav-toggle');
+    if (container) container.classList.remove('open');
+    if (tg) tg.classList.remove('active');
+    if (typeof document !== 'undefined' && document.body && document.body.style) document.body.style.overflow = '';
+}
+
+function toggleMobileDrawer() {
+    var container = document.getElementById('mobile-drawer-root');
+    if (container && container.classList.contains('open')) {
+        closeMobileDrawer();
+    } else {
+        openMobileDrawer();
+    }
 }
 
 function fmtUserAvatar(u, sizePx) {

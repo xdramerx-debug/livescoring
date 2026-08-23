@@ -3055,3 +3055,43 @@ function toggleActiveScorecard(panelId) {
         if (txt) txt.textContent = currentLang === 'en' ? 'Expand Scorecard' : 'Развернуть счётную карточку';
     }
 }
+
+// ==========================================
+// TELEGRAM BOT OFFICIAL ALERTS
+// ==========================================
+function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo) {
+    var botToken = localStorage.getItem('pestovo_tg_bot_token');
+    var chatId = localStorage.getItem('pestovo_tg_chat_id');
+
+    var triggerAlert = function(token, chat) {
+        if (!token || !chat) return;
+        var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
+        var text = '🚨 *' + typeTitle + ' В ПЕСТОВО!*\n' +
+                   '----------------------------------\n' +
+                   '👤 *Игрок:* ' + (playerName || 'Игрок') + '\n' +
+                   '⛳ *Лунка:* №' + holeNum + '\n' +
+                   '📋 *Раунд:* ' + (roundInfo || 'Активный раунд') + '\n' +
+                   '⏰ *Время:* ' + fmtTime(Date.now());
+
+        fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chat,
+                text: text,
+                parse_mode: 'Markdown'
+            })
+        }).catch(function(err) { console.warn('Telegram Alert error:', err); });
+    };
+
+    if (botToken && chatId) {
+        triggerAlert(botToken, chatId);
+    } else if (typeof db !== 'undefined') {
+        db.ref('settings/telegram').once('value').then(function(sn) {
+            var tg = sn.val() || {};
+            if (tg.botToken && tg.chatId) {
+                triggerAlert(tg.botToken, tg.chatId);
+            }
+        });
+    }
+}

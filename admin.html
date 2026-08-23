@@ -81,6 +81,27 @@
                 </div>
                 <div id="admin-alerts-list"></div>
             </div>
+
+            <div class="card">
+                <h2><i class="fab fa-telegram"></i> <span>Интеграция Telegram Bot для Судей и Маршалов</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">
+                    Укажите Telegram Bot Token и Chat ID судейской группы. При вызове судьи или маршала игрок сразу отправит пуш-уведомление в ваш Telegram-чат!
+                </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-key"></i> Telegram Bot Token</label>
+                        <input type="text" id="tg-bot-token" class="form-input" placeholder="7891234567:AAExampleBotToken">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-users"></i> Telegram Group Chat ID</label>
+                        <input type="text" id="tg-chat-id" class="form-input" placeholder="-1001234567890">
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+                    <button class="btn btn-g" onclick="saveTelegramSettings()"><i class="fas fa-save"></i> Сохранить настройки Telegram</button>
+                    <button class="btn btn-og" onclick="testTelegramAlert()"><i class="fab fa-telegram-plane"></i> Проверить отправку в Telegram</button>
+                </div>
+            </div>
         </div>
 
         <div id="tab-broadcasts" class="admin-section hidden">

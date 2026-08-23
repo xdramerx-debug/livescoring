@@ -47,6 +47,7 @@ function openAdminPanel() {
     loadTournaments();
     loadClubBroadcastsHistory();
     listenForAlerts();
+    loadTelegramSettings();
     updateNotifButton();
 }
 
@@ -704,4 +705,51 @@ function downloadJSONBackup() {
         link.remove();
         toast('💾 Database JSON backup downloaded!', 'success');
     });
+}
+
+// ==========================================
+// TELEGRAM BOT SETTINGS & ALERTS
+// ==========================================
+function loadTelegramSettings() {
+    var tokInp = document.getElementById('tg-bot-token');
+    var chatInp = document.getElementById('tg-chat-id');
+
+    if (tokInp && localStorage.getItem('pestovo_tg_bot_token')) tokInp.value = localStorage.getItem('pestovo_tg_bot_token');
+    if (chatInp && localStorage.getItem('pestovo_tg_chat_id')) chatInp.value = localStorage.getItem('pestovo_tg_chat_id');
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/telegram').once('value').then(function(sn) {
+            var tg = sn.val() || {};
+            if (tokInp && tg.botToken) tokInp.value = tg.botToken;
+            if (chatInp && tg.chatId) chatInp.value = tg.chatId;
+        });
+    }
+}
+
+function saveTelegramSettings() {
+    var tokInp = document.getElementById('tg-bot-token');
+    var chatInp = document.getElementById('tg-chat-id');
+    var botToken = tokInp ? tokInp.value.trim() : '';
+    var chatId = chatInp ? chatInp.value.trim() : '';
+
+    localStorage.setItem('pestovo_tg_bot_token', botToken);
+    localStorage.setItem('pestovo_tg_chat_id', chatId);
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/telegram').set({
+            botToken: botToken,
+            chatId: chatId,
+            updatedAt: Date.now()
+        }).then(function() {
+            toast(currentLang === 'en' ? '✅ Telegram Bot settings saved!' : '✅ Настройки Telegram Bot сохранены!', 'success');
+        });
+    } else {
+        toast(currentLang === 'en' ? '✅ Telegram settings saved locally!' : '✅ Настройки Telegram сохранены локально!', 'success');
+    }
+}
+
+function testTelegramAlert() {
+    saveTelegramSettings();
+    sendTelegramOfficialAlert('referee', 1, 'Тестовый Игрок (Админ)', 'Проверка интеграции Telegram');
+    toast(currentLang === 'en' ? '📲 Test Telegram notification sent!' : '📲 Тестовое уведомление отправлено в Telegram!', 'info');
 }

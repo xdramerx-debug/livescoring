@@ -578,6 +578,16 @@ body.sun-mode .lb-table td:first-child {
     transform: scale(1.1);
 }
 
+/* ACCESSIBILITY HIGH-CONTRAST FOCUS RINGS */
+:focus-visible {
+    outline: 2px solid var(--gold) !important;
+    outline-offset: 3px !important;
+}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--gold) !important;
+    outline-offset: 3px !important;
+}
+
 /* NO-SCROLL VERTICAL HOLE GRID MATRIX */
 .noscroll-player-block {
     background: rgba(19, 34, 24, 0.85);

@@ -1248,6 +1248,9 @@ function openPlayerProfileModal(playerId, roundId) {
             rounds.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
 
             if (rounds.length > 0) {
+                html += renderTrophyCabinet(u, rounds);
+                html += renderScoringDistributionBar(rounds);
+
                 html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> ' + t('round_history') + '</h3>';
                 rounds.forEach(function(r) {
                     var isFull = r.holes === 18;
@@ -2097,6 +2100,75 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
 function closePNGModal() {
     var modalEl = document.getElementById('png-modal');
     if (modalEl) modalEl.classList.add('hidden');
+}
+
+function renderTrophyCabinet(u, rounds) {
+    var totalEagles = 0, totalBirdies = 0, totalHIO = 0;
+    (rounds || []).forEach(function(r) {
+        if (r.eagles) totalEagles += r.eagles;
+        if (r.birdies) totalBirdies += r.birdies;
+        if (r.holeInOne) totalHIO += r.holeInOne;
+    });
+
+    var trophies = [];
+    if (totalHIO > 0) trophies.push({ icon: '🎯', title: 'Hole-in-One', desc: 'Hole-in-One!' });
+    if (totalEagles > 0) trophies.push({ icon: '🦅', title: 'Eagle Hunter', desc: totalEagles + ' Eagles' });
+    if (totalBirdies >= 5) trophies.push({ icon: '🐦', title: 'Birdie Master', desc: totalBirdies + ' Birdies' });
+    if (u.roundsPlayed >= 10) trophies.push({ icon: '👑', title: 'Century Player', desc: u.roundsPlayed + ' Rounds' });
+    else if (u.roundsPlayed >= 1) trophies.push({ icon: '⛳', title: 'Pestovo Golfer', desc: u.roundsPlayed + ' Rounds' });
+
+    if (!trophies.length) return '';
+
+    var html = '<div class="trophy-cabinet" style="margin:16px 0;padding:12px;background:var(--input);border-radius:var(--rs);border:1px solid var(--border);">';
+    html += '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px;text-transform:uppercase;"><i class="fas fa-award"></i> ' + (currentLang === 'en' ? 'Trophy Cabinet & Badges' : 'Витрина наград и достижений') + '</div>';
+    html += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
+    trophies.forEach(function(tVal) {
+        html += '<div class="trophy-badge" style="background:rgba(201,168,76,0.12);border:1px solid var(--gold);padding:6px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--white);">';
+        html += '<span>' + tVal.icon + '</span><span>' + tVal.title + ' <small style="color:var(--muted);font-weight:400;">(' + tVal.desc + ')</small></span>';
+        html += '</div>';
+    });
+    html += '</div></div>';
+    return html;
+}
+
+function renderScoringDistributionBar(rounds) {
+    var eagles = 0, birdies = 0, pars = 0, bogeys = 0, doubles = 0;
+    (rounds || []).forEach(function(r) {
+        if (r.eagles) eagles += r.eagles;
+        if (r.birdies) birdies += r.birdies;
+        if (r.pars) pars += r.pars;
+        if (r.bogeys) bogeys += r.bogeys;
+        if (r.doubles) doubles += r.doubles;
+    });
+
+    var total = eagles + birdies + pars + bogeys + doubles;
+    if (total === 0) return '';
+
+    var pEag = Math.round((eagles / total) * 100);
+    var pBir = Math.round((birdies / total) * 100);
+    var pPar = Math.round((pars / total) * 100);
+    var pBog = Math.round((bogeys / total) * 100);
+    var pDbl = Math.round((doubles / total) * 100);
+
+    var html = '<div class="scoring-dist-wrap" style="margin:16px 0;padding:12px;background:var(--input);border-radius:var(--rs);border:1px solid var(--border);">';
+    html += '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px;text-transform:uppercase;"><i class="fas fa-chart-pie"></i> ' + (currentLang === 'en' ? 'Scoring Distribution' : 'Распределение результатов ударов') + '</div>';
+    html += '<div style="height:12px;border-radius:6px;overflow:hidden;display:flex;background:var(--border);margin-bottom:8px;">';
+    if (pEag > 0) html += '<div style="width:' + pEag + '%;background:#f39c12;" title="Eagle ' + pEag + '%"></div>';
+    if (pBir > 0) html += '<div style="width:' + pBir + '%;background:#2ecc71;" title="Birdie ' + pBir + '%"></div>';
+    if (pPar > 0) html += '<div style="width:' + pPar + '%;background:#555555;" title="Par ' + pPar + '%"></div>';
+    if (pBog > 0) html += '<div style="width:' + pBog + '%;background:#5aade0;" title="Bogey ' + pBog + '%"></div>';
+    if (pDbl > 0) html += '<div style="width:' + pDbl + '%;background:#e05a4a;" title="Double+ ' + pDbl + '%"></div>';
+    html += '</div>';
+
+    html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);flex-wrap:wrap;gap:6px;">';
+    html += '<span style="color:#f39c12;">🦅 Eagle ' + pEag + '%</span>';
+    html += '<span style="color:#2ecc71;">🐦 Birdie ' + pBir + '%</span>';
+    html += '<span>⚪ Par ' + pPar + '%</span>';
+    html += '<span style="color:#5aade0;">🔷 Bogey ' + pBog + '%</span>';
+    html += '<span style="color:#e05a4a;">🟥 Dbl+ ' + pDbl + '%</span>';
+    html += '</div></div>';
+
+    return html;
 }
 
 function sharePNGNative(dataUrl, fileName) {

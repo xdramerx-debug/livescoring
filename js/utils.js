@@ -3059,19 +3059,27 @@ function toggleActiveScorecard(panelId) {
 // ==========================================
 // TELEGRAM BOT OFFICIAL ALERTS
 // ==========================================
-function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo) {
-    var botToken = localStorage.getItem('pestovo_tg_bot_token');
-    var chatId = localStorage.getItem('pestovo_tg_chat_id');
+function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, isTest) {
+    var botToken = (localStorage.getItem('pestovo_tg_bot_token') || '').trim();
+    var chatId = (localStorage.getItem('pestovo_tg_chat_id') || '').trim();
 
-    var triggerAlert = function(token, chat) {
-        if (!token || !chat) return;
+    var doFetch = function(token, chat) {
+        if (!token || !chat) {
+            if (isTest) toast('⚠️ Укажите Telegram Bot Token и Chat ID', 'error');
+            return;
+        }
+
         var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
-        var text = '🚨 *' + typeTitle + ' В ПЕСТОВО!*\n' +
+        var safePlayerName = escapeHtml(playerName || 'Игрок');
+        var safeRoundInfo = escapeHtml(roundInfo || 'Активный раунд');
+        var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
+
+        var text = '🚨 <b>' + typeTitle + ' В ПЕСТОВО!</b>\n' +
                    '----------------------------------\n' +
-                   '👤 *Игрок:* ' + (playerName || 'Игрок') + '\n' +
-                   '⛳ *Лунка:* №' + holeNum + '\n' +
-                   '📋 *Раунд:* ' + (roundInfo || 'Активный раунд') + '\n' +
-                   '⏰ *Время:* ' + fmtTime(Date.now());
+                   '👤 <b>Игрок:</b> ' + safePlayerName + '\n' +
+                   '⛳ <b>Лунка:</b> №' + holeNum + '\n' +
+                   '📋 <b>Раунд:</b> ' + safeRoundInfo + '\n' +
+                   '⏰ <b>Время:</b> ' + timeStr;
 
         fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
             method: 'POST',
@@ -3079,19 +3087,40 @@ function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo) {
             body: JSON.stringify({
                 chat_id: chat,
                 text: text,
-                parse_mode: 'Markdown'
+                parse_mode: 'HTML'
             })
-        }).catch(function(err) { console.warn('Telegram Alert error:', err); });
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data && data.ok) {
+                console.log('✅ Telegram alert delivered:', data.result);
+                if (isTest) toast(currentLang === 'en' ? '✅ Telegram alert sent successfully!' : '✅ Сообщение Telegram доставлено в чат!', 'success');
+            } else {
+                var errDesc = (data && data.description) ? data.description : 'Ошибка Telegram API';
+                console.error('❌ Telegram Bot API Error:', errDesc);
+                if (isTest) toast('❌ Ошибка Telegram: ' + errDesc, 'error');
+            }
+        })
+        .catch(function(err) {
+            console.error('❌ Telegram Fetch Error:', err);
+            if (isTest) toast('❌ Не удалось связаться с Telegram: ' + err.message, 'error');
+        });
     };
 
     if (botToken && chatId) {
-        triggerAlert(botToken, chatId);
+        doFetch(botToken, chatId);
     } else if (typeof db !== 'undefined') {
         db.ref('settings/telegram').once('value').then(function(sn) {
             var tg = sn.val() || {};
-            if (tg.botToken && tg.chatId) {
-                triggerAlert(tg.botToken, tg.chatId);
+            var token = (tg.botToken || '').trim();
+            var chat = (tg.chatId || '').trim();
+            if (token && chat) {
+                doFetch(token, chat);
+            } else if (isTest) {
+                toast('⚠️ Telegram Bot Token или Chat ID не настроены', 'error');
             }
         });
+    } else if (isTest) {
+        toast('⚠️ Укажите Telegram Bot Token и Chat ID', 'error');
     }
 }

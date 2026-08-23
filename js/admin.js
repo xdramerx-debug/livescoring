@@ -750,6 +750,5 @@ function saveTelegramSettings() {
 
 function testTelegramAlert() {
     saveTelegramSettings();
-    sendTelegramOfficialAlert('referee', 1, 'Тестовый Игрок (Админ)', 'Проверка интеграции Telegram');
-    toast(currentLang === 'en' ? '📲 Test Telegram notification sent!' : '📲 Тестовое уведомление отправлено в Telegram!', 'info');
+    sendTelegramOfficialAlert('referee', 1, 'Тестовый Игрок (Админ)', 'Проверка интеграции Telegram', true);
 }

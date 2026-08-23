@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function onAuthReady(u, d) { navAuth(u, d); }
 
 function loadStats() {
-    Promise.all([
+    return Promise.all([
         db.ref('rounds').once('value'),
         db.ref('users').once('value')
     ]).then(function(snaps) {
@@ -19,7 +19,7 @@ function loadStats() {
         var birdies = 0, eagles = 0, pars = 0, hio = 0;
         var bestGross = Infinity, bestGrossPlayer = '—';
         var bestStblfd = 0, bestStblfdPlayer = '—';
-        var fastestTime = Infinity, fastestPlayer = '—';
+        var fastestTime = Infinity, fastestPlayer = '—', fastestHoles = 18;
         var soloCount = 0, groupCount = 0;
         var totalStblFieldSum = 0, totalStblExactSum = 0;
 
@@ -29,22 +29,30 @@ function loadStats() {
         var playerRounds = {};
 
         Object.values(rounds).forEach(function(r) {
+            if (!r || typeof r !== 'object') return;
             totalRounds++;
+
+            var startTS = r.startTime || r.createdAt;
+            var endTS = r.completedAt;
+
             if (r.status === 'completed') {
                 completed++;
                 
-                if (r.startTime && r.completedAt) {
-                    var dur = (r.completedAt - r.startTime) / 60000;
-                    Object.entries(r.players || {}).forEach(function(pe) {
-                        var p = pe[1];
-                        var sc = p.scores || {};
-                        var cnt = 0;
-                        Object.values(sc).forEach(function(s) { if (parseInt(s) >= 1) cnt++; });
-                        if (cnt === 18 && dur > 30 && dur < fastestTime) {
-                            fastestTime = dur;
-                            fastestPlayer = p.name;
-                        }
-                    });
+                if (startTS && endTS && endTS > startTS) {
+                    var dur = (endTS - startTS) / 60000;
+                    if (dur >= 0.5) {
+                        Object.entries(r.players || {}).forEach(function(pe) {
+                            var p = pe[1];
+                            var sc = p.scores || {};
+                            var cnt = 0;
+                            Object.values(sc).forEach(function(s) { if (parseInt(s) >= 1) cnt++; });
+                            if (cnt > 0 && dur < fastestTime) {
+                                fastestTime = dur;
+                                fastestPlayer = p.name || 'Player';
+                                fastestHoles = cnt;
+                            }
+                        });
+                    }
                 }
             }
             if (r.status === 'active') active++;
@@ -110,8 +118,20 @@ function loadStats() {
 
         var hourUnit = currentLang === 'en' ? 'h ' : 'ч ';
         var minUnit = currentLang === 'en' ? 'm' : 'м';
-        var fastestStr = fastestTime < Infinity ?
-            Math.floor(fastestTime / 60) + hourUnit + Math.round(fastestTime % 60) + minUnit : '—';
+        var fastestStr = '—';
+
+        if (fastestTime < Infinity) {
+            if (fastestTime >= 60) {
+                var hrs = Math.floor(fastestTime / 60);
+                var mins = Math.round(fastestTime % 60);
+                fastestStr = hrs + hourUnit + (mins > 0 ? mins + minUnit : '');
+            } else {
+                fastestStr = Math.max(1, Math.round(fastestTime)) + minUnit;
+            }
+            if (fastestHoles < 18) {
+                fastestStr += ' (' + fastestHoles + (currentLang === 'en' ? 'h' : 'л') + ')';
+            }
+        }
 
         var lTotalRounds = currentLang === 'en' ? 'Total Rounds' : 'Всего раундов';
         var lActiveRounds = currentLang === 'en' ? 'Active Rounds' : 'Активных';

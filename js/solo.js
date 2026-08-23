@@ -603,6 +603,7 @@ function callOfficial(type) {
         status: 'active'
     }).then(function() {
         sendTelegramOfficialAlert(type, curHole, pName, 'Одиночный раунд');
+        sendVKOfficialAlert(type, curHole, pName, 'Одиночный раунд');
         toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + curHole + '!', 'warn');
         vib([100, 50, 100]);
     });

@@ -3149,3 +3149,80 @@ function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetM
         });
     }
 }
+
+// ==========================================
+// VK API OFFICIAL ALERTS
+// ==========================================
+function sendVKDirectAlert(token, peerId, type, holeNum, playerName, roundInfo) {
+    token = (token || '').trim();
+    peerId = (peerId || '').trim();
+
+    if (!token || !peerId) {
+        toast('⚠️ Укажите VK Access Token и Peer ID в настройках', 'error');
+        return;
+    }
+
+    var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
+    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
+
+    var text = '🚨 ' + typeTitle + ' В ПЕСТОВО!\n' +
+               '----------------------------------\n' +
+               '👤 Игрок: ' + (playerName || 'Игрок') + '\n' +
+               '⛳ Лунка: №' + holeNum + '\n' +
+               '📋 Раунд: ' + (roundInfo || 'Активная игра') + '\n' +
+               '⏰ Время: ' + timeStr;
+
+    var randomId = Math.floor(Math.random() * 2000000000);
+    var url = 'https://api.vk.com/method/messages.send?access_token=' + encodeURIComponent(token) +
+              '&peer_id=' + encodeURIComponent(peerId) +
+              '&message=' + encodeURIComponent(text) +
+              '&random_id=' + randomId +
+              '&v=5.131';
+
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch(e){} }, 6000) : null;
+
+    var fetchOptions = { method: 'GET' };
+    if (controller) fetchOptions.signal = controller.signal;
+
+    fetch(url, fetchOptions)
+    .then(function(res) {
+        if (timeoutId) clearTimeout(timeoutId);
+        return res.json();
+    })
+    .then(function(data) {
+        if (data && (data.response || data.result)) {
+            console.log('✅ VK alert delivered:', data.response || data.result);
+            toast('✅ Сообщение ВК доставлено в чат!', 'success');
+        } else {
+            var errDesc = (data && data.error && data.error.error_msg) ? data.error.error_msg : 'Ошибка VK API';
+            console.error('❌ VK API Error:', errDesc);
+            toast('❌ Ошибка VK API: ' + errDesc, 'error');
+        }
+    })
+    .catch(function(err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        var isAbort = err && err.name === 'AbortError';
+        var errMsg = isAbort ? 'Таймаут соединения (6 сек)' : (err ? err.message : 'Ошибка сети');
+        console.error('❌ VK Fetch Error:', err);
+        toast('❌ Ошибка сети / Таймаут VK: ' + errMsg, 'error');
+    });
+}
+
+function sendVKOfficialAlert(type, holeNum, playerName, roundInfo) {
+    var vkToken = (localStorage.getItem('pestovo_vk_token') || '').trim();
+    var vkPeerId = (localStorage.getItem('pestovo_vk_peer_id') || '').trim();
+
+    if (vkToken && vkPeerId) {
+        sendVKDirectAlert(vkToken, vkPeerId, type, holeNum, playerName, roundInfo);
+    } else if (typeof db !== 'undefined') {
+        db.ref('settings/vk').once('value').then(function(sn) {
+            var vk = sn.val() || {};
+            var token = (vk.token || '').trim();
+            var peer = (vk.peerId || '').trim();
+            if (token && peer) {
+                sendVKDirectAlert(token, peer, type, holeNum, playerName, roundInfo);
+            }
+        });
+    }
+}

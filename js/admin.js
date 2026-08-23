@@ -48,6 +48,7 @@ function openAdminPanel() {
     loadClubBroadcastsHistory();
     listenForAlerts();
     loadTelegramSettings();
+    loadVKSettings();
     updateNotifButton();
 }
 
@@ -830,4 +831,66 @@ function testTelegramAlert(targetMode) {
         testTelegramGroupAlert();
         testTelegramChannelAlert();
     }
+}
+
+// ==========================================
+// VK API SETTINGS & ALERTS
+// ==========================================
+function loadVKSettings() {
+    var tokInp = document.getElementById('vk-access-token');
+    var peerInp = document.getElementById('vk-peer-id');
+
+    if (tokInp) tokInp.value = localStorage.getItem('pestovo_vk_token') || '';
+    if (peerInp) peerInp.value = localStorage.getItem('pestovo_vk_peer_id') || '';
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/vk').once('value').then(function(sn) {
+            var vk = sn.val() || {};
+            if (tokInp && vk.token) tokInp.value = vk.token;
+            if (peerInp && vk.peerId) peerInp.value = vk.peerId;
+        });
+    }
+}
+
+function saveVKSettings() {
+    var tokInp = document.getElementById('vk-access-token');
+    var peerInp = document.getElementById('vk-peer-id');
+    var token = tokInp ? tokInp.value.trim() : '';
+    var peerId = peerInp ? peerInp.value.trim() : '';
+
+    if (token) localStorage.setItem('pestovo_vk_token', token);
+    if (peerId) localStorage.setItem('pestovo_vk_peer_id', peerId);
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/vk').set({
+            token: token,
+            peerId: peerId,
+            updatedAt: Date.now()
+        }).then(function() {
+            toast(currentLang === 'en' ? '✅ VK API settings saved!' : '✅ Настройки ВК сохранены!', 'success');
+        });
+    } else {
+        toast(currentLang === 'en' ? '✅ VK settings saved locally!' : '✅ Настройки ВК сохранены локально!', 'success');
+    }
+}
+
+function testVKAlert() {
+    var tokInp = document.getElementById('vk-access-token');
+    var peerInp = document.getElementById('vk-peer-id');
+    var token = tokInp ? tokInp.value.trim() : '';
+    var peerId = peerInp ? peerInp.value.trim() : '';
+
+    if (!token || !peerId) {
+        toast('⚠️ Укажите VK Access Token и Peer ID перед проверкой', 'error');
+        return;
+    }
+
+    localStorage.setItem('pestovo_vk_token', token);
+    localStorage.setItem('pestovo_vk_peer_id', peerId);
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/vk').set({ token: token, peerId: peerId, updatedAt: Date.now() }).catch(function(){});
+    }
+
+    sendVKDirectAlert(token, peerId, 'referee', 1, 'Администратор Клуба', 'Тестовая проверка ВК');
 }

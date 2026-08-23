@@ -758,6 +758,7 @@ function callOfficial(type) {
         status: 'active'
     }).then(function() {
         sendTelegramOfficialAlert(type, playHole, pName, 'Групповой раунд (' + (curRoundData ? curRoundData.format : '') + ')');
+        sendVKOfficialAlert(type, playHole, pName, 'Групповой раунд (' + (curRoundData ? curRoundData.format : '') + ')');
         toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + playHole + '!', 'warn');
         vib([100, 50, 100]);
     });

@@ -111,6 +111,41 @@
                     <button class="score-par-btn" onclick="setParSolo()">Par</button>
                     <button class="score-plus" onclick="adjSolo(1)">+</button>
                 </div>
+
+                <!-- РАСШИРЕННЫЙ ТРЕКИНГ УДАРОВ (ОПЦИОНАЛЬНО В МЕНЮ ИНСТРУМЕНТОВ) -->
+                <div id="shot-tracking-container" class="card hidden" style="background:var(--input);padding:14px;margin:16px 0 10px;">
+                    <h3 style="font-size:13px;color:var(--gold);margin-bottom:10px;"><i class="fas fa-chart-line"></i> <span data-i18n="shot_tracking">Трекинг ударов (FIR / GIR / Putts)</span></h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label style="font-size:11px;">FIR (Fairway):</label>
+                            <select id="track-fir" class="form-input" style="padding:6px;font-size:12px;">
+                                <option value="">— FIR —</option>
+                                <option value="center">✅ Fairway Center</option>
+                                <option value="left">← Left Rough</option>
+                                <option value="right">Right → Rough</option>
+                                <option value="miss">🚫 Missed</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:11px;">GIR (Green):</label>
+                            <select id="track-gir" class="form-input" style="padding:6px;font-size:12px;">
+                                <option value="">— GIR —</option>
+                                <option value="yes">✅ GIR Yes</option>
+                                <option value="no">❌ No</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:11px;">Putts (Патты):</label>
+                            <select id="track-putts" class="form-input" style="padding:6px;font-size:12px;">
+                                <option value="">— Putts —</option>
+                                <option value="1">1 Putt 🎯</option>
+                                <option value="2">2 Putts</option>
+                                <option value="3">3+ Putts</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <button class="btn btn-g btn-block" onclick="saveSolo()" style="padding:16px;font-size:15px;">
                     <i class="fas fa-save"></i> <span data-i18n="save_hole">Сохранить</span>
                 </button>

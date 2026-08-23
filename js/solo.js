@@ -305,6 +305,15 @@ function renderCurrentHole() {
 
     curScore = savedScore > 0 ? savedScore : par;
     updateDisplay();
+
+    var trackContainer = document.getElementById('shot-tracking-container');
+    if (trackContainer) {
+        if (localStorage.getItem('pestovo_shot_tracking_enabled') === '1') {
+            trackContainer.classList.remove('hidden');
+        } else {
+            trackContainer.classList.add('hidden');
+        }
+    }
 }
 
 function adjSolo(delta) {

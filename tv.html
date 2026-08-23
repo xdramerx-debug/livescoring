@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pestovo TV Leaderboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body { background: #071209; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .tv-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(11,26,14,0.95); border-bottom: 3px solid #c9a84c; }
+        .tv-logo { height: 60px; }
+        .tv-title { font-family: 'Playfair Display', serif; font-size: 38px; color: #c9a84c; font-weight: 800; }
+        .tv-clock { font-size: 28px; color: #9eb5a5; font-weight: 700; }
+        .tv-container { padding: 30px 40px; height: calc(100vh - 120px); overflow-y: auto; scroll-behavior: smooth; }
+        .tv-card { background: rgba(19,34,24,0.9); border: 2px solid rgba(201,168,76,0.3); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+        .tv-table { width: 100%; border-collapse: collapse; font-size: 20px; }
+        .tv-table th { color: #c9a84c; font-size: 16px; text-transform: uppercase; padding: 12px; border-bottom: 2px solid #c9a84c; text-align: center; }
+        .tv-table td { padding: 16px 12px; border-bottom: 1px solid #1e3525; text-align: center; }
+        .tv-pos { font-size: 28px; font-weight: 900; color: #c9a84c; }
+        .tv-name { font-size: 24px; font-weight: 700; color: #fff; text-align: left; }
+        .tv-score { font-size: 32px; font-weight: 900; }
+    </style>
+</head>
+<body>
+
+<div class="tv-header">
+    <div style="display:flex;align-items:center;gap:20px;">
+        <img src="img/logo.png" alt="Pestovo" class="tv-logo">
+        <div class="tv-title">PESTOVO GOLF CLUB · LIVE LEADERBOARD</div>
+    </div>
+    <div class="tv-clock" id="tv-clock">12:00</div>
+</div>
+
+<div class="tv-container" id="tv-container">
+    <div id="tv-content"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js?v=2"></script>
+<script>
+function updateClock() {
+    var now = new Date();
+    document.getElementById('tv-clock').textContent = fmtTime(now.getTime());
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function loadTVLeaderboard() {
+    db.ref('rounds').on('value', function(sn) {
+        var data = sn.val() || {};
+        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+
+        if (!entries.length) {
+            document.getElementById('tv-content').innerHTML = '<h2 style="text-align:center;color:var(--muted);margin-top:100px;">NO ACTIVE ROUNDS</h2>';
+            return;
+        }
+
+        entries.sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
+
+        var html = '';
+        entries.forEach(function(e) {
+            var id = e[0], r = e[1];
+            var isLive = r.status === 'active';
+            var players = r.players || {};
+            var order = holeOrder(r.startHole || 1);
+
+            var list = Object.entries(players).map(function(pe) {
+                var pid = pe[0], p = pe[1], sc = p.scores || {};
+                var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
+                return { pid: pid, name: p.name, gross: stats.gross, toPar: stats.toPar, net: stats.net, stblField: stats.stablefordField, holesPlayed: stats.holesPlayed, currentHole: stats.currentHole };
+            });
+
+            list.sort(function(a, b) {
+                if (a.toPar === null && b.toPar === null) return 0;
+                if (a.toPar === null) return 1;
+                if (b.toPar === null) return -1;
+                return a.toPar - b.toPar;
+            });
+
+            var rows = list.map(function(p, i) {
+                var thruTxt = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? 'Hole #' + p.currentHole : '—');
+                return '<tr><td class="tv-pos">' + (i + 1) + '</td><td class="tv-name">' + (p.name || '—') + '</td><td style="color:var(--gold);font-weight:700;">' + thruTxt + '</td><td class="tv-score ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</td><td>' + (p.gross || '—') + '</td><td>' + (p.net || '—') + '</td><td style="color:var(--gold);font-weight:700;">' + p.stblField + '</td></tr>';
+            }).join('');
+
+            var badge = isLive ? '<span class="live-badge" style="font-size:16px;padding:6px 18px;"><span class="live-dot"></span> LIVE</span>' : '<span class="tn-status tn-d" style="font-size:16px;padding:6px 18px;">COMPLETED</span>';
+
+            html += '<div class="tv-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+                '<div><h2 style="font-family:var(--ff);font-size:32px;color:var(--gold);margin:0;">Pestovo · ' + fmtTime(r.startTime) + '</h2>' +
+                '<div style="font-size:18px;color:var(--muted);margin-top:4px;">' + fmtDate(r.createdAt) + ' · ' + (r.format || 'Stroke') + ' · Tee: ' + TEES[r.tee] + '</div></div>' + badge + '</div>' +
+                '<table class="tv-table"><thead><tr><th style="width:60px;">POS</th><th style="text-align:left;">PLAYER</th><th>THRU</th><th>TO PAR</th><th>GROSS</th><th>NET</th><th>STBLFD</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+        });
+
+        document.getElementById('tv-content').innerHTML = html;
+    });
+}
+
+loadTVLeaderboard();
+
+// Auto Scroll for TV
+setInterval(function() {
+    var c = document.getElementById('tv-container');
+    if (c) {
+        if (c.scrollTop + c.clientHeight >= c.scrollHeight - 20) {
+            c.scrollTop = 0;
+        } else {
+            c.scrollTop += 2;
+        }
+    }
+}, 50);
+</script>
+</body>
+</html>

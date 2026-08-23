@@ -165,6 +165,13 @@ var I18N = {
         sort_rounds: 'По раундам', sort_gross: 'По лучшему Gross', sort_name: 'По имени',
         player_type: 'Тип игрока',
         sort_by: 'Сортировка',
+        tools_title: 'Инструменты и функции',
+        gps_rangefinder: 'GPS-Дальномер до грина',
+        shot_tracking: 'Детальный трекинг ударов (FIR/GIR/Putts)',
+        tv_mode: 'ТВ-Трансляция (Clubhouse TV)',
+        h2h_duel: 'Сравнение игроков 1v1 (Head-to-Head)',
+        enabled_lbl: 'Включено ✅',
+        disabled_lbl: 'Выключено ❌',
         send_broadcast_title: 'Отправить Push-анонс клуба',
         send_broadcast_sub: 'Сообщение будет отправлено на смартфоны всех игроков клуба.',
         broadcast_title_lbl: 'Заголовок анонса',
@@ -374,6 +381,13 @@ var I18N = {
         sort_rounds: 'By Rounds', sort_gross: 'By Best Gross', sort_name: 'By Name',
         player_type: 'Player Type',
         sort_by: 'Sort By',
+        tools_title: 'Tools & Features',
+        gps_rangefinder: 'GPS Rangefinder',
+        shot_tracking: 'Advanced Shot Tracking (FIR/GIR/Putts)',
+        tv_mode: 'TV Broadcast Mode',
+        h2h_duel: 'Head-to-Head Duel 1v1',
+        enabled_lbl: 'Enabled ✅',
+        disabled_lbl: 'Disabled ❌',
         send_broadcast_title: 'Send Club Push Announcement',
         send_broadcast_sub: 'Message will be sent to smartphones of all club players.',
         broadcast_title_lbl: 'Announcement Title',
@@ -928,16 +942,17 @@ function navAuth(u, d) {
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
     var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i> ' + (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : '<i class="far fa-sun"></i> ' + (currentLang === 'en' ? 'Sun' : 'Солнце')) + '</button>';
     var langBtn = '<button class="lang-btn" onclick="toggleLang()">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
+    var toolsBtn = '<button class="lang-btn" onclick="openToolsMenu()"><i class="fas fa-toolbox"></i> ' + (currentLang === 'en' ? 'Tools' : 'Меню') + '</button>';
 
     if (u && d) {
         var avatarMarkup = fmtUserAvatar(d, 30);
         e.innerHTML = '<div class="nav-user" style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + u.uid + '\')">' +
-            sunBtn + langBtn + avatarMarkup +
+            sunBtn + langBtn + toolsBtn + avatarMarkup +
             '<span class="nav-uname">' + (d.name || '') + '</span>' +
             '<button class="btn btn-og btn-sm" onclick="event.stopPropagation();doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
     } else {
-        e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + '<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';
+        e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + toolsBtn + '<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';
     }
 }
 
@@ -2182,4 +2197,282 @@ function sharePNGNative(dataUrl, fileName) {
             }).catch(function() {});
         }
     });
+}
+
+// ==========================================
+// МЕНЮ ИНСТРУМЕНТОВ И ФУНКЦИЙ (TOOLS MENU)
+// ==========================================
+function openToolsMenu() {
+    var modalEl = document.getElementById('tools-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'tools-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML =
+            '<div class="modal-bg" onclick="closeToolsModal()"></div>' +
+            '<div class="modal-body" style="max-width:520px;">' +
+            '<button class="modal-close" onclick="closeToolsModal()">&times;</button>' +
+            '<div id="tools-modal-body"></div>' +
+            '</div>';
+        if (document.body) document.body.appendChild(modalEl);
+    }
+
+    var bodyEl = document.getElementById('tools-modal-body');
+    if (!bodyEl) return;
+
+    var isGps = localStorage.getItem('pestovo_gps_enabled') === '1';
+    var isShotTrack = localStorage.getItem('pestovo_shot_tracking_enabled') === '1';
+
+    var html = '<h2 style="color:var(--gold);margin-bottom:12px;"><i class="fas fa-toolbox"></i> ' + t('tools_title') + '</h2>';
+    html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">' + (currentLang === 'en' ? 'Toggle optional features on/off or launch standalone tools:' : 'Включайте и выключайте отдельные функции или запускайте инструменты:') + '</p>';
+
+    // Feature 1: GPS Rangefinder
+    html += '<div class="list-item" style="padding:14px;margin-bottom:12px;flex-wrap:wrap;gap:10px;">';
+    html += '<div style="flex:1;min-width:180px;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-location-crosshairs" style="color:var(--gold);"></i> ' + t('gps_rangefinder') + '</strong>';
+    html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + (currentLang === 'en' ? 'Live GPS distance in meters to green & club recommendation' : 'Точный расчёт дистанции в метрах до грина по GPS и рекомендация клюшки') + '</div></div>';
+    html += '<div style="display:flex;gap:8px;align-items:center;">';
+    html += '<button class="btn ' + (isGps ? 'btn-g' : 'btn-og') + ' btn-sm" onclick="toggleFeatureSetting(\'pestovo_gps_enabled\')">' + (isGps ? t('enabled_lbl') : t('disabled_lbl')) + '</button>';
+    html += '<button class="btn btn-og btn-sm" onclick="openGPSRangefinderModal()"><i class="fas fa-expand"></i></button>';
+    html += '</div></div>';
+
+    // Feature 2: Shot Tracking
+    html += '<div class="list-item" style="padding:14px;margin-bottom:12px;flex-wrap:wrap;gap:10px;">';
+    html += '<div style="flex:1;min-width:180px;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-chart-line" style="color:var(--gold);"></i> ' + t('shot_tracking') + '</strong>';
+    html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + (currentLang === 'en' ? 'Record FIR (Fairway), GIR (Green) & Putts per hole' : 'Дополнительный ввод точности драйва, выхода на грин и числа паттов') + '</div></div>';
+    html += '<div><button class="btn ' + (isShotTrack ? 'btn-g' : 'btn-og') + ' btn-sm" onclick="toggleFeatureSetting(\'pestovo_shot_tracking_enabled\')">' + (isShotTrack ? t('enabled_lbl') : t('disabled_lbl')) + '</button></div>';
+    html += '</div>';
+
+    // Feature 3: TV Broadcast Mode
+    html += '<div class="list-item" style="padding:14px;margin-bottom:12px;flex-wrap:wrap;gap:10px;">';
+    html += '<div style="flex:1;min-width:180px;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-tv" style="color:var(--gold);"></i> ' + t('tv_mode') + '</strong>';
+    html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + (currentLang === 'en' ? 'Fullscreen auto-scrolling leaderboard for Clubhouse TV panels' : 'Полноэкранная ТВ-трансляция для телевизоров в клубном доме') + '</div></div>';
+    html += '<div><a href="tv.html" target="_blank" class="btn btn-g btn-sm"><i class="fas fa-desktop"></i> ' + (currentLang === 'en' ? 'Open TV Page' : 'Открыть ТВ') + '</a></div>';
+    html += '</div>';
+
+    // Feature 4: Head-to-Head 1v1
+    html += '<div class="list-item" style="padding:14px;margin-bottom:12px;flex-wrap:wrap;gap:10px;">';
+    html += '<div style="flex:1;min-width:180px;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-handshake-simple" style="color:var(--gold);"></i> ' + t('h2h_duel') + '</strong>';
+    html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + (currentLang === 'en' ? 'Compare stats and direct head-to-head match history between 2 players' : 'Прямое сравнение результатов двух игроков и история личных встреч') + '</div></div>';
+    html += '<div><button class="btn btn-og btn-sm" onclick="closeToolsModal();openHeadToHeadModal();"><i class="fas fa-chart-column"></i> ' + (currentLang === 'en' ? 'Compare 1v1' : 'Сравнить 1v1') + '</button></div>';
+    html += '</div>';
+
+    bodyEl.innerHTML = html;
+    modalEl.classList.remove('hidden');
+}
+
+function closeToolsModal() {
+    var modalEl = document.getElementById('tools-modal');
+    if (modalEl) modalEl.classList.add('hidden');
+}
+
+function toggleFeatureSetting(key) {
+    var curr = localStorage.getItem(key) === '1';
+    localStorage.setItem(key, curr ? '0' : '1');
+    toast(curr ? (currentLang === 'en' ? 'Feature Disabled' : 'Функция выключена') : (currentLang === 'en' ? 'Feature Enabled ✅' : 'Функция включена ✅'), 'info');
+    openToolsMenu();
+    if (typeof renderPlayHole === 'function') renderPlayHole();
+    if (typeof renderCurrentHole === 'function') renderCurrentHole();
+}
+
+// ==========================================
+// FEATURE 1: GPS-ДАЛЬНОМЕР И РЕКОМЕНДАЦИЯ КЛЮШКИ
+// ==========================================
+const HOLE_GREENS = {
+    1: { lat: 56.0912, lon: 37.6210 }, 2: { lat: 56.0925, lon: 37.6225 }, 3: { lat: 56.0938, lon: 37.6240 },
+    4: { lat: 56.0918, lon: 37.6255 }, 5: { lat: 56.0905, lon: 37.6235 }, 6: { lat: 56.0892, lon: 37.6215 },
+    7: { lat: 56.0880, lon: 37.6200 }, 8: { lat: 56.0872, lon: 37.6220 }, 9: { lat: 56.0895, lon: 37.6250 },
+    10: { lat: 56.0910, lon: 37.6270 }, 11: { lat: 56.0928, lon: 37.6285 }, 12: { lat: 56.0945, lon: 37.6275 },
+    13: { lat: 56.0952, lon: 37.6255 }, 14: { lat: 56.0935, lon: 37.6230 }, 15: { lat: 56.0920, lon: 37.6205 },
+    16: { lat: 56.0902, lon: 37.6185 }, 17: { lat: 56.0885, lon: 37.6170 }, 18: { lat: 56.0898, lon: 37.6198 }
+};
+
+function calcGPSDistanceMeters(lat1, lon1, lat2, lon2) {
+    var R = 6371000;
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLon = (lon2 - lon1) * Math.PI / 180;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c);
+}
+
+function suggestGolfClub(meters) {
+    if (meters > 210) return 'Driver / 3-Wood';
+    if (meters > 185) return '4-Hybrid / 4-Iron';
+    if (meters > 170) return '5-Iron';
+    if (meters > 155) return '6-Iron';
+    if (meters > 140) return '7-Iron';
+    if (meters > 125) return '8-Iron';
+    if (meters > 110) return '9-Iron';
+    if (meters > 90) return 'Pitching Wedge (PW)';
+    if (meters > 70) return 'Gap Wedge (GW)';
+    return 'Sand Wedge / Putter';
+}
+
+function openGPSRangefinderModal(holeNum) {
+    holeNum = holeNum || (typeof playHole !== 'undefined' ? playHole : (typeof curHole !== 'undefined' ? curHole : 1));
+
+    var modalEl = document.getElementById('gps-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'gps-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML =
+            '<div class="modal-bg" onclick="closeGPSModal()"></div>' +
+            '<div class="modal-body" style="max-width:480px;text-align:center;">' +
+            '<button class="modal-close" onclick="closeGPSModal()">&times;</button>' +
+            '<div id="gps-modal-body"></div>' +
+            '</div>';
+        if (document.body) document.body.appendChild(modalEl);
+    }
+
+    var bodyEl = document.getElementById('gps-modal-body');
+    if (!bodyEl) return;
+
+    var green = HOLE_GREENS[holeNum] || HOLE_GREENS[1];
+
+    var html = '<h2 style="color:var(--gold);margin-bottom:8px;"><i class="fas fa-location-crosshairs"></i> GPS Rangefinder</h2>';
+    html += '<div style="font-size:16px;font-weight:700;color:var(--white);margin-bottom:16px;">' + t('hole') + ' #' + holeNum + ' (' + t('par') + ' ' + holePar(holeNum) + ')</div>';
+
+    html += '<div id="gps-status-card" class="card" style="background:var(--input);padding:20px;border-color:var(--gold);margin-bottom:16px;">';
+    html += '<div class="loading"><div class="spinner"></div><p style="margin-top:8px;font-size:13px;color:var(--muted);">' + (currentLang === 'en' ? 'Acquiring GPS position...' : 'Определяем GPS-координаты...') + '</p></div>';
+    html += '</div>';
+
+    html += '<div class="form-group"><label>' + t('hole') + ':</label><select class="form-input" style="max-width:200px;margin:0 auto;" onchange="openGPSRangefinderModal(parseInt(this.value))">';
+    for (var i = 1; i <= 18; i++) {
+        var sel = i === holeNum ? 'selected' : '';
+        html += '<option value="' + i + '" ' + sel + '>' + t('hole') + ' #' + i + '</option>';
+    }
+    html += '</select></div>';
+
+    bodyEl.innerHTML = html;
+    modalEl.classList.remove('hidden');
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            var userLat = pos.coords.latitude;
+            var userLon = pos.coords.longitude;
+            var distCenter = calcGPSDistanceMeters(userLat, userLon, green.lat, green.lon);
+            var distFront = Math.max(10, distCenter - 14);
+            var distBack = distCenter + 14;
+            var club = suggestGolfClub(distCenter);
+
+            var cardEl = document.getElementById('gps-status-card');
+            if (cardEl) {
+                var cHtml = '<div style="font-size:11px;color:#2ecc71;font-weight:700;margin-bottom:10px;"><i class="fas fa-satellite"></i> GPS ACTIVE (±' + Math.round(pos.coords.accuracy || 3) + 'm)</div>';
+                cHtml += '<div style="display:flex;justify-content:space-around;align-items:center;margin:12px 0;">';
+                cHtml += '<div><div style="font-size:10px;color:var(--muted);">FRONT</div><div style="font-size:18px;font-weight:700;color:var(--text);">' + distFront + 'm</div></div>';
+                cHtml += '<div style="background:rgba(201,168,76,0.15);padding:10px 18px;border-radius:12px;border:1px solid var(--gold);"><div style="font-size:11px;color:var(--gold);font-weight:700;">CENTER</div><div style="font-size:36px;font-weight:800;color:var(--white);line-height:1;">' + distCenter + 'm</div></div>';
+                cHtml += '<div><div style="font-size:10px;color:var(--muted);">BACK</div><div style="font-size:18px;font-weight:700;color:var(--text);">' + distBack + 'm</div></div>';
+                cHtml += '</div>';
+                cHtml += '<div style="font-size:13px;color:var(--gold);font-weight:700;margin-top:10px;"><i class="fas fa-golf-ball-tee"></i> ' + (currentLang === 'en' ? 'Suggested Club: ' : 'Рекомендуемая клюшка: ') + '<b>' + club + '</b></div>';
+                cardEl.innerHTML = cHtml;
+            }
+        }, function(err) {
+            var cardEl = document.getElementById('gps-status-card');
+            if (cardEl) {
+                var distCenter = holeDist(holeNum, 'wh');
+                var club = suggestGolfClub(distCenter);
+                cardEl.innerHTML = '<div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:8px;"><i class="fas fa-flag"></i> ' + (currentLang === 'en' ? 'Course Yardage' : 'Дистанция по карте Пестово') + '</div>' +
+                    '<div style="font-size:36px;font-weight:800;color:var(--white);">' + distCenter + 'm</div>' +
+                    '<div style="font-size:12px;color:var(--gold);margin-top:6px;">' + (currentLang === 'en' ? 'Suggested Club: ' : 'Рекомендуемая клюшка: ') + '<b>' + club + '</b></div>';
+            }
+        }, { enableHighAccuracy: true, timeout: 8000 });
+    }
+}
+
+function closeGPSModal() {
+    var modalEl = document.getElementById('gps-modal');
+    if (modalEl) modalEl.classList.add('hidden');
+}
+
+// ==========================================
+// FEATURE 4: HEAD-TO-HEAD DUEL 1v1
+// ==========================================
+function openHeadToHeadModal(p1Id, p2Id) {
+    var modalEl = document.getElementById('h2h-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'h2h-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML =
+            '<div class="modal-bg" onclick="closeH2HModal()"></div>' +
+            '<div class="modal-body" style="max-width:580px;">' +
+            '<button class="modal-close" onclick="closeH2HModal()">&times;</button>' +
+            '<div id="h2h-modal-body"></div>' +
+            '</div>';
+        if (document.body) document.body.appendChild(modalEl);
+    }
+
+    var bodyEl = document.getElementById('h2h-modal-body');
+    if (!bodyEl || typeof db === 'undefined') return;
+
+    db.ref('users').once('value').then(function(sn) {
+        var users = sn.val() || {};
+        var userEntries = Object.entries(users);
+        if (userEntries.length < 2) {
+            bodyEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:30px;">' + (currentLang === 'en' ? 'Need at least 2 registered players' : 'Требуется минимум 2 зарегистрированных игрока') + '</p>';
+            modalEl.classList.remove('hidden');
+            return;
+        }
+
+        var uid1 = p1Id || userEntries[0][0];
+        var uid2 = p2Id || (userEntries[1] ? userEntries[1][0] : userEntries[0][0]);
+        if (uid1 === uid2 && userEntries[1]) uid2 = userEntries[1][0];
+
+        var u1 = users[uid1] || {};
+        var u2 = users[uid2] || {};
+
+        var html = '<h2 style="color:var(--gold);margin-bottom:14px;"><i class="fas fa-handshake-simple"></i> ' + t('h2h_duel') + '</h2>';
+
+        // Player Selectors
+        html += '<div class="form-row" style="margin-bottom:20px;">';
+        html += '<div class="form-group"><label>Player 1</label><select class="form-input" onchange="openHeadToHeadModal(this.value, \'' + uid2 + '\')">';
+        userEntries.forEach(function(e) {
+            var sel = e[0] === uid1 ? 'selected' : '';
+            html += '<option value="' + e[0] + '" ' + sel + '>' + (e[1].name || 'Player') + '</option>';
+        });
+        html += '</select></div>';
+
+        html += '<div class="form-group"><label>Player 2</label><select class="form-input" onchange="openHeadToHeadModal(\'' + uid1 + '\', this.value)">';
+        userEntries.forEach(function(e) {
+            var sel = e[0] === uid2 ? 'selected' : '';
+            html += '<option value="' + e[0] + '" ' + sel + '>' + (e[1].name || 'Player') + '</option>';
+        });
+        html += '</select></div>';
+        html += '</div>';
+
+        // Head-to-Head Comparison Table
+        html += '<div class="card" style="background:var(--input);padding:16px;">';
+        html += '<div style="display:flex;justify-content:space-around;align-items:center;margin-bottom:16px;text-align:center;">';
+        html += '<div>' + fmtUserAvatar(u1, 52) + '<div style="font-weight:700;color:var(--gold);margin-top:4px;">' + (u1.name || 'Player 1') + '</div></div>';
+        html += '<div style="font-size:24px;font-weight:900;color:var(--white);">VS</div>';
+        html += '<div style="font-size:24px;font-weight:900;color:var(--white);">' + fmtUserAvatar(u2, 52) + '<div style="font-weight:700;color:var(--gold);margin-top:4px;">' + (u2.name || 'Player 2') + '</div></div>';
+        html += '</div>';
+
+        // Metrics Rows
+        html += drawH2HRow('Exact HCP', fmtExactHcp(u1.handicap), fmtExactHcp(u2.handicap));
+        html += drawH2HRow('Rounds Played', String(u1.roundsPlayed || 0), String(u2.roundsPlayed || 0));
+        html += drawH2HRow('Best Gross (18h)', String(u1.bestGross || '—'), String(u2.bestGross || '—'));
+        html += drawH2HRow('Best Stableford', String(u1.bestStableford || '—'), String(u2.bestStableford || '—'));
+
+        html += '</div>';
+
+        bodyEl.innerHTML = html;
+        modalEl.classList.remove('hidden');
+    });
+}
+
+function drawH2HRow(label, v1, v2) {
+    return '<div class="list-item" style="padding:10px;margin-bottom:6px;">' +
+        '<div style="font-weight:700;color:var(--white);width:30%;text-align:center;">' + v1 + '</div>' +
+        '<div style="font-size:11px;color:var(--muted);width:40%;text-align:center;text-transform:uppercase;">' + label + '</div>' +
+        '<div style="font-weight:700;color:var(--white);width:30%;text-align:center;">' + v2 + '</div>' +
+        '</div>';
+}
+
+function closeH2HModal() {
+    var modalEl = document.getElementById('h2h-modal');
+    if (modalEl) modalEl.classList.add('hidden');
 }

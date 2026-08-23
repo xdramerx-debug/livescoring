@@ -464,6 +464,15 @@ function renderPlayHole() {
     updScoreDisplay('my', myScore);
     updScoreDisplay('mark', targetScore);
 
+    var trackContainer = document.getElementById('shot-tracking-container');
+    if (trackContainer) {
+        if (localStorage.getItem('pestovo_shot_tracking_enabled') === '1') {
+            trackContainer.classList.remove('hidden');
+        } else {
+            trackContainer.classList.add('hidden');
+        }
+    }
+
     var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
     var net = calcNettScore(myScore, par, holeHcp(playHole), myFieldHcp);
     var netBadge = document.getElementById('my-net-badge');

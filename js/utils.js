@@ -1768,8 +1768,9 @@ function exportRoundPNG(roundId, playerId) {
         var r = sn.val();
         if (!r || !r.players) return;
 
-        var pid = playerId || Object.keys(r.players)[0];
-        var p = r.players[pid] || Object.values(r.players)[0];
+        var playersList = Object.entries(r.players);
+        var pid = playerId || playersList[0][0];
+        var p = r.players[pid] || playersList[0][1];
         if (!p) return;
 
         var canvas = document.createElement('canvas');
@@ -1798,55 +1799,81 @@ function exportRoundPNG(roundId, playerId) {
         ctx.fillStyle = '#c9a84c';
         ctx.font = 'bold 36px "Playfair Display", Georgia, serif';
         ctx.textAlign = 'center';
-        ctx.fillText('PESTOVO GOLF CLUB', 540, 110);
+        ctx.fillText('PESTOVO GOLF CLUB', 540, 95);
 
         ctx.fillStyle = '#9eb5a5';
-        ctx.font = '500 20px "Inter", sans-serif';
-        ctx.fillText('OFFICIAL DIGITAL SCORECARD', 540, 150);
+        ctx.font = '500 18px "Inter", sans-serif';
+        ctx.fillText('OFFICIAL DIGITAL SCORECARD', 540, 130);
 
         // Gold Divider
         ctx.beginPath();
-        ctx.moveTo(180, 175);
-        ctx.lineTo(900, 175);
+        ctx.moveTo(180, 150);
+        ctx.lineTo(900, 150);
         ctx.strokeStyle = '#c9a84c';
         ctx.lineWidth = 2;
         ctx.stroke();
 
         // Player Name
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 52px "Playfair Display", serif';
-        ctx.fillText(p.name || 'Golf Player', 540, 245);
+        ctx.font = 'bold 48px "Playfair Display", serif';
+        ctx.fillText(p.name || 'Golf Player', 540, 215);
 
         // Sub Meta
         var fmtStr = (r.format || 'Stroke Play') + ' · Tee: ' + (TEES[r.tee] || 'White') + ' · HCP: ' + fmtExactHcp(p.exactHcp);
         var dateStr = fmtDate(r.completedAt || r.createdAt || Date.now());
 
         ctx.fillStyle = '#c9a84c';
-        ctx.font = '600 22px "Inter", sans-serif';
-        ctx.fillText(fmtStr, 540, 290);
-        ctx.fillStyle = '#9eb5a5';
-        ctx.font = '18px "Inter", sans-serif';
-        ctx.fillText(dateStr, 540, 325);
+        ctx.font = '600 20px "Inter", sans-serif';
+        ctx.fillText(fmtStr, 540, 255);
+
+        // Marker Info (if group round)
+        var myMarkerId = p.markedBy;
+        var markerPlayer = (myMarkerId && r.players[myMarkerId]) ? r.players[myMarkerId] : null;
+        var markerName = markerPlayer ? markerPlayer.name : null;
+        var markerScores = (myMarkerId && p.markerScores && p.markerScores[myMarkerId]) ? p.markerScores[myMarkerId] : {};
+
+        if (markerName) {
+            ctx.fillStyle = '#9b59b6';
+            ctx.font = '600 18px "Inter", sans-serif';
+            ctx.fillText((currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + markerName, 540, 288);
+            ctx.fillStyle = '#9eb5a5';
+            ctx.font = '16px "Inter", sans-serif';
+            ctx.fillText(dateStr, 540, 315);
+        } else {
+            ctx.fillStyle = '#9eb5a5';
+            ctx.font = '16px "Inter", sans-serif';
+            ctx.fillText(dateStr, 540, 290);
+        }
 
         // Score KPIs Cards (Gross, Net, ToPar)
         var order = holeOrder(r.startHole || 1);
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
 
-        drawKPICard(ctx, 160, 360, 220, 130, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
-        drawKPICard(ctx, 430, 360, 220, 130, 'GROSS', String(stats.gross || 0), '#c9a84c');
-        drawKPICard(ctx, 700, 360, 220, 130, 'NET', String(stats.net || 0), '#5aade0');
+        var kpiY = markerName ? 335 : 320;
+        drawKPICard(ctx, 160, kpiY, 220, 115, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
+        drawKPICard(ctx, 430, kpiY, 220, 115, 'GROSS', String(stats.gross || 0), '#c9a84c');
+        drawKPICard(ctx, 700, kpiY, 220, 115, 'NET', String(stats.net || 0), '#5aade0');
 
-        // Hole Grid Rows
-        drawHoleGridRow(ctx, p.scores || {}, 1, 9, 530);
-        drawHoleGridRow(ctx, p.scores || {}, 10, 18, 730);
+        // Hole Grid Rows (Front 9 & Back 9)
+        var frontY = markerName ? 475 : 460;
+        var backY = markerName ? 695 : 680;
+        drawHoleGridRow(ctx, p.scores || {}, markerScores, 1, 9, frontY);
+        drawHoleGridRow(ctx, p.scores || {}, markerScores, 10, 18, backY);
+
+        // Marker Verification Bar
+        if (markerName) {
+            ctx.fillStyle = '#2ecc71';
+            ctx.font = '600 18px "Inter", sans-serif';
+            ctx.fillText('✅ ' + (currentLang === 'en' ? 'Verified by Marker: ' : 'Подтверждено маркером: ') + markerName, 540, 935);
+        }
 
         // Footer Branding
         ctx.fillStyle = 'rgba(201,168,76,0.6)';
-        ctx.font = '600 20px "Inter", sans-serif';
+        ctx.font = '600 18px "Inter", sans-serif';
         ctx.fillText('⛳ GOLF CLUB PESTOVO · LIVE SCORING SYSTEM', 540, 995);
 
         var dataUrl = canvas.toDataURL('image/png');
-        openPNGExportModal(dataUrl, p.name);
+        openPNGExportModal(dataUrl, p.name, roundId, pid, playersList);
     });
 }
 
@@ -1860,49 +1887,53 @@ function drawKPICard(ctx, x, y, w, h, label, value, valColor) {
     ctx.stroke();
 
     ctx.fillStyle = '#9eb5a5';
-    ctx.font = 'bold 16px "Inter", sans-serif';
+    ctx.font = 'bold 15px "Inter", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(label, x + w / 2, y + 38);
+    ctx.fillText(label, x + w / 2, y + 32);
 
     ctx.fillStyle = valColor || '#ffffff';
-    ctx.font = 'bold 44px "Inter", sans-serif';
-    ctx.fillText(value, x + w / 2, y + 95);
+    ctx.font = 'bold 38px "Inter", sans-serif';
+    ctx.fillText(value, x + w / 2, y + 84);
 }
 
-function drawHoleGridRow(ctx, scores, startHole, endHole, startY) {
-    var startX = 80;
-    var cellW = 92;
-    var cellH = 65;
+function drawHoleGridRow(ctx, scores, markerScores, startHole, endHole, startY) {
+    var startX = 60;
+    var cellW = 96;
+    var cellH = 95;
 
     // Header Row
     ctx.fillStyle = '#101f13';
-    ctx.fillRect(startX, startY, cellW * 10, 40);
+    ctx.fillRect(startX, startY, cellW * 10, 36);
     ctx.strokeStyle = '#1e3525';
     ctx.lineWidth = 1;
-    ctx.strokeRect(startX, startY, cellW * 10, 40);
+    ctx.strokeRect(startX, startY, cellW * 10, 36);
 
     ctx.fillStyle = '#c9a84c';
-    ctx.font = 'bold 16px "Inter", sans-serif';
+    ctx.font = 'bold 15px "Inter", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(startHole === 1 ? 'FRONT 9' : 'BACK 9', startX + cellW / 2, startY + 26);
+    ctx.fillText(startHole === 1 ? 'FRONT 9' : 'BACK 9', startX + cellW / 2, startY + 24);
 
     for (var i = startHole; i <= endHole; i++) {
         var colX = startX + (i - startHole + 1) * cellW;
-        ctx.fillText(String(i), colX + cellW / 2, startY + 26);
+        ctx.fillText(String(i), colX + cellW / 2, startY + 24);
     }
 
     // Scores Row
-    var rowY = startY + 40;
+    var rowY = startY + 36;
     ctx.fillStyle = '#132218';
     ctx.fillRect(startX, rowY, cellW * 10, cellH);
     ctx.strokeRect(startX, rowY, cellW * 10, cellH);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px "Inter", sans-serif';
-    ctx.fillText('SCORE', startX + cellW / 2, rowY + 38);
+    ctx.font = 'bold 16px "Inter", sans-serif';
+    ctx.fillText('SCORE', startX + cellW / 2, rowY + 35);
+    ctx.fillStyle = '#9b59b6';
+    ctx.font = '12px "Inter", sans-serif';
+    ctx.fillText('MARKER', startX + cellW / 2, rowY + 68);
 
     for (var i = startHole; i <= endHole; i++) {
         var s = parseInt(scores[i]) || 0;
+        var ms = parseInt(markerScores[i]) || 0;
         var par = holePar(i);
         var colX = startX + (i - startHole + 1) * cellW;
 
@@ -1916,23 +1947,50 @@ function drawHoleGridRow(ctx, scores, startHole, endHole, startY) {
             else if (diff === 1) circleColor = '#5aade0';
             else circleColor = '#e05a4a';
 
+            // Top: Player Score Badge
             ctx.fillStyle = circleColor;
             ctx.beginPath();
-            ctx.arc(colX + cellW / 2, rowY + cellH / 2, 22, 0, Math.PI * 2);
+            ctx.arc(colX + cellW / 2, rowY + 30, 20, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 22px "Inter", sans-serif';
-            ctx.fillText(String(s), colX + cellW / 2, rowY + cellH / 2 + 7);
+            ctx.font = 'bold 20px "Inter", sans-serif';
+            ctx.fillText(String(s), colX + cellW / 2, rowY + 37);
+
+            // Bottom: Marker Score (With Strikethrough if Mismatch)
+            if (ms > 0) {
+                var isMatch = (ms === s);
+                var mText = 'M: ' + ms;
+                ctx.font = '13px "Inter", sans-serif';
+                var textX = colX + cellW / 2;
+                var textY = rowY + 74;
+
+                if (isMatch) {
+                    ctx.fillStyle = '#9b59b6';
+                    ctx.fillText(mText, textX, textY);
+                } else {
+                    ctx.fillStyle = '#e05a4a';
+                    ctx.fillText(mText, textX, textY);
+
+                    // Draw Strikethrough line
+                    var textW = ctx.measureText(mText).width;
+                    ctx.beginPath();
+                    ctx.moveTo(textX - textW / 2 - 2, textY - 4);
+                    ctx.lineTo(textX + textW / 2 + 2, textY - 4);
+                    ctx.strokeStyle = '#e05a4a';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+            }
         } else {
             ctx.fillStyle = '#3a523e';
             ctx.font = '18px "Inter", sans-serif';
-            ctx.fillText('—', colX + cellW / 2, rowY + cellH / 2 + 6);
+            ctx.fillText('—', colX + cellW / 2, rowY + 45);
         }
     }
 }
 
-function openPNGExportModal(pngDataUrl, playerName) {
+function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersList) {
     var modalEl = document.getElementById('png-modal');
     if (!modalEl) {
         modalEl = document.createElement('div');
@@ -1940,7 +1998,7 @@ function openPNGExportModal(pngDataUrl, playerName) {
         modalEl.className = 'modal hidden';
         modalEl.innerHTML =
             '<div class="modal-bg" onclick="closePNGModal()"></div>' +
-            '<div class="modal-body" style="max-width:540px;text-align:center;">' +
+            '<div class="modal-body" style="max-width:560px;text-align:center;">' +
             '<button class="modal-close" onclick="closePNGModal()">&times;</button>' +
             '<div id="png-modal-body"></div>' +
             '</div>';
@@ -1951,6 +2009,20 @@ function openPNGExportModal(pngDataUrl, playerName) {
     var fileName = 'Pestovo_' + (playerName || 'Card').replace(/\s+/g, '_') + '.png';
 
     var html = '<h2 style="color:var(--gold);margin-bottom:12px;"><i class="fas fa-image"></i> ' + t('share_card') + '</h2>';
+
+    // Group Player Selector (If Group Round with >1 players)
+    if (playersList && playersList.length > 1 && roundId) {
+        html += '<div style="margin-bottom:16px;background:var(--input);padding:12px;border-radius:var(--rs);border:1px solid var(--border);">';
+        html += '<label style="font-size:12px;color:var(--gold);display:block;margin-bottom:6px;font-weight:700;"><i class="fas fa-users"></i> ' + (currentLang === 'en' ? 'Select Group Player Card:' : 'Выберите карточку игрока группы:') + '</label>';
+        html += '<select class="form-input" style="max-width:320px;margin:0 auto;text-align:center;font-weight:700;" onchange="exportRoundPNG(\'' + roundId + '\', this.value)">';
+        playersList.forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var sel = pid === activePid ? 'selected' : '';
+            html += '<option value="' + pid + '" ' + sel + '>' + (p.name || 'Player') + '</option>';
+        });
+        html += '</select></div>';
+    }
+
     html += '<img src="' + pngDataUrl + '" alt="Pestovo Card" style="width:100%;max-width:440px;border-radius:12px;border:2px solid var(--gold);box-shadow:0 8px 32px rgba(0,0,0,0.5);margin-bottom:20px;">';
     html += '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">';
     html += '<a href="' + pngDataUrl + '" download="' + fileName + '" class="btn btn-g" style="flex:1;min-width:180px;"><i class="fas fa-download"></i> ' + t('download_png') + '</a>';

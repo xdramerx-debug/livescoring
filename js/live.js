@@ -505,8 +505,9 @@ function renderPlayHole() {
         if (curRoundData && (curRoundData.format === 'Match Play 1v1' || curRoundData.format === 'Match Play 2v2') && myTargetUid) {
             var myScoresObj = (curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
             var targetScoresObj = (curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].scores) || {};
+            var myName = (curRoundData.players[myUid] && curRoundData.players[myUid].name) || (typeof myPlayerName !== 'undefined' ? myPlayerName : 'Player 1');
             var targetName = (curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].name) || 'Opponent';
-            var mStatus = calcMatchPlayStatus(myScoresObj, targetScoresObj, myPlayerName, targetName);
+            var mStatus = calcMatchPlayStatus(myScoresObj, targetScoresObj, myName, targetName);
             trackerEl.innerHTML = renderMatchPlayTrackerHTML(mStatus);
         } else {
             trackerEl.innerHTML = '';
@@ -827,16 +828,17 @@ function finishGroupRound() {
 
         toast(t('msg_round_finished'));
         setTimeout(function() {
+            var pName = (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].name) || 'Player';
             if (confirm(currentLang === 'en' ? 'Download official PDF scorecard?' : 'Скачать официальную PDF-карточку?')) {
                 downloadOfficialScorecardPDF({
-                    playerName: myPlayerName,
+                    playerName: pName,
                     markerName: 'Group Marker',
-                    createdAt: curRoundData.createdAt,
-                    tee: curRoundData.tee,
-                    format: curRoundData.format,
-                    exactHandicap: (curRoundData.players[myUid] && curRoundData.players[myUid].exactHcp) || 0,
-                    fieldHandicap: (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0,
-                    scores: curRoundData.players[myUid] ? curRoundData.players[myUid].scores : {}
+                    createdAt: curRoundData ? curRoundData.createdAt : Date.now(),
+                    tee: curRoundData ? curRoundData.tee : 'wh',
+                    format: curRoundData ? curRoundData.format : 'Stroke Play',
+                    exactHandicap: (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].exactHcp) || 0,
+                    fieldHandicap: (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0,
+                    scores: (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {}
                 });
             }
             window.location.href = 'leaderboard.html';
@@ -852,23 +854,31 @@ function triggerGroupVoiceInput(targetKey) {
             if (targetKey === 'my') myScore = parsed.score;
             else if (targetKey === 'mark') targetScore = parsed.score;
         }
-        if (parsed.putts || parsed.fir || parsed.gir) {
-            if (!myShotTracking[playHole]) myShotTracking[playHole] = {};
-            if (parsed.putts) myShotTracking[playHole].putts = parsed.putts;
-            if (parsed.fir) myShotTracking[playHole].fir = parsed.fir;
-            if (parsed.gir) myShotTracking[playHole].gir = parsed.gir;
-        }
+        var firEl = document.getElementById('track-fir');
+        var girEl = document.getElementById('track-gir');
+        var puttsEl = document.getElementById('track-putts');
+        if (parsed.fir && firEl) firEl.value = parsed.fir;
+        if (parsed.gir && girEl) girEl.value = parsed.gir;
+        if (parsed.putts && puttsEl) puttsEl.value = parsed.putts;
+
         updScoreDisplay('my', myScore);
         updScoreDisplay('mark', targetScore);
     });
 }
 
+function triggerGroup2DMap() {
+    var tee = (curRoundData && curRoundData.tee) ? curRoundData.tee : (document.getElementById('g-tee') ? document.getElementById('g-tee').value : 'wh');
+    open2DHoleMapModal(playHole, tee);
+}
+
 function openActiveGroupAnalytics() {
-    var pScores = (curRoundData && curRoundData.players && curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
+    var pScores = (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
+    var stObj = (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].shotTracking) || {};
+    var pName = (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].name) || 'Player';
     openRoundAnalyticsModal({
         scores: pScores,
-        shotTracking: myShotTracking,
-        playerName: myPlayerName || 'Игрок',
+        shotTracking: stObj,
+        playerName: pName,
         createdAt: curRoundData ? curRoundData.createdAt : Date.now()
     });
 }

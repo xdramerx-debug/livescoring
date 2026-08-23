@@ -600,13 +600,21 @@ function triggerSoloVoiceInput() {
     });
 }
 
+function triggerSolo2DMap() {
+    var tee = (soloRound && soloRound.tee) ? soloRound.tee : (document.getElementById('s-tee') ? document.getElementById('s-tee').value : 'wh');
+    open2DHoleMapModal(curHole, tee);
+}
+
 function openActiveSoloAnalytics() {
-    var fnName = (document.getElementById('s-firstname').value + ' ' + document.getElementById('s-lastname').value).trim() || 'Player';
+    var uid = (typeof getPlayerId === 'function') ? getPlayerId() : null;
+    var p = (uid && soloRound && soloRound.players && soloRound.players[uid]) || {};
+    var sObj = p.scores || {};
+    var fnName = p.name || ((document.getElementById('s-firstname') ? document.getElementById('s-firstname').value : '') + ' ' + (document.getElementById('s-lastname') ? document.getElementById('s-lastname').value : '')).trim() || 'Player';
     openRoundAnalyticsModal({
-        scores: scores,
-        shotTracking: shotTracking,
+        scores: sObj,
+        shotTracking: (typeof shotTracking !== 'undefined') ? shotTracking : {},
         playerName: fnName,
-        createdAt: currentRoundStartTime || Date.now()
+        createdAt: (soloRound && soloRound.startTime) ? soloRound.startTime : Date.now()
     });
 }
 

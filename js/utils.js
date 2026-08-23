@@ -85,7 +85,7 @@ const I18N = {
         stbl_field: 'Stblfd (пол.)', stbl_exact: 'Stblfd (игр.)',
         out: 'Аут', in_side: 'Ин', total: 'Итого', meters: 'Метры', deadline: 'Дедлайн',
 
-        round_setup: 'Настройка раунда',
+        round_setup: 'Настройки раунда',
         group_setup_title: 'Настройка группы',
         solo_round: 'Одиночный раунд', group_round: 'Групповой раунд',
         solo_desc: 'Играете один. Сами вводите свой счёт на каждой лунке.',
@@ -104,6 +104,8 @@ const I18N = {
         field_auto: 'Полевой (авто)',
         start_round_btn: 'Начать раунд', back_btn: 'Назад',
         timings_title: 'Тайминги',
+        time_and_hole: 'Время и лунка',
+        game_format: 'Формат игры',
 
         my_score: 'Мой счёт',
         marker_for: 'Маркер для',
@@ -139,6 +141,27 @@ const I18N = {
         from_col: 'Показатель от', to_col: 'Показатель до',
         round_history: 'История раундов',
 
+        // Admin & Auth
+        admin_login: 'Вход в админ-панель',
+        admin_panel: 'Админ-панель',
+        admin_desc: 'Войдите с мастер-паролем или авторизуйтесь через аккаунт с правами администратора.',
+        username: 'Логин', password: 'Пароль',
+        login_btn: 'Войти', register_btn: 'Регистрация', create_account: 'Создать аккаунт',
+        continue_guest: 'Продолжить как гость',
+        tab_rounds: 'Раунды', tab_alerts: 'Вызовы 🚨', tab_tournaments: 'Турниры',
+        tab_players: 'Игроки и роли', tab_data: 'Данные',
+        all_tournaments: 'Все турниры',
+        create_tournament: 'Создать турнир',
+        tournament_name: 'Название', tournament_date: 'Дата',
+        available_formats: 'Доступные форматы', available_tees: 'Доступные ТИ',
+        create_btn: 'Создать',
+
+        // Offline & Error
+        offline_title: 'Нет соединения',
+        offline_desc: 'Проверьте интернет-соединение. Ваши результаты сохраняются локально.',
+        refresh_btn: 'Обновить', error_title: 'Ошибка', qr_invalid: 'QR-код недействителен.',
+
+        // Toast Messages
         msg_start_time_req: 'Укажите время старта',
         msg_name_req: 'Заполните имя игрока',
         msg_exact_hcp_req: 'Укажите точный гандикап',
@@ -194,6 +217,8 @@ const I18N = {
         field_auto: 'Course HCP (auto)',
         start_round_btn: 'Start Round', back_btn: 'Back',
         timings_title: 'Hole Timings',
+        time_and_hole: 'Time and Hole',
+        game_format: 'Game Format',
 
         my_score: 'My Score',
         marker_for: 'Marker for',
@@ -229,6 +254,27 @@ const I18N = {
         from_col: 'Handicap From', to_col: 'Handicap To',
         round_history: 'Round History',
 
+        // Admin & Auth
+        admin_login: 'Admin Panel Login',
+        admin_panel: 'Admin Panel',
+        admin_desc: 'Log in with master password or authenticate with admin privileges.',
+        username: 'Username', password: 'Password',
+        login_btn: 'Log In', register_btn: 'Register', create_account: 'Create Account',
+        continue_guest: 'Continue as Guest',
+        tab_rounds: 'Rounds', tab_alerts: 'Alerts 🚨', tab_tournaments: 'Tournaments',
+        tab_players: 'Players & Roles', tab_data: 'Data',
+        all_tournaments: 'All Tournaments',
+        create_tournament: 'Create Tournament',
+        tournament_name: 'Name', tournament_date: 'Date',
+        available_formats: 'Available Formats', available_tees: 'Available Tees',
+        create_btn: 'Create',
+
+        // Offline & Error
+        offline_title: 'No Connection',
+        offline_desc: 'Check your internet connection. Your scores are saved locally.',
+        refresh_btn: 'Refresh', error_title: 'Error', qr_invalid: 'QR code is invalid.',
+
+        // Toast Messages
         msg_start_time_req: 'Specify start time',
         msg_name_req: 'Enter player name',
         msg_exact_hcp_req: 'Specify exact handicap',

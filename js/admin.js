@@ -236,6 +236,8 @@ function createTournament() {
     var formats = [];
     if (document.getElementById('tn-f-stroke').checked) formats.push('Stroke Play');
     if (document.getElementById('tn-f-stbl').checked) formats.push('Stableford');
+    if (document.getElementById('tn-f-m1v1') && document.getElementById('tn-f-m1v1').checked) formats.push('Match Play 1v1');
+    if (document.getElementById('tn-f-scram') && document.getElementById('tn-f-scram').checked) formats.push('Scramble');
     if (!formats.length) { toast(currentLang === 'en' ? 'Select at least one format' : 'Выберите хотя бы один формат', 'error'); return; }
 
     var tees = [];

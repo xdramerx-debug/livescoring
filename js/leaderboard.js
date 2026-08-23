@@ -104,7 +104,8 @@ function renderRound(id, r) {
         : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>';
         
     var downloadBtn = !isLive 
-        ? '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')" style="margin-top:10px;"><i class="fas fa-download"></i> ' + (currentLang === 'en' ? 'Scorecard' : 'Счётная карточка') + '</button>' 
+        ? '<div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i> ' + (currentLang === 'en' ? 'Scorecard' : 'Счётная карточка') + '</button>' +
+          '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button></div>'
         : '';
 
     var posHeader = currentLang === 'en' ? 'Pos' : 'Поз';

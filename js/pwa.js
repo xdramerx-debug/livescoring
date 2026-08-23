@@ -51,12 +51,16 @@ function saveOfflineScore(roundId,playerId,hole,score){
     var pending=JSON.parse(localStorage.getItem(OFFLINE_KEY)||'[]');
     pending.push({roundId:roundId,playerId:playerId,hole:hole,score:score,timestamp:Date.now(),type:'score'});
     localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending));
+    updateOfflineQueueBadge();
 }
 
 function syncOfflineScores(){
     if(!navigator.onLine||typeof db==='undefined')return;
     var pending=JSON.parse(localStorage.getItem(OFFLINE_KEY)||'[]');
-    if(pending.length===0)return;
+    if(pending.length===0){
+        updateOfflineQueueBadge();
+        return;
+    }
     var promises=pending.map(function(item){
         if(item.type==='score')return db.ref('rounds/'+item.roundId+'/players/'+item.playerId+'/scores/'+item.hole).set(item.score);
         return Promise.resolve();
@@ -64,8 +68,35 @@ function syncOfflineScores(){
     Promise.all(promises).then(function(){
         localStorage.removeItem(OFFLINE_KEY);
         if(typeof toast==='function')toast((currentLang === 'en' ? '✅ Synced ' : '✅ Синхронизировано ') + pending.length + (currentLang === 'en' ? ' records' : ' записей'),'success');
+        updateOfflineQueueBadge();
     });
 }
+
+function updateOfflineQueueBadge() {
+    var pending = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+    var badgeEl = document.getElementById('offline-queue-badge');
+
+    if (!pending.length) {
+        if (badgeEl) badgeEl.classList.add('hide');
+        return;
+    }
+
+    if (!badgeEl) {
+        badgeEl = document.createElement('div');
+        badgeEl.id = 'offline-queue-badge';
+        badgeEl.className = 'offline-queue-badge';
+        if (document.body) document.body.appendChild(badgeEl);
+    }
+
+    var badgeText = currentLang === 'en'
+        ? pending.length + ' pending scores waiting for sync'
+        : pending.length + ' записей ожидают отправки';
+
+    badgeEl.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> ⏳ ' + badgeText;
+    badgeEl.classList.remove('hide');
+}
+
+window.addEventListener('load', function() { updateOfflineQueueBadge(); });
 
 var deferredPrompt;
 window.addEventListener('beforeinstallprompt',function(e){

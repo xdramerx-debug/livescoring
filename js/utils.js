@@ -92,6 +92,12 @@ var I18N = {
         hole_lbl: 'Лунка', par_lbl: 'Пар', dist_lbl: 'Метры', deadline_lbl: 'Дедлайн',
         stbl_field: 'Stblfd (пол.)', stbl_exact: 'Stblfd (игр.)',
         out: 'Аут', in_side: 'Ин', total: 'Итого', meters: 'Метры', deadline: 'Дедлайн',
+        format_match_1v1: 'Матч-плей (1х1)',
+        format_match_2v2: 'Матч-плей (2х2)',
+        format_scramble: 'Скрембл (Scramble)',
+        share_card: 'Поделиться в соцсетях (PNG)',
+        download_png: 'Скачать картинку (PNG)',
+        share_native: 'Поделиться в приложении',
 
         page_title_live: 'Начать раунд',
         page_sub_live: 'Выберите режим или перейдите к игре',
@@ -265,6 +271,12 @@ var I18N = {
         hole_lbl: 'Hole', par_lbl: 'Par', dist_lbl: 'Meters', deadline_lbl: 'Deadline',
         stbl_field: 'Stblfd (Course)', stbl_exact: 'Stblfd (Playing)',
         out: 'Out', in_side: 'In', total: 'Total', meters: 'Meters', deadline: 'Deadline',
+        format_match_1v1: 'Match Play (1v1)',
+        format_match_2v2: 'Match Play (2v2)',
+        format_scramble: 'Scramble',
+        share_card: 'Share Scorecard (PNG)',
+        download_png: 'Download Image (PNG)',
+        share_native: 'Share to Apps',
 
         page_title_live: 'Start Round',
         page_sub_live: 'Select mode or continue your game',
@@ -1152,6 +1164,7 @@ function openPlayerProfileModal(playerId, roundId) {
                     html += '<div class="' + scoreClass(r.toPar) + '" style="font-size:14px;font-weight:700;">' + fmtScore(r.toPar) + '</div>';
                     if (r.roundId) {
                         html += '<button class="btn btn-og btn-sm" style="margin-top:6px;" onclick="event.stopPropagation();downloadScorecard(\'' + r.roundId + '\')"><i class="fas fa-download"></i></button>';
+                        html += '<button class="btn btn-g btn-sm" style="margin-top:6px;margin-left:6px;" onclick="event.stopPropagation();exportRoundPNG(\'' + r.roundId + '\')"><i class="fas fa-image"></i> PNG</button>';
                     }
                     html += '</div></div>';
                 });
@@ -1451,4 +1464,294 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
         db.ref('users/'+userId+'/bestGross').transaction(function(v){if(!v||stats.gross<v)return stats.gross;return v;});
         db.ref('users/'+userId+'/bestStableford').transaction(function(v){if(!v||stats.stablefordField>v)return stats.stablefordField;return v;});
     }
+}
+
+// ==========================================
+// МАТЧ-ПЛЕЙ (MATCH PLAY 1v1 & 2v2) & SCRAMBLE
+// ==========================================
+function calcMatchPlay1v1(playerA, playerB, holesOrder) {
+    holesOrder = holesOrder || [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+    var scA = (playerA && playerA.scores) || {};
+    var scB = (playerB && playerB.scores) || {};
+    var fHcpA = (playerA && playerA.fieldHcp) || 0;
+    var fHcpB = (playerB && playerB.fieldHcp) || 0;
+
+    var holesWonA = 0, holesWonB = 0, holesHalved = 0, playedCount = 0;
+
+    for (var i = 0; i < holesOrder.length; i++) {
+        var h = holesOrder[i];
+        var sA = parseInt(scA[h]) || 0;
+        var sB = parseInt(scB[h]) || 0;
+        if (sA < 1 || sB < 1) break;
+
+        var netA = calcNettScore(sA, holePar(h), holeHcp(h), fHcpA);
+        var netB = calcNettScore(sB, holePar(h), holeHcp(h), fHcpB);
+
+        playedCount++;
+        if (netA < netB) holesWonA++;
+        else if (netB < netA) holesWonB++;
+        else holesHalved++;
+    }
+
+    var margin = holesWonA - holesWonB;
+    var remaining = 18 - playedCount;
+
+    var nameA = (playerA && playerA.name) || 'Player 1';
+    var nameB = (playerB && playerB.name) || 'Player 2';
+    var statusText = 'A/S (All Square)';
+
+    if (margin > 0) {
+        if (margin > remaining && remaining > 0) {
+            statusText = nameA + ' won ' + margin + '&' + remaining;
+        } else if (remaining === 0) {
+            statusText = nameA + ' won ' + margin + ' UP';
+        } else {
+            statusText = nameA + ' ' + margin + ' UP';
+        }
+    } else if (margin < 0) {
+        var absM = Math.abs(margin);
+        if (absM > remaining && remaining > 0) {
+            statusText = nameB + ' won ' + absM + '&' + remaining;
+        } else if (remaining === 0) {
+            statusText = nameB + ' won ' + absM + ' UP';
+        } else {
+            statusText = nameB + ' ' + absM + ' UP';
+        }
+    } else {
+        statusText = playedCount === 18 ? 'Halved (A/S)' : 'All Square (A/S)';
+    }
+
+    return {
+        holesWonA: holesWonA,
+        holesWonB: holesWonB,
+        holesHalved: holesHalved,
+        playedCount: playedCount,
+        remaining: remaining,
+        margin: margin,
+        statusText: statusText
+    };
+}
+
+// ==========================================
+// ГЕНЕРАТОР PNG-КАРТОЧКИ ДЛЯ СОЦСЕТЕЙ
+// ==========================================
+function exportRoundPNG(roundId, playerId) {
+    if (typeof db === 'undefined' || !roundId) return;
+
+    db.ref('rounds/' + roundId).once('value').then(function(sn) {
+        var r = sn.val();
+        if (!r || !r.players) return;
+
+        var pid = playerId || Object.keys(r.players)[0];
+        var p = r.players[pid] || Object.values(r.players)[0];
+        if (!p) return;
+
+        var canvas = document.createElement('canvas');
+        canvas.width = 1080;
+        canvas.height = 1080;
+        var ctx = canvas.getContext('2d');
+
+        // Background Gradient
+        var bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
+        bgGrad.addColorStop(0, '#0b1a0e');
+        bgGrad.addColorStop(0.5, '#132817');
+        bgGrad.addColorStop(1, '#071209');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, 1080, 1080);
+
+        // Gold Border Frame
+        ctx.strokeStyle = '#c9a84c';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(30, 30, 1020, 1020);
+
+        ctx.strokeStyle = 'rgba(201,168,76,0.3)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(42, 42, 996, 996);
+
+        // Header Title
+        ctx.fillStyle = '#c9a84c';
+        ctx.font = 'bold 36px "Playfair Display", Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('PESTOVO GOLF CLUB', 540, 110);
+
+        ctx.fillStyle = '#9eb5a5';
+        ctx.font = '500 20px "Inter", sans-serif';
+        ctx.fillText('OFFICIAL DIGITAL SCORECARD', 540, 150);
+
+        // Gold Divider
+        ctx.beginPath();
+        ctx.moveTo(180, 175);
+        ctx.lineTo(900, 175);
+        ctx.strokeStyle = '#c9a84c';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Player Name
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 52px "Playfair Display", serif';
+        ctx.fillText(p.name || 'Golf Player', 540, 245);
+
+        // Sub Meta
+        var fmtStr = (r.format || 'Stroke Play') + ' · Tee: ' + (TEES[r.tee] || 'White') + ' · HCP: ' + fmtExactHcp(p.exactHcp);
+        var dateStr = fmtDate(r.completedAt || r.createdAt || Date.now());
+
+        ctx.fillStyle = '#c9a84c';
+        ctx.font = '600 22px "Inter", sans-serif';
+        ctx.fillText(fmtStr, 540, 290);
+        ctx.fillStyle = '#9eb5a5';
+        ctx.font = '18px "Inter", sans-serif';
+        ctx.fillText(dateStr, 540, 325);
+
+        // Score KPIs Cards (Gross, Net, ToPar)
+        var order = holeOrder(r.startHole || 1);
+        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+
+        drawKPICard(ctx, 160, 360, 220, 130, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
+        drawKPICard(ctx, 430, 360, 220, 130, 'GROSS', String(stats.gross || 0), '#c9a84c');
+        drawKPICard(ctx, 700, 360, 220, 130, 'NET', String(stats.net || 0), '#5aade0');
+
+        // Hole Grid Rows
+        drawHoleGridRow(ctx, p.scores || {}, 1, 9, 530);
+        drawHoleGridRow(ctx, p.scores || {}, 10, 18, 730);
+
+        // Footer Branding
+        ctx.fillStyle = 'rgba(201,168,76,0.6)';
+        ctx.font = '600 20px "Inter", sans-serif';
+        ctx.fillText('⛳ GOLF CLUB PESTOVO · LIVE SCORING SYSTEM', 540, 995);
+
+        var dataUrl = canvas.toDataURL('image/png');
+        openPNGExportModal(dataUrl, p.name);
+    });
+}
+
+function drawKPICard(ctx, x, y, w, h, label, value, valColor) {
+    ctx.fillStyle = '#132218';
+    ctx.strokeStyle = '#1e3525';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#9eb5a5';
+    ctx.font = 'bold 16px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x + w / 2, y + 38);
+
+    ctx.fillStyle = valColor || '#ffffff';
+    ctx.font = 'bold 44px "Inter", sans-serif';
+    ctx.fillText(value, x + w / 2, y + 95);
+}
+
+function drawHoleGridRow(ctx, scores, startHole, endHole, startY) {
+    var startX = 80;
+    var cellW = 92;
+    var cellH = 65;
+
+    // Header Row
+    ctx.fillStyle = '#101f13';
+    ctx.fillRect(startX, startY, cellW * 10, 40);
+    ctx.strokeStyle = '#1e3525';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(startX, startY, cellW * 10, 40);
+
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 16px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(startHole === 1 ? 'FRONT 9' : 'BACK 9', startX + cellW / 2, startY + 26);
+
+    for (var i = startHole; i <= endHole; i++) {
+        var colX = startX + (i - startHole + 1) * cellW;
+        ctx.fillText(String(i), colX + cellW / 2, startY + 26);
+    }
+
+    // Scores Row
+    var rowY = startY + 40;
+    ctx.fillStyle = '#132218';
+    ctx.fillRect(startX, rowY, cellW * 10, cellH);
+    ctx.strokeRect(startX, rowY, cellW * 10, cellH);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px "Inter", sans-serif';
+    ctx.fillText('SCORE', startX + cellW / 2, rowY + 38);
+
+    for (var i = startHole; i <= endHole; i++) {
+        var s = parseInt(scores[i]) || 0;
+        var par = holePar(i);
+        var colX = startX + (i - startHole + 1) * cellW;
+
+        if (s > 0) {
+            var diff = s - par;
+            var circleColor = '#132218';
+
+            if (diff <= -2 || s === 1) circleColor = '#f39c12';
+            else if (diff === -1) circleColor = '#2ecc71';
+            else if (diff === 0) circleColor = '#2c3e50';
+            else if (diff === 1) circleColor = '#5aade0';
+            else circleColor = '#e05a4a';
+
+            ctx.fillStyle = circleColor;
+            ctx.beginPath();
+            ctx.arc(colX + cellW / 2, rowY + cellH / 2, 22, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 22px "Inter", sans-serif';
+            ctx.fillText(String(s), colX + cellW / 2, rowY + cellH / 2 + 7);
+        } else {
+            ctx.fillStyle = '#3a523e';
+            ctx.font = '18px "Inter", sans-serif';
+            ctx.fillText('—', colX + cellW / 2, rowY + cellH / 2 + 6);
+        }
+    }
+}
+
+function openPNGExportModal(pngDataUrl, playerName) {
+    var modalEl = document.getElementById('png-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'png-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML =
+            '<div class="modal-bg" onclick="closePNGModal()"></div>' +
+            '<div class="modal-body" style="max-width:540px;text-align:center;">' +
+            '<button class="modal-close" onclick="closePNGModal()">&times;</button>' +
+            '<div id="png-modal-body"></div>' +
+            '</div>';
+        if (document.body) document.body.appendChild(modalEl);
+    }
+
+    var bodyEl = document.getElementById('png-modal-body');
+    var fileName = 'Pestovo_' + (playerName || 'Card').replace(/\s+/g, '_') + '.png';
+
+    var html = '<h2 style="color:var(--gold);margin-bottom:12px;"><i class="fas fa-image"></i> ' + t('share_card') + '</h2>';
+    html += '<img src="' + pngDataUrl + '" alt="Pestovo Card" style="width:100%;max-width:440px;border-radius:12px;border:2px solid var(--gold);box-shadow:0 8px 32px rgba(0,0,0,0.5);margin-bottom:20px;">';
+    html += '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">';
+    html += '<a href="' + pngDataUrl + '" download="' + fileName + '" class="btn btn-g" style="flex:1;min-width:180px;"><i class="fas fa-download"></i> ' + t('download_png') + '</a>';
+
+    if (navigator.share) {
+        html += '<button class="btn btn-og" style="flex:1;min-width:180px;" onclick="sharePNGNative(\'' + pngDataUrl + '\', \'' + fileName + '\')"><i class="fas fa-share-nodes"></i> ' + t('share_native') + '</button>';
+    }
+    html += '</div>';
+
+    if (bodyEl) bodyEl.innerHTML = html;
+    modalEl.classList.remove('hidden');
+}
+
+function closePNGModal() {
+    var modalEl = document.getElementById('png-modal');
+    if (modalEl) modalEl.classList.add('hidden');
+}
+
+function sharePNGNative(dataUrl, fileName) {
+    fetch(dataUrl).then(function(res) { return res.blob(); }).then(function(blob) {
+        var file = new File([blob], fileName || 'Pestovo_Card.png', { type: 'image/png' });
+        if (navigator.share) {
+            navigator.share({
+                title: 'Pestovo Golf Scorecard',
+                text: 'My score at Pestovo Golf Club!',
+                files: [file]
+            }).catch(function() {});
+        }
+    });
 }

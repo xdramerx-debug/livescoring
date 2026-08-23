@@ -93,7 +93,7 @@ body.sun-mode .list-item{background:#ffffff;border:1px solid #b0c4b5;}
 .live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(224,90,74,.15);color:var(--red);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;position:relative;overflow:hidden;}
 
 /* GLASSMORPHISM CARD DESIGN */
-.card{background:rgba(19,34,24,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(201,168,76,0.22);border-radius:var(--r);padding:22px;margin-bottom:18px;box-shadow:0 8px 32px rgba(0,0,0,0.35);}
+.card{background:rgba(19,34,24,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(201,168,76,0.22);border-radius:var(--r);padding:22px;margin-bottom:18px;box-shadow:0 8px 32px rgba(0,0,0,0.35);overflow:hidden;box-sizing:border-box;}
 .card h2{font-family:var(--ff);font-size:18px;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
 .card h3{font-size:15px;color:var(--white);margin-bottom:10px;}
 
@@ -107,7 +107,7 @@ body.sun-mode .list-item{background:#ffffff;border:1px solid #b0c4b5;}
 .empty{text-align:center;padding:50px 20px;color:var(--muted);}
 .empty i{font-size:40px;margin-bottom:14px;opacity:.3;display:block;}
 
-.form-group{margin-bottom:16px;min-width:0;width:100%;}
+.form-group{margin-bottom:16px;min-width:0;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;}
 .form-group label{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:12px;color:var(--muted);font-weight:500;}
 .form-input{width:100%;max-width:100%;min-width:0;box-sizing:border-box;background:var(--input);border:1px solid var(--border);color:var(--white);padding:11px 14px;border-radius:var(--rs);font-size:14px;font-family:var(--fb);outline:none;transition:var(--t);}
 .form-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.18);}
@@ -122,15 +122,33 @@ input[type="time"], input[type="date"] {
     min-width: 0 !important;
     box-sizing: border-box !important;
     display: block !important;
-    padding: 9px 10px !important;
+    padding: 10px 12px !important;
     font-family: var(--fb) !important;
+    border-radius: var(--rs) !important;
+    background: var(--input) !important;
+    color: var(--white) !important;
+    border: 1px solid var(--border) !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
 }
 input[type="time"]::-webkit-calendar-picker-indicator,
 input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(0.8) sepia(1) saturate(5) hue-rotate(5deg);
     cursor: pointer;
 }
-.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;width:100%;min-width:0;}
+input[type="time"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+    display: inline-flex !important;
+    padding: 0 !important;
+    width: auto !important;
+}
+.form-row{display:flex;flex-wrap:wrap;gap:12px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;}
+.form-row > .form-group {
+    flex: 1 1 140px;
+    min-width: 0;
+    max-width: 100%;
+}
 .form-err{background:rgba(224,90,74,.1);border:1px solid var(--red);color:var(--red);padding:10px 14px;border-radius:var(--rs);font-size:13px;margin-bottom:14px;}
 
 .s-un{color:#e05a4a;}
@@ -520,13 +538,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     .weather-icon{font-size:11px;}
     .sun-mode-btn, .lang-btn{padding:4px 8px;font-size:11px;}
     
-    /* PREVENT iOS SAFARI AUTO-ZOOM ON INPUT FOCUS */
-    .form-input, select.form-input, input[type="text"], input[type="number"], input[type="time"], input[type="password"], input[type="email"] {
+    /* PREVENT iOS SAFARI AUTO-ZOOM ON INPUT FOCUS & PREVENT FORM OVERFLOW */
+    .form-input, select.form-input, input[type="text"], input[type="number"], input[type="time"], input[type="date"], input[type="password"], input[type="email"] {
         font-size: 16px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
     }
     .form-row {
-        grid-template-columns: 1fr;
-        gap: 10px;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+    .form-group {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
     }
 }
 @media(max-width:480px){

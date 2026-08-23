@@ -1692,71 +1692,6 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
     }
 }
 
-// ==========================================
-// МАТЧ-ПЛЕЙ (MATCH PLAY 1v1 & 2v2) & SCRAMBLE
-// ==========================================
-function calcMatchPlay1v1(playerA, playerB, holesOrder) {
-    holesOrder = holesOrder || [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
-    var scA = (playerA && playerA.scores) || {};
-    var scB = (playerB && playerB.scores) || {};
-    var fHcpA = (playerA && playerA.fieldHcp) || 0;
-    var fHcpB = (playerB && playerB.fieldHcp) || 0;
-
-    var holesWonA = 0, holesWonB = 0, holesHalved = 0, playedCount = 0;
-
-    for (var i = 0; i < holesOrder.length; i++) {
-        var h = holesOrder[i];
-        var sA = parseInt(scA[h]) || 0;
-        var sB = parseInt(scB[h]) || 0;
-        if (sA < 1 || sB < 1) break;
-
-        var netA = calcNettScore(sA, holePar(h), holeHcp(h), fHcpA);
-        var netB = calcNettScore(sB, holePar(h), holeHcp(h), fHcpB);
-
-        playedCount++;
-        if (netA < netB) holesWonA++;
-        else if (netB < netA) holesWonB++;
-        else holesHalved++;
-    }
-
-    var margin = holesWonA - holesWonB;
-    var remaining = 18 - playedCount;
-
-    var nameA = (playerA && playerA.name) || 'Player 1';
-    var nameB = (playerB && playerB.name) || 'Player 2';
-    var statusText = 'A/S (All Square)';
-
-    if (margin > 0) {
-        if (margin > remaining && remaining > 0) {
-            statusText = nameA + ' won ' + margin + '&' + remaining;
-        } else if (remaining === 0) {
-            statusText = nameA + ' won ' + margin + ' UP';
-        } else {
-            statusText = nameA + ' ' + margin + ' UP';
-        }
-    } else if (margin < 0) {
-        var absM = Math.abs(margin);
-        if (absM > remaining && remaining > 0) {
-            statusText = nameB + ' won ' + absM + '&' + remaining;
-        } else if (remaining === 0) {
-            statusText = nameB + ' won ' + absM + ' UP';
-        } else {
-            statusText = nameB + ' ' + absM + ' UP';
-        }
-    } else {
-        statusText = playedCount === 18 ? 'Halved (A/S)' : 'All Square (A/S)';
-    }
-
-    return {
-        holesWonA: holesWonA,
-        holesWonB: holesWonB,
-        holesHalved: holesHalved,
-        playedCount: playedCount,
-        remaining: remaining,
-        margin: margin,
-        statusText: statusText
-    };
-}
 
 // ==========================================
 // ГЕНЕРАТОР PNG-КАРТОЧКИ ДЛЯ СОЦСЕТЕЙ
@@ -1819,55 +1754,52 @@ function exportRoundPNG(roundId, playerId) {
         ctx.fillText(p.name || 'Golf Player', 540, 215);
 
         // Sub Meta
-        var fmtStr = (r.format || 'Stroke Play') + ' · Tee: ' + (TEES[r.tee] || 'White') + ' · HCP: ' + fmtExactHcp(p.exactHcp);
+        var teeName = t('tee_' + (r.tee || 'wh'));
+        var fmtStr = (r.format || 'Stroke Play') + ' · Tee: ' + teeName + ' · HCP: ' + fmtExactHcp(p.exactHcp);
         var dateStr = fmtDate(r.completedAt || r.createdAt || Date.now());
 
         ctx.fillStyle = '#c9a84c';
         ctx.font = '600 20px "Inter", sans-serif';
         ctx.fillText(fmtStr, 540, 255);
 
-        // Marker Info (if group round)
-        var myMarkerId = p.markedBy;
-        var markerPlayer = (myMarkerId && r.players[myMarkerId]) ? r.players[myMarkerId] : null;
-        var markerName = markerPlayer ? markerPlayer.name : null;
-        var markerScores = (myMarkerId && p.markerScores && p.markerScores[myMarkerId]) ? p.markerScores[myMarkerId] : {};
-
-        if (markerName) {
-            ctx.fillStyle = '#9b59b6';
-            ctx.font = '600 18px "Inter", sans-serif';
-            ctx.fillText((currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + markerName, 540, 288);
-            ctx.fillStyle = '#9eb5a5';
-            ctx.font = '16px "Inter", sans-serif';
-            ctx.fillText(dateStr, 540, 315);
-        } else {
-            ctx.fillStyle = '#9eb5a5';
-            ctx.font = '16px "Inter", sans-serif';
-            ctx.fillText(dateStr, 540, 290);
-        }
+        ctx.fillStyle = '#9eb5a5';
+        ctx.font = '16px "Inter", sans-serif';
+        ctx.fillText(dateStr, 540, 288);
 
         // Score KPIs Cards (Gross, Net, ToPar)
         var order = holeOrder(r.startHole || 1);
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
 
-        var kpiY = markerName ? 335 : 320;
-        drawKPICard(ctx, 160, kpiY, 220, 115, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
-        drawKPICard(ctx, 430, kpiY, 220, 115, 'GROSS', String(stats.gross || 0), '#c9a84c');
-        drawKPICard(ctx, 700, kpiY, 220, 115, 'NET', String(stats.net || 0), '#5aade0');
+        drawKPICard(ctx, 160, 315, 220, 115, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
+        drawKPICard(ctx, 430, 315, 220, 115, 'GROSS', String(stats.gross || 0), '#c9a84c');
+        drawKPICard(ctx, 700, 315, 220, 115, 'NET', String(stats.net || 0), '#5aade0');
 
-        // Hole Grid Rows (Front 9 & Back 9)
-        var frontY = markerName ? 475 : 460;
-        var backY = markerName ? 695 : 680;
-        drawHoleGridRow(ctx, p.scores || {}, markerScores, 1, 9, frontY);
-        drawHoleGridRow(ctx, p.scores || {}, markerScores, 10, 18, backY);
+        // Hole Grid Rows (Front 9 & Back 9) - TRADITIONAL SCORECARD (HOLE, PAR, SCORE)
+        drawScorecardGridRow(ctx, p.scores || {}, 1, 9, 460);
+        drawScorecardGridRow(ctx, p.scores || {}, 10, 18, 680);
 
-        // Marker Verification Bar
-        if (markerName) {
-            ctx.fillStyle = '#2ecc71';
-            ctx.font = '600 18px "Inter", sans-serif';
-            ctx.fillText('✅ ' + (currentLang === 'en' ? 'Verified by Marker: ' : 'Подтверждено маркером: ') + markerName, 540, 935);
-        }
+        // Total 18 Holes Summary Bar
+        var outGross = 0, inGross = 0;
+        for (var i = 1; i <= 9; i++) { var s = parseInt(p.scores && p.scores[i]) || 0; if (s > 0) outGross += s; }
+        for (var i = 10; i <= 18; i++) { var s = parseInt(p.scores && p.scores[i]) || 0; if (s > 0) inGross += s; }
+        var totalGross18 = outGross + inGross;
+
+        ctx.fillStyle = '#101f13';
+        ctx.fillRect(60, 850, 960, 50);
+        ctx.strokeStyle = '#c9a84c';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(60, 850, 960, 50);
+
+        ctx.fillStyle = '#c9a84c';
+        ctx.font = 'bold 18px "Inter", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(' OUT: ' + (outGross || '—') + '  |  IN: ' + (inGross || '—') + '  |  TOTAL 18 HOLES: ' + (totalGross18 || '—'), 80, 882);
+
+        ctx.textAlign = 'right';
+        ctx.fillText('STABLEFORD: ' + stats.stablefordField + ' PTS ', 1000, 882);
 
         // Footer Branding
+        ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(201,168,76,0.6)';
         ctx.font = '600 18px "Inter", sans-serif';
         ctx.fillText('⛳ GOLF CLUB PESTOVO · LIVE SCORING SYSTEM', 540, 995);
@@ -1875,6 +1807,128 @@ function exportRoundPNG(roundId, playerId) {
         var dataUrl = canvas.toDataURL('image/png');
         openPNGExportModal(dataUrl, p.name, roundId, pid, playersList);
     });
+}
+
+function drawKPICard(ctx, x, y, w, h, label, value, valColor) {
+    ctx.fillStyle = '#132218';
+    ctx.strokeStyle = '#1e3525';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#9eb5a5';
+    ctx.font = 'bold 15px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x + w / 2, y + 32);
+
+    ctx.fillStyle = valColor || '#ffffff';
+    ctx.font = 'bold 38px "Inter", sans-serif';
+    ctx.fillText(value, x + w / 2, y + 84);
+}
+
+function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
+    var startX = 60;
+    var labelW = 110;
+    var holeW = 85;
+    var totW = 85;
+    var row1H = 36;
+    var row2H = 36;
+    var row3H = 65;
+
+    // --- ROW 1: HOLE NUMBERS ---
+    ctx.fillStyle = '#101f13';
+    ctx.fillRect(startX, startY, labelW + holeW * 9 + totW, row1H);
+    ctx.strokeStyle = '#1e3525';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(startX, startY, labelW + holeW * 9 + totW, row1H);
+
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 15px "Inter", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(' HOLE', startX + 10, startY + 24);
+
+    ctx.textAlign = 'center';
+    var parSum = 0;
+    for (var i = startHole; i <= endHole; i++) {
+        var colX = startX + labelW + (i - startHole) * holeW;
+        ctx.fillText(String(i), colX + holeW / 2, startY + 24);
+        parSum += holePar(i);
+    }
+    var totX = startX + labelW + holeW * 9;
+    ctx.fillText(startHole === 1 ? 'OUT' : 'IN', totX + totW / 2, startY + 24);
+
+    // --- ROW 2: PAR ---
+    var y2 = startY + row1H;
+    ctx.fillStyle = 'rgba(46, 204, 113, 0.08)';
+    ctx.fillRect(startX, y2, labelW + holeW * 9 + totW, row2H);
+    ctx.strokeStyle = '#1e3525';
+    ctx.strokeRect(startX, y2, labelW + holeW * 9 + totW, row2H);
+
+    ctx.fillStyle = '#2ecc71';
+    ctx.font = 'bold 15px "Inter", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(' PAR', startX + 10, y2 + 24);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    for (var i = startHole; i <= endHole; i++) {
+        var colX = startX + labelW + (i - startHole) * holeW;
+        ctx.fillText(String(holePar(i)), colX + holeW / 2, y2 + 24);
+    }
+    ctx.fillStyle = '#2ecc71';
+    ctx.fillText(String(parSum), totX + totW / 2, y2 + 24);
+
+    // --- ROW 3: SCORE ---
+    var y3 = y2 + row2H;
+    ctx.fillStyle = '#132218';
+    ctx.fillRect(startX, y3, labelW + holeW * 9 + totW, row3H);
+    ctx.strokeStyle = '#1e3525';
+    ctx.strokeRect(startX, y3, labelW + holeW * 9 + totW, row3H);
+
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 16px "Inter", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(' SCORE', startX + 10, y3 + 38);
+
+    ctx.textAlign = 'center';
+    var scoreSum = 0;
+    for (var i = startHole; i <= endHole; i++) {
+        var s = parseInt(scores[i]) || 0;
+        var par = holePar(i);
+        var colX = startX + labelW + (i - startHole) * holeW;
+
+        if (s > 0) {
+            scoreSum += s;
+            var diff = s - par;
+            var circleColor = '#132218';
+
+            if (diff <= -2 || s === 1) circleColor = '#f39c12';
+            else if (diff === -1) circleColor = '#2ecc71';
+            else if (diff === 0) circleColor = '#2c3e50';
+            else if (diff === 1) circleColor = '#5aade0';
+            else circleColor = '#e05a4a';
+
+            // Score Badge Circle
+            ctx.fillStyle = circleColor;
+            ctx.beginPath();
+            ctx.arc(colX + holeW / 2, y3 + row3H / 2, 22, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 22px "Inter", sans-serif';
+            ctx.fillText(String(s), colX + holeW / 2, y3 + row3H / 2 + 7);
+        } else {
+            ctx.fillStyle = '#3a523e';
+            ctx.font = '18px "Inter", sans-serif';
+            ctx.fillText('—', colX + holeW / 2, y3 + row3H / 2 + 6);
+        }
+    }
+
+    ctx.fillStyle = scoreSum > 0 ? '#c9a84c' : '#3a523e';
+    ctx.font = 'bold 22px "Inter", sans-serif';
+    ctx.fillText(scoreSum > 0 ? String(scoreSum) : '—', totX + totW / 2, y3 + row3H / 2 + 7);
 }
 
 function drawKPICard(ctx, x, y, w, h, label, value, valColor) {

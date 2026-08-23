@@ -64,7 +64,7 @@ var currentLang = (typeof localStorage !== 'undefined' && localStorage.getItem('
 var I18N = {
     ru: {
         brand_name: 'Пестово',
-        nav_home: 'Главная', nav_round: 'Раунд', nav_leaderboard: 'Лидерборд',
+        nav_home: 'Главная', nav_round: 'Раунд', nav_leaderboard: 'Все раунды',
         nav_players: 'Игроки', nav_tournaments: 'Турниры', nav_stats: 'Статистика',
         nav_handicaps: 'Гандикапы', nav_admin: 'Админ', nav_login: 'Войти',
         footer_club: '© 2024 Гольф-клуб Пестово',
@@ -73,7 +73,7 @@ var I18N = {
         hero_title: 'Лайв-скоринг и электронные карточки Пестово',
         hero_desc: '18 лунок · Пар 72 · Автоматический расчёт WHS-гандикапов',
         btn_start_game: 'Начать игру',
-        btn_view_scores: 'Смотреть счёт на поле',
+        btn_view_scores: 'Все раунды',
         sec_now_playing: 'Сейчас на поле',
         sec_my_active: 'Мои активные раунды',
         sec_club_stats: 'Клуб в цифрах',
@@ -237,7 +237,7 @@ var I18N = {
     },
     en: {
         brand_name: 'Pestovo',
-        nav_home: 'Home', nav_round: 'Round', nav_leaderboard: 'Leaderboard',
+        nav_home: 'Home', nav_round: 'Round', nav_leaderboard: 'All Rounds',
         nav_players: 'Players', nav_tournaments: 'Tournaments', nav_stats: 'Statistics',
         nav_handicaps: 'Handicaps', nav_admin: 'Admin', nav_login: 'Login',
         footer_club: '© 2024 Pestovo Golf Club',
@@ -246,7 +246,7 @@ var I18N = {
         hero_title: 'Pestovo Live Scoring & Digital Scorecards',
         hero_desc: '18 Holes · Par 72 · Automatic WHS Handicap Calculation',
         btn_start_game: 'Start Game',
-        btn_view_scores: 'Live Leaderboard',
+        btn_view_scores: 'All Rounds',
         sec_now_playing: 'Currently Playing',
         sec_my_active: 'My Active Rounds',
         sec_club_stats: 'Club Statistics',

@@ -446,6 +446,56 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 .modal-body, .modal-content{position:relative;background:rgba(19,34,24,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--gold);border-radius:16px;padding:24px 20px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 12px 48px rgba(0,0,0,0.8);box-sizing:border-box;}
 .modal-close{position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);font-size:24px;line-height:1;cursor:pointer;z-index:10;}
 
+/* STICKY TOP HUD BAR FOR ALL MODALS WITH ALWAYS-VISIBLE BACK BUTTON */
+.modal-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    margin: -24px -20px 14px -20px;
+    background: rgba(11, 26, 14, 0.95);
+    border-bottom: 1px solid rgba(201, 168, 76, 0.3);
+    position: sticky;
+    top: -24px;
+    z-index: 100;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+.modal-back-btn {
+    background: linear-gradient(135deg, rgba(201, 168, 76, 0.25), rgba(201, 168, 76, 0.1)) !important;
+    border: 1px solid var(--gold) !important;
+    color: var(--gold) !important;
+    font-weight: 700 !important;
+    font-size: 12px !important;
+    padding: 6px 14px !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    transition: var(--t) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+.modal-back-btn:hover, .modal-back-btn:active {
+    background: var(--gold) !important;
+    color: var(--bg) !important;
+}
+.modal-close-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+    transition: var(--t);
+}
+.modal-close-btn:hover {
+    color: var(--white);
+}
+
 .page-head{padding:100px 0 36px;text-align:center;background:linear-gradient(135deg,var(--bg),var(--gr-d),var(--bg));border-bottom:1px solid var(--border);}
 .page-title{font-family:var(--ff);font-size:32px;font-weight:700;color:var(--white);margin-bottom:6px;}
 .page-sub{color:var(--muted);font-size:15px;}

@@ -82,7 +82,10 @@
 <div id="pmodal" class="modal hidden">
     <div class="modal-bg" onclick="closePModal()"></div>
     <div class="modal-body">
-        <button class="modal-close" onclick="closePModal()">&times;</button>
+        <div class="modal-top-bar">
+            <button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closePModal()"><i class="fas fa-arrow-left"></i> <span data-i18n="back_btn">Назад</span></button>
+            <button type="button" class="modal-close-btn" onclick="closePModal()">&times;</button>
+        </div>
         <div id="pmodal-body"></div>
     </div>
 </div>

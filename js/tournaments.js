@@ -101,7 +101,10 @@ function openTournamentRegModal(tnId) {
             modalEl.innerHTML =
                 '<div class="modal-bg" onclick="closeRegTnModal()"></div>' +
                 '<div class="modal-body" style="max-width:480px;text-align:center;">' +
-                '<button class="modal-close" onclick="closeRegTnModal()">&times;</button>' +
+                '<div class="modal-top-bar">' +
+                '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeRegTnModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+                '<button type="button" class="modal-close-btn" onclick="closeRegTnModal()">&times;</button>' +
+                '</div>' +
                 '<div id="reg-tn-modal-body"></div>' +
                 '</div>';
             if (document.body) document.body.appendChild(modalEl);

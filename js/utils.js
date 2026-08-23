@@ -1552,7 +1552,10 @@ function openPlayerProfileModal(playerId, roundId) {
         modalEl.innerHTML =
             '<div class="modal-bg" onclick="closePModal()"></div>' +
             '<div class="modal-body">' +
-            '<button class="modal-close" onclick="closePModal()">&times;</button>' +
+            '<div class="modal-top-bar">' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closePModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" onclick="closePModal()">&times;</button>' +
+            '</div>' +
             '<div id="pmodal-body"><div class="loading"><div class="spinner"></div></div></div>' +
             '</div>';
         if (document.body) document.body.appendChild(modalEl);
@@ -1815,7 +1818,10 @@ function openFinishConfirmModal(roundId, onConfirmCallback) {
             modalEl.innerHTML =
                 '<div class="modal-bg" onclick="closeFinishModal()"></div>' +
                 '<div class="modal-body" style="max-width:560px;">' +
-                '<button class="modal-close" onclick="closeFinishModal()">&times;</button>' +
+                '<div class="modal-top-bar">' +
+                '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeFinishModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+                '<button type="button" class="modal-close-btn" onclick="closeFinishModal()">&times;</button>' +
+                '</div>' +
                 '<div id="finish-modal-body"></div>' +
                 '</div>';
             if (document.body) document.body.appendChild(modalEl);
@@ -2437,7 +2443,10 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
         modalEl.innerHTML =
             '<div class="modal-bg" onclick="closePNGModal()"></div>' +
             '<div class="modal-body" style="max-width:560px;text-align:center;">' +
-            '<button class="modal-close" onclick="closePNGModal()">&times;</button>' +
+            '<div class="modal-top-bar">' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closePNGModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" onclick="closePNGModal()">&times;</button>' +
+            '</div>' +
             '<div id="png-modal-body"></div>' +
             '</div>';
         if (document.body) document.body.appendChild(modalEl);
@@ -2573,7 +2582,10 @@ function openToolsMenu() {
         modalEl.innerHTML =
             '<div class="modal-bg" onclick="closeToolsModal()"></div>' +
             '<div class="modal-body" style="max-width:520px;">' +
-            '<button class="modal-close" onclick="closeToolsModal()">&times;</button>' +
+            '<div class="modal-top-bar">' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeToolsModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" onclick="closeToolsModal()">&times;</button>' +
+            '</div>' +
             '<div id="tools-modal-body"></div>' +
             '</div>';
         if (document.body) document.body.appendChild(modalEl);
@@ -2683,7 +2695,10 @@ function openGPSRangefinderModal(holeNum) {
         modalEl.innerHTML =
             '<div class="modal-bg" onclick="closeGPSModal()"></div>' +
             '<div class="modal-body" style="max-width:480px;text-align:center;">' +
-            '<button class="modal-close" onclick="closeGPSModal()">&times;</button>' +
+            '<div class="modal-top-bar">' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeGPSModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" onclick="closeGPSModal()">&times;</button>' +
+            '</div>' +
             '<div id="gps-modal-body"></div>' +
             '</div>';
         if (document.body) document.body.appendChild(modalEl);
@@ -2761,7 +2776,10 @@ function openHeadToHeadModal(p1Id, p2Id) {
         modalEl.innerHTML =
             '<div class="modal-bg" onclick="closeH2HModal()"></div>' +
             '<div class="modal-body" style="max-width:580px;">' +
-            '<button class="modal-close" onclick="closeH2HModal()">&times;</button>' +
+            '<div class="modal-top-bar">' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeH2HModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" onclick="closeH2HModal()">&times;</button>' +
+            '</div>' +
             '<div id="h2h-modal-body"></div>' +
             '</div>';
         if (document.body) document.body.appendChild(modalEl);

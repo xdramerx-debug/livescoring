@@ -508,7 +508,10 @@ function openFlightGeneratorModal(tnId) {
             modalEl.innerHTML =
                 '<div class="modal-bg" onclick="closeFlightGenModal()"></div>' +
                 '<div class="modal-body" style="max-width:520px;text-align:center;">' +
-                '<button class="modal-close" onclick="closeFlightGenModal()">&times;</button>' +
+                '<div class="modal-top-bar">' +
+                '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeFlightGenModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+                '<button type="button" class="modal-close-btn" onclick="closeFlightGenModal()">&times;</button>' +
+                '</div>' +
                 '<div id="flight-gen-modal-body"></div>' +
                 '</div>';
             if (document.body) document.body.appendChild(modalEl);

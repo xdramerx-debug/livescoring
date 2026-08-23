@@ -65,6 +65,7 @@ var I18N = {
     ru: {
         brand_name: 'Пестово',
         nav_home: 'Главная', nav_round: 'Раунд', nav_leaderboard: 'Все раунды',
+        nav_guide: 'Книга поля', nav_feed: 'Лента событий', nav_predictor: 'Симулятор WHS', nav_oom: 'Зачёт сезона',
         nav_players: 'Игроки', nav_tournaments: 'Турниры', nav_stats: 'Статистика',
         nav_handicaps: 'Гандикапы', nav_admin: 'Админ', nav_login: 'Войти',
         footer_club: '© 2024 Гольф-клуб Пестово',
@@ -296,6 +297,7 @@ var I18N = {
     en: {
         brand_name: 'Pestovo',
         nav_home: 'Home', nav_round: 'Round', nav_leaderboard: 'All Rounds',
+        nav_guide: 'Course Guide', nav_feed: 'Live Feed', nav_predictor: 'WHS Predictor', nav_oom: 'Order of Merit',
         nav_players: 'Players', nav_tournaments: 'Tournaments', nav_stats: 'Statistics',
         nav_handicaps: 'Handicaps', nav_admin: 'Admin', nav_login: 'Login',
         footer_club: '© 2024 Pestovo Golf Club',

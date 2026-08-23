@@ -96,6 +96,29 @@ function loadLiveRounds() {
             var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'live.html?round=' + id;
             var panelId = 'live-sc-' + id;
 
+            var localGroupKey = localStorage.getItem('pestovo_group_key_' + id);
+            var localSoloKey = localStorage.getItem('pestovo_solo_key_' + id);
+            var localActingAs = localStorage.getItem('pestovo_acting_as_' + id);
+
+            var isMyRound = false;
+            if (currentUser && r.createdBy === currentUser.uid) {
+                isMyRound = true;
+            } else if (currentUser && r.players && r.players[currentUser.uid]) {
+                isMyRound = true;
+            } else if (localSoloKey && r.accessKey === localSoloKey) {
+                isMyRound = true;
+            } else if (localGroupKey && r.accessKey === localGroupKey) {
+                isMyRound = true;
+            } else if (localActingAs && r.players && r.players[localActingAs]) {
+                isMyRound = true;
+            }
+
+            var startBtnMarkup = isMyRound
+                ? '<a href="' + link + '" class="btn btn-g btn-sm" style="flex:1;"><i class="fas fa-gamepad"></i> ' + (currentLang === 'en' ? 'Continue' : 'Продолжить') + '</a>'
+                : '';
+
+            var toggleWidth = isMyRound ? 'flex:1;' : 'width:100%;';
+
             html += '<div class="round-card" style="cursor:default;">' +
                 '<div class="round-hdr"><span class="round-course"><i class="fas fa-flag"></i> ' + t('brand_name') + ' · ' + startWord + ' ' + fmtTime(r.startTime) + '</span>' +
                 '<span class="live-badge"><span class="live-dot" style="width:7px;height:7px;"></span> LIVE</span></div>' +
@@ -104,8 +127,8 @@ function loadLiveRounds() {
                 '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + '</span>' +
                 '<span>' + t('tee_select') + ': ' + fmtTeePill(r.tee) + '</span></div>' +
                 '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
-                '<button class="btn btn-og btn-sm" style="flex:1;" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
-                '<a href="' + link + '" class="btn btn-g btn-sm" style="flex:1;"><i class="fas fa-gamepad"></i> ' + t('btn_start_game') + '</a>' +
+                '<button class="btn btn-og btn-sm" style="' + toggleWidth + '" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
+                startBtnMarkup +
                 '</div>' +
                 '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
                 '</div>';

@@ -55,11 +55,11 @@ function buildCourseCard() {
 
 function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
-    if (!el) return;
+    if (!el || typeof db === 'undefined') return;
 
     db.ref('rounds').on('value', function(snap) {
         var data = snap.val() || {};
-        var entries = Object.entries(data).filter(function(e) { return e[1] && e[1].status === 'active'; });
+        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active'; });
 
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="live.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
@@ -84,27 +84,64 @@ function loadLiveRounds() {
 
                 var thruText = stats.holesPlayed >= 18 ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : t('hole') + ' №' + (parseInt(r.startHole)||1));
 
-                pHtml += '<div class="round-p" style="align-items:flex-start;cursor:pointer;" onclick="event.stopPropagation();openPlayerProfileModal(\'' + pid + '\',\'' + id + '\')">' +
+                pHtml += '<div class="round-p" style="align-items:flex-start;">' +
                     '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + (p.name || '—') + '</div>' +
                     '<div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;">📍 ' + thruText + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
-                    '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + '</div>' +
+                    '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div>' +
                     '</div></div>';
             });
 
             var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'live.html?round=' + id;
-            html += '<div class="round-card" onclick="window.location=\'' + link + '\'">' +
+            var panelId = 'live-sc-' + id;
+
+            html += '<div class="round-card" style="cursor:default;">' +
                 '<div class="round-hdr"><span class="round-course"><i class="fas fa-flag"></i> ' + t('brand_name') + ' · ' + startWord + ' ' + fmtTime(r.startTime) + '</span>' +
                 '<span class="live-badge"><span class="live-dot" style="width:7px;height:7px;"></span> LIVE</span></div>' +
                 pHtml +
                 '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">' +
                 '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + '</span>' +
-                '<span>' + t('tee_select') + ': ' + fmtTeePill(r.tee) + '</span></div></div>';
+                '<span>' + t('tee_select') + ': ' + fmtTeePill(r.tee) + '</span></div>' +
+                '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+                '<button class="btn btn-og btn-sm" style="flex:1;" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
+                '<a href="' + link + '" class="btn btn-g btn-sm" style="flex:1;"><i class="fas fa-gamepad"></i> ' + t('btn_start_game') + '</a>' +
+                '</div>' +
+                '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
+                '</div>';
         });
 
-        el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">' + html + '</div>';
+        el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">' + html + '</div>';
     });
+}
+
+function toggleCardScorecard(panelId, roundId) {
+    var panel = document.getElementById(panelId);
+    var icon = document.getElementById(panelId + '-icon');
+    var txt = document.getElementById(panelId + '-txt');
+    if (!panel) return;
+
+    var isHidden = panel.classList.contains('hidden');
+    if (isHidden) {
+        panel.classList.remove('hidden');
+        if (icon) icon.className = 'fas fa-chevron-up';
+        if (txt) txt.textContent = t('collapse_scorecard');
+
+        if (roundId && typeof db !== 'undefined' && panel.innerHTML === '') {
+            panel.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            db.ref('rounds/' + roundId).once('value').then(function(sn) {
+                var r = sn.val();
+                if (r && typeof generateGroupHoleTableHTML === 'function') {
+                    r.roundId = roundId;
+                    panel.innerHTML = generateGroupHoleTableHTML(r);
+                }
+            });
+        }
+    } else {
+        panel.classList.add('hidden');
+        if (icon) icon.className = 'fas fa-chevron-down';
+        if (txt) txt.textContent = t('expand_scorecard');
+    }
 }
 
 function loadRecentResults() {

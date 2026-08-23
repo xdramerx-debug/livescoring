@@ -1128,7 +1128,11 @@ function fmtExactHcp(val) {
 
 function fmtFieldHcp(val) {
     if (val === null || val === undefined || isNaN(val) || val === '') return '0';
-    return String(Math.abs(Math.round(parseFloat(val) || 0)));
+    var num = Math.round(parseFloat(val) || 0);
+    if (num < 0) {
+        return '+' + Math.abs(num);
+    }
+    return String(num);
 }
 
 const PESTOVO_MEN_HCP_TABLE = {

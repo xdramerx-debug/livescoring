@@ -143,11 +143,49 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
     padding: 0 !important;
     width: auto !important;
 }
-.form-row{display:flex;flex-wrap:wrap;gap:12px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;}
+.form-row{display:flex;flex-wrap:wrap;gap:10px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;}
 .form-row > .form-group {
-    flex: 1 1 140px;
+    flex: 1 1 130px;
     min-width: 0;
     max-width: 100%;
+}
+.form-row-3 > .form-group {
+    flex: 1 1 100px;
+}
+.setup-section-title {
+    color: var(--gold);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 12px 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.setup-subhead {
+    color: var(--gold);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 14px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.setup-player-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+.setup-player-head {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 .form-err{background:rgba(224,90,74,.1);border:1px solid var(--red);color:var(--red);padding:10px 14px;border-radius:var(--rs);font-size:13px;margin-bottom:14px;}
 
@@ -538,9 +576,13 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
     .weather-icon{font-size:11px;}
     .sun-mode-btn, .lang-btn{padding:4px 8px;font-size:11px;}
     
-    /* PREVENT iOS SAFARI AUTO-ZOOM ON INPUT FOCUS & PREVENT FORM OVERFLOW */
+    /* PREVENT iOS SAFARI AUTO-ZOOM ON INPUT FOCUS & COMPACT FORM LAYOUT */
     .form-input, select.form-input, input[type="text"], input[type="number"], input[type="time"], input[type="date"], input[type="password"], input[type="email"] {
         font-size: 16px !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        padding: 6px 10px !important;
+        border-radius: 8px !important;
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
@@ -548,15 +590,60 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
     }
     .form-row {
         display: flex !important;
-        flex-direction: column !important;
-        gap: 10px !important;
-        width: 100% !important;
-    }
-    .form-group {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 6px 8px !important;
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+    .form-row > .form-group {
+        flex: 1 1 calc(50% - 4px) !important;
+        min-width: 100px !important;
+        max-width: 100% !important;
+        margin-bottom: 0 !important;
+        box-sizing: border-box !important;
+    }
+    .form-row-3 > .form-group {
+        flex: 1 1 calc(33.333% - 6px) !important;
+        min-width: 80px !important;
+    }
+    .form-group {
+        margin-bottom: 8px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
         overflow: hidden !important;
+    }
+    .form-group label {
+        font-size: 11px !important;
+        margin-bottom: 3px !important;
+        gap: 4px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    .setup-card {
+        padding: 12px 10px !important;
+    }
+    .setup-section-title {
+        font-size: 12px !important;
+        margin: 8px 0 4px !important;
+    }
+    .setup-subhead {
+        font-size: 12px !important;
+        margin: 10px 0 6px !important;
+    }
+    .setup-player-card {
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+    }
+    .setup-player-head {
+        font-size: 12px !important;
+        margin-bottom: 4px !important;
     }
 }
 @media(max-width:480px){

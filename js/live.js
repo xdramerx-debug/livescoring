@@ -102,14 +102,15 @@ function onTournamentSelect() {
 function buildPlayerSlots() {
     var count = parseInt(document.getElementById('g-count').value) || 2;
     var el = document.getElementById('player-slots');
-    var html = '<h3 style="margin-top:16px;color:var(--gold);"><i class="fas fa-user-plus"></i> ' + t('players_label') + '</h3>';
+    var html = '<h3 class="setup-subhead"><i class="fas fa-user-plus"></i> ' + t('players_label') + '</h3>';
 
     var namePlaceholder = currentLang === 'en' ? 'John Doe' : 'Иван Петров';
 
     for (var i = 1; i <= count; i++) {
-        html += '<div class="card" style="background:var(--input);padding:16px;margin-bottom:12px;">';
-        html += '<h3 style="color:var(--gold);font-size:14px;">' + t('player') + ' #' + i + '</h3>';
-        html += '<div class="form-group"><label>' + t('select_registered') + '</label>';
+        html += '<div class="setup-player-card">';
+        html += '<div class="setup-player-head"><span><i class="fas fa-user"></i> ' + t('player') + ' #' + i + '</span></div>';
+        
+        html += '<div class="form-group" style="margin-bottom:6px;"><label>' + t('select_registered') + '</label>';
         html += '<select class="form-input" id="pl-select-' + i + '" onchange="fillPlayerFromUser(' + i + ')">';
         html += '<option value="">' + t('guest_manual') + '</option>';
         
@@ -123,13 +124,13 @@ function buildPlayerSlots() {
         html += '</select></div>';
 
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"></div>';
-        html += '<div class="form-group"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" onchange="calcPlayerFieldHcp(' + i + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
+        html += '<div class="form-group" style="flex:1.4 1 120px;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"></div>';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" onchange="calcPlayerFieldHcp(' + i + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
         html += '</div>';
 
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>' + t('exact_hcp') + '</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
-        html += '<div class="form-group"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly></div>';
+        html += '<div class="form-group" style="flex:1 1 100px;"><label>' + t('exact_hcp') + '</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
+        html += '<div class="form-group" style="flex:1 1 100px;"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly placeholder="—"></div>';
         html += '</div></div>';
     }
     el.innerHTML = html;

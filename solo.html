@@ -56,23 +56,23 @@
             </p>
         </div>
 
-        <div class="card">
+        <div class="card setup-card">
             <h2><i class="fas fa-cog"></i> <span data-i18n="round_setup">Настройки раунда</span></h2>
 
-            <h3 style="color:var(--gold);font-size:14px;margin:8px 0 12px;"><i class="fas fa-user"></i> <span data-i18n="player_data">Данные игрока</span></h3>
+            <h3 class="setup-section-title"><i class="fas fa-user"></i> <span data-i18n="player_data">Данные игрока</span></h3>
             <div class="form-row">
                 <div class="form-group"><label data-i18n="first_name">Имя</label><input type="text" id="s-firstname" class="form-input" data-i18n-placeholder="placeholder_first_name" placeholder="Иван"></div>
                 <div class="form-group"><label data-i18n="last_name">Фамилия</label><input type="text" id="s-lastname" class="form-input" data-i18n-placeholder="placeholder_last_name" placeholder="Петров"></div>
             </div>
 
-            <h3 style="color:var(--gold);font-size:14px;margin:20px 0 12px;"><i class="fas fa-clock"></i> <span data-i18n="time_and_hole">Время и лунка</span></h3>
+            <h3 class="setup-section-title"><i class="fas fa-clock"></i> <span data-i18n="time_and_hole">Время и лунка</span></h3>
             <div class="form-row">
                 <div class="form-group"><label data-i18n="start_time">Время старта</label><input type="time" id="s-time" class="form-input"></div>
                 <div class="form-group"><label data-i18n="start_hole">Стартовая лунка</label><select id="s-hole" class="form-input"></select></div>
             </div>
 
-            <h3 style="color:var(--gold);font-size:14px;margin:20px 0 12px;"><i class="fas fa-gamepad"></i> <span data-i18n="game_format">Формат игры</span></h3>
-            <div class="form-row">
+            <h3 class="setup-section-title"><i class="fas fa-gamepad"></i> <span data-i18n="game_format">Формат игры</span></h3>
+            <div class="form-row form-row-3">
                 <div class="form-group"><label data-i18n="gender_label">Пол</label><select id="s-gender" class="form-input" onchange="calcSoloFieldHcp()"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Женщина</option></select></div>
                 <div class="form-group"><label data-i18n="tee_select">ТИ</label><select id="s-tee" class="form-input" onchange="calcSoloFieldHcp()"><option value="bk" data-i18n="tee_opt_bk">⬛ Чёрный</option><option value="bl" data-i18n="tee_opt_bl">🟦 Синий</option><option value="wh" selected data-i18n="tee_opt_wh">⬜ Белый</option><option value="rd" data-i18n="tee_opt_rd">🟥 Красный</option></select></div>
                 <div class="form-group"><label data-i18n="format_select">Формат</label><select id="s-format" class="form-input"><option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option><option value="Match Play 1v1" data-i18n="format_match_1v1">Матч-плей (1х1)</option><option value="Scramble" data-i18n="format_scramble">Скрембл (Scramble)</option></select></div>
@@ -83,7 +83,7 @@
                 <div class="form-group"><label data-i18n="field_hcp">Полевой гандикап</label><input type="text" id="s-field-hcp" class="form-input" readonly placeholder="—"></div>
             </div>
 
-            <button class="btn btn-g btn-block" onclick="startSolo()" style="margin-top:16px;"><i class="fas fa-play"></i> <span data-i18n="start_round_btn">Начать раунд</span></button>
+            <button class="btn btn-g btn-block" onclick="startSolo()" style="margin-top:12px;"><i class="fas fa-play"></i> <span data-i18n="start_round_btn">Начать раунд</span></button>
         </div>
 
         <div class="card">

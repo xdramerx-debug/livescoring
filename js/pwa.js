@@ -233,3 +233,40 @@ function initBackgroundAlertListener() {
         });
     });
 }
+
+var globalBroadcastsKnown = {};
+var bgBroadcastListenerAttached = false;
+
+function initBackgroundBroadcastListener() {
+    if (typeof db === 'undefined' || bgBroadcastListenerAttached) return;
+    bgBroadcastListenerAttached = true;
+
+    db.ref('broadcasts').on('value', function(sn) {
+        var broadcasts = sn.val() || {};
+        var isFirstRun = Object.keys(globalBroadcastsKnown).length === 0;
+
+        Object.entries(broadcasts).forEach(function(e) {
+            var id = e[0], b = e[1];
+            if (!globalBroadcastsKnown[id]) {
+                globalBroadcastsKnown[id] = true;
+                if (!isFirstRun) {
+                    var title = b.title || (currentLang === 'en' ? '📢 Pestovo Announcement' : '📢 Анонс Пестово');
+                    var body = b.body || '';
+                    var targetUrl = b.link || 'tournaments.html';
+
+                    if (typeof showPushNotification === 'function') {
+                        showPushNotification(title, body, targetUrl);
+                    }
+                    if (typeof toast === 'function') {
+                        toast('📢 <b>' + title + '</b><br>' + body, 'info');
+                    }
+                    if (typeof vib === 'function') vib([150, 50, 150]);
+                }
+            }
+        });
+    });
+}
+
+window.addEventListener('load', function() {
+    initBackgroundBroadcastListener();
+});

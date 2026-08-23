@@ -58,6 +58,7 @@
         <div class="admin-tabs">
             <button class="admin-tab active" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
             <button class="admin-tab" onclick="switchTab('alerts',this)" data-i18n="tab_alerts">Вызовы 🚨</button>
+            <button class="admin-tab" onclick="switchTab('broadcasts',this)">Анонсы 📢</button>
             <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры</button>
             <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
             <button class="admin-tab" onclick="switchTab('data',this)" data-i18n="tab_data">Данные</button>
@@ -76,6 +77,37 @@
                     </button>
                 </div>
                 <div id="admin-alerts-list"></div>
+            </div>
+        </div>
+
+        <div id="tab-broadcasts" class="admin-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-bullhorn"></i> <span data-i18n="send_broadcast_title">Отправить Push-анонс клуба</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="send_broadcast_sub">
+                    Сообщение будет отправлено на смартфоны всех зарегистрированных игроков клуба.
+                </p>
+                <div class="form-group">
+                    <label data-i18n="broadcast_title_lbl">Заголовок анонса</label>
+                    <input type="text" id="bc-title" class="form-input" placeholder="🏆 Чемпионат Пестово 2024">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="broadcast_body_lbl">Текст сообщения</label>
+                    <textarea id="bc-body" class="form-input" style="min-height:90px;" placeholder="Регистрация на турнир открыта! Старт в субботу в 10:00."></textarea>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="broadcast_link_lbl">Ссылка (опционально)</label>
+                    <select id="bc-link" class="form-input">
+                        <option value="tournaments.html">Турниры (tournaments.html)</option>
+                        <option value="index.html">Главная (index.html)</option>
+                        <option value="leaderboard.html">Все раунды (leaderboard.html)</option>
+                    </select>
+                </div>
+                <button class="btn btn-g" onclick="sendClubBroadcast()"><i class="fas fa-paper-plane"></i> <span data-i18n="send_broadcast_btn">Отправить анонс всем игрокам</span></button>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-history"></i> <span data-i18n="broadcast_history_title">История отправленных анонсов</span></h2>
+                <div id="admin-broadcasts-list"></div>
             </div>
         </div>
 

@@ -45,6 +45,7 @@ function openAdminPanel() {
     loadAdmRounds();
     loadAdmPlayers();
     loadTournaments();
+    loadClubBroadcastsHistory();
     listenForAlerts();
     updateNotifButton();
 }
@@ -370,4 +371,75 @@ function listenForAlerts() {
 
 function closeAlert(id) {
     db.ref('alerts/' + id + '/status').set('resolved');
+}
+
+// ==========================================
+// PUSH-АНОНСЫ И РАССЫЛКИ КЛУБА
+// ==========================================
+function sendClubBroadcast() {
+    var titleInp = document.getElementById('bc-title');
+    var bodyInp = document.getElementById('bc-body');
+    var linkInp = document.getElementById('bc-link');
+
+    var title = titleInp ? titleInp.value.trim() : '';
+    var body = bodyInp ? bodyInp.value.trim() : '';
+    var link = linkInp ? linkInp.value : 'tournaments.html';
+
+    if (!title || !body) {
+        toast(currentLang === 'en' ? 'Specify title and message text' : 'Заполните заголовок и текст анонса', 'error');
+        return;
+    }
+
+    if (!confirm(currentLang === 'en' ? 'Send push broadcast to ALL club players?' : 'Отправить Push-анонс ВСЕМ игрокам клуба?')) return;
+
+    db.ref('broadcasts').push({
+        title: title,
+        body: body,
+        link: link,
+        time: Date.now(),
+        sentBy: currentUser ? currentUser.uid : 'admin'
+    }).then(function() {
+        toast(currentLang === 'en' ? '📢 Push broadcast sent to all players!' : '📢 Push-анонс отправлен всем игрокам!');
+        if (titleInp) titleInp.value = '';
+        if (bodyInp) bodyInp.value = '';
+        if (typeof showPushNotification === 'function') {
+            showPushNotification(title, body, link);
+        }
+    });
+}
+
+function loadClubBroadcastsHistory() {
+    if (typeof db === 'undefined') return;
+    db.ref('broadcasts').on('value', function(sn) {
+        var data = sn.val() || {};
+        var entries = Object.entries(data).sort(function(a, b) { return b[1].time - a[1].time; });
+        var el = document.getElementById('admin-broadcasts-list');
+        if (!el) return;
+
+        if (!entries.length) {
+            el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">' + (currentLang === 'en' ? 'No broadcast announcements sent yet' : 'Пока нет отправленных анонсов') + '</p>';
+            return;
+        }
+
+        var html = '';
+        entries.forEach(function(e) {
+            var id = e[0], b = e[1];
+            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
+            html += '<div style="flex:1;min-width:200px;">';
+            html += '<strong style="color:var(--gold);font-size:15px;"><i class="fas fa-bullhorn"></i> ' + (b.title || 'Announcement') + '</strong>';
+            html += '<div style="font-size:13px;color:var(--white);margin:4px 0;">' + (b.body || '') + '</div>';
+            html += '<div style="font-size:11px;color:var(--muted);">' + fmtDate(b.time) + ' · ' + fmtTime(b.time) + ' · Link: ' + (b.link || 'tournaments.html') + '</div>';
+            html += '</div>';
+            html += '<button class="btn btn-r btn-sm" onclick="deleteBroadcast(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
+            html += '</div>';
+        });
+
+        el.innerHTML = html;
+    });
+}
+
+function deleteBroadcast(id) {
+    if (confirm(currentLang === 'en' ? 'Delete announcement?' : 'Удалить анонс?')) {
+        db.ref('broadcasts/' + id).remove();
+    }
 }

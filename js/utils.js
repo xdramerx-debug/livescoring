@@ -1883,110 +1883,121 @@ function generatePestovoScorecardHTML(player, roundData) {
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
     var eHcp = p.exactHcp || 0;
+    var teeCode = (roundData && roundData.tee) || p.tee || 'wh';
     var fmt = (roundData && roundData.format) || 'Stroke Play';
     var date = fmtDate((roundData && (roundData.completedAt || roundData.createdAt)) || Date.now());
-    var startTime = fmtTime(roundData && roundData.startTime);
 
-    var outG=0,inG=0,outS=0,inS=0;
-    for(var i=1;i<=9;i++){var s=parseInt(sc[i])||0;if(s>0){outG+=s;outS+=stablefordField(s,i,fHcp);}}
-    for(var i=10;i<=18;i++){var s=parseInt(sc[i])||0;if(s>0){inG+=s;inS+=stablefordField(s,i,fHcp);}}
-    var totG=outG+inG,totS=outS+inS;
+    var outG = 0, inG = 0, outS = 0, inS = 0, outNet = 0, inNet = 0;
+    for (var i = 1; i <= 9; i++) {
+        var s = parseInt(sc[i]) || 0;
+        if (s > 0) {
+            outG += s;
+            outS += stablefordField(s, i, fHcp);
+            outNet += calcNettScore(s, holePar(i), holeHcp(i), fHcp);
+        }
+    }
+    for (var i = 10; i <= 18; i++) {
+        var s = parseInt(sc[i]) || 0;
+        if (s > 0) {
+            inG += s;
+            inS += stablefordField(s, i, fHcp);
+            inNet += calcNettScore(s, holePar(i), holeHcp(i), fHcp);
+        }
+    }
+    var totG = outG + inG, totS = outS + inS, totNet = outNet + inNet;
 
-    var pOut=0,pIn=0;
-    for(var i=1;i<=9;i++)pOut+=holePar(i);
-    for(var i=10;i<=18;i++)pIn+=holePar(i);
+    var pOut = 0, pIn = 0;
+    for (var i = 1; i <= 9; i++) pOut += holePar(i);
+    for (var i = 10; i <= 18; i++) pIn += holePar(i);
 
-    var exactHcpLbl = currentLang === 'en' ? 'Exact HCP' : 'Точный гандикап';
-    var courseHcpLbl = currentLang === 'en' ? 'Course HCP' : 'Полевой';
-    var scoreLbl = currentLang === 'en' ? 'Score' : 'Счёт';
-    var signaturesLbl = currentLang === 'en' ? 'Signatures' : 'Подписи';
-    var markerLbl = currentLang === 'en' ? 'Marker' : 'Маркер';
-    var officialLbl = currentLang === 'en' ? 'Official' : 'Судья';
+    var html = '<div class="modern-scorecard-wrap">';
 
-    var html='<div class="pestovo-card-wrap">';
+    // Compact Header
+    html += '<div class="msc-header">';
+    html += '  <div class="msc-player-info">';
+    html += '    <div class="msc-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</div>';
+    html += '    <div class="msc-meta-row">';
+    html += '      <span>HCP: <b>' + fmtExactHcp(eHcp) + '</b> (Игровой: <b>' + fmtFieldHcp(fHcp) + '</b>)</span>';
+    html += '      <span>' + t('tee_select') + ': ' + fmtTeePill(teeCode) + '</span>';
+    html += '      <span>' + fmt + ' · ' + date + '</span>';
+    html += '    </div>';
+    html += '  </div>';
+    html += '  <div class="msc-tot-badge">';
+    html += '    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Gross (Net) · Stbl</div>';
+    html += '    <div style="font-size:18px;font-weight:900;color:var(--gold);">' + (totG > 0 ? totG : '—') + ' <small style="font-size:11px;color:var(--white);">(' + (totNet > 0 ? totNet : '—') + ')</small> · <span style="color:#2ecc71;">' + totS + 'p</span></div>';
+    html += '  </div>';
+    html += '</div>';
 
-    // Шапка
-    html+='<div class="pc-header">';
-    html+='<div class="pc-col"><strong>' + t('player') + ':</strong> '+(p.name||'—')+'</div>';
-    html+='<div class="pc-col"><strong>' + exactHcpLbl + ':</strong> '+(fmtExactHcp(eHcp))+' · <strong>' + courseHcpLbl + ':</strong> '+(fmtFieldHcp(fHcp))+'</div>';
-    html+='<div class="pc-col"><strong>' + t('format') + ':</strong> '+fmt+' · <strong>' + t('start') + ':</strong> '+startTime+' · <strong>' + t('date') + ':</strong> '+date+'</div>';
-    html+='</div>';
+    // 18-Hole Modern Grid Matrix
+    html += '<div class="msc-table-container">';
+    html += '<table class="msc-table">';
+    html += '<thead><tr><th>' + t('hole') + '</th>';
+    for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
+    html += '<th class="msc-tot-col">OUT</th>';
+    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
+    html += '<th class="msc-tot-col">IN</th><th class="msc-tot-col">TOT</th></tr></thead>';
 
-    // Таблица Front 9
-    html+='<div class="pc-table-wrap"><table class="pc-table">';
-    html+='<tr><th class="pc-lbl">' + t('tee_select') + '</th><th class="pc-lbl">' + t('hole') + '</th>';
-    for(var i=1;i<=9;i++)html+='<th>'+i+'</th>';
-    html+='<th class="pc-tot">' + t('out') + '</th>';
-    for(var i=10;i<=18;i++)html+='<th>'+i+'</th>';
-    html+='<th class="pc-tot">' + t('in_side') + '</th><th class="pc-tot">' + t('total') + '</th></tr>';
+    html += '<tbody>';
 
-    // Чёрный ти
-    var bkOut=0,bkIn=0;for(var i=1;i<=9;i++)bkOut+=HOLES[i].bk;for(var i=10;i<=18;i++)bkIn+=HOLES[i].bk;
-    html+='<tr><td colspan="2" class="pc-lbl" style="background:#1a1a1a;color:#fff;">' + t('tee_bk') + '</td>';
-    for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].bk+'</td>';
-    html+='<td class="pc-tot">'+bkOut+'</td>';
-    for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].bk+'</td>';
-    html+='<td class="pc-tot">'+bkIn+'</td><td class="pc-tot">'+(bkOut+bkIn)+'</td></tr>';
+    // Distances
+    html += '<tr class="msc-row-dist"><td>Meters</td>';
+    var dOut = 0, dIn = 0;
+    for (var i = 1; i <= 9; i++) { var d = holeDist(i, teeCode); dOut += d; html += '<td>' + d + '</td>'; }
+    html += '<td class="msc-tot-col">' + dOut + '</td>';
+    for (var i = 10; i <= 18; i++) { var d = holeDist(i, teeCode); dIn += d; html += '<td>' + d + '</td>'; }
+    html += '<td class="msc-tot-col">' + dIn + '</td><td class="msc-tot-col">' + (dOut + dIn) + '</td></tr>';
 
-    // Синий ти
-    var blOut=0,blIn=0;for(var i=1;i<=9;i++)blOut+=HOLES[i].bl;for(var i=10;i<=18;i++)blIn+=HOLES[i].bl;
-    html+='<tr><td colspan="2" class="pc-lbl" style="background:#2980b9;color:#fff;">' + t('tee_bl') + '</td>';
-    for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].bl+'</td>';
-    html+='<td class="pc-tot">'+blOut+'</td>';
-    for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].bl+'</td>';
-    html+='<td class="pc-tot">'+bkIn+'</td><td class="pc-tot">'+(blOut+blIn)+'</td></tr>';
+    // Par
+    html += '<tr class="msc-row-par"><td>Par</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + holePar(i) + '</td>';
+    html += '<td class="msc-tot-col">' + pOut + '</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + holePar(i) + '</td>';
+    html += '<td class="msc-tot-col">' + pIn + '</td><td class="msc-tot-col">' + (pOut + pIn) + '</td></tr>';
 
-    // Белый ти
-    var whOut=0,whIn=0;for(var i=1;i<=9;i++)whOut+=HOLES[i].wh;for(var i=10;i<=18;i++)whIn+=HOLES[i].wh;
-    html+='<tr><td colspan="2" class="pc-lbl">' + t('tee_wh') + '</td>';
-    for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].wh+'</td>';
-    html+='<td class="pc-tot">'+whOut+'</td>';
-    for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].wh+'</td>';
-    html+='<td class="pc-tot">'+whIn+'</td><td class="pc-tot">'+(whOut+whIn)+'</td></tr>';
+    // Index (HCP)
+    html += '<tr class="msc-row-idx"><td>Index</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + holeHcp(i) + '</td>';
+    html += '<td class="msc-tot-col">—</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + holeHcp(i) + '</td>';
+    html += '<td class="msc-tot-col">—</td><td class="msc-tot-col">—</td></tr>';
 
-    // Красный ти
-    var rdOut=0,rdIn=0;for(var i=1;i<=9;i++)rdOut+=HOLES[i].rd;for(var i=10;i<=18;i++)rdIn+=HOLES[i].rd;
-    html+='<tr><td colspan="2" class="pc-lbl" style="background:#c0392b;color:#fff;">' + t('tee_rd') + '</td>';
-    for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].rd+'</td>';
-    html+='<td class="pc-tot">'+rdOut+'</td>';
-    for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].rd+'</td>';
-    html+='<td class="pc-tot">'+rdIn+'</td><td class="pc-tot">'+(rdOut+rdIn)+'</td></tr>';
-
-    // Пар
-    html+='<tr><td colspan="2" class="pc-lbl pc-par">' + t('par') + '</td>';
-    for(var i=1;i<=9;i++)html+='<td class="pc-par">'+HOLES[i].p+'</td>';
-    html+='<td class="pc-tot pc-par">'+pOut+'</td>';
-    for(var i=10;i<=18;i++)html+='<td class="pc-par">'+HOLES[i].p+'</td>';
-    html+='<td class="pc-tot pc-par">'+pIn+'</td><td class="pc-tot pc-par">'+(pOut+pIn)+'</td></tr>';
-
-    // Индекс
-    html+='<tr><td colspan="2" class="pc-lbl pc-idx">' + t('index') + '</td>';
-    for(var i=1;i<=9;i++)html+='<td class="pc-idx">'+HOLES[i].hcp+'</td>';
-    html+='<td class="pc-idx"></td>';
-    for(var i=10;i<=18;i++)html+='<td class="pc-idx">'+HOLES[i].hcp+'</td>';
-    html+='<td class="pc-idx"></td><td class="pc-idx"></td></tr>';
-
-    // СЧЁТ
-    html+='<tr><td colspan="2" class="pc-lbl pc-score-lbl">' + scoreLbl + '</td>';
-    for(var i=1;i<=9;i++){var s=parseInt(sc[i])||0;html+='<td class="pc-score-box"><b>'+(s>0?s:'')+'</b></td>';}
-    html+='<td class="pc-tot pc-score-box"><b>'+(outG>0?outG:'')+'</b></td>';
-    for(var i=10;i<=18;i++){var s=parseInt(sc[i])||0;html+='<td class="pc-score-box"><b>'+(s>0?s:'')+'</b></td>';}
-    html+='<td class="pc-tot pc-score-box"><b>'+(inG>0?inG:'')+'</b></td>';
-    html+='<td class="pc-tot pc-score-box"><b>'+(totG>0?totG:'')+'</b></td></tr>';
+    // Score Strokes
+    html += '<tr class="msc-row-score"><td>Score</td>';
+    for (var i = 1; i <= 9; i++) {
+        var s = parseInt(sc[i]) || 0;
+        var par = holePar(i);
+        var badgeCls = s > 0 ? holeResClass(s, par) : '';
+        html += '<td><span class="msc-score-badge ' + badgeCls + '">' + (s > 0 ? s : '—') + '</span></td>';
+    }
+    html += '<td class="msc-tot-col"><b>' + (outG > 0 ? outG : '—') + '</b></td>';
+    for (var i = 10; i <= 18; i++) {
+        var s = parseInt(sc[i]) || 0;
+        var par = holePar(i);
+        var badgeCls = s > 0 ? holeResClass(s, par) : '';
+        html += '<td><span class="msc-score-badge ' + badgeCls + '">' + (s > 0 ? s : '—') + '</span></td>';
+    }
+    html += '<td class="msc-tot-col"><b>' + (inG > 0 ? inG : '—') + '</b></td>';
+    html += '<td class="msc-tot-col"><b>' + (totG > 0 ? totG : '—') + '</b></td></tr>';
 
     // Stableford
-    html+='<tr><td colspan="2" class="pc-lbl">Stableford</td>';
-    for(var i=1;i<=9;i++){var s=parseInt(sc[i])||0;html+='<td>'+(s>0?stablefordField(s,i,fHcp):'')+'</td>';}
-    html+='<td class="pc-tot">'+(outS>0?outS:'')+'</td>';
-    for(var i=10;i<=18;i++){var s=parseInt(sc[i])||0;html+='<td>'+(s>0?stablefordField(s,i,fHcp):'')+'</td>';}
-    html+='<td class="pc-tot">'+(inS>0?inS:'')+'</td>';
-    html+='<td class="pc-tot"><b>'+(totS>0?totS:'')+'</b></td></tr>';
+    html += '<tr class="msc-row-stbl"><td>Stableford</td>';
+    for (var i = 1; i <= 9; i++) {
+        var s = parseInt(sc[i]) || 0;
+        var pts = s > 0 ? stablefordField(s, i, fHcp) : '';
+        html += '<td>' + (pts !== '' ? pts : '—') + '</td>';
+    }
+    html += '<td class="msc-tot-col"><b>' + (outS > 0 ? outS : '—') + '</b></td>';
+    for (var i = 10; i <= 18; i++) {
+        var s = parseInt(sc[i]) || 0;
+        var pts = s > 0 ? stablefordField(s, i, fHcp) : '';
+        html += '<td>' + (pts !== '' ? pts : '—') + '</td>';
+    }
+    html += '<td class="msc-tot-col"><b>' + (inS > 0 ? inS : '—') + '</b></td>';
+    html += '<td class="msc-tot-col"><b>' + (totS > 0 ? totS : '—') + '</b></td></tr>';
 
-    html+='</table></div>';
+    html += '</tbody></table></div>';
+    html += '</div>';
 
-    // Подписи
-    html+='<div class="pc-footer"><div><strong>' + signaturesLbl + ':</strong> ' + t('player') + ' ___________________</div><div>' + markerLbl + ' ___________________</div><div>' + officialLbl + ' ___________________</div></div>';
-    html+='</div>';
     return html;
 }
 

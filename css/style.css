@@ -852,6 +852,104 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 /* =========================================
    СКОРКАРТА ПЕСТОВО (ВЕБ-ВИД)
    ========================================= */
+/* =========================================
+   СКОРКАРТА ПЕСТОВО (МОДЕРНИЗИРОВАННЫЙ ВЕБ-ВИД)
+   ========================================= */
+.modern-scorecard-wrap {
+    background: rgba(19, 34, 24, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+}
+.msc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.25);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.msc-player-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.msc-meta-row {
+    display: flex;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+.msc-meta-row b {
+    color: var(--gold);
+}
+.msc-tot-badge {
+    text-align: right;
+    background: rgba(201, 168, 76, 0.08);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: 8px;
+    padding: 4px 10px;
+}
+.msc-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.msc-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 680px;
+    font-size: 11px;
+    text-align: center;
+}
+.msc-table th, .msc-table td {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 6px 3px;
+    box-sizing: border-box;
+}
+.msc-table th {
+    background: var(--gr-d);
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 10px;
+}
+.msc-table td:first-child, .msc-table th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background: #132218;
+    text-align: left;
+    padding-left: 6px;
+    font-weight: 700;
+    color: var(--gold);
+    box-shadow: 2px 0 6px rgba(0,0,0,0.3);
+}
+.msc-tot-col {
+    background: rgba(201, 168, 76, 0.12) !important;
+    font-weight: 800 !important;
+    color: var(--gold) !important;
+}
+.msc-row-par td { background: rgba(46, 107, 63, 0.15); color: var(--white); }
+.msc-row-idx td { color: var(--muted); font-size: 10px; }
+.msc-score-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 12px;
+}
+
 .pestovo-card-wrap{background:rgba(19,34,24,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(201,168,76,0.22);border-radius:var(--r);padding:16px;margin-bottom:20px;overflow-x:auto;}
 .pc-header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--gold);padding-bottom:12px;margin-bottom:12px;min-width:800px;flex-wrap:wrap;gap:8px;}
 .pc-col{font-size:12px;color:var(--muted);}

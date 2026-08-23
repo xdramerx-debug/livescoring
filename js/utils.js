@@ -1094,87 +1094,52 @@ function generateGroupHoleTableHTML(r) {
 
     var order = holeOrder(r.startHole || 1);
 
-    // --- MOBILE PLAYER KPI SUMMARY BAR ---
-    var kpiHtml = '<div class="mobile-player-kpi-bar">';
-    playerEntries.forEach(function(pe) {
-        var pid = pe[0], p = pe[1];
-        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-        var thruText = stats.holesPlayed >= 18 ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '1/18');
-
-        kpiHtml += '<div class="mobile-kpi-card" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
-        kpiHtml += '<div class="mobile-kpi-name">' + (p.name || '—') + '</div>';
-        kpiHtml += '<div class="mobile-kpi-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</div>';
-        kpiHtml += '<div class="mobile-kpi-meta">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · 📍 ' + thruText + '</div>';
-        kpiHtml += '</div>';
-    });
-    kpiHtml += '</div>';
-
-    var pOut = 0, pIn = 0;
-    for (var i = 1; i <= 9; i++) pOut += holePar(i);
-    for (var i = 10; i <= 18; i++) pIn += holePar(i);
-
-    var playerHoleHeader = currentLang === 'en' ? 'Player / Hole' : 'Игрок / Лунка';
-    var hintText = currentLang === 'en' ? '← Swipe table to view all holes →' : '← Прокрутите таблицу для всех лунок →';
-
-    var html = kpiHtml;
-    html += '<div class="mobile-scroll-hint"><i class="fas fa-arrows-left-right"></i> ' + hintText + '</div>';
-
-    html += '<div class="scorecard" style="margin-bottom:12px;"><table>';
-    html += '<tr><th style="text-align:left;padding-left:10px;">' + playerHoleHeader + '</th>';
-    for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
-    html += '<th>' + t('out') + '</th></tr>';
-
-    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;font-weight:700;">' + t('par') + '</td>';
-    for (var i = 1; i <= 9; i++) html += '<td>' + holePar(i) + '</td>';
-    html += '<td style="font-weight:800;">' + pOut + '</td></tr>';
+    // --- NO-SCROLL VERTICAL GRID MATRIX (100% FIT ON MOBILE SCREENS) ---
+    var html = '<div class="no-scroll-view-container">';
 
     playerEntries.forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         var sc = p.scores || {};
-        var outG = 0;
-        html += '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')">';
-        html += '<td style="text-align:left;padding-left:10px;font-weight:700;color:var(--gold);white-space:nowrap;"><i class="fas fa-user"></i> ' + (p.name || '—') + '</td>';
-        for (var i = 1; i <= 9; i++) {
+        var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
+        var thruText = stats.holesPlayed >= 18 ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '1/18');
+
+        html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
+        html += '<div class="noscroll-player-hdr">';
+        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</span>';
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div></div>';
+        html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
+        html += '</div>';
+
+        // 18-Hole 6x3 Matrix (Fits 100% on any mobile screen width)
+        html += '<div class="noscroll-grid">';
+        for (var i = 1; i <= 18; i++) {
             var s = parseInt(sc[i]) || 0;
             var par = holePar(i);
             var cls = holeResClass(s, par);
-            if (s > 0) outG += s;
-            html += '<td class="' + cls + '"><b>' + (s > 0 ? s : '') + '</b></td>';
+
+            html += '<div class="noscroll-tile ' + cls + '">';
+            html += '<div class="noscroll-hole">#' + i + '</div>';
+            html += '<div class="noscroll-score">' + (s > 0 ? s : '—') + '</div>';
+            html += '<div class="noscroll-par">p' + par + '</div>';
+            html += '</div>';
         }
-        html += '<td class="row-total"><b>' + (outG > 0 ? outG : '') + '</b></td></tr>';
-    });
-    html += '</table></div>';
+        html += '</div>';
 
-    html += '<div class="scorecard"><table>';
-    html += '<tr><th style="text-align:left;padding-left:10px;">' + playerHoleHeader + '</th>';
-    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
-    html += '<th>' + t('in_side') + '</th><th>' + t('total') + '</th></tr>';
-
-    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;font-weight:700;">' + t('par') + '</td>';
-    for (var i = 10; i <= 18; i++) html += '<td>' + holePar(i) + '</td>';
-    html += '<td style="font-weight:800;">' + pIn + '</td><td style="font-weight:800;">' + (pOut + pIn) + '</td></tr>';
-
-    playerEntries.forEach(function(pe) {
-        var pid = pe[0], p = pe[1];
-        var sc = p.scores || {};
+        // Front 9 / Back 9 / Total Totals
         var outG = 0, inG = 0;
         for (var i = 1; i <= 9; i++) { var s = parseInt(sc[i]) || 0; if (s > 0) outG += s; }
         for (var i = 10; i <= 18; i++) { var s = parseInt(sc[i]) || 0; if (s > 0) inG += s; }
-        var totG = outG + inG;
 
-        html += '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')">';
-        html += '<td style="text-align:left;padding-left:10px;font-weight:700;color:var(--gold);white-space:nowrap;"><i class="fas fa-user"></i> ' + (p.name || '—') + '</td>';
-        for (var i = 10; i <= 18; i++) {
-            var s = parseInt(sc[i]) || 0;
-            var par = holePar(i);
-            var cls = holeResClass(s, par);
-            if (s > 0) inG += s;
-            html += '<td class="' + cls + '"><b>' + (s > 0 ? s : '') + '</b></td>';
-        }
-        html += '<td class="row-total"><b>' + (inG > 0 ? inG : '') + '</b></td>';
-        html += '<td class="row-total"><b>' + (totG > 0 ? totG : '') + '</b></td></tr>';
+        html += '<div class="noscroll-totals">';
+        html += '<span>OUT (1-9): <b>' + (outG > 0 ? outG : '—') + '</b></span>';
+        html += '<span>IN (10-18): <b>' + (inG > 0 ? inG : '—') + '</b></span>';
+        html += '<span>TOTAL: <b>' + (outG + inG > 0 ? (outG + inG) : '—') + '</b></span>';
+        html += '</div>';
+
+        html += '</div>';
     });
-    html += '</table></div>';
+
+    html += '</div>';
 
     return html;
 }

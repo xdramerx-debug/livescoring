@@ -792,10 +792,10 @@ function testTelegramGroupAlert() {
             botToken: token,
             chatId: chatId,
             updatedAt: Date.now()
-        });
+        }).catch(function(){});
     }
 
-    sendTelegramOfficialAlert('referee', 1, 'Администратор Клуба', 'Тестовая проверка Группы', 'group');
+    sendTelegramDirectAlert(token, chatId, 'Группу', 'referee', 1, 'Администратор Клуба', 'Тестовая проверка Группы');
 }
 
 function testTelegramChannelAlert() {
@@ -817,10 +817,10 @@ function testTelegramChannelAlert() {
             channelToken: token,
             channelId: chatId,
             updatedAt: Date.now()
-        });
+        }).catch(function(){});
     }
 
-    sendTelegramOfficialAlert('referee', 1, 'Администратор Клуба', 'Тестовая проверка Канала', 'channel');
+    sendTelegramDirectAlert(token, chatId, 'Канал', 'referee', 1, 'Администратор Клуба', 'Тестовая проверка Канала');
 }
 
 function testTelegramAlert(targetMode) {

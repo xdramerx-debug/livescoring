@@ -3059,6 +3059,65 @@ function toggleActiveScorecard(panelId) {
 // ==========================================
 // TELEGRAM BOT OFFICIAL ALERTS (GROUP & CHANNEL)
 // ==========================================
+function sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerName, roundInfo) {
+    token = (token || '').trim();
+    chat = (chat || '').trim();
+
+    if (!token || !chat) {
+        toast('⚠️ Укажите Bot Token и Chat ID / Username для ' + (labelName || 'Telegram'), 'error');
+        return;
+    }
+
+    var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
+    var safePlayerName = escapeHtml(playerName || 'Игрок');
+    var safeRoundInfo = escapeHtml(roundInfo || 'Активный раунд');
+    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
+
+    var text = '🚨 <b>' + typeTitle + ' В ПЕСТОВО!</b>\n' +
+               '----------------------------------\n' +
+               '👤 <b>Игрок:</b> ' + safePlayerName + '\n' +
+               '⛳ <b>Лунка:</b> №' + holeNum + '\n' +
+               '📋 <b>Раунд:</b> ' + safeRoundInfo + '\n' +
+               '⏰ <b>Время:</b> ' + timeStr;
+
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch(e){} }, 6000) : null;
+
+    var fetchOptions = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            chat_id: chat,
+            text: text,
+            parse_mode: 'HTML'
+        })
+    };
+    if (controller) fetchOptions.signal = controller.signal;
+
+    fetch('https://api.telegram.org/bot' + token + '/sendMessage', fetchOptions)
+    .then(function(res) {
+        if (timeoutId) clearTimeout(timeoutId);
+        return res.json();
+    })
+    .then(function(data) {
+        if (data && data.ok) {
+            console.log('✅ Telegram alert delivered to ' + labelName + ':', data.result);
+            toast('✅ Telegram сообщение доставлено в ' + (labelName || 'чат') + '!', 'success');
+        } else {
+            var errDesc = (data && data.description) ? data.description : 'Ошибка Telegram API';
+            console.error('❌ Telegram Bot API Error (' + labelName + '):', errDesc);
+            toast('❌ Ошибка Telegram (' + (labelName || 'чат') + '): ' + errDesc, 'error');
+        }
+    })
+    .catch(function(err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        var isAbort = err && err.name === 'AbortError';
+        var errMsg = isAbort ? 'Таймаут соединения (6 сек)' : (err ? err.message : 'Ошибка сети');
+        console.error('❌ Telegram Fetch Error (' + labelName + '):', err);
+        toast('❌ Ошибка сети / Таймаут Telegram: ' + errMsg, 'error');
+    });
+}
+
 function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetMode) {
     var groupToken = (localStorage.getItem('pestovo_tg_group_token') || localStorage.getItem('pestovo_tg_bot_token') || '').trim();
     var groupId = (localStorage.getItem('pestovo_tg_group_id') || localStorage.getItem('pestovo_tg_chat_id') || '').trim();
@@ -3066,73 +3125,27 @@ function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetM
     var channelToken = (localStorage.getItem('pestovo_tg_channel_token') || groupToken || '').trim();
     var channelId = (localStorage.getItem('pestovo_tg_channel_id') || '').trim();
 
-    var postMessage = function(token, chat, labelName, isExplicitTest) {
-        if (!token || !chat) {
-            if (isExplicitTest) toast('⚠️ Укажите Bot Token и Chat ID / Username для ' + labelName, 'error');
-            return;
-        }
+    if (groupToken && groupId && (targetMode === 'group' || !targetMode)) {
+        sendTelegramDirectAlert(groupToken, groupId, 'Группу', type, holeNum, playerName, roundInfo);
+    }
+    if (channelToken && channelId && (targetMode === 'channel' || !targetMode)) {
+        sendTelegramDirectAlert(channelToken, channelId, 'Канал', type, holeNum, playerName, roundInfo);
+    }
 
-        var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
-        var safePlayerName = escapeHtml(playerName || 'Игрок');
-        var safeRoundInfo = escapeHtml(roundInfo || 'Активный раунд');
-        var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
-
-        var text = '🚨 <b>' + typeTitle + ' В ПЕСТОВО!</b>\n' +
-                   '----------------------------------\n' +
-                   '👤 <b>Игрок:</b> ' + safePlayerName + '\n' +
-                   '⛳ <b>Лунка:</b> №' + holeNum + '\n' +
-                   '📋 <b>Раунд:</b> ' + safeRoundInfo + '\n' +
-                   '⏰ <b>Время:</b> ' + timeStr;
-
-        fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: chat,
-                text: text,
-                parse_mode: 'HTML'
-            })
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            if (data && data.ok) {
-                console.log('✅ Telegram alert delivered to ' + labelName + ':', data.result);
-                if (isExplicitTest) toast('✅ Telegram сообщение доставлено в ' + labelName + '!', 'success');
-            } else {
-                var errDesc = (data && data.description) ? data.description : 'Ошибка Telegram API';
-                console.error('❌ Telegram Bot API Error (' + labelName + '):', errDesc);
-                if (isExplicitTest) toast('❌ Ошибка Telegram (' + labelName + '): ' + errDesc, 'error');
-            }
-        })
-        .catch(function(err) {
-            console.error('❌ Telegram Fetch Error (' + labelName + '):', err);
-            if (isExplicitTest) toast('❌ Ошибка сети Telegram (' + labelName + '): ' + err.message, 'error');
-        });
-    };
-
-    var triggerAll = function(gTok, gId, cTok, cId) {
-        if (targetMode === 'group' || !targetMode) {
-            if (gTok && gId) postMessage(gTok, gId, 'Группу', targetMode === 'group');
-            else if (targetMode === 'group') toast('⚠️ Не настроен Bot Token или Chat ID Группы', 'error');
-        }
-        if (targetMode === 'channel' || !targetMode) {
-            if (cTok && cId) postMessage(cTok, cId, 'Канал', targetMode === 'channel');
-            else if (targetMode === 'channel') toast('⚠️ Не настроен Bot Token или ID Канала', 'error');
-        }
-    };
-
-    if (groupToken || channelToken) {
-        triggerAll(groupToken, groupId, channelToken, channelId);
-    } else if (typeof db !== 'undefined') {
+    if (!groupToken && !channelToken && typeof db !== 'undefined') {
         db.ref('settings/telegram').once('value').then(function(sn) {
             var tg = sn.val() || {};
             var gTok = (tg.groupToken || tg.botToken || '').trim();
             var gId = (tg.groupId || tg.chatId || '').trim();
             var cTok = (tg.channelToken || gTok || '').trim();
             var cId = (tg.channelId || '').trim();
-            triggerAll(gTok, gId, cTok, cId);
+
+            if (gTok && gId && (targetMode === 'group' || !targetMode)) {
+                sendTelegramDirectAlert(gTok, gId, 'Группу', type, holeNum, playerName, roundInfo);
+            }
+            if (cTok && cId && (targetMode === 'channel' || !targetMode)) {
+                sendTelegramDirectAlert(cTok, cId, 'Канал', type, holeNum, playerName, roundInfo);
+            }
         });
-    } else if (targetMode) {
-        toast('⚠️ Заполните настройки Telegram', 'error');
     }
 }

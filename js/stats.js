@@ -18,7 +18,7 @@ function loadStats() {
         var totalHoles = 0;
         var birdies = 0, eagles = 0, pars = 0, hio = 0;
         var bestGross = Infinity, bestGrossPlayer = '—';
-        var bestStblfd = 0, bestStblfdPlayer = '—';
+        var bestStableford = 0, bestStablefordPlayer = '—';
         var fastestTime = Infinity, fastestPlayer = '—', fastestHoles = 18;
         var soloCount = 0, groupCount = 0;
         var totalStblFieldSum = 0, totalStblExactSum = 0;
@@ -99,9 +99,9 @@ function loadStats() {
                         bestGross = gross;
                         bestGrossPlayer = p.name;
                     }
-                    if (stblF > bestStblfd) {
-                        bestStblfd = stblF;
-                        bestStblfdPlayer = p.name;
+                    if (stblF > bestStableford) {
+                        bestStableford = stblF;
+                        bestStablefordPlayer = p.name;
                     }
                 }
 
@@ -171,7 +171,7 @@ function loadStats() {
                 var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
                 thtml += '<div class="list-item">' +
                     '<span><strong style="color:var(--white);">' + medal + ' ' + p.name + '</strong></span>' +
-                    '<span>' + avgWord + '<b style="color:var(--gold);">' + avg + '</b> · Stblfd: <b style="color:var(--gold);">' + avgStbl + '</b> · ' + p.count + fullRoundsWord + '</span>' +
+                    '<span>' + avgWord + '<b style="color:var(--gold);">' + avg + '</b> · Stableford: <b style="color:var(--gold);">' + avgStbl + '</b> · ' + p.count + fullRoundsWord + '</span>' +
                     '</div>';
             });
             topEl.innerHTML = thtml;
@@ -186,7 +186,7 @@ function loadStats() {
             '<div class="list-item"><span>' + lBestGross18 + '</span>' +
             '<strong>' + (bestGross < Infinity ? bestGross + ' (' + bestGrossPlayer + ')' : '—') + '</strong></div>' +
             '<div class="list-item"><span>' + lBestStbl18 + '</span>' +
-            '<strong>' + (bestStblfd > 0 ? bestStblfd + ' (' + bestStblfdPlayer + ')' : '—') + '</strong></div>' +
+            '<strong>' + (bestStableford > 0 ? bestStableford + ' (' + bestStablefordPlayer + ')' : '—') + '</strong></div>' +
             '<div class="list-item"><span>' + lFastest18 + '</span>' +
             '<strong>' + fastestStr + (fastestPlayer !== '—' ? ' (' + fastestPlayer + ')' : '') + '</strong></div>' +
             '<div class="list-item"><span>🎯 Hole-in-One</span><strong>' + hio + '</strong></div>' +

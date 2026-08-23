@@ -91,7 +91,7 @@ var I18N = {
         tee_opt_bk: '⬛ Чёрный', tee_opt_bl: '🟦 Синий', tee_opt_wh: '⬜ Белый', tee_opt_rd: '🟥 Красный',
         hole: 'Лунка', par: 'Пар', index: 'Индекс', gross: 'Gross', net: 'Net',
         hole_lbl: 'Лунка', par_lbl: 'Пар', dist_lbl: 'Метры', deadline_lbl: 'Дедлайн',
-        stbl_field: 'Stblfd (пол.)', stbl_exact: 'Stblfd (игр.)',
+        stbl_field: 'Stableford (пол.)', stbl_exact: 'Stableford (игр.)',
         out: 'Аут', in_side: 'Ин', total: 'Итого', meters: 'Метры', deadline: 'Дедлайн',
         format_match_1v1: 'Матч-плей (1х1)',
         format_match_2v2: 'Матч-плей (2х2)',
@@ -323,7 +323,7 @@ var I18N = {
         tee_opt_bk: '⬛ Black', tee_opt_bl: '🟦 Blue', tee_opt_wh: '⬜ White', tee_opt_rd: '🟥 Red',
         hole: 'Hole', par: 'Par', index: 'Index', gross: 'Gross', net: 'Net',
         hole_lbl: 'Hole', par_lbl: 'Par', dist_lbl: 'Meters', deadline_lbl: 'Deadline',
-        stbl_field: 'Stblfd (Course)', stbl_exact: 'Stblfd (Playing)',
+        stbl_field: 'Stableford (Course)', stbl_exact: 'Stableford (Playing)',
         out: 'Out', in_side: 'In', total: 'Total', meters: 'Meters', deadline: 'Deadline',
         format_match_1v1: 'Match Play (1v1)',
         format_match_2v2: 'Match Play (2v2)',
@@ -1694,7 +1694,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     html+='<td class="pc-tot pc-score-box"><b>'+(totG>0?totG:'')+'</b></td></tr>';
 
     // Stableford
-    html+='<tr><td colspan="2" class="pc-lbl">Stblfd</td>';
+    html+='<tr><td colspan="2" class="pc-lbl">Stableford</td>';
     for(var i=1;i<=9;i++){var s=parseInt(sc[i])||0;html+='<td>'+(s>0?stablefordField(s,i,fHcp):'')+'</td>';}
     html+='<td class="pc-tot">'+(outS>0?outS:'')+'</td>';
     for(var i=10;i<=18;i++){var s=parseInt(sc[i])||0;html+='<td>'+(s>0?stablefordField(s,i,fHcp):'')+'</td>';}

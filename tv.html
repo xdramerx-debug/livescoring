@@ -91,7 +91,7 @@ function loadTVLeaderboard() {
             html += '<div class="tv-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
                 '<div><h2 style="font-family:var(--ff);font-size:32px;color:var(--gold);margin:0;">Pestovo · ' + fmtTime(r.startTime) + '</h2>' +
                 '<div style="font-size:18px;color:var(--muted);margin-top:4px;">' + fmtDate(r.createdAt) + ' · ' + (r.format || 'Stroke') + ' · Tee: ' + TEES[r.tee] + '</div></div>' + badge + '</div>' +
-                '<table class="tv-table"><thead><tr><th style="width:60px;">POS</th><th style="text-align:left;">PLAYER</th><th>THRU</th><th>TO PAR</th><th>GROSS</th><th>NET</th><th>STBLFD</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+                '<table class="tv-table"><thead><tr><th style="width:60px;">POS</th><th style="text-align:left;">PLAYER</th><th>THRU</th><th>TO PAR</th><th>GROSS</th><th>NET</th><th>STABLEFORD</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
         });
 
         document.getElementById('tv-content').innerHTML = html;

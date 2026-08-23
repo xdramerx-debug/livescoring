@@ -71,7 +71,7 @@ function loadPlayers() {
                 'HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') +
                 ' · ' + roundsWord + (u.roundsPlayed || 0) +
                 (u.bestGross ? ' · Gross (18h): ' + u.bestGross : '') +
-                (u.bestStableford ? ' · Stblfd (18h): ' + u.bestStableford : '') +
+                (u.bestStableford ? ' · Stableford (18h): ' + u.bestStableford : '') +
                 '</div></div></div></div>';
         });
 

@@ -483,7 +483,7 @@ function renderMiniCard(targetId) {
     }
     html += '<td class="row-total"><b>' + (gO > 0 ? gO : '') + '</b></td></tr>';
 
-    html += '<tr><td>Stblfd (' + courseHcpLbl + ')</td>';
+    html += '<tr><td>Stableford (' + courseHcpLbl + ')</td>';
     var sfO = 0;
     for (var i = 1; i <= 9; i++) {
         var s = parseInt(scores[i]) || 0;
@@ -492,7 +492,7 @@ function renderMiniCard(targetId) {
     }
     html += '<td class="row-total"><b>' + sfO + '</b></td></tr>';
 
-    html += '<tr><td>Stblfd (playing)</td>';
+    html += '<tr><td>Stableford (playing)</td>';
     var seO = 0;
     for (var i = 1; i <= 9; i++) {
         var s = parseInt(scores[i]) || 0;
@@ -515,7 +515,7 @@ function renderMiniCard(targetId) {
     }
     html += '<td class="row-total"><b>' + (gI > 0 ? gI : '') + '</b></td><td class="row-total"><b>' + ((gO + gI) > 0 ? (gO + gI) : '') + '</b></td></tr>';
 
-    html += '<tr><td>Stblfd (' + courseHcpLbl + ')</td>';
+    html += '<tr><td>Stableford (' + courseHcpLbl + ')</td>';
     var sfI = 0;
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(scores[i]) || 0;
@@ -524,7 +524,7 @@ function renderMiniCard(targetId) {
     }
     html += '<td class="row-total"><b>' + sfI + '</b></td><td class="row-total"><b>' + (sfO + sfI) + '</b></td></tr>';
 
-    html += '<tr><td>Stblfd (playing)</td>';
+    html += '<tr><td>Stableford (playing)</td>';
     var seI = 0;
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(scores[i]) || 0;

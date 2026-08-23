@@ -155,16 +155,6 @@
     <!-- АКТИВНЫЙ ВВОД (ТОЛЬКО УЧАСТНИКИ) -->
     <div id="active-scoring-view" class="hidden">
         
-        <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
-        <div style="display:flex;gap:10px;margin-bottom:16px;">
-            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
-                <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
-            </button>
-            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
-                <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
-            </button>
-        </div>
-
         <div id="live-progress-bar"></div>
 
         <div class="card">
@@ -218,6 +208,16 @@
         <div class="card">
             <h2><i class="fas fa-table"></i> <span data-i18n="group_summary">Сводка группы</span></h2>
             <div id="play-group-summary"></div>
+        </div>
+
+        <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
+                <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
+            </button>
+            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
+                <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
+            </button>
         </div>
 
         <!-- QR КОДЫ ДЛЯ ПОДКЛЮЧЕНИЯ ДРУГИХ ИГРОКОВ -->

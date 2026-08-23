@@ -51,24 +51,32 @@
     </div>
 </section>
 
+<!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" (УРОВЕНЬ 1 ИЕРАРХИИ) -->
+<section class="section" style="padding-bottom:10px;">
+    <div class="container">
+        <div id="my-active-rounds-container" class="hidden"></div>
+    </div>
+</section>
+
+<!-- УРОВЕНЬ 2 ИЕРАРХИИ: СЕЙЧАС НА ПОЛЕ -->
 <section class="section">
     <div class="container">
-        <!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" -->
-        <div id="my-active-rounds-container" class="hidden"></div>
-
         <div class="sec-hdr"><h2 class="sec-t"><span class="live-dot"></span> <span data-i18n="sec_now_playing">Сейчас на поле</span></h2>
         <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все раунды</span> <i class="fas fa-arrow-right"></i></a></div>
         <div id="live-rounds"><div class="skeleton" style="height:120px;margin-bottom:12px;"></div></div>
     </div>
 </section>
 
+<!-- УРОВЕНЬ 3 ИЕРАРХИИ: ПОСЛЕДНИЕ РЕЗУЛЬТАТЫ -->
 <section class="section section-alt">
     <div class="container">
-        <h2 class="sec-t text-center" style="justify-content:center;margin-bottom:28px;" data-i18n="sec_club_stats">Клуб в цифрах</h2>
-        <div class="stats-grid" id="club-stats"></div>
+        <div class="sec-hdr"><h2 class="sec-t" data-i18n="sec_recent_results">Последние результаты</h2>
+        <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все</span> <i class="fas fa-arrow-right"></i></a></div>
+        <div id="recent-results"><div class="skeleton" style="height:60px;margin-bottom:8px;"></div></div>
     </div>
 </section>
 
+<!-- УРОВЕНЬ 4 ИЕРАРХИИ: ПОЛЕ КЛУБА -->
 <section class="section">
     <div class="container">
         <h2 class="sec-t text-center" style="justify-content:center;margin-bottom:8px;"><i class="fas fa-flag"></i> <span data-i18n="sec_course_card">Поле клуба</span></h2>
@@ -77,11 +85,11 @@
     </div>
 </section>
 
+<!-- УРОВЕНЬ 5 ИЕРАРХИИ: КЛУБ В ЦИФРАХ -->
 <section class="section section-alt">
     <div class="container">
-        <div class="sec-hdr"><h2 class="sec-t" data-i18n="sec_recent_results">Последние результаты</h2>
-        <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все</span> <i class="fas fa-arrow-right"></i></a></div>
-        <div id="recent-results"><div class="skeleton" style="height:60px;margin-bottom:8px;"></div></div>
+        <h2 class="sec-t text-center" style="justify-content:center;margin-bottom:28px;" data-i18n="sec_club_stats">Клуб в цифрах</h2>
+        <div class="stats-grid" id="club-stats"></div>
     </div>
 </section>
 

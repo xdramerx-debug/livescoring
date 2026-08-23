@@ -90,15 +90,6 @@
 
     <!-- ИГРА И ВВОД СЧЁТА (ТОЛЬКО ДЛЯ ИГРОКА) -->
     <div id="game" class="hidden">
-        <div style="display:flex;gap:10px;margin-bottom:16px;">
-            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
-                <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
-            </button>
-            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
-                <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
-            </button>
-        </div>
-
         
         <div class="timing-info" id="round-info"></div>
         <div id="solo-progress-bar"></div>
@@ -128,6 +119,17 @@
         </div>
 
         <div id="timing-notice"></div>
+
+        <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
+                <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
+            </button>
+            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
+                <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
+            </button>
+        </div>
+
         <div class="card"><h2><i class="fas fa-chart-bar"></i> <span data-i18n="current_score">Текущий счёт</span></h2><div id="live-stats"></div></div>
         <div class="card"><h2><i class="fas fa-table"></i> <span data-i18n="hole_scorecard">Счётная карточка по лункам</span></h2><div id="mini-card"></div></div>
 
@@ -147,7 +149,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>

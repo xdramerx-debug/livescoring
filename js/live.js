@@ -218,6 +218,7 @@ function startGroup() {
             exactHcp: parsedHcp,
             fieldHcp: fieldHcp,
             gender: gender,
+            isGuest: !uid,
             scores: {},
             markerScores: {},
             verified: {}
@@ -299,30 +300,37 @@ function getActingUid() {
 function initRoundView() {
     db.ref('rounds/' + curRid).on('value', function(sn) {
         curRoundData = sn.val();
-        if (!curRoundData) {
+        if (!curRoundData || typeof curRoundData !== 'object') {
             toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден', 'error');
             return;
         }
 
-        document.getElementById('mode-view').classList.add('hidden');
+        var modeView = document.getElementById('mode-view');
+        if (modeView) modeView.classList.add('hidden');
 
         myUid = getActingUid();
         canEditGroup = (myUid !== null) && (curRoundData.status === 'active');
 
+        var activeView = document.getElementById('active-scoring-view');
+        var groupView = document.getElementById('group-view');
+
         if (canEditGroup) {
-            document.getElementById('active-scoring-view').classList.remove('hidden');
-            document.getElementById('group-view').classList.add('hidden');
+            if (activeView) activeView.classList.remove('hidden');
+            if (groupView) groupView.classList.add('hidden');
 
-            var myPlayer = curRoundData.players[myUid];
-            document.getElementById('my-player-name-title').textContent = myPlayer ? myPlayer.name : t('my_score');
+            var myPlayer = curRoundData.players && curRoundData.players[myUid];
+            var myTitle = document.getElementById('my-player-name-title');
+            if (myTitle) myTitle.textContent = myPlayer ? myPlayer.name : t('my_score');
 
+            var markContainer = document.getElementById('marker-input-container');
             if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
                 myTargetUid = curRoundData.markerAssignments[myUid].targetId;
-                var targetPlayer = curRoundData.players[myTargetUid];
-                document.getElementById('mark-player-name').textContent = targetPlayer ? targetPlayer.name : (currentLang === 'en' ? 'Partner' : 'Партнёр');
-                document.getElementById('marker-input-container').classList.remove('hidden');
+                var targetPlayer = curRoundData.players && curRoundData.players[myTargetUid];
+                var markTitle = document.getElementById('mark-player-name');
+                if (markTitle) markTitle.textContent = targetPlayer ? targetPlayer.name : (currentLang === 'en' ? 'Partner' : 'Партнёр');
+                if (markContainer) markContainer.classList.remove('hidden');
             } else {
-                document.getElementById('marker-input-container').classList.add('hidden');
+                if (markContainer) markContainer.classList.add('hidden');
             }
 
             if (!isChanging) {
@@ -335,8 +343,8 @@ function initRoundView() {
             renderInviteQRs();
 
         } else {
-            document.getElementById('active-scoring-view').classList.add('hidden');
-            document.getElementById('group-view').classList.remove('hidden');
+            if (activeView) activeView.classList.add('hidden');
+            if (groupView) groupView.classList.remove('hidden');
 
             renderGVPlayers(curRoundData);
         }
@@ -361,6 +369,7 @@ function findCurrentHole() {
 function buildPlayHolesNav() {
     if (!canEditGroup) return;
     var el = document.getElementById('play-holes-nav');
+    if (!el) return;
     var order = holeOrder(curRoundData.startHole || 1);
     var myScores = (curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
     var myVerified = (curRoundData.players[myUid] && curRoundData.players[myUid].verified) || {};
@@ -398,9 +407,13 @@ function renderPlayHole() {
     var par = holePar(playHole);
     var dist = holeDist(playHole, curRoundData.tee);
 
-    document.getElementById('play-hole').textContent = playHole;
-    document.getElementById('play-par').textContent = par;
-    document.getElementById('play-dist').textContent = dist > 0 ? dist : '—';
+    var playHoleEl = document.getElementById('play-hole');
+    var playParEl = document.getElementById('play-par');
+    var playDistEl = document.getElementById('play-dist');
+
+    if (playHoleEl) playHoleEl.textContent = playHole;
+    if (playParEl) playParEl.textContent = par;
+    if (playDistEl) playDistEl.textContent = dist > 0 ? dist : '—';
 
     var mySaved = parseInt(curRoundData.players[myUid] && curRoundData.players[myUid].scores && curRoundData.players[myUid].scores[playHole]) || 0;
     myScore = mySaved > 0 ? mySaved : par;
@@ -415,7 +428,8 @@ function renderPlayHole() {
 
     var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
     var net = calcNettScore(myScore, par, holeHcp(playHole), myFieldHcp);
-    document.getElementById('my-net-badge').textContent = 'Net: ' + net;
+    var netBadge = document.getElementById('my-net-badge');
+    if (netBadge) netBadge.textContent = 'Net: ' + net;
 
     checkPlayVerification();
 }
@@ -428,7 +442,8 @@ function adjScore(who, delta) {
         animateScoreElement('my-disp');
         var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
         var net = calcNettScore(myScore, holePar(playHole), holeHcp(playHole), myFieldHcp);
-        document.getElementById('my-net-badge').textContent = 'Net: ' + net;
+        var netBadge = document.getElementById('my-net-badge');
+        if (netBadge) netBadge.textContent = 'Net: ' + net;
     } else {
         targetScore = Math.max(1, Math.min(15, targetScore + delta));
         updScoreDisplay('mark', targetScore);
@@ -444,14 +459,19 @@ function adjScore(who, delta) {
 
 function updScoreDisplay(who, score) {
     var par = holePar(playHole);
-    document.getElementById(who + '-disp').textContent = score;
-    var r = document.getElementById(who + '-result');
-    r.textContent = holeResName(score, par);
-    r.className = 'score-result ' + holeResClass(score, par);
+    var dispEl = document.getElementById(who + '-disp');
+    var resEl = document.getElementById(who + '-result');
+    if (dispEl) dispEl.textContent = score;
+    if (resEl) {
+        resEl.textContent = holeResName(score, par);
+        resEl.className = 'score-result ' + holeResClass(score, par);
+    }
 }
 
 function checkPlayVerification() {
     var box = document.getElementById('play-verify-status');
+    if (!box) return;
+
     var myPlayer = curRoundData.players[myUid];
     var myS = parseInt(myPlayer && myPlayer.scores && myPlayer.scores[playHole]) || 0;
     var myMarkerId = myPlayer && myPlayer.markedBy;
@@ -569,13 +589,9 @@ function renderPlaySummary() {
 function renderInviteQRs() {
     var cardEl = document.getElementById('invite-qrs-card');
     var activeEl = document.getElementById('invite-qrs-grid');
+    
+    // Показываем блок QR-кодов только для активных участников групповой игры
     if (!canEditGroup || !curRoundData || !activeEl) {
-        if (cardEl) cardEl.classList.add('hidden');
-        return;
-    }
-
-    var isGuestUser = (!currentUser) || (curRoundData.players && curRoundData.players[myUid] && curRoundData.players[myUid].isGuest);
-    if (isGuestUser) {
         if (cardEl) cardEl.classList.add('hidden');
         return;
     }
@@ -589,11 +605,13 @@ function renderInviteQRs() {
         var pid = pe[0], p = pe[1];
         var url = base + 'live.html?round=' + curRid + '&as=' + pid;
 
-        html += '<div class="qr-card">';
-        html += '<div class="qr-name" style="color:var(--white);"><i class="fas fa-mobile-alt"></i> ' + t('player') + ': ' + p.name + '</div>';
-        html += '<div style="font-size:11px;color:var(--gold);margin-bottom:6px;">' + t('scan_to_play') + '</div>';
-        html += '<img src="' + qrUrl(url) + '" alt="QR">';
-        html += '<div class="qr-url"><a href="' + url + '" target="_blank">' + url + '</a></div>';
+        var isMe = pid === myUid ? ' <span style="font-size:11px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
+
+        html += '<div class="qr-card" style="padding:14px;text-align:center;">';
+        html += '<div class="qr-name" style="color:var(--white);font-weight:700;font-size:14px;margin-bottom:4px;"><i class="fas fa-mobile-alt"></i> ' + (p.name || t('player')) + isMe + '</div>';
+        html += '<div style="font-size:11px;color:var(--gold);margin-bottom:8px;">' + t('scan_to_play') + '</div>';
+        html += '<img src="' + qrUrl(url) + '" alt="QR" style="width:160px;height:160px;border-radius:8px;background:#fff;padding:6px;margin:0 auto 8px;display:block;">';
+        html += '<div class="qr-url" style="font-size:10px;word-break:break-all;"><a href="' + url + '" target="_blank" style="color:var(--muted);">' + url + '</a></div>';
         html += '</div>';
     });
 

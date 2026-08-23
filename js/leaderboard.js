@@ -10,7 +10,7 @@ function loadLB() {
     var status = statusSelect ? statusSelect.value : 'all';
 
     db.ref('rounds').on('value', function(sn) {
-        var data = snap.val() || {};
+        var data = sn.val() || {};
         var entries = Object.entries(data);
 
         if (status !== 'all') {

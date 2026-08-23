@@ -169,11 +169,11 @@ function toggleCardScorecard(panelId, roundId) {
 
 function loadRecentResults() {
     var el = document.getElementById('recent-results');
-    if (!el) return;
+    if (!el || typeof db === 'undefined') return;
 
     db.ref('rounds').on('value', function(snap) {
         var data = snap.val() || {};
-        var entries = Object.entries(data).filter(function(e) { return e[1] && e[1].status === 'completed'; });
+        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'completed'; });
 
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-clock"></i><p>' + t('no_completed') + '</p></div>';
@@ -188,41 +188,45 @@ function loadRecentResults() {
 
         entries = entries.slice(0, 5);
 
-        var leaderWord = currentLang === 'en' ? 'Round Leader' : 'Лидер раунда';
-        var playerWord = currentLang === 'en' ? 'Player' : 'Игрок';
+        var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
+        var completedWord = currentLang === 'en' ? 'Completed' : 'Завершён';
 
         var html = '';
         entries.forEach(function(e) {
             var id = e[0], r = e[1], players = r.players || {};
-            var bestToPar = Infinity, winner = '—', winnerPid = '', bestGross = 0, count = 0;
+            var pHtml = '';
             var order = holeOrder(r.startHole || 1);
 
             Object.entries(players).forEach(function(pe) {
-                count++;
-                var pid = pe[0], p = pe[1];
-                var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-                if (stats.toPar !== null && stats.toPar < bestToPar) {
-                    bestToPar = stats.toPar;
-                    winner = p.name || playerWord;
-                    winnerPid = pid;
-                    bestGross = stats.gross;
-                }
+                var pid = pe[0], p = pe[1], scores = p.scores || {};
+                var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
+
+                pHtml += '<div class="round-p" style="align-items:flex-start;">' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + (p.name || '—') + '</div>' +
+                    '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stblfd: ' + stats.stablefordField + '</div></div>' +
+                    '<div style="text-align:right;">' +
+                    '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
+                    '</div></div>';
             });
 
-            html += '<div class="list-item" style="padding:14px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + (winnerPid || '') + '\',\'' + id + '\')">' +
-                '<div><strong style="color:var(--white);">' + t('brand_name') + '</strong>' +
-                '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
-                '<i class="fas fa-calendar"></i> ' + fmtDate(r.completedAt || r.createdAt) +
-                ' · <i class="fas fa-users"></i> ' + count +
-                ' · ' + (r.format || 'Stroke') + '</div></div>' +
-                '<div style="text-align:right;">' +
-                '<div style="font-size:11px;color:var(--muted);">' + leaderWord + '</div>' +
-                '<div style="color:var(--gold);font-weight:600;"><i class="fas fa-trophy"></i> ' + winner + '</div>' +
-                '<div style="font-size:18px;font-weight:800;color:var(--white);">' + (bestToPar < Infinity ? fmtScore(bestToPar) + ' (' + bestGross + ')' : '—') + '</div>' +
-                '</div></div>';
+            var panelId = 'recent-sc-' + id;
+
+            html += '<div class="round-card" style="cursor:default;">' +
+                '<div class="round-hdr"><span class="round-course"><i class="fas fa-flag"></i> ' + t('brand_name') + ' · ' + fmtDate(r.completedAt || r.createdAt) + '</span>' +
+                '<span class="tn-status tn-d">' + completedWord + '</span></div>' +
+                pHtml +
+                '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">' +
+                '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + '</span>' +
+                '<span>' + t('tee_select') + ': ' + fmtTeePill(r.tee) + '</span></div>' +
+                '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+                '<button class="btn btn-og btn-sm" style="flex:1;" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
+                '<button class="btn btn-g btn-sm" style="flex:1;" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' +
+                '</div>' +
+                '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
+                '</div>';
         });
 
-        el.innerHTML = html;
+        el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">' + html + '</div>';
     });
 }
 

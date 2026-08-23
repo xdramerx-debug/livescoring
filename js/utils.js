@@ -37,31 +37,259 @@ function holeTiming(h){return TIMINGS[h]||15;}
 function fmtScore(s){if(s===null||s===undefined||isNaN(s))return'—';if(s===0)return'E';return s>0?'+'+s:''+s;}
 function scoreClass(s){if(s===null||s===undefined)return'';return s<0?'s-un':s>0?'s-ov':'s-ev';}
 function holeResClass(s,p){if(!s||s<1||!p)return'';var d=s-p;if(d<=-2)return'r-eag';if(d===-1)return'r-bir';if(d===0)return'r-par';if(d===1)return'r-bog';return'r-dbl';}
-function holeResName(s,p){if(!s||!p)return'';if(s===1)return'Hole-in-One!';var d=s-p;if(d<=-3)return'Альбатрос';if(d===-2)return'Eagle';if(d===-1)return'Birdie';if(d===0)return'Par';if(d===1)return'Bogey';if(d===2)return'Double';return'+'+d;}
+function holeResName(s,p){
+    if(!s||!p)return'';
+    if(s===1)return t('res_hio');
+    var d=s-p;
+    if(d<=-3)return t('res_albatross');
+    if(d===-2)return t('res_eagle');
+    if(d===-1)return t('res_birdie');
+    if(d===0)return t('res_par');
+    if(d===1)return t('res_bogey');
+    if(d===2)return t('res_double');
+    return '+'+d;
+}
 function toast(m,t){t=t||'success';var e=document.createElement('div');e.className='toast t-'+t;e.innerHTML=m;document.body.appendChild(e);setTimeout(function(){e.classList.add('t-show');},10);setTimeout(function(){e.classList.remove('t-show');setTimeout(function(){e.remove();},300);},4000);}
 function vib(ms){if(navigator.vibrate)navigator.vibrate(ms||50);}
-function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'});}
+function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'ru-RU',{day:'2-digit',month:'short',year:'numeric'});}
 function fmtTime(ts){if(!ts)return'—';var d=new Date(ts),h=d.getHours(),m=d.getMinutes();return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
 function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
 function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
 
 // ==========================================
+// МЕЖДУНАРОДНЫЙ ЯЗЫКОВОЙ ПЕРЕКЛЮЧАТЕЛЬ (RU / EN)
+// ==========================================
+var currentLang = (typeof localStorage !== 'undefined' && localStorage.getItem('pestovo_lang')) || 'ru';
+
+const I18N = {
+    ru: {
+        nav_home: 'Главная', nav_round: 'Раунд', nav_leaderboard: 'Лидерборд',
+        nav_players: 'Игроки', nav_tournaments: 'Турниры', nav_stats: 'Статистика',
+        nav_handicaps: 'Гандикапы', nav_admin: 'Админ', nav_login: 'Войти',
+
+        hero_sub: 'Цифровая счётная карточка Пестово',
+        hero_title: 'Лайв-скоринг и электронные карточки Пестово',
+        hero_desc: '18 лунок · Пар 72 · Автоматический расчёт WHS-гандикапов',
+        btn_start_game: 'Начать игру',
+        btn_view_scores: 'Смотреть счёт на поле',
+        sec_now_playing: 'Сейчас на поле',
+        sec_my_active: 'Мои активные раунды',
+        sec_club_stats: 'Клуб в цифрах',
+        sec_course_card: 'Поле клуба',
+        sec_recent_results: 'Последние результаты',
+        all_rounds: 'Все раунды',
+
+        tee_bk: 'Чёрный', tee_bl: 'Синий', tee_wh: 'Белый', tee_rd: 'Красный',
+        hole: 'Лунка', par: 'Пар', index: 'Индекс', gross: 'Gross', net: 'Net',
+        stbl_field: 'Stblfd (пол.)', stbl_exact: 'Stblfd (игр.)',
+
+        solo_round: 'Одиночный раунд', group_round: 'Групповой раунд',
+        solo_desc: 'Играете один. Сами вводите свой счёт на каждой лунке.',
+        group_desc: 'От 2 до 4 игроков. Двойной ввод (свой счёт + счёт партнёра).',
+        start_time: 'Время старта', start_hole: 'Стартовая лунка',
+        exact_hcp: 'Точный гандикап', field_hcp: 'Полевой гандикап',
+        save_hole: 'Сохранить лунку', finish_round: 'Завершить раунд',
+        call_referee: 'Вызвать судью', call_marshal: 'Вызвать маршала',
+        read_only_mode: 'Режим просмотра.',
+        round_score: 'Счёт раунда', hole_scorecard: 'Счётная карточка по лункам',
+
+        res_hio: 'Hole-in-One!', res_albatross: 'Альбатрос', res_eagle: 'Eagle',
+        res_birdie: 'Birdie', res_par: 'Par', res_bogey: 'Bogey', res_double: 'Double',
+
+        weather_clear: 'Ясно', weather_cloudy: 'Малооблачно', weather_fog: 'Туман',
+        weather_rain: 'Дождь', weather_snow: 'Снег', weather_thunder: 'Гроза',
+        wind_label: 'Ветер',
+
+        player: 'Игрок', guest: 'ГОСТЬ', start: 'Старт', date: 'Дата', format: 'Формат'
+    },
+    en: {
+        nav_home: 'Home', nav_round: 'Round', nav_leaderboard: 'Leaderboard',
+        nav_players: 'Players', nav_tournaments: 'Tournaments', nav_stats: 'Statistics',
+        nav_handicaps: 'Handicaps', nav_admin: 'Admin', nav_login: 'Login',
+
+        hero_sub: 'Pestovo Digital Scorecard',
+        hero_title: 'Pestovo Live Scoring & Digital Scorecards',
+        hero_desc: '18 Holes · Par 72 · Automatic WHS Handicap Calculation',
+        btn_start_game: 'Start Game',
+        btn_view_scores: 'Live Leaderboard',
+        sec_now_playing: 'Currently Playing',
+        sec_my_active: 'My Active Rounds',
+        sec_club_stats: 'Club Statistics',
+        sec_course_card: 'Course Map',
+        sec_recent_results: 'Recent Results',
+        all_rounds: 'All Rounds',
+
+        tee_bk: 'Black', tee_bl: 'Blue', tee_wh: 'White', tee_rd: 'Red',
+        hole: 'Hole', par: 'Par', index: 'Index', gross: 'Gross', net: 'Net',
+        stbl_field: 'Stblfd (Course)', stbl_exact: 'Stblfd (Playing)',
+
+        solo_round: 'Solo Round', group_round: 'Group Round',
+        solo_desc: 'Play solo. Enter your own score for each hole.',
+        group_desc: '2 to 4 players. Dual entry (your score + partner score).',
+        start_time: 'Start Time', start_hole: 'Start Hole',
+        exact_hcp: 'Exact Handicap', field_hcp: 'Course Handicap',
+        save_hole: 'Save Hole', finish_round: 'Finish Round',
+        call_referee: 'Call Referee', call_marshal: 'Call Marshal',
+        read_only_mode: 'View mode.',
+        round_score: 'Round Score', hole_scorecard: 'Hole Scorecard',
+
+        res_hio: 'Hole-in-One!', res_albatross: 'Albatross', res_eagle: 'Eagle',
+        res_birdie: 'Birdie', res_par: 'Par', res_bogey: 'Bogey', res_double: 'Double',
+
+        weather_clear: 'Clear', weather_cloudy: 'Partly Cloudy', weather_fog: 'Fog',
+        weather_rain: 'Rain', weather_snow: 'Snow', weather_thunder: 'Storm',
+        wind_label: 'Wind',
+
+        player: 'Player', guest: 'GUEST', start: 'Start', date: 'Date', format: 'Format'
+    }
+};
+
+function t(key) {
+    if (I18N[currentLang] && I18N[currentLang][key]) {
+        return I18N[currentLang][key];
+    }
+    if (I18N['ru'] && I18N['ru'][key]) {
+        return I18N['ru'][key];
+    }
+    return key;
+}
+
+function toggleLang() {
+    currentLang = currentLang === 'ru' ? 'en' : 'ru';
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('pestovo_lang', currentLang);
+    }
+    applyTranslations();
+    updateLangButtons();
+    if (typeof toast === 'function') {
+        toast(currentLang === 'en' ? '🇬🇧 English language enabled' : '🇷🇺 Выбран русский язык', 'info');
+    }
+    if (typeof loadLiveRounds === 'function') loadLiveRounds();
+    if (typeof loadRecentResults === 'function') loadRecentResults();
+    if (typeof loadLB === 'function') loadLB();
+    if (typeof loadPlayers === 'function') loadPlayers();
+    if (typeof loadPestovoWeather === 'function') loadPestovoWeather('nav-weather-container');
+}
+
+function updateLangButtons() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('.lang-btn').forEach(function(btn) {
+        btn.innerHTML = currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU';
+    });
+}
+
+function applyTranslations() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (key && I18N[currentLang] && I18N[currentLang][key]) {
+            el.innerHTML = I18N[currentLang][key];
+        }
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n-placeholder');
+        if (key && I18N[currentLang] && I18N[currentLang][key]) {
+            el.setAttribute('placeholder', I18N[currentLang][key]);
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    applyTranslations();
+});
+
+// ==========================================
+// БЛОК «МОИ АКТИВНЫЕ РАУНДЫ»
+// ==========================================
+function loadMyActiveRounds(targetId) {
+    var el = document.getElementById(targetId);
+    if (!el || typeof db === 'undefined') return;
+
+    db.ref('rounds').on('value', function(snap) {
+        var data = snap.val() || {};
+        var myActive = [];
+
+        Object.entries(data).forEach(function(e) {
+            var id = e[0], r = e[1];
+            if (!r || r.status !== 'active') return;
+
+            var localSoloKey = localStorage.getItem('pestovo_solo_key_' + id);
+            var localGroupKey = localStorage.getItem('pestovo_group_key_' + id);
+            var localActingAs = localStorage.getItem('pestovo_acting_as_' + id);
+
+            var isCreatedByMe = false;
+
+            if (currentUser && r.createdBy === currentUser.uid) {
+                isCreatedByMe = true;
+            } else if (localSoloKey && r.accessKey === localSoloKey) {
+                isCreatedByMe = true;
+            } else if (localGroupKey && r.accessKey === localGroupKey) {
+                isCreatedByMe = true;
+            } else if (currentUser && r.players && r.players[currentUser.uid]) {
+                isCreatedByMe = true;
+            } else if (localActingAs && r.players && r.players[localActingAs]) {
+                isCreatedByMe = true;
+            }
+
+            if (isCreatedByMe) {
+                myActive.push({ id: id, round: r });
+            }
+        });
+
+        if (myActive.length === 0) {
+            el.innerHTML = '';
+            el.classList.add('hidden');
+            return;
+        }
+
+        myActive.sort(function(a, b) { return (b.round.createdAt || 0) - (a.round.createdAt || 0); });
+
+        var html = '<div class="card" style="border:2px solid var(--gold);background:linear-gradient(135deg, rgba(201,168,76,0.12), var(--card));margin-bottom:24px;">';
+        html += '<h2 style="color:var(--gold);margin-bottom:12px;"><i class="fas fa-play-circle"></i> ' + t('sec_my_active') + '</h2>';
+        html += '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">' + (currentLang === 'en' ? 'You have an active round in progress:' : 'У вас есть начатый раунд. Нажмите, чтобы продолжить игру:') + '</p>';
+
+        myActive.forEach(function(item) {
+            var id = item.id, r = item.round;
+            var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'live.html?round=' + id;
+            var modeIcon = r.mode === 'solo' ? '<i class="fas fa-user"></i> ' + t('solo_round') : '<i class="fas fa-users"></i> ' + t('group_round');
+            var teePill = fmtTeePill(r.tee);
+            var playersCount = Object.keys(r.players || {}).length;
+
+            html += '<div class="list-item" style="padding:16px;background:var(--input);border:1px solid var(--border);margin-bottom:10px;flex-wrap:wrap;gap:12px;">';
+            html += '<div style="flex:1;min-width:200px;">';
+            html += '<div style="font-weight:800;font-size:16px;color:var(--white);"><span class="live-dot" style="width:7px;height:7px;margin-right:6px;"></span> Пестово · ' + modeIcon + '</div>';
+            html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
+                    t('start') + ': ' + fmtTime(r.startTime) + ' · ' + t('hole') + ': №' + (r.startHole || 1) + ' · ТИ: ' + teePill + ' · ' + t('player') + ': ' + playersCount + '</div>';
+            html += '</div>';
+            html += '<a href="' + link + '" class="btn btn-g"><i class="fas fa-gamepad"></i> ' + t('btn_start_game') + '</a>';
+            html += '</div>';
+        });
+
+        html += '</div>';
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+    });
+}
+
+// ==========================================
 // ПОГОДНЫЙ ВИДЖЕТ И ВЕКТОР ВЕТРА В ШАПКЕ
 // ==========================================
 function getWindCardinal(deg) {
-    var directions = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'];
+    var directions = currentLang === 'en' 
+        ? ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+        : ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'];
     var idx = Math.round((deg % 360) / 45) % 8;
     return directions[idx];
 }
 
 function getWeatherCodeInfo(code) {
-    if (code === 0) return { icon: '☀️', text: 'Ясно' };
-    if (code >= 1 && code <= 3) return { icon: '🌤️', text: 'Малооблачно' };
-    if (code === 45 || code === 48) return { icon: '🌫️', text: 'Туман' };
-    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return { icon: '🌧️', text: 'Дождь' };
-    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return { icon: '❄️', text: 'Снег' };
-    if (code >= 95) return { icon: '⛈️', text: 'Гроза' };
-    return { icon: '🌤️', text: 'Пестово' };
+    if (code === 0) return { icon: '☀️', text: t('weather_clear') };
+    if (code >= 1 && code <= 3) return { icon: '🌤️', text: t('weather_cloudy') };
+    if (code === 45 || code === 48) return { icon: '🌫️', text: t('weather_fog') };
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return { icon: '🌧️', text: t('weather_rain') };
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return { icon: '❄️', text: t('weather_snow') };
+    if (code >= 95) return { icon: '⛈️', text: t('weather_thunder') };
+    return { icon: '🌤️', text: 'Pestovo' };
 }
 
 function loadPestovoWeather(targetId) {
@@ -87,25 +315,25 @@ function loadPestovoWeather(targetId) {
             var html = '<div class="weather-widget">' +
                 '<div class="weather-item"><span class="weather-icon">' + weather.icon + '</span><b>' + tempStr + '</b> <span class="weather-desc" style="color:var(--muted);font-size:10px;">(' + weather.text + ')</span></div>' +
                 '<div class="weather-divider"></div>' +
-                '<div class="weather-item"><i class="fas fa-location-arrow wind-arrow" style="transform:rotate(' + (windDeg - 45) + 'deg);"></i> <b>' + windSpeed + ' м/с ' + windDir + '</b></div>' +
+                '<div class="weather-item"><i class="fas fa-location-arrow wind-arrow" style="transform:rotate(' + (windDeg - 45) + 'deg);"></i> <b>' + windSpeed + ' m/s ' + windDir + '</b></div>' +
                 '</div>';
 
             el.innerHTML = html;
             el.classList.remove('hidden');
         }).catch(function() {
             var html = '<div class="weather-widget">' +
-                '<div class="weather-item"><span class="weather-icon">⛳</span> <b>Пестово</b></div>' +
+                '<div class="weather-item"><span class="weather-icon">⛳</span> <b>Pestovo</b></div>' +
                 '<div class="weather-divider"></div>' +
-                '<div class="weather-item"><i class="fas fa-wind" style="color:var(--gold);"></i> <b>3 м/с ЮЗ</b></div>' +
+                '<div class="weather-item"><i class="fas fa-wind" style="color:var(--gold);"></i> <b>3 m/s SW</b></div>' +
                 '</div>';
             el.innerHTML = html;
             el.classList.remove('hidden');
         });
     } else {
         var html = '<div class="weather-widget">' +
-            '<div class="weather-item"><span class="weather-icon">⛳</span> <b>Пестово</b></div>' +
+            '<div class="weather-item"><span class="weather-icon">⛳</span> <b>Pestovo</b></div>' +
             '<div class="weather-divider"></div>' +
-            '<div class="weather-item"><i class="fas fa-wind" style="color:var(--gold);"></i> <b>3 м/с ЮЗ</b></div>' +
+            '<div class="weather-item"><i class="fas fa-wind" style="color:var(--gold);"></i> <b>3 m/s SW</b></div>' +
             '</div>';
         el.innerHTML = html;
         el.classList.remove('hidden');
@@ -148,7 +376,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // ==========================================
 function fmtTeePill(t) {
     t = t || 'wh';
-    var name = TEES[t] || 'Белый';
+    var nameKey = 'tee_' + t;
+    var name = t(nameKey) || TEES[t] || 'White';
     return '<span class="tee-pill tee-' + t + '">' + name + '</span>';
 }
 
@@ -176,7 +405,7 @@ function renderHoleProgressBar(targetId, holesPlayed) {
     var pct = Math.round((cnt / 18) * 100);
     el.innerHTML =
         '<div class="progress-track-wrap">' +
-        '<div class="progress-track-head"><span><i class="fas fa-flag"></i> Прогресс раунда</span><span>' + cnt + ' / 18 лунок (' + pct + '%)</span></div>' +
+        '<div class="progress-track-head"><span><i class="fas fa-flag"></i> ' + (currentLang === 'en' ? 'Round Progress' : 'Прогресс раунда') + '</span><span>' + cnt + ' / 18 ' + t('hole') + ' (' + pct + '%)</span></div>' +
         '<div class="progress-track-bar"><div class="progress-track-fill" style="width:' + pct + '%;"></div></div>' +
         '</div>';
 }
@@ -305,9 +534,11 @@ function navAuth(u,d){
     var e=document.getElementById('nav-auth');
     if(!e)return;
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
-    var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i> Солнце ✅' : '<i class="far fa-sun"></i> Солнце') + '</button>';
-    if(u&&d)e.innerHTML='<div class="nav-user">'+sunBtn+'<span class="nav-uname">'+(d.name||'')+'</span><button class="btn btn-og btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button></div>';
-    else e.innerHTML='<div style="display:flex;align-items:center;gap:8px;">'+sunBtn+'<a href="auth.html" class="btn btn-g btn-sm">Войти</a></div>';
+    var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i>' : '<i class="far fa-sun"></i>') + '</button>';
+    var langBtn = '<button class="sun-mode-btn lang-btn" onclick="toggleLang()">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
+
+    if(u&&d)e.innerHTML='<div class="nav-user">'+sunBtn+langBtn+'<span class="nav-uname">'+(d.name||'')+'</span><button class="btn btn-og btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button></div>';
+    else e.innerHTML='<div style="display:flex;align-items:center;gap:6px;">'+sunBtn+langBtn+'<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';
 }
 
 function doLogout(){auth.signOut().then(function(){window.location.href='auth.html';});}
@@ -316,7 +547,7 @@ function holeOrder(sh){var o=[],h=parseInt(sh)||1;for(var i=0;i<18;i++){o.push(h
 function holeDeadline(startTime,startHole,targetHole){if(!startTime)return null;var t=0,h=parseInt(startHole)||1,c=0;while(c<18){t+=holeTiming(h);if(h===targetHole)break;h=h>=18?1:h+1;c++;}return startTime+t*60000;}
 function checkTiming(startTime,startHole,holeNum){var dl=holeDeadline(startTime,startHole,holeNum);if(!dl)return{status:'ok',diff:0,deadline:null};var now=Date.now(),d=Math.round((now-dl)/60000);if(d>5)return{status:'late',diff:d,deadline:dl};if(d>0)return{status:'warning',diff:d,deadline:dl};return{status:'ok',diff:d,deadline:dl};}
 function buildTimingNotice(st,sh,ch){var c=checkTiming(st,sh,ch);if(!c.deadline)return'';var dl=fmtTime(c.deadline),nw=fmtTime(Date.now());if(c.status==='late')return'<div class="timing-alert timing-late"><i class="fas fa-exclamation-triangle"></i><div><strong>Отставание!</strong><br>Лунка '+ch+': дедлайн '+dl+', сейчас '+nw+' ('+c.diff+' мин.)</div></div>';if(c.status==='warning')return'<div class="timing-alert timing-warn"><i class="fas fa-clock"></i><div><strong>Близко к дедлайну</strong><br>Лунка '+ch+': '+dl+'</div></div>';var a=Math.abs(c.diff);return'<div class="timing-alert timing-ok"><i class="fas fa-check-circle"></i><div>Лунка '+ch+': в графике'+(a>0?' (запас '+a+' мин.)':'')+'</div></div>';}
-function buildTimingTable(st,sh){if(!st)return'';var html='<table class="scorecard"><tr><th>Лунка</th><th>Пар</th><th>Мин</th><th>Дедлайн</th></tr>';var h=parseInt(sh)||1;for(var i=0;i<18;i++){var dl=holeDeadline(st,sh,h);html+='<tr><td style="font-weight:700">'+h+'</td><td>'+holePar(h)+'</td><td>'+holeTiming(h)+'</td><td>'+fmtTime(dl)+'</td></tr>';h=h>=18?1:h+1;}html+='</table>';return html;}
+function buildTimingTable(st,sh){if(!st)return'';var html='<table class="scorecard"><tr><th>' + t('hole') + '</th><th>' + t('par') + '</th><th>Мин</th><th>Дедлайн</th></tr>';var h=parseInt(sh)||1;for(var i=0;i<18;i++){var dl=holeDeadline(st,sh,h);html+='<tr><td style="font-weight:700">'+h+'</td><td>'+holePar(h)+'</td><td>'+holeTiming(h)+'</td><td>'+fmtTime(dl)+'</td></tr>';h=h>=18?1:h+1;}html+='</table>';return html;}
 
 const ADMIN_LOGIN='admin';
 const ADMIN_PASS='pestovo2024';
@@ -480,11 +711,11 @@ function generateGroupHoleTableHTML(r) {
     for (var i = 10; i <= 18; i++) pIn += holePar(i);
 
     var html = '<div class="scorecard" style="margin-bottom:12px;"><table>';
-    html += '<tr><th style="text-align:left;padding-left:10px;">Игрок / Лунка</th>';
+    html += '<tr><th style="text-align:left;padding-left:10px;">' + (currentLang === 'en' ? 'Player / Hole' : 'Игрок / Лунка') + '</th>';
     for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
-    html += '<th>Аут</th></tr>';
+    html += '<th>' + (currentLang === 'en' ? 'Out' : 'Аут') + '</th></tr>';
 
-    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;font-weight:700;">Пар</td>';
+    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;font-weight:700;">' + t('par') + '</td>';
     for (var i = 1; i <= 9; i++) html += '<td>' + holePar(i) + '</td>';
     html += '<td style="font-weight:800;">' + pOut + '</td></tr>';
 
@@ -506,11 +737,11 @@ function generateGroupHoleTableHTML(r) {
     html += '</table></div>';
 
     html += '<div class="scorecard"><table>';
-    html += '<tr><th style="text-align:left;padding-left:10px;">Игрок / Лунка</th>';
+    html += '<tr><th style="text-align:left;padding-left:10px;">' + (currentLang === 'en' ? 'Player / Hole' : 'Игрок / Лунка') + '</th>';
     for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
-    html += '<th>Ин</th><th>Итого</th></tr>';
+    html += '<th>' + (currentLang === 'en' ? 'In' : 'Ин') + '</th><th>' + (currentLang === 'en' ? 'Total' : 'Итого') + '</th></tr>';
 
-    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;font-weight:700;">Пар</td>';
+    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;font-weight:700;">' + t('par') + '</td>';
     for (var i = 10; i <= 18; i++) html += '<td>' + holePar(i) + '</td>';
     html += '<td style="font-weight:800;">' + pIn + '</td><td style="font-weight:800;">' + (pOut + pIn) + '</td></tr>';
 
@@ -587,14 +818,14 @@ function openPlayerProfileModal(playerId, roundId) {
         }
 
         var gIcon = u.gender === 'women' ? '👩' : '👨';
-        var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">ГОСТЬ</span>' : '';
+        var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">' + t('guest') + '</span>' : '';
 
         var html = '<div class="profile-head">';
         html += '<div class="profile-avatar">' + (u.name ? u.name.charAt(0) : '?') + '</div>';
         html += '<div><div class="profile-name">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</div>';
         html += '<div class="profile-meta">';
         html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
-        html += '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' раундов</span>';
+        html += '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' ' + (currentLang === 'en' ? 'rounds' : 'раундов') + '</span>';
         if (u.bestGross) html += '<span><i class="fas fa-trophy"></i> Gross (18л): ' + u.bestGross + '</span>';
         html += '</div></div></div>';
 
@@ -602,7 +833,7 @@ function openPlayerProfileModal(playerId, roundId) {
             var roundPlayer = rd.players[playerId];
             html += '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">';
             html += '<h3 style="color:var(--gold);margin-bottom:14px;font-family:var(--ff);font-size:18px;">' +
-                    '<i class="fas fa-table"></i> Счётная карточка раунда (' + (rd.format || 'Stroke') + ' · ТИ: ' + fmtTeePill(rd.tee) + ')' +
+                    '<i class="fas fa-table"></i> ' + (currentLang === 'en' ? 'Round Scorecard' : 'Счётная карточка раунда') + ' (' + (rd.format || 'Stroke') + ' · ТИ: ' + fmtTeePill(rd.tee) + ')' +
                     '</h3>';
             
             if (typeof generatePestovoScorecardHTML === 'function') {
@@ -617,7 +848,7 @@ function openPlayerProfileModal(playerId, roundId) {
             rounds.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
 
             if (rounds.length > 0) {
-                html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> История раундов</h3>';
+                html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> ' + (currentLang === 'en' ? 'Round History' : 'История раундов') + '</h3>';
                 rounds.forEach(function(r) {
                     var isFull = r.holes === 18;
                     var fullTag = isFull ? ' <span style="color:#2ecc71;font-size:10px;">(18л)</span>' : ' <span style="color:var(--muted);font-size:10px;">(' + r.holes + 'л)</span>';
@@ -677,22 +908,22 @@ function generatePestovoScorecardHTML(player, roundData) {
 
     // Шапка
     html+='<div class="pc-header">';
-    html+='<div class="pc-col"><strong>Игрок:</strong> '+(p.name||'—')+'</div>';
-    html+='<div class="pc-col"><strong>Точный гандикап:</strong> '+(fmtExactHcp(eHcp))+' · <strong>Полевой:</strong> '+(fmtFieldHcp(fHcp))+'</div>';
-    html+='<div class="pc-col"><strong>Формат:</strong> '+fmt+' · <strong>Старт:</strong> '+startTime+' · <strong>Дата:</strong> '+date+'</div>';
+    html+='<div class="pc-col"><strong>' + t('player') + ':</strong> '+(p.name||'—')+'</div>';
+    html+='<div class="pc-col"><strong>' + (currentLang === 'en' ? 'Exact HCP' : 'Точный гандикап') + ':</strong> '+(fmtExactHcp(eHcp))+' · <strong>' + (currentLang === 'en' ? 'Course' : 'Полевой') + ':</strong> '+(fmtFieldHcp(fHcp))+'</div>';
+    html+='<div class="pc-col"><strong>' + t('format') + ':</strong> '+fmt+' · <strong>' + t('start') + ':</strong> '+startTime+' · <strong>' + t('date') + ':</strong> '+date+'</div>';
     html+='</div>';
 
     // Таблица Front 9
     html+='<div class="pc-table-wrap"><table class="pc-table">';
-    html+='<tr><th class="pc-lbl">ТИ</th><th class="pc-lbl">Лунка</th>';
+    html+='<tr><th class="pc-lbl">ТИ</th><th class="pc-lbl">' + t('hole') + '</th>';
     for(var i=1;i<=9;i++)html+='<th>'+i+'</th>';
-    html+='<th class="pc-tot">Аут</th>';
+    html+='<th class="pc-tot">' + (currentLang === 'en' ? 'Out' : 'Аут') + '</th>';
     for(var i=10;i<=18;i++)html+='<th>'+i+'</th>';
-    html+='<th class="pc-tot">Ин</th><th class="pc-tot">Итого</th></tr>';
+    html+='<th class="pc-tot">' + (currentLang === 'en' ? 'In' : 'Ин') + '</th><th class="pc-tot">' + (currentLang === 'en' ? 'Total' : 'Итого') + '</th></tr>';
 
     // Чёрный ти
     var bkOut=0,bkIn=0;for(var i=1;i<=9;i++)bkOut+=HOLES[i].bk;for(var i=10;i<=18;i++)bkIn+=HOLES[i].bk;
-    html+='<tr><td colspan="2" class="pc-lbl" style="background:#1a1a1a;color:#fff;">Чёрный</td>';
+    html+='<tr><td colspan="2" class="pc-lbl" style="background:#1a1a1a;color:#fff;">' + t('tee_bk') + '</td>';
     for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].bk+'</td>';
     html+='<td class="pc-tot">'+bkOut+'</td>';
     for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].bk+'</td>';
@@ -700,7 +931,7 @@ function generatePestovoScorecardHTML(player, roundData) {
 
     // Синий ти
     var blOut=0,blIn=0;for(var i=1;i<=9;i++)blOut+=HOLES[i].bl;for(var i=10;i<=18;i++)blIn+=HOLES[i].bl;
-    html+='<tr><td colspan="2" class="pc-lbl" style="background:#2980b9;color:#fff;">Синий</td>';
+    html+='<tr><td colspan="2" class="pc-lbl" style="background:#2980b9;color:#fff;">' + t('tee_bl') + '</td>';
     for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].bl+'</td>';
     html+='<td class="pc-tot">'+blOut+'</td>';
     for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].bl+'</td>';
@@ -708,7 +939,7 @@ function generatePestovoScorecardHTML(player, roundData) {
 
     // Белый ти
     var whOut=0,whIn=0;for(var i=1;i<=9;i++)whOut+=HOLES[i].wh;for(var i=10;i<=18;i++)whIn+=HOLES[i].wh;
-    html+='<tr><td colspan="2" class="pc-lbl">Белый</td>';
+    html+='<tr><td colspan="2" class="pc-lbl">' + t('tee_wh') + '</td>';
     for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].wh+'</td>';
     html+='<td class="pc-tot">'+whOut+'</td>';
     for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].wh+'</td>';
@@ -716,28 +947,28 @@ function generatePestovoScorecardHTML(player, roundData) {
 
     // Красный ти
     var rdOut=0,rdIn=0;for(var i=1;i<=9;i++)rdOut+=HOLES[i].rd;for(var i=10;i<=18;i++)rdIn+=HOLES[i].rd;
-    html+='<tr><td colspan="2" class="pc-lbl" style="background:#c0392b;color:#fff;">Красный</td>';
+    html+='<tr><td colspan="2" class="pc-lbl" style="background:#c0392b;color:#fff;">' + t('tee_rd') + '</td>';
     for(var i=1;i<=9;i++)html+='<td>'+HOLES[i].rd+'</td>';
     html+='<td class="pc-tot">'+rdOut+'</td>';
     for(var i=10;i<=18;i++)html+='<td>'+HOLES[i].rd+'</td>';
     html+='<td class="pc-tot">'+rdIn+'</td><td class="pc-tot">'+(rdOut+rdIn)+'</td></tr>';
 
     // Пар
-    html+='<tr><td colspan="2" class="pc-lbl pc-par">Пар</td>';
+    html+='<tr><td colspan="2" class="pc-lbl pc-par">' + t('par') + '</td>';
     for(var i=1;i<=9;i++)html+='<td class="pc-par">'+HOLES[i].p+'</td>';
     html+='<td class="pc-tot pc-par">'+pOut+'</td>';
     for(var i=10;i<=18;i++)html+='<td class="pc-par">'+HOLES[i].p+'</td>';
     html+='<td class="pc-tot pc-par">'+pIn+'</td><td class="pc-tot pc-par">'+(pOut+pIn)+'</td></tr>';
 
     // Индекс
-    html+='<tr><td colspan="2" class="pc-lbl pc-idx">Индекс</td>';
+    html+='<tr><td colspan="2" class="pc-lbl pc-idx">' + t('index') + '</td>';
     for(var i=1;i<=9;i++)html+='<td class="pc-idx">'+HOLES[i].hcp+'</td>';
     html+='<td class="pc-idx"></td>';
     for(var i=10;i<=18;i++)html+='<td class="pc-idx">'+HOLES[i].hcp+'</td>';
     html+='<td class="pc-idx"></td><td class="pc-idx"></td></tr>';
 
     // СЧЁТ
-    html+='<tr><td colspan="2" class="pc-lbl pc-score-lbl">Счёт</td>';
+    html+='<tr><td colspan="2" class="pc-lbl pc-score-lbl">' + (currentLang === 'en' ? 'Score' : 'Счёт') + '</td>';
     for(var i=1;i<=9;i++){var s=parseInt(sc[i])||0;html+='<td class="pc-score-box"><b>'+(s>0?s:'')+'</b></td>';}
     html+='<td class="pc-tot pc-score-box"><b>'+(outG>0?outG:'')+'</b></td>';
     for(var i=10;i<=18;i++){var s=parseInt(sc[i])||0;html+='<td class="pc-score-box"><b>'+(s>0?s:'')+'</b></td>';}
@@ -755,7 +986,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     html+='</table></div>';
 
     // Подписи
-    html+='<div class="pc-footer"><div><strong>Подписи:</strong> Игрок ___________________</div><div>Маркер ___________________</div><div>Судья ___________________</div></div>';
+    html+='<div class="pc-footer"><div><strong>' + (currentLang === 'en' ? 'Signatures' : 'Подписи') + ':</strong> ' + t('player') + ' ___________________</div><div>' + (currentLang === 'en' ? 'Marker' : 'Маркер') + ' ___________________</div><div>' + (currentLang === 'en' ? 'Official' : 'Судья') + ' ___________________</div></div>';
     html+='</div>';
     return html;
 }
@@ -793,9 +1024,9 @@ function downloadScorecard(roundId){
         var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Счётная карточка — Пестово</title><style>'+css+'</style></head><body>';
 
         h+='<div class="no-print no-print-bar">'
-           +'<button class="back-btn" onclick="if(window.opener || window.history.length<=1){window.close();}else{window.history.back();}">&larr; Назад</button>'
-           +'<div style="font-weight:bold;font-size:15px;color:#c9a84c;">Печать счётных карточек — Пестово</div>'
-           +'<button class="print-btn" onclick="window.print()">Печать</button>'
+           +'<button class="back-btn" onclick="if(window.opener || window.history.length<=1){window.close();}else{window.history.back();}">&larr; ' + (currentLang === 'en' ? 'Back' : 'Назад') + '</button>'
+           +'<div style="font-weight:bold;font-size:15px;color:#c9a84c;">' + (currentLang === 'en' ? 'Pestovo Scorecards' : 'Печать счётных карточек — Пестово') + '</div>'
+           +'<button class="print-btn" onclick="window.print()">' + (currentLang === 'en' ? 'Print' : 'Печать') + '</button>'
            +'</div>';
 
         Object.values(pl).forEach(function(p){

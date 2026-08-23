@@ -27,13 +27,13 @@
     </div>
     <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
     <div class="nav-menu" id="nav-menu">
-        <a href="index.html" class="nav-link active">Главная</a>
-        <a href="live.html" class="nav-link">Раунд</a>
-        <a href="leaderboard.html" class="nav-link">Лидерборд</a>
-        <a href="players.html" class="nav-link">Игроки</a>
-        <a href="tournaments.html" class="nav-link">Турниры</a>
-        <a href="stats.html" class="nav-link">Статистика</a>
-        <a href="handicap.html" class="nav-link">Гандикапы</a>
+        <a href="index.html" class="nav-link active" data-i18n="nav_home">Главная</a>
+        <a href="live.html" class="nav-link" data-i18n="nav_round">Раунд</a>
+        <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Лидерборд</a>
+        <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
+        <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
+        <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
+        <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
         <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
@@ -41,13 +41,12 @@
 <section class="hero">
     <div class="hero-content">
         <img src="img/logo.png" alt="Пестово" class="hero-logo" onerror="this.style.display='none'">
-        <p class="hero-sub">Цифровая счётная карточка Пестово</p>
-        <h1 class="hero-title">Лайв-скоринг и электронные карточки Пестово</h1>
-        <p class="hero-desc">18 лунок · Пар 72 · Автоматический расчёт WHS-гандикапов</p>
-        
+        <p class="hero-sub" data-i18n="hero_sub">Цифровая счётная карточка Пестово</p>
+        <h1 class="hero-title" data-i18n="hero_title">Лайв-скоринг и электронные карточки Пестово</h1>
+        <p class="hero-desc" data-i18n="hero_desc">18 лунок · Пар 72 · Автоматический расчёт WHS-гандикапов</p>
         <div class="hero-btns">
-            <a href="live.html" class="btn btn-g btn-lg"><i class="fas fa-play"></i> Начать игру</a>
-            <a href="leaderboard.html" class="btn btn-ol btn-lg"><i class="fas fa-trophy"></i> Смотреть счёт на поле</a>
+            <a href="live.html" class="btn btn-g btn-lg"><i class="fas fa-play"></i> <span data-i18n="btn_start_game">Начать игру</span></a>
+            <a href="leaderboard.html" class="btn btn-ol btn-lg"><i class="fas fa-trophy"></i> <span data-i18n="btn_view_scores">Смотреть счёт на поле</span></a>
         </div>
     </div>
 </section>
@@ -57,22 +56,22 @@
         <!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" -->
         <div id="my-active-rounds-container" class="hidden"></div>
 
-        <div class="sec-hdr"><h2 class="sec-t"><span class="live-dot"></span> Сейчас на поле</h2>
-        <a href="leaderboard.html" class="sec-l">Все раунды <i class="fas fa-arrow-right"></i></a></div>
+        <div class="sec-hdr"><h2 class="sec-t"><span class="live-dot"></span> <span data-i18n="sec_now_playing">Сейчас на поле</span></h2>
+        <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все раунды</span> <i class="fas fa-arrow-right"></i></a></div>
         <div id="live-rounds"><div class="skeleton" style="height:120px;margin-bottom:12px;"></div></div>
     </div>
 </section>
 
 <section class="section section-alt">
     <div class="container">
-        <h2 class="sec-t text-center" style="justify-content:center;margin-bottom:28px;">Клуб в цифрах</h2>
+        <h2 class="sec-t text-center" style="justify-content:center;margin-bottom:28px;" data-i18n="sec_club_stats">Клуб в цифрах</h2>
         <div class="stats-grid" id="club-stats"></div>
     </div>
 </section>
 
 <section class="section">
     <div class="container">
-        <h2 class="sec-t text-center" style="justify-content:center;margin-bottom:8px;"><i class="fas fa-flag"></i> Поле клуба</h2>
+        <h2 class="sec-t text-center" style="justify-content:center;margin-bottom:8px;"><i class="fas fa-flag"></i> <span data-i18n="sec_course_card">Поле клуба</span></h2>
         <p class="text-center" style="color:var(--muted);margin-bottom:24px;">18 лунок · Пар 72 · Все ТИ (метры)</p>
         <div id="course-card"></div>
     </div>
@@ -80,8 +79,8 @@
 
 <section class="section section-alt">
     <div class="container">
-        <div class="sec-hdr"><h2 class="sec-t">Последние результаты</h2>
-        <a href="leaderboard.html" class="sec-l">Все <i class="fas fa-arrow-right"></i></a></div>
+        <div class="sec-hdr"><h2 class="sec-t" data-i18n="sec_recent_results">Последние результаты</h2>
+        <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все</span> <i class="fas fa-arrow-right"></i></a></div>
         <div id="recent-results"><div class="skeleton" style="height:60px;margin-bottom:8px;"></div></div>
     </div>
 </section>
@@ -92,11 +91,11 @@
         <p class="footer-desc">18 лунок · Пар 72</p>
         <p class="footer-desc" style="margin-top:8px;">📍 МО, г. Мытищи, Никольская ул., 1, Румянцево</p></div>
         <div><h4 class="footer-sub">Навигация</h4>
-        <a href="live.html" class="footer-link">Раунд</a><a href="leaderboard.html" class="footer-link">Лидерборд</a>
-        <a href="players.html" class="footer-link">Игроки</a><a href="handicap.html" class="footer-link">Гандикапы</a></div>
+        <a href="live.html" class="footer-link" data-i18n="nav_round">Раунд</a><a href="leaderboard.html" class="footer-link" data-i18n="nav_leaderboard">Лидерборд</a>
+        <a href="players.html" class="footer-link" data-i18n="nav_players">Игроки</a><a href="handicap.html" class="footer-link" data-i18n="nav_handicaps">Гандикапы</a></div>
         <div><h4 class="footer-sub">Ещё</h4>
-        <a href="stats.html" class="footer-link">Статистика</a><a href="tournaments.html" class="footer-link">Турниры</a>
-        <a href="admin.html" class="footer-link">Админ</a><a href="auth.html" class="footer-link">Авторизация</a></div>
+        <a href="stats.html" class="footer-link" data-i18n="nav_stats">Статистика</a><a href="tournaments.html" class="footer-link" data-i18n="nav_tournaments">Турниры</a>
+        <a href="admin.html" class="footer-link" data-i18n="nav_admin">Админ</a><a href="auth.html" class="footer-link" data-i18n="nav_login">Авторизация</a></div>
     </div>
     <div class="footer-bottom"><p>&copy; 2024 Гольф-клуб Пестово</p></div>
 </div></footer>

@@ -362,7 +362,8 @@ select.form-input option{background:var(--card);}
     .sun-mode-btn, .lang-btn{padding:4px 8px;font-size:11px;}
 }
 @media(max-width:480px){
-    .card{padding:14px 12px;border-radius:10px;}
+    .container{padding:0 12px;}
+    .card{padding:14px 12px;border-radius:10px;margin-bottom:12px;}
     .nav-logo{width:34px!important;height:34px!important;max-width:34px!important;max-height:34px!important;}
     .nav-brand-text{font-size:14px;}
     .hero-logo{
@@ -382,11 +383,36 @@ select.form-input option{background:var(--card);}
         object-fit: contain !important;
     }
     .stats-grid{grid-template-columns:1fr 1fr;gap:10px;}
-    .stat{padding:16px 10px;}
-    .hole-nav{grid-template-columns:repeat(6,1fr);gap:3px;}
-    .hole-btn{padding:7px 2px;font-size:11px;}
-    .mode-cards{grid-template-columns:1fr;}
+    .stat{padding:14px 8px;}
+    .stat-n{font-size:22px;}
+    .page-head{padding:76px 0 20px;}
+    .page-title{font-size:22px;}
+    
+    /* MOBILE HOLE & SCORE CONTROLS */
+    .hole-display{gap:8px;margin:12px 0;}
+    .hole-box{padding:10px 12px;min-width:70px;border-radius:10px;}
+    .hole-lbl{font-size:10px;}
+    .hole-val{font-size:26px;}
+    .hole-nav{grid-template-columns:repeat(6,1fr);gap:4px;margin:10px 0;}
+    .hole-btn{padding:8px 2px;font-size:12px;border-radius:6px;}
+    
+    .score-area{margin:12px 0;}
+    .score-disp{font-size:52px;min-height:56px;}
+    .score-btns{gap:10px;margin:12px 0;}
+    .score-minus,.score-plus{width:52px;height:52px;font-size:22px;}
+    .score-par-btn{padding:6px 12px;font-size:12px;}
+    
+    .scoring-dual-block{padding:12px;margin-bottom:12px;border-radius:10px;}
+    .dual-header h3{font-size:14px;}
+    .list-item{padding:10px;font-size:12px;}
+    .modal-body{padding:20px 14px;border-radius:12px;max-height:88vh;}
+    .mode-cards{grid-template-columns:1fr;gap:12px;}
+    .mode-card{padding:22px 16px;}
+    .mode-icon{font-size:38px;margin-bottom:10px;}
+    .mode-title{font-size:18px;}
+    
     .weather-widget{padding:2px 6px;font-size:10px;gap:3px;}
+    .weather-desc{display:none;}
     .sun-mode-btn, .lang-btn{padding:3px 6px;font-size:10px;}
     .sun-text{display:none;}
 }

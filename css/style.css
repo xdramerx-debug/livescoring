@@ -850,104 +850,137 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 }
 
 /* =========================================
-   СКОРКАРТА ПЕСТОВО (ВЕБ-ВИД)
+   СКОРКАРТА ПЕСТОВО (100% NO-OVERFLOW GRID)
    ========================================= */
-/* =========================================
-   СКОРКАРТА ПЕСТОВО (МОДЕРНИЗИРОВАННЫЙ ВЕБ-ВИД)
-   ========================================= */
-.modern-scorecard-wrap {
+.pestovo-modern-scorecard {
     background: rgba(19, 34, 24, 0.95);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(201, 168, 76, 0.3);
     border-radius: 12px;
-    padding: 12px 14px;
+    padding: 10px 8px;
     margin-bottom: 12px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     box-sizing: border-box;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
 }
-.msc-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-bottom: 10px;
-    margin-bottom: 10px;
-    border-bottom: 1px solid rgba(201, 168, 76, 0.25);
-    flex-wrap: wrap;
-    gap: 8px;
+.msc-card-hdr {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
 }
-.msc-player-name {
-    font-size: 15px;
+.msc-player-title {
+    font-size: 14px;
     font-weight: 800;
     color: var(--white);
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
     gap: 6px;
 }
-.msc-meta-row {
+.msc-meta-pills {
     display: flex;
-    gap: 10px;
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 4px;
+    gap: 6px;
     flex-wrap: wrap;
-}
-.msc-meta-row b {
-    color: var(--gold);
-}
-.msc-tot-badge {
-    text-align: right;
-    background: rgba(201, 168, 76, 0.08);
-    border: 1px solid rgba(201, 168, 76, 0.25);
-    border-radius: 8px;
-    padding: 4px 10px;
-}
-.msc-table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-.msc-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 680px;
-    font-size: 11px;
-    text-align: center;
-}
-.msc-table th, .msc-table td {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 6px 3px;
-    box-sizing: border-box;
-}
-.msc-table th {
-    background: var(--gr-d);
-    color: var(--gold);
-    font-weight: 700;
     font-size: 10px;
 }
-.msc-table td:first-child, .msc-table th:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 5;
-    background: #132218;
-    text-align: left;
-    padding-left: 6px;
+.msc-pill {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 2px 6px;
+    color: var(--gold);
+    font-weight: 600;
+}
+.msc-sec-hdr {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 6px 0 4px;
+    padding: 0 2px;
+}
+.msc-tile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    margin-bottom: 6px;
+}
+@media (min-width: 601px) {
+    .msc-tile-grid {
+        grid-template-columns: repeat(9, 1fr);
+    }
+}
+.msc-tile {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 4px 5px;
+    text-align: center;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.msc-tile-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: var(--muted);
+    font-weight: 600;
+}
+.msc-hole-num {
+    color: var(--gold);
+    font-weight: 800;
+}
+.msc-tile-score {
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--white);
+    margin: 2px 0;
+}
+.msc-tile-bot {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: var(--muted);
+}
+.msc-hole-stbl {
+    color: #2ecc71;
+    font-weight: 700;
+}
+.msc-totals-strip {
+    display: flex;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: var(--muted);
+}
+.msc-totals-strip b {
+    color: var(--white);
+}
+.msc-grand-strip {
+    display: flex;
+    justify-content: space-between;
+    background: rgba(201, 168, 76, 0.12);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--gold);
-    box-shadow: 2px 0 6px rgba(0,0,0,0.3);
+    margin-top: 8px;
 }
-.msc-tot-col {
-    background: rgba(201, 168, 76, 0.12) !important;
-    font-weight: 800 !important;
-    color: var(--gold) !important;
-}
-.msc-row-par td { background: rgba(46, 107, 63, 0.15); color: var(--white); }
-.msc-row-idx td { color: var(--muted); font-size: 10px; }
-.msc-score-badge {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-weight: 800;
-    font-size: 12px;
+.msc-grand-strip b {
+    color: var(--white);
 }
 
 .pestovo-card-wrap{background:rgba(19,34,24,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(201,168,76,0.22);border-radius:var(--r);padding:16px;margin-bottom:20px;overflow-x:auto;}

@@ -18,7 +18,13 @@
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
-    <a href="index.html" class="nav-brand"><img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'"><span class="nav-brand-text">Пестово</span></a>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
+        <a href="index.html" class="nav-brand">
+            <img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'">
+            <span class="nav-brand-text">Пестово</span>
+        </a>
+        <div id="nav-weather-container"></div>
+    </div>
     <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
     <div class="nav-menu" id="nav-menu">
         <a href="index.html" class="nav-link">Главная</a>

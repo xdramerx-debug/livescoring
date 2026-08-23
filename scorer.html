@@ -18,7 +18,13 @@
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
-    <a href="index.html" class="nav-brand"><img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'"><span class="nav-brand-text">Пестово</span></a>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
+        <a href="index.html" class="nav-brand">
+            <img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'">
+            <span class="nav-brand-text">Пестово</span>
+        </a>
+        <div id="nav-weather-container"></div>
+    </div>
     <div class="nav-menu" id="nav-menu">
         <a href="index.html" class="nav-link">Главная</a>
         <a href="live.html" class="nav-link">Раунд</a>
@@ -26,7 +32,7 @@
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title" id="sc-title">Ввод счёта</h1><p class="page-sub" id="sc-sub">—</p><div id="weather-widget-container"></div></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title" id="sc-title">Ввод счёта</h1><p class="page-sub" id="sc-sub">—</p></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
     <div id="sc-err" class="card hidden"><h2 style="color:var(--red);">Ошибка</h2><p>QR-код недействителен.</p><a href="index.html" class="btn btn-g" style="margin-top:12px;">На главную</a></div>
@@ -42,7 +48,7 @@
             </button>
         </div>
 
-        <div id="sc-weather-container" style="text-align:center;margin-bottom:14px;"></div>
+        
         <div class="timing-info" id="sc-info"></div>
         <div id="sc-verify"></div>
         <div class="card">

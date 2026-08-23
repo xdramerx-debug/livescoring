@@ -75,7 +75,12 @@ function renderHole() {
     updDisp();
 }
 
-function adjMk(d) { mkScore = Math.max(1, Math.min(15, mkScore + d)); vib(); updDisp(); }
+function adjMk(d) {
+    mkScore = Math.max(1, Math.min(15, mkScore + d));
+    vib();
+    updDisp();
+    animateScoreElement('mk-disp');
+}
 
 function updDisp() {
     var par = holePar(mkHole);

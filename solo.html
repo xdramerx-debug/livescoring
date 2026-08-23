@@ -18,7 +18,13 @@
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
-    <a href="index.html" class="nav-brand"><img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'"><span class="nav-brand-text">Пестово</span></a>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
+        <a href="index.html" class="nav-brand">
+            <img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'">
+            <span class="nav-brand-text">Пестово</span>
+        </a>
+        <div id="nav-weather-container"></div>
+    </div>
     <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
     <div class="nav-menu" id="nav-menu">
         <a href="index.html" class="nav-link">Главная</a>
@@ -32,7 +38,7 @@
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-user"></i> Одиночный раунд</h1><p class="page-sub">Гольф-клуб Пестово</p><div id="weather-widget-container"></div></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-user"></i> Одиночный раунд</h1><p class="page-sub">Гольф-клуб Пестово</p></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
     <!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" -->
@@ -93,7 +99,7 @@
             </button>
         </div>
 
-        <div id="solo-scoring-weather-container" style="text-align:center;margin-bottom:14px;"></div>
+        
         <div class="timing-info" id="round-info"></div>
         <div id="solo-progress-bar"></div>
 

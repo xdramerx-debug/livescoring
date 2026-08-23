@@ -49,9 +49,11 @@ function loadSc() {
 }
 
 function renderInfo() {
-    document.getElementById('sc-info').innerHTML =
+    var el = document.getElementById('sc-info');
+    if (!el) return;
+    el.innerHTML =
         '<div><b>Старт:</b> ' + fmtTime(scRound.startTime) + ' · <b>С лунки:</b> ' + scRound.startHole + '</div>' +
-        '<div><b>ТИ:</b> ' + TEES[scRound.tee] + '</div>';
+        '<div><b>ТИ:</b> ' + fmtTeePill(scRound.tee) + '</div>';
 }
 
 function buildHoles() {
@@ -90,7 +92,12 @@ function renderHole() {
     updDisp();
 }
 
-function adjSc(d) { scScore = Math.max(1, Math.min(15, scScore + d)); vib(); updDisp(); }
+function adjSc(d) {
+    scScore = Math.max(1, Math.min(15, scScore + d));
+    vib();
+    updDisp();
+    animateScoreElement('sc-disp');
+}
 
 function updDisp() {
     var par = holePar(scHole);
@@ -125,6 +132,11 @@ function saveSc() {
             toast('⚠️ Несовпадение!', 'error');
         } else {
             toast('⏳ Ждём маркера'); vib();
+        }
+
+        var par = holePar(savedHole);
+        if (scScore === 1 || (scScore - par) <= -1) {
+            triggerVictoryConfetti();
         }
 
         document.getElementById('sc-notice').innerHTML = buildTimingNotice(scRound.startTime, scRound.startHole, savedHole);

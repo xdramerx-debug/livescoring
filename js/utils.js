@@ -541,26 +541,11 @@ function loadMyActiveRounds(targetId) {
             var teePill = fmtTeePill(r.tee);
             var playersCount = Object.keys(r.players || {}).length;
 
-            var maxPlayed = 0;
-            var order = holeOrder(r.startHole || 1);
-            Object.values(r.players || {}).forEach(function(p) {
-                var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-                if (stats.holesPlayed > maxPlayed) maxPlayed = stats.holesPlayed;
-            });
-            var pct = Math.round((maxPlayed / 18) * 100);
-
             html += '<div class="list-item" style="padding:16px;background:var(--input);border:1px solid var(--border);margin-bottom:10px;flex-wrap:wrap;gap:12px;">';
             html += '<div style="flex:1;min-width:200px;">';
             html += '<div style="font-weight:800;font-size:16px;color:var(--white);"><span class="live-dot" style="width:7px;height:7px;margin-right:6px;"></span> ' + t('brand_name') + ' · ' + modeIcon + '</div>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                     t('start') + ': ' + fmtTime(r.startTime) + ' · ' + t('hole') + ': №' + (r.startHole || 1) + ' · ' + t('tee_select') + ': ' + teePill + ' · ' + t('player') + ': ' + playersCount + '</div>';
-            html += '<div style="margin-top:10px;">';
-            html += '<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--gold);margin-bottom:4px;">';
-            html += '<span><i class="fas fa-flag"></i> ' + t('hole') + ': ' + maxPlayed + ' / 18 (' + pct + '%)</span>';
-            html += '</div>';
-            html += '<div class="progress-track-bar" style="height:6px;background:var(--border);border-radius:3px;">';
-            html += '<div class="progress-track-fill" style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-l));border-radius:3px;transition:width 0.3s;"></div>';
-            html += '</div></div>';
             html += '</div>';
             html += '<a href="' + link + '" class="btn btn-g" style="align-self:center;"><i class="fas fa-gamepad"></i> ' + t('btn_start_game') + '</a>';
             html += '</div>';
@@ -703,13 +688,7 @@ function fmtScoreBadge(s, p) {
 function renderHoleProgressBar(targetId, holesPlayed) {
     var el = document.getElementById(targetId);
     if (!el) return;
-    var cnt = Math.max(0, Math.min(18, holesPlayed || 0));
-    var pct = Math.round((cnt / 18) * 100);
-    el.innerHTML =
-        '<div class="progress-track-wrap">' +
-        '<div class="progress-track-head"><span><i class="fas fa-flag"></i> ' + t('round_progress') + '</span><span>' + cnt + ' / 18 ' + t('hole') + ' (' + pct + '%)</span></div>' +
-        '<div class="progress-track-bar"><div class="progress-track-fill" style="width:' + pct + '%;"></div></div>' +
-        '</div>';
+    el.innerHTML = '';
 }
 
 // ==========================================

@@ -603,7 +603,6 @@ function renderPlaySummary() {
         html += '</div></div>';
     });
 
-    renderHoleProgressBar('live-progress-bar', maxPlayed);
     el.innerHTML = html;
 }
 

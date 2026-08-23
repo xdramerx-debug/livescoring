@@ -382,8 +382,6 @@ function saveSolo(isAuto) {
         if (p) {
             p.scores = p.scores || {};
             p.scores[savedHole] = curScore;
-            var stats = calcRoundStats(p.scores, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(soloRound.startHole));
-            renderHoleProgressBar('solo-progress-bar', stats.holesPlayed);
         }
 
         setTimeout(function() { isChanging = false; }, 200);
@@ -408,8 +406,6 @@ function renderLiveStats(targetId) {
     if (!p) return;
     var scores = p.scores || {};
     var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(soloRound.startHole));
-
-    renderHoleProgressBar('solo-progress-bar', stats.holesPlayed);
 
     var playedLbl = currentLang === 'en' ? 'Completed' : 'Пройдено';
     var projLbl = currentLang === 'en' ? 'Projected' : 'Прогноз';

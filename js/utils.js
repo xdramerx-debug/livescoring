@@ -821,8 +821,8 @@ function navAuth(u,d){
     var e=document.getElementById('nav-auth');
     if(!e)return;
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
-    var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i>' : '<i class="far fa-sun"></i>') + '</button>';
-    var langBtn = '<button class="sun-mode-btn lang-btn" onclick="toggleLang()">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
+    var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i> ' + (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : '<i class="far fa-sun"></i> ' + (currentLang === 'en' ? 'Sun' : 'Солнце')) + '</button>';
+    var langBtn = '<button class="lang-btn" onclick="toggleLang()">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
 
     if(u&&d)e.innerHTML='<div class="nav-user">'+sunBtn+langBtn+'<span class="nav-uname">'+(d.name||'')+'</span><button class="btn btn-og btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button></div>';
     else e.innerHTML='<div style="display:flex;align-items:center;gap:6px;">'+sunBtn+langBtn+'<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';

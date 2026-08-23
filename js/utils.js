@@ -1910,58 +1910,50 @@ function generatePestovoScorecardHTML(player, roundData) {
     for (var i = 1; i <= 9; i++) pOut += holePar(i);
     for (var i = 10; i <= 18; i++) pIn += holePar(i);
 
-    var html = '<div class="modern-scorecard-wrap">';
+    var html = '<div class="noscroll-scorecard-wrap">';
 
     // Compact Header
-    html += '<div class="msc-header">';
+    html += '<div class="noscroll-msc-header">';
     html += '  <div class="msc-player-info">';
     html += '    <div class="msc-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</div>';
     html += '    <div class="msc-meta-row">';
-    html += '      <span>HCP: <b>' + fmtExactHcp(eHcp) + '</b> (Игровой: <b>' + fmtFieldHcp(fHcp) + '</b>)</span>';
-    html += '      <span>' + t('tee_select') + ': ' + fmtTeePill(teeCode) + '</span>';
+    html += '      <span>HCP: <b>' + fmtExactHcp(eHcp) + '</b> (' + fmtFieldHcp(fHcp) + ')</span>';
+    html += '      <span>' + fmtTeePill(teeCode) + '</span>';
     html += '      <span>' + fmt + ' · ' + date + '</span>';
     html += '    </div>';
     html += '  </div>';
     html += '  <div class="msc-tot-badge">';
-    html += '    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Gross (Net) · Stbl</div>';
-    html += '    <div style="font-size:18px;font-weight:900;color:var(--gold);">' + (totG > 0 ? totG : '—') + ' <small style="font-size:11px;color:var(--white);">(' + (totNet > 0 ? totNet : '—') + ')</small> · <span style="color:#2ecc71;">' + totS + 'p</span></div>';
+    html += '    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Gross (Net) · Stbl</div>';
+    html += '    <div style="font-size:16px;font-weight:900;color:var(--gold);">' + (totG > 0 ? totG : '—') + ' <small style="font-size:11px;color:var(--white);">(' + (totNet > 0 ? totNet : '—') + ')</small> · <span style="color:#2ecc71;">' + totS + 'p</span></div>';
     html += '  </div>';
     html += '</div>';
 
-    // 18-Hole Modern Grid Matrix
-    html += '<div class="msc-table-container">';
-    html += '<table class="msc-table">';
+    // BLOCK 1: FRONT 9 (OUT: Holes 1-9) - 100% NO-SCROLL TABLE
+    html += '<div class="noscroll-table-section">';
+    html += '<div class="noscroll-sec-title"><span>FRONT 9 (OUT)</span> <span>Par ' + pOut + '</span></div>';
+    html += '<table class="noscroll-msc-table">';
     html += '<thead><tr><th>' + t('hole') + '</th>';
     for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
-    html += '<th class="msc-tot-col">OUT</th>';
-    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
-    html += '<th class="msc-tot-col">IN</th><th class="msc-tot-col">TOT</th></tr></thead>';
-
+    html += '<th class="msc-tot-col">OUT</th></tr></thead>';
     html += '<tbody>';
 
-    // Distances
+    // Meters
+    var dOut = 0;
     html += '<tr class="msc-row-dist"><td>Meters</td>';
-    var dOut = 0, dIn = 0;
     for (var i = 1; i <= 9; i++) { var d = holeDist(i, teeCode); dOut += d; html += '<td>' + d + '</td>'; }
-    html += '<td class="msc-tot-col">' + dOut + '</td>';
-    for (var i = 10; i <= 18; i++) { var d = holeDist(i, teeCode); dIn += d; html += '<td>' + d + '</td>'; }
-    html += '<td class="msc-tot-col">' + dIn + '</td><td class="msc-tot-col">' + (dOut + dIn) + '</td></tr>';
+    html += '<td class="msc-tot-col">' + dOut + '</td></tr>';
 
     // Par
     html += '<tr class="msc-row-par"><td>Par</td>';
     for (var i = 1; i <= 9; i++) html += '<td>' + holePar(i) + '</td>';
-    html += '<td class="msc-tot-col">' + pOut + '</td>';
-    for (var i = 10; i <= 18; i++) html += '<td>' + holePar(i) + '</td>';
-    html += '<td class="msc-tot-col">' + pIn + '</td><td class="msc-tot-col">' + (pOut + pIn) + '</td></tr>';
+    html += '<td class="msc-tot-col">' + pOut + '</td></tr>';
 
-    // Index (HCP)
+    // Index
     html += '<tr class="msc-row-idx"><td>Index</td>';
     for (var i = 1; i <= 9; i++) html += '<td>' + holeHcp(i) + '</td>';
-    html += '<td class="msc-tot-col">—</td>';
-    for (var i = 10; i <= 18; i++) html += '<td>' + holeHcp(i) + '</td>';
-    html += '<td class="msc-tot-col">—</td><td class="msc-tot-col">—</td></tr>';
+    html += '<td class="msc-tot-col">—</td></tr>';
 
-    // Score Strokes
+    // Score
     html += '<tr class="msc-row-score"><td>Score</td>';
     for (var i = 1; i <= 9; i++) {
         var s = parseInt(sc[i]) || 0;
@@ -1969,7 +1961,46 @@ function generatePestovoScorecardHTML(player, roundData) {
         var badgeCls = s > 0 ? holeResClass(s, par) : '';
         html += '<td><span class="msc-score-badge ' + badgeCls + '">' + (s > 0 ? s : '—') + '</span></td>';
     }
-    html += '<td class="msc-tot-col"><b>' + (outG > 0 ? outG : '—') + '</b></td>';
+    html += '<td class="msc-tot-col"><b>' + (outG > 0 ? outG : '—') + '</b></td></tr>';
+
+    // Stableford
+    html += '<tr class="msc-row-stbl"><td>Stbl</td>';
+    for (var i = 1; i <= 9; i++) {
+        var s = parseInt(sc[i]) || 0;
+        var pts = s > 0 ? stablefordField(s, i, fHcp) : '';
+        html += '<td>' + (pts !== '' ? pts : '—') + '</td>';
+    }
+    html += '<td class="msc-tot-col"><b>' + (outS > 0 ? outS : '—') + '</b></td></tr>';
+
+    html += '</tbody></table></div>';
+
+    // BLOCK 2: BACK 9 (IN: Holes 10-18) - 100% NO-SCROLL TABLE
+    html += '<div class="noscroll-table-section" style="margin-top:8px;">';
+    html += '<div class="noscroll-sec-title"><span>BACK 9 (IN)</span> <span>Par ' + pIn + '</span></div>';
+    html += '<table class="noscroll-msc-table">';
+    html += '<thead><tr><th>' + t('hole') + '</th>';
+    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
+    html += '<th class="msc-tot-col">IN</th><th class="msc-tot-col">TOT</th></tr></thead>';
+    html += '<tbody>';
+
+    // Meters
+    var dIn = 0;
+    html += '<tr class="msc-row-dist"><td>Meters</td>';
+    for (var i = 10; i <= 18; i++) { var d = holeDist(i, teeCode); dIn += d; html += '<td>' + d + '</td>'; }
+    html += '<td class="msc-tot-col">' + dIn + '</td><td class="msc-tot-col">' + (dOut + dIn) + '</td></tr>';
+
+    // Par
+    html += '<tr class="msc-row-par"><td>Par</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + holePar(i) + '</td>';
+    html += '<td class="msc-tot-col">' + pIn + '</td><td class="msc-tot-col">' + (pOut + pIn) + '</td></tr>';
+
+    // Index
+    html += '<tr class="msc-row-idx"><td>Index</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + holeHcp(i) + '</td>';
+    html += '<td class="msc-tot-col">—</td><td class="msc-tot-col">—</td></tr>';
+
+    // Score
+    html += '<tr class="msc-row-score"><td>Score</td>';
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(sc[i]) || 0;
         var par = holePar(i);
@@ -1980,13 +2011,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     html += '<td class="msc-tot-col"><b>' + (totG > 0 ? totG : '—') + '</b></td></tr>';
 
     // Stableford
-    html += '<tr class="msc-row-stbl"><td>Stableford</td>';
-    for (var i = 1; i <= 9; i++) {
-        var s = parseInt(sc[i]) || 0;
-        var pts = s > 0 ? stablefordField(s, i, fHcp) : '';
-        html += '<td>' + (pts !== '' ? pts : '—') + '</td>';
-    }
-    html += '<td class="msc-tot-col"><b>' + (outS > 0 ? outS : '—') + '</b></td>';
+    html += '<tr class="msc-row-stbl"><td>Stbl</td>';
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(sc[i]) || 0;
         var pts = s > 0 ? stablefordField(s, i, fHcp) : '';
@@ -1996,6 +2021,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     html += '<td class="msc-tot-col"><b>' + (totS > 0 ? totS : '—') + '</b></td></tr>';
 
     html += '</tbody></table></div>';
+
     html += '</div>';
 
     return html;

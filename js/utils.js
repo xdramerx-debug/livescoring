@@ -761,7 +761,7 @@ function generatePestovoScorecardHTML(player, roundData) {
 }
 
 // ==========================================
-// ПЕЧАТЬ
+// ПЕЧАТЬ С КНОПКОЙ «НАЗАД»
 // ==========================================
 function downloadScorecard(roundId){
     db.ref('rounds/'+roundId).once('value').then(function(sn){
@@ -770,6 +770,10 @@ function downloadScorecard(roundId){
         var w=window.open('','_blank');
 
         var css='body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#fff;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+            +'@media print{.no-print{display:none!important;}}'
+            +'.no-print-bar{display:flex;justify-content:space-between;align-items:center;background:#0b1a0e;color:#c9a84c;padding:12px 20px;margin-bottom:20px;border-radius:8px;font-family:Arial,sans-serif;}'
+            +'.print-btn{background:#c9a84c;color:#0b1a0e;border:none;padding:10px 18px;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;text-transform:uppercase;}'
+            +'.back-btn{background:transparent;color:#c9a84c;border:1px solid #c9a84c;padding:10px 18px;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;text-transform:uppercase;}'
             +'.pestovo-card-wrap{border:2px solid #000;border-radius:8px;padding:16px;margin-bottom:30px;page-break-inside:avoid;}'
             +'.pc-header{display:flex;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:10px;font-size:12px;flex-wrap:wrap;gap:8px;}'
             +'.pc-col{display:flex;flex-direction:column;gap:4px;}'
@@ -787,6 +791,12 @@ function downloadScorecard(roundId){
             +'.pc-footer{display:flex;justify-content:space-between;margin-top:20px;font-size:12px;font-weight:bold;flex-wrap:wrap;gap:12px;}';
 
         var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Счётная карточка — Пестово</title><style>'+css+'</style></head><body>';
+
+        h+='<div class="no-print no-print-bar">'
+           +'<button class="back-btn" onclick="if(window.opener || window.history.length<=1){window.close();}else{window.history.back();}">&larr; Назад</button>'
+           +'<div style="font-weight:bold;font-size:15px;color:#c9a84c;">Печать счётных карточек — Пестово</div>'
+           +'<button class="print-btn" onclick="window.print()">Печать</button>'
+           +'</div>';
 
         Object.values(pl).forEach(function(p){
             h+=generatePestovoScorecardHTML(p,r);

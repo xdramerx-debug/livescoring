@@ -1092,13 +1092,34 @@ function generateGroupHoleTableHTML(r) {
     var playerEntries = Object.entries(players);
     if (!playerEntries.length) return '';
 
+    var order = holeOrder(r.startHole || 1);
+
+    // --- MOBILE PLAYER KPI SUMMARY BAR ---
+    var kpiHtml = '<div class="mobile-player-kpi-bar">';
+    playerEntries.forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+        var thruText = stats.holesPlayed >= 18 ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '1/18');
+
+        kpiHtml += '<div class="mobile-kpi-card" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
+        kpiHtml += '<div class="mobile-kpi-name">' + (p.name || '—') + '</div>';
+        kpiHtml += '<div class="mobile-kpi-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</div>';
+        kpiHtml += '<div class="mobile-kpi-meta">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · 📍 ' + thruText + '</div>';
+        kpiHtml += '</div>';
+    });
+    kpiHtml += '</div>';
+
     var pOut = 0, pIn = 0;
     for (var i = 1; i <= 9; i++) pOut += holePar(i);
     for (var i = 10; i <= 18; i++) pIn += holePar(i);
 
     var playerHoleHeader = currentLang === 'en' ? 'Player / Hole' : 'Игрок / Лунка';
+    var hintText = currentLang === 'en' ? '← Swipe table to view all holes →' : '← Прокрутите таблицу для всех лунок →';
 
-    var html = '<div class="scorecard" style="margin-bottom:12px;"><table>';
+    var html = kpiHtml;
+    html += '<div class="mobile-scroll-hint"><i class="fas fa-arrows-left-right"></i> ' + hintText + '</div>';
+
+    html += '<div class="scorecard" style="margin-bottom:12px;"><table>';
     html += '<tr><th style="text-align:left;padding-left:10px;">' + playerHoleHeader + '</th>';
     for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
     html += '<th>' + t('out') + '</th></tr>';

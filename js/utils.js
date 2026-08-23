@@ -78,20 +78,45 @@ const I18N = {
         sec_course_card: 'Поле клуба',
         sec_recent_results: 'Последние результаты',
         all_rounds: 'Все раунды',
+        no_active_players: 'Сейчас никто не играет',
 
         tee_bk: 'Чёрный', tee_bl: 'Синий', tee_wh: 'Белый', tee_rd: 'Красный',
         hole: 'Лунка', par: 'Пар', index: 'Индекс', gross: 'Gross', net: 'Net',
         stbl_field: 'Stblfd (пол.)', stbl_exact: 'Stblfd (игр.)',
+        out: 'Аут', in_side: 'Ин', total: 'Итого', meters: 'Метры', deadline: 'Дедлайн',
 
+        round_setup: 'Настройка раунда',
+        group_setup_title: 'Настройка группы',
         solo_round: 'Одиночный раунд', group_round: 'Групповой раунд',
         solo_desc: 'Играете один. Сами вводите свой счёт на каждой лунке.',
         group_desc: 'От 2 до 4 игроков. Двойной ввод (свой счёт + счёт партнёра).',
+        tournament_opt: 'Турнир (опционально)',
+        no_tournament: '— Без турнира —',
         start_time: 'Время старта', start_hole: 'Стартовая лунка',
+        tee_select: 'ТИ', format_select: 'Формат',
+        player_count: 'Количество игроков',
+        player_data: 'Данные игрока',
+        select_registered: 'Выбрать из зарегистрированных',
+        guest_manual: '— Гость / ввести вручную —',
+        first_name: 'Имя', last_name: 'Фамилия', gender_label: 'Пол',
+        men: 'Мужчина', women: 'Женщина',
         exact_hcp: 'Точный гандикап', field_hcp: 'Полевой гандикап',
+        field_auto: 'Полевой (авто)',
+        start_round_btn: 'Начать раунд', back_btn: 'Назад',
+        timings_title: 'Тайминги',
+
+        my_score: 'Мой счёт',
+        marker_for: 'Маркер для',
         save_hole: 'Сохранить лунку', finish_round: 'Завершить раунд',
         call_referee: 'Вызвать судью', call_marshal: 'Вызвать маршала',
-        read_only_mode: 'Режим просмотра.',
+        read_only_mode: 'Режим просмотра. Ввод счёта доступен только участникам раунда.',
         round_score: 'Счёт раунда', hole_scorecard: 'Счётная карточка по лункам',
+        group_summary: 'Сводка группы',
+        connect_players: 'Подключение игроков группы',
+        connect_desc: 'Дайте отсканировать QR-код другим игрокам, чтобы они открыли счётную карточку со своих телефонов.',
+        scan_to_play: 'Сканируй, чтобы играть за этого игрока',
+        round_progress: 'Прогресс раунда',
+        finished_f: 'Завершил (F)',
 
         res_hio: 'Hole-in-One!', res_albatross: 'Альбатрос', res_eagle: 'Eagle',
         res_birdie: 'Birdie', res_par: 'Par', res_bogey: 'Bogey', res_double: 'Double',
@@ -100,7 +125,32 @@ const I18N = {
         weather_rain: 'Дождь', weather_snow: 'Снег', weather_thunder: 'Гроза',
         wind_label: 'Ветер',
 
-        player: 'Игрок', guest: 'ГОСТЬ', start: 'Старт', date: 'Дата', format: 'Формат'
+        all_players: 'Все игроки',
+        type_registered: 'Только зарегистрированные',
+        type_guests: 'Только гости',
+        sort_rounds: 'По раундам',
+        player_type: 'Тип игрока',
+        sort_by: 'Сортировка',
+        quick_calc: 'Быстрый расчёт',
+        full_table: 'Посмотреть полную таблицу',
+        tbl_gender: 'Пол игрока',
+        tbl_select_gender: '— Выберите пол —',
+        tbl_select_tee: '— Выберите ТИ —',
+        from_col: 'Показатель от', to_col: 'Показатель до',
+        round_history: 'История раундов',
+
+        msg_start_time_req: 'Укажите время старта',
+        msg_name_req: 'Заполните имя игрока',
+        msg_exact_hcp_req: 'Укажите точный гандикап',
+        msg_round_started: '🏌️ Раунд начат!',
+        msg_saved_hole: '✅ Сохранено на лунке ',
+        msg_edit_disabled: 'Редактирование запрещено',
+        msg_score_min: 'Счёт должен быть ≥ 1',
+        msg_finish_confirm: 'Завершить раунд?',
+        msg_round_finished: '🏁 Раунд завершён!',
+
+        player: 'Игрок', players_label: 'Игроки', guest: 'ГОСТЬ', start: 'Старт', date: 'Дата', format: 'Формат',
+        round_leader: 'Лидер раунда', no_completed: 'Пока нет завершённых раундов'
     },
     en: {
         nav_home: 'Home', nav_round: 'Round', nav_leaderboard: 'Leaderboard',
@@ -118,20 +168,45 @@ const I18N = {
         sec_course_card: 'Course Map',
         sec_recent_results: 'Recent Results',
         all_rounds: 'All Rounds',
+        no_active_players: 'No active players on course',
 
         tee_bk: 'Black', tee_bl: 'Blue', tee_wh: 'White', tee_rd: 'Red',
         hole: 'Hole', par: 'Par', index: 'Index', gross: 'Gross', net: 'Net',
         stbl_field: 'Stblfd (Course)', stbl_exact: 'Stblfd (Playing)',
+        out: 'Out', in_side: 'In', total: 'Total', meters: 'Meters', deadline: 'Deadline',
 
+        round_setup: 'Round Settings',
+        group_setup_title: 'Group Setup',
         solo_round: 'Solo Round', group_round: 'Group Round',
         solo_desc: 'Play solo. Enter your own score for each hole.',
         group_desc: '2 to 4 players. Dual entry (your score + partner score).',
+        tournament_opt: 'Tournament (optional)',
+        no_tournament: '— No Tournament —',
         start_time: 'Start Time', start_hole: 'Start Hole',
+        tee_select: 'Tee', format_select: 'Format',
+        player_count: 'Number of Players',
+        player_data: 'Player Details',
+        select_registered: 'Select from registered users',
+        guest_manual: '— Guest / enter manually —',
+        first_name: 'First Name', last_name: 'Last Name', gender_label: 'Gender',
+        men: 'Male', women: 'Female',
         exact_hcp: 'Exact Handicap', field_hcp: 'Course Handicap',
+        field_auto: 'Course HCP (auto)',
+        start_round_btn: 'Start Round', back_btn: 'Back',
+        timings_title: 'Hole Timings',
+
+        my_score: 'My Score',
+        marker_for: 'Marker for',
         save_hole: 'Save Hole', finish_round: 'Finish Round',
         call_referee: 'Call Referee', call_marshal: 'Call Marshal',
-        read_only_mode: 'View mode.',
+        read_only_mode: 'View mode. Score entry is available to active players only.',
         round_score: 'Round Score', hole_scorecard: 'Hole Scorecard',
+        group_summary: 'Group Summary',
+        connect_players: 'Connect Players',
+        connect_desc: 'Let other players scan their QR code to open their scorecard on their phones.',
+        scan_to_play: 'Scan to play for this player',
+        round_progress: 'Round Progress',
+        finished_f: 'Finished (F)',
 
         res_hio: 'Hole-in-One!', res_albatross: 'Albatross', res_eagle: 'Eagle',
         res_birdie: 'Birdie', res_par: 'Par', res_bogey: 'Bogey', res_double: 'Double',
@@ -140,7 +215,32 @@ const I18N = {
         weather_rain: 'Rain', weather_snow: 'Snow', weather_thunder: 'Storm',
         wind_label: 'Wind',
 
-        player: 'Player', guest: 'GUEST', start: 'Start', date: 'Date', format: 'Format'
+        all_players: 'All Players',
+        type_registered: 'Registered Only',
+        type_guests: 'Guests Only',
+        sort_rounds: 'By Rounds',
+        player_type: 'Player Type',
+        sort_by: 'Sort By',
+        quick_calc: 'Quick Calculator',
+        full_table: 'View Full Table',
+        tbl_gender: 'Player Gender',
+        tbl_select_gender: '— Select Gender —',
+        tbl_select_tee: '— Select Tee —',
+        from_col: 'Handicap From', to_col: 'Handicap To',
+        round_history: 'Round History',
+
+        msg_start_time_req: 'Specify start time',
+        msg_name_req: 'Enter player name',
+        msg_exact_hcp_req: 'Specify exact handicap',
+        msg_round_started: '🏌️ Round Started!',
+        msg_saved_hole: '✅ Saved for Hole ',
+        msg_edit_disabled: 'Editing disabled',
+        msg_score_min: 'Score must be ≥ 1',
+        msg_finish_confirm: 'Finish round?',
+        msg_round_finished: '🏁 Round Completed!',
+
+        player: 'Player', players_label: 'Players', guest: 'GUEST', start: 'Start', date: 'Date', format: 'Format',
+        round_leader: 'Round Leader', no_completed: 'No completed rounds yet'
     }
 };
 
@@ -169,6 +269,9 @@ function toggleLang() {
     if (typeof loadLB === 'function') loadLB();
     if (typeof loadPlayers === 'function') loadPlayers();
     if (typeof loadPestovoWeather === 'function') loadPestovoWeather('nav-weather-container');
+    if (typeof showGroupSetup === 'function' && document.getElementById('group-setup') && !document.getElementById('group-setup').classList.contains('hidden')) {
+        showGroupSetup();
+    }
 }
 
 function updateLangButtons() {
@@ -546,8 +649,8 @@ function holeOrder(sh){var o=[],h=parseInt(sh)||1;for(var i=0;i<18;i++){o.push(h
 
 function holeDeadline(startTime,startHole,targetHole){if(!startTime)return null;var t=0,h=parseInt(startHole)||1,c=0;while(c<18){t+=holeTiming(h);if(h===targetHole)break;h=h>=18?1:h+1;c++;}return startTime+t*60000;}
 function checkTiming(startTime,startHole,holeNum){var dl=holeDeadline(startTime,startHole,holeNum);if(!dl)return{status:'ok',diff:0,deadline:null};var now=Date.now(),d=Math.round((now-dl)/60000);if(d>5)return{status:'late',diff:d,deadline:dl};if(d>0)return{status:'warning',diff:d,deadline:dl};return{status:'ok',diff:d,deadline:dl};}
-function buildTimingNotice(st,sh,ch){var c=checkTiming(st,sh,ch);if(!c.deadline)return'';var dl=fmtTime(c.deadline),nw=fmtTime(Date.now());if(c.status==='late')return'<div class="timing-alert timing-late"><i class="fas fa-exclamation-triangle"></i><div><strong>Отставание!</strong><br>Лунка '+ch+': дедлайн '+dl+', сейчас '+nw+' ('+c.diff+' мин.)</div></div>';if(c.status==='warning')return'<div class="timing-alert timing-warn"><i class="fas fa-clock"></i><div><strong>Близко к дедлайну</strong><br>Лунка '+ch+': '+dl+'</div></div>';var a=Math.abs(c.diff);return'<div class="timing-alert timing-ok"><i class="fas fa-check-circle"></i><div>Лунка '+ch+': в графике'+(a>0?' (запас '+a+' мин.)':'')+'</div></div>';}
-function buildTimingTable(st,sh){if(!st)return'';var html='<table class="scorecard"><tr><th>' + t('hole') + '</th><th>' + t('par') + '</th><th>Мин</th><th>Дедлайн</th></tr>';var h=parseInt(sh)||1;for(var i=0;i<18;i++){var dl=holeDeadline(st,sh,h);html+='<tr><td style="font-weight:700">'+h+'</td><td>'+holePar(h)+'</td><td>'+holeTiming(h)+'</td><td>'+fmtTime(dl)+'</td></tr>';h=h>=18?1:h+1;}html+='</table>';return html;}
+function buildTimingNotice(st,sh,ch){var c=checkTiming(st,sh,ch);if(!c.deadline)return'';var dl=fmtTime(c.deadline),nw=fmtTime(Date.now());if(c.status==='late')return'<div class="timing-alert timing-late"><i class="fas fa-exclamation-triangle"></i><div><strong>' + (currentLang === 'en' ? 'Pace Lag!' : 'Отставание!') + '</strong><br>' + t('hole') + ' ' + ch + ': deadline ' + dl + ', now ' + nw + ' (' + c.diff + ' min)</div></div>';if(c.status==='warning')return'<div class="timing-alert timing-warn"><i class="fas fa-clock"></i><div><strong>' + (currentLang === 'en' ? 'Deadline Approaching' : 'Близко к дедлайну') + '</strong><br>' + t('hole') + ' ' + ch + ': ' + dl + '</div></div>';var a=Math.abs(c.diff);return'<div class="timing-alert timing-ok"><i class="fas fa-check-circle"></i><div>' + t('hole') + ' ' + ch + ': ' + (currentLang === 'en' ? 'On Pace' : 'в графике') + (a>0?' (' + (currentLang === 'en' ? 'buffer ' : 'запас ') + a + ' min)':'') + '</div></div>';}
+function buildTimingTable(st,sh){if(!st)return'';var html='<table class="scorecard"><tr><th>' + t('hole') + '</th><th>' + t('par') + '</th><th>Min</th><th>Deadline</th></tr>';var h=parseInt(sh)||1;for(var i=0;i<18;i++){var dl=holeDeadline(st,sh,h);html+='<tr><td style="font-weight:700">'+h+'</td><td>'+holePar(h)+'</td><td>'+holeTiming(h)+'</td><td>'+fmtTime(dl)+'</td></tr>';h=h>=18?1:h+1;}html+='</table>';return html;}
 
 const ADMIN_LOGIN='admin';
 const ADMIN_PASS='pestovo2024';
@@ -804,7 +907,7 @@ function openPlayerProfileModal(playerId, roundId) {
         if (!u && rd && rd.players && rd.players[playerId]) {
             var p = rd.players[playerId];
             u = {
-                name: p.name || 'Гость',
+                name: p.name || (currentLang === 'en' ? 'Guest' : 'Гость'),
                 handicap: p.exactHcp || null,
                 gender: p.gender || 'men',
                 isGuest: true,
@@ -813,7 +916,7 @@ function openPlayerProfileModal(playerId, roundId) {
         }
 
         if (!u) {
-            if (bodyEl) bodyEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:30px;">Профиль игрока не найден</p>';
+            if (bodyEl) bodyEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:30px;">' + (currentLang === 'en' ? 'Player profile not found' : 'Профиль игрока не найден') + '</p>';
             return;
         }
 

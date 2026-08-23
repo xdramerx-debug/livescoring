@@ -47,7 +47,7 @@ function showGroupSetup() {
     if (sel) {
         sel.innerHTML = '';
         for (var i = 1; i <= 18; i++) {
-            sel.innerHTML += '<option value="' + i + '">Лунка ' + i + ' (Пар ' + holePar(i) + ')</option>';
+            sel.innerHTML += '<option value="' + i + '">' + t('hole') + ' ' + i + ' (' + t('par') + ' ' + holePar(i) + ')</option>';
         }
     }
 
@@ -66,11 +66,11 @@ function showGroupSetup() {
         availableTournaments = sn.val() || {};
         var tnSel = document.getElementById('g-tournament');
         if (tnSel) {
-            tnSel.innerHTML = '<option value="">— Без турнира —</option>';
+            tnSel.innerHTML = '<option value="">' + t('no_tournament') + '</option>';
             Object.entries(availableTournaments).forEach(function(e) {
-                var t = e[1];
-                if (t.status === 'completed') return;
-                tnSel.innerHTML += '<option value="' + e[0] + '">' + (t.name || '—') + ' · ' + fmtDate(new Date(t.date).getTime()) + '</option>';
+                var tVal = e[1];
+                if (tVal.status === 'completed') return;
+                tnSel.innerHTML += '<option value="' + e[0] + '">' + (tVal.name || '—') + ' · ' + fmtDate(new Date(tVal.date).getTime()) + '</option>';
             });
             tnSel.addEventListener('change', onTournamentSelect);
         }
@@ -83,29 +83,29 @@ function onTournamentSelect() {
     var fmtSel = document.getElementById('g-format');
 
     if (!tid) {
-        teeSel.innerHTML = '<option value="bk">⬛ Чёрный</option><option value="bl">🟦 Синий</option><option value="wh" selected>⬜ Белый</option><option value="rd">🟥 Красный</option>';
+        teeSel.innerHTML = '<option value="bk">⬛ ' + t('tee_bk') + '</option><option value="bl">🟦 ' + t('tee_bl') + '</option><option value="wh" selected>⬜ ' + t('tee_wh') + '</option><option value="rd">🟥 ' + t('tee_rd') + '</option>';
         fmtSel.innerHTML = '<option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option>';
         return;
     }
-    var t = availableTournaments[tid];
-    if (!t) return;
+    var tVal = availableTournaments[tid];
+    if (!tVal) return;
     teeSel.innerHTML = ''; 
-    (t.tees || ['wh']).forEach(function(tk) { teeSel.innerHTML += '<option value="' + tk + '">' + TEES[tk] + '</option>'; });
+    (tVal.tees || ['wh']).forEach(function(tk) { teeSel.innerHTML += '<option value="' + tk + '">' + fmtTeePill(tk) + '</option>'; });
     fmtSel.innerHTML = ''; 
-    (t.formats || ['Stroke Play']).forEach(function(f) { fmtSel.innerHTML += '<option value="' + f + '">' + f + '</option>'; });
+    (tVal.formats || ['Stroke Play']).forEach(function(f) { fmtSel.innerHTML += '<option value="' + f + '">' + f + '</option>'; });
 }
 
 function buildPlayerSlots() {
     var count = parseInt(document.getElementById('g-count').value) || 2;
     var el = document.getElementById('player-slots');
-    var html = '<h3 style="margin-top:16px;color:var(--gold);"><i class="fas fa-user-plus"></i> Игроки</h3>';
+    var html = '<h3 style="margin-top:16px;color:var(--gold);"><i class="fas fa-user-plus"></i> ' + t('players_label') + '</h3>';
 
     for (var i = 1; i <= count; i++) {
         html += '<div class="card" style="background:var(--input);padding:16px;margin-bottom:12px;">';
-        html += '<h3 style="color:var(--gold);font-size:14px;">Игрок #' + i + '</h3>';
-        html += '<div class="form-group"><label>Выбрать из зарегистрированных</label>';
+        html += '<h3 style="color:var(--gold);font-size:14px;">' + t('player') + ' #' + i + '</h3>';
+        html += '<div class="form-group"><label>' + t('select_registered') + '</label>';
         html += '<select class="form-input" id="pl-select-' + i + '" onchange="fillPlayerFromUser(' + i + ')">';
-        html += '<option value="">— Гость / ввести вручную —</option>';
+        html += '<option value="">' + t('guest_manual') + '</option>';
         
         Object.entries(registeredUsers).forEach(function(e) {
             var u = e[1];
@@ -117,13 +117,13 @@ function buildPlayerSlots() {
         html += '</select></div>';
 
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>Имя</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="Имя Фамилия"></div>';
-        html += '<div class="form-group"><label>Пол</label><select id="pl-gender-' + i + '" class="form-input" onchange="calcPlayerFieldHcp(' + i + ')"><option value="men">Мужчина</option><option value="women">Женщина</option></select></div>';
+        html += '<div class="form-group"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="Name Surname"></div>';
+        html += '<div class="form-group"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" onchange="calcPlayerFieldHcp(' + i + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
         html += '</div>';
 
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>Точный HCP</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 или 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
-        html += '<div class="form-group"><label>Полевой (авто)</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly></div>';
+        html += '<div class="form-group"><label>' + t('exact_hcp') + '</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
+        html += '<div class="form-group"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly></div>';
         html += '</div></div>';
     }
     el.innerHTML = html;
@@ -192,7 +192,7 @@ function startGroup() {
     var count = parseInt(document.getElementById('g-count').value) || 2;
     var tournamentId = document.getElementById('g-tournament') ? document.getElementById('g-tournament').value : '';
 
-    if (!timeStr) { toast('Укажите время старта', 'error'); return; }
+    if (!timeStr) { toast(t('msg_start_time_req'), 'error'); return; }
 
     var players = {};
     var pOrder = [];
@@ -205,7 +205,7 @@ function startGroup() {
         var hcpStr = document.getElementById('pl-hcp-' + i).value;
         var gender = document.getElementById('pl-gender-' + i).value;
 
-        if (!name) { toast('Заполните имя игрока #' + i, 'error'); return; }
+        if (!name) { toast(t('msg_name_req') + ' #' + i, 'error'); return; }
 
         var pid = uid || 'guest_' + Date.now() + '_' + i;
         var parsedHcp = parseExactHcp(hcpStr);
@@ -266,7 +266,7 @@ function startGroup() {
     localStorage.setItem('pestovo_acting_as_' + newRoundId, pOrder[0]);
 
     ref.set(data).then(function() {
-        toast('🏌️ Раунд начат!');
+        toast(t('msg_round_started'));
         window.location.href = 'live.html?round=' + newRoundId;
     });
 }
@@ -298,7 +298,7 @@ function initRoundView() {
     db.ref('rounds/' + curRid).on('value', function(sn) {
         curRoundData = sn.val();
         if (!curRoundData) {
-            toast('Раунд не найден', 'error');
+            toast('Round not found', 'error');
             return;
         }
 
@@ -312,12 +312,12 @@ function initRoundView() {
             document.getElementById('group-view').classList.add('hidden');
 
             var myPlayer = curRoundData.players[myUid];
-            document.getElementById('my-player-name-title').textContent = myPlayer ? myPlayer.name : 'Мой счёт';
+            document.getElementById('my-player-name-title').textContent = myPlayer ? myPlayer.name : t('my_score');
 
             if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
                 myTargetUid = curRoundData.markerAssignments[myUid].targetId;
                 var targetPlayer = curRoundData.players[myTargetUid];
-                document.getElementById('mark-player-name').textContent = targetPlayer ? targetPlayer.name : 'Партнёр';
+                document.getElementById('mark-player-name').textContent = targetPlayer ? targetPlayer.name : 'Partner';
                 document.getElementById('marker-input-container').classList.remove('hidden');
             } else {
                 document.getElementById('marker-input-container').classList.add('hidden');
@@ -460,19 +460,19 @@ function checkPlayVerification() {
     }
 
     if (myS > 0 && markerS > 0 && myS === markerS) {
-        box.innerHTML = '<div class="verify-ok">✅ Ваш счёт на лунке ' + playHole + ' подтверждён маркером (' + myS + ' уд.)</div>';
+        box.innerHTML = '<div class="verify-ok">✅ ' + (currentLang === 'en' ? 'Your score on hole ' + playHole + ' is confirmed (' + myS + ')' : 'Ваш счёт на лунке ' + playHole + ' подтверждён маркером (' + myS + ' уд.)') + '</div>';
     } else if (myS > 0 && markerS > 0 && myS !== markerS) {
-        box.innerHTML = '<div class="verify-fail">⚠️ НЕСОВПАДЕНИЕ! Вы: ' + myS + ' | Маркер: ' + markerS + '</div>';
+        box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! You: ' + myS + ' | Marker: ' + markerS + '</div>';
     } else if (myS > 0) {
-        box.innerHTML = '<div class="verify-wait">⏳ Ожидаем подтверждения от вашего маркера...</div>';
+        box.innerHTML = '<div class="verify-wait">⏳ ' + (currentLang === 'en' ? 'Waiting for marker confirmation...' : 'Ожидаем подтверждения от вашего маркера...') + '</div>';
     } else {
         box.innerHTML = '';
     }
 }
 
 function saveHoleScores(isAuto) {
-    if (!canEditGroup) { if (!isAuto) toast('Редактирование запрещено', 'error'); return; }
-    if (myScore < 1 || (myTargetUid && targetScore < 1)) { if (!isAuto) toast('Счёт должен быть ≥ 1', 'error'); return; }
+    if (!canEditGroup) { if (!isAuto) toast(t('msg_edit_disabled'), 'error'); return; }
+    if (myScore < 1 || (myTargetUid && targetScore < 1)) { if (!isAuto) toast(t('msg_score_min'), 'error'); return; }
 
     isChanging = true;
     var h = playHole;
@@ -507,7 +507,7 @@ function saveHoleScores(isAuto) {
 
     db.ref().update(updates).then(function() {
         if (!isAuto) {
-            toast('✅ Сохранено на лунке ' + h);
+            toast(t('msg_saved_hole') + h);
             var par = holePar(h);
             var d = myScore - par;
             if (myScore === 1 || d <= -1) {
@@ -545,11 +545,11 @@ function renderPlaySummary() {
         var pid = pe[0], p = pe[1];
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
         if (stats.holesPlayed > maxPlayed) maxPlayed = stats.holesPlayed;
-        var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(Вы)</span>' : '';
+        var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(You)</span>' : '';
 
         html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
         html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + p.name + isMe + '</strong>';
-        html += '<div style="font-size:12px;color:var(--muted);">Лунок: ' + stats.holesPlayed + ' / 18</div></div>';
+        html += '<div style="font-size:12px;color:var(--muted);">' + t('hole') + 's: ' + stats.holesPlayed + ' / 18</div></div>';
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '<div style="font-size:11px;color:var(--muted);">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div>';
@@ -575,8 +575,8 @@ function renderInviteQRs() {
         var url = base + 'live.html?round=' + curRid + '&as=' + pid;
 
         html += '<div class="qr-card">';
-        html += '<div class="qr-name" style="color:var(--white);"><i class="fas fa-mobile-alt"></i> Игрок: ' + p.name + '</div>';
-        html += '<div style="font-size:11px;color:var(--gold);margin-bottom:6px;">Сканируй, чтобы играть за этого игрока</div>';
+        html += '<div class="qr-name" style="color:var(--white);"><i class="fas fa-mobile-alt"></i> ' + t('player') + ': ' + p.name + '</div>';
+        html += '<div style="font-size:11px;color:var(--gold);margin-bottom:6px;">' + t('scan_to_play') + '</div>';
         html += '<img src="' + qrUrl(url) + '" alt="QR">';
         html += '<div class="qr-url"><a href="' + url + '" target="_blank">' + url + '</a></div>';
         html += '</div>';
@@ -590,10 +590,10 @@ function renderInviteQRs() {
 // ==========================================
 function callOfficial(type) {
     if (!canEditGroup) return;
-    var typeName = type === 'referee' ? 'Судью' : 'Маршала';
-    if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + playHole + '?')) return;
+    var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
+    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + 'а на лунку ') + playHole + '?')) return;
 
-    var pName = (curRoundData && curRoundData.players && curRoundData.players[myUid]) ? curRoundData.players[myUid].name : 'Игрок';
+    var pName = (curRoundData && curRoundData.players && curRoundData.players[myUid]) ? curRoundData.players[myUid].name : 'Player';
 
     db.ref('alerts').push({
         roundId: curRid,
@@ -604,7 +604,7 @@ function callOfficial(type) {
         time: Date.now(),
         status: 'active'
     }).then(function() {
-        toast('🚨 ' + (type === 'referee' ? 'Судья' : 'Маршал') + ' вызван на лунку ' + playHole + '!', 'warn');
+        toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + playHole + '!', 'warn');
         vib([100, 50, 100]);
     });
 }
@@ -622,7 +622,7 @@ function renderGVPlayers(r) {
         Object.entries(r.players || {}).forEach(function(pe) {
             var pid = pe[0], p = pe[1];
             var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-            var thruTxt = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : '—');
+            var thruTxt = stats.holesPlayed >= 18 ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
 
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
                 '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</strong>' +
@@ -631,7 +631,7 @@ function renderGVPlayers(r) {
                 '</div>' +
                 '<div style="text-align:right;">' +
                 '<div class="' + scoreClass(stats.toPar) + '" style="font-size:24px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>' +
-                '<button class="btn btn-og btn-sm" style="margin-top:4px;padding:3px 8px;font-size:10px;"><i class="fas fa-id-card"></i> Карточка</button>' +
+                '<button class="btn btn-og btn-sm" style="margin-top:4px;padding:3px 8px;font-size:10px;"><i class="fas fa-id-card"></i> ' + (currentLang === 'en' ? 'Card' : 'Карточка') + '</button>' +
                 '</div></div>';
         });
         el.innerHTML = html;
@@ -645,7 +645,7 @@ function renderGVPlayers(r) {
 
 function finishGroupRound() {
     if (!canEditGroup) return;
-    if (!confirm('Завершить раунд для ВСЕЙ группы?')) return;
+    if (!confirm(t('msg_finish_confirm'))) return;
 
     db.ref('rounds/' + curRid + '/status').set('completed');
     db.ref('rounds/' + curRid + '/completedAt').set(Date.now());
@@ -655,9 +655,9 @@ function finishGroupRound() {
         if (r) saveHistory(curRid, r);
     });
 
-    toast('🏁 Раунд завершён!');
+    toast(t('msg_round_finished'));
     setTimeout(function() {
-        if (confirm('Скачать счётные карточки игроков?')) downloadScorecard(curRid);
+        if (confirm(currentLang === 'en' ? 'Download player scorecards?' : 'Скачать счётные карточки игроков?')) downloadScorecard(curRid);
         window.location.href = 'leaderboard.html';
     }, 1000);
 }

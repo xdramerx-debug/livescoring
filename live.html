@@ -73,14 +73,14 @@
     <!-- НАСТРОЙКА ГРУППОВОГО РАУНДА -->
     <div id="group-setup" class="hidden">
         <button class="btn btn-og btn-sm" onclick="backToModes()" style="margin-bottom:16px;">
-            <i class="fas fa-arrow-left"></i> Назад
+            <i class="fas fa-arrow-left"></i> <span data-i18n="back_btn">Назад</span>
         </button>
 
         <div class="card">
-            <h2><i class="fas fa-users"></i> Настройка группы</h2>
+            <h2><i class="fas fa-users"></i> <span data-i18n="group_setup_title">Настройка группы</span></h2>
 
             <div class="form-group">
-                <label><i class="fas fa-trophy"></i> Турнир (опционально)</label>
+                <label><i class="fas fa-trophy"></i> <span data-i18n="tournament_opt">Турнир (опционально)</span></label>
                 <select id="g-tournament" class="form-input">
                     <option value="">— Без турнира —</option>
                 </select>
@@ -88,18 +88,18 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label><i class="fas fa-clock"></i> Время старта</label>
+                    <label><i class="fas fa-clock"></i> <span data-i18n="start_time">Время старта</span></label>
                     <input type="time" id="g-time" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label><i class="fas fa-flag"></i> Стартовая лунка</label>
+                    <label><i class="fas fa-flag"></i> <span data-i18n="start_hole">Стартовая лунка</span></label>
                     <select id="g-hole" class="form-input"></select>
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label><i class="fas fa-golf-ball-tee"></i> ТИ</label>
+                    <label><i class="fas fa-golf-ball-tee"></i> <span data-i18n="tee_select">ТИ</span></label>
                     <select id="g-tee" class="form-input">
                         <option value="bk">⬛ Чёрный</option>
                         <option value="bl">🟦 Синий</option>
@@ -108,7 +108,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label><i class="fas fa-gamepad"></i> Формат</label>
+                    <label><i class="fas fa-gamepad"></i> <span data-i18n="format_select">Формат</span></label>
                     <select id="g-format" class="form-input">
                         <option value="Stroke Play">Stroke Play</option>
                         <option value="Stableford">Stableford</option>
@@ -117,7 +117,7 @@
             </div>
 
             <div class="form-group">
-                <label><i class="fas fa-hashtag"></i> Количество игроков</label>
+                <label><i class="fas fa-hashtag"></i> <span data-i18n="player_count">Количество игроков</span></label>
                 <select id="g-count" class="form-input" onchange="buildPlayerSlots()">
                     <option value="1">1 игрок</option>
                     <option value="2" selected>2 игрока</option>
@@ -129,7 +129,7 @@
             <div id="player-slots"></div>
 
             <button class="btn btn-g btn-block" onclick="startGroup()" style="margin-top:12px;">
-                <i class="fas fa-play"></i> Начать раунд
+                <i class="fas fa-play"></i> <span data-i18n="start_round_btn">Начать раунд</span>
             </button>
         </div>
     </div>
@@ -143,12 +143,12 @@
         </div>
 
         <div class="card">
-            <h2 id="gv-title"><i class="fas fa-trophy"></i> Счёт раунда</h2>
+            <h2 id="gv-title"><i class="fas fa-trophy"></i> <span data-i18n="round_score">Счёт раунда</span></h2>
             <div id="gv-players"></div>
         </div>
 
         <div class="card">
-            <h2><i class="fas fa-table"></i> Счётная карточка по лункам</h2>
+            <h2><i class="fas fa-table"></i> <span data-i18n="hole_scorecard">Счётная карточка по лункам</span></h2>
             <div id="gv-scorecard-card"></div>
         </div>
     </div>
@@ -159,10 +159,10 @@
         <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
         <div style="display:flex;gap:10px;margin-bottom:16px;">
             <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
-                <i class="fas fa-gavel"></i> Вызвать судью
+                <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
             </button>
             <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
-                <i class="fas fa-shield-halved"></i> Вызвать маршала
+                <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
             </button>
         </div>
 
@@ -216,7 +216,7 @@
         </div>
 
         <div class="card">
-            <h2><i class="fas fa-table"></i> Сводка группы</h2>
+            <h2><i class="fas fa-table"></i> <span data-i18n="group_summary">Сводка группы</span></h2>
             <div id="play-group-summary"></div>
         </div>
 
@@ -230,7 +230,7 @@
         </div>
 
         <button class="btn btn-og btn-block" onclick="finishGroupRound()">
-            <i class="fas fa-flag-checkered"></i> Завершить раунд
+            <i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span>
         </button>
     </div>
 

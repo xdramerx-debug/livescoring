@@ -26,7 +26,7 @@
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title" id="sc-title">Ввод счёта</h1><p class="page-sub" id="sc-sub">—</p></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title" id="sc-title">Ввод счёта</h1><p class="page-sub" id="sc-sub">—</p><div id="weather-widget-container"></div></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
     <div id="sc-err" class="card hidden"><h2 style="color:var(--red);">Ошибка</h2><p>QR-код недействителен.</p><a href="index.html" class="btn btn-g" style="margin-top:12px;">На главную</a></div>
@@ -42,6 +42,7 @@
             </button>
         </div>
 
+        <div id="sc-weather-container" style="text-align:center;margin-bottom:14px;"></div>
         <div class="timing-info" id="sc-info"></div>
         <div id="sc-verify"></div>
         <div class="card">
@@ -72,7 +73,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils.js?v=2"></script>
 <script src="js/scorer.js"></script>
 <script src="js/pwa.js"></script>
 </body>

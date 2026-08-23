@@ -46,6 +46,79 @@ function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(
 function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
 
 // ==========================================
+// БЛОК «МОИ АКТИВНЫЕ РАУНДЫ»
+// ==========================================
+function loadMyActiveRounds(targetId) {
+    var el = document.getElementById(targetId);
+    if (!el || typeof db === 'undefined') return;
+
+    db.ref('rounds').on('value', function(snap) {
+        var data = snap.val() || {};
+        var myActive = [];
+
+        Object.entries(data).forEach(function(e) {
+            var id = e[0], r = e[1];
+            if (!r || r.status !== 'active') return;
+
+            var localSoloKey = localStorage.getItem('pestovo_solo_key_' + id);
+            var localGroupKey = localStorage.getItem('pestovo_group_key_' + id);
+            var localActingAs = localStorage.getItem('pestovo_acting_as_' + id);
+
+            var isCreatedByMe = false;
+
+            if (currentUser && r.createdBy === currentUser.uid) {
+                isCreatedByMe = true;
+            } else if (localSoloKey && r.accessKey === localSoloKey) {
+                isCreatedByMe = true;
+            } else if (localGroupKey && r.accessKey === localGroupKey) {
+                isCreatedByMe = true;
+            } else if (currentUser && r.players && r.players[currentUser.uid]) {
+                isCreatedByMe = true;
+            } else if (localActingAs && r.players && r.players[localActingAs]) {
+                isCreatedByMe = true;
+            }
+
+            if (isCreatedByMe) {
+                myActive.push({ id: id, round: r });
+            }
+        });
+
+        if (myActive.length === 0) {
+            el.innerHTML = '';
+            el.classList.add('hidden');
+            return;
+        }
+
+        myActive.sort(function(a, b) { return (b.round.createdAt || 0) - (a.round.createdAt || 0); });
+
+        var html = '<div class="card" style="border:2px solid var(--gold);background:linear-gradient(135deg, rgba(201,168,76,0.12), var(--card));margin-bottom:24px;">';
+        html += '<h2 style="color:var(--gold);margin-bottom:12px;"><i class="fas fa-play-circle"></i> Мои активные раунды</h2>';
+        html += '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">У вас есть начатый раунд. Нажмите, чтобы продолжить игру:</p>';
+
+        myActive.forEach(function(item) {
+            var id = item.id, r = item.round;
+            var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'live.html?round=' + id;
+            var modeIcon = r.mode === 'solo' ? '<i class="fas fa-user"></i> Одиночный' : '<i class="fas fa-users"></i> Групповой';
+            var teePill = fmtTeePill(r.tee);
+            var playersCount = Object.keys(r.players || {}).length;
+
+            html += '<div class="list-item" style="padding:16px;background:var(--input);border:1px solid var(--border);margin-bottom:10px;flex-wrap:wrap;gap:12px;">';
+            html += '<div style="flex:1;min-width:200px;">';
+            html += '<div style="font-weight:800;font-size:16px;color:var(--white);"><span class="live-dot" style="width:7px;height:7px;margin-right:6px;"></span> Пестово · ' + modeIcon + '</div>';
+            html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
+                    'Старт: ' + fmtTime(r.startTime) + ' · С лунки: №' + (r.startHole || 1) + ' · ТИ: ' + teePill + ' · Игроков: ' + playersCount + '</div>';
+            html += '</div>';
+            html += '<a href="' + link + '" class="btn btn-g"><i class="fas fa-gamepad"></i> Продолжить игру</a>';
+            html += '</div>';
+        });
+
+        html += '</div>';
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+    });
+}
+
+// ==========================================
 // ПОГОДНЫЙ ВИДЖЕТ И ВЕКТОР ВЕТРА (OPEN-METEO)
 // ==========================================
 function getWindCardinal(deg) {

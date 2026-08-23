@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', function() {
     loadLiveRounds();
     loadRecentResults();
     loadClubStats();
+    loadMyActiveRounds('my-active-rounds-container');
+    if (typeof loadPestovoWeather === 'function') {
+        loadPestovoWeather('weather-widget-container');
+    }
 });
 
 function onAuthReady(u, d) { navAuth(u, d); }

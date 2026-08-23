@@ -32,9 +32,12 @@
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-user"></i> Одиночный раунд</h1><p class="page-sub">Гольф-клуб Пестово</p></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-user"></i> Одиночный раунд</h1><p class="page-sub">Гольф-клуб Пестово</p><div id="weather-widget-container"></div></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
+    <!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" -->
+    <div id="my-active-rounds-container" class="hidden"></div>
+
     <!-- НАСТРОЙКА -->
     <div id="setup">
         <div id="guest-banner" class="card hidden" style="background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
@@ -90,6 +93,7 @@
             </button>
         </div>
 
+        <div id="solo-scoring-weather-container" style="text-align:center;margin-bottom:14px;"></div>
         <div class="timing-info" id="round-info"></div>
         <div id="solo-progress-bar"></div>
 

@@ -202,6 +202,7 @@ function startGroup() {
 
     var players = {};
     var pOrder = [];
+    var selectedUids = [];
 
     for (var i = 1; i <= count; i++) {
         var selectEl = document.getElementById('pl-select-' + i);
@@ -210,6 +211,15 @@ function startGroup() {
         var name = nameEl ? nameEl.value.trim() : '';
         var hcpStr = document.getElementById('pl-hcp-' + i).value;
         var gender = document.getElementById('pl-gender-' + i).value;
+
+        if (uid) {
+            if (selectedUids.indexOf(uid) !== -1) {
+                var dupName = registeredUsers[uid] ? registeredUsers[uid].name : uid;
+                toast((currentLang === 'en' ? 'Duplicate player selected: ' : 'Выбран дублирующий игрок: ') + dupName, 'error');
+                return;
+            }
+            selectedUids.push(uid);
+        }
 
         if (!name) { toast(t('msg_name_req') + ' #' + i, 'error'); return; }
 

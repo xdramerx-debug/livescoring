@@ -923,7 +923,7 @@ function navAuth(u, d) {
     }
 }
 
-function doLogout(){auth.signOut().then(function(){window.location.href='auth.html';});}
+function doLogout(){auth.signOut().then(function(){window.location.reload();});}
 function holeOrder(sh){var o=[],h=parseInt(sh)||1;for(var i=0;i<18;i++){o.push(h);h=h>=18?1:h+1;}return o;}
 
 function holeDeadline(startTime,startHole,targetHole){if(!startTime)return null;var tVal=0,h=parseInt(startHole)||1,c=0;while(c<18){tVal+=holeTiming(h);if(h===targetHole)break;h=h>=18?1:h+1;c++;}return startTime+tVal*60000;}

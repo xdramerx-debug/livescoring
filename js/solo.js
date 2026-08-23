@@ -543,7 +543,7 @@ function finishSolo() {
             toast(t('msg_round_finished'));
             setTimeout(function() {
                 if (confirm(currentLang === 'en' ? 'Download player scorecard?' : 'Скачать счётную карточку?')) downloadScorecard(soloRid);
-                window.location.href = 'players.html';
+                window.location.href = 'leaderboard.html';
             }, 800);
         });
     } else {

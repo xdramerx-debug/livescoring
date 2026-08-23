@@ -32,7 +32,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var btn = document.getElementById('login-btn');
         btn.textContent = currentLang === 'en' ? 'Loading...' : 'Загрузка...'; btn.disabled = true;
         auth.signInWithEmailAndPassword(em, pw).then(function() {
-            window.location.href = 'index.html';
+            var urlP = new URLSearchParams(window.location.search);
+            var red = urlP.get('redirect') || 'index.html';
+            window.location.href = red;
         }).catch(function(err) {
             er.textContent = authErr(err.code);
             er.classList.remove('hidden');
@@ -73,7 +75,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }).then(function() {
             toast(currentLang === 'en' ? '🎉 Account created!' : '🎉 Аккаунт создан!');
-            window.location.href = 'index.html';
+            var urlP = new URLSearchParams(window.location.search);
+            var red = urlP.get('redirect') || 'index.html';
+            window.location.href = red;
         }).catch(function(err) {
             er.textContent = authErr(err.code);
             er.classList.remove('hidden');

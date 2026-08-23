@@ -30,20 +30,20 @@ body.sun-mode .hole-btn.active{background:#9e7a1b;color:#ffffff;}
 body.sun-mode .hole-val,body.sun-mode .score-disp{color:#000000;}
 body.sun-mode .list-item{background:#ffffff;border:1px solid #b0c4b5;}
 
-.sun-mode-btn{background:none;border:1px solid var(--border);color:var(--gold);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:var(--t);}
+.sun-mode-btn{background:none;border:1px solid var(--border);color:var(--gold);padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:var(--t);white-space:nowrap;}
 .sun-mode-btn:hover{background:var(--card-h);}
 
-/* ПОГОДНЫЙ ВИДЖЕТ И ВЕКТОР ВЕТРА */
-.weather-widget{display:inline-flex;align-items:center;gap:12px;background:var(--input);border:1px solid var(--border);border-radius:20px;padding:6px 16px;font-size:12px;color:var(--white);margin-top:10px;box-shadow:0 4px 12px rgba(0,0,0,0.2);}
-.weather-item{display:flex;align-items:center;gap:6px;}
-.weather-icon{font-size:16px;}
-.weather-divider{width:1px;height:14px;background:var(--border);}
-.wind-arrow{color:var(--gold);font-size:13px;transition:transform .3s ease;}
+/* ПОГОДНЫЙ ВИДЖЕТ В ШАПКЕ */
+.weather-widget{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:16px;padding:3px 10px;font-size:11px;color:var(--white);white-space:nowrap;line-height:1.2;}
+.weather-item{display:flex;align-items:center;gap:4px;}
+.weather-icon{font-size:13px;}
+.weather-divider{width:1px;height:12px;background:var(--border);}
+.wind-arrow{color:var(--gold);font-size:10px;transition:transform .3s ease;}
 
 .nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(11,26,14,.88);backdrop-filter:blur(16px);border-bottom:1px solid transparent;transition:var(--t);padding:14px 0;}
 .nav-scrolled{background:rgba(11,26,14,.97);border-bottom-color:var(--border);padding:8px 0;box-shadow:var(--shd);}
 .nav-c{display:flex;justify-content:space-between;align-items:center;}
-.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--gold);}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--gold);flex-shrink:0;}
 .nav-logo{width:40px!important;height:40px!important;max-width:40px!important;max-height:40px!important;object-fit:contain!important;}
 .nav-brand-text{font-family:var(--ff);font-size:18px;font-weight:700;}
 .nav-menu{display:flex;align-items:center;gap:4px;}
@@ -357,11 +357,14 @@ select.form-input option{background:var(--card);}
     .score-disp{font-size:48px;}
     .page-title{font-size:26px;}
     .lb-table th,.lb-table td{padding:10px 6px;font-size:12px;}
+    .weather-widget{padding:2px 7px;font-size:10px;gap:4px;border-radius:12px;}
+    .weather-icon{font-size:11px;}
+    .sun-mode-btn{padding:4px 8px;font-size:11px;}
 }
 @media(max-width:480px){
     .card{padding:14px 12px;border-radius:10px;}
-    .nav-logo{width:38px!important;height:38px!important;max-width:38px!important;max-height:38px!important;}
-    .nav-brand-text{font-size:16px;}
+    .nav-logo{width:34px!important;height:34px!important;max-width:34px!important;max-height:34px!important;}
+    .nav-brand-text{font-size:14px;}
     .hero-logo{
         width: clamp(160px, 70vw, 256px) !important;
         height: auto !important;
@@ -383,6 +386,9 @@ select.form-input option{background:var(--card);}
     .hole-nav{grid-template-columns:repeat(6,1fr);gap:3px;}
     .hole-btn{padding:7px 2px;font-size:11px;}
     .mode-cards{grid-template-columns:1fr;}
+    .weather-widget{padding:2px 6px;font-size:10px;gap:3px;}
+    .sun-mode-btn{padding:3px 6px;font-size:10px;}
+    .sun-text{display:none;}
 }
 
 @media (display-mode: standalone), (display-mode: fullscreen) {

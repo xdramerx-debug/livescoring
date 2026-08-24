@@ -95,21 +95,30 @@ function showGroupSetup() {
 }
 
 function onTournamentSelect() {
-    var tid = document.getElementById('g-tournament').value;
-    var teeSel = document.getElementById('g-tee');
+    var tid = document.getElementById('g-tournament') ? document.getElementById('g-tournament').value : '';
     var fmtSel = document.getElementById('g-format');
 
     if (!tid) {
-        teeSel.innerHTML = '<option value="bk">⬛ ' + t('tee_bk') + '</option><option value="bl">🟦 ' + t('tee_bl') + '</option><option value="wh" selected>⬜ ' + t('tee_wh') + '</option><option value="rd">🟥 ' + t('tee_rd') + '</option>';
-        fmtSel.innerHTML = '<option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option><option value="Match Play 1v1">' + t('format_match_1v1') + '</option><option value="Match Play 2v2">' + t('format_match_2v2') + '</option><option value="Scramble">' + t('format_scramble') + '</option>';
+        if (fmtSel) fmtSel.innerHTML = '<option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option><option value="Match Play 1v1">' + t('format_match_1v1') + '</option><option value="Match Play 2v2">' + t('format_match_2v2') + '</option><option value="Scramble">' + t('format_scramble') + '</option>';
         return;
     }
     var tVal = availableTournaments[tid];
     if (!tVal) return;
-    teeSel.innerHTML = ''; 
-    (tVal.tees || ['wh']).forEach(function(tk) { teeSel.innerHTML += '<option value="' + tk + '">' + fmtTeePill(tk) + '</option>'; });
-    fmtSel.innerHTML = ''; 
-    (tVal.formats || ['Stroke Play']).forEach(function(f) { fmtSel.innerHTML += '<option value="' + f + '">' + f + '</option>'; });
+    if (fmtSel) {
+        fmtSel.innerHTML = ''; 
+        (tVal.formats || ['Stroke Play']).forEach(function(f) { fmtSel.innerHTML += '<option value="' + f + '">' + f + '</option>'; });
+    }
+    if (tVal.tees && tVal.tees.length) {
+        var count = parseInt(document.getElementById('g-count').value) || 2;
+        for (var i = 1; i <= count; i++) {
+            var plTeeSel = document.getElementById('pl-tee-' + i);
+            if (plTeeSel) {
+                plTeeSel.innerHTML = '';
+                tVal.tees.forEach(function(tk) { plTeeSel.innerHTML += '<option value="' + tk + '">' + fmtTeePill(tk) + '</option>'; });
+                calcPlayerFieldHcp(i);
+            }
+        }
+    }
 }
 
 function buildPlayerSlots() {
@@ -208,7 +217,7 @@ function onPlayerGenderOrTeeChange(idx) {
 function calcPlayerFieldHcp(idx) {
     var hcpEl = document.getElementById('pl-hcp-' + idx);
     var genderEl = document.getElementById('pl-gender-' + idx);
-    var teeEl = document.getElementById('pl-tee-' + idx) || document.getElementById('g-tee');
+    var teeEl = document.getElementById('pl-tee-' + idx);
     
     if (!hcpEl || !genderEl || !teeEl) return;
     var hcp = hcpEl.value;
@@ -241,10 +250,6 @@ function updateGroupTimingPreview() {
 }
 
 document.addEventListener('change', function(e) {
-    if (e.target.id === 'g-tee') {
-        var count = parseInt(document.getElementById('g-count').value) || 2;
-        for (var i = 1; i <= count; i++) calcPlayerFieldHcp(i);
-    }
     if (e.target.id === 'g-time' || e.target.id === 'g-hole') {
         updateGroupTimingPreview();
     }
@@ -261,7 +266,6 @@ function backToModes() {
 function startGroup() {
     var timeStr = document.getElementById('g-time').value;
     var startHole = parseInt(document.getElementById('g-hole').value) || 1;
-    var tee = document.getElementById('g-tee').value;
     var format = document.getElementById('g-format').value;
     var count = parseInt(document.getElementById('g-count').value) || 2;
     var tournamentId = document.getElementById('g-tournament') ? document.getElementById('g-tournament').value : '';
@@ -279,7 +283,7 @@ function startGroup() {
         var name = nameEl ? nameEl.value.trim() : '';
         var hcpStr = document.getElementById('pl-hcp-' + i).value;
         var gender = document.getElementById('pl-gender-' + i).value;
-        var playerTee = document.getElementById('pl-tee-' + i) ? document.getElementById('pl-tee-' + i).value : tee;
+        var playerTee = document.getElementById('pl-tee-' + i) ? document.getElementById('pl-tee-' + i).value : 'wh';
 
         if (uid) {
             if (selectedUids.indexOf(uid) !== -1) {

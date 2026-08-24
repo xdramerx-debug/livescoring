@@ -3731,6 +3731,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // REAL-TIME AUTOCOMPLETE PLAYER NAME SUGGESTIONS
 // ==========================================
 var DEFAULT_REGISTERED_PLAYERS = {
+    'user_vasya_p': { name: 'Вася Петров', firstName: 'Вася', lastName: 'Петров', handicap: 13.0, gender: 'men', defaultTee: 'wh' },
     'user_vladimir_v': { name: 'Владимир Воробьёв', firstName: 'Владимир', lastName: 'Воробьёв', handicap: 14.4, gender: 'men', defaultTee: 'bl' },
     'user_anna_v': { name: 'Анна Воробьёва', firstName: 'Анна', lastName: 'Воробьёва', handicap: 18.2, gender: 'women', defaultTee: 'rd' },
     'user_alex_i': { name: 'Александр Иванов', firstName: 'Александр', lastName: 'Иванов', handicap: 9.6, gender: 'men', defaultTee: 'bl' },
@@ -3761,7 +3762,22 @@ if (typeof db !== 'undefined') {
     } catch(e) {}
 }
 
+function getCombinedUsers() {
+    var users = Object.assign({}, DEFAULT_REGISTERED_PLAYERS, cachedRegisteredUsers);
+    try {
+        var custom = localStorage.getItem('pestovo_custom_players');
+        if (custom) {
+            var parsedCustom = JSON.parse(custom);
+            if (parsedCustom && typeof parsedCustom === 'object') {
+                Object.assign(users, parsedCustom);
+            }
+        }
+    } catch(e) {}
+    return users;
+}
+
 function loadAllRegisteredUsers(callback) {
+    var users = getCombinedUsers();
     if (typeof db !== 'undefined') {
         db.ref('users').once('value').then(function(sn) {
             var val = sn.val();
@@ -3769,12 +3785,12 @@ function loadAllRegisteredUsers(callback) {
                 Object.assign(cachedRegisteredUsers, val);
                 try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
             }
-            if (typeof callback === 'function') callback(cachedRegisteredUsers);
+            if (typeof callback === 'function') callback(getCombinedUsers());
         }).catch(function() {
-            if (typeof callback === 'function') callback(cachedRegisteredUsers);
+            if (typeof callback === 'function') callback(getCombinedUsers());
         });
     } else {
-        if (typeof callback === 'function') callback(cachedRegisteredUsers);
+        if (typeof callback === 'function') callback(users);
     }
 }
 
@@ -3800,21 +3816,25 @@ function handlePlayerSelect(evt, idx) {
 function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
     if (!inputEl) return;
 
-    var parent = inputEl.parentElement;
-    if (parent) {
-        parent.style.position = 'relative';
-        parent.style.overflow = 'visible';
-    }
-
     var dropdown = document.createElement('div');
     dropdown.className = 'autocomplete-suggestions hidden';
     dropdown.style.display = 'none';
+    dropdown.style.position = 'fixed';
+    dropdown.style.zIndex = '99999999';
 
-    if (containerEl) {
-        containerEl.appendChild(dropdown);
-    } else if (parent) {
-        parent.appendChild(dropdown);
+    if (document.body) {
+        document.body.appendChild(dropdown);
+    } else if (inputEl.parentElement) {
+        inputEl.parentElement.appendChild(dropdown);
     }
+
+    var updatePosition = function() {
+        if (!inputEl || dropdown.style.display === 'none') return;
+        var rect = inputEl.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + 2) + 'px';
+        dropdown.style.left = rect.left + 'px';
+        dropdown.style.width = Math.max(rect.width, 240) + 'px';
+    };
 
     var handleInput = function() {
         var query = inputEl.value.trim().toLowerCase();
@@ -3826,7 +3846,7 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
 
         loadAllRegisteredUsers(function(usersData) {
             var matches = [];
-            Object.entries(usersData).forEach(function(e) {
+            Object.entries(usersData || {}).forEach(function(e) {
                 var uid = e[0];
                 var u = e[1];
                 var name = (u.name || '').trim();
@@ -3843,7 +3863,7 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
                         name: full || name || 'Игрок',
                         handicap: u.handicap != null ? u.handicap : 0,
                         gender: u.gender || 'men',
-                        defaultTee: u.defaultTee || 'wh'
+                        defaultTee: u.defaultTee || (u.gender === 'women' ? 'rd' : 'bl')
                     });
                 }
             });
@@ -3859,7 +3879,7 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
             activeAutocompleteDropdown = dropdown;
 
             var html = '';
-            matches.slice(0, 6).forEach(function(m, idx) {
+            matches.slice(0, 8).forEach(function(m, idx) {
                 var gIcon = m.gender === 'women' ? '👩' : '👨';
                 var hcpText = fmtExactHcp(m.handicap) + ' HCP';
                 html += '<div class="autocomplete-item" ' +
@@ -3872,6 +3892,7 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
             });
 
             dropdown.innerHTML = html;
+            updatePosition();
             dropdown.style.display = 'block';
             dropdown.classList.remove('hidden');
         });
@@ -3880,6 +3901,9 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
     inputEl.addEventListener('input', handleInput);
     inputEl.addEventListener('keyup', handleInput);
     inputEl.addEventListener('focus', handleInput);
+
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
 
     document.addEventListener('touchstart', function(e) {
         if (e.target !== inputEl && !dropdown.contains(e.target)) {

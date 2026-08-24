@@ -3549,7 +3549,8 @@ function applyPageVisibilitySettings() {
     var curPage = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.split('/').pop() || 'index.html' : 'index.html';
 
     MANAGED_PAGES.forEach(function(page) {
-        var isHidden = (hiddenPages[page] === true);
+        var key = page.replace('.html', '');
+        var isHidden = (hiddenPages[page] === true || hiddenPages[key] === true);
         var links = document.querySelectorAll('a[href*="' + page + '"]');
         links.forEach(function(link) {
             if (isHidden) {
@@ -3562,7 +3563,25 @@ function applyPageVisibilitySettings() {
         });
     });
 
-    if (MANAGED_PAGES.includes(curPage) && hiddenPages[curPage] === true) {
+    var groups = document.querySelectorAll('.mobile-drawer-group, .nav-group, .menu-group, .footer-group');
+    groups.forEach(function(group) {
+        var links = group.querySelectorAll('a');
+        if (links.length > 0) {
+            var visibleCount = 0;
+            links.forEach(function(l) {
+                if (l.style.display !== 'none' && !l.classList.contains('nav-page-hidden')) {
+                    visibleCount++;
+                }
+            });
+            if (visibleCount === 0) {
+                group.style.setProperty('display', 'none', 'important');
+            } else {
+                group.style.removeProperty('display');
+            }
+        }
+    });
+
+    if (MANAGED_PAGES.includes(curPage) && (hiddenPages[curPage] === true || hiddenPages[curPage.replace('.html', '')] === true)) {
         var mainEl = document.querySelector('main') || document.body;
         if (mainEl && !document.getElementById('page-hidden-notice')) {
             var homeText = (typeof t === 'function' ? t('nav_home') : (currentLang === 'en' ? 'Home' : 'Главная'));

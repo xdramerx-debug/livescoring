@@ -994,7 +994,8 @@ function loadPageVisibilitySettings() {
             var key = page.replace('.html', '');
             var checkbox = document.getElementById('pv-' + key) || document.getElementById('pv-' + page);
             if (checkbox) {
-                checkbox.checked = (hp[page] !== true);
+                var isHidden = (hp[page] === true || hp[key] === true);
+                checkbox.checked = !isHidden;
             }
         });
     };
@@ -1005,9 +1006,23 @@ function loadPageVisibilitySettings() {
 
     if (typeof db !== 'undefined') {
         db.ref('settings/hidden_pages').on('value', function(sn) {
-            var hp = sn.val() || {};
-            localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hp));
-            updateCheckboxes(hp);
+            var fbVal = sn.val();
+            if (fbVal !== null && typeof fbVal === 'object') {
+                var hp = {};
+                MANAGED_PAGES.forEach(function(page) {
+                    var key = page.replace('.html', '');
+                    if (fbVal[key] !== undefined) {
+                        hp[page] = (fbVal[key] === true);
+                        hp[key] = (fbVal[key] === true);
+                    } else if (fbVal[page] !== undefined) {
+                        hp[page] = (fbVal[page] === true);
+                        hp[key] = (fbVal[page] === true);
+                    }
+                });
+                localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hp));
+                updateCheckboxes(hp);
+                if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+            }
         });
     }
 }
@@ -1016,10 +1031,16 @@ function savePageVisibilitySettings() {
     if (typeof MANAGED_PAGES === 'undefined') return;
 
     var hiddenPages = {};
+    var fbPages = {};
+
     MANAGED_PAGES.forEach(function(page) {
         var key = page.replace('.html', '');
         var checkbox = document.getElementById('pv-' + key) || document.getElementById('pv-' + page);
-        hiddenPages[page] = checkbox ? !checkbox.checked : false;
+        var isHidden = checkbox ? !checkbox.checked : false;
+
+        hiddenPages[page] = isHidden;
+        hiddenPages[key] = isHidden;
+        fbPages[key] = isHidden;
     });
 
     localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hiddenPages));
@@ -1029,8 +1050,8 @@ function savePageVisibilitySettings() {
     if (typeof vib === 'function') vib([50, 30, 50]);
 
     if (typeof db !== 'undefined') {
-        db.ref('settings/hidden_pages').set(hiddenPages).then(function() {
-            console.log('Page visibility synced to Firebase');
+        db.ref('settings/hidden_pages').set(fbPages).then(function() {
+            console.log('Page visibility synced to Firebase successfully');
         }).catch(function(err) {
             console.warn('Firebase sync warning:', err);
         });

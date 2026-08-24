@@ -346,9 +346,11 @@ function startGroup() {
     var creatorId = currentUser ? currentUser.uid : pOrder[0];
     var accessKey = 'group_key_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
 
+    var flightTee = (pOrder.length > 0 && players[pOrder[0]] && players[pOrder[0]].tee) ? players[pOrder[0]].tee : 'wh';
+
     var data = {
         mode: 'group',
-        tee: tee,
+        tee: flightTee,
         format: format,
         startHole: startHole,
         startTime: startDate.getTime(),
@@ -372,6 +374,8 @@ function startGroup() {
     ref.set(data).then(function() {
         toast(t('msg_round_started'));
         window.location.href = 'live.html?round=' + newRoundId;
+    }).catch(function(err) {
+        toast('⚠️ Ошибка запуска раунда: ' + err.message, 'error');
     });
 }
 

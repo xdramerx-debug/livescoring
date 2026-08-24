@@ -3764,36 +3764,79 @@ if (typeof db !== 'undefined') {
     } catch(e) {}
 }
 
-function getCombinedUsers() {
-    var users = Object.assign({}, DEFAULT_REGISTERED_PLAYERS, cachedRegisteredUsers);
+function getAllKnownPlayers(callback) {
+    var known = Object.assign({}, DEFAULT_REGISTERED_PLAYERS);
+
+    try {
+        var localCached = localStorage.getItem('pestovo_cached_users');
+        if (localCached) {
+            var p1 = JSON.parse(localCached);
+            if (p1 && typeof p1 === 'object') Object.assign(known, p1);
+        }
+    } catch(e) {}
+
     try {
         var custom = localStorage.getItem('pestovo_custom_players');
         if (custom) {
-            var parsedCustom = JSON.parse(custom);
-            if (parsedCustom && typeof parsedCustom === 'object') {
-                Object.assign(users, parsedCustom);
-            }
+            var p2 = JSON.parse(custom);
+            if (p2 && typeof p2 === 'object') Object.assign(known, p2);
         }
     } catch(e) {}
-    return users;
+
+    if (cachedRegisteredUsers) {
+        Object.assign(known, cachedRegisteredUsers);
+    }
+
+    var finalize = function() {
+        if (typeof callback === 'function') callback(known);
+    };
+
+    if (typeof db !== 'undefined') {
+        Promise.all([
+            db.ref('users').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
+            db.ref('rounds').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; })
+        ]).then(function(results) {
+            var dbUsers = results[0];
+            var dbRounds = results[1];
+
+            Object.assign(known, dbUsers);
+
+            Object.values(dbRounds).forEach(function(r) {
+                if (r && r.players && typeof r.players === 'object') {
+                    Object.entries(r.players).forEach(function(pe) {
+                        var pid = pe[0], p = pe[1];
+                        if (p && p.name) {
+                            var pName = p.name.trim();
+                            var key = pid.startsWith('guest_') ? ('guest_name_' + pName.toLowerCase().replace(/\s+/g, '_')) : pid;
+                            if (!known[key]) {
+                                var parts = pName.split(' ');
+                                known[key] = {
+                                    name: pName,
+                                    firstName: parts[0] || pName,
+                                    lastName: parts.slice(1).join(' ') || '',
+                                    handicap: p.exactHcp != null ? p.exactHcp : (p.fieldHcp || 0),
+                                    gender: p.gender || 'men',
+                                    defaultTee: p.tee || (p.gender === 'women' ? 'rd' : 'bl'),
+                                    isGuest: true
+                                };
+                            }
+                        }
+                    });
+                }
+            });
+
+            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(known)); } catch(e) {}
+            finalize();
+        }).catch(function() {
+            finalize();
+        });
+    } else {
+        finalize();
+    }
 }
 
 function loadAllRegisteredUsers(callback) {
-    var users = getCombinedUsers();
-    if (typeof db !== 'undefined') {
-        db.ref('users').once('value').then(function(sn) {
-            var val = sn.val();
-            if (val && typeof val === 'object') {
-                Object.assign(cachedRegisteredUsers, val);
-                try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
-            }
-            if (typeof callback === 'function') callback(getCombinedUsers());
-        }).catch(function() {
-            if (typeof callback === 'function') callback(getCombinedUsers());
-        });
-    } else {
-        if (typeof callback === 'function') callback(users);
-    }
+    getAllKnownPlayers(callback);
 }
 
 var currentAutocompleteMatches = [];
@@ -3817,25 +3860,68 @@ function handlePlayerSelect(evt, idx) {
 
 function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
     if (!inputEl) return;
+    initPlayerSearchAutofill({
+        searchInputId: inputEl.id,
+        onSelect: onSelectCallback,
+        onClear: null
+    });
+}
+
+function initPlayerSearchAutofill(opts) {
+    opts = opts || {};
+    var searchInputId = opts.searchInputId;
+    var onSelect = opts.onSelect;
+    var onClear = opts.onClear;
+
+    var inputEl = document.getElementById(searchInputId);
+    if (!inputEl) return;
+
+    inputEl.setAttribute('autocomplete', 'off');
+    inputEl.setAttribute('autocorrect', 'off');
+
+    var parent = inputEl.parentElement;
+    if (parent) {
+        parent.style.position = 'relative';
+        parent.style.overflow = 'visible';
+    }
+
+    var oldDropdown = parent ? parent.querySelector('.autocomplete-suggestions') : null;
+    if (oldDropdown) oldDropdown.remove();
 
     var dropdown = document.createElement('div');
     dropdown.className = 'autocomplete-suggestions hidden';
     dropdown.style.display = 'none';
-    dropdown.style.position = 'fixed';
-    dropdown.style.zIndex = '99999999';
 
-    if (document.body) {
+    if (parent) {
+        parent.appendChild(dropdown);
+    } else {
         document.body.appendChild(dropdown);
-    } else if (inputEl.parentElement) {
-        inputEl.parentElement.appendChild(dropdown);
     }
 
-    var updatePosition = function() {
-        if (!inputEl || dropdown.style.display === 'none') return;
-        var rect = inputEl.getBoundingClientRect();
-        dropdown.style.top = (rect.bottom + 2) + 'px';
-        dropdown.style.left = rect.left + 'px';
-        dropdown.style.width = Math.max(rect.width, 240) + 'px';
+    var activeMatches = [];
+    var highlightedIdx = -1;
+
+    var updateHighlight = function() {
+        var items = dropdown.querySelectorAll('.autocomplete-item');
+        items.forEach(function(item, i) {
+            if (i === highlightedIdx) {
+                item.classList.add('active-keyboard');
+                try { item.scrollIntoView({ block: 'nearest' }); } catch(e) {}
+            } else {
+                item.classList.remove('active-keyboard');
+            }
+        });
+    };
+
+    var triggerSelection = function(match) {
+        if (!match) return;
+        if (typeof onSelect === 'function') {
+            onSelect(match);
+        }
+        dropdown.style.display = 'none';
+        dropdown.classList.add('hidden');
+        highlightedIdx = -1;
+        try { inputEl.blur(); } catch(e) {}
     };
 
     var handleInput = function() {
@@ -3843,11 +3929,16 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
         if (!query || query.length < 1) {
             dropdown.style.display = 'none';
             dropdown.classList.add('hidden');
+            highlightedIdx = -1;
+            if (typeof onClear === 'function') onClear();
             return;
         }
 
-        loadAllRegisteredUsers(function(usersData) {
+        getAllKnownPlayers(function(usersData) {
             var matches = [];
+            var seenKeys = new Set();
+            var exactMatch = null;
+
             Object.entries(usersData || {}).forEach(function(e) {
                 var uid = e[0];
                 var u = e[1];
@@ -3857,66 +3948,130 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
                 var email = (u.email || '').trim();
 
                 var full = (fn + ' ' + ln).trim() || name;
-                var searchStr = (full + ' ' + name + ' ' + email).toLowerCase();
+                if (!full) return;
 
-                if (searchStr.includes(query)) {
-                    matches.push({
+                var normKey = full.toLowerCase() + '_' + (u.handicap != null ? u.handicap : '');
+                if (seenKeys.has(normKey)) return;
+
+                var fnLower = fn.toLowerCase();
+                var lnLower = ln.toLowerCase();
+                var fullLower = full.toLowerCase();
+                var nameLower = name.toLowerCase();
+
+                var isPrefixMatch = (fnLower.startsWith(query) || lnLower.startsWith(query) || fullLower.startsWith(query) || nameLower.startsWith(query) || fullLower.includes(query));
+
+                if (isPrefixMatch) {
+                    seenKeys.add(normKey);
+                    var playerObj = {
                         uid: uid,
-                        name: full || name || 'Игрок',
+                        name: full,
+                        firstName: fn || full.split(' ')[0] || full,
+                        lastName: ln || full.split(' ').slice(1).join(' ') || '',
                         handicap: u.handicap != null ? u.handicap : 0,
                         gender: u.gender || 'men',
-                        defaultTee: u.defaultTee || (u.gender === 'women' ? 'rd' : 'bl')
-                    });
+                        defaultTee: u.defaultTee || (u.gender === 'women' ? 'rd' : 'bl'),
+                        isGuest: !!u.isGuest
+                    };
+                    matches.push(playerObj);
+
+                    var reversedFull = (ln + ' ' + fn).trim().toLowerCase();
+                    if (query === fullLower || query === reversedFull || query === nameLower) {
+                        exactMatch = playerObj;
+                    }
                 }
             });
+
+            if (exactMatch) {
+                triggerSelection(exactMatch);
+                return;
+            }
 
             if (matches.length === 0) {
                 dropdown.style.display = 'none';
                 dropdown.classList.add('hidden');
+                highlightedIdx = -1;
                 return;
             }
 
+            activeMatches = matches;
             currentAutocompleteMatches = matches;
-            currentAutocompleteCallback = onSelectCallback;
+            currentAutocompleteCallback = onSelect;
             activeAutocompleteDropdown = dropdown;
+            highlightedIdx = -1;
 
             var html = '';
             matches.slice(0, 8).forEach(function(m, idx) {
                 var gIcon = m.gender === 'women' ? '👩' : '👨';
                 var hcpText = fmtExactHcp(m.handicap) + ' HCP';
-                html += '<div class="autocomplete-item" ' +
-                        'onmousedown="handlePlayerSelect(event, ' + idx + ')" ' +
-                        'ontouchstart="handlePlayerSelect(event, ' + idx + ')" ' +
-                        'onclick="handlePlayerSelect(event, ' + idx + ')">';
-                html += '<span>' + gIcon + ' <strong style="color:var(--white);">' + escapeHtml(m.name) + '</strong></span>';
-                html += '<span style="color:var(--gold);font-weight:700;font-size:12px;">' + hcpText + '</span>';
+                var guestTag = m.isGuest ? ' <span style="font-size:10px;color:var(--gold);">(Гость)</span>' : '';
+
+                html += '<div class="autocomplete-item" data-idx="' + idx + '" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.08);min-height:44px;">';
+                html += '<span>' + gIcon + ' <strong style="color:var(--white);font-size:14px;">' + escapeHtml(m.name) + '</strong>' + guestTag + '</span>';
+                html += '<span style="color:var(--gold);font-weight:700;font-size:13px;">' + hcpText + '</span>';
                 html += '</div>';
             });
 
             dropdown.innerHTML = html;
-            updatePosition();
             dropdown.style.display = 'block';
             dropdown.classList.remove('hidden');
+
+            dropdown.querySelectorAll('.autocomplete-item').forEach(function(item) {
+                var handleTap = function(evt) {
+                    if (evt.cancelable) evt.preventDefault();
+                    evt.stopPropagation();
+                    var idxAttr = item.getAttribute('data-idx');
+                    var idx = parseInt(idxAttr);
+                    var match = activeMatches[idx];
+                    if (match) {
+                        triggerSelection(match);
+                    }
+                };
+
+                item.addEventListener('touchstart', handleTap, { passive: false });
+                item.addEventListener('mousedown', handleTap);
+                item.addEventListener('click', handleTap);
+            });
         });
     };
 
-    inputEl.addEventListener('input', handleInput);
-    inputEl.addEventListener('keyup', handleInput);
-    inputEl.addEventListener('focus', handleInput);
+    inputEl.addEventListener('keydown', function(e) {
+        if (dropdown.style.display === 'none' || activeMatches.length === 0) return;
 
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlightedIdx = (highlightedIdx + 1) % activeMatches.length;
+            updateHighlight();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlightedIdx = (highlightedIdx - 1 + activeMatches.length) % activeMatches.length;
+            updateHighlight();
+        } else if (e.key === 'Enter') {
+            if (highlightedIdx >= 0 && highlightedIdx < activeMatches.length) {
+                e.preventDefault();
+                triggerSelection(activeMatches[highlightedIdx]);
+            }
+        } else if (e.key === 'Escape') {
+            dropdown.style.display = 'none';
+            dropdown.classList.add('hidden');
+            highlightedIdx = -1;
+        }
+    });
+
+    inputEl.addEventListener('input', handleInput);
+    inputEl.addEventListener('focus', handleInput);
 
     document.addEventListener('touchstart', function(e) {
         if (e.target !== inputEl && !dropdown.contains(e.target)) {
             dropdown.style.display = 'none';
             dropdown.classList.add('hidden');
+            highlightedIdx = -1;
         }
     });
     document.addEventListener('click', function(e) {
         if (e.target !== inputEl && !dropdown.contains(e.target)) {
             dropdown.style.display = 'none';
             dropdown.classList.add('hidden');
+            highlightedIdx = -1;
         }
     });
 }

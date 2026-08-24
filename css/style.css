@@ -1829,8 +1829,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .autocomplete-item:last-child {
     border-bottom: none !important;
 }
-.autocomplete-item:hover, .autocomplete-item:active {
-    background: rgba(201, 168, 76, 0.25) !important;
+.autocomplete-item:hover, .autocomplete-item:active, .autocomplete-item.active-keyboard {
+    background: rgba(201, 168, 76, 0.35) !important;
 }
 body.sun-mode .autocomplete-suggestions {
     background: #ffffff !important;
@@ -1842,7 +1842,8 @@ body.sun-mode .autocomplete-item {
     border-bottom: 1px solid #e0e0e0 !important;
 }
 body.sun-mode .autocomplete-item:hover,
-body.sun-mode .autocomplete-item:active {
+body.sun-mode .autocomplete-item:active,
+body.sun-mode .autocomplete-item.active-keyboard {
     background: #e8f5e9 !important;
 }
 

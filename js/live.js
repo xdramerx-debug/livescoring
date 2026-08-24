@@ -148,32 +148,43 @@ function buildPlayerSlots() {
     for (var i = 1; i <= count; i++) {
         (function(idx) {
             var nameInp = document.getElementById('pl-name-' + idx);
-            if (typeof attachPlayerNameAutocomplete === 'function') {
-                attachPlayerNameAutocomplete(nameInp, null, function(matchedUser) {
-                    var nEl = document.getElementById('pl-name-' + idx);
-                    var uEl = document.getElementById('pl-uid-' + idx);
-                    var gEl = document.getElementById('pl-gender-' + idx);
-                    var tEl = document.getElementById('pl-tee-' + idx);
-                    var hEl = document.getElementById('pl-hcp-' + idx);
+            if (typeof initPlayerSearchAutofill === 'function') {
+                initPlayerSearchAutofill({
+                    searchInputId: 'pl-name-' + idx,
+                    onSelect: function(matchedUser) {
+                        var nEl = document.getElementById('pl-name-' + idx);
+                        var uEl = document.getElementById('pl-uid-' + idx);
+                        var gEl = document.getElementById('pl-gender-' + idx);
+                        var tEl = document.getElementById('pl-tee-' + idx);
+                        var hEl = document.getElementById('pl-hcp-' + idx);
 
-                    if (nEl) nEl.value = matchedUser.name;
-                    if (uEl) uEl.value = matchedUser.uid;
-                    if (gEl) gEl.value = matchedUser.gender;
+                        if (nEl) nEl.value = matchedUser.name;
+                        if (uEl) uEl.value = matchedUser.uid;
+                        if (gEl) gEl.value = matchedUser.gender;
 
-                    if (tEl) {
-                        if (matchedUser.defaultTee) {
-                            tEl.value = matchedUser.defaultTee;
-                        } else if (matchedUser.gender === 'women') {
-                            tEl.value = 'rd';
-                        } else {
-                            tEl.value = 'bl';
+                        if (tEl) {
+                            if (matchedUser.defaultTee) {
+                                tEl.value = matchedUser.defaultTee;
+                            } else if (matchedUser.gender === 'women') {
+                                tEl.value = 'rd';
+                            } else {
+                                tEl.value = 'bl';
+                            }
                         }
+
+                        if (hEl) hEl.value = fmtExactHcp(matchedUser.handicap);
+
+                        calcPlayerFieldHcp(idx);
+                        if (typeof toast === 'function') toast('👤 ' + (currentLang === 'en' ? 'Selected player: ' : 'Выбран игрок: ') + matchedUser.name + ' (' + fmtExactHcp(matchedUser.handicap) + ' HCP)', 'info');
+                    },
+                    onClear: function() {
+                        var uEl = document.getElementById('pl-uid-' + idx);
+                        var hEl = document.getElementById('pl-hcp-' + idx);
+                        var fEl = document.getElementById('pl-field-' + idx);
+                        if (uEl) uEl.value = '';
+                        if (hEl) hEl.value = '';
+                        if (fEl) fEl.value = '';
                     }
-
-                    if (hEl) hEl.value = fmtExactHcp(matchedUser.handicap);
-
-                    calcPlayerFieldHcp(idx);
-                    if (typeof toast === 'function') toast('👤 ' + (currentLang === 'en' ? 'Selected player: ' : 'Выбран игрок: ') + matchedUser.name + ' (' + fmtExactHcp(matchedUser.handicap) + ' HCP)', 'info');
                 });
             }
         })(i);

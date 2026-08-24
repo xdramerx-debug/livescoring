@@ -45,26 +45,36 @@ function initSoloForm() {
         var lnInp = document.getElementById('s-lastname');
         var gEl = document.getElementById('s-gender');
         var hEl = document.getElementById('s-exact-hcp');
+        var tEl = document.getElementById('s-tee');
 
-        var nameParts = matchedUser.name.split(' ');
-        var fn = nameParts[0] || matchedUser.name;
-        var ln = nameParts.slice(1).join(' ') || '';
-
-        if (fnInp) fnInp.value = fn;
-        if (lnInp) lnInp.value = ln;
+        if (fnInp) fnInp.value = matchedUser.firstName || matchedUser.name;
+        if (lnInp) lnInp.value = matchedUser.lastName || '';
         if (gEl) gEl.value = matchedUser.gender;
         if (hEl) hEl.value = fmtExactHcp(matchedUser.handicap);
+        if (tEl && matchedUser.defaultTee) tEl.value = matchedUser.defaultTee;
 
         window.sSelectedUid = matchedUser.uid;
         calcSoloFieldHcp();
         if (typeof toast === 'function') toast('👤 ' + (currentLang === 'en' ? 'Selected player: ' : 'Выбран игрок: ') + matchedUser.name + ' (' + fmtExactHcp(matchedUser.handicap) + ' HCP)', 'info');
     };
 
-    if (fnInp && typeof attachPlayerNameAutocomplete === 'function') {
-        attachPlayerNameAutocomplete(fnInp, null, handleSoloSelect);
+    var handleSoloClear = function() {
+        window.sSelectedUid = null;
+    };
+
+    if (fnInp && typeof initPlayerSearchAutofill === 'function') {
+        initPlayerSearchAutofill({
+            searchInputId: 's-firstname',
+            onSelect: handleSoloSelect,
+            onClear: handleSoloClear
+        });
     }
-    if (lnInp && typeof attachPlayerNameAutocomplete === 'function') {
-        attachPlayerNameAutocomplete(lnInp, null, handleSoloSelect);
+    if (lnInp && typeof initPlayerSearchAutofill === 'function') {
+        initPlayerSearchAutofill({
+            searchInputId: 's-lastname',
+            onSelect: handleSoloSelect,
+            onClear: handleSoloClear
+        });
     }
 }
 

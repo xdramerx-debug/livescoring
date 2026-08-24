@@ -949,12 +949,40 @@ function loadPageVisibilitySettings() {
     }
 }
 
+function loadPageVisibilitySettings() {
+    if (typeof MANAGED_PAGES === 'undefined') return;
+
+    var updateCheckboxes = function(hp) {
+        hp = hp || {};
+        MANAGED_PAGES.forEach(function(page) {
+            var key = page.replace('.html', '');
+            var checkbox = document.getElementById('pv-' + key) || document.getElementById('pv-' + page);
+            if (checkbox) {
+                checkbox.checked = (hp[page] !== true);
+            }
+        });
+    };
+
+    if (typeof getHiddenPages === 'function') {
+        updateCheckboxes(getHiddenPages());
+    }
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/hidden_pages').on('value', function(sn) {
+            var hp = sn.val() || {};
+            localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hp));
+            updateCheckboxes(hp);
+        });
+    }
+}
+
 function savePageVisibilitySettings() {
     if (typeof MANAGED_PAGES === 'undefined') return;
 
     var hiddenPages = {};
     MANAGED_PAGES.forEach(function(page) {
-        var checkbox = document.getElementById('pv-' + page);
+        var key = page.replace('.html', '');
+        var checkbox = document.getElementById('pv-' + key) || document.getElementById('pv-' + page);
         if (checkbox && !checkbox.checked) {
             hiddenPages[page] = true;
         }
@@ -965,6 +993,9 @@ function savePageVisibilitySettings() {
     if (typeof db !== 'undefined') {
         db.ref('settings/hidden_pages').set(hiddenPages).then(function() {
             toast(currentLang === 'en' ? '✅ Page visibility settings saved!' : '✅ Настройки видимости страниц сохранены!', 'success');
+            if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+        }).catch(function(err) {
+            toast('⚠️ Ошибка сохранения: ' + err.message, 'error');
             if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
         });
     } else {

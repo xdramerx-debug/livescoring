@@ -983,9 +983,7 @@ function savePageVisibilitySettings() {
     MANAGED_PAGES.forEach(function(page) {
         var key = page.replace('.html', '');
         var checkbox = document.getElementById('pv-' + key) || document.getElementById('pv-' + page);
-        if (checkbox && !checkbox.checked) {
-            hiddenPages[page] = true;
-        }
+        hiddenPages[page] = checkbox ? !checkbox.checked : false;
     });
 
     localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hiddenPages));

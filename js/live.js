@@ -68,19 +68,30 @@ function showGroupSetup() {
         buildPlayerSlots();
     });
 
-    db.ref('tournaments').once('value').then(function(sn) {
-        availableTournaments = sn.val() || {};
-        var tnSel = document.getElementById('g-tournament');
-        if (tnSel) {
-            tnSel.innerHTML = '<option value="">' + t('no_tournament') + '</option>';
-            Object.entries(availableTournaments).forEach(function(e) {
-                var tVal = e[1];
-                if (tVal.status === 'completed') return;
-                tnSel.innerHTML += '<option value="' + e[0] + '">' + (tVal.name || '—') + ' · ' + fmtDate(new Date(tVal.date).getTime()) + '</option>';
-            });
-            tnSel.addEventListener('change', onTournamentSelect);
-        }
-    });
+    var hiddenPages = typeof getHiddenPages === 'function' ? getHiddenPages() : {};
+    var isTournamentsHidden = (hiddenPages['tournaments.html'] === true || hiddenPages['tournaments'] === true);
+
+    var tnSel = document.getElementById('g-tournament');
+    var tnGroup = tnSel ? tnSel.closest('.form-group') : null;
+
+    if (isTournamentsHidden) {
+        if (tnGroup) tnGroup.style.setProperty('display', 'none', 'important');
+        if (tnSel) tnSel.value = '';
+    } else {
+        if (tnGroup) tnGroup.style.removeProperty('display');
+        db.ref('tournaments').once('value').then(function(sn) {
+            availableTournaments = sn.val() || {};
+            if (tnSel) {
+                tnSel.innerHTML = '<option value="">' + t('no_tournament') + '</option>';
+                Object.entries(availableTournaments).forEach(function(e) {
+                    var tVal = e[1];
+                    if (tVal.status === 'completed') return;
+                    tnSel.innerHTML += '<option value="' + e[0] + '">' + (tVal.name || '—') + ' · ' + fmtDate(new Date(tVal.date).getTime()) + '</option>';
+                });
+                tnSel.addEventListener('change', onTournamentSelect);
+            }
+        });
+    }
 }
 
 function onTournamentSelect() {

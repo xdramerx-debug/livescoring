@@ -3649,6 +3649,20 @@ function applyPageVisibilitySettings() {
     var hiddenPages = getHiddenPages();
     var curPage = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.split('/').pop() || 'index.html' : 'index.html';
 
+    var isTournamentsHidden = (hiddenPages['tournaments.html'] === true || hiddenPages['tournaments'] === true);
+    var tnSel = document.getElementById('g-tournament');
+    if (tnSel) {
+        var tnGroup = tnSel.closest('.form-group');
+        if (tnGroup) {
+            if (isTournamentsHidden) {
+                tnGroup.style.setProperty('display', 'none', 'important');
+                tnSel.value = '';
+            } else {
+                tnGroup.style.removeProperty('display');
+            }
+        }
+    }
+
     MANAGED_PAGES.forEach(function(page) {
         var key = page.replace('.html', '');
         var isHidden = (hiddenPages[page] === true || hiddenPages[key] === true);

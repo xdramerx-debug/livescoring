@@ -17,19 +17,192 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100
 .text-center{text-align:center;}
 img{max-width:100%;height:auto;display:block;}
 
-/* SUN MODE (Яркое солнце) */
-body.sun-mode{
-    --bg:#f8faf8;--bg2:#ffffff;--card:#f0f4f1;--card-h:#e2e8e3;--input:#ffffff;
-    --green:#1a472a;--gr-l:#2d6b3f;--gr-d:#e2ebe4;
-    --gold:#9e7a1b;--gold-l:#b89228;
-    --white:#000000;--text:#0b1a0e;--muted:#3a523e;--border:#b0c4b5;
-    --red:#d32f2f;--blue:#1976d2;
+/* SUN MODE (ЯРКОЕ СОЛНЦЕ - ВЫСОКИЙ КОНТРАСТ ДЛЯ ПРЯМЫХ СОЛНЕЧНЫХ ЛУЧЕЙ) */
+body.sun-mode {
+    --bg: #ffffff;
+    --bg2: #f4f6f4;
+    --card: #ffffff;
+    --card-h: #e2e8e3;
+    --input: #ffffff;
+    --green: #11381b;
+    --gr-l: #1b522b;
+    --gr-d: #d8e5df;
+    --gold: #000000;
+    --gold-l: #111111;
+    --white: #000000;
+    --text: #000000;
+    --muted: #222222;
+    --border: #000000;
+    --red: #b71c1c;
+    --blue: #0d47a1;
 }
-body.sun-mode .nav{background:rgba(248,250,248,.95);border-bottom-color:#b0c4b5;}
-body.sun-mode .card{background:#ffffff;backdrop-filter:none;-webkit-backdrop-filter:none;border:1px solid #b0c4b5;box-shadow:0 2px 12px rgba(0,0,0,0.06);}
-body.sun-mode .hole-btn.active{background:#9e7a1b;color:#ffffff;box-shadow:none;}
-body.sun-mode .hole-val,body.sun-mode .score-disp{color:#000000;}
-body.sun-mode .list-item{background:#ffffff;border:1px solid #b0c4b5;}
+
+body.sun-mode .nav {
+    background: #ffffff !important;
+    border-bottom: 2px solid #000000 !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+}
+body.sun-mode .nav-brand-text,
+body.sun-mode .nav-link,
+body.sun-mode .nav-uname {
+    color: #000000 !important;
+    font-weight: 800 !important;
+}
+body.sun-mode .nav-link:hover,
+body.sun-mode .nav-link.active {
+    color: #11381b !important;
+    border-bottom: 2px solid #11381b !important;
+}
+
+body.sun-mode .card,
+body.sun-mode .setup-card,
+body.sun-mode .round-card,
+body.sun-mode .setup-player-card,
+body.sun-mode .list-item,
+body.sun-mode .pestovo-modern-scorecard {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
+    color: #000000 !important;
+}
+
+body.sun-mode h1,
+body.sun-mode h2,
+body.sun-mode h3,
+body.sun-mode h4,
+body.sun-mode .sec-t,
+body.sun-mode .page-title,
+body.sun-mode .setup-section-title,
+body.sun-mode .setup-subhead,
+body.sun-mode .setup-player-head {
+    color: #000000 !important;
+    font-weight: 800 !important;
+}
+
+body.sun-mode .form-input,
+body.sun-mode select.form-input,
+body.sun-mode input[type="text"],
+body.sun-mode input[type="number"],
+body.sun-mode input[type="time"],
+body.sun-mode input[type="date"],
+body.sun-mode input[type="password"],
+body.sun-mode input[type="email"] {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+body.sun-mode label {
+    color: #000000 !important;
+    font-weight: 800 !important;
+}
+
+/* Active Game Score Controls in Sun Mode */
+body.sun-mode .hole-box {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+}
+body.sun-mode .hole-lbl {
+    color: #222222 !important;
+    font-weight: 800 !important;
+}
+body.sun-mode .hole-val {
+    color: #000000 !important;
+    font-weight: 900 !important;
+    text-shadow: none !important;
+}
+body.sun-mode .hole-btn {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+}
+body.sun-mode .hole-btn.active {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border-color: #000000 !important;
+}
+body.sun-mode .hole-btn.done {
+    background: #11381b !important;
+    color: #ffffff !important;
+    border-color: #11381b !important;
+}
+
+body.sun-mode .score-disp {
+    color: #000000 !important;
+    font-weight: 900 !important;
+    text-shadow: none !important;
+}
+body.sun-mode .score-minus,
+body.sun-mode .score-plus {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: 2px solid #000000 !important;
+}
+body.sun-mode .score-par-btn {
+    background: #f0f0f0 !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+    font-weight: 800 !important;
+}
+
+body.sun-mode .btn-g {
+    background: #11381b !important;
+    color: #ffffff !important;
+    border: 2px solid #11381b !important;
+    font-weight: 800 !important;
+}
+body.sun-mode .btn-og {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+    font-weight: 800 !important;
+}
+
+/* Modals & Mobile Drawer in Sun Mode */
+body.sun-mode .modal-body,
+body.sun-mode .modal-content,
+body.sun-mode .mobile-drawer-panel {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+    color: #000000 !important;
+}
+body.sun-mode .modal-top-bar {
+    background: #f0f4f1 !important;
+    border-bottom: 2px solid #000000 !important;
+}
+body.sun-mode .modal-back-btn,
+body.sun-mode .simple-mode-btn,
+body.sun-mode .sun-mode-btn,
+body.sun-mode .lang-btn {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+}
+
+/* Scorecard Tiles in Sun Mode */
+body.sun-mode .msc-tile {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+    color: #000000 !important;
+}
+body.sun-mode .msc-tile-score {
+    color: #000000 !important;
+    font-weight: 900 !important;
+}
+body.sun-mode .msc-totals-strip,
+body.sun-mode .msc-grand-strip {
+    background: #f0f4f1 !important;
+    border: 2px solid #000000 !important;
+    color: #000000 !important;
+}
+body.sun-mode .msc-totals-strip b,
+body.sun-mode .msc-grand-strip b {
+    color: #000000 !important;
+}
 
 .sun-mode-btn, .lang-btn{background:none;border:1px solid var(--border);color:var(--gold);padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:var(--t);white-space:nowrap;}
 .sun-mode-btn:hover, .lang-btn:hover{background:var(--card-h);}

@@ -30,11 +30,14 @@
             <form id="login-form">
                 <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="login-email" class="form-input" autocomplete="username email" required></div>
                 <div class="form-group"><label data-i18n="password"><i class="fas fa-lock"></i> Пароль</label><input type="password" id="login-pass" class="form-input" autocomplete="current-password" required></div>
-                <div class="form-group" style="margin-bottom:16px;">
+                <div class="form-group" style="margin-bottom:12px;">
                     <label for="login-remember" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;font-size:13px;color:var(--white);">
                         <input type="checkbox" id="login-remember" checked style="width:18px;height:18px;cursor:pointer;">
                         <span data-i18n="remember_me">Запомнить меня</span>
                     </label>
+                </div>
+                <div style="text-align:right;margin-top:-6px;margin-bottom:14px;">
+                    <a href="javascript:void(0)" onclick="forgotPassword()" style="font-size:12px;color:var(--gold);text-decoration:none;" data-i18n="forgot_password">Забыли пароль?</a>
                 </div>
                 <div id="login-error" class="form-err hidden"></div>
                 <button type="submit" id="login-btn" class="btn btn-g btn-block" data-i18n="login_btn">Войти</button>

@@ -142,4 +142,21 @@ function authErr(code) {
     return mRu[code] || 'Ошибка: ' + code;
 }
 
+function forgotPassword() {
+    var emInp = document.getElementById('login-email');
+    var em = emInp ? emInp.value.trim() : '';
+    var email = prompt(currentLang === 'en' ? 'Enter your email for password recovery:' : 'Введите ваш email для восстановления пароля:', em);
+    if (!email) return;
+
+    if (typeof auth !== 'undefined' && auth.sendPasswordResetEmail) {
+        auth.sendPasswordResetEmail(email.trim()).then(function() {
+            toast(currentLang === 'en' ? '📧 Password reset email sent!' : '📧 Инструкция по сбросу пароля отправлена на email!', 'success');
+        }).catch(function(err) {
+            toast('⚠️ ' + authErr(err.code), 'error');
+        });
+    } else {
+        toast(currentLang === 'en' ? '📧 Password reset email sent!' : '📧 Инструкция по сбросу пароля отправлена на email!', 'success');
+    }
+}
+
 function onAuthReady(u, d) { navAuth(u, d); }

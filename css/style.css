@@ -17,7 +17,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100
 .text-center{text-align:center;}
 img{max-width:100%;height:auto;display:block;}
 
-/* SUN MODE (ЯРКОЕ СОЛНЦЕ - СВЕТЛЫЕ ЗЕЛЕНЫЕ АКЦЕНТЫ С ВЫСОКИМ КОНТРАСТОМ) */
+/* SUN MODE (ЯРКОЕ СОЛНЦЕ - 100% СВЕТЛАЯ ТЕМА С ВЫСОКИМ КОНТРАСТОМ) */
 body.sun-mode {
     --bg: #ffffff;
     --bg2: #f4f8f5;
@@ -35,9 +35,35 @@ body.sun-mode {
     --border: #000000;
     --red: #d32f2f;
     --blue: #1976d2;
+    background: #ffffff !important;
+    color: #000000 !important;
 }
 
-body.sun-mode .nav {
+body.sun-mode .hero,
+body.sun-mode .page-head,
+body.sun-mode .footer,
+body.sun-mode .section-alt,
+body.sun-mode .auth-wrap {
+    background: #f4f8f5 !important;
+    border-color: #000000 !important;
+    color: #000000 !important;
+}
+body.sun-mode .hero-sub,
+body.sun-mode .hero-title,
+body.sun-mode .hero-desc,
+body.sun-mode .page-title,
+body.sun-mode .page-sub,
+body.sun-mode .footer-title,
+body.sun-mode .footer-sub,
+body.sun-mode .footer-desc,
+body.sun-mode .footer-link,
+body.sun-mode .footer-bottom {
+    color: #000000 !important;
+    text-shadow: none !important;
+}
+
+body.sun-mode .nav,
+body.sun-mode .nav-scrolled {
     background: #ffffff !important;
     border-bottom: 2px solid #000000 !important;
     box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
@@ -58,8 +84,16 @@ body.sun-mode .card,
 body.sun-mode .setup-card,
 body.sun-mode .round-card,
 body.sun-mode .setup-player-card,
+body.sun-mode .mode-card,
+body.sun-mode .auth-card,
 body.sun-mode .list-item,
-body.sun-mode .pestovo-modern-scorecard {
+body.sun-mode .stat,
+body.sun-mode .pestovo-modern-scorecard,
+body.sun-mode .noscroll-player-block,
+body.sun-mode .trophy-cabinet,
+body.sun-mode .timing-info,
+body.sun-mode .timing-summary-card,
+body.sun-mode .timing-pill {
     background: #ffffff !important;
     border: 2px solid #000000 !important;
     box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important;
@@ -72,9 +106,16 @@ body.sun-mode h3,
 body.sun-mode h4,
 body.sun-mode .sec-t,
 body.sun-mode .page-title,
+body.sun-mode .mode-title,
+body.sun-mode .mode-desc,
+body.sun-mode .auth-title,
 body.sun-mode .setup-section-title,
 body.sun-mode .setup-subhead,
-body.sun-mode .setup-player-head {
+body.sun-mode .setup-player-head,
+body.sun-mode .stat-n,
+body.sun-mode .stat-l,
+body.sun-mode .tp-lbl,
+body.sun-mode .tp-val {
     color: #000000 !important;
     font-weight: 800 !important;
 }
@@ -86,7 +127,8 @@ body.sun-mode input[type="number"],
 body.sun-mode input[type="time"],
 body.sun-mode input[type="date"],
 body.sun-mode input[type="password"],
-body.sun-mode input[type="email"] {
+body.sun-mode input[type="email"],
+body.sun-mode textarea.form-input {
     background: #ffffff !important;
     border: 2px solid #000000 !important;
     color: #000000 !important;
@@ -139,9 +181,10 @@ body.sun-mode .score-disp {
 }
 body.sun-mode .score-minus,
 body.sun-mode .score-plus {
-    background: #000000 !important;
-    color: #ffffff !important;
+    background: #ffffff !important;
+    color: #000000 !important;
     border: 2px solid #000000 !important;
+    font-weight: 900 !important;
 }
 body.sun-mode .score-par-btn {
     background: #e8f5e9 !important;
@@ -150,7 +193,7 @@ body.sun-mode .score-par-btn {
     font-weight: 800 !important;
 }
 
-/* LIGHT GREEN CTA BUTTONS IN SUN MODE */
+/* LIGHT GREEN & LIGHT GOLD CTA BUTTONS IN SUN MODE */
 body.sun-mode .btn-g {
     background: #d4edda !important;
     color: #0b2912 !important;
@@ -164,10 +207,24 @@ body.sun-mode .btn-g:active {
     color: #000000 !important;
 }
 
-body.sun-mode .btn-og {
+body.sun-mode .btn-og,
+body.sun-mode .btn-ol {
     background: #ffffff !important;
     color: #000000 !important;
     border: 2px solid #000000 !important;
+    font-weight: 800 !important;
+}
+
+body.sun-mode .btn-danger {
+    background: #ffebee !important;
+    color: #b71c1c !important;
+    border: 2px solid #b71c1c !important;
+    font-weight: 800 !important;
+}
+body.sun-mode .btn-warning {
+    background: #fff8e1 !important;
+    color: #f57f17 !important;
+    border: 2px solid #f57f17 !important;
     font-weight: 800 !important;
 }
 
@@ -186,32 +243,61 @@ body.sun-mode .modal-top-bar {
 body.sun-mode .modal-back-btn,
 body.sun-mode .simple-mode-btn,
 body.sun-mode .sun-mode-btn,
-body.sun-mode .lang-btn {
+body.sun-mode .lang-btn,
+body.sun-mode .weather-widget {
     background: #e8f5e9 !important;
     border: 2px solid #1b5e20 !important;
     color: #0b2912 !important;
     font-weight: 800 !important;
 }
 
-/* Scorecard Tiles in Sun Mode */
-body.sun-mode .msc-tile {
+/* Scorecard Tiles, Tables & Headers in Sun Mode */
+body.sun-mode .msc-tile,
+body.sun-mode .noscroll-tile {
     background: #ffffff !important;
     border: 2px solid #000000 !important;
     color: #000000 !important;
 }
-body.sun-mode .msc-tile-score {
+body.sun-mode .msc-tile-score,
+body.sun-mode .noscroll-score {
     color: #000000 !important;
     font-weight: 900 !important;
 }
 body.sun-mode .msc-totals-strip,
-body.sun-mode .msc-grand-strip {
+body.sun-mode .msc-grand-strip,
+body.sun-mode .noscroll-totals,
+body.sun-mode .msc-sec-hdr,
+body.sun-mode .timing-total-badge {
     background: #e8f5e9 !important;
     border: 2px solid #1b5e20 !important;
     color: #0b2912 !important;
 }
 body.sun-mode .msc-totals-strip b,
-body.sun-mode .msc-grand-strip b {
+body.sun-mode .msc-grand-strip b,
+body.sun-mode .noscroll-totals b,
+body.sun-mode .timing-total-badge b {
     color: #0b2912 !important;
+}
+
+body.sun-mode table,
+body.sun-mode .lb-table,
+body.sun-mode .pc-table,
+body.sun-mode .psc-grid-table,
+body.sun-mode .noscroll-msc-table {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+body.sun-mode th {
+    background: #e8f5e9 !important;
+    color: #0b2912 !important;
+    font-weight: 800 !important;
+    border-color: #000000 !important;
+}
+body.sun-mode td {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-weight: 700 !important;
+    border-color: #000000 !important;
 }
 
 .sun-mode-btn, .lang-btn{background:none;border:1px solid var(--border);color:var(--gold);padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:var(--t);white-space:nowrap;}

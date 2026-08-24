@@ -3909,7 +3909,6 @@ function initPlayerSearchAutofill(opts) {
         var usersData = getKnownPlayersSync();
         var matches = [];
         var seenKeys = new Set();
-        var exactMatch = null;
 
         Object.entries(usersData || {}).forEach(function(e) {
             var uid = e[0];
@@ -3922,7 +3921,7 @@ function initPlayerSearchAutofill(opts) {
             var full = (fn + ' ' + ln).trim() || name;
             if (!full) return;
 
-            var normKey = full.toLowerCase() + '_' + (u.handicap != null ? u.handicap : '');
+            var normKey = uid + '_' + full.toLowerCase() + '_' + (u.handicap != null ? u.handicap : '');
             if (seenKeys.has(normKey)) return;
 
             var fnLower = fn.toLowerCase();
@@ -3945,18 +3944,8 @@ function initPlayerSearchAutofill(opts) {
                     isGuest: !!u.isGuest
                 };
                 matches.push(playerObj);
-
-                var reversedFull = (ln + ' ' + fn).trim().toLowerCase();
-                if (query.length >= 4 && (query === fullLower || query === reversedFull || query === nameLower)) {
-                    exactMatch = playerObj;
-                }
             }
         });
-
-        if (exactMatch) {
-            triggerSelection(exactMatch);
-            return;
-        }
 
         if (matches.length === 0) {
             dropdown.style.display = 'none';

@@ -544,7 +544,10 @@ function openFlightGeneratorModal(tnId) {
 
         html += '<div class="card" style="background:var(--input);padding:16px;text-align:left;margin-bottom:20px;">';
         html += '<div class="form-group"><label>' + (currentLang === 'en' ? 'Players per flight:' : 'Игроков во флайте:') + '</label>';
-        html += '<select id="fg-size" class="form-input"><option value="4" selected>4 игрока</option><option value="3">3 игрока</option><option value="2">2 игрока</option></select></div>';
+        var p4Str = currentLang === 'en' ? '4 Players' : '4 игрока';
+        var p3Str = currentLang === 'en' ? '3 Players' : '3 игрока';
+        var p2Str = currentLang === 'en' ? '2 Players' : '2 игрока';
+        html += '<select id="fg-size" class="form-input"><option value="4" selected>' + p4Str + '</option><option value="3">' + p3Str + '</option><option value="2">' + p2Str + '</option></select></div>';
 
         html += '<div class="form-group"><label>' + (currentLang === 'en' ? 'First Flight Start Time:' : 'Время старта 1-го флайта:') + '</label>';
         html += '<input type="time" id="fg-time" class="form-input" value="10:00"></div>';

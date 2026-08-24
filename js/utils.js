@@ -783,6 +783,7 @@ function updateSunModeButtons() {
 
 document.addEventListener('DOMContentLoaded', function() {
     initThemeMode();
+    initSimpleMode();
 });
 
 // ==========================================
@@ -891,10 +892,13 @@ function buildMobileDrawer() {
     }
 
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
+    var isSimple = document.body && document.body.classList && document.body.classList.contains('simple-mode');
     var isEn = currentLang === 'en';
 
     var sunTxt = isSun ? (isEn ? 'Sun ✅' : 'Солнце ✅') : (isEn ? 'Sun' : 'Солнце');
     var sunIcon = isSun ? 'fa-sun' : 'far fa-sun';
+    var simpleTxt = isSimple ? (isEn ? 'Standard' : 'Стандарт') : (isEn ? 'Simple' : 'Простая');
+    var simpleIcon = isSimple ? 'fa-sparkles' : 'fa-bolt';
 
     var authBtnMarkup = '';
     var isUserLoggedIn = (typeof currentUser !== 'undefined' && currentUser && typeof currentUserData !== 'undefined' && currentUserData);
@@ -909,6 +913,40 @@ function buildMobileDrawer() {
         authBtnMarkup = '<a href="auth.html" class="btn btn-g btn-block" onclick="closeMobileDrawer()"><i class="fas fa-sign-in-alt"></i> ' + t('nav_login') + '</a>';
     }
 
+    var menuBodyMarkup = '';
+    if (isSimple) {
+        menuBodyMarkup = '<div class="mobile-drawer-group">' +
+            '<div class="mobile-drawer-group-title">⚡ ' + (isEn ? 'Simple Version' : 'Простая версия (Главное)') + '</div>' +
+            '<a href="index.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-home"></i> <span data-i18n="nav_home">' + t('nav_home') + '</span></a>' +
+            '<a href="live.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-gamepad"></i> <span data-i18n="nav_round">' + t('nav_round') + '</span></a>' +
+            '<a href="leaderboard.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">' + t('nav_leaderboard') + '</span></a>' +
+            '<a href="players.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-users"></i> <span data-i18n="nav_players">' + t('nav_players') + '</span></a>' +
+            '</div>';
+    } else {
+        menuBodyMarkup = '<div class="mobile-drawer-group">' +
+            '<div class="mobile-drawer-group-title">⛳ ' + (isEn ? 'Game & Rounds' : 'Игра и Раунды') + '</div>' +
+            '<a href="index.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-home"></i> <span data-i18n="nav_home">' + t('nav_home') + '</span></a>' +
+            '<a href="live.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-gamepad"></i> <span data-i18n="nav_round">' + t('nav_round') + '</span></a>' +
+            '<a href="leaderboard.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">' + t('nav_leaderboard') + '</span></a>' +
+            '</div>' +
+
+            '<div class="mobile-drawer-group">' +
+            '<div class="mobile-drawer-group-title">📖 ' + (isEn ? 'Club & Features' : 'Клуб и Сервисы') + '</div>' +
+            '<a href="guide.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-book-bookmark"></i> <span data-i18n="nav_guide">' + t('nav_guide') + '</span></a>' +
+            '<a href="feed.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-rss"></i> <span data-i18n="nav_feed">' + t('nav_feed') + '</span></a>' +
+            '<a href="predictor.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-calculator"></i> <span data-i18n="nav_predictor">' + t('nav_predictor') + '</span></a>' +
+            '<a href="order-of-merit.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-crown"></i> <span data-i18n="nav_oom">' + t('nav_oom') + '</span></a>' +
+            '</div>' +
+
+            '<div class="mobile-drawer-group">' +
+            '<div class="mobile-drawer-group-title">👥 ' + (isEn ? 'Community & Stats' : 'Сообщество и Инфо') + '</div>' +
+            '<a href="players.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-users"></i> <span data-i18n="nav_players">' + t('nav_players') + '</span></a>' +
+            '<a href="tournaments.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-list"></i> <span data-i18n="nav_tournaments">' + t('nav_tournaments') + '</span></a>' +
+            '<a href="stats.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_stats">' + t('nav_stats') + '</span></a>' +
+            '<a href="handicap.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-calculator"></i> <span data-i18n="nav_handicaps">' + t('nav_handicaps') + '</span></a>' +
+            '</div>';
+    }
+
     var html =
         '<div class="mobile-drawer-backdrop" onclick="closeMobileDrawer()"></div>' +
         '<div class="mobile-drawer-panel">' +
@@ -920,36 +958,13 @@ function buildMobileDrawer() {
                 '<button class="mobile-drawer-close" onclick="closeMobileDrawer()">&times;</button>' +
             '</div>' +
 
-            '<div class="mobile-drawer-body">' +
-                '<div class="mobile-drawer-group">' +
-                    '<div class="mobile-drawer-group-title">⛳ ' + (isEn ? 'Game & Rounds' : 'Игра и Раунды') + '</div>' +
-                    '<a href="index.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-home"></i> <span data-i18n="nav_home">' + t('nav_home') + '</span></a>' +
-                    '<a href="live.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-gamepad"></i> <span data-i18n="nav_round">' + t('nav_round') + '</span></a>' +
-                    '<a href="leaderboard.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">' + t('nav_leaderboard') + '</span></a>' +
-                '</div>' +
-
-                '<div class="mobile-drawer-group">' +
-                    '<div class="mobile-drawer-group-title">📖 ' + (isEn ? 'Club & Features' : 'Клуб и Сервисы') + '</div>' +
-                    '<a href="guide.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-book-bookmark"></i> <span data-i18n="nav_guide">' + t('nav_guide') + '</span></a>' +
-                    '<a href="feed.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-rss"></i> <span data-i18n="nav_feed">' + t('nav_feed') + '</span></a>' +
-                    '<a href="predictor.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-calculator"></i> <span data-i18n="nav_predictor">' + t('nav_predictor') + '</span></a>' +
-                    '<a href="order-of-merit.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-crown"></i> <span data-i18n="nav_oom">' + t('nav_oom') + '</span></a>' +
-                '</div>' +
-
-                '<div class="mobile-drawer-group">' +
-                    '<div class="mobile-drawer-group-title">👥 ' + (isEn ? 'Community & Stats' : 'Сообщество и Инфо') + '</div>' +
-                    '<a href="players.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-users"></i> <span data-i18n="nav_players">' + t('nav_players') + '</span></a>' +
-                    '<a href="tournaments.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-list"></i> <span data-i18n="nav_tournaments">' + t('nav_tournaments') + '</span></a>' +
-                    '<a href="stats.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_stats">' + t('nav_stats') + '</span></a>' +
-                    '<a href="handicap.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-calculator"></i> <span data-i18n="nav_handicaps">' + t('nav_handicaps') + '</span></a>' +
-                '</div>' +
-            '</div>' +
+            '<div class="mobile-drawer-body">' + menuBodyMarkup + '</div>' +
 
             '<div class="mobile-drawer-footer">' +
-                '<div style="display:flex;gap:8px;margin-bottom:12px;">' +
+                '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
+                    '<button class="simple-mode-btn" style="flex:1;justify-content:center;" onclick="toggleSimpleMode()"><i class="fas ' + simpleIcon + '"></i> ' + simpleTxt + '</button>' +
                     '<button class="sun-mode-btn" style="flex:1;justify-content:center;" onclick="toggleSunMode()"><i class="fas ' + sunIcon + '"></i> ' + sunTxt + '</button>' +
                     '<button class="lang-btn" style="flex:1;justify-content:center;" onclick="toggleLang()">' + (isEn ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>' +
-                    '<button class="lang-btn" style="flex:1;justify-content:center;" onclick="closeMobileDrawer();openToolsMenu();"><i class="fas fa-toolbox"></i> ' + (isEn ? 'Tools' : 'Меню') + '</button>' +
                 '</div>' +
                 '<div id="mobile-drawer-auth">' + authBtnMarkup + '</div>' +
             '</div>' +
@@ -1032,23 +1047,68 @@ function handleAvatarFileUpload(fileInputEl, callback) {
     };
     reader.readAsDataURL(file);
 }
+function initSimpleMode() {
+    if (typeof localStorage === 'undefined' || typeof document === 'undefined') return;
+    var isSimple = localStorage.getItem('pestovo_simple_mode') === '1';
+    if (isSimple) {
+        if (document.body) document.body.classList.add('simple-mode');
+    } else {
+        if (document.body) document.body.classList.remove('simple-mode');
+    }
+    updateSimpleModeButtons();
+}
+
+function toggleSimpleMode() {
+    if (typeof document === 'undefined') return;
+    var isSimple = document.body && document.body.classList && document.body.classList.contains('simple-mode');
+    if (isSimple) {
+        document.body.classList.remove('simple-mode');
+        localStorage.setItem('pestovo_simple_mode', '0');
+        toast(currentLang === 'en' ? '✨ Switched to Standard Mode' : '✨ Включена стандартная версия сайта', 'info');
+    } else {
+        document.body.classList.add('simple-mode');
+        localStorage.setItem('pestovo_simple_mode', '1');
+        toast(currentLang === 'en' ? '⚡ Switched to Simple Lite Mode' : '⚡ Включена простая версия сайта', 'success');
+    }
+    updateSimpleModeButtons();
+    if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
+}
+
+function updateSimpleModeButtons() {
+    if (typeof document === 'undefined') return;
+    var isSimple = document.body && document.body.classList && document.body.classList.contains('simple-mode');
+    var btns = document.querySelectorAll('.simple-mode-btn');
+    btns.forEach(function(btn) {
+        if (isSimple) {
+            btn.innerHTML = '<i class="fas fa-sparkles"></i> <span>' + (currentLang === 'en' ? 'Standard' : 'Стандартная') + '</span>';
+            btn.title = currentLang === 'en' ? 'Switch to Standard Version' : 'Переключить на стандартную версию';
+        } else {
+            btn.innerHTML = '<i class="fas fa-bolt"></i> <span>' + (currentLang === 'en' ? 'Simple' : 'Простая') + '</span>';
+            btn.title = currentLang === 'en' ? 'Switch to Simple Version' : 'Переключить на простую версию';
+        }
+    });
+}
+
 function navAuth(u, d) {
     var e = document.getElementById('nav-auth');
     if (!e) return;
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
+    var isSimple = document.body && document.body.classList && document.body.classList.contains('simple-mode');
+
     var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i> ' + (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : '<i class="far fa-sun"></i> ' + (currentLang === 'en' ? 'Sun' : 'Солнце')) + '</button>';
     var langBtn = '<button class="lang-btn" onclick="toggleLang()">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
+    var simpleBtn = '<button class="simple-mode-btn" onclick="toggleSimpleMode()">' + (isSimple ? '<i class="fas fa-sparkles"></i> ' + (currentLang === 'en' ? 'Standard' : 'Стандартная') : '<i class="fas fa-bolt"></i> ' + (currentLang === 'en' ? 'Simple' : 'Простая')) + '</button>';
     var toolsBtn = '<button class="lang-btn" onclick="openToolsMenu()"><i class="fas fa-toolbox"></i> ' + (currentLang === 'en' ? 'Tools' : 'Меню') + '</button>';
 
     if (u && d) {
         var avatarMarkup = fmtUserAvatar(d, 30);
         e.innerHTML = '<div class="nav-user" style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + u.uid + '\')">' +
-            sunBtn + langBtn + toolsBtn + avatarMarkup +
+            simpleBtn + sunBtn + langBtn + toolsBtn + avatarMarkup +
             '<span class="nav-uname">' + (d.name || '') + '</span>' +
             '<button class="btn btn-og btn-sm" onclick="event.stopPropagation();doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
     } else {
-        e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + toolsBtn + '<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';
+        e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + simpleBtn + sunBtn + langBtn + toolsBtn + '<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';
     }
 }
 

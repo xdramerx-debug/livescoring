@@ -1309,3 +1309,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     #printable-scorecard, #printable-scorecard * { visibility: visible; }
     #printable-scorecard { position: absolute; left: 0; top: 0; width: 100%; }
 }
+
+/* SIMPLE / LITE MODE STYLES & VISIBILITY */
+.simple-mode-btn {
+    background: rgba(201, 168, 76, 0.15) !important;
+    border: 1px solid var(--gold) !important;
+    color: var(--gold) !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    padding: 5px 10px !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    transition: var(--t) !important;
+}
+.simple-mode-btn:hover {
+    background: var(--gold) !important;
+    color: var(--bg) !important;
+}
+
+body.simple-mode .non-essential-feature,
+body.simple-mode .nav-link-secondary,
+body.simple-mode .home-secondary-widget,
+body.simple-mode #shot-tracking-container,
+body.simple-mode .weather-widget {
+    display: none !important;
+}

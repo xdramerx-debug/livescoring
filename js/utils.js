@@ -1044,6 +1044,10 @@ function buildMobileDrawer() {
             }
         });
     }
+
+    if (typeof applyPageVisibilitySettings === 'function') {
+        applyPageVisibilitySettings();
+    }
 }
 
 function openMobileDrawer() {
@@ -3600,8 +3604,10 @@ function applyPageVisibilitySettings() {
     var hiddenPages = getHiddenPages();
     var curPage = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.split('/').pop() || 'index.html' : 'index.html';
 
+    var isAdmin = typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin';
+
     MANAGED_PAGES.forEach(function(page) {
-        var isHidden = hiddenPages[page] === true;
+        var isHidden = (hiddenPages[page] === true) && !isAdmin;
         var links = document.querySelectorAll('a[href="' + page + '"]');
         links.forEach(function(link) {
             if (isHidden) {
@@ -3614,20 +3620,17 @@ function applyPageVisibilitySettings() {
         });
     });
 
-    if (MANAGED_PAGES.includes(curPage) && hiddenPages[curPage] === true) {
-        var isAdmin = typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin';
-        if (!isAdmin) {
-            var mainEl = document.querySelector('main') || document.body;
-            if (mainEl) {
-                mainEl.innerHTML =
-                    '<div class="container" style="padding:60px 20px;text-align:center;">' +
-                    '<div class="card" style="max-width:500px;margin:0 auto;padding:40px;">' +
-                    '<div style="font-size:48px;color:var(--gold);margin-bottom:16px;"><i class="fas fa-eye-slash"></i></div>' +
-                    '<h2 style="color:var(--white);margin-bottom:10px;">' + (currentLang === 'en' ? 'Page Hidden' : 'Страница временно скрыта') + '</h2>' +
-                    '<p style="color:var(--muted);font-size:14px;margin-bottom:24px;">' + (currentLang === 'en' ? 'This page is currently hidden by administrator.' : 'Эта страница временно убрана из показа администратором клуба.') + '</p>' +
-                    '<a href="index.html" class="btn btn-g"><i class="fas fa-home"></i> ' + t('nav_home') + '</a>' +
-                    '</div></div>';
-            }
+    if (MANAGED_PAGES.includes(curPage) && hiddenPages[curPage] === true && !isAdmin) {
+        var mainEl = document.querySelector('main') || document.body;
+        if (mainEl && !document.getElementById('page-hidden-notice')) {
+            mainEl.innerHTML =
+                '<div class="container" style="padding:60px 20px;text-align:center;" id="page-hidden-notice">' +
+                '<div class="card" style="max-width:500px;margin:0 auto;padding:40px;border:2px solid var(--gold);">' +
+                '<div style="font-size:56px;color:var(--gold);margin-bottom:16px;"><i class="fas fa-eye-slash"></i></div>' +
+                '<h2 style="color:var(--white);margin-bottom:10px;font-size:22px;">' + (currentLang === 'en' ? 'Page Hidden' : 'Страница скрыта администратором') + '</h2>' +
+                '<p style="color:var(--muted);font-size:14px;margin-bottom:24px;line-height:1.6;">' + (currentLang === 'en' ? 'This page has been temporarily hidden by the club administrator.' : 'Эта страница временно убрана из доступа администратором клуба.') + '</p>' +
+                '<a href="index.html" class="btn btn-g btn-lg"><i class="fas fa-home"></i> ' + t('nav_home') + '</a>' +
+                '</div></div>';
         }
     }
 }

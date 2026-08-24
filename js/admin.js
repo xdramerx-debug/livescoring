@@ -354,7 +354,25 @@ function listenForAlerts() {
     db.ref('alerts').orderByChild('status').equalTo('active').on('value', function(sn) {
         var alerts = sn.val() || {};
         var c = document.getElementById('admin-alerts-list');
+        var bannerEl = document.getElementById('admin-top-alerts-banner');
         var entries = Object.entries(alerts);
+
+        if (bannerEl) {
+            if (entries.length > 0) {
+                bannerEl.innerHTML = '<div class="card" style="background:rgba(224,90,74,0.18);border:2px solid var(--red);margin-bottom:16px;cursor:pointer;" onclick="switchTab(\'alerts\', document.querySelector(\'[data-i18n=tab_alerts]\'))">' +
+                    '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
+                    '<div style="color:var(--red);font-weight:800;font-size:14px;display:flex;align-items:center;gap:8px;">' +
+                    '<i class="fas fa-exclamation-triangle" style="font-size:20px;"></i> ' +
+                    '<span>🚨 ' + (currentLang === 'en' ? 'ATTENTION: ' + entries.length + ' ACTIVE OFFICIAL CALL(S) ON COURSE!' : 'ВНИМАНИЕ: ' + entries.length + ' АКТИВНЫХ ВЫЗОВА СУДЬИ/МАРШАЛА НА ПОЛЕ!') + '</span>' +
+                    '</div>' +
+                    '<button class="btn btn-danger btn-sm">' + (currentLang === 'en' ? 'View Calls →' : 'Посмотреть вызовы →') + '</button>' +
+                    '</div></div>';
+                bannerEl.classList.remove('hidden');
+            } else {
+                bannerEl.innerHTML = '';
+                bannerEl.classList.add('hidden');
+            }
+        }
 
         if (entries.length === 0) {
             if (c) c.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">' + (currentLang === 'en' ? 'No active alerts' : 'Нет активных вызовов') + '</p>';

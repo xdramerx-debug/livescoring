@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v32';
+const CACHE_NAME = 'pestovo-v33';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [

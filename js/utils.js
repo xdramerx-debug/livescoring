@@ -2074,55 +2074,236 @@ function generatePestovoScorecardHTML(player, roundData) {
 }
 
 // ==========================================
-// ПЕЧАТЬ С КНОПКОЙ «НАЗАД»
+// ПЕЧАТЬ ОФИЦИАЛЬНОЙ СЧЁТНОЙ КАРТОЧКИ (IMG_1113.JPEG REPLICA)
 // ==========================================
-function downloadScorecard(roundId){
-    db.ref('rounds/'+roundId).once('value').then(function(sn){
-        var r=sn.val();if(!r){toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден','error');return;}
-        var pl=r.players||{};
-        var w=window.open('','_blank');
+function generateExactPestovoPaperScorecardHTML(player, roundData) {
+    var p = player || {};
+    var sc = p.scores || {};
+    var fHcp = p.fieldHcp || 0;
+    var eHcp = p.exactHcp || 0;
+    var teeCode = (roundData && roundData.tee) || p.tee || 'wh';
+    var fmt = (roundData && roundData.format) || 'Stroke Play';
+    var tName = (roundData && roundData.tournamentName) || '—';
+    var date = fmtDate((roundData && (roundData.completedAt || roundData.createdAt)) || Date.now());
+    var startTime = fmtTime(roundData && roundData.startTime);
 
-        var css='body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#fff;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-            +'@media print{.no-print{display:none!important;}}'
-            +'.no-print-bar{display:flex;justify-content:space-between;align-items:center;background:#0b1a0e;color:#c9a84c;padding:12px 20px;margin-bottom:20px;border-radius:8px;font-family:Arial,sans-serif;}'
-            +'.print-btn{background:#c9a84c;color:#0b1a0e;border:none;padding:10px 18px;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;text-transform:uppercase;}'
-            +'.back-btn{background:transparent;color:#c9a84c;border:1px solid #c9a84c;padding:10px 18px;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;text-transform:uppercase;}'
-            +'.pestovo-card-wrap{border:2px solid #000;border-radius:8px;padding:16px;margin-bottom:30px;page-break-inside:avoid;}'
-            +'.pc-header{display:flex;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:10px;font-size:12px;flex-wrap:wrap;gap:8px;}'
-            +'.pc-col{display:flex;flex-direction:column;gap:4px;}'
-            +'.pc-col strong{color:#000;}'
-            +'.pc-table-wrap{overflow-x:auto;}'
-            +'.pc-table{width:100%;border-collapse:collapse;text-align:center;font-size:11px;}'
-            +'.pc-table th,.pc-table td{border:1px solid #000;padding:6px 3px;}'
-            +'.pc-table th{background:#e0e0e0;font-weight:bold;}'
-            +'.pc-lbl{text-align:left!important;padding-left:8px!important;font-weight:bold;width:60px;}'
-            +'.pc-tot{background:#f5f5f5;font-weight:bold;}'
-            +'.pc-par{background:#d4edda;}'
-            +'.pc-idx{color:#555;font-size:10px;}'
-            +'.pc-score-lbl{font-size:14px;text-transform:uppercase;}'
-            +'.pc-score-box{height:28px;font-size:16px;color:#000!important;}'
-            +'.pc-footer{display:flex;justify-content:space-between;margin-top:20px;font-size:12px;font-weight:bold;flex-wrap:wrap;gap:12px;}';
+    var outG = 0, inG = 0, outS = 0, inS = 0;
+    for (var i = 1; i <= 9; i++) {
+        var s = parseInt(sc[i]) || 0;
+        if (s > 0) { outG += s; outS += stablefordField(s, i, fHcp); }
+    }
+    for (var i = 10; i <= 18; i++) {
+        var s = parseInt(sc[i]) || 0;
+        if (s > 0) { inG += s; inS += stablefordField(s, i, fHcp); }
+    }
+    var totG = outG + inG, totS = outS + inS;
 
-        var titleStr = currentLang === 'en' ? 'Pestovo Scorecards' : 'Печать счётных карточек — Пестово';
-        var backBtnStr = currentLang === 'en' ? 'Back' : 'Назад';
-        var printBtnStr = currentLang === 'en' ? 'Print' : 'Печать';
+    var pOut = 0, pIn = 0;
+    for (var i = 1; i <= 9; i++) pOut += holePar(i);
+    for (var i = 10; i <= 18; i++) pIn += holePar(i);
 
-        var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + titleStr + '</title><style>'+css+'</style></head><body>';
+    var html = '<div class="paper-scorecard-wrap" id="printable-scorecard">';
 
-        h+='<div class="no-print no-print-bar">'
-           +'<button class="back-btn" onclick="if(window.opener || window.history.length<=1){window.close();}else{window.history.back();}">&larr; ' + backBtnStr + '</button>'
-           +'<div style="font-weight:bold;font-size:15px;color:#c9a84c;">' + titleStr + '</div>'
-           +'<button class="print-btn" onclick="window.print()">' + printBtnStr + '</button>'
-           +'</div>';
+    // Top Header with Logo
+    html += '<div class="psc-top-header">';
+    html += '  <div class="psc-logo-brand">';
+    html += '    <img src="img/logo.png" alt="Pestovo" class="psc-logo" onerror="this.style.display=\'none\'">';
+    html += '    <div><div class="psc-club-title">ГОЛЬФ-КЛУБ «ПЕСТОВО»</div><div class="psc-club-sub">Официальная счётная карточка</div></div>';
+    html += '  </div>';
+    html += '</div>';
 
-        Object.values(pl).forEach(function(p){
-            h+=generatePestovoScorecardHTML(p,r);
-        });
+    // Player & Meta Block (Matching IMG_1113.jpeg)
+    html += '<div class="psc-meta-grid">';
+    html += '  <div class="psc-meta-left">';
+    html += '    <div><b>Игрок:</b> ' + (p.name || '___________________________') + '</div>';
+    html += '    <div><b>Турнир:</b> ' + tName + ' &nbsp;&nbsp;&nbsp;&nbsp; <b>Формат:</b> ' + fmt + '</div>';
+    html += '  </div>';
+    html += '  <div class="psc-meta-right">';
+    html += '    <div><b>Точный гандикап:</b> ' + fmtExactHcp(eHcp) + ' &nbsp;&nbsp; (Игровой: ' + fmtFieldHcp(fHcp) + ')</div>';
+    html += '    <table class="psc-meta-table">';
+    html += '      <tr><th>Раунд</th><th>Время старта</th><th>Дата</th></tr>';
+    html += '      <tr><td>1</td><td>' + startTime + '</td><td>' + date + '</td></tr>';
+    html += '    </table>';
+    html += '  </div>';
+    html += '</div>';
 
-        h+='</body></html>';
-        w.document.write(h);w.document.close();
-        setTimeout(function(){w.print();},500);
+    // Grid Table Matching IMG_1113.jpeg
+    html += '<div class="psc-table-wrap">';
+    html += '<table class="psc-grid-table">';
+    html += '<thead><tr><th style="width:75px;">ТИ \\ Лунка</th>';
+    for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
+    html += '<th class="psc-tot-col">Аут</th>';
+    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
+    html += '<th class="psc-tot-col">Ин</th><th class="psc-tot-col">Итого</th></tr></thead>';
+
+    html += '<tbody>';
+
+    // Черный ТИ
+    var bkO = 0, bkI = 0;
+    for (var i = 1; i <= 9; i++) bkO += HOLES[i].bk;
+    for (var i = 10; i <= 18; i++) bkI += HOLES[i].bk;
+    html += '<tr><td class="psc-lbl-tee psc-tee-bk">Черный</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].bk + '</td>';
+    html += '<td class="psc-tot-col">' + bkO + '</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].bk + '</td>';
+    html += '<td class="psc-tot-col">' + bkI + '</td><td class="psc-tot-col">' + (bkO + bkI) + '</td></tr>';
+
+    // Синий ТИ
+    var blO = 0, blI = 0;
+    for (var i = 1; i <= 9; i++) blO += HOLES[i].bl;
+    for (var i = 10; i <= 18; i++) blI += HOLES[i].bl;
+    html += '<tr><td class="psc-lbl-tee psc-tee-bl">Синий</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].bl + '</td>';
+    html += '<td class="psc-tot-col">' + blO + '</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].bl + '</td>';
+    html += '<td class="psc-tot-col">' + blI + '</td><td class="psc-tot-col">' + (blO + blI) + '</td></tr>';
+
+    // Белый ТИ
+    var whO = 0, whI = 0;
+    for (var i = 1; i <= 9; i++) whO += HOLES[i].wh;
+    for (var i = 10; i <= 18; i++) whI += HOLES[i].wh;
+    html += '<tr><td class="psc-lbl-tee psc-tee-wh">Белый</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].wh + '</td>';
+    html += '<td class="psc-tot-col">' + whO + '</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].wh + '</td>';
+    html += '<td class="psc-tot-col">' + whI + '</td><td class="psc-tot-col">' + (whO + whI) + '</td></tr>';
+
+    // Красный ТИ
+    var rdO = 0, rdI = 0;
+    for (var i = 1; i <= 9; i++) rdO += HOLES[i].rd;
+    for (var i = 10; i <= 18; i++) rdI += HOLES[i].rd;
+    html += '<tr><td class="psc-lbl-tee psc-tee-rd">Красный</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].rd + '</td>';
+    html += '<td class="psc-tot-col">' + rdO + '</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].rd + '</td>';
+    html += '<td class="psc-tot-col">' + rdI + '</td><td class="psc-tot-col">' + (rdO + rdI) + '</td></tr>';
+
+    // Пар
+    html += '<tr class="psc-row-par"><td class="psc-lbl-bold">Пар</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].p + '</td>';
+    html += '<td class="psc-tot-col">' + pOut + '</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].p + '</td>';
+    html += '<td class="psc-tot-col">' + pIn + '</td><td class="psc-tot-col">' + (pOut + pIn) + '</td></tr>';
+
+    // Индекс
+    html += '<tr class="psc-row-idx"><td class="psc-lbl-bold">Индекс</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].hcp + '</td>';
+    html += '<td class="psc-tot-col">—</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].hcp + '</td>';
+    html += '<td class="psc-tot-col">—</td><td class="psc-tot-col">—</td></tr>';
+
+    // Счёт Игрока
+    html += '<tr class="psc-row-score"><td class="psc-lbl-bold">Счёт</td>';
+    for (var i = 1; i <= 9; i++) {
+        var s = parseInt(sc[i]) || 0;
+        html += '<td class="psc-score-cell">' + (s > 0 ? '<b>' + s + '</b>' : '') + '</td>';
+    }
+    html += '<td class="psc-tot-col"><b>' + (outG > 0 ? outG : '') + '</b></td>';
+    for (var i = 10; i <= 18; i++) {
+        var s = parseInt(sc[i]) || 0;
+        html += '<td class="psc-score-cell">' + (s > 0 ? '<b>' + s + '</b>' : '') + '</td>';
+    }
+    html += '<td class="psc-tot-col"><b>' + (inG > 0 ? inG : '') + '</b></td>';
+    html += '<td class="psc-tot-col"><b>' + (totG > 0 ? totG : '') + '</b></td></tr>';
+
+    // Stableford
+    html += '<tr><td class="psc-lbl-bold">Stableford</td>';
+    for (var i = 1; i <= 9; i++) {
+        var s = parseInt(sc[i]) || 0;
+        var pts = s > 0 ? stablefordField(s, i, fHcp) : '';
+        html += '<td>' + pts + '</td>';
+    }
+    html += '<td class="psc-tot-col"><b>' + (outS > 0 ? outS : '') + '</b></td>';
+    for (var i = 10; i <= 18; i++) {
+        var s = parseInt(sc[i]) || 0;
+        var pts = s > 0 ? stablefordField(s, i, fHcp) : '';
+        html += '<td>' + pts + '</td>';
+    }
+    html += '<td class="psc-tot-col"><b>' + (inS > 0 ? inS : '') + '</b></td>';
+    html += '<td class="psc-tot-col"><b>' + (totS > 0 ? totS : '') + '</b></td></tr>';
+
+    html += '</tbody></table></div>';
+
+    // Signatures Footer
+    html += '<div class="psc-signatures">';
+    html += '  <span><b>Подписи:</b></span>';
+    html += '  <span><b>Игрок:</b> ____________________</span>';
+    html += '  <span><b>Маркер:</b> ____________________</span>';
+    html += '  <span><b>Судья:</b> ____________________</span>';
+    html += '</div>';
+
+    html += '</div>';
+
+    return html;
+}
+
+function openPrintScorecardModal(roundId, playerId) {
+    if (typeof db === 'undefined' || !roundId) return;
+
+    db.ref('rounds/' + roundId).once('value').then(function(sn) {
+        var r = sn.val();
+        if (!r || !r.players) {
+            toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден', 'error');
+            return;
+        }
+
+        var playersList = Object.entries(r.players);
+        var pid = playerId || playersList[0][0];
+        var p = r.players[pid] || playersList[0][1];
+        if (!p) return;
+
+        var modalEl = document.getElementById('print-modal');
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.id = 'print-modal';
+            modalEl.className = 'modal hidden';
+            modalEl.innerHTML =
+                '<div class="modal-bg" onclick="closePrintModal()"></div>' +
+                '<div class="modal-body" style="max-width:880px;">' +
+                '<div class="modal-top-bar">' +
+                '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closePrintModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+                '<button type="button" class="modal-close-btn" onclick="closePrintModal()">&times;</button>' +
+                '</div>' +
+                '<div id="print-modal-body"></div>' +
+                '</div>';
+            if (document.body) document.body.appendChild(modalEl);
+        }
+
+        var bodyEl = document.getElementById('print-modal-body');
+
+        var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">';
+        html += '<h2 style="color:var(--gold);margin:0;"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print Official Scorecard' : 'Печать официальной счётной карточки') + '</h2>';
+        html += '<div style="display:flex;gap:8px;">';
+        html += '<button type="button" class="btn btn-g" onclick="window.print()"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print' : 'Распечатать') + '</button>';
+        html += '<button type="button" class="btn btn-og" onclick="closePrintModal()">' + (currentLang === 'en' ? 'Close' : 'Закрыть') + '</button>';
+        html += '</div></div>';
+
+        if (playersList.length > 1) {
+            html += '<div style="margin-bottom:12px;background:var(--input);padding:10px;border-radius:var(--rs);border:1px solid var(--border);display:flex;align-items:center;gap:12px;">';
+            html += '<label style="font-size:12px;color:var(--gold);font-weight:700;"><i class="fas fa-users"></i> Игрок группы:</label>';
+            html += '<select class="form-input" style="max-width:260px;" onchange="openPrintScorecardModal(\'' + roundId + '\', this.value)">';
+            playersList.forEach(function(pe) {
+                var id = pe[0], pl = pe[1];
+                var sel = id === pid ? 'selected' : '';
+                html += '<option value="' + id + '" ' + sel + '>' + (pl.name || 'Player') + '</option>';
+            });
+            html += '</select></div>';
+        }
+
+        html += generateExactPestovoPaperScorecardHTML(p, r);
+
+        if (bodyEl) bodyEl.innerHTML = html;
+        modalEl.classList.remove('hidden');
     });
+}
+
+function closePrintModal() {
+    var modalEl = document.getElementById('print-modal');
+    if (modalEl) modalEl.classList.add('hidden');
+}
+
+function downloadScorecard(roundId) {
+    openPrintScorecardModal(roundId);
 }
 
 // ==========================================

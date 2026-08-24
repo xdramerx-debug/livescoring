@@ -2434,6 +2434,68 @@ function drawHoleGridRow(ctx, scores, markerScores, startHole, endHole, startY) 
     }
 }
 
+function downloadPNGImage(pngDataUrl, fileName) {
+    fileName = fileName || 'Pestovo_Scorecard.png';
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    var dataURLtoBlob = function(dataurl) {
+        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], {type:mime});
+    };
+
+    var blob = null;
+    try {
+        blob = dataURLtoBlob(pngDataUrl);
+    } catch(e) {}
+
+    if (navigator.share && blob) {
+        try {
+            var file = new File([blob], fileName, { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    files: [file],
+                    title: 'Пестово Счётная Карточка',
+                    text: 'Официальная карточка раунда'
+                }).then(function() {
+                    console.log('✅ Web Share succeeded');
+                }).catch(function(err) {
+                    if (err && err.name !== 'AbortError') {
+                        fallbackIOSDownload(pngDataUrl, blob, fileName, isIOS);
+                    }
+                });
+                return;
+            }
+        } catch (e) {
+            console.warn('Web Share file error:', e);
+        }
+    }
+
+    fallbackIOSDownload(pngDataUrl, blob, fileName, isIOS);
+}
+
+function fallbackIOSDownload(pngDataUrl, blob, fileName, isIOS) {
+    if (isIOS) {
+        var blobUrl = blob ? URL.createObjectURL(blob) : pngDataUrl;
+        var win = window.open(blobUrl, '_blank');
+        if (!win) {
+            window.location.href = blobUrl;
+        }
+        toast(currentLang === 'en' ? '📱 Long press image and choose "Save to Photos"!' : '📱 Зажмите изображение пальцем и выберите «Сохранить в Фото»!', 'info');
+    } else {
+        var a = document.createElement('a');
+        a.href = pngDataUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        toast(currentLang === 'en' ? '✅ PNG Scorecard downloaded!' : '✅ PNG Карточка успешно скачана!', 'success');
+    }
+}
+
 function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersList) {
     var modalEl = document.getElementById('png-modal');
     if (!modalEl) {
@@ -2470,12 +2532,14 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
         html += '</select></div>';
     }
 
-    html += '<img src="' + pngDataUrl + '" alt="Pestovo Card" style="width:100%;max-width:440px;border-radius:12px;border:2px solid var(--gold);box-shadow:0 8px 32px rgba(0,0,0,0.5);margin-bottom:20px;">';
+    html += '<img src="' + pngDataUrl + '" alt="Pestovo Card" style="width:100%;max-width:440px;border-radius:12px;border:2px solid var(--gold);box-shadow:0 8px 32px rgba(0,0,0,0.5);margin-bottom:12px;">';
+    html += '<p style="font-size:11px;color:var(--muted);margin-bottom:14px;"><i class="fas fa-mobile-screen-button"></i> ' + (currentLang === 'en' ? 'On iPhone / iPad: Tap button to Share or long-press image to Save to Photos' : 'На iPhone: нажмите кнопку для отправки или зажмите картинку пальцем для сохранения в Фото') + '</p>';
+
     html += '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">';
-    html += '<a href="' + pngDataUrl + '" download="' + fileName + '" class="btn btn-g" style="flex:1;min-width:180px;"><i class="fas fa-download"></i> ' + t('download_png') + '</a>';
+    html += '<button type="button" class="btn btn-g" style="flex:1;min-width:180px;" onclick="downloadPNGImage(\'' + pngDataUrl + '\', \'' + fileName + '\')"><i class="fas fa-download"></i> ' + t('download_png') + '</button>';
 
     if (navigator.share) {
-        html += '<button class="btn btn-og" style="flex:1;min-width:180px;" onclick="sharePNGNative(\'' + pngDataUrl + '\', \'' + fileName + '\')"><i class="fas fa-share-nodes"></i> ' + t('share_native') + '</button>';
+        html += '<button type="button" class="btn btn-og" style="flex:1;min-width:180px;" onclick="downloadPNGImage(\'' + pngDataUrl + '\', \'' + fileName + '\')"><i class="fas fa-share-nodes"></i> ' + t('share_native') + '</button>';
     }
     html += '</div>';
 

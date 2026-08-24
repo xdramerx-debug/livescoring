@@ -8,6 +8,7 @@ var soloAutoSaveTimer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
+    initSoloForm();
     var urlP = new URLSearchParams(window.location.search);
     var rid = urlP.get('round');
     if (rid) {
@@ -34,6 +35,38 @@ document.addEventListener('DOMContentLoaded', function() {
     if (timeEl) timeEl.addEventListener('change', updateTimingPreview);
     if (sel) sel.addEventListener('change', updateTimingPreview);
 });
+
+function initSoloForm() {
+    var fnInp = document.getElementById('s-firstname');
+    var lnInp = document.getElementById('s-lastname');
+
+    var handleSoloSelect = function(matchedUser) {
+        var fnInp = document.getElementById('s-firstname');
+        var lnInp = document.getElementById('s-lastname');
+        var gEl = document.getElementById('s-gender');
+        var hEl = document.getElementById('s-exact-hcp');
+
+        var nameParts = matchedUser.name.split(' ');
+        var fn = nameParts[0] || matchedUser.name;
+        var ln = nameParts.slice(1).join(' ') || '';
+
+        if (fnInp) fnInp.value = fn;
+        if (lnInp) lnInp.value = ln;
+        if (gEl) gEl.value = matchedUser.gender;
+        if (hEl) hEl.value = fmtExactHcp(matchedUser.handicap);
+
+        window.sSelectedUid = matchedUser.uid;
+        calcSoloFieldHcp();
+        if (typeof toast === 'function') toast('👤 ' + (currentLang === 'en' ? 'Selected player: ' : 'Выбран игрок: ') + matchedUser.name + ' (' + fmtExactHcp(matchedUser.handicap) + ' HCP)', 'info');
+    };
+
+    if (fnInp && typeof attachPlayerNameAutocomplete === 'function') {
+        attachPlayerNameAutocomplete(fnInp, null, handleSoloSelect);
+    }
+    if (lnInp && typeof attachPlayerNameAutocomplete === 'function') {
+        attachPlayerNameAutocomplete(lnInp, null, handleSoloSelect);
+    }
+}
 
 function initSoloView() {
     if (soloRid) {
@@ -143,8 +176,8 @@ function startSolo() {
 
     var accessKey = 'key_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
 
-    var playerId = currentUser ? currentUser.uid : 'guest_' + Date.now();
-    var isGuest = !currentUser;
+    var playerId = window.sSelectedUid || (currentUser ? currentUser.uid : 'guest_' + Date.now());
+    var isGuest = !window.sSelectedUid && !currentUser;
 
     var players = {};
     players[playerId] = {

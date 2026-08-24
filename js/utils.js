@@ -3726,3 +3726,120 @@ if (typeof db !== 'undefined') {
 document.addEventListener('DOMContentLoaded', function() {
     applyPageVisibilitySettings();
 });
+
+// ==========================================
+// REAL-TIME AUTOCOMPLETE PLAYER NAME SUGGESTIONS
+// ==========================================
+var cachedRegisteredUsers = {};
+
+function loadAllRegisteredUsers(callback) {
+    if (Object.keys(cachedRegisteredUsers).length > 0) {
+        if (typeof callback === 'function') callback(cachedRegisteredUsers);
+        return;
+    }
+    if (typeof db === 'undefined') {
+        if (typeof callback === 'function') callback({});
+        return;
+    }
+    db.ref('users').once('value').then(function(sn) {
+        cachedRegisteredUsers = sn.val() || {};
+        if (typeof callback === 'function') callback(cachedRegisteredUsers);
+    }).catch(function() {
+        if (typeof callback === 'function') callback({});
+    });
+}
+
+function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
+    if (!inputEl) return;
+
+    var parent = inputEl.parentElement;
+    if (parent && getComputedStyle(parent).position === 'static') {
+        parent.style.position = 'relative';
+    }
+
+    var dropdown = document.createElement('div');
+    dropdown.className = 'autocomplete-suggestions hidden';
+    dropdown.style.display = 'none';
+
+    if (containerEl) {
+        containerEl.appendChild(dropdown);
+    } else if (parent) {
+        parent.appendChild(dropdown);
+    }
+
+    var handleInput = function() {
+        var query = inputEl.value.trim().toLowerCase();
+        if (!query || query.length < 1) {
+            dropdown.style.display = 'none';
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        loadAllRegisteredUsers(function(usersData) {
+            var matches = [];
+            Object.entries(usersData).forEach(function(e) {
+                var uid = e[0];
+                var u = e[1];
+                var name = (u.name || '').trim();
+                var fn = (u.firstName || '').trim();
+                var ln = (u.lastName || '').trim();
+                var email = (u.email || '').trim();
+
+                var full = (fn + ' ' + ln).trim() || name;
+                var searchStr = (full + ' ' + name + ' ' + email).toLowerCase();
+
+                if (searchStr.includes(query)) {
+                    matches.push({
+                        uid: uid,
+                        name: full || name || 'Игрок',
+                        handicap: u.handicap != null ? u.handicap : 0,
+                        gender: u.gender || 'men',
+                        defaultTee: u.defaultTee || 'wh'
+                    });
+                }
+            });
+
+            if (matches.length === 0) {
+                dropdown.style.display = 'none';
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            var html = '';
+            matches.slice(0, 6).forEach(function(m) {
+                var gIcon = m.gender === 'women' ? '👩' : '👨';
+                var hcpText = fmtExactHcp(m.handicap) + ' HCP';
+                html += '<div class="autocomplete-item" data-uid="' + m.uid + '">';
+                html += '<span>' + gIcon + ' <strong style="color:var(--white);">' + escapeHtml(m.name) + '</strong></span>';
+                html += '<span style="color:var(--gold);font-weight:700;font-size:12px;">' + hcpText + '</span>';
+                html += '</div>';
+            });
+
+            dropdown.innerHTML = html;
+            dropdown.style.display = 'block';
+            dropdown.classList.remove('hidden');
+
+            dropdown.querySelectorAll('.autocomplete-item').forEach(function(item, idx) {
+                item.addEventListener('click', function(evt) {
+                    evt.stopPropagation();
+                    var match = matches[idx];
+                    if (match && typeof onSelectCallback === 'function') {
+                        onSelectCallback(match);
+                    }
+                    dropdown.style.display = 'none';
+                    dropdown.classList.add('hidden');
+                });
+            });
+        });
+    };
+
+    inputEl.addEventListener('input', handleInput);
+    inputEl.addEventListener('focus', handleInput);
+
+    document.addEventListener('click', function(e) {
+        if (e.target !== inputEl && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+            dropdown.classList.add('hidden');
+        }
+    });
+}

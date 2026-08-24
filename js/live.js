@@ -123,21 +123,8 @@ function buildPlayerSlots() {
         html += '<div class="setup-player-card">';
         html += '<div class="setup-player-head"><span><i class="fas fa-user"></i> ' + t('player') + ' #' + i + '</span></div>';
         
-        html += '<div class="form-group" style="margin-bottom:6px;"><label>' + t('select_registered') + '</label>';
-        html += '<select class="form-input" id="pl-select-' + i + '" onchange="fillPlayerFromUser(' + i + ')">';
-        html += '<option value="">' + t('guest_manual') + '</option>';
-        
-        Object.entries(registeredUsers).forEach(function(e) {
-            var u = e[1];
-            var isCurrent = (i === 1 && currentUser && e[0] === currentUser.uid);
-            var sel = isCurrent ? 'selected' : '';
-            html += '<option value="' + e[0] + '" ' + sel + '>' + (u.name || '—') + ' (HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + ')</option>';
-        });
-        
-        html += '</select></div>';
-
         html += '<div class="form-row">';
-        html += '<div class="form-group" style="flex:1.4 1 120px;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"></div>';
+        html += '<div class="form-group" style="flex:1.4 1 120px;position:relative;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"><input type="hidden" id="pl-uid-' + i + '" value=""></div>';
         html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" onchange="calcPlayerFieldHcp(' + i + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
         html += '</div>';
 
@@ -148,7 +135,41 @@ function buildPlayerSlots() {
     }
     el.innerHTML = html;
 
-    setTimeout(function() { fillPlayerFromUser(1); }, 100);
+    for (var i = 1; i <= count; i++) {
+        (function(idx) {
+            var nameInp = document.getElementById('pl-name-' + idx);
+            if (typeof attachPlayerNameAutocomplete === 'function') {
+                attachPlayerNameAutocomplete(nameInp, null, function(matchedUser) {
+                    var nEl = document.getElementById('pl-name-' + idx);
+                    var uEl = document.getElementById('pl-uid-' + idx);
+                    var gEl = document.getElementById('pl-gender-' + idx);
+                    var hEl = document.getElementById('pl-hcp-' + idx);
+
+                    if (nEl) nEl.value = matchedUser.name;
+                    if (uEl) uEl.value = matchedUser.uid;
+                    if (gEl) gEl.value = matchedUser.gender;
+                    if (hEl) hEl.value = fmtExactHcp(matchedUser.handicap);
+
+                    calcPlayerFieldHcp(idx);
+                    if (typeof toast === 'function') toast('👤 ' + (currentLang === 'en' ? 'Selected player: ' : 'Выбран игрок: ') + matchedUser.name + ' (' + fmtExactHcp(matchedUser.handicap) + ' HCP)', 'info');
+                });
+            }
+        })(i);
+    }
+
+    if (currentUser && currentUserData) {
+        var p1Name = document.getElementById('pl-name-1');
+        var p1Uid = document.getElementById('pl-uid-1');
+        var p1Gender = document.getElementById('pl-gender-1');
+        var p1Hcp = document.getElementById('pl-hcp-1');
+
+        if (p1Name && !p1Name.value) p1Name.value = currentUserData.name || '';
+        if (p1Uid) p1Uid.value = currentUser.uid;
+        if (p1Gender && currentUserData.gender) p1Gender.value = currentUserData.gender;
+        if (p1Hcp && currentUserData.handicap != null) p1Hcp.value = fmtExactHcp(currentUserData.handicap);
+
+        calcPlayerFieldHcp(1);
+    }
 }
 
 function fillPlayerFromUser(idx) {
@@ -237,8 +258,8 @@ function startGroup() {
     var selectedUids = [];
 
     for (var i = 1; i <= count; i++) {
-        var selectEl = document.getElementById('pl-select-' + i);
-        var uid = selectEl ? selectEl.value : '';
+        var uidEl = document.getElementById('pl-uid-' + i);
+        var uid = uidEl ? uidEl.value : '';
         var nameEl = document.getElementById('pl-name-' + i);
         var name = nameEl ? nameEl.value.trim() : '';
         var hcpStr = document.getElementById('pl-hcp-' + i).value;
@@ -246,7 +267,7 @@ function startGroup() {
 
         if (uid) {
             if (selectedUids.indexOf(uid) !== -1) {
-                var dupName = registeredUsers[uid] ? registeredUsers[uid].name : uid;
+                var dupName = name || uid;
                 toast((currentLang === 'en' ? 'Duplicate player selected: ' : 'Выбран дублирующий игрок: ') + dupName, 'error');
                 return;
             }

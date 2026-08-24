@@ -3608,7 +3608,7 @@ function applyPageVisibilitySettings() {
 
     MANAGED_PAGES.forEach(function(page) {
         var isHidden = (hiddenPages[page] === true) && !isAdmin;
-        var links = document.querySelectorAll('a[href="' + page + '"]');
+        var links = document.querySelectorAll('a[href*="' + page + '"]');
         links.forEach(function(link) {
             if (isHidden) {
                 link.classList.add('nav-page-hidden');
@@ -3623,13 +3623,14 @@ function applyPageVisibilitySettings() {
     if (MANAGED_PAGES.includes(curPage) && hiddenPages[curPage] === true && !isAdmin) {
         var mainEl = document.querySelector('main') || document.body;
         if (mainEl && !document.getElementById('page-hidden-notice')) {
+            var homeText = (typeof t === 'function' ? t('nav_home') : (currentLang === 'en' ? 'Home' : 'Главная'));
             mainEl.innerHTML =
                 '<div class="container" style="padding:60px 20px;text-align:center;" id="page-hidden-notice">' +
                 '<div class="card" style="max-width:500px;margin:0 auto;padding:40px;border:2px solid var(--gold);">' +
                 '<div style="font-size:56px;color:var(--gold);margin-bottom:16px;"><i class="fas fa-eye-slash"></i></div>' +
                 '<h2 style="color:var(--white);margin-bottom:10px;font-size:22px;">' + (currentLang === 'en' ? 'Page Hidden' : 'Страница скрыта администратором') + '</h2>' +
                 '<p style="color:var(--muted);font-size:14px;margin-bottom:24px;line-height:1.6;">' + (currentLang === 'en' ? 'This page has been temporarily hidden by the club administrator.' : 'Эта страница временно убрана из доступа администратором клуба.') + '</p>' +
-                '<a href="index.html" class="btn btn-g btn-lg"><i class="fas fa-home"></i> ' + t('nav_home') + '</a>' +
+                '<a href="index.html" class="btn btn-g btn-lg"><i class="fas fa-home"></i> ' + homeText + '</a>' +
                 '</div></div>';
         }
     }

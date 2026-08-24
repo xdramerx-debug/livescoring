@@ -22,10 +22,12 @@ auth.onAuthStateChanged(function(user) {
     if (user) {
         db.ref('users/' + user.uid).once('value').then(function(s) {
             currentUserData = s.val();
+            if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
             if (typeof onAuthReady === 'function') onAuthReady(user, currentUserData);
         });
     } else {
         currentUserData = null;
+        if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
         if (typeof onAuthReady === 'function') onAuthReady(null, null);
     }
 });

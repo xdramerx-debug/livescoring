@@ -87,15 +87,15 @@
 
             <!-- TELEGRAM DUAL INTEGRATION: GROUP & CHANNEL -->
             <div class="card">
-                <h2><i class="fab fa-telegram"></i> <span>Интеграция Telegram: Группа Судей & Канал Клуба</span></h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+                <h2><i class="fab fa-telegram"></i> <span data-i18n="tg_integration_title">Интеграция Telegram: Группа Судей & Канал Клуба</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="tg_integration_sub">
                     Вы можете настроить отправку уведомлений отдельно для <b>Группы Судей/Маршалов</b> и для <b>Канала Клуба</b> (или использовать один и тот же бот).
                 </p>
 
                 <!-- 1. TELEGRAM GROUP SETTINGS -->
                 <div class="card" style="background:rgba(255,255,255,0.03);padding:14px;margin-bottom:14px;border:1px solid rgba(201,168,76,0.2);">
-                    <h3 style="color:var(--gold);font-size:14px;margin-bottom:10px;"><i class="fas fa-users"></i> 1. Telegram Группа (Вызовы Судей и Маршалов)</h3>
-                    <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+                    <h3 style="color:var(--gold);font-size:14px;margin-bottom:10px;" data-i18n="tg_group_title"><i class="fas fa-users"></i> 1. Telegram Группа (Вызовы Судей и Маршалов)</h3>
+                    <p style="font-size:11px;color:var(--muted);margin-bottom:10px;" data-i18n="tg_group_sub">
                         💡 Добавьте бота в группу судей. Chat ID обычно начинается с <code>-100...</code>
                     </p>
                     <div class="form-row">
@@ -116,8 +116,8 @@
 
                 <!-- 2. TELEGRAM CHANNEL SETTINGS -->
                 <div class="card" style="background:rgba(255,255,255,0.03);padding:14px;border:1px solid rgba(201,168,76,0.2);">
-                    <h3 style="color:var(--gold);font-size:14px;margin-bottom:10px;"><i class="fas fa-bullhorn"></i> 2. Telegram Канал (Анонсы и Результаты)</h3>
-                    <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+                    <h3 style="color:var(--gold);font-size:14px;margin-bottom:10px;" data-i18n="tg_channel_title"><i class="fas fa-bullhorn"></i> 2. Telegram Канал (Анонсы и Результаты)</h3>
+                    <p style="font-size:11px;color:var(--muted);margin-bottom:10px;" data-i18n="tg_channel_sub">
                         💡 Назначьте бота <b>Администратором канала</b> с правом публикации сообщений. Укажите ID (<code>-100...</code>) или username (<code>@pestovo_golf</code>).
                     </p>
                     <div class="form-row">
@@ -127,7 +127,7 @@
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-bullhorn"></i> Channel ID / Username</label>
-                            <input type="text" id="tg-channel-id" class="form-input" placeholder="@pestovo_golf или -1001987654321">
+                            <input type="text" id="tg-channel-id" class="form-input" data-i18n-placeholder="placeholder_tg_channel_id" placeholder="@pestovo_golf или -1001987654321">
                         </div>
                     </div>
                     <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
@@ -139,18 +139,18 @@
 
             <!-- VK API INTEGRATION FOR ALERTS -->
             <div class="card">
-                <h2><i class="fab fa-vk"></i> <span>Интеграция ВКонтакте (VK API)</span></h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">
+                <h2><i class="fab fa-vk"></i> <span data-i18n="vk_integration_title">Интеграция ВКонтакте (VK API)</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:14px;" data-i18n="vk_integration_sub">
                     Укажите Токен доступа сообщества ВК и ID беседы/пользователя (Peer ID). При вызове судьи или маршала вызов мгновенно отравится в ваш чат ВК!
                 </p>
                 <div class="form-row">
                     <div class="form-group">
-                        <label><i class="fas fa-key"></i> VK Access Token Сообщества</label>
+                        <label data-i18n="vk_token_lbl"><i class="fas fa-key"></i> VK Access Token Сообщества</label>
                         <input type="text" id="vk-access-token" class="form-input" placeholder="vk1.a.ExampleAccessToken...">
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-comments"></i> VK Peer ID / Chat ID</label>
-                        <input type="text" id="vk-peer-id" class="form-input" placeholder="2000000001 (беседа) или 123456789">
+                        <input type="text" id="vk-peer-id" class="form-input" data-i18n-placeholder="placeholder_vk_peer_id" placeholder="2000000001 (беседа) или 123456789">
                     </div>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">

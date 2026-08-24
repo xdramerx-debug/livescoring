@@ -3732,40 +3732,53 @@ document.addEventListener('DOMContentLoaded', function() {
 // ==========================================
 var cachedRegisteredUsers = {};
 
+if (typeof db !== 'undefined') {
+    try {
+        db.ref('users').on('value', function(sn) {
+            cachedRegisteredUsers = sn.val() || {};
+        });
+    } catch(e) {}
+}
+
 function loadAllRegisteredUsers(callback) {
     if (Object.keys(cachedRegisteredUsers).length > 0) {
         if (typeof callback === 'function') callback(cachedRegisteredUsers);
         return;
     }
-    if (typeof db === 'undefined') {
+    if (typeof db !== 'undefined') {
+        db.ref('users').once('value').then(function(sn) {
+            cachedRegisteredUsers = sn.val() || {};
+            if (typeof callback === 'function') callback(cachedRegisteredUsers);
+        }).catch(function() {
+            if (typeof callback === 'function') callback({});
+        });
+    } else {
         if (typeof callback === 'function') callback({});
-        return;
     }
-    db.ref('users').once('value').then(function(sn) {
-        cachedRegisteredUsers = sn.val() || {};
-        if (typeof callback === 'function') callback(cachedRegisteredUsers);
-    }).catch(function() {
-        if (typeof callback === 'function') callback({});
-    });
 }
 
 function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
     if (!inputEl) return;
 
-    var parent = inputEl.parentElement;
-    if (parent && getComputedStyle(parent).position === 'static') {
-        parent.style.position = 'relative';
-    }
-
     var dropdown = document.createElement('div');
     dropdown.className = 'autocomplete-suggestions hidden';
     dropdown.style.display = 'none';
+    dropdown.style.position = 'fixed';
+    dropdown.style.zIndex = '99999999';
 
-    if (containerEl) {
-        containerEl.appendChild(dropdown);
-    } else if (parent) {
-        parent.appendChild(dropdown);
+    if (document.body) {
+        document.body.appendChild(dropdown);
+    } else if (inputEl.parentElement) {
+        inputEl.parentElement.appendChild(dropdown);
     }
+
+    var updatePosition = function() {
+        if (!inputEl || dropdown.style.display === 'none') return;
+        var rect = inputEl.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + 2) + 'px';
+        dropdown.style.left = rect.left + 'px';
+        dropdown.style.width = rect.width + 'px';
+    };
 
     var handleInput = function() {
         var query = inputEl.value.trim().toLowerCase();
@@ -3816,6 +3829,7 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
             });
 
             dropdown.innerHTML = html;
+            updatePosition();
             dropdown.style.display = 'block';
             dropdown.classList.remove('hidden');
 
@@ -3841,8 +3855,18 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
     };
 
     inputEl.addEventListener('input', handleInput);
+    inputEl.addEventListener('keyup', handleInput);
     inputEl.addEventListener('focus', handleInput);
 
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+
+    document.addEventListener('touchstart', function(e) {
+        if (e.target !== inputEl && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+            dropdown.classList.add('hidden');
+        }
+    });
     document.addEventListener('click', function(e) {
         if (e.target !== inputEl && !dropdown.contains(e.target)) {
             dropdown.style.display = 'none';

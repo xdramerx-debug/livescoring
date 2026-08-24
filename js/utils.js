@@ -3548,11 +3548,8 @@ function applyPageVisibilitySettings() {
     var hiddenPages = getHiddenPages();
     var curPage = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.split('/').pop() || 'index.html' : 'index.html';
 
-    var isAdmin = (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin') ||
-                  (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('pestovo_is_admin') === 'true');
-
     MANAGED_PAGES.forEach(function(page) {
-        var isHidden = (hiddenPages[page] === true) && !isAdmin;
+        var isHidden = (hiddenPages[page] === true);
         var links = document.querySelectorAll('a[href*="' + page + '"]');
         links.forEach(function(link) {
             if (isHidden) {
@@ -3565,7 +3562,7 @@ function applyPageVisibilitySettings() {
         });
     });
 
-    if (MANAGED_PAGES.includes(curPage) && hiddenPages[curPage] === true && !isAdmin) {
+    if (MANAGED_PAGES.includes(curPage) && hiddenPages[curPage] === true) {
         var mainEl = document.querySelector('main') || document.body;
         if (mainEl && !document.getElementById('page-hidden-notice')) {
             var homeText = (typeof t === 'function' ? t('nav_home') : (currentLang === 'en' ? 'Home' : 'Главная'));

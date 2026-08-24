@@ -42,11 +42,15 @@ body.sun-mode {
 body.sun-mode .hero,
 body.sun-mode .page-head,
 body.sun-mode .footer,
+body.sun-mode .section,
 body.sun-mode .section-alt,
 body.sun-mode .auth-wrap {
     background: #f4f8f5 !important;
     border-color: #000000 !important;
     color: #000000 !important;
+}
+body.sun-mode .hero::before {
+    display: none !important;
 }
 body.sun-mode .hero-sub,
 body.sun-mode .hero-title,
@@ -86,6 +90,7 @@ body.sun-mode .round-card,
 body.sun-mode .setup-player-card,
 body.sun-mode .mode-card,
 body.sun-mode .auth-card,
+body.sun-mode .tn-card,
 body.sun-mode .list-item,
 body.sun-mode .stat,
 body.sun-mode .pestovo-modern-scorecard,
@@ -93,11 +98,20 @@ body.sun-mode .noscroll-player-block,
 body.sun-mode .trophy-cabinet,
 body.sun-mode .timing-info,
 body.sun-mode .timing-summary-card,
-body.sun-mode .timing-pill {
+body.sun-mode .timing-pill,
+body.sun-mode .scoring-dual-block,
+body.sun-mode .my-score-block,
+body.sun-mode .marker-score-block,
+body.sun-mode #course-card,
+body.sun-mode #club-stats {
     background: #ffffff !important;
     border: 2px solid #000000 !important;
     box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important;
     color: #000000 !important;
+}
+
+body.sun-mode .skeleton {
+    background: #e0e0e0 !important;
 }
 
 body.sun-mode h1,
@@ -115,7 +129,8 @@ body.sun-mode .setup-player-head,
 body.sun-mode .stat-n,
 body.sun-mode .stat-l,
 body.sun-mode .tp-lbl,
-body.sun-mode .tp-val {
+body.sun-mode .tp-val,
+body.sun-mode .round-course {
     color: #000000 !important;
     font-weight: 800 !important;
 }

@@ -1001,3 +1001,11 @@ function savePageVisibilitySettings() {
         if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
     }
 }
+
+function togglePVCheckbox(id) {
+    var checkbox = document.getElementById(id);
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        if (typeof vib === 'function') vib(30);
+    }
+}

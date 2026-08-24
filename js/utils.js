@@ -3820,7 +3820,10 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
             dropdown.classList.remove('hidden');
 
             dropdown.querySelectorAll('.autocomplete-item').forEach(function(item, idx) {
-                item.addEventListener('click', function(evt) {
+                var selectItem = function(evt) {
+                    if (evt.type === 'touchstart' || evt.type === 'mousedown') {
+                        evt.preventDefault();
+                    }
                     evt.stopPropagation();
                     var match = matches[idx];
                     if (match && typeof onSelectCallback === 'function') {
@@ -3828,7 +3831,11 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
                     }
                     dropdown.style.display = 'none';
                     dropdown.classList.add('hidden');
-                });
+                };
+
+                item.addEventListener('touchstart', selectItem, { passive: false });
+                item.addEventListener('mousedown', selectItem);
+                item.addEventListener('click', selectItem);
             });
         });
     };

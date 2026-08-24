@@ -125,12 +125,13 @@ function buildPlayerSlots() {
         
         html += '<div class="form-row">';
         html += '<div class="form-group" style="flex:1.4 1 120px;position:relative;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"><input type="hidden" id="pl-uid-' + i + '" value=""></div>';
-        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" onchange="calcPlayerFieldHcp(' + i + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" onchange="onPlayerGenderOrTeeChange(' + i + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
         html += '</div>';
 
-        html += '<div class="form-row">';
-        html += '<div class="form-group" style="flex:1 1 100px;"><label>' + t('exact_hcp') + '</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
-        html += '<div class="form-group" style="flex:1 1 100px;"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly placeholder="—"></div>';
+        html += '<div class="form-row form-row-3">';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('tee_select') + '</label><select id="pl-tee-' + i + '" class="form-input" onchange="calcPlayerFieldHcp(' + i + ')"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('exact_hcp') + '</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly placeholder="—"></div>';
         html += '</div></div>';
     }
     el.innerHTML = html;
@@ -143,11 +144,23 @@ function buildPlayerSlots() {
                     var nEl = document.getElementById('pl-name-' + idx);
                     var uEl = document.getElementById('pl-uid-' + idx);
                     var gEl = document.getElementById('pl-gender-' + idx);
+                    var tEl = document.getElementById('pl-tee-' + idx);
                     var hEl = document.getElementById('pl-hcp-' + idx);
 
                     if (nEl) nEl.value = matchedUser.name;
                     if (uEl) uEl.value = matchedUser.uid;
                     if (gEl) gEl.value = matchedUser.gender;
+
+                    if (tEl) {
+                        if (matchedUser.defaultTee) {
+                            tEl.value = matchedUser.defaultTee;
+                        } else if (matchedUser.gender === 'women') {
+                            tEl.value = 'rd';
+                        } else {
+                            tEl.value = 'bl';
+                        }
+                    }
+
                     if (hEl) hEl.value = fmtExactHcp(matchedUser.handicap);
 
                     calcPlayerFieldHcp(idx);
@@ -161,39 +174,41 @@ function buildPlayerSlots() {
         var p1Name = document.getElementById('pl-name-1');
         var p1Uid = document.getElementById('pl-uid-1');
         var p1Gender = document.getElementById('pl-gender-1');
+        var p1Tee = document.getElementById('pl-tee-1');
         var p1Hcp = document.getElementById('pl-hcp-1');
 
         if (p1Name && !p1Name.value) p1Name.value = currentUserData.name || '';
         if (p1Uid) p1Uid.value = currentUser.uid;
         if (p1Gender && currentUserData.gender) p1Gender.value = currentUserData.gender;
+        if (p1Tee) {
+            if (currentUserData.defaultTee) p1Tee.value = currentUserData.defaultTee;
+            else if (currentUserData.gender === 'women') p1Tee.value = 'rd';
+            else p1Tee.value = 'bl';
+        }
         if (p1Hcp && currentUserData.handicap != null) p1Hcp.value = fmtExactHcp(currentUserData.handicap);
 
         calcPlayerFieldHcp(1);
     }
 }
 
-function fillPlayerFromUser(idx) {
-    var sel = document.getElementById('pl-select-' + idx);
-    if (!sel) return;
-    var uid = sel.value;
-    if (!uid || !registeredUsers[uid]) return;
-    var u = registeredUsers[uid];
-    
-    var nameEl = document.getElementById('pl-name-' + idx);
-    var hcpEl = document.getElementById('pl-hcp-' + idx);
+function onPlayerGenderOrTeeChange(idx) {
     var genderEl = document.getElementById('pl-gender-' + idx);
-
-    if (nameEl) nameEl.value = u.name || '';
-    if (hcpEl) hcpEl.value = u.handicap != null ? fmtExactHcp(u.handicap) : '';
-    if (genderEl && u.gender) genderEl.value = u.gender;
-    
+    var teeEl = document.getElementById('pl-tee-' + idx);
+    if (genderEl && teeEl) {
+        var g = genderEl.value;
+        if (g === 'women' && (teeEl.value === 'bk' || teeEl.value === 'bl')) {
+            teeEl.value = 'rd';
+        } else if (g === 'men' && teeEl.value === 'rd') {
+            teeEl.value = 'bl';
+        }
+    }
     calcPlayerFieldHcp(idx);
 }
 
 function calcPlayerFieldHcp(idx) {
     var hcpEl = document.getElementById('pl-hcp-' + idx);
     var genderEl = document.getElementById('pl-gender-' + idx);
-    var teeEl = document.getElementById('g-tee');
+    var teeEl = document.getElementById('pl-tee-' + idx) || document.getElementById('g-tee');
     
     if (!hcpEl || !genderEl || !teeEl) return;
     var hcp = hcpEl.value;
@@ -264,6 +279,7 @@ function startGroup() {
         var name = nameEl ? nameEl.value.trim() : '';
         var hcpStr = document.getElementById('pl-hcp-' + i).value;
         var gender = document.getElementById('pl-gender-' + i).value;
+        var playerTee = document.getElementById('pl-tee-' + i) ? document.getElementById('pl-tee-' + i).value : tee;
 
         if (uid) {
             if (selectedUids.indexOf(uid) !== -1) {
@@ -278,13 +294,14 @@ function startGroup() {
 
         var pid = uid || 'guest_' + Date.now() + '_' + i;
         var parsedHcp = parseExactHcp(hcpStr);
-        var fieldHcp = hcpStr ? getFieldHcp(parsedHcp, tee, gender) : 0;
+        var fieldHcp = hcpStr ? getFieldHcp(parsedHcp, playerTee, gender) : 0;
 
         players[pid] = {
             name: name,
             exactHcp: parsedHcp,
             fieldHcp: fieldHcp,
             gender: gender,
+            tee: playerTee,
             isGuest: !uid,
             scores: {},
             markerScores: {},

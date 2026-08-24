@@ -38,6 +38,9 @@ function adminLogin() {
 }
 
 function openAdminPanel() {
+    try { sessionStorage.setItem('pestovo_is_admin', 'true'); } catch(e) {}
+    if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+
     var loginEl = document.getElementById('admin-login');
     var contentEl = document.getElementById('admin-content');
     if (loginEl) loginEl.classList.add('hidden');

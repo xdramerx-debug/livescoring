@@ -3604,7 +3604,8 @@ function applyPageVisibilitySettings() {
     var hiddenPages = getHiddenPages();
     var curPage = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.split('/').pop() || 'index.html' : 'index.html';
 
-    var isAdmin = typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin';
+    var isAdmin = (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin') ||
+                  (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('pestovo_is_admin') === 'true');
 
     MANAGED_PAGES.forEach(function(page) {
         var isHidden = (hiddenPages[page] === true) && !isAdmin;
@@ -3631,7 +3632,8 @@ function applyPageVisibilitySettings() {
                 '<h2 style="color:var(--white);margin-bottom:10px;font-size:22px;">' + (currentLang === 'en' ? 'Page Hidden' : 'Страница скрыта администратором') + '</h2>' +
                 '<p style="color:var(--muted);font-size:14px;margin-bottom:24px;line-height:1.6;">' + (currentLang === 'en' ? 'This page has been temporarily hidden by the club administrator.' : 'Эта страница временно убрана из доступа администратором клуба.') + '</p>' +
                 '<a href="index.html" class="btn btn-g btn-lg"><i class="fas fa-home"></i> ' + homeText + '</a>' +
-                '</div></div>';
+                '</div>' +
+                '</div>';
         }
     }
 }

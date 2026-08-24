@@ -3742,15 +3742,25 @@ var DEFAULT_REGISTERED_PLAYERS = {
 
 var cachedRegisteredUsers = Object.assign({}, DEFAULT_REGISTERED_PLAYERS);
 
-try {
-    var localCached = localStorage.getItem('pestovo_cached_users');
-    if (localCached) {
-        var parsedLocal = JSON.parse(localCached);
-        if (parsedLocal && typeof parsedLocal === 'object' && Object.keys(parsedLocal).length > 0) {
-            Object.assign(cachedRegisteredUsers, parsedLocal);
+function syncKnownPlayersCache() {
+    try {
+        var localCached = localStorage.getItem('pestovo_cached_users');
+        if (localCached) {
+            var p1 = JSON.parse(localCached);
+            if (p1 && typeof p1 === 'object') Object.assign(cachedRegisteredUsers, p1);
         }
-    }
-} catch(e) {}
+    } catch(e) {}
+
+    try {
+        var custom = localStorage.getItem('pestovo_custom_players');
+        if (custom) {
+            var p2 = JSON.parse(custom);
+            if (p2 && typeof p2 === 'object') Object.assign(cachedRegisteredUsers, p2);
+        }
+    } catch(e) {}
+}
+
+syncKnownPlayersCache();
 
 if (typeof db !== 'undefined') {
     try {
@@ -3761,56 +3771,18 @@ if (typeof db !== 'undefined') {
                 try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
             }
         });
-    } catch(e) {}
-}
-
-function getAllKnownPlayers(callback) {
-    var known = Object.assign({}, DEFAULT_REGISTERED_PLAYERS);
-
-    try {
-        var localCached = localStorage.getItem('pestovo_cached_users');
-        if (localCached) {
-            var p1 = JSON.parse(localCached);
-            if (p1 && typeof p1 === 'object') Object.assign(known, p1);
-        }
-    } catch(e) {}
-
-    try {
-        var custom = localStorage.getItem('pestovo_custom_players');
-        if (custom) {
-            var p2 = JSON.parse(custom);
-            if (p2 && typeof p2 === 'object') Object.assign(known, p2);
-        }
-    } catch(e) {}
-
-    if (cachedRegisteredUsers) {
-        Object.assign(known, cachedRegisteredUsers);
-    }
-
-    var finalize = function() {
-        if (typeof callback === 'function') callback(known);
-    };
-
-    if (typeof db !== 'undefined') {
-        Promise.all([
-            db.ref('users').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
-            db.ref('rounds').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; })
-        ]).then(function(results) {
-            var dbUsers = results[0];
-            var dbRounds = results[1];
-
-            Object.assign(known, dbUsers);
-
-            Object.values(dbRounds).forEach(function(r) {
+        db.ref('rounds').on('value', function(sn) {
+            var roundsData = sn.val() || {};
+            Object.values(roundsData).forEach(function(r) {
                 if (r && r.players && typeof r.players === 'object') {
                     Object.entries(r.players).forEach(function(pe) {
                         var pid = pe[0], p = pe[1];
                         if (p && p.name) {
                             var pName = p.name.trim();
                             var key = pid.startsWith('guest_') ? ('guest_name_' + pName.toLowerCase().replace(/\s+/g, '_')) : pid;
-                            if (!known[key]) {
+                            if (!cachedRegisteredUsers[key]) {
                                 var parts = pName.split(' ');
-                                known[key] = {
+                                cachedRegisteredUsers[key] = {
                                     name: pName,
                                     firstName: parts[0] || pName,
                                     lastName: parts.slice(1).join(' ') || '',
@@ -3824,19 +3796,19 @@ function getAllKnownPlayers(callback) {
                     });
                 }
             });
-
-            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(known)); } catch(e) {}
-            finalize();
-        }).catch(function() {
-            finalize();
         });
-    } else {
-        finalize();
-    }
+    } catch(e) {}
+}
+
+function getKnownPlayersSync() {
+    syncKnownPlayersCache();
+    return cachedRegisteredUsers;
 }
 
 function loadAllRegisteredUsers(callback) {
-    getAllKnownPlayers(callback);
+    if (typeof callback === 'function') {
+        callback(getKnownPlayersSync());
+    }
 }
 
 var currentAutocompleteMatches = [];
@@ -3934,103 +3906,102 @@ function initPlayerSearchAutofill(opts) {
             return;
         }
 
-        getAllKnownPlayers(function(usersData) {
-            var matches = [];
-            var seenKeys = new Set();
-            var exactMatch = null;
+        var usersData = getKnownPlayersSync();
+        var matches = [];
+        var seenKeys = new Set();
+        var exactMatch = null;
 
-            Object.entries(usersData || {}).forEach(function(e) {
-                var uid = e[0];
-                var u = e[1];
-                var name = (u.name || '').trim();
-                var fn = (u.firstName || '').trim();
-                var ln = (u.lastName || '').trim();
-                var email = (u.email || '').trim();
+        Object.entries(usersData || {}).forEach(function(e) {
+            var uid = e[0];
+            var u = e[1];
+            var name = (u.name || '').trim();
+            var fn = (u.firstName || '').trim();
+            var ln = (u.lastName || '').trim();
+            var email = (u.email || '').trim();
 
-                var full = (fn + ' ' + ln).trim() || name;
-                if (!full) return;
+            var full = (fn + ' ' + ln).trim() || name;
+            if (!full) return;
 
-                var normKey = full.toLowerCase() + '_' + (u.handicap != null ? u.handicap : '');
-                if (seenKeys.has(normKey)) return;
+            var normKey = full.toLowerCase() + '_' + (u.handicap != null ? u.handicap : '');
+            if (seenKeys.has(normKey)) return;
 
-                var fnLower = fn.toLowerCase();
-                var lnLower = ln.toLowerCase();
-                var fullLower = full.toLowerCase();
-                var nameLower = name.toLowerCase();
+            var fnLower = fn.toLowerCase();
+            var lnLower = ln.toLowerCase();
+            var fullLower = full.toLowerCase();
+            var nameLower = name.toLowerCase();
 
-                var isPrefixMatch = (fnLower.startsWith(query) || lnLower.startsWith(query) || fullLower.startsWith(query) || nameLower.startsWith(query) || fullLower.includes(query));
+            var isPrefixMatch = (fnLower.startsWith(query) || lnLower.startsWith(query) || fullLower.startsWith(query) || nameLower.startsWith(query) || fullLower.includes(query));
 
-                if (isPrefixMatch) {
-                    seenKeys.add(normKey);
-                    var playerObj = {
-                        uid: uid,
-                        name: full,
-                        firstName: fn || full.split(' ')[0] || full,
-                        lastName: ln || full.split(' ').slice(1).join(' ') || '',
-                        handicap: u.handicap != null ? u.handicap : 0,
-                        gender: u.gender || 'men',
-                        defaultTee: u.defaultTee || (u.gender === 'women' ? 'rd' : 'bl'),
-                        isGuest: !!u.isGuest
-                    };
-                    matches.push(playerObj);
-
-                    var reversedFull = (ln + ' ' + fn).trim().toLowerCase();
-                    if (query === fullLower || query === reversedFull || query === nameLower) {
-                        exactMatch = playerObj;
-                    }
-                }
-            });
-
-            if (exactMatch) {
-                triggerSelection(exactMatch);
-                return;
-            }
-
-            if (matches.length === 0) {
-                dropdown.style.display = 'none';
-                dropdown.classList.add('hidden');
-                highlightedIdx = -1;
-                return;
-            }
-
-            activeMatches = matches;
-            currentAutocompleteMatches = matches;
-            currentAutocompleteCallback = onSelect;
-            activeAutocompleteDropdown = dropdown;
-            highlightedIdx = -1;
-
-            var html = '';
-            matches.slice(0, 8).forEach(function(m, idx) {
-                var gIcon = m.gender === 'women' ? '👩' : '👨';
-                var hcpText = fmtExactHcp(m.handicap) + ' HCP';
-                var guestTag = m.isGuest ? ' <span style="font-size:10px;color:var(--gold);">(Гость)</span>' : '';
-
-                html += '<div class="autocomplete-item" data-idx="' + idx + '" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.08);min-height:44px;">';
-                html += '<span>' + gIcon + ' <strong style="color:var(--white);font-size:14px;">' + escapeHtml(m.name) + '</strong>' + guestTag + '</span>';
-                html += '<span style="color:var(--gold);font-weight:700;font-size:13px;">' + hcpText + '</span>';
-                html += '</div>';
-            });
-
-            dropdown.innerHTML = html;
-            dropdown.style.display = 'block';
-            dropdown.classList.remove('hidden');
-
-            dropdown.querySelectorAll('.autocomplete-item').forEach(function(item) {
-                var handleTap = function(evt) {
-                    if (evt.cancelable) evt.preventDefault();
-                    evt.stopPropagation();
-                    var idxAttr = item.getAttribute('data-idx');
-                    var idx = parseInt(idxAttr);
-                    var match = activeMatches[idx];
-                    if (match) {
-                        triggerSelection(match);
-                    }
+            if (isPrefixMatch) {
+                seenKeys.add(normKey);
+                var playerObj = {
+                    uid: uid,
+                    name: full,
+                    firstName: fn || full.split(' ')[0] || full,
+                    lastName: ln || full.split(' ').slice(1).join(' ') || '',
+                    handicap: u.handicap != null ? u.handicap : 0,
+                    gender: u.gender || 'men',
+                    defaultTee: u.defaultTee || (u.gender === 'women' ? 'rd' : 'bl'),
+                    isGuest: !!u.isGuest
                 };
+                matches.push(playerObj);
 
-                item.addEventListener('touchstart', handleTap, { passive: false });
-                item.addEventListener('mousedown', handleTap);
-                item.addEventListener('click', handleTap);
-            });
+                var reversedFull = (ln + ' ' + fn).trim().toLowerCase();
+                if (query.length >= 4 && (query === fullLower || query === reversedFull || query === nameLower)) {
+                    exactMatch = playerObj;
+                }
+            }
+        });
+
+        if (exactMatch) {
+            triggerSelection(exactMatch);
+            return;
+        }
+
+        if (matches.length === 0) {
+            dropdown.style.display = 'none';
+            dropdown.classList.add('hidden');
+            highlightedIdx = -1;
+            return;
+        }
+
+        activeMatches = matches;
+        currentAutocompleteMatches = matches;
+        currentAutocompleteCallback = onSelect;
+        activeAutocompleteDropdown = dropdown;
+        highlightedIdx = -1;
+
+        var html = '';
+        matches.slice(0, 8).forEach(function(m, idx) {
+            var gIcon = m.gender === 'women' ? '👩' : '👨';
+            var hcpText = fmtExactHcp(m.handicap) + ' HCP';
+            var guestTag = m.isGuest ? ' <span style="font-size:10px;color:var(--gold);">(Гость)</span>' : '';
+
+            html += '<div class="autocomplete-item" data-idx="' + idx + '" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.08);min-height:44px;">';
+            html += '<span>' + gIcon + ' <strong style="color:var(--white);font-size:14px;">' + escapeHtml(m.name) + '</strong>' + guestTag + '</span>';
+            html += '<span style="color:var(--gold);font-weight:700;font-size:13px;">' + hcpText + '</span>';
+            html += '</div>';
+        });
+
+        dropdown.innerHTML = html;
+        dropdown.style.display = 'block';
+        dropdown.classList.remove('hidden');
+
+        dropdown.querySelectorAll('.autocomplete-item').forEach(function(item) {
+            var handleTap = function(evt) {
+                if (evt.cancelable) evt.preventDefault();
+                evt.stopPropagation();
+                var idxAttr = item.getAttribute('data-idx');
+                var idx = parseInt(idxAttr);
+                var match = activeMatches[idx];
+                if (match) {
+                    triggerSelection(match);
+                }
+            };
+
+            item.addEventListener('touchstart', handleTap, { passive: false });
+            item.addEventListener('mousedown', handleTap);
+            item.addEventListener('click', handleTap);
         });
     };
 

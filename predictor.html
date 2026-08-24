@@ -46,13 +46,13 @@
 
 <main class="container" style="padding:24px 20px 60px;">
     <div class="card" style="max-width:540px;margin:0 auto 24px;">
-        <h2><i class="fas fa-user-gear"></i> Данные для прогноза</h2>
-        <div class="form-group"><label>Выберите зарегистрированного игрока:</label>
+        <h2><i class="fas fa-user-gear"></i> <span data-i18n="forecast_input_title">Данные для прогноза</span></h2>
+        <div class="form-group"><label data-i18n="select_registered_player">Выберите зарегистрированного игрока:</label>
             <select id="pred-user-select" class="form-input" onchange="runWHSPredictor()"></select>
         </div>
         <div class="form-row">
-            <div class="form-group"><label>Пол:</label><select id="pred-gender" class="form-input" onchange="runWHSPredictor()"><option value="men">Мужчина</option><option value="women">Женщина</option></select></div>
-            <div class="form-group"><label>Планируемый ТИ:</label><select id="pred-tee" class="form-input" onchange="runWHSPredictor()"><option value="bk">⬛ Чёрный</option><option value="bl">🟦 Синий</option><option value="wh" selected>⬜ Белый</option><option value="rd">🟥 Красный</option></select></div>
+            <div class="form-group"><label data-i18n="gender_label">Пол:</label><select id="pred-gender" class="form-input" onchange="runWHSPredictor()"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Женщина</option></select></div>
+            <div class="form-group"><label data-i18n="planned_tee">Планируемый ТИ:</label><select id="pred-tee" class="form-input" onchange="runWHSPredictor()"><option value="bk" data-i18n="tee_opt_bk">⬛ Чёрный</option><option value="bl" data-i18n="tee_opt_bl">🟦 Синий</option><option value="wh" selected data-i18n="tee_opt_wh">⬜ Белый</option><option value="rd" data-i18n="tee_opt_rd">🟥 Красный</option></select></div>
         </div>
     </div>
 

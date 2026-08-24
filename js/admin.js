@@ -49,6 +49,7 @@ function openAdminPanel() {
     listenForAlerts();
     loadTelegramSettings();
     loadVKSettings();
+    loadPageVisibilitySettings();
     updateNotifButton();
 }
 
@@ -914,4 +915,52 @@ function testVKAlert() {
     }
 
     sendVKDirectAlert(token, peerId, 'referee', 1, 'Администратор Клуба', 'Тестовая проверка ВК');
+}
+
+// ==========================================
+// PAGE VISIBILITY MANAGEMENT
+// ==========================================
+function loadPageVisibilitySettings() {
+    if (typeof MANAGED_PAGES === 'undefined') return;
+
+    MANAGED_PAGES.forEach(function(page) {
+        var checkbox = document.getElementById('pv-' + page);
+        if (checkbox) checkbox.checked = true;
+    });
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/hidden_pages').once('value').then(function(sn) {
+            var hp = sn.val() || {};
+            MANAGED_PAGES.forEach(function(page) {
+                var checkbox = document.getElementById('pv-' + page);
+                if (checkbox) {
+                    checkbox.checked = (hp[page] !== true);
+                }
+            });
+        });
+    }
+}
+
+function savePageVisibilitySettings() {
+    if (typeof MANAGED_PAGES === 'undefined') return;
+
+    var hiddenPages = {};
+    MANAGED_PAGES.forEach(function(page) {
+        var checkbox = document.getElementById('pv-' + page);
+        if (checkbox && !checkbox.checked) {
+            hiddenPages[page] = true;
+        }
+    });
+
+    localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hiddenPages));
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/hidden_pages').set(hiddenPages).then(function() {
+            toast(currentLang === 'en' ? '✅ Page visibility settings saved!' : '✅ Настройки видимости страниц сохранены!', 'success');
+            if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+        });
+    } else {
+        toast(currentLang === 'en' ? '✅ Settings saved locally!' : '✅ Настройки сохранены локально!', 'success');
+        if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+    }
 }

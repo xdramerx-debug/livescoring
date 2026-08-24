@@ -288,6 +288,9 @@ var I18N = {
         manage_players_sub: 'Назначайте права Администратора другим игрокам. Администраторы получают полный доступ к этой панели.',
         data_management: 'Управление данными',
         data_danger_sub: 'Осторожно — действия необратимы.',
+        page_visibility_title: 'Управление видимостью страниц',
+        page_visibility_sub: 'Снимите галочку с любой страницы, чтобы полностью скрыть её из меню навигации и закрыть доступ для игроков.',
+        save_visibility_btn: 'Сохранить видимость страниц',
         tab_broadcasts: 'Анонсы 📢',
         delete_all_rounds: 'Удалить все раунды',
         full_name: 'Имя и фамилия',
@@ -554,6 +557,9 @@ var I18N = {
         manage_players_sub: 'Assign Administrator rights to other players. Administrators get full access to this panel.',
         data_management: 'Data Management',
         data_danger_sub: 'Caution — actions are irreversible.',
+        page_visibility_title: 'Manage Page Visibility',
+        page_visibility_sub: 'Uncheck any page to completely hide it from navigation menu and restrict player access.',
+        save_visibility_btn: 'Save Page Visibility',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
         full_name: 'Full Name',
@@ -3564,3 +3570,78 @@ function sendVKOfficialAlert(type, holeNum, playerName, roundInfo) {
         });
     }
 }
+
+// ==========================================
+// DYNAMIC PAGE VISIBILITY MANAGEMENT
+// ==========================================
+var MANAGED_PAGES = [
+    'guide.html',
+    'feed.html',
+    'predictor.html',
+    'order-of-merit.html',
+    'players.html',
+    'tournaments.html',
+    'stats.html',
+    'handicap.html'
+];
+
+function getHiddenPages() {
+    try {
+        var local = localStorage.getItem('pestovo_hidden_pages');
+        return local ? JSON.parse(local) : {};
+    } catch(e) {
+        return {};
+    }
+}
+
+function applyPageVisibilitySettings() {
+    if (typeof document === 'undefined') return;
+
+    var hiddenPages = getHiddenPages();
+    var curPage = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.split('/').pop() || 'index.html' : 'index.html';
+
+    MANAGED_PAGES.forEach(function(page) {
+        var isHidden = hiddenPages[page] === true;
+        var links = document.querySelectorAll('a[href="' + page + '"]');
+        links.forEach(function(link) {
+            if (isHidden) {
+                link.classList.add('nav-page-hidden');
+                link.style.setProperty('display', 'none', 'important');
+            } else {
+                link.classList.remove('nav-page-hidden');
+                link.style.removeProperty('display');
+            }
+        });
+    });
+
+    if (MANAGED_PAGES.includes(curPage) && hiddenPages[curPage] === true) {
+        var isAdmin = typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin';
+        if (!isAdmin) {
+            var mainEl = document.querySelector('main') || document.body;
+            if (mainEl) {
+                mainEl.innerHTML =
+                    '<div class="container" style="padding:60px 20px;text-align:center;">' +
+                    '<div class="card" style="max-width:500px;margin:0 auto;padding:40px;">' +
+                    '<div style="font-size:48px;color:var(--gold);margin-bottom:16px;"><i class="fas fa-eye-slash"></i></div>' +
+                    '<h2 style="color:var(--white);margin-bottom:10px;">' + (currentLang === 'en' ? 'Page Hidden' : 'Страница временно скрыта') + '</h2>' +
+                    '<p style="color:var(--muted);font-size:14px;margin-bottom:24px;">' + (currentLang === 'en' ? 'This page is currently hidden by administrator.' : 'Эта страница временно убрана из показа администратором клуба.') + '</p>' +
+                    '<a href="index.html" class="btn btn-g"><i class="fas fa-home"></i> ' + t('nav_home') + '</a>' +
+                    '</div></div>';
+            }
+        }
+    }
+}
+
+if (typeof db !== 'undefined') {
+    try {
+        db.ref('settings/hidden_pages').on('value', function(sn) {
+            var hp = sn.val() || {};
+            localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hp));
+            applyPageVisibilitySettings();
+        });
+    } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    applyPageVisibilitySettings();
+});

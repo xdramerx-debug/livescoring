@@ -232,6 +232,24 @@
         </div>
 
         <div id="tab-data" class="admin-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-eye-slash"></i> <span data-i18n="page_visibility_title">Управление видимостью страниц</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="page_visibility_sub">
+                    Снимите галочку с любой страницы, чтобы полностью скрыть её из меню навигации и закрыть доступ для игроков.
+                </p>
+                <div id="page-visibility-grid" class="form-row" style="gap:10px;margin-bottom:16px;">
+                    <label class="list-item" style="cursor:pointer;padding:10px 14px;flex:1 1 200px;"><input type="checkbox" id="pv-guide.html" checked> 📖 <span data-i18n="nav_guide">Книга поля</span></label>
+                    <label class="list-item" style="cursor:pointer;padding:10px 14px;flex:1 1 200px;"><input type="checkbox" id="pv-feed.html" checked> 📡 <span data-i18n="nav_feed">Лента событий</span></label>
+                    <label class="list-item" style="cursor:pointer;padding:10px 14px;flex:1 1 200px;"><input type="checkbox" id="pv-predictor.html" checked> 🧮 <span data-i18n="nav_predictor">Симулятор WHS</span></label>
+                    <label class="list-item" style="cursor:pointer;padding:10px 14px;flex:1 1 200px;"><input type="checkbox" id="pv-order-of-merit.html" checked> 👑 <span data-i18n="nav_oom">Зачёт сезона</span></label>
+                    <label class="list-item" style="cursor:pointer;padding:10px 14px;flex:1 1 200px;"><input type="checkbox" id="pv-players.html" checked> 👥 <span data-i18n="nav_players">Игроки</span></label>
+                    <label class="list-item" style="cursor:pointer;padding:10px 14px;flex:1 1 200px;"><input type="checkbox" id="pv-tournaments.html" checked> 📋 <span data-i18n="nav_tournaments">Турниры</span></label>
+                    <label class="list-item" style="cursor:pointer;padding:10px 14px;flex:1 1 200px;"><input type="checkbox" id="pv-stats.html" checked> 📊 <span data-i18n="nav_stats">Статистика клуба</span></label>
+                    <label class="list-item" style="cursor:pointer;padding:10px 14px;flex:1 1 200px;"><input type="checkbox" id="pv-handicap.html" checked> 📐 <span data-i18n="nav_handicaps">Таблица гандикапов</span></label>
+                </div>
+                <button class="btn btn-g" onclick="savePageVisibilitySettings()"><i class="fas fa-save"></i> <span data-i18n="save_visibility_btn">Сохранить видимость страниц</span></button>
+            </div>
+
             <div class="card"><h2><i class="fas fa-database"></i> <span data-i18n="data_management">Управление данными</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="data_danger_sub">Экспорт отчётов и резервное копирование.</p>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">

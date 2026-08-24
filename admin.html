@@ -168,18 +168,18 @@
                 </p>
                 <div class="form-group">
                     <label data-i18n="broadcast_title_lbl">Заголовок анонса</label>
-                    <input type="text" id="bc-title" class="form-input" placeholder="🏆 Чемпионат Пестово 2024">
+                    <input type="text" id="bc-title" class="form-input" data-i18n-placeholder="placeholder_bc_title" placeholder="🏆 Чемпионат Пестово 2024">
                 </div>
                 <div class="form-group">
                     <label data-i18n="broadcast_body_lbl">Текст сообщения</label>
-                    <textarea id="bc-body" class="form-input" style="min-height:90px;" placeholder="Регистрация на турнир открыта! Старт в субботу в 10:00."></textarea>
+                    <textarea id="bc-body" class="form-input" style="min-height:90px;" data-i18n-placeholder="placeholder_bc_body" placeholder="Регистрация на турнир открыта! Старт в субботу в 10:00."></textarea>
                 </div>
                 <div class="form-group">
                     <label data-i18n="broadcast_link_lbl">Ссылка (опционально)</label>
                     <select id="bc-link" class="form-input">
-                        <option value="tournaments.html">Турниры (tournaments.html)</option>
-                        <option value="index.html">Главная (index.html)</option>
-                        <option value="leaderboard.html">Все раунды (leaderboard.html)</option>
+                        <option value="tournaments.html" data-i18n="nav_tournaments">Турниры</option>
+                        <option value="index.html" data-i18n="nav_home">Главная</option>
+                        <option value="leaderboard.html" data-i18n="nav_leaderboard">Все раунды</option>
                     </select>
                 </div>
                 <button class="btn btn-g" onclick="sendClubBroadcast()"><i class="fas fa-paper-plane"></i> <span data-i18n="send_broadcast_btn">Отправить анонс всем игрокам</span></button>

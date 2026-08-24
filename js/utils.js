@@ -2089,6 +2089,8 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
 function exportRoundPNG(roundId, playerId) {
     if (typeof db === 'undefined' || !roundId) return;
 
+    toast(currentLang === 'en' ? '⏳ Generating PNG scorecard...' : '⏳ Генерируем PNG-карточку...', 'info');
+
     db.ref('rounds/' + roundId).once('value').then(function(sn) {
         var r = sn.val();
         if (!r || !r.players) return;

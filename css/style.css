@@ -904,6 +904,14 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
     }
 }
 
+/* ALLOW LONG-PRESS IMAGE SAVING ON IPHONE PWA / WEBKIT */
+#png-modal img, .modal img, .pestovo-modern-scorecard img {
+    -webkit-touch-callout: default !important;
+    -webkit-user-select: auto !important;
+    user-select: auto !important;
+    pointer-events: auto !important;
+}
+
 /* =========================================
    СКОРКАРТА ПЕСТОВО (100% NO-OVERFLOW GRID)
    ========================================= */

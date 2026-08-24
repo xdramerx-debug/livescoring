@@ -1,4 +1,25 @@
-document.addEventListener('DOMContentLoaded', function() { initNav(); });
+document.addEventListener('DOMContentLoaded', function() {
+    initNav();
+    initAdminAutoLogin();
+});
+
+function initAdminAutoLogin() {
+    var uInp = document.getElementById('adm-user');
+    var pInp = document.getElementById('adm-pass');
+    var rChk = document.getElementById('adm-remember');
+
+    var savedU = localStorage.getItem('pestovo_adm_user');
+    var savedP = localStorage.getItem('pestovo_adm_pass');
+    var savedR = localStorage.getItem('pestovo_adm_remember');
+
+    if (savedU && uInp) uInp.value = savedU;
+    if (savedP && pInp) pInp.value = savedP;
+    if (rChk && savedR !== null) rChk.checked = (savedR === 'true');
+
+    if (localStorage.getItem('pestovo_adm_logged_in') === 'true') {
+        openAdminPanel();
+    }
+}
 
 // ==========================================
 // АВТОРИЗАЦИЯ АДМИНКИ
@@ -12,39 +33,76 @@ function onAuthReady(user, userData) {
 }
 
 function adminLogin() {
-    var u = document.getElementById('adm-user').value.trim();
-    var p = document.getElementById('adm-pass').value;
+    var uInp = document.getElementById('adm-user');
+    var pInp = document.getElementById('adm-pass');
+    var rChk = document.getElementById('adm-remember');
+
+    var u = uInp ? uInp.value.trim() : '';
+    var p = pInp ? pInp.value : '';
     var er = document.getElementById('adm-error');
-    er.classList.add('hidden');
+    if (er) er.classList.add('hidden');
 
     if (u === ADMIN_LOGIN && p === ADMIN_PASS) {
+        if (rChk && rChk.checked) {
+            localStorage.setItem('pestovo_adm_user', u);
+            localStorage.setItem('pestovo_adm_pass', p);
+            localStorage.setItem('pestovo_adm_remember', 'true');
+        } else {
+            localStorage.removeItem('pestovo_adm_user');
+            localStorage.removeItem('pestovo_adm_pass');
+            localStorage.setItem('pestovo_adm_remember', 'false');
+        }
+        localStorage.setItem('pestovo_adm_logged_in', 'true');
+
         openAdminPanel();
         toast(currentLang === 'en' ? '✅ Logged in via master password' : '✅ Вход по мастер-паролю');
         return;
     }
 
     if (currentUserData && currentUserData.role === 'admin') {
+        localStorage.setItem('pestovo_adm_logged_in', 'true');
         openAdminPanel();
         toast(currentLang === 'en' ? '✅ Logged in (Admin Privileges)' : '✅ Вход выполнен (Права администратора)');
         return;
     }
 
     if (currentUserData && currentUserData.role !== 'admin') {
-        er.textContent = currentLang === 'en' ? 'Your account does not have admin privileges.' : 'У вашего аккаунта нет прав администратора. Обратитесь к главному админу.';
+        if (er) er.textContent = currentLang === 'en' ? 'Your account does not have admin privileges.' : 'У вашего аккаунта нет прав администратора. Обратитесь к главному админу.';
     } else {
-        er.textContent = currentLang === 'en' ? 'Invalid credentials or not authorized.' : 'Неверный логин/пароль или вы не авторизованы на сайте.';
+        if (er) er.textContent = currentLang === 'en' ? 'Invalid credentials or not authorized.' : 'Неверный логин/пароль или вы не авторизованы на сайте.';
     }
-    er.classList.remove('hidden');
+    if (er) er.classList.remove('hidden');
+}
+
+function adminLogout() {
+    localStorage.removeItem('pestovo_adm_logged_in');
+    try { sessionStorage.removeItem('pestovo_is_admin'); } catch(e) {}
+
+    var loginEl = document.getElementById('admin-login');
+    var contentEl = document.getElementById('admin-content');
+    var logoutBtn = document.getElementById('admin-logout-btn');
+
+    if (loginEl) loginEl.classList.remove('hidden');
+    if (contentEl) contentEl.classList.add('hidden');
+    if (logoutBtn) logoutBtn.classList.add('hidden');
+
+    toast(currentLang === 'en' ? 'Logged out of admin panel' : 'Вышли из админки', 'info');
+    if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
 }
 
 function openAdminPanel() {
     try { sessionStorage.setItem('pestovo_is_admin', 'true'); } catch(e) {}
+    localStorage.setItem('pestovo_adm_logged_in', 'true');
     if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
 
     var loginEl = document.getElementById('admin-login');
     var contentEl = document.getElementById('admin-content');
+    var logoutBtn = document.getElementById('admin-logout-btn');
+
     if (loginEl) loginEl.classList.add('hidden');
     if (contentEl) contentEl.classList.remove('hidden');
+    if (logoutBtn) logoutBtn.classList.remove('hidden');
+
     loadAdmRounds();
     loadAdmPlayers();
     loadTournaments();
@@ -965,22 +1023,25 @@ function savePageVisibilitySettings() {
     });
 
     localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hiddenPages));
+    if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+
+    toast(currentLang === 'en' ? '✅ Page visibility settings saved!' : '✅ Настройки видимости страниц сохранены!', 'success');
+    if (typeof vib === 'function') vib([50, 30, 50]);
 
     if (typeof db !== 'undefined') {
         db.ref('settings/hidden_pages').set(hiddenPages).then(function() {
-            toast(currentLang === 'en' ? '✅ Page visibility settings saved!' : '✅ Настройки видимости страниц сохранены!', 'success');
-            if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+            console.log('Page visibility synced to Firebase');
         }).catch(function(err) {
-            toast('⚠️ Ошибка сохранения: ' + err.message, 'error');
-            if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+            console.warn('Firebase sync warning:', err);
         });
-    } else {
-        toast(currentLang === 'en' ? '✅ Settings saved locally!' : '✅ Настройки сохранены локально!', 'success');
-        if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
     }
 }
 
-function togglePVCheckbox(id) {
+function togglePVCheckbox(id, event) {
+    if (event) {
+        if (event.preventDefault) event.preventDefault();
+        if (event.stopPropagation) event.stopPropagation();
+    }
     var checkbox = document.getElementById(id);
     if (checkbox) {
         checkbox.checked = !checkbox.checked;

@@ -1,6 +1,25 @@
 document.addEventListener('DOMContentLoaded', function() {
     if (!document.getElementById('auth-page')) return;
+
+    if (typeof auth !== 'undefined' && auth.setPersistence && firebase.auth.Auth.Persistence.LOCAL) {
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(e) {
+            console.warn('Auth persistence error:', e);
+        });
+    }
+
     if (currentUser) { window.location.href = 'index.html'; return; }
+
+    var savedEmail = localStorage.getItem('pestovo_saved_email');
+    var savedPass = localStorage.getItem('pestovo_saved_password');
+    var savedRem = localStorage.getItem('pestovo_saved_remember');
+
+    var emInp = document.getElementById('login-email');
+    var pwInp = document.getElementById('login-pass');
+    var remChk = document.getElementById('login-remember');
+
+    if (savedEmail && emInp) emInp.value = savedEmail;
+    if (savedPass && pwInp) pwInp.value = savedPass;
+    if (remChk && savedRem !== null) remChk.checked = (savedRem === 'true');
 
     var tabs = document.querySelectorAll('.auth-tab');
     tabs.forEach(function(t) {
@@ -21,6 +40,8 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         var emInp = document.getElementById('login-email');
         var pwInp = document.getElementById('login-pass');
+        var remChk = document.getElementById('login-remember');
+
         var em = emInp.value.trim();
         var pw = pwInp.value;
         var er = document.getElementById('login-error');
@@ -31,6 +52,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var btn = document.getElementById('login-btn');
         btn.textContent = currentLang === 'en' ? 'Loading...' : 'Загрузка...'; btn.disabled = true;
+
+        if (remChk && remChk.checked) {
+            localStorage.setItem('pestovo_saved_email', em);
+            localStorage.setItem('pestovo_saved_password', pw);
+            localStorage.setItem('pestovo_saved_remember', 'true');
+        } else {
+            localStorage.removeItem('pestovo_saved_email');
+            localStorage.removeItem('pestovo_saved_password');
+            localStorage.setItem('pestovo_saved_remember', 'false');
+        }
+
         auth.signInWithEmailAndPassword(em, pw).then(function() {
             var urlP = new URLSearchParams(window.location.search);
             var red = urlP.get('redirect') || 'index.html';
@@ -67,6 +99,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var btn = document.getElementById('register-btn');
         btn.textContent = currentLang === 'en' ? 'Loading...' : 'Загрузка...'; btn.disabled = true;
+
+        localStorage.setItem('pestovo_saved_email', em);
+        localStorage.setItem('pestovo_saved_password', pw);
+        localStorage.setItem('pestovo_saved_remember', 'true');
+
         auth.createUserWithEmailAndPassword(em, pw).then(function(c) {
             return db.ref('users/' + c.user.uid).set({
                 name: nm, email: em, role: 'player', gender: gd,

@@ -28,8 +28,14 @@
 
         <div id="form-login" class="auth-form">
             <form id="login-form">
-                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="login-email" class="form-input" required></div>
-                <div class="form-group"><label data-i18n="password"><i class="fas fa-lock"></i> Пароль</label><input type="password" id="login-pass" class="form-input" required></div>
+                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="login-email" class="form-input" autocomplete="username email" required></div>
+                <div class="form-group"><label data-i18n="password"><i class="fas fa-lock"></i> Пароль</label><input type="password" id="login-pass" class="form-input" autocomplete="current-password" required></div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label for="login-remember" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;font-size:13px;color:var(--white);">
+                        <input type="checkbox" id="login-remember" checked style="width:18px;height:18px;cursor:pointer;">
+                        <span data-i18n="remember_me">Запомнить меня</span>
+                    </label>
+                </div>
                 <div id="login-error" class="form-err hidden"></div>
                 <button type="submit" id="login-btn" class="btn btn-g btn-block" data-i18n="login_btn">Войти</button>
             </form>
@@ -38,14 +44,14 @@
 
         <div id="form-register" class="auth-form hidden">
             <form id="register-form">
-                <div class="form-group"><label data-i18n="full_name"><i class="fas fa-user"></i> Имя и фамилия</label><input type="text" id="reg-name" class="form-input" required></div>
-                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="reg-email" class="form-input" required></div>
+                <div class="form-group"><label data-i18n="full_name"><i class="fas fa-user"></i> Имя и фамилия</label><input type="text" id="reg-name" class="form-input" autocomplete="name" required></div>
+                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="reg-email" class="form-input" autocomplete="username email" required></div>
                 <div class="form-row">
                     <div class="form-group"><label data-i18n="gender_label"><i class="fas fa-venus-mars"></i> Пол</label><select id="reg-gender" class="form-input"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Женщина</option></select></div>
                     <div class="form-group"><label data-i18n="exact_hcp"><i class="fas fa-golf-ball"></i> Точный HCP</label><input type="number" id="reg-hcp" class="form-input" step="0.1" placeholder="12.4"></div>
                 </div>
-                <div class="form-group"><label data-i18n="password"><i class="fas fa-lock"></i> Пароль (мин. 6)</label><input type="password" id="reg-pass" class="form-input" required></div>
-                <div class="form-group"><label data-i18n="repeat_password"><i class="fas fa-lock"></i> Повторите пароль</label><input type="password" id="reg-pass2" class="form-input" required></div>
+                <div class="form-group"><label data-i18n="password"><i class="fas fa-lock"></i> Пароль (мин. 6)</label><input type="password" id="reg-pass" class="form-input" autocomplete="new-password" required></div>
+                <div class="form-group"><label data-i18n="repeat_password"><i class="fas fa-lock"></i> Повторите пароль</label><input type="password" id="reg-pass2" class="form-input" autocomplete="new-password" required></div>
                 <div id="register-error" class="form-err hidden"></div>
                 <button type="submit" id="register-btn" class="btn btn-g btn-block" data-i18n="create_account">Создать аккаунт</button>
             </form>

@@ -1145,3 +1145,72 @@ function clearPlayerHistory(userId, userName) {
         toast('⚠️ Ошибка удаления истории: ' + err.message, 'error');
     });
 }
+
+function createPlayerInAdmin() {
+    var nameInp = document.getElementById('adm-new-name');
+    var emailInp = document.getElementById('adm-new-email');
+    var hcpInp = document.getElementById('adm-new-hcp');
+    var genderSel = document.getElementById('adm-new-gender');
+    var teeSel = document.getElementById('adm-new-tee');
+    var roleSel = document.getElementById('adm-new-role');
+
+    if (!nameInp) return;
+    var name = nameInp.value.trim();
+    if (!name) {
+        toast(currentLang === 'en' ? '⚠️ Specify player full name' : '⚠️ Укажите имя и фамилию игрока', 'error');
+        nameInp.focus();
+        return;
+    }
+
+    var email = emailInp ? emailInp.value.trim() : '';
+    var hcpRaw = hcpInp ? hcpInp.value.trim() : '0';
+    var parsedHcp = parseExactHcp(hcpRaw);
+    var gender = genderSel ? genderSel.value : 'men';
+    var defaultTee = teeSel ? teeSel.value : 'wh';
+    var role = roleSel ? roleSel.value : 'player';
+
+    var parts = name.split(' ');
+    var firstName = parts[0] || name;
+    var lastName = parts.slice(1).join(' ') || '';
+
+    var newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+
+    var playerData = {
+        name: name,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        handicap: parsedHcp,
+        gender: gender,
+        defaultTee: defaultTee,
+        role: role,
+        createdAt: Date.now(),
+        roundsPlayed: 0,
+        bestGross: null,
+        bestStableford: null
+    };
+
+    if (typeof cachedRegisteredUsers !== 'undefined') {
+        cachedRegisteredUsers[newId] = playerData;
+        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+    }
+
+    if (typeof db !== 'undefined') {
+        db.ref('users/' + newId).set(playerData).then(function() {
+            toast(currentLang === 'en' ? '🎉 Player created!' : '🎉 Игрок ' + name + ' создан!', 'success');
+            if (typeof vib === 'function') vib([50, 30, 50]);
+            nameInp.value = '';
+            if (emailInp) emailInp.value = '';
+            if (hcpInp) hcpInp.value = '';
+            if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        }).catch(function(err) {
+            toast('⚠️ Ошибка создания: ' + err.message, 'error');
+        });
+    } else {
+        toast(currentLang === 'en' ? '🎉 Player saved locally!' : '🎉 Игрок ' + name + ' сохранён локально!', 'success');
+        nameInp.value = '';
+        if (emailInp) emailInp.value = '';
+        if (hcpInp) hcpInp.value = '';
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+    }
+}

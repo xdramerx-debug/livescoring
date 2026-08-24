@@ -233,6 +233,60 @@
         </div>
 
         <div id="tab-players" class="admin-section hidden">
+            <!-- CREATE NEW PLAYER CARD -->
+            <div class="card" style="margin-bottom:20px;">
+                <h2><i class="fas fa-user-plus"></i> <span>Создать игрока</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+                    Добавьте нового игрока в систему клуба (укажите имя, точный HCP, пол и ТИ по умолчанию).
+                </p>
+                <div class="form-row">
+                    <div class="form-group" style="flex:1.4 1 140px;">
+                        <label>Имя и фамилия</label>
+                        <input type="text" id="adm-new-name" class="form-input" placeholder="например: Вася Петров">
+                    </div>
+                    <div class="form-group" style="flex:1 1 100px;">
+                        <label>Email (опционально)</label>
+                        <input type="email" id="adm-new-email" class="form-input" placeholder="player@pestovo.ru">
+                    </div>
+                </div>
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>Точный HCP</label>
+                        <input type="text" id="adm-new-hcp" class="form-input" placeholder="13.0 или +2.4">
+                    </div>
+                    <div class="form-group">
+                        <label>Пол</label>
+                        <select id="adm-new-gender" class="form-input">
+                            <option value="men">👨 Мужчина</option>
+                            <option value="women">👩 Женщина</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ТИ по умолчанию</label>
+                        <select id="adm-new-tee" class="form-input">
+                            <option value="bk">⬛ Чёрный</option>
+                            <option value="bl">🟦 Синий</option>
+                            <option value="wh" selected>⬜ Белый</option>
+                            <option value="rd">🟥 Красный</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex:1 1 120px;">
+                        <label>Роль</label>
+                        <select id="adm-new-role" class="form-input">
+                            <option value="player">Игрок</option>
+                            <option value="referee">Судья</option>
+                            <option value="marshal">Маршал</option>
+                            <option value="admin">Администратор</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-g btn-block" onclick="createPlayerInAdmin()" style="margin-top:8px;">
+                    <i class="fas fa-plus-circle"></i> <span>Создать игрока</span>
+                </button>
+            </div>
+
             <div class="card">
                 <h2><i class="fas fa-users-gear"></i> <span data-i18n="manage_players_roles">Управление игроками и ролями</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="manage_players_sub">

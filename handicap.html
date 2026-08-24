@@ -16,11 +16,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        .hcp-tbl{width:100%;border-collapse:collapse;font-size:12px;min-width:400px;}
-        .hcp-tbl th{background:var(--green);color:var(--gold);padding:10px 8px;text-align:center;font-size:11px;border:1px solid var(--border);text-transform:uppercase;}
-        .hcp-tbl td{padding:8px 6px;text-align:center;border:1px solid var(--border);font-size:12px;}
-        .hcp-tbl tr:nth-child(even) td{background:rgba(201,168,76,.03);}
-        .hcp-tbl .tbl-field{font-weight:800;color:var(--gold);font-size:14px;}
+        .hcp-tbl-container{width:100%;max-width:100%;overflow-x:hidden;box-sizing:border-box;}
+        .hcp-tbl{width:100%;max-width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;box-sizing:border-box;}
+        .hcp-tbl th{background:rgba(201,168,76,.15);color:var(--gold);padding:10px 4px;text-align:center;font-size:11px;font-weight:800;border:1px solid var(--border);text-transform:uppercase;}
+        .hcp-tbl td{padding:8px 4px;text-align:center;border:1px solid var(--border);font-size:13px;color:var(--white);word-break:break-word;}
+        .hcp-tbl tr:nth-child(even) td{background:rgba(255,255,255,.02);}
+        .hcp-tbl .tbl-field{font-weight:900;color:var(--gold);font-size:15px;background:rgba(201,168,76,.08);}
+        .hcp-row-highlight td{background:rgba(201,168,76,.25) !important;color:#ffffff !important;font-weight:800 !important;border-top:2px solid var(--gold) !important;border-bottom:2px solid var(--gold) !important;}
+        .hcp-row-highlight .tbl-field{color:var(--gold) !important;font-size:17px !important;}
         .hcp-result{margin-top:16px;padding:20px;background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(201,168,76,.15));border:1px solid rgba(201,168,76,.3);border-radius:var(--rs);text-align:center;}
         .hcp-result-val{font-family:var(--ff);font-size:48px;font-weight:800;color:var(--gold);}
     </style>

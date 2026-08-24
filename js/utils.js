@@ -2127,7 +2127,7 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
     html += '  </div>';
     html += '</div>';
 
-    // Grid Table Matching IMG_1113.jpeg
+    // Grid Table Showing ONLY Played Tee
     html += '<div class="psc-table-wrap">';
     html += '<table class="psc-grid-table">';
     html += '<thead><tr><th style="width:75px;">ТИ \\ Лунка</th>';
@@ -2138,45 +2138,18 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
 
     html += '<tbody>';
 
-    // Черный ТИ
-    var bkO = 0, bkI = 0;
-    for (var i = 1; i <= 9; i++) bkO += HOLES[i].bk;
-    for (var i = 10; i <= 18; i++) bkI += HOLES[i].bk;
-    html += '<tr><td class="psc-lbl-tee psc-tee-bk">Черный</td>';
-    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].bk + '</td>';
-    html += '<td class="psc-tot-col">' + bkO + '</td>';
-    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].bk + '</td>';
-    html += '<td class="psc-tot-col">' + bkI + '</td><td class="psc-tot-col">' + (bkO + bkI) + '</td></tr>';
+    // SINGLE PLAYED TEE ROW (Only the Tee played by the player)
+    var teeName = TEES[teeCode] || 'Белый';
+    var teeClass = 'psc-tee-' + teeCode;
+    var dO = 0, dI = 0;
+    for (var i = 1; i <= 9; i++) dO += (HOLES[i][teeCode] || HOLES[i].wh);
+    for (var i = 10; i <= 18; i++) dI += (HOLES[i][teeCode] || HOLES[i].wh);
 
-    // Синий ТИ
-    var blO = 0, blI = 0;
-    for (var i = 1; i <= 9; i++) blO += HOLES[i].bl;
-    for (var i = 10; i <= 18; i++) blI += HOLES[i].bl;
-    html += '<tr><td class="psc-lbl-tee psc-tee-bl">Синий</td>';
-    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].bl + '</td>';
-    html += '<td class="psc-tot-col">' + blO + '</td>';
-    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].bl + '</td>';
-    html += '<td class="psc-tot-col">' + blI + '</td><td class="psc-tot-col">' + (blO + blI) + '</td></tr>';
-
-    // Белый ТИ
-    var whO = 0, whI = 0;
-    for (var i = 1; i <= 9; i++) whO += HOLES[i].wh;
-    for (var i = 10; i <= 18; i++) whI += HOLES[i].wh;
-    html += '<tr><td class="psc-lbl-tee psc-tee-wh">Белый</td>';
-    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].wh + '</td>';
-    html += '<td class="psc-tot-col">' + whO + '</td>';
-    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].wh + '</td>';
-    html += '<td class="psc-tot-col">' + whI + '</td><td class="psc-tot-col">' + (whO + whI) + '</td></tr>';
-
-    // Красный ТИ
-    var rdO = 0, rdI = 0;
-    for (var i = 1; i <= 9; i++) rdO += HOLES[i].rd;
-    for (var i = 10; i <= 18; i++) rdI += HOLES[i].rd;
-    html += '<tr><td class="psc-lbl-tee psc-tee-rd">Красный</td>';
-    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].rd + '</td>';
-    html += '<td class="psc-tot-col">' + rdO + '</td>';
-    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].rd + '</td>';
-    html += '<td class="psc-tot-col">' + rdI + '</td><td class="psc-tot-col">' + (rdO + rdI) + '</td></tr>';
+    html += '<tr><td class="psc-lbl-tee ' + teeClass + '">' + teeName + '</td>';
+    for (var i = 1; i <= 9; i++) html += '<td>' + (HOLES[i][teeCode] || HOLES[i].wh) + '</td>';
+    html += '<td class="psc-tot-col">' + dO + '</td>';
+    for (var i = 10; i <= 18; i++) html += '<td>' + (HOLES[i][teeCode] || HOLES[i].wh) + '</td>';
+    html += '<td class="psc-tot-col">' + dI + '</td><td class="psc-tot-col">' + (dO + dI) + '</td></tr>';
 
     // Пар
     html += '<tr class="psc-row-par"><td class="psc-lbl-bold">Пар</td>';

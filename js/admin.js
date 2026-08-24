@@ -81,6 +81,10 @@ function switchTab(t, b) {
     var tabEl = document.getElementById('tab-' + t);
     if (tabEl) tabEl.classList.remove('hidden');
     if (b) b.classList.add('active');
+
+    if (t === 'data') {
+        loadPageVisibilitySettings();
+    }
 }
 
 // ==========================================
@@ -923,20 +927,24 @@ function testVKAlert() {
 function loadPageVisibilitySettings() {
     if (typeof MANAGED_PAGES === 'undefined') return;
 
-    MANAGED_PAGES.forEach(function(page) {
-        var checkbox = document.getElementById('pv-' + page);
-        if (checkbox) checkbox.checked = true;
-    });
+    var updateCheckboxes = function(hp) {
+        MANAGED_PAGES.forEach(function(page) {
+            var checkbox = document.getElementById('pv-' + page);
+            if (checkbox) {
+                checkbox.checked = (hp[page] !== true);
+            }
+        });
+    };
+
+    if (typeof getHiddenPages === 'function') {
+        updateCheckboxes(getHiddenPages());
+    }
 
     if (typeof db !== 'undefined') {
-        db.ref('settings/hidden_pages').once('value').then(function(sn) {
+        db.ref('settings/hidden_pages').on('value', function(sn) {
             var hp = sn.val() || {};
-            MANAGED_PAGES.forEach(function(page) {
-                var checkbox = document.getElementById('pv-' + page);
-                if (checkbox) {
-                    checkbox.checked = (hp[page] !== true);
-                }
-            });
+            localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hp));
+            updateCheckboxes(hp);
         });
     }
 }

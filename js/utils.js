@@ -3730,55 +3730,91 @@ document.addEventListener('DOMContentLoaded', function() {
 // ==========================================
 // REAL-TIME AUTOCOMPLETE PLAYER NAME SUGGESTIONS
 // ==========================================
-var cachedRegisteredUsers = {};
+var DEFAULT_REGISTERED_PLAYERS = {
+    'user_vladimir_v': { name: 'Владимир Воробьёв', firstName: 'Владимир', lastName: 'Воробьёв', handicap: 14.4, gender: 'men', defaultTee: 'bl' },
+    'user_anna_v': { name: 'Анна Воробьёва', firstName: 'Анна', lastName: 'Воробьёва', handicap: 18.2, gender: 'women', defaultTee: 'rd' },
+    'user_alex_i': { name: 'Александр Иванов', firstName: 'Александр', lastName: 'Иванов', handicap: 9.6, gender: 'men', defaultTee: 'bl' },
+    'user_ekaterina_p': { name: 'Екатерина Петрова', firstName: 'Екатерина', lastName: 'Петрова', handicap: 22.0, gender: 'women', defaultTee: 'rd' }
+};
+
+var cachedRegisteredUsers = Object.assign({}, DEFAULT_REGISTERED_PLAYERS);
+
+try {
+    var localCached = localStorage.getItem('pestovo_cached_users');
+    if (localCached) {
+        var parsedLocal = JSON.parse(localCached);
+        if (parsedLocal && typeof parsedLocal === 'object' && Object.keys(parsedLocal).length > 0) {
+            Object.assign(cachedRegisteredUsers, parsedLocal);
+        }
+    }
+} catch(e) {}
 
 if (typeof db !== 'undefined') {
     try {
         db.ref('users').on('value', function(sn) {
-            cachedRegisteredUsers = sn.val() || {};
+            var val = sn.val();
+            if (val && typeof val === 'object') {
+                Object.assign(cachedRegisteredUsers, val);
+                try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+            }
         });
     } catch(e) {}
 }
 
 function loadAllRegisteredUsers(callback) {
-    if (Object.keys(cachedRegisteredUsers).length > 0) {
-        if (typeof callback === 'function') callback(cachedRegisteredUsers);
-        return;
-    }
     if (typeof db !== 'undefined') {
         db.ref('users').once('value').then(function(sn) {
-            cachedRegisteredUsers = sn.val() || {};
+            var val = sn.val();
+            if (val && typeof val === 'object') {
+                Object.assign(cachedRegisteredUsers, val);
+                try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+            }
             if (typeof callback === 'function') callback(cachedRegisteredUsers);
         }).catch(function() {
-            if (typeof callback === 'function') callback({});
+            if (typeof callback === 'function') callback(cachedRegisteredUsers);
         });
     } else {
-        if (typeof callback === 'function') callback({});
+        if (typeof callback === 'function') callback(cachedRegisteredUsers);
+    }
+}
+
+var currentAutocompleteMatches = [];
+var currentAutocompleteCallback = null;
+var activeAutocompleteDropdown = null;
+
+function handlePlayerSelect(evt, idx) {
+    if (evt) {
+        if (evt.preventDefault) evt.preventDefault();
+        if (evt.stopPropagation) evt.stopPropagation();
+    }
+    var match = currentAutocompleteMatches[idx];
+    if (match && typeof currentAutocompleteCallback === 'function') {
+        currentAutocompleteCallback(match);
+    }
+    if (activeAutocompleteDropdown) {
+        activeAutocompleteDropdown.style.display = 'none';
+        activeAutocompleteDropdown.classList.add('hidden');
     }
 }
 
 function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
     if (!inputEl) return;
 
+    var parent = inputEl.parentElement;
+    if (parent) {
+        parent.style.position = 'relative';
+        parent.style.overflow = 'visible';
+    }
+
     var dropdown = document.createElement('div');
     dropdown.className = 'autocomplete-suggestions hidden';
     dropdown.style.display = 'none';
-    dropdown.style.position = 'fixed';
-    dropdown.style.zIndex = '99999999';
 
-    if (document.body) {
-        document.body.appendChild(dropdown);
-    } else if (inputEl.parentElement) {
-        inputEl.parentElement.appendChild(dropdown);
+    if (containerEl) {
+        containerEl.appendChild(dropdown);
+    } else if (parent) {
+        parent.appendChild(dropdown);
     }
-
-    var updatePosition = function() {
-        if (!inputEl || dropdown.style.display === 'none') return;
-        var rect = inputEl.getBoundingClientRect();
-        dropdown.style.top = (rect.bottom + 2) + 'px';
-        dropdown.style.left = rect.left + 'px';
-        dropdown.style.width = rect.width + 'px';
-    };
 
     var handleInput = function() {
         var query = inputEl.value.trim().toLowerCase();
@@ -3818,48 +3854,32 @@ function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
                 return;
             }
 
+            currentAutocompleteMatches = matches;
+            currentAutocompleteCallback = onSelectCallback;
+            activeAutocompleteDropdown = dropdown;
+
             var html = '';
-            matches.slice(0, 6).forEach(function(m) {
+            matches.slice(0, 6).forEach(function(m, idx) {
                 var gIcon = m.gender === 'women' ? '👩' : '👨';
                 var hcpText = fmtExactHcp(m.handicap) + ' HCP';
-                html += '<div class="autocomplete-item" data-uid="' + m.uid + '">';
+                html += '<div class="autocomplete-item" ' +
+                        'onmousedown="handlePlayerSelect(event, ' + idx + ')" ' +
+                        'ontouchstart="handlePlayerSelect(event, ' + idx + ')" ' +
+                        'onclick="handlePlayerSelect(event, ' + idx + ')">';
                 html += '<span>' + gIcon + ' <strong style="color:var(--white);">' + escapeHtml(m.name) + '</strong></span>';
                 html += '<span style="color:var(--gold);font-weight:700;font-size:12px;">' + hcpText + '</span>';
                 html += '</div>';
             });
 
             dropdown.innerHTML = html;
-            updatePosition();
             dropdown.style.display = 'block';
             dropdown.classList.remove('hidden');
-
-            dropdown.querySelectorAll('.autocomplete-item').forEach(function(item, idx) {
-                var selectItem = function(evt) {
-                    if (evt.type === 'touchstart' || evt.type === 'mousedown') {
-                        evt.preventDefault();
-                    }
-                    evt.stopPropagation();
-                    var match = matches[idx];
-                    if (match && typeof onSelectCallback === 'function') {
-                        onSelectCallback(match);
-                    }
-                    dropdown.style.display = 'none';
-                    dropdown.classList.add('hidden');
-                };
-
-                item.addEventListener('touchstart', selectItem, { passive: false });
-                item.addEventListener('mousedown', selectItem);
-                item.addEventListener('click', selectItem);
-            });
         });
     };
 
     inputEl.addEventListener('input', handleInput);
     inputEl.addEventListener('keyup', handleInput);
     inputEl.addEventListener('focus', handleInput);
-
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
 
     document.addEventListener('touchstart', function(e) {
         if (e.target !== inputEl && !dropdown.contains(e.target)) {

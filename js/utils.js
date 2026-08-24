@@ -1701,33 +1701,78 @@ function openPlayerProfileModal(playerId, roundId) {
 
         db.ref('users/' + playerId + '/history').once('value').then(function(hSn) {
             var history = hSn.val() || {};
-            var rounds = Object.values(history);
-            rounds.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
+            var entries = Object.entries(history);
+            entries.sort(function(a, b) { return (b[1].date || 0) - (a[1].date || 0); });
 
-            if (rounds.length > 0) {
-                html += renderTrophyCabinet(u, rounds);
-                html += renderScoringDistributionBar(rounds);
+            if (entries.length > 0) {
+                var roundsList = entries.map(function(e) { return Object.assign({}, e[1], { _key: e[0] }); });
+                html += renderTrophyCabinet(u, roundsList);
+                html += renderScoringDistributionBar(roundsList);
 
-                html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> ' + t('round_history') + '</h3>';
-                rounds.forEach(function(r) {
+                html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> ' + t('round_history') + ' (' + entries.length + ')</h3>';
+
+                entries.forEach(function(entry, idx) {
+                    var hKey = entry[0];
+                    var r = entry[1];
+                    var cardId = 'pr-card-' + idx;
+                    var btnTxtId = 'pr-btn-txt-' + idx;
+                    var btnIconId = 'pr-btn-icon-' + idx;
+
                     var isFull = r.holes === 18;
-                    var fullTag = isFull ? ' <span style="color:#2ecc71;font-size:10px;">(18' + hTag + ')</span>' : ' <span style="color:var(--muted);font-size:10px;">(' + r.holes + hTag + ')</span>';
+                    var fullTag = isFull ? ' <span style="color:#2ecc71;font-size:10px;font-weight:700;">(18' + hTag + ')</span>' : ' <span style="color:var(--muted);font-size:10px;">(' + (r.holes || 1) + hTag + ')</span>';
 
-                    html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
-                    html += '<div style="flex:1;min-width:180px;"><strong style="color:var(--white);">' + t('brand_name') + '</strong>' + fullTag;
+                    html += '<div class="card" style="padding:14px;margin-bottom:12px;border:1px solid var(--border);background:var(--card-bg);">';
+                    
+                    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">';
+                    html += '<div style="flex:1;min-width:180px;">';
+                    html += '<strong style="color:var(--white);font-size:15px;">' + t('brand_name') + '</strong>' + fullTag;
                     html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
                             fmtDate(r.date) + ' · ' + (r.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + (r.tee ? fmtTeePill(r.tee) : '—') +
-                            ' · ' + (r.mode === 'solo' ? '👤' : '👥') + '</div>';
+                            ' · ' + (r.mode === 'solo' ? '👤 Solo' : '👥 Group') + '</div>';
                     html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' +
                             (r.holeInOne ? '🎯 ' + r.holeInOne + ' · ' : '') +
                             '🦅 ' + (r.eagles || 0) + ' · 🐦 ' + (r.birdies || 0) + ' · Par ' + (r.pars || 0) + '</div></div>';
+
                     html += '<div style="text-align:right;">';
-                    html += '<div style="font-size:22px;font-weight:800;color:var(--white);">' + r.gross + '</div>';
+                    html += '<div style="font-size:22px;font-weight:800;color:var(--white);">' + r.gross + ' <span style="font-size:12px;color:var(--muted);font-weight:600;">Gross</span></div>';
                     html += '<div class="' + scoreClass(r.toPar) + '" style="font-size:14px;font-weight:700;">' + fmtScore(r.toPar) + '</div>';
-                    if (r.roundId) {
-                        html += '<button class="btn btn-og btn-sm" style="margin-top:6px;" onclick="event.stopPropagation();downloadScorecard(\'' + r.roundId + '\')"><i class="fas fa-download"></i></button>';
-                        html += '<button class="btn btn-g btn-sm" style="margin-top:6px;margin-left:6px;" onclick="event.stopPropagation();exportRoundPNG(\'' + r.roundId + '\')"><i class="fas fa-image"></i> PNG</button>';
+                    html += '</div></div>';
+
+                    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;gap:8px;">';
+                    html += '<button class="btn btn-og btn-sm" onclick="toggleProfileRoundCard(\'' + cardId + '\')"><i class="fas fa-chevron-down" id="' + btnIconId + '"></i> <span id="' + btnTxtId + '">' + (currentLang === 'en' ? 'Expand Scorecard' : 'Развернуть карточку') + '</span></button>';
+
+                    var isAdminOrOwner = (currentUser && (currentUser.uid === playerId || (currentUserData && currentUserData.role === 'admin') || sessionStorage.getItem('pestovo_is_admin') === 'true'));
+                    if (isAdminOrOwner) {
+                        html += '<button class="btn btn-r btn-sm" onclick="deletePlayerHistoryRecord(\'' + playerId + '\', \'' + hKey + '\')" title="' + (currentLang === 'en' ? 'Delete Round' : 'Удалить из истории') + '"><i class="fas fa-trash"></i></button>';
                     }
+                    html += '</div>';
+
+                    html += '<div id="' + cardId + '" class="hidden" style="display:none;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);">';
+                    
+                    var pObj = {
+                        name: u.name || 'Игрок',
+                        scores: r.scores || {},
+                        fieldHcp: r.fieldHcp || 0,
+                        exactHcp: r.exactHcp || 0,
+                        tee: r.tee || 'wh'
+                    };
+                    var rObj = {
+                        tee: r.tee || 'wh',
+                        format: r.format || 'Stroke Play',
+                        completedAt: r.date
+                    };
+
+                    if (typeof generatePestovoScorecardHTML === 'function') {
+                        html += generatePestovoScorecardHTML(pObj, rObj);
+                    }
+
+                    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">';
+                    if (r.roundId) {
+                        html += '<button class="btn btn-og btn-sm" onclick="openPrintScorecardModal(\'' + r.roundId + '\')"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print (A4)' : 'Печать (A4)') + '</button>';
+                        html += '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + r.roundId + '\')"><i class="fas fa-image"></i> PNG</button>';
+                    }
+                    html += '</div>';
+
                     html += '</div></div>';
                 });
             }
@@ -1736,6 +1781,62 @@ function openPlayerProfileModal(playerId, roundId) {
         }).catch(function() {
             if (bodyEl) bodyEl.innerHTML = html;
         });
+    });
+}
+
+function toggleProfileRoundCard(cardId) {
+    var card = document.getElementById(cardId);
+    var btnTxt = document.getElementById(cardId.replace('pr-card-', 'pr-btn-txt-'));
+    var icon = document.getElementById(cardId.replace('pr-card-', 'pr-btn-icon-'));
+    if (!card) return;
+
+    if (card.style.display === 'none' || card.classList.contains('hidden')) {
+        card.style.display = 'block';
+        card.classList.remove('hidden');
+        if (btnTxt) btnTxt.textContent = currentLang === 'en' ? 'Collapse' : 'Свернуть карточку';
+        if (icon) icon.className = 'fas fa-chevron-up';
+    } else {
+        card.style.display = 'none';
+        card.classList.add('hidden');
+        if (btnTxt) btnTxt.textContent = currentLang === 'en' ? 'Expand Scorecard' : 'Развернуть карточку';
+        if (icon) icon.className = 'fas fa-chevron-down';
+    }
+}
+
+function deletePlayerHistoryRecord(userId, historyKey) {
+    if (!userId || !historyKey) return;
+    var confirmMsg = currentLang === 'en' ? 'Delete this round from history?' : 'Удалить этот раунд из истории?';
+    if (!confirm(confirmMsg)) return;
+
+    db.ref('users/' + userId + '/history/' + historyKey).remove().then(function() {
+        db.ref('users/' + userId + '/history').once('value').then(function(sn) {
+            var history = sn.val() || {};
+            var rounds = Object.values(history);
+            var count = rounds.length;
+            var bestG = null;
+            var bestS = null;
+
+            rounds.forEach(function(r) {
+                if (r.holes === 18 && r.gross) {
+                    if (bestG === null || r.gross < bestG) bestG = r.gross;
+                }
+                if (r.holes === 18 && r.stablefordField) {
+                    if (bestS === null || r.stablefordField > bestS) bestS = r.stablefordField;
+                }
+            });
+
+            db.ref('users/' + userId).update({
+                roundsPlayed: count,
+                bestGross: bestG,
+                bestStableford: bestS
+            });
+
+            toast(currentLang === 'en' ? 'Round deleted from history' : 'Раунд удалён из истории', 'info');
+            if (typeof vib === 'function') vib(30);
+            if (typeof openPlayerProfileModal === 'function') openPlayerProfileModal(userId);
+        });
+    }).catch(function(err) {
+        toast('⚠️ Ошибка: ' + err.message, 'error');
     });
 }
 

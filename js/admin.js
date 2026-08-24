@@ -192,20 +192,70 @@ function loadAdmRounds() {
 }
 
 function deleteRound(id) {
-    if (confirm(currentLang === 'en' ? 'Delete round?' : 'Удалить раунд?')) {
+    if (!confirm(currentLang === 'en' ? 'Delete round?' : 'Удалить раунд?')) return;
+
+    db.ref('rounds/' + id).once('value').then(function(sn) {
+        var r = sn.val();
+        if (r && r.players) {
+            var playerIds = Object.keys(r.players);
+            playerIds.forEach(function(pid) {
+                db.ref('users/' + pid + '/history').once('value').then(function(hSn) {
+                    var hist = hSn.val() || {};
+                    Object.entries(hist).forEach(function(he) {
+                        if (he[1] && he[1].roundId === id) {
+                            db.ref('users/' + pid + '/history/' + he[0]).remove();
+                        }
+                    });
+                    db.ref('users/' + pid + '/history').once('value').then(function(hSn2) {
+                        var history = hSn2.val() || {};
+                        var rounds = Object.values(history);
+                        var count = rounds.length;
+                        var bestG = null, bestS = null;
+                        rounds.forEach(function(item) {
+                            if (item.holes === 18 && item.gross) {
+                                if (bestG === null || item.gross < bestG) bestG = item.gross;
+                            }
+                            if (item.holes === 18 && item.stablefordField) {
+                                if (bestS === null || item.stablefordField > bestS) bestS = item.stablefordField;
+                            }
+                        });
+                        db.ref('users/' + pid).update({
+                            roundsPlayed: count,
+                            bestGross: bestG,
+                            bestStableford: bestS
+                        });
+                    });
+                });
+            });
+        }
+
         db.ref('rounds/' + id).remove();
         db.ref('markers/' + id).remove();
         db.ref('markerAssignments/' + id).remove();
-    }
+        toast(currentLang === 'en' ? 'Round deleted' : 'Раунд удалён', 'info');
+    });
 }
 
 function clearRounds() {
-    if (confirm(currentLang === 'en' ? 'Delete ALL rounds? This cannot be undone!' : 'Удалить ВСЕ раунды? Это необратимо!') && confirm(currentLang === 'en' ? 'Are you sure?' : 'Точно уверены?')) {
+    if (confirm(currentLang === 'en' ? 'Delete ALL rounds and history? This cannot be undone!' : 'Удалить ВСЕ раунды и всю историю? Это необратимо!') && confirm(currentLang === 'en' ? 'Are you sure?' : 'Точно уверены?')) {
         db.ref('rounds').remove();
         db.ref('markers').remove();
         db.ref('markerAssignments').remove();
         db.ref('alerts').remove();
-        toast(currentLang === 'en' ? 'All rounds deleted' : 'Все раунды удалены');
+
+        db.ref('users').once('value').then(function(sn) {
+            var users = sn.val() || {};
+            Object.keys(users).forEach(function(uid) {
+                db.ref('users/' + uid + '/history').remove();
+                db.ref('users/' + uid).update({
+                    roundsPlayed: 0,
+                    bestGross: null,
+                    bestStableford: null
+                });
+            });
+        });
+
+        toast(currentLang === 'en' ? 'All rounds and history deleted' : 'Все раунды и история удалены', 'info');
     }
 }
 
@@ -266,9 +316,12 @@ function loadAdmPlayers() {
                 html += '<option value="admin" ' + (curRole === 'admin' ? 'selected' : '') + '>' + t('role_admin') + '</option>';
                 html += '</select>';
 
+                html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="' + (currentLang === 'en' ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
+
                 html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="Delete">' +
                         '<i class="fas fa-trash"></i></button>';
             } else {
+                html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="' + (currentLang === 'en' ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
                 html += '<span style="font-size:11px;color:var(--gold);font-weight:600;">(' + (currentLang === 'en' ? 'You' : 'Это вы') + ')</span>';
             }
 
@@ -1068,4 +1121,27 @@ function togglePVCheckbox(id, event) {
         checkbox.checked = !checkbox.checked;
         if (typeof vib === 'function') vib(30);
     }
+}
+
+function clearPlayerHistory(userId, userName) {
+    if (!userId) return;
+    var confirmMsg = currentLang === 'en'
+        ? 'Delete ALL round history for ' + (userName || 'player') + '?'
+        : 'Удалить ВСЮ историю раундов игрока ' + (userName || 'игрока') + '? Это действие необратимо!';
+
+    if (!confirm(confirmMsg)) return;
+
+    db.ref('users/' + userId + '/history').remove().then(function() {
+        db.ref('users/' + userId).update({
+            roundsPlayed: 0,
+            bestGross: null,
+            bestStableford: null
+        });
+
+        toast(currentLang === 'en' ? 'History cleared for ' + userName : 'История раундов игрока ' + userName + ' очищена', 'success');
+        if (typeof vib === 'function') vib([50, 30, 50]);
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+    }).catch(function(err) {
+        toast('⚠️ Ошибка удаления истории: ' + err.message, 'error');
+    });
 }

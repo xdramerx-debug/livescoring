@@ -1263,16 +1263,48 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
         grid-template-columns: repeat(9, 1fr);
     }
 }
+/* 100% NO-SCROLL COURSE CARD GRID MATRIX */
+.msc-grid-9 {
+    display: grid !important;
+    grid-template-columns: 2.4fr repeat(9, 1fr) 1.6fr !important;
+    gap: 2px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.msc-grid-10 {
+    display: grid !important;
+    grid-template-columns: 2.4fr repeat(9, 1fr) 1.4fr 1.7fr !important;
+    gap: 2px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
 .msc-tile {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 4px 5px;
+    border-radius: 4px;
+    padding: 3px 1px;
     text-align: center;
     box-sizing: border-box;
+    font-size: 10px;
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    align-items: center;
+    justify-content: center;
+}
+.msc-hdr-lbl, .msc-hdr-num, .msc-hdr-tot {
+    font-weight: 800;
+    font-size: 10px;
+    color: var(--gold);
+    background: rgba(201, 168, 76, 0.15);
+}
+.msc-lbl-bk { color: #f39c12; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
+.msc-lbl-bl { color: #3498db; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
+.msc-lbl-wh { color: #ecf0f1; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
+.msc-lbl-rd { color: #e74c3c; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
+.msc-lbl-par { color: var(--gold); font-weight: 800; text-align: left; padding-left: 3px; font-size: 9px; }
+.msc-lbl-idx { color: var(--muted); font-weight: 600; text-align: left; padding-left: 3px; font-size: 9px; }
+.msc-tot-bk, .msc-tot-bl, .msc-tot-wh, .msc-tot-rd, .msc-tot-par, .msc-tot-idx {
+    font-weight: 800;
+    background: rgba(255, 255, 255, 0.08);
 }
 .msc-tile-top {
     display: flex;

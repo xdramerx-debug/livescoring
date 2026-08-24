@@ -16,40 +16,102 @@ function buildCourseCard() {
     var el = document.getElementById('course-card');
     if (!el) return;
     var teeKeys = ['bk','bl','wh','rd'];
-    var headerStr = currentLang === 'en' ? 'Tee / Hole' : 'ТИ / Лунка';
-    var outStr = t('out');
-    var inStr = t('in_side');
-    var totalStr = t('total');
-    var parStr = t('par');
+    var isEn = currentLang === 'en';
 
-    var html = '<div class="scorecard"><table><tr><th>' + headerStr + '</th>';
-    for (var h = 1; h <= 9; h++) html += '<th>' + h + '</th>';
-    html += '<th>' + outStr + '</th></tr>';
+    var headerStr = isEn ? 'Tee / Hole' : 'ТИ / Лунка';
+    var outStr = isEn ? 'OUT' : 'OUT';
+    var inStr = isEn ? 'IN' : 'IN';
+    var totalStr = isEn ? 'TOTAL' : 'ВСЕГО';
+    var parStr = isEn ? 'Par' : 'Пар';
+    var indexStr = isEn ? 'Index' : 'Индекс';
+
+    // Front 9 (OUT)
+    var html = '<div class="pestovo-modern-scorecard" style="margin-bottom:12px;padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;padding-left:2px;"><i class="fas fa-flag"></i> ' + (isEn ? 'Front 9 (Holes 1–9)' : 'Первые 9 лунок (1–9)') + '</div>';
+    html += '<div class="msc-tile-grid msc-grid-9">';
+
+    // Header row
+    html += '<div class="msc-tile msc-hdr-lbl">' + headerStr + '</div>';
+    for (var h = 1; h <= 9; h++) html += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
+    html += '<div class="msc-tile msc-hdr-tot">' + outStr + '</div>';
+
+    // Tees
     teeKeys.forEach(function(tKey) {
-        html += '<tr class="sc-t-' + tKey + '"><td style="text-align:left;padding-left:10px;font-weight:700;">' + t('tee_' + tKey) + '</td>';
+        html += '<div class="msc-tile msc-lbl-' + tKey + '">' + t('tee_' + tKey) + '</div>';
         var sum = 0;
-        for (var h = 1; h <= 9; h++) { var d = holeDist(h, tKey); sum += d; html += '<td>' + d + '</td>'; }
-        html += '<td style="font-weight:800;">' + sum + '</td></tr>';
+        for (var h = 1; h <= 9; h++) {
+            var d = holeDist(h, tKey);
+            sum += d;
+            html += '<div class="msc-tile msc-val-' + tKey + '">' + d + '</div>';
+        }
+        html += '<div class="msc-tile msc-tot-' + tKey + '">' + sum + '</div>';
     });
-    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;">' + parStr + '</td>';
-    var pO = 0;
-    for (var h = 1; h <= 9; h++) { var p = holePar(h); pO += p; html += '<td>' + p + '</td>'; }
-    html += '<td>' + pO + '</td></tr></table></div>';
 
-    html += '<div class="scorecard" style="margin-top:8px;"><table><tr><th>' + headerStr + '</th>';
-    for (var h = 10; h <= 18; h++) html += '<th>' + h + '</th>';
-    html += '<th>' + inStr + '</th><th>' + totalStr + '</th></tr>';
+    // Par row
+    html += '<div class="msc-tile msc-lbl-par">' + parStr + '</div>';
+    var pO = 0;
+    for (var h = 1; h <= 9; h++) {
+        var p = holePar(h);
+        pO += p;
+        html += '<div class="msc-tile msc-val-par">' + p + '</div>';
+    }
+    html += '<div class="msc-tile msc-tot-par">' + pO + '</div>';
+
+    // Index row
+    html += '<div class="msc-tile msc-lbl-idx">' + indexStr + '</div>';
+    for (var h = 1; h <= 9; h++) {
+        html += '<div class="msc-tile msc-val-idx">' + holeHcp(h) + '</div>';
+    }
+    html += '<div class="msc-tile msc-tot-idx">—</div>';
+
+    html += '</div></div>';
+
+    // Back 9 (IN & TOTAL)
+    html += '<div class="pestovo-modern-scorecard" style="padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;padding-left:2px;"><i class="fas fa-flag-checkered"></i> ' + (isEn ? 'Back 9 (Holes 10–18 & Total)' : 'Вторые 9 лунок (10–18 и Итог)') + '</div>';
+    html += '<div class="msc-tile-grid msc-grid-10">';
+
+    // Header row
+    html += '<div class="msc-tile msc-hdr-lbl">' + headerStr + '</div>';
+    for (var h = 10; h <= 18; h++) html += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
+    html += '<div class="msc-tile msc-hdr-tot">' + inStr + '</div>';
+    html += '<div class="msc-tile msc-hdr-tot" style="background:var(--gold);color:var(--bg);">' + totalStr + '</div>';
+
+    // Tees
     teeKeys.forEach(function(tKey) {
-        html += '<tr class="sc-t-' + tKey + '"><td style="text-align:left;padding-left:10px;font-weight:700;">' + t('tee_' + tKey) + '</td>';
+        html += '<div class="msc-tile msc-lbl-' + tKey + '">' + t('tee_' + tKey) + '</div>';
         var sumI = 0, sumO = 0;
         for (var h = 1; h <= 9; h++) sumO += holeDist(h, tKey);
-        for (var h = 10; h <= 18; h++) { var d = holeDist(h, tKey); sumI += d; html += '<td>' + d + '</td>'; }
-        html += '<td style="font-weight:800;">' + sumI + '</td><td style="font-weight:800;">' + (sumO + sumI) + '</td></tr>';
+        for (var h = 10; h <= 18; h++) {
+            var d = holeDist(h, tKey);
+            sumI += d;
+            html += '<div class="msc-tile msc-val-' + tKey + '">' + d + '</div>';
+        }
+        html += '<div class="msc-tile msc-tot-' + tKey + '">' + sumI + '</div>';
+        html += '<div class="msc-tile msc-tot-' + tKey + '" style="font-weight:900;">' + (sumO + sumI) + '</div>';
     });
-    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;">' + parStr + '</td>';
+
+    // Par row
+    html += '<div class="msc-tile msc-lbl-par">' + parStr + '</div>';
     var pI = 0;
-    for (var h = 10; h <= 18; h++) { var p = holePar(h); pI += p; html += '<td>' + p + '</td>'; }
-    html += '<td>' + pI + '</td><td>' + (pO + pI) + '</td></tr></table></div>';
+    for (var h = 10; h <= 18; h++) {
+        var p = holePar(h);
+        pI += p;
+        html += '<div class="msc-tile msc-val-par">' + p + '</div>';
+    }
+    html += '<div class="msc-tile msc-tot-par">' + pI + '</div>';
+    html += '<div class="msc-tile msc-tot-par" style="font-weight:900;">' + (pO + pI) + '</div>';
+
+    // Index row
+    html += '<div class="msc-tile msc-lbl-idx">' + indexStr + '</div>';
+    for (var h = 10; h <= 18; h++) {
+        html += '<div class="msc-tile msc-val-idx">' + holeHcp(h) + '</div>';
+    }
+    html += '<div class="msc-tile msc-tot-idx">—</div>';
+    html += '<div class="msc-tile msc-tot-idx">—</div>';
+
+    html += '</div></div>';
+
     el.innerHTML = html;
 }
 

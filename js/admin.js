@@ -1134,22 +1134,45 @@ function changeRole(id, newRole, name) {
 function deletePlayer(id, name) {
     if (!confirm((currentLang === 'en' ? 'Delete player ' + (name || id) + '? This cannot be undone!' : 'Удалить игрока ' + (name || id) + '? Это необратимо!'))) return;
 
-    if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[id]) {
-        delete cachedRegisteredUsers[id];
-    }
-    try {
-        var custom = {};
-        var existing = localStorage.getItem('pestovo_custom_players');
-        if (existing) custom = JSON.parse(existing) || {};
-        delete custom[id];
-        localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
-    } catch(e) {}
+    var finishLocalDelete = function() {
+        // Запоминаем удаление, чтобы кэш и история раундов не «воскрешали» игрока
+        if (typeof markPlayerDeleted === 'function') markPlayerDeleted(id, name);
 
-    toast(currentLang === 'en' ? '🗑️ Player deleted' : '🗑️ Игрок удалён');
-    if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[id]) {
+            delete cachedRegisteredUsers[id];
+        }
+        try {
+            var custom = {};
+            var existing = localStorage.getItem('pestovo_custom_players');
+            if (existing) custom = JSON.parse(existing) || {};
+            if (custom[id]) {
+                delete custom[id];
+                localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
+            }
+            // Кэш удалённых игроков хранится и в pestovo_cached_users — чистим оба ключа
+            var cachedRaw = localStorage.getItem('pestovo_cached_users');
+            if (cachedRaw) {
+                var cached = JSON.parse(cachedRaw);
+                if (cached && typeof cached === 'object') {
+                    delete cached[id];
+                    localStorage.setItem('pestovo_cached_users', JSON.stringify(cached));
+                }
+            }
+        } catch(e) {}
+
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        toast(currentLang === 'en' ? '🗑️ Player deleted' : '🗑️ Игрок удалён');
+    };
 
     if (typeof db !== 'undefined') {
-        db.ref('users/' + id).remove();
+        // Удаляем из Firebase, и только после успешного удаления чистим локальный кэш
+        db.ref('users/' + id).remove().then(function() {
+            finishLocalDelete();
+        }).catch(function(err) {
+            toast((currentLang === 'en' ? '❌ Delete failed: ' : '❌ Ошибка удаления: ') + (err && err.message ? err.message : err), 'error');
+        });
+    } else {
+        finishLocalDelete();
     }
 }
 

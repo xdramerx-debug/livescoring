@@ -2389,6 +2389,14 @@ function saveHistory(roundId,rd){
     var players=rd.players||{};
     Object.entries(players).forEach(function(pe){
         var pid=pe[0],p=pe[1],sc=p.scores||{},fH=p.fieldHcp||0,eH=p.exactHcp||0;
+        // Игрок удалён в админке — не создаём/не пополняем его профиль и историю,
+        // иначе он «воскреснет» из завершённого раунда
+        if (p && typeof isPlayerDeleted === 'function') {
+            var guestAlias = String(pid).indexOf('guest_') === 0
+                ? ('guest_name_' + String(p.name || '').trim().toLowerCase().replace(/\s+/g, '_'))
+                : null;
+            if (isPlayerDeleted(pid) || (guestAlias && isPlayerDeleted(guestAlias))) return;
+        }
         var stats=calcRoundStats(sc,fH,eH,holeOrder(rd.startHole));
         if(stats.gross<=0)return;
         var isGuestPlayer=pid.indexOf('guest_')===0;
@@ -3733,6 +3741,12 @@ function registerGuestPlayerInDatabase(p) {
 
     var guestId = p.uid || ('guest_' + cleanName.toLowerCase().replace(/\s+/g, '_') + '_' + Math.abs(exactHcp).toString().replace('.', ''));
 
+    // Если гостя с таким ID удалили в админке — не переиспользуем «могилу»,
+    // генерируем свежий ID, чтобы старая запись не воскресла
+    try {
+        if (isPlayerDeleted(guestId)) guestId = guestId + '_' + Date.now();
+    } catch(e) {}
+
     var guestData = {
         name: cleanName,
         firstName: firstName,
@@ -3801,6 +3815,46 @@ var DEFAULT_REGISTERED_PLAYERS = {
 
 var cachedRegisteredUsers = Object.assign({}, DEFAULT_REGISTERED_PLAYERS);
 
+// ==========================================
+// «МОГИЛЬНИК» УДАЛЁННЫХ ИГРОКОВ (TOMBSTONES)
+// Гарантирует, что игрок, удалённый в админке, не «воскресает» из локальных
+// кэшей, устаревших снапшотов или завершаемых раундов — удаляется отовсюду.
+// ==========================================
+var DELETED_PLAYERS_KEY = 'pestovo_deleted_players';
+
+function getDeletedPlayers() {
+    try {
+        var raw = localStorage.getItem(DELETED_PLAYERS_KEY);
+        var p = raw ? JSON.parse(raw) : null;
+        return (p && typeof p === 'object') ? p : {};
+    } catch(e) { return {}; }
+}
+
+function isPlayerDeleted(id) {
+    if (!id) return false;
+    try { return !!getDeletedPlayers()[id]; } catch(e) { return false; }
+}
+
+function markPlayerDeleted(id) {
+    if (!id) return;
+    try {
+        var tomb = getDeletedPlayers();
+        tomb[id] = Date.now();
+        localStorage.setItem(DELETED_PLAYERS_KEY, JSON.stringify(tomb));
+    } catch(e) {}
+}
+
+function unmarkPlayerDeleted(id) {
+    if (!id) return;
+    try {
+        var tomb = getDeletedPlayers();
+        if (tomb[id]) {
+            delete tomb[id];
+            localStorage.setItem(DELETED_PLAYERS_KEY, JSON.stringify(tomb));
+        }
+    } catch(e) {}
+}
+
 function syncKnownPlayersCache() {
     try {
         var localCached = localStorage.getItem('pestovo_cached_users');
@@ -3817,6 +3871,12 @@ function syncKnownPlayersCache() {
             if (p2 && typeof p2 === 'object') Object.assign(cachedRegisteredUsers, p2);
         }
     } catch(e) {}
+
+    // Удалённые в админке игроки не восстанавливаются из локальных кэшей
+    try {
+        var tomb = getDeletedPlayers();
+        Object.keys(tomb).forEach(function(k) { delete cachedRegisteredUsers[k]; });
+    } catch(e) {}
 }
 
 syncKnownPlayersCache();
@@ -3826,8 +3886,35 @@ if (typeof db !== 'undefined') {
         db.ref('users').on('value', function(sn) {
             var val = sn.val();
             if (val && typeof val === 'object') {
+                // Если игрок исчез из Firebase — он удалён: ставим «могилу»,
+                // чтобы он не воскрес из локального кэша на любом устройстве.
+                var removedFbIds = {};
+                try {
+                    var prevFb = JSON.parse(localStorage.getItem('pestovo_fb_user_ids') || 'null');
+                    var prevFbList = Array.isArray(prevFb) ? prevFb : (prevFb && typeof prevFb === 'object' ? Object.keys(prevFb) : []);
+                    prevFbList.forEach(function(k) {
+                        if (k && !(k in val)) removedFbIds[k] = true;
+                    });
+                } catch(e) {}
+
+                Object.keys(removedFbIds).forEach(function(k) {
+                    markPlayerDeleted(k);
+                    delete cachedRegisteredUsers[k];
+                });
+                Object.keys(val).forEach(function(k) {
+                    // Игрок снова появился в Firebase (например, пере-зарегистрировался) — снимаем «могилу»
+                    if (isPlayerDeleted(k)) unmarkPlayerDeleted(k);
+                });
+
                 Object.assign(cachedRegisteredUsers, val);
-                try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+                try {
+                    var toSave = {};
+                    Object.keys(cachedRegisteredUsers).forEach(function(k) {
+                        if (!isPlayerDeleted(k)) toSave[k] = cachedRegisteredUsers[k];
+                    });
+                    localStorage.setItem('pestovo_cached_users', JSON.stringify(toSave));
+                    localStorage.setItem('pestovo_fb_user_ids', JSON.stringify(Object.keys(val)));
+                } catch(e) {}
             }
         });
         db.ref('rounds').on('value', function(sn) {
@@ -3839,6 +3926,8 @@ if (typeof db !== 'undefined') {
                         if (p && p.name) {
                             var pName = p.name.trim();
                             var key = pid.startsWith('guest_') ? ('guest_name_' + pName.toLowerCase().replace(/\s+/g, '_')) : pid;
+                            // Удалённого игрока из раундов не восстанавливаем
+                            if (isPlayerDeleted(pid) || isPlayerDeleted(key)) return;
                             if (!cachedRegisteredUsers[key]) {
                                 var parts = pName.split(' ');
                                 cachedRegisteredUsers[key] = {

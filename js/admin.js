@@ -1064,6 +1064,8 @@ function loadAdmPlayers() {
         var html = '';
         entries.forEach(function(e) {
             var id = e[0], u = e[1];
+            // Страховка: удалённые в админке игроки не показываются ни при каких условиях
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(id)) return;
             var gIcon = u.gender === 'women' ? '👩' : '👨';
             var guestBadge = u.isGuest ? ' <span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 6px;border-radius:8px;font-size:10px;">' + t('guest') + '</span>' : '';
             var curRole = u.role || 'player';
@@ -1134,10 +1136,30 @@ function changeRole(id, newRole, name) {
 function deletePlayer(id, name) {
     if (!confirm((currentLang === 'en' ? 'Delete player ' + (name || id) + '? This cannot be undone!' : 'Удалить игрока ' + (name || id) + '? Это необратимо!'))) return;
 
-    if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[id]) {
+    // 1) «Могилка»: игрок гарантированно не воскреснет из локальных кэшей,
+    //    устаревших снапшотов или завершаемых раундов — на этом и других устройствах.
+    if (typeof markPlayerDeleted === 'function') {
+        markPlayerDeleted(id);
+        // Гостевые игроки могут быть закэшированы под alias guest_name_* — чистим его тоже
+        if (name && String(id).indexOf('guest_') === 0) {
+            markPlayerDeleted('guest_name_' + String(name).trim().toLowerCase().replace(/\s+/g, '_'));
+        }
+    }
+
+    // 2) Чистим in-memory кэш
+    if (typeof cachedRegisteredUsers !== 'undefined') {
         delete cachedRegisteredUsers[id];
     }
+
+    // 3) Чистим ОБА локальных хранилища. Ключевое — pestovo_cached_users:
+    //    именно он «возрождал» удалённого игрока при каждом getKnownPlayersSync().
     try {
+        var cached = {};
+        var existingCached = localStorage.getItem('pestovo_cached_users');
+        if (existingCached) cached = JSON.parse(existingCached) || {};
+        delete cached[id];
+        localStorage.setItem('pestovo_cached_users', JSON.stringify(cached));
+
         var custom = {};
         var existing = localStorage.getItem('pestovo_custom_players');
         if (existing) custom = JSON.parse(existing) || {};
@@ -1145,11 +1167,31 @@ function deletePlayer(id, name) {
         localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
     } catch(e) {}
 
+    // 4) Убираем игрока из списков участников ВСЕХ турниров
+    if (typeof db !== 'undefined') {
+        db.ref('tournaments').once('value').then(function(sn) {
+            var tns = sn.val() || {};
+            Object.keys(tns).forEach(function(tnId) {
+                var reg = tns[tnId] && tns[tnId].registeredPlayers;
+                if (reg && reg[id]) {
+                    db.ref('tournaments/' + tnId + '/registeredPlayers/' + id).remove();
+                }
+            });
+        }).catch(function(){});
+    }
+
+    // 5) Мгновенно перерисовываем список (локально игрок уже чист)
     toast(currentLang === 'en' ? '🗑️ Player deleted' : '🗑️ Игрок удалён');
+    if (typeof vib === 'function') vib([50, 30, 50]);
     if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
 
+    // 6) Удаляем из Firebase (единый источник правды для всех страниц сайта)
     if (typeof db !== 'undefined') {
-        db.ref('users/' + id).remove();
+        db.ref('users/' + id).remove().then(function() {
+            if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        }).catch(function(err) {
+            toast((currentLang === 'en' ? '⚠️ Error deleting player: ' : '⚠️ Ошибка удаления игрока: ') + (err && err.message ? err.message : ''), 'error');
+        });
     }
 }
 
@@ -1271,9 +1313,12 @@ function impCollectPlayers(callback) {
     var localUsers = typeof getKnownPlayersSync === 'function' ? (getKnownPlayersSync() || {}) : {};
     var renderList = function(remoteData) {
         var combined = Object.assign({}, localUsers, remoteData || {});
-        callback(Object.entries(combined).map(function(e) {
+        var list = Object.entries(combined).filter(function(e) {
+            return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(e[0]));
+        }).map(function(e) {
             return { id: e[0], data: e[1] || {} };
-        }));
+        });
+        callback(list);
     };
     if (typeof db !== 'undefined') {
         db.ref('users').once('value').then(function(sn) { renderList(sn.val()); })

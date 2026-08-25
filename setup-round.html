@@ -48,25 +48,36 @@
             overflow: visible !important;
         }
         .search-results-list {
-            margin-top: 8px;
-            background: #0d1e11;
-            border: 2px solid var(--gold);
-            border-radius: 10px;
-            max-height: 260px;
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            position: absolute !important;
+            top: 100% !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 9999999 !important;
+            background: #0d1e11 !important;
+            border: 2px solid var(--gold) !important;
+            border-radius: 10px !important;
+            max-height: 260px !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.85) !important;
+            margin-top: 4px !important;
+            touch-action: manipulation !important;
         }
         .search-result-item {
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            min-height: 48px;
+            padding: 12px 16px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            cursor: pointer !important;
+            border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+            min-height: 48px !important;
+            box-sizing: border-box !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -webkit-tap-highlight-color: rgba(201, 168, 76, 0.3) !important;
         }
         .search-result-item:last-child {
-            border-bottom: none;
+            border-bottom: none !important;
         }
         .search-result-item:active, .search-result-item:hover {
             background: rgba(201,168,76,0.25) !important;

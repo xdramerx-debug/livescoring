@@ -194,7 +194,7 @@ function onSetupSearchInput(idx) {
         var hcpText = fmtExactHcp(m.handicap) + ' HCP';
         var guestTag = m.isGuest ? ' <span style="font-size:10px;color:var(--gold);">(Гость)</span>' : '';
 
-        html += '<div class="search-result-item" data-idx="' + mIdx + '">';
+        html += '<div class="search-result-item" data-idx="' + mIdx + '" data-uid="' + m.uid + '">';
         html += '<span>' + gIcon + ' <strong style="color:var(--white);font-size:14px;">' + escapeHtml(m.name) + '</strong>' + guestTag + '</span>';
         html += '<span style="color:var(--gold);font-weight:700;font-size:13px;">' + hcpText + '</span>';
         html += '</div>';

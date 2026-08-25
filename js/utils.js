@@ -3783,6 +3783,42 @@ if (typeof window !== 'undefined') {
 }
 
 // ==========================================
+// УДАЛЁННЫЕ ИГРОКИ (ЗАЩИТА ОТ «ВОСКРЕШЕНИЯ»)
+// Запоминаем id и нормализованное имя удалённых в админке игроков,
+// чтобы локальный кэш и история раундов не возвращали их в списки
+// ==========================================
+function getDeletedPlayerIds() {
+    try {
+        var raw = localStorage.getItem('pestovo_deleted_player_ids');
+        if (raw) {
+            var list = JSON.parse(raw);
+            if (Array.isArray(list)) return list;
+        }
+    } catch(e) {}
+    return [];
+}
+
+function isPlayerDeleted(id, name) {
+    var list = getDeletedPlayerIds();
+    if (!list.length) return false;
+    if (id && list.indexOf(id) !== -1) return true;
+    var nm = name ? normalizeSearchText(name) : '';
+    return !!nm && list.indexOf(nm) !== -1;
+}
+
+function markPlayerDeleted(id, name) {
+    try {
+        var list = getDeletedPlayerIds();
+        var add = function(v) {
+            if (v && list.indexOf(v) === -1) list.push(v);
+        };
+        add(id);
+        add(name ? normalizeSearchText(name) : '');
+        localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify(list));
+    } catch(e) {}
+}
+
+// ==========================================
 // REAL-TIME AUTOCOMPLETE PLAYER NAME SUGGESTIONS
 // ==========================================
 var DEFAULT_REGISTERED_PLAYERS = {
@@ -3802,11 +3838,18 @@ var DEFAULT_REGISTERED_PLAYERS = {
 var cachedRegisteredUsers = Object.assign({}, DEFAULT_REGISTERED_PLAYERS);
 
 function syncKnownPlayersCache() {
+    var mergeCache = function(obj) {
+        Object.keys(obj).forEach(function(k) {
+            if (isPlayerDeleted(k, obj[k] && obj[k].name)) return;
+            cachedRegisteredUsers[k] = obj[k];
+        });
+    };
+
     try {
         var localCached = localStorage.getItem('pestovo_cached_users');
         if (localCached) {
             var p1 = JSON.parse(localCached);
-            if (p1 && typeof p1 === 'object') Object.assign(cachedRegisteredUsers, p1);
+            if (p1 && typeof p1 === 'object') mergeCache(p1);
         }
     } catch(e) {}
 
@@ -3814,12 +3857,14 @@ function syncKnownPlayersCache() {
         var custom = localStorage.getItem('pestovo_custom_players');
         if (custom) {
             var p2 = JSON.parse(custom);
-            if (p2 && typeof p2 === 'object') Object.assign(cachedRegisteredUsers, p2);
+            if (p2 && typeof p2 === 'object') mergeCache(p2);
         }
     } catch(e) {}
 }
 
 syncKnownPlayersCache();
+
+var lastRemoteUserIds = null;
 
 if (typeof db !== 'undefined') {
     try {
@@ -3827,6 +3872,16 @@ if (typeof db !== 'undefined') {
             var val = sn.val();
             if (val && typeof val === 'object') {
                 Object.assign(cachedRegisteredUsers, val);
+                // Игрок, которого удалили в Firebase, должен исчезнуть из локального кэша
+                // (Object.assign только добавляет, поэтому удаляем ключи из прошлого снапшота)
+                if (lastRemoteUserIds) {
+                    lastRemoteUserIds.forEach(function(key) {
+                        if (!Object.prototype.hasOwnProperty.call(val, key)) {
+                            delete cachedRegisteredUsers[key];
+                        }
+                    });
+                }
+                lastRemoteUserIds = Object.keys(val);
                 try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
             }
         });
@@ -3837,6 +3892,7 @@ if (typeof db !== 'undefined') {
                     Object.entries(r.players).forEach(function(pe) {
                         var pid = pe[0], p = pe[1];
                         if (p && p.name) {
+                            if (isPlayerDeleted(pid, p.name)) return; // игрок удалён в админке — не «воскрешаем» его из истории раундов
                             var pName = p.name.trim();
                             var key = pid.startsWith('guest_') ? ('guest_name_' + pName.toLowerCase().replace(/\s+/g, '_')) : pid;
                             if (!cachedRegisteredUsers[key]) {

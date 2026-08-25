@@ -85,40 +85,57 @@ function renderRound(id, r) {
         pos++;
     });
 
+    var isEn = currentLang === 'en';
+    var stblShort = isEn ? 'Pts' : 'Стб';
+    var stblF = isEn ? 'Stb (fld)' : 'Стб (пол)';
+    var stblE = isEn ? 'Stb (exc)' : 'Стб (игр)';
+
     var rows = list.map(function(p) {
         var posCls = p.position <= 3 ? 'lb-' + p.position : '';
-        var holeInfo = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? (currentLang === 'en' ? 'Hole #' : 'лунка №') + p.currentHole : '—');
-        
-        return '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + p.pid + '\',\'' + id + '\')"><td class="lb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</td>' +
-            '<td><div style="display:flex;align-items:center;gap:8px;">' + fmtUserAvatar(p, 30) +
-            '<div><span class="lb-name" style="color:var(--gold);">' + (p.name || '—') + '</span><div style="font-size:11px;color:var(--muted);">' + holeInfo + '</div></div></div></td>' +
-            '<td class="lb-score ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</td>' +
-            '<td style="text-align:center;">' + (p.gross || '—') + '</td>' +
-            '<td style="text-align:center;">' + (p.net || '—') + '</td>' +
-            '<td style="text-align:center;color:var(--gold);font-weight:700;">' + p.stblField + '</td>' +
-            '<td style="text-align:center;color:var(--muted);">' + p.stblExact + '</td></tr>';
+        var holeInfo = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
+        var gross = p.gross || '—';
+        var net = p.net || '—';
+
+        return '<div class="rlb-row" onclick="openPlayerProfileModal(\'' + p.pid + '\',\'' + id + '\')">' +
+            '<span class="rlb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</span>' +
+            '<div class="rlb-player">' + fmtUserAvatar(p, 28) +
+            '<div class="rlb-pcol"><span class="rlb-name">' + (p.name || '—') + '</span>' +
+            '<span class="rlb-thru">' + holeInfo + '</span></div></div>' +
+            '<span class="rlb-par ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</span>' +
+            '<span class="rlb-num">' + gross + '</span>' +
+            '<span class="rlb-num">' + net + '</span>' +
+            '<span class="rlb-num rlb-stbl">' + p.stblField + '</span>' +
+            '<span class="rlb-num rlb-dim">' + p.stblExact + '</span>' +
+            '<div class="rlb-sub">' + holeInfo + ' · Gross ' + gross + ' · Net ' + net + ' · ' + stblShort + ' ' + p.stblField + '/' + p.stblExact + '</div>' +
+            '</div>';
     }).join('');
 
     var badge = isLive 
         ? '<span class="live-badge"><span class="live-dot" style="width:7px;height:7px;"></span> LIVE</span>' 
-        : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>';
+        : '<span class="tn-status tn-d">' + (isEn ? 'Completed' : 'Завершён') + '</span>';
         
     var downloadBtn = !isLive 
-        ? '<div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i> ' + (currentLang === 'en' ? 'Scorecard' : 'Счётная карточка') + '</button>' +
+        ? '<div class="rl-actions"><button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i> ' + (isEn ? 'Scorecard' : 'Счётная карточка') + '</button>' +
           '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button></div>'
         : '';
 
-    var posHeader = currentLang === 'en' ? 'Pos' : 'Поз';
-    var playerHeader = t('player');
-    var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
+    var head = '<div class="rlb-row rlb-head">' +
+        '<span class="rlb-pos">#</span>' +
+        '<span class="rlb-hpl">' + t('player') + '</span>' +
+        '<span class="rlb-par">±Par</span>' +
+        '<span class="rlb-num">' + t('gross') + '</span>' +
+        '<span class="rlb-num">' + t('net') + '</span>' +
+        '<span class="rlb-num">' + stblF + '</span>' +
+        '<span class="rlb-num">' + stblE + '</span></div>';
 
-    return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">' +
-        '<div><h2 style="margin-bottom:4px;"><i class="fas fa-flag"></i> ' + t('brand_name') + ' · ' + fmtTime(r.startTime) + '</h2>' +
-        '<div style="font-size:12px;color:var(--muted);">' + fmtDate(r.createdAt) + ' · ' + (r.format || 'Stroke Play') + ' · ' + t('tee_select') + ': ' + fmtTeePill(r.tee) +
-        (r.mode === 'solo' ? soloWord : '') + '</div></div>' + badge + '</div>' +
-        '<div style="overflow-x:auto;"><table class="lb-table"><thead><tr>' +
-        '<th style="width:44px;">' + posHeader + '</th><th>' + playerHeader + '</th><th style="text-align:center;">±Par</th>' +
-        '<th style="text-align:center;">Gross</th><th style="text-align:center;">Net</th>' +
-        '<th style="text-align:center;">' + t('stbl_field') + '</th><th style="text-align:center;">' + t('stbl_exact') + '</th>' +
-        '</tr></thead><tbody>' + rows + '</tbody></table></div>' + downloadBtn + '</div>';
+    var ts = r.startTime || r.createdAt;
+    var soloWord = isEn ? ' · Solo' : ' · Одиночный';
+
+    return '<div class="card rl-card">' +
+        '<div class="rl-head"><div class="rl-hinfo">' +
+        '<div class="rl-title"><i class="fas fa-flag"></i>' + fmtDate(ts) + ' · ' + fmtTime(ts) + '</div>' +
+        '<div class="rl-sub">' + (r.format || 'Stroke Play') + ' · ' + fmtTeePill(r.tee) + (r.mode === 'solo' ? soloWord : '') + '</div>' +
+        '</div>' + badge + '</div>' +
+        '<div class="rlb">' + head + rows + '</div>' +
+        downloadBtn + '</div>';
 }

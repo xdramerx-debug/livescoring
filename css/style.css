@@ -1115,27 +1115,29 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
     .hole-lbl { font-size: 9px !important; margin-bottom: 2px !important; letter-spacing: 0.5px !important; }
     .hole-val { font-size: 20px !important; text-shadow: none !important; }
     .hole-nav {
-        display: flex !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        gap: 4px !important;
-        margin: 6px 0 !important;
-        padding: 4px 2px !important;
-        scrollbar-width: none !important;
-    }
-    .hole-nav::-webkit-scrollbar { display: none !important; }
-    .hole-btn {
-        flex: 0 0 34px !important;
-        width: 34px !important;
-        min-width: 34px !important;
-        height: 34px !important;
-        min-height: 34px !important;
+        display: grid !important;
+        grid-template-columns: repeat(9, 1fr) !important;
+        gap: 3px !important;
+        margin: 8px 0 !important;
         padding: 0 !important;
-        font-size: 12px !important;
-        border-radius: 8px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+    .hole-btn {
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        padding: 2px 1px !important;
+        font-size: 11px !important;
+        border-radius: 6px !important;
         display: flex !important;
+        flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
+        box-sizing: border-box !important;
     }
     
     .score-area { margin: 6px 0 !important; }
@@ -1164,9 +1166,9 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
     .nav-brand-text{font-size:12px;}
     .weather-widget{padding:1px 4px;font-size:9px;}
     .sun-mode-btn, .lang-btn{padding:2px 4px;font-size:9px;}
-    .hole-nav{grid-template-columns:repeat(6,1fr);gap:3px;}
-    .hole-box{padding:8px 8px;min-width:60px;}
-    .hole-val{font-size:22px;}
+    .hole-nav{grid-template-columns:repeat(9,1fr) !important;gap:2px !important;}
+    .hole-box{padding:6px 2px;min-width:0;}
+    .hole-val{font-size:18px;}
 }
 
 @media (display-mode: standalone), (display-mode: fullscreen) {

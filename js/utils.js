@@ -55,6 +55,12 @@ function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleDateString(c
 function fmtTime(ts){if(!ts)return'—';var d=new Date(ts),h=d.getHours(),m=d.getMinutes();return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
 function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
 function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
+function escapeHtml(str){
+    if(str===null||str===undefined)return'';
+    return String(str).replace(/[&<>"']/g,function(c){
+        return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+}
 
 // ==========================================
 // МЕЖДУНАРОДНЫЙ ЯЗЫКОВОЙ ПЕРЕКЛЮЧАТЕЛЬ (RU / EN)
@@ -126,9 +132,6 @@ var I18N = {
         placeholder_vk_peer_id: '2000000001 (беседа) или 123456789',
         placeholder_bc_title: '🏆 Чемпионат Пестово 2024',
         placeholder_bc_body: 'Регистрация на турнир открыта! Старт в субботу в 10:00.',
-        view_only_group_desc: 'Режим просмотра. Ввод счёта доступен только участникам раунда.',
-        connect_players_desc: 'Дайте отсканировать QR-код другим игрокам, чтобы они открыли счётную карточку со своих телефонов.',
-        offline_desc: 'Проверьте интернет-соединение. Ваши результаты сохраняются локально.',
         share_card: 'Поделиться в соцсетях (PNG)',
         download_png: 'Скачать картинку (PNG)',
         share_native: 'Поделиться в приложении',
@@ -398,9 +401,6 @@ var I18N = {
         placeholder_vk_peer_id: '2000000001 (chat) or 123456789',
         placeholder_bc_title: '🏆 Pestovo Championship 2024',
         placeholder_bc_body: 'Tournament registration is open! Start on Saturday at 10:00.',
-        view_only_group_desc: 'View mode. Score entry is available to round participants only.',
-        connect_players_desc: 'Allow other players to scan the QR code to open the scorecard from their phones.',
-        offline_desc: 'Check your internet connection. Your scores are saved locally.',
         share_card: 'Share Scorecard (PNG)',
         download_png: 'Download Image (PNG)',
         share_native: 'Share to Apps',
@@ -2650,25 +2650,6 @@ function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
     ctx.fillStyle = scoreSum > 0 ? '#c9a84c' : '#3a523e';
     ctx.font = 'bold 22px "Inter", sans-serif';
     ctx.fillText(scoreSum > 0 ? String(scoreSum) : '—', totX + totW / 2, y3 + row3H / 2 + 7);
-}
-
-function drawKPICard(ctx, x, y, w, h, label, value, valColor) {
-    ctx.fillStyle = '#132218';
-    ctx.strokeStyle = '#1e3525';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, 12);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#9eb5a5';
-    ctx.font = 'bold 15px "Inter", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(label, x + w / 2, y + 32);
-
-    ctx.fillStyle = valColor || '#ffffff';
-    ctx.font = 'bold 38px "Inter", sans-serif';
-    ctx.fillText(value, x + w / 2, y + 84);
 }
 
 function drawHoleGridRow(ctx, scores, markerScores, startHole, endHole, startY) {

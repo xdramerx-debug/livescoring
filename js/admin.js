@@ -260,97 +260,6 @@ function clearRounds() {
 }
 
 // ==========================================
-// ИГРОКИ И РОЛИ
-// ==========================================
-function loadAdmPlayers() {
-    db.ref('users').on('value', function(sn) {
-        var data = sn.val() || {};
-        var entries = Object.entries(data);
-        var el = document.getElementById('adm-players');
-        if (!el) return;
-
-        if (!entries.length) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>' + (currentLang === 'en' ? 'No players' : 'Нет игроков') + '</p></div>';
-            return;
-        }
-
-        entries.sort(function(a, b) {
-            var roleA = a[1].role === 'admin' ? 0 : a[1].role === 'referee' ? 1 : a[1].role === 'marshal' ? 2 : 3;
-            var roleB = b[1].role === 'admin' ? 0 : b[1].role === 'referee' ? 1 : b[1].role === 'marshal' ? 2 : 3;
-            if (roleA !== roleB) return roleA - roleB;
-            return (a[1].name || '').localeCompare(b[1].name || '');
-        });
-
-        var roundsStr = currentLang === 'en' ? ' · Rounds: ' : ' · Раундов: ';
-
-        var html = '';
-        entries.forEach(function(e) {
-            var id = e[0], u = e[1];
-            var gIcon = u.gender === 'women' ? '👩' : '👨';
-            var guestBadge = u.isGuest ? ' <span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 6px;border-radius:8px;font-size:10px;">' + t('guest') + '</span>' : '';
-            var curRole = u.role || 'player';
-
-            var roleBadge = curRole === 'admin'
-                ? '<span style="color:#2ecc71;font-size:12px;font-weight:700;"><i class="fas fa-shield-halved"></i> ' + t('role_admin') + '</span>'
-                : curRole === 'referee'
-                ? '<span style="color:var(--red);font-size:12px;font-weight:700;"><i class="fas fa-gavel"></i> ' + t('role_referee') + '</span>'
-                : curRole === 'marshal'
-                ? '<span style="color:var(--blue);font-size:12px;font-weight:700;"><i class="fas fa-shield"></i> ' + t('role_marshal') + '</span>'
-                : '<span style="color:var(--muted);font-size:12px;">' + t('role_player') + '</span>';
-
-            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
-            html += '<div style="flex:1;min-width:200px;">';
-            html += '<strong style="color:var(--white);">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</strong>';
-            html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">';
-            html += (u.email || (currentLang === 'en' ? 'No email' : 'Без email')) + ' · HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + roundsStr + (u.roundsPlayed || 0);
-            html += '</div></div>';
-
-            html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
-            html += roleBadge;
-
-            if (!currentUser || id !== currentUser.uid) {
-                html += '<select class="form-input" style="padding:4px 8px;font-size:11px;width:auto;" onchange="changeRole(\'' + id + '\', this.value, \'' + (u.name || '').replace(/'/g, "\\'") + '\')">';
-                html += '<option value="player" ' + (curRole === 'player' ? 'selected' : '') + '>' + t('role_player') + '</option>';
-                html += '<option value="referee" ' + (curRole === 'referee' ? 'selected' : '') + '>' + t('role_referee') + '</option>';
-                html += '<option value="marshal" ' + (curRole === 'marshal' ? 'selected' : '') + '>' + t('role_marshal') + '</option>';
-                html += '<option value="admin" ' + (curRole === 'admin' ? 'selected' : '') + '>' + t('role_admin') + '</option>';
-                html += '</select>';
-
-                html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="' + (currentLang === 'en' ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
-
-                html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="Delete">' +
-                        '<i class="fas fa-trash"></i></button>';
-            } else {
-                html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="' + (currentLang === 'en' ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
-                html += '<span style="font-size:11px;color:var(--gold);font-weight:600;">(' + (currentLang === 'en' ? 'You' : 'Это вы') + ')</span>';
-            }
-
-            html += '</div></div>';
-        });
-
-        el.innerHTML = html;
-    });
-}
-
-function changeRole(id, newRole, name) {
-    var roleText = newRole === 'admin' ? (currentLang === 'en' ? 'Administrator' : 'Администратора') : (currentLang === 'en' ? 'Player' : 'Игрока');
-    if (!confirm((currentLang === 'en' ? 'Set ' + (name || 'user') + ' role to ' + roleText + '?' : 'Назначить ' + (name || 'пользователя') + ' на роль ' + roleText + '?'))) return;
-
-    db.ref('users/' + id + '/role').set(newRole).then(function() {
-        toast('✅ ' + (name || 'User') + (currentLang === 'en' ? ' is now ' : ' теперь ') + roleText);
-    }).catch(function(err) {
-        toast('❌ Error: ' + err.message, 'error');
-    });
-}
-
-function deletePlayer(id, name) {
-    if (!confirm((currentLang === 'en' ? 'Delete player ' + (name || id) + '? This cannot be undone!' : 'Удалить игрока ' + (name || id) + '? Это необратимо!'))) return;
-    db.ref('users/' + id).remove().then(function() {
-        toast(currentLang === 'en' ? '🗑️ Player deleted' : '🗑️ Игрок удалён');
-    });
-}
-
-// ==========================================
 // ТУРНИРЫ
 // ==========================================
 function createTournament() {
@@ -1131,7 +1040,8 @@ function loadAdmPlayers() {
     if (!el) return;
 
     var renderWithData = function(remoteData) {
-        var combined = Object.assign({}, typeof getCombinedUsers === 'function' ? getCombinedUsers() : {}, remoteData || {});
+        var localUsers = typeof getKnownPlayersSync === 'function' ? (getKnownPlayersSync() || {}) : {};
+        var combined = Object.assign({}, localUsers, remoteData || {});
         var entries = Object.entries(combined);
 
         if (!entries.length) {

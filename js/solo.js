@@ -571,17 +571,24 @@ function finishSolo() {
 
         toast(t('msg_round_finished'));
         setTimeout(function() {
-            var fnName = (document.getElementById('s-firstname').value + ' ' + document.getElementById('s-lastname').value).trim() || 'Player';
+            var fnEl = document.getElementById('s-firstname');
+            var lnEl = document.getElementById('s-lastname');
+            var uid = getPlayerId();
+            var me = (soloRound && soloRound.players && soloRound.players[uid]) || null;
+            var fnName = ((fnEl ? fnEl.value : '') + ' ' + (lnEl ? lnEl.value : '')).trim() || (me && me.name) || 'Player';
+            var teeEl = document.getElementById('s-tee');
+            var teeCode = (soloRound && soloRound.tee) ? soloRound.tee : (teeEl ? teeEl.value : 'wh');
+            var scoreMap = (me && me.scores) || {};
             if (confirm(currentLang === 'en' ? 'Download official PDF scorecard?' : 'Скачать официальную PDF-карточку?')) {
                 downloadOfficialScorecardPDF({
                     playerName: fnName,
                     markerName: 'Self (Solo)',
                     createdAt: soloRound ? soloRound.startTime : Date.now(),
-                    tee: curTee,
+                    tee: teeCode,
                     format: soloRound ? soloRound.format : 'Stroke Play',
                     exactHandicap: document.getElementById('s-exact-hcp') ? document.getElementById('s-exact-hcp').value : 0,
                     fieldHandicap: document.getElementById('s-field-hcp') ? document.getElementById('s-field-hcp').value : 0,
-                    scores: scores
+                    scores: scoreMap
                 });
             }
             window.location.href = 'leaderboard.html';

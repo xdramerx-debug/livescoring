@@ -95,8 +95,8 @@
     <!-- ИГРА И ВВОД СЧЁТА (ТОЛЬКО ДЛЯ ИГРОКА) -->
     <div id="game" class="hidden">
         
-        <!-- БЛОК 1: ВВОД СЧЁТА И ЛУНКИ БЕЗ СКРОЛЛА -->
-        <div class="card setup-card" style="padding:16px;margin-bottom:16px;">
+        <!-- БЛОК 1: ВВОД СЧЁТА И ЛУНКИ 1-18 (2 СТРОКИ ПО 9 ЛУНОК - 100% БЕЗ СКРОЛЛА) -->
+        <div class="card setup-card" id="play-hole-card" style="padding:16px;margin-bottom:16px;">
             <div class="hole-display">
                 <div class="hole-box"><div class="hole-lbl" data-i18n="hole_lbl">Лунка</div><div class="hole-val" id="g-hole">1</div></div>
                 <div class="hole-box h-par"><div class="hole-lbl" data-i18n="par_lbl">Пар</div><div class="hole-val" id="g-par">4</div></div>
@@ -104,7 +104,7 @@
                 <div class="hole-box"><div class="hole-lbl" data-i18n="deadline_lbl">Дедлайн</div><div class="hole-val" id="g-deadline" style="font-size:20px;color:var(--gold-l);">—</div></div>
             </div>
 
-            <!-- HOLE NAVIGATION (2 ROWS OF 9 HOLES - 100% NO-SCROLL) -->
+            <!-- HOLE NAVIGATION (2 ROWS OF 9 HOLES - 100% NO-SCROLL GRID MATRIX) -->
             <div class="hole-nav" id="g-holes" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-bottom:16px;width:100%;box-sizing:border-box;"></div>
 
             <div class="score-area">
@@ -159,10 +159,10 @@
 
         <!-- БЛОК 2: КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
         <div style="display:flex;gap:10px;margin:16px 0;">
-            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;min-height:48px;" onclick="callOfficial('referee')">
+            <button class="btn btn-danger" style="flex:1;font-size:13px;padding:12px 8px;min-height:48px;" onclick="callOfficial('referee')">
                 <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
             </button>
-            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;min-height:48px;" onclick="callOfficial('marshal')">
+            <button class="btn btn-warning" style="flex:1;font-size:13px;padding:12px 8px;min-height:48px;" onclick="callOfficial('marshal')">
                 <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
             </button>
         </div>
@@ -185,7 +185,7 @@
             </div>
         </div>
 
-        <button class="btn btn-og btn-block" onclick="finishSolo()" style="margin-bottom:20px;"><i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span></button>
+        <button class="btn btn-og btn-block" onclick="finishSolo()" style="margin-bottom:20px;min-height:48px;"><i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span></button>
     </div>
 
     <!-- ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ / ГОСТЕЙ) -->

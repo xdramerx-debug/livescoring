@@ -310,14 +310,18 @@ function buildHoles() {
     if (!uid || !soloRound || !soloRound.players) return;
     var p = soloRound.players[uid];
     var scores = (p && p.scores) || {};
-    var order = holeOrder(soloRound.startHole || 1);
+
     var html = '';
-    order.forEach(function(h) {
+    for (var h = 1; h <= 18; h++) {
         var cls = h === curHole ? 'active' : '';
         var s = parseInt(scores[h]) || 0;
         if (s >= 1 && h !== curHole) cls += ' done';
-        html += '<button class="hole-btn ' + cls + '" onclick="goHole(' + h + ')">' + h + '</button>';
-    });
+
+        html += '<button class="hole-btn ' + cls + '" onclick="goHole(' + h + ')" style="min-height:38px;padding:2px;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;">' +
+            '<span style="font-size:9px;opacity:0.75;line-height:1;">#' + h + '</span>' +
+            '<span style="font-size:13px;font-weight:800;line-height:1.2;margin-top:1px;">' + (s >= 1 ? s : '—') + '</span>' +
+            '</button>';
+    }
     el.innerHTML = html;
 }
 
@@ -510,14 +514,14 @@ function updateSoloActionButton() {
 
     if (playedCount >= 18) {
         btn.onclick = function() { finishSolo(); };
-        btn.className = 'btn btn-g btn-block';
-        if (txt) txt.textContent = currentLang === 'en' ? 'Finish Round' : 'Завершить раунд';
+        btn.className = 'btn btn-g btn-block btn-lg';
+        if (txt) txt.innerHTML = currentLang === 'en' ? '🏆 Finish Round' : '🏆 Завершить раунд';
         var icon = btn.querySelector('i');
         if (icon) icon.className = 'fas fa-flag-checkered';
     } else {
         btn.onclick = function() { saveSolo(); };
         btn.className = 'btn btn-g btn-block';
-        if (txt) txt.textContent = currentLang === 'en' ? 'Next Hole' : 'Следующая лунка';
+        if (txt) txt.innerHTML = currentLang === 'en' ? '➡️ Next Hole' : '➡️ Сохранить и следующая лунка';
         var icon = btn.querySelector('i');
         if (icon) icon.className = 'fas fa-arrow-right';
     }

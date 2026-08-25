@@ -41,15 +41,29 @@ function setSetupMode(mode) {
     var btnSolo = document.getElementById('btn-mode-solo');
     var btnGroup = document.getElementById('btn-mode-group');
     var countWrap = document.getElementById('group-count-wrap');
+    var fmtSel = document.getElementById('setup-format');
 
     if (mode === 'solo') {
         if (btnSolo) btnSolo.classList.add('active');
         if (btnGroup) btnGroup.classList.remove('active');
         if (countWrap) countWrap.style.display = 'none';
+        if (fmtSel) {
+            fmtSel.innerHTML =
+                '<option value="Stroke Play">Stroke Play</option>' +
+                '<option value="Stableford">Stableford</option>';
+        }
     } else {
         if (btnSolo) btnSolo.classList.remove('active');
         if (btnGroup) btnGroup.classList.add('active');
         if (countWrap) countWrap.style.display = 'block';
+        if (fmtSel) {
+            fmtSel.innerHTML =
+                '<option value="Stroke Play">Stroke Play</option>' +
+                '<option value="Stableford">Stableford</option>' +
+                '<option value="Match Play 1v1">Матч-плей (1х1)</option>' +
+                '<option value="Match Play 2v2">Матч-плей (2х2)</option>' +
+                '<option value="Scramble">Скрембл (Scramble)</option>';
+        }
     }
     renderSetupPlayerSlots();
 }

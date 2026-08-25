@@ -573,7 +573,7 @@ function renderPlayHole() {
         if (curRoundData && (curRoundData.format === 'Match Play 1v1' || curRoundData.format === 'Match Play 2v2') && myTargetUid) {
             var myScoresObj = (curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
             var targetScoresObj = (curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].scores) || {};
-            var myName = (curRoundData.players[myUid] && curRoundData.players[myUid].name) || (typeof myPlayerName !== 'undefined' ? myPlayerName : 'Player 1');
+            var myName = (curRoundData.players[myUid] && curRoundData.players[myUid].name) || (currentUserData && currentUserData.name) || 'Player 1';
             var targetName = (curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].name) || 'Opponent';
             var mStatus = calcMatchPlayStatus(myScoresObj, targetScoresObj, myName, targetName);
             trackerEl.innerHTML = renderMatchPlayTrackerHTML(mStatus);

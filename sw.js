@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v69';
+const CACHE_NAME = 'pestovo-v70';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
@@ -40,6 +40,9 @@ self.addEventListener('fetch', function(event) {
     var url = event.request.url;
     if (event.request.method !== 'GET') return;
     if (url.indexOf('firebaseio.com') !== -1 || url.indexOf('googleapis.com') !== -1) return;
+    // RUSGOLF parser: proxy requests must always go to the network (never serve stale cache)
+    if (url.indexOf('hcp.rusgolf.ru') !== -1 || url.indexOf('r.jina.ai') !== -1 ||
+        url.indexOf('allorigins') !== -1 || url.indexOf('codetabs') !== -1 || url.indexOf('corsproxy') !== -1) return;
     event.respondWith(
         caches.match(event.request).then(function(cached) {
             if (cached) return cached;

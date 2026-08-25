@@ -1889,3 +1889,64 @@ body.sun-mode .autocomplete-item.active-keyboard {
 }
 
 
+
+/* ===== ADMIN: ИМПОРТ/ЭКСПОРТ EXCEL ===== */
+.imp-file-label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:28px 16px;border:2px dashed var(--border);border-radius:var(--r);background:rgba(255,255,255,.02);cursor:pointer;transition:var(--t);color:var(--text);font-size:14px;min-height:96px;touch-action:manipulation;}
+.imp-file-label:hover,.imp-file-label:active{border-color:var(--gold);background:rgba(201,168,76,.08);}
+.imp-file-label i{font-size:28px;color:var(--gold);}
+.imp-big-btn{min-height:48px;justify-content:center;flex:1 1 220px;}
+.imp-note{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.35);color:var(--gold);border-radius:var(--rs);padding:10px 14px;font-size:13px;margin:14px 0 6px;}
+.imp-note-err{background:rgba(224,90,74,.12);border-color:rgba(224,90,74,.45);color:var(--red);}
+.imp-note-warn{background:rgba(243,156,18,.12);border-color:rgba(243,156,18,.45);color:var(--yellow);}
+.imp-list{margin-top:10px;}
+.imp-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--input);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:6px;cursor:pointer;flex-wrap:wrap;touch-action:manipulation;}
+.imp-row:hover{background:var(--card-h);}
+.imp-row input[type="checkbox"]{width:22px;height:22px;min-width:22px;cursor:pointer;accent-color:var(--gold);}
+.imp-row-head{background:rgba(201,168,76,.08);border-color:rgba(201,168,76,.3);cursor:default;}
+.imp-info{flex:1;min-width:150px;display:flex;flex-direction:column;gap:2px;}
+.imp-name{color:var(--white);font-weight:700;font-size:14px;}
+.imp-sub{color:var(--muted);font-size:12px;}
+.imp-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;white-space:nowrap;}
+.imp-badge-new{background:rgba(46,204,113,.15);color:#2ecc71;}
+.imp-badge-dup{background:rgba(201,168,76,.16);color:var(--gold);}
+.imp-badge-err{background:rgba(224,90,74,.15);color:var(--red);}
+
+/* ===== ADMIN: RUSGOLF (hcp.rusgolf.ru) ===== */
+.rg-search-row{display:flex;gap:10px;flex-wrap:wrap;}
+.rg-search-row .form-input{flex:1 1 220px;min-height:48px;font-size:16px;}
+.rg-search-btn{min-height:48px;flex:0 0 auto;}
+.rg-list{margin-top:6px;}
+.rg-card{display:flex;align-items:center;gap:14px;padding:14px;background:var(--input);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;flex-wrap:wrap;}
+.rg-main{flex:1 1 200px;min-width:0;}
+.rg-name{color:var(--white);font-weight:800;font-size:15px;line-height:1.35;}
+.rg-meta{color:var(--muted);font-size:12px;margin-top:3px;}
+.rg-hcp{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:70px;padding:6px 10px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.35);border-radius:var(--rs);color:var(--gold);font-weight:800;font-size:20px;line-height:1.1;}
+.rg-hcp-label{font-size:9px;font-weight:700;letter-spacing:1px;opacity:.8;}
+.rg-hcp-changed{border-color:#2ecc71;box-shadow:0 0 0 1px rgba(46,204,113,.35);}
+.rg-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.rg-actions .btn{min-height:44px;}
+.rg-progress-wrap{margin-top:16px;}
+.rg-progress{height:12px;background:var(--input);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.rg-progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold-l));transition:width .3s;}
+.rg-progress-text{font-size:13px;color:var(--text);margin-top:8px;}
+.rg-conflict{background:var(--input);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:var(--rs);padding:12px 14px;margin-bottom:12px;}
+.rg-conflict-title{color:var(--white);font-weight:800;font-size:14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.rg-conflict-hcp{color:var(--muted);font-weight:600;font-size:12px;}
+.rg-cand{display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:6px;flex-wrap:wrap;}
+.rg-cand-info{flex:1 1 160px;color:var(--white);font-size:13px;display:flex;flex-direction:column;gap:2px;min-width:0;}
+.rg-cand .btn{min-height:44px;}
+
+@media (max-width:640px){
+    .imp-file-label{padding:22px 12px;}
+    .rg-card{flex-direction:column;align-items:stretch;gap:10px;}
+    .rg-hcp{flex-direction:row;gap:8px;justify-content:flex-start;align-self:flex-start;padding:6px 14px;font-size:22px;}
+    .rg-hcp-label{font-size:10px;}
+    .rg-actions{width:100%;}
+    .rg-actions .btn{flex:1 1 100%;justify-content:center;}
+    .rg-cand{flex-direction:column;align-items:stretch;gap:8px;}
+    .rg-cand .btn{width:100%;justify-content:center;}
+    .rg-conflict-title{flex-direction:column;gap:2px;}
+    .imp-row{gap:10px;padding:11px 10px;}
+    .imp-badge{width:100%;text-align:center;}
+    .rg-search-btn{flex:1 1 100%;justify-content:center;}
+}

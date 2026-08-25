@@ -78,6 +78,8 @@
             <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры</button>
             <button class="admin-tab" onclick="switchTab('broadcasts',this)" data-i18n="tab_broadcasts">Анонсы 📢</button>
             <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
+            <button class="admin-tab" onclick="switchTab('importexport',this)" data-i18n="tab_importexport">Импорт/Экспорт 📊</button>
+            <button class="admin-tab" onclick="switchTab('rusgolf',this)" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
             <button class="admin-tab" onclick="switchTab('data',this)" data-i18n="tab_data">Данные</button>
         </div>
 
@@ -296,6 +298,96 @@
             </div>
         </div>
 
+        <div id="tab-importexport" class="admin-section hidden">
+            <!-- ЭКСПОРТ ИГРОКОВ В EXCEL -->
+            <div class="card" style="margin-bottom:20px;">
+                <h2><i class="fas fa-file-excel"></i> <span data-i18n="imp_exp_title">Импорт и экспорт игроков (Excel)</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="imp_exp_sub">
+                    Выгружайте список игроков в таблицу Excel и импортируйте игроков обратно: имя, фамилия и точный гандикап.
+                </p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-g imp-big-btn" onclick="exportPlayersExcel()">
+                        <i class="fas fa-download"></i> <span>Экспорт игроков в Excel</span>
+                    </button>
+                    <button type="button" class="btn btn-og imp-big-btn" onclick="downloadPlayersTemplate()">
+                        <i class="fas fa-file-arrow-down"></i> <span>Скачать шаблон таблицы</span>
+                    </button>
+                </div>
+                <p style="color:var(--muted);font-size:12px;margin-top:12px;">
+                    📋 Столбцы таблицы: <b style="color:var(--gold);">Имя</b> · <b style="color:var(--gold);">Фамилия</b> · <b style="color:var(--gold);">Точный гандикап</b> (например <b>13.0</b> или <b>+2.4</b>). Опционально можно добавить столбец <b>Пол</b> (муж/жен).
+                </p>
+            </div>
+
+            <!-- ИМПОРТ ИГРОКОВ ИЗ EXCEL -->
+            <div class="card">
+                <h2><i class="fas fa-file-import"></i> <span>Импорт игроков из Excel</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+                    Загрузите файл .xlsx / .xls / .csv — игроки появятся в списке игроков сайта. Дубликаты определяются по имени и фамилии: для них можно обновить точный гандикап.
+                </p>
+                <label class="imp-file-label" for="imp-file-input">
+                    <i class="fas fa-cloud-arrow-up"></i>
+                    <span><b>Выберите файл Excel</b><br><small style="color:var(--muted);">.xlsx, .xls или .csv · столбцы: Имя, Фамилия, Точный гандикап</small></span>
+                    <input type="file" id="imp-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handlePlayersFileSelect(this)">
+                </label>
+                <div id="imp-status"></div>
+                <div id="imp-preview"></div>
+            </div>
+        </div>
+
+        <div id="tab-rusgolf" class="admin-section hidden">
+            <!-- ПОИСК ГАНДИКАПА В БАЗЕ АГА -->
+            <div class="card" style="margin-bottom:20px;">
+                <h2><i class="fas fa-magnifying-glass-chart"></i> <span data-i18n="rg_title">Проверка гандикапа — база АГА России</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="rg_sub">
+                    Поиск точного гандикапа (HI) игрока в официальной базе Ассоциации гольфа России (hcp.rusgolf.ru) с возможностью добавить игрока к себе на сайт.
+                </p>
+                <form id="rg-search-form" onsubmit="rgDoSearch(event)">
+                    <div class="rg-search-row">
+                        <input type="search" id="rg-search-input" class="form-input" placeholder="Например: Петров Сергей или RU000732" autocomplete="off">
+                        <button type="submit" class="btn btn-g rg-search-btn" id="rg-search-btn"><i class="fas fa-magnifying-glass"></i> <span>Найти</span></button>
+                    </div>
+                </form>
+                <div id="rg-status"></div>
+                <div id="rg-results"></div>
+            </div>
+
+            <!-- МАССОВАЯ СИНХРОНИЗАЦИЯ -->
+            <div class="card" style="margin-bottom:20px;">
+                <h2><i class="fas fa-rotate"></i> <span>Синхронизация гандикапов игроков</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+                    Проверяет точный гандикап каждого игрока сайта в базе АГА России по фамилии и имени. При однозначном совпадении — обновляет автоматически. Если найдено несколько одинаковых имён с разными гандикапами — предложит выбрать нужного вручную.
+                </p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-g imp-big-btn" id="rg-sync-btn" onclick="rgSyncAll()">
+                        <i class="fas fa-rotate"></i> <span>Синхронизировать всех игроков</span>
+                    </button>
+                    <button type="button" class="btn btn-r imp-big-btn hidden" id="rg-sync-stop" onclick="rgSyncStop()">
+                        <i class="fas fa-stop"></i> <span>Остановить</span>
+                    </button>
+                </div>
+                <div id="rg-sync-progress"></div>
+                <div id="rg-sync-manual"></div>
+            </div>
+
+            <!-- НАСТРОЙКИ ПРОКСИ -->
+            <div class="card">
+                <details>
+                    <summary style="cursor:pointer;color:var(--gold);font-weight:700;font-size:14px;padding:4px 0;"><i class="fas fa-gear"></i> Настройки подключения (прокси к hcp.rusgolf.ru)</summary>
+                    <p style="color:var(--muted);font-size:12px;margin:12px 0;">
+                        Сайт АГА не разрешает прямые запросы из браузера, поэтому используется цепочка публичных CORS-прокси.
+                        Если все прокси недоступны — укажите свой прокси-шаблон, где <code style="color:var(--gold);">{url}</code> будет заменён на адрес запроса.<br>
+                        Пример: <code style="color:var(--gold);">https://my-proxy.example.com/?target={url}</code>
+                    </p>
+                    <div class="form-group">
+                        <label>Свой прокси (необязательно)</label>
+                        <input type="text" id="rg-proxy-input" class="form-input" placeholder="https://my-proxy.example.com/?target={url}">
+                    </div>
+                    <button type="button" class="btn btn-og btn-sm" onclick="saveRusgolfProxySettings()"><i class="fas fa-save"></i> <span>Сохранить</span></button>
+                    <span id="rg-proxy-status" style="font-size:12px;color:var(--muted);margin-left:10px;"></span>
+                </details>
+            </div>
+        </div>
+
         <div id="tab-data" class="admin-section hidden">
             <div class="card">
                 <h2><i class="fas fa-eye-slash"></i> <span data-i18n="page_visibility_title">Управление видимостью страниц</span></h2>
@@ -360,6 +452,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/utils.js?v=4"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/pwa.js"></script>
 </body>

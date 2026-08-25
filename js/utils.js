@@ -3783,15 +3783,29 @@ function registerGuestPlayerInDatabase(p) {
     return guestId;
 }
 
+function normalizeSearchText(str) {
+    if (!str) return '';
+    return str.toString().toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+}
+if (typeof window !== 'undefined') {
+    window.normalizeSearchText = normalizeSearchText;
+}
+
 // ==========================================
 // REAL-TIME AUTOCOMPLETE PLAYER NAME SUGGESTIONS
 // ==========================================
 var DEFAULT_REGISTERED_PLAYERS = {
+    'user_petr_odin_17': { name: 'Петр Один', firstName: 'Петр', lastName: 'Один', handicap: 17.0, gender: 'men', defaultTee: 'bl' },
+    'user_petr_odin_21': { name: 'Петр Один', firstName: 'Петр', lastName: 'Один', handicap: 21.0, gender: 'men', defaultTee: 'bl' },
+    'user_petr_p': { name: 'Пётр Петров', firstName: 'Пётр', lastName: 'Петров', handicap: 15.0, gender: 'men', defaultTee: 'bl' },
     'user_vasya_p': { name: 'Вася Петров', firstName: 'Вася', lastName: 'Петров', handicap: 13.0, gender: 'men', defaultTee: 'wh' },
     'user_vladimir_v': { name: 'Владимир Воробьёв', firstName: 'Владимир', lastName: 'Воробьёв', handicap: 14.4, gender: 'men', defaultTee: 'bl' },
+    'user_vladimir_v2': { name: 'Владимир Воробьев', firstName: 'Владимир', lastName: 'Воробьев', handicap: 22.0, gender: 'men', defaultTee: 'bl' },
     'user_anna_v': { name: 'Анна Воробьёва', firstName: 'Анна', lastName: 'Воробьёва', handicap: 18.2, gender: 'women', defaultTee: 'rd' },
     'user_alex_i': { name: 'Александр Иванов', firstName: 'Александр', lastName: 'Иванов', handicap: 9.6, gender: 'men', defaultTee: 'bl' },
-    'user_ekaterina_p': { name: 'Екатерина Петрова', firstName: 'Екатерина', lastName: 'Петрова', handicap: 22.0, gender: 'women', defaultTee: 'rd' }
+    'user_ekaterina_p': { name: 'Екатерина Петрова', firstName: 'Екатерина', lastName: 'Петрова', handicap: 22.0, gender: 'women', defaultTee: 'rd' },
+    'user_dmitry_s': { name: 'Дмитрий Смирнов', firstName: 'Дмитрий', lastName: 'Смирнов', handicap: 11.5, gender: 'men', defaultTee: 'wh' },
+    'user_elena_k': { name: 'Елена Кузнецова', firstName: 'Елена', lastName: 'Кузнецова', handicap: 24.8, gender: 'women', defaultTee: 'rd' }
 };
 
 var cachedRegisteredUsers = Object.assign({}, DEFAULT_REGISTERED_PLAYERS);

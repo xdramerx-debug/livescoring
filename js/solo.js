@@ -348,6 +348,7 @@ function renderCurrentHole() {
 
     curScore = savedScore > 0 ? savedScore : par;
     updateDisplay();
+    updateSoloActionButton();
 
     var trackContainer = document.getElementById('shot-tracking-container');
     if (trackContainer) {
@@ -440,6 +441,9 @@ function saveSolo(isAuto) {
             p.scores[savedHole] = curScore;
         }
 
+        updateSoloActionButton();
+        renderMiniCard('mini-card');
+
         setTimeout(function() { isChanging = false; }, 200);
     });
 }
@@ -489,6 +493,36 @@ function renderLiveStats(targetId) {
     el.innerHTML = html;
 }
 
+function updateSoloActionButton() {
+    var btn = document.getElementById('btn-solo-action');
+    var txt = document.getElementById('btn-solo-action-txt');
+    if (!btn) return;
+
+    var uid = getPlayerId();
+    if (!uid || !soloRound || !soloRound.players) return;
+    var p = soloRound.players[uid];
+    var scores = (p && p.scores) || {};
+
+    var playedCount = 0;
+    for (var h = 1; h <= 18; h++) {
+        if (parseInt(scores[h]) > 0) playedCount++;
+    }
+
+    if (playedCount >= 18) {
+        btn.onclick = function() { finishSolo(); };
+        btn.className = 'btn btn-g btn-block';
+        if (txt) txt.textContent = currentLang === 'en' ? 'Finish Round' : 'Завершить раунд';
+        var icon = btn.querySelector('i');
+        if (icon) icon.className = 'fas fa-flag-checkered';
+    } else {
+        btn.onclick = function() { saveSolo(); };
+        btn.className = 'btn btn-g btn-block';
+        if (txt) txt.textContent = currentLang === 'en' ? 'Next Hole' : 'Следующая лунка';
+        var icon = btn.querySelector('i');
+        if (icon) icon.className = 'fas fa-arrow-right';
+    }
+}
+
 function renderMiniCard(targetId) {
     var el = document.getElementById(targetId);
     if (!el) return;
@@ -496,87 +530,10 @@ function renderMiniCard(targetId) {
     if (!uid || !soloRound || !soloRound.players) return;
     var p = soloRound.players[uid];
     if (!p) return;
-    var scores = p.scores || {};
-    var fieldHcp = p.fieldHcp || 0;
-    var exactHcp = p.exactHcp || 0;
 
-    var courseHcpLbl = currentLang === 'en' ? 'Course' : 'пол.';
-    var holeHeader = t('hole');
-    var parHeader = t('par');
-    var scoreHeader = currentLang === 'en' ? 'Score' : 'Счёт';
-    var outHeader = t('out');
-    var inHeader = t('in_side');
-    var totalHeader = t('total');
-
-    var html = '<div style="margin-bottom:12px;font-size:14px;color:var(--gold);font-weight:700;cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')">' +
-        '<i class="fas fa-user-circle"></i> ' + (p.name || t('player')) + ' · HCP: ' + fmtExactHcp(exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + ')' +
-        '</div>';
-
-    html += '<div class="scorecard" style="margin-bottom:12px;"><table><tr><th>' + holeHeader + '</th>';
-    for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
-    html += '<th>' + outHeader + '</th></tr><tr class="row-par"><td>' + parHeader + '</td>';
-    var pO = 0;
-    for (var i = 1; i <= 9; i++) { var pv = holePar(i); pO += pv; html += '<td>' + pv + '</td>'; }
-    html += '<td>' + pO + '</td></tr><tr><td>' + scoreHeader + '</td>';
-    var gO = 0;
-    for (var i = 1; i <= 9; i++) {
-        var s = parseInt(scores[i]) || 0, par = holePar(i), cls = holeResClass(s, par);
-        if (s >= 1) gO += s;
-        html += '<td class="' + cls + '"><b>' + (s >= 1 ? s : '') + '</b></td>';
+    if (typeof generatePestovoScorecardHTML === 'function') {
+        el.innerHTML = generatePestovoScorecardHTML(p, soloRound);
     }
-    html += '<td class="row-total"><b>' + (gO > 0 ? gO : '') + '</b></td></tr>';
-
-    html += '<tr><td>Stableford (' + courseHcpLbl + ')</td>';
-    var sfO = 0;
-    for (var i = 1; i <= 9; i++) {
-        var s = parseInt(scores[i]) || 0;
-        if (s >= 1) { var pts = stablefordField(s, i, fieldHcp); sfO += pts; html += '<td>' + pts + '</td>'; }
-        else html += '<td></td>';
-    }
-    html += '<td class="row-total"><b>' + sfO + '</b></td></tr>';
-
-    html += '<tr><td>Stableford (playing)</td>';
-    var seO = 0;
-    for (var i = 1; i <= 9; i++) {
-        var s = parseInt(scores[i]) || 0;
-        if (s >= 1) { var pts = stablefordExact(s, i, exactHcp); seO += pts; html += '<td>' + pts + '</td>'; }
-        else html += '<td></td>';
-    }
-    html += '<td class="row-total"><b>' + seO + '</b></td></tr></table></div>';
-
-    html += '<div class="scorecard"><table><tr><th>' + holeHeader + '</th>';
-    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
-    html += '<th>' + inHeader + '</th><th>' + totalHeader + '</th></tr><tr class="row-par"><td>' + parHeader + '</td>';
-    var pI = 0;
-    for (var i = 10; i <= 18; i++) { var pv = holePar(i); pI += pv; html += '<td>' + pv + '</td>'; }
-    html += '<td>' + pI + '</td><td>' + (pO + pI) + '</td></tr><tr><td>' + scoreHeader + '</td>';
-    var gI = 0;
-    for (var i = 10; i <= 18; i++) {
-        var s = parseInt(scores[i]) || 0, par = holePar(i), cls = holeResClass(s, par);
-        if (s >= 1) gI += s;
-        html += '<td class="' + cls + '"><b>' + (s >= 1 ? s : '') + '</b></td>';
-    }
-    html += '<td class="row-total"><b>' + (gI > 0 ? gI : '') + '</b></td><td class="row-total"><b>' + ((gO + gI) > 0 ? (gO + gI) : '') + '</b></td></tr>';
-
-    html += '<tr><td>Stableford (' + courseHcpLbl + ')</td>';
-    var sfI = 0;
-    for (var i = 10; i <= 18; i++) {
-        var s = parseInt(scores[i]) || 0;
-        if (s >= 1) { var pts = stablefordField(s, i, fieldHcp); sfI += pts; html += '<td>' + pts + '</td>'; }
-        else html += '<td></td>';
-    }
-    html += '<td class="row-total"><b>' + sfI + '</b></td><td class="row-total"><b>' + (sfO + sfI) + '</b></td></tr>';
-
-    html += '<tr><td>Stableford (playing)</td>';
-    var seI = 0;
-    for (var i = 10; i <= 18; i++) {
-        var s = parseInt(scores[i]) || 0;
-        if (s >= 1) { var pts = stablefordExact(s, i, exactHcp); seI += pts; html += '<td>' + pts + '</td>'; }
-        else html += '<td></td>';
-    }
-    html += '<td class="row-total"><b>' + seI + '</b></td><td class="row-total"><b>' + (seO + seI) + '</b></td></tr></table></div>';
-
-    el.innerHTML = html;
 }
 
 function finishSolo() {

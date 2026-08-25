@@ -95,9 +95,8 @@
     <!-- ИГРА И ВВОД СЧЁТА (ТОЛЬКО ДЛЯ ИГРОКА) -->
     <div id="game" class="hidden">
         
-        <div class="timing-info" id="round-info"></div>
-
-        <div class="card">
+        <!-- БЛОК 1: ВВОД СЧЁТА И ЛУНКИ БЕЗ СКРОЛЛА -->
+        <div class="card setup-card" style="padding:16px;margin-bottom:16px;">
             <div class="hole-display">
                 <div class="hole-box"><div class="hole-lbl" data-i18n="hole_lbl">Лунка</div><div class="hole-val" id="g-hole">1</div></div>
                 <div class="hole-box h-par"><div class="hole-lbl" data-i18n="par_lbl">Пар</div><div class="hole-val" id="g-par">4</div></div>
@@ -105,7 +104,8 @@
                 <div class="hole-box"><div class="hole-lbl" data-i18n="deadline_lbl">Дедлайн</div><div class="hole-val" id="g-deadline" style="font-size:20px;color:var(--gold-l);">—</div></div>
             </div>
 
-            <div class="hole-nav" id="g-holes"></div>
+            <!-- HOLE NAVIGATION (2 ROWS OF 9 HOLES - 100% NO-SCROLL) -->
+            <div class="hole-nav" id="g-holes" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-bottom:16px;width:100%;box-sizing:border-box;"></div>
 
             <div class="score-area">
                 <div class="score-result" id="g-result"></div>
@@ -150,36 +150,42 @@
                     </div>
                 </div>
 
-                <button class="btn btn-g btn-block" onclick="saveSolo()" style="padding:16px;font-size:15px;">
-                    <i class="fas fa-save"></i> <span data-i18n="save_hole">Сохранить</span>
+                <!-- MAIN ACTION BUTTON (СЛЕДУЮЩАЯ ЛУНКА / ЗАВЕРШИТЬ РАУНД) -->
+                <button class="btn btn-g btn-block" id="btn-solo-action" onclick="saveSolo()" style="padding:16px;font-size:16px;min-height:52px;margin-top:14px;">
+                    <i class="fas fa-arrow-right"></i> <span id="btn-solo-action-txt" data-i18n="next_hole_btn">Следующая лунка</span>
                 </button>
             </div>
         </div>
 
-        <div id="timing-notice"></div>
-
-        <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
-        <div style="display:flex;gap:10px;margin-bottom:16px;">
-            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
+        <!-- БЛОК 2: КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
+        <div style="display:flex;gap:10px;margin:16px 0;">
+            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;min-height:48px;" onclick="callOfficial('referee')">
                 <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
             </button>
-            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
+            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;min-height:48px;" onclick="callOfficial('marshal')">
                 <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
             </button>
         </div>
 
-        <div class="round-card" style="margin:12px 0;">
-            <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('solo-sc-panel')" style="width:100%;">
+        <!-- БЛОК 3: ИНФОРМАЦИЯ О СТАРТОВОМ ВРЕМЕНИ, ТИ И ТАЙМИНГАХ -->
+        <div class="timing-info" id="round-info" style="margin-bottom:12px;"></div>
+        <div id="timing-notice" style="margin-bottom:16px;"></div>
+
+        <!-- БЛОК 4: СВОРАЧИВАЕМАЯ СЧЁТНАЯ КАРТОЧКА ПО ЛУНКАМ (БЕЗ "ТЕКУЩЕГО СЧЁТА") -->
+        <div class="round-card" style="margin:16px 0;">
+            <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('solo-sc-panel')" style="width:100%;min-height:44px;">
                 <i class="fas fa-chevron-down" id="solo-sc-panel-icon"></i> 
                 <span id="solo-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
             </button>
             <div id="solo-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
-                <div class="card" style="margin-bottom:10px;"><h2><i class="fas fa-chart-bar"></i> <span data-i18n="current_score">Текущий счёт</span></h2><div id="live-stats"></div></div>
-                <div class="card"><h2><i class="fas fa-table"></i> <span data-i18n="hole_scorecard">Счётная карточка по лункам</span></h2><div id="mini-card"></div></div>
+                <div class="card" style="padding:12px;max-width:100%;overflow-x:hidden;">
+                    <h2><i class="fas fa-table"></i> <span data-i18n="hole_scorecard">Счётная карточка по лункам</span></h2>
+                    <div id="mini-card"></div>
+                </div>
             </div>
         </div>
 
-        <button class="btn btn-og btn-block" onclick="finishSolo()" style="margin-bottom:16px;"><i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span></button>
+        <button class="btn btn-og btn-block" onclick="finishSolo()" style="margin-bottom:20px;"><i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span></button>
     </div>
 
     <!-- ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ / ГОСТЕЙ) -->

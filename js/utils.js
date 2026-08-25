@@ -3729,6 +3729,60 @@ document.addEventListener('DOMContentLoaded', function() {
     applyPageVisibilitySettings();
 });
 
+function registerGuestPlayerInDatabase(p) {
+    if (!p || !p.name) return null;
+
+    var cleanName = p.name.trim();
+    var parts = cleanName.split(' ');
+    var firstName = p.firstName || parts[0] || cleanName;
+    var lastName = p.lastName || parts.slice(1).join(' ') || '';
+    var exactHcp = parseExactHcp(p.exactHcp != null ? p.exactHcp : (p.handicap || 0));
+    var gender = p.gender || 'men';
+    var defaultTee = p.tee || p.defaultTee || (gender === 'women' ? 'rd' : 'bl');
+
+    var guestId = p.uid || ('guest_' + cleanName.toLowerCase().replace(/\s+/g, '_') + '_' + Math.abs(exactHcp).toString().replace('.', ''));
+
+    var guestData = {
+        name: cleanName,
+        firstName: firstName,
+        lastName: lastName,
+        handicap: exactHcp,
+        gender: gender,
+        defaultTee: defaultTee,
+        role: 'player',
+        isGuest: true,
+        createdAt: Date.now(),
+        roundsPlayed: 0
+    };
+
+    try {
+        var custom = {};
+        var existing = localStorage.getItem('pestovo_custom_players');
+        if (existing) custom = JSON.parse(existing) || {};
+        if (!custom[guestId]) {
+            custom[guestId] = guestData;
+            localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
+        }
+    } catch(e) {}
+
+    if (typeof cachedRegisteredUsers !== 'undefined') {
+        cachedRegisteredUsers[guestId] = Object.assign({}, guestData, cachedRegisteredUsers[guestId] || {});
+        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+    }
+
+    if (typeof db !== 'undefined') {
+        db.ref('users/' + guestId).once('value').then(function(sn) {
+            if (!sn.exists()) {
+                db.ref('users/' + guestId).set(guestData).catch(function(err) {
+                    console.warn('Firebase guest save notice:', err);
+                });
+            }
+        }).catch(function(){});
+    }
+
+    return guestId;
+}
+
 // ==========================================
 // REAL-TIME AUTOCOMPLETE PLAYER NAME SUGGESTIONS
 // ==========================================

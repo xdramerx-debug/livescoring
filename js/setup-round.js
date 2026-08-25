@@ -303,6 +303,15 @@ function submitSetupRound() {
         var exactHcp = parseExactHcp(hcpInp ? hcpInp.value : '0');
         var fieldHcp = getFieldHcp(exactHcp, tee, gender);
 
+        var regId = registerGuestPlayerInDatabase({
+            uid: uid,
+            name: name,
+            exactHcp: exactHcp,
+            gender: gender,
+            tee: tee
+        });
+        if (!uid && regId) uid = regId;
+
         var pid = uid || (currentUser ? currentUser.uid : 'guest_' + Date.now());
         var isGuest = !uid && !currentUser;
 
@@ -366,6 +375,15 @@ function submitSetupRound() {
             var playerTee = teeSel ? teeSel.value : 'wh';
             var exactHcp = parseExactHcp(hcpInp ? hcpInp.value : '0');
             var fieldHcp = getFieldHcp(exactHcp, playerTee, gender);
+
+            var regId = registerGuestPlayerInDatabase({
+                uid: uid,
+                name: name,
+                exactHcp: exactHcp,
+                gender: gender,
+                tee: playerTee
+            });
+            if (!uid && regId) uid = regId;
 
             if (uid) {
                 if (selectedUids.indexOf(uid) !== -1) {

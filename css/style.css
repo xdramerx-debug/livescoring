@@ -604,8 +604,16 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .hole-btn.active{background:linear-gradient(135deg, #c9a84c 0%, #e0c76a 100%);border-color:var(--gold-l);color:var(--bg);box-shadow:0 0 16px rgba(201,168,76,0.5);}
 .hole-btn.done{background:var(--gr-d);border-color:var(--gr-l);color:var(--gr-l);}
 .hole-btn.verified{background:rgba(46,204,113,.15)!important;border-color:#2ecc71!important;color:#2ecc71!important;}
-.hole-btn.mismatch{background:rgba(224,90,74,.15)!important;border-color:var(--red)!important;color:var(--red)!important;animation:blink 1.5s infinite;}
+.hole-btn.mismatch{border-color:var(--red)!important;color:var(--red)!important;animation:cell-mismatch-blink 1.2s ease-in-out infinite;}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* Несовпадение счёта с маркером: ячейка мигает серым, чтобы игроки видели, где расхождение.
+   Анимируются box-shadow + filter, чтобы серая пульсация перекрывала любой фон ячейки. */
+.cell-mismatch{animation:cell-mismatch-blink 1.2s ease-in-out infinite;}
+@keyframes cell-mismatch-blink{
+    0%,100%{box-shadow:inset 0 0 0 999px rgba(174,180,186,.10);filter:none;}
+    50%{box-shadow:inset 0 0 0 999px rgba(174,180,186,.62);filter:grayscale(1) brightness(1.35);}
+}
 
 .score-area{text-align:center;margin:24px 0;}
 .score-disp{font-family:var(--fb);font-variant-numeric:tabular-nums;font-size:64px;font-weight:800;color:var(--white);min-height:80px;display:flex;align-items:center;justify-content:center;text-shadow:0 4px 16px rgba(0,0,0,0.5);}

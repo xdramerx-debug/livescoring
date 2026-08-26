@@ -634,10 +634,10 @@ function initRoundView() {
 function findCurrentHole() {
     var order = getRoundOrder(curRoundData);
     var myPlayer = (curRoundData.players && curRoundData.players[myUid]) || {};
-    var myVerified = myPlayer.verified || {};
     playHole = order[0];
     for (var i = 0; i < order.length; i++) {
-        if (myVerified[order[i]] !== true) {
+        // Данные важнее флага: лунка с фактическим несовпадением снова становится текущей
+        if (getHoleVerifyState(myPlayer, order[i]) !== 'confirmed') {
             playHole = order[i];
             break;
         }
@@ -655,18 +655,18 @@ function buildPlayHolesNav() {
     var myPlayer = curRoundData.players && curRoundData.players[myUid];
     var myScores = (myPlayer && myPlayer.scores) || {};
     var mySubmitted = (myPlayer && myPlayer.submitted) || {};
-    var myVerified = (myPlayer && myPlayer.verified) || {};
 
     var html = '';
     order.forEach(function(h) {
         var s = parseInt(myScores[h]) || 0;
         var sub = mySubmitted[h] === true;
-        var v = myVerified[h];
         var cls = h === playHole ? 'active' : '';
 
-        if (v === true) {
+        // Состояние по фактическим данным (мой счёт vs счёт маркера), флаг verified — только запасной вариант
+        var vState = getHoleVerifyState(myPlayer, h);
+        if (vState === 'confirmed') {
             cls += ' verified';
-        } else if (v === false) {
+        } else if (vState === 'mismatch') {
             cls += ' mismatch';
         } else if (sub || s > 0) {
             cls += ' done';
@@ -855,6 +855,17 @@ function saveHoleScores() {
     if (myTargetUid) {
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerScores/' + myUid + '/' + h] = targetScore;
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerSubmitted/' + myUid + '/' + h] = true;
+
+        // Синхронизируем verified игрока, за которого вводим счёт: сравниваем с его собственным счётом.
+        // Раньше флаг не обновлялся, если игрок сохранил свой счёт раньше маркера — из-за этого
+        // раунд нельзя было завершить: висело «не подтверждено», хотя в данных уже было видно несовпадение.
+        var targetPlayer = curRoundData.players ? curRoundData.players[myTargetUid] : null;
+        var targetPs = parseInt(targetPlayer && targetPlayer.scores && targetPlayer.scores[h]) || 0;
+        if (targetPs >= 1) {
+            updates['rounds/' + curRid + '/players/' + myTargetUid + '/verified/' + h] = (targetPs === targetScore);
+        } else {
+            updates['rounds/' + curRid + '/players/' + myTargetUid + '/verified/' + h] = 'pending';
+        }
     }
 
     var myPlayer = curRoundData.players[myUid];
@@ -1105,10 +1116,15 @@ function finishGroupRound() {
     var verification = collectRoundVerification(curRoundData);
     if (!verification.canFinish) {
         var report = buildVerificationReportHtml(verification);
+        var hasMismatch = Object.keys(verification.mismatch || {}).length > 0;
         if (currentLang === 'en') {
-            toast('⚠️ The round cannot be finished yet — some scores are not confirmed.', 'error');
+            toast(hasMismatch
+                ? '⚠️ The round cannot be finished — score mismatches must be resolved first.'
+                : '⚠️ The round cannot be finished yet — some scores are not confirmed.', 'error');
         } else {
-            toast('⚠️ Раунд нельзя завершить — не все счета подтверждены.', 'error');
+            toast(hasMismatch
+                ? '⚠️ Раунд нельзя завершить — сначала устраните несовпадения счёта.'
+                : '⚠️ Раунд нельзя завершить — не все счета подтверждены.', 'error');
         }
         var statusBox = document.getElementById('play-verify-status');
         if (statusBox) statusBox.innerHTML = report;

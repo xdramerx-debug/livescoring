@@ -134,10 +134,11 @@ function renderSum() {
     var html = '<div style="overflow-x:auto;"><table class="scorecard"><tr><th>' + holeHeader + '</th><th>' + parHeader + '</th><th>' + playerHeader + '</th><th>' + markerHeader + '</th><th>' + statusHeader + '</th></tr>';
     for (var i = 1; i <= 18; i++) {
         var ps = parseInt(mkPScores[i]) || 0, ms = parseInt(mkScores[i]) || 0, icon = '—', bg = '';
+        var misCls = '';
         if (ps >= 1 && ms >= 1 && ps === ms) { icon = '✅'; bg = 'background:rgba(46,204,113,.05);'; match++; }
-        else if (ps >= 1 && ms >= 1) { icon = '⚠️'; bg = 'background:rgba(224,90,74,.08);'; mis++; }
+        else if (ps >= 1 && ms >= 1) { icon = '⚠️'; bg = 'background:rgba(224,90,74,.08);'; mis++; misCls = ' class="cell-mismatch"'; }
         else if (ps >= 1 || ms >= 1) { icon = '⏳'; pend++; }
-        html += '<tr style="' + bg + '"><td style="font-weight:700;">' + i + '</td><td>' + holePar(i) + '</td><td>' + (ps >= 1 ? ps : '—') + '</td><td>' + (ms >= 1 ? ms : '—') + '</td><td style="font-size:16px;">' + icon + '</td></tr>';
+        html += '<tr style="' + bg + '"><td style="font-weight:700;">' + i + '</td><td>' + holePar(i) + '</td><td' + misCls + '>' + (ps >= 1 ? ps : '—') + '</td><td' + misCls + '>' + (ms >= 1 ? ms : '—') + '</td><td style="font-size:16px;">' + icon + '</td></tr>';
     }
     html += '</table></div>';
     html += '<div style="display:flex;gap:16px;padding:12px;font-size:13px;font-weight:700;"><span style="color:#2ecc71;">✅ ' + match + '</span><span style="color:var(--red);">⚠️ ' + mis + '</span><span style="color:var(--gold);">⏳ ' + pend + '</span></div>';

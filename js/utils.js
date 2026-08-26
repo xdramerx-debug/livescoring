@@ -1276,8 +1276,30 @@ function buildStartHoleOptions(holeEl, holeRange) {
     holeEl.value = cur;
 }
 
+// Состояние подтверждения счёта игрока на лунке h — по фактическим данным, а не только по флагу verified:
+//  'confirmed' — счёт игрока и маркера введены и совпадают (флаг мог устареть — данные важнее)
+//  'mismatch'  — введённые счёта расходятся (или несовпадение зафиксировано флагом verified === false,
+//                например внешним маркером через marker.html, чьих данных в раунде нет)
+//  'pending'   — счёт игрока введён, но маркер ещё не подтвердил
+//  'none'      — счёт ещё не введён
+function getHoleVerifyState(p, h) {
+    p = p || {};
+    var ps = parseInt(p.scores && p.scores[h]) || 0;
+    var markerId = p.markedBy;
+    var ms = markerId ? (parseInt(p.markerScores && p.markerScores[markerId] && p.markerScores[markerId][h]) || 0) : 0;
+    var v = p.verified && p.verified[h];
+
+    // Фактические данные приоритетнее флага: флаг мог не обновиться,
+    // если маркер ввёл счёт позже игрока или счёт исправили
+    if (ps >= 1 && ms >= 1) return (ps === ms) ? 'confirmed' : 'mismatch';
+    if (v === false) return 'mismatch';
+    if (v === true) return 'confirmed';
+    if (ps >= 1) return 'pending';
+    return 'none';
+}
+
 // Собирает информацию о «незавершённых» лунках раунда для проверки перед финишем:
-//  - mismatch: лунки, где у игроков зафиксировано несовпадение (verified === false)
+//  - mismatch: лунки, где есть несовпадение счёта (по фактическим данным игрок/маркер или флагу verified === false)
 //  - unconfirmed: лунки, где счёт ещё не подтверждён всеми / не введён
 function collectRoundVerification(r) {
     var order = getRoundOrder(r);
@@ -1296,15 +1318,22 @@ function collectRoundVerification(r) {
     } else {
         order.forEach(function(h){
             var mismatchForHole = {}, unconfForHole = {};
-            var anyMismatch = false;
             players.forEach(function(pe){
                 var p = pe[1] || {};
-                var v = p.verified && p.verified[h];
                 var name = p.name || (currentLang === 'en' ? 'Player' : 'Игрок');
-                if (v === false) { anyMismatch = true; mismatchForHole[name] = true; }
-                else if (v !== true) unconfForHole[name] = true;
+                var st = getHoleVerifyState(p, h);
+                if (st === 'mismatch') {
+                    // Показываем расхождение цифрами: «Имя (4≠5)» — когда известны оба счёта
+                    var ps = parseInt(p.scores && p.scores[h]) || 0;
+                    var mkId = p.markedBy;
+                    var ms = mkId ? (parseInt(p.markerScores && p.markerScores[mkId] && p.markerScores[mkId][h]) || 0) : 0;
+                    var label = (ps >= 1 && ms >= 1) ? (name + ' (' + ps + '\u2260' + ms + ')') : name;
+                    mismatchForHole[label] = true;
+                } else if (st !== 'confirmed') {
+                    unconfForHole[name] = true;
+                }
             });
-            if (anyMismatch) mismatch[h] = Object.keys(mismatchForHole);
+            if (Object.keys(mismatchForHole).length > 0) mismatch[h] = Object.keys(mismatchForHole);
             else if (Object.keys(unconfForHole).length > 0) unconfirmed[h] = Object.keys(unconfForHole);
         });
     }
@@ -1788,6 +1817,8 @@ function generateGroupHoleTableHTML(r) {
             var s = parseInt(sc[i]) || 0;
             var par = holePar(i);
             var cls = holeResClass(s, par);
+            // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
+            if (getHoleVerifyState(p, i) === 'mismatch') cls += ' cell-mismatch';
 
             html += '<div class="noscroll-tile ' + cls + '">';
             html += '<div class="noscroll-hole">#' + i + '</div>';
@@ -2332,6 +2363,8 @@ function generatePestovoScorecardHTML(player, roundData) {
             var dist = holeDist(i, teeCode);
             var hcp = holeHcp(i);
             var badgeCls = s > 0 ? holeResClass(s, par) : '';
+            // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
+            if (getHoleVerifyState(p, i) === 'mismatch') badgeCls += ' cell-mismatch';
             var stbl = s > 0 ? stablefordField(s, i, fHcp) : null;
 
             html += '<div class="msc-tile ' + badgeCls + '">';
@@ -2359,6 +2392,8 @@ function generatePestovoScorecardHTML(player, roundData) {
             var dist = holeDist(i, teeCode);
             var hcp = holeHcp(i);
             var badgeCls = s > 0 ? holeResClass(s, par) : '';
+            // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
+            if (getHoleVerifyState(p, i) === 'mismatch') badgeCls += ' cell-mismatch';
             var stbl = s > 0 ? stablefordField(s, i, fHcp) : null;
 
             html += '<div class="msc-tile ' + badgeCls + '">';

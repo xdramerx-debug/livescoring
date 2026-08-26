@@ -156,7 +156,6 @@ function saveSc() {
 function renderCard() {
     var el = document.getElementById('sc-card');
     var scores = scRound.players[scPid].scores || {};
-    var verified = scRound.players[scPid].verified || {};
 
     var holeHeader = t('hole');
     var parHeader = t('par');
@@ -174,7 +173,9 @@ function renderCard() {
     var gO = 0;
     for (var i = 1; i <= 9; i++) {
         var s = parseInt(scores[i]) || 0, cls = holeResClass(s, holePar(i)), v = '';
-        if (verified[i] === true) v = ' ✅'; else if (verified[i] === false) v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
+        var st = getHoleVerifyState(scRound.players[scPid], i);
+        if (st === 'confirmed') v = ' ✅'; else if (st === 'mismatch') v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
+        if (st === 'mismatch') cls += ' cell-mismatch';
         if (s >= 1) gO += s;
         html += '<td class="' + cls + '">' + (s >= 1 ? s + v : '') + '</td>';
     }
@@ -189,7 +190,9 @@ function renderCard() {
     var gI = 0;
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(scores[i]) || 0, cls = holeResClass(s, holePar(i)), v = '';
-        if (verified[i] === true) v = ' ✅'; else if (verified[i] === false) v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
+        var st = getHoleVerifyState(scRound.players[scPid], i);
+        if (st === 'confirmed') v = ' ✅'; else if (st === 'mismatch') v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
+        if (st === 'mismatch') cls += ' cell-mismatch';
         if (s >= 1) gI += s;
         html += '<td class="' + cls + '">' + (s >= 1 ? s + v : '') + '</td>';
     }

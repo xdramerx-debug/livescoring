@@ -325,7 +325,7 @@ function loadTournaments() {
 
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
             html += '<div style="flex:1;min-width:200px;">';
-            html += '<strong style="color:var(--white);">' + (tVal.name || '—') + '</strong>';
+            html += '<strong style="color:var(--white);">' + escapeHtml(tVal.name || '—') + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                     fmtDate(new Date(tVal.date).getTime()) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + ' · Participants: ' + regCount + '</div>';
             html += '</div>';
@@ -1078,7 +1078,7 @@ function loadAdmPlayers() {
 
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
             html += '<div style="flex:1;min-width:200px;">';
-            html += '<strong style="color:var(--white);">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</strong>';
+            html += '<strong style="color:var(--white);">' + gIcon + ' ' + escapeHtml(u.name || '—') + guestBadge + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">';
             html += (u.email || (currentLang === 'en' ? 'No email' : 'Без email')) + ' · HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + roundsStr + (u.roundsPlayed || 0);
             html += '</div></div>';

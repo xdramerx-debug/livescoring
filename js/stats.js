@@ -188,7 +188,7 @@ function loadStats() {
             '<div class="list-item"><span>' + lBestStbl18 + '</span>' +
             '<strong>' + (bestStableford > 0 ? bestStableford + ' (' + bestStablefordPlayer + ')' : '—') + '</strong></div>' +
             '<div class="list-item"><span>' + lFastest18 + '</span>' +
-            '<strong>' + fastestStr + (fastestPlayer !== '—' ? ' (' + fastestPlayer + ')' : '') + '</strong></div>' +
+            '<strong>' + fastestStr + (fastestPlayer !== '—' ? ' (' + escapeHtml(fastestPlayer) + ')' : '') + '</strong></div>' +
             '<div class="list-item"><span>🎯 Hole-in-One</span><strong>' + hio + '</strong></div>' +
             '<div class="list-item"><span>🦅 Eagles</span><strong>' + eagles + '</strong></div>' +
             '<div class="list-item"><span>🐦 Birdies</span><strong>' + birdies + '</strong></div>' +

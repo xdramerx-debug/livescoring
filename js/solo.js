@@ -176,7 +176,9 @@ function startSolo() {
 
     var parsedExact = parseExactHcp(exactHcpStr);
     var fieldHcp = getFieldHcp(parsedExact, tee, gender);
-    var fullName = lastName + ' ' + firstName;
+    var fullName = sanitizeNameRaw(lastName + ' ' + firstName);
+    firstName = sanitizeNameRaw(firstName);
+    lastName = sanitizeNameRaw(lastName);
 
     var parts = timeStr.split(':');
     var now = new Date();
@@ -299,7 +301,7 @@ function renderRoundInfo(targetId) {
     var holeLbl = t('hole');
 
     el.innerHTML =
-        '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || t('player')) + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
+        '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || t('player')) + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
         '<div><b>' + startLbl + ':</b> ' + fmtTime(soloRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + soloRound.startHole + ' · <b>' + t('tee_select') + ':</b> ' + fmtTeePill(soloRound.tee) + ' · <b>' + t('format_select') + ':</b> ' + soloRound.format + '</div>';
 }
 

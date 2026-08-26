@@ -9,16 +9,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (currentUser) { window.location.href = 'index.html'; return; }
 
+    // АУДИТ БЕЗОПАСНОСТИ: пароль никогда не хранится локально.
+    // Миграция: удаляем пароль, если он остался со старой версии приложения.
+    try { ['pestovo_saved_password'].forEach(function(k) { if (localStorage.getItem(k) !== null) localStorage.removeItem(k); }); } catch (e) {}
+
     var savedEmail = localStorage.getItem('pestovo_saved_email');
-    var savedPass = localStorage.getItem('pestovo_saved_password');
     var savedRem = localStorage.getItem('pestovo_saved_remember');
 
     var emInp = document.getElementById('login-email');
-    var pwInp = document.getElementById('login-pass');
     var remChk = document.getElementById('login-remember');
 
     if (savedEmail && emInp) emInp.value = savedEmail;
-    if (savedPass && pwInp) pwInp.value = savedPass;
     if (remChk && savedRem !== null) remChk.checked = (savedRem === 'true');
 
     var tabs = document.querySelectorAll('.auth-tab');
@@ -53,13 +54,12 @@ document.addEventListener('DOMContentLoaded', function() {
         var btn = document.getElementById('login-btn');
         btn.textContent = currentLang === 'en' ? 'Loading...' : 'Загрузка...'; btn.disabled = true;
 
+        // Храним только e-mail (для удобства автозаполнения), пароль — никогда.
         if (remChk && remChk.checked) {
             localStorage.setItem('pestovo_saved_email', em);
-            localStorage.setItem('pestovo_saved_password', pw);
             localStorage.setItem('pestovo_saved_remember', 'true');
         } else {
             localStorage.removeItem('pestovo_saved_email');
-            localStorage.removeItem('pestovo_saved_password');
             localStorage.setItem('pestovo_saved_remember', 'false');
         }
 
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var pwInp = document.getElementById('reg-pass');
         var pw2Inp = document.getElementById('reg-pass2');
 
-        var nm = nmInp.value.trim();
+        var nm = sanitizeNameRaw(nmInp.value);
         var em = emInp.value.trim();
         var hc = document.getElementById('reg-hcp').value;
         var gd = document.getElementById('reg-gender').value;
@@ -101,7 +101,6 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.textContent = currentLang === 'en' ? 'Loading...' : 'Загрузка...'; btn.disabled = true;
 
         localStorage.setItem('pestovo_saved_email', em);
-        localStorage.setItem('pestovo_saved_password', pw);
         localStorage.setItem('pestovo_saved_remember', 'true');
 
         auth.createUserWithEmailAndPassword(em, pw).then(function(c) {
@@ -144,13 +143,25 @@ function authErr(code) {
 
 function forgotPassword() {
     var emInp = document.getElementById('login-email');
-    var em = emInp ? emInp.value.trim() : '';
-    var email = prompt(currentLang === 'en' ? 'Enter your email for password recovery:' : 'Введите ваш email для восстановления пароля:', em);
-    if (!email) return;
+    var email = emInp ? emInp.value.trim() : '';
+
+    // Если поле email уже заполнено — используем его без лишних вопросов.
+    if (!email) {
+        email = prompt(currentLang === 'en' ? 'Enter your email for password recovery:' : 'Введите ваш email для восстановления пароля:', '');
+        if (!email) return;
+        email = email.trim();
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (emInp) emInp.classList.add('is-invalid');
+        var er = document.getElementById('login-error');
+        if (er) { er.textContent = currentLang === 'en' ? 'Enter a valid email above' : 'Укажите корректный email в поле выше'; er.classList.remove('hidden'); }
+        return;
+    }
 
     if (typeof auth !== 'undefined' && auth.sendPasswordResetEmail) {
-        auth.sendPasswordResetEmail(email.trim()).then(function() {
-            toast(currentLang === 'en' ? '📧 Password reset email sent!' : '📧 Инструкция по сбросу пароля отправлена на email!', 'success');
+        auth.sendPasswordResetEmail(email).then(function() {
+            toast(currentLang === 'en' ? '📧 Reset link sent to ' + email : '📧 Ссылка для сброса пароля отправлена на ' + email, 'success');
         }).catch(function(err) {
             toast('⚠️ ' + authErr(err.code), 'error');
         });

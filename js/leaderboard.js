@@ -99,7 +99,7 @@ function renderRound(id, r) {
         return '<div class="rlb-row" onclick="openPlayerProfileModal(\'' + p.pid + '\',\'' + id + '\')">' +
             '<span class="rlb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</span>' +
             '<div class="rlb-player">' + fmtUserAvatar(p, 28) +
-            '<div class="rlb-pcol"><span class="rlb-name">' + (p.name || '—') + '</span>' +
+            '<div class="rlb-pcol"><span class="rlb-name">' + escapeHtml(p.name || '—') + '</span>' +
             '<span class="rlb-thru">' + holeInfo + '</span></div></div>' +
             '<span class="rlb-par ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</span>' +
             '<span class="rlb-num">' + gross + '</span>' +

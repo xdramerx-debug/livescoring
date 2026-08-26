@@ -1012,63 +1012,113 @@ function testTelegramAlert(targetMode) {
 // ==========================================
 // VK API SETTINGS & ALERTS
 // ==========================================
+
 function loadVKSettings() {
-    var tokInp = document.getElementById('vk-access-token');
+    var tokInp  = document.getElementById('vk-access-token');
     var peerInp = document.getElementById('vk-peer-id');
 
-    if (tokInp) tokInp.value = localStorage.getItem('pestovo_vk_token') || '';
-    if (peerInp) peerInp.value = localStorage.getItem('pestovo_vk_peer_id') || '';
+    // Сначала подгружаем из localStorage
+    if (tokInp)  tokInp.value  = localStorage.getItem('pestovo_vk_token')    || '';
+    if (peerInp) peerInp.value = localStorage.getItem('pestovo_vk_peer_id')  || '';
 
+    // Затем из Firebase (приоритет выше)
     if (typeof db !== 'undefined') {
         db.ref('settings/vk').once('value').then(function(sn) {
             var vk = sn.val() || {};
-            if (tokInp && vk.token) tokInp.value = vk.token;
+            if (tokInp  && vk.token)  tokInp.value  = vk.token;
             if (peerInp && vk.peerId) peerInp.value = vk.peerId;
+        }).catch(function(e) {
+            console.warn('VK loadSettings Firebase error:', e);
         });
     }
 }
 
 function saveVKSettings() {
-    var tokInp = document.getElementById('vk-access-token');
+    var tokInp  = document.getElementById('vk-access-token');
     var peerInp = document.getElementById('vk-peer-id');
-    var token = tokInp ? tokInp.value.trim() : '';
-    var peerId = peerInp ? peerInp.value.trim() : '';
+    var token   = tokInp  ? tokInp.value.trim()  : '';
+    var peerId  = peerInp ? peerInp.value.trim() : '';
 
-    if (token) localStorage.setItem('pestovo_vk_token', token);
-    if (peerId) localStorage.setItem('pestovo_vk_peer_id', peerId);
+    // Валидация
+    if (!token) {
+        toast(currentLang === 'en'
+            ? '⚠️ Enter VK Community Access Token'
+            : '⚠️ Введите VK Access Token сообщества', 'error');
+        return;
+    }
+    if (!peerId) {
+        toast(currentLang === 'en'
+            ? '⚠️ Enter VK Peer ID (chat/user ID)'
+            : '⚠️ Введите VK Peer ID (беседы или пользователя)', 'error');
+        return;
+    }
+    if (!/^-?\d+$/.test(peerId)) {
+        toast(currentLang === 'en'
+            ? '⚠️ Peer ID must be a number (e.g. 2000000001 or 123456789)'
+            : '⚠️ Peer ID должен быть числом (например 2000000001 или 123456789)', 'error');
+        return;
+    }
+
+    localStorage.setItem('pestovo_vk_token',   token);
+    localStorage.setItem('pestovo_vk_peer_id', peerId);
 
     if (typeof db !== 'undefined') {
         db.ref('settings/vk').set({
-            token: token,
-            peerId: peerId,
+            token:     token,
+            peerId:    peerId,
             updatedAt: Date.now()
         }).then(function() {
-            toast(currentLang === 'en' ? '✅ VK API settings saved!' : '✅ Настройки ВК сохранены!', 'success');
+            toast(currentLang === 'en'
+                ? '✅ VK settings saved!'
+                : '✅ Настройки ВКонтакте сохранены!', 'success');
+        }).catch(function(e) {
+            console.error('VK save Firebase error:', e);
+            toast(currentLang === 'en'
+                ? '⚠️ Saved locally (Firebase error: ' + e.message + ')'
+                : '⚠️ Сохранено локально (ошибка Firebase: ' + e.message + ')', 'error');
         });
     } else {
-        toast(currentLang === 'en' ? '✅ VK settings saved locally!' : '✅ Настройки ВК сохранены локально!', 'success');
+        toast(currentLang === 'en'
+            ? '✅ VK settings saved locally!'
+            : '✅ Настройки ВКонтакте сохранены локально!', 'success');
     }
 }
 
 function testVKAlert() {
-    var tokInp = document.getElementById('vk-access-token');
+    var tokInp  = document.getElementById('vk-access-token');
     var peerInp = document.getElementById('vk-peer-id');
-    var token = tokInp ? tokInp.value.trim() : '';
-    var peerId = peerInp ? peerInp.value.trim() : '';
+    var token   = tokInp  ? tokInp.value.trim()  : '';
+    var peerId  = peerInp ? peerInp.value.trim() : '';
 
     if (!token || !peerId) {
-        toast('⚠️ Укажите VK Access Token и Peer ID перед проверкой', 'error');
+        toast(currentLang === 'en'
+            ? '⚠️ Enter VK Access Token and Peer ID first'
+            : '⚠️ Укажите VK Access Token и Peer ID перед проверкой', 'error');
+        return;
+    }
+    if (!/^-?\d+$/.test(peerId)) {
+        toast(currentLang === 'en'
+            ? '⚠️ Peer ID must be a number (e.g. 2000000001)'
+            : '⚠️ Peer ID должен быть числом (например 2000000001)', 'error');
         return;
     }
 
-    localStorage.setItem('pestovo_vk_token', token);
+    // Автосохранение перед тестом
+    localStorage.setItem('pestovo_vk_token',   token);
     localStorage.setItem('pestovo_vk_peer_id', peerId);
-
     if (typeof db !== 'undefined') {
-        db.ref('settings/vk').set({ token: token, peerId: peerId, updatedAt: Date.now() }).catch(function(){});
+        db.ref('settings/vk').set({
+            token: token, peerId: peerId, updatedAt: Date.now()
+        }).catch(function(){});
     }
 
-    sendVKDirectAlert(token, peerId, 'referee', 1, 'Администратор Клуба', 'Тестовая проверка ВК');
+    toast(currentLang === 'en'
+        ? '⏳ Sending test VK message...'
+        : '⏳ Отправка тестового сообщения ВК...', 'info');
+
+    sendVKDirectAlert(token, peerId, 'referee', 1,
+        currentLang === 'en' ? 'Club Administrator' : 'Администратор Клуба',
+        currentLang === 'en' ? 'VK integration test' : 'Тестовая проверка ВКонтакте');
 }
 
 // ==========================================

@@ -136,8 +136,8 @@ var I18N = {
         test_group: 'Проверить Группу',
         save_channel: 'Сохранить Канал',
         test_channel: 'Проверить Канал',
-        save_vk: 'Сохранить настройки ВК',
-        test_vk: 'Проверить отправку в ВК',
+        save_vk: 'Сохранить настройки ВКонтакте',
+        test_vk: 'Проверить отправку в ВКонтакте',
         tg_integration_title: 'Интеграция Telegram: Группа Судей & Канал Клуба',
         tg_integration_sub: 'Вы можете настроить отправку уведомлений отдельно для Группы Судей/Маршалов и для Канала Клуба.',
         tg_group_title: '1. Telegram Группа (Вызовы Судей и Маршалов)',
@@ -146,9 +146,9 @@ var I18N = {
         tg_channel_sub: '💡 Назначьте бота Администратором канала с правом публикации сообщений.',
         placeholder_tg_channel_id: '@pestovo_golf или -1001987654321',
         vk_integration_title: 'Интеграция ВКонтакте (VK API)',
-        vk_integration_sub: 'Укажите Токен доступа сообщества ВК и ID беседы/пользователя (Peer ID).',
+        vk_integration_sub: 'При вызове судьи или маршала уведомление мгновенно отправится в беседу или личные сообщения ВКонтакте.',
         vk_token_lbl: 'VK Access Token Сообщества',
-        placeholder_vk_peer_id: '2000000001 (беседа) или 123456789',
+        placeholder_vk_peer_id: '2000000001 (беседа) или 123456789 (пользователь)',
         placeholder_bc_title: '🏆 Чемпионат Пестово 2024',
         placeholder_bc_body: 'Регистрация на турнир открыта! Старт в субботу в 10:00.',
         share_card: 'Поделиться в соцсетях (PNG)',
@@ -413,7 +413,7 @@ var I18N = {
         test_group: 'Test Group',
         save_channel: 'Save Channel',
         test_channel: 'Test Channel',
-        save_vk: 'Save VK Settings',
+        save_vk: 'Save VKontakte Settings',
         test_vk: 'Test VK Message',
         tg_integration_title: 'Telegram Integration: Referee Group & Club Channel',
         tg_integration_sub: 'Configure notification settings for Referee/Marshal Group and Club Channel.',
@@ -423,9 +423,9 @@ var I18N = {
         tg_channel_sub: '💡 Set bot as Channel Administrator with Post Messages permission.',
         placeholder_tg_channel_id: '@pestovo_golf or -1001987654321',
         vk_integration_title: 'VKontakte Integration (VK API)',
-        vk_integration_sub: 'Enter VK Community Access Token and Peer ID.',
+        vk_integration_sub: 'Referee/marshal call notifications will be sent instantly to your VK chat or DM.',
         vk_token_lbl: 'VK Community Access Token',
-        placeholder_vk_peer_id: '2000000001 (chat) or 123456789',
+        placeholder_vk_peer_id: '2000000001 (chat) or 123456789 (user)',
         placeholder_bc_title: '🏆 Pestovo Championship 2024',
         placeholder_bc_body: 'Tournament registration is open! Start on Saturday at 10:00.',
         share_card: 'Share Scorecard (PNG)',
@@ -3718,114 +3718,136 @@ function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetM
 
 // ==========================================
 // VK API OFFICIAL ALERTS
+// Использует JSONP (<script>-тег) для обхода CORS-ограничений браузера.
+// VK API официально поддерживает JSONP через параметр callback=.
 // ==========================================
+
+/**
+ * Низкоуровневая отправка через JSONP — единственный способ вызвать
+ * VK API из браузера без серверного прокси (обходит CORS).
+ *
+ * @param {string} token     - Access Token сообщества VK
+ * @param {string} peerId    - Peer ID беседы / пользователя
+ * @param {string} text      - Текст сообщения
+ * @param {boolean} silent   - true = без тостов об ошибках
+ */
+function vkSendMessageJsonp(token, peerId, text, silent) {
+    token = (token || '').trim();
+    peerId = (peerId || '').trim();
+    if (!token || !peerId) {
+        if (!silent) toast('⚠️ Укажите VK Access Token и Peer ID в настройках', 'error');
+        return;
+    }
+
+    var cbName = '_vkCb_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+    var randomId = Math.floor(Math.random() * 2000000000);
+    var timeoutId = null;
+    var script = null;
+
+    var cleanup = function() {
+        try { if (script && script.parentNode) script.parentNode.removeChild(script); } catch(e) {}
+        try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
+        if (timeoutId) clearTimeout(timeoutId);
+    };
+
+    window[cbName] = function(data) {
+        cleanup();
+        if (data && (data.response !== undefined) && data.response) {
+            if (!silent) {
+                console.log('✅ VK message sent, id:', data.response);
+                toast('✅ Сообщение ВКонтакте доставлено!', 'success');
+            }
+        } else {
+            var errCode = data && data.error && data.error.error_code;
+            var errMsg  = data && data.error && data.error.error_msg
+                          ? data.error.error_msg
+                          : 'Ошибка VK API';
+            console.error('❌ VK API Error ' + errCode + ':', errMsg, data);
+            if (!silent) {
+                toast('❌ VK API: ' + errMsg, 'error');
+            } else {
+                console.warn('⚠️ VK silent send failed (code ' + errCode + '):', errMsg);
+            }
+        }
+    };
+
+    var url = 'https://api.vk.com/method/messages.send' +
+              '?access_token=' + encodeURIComponent(token) +
+              '&peer_id='      + encodeURIComponent(peerId) +
+              '&message='      + encodeURIComponent(text) +
+              '&random_id='    + randomId +
+              '&v=5.199' +
+              '&callback='    + cbName;
+
+    script = document.createElement('script');
+    script.src = url;
+    script.onerror = function() {
+        cleanup();
+        if (!silent) {
+            toast('❌ Ошибка сети при отправке в VK (JSONP)', 'error');
+        } else {
+            console.warn('⚠️ VK JSONP network error (suppressed)');
+        }
+    };
+
+    // Таймаут 10 секунд
+    timeoutId = setTimeout(function() {
+        cleanup();
+        if (!silent) {
+            toast('❌ Таймаут соединения с VK (10 сек)', 'error');
+        } else {
+            console.warn('⚠️ VK JSONP timeout (suppressed)');
+        }
+    }, 10000);
+
+    (document.head || document.body).appendChild(script);
+}
+
+/**
+ * Формирует текст уведомления о вызове судьи/маршала.
+ */
+function vkBuildAlertText(type, holeNum, playerName, roundInfo) {
+    var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
+    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
+    return '🚨 ' + typeTitle + ' В ПЕСТОВО!\n' +
+           '----------------------------------\n' +
+           '👤 Игрок: ' + (playerName || 'Игрок') + '\n' +
+           '⛳ Лунка: №' + holeNum + '\n' +
+           '📋 Раунд: ' + (roundInfo || 'Активная игра') + '\n' +
+           '⏰ Время: ' + timeStr;
+}
+
+/**
+ * Прямая отправка с тостами (для теста из админки).
+ */
 function sendVKDirectAlert(token, peerId, type, holeNum, playerName, roundInfo) {
     token = (token || '').trim();
     peerId = (peerId || '').trim();
-
     if (!token || !peerId) {
         toast('⚠️ Укажите VK Access Token и Peer ID в настройках', 'error');
         return;
     }
-
-    var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
-    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
-
-    var text = '🚨 ' + typeTitle + ' В ПЕСТОВО!\n' +
-               '----------------------------------\n' +
-               '👤 Игрок: ' + (playerName || 'Игрок') + '\n' +
-               '⛳ Лунка: №' + holeNum + '\n' +
-               '📋 Раунд: ' + (roundInfo || 'Активная игра') + '\n' +
-               '⏰ Время: ' + timeStr;
-
-    var randomId = Math.floor(Math.random() * 2000000000);
-    var url = 'https://api.vk.com/method/messages.send?access_token=' + encodeURIComponent(token) +
-              '&peer_id=' + encodeURIComponent(peerId) +
-              '&message=' + encodeURIComponent(text) +
-              '&random_id=' + randomId +
-              '&v=5.131';
-
-    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch(e){} }, 6000) : null;
-
-    var fetchOptions = { method: 'GET' };
-    if (controller) fetchOptions.signal = controller.signal;
-
-    fetch(url, fetchOptions)
-    .then(function(res) {
-        if (timeoutId) clearTimeout(timeoutId);
-        return res.json();
-    })
-    .then(function(data) {
-        if (data && (data.response || data.result)) {
-            console.log('✅ VK alert delivered:', data.response || data.result);
-            toast('✅ Сообщение ВК доставлено в чат!', 'success');
-        } else {
-            var errDesc = (data && data.error && data.error.error_msg) ? data.error.error_msg : 'Ошибка VK API';
-            console.error('❌ VK API Error:', errDesc);
-            toast('❌ Ошибка VK API: ' + errDesc, 'error');
-        }
-    })
-    .catch(function(err) {
-        if (timeoutId) clearTimeout(timeoutId);
-        var isAbort = err && err.name === 'AbortError';
-        var errMsg = isAbort ? 'Таймаут соединения (6 сек)' : (err ? err.message : 'Ошибка сети');
-        console.error('❌ VK Fetch Error:', err);
-        toast('❌ Ошибка сети / Таймаут VK: ' + errMsg, 'error');
-    });
+    var text = vkBuildAlertText(type, holeNum, playerName, roundInfo);
+    vkSendMessageJsonp(token, peerId, text, false);
 }
 
-// «Молчаливый» вариант VK-отправки для ИГРОКА: без тостов об ошибках/успехе.
+/**
+ * «Молчаливый» вариант для ИГРОКА: без тостов об ошибках.
+ */
 function sendVKSilentAlert(token, peerId, type, holeNum, playerName, roundInfo) {
     token = (token || '').trim();
     peerId = (peerId || '').trim();
-    if (!token || !peerId) return; // нет настроек — тихо выходим
-
-    var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
-    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
-
-    var text = '🚨 ' + typeTitle + ' В ПЕСТОВО!\n' +
-               '----------------------------------\n' +
-               '👤 Игрок: ' + (playerName || 'Игрок') + '\n' +
-               '⛳ Лунка: №' + holeNum + '\n' +
-               '📋 Раунд: ' + (roundInfo || 'Активная игра') + '\n' +
-               '⏰ Время: ' + timeStr;
-
-    var randomId = Math.floor(Math.random() * 2000000000);
-    var url = 'https://api.vk.com/method/messages.send?access_token=' + encodeURIComponent(token) +
-              '&peer_id=' + encodeURIComponent(peerId) +
-              '&message=' + encodeURIComponent(text) +
-              '&random_id=' + randomId +
-              '&v=5.131';
-
-    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch(e){} }, 6000) : null;
-
-    var fetchOptions = { method: 'GET' };
-    if (controller) fetchOptions.signal = controller.signal;
-
-    fetch(url, fetchOptions)
-    .then(function(res) {
-        if (timeoutId) clearTimeout(timeoutId);
-        return res.json();
-    })
-    .then(function(data) {
-        if (!data || (!data.response && !data.result)) {
-            console.warn('⚠️ VK silent send failed:', data && data.error);
-        }
-    })
-    .catch(function(err) {
-        if (timeoutId) clearTimeout(timeoutId);
-        // НЕ показываем toast игроку — он уже получил «🚨 Маршал вызван»,
-        // а сам вызов лежит в Firebase и виден админу в панели «Вызовы».
-        console.warn('⚠️ VK silent send error (suppressed):', err && err.message);
-    });
+    if (!token || !peerId) return;
+    var text = vkBuildAlertText(type, holeNum, playerName, roundInfo);
+    vkSendMessageJsonp(token, peerId, text, true);
 }
 
+/**
+ * Точка входа при вызове судьи/маршала ИГРОКОМ.
+ * Читает настройки из localStorage → Firebase, отправляет молча.
+ */
 function sendVKOfficialAlert(type, holeNum, playerName, roundInfo) {
-    // ВАЖНО: вызов от ИГРОКА. Никаких тостов об ошибках VK / таймаутах —
-    // только «🚨 Судья вызван» уже показан в UI, а сам вызов в Firebase.
-    var vkToken = (localStorage.getItem('pestovo_vk_token') || '').trim();
+    var vkToken  = (localStorage.getItem('pestovo_vk_token')   || '').trim();
     var vkPeerId = (localStorage.getItem('pestovo_vk_peer_id') || '').trim();
 
     if (vkToken && vkPeerId) {
@@ -3833,11 +3855,13 @@ function sendVKOfficialAlert(type, holeNum, playerName, roundInfo) {
     } else if (typeof db !== 'undefined') {
         db.ref('settings/vk').once('value').then(function(sn) {
             var vk = sn.val() || {};
-            var token = (vk.token || '').trim();
-            var peer = (vk.peerId || '').trim();
+            var token = (vk.token  || '').trim();
+            var peer  = (vk.peerId || '').trim();
             if (token && peer) {
                 sendVKSilentAlert(token, peer, type, holeNum, playerName, roundInfo);
             }
+        }).catch(function(e) {
+            console.warn('⚠️ VK: не удалось загрузить настройки из Firebase:', e);
         });
     }
 }

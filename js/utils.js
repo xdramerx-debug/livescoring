@@ -2080,7 +2080,7 @@ function saveUserProfileData(playerId) {
 
     var firstName = fnInp ? sanitizeNameRaw(fnInp.value) : '';
     var lastName = lnInp ? sanitizeNameRaw(lnInp.value) : '';
-    var fullName = (lastName + ' ' + firstName).trim() || 'Player';
+    var fullName = (firstName + ' ' + lastName).trim() || 'Player';
     var exactHcp = hcpInp ? parseExactHcp(hcpInp.value) : 0;
     var gender = genderInp ? genderInp.value : 'men';
     var phone = phoneInp ? phoneInp.value.trim().replace(/[^\d+\-() ]/g, '').substring(0, 20) : '';
@@ -4029,7 +4029,8 @@ function registerGuestPlayerInDatabase(p) {
     } catch(e) {}
 
     if (typeof cachedRegisteredUsers !== 'undefined') {
-        cachedRegisteredUsers[guestId] = Object.assign({}, guestData, cachedRegisteredUsers[guestId] || {});
+        // Новые данные (HCP/имя) имеют приоритет над устаревшим кэшем
+        cachedRegisteredUsers[guestId] = Object.assign({}, cachedRegisteredUsers[guestId] || {}, guestData);
         try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
     }
 
@@ -4039,6 +4040,16 @@ function registerGuestPlayerInDatabase(p) {
                 db.ref('users/' + guestId).set(guestData).catch(function(err) {
                     console.warn('Firebase guest save notice:', err);
                 });
+            } else {
+                // Обновляем HCP/имя у уже существующей записи (важно для синхронизации и профиля)
+                var patch = {
+                    handicap: exactHcp,
+                    firstName: firstName,
+                    lastName: lastName,
+                    name: cleanName,
+                    gender: gender
+                };
+                db.ref('users/' + guestId).update(patch).catch(function(){});
             }
         }).catch(function(){});
     }

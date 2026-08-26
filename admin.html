@@ -393,10 +393,21 @@
 
         <div id="tab-data" class="admin-section hidden">
             <div class="card">
-                <h2><i class="fas fa-eye-slash"></i> <span data-i18n="page_visibility_title">Управление видимостью страниц</span></h2>
+                <h2><i class="fas fa-eye-slash"></i> <span data-i18n="page_visibility_title">Управление видимостью страниц и функций</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="page_visibility_sub">
                     Снимите галочку с любой страницы, чтобы полностью скрыть её из меню навигации и закрыть доступ для игроков.
                 </p>
+
+                <!-- Переключатель «Меню инструментов» -->
+                <div class="list-item" onclick="toggleToolsMenuCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:16px;touch-action:manipulation;">
+                    <div>
+                        <span style="font-weight:700;font-size:14px;color:var(--white);">🧰 <span data-i18n="tools_title">Инструменты и функции</span></span>
+                        <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+                            <span data-i18n-ru="Показать/скрыть кнопку «Меню» в шапке (GPS-дальномер, Shot Tracking, ТВ-режим, 1v1)." data-i18n-en="Show/hide the Tools button in the header (GPS rangefinder, Shot Tracking, TV mode, 1v1 duel).">Показать/скрыть кнопку «Меню» в шапке (GPS-дальномер, Shot Tracking, ТВ-режим, 1v1).</span>
+                        </div>
+                    </div>
+                    <input type="checkbox" id="pv-tools-menu" style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
+                </div>
                 <div id="page-visibility-grid" class="form-row" style="gap:10px;margin-bottom:16px;">
                     <div class="list-item" onclick="togglePVCheckbox('pv-guide', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
                         <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">📖 <span data-i18n="nav_guide">Книга поля</span></span>

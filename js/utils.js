@@ -318,9 +318,9 @@ var I18N = {
         manage_players_sub: 'Назначайте права Администратора другим игрокам. Администраторы получают полный доступ к этой панели.',
         data_management: 'Управление данными',
         data_danger_sub: 'Осторожно — действия необратимы.',
-        page_visibility_title: 'Управление видимостью страниц',
-        page_visibility_sub: 'Снимите галочку с любой страницы, чтобы полностью скрыть её из меню навигации и закрыть доступ для игроков.',
-        save_visibility_btn: 'Сохранить видимость страниц',
+        page_visibility_title: 'Управление видимостью страниц и функций',
+        page_visibility_sub: 'Снимите галочку с любой страницы или функции, чтобы полностью скрыть её из меню навигации для игроков.',
+        save_visibility_btn: 'Сохранить настройки',
         tab_broadcasts: 'Анонсы 📢',
         delete_all_rounds: 'Удалить все раунды',
         delete_all_data: 'Удалить всех игроков и раунды',
@@ -595,9 +595,9 @@ var I18N = {
         manage_players_sub: 'Assign Administrator rights to other players. Administrators get full access to this panel.',
         data_management: 'Data Management',
         data_danger_sub: 'Caution — actions are irreversible.',
-        page_visibility_title: 'Manage Page Visibility',
-        page_visibility_sub: 'Uncheck any page to completely hide it from navigation menu and restrict player access.',
-        save_visibility_btn: 'Save Page Visibility',
+        page_visibility_title: 'Manage Page & Feature Visibility',
+        page_visibility_sub: 'Uncheck any page or feature to completely hide it from the navigation menu for players.',
+        save_visibility_btn: 'Save Settings',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
         delete_all_data: 'Delete All Players & Rounds',
@@ -1228,6 +1228,14 @@ function handleAvatarFileUpload(fileInputEl, callback) {
     };
     reader.readAsDataURL(file);
 }
+function isToolsMenuEnabled() {
+    // Администратор может включить/выключить отображение кнопки «Меню» (Инструменты и функции).
+    // По умолчанию кнопка скрыта — вкл/выкл делается из админ-панели (вкладка «Данные»).
+    try {
+        return localStorage.getItem('pestovo_tools_menu_enabled') === '1';
+    } catch(e) { return false; }
+}
+
 function navAuth(u, d) {
     var e = document.getElementById('nav-auth');
     if (!e) return;
@@ -1235,7 +1243,10 @@ function navAuth(u, d) {
 
     var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i> ' + (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : '<i class="far fa-sun"></i> ' + (currentLang === 'en' ? 'Sun' : 'Солнце')) + '</button>';
     var langBtn = '<button class="lang-btn" onclick="toggleLang()">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
-    var toolsBtn = '<button class="lang-btn" onclick="openToolsMenu()"><i class="fas fa-toolbox"></i> ' + (currentLang === 'en' ? 'Tools' : 'Меню') + '</button>';
+    // Кнопка «Меню» (Инструменты) показывается только если администратор явно включил это
+    var toolsBtn = isToolsMenuEnabled()
+        ? '<button class="lang-btn" onclick="openToolsMenu()"><i class="fas fa-toolbox"></i> ' + (currentLang === 'en' ? 'Tools' : 'Меню') + '</button>'
+        : '';
 
     if (u && d) {
         var avatarMarkup = fmtUserAvatar(d, 30);
@@ -3931,6 +3942,17 @@ if (typeof db !== 'undefined') {
             localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hp));
             applyPageVisibilitySettings();
         });
+        // Синхронизация переключателя «Меню инструментов» между устройствами
+        db.ref('settings/tools_menu_enabled').on('value', function(sn) {
+            var v = sn.val();
+            var enabled = (v === true || v === '1' || v === 1);
+            try { localStorage.setItem('pestovo_tools_menu_enabled', enabled ? '1' : '0'); } catch(e) {}
+            // Перерисовываем навигацию, чтобы кнопка появилась/исчезла сразу
+            if (typeof navAuth === 'function' && typeof currentUser !== 'undefined') {
+                navAuth(currentUser, currentUserData || null);
+            }
+            if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
+        });
     } catch(e) {}
 }
 
@@ -4077,6 +4099,9 @@ function wipeLocalPlayerCaches() {
         localStorage.removeItem('pestovo_cached_users');
         localStorage.removeItem('pestovo_custom_players');
         localStorage.setItem('pestovo_defaults_cleared', 'true');
+        // Сброс списка удалённых игроков — после полной очистки база пуста,
+        // никакие id не должны считаться «удалёнными» (чтобы не мешали новой работе)
+        localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([]));
     } catch(e) {}
 
     if (typeof cachedRegisteredUsers === 'object' && cachedRegisteredUsers) {
@@ -4093,9 +4118,33 @@ if (typeof window !== 'undefined') {
 }
 
 function syncKnownPlayersCache() {
+    // Если был выполнен полный сброс (пользователь нажал «Удалить всех игроков и раунды»
+    // в админке) — НЕ восстанавливаем демо-игроков и не подмешиваем ничего из
+    // localStorage, чтобы кэш оставался пустым после обновления страницы.
+    if (areDefaultPlayersCleared()) {
+        // На всякий случай добиваем ключи в localStorage — если они по какой-то
+        // причине не были очищены в wipeLocalPlayerCaches().
+        try {
+            localStorage.removeItem('pestovo_cached_users');
+            localStorage.removeItem('pestovo_custom_players');
+        } catch(e) {}
+        return;
+    }
+
+    var deletedIds = [];
+    try {
+        var dRaw = localStorage.getItem('pestovo_deleted_player_ids');
+        if (dRaw) deletedIds = JSON.parse(dRaw) || [];
+    } catch(e) {}
+
     var mergeCache = function(obj) {
         Object.keys(obj).forEach(function(k) {
             if (isPlayerDeleted(k, obj[k] && obj[k].name)) return;
+            // Дополнительно фильтруем по нормализованному имени
+            if (obj[k] && obj[k].name) {
+                var nKey = normalizeSearchText(obj[k].name);
+                if (nKey && deletedIds.indexOf(nKey) !== -1) return;
+            }
             cachedRegisteredUsers[k] = obj[k];
         });
     };
@@ -4125,31 +4174,80 @@ if (typeof db !== 'undefined') {
     try {
         db.ref('users').on('value', function(sn) {
             var val = sn.val();
-            if (val && typeof val === 'object') {
-                Object.assign(cachedRegisteredUsers, val);
-                // Игрок, которого удалили в Firebase, должен исчезнуть из локального кэша
-                // (Object.assign только добавляет, поэтому удаляем ключи из прошлого снапшота)
-                if (lastRemoteUserIds) {
-                    lastRemoteUserIds.forEach(function(key) {
-                        if (!Object.prototype.hasOwnProperty.call(val, key)) {
-                            delete cachedRegisteredUsers[key];
-                        }
-                    });
-                }
-                lastRemoteUserIds = Object.keys(val);
-                try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+            // Сброс: если после очистки БД в Firebase нет пользователей (val === null) —
+            // полностью вычищаем in-memory кэш и localStorage, чтобы демо/удалённые
+            // игроки не «воскрешали» при обновлении страницы.
+            if (!val || typeof val !== 'object' || Object.keys(val).length === 0) {
+                Object.keys(cachedRegisteredUsers).forEach(function(k) {
+                    delete cachedRegisteredUsers[k];
+                });
+                lastRemoteUserIds = [];
+                try {
+                    localStorage.removeItem('pestovo_cached_users');
+                    localStorage.removeItem('pestovo_custom_players');
+                    localStorage.setItem('pestovo_defaults_cleared', 'true');
+                } catch(e) {}
+                return;
             }
+            Object.assign(cachedRegisteredUsers, val);
+            // Игрок, которого удалили в Firebase, должен исчезнуть из локального кэша
+            // (Object.assign только добавляет, поэтому удаляем ключи из прошлого снапшота)
+            if (lastRemoteUserIds) {
+                lastRemoteUserIds.forEach(function(key) {
+                    if (!Object.prototype.hasOwnProperty.call(val, key)) {
+                        delete cachedRegisteredUsers[key];
+                        // Также убираем guest_name_-записи, ссылающиеся на удалённого игрока
+                        var removed = cachedRegisteredUsers[key];
+                        if (removed && removed.name) {
+                            var ghostKey = 'guest_name_' + removed.name.toLowerCase().replace(/\s+/g, '_');
+                            delete cachedRegisteredUsers[ghostKey];
+                        }
+                    }
+                });
+            }
+            lastRemoteUserIds = Object.keys(val);
+            // Вычищаем из кэша всех игроков, помеченных как удалённые
+            var deleted = [];
+            try {
+                var dRaw = localStorage.getItem('pestovo_deleted_player_ids');
+                if (dRaw) deleted = JSON.parse(dRaw) || [];
+            } catch(e) {}
+            Object.keys(cachedRegisteredUsers).forEach(function(k) {
+                var u = cachedRegisteredUsers[k];
+                if (!u) return;
+                if (deleted.indexOf(k) !== -1) { delete cachedRegisteredUsers[k]; return; }
+                if (u.name) {
+                    var nKey = normalizeSearchText(u.name);
+                    if (nKey && deleted.indexOf(nKey) !== -1) delete cachedRegisteredUsers[k];
+                }
+            });
+            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
         });
         db.ref('rounds').on('value', function(sn) {
             var roundsData = sn.val() || {};
+            // Когда все раунды удалены (очистка БД) — раунды не должны «воскрешать»
+            // гостевые записи игроков из несуществующих раундов.
+            if (!roundsData || typeof roundsData !== 'object' || Object.keys(roundsData).length === 0) {
+                return;
+            }
             Object.values(roundsData).forEach(function(r) {
                 if (r && r.players && typeof r.players === 'object') {
                     Object.entries(r.players).forEach(function(pe) {
                         var pid = pe[0], p = pe[1];
                         if (p && p.name) {
-                            if (isPlayerDeleted(pid, p.name)) return; // игрок удалён в админке — не «воскрешаем» его из истории раундов
                             var pName = p.name.trim();
+                            var normName = normalizeSearchText(pName);
+                            // Усиленная проверка: не воскрешаем удалённых ни по uid, ни по нормализованному имени
+                            var deleted = [];
+                            try {
+                                var dRaw = localStorage.getItem('pestovo_deleted_player_ids');
+                                if (dRaw) deleted = JSON.parse(dRaw) || [];
+                            } catch(e) {}
+                            var isDel = (deleted.indexOf(pid) !== -1) || (normName && deleted.indexOf(normName) !== -1);
+                            if (isDel) return;
                             var key = pid.startsWith('guest_') ? ('guest_name_' + pName.toLowerCase().replace(/\s+/g, '_')) : pid;
+                            // Не перезаписываем существующую запись, если игрок уже в кэше с корректными данными —
+                            // и только добавляем гостевую запись, если её действительно нет
                             if (!cachedRegisteredUsers[key]) {
                                 var parts = pName.split(' ');
                                 cachedRegisteredUsers[key] = {

@@ -1089,6 +1089,13 @@ function loadPageVisibilitySettings() {
         });
     };
 
+    // Состояние чекбокса «Меню инструментов» (по умолчанию ВЫКЛЮЧЕНО)
+    var toolsCheckbox = document.getElementById('pv-tools-menu');
+    if (toolsCheckbox) {
+        var toolsEnabled = localStorage.getItem('pestovo_tools_menu_enabled') === '1';
+        toolsCheckbox.checked = toolsEnabled;
+    }
+
     if (typeof getHiddenPages === 'function') {
         updateCheckboxes(getHiddenPages());
     }
@@ -1113,6 +1120,18 @@ function loadPageVisibilitySettings() {
                 if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
             }
         });
+        // Синхронизация переключателя «Меню инструментов»
+        db.ref('settings/tools_menu_enabled').on('value', function(sn) {
+            var v = sn.val();
+            var enabled = (v === true || v === '1' || v === 1);
+            try { localStorage.setItem('pestovo_tools_menu_enabled', enabled ? '1' : '0'); } catch(e) {}
+            var cb = document.getElementById('pv-tools-menu');
+            if (cb) cb.checked = enabled;
+            if (typeof navAuth === 'function' && typeof currentUserData !== 'undefined') {
+                navAuth(currentUser, currentUserData);
+            }
+            if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
+        });
     }
 }
 
@@ -1135,12 +1154,22 @@ function savePageVisibilitySettings() {
     localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hiddenPages));
     if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
 
-    toast(currentLang === 'en' ? '✅ Page visibility settings saved!' : '✅ Настройки видимости страниц сохранены!', 'success');
+    // Сохраняем состояние «Меню инструментов»
+    var toolsCb = document.getElementById('pv-tools-menu');
+    var toolsEnabled = toolsCb ? toolsCb.checked : false;
+    try { localStorage.setItem('pestovo_tools_menu_enabled', toolsEnabled ? '1' : '0'); } catch(e) {}
+    if (typeof navAuth === 'function' && typeof currentUserData !== 'undefined') {
+        navAuth(currentUser, currentUserData);
+    }
+    if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
+
+    toast(currentLang === 'en' ? '✅ Page visibility settings saved!' : '✅ Настройки видимости сохранены!', 'success');
     if (typeof vib === 'function') vib([50, 30, 50]);
 
     if (typeof db !== 'undefined') {
-        db.ref('settings/hidden_pages').set(fbPages).then(function() {
-            console.log('Page visibility synced to Firebase successfully');
+        var updates = { 'settings/hidden_pages': fbPages, 'settings/tools_menu_enabled': toolsEnabled };
+        db.ref().update(updates).then(function() {
+            console.log('Visibility settings synced to Firebase successfully');
         }).catch(function(err) {
             console.warn('Firebase sync warning:', err);
         });
@@ -1157,6 +1186,10 @@ function togglePVCheckbox(id, event) {
         checkbox.checked = !checkbox.checked;
         if (typeof vib === 'function') vib(30);
     }
+}
+
+function toggleToolsMenuCheckbox(event) {
+    togglePVCheckbox('pv-tools-menu', event);
 }
 
 // ==========================================

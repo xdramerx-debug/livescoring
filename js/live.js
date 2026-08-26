@@ -460,6 +460,7 @@ function initRoundView() {
             buildPlayHolesNav();
             renderPlaySummary();
             renderInviteQRs();
+            listenForCallResponses();
 
         } else {
             if (activeView) activeView.classList.add('hidden');
@@ -843,6 +844,33 @@ function callOfficial(type) {
         sendVKOfficialAlert(type, playHole, pName, 'Групповой раунд (' + (curRoundData ? curRoundData.format : '') + ')');
         toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + playHole + '!', 'warn');
         vib([100, 50, 100]);
+    });
+}
+
+// Слушаем «ответы» на вызовы, которые админ оставил в `users/<myUid>/notifications`.
+// Каждое новое уведомление с type === 'call_response' показываем тостом
+// «Судья/маршал едет» и сразу помечаем как прочитанное.
+function listenForCallResponses() {
+    if (typeof db === 'undefined' || !myUid) return;
+    if (window._pestovoCallResponsesListening) return;
+    window._pestovoCallResponsesListening = true;
+
+    db.ref('users/' + myUid + '/notifications').orderByChild('type').equalTo('call_response').on('child_added', function(sn) {
+        var n = sn.val();
+        if (!n || n.read) return;
+
+        var who = n.responderRole === 'marshal'
+            ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
+            : (currentLang === 'en' ? 'Referee' : 'Судья');
+        var txt = currentLang === 'en'
+            ? '🚗 ' + who + ' is on the way to you!'
+            : '🚗 ' + who + ' едет к вам!';
+
+        toast(txt, 'success');
+        if (typeof vib === 'function') vib([80, 40, 80, 40, 80]);
+
+        // Помечаем прочитанным, чтобы не показывать тост повторно
+        db.ref('users/' + myUid + '/notifications/' + sn.key + '/read').set(true).catch(function(){});
     });
 }
 

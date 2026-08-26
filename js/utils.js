@@ -1100,45 +1100,20 @@ function buildMobileDrawer() {
 
 // ==========================================
 // МОБИЛЬНАЯ НИЖНЯЯ НАВИГАЦИЯ (BOTTOM TAB BAR)
+// Нижнее меню отключено: в дизайне больше не используется.
+// Функция оставлена как no-op для обратной совместимости со старыми
+// страницами, которые её вызывают.
 // ==========================================
 var BOTTOM_NAV_SKIP = { 'tv.html': true, 'offline.html': true, 'auth.html': true };
 
 function buildBottomNav() {
-    if (typeof document === 'undefined' || !document.body) return;
-    var curPage = (window.location && window.location.pathname) ? (window.location.pathname.split('/').pop() || 'index.html') : 'index.html';
-    if (BOTTOM_NAV_SKIP[curPage]) return;
-
-    var tabs = [
-        { href: 'index.html',      icon: 'fas fa-home',         key: 'bn_home'   },
-        { href: 'live.html',       icon: 'fas fa-play',         key: 'bn_round',  match: ['live.html', 'solo.html', 'setup-round.html', 'scorer.html', 'marker.html'] },
-        { href: 'leaderboard.html',icon: 'fas fa-trophy',       key: 'bn_rounds' },
-        { href: 'guide.html',      icon: 'fas fa-book-bookmark',key: 'bn_guide'  },
-        { menu: true,              icon: 'fas fa-bars',         key: 'bn_menu'   }
-    ];
-
+    // Нижняя таб-панель убрана. Если ранее созданный элемент остался в DOM —
+    // удаляем его и снимаем служебный класс с body, чтобы CSS не навешивал
+    // лишние отступы и плавающие элементы не «висели» над пустым местом.
+    if (typeof document === 'undefined') return;
     var bar = document.getElementById('bottom-tabbar');
-    if (!bar) {
-        bar = document.createElement('nav');
-        bar.id = 'bottom-tabbar';
-        bar.className = 'bottom-tabbar';
-        bar.setAttribute('aria-label', 'Mobile navigation');
-        document.body.appendChild(bar);
-    }
-
-    var html = '';
-    tabs.forEach(function(tab) {
-        var isActive = tab.menu ? false : (tab.href === curPage || (tab.match && tab.match.indexOf(curPage) !== -1));
-        var active = isActive ? ' active' : '';
-        if (tab.menu) {
-            html += '<button type="button" class="bottom-tab' + active + '" onclick="toggleMobileDrawer()" aria-label="' + t(tab.key) + '"><i class="' + tab.icon + '"></i><span>' + t(tab.key) + '</span></button>';
-        } else {
-            html += '<a class="bottom-tab' + active + '" href="' + tab.href + '"><i class="' + tab.icon + '" aria-hidden="true"></i><span>' + t(tab.key) + '</span></a>';
-        }
-    });
-    bar.innerHTML = html;
-    if (document.body && !document.body.classList.contains('has-bottom-tabbar')) {
-        document.body.classList.add('has-bottom-tabbar');
-    }
+    if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
+    if (document.body) document.body.classList.remove('has-bottom-tabbar');
 }
 
 /* Прячем нижнюю навигацию, когда открыта экранная клавиатура (фокус в поле ввода) */
@@ -3579,6 +3554,9 @@ function toggleActiveScorecard(panelId) {
 // ==========================================
 // TELEGRAM BOT OFFICIAL ALERTS (GROUP & CHANNEL)
 // ==========================================
+// Внутренний «молчаливый» отправитель: используется, когда вызов делает
+// ИГРОК с поля — он не должен видеть «Тайм-аут соединения» / «Ошибка сети»
+// в тосте (он уже нажал «Вызвать судью» и видит «🚨 Судья вызван»).
 function sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerName, roundInfo) {
     token = (token || '').trim();
     chat = (chat || '').trim();
@@ -3638,7 +3616,60 @@ function sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerNa
     });
 }
 
+// «Молчаливый» вариант: та же логика, но без тостов на ошибках и успехах.
+// Используется, когда вызов инициирует ИГРОК — он не должен получать
+// «Тайм-аут соединения» или «Ошибка сети», только «🚨 Судья вызван».
+function sendTelegramSilentAlert(token, chat, type, holeNum, playerName, roundInfo) {
+    token = (token || '').trim();
+    chat = (chat || '').trim();
+    if (!token || !chat) return; // нет настроек — тихо выходим
+
+    var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
+    var safePlayerName = escapeHtml(playerName || 'Игрок');
+    var safeRoundInfo = escapeHtml(roundInfo || 'Активный раунд');
+    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
+
+    var text = '🚨 <b>' + typeTitle + ' В ПЕСТОВО!</b>\n' +
+               '----------------------------------\n' +
+               '👤 <b>Игрок:</b> ' + safePlayerName + '\n' +
+               '⛳ <b>Лунка:</b> №' + holeNum + '\n' +
+               '📋 <b>Раунд:</b> ' + safeRoundInfo + '\n' +
+               '⏰ <b>Время:</b> ' + timeStr;
+
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch(e){} }, 6000) : null;
+
+    var fetchOptions = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chat, text: text, parse_mode: 'HTML' })
+    };
+    if (controller) fetchOptions.signal = controller.signal;
+
+    fetch('https://api.telegram.org/bot' + token + '/sendMessage', fetchOptions)
+    .then(function(res) {
+        if (timeoutId) clearTimeout(timeoutId);
+        return res.json();
+    })
+    .then(function(data) {
+        if (!data || !data.ok) {
+            console.warn('⚠️ Telegram silent send failed:', data && data.description);
+        }
+    })
+    .catch(function(err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        // Намеренно НЕ показываем toast — игрок уже получил «🚨 Судья вызван».
+        // Тайм-аут / ошибка сети — внутренняя кухня отправки уведомления админу,
+        // а вызов уже зафиксирован в Firebase (`alerts/<id>`) и виден в админке.
+        console.warn('⚠️ Telegram silent send error (suppressed):', err && err.message);
+    });
+}
+
 function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetMode) {
+    // ВАЖНО: этот вызов делает ИГРОК. Никаких тостов об ошибках сети / таймаутах
+    // Telegram ему показывать нельзя — он уже видит «🚨 Судья вызван». Если Telegram
+    // настроен и отвечает — это плюс. Если нет — вызов всё равно лежит в Firebase
+    // и админ увидит его в панели «Вызовы».
     var groupToken = (localStorage.getItem('pestovo_tg_group_token') || localStorage.getItem('pestovo_tg_bot_token') || '').trim();
     var groupId = (localStorage.getItem('pestovo_tg_group_id') || localStorage.getItem('pestovo_tg_chat_id') || '').trim();
 
@@ -3646,10 +3677,10 @@ function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetM
     var channelId = (localStorage.getItem('pestovo_tg_channel_id') || '').trim();
 
     if (groupToken && groupId && (targetMode === 'group' || !targetMode)) {
-        sendTelegramDirectAlert(groupToken, groupId, 'Группу', type, holeNum, playerName, roundInfo);
+        sendTelegramSilentAlert(groupToken, groupId, type, holeNum, playerName, roundInfo);
     }
     if (channelToken && channelId && (targetMode === 'channel' || !targetMode)) {
-        sendTelegramDirectAlert(channelToken, channelId, 'Канал', type, holeNum, playerName, roundInfo);
+        sendTelegramSilentAlert(channelToken, channelId, type, holeNum, playerName, roundInfo);
     }
 
     if (!groupToken && !channelToken && typeof db !== 'undefined') {
@@ -3661,10 +3692,10 @@ function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetM
             var cId = (tg.channelId || '').trim();
 
             if (gTok && gId && (targetMode === 'group' || !targetMode)) {
-                sendTelegramDirectAlert(gTok, gId, 'Группу', type, holeNum, playerName, roundInfo);
+                sendTelegramSilentAlert(gTok, gId, type, holeNum, playerName, roundInfo);
             }
             if (cTok && cId && (targetMode === 'channel' || !targetMode)) {
-                sendTelegramDirectAlert(cTok, cId, 'Канал', type, holeNum, playerName, roundInfo);
+                sendTelegramSilentAlert(cTok, cId, type, holeNum, playerName, roundInfo);
             }
         });
     }
@@ -3729,19 +3760,68 @@ function sendVKDirectAlert(token, peerId, type, holeNum, playerName, roundInfo) 
     });
 }
 
+// «Молчаливый» вариант VK-отправки для ИГРОКА: без тостов об ошибках/успехе.
+function sendVKSilentAlert(token, peerId, type, holeNum, playerName, roundInfo) {
+    token = (token || '').trim();
+    peerId = (peerId || '').trim();
+    if (!token || !peerId) return; // нет настроек — тихо выходим
+
+    var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
+    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
+
+    var text = '🚨 ' + typeTitle + ' В ПЕСТОВО!\n' +
+               '----------------------------------\n' +
+               '👤 Игрок: ' + (playerName || 'Игрок') + '\n' +
+               '⛳ Лунка: №' + holeNum + '\n' +
+               '📋 Раунд: ' + (roundInfo || 'Активная игра') + '\n' +
+               '⏰ Время: ' + timeStr;
+
+    var randomId = Math.floor(Math.random() * 2000000000);
+    var url = 'https://api.vk.com/method/messages.send?access_token=' + encodeURIComponent(token) +
+              '&peer_id=' + encodeURIComponent(peerId) +
+              '&message=' + encodeURIComponent(text) +
+              '&random_id=' + randomId +
+              '&v=5.131';
+
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch(e){} }, 6000) : null;
+
+    var fetchOptions = { method: 'GET' };
+    if (controller) fetchOptions.signal = controller.signal;
+
+    fetch(url, fetchOptions)
+    .then(function(res) {
+        if (timeoutId) clearTimeout(timeoutId);
+        return res.json();
+    })
+    .then(function(data) {
+        if (!data || (!data.response && !data.result)) {
+            console.warn('⚠️ VK silent send failed:', data && data.error);
+        }
+    })
+    .catch(function(err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        // НЕ показываем toast игроку — он уже получил «🚨 Маршал вызван»,
+        // а сам вызов лежит в Firebase и виден админу в панели «Вызовы».
+        console.warn('⚠️ VK silent send error (suppressed):', err && err.message);
+    });
+}
+
 function sendVKOfficialAlert(type, holeNum, playerName, roundInfo) {
+    // ВАЖНО: вызов от ИГРОКА. Никаких тостов об ошибках VK / таймаутах —
+    // только «🚨 Судья вызван» уже показан в UI, а сам вызов в Firebase.
     var vkToken = (localStorage.getItem('pestovo_vk_token') || '').trim();
     var vkPeerId = (localStorage.getItem('pestovo_vk_peer_id') || '').trim();
 
     if (vkToken && vkPeerId) {
-        sendVKDirectAlert(vkToken, vkPeerId, type, holeNum, playerName, roundInfo);
+        sendVKSilentAlert(vkToken, vkPeerId, type, holeNum, playerName, roundInfo);
     } else if (typeof db !== 'undefined') {
         db.ref('settings/vk').once('value').then(function(sn) {
             var vk = sn.val() || {};
             var token = (vk.token || '').trim();
             var peer = (vk.peerId || '').trim();
             if (token && peer) {
-                sendVKDirectAlert(token, peer, type, holeNum, playerName, roundInfo);
+                sendVKSilentAlert(token, peer, type, holeNum, playerName, roundInfo);
             }
         });
     }
@@ -4177,6 +4257,9 @@ function initPlayerSearchAutofill(opts) {
 
             var full = (fn + ' ' + ln).trim() || name;
             if (!full) return;
+
+            // Защита: не показывать удалённых в админке игроков
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, name)) return;
 
             var normKey = uid + '_' + full.toLowerCase() + '_' + (u.handicap != null ? u.handicap : '');
             if (seenKeys.has(normKey)) return;

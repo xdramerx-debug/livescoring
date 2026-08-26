@@ -1968,84 +1968,23 @@ body.sun-mode .autocomplete-item.active-keyboard {
 
 /* =========================================
    MOBILE BOTTOM TAB BAR (PRIMARY NAVIGATION)
+   Полностью отключено: нижнее меню больше не используется.
+   Стили оставлены как no-op, чтобы старый CSS/JS-код не падал.
    ========================================= */
 .bottom-tabbar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 900;
-    display: none;
-    align-items: stretch;
-    justify-content: space-around;
-    background: rgba(11, 26, 14, 0.97);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid var(--border);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
-    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
-    box-sizing: border-box;
-    touch-action: manipulation;
+    display: none !important;
 }
 .bottom-tab {
-    flex: 1 1 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    min-height: 50px;
-    padding: 4px 2px;
-    border: none;
-    background: none;
-    color: var(--muted);
-    font-family: var(--fb);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-    text-decoration: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: color 0.15s ease, background 0.15s ease;
-    -webkit-tap-highlight-color: transparent;
+    /* на случай если элемент попадёт в DOM — скрываем визуально */
+    display: none !important;
 }
-.bottom-tab i {
-    font-size: 19px;
-    line-height: 1;
-    transition: transform 0.15s ease;
-}
-.bottom-tab span {
-    display: block;
-    max-width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.bottom-tab:active { background: rgba(201, 168, 76, 0.12); }
-.bottom-tab.active { color: var(--gold); }
-.bottom-tab.active i { transform: translateY(-1px) scale(1.08); }
-
-@media (max-width: 819px) {
-    .bottom-tabbar { display: flex; }
-    body.has-bottom-tabbar { padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
-    body.has-bottom-tabbar .footer { padding-bottom: max(24px, calc(70px + env(safe-area-inset-bottom, 0px))); }
-    /* keep floating widgets above the tab bar */
-    body.has-bottom-tabbar .offline-queue-badge { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
-    body.has-bottom-tabbar .install-banner.show { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
-    body.has-bottom-tabbar .ios-install-banner.show { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
-    body.has-bottom-tabbar .online-indicator { top: calc(max(70px, env(safe-area-inset-top, 0px) + 56px)); }
-}
-/* hide tab bar while the device keyboard is open */
-body.kb-open .bottom-tabbar { display: none; }
-/* standalone sun/mode styling */
-body.sun-mode .bottom-tabbar {
-    background: #ffffff !important;
-    border-top: 2px solid #000000 !important;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.08) !important;
-}
-body.sun-mode .bottom-tab { color: #333333 !important; }
-body.sun-mode .bottom-tab.active { color: #1b5e20 !important; }
-body.sun-mode .bottom-tab:active { background: rgba(0,0,0,0.05) !important; }
+/* снимаем отступы, которые раньше навешивались на body из-за таб-бара */
+body.has-bottom-tabbar { padding-bottom: 0 !important; }
+body.has-bottom-tabbar .footer { padding-bottom: 24px !important; }
+body.has-bottom-tabbar .offline-queue-badge { bottom: 24px !important; }
+body.has-bottom-tabbar .install-banner.show { bottom: 20px !important; }
+body.has-bottom-tabbar .ios-install-banner.show { bottom: 20px !important; }
+body.has-bottom-tabbar .online-indicator { top: 70px !important; }
 
 /* =========================================
    MOBILE-FIRST FORM & CONTROL POLISH

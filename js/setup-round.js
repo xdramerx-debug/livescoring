@@ -448,7 +448,7 @@ function submitSetupRound() {
 
         ref.set(data).then(function() {
             toast(t('msg_round_started'));
-            window.location.href = 'live.html?round=' + newRoundId;
+            window.location.href = 'setup-round.html?round=' + newRoundId;
         }).catch(function(err) {
             toast('⚠️ Ошибка запуска: ' + err.message, 'error');
         });

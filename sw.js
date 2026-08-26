@@ -1,8 +1,8 @@
-const CACHE_NAME = 'pestovo-v73';
+const CACHE_NAME = 'pestovo-v74';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
-    './', 'index.html', 'setup-round.html', 'live.html', 'solo.html', 'leaderboard.html',
+    './', 'index.html', 'setup-round.html', 'solo.html', 'leaderboard.html',
     'guide.html', 'feed.html', 'predictor.html', 'order-of-merit.html', 'tv.html',
     'players.html', 'tournaments.html', 'stats.html', 'handicap.html',
     'admin.html', 'auth.html', 'scorer.html', 'marker.html', 'offline.html',

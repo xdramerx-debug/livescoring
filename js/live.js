@@ -387,7 +387,7 @@ function startGroup() {
 
     ref.set(data).then(function() {
         toast(t('msg_round_started'));
-        window.location.href = 'live.html?round=' + newRoundId;
+        window.location.href = 'setup-round.html?round=' + newRoundId;
     }).catch(function(err) {
         toast('⚠️ Ошибка запуска раунда: ' + err.message, 'error');
     });
@@ -806,7 +806,7 @@ function renderInviteQRs() {
 
     Object.entries(curRoundData.players || {}).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
-        var url = base + 'live.html?round=' + curRid + '&as=' + pid;
+        var url = base + 'setup-round.html?round=' + curRid + '&as=' + pid;
 
         var isMe = pid === myUid ? ' <span style="font-size:11px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
 

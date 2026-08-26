@@ -84,10 +84,8 @@ function switchSetupMode(mode) {
 function showGroupSetup() {
     var sel = document.getElementById('grp-hole');
     if (sel) {
-        sel.innerHTML = '';
-        for (var i = 1; i <= 18; i++) {
-            sel.innerHTML += '<option value="' + i + '">' + t('hole') + ' ' + i + ' (' + t('par') + ' ' + holePar(i) + ')</option>';
-        }
+        var rangeEl = document.getElementById('grp-range');
+        buildStartHoleOptions(sel, rangeEl ? rangeEl.value : '1-18');
     }
 
     var now = new Date();
@@ -172,8 +170,9 @@ function buildPlayerSlots() {
         html += '<div class="setup-player-card">';
         html += '<div class="setup-player-head"><span><i class="fas fa-user"></i> ' + t('player') + ' #' + i + '</span></div>';
         
-        html += '<div class="form-row">';
+        html += '<div class="form-row form-row-3">';
         html += '<div class="form-group" style="flex:1.4 1 120px;position:relative;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"><input type="hidden" id="pl-uid-' + i + '" value=""></div>';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('middle_name') + '</label><input type="text" id="pl-mid-' + i + '" class="form-input" placeholder="' + (currentLang === 'en' ? 'Jr.' : 'Иванович') + '"></div>';
         html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" onchange="onPlayerGenderOrTeeChange(' + i + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
         html += '</div>';
 
@@ -194,12 +193,21 @@ function buildPlayerSlots() {
                     onSelect: function(matchedUser) {
                         var nEl = document.getElementById('pl-name-' + idx);
                         var uEl = document.getElementById('pl-uid-' + idx);
+                        var midEl = document.getElementById('pl-mid-' + idx);
                         var gEl = document.getElementById('pl-gender-' + idx);
                         var tEl = document.getElementById('pl-tee-' + idx);
                         var hEl = document.getElementById('pl-hcp-' + idx);
 
-                        if (nEl) nEl.value = matchedUser.name;
+                        // Имя+фамилию вставляем без отчества — оно в отдельном поле
+                        if (nEl) {
+                            if (matchedUser.firstName || matchedUser.lastName) {
+                                nEl.value = ((matchedUser.firstName || '') + ' ' + (matchedUser.lastName || '')).trim();
+                            } else {
+                                nEl.value = matchedUser.name;
+                            }
+                        }
                         if (uEl) uEl.value = matchedUser.uid;
+                        if (midEl) midEl.value = matchedUser.middleName || '';
                         if (gEl) gEl.value = matchedUser.gender;
 
                         if (tEl) {
@@ -219,9 +227,11 @@ function buildPlayerSlots() {
                     },
                     onClear: function() {
                         var uEl = document.getElementById('pl-uid-' + idx);
+                        var midEl = document.getElementById('pl-mid-' + idx);
                         var hEl = document.getElementById('pl-hcp-' + idx);
                         var fEl = document.getElementById('pl-field-' + idx);
                         if (uEl) uEl.value = '';
+                        if (midEl) midEl.value = '';
                         if (hEl) hEl.value = '';
                         if (fEl) fEl.value = '';
                     }
@@ -233,11 +243,19 @@ function buildPlayerSlots() {
     if (currentUser && currentUserData) {
         var p1Name = document.getElementById('pl-name-1');
         var p1Uid = document.getElementById('pl-uid-1');
+        var p1Mid = document.getElementById('pl-mid-1');
         var p1Gender = document.getElementById('pl-gender-1');
         var p1Tee = document.getElementById('pl-tee-1');
         var p1Hcp = document.getElementById('pl-hcp-1');
 
-        if (p1Name && !p1Name.value) p1Name.value = currentUserData.name || '';
+        if (p1Name && !p1Name.value) {
+            if (currentUserData.firstName || currentUserData.lastName) {
+                p1Name.value = ((currentUserData.firstName || '') + ' ' + (currentUserData.lastName || '')).trim();
+            } else {
+                p1Name.value = currentUserData.name || '';
+            }
+        }
+        if (p1Mid) p1Mid.value = currentUserData.middleName || '';
         if (p1Uid) p1Uid.value = currentUser.uid;
         if (p1Gender && currentUserData.gender) p1Gender.value = currentUserData.gender;
         if (p1Tee) {
@@ -302,17 +320,15 @@ function updateGroupTimingPreview() {
     if (previewEl) previewEl.innerHTML = buildTimingTable(startDate.getTime(), startHole, holeRange);
 }
 
-// При смене «сколько лунок» подстраиваем стартовую лунку под выбранный диапазон
+// При смене «сколько лунок» перестраиваем список стартовых лунок под выбранный
+// диапазон (1-9 → только лунки 1-9, 10-18 → только 10-18) и подстраиваем выбор
 function applyRangeToStartHole(mode) {
     var rangeId = mode === 'solo' ? 's-range' : 'grp-range';
     var holeId = mode === 'solo' ? 's-hole' : 'grp-hole';
     var rangeEl = document.getElementById(rangeId);
     var holeEl = document.getElementById(holeId);
     if (!rangeEl || !holeEl) return;
-    var r = rangeEl.value;
-    if (r === '1-9') holeEl.value = '1';
-    else if (r === '10-18') holeEl.value = '10';
-    else holeEl.value = '1';
+    buildStartHoleOptions(holeEl, rangeEl.value);
     if (mode === 'solo') updateTimingPreview();
     else updateGroupTimingPreview();
 }
@@ -354,6 +370,16 @@ function startGroup() {
         var uid = uidEl ? uidEl.value : '';
         var nameEl = document.getElementById('pl-name-' + i);
         var name = nameEl ? sanitizeNameRaw(nameEl.value) : '';
+        var midEl = document.getElementById('pl-mid-' + i);
+        var midName = midEl ? sanitizeNameRaw(midEl.value) : '';
+        // Полное имя с отчеством: «Имя [Отчество] Фамилия»
+        var nameParts = name ? name.split(' ') : [];
+        var fullName = name;
+        if (midName) {
+            fullName = nameParts.length >= 2
+                ? (nameParts[0] + ' ' + midName + ' ' + nameParts.slice(1).join(' '))
+                : ((name + ' ' + midName).trim());
+        }
         var hcpStr = document.getElementById('pl-hcp-' + i).value;
         var gender = document.getElementById('pl-gender-' + i).value;
         var playerTee = document.getElementById('pl-tee-' + i) ? document.getElementById('pl-tee-' + i).value : 'wh';
@@ -372,7 +398,10 @@ function startGroup() {
         inputs.push({
             idx: i,
             uid: uid,
-            name: name,
+            name: fullName,
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            middleName: midName,
             hcpStr: hcpStr,
             gender: gender,
             tee: playerTee,
@@ -396,6 +425,9 @@ function startGroup() {
                 return resolver({
                     uid: null,
                     name: inp.name,
+                    firstName: inp.firstName,
+                    lastName: inp.lastName,
+                    middleName: inp.middleName,
                     exactHcp: inp.parsedHcp,
                     gender: inp.gender,
                     tee: inp.tee
@@ -428,6 +460,9 @@ function startGroup() {
 
             players[pid] = {
                 name: inp.name,
+                firstName: inp.firstName || '',
+                lastName: inp.lastName || '',
+                middleName: inp.middleName || '',
                 exactHcp: inp.parsedHcp,
                 fieldHcp: inp.fieldHcp,
                 gender: inp.gender,
@@ -713,11 +748,6 @@ function renderPlayHole() {
         }
     }
 
-    var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
-    var net = calcNettScore(myScore, par, holeHcp(playHole), myFieldHcp);
-    var netBadge = document.getElementById('my-net-badge');
-    if (netBadge) netBadge.textContent = 'Net: ' + net;
-
     // Render Match Play Tracker if Match Play format
     var trackerEl = document.getElementById('match-play-tracker-container');
     if (trackerEl) {
@@ -742,10 +772,6 @@ function adjScore(who, delta) {
         myScore = Math.max(1, Math.min(15, myScore + delta));
         updScoreDisplay('my', myScore);
         animateScoreElement('my-disp');
-        var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
-        var net = calcNettScore(myScore, holePar(playHole), holeHcp(playHole), myFieldHcp);
-        var netBadge = document.getElementById('my-net-badge');
-        if (netBadge) netBadge.textContent = 'Net: ' + net;
     } else {
         targetScore = Math.max(1, Math.min(15, targetScore + delta));
         updScoreDisplay('mark', targetScore);
@@ -761,10 +787,6 @@ function setParScore(who) {
         myScore = par;
         updScoreDisplay('my', myScore);
         animateScoreElement('my-disp');
-        var myFieldHcp = (curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0;
-        var net = calcNettScore(myScore, par, holeHcp(playHole), myFieldHcp);
-        var netBadge = document.getElementById('my-net-badge');
-        if (netBadge) netBadge.textContent = 'Net: ' + net;
     } else {
         targetScore = par;
         updScoreDisplay('mark', targetScore);
@@ -915,7 +937,7 @@ function renderPlaySummary() {
         html += '<div style="font-size:12px;color:var(--muted);">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + getRoundHoleCount(curRoundData) + '</div></div>';
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
-        html += '<div style="font-size:11px;color:var(--muted);">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div>';
+        html += '<div style="font-size:11px;color:var(--muted);">Gross: ' + (stats.gross || 0) + '</div>';
         html += '<button class="btn btn-og btn-sm" style="margin-top:4px;padding:2px 6px;font-size:10px;"><i class="fas fa-id-card"></i> ' + (currentLang === 'en' ? 'Card' : 'Карточка') + '</button>';
         html += '</div></div>';
     });
@@ -990,6 +1012,8 @@ function callOfficial(type) {
     if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + playHole + '?')) return;
 
     var pName = (curRoundData && curRoundData.players && curRoundData.players[myUid]) ? curRoundData.players[myUid].name : 'Player';
+    // Состав флайта: все остальные игроки, играющие на поле вместе с вызвавшим
+    var flightNames = (typeof getFlightPlayerNames === 'function') ? getFlightPlayerNames(curRoundData, myUid) : [];
 
     db.ref('alerts').push({
         roundId: curRid,
@@ -997,11 +1021,12 @@ function callOfficial(type) {
         hole: playHole,
         playerId: myUid,
         playerName: pName,
+        flightMembers: flightNames,
         time: Date.now(),
         status: 'active'
     }).then(function() {
-        sendTelegramOfficialAlert(type, playHole, pName, 'Групповой раунд (' + (curRoundData ? curRoundData.format : '') + ')');
-        sendVKOfficialAlert(type, playHole, pName, 'Групповой раунд (' + (curRoundData ? curRoundData.format : '') + ')');
+        sendTelegramOfficialAlert(type, playHole, pName, flightNames);
+        sendVKOfficialAlert(type, playHole, pName, flightNames);
         toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + playHole + '!', 'warn');
         vib([100, 50, 100]);
     });
@@ -1052,7 +1077,7 @@ function renderGVPlayers(r) {
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
                 '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</strong>' +
                 '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + '</div>' +
-                '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stableford: ' + stats.stablefordField + '</div>' +
+                '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div>' +
                 '</div>' +
                 '<div style="text-align:right;">' +
                 '<div class="' + scoreClass(stats.toPar) + '" style="font-size:24px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>' +
@@ -1103,6 +1128,8 @@ function finishGroupRound() {
         });
     };
 
+    // После завершения раунда карточка не предлагается к печати/скачиванию —
+    // переходим сразу к списку раундов.
     if (typeof openFinishConfirmModal === 'function') {
         openFinishConfirmModal(curRid, function() {
             groupFinishing = true;
@@ -1110,7 +1137,6 @@ function finishGroupRound() {
 
             toast(t('msg_round_finished'));
             setTimeout(function() {
-                if (confirm(currentLang === 'en' ? 'Download player scorecards?' : 'Скачать счётные карточки игроков?')) downloadScorecard(curRid);
                 window.location.href = 'leaderboard.html';
             }, 800);
         }, function() {
@@ -1124,19 +1150,6 @@ function finishGroupRound() {
 
         toast(t('msg_round_finished'));
         setTimeout(function() {
-            var pName = (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].name) || 'Player';
-            if (confirm(currentLang === 'en' ? 'Download official PDF scorecard?' : 'Скачать официальную PDF-карточку?')) {
-                downloadOfficialScorecardPDF({
-                    playerName: pName,
-                    markerName: 'Group Marker',
-                    createdAt: curRoundData ? curRoundData.createdAt : Date.now(),
-                    tee: curRoundData ? curRoundData.tee : 'wh',
-                    format: curRoundData ? curRoundData.format : 'Stroke Play',
-                    exactHandicap: (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].exactHcp) || 0,
-                    fieldHandicap: (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].fieldHcp) || 0,
-                    scores: (curRoundData && curRoundData.players && myUid && curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {}
-                });
-            }
             window.location.href = 'leaderboard.html';
         }, 800);
     }

@@ -58,7 +58,6 @@ function renderRound(id, r) {
             name: p.name, 
             gross: stats.gross, 
             toPar: stats.toPar, 
-            net: stats.net,
             stblField: stats.stablefordField, 
             stblExact: stats.stablefordExact,
             holesPlayed: stats.holesPlayed, 
@@ -95,7 +94,6 @@ function renderRound(id, r) {
         var posCls = p.position <= 3 ? 'lb-' + p.position : '';
         var holeInfo = p.holesPlayed >= (p.holeCount || 18) ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
         var gross = p.gross || '—';
-        var net = p.net || '—';
 
         return '<div class="rlb-row" onclick="openPlayerProfileModal(\'' + p.pid + '\',\'' + id + '\')">' +
             '<span class="rlb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</span>' +
@@ -104,10 +102,9 @@ function renderRound(id, r) {
             '<span class="rlb-thru">' + holeInfo + '</span></div></div>' +
             '<span class="rlb-par ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</span>' +
             '<span class="rlb-num">' + gross + '</span>' +
-            '<span class="rlb-num">' + net + '</span>' +
             '<span class="rlb-num rlb-stbl">' + p.stblField + '</span>' +
             '<span class="rlb-num rlb-dim">' + p.stblExact + '</span>' +
-            '<div class="rlb-sub">' + holeInfo + ' · Gross ' + gross + ' · Net ' + net + ' · ' + stblShort + ' ' + p.stblField + '/' + p.stblExact + '</div>' +
+            '<div class="rlb-sub">' + holeInfo + ' · Gross ' + gross + ' · ' + stblShort + ' ' + p.stblField + '/' + p.stblExact + '</div>' +
             '</div>';
     }).join('');
 
@@ -125,7 +122,6 @@ function renderRound(id, r) {
         '<span class="rlb-hpl">' + t('player') + '</span>' +
         '<span class="rlb-par">±Par</span>' +
         '<span class="rlb-num">' + t('gross') + '</span>' +
-        '<span class="rlb-num">' + t('net') + '</span>' +
         '<span class="rlb-num">' + stblF + '</span>' +
         '<span class="rlb-num">' + stblE + '</span></div>';
 

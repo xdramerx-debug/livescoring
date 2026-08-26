@@ -281,7 +281,7 @@
                         <label>Пол</label>
                         <select id="adm-new-gender" class="form-input">
                             <option value="men">👨 Мужчина</option>
-                            <option value="women">👩 Женщина</option>
+                            <option value="women">👩 Девушка</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -315,6 +315,14 @@
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="manage_players_sub">
                     Назначайте права Администратора другим игрокам. Администраторы получают полный доступ к этой панели.
                 </p>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:rgba(224,90,74,0.08);border:1px solid rgba(224,90,74,0.35);border-radius:12px;">
+                    <p style="color:var(--muted);font-size:12px;margin:0;flex:1;min-width:220px;">
+                        <i class="fas fa-triangle-exclamation" style="color:var(--red);"></i> Полное удаление всех игроков: список станет пустым (также удалятся их раунды, история и регистрации на турниры).
+                    </p>
+                    <button type="button" class="btn btn-r imp-big-btn" onclick="clearAllData()">
+                        <i class="fas fa-user-minus"></i> <span>Удалить всех игроков</span>
+                    </button>
+                </div>
                 <div id="adm-players"></div>
             </div>
         </div>
@@ -506,14 +514,14 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.4.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.5.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=9"></script>
+<script src="js/utils.js?v=10"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/admin.js?v=7"></script>
+<script src="js/admin.js?v=8"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

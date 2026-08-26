@@ -97,7 +97,7 @@ var I18N = {
 
         hero_sub: 'Цифровая счётная карточка Пестово',
         hero_title: 'Лайв-скоринг и электронные карточки Пестово',
-        hero_desc: '18 лунок · Пар 72 · Автоматический расчёт WHS-гандикапов',
+        hero_desc: '18 лунок · Пар 72',
         btn_start_game: 'Начать игру',
         btn_view_scores: 'Все раунды',
         sec_now_playing: 'Сейчас на поле',
@@ -114,7 +114,7 @@ var I18N = {
 
         tee_bk: 'Чёрный', tee_bl: 'Синий', tee_wh: 'Белый', tee_rd: 'Красный',
         tee_opt_bk: '⬛ Чёрный', tee_opt_bl: '🟦 Синий', tee_opt_wh: '⬜ Белый', tee_opt_rd: '🟥 Красный',
-        hole: 'Лунка', par: 'Пар', index: 'Индекс', gross: 'Gross', net: 'Net',
+        hole: 'Лунка', par: 'Пар', index: 'Индекс', gross: 'Gross',
         hole_lbl: 'Лунка', par_lbl: 'Пар', dist_lbl: 'Метры', deadline_lbl: 'Дедлайн',
         stbl_field: 'Stableford (пол.)', stbl_exact: 'Stableford (игр.)',
         out: 'Аут', in_side: 'Ин', total: 'Итого', meters: 'Метры', deadline: 'Дедлайн',
@@ -176,11 +176,11 @@ var I18N = {
         player_data: 'Данные игрока',
         select_registered: 'Выбрать из зарегистрированных',
         guest_manual: '— Гость / ввести вручную —',
-        first_name: 'Имя', last_name: 'Фамилия', gender_label: 'Пол',
-        placeholder_first_name: 'Иван', placeholder_last_name: 'Петров',
+        first_name: 'Имя', last_name: 'Фамилия', middle_name: 'Отчество (необязательно)', gender_label: 'Пол',
+        placeholder_first_name: 'Иван', placeholder_last_name: 'Петров', placeholder_middle_name: 'Иванович',
         placeholder_tn_name: 'Чемпионат Пестово',
         placeholder_hcp_calc: '+2.4 или 12.4',
-        men: 'Мужчина', women: 'Женщина',
+        men: 'Мужчина', women: 'Девушка',
         exact_hcp: 'Точный гандикап', field_hcp: 'Полевой гандикап',
         field_auto: 'Полевой (авто)',
         start_round_btn: 'Начать раунд', back_btn: 'Назад',
@@ -272,7 +272,7 @@ var I18N = {
         admin_logout: 'Выйти из админки',
         tournament_date_label: 'Дата',
         tournament_name_label: 'Название',
-        all_genders: 'Все', men_plural: 'Мужчины', women_plural: 'Женщины',
+        all_genders: 'Все', men_plural: 'Мужчины', women_plural: 'Девушки',
         quick_calc: 'Быстрый расчёт',
         full_table: 'Посмотреть полную таблицу',
         full_table_title: 'Посмотреть полную таблицу',
@@ -286,9 +286,6 @@ var I18N = {
 
         // Solo & Guest
         solo_sub: 'Гольф-клуб Пестово',
-        guest_notice: 'Вы играете как гость.',
-        login_link: 'Войти в аккаунт',
-        guest_notice_suffix: ', чтобы сохранить раунд в истории.',
         current_score: 'Текущий счёт',
         view_mode_notice: 'Режим просмотра.',
 
@@ -375,7 +372,7 @@ var I18N = {
 
         hero_sub: 'Pestovo Digital Scorecard',
         hero_title: 'Pestovo Live Scoring & Digital Scorecards',
-        hero_desc: '18 Holes · Par 72 · Automatic WHS Handicap Calculation',
+        hero_desc: '18 Holes · Par 72',
         btn_start_game: 'Start Game',
         btn_view_scores: 'All Rounds',
         sec_now_playing: 'Currently Playing',
@@ -392,7 +389,7 @@ var I18N = {
 
         tee_bk: 'Black', tee_bl: 'Blue', tee_wh: 'White', tee_rd: 'Red',
         tee_opt_bk: '⬛ Black', tee_opt_bl: '🟦 Blue', tee_opt_wh: '⬜ White', tee_opt_rd: '🟥 Red',
-        hole: 'Hole', par: 'Par', index: 'Index', gross: 'Gross', net: 'Net',
+        hole: 'Hole', par: 'Par', index: 'Index', gross: 'Gross',
         hole_lbl: 'Hole', par_lbl: 'Par', dist_lbl: 'Meters', deadline_lbl: 'Deadline',
         stbl_field: 'Stableford (Course)', stbl_exact: 'Stableford (Playing)',
         out: 'Out', in_side: 'In', total: 'Total', meters: 'Meters', deadline: 'Deadline',
@@ -454,8 +451,8 @@ var I18N = {
         player_data: 'Player Details',
         select_registered: 'Select from registered users',
         guest_manual: '— Guest / enter manually —',
-        first_name: 'First Name', last_name: 'Last Name', gender_label: 'Gender',
-        placeholder_first_name: 'John', placeholder_last_name: 'Doe',
+        first_name: 'First Name', last_name: 'Last Name', middle_name: 'Middle Name (optional)', gender_label: 'Gender',
+        placeholder_first_name: 'John', placeholder_last_name: 'Doe', placeholder_middle_name: 'Jr.',
         placeholder_tn_name: 'Pestovo Championship',
         placeholder_hcp_calc: '+2.4 or 12.4',
         men: 'Male', women: 'Female',
@@ -564,9 +561,6 @@ var I18N = {
 
         // Solo & Guest
         solo_sub: 'Pestovo Golf Club',
-        guest_notice: 'You are playing as a guest.',
-        login_link: 'Log in',
-        guest_notice_suffix: ' to save round to history.',
         current_score: 'Current Score',
         view_mode_notice: 'View mode.',
 
@@ -953,31 +947,11 @@ function renderHoleProgressBar(targetId, holesPlayed) {
 }
 
 // ==========================================
-// ВСПЛЕСК КОНФЕТТИ ПРИ BIRDIE / EAGLE / HIO
+// КОНФЕТТИ ПРИ ВВОДЕ СЧЁТА — ЭФФЕКТ ОТКЛЮЧЁН
+// (функция оставлена как no-op для совместимости со старыми вызовами)
 // ==========================================
 function triggerVictoryConfetti() {
-    if (typeof document === 'undefined' || !document.body) return;
-    var colors = ['#f39c12', '#c9a84c', '#e0c76a', '#2ecc71', '#ffffff'];
-    for (var i = 0; i < 35; i++) {
-        var p = document.createElement('div');
-        p.className = 'confetti-particle';
-        var dx = (Math.random() * 200 - 100) + 'px';
-        var dur = (1.2 + Math.random() * 0.8) + 's';
-        var color = colors[Math.floor(Math.random() * colors.length)];
-        var left = (Math.random() * 100) + 'vw';
-        
-        p.style.left = left;
-        p.style.top = '-20px';
-        p.style.backgroundColor = color;
-        p.style.animationDuration = dur;
-        if (p.style.setProperty) {
-            p.style.setProperty('--dx', dx);
-        }
-        document.body.appendChild(p);
-        (function(elem) {
-            setTimeout(function() { elem.remove(); }, 2000);
-        })(p);
-    }
+    return; // конфетти при вводе счёта больше не показываются
 }
 
 // ==========================================
@@ -1280,6 +1254,27 @@ function roundHoleCount(holeRange) {
 }
 function getRoundOrder(rd) { return roundHoles((rd && rd.startHole) || 1, rd && rd.holeRange); }
 function getRoundHoleCount(rd) { return roundHoleCount(rd && rd.holeRange); }
+
+// Заполняет выпадающий список «Стартовая лунка» лунками выбранного диапазона:
+// '1-9' → только 1-9, '10-18' → только 10-18, '1-18' (и другое) → все 18.
+// Если текущее значение выпадающего списка уже входит в диапазон — сохраняем его.
+function buildStartHoleOptions(holeEl, holeRange) {
+    if (!holeEl) return;
+    holeRange = holeRange || '1-18';
+    var from = 1, to = 18;
+    if (holeRange === '1-9') { from = 1; to = 9; }
+    else if (holeRange === '10-18') { from = 10; to = 18; }
+    var cur = parseInt(holeEl.value);
+    if (!cur || cur < from || cur > to) {
+        cur = (holeRange === '10-18') ? 10 : 1;
+    }
+    var html = '';
+    for (var i = from; i <= to; i++) {
+        html += '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + t('hole') + ' ' + i + ' (' + t('par') + ' ' + holePar(i) + ')</option>';
+    }
+    holeEl.innerHTML = html;
+    holeEl.value = cur;
+}
 
 // Собирает информацию о «незавершённых» лунках раунда для проверки перед финишем:
 //  - mismatch: лунки, где у игроков зафиксировано несовпадение (verified === false)
@@ -1783,7 +1778,7 @@ function generateGroupHoleTableHTML(r) {
         html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
         html += '<div class="noscroll-player-hdr">';
         html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</span>';
-        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div></div>';
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div></div>';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '</div>';
 
@@ -2067,6 +2062,7 @@ function renderProfileEditForm(playerId) {
 
         var firstName = u.firstName || (u.name ? u.name.split(' ')[0] : '');
         var lastName = u.lastName || (u.name ? u.name.split(' ').slice(1).join(' ') : '');
+        var middleName = u.middleName || '';
         var phone = u.phone || '';
         var hcp = u.handicap != null ? fmtExactHcp(u.handicap) : '';
         var gender = u.gender || 'men';
@@ -2096,6 +2092,9 @@ function renderProfileEditForm(playerId) {
         html += '<div class="form-row">';
         html += '<div class="form-group"><label>' + t('first_name') + '</label><input type="text" id="edit-fn" class="form-input" value="' + escapeHtml(firstName) + '"></div>';
         html += '<div class="form-group"><label>' + t('last_name') + '</label><input type="text" id="edit-ln" class="form-input" value="' + escapeHtml(lastName) + '"></div>';
+        html += '</div>';
+        html += '<div class="form-row">';
+        html += '<div class="form-group"><label>' + t('middle_name') + '</label><input type="text" id="edit-mid" class="form-input" value="' + escapeHtml(middleName) + '" placeholder="' + (currentLang === 'en' ? 'Middle name (optional)' : 'Иванович (необязательно)') + '"></div>';
         html += '</div>';
 
         html += '<div class="form-row">';
@@ -2146,6 +2145,7 @@ function onAvatarFileSelected(inp) {
 function saveUserProfileData(playerId) {
     var fnInp = document.getElementById('edit-fn');
     var lnInp = document.getElementById('edit-ln');
+    var midInp = document.getElementById('edit-mid');
     var hcpInp = document.getElementById('edit-hcp');
     var genderInp = document.getElementById('edit-gender');
     var phoneInp = document.getElementById('edit-phone');
@@ -2153,8 +2153,10 @@ function saveUserProfileData(playerId) {
     var avatarInp = document.getElementById('edit-avatar-val');
 
     var firstName = fnInp ? sanitizeNameRaw(fnInp.value) : '';
+    var middleName = midInp ? sanitizeNameRaw(midInp.value) : '';
     var lastName = lnInp ? sanitizeNameRaw(lnInp.value) : '';
-    var fullName = (firstName + ' ' + lastName).trim() || 'Player';
+    // Полное имя: «Имя [Отчество] Фамилия»
+    var fullName = ((firstName + ' ' + (middleName ? middleName + ' ' : '')) + lastName).trim() || 'Player';
     var exactHcp = hcpInp ? parseExactHcp(hcpInp.value) : 0;
     var gender = genderInp ? genderInp.value : 'men';
     var phone = phoneInp ? phoneInp.value.trim().replace(/[^\d+\-() ]/g, '').substring(0, 20) : '';
@@ -2164,6 +2166,7 @@ function saveUserProfileData(playerId) {
     var updates = {
         name: fullName,
         firstName: firstName,
+        middleName: middleName || null,
         lastName: lastName,
         handicap: exactHcp,
         gender: gender,
@@ -2231,7 +2234,7 @@ function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback) {
 
             html += '<div class="list-item" style="padding:14px;margin-bottom:10px;flex-wrap:wrap;gap:8px;">';
             html += '<div style="flex:1;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</strong>';
-            html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + holeCount + ' · Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div></div>';
+            html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + holeCount + ' · Gross: ' + (stats.gross || 0) + '</div></div>';
             html += '<div style="text-align:right;"><div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;font-size:18px;">' + fmtScore(stats.toPar) + '</div></div>';
             html += '</div>';
         });
@@ -2297,13 +2300,12 @@ function generatePestovoScorecardHTML(player, roundData) {
     var front = order.filter(function(h){ return h <= 9; });
     var back = order.filter(function(h){ return h >= 10; });
 
-    var totG = 0, totS = 0, totNet = 0, totPar = 0;
+    var totG = 0, totS = 0, totPar = 0;
     order.forEach(function(i) {
         var s = parseInt(sc[i]) || 0;
         if (s > 0) {
             totG += s;
             totS += stablefordField(s, i, fHcp);
-            totNet += calcNettScore(s, holePar(i), holeHcp(i), fHcp);
         }
         totPar += holePar(i);
     });
@@ -2339,11 +2341,10 @@ function generatePestovoScorecardHTML(player, roundData) {
             html += '</div>';
         });
         html += '</div>';
-        var outG = 0, outNet = 0, outS = 0;
-        front.forEach(function(i){ var s=parseInt(sc[i])||0; if(s>0){ outG+=s; outNet+=calcNettScore(s,holePar(i),holeHcp(i),fHcp); outS+=stablefordField(s,i,fHcp);} });
+        var outG = 0, outS = 0;
+        front.forEach(function(i){ var s=parseInt(sc[i])||0; if(s>0){ outG+=s; outS+=stablefordField(s,i,fHcp);} });
         html += '<div class="msc-totals-strip">';
         html += '  <span>OUT: <b>' + (outG > 0 ? outG : '—') + '</b></span>';
-        html += '  <span>Net: <b>' + (outNet > 0 ? outNet : '—') + '</b></span>';
         html += '  <span>Stbl: <b>' + outS + 'p</b></span>';
         html += '</div>';
     }
@@ -2367,18 +2368,16 @@ function generatePestovoScorecardHTML(player, roundData) {
             html += '</div>';
         });
         html += '</div>';
-        var inG = 0, inNet = 0, inS = 0;
-        back.forEach(function(i){ var s=parseInt(sc[i])||0; if(s>0){ inG+=s; inNet+=calcNettScore(s,holePar(i),holeHcp(i),fHcp); inS+=stablefordField(s,i,fHcp);} });
+        var inG = 0, inS = 0;
+        back.forEach(function(i){ var s=parseInt(sc[i])||0; if(s>0){ inG+=s; inS+=stablefordField(s,i,fHcp);} });
         html += '<div class="msc-totals-strip">';
         html += '  <span>IN: <b>' + (inG > 0 ? inG : '—') + '</b></span>';
-        html += '  <span>Net: <b>' + (inNet > 0 ? inNet : '—') + '</b></span>';
         html += '  <span>Stbl: <b>' + inS + 'p</b></span>';
         html += '</div>';
     }
 
     html += '<div class="msc-grand-strip">';
     html += '  <span>GROSS: <b>' + (totG > 0 ? totG : '—') + '</b></span>';
-    html += '  <span>NET: <b>' + (totNet > 0 ? totNet : '—') + '</b></span>';
     html += '  <span>STABLEFORD: <b>' + totS + 'p</b></span>';
     html += '</div>';
 
@@ -2416,7 +2415,7 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
     for (var i = 1; i <= 9; i++) pOut += holePar(i);
     for (var i = 10; i <= 18; i++) pIn += holePar(i);
 
-    var html = '<div class="paper-scorecard-wrap" id="printable-scorecard">';
+    var html = '<div class="paper-scorecard-wrap">';
 
     // Top Header with Logo
     html += '<div class="psc-top-header">';
@@ -2535,9 +2534,7 @@ function openPrintScorecardModal(roundId, playerId) {
         }
 
         var playersList = Object.entries(r.players);
-        var pid = playerId || playersList[0][0];
-        var p = r.players[pid] || playersList[0][1];
-        if (!p) return;
+        if (!playersList.length) return;
 
         var modalEl = document.getElementById('print-modal');
         if (!modalEl) {
@@ -2556,31 +2553,30 @@ function openPrintScorecardModal(roundId, playerId) {
             if (document.body) document.body.appendChild(modalEl);
         }
 
-        var bodyEl = document.getElementById('print-modal-body');
+    var bodyEl = document.getElementById('print-modal-body');
 
-        var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">';
-        html += '<h2 style="color:var(--gold);margin:0;"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print Official Scorecard' : 'Печать официальной счётной карточки') + '</h2>';
-        html += '<div style="display:flex;gap:8px;">';
-        html += '<button type="button" class="btn btn-g" onclick="window.print()"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print' : 'Распечатать') + '</button>';
-        html += '<button type="button" class="btn btn-og" onclick="closePrintModal()">' + (currentLang === 'en' ? 'Close' : 'Закрыть') + '</button>';
-        html += '</div></div>';
+    // Печатается карточка каждого игрока раунда: на листе A4 (landscape)
+    // помещается 2 карточки, при печати видна только сама карточка.
+    var html = '<div class="print-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">';
+    html += '<h2 style="color:var(--gold);margin:0;"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print Official Scorecard' : 'Печать официальной счётной карточки') + '</h2>';
+    html += '<div style="display:flex;gap:8px;">';
+    html += '<button type="button" class="btn btn-g" onclick="window.print()"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print' : 'Распечатать') + '</button>';
+    html += '<button type="button" class="btn btn-og" onclick="closePrintModal()">' + (currentLang === 'en' ? 'Close' : 'Закрыть') + '</button>';
+    html += '</div></div>';
 
-        if (playersList.length > 1) {
-            html += '<div style="margin-bottom:12px;background:var(--input);padding:10px;border-radius:var(--rs);border:1px solid var(--border);display:flex;align-items:center;gap:12px;">';
-            html += '<label style="font-size:12px;color:var(--gold);font-weight:700;"><i class="fas fa-users"></i> Игрок группы:</label>';
-            html += '<select class="form-input" style="max-width:260px;" onchange="openPrintScorecardModal(\'' + roundId + '\', this.value)">';
-            playersList.forEach(function(pe) {
-                var id = pe[0], pl = pe[1];
-                var sel = id === pid ? 'selected' : '';
-                html += '<option value="' + id + '" ' + sel + '>' + escapeHtml(pl.name || 'Player') + '</option>';
-            });
-            html += '</select></div>';
-        }
+    if (playersList.length > 1) {
+        html += '<p class="no-print" style="color:var(--muted);font-size:12px;margin-bottom:10px;"><i class="fas fa-circle-info"></i> ' +
+            (currentLang === 'en' ? 'Cards for all ' + playersList.length + ' players — 2 per A4 sheet.' : 'Карточки всех игроков (' + playersList.length + ') — по 2 на лист A4.') + '</p>';
+    }
 
-        html += generateExactPestovoPaperScorecardHTML(p, r);
+    html += '<div id="printable-scorecard" class="print-cards-grid">';
+    playersList.forEach(function(pe) {
+        html += generateExactPestovoPaperScorecardHTML(pe[1], r);
+    });
+    html += '</div>';
 
-        if (bodyEl) bodyEl.innerHTML = html;
-        modalEl.classList.remove('hidden');
+    if (bodyEl) bodyEl.innerHTML = html;
+    modalEl.classList.remove('hidden');
     });
 }
 
@@ -2717,9 +2713,9 @@ function exportRoundPNG(roundId, playerId) {
         var order = getRoundOrder(r);
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
 
+        // Карточка NET убрана из PNG (по требованию клуба — без отображения Net)
         drawKPICard(ctx, 160, 315, 220, 115, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
         drawKPICard(ctx, 430, 315, 220, 115, 'GROSS', String(stats.gross || 0), '#c9a84c');
-        drawKPICard(ctx, 700, 315, 220, 115, 'NET', String(stats.net || 0), '#5aade0');
 
         // Hole Grid Rows (Front 9 & Back 9) - TRADITIONAL SCORECARD (HOLE, PAR, SCORE)
         drawScorecardGridRow(ctx, p.scores || {}, 1, 9, 460);
@@ -3658,13 +3654,54 @@ function toggleActiveScorecard(panelId) {
     }
 }
 
+// Состав флайта: имена всех игроков раунда, играющих на поле вместе с
+// вызвавшим (кроме самого вызвавшего). Порядок — как в participantsList.
+function getFlightPlayerNames(roundData, excludeUid) {
+    if (!roundData || !roundData.players) return [];
+    var order = (Array.isArray(roundData.participantsList) && roundData.participantsList.length)
+        ? roundData.participantsList
+        : Object.keys(roundData.players);
+    var names = [];
+    order.forEach(function(pid) {
+        if (pid === excludeUid) return;
+        var p = roundData.players[pid];
+        if (p && p.name) names.push(p.name);
+    });
+    return names;
+}
+
 // ==========================================
 // TELEGRAM BOT OFFICIAL ALERTS (GROUP & CHANNEL)
 // ==========================================
+// Формат сообщения о вызове судьи/маршала (общий для Telegram и ВКонтакте):
+//   Вызов Судьи / Вызов Маршала
+//   Кто вызвал: Имя Фамилия игрока
+//   Лунка: №N
+//   Время: ЧЧ:ММ
+//   Состав флайта: Имя Фамилия, ... (все игроки, играющие на поле
+//   вместе с вызвавшим; для группового раунда)
+function buildOfficialCallText(type, holeNum, callerName, flightNames, withHtml) {
+    var isHtml = !!withHtml;
+    var esc = isHtml ? (typeof escapeHtml === 'function' ? escapeHtml : function(v) { return String(v); }) : function(v) { return String(v); };
+    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
+    var title = type === 'referee' ? '🚨 Вызов Судьи' : '🚨 Вызов Маршала';
+    var bOpen = isHtml ? '<b>' : '', bClose = isHtml ? '</b>' : '';
+    var parts = [];
+    parts.push(isHtml ? '<b>' + title + '</b>' : title);
+    parts.push(bOpen + 'Кто вызвал:' + bClose + ' ' + esc(callerName || 'Игрок'));
+    parts.push(bOpen + 'Лунка:' + bClose + ' №' + holeNum);
+    parts.push(bOpen + 'Время:' + bClose + ' ' + timeStr);
+    var flight = (flightNames || []).map(function(n) { return String(n || '').trim(); }).filter(Boolean);
+    if (flight.length) {
+        parts.push(bOpen + 'Состав флайта:' + bClose + ' ' + esc(flight.join(', ')));
+    }
+    return parts.join('\n');
+}
+
 // Внутренний «молчаливый» отправитель: используется, когда вызов делает
 // ИГРОК с поля — он не должен видеть «Тайм-аут соединения» / «Ошибка сети»
 // в тосте (он уже нажал «Вызвать судью» и видит «🚨 Судья вызван»).
-function sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerName, roundInfo) {
+function sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerName, flightNames) {
     token = (token || '').trim();
     chat = (chat || '').trim();
 
@@ -3673,17 +3710,7 @@ function sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerNa
         return;
     }
 
-    var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
-    var safePlayerName = escapeHtml(playerName || 'Игрок');
-    var safeRoundInfo = escapeHtml(roundInfo || 'Активный раунд');
-    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
-
-    var text = '🚨 <b>' + typeTitle + ' В ПЕСТОВО!</b>\n' +
-               '----------------------------------\n' +
-               '👤 <b>Игрок:</b> ' + safePlayerName + '\n' +
-               '⛳ <b>Лунка:</b> №' + holeNum + '\n' +
-               '📋 <b>Раунд:</b> ' + safeRoundInfo + '\n' +
-               '⏰ <b>Время:</b> ' + timeStr;
+    var text = buildOfficialCallText(type, holeNum, playerName, flightNames, true);
 
     var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch(e){} }, 6000) : null;
@@ -3726,22 +3753,12 @@ function sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerNa
 // «Молчаливый» вариант: та же логика, но без тостов на ошибках и успехах.
 // Используется, когда вызов инициирует ИГРОК — он не должен получать
 // «Тайм-аут соединения» или «Ошибка сети», только «🚨 Судья вызван».
-function sendTelegramSilentAlert(token, chat, type, holeNum, playerName, roundInfo) {
+function sendTelegramSilentAlert(token, chat, type, holeNum, playerName, flightNames) {
     token = (token || '').trim();
     chat = (chat || '').trim();
     if (!token || !chat) return; // нет настроек — тихо выходим
 
-    var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
-    var safePlayerName = escapeHtml(playerName || 'Игрок');
-    var safeRoundInfo = escapeHtml(roundInfo || 'Активный раунд');
-    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
-
-    var text = '🚨 <b>' + typeTitle + ' В ПЕСТОВО!</b>\n' +
-               '----------------------------------\n' +
-               '👤 <b>Игрок:</b> ' + safePlayerName + '\n' +
-               '⛳ <b>Лунка:</b> №' + holeNum + '\n' +
-               '📋 <b>Раунд:</b> ' + safeRoundInfo + '\n' +
-               '⏰ <b>Время:</b> ' + timeStr;
+    var text = buildOfficialCallText(type, holeNum, playerName, flightNames, true);
 
     var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch(e){} }, 6000) : null;
@@ -3772,7 +3789,7 @@ function sendTelegramSilentAlert(token, chat, type, holeNum, playerName, roundIn
     });
 }
 
-function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetMode) {
+function sendTelegramOfficialAlert(type, holeNum, playerName, flightNames, targetMode) {
     // ВАЖНО: этот вызов делает ИГРОК. Никаких тостов об ошибках сети / таймаутах
     // Telegram ему показывать нельзя — он уже видит «🚨 Судья вызван». Если Telegram
     // настроен и отвечает — это плюс. Если нет — вызов всё равно лежит в Firebase
@@ -3784,10 +3801,10 @@ function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetM
     var channelId = (localStorage.getItem('pestovo_tg_channel_id') || '').trim();
 
     if (groupToken && groupId && (targetMode === 'group' || !targetMode)) {
-        sendTelegramSilentAlert(groupToken, groupId, type, holeNum, playerName, roundInfo);
+        sendTelegramSilentAlert(groupToken, groupId, type, holeNum, playerName, flightNames);
     }
     if (channelToken && channelId && (targetMode === 'channel' || !targetMode)) {
-        sendTelegramSilentAlert(channelToken, channelId, type, holeNum, playerName, roundInfo);
+        sendTelegramSilentAlert(channelToken, channelId, type, holeNum, playerName, flightNames);
     }
 
     if (!groupToken && !channelToken && typeof db !== 'undefined') {
@@ -3799,10 +3816,10 @@ function sendTelegramOfficialAlert(type, holeNum, playerName, roundInfo, targetM
             var cId = (tg.channelId || '').trim();
 
             if (gTok && gId && (targetMode === 'group' || !targetMode)) {
-                sendTelegramSilentAlert(gTok, gId, type, holeNum, playerName, roundInfo);
+                sendTelegramSilentAlert(gTok, gId, type, holeNum, playerName, flightNames);
             }
             if (cTok && cId && (targetMode === 'channel' || !targetMode)) {
-                sendTelegramSilentAlert(cTok, cId, type, holeNum, playerName, roundInfo);
+                sendTelegramSilentAlert(cTok, cId, type, holeNum, playerName, flightNames);
             }
         });
     }
@@ -3896,41 +3913,34 @@ function vkSendMessageJsonp(token, peerId, text, silent) {
 }
 
 /**
- * Формирует текст уведомления о вызове судьи/маршала.
+ * Формирует текст уведомления о вызове судьи/маршала (обычный текст для VK).
  */
-function vkBuildAlertText(type, holeNum, playerName, roundInfo) {
-    var typeTitle = type === 'referee' ? '⚖️ ВЫЗОВ СУДЬИ' : '🛡️ ВЫЗОВ МАРШАЛА';
-    var timeStr = typeof fmtTime === 'function' ? fmtTime(Date.now()) : new Date().toLocaleTimeString('ru-RU');
-    return '🚨 ' + typeTitle + ' В ПЕСТОВО!\n' +
-           '----------------------------------\n' +
-           '👤 Игрок: ' + (playerName || 'Игрок') + '\n' +
-           '⛳ Лунка: №' + holeNum + '\n' +
-           '📋 Раунд: ' + (roundInfo || 'Активная игра') + '\n' +
-           '⏰ Время: ' + timeStr;
+function vkBuildAlertText(type, holeNum, playerName, flightNames) {
+    return buildOfficialCallText(type, holeNum, playerName, flightNames, false);
 }
 
 /**
  * Прямая отправка с тостами (для теста из админки).
  */
-function sendVKDirectAlert(token, peerId, type, holeNum, playerName, roundInfo) {
+function sendVKDirectAlert(token, peerId, type, holeNum, playerName, flightNames) {
     token = (token || '').trim();
     peerId = (peerId || '').trim();
     if (!token || !peerId) {
         toast('⚠️ Укажите VK Access Token и Peer ID в настройках', 'error');
         return;
     }
-    var text = vkBuildAlertText(type, holeNum, playerName, roundInfo);
+    var text = vkBuildAlertText(type, holeNum, playerName, flightNames);
     vkSendMessageJsonp(token, peerId, text, false);
 }
 
 /**
  * «Молчаливый» вариант для ИГРОКА: без тостов об ошибках.
  */
-function sendVKSilentAlert(token, peerId, type, holeNum, playerName, roundInfo) {
+function sendVKSilentAlert(token, peerId, type, holeNum, playerName, flightNames) {
     token = (token || '').trim();
     peerId = (peerId || '').trim();
     if (!token || !peerId) return;
-    var text = vkBuildAlertText(type, holeNum, playerName, roundInfo);
+    var text = vkBuildAlertText(type, holeNum, playerName, flightNames);
     vkSendMessageJsonp(token, peerId, text, true);
 }
 
@@ -3938,19 +3948,19 @@ function sendVKSilentAlert(token, peerId, type, holeNum, playerName, roundInfo) 
  * Точка входа при вызове судьи/маршала ИГРОКОМ.
  * Читает настройки из localStorage → Firebase, отправляет молча.
  */
-function sendVKOfficialAlert(type, holeNum, playerName, roundInfo) {
+function sendVKOfficialAlert(type, holeNum, playerName, flightNames) {
     var vkToken  = (localStorage.getItem('pestovo_vk_token')   || '').trim();
     var vkPeerId = (localStorage.getItem('pestovo_vk_peer_id') || '').trim();
 
     if (vkToken && vkPeerId) {
-        sendVKSilentAlert(vkToken, vkPeerId, type, holeNum, playerName, roundInfo);
+        sendVKSilentAlert(vkToken, vkPeerId, type, holeNum, playerName, flightNames);
     } else if (typeof db !== 'undefined') {
         db.ref('settings/vk').once('value').then(function(sn) {
             var vk = sn.val() || {};
             var token = (vk.token  || '').trim();
             var peer  = (vk.peerId || '').trim();
             if (token && peer) {
-                sendVKSilentAlert(token, peer, type, holeNum, playerName, roundInfo);
+                sendVKSilentAlert(token, peer, type, holeNum, playerName, flightNames);
             }
         }).catch(function(e) {
             console.warn('⚠️ VK: не удалось загрузить настройки из Firebase:', e);
@@ -4106,12 +4116,16 @@ function resolveOrCreatePlayerUser(p) {
     if (!cleanName) return Promise.resolve(null);
     var parts = cleanName.split(' ');
     var firstName = p.firstName ? sanitizeNameRaw(p.firstName) : (parts[0] || cleanName);
+    var middleName = p.middleName ? sanitizeNameRaw(p.middleName) : '';
     var lastName = p.lastName ? sanitizeNameRaw(p.lastName) : (parts.slice(1).join(' ') || '');
     var exactHcp = parseExactHcp(p.exactHcp != null ? p.exactHcp : (p.handicap || 0));
     var gender = p.gender || 'men';
     var defaultTee = p.tee || p.defaultTee || (gender === 'women' ? 'rd' : 'bl');
 
+    // Отчество обновляем только если оно реально указано — чтобы пустое поле
+    // при создании раунда не затирало отчество, сохранённое ранее в профиле.
     var patch = { handicap: exactHcp, firstName: firstName, lastName: lastName, name: cleanName, gender: gender };
+    if (middleName) patch.middleName = middleName;
 
     var updateLocalCaches = function(id, data) {
         if (!id) return;
@@ -4132,7 +4146,9 @@ function resolveOrCreatePlayerUser(p) {
 
     var finish = function(id) {
         // isGuest в кэш не пишем — его проставит слушатель users из БД
-        updateLocalCaches(id, { name: cleanName, firstName: firstName, lastName: lastName, handicap: exactHcp, gender: gender, defaultTee: defaultTee });
+        var cacheData = { name: cleanName, firstName: firstName, lastName: lastName, handicap: exactHcp, gender: gender, defaultTee: defaultTee };
+        if (middleName) cacheData.middleName = middleName;
+        updateLocalCaches(id, cacheData);
         return id;
     };
 
@@ -4152,6 +4168,7 @@ function resolveOrCreatePlayerUser(p) {
             createdAt: Date.now(),
             roundsPlayed: 0
         };
+        if (middleName) uidData.middleName = middleName;
         if (typeof db === 'undefined') return Promise.resolve(finish(uidKey));
         return db.ref('users/' + uidKey).once('value').then(function(sn) {
             if (!sn.exists()) {
@@ -4178,6 +4195,7 @@ function resolveOrCreatePlayerUser(p) {
         createdAt: Date.now(),
         roundsPlayed: 0
     };
+    if (middleName) guestData.middleName = middleName;
 
     if (typeof db === 'undefined') return Promise.resolve(finish(candidateId));
 
@@ -4668,6 +4686,7 @@ function initPlayerSearchAutofill(opts) {
                     name: full,
                     firstName: fn || full.split(' ')[0] || full,
                     lastName: ln || full.split(' ').slice(1).join(' ') || '',
+                    middleName: u.middleName || '',
                     handicap: u.handicap != null ? u.handicap : 0,
                     gender: u.gender || 'men',
                     defaultTee: u.defaultTee || (u.gender === 'women' ? 'rd' : 'bl'),

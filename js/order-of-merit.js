@@ -21,9 +21,13 @@ function loadOrderOfMerit() {
 
         // Базовые очки участия начисляются всем игрокам, в том числе тем, у кого
         // уже есть турнирные результаты (раньше они ошибочно их не получали).
-        Object.entries(users).forEach(function(ue) {
+        var filteredUserEntries = Object.entries(users).filter(function(ue){
             var uid = ue[0], u = ue[1];
-            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u && u.name)) return;
+            return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u && u.name));
+        });
+        var dedupedUserEntries = (typeof dedupePlayerEntriesByFio === 'function') ? dedupePlayerEntriesByFio(filteredUserEntries) : filteredUserEntries;
+        dedupedUserEntries.forEach(function(ue) {
+            var uid = ue[0], u = ue[1];
             seasonPoints[uid] = {
                 pid: uid,
                 name: u.name || 'Player',
@@ -43,8 +47,9 @@ function loadOrderOfMerit() {
             if (!r || r.status !== 'completed' || !r.tournamentId || !r.players) return;
 
             var order = getRoundOrder(r);
-            var players = Object.entries(r.players).filter(function(pe) {
-                // Удалённые и навсегда заблокированные демо-игроки не попадают в зачёт
+            var rawRoundPlayers = r.players || {};
+            var dedupedRoundPlayers = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawRoundPlayers) : rawRoundPlayers;
+            var players = Object.entries(dedupedRoundPlayers).filter(function(pe) {
                 return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
             }).map(function(pe) {
                 var pid = pe[0], p = pe[1];

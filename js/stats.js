@@ -14,10 +14,12 @@ function loadStats() {
         var users = snaps[1].val() || {};
 
         var totalRounds = 0, completed = 0, active = 0;
-        var totalPlayers = Object.keys(users).filter(function(uid) {
-            var u = users[uid];
+        var filteredUsers = Object.entries(users).filter(function(e){
+            var uid = e[0], u = e[1];
             return !(u && typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u.name));
-        }).length;
+        });
+        var dedupedUsers = (typeof dedupePlayerEntriesByFio === 'function') ? dedupePlayerEntriesByFio(filteredUsers) : filteredUsers;
+        var totalPlayers = dedupedUsers.length;
         var totalHoles = 0;
         var birdies = 0, eagles = 0, pars = 0, hio = 0;
         var bestGross = Infinity, bestGrossPlayer = '—';
@@ -38,13 +40,15 @@ function loadStats() {
             var startTS = r.startTime || r.createdAt;
             var endTS = r.completedAt;
 
+            var roundPlayersForStats = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(r.players || {}) : (r.players || {});
+
             if (r.status === 'completed') {
                 completed++;
                 
                 if (startTS && endTS && endTS > startTS) {
                     var dur = (endTS - startTS) / 60000;
                     if (dur >= 0.5) {
-                        Object.entries(r.players || {}).forEach(function(pe) {
+                        Object.entries(roundPlayersForStats).forEach(function(pe) {
                             var p = pe[1];
                             if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], p && p.name)) return;
                             var sc = p.scores || {};
@@ -63,7 +67,7 @@ function loadStats() {
             if (r.mode === 'solo') soloCount++;
             else groupCount++;
 
-            Object.entries(r.players || {}).forEach(function(pe) {
+            Object.entries(roundPlayersForStats).forEach(function(pe) {
                 var pid = pe[0], p = pe[1];
                 if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
                 var scores = p.scores || {};

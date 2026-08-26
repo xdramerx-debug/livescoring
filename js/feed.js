@@ -23,8 +23,9 @@ function loadLiveFeed() {
             var rid = e[0], r = e[1];
             if (!r || typeof r !== 'object') return;
             var order = getRoundOrder(r);
+            var roundPlayers = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(r.players || {}) : (r.players || {});
 
-            Object.entries(r.players || {}).forEach(function(pe) {
+            Object.entries(roundPlayers).forEach(function(pe) {
                 var pid = pe[0], p = pe[1];
                 // Удалённые и навсегда заблокированные демо-игроки не показываются в ленте
                 if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;

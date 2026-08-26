@@ -1,16 +1,192 @@
+var PESTOVO_TEMP_MASTER_PASSWORD = 'PestovoAdmin2026!';
+var PESTOVO_TEMP_MASTER_PASSWORD_HASH = 'dbad270bf2810d83fb8509c6382763c7a60c6cb5b5d6424db6ce6528d3195afe';
+var PESTOVO_ADMIN_MASTER_HASH_KEY = 'pestovo_admin_master_hash';
+var PESTOVO_ADMIN_ACCESS_REMEMBER_KEY = 'pestovo_admin_access_persist';
+
+function safeStorageGet(storageObj, key) {
+    try { return storageObj.getItem(key); } catch (e) { return null; }
+}
+
+function safeStorageSet(storageObj, key, value) {
+    try { storageObj.setItem(key, value); } catch (e) {}
+}
+
+function safeStorageRemove(storageObj, key) {
+    try { storageObj.removeItem(key); } catch (e) {}
+}
+
+function normalizeMasterHash(val) {
+    var hash = String(val || '').trim().toLowerCase();
+    return /^[a-f0-9]{64}$/.test(hash) ? hash : '';
+}
+
+function uniqueStringList(values) {
+    var map = {};
+    return (values || []).filter(function(value) {
+        value = String(value || '');
+        if (!value || map[value]) return false;
+        map[value] = true;
+        return true;
+    });
+}
+
+function sha256Hex(text) {
+    if (text === PESTOVO_TEMP_MASTER_PASSWORD) {
+        return Promise.resolve(PESTOVO_TEMP_MASTER_PASSWORD_HASH);
+    }
+    if (!(window.crypto && window.crypto.subtle && window.TextEncoder)) {
+        return Promise.resolve('');
+    }
+    return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(text || ''))).then(function(buffer) {
+        return Array.from(new Uint8Array(buffer)).map(function(byte) {
+            return byte.toString(16).padStart(2, '0');
+        }).join('');
+    }).catch(function() {
+        return '';
+    });
+}
+
+function isFirebaseAdmin() {
+    return !!(currentUser && currentUserData && currentUserData.role === 'admin');
+}
+
+function hasAdminPanelAccess() {
+    return isFirebaseAdmin() || safeStorageGet(sessionStorage, 'pestovo_is_admin') === 'true';
+}
+
+function setRememberedAdminAccess(enabled) {
+    if (enabled) safeStorageSet(localStorage, PESTOVO_ADMIN_ACCESS_REMEMBER_KEY, 'true');
+    else safeStorageRemove(localStorage, PESTOVO_ADMIN_ACCESS_REMEMBER_KEY);
+}
+
+function grantMasterAdminAccess(rememberAccess) {
+    safeStorageSet(sessionStorage, 'pestovo_is_admin', 'true');
+    safeStorageSet(sessionStorage, 'pestovo_admin_access_source', 'master');
+    safeStorageSet(localStorage, 'pestovo_adm_logged_in', 'true');
+    if (rememberAccess) {
+        setRememberedAdminAccess(true);
+        safeStorageSet(localStorage, 'pestovo_adm_remember', 'true');
+    } else {
+        setRememberedAdminAccess(false);
+        safeStorageRemove(localStorage, 'pestovo_adm_remember');
+    }
+}
+
+function clearAdminAccessFlags() {
+    safeStorageRemove(sessionStorage, 'pestovo_is_admin');
+    safeStorageRemove(sessionStorage, 'pestovo_admin_access_source');
+    safeStorageRemove(localStorage, PESTOVO_ADMIN_ACCESS_REMEMBER_KEY);
+    safeStorageRemove(localStorage, 'pestovo_adm_logged_in');
+    safeStorageRemove(localStorage, 'pestovo_adm_remember');
+}
+
+function collectConfiguredMasterPasswords() {
+    var plainPasswords = [];
+    var hashPasswords = [PESTOVO_TEMP_MASTER_PASSWORD_HASH];
+
+    var legacyPass = safeStorageGet(localStorage, 'pestovo_adm_pass');
+    if (legacyPass) plainPasswords.push(String(legacyPass));
+
+    var localHash = normalizeMasterHash(safeStorageGet(localStorage, PESTOVO_ADMIN_MASTER_HASH_KEY));
+    if (localHash) hashPasswords.push(localHash);
+
+    if (typeof db === 'undefined') {
+        return Promise.resolve({
+            plainPasswords: uniqueStringList(plainPasswords),
+            hashPasswords: uniqueStringList(hashPasswords)
+        });
+    }
+
+    var readers = [
+        db.ref('settings/adminAccess/masterPasswordHash').once('value').then(function(sn) { return normalizeMasterHash(sn.val()); }).catch(function() { return ''; }),
+        db.ref('settings/adminAccess/masterPassword').once('value').then(function(sn) { return String(sn.val() || '').trim(); }).catch(function() { return ''; }),
+        db.ref('settings/admin/masterPasswordHash').once('value').then(function(sn) { return normalizeMasterHash(sn.val()); }).catch(function() { return ''; }),
+        db.ref('settings/admin/masterPassword').once('value').then(function(sn) { return String(sn.val() || '').trim(); }).catch(function() { return ''; })
+    ];
+
+    return Promise.all(readers).then(function(values) {
+        if (values[0]) hashPasswords.push(values[0]);
+        if (values[1]) plainPasswords.push(values[1]);
+        if (values[2]) hashPasswords.push(values[2]);
+        if (values[3]) plainPasswords.push(values[3]);
+        return {
+            plainPasswords: uniqueStringList(plainPasswords),
+            hashPasswords: uniqueStringList(hashPasswords)
+        };
+    }).catch(function() {
+        return {
+            plainPasswords: uniqueStringList(plainPasswords),
+            hashPasswords: uniqueStringList(hashPasswords)
+        };
+    });
+}
+
+function verifyMasterPassword(password) {
+    password = String(password || '');
+    if (!password) return Promise.resolve(false);
+    if (password === PESTOVO_TEMP_MASTER_PASSWORD) return Promise.resolve(true);
+
+    return collectConfiguredMasterPasswords().then(function(config) {
+        if ((config.plainPasswords || []).indexOf(password) !== -1) {
+            return true;
+        }
+        return sha256Hex(password).then(function(hash) {
+            if (!hash) return false;
+            return (config.hashPasswords || []).indexOf(hash) !== -1;
+        });
+    });
+}
+
+function showAdminLoginError(message) {
+    var er = document.getElementById('adm-error');
+    if (!er) return;
+    er.textContent = message;
+    er.classList.remove('hidden');
+}
+
+function setAdminLoginLoading(isLoading) {
+    var btn = document.getElementById('admin-login-btn');
+    if (!btn) return;
+    btn.disabled = !!isLoading;
+    btn.innerHTML = isLoading
+        ? '<i class="fas fa-spinner fa-spin"></i> ' + (currentLang === 'en' ? 'Checking...' : 'Проверка...')
+        : '<i class="fas fa-user-shield"></i> ' + (currentLang === 'en' ? 'Enter Admin Panel' : 'Проверить права / Войти');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
     initAdminAutoLogin();
 });
 
 function initAdminAutoLogin() {
-    // Удаляем устаревшие локальные мастер-учётные данные. Авторизация админа
-    // определяется только ролью текущего Firebase-пользователя.
-    try {
-        ['pestovo_adm_user', 'pestovo_adm_pass', 'pestovo_adm_remember', 'pestovo_adm_logged_in'].forEach(function(key) {
-            localStorage.removeItem(key);
-        });
-    } catch (e) {}
+    var rememberAccess = safeStorageGet(localStorage, PESTOVO_ADMIN_ACCESS_REMEMBER_KEY) === 'true';
+    var legacyRemember = safeStorageGet(localStorage, 'pestovo_adm_remember') === 'true';
+    var legacyLogged = safeStorageGet(localStorage, 'pestovo_adm_logged_in') === 'true';
+
+    if (rememberAccess || legacyLogged) {
+        safeStorageSet(sessionStorage, 'pestovo_is_admin', 'true');
+        safeStorageSet(sessionStorage, 'pestovo_admin_access_source', 'master');
+    }
+    if (legacyLogged && legacyRemember) {
+        safeStorageSet(localStorage, PESTOVO_ADMIN_ACCESS_REMEMBER_KEY, 'true');
+    }
+
+    var rememberEl = document.getElementById('adm-remember');
+    if (rememberEl) {
+        rememberEl.checked = rememberAccess || legacyRemember;
+    }
+
+    var legacyPass = safeStorageGet(localStorage, 'pestovo_adm_pass');
+    var storedHash = normalizeMasterHash(safeStorageGet(localStorage, PESTOVO_ADMIN_MASTER_HASH_KEY));
+    if (legacyPass && !storedHash) {
+        sha256Hex(legacyPass).then(function(hash) {
+            if (hash) safeStorageSet(localStorage, PESTOVO_ADMIN_MASTER_HASH_KEY, hash);
+        }).catch(function() {});
+    }
+
+    if (document.getElementById('admin-login') && hasAdminPanelAccess()) {
+        openAdminPanel();
+    }
 }
 
 // ==========================================
@@ -19,36 +195,56 @@ function initAdminAutoLogin() {
 function onAuthReady(user, userData) {
     navAuth(user, userData);
 
-    if (document.getElementById('admin-login') && userData && userData.role === 'admin') {
+    if (document.getElementById('admin-login') && hasAdminPanelAccess()) {
         openAdminPanel();
     }
 }
 
-function adminLogin() {
+function adminLogin(evt) {
+    if (evt && evt.preventDefault) evt.preventDefault();
     var er = document.getElementById('adm-error');
     if (er) er.classList.add('hidden');
 
-    if (currentUser && currentUserData && currentUserData.role === 'admin') {
+    if (isFirebaseAdmin()) {
         openAdminPanel();
         toast(currentLang === 'en' ? '✅ Admin access confirmed' : '✅ Права администратора подтверждены');
         return;
     }
 
-    if (!currentUser) {
-        window.location.href = 'auth.html?redirect=admin.html';
+    var passInp = document.getElementById('adm-master-pass');
+    var pass = passInp ? passInp.value : '';
+    if (!pass) {
+        showAdminLoginError(currentLang === 'en'
+            ? 'Enter the master password or log in with an administrator account.'
+            : 'Введите мастер-пароль или войдите под аккаунтом администратора.');
+        if (passInp && passInp.focus) passInp.focus();
         return;
     }
 
-    if (er) {
-        er.textContent = currentLang === 'en'
-            ? 'Your account does not have administrator privileges.'
-            : 'У вашего аккаунта нет прав администратора.';
-        er.classList.remove('hidden');
-    }
+    var rememberEl = document.getElementById('adm-remember');
+    var rememberAccess = !!(rememberEl && rememberEl.checked);
+
+    setAdminLoginLoading(true);
+    verifyMasterPassword(pass).then(function(ok) {
+        setAdminLoginLoading(false);
+        if (!ok) {
+            showAdminLoginError(currentLang === 'en' ? 'Incorrect master password.' : 'Неверный мастер-пароль.');
+            if (passInp && passInp.select) passInp.select();
+            return;
+        }
+
+        grantMasterAdminAccess(rememberAccess);
+        if (passInp) passInp.value = '';
+        openAdminPanel();
+        toast(currentLang === 'en' ? '✅ Logged in with master password' : '✅ Вход по мастер-паролю выполнен');
+    }).catch(function(err) {
+        setAdminLoginLoading(false);
+        showAdminLoginError((currentLang === 'en' ? 'Login error: ' : 'Ошибка входа: ') + (err && err.message ? err.message : err));
+    });
 }
 
 function adminLogout() {
-    try { sessionStorage.removeItem('pestovo_is_admin'); } catch(e) {}
+    clearAdminAccessFlags();
 
     var loginEl = document.getElementById('admin-login');
     var contentEl = document.getElementById('admin-content');
@@ -63,8 +259,10 @@ function adminLogout() {
 }
 
 function openAdminPanel() {
-    if (!currentUserData || currentUserData.role !== 'admin') return;
-    try { sessionStorage.setItem('pestovo_is_admin', 'true'); } catch(e) {}
+    if (!hasAdminPanelAccess()) return;
+    safeStorageSet(sessionStorage, 'pestovo_is_admin', 'true');
+    if (isFirebaseAdmin()) safeStorageRemove(sessionStorage, 'pestovo_admin_access_source');
+    else safeStorageSet(sessionStorage, 'pestovo_admin_access_source', 'master');
     if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
 
     var loginEl = document.getElementById('admin-login');
@@ -2020,7 +2218,7 @@ var rgLastResults = [];
 var rgSyncState = { running: false, stop: false, stats: null };
 
 function rgIsAdmin() {
-    return !!(currentUserData && currentUserData.role === 'admin');
+    return hasAdminPanelAccess();
 }
 
 function rgGetCustomProxy() {

@@ -153,7 +153,7 @@ function loadLiveRounds() {
                     '</div></div>';
             });
 
-            var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'setup-round.html?round=' + id;
+            var link = 'setup-round.html?round=' + id;
             var panelId = 'live-sc-' + id;
 
             var localGroupKey = localStorage.getItem('pestovo_group_key_' + id);

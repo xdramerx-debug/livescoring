@@ -241,22 +241,50 @@ function deleteRound(id) {
 
 function clearRounds() {
     if (confirm(currentLang === 'en' ? 'Delete ALL rounds and history? This cannot be undone!' : 'Удалить ВСЕ раунды и всю историю? Это необратимо!') && confirm(currentLang === 'en' ? 'Are you sure?' : 'Точно уверены?')) {
-        db.ref('rounds').remove();
-        db.ref('markers').remove();
-        db.ref('markerAssignments').remove();
-        db.ref('alerts').remove();
+        // Немедленно чистим локальные кэши раундов, чтобы автоподбор не показывал гостей из старых раундов
+        try {
+            if (typeof wipeLocalPlayerCaches === 'function') {
+                // Для clearRounds не скрываем демо-игроков, только гостей из раундов
+                // Поэтому делаем частичную очистку: удаляем гостей и ключи раундов
+                var keysToRemove = [];
+                for (var i = 0; i < localStorage.length; i++) {
+                    var k = localStorage.key(i);
+                    if (!k) continue;
+                    if (k.indexOf('pestovo_solo_key_') === 0 ||
+                        k.indexOf('pestovo_group_key_') === 0 ||
+                        k.indexOf('pestovo_acting_as_') === 0 ||
+                        k === 'pestovo_offline_scores') {
+                        keysToRemove.push(k);
+                    }
+                }
+                keysToRemove.forEach(function(k){ try{ localStorage.removeItem(k);}catch(e){} });
+                if (typeof cachedRegisteredUsers !== 'undefined') {
+                    Object.keys(cachedRegisteredUsers).forEach(function(k){
+                        if (k.indexOf('guest_') === 0 || k.indexOf('guest_name_') === 0) delete cachedRegisteredUsers[k];
+                    });
+                    try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e){}
+                }
+            }
+        } catch(e){}
 
-        db.ref('users').once('value').then(function(sn) {
-            var users = sn.val() || {};
-            Object.keys(users).forEach(function(uid) {
-                db.ref('users/' + uid + '/history').remove();
-                db.ref('users/' + uid).update({
-                    roundsPlayed: 0,
-                    bestGross: null,
-                    bestStableford: null
+        if (typeof db !== 'undefined') {
+            db.ref('rounds').remove();
+            db.ref('markers').remove();
+            db.ref('markerAssignments').remove();
+            db.ref('alerts').remove();
+
+            db.ref('users').once('value').then(function(sn) {
+                var users = sn.val() || {};
+                Object.keys(users).forEach(function(uid) {
+                    db.ref('users/' + uid + '/history').remove();
+                    db.ref('users/' + uid).update({
+                        roundsPlayed: 0,
+                        bestGross: null,
+                        bestStableford: null
+                    });
                 });
             });
-        });
+        }
 
         toast(currentLang === 'en' ? 'All rounds and history deleted' : 'Все раунды и история удалены', 'info');
     }
@@ -264,6 +292,12 @@ function clearRounds() {
 
 // Полностью удаляет ВСЕХ игроков И все раунды, чтобы после этого нигде
 // (списки, автоподбор, история, статистика, лидерборды) не осталось следов.
+// Исправлено: теперь гарантированно чистит ВСЕ локальные кэши игроков
+// (pestovo_cached_users, pestovo_custom_players, offline, solo/group keys,
+// deleted_ids) и ставит флаг pestovo_defaults_cleared, чтобы встроенные
+// демо-игроки тоже не появлялись в автодополнении при создании раунда
+// (одиночного или любого другого). Даже если Firebase недоступен —
+// локальный автоподбор становится пустым.
 function clearAllData() {
     var msg1 = currentLang === 'en'
         ? 'Delete ALL players AND ALL rounds? Everything will be permanently removed and cannot be recovered!'
@@ -274,12 +308,31 @@ function clearAllData() {
 
     if (!confirm(msg1) || !confirm(msg2)) return;
 
-    if (typeof db === 'undefined') {
-        // Оффлайн-режим: чистим только локальные кэши
+    // 0) Немедленная локальная зачистка — чтобы автоподбор опустел сразу,
+    // даже если Firebase ещё удаляет данные или недоступен.
+    try {
         if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
-        try {
-            localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([]));
-        } catch(e) {}
+        // Дополнительно гарантируем флаг скрытия демо-игроков и чистый список удалённых
+        localStorage.setItem('pestovo_defaults_cleared', 'true');
+        localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([]));
+        localStorage.removeItem('pestovo_cached_users');
+        localStorage.removeItem('pestovo_custom_players');
+        localStorage.removeItem('pestovo_offline_scores');
+        var extraKeys = [];
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (!k) continue;
+            if (k.indexOf('pestovo_solo_key_') === 0 ||
+                k.indexOf('pestovo_group_key_') === 0 ||
+                k.indexOf('pestovo_acting_as_') === 0) {
+                extraKeys.push(k);
+            }
+        }
+        extraKeys.forEach(function(k){ try{ localStorage.removeItem(k);}catch(e){} });
+    } catch(e) {}
+
+    if (typeof db === 'undefined') {
+        // Оффлайн-режим: чистим только локальные кэши (уже сделано выше)
         if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
         if (typeof loadAdmRounds === 'function') loadAdmRounds();
         toast(currentLang === 'en' ? 'All data deleted' : 'Все данные удалены', 'info');
@@ -308,10 +361,27 @@ function clearAllData() {
     }, function(){}).then(function() {
         return db.ref().update(wipeUpdates);
     }).then(function() {
-        // 2) Чистим локальные кэши и «прячем» встроенных демо-игроков
+        // 2) Повторная чистка локальных кэшей после успешной очистки Firebase
+        // (на случай если Firebase-лисенеры успели что-то записать обратно)
         if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
-        // Сбрасываем список «удалённых», т.к. база уже полностью пуста
-        try { localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([])); } catch(e) {}
+        try {
+            localStorage.setItem('pestovo_defaults_cleared', 'true');
+            localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([]));
+            localStorage.removeItem('pestovo_cached_users');
+            localStorage.removeItem('pestovo_custom_players');
+            localStorage.removeItem('pestovo_offline_scores');
+            var extraKeys2 = [];
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (!k) continue;
+                if (k.indexOf('pestovo_solo_key_') === 0 ||
+                    k.indexOf('pestovo_group_key_') === 0 ||
+                    k.indexOf('pestovo_acting_as_') === 0) {
+                    extraKeys2.push(k);
+                }
+            }
+            extraKeys2.forEach(function(k){ try{ localStorage.removeItem(k);}catch(e){} });
+        } catch(e) {}
         if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
 
         // 3) Обновляем открытые списки в админке
@@ -321,6 +391,12 @@ function clearAllData() {
         toast(currentLang === 'en' ? 'All players and rounds deleted everywhere' : 'Все игроки и раунды полностью удалены', 'info');
         if (typeof vib === 'function') vib([60, 40, 60]);
     }).catch(function(err) {
+        // Даже при ошибке Firebase — локально всё уже зачищено, чтобы автоподбор был пуст
+        if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
+        try {
+            localStorage.setItem('pestovo_defaults_cleared', 'true');
+            localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([]));
+        } catch(e){}
         toast((currentLang === 'en' ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err), 'error');
     });
 }

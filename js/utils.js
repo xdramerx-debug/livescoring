@@ -4072,11 +4072,32 @@ var cachedRegisteredUsers = areDefaultPlayersCleared() ? {} : Object.assign({}, 
 // Полностью стирает локальный кэш игроков (и в памяти, и в localStorage),
 // а также «прячет» встроенных демо-игроков, чтобы после удаления всех данных
 // в админке ни один игрок нигде не всплыл заново.
+// Расширено: чистит ВСЕ ключи, где могут остаться игроки — кастомный кэш,
+// оффлайн-очередь, ключи активных раундов (solo/group/acting_as), список
+// удалённых игроков. После этого автоподбор не должен показывать старых.
 function wipeLocalPlayerCaches() {
     try {
         localStorage.removeItem('pestovo_cached_users');
         localStorage.removeItem('pestovo_custom_players');
+        localStorage.removeItem('pestovo_deleted_player_ids');
+        localStorage.removeItem('pestovo_offline_scores');
         localStorage.setItem('pestovo_defaults_cleared', 'true');
+        // Удаляем все ключи вида pestovo_solo_key_*, pestovo_group_key_*, pestovo_acting_as_*
+        var keysToRemove = [];
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (!k) continue;
+            if (k.indexOf('pestovo_solo_key_') === 0 ||
+                k.indexOf('pestovo_group_key_') === 0 ||
+                k.indexOf('pestovo_acting_as_') === 0) {
+                keysToRemove.push(k);
+            }
+        }
+        keysToRemove.forEach(function(k) {
+            try { localStorage.removeItem(k); } catch(e) {}
+        });
+        // Чистый список удалённых — база пуста, запоминать нечего
+        try { localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([])); } catch(e) {}
     } catch(e) {}
 
     if (typeof cachedRegisteredUsers === 'object' && cachedRegisteredUsers) {
@@ -4084,7 +4105,13 @@ function wipeLocalPlayerCaches() {
             delete cachedRegisteredUsers[k];
         });
     }
-    lastRemoteUserIds = null;
+    // Если демо-игроки скрыты — оставляем пусто, иначе восстановим дефолты
+    if (!areDefaultPlayersCleared()) {
+        try { Object.assign(cachedRegisteredUsers, DEFAULT_REGISTERED_PLAYERS); } catch(e) {}
+    }
+    lastRemoteUserIds = [];
+    try { localStorage.removeItem('pestovo_cached_users'); } catch(e) {}
+    try { localStorage.removeItem('pestovo_custom_players'); } catch(e) {}
 }
 
 if (typeof window !== 'undefined') {
@@ -4093,9 +4120,20 @@ if (typeof window !== 'undefined') {
 }
 
 function syncKnownPlayersCache() {
+    // Если выполнена полная очистка — демо-игроки не должны возвращаться
+    if (areDefaultPlayersCleared()) {
+        Object.keys(DEFAULT_REGISTERED_PLAYERS).forEach(function(k) {
+            if (cachedRegisteredUsers[k]) delete cachedRegisteredUsers[k];
+        });
+    }
+
     var mergeCache = function(obj) {
+        if (!obj || typeof obj !== 'object') return;
         Object.keys(obj).forEach(function(k) {
+            if (!obj[k] || typeof obj[k] !== 'object') return;
             if (isPlayerDeleted(k, obj[k] && obj[k].name)) return;
+            // Если демо-игроки скрыты — не мержим их даже из localStorage
+            if (areDefaultPlayersCleared() && DEFAULT_REGISTERED_PLAYERS[k]) return;
             cachedRegisteredUsers[k] = obj[k];
         });
     };
@@ -4115,20 +4153,66 @@ function syncKnownPlayersCache() {
             if (p2 && typeof p2 === 'object') mergeCache(p2);
         }
     } catch(e) {}
+
+    // Финальная чистка: если флаг полной очистки стоит, удаляем всё, что могло просочиться
+    if (areDefaultPlayersCleared()) {
+        // Если в localStorage нет пользовательских игроков — кэш должен быть пустым
+        var hasCustom = false;
+        try {
+            var cc = localStorage.getItem('pestovo_custom_players');
+            var cu = localStorage.getItem('pestovo_cached_users');
+            if ((cc && JSON.parse(cc) && Object.keys(JSON.parse(cc)).length) ||
+                (cu && JSON.parse(cu) && Object.keys(JSON.parse(cu)).length)) {
+                hasCustom = true;
+            }
+        } catch(e) {}
+        if (!hasCustom) {
+            // Оставляем только то, что пришло из Firebase (оно уже в cachedRegisteredUsers)
+            // Но если Firebase пуст — кэш будет пуст, что и требуется
+        }
+    }
 }
+
+var lastRemoteUserIds = null;
 
 syncKnownPlayersCache();
 
-var lastRemoteUserIds = null;
+// Кросс-вкладочная синхронизация полной очистки: если в другой вкладке
+// нажали «Удалить всех игроков и раунды», флаг pestovo_defaults_cleared
+// становится true и localStorage чистится. Слушаем storage-событие и
+// чистим in-memory кэш в этой вкладке, чтобы автоподбор не показывал старых.
+if (typeof window !== 'undefined') {
+    window.addEventListener('storage', function(e) {
+        if (!e) return;
+        if (e.key === 'pestovo_defaults_cleared' && e.newValue === 'true') {
+            try {
+                if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
+            } catch(err) {}
+        }
+        if (e.key === 'pestovo_cached_users' && !e.newValue) {
+            try {
+                Object.keys(cachedRegisteredUsers).forEach(function(k){
+                    if (k.indexOf('guest_') === 0 || k.indexOf('guest_name_') === 0) delete cachedRegisteredUsers[k];
+                    if (DEFAULT_REGISTERED_PLAYERS[k]) delete cachedRegisteredUsers[k];
+                });
+            } catch(err){}
+        }
+        if (e.key === 'pestovo_custom_players' && !e.newValue) {
+            try {
+                // Ничего не мержим — кэш уже пуст
+            } catch(err){}
+        }
+    });
+}
 
 if (typeof db !== 'undefined') {
     try {
         db.ref('users').on('value', function(sn) {
             var val = sn.val();
-            if (val && typeof val === 'object') {
+            if (val && typeof val === 'object' && Object.keys(val).length) {
+                // Мержим свежие данные из Firebase
                 Object.assign(cachedRegisteredUsers, val);
-                // Игрок, которого удалили в Firebase, должен исчезнуть из локального кэша
-                // (Object.assign только добавляет, поэтому удаляем ключи из прошлого снапшота)
+                // Удаляем тех, кого больше нет в Firebase
                 if (lastRemoteUserIds) {
                     lastRemoteUserIds.forEach(function(key) {
                         if (!Object.prototype.hasOwnProperty.call(val, key)) {
@@ -4137,19 +4221,68 @@ if (typeof db !== 'undefined') {
                     });
                 }
                 lastRemoteUserIds = Object.keys(val);
+                // Если включена полная очистка — не сохраняем демо-игроков
+                if (areDefaultPlayersCleared()) {
+                    Object.keys(DEFAULT_REGISTERED_PLAYERS).forEach(function(k) {
+                        if (!val[k]) delete cachedRegisteredUsers[k];
+                    });
+                }
                 try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+            } else {
+                // Firebase вернул пусто — все игроки удалены
+                // Чистим кэш полностью (кроме дефолтов, если они не скрыты)
+                var keepDefaults = !areDefaultPlayersCleared();
+                Object.keys(cachedRegisteredUsers).forEach(function(k) {
+                    if (!keepDefaults || !DEFAULT_REGISTERED_PLAYERS[k]) {
+                        delete cachedRegisteredUsers[k];
+                    }
+                });
+                if (keepDefaults) {
+                    Object.assign(cachedRegisteredUsers, DEFAULT_REGISTERED_PLAYERS);
+                }
+                lastRemoteUserIds = [];
+                try { localStorage.removeItem('pestovo_cached_users'); } catch(e) {}
+                try { localStorage.removeItem('pestovo_custom_players'); } catch(e) {}
+                // Если флаг полной очистки стоит — гарантируем пустоту
+                if (areDefaultPlayersCleared()) {
+                    Object.keys(cachedRegisteredUsers).forEach(function(k) { delete cachedRegisteredUsers[k]; });
+                }
             }
         });
         db.ref('rounds').on('value', function(sn) {
             var roundsData = sn.val() || {};
+            var roundsKeys = Object.keys(roundsData);
+            // Если раундов нет — удаляем всех гостей, созданных из истории раундов
+            if (!roundsKeys.length) {
+                Object.keys(cachedRegisteredUsers).forEach(function(k) {
+                    if (k.indexOf('guest_') === 0 || k.indexOf('guest_name_') === 0) {
+                        delete cachedRegisteredUsers[k];
+                    }
+                });
+                try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+                return;
+            }
+            // Пересобираем гостевой кэш заново: сначала удаляем старых гостей,
+            // потом добавляем актуальных из текущих раундов. Это не даёт
+            // удалённым раундам «воскрешать» игроков после очистки.
+            var currentGuestKeys = [];
+            Object.keys(cachedRegisteredUsers).forEach(function(k) {
+                if (k.indexOf('guest_') === 0 || k.indexOf('guest_name_') === 0) currentGuestKeys.push(k);
+            });
+            // Удалим всех гостей — заново наполним из roundsData
+            currentGuestKeys.forEach(function(k) { delete cachedRegisteredUsers[k]; });
+
             Object.values(roundsData).forEach(function(r) {
                 if (r && r.players && typeof r.players === 'object') {
                     Object.entries(r.players).forEach(function(pe) {
                         var pid = pe[0], p = pe[1];
                         if (p && p.name) {
-                            if (isPlayerDeleted(pid, p.name)) return; // игрок удалён в админке — не «воскрешаем» его из истории раундов
+                            if (isPlayerDeleted(pid, p.name)) return;
+                            // Если выполнена полная очистка и раундов не было — не добавляем
+                            if (areDefaultPlayersCleared() && !roundsKeys.length) return;
                             var pName = p.name.trim();
                             var key = pid.startsWith('guest_') ? ('guest_name_' + pName.toLowerCase().replace(/\s+/g, '_')) : pid;
+                            // Гостей из раундов добавляем только если их ещё нет
                             if (!cachedRegisteredUsers[key]) {
                                 var parts = pName.split(' ');
                                 cachedRegisteredUsers[key] = {
@@ -4166,13 +4299,36 @@ if (typeof db !== 'undefined') {
                     });
                 }
             });
+            try {
+                // Сохраняем только если не в режиме полной очистки с пустой базой
+                if (!(areDefaultPlayersCleared() && !roundsKeys.length && !Object.keys(cachedRegisteredUsers).length)) {
+                    localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers));
+                }
+            } catch(e) {}
         });
     } catch(e) {}
 }
 
 function getKnownPlayersSync() {
     syncKnownPlayersCache();
-    return cachedRegisteredUsers;
+    // Если выполнена полная очистка — гарантируем, что в кэше нет демо-игроков
+    // и нет удалённых. Если кэш пуст — возвращаем пустой объект, автоподбор ничего не покажет.
+    if (areDefaultPlayersCleared()) {
+        Object.keys(DEFAULT_REGISTERED_PLAYERS).forEach(function(k){
+            if (cachedRegisteredUsers[k]) delete cachedRegisteredUsers[k];
+        });
+    }
+    // Фильтруем удалённых на лету
+    var filtered = {};
+    Object.keys(cachedRegisteredUsers).forEach(function(k){
+        var u = cachedRegisteredUsers[k];
+        if (!u) return;
+        if (isPlayerDeleted(k, u.name)) return;
+        filtered[k] = u;
+    });
+    // Если после фильтрации ничего нет и стоит флаг полной очистки — возвращаем пусто
+    // (иначе вернётся filtered, который может содержать актуальных игроков из Firebase)
+    return filtered;
 }
 
 function loadAllRegisteredUsers(callback) {

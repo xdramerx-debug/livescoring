@@ -139,9 +139,22 @@ function onSetupSearchInput(idx) {
     var matches = [];
     var seenKeys = new Set();
 
+    // Если выполнена полная очистка и кэш пуст — сразу выходим, ничего не показываем
+    if (!usersData || !Object.keys(usersData).length) {
+        resultsEl.style.display = 'none';
+        resultsEl.classList.add('hidden');
+        return;
+    }
+
     Object.entries(usersData || {}).forEach(function(e) {
         var uid = e[0];
         var u = e[1];
+        if (!u) return;
+        // Не показываем удалённых и демо-игроков, если включена полная очистка
+        if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u.name)) return;
+        if (typeof areDefaultPlayersCleared === 'function' && areDefaultPlayersCleared()) {
+            if (typeof DEFAULT_REGISTERED_PLAYERS !== 'undefined' && DEFAULT_REGISTERED_PLAYERS[uid]) return;
+        }
         var name = (u.name || '').trim();
         var fn = (u.firstName || '').trim();
         var ln = (u.lastName || '').trim();

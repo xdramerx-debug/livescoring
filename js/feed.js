@@ -26,6 +26,8 @@ function loadLiveFeed() {
 
             Object.entries(r.players || {}).forEach(function(pe) {
                 var pid = pe[0], p = pe[1];
+                // Удалённые и навсегда заблокированные демо-игроки не показываются в ленте
+                if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
                 var scores = p.scores || {};
 
                 Object.entries(scores).forEach(function(se) {

@@ -298,7 +298,10 @@ function loadClubStats() {
         var rounds = snaps[0].val() || {};
         var users = snaps[1].val() || {};
         var totalRounds = Object.keys(rounds).length;
-        var totalPlayers = Object.keys(users).length;
+        var totalPlayers = Object.keys(users).filter(function(uid) {
+            var u = users[uid];
+            return !(u && typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u.name));
+        }).length;
         var completedRounds = 0, activeRounds = 0;
         var birdies = 0, eagles = 0, pars = 0, bogeys = 0;
         var best = Infinity, totalHolesPlayed = 0;
@@ -307,6 +310,8 @@ function loadClubStats() {
             if (r.status === 'completed') completedRounds++;
             if (r.status === 'active') activeRounds++;
             Object.values(r.players || {}).forEach(function(p) {
+                // Удалённые и навсегда заблокированные демо-игроки не учитываются
+                if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(null, p && p.name)) return;
                 var scores = p.scores || {};
                 var gross = 0, holesPlayed = 0;
                 Object.entries(scores).forEach(function(se) {

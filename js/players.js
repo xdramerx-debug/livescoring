@@ -10,7 +10,12 @@ function loadPlayers() {
         var data = sn.val() || {};
         var el = document.getElementById('players-grid');
         if (!el) return;
-        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+        var entries = Object.entries(data).filter(function(e) {
+            if (!e || !e[1] || typeof e[1] !== 'object') return false;
+            // Удалённые и навсегда заблокированные демо-игроки не показываются
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(e[0], e[1].name)) return false;
+            return true;
+        });
 
         var searchInp = document.getElementById('players-search');
         var query = searchInp ? searchInp.value.trim().toLowerCase() : '';

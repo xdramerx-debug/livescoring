@@ -177,7 +177,7 @@ var I18N = {
         select_registered: 'Выбрать из зарегистрированных',
         guest_manual: '— Гость / ввести вручную —',
         first_name: 'Имя', last_name: 'Фамилия', middle_name: 'Отчество (необязательно)', gender_label: 'Пол',
-        placeholder_first_name: 'Иван', placeholder_last_name: 'Петров', placeholder_middle_name: 'Иванович',
+        placeholder_first_name: 'Имя', placeholder_last_name: 'Фамилия', placeholder_middle_name: 'Отчество',
         placeholder_tn_name: 'Чемпионат Пестово',
         placeholder_hcp_calc: '+2.4 или 12.4',
         men: 'Мужчина', women: 'Девушка',
@@ -1789,7 +1789,10 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
 
 function generateGroupHoleTableHTML(r) {
     var players = r.players || {};
-    var playerEntries = Object.entries(players);
+    var playerEntries = Object.entries(players).filter(function(pe) {
+        // Удалённые и навсегда заблокированные демо-игроки не показываются
+        return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
+    });
     if (!playerEntries.length) return '';
 
     var order = getRoundOrder(r);
@@ -2125,7 +2128,7 @@ function renderProfileEditForm(playerId) {
         html += '<div class="form-group"><label>' + t('last_name') + '</label><input type="text" id="edit-ln" class="form-input" value="' + escapeHtml(lastName) + '"></div>';
         html += '</div>';
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>' + t('middle_name') + '</label><input type="text" id="edit-mid" class="form-input" value="' + escapeHtml(middleName) + '" placeholder="' + (currentLang === 'en' ? 'Middle name (optional)' : 'Иванович (необязательно)') + '"></div>';
+        html += '<div class="form-group"><label>' + t('middle_name') + '</label><input type="text" id="edit-mid" class="form-input" value="' + escapeHtml(middleName) + '" placeholder="' + (currentLang === 'en' ? 'Middle name (optional)' : 'Отчество (необязательно)') + '"></div>';
         html += '</div>';
 
         html += '<div class="form-row">';
@@ -2248,7 +2251,10 @@ function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback) {
         var bodyEl = document.getElementById('finish-modal-body');
         var order = getRoundOrder(r);
         var holeCount = order.length;
-        var players = Object.entries(r.players || {});
+        var players = Object.entries(r.players || {}).filter(function(pe) {
+            // Удалённые и навсегда заблокированные демо-игроки не показываются
+            return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
+        });
         var verification = collectRoundVerification(r);
 
         var titleStr = currentLang === 'en' ? '🏁 Finish Round Confirmation' : '🏁 Подтверждение завершения раунда';
@@ -4149,6 +4155,8 @@ function resolveOrCreatePlayerUser(p) {
 
     var cleanName = sanitizeNameRaw(p.name);
     if (!cleanName) return Promise.resolve(null);
+    // Навсегда заблокированные демо-игроки не создаются заново
+    if (isBlockedDemoPlayer(null, cleanName)) return Promise.resolve(null);
     var parts = cleanName.split(' ');
     var firstName = p.firstName ? sanitizeNameRaw(p.firstName) : (parts[0] || cleanName);
     var middleName = p.middleName ? sanitizeNameRaw(p.middleName) : '';
@@ -4317,6 +4325,8 @@ function getDeletedPlayerIds() {
 }
 
 function isPlayerDeleted(id, name) {
+    // Навсегда заблокированные демо-игроки проверяются в первую очередь
+    if (typeof isBlockedDemoPlayer === 'function' && isBlockedDemoPlayer(id, name)) return true;
     var list = getDeletedPlayerIds();
     if (!list.length) return false;
     if (id && list.indexOf(id) !== -1) return true;
@@ -4337,29 +4347,102 @@ function markPlayerDeleted(id, name) {
 }
 
 // ==========================================
-// REAL-TIME AUTOCOMPLETE PLAYER NAME SUGGESTIONS
+// НАВСЕГДА ЗАБЛОКИРОВАННЫЕ ДЕМО-ИГРОКИ
+// Старые версии сайта жёстко «подмешивали» в списки игроков демо-записи
+// (Петр Один, Пётр Петров, Александр Иванов, Анна Воробьёва и т.д.).
+// Из-за этого при каждом обновлении сайта они появлялись снова.
+// Демо-список полностью УДАЛЁН из кода, а все известные id и имена
+// навсегда заблокированы: даже если их запись осталась в Firebase
+// (users / rounds) или в локальных кэшах старых версий, они нигде
+// больше не показываются и не могут быть созданы заново.
 // ==========================================
-var DEFAULT_REGISTERED_PLAYERS = {
-    'user_petr_odin_17': { name: 'Петр Один', firstName: 'Петр', lastName: 'Один', handicap: 17.0, gender: 'men', defaultTee: 'bl' },
-    'user_petr_odin_21': { name: 'Петр Один', firstName: 'Петр', lastName: 'Один', handicap: 21.0, gender: 'men', defaultTee: 'bl' },
-    'user_petr_p': { name: 'Пётр Петров', firstName: 'Пётр', lastName: 'Петров', handicap: 15.0, gender: 'men', defaultTee: 'bl' },
-    'user_vasya_p': { name: 'Вася Петров', firstName: 'Вася', lastName: 'Петров', handicap: 13.0, gender: 'men', defaultTee: 'wh' },
-    'user_vladimir_v': { name: 'Владимир Воробьёв', firstName: 'Владимир', lastName: 'Воробьёв', handicap: 14.4, gender: 'men', defaultTee: 'bl' },
-    'user_vladimir_v2': { name: 'Владимир Воробьев', firstName: 'Владимир', lastName: 'Воробьев', handicap: 22.0, gender: 'men', defaultTee: 'bl' },
-    'user_anna_v': { name: 'Анна Воробьёва', firstName: 'Анна', lastName: 'Воробьёва', handicap: 18.2, gender: 'women', defaultTee: 'rd' },
-    'user_alex_i': { name: 'Александр Иванов', firstName: 'Александр', lastName: 'Иванов', handicap: 9.6, gender: 'men', defaultTee: 'bl' },
-    'user_ekaterina_p': { name: 'Екатерина Петрова', firstName: 'Екатерина', lastName: 'Петрова', handicap: 22.0, gender: 'women', defaultTee: 'rd' },
-    'user_dmitry_s': { name: 'Дмитрий Смирнов', firstName: 'Дмитрий', lastName: 'Смирнов', handicap: 11.5, gender: 'men', defaultTee: 'wh' },
-    'user_elena_k': { name: 'Елена Кузнецова', firstName: 'Елена', lastName: 'Кузнецова', handicap: 24.8, gender: 'women', defaultTee: 'rd' }
-};
+var BLOCKED_DEMO_PLAYER_IDS = [
+    'user_petr_odin_17',
+    'user_petr_odin_21',
+    'user_petr_p',
+    'user_vasya_p',
+    'user_vladimir_v',
+    'user_vladimir_v2',
+    'user_anna_v',
+    'user_alex_i',
+    'user_ekaterina_p',
+    'user_dmitry_s',
+    'user_elena_k'
+];
 
-// Флаг «полной очистки»: когда админ удаляет ВСЕХ игроков, встроенные
-// демо-игроки (DEFAULT_REGISTERED_PLAYERS) не должны возвращаться в списки.
+// Нормализованные имена (ё → е, нижний регистр, схлопнутые пробелы),
+// включая варианты «Фамилия Имя», чтобы заблокировать и ghost-записи.
+var BLOCKED_DEMO_PLAYER_NAMES = [
+    'петр один',
+    'один петр',
+    'петр петров',
+    'петров петр',
+    'вася петров',
+    'петров вася',
+    'владимир воробьев',
+    'воробьев владимир',
+    'анна воробьева',
+    'воробьева анна',
+    'александр иванов',
+    'иванов александр',
+    'екатерина петрова',
+    'петрова екатерина',
+    'дмитрий смирнов',
+    'смирнов дмитрий',
+    'елена кузнецова',
+    'кузнецова елена'
+];
+
+function isBlockedDemoPlayer(id, name) {
+    if (id && BLOCKED_DEMO_PLAYER_IDS.indexOf(id) !== -1) return true;
+    // ghost-записи из истории раундов имеют вид guest_name_имя_фамилия
+    if (id && String(id).indexOf('guest_name_') === 0) {
+        var ghostName = String(id).slice('guest_name_'.length).replace(/_/g, ' ').replace(/ё/g, 'е');
+        ghostName = ghostName.replace(/\s+/g, ' ').trim();
+        if (ghostName && BLOCKED_DEMO_PLAYER_NAMES.indexOf(ghostName) !== -1) return true;
+    }
+    if (name) {
+        var nm = normalizeSearchText(name);
+        if (nm && BLOCKED_DEMO_PLAYER_NAMES.indexOf(nm) !== -1) return true;
+    }
+    return false;
+}
+if (typeof window !== 'undefined') {
+    window.isBlockedDemoPlayer = isBlockedDemoPlayer;
+    window.BLOCKED_DEMO_PLAYER_IDS = BLOCKED_DEMO_PLAYER_IDS;
+    window.BLOCKED_DEMO_PLAYER_NAMES = BLOCKED_DEMO_PLAYER_NAMES;
+}
+
+// Флаг «полной очистки» сохранён для обратной совместимости с админкой.
+// Встроенных демо-игроков в коде больше нет.
 function areDefaultPlayersCleared() {
     try { return localStorage.getItem('pestovo_defaults_cleared') === 'true'; } catch(e) { return false; }
 }
 
-var cachedRegisteredUsers = areDefaultPlayersCleared() ? {} : Object.assign({}, DEFAULT_REGISTERED_PLAYERS);
+// Встроенные демо-игроки навсегда удалены из кода — кэш игроков стартует пустым.
+var cachedRegisteredUsers = {};
+
+function purgeBlockedFromPlayerCaches() {
+    var clean = function(raw) {
+        if (!raw) return raw;
+        var obj = JSON.parse(raw);
+        if (obj && typeof obj === 'object') {
+            Object.keys(obj).forEach(function(k) {
+                var u = obj[k];
+                if (isBlockedDemoPlayer(k, u && u.name)) delete obj[k];
+            });
+        }
+        return obj;
+    };
+    try {
+        var c1 = localStorage.getItem('pestovo_cached_users');
+        if (c1) localStorage.setItem('pestovo_cached_users', JSON.stringify(clean(c1)));
+    } catch(e) {}
+    try {
+        var c2 = localStorage.getItem('pestovo_custom_players');
+        if (c2) localStorage.setItem('pestovo_custom_players', JSON.stringify(clean(c2)));
+    } catch(e) {}
+}
 
 // Полностью стирает локальный кэш игроков (и в памяти, и в localStorage),
 // а также «прячет» встроенных демо-игроков, чтобы после удаления всех данных
@@ -4434,6 +4517,10 @@ function syncKnownPlayersCache() {
             if (p2 && typeof p2 === 'object') mergeCache(p2);
         }
     } catch(e) {}
+
+    // Навсегда вычищаем заблокированных демо-игроков из локальных кэшей,
+    // оставшихся от старых версий сайта.
+    purgeBlockedFromPlayerCaches();
 }
 
 syncKnownPlayersCache();
@@ -4492,7 +4579,8 @@ if (typeof db !== 'undefined') {
                 });
                 if (hasReal) delete cachedRegisteredUsers[k];
             });
-            // Вычищаем из кэша всех игроков, помеченных как удалённые
+            // Вычищаем из кэша всех игроков, помеченных как удалённые,
+            // а также навсегда заблокированных демо-игроков
             var deleted = [];
             try {
                 var dRaw = localStorage.getItem('pestovo_deleted_player_ids');
@@ -4501,6 +4589,7 @@ if (typeof db !== 'undefined') {
             Object.keys(cachedRegisteredUsers).forEach(function(k) {
                 var u = cachedRegisteredUsers[k];
                 if (!u) return;
+                if (isPlayerDeleted(k, u.name)) { delete cachedRegisteredUsers[k]; return; }
                 if (deleted.indexOf(k) !== -1) { delete cachedRegisteredUsers[k]; return; }
                 if (u.name) {
                     var nKey = normalizeSearchText(u.name);
@@ -4523,13 +4612,14 @@ if (typeof db !== 'undefined') {
                         if (p && p.name) {
                             var pName = p.name.trim();
                             var normName = normalizeSearchText(pName);
-                            // Усиленная проверка: не воскрешаем удалённых ни по uid, ни по нормализованному имени
+                            // Усиленная проверка: не воскрешаем удалённых и навсегда
+                            // заблокированных демо-игроков ни по uid, ни по имени
                             var deleted = [];
                             try {
                                 var dRaw = localStorage.getItem('pestovo_deleted_player_ids');
                                 if (dRaw) deleted = JSON.parse(dRaw) || [];
                             } catch(e) {}
-                            var isDel = (deleted.indexOf(pid) !== -1) || (normName && deleted.indexOf(normName) !== -1);
+                            var isDel = (deleted.indexOf(pid) !== -1) || (normName && deleted.indexOf(normName) !== -1) || isBlockedDemoPlayer(pid, pName);
                             if (isDel) return;
                             var key = pid.startsWith('guest_') ? ('guest_name_' + pName.toLowerCase().replace(/\s+/g, '_')) : pid;
                             // Не перезаписываем существующую запись, если игрок уже в кэше с корректными данными —

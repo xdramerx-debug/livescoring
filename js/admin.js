@@ -1258,7 +1258,10 @@ function loadAdmPlayers() {
     var renderWithData = function(remoteData) {
         var localUsers = typeof getKnownPlayersSync === 'function' ? (getKnownPlayersSync() || {}) : {};
         var combined = Object.assign({}, localUsers, remoteData || {});
-        var entries = Object.entries(combined);
+        var entries = Object.entries(combined).filter(function(e) {
+            // Удалённые и навсегда заблокированные демо-игроки не показываются в админке
+            return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(e[0], e[1] && e[1].name));
+        });
 
         if (!entries.length) {
             el.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>' + (currentLang === 'en' ? 'No players' : 'Нет игроков') + '</p></div>';
@@ -1638,7 +1641,10 @@ function impCollectPlayers(callback) {
                 };
             });
         });
-        callback(Object.entries(combined).map(function(e) {
+        callback(Object.entries(combined).filter(function(e) {
+            // Удалённые и навсегда заблокированные демо-игроки не попадают в экспорт
+            return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(e[0], e[1] && e[1].name));
+        }).map(function(e) {
             return { id: e[0], data: e[1] || {} };
         }));
     };
@@ -1698,8 +1704,8 @@ function downloadPlayersTemplate() {
     }
     var rows = [
         ['Имя', 'Фамилия', 'Точный гандикап', 'Пол (муж/жен — необязательно)'],
-        ['Сергей', 'Петров', 3.9, 'муж'],
-        ['Анна', 'Воробьёва', 18.2, 'жен']
+        ['Иван', 'Тестов', 12.0, 'муж'],
+        ['Мария', 'Тестова', 20.0, 'жен']
     ];
     var ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 24 }, { wch: 28 }, { wch: 18 }, { wch: 30 }];
@@ -3270,8 +3276,8 @@ function rgBatchDownloadTemplate() {
     }
     var rows = [
         ['Имя', 'Фамилия'],
-        ['Сергей', 'Петров'],
-        ['Анна', 'Воробьёва']
+        ['Иван', 'Тестов'],
+        ['Мария', 'Тестова']
     ];
     var ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 24 }, { wch: 28 }];

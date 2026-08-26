@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function onAuthReady(u, d) { navAuth(u, d); }
 
 function loadPlayers() {
-    db.ref('users').on('value', function(sn) {
+    bindRealtimeValue('players-list', db.ref('users'), function(sn) {
         var data = sn.val() || {};
         var el = document.getElementById('players-grid');
         if (!el) return;

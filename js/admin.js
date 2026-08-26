@@ -4,21 +4,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initAdminAutoLogin() {
-    var uInp = document.getElementById('adm-user');
-    var pInp = document.getElementById('adm-pass');
-    var rChk = document.getElementById('adm-remember');
-
-    var savedU = localStorage.getItem('pestovo_adm_user');
-    var savedP = localStorage.getItem('pestovo_adm_pass');
-    var savedR = localStorage.getItem('pestovo_adm_remember');
-
-    if (savedU && uInp) uInp.value = savedU;
-    if (savedP && pInp) pInp.value = savedP;
-    if (rChk && savedR !== null) rChk.checked = (savedR === 'true');
-
-    if (localStorage.getItem('pestovo_adm_logged_in') === 'true') {
-        openAdminPanel();
-    }
+    // Удаляем устаревшие локальные мастер-учётные данные. Авторизация админа
+    // определяется только ролью текущего Firebase-пользователя.
+    try {
+        ['pestovo_adm_user', 'pestovo_adm_pass', 'pestovo_adm_remember', 'pestovo_adm_logged_in'].forEach(function(key) {
+            localStorage.removeItem(key);
+        });
+    } catch (e) {}
 }
 
 // ==========================================
@@ -33,49 +25,29 @@ function onAuthReady(user, userData) {
 }
 
 function adminLogin() {
-    var uInp = document.getElementById('adm-user');
-    var pInp = document.getElementById('adm-pass');
-    var rChk = document.getElementById('adm-remember');
-
-    var u = uInp ? uInp.value.trim() : '';
-    var p = pInp ? pInp.value : '';
     var er = document.getElementById('adm-error');
     if (er) er.classList.add('hidden');
 
-    if (u === ADMIN_LOGIN && p === ADMIN_PASS) {
-        if (rChk && rChk.checked) {
-            localStorage.setItem('pestovo_adm_user', u);
-            localStorage.setItem('pestovo_adm_pass', p);
-            localStorage.setItem('pestovo_adm_remember', 'true');
-        } else {
-            localStorage.removeItem('pestovo_adm_user');
-            localStorage.removeItem('pestovo_adm_pass');
-            localStorage.setItem('pestovo_adm_remember', 'false');
-        }
-        localStorage.setItem('pestovo_adm_logged_in', 'true');
-
+    if (currentUser && currentUserData && currentUserData.role === 'admin') {
         openAdminPanel();
-        toast(currentLang === 'en' ? '✅ Logged in via master password' : '✅ Вход по мастер-паролю');
+        toast(currentLang === 'en' ? '✅ Admin access confirmed' : '✅ Права администратора подтверждены');
         return;
     }
 
-    if (currentUserData && currentUserData.role === 'admin') {
-        localStorage.setItem('pestovo_adm_logged_in', 'true');
-        openAdminPanel();
-        toast(currentLang === 'en' ? '✅ Logged in (Admin Privileges)' : '✅ Вход выполнен (Права администратора)');
+    if (!currentUser) {
+        window.location.href = 'auth.html?redirect=admin.html';
         return;
     }
 
-    if (currentUserData && currentUserData.role !== 'admin') {
-        if (er) er.textContent = currentLang === 'en' ? 'Your account does not have admin privileges.' : 'У вашего аккаунта нет прав администратора. Обратитесь к главному админу.';
-    } else {
-        if (er) er.textContent = currentLang === 'en' ? 'Invalid credentials or not authorized.' : 'Неверный логин/пароль или вы не авторизованы на сайте.';
+    if (er) {
+        er.textContent = currentLang === 'en'
+            ? 'Your account does not have administrator privileges.'
+            : 'У вашего аккаунта нет прав администратора.';
+        er.classList.remove('hidden');
     }
-    if (er) er.classList.remove('hidden');
 }
 
 function adminLogout() {
-    localStorage.removeItem('pestovo_adm_logged_in');
     try { sessionStorage.removeItem('pestovo_is_admin'); } catch(e) {}
 
     var loginEl = document.getElementById('admin-login');
@@ -91,8 +63,8 @@ function adminLogout() {
 }
 
 function openAdminPanel() {
+    if (!currentUserData || currentUserData.role !== 'admin') return;
     try { sessionStorage.setItem('pestovo_is_admin', 'true'); } catch(e) {}
-    localStorage.setItem('pestovo_adm_logged_in', 'true');
     if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
 
     var loginEl = document.getElementById('admin-login');
@@ -649,9 +621,9 @@ function loadClubBroadcastsHistory() {
             var id = e[0], b = e[1];
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
             html += '<div style="flex:1;min-width:200px;">';
-            html += '<strong style="color:var(--gold);font-size:15px;"><i class="fas fa-bullhorn"></i> ' + (b.title || 'Announcement') + '</strong>';
-            html += '<div style="font-size:13px;color:var(--white);margin:4px 0;">' + (b.body || '') + '</div>';
-            html += '<div style="font-size:11px;color:var(--muted);">' + fmtDate(b.time) + ' · ' + fmtTime(b.time) + ' · Link: ' + (b.link || 'tournaments.html') + '</div>';
+            html += '<strong style="color:var(--gold);font-size:15px;"><i class="fas fa-bullhorn"></i> ' + escapeHtml(b.title || 'Announcement') + '</strong>';
+            html += '<div style="font-size:13px;color:var(--white);margin:4px 0;">' + escapeHtml(b.body || '') + '</div>';
+            html += '<div style="font-size:11px;color:var(--muted);">' + fmtDate(b.time) + ' · ' + fmtTime(b.time) + ' · Link: ' + escapeHtml(b.link || 'tournaments.html') + '</div>';
             html += '</div>';
             html += '<button class="btn btn-r btn-sm" onclick="deleteBroadcast(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
             html += '</div>';
@@ -1296,7 +1268,7 @@ function loadAdmPlayers() {
             html += '<div style="flex:1;min-width:200px;">';
             html += '<strong style="color:var(--white);">' + gIcon + ' ' + escapeHtml(u.name || '—') + guestBadge + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">';
-            html += (u.email || (currentLang === 'en' ? 'No email' : 'Без email')) + ' · HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + roundsStr + (u.roundsPlayed || 0);
+            html += escapeHtml(u.email || (currentLang === 'en' ? 'No email' : 'Без email')) + ' · HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + roundsStr + (u.roundsPlayed || 0);
             html += '</div></div>';
 
             html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
@@ -2048,7 +2020,7 @@ var rgLastResults = [];
 var rgSyncState = { running: false, stop: false, stats: null };
 
 function rgIsAdmin() {
-    try { return sessionStorage.getItem('pestovo_is_admin') === 'true' || localStorage.getItem('pestovo_adm_logged_in') === 'true'; } catch(e) { return false; }
+    return !!(currentUserData && currentUserData.role === 'admin');
 }
 
 function rgGetCustomProxy() {

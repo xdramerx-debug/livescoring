@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
     <meta name="description" content="Официальная система лайв-скоринга Гольф-клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
@@ -56,19 +56,11 @@
 
     <div id="admin-login" class="card" style="max-width:400px;margin:0 auto;">
         <h2><i class="fas fa-lock"></i> <span data-i18n="admin_login_title">Вход в админ-панель</span></h2>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="admin_desc">
-            Войдите с мастер-паролем или авторизуйтесь через аккаунт с правами администратора.
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+            Доступ разрешён только аккаунтам с ролью администратора. Пароли на устройстве не сохраняются.
         </p>
-        <div class="form-group"><label data-i18n="username">Логин</label><input type="text" id="adm-user" class="form-input" placeholder="admin" autocomplete="username"></div>
-        <div class="form-group"><label data-i18n="password">Пароль</label><input type="password" id="adm-pass" class="form-input" autocomplete="current-password"></div>
-        <div class="form-group" style="margin-bottom:16px;">
-            <label for="adm-remember" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;font-size:13px;color:var(--white);">
-                <input type="checkbox" id="adm-remember" checked style="width:18px;height:18px;cursor:pointer;">
-                <span data-i18n="remember_me">Запомнить меня</span>
-            </label>
-        </div>
         <div id="adm-error" class="form-err hidden"></div>
-        <button class="btn btn-g btn-block" onclick="adminLogin()" data-i18n="login_btn">Войти</button>
+        <button class="btn btn-g btn-block" onclick="adminLogin()"><i class="fas fa-user-shield"></i> Проверить права / Войти</button>
     </div>
 
     <div id="admin-content" class="hidden">
@@ -514,14 +506,14 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.5.1</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.6.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=11"></script>
+<script src="js/utils.js?v=12"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/admin.js?v=9"></script>
+<script src="js/admin.js?v=10"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

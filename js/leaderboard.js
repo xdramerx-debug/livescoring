@@ -12,7 +12,7 @@ function loadLB() {
     var searchInput = document.getElementById('lb-search');
     var query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-    db.ref('rounds').on('value', function(sn) {
+    bindRealtimeValue('leaderboard-rounds', db.ref('rounds'), function(sn) {
         var data = sn.val() || {};
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
 

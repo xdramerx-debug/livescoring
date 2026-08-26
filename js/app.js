@@ -117,7 +117,7 @@ function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
     if (!el || typeof db === 'undefined') return;
 
-    db.ref('rounds').on('value', function(snap) {
+    bindRealtimeValue('home-live-rounds', db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active'; });
 
@@ -231,7 +231,7 @@ function loadRecentResults() {
     var el = document.getElementById('recent-results');
     if (!el || typeof db === 'undefined') return;
 
-    db.ref('rounds').on('value', function(snap) {
+    bindRealtimeValue('home-recent-results', db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'completed'; });
 

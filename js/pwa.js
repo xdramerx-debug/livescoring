@@ -46,34 +46,68 @@ window.addEventListener('offline',updateOnlineStatus);
 window.addEventListener('load',function(){if(!navigator.onLine)updateOnlineStatus();});
 
 var OFFLINE_KEY='pestovo_offline_scores';
+var offlineSyncInProgress = false;
+
+function readOfflineScores() {
+    try {
+        var value = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+        return Array.isArray(value) ? value : [];
+    } catch (error) {
+        console.warn('[PWA] Invalid offline queue was reset', error);
+        try { localStorage.removeItem(OFFLINE_KEY); } catch (e) {}
+        return [];
+    }
+}
 
 function saveOfflineScore(roundId,playerId,hole,score){
-    var pending=JSON.parse(localStorage.getItem(OFFLINE_KEY)||'[]');
+    var pending=readOfflineScores();
+    var itemKey=String(roundId)+'|'+String(playerId)+'|'+String(hole);
+    // Для одной лунки нужен только самый свежий несинхронизированный результат.
+    pending=pending.filter(function(item){
+        return String(item.roundId)+'|'+String(item.playerId)+'|'+String(item.hole)!==itemKey;
+    });
     pending.push({roundId:roundId,playerId:playerId,hole:hole,score:score,timestamp:Date.now(),type:'score'});
-    localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending));
+    try { localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending)); } catch (error) {
+        console.error('[PWA] Cannot save offline score', error);
+        if(typeof toast==='function')toast(currentLang === 'en' ? 'Cannot save score offline' : 'Не удалось сохранить счёт офлайн','error');
+    }
     updateOfflineQueueBadge();
 }
 
 function syncOfflineScores(){
-    if(!navigator.onLine||typeof db==='undefined')return;
-    var pending=JSON.parse(localStorage.getItem(OFFLINE_KEY)||'[]');
+    if(!navigator.onLine||typeof db==='undefined'||offlineSyncInProgress)return;
+    var pending=readOfflineScores();
     if(pending.length===0){
         updateOfflineQueueBadge();
         return;
     }
+    offlineSyncInProgress=true;
+    var sentIds=pending.map(function(item){
+        return [item.roundId,item.playerId,item.hole,item.timestamp].join('|');
+    });
     var promises=pending.map(function(item){
         if(item.type==='score')return db.ref('rounds/'+item.roundId+'/players/'+item.playerId+'/scores/'+item.hole).set(item.score);
         return Promise.resolve();
     });
     Promise.all(promises).then(function(){
-        localStorage.removeItem(OFFLINE_KEY);
+        // Не удаляем записи, добавленные во время синхронизации.
+        var remaining=readOfflineScores().filter(function(item){
+            return sentIds.indexOf([item.roundId,item.playerId,item.hole,item.timestamp].join('|'))===-1;
+        });
+        if(remaining.length) localStorage.setItem(OFFLINE_KEY,JSON.stringify(remaining));
+        else localStorage.removeItem(OFFLINE_KEY);
         if(typeof toast==='function')toast((currentLang === 'en' ? '✅ Synced ' : '✅ Синхронизировано ') + pending.length + (currentLang === 'en' ? ' records' : ' записей'),'success');
+    }).catch(function(error){
+        console.error('[PWA] Offline sync failed',error);
+        if(typeof toast==='function')toast(currentLang === 'en' ? 'Sync failed; scores remain on device' : 'Синхронизация не удалась; счёт сохранён на устройстве','warn');
+    }).then(function(){
+        offlineSyncInProgress=false;
         updateOfflineQueueBadge();
     });
 }
 
 function updateOfflineQueueBadge() {
-    var pending = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+    var pending = readOfflineScores();
     var badgeEl = document.getElementById('offline-queue-badge');
 
     if (!pending.length) {

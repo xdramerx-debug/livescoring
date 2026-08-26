@@ -5533,6 +5533,126 @@ function loadAllRegisteredUsers(callback) {
     }
 }
 
+
+// ==========================================
+// ФИО: разбор частей и отображение
+// «Фамилия Имя Отчество» — только визуал автоподбора.
+// В поля формы всегда кладём firstName/lastName/middleName по смыслу.
+// ==========================================
+function looksLikePatronymic(s) {
+    s = normalizeSearchText(s || '');
+    if (!s) return false;
+    return /(ович|евич|ич|овна|евна|ична|инична)$/.test(s);
+}
+
+function looksLikeLastName(s) {
+    s = normalizeSearchText(s || '');
+    if (!s || s.length < 3) return false;
+    return /(ов|ева|ова|ев|ин|ына|ина|ын|ский|цкий|ская|цкая|енко|ук|юк|ко)$/.test(s);
+}
+
+function joinNameParts(parts) {
+    return (parts || []).map(function(x) { return String(x || '').trim(); }).filter(Boolean).join(' ');
+}
+
+function formatFioLastFirstMiddle(firstName, lastName, middleName) {
+    return joinNameParts([lastName, firstName, middleName]);
+}
+
+function resolvePlayerNameParts(u) {
+    u = u || {};
+    var first = String(u.firstName || '').replace(/\s+/g, ' ').trim();
+    var middle = String(u.middleName || '').replace(/\s+/g, ' ').trim();
+    var last = String(u.lastName || '').replace(/\s+/g, ' ').trim();
+    var name = String(u.name || '').replace(/\s+/g, ' ').trim();
+    var tokens = name ? name.split(' ').filter(Boolean) : [];
+
+    // Если имя и отчество перепутаны в полях — меняем местами.
+    if (first && middle && looksLikePatronymic(first) && !looksLikePatronymic(middle)) {
+        var swapped = first;
+        first = middle;
+        middle = swapped;
+    }
+
+    // Имя+отчество в одном поле firstName: «Иван Иванович»
+    if (!middle && first && first.indexOf(' ') !== -1) {
+        var fp = first.split(' ').filter(Boolean);
+        if (fp.length >= 2 && looksLikePatronymic(fp[fp.length - 1])) {
+            middle = fp.slice(1).join(' ');
+            first = fp[0];
+        }
+    }
+
+    // Отчество попало в фамилию: «Иванович Петров» или «Петров Иванович»
+    if (!middle && last && last.indexOf(' ') !== -1) {
+        var lp = last.split(' ').filter(Boolean);
+        if (lp.length >= 2 && looksLikePatronymic(lp[0])) {
+            middle = lp[0];
+            last = lp.slice(1).join(' ');
+        } else if (lp.length >= 2 && looksLikePatronymic(lp[lp.length - 1])) {
+            middle = lp[lp.length - 1];
+            last = lp.slice(0, -1).join(' ');
+        }
+    }
+
+    // Добираем недостающие части из полного name, учитывая разные порядки.
+    if (tokens.length >= 3 && (!first || !last || !middle)) {
+        var t0 = tokens[0];
+        var t1 = tokens[1];
+        var tLast = tokens[tokens.length - 1];
+        var tMid = tokens.slice(1, -1).join(' ');
+        var tRest = tokens.slice(2).join(' ');
+        if (looksLikeLastName(t0) && looksLikePatronymic(t1) && !looksLikePatronymic(tLast)) {
+            // «Фамилия Отчество Имя»
+            if (!last) last = t0;
+            if (!middle) middle = t1;
+            if (!first) first = tokens.slice(2).join(' ');
+        } else if (looksLikeLastName(t0) && looksLikePatronymic(tLast)) {
+            // «Фамилия Имя Отчество»
+            if (!last) last = t0;
+            if (!first) first = t1;
+            if (!middle) middle = tRest;
+        } else if (looksLikePatronymic(t1) || looksLikeLastName(tLast)) {
+            // «Имя Отчество Фамилия»
+            if (!first) first = t0;
+            if (!middle) middle = tMid;
+            if (!last) last = tLast;
+        } else if (looksLikeLastName(t0)) {
+            if (!last) last = t0;
+            if (!first) first = t1;
+            if (!middle) middle = tRest;
+        } else {
+            if (!first) first = t0;
+            if (!last) last = tLast;
+            if (!middle) middle = tMid;
+        }
+    } else if (tokens.length === 2 && (!first || !last)) {
+        if (looksLikeLastName(tokens[0]) && !looksLikeLastName(tokens[1])) {
+            if (!last) last = tokens[0];
+            if (!first) first = tokens[1];
+        } else {
+            if (!first) first = tokens[0];
+            if (!last) last = tokens[1];
+        }
+    } else if (tokens.length === 1) {
+        if (!first && !last) first = tokens[0];
+    }
+
+    var displayName = formatFioLastFirstMiddle(first, last, middle) || name;
+    return {
+        firstName: first,
+        lastName: last,
+        middleName: middle,
+        displayName: displayName,
+        storedName: name
+    };
+}
+
+if (typeof window !== 'undefined') {
+    window.resolvePlayerNameParts = resolvePlayerNameParts;
+    window.formatFioLastFirstMiddle = formatFioLastFirstMiddle;
+}
+
 var currentAutocompleteMatches = [];
 var currentAutocompleteCallback = null;
 var activeAutocompleteDropdown = null;
@@ -5636,16 +5756,15 @@ function initPlayerSearchAutofill(opts) {
             var uid = e[0];
             var u = e[1];
             var name = (u.name || '').trim();
-            var fn = (u.firstName || '').trim();
-            var mn = (u.middleName || '').trim();
-            var ln = (u.lastName || '').trim();
+            var parts = resolvePlayerNameParts(u);
+            var fn = parts.firstName;
+            var mn = parts.middleName;
+            var ln = parts.lastName;
             var email = (u.email || '').trim();
 
-            // В подсказке показываем актуальное полное ФИО в формате
-            // «Фамилия Имя Отчество» (фамилия на первом месте, как принято
-            // в алфавитных списках). Раньше отчество терялось, потому что
-            // строка собиралась только из firstName + lastName.
-            var full = (ln + ' ' + fn + ' ' + mn).replace(/\s+/g, ' ').trim() || name;
+            // Подсказка и выбранная строка: «Фамилия Имя Отчество».
+            // Части first/last/middle при этом остаются своими — ими заполняем поля.
+            var full = parts.displayName || name;
             if (!full) return;
 
             // Защита: не показывать удалённых в админке игроков
@@ -5686,8 +5805,8 @@ function initPlayerSearchAutofill(opts) {
                 var playerObj = {
                     uid: uid,
                     name: full,
-                    firstName: fn || full.split(' ')[0] || full,
-                    lastName: ln || full.split(' ').slice(-1)[0] || '',
+                    firstName: fn,
+                    lastName: ln,
                     middleName: mn,
                     handicap: u.handicap != null ? u.handicap : 0,
                     gender: u.gender || 'men',

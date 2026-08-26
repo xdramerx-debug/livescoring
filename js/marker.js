@@ -26,9 +26,10 @@ function loadMk() {
         document.getElementById('mk-body').classList.remove('hidden');
 
         var pl = mkRound.players[mkPid];
+        var playerTee = (pl && pl.tee) || mkRound.tee || 'wh';
         var prefix = t('marker_for');
         document.getElementById('mk-title').textContent = prefix + ': ' + (pl.name || t('player'));
-        document.getElementById('mk-sub').textContent = t('tee_select') + ': ' + fmtTeePill(mkRound.tee);
+        document.getElementById('mk-sub').textContent = t('tee_select') + ': ' + fmtTeePill(playerTee);
         mkPScores = pl.scores || {};
         renderPaceAssistant('mk-pace-assistant', mkRound);
         listenForOfficialCallState({

@@ -439,9 +439,10 @@ function renderRoundInfo(targetId) {
     var startLbl = t('start');
     var holeLbl = t('hole');
 
+    var pTee = (p && p.tee) || soloRound.tee || 'wh';
     el.innerHTML =
         '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || t('player')) + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
-        '<div><b>' + startLbl + ':</b> ' + fmtTime(soloRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + soloRound.startHole + ' · <b>' + t('tee_select') + ':</b> ' + fmtTeePill(soloRound.tee) + ' · <b>' + t('format_select') + ':</b> ' + soloRound.format + '</div>';
+        '<div><b>' + startLbl + ':</b> ' + fmtTime(soloRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + soloRound.startHole + ' · <b>' + t('tee_select') + ':</b> ' + fmtTeePill(pTee) + ' · <b>' + t('format_select') + ':</b> ' + soloRound.format + '</div>';
 }
 
 function buildHoles() {
@@ -480,7 +481,10 @@ function goHole(h) {
 
 function renderCurrentHole() {
     var par = holePar(curHole);
-    var dist = holeDist(curHole, soloRound.tee);
+    var uid = getPlayerId();
+    var p = uid && soloRound && soloRound.players && soloRound.players[uid];
+    var pTee = (p && p.tee) || (soloRound && soloRound.tee) || 'wh';
+    var dist = holeDist(curHole, pTee);
 
     document.getElementById('g-hole').textContent = curHole;
     document.getElementById('g-par').textContent = par;

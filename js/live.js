@@ -729,7 +729,9 @@ function goPlayHole(h) {
 function renderPlayHole() {
     if (!canEditGroup) return;
     var par = holePar(playHole);
-    var dist = holeDist(playHole, curRoundData.tee);
+    var myPlayer = (curRoundData && curRoundData.players && curRoundData.players[myUid]) || {};
+    var myTee = myPlayer.tee || curRoundData.tee || 'wh';
+    var dist = holeDist(playHole, myTee);
 
     var playHoleEl = document.getElementById('play-hole');
     var playParEl = document.getElementById('play-par');
@@ -1004,9 +1006,11 @@ function renderPlaySummary() {
         }
         var stats = calcRoundStats(displayScores, p.fieldHcp || 0, p.exactHcp || 0, order);
         var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
+        var pTee = (p && p.tee) || curRoundData.tee || 'wh';
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
 
         html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
-        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + isMe + markerNote + '</strong>';
+        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + isMe + markerNote + '</strong>';
         html += '<div style="font-size:12px;color:var(--muted);">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + getRoundHoleCount(curRoundData) + '</div></div>';
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
@@ -1164,9 +1168,11 @@ function renderGVPlayers(r) {
             }
             var stats = calcRoundStats(displayScores, p.fieldHcp || 0, p.exactHcp || 0, order);
             var thruTxt = stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
+            var pTee = (p && p.tee) || r.tee || 'wh';
+            var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
 
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
-                '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</strong>' +
+                '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + '</strong>' +
                 '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + markerNote + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div>' +
                 '</div>' +

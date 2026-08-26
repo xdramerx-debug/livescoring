@@ -83,6 +83,7 @@
         <div class="admin-tabs">
             <button class="admin-tab active" onclick="switchTab('alerts',this)" data-i18n="tab_alerts">Вызовы 🚨</button>
             <button class="admin-tab" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
+            <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
             <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры</button>
             <button class="admin-tab" onclick="switchTab('broadcasts',this)" data-i18n="tab_broadcasts">Анонсы 📢</button>
             <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
@@ -93,6 +94,14 @@
 
         <div id="tab-rounds" class="admin-section">
             <div class="card"><h2><i class="fas fa-flag"></i> <span data-i18n="all_rounds">Все раунды</span></h2><div id="adm-rounds"></div></div>
+        </div>
+
+        <div id="tab-groups" class="admin-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-stopwatch"></i> <span data-i18n="admin_groups_title">Группы, которые сейчас играют</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="admin_groups_sub">Контроль темпа игры по активным групповым раундам</p>
+                <div id="adm-groups"></div>
+            </div>
         </div>
 
         <div id="tab-alerts" class="admin-section hidden">
@@ -519,14 +528,14 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.6.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.7.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=12"></script>
+<script src="js/utils.js?v=13"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/admin.js?v=11"></script>
+<script src="js/admin.js?v=12"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

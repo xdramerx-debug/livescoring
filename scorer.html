@@ -52,16 +52,19 @@
     
     <div id="sc-body" class="hidden">
         <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
-        <div style="display:flex;gap:10px;margin-bottom:16px;">
-            <button class="btn btn-danger" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
+        <div style="display:flex;gap:10px;margin-bottom:6px;">
+            <button id="sc-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
                 <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
             </button>
-            <button class="btn btn-warning" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
+            <button id="sc-marshal-call-btn" class="btn btn-warning official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
                 <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
             </button>
         </div>
+        <div id="sc-referee-call-status" class="official-call-status hidden" aria-live="polite"></div>
+        <div id="sc-marshal-call-status" class="official-call-status hidden" aria-live="polite"></div>
 
         <div class="timing-info" id="sc-info"></div>
+        <div id="sc-pace-assistant"></div>
         <div id="sc-verify"></div>
         <div class="card">
             <div class="hole-display">
@@ -86,12 +89,12 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.6.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.7.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=12"></script>
+<script src="js/utils.js?v=13"></script>
 <script src="js/scorer.js"></script>
 <script src="js/pwa.js"></script>
 </body>

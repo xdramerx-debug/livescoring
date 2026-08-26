@@ -37,13 +37,18 @@ function loadPlayers() {
         var sortBy = document.getElementById('sort-by') ? document.getElementById('sort-by').value : 'rounds';
 
         // Скрываем дубликаты одного игрока (могли остаться от старых guest-записей с разными id):
-        // ключ «имя + гандикап»; приоритет — зарегистрированная запись и бóльшее число раундов
+        // ключ только по ФИО (имя + отчество + фамилия), без гандикапа — чтобы не было похожих вариантов,
+        // когда имена одинаковые, а гандикапы разные. Приоритет — зарегистрированная запись и большее число раундов.
         var dedupKeyOf = function(e) {
             var u = e[1] || {};
-            var nm = (u.name || '').toString();
-            var norm = (typeof normalizeSearchText === 'function' ? normalizeSearchText(nm) : nm.toLowerCase());
-            var hcp = (u.handicap != null && !isNaN(parseFloat(u.handicap))) ? Math.round(parseFloat(u.handicap) * 10) / 10 : '';
-            return norm + '|' + hcp;
+            var fio = '';
+            if (typeof getPlayerFioKey === 'function') {
+                fio = getPlayerFioKey(u);
+            } else {
+                var nm = (u.name || '').toString();
+                fio = (typeof normalizeSearchText === 'function' ? normalizeSearchText(nm) : nm.toLowerCase());
+            }
+            return fio;
         };
         var byDedupKey = {};
         entries.forEach(function(e) {

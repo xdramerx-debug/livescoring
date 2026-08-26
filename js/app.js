@@ -134,7 +134,8 @@ function loadLiveRounds() {
         var html = '';
         entries.forEach(function(e) {
             var id = e[0], r = e[1];
-            var players = r.players || {};
+            var rawPlayers = r.players || {};
+            var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
             var pHtml = '';
             var order = getRoundOrder(r);
 
@@ -267,7 +268,9 @@ function loadRecentResults() {
 
         var html = '';
         entries.forEach(function(e) {
-            var id = e[0], r = e[1], players = r.players || {};
+            var id = e[0], r = e[1];
+            var rawPlayers = r.players || {};
+            var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
             var pHtml = '';
             var order = getRoundOrder(r);
 

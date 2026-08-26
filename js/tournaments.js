@@ -60,9 +60,16 @@ function loadTournaments() {
             } else {
                 html += '<div style="overflow-x:auto;"><table class="lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>ТИ</th><th>' + t('date') + '</th></tr></thead><tbody>';
                 var rIdx = 1;
-                Object.values(regPlayers).forEach(function(rp) {
-                    // Удалённые и навсегда заблокированные демо-игроки не показываются
+                var seenFio = {};
+                var finalReg = [];
+                Object.values(regPlayers).forEach(function(rp){
                     if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(null, rp && rp.name)) return;
+                    var fioKey = (typeof getPlayerFioKey === 'function') ? getPlayerFioKey({name: rp.name, firstName: rp.name.split(' ')[0], lastName: rp.name.split(' ').slice(1).join(' ')}) : (rp.name||'').toLowerCase();
+                    if (seenFio[fioKey]) return;
+                    seenFio[fioKey]=true;
+                    finalReg.push(rp);
+                });
+                finalReg.forEach(function(rp) {
                     html += '<tr><td>' + (rIdx++) + '</td>';
                     html += '<td><strong style="color:var(--gold);">' + escapeHtml(rp.name || '—') + '</strong></td>';
                     html += '<td>' + (rp.handicap != null ? fmtExactHcp(rp.handicap) : '—') + '</td>';

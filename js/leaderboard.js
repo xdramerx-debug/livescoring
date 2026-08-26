@@ -47,11 +47,12 @@ function loadLB() {
 
 function renderRound(id, r) {
     var isLive = r.status === 'active';
-    var players = r.players || {};
+    var rawPlayers = r.players || {};
+    // Дедуп по ФИО, чтобы не было сдваивания игроков с одинаковыми именами
+    var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
     var order = getRoundOrder(r);
 
     var list = Object.entries(players).filter(function(pe) {
-        // Удалённые и навсегда заблокированные демо-игроки не показываются
         return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
     }).map(function(pe) {
         var pid = pe[0], p = pe[1], sc = p.scores || {};

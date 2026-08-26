@@ -1506,9 +1506,25 @@ function loadAdmPlayers() {
         var localUsers = typeof getKnownPlayersSync === 'function' ? (getKnownPlayersSync() || {}) : {};
         var combined = Object.assign({}, localUsers, remoteData || {});
         var entries = Object.entries(combined).filter(function(e) {
-            // Удалённые и навсегда заблокированные демо-игроки не показываются в админке
             return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(e[0], e[1] && e[1].name));
         });
+
+        // Дедуп по ФИО, чтобы не было сдваивания в админ-списке
+        if (typeof dedupePlayerEntriesByFio === 'function') {
+            entries = dedupePlayerEntriesByFio(entries);
+        } else if (typeof rgGetFioKey === 'function') {
+            var seenFio = {};
+            var deduped = [];
+            entries.forEach(function(en){
+                var u = en[1] || {};
+                var key = rgGetFioKey(u) || impNormName(u.name||'');
+                if (!key) { deduped.push(en); return; }
+                if (seenFio[key]) return;
+                seenFio[key]=true;
+                deduped.push(en);
+            });
+            entries = deduped;
+        }
 
         if (!entries.length) {
             el.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>' + (currentLang === 'en' ? 'No players' : 'Нет игроков') + '</p></div>';
@@ -1794,13 +1810,70 @@ function createPlayerInAdmin() {
 
     var parts = name.split(' ');
     var firstName = parts[0] || name;
-    var lastName = parts.slice(1).join(' ') || '';
+    var middleName = parts.length > 2 ? parts.slice(1, -1).join(' ') : '';
+    var lastName = parts.length > 1 ? parts[parts.length - 1] : '';
+    // Если ввели "Иван Петрович Тестов" — first=Иван, middle=Петрович, last=Тестов
+    // Если ввели "Тестов Иван Петрович" — тоже попробуем разобрать как в АГР
+    if (parts.length === 3) {
+        // Эвристика: если первая часть похожа на фамилию (заканчивается на -ов/-ев/-ин), считаем фамилия первая
+        var firstNorm = impNormName(parts[0]);
+        if (/(ов|ев|ин|ский|цкий|ко)$/.test(firstNorm)) {
+            lastName = parts[0];
+            firstName = parts[1];
+            middleName = parts[2];
+        }
+    }
+
+    // Проверка на дубликат по ФИО — чтобы не было сдваивания
+    var allLocal = (typeof getKnownPlayersSync === 'function') ? getKnownPlayersSync() : {};
+    var normNew = impNormName(name);
+    var foundDupId = null;
+    var foundDupData = null;
+    Object.keys(allLocal).forEach(function(uid){
+        var u = allLocal[uid] || {};
+        if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u.name)) return;
+        var existingKey = (typeof rgGetFioKey === 'function') ? rgGetFioKey(u) : impNormName(u.name||'');
+        if (existingKey && existingKey === normNew) {
+            foundDupId = uid;
+            foundDupData = u;
+        }
+    });
+    if (foundDupId) {
+        // Уже есть игрок с таким ФИО — обновляем гандикап и добавляем отчество если не было
+        if (typeof db !== 'undefined') {
+            var upd = { handicap: parsedHcp, hcpUpdatedAt: Date.now(), hcpSource: 'manual' };
+            if (middleName && !(foundDupData && foundDupData.middleName)) {
+                upd.middleName = middleName;
+                upd.firstName = firstName;
+                upd.lastName = lastName;
+                upd.name = (firstName + (middleName ? ' ' + middleName : '') + (lastName ? ' ' + lastName : '')).trim();
+            }
+            db.ref('users/' + foundDupId).update(upd);
+        }
+        if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[foundDupId]) {
+            cachedRegisteredUsers[foundDupId].handicap = parsedHcp;
+            if (middleName && !cachedRegisteredUsers[foundDupId].middleName) {
+                cachedRegisteredUsers[foundDupId].middleName = middleName;
+                cachedRegisteredUsers[foundDupId].firstName = firstName;
+                cachedRegisteredUsers[foundDupId].lastName = lastName;
+                cachedRegisteredUsers[foundDupId].name = (firstName + (middleName ? ' ' + middleName : '') + (lastName ? ' ' + lastName : '')).trim();
+            }
+            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e){}
+        }
+        toast((currentLang === 'en' ? '🔄 Player ' : '🔄 Игрок ') + name + (currentLang === 'en' ? ' updated (HCP ' : ' обновлён (HCP ') + fmtExactHcp(parsedHcp) + ') — ' + (currentLang === 'en' ? 'duplicate avoided' : 'дубликат предотвращён'), 'success');
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        nameInp.value = '';
+        if (emailInp) emailInp.value = '';
+        if (hcpInp) hcpInp.value = '';
+        return;
+    }
 
     var newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
 
     var playerData = {
         name: name,
         firstName: firstName,
+        middleName: middleName || '',
         lastName: lastName,
         email: email,
         handicap: parsedHcp,
@@ -2662,12 +2735,13 @@ function rgRenderResults(rows) {
                                 : 'Обновить существующего ' + escapeHtml(rgPlayerDisplayName(d)) + ': HCP ' + oldH + ' → ' + fmtExactHcp(r.hcp))
                             : (currentLang === 'en' ? 'Up to date: ' : 'HCP актуален: ') + escapeHtml(rgPlayerDisplayName(d))) + '</button>';
                 });
-                if (dups.length) {
-                    html += '<button type="button" class="btn btn-g btn-sm" onclick="rgAddAsNewFromResults(' + i + ')"><i class="fas fa-user-plus"></i> ' +
-                        (currentLang === 'en' ? 'Add as NEW player' : 'Добавить как нового игрока') + '</button>';
-                } else {
+                if (!dups.length) {
                     html += '<button type="button" class="btn btn-g btn-sm" onclick="rgAddFromResults(' + i + ')"><i class="fas fa-plus"></i> ' +
                         (currentLang === 'en' ? 'Add to site' : 'Добавить на сайт') + '</button>';
+                } else {
+                    // Дубликат предотвращён: одинаковое ФИО уже есть, предлагаем только обновить HCP и добавить отчество
+                    // Кнопка "Добавить как нового" убрана чтобы не было похожих вариантов с разным HCP
+                    html += '<span class="imp-badge imp-badge-dup" style="margin-left:6px;">' + (currentLang === 'en' ? 'Duplicate prevented - use update' : 'Дубликат предотвращён - используйте обновление') + '</span>';
                 }
             }
             html += '</div>';
@@ -2718,6 +2792,8 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
     var gender = (playerData && playerData.gender) || r.gender || 'men';
     var name = (playerData && playerData.name) || r.fio || '';
     var nameKey = impNormName(name);
+    var existingMiddle = (playerData && playerData.middleName) ? String(playerData.middleName).trim() : '';
+    var shouldAddMiddle = !!r.middleName && !existingMiddle;
     var updates = {
         handicap: hcp,
         rusgolfNumber: r.number || null,
@@ -2725,34 +2801,29 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
         hcpUpdatedAt: Date.now(),
         hcpSource: 'rusgolf'
     };
-    if (r.firstName) updates.firstName = r.firstName;
-    if (r.lastName) updates.lastName = r.lastName;
-    // Отчество из базы АГР тоже дописываем в профиль (имя, фамилия, отчество, HCP)
-    if (r.middleName) {
+    if (r.firstName && !(playerData && playerData.firstName)) updates.firstName = r.firstName;
+    if (r.lastName && !(playerData && playerData.lastName)) updates.lastName = r.lastName;
+    if (shouldAddMiddle) {
         updates.middleName = r.middleName;
         updates.name = rgAgrNameSiteOrder(r);
     }
 
-    // Локальный кэш (профиль, автоподбор, список игроков)
     if (typeof cachedRegisteredUsers !== 'undefined') {
         if (cachedRegisteredUsers[userId]) {
-            Object.assign(cachedRegisteredUsers[userId], updates);
+            var cur = cachedRegisteredUsers[userId] || {};
+            cur.handicap = hcp;
+            if (r.number) cur.rusgolfNumber = r.number;
+            cur.hcpUpdatedAt = updates.hcpUpdatedAt;
+            cur.hcpSource = 'rusgolf';
+            if (shouldAddMiddle) {
+                cur.middleName = r.middleName;
+                cur.name = updates.name;
+                if (r.firstName) cur.firstName = r.firstName;
+                if (r.lastName) cur.lastName = r.lastName;
+            }
+            cachedRegisteredUsers[userId] = cur;
         } else if (playerData) {
             cachedRegisteredUsers[userId] = Object.assign({}, playerData, updates);
-        }
-        // Синхронизируем ghost/guest-записи с тем же именем
-        if (nameKey) {
-            Object.keys(cachedRegisteredUsers).forEach(function(k) {
-                if (k === userId) return;
-                var u = cachedRegisteredUsers[k];
-                if (!u || !u.name) return;
-                if (impNormName(u.name) === nameKey) {
-                    u.handicap = hcp;
-                    if (r.number) u.rusgolfNumber = r.number;
-                    u.hcpUpdatedAt = updates.hcpUpdatedAt;
-                    u.hcpSource = 'rusgolf';
-                }
-            });
         }
         try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
     }
@@ -2761,7 +2832,15 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
         var existing = localStorage.getItem('pestovo_custom_players');
         if (existing) custom = JSON.parse(existing) || {};
         if (custom[userId]) {
-            Object.assign(custom[userId], updates);
+            var cur2 = custom[userId] || {};
+            cur2.handicap = hcp;
+            if (shouldAddMiddle) {
+                cur2.middleName = r.middleName;
+                cur2.name = updates.name;
+                if (r.firstName) cur2.firstName = r.firstName;
+                if (r.lastName) cur2.lastName = r.lastName;
+            }
+            custom[userId] = cur2;
             localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
         }
     } catch(e) {}
@@ -2774,11 +2853,11 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
     fbUpdates['users/' + userId + '/hcpSource'] = 'rusgolf';
     if (r.number) fbUpdates['users/' + userId + '/rusgolfNumber'] = r.number;
     if (r.hcpDate) fbUpdates['users/' + userId + '/rusgolfHcpDate'] = r.hcpDate;
-    if (r.firstName) fbUpdates['users/' + userId + '/firstName'] = r.firstName;
-    if (r.lastName) fbUpdates['users/' + userId + '/lastName'] = r.lastName;
-    if (r.middleName) {
+    if (r.firstName && !(playerData && playerData.firstName)) fbUpdates['users/' + userId + '/firstName'] = r.firstName;
+    if (r.lastName && !(playerData && playerData.lastName)) fbUpdates['users/' + userId + '/lastName'] = r.lastName;
+    if (shouldAddMiddle) {
         fbUpdates['users/' + userId + '/middleName'] = r.middleName;
-        fbUpdates['users/' + userId + '/name'] = rgAgrNameSiteOrder(r);
+        fbUpdates['users/' + userId + '/name'] = updates.name;
     }
 
     return Promise.all([
@@ -2797,8 +2876,7 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
                 var p = rd.players[pid];
                 if (!p) return;
                 var sameId = pid === userId;
-                var sameName = nameKey && p.name && impNormName(p.name) === nameKey;
-                if (!sameId && !sameName) return;
+                if (!sameId) return;
                 var tee = p.tee || rd.tee || 'wh';
                 var g = p.gender || gender;
                 var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(hcp, tee, g) : Math.round(hcp);
@@ -2814,8 +2892,7 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
                 var rp = tn.registeredPlayers[pid];
                 if (!rp) return;
                 var sameId = pid === userId || (rp.uid && rp.uid === userId);
-                var sameName = nameKey && rp.name && impNormName(rp.name) === nameKey;
-                if (!sameId && !sameName) return;
+                if (!sameId) return;
                 fbUpdates['tournaments/' + tid + '/registeredPlayers/' + pid + '/handicap'] = hcp;
             });
         });
@@ -2830,40 +2907,13 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
             fbUpdates['users/' + userId + '/history/' + hKey + '/fieldHcp'] = fieldHcp;
         });
 
-        // Также обновляем history у других uid с тем же именем (гости)
-        if (nameKey) {
-            return db.ref('users').once('value').then(function(usn) {
-                var users = usn.val() || {};
-                Object.keys(users).forEach(function(uid) {
-                    if (uid === userId) return;
-                    var u = users[uid];
-                    if (!u || !u.name || impNormName(u.name) !== nameKey) return;
-                    fbUpdates['users/' + uid + '/handicap'] = hcp;
-                    fbUpdates['users/' + uid + '/hcpUpdatedAt'] = updates.hcpUpdatedAt;
-                    fbUpdates['users/' + uid + '/hcpSource'] = 'rusgolf';
-                    if (r.number) fbUpdates['users/' + uid + '/rusgolfNumber'] = r.number;
-                    if (u.history) {
-                        Object.keys(u.history).forEach(function(hKey) {
-                            var h = u.history[hKey];
-                            if (!h) return;
-                            var tee = h.tee || 'wh';
-                            var g = h.gender || u.gender || gender;
-                            var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(hcp, tee, g) : Math.round(hcp);
-                            fbUpdates['users/' + uid + '/history/' + hKey + '/exactHcp'] = hcp;
-                            fbUpdates['users/' + uid + '/history/' + hKey + '/fieldHcp'] = fieldHcp;
-                        });
-                    }
-                });
-                return db.ref().update(fbUpdates);
-            });
-        }
         return db.ref().update(fbUpdates);
     }).catch(function(err) {
         console.warn('rgPropagateHcpEverywhere:', err);
-        // Fallback: хотя бы users
         return db.ref('users/' + userId).update(updates);
     });
 }
+
 
 function rgUpdateHcpOfSilent(userId, r, playerData) {
     return rgPropagateHcpEverywhere(userId, r, playerData);
@@ -2924,7 +2974,13 @@ function rgAgrNameSiteOrder(r) {
 // Создаёт НОВУЮ запись игрока из результата базы АГР.
 // Сохраняет имя, фамилию, ОТЧЕСТВО и гандикап (отчество — отдельно в middleName).
 function rgCreateNewPlayerFromAgr(r) {
-    var newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6) + '_' + Math.floor(Math.random() * 10000);
+    var baseName = rgAgrNameSiteOrder(r) || r.fio || 'player';
+    var norm = impNormName(baseName).replace(/\s+/g, '_');
+    var numPart = String(r.number || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    var newId = 'user_' + norm + (numPart ? '_' + numPart : '') + '_' + Date.now().toString().slice(-6);
+    if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[newId]) {
+        newId = newId + '_' + Math.random().toString(36).substring(2,4);
+    }
     var playerData = {
         name: rgAgrNameSiteOrder(r),
         firstName: r.firstName || '',
@@ -3055,6 +3111,129 @@ function rgPlayerDisplayName(p) {
     return u.name || ((u.firstName || '') + ' ' + (u.lastName || '')).trim() || p.id || '—';
 }
 
+function rgGetFioKey(u) {
+    if (!u) return '';
+    var fn = (u.firstName || '').toString().trim();
+    var mn = (u.middleName || '').toString().trim();
+    var ln = (u.lastName || '').toString().trim();
+    var name = (u.name || '').toString().trim();
+    var combined = (fn + ' ' + mn + ' ' + ln).replace(/\s+/g, ' ').trim() || name;
+    return impNormName(combined);
+}
+
+function rgFindDuplicateGroups(allPlayers) {
+    var groups = {};
+    (allPlayers || []).forEach(function(p) {
+        var u = p.data || {};
+        var key = rgGetFioKey(u);
+        if (!key) return;
+        if (!groups[key]) groups[key] = { key: key, displayName: rgPlayerDisplayName(p), players: [] };
+        groups[key].players.push(p);
+    });
+    var result = [];
+    Object.keys(groups).forEach(function(k) {
+        var g = groups[k];
+        if (g.players.length > 1) {
+            result.push(g);
+        }
+    });
+    return result;
+}
+
+function rgRenderDuplicateGroups(groups) {
+    if (!groups || !groups.length) return '';
+    var en = currentLang === 'en';
+    var html = '<div class="card" style="border:2px solid var(--red);background:rgba(224,90,74,0.08);margin-top:18px;">';
+    html += '<h3 style="color:var(--red);font-size:15px;margin-bottom:10px;"><i class="fas fa-clone"></i> ' + (en ? 'Duplicate names - choose handicap' : 'Одинаковые ФИО - выберите гандикап') + ' (' + groups.length + ')</h3>';
+    html += '<p style="color:var(--muted);font-size:12px;margin-bottom:14px;">' + (en ? 'Same first/last/middle names with different handicaps were found. Use "Change handicap" to set correct HCP for each, or delete extra duplicates.' : 'Найдены игроки с одинаковыми именем, фамилией и отчеством, но разными гандикапами. Используйте "Изменить гандикап" чтобы указать у кого какой HCP, или удалите лишние дубликаты.') + '</p>';
+    groups.forEach(function(g, gi) {
+        html += '<div style="margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;">';
+        html += '<div style="font-weight:800;color:var(--white);margin-bottom:8px;">' + escapeHtml(g.displayName) + ' <span style="color:var(--muted);font-weight:400;">(' + g.players.length + ')</span></div>';
+        g.players.forEach(function(pl, pi) {
+            var u = pl.data || {};
+            var curHcp = u.handicap != null ? fmtExactHcp(u.handicap) : '—';
+            var safeId = String(pl.id).replace(/'/g, "\\'");
+            var inputId = 'rg-dup-hcp-' + gi + '-' + pi;
+            html += '<div class="list-item" style="padding:10px;gap:10px;flex-wrap:wrap;">';
+            html += '<div style="flex:1;min-width:160px;"><strong style="color:var(--gold);">' + escapeHtml(rgPlayerDisplayName(pl)) + '</strong>';
+            html += '<div style="font-size:12px;color:var(--muted);">ID: ' + escapeHtml(pl.id) + (u.isGuest ? ' · ' + (en ? 'Guest' : 'Гость') : '') + (u.rusgolfNumber ? ' · 💳 ' + escapeHtml(u.rusgolfNumber) : '') + '</div></div>';
+            html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
+            html += '<span style="font-size:12px;color:var(--muted);">' + (en ? 'Current HCP' : 'Текущий HCP') + ': <b>' + curHcp + '</b></span>';
+            html += '<input type="text" id="' + inputId + '" class="form-input" style="width:90px;padding:6px 8px;font-size:13px;" placeholder="' + curHcp + '" value="' + (u.handicap!=null? String(u.handicap).replace('+','') : '') + '">';
+            html += '<button class="btn btn-g btn-sm" onclick="rgChangeDuplicateHcp(\'' + safeId + '\', \'' + inputId + '\')"><i class="fas fa-rotate"></i> ' + (en ? 'Change HCP' : 'Изменить гандикап') + '</button>';
+            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + safeId + '\', \'' + escapeHtml(u.name||'').replace(/'/g, "\\'") + '\')"><i class="fas fa-trash"></i></button>';
+            html += '</div></div>';
+        });
+        html += '</div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+function rgChangeDuplicateHcp(userId, inputId) {
+    if (!rgIsAdmin()) {
+        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
+        return;
+    }
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    var raw = inp.value.trim();
+    if (!raw) {
+        toast(currentLang === 'en' ? '⚠ Enter new HCP' : '⚠ Введите новый HCP', 'error');
+        return;
+    }
+    var parsed = (typeof impParseHcpStrict === 'function') ? impParseHcpStrict(raw) : null;
+    var newHcp;
+    if (parsed && parsed.val != null) newHcp = parsed.val;
+    else newHcp = (typeof parseExactHcp === 'function') ? parseExactHcp(raw) : parseFloat(raw);
+    if (newHcp == null || isNaN(newHcp)) {
+        toast(currentLang === 'en' ? '⚠ Invalid HCP' : '⚠ Некорректный HCP', 'error');
+        return;
+    }
+    if (typeof db === 'undefined') {
+        if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[userId]) {
+            cachedRegisteredUsers[userId].handicap = newHcp;
+            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e){}
+        }
+        toast('✅ HCP ' + fmtExactHcp(newHcp) + ' ' + (currentLang === 'en' ? 'set for ' : 'установлен для ') + userId, 'success');
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        return;
+    }
+    db.ref('users/' + userId).update({ handicap: newHcp, hcpUpdatedAt: Date.now(), hcpSource: 'manual' }).then(function(){
+        return db.ref('rounds').once('value');
+    }).then(function(sn){
+        var rounds = sn.val() || {};
+        var updates = {};
+        Object.keys(rounds).forEach(function(rid){
+            var rd = rounds[rid];
+            if (!rd || !rd.players || !rd.players[userId]) return;
+            var tee = rd.players[userId].tee || rd.tee || 'wh';
+            var g = rd.players[userId].gender || 'men';
+            var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(newHcp, tee, g) : Math.round(newHcp);
+            updates['rounds/' + rid + '/players/' + userId + '/exactHcp'] = newHcp;
+            updates['rounds/' + rid + '/players/' + userId + '/fieldHcp'] = fieldHcp;
+        });
+        if (Object.keys(updates).length) return db.ref().update(updates);
+    }).then(function(){
+        toast('✅ HCP ' + fmtExactHcp(newHcp) + ' ' + (currentLang === 'en' ? 'updated for ' : 'обновлён у ') + userId, 'success');
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        impCollectPlayers(function(all){
+            var dups = rgFindDuplicateGroups(all);
+            var el = document.getElementById('rg-sync-manual');
+            if (el && dups.length) {
+                var existing = document.getElementById('rg-duplicates-block');
+                var html = '<div id="rg-duplicates-block">' + rgRenderDuplicateGroups(dups) + '</div>';
+                if (existing) existing.outerHTML = html;
+                else el.insertAdjacentHTML('beforeend', html);
+            }
+        });
+    }).catch(function(err){
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+
+
 function rgSyncResultListsHtml(stats) {
     var en = currentLang === 'en';
     var sections = [
@@ -3170,14 +3349,13 @@ function rgSyncAll() {
         : 'Проверить гандикап каждого игрока в базе АГР? При большом списке это может занять несколько минут.')) return;
 
     impCollectPlayers(function(players) {
-        // Дедуп по нормализованному имени: один человек из users + rounds не должен синкаться дважды
+        // Дедуп по ФИО (имя + отчество + фамилия), без учета HCP — чтобы не было сдваивания
         var seenNames = {};
         var list = [];
         players.forEach(function(p) {
             if (!p.data || !(p.data.name || p.data.firstName || p.data.lastName)) return;
-            var key = impNormName(p.data.name || ((p.data.firstName || '') + ' ' + (p.data.lastName || '')));
+            var key = rgGetFioKey(p.data) || impNormName(p.data.name || ((p.data.firstName || '') + ' ' + (p.data.lastName || '')));
             if (key && seenNames[key]) {
-                // Предпочитаем запись без isGuest / с email
                 var prev = seenNames[key];
                 var preferNew = (!p.data.isGuest && prev.data.isGuest) || (p.data.email && !prev.data.email);
                 if (preferNew) {
@@ -3305,11 +3483,26 @@ function rgSyncAll() {
             stats.noHcp = stats.noHcpList.length;
 
             var listsHtml = rgSyncResultListsHtml(stats);
-            if (resultsEl) {
-                resultsEl.innerHTML = listsHtml;
-            } else if (progressEl) {
-                progressEl.insertAdjacentHTML('beforeend', listsHtml);
-            }
+            // После синхронизации проверяем дубликаты по ФИО и предлагаем выбрать гандикап
+            (function(statsCopy, listsHtmlCopy, progressElCopy, resultsElCopy) {
+                impCollectPlayers(function(allPlayers) {
+                    var dupGroups = rgFindDuplicateGroups(allPlayers);
+                    var dupHtml = rgRenderDuplicateGroups(dupGroups);
+                    if (resultsElCopy) {
+                        resultsElCopy.innerHTML = listsHtmlCopy + dupHtml;
+                    } else if (progressElCopy) {
+                        progressElCopy.insertAdjacentHTML('beforeend', listsHtmlCopy + dupHtml);
+                    }
+                    if (dupGroups.length) {
+                        var manualEl = document.getElementById('rg-sync-manual');
+                        if (manualEl) {
+                            if (!document.getElementById('rg-duplicates-block')) {
+                                manualEl.insertAdjacentHTML('beforeend', '<div id="rg-duplicates-block">' + dupHtml + '</div>');
+                            }
+                        }
+                    }
+                });
+            })(stats, listsHtml, progressEl, resultsEl);
 
             var msg = (currentLang === 'en' ? '✅ Sync finished: ' : '✅ Синхронизация завершена: ') +
                 (currentLang === 'en' ? stats.updated + ' updated, ' : stats.updated + ' обновлено, ') +

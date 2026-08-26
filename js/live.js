@@ -309,7 +309,12 @@ document.addEventListener('change', function(e) {
 // ==========================================
 // СТАРТ И АВТО-МАРКЕРЫ
 // ==========================================
+var groupStarting = false;
+
 function startGroup() {
+    // Защита от двойного нажатия: иначе создавалось два раунда
+    if (groupStarting) return;
+
     var timeStr = document.getElementById('grp-time').value;
     var startHole = parseInt(document.getElementById('grp-hole').value) || 1;
     var format = document.getElementById('grp-format').value;
@@ -318,10 +323,10 @@ function startGroup() {
 
     if (!timeStr) { toast(t('msg_start_time_req'), 'error'); return; }
 
-    var players = {};
-    var pOrder = [];
     var selectedUids = [];
+    var inputs = [];
 
+    // 1) Собираем и валидируем ввод
     for (var i = 1; i <= count; i++) {
         var uidEl = document.getElementById('pl-uid-' + i);
         var uid = uidEl ? uidEl.value : '';
@@ -342,75 +347,133 @@ function startGroup() {
 
         if (!name) { toast(t('msg_name_req') + ' #' + i, 'error'); return; }
 
-        var pid = uid || 'guest_' + Date.now() + '_' + i;
-        var parsedHcp = parseExactHcp(hcpStr);
-        var fieldHcp = hcpStr ? getFieldHcp(parsedHcp, playerTee, gender) : 0;
-
-        players[pid] = {
+        inputs.push({
+            idx: i,
+            uid: uid,
             name: name,
-            exactHcp: parsedHcp,
-            fieldHcp: fieldHcp,
+            hcpStr: hcpStr,
             gender: gender,
             tee: playerTee,
-            isGuest: !uid,
-            scores: {},
-            markerScores: {},
-            submitted: {},
-            markerSubmitted: {},
-            verified: {}
-        };
-        pOrder.push(pid);
+            parsedHcp: parseExactHcp(hcpStr),
+            fieldHcp: hcpStr ? getFieldHcp(parseExactHcp(hcpStr), playerTee, gender) : 0
+        });
     }
 
-    var markerAssignments = {};
-    for (var i = 0; i < pOrder.length; i++) {
-        var markerId = pOrder[i];
-        var targetId = pOrder[(i + 1) % pOrder.length];
+    groupStarting = true;
 
-        players[targetId].markedBy = markerId; 
-        markerAssignments[markerId] = {
-            targetId: targetId,
-            targetName: players[targetId].name
-        };
-    }
+    var resolver = typeof resolveOrCreatePlayerUser === 'function'
+        ? resolveOrCreatePlayerUser
+        : (typeof registerGuestPlayerInDatabase === 'function' ? registerGuestPlayerInDatabase : null);
 
-    var parts = timeStr.split(':');
-    var now = new Date();
-    var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
-
-    var creatorId = currentUser ? currentUser.uid : pOrder[0];
-    var accessKey = 'group_key_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-
-    var flightTee = (pOrder.length > 0 && players[pOrder[0]] && players[pOrder[0]].tee) ? players[pOrder[0]].tee : 'wh';
-
-    var data = {
-        mode: 'group',
-        tee: flightTee,
-        format: format,
-        startHole: startHole,
-        startTime: startDate.getTime(),
-        players: players,
-        markerAssignments: markerAssignments,
-        participantsList: pOrder,
-        status: 'active',
-        createdAt: Date.now(),
-        createdBy: creatorId,
-        accessKey: accessKey
+    // 2) Идемпотентно разрешаем id игроков: существующие не создаются заново,
+    //    новые гости получают детерминированный id (одинаков для всех режимов)
+    var resolveOne = function(inp) {
+        if (inp.uid) return Promise.resolve(inp.uid);
+        if (resolver) {
+            try {
+                return resolver({
+                    uid: null,
+                    name: inp.name,
+                    exactHcp: inp.parsedHcp,
+                    gender: inp.gender,
+                    tee: inp.tee
+                }).catch(function() { return null; });
+            } catch (e) {
+                return Promise.resolve(null);
+            }
+        }
+        return Promise.resolve(null);
     };
 
-    if (tournamentId) data.tournamentId = tournamentId;
+    var resolveAll = Promise.all(inputs.map(resolveOne));
 
-    var ref = db.ref('rounds').push();
-    var newRoundId = ref.key;
-    
-    localStorage.setItem('pestovo_group_key_' + newRoundId, accessKey);
-    localStorage.setItem('pestovo_acting_as_' + newRoundId, pOrder[0]);
+    resolveAll.then(function(resolvedIds) {
+        var players = {};
+        var pOrder = [];
+        var seenIds = {};
 
-    ref.set(data).then(function() {
-        toast(t('msg_round_started'));
-        window.location.href = 'setup-round.html?round=' + newRoundId;
+        for (var j = 0; j < inputs.length; j++) {
+            var inp = inputs[j];
+            var pid = resolvedIds[j] || ('guest_' + Date.now() + '_' + inp.idx);
+            // Два разных поля с одним игроком (одинаковое имя без выбора из списка)
+            // после разрешения дают одинаковый id — не допускаем дубль в раунде
+            if (seenIds[pid]) {
+                toast((currentLang === 'en' ? 'Duplicate player in group: ' : 'Дублирующий игрок в группе: ') + inp.name, 'error');
+                groupStarting = false;
+                return;
+            }
+            seenIds[pid] = true;
+
+            players[pid] = {
+                name: inp.name,
+                exactHcp: inp.parsedHcp,
+                fieldHcp: inp.fieldHcp,
+                gender: inp.gender,
+                tee: inp.tee,
+                isGuest: String(pid).indexOf('guest_') === 0,
+                scores: {},
+                markerScores: {},
+                submitted: {},
+                markerSubmitted: {},
+                verified: {}
+            };
+            pOrder.push(pid);
+        }
+
+        var markerAssignments = {};
+        for (var m = 0; m < pOrder.length; m++) {
+            var markerId = pOrder[m];
+            var targetId = pOrder[(m + 1) % pOrder.length];
+
+            players[targetId].markedBy = markerId;
+            markerAssignments[markerId] = {
+                targetId: targetId,
+                targetName: players[targetId].name
+            };
+        }
+
+        var parts = timeStr.split(':');
+        var now = new Date();
+        var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
+
+        var creatorId = currentUser ? currentUser.uid : pOrder[0];
+        var accessKey = 'group_key_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+        var flightTee = (pOrder.length > 0 && players[pOrder[0]] && players[pOrder[0]].tee) ? players[pOrder[0]].tee : 'wh';
+
+        var data = {
+            mode: 'group',
+            tee: flightTee,
+            format: format,
+            startHole: startHole,
+            startTime: startDate.getTime(),
+            players: players,
+            markerAssignments: markerAssignments,
+            participantsList: pOrder,
+            status: 'active',
+            createdAt: Date.now(),
+            createdBy: creatorId,
+            accessKey: accessKey
+        };
+
+        if (tournamentId) data.tournamentId = tournamentId;
+
+        var ref = db.ref('rounds').push();
+        var newRoundId = ref.key;
+
+        localStorage.setItem('pestovo_group_key_' + newRoundId, accessKey);
+        localStorage.setItem('pestovo_acting_as_' + newRoundId, pOrder[0]);
+
+        ref.set(data).then(function() {
+            toast(t('msg_round_started'));
+            window.location.href = 'setup-round.html?round=' + newRoundId;
+        }).catch(function(err) {
+            groupStarting = false;
+            toast('⚠️ Ошибка запуска раунда: ' + err.message, 'error');
+        });
     }).catch(function(err) {
-        toast('⚠️ Ошибка запуска раунда: ' + err.message, 'error');
+        groupStarting = false;
+        toast('⚠️ Ошибка запуска раунда: ' + (err && err.message ? err.message : err), 'error');
     });
 }
 
@@ -814,7 +877,7 @@ function renderPlaySummary() {
         var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
 
         html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
-        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + p.name + isMe + '</strong>';
+        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + isMe + '</strong>';
         html += '<div style="font-size:12px;color:var(--muted);">' + t('hole') + 's: ' + stats.holesPlayed + ' / 18</div></div>';
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
@@ -947,18 +1010,28 @@ function renderGVPlayers(r) {
     }
 }
 
+var groupFinishing = false;
+
 function finishGroupRound() {
     if (!canEditGroup) return;
+    // Защита от повторного завершения (двойной клик): иначе история и roundsPlayed задваивались
+    if (groupFinishing) return;
+    if (curRoundData && curRoundData.status === 'completed') return;
+    groupFinishing = true;
+
+    var finalizeGroup = function() {
+        db.ref('rounds/' + curRid + '/status').set('completed').catch(function(){ groupFinishing = false; });
+        db.ref('rounds/' + curRid + '/completedAt').set(Date.now());
+
+        db.ref('rounds/' + curRid).once('value').then(function(sn) {
+            var r = sn.val();
+            if (r) saveHistory(curRid, r);
+        });
+    };
 
     if (typeof openFinishConfirmModal === 'function') {
         openFinishConfirmModal(curRid, function() {
-            db.ref('rounds/' + curRid + '/status').set('completed');
-            db.ref('rounds/' + curRid + '/completedAt').set(Date.now());
-
-            db.ref('rounds/' + curRid).once('value').then(function(sn) {
-                var r = sn.val();
-                if (r) saveHistory(curRid, r);
-            });
+            finalizeGroup();
 
             toast(t('msg_round_finished'));
             setTimeout(function() {
@@ -967,15 +1040,9 @@ function finishGroupRound() {
             }, 800);
         });
     } else {
-        if (!confirm(t('msg_finish_confirm'))) return;
+        if (!confirm(t('msg_finish_confirm'))) { groupFinishing = false; return; }
 
-        db.ref('rounds/' + curRid + '/status').set('completed');
-        db.ref('rounds/' + curRid + '/completedAt').set(Date.now());
-
-        db.ref('rounds/' + curRid).once('value').then(function(sn) {
-            var r = sn.val();
-            if (r) saveHistory(curRid, r);
-        });
+        finalizeGroup();
 
         toast(t('msg_round_finished'));
         setTimeout(function() {

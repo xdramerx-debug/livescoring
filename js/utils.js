@@ -794,7 +794,7 @@ function loadMyActiveRounds(targetId) {
 
         myActive.forEach(function(item) {
             var id = item.id, r = item.round;
-            var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'live.html?round=' + id;
+            var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'setup-round.html?round=' + id;
             var modeIcon = r.mode === 'solo' ? '<i class="fas fa-user"></i> ' + t('solo_round') : '<i class="fas fa-users"></i> ' + t('group_round');
             var teePill = fmtTeePill(r.tee);
             var playersCount = Object.keys(r.players || {}).length;
@@ -1044,7 +1044,7 @@ function buildMobileDrawer() {
     var menuBodyMarkup = '<div class="mobile-drawer-group">' +
         '<div class="mobile-drawer-group-title">⛳ ' + (isEn ? 'Game & Rounds' : 'Игра и Раунды') + '</div>' +
         '<a href="index.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-home"></i> <span data-i18n="nav_home">' + t('nav_home') + '</span></a>' +
-        '<a href="live.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-gamepad"></i> <span data-i18n="nav_round">' + t('nav_round') + '</span></a>' +
+        '<a href="setup-round.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-gamepad"></i> <span data-i18n="nav_round">' + t('nav_round') + '</span></a>' +
         '<a href="leaderboard.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">' + t('nav_leaderboard') + '</span></a>' +
         '</div>' +
 
@@ -1147,7 +1147,7 @@ function initWakeLock() {
     if (typeof document === 'undefined') return;
     if (!('wakeLock' in navigator)) return;
     var curPage = (window.location && window.location.pathname) ? (window.location.pathname.split('/').pop() || '') : '';
-    var SCORING_PAGES = ['live.html', 'solo.html', 'scorer.html', 'marker.html'];
+    var SCORING_PAGES = ['setup-round.html', 'solo.html', 'scorer.html', 'marker.html'];
     if (SCORING_PAGES.indexOf(curPage) === -1) return;
 
     function acquire() {

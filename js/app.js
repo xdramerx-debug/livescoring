@@ -122,7 +122,7 @@ function loadLiveRounds() {
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active'; });
 
         if (entries.length === 0) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="live.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
+            el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
             return;
         }
 
@@ -153,7 +153,7 @@ function loadLiveRounds() {
                     '</div></div>';
             });
 
-            var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'live.html?round=' + id;
+            var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'setup-round.html?round=' + id;
             var panelId = 'live-sc-' + id;
 
             var localGroupKey = localStorage.getItem('pestovo_group_key_' + id);

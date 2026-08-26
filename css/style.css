@@ -850,6 +850,8 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .footer-link{display:block;color:var(--muted);text-decoration:none;font-size:13px;padding:3px 0;}
 .footer-link:hover{color:var(--gold);}
 .footer-bottom{border-top:1px solid var(--border);padding-top:18px;text-align:center;font-size:12px;color:var(--muted);}
+.site-version{margin-top:8px;font-size:11px;color:var(--gold);font-weight:600;opacity:0.8;}
+.site-version:hover{opacity:1;}
 
 .toast{position:fixed;top:max(80px, calc(env(safe-area-inset-top) + 20px));right:20px;padding:12px 22px;border-radius:var(--rs);font-size:13px;font-weight:600;z-index:9999999!important;transform:translateY(-150%);transition:var(--t);box-shadow:var(--shl);max-width:340px;}
 .t-show{transform:translateY(0);}

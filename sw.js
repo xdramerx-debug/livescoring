@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v70';
+const CACHE_NAME = 'pestovo-v72';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
@@ -11,7 +11,8 @@ const STATIC_ASSETS = [
     'js/leaderboard.js', 'js/players.js', 'js/tournaments.js',
     'js/stats.js', 'js/handicap.js', 'js/admin.js', 'js/scorer.js',
     'js/marker.js', 'js/guide.js', 'js/feed.js', 'js/predictor.js',
-    'js/order-of-merit.js', 'js/pwa.js', 'img/logo.png'
+    'js/order-of-merit.js', 'js/pwa.js', 'img/logo.png',
+    'img/icon-192.png', 'img/icon-512.png', 'img/icon-180.png'
 ];
 
 self.addEventListener('install', function(event) {
@@ -44,7 +45,7 @@ self.addEventListener('fetch', function(event) {
     if (url.indexOf('hcp.rusgolf.ru') !== -1 || url.indexOf('r.jina.ai') !== -1 ||
         url.indexOf('allorigins') !== -1 || url.indexOf('codetabs') !== -1 || url.indexOf('corsproxy') !== -1) return;
     event.respondWith(
-        caches.match(event.request).then(function(cached) {
+        caches.match(event.request, { ignoreSearch: true }).then(function(cached) {
             if (cached) return cached;
             return fetch(event.request).catch(function() {
                 if (event.request.destination === 'document') return caches.match(OFFLINE_URL);

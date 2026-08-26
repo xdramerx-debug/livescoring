@@ -12,6 +12,15 @@ var targetScore = 0;
 var isChanging = false;
 var canEditGroup = false;
 
+// Защита от гонки: если колбэк авторизации сработает до парсинга этого файла
+// (медленная загрузка/кэш SW), подписываемся на раунд и из DOMContentLoaded.
+var roundViewListening = false;
+function bootRoundViewOnce() {
+    if (roundViewListening || !curRid) return;
+    roundViewListening = true;
+    initRoundView();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
     var p = new URLSearchParams(window.location.search);
@@ -23,16 +32,21 @@ document.addEventListener('DOMContentLoaded', function() {
         window.history.replaceState(null, null, window.location.pathname + '?round=' + curRid);
     }
 
-    if (typeof loadPestovoWeather === 'function') {
-        loadPestovoWeather('weather-widget-container');
-    }
+    // не ждём авторизацию: гость с ключом раунда тоже должен сразу попасть в счёт
+    if (curRid) bootRoundViewOnce();
+
+    // погодный виджет инициализируется в initNav() с правильным контейнером
 });
 
 function onAuthReady(u, d) {
     navAuth(u, d);
-    if (curRid) {
-        initRoundView();
+    // Доступ участника мог определиться только после входа в аккаунт:
+    // если слушатель уже подписан как гость — перепроверяем права с учётом uid.
+    if (roundViewListening && u && myUid === null && curRoundData) {
+        roundViewListening = false;
+        try { db.ref('rounds/' + curRid).off('value'); } catch (e) {}
     }
+    bootRoundViewOnce();
 }
 
 // ==========================================
@@ -291,7 +305,7 @@ function startGroup() {
         var uidEl = document.getElementById('pl-uid-' + i);
         var uid = uidEl ? uidEl.value : '';
         var nameEl = document.getElementById('pl-name-' + i);
-        var name = nameEl ? nameEl.value.trim() : '';
+        var name = nameEl ? sanitizeNameRaw(nameEl.value) : '';
         var hcpStr = document.getElementById('pl-hcp-' + i).value;
         var gender = document.getElementById('pl-gender-' + i).value;
         var playerTee = document.getElementById('pl-tee-' + i) ? document.getElementById('pl-tee-' + i).value : 'wh';
@@ -796,7 +810,7 @@ function renderInviteQRs() {
         var isMe = pid === myUid ? ' <span style="font-size:11px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
 
         html += '<div class="qr-card" style="padding:14px;text-align:center;">';
-        html += '<div class="qr-name" style="color:var(--white);font-weight:700;font-size:14px;margin-bottom:4px;"><i class="fas fa-mobile-alt"></i> ' + (p.name || t('player')) + isMe + '</div>';
+        html += '<div class="qr-name" style="color:var(--white);font-weight:700;font-size:14px;margin-bottom:4px;"><i class="fas fa-mobile-alt"></i> ' + escapeHtml(p.name || t('player')) + isMe + '</div>';
         html += '<div style="font-size:11px;color:var(--gold);margin-bottom:8px;">' + t('scan_to_play') + '</div>';
         html += '<img src="' + qrUrl(url) + '" alt="QR" style="width:160px;height:160px;border-radius:8px;background:#fff;padding:6px;margin:0 auto 8px;display:block;">';
         html += '<div class="qr-url" style="font-size:10px;word-break:break-all;"><a href="' + url + '" target="_blank" style="color:var(--muted);">' + url + '</a></div>';
@@ -848,7 +862,7 @@ function renderGVPlayers(r) {
             var thruTxt = stats.holesPlayed >= 18 ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
 
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
-                '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</strong>' +
+                '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</strong>' +
                 '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stableford: ' + stats.stablefordField + '</div>' +
                 '</div>' +

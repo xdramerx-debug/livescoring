@@ -294,7 +294,7 @@ function submitSetupRound() {
         var teeSel = document.getElementById('sp-tee-1');
         var hcpInp = document.getElementById('sp-hcp-1');
 
-        var name = nameInp ? nameInp.value.trim() : '';
+        var name = nameInp ? sanitizeNameRaw(nameInp.value) : '';
         if (!name) { toast('⚠️ Укажите имя игрока', 'error'); return; }
 
         var uid = uidInp ? uidInp.value : '';
@@ -367,7 +367,7 @@ function submitSetupRound() {
             var teeSel = document.getElementById('sp-tee-' + i);
             var hcpInp = document.getElementById('sp-hcp-' + i);
 
-            var name = nameInp ? nameInp.value.trim() : '';
+            var name = nameInp ? sanitizeNameRaw(nameInp.value) : '';
             if (!name) { toast('⚠️ Укажите имя игрока #' + i, 'error'); return; }
 
             var uid = uidInp ? uidInp.value : '';

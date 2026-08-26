@@ -2,24 +2,38 @@
     "name": "Гольф-клуб Пестово",
     "short_name": "Пестово",
     "description": "Система лайв-скоринга Гольф-клуба Пестово",
+    "id": "./",
     "start_url": "index.html",
     "scope": "./",
     "display": "standalone",
+    "display_override": ["standalone", "browser"],
     "orientation": "portrait",
     "background_color": "#0b1a0e",
     "theme_color": "#0b1a0e",
     "icons": [
         {
-            "src": "img/logo.png",
+            "src": "img/icon-192.png",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         },
         {
-            "src": "img/logo.png",
+            "src": "img/icon-512.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "img/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "img/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
         }
     ],
     "lang": "ru"

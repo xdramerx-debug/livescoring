@@ -38,7 +38,7 @@ function loadTournaments() {
 
             html += '<div class="tn-card">';
             html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">';
-            html += '<div style="flex:1;"><div class="tn-name">' + (tVal.name || '—') + '</div>';
+            html += '<div style="flex:1;"><div class="tn-name">' + escapeHtml(tVal.name || '—') + '</div>';
             html += '<div class="tn-meta"><span><i class="fas fa-calendar"></i> ' + fmtDate(new Date(tVal.date).getTime()) + '</span></div>';
             html += '<div style="margin-top:8px;font-size:12px;color:var(--muted);">' + formatLabel + formatsStr + '</div>';
             html += '<div style="font-size:12px;color:var(--muted);">' + teeLabel + teesStr + '</div>';

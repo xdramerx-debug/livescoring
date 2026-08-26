@@ -62,6 +62,24 @@ function escapeHtml(str){
     });
 }
 
+// Глобальный fallback для битых <img> (заменяет инлайн-обработчики onerror — лучше для CSP).
+// Слушаем в фазе capture: ошибки ресурсов не всплывают.
+document.addEventListener('error', function(e) {
+    var el = e && e.target;
+    if (el && el.tagName === 'IMG') { el.style.display = 'none'; }
+}, true);
+
+// Санитизация имён/текстов перед записью в БД: убираем HTML/JS-инъекции на входе,
+// чтобы все места, где имя рендерится в innerHTML, были безопасны.
+function sanitizeNameRaw(str){
+    if(str===null||str===undefined)return'';
+    var s=String(str);
+    s=s.replace(/[<>&"'`{}\\\/\[\]();:]/g,'');   // потенциально опасная для HTML разметка
+    s=s.replace(/\s+/g,' ').trim();
+    if(s.length>60)s=s.substring(0,60).trim();
+    return s;
+}
+
 // ==========================================
 // МЕЖДУНАРОДНЫЙ ЯЗЫКОВОЙ ПЕРЕКЛЮЧАТЕЛЬ (RU / EN)
 // ==========================================
@@ -71,6 +89,7 @@ var I18N = {
     ru: {
         brand_name: 'Пестово',
         nav_home: 'Главная', nav_round: 'Раунд', nav_leaderboard: 'Все раунды',
+        bn_home: 'Главная', bn_round: 'Раунд', bn_rounds: 'Табло', bn_guide: 'Поле', bn_menu: 'Меню',
         nav_guide: 'Книга поля', nav_feed: 'Лента событий', nav_predictor: 'Симулятор WHS', nav_oom: 'Зачёт сезона',
         nav_players: 'Игроки', nav_tournaments: 'Турниры', nav_stats: 'Статистика',
         nav_handicaps: 'Гандикапы', nav_admin: 'Админ', nav_login: 'Войти',
@@ -173,7 +192,7 @@ var I18N = {
         save_hole: 'Сохранить лунку', finish_round: 'Завершить раунд',
         next_hole_btn: 'На следующую лунку →',
         confirm_final_hole: 'Зафиксировать 18-ю лунку',
-        waiting_for_marker: '⏳ Счёт отправлен. Ожидаем «На следующую лунку» от маркера',
+        waiting_for_marker: '⏳ Ваш счёт введён. Ожидаем подтверждение от маркера',
         hole_finalized_both: '✅ Счёт зафиксирован и подтверждён обеими сторонами!',
         mismatch_error: '⚠️ Несовпадение с маркером! Исправьте результат.',
         call_referee: 'Вызвать судью', call_marshal: 'Вызвать маршала',
@@ -258,9 +277,9 @@ var I18N = {
         full_table_title: 'Посмотреть полную таблицу',
         full_table_sub: 'Выберите пол и ТИ — таблица появится ниже',
         tbl_gender: 'Пол игрока',
-        tbl_select_gender: '— Выберите пол —',
-        tbl_select_tee: '— Выберите ТИ —',
-        select_gender_first: '— Сначала выберите пол —',
+        tbl_select_gender: '— Пол —',
+        tbl_select_tee: '— ТИ —',
+        select_gender_first: '— Сначала пол —',
         from_col: 'Показатель от', to_col: 'Показатель до',
         round_history: 'История раундов',
 
@@ -345,6 +364,7 @@ var I18N = {
     en: {
         brand_name: 'Pestovo',
         nav_home: 'Home', nav_round: 'Round', nav_leaderboard: 'All Rounds',
+        bn_home: 'Home', bn_round: 'Round', bn_rounds: 'Board', bn_guide: 'Course', bn_menu: 'Menu',
         nav_guide: 'Course Guide', nav_feed: 'Live Feed', nav_predictor: 'WHS Predictor', nav_oom: 'Order of Merit',
         nav_players: 'Players', nav_tournaments: 'Tournaments', nav_stats: 'Statistics',
         nav_handicaps: 'Handicaps', nav_admin: 'Admin', nav_login: 'Login',
@@ -447,7 +467,7 @@ var I18N = {
         save_hole: 'Save Hole', finish_round: 'Finish Round',
         next_hole_btn: 'To Next Hole →',
         confirm_final_hole: 'Finalize Hole 18',
-        waiting_for_marker: '⏳ Score sent. Waiting for marker to press "Next Hole"',
+        waiting_for_marker: '⏳ Your score is in. Waiting for the marker to confirm',
         hole_finalized_both: '✅ Score confirmed and finalized by both sides!',
         mismatch_error: '⚠️ Score mismatch with marker! Please correct before proceeding.',
         call_referee: 'Call Referee', call_marshal: 'Call Marshal',
@@ -532,9 +552,9 @@ var I18N = {
         full_table_title: 'View Full Table',
         full_table_sub: 'Select gender and tee — table will appear below',
         tbl_gender: 'Player Gender',
-        tbl_select_gender: '— Select Gender —',
-        tbl_select_tee: '— Select Tee —',
-        select_gender_first: '— Select Gender First —',
+        tbl_select_gender: '— Gender —',
+        tbl_select_tee: '— Tee —',
+        select_gender_first: '— Gender First —',
         from_col: 'Handicap From', to_col: 'Handicap To',
         round_history: 'Round History',
 
@@ -618,6 +638,9 @@ var I18N = {
     }
 };
 
+// Год копирайта всегда актуален
+(function(){ var y = new Date().getFullYear(); if (I18N.ru) I18N.ru.footer_club = '© ' + y + ' Гольф-клуб Пестово'; if (I18N.en) I18N.en.footer_club = '© ' + y + ' Pestovo Golf Club'; })();
+
 function t(key) {
     if (I18N[currentLang] && I18N[currentLang][key] !== undefined) {
         return I18N[currentLang][key];
@@ -633,8 +656,16 @@ function toggleLang() {
     if (typeof localStorage !== 'undefined') {
         localStorage.setItem('pestovo_lang', currentLang);
     }
+    try { document.documentElement.setAttribute('lang', currentLang); } catch(e) {}
     applyTranslations();
     updateLangButtons();
+    if (typeof buildBottomNav === 'function') buildBottomNav();
+    if (typeof buildMobileDrawer === 'function') {
+        var drawerRoot = document.getElementById('mobile-drawer-root');
+        var wasOpen = drawerRoot && drawerRoot.classList.contains('open');
+        buildMobileDrawer();
+        if (wasOpen && drawerRoot) drawerRoot.classList.add('open');
+    }
     if (typeof toast === 'function') {
         toast(currentLang === 'en' ? '🇬🇧 English language enabled' : '🇷🇺 Выбран русский язык', 'info');
     }
@@ -688,9 +719,24 @@ function applyTranslations() {
     });
 }
 
+/* Применяем переводы и тему мгновенно (скрипт внизу <body> — DOM уже распаршен),
+   чтобы не было «вспышки» исходного текста/темы при загрузке */
+try { if (document.documentElement) document.documentElement.setAttribute('lang', currentLang); } catch(e) {}
+applyTranslations();
 document.addEventListener('DOMContentLoaded', function() {
     applyTranslations();
+    updateFooterYear();
 });
+
+// Динамический год копирайта (никогда не устареет)
+function updateFooterYear() {
+    if (typeof document === 'undefined') return;
+    var year = new Date().getFullYear();
+    document.querySelectorAll('.footer-bottom p').forEach(function(p) {
+        p.innerHTML = p.innerHTML.replace(/(©|&copy;)\s*\d{4}/g, '$1 ' + year).replace(/&copy;\s*\d{4}/g, '&copy; ' + year);
+    });
+}
+updateFooterYear();
 
 // ==========================================
 // БЛОК «МОИ АКТИВНЫЕ РАУНДЫ»
@@ -861,6 +907,7 @@ function updateSunModeButtons() {
     });
 }
 
+initThemeMode(); // применяем сразу, до первой отрисовки — без вспышки тёмной темы
 document.addEventListener('DOMContentLoaded', function() {
     initThemeMode();
 });
@@ -940,6 +987,7 @@ function animateScoreElement(elId) {
 
 function initNav(){
     buildMobileDrawer();
+    buildBottomNav();
 
     var tg = document.getElementById('nav-toggle');
     if (tg) {
@@ -974,7 +1022,7 @@ function buildMobileDrawer() {
     var isEn = currentLang === 'en';
 
     var sunTxt = isSun ? (isEn ? 'Sun ✅' : 'Солнце ✅') : (isEn ? 'Sun' : 'Солнце');
-    var sunIcon = isSun ? 'fa-sun' : 'far fa-sun';
+    var sunPrefix = isSun ? 'fas' : 'far';
 
     var authBtnMarkup = '';
     var isUserLoggedIn = (typeof currentUser !== 'undefined' && currentUser && typeof currentUserData !== 'undefined' && currentUserData);
@@ -1026,8 +1074,8 @@ function buildMobileDrawer() {
             '<div class="mobile-drawer-body">' + menuBodyMarkup + '</div>' +
 
             '<div class="mobile-drawer-footer">' +
-                '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
-                    '<button class="sun-mode-btn" style="flex:1;justify-content:center;" onclick="toggleSunMode()"><i class="fas ' + sunIcon + '"></i> ' + sunTxt + '</button>' +
+            '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
+                '<button class="sun-mode-btn" style="flex:1;justify-content:center;" onclick="toggleSunMode()"><i class="' + sunPrefix + ' fa-sun"></i> ' + sunTxt + '</button>' +
                     '<button class="lang-btn" style="flex:1;justify-content:center;" onclick="toggleLang()">' + (isEn ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>' +
                 '</div>' +
                 '<div id="mobile-drawer-auth">' + authBtnMarkup + '</div>' +
@@ -1049,6 +1097,92 @@ function buildMobileDrawer() {
         applyPageVisibilitySettings();
     }
 }
+
+// ==========================================
+// МОБИЛЬНАЯ НИЖНЯЯ НАВИГАЦИЯ (BOTTOM TAB BAR)
+// ==========================================
+var BOTTOM_NAV_SKIP = { 'tv.html': true, 'offline.html': true, 'auth.html': true };
+
+function buildBottomNav() {
+    if (typeof document === 'undefined' || !document.body) return;
+    var curPage = (window.location && window.location.pathname) ? (window.location.pathname.split('/').pop() || 'index.html') : 'index.html';
+    if (BOTTOM_NAV_SKIP[curPage]) return;
+
+    var tabs = [
+        { href: 'index.html',      icon: 'fas fa-home',         key: 'bn_home'   },
+        { href: 'live.html',       icon: 'fas fa-play',         key: 'bn_round',  match: ['live.html', 'solo.html', 'setup-round.html', 'scorer.html', 'marker.html'] },
+        { href: 'leaderboard.html',icon: 'fas fa-trophy',       key: 'bn_rounds' },
+        { href: 'guide.html',      icon: 'fas fa-book-bookmark',key: 'bn_guide'  },
+        { menu: true,              icon: 'fas fa-bars',         key: 'bn_menu'   }
+    ];
+
+    var bar = document.getElementById('bottom-tabbar');
+    if (!bar) {
+        bar = document.createElement('nav');
+        bar.id = 'bottom-tabbar';
+        bar.className = 'bottom-tabbar';
+        bar.setAttribute('aria-label', 'Mobile navigation');
+        document.body.appendChild(bar);
+    }
+
+    var html = '';
+    tabs.forEach(function(tab) {
+        var isActive = tab.menu ? false : (tab.href === curPage || (tab.match && tab.match.indexOf(curPage) !== -1));
+        var active = isActive ? ' active' : '';
+        if (tab.menu) {
+            html += '<button type="button" class="bottom-tab' + active + '" onclick="toggleMobileDrawer()" aria-label="' + t(tab.key) + '"><i class="' + tab.icon + '"></i><span>' + t(tab.key) + '</span></button>';
+        } else {
+            html += '<a class="bottom-tab' + active + '" href="' + tab.href + '"><i class="' + tab.icon + '" aria-hidden="true"></i><span>' + t(tab.key) + '</span></a>';
+        }
+    });
+    bar.innerHTML = html;
+    if (document.body && !document.body.classList.contains('has-bottom-tabbar')) {
+        document.body.classList.add('has-bottom-tabbar');
+    }
+}
+
+/* Прячем нижнюю навигацию, когда открыта экранная клавиатура (фокус в поле ввода) */
+document.addEventListener('focusin', function(e) {
+    if (!e || !e.target) return;
+    var tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+        document.body.classList.add('kb-open');
+    }
+});
+document.addEventListener('focusout', function(e) {
+    setTimeout(function() {
+        var a = document.activeElement;
+        var tag = a && a.tagName;
+        if (!(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT')) {
+            document.body.classList.remove('kb-open');
+        }
+    }, 120);
+});
+
+// ==========================================
+// SCREEN WAKE LOCK — экран не гаснет во время раунда
+// ==========================================
+var wakeLockSentinel = null;
+
+function initWakeLock() {
+    if (typeof document === 'undefined') return;
+    if (!('wakeLock' in navigator)) return;
+    var curPage = (window.location && window.location.pathname) ? (window.location.pathname.split('/').pop() || '') : '';
+    var SCORING_PAGES = ['live.html', 'solo.html', 'scorer.html', 'marker.html'];
+    if (SCORING_PAGES.indexOf(curPage) === -1) return;
+
+    function acquire() {
+        navigator.wakeLock.request('screen').then(function(s) {
+            wakeLockSentinel = s;
+            s.addEventListener('release', function() { wakeLockSentinel = null; });
+        }).catch(function() { /* тихо игнорируем — не критично */ });
+    }
+    acquire();
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible' && !wakeLockSentinel) acquire();
+    });
+}
+initWakeLock();
 
 function openMobileDrawer() {
     buildMobileDrawer();
@@ -1136,7 +1270,7 @@ function navAuth(u, d) {
     }
 }
 
-function doLogout(){auth.signOut().then(function(){window.location.reload();});}
+function doLogout(){if(typeof auth!=='undefined'&&auth&&auth.signOut){auth.signOut().then(function(){window.location.reload();});}else{window.location.reload();}}
 function holeOrder(sh){var o=[],h=parseInt(sh)||1;for(var i=0;i<18;i++){o.push(h);h=h>=18?1:h+1;}return o;}
 
 function holeDeadline(startTime,startHole,targetHole){if(!startTime)return null;var tVal=0,h=parseInt(startHole)||1,c=0;while(c<18){tVal+=holeTiming(h);if(h===targetHole)break;h=h>=18?1:h+1;c++;}return startTime+tVal*60000;}
@@ -1585,7 +1719,7 @@ function generateGroupHoleTableHTML(r) {
 
         html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
         html += '<div class="noscroll-player-hdr">';
-        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</span>';
+        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</span>';
         html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div></div>';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '</div>';
@@ -1683,7 +1817,7 @@ function openPlayerProfileModal(playerId, roundId) {
 
         var html = '<div class="profile-head" style="margin-bottom:16px;">';
         html += fmtUserAvatar(u, 80);
-        html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + (u.name || '—') + guestBadge + '</div>';
+        html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(u.name || '—') + guestBadge + '</div>';
         html += '<div class="profile-meta">';
         html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
         if (teePillMarkup) html += '<span><i class="fas fa-golf-ball-tee"></i> Tee: ' + teePillMarkup + '</span>';
@@ -1896,8 +2030,8 @@ function renderProfileEditForm(playerId) {
 
         // Form Inputs
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>' + t('first_name') + '</label><input type="text" id="edit-fn" class="form-input" value="' + firstName + '"></div>';
-        html += '<div class="form-group"><label>' + t('last_name') + '</label><input type="text" id="edit-ln" class="form-input" value="' + lastName + '"></div>';
+        html += '<div class="form-group"><label>' + t('first_name') + '</label><input type="text" id="edit-fn" class="form-input" value="' + escapeHtml(firstName) + '"></div>';
+        html += '<div class="form-group"><label>' + t('last_name') + '</label><input type="text" id="edit-ln" class="form-input" value="' + escapeHtml(lastName) + '"></div>';
         html += '</div>';
 
         html += '<div class="form-row">';
@@ -1954,12 +2088,12 @@ function saveUserProfileData(playerId) {
     var teeInp = document.getElementById('edit-tee');
     var avatarInp = document.getElementById('edit-avatar-val');
 
-    var firstName = fnInp ? fnInp.value.trim() : '';
-    var lastName = lnInp ? lnInp.value.trim() : '';
+    var firstName = fnInp ? sanitizeNameRaw(fnInp.value) : '';
+    var lastName = lnInp ? sanitizeNameRaw(lnInp.value) : '';
     var fullName = (lastName + ' ' + firstName).trim() || 'Player';
     var exactHcp = hcpInp ? parseExactHcp(hcpInp.value) : 0;
     var gender = genderInp ? genderInp.value : 'men';
-    var phone = phoneInp ? phoneInp.value.trim() : '';
+    var phone = phoneInp ? phoneInp.value.trim().replace(/[^\d+\-() ]/g, '').substring(0, 20) : '';
     var defaultTee = teeInp ? teeInp.value : 'wh';
     var avatar = avatarInp ? avatarInp.value : '';
 
@@ -2032,7 +2166,7 @@ function openFinishConfirmModal(roundId, onConfirmCallback) {
             if (stats.holesPlayed < 18) hasUnfinishedHoles = true;
 
             html += '<div class="list-item" style="padding:14px;margin-bottom:10px;flex-wrap:wrap;gap:8px;">';
-            html += '<div style="flex:1;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</strong>';
+            html += '<div style="flex:1;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + t('hole') + 's: ' + stats.holesPlayed + ' / 18 · Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div></div>';
             html += '<div style="text-align:right;"><div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;font-size:18px;">' + fmtScore(stats.toPar) + '</div></div>';
             html += '</div>';
@@ -2105,7 +2239,7 @@ function generatePestovoScorecardHTML(player, roundData) {
 
     // 1. Top HUD Header
     html += '<div class="msc-card-hdr">';
-    html += '  <div class="msc-player-title"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + (p.name || '—') + '</div>';
+    html += '  <div class="msc-player-title"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</div>';
     html += '  <div class="msc-meta-pills">';
     html += '    <span class="msc-pill">HCP: <b>' + fmtExactHcp(eHcp) + '</b> (' + fmtFieldHcp(fHcp) + ')</span>';
     html += '    <span class="msc-pill">' + fmtTeePill(teeCode) + '</span>';
@@ -2218,8 +2352,8 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
     // Player & Meta Block (Matching IMG_1113.jpeg)
     html += '<div class="psc-meta-grid">';
     html += '  <div class="psc-meta-left">';
-    html += '    <div><b>Игрок:</b> ' + (p.name || '___________________________') + '</div>';
-    html += '    <div><b>Турнир:</b> ' + tName + ' &nbsp;&nbsp;&nbsp;&nbsp; <b>Формат:</b> ' + fmt + '</div>';
+    html += '    <div><b>Игрок:</b> ' + escapeHtml(p.name || '___________________________') + '</div>';
+    html += '    <div><b>Турнир:</b> ' + escapeHtml(tName || '') + ' &nbsp;&nbsp;&nbsp;&nbsp; <b>Формат:</b> ' + escapeHtml(fmt || '') + '</div>';
     html += '  </div>';
     html += '  <div class="psc-meta-right">';
     html += '    <div><b>Точный гандикап:</b> ' + fmtExactHcp(eHcp) + ' &nbsp;&nbsp; (Игровой: ' + fmtFieldHcp(fHcp) + ')</div>';
@@ -2361,7 +2495,7 @@ function openPrintScorecardModal(roundId, playerId) {
             playersList.forEach(function(pe) {
                 var id = pe[0], pl = pe[1];
                 var sel = id === pid ? 'selected' : '';
-                html += '<option value="' + id + '" ' + sel + '>' + (pl.name || 'Player') + '</option>';
+                html += '<option value="' + id + '" ' + sel + '>' + escapeHtml(pl.name || 'Player') + '</option>';
             });
             html += '</select></div>';
         }
@@ -2849,7 +2983,7 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
         playersList.forEach(function(pe) {
             var pid = pe[0], p = pe[1];
             var sel = pid === activePid ? 'selected' : '';
-            html += '<option value="' + pid + '" ' + sel + '>' + (p.name || 'Player') + '</option>';
+            html += '<option value="' + pid + '" ' + sel + '>' + escapeHtml(p.name || 'Player') + '</option>';
         });
         html += '</select></div>';
     }
@@ -3723,15 +3857,23 @@ document.addEventListener('DOMContentLoaded', function() {
 function registerGuestPlayerInDatabase(p) {
     if (!p || !p.name) return null;
 
-    var cleanName = p.name.trim();
+    var cleanName = sanitizeNameRaw(p.name);
+    if (!cleanName) return null;
     var parts = cleanName.split(' ');
-    var firstName = p.firstName || parts[0] || cleanName;
-    var lastName = p.lastName || parts.slice(1).join(' ') || '';
+    var firstName = p.firstName ? sanitizeNameRaw(p.firstName) : (parts[0] || cleanName);
+    var lastName = p.lastName ? sanitizeNameRaw(p.lastName) : (parts.slice(1).join(' ') || '');
     var exactHcp = parseExactHcp(p.exactHcp != null ? p.exactHcp : (p.handicap || 0));
     var gender = p.gender || 'men';
     var defaultTee = p.tee || p.defaultTee || (gender === 'women' ? 'rd' : 'bl');
 
-    var guestId = p.uid || ('guest_' + cleanName.toLowerCase().replace(/\s+/g, '_') + '_' + Math.abs(exactHcp).toString().replace('.', ''));
+    // Ключи Firebase не могут содержать . $ # [ ] / — нормализуем готовый id гостя,
+    // иначе db.ref('users/<id>') упадёт на именах с точками и т.п.
+    // (сами символы заменяем в конце: так имена, что уже сохранены в БД, получают прежний id)
+    var firebaseSafeKey = function(s) { return String(s).replace(/[.$#\[\]\/]/g, '_'); };
+    var guestId = p.uid
+        ? String(p.uid)
+        : firebaseSafeKey('guest_' + cleanName.toLowerCase().replace(/\s+/g, '_') + '_' + Math.abs(exactHcp).toString().replace('.', ''));
+    if (!guestId || guestId === 'guest__') return null;
 
     var guestData = {
         name: cleanName,

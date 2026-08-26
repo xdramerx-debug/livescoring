@@ -71,7 +71,7 @@ function runWHSPredictor() {
 
             var html = '<div class="card" style="max-width:540px;margin:0 auto;border:2px solid var(--gold);background:linear-gradient(135deg, rgba(201,168,76,0.12), var(--card));">';
             html += '<div style="text-align:center;margin-bottom:20px;">';
-            html += '<h2 style="font-size:24px;color:var(--white);font-family:var(--ff);">' + (u.name || 'Player') + '</h2>';
+            html += '<h2 style="font-size:24px;color:var(--white);font-family:var(--ff);">' + escapeHtml(u.name || 'Player') + '</h2>';
             html += '<div style="font-size:13px;color:var(--muted);">' + (currentLang === 'en' ? 'Current WHS Exact Index: ' : 'Текущий точный гандикап WHS: ') + '<b>' + fmtExactHcp(curExact) + '</b> · ' + (currentLang === 'en' ? 'Course HCP: ' : 'Полевой: ') + '<b>' + fmtFieldHcp(curField) + '</b></div>';
             html += '</div>';
 

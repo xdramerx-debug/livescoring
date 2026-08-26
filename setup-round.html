@@ -85,6 +85,152 @@
         .search-result-item:active, .search-result-item:hover {
             background: rgba(201,168,76,0.25) !important;
         }
+
+        /* ===== ВЫБОР РЕЖИМА: 2 КОМПАКТНЫХ БЛОКА (mobile-first) ===== */
+        .mode-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 560px;
+            margin: 4px auto 0;
+        }
+        .mode-option {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            text-align: left;
+            text-decoration: none;
+            color: var(--text);
+            font-family: var(--fb);
+            font-size: 14px;
+            background: rgba(19,34,24,0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 14px 14px 14px 12px;
+            cursor: pointer;
+            transition: var(--t);
+            -webkit-tap-highlight-color: rgba(201,168,76,0.25);
+            touch-action: manipulation;
+            box-sizing: border-box;
+        }
+        .mode-option:hover, .mode-option:focus-visible {
+            border-color: var(--gold);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 26px rgba(201,168,76,0.18);
+        }
+        .mode-option:active { transform: scale(0.985); }
+        .mode-option-icon {
+            flex: 0 0 auto;
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: var(--gold);
+            background: rgba(201,168,76,0.14);
+            border: 1px solid rgba(201,168,76,0.3);
+        }
+        .mode-option-group .mode-option-icon {
+            color: var(--blue);
+            background: rgba(90,173,224,0.14);
+            border-color: rgba(90,173,224,0.35);
+        }
+        .mode-option-body {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .mode-option-title {
+            font-family: var(--ff);
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--white);
+            line-height: 1.25;
+        }
+        .mode-option-desc {
+            font-size: 12.5px;
+            color: var(--muted);
+            line-height: 1.45;
+            margin-top: 3px;
+        }
+        .mode-option-cta {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+            color: var(--bg);
+            background: linear-gradient(135deg, #c9a84c 0%, #e0c76a 50%, #b89228 100%);
+            padding: 8px 13px;
+            border-radius: 24px;
+            box-shadow: 0 4px 14px rgba(201,168,76,0.3);
+        }
+        .mode-option-cta i { font-size: 11px; }
+        .mode-option-group .mode-option-cta {
+            color: #fff;
+            background: linear-gradient(135deg, #3d8bc4 0%, #5aade0 50%, #2f74a8 100%);
+            box-shadow: 0 4px 14px rgba(90,173,224,0.3);
+        }
+
+        body.sun-mode .mode-option {
+            background: #fff;
+            border: 2px solid #000;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            color: #000;
+        }
+        body.sun-mode .mode-option:hover, body.sun-mode .mode-option:focus-visible {
+            border-color: #1b5e20;
+            box-shadow: 0 10px 26px rgba(0,0,0,0.15);
+        }
+        body.sun-mode .mode-option-title { color: #000; }
+        body.sun-mode .mode-option-desc { color: #222; }
+
+        @media (max-width: 360px) {
+            .mode-option { gap: 10px; padding: 12px 10px 12px 10px; }
+            .mode-option-icon { width: 44px; height: 44px; font-size: 19px; border-radius: 12px; }
+            .mode-option-title { font-size: 15px; }
+            .mode-option-desc { font-size: 11.5px; }
+            .mode-option-cta { padding: 7px 10px; font-size: 11px; }
+        }
+
+        @media (min-width: 720px) {
+            .mode-options {
+                flex-direction: row;
+                max-width: 720px;
+                gap: 16px;
+            }
+            .mode-option {
+                flex: 1 1 0;
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+                gap: 12px;
+                padding: 24px 20px 20px;
+            }
+            .mode-option-icon {
+                width: 64px;
+                height: 64px;
+                font-size: 26px;
+                margin: 0 auto;
+                border-radius: 18px;
+            }
+            .mode-option-title { font-size: 19px; }
+            .mode-option-desc { font-size: 13px; }
+            .mode-option-cta {
+                justify-content: center;
+                margin-top: 4px;
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -130,17 +276,23 @@
 
     <!-- ВЫБОР РЕЖИМА -->
     <div id="mode-view">
-        <div class="mode-cards">
-            <a href="solo.html" class="mode-card">
-                <div class="mode-icon"><i class="fas fa-user"></i></div>
-                <div class="mode-title" data-i18n="mode_solo_title">Одиночный раунд</div>
-                <div class="mode-desc" data-i18n="mode_solo_desc">Играете один. Сами вводите свой счёт на каждой лунке.</div>
+        <div class="mode-options">
+            <a href="solo.html" class="mode-option">
+                <span class="mode-option-icon"><i class="fas fa-user"></i></span>
+                <span class="mode-option-body">
+                    <span class="mode-option-title" data-i18n="mode_solo_title">Одиночный раунд</span>
+                    <span class="mode-option-desc" data-i18n="mode_solo_desc">Играете один. Сами вводите свой счёт на каждой лунке.</span>
+                </span>
+                <span class="mode-option-cta"><span data-i18n="mode_start">Начать</span> <i class="fas fa-chevron-right"></i></span>
             </a>
-            <a href="#" class="mode-card" onclick="showGroupSetup();return false;">
-                <div class="mode-icon"><i class="fas fa-users"></i></div>
-                <div class="mode-title" data-i18n="mode_group_title">Групповой раунд</div>
-                <div class="mode-desc" data-i18n="mode_group_desc">От 2 до 4 игроков. Двойной ввод (свой счёт + счёт партнёра).</div>
-            </a>
+            <button type="button" class="mode-option mode-option-group" onclick="showGroupSetup();return false;">
+                <span class="mode-option-icon"><i class="fas fa-users"></i></span>
+                <span class="mode-option-body">
+                    <span class="mode-option-title" data-i18n="mode_group_title">Групповой раунд</span>
+                    <span class="mode-option-desc" data-i18n="mode_group_desc">От 2 до 4 игроков. Двойной ввод (свой счёт + счёт партнёра).</span>
+                </span>
+                <span class="mode-option-cta"><span data-i18n="mode_start">Начать</span> <i class="fas fa-chevron-right"></i></span>
+            </button>
         </div>
     </div>
 
@@ -360,7 +512,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span id="site-version">1.0.2</span></p>
+            <p class="site-version">Версия сайта: <span id="site-version">1.0.3</span></p>
         </div>
     </div>
 </footer>
@@ -369,12 +521,12 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=6"></script>
+<script src="js/utils.js?v=7"></script>
 <script src="js/live.js"></script>
 <script src="js/pwa.js"></script>
 <script>
     // Установка версии сайта
-    var SITE_VERSION = '1.0.2';
+    var SITE_VERSION = '1.0.3';
     var versionEl = document.getElementById('site-version');
     if (versionEl) versionEl.textContent = SITE_VERSION;
 </script>

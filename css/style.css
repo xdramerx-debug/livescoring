@@ -515,8 +515,6 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 @keyframes score-bounce{0%{transform:scale(.82);opacity:.5;}50%{transform:scale(1.15);}100%{transform:scale(1);opacity:1;}}
 
 /* VICTORY CONFETTI PARTICLES */
-.confetti-particle{position:fixed;width:8px;height:12px;background:var(--gold);z-index:99999;pointer-events:none;border-radius:2px;animation:confetti-fall 1.8s cubic-bezier(.25,1,.5,1) forwards;}
-@keyframes confetti-fall{0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);}100%{opacity:0;transform:translate(var(--dx),100vh) rotate(720deg) scale(.4);}}
 
 /* HEATMAP COLOR CODING FOR SCORECARDS & TABLES */
 .r-eag,.scorecard td.r-eag,.pc-table td.r-eag{background:rgba(243,156,18,0.25)!important;color:#f39c12!important;font-weight:800;}
@@ -573,7 +571,7 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 @media (min-width:720px){
     .rl-card{padding:18px 20px 16px;}
     .rl-head{margin-bottom:8px;}
-    .rlb-row{grid-template-columns:28px minmax(0,1fr) 56px 46px 46px 62px 62px;gap:2px 10px;padding:8px 4px;}
+    .rlb-row{grid-template-columns:28px minmax(0,1fr) 56px 46px 62px 62px;gap:2px 10px;padding:8px 4px;}
     .rlb-head{display:grid;cursor:default;border-bottom:2px solid var(--gold);padding:0 4px 6px;}
     .rlb-head:hover{background:none;}
     .rlb-head span{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold);text-align:center;align-self:center;}
@@ -878,7 +876,6 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .marker-score-block{border-top:4px solid #9b59b6;background:linear-gradient(180deg,rgba(155,89,182,0.08) 0%,var(--card) 100%);}
 .dual-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
 .dual-header h3{margin:0;font-size:16px;color:var(--white);display:flex;align-items:center;gap:8px;}
-.net-score-badge{background:rgba(46,204,113,0.15);color:#2ecc71;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;}
 
 /* PWA & iOS INSTALL BANNER */
 .online-indicator{position:fixed;top:70px;left:20px;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:600;z-index:999;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s;background:var(--card);}
@@ -1354,7 +1351,7 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
     color: var(--gold);
     background: rgba(201, 168, 76, 0.15);
 }
-.msc-lbl-bk { color: #f39c12; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
+.msc-lbl-bk { color: #000000; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
 .msc-lbl-bl { color: #3498db; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
 .msc-lbl-wh { color: #ecf0f1; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
 .msc-lbl-rd { color: #e74c3c; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
@@ -1689,6 +1686,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     box-sizing: border-box;
 }
+/* Сетка карточек в модалке печати: на экране — 2 в ряд (как на листе A4) */
+.print-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+@media (max-width: 760px) {
+    .print-cards-grid { grid-template-columns: 1fr; }
+}
+.print-cards-grid .paper-scorecard-wrap { margin-top: 0; }
 .psc-top-header {
     display: flex;
     align-items: center;
@@ -1786,7 +1794,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     gap: 10px;
 }
 
-/* OFFICIAL PRINTABLE SCORECARD STYLES (EXACT 1 PAGE A4 LANDSCAPE FIT) */
+/* OFFICIAL PRINTABLE SCORECARD STYLES: A4 LANDSCAPE, 2 CARDs PER SHEET,
+   ONLY THE CARDS VISIBLE (no nav, modals chrome, buttons or other page content) */
 @media print {
     @page {
         size: A4 landscape;
@@ -1803,49 +1812,85 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
+    /* Прячем ВЕСЬ остальной контент страницы — печатается только карточка */
     body > * {
         display: none !important;
     }
-    #print-modal, #printable-scorecard {
+    /* Модалка печати — только как контейнер; её шапка/кнопки/селекторы не печатаются */
+    #print-modal {
         display: block !important;
-        position: relative !important;
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+    }
+    #print-modal .modal-bg,
+    #print-modal .modal-top-bar,
+    #print-modal .no-print,
+    #print-modal h2,
+    #print-modal .print-toolbar,
+    #print-modal .print-player-select,
+    #print-modal button,
+    #print-modal select {
+        display: none !important;
+    }
+    #print-modal .modal-body {
+        display: block !important;
+        position: static !important;
         inset: auto !important;
         width: 100% !important;
         max-width: 100% !important;
-        margin: 0 auto !important;
-        padding: 0 !important;
-        box-shadow: none !important;
-        border: none !important;
-        background: #ffffff !important;
+        height: auto !important;
+        max-height: none !important;
         overflow: visible !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: #ffffff !important;
     }
-    .modal-bg, .modal-top-bar, .no-print, button, select {
-        display: none !important;
+    /* Сетка карточек: ровно 2 карточки на лист A4 (по 2 в ряд, A4 landscape) */
+    #printable-scorecard {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        grid-auto-rows: auto !important;
+        gap: 6mm !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+        background: #ffffff !important;
     }
     .paper-scorecard-wrap {
-        border: 2px solid #1d3d23 !important;
+        border: 1.5px solid #1d3d23 !important;
         border-radius: 6px !important;
-        padding: 10px 12px !important;
-        margin: 0 auto !important;
+        padding: 8px 9px !important;
+        margin: 0 !important;
         page-break-inside: avoid !important;
-        page-break-after: avoid !important;
-        page-break-before: avoid !important;
+        break-inside: avoid !important;
         box-shadow: none !important;
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
         background: #ffffff !important;
         color: #000000 !important;
+        font-size: 10px !important;
     }
+    .psc-top-header { margin-bottom: 8px !important; }
+    .psc-club-title { font-size: 13px !important; }
+    .psc-club-sub { font-size: 10px !important; }
+    .psc-meta-grid { font-size: 10px !important; margin-bottom: 8px !important; }
+    .psc-meta-table { font-size: 9px !important; }
     .psc-grid-table {
         min-width: 0 !important;
         width: 100% !important;
         table-layout: fixed !important;
+        font-size: 9px !important;
     }
     .psc-grid-table th, .psc-grid-table td {
-        padding: 4px 1px !important;
-        font-size: 10px !important;
+        padding: 3px 1px !important;
+        font-size: 8.5px !important;
     }
+    .psc-row-score td { font-size: 10px !important; }
+    .psc-signatures { font-size: 9px !important; margin-top: 8px !important; padding-top: 6px !important; }
 }
 
 /* FLOATING AUTOCOMPLETE SUGGESTIONS */

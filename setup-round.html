@@ -128,19 +128,14 @@
 
         <!-- ===== ВКЛАДКА 1: ОДИНОЧНЫЙ РАУНД ===== -->
         <div id="solo-setup">
-            <div id="guest-banner" class="card hidden" style="background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
-                <p style="color:var(--gold);font-size:14px;text-align:center;">
-                    <i class="fas fa-info-circle"></i> <span data-i18n="guest_notice">Вы играете как гость.</span> <a href="auth.html?redirect=setup-round.html" style="color:var(--gold);font-weight:700;" data-i18n="login_link">Войти в аккаунт</a><span data-i18n="guest_notice_suffix">, чтобы сохранить раунд в истории.</span>
-                </p>
-            </div>
-
             <div class="card setup-card">
                 <h2><i class="fas fa-cog"></i> <span data-i18n="round_setup">Настройки раунда</span></h2>
 
                 <h3 class="setup-section-title"><i class="fas fa-user"></i> <span data-i18n="player_data">Данные игрока</span></h3>
-                <div class="form-row">
+                <div class="form-row form-row-3">
                     <div class="form-group"><label data-i18n="first_name">Имя</label><input type="text" id="s-firstname" class="form-input" data-i18n-placeholder="placeholder_first_name" placeholder="Иван"></div>
                     <div class="form-group"><label data-i18n="last_name">Фамилия</label><input type="text" id="s-lastname" class="form-input" data-i18n-placeholder="placeholder_last_name" placeholder="Петров"></div>
+                    <div class="form-group"><label data-i18n="middle_name">Отчество (необязательно)</label><input type="text" id="s-middlename" class="form-input" data-i18n-placeholder="placeholder_middle_name" placeholder="Иванович"></div>
                 </div>
 
                 <h3 class="setup-section-title"><i class="fas fa-clock"></i> <span data-i18n="time_and_hole">Время и лунка</span></h3>
@@ -152,8 +147,8 @@
 
                 <h3 class="setup-section-title"><i class="fas fa-gamepad"></i> <span data-i18n="game_format">Формат игры</span></h3>
                 <div class="form-row form-row-3">
-                    <div class="form-group"><label data-i18n="gender_label">Пол</label><select id="s-gender" class="form-input" onchange="calcSoloFieldHcp()"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Женщина</option></select></div>
-                    <div class="form-group"><label data-i18n="tee_select">ТИ</label><select id="s-tee" class="form-input" onchange="calcSoloFieldHcp()"><option value="bk" data-i18n="tee_opt_bk">⬛ Чёрный</option><option value="bl" data-i18n="tee_opt_bl">🟦 Синий</option><option value="wh" selected data-i18n="tee_opt_wh">⬜ Белый</option><option value="rd" data-i18n="tee_opt_rd">🟥 Красный</option></select></div>
+                    <div class="form-group"><label data-i18n="gender_label">Пол</label><select id="s-gender" class="form-input" onchange="onSoloGenderChange()"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Девушка</option></select></div>
+                    <div class="form-group"><label data-i18n="tee_select">ТИ</label><select id="s-tee" class="form-input" onchange="calcSoloFieldHcp()"><option value="bk" data-i18n="tee_opt_bk">⬛ Чёрный</option><option value="bl" selected data-i18n="tee_opt_bl">🟦 Синий</option><option value="wh" data-i18n="tee_opt_wh">⬜ Белый</option><option value="rd" data-i18n="tee_opt_rd">🟥 Красный</option></select></div>
                     <div class="form-group"><label data-i18n="format_select">Формат</label><select id="s-format" class="form-input"><option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option></select></div>
                 </div>
 
@@ -279,7 +274,6 @@
             <div class="scoring-dual-block my-score-block">
                 <div class="dual-header">
                     <h3><i class="fas fa-user"></i> <span id="my-player-name-title" data-i18n="my_score">Мой счёт</span></h3>
-                    <span class="net-score-badge" id="my-net-badge">Net: —</span>
                 </div>
                 <div class="score-area" style="margin:10px 0;">
                     <div class="score-result" id="my-result"></div>
@@ -512,7 +506,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.4.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.5.0</span></p>
         </div>
     </div>
 </footer>
@@ -521,9 +515,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=9"></script>
+<script src="js/utils.js?v=10"></script>
 <script src="js/live.js"></script>
-<script src="js/solo.js?v=9"></script>
+<script src="js/solo.js?v=10"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

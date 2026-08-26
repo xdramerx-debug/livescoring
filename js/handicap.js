@@ -71,7 +71,7 @@ function showTable() {
     var cr = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
     if (!table || !cr || !table.length) { el.innerHTML = '<div class="card"><p style="text-align:center;color:var(--muted);">' + (currentLang === 'en' ? 'No data' : 'Нет данных') + '</p></div>'; return; }
     var genderIcon = gender === 'women' ? '👩' : '👨';
-    var genderName = gender === 'women' ? (currentLang === 'en' ? 'Women' : 'Женщины') : (currentLang === 'en' ? 'Men' : 'Мужчины');
+    var genderName = gender === 'women' ? (currentLang === 'en' ? 'Women' : 'Девушки') : (currentLang === 'en' ? 'Men' : 'Мужчины');
     var teeName = t('tee_' + tee);
     var fromHeader = t('from_col');
     var toHeader = t('to_col');

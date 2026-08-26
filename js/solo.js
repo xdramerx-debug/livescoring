@@ -22,10 +22,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var sel = document.getElementById('s-hole');
     if (sel) {
-        sel.innerHTML = '';
-        for (var i = 1; i <= 18; i++) {
-            sel.innerHTML += '<option value="' + i + '">' + t('hole') + ' ' + i + ' (' + t('par') + ' ' + holePar(i) + ')</option>';
-        }
+        var rangeEl0 = document.getElementById('s-range');
+        buildStartHoleOptions(sel, rangeEl0 ? rangeEl0.value : '1-18');
     }
 
     var now = new Date();
@@ -46,15 +44,21 @@ function initSoloForm() {
     var handleSoloSelect = function(matchedUser) {
         var fnInp = document.getElementById('s-firstname');
         var lnInp = document.getElementById('s-lastname');
+        var midInp = document.getElementById('s-middlename');
         var gEl = document.getElementById('s-gender');
         var hEl = document.getElementById('s-exact-hcp');
         var tEl = document.getElementById('s-tee');
 
-        if (fnInp) fnInp.value = matchedUser.firstName || matchedUser.name;
+        if (fnInp) fnInp.value = matchedUser.firstName || (matchedUser.name ? matchedUser.name.split(' ')[0] : '');
         if (lnInp) lnInp.value = matchedUser.lastName || '';
+        if (midInp) midInp.value = matchedUser.middleName || '';
         if (gEl) gEl.value = matchedUser.gender;
         if (hEl) hEl.value = fmtExactHcp(matchedUser.handicap);
-        if (tEl && matchedUser.defaultTee) tEl.value = matchedUser.defaultTee;
+        // ТИ: предпочитаемый игроком; если не задан — мужчина → синие, девушка → красные
+        if (tEl) {
+            if (matchedUser.defaultTee) tEl.value = matchedUser.defaultTee;
+            else tEl.value = (matchedUser.gender === 'women') ? 'rd' : 'bl';
+        }
 
         window.sSelectedUid = matchedUser.uid;
         calcSoloFieldHcp();
@@ -87,12 +91,8 @@ function initSoloView() {
     } else {
         var sel = document.getElementById('s-hole');
         if (sel) {
-            var curVal = sel.value;
-            sel.innerHTML = '';
-            for (var i = 1; i <= 18; i++) {
-                sel.innerHTML += '<option value="' + i + '">' + t('hole') + ' ' + i + ' (' + t('par') + ' ' + holePar(i) + ')</option>';
-            }
-            if (curVal) sel.value = curVal;
+            var rangeEl = document.getElementById('s-range');
+            buildStartHoleOptions(sel, rangeEl ? rangeEl.value : '1-18');
         }
         updateTimingPreview();
     }
@@ -101,13 +101,20 @@ function initSoloView() {
 function soloAuthReady(u, d) {
     // navAuth уже вызван в onAuthReady (js/live.js) — здесь только дефолты формы соло
     if (u && d) {
-        var name = d.name || '';
-        var parts = name.split(' ');
         var fn = document.getElementById('s-firstname');
         var ln = document.getElementById('s-lastname');
+        var mid = document.getElementById('s-middlename');
 
-        if (fn && !fn.value) fn.value = parts[0] || '';
-        if (ln && !ln.value) ln.value = parts.slice(1).join(' ') || '';
+        if (d.middleName || d.firstName || d.lastName) {
+            if (fn && !fn.value) fn.value = d.firstName || '';
+            if (ln && !ln.value) ln.value = d.lastName || '';
+            if (mid && !mid.value) mid.value = d.middleName || '';
+        } else {
+            var name = d.name || '';
+            var parts = name.split(' ');
+            if (fn && !fn.value) fn.value = parts[0] || '';
+            if (ln && !ln.value) ln.value = parts.slice(1).join(' ') || '';
+        }
 
         if (d.handicap != null) {
             var hcpEl = document.getElementById('s-exact-hcp');
@@ -117,18 +124,15 @@ function soloAuthReady(u, d) {
             var gEl = document.getElementById('s-gender');
             if (gEl) gEl.value = d.gender;
         }
+        var teeEl = document.getElementById('s-tee');
         if (d.defaultTee) {
-            var teeEl = document.getElementById('s-tee');
             if (teeEl) teeEl.value = d.defaultTee;
+        } else if (d.gender && teeEl) {
+            // По правилу клуба: мужчина → синие ти, девушка → красные ти
+            teeEl.value = (d.gender === 'women') ? 'rd' : 'bl';
         }
 
         calcSoloFieldHcp();
-
-        var banner = document.getElementById('guest-banner');
-        if (banner) banner.classList.add('hidden');
-    } else {
-        var banner = document.getElementById('guest-banner');
-        if (banner) banner.classList.remove('hidden');
     }
 }
 
@@ -139,6 +143,17 @@ function calcSoloFieldHcp() {
     var tee = document.getElementById('s-tee').value;
     var field = getFieldHcp(exact, tee, gender);
     document.getElementById('s-field-hcp').value = fmtFieldHcp(field);
+}
+
+// Смена пола в одиночном режиме: автоматически подставляем ТИ
+// (мужчина → синие ти, девушка → красные ти) и пересчитываем полевой HCP
+function onSoloGenderChange() {
+    var gEl = document.getElementById('s-gender');
+    var tEl = document.getElementById('s-tee');
+    if (gEl && tEl) {
+        tEl.value = (gEl.value === 'women') ? 'rd' : 'bl';
+    }
+    calcSoloFieldHcp();
 }
 
 function updateTimingPreview() {
@@ -166,11 +181,13 @@ function startSolo() {
 
     var fnInp = document.getElementById('s-firstname');
     var lnInp = document.getElementById('s-lastname');
+    var midInp = document.getElementById('s-middlename');
     var timeInp = document.getElementById('s-time');
     var hcpInp = document.getElementById('s-exact-hcp');
 
     var firstName = fnInp.value.trim();
     var lastName = lnInp.value.trim();
+    var middleName = midInp ? midInp.value.trim() : '';
     var timeStr = timeInp.value;
     var startHole = parseInt(document.getElementById('s-hole').value) || 1;
     var tee = document.getElementById('s-tee').value;
@@ -186,10 +203,12 @@ function startSolo() {
 
     var parsedExact = parseExactHcp(exactHcpStr);
     var fieldHcp = getFieldHcp(parsedExact, tee, gender);
-    // Полное имя: «Имя Фамилия» — firstName/lastName остаются в отдельных полях для поиска АГР
+    // Полное имя: «Имя [Отчество] Фамилия» — firstName/middleName/lastName
+    // остаются в отдельных полях для поиска АГР
     firstName = sanitizeNameRaw(firstName);
+    middleName = sanitizeNameRaw(middleName);
     lastName = sanitizeNameRaw(lastName);
-    var fullName = sanitizeNameRaw((firstName + ' ' + lastName).trim());
+    var fullName = sanitizeNameRaw(((firstName + ' ' + (middleName ? middleName + ' ' : '')) + lastName).trim());
 
     var parts = timeStr.split(':');
     var now = new Date();
@@ -212,6 +231,7 @@ function startSolo() {
             name: fullName,
             firstName: firstName,
             lastName: lastName,
+            middleName: middleName,
             exactHcp: parsedExact,
             fieldHcp: fieldHcp,
             gender: gender,
@@ -260,6 +280,7 @@ function startSolo() {
                 name: fullName,
                 firstName: firstName,
                 lastName: lastName,
+                middleName: middleName,
                 exactHcp: parsedExact,
                 gender: gender,
                 tee: tee
@@ -503,9 +524,9 @@ function saveSolo(isAuto) {
         var d = scoreToSave - par;
 
         if (!isAuto) {
-            if (scoreToSave === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); triggerVictoryConfetti(); }
-            else if (d <= -2) { toast('🦅 EAGLE!', 'info'); vib([80, 50, 80]); triggerVictoryConfetti(); }
-            else if (d === -1) { toast('🐦 Birdie!', 'success'); vib([50, 50]); triggerVictoryConfetti(); }
+            if (scoreToSave === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); }
+            else if (d <= -2) { toast('🦅 EAGLE!', 'info'); vib([80, 50, 80]); }
+            else if (d === -1) { toast('🐦 Birdie!', 'success'); vib([50, 50]); }
             else if (d === 0) { toast('✅ Par'); vib(); }
             else if (d === 1) { toast('Bogey'); vib(); }
             else { toast('Double+', 'warn'); vib(); }
@@ -516,8 +537,6 @@ function saveSolo(isAuto) {
                 curHole = order[idx + 1];
                 curScore = 0;
             }
-        } else if (scoreToSave === 1 || d <= -1) {
-            triggerVictoryConfetti();
         }
 
         showTimingNotice(savedHole);
@@ -563,7 +582,6 @@ function renderLiveStats(targetId) {
     html += '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + stats.holesPlayed + '/' + getRoundHoleCount(soloRound) + '</div><div class="stat-l">' + playedLbl + '</div></div>';
     html += '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + (stats.gross || '—') + '</div><div class="stat-l">Gross</div></div>';
     html += '<div class="stat"><i class="fas fa-chart-line"></i><div class="stat-n ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</div><div class="stat-l">± Par</div></div>';
-    html += '<div class="stat"><i class="fas fa-calculator"></i><div class="stat-n">' + (stats.net || '—') + '</div><div class="stat-l">Net</div></div>';
     html += '<div class="stat"><i class="fas fa-star"></i><div class="stat-n" style="color:var(--gold);">' + stats.stablefordField + '</div><div class="stat-l">' + t('stbl_field') + '</div></div>';
     html += '<div class="stat"><i class="fas fa-star-half-alt"></i><div class="stat-n" style="color:var(--muted);">' + stats.stablefordExact + '</div><div class="stat-l">' + t('stbl_exact') + '</div></div>';
 
@@ -646,6 +664,8 @@ function finishSolo() {
         });
     };
 
+    // После завершения раунда карточка не предлагается к печати/скачиванию —
+    // переходим сразу к списку раундов.
     if (typeof openFinishConfirmModal === 'function') {
         openFinishConfirmModal(soloRid, function() {
             soloFinishing = true;
@@ -653,7 +673,6 @@ function finishSolo() {
 
             toast(t('msg_round_finished'));
             setTimeout(function() {
-                if (confirm(currentLang === 'en' ? 'Download player scorecard?' : 'Скачать счётную карточку?')) downloadScorecard(soloRid);
                 window.location.href = 'leaderboard.html';
             }, 800);
         }, function() {
@@ -666,26 +685,6 @@ function finishSolo() {
 
         toast(t('msg_round_finished'));
         setTimeout(function() {
-            var fnEl = document.getElementById('s-firstname');
-            var lnEl = document.getElementById('s-lastname');
-            var uid = getPlayerId();
-            var me = (soloRound && soloRound.players && soloRound.players[uid]) || null;
-            var fnName = ((fnEl ? fnEl.value : '') + ' ' + (lnEl ? lnEl.value : '')).trim() || (me && me.name) || 'Player';
-            var teeEl = document.getElementById('s-tee');
-            var teeCode = (soloRound && soloRound.tee) ? soloRound.tee : (teeEl ? teeEl.value : 'wh');
-            var scoreMap = (me && me.scores) || {};
-            if (confirm(currentLang === 'en' ? 'Download official PDF scorecard?' : 'Скачать официальную PDF-карточку?')) {
-                downloadOfficialScorecardPDF({
-                    playerName: fnName,
-                    markerName: 'Self (Solo)',
-                    createdAt: soloRound ? soloRound.startTime : Date.now(),
-                    tee: teeCode,
-                    format: soloRound ? soloRound.format : 'Stroke Play',
-                    exactHandicap: document.getElementById('s-exact-hcp') ? document.getElementById('s-exact-hcp').value : 0,
-                    fieldHandicap: document.getElementById('s-field-hcp') ? document.getElementById('s-field-hcp').value : 0,
-                    scores: scoreMap
-                });
-            }
             window.location.href = 'leaderboard.html';
         }, 800);
     }
@@ -698,6 +697,8 @@ function callOfficialSolo(type) {
 
     var uid = getPlayerId();
     var pName = (soloRound && soloRound.players && soloRound.players[uid]) ? soloRound.players[uid].name : 'Player';
+    // Одиночный раунд: состава флайта нет (игрок один)
+    var flightNames = (typeof getFlightPlayerNames === 'function') ? getFlightPlayerNames(soloRound, uid) : [];
 
     db.ref('alerts').push({
         roundId: soloRid,
@@ -705,11 +706,12 @@ function callOfficialSolo(type) {
         hole: curHole,
         playerId: uid,
         playerName: pName,
+        flightMembers: flightNames,
         time: Date.now(),
         status: 'active'
     }).then(function() {
-        sendTelegramOfficialAlert(type, curHole, pName, 'Одиночный раунд');
-        sendVKOfficialAlert(type, curHole, pName, 'Одиночный раунд');
+        sendTelegramOfficialAlert(type, curHole, pName, flightNames);
+        sendVKOfficialAlert(type, curHole, pName, flightNames);
         toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + curHole + '!', 'warn');
         vib([100, 50, 100]);
     });

@@ -484,6 +484,9 @@ function listenForAlerts() {
                     hasNewAlert = true;
                     var title = a.type === 'referee' ? (currentLang === 'en' ? '🚨 REFEREE CALL!' : '🚨 ВЫЗОВ СУДЬИ!') : (currentLang === 'en' ? '🚨 MARSHAL CALL!' : '🚨 ВЫЗОВ МАРШАЛА!');
                     var body = (currentLang === 'en' ? 'Hole #' : 'Лунка №') + a.hole + ' | ' + (currentLang === 'en' ? 'Player: ' : 'Игрок: ') + (a.playerName || 'Player') + ' (' + fmtTime(a.time) + ')';
+                    if (a.flightMembers && a.flightMembers.length) {
+                        body += ' | ' + (currentLang === 'en' ? 'Flight: ' : 'Флайт: ') + a.flightMembers.join(', ');
+                    }
                     if (typeof showPushNotification === 'function') {
                         showPushNotification(title, body, 'admin.html');
                     }
@@ -510,6 +513,10 @@ function listenForAlerts() {
                 html += '<div style="flex:1;min-width:200px;">';
                 html += '<div style="font-weight:800;font-size:16px;color:var(--white);">' + icon + ' ' + callHeader + title + '</div>';
                 html += '<div style="color:var(--gold);font-size:14px;margin:4px 0;">' + holeLblStr + ': <b>' + a.hole + '</b> | ' + playerLblStr + ': <b>' + (a.playerName || '—') + '</b></div>';
+                if (a.flightMembers && a.flightMembers.length) {
+                    var flightLblStr = currentLang === 'en' ? 'Flight' : 'Состав флайта';
+                    html += '<div style="font-size:12px;color:var(--blue);margin-top:2px;">' + flightLblStr + ': ' + a.flightMembers.map(function(n) { return escapeHtml(n); }).join(', ') + '</div>';
+                }
                 html += '<div style="font-size:11px;color:var(--muted);">' + fmtTime(a.time) + '</div>';
                 if (alreadyResponded) {
                     var who = a.response.responderRole === 'marshal'
@@ -972,7 +979,7 @@ function testTelegramGroupAlert() {
         }).catch(function(){});
     }
 
-    sendTelegramDirectAlert(token, chatId, 'Группу', 'referee', 1, 'Администратор Клуба', 'Тестовая проверка Группы');
+    sendTelegramDirectAlert(token, chatId, 'Группу', 'referee', 1, 'Администратор Клуба', []);
 }
 
 function testTelegramChannelAlert() {
@@ -997,7 +1004,7 @@ function testTelegramChannelAlert() {
         }).catch(function(){});
     }
 
-    sendTelegramDirectAlert(token, chatId, 'Канал', 'referee', 1, 'Администратор Клуба', 'Тестовая проверка Канала');
+    sendTelegramDirectAlert(token, chatId, 'Канал', 'referee', 1, 'Администратор Клуба', []);
 }
 
 function testTelegramAlert(targetMode) {
@@ -1117,8 +1124,7 @@ function testVKAlert() {
         : '⏳ Отправка тестового сообщения ВК...', 'info');
 
     sendVKDirectAlert(token, peerId, 'referee', 1,
-        currentLang === 'en' ? 'Club Administrator' : 'Администратор Клуба',
-        currentLang === 'en' ? 'VK integration test' : 'Тестовая проверка ВКонтакте');
+        currentLang === 'en' ? 'Club Administrator' : 'Администратор Клуба', []);
 }
 
 // ==========================================
@@ -2269,10 +2275,35 @@ function rgMatchInList(players, result) {
     return found || foundLoose;
 }
 
-function rgFindLocalMatch(result) {
+// ВСЕ локальные игроки, совпадающие с записью базы АГР (сначала сильные
+// совпадения, при их отсутствии — нечёткие). Дедупликация по id.
+// Возврат списка (а не одного первого) нужен, чтобы админ мог выбрать:
+// обновить существующего игрока (какого именно, если их несколько)
+// или добавить нового — иначе плодились дубли с разными гандикапами.
+function rgFindLocalMatchesInList(players, result) {
+    var strong = [];
+    var loose = [];
+    (players || []).forEach(function(p) {
+        var u = p.data || {};
+        var local = rgLocalNameParts(u);
+        if (!local.full && !local.first && !local.last) return;
+        var m = rgNamesMatch(local.first, local.last, result.firstName, result.lastName, local.full, result.fio);
+        if (m === 'strong') strong.push(p);
+        else if (m === 'loose') loose.push(p);
+    });
+    return strong.length ? strong : loose;
+}
+
+function rgFindLocalMatches(result) {
     var localUsers = typeof getKnownPlayersSync === 'function' ? (getKnownPlayersSync() || {}) : {};
     var players = Object.keys(localUsers).map(function(id) { return { id: id, data: localUsers[id] || {} }; });
-    return rgMatchInList(players, result);
+    return rgFindLocalMatchesInList(players, result);
+}
+
+// Совместимость со старыми вызовами: первый найденный локальный игрок
+function rgFindLocalMatch(result) {
+    var all = rgFindLocalMatches(result);
+    return all.length ? all[0] : null;
 }
 
 function rgShowStatus(html, cls) {
@@ -2337,10 +2368,11 @@ function rgRenderResults(rows) {
 
         html += '<div class="rg-list">';
         rows.forEach(function(r, i) {
-            var dup = rgMatchInList(players, r);
+            var dups = rgFindLocalMatchesInList(players, r);
+            var firstDup = dups.length ? dups[0] : null;
             var genderIcon = r.gender === 'women' ? '👩' : '👨';
             var hcpVal = r.hcp != null ? fmtExactHcp(r.hcp) : r.hcpDisplay;
-            var hcpChanged = dup && r.hcp != null && dup.data.handicap != null && Math.abs((parseFloat(dup.data.handicap) || 0) - r.hcp) > 0.049;
+            var hcpChanged = firstDup && r.hcp != null && firstDup.data.handicap != null && Math.abs((parseFloat(firstDup.data.handicap) || 0) - r.hcp) > 0.049;
             var isDisabled = r.hcp == null;
             var teeLabel = r.gender === 'women' ? '🟥 ' + (currentLang === 'en' ? 'Red tees' : 'Красные ти') : '🟦 ' + (currentLang === 'en' ? 'Blue tees' : 'Синие ти');
 
@@ -2353,22 +2385,37 @@ function rgRenderResults(rows) {
             html += '<div class="rg-meta">💳 ' + escapeHtml(r.number) + ' · ' + (r.gender === 'women' ? (currentLang === 'en' ? 'Female' : 'Жен.') : (currentLang === 'en' ? 'Male' : 'Муж.')) +
                 ' · ' + teeLabel +
                 (r.hcpDate ? ' · ' + (currentLang === 'en' ? 'updated ' : 'обновлён ') + escapeHtml(r.hcpDate) : '') + '</div>';
-            if (dup) html += '<div class="rg-meta" style="color:var(--gold);">' + (currentLang === 'en' ? 'Already on site' : 'Уже есть на сайте') + ': ' + escapeHtml(dup.data.name || dup.id) + '</div>';
+            if (dups.length) {
+                var dupNames = dups.map(function(d) { return escapeHtml(rgPlayerDisplayName(d)); }).join(', ');
+                html += '<div class="rg-meta" style="color:var(--gold);">' + (currentLang === 'en' ? 'Already on site' : 'Уже есть на сайте') +
+                    (dups.length > 1 ? ' (' + dups.length + ')' : '') + ': ' + dupNames + '</div>';
+            }
             html += '</div>';
             html += '<div class="rg-hcp' + (hcpChanged ? ' rg-hcp-changed' : '') + '" style="flex-shrink:0;">' + escapeHtml(hcpVal) + '<span class="rg-hcp-label">HI</span></div>';
             html += '</div>';
             html += '<div class="rg-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">';
             if (r.hcp == null) {
                 html += '<span class="imp-badge imp-badge-err">⚠ ' + (currentLang === 'en' ? 'No HI in RGA base' : 'Нет HI в базе АГР') + '</span>';
-            } else if (dup) {
-                html += '<button type="button" class="btn btn-og btn-sm" onclick="rgUpdateFromResults(' + i + ')"><i class="fas fa-rotate"></i> ' +
-                    (hcpChanged
-                        ? (currentLang === 'en' ? 'Update HCP ' + fmtExactHcp(dup.data.handicap) + ' → ' + fmtExactHcp(r.hcp)
-                            : 'Обновить HCP ' + fmtExactHcp(dup.data.handicap) + ' → ' + fmtExactHcp(r.hcp))
-                        : (currentLang === 'en' ? 'HCP is up to date' : 'HCP актуален')) + '</button>';
             } else {
-                html += '<button type="button" class="btn btn-g btn-sm" onclick="rgAddFromResults(' + i + ')"><i class="fas fa-plus"></i> ' +
-                    (currentLang === 'en' ? 'Add to site' : 'Добавить на сайт') + '</button>';
+                // Выбор: обновить СУЩЕСТВУЮЩЕГО игрока (каждого из совпавших)
+                // или добавить НОВОГО — чтобы не плодить дублей с разным HCP
+                dups.forEach(function(d) {
+                    var dIdAttr = String(d.id).replace(/'/g, "\\'");
+                    var oldH = d.data.handicap != null ? fmtExactHcp(d.data.handicap) : '—';
+                    var dChanged = d.data.handicap != null && Math.abs((parseFloat(d.data.handicap) || 0) - r.hcp) > 0.049;
+                    html += '<button type="button" class="btn btn-og btn-sm" onclick="rgUpdateLocalFromResults(' + i + ', \'' + dIdAttr + '\')"><i class="fas fa-rotate"></i> ' +
+                        (dChanged
+                            ? (currentLang === 'en' ? 'Update existing ' + escapeHtml(rgPlayerDisplayName(d)) + ': HCP ' + oldH + ' → ' + fmtExactHcp(r.hcp)
+                                : 'Обновить существующего ' + escapeHtml(rgPlayerDisplayName(d)) + ': HCP ' + oldH + ' → ' + fmtExactHcp(r.hcp))
+                            : (currentLang === 'en' ? 'Up to date: ' : 'HCP актуален: ') + escapeHtml(rgPlayerDisplayName(d))) + '</button>';
+                });
+                if (dups.length) {
+                    html += '<button type="button" class="btn btn-g btn-sm" onclick="rgAddAsNewFromResults(' + i + ')"><i class="fas fa-user-plus"></i> ' +
+                        (currentLang === 'en' ? 'Add as NEW player' : 'Добавить как нового игрока') + '</button>';
+                } else {
+                    html += '<button type="button" class="btn btn-g btn-sm" onclick="rgAddFromResults(' + i + ')"><i class="fas fa-plus"></i> ' +
+                        (currentLang === 'en' ? 'Add to site' : 'Добавить на сайт') + '</button>';
+                }
             }
             html += '</div>';
             html += '</div>';
@@ -2427,6 +2474,11 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
     };
     if (r.firstName) updates.firstName = r.firstName;
     if (r.lastName) updates.lastName = r.lastName;
+    // Отчество из базы АГР тоже дописываем в профиль (имя, фамилия, отчество, HCP)
+    if (r.middleName) {
+        updates.middleName = r.middleName;
+        updates.name = rgAgrNameSiteOrder(r);
+    }
 
     // Локальный кэш (профиль, автоподбор, список игроков)
     if (typeof cachedRegisteredUsers !== 'undefined') {
@@ -2471,6 +2523,10 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
     if (r.hcpDate) fbUpdates['users/' + userId + '/rusgolfHcpDate'] = r.hcpDate;
     if (r.firstName) fbUpdates['users/' + userId + '/firstName'] = r.firstName;
     if (r.lastName) fbUpdates['users/' + userId + '/lastName'] = r.lastName;
+    if (r.middleName) {
+        fbUpdates['users/' + userId + '/middleName'] = r.middleName;
+        fbUpdates['users/' + userId + '/name'] = rgAgrNameSiteOrder(r);
+    }
 
     return Promise.all([
         db.ref('rounds').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
@@ -2591,29 +2647,7 @@ function rgBulkAddSelected() {
             rgUpdateHcpOfSilent(existing.id, r, existing.data);
             updated++;
         } else {
-            var newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6) + '_' + Math.floor(Math.random()*10000);
-            var playerData = {
-                name: r.fio,
-                firstName: r.firstName,
-                lastName: r.lastName,
-                email: '',
-                handicap: r.hcp,
-                gender: r.gender,
-                defaultTee: r.gender === 'women' ? 'rd' : 'bl',
-                role: 'player',
-                createdAt: Date.now(),
-                roundsPlayed: 0,
-                bestGross: null,
-                bestStableford: null,
-                rusgolfNumber: r.number,
-                rusgolfHcpDate: r.hcpDate,
-                hcpUpdatedAt: Date.now(),
-                hcpSource: 'rusgolf'
-            };
-            impSaveLocalPlayer(newId, playerData);
-            if (typeof db !== 'undefined') {
-                db.ref('users/' + newId).set(playerData).catch(function(){});
-            }
+            rgCreateNewPlayerFromAgr(r);
             added++;
         }
     });
@@ -2628,28 +2662,21 @@ function rgBulkAddSelected() {
     rgRenderResults(rgLastResults);
 }
 
-function rgAddFromResults(idx) {
-    if (!rgIsAdmin()) {
-        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
-        return;
-    }
-    var r = rgLastResults[idx];
-    if (!r) return;
-    if (r.hcp == null) {
-        toast(currentLang === 'en' ? '⚠ This player has no HI in the RGA base' : '⚠ У этого игрока нет HI в базе АГР', 'error');
-        return;
-    }
-    var existing = rgFindLocalMatch(r);
-    if (existing) {
-        rgUpdateHcpOf(existing.id, r);
-        return;
-    }
+// Имя в порядке сайта: «Имя [Отчество] Фамилия» (в базе АГР — «Фамилия Имя Отчество»)
+function rgAgrNameSiteOrder(r) {
+    var parts = [r.firstName, r.middleName, r.lastName].map(function(s) { return String(s || '').trim(); }).filter(Boolean);
+    return parts.join(' ') || (r.fio || 'Игрок');
+}
 
-    var newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+// Создаёт НОВУЮ запись игрока из результата базы АГР.
+// Сохраняет имя, фамилию, ОТЧЕСТВО и гандикап (отчество — отдельно в middleName).
+function rgCreateNewPlayerFromAgr(r) {
+    var newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6) + '_' + Math.floor(Math.random() * 10000);
     var playerData = {
-        name: r.fio,
-        firstName: r.firstName,
-        lastName: r.lastName,
+        name: rgAgrNameSiteOrder(r),
+        firstName: r.firstName || '',
+        lastName: r.lastName || '',
+        middleName: r.middleName || '',
         email: '',
         handicap: r.hcp,
         gender: r.gender,
@@ -2664,16 +2691,68 @@ function rgAddFromResults(idx) {
         hcpUpdatedAt: Date.now(),
         hcpSource: 'rusgolf'
     };
-
     impSaveLocalPlayer(newId, playerData);
-    toast('🎉 ' + (currentLang === 'en' ? 'Player ' : 'Игрок ') + r.fio + (currentLang === 'en' ? ' added (HCP ' : ' добавлен (HCP ') + fmtExactHcp(r.hcp) + ')', 'success');
-    if (typeof vib === 'function') vib([50, 30, 50]);
-    if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
     if (typeof db !== 'undefined') {
         db.ref('users/' + newId).set(playerData).catch(function(err) {
             console.warn('RUSGOLF player save notice:', err);
         });
     }
+    return { id: newId, name: playerData.name };
+}
+
+function rgAddFromResults(idx) {
+    if (!rgIsAdmin()) {
+        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
+        return;
+    }
+    var r = rgLastResults[idx];
+    if (!r) return;
+    if (r.hcp == null) {
+        toast(currentLang === 'en' ? '⚠ This player has no HI in the RGA base' : '⚠ У этого игрока нет HI в базе АГР', 'error');
+        return;
+    }
+    // Если похожий игрок уже есть на сайте — НЕ создаём дубль: обновляем его HCP.
+    // Чтобы создать вторую запись, есть отдельная кнопка «Добавить как нового игрока».
+    var existing = rgFindLocalMatch(r);
+    if (existing) {
+        rgUpdateHcpOf(existing.id, r);
+        return;
+    }
+
+    var created = rgCreateNewPlayerFromAgr(r);
+    toast('🎉 ' + (currentLang === 'en' ? 'Player ' : 'Игрок ') + created.name + (currentLang === 'en' ? ' added (HCP ' : ' добавлен (HCP ') + fmtExactHcp(r.hcp) + ')', 'success');
+    if (typeof vib === 'function') vib([50, 30, 50]);
+    if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+    rgRenderResults(rgLastResults);
+}
+
+// Обновляет HCP конкретного СУЩЕСТВУЮЩЕГО игрока, выбранного из совпадений
+function rgUpdateLocalFromResults(idx, userId) {
+    if (!rgIsAdmin()) {
+        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
+        return;
+    }
+    var r = rgLastResults[idx];
+    if (!r || r.hcp == null || !userId) return;
+    rgUpdateHcpOf(userId, r);
+}
+
+// Добавляет игрока как НОВОГО, даже если похожие записи уже есть на сайте
+function rgAddAsNewFromResults(idx) {
+    if (!rgIsAdmin()) {
+        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
+        return;
+    }
+    var r = rgLastResults[idx];
+    if (!r) return;
+    if (r.hcp == null) {
+        toast(currentLang === 'en' ? '⚠ This player has no HI in the RGA base' : '⚠ У этого игрока нет HI в базе АГР', 'error');
+        return;
+    }
+    var created = rgCreateNewPlayerFromAgr(r);
+    toast('🎉 ' + (currentLang === 'en' ? 'Player ' : 'Игрок ') + created.name + (currentLang === 'en' ? ' added as NEW (HCP ' : ' добавлен как новый (HCP ') + fmtExactHcp(r.hcp) + ')', 'success');
+    if (typeof vib === 'function') vib([50, 30, 50]);
+    if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
     rgRenderResults(rgLastResults);
 }
 
@@ -2917,23 +2996,46 @@ function rgSyncAll() {
             var html = '<h3 style="color:var(--gold);font-size:15px;margin:18px 0 10px;"><i class="fas fa-user-pen"></i> ' +
                 (currentLang === 'en' ? 'Choose the right player (' : 'Выберите нужного игрока (') + stats.conflicts.length + ')</h3>';
             html += '<p style="color:var(--muted);font-size:12px;margin-bottom:12px;">' +
-                (currentLang === 'en' ? 'Same name found with different handicaps — pick the correct one.' : 'Найдено несколько одинаковых имён с разными гандикапами — выберите правильного.') + '</p>';
+                (currentLang === 'en'
+                    ? 'Several matches found — choose: update an existing player (which one) or add a new one.'
+                    : 'Найдено несколько совпадений — выберите: обновить существующего игрока (какого именно) или добавить нового.') + '</p>';
             stats.conflicts.forEach(function(c, ci) {
                 if (c.resolved) {
+                    var resolvedNote = c.addedNew
+                        ? (currentLang === 'en' ? ' — added as NEW player' : ' — добавлен как новый игрок')
+                        : (c.resolvedHcp != null ? ' → HCP ' + fmtExactHcp(c.resolvedHcp) : '');
                     html += '<div class="rg-conflict" data-conflict-idx="' + ci + '"><div style="color:#2ecc71;font-weight:700;font-size:13px;padding:8px 0;"><i class="fas fa-check-circle"></i> ' +
-                        escapeHtml(rgPlayerDisplayName(c.player)) + (c.resolvedHcp != null ? ' → HCP ' + fmtExactHcp(c.resolvedHcp) : '') + '</div></div>';
+                        escapeHtml(rgPlayerDisplayName(c.player)) + resolvedNote + '</div></div>';
                     return;
                 }
                 html += '<div class="rg-conflict" data-conflict-idx="' + ci + '">';
                 html += '<div class="rg-conflict-title">' + escapeHtml(rgPlayerDisplayName(c.player)) +
                     ' <span class="rg-conflict-hcp">' + (c.player.data.handicap != null ? (currentLang === 'en' ? 'current HCP ' : 'текущий HCP ') + fmtExactHcp(c.player.data.handicap) : (currentLang === 'en' ? 'no HCP' : 'без HCP')) + '</span></div>';
-                c.candidates.forEach(function(r, ri) {
+                // 1) Несколько записей в базе АГР — выбрать, какая из них
+                (c.candidates || []).forEach(function(r, ri) {
                     html += '<div class="rg-cand">';
                     html += '<div class="rg-cand-info"><b>' + escapeHtml(r.fio) + '</b><span class="rg-meta">💳 ' + escapeHtml(r.number) + ' · ' + (r.gender === 'women' ? 'Жен.' : 'Муж.') + (r.hcpDate ? ' · ' + escapeHtml(r.hcpDate) : '') + '</span></div>';
                     html += '<div class="rg-hcp">' + (r.hcp != null ? fmtExactHcp(r.hcp) : '—') + '<span class="rg-hcp-label">HI</span></div>';
                     html += '<button type="button" class="btn btn-g btn-sm" ' + (r.hcp == null ? 'disabled' : '') + ' onclick="rgResolveConflict(' + ci + ',' + ri + ')"><i class="fas fa-check"></i> ' + (currentLang === 'en' ? 'This one' : 'Это он') + '</button>';
                     html += '</div>';
                 });
+                // 2) Несколько ЛОКАЛЬНЫХ игроков с таким именем — выбрать, кого обновить
+                (c.localCandidates || []).forEach(function(lc, li) {
+                    html += '<div class="rg-cand" style="border-left:3px solid var(--gold);">';
+                    html += '<div class="rg-cand-info"><b>' + escapeHtml(rgPlayerDisplayName(lc)) + '</b><span class="rg-meta">' + (currentLang === 'en' ? 'on site' : 'на сайте') + (lc.data.rusgolfNumber ? ' · 💳 ' + escapeHtml(lc.data.rusgolfNumber) : '') + (lc.data.isGuest || String(lc.id).indexOf('guest_') === 0 ? ' · ' + t('guest') : '') + '</span></div>';
+                    html += '<div class="rg-hcp">' + (lc.data.handicap != null ? fmtExactHcp(lc.data.handicap) : '—') + '<span class="rg-hcp-label">HCP</span></div>';
+                    html += '<button type="button" class="btn btn-g btn-sm" onclick="rgResolveLocalConflict(' + ci + ',' + li + ')"><i class="fas fa-rotate"></i> ' + (currentLang === 'en' ? 'Update this one' : 'Обновить этого') + '</button>';
+                    html += '</div>';
+                });
+                // 3) Добавить как НОВОГО игрока (по найденной записи АГР)
+                var remoteForNew = c.remote || (c.candidates || []).filter(function(x) { return x.hcp != null; })[0];
+                if (remoteForNew && remoteForNew.hcp != null) {
+                    html += '<div class="rg-cand" style="border-left:3px solid #2ecc71;">';
+                    html += '<div class="rg-cand-info"><b>' + (currentLang === 'en' ? 'Add as a NEW player' : 'Добавить как нового игрока') + '</b><span class="rg-meta">' + escapeHtml(remoteForNew.fio || '') + (remoteForNew.number ? ' · 💳 ' + escapeHtml(remoteForNew.number) : '') + '</span></div>';
+                    html += '<div class="rg-hcp">' + fmtExactHcp(remoteForNew.hcp) + '<span class="rg-hcp-label">HI</span></div>';
+                    html += '<button type="button" class="btn btn-g btn-sm" onclick="rgResolveAddNew(' + ci + ')"><i class="fas fa-user-plus"></i> ' + (currentLang === 'en' ? 'Add new' : 'Добавить нового') + '</button>';
+                    html += '</div>';
+                }
                 html += '</div>';
             });
             manualEl.innerHTML = html;
@@ -2996,52 +3098,53 @@ function rgSyncAll() {
                 });
             };
 
+            // Применить найденную в АГР запись к локальному игроку.
+            // ВАЖНО: если на сайте НЕСКОЛЬКО игроков с таким именем (обычно
+            // с разными гандикапами) — не угадываем, а показываем выбор:
+            // обновить существующего (какого именно) или добавить нового.
+            var applyRemote = function(remoteRec) {
+                var localMatches = rgFindLocalMatchesInList(players, remoteRec);
+                if (localMatches.length > 1) {
+                    stats.conflicts.push({ player: p, candidates: [], localCandidates: localMatches, remote: remoteRec });
+                    renderConflicts();
+                    return;
+                }
+                var target = localMatches.length ? localMatches[0] : p;
+                var curHcp = (target.data.handicap != null && !isNaN(parseFloat(target.data.handicap))) ? parseFloat(target.data.handicap) : null;
+                if (curHcp === null || Math.abs(curHcp - remoteRec.hcp) > 0.049) {
+                    rgUpdateHcpOf(target.id, remoteRec, target.data);
+                    stats.updatedList.push({
+                        id: target.id,
+                        name: rgPlayerDisplayName(target),
+                        oldHcp: curHcp,
+                        newHcp: remoteRec.hcp,
+                        rusgolfNumber: remoteRec.number,
+                        fio: remoteRec.fio
+                    });
+                    // Обновляем локальную копию, чтобы дедуп/последующие шаги видели новый HCP
+                    if (target === p) u.handicap = remoteRec.hcp;
+                } else {
+                    stats.actualList.push({ id: target.id, name: rgPlayerDisplayName(target), hcp: curHcp, fio: remoteRec.fio });
+                }
+            };
+
             tryFetch(query || displayName, true).then(function(pack) {
                 var strong = pack.classified.strong;
                 var loose = pack.classified.loose;
                 var usedQuery = pack.usedQuery;
 
                 if (strong.length === 1 && strong[0].hcp != null) {
-                    var curHcp = (u.handicap != null && !isNaN(parseFloat(u.handicap))) ? parseFloat(u.handicap) : null;
-                    if (curHcp === null || Math.abs(curHcp - strong[0].hcp) > 0.049) {
-                        rgUpdateHcpOf(p.id, strong[0], u);
-                        stats.updatedList.push({
-                            id: p.id,
-                            name: displayName,
-                            oldHcp: curHcp,
-                            newHcp: strong[0].hcp,
-                            rusgolfNumber: strong[0].number,
-                            fio: strong[0].fio
-                        });
-                        // Обновляем локальную копию, чтобы дедуп/последующие шаги видели новый HCP
-                        u.handicap = strong[0].hcp;
-                    } else {
-                        stats.actualList.push({ id: p.id, name: displayName, hcp: curHcp, fio: strong[0].fio });
-                    }
+                    applyRemote(strong[0]);
                 } else if (strong.length === 1 && strong[0].hcp == null) {
                     stats.noHcpList.push({ id: p.id, name: displayName, fio: strong[0].fio, number: strong[0].number });
                 } else if (strong.length > 1) {
-                    stats.conflicts.push({ player: p, candidates: strong });
+                    stats.conflicts.push({ player: p, candidates: strong, localCandidates: null, remote: null });
                     renderConflicts();
                 } else if (loose.length === 1 && loose[0].hcp != null && local.first && local.last) {
                     // Одно нечёткое совпадение при полном ФИО — тоже обновляем
-                    var curHcp2 = (u.handicap != null && !isNaN(parseFloat(u.handicap))) ? parseFloat(u.handicap) : null;
-                    if (curHcp2 === null || Math.abs(curHcp2 - loose[0].hcp) > 0.049) {
-                        rgUpdateHcpOf(p.id, loose[0], u);
-                        stats.updatedList.push({
-                            id: p.id,
-                            name: displayName,
-                            oldHcp: curHcp2,
-                            newHcp: loose[0].hcp,
-                            rusgolfNumber: loose[0].number,
-                            fio: loose[0].fio
-                        });
-                        u.handicap = loose[0].hcp;
-                    } else {
-                        stats.actualList.push({ id: p.id, name: displayName, hcp: curHcp2, fio: loose[0].fio });
-                    }
+                    applyRemote(loose[0]);
                 } else if (loose.length) {
-                    stats.conflicts.push({ player: p, candidates: loose });
+                    stats.conflicts.push({ player: p, candidates: loose, localCandidates: null, remote: null });
                     renderConflicts();
                 } else {
                     stats.notFoundList.push({ id: p.id, name: displayName, query: usedQuery });
@@ -3089,6 +3192,61 @@ function rgResolveConflict(ci, ri) {
         card.innerHTML = '<div style="color:#2ecc71;font-weight:700;font-size:13px;padding:8px 0;"><i class="fas fa-check-circle"></i> ' +
             escapeHtml(rgPlayerDisplayName(c.player)) + ' → HCP ' + fmtExactHcp(r.hcp) + '</div>';
     }
+}
+
+// Конфликт «на сайте несколько игроков с одним именем»: выбрать, кого обновить
+function rgResolveLocalConflict(ci, li) {
+    var c = rgSyncConflictsRef[ci];
+    if (!c || !rgIsAdmin()) return;
+    var localCands = c.localCandidates || [];
+    var lc = localCands[li];
+    var remote = c.remote || (c.candidates && c.candidates[0]);
+    if (!lc || !remote || remote.hcp == null) return;
+
+    rgUpdateHcpOf(lc.id, remote, lc.data);
+    c.resolved = true;
+    c.resolvedHcp = remote.hcp;
+    c.resolvedLocalId = lc.id;
+    if (rgSyncState && rgSyncState.stats && rgSyncState.stats.updatedList) {
+        var oldHcp = lc.data && lc.data.handicap != null ? parseFloat(lc.data.handicap) : null;
+        rgSyncState.stats.updatedList.push({
+            id: lc.id,
+            name: rgPlayerDisplayName(lc),
+            oldHcp: oldHcp,
+            newHcp: remote.hcp,
+            rusgolfNumber: remote.number,
+            fio: remote.fio
+        });
+    }
+    var manualEl = document.getElementById('rg-sync-manual');
+    var card = manualEl ? manualEl.querySelector('[data-conflict-idx="' + ci + '"]') : null;
+    if (card) {
+        card.innerHTML = '<div style="color:#2ecc71;font-weight:700;font-size:13px;padding:8px 0;"><i class="fas fa-check-circle"></i> ' +
+            (currentLang === 'en' ? 'Updated: ' : 'Обновлено: ') + escapeHtml(rgPlayerDisplayName(lc)) + ' → HCP ' + fmtExactHcp(remote.hcp) + '</div>';
+    }
+}
+
+// Конфликт: добавить игрока как НОВОГО (по выбранной записи АГР)
+function rgResolveAddNew(ci) {
+    var c = rgSyncConflictsRef[ci];
+    if (!c || !rgIsAdmin()) return;
+    var remote = c.remote || (c.candidates || []).filter(function(x) { return x.hcp != null; })[0];
+    if (!remote || remote.hcp == null) return;
+
+    rgCreateNewPlayerFromAgr(remote);
+    c.resolved = true;
+    c.resolvedHcp = remote.hcp;
+    c.addedNew = true;
+    var msgNew = (currentLang === 'en' ? 'Added as new player: ' : 'Добавлен как новый игрок: ') + (remote.fio || '');
+    if (typeof toast === 'function') toast('🎉 ' + msgNew + ' (HCP ' + fmtExactHcp(remote.hcp) + ')', 'success');
+    var manualEl = document.getElementById('rg-sync-manual');
+    var card = manualEl ? manualEl.querySelector('[data-conflict-idx="' + ci + '"]') : null;
+    if (card) {
+        card.innerHTML = '<div style="color:#2ecc71;font-weight:700;font-size:13px;padding:8px 0;"><i class="fas fa-check-circle"></i> ' +
+            escapeHtml(rgPlayerDisplayName(c.player)) + ' — ' + (currentLang === 'en' ? 'added as NEW player' : 'добавлен как новый игрок') + ' (HCP ' + fmtExactHcp(remote.hcp) + ')</div>';
+    }
+    if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+    if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
 }
 
 // -------- МАССОВАЯ ПРОВЕРКА ГАНДИКАПА ИЗ EXCEL ---------
@@ -3414,29 +3572,7 @@ function rgBatchAddResult(r) {
         rgUpdateHcpOfSilent(existing.id, r, existing.data);
         return;
     }
-    var newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6) + '_' + Math.floor(Math.random() * 10000);
-    var playerData = {
-        name: r.fio,
-        firstName: r.firstName,
-        lastName: r.lastName,
-        email: '',
-        handicap: r.hcp,
-        gender: r.gender,
-        defaultTee: r.gender === 'women' ? 'rd' : 'bl',
-        role: 'player',
-        createdAt: Date.now(),
-        roundsPlayed: 0,
-        bestGross: null,
-        bestStableford: null,
-        rusgolfNumber: r.number,
-        rusgolfHcpDate: r.hcpDate,
-        hcpUpdatedAt: Date.now(),
-        hcpSource: 'rusgolf'
-    };
-    impSaveLocalPlayer(newId, playerData);
-    if (typeof db !== 'undefined') {
-        db.ref('users/' + newId).set(playerData).catch(function() {});
-    }
+    rgCreateNewPlayerFromAgr(r);
 }
 
 function rgBatchAddOne(ri, ii) {

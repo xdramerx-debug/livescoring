@@ -31,6 +31,30 @@ function loadPlayers() {
         var filterType = document.getElementById('filter-type') ? document.getElementById('filter-type').value : 'all';
         var sortBy = document.getElementById('sort-by') ? document.getElementById('sort-by').value : 'rounds';
 
+        // Скрываем дубликаты одного игрока (могли остаться от старых guest-записей с разными id):
+        // ключ «имя + гандикап»; приоритет — зарегистрированная запись и бóльшее число раундов
+        var dedupKeyOf = function(e) {
+            var u = e[1] || {};
+            var nm = (u.name || '').toString();
+            var norm = (typeof normalizeSearchText === 'function' ? normalizeSearchText(nm) : nm.toLowerCase());
+            var hcp = (u.handicap != null && !isNaN(parseFloat(u.handicap))) ? Math.round(parseFloat(u.handicap) * 10) / 10 : '';
+            return norm + '|' + hcp;
+        };
+        var byDedupKey = {};
+        entries.forEach(function(e) {
+            var id = e[0], u = e[1] || {};
+            var isGuest = !!u.isGuest || String(id).indexOf('guest_') === 0;
+            var weight = (isGuest ? 0 : 1000) + (u.roundsPlayed || 0);
+            var key = dedupKeyOf(e);
+            if (!byDedupKey[key] || weight > byDedupKey[key].weight) {
+                byDedupKey[key] = { entry: e, weight: weight };
+            }
+        });
+        entries = entries.filter(function(e) {
+            var best = byDedupKey[dedupKeyOf(e)];
+            return !!best && best.entry[0] === e[0];
+        });
+
         if (filterGender !== 'all') {
             entries = entries.filter(function(e) { return e[1].gender === filterGender; });
         }

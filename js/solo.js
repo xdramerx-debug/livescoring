@@ -156,7 +156,12 @@ function updateTimingPreview() {
     if (previewEl) previewEl.innerHTML = buildTimingTable(startDate.getTime(), startHole);
 }
 
+var soloStarting = false;
+
 function startSolo() {
+    // Защита от двойного нажатия: иначе создавалось два раунда и два игрока
+    if (soloStarting) return;
+
     var fnInp = document.getElementById('s-firstname');
     var lnInp = document.getElementById('s-lastname');
     var timeInp = document.getElementById('s-time');
@@ -191,80 +196,81 @@ function startSolo() {
 
     var accessKey = 'key_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
 
-    var playerId = window.sSelectedUid || (currentUser ? currentUser.uid : 'guest_' + Date.now());
-    var isGuest = !window.sSelectedUid && !currentUser;
+    // Идемпотентное определение id игрока: существующий (по uid или имени) не создаётся заново,
+    // новый игрок получает один детерминированный guest-id на все режимы
+    var chosenUid = window.sSelectedUid || (currentUser ? currentUser.uid : null);
 
-    var players = {};
-    players[playerId] = {
-        name: fullName,
-        firstName: firstName,
-        lastName: lastName,
-        exactHcp: parsedExact,
-        fieldHcp: fieldHcp,
-        gender: gender,
-        scores: {}
-    };
+    var createRound = function(playerId) {
+        playerId = playerId || chosenUid || ('guest_' + Date.now());
+        var isGuest = String(playerId).indexOf('guest_') === 0;
 
-    // Регистрируем/обновляем игрока в users, чтобы синхронизация HCP и профиль видели его
-    if (typeof registerGuestPlayerInDatabase === 'function') {
-        var regId = registerGuestPlayerInDatabase({
-            uid: window.sSelectedUid || null,
+        var players = {};
+        players[playerId] = {
             name: fullName,
             firstName: firstName,
             lastName: lastName,
             exactHcp: parsedExact,
+            fieldHcp: fieldHcp,
             gender: gender,
-            tee: tee
+            scores: {}
+        };
+
+        var ref = db.ref('rounds').push();
+        soloRid = ref.key;
+
+        localStorage.setItem('pestovo_solo_key_' + soloRid, accessKey);
+
+        var roundData = {
+            mode: 'solo',
+            tee: tee,
+            format: format,
+            startHole: startHole,
+            startTime: startTime,
+            players: players,
+            status: 'active',
+            createdAt: Date.now(),
+            createdBy: currentUser ? currentUser.uid : playerId,
+            accessKey: accessKey,
+            isGuest: isGuest
+        };
+
+        ref.set(roundData).then(function() {
+            toast(t('msg_round_started'));
+            window.location.href = 'setup-round.html?round=' + soloRid;
+        }).catch(function(err) {
+            soloStarting = false;
+            toast('⚠️ ' + (currentLang === 'en' ? 'Round start error: ' : 'Ошибка запуска раунда: ') + err.message, 'error');
         });
-        if (!window.sSelectedUid && !currentUser && regId) {
-            playerId = regId;
-            isGuest = true;
-            players = {};
-            players[playerId] = {
+    };
+
+    soloStarting = true;
+
+    var resolver = typeof resolveOrCreatePlayerUser === 'function'
+        ? resolveOrCreatePlayerUser
+        : (typeof registerGuestPlayerInDatabase === 'function' ? registerGuestPlayerInDatabase : null);
+
+    if (resolver) {
+        try {
+            resolver({
+                uid: chosenUid,
                 name: fullName,
                 firstName: firstName,
                 lastName: lastName,
                 exactHcp: parsedExact,
-                fieldHcp: fieldHcp,
                 gender: gender,
-                scores: {}
-            };
+                tee: tee
+            }).then(function(resolvedId) {
+                createRound(resolvedId);
+            }).catch(function() {
+                createRound(null);
+            });
+        } catch (e) {
+            // Совместимость со старым кэшем utils.js (синхронная версия регистрации)
+            createRound(typeof e === 'string' ? e : null);
         }
+    } else {
+        createRound(null);
     }
-    // Если выбран существующий uid — обновим его HCP в профиле
-    if (window.sSelectedUid && typeof db !== 'undefined') {
-        db.ref('users/' + window.sSelectedUid).update({
-            handicap: parsedExact,
-            firstName: firstName,
-            lastName: lastName,
-            name: fullName,
-            gender: gender
-        }).catch(function(){});
-    }
-
-    var ref = db.ref('rounds').push();
-    soloRid = ref.key;
-
-    localStorage.setItem('pestovo_solo_key_' + soloRid, accessKey);
-
-    var roundData = {
-        mode: 'solo',
-        tee: tee,
-        format: format,
-        startHole: startHole,
-        startTime: startTime,
-        players: players,
-        status: 'active',
-        createdAt: Date.now(),
-        createdBy: currentUser ? currentUser.uid : playerId,
-        accessKey: accessKey,
-        isGuest: isGuest
-    };
-
-    ref.set(roundData).then(function() {
-        toast(t('msg_round_started'));
-        window.location.href = 'setup-round.html?round=' + soloRid;
-    });
 }
 
 var soloRoundHandler = null;
@@ -482,16 +488,17 @@ function saveSolo(isAuto) {
 
     soloIsChanging = true;
     var savedHole = curHole;
+    var scoreToSave = curScore; // фиксируем счёт до колбэка: ниже curScore может сбрасываться в 0
 
     var uid = getPlayerId();
     var path = 'rounds/' + soloRid + '/players/' + uid + '/scores/' + savedHole;
 
-    db.ref(path).set(curScore).then(function() {
+    db.ref(path).set(scoreToSave).then(function() {
         var par = holePar(savedHole);
-        var d = curScore - par;
+        var d = scoreToSave - par;
 
         if (!isAuto) {
-            if (curScore === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); triggerVictoryConfetti(); }
+            if (scoreToSave === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); triggerVictoryConfetti(); }
             else if (d <= -2) { toast('🦅 EAGLE!', 'info'); vib([80, 50, 80]); triggerVictoryConfetti(); }
             else if (d === -1) { toast('🐦 Birdie!', 'success'); vib([50, 50]); triggerVictoryConfetti(); }
             else if (d === 0) { toast('✅ Par'); vib(); }
@@ -504,7 +511,7 @@ function saveSolo(isAuto) {
                 curHole = order[idx + 1];
                 curScore = 0;
             }
-        } else if (curScore === 1 || d <= -1) {
+        } else if (scoreToSave === 1 || d <= -1) {
             triggerVictoryConfetti();
         }
 
@@ -515,7 +522,7 @@ function saveSolo(isAuto) {
         var p = soloRound.players && soloRound.players[uid];
         if (p) {
             p.scores = p.scores || {};
-            p.scores[savedHole] = curScore;
+            p.scores[savedHole] = scoreToSave;
         }
 
         updateSoloActionButton();
@@ -613,18 +620,28 @@ function renderMiniCard(targetId) {
     }
 }
 
+var soloFinishing = false;
+
 function finishSolo() {
     if (!canEditSolo) return;
+    // Защита от повторного завершения (двойной клик): иначе история и roundsPlayed задваивались
+    if (soloFinishing) return;
+    if (soloRound && soloRound.status === 'completed') return;
+    soloFinishing = true;
+
+    var finalizeSolo = function() {
+        db.ref('rounds/' + soloRid + '/status').set('completed').catch(function(){ soloFinishing = false; });
+        db.ref('rounds/' + soloRid + '/completedAt').set(Date.now());
+
+        db.ref('rounds/' + soloRid).once('value').then(function(sn) {
+            var r = sn.val();
+            if (r) saveHistory(soloRid, r);
+        });
+    };
 
     if (typeof openFinishConfirmModal === 'function') {
         openFinishConfirmModal(soloRid, function() {
-            db.ref('rounds/' + soloRid + '/status').set('completed');
-            db.ref('rounds/' + soloRid + '/completedAt').set(Date.now());
-
-            db.ref('rounds/' + soloRid).once('value').then(function(sn) {
-                var r = sn.val();
-                if (r) saveHistory(soloRid, r);
-            });
+            finalizeSolo();
 
             toast(t('msg_round_finished'));
             setTimeout(function() {
@@ -633,14 +650,8 @@ function finishSolo() {
             }, 800);
         });
     } else {
-        if (!confirm(t('msg_finish_confirm'))) return;
-        db.ref('rounds/' + soloRid + '/status').set('completed');
-        db.ref('rounds/' + soloRid + '/completedAt').set(Date.now());
-
-        db.ref('rounds/' + soloRid).once('value').then(function(sn) {
-            var r = sn.val();
-            if (r) saveHistory(soloRid, r);
-        });
+        if (!confirm(t('msg_finish_confirm'))) { soloFinishing = false; return; }
+        finalizeSolo();
 
         toast(t('msg_round_finished'));
         setTimeout(function() {

@@ -2517,17 +2517,22 @@ function saveHistory(roundId,rd){
         var pid=pe[0],p=pe[1],sc=p.scores||{},fH=p.fieldHcp||0,eH=p.exactHcp||0;
         var stats=calcRoundStats(sc,fH,eH,holeOrder(rd.startHole));
         if(stats.gross<=0)return;
-        var isGuestPlayer=pid.indexOf('guest_')===0;
-        if(isGuestPlayer){
-            db.ref('users').orderByChild('name').equalTo(p.name||'Гость').once('value').then(function(usn){
-                var existingId=null,existing=usn.val()||{};
-                Object.entries(existing).forEach(function(ue){if(ue[1].isGuest===true)existingId=ue[0];});
-                if(existingId){saveHistoryEntry(existingId,roundId,rd,p,stats);}
-                else{
-                    var newRef=db.ref('users').push();
-                    newRef.set({name:p.name||'Гость',firstName:p.firstName||'',lastName:p.lastName||'',email:'',role:'guest',gender:p.gender||'men',handicap:eH||null,createdAt:Date.now(),roundsPlayed:0,bestGross:null,bestStableford:null,isGuest:true}).then(function(){saveHistoryEntry(newRef.key,roundId,rd,p,stats);});
-                }
-            });
+        var isGuestPlayer=String(pid).indexOf('guest_')===0;
+        if(isGuestPlayer && typeof resolveOrCreatePlayerUser==='function'){
+            // Идемпотентное разрешение игрока: переиспользуем существующую запись
+            // (по детерминированному id или по имени) вместо создания новой —
+            // иначе один игрок плодил дубликаты в users после каждого раунда.
+            resolveOrCreatePlayerUser({
+                uid:null,
+                name:p.name||'Гость',
+                firstName:p.firstName||'',
+                lastName:p.lastName||'',
+                exactHcp:eH,
+                gender:p.gender||'men',
+                isGuest:true
+            }).then(function(userId){
+                if(userId)saveHistoryEntry(userId,roundId,rd,p,stats);
+            }).catch(function(){});
         }else{saveHistoryEntry(pid,roundId,rd,p,stats);}
     });
 }
@@ -3986,11 +3991,34 @@ document.addEventListener('DOMContentLoaded', function() {
     applyPageVisibilitySettings();
 });
 
-function registerGuestPlayerInDatabase(p) {
-    if (!p || !p.name) return null;
+// Нормализация ключа для Firebase (нельзя . $ # [ ] /)
+function firebaseSafeKeyStr(s) { return String(s).replace(/[.$#\[\]\/]/g, '_'); }
+
+// Детерминированный id гостя: одно и то же имя + HCP всегда даёт один и тот же id,
+// чтобы игрок не дублировался в users при повторных раундах (соло, группа, турниры).
+function buildGuestUserId(cleanName, exactHcp) {
+    return firebaseSafeKeyStr('guest_' + cleanName.toLowerCase().replace(/\s+/g, '_') + '_' + Math.abs(exactHcp).toString().replace('.', ''));
+}
+
+function hcpKey1(v) {
+    var n = parseFloat(v);
+    if (isNaN(n)) n = 0;
+    return Math.round(n * 10) / 10;
+}
+
+// ==========================================
+// ЕДИНАЯ ИДЕМПОТЕНТНАЯ РЕГИСТРАЦИЯ ИГРОКА
+// Возвращает Promise<userId>. Гарантирует, что один и тот же человек
+// (одно имя / один uid) получает ОДНУ запись в users во всех режимах:
+// одиночный раунд, групповой раунд, завершение раунда (история).
+// Никогда не создаёт вторую запись, если игрок уже есть (по uid или по имени).
+// ==========================================
+function resolveOrCreatePlayerUser(p) {
+    p = p || {};
+    if (!p.name) return Promise.resolve(null);
 
     var cleanName = sanitizeNameRaw(p.name);
-    if (!cleanName) return null;
+    if (!cleanName) return Promise.resolve(null);
     var parts = cleanName.split(' ');
     var firstName = p.firstName ? sanitizeNameRaw(p.firstName) : (parts[0] || cleanName);
     var lastName = p.lastName ? sanitizeNameRaw(p.lastName) : (parts.slice(1).join(' ') || '');
@@ -3998,14 +4026,60 @@ function registerGuestPlayerInDatabase(p) {
     var gender = p.gender || 'men';
     var defaultTee = p.tee || p.defaultTee || (gender === 'women' ? 'rd' : 'bl');
 
-    // Ключи Firebase не могут содержать . $ # [ ] / — нормализуем готовый id гостя,
-    // иначе db.ref('users/<id>') упадёт на именах с точками и т.п.
-    // (сами символы заменяем в конце: так имена, что уже сохранены в БД, получают прежний id)
-    var firebaseSafeKey = function(s) { return String(s).replace(/[.$#\[\]\/]/g, '_'); };
-    var guestId = p.uid
-        ? String(p.uid)
-        : firebaseSafeKey('guest_' + cleanName.toLowerCase().replace(/\s+/g, '_') + '_' + Math.abs(exactHcp).toString().replace('.', ''));
-    if (!guestId || guestId === 'guest__') return null;
+    var patch = { handicap: exactHcp, firstName: firstName, lastName: lastName, name: cleanName, gender: gender };
+
+    var updateLocalCaches = function(id, data) {
+        if (!id) return;
+        try {
+            var custom = {};
+            var existing = localStorage.getItem('pestovo_custom_players');
+            if (existing) custom = JSON.parse(existing) || {};
+            if (!custom[id]) {
+                custom[id] = data;
+                localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
+            }
+        } catch(e) {}
+        if (typeof cachedRegisteredUsers !== 'undefined') {
+            cachedRegisteredUsers[id] = Object.assign({}, cachedRegisteredUsers[id] || {}, data);
+            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+        }
+    };
+
+    var finish = function(id) {
+        // isGuest в кэш не пишем — его проставит слушатель users из БД
+        updateLocalCaches(id, { name: cleanName, firstName: firstName, lastName: lastName, handicap: exactHcp, gender: gender, defaultTee: defaultTee });
+        return id;
+    };
+
+    // --- 1) Явно указан uid (выбран из списка / текущий аккаунт) ---
+    if (p.uid) {
+        var uidKey = firebaseSafeKeyStr(String(p.uid));
+        if (!uidKey) return Promise.resolve(null);
+        var uidData = {
+            name: cleanName,
+            firstName: firstName,
+            lastName: lastName,
+            handicap: exactHcp,
+            gender: gender,
+            defaultTee: defaultTee,
+            role: 'player',
+            isGuest: !!p.isGuest || uidKey.indexOf('guest_') === 0,
+            createdAt: Date.now(),
+            roundsPlayed: 0
+        };
+        if (typeof db === 'undefined') return Promise.resolve(finish(uidKey));
+        return db.ref('users/' + uidKey).once('value').then(function(sn) {
+            if (!sn.exists()) {
+                return db.ref('users/' + uidKey).set(uidData).catch(function(){}).then(function() { return uidKey; });
+            }
+            // Существующую запись только обновляем (HCP/имя) — новую не создаём
+            return db.ref('users/' + uidKey).update(patch).catch(function(){}).then(function() { return uidKey; });
+        }).catch(function() { return uidKey; }).then(finish);
+    }
+
+    // --- 2) Гость без uid: ищем существующего игрока, прежде чем создать ---
+    var candidateId = buildGuestUserId(cleanName, exactHcp);
+    if (!candidateId || candidateId === 'guest__') return Promise.resolve(null);
 
     var guestData = {
         name: cleanName,
@@ -4020,43 +4094,64 @@ function registerGuestPlayerInDatabase(p) {
         roundsPlayed: 0
     };
 
-    try {
-        var custom = {};
-        var existing = localStorage.getItem('pestovo_custom_players');
-        if (existing) custom = JSON.parse(existing) || {};
-        if (!custom[guestId]) {
-            custom[guestId] = guestData;
-            localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
-        }
-    } catch(e) {}
+    if (typeof db === 'undefined') return Promise.resolve(finish(candidateId));
 
-    if (typeof cachedRegisteredUsers !== 'undefined') {
-        // Новые данные (HCP/имя) имеют приоритет над устаревшим кэшем
-        cachedRegisteredUsers[guestId] = Object.assign({}, cachedRegisteredUsers[guestId] || {}, guestData);
-        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
-    }
-
-    if (typeof db !== 'undefined') {
-        db.ref('users/' + guestId).once('value').then(function(sn) {
-            if (!sn.exists()) {
-                db.ref('users/' + guestId).set(guestData).catch(function(err) {
-                    console.warn('Firebase guest save notice:', err);
-                });
-            } else {
-                // Обновляем HCP/имя у уже существующей записи (важно для синхронизации и профиля)
-                var patch = {
-                    handicap: exactHcp,
-                    firstName: firstName,
-                    lastName: lastName,
-                    name: cleanName,
-                    gender: gender
-                };
-                db.ref('users/' + guestId).update(patch).catch(function(){});
+    // 2а) Есть уже запись с детерминированным id? — переиспользуем
+    // 2б) Иначе ищем по имени (зарегистрированный или гостевая запись с любым ключом).
+    //     Совпадением считаем то же имя И тот же гандикап (округлённый до 0,1):
+    //     игроки с одинаковым именем, но разным HCP — это разные люди (как в базе клуба).
+    var findByCandidate = db.ref('users/' + candidateId).once('value').then(function(sn) {
+        return sn.exists() ? candidateId : null;
+    });
+    var findByName = db.ref('users').orderByChild('name').equalTo(cleanName).once('value').then(function(usn) {
+        var found = null;
+        var foundData = null;
+        usn.forEach(function(cs) {
+            var u = cs.val() || {};
+            if (isPlayerDeleted(cs.key, u.name)) return;
+            if (u.handicap != null && hcpKey1(u.handicap) !== hcpKey1(exactHcp)) return;
+            var better;
+            if (!found) better = true;
+            else {
+                // Приоритет: зарегистрированный (не гость) > гостевая запись;
+                // среди равных — запись с большим числом раундов
+                var foundIsGuest = !!foundData.isGuest || String(found).indexOf('guest_') === 0;
+                var curIsGuest = !!u.isGuest || String(cs.key).indexOf('guest_') === 0;
+                if (foundIsGuest && !curIsGuest) better = true;
+                else if (foundIsGuest === curIsGuest) better = ((u.roundsPlayed || 0) > (foundData.roundsPlayed || 0));
+                else better = false;
             }
-        }).catch(function(){});
-    }
+            if (better) { found = cs.key; foundData = u; }
+        });
+        return found;
+    }).catch(function() { return null; });
 
-    return guestId;
+    return Promise.all([findByCandidate, findByName]).then(function(res) {
+        var existingId = res[0] || res[1];
+        if (existingId) {
+            // Переиспользуем найденную запись; HCP/имя обновляем только у гостевых записей,
+            // чтобы не затирать данные зарегистрированного игрока, введённые вручную с опечаткой
+            return db.ref('users/' + existingId).once('value').then(function(sn) {
+                var u = sn.val() || {};
+                if (u.isGuest || String(existingId).indexOf('guest_') === 0) {
+                    return db.ref('users/' + existingId).update(patch).catch(function(){}).then(function() { return existingId; });
+                }
+                return existingId;
+            }).catch(function() { return existingId; });
+        }
+        // Не нашли — создаём ровно одну запись с детерминированным id
+        return db.ref('users/' + candidateId).set(guestData).catch(function(){}).then(function() { return candidateId; });
+    }).catch(function() { return candidateId; }).then(finish);
+}
+
+// Обратная совместимость: раньше возвращала id синхронно.
+// Теперь регистрация идемпотентна и асинхронна — возвращается Promise<id>.
+function registerGuestPlayerInDatabase(p) {
+    return resolveOrCreatePlayerUser(p);
+}
+if (typeof window !== 'undefined') {
+    window.registerGuestPlayerInDatabase = registerGuestPlayerInDatabase;
+    window.resolveOrCreatePlayerUser = resolveOrCreatePlayerUser;
 }
 
 function normalizeSearchText(str) {
@@ -4243,6 +4338,22 @@ if (typeof db !== 'undefined') {
                 });
             }
             lastRemoteUserIds = Object.keys(val);
+            // Убираем ghost-записи гостевых игроков, для которых уже существует
+            // реальная запись в users с тем же именем (иначе игрок отображался дважды)
+            Object.keys(cachedRegisteredUsers).forEach(function(k) {
+                if (k.indexOf('guest_name_') !== 0) return;
+                var ghost = cachedRegisteredUsers[k];
+                if (!ghost || !ghost.name) return;
+                var gName = normalizeSearchText(ghost.name);
+                var gHcp = hcpKey1(ghost.handicap);
+                var hasReal = Object.keys(val).some(function(rk) {
+                    var ru = val[rk];
+                    if (!ru || !ru.name) return false;
+                    if (normalizeSearchText(ru.name) !== gName) return false;
+                    return ru.handicap == null || hcpKey1(ru.handicap) === gHcp;
+                });
+                if (hasReal) delete cachedRegisteredUsers[k];
+            });
             // Вычищаем из кэша всех игроков, помеченных как удалённые
             var deleted = [];
             try {
@@ -4284,18 +4395,29 @@ if (typeof db !== 'undefined') {
                             if (isDel) return;
                             var key = pid.startsWith('guest_') ? ('guest_name_' + pName.toLowerCase().replace(/\s+/g, '_')) : pid;
                             // Не перезаписываем существующую запись, если игрок уже в кэше с корректными данными —
-                            // и только добавляем гостевую запись, если её действительно нет
+                            // и только добавляем гостевую запись, если её действительно нет.
+                            // Дополнительно: если игрок с таким же именем и HCP уже есть в кэше
+                            // (зарегистрированный или гостевой из users) — ghost-дубль не создаём.
                             if (!cachedRegisteredUsers[key]) {
-                                var parts = pName.split(' ');
-                                cachedRegisteredUsers[key] = {
-                                    name: pName,
-                                    firstName: parts[0] || pName,
-                                    lastName: parts.slice(1).join(' ') || '',
-                                    handicap: p.exactHcp != null ? p.exactHcp : (p.fieldHcp || 0),
-                                    gender: p.gender || 'men',
-                                    defaultTee: p.tee || (p.gender === 'women' ? 'rd' : 'bl'),
-                                    isGuest: true
-                                };
+                                var dupInCache = Object.keys(cachedRegisteredUsers).some(function(ck) {
+                                    if (ck === key) return false;
+                                    var cu = cachedRegisteredUsers[ck];
+                                    if (!cu || !cu.name) return false;
+                                    if (normalizeSearchText(cu.name) !== normName) return false;
+                                    return cu.handicap == null || hcpKey1(cu.handicap) === hcpKey1(p.exactHcp != null ? p.exactHcp : (p.fieldHcp || 0));
+                                });
+                                if (!dupInCache) {
+                                    var parts = pName.split(' ');
+                                    cachedRegisteredUsers[key] = {
+                                        name: pName,
+                                        firstName: parts[0] || pName,
+                                        lastName: parts.slice(1).join(' ') || '',
+                                        handicap: p.exactHcp != null ? p.exactHcp : (p.fieldHcp || 0),
+                                        gender: p.gender || 'men',
+                                        defaultTee: p.tee || (p.gender === 'women' ? 'rd' : 'bl'),
+                                        isGuest: true
+                                    };
+                                }
                             }
                         }
                     });
@@ -4413,7 +4535,7 @@ function initPlayerSearchAutofill(opts) {
 
         var usersData = getKnownPlayersSync();
         var matches = [];
-        var seenKeys = new Set();
+        var seenKeys = {};
 
         Object.entries(usersData || {}).forEach(function(e) {
             var uid = e[0];
@@ -4429,8 +4551,23 @@ function initPlayerSearchAutofill(opts) {
             // Защита: не показывать удалённых в админке игроков
             if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, name)) return;
 
-            var normKey = uid + '_' + full.toLowerCase() + '_' + (u.handicap != null ? u.handicap : '');
-            if (seenKeys.has(normKey)) return;
+            // Дедупликация по «имя + гандикап» (а не по uid): один человек =
+            // одна строка в подсказках. Дубликаты возможны из-за старых guest-записей.
+            var normKey = normalizeSearchText(full) + '|' + (u.handicap != null ? hcpKey1(u.handicap) : '');
+            var isGuestEntry = !!u.isGuest || String(uid).indexOf('guest_') === 0;
+            var prevUid = seenKeys[normKey];
+            if (prevUid !== undefined) {
+                // Уже есть вариант с этим именем — оставляем более «настоящего» игрока:
+                // зарегистрированный приоритетнее гостя, запись из users приоритетнее ghost-кэша
+                var prev = usersData[prevUid] || {};
+                var prevIsGuest = !!prev.isGuest || String(prevUid).indexOf('guest_') === 0;
+                var preferNew = (prevIsGuest && !isGuestEntry);
+                if (preferNew) {
+                    matches = matches.filter(function(m) { return m.uid !== prevUid; });
+                } else {
+                    return;
+                }
+            }
 
             var fnLower = fn.toLowerCase();
             var lnLower = ln.toLowerCase();
@@ -4440,7 +4577,7 @@ function initPlayerSearchAutofill(opts) {
             var isPrefixMatch = (fnLower.startsWith(query) || lnLower.startsWith(query) || fullLower.startsWith(query) || nameLower.startsWith(query) || fullLower.includes(query));
 
             if (isPrefixMatch) {
-                seenKeys.add(normKey);
+                seenKeys[normKey] = uid;
                 var playerObj = {
                     uid: uid,
                     name: full,
@@ -4449,7 +4586,7 @@ function initPlayerSearchAutofill(opts) {
                     handicap: u.handicap != null ? u.handicap : 0,
                     gender: u.gender || 'men',
                     defaultTee: u.defaultTee || (u.gender === 'women' ? 'rd' : 'bl'),
-                    isGuest: !!u.isGuest
+                    isGuest: isGuestEntry
                 };
                 matches.push(playerObj);
             }

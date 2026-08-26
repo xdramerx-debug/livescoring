@@ -11,6 +11,7 @@ var myScore = 0;
 var targetScore = 0;
 var isChanging = false;
 var canEditGroup = false;
+var groupPaceTimer = null;
 
 // Защита от гонки: если колбэк авторизации сработает до парсинга этого файла
 // (медленная загрузка/кэш SW), подписываемся на раунд и из DOMContentLoaded.
@@ -19,6 +20,18 @@ function bootRoundViewOnce() {
     if (roundViewListening || !curRid) return;
     roundViewListening = true;
     initRoundView();
+}
+
+function updateGroupPaceAssistant() {
+    if (curRoundData) renderPaceAssistant('group-pace-assistant', curRoundData);
+}
+
+function startGroupPaceTicker() {
+    if (groupPaceTimer) clearInterval(groupPaceTimer);
+    updateGroupPaceAssistant();
+    groupPaceTimer = setInterval(function() {
+        updateGroupPaceAssistant();
+    }, isBatterySaverEnabled() ? 60000 : 30000);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -469,6 +482,7 @@ function startGroup() {
                 tee: inp.tee,
                 isGuest: String(pid).indexOf('guest_') === 0,
                 scores: {},
+                holeTimes: {},
                 markerScores: {},
                 submitted: {},
                 markerSubmitted: {},
@@ -506,6 +520,7 @@ function startGroup() {
             startHole: startHole,
             startTime: startDate.getTime(),
             players: players,
+            holeTimes: {},
             markerAssignments: markerAssignments,
             participantsList: pOrder,
             status: 'active',
@@ -620,6 +635,22 @@ function initRoundView() {
             renderPlaySummary();
             renderInviteQRs();
             listenForCallResponses();
+            listenForOfficialCallState({
+                roundId: curRid,
+                playerId: myUid,
+                prefix: 'group',
+                canEdit: function() { return canEditGroup; },
+                hole: function() { return playHole; },
+                playerName: function() {
+                    return curRoundData.players && curRoundData.players[myUid]
+                        ? curRoundData.players[myUid].name : 'Player';
+                },
+                flightMembers: function() {
+                    return typeof getFlightPlayerNames === 'function'
+                        ? getFlightPlayerNames(curRoundData, myUid) : [];
+                }
+            });
+            startGroupPaceTicker();
 
         } else {
             if (activeView) activeView.classList.add('hidden');
@@ -634,6 +665,11 @@ function initRoundView() {
 function findCurrentHole() {
     var order = getRoundOrder(curRoundData);
     var myPlayer = (curRoundData.players && curRoundData.players[myUid]) || {};
+    var savedResumeHole = getSavedResumeHole(curRid, myUid, order, myPlayer);
+    if (savedResumeHole) {
+        playHole = savedResumeHole;
+        return;
+    }
     playHole = order[0];
     for (var i = 0; i < order.length; i++) {
         // Данные важнее флага: лунка с фактическим несовпадением снова становится текущей
@@ -683,6 +719,7 @@ function goPlayHole(h) {
     playHole = h;
     myScore = 0;
     targetScore = 0;
+    rememberResumeHole(curRid, myUid, h);
     renderPlayHole();
     buildPlayHolesNav();
     setTimeout(function() { isChanging = false; }, 100);
@@ -764,6 +801,7 @@ function renderPlayHole() {
     }
 
     checkPlayVerification();
+    updateGroupPaceAssistant();
 }
 
 function adjScore(who, delta) {
@@ -849,8 +887,10 @@ function saveHoleScores() {
     var h = playHole;
     var updates = {};
 
+    var savedAt = Date.now();
     updates['rounds/' + curRid + '/players/' + myUid + '/scores/' + h] = myScore;
     updates['rounds/' + curRid + '/players/' + myUid + '/submitted/' + h] = true;
+    updates['rounds/' + curRid + '/players/' + myUid + '/holeTimes/' + h] = savedAt;
 
     if (myTargetUid) {
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerScores/' + myUid + '/' + h] = targetScore;
@@ -925,6 +965,8 @@ function saveHoleScores() {
             }
         }
 
+        recordGroupHoleCompletion(curRid, h, savedAt);
+        rememberResumeHole(curRid, myUid, playHole);
         renderPlayHole();
         buildPlayHolesNav();
         renderPlaySummary();
@@ -1021,27 +1063,29 @@ function renderInviteQRs() {
 // ==========================================
 function callOfficial(type) {
     if (!canEditGroup) return;
-    var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
-    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + playHole + '?')) return;
-
-    var pName = (curRoundData && curRoundData.players && curRoundData.players[myUid]) ? curRoundData.players[myUid].name : 'Player';
-    // Состав флайта: все остальные игроки, играющие на поле вместе с вызвавшим
-    var flightNames = (typeof getFlightPlayerNames === 'function') ? getFlightPlayerNames(curRoundData, myUid) : [];
-
-    db.ref('alerts').push({
+    requestOfficialCall({
         roundId: curRid,
-        type: type,
-        hole: playHole,
         playerId: myUid,
-        playerName: pName,
-        flightMembers: flightNames,
-        time: Date.now(),
-        status: 'active'
-    }).then(function() {
-        sendTelegramOfficialAlert(type, playHole, pName, flightNames);
-        sendVKOfficialAlert(type, playHole, pName, flightNames);
-        toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + playHole + '!', 'warn');
-        vib([100, 50, 100]);
+        prefix: 'group',
+        type: type,
+        hole: function() { return playHole; },
+        playerName: function() {
+            return (curRoundData && curRoundData.players && curRoundData.players[myUid])
+                ? curRoundData.players[myUid].name : 'Player';
+        },
+        flightMembers: function() {
+            return typeof getFlightPlayerNames === 'function'
+                ? getFlightPlayerNames(curRoundData, myUid) : [];
+        },
+        canEdit: function() { return canEditGroup; },
+        onSent: function(call) {
+            var pName = call.playerName || 'Player';
+            var members = call.flightMembers || [];
+            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, pName, members);
+            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, pName, members);
+            toast('🚨 ' + getOfficialRoleName(type) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
+            vib([100, 50, 100]);
+        }
     });
 }
 

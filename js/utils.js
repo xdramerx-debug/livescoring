@@ -50,7 +50,25 @@ function holeResName(s,p){
     return '+'+d;
 }
 function toast(m,toastType){toastType=toastType||'success';var e=document.createElement('div');e.className='toast t-'+toastType;e.innerHTML=m;document.body.appendChild(e);setTimeout(function(){e.classList.add('t-show');},10);setTimeout(function(){e.classList.remove('t-show');setTimeout(function(){e.remove();},300);},4000);}
-function vib(ms){if(navigator.vibrate)navigator.vibrate(ms||50);}
+function isPlayerModeEnabled(key){
+    try { return localStorage.getItem(key) === '1'; } catch(e) { return false; }
+}
+function vib(pattern){
+    if (!navigator.vibrate) return;
+    var value = pattern === undefined || pattern === null ? 50 : pattern;
+    // Усиленный режим меняет только длительность вибрации, сохраняя ритм паттерна.
+    if (isPlayerModeEnabled('pestovo_strong_vibration')) {
+        if (Array.isArray(value)) {
+            value = value.map(function(part, index) {
+                if (index % 2 === 0) return Math.min(650, Math.max(35, Math.round((parseInt(part) || 0) * 1.45)));
+                return Math.min(260, Math.max(20, Math.round((parseInt(part) || 0) * 0.9)));
+            });
+        } else {
+            value = Math.min(650, Math.max(70, Math.round((parseInt(value) || 50) * 1.5)));
+        }
+    }
+    try { navigator.vibrate(value); } catch(e) {}
+}
 function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'ru-RU',{day:'2-digit',month:'short',year:'numeric'});}
 function fmtTime(ts){if(!ts)return'—';var d=new Date(ts),h=d.getHours(),m=d.getMinutes();return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
 function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
@@ -122,6 +140,7 @@ var I18N = {
         btn_view_scores: 'Все раунды',
         sec_now_playing: 'Сейчас на поле',
         sec_my_active: 'Мои активные раунды',
+        continue_round: 'Продолжить игру',
         sec_club_stats: 'Клуб в цифрах',
         sec_course_card: 'Поле клуба',
         sec_recent_results: 'Последние результаты',
@@ -205,6 +224,19 @@ var I18N = {
         field_auto: 'Полевой (авто)',
         start_round_btn: 'Начать раунд', back_btn: 'Назад',
         timings_title: 'Тайминги',
+        pace_of_play: 'Темп игры',
+        pace_current_hole: 'Текущая лунка',
+        pace_completed: 'Пройдено',
+        pace_delay: 'Общее отставание',
+        pace_buffer: 'Запас',
+        pace_on_time: 'В графике',
+        pace_warning: 'Небольшое отставание',
+        pace_late: 'Отставание',
+        pace_severe: 'Сильное отставание',
+        pace_pending: 'Тайминг появится после сохранения лунок',
+        pace_deadline: 'Плановый дедлайн',
+        pace_hole_norm: 'Норма',
+        pace_in_progress: 'в процессе',
         time_and_hole: 'Время и лунка',
         game_format: 'Формат игры',
 
@@ -217,6 +249,11 @@ var I18N = {
         hole_finalized_both: '✅ Счёт зафиксирован и подтверждён обеими сторонами!',
         mismatch_error: '⚠️ Несовпадение с маркером! Исправьте результат.',
         call_referee: 'Вызвать судью', call_marshal: 'Вызвать маршала',
+        call_sent: 'Вызов отправлен',
+        call_accepted: 'принял вызов',
+        call_on_way: 'едет',
+        call_retry_in: 'Повторный вызов через',
+        call_cooldown: 'Повторный вызов будет доступен через',
         read_only_mode: 'Режим просмотра. Ввод счёта доступен только участникам раунда.',
         view_only_group_desc: 'Режим просмотра. Ввод счёта доступен только участникам раунда.',
         round_score: 'Счёт раунда', hole_scorecard: 'Счётная карточка по лункам',
@@ -304,6 +341,15 @@ var I18N = {
         from_col: 'Показатель от', to_col: 'Показатель до',
         round_history: 'История раундов',
 
+        // Режимы интерфейса игрока
+        large_ui_mode: 'Крупный шрифт и кнопки',
+        strong_vibration_mode: 'Усиленная вибрация',
+        high_contrast_mode: 'Более заметные цвета статусов',
+        battery_saver_mode: 'Экономия батареи',
+        player_modes_title: 'Режимы игрока',
+        mode_on: 'Вкл.',
+        mode_off: 'Выкл.',
+
         // Solo & Guest
         solo_sub: 'Гольф-клуб Пестово',
         current_score: 'Текущий счёт',
@@ -316,7 +362,7 @@ var I18N = {
         username: 'Логин', password: 'Пароль',
         login_btn: 'Войти', register_btn: 'Регистрация', create_account: 'Создать аккаунт',
         continue_guest: 'Продолжить как гость',
-        tab_rounds: 'Раунды', tab_alerts: 'Вызовы 🚨', tab_tournaments: 'Турниры',
+        tab_rounds: 'Раунды', tab_alerts: 'Вызовы 🚨', tab_groups: 'Группы сейчас ⏱️', tab_tournaments: 'Турниры',
         tab_players: 'Игроки и роли', tab_data: 'Данные',
         tab_importexport: 'Импорт/Экспорт 📊', tab_rusgolf: 'RUSGOLF 🇷🇺',
         imp_exp_title: 'Импорт и экспорт игроков (Excel)',
@@ -331,6 +377,15 @@ var I18N = {
         admin_only_tournaments: 'Турниры создаёт только администратор.',
         admin_panel_link: 'Админка',
         referee_marshal_calls: 'Вызовы судей и маршалов',
+        admin_groups_title: 'Группы, которые сейчас играют',
+        admin_groups_sub: 'Контроль темпа игры по активным групповым раундам',
+        admin_no_groups: 'Сейчас нет активных групповых раундов',
+        admin_group_players: 'Игроки',
+        admin_start_time: 'Стартовое время',
+        admin_start_hole: 'Стартовая лунка',
+        admin_current_hole: 'Текущая лунка',
+        admin_hole_timings: 'Тайминги прохождения лунок',
+        admin_total_delay: 'Общее отставание',
         enable_push_notifications: 'Включить Push-уведомления',
         manage_players_roles: 'Управление игроками и ролями',
         manage_players_sub: 'Назначайте права Администратора другим игрокам. Администраторы получают полный доступ к этой панели.',
@@ -397,6 +452,7 @@ var I18N = {
         btn_view_scores: 'All Rounds',
         sec_now_playing: 'Currently Playing',
         sec_my_active: 'My Active Rounds',
+        continue_round: 'Continue Playing',
         sec_club_stats: 'Club Statistics',
         sec_course_card: 'Course Map',
         sec_recent_results: 'Recent Results',
@@ -480,6 +536,19 @@ var I18N = {
         field_auto: 'Course HCP (auto)',
         start_round_btn: 'Start Round', back_btn: 'Back',
         timings_title: 'Hole Timings',
+        pace_of_play: 'Pace of Play',
+        pace_current_hole: 'Current hole',
+        pace_completed: 'Completed',
+        pace_delay: 'Total delay',
+        pace_buffer: 'Buffer',
+        pace_on_time: 'On pace',
+        pace_warning: 'Slightly behind',
+        pace_late: 'Behind pace',
+        pace_severe: 'Severely behind',
+        pace_pending: 'Timing appears after holes are saved',
+        pace_deadline: 'Planned deadline',
+        pace_hole_norm: 'Target',
+        pace_in_progress: 'in progress',
         time_and_hole: 'Time and Hole',
         game_format: 'Game Format',
 
@@ -492,6 +561,11 @@ var I18N = {
         hole_finalized_both: '✅ Score confirmed and finalized by both sides!',
         mismatch_error: '⚠️ Score mismatch with marker! Please correct before proceeding.',
         call_referee: 'Call Referee', call_marshal: 'Call Marshal',
+        call_sent: 'Call sent',
+        call_accepted: 'accepted the call',
+        call_on_way: 'is on the way',
+        call_retry_in: 'Call again in',
+        call_cooldown: 'Another call will be available in',
         read_only_mode: 'View mode. Score entry is available to active players only.',
         view_only_group_desc: 'View mode. Score entry is available to active players only.',
         round_score: 'Round Score', hole_scorecard: 'Hole Scorecard',
@@ -579,6 +653,15 @@ var I18N = {
         from_col: 'Handicap From', to_col: 'Handicap To',
         round_history: 'Round History',
 
+        // Player interface modes
+        large_ui_mode: 'Large text and buttons',
+        strong_vibration_mode: 'Stronger vibration',
+        high_contrast_mode: 'High-visibility status colors',
+        battery_saver_mode: 'Battery saver',
+        player_modes_title: 'Player modes',
+        mode_on: 'On',
+        mode_off: 'Off',
+
         // Solo & Guest
         solo_sub: 'Pestovo Golf Club',
         current_score: 'Current Score',
@@ -591,7 +674,7 @@ var I18N = {
         username: 'Username', password: 'Password',
         login_btn: 'Log In', register_btn: 'Register', create_account: 'Create Account',
         continue_guest: 'Continue as Guest',
-        tab_rounds: 'Rounds', tab_alerts: 'Alerts 🚨', tab_tournaments: 'Tournaments',
+        tab_rounds: 'Rounds', tab_alerts: 'Alerts 🚨', tab_groups: 'Groups now ⏱️', tab_tournaments: 'Tournaments',
         tab_players: 'Players & Roles', tab_data: 'Data',
         tab_importexport: 'Import/Export 📊', tab_rusgolf: 'RUSGOLF 🇷🇺',
         imp_exp_title: 'Player Import & Export (Excel)',
@@ -606,6 +689,15 @@ var I18N = {
         admin_only_tournaments: 'Tournaments are created by administrators only.',
         admin_panel_link: 'Admin Panel',
         referee_marshal_calls: 'Referee & Marshal Calls',
+        admin_groups_title: 'Groups currently playing',
+        admin_groups_sub: 'Pace monitoring for active group rounds',
+        admin_no_groups: 'There are no active group rounds',
+        admin_group_players: 'Players',
+        admin_start_time: 'Start time',
+        admin_start_hole: 'Start hole',
+        admin_current_hole: 'Current hole',
+        admin_hole_timings: 'Hole-by-hole timing',
+        admin_total_delay: 'Total delay',
         enable_push_notifications: 'Enable Push Notifications',
         manage_players_roles: 'Manage Players & Roles',
         manage_players_sub: 'Assign Administrator rights to other players. Administrators get full access to this panel.',
@@ -679,6 +771,9 @@ function toggleLang() {
     try { document.documentElement.setAttribute('lang', currentLang); } catch(e) {}
     applyTranslations();
     updateLangButtons();
+    if (typeof applyPlayerModes === 'function') applyPlayerModes();
+    if (typeof refreshOfficialCallBindings === 'function') refreshOfficialCallBindings();
+    if (typeof renderAdmGroups === 'function') renderAdmGroups();
     if (typeof buildMobileDrawer === 'function') {
         var drawerRoot = document.getElementById('mobile-drawer-root');
         var wasOpen = drawerRoot && drawerRoot.classList.contains('open');
@@ -812,15 +907,29 @@ function loadMyActiveRounds(targetId) {
             var link = 'setup-round.html?round=' + id;
             var modeIcon = r.mode === 'solo' ? '<i class="fas fa-user"></i> ' + t('solo_round') : '<i class="fas fa-users"></i> ' + t('group_round');
             var teePill = fmtTeePill(r.tee);
+            var resume = getRoundResumeState(id, r);
+            var pace = resume.metrics;
+            var paceState = paceStatus(pace.overallDelay);
+            var progressPercent = resume.holeCount ? Math.min(100, Math.round((resume.holesPlayed / resume.holeCount) * 100)) : 0;
             var playersCount = Object.keys(r.players || {}).length;
+            var progressLabel = currentLang === 'en' ? 'Progress' : 'Прогресс';
+            var currentHoleLabel = currentLang === 'en' ? 'Current hole' : 'Текущая лунка';
+            var paceLabel = currentLang === 'en' ? 'Pace' : 'Темп';
 
-            html += '<div class="list-item" style="padding:16px;background:var(--input);border:1px solid var(--border);margin-bottom:10px;flex-wrap:wrap;gap:12px;">';
+            html += '<div class="list-item resume-round-card" style="padding:16px;background:var(--input);border:1px solid var(--border);margin-bottom:10px;flex-wrap:wrap;gap:12px;">';
             html += '<div style="flex:1;min-width:200px;">';
             html += '<div style="font-weight:800;font-size:16px;color:var(--white);"><span class="live-dot" style="width:7px;height:7px;margin-right:6px;"></span> ' + t('brand_name') + ' · ' + modeIcon + '</div>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                     t('start') + ': ' + fmtTime(r.startTime) + ' · ' + t('hole') + ': №' + (r.startHole || 1) + ' · ' + t('tee_select') + ': ' + teePill + ' · ' + t('player') + ': ' + playersCount + '</div>';
+            html += '<div class="resume-round-meta">' +
+                    '<span><b>' + currentHoleLabel + ':</b> №' + resume.currentHole + '</span>' +
+                    '<span><b>' + progressLabel + ':</b> ' + resume.holesPlayed + '/' + resume.holeCount + '</span>' +
+                    '<span style="color:' + paceState.color + '"><b>' + paceLabel + ':</b> ' + formatPaceDelta(pace.overallDelay) + '</span>' +
+                    '</div>';
+            html += '<div class="resume-progress-track" aria-label="' + progressLabel + '">' +
+                    '<span style="width:' + progressPercent + '%;background:' + paceState.color + ';"></span></div>';
             html += '</div>';
-            html += '<a href="' + link + '" class="btn btn-g" style="align-self:center;"><i class="fas fa-gamepad"></i> ' + t('btn_start_game') + '</a>';
+            html += '<a href="' + link + '" class="btn btn-g resume-round-button" style="align-self:center;"><i class="fas fa-gamepad"></i> ' + t('continue_round') + '</a>';
             html += '</div>';
         });
 
@@ -926,9 +1035,70 @@ function updateSunModeButtons() {
     });
 }
 
+// ==========================================
+// РЕЖИМЫ ИНТЕРФЕЙСА ИГРОКА
+// ==========================================
+var PLAYER_MODE_STORAGE_KEYS = [
+    'pestovo_large_ui',
+    'pestovo_strong_vibration',
+    'pestovo_high_contrast',
+    'pestovo_battery_saver'
+];
+
+function isBatterySaverEnabled() {
+    return isPlayerModeEnabled('pestovo_battery_saver');
+}
+
+function applyPlayerModes() {
+    if (!document.body) return;
+    document.body.classList.toggle('large-ui', isPlayerModeEnabled('pestovo_large_ui'));
+    document.body.classList.toggle('high-contrast-status', isPlayerModeEnabled('pestovo_high_contrast'));
+    document.body.classList.toggle('battery-saver', isBatterySaverEnabled());
+
+    // Режим экономии батареи не держит экран постоянно включённым.
+    if (isBatterySaverEnabled() && typeof wakeLockSentinel !== 'undefined' && wakeLockSentinel) {
+        try { wakeLockSentinel.release(); } catch(e) {}
+        wakeLockSentinel = null;
+    } else if (!isBatterySaverEnabled()) {
+        acquireWakeLockIfAllowed();
+    }
+}
+
+function togglePlayerMode(key) {
+    if (PLAYER_MODE_STORAGE_KEYS.indexOf(key) === -1) return;
+    var enabled = !isPlayerModeEnabled(key);
+    try { localStorage.setItem(key, enabled ? '1' : '0'); } catch(e) {}
+    applyPlayerModes();
+    if (typeof soloRound !== 'undefined' && soloRound && typeof startSoloPaceTicker === 'function') startSoloPaceTicker();
+    if (typeof curRoundData !== 'undefined' && curRoundData && typeof startGroupPaceTicker === 'function') startGroupPaceTicker();
+    if (typeof buildMobileDrawer === 'function') {
+        var drawer = document.getElementById('mobile-drawer-root');
+        var wasOpen = drawer && drawer.classList.contains('open');
+        buildMobileDrawer();
+        if (wasOpen && drawer) drawer.classList.add('open');
+    }
+    var labels = {
+        pestovo_large_ui: t('large_ui_mode'),
+        pestovo_strong_vibration: t('strong_vibration_mode'),
+        pestovo_high_contrast: t('high_contrast_mode'),
+        pestovo_battery_saver: t('battery_saver_mode')
+    };
+    toast((enabled ? '✅ ' : '❌ ') + labels[key] + (enabled ? (currentLang === 'en' ? ' enabled' : ' включён') : (currentLang === 'en' ? ' disabled' : ' выключен')), 'info');
+}
+
+function playerModeRow(key, labelKey, icon) {
+    var enabled = isPlayerModeEnabled(key);
+    return '<div class="player-mode-row">' +
+        '<span><i class="fas ' + icon + '"></i> ' + t(labelKey) + '</span>' +
+        '<button type="button" class="player-mode-button ' + (enabled ? 'active' : '') + '" aria-pressed="' + (enabled ? 'true' : 'false') + '" onclick="togglePlayerMode(\'' + key + '\')">' + (enabled ? t('mode_on') : t('mode_off')) + '</button>' +
+        '</div>';
+}
+
 initThemeMode(); // применяем сразу, до первой отрисовки — без вспышки тёмной темы
+applyPlayerModes();
 document.addEventListener('DOMContentLoaded', function() {
     initThemeMode();
+    applyPlayerModes();
 });
 
 // ==========================================
@@ -1072,6 +1242,13 @@ function buildMobileDrawer() {
             '<div class="mobile-drawer-body">' + menuBodyMarkup + '</div>' +
 
             '<div class="mobile-drawer-footer">' +
+            '<div class="player-modes">' +
+                '<div class="player-modes-title"><i class="fas fa-sliders"></i> ' + t('player_modes_title') + '</div>' +
+                playerModeRow('pestovo_large_ui', 'large_ui_mode', 'fa-text-height') +
+                playerModeRow('pestovo_strong_vibration', 'strong_vibration_mode', 'fa-mobile-screen-button') +
+                playerModeRow('pestovo_high_contrast', 'high_contrast_mode', 'fa-circle-half-stroke') +
+                playerModeRow('pestovo_battery_saver', 'battery_saver_mode', 'fa-battery-quarter') +
+            '</div>' +
             '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
                 '<button class="sun-mode-btn" style="flex:1;justify-content:center;" onclick="toggleSunMode()"><i class="' + sunPrefix + ' fa-sun"></i> ' + sunTxt + '</button>' +
                     '<button class="lang-btn" style="flex:1;justify-content:center;" onclick="toggleLang()">' + (isEn ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>' +
@@ -1118,24 +1295,29 @@ document.addEventListener('focusout', function(e) {
 // SCREEN WAKE LOCK — экран не гаснет во время раунда
 // ==========================================
 var wakeLockSentinel = null;
+var wakeLockVisibilityListenerAttached = false;
 
-function initWakeLock() {
-    if (typeof document === 'undefined') return;
-    if (!('wakeLock' in navigator)) return;
+function acquireWakeLockIfAllowed() {
+    if (typeof document === 'undefined' || isBatterySaverEnabled() || !('wakeLock' in navigator)) return;
     var curPage = (window.location && window.location.pathname) ? (window.location.pathname.split('/').pop() || '') : '';
     var SCORING_PAGES = ['setup-round.html', 'scorer.html', 'marker.html'];
-    if (SCORING_PAGES.indexOf(curPage) === -1) return;
+    if (SCORING_PAGES.indexOf(curPage) === -1 || wakeLockSentinel) return;
+    navigator.wakeLock.request('screen').then(function(s) {
+        wakeLockSentinel = s;
+        s.addEventListener('release', function() { wakeLockSentinel = null; });
+    }).catch(function() { /* тихо игнорируем — не критично */ });
+}
 
-    function acquire() {
-        navigator.wakeLock.request('screen').then(function(s) {
-            wakeLockSentinel = s;
-            s.addEventListener('release', function() { wakeLockSentinel = null; });
-        }).catch(function() { /* тихо игнорируем — не критично */ });
+function initWakeLock() {
+    if (typeof document === 'undefined' || isBatterySaverEnabled()) return;
+    if (!('wakeLock' in navigator)) return;
+    acquireWakeLockIfAllowed();
+    if (!wakeLockVisibilityListenerAttached) {
+        wakeLockVisibilityListenerAttached = true;
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') acquireWakeLockIfAllowed();
+        });
     }
-    acquire();
-    document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'visible' && !wakeLockSentinel) acquire();
-    });
 }
 initWakeLock();
 
@@ -1219,6 +1401,7 @@ function navAuth(u, d) {
 
     var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i> ' + (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : '<i class="far fa-sun"></i> ' + (currentLang === 'en' ? 'Sun' : 'Солнце')) + '</button>';
     var langBtn = '<button class="lang-btn" onclick="toggleLang()">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
+    var playerModesBtn = '<button class="player-modes-launcher" title="' + t('player_modes_title') + '" aria-label="' + t('player_modes_title') + '" onclick="event.stopPropagation();openMobileDrawer()"><i class="fas fa-sliders"></i></button>';
     // Кнопка «Меню» (Инструменты) показывается только если администратор явно включил это
     var toolsBtn = isToolsMenuEnabled()
         ? '<button class="lang-btn" onclick="openToolsMenu()"><i class="fas fa-toolbox"></i> ' + (currentLang === 'en' ? 'Tools' : 'Меню') + '</button>'
@@ -1227,12 +1410,12 @@ function navAuth(u, d) {
     if (u && d) {
         var avatarMarkup = fmtUserAvatar(d, 30);
         e.innerHTML = '<div class="nav-user" style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + u.uid + '\')">' +
-            sunBtn + langBtn + toolsBtn + avatarMarkup +
+            sunBtn + langBtn + playerModesBtn + toolsBtn + avatarMarkup +
             '<span class="nav-uname">' + (d.name || '') + '</span>' +
             '<button class="btn btn-og btn-sm" onclick="event.stopPropagation();doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
     } else {
-        e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + toolsBtn + '<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';
+        e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + playerModesBtn + toolsBtn + '<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';
     }
 }
 
@@ -1405,6 +1588,556 @@ function buildTimingTable(st, sh, holeRange) {
     html += '</div></details>';
     html += '</div>';
     return html;
+}
+
+// ==========================================
+// ТЕМП ИГРЫ / ТАЙМИНГИ ПРОХОЖДЕНИЯ ЛУНОК
+// ==========================================
+function paceStatus(delayMinutes) {
+    if (delayMinutes === null || delayMinutes === undefined || isNaN(delayMinutes)) {
+        return { key: 'pending', color: '#9eb5a5', label: t('pace_pending') };
+    }
+    var delay = Math.round(parseFloat(delayMinutes) || 0);
+    if (delay <= 2) return { key: 'ok', color: '#2ecc71', label: t('pace_on_time') };
+    if (delay <= 5) return { key: 'warning', color: '#f39c12', label: t('pace_warning') };
+    if (delay <= 10) return { key: 'late', color: '#e67e22', label: t('pace_late') };
+    return { key: 'severe', color: '#e05a4a', label: t('pace_severe') };
+}
+
+function formatPaceMinutes(minutes) {
+    if (minutes === null || minutes === undefined || isNaN(minutes)) return '—';
+    var value = Math.max(0, Math.round(parseFloat(minutes) || 0));
+    if (value < 1) return currentLang === 'en' ? '<1 min' : '<1 мин';
+    if (value >= 60) {
+        var hours = Math.floor(value / 60);
+        var rest = value % 60;
+        return hours + (currentLang === 'en' ? 'h' : 'ч') + (rest ? ' ' + rest + (currentLang === 'en' ? 'm' : 'мин') : '');
+    }
+    return value + (currentLang === 'en' ? ' min' : ' мин');
+}
+
+function formatPaceDelta(minutes) {
+    if (minutes === null || minutes === undefined || isNaN(minutes)) return '—';
+    var value = Math.round(parseFloat(minutes) || 0);
+    if (value > 0) return '+' + value + (currentLang === 'en' ? ' min' : ' мин');
+    if (value < 0) return (currentLang === 'en' ? 'buffer ' : 'запас ') + Math.abs(value) + (currentLang === 'en' ? ' min' : ' мин');
+    return currentLang === 'en' ? 'on time' : 'в графике';
+}
+
+function getPaceParticipants(roundData) {
+    if (!roundData || !roundData.players) return [];
+    var ids = Array.isArray(roundData.participantsList) && roundData.participantsList.length
+        ? roundData.participantsList.slice()
+        : Object.keys(roundData.players);
+    return ids.map(function(id) {
+        return { id: id, player: roundData.players[id] };
+    }).filter(function(item) {
+        return item.player && !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(item.id, item.player.name));
+    });
+}
+
+function getPaceHoleTime(player, hole) {
+    if (!player) return null;
+    var candidates = [
+        player.holeTimes && player.holeTimes[hole],
+        player.scoreTimes && player.scoreTimes[hole],
+        player.completedHoles && player.completedHoles[hole]
+    ];
+    for (var i = 0; i < candidates.length; i++) {
+        var value = parseInt(candidates[i]);
+        if (value > 0) return value;
+    }
+    return null;
+}
+
+function getGroupPaceHoleTime(roundData, hole, participants) {
+    var rootTime = roundData && roundData.holeTimes && parseInt(roundData.holeTimes[hole]);
+    if (rootTime > 0) return rootTime;
+
+    var times = (participants || []).map(function(item) {
+        return getPaceHoleTime(item.player, hole);
+    }).filter(function(value) { return value !== null; });
+    // Для старых раундов, где root holeTimes ещё нет, считаем лунку
+    // завершённой группой в момент, когда последний игрок отправил счёт.
+    if (times.length === (participants || []).length && times.length > 0) {
+        return Math.max.apply(Math, times);
+    }
+    return null;
+}
+
+function getRoundPaceMetrics(roundData, nowValue) {
+    var now = nowValue || Date.now();
+    var order = getRoundOrder(roundData || {});
+    var participants = getPaceParticipants(roundData);
+    var isGroup = !!(roundData && roundData.mode === 'group' && participants.length > 1);
+    var startTime = parseInt(roundData && roundData.startTime) || 0;
+    var startHole = parseInt(roundData && roundData.startHole) || 1;
+    var timeline = [];
+    var completedHoles = [];
+    var currentHole = order.length ? order[order.length - 1] : startHole;
+    var previousTime = startTime || now;
+    var hasTimingData = false;
+
+    order.forEach(function(hole) {
+        var complete;
+        if (isGroup) {
+            complete = participants.length > 0 && participants.every(function(item) {
+                return parseInt(item.player.scores && item.player.scores[hole]) >= 1;
+            });
+        } else {
+            var soloPlayer = participants.length ? participants[0].player : null;
+            complete = !!(soloPlayer && parseInt(soloPlayer.scores && soloPlayer.scores[hole]) >= 1);
+        }
+
+        var completedAt = isGroup
+            ? getGroupPaceHoleTime(roundData, hole, participants)
+            : getPaceHoleTime(participants.length ? participants[0].player : null, hole);
+        var durationMin = null;
+        var holeDelay = null;
+
+        if (complete) {
+            completedHoles.push(hole);
+            if (completedAt && startTime) {
+                hasTimingData = true;
+                durationMin = Math.max(0, (completedAt - previousTime) / 60000);
+                holeDelay = durationMin - holeTiming(hole);
+                previousTime = Math.max(previousTime, completedAt);
+            }
+        } else if (currentHole === order[order.length - 1] || completedHoles.length === order.indexOf(currentHole)) {
+            currentHole = hole;
+        }
+
+        timeline.push({
+            hole: hole,
+            complete: complete,
+            inProgress: false,
+            completedAt: completedAt,
+            durationMin: durationMin,
+            expectedMin: holeTiming(hole),
+            delayMin: holeDelay
+        });
+    });
+
+    // Первый незавершённый элемент — текущая лунка. Если всё записано,
+    // оставляем последнюю лунку, чтобы показывать итоговый темп до финиша.
+    var firstIncompleteIndex = -1;
+    for (var i = 0; i < timeline.length; i++) {
+        if (!timeline[i].complete) { firstIncompleteIndex = i; break; }
+    }
+    if (firstIncompleteIndex >= 0) {
+        currentHole = timeline[firstIncompleteIndex].hole;
+        var currentItem = timeline[firstIncompleteIndex];
+        var currentStart = previousTime;
+        currentItem.inProgress = true;
+        currentItem.durationMin = startTime ? Math.max(0, (now - currentStart) / 60000) : null;
+        currentItem.delayMin = startTime ? currentItem.durationMin - currentItem.expectedMin : null;
+    }
+
+    var expectedDeadline = startTime ? holeDeadline(startTime, startHole, currentHole) : null;
+    var actualReference = firstIncompleteIndex >= 0 ? now : (previousTime || now);
+    var overallDelay = (expectedDeadline && actualReference) ? (actualReference - expectedDeadline) / 60000 : null;
+
+    return {
+        order: order,
+        participants: participants,
+        isGroup: isGroup,
+        currentHole: currentHole,
+        holesCompleted: completedHoles.length,
+        holeCount: order.length,
+        completedHoles: completedHoles,
+        timeline: timeline,
+        expectedDeadline: expectedDeadline,
+        actualReference: actualReference,
+        overallDelay: overallDelay,
+        hasTimingData: hasTimingData,
+        startTime: startTime,
+        startHole: startHole
+    };
+}
+
+function getRoundResumePlayerId(roundId, roundData) {
+    if (!roundData || !roundData.players) return null;
+    var stored = null;
+    try { stored = localStorage.getItem('pestovo_acting_as_' + roundId); } catch(e) {}
+    if (stored && roundData.players[stored]) return stored;
+    if (typeof currentUser !== 'undefined' && currentUser && roundData.players[currentUser.uid]) return currentUser.uid;
+    if (roundData.createdBy && roundData.players[roundData.createdBy]) return roundData.createdBy;
+    var ids = Array.isArray(roundData.participantsList) && roundData.participantsList.length
+        ? roundData.participantsList
+        : Object.keys(roundData.players);
+    return ids.length ? ids[0] : null;
+}
+
+function getSavedResumeHole(roundId, playerId, order, player) {
+    if (!roundId || !playerId || !order || !order.length) return null;
+    var value = null;
+    try { value = parseInt(localStorage.getItem('pestovo_resume_hole_' + roundId + '_' + playerId)); } catch(e) {}
+    if (order.indexOf(value) === -1) return null;
+    if (player && player.verified && player.verified[value] === true) return null;
+    return value;
+}
+
+function rememberResumeHole(roundId, playerId, hole) {
+    if (!roundId || !playerId || !hole) return;
+    try {
+        localStorage.setItem('pestovo_resume_hole_' + roundId + '_' + playerId, String(hole));
+        localStorage.setItem('pestovo_last_round_id', String(roundId));
+    } catch(e) {}
+}
+
+function getRoundResumeState(roundId, roundData) {
+    var metrics = getRoundPaceMetrics(roundData);
+    var playerId = getRoundResumePlayerId(roundId, roundData);
+    var player = playerId && roundData && roundData.players ? roundData.players[playerId] : null;
+    var order = metrics.order;
+    var resumeHole = getSavedResumeHole(roundId, playerId, order, player);
+    if (!resumeHole) {
+        resumeHole = metrics.currentHole || (order.length ? order[0] : 1);
+    }
+    var played = 0;
+    if (player && player.scores) {
+        order.forEach(function(h) { if (parseInt(player.scores[h]) >= 1) played++; });
+    } else {
+        played = metrics.holesCompleted;
+    }
+    return {
+        playerId: playerId,
+        currentHole: resumeHole,
+        holesPlayed: played,
+        holeCount: metrics.holeCount,
+        metrics: metrics
+    };
+}
+
+function renderPaceHoleTimeline(metrics) {
+    if (!metrics || !metrics.timeline) return '';
+    return metrics.timeline.map(function(item) {
+        var state = item.complete || item.inProgress ? paceStatus(item.delayMin) : paceStatus(null);
+        var marker = item.complete ? '✓ ' : item.inProgress ? '▶ ' : '';
+        var duration = item.durationMin === null ? '—' : formatPaceMinutes(item.durationMin);
+        var title = currentLang === 'en'
+            ? 'Hole ' + item.hole + ': ' + duration + ' / target ' + item.expectedMin + ' min'
+            : 'Лунка ' + item.hole + ': ' + duration + ' / норма ' + item.expectedMin + ' мин';
+        var holePrefix = currentLang === 'en' ? 'H.' : 'Л.';
+        return '<span class="pace-hole pace-hole-' + state.key + '" title="' + title + '">' + marker + holePrefix + item.hole + ' · ' + duration + '</span>';
+    }).join('');
+}
+
+function renderPaceAssistant(targetId, roundData) {
+    var el = document.getElementById(targetId);
+    if (!el || !roundData) return;
+    var metrics = getRoundPaceMetrics(roundData);
+    var state = paceStatus(metrics.overallDelay);
+    var delayText = formatPaceDelta(metrics.overallDelay);
+    var currentDeadline = metrics.expectedDeadline ? fmtTime(metrics.expectedDeadline) : '—';
+    var title = t('pace_of_play');
+    var note = '';
+    if (!metrics.hasTimingData) note = '<div class="pace-note">' + t('pace_pending') + '</div>';
+
+    var html = '<div class="pace-assistant pace-state-' + state.key + '" style="--pace-color:' + state.color + ';">';
+    html += '<div class="pace-assistant-header"><strong><i class="fas fa-stopwatch"></i> ' + title + '</strong><span class="pace-status-label">' + state.label + '</span></div>';
+    html += '<div class="pace-assistant-grid">';
+    html += '<div><span>' + t('pace_current_hole') + '</span><b>№' + metrics.currentHole + '</b></div>';
+    html += '<div><span>' + t('pace_completed') + '</span><b>' + metrics.holesCompleted + '/' + metrics.holeCount + '</b></div>';
+    html += '<div><span>' + t('pace_delay') + '</span><b>' + delayText + '</b></div>';
+    html += '</div>';
+    html += '<div class="pace-assistant-deadline"><i class="fas fa-clock"></i> ' + t('pace_deadline') + ': <b>' + currentDeadline + '</b></div>';
+    html += note;
+    html += '</div>';
+    el.innerHTML = html;
+}
+
+function recordHoleCompletionTime(roundId, playerId, hole, timestamp) {
+    if (typeof db === 'undefined' || !roundId || !playerId || !hole) return Promise.resolve();
+    var path = 'rounds/' + roundId + '/players/' + playerId + '/holeTimes/' + hole;
+    var value = timestamp || Date.now();
+    return db.ref(path).transaction(function(existing) {
+        return parseInt(existing) > 0 ? existing : value;
+    }).catch(function(error) {
+        console.warn('[Pace] Cannot save hole time', error);
+    });
+}
+
+function recordGroupHoleCompletion(roundId, hole, timestamp) {
+    if (typeof db === 'undefined' || !roundId || !hole) return Promise.resolve();
+    return db.ref('rounds/' + roundId).once('value').then(function(snapshot) {
+        var roundData = snapshot.val();
+        if (!roundData || roundData.mode !== 'group') return;
+        var participants = getPaceParticipants(roundData);
+        if (!participants.length || !participants.every(function(item) {
+            return parseInt(item.player.scores && item.player.scores[hole]) >= 1;
+        })) return;
+        var path = 'rounds/' + roundId + '/holeTimes/' + hole;
+        var value = timestamp || Date.now();
+        return db.ref(path).transaction(function(existing) {
+            return parseInt(existing) > 0 ? existing : value;
+        });
+    }).catch(function(error) {
+        console.warn('[Pace] Cannot save group hole time', error);
+    });
+}
+
+// ==========================================
+// ВЫЗОВ СУДЬИ / МАРШАЛА С КУЛДАУНОМ 5 МИНУТ
+// ==========================================
+var OFFICIAL_CALL_COOLDOWN_MS = 5 * 60 * 1000;
+var officialCallBindings = Object.create(null);
+
+function officialCallKey(roundId, playerId, type) {
+    return String(roundId || '') + '|' + String(playerId || '') + '|' + String(type || '');
+}
+
+function readLocalOfficialCall(roundId, playerId, type) {
+    try {
+        var raw = localStorage.getItem('pestovo_official_call_' + officialCallKey(roundId, playerId, type));
+        if (!raw) return null;
+        var value = JSON.parse(raw);
+        return value && parseInt(value.time) > 0 ? value : null;
+    } catch(e) { return null; }
+}
+
+function saveLocalOfficialCall(roundId, playerId, type, call) {
+    try {
+        localStorage.setItem('pestovo_official_call_' + officialCallKey(roundId, playerId, type), JSON.stringify({
+            time: call.time,
+            cooldownUntil: call.cooldownUntil,
+            alertId: call.alertId || '',
+            response: call.response || null
+        }));
+    } catch(e) {}
+}
+
+function getOfficialCallState(alerts, roundId, playerId, type) {
+    var matches = Object.entries(alerts || {}).map(function(entry) {
+        return Object.assign({}, entry[1] || {}, { alertId: entry[0] });
+    }).filter(function(alert) {
+        return String(alert.roundId || '') === String(roundId || '') &&
+            String(alert.playerId || '') === String(playerId || '') &&
+            String(alert.type || '') === String(type || '') && parseInt(alert.time) > 0;
+    });
+    matches.sort(function(a, b) { return parseInt(a.time) - parseInt(b.time); });
+
+    var localCall = readLocalOfficialCall(roundId, playerId, type);
+    var serverCall = matches.length ? matches[matches.length - 1] : null;
+    var call = serverCall;
+    if (localCall && (!call || parseInt(localCall.time) > parseInt(call.time))) {
+        call = Object.assign({}, localCall);
+    }
+    if (!call) return { call: null, remainingMs: 0, accepted: false, available: true };
+
+    var callTime = parseInt(call.time) || 0;
+    var cooldownUntil = parseInt(call.cooldownUntil) || (callTime + OFFICIAL_CALL_COOLDOWN_MS);
+    var remainingMs = Math.max(0, cooldownUntil - Date.now());
+    return {
+        call: call,
+        remainingMs: remainingMs,
+        accepted: !!(call.response && parseInt(call.response.respondedAt) > 0),
+        available: remainingMs <= 0
+    };
+}
+
+function formatOfficialCountdown(ms) {
+    var totalSeconds = Math.max(0, Math.ceil((parseInt(ms) || 0) / 1000));
+    var mins = Math.floor(totalSeconds / 60);
+    var seconds = totalSeconds % 60;
+    return (mins < 10 ? '0' : '') + mins + ':' + (seconds < 10 ? '0' : '') + seconds;
+}
+
+function getOfficialRoleName(type) {
+    return type === 'marshal'
+        ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
+        : (currentLang === 'en' ? 'Referee' : 'Судья');
+}
+
+function getOfficialCallButtonLabel(type) {
+    return type === 'marshal' ? t('call_marshal') : t('call_referee');
+}
+
+function getOfficialCallIcon(type) {
+    return type === 'marshal' ? 'fa-shield-halved' : 'fa-gavel';
+}
+
+function renderOfficialCallButtons(config, alerts) {
+    if (!config || !config.roundId || !config.playerId) return;
+    var canEdit = typeof config.canEdit === 'function' ? config.canEdit() : config.canEdit !== false;
+    var prefix = config.prefix || 'official';
+    ['referee', 'marshal'].forEach(function(type) {
+        var btn = document.getElementById(prefix + '-' + type + '-call-btn');
+        if (!btn) return;
+        var state = getOfficialCallState(alerts || {}, config.roundId, config.playerId, type);
+        var enabled = canEdit && state.available;
+        var role = getOfficialRoleName(type);
+        var isAccepted = state.accepted && !state.available;
+        var label = enabled
+            ? getOfficialCallButtonLabel(type)
+            : (isAccepted ? role + ' ' + t('call_on_way') : t('call_sent'));
+
+        btn.disabled = !enabled;
+        btn.className = 'btn btn-sm official-call-btn ' + (type === 'marshal' ? 'btn-warning' : 'btn-danger') +
+            (enabled ? ' official-call-ready' : isAccepted ? ' official-call-accepted' : ' official-call-sent');
+        btn.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+        btn.innerHTML = '<i class="fas ' + getOfficialCallIcon(type) + '"></i> ' + label;
+
+        var statusEl = document.getElementById(prefix + '-' + type + '-call-status');
+        if (!statusEl) return;
+        if (!state.call || state.available) {
+            statusEl.innerHTML = '';
+            statusEl.className = 'official-call-status hidden';
+            return;
+        }
+
+        var statusHtml = '';
+        if (state.accepted) {
+            var acceptedAt = parseInt(state.call.response.respondedAt) || 0;
+            statusHtml = '<strong>' + role + ' ' + t('call_accepted') + ' ' + fmtTime(acceptedAt) + '</strong>' +
+                ' · ' + role + ' ' + t('call_on_way');
+        } else {
+            statusHtml = '<strong>' + t('call_sent') + '</strong>' +
+                (state.call.time ? ' · ' + fmtTime(state.call.time) : '');
+        }
+        statusHtml += '<br><span>' + t('call_cooldown') + ' <b>' + formatOfficialCountdown(state.remainingMs) + '</b></span>';
+        statusEl.innerHTML = statusHtml;
+        statusEl.className = 'official-call-status ' + (state.accepted ? 'accepted' : 'sent');
+    });
+}
+
+function refreshOfficialCallBindings() {
+    Object.keys(officialCallBindings).forEach(function(key) {
+        var binding = officialCallBindings[key];
+        if (binding) renderOfficialCallButtons(binding.config, binding.alerts || {});
+    });
+}
+
+function ensureOfficialCallTicker(key) {
+    var binding = officialCallBindings[key];
+    if (!binding || binding.timer) return;
+    var tick = function() {
+        var current = officialCallBindings[key];
+        if (!current) return;
+        renderOfficialCallButtons(current.config, current.alerts || {});
+        current.timer = setTimeout(tick, isBatterySaverEnabled() ? 30000 : 1000);
+    };
+    binding.timer = setTimeout(tick, isBatterySaverEnabled() ? 30000 : 1000);
+}
+
+function reconcileOfficialCallResponse(binding, notification) {
+    if (!binding || !notification || notification.type !== 'call_response') return;
+    var alertId = notification.alertId || '';
+    var alert = alertId && binding.alerts ? binding.alerts[alertId] : null;
+    if (alert && String(alert.playerId || '') !== String(binding.config.playerId || '')) alert = null;
+    var response = {
+        status: 'accepted',
+        responderRole: notification.responderRole,
+        respondedAt: parseInt(notification.time) || Date.now()
+    };
+
+    if (alert) {
+        alert.response = Object.assign({}, alert.response || {}, response);
+        saveLocalOfficialCall(binding.config.roundId, binding.config.playerId, alert.type, alert);
+    } else {
+        // Если чтение alerts недоступно, локальная запись всё равно переводит
+        // кнопку в состояние «едет» после push-уведомления от администратора.
+        ['referee', 'marshal'].forEach(function(type) {
+            var local = readLocalOfficialCall(binding.config.roundId, binding.config.playerId, type);
+            if (local && (!alertId || local.alertId === alertId)) {
+                local.response = response;
+                saveLocalOfficialCall(binding.config.roundId, binding.config.playerId, type, local);
+            }
+        });
+    }
+    renderOfficialCallButtons(binding.config, binding.alerts || {});
+}
+
+function listenForOfficialCallState(config) {
+    if (typeof db === 'undefined' || !config || !config.roundId || !config.playerId) return;
+    var key = officialCallKey(config.roundId, config.playerId, config.prefix || 'official');
+    if (!officialCallBindings[key]) {
+        officialCallBindings[key] = { config: config, alerts: {}, timer: null };
+        db.ref('alerts').orderByChild('roundId').equalTo(String(config.roundId)).on('value', function(snapshot) {
+            var binding = officialCallBindings[key];
+            if (!binding) return;
+            binding.alerts = snapshot.val() || {};
+            renderOfficialCallButtons(binding.config, binding.alerts);
+        });
+        db.ref('users/' + config.playerId + '/notifications').orderByChild('type').equalTo('call_response').on('child_added', function(snapshot) {
+            var binding = officialCallBindings[key];
+            if (binding) reconcileOfficialCallResponse(binding, snapshot.val());
+        });
+    } else {
+        officialCallBindings[key].config = config;
+    }
+    ensureOfficialCallTicker(key);
+    renderOfficialCallButtons(officialCallBindings[key].config, officialCallBindings[key].alerts || {});
+}
+
+function requestOfficialCall(config) {
+    if (typeof db === 'undefined' || !config || !config.roundId || !config.playerId || !config.type) return Promise.resolve(false);
+    var type = config.type;
+    var localState = getOfficialCallState({}, config.roundId, config.playerId, type);
+    if (localState.remainingMs > 0) {
+        renderOfficialCallButtons(config, {});
+        toast(t('call_cooldown') + ' ' + formatOfficialCountdown(localState.remainingMs), 'warn');
+        return Promise.resolve(false);
+    }
+
+    // Чтение списка вызовов может быть запрещено правилами Firebase для игрока.
+    // В этом случае локальный таймер всё равно защищает от обычного спама,
+    // а сам вызов не должен блокироваться — продолжаем с пустым списком.
+    var alertsPromise = db.ref('alerts').orderByChild('roundId').equalTo(String(config.roundId)).once('value')
+        .then(function(snapshot) { return snapshot.val() || {}; })
+        .catch(function(error) {
+            console.warn('[Calls] Cannot read existing calls; using local cooldown', error);
+            return {};
+        });
+
+    return alertsPromise.then(function(alerts) {
+        var state = getOfficialCallState(alerts, config.roundId, config.playerId, type);
+        if (state.remainingMs > 0) {
+            renderOfficialCallButtons(config, alerts);
+            toast(t('call_cooldown') + ' ' + formatOfficialCountdown(state.remainingMs), 'warn');
+            return false;
+        }
+
+        var hole = typeof config.hole === 'function' ? config.hole() : config.hole;
+        var role = getOfficialRoleName(type);
+        var confirmText = currentLang === 'en'
+            ? 'Call ' + role.toLowerCase() + ' to hole ' + hole + '?'
+            : 'Вызвать ' + (type === 'marshal' ? 'маршала' : 'судью') + ' на лунку ' + hole + '?';
+        if (!window.confirm(confirmText)) return false;
+
+        var now = Date.now();
+        var playerName = typeof config.playerName === 'function' ? config.playerName() : config.playerName;
+        var flightMembers = typeof config.flightMembers === 'function' ? config.flightMembers() : config.flightMembers;
+        var call = {
+            roundId: config.roundId,
+            type: type,
+            hole: hole,
+            playerId: config.playerId,
+            playerName: playerName || (currentLang === 'en' ? 'Player' : 'Игрок'),
+            flightMembers: flightMembers || [],
+            time: now,
+            createdAt: now,
+            cooldownUntil: now + OFFICIAL_CALL_COOLDOWN_MS,
+            status: 'active',
+            state: 'sent'
+        };
+        var ref = db.ref('alerts').push();
+        call.alertId = ref.key;
+        return ref.set(call).then(function() {
+            saveLocalOfficialCall(config.roundId, config.playerId, type, call);
+            var binding = officialCallBindings[officialCallKey(config.roundId, config.playerId, config.prefix || 'official')];
+            if (binding) {
+                binding.alerts = binding.alerts || {};
+                binding.alerts[ref.key] = call;
+                renderOfficialCallButtons(binding.config, binding.alerts);
+            }
+            if (typeof config.onSent === 'function') config.onSent(call);
+            return true;
+        });
+    }).catch(function(error) {
+        toast((currentLang === 'en' ? '❌ Call failed: ' : '❌ Не удалось отправить вызов: ') + (error && error.message ? error.message : error), 'error');
+        return false;
+    });
 }
 
 function parseExactHcp(val) {

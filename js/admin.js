@@ -274,6 +274,7 @@ function openAdminPanel() {
     if (logoutBtn) logoutBtn.classList.remove('hidden');
 
     loadAdmRounds();
+    loadAdmGroups();
     loadAdmPlayers();
     loadTournaments();
     loadClubBroadcastsHistory();
@@ -313,12 +314,89 @@ function switchTab(t, b) {
     if (tabEl) tabEl.classList.remove('hidden');
     if (b) b.classList.add('active');
 
+    if (t === 'groups') {
+        renderAdmGroups();
+    }
     if (t === 'data') {
         loadPageVisibilitySettings();
     }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
     }
+}
+
+// ==========================================
+// ГРУППЫ, КОТОРЫЕ СЕЙЧАС ИГРАЮТ / КОНТРОЛЬ ТЕМПА
+// ==========================================
+var adminGroupsSnapshot = null;
+var adminGroupsTimer = null;
+
+function loadAdmGroups() {
+    if (typeof db === 'undefined') return;
+    bindRealtimeValue('admin-groups', db.ref('rounds'), function(snapshot) {
+        adminGroupsSnapshot = snapshot;
+        renderAdmGroups();
+    });
+    if (!adminGroupsTimer) {
+        adminGroupsTimer = setInterval(function() { renderAdmGroups(); }, 30000);
+    }
+}
+
+function renderAdmGroups() {
+    var el = document.getElementById('adm-groups');
+    if (!el) return;
+    var data = adminGroupsSnapshot && typeof adminGroupsSnapshot.val === 'function'
+        ? (adminGroupsSnapshot.val() || {}) : {};
+    var groups = Object.entries(data).filter(function(entry) {
+        var roundData = entry[1];
+        return roundData && roundData.status === 'active' && roundData.mode === 'group' &&
+            getPaceParticipants(roundData).length > 1;
+    });
+
+    if (!groups.length) {
+        el.innerHTML = '<div class="empty"><i class="fas fa-users-slash"></i><p>' + t('admin_no_groups') + '</p></div>';
+        return;
+    }
+
+    groups.sort(function(a, b) {
+        var delayA = getRoundPaceMetrics(a[1]).overallDelay || 0;
+        var delayB = getRoundPaceMetrics(b[1]).overallDelay || 0;
+        return delayB - delayA;
+    });
+
+    var html = '';
+    groups.forEach(function(entry, index) {
+        var roundData = entry[1];
+        var metrics = getRoundPaceMetrics(roundData);
+        var state = paceStatus(metrics.overallDelay);
+        var participants = getPaceParticipants(roundData);
+        var names = participants.map(function(item) { return escapeHtml(item.player.name || t('player')); }).join(' · ');
+        var currentHole = metrics.currentHole || (metrics.order.length ? metrics.order[0] : roundData.startHole || 1);
+        var noTimingNote = !metrics.hasTimingData
+            ? '<div class="pace-note">' + t('pace_pending') + '</div>' : '';
+        var groupLabel = currentLang === 'en' ? 'Group ' + (index + 1) : 'Группа ' + (index + 1);
+
+        html += '<div class="admin-group-card pace-state-' + state.key + '" style="--pace-color:' + state.color + ';">';
+        html += '<div class="admin-group-card-header">';
+        html += '<div><h3><span class="live-dot" style="width:8px;height:8px;margin-right:5px;"></span>' + groupLabel + '</h3>';
+        html += '<div class="admin-group-players"><i class="fas fa-users"></i> ' + names + '</div></div>';
+        html += '<span class="admin-group-status">' + state.label + '</span>';
+        html += '</div>';
+
+        html += '<div class="admin-group-meta">';
+        html += '<div><span>' + t('admin_start_time') + '</span><b>' + fmtTime(roundData.startTime) + '</b></div>';
+        html += '<div><span>' + t('admin_start_hole') + '</span><b>№' + (roundData.startHole || 1) + '</b></div>';
+        html += '<div><span>' + t('admin_current_hole') + '</span><b>№' + currentHole + '</b></div>';
+        html += '<div><span>' + t('admin_total_delay') + '</span><b class="admin-group-delay">' + formatPaceDelta(metrics.overallDelay) + '</b></div>';
+        html += '</div>';
+
+        html += '<div class="admin-group-timeline-title"><i class="fas fa-list-ol"></i> ' + t('admin_hole_timings') + '</div>';
+        html += '<div class="pace-timeline">' + renderPaceHoleTimeline(metrics) + '</div>';
+        html += noTimingNote;
+        html += '</div>';
+    });
+
+    el.innerHTML = html;
 }
 
 // ==========================================
@@ -700,10 +778,8 @@ function listenForAlerts() {
                 html += '</div>';
                 html += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-wrap:wrap;">';
                 if (!alreadyResponded) {
-                    var whoRes = a.type === 'referee'
-                        ? (currentLang === 'en' ? 'Referee is on the way' : 'Судья едет')
-                        : (currentLang === 'en' ? 'Marshal is on the way' : 'Маршал едет');
-                    html += '<button class="btn btn-g btn-sm" style="background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;border:none;" onclick="respondToAlert(\'' + id + '\', \'' + a.type + '\', \'' + (a.playerId || '') + '\')"><i class="fas fa-car"></i> ' + whoRes + '</button>';
+                    var acceptCallText = currentLang === 'en' ? 'Accept Call' : 'Вызов принят';
+                    html += '<button class="btn btn-g btn-sm" style="background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;border:none;" onclick="respondToAlert(\'' + id + '\', \'' + a.type + '\', \'' + (a.playerId || '') + '\')"><i class="fas fa-car"></i> ' + acceptCallText + '</button>';
                 }
                 html += '<button class="btn btn-r btn-sm" onclick="closeAlert(\'' + id + '\')">' + (currentLang === 'en' ? 'Dismiss Alert' : 'Закрыть вызов') + '</button>';
                 html += '</div>';
@@ -738,6 +814,7 @@ function respondToAlert(alertId, alertType, playerId) {
     var responderRole = (alertType === 'marshal') ? 'marshal' : 'referee';
 
     var responseData = {
+        status: 'accepted',
         responderRole: responderRole,
         respondedAt: now,
         respondedBy: currentUser ? currentUser.uid : 'admin'

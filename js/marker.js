@@ -1,6 +1,7 @@
 var mkRid = null, mkPid = null, mkRound = null;
 var mkHole = 1, mkScore = 0, mkScores = {}, mkPScores = {};
 var mkChanging = false;
+var mkPaceTimer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
@@ -8,6 +9,9 @@ document.addEventListener('DOMContentLoaded', function() {
     mkRid = p.get('round'); mkPid = p.get('player');
     if (!mkRid || !mkPid) { document.getElementById('mk-err').classList.remove('hidden'); return; }
     loadMk();
+    mkPaceTimer = setInterval(function() {
+        if (mkRound) renderPaceAssistant('mk-pace-assistant', mkRound);
+    }, isBatterySaverEnabled() ? 60000 : 30000);
 });
 
 function loadMk() {
@@ -26,14 +30,29 @@ function loadMk() {
         document.getElementById('mk-title').textContent = prefix + ': ' + (pl.name || t('player'));
         document.getElementById('mk-sub').textContent = t('tee_select') + ': ' + fmtTeePill(mkRound.tee);
         mkPScores = pl.scores || {};
+        renderPaceAssistant('mk-pace-assistant', mkRound);
+        listenForOfficialCallState({
+            roundId: mkRid,
+            playerId: mkPid,
+            prefix: 'mk',
+            canEdit: true,
+            hole: function() { return mkHole; },
+            playerName: 'Marker (' + (pl.name || 'Player') + ')',
+            flightMembers: []
+        });
 
         if (!mkChanging) {
             var order = getRoundOrder(mkRound);
-            var found = false;
-            for (var i = 0; i < order.length; i++) {
-                if (!(parseInt(mkScores[order[i]]) >= 1)) { mkHole = order[i]; found = true; break; }
+            var savedResumeHole = getSavedResumeHole(mkRid, mkPid, order, pl);
+            if (savedResumeHole) {
+                mkHole = savedResumeHole;
+            } else {
+                var found = false;
+                for (var i = 0; i < order.length; i++) {
+                    if (!(parseInt(mkScores[order[i]]) >= 1)) { mkHole = order[i]; found = true; break; }
+                }
+                if (!found) mkHole = order[order.length - 1];
             }
-            if (!found) mkHole = order[order.length - 1];
         }
 
         buildHoles(); renderHole(); renderSum(); checkVerify();
@@ -63,6 +82,7 @@ function buildHoles() {
 function goMk(h) {
     mkChanging = true;
     mkHole = h; mkScore = 0;
+    rememberResumeHole(mkRid, mkPid, h);
     renderHole(); checkVerify();
     setTimeout(function() { mkChanging = false; }, 100);
 }
@@ -146,21 +166,22 @@ function renderSum() {
 }
 
 function callOfficial(type) {
-    var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
-    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + mkHole + '?')) return;
-
-    var pName = (mkRound && mkRound.players[mkPid]) ? mkRound.players[mkPid].name : 'Player';
-
-    db.ref('alerts').push({
+    if (!mkRound || !mkPid) return;
+    var pName = (mkRound.players[mkPid] && mkRound.players[mkPid].name) || 'Player';
+    requestOfficialCall({
         roundId: mkRid,
-        type: type,
-        hole: mkHole,
         playerId: mkPid,
+        prefix: 'mk',
+        type: type,
+        hole: function() { return mkHole; },
         playerName: 'Marker (' + pName + ')',
-        time: Date.now(),
-        status: 'active'
-    }).then(function() {
-        toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + mkHole + '!', 'warn');
-        vib([100, 50, 100]);
+        flightMembers: [],
+        canEdit: true,
+        onSent: function(call) {
+            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, call.playerName, []);
+            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, call.playerName, []);
+            toast('🚨 ' + getOfficialRoleName(type) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
+            vib([100, 50, 100]);
+        }
     });
 }

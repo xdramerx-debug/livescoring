@@ -5,6 +5,7 @@ var curScore = 0;
 var soloIsChanging = false;
 var canEditSolo = false;
 var soloAutoSaveTimer = null;
+var soloPaceTimer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
@@ -36,6 +37,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (timeEl) timeEl.addEventListener('change', updateTimingPreview);
     if (sel) sel.addEventListener('change', updateTimingPreview);
 });
+
+function updateSoloPaceAssistant() {
+    if (soloRound) renderPaceAssistant('solo-pace-assistant', soloRound);
+}
+
+function startSoloPaceTicker() {
+    if (soloPaceTimer) clearInterval(soloPaceTimer);
+    updateSoloPaceAssistant();
+    soloPaceTimer = setInterval(function() {
+        updateSoloPaceAssistant();
+    }, isBatterySaverEnabled() ? 60000 : 30000);
+}
 
 function initSoloForm() {
     var fnInp = document.getElementById('s-firstname');
@@ -235,7 +248,8 @@ function startSolo() {
             exactHcp: parsedExact,
             fieldHcp: fieldHcp,
             gender: gender,
-            scores: {}
+            scores: {},
+            holeTimes: {}
         };
 
         var ref = db.ref('rounds').push();
@@ -343,14 +357,20 @@ function loadExistingSolo() {
             var order = getRoundOrder(soloRound);
 
             if (!soloIsChanging) {
-                var found = false;
-                for (var i = 0; i < order.length; i++) {
-                    var h = order[i];
-                    var s = parseInt(scores[h]) || 0;
-                    if (s < 1) { curHole = h; found = true; break; }
+                var savedResumeHole = getSavedResumeHole(soloRid, uid, order, player);
+                if (savedResumeHole) {
+                    curHole = savedResumeHole;
+                } else {
+                    var found = false;
+                    for (var i = 0; i < order.length; i++) {
+                        var h = order[i];
+                        var s = parseInt(scores[h]) || 0;
+                        if (s < 1) { curHole = h; found = true; break; }
+                    }
+                    if (!found) curHole = order[order.length - 1];
                 }
-                if (!found) curHole = order[order.length - 1];
             }
+
 
             renderRoundInfo('round-info');
             buildHoles();
@@ -358,6 +378,18 @@ function loadExistingSolo() {
             renderLiveStats('live-stats');
             renderMiniCard('mini-card');
             listenForCallResponsesSolo();
+            listenForOfficialCallState({
+                roundId: soloRid,
+                playerId: uid,
+                prefix: 'solo',
+                canEdit: function() { return canEditSolo; },
+                hole: function() { return curHole; },
+                playerName: function() {
+                    return soloRound.players && soloRound.players[uid] ? soloRound.players[uid].name : 'Player';
+                },
+                flightMembers: []
+            });
+            startSoloPaceTicker();
 
         } else {
             document.getElementById('game').classList.add('hidden');
@@ -366,6 +398,7 @@ function loadExistingSolo() {
             renderRoundInfo('ro-round-info');
             renderLiveStats('ro-live-stats');
             renderMiniCard('ro-mini-card');
+            startSoloPaceTicker();
         }
     };
     db.ref('rounds/' + soloRid).on('value', soloRoundHandler);
@@ -435,6 +468,7 @@ function goHole(h) {
     soloIsChanging = true;
     curHole = h;
     curScore = 0;
+    rememberResumeHole(soloRid, getPlayerId(), h);
     renderCurrentHole();
     buildHoles();
     setTimeout(function() { soloIsChanging = false; }, 100);
@@ -458,6 +492,7 @@ function renderCurrentHole() {
     curScore = savedScore > 0 ? savedScore : par;
     updateDisplay();
     updateSoloActionButton();
+    updateSoloPaceAssistant();
 
     var trackContainer = document.getElementById('shot-tracking-container');
     if (trackContainer) {
@@ -520,6 +555,8 @@ function saveSolo(isAuto) {
     var path = 'rounds/' + soloRid + '/players/' + uid + '/scores/' + savedHole;
 
     db.ref(path).set(scoreToSave).then(function() {
+        return recordHoleCompletionTime(soloRid, uid, savedHole, Date.now());
+    }).then(function() {
         var par = holePar(savedHole);
         var d = scoreToSave - par;
 
@@ -539,6 +576,7 @@ function saveSolo(isAuto) {
             }
         }
 
+        rememberResumeHole(soloRid, uid, curHole);
         showTimingNotice(savedHole);
         renderCurrentHole();
         buildHoles();
@@ -692,28 +730,25 @@ function finishSolo() {
 
 function callOfficialSolo(type) {
     if (!canEditSolo) return;
-    var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
-    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + curHole + '?')) return;
-
     var uid = getPlayerId();
-    var pName = (soloRound && soloRound.players && soloRound.players[uid]) ? soloRound.players[uid].name : 'Player';
-    // Одиночный раунд: состава флайта нет (игрок один)
-    var flightNames = (typeof getFlightPlayerNames === 'function') ? getFlightPlayerNames(soloRound, uid) : [];
-
-    db.ref('alerts').push({
+    requestOfficialCall({
         roundId: soloRid,
-        type: type,
-        hole: curHole,
         playerId: uid,
-        playerName: pName,
-        flightMembers: flightNames,
-        time: Date.now(),
-        status: 'active'
-    }).then(function() {
-        sendTelegramOfficialAlert(type, curHole, pName, flightNames);
-        sendVKOfficialAlert(type, curHole, pName, flightNames);
-        toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + curHole + '!', 'warn');
-        vib([100, 50, 100]);
+        prefix: 'solo',
+        type: type,
+        hole: function() { return curHole; },
+        playerName: function() {
+            return (soloRound && soloRound.players && soloRound.players[uid])
+                ? soloRound.players[uid].name : 'Player';
+        },
+        flightMembers: [],
+        canEdit: function() { return canEditSolo; },
+        onSent: function(call) {
+            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, call.playerName, []);
+            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, call.playerName, []);
+            toast('🚨 ' + getOfficialRoleName(type) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
+            vib([100, 50, 100]);
+        }
     });
 }
 

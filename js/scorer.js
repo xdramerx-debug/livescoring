@@ -1,6 +1,7 @@
 var scRid = null, scPid = null, scRound = null;
 var scHole = 1, scScore = 0, scMarker = {};
 var scChanging = false;
+var scPaceTimer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
@@ -8,6 +9,9 @@ document.addEventListener('DOMContentLoaded', function() {
     scRid = p.get('round'); scPid = p.get('player');
     if (!scRid || !scPid) { document.getElementById('sc-err').classList.remove('hidden'); return; }
     loadSc();
+    scPaceTimer = setInterval(function() {
+        if (scRound) renderPaceAssistant('sc-pace-assistant', scRound);
+    }, isBatterySaverEnabled() ? 60000 : 30000);
 });
 
 function loadSc() {
@@ -26,15 +30,30 @@ function loadSc() {
         document.getElementById('sc-title').textContent = scorePrefix + (pl.name || t('player'));
         document.getElementById('sc-sub').textContent = (scRound.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(scRound.tee);
         renderInfo();
+        renderPaceAssistant('sc-pace-assistant', scRound);
+        listenForOfficialCallState({
+            roundId: scRid,
+            playerId: scPid,
+            prefix: 'sc',
+            canEdit: true,
+            hole: function() { return scHole; },
+            playerName: function() { return pl.name || 'Player'; },
+            flightMembers: []
+        });
 
         if (!scChanging) {
             var order = getRoundOrder(scRound);
             var scores = pl.scores || {};
-            var found = false;
-            for (var i = 0; i < order.length; i++) {
-                if (!(parseInt(scores[order[i]]) >= 1)) { scHole = order[i]; found = true; break; }
+            var savedResumeHole = getSavedResumeHole(scRid, scPid, order, pl);
+            if (savedResumeHole) {
+                scHole = savedResumeHole;
+            } else {
+                var found = false;
+                for (var i = 0; i < order.length; i++) {
+                    if (!(parseInt(scores[order[i]]) >= 1)) { scHole = order[i]; found = true; break; }
+                }
+                if (!found) scHole = order[order.length - 1];
             }
-            if (!found) scHole = order[order.length - 1];
         }
 
         buildHoles();
@@ -78,6 +97,7 @@ function buildHoles() {
 function goSc(h) {
     scChanging = true;
     scHole = h; scScore = 0;
+    rememberResumeHole(scRid, scPid, h);
     renderHole(); buildHoles(); checkVerify();
     setTimeout(function() { scChanging = false; }, 100);
 }
@@ -126,6 +146,8 @@ function saveSc() {
     var savedHole = scHole;
 
     db.ref('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole).set(scScore).then(function() {
+        return recordHoleCompletionTime(scRid, scPid, savedHole, Date.now());
+    }).then(function() {
         var ms = parseInt(scMarker[savedHole]) || 0;
         if (ms >= 1 && ms === scScore) {
             db.ref('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole).set(true);
@@ -147,8 +169,10 @@ function saveSc() {
         var order = getRoundOrder(scRound);
         var idx = order.indexOf(savedHole);
         if (idx >= 0 && idx < order.length - 1) { scHole = order[idx + 1]; scScore = 0; }
+        rememberResumeHole(scRid, scPid, scHole);
 
         renderHole(); buildHoles(); renderCard();
+        renderPaceAssistant('sc-pace-assistant', scRound);
         setTimeout(function() { scChanging = false; }, 200);
     });
 }
@@ -201,21 +225,22 @@ function renderCard() {
 }
 
 function callOfficial(type) {
-    var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
-    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + scHole + '?')) return;
-
-    var pName = (scRound && scRound.players[scPid]) ? scRound.players[scPid].name : 'Player';
-
-    db.ref('alerts').push({
+    if (!scRound || !scPid) return;
+    var pName = (scRound.players[scPid] && scRound.players[scPid].name) || 'Player';
+    requestOfficialCall({
         roundId: scRid,
-        type: type,
-        hole: scHole,
         playerId: scPid,
+        prefix: 'sc',
+        type: type,
+        hole: function() { return scHole; },
         playerName: pName,
-        time: Date.now(),
-        status: 'active'
-    }).then(function() {
-        toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + scHole + '!', 'warn');
-        vib([100, 50, 100]);
+        flightMembers: [],
+        canEdit: true,
+        onSent: function(call) {
+            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, pName, []);
+            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, pName, []);
+            toast('🚨 ' + getOfficialRoleName(type) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
+            vib([100, 50, 100]);
+        }
     });
 }

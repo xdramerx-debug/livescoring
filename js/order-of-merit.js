@@ -27,7 +27,7 @@ function loadOrderOfMerit() {
             var id = e[0], r = e[1];
             if (!r || r.status !== 'completed' || !r.players) return;
 
-            var order = holeOrder(r.startHole || 1);
+            var order = getRoundOrder(r);
             var players = Object.entries(r.players).map(function(pe) {
                 var pid = pe[0], p = pe[1];
                 var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);

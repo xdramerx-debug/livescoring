@@ -144,16 +144,18 @@ function calcSoloFieldHcp() {
 function updateTimingPreview() {
     var timeEl = document.getElementById('s-time');
     var holeEl = document.getElementById('s-hole');
+    var rangeEl = document.getElementById('s-range');
     if (!timeEl || !holeEl) return;
     var timeStr = timeEl.value;
     var startHole = parseInt(holeEl.value) || 1;
+    var holeRange = rangeEl ? rangeEl.value : '1-18';
     if (!timeStr) return;
     var parts = timeStr.split(':');
     var now = new Date();
     var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
         parseInt(parts[0]), parseInt(parts[1]), 0);
     var previewEl = document.getElementById('timing-preview');
-    if (previewEl) previewEl.innerHTML = buildTimingTable(startDate.getTime(), startHole);
+    if (previewEl) previewEl.innerHTML = buildTimingTable(startDate.getTime(), startHole, holeRange);
 }
 
 var soloStarting = false;
@@ -173,6 +175,7 @@ function startSolo() {
     var startHole = parseInt(document.getElementById('s-hole').value) || 1;
     var tee = document.getElementById('s-tee').value;
     var format = document.getElementById('s-format').value;
+    var holeRange = document.getElementById('s-range') ? document.getElementById('s-range').value : '1-18';
     var gender = document.getElementById('s-gender').value;
     var exactHcpStr = hcpInp.value;
 
@@ -224,6 +227,7 @@ function startSolo() {
             mode: 'solo',
             tee: tee,
             format: format,
+            holeRange: holeRange,
             startHole: startHole,
             startTime: startTime,
             players: players,
@@ -315,7 +319,7 @@ function loadExistingSolo() {
             if (!player) return;
 
             var scores = player.scores || {};
-            var order = holeOrder(soloRound.startHole || 1);
+            var order = getRoundOrder(soloRound);
 
             if (!soloIsChanging) {
                 var found = false;
@@ -391,7 +395,8 @@ function buildHoles() {
     var scores = (p && p.scores) || {};
 
     var html = '';
-    for (var h = 1; h <= 18; h++) {
+    var order = getRoundOrder(soloRound);
+    order.forEach(function(h) {
         var cls = h === curHole ? 'active' : '';
         var s = parseInt(scores[h]) || 0;
         if (s >= 1 && h !== curHole) cls += ' done';
@@ -400,7 +405,7 @@ function buildHoles() {
             '<span style="font-size:9px;opacity:0.75;line-height:1;">#' + h + '</span>' +
             '<span style="font-size:13px;font-weight:800;line-height:1.2;margin-top:1px;">' + (s >= 1 ? s : '—') + '</span>' +
             '</button>';
-    }
+    });
     el.innerHTML = html;
 }
 
@@ -505,7 +510,7 @@ function saveSolo(isAuto) {
             else if (d === 1) { toast('Bogey'); vib(); }
             else { toast('Double+', 'warn'); vib(); }
 
-            var order = holeOrder(soloRound.startHole);
+            var order = getRoundOrder(soloRound);
             var idx = order.indexOf(savedHole);
             if (idx >= 0 && idx < order.length - 1) {
                 curHole = order[idx + 1];
@@ -549,13 +554,13 @@ function renderLiveStats(targetId) {
     var p = soloRound.players[uid];
     if (!p) return;
     var scores = p.scores || {};
-    var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(soloRound.startHole));
+    var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, getRoundOrder(soloRound));
 
     var playedLbl = currentLang === 'en' ? 'Completed' : 'Пройдено';
     var projLbl = currentLang === 'en' ? 'Projected' : 'Прогноз';
 
     var html = '<div class="stats-grid">';
-    html += '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + stats.holesPlayed + '/18</div><div class="stat-l">' + playedLbl + '</div></div>';
+    html += '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + stats.holesPlayed + '/' + getRoundHoleCount(soloRound) + '</div><div class="stat-l">' + playedLbl + '</div></div>';
     html += '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + (stats.gross || '—') + '</div><div class="stat-l">Gross</div></div>';
     html += '<div class="stat"><i class="fas fa-chart-line"></i><div class="stat-n ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</div><div class="stat-l">± Par</div></div>';
     html += '<div class="stat"><i class="fas fa-calculator"></i><div class="stat-n">' + (stats.net || '—') + '</div><div class="stat-l">Net</div></div>';
@@ -587,12 +592,14 @@ function updateSoloActionButton() {
     var p = soloRound.players[uid];
     var scores = (p && p.scores) || {};
 
+    var order = getRoundOrder(soloRound);
+    var holeCount = order.length;
     var playedCount = 0;
-    for (var h = 1; h <= 18; h++) {
+    order.forEach(function(h) {
         if (parseInt(scores[h]) > 0) playedCount++;
-    }
+    });
 
-    if (playedCount >= 18) {
+    if (playedCount >= holeCount) {
         btn.onclick = function() { finishSolo(); };
         btn.className = 'btn btn-g btn-block btn-lg';
         if (txt) txt.innerHTML = currentLang === 'en' ? '🏆 Finish Round' : '🏆 Завершить раунд';
@@ -641,6 +648,7 @@ function finishSolo() {
 
     if (typeof openFinishConfirmModal === 'function') {
         openFinishConfirmModal(soloRid, function() {
+            soloFinishing = true;
             finalizeSolo();
 
             toast(t('msg_round_finished'));
@@ -648,6 +656,9 @@ function finishSolo() {
                 if (confirm(currentLang === 'en' ? 'Download player scorecard?' : 'Скачать счётную карточку?')) downloadScorecard(soloRid);
                 window.location.href = 'leaderboard.html';
             }, 800);
+        }, function() {
+            // Модалка закрыта без подтверждения — снимаем блокировку повторного завершения
+            soloFinishing = false;
         });
     } else {
         if (!confirm(t('msg_finish_confirm'))) { soloFinishing = false; return; }

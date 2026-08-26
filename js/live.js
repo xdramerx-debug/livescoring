@@ -139,7 +139,7 @@ function onTournamentSelect() {
     var fmtSel = document.getElementById('grp-format');
 
     if (!tid) {
-        if (fmtSel) fmtSel.innerHTML = '<option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option><option value="Match Play 1v1">' + t('format_match_1v1') + '</option><option value="Match Play 2v2">' + t('format_match_2v2') + '</option><option value="Scramble">' + t('format_scramble') + '</option>';
+        if (fmtSel) fmtSel.innerHTML = '<option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option>';
         return;
     }
     var tVal = availableTournaments[tid];
@@ -288,21 +288,42 @@ function calcPlayerFieldHcp(idx) {
 function updateGroupTimingPreview() {
     var timeEl = document.getElementById('grp-time');
     var holeEl = document.getElementById('grp-hole');
+    var rangeEl = document.getElementById('grp-range');
     if (!timeEl || !holeEl) return;
     var timeStr = timeEl.value;
     var startHole = parseInt(holeEl.value) || 1;
+    var holeRange = rangeEl ? rangeEl.value : '1-18';
     if (!timeStr) return;
     var parts = timeStr.split(':');
     var now = new Date();
     var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
         parseInt(parts[0]), parseInt(parts[1]), 0);
     var previewEl = document.getElementById('grp-timing-preview');
-    if (previewEl) previewEl.innerHTML = buildTimingTable(startDate.getTime(), startHole);
+    if (previewEl) previewEl.innerHTML = buildTimingTable(startDate.getTime(), startHole, holeRange);
+}
+
+// При смене «сколько лунок» подстраиваем стартовую лунку под выбранный диапазон
+function applyRangeToStartHole(mode) {
+    var rangeId = mode === 'solo' ? 's-range' : 'grp-range';
+    var holeId = mode === 'solo' ? 's-hole' : 'grp-hole';
+    var rangeEl = document.getElementById(rangeId);
+    var holeEl = document.getElementById(holeId);
+    if (!rangeEl || !holeEl) return;
+    var r = rangeEl.value;
+    if (r === '1-9') holeEl.value = '1';
+    else if (r === '10-18') holeEl.value = '10';
+    else holeEl.value = '1';
+    if (mode === 'solo') updateTimingPreview();
+    else updateGroupTimingPreview();
 }
 
 document.addEventListener('change', function(e) {
     if (e.target.id === 'grp-time' || e.target.id === 'grp-hole') {
         updateGroupTimingPreview();
+    } else if (e.target.id === 'grp-range') {
+        applyRangeToStartHole('group');
+    } else if (e.target.id === 's-range') {
+        applyRangeToStartHole('solo');
     }
 });
 
@@ -318,6 +339,7 @@ function startGroup() {
     var timeStr = document.getElementById('grp-time').value;
     var startHole = parseInt(document.getElementById('grp-hole').value) || 1;
     var format = document.getElementById('grp-format').value;
+    var holeRange = document.getElementById('grp-range') ? document.getElementById('grp-range').value : '1-18';
     var count = parseInt(document.getElementById('grp-count').value) || 2;
     var tournamentId = document.getElementById('grp-tournament') ? document.getElementById('grp-tournament').value : '';
 
@@ -445,6 +467,7 @@ function startGroup() {
             mode: 'group',
             tee: flightTee,
             format: format,
+            holeRange: holeRange,
             startHole: startHole,
             startTime: startDate.getTime(),
             players: players,
@@ -574,7 +597,7 @@ function initRoundView() {
 }
 
 function findCurrentHole() {
-    var order = holeOrder(curRoundData.startHole || 1);
+    var order = getRoundOrder(curRoundData);
     var myPlayer = (curRoundData.players && curRoundData.players[myUid]) || {};
     var myVerified = myPlayer.verified || {};
     playHole = order[0];
@@ -593,7 +616,7 @@ function buildPlayHolesNav() {
     if (!canEditGroup) return;
     var el = document.getElementById('play-holes-nav');
     if (!el) return;
-    var order = holeOrder(curRoundData.startHole || 1);
+    var order = getRoundOrder(curRoundData);
     var myPlayer = curRoundData.players && curRoundData.players[myUid];
     var myScores = (myPlayer && myPlayer.scores) || {};
     var mySubmitted = (myPlayer && myPlayer.submitted) || {};
@@ -643,19 +666,30 @@ function renderPlayHole() {
     if (playParEl) playParEl.textContent = par;
     if (playDistEl) playDistEl.textContent = dist > 0 ? dist : '—';
 
-    var order = holeOrder(curRoundData.startHole || 1);
+    var order = getRoundOrder(curRoundData);
     var isLastHole = (playHole === order[order.length - 1]);
+
+    var myPlayer = curRoundData.players[myUid] || {};
+    var mySubmittedLast = !!(myPlayer.submitted && myPlayer.submitted[playHole] === true);
 
     var btnIcon = document.getElementById('save-hole-btn-icon');
     var btnText = document.getElementById('save-hole-btn-text');
+    var btn = document.getElementById('save-hole-btn');
 
-    if (btnIcon && btnText) {
-        if (isLastHole) {
-            btnIcon.className = 'fas fa-check-double';
-            btnText.textContent = t('confirm_final_hole');
+    if (btnIcon && btnText && btn) {
+        if (isLastHole && mySubmittedLast) {
+            // Результат последней лунки введён — кнопка становится «Завершить раунд»
+            btnIcon.className = 'fas fa-flag-checkered';
+            btnText.textContent = t('finish_round');
+            btn.onclick = function() { finishGroupRound(); };
+        } else if (isLastHole) {
+            btnIcon.className = 'fas fa-check';
+            btnText.textContent = currentLang === 'en' ? 'Save Result' : 'Сохранить результат';
+            btn.onclick = function() { saveHoleScores(); };
         } else {
             btnIcon.className = 'fas fa-arrow-right';
             btnText.textContent = t('next_hole_btn');
+            btn.onclick = function() { saveHoleScores(); };
         }
     }
 
@@ -830,7 +864,7 @@ function saveHoleScores() {
     }
 
     db.ref().update(updates).then(function() {
-        var order = holeOrder(curRoundData.startHole || 1);
+        var order = getRoundOrder(curRoundData);
         var idx = order.indexOf(h);
 
         if (bothSubmittedAndMatch) {
@@ -868,7 +902,7 @@ function saveHoleScores() {
 function renderPlaySummary() {
     var el = document.getElementById('play-group-summary');
     if (!el) return;
-    var order = holeOrder(curRoundData.startHole || 1);
+    var order = getRoundOrder(curRoundData);
     var html = '';
 
     Object.entries(curRoundData.players || {}).forEach(function(pe) {
@@ -878,7 +912,7 @@ function renderPlaySummary() {
 
         html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
         html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + isMe + '</strong>';
-        html += '<div style="font-size:12px;color:var(--muted);">' + t('hole') + 's: ' + stats.holesPlayed + ' / 18</div></div>';
+        html += '<div style="font-size:12px;color:var(--muted);">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + getRoundHoleCount(curRoundData) + '</div></div>';
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '<div style="font-size:11px;color:var(--muted);">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div>';
@@ -892,6 +926,23 @@ function renderPlaySummary() {
 // ==========================================
 // ГЕНЕРАЦИЯ QR ДЛЯ ПОДКЛЮЧЕНИЯ ИГРОКОВ
 // ==========================================
+// Сворачивание / разворачивание QR-кодов подключения игроков
+function toggleInviteQRs() {
+    var panel = document.getElementById('invite-qrs-panel');
+    var icon = document.getElementById('invite-qrs-icon');
+    var txt = document.getElementById('invite-qrs-txt');
+    if (!panel) return;
+    if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        if (icon) icon.className = 'fas fa-chevron-up';
+        if (txt) txt.textContent = currentLang === 'en' ? 'Collapse player QR codes' : 'Свернуть QR-коды подключения';
+    } else {
+        panel.classList.add('hidden');
+        if (icon) icon.className = 'fas fa-chevron-down';
+        if (txt) txt.textContent = currentLang === 'en' ? 'Expand player QR codes' : 'Развернуть QR-коды подключения';
+    }
+}
+
 function renderInviteQRs() {
     var cardEl = document.getElementById('invite-qrs-card');
     var activeEl = document.getElementById('invite-qrs-grid');
@@ -902,6 +953,13 @@ function renderInviteQRs() {
     }
 
     if (cardEl) cardEl.classList.remove('hidden');
+    // QR-коды развёрнуты по умолчанию при открытии раунда
+    var panel = document.getElementById('invite-qrs-panel');
+    if (panel && panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        var icon = document.getElementById('invite-qrs-icon');
+        if (icon) icon.className = 'fas fa-chevron-up';
+    }
 
     var base = baseUrl();
     var html = '';
@@ -982,14 +1040,14 @@ function listenForCallResponses() {
 function renderGVPlayers(r) {
     var el = document.getElementById('gv-players');
     var scCardEl = document.getElementById('gv-scorecard-card');
-    var order = holeOrder(r.startHole || 1);
+    var order = getRoundOrder(r);
     
     if (el) {
         var html = '';
         Object.entries(r.players || {}).forEach(function(pe) {
             var pid = pe[0], p = pe[1];
             var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-            var thruTxt = stats.holesPlayed >= 18 ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
+            var thruTxt = stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
 
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
                 '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</strong>' +
@@ -1017,6 +1075,22 @@ function finishGroupRound() {
     // Защита от повторного завершения (двойной клик): иначе история и roundsPlayed задваивались
     if (groupFinishing) return;
     if (curRoundData && curRoundData.status === 'completed') return;
+
+    // Проверка: если есть несовпадения или неподтверждённые лунки — завершать нельзя
+    var verification = collectRoundVerification(curRoundData);
+    if (!verification.canFinish) {
+        var report = buildVerificationReportHtml(verification);
+        if (currentLang === 'en') {
+            toast('⚠️ The round cannot be finished yet — some scores are not confirmed.', 'error');
+        } else {
+            toast('⚠️ Раунд нельзя завершить — не все счета подтверждены.', 'error');
+        }
+        var statusBox = document.getElementById('play-verify-status');
+        if (statusBox) statusBox.innerHTML = report;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
+
     groupFinishing = true;
 
     var finalizeGroup = function() {
@@ -1031,6 +1105,7 @@ function finishGroupRound() {
 
     if (typeof openFinishConfirmModal === 'function') {
         openFinishConfirmModal(curRid, function() {
+            groupFinishing = true;
             finalizeGroup();
 
             toast(t('msg_round_finished'));
@@ -1038,6 +1113,9 @@ function finishGroupRound() {
                 if (confirm(currentLang === 'en' ? 'Download player scorecards?' : 'Скачать счётные карточки игроков?')) downloadScorecard(curRid);
                 window.location.href = 'leaderboard.html';
             }, 800);
+        }, function() {
+            // Модалка закрыта без подтверждения — снимаем блокировку повторного завершения
+            groupFinishing = false;
         });
     } else {
         if (!confirm(t('msg_finish_confirm'))) { groupFinishing = false; return; }

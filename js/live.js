@@ -211,16 +211,17 @@ function buildPlayerSlots() {
                         var tEl = document.getElementById('pl-tee-' + idx);
                         var hEl = document.getElementById('pl-hcp-' + idx);
 
-                        // Имя+фамилию вставляем без отчества — оно в отдельном поле
+                        // Имя+фамилию вставляем без отчества — оно в отдельном поле.
+                        // Не берём строку подсказки («Фамилия Имя Отчество»), чтобы
+                        // фамилия не попала в имя.
+                        var parts = (typeof resolvePlayerNameParts === 'function')
+                            ? resolvePlayerNameParts(matchedUser)
+                            : matchedUser;
                         if (nEl) {
-                            if (matchedUser.firstName || matchedUser.lastName) {
-                                nEl.value = ((matchedUser.firstName || '') + ' ' + (matchedUser.lastName || '')).trim();
-                            } else {
-                                nEl.value = matchedUser.name;
-                            }
+                            nEl.value = ((parts.firstName || '') + ' ' + (parts.lastName || '')).trim();
                         }
                         if (uEl) uEl.value = matchedUser.uid;
-                        if (midEl) midEl.value = matchedUser.middleName || '';
+                        if (midEl) midEl.value = parts.middleName || '';
                         if (gEl) gEl.value = matchedUser.gender;
 
                         if (tEl) {

@@ -62,9 +62,13 @@ function initSoloForm() {
         var hEl = document.getElementById('s-exact-hcp');
         var tEl = document.getElementById('s-tee');
 
-        if (fnInp) fnInp.value = matchedUser.firstName || (matchedUser.name ? matchedUser.name.split(' ')[0] : '');
-        if (lnInp) lnInp.value = matchedUser.lastName || '';
-        if (midInp) midInp.value = matchedUser.middleName || '';
+        // Не разбираем строку подсказки («Фамилия Имя Отчество») — только поля по смыслу.
+        var parts = (typeof resolvePlayerNameParts === 'function')
+            ? resolvePlayerNameParts(matchedUser)
+            : matchedUser;
+        if (fnInp) fnInp.value = parts.firstName || '';
+        if (lnInp) lnInp.value = parts.lastName || '';
+        if (midInp) midInp.value = parts.middleName || '';
         if (gEl) gEl.value = matchedUser.gender;
         if (hEl) hEl.value = fmtExactHcp(matchedUser.handicap);
         // ТИ: предпочитаемый игроком; если не задан — мужчина → синие, девушка → красные

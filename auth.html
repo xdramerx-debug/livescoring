@@ -1,49 +1,65 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
+    <meta name="description" content="Официальная система лайв-скоринга Гольф-клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Пестово">
-    <link rel="apple-touch-icon" href="img/logo.png">
-    <title>Вход — Пестово</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Pestovo">
+    <link rel="icon" type="image/png" href="img/logo.png">
+    <link rel="apple-touch-icon" href="img/icon-180.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
+    <title data-i18n="nav_login">Вход — Пестово</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body id="auth-page">
 <div class="auth-wrap">
     <div class="auth-card">
-        <img src="img/logo.png" alt="Пестово" class="auth-logo" onerror="this.style.display='none'">
-        <h1 class="auth-title">Гольф-клуб Пестово</h1>
+        <img src="img/logo.png" alt="Pestovo" class="auth-logo">
+        <h1 class="auth-title" data-i18n="brand_name">Гольф-клуб Пестово</h1>
         <div class="auth-tabs">
-            <button class="auth-tab active" data-tab="login">Вход</button>
-            <button class="auth-tab" data-tab="register">Регистрация</button>
+            <button class="auth-tab active" data-tab="login" data-i18n="nav_login">Вход</button>
+            <button class="auth-tab" data-tab="register" data-i18n="register_btn">Регистрация</button>
         </div>
 
         <div id="form-login" class="auth-form">
             <form id="login-form">
-                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="login-email" class="form-input" required></div>
-                <div class="form-group"><label><i class="fas fa-lock"></i> Пароль</label><input type="password" id="login-pass" class="form-input" required></div>
+                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="login-email" class="form-input" autocomplete="username email" required></div>
+                <div class="form-group"><label data-i18n="password"><i class="fas fa-lock"></i> Пароль</label><input type="password" id="login-pass" class="form-input" autocomplete="current-password" required></div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label for="login-remember" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;font-size:13px;color:var(--white);">
+                        <input type="checkbox" id="login-remember" checked style="width:18px;height:18px;cursor:pointer;">
+                        <span data-i18n="remember_me">Запомнить меня</span>
+                    </label>
+                </div>
+                <div style="text-align:right;margin-top:-6px;margin-bottom:14px;">
+                    <a href="javascript:void(0)" onclick="forgotPassword()" style="font-size:12px;color:var(--gold);text-decoration:none;" data-i18n="forgot_password">Забыли пароль?</a>
+                </div>
                 <div id="login-error" class="form-err hidden"></div>
-                <button type="submit" id="login-btn" class="btn btn-g btn-block">Войти</button>
+                <button type="submit" id="login-btn" class="btn btn-g btn-block" data-i18n="login_btn">Войти</button>
             </form>
-            <div class="auth-guest"><a href="index.html"><i class="fas fa-eye"></i> Продолжить как гость</a></div>
+            <div class="auth-guest"><a href="index.html"><i class="fas fa-eye"></i> <span data-i18n="continue_guest">Продолжить как гость</span></a></div>
         </div>
 
         <div id="form-register" class="auth-form hidden">
             <form id="register-form">
-                <div class="form-group"><label><i class="fas fa-user"></i> Имя и фамилия</label><input type="text" id="reg-name" class="form-input" required></div>
-                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="reg-email" class="form-input" required></div>
+                <div class="form-group"><label data-i18n="full_name"><i class="fas fa-user"></i> Имя и фамилия</label><input type="text" id="reg-name" class="form-input" autocomplete="name" required></div>
+                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="reg-email" class="form-input" autocomplete="username email" required></div>
                 <div class="form-row">
-                    <div class="form-group"><label><i class="fas fa-venus-mars"></i> Пол</label><select id="reg-gender" class="form-input"><option value="men">Мужчина</option><option value="women">Женщина</option></select></div>
-                    <div class="form-group"><label><i class="fas fa-golf-ball"></i> Точный HCP</label><input type="number" id="reg-hcp" class="form-input" step="0.1" placeholder="12.4"></div>
+                    <div class="form-group"><label data-i18n="gender_label"><i class="fas fa-venus-mars"></i> Пол</label><select id="reg-gender" class="form-input"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Женщина</option></select></div>
+                    <div class="form-group"><label data-i18n="exact_hcp"><i class="fas fa-golf-ball"></i> Точный HCP</label><input type="number" id="reg-hcp" class="form-input" step="0.1" placeholder="12.4"></div>
                 </div>
-                <div class="form-group"><label><i class="fas fa-lock"></i> Пароль (мин. 6)</label><input type="password" id="reg-pass" class="form-input" required></div>
-                <div class="form-group"><label><i class="fas fa-lock"></i> Повторите пароль</label><input type="password" id="reg-pass2" class="form-input" required></div>
+                <div class="form-group"><label data-i18n="password"><i class="fas fa-lock"></i> Пароль (мин. 6)</label><input type="password" id="reg-pass" class="form-input" autocomplete="new-password" required></div>
+                <div class="form-group"><label data-i18n="repeat_password"><i class="fas fa-lock"></i> Повторите пароль</label><input type="password" id="reg-pass2" class="form-input" autocomplete="new-password" required></div>
                 <div id="register-error" class="form-err hidden"></div>
-                <button type="submit" id="register-btn" class="btn btn-g btn-block">Создать аккаунт</button>
+                <button type="submit" id="register-btn" class="btn btn-g btn-block" data-i18n="create_account">Создать аккаунт</button>
             </form>
         </div>
     </div>
@@ -53,7 +69,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils.js?v=5"></script>
 <script src="js/auth.js"></script>
 <script src="js/pwa.js"></script>
 </body>

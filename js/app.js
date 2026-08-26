@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', function() {
     loadLiveRounds();
     loadRecentResults();
     loadClubStats();
+    loadMyActiveRounds('my-active-rounds-container');
+    // погодный виджет инициализируется в initNav() с правильным контейнером
 });
 
 function onAuthReady(u, d) { navAuth(u, d); }
@@ -12,49 +14,122 @@ function buildCourseCard() {
     var el = document.getElementById('course-card');
     if (!el) return;
     var teeKeys = ['bk','bl','wh','rd'];
-    var html = '<div class="scorecard"><table><tr><th>ТИ / Лунка</th>';
-    for (var h = 1; h <= 9; h++) html += '<th>' + h + '</th>';
-    html += '<th>Аут</th></tr>';
-    teeKeys.forEach(function(t) {
-        html += '<tr class="sc-t-' + t + '"><td style="text-align:left;padding-left:10px;font-weight:700;">' + TEES[t] + '</td>';
-        var sum = 0;
-        for (var h = 1; h <= 9; h++) { var d = holeDist(h, t); sum += d; html += '<td>' + d + '</td>'; }
-        html += '<td style="font-weight:800;">' + sum + '</td></tr>';
-    });
-    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;">Пар</td>';
-    var pO = 0;
-    for (var h = 1; h <= 9; h++) { var p = holePar(h); pO += p; html += '<td>' + p + '</td>'; }
-    html += '<td>' + pO + '</td></tr></table></div>';
+    var isEn = currentLang === 'en';
 
-    html += '<div class="scorecard" style="margin-top:8px;"><table><tr><th>ТИ / Лунка</th>';
-    for (var h = 10; h <= 18; h++) html += '<th>' + h + '</th>';
-    html += '<th>Ин</th><th>Итого</th></tr>';
-    teeKeys.forEach(function(t) {
-        html += '<tr class="sc-t-' + t + '"><td style="text-align:left;padding-left:10px;font-weight:700;">' + TEES[t] + '</td>';
-        var sumI = 0, sumO = 0;
-        for (var h = 1; h <= 9; h++) sumO += holeDist(h, t);
-        for (var h = 10; h <= 18; h++) { var d = holeDist(h, t); sumI += d; html += '<td>' + d + '</td>'; }
-        html += '<td style="font-weight:800;">' + sumI + '</td><td style="font-weight:800;">' + (sumO + sumI) + '</td></tr>';
+    var headerStr = isEn ? 'Tee / Hole' : 'ТИ / Лунка';
+    var outStr = isEn ? 'OUT' : 'OUT';
+    var inStr = isEn ? 'IN' : 'IN';
+    var totalStr = isEn ? 'TOTAL' : 'ВСЕГО';
+    var parStr = isEn ? 'Par' : 'Пар';
+    var indexStr = isEn ? 'Index' : 'Индекс';
+
+    // Front 9 (OUT)
+    var html = '<div class="pestovo-modern-scorecard" style="margin-bottom:12px;padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;padding-left:2px;"><i class="fas fa-flag"></i> ' + (isEn ? 'Front 9 (Holes 1–9)' : 'Первые 9 лунок (1–9)') + '</div>';
+    html += '<div class="msc-tile-grid msc-grid-9">';
+
+    // Header row
+    html += '<div class="msc-tile msc-hdr-lbl">' + headerStr + '</div>';
+    for (var h = 1; h <= 9; h++) html += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
+    html += '<div class="msc-tile msc-hdr-tot">' + outStr + '</div>';
+
+    // Tees
+    teeKeys.forEach(function(tKey) {
+        html += '<div class="msc-tile msc-lbl-' + tKey + '">' + t('tee_' + tKey) + '</div>';
+        var sum = 0;
+        for (var h = 1; h <= 9; h++) {
+            var d = holeDist(h, tKey);
+            sum += d;
+            html += '<div class="msc-tile msc-val-' + tKey + '">' + d + '</div>';
+        }
+        html += '<div class="msc-tile msc-tot-' + tKey + '">' + sum + '</div>';
     });
-    html += '<tr class="row-par"><td style="text-align:left;padding-left:10px;">Пар</td>';
+
+    // Par row
+    html += '<div class="msc-tile msc-lbl-par">' + parStr + '</div>';
+    var pO = 0;
+    for (var h = 1; h <= 9; h++) {
+        var p = holePar(h);
+        pO += p;
+        html += '<div class="msc-tile msc-val-par">' + p + '</div>';
+    }
+    html += '<div class="msc-tile msc-tot-par">' + pO + '</div>';
+
+    // Index row
+    html += '<div class="msc-tile msc-lbl-idx">' + indexStr + '</div>';
+    for (var h = 1; h <= 9; h++) {
+        html += '<div class="msc-tile msc-val-idx">' + holeHcp(h) + '</div>';
+    }
+    html += '<div class="msc-tile msc-tot-idx">—</div>';
+
+    html += '</div></div>';
+
+    // Back 9 (IN & TOTAL)
+    html += '<div class="pestovo-modern-scorecard" style="padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;padding-left:2px;"><i class="fas fa-flag-checkered"></i> ' + (isEn ? 'Back 9 (Holes 10–18 & Total)' : 'Вторые 9 лунок (10–18 и Итог)') + '</div>';
+    html += '<div class="msc-tile-grid msc-grid-10">';
+
+    // Header row
+    html += '<div class="msc-tile msc-hdr-lbl">' + headerStr + '</div>';
+    for (var h = 10; h <= 18; h++) html += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
+    html += '<div class="msc-tile msc-hdr-tot">' + inStr + '</div>';
+    html += '<div class="msc-tile msc-hdr-tot" style="background:var(--gold);color:var(--bg);">' + totalStr + '</div>';
+
+    // Tees
+    teeKeys.forEach(function(tKey) {
+        html += '<div class="msc-tile msc-lbl-' + tKey + '">' + t('tee_' + tKey) + '</div>';
+        var sumI = 0, sumO = 0;
+        for (var h = 1; h <= 9; h++) sumO += holeDist(h, tKey);
+        for (var h = 10; h <= 18; h++) {
+            var d = holeDist(h, tKey);
+            sumI += d;
+            html += '<div class="msc-tile msc-val-' + tKey + '">' + d + '</div>';
+        }
+        html += '<div class="msc-tile msc-tot-' + tKey + '">' + sumI + '</div>';
+        html += '<div class="msc-tile msc-tot-' + tKey + '" style="font-weight:900;">' + (sumO + sumI) + '</div>';
+    });
+
+    // Par row
+    html += '<div class="msc-tile msc-lbl-par">' + parStr + '</div>';
     var pI = 0;
-    for (var h = 10; h <= 18; h++) { var p = holePar(h); pI += p; html += '<td>' + p + '</td>'; }
-    html += '<td>' + pI + '</td><td>' + (pO + pI) + '</td></tr></table></div>';
+    for (var h = 10; h <= 18; h++) {
+        var p = holePar(h);
+        pI += p;
+        html += '<div class="msc-tile msc-val-par">' + p + '</div>';
+    }
+    html += '<div class="msc-tile msc-tot-par">' + pI + '</div>';
+    html += '<div class="msc-tile msc-tot-par" style="font-weight:900;">' + (pO + pI) + '</div>';
+
+    // Index row
+    html += '<div class="msc-tile msc-lbl-idx">' + indexStr + '</div>';
+    for (var h = 10; h <= 18; h++) {
+        html += '<div class="msc-tile msc-val-idx">' + holeHcp(h) + '</div>';
+    }
+    html += '<div class="msc-tile msc-tot-idx">—</div>';
+    html += '<div class="msc-tile msc-tot-idx">—</div>';
+
+    html += '</div></div>';
+
     el.innerHTML = html;
 }
 
 function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
-    if (!el) return;
+    if (!el || typeof db === 'undefined') return;
 
-    db.ref('rounds').orderByChild('status').equalTo('active').on('value', function(snap) {
+    db.ref('rounds').on('value', function(snap) {
         var data = snap.val() || {};
-        var entries = Object.entries(data);
+        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active'; });
 
         if (entries.length === 0) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>Сейчас никто не играет</p><a href="live.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> Начать раунд</a></div>';
+            el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="live.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
             return;
         }
+
+        entries.sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
+
+        var startWord = currentLang === 'en' ? 'Start' : 'Старт';
+        var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
 
         var html = '';
         entries.forEach(function(e) {
@@ -64,80 +139,154 @@ function loadLiveRounds() {
             var order = holeOrder(r.startHole || 1);
 
             Object.entries(players).forEach(function(pe) {
-                var p = pe[1], scores = p.scores || {};
+                var pid = pe[0], p = pe[1], scores = p.scores || {};
                 var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
 
-                var thruText = stats.holesPlayed >= 18 ? 'Завершил (F)' : (stats.currentHole ? 'лунка №' + stats.currentHole : 'лунка №' + (parseInt(r.startHole)||1));
+                var thruText = stats.holesPlayed >= 18 ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : t('hole') + ' №' + (parseInt(r.startHole)||1));
 
                 pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;">' + (p.name || '—') + '</div>' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + '</div>' +
                     '<div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;">📍 ' + thruText + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
-                    '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + '</div>' +
+                    '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div>' +
                     '</div></div>';
             });
 
             var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'live.html?round=' + id;
-            html += '<div class="round-card" onclick="window.location=\'' + link + '\'">' +
-                '<div class="round-hdr"><span class="round-course"><i class="fas fa-flag"></i> Пестово · Старт ' + fmtTime(r.startTime) + '</span>' +
+            var panelId = 'live-sc-' + id;
+
+            var localGroupKey = localStorage.getItem('pestovo_group_key_' + id);
+            var localSoloKey = localStorage.getItem('pestovo_solo_key_' + id);
+            var localActingAs = localStorage.getItem('pestovo_acting_as_' + id);
+
+            var isMyRound = false;
+            if (currentUser && r.createdBy === currentUser.uid) {
+                isMyRound = true;
+            } else if (currentUser && r.players && r.players[currentUser.uid]) {
+                isMyRound = true;
+            } else if (localSoloKey && r.accessKey === localSoloKey) {
+                isMyRound = true;
+            } else if (localGroupKey && r.accessKey === localGroupKey) {
+                isMyRound = true;
+            } else if (localActingAs && r.players && r.players[localActingAs]) {
+                isMyRound = true;
+            }
+
+            var startBtnMarkup = isMyRound
+                ? '<a href="' + link + '" class="btn btn-g btn-sm" style="flex:1;"><i class="fas fa-gamepad"></i> ' + (currentLang === 'en' ? 'Continue' : 'Продолжить') + '</a>'
+                : '';
+
+            var toggleWidth = isMyRound ? 'flex:1;' : 'width:100%;';
+
+            html += '<div class="round-card" style="cursor:default;">' +
+                '<div class="round-hdr"><span class="round-course"><i class="fas fa-flag"></i> ' + t('brand_name') + ' · ' + startWord + ' ' + fmtTime(r.startTime) + '</span>' +
                 '<span class="live-badge"><span class="live-dot" style="width:7px;height:7px;"></span> LIVE</span></div>' +
                 pHtml +
                 '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">' +
-                '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? ' · Одиночный' : '') + '</span>' +
-                '<span>ТИ: ' + TEES[r.tee] + '</span></div></div>';
+                '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + '</span>' +
+                '<span>' + t('tee_select') + ': ' + fmtTeePill(r.tee) + '</span></div>' +
+                '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+                '<button class="btn btn-og btn-sm" style="' + toggleWidth + '" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
+                startBtnMarkup +
+                '</div>' +
+                '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
+                '</div>';
         });
 
-        el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">' + html + '</div>';
+        el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">' + html + '</div>';
     });
+}
+
+function toggleCardScorecard(panelId, roundId) {
+    var panel = document.getElementById(panelId);
+    var icon = document.getElementById(panelId + '-icon');
+    var txt = document.getElementById(panelId + '-txt');
+    if (!panel) return;
+
+    var isHidden = panel.classList.contains('hidden');
+    if (isHidden) {
+        panel.classList.remove('hidden');
+        if (icon) icon.className = 'fas fa-chevron-up';
+        if (txt) txt.textContent = t('collapse_scorecard');
+
+        if (roundId && typeof db !== 'undefined' && panel.innerHTML === '') {
+            panel.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            db.ref('rounds/' + roundId).once('value').then(function(sn) {
+                var r = sn.val();
+                if (r && typeof generateGroupHoleTableHTML === 'function') {
+                    r.roundId = roundId;
+                    panel.innerHTML = generateGroupHoleTableHTML(r);
+                }
+            });
+        }
+    } else {
+        panel.classList.add('hidden');
+        if (icon) icon.className = 'fas fa-chevron-down';
+        if (txt) txt.textContent = t('expand_scorecard');
+    }
 }
 
 function loadRecentResults() {
     var el = document.getElementById('recent-results');
-    if (!el) return;
+    if (!el || typeof db === 'undefined') return;
 
-    db.ref('rounds').orderByChild('status').equalTo('completed').limitToLast(5).on('value', function(snap) {
+    db.ref('rounds').on('value', function(snap) {
         var data = snap.val() || {};
-        var entries = Object.entries(data).reverse();
+        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'completed'; });
 
         if (entries.length === 0) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-clock"></i><p>Пока нет завершённых раундов</p></div>';
+            el.innerHTML = '<div class="empty"><i class="fas fa-clock"></i><p>' + t('no_completed') + '</p></div>';
             return;
         }
 
-        var html = '';
-        entries.forEach(function(e) {
-            var r = e[1], players = r.players || {};
-            var best = Infinity, winner = '—', count = 0;
-
-            Object.values(players).forEach(function(p) {
-                count++;
-                var scores = p.scores || {};
-                var total = 0;
-                Object.values(scores).forEach(function(s) {
-                    var v = parseInt(s) || 0;
-                    if (v >= 1) total += v;
-                });
-                if (total > 0 && total < best) {
-                    best = total;
-                    winner = p.name;
-                }
-            });
-
-            html += '<div class="list-item" style="padding:14px;">' +
-                '<div><strong style="color:var(--white);">Пестово</strong>' +
-                '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
-                '<i class="fas fa-calendar"></i> ' + fmtDate(r.completedAt || r.createdAt) +
-                ' · <i class="fas fa-users"></i> ' + count +
-                ' · ' + (r.format || 'Stroke') + '</div></div>' +
-                '<div style="text-align:right;">' +
-                '<div style="font-size:11px;color:var(--muted);">Лидер раунда</div>' +
-                '<div style="color:var(--gold);font-weight:600;"><i class="fas fa-trophy"></i> ' + winner + '</div>' +
-                '<div style="font-size:18px;font-weight:800;color:var(--white);">' + (best < Infinity ? best : '—') + '</div>' +
-                '</div></div>';
+        entries.sort(function(a, b) {
+            var timeA = a[1].completedAt || a[1].createdAt || 0;
+            var timeB = b[1].completedAt || b[1].createdAt || 0;
+            return timeB - timeA;
         });
 
-        el.innerHTML = html;
+        entries = entries.slice(0, 5);
+
+        var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
+        var completedWord = currentLang === 'en' ? 'Completed' : 'Завершён';
+
+        var html = '';
+        entries.forEach(function(e) {
+            var id = e[0], r = e[1], players = r.players || {};
+            var pHtml = '';
+            var order = holeOrder(r.startHole || 1);
+
+            Object.entries(players).forEach(function(pe) {
+                var pid = pe[0], p = pe[1], scores = p.scores || {};
+                var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
+
+                pHtml += '<div class="round-p" style="align-items:flex-start;">' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + '</div>' +
+                    '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + ' · Stableford: ' + stats.stablefordField + '</div></div>' +
+                    '<div style="text-align:right;">' +
+                    '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
+                    '</div></div>';
+            });
+
+            var panelId = 'recent-sc-' + id;
+
+            html += '<div class="round-card" style="cursor:default;">' +
+                '<div class="round-hdr"><span class="round-course"><i class="fas fa-flag"></i> ' + t('brand_name') + ' · ' + fmtDate(r.completedAt || r.createdAt) + '</span>' +
+                '<span class="tn-status tn-d">' + completedWord + '</span></div>' +
+                pHtml +
+                '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">' +
+                '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + '</span>' +
+                '<span>' + t('tee_select') + ': ' + fmtTeePill(r.tee) + '</span></div>' +
+                '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+                '<button class="btn btn-og btn-sm" style="flex:1;" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
+                '<button class="btn btn-g btn-sm" style="flex:1;" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' +
+                '</div>' +
+                '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
+                '</div>';
+        });
+
+        el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">' + html + '</div>';
     });
 }
 
@@ -171,16 +320,23 @@ function loadClubStats() {
             });
         });
 
+        var lTotalRounds = currentLang === 'en' ? 'Total Rounds' : 'Всего раундов';
+        var lActiveRounds = currentLang === 'en' ? 'Currently Playing' : 'Сейчас играют';
+        var lCompletedRounds = currentLang === 'en' ? 'Completed Rounds' : 'Завершено';
+        var lPlayers = currentLang === 'en' ? 'Total Players' : 'Игроков';
+        var lBestGross = currentLang === 'en' ? 'Best Gross (18h)' : 'Лучший Gross (18л)';
+        var lHolesPlayed = currentLang === 'en' ? 'Holes Played' : 'Лунок сыграно';
+
         el.innerHTML =
-            '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + totalRounds + '</div><div class="stat-label">Всего раундов</div></div>' +
-            '<div class="stat"><i class="fas fa-circle-play"></i><div class="stat-n">' + activeRounds + '</div><div class="stat-label">Сейчас играют</div></div>' +
-            '<div class="stat"><i class="fas fa-check-circle"></i><div class="stat-n">' + completedRounds + '</div><div class="stat-label">Завершено</div></div>' +
-            '<div class="stat"><i class="fas fa-users"></i><div class="stat-n">' + totalPlayers + '</div><div class="stat-label">Игроков</div></div>' +
-            '<div class="stat"><i class="fas fa-star"></i><div class="stat-n">' + (best < Infinity ? best : '—') + '</div><div class="stat-label">Лучший Gross (18л)</div></div>' +
-            '<div class="stat"><i class="fas fa-fire"></i><div class="stat-n">' + birdies + '</div><div class="stat-label">Birdies</div></div>' +
-            '<div class="stat"><i class="fas fa-bolt"></i><div class="stat-n">' + eagles + '</div><div class="stat-label">Eagles</div></div>' +
-            '<div class="stat"><i class="fas fa-circle-check"></i><div class="stat-n">' + pars + '</div><div class="stat-label">Pars</div></div>' +
-            '<div class="stat"><i class="fas fa-circle-xmark"></i><div class="stat-n">' + bogeys + '</div><div class="stat-label">Bogeys</div></div>' +
-            '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHolesPlayed + '</div><div class="stat-label">Лунок сыграно</div></div>';
+            '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + totalRounds + '</div><div class="stat-l">' + lTotalRounds + '</div></div>' +
+            '<div class="stat"><i class="fas fa-circle-play"></i><div class="stat-n">' + activeRounds + '</div><div class="stat-l">' + lActiveRounds + '</div></div>' +
+            '<div class="stat"><i class="fas fa-check-circle"></i><div class="stat-n">' + completedRounds + '</div><div class="stat-l">' + lCompletedRounds + '</div></div>' +
+            '<div class="stat"><i class="fas fa-users"></i><div class="stat-n">' + totalPlayers + '</div><div class="stat-l">' + lPlayers + '</div></div>' +
+            '<div class="stat"><i class="fas fa-star"></i><div class="stat-n">' + (best < Infinity ? best : '—') + '</div><div class="stat-l">' + lBestGross + '</div></div>' +
+            '<div class="stat"><i class="fas fa-fire"></i><div class="stat-n">' + birdies + '</div><div class="stat-l">Birdies</div></div>' +
+            '<div class="stat"><i class="fas fa-bolt"></i><div class="stat-n">' + eagles + '</div><div class="stat-l">Eagles</div></div>' +
+            '<div class="stat"><i class="fas fa-circle-check"></i><div class="stat-n">' + pars + '</div><div class="stat-l">Pars</div></div>' +
+            '<div class="stat"><i class="fas fa-circle-xmark"></i><div class="stat-n">' + bogeys + '</div><div class="stat-l">Bogeys</div></div>' +
+            '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHolesPlayed + '</div><div class="stat-l">' + lHolesPlayed + '</div></div>';
     });
 }

@@ -12,11 +12,11 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
-    <title data-i18n="nav_leaderboard">Все раунды — Пестово</title>
+    <title data-i18n="nav_feed">Лента событий — Пестово</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
@@ -32,9 +32,9 @@
     <div class="nav-menu" id="nav-menu">
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
         <a href="live.html" class="nav-link" data-i18n="nav_round">Раунд</a>
-        <a href="leaderboard.html" class="nav-link active" data-i18n="nav_leaderboard">Все раунды</a>
+        <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
         <a href="guide.html" class="nav-link" data-i18n="nav_guide">Книга поля</a>
-        <a href="feed.html" class="nav-link" data-i18n="nav_feed">Лента событий</a>
+        <a href="feed.html" class="nav-link active" data-i18n="nav_feed">Лента событий</a>
         <a href="predictor.html" class="nav-link" data-i18n="nav_predictor">Симулятор WHS</a>
         <a href="order-of-merit.html" class="nav-link" data-i18n="nav_oom">Зачёт сезона</a>
         <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
@@ -45,18 +45,10 @@
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">Все раунды</span></h1></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-rss"></i> <span data-i18n="nav_feed">Лента событий и реакций</span></h1><p class="page-sub">Ключевые моменты раундов в реальном времени</p></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
-    <div class="card"><div class="form-row">
-        <div class="form-group" style="flex:2;min-width:200px;">
-            <label data-i18n="search_label">Поиск игрока</label>
-            <input type="text" id="lb-search" class="form-input" data-i18n-placeholder="search_placeholder" placeholder="Поиск по имени..." oninput="loadLB()">
-        </div>
-        <div class="form-group" style="flex:1;min-width:140px;"><label data-i18n="status_label">Статус</label><select id="lb-status" class="form-input" onchange="loadLB()">
-            <option value="all" selected data-i18n="status_all">Все</option><option value="active" data-i18n="status_active">Live</option><option value="completed" data-i18n="status_completed">Завершённые</option></select></div>
-    </div></div>
-    <div id="lb-container"><div class="loading"><div class="spinner"></div></div></div>
+    <div id="feed-list"><div class="loading"><div class="spinner"></div></div></div>
 </main>
 
 <footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p></div></div></footer>
@@ -65,7 +57,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/utils.js?v=5"></script>
-<script src="js/leaderboard.js"></script>
+<script src="js/feed.js"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

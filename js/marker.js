@@ -22,8 +22,9 @@ function loadMk() {
         document.getElementById('mk-body').classList.remove('hidden');
 
         var pl = mkRound.players[mkPid];
-        document.getElementById('mk-title').textContent = 'Маркер для: ' + (pl.name || 'Игрок');
-        document.getElementById('mk-sub').textContent = 'ТИ: ' + TEES[mkRound.tee];
+        var prefix = t('marker_for');
+        document.getElementById('mk-title').textContent = prefix + ': ' + (pl.name || t('player'));
+        document.getElementById('mk-sub').textContent = t('tee_select') + ': ' + fmtTeePill(mkRound.tee);
         mkPScores = pl.scores || {};
 
         if (!mkChanging) {
@@ -75,7 +76,12 @@ function renderHole() {
     updDisp();
 }
 
-function adjMk(d) { mkScore = Math.max(1, Math.min(15, mkScore + d)); vib(); updDisp(); }
+function adjMk(d) {
+    mkScore = Math.max(1, Math.min(15, mkScore + d));
+    vib();
+    updDisp();
+    animateScoreElement('mk-disp');
+}
 
 function updDisp() {
     var par = holePar(mkHole);
@@ -88,9 +94,9 @@ function updDisp() {
 function checkVerify() {
     var box = document.getElementById('mk-verify');
     var ps = parseInt(mkPScores[mkHole]) || 0, ms = parseInt(mkScores[mkHole]) || 0;
-    if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ Совпадает: ' + ps + ' уд.</div>';
-    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ НЕСОВПАДЕНИЕ! Игрок: ' + ps + ' | Маркер: ' + ms + '</div>';
-    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">🏌️ Игрок ввёл: ' + ps + '. Ожидает подтверждения</div>';
+    if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (currentLang === 'en' ? 'Matched: ' + ps : 'Совпадает: ' + ps + ' уд.') + '</div>';
+    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (currentLang === 'en' ? 'Player: ' : 'Игрок: ') + ps + ' | ' + (currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + ms + '</div>';
+    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">🏌️ ' + (currentLang === 'en' ? 'Player entered: ' + ps + '. Awaiting confirmation.' : 'Игрок ввёл: ' + ps + '. Ожидает подтверждения') + '</div>';
     else box.innerHTML = '';
 }
 
@@ -101,11 +107,11 @@ function saveMk() {
         var ps = parseInt(mkPScores[savedHole]) || 0;
         if (ps >= 1 && ps === mkScore) {
             db.ref('rounds/' + mkRid + '/players/' + mkPid + '/verified/' + savedHole).set(true);
-            toast('✅ Лунка ' + savedHole + ' подтверждена!'); vib([50, 50]);
+            toast(currentLang === 'en' ? '✅ Hole ' + savedHole + ' confirmed!' : '✅ Лунка ' + savedHole + ' подтверждена!'); vib([50, 50]);
         } else if (ps >= 1) {
             db.ref('rounds/' + mkRid + '/players/' + mkPid + '/verified/' + savedHole).set(false);
-            toast('⚠️ Несовпадение!', 'error');
-        } else { toast('👁️ Ждём игрока'); vib(); }
+            toast(currentLang === 'en' ? '⚠️ Mismatch!' : '⚠️ Несовпадение!', 'error');
+        } else { toast(currentLang === 'en' ? '👁️ Waiting for player' : '👁️ Ждём игрока'); vib(); }
 
         var order = holeOrder(mkRound.startHole || 1);
         var idx = order.indexOf(savedHole);
@@ -119,7 +125,13 @@ function saveMk() {
 function renderSum() {
     var el = document.getElementById('mk-sum');
     var match = 0, mis = 0, pend = 0;
-    var html = '<div style="overflow-x:auto;"><table class="scorecard"><tr><th>Лунка</th><th>Пар</th><th>Игрок</th><th>Маркер</th><th>Статус</th></tr>';
+    var holeHeader = t('hole');
+    var parHeader = t('par');
+    var playerHeader = t('player');
+    var markerHeader = currentLang === 'en' ? 'Marker' : 'Маркер';
+    var statusHeader = currentLang === 'en' ? 'Status' : 'Статус';
+
+    var html = '<div style="overflow-x:auto;"><table class="scorecard"><tr><th>' + holeHeader + '</th><th>' + parHeader + '</th><th>' + playerHeader + '</th><th>' + markerHeader + '</th><th>' + statusHeader + '</th></tr>';
     for (var i = 1; i <= 18; i++) {
         var ps = parseInt(mkPScores[i]) || 0, ms = parseInt(mkScores[i]) || 0, icon = '—', bg = '';
         if (ps >= 1 && ms >= 1 && ps === ms) { icon = '✅'; bg = 'background:rgba(46,204,113,.05);'; match++; }
@@ -133,21 +145,21 @@ function renderSum() {
 }
 
 function callOfficial(type) {
-    var typeName = type === 'referee' ? 'Судью' : 'Маршала';
-    if (!confirm('Вы действительно хотите вызвать ' + typeName.toLowerCase() + 'а на лунку ' + mkHole + '?')) return;
+    var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
+    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + mkHole + '?')) return;
 
-    var pName = (mkRound && mkRound.players[mkPid]) ? mkRound.players[mkPid].name : 'Игрок';
+    var pName = (mkRound && mkRound.players[mkPid]) ? mkRound.players[mkPid].name : 'Player';
 
     db.ref('alerts').push({
         roundId: mkRid,
         type: type,
         hole: mkHole,
         playerId: mkPid,
-        playerName: 'Маркер (' + pName + ')',
+        playerName: 'Marker (' + pName + ')',
         time: Date.now(),
         status: 'active'
     }).then(function() {
-        toast('🚨 ' + (type === 'referee' ? 'Судья' : 'Маршал') + ' вызван на лунку ' + mkHole + '!', 'warn');
+        toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + mkHole + '!', 'warn');
         vib([100, 50, 100]);
     });
 }

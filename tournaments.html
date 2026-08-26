@@ -1,54 +1,71 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
+    <meta name="description" content="Официальная система лайв-скоринга Гольф-клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Пестово">
-    <link rel="apple-touch-icon" href="img/logo.png">
-    <title>Турниры — Пестово</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Pestovo">
+    <link rel="icon" type="image/png" href="img/logo.png">
+    <link rel="apple-touch-icon" href="img/icon-180.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
+    <title data-i18n="nav_tournaments">Турниры — Пестово</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
-    <a href="index.html" class="nav-brand"><img src="img/logo.png" alt="Пестово" class="nav-logo" onerror="this.style.display='none'"><span class="nav-brand-text">Пестово</span></a>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
+        <a href="index.html" class="nav-brand">
+            <img src="img/logo.png" alt="Pestovo" class="nav-logo">
+            <span class="nav-brand-text" data-i18n="brand_name">Пестово</span>
+        </a>
+        <div id="nav-weather-container"></div>
+    </div>
     <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
     <div class="nav-menu" id="nav-menu">
-        <a href="index.html" class="nav-link">Главная</a>
-        <a href="live.html" class="nav-link">Раунд</a>
-        <a href="leaderboard.html" class="nav-link">Лидерборд</a>
-        <a href="players.html" class="nav-link">Игроки</a>
-        <a href="tournaments.html" class="nav-link active">Турниры</a>
-        <a href="stats.html" class="nav-link">Статистика</a>
-        <a href="handicap.html" class="nav-link">Гандикапы</a>
+        <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
+        <a href="live.html" class="nav-link" data-i18n="nav_round">Раунд</a>
+        <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
+        <a href="guide.html" class="nav-link" data-i18n="nav_guide">Книга поля</a>
+        <a href="feed.html" class="nav-link" data-i18n="nav_feed">Лента событий</a>
+        <a href="predictor.html" class="nav-link" data-i18n="nav_predictor">Симулятор WHS</a>
+        <a href="order-of-merit.html" class="nav-link" data-i18n="nav_oom">Зачёт сезона</a>
+        <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
+        <a href="tournaments.html" class="nav-link active" data-i18n="nav_tournaments">Турниры</a>
+        <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
+        <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
         <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
 
-<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-trophy"></i> Турниры</h1></div></div>
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-trophy"></i> <span data-i18n="nav_tournaments">Турниры</span></h1></div></div>
 
 <main class="container" style="padding:24px 20px 60px;">
     <div class="card" style="background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
         <p style="color:var(--muted);font-size:14px;text-align:center;">
             <i class="fas fa-info-circle" style="color:var(--gold);"></i>
-            Турниры создаёт только администратор. <a href="admin.html" style="color:var(--gold);">Админка</a>
+            <span data-i18n="admin_only_tournaments">Турниры создаёт только администратор.</span> <a href="admin.html" style="color:var(--gold);" data-i18n="admin_panel_link">Админка</a>
         </p>
     </div>
     <div class="card">
-        <h2><i class="fas fa-list"></i> Все турниры</h2>
+        <h2><i class="fas fa-list"></i> <span data-i18n="all_tournaments">Все турниры</span></h2>
         <div id="tn-list"></div>
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2024 Пестово</p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils.js?v=5"></script>
 <script src="js/tournaments.js"></script>
 <script src="js/pwa.js"></script>
 </body>

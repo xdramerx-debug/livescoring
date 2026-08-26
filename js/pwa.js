@@ -1,9 +1,25 @@
+function isIOS() {
+    return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isStandalone() {
+    return (window.navigator && window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+}
+
 if('serviceWorker' in navigator){
     window.addEventListener('load',function(){
-        navigator.serviceWorker.register('/sw.js').then(function(reg){console.log('[PWA] SW registered');}).catch(function(err){console.error('[PWA] SW failed',err);});
+        navigator.serviceWorker.register('sw.js').then(function(reg){
+            console.log('[PWA] SW registered');
+            initBackgroundAlertListener();
+            checkPWAInstallPrompt();
+        }).catch(function(err){console.error('[PWA] SW failed',err);});
     });
     navigator.serviceWorker.addEventListener('message',function(event){
         if(event.data&&event.data.type==='SYNC_SCORES')syncOfflineScores();
+    });
+} else {
+    window.addEventListener('load', function() {
+        checkPWAInstallPrompt();
     });
 }
 
@@ -15,13 +31,13 @@ function updateOnlineStatus(){
     if(!indicator){indicator=document.createElement('div');indicator.id='online-indicator';indicator.className='online-indicator';document.body.appendChild(indicator);}
     if(isOnline){
         indicator.className='online-indicator online';
-        indicator.innerHTML='<i class="fas fa-wifi"></i> Онлайн';
-        if(!wasOnline){if(typeof toast==='function')toast('🌐 Соединение восстановлено','success');syncOfflineScores();}
+        indicator.innerHTML='<i class="fas fa-wifi"></i> ' + (currentLang === 'en' ? 'Online' : 'Онлайн');
+        if(!wasOnline){if(typeof toast==='function')toast(currentLang === 'en' ? '🌐 Connection restored' : '🌐 Соединение восстановлено','success');syncOfflineScores();}
         setTimeout(function(){if(indicator)indicator.classList.add('hide');},3000);
     }else{
         indicator.className='online-indicator offline';
-        indicator.innerHTML='<i class="fas fa-wifi-slash"></i> Оффлайн';
-        if(wasOnline)if(typeof toast==='function')toast('📡 Нет соединения','warn');
+        indicator.innerHTML='<i class="fas fa-wifi-slash"></i> ' + (currentLang === 'en' ? 'Offline' : 'Оффлайн');
+        if(wasOnline)if(typeof toast==='function')toast(currentLang === 'en' ? '📡 Connection lost' : '📡 Нет соединения','warn');
     }
 }
 
@@ -35,35 +51,222 @@ function saveOfflineScore(roundId,playerId,hole,score){
     var pending=JSON.parse(localStorage.getItem(OFFLINE_KEY)||'[]');
     pending.push({roundId:roundId,playerId:playerId,hole:hole,score:score,timestamp:Date.now(),type:'score'});
     localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending));
+    updateOfflineQueueBadge();
 }
 
 function syncOfflineScores(){
     if(!navigator.onLine||typeof db==='undefined')return;
     var pending=JSON.parse(localStorage.getItem(OFFLINE_KEY)||'[]');
-    if(pending.length===0)return;
+    if(pending.length===0){
+        updateOfflineQueueBadge();
+        return;
+    }
     var promises=pending.map(function(item){
         if(item.type==='score')return db.ref('rounds/'+item.roundId+'/players/'+item.playerId+'/scores/'+item.hole).set(item.score);
         return Promise.resolve();
     });
     Promise.all(promises).then(function(){
         localStorage.removeItem(OFFLINE_KEY);
-        if(typeof toast==='function')toast('✅ Синхронизировано '+pending.length+' записей','success');
+        if(typeof toast==='function')toast((currentLang === 'en' ? '✅ Synced ' : '✅ Синхронизировано ') + pending.length + (currentLang === 'en' ? ' records' : ' записей'),'success');
+        updateOfflineQueueBadge();
     });
 }
 
+function updateOfflineQueueBadge() {
+    var pending = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+    var badgeEl = document.getElementById('offline-queue-badge');
+
+    if (!pending.length) {
+        if (badgeEl) badgeEl.classList.add('hide');
+        return;
+    }
+
+    if (!badgeEl) {
+        badgeEl = document.createElement('div');
+        badgeEl.id = 'offline-queue-badge';
+        badgeEl.className = 'offline-queue-badge';
+        if (document.body) document.body.appendChild(badgeEl);
+    }
+
+    var badgeText = currentLang === 'en'
+        ? pending.length + ' pending scores waiting for sync'
+        : pending.length + ' записей ожидают отправки';
+
+    badgeEl.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> ⏳ ' + badgeText;
+    badgeEl.classList.remove('hide');
+}
+
+window.addEventListener('load', function() { updateOfflineQueueBadge(); });
+
 var deferredPrompt;
-window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredPrompt=e;setTimeout(function(){if(deferredPrompt)showInstallBanner();},3000);});
+window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault();
+    deferredPrompt=e;
+    if (!isIOS()) {
+        setTimeout(function(){if(deferredPrompt)showInstallBanner();},3000);
+    }
+});
+
+function checkPWAInstallPrompt() {
+    if (localStorage.getItem('pwa_install_dismissed')) return;
+    if (isStandalone()) return;
+
+    if (isIOS()) {
+        setTimeout(showIOSInstallBanner, 2000);
+    }
+}
 
 function showInstallBanner(){
     if(localStorage.getItem('pwa_install_dismissed'))return;
     var banner=document.createElement('div');
     banner.id='install-banner';banner.className='install-banner';
-    banner.innerHTML='<div class="install-content"><div><strong>📱 Установить приложение</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">Работает оффлайн</div></div><div style="display:flex;gap:8px;"><button class="btn btn-og btn-sm" onclick="dismissInstall()">Позже</button><button class="btn btn-g btn-sm" onclick="installPWA()">Установить</button></div></div>';
+    var titleStr = currentLang === 'en' ? '📱 Install Web App' : '📱 Установить приложение';
+    var subStr = currentLang === 'en' ? 'Works offline' : 'Работает оффлайн';
+    var laterStr = currentLang === 'en' ? 'Later' : 'Позже';
+    var installStr = currentLang === 'en' ? 'Install' : 'Установить';
+
+    banner.innerHTML='<div class="install-content"><div><strong>' + titleStr + '</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">' + subStr + '</div></div><div style="display:flex;gap:8px;"><button class="btn btn-og btn-sm" onclick="dismissInstall()">' + laterStr + '</button><button class="btn btn-g btn-sm" onclick="installPWA()">' + installStr + '</button></div></div>';
     document.body.appendChild(banner);
     setTimeout(function(){banner.classList.add('show');},100);
 }
 
+function showIOSInstallBanner() {
+    if (localStorage.getItem('pwa_install_dismissed')) return;
+    if (document.getElementById('ios-install-banner')) return;
+
+    var banner = document.createElement('div');
+    banner.id = 'ios-install-banner';
+    banner.className = 'ios-install-banner';
+
+    var headerStr = currentLang === 'en' ? '📱 Add to Home Screen (iPhone)' : '📱 Установить на экран «Домой» (iPhone)';
+    var subStr = currentLang === 'en' ? 'Required for Push notifications on iOS' : 'Необходимо для работы Push-уведомлений на iOS';
+    var step1Str = currentLang === 'en' ? 'Tap <strong>"Share"</strong> button <i class="fas fa-arrow-up-from-bracket" style="color:var(--gold);"></i> in Safari' : 'Нажмите кнопку <strong>«Поделиться»</strong> <i class="fas fa-arrow-up-from-bracket" style="color:var(--gold);"></i> в Safari';
+    var step2Str = currentLang === 'en' ? 'Select <strong>"Add to Home Screen"</strong> <i class="far fa-plus-square" style="color:var(--gold);"></i>' : 'Выберите <strong>«На экран "Домой"»</strong> <i class="far fa-plus-square" style="color:var(--gold);"></i>';
+    var step3Str = currentLang === 'en' ? 'Tap <strong>"Add"</strong> and launch icon from Home Screen' : 'Нажмите <strong>«Добавить»</strong> и запустите иконку с экрана';
+
+    banner.innerHTML =
+        '<div class="ios-install-header">' +
+        '<img src="img/logo.png" alt="Pestovo" class="ios-install-logo">' +
+        '<div><strong>' + headerStr + '</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">' + subStr + '</div></div>' +
+        '<button class="ios-install-close" onclick="dismissIOSInstall()">&times;</button>' +
+        '</div>' +
+        '<div class="ios-install-steps">' +
+        '<div class="ios-step"><span class="ios-num">1</span> ' + step1Str + '</div>' +
+        '<div class="ios-step"><span class="ios-num">2</span> ' + step2Str + '</div>' +
+        '<div class="ios-step"><span class="ios-num">3</span> ' + step3Str + '</div>' +
+        '</div>';
+
+    document.body.appendChild(banner);
+    setTimeout(function() { banner.classList.add('show'); }, 100);
+}
+
 function installPWA(){if(!deferredPrompt)return;deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;var b=document.getElementById('install-banner');if(b)b.remove();});}
 function dismissInstall(){localStorage.setItem('pwa_install_dismissed','1');var b=document.getElementById('install-banner');if(b)b.remove();}
-window.installPWA=installPWA;window.dismissInstall=dismissInstall;
+function dismissIOSInstall(){localStorage.setItem('pwa_install_dismissed','1');var b=document.getElementById('ios-install-banner');if(b)b.remove();}
+window.installPWA=installPWA;window.dismissInstall=dismissInstall;window.dismissIOSInstall=dismissIOSInstall;
 setInterval(function(){if(navigator.onLine)syncOfflineScores();},60000);
+
+// ==========================================
+// ПУШ-УВЕДОМЛЕНИЯ ВЫЗОВОВ (СУДЬЯ / МАРШАЛ)
+// ==========================================
+function requestNotificationPermission(callback) {
+    if (!('Notification' in window)) {
+        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Notifications supported when added to Home Screen' : 'Уведомления поддерживаются при добавлении приложения на экран «Домой»', 'warn');
+        if (typeof callback === 'function') callback(false);
+        return;
+    }
+    Notification.requestPermission().then(function(perm) {
+        if (perm === 'granted') {
+            if (typeof toast === 'function') toast(currentLang === 'en' ? '🔔 Call push notifications enabled!' : '🔔 Пуш-уведомления вызовов включены!', 'success');
+            initBackgroundAlertListener();
+            if (typeof callback === 'function') callback(true);
+        } else {
+            if (typeof toast === 'function') toast(currentLang === 'en' ? 'Notifications declined by browser' : 'Уведомления отклонены браузером', 'warn');
+            if (typeof callback === 'function') callback(false);
+        }
+    });
+}
+
+function showPushNotification(title, body, targetUrl) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    var options = {
+        body: body || '',
+        icon: 'img/logo.png',
+        badge: 'img/logo.png',
+        vibrate: [200, 100, 200],
+        data: { url: targetUrl || 'admin.html' }
+    };
+
+    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(function(reg) {
+            reg.showNotification(title, options);
+        }).catch(function() {
+            try { new Notification(title, options); } catch(e) {}
+        });
+    } else {
+        try { new Notification(title, options); } catch(e) {}
+    }
+}
+
+var globalAlertsKnown = {};
+var bgAlertsListenerAttached = false;
+
+function initBackgroundAlertListener() {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || typeof db === 'undefined' || bgAlertsListenerAttached) return;
+    bgAlertsListenerAttached = true;
+
+    db.ref('alerts').orderByChild('status').equalTo('active').on('value', function(sn) {
+        var alerts = sn.val() || {};
+        var isFirstRun = Object.keys(globalAlertsKnown).length === 0;
+
+        Object.entries(alerts).forEach(function(e) {
+            var id = e[0], a = e[1];
+            if (!globalAlertsKnown[id]) {
+                globalAlertsKnown[id] = true;
+                if (!isFirstRun) {
+                    var title = a.type === 'referee' ? (currentLang === 'en' ? '🚨 REFEREE CALL!' : '🚨 ВЫЗОВ СУДЬИ!') : (currentLang === 'en' ? '🚨 MARSHAL CALL!' : '🚨 ВЫЗОВ МАРШАЛА!');
+                    var body = (currentLang === 'en' ? 'Hole #' : 'Лунка №') + a.hole + ' | ' + (currentLang === 'en' ? 'Player: ' : 'Игрок: ') + (a.playerName || 'Player') + (typeof fmtTime === 'function' ? ' (' + fmtTime(a.time) + ')' : '');
+                    showPushNotification(title, body, 'admin.html');
+                }
+            }
+        });
+    });
+}
+
+var globalBroadcastsKnown = {};
+var bgBroadcastListenerAttached = false;
+
+function initBackgroundBroadcastListener() {
+    if (typeof db === 'undefined' || bgBroadcastListenerAttached) return;
+    bgBroadcastListenerAttached = true;
+
+    db.ref('broadcasts').on('value', function(sn) {
+        var broadcasts = sn.val() || {};
+        var isFirstRun = Object.keys(globalBroadcastsKnown).length === 0;
+
+        Object.entries(broadcasts).forEach(function(e) {
+            var id = e[0], b = e[1];
+            if (!globalBroadcastsKnown[id]) {
+                globalBroadcastsKnown[id] = true;
+                if (!isFirstRun) {
+                    var title = b.title || (currentLang === 'en' ? '📢 Pestovo Announcement' : '📢 Анонс Пестово');
+                    var body = b.body || '';
+                    var targetUrl = b.link || 'tournaments.html';
+
+                    if (typeof showPushNotification === 'function') {
+                        showPushNotification(title, body, targetUrl);
+                    }
+                    if (typeof toast === 'function') {
+                        toast('📢 <b>' + title + '</b><br>' + body, 'info');
+                    }
+                    if (typeof vib === 'function') vib([150, 50, 150]);
+                }
+            }
+        });
+    });
+}
+
+window.addEventListener('load', function() {
+    initBackgroundBroadcastListener();
+});

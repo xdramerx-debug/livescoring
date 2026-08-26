@@ -18,218 +18,57 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
+        /* ===== ВКЛАДКИ РЕЖИМА: ОДИНОЧНЫЙ / ГРУППОВОЙ ===== */
         .mode-toggle-group {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            max-width: 560px;
+            margin: 0 auto 22px;
         }
         .mode-toggle-btn {
             flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 54px;
             padding: 14px 10px;
-            border-radius: 12px;
+            border-radius: 14px;
             background: rgba(255,255,255,0.05);
             border: 2px solid var(--border);
             color: var(--white);
+            font-family: var(--ff, 'Inter', sans-serif);
             font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             text-align: center;
             transition: all 0.2s ease;
+            -webkit-tap-highlight-color: rgba(201,168,76,0.25);
+            touch-action: manipulation;
         }
+        .mode-toggle-btn i { font-size: 15px; }
         .mode-toggle-btn.active {
             background: rgba(201,168,76,0.18);
             border-color: var(--gold);
             color: var(--gold);
+            box-shadow: 0 6px 20px rgba(201,168,76,0.18);
         }
-        .player-search-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(201, 168, 76, 0.25);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            position: relative;
-            overflow: visible !important;
-        }
-        .search-results-list {
-            position: absolute !important;
-            top: 100% !important;
-            left: 0 !important;
-            right: 0 !important;
-            z-index: 9999999 !important;
-            background: #0d1e11 !important;
-            border: 2px solid var(--gold) !important;
-            border-radius: 10px !important;
-            max-height: 260px !important;
-            overflow-y: auto !important;
-            -webkit-overflow-scrolling: touch !important;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.85) !important;
-            margin-top: 4px !important;
-            touch-action: manipulation !important;
-        }
-        .search-result-item {
-            padding: 12px 16px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            cursor: pointer !important;
-            border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-            min-height: 48px !important;
-            box-sizing: border-box !important;
-            user-select: none !important;
-            -webkit-user-select: none !important;
-            -webkit-tap-highlight-color: rgba(201, 168, 76, 0.3) !important;
-        }
-        .search-result-item:last-child {
-            border-bottom: none !important;
-        }
-        .search-result-item:active, .search-result-item:hover {
-            background: rgba(201,168,76,0.25) !important;
-        }
-
-        /* ===== ВЫБОР РЕЖИМА: 2 КОМПАКТНЫХ БЛОКА (mobile-first) ===== */
-        .mode-options {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-width: 560px;
-            margin: 4px auto 0;
-        }
-        .mode-option {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            width: 100%;
-            text-align: left;
-            text-decoration: none;
-            color: var(--text);
-            font-family: var(--fb);
-            font-size: 14px;
-            background: rgba(19,34,24,0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 2px solid var(--border);
-            border-radius: 16px;
-            padding: 14px 14px 14px 12px;
-            cursor: pointer;
-            transition: var(--t);
-            -webkit-tap-highlight-color: rgba(201,168,76,0.25);
-            touch-action: manipulation;
-            box-sizing: border-box;
-        }
-        .mode-option:hover, .mode-option:focus-visible {
-            border-color: var(--gold);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 26px rgba(201,168,76,0.18);
-        }
-        .mode-option:active { transform: scale(0.985); }
-        .mode-option-icon {
-            flex: 0 0 auto;
-            width: 50px;
-            height: 50px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            color: var(--gold);
-            background: rgba(201,168,76,0.14);
-            border: 1px solid rgba(201,168,76,0.3);
-        }
-        .mode-option-group .mode-option-icon {
-            color: var(--blue);
-            background: rgba(90,173,224,0.14);
-            border-color: rgba(90,173,224,0.35);
-        }
-        .mode-option-body {
-            flex: 1 1 auto;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-        }
-        .mode-option-title {
-            font-family: var(--ff);
-            font-size: 17px;
-            font-weight: 700;
-            color: var(--white);
-            line-height: 1.25;
-        }
-        .mode-option-desc {
-            font-size: 12.5px;
-            color: var(--muted);
-            line-height: 1.45;
-            margin-top: 3px;
-        }
-        .mode-option-cta {
-            flex: 0 0 auto;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 700;
-            white-space: nowrap;
-            color: var(--bg);
-            background: linear-gradient(135deg, #c9a84c 0%, #e0c76a 50%, #b89228 100%);
-            padding: 8px 13px;
-            border-radius: 24px;
-            box-shadow: 0 4px 14px rgba(201,168,76,0.3);
-        }
-        .mode-option-cta i { font-size: 11px; }
-        .mode-option-group .mode-option-cta {
-            color: #fff;
-            background: linear-gradient(135deg, #3d8bc4 0%, #5aade0 50%, #2f74a8 100%);
-            box-shadow: 0 4px 14px rgba(90,173,224,0.3);
-        }
-
-        body.sun-mode .mode-option {
+        .mode-toggle-btn:not(.active):hover { border-color: rgba(201,168,76,0.45); }
+        body.sun-mode .mode-toggle-btn {
             background: #fff;
             border: 2px solid #000;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
             color: #000;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
         }
-        body.sun-mode .mode-option:hover, body.sun-mode .mode-option:focus-visible {
+        body.sun-mode .mode-toggle-btn.active {
+            background: rgba(201,168,76,0.2);
             border-color: #1b5e20;
-            box-shadow: 0 10px 26px rgba(0,0,0,0.15);
+            color: #1b5e20;
         }
-        body.sun-mode .mode-option-title { color: #000; }
-        body.sun-mode .mode-option-desc { color: #222; }
-
-        @media (max-width: 360px) {
-            .mode-option { gap: 10px; padding: 12px 10px 12px 10px; }
-            .mode-option-icon { width: 44px; height: 44px; font-size: 19px; border-radius: 12px; }
-            .mode-option-title { font-size: 15px; }
-            .mode-option-desc { font-size: 11.5px; }
-            .mode-option-cta { padding: 7px 10px; font-size: 11px; }
-        }
-
-        @media (min-width: 720px) {
-            .mode-options {
-                flex-direction: row;
-                max-width: 720px;
-                gap: 16px;
-            }
-            .mode-option {
-                flex: 1 1 0;
-                flex-direction: column;
-                align-items: stretch;
-                text-align: center;
-                gap: 12px;
-                padding: 24px 20px 20px;
-            }
-            .mode-option-icon {
-                width: 64px;
-                height: 64px;
-                font-size: 26px;
-                margin: 0 auto;
-                border-radius: 18px;
-            }
-            .mode-option-title { font-size: 19px; }
-            .mode-option-desc { font-size: 13px; }
-            .mode-option-cta {
-                justify-content: center;
-                margin-top: 4px;
-                padding: 10px 16px;
-                font-size: 13px;
-            }
+        @media (max-width: 380px) {
+            .mode-toggle-group { gap: 8px; }
+            .mode-toggle-btn { font-size: 12.5px; padding: 12px 6px; gap: 6px; }
+            .mode-toggle-btn i { font-size: 13px; }
         }
     </style>
 </head>
@@ -265,7 +104,7 @@
 <div class="page-head" id="page-head">
     <div class="container">
         <h1 class="page-title" id="page-title" data-i18n="page_title_live">Начать раунд</h1>
-        <p class="page-sub" id="page-sub" data-i18n="page_sub_live">Выберите режим или перейдите к игре</p>
+        <p class="page-sub" id="page-sub" data-i18n="page_sub_live">Одиночный или групповой раунд — переключайте вкладки</p>
     </div>
 </div>
 
@@ -274,89 +113,122 @@
     <!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" -->
     <div id="my-active-rounds-container" class="hidden"></div>
 
-    <!-- ВЫБОР РЕЖИМА -->
-    <div id="mode-view">
-        <div class="mode-options">
-            <a href="solo.html" class="mode-option">
-                <span class="mode-option-icon"><i class="fas fa-user"></i></span>
-                <span class="mode-option-body">
-                    <span class="mode-option-title" data-i18n="mode_solo_title">Одиночный раунд</span>
-                    <span class="mode-option-desc" data-i18n="mode_solo_desc">Играете один. Сами вводите свой счёт на каждой лунке.</span>
-                </span>
-                <span class="mode-option-cta"><span data-i18n="mode_start">Начать</span> <i class="fas fa-chevron-right"></i></span>
-            </a>
-            <button type="button" class="mode-option mode-option-group" onclick="showGroupSetup();return false;">
-                <span class="mode-option-icon"><i class="fas fa-users"></i></span>
-                <span class="mode-option-body">
-                    <span class="mode-option-title" data-i18n="mode_group_title">Групповой раунд</span>
-                    <span class="mode-option-desc" data-i18n="mode_group_desc">От 2 до 4 игроков. Двойной ввод (свой счёт + счёт партнёра).</span>
-                </span>
-                <span class="mode-option-cta"><span data-i18n="mode_start">Начать</span> <i class="fas fa-chevron-right"></i></span>
+    <!-- ===== НАСТРОЙКА РАУНДА: 2 ВКЛАДКИ НА ОДНОЙ СТРАНИЦЕ ===== -->
+    <div id="setup">
+
+        <!-- ПЕРЕКЛЮЧАТЕЛЬ ВКЛАДОК -->
+        <div class="mode-toggle-group" id="setup-tabs" role="tablist">
+            <button type="button" class="mode-toggle-btn active" id="tab-solo" role="tab" onclick="switchSetupMode('solo')">
+                <i class="fas fa-user"></i> <span data-i18n="mode_solo_title">Одиночный раунд</span>
+            </button>
+            <button type="button" class="mode-toggle-btn" id="tab-group" role="tab" onclick="switchSetupMode('group')">
+                <i class="fas fa-users"></i> <span data-i18n="mode_group_title">Групповой раунд</span>
             </button>
         </div>
-    </div>
 
-    <!-- НАСТРОЙКА ГРУППОВОГО РАУНДА -->
-    <div id="group-setup" class="hidden">
-        <button class="btn btn-og btn-sm" onclick="backToModes()" style="margin-bottom:16px;">
-            <i class="fas fa-arrow-left"></i> <span data-i18n="back_btn">Назад</span>
-        </button>
-
-        <div class="card setup-card">
-            <h2><i class="fas fa-users"></i> <span data-i18n="group_setup_title">Настройка группы</span></h2>
-
-            <div class="form-row">
-                <div class="form-group" style="flex:1.4 1 130px;">
-                    <label><i class="fas fa-trophy"></i> <span data-i18n="tournament_opt">Турнир (опционально)</span></label>
-                    <select id="g-tournament" class="form-input">
-                        <option value="" data-i18n="no_tournament">— Без турнира —</option>
-                    </select>
-                </div>
-                <div class="form-group" style="flex:1 1 100px;">
-                    <label><i class="fas fa-hashtag"></i> <span data-i18n="player_count">Игроки</span></label>
-                    <select id="g-count" class="form-input" onchange="buildPlayerSlots()">
-                        <option value="2" selected data-i18n="player_count_2">2 игрока</option>
-                        <option value="3" data-i18n="player_count_3">3 игрока</option>
-                        <option value="4" data-i18n="player_count_4">4 игрока</option>
-                    </select>
-                </div>
+        <!-- ===== ВКЛАДКА 1: ОДИНОЧНЫЙ РАУНД ===== -->
+        <div id="solo-setup">
+            <div id="guest-banner" class="card hidden" style="background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
+                <p style="color:var(--gold);font-size:14px;text-align:center;">
+                    <i class="fas fa-info-circle"></i> <span data-i18n="guest_notice">Вы играете как гость.</span> <a href="auth.html?redirect=setup-round.html" style="color:var(--gold);font-weight:700;" data-i18n="login_link">Войти в аккаунт</a><span data-i18n="guest_notice_suffix">, чтобы сохранить раунд в истории.</span>
+                </p>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label><i class="fas fa-clock"></i> <span data-i18n="start_time">Время старта</span></label>
-                    <input type="time" id="g-time" class="form-input">
+            <div class="card setup-card">
+                <h2><i class="fas fa-cog"></i> <span data-i18n="round_setup">Настройки раунда</span></h2>
+
+                <h3 class="setup-section-title"><i class="fas fa-user"></i> <span data-i18n="player_data">Данные игрока</span></h3>
+                <div class="form-row">
+                    <div class="form-group"><label data-i18n="first_name">Имя</label><input type="text" id="s-firstname" class="form-input" data-i18n-placeholder="placeholder_first_name" placeholder="Иван"></div>
+                    <div class="form-group"><label data-i18n="last_name">Фамилия</label><input type="text" id="s-lastname" class="form-input" data-i18n-placeholder="placeholder_last_name" placeholder="Петров"></div>
                 </div>
-                <div class="form-group">
-                    <label><i class="fas fa-flag"></i> <span data-i18n="start_hole">Стартовая лунка</span></label>
-                    <select id="g-hole" class="form-input"></select>
+
+                <h3 class="setup-section-title"><i class="fas fa-clock"></i> <span data-i18n="time_and_hole">Время и лунка</span></h3>
+                <div class="form-row">
+                    <div class="form-group"><label data-i18n="start_time">Время старта</label><input type="time" id="s-time" class="form-input"></div>
+                    <div class="form-group"><label data-i18n="start_hole">Стартовая лунка</label><select id="s-hole" class="form-input"></select></div>
                 </div>
+
+                <h3 class="setup-section-title"><i class="fas fa-gamepad"></i> <span data-i18n="game_format">Формат игры</span></h3>
+                <div class="form-row form-row-3">
+                    <div class="form-group"><label data-i18n="gender_label">Пол</label><select id="s-gender" class="form-input" onchange="calcSoloFieldHcp()"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Женщина</option></select></div>
+                    <div class="form-group"><label data-i18n="tee_select">ТИ</label><select id="s-tee" class="form-input" onchange="calcSoloFieldHcp()"><option value="bk" data-i18n="tee_opt_bk">⬛ Чёрный</option><option value="bl" data-i18n="tee_opt_bl">🟦 Синий</option><option value="wh" selected data-i18n="tee_opt_wh">⬜ Белый</option><option value="rd" data-i18n="tee_opt_rd">🟥 Красный</option></select></div>
+                    <div class="form-group"><label data-i18n="format_select">Формат</label><select id="s-format" class="form-input"><option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option></select></div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group"><label data-i18n="exact_hcp">Точный гандикап</label><input type="text" id="s-exact-hcp" class="form-input" data-i18n-placeholder="placeholder_hcp_calc" placeholder="+2.4 или 12.4" oninput="calcSoloFieldHcp()"></div>
+                    <div class="form-group"><label data-i18n="field_hcp">Полевой гандикап</label><input type="text" id="s-field-hcp" class="form-input" readonly placeholder="—"></div>
+                </div>
+
+                <button class="btn btn-g btn-block" onclick="startSolo()" style="margin-top:12px;"><i class="fas fa-play"></i> <span data-i18n="start_round_btn">Начать раунд</span></button>
             </div>
 
-            <div class="form-row">
-                <div class="form-group" style="flex:1 1 100%;">
-                    <label><i class="fas fa-gamepad"></i> <span data-i18n="format_select">Формат</span></label>
-                    <select id="g-format" class="form-input">
-                        <option value="Stroke Play">Stroke Play</option>
-                        <option value="Stableford">Stableford</option>
-                        <option value="Match Play 1v1" data-i18n="format_match_1v1">Матч-плей (1х1)</option>
-                        <option value="Match Play 2v2" data-i18n="format_match_2v2">Матч-плей (2х2)</option>
-                        <option value="Scramble" data-i18n="format_scramble">Скрембл (Scramble)</option>
-                    </select>
-                </div>
+            <div class="card">
+                <h2><i class="fas fa-info-circle"></i> <span data-i18n="timings_title">Тайминги</span></h2>
+                <div id="timing-preview"></div>
             </div>
-
-            <div id="player-slots"></div>
-
-            <div id="g-timing-preview" style="margin-top:10px;"></div>
-
-            <button class="btn btn-g btn-block" onclick="startGroup()" style="margin-top:12px;">
-                <i class="fas fa-play"></i> <span data-i18n="start_round_btn">Начать раунд</span>
-            </button>
         </div>
-    </div>
 
-    <!-- ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ / ГОСТЕЙ) -->
+        <!-- ===== ВКЛАДКА 2: ГРУППОВОЙ РАУНД ===== -->
+        <div id="group-setup" class="hidden">
+            <div class="card setup-card">
+                <h2><i class="fas fa-users"></i> <span data-i18n="group_setup_title">Настройка группы</span></h2>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex:1.4 1 130px;">
+                        <label><i class="fas fa-trophy"></i> <span data-i18n="tournament_opt">Турнир (опционально)</span></label>
+                        <select id="grp-tournament" class="form-input">
+                            <option value="" data-i18n="no_tournament">— Без турнира —</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1 1 100px;">
+                        <label><i class="fas fa-hashtag"></i> <span data-i18n="player_count">Игроки</span></label>
+                        <select id="grp-count" class="form-input" onchange="buildPlayerSlots()">
+                            <option value="2" selected data-i18n="player_count_2">2 игрока</option>
+                            <option value="3" data-i18n="player_count_3">3 игрока</option>
+                            <option value="4" data-i18n="player_count_4">4 игрока</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-clock"></i> <span data-i18n="start_time">Время старта</span></label>
+                        <input type="time" id="grp-time" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-flag"></i> <span data-i18n="start_hole">Стартовая лунка</span></label>
+                        <select id="grp-hole" class="form-input"></select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex:1 1 100%;">
+                        <label><i class="fas fa-gamepad"></i> <span data-i18n="format_select">Формат</span></label>
+                        <select id="grp-format" class="form-input">
+                            <option value="Stroke Play">Stroke Play</option>
+                            <option value="Stableford">Stableford</option>
+                            <option value="Match Play 1v1" data-i18n="format_match_1v1">Матч-плей (1х1)</option>
+                            <option value="Match Play 2v2" data-i18n="format_match_2v2">Матч-плей (2х2)</option>
+                            <option value="Scramble" data-i18n="format_scramble">Скрембл (Scramble)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="player-slots"></div>
+
+                <div id="grp-timing-preview" style="margin-top:10px;"></div>
+
+                <button class="btn btn-g btn-block" onclick="startGroup()" style="margin-top:12px;">
+                    <i class="fas fa-play"></i> <span data-i18n="start_round_btn">Начать раунд</span>
+                </button>
+            </div>
+        </div>
+
+    </div><!-- /#setup -->
+
+    <!-- ===== ГРУППОВОЙ РАУНД: ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ / ГОСТЕЙ) ===== -->
     <div id="group-view" class="hidden">
         <div class="card" style="background:rgba(90,173,224,0.1);border-color:var(--blue);">
             <p style="color:var(--blue);text-align:center;font-size:14px;margin:0;" data-i18n="view_only_group_desc">
@@ -383,7 +255,7 @@
         </div>
     </div>
 
-    <!-- АКТИВНЫЙ ВВОД (ТОЛЬКО УЧАСТНИКИ) -->
+    <!-- ===== ГРУППОВОЙ РАУНД: АКТИВНЫЙ ВВОД (ТОЛЬКО УЧАСТНИКИ) ===== -->
     <div id="active-scoring-view" class="hidden">
 
         <div class="card">
@@ -415,12 +287,12 @@
             </div>
 
             <!-- РАСШИРЕННЫЙ ТРЕКИНГ УДАРОВ (ОПЦИОНАЛЬНО В МЕНЮ ИНСТРУМЕНТОВ) -->
-            <div id="shot-tracking-container" class="card hidden" style="background:var(--input);padding:14px;margin-bottom:16px;">
+            <div id="gr-shot-tracking-container" class="card hidden" style="background:var(--input);padding:14px;margin-bottom:16px;">
                 <h3 style="font-size:13px;color:var(--gold);margin-bottom:10px;"><i class="fas fa-chart-line"></i> <span data-i18n="shot_tracking">Трекинг ударов (FIR / GIR / Putts)</span></h3>
                 <div class="form-row">
                     <div class="form-group">
                         <label style="font-size:11px;">FIR (Fairway):</label>
-                        <select id="track-fir" class="form-input" style="padding:6px;font-size:12px;">
+                        <select id="gr-track-fir" class="form-input" style="padding:6px;font-size:12px;">
                             <option value="">— FIR —</option>
                             <option value="center">✅ Fairway Center</option>
                             <option value="left">← Left Rough</option>
@@ -430,7 +302,7 @@
                     </div>
                     <div class="form-group">
                         <label style="font-size:11px;">GIR (Green):</label>
-                        <select id="track-gir" class="form-input" style="padding:6px;font-size:12px;">
+                        <select id="gr-track-gir" class="form-input" style="padding:6px;font-size:12px;">
                             <option value="">— GIR —</option>
                             <option value="yes">✅ GIR Yes</option>
                             <option value="no">❌ No</option>
@@ -438,7 +310,7 @@
                     </div>
                     <div class="form-group">
                         <label style="font-size:11px;" data-i18n="putts_label">Putts (Патты):</label>
-                        <select id="track-putts" class="form-input" style="padding:6px;font-size:12px;">
+                        <select id="gr-track-putts" class="form-input" style="padding:6px;font-size:12px;">
                             <option value="">— Putts —</option>
                             <option value="1">1 Putt 🎯</option>
                             <option value="2">2 Putts</option>
@@ -506,13 +378,130 @@
         </button>
     </div>
 
+    <!-- ===== ОДИНОЧНЫЙ РАУНД: ИГРА И ВВОД СЧЁТА (ТОЛЬКО ДЛЯ ИГРОКА) ===== -->
+    <div id="game" class="hidden">
+
+        <!-- БЛОК 1: ВВОД СЧЁТА И ЛУНКИ 1-18 (2 СТРОКИ ПО 9 ЛУНОК - 100% БЕЗ СКРОЛЛА) -->
+        <div class="card setup-card" id="play-hole-card" style="padding:16px;margin-bottom:16px;">
+            <div class="hole-display">
+                <div class="hole-box"><div class="hole-lbl" data-i18n="hole_lbl">Лунка</div><div class="hole-val" id="g-hole">1</div></div>
+                <div class="hole-box h-par"><div class="hole-lbl" data-i18n="par_lbl">Пар</div><div class="hole-val" id="g-par">4</div></div>
+                <div class="hole-box h-dist"><div class="hole-lbl" data-i18n="dist_lbl">Метры</div><div class="hole-val" id="g-dist" style="font-size:24px;">—</div></div>
+                <div class="hole-box"><div class="hole-lbl" data-i18n="deadline_lbl">Дедлайн</div><div class="hole-val" id="g-deadline" style="font-size:20px;color:var(--gold-l);">—</div></div>
+            </div>
+
+            <!-- HOLE NAVIGATION (2 ROWS OF 9 HOLES - 100% NO-SCROLL GRID MATRIX) -->
+            <div class="hole-nav" id="g-holes" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-bottom:16px;width:100%;box-sizing:border-box;"></div>
+
+            <div class="score-area">
+                <div class="score-result" id="g-result"></div>
+                <div class="score-disp" id="g-disp">—</div>
+                <div class="score-btns">
+                    <button class="score-minus" onclick="adjSolo(-1)">−</button>
+                    <button class="score-par-btn" onclick="setParSolo()">Par</button>
+                    <button class="score-plus" onclick="adjSolo(1)">+</button>
+                </div>
+
+                <!-- РАСШИРЕННЫЙ ТРЕКИНГ УДАРОВ (ОПЦИОНАЛЬНО В МЕНЮ ИНСТРУМЕНТОВ) -->
+                <div id="shot-tracking-container" class="card hidden" style="background:var(--input);padding:14px;margin:16px 0 10px;">
+                    <h3 style="font-size:13px;color:var(--gold);margin-bottom:10px;"><i class="fas fa-chart-line"></i> <span data-i18n="shot_tracking">Трекинг ударов (FIR / GIR / Putts)</span></h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label style="font-size:11px;">FIR (Fairway):</label>
+                            <select id="track-fir" class="form-input" style="padding:6px;font-size:12px;">
+                                <option value="">— FIR —</option>
+                                <option value="center">✅ Fairway Center</option>
+                                <option value="left">← Left Rough</option>
+                                <option value="right">Right → Rough</option>
+                                <option value="miss">🚫 Missed</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:11px;">GIR (Green):</label>
+                            <select id="track-gir" class="form-input" style="padding:6px;font-size:12px;">
+                                <option value="">— GIR —</option>
+                                <option value="yes">✅ GIR Yes</option>
+                                <option value="no">❌ No</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:11px;" data-i18n="putts_label">Putts (Патты):</label>
+                            <select id="track-putts" class="form-input" style="padding:6px;font-size:12px;">
+                                <option value="">— Putts —</option>
+                                <option value="1">1 Putt 🎯</option>
+                                <option value="2">2 Putts</option>
+                                <option value="3">3+ Putts</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MAIN ACTION BUTTON (СЛЕДУЮЩАЯ ЛУНКА / ЗАВЕРШИТЬ РАУНД) -->
+                <button class="btn btn-g btn-block" id="btn-solo-action" onclick="saveSolo()" style="padding:16px;font-size:16px;min-height:52px;margin-top:14px;">
+                    <i class="fas fa-arrow-right"></i> <span id="btn-solo-action-txt" data-i18n="next_hole_btn">Следующая лунка</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- БЛОК 2: КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
+        <div style="display:flex;gap:10px;margin:16px 0;">
+            <button class="btn btn-danger" style="flex:1;font-size:13px;padding:12px 8px;min-height:48px;" onclick="callOfficialSolo('referee')">
+                <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
+            </button>
+            <button class="btn btn-warning" style="flex:1;font-size:13px;padding:12px 8px;min-height:48px;" onclick="callOfficialSolo('marshal')">
+                <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
+            </button>
+        </div>
+
+        <!-- БЛОК 3: ИНФОРМАЦИЯ О СТАРТОВОМ ВРЕМЕНИ, ТИ И ТАЙМИНГАХ -->
+        <div class="timing-info" id="round-info" style="margin-bottom:12px;"></div>
+        <div id="timing-notice" style="margin-bottom:16px;"></div>
+
+        <!-- БЛОК 4: СВОРАЧИВАЕМАЯ СЧЁТНАЯ КАРТОЧКА ПО ЛУНКАМ -->
+        <div class="round-card" style="margin:16px 0;">
+            <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('solo-sc-panel')" style="width:100%;min-height:44px;">
+                <i class="fas fa-chevron-down" id="solo-sc-panel-icon"></i> 
+                <span id="solo-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
+            </button>
+            <div id="solo-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+                <div class="card" style="padding:12px;max-width:100%;overflow-x:hidden;">
+                    <h2><i class="fas fa-table"></i> <span data-i18n="hole_scorecard">Счётная карточка по лункам</span></h2>
+                    <div id="mini-card"></div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-og btn-block" onclick="finishSolo()" style="margin-bottom:20px;min-height:48px;"><i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span></button>
+    </div>
+
+    <!-- ===== ОДИНОЧНЫЙ РАУНД: ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ / ГОСТЕЙ) ===== -->
+    <div id="read-only-view" class="hidden">
+        <div class="card" style="background:rgba(90,173,224,0.1);border-color:var(--blue);">
+            <p style="color:var(--blue);text-align:center;font-size:14px;margin:0;">
+                <i class="fas fa-eye"></i> <span data-i18n="view_mode_notice">Режим просмотра.</span>
+            </p>
+        </div>
+        <div class="timing-info" id="ro-round-info"></div>
+
+        <div class="round-card" style="margin:12px 0;">
+            <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('ro-solo-sc-panel')" style="width:100%;">
+                <i class="fas fa-chevron-down" id="ro-solo-sc-panel-icon"></i> 
+                <span id="ro-solo-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
+            </button>
+            <div id="ro-solo-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+                <div class="card" style="margin-bottom:10px;"><h2><i class="fas fa-trophy"></i> <span data-i18n="round_score">Счёт раунда</span></h2><div id="ro-live-stats"></div></div>
+                <div class="card"><h2><i class="fas fa-table"></i> <span data-i18n="hole_scorecard">Счётная карточка по лункам</span></h2><div id="ro-mini-card"></div></div>
+            </div>
+        </div>
+    </div>
+
 </main>
 
 <footer class="footer">
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span id="site-version">1.0.3</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.1.0</span></p>
         </div>
     </div>
 </footer>
@@ -523,12 +512,7 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/utils.js?v=7"></script>
 <script src="js/live.js"></script>
+<script src="js/solo.js?v=7"></script>
 <script src="js/pwa.js"></script>
-<script>
-    // Установка версии сайта
-    var SITE_VERSION = '1.0.3';
-    var versionEl = document.getElementById('site-version');
-    if (versionEl) versionEl.textContent = SITE_VERSION;
-</script>
 </body>
 </html>

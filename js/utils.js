@@ -156,7 +156,7 @@ var I18N = {
         share_native: 'Поделиться в приложении',
 
         page_title_live: 'Начать раунд',
-        page_sub_live: 'Выберите режим или перейдите к игре',
+        page_sub_live: 'Одиночный или групповой раунд — переключайте вкладки',
         round_setup: 'Настройки раунда',
         group_setup_title: 'Настройка группы',
         solo_round: 'Одиночный раунд', group_round: 'Групповой раунд',
@@ -434,7 +434,7 @@ var I18N = {
         share_native: 'Share to Apps',
 
         page_title_live: 'Start Round',
-        page_sub_live: 'Select mode or continue your game',
+        page_sub_live: 'Solo or group round — switch tabs',
         round_setup: 'Round Settings',
         group_setup_title: 'Group Setup',
         solo_round: 'Solo Round', group_round: 'Group Round',
@@ -796,7 +796,7 @@ function loadMyActiveRounds(targetId) {
 
         myActive.forEach(function(item) {
             var id = item.id, r = item.round;
-            var link = r.mode === 'solo' ? 'solo.html?round=' + id : 'setup-round.html?round=' + id;
+            var link = 'setup-round.html?round=' + id;
             var modeIcon = r.mode === 'solo' ? '<i class="fas fa-user"></i> ' + t('solo_round') : '<i class="fas fa-users"></i> ' + t('group_round');
             var teePill = fmtTeePill(r.tee);
             var playersCount = Object.keys(r.players || {}).length;
@@ -1149,7 +1149,7 @@ function initWakeLock() {
     if (typeof document === 'undefined') return;
     if (!('wakeLock' in navigator)) return;
     var curPage = (window.location && window.location.pathname) ? (window.location.pathname.split('/').pop() || '') : '';
-    var SCORING_PAGES = ['setup-round.html', 'solo.html', 'scorer.html', 'marker.html'];
+    var SCORING_PAGES = ['setup-round.html', 'scorer.html', 'marker.html'];
     if (SCORING_PAGES.indexOf(curPage) === -1) return;
 
     function acquire() {
@@ -3898,7 +3898,7 @@ function applyPageVisibilitySettings() {
     var curPage = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.split('/').pop() || 'index.html' : 'index.html';
 
     var isTournamentsHidden = (hiddenPages['tournaments.html'] === true || hiddenPages['tournaments'] === true);
-    var tnSel = document.getElementById('g-tournament');
+    var tnSel = document.getElementById('grp-tournament');
     if (tnSel) {
         var tnGroup = tnSel.closest('.form-group');
         if (tnGroup) {

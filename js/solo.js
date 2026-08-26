@@ -2,7 +2,7 @@ var soloRid = null;
 var soloRound = null;
 var curHole = 1;
 var curScore = 0;
-var isChanging = false;
+var soloIsChanging = false;
 var canEditSolo = false;
 var soloAutoSaveTimer = null;
 
@@ -12,8 +12,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var urlP = new URLSearchParams(window.location.search);
     var rid = urlP.get('round');
     if (rid) {
-        soloRid = rid;
-        loadExistingSolo();
+        // Если live.js уже делегировал этот раунд сюда — не запускаем повторно
+        if (window._pestovoSoloBooted !== rid) {
+            soloRid = rid;
+            loadExistingSolo();
+        }
         return;
     }
 
@@ -95,9 +98,8 @@ function initSoloView() {
     }
 }
 
-function onAuthReady(u, d) {
-    navAuth(u, d);
-
+function soloAuthReady(u, d) {
+    // navAuth уже вызван в onAuthReady (js/live.js) — здесь только дефолты формы соло
     if (u && d) {
         var name = d.name || '';
         var parts = name.split(' ');
@@ -261,14 +263,33 @@ function startSolo() {
 
     ref.set(roundData).then(function() {
         toast(t('msg_round_started'));
-        window.location.href = 'solo.html?round=' + soloRid;
+        window.location.href = 'setup-round.html?round=' + soloRid;
     });
 }
 
+var soloRoundHandler = null;
+
 function loadExistingSolo() {
-    db.ref('rounds/' + soloRid).on('value', function(sn) {
+    if (!soloRid) return;
+    // Защита от дублей подписки (повторный вызов, смена языка и т.п.)
+    if (soloRoundHandler) {
+        try { db.ref('rounds/' + soloRid).off('value', soloRoundHandler); } catch (e) {}
+    }
+    soloRoundHandler = function(sn) {
         soloRound = sn.val();
         if (!soloRound) { toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден', 'error'); return; }
+
+        // Это групповой раунд — передаём его live.js (обе вкладки на setup-round.html)
+        if (soloRound.mode === 'group') {
+            var gid = soloRid;
+            try { db.ref('rounds/' + gid).off('value', soloRoundHandler); } catch (e) {}
+            soloRoundHandler = null;
+            soloRid = null;
+            soloRound = null;
+            curRid = gid;
+            if (typeof bootRoundViewOnce === 'function') bootRoundViewOnce();
+            return;
+        }
 
         document.getElementById('setup').classList.add('hidden');
 
@@ -290,7 +311,7 @@ function loadExistingSolo() {
             var scores = player.scores || {};
             var order = holeOrder(soloRound.startHole || 1);
 
-            if (!isChanging) {
+            if (!soloIsChanging) {
                 var found = false;
                 for (var i = 0; i < order.length; i++) {
                     var h = order[i];
@@ -305,7 +326,7 @@ function loadExistingSolo() {
             renderCurrentHole();
             renderLiveStats('live-stats');
             renderMiniCard('mini-card');
-            listenForCallResponses();
+            listenForCallResponsesSolo();
 
         } else {
             document.getElementById('game').classList.add('hidden');
@@ -315,7 +336,18 @@ function loadExistingSolo() {
             renderLiveStats('ro-live-stats');
             renderMiniCard('ro-mini-card');
         }
-    });
+    };
+    db.ref('rounds/' + soloRid).on('value', soloRoundHandler);
+}
+
+// Точка входа из live.js: соло-раунд, открытый как setup-round.html?round=ID
+function bootSoloRoundView(rid) {
+    if (!rid) return;
+    if (window._pestovoSoloBooted === rid) return;
+    window._pestovoSoloBooted = rid;
+    soloRid = rid;
+    soloRoundHandler = null; // свежая подписка
+    loadExistingSolo();
 }
 
 function getPlayerId() {
@@ -368,12 +400,12 @@ function buildHoles() {
 
 function goHole(h) {
     if (!canEditSolo) return;
-    isChanging = true;
+    soloIsChanging = true;
     curHole = h;
     curScore = 0;
     renderCurrentHole();
     buildHoles();
-    setTimeout(function() { isChanging = false; }, 100);
+    setTimeout(function() { soloIsChanging = false; }, 100);
 }
 
 function renderCurrentHole() {
@@ -448,7 +480,7 @@ function saveSolo(isAuto) {
     }
     if (curScore < 1) { if (!isAuto) toast(t('msg_score_min'), 'error'); return; }
 
-    isChanging = true;
+    soloIsChanging = true;
     var savedHole = curHole;
 
     var uid = getPlayerId();
@@ -489,7 +521,7 @@ function saveSolo(isAuto) {
         updateSoloActionButton();
         renderMiniCard('mini-card');
 
-        setTimeout(function() { isChanging = false; }, 200);
+        setTimeout(function() { soloIsChanging = false; }, 200);
     });
 }
 
@@ -637,7 +669,7 @@ function finishSolo() {
     }
 }
 
-function callOfficial(type) {
+function callOfficialSolo(type) {
     if (!canEditSolo) return;
     var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
     if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + curHole + '?')) return;
@@ -664,7 +696,7 @@ function callOfficial(type) {
 // Слушаем «ответы» на вызовы, которые админ оставил в `users/<uid>/notifications`.
 // Каждое новое уведомление с type === 'call_response' показываем тостом
 // «Судья/маршал едет» и сразу помечаем как прочитанное.
-function listenForCallResponses() {
+function listenForCallResponsesSolo() {
     if (typeof db === 'undefined') return;
     var uid = getPlayerId();
     if (!uid) return;

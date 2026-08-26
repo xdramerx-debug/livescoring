@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // не ждём авторизацию: гость с ключом раунда тоже должен сразу попасть в счёт
     if (curRid) bootRoundViewOnce();
+    else if (p.get('mode') === 'group') switchSetupMode('group');
 
     // погодный виджет инициализируется в initNav() с правильным контейнером
 });
@@ -47,16 +48,41 @@ function onAuthReady(u, d) {
         try { db.ref('rounds/' + curRid).off('value'); } catch (e) {}
     }
     bootRoundViewOnce();
+    // Дефолты формы одиночного раунда (обе вкладки живут на одной странице)
+    if (typeof soloAuthReady === 'function') soloAuthReady(u, d);
+}
+
+// ==========================================
+// ВКЛАДКИ РЕЖИМА: ОДИНОЧНЫЙ / ГРУППОВОЙ
+// ==========================================
+var setupGroupInited = false;
+
+function switchSetupMode(mode) {
+    var tabSolo = document.getElementById('tab-solo');
+    var tabGroup = document.getElementById('tab-group');
+    var soloPane = document.getElementById('solo-setup');
+    var groupPane = document.getElementById('group-setup');
+    if (!tabSolo || !tabGroup || !soloPane || !groupPane) return;
+
+    var isGroup = (mode === 'group');
+    tabSolo.classList.toggle('active', !isGroup);
+    tabGroup.classList.toggle('active', isGroup);
+    soloPane.classList.toggle('hidden', isGroup);
+    groupPane.classList.toggle('hidden', !isGroup);
+
+    // Форма группы инициализируется лениво — при первом открытии вкладки
+    if (isGroup && !setupGroupInited) {
+        setupGroupInited = true;
+        showGroupSetup();
+    }
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
 }
 
 // ==========================================
 // СОЗДАНИЕ ГРУППЫ
 // ==========================================
 function showGroupSetup() {
-    document.getElementById('mode-view').classList.add('hidden');
-    document.getElementById('group-setup').classList.remove('hidden');
-
-    var sel = document.getElementById('g-hole');
+    var sel = document.getElementById('grp-hole');
     if (sel) {
         sel.innerHTML = '';
         for (var i = 1; i <= 18; i++) {
@@ -65,12 +91,12 @@ function showGroupSetup() {
     }
 
     var now = new Date();
-    var timeInput = document.getElementById('g-time');
+    var timeInput = document.getElementById('grp-time');
     if (timeInput) {
         timeInput.value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
     }
 
-    var teeSel = document.getElementById('g-tee');
+    var teeSel = document.getElementById('grp-tee');
     if (teeSel && currentUserData && currentUserData.defaultTee) {
         teeSel.value = currentUserData.defaultTee;
     }
@@ -85,7 +111,7 @@ function showGroupSetup() {
     var hiddenPages = typeof getHiddenPages === 'function' ? getHiddenPages() : {};
     var isTournamentsHidden = (hiddenPages['tournaments.html'] === true || hiddenPages['tournaments'] === true);
 
-    var tnSel = document.getElementById('g-tournament');
+    var tnSel = document.getElementById('grp-tournament');
     var tnGroup = tnSel ? tnSel.closest('.form-group') : null;
 
     if (isTournamentsHidden) {
@@ -109,8 +135,8 @@ function showGroupSetup() {
 }
 
 function onTournamentSelect() {
-    var tid = document.getElementById('g-tournament') ? document.getElementById('g-tournament').value : '';
-    var fmtSel = document.getElementById('g-format');
+    var tid = document.getElementById('grp-tournament') ? document.getElementById('grp-tournament').value : '';
+    var fmtSel = document.getElementById('grp-format');
 
     if (!tid) {
         if (fmtSel) fmtSel.innerHTML = '<option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option><option value="Match Play 1v1">' + t('format_match_1v1') + '</option><option value="Match Play 2v2">' + t('format_match_2v2') + '</option><option value="Scramble">' + t('format_scramble') + '</option>';
@@ -123,7 +149,7 @@ function onTournamentSelect() {
         (tVal.formats || ['Stroke Play']).forEach(function(f) { fmtSel.innerHTML += '<option value="' + f + '">' + f + '</option>'; });
     }
     if (tVal.tees && tVal.tees.length) {
-        var count = parseInt(document.getElementById('g-count').value) || 2;
+        var count = parseInt(document.getElementById('grp-count').value) || 2;
         for (var i = 1; i <= count; i++) {
             var plTeeSel = document.getElementById('pl-tee-' + i);
             if (plTeeSel) {
@@ -136,7 +162,7 @@ function onTournamentSelect() {
 }
 
 function buildPlayerSlots() {
-    var count = parseInt(document.getElementById('g-count').value) || 2;
+    var count = parseInt(document.getElementById('grp-count').value) || 2;
     var el = document.getElementById('player-slots');
     var html = '<h3 class="setup-subhead"><i class="fas fa-user-plus"></i> ' + t('players_label') + '</h3>';
 
@@ -260,8 +286,8 @@ function calcPlayerFieldHcp(idx) {
 }
 
 function updateGroupTimingPreview() {
-    var timeEl = document.getElementById('g-time');
-    var holeEl = document.getElementById('g-hole');
+    var timeEl = document.getElementById('grp-time');
+    var holeEl = document.getElementById('grp-hole');
     if (!timeEl || !holeEl) return;
     var timeStr = timeEl.value;
     var startHole = parseInt(holeEl.value) || 1;
@@ -270,30 +296,25 @@ function updateGroupTimingPreview() {
     var now = new Date();
     var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
         parseInt(parts[0]), parseInt(parts[1]), 0);
-    var previewEl = document.getElementById('g-timing-preview');
+    var previewEl = document.getElementById('grp-timing-preview');
     if (previewEl) previewEl.innerHTML = buildTimingTable(startDate.getTime(), startHole);
 }
 
 document.addEventListener('change', function(e) {
-    if (e.target.id === 'g-time' || e.target.id === 'g-hole') {
+    if (e.target.id === 'grp-time' || e.target.id === 'grp-hole') {
         updateGroupTimingPreview();
     }
 });
-
-function backToModes() {
-    document.getElementById('group-setup').classList.add('hidden');
-    document.getElementById('mode-view').classList.remove('hidden');
-}
 
 // ==========================================
 // СТАРТ И АВТО-МАРКЕРЫ
 // ==========================================
 function startGroup() {
-    var timeStr = document.getElementById('g-time').value;
-    var startHole = parseInt(document.getElementById('g-hole').value) || 1;
-    var format = document.getElementById('g-format').value;
-    var count = parseInt(document.getElementById('g-count').value) || 2;
-    var tournamentId = document.getElementById('g-tournament') ? document.getElementById('g-tournament').value : '';
+    var timeStr = document.getElementById('grp-time').value;
+    var startHole = parseInt(document.getElementById('grp-hole').value) || 1;
+    var format = document.getElementById('grp-format').value;
+    var count = parseInt(document.getElementById('grp-count').value) || 2;
+    var tournamentId = document.getElementById('grp-tournament') ? document.getElementById('grp-tournament').value : '';
 
     if (!timeStr) { toast(t('msg_start_time_req'), 'error'); return; }
 
@@ -416,14 +437,31 @@ function getActingUid() {
     return null;
 }
 
+var roundViewHandler = null;
+
 function initRoundView() {
-    db.ref('rounds/' + curRid).on('value', function(sn) {
+    // Защита от дублей подписки (например, при смене языка страница перерисовывается)
+    if (roundViewHandler) {
+        try { db.ref('rounds/' + curRid).off('value', roundViewHandler); } catch (e) {}
+    }
+    roundViewHandler = function(sn) {
         curRoundData = sn.val();
         if (!curRoundData || typeof curRoundData !== 'object') {
             toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден', 'error');
             return;
         }
 
+        // Раунд с mode='solo' обслуживает solo.js — делегируем ему
+        if (curRoundData.mode === 'solo') {
+            try { db.ref('rounds/' + curRid).off('value', roundViewHandler); } catch (e) {}
+            roundViewHandler = null;
+            roundViewListening = false;
+            if (typeof bootSoloRoundView === 'function') bootSoloRoundView(curRid);
+            return;
+        }
+
+        var setupEl = document.getElementById('setup');
+        if (setupEl) setupEl.classList.add('hidden');
         var modeView = document.getElementById('mode-view');
         if (modeView) modeView.classList.add('hidden');
 
@@ -468,7 +506,8 @@ function initRoundView() {
 
             renderGVPlayers(curRoundData);
         }
-    });
+    };
+    db.ref('rounds/' + curRid).on('value', roundViewHandler);
 }
 
 function findCurrentHole() {
@@ -568,7 +607,7 @@ function renderPlayHole() {
     updScoreDisplay('my', myScore);
     updScoreDisplay('mark', targetScore);
 
-    var trackContainer = document.getElementById('shot-tracking-container');
+    var trackContainer = document.getElementById('gr-shot-tracking-container');
     if (trackContainer) {
         if (localStorage.getItem('pestovo_shot_tracking_enabled') === '1') {
             trackContainer.classList.remove('hidden');

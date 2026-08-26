@@ -262,6 +262,69 @@ function clearRounds() {
     }
 }
 
+// Полностью удаляет ВСЕХ игроков И все раунды, чтобы после этого нигде
+// (списки, автоподбор, история, статистика, лидерборды) не осталось следов.
+function clearAllData() {
+    var msg1 = currentLang === 'en'
+        ? 'Delete ALL players AND ALL rounds? Everything will be permanently removed and cannot be recovered!'
+        : 'Удалить ВСЕХ игроков И ВСЕ раунды? Все данные будут удалены безвозвратно и нигде не появятся снова!';
+    var msg2 = currentLang === 'en'
+        ? 'This is irreversible. Are you absolutely sure?'
+        : 'Это действие необратимо. Вы абсолютно уверены?';
+
+    if (!confirm(msg1) || !confirm(msg2)) return;
+
+    if (typeof db === 'undefined') {
+        // Оффлайн-режим: чистим только локальные кэши
+        if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
+        try {
+            localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([]));
+        } catch(e) {}
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        if (typeof loadAdmRounds === 'function') loadAdmRounds();
+        toast(currentLang === 'en' ? 'All data deleted' : 'Все данные удалены', 'info');
+        return;
+    }
+
+    // 1) Удаляем все ветки, где хранятся раунды, игроки и связанные данные
+    var wipeUpdates = {
+        'rounds': null,
+        'markers': null,
+        'markerAssignments': null,
+        'alerts': null,
+        'users': null,
+        'broadcasts': null
+    };
+
+    // Регистрации игроков на турнирах тоже нужно снять, иначе удалённые
+    // игроки «всплывут» в списках участников турниров.
+    db.ref('tournaments').once('value').then(function(sn) {
+        var tns = sn.val() || {};
+        Object.keys(tns).forEach(function(tid) {
+            if (tns[tid] && tns[tid].registeredPlayers) {
+                wipeUpdates['tournaments/' + tid + '/registeredPlayers'] = null;
+            }
+        });
+    }, function(){}).then(function() {
+        return db.ref().update(wipeUpdates);
+    }).then(function() {
+        // 2) Чистим локальные кэши и «прячем» встроенных демо-игроков
+        if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
+        // Сбрасываем список «удалённых», т.к. база уже полностью пуста
+        try { localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([])); } catch(e) {}
+        if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
+
+        // 3) Обновляем открытые списки в админке
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        if (typeof loadAdmRounds === 'function') loadAdmRounds();
+
+        toast(currentLang === 'en' ? 'All players and rounds deleted everywhere' : 'Все игроки и раунды полностью удалены', 'info');
+        if (typeof vib === 'function') vib([60, 40, 60]);
+    }).catch(function(err) {
+        toast((currentLang === 'en' ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err), 'error');
+    });
+}
+
 // ==========================================
 // ТУРНИРЫ
 // ==========================================

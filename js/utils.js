@@ -323,6 +323,8 @@ var I18N = {
         save_visibility_btn: 'Сохранить видимость страниц',
         tab_broadcasts: 'Анонсы 📢',
         delete_all_rounds: 'Удалить все раунды',
+        delete_all_data: 'Удалить всех игроков и раунды',
+        delete_all_data_sub: 'Полностью удаляет всех игроков и все раунды. Данные исчезнут из всех списков, статистики и автоподбора и не появятся снова.',
         full_name: 'Имя и фамилия',
         repeat_password: 'Повторите пароль',
 
@@ -598,6 +600,8 @@ var I18N = {
         save_visibility_btn: 'Save Page Visibility',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
+        delete_all_data: 'Delete All Players & Rounds',
+        delete_all_data_sub: 'Permanently removes every player and every round. Data disappears from all lists, stats and autocomplete and will not reappear.',
         full_name: 'Full Name',
         repeat_password: 'Repeat Password',
 
@@ -4057,7 +4061,36 @@ var DEFAULT_REGISTERED_PLAYERS = {
     'user_elena_k': { name: 'Елена Кузнецова', firstName: 'Елена', lastName: 'Кузнецова', handicap: 24.8, gender: 'women', defaultTee: 'rd' }
 };
 
-var cachedRegisteredUsers = Object.assign({}, DEFAULT_REGISTERED_PLAYERS);
+// Флаг «полной очистки»: когда админ удаляет ВСЕХ игроков, встроенные
+// демо-игроки (DEFAULT_REGISTERED_PLAYERS) не должны возвращаться в списки.
+function areDefaultPlayersCleared() {
+    try { return localStorage.getItem('pestovo_defaults_cleared') === 'true'; } catch(e) { return false; }
+}
+
+var cachedRegisteredUsers = areDefaultPlayersCleared() ? {} : Object.assign({}, DEFAULT_REGISTERED_PLAYERS);
+
+// Полностью стирает локальный кэш игроков (и в памяти, и в localStorage),
+// а также «прячет» встроенных демо-игроков, чтобы после удаления всех данных
+// в админке ни один игрок нигде не всплыл заново.
+function wipeLocalPlayerCaches() {
+    try {
+        localStorage.removeItem('pestovo_cached_users');
+        localStorage.removeItem('pestovo_custom_players');
+        localStorage.setItem('pestovo_defaults_cleared', 'true');
+    } catch(e) {}
+
+    if (typeof cachedRegisteredUsers === 'object' && cachedRegisteredUsers) {
+        Object.keys(cachedRegisteredUsers).forEach(function(k) {
+            delete cachedRegisteredUsers[k];
+        });
+    }
+    lastRemoteUserIds = null;
+}
+
+if (typeof window !== 'undefined') {
+    window.wipeLocalPlayerCaches = wipeLocalPlayerCaches;
+    window.areDefaultPlayersCleared = areDefaultPlayersCleared;
+}
 
 function syncKnownPlayersCache() {
     var mergeCache = function(obj) {

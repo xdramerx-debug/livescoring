@@ -443,7 +443,11 @@
                     <button class="btn btn-og" onclick="downloadJSONBackup()"><i class="fas fa-download"></i> <span data-i18n="download_backup_btn">Скачать бэкап базы (JSON)</span></button>
                 </div>
                 <hr style="border-color:var(--border);margin:20px 0;">
-                <button class="btn btn-r" onclick="clearRounds()"><i class="fas fa-trash"></i> <span data-i18n="delete_all_rounds">Удалить все раунды</span></button>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <button class="btn btn-r" onclick="clearRounds()"><i class="fas fa-trash"></i> <span data-i18n="delete_all_rounds">Удалить все раунды</span></button>
+                    <button class="btn btn-r" onclick="clearAllData()"><i class="fas fa-radiation"></i> <span data-i18n="delete_all_data">Удалить всех игроков и раунды</span></button>
+                </div>
+                <p style="color:var(--red);font-size:12px;margin-top:10px;" data-i18n="delete_all_data_sub">Полностью удаляет всех игроков и все раунды. Данные исчезнут из всех списков, статистики и автоподбора и не появятся снова.</p>
             </div>
         </div>
     </div>

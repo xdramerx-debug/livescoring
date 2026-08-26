@@ -139,14 +139,28 @@ function loadLiveRounds() {
             var order = getRoundOrder(r);
 
             Object.entries(players).forEach(function(pe) {
-                var pid = pe[0], p = pe[1], scores = p.scores || {};
-                var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
+                var pid = pe[0], p = pe[1];
+                // Для отображения используем собственные счёта игрока.
+                // Если их нет, но есть счёта маркера — показываем их (с пометкой).
+                var scores = p.scores || {};
+                var hasOwnScores = Object.values(scores).some(function(v) { return parseInt(v) >= 1; });
+                var displayScores = scores;
+                var markerNote = '';
+                if (!hasOwnScores && p.markedBy && players[p.markedBy]) {
+                    var mkScores = players[p.markedBy].markerScores && players[p.markedBy].markerScores[pid];
+                    if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
+                        displayScores = mkScores;
+                        var mkName = players[p.markedBy].name || '';
+                        markerNote = currentLang === 'en' ? ' (marker: ' + mkName + ')' : ' (маркер: ' + mkName + ')';
+                    }
+                }
+                var stats = calcRoundStats(displayScores, p.fieldHcp || 0, p.exactHcp || 0, order);
 
                 var thruText = stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : t('hole') + ' №' + (parseInt(r.startHole)||1));
 
                 pHtml += '<div class="round-p" style="align-items:flex-start;">' +
                     '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + '</div>' +
-                    '<div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;">📍 ' + thruText + '</div></div>' +
+                    '<div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;">📍 ' + thruText + markerNote + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
                     '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + '</div>' +

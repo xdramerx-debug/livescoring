@@ -857,12 +857,14 @@ function checkPlayVerification() {
     var markerS = 0;
     var markerSub = false;
 
-    if (myMarkerId && curRoundData.players[myMarkerId]) {
-        var mp = curRoundData.players[myMarkerId];
-        markerS = parseInt(mp.markerScores && mp.markerScores[myUid] && mp.markerScores[myUid][playHole]) || 0;
-        if (mp.markerSubmitted && mp.markerSubmitted[myUid] && mp.markerSubmitted[myUid][playHole] === true) {
+    // Читаем счёт маркера из ТЕКУЩЕГО игрока (myPlayer.markerScores[myMarkerId]),
+    // а НЕ из данных маркера (mp.markerScores[myUid]) — иначе читается собственный
+    // ввод маркера для другого игрока, а не то, что маркер ввёл для нас.
+    if (myMarkerId) {
+        markerS = parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][playHole]) || 0;
+        if (myPlayer.markerSubmitted && myPlayer.markerSubmitted[myMarkerId] && myPlayer.markerSubmitted[myMarkerId][playHole] === true) {
             markerSub = true;
-        } else if (markerS > 0 && mp.scores && mp.scores[playHole] > 0) {
+        } else if (markerS > 0) {
             markerSub = true;
         }
     }
@@ -914,10 +916,11 @@ function saveHoleScores() {
     var markerS = 0;
     var markerSub = false;
 
-    if (myMarkerId && curRoundData.players[myMarkerId]) {
-        var mp = curRoundData.players[myMarkerId];
-        markerS = parseInt(mp.markerScores && mp.markerScores[myUid] && mp.markerScores[myUid][h]) || 0;
-        if (mp.markerSubmitted && mp.markerSubmitted[myUid] && mp.markerSubmitted[myUid][h] === true) {
+    // Читаем счёт маркера из ТЕКУЩЕГО игрока (myPlayer.markerScores[myMarkerId]),
+    // а НЕ из данных маркера — это то, что маркер ввёл для нас.
+    if (myMarkerId) {
+        markerS = parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][h]) || 0;
+        if (myPlayer.markerSubmitted && myPlayer.markerSubmitted[myMarkerId] && myPlayer.markerSubmitted[myMarkerId][h] === true) {
             markerSub = true;
         } else if (markerS > 0) {
             markerSub = true;
@@ -978,17 +981,31 @@ function renderPlaySummary() {
     var el = document.getElementById('play-group-summary');
     if (!el) return;
     var order = getRoundOrder(curRoundData);
+    var allPlayers = curRoundData.players || {};
     var html = '';
 
-    Object.entries(curRoundData.players || {}).forEach(function(pe) {
+    Object.entries(allPlayers).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         // Удалённые и навсегда заблокированные демо-игроки не показываются
         if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
-        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+        // Для сводки: если нет своих счётов, берём счёты маркера
+        var scores = p.scores || {};
+        var hasOwnScores = Object.values(scores).some(function(v) { return parseInt(v) >= 1; });
+        var displayScores = scores;
+        var markerNote = '';
+        if (!hasOwnScores && p.markedBy && allPlayers[p.markedBy]) {
+            var mkScores = allPlayers[p.markedBy].markerScores && allPlayers[p.markedBy].markerScores[pid];
+            if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
+                displayScores = mkScores;
+                var mkName = allPlayers[p.markedBy].name || '';
+                markerNote = ' <span style="font-size:10px;color:#9b59b6;">(' + (currentLang === 'en' ? 'marker: ' : 'маркер: ') + mkName + ')</span>';
+            }
+        }
+        var stats = calcRoundStats(displayScores, p.fieldHcp || 0, p.exactHcp || 0, order);
         var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
 
         html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
-        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + isMe + '</strong>';
+        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + isMe + markerNote + '</strong>';
         html += '<div style="font-size:12px;color:var(--muted);">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + getRoundHoleCount(curRoundData) + '</div></div>';
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
@@ -1123,19 +1140,33 @@ function renderGVPlayers(r) {
     var el = document.getElementById('gv-players');
     var scCardEl = document.getElementById('gv-scorecard-card');
     var order = getRoundOrder(r);
+    var allPlayers = r.players || {};
     
     if (el) {
         var html = '';
-        Object.entries(r.players || {}).forEach(function(pe) {
+        Object.entries(allPlayers).forEach(function(pe) {
             var pid = pe[0], p = pe[1];
             // Удалённые и навсегда заблокированные демо-игроки не показываются
             if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
-            var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+            // Для отображения: если нет своих счётов, берём счёты маркера
+            var scores = p.scores || {};
+            var hasOwnScores = Object.values(scores).some(function(v) { return parseInt(v) >= 1; });
+            var displayScores = scores;
+            var markerNote = '';
+            if (!hasOwnScores && p.markedBy && allPlayers[p.markedBy]) {
+                var mkScores = allPlayers[p.markedBy].markerScores && allPlayers[p.markedBy].markerScores[pid];
+                if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
+                    displayScores = mkScores;
+                    var mkName = allPlayers[p.markedBy].name || '';
+                    markerNote = currentLang === 'en' ? ' (marker: ' + mkName + ')' : ' (маркер: ' + mkName + ')';
+                }
+            }
+            var stats = calcRoundStats(displayScores, p.fieldHcp || 0, p.exactHcp || 0, order);
             var thruTxt = stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
 
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
                 '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</strong>' +
-                '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + '</div>' +
+                '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + markerNote + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div>' +
                 '</div>' +
                 '<div style="text-align:right;">' +

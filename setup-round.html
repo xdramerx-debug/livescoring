@@ -269,7 +269,6 @@
             <div class="hole-nav" id="play-holes-nav"></div>
             <div id="match-play-tracker-container" style="margin-top:12px;"></div>
             <div id="play-verify-status" style="margin-top:12px;"></div>
-            <div id="group-pace-assistant"></div>
 
             <!-- БЛОК 1: МОЙ СЧЁТ -->
             <div class="scoring-dual-block my-score-block">
@@ -341,6 +340,8 @@
                 <i class="fas fa-arrow-right" id="save-hole-btn-icon"></i> <span id="save-hole-btn-text" data-i18n="next_hole_btn">На следующую лунку →</span>
             </button>
         </div>
+
+        <div id="group-pace-assistant" style="margin-top:12px;"></div>
 
         <div class="round-card" style="margin:12px 0;">
             <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('group-sc-panel')" style="width:100%;">
@@ -451,6 +452,8 @@
             </div>
         </div>
 
+        <div id="solo-pace-assistant" style="margin-top:12px;"></div>
+
         <!-- БЛОК 2: КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
         <div style="display:flex;gap:10px;margin:16px 0 6px;">
             <button id="solo-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;font-size:13px;padding:12px 8px;min-height:48px;" onclick="callOfficialSolo('referee')">
@@ -465,7 +468,6 @@
 
         <!-- БЛОК 3: ИНФОРМАЦИЯ О СТАРТОВОМ ВРЕМЕНИ, ТИ И ТАЙМИНГАХ -->
         <div class="timing-info" id="round-info" style="margin-bottom:12px;"></div>
-        <div id="solo-pace-assistant"></div>
         <div id="timing-notice" style="margin-bottom:16px;"></div>
 
         <!-- БЛОК 4: СВОРАЧИВАЕМАЯ СЧЁТНАЯ КАРТОЧКА ПО ЛУНКАМ -->
@@ -512,7 +514,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.7.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.8.0</span></p>
         </div>
     </div>
 </footer>

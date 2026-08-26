@@ -3091,6 +3091,427 @@ function rgResolveConflict(ci, ri) {
     }
 }
 
+// -------- МАССОВАЯ ПРОВЕРКА ГАНДИКАПА ИЗ EXCEL ---------
+
+// Каждая строка файла: { idx, firstName, lastName, name, query, proxy, error, done, results: [ {number,fio,...}, ... ] }
+var rgBatchRows = [];
+var rgBatchState = { running: false, stop: false };
+
+function rgBatchHeaderKey(raw) {
+    var s = impNormName(raw).replace(/[.:]/g, '');
+    if (['имя', 'first name', 'firstname', 'first_name', 'given name'].indexOf(s) !== -1) return 'firstName';
+    if (['фамилия', 'last name', 'lastname', 'last_name', 'surname', 'family name'].indexOf(s) !== -1) return 'lastName';
+    if (['фио', 'имя фамилия', 'full name', 'фамилия имя отчество', 'игрок', 'player'].indexOf(s) !== -1) return 'fio';
+    return null;
+}
+
+function rgBatchDownloadTemplate() {
+    if (typeof XLSX === 'undefined') {
+        toast(currentLang === 'en' ? '❌ Excel library not loaded (check internet)' : '❌ Библиотека Excel не загрузилась (проверьте интернет)', 'error');
+        return;
+    }
+    var rows = [
+        ['Имя', 'Фамилия'],
+        ['Сергей', 'Петров'],
+        ['Анна', 'Воробьёва']
+    ];
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 24 }, { wch: 28 }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Игроки');
+    XLSX.writeFile(wb, 'Shablon_Proverki_AGR.xlsx');
+    toast('📋 ' + (currentLang === 'en' ? 'Template downloaded' : 'Шаблон скачан'), 'success');
+}
+
+function rgBatchParseRows(jsonRows) {
+    var keys = {};
+    var rows = [];
+    if (jsonRows.length) {
+        Object.keys(jsonRows[0]).forEach(function(h) {
+            var k = rgBatchHeaderKey(h);
+            if (k && !keys[k]) keys[k] = h;
+        });
+    }
+    jsonRows.forEach(function(r, i) {
+        var firstName = '', lastName = '', fio = '';
+        if (keys.firstName) firstName = String(r[keys.firstName] || '').trim();
+        if (keys.lastName) lastName = String(r[keys.lastName] || '').trim();
+        if (keys.fio) fio = String(r[keys.fio] || '').trim();
+
+        if ((!firstName || !lastName) && fio) {
+            var fioParts = fio.split(/\s+/).filter(Boolean);
+            if (!lastName) lastName = fioParts[0] || '';
+            if (!firstName) firstName = fioParts.slice(1).join(' ') || '';
+        }
+        if (!firstName && lastName) { var s = impSplitName(lastName); firstName = s.firstName; lastName = s.lastName; }
+        if (!lastName && firstName) { var s2 = impSplitName(firstName); firstName = s2.firstName; lastName = s2.lastName; }
+
+        var name = (firstName + ' ' + lastName).replace(/\s+/g, ' ').trim();
+        if (!name) return;
+        rows.push({ idx: i, firstName: firstName, lastName: lastName, name: name });
+    });
+    // Дедуп по нормализованному имени
+    var seen = {};
+    return rows.filter(function(r) {
+        var k = impNormName(r.name);
+        if (seen[k]) return false;
+        seen[k] = true;
+        return true;
+    });
+}
+
+function rgBatchHandleFile(input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var statusEl = document.getElementById('rg-batch-status');
+    var resultsEl = document.getElementById('rg-batch-results');
+
+    if (typeof XLSX === 'undefined') {
+        toast(currentLang === 'en' ? '❌ Excel library not loaded (check internet)' : '❌ Библиотека Excel не загрузилась (проверьте интернет)', 'error');
+        input.value = '';
+        return;
+    }
+    if (rgBatchState.running) {
+        toast(currentLang === 'en' ? '⚠ Wait for the current search to finish' : '⚠ Дождитесь окончания текущего поиска', 'error');
+        input.value = '';
+        return;
+    }
+
+    if (statusEl) statusEl.innerHTML = '<p style="color:var(--muted);font-size:13px;"><i class="fas fa-spinner fa-spin"></i> ' + (currentLang === 'en' ? 'Reading file...' : 'Чтение файла...') + '</p>';
+    if (resultsEl) resultsEl.innerHTML = '';
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            var sheet = wb.Sheets[wb.SheetNames[0]];
+            if (!sheet) throw new Error(currentLang === 'en' ? 'no sheets' : 'нет листов в файле');
+            var json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            var rows = rgBatchParseRows(json || []);
+            if (!rows.length) {
+                if (statusEl) statusEl.innerHTML = '<div class="imp-note imp-note-err"><i class="fas fa-triangle-exclamation"></i> ' +
+                    (currentLang === 'en' ? 'No player rows found. Expected columns «Имя» and «Фамилия».' : 'Строки с игроками не найдены. Ожидаются столбцы «Имя» и «Фамилия».') + '</div>';
+                return;
+            }
+            rgBatchStartSearch(rows);
+        } catch (err) {
+            console.warn('RGA batch parse error:', err);
+            if (statusEl) statusEl.innerHTML = '<div class="imp-note imp-note-err"><i class="fas fa-triangle-exclamation"></i> ' +
+                (currentLang === 'en' ? 'Failed to read file: ' : 'Не удалось прочитать файл: ') + (err.message || err) + '</div>';
+        }
+        input.value = '';
+    };
+    reader.onerror = function() {
+        if (statusEl) statusEl.innerHTML = '<div class="imp-note imp-note-err"><i class="fas fa-triangle-exclamation"></i> ' + (currentLang === 'en' ? 'File read error.' : 'Ошибка чтения файла.') + '</div>';
+        input.value = '';
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function rgBatchBuildQueries(row) {
+    var q = (row.lastName && row.firstName) ? (row.lastName + ' ' + row.firstName) : row.name;
+    var alt = '';
+    if (row.firstName && row.lastName) {
+        alt = row.firstName + ' ' + row.lastName;
+        if (impNormName(alt) === impNormName(q)) alt = '';
+    }
+    return { q: q, alt: alt };
+}
+
+function rgBatchStartSearch(rows) {
+    rgBatchState = { running: true, stop: false };
+    rgBatchRows = rows.map(function(r) {
+        return { idx: r.idx, firstName: r.firstName, lastName: r.lastName, name: r.name, query: '', proxy: '', error: '', done: false, results: [] };
+    });
+
+    var statusEl = document.getElementById('rg-batch-status');
+    var resultsEl = document.getElementById('rg-batch-results');
+    if (statusEl) statusEl.innerHTML = '';
+    rgBatchRender(0, rows.length);
+
+    var processed = 0;
+    var total = rows.length;
+
+    var processNext = function() {
+        if (rgBatchState.stop || processed >= total) {
+            rgBatchState.running = false;
+            rgBatchRender(processed, total);
+            if (statusEl) {
+                var found = rgBatchRows.filter(function(r) { return r.done && r.results.length; }).length;
+                var notFound = rgBatchRows.filter(function(r) { return r.done && !r.results.length && !r.error; }).length;
+                statusEl.innerHTML = '<div class="imp-note"><i class="fas fa-check"></i> ' +
+                    (currentLang === 'en' ? 'Search finished. Found: <b>' : 'Поиск завершён. Найдено: <b>') + found + '</b>' +
+                    (currentLang === 'en' ? ' · Not found: <b>' : ' · Не найдено: <b>') + notFound + '</b></div>';
+            }
+            return;
+        }
+        var row = rgBatchRows[processed];
+        var queries = rgBatchBuildQueries(row);
+        row.query = queries.q;
+
+        var tryFetch = function(q, allowAlt) {
+            return rgFetchViaProxy(q).then(function(res) {
+                if (!res.rows.length && allowAlt && queries.alt) return tryFetch(queries.alt, false);
+                return res;
+            });
+        };
+
+        tryFetch(queries.q, true).then(function(res) {
+            row.query = queries.q;
+            row.results = res.rows;
+            row.proxy = res.proxy;
+            row.done = true;
+        }).catch(function(err) {
+            row.error = err && err.message ? err.message : String(err);
+            row.done = true;
+        }).then(function() {
+            processed++;
+            rgBatchRender(processed, total);
+            setTimeout(processNext, 350);
+        });
+    };
+
+    processNext();
+}
+
+function rgBatchRender(processed, total) {
+    var resultsEl = document.getElementById('rg-batch-results');
+    if (!resultsEl) return;
+
+    impCollectPlayers(function(players) {
+        var html = '';
+        var pct = total ? Math.round((processed / total) * 100) : 0;
+        var doneRows = rgBatchRows.filter(function(r) { return r.done; });
+        var foundCount = doneRows.filter(function(r) { return r.results.length; }).length;
+
+        html += '<div class="rg-progress-wrap" style="margin-top:14px;">' +
+            '<div class="rg-progress"><div class="rg-progress-fill" style="width:' + pct + '%;"></div></div>' +
+            '<div class="rg-progress-text">' + (currentLang === 'en' ? 'Processed ' : 'Обработано ') + processed + '/' + total +
+            ' · <span style="color:#2ecc71;">' + (currentLang === 'en' ? 'found ' : 'найдено ') + foundCount + '</span></div></div>';
+
+        // Toolbar: add selected + stop
+        var selectable = rgBatchRows.some(function(r) { return r.results.some(function(x) { return x.hcp != null; }); });
+        html += '<div class="rg-bulk-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0;padding:12px 14px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:12px;">';
+        html += '<label class="list-item" style="cursor:pointer;padding:8px 14px;display:flex;align-items:center;gap:10px;margin:0;background:rgba(255,255,255,0.03);border-radius:10px;user-select:none;">' +
+            '<input type="checkbox" id="rg-batch-check-all" onchange="rgBatchToggleAll(this)" style="width:20px;height:20px;cursor:pointer;">' +
+            '<span style="font-weight:700;font-size:13px;color:var(--white);">' + (currentLang === 'en' ? 'Select all found' : 'Выбрать всех найденных') + '</span></label>';
+        html += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
+        html += '<button type="button" class="btn btn-g imp-big-btn" onclick="rgBatchAddSelected()" ' + (selectable ? '' : 'disabled') + ' style="min-height:42px;">' +
+            '<i class="fas fa-users-plus"></i> <span>' + (currentLang === 'en' ? 'Add selected' : 'Добавить выбранных') + ' (<span id="rg-batch-bulk-count">0</span>)</span></button>';
+        html += '<button type="button" class="btn btn-r imp-big-btn ' + (rgBatchState.running ? '' : 'hidden') + '" onclick="rgBatchStop()" style="min-height:42px;">' +
+            '<i class="fas fa-stop"></i> <span>' + (currentLang === 'en' ? 'Stop' : 'Остановить') + '</span></button>';
+        html += '</div></div>';
+
+        html += '<div class="rg-list">';
+        rgBatchRows.forEach(function(row, ri) {
+            if (!row.done) {
+                html += '<div class="rg-card" style="opacity:.55;">' +
+                    '<div style="flex:1;min-width:0;"><div class="rg-name">' + escapeHtml(row.name) + '</div>' +
+                    '<div class="rg-meta"><i class="fas fa-spinner fa-spin"></i> ' + (currentLang === 'en' ? 'Searching...' : 'Поиск...') + '</div></div></div>';
+                return;
+            }
+            var statusBadge;
+            if (row.error) {
+                statusBadge = '<span class="imp-badge imp-badge-err">⚠ ' + (currentLang === 'en' ? 'Error' : 'Ошибка') + '</span>';
+            } else if (!row.results.length) {
+                statusBadge = '<span class="imp-badge" style="background:rgba(224,90,74,0.15);color:var(--red);">' + (currentLang === 'en' ? 'Not found' : 'Не найдено') + '</span>';
+            } else {
+                statusBadge = '<span class="imp-badge imp-badge-new">' + (currentLang === 'en' ? 'Found ' : 'Найдено ') + row.results.length + '</span>';
+            }
+            html += '<div class="rg-card" style="flex-direction:column;align-items:stretch;gap:8px;">';
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">' +
+                '<div style="font-weight:800;font-size:15px;color:var(--white);">' + escapeHtml(row.name) + '</div>' + statusBadge + '</div>';
+            if (row.error) {
+                html += '<div class="rg-meta" style="color:var(--red);">' + escapeHtml(row.error) + '</div>';
+            }
+            if (row.query) {
+                html += '<div class="rg-meta">' + (currentLang === 'en' ? 'Query: ' : 'Запрос: ') + '«' + escapeHtml(row.query) + '»</div>';
+            }
+            row.results.forEach(function(r, ii) {
+                var dup = rgMatchInList(players, r);
+                var genderIcon = r.gender === 'women' ? '👩' : '👨';
+                var hcpVal = r.hcp != null ? fmtExactHcp(r.hcp) : r.hcpDisplay;
+                var hcpChanged = dup && r.hcp != null && dup.data.handicap != null && Math.abs((parseFloat(dup.data.handicap) || 0) - r.hcp) > 0.049;
+                var isDisabled = r.hcp == null;
+                html += '<div style="display:flex;align-items:flex-start;gap:10px;border-top:1px solid var(--border);padding-top:10px;margin-top:2px;">';
+                html += '<input type="checkbox" class="rg-batch-check" data-ri="' + ri + '" data-ii="' + ii + '" ' + (isDisabled ? 'disabled' : (r.selected ? 'checked' : '')) + ' onchange="rgBatchRowToggle(this)" style="width:20px;height:20px;cursor:pointer;margin-top:6px;flex-shrink:0;">';
+                html += '<div style="flex:1;min-width:0;">';
+                html += '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;">';
+                html += '<div class="rg-main" style="flex:1;min-width:160px;">';
+                html += '<div class="rg-name">' + genderIcon + ' ' + escapeHtml(r.fio) + '</div>';
+                html += '<div class="rg-meta">💳 ' + escapeHtml(r.number) + ' · ' + (r.gender === 'women' ? (currentLang === 'en' ? 'Female' : 'Жен.') : (currentLang === 'en' ? 'Male' : 'Муж.')) +
+                    (r.hcpDate ? ' · ' + (currentLang === 'en' ? 'updated ' : 'обновлён ') + escapeHtml(r.hcpDate) : '') + '</div>';
+                if (dup) html += '<div class="rg-meta" style="color:var(--gold);">' + (currentLang === 'en' ? 'Already on site' : 'Уже есть на сайте') + ': ' + escapeHtml(dup.data.name || dup.id) + '</div>';
+                html += '</div>';
+                html += '<div class="rg-hcp' + (hcpChanged ? ' rg-hcp-changed' : '') + '" style="flex-shrink:0;">' + escapeHtml(hcpVal) + '<span class="rg-hcp-label">HI</span></div>';
+                html += '</div>';
+                html += '<div class="rg-actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">';
+                if (r.hcp == null) {
+                    html += '<span class="imp-badge imp-badge-err">⚠ ' + (currentLang === 'en' ? 'No HI in RGA base' : 'Нет HI в базе АГР') + '</span>';
+                } else if (dup) {
+                    html += '<button type="button" class="btn btn-og btn-sm" onclick="rgBatchUpdateOne(' + ri + ',' + ii + ')"><i class="fas fa-rotate"></i> ' +
+                        (hcpChanged
+                            ? (currentLang === 'en' ? 'Update HCP ' + fmtExactHcp(dup.data.handicap) + ' → ' + fmtExactHcp(r.hcp)
+                                : 'Обновить HCP ' + fmtExactHcp(dup.data.handicap) + ' → ' + fmtExactHcp(r.hcp))
+                            : (currentLang === 'en' ? 'HCP is up to date' : 'HCP актуален')) + '</button>';
+                } else {
+                    html += '<button type="button" class="btn btn-g btn-sm" onclick="rgBatchAddOne(' + ri + ',' + ii + ')"><i class="fas fa-plus"></i> ' +
+                        (currentLang === 'en' ? 'Add to site' : 'Добавить на сайт') + '</button>';
+                }
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+        });
+        html += '</div>';
+        resultsEl.innerHTML = html;
+        rgBatchUpdateBulkCount();
+    });
+}
+
+function rgBatchResult(ri, ii) {
+    var row = rgBatchRows[ri];
+    if (!row || !row.results[ii]) return null;
+    return row.results[ii];
+}
+
+function rgBatchRowToggle(cb) {
+    var ri = parseInt(cb.getAttribute('data-ri'));
+    var ii = parseInt(cb.getAttribute('data-ii'));
+    var r = rgBatchResult(ri, ii);
+    if (r) r.selected = cb.checked;
+    rgBatchUpdateBulkCount();
+}
+
+function rgBatchToggleAll(master) {
+    document.querySelectorAll('.rg-batch-check:not(:disabled)').forEach(function(cb) {
+        cb.checked = master.checked;
+        var ri = parseInt(cb.getAttribute('data-ri'));
+        var ii = parseInt(cb.getAttribute('data-ii'));
+        var r = rgBatchResult(ri, ii);
+        if (r) r.selected = master.checked;
+    });
+    rgBatchUpdateBulkCount();
+}
+
+function rgBatchUpdateBulkCount() {
+    var checked = document.querySelectorAll('.rg-batch-check:checked');
+    var label = document.getElementById('rg-batch-bulk-count');
+    if (label) label.textContent = String(checked.length);
+}
+
+function rgBatchStop() {
+    rgBatchState.stop = true;
+    rgBatchState.running = false;
+}
+
+/** Добавляет одного игрока (или обновляет HCP, если он уже есть на сайте). */
+function rgBatchAddResult(r) {
+    if (!r || r.hcp == null) return;
+    var existing = rgFindLocalMatch(r);
+    if (existing) {
+        rgUpdateHcpOfSilent(existing.id, r, existing.data);
+        return;
+    }
+    var newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6) + '_' + Math.floor(Math.random() * 10000);
+    var playerData = {
+        name: r.fio,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: '',
+        handicap: r.hcp,
+        gender: r.gender,
+        defaultTee: r.gender === 'women' ? 'rd' : 'bl',
+        role: 'player',
+        createdAt: Date.now(),
+        roundsPlayed: 0,
+        bestGross: null,
+        bestStableford: null,
+        rusgolfNumber: r.number,
+        rusgolfHcpDate: r.hcpDate,
+        hcpUpdatedAt: Date.now(),
+        hcpSource: 'rusgolf'
+    };
+    impSaveLocalPlayer(newId, playerData);
+    if (typeof db !== 'undefined') {
+        db.ref('users/' + newId).set(playerData).catch(function() {});
+    }
+}
+
+function rgBatchAddOne(ri, ii) {
+    if (!rgIsAdmin()) {
+        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
+        return;
+    }
+    var r = rgBatchResult(ri, ii);
+    if (!r || r.hcp == null) return;
+    rgBatchAddResult(r);
+    toast('🎉 ' + (currentLang === 'en' ? 'Player ' : 'Игрок ') + r.fio + (currentLang === 'en' ? ' added (HCP ' : ' добавлен (HCP ') + fmtExactHcp(r.hcp) + ')', 'success');
+    if (typeof vib === 'function') vib([50, 30, 50]);
+    if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+    r.selected = false;
+    rgBatchRender(rgBatchRows.filter(function(x) { return x.done; }).length, rgBatchRows.length);
+}
+
+function rgBatchUpdateOne(ri, ii) {
+    if (!rgIsAdmin()) {
+        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
+        return;
+    }
+    var r = rgBatchResult(ri, ii);
+    if (!r || r.hcp == null) return;
+    var existing = rgFindLocalMatch(r);
+    if (existing) {
+        rgUpdateHcpOf(existing.id, r);
+        r.selected = false;
+        rgBatchRender(rgBatchRows.filter(function(x) { return x.done; }).length, rgBatchRows.length);
+    }
+}
+
+function rgBatchAddSelected() {
+    if (!rgIsAdmin()) {
+        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
+        return;
+    }
+    var selected = [];
+    rgBatchRows.forEach(function(row) {
+        row.results.forEach(function(r) {
+            if (r.selected && r.hcp != null) selected.push(r);
+        });
+    });
+    if (!selected.length) {
+        toast(currentLang === 'en' ? '⚠ Select at least one player' : '⚠ Выберите хотя бы одного игрока', 'error');
+        return;
+    }
+
+    var added = 0, updated = 0;
+    var seen = {};
+    selected.forEach(function(r) {
+        var uniqKey = (r.number || '') + '|' + impNormName(r.fio);
+        if (seen[uniqKey]) return;
+        seen[uniqKey] = true;
+        var existing = rgFindLocalMatch(r);
+        if (existing) {
+            rgUpdateHcpOfSilent(existing.id, r, existing.data);
+            updated++;
+        } else {
+            rgBatchAddResult(r);
+            added++;
+        }
+        r.selected = false;
+    });
+
+    var msg = '✅ ' + (currentLang === 'en' ? 'Bulk add: ' : 'Массовое добавление: ') +
+        added + ' ' + (currentLang === 'en' ? 'added' : 'добавлено') +
+        ', ' + updated + ' ' + (currentLang === 'en' ? 'updated' : 'обновлено');
+    toast(msg, 'success');
+    if (typeof vib === 'function') vib([50, 30, 50]);
+    if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+    if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
+    rgBatchRender(rgBatchRows.filter(function(x) { return x.done; }).length, rgBatchRows.length);
+}
+
 // -------- НАСТРОЙКИ ПРОКСИ ---------
 
 function loadRusgolfProxySettings() {

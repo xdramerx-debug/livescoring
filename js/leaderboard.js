@@ -50,7 +50,10 @@ function renderRound(id, r) {
     var players = r.players || {};
     var order = getRoundOrder(r);
 
-    var list = Object.entries(players).map(function(pe) {
+    var list = Object.entries(players).filter(function(pe) {
+        // Удалённые и навсегда заблокированные демо-игроки не показываются
+        return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
+    }).map(function(pe) {
         var pid = pe[0], p = pe[1], sc = p.scores || {};
         var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
         return {

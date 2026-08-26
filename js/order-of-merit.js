@@ -28,7 +28,10 @@ function loadOrderOfMerit() {
             if (!r || r.status !== 'completed' || !r.players) return;
 
             var order = getRoundOrder(r);
-            var players = Object.entries(r.players).map(function(pe) {
+            var players = Object.entries(r.players).filter(function(pe) {
+                // Удалённые и навсегда заблокированные демо-игроки не попадают в зачёт
+                return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
+            }).map(function(pe) {
                 var pid = pe[0], p = pe[1];
                 var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
                 return { pid: pid, name: p.name, toPar: stats.toPar, gross: stats.gross, stbl: stats.stablefordField };
@@ -62,6 +65,8 @@ function loadOrderOfMerit() {
         // Also add base participation points from users' roundsPlayed
         Object.entries(users).forEach(function(ue) {
             var uid = ue[0], u = ue[1];
+            // Удалённые и навсегда заблокированные демо-игроки не попадают в зачёт
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u && u.name)) return;
             if (!seasonPoints[uid]) {
                 seasonPoints[uid] = {
                     pid: uid,

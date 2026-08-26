@@ -18,6 +18,8 @@ function initPredictorUsers() {
         sel.innerHTML = '<option value="">' + (currentLang === 'en' ? '— Select Player —' : '— Выберите игрока —') + '</option>';
         Object.entries(users).forEach(function(e) {
             var uid = e[0], u = e[1];
+            // Удалённые и навсегда заблокированные демо-игроки не показываются
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u && u.name)) return;
             var isCurrent = currentUser && uid === currentUser.uid;
             sel.innerHTML += '<option value="' + uid + '" ' + (isCurrent ? 'selected' : '') + '>' + (u.name || 'Player') + ' (HCP: ' + fmtExactHcp(u.handicap) + ')</option>';
         });

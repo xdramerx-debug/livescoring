@@ -14,7 +14,10 @@ function loadStats() {
         var users = snaps[1].val() || {};
 
         var totalRounds = 0, completed = 0, active = 0;
-        var totalPlayers = Object.keys(users).length;
+        var totalPlayers = Object.keys(users).filter(function(uid) {
+            var u = users[uid];
+            return !(u && typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u.name));
+        }).length;
         var totalHoles = 0;
         var birdies = 0, eagles = 0, pars = 0, hio = 0;
         var bestGross = Infinity, bestGrossPlayer = '—';
@@ -43,6 +46,7 @@ function loadStats() {
                     if (dur >= 0.5) {
                         Object.entries(r.players || {}).forEach(function(pe) {
                             var p = pe[1];
+                            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], p && p.name)) return;
                             var sc = p.scores || {};
                             var cnt = 0;
                             Object.values(sc).forEach(function(s) { if (parseInt(s) >= 1) cnt++; });
@@ -61,6 +65,7 @@ function loadStats() {
 
             Object.entries(r.players || {}).forEach(function(pe) {
                 var pid = pe[0], p = pe[1];
+                if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
                 var scores = p.scores || {};
                 var fieldHcp = p.fieldHcp || 0;
                 var exactHcp = p.exactHcp || 0;

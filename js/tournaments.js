@@ -61,6 +61,8 @@ function loadTournaments() {
                 html += '<div style="overflow-x:auto;"><table class="lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>ТИ</th><th>' + t('date') + '</th></tr></thead><tbody>';
                 var rIdx = 1;
                 Object.values(regPlayers).forEach(function(rp) {
+                    // Удалённые и навсегда заблокированные демо-игроки не показываются
+                    if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(null, rp && rp.name)) return;
                     html += '<tr><td>' + (rIdx++) + '</td>';
                     html += '<td><strong style="color:var(--gold);">' + (rp.name || '—') + '</strong></td>';
                     html += '<td>' + (rp.handicap != null ? fmtExactHcp(rp.handicap) : '—') + '</td>';

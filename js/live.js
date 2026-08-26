@@ -164,7 +164,7 @@ function buildPlayerSlots() {
     var el = document.getElementById('player-slots');
     var html = '<h3 class="setup-subhead"><i class="fas fa-user-plus"></i> ' + t('players_label') + '</h3>';
 
-    var namePlaceholder = currentLang === 'en' ? 'John Doe' : 'Иван Петров';
+    var namePlaceholder = currentLang === 'en' ? 'John Doe' : 'Имя Фамилия';
 
     for (var i = 1; i <= count; i++) {
         html += '<div class="setup-player-card">';
@@ -172,7 +172,7 @@ function buildPlayerSlots() {
         
         html += '<div class="form-row form-row-3">';
         html += '<div class="form-group" style="flex:1.4 1 120px;position:relative;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"><input type="hidden" id="pl-uid-' + i + '" value=""></div>';
-        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('middle_name') + '</label><input type="text" id="pl-mid-' + i + '" class="form-input" placeholder="' + (currentLang === 'en' ? 'Jr.' : 'Иванович') + '"></div>';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('middle_name') + '</label><input type="text" id="pl-mid-' + i + '" class="form-input" placeholder="' + (currentLang === 'en' ? 'Jr.' : 'Отчество') + '"></div>';
         html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" onchange="onPlayerGenderOrTeeChange(' + i + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
         html += '</div>';
 
@@ -940,6 +940,8 @@ function renderPlaySummary() {
 
     Object.entries(curRoundData.players || {}).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
+        // Удалённые и навсегда заблокированные демо-игроки не показываются
+        if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
         var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
 
@@ -1082,6 +1084,8 @@ function renderGVPlayers(r) {
         var html = '';
         Object.entries(r.players || {}).forEach(function(pe) {
             var pid = pe[0], p = pe[1];
+            // Удалённые и навсегда заблокированные демо-игроки не показываются
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
             var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
             var thruTxt = stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
 

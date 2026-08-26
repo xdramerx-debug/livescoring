@@ -441,13 +441,32 @@ function listenForAlerts() {
                 var holeLblStr = currentLang === 'en' ? 'Hole' : 'Лунка';
                 var playerLblStr = currentLang === 'en' ? 'Player' : 'Игрок';
 
+                var alreadyResponded = !!(a.response && a.response.respondedAt);
+
                 html += '<div class="list-item" style="padding:16px;border-left:4px solid var(--red);background:rgba(224,90,74,0.1);flex-wrap:wrap;gap:10px;">';
                 html += '<div style="flex:1;min-width:200px;">';
                 html += '<div style="font-weight:800;font-size:16px;color:var(--white);">' + icon + ' ' + callHeader + title + '</div>';
                 html += '<div style="color:var(--gold);font-size:14px;margin:4px 0;">' + holeLblStr + ': <b>' + a.hole + '</b> | ' + playerLblStr + ': <b>' + (a.playerName || '—') + '</b></div>';
                 html += '<div style="font-size:11px;color:var(--muted);">' + fmtTime(a.time) + '</div>';
+                if (alreadyResponded) {
+                    var who = a.response.responderRole === 'marshal'
+                        ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
+                        : (currentLang === 'en' ? 'Referee' : 'Судья');
+                    var respondedTxt = currentLang === 'en'
+                        ? '✅ ' + who + ' is on the way (' + fmtTime(a.response.respondedAt) + ')'
+                        : '✅ ' + who + ' едет (' + fmtTime(a.response.respondedAt) + ')';
+                    html += '<div style="font-size:12px;color:#2ecc71;font-weight:700;margin-top:6px;"><i class="fas fa-check-circle"></i> ' + respondedTxt + '</div>';
+                }
                 html += '</div>';
+                html += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-wrap:wrap;">';
+                if (!alreadyResponded) {
+                    var whoRes = a.type === 'referee'
+                        ? (currentLang === 'en' ? 'Referee is on the way' : 'Судья едет')
+                        : (currentLang === 'en' ? 'Marshal is on the way' : 'Маршал едет');
+                    html += '<button class="btn btn-g btn-sm" style="background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;border:none;" onclick="respondToAlert(\'' + id + '\', \'' + a.type + '\', \'' + (a.playerId || '') + '\')"><i class="fas fa-car"></i> ' + whoRes + '</button>';
+                }
                 html += '<button class="btn btn-r btn-sm" onclick="closeAlert(\'' + id + '\')">' + (currentLang === 'en' ? 'Dismiss Alert' : 'Закрыть вызов') + '</button>';
+                html += '</div>';
                 html += '</div>';
             });
 
@@ -463,6 +482,48 @@ function listenForAlerts() {
 
 function closeAlert(id) {
     db.ref('alerts/' + id + '/status').set('resolved');
+}
+
+// Ответ админа на вызов: записывает в `alerts/<id>/response` и шлёт уведомление
+// игроку в `users/<playerId>/notifications` — клиент игрока подхватит его при следующем
+// заходе в live/solo и покажет тост «Судья/маршал едет».
+function respondToAlert(alertId, alertType, playerId) {
+    if (!alertId) return;
+    if (!playerId) {
+        toast(currentLang === 'en' ? '⚠️ Player ID is unknown for this alert' : '⚠️ Не удалось определить игрока для ответа', 'error');
+        return;
+    }
+
+    var now = Date.now();
+    var responderRole = (alertType === 'marshal') ? 'marshal' : 'referee';
+
+    var responseData = {
+        responderRole: responderRole,
+        respondedAt: now,
+        respondedBy: currentUser ? currentUser.uid : 'admin'
+    };
+
+    var notification = {
+        type: 'call_response',
+        alertId: alertId,
+        responderRole: responderRole,
+        time: now,
+        read: false
+    };
+
+    var updates = {};
+    updates['alerts/' + alertId + '/response'] = responseData;
+    updates['users/' + playerId + '/notifications/' + alertId] = notification;
+
+    db.ref().update(updates).then(function() {
+        var who = responderRole === 'marshal'
+            ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
+            : (currentLang === 'en' ? 'Referee' : 'Судья');
+        toast((currentLang === 'en' ? '✅ ' + who + ' is on the way! Player notified.' : '✅ ' + who + ' едет! Игрок уведомлён.'), 'success');
+        if (typeof vib === 'function') vib([50, 30, 50]);
+    }).catch(function(err) {
+        toast((currentLang === 'en' ? '❌ Response failed: ' : '❌ Ошибка отправки ответа: ') + (err && err.message ? err.message : err), 'error');
+    });
 }
 
 // ==========================================
@@ -1134,12 +1195,102 @@ function changeRole(id, newRole, name) {
 function deletePlayer(id, name) {
     if (!confirm((currentLang === 'en' ? 'Delete player ' + (name || id) + '? This cannot be undone!' : 'Удалить игрока ' + (name || id) + '? Это необратимо!'))) return;
 
-    var finishLocalDelete = function() {
-        // Запоминаем удаление, чтобы кэш и история раундов не «воскрешали» игрока
-        if (typeof markPlayerDeleted === 'function') markPlayerDeleted(id, name);
+    // Нормализованный ключ имени, по которому ищем упоминания удалённого игрока
+    // в раундах, регистрациях на турниры и т.п.
+    var normKey = '';
+    if (typeof normalizeSearchText === 'function' && name) {
+        normKey = normalizeSearchText(name);
+    } else if (name) {
+        normKey = String(name).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+    }
 
+    // Запоминаем удаление, чтобы кэш и история раундов не «воскрешали» игрока
+    if (typeof markPlayerDeleted === 'function') markPlayerDeleted(id, name);
+
+    // Удаляем все упоминания игрока в `rounds` (players / markerAssignments / markerScores /
+    // submitted / markerSubmitted / verified) и снимаем регистрации во всех турнирах.
+    // Без этого в выпадашке автоподбора при создании раунда удалённый игрок всё равно
+    // появляется — его подбирают из истории раундов.
+    var purgeFirebaseReferences = function(callback) {
+        if (typeof db === 'undefined') { callback(); return; }
+
+        var tasksPending = 4; // rounds, tournaments, users/history, users
+        var tasksLeft = tasksPending;
+        var check = function() { tasksLeft--; if (tasksLeft === 0) callback(); };
+
+        // 1) Удаляем упоминания в `rounds` (включая marker* и verified поля)
+        db.ref('rounds').once('value').then(function(sn) {
+            var rounds = sn.val() || {};
+            var updates = {};
+            Object.keys(rounds).forEach(function(rid) {
+                var r = rounds[rid];
+                if (!r) return;
+                if (r.players && r.players[id]) {
+                    updates['rounds/' + rid + '/players/' + id] = null;
+                }
+                if (r.markerAssignments && r.markerAssignments[id]) {
+                    updates['rounds/' + rid + '/markerAssignments/' + id] = null;
+                }
+                // markerScores и markerSubmitted хранятся под ключом целевого игрока
+                if (r.players) {
+                    Object.keys(r.players).forEach(function(tid) {
+                        if (tid === id) return;
+                        var p = r.players[tid] || {};
+                        if (p.markerScores && p.markerScores[id]) {
+                            updates['rounds/' + rid + '/players/' + tid + '/markerScores/' + id] = null;
+                        }
+                        if (p.markerSubmitted && p.markerSubmitted[id]) {
+                            updates['rounds/' + rid + '/players/' + tid + '/markerSubmitted/' + id] = null;
+                        }
+                    });
+                }
+            });
+            var applyRoundUpdates = function() {
+                if (Object.keys(updates).length === 0) { check(); return; }
+                db.ref().update(updates).then(check, check);
+            };
+            applyRoundUpdates();
+        }, check);
+
+        // 2) Снимаем регистрации во всех турнирах (по uid)
+        db.ref('tournaments').once('value').then(function(sn) {
+            var tournaments = sn.val() || {};
+            var tnUpdates = {};
+            Object.keys(tournaments).forEach(function(tid) {
+                var t = tournaments[tid];
+                if (t && t.registeredPlayers && t.registeredPlayers[id]) {
+                    tnUpdates['tournaments/' + tid + '/registeredPlayers/' + id] = null;
+                }
+            });
+            if (Object.keys(tnUpdates).length === 0) { check(); return; }
+            db.ref().update(tnUpdates).then(check, check);
+        }, check);
+
+        // 3) Удаляем историю раундов
+        db.ref('users/' + id + '/history').remove().then(check, check);
+
+        // 4) Удаляем саму ноду users/<id> и уведомления этого игрока
+        var userUpdates = {};
+        userUpdates['users/' + id] = null;
+        userUpdates['users/' + id + '/notifications'] = null;
+        db.ref().update(userUpdates).then(check, check);
+    };
+
+    var finishLocalDelete = function() {
         if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[id]) {
             delete cachedRegisteredUsers[id];
+        }
+        // Также выкидываем из кэша все ghost-записи, оставшиеся от истории раундов
+        // по этому имени (могут иметь ключ вроде guest_name_xxx).
+        if (normKey && typeof cachedRegisteredUsers !== 'undefined') {
+            Object.keys(cachedRegisteredUsers).forEach(function(k) {
+                var u = cachedRegisteredUsers[k];
+                if (!u || !u.name) return;
+                var uKey = (typeof normalizeSearchText === 'function')
+                    ? normalizeSearchText(u.name)
+                    : String(u.name).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+                if (uKey === normKey) delete cachedRegisteredUsers[k];
+            });
         }
         try {
             var custom = {};
@@ -1155,21 +1306,33 @@ function deletePlayer(id, name) {
                 var cached = JSON.parse(cachedRaw);
                 if (cached && typeof cached === 'object') {
                     delete cached[id];
+                    // Тот же ghost-фильтр по нормализованному имени
+                    if (normKey) {
+                        Object.keys(cached).forEach(function(k) {
+                            var u = cached[k];
+                            if (!u || !u.name) return;
+                            var uKey = (typeof normalizeSearchText === 'function')
+                                ? normalizeSearchText(u.name)
+                                : String(u.name).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+                            if (uKey === normKey) delete cached[k];
+                        });
+                    }
                     localStorage.setItem('pestovo_cached_users', JSON.stringify(cached));
                 }
             }
         } catch(e) {}
 
+        // После удаления автоподбор читает кэш через `getKnownPlayersSync()`,
+        // поэтому нужно триггерить обновление списка в открытых формах.
+        if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
         if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
-        toast(currentLang === 'en' ? '🗑️ Player deleted' : '🗑️ Игрок удалён');
+        toast(currentLang === 'en' ? '🗑️ Player deleted everywhere' : '🗑️ Игрок полностью удалён');
     };
 
     if (typeof db !== 'undefined') {
-        // Удаляем из Firebase, и только после успешного удаления чистим локальный кэш
-        db.ref('users/' + id).remove().then(function() {
+        // Сначала чистим все упоминания, потом завершаем очистку локального кэша
+        purgeFirebaseReferences(function() {
             finishLocalDelete();
-        }).catch(function(err) {
-            toast((currentLang === 'en' ? '❌ Delete failed: ' : '❌ Ошибка удаления: ') + (err && err.message ? err.message : err), 'error');
         });
     } else {
         finishLocalDelete();

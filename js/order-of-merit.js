@@ -19,13 +19,28 @@ function loadOrderOfMerit() {
 
         var seasonPoints = {};
 
-        // Award points from completed tournament rounds:
-        // 1st place: 100 pts, 2nd: 80 pts, 3rd: 70 pts, 4th: 60 pts, 5th: 50 pts, participation: 20 pts
+        // Базовые очки участия начисляются всем игрокам, в том числе тем, у кого
+        // уже есть турнирные результаты (раньше они ошибочно их не получали).
+        Object.entries(users).forEach(function(ue) {
+            var uid = ue[0], u = ue[1];
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u && u.name)) return;
+            seasonPoints[uid] = {
+                pid: uid,
+                name: u.name || 'Player',
+                avatar: u.avatar,
+                points: (u.roundsPlayed || 0) * 5,
+                tournamentsPlayed: 0,
+                wins: 0
+            };
+        });
+
+        // Турнирные места считаются только для завершённых раундов, связанных
+        // с турниром. Обычные тренировки больше не дают турнирные очки.
         var placementPoints = [100, 80, 70, 60, 50, 40, 30, 25, 20, 15];
 
         Object.entries(rounds).forEach(function(e) {
             var id = e[0], r = e[1];
-            if (!r || r.status !== 'completed' || !r.players) return;
+            if (!r || r.status !== 'completed' || !r.tournamentId || !r.players) return;
 
             var order = getRoundOrder(r);
             var players = Object.entries(r.players).filter(function(pe) {
@@ -60,23 +75,6 @@ function loadOrderOfMerit() {
                 seasonPoints[p.pid].tournamentsPlayed += 1;
                 if (rank === 0) seasonPoints[p.pid].wins += 1;
             });
-        });
-
-        // Also add base participation points from users' roundsPlayed
-        Object.entries(users).forEach(function(ue) {
-            var uid = ue[0], u = ue[1];
-            // Удалённые и навсегда заблокированные демо-игроки не попадают в зачёт
-            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u && u.name)) return;
-            if (!seasonPoints[uid]) {
-                seasonPoints[uid] = {
-                    pid: uid,
-                    name: u.name || 'Player',
-                    avatar: u.avatar,
-                    points: (u.roundsPlayed || 0) * 5,
-                    tournamentsPlayed: u.roundsPlayed || 0,
-                    wins: 0
-                };
-            }
         });
 
         var standings = Object.values(seasonPoints);

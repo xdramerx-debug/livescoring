@@ -2022,26 +2022,6 @@ body.sun-mode .autocomplete-item.active-keyboard {
 }
 
 /* =========================================
-   MOBILE BOTTOM TAB BAR (PRIMARY NAVIGATION)
-   Полностью отключено: нижнее меню больше не используется.
-   Стили оставлены как no-op, чтобы старый CSS/JS-код не падал.
-   ========================================= */
-.bottom-tabbar {
-    display: none !important;
-}
-.bottom-tab {
-    /* на случай если элемент попадёт в DOM — скрываем визуально */
-    display: none !important;
-}
-/* снимаем отступы, которые раньше навешивались на body из-за таб-бара */
-body.has-bottom-tabbar { padding-bottom: 0 !important; }
-body.has-bottom-tabbar .footer { padding-bottom: 24px !important; }
-body.has-bottom-tabbar .offline-queue-badge { bottom: 24px !important; }
-body.has-bottom-tabbar .install-banner.show { bottom: 20px !important; }
-body.has-bottom-tabbar .ios-install-banner.show { bottom: 20px !important; }
-body.has-bottom-tabbar .online-indicator { top: 70px !important; }
-
-/* =========================================
    MOBILE-FIRST FORM & CONTROL POLISH
    ========================================= */
 @media (max-width: 768px) {
@@ -2072,3 +2052,33 @@ body.has-bottom-tabbar .online-indicator { top: 70px !important; }
 .rg-sync-section{margin-bottom:14px;}
 .rg-sync-list{max-height:280px;overflow:auto;}
 .rg-sync-row{padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:rgba(255,255,255,0.03);font-size:13px;color:var(--white);}
+
+
+/* ===== v1.6.0: mobile accessibility and safe-area polish ===== */
+html, body { max-width: 100%; overflow-x: clip; }
+button, input, select, textarea { font: inherit; }
+button, .btn, a { -webkit-tap-highlight-color: transparent; }
+.footer { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.site-version { overflow-wrap: anywhere; }
+.modal-body { max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
+.mobile-drawer-panel { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+
+@media (max-width: 480px) {
+    .container { padding-left: 14px; padding-right: 14px; }
+    .card, .setup-card, .auth-card { padding-left: 16px; padding-right: 16px; }
+    .hero { padding-left: 14px; padding-right: 14px; }
+    .hero-btns, .modal-actions { width: 100%; }
+    .hero-btns .btn, .modal-actions .btn { flex: 1 1 100%; }
+    .admin-tabs { scrollbar-width: thin; }
+    .footer-bottom { gap: 6px; text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

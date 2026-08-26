@@ -62,6 +62,26 @@ function escapeHtml(str){
     });
 }
 
+// Одна Firebase-подписка на логический виджет. Повторный рендер (например, при
+// смене языка или фильтра) переиспользует последний снимок, не создавая дублей.
+var realtimeValueBindings = Object.create(null);
+function bindRealtimeValue(key, firebaseRef, render) {
+    if (!key || !firebaseRef || typeof render !== 'function') return;
+    var binding = realtimeValueBindings[key];
+    if (!binding) {
+        binding = realtimeValueBindings[key] = { render: render, snapshot: null };
+        firebaseRef.on('value', function(snapshot) {
+            binding.snapshot = snapshot;
+            binding.render(snapshot);
+        }, function(error) {
+            console.error('[Firebase] ' + key + ':', error);
+        });
+    } else {
+        binding.render = render;
+        if (binding.snapshot) binding.render(binding.snapshot);
+    }
+}
+
 // Глобальный fallback для битых <img> (заменяет инлайн-обработчики onerror — лучше для CSP).
 // Слушаем в фазе capture: ошибки ресурсов не всплывают.
 document.addEventListener('error', function(e) {
@@ -659,7 +679,6 @@ function toggleLang() {
     try { document.documentElement.setAttribute('lang', currentLang); } catch(e) {}
     applyTranslations();
     updateLangButtons();
-    if (typeof buildBottomNav === 'function') buildBottomNav();
     if (typeof buildMobileDrawer === 'function') {
         var drawerRoot = document.getElementById('mobile-drawer-root');
         var wasOpen = drawerRoot && drawerRoot.classList.contains('open');
@@ -745,7 +764,7 @@ function loadMyActiveRounds(targetId) {
     var el = document.getElementById(targetId);
     if (!el || typeof db === 'undefined') return;
 
-    db.ref('rounds').on('value', function(snap) {
+    bindRealtimeValue('my-active-rounds:' + targetId, db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
         var myActive = [];
 
@@ -967,7 +986,6 @@ function animateScoreElement(elId) {
 
 function initNav(){
     buildMobileDrawer();
-    buildBottomNav();
 
     var tg = document.getElementById('nav-toggle');
     if (tg) {
@@ -1076,24 +1094,6 @@ function buildMobileDrawer() {
     if (typeof applyPageVisibilitySettings === 'function') {
         applyPageVisibilitySettings();
     }
-}
-
-// ==========================================
-// МОБИЛЬНАЯ НИЖНЯЯ НАВИГАЦИЯ (BOTTOM TAB BAR)
-// Нижнее меню отключено: в дизайне больше не используется.
-// Функция оставлена как no-op для обратной совместимости со старыми
-// страницами, которые её вызывают.
-// ==========================================
-var BOTTOM_NAV_SKIP = { 'tv.html': true, 'offline.html': true, 'auth.html': true };
-
-function buildBottomNav() {
-    // Нижняя таб-панель убрана. Если ранее созданный элемент остался в DOM —
-    // удаляем его и снимаем служебный класс с body, чтобы CSS не навешивал
-    // лишние отступы и плавающие элементы не «висели» над пустым местом.
-    if (typeof document === 'undefined') return;
-    var bar = document.getElementById('bottom-tabbar');
-    if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
-    if (document.body) document.body.classList.remove('has-bottom-tabbar');
 }
 
 /* Прячем нижнюю навигацию, когда открыта экранная клавиатура (фокус в поле ввода) */
@@ -1406,9 +1406,6 @@ function buildTimingTable(st, sh, holeRange) {
     html += '</div>';
     return html;
 }
-
-const ADMIN_LOGIN='admin';
-const ADMIN_PASS='pestovo2024';
 
 function parseExactHcp(val) {
     if (val === null || val === undefined || val === '') return 0;
@@ -3450,14 +3447,14 @@ function openHeadToHeadModal(p1Id, p2Id) {
         html += '<div class="form-group"><label>Player 1</label><select class="form-input" onchange="openHeadToHeadModal(this.value, \'' + uid2 + '\')">';
         userEntries.forEach(function(e) {
             var sel = e[0] === uid1 ? 'selected' : '';
-            html += '<option value="' + e[0] + '" ' + sel + '>' + (e[1].name || 'Player') + '</option>';
+            html += '<option value="' + e[0] + '" ' + sel + '>' + escapeHtml(e[1].name || 'Player') + '</option>';
         });
         html += '</select></div>';
 
         html += '<div class="form-group"><label>Player 2</label><select class="form-input" onchange="openHeadToHeadModal(\'' + uid1 + '\', this.value)">';
         userEntries.forEach(function(e) {
             var sel = e[0] === uid2 ? 'selected' : '';
-            html += '<option value="' + e[0] + '" ' + sel + '>' + (e[1].name || 'Player') + '</option>';
+            html += '<option value="' + e[0] + '" ' + sel + '>' + escapeHtml(e[1].name || 'Player') + '</option>';
         });
         html += '</select></div>';
         html += '</div>';
@@ -3465,9 +3462,9 @@ function openHeadToHeadModal(p1Id, p2Id) {
         // Head-to-Head Comparison Table
         html += '<div class="card" style="background:var(--input);padding:16px;">';
         html += '<div style="display:flex;justify-content:space-around;align-items:center;margin-bottom:16px;text-align:center;">';
-        html += '<div>' + fmtUserAvatar(u1, 52) + '<div style="font-weight:700;color:var(--gold);margin-top:4px;">' + (u1.name || 'Player 1') + '</div></div>';
+        html += '<div>' + fmtUserAvatar(u1, 52) + '<div style="font-weight:700;color:var(--gold);margin-top:4px;">' + escapeHtml(u1.name || 'Player 1') + '</div></div>';
         html += '<div style="font-size:24px;font-weight:900;color:var(--white);">VS</div>';
-        html += '<div style="font-size:24px;font-weight:900;color:var(--white);">' + fmtUserAvatar(u2, 52) + '<div style="font-weight:700;color:var(--gold);margin-top:4px;">' + (u2.name || 'Player 2') + '</div></div>';
+        html += '<div style="font-size:24px;font-weight:900;color:var(--white);">' + fmtUserAvatar(u2, 52) + '<div style="font-weight:700;color:var(--gold);margin-top:4px;">' + escapeHtml(u2.name || 'Player 2') + '</div></div>';
         html += '</div>';
 
         // Metrics Rows

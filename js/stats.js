@@ -175,7 +175,7 @@ function loadStats() {
                 var avgStbl = (p.totalStbl / p.count).toFixed(1);
                 var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
                 thtml += '<div class="list-item">' +
-                    '<span><strong style="color:var(--white);">' + medal + ' ' + p.name + '</strong></span>' +
+                    '<span><strong style="color:var(--white);">' + medal + ' ' + escapeHtml(p.name || 'Player') + '</strong></span>' +
                     '<span>' + avgWord + '<b style="color:var(--gold);">' + avg + '</b> · Stableford: <b style="color:var(--gold);">' + avgStbl + '</b> · ' + p.count + fullRoundsWord + '</span>' +
                     '</div>';
             });

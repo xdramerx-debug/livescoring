@@ -832,7 +832,7 @@ function exportAllRoundsCSV() {
             var timeStr = fmtTime(r.startTime);
 
             Object.values(r.players || {}).forEach(function(p) {
-                var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, holeOrder(r.startHole || 1));
+                var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, getRoundOrder(r));
                 var row = [
                     rid,
                     dateStr,

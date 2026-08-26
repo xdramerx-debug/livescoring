@@ -136,13 +136,13 @@ function loadLiveRounds() {
             var id = e[0], r = e[1];
             var players = r.players || {};
             var pHtml = '';
-            var order = holeOrder(r.startHole || 1);
+            var order = getRoundOrder(r);
 
             Object.entries(players).forEach(function(pe) {
                 var pid = pe[0], p = pe[1], scores = p.scores || {};
                 var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
 
-                var thruText = stats.holesPlayed >= 18 ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : t('hole') + ' №' + (parseInt(r.startHole)||1));
+                var thruText = stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : t('hole') + ' №' + (parseInt(r.startHole)||1));
 
                 pHtml += '<div class="round-p" style="align-items:flex-start;">' +
                     '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + '</div>' +
@@ -255,7 +255,7 @@ function loadRecentResults() {
         entries.forEach(function(e) {
             var id = e[0], r = e[1], players = r.players || {};
             var pHtml = '';
-            var order = holeOrder(r.startHole || 1);
+            var order = getRoundOrder(r);
 
             Object.entries(players).forEach(function(pe) {
                 var pid = pe[0], p = pe[1], scores = p.scores || {};

@@ -28,7 +28,7 @@ function loadSc() {
         renderInfo();
 
         if (!scChanging) {
-            var order = holeOrder(scRound.startHole || 1);
+            var order = getRoundOrder(scRound);
             var scores = pl.scores || {};
             var found = false;
             for (var i = 0; i < order.length; i++) {
@@ -61,7 +61,7 @@ function renderInfo() {
 
 function buildHoles() {
     var el = document.getElementById('sc-holes');
-    var order = holeOrder(scRound.startHole || 1);
+    var order = getRoundOrder(scRound);
     var scores = scRound.players[scPid].scores || {};
     var html = '';
     order.forEach(function(h) {
@@ -144,7 +144,7 @@ function saveSc() {
 
         document.getElementById('sc-notice').innerHTML = buildTimingNotice(scRound.startTime, scRound.startHole, savedHole);
 
-        var order = holeOrder(scRound.startHole);
+        var order = getRoundOrder(scRound);
         var idx = order.indexOf(savedHole);
         if (idx >= 0 && idx < order.length - 1) { scHole = order[idx + 1]; scScore = 0; }
 

@@ -28,7 +28,7 @@ function loadMk() {
         mkPScores = pl.scores || {};
 
         if (!mkChanging) {
-            var order = holeOrder(mkRound.startHole || 1);
+            var order = getRoundOrder(mkRound);
             var found = false;
             for (var i = 0; i < order.length; i++) {
                 if (!(parseInt(mkScores[order[i]]) >= 1)) { mkHole = order[i]; found = true; break; }
@@ -47,7 +47,7 @@ function loadMk() {
 
 function buildHoles() {
     var el = document.getElementById('mk-holes');
-    var order = holeOrder(mkRound.startHole || 1);
+    var order = getRoundOrder(mkRound);
     var html = '';
     order.forEach(function(h) {
         var ps = parseInt(mkPScores[h]) || 0, ms = parseInt(mkScores[h]) || 0;
@@ -113,7 +113,7 @@ function saveMk() {
             toast(currentLang === 'en' ? '⚠️ Mismatch!' : '⚠️ Несовпадение!', 'error');
         } else { toast(currentLang === 'en' ? '👁️ Waiting for player' : '👁️ Ждём игрока'); vib(); }
 
-        var order = holeOrder(mkRound.startHole || 1);
+        var order = getRoundOrder(mkRound);
         var idx = order.indexOf(savedHole);
         if (idx >= 0 && idx < order.length - 1) { mkHole = order[idx + 1]; mkScore = 0; }
 

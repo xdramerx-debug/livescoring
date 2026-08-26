@@ -169,7 +169,7 @@ var I18N = {
         mode_start: 'Начать',
         tournament_opt: 'Турнир (опционально)',
         no_tournament: '— Без турнира —',
-        start_time: 'Время старта', start_hole: 'Стартовая лунка',
+        start_time: 'Время старта', start_hole: 'Стартовая лунка', holes_count: 'Сколько лунок',
         tee_select: 'ТИ', format_select: 'Формат',
         player_count: 'Количество игроков',
         player_count_1: '1 игрок', player_count_2: '2 игрока', player_count_3: '3 игрока', player_count_4: '4 игрока',
@@ -447,7 +447,7 @@ var I18N = {
         mode_start: 'Start',
         tournament_opt: 'Tournament (optional)',
         no_tournament: '— No Tournament —',
-        start_time: 'Start Time', start_hole: 'Start Hole',
+        start_time: 'Start Time', start_hole: 'Start Hole', holes_count: 'Number of Holes',
         tee_select: 'Tee', format_select: 'Format',
         player_count: 'Number of Players',
         player_count_1: '1 Player', player_count_2: '2 Players', player_count_3: '3 Players', player_count_4: '4 Players',
@@ -1265,49 +1265,119 @@ function navAuth(u, d) {
 function doLogout(){if(typeof auth!=='undefined'&&auth&&auth.signOut){auth.signOut().then(function(){window.location.reload();});}else{window.location.reload();}}
 function holeOrder(sh){var o=[],h=parseInt(sh)||1;for(var i=0;i<18;i++){o.push(h);h=h>=18?1:h+1;}return o;}
 
+// ==========================================
+// ВЫБОР КОЛИЧЕСТВА ЛУНОК (holeRange)
+// '1-9' | '10-18' | '1-18' (по умолчанию)
+// ==========================================
+function roundHoles(startHole, holeRange) {
+    startHole = parseInt(startHole) || 1;
+    if (holeRange === '1-9') return [1,2,3,4,5,6,7,8,9];
+    if (holeRange === '10-18') return [10,11,12,13,14,15,16,17,18];
+    return holeOrder(startHole); // 18 лунок, порядок со стартовой лунки (shotgun)
+}
+function roundHoleCount(holeRange) {
+    return (holeRange === '1-9' || holeRange === '10-18') ? 9 : 18;
+}
+function getRoundOrder(rd) { return roundHoles((rd && rd.startHole) || 1, rd && rd.holeRange); }
+function getRoundHoleCount(rd) { return roundHoleCount(rd && rd.holeRange); }
+
+// Собирает информацию о «незавершённых» лунках раунда для проверки перед финишем:
+//  - mismatch: лунки, где у игроков зафиксировано несовпадение (verified === false)
+//  - unconfirmed: лунки, где счёт ещё не подтверждён всеми / не введён
+function collectRoundVerification(r) {
+    var order = getRoundOrder(r);
+    var players = Object.entries((r && r.players) || {});
+    var mismatch = {}, unconfirmed = {};
+    if (r && r.mode === 'solo') {
+        // У сольного раунда нет маркера — «не подтверждено» значит нет введённого счёта
+        order.forEach(function(h){
+            var allScored = true;
+            players.forEach(function(pe){
+                var sc = (pe[1] && pe[1].scores) || {};
+                if (!(parseInt(sc[h]) >= 1)) allScored = false;
+            });
+            if (!allScored) unconfirmed[h] = [(currentLang === 'en' ? 'no score' : 'нет счёта')];
+        });
+    } else {
+        order.forEach(function(h){
+            var mismatchForHole = {}, unconfForHole = {};
+            var anyMismatch = false;
+            players.forEach(function(pe){
+                var p = pe[1] || {};
+                var v = p.verified && p.verified[h];
+                var name = p.name || (currentLang === 'en' ? 'Player' : 'Игрок');
+                if (v === false) { anyMismatch = true; mismatchForHole[name] = true; }
+                else if (v !== true) unconfForHole[name] = true;
+            });
+            if (anyMismatch) mismatch[h] = Object.keys(mismatchForHole);
+            else if (Object.keys(unconfForHole).length > 0) unconfirmed[h] = Object.keys(unconfForHole);
+        });
+    }
+    var canFinish = Object.keys(mismatch).length === 0 && Object.keys(unconfirmed).length === 0;
+    return { order: order, mismatch: mismatch, unconfirmed: unconfirmed, canFinish: canFinish, total: order.length };
+}
+
+function buildVerificationReportHtml(v) {
+    if (!v) return '';
+    var isEn = currentLang === 'en';
+    var parts = [];
+    var misKeys = Object.keys(v.mismatch || {});
+    var uncKeys = Object.keys(v.unconfirmed || {});
+    if (misKeys.length) {
+        var misList = misKeys.map(function(h){ return '#' + h + (v.mismatch[h].length ? ' (' + v.mismatch[h].join(', ') + ')' : ''); }).join(', ');
+        parts.push('<div class="timing-alert timing-late"><i class="fas fa-exclamation-triangle"></i><div><strong>' + (isEn ? 'Score mismatch on holes: ' : 'Несовпадения на лунках: ') + '</strong>' + misList + '</div></div>');
+    }
+    if (uncKeys.length) {
+        var uncList = uncKeys.map(function(h){ return '#' + h + (v.unconfirmed[h].length ? ' (' + v.unconfirmed[h].join(', ') + ')' : ''); }).join(', ');
+        parts.push('<div class="timing-alert timing-warn"><i class="fas fa-clock"></i><div><strong>' + (isEn ? 'Score not confirmed on holes: ' : 'Счёт не подтверждён на лунках: ') + '</strong>' + uncList + '</div></div>');
+    }
+    if (v.canFinish) {
+        parts.push('<div class="verify-ok">✅ ' + (isEn ? 'All ' + v.total + ' holes are confirmed.' : 'Все ' + v.total + ' лунок подтверждены.') + '</div>');
+    }
+    return parts.join('');
+}
+
 function holeDeadline(startTime,startHole,targetHole){if(!startTime)return null;var tVal=0,h=parseInt(startHole)||1,c=0;while(c<18){tVal+=holeTiming(h);if(h===targetHole)break;h=h>=18?1:h+1;c++;}return startTime+tVal*60000;}
 function checkTiming(startTime,startHole,holeNum){var dl=holeDeadline(startTime,startHole,holeNum);if(!dl)return{status:'ok',diff:0,deadline:null};var now=Date.now(),d=Math.round((now-dl)/60000);if(d>5)return{status:'late',diff:d,deadline:dl};if(d>0)return{status:'warning',diff:d,deadline:dl};return{status:'ok',diff:d,deadline:dl};}
 function buildTimingNotice(st,sh,ch){var c=checkTiming(st,sh,ch);if(!c.deadline)return'';var dl=fmtTime(c.deadline),nw=fmtTime(Date.now());if(c.status==='late')return'<div class="timing-alert timing-late"><i class="fas fa-exclamation-triangle"></i><div><strong>' + (currentLang === 'en' ? 'Pace Lag!' : 'Отставание!') + '</strong><br>' + t('hole') + ' ' + ch + ': deadline ' + dl + ', now ' + nw + ' (' + c.diff + ' min)</div></div>';if(c.status==='warning')return'<div class="timing-alert timing-warn"><i class="fas fa-clock"></i><div><strong>' + (currentLang === 'en' ? 'Deadline Approaching' : 'Близко к дедлайну') + '</strong><br>' + t('hole') + ' ' + ch + ': ' + dl + '</div></div>';var a=Math.abs(c.diff);return'<div class="timing-alert timing-ok"><i class="fas fa-check-circle"></i><div>' + t('hole') + ' ' + ch + ': ' + (currentLang === 'en' ? 'On Pace' : 'в графике') + (a>0?' (' + (currentLang === 'en' ? 'buffer ' : 'запас ') + a + ' min)':'') + '</div></div>';}
-function buildTimingTable(st, sh) {
+function buildTimingTable(st, sh, holeRange) {
     if (!st) return '';
     var startHole = parseInt(sh) || 1;
+    var order = roundHoles(startHole, holeRange);
+    var count = order.length;
+    var lastHole = order[order.length - 1];
 
-    var hole9Target = (startHole + 8 > 18) ? (startHole + 8 - 18) : (startHole + 8);
-    var dl9 = holeDeadline(st, startHole, hole9Target);
-
-    var hole18Target = (startHole + 17 > 18) ? (startHole + 17 - 18) : (startHole + 17);
-    var dl18 = holeDeadline(st, startHole, hole18Target);
-
-    var totalMin = Math.round((dl18 - st) / 60000);
+    var dlFinish = holeDeadline(st, startHole, lastHole);
+    var totalMin = Math.round((dlFinish - st) / 60000);
     var hrs = Math.floor(totalMin / 60);
     var mins = totalMin % 60;
     var durationStr = hrs + (currentLang === 'en' ? 'h ' : 'ч ') + (mins < 10 ? '0' : '') + mins + (currentLang === 'en' ? 'm' : 'мин');
 
     var startStr = fmtTime(st);
-    var turnStr = fmtTime(dl9);
-    var finishStr = fmtTime(dl18);
+    var finishStr = fmtTime(dlFinish);
 
     var html = '<div class="timing-summary-card">';
     html += '<div class="timing-pills-row">';
     html += '  <div class="timing-pill"><span class="tp-lbl">' + (currentLang === 'en' ? 'Start' : 'Старт') + '</span><span class="tp-val">' + startStr + '</span></div>';
-    html += '  <div class="timing-pill"><span class="tp-lbl">' + (currentLang === 'en' ? 'Turn (9h)' : '9 лунок') + '</span><span class="tp-val">' + turnStr + '</span></div>';
-    html += '  <div class="timing-pill tp-finish"><span class="tp-lbl">' + (currentLang === 'en' ? 'Finish (18h)' : 'Финиш') + '</span><span class="tp-val">' + finishStr + '</span></div>';
+    if (count === 18) {
+        var dl9 = holeDeadline(st, startHole, order[8]);
+        html += '  <div class="timing-pill"><span class="tp-lbl">' + (currentLang === 'en' ? 'Turn (9h)' : '9 лунок') + '</span><span class="tp-val">' + fmtTime(dl9) + '</span></div>';
+    }
+    html += '  <div class="timing-pill tp-finish"><span class="tp-lbl">' + (currentLang === 'en' ? (count === 18 ? 'Finish (18h)' : 'Finish') : 'Финиш') + '</span><span class="tp-val">' + finishStr + '</span></div>';
     html += '</div>';
     html += '<div class="timing-total-badge"><i class="fas fa-clock"></i> ' + (currentLang === 'en' ? 'Pace of Play: ' : 'Норматив раунда: ') + '<b>' + durationStr + '</b></div>';
 
-    html += '<details class="timing-details"><summary><i class="fas fa-list-ol"></i> ' + (currentLang === 'en' ? 'Hole-by-Hole Deadlines' : 'Детализация по 18 лункам') + '</summary>';
+    html += '<details class="timing-details"><summary><i class="fas fa-list-ol"></i> ' + (currentLang === 'en' ? 'Hole-by-Hole Deadlines' : 'Детализация по лункам') + '</summary>';
     html += '<div class="timing-grid">';
 
-    var h = startHole;
-    for (var i = 0; i < 18; i++) {
+    order.forEach(function(h) {
         var dl = holeDeadline(st, startHole, h);
         var tMin = holeTiming(h);
         html += '<div class="timing-grid-item">';
         html += '  <span class="tg-hole">' + (currentLang === 'en' ? 'Hole ' : 'Л.') + h + ' <small>(P' + holePar(h) + '·' + tMin + 'm)</small></span>';
         html += '  <span class="tg-time">' + fmtTime(dl) + '</span>';
         html += '</div>';
-        h = (h >= 18) ? 1 : h + 1;
-    }
+    });
     html += '</div></details>';
     html += '</div>';
     return html;
@@ -1698,7 +1768,8 @@ function generateGroupHoleTableHTML(r) {
     var playerEntries = Object.entries(players);
     if (!playerEntries.length) return '';
 
-    var order = holeOrder(r.startHole || 1);
+    var order = getRoundOrder(r);
+    var holeCount = order.length;
 
     // --- NO-SCROLL VERTICAL GRID MATRIX (100% FIT ON MOBILE SCREENS) ---
     var html = '<div class="no-scroll-view-container">';
@@ -1707,7 +1778,7 @@ function generateGroupHoleTableHTML(r) {
         var pid = pe[0], p = pe[1];
         var sc = p.scores || {};
         var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
-        var thruText = stats.holesPlayed >= 18 ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '1/18');
+        var thruText = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '');
 
         html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
         html += '<div class="noscroll-player-hdr">';
@@ -1716,9 +1787,9 @@ function generateGroupHoleTableHTML(r) {
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '</div>';
 
-        // 18-Hole 6x3 Matrix (Fits 100% on any mobile screen width)
+        // Hole matrix (9 or 18 holes)
         html += '<div class="noscroll-grid">';
-        for (var i = 1; i <= 18; i++) {
+        order.forEach(function(i) {
             var s = parseInt(sc[i]) || 0;
             var par = holePar(i);
             var cls = holeResClass(s, par);
@@ -1728,18 +1799,17 @@ function generateGroupHoleTableHTML(r) {
             html += '<div class="noscroll-score">' + (s > 0 ? s : '—') + '</div>';
             html += '<div class="noscroll-par">p' + par + '</div>';
             html += '</div>';
-        }
+        });
         html += '</div>';
 
-        // Front 9 / Back 9 / Total Totals
-        var outG = 0, inG = 0;
-        for (var i = 1; i <= 9; i++) { var s = parseInt(sc[i]) || 0; if (s > 0) outG += s; }
-        for (var i = 10; i <= 18; i++) { var s = parseInt(sc[i]) || 0; if (s > 0) inG += s; }
+        // Totals
+        var totG = 0, parTotal = 0;
+        order.forEach(function(i) { var s = parseInt(sc[i]) || 0; if (s > 0) totG += s; parTotal += holePar(i); });
 
         html += '<div class="noscroll-totals">';
-        html += '<span>OUT (1-9): <b>' + (outG > 0 ? outG : '—') + '</b></span>';
-        html += '<span>IN (10-18): <b>' + (inG > 0 ? inG : '—') + '</b></span>';
-        html += '<span>TOTAL: <b>' + (outG + inG > 0 ? (outG + inG) : '—') + '</b></span>';
+        html += '<span>' + (currentLang === 'en' ? 'Holes' : 'Лунки') + ': <b>' + stats.holesPlayed + '/' + holeCount + '</b></span>';
+        html += '<span>' + t('par') + ': <b>' + parTotal + '</b></span>';
+        html += '<span>' + t('total') + ': <b>' + (totG > 0 ? totG : '—') + '</b></span>';
         html += '</div>';
 
         html += '</div>';
@@ -1897,6 +1967,8 @@ function openPlayerProfileModal(playerId, roundId) {
                     var rObj = {
                         tee: r.tee || 'wh',
                         format: r.format || 'Stroke Play',
+                        holeRange: r.holeRange || '1-18',
+                        startHole: r.startHole || 1,
                         completedAt: r.date
                     };
 
@@ -2114,8 +2186,9 @@ function saveUserProfileData(playerId) {
 // ==========================================
 // МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ЗАВЕРШЕНИЯ РАУНДА
 // ==========================================
-function openFinishConfirmModal(roundId, onConfirmCallback) {
+function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback) {
     if (typeof db === 'undefined' || !roundId) return;
+    window._pestovoFinishModalOnClose = (typeof onCloseCallback === 'function') ? onCloseCallback : null;
 
     db.ref('rounds/' + roundId).once('value').then(function(sn) {
         var r = sn.val();
@@ -2139,8 +2212,10 @@ function openFinishConfirmModal(roundId, onConfirmCallback) {
         }
 
         var bodyEl = document.getElementById('finish-modal-body');
-        var order = holeOrder(r.startHole || 1);
+        var order = getRoundOrder(r);
+        var holeCount = order.length;
         var players = Object.entries(r.players || {});
+        var verification = collectRoundVerification(r);
 
         var titleStr = currentLang === 'en' ? '🏁 Finish Round Confirmation' : '🏁 Подтверждение завершения раунда';
         var subStr = currentLang === 'en' ? 'Please review final scores before finishing:' : 'Пожалуйста, проверьте итоговые результаты перед завершением:';
@@ -2150,23 +2225,24 @@ function openFinishConfirmModal(roundId, onConfirmCallback) {
         var html = '<h2 style="color:var(--gold);font-family:var(--ff);margin-bottom:6px;">' + titleStr + '</h2>';
         html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">' + subStr + '</p>';
 
-        var hasUnfinishedHoles = false;
-
         players.forEach(function(pe) {
             var pid = pe[0], p = pe[1];
             var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-            if (stats.holesPlayed < 18) hasUnfinishedHoles = true;
 
             html += '<div class="list-item" style="padding:14px;margin-bottom:10px;flex-wrap:wrap;gap:8px;">';
             html += '<div style="flex:1;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</strong>';
-            html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + t('hole') + 's: ' + stats.holesPlayed + ' / 18 · Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div></div>';
+            html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + holeCount + ' · Gross: ' + (stats.gross || 0) + ' · Net: ' + (stats.net || 0) + '</div></div>';
             html += '<div style="text-align:right;"><div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;font-size:18px;">' + fmtScore(stats.toPar) + '</div></div>';
             html += '</div>';
         });
 
-        if (hasUnfinishedHoles) {
-            var warnStr = currentLang === 'en' ? '⚠️ Note: Not all 18 holes have scores entered.' : '⚠️ Внимание: Не на всех 18 лунках введён счёт.';
-            html += '<div class="timing-alert timing-warn" style="margin:16px 0;"><i class="fas fa-exclamation-triangle"></i><div>' + warnStr + '</div></div>';
+        if (!verification.canFinish) {
+            html += '<div style="margin:16px 0;" id="finish-verification-report">' + buildVerificationReportHtml(verification) + '</div>';
+            if (currentLang === 'en') {
+                html += '<div class="timing-alert timing-late" style="margin-bottom:4px;"><i class="fas fa-ban"></i><div><strong>The round cannot be finished until all scores are confirmed and matches are resolved.</strong></div></div>';
+            } else {
+                html += '<div class="timing-alert timing-late" style="margin-bottom:4px;"><i class="fas fa-ban"></i><div><strong>Раунд нельзя завершить, пока все счета не подтверждены и не устранены несовпадения.</strong></div></div>';
+            }
         }
 
         html += '<div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">';
@@ -2179,10 +2255,17 @@ function openFinishConfirmModal(roundId, onConfirmCallback) {
 
         var confirmBtn = document.getElementById('confirm-finish-btn');
         if (confirmBtn) {
-            confirmBtn.onclick = function() {
-                closeFinishModal();
-                if (typeof onConfirmCallback === 'function') onConfirmCallback();
-            };
+            if (!verification.canFinish) {
+                confirmBtn.disabled = true;
+                confirmBtn.style.opacity = '0.45';
+                confirmBtn.style.cursor = 'not-allowed';
+                confirmBtn.style.pointerEvents = 'none';
+            } else {
+                confirmBtn.onclick = function() {
+                    closeFinishModal();
+                    if (typeof onConfirmCallback === 'function') onConfirmCallback();
+                };
+            }
         }
     });
 }
@@ -2190,6 +2273,11 @@ function openFinishConfirmModal(roundId, onConfirmCallback) {
 function closeFinishModal() {
     var modalEl = document.getElementById('finish-modal');
     if (modalEl) modalEl.classList.add('hidden');
+    if (typeof window._pestovoFinishModalOnClose === 'function') {
+        var cb = window._pestovoFinishModalOnClose;
+        window._pestovoFinishModalOnClose = null;
+        cb();
+    }
 }
 
 // ==========================================
@@ -2204,28 +2292,21 @@ function generatePestovoScorecardHTML(player, roundData) {
     var fmt = (roundData && roundData.format) || 'Stroke Play';
     var date = fmtDate((roundData && (roundData.completedAt || roundData.createdAt)) || Date.now());
 
-    var outG = 0, inG = 0, outS = 0, inS = 0, outNet = 0, inNet = 0;
-    for (var i = 1; i <= 9; i++) {
-        var s = parseInt(sc[i]) || 0;
-        if (s > 0) {
-            outG += s;
-            outS += stablefordField(s, i, fHcp);
-            outNet += calcNettScore(s, holePar(i), holeHcp(i), fHcp);
-        }
-    }
-    for (var i = 10; i <= 18; i++) {
-        var s = parseInt(sc[i]) || 0;
-        if (s > 0) {
-            inG += s;
-            inS += stablefordField(s, i, fHcp);
-            inNet += calcNettScore(s, holePar(i), holeHcp(i), fHcp);
-        }
-    }
-    var totG = outG + inG, totS = outS + inS, totNet = outNet + inNet;
+    var order = getRoundOrder(roundData);
+    var holeRange = (roundData && roundData.holeRange) || '1-18';
+    var front = order.filter(function(h){ return h <= 9; });
+    var back = order.filter(function(h){ return h >= 10; });
 
-    var pOut = 0, pIn = 0;
-    for (var i = 1; i <= 9; i++) pOut += holePar(i);
-    for (var i = 10; i <= 18; i++) pIn += holePar(i);
+    var totG = 0, totS = 0, totNet = 0, totPar = 0;
+    order.forEach(function(i) {
+        var s = parseInt(sc[i]) || 0;
+        if (s > 0) {
+            totG += s;
+            totS += stablefordField(s, i, fHcp);
+            totNet += calcNettScore(s, holePar(i), holeHcp(i), fHcp);
+        }
+        totPar += holePar(i);
+    });
 
     var html = '<div class="pestovo-modern-scorecard">';
 
@@ -2235,61 +2316,65 @@ function generatePestovoScorecardHTML(player, roundData) {
     html += '  <div class="msc-meta-pills">';
     html += '    <span class="msc-pill">HCP: <b>' + fmtExactHcp(eHcp) + '</b> (' + fmtFieldHcp(fHcp) + ')</span>';
     html += '    <span class="msc-pill">' + fmtTeePill(teeCode) + '</span>';
-    html += '    <span class="msc-pill">' + fmt + ' · ' + date + '</span>';
+    html += '    <span class="msc-pill">' + fmt + ' · ' + holeRange + ' · ' + date + '</span>';
     html += '  </div>';
     html += '</div>';
 
-    // 2. FRONT 9 (OUT) SECTION
-    html += '<div class="msc-sec-hdr"><span>FRONT 9 (OUT)</span> <span>Par ' + pOut + '</span></div>';
-    html += '<div class="msc-tile-grid">';
-    for (var i = 1; i <= 9; i++) {
-        var s = parseInt(sc[i]) || 0;
-        var par = holePar(i);
-        var dist = holeDist(i, teeCode);
-        var hcp = holeHcp(i);
-        var badgeCls = s > 0 ? holeResClass(s, par) : '';
-        var stbl = s > 0 ? stablefordField(s, i, fHcp) : null;
+    if (front.length) {
+        var pOut = 0; front.forEach(function(i){ pOut += holePar(i); });
+        html += '<div class="msc-sec-hdr"><span>FRONT 9 (OUT)</span> <span>Par ' + pOut + '</span></div>';
+        html += '<div class="msc-tile-grid">';
+        front.forEach(function(i) {
+            var s = parseInt(sc[i]) || 0;
+            var par = holePar(i);
+            var dist = holeDist(i, teeCode);
+            var hcp = holeHcp(i);
+            var badgeCls = s > 0 ? holeResClass(s, par) : '';
+            var stbl = s > 0 ? stablefordField(s, i, fHcp) : null;
 
-        html += '<div class="msc-tile ' + badgeCls + '">';
-        html += '  <div class="msc-tile-top"><span class="msc-hole-num">#' + i + '</span><span class="msc-hole-par">P' + par + ' · ' + dist + 'm</span></div>';
-        html += '  <div class="msc-tile-score">' + (s > 0 ? s : '—') + '</div>';
-        html += '  <div class="msc-tile-bot"><span class="msc-hole-idx">Idx ' + hcp + '</span><span class="msc-hole-stbl">' + (stbl !== null ? stbl + 'p' : '—') + '</span></div>';
+            html += '<div class="msc-tile ' + badgeCls + '">';
+            html += '  <div class="msc-tile-top"><span class="msc-hole-num">#' + i + '</span><span class="msc-hole-par">P' + par + ' · ' + dist + 'm</span></div>';
+            html += '  <div class="msc-tile-score">' + (s > 0 ? s : '—') + '</div>';
+            html += '  <div class="msc-tile-bot"><span class="msc-hole-idx">Idx ' + hcp + '</span><span class="msc-hole-stbl">' + (stbl !== null ? stbl + 'p' : '—') + '</span></div>';
+            html += '</div>';
+        });
+        html += '</div>';
+        var outG = 0, outNet = 0, outS = 0;
+        front.forEach(function(i){ var s=parseInt(sc[i])||0; if(s>0){ outG+=s; outNet+=calcNettScore(s,holePar(i),holeHcp(i),fHcp); outS+=stablefordField(s,i,fHcp);} });
+        html += '<div class="msc-totals-strip">';
+        html += '  <span>OUT: <b>' + (outG > 0 ? outG : '—') + '</b></span>';
+        html += '  <span>Net: <b>' + (outNet > 0 ? outNet : '—') + '</b></span>';
+        html += '  <span>Stbl: <b>' + outS + 'p</b></span>';
         html += '</div>';
     }
-    html += '</div>';
 
-    // Front 9 Totals Strip
-    html += '<div class="msc-totals-strip">';
-    html += '  <span>OUT (1-9): <b>' + (outG > 0 ? outG : '—') + '</b></span>';
-    html += '  <span>Net: <b>' + (outNet > 0 ? outNet : '—') + '</b></span>';
-    html += '  <span>Stbl: <b>' + outS + 'p</b></span>';
-    html += '</div>';
+    if (back.length) {
+        var pIn = 0; back.forEach(function(i){ pIn += holePar(i); });
+        html += '<div class="msc-sec-hdr" style="margin-top:10px;"><span>BACK 9 (IN)</span> <span>Par ' + pIn + '</span></div>';
+        html += '<div class="msc-tile-grid">';
+        back.forEach(function(i) {
+            var s = parseInt(sc[i]) || 0;
+            var par = holePar(i);
+            var dist = holeDist(i, teeCode);
+            var hcp = holeHcp(i);
+            var badgeCls = s > 0 ? holeResClass(s, par) : '';
+            var stbl = s > 0 ? stablefordField(s, i, fHcp) : null;
 
-    // 3. BACK 9 (IN) SECTION
-    html += '<div class="msc-sec-hdr" style="margin-top:10px;"><span>BACK 9 (IN)</span> <span>Par ' + pIn + '</span></div>';
-    html += '<div class="msc-tile-grid">';
-    for (var i = 10; i <= 18; i++) {
-        var s = parseInt(sc[i]) || 0;
-        var par = holePar(i);
-        var dist = holeDist(i, teeCode);
-        var hcp = holeHcp(i);
-        var badgeCls = s > 0 ? holeResClass(s, par) : '';
-        var stbl = s > 0 ? stablefordField(s, i, fHcp) : null;
-
-        html += '<div class="msc-tile ' + badgeCls + '">';
-        html += '  <div class="msc-tile-top"><span class="msc-hole-num">#' + i + '</span><span class="msc-hole-par">P' + par + ' · ' + dist + 'm</span></div>';
-        html += '  <div class="msc-tile-score">' + (s > 0 ? s : '—') + '</div>';
-        html += '  <div class="msc-tile-bot"><span class="msc-hole-idx">Idx ' + hcp + '</span><span class="msc-hole-stbl">' + (stbl !== null ? stbl + 'p' : '—') + '</span></div>';
+            html += '<div class="msc-tile ' + badgeCls + '">';
+            html += '  <div class="msc-tile-top"><span class="msc-hole-num">#' + i + '</span><span class="msc-hole-par">P' + par + ' · ' + dist + 'm</span></div>';
+            html += '  <div class="msc-tile-score">' + (s > 0 ? s : '—') + '</div>';
+            html += '  <div class="msc-tile-bot"><span class="msc-hole-idx">Idx ' + hcp + '</span><span class="msc-hole-stbl">' + (stbl !== null ? stbl + 'p' : '—') + '</span></div>';
+            html += '</div>';
+        });
+        html += '</div>';
+        var inG = 0, inNet = 0, inS = 0;
+        back.forEach(function(i){ var s=parseInt(sc[i])||0; if(s>0){ inG+=s; inNet+=calcNettScore(s,holePar(i),holeHcp(i),fHcp); inS+=stablefordField(s,i,fHcp);} });
+        html += '<div class="msc-totals-strip">';
+        html += '  <span>IN: <b>' + (inG > 0 ? inG : '—') + '</b></span>';
+        html += '  <span>Net: <b>' + (inNet > 0 ? inNet : '—') + '</b></span>';
+        html += '  <span>Stbl: <b>' + inS + 'p</b></span>';
         html += '</div>';
     }
-    html += '</div>';
-
-    // Back 9 & Grand Totals Strip
-    html += '<div class="msc-totals-strip">';
-    html += '  <span>IN (10-18): <b>' + (inG > 0 ? inG : '—') + '</b></span>';
-    html += '  <span>Net: <b>' + (inNet > 0 ? inNet : '—') + '</b></span>';
-    html += '  <span>Stbl: <b>' + inS + 'p</b></span>';
-    html += '</div>';
 
     html += '<div class="msc-grand-strip">';
     html += '  <span>GROSS: <b>' + (totG > 0 ? totG : '—') + '</b></span>';
@@ -2515,7 +2600,7 @@ function saveHistory(roundId,rd){
     var players=rd.players||{};
     Object.entries(players).forEach(function(pe){
         var pid=pe[0],p=pe[1],sc=p.scores||{},fH=p.fieldHcp||0,eH=p.exactHcp||0;
-        var stats=calcRoundStats(sc,fH,eH,holeOrder(rd.startHole));
+        var stats=calcRoundStats(sc,fH,eH,getRoundOrder(rd));
         if(stats.gross<=0)return;
         var isGuestPlayer=String(pid).indexOf('guest_')===0;
         if(isGuestPlayer && typeof resolveOrCreatePlayerUser==='function'){
@@ -2540,13 +2625,13 @@ function saveHistory(roundId,rd){
 function saveHistoryEntry(userId,roundId,rd,p,stats){
     db.ref('users/'+userId+'/history').push({
         roundId:roundId,date:rd.completedAt||Date.now(),tee:rd.tee||'wh',format:rd.format||'Stroke Play',
-        mode:rd.mode||'group',startHole:rd.startHole||1,gross:stats.gross,toPar:stats.toPar,
+        mode:rd.mode||'group',startHole:rd.startHole||1,holeRange:rd.holeRange||'1-18',gross:stats.gross,toPar:stats.toPar,
         net:stats.net,netToPar:stats.netToPar,stablefordField:stats.stablefordField,stablefordExact:stats.stablefordExact,
         holes:stats.holesPlayed,scores:p.scores||{},birdies:stats.birdies,eagles:stats.eagles,
         pars:stats.pars,holeInOne:stats.holeInOne,exactHcp:p.exactHcp||0,fieldHcp:p.fieldHcp||0,gender:p.gender||'men'
     });
     db.ref('users/'+userId+'/roundsPlayed').transaction(function(v){return(v||0)+1;});
-    if(stats.holesPlayed===18){
+    if(stats.holesPlayed===getRoundHoleCount(rd)){
         db.ref('users/'+userId+'/bestGross').transaction(function(v){if(!v||stats.gross<v)return stats.gross;return v;});
         db.ref('users/'+userId+'/bestStableford').transaction(function(v){if(!v||stats.stablefordField>v)return stats.stablefordField;return v;});
     }
@@ -2629,7 +2714,7 @@ function exportRoundPNG(roundId, playerId) {
         ctx.fillText(dateStr, 540, 288);
 
         // Score KPIs Cards (Gross, Net, ToPar)
-        var order = holeOrder(r.startHole || 1);
+        var order = getRoundOrder(r);
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
 
         drawKPICard(ctx, 160, 315, 220, 115, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');

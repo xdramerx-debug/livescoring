@@ -48,7 +48,7 @@ function loadLB() {
 function renderRound(id, r) {
     var isLive = r.status === 'active';
     var players = r.players || {};
-    var order = holeOrder(r.startHole || 1);
+    var order = getRoundOrder(r);
 
     var list = Object.entries(players).map(function(pe) {
         var pid = pe[0], p = pe[1], sc = p.scores || {};
@@ -62,6 +62,7 @@ function renderRound(id, r) {
             stblField: stats.stablefordField, 
             stblExact: stats.stablefordExact,
             holesPlayed: stats.holesPlayed, 
+            holeCount: getRoundHoleCount(r),
             currentHole: stats.currentHole
         };
     });
@@ -92,7 +93,7 @@ function renderRound(id, r) {
 
     var rows = list.map(function(p) {
         var posCls = p.position <= 3 ? 'lb-' + p.position : '';
-        var holeInfo = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
+        var holeInfo = p.holesPlayed >= (p.holeCount || 18) ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
         var gross = p.gross || '—';
         var net = p.net || '—';
 

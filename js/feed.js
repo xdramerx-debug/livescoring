@@ -22,7 +22,7 @@ function loadLiveFeed() {
         Object.entries(rounds).forEach(function(e) {
             var rid = e[0], r = e[1];
             if (!r || typeof r !== 'object') return;
-            var order = holeOrder(r.startHole || 1);
+            var order = getRoundOrder(r);
 
             Object.entries(r.players || {}).forEach(function(pe) {
                 var pid = pe[0], p = pe[1];

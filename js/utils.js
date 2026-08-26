@@ -25,6 +25,7 @@ const HOLES = {
 
 const TIMINGS = {1:15,2:15,3:20,4:12,5:15,6:15,7:15,8:12,9:20,10:20,11:15,12:15,13:12,14:15,15:20,16:15,17:12,18:15};
 const TEES = {bk:'Чёрный',bl:'Синий',wh:'Белый',rd:'Красный'};
+const TEE_ORDER = ['bk', 'bl', 'wh', 'rd'];
 const COURSE_RATINGS = {
     men:{bk:{cr:76.0,sr:144},bl:{cr:73.8,sr:137},wh:{cr:72.0,sr:135},rd:{cr:69.2,sr:134}},
     women:{bl:{cr:80.8,sr:153},wh:{cr:78.6,sr:143},rd:{cr:75.2,sr:136}}
@@ -906,7 +907,7 @@ function loadMyActiveRounds(targetId) {
             var id = item.id, r = item.round;
             var link = 'setup-round.html?round=' + id;
             var modeIcon = r.mode === 'solo' ? '<i class="fas fa-user"></i> ' + t('solo_round') : '<i class="fas fa-users"></i> ' + t('group_round');
-            var teePill = fmtTeePill(r.tee);
+            var teePill = fmtRoundTeePills(r);
             var resume = getRoundResumeState(id, r);
             var pace = resume.metrics;
             var paceState = paceStatus(pace.overallDelay);
@@ -1104,12 +1105,78 @@ document.addEventListener('DOMContentLoaded', function() {
 // ==========================================
 // ФИРМЕННЫЕ БЕЙДЖИ РЕЗУЛЬТАТОВ И ТИ
 // ==========================================
+function getRoundTeeCodes(r) {
+    if (!r) return ['wh'];
+    if (typeof r === 'string') return [r];
+    if (Array.isArray(r)) {
+        var arr = [];
+        r.forEach(function(code) {
+            if (code && arr.indexOf(code) === -1) arr.push(code);
+        });
+        return arr.length ? arr : ['wh'];
+    }
+    var teesFound = [];
+    var players = r.players || {};
+    var playerEntries = Object.entries(players).filter(function(pe) {
+        return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
+    });
+
+    if (playerEntries.length > 0) {
+        playerEntries.forEach(function(pe) {
+            var p = pe[1];
+            var code = (p && p.tee) || r.tee || 'wh';
+            if (code && teesFound.indexOf(code) === -1) {
+                teesFound.push(code);
+            }
+        });
+    }
+
+    if (!teesFound.length) {
+        teesFound.push(r.tee || 'wh');
+    }
+
+    teesFound.sort(function(a, b) {
+        var idxA = TEE_ORDER.indexOf(a);
+        var idxB = TEE_ORDER.indexOf(b);
+        if (idxA === -1 && idxB === -1) return 0;
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+    });
+
+    return teesFound;
+}
+
 function fmtTeePill(teeCode) {
-    teeCode = teeCode || 'wh';
+    if (!teeCode) teeCode = 'wh';
+    if (typeof teeCode === 'object' && teeCode !== null) {
+        return fmtRoundTeePills(teeCode);
+    }
     var nameKey = 'tee_' + teeCode;
     var name = t(nameKey);
     if (!name || name === nameKey) name = TEES[teeCode] || 'White';
     return '<span class="tee-pill tee-' + teeCode + '">' + name + '</span>';
+}
+
+function fmtRoundTeePills(r) {
+    var codes = getRoundTeeCodes(r);
+    var pills = codes.map(function(c) {
+        var nameKey = 'tee_' + c;
+        var name = t(nameKey);
+        if (!name || name === nameKey) name = TEES[c] || 'White';
+        return '<span class="tee-pill tee-' + c + '">' + name + '</span>';
+    });
+    return '<span class="round-tee-pills">' + pills.join('') + '</span>';
+}
+
+function fmtRoundTeesText(r) {
+    var codes = getRoundTeeCodes(r);
+    return codes.map(function(c) {
+        var nameKey = 'tee_' + c;
+        var name = t(nameKey);
+        if (!name || name === nameKey) name = TEES[c] || 'White';
+        return name;
+    }).join(', ');
 }
 
 function fmtScoreBadge(s, p) {
@@ -2537,9 +2604,12 @@ function generateGroupHoleTableHTML(r) {
         var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
         var thruText = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '');
 
+        var pTee = (p && p.tee) || r.tee || 'wh';
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
+
         html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
         html += '<div class="noscroll-player-hdr">';
-        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</span>';
+        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + '</span>';
         html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div></div>';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '</div>';
@@ -2655,9 +2725,10 @@ function openPlayerProfileModal(playerId, roundId) {
 
         if (rd && rd.players && rd.players[playerId]) {
             var roundPlayer = rd.players[playerId];
+            var roundPlayerTee = (roundPlayer && roundPlayer.tee) || (rd && rd.tee) || 'wh';
             html += '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">';
             html += '<h3 style="color:var(--gold);margin-bottom:14px;font-family:var(--ff);font-size:18px;">' +
-                    '<i class="fas fa-table"></i> ' + (currentLang === 'en' ? 'Round Scorecard' : 'Счётная карточка раунда') + ' (' + (rd.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(rd.tee) + ')' +
+                    '<i class="fas fa-table"></i> ' + (currentLang === 'en' ? 'Round Scorecard' : 'Счётная карточка раунда') + ' (' + (rd.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(roundPlayerTee) + ')' +
                     '</h3>';
             
             if (typeof generatePestovoScorecardHTML === 'function') {
@@ -3058,7 +3129,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
     var eHcp = p.exactHcp || 0;
-    var teeCode = (roundData && roundData.tee) || p.tee || 'wh';
+    var teeCode = (p && p.tee) || (roundData && roundData.tee) || 'wh';
     var fmt = (roundData && roundData.format) || 'Stroke Play';
     var date = fmtDate((roundData && (roundData.completedAt || roundData.createdAt)) || Date.now());
 
@@ -3165,7 +3236,7 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
     var eHcp = p.exactHcp || 0;
-    var teeCode = (roundData && roundData.tee) || p.tee || 'wh';
+    var teeCode = (p && p.tee) || (roundData && roundData.tee) || 'wh';
     var fmt = (roundData && roundData.format) || 'Stroke Play';
     var tName = (roundData && roundData.tournamentName) || '—';
     var date = fmtDate((roundData && (roundData.completedAt || roundData.createdAt)) || Date.now());
@@ -3391,7 +3462,7 @@ function saveHistory(roundId,rd){
 
 function saveHistoryEntry(userId,roundId,rd,p,stats){
     db.ref('users/'+userId+'/history').push({
-        roundId:roundId,date:rd.completedAt||Date.now(),tee:rd.tee||'wh',format:rd.format||'Stroke Play',
+        roundId:roundId,date:rd.completedAt||Date.now(),tee:(p&&p.tee)||rd.tee||'wh',format:rd.format||'Stroke Play',
         mode:rd.mode||'group',startHole:rd.startHole||1,holeRange:rd.holeRange||'1-18',gross:stats.gross,toPar:stats.toPar,
         net:stats.net,netToPar:stats.netToPar,stablefordField:stats.stablefordField,stablefordExact:stats.stablefordExact,
         holes:stats.holesPlayed,scores:p.scores||{},birdies:stats.birdies,eagles:stats.eagles,
@@ -3468,7 +3539,7 @@ function exportRoundPNG(roundId, playerId) {
         ctx.fillText(p.name || 'Golf Player', 540, 215);
 
         // Sub Meta
-        var teeName = t('tee_' + (r.tee || 'wh'));
+        var teeName = t('tee_' + ((p && p.tee) || r.tee || 'wh'));
         var fmtStr = (r.format || 'Stroke Play') + ' · Tee: ' + teeName + ' · HCP: ' + fmtExactHcp(p.exactHcp);
         var dateStr = fmtDate(r.completedAt || r.createdAt || Date.now());
 

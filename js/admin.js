@@ -370,7 +370,10 @@ function renderAdmGroups() {
         var metrics = getRoundPaceMetrics(roundData);
         var state = paceStatus(metrics.overallDelay);
         var participants = getPaceParticipants(roundData);
-        var names = participants.map(function(item) { return escapeHtml(item.player.name || t('player')); }).join(' · ');
+        var names = participants.map(function(item) {
+            var pTee = (item.player && item.player.tee) || roundData.tee || 'wh';
+            return escapeHtml(item.player.name || t('player')) + ' ' + fmtTeePill(pTee);
+        }).join(' · ');
         var currentHole = metrics.currentHole || (metrics.order.length ? metrics.order[0] : roundData.startHole || 1);
         var noTimingNote = !metrics.hasTimingData
             ? '<div class="pace-note">' + t('pace_pending') + '</div>' : '';
@@ -387,6 +390,7 @@ function renderAdmGroups() {
         html += '<div><span>' + t('admin_start_time') + '</span><b>' + fmtTime(roundData.startTime) + '</b></div>';
         html += '<div><span>' + t('admin_start_hole') + '</span><b>№' + (roundData.startHole || 1) + '</b></div>';
         html += '<div><span>' + t('admin_current_hole') + '</span><b>№' + currentHole + '</b></div>';
+        html += '<div><span>' + t('tee_select') + '</span><b>' + fmtRoundTeePills(roundData) + '</b></div>';
         html += '<div><span>' + t('admin_total_delay') + '</span><b class="admin-group-delay">' + formatPaceDelta(metrics.overallDelay) + '</b></div>';
         html += '</div>';
 
@@ -428,7 +432,7 @@ function loadAdmRounds() {
             html += '<div style="flex:1;min-width:200px;"><strong style="color:var(--white);">' + t('brand_name') + '</strong> ' + badge;
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                     fmtDate(r.createdAt) + ' · ' + fmtTime(r.startTime) + ' · ' + pc + playersStr +
-                    (r.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(r.tee) +
+                    (r.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtRoundTeePills(r) +
                     (r.mode === 'solo' ? soloStr : '') + '</div></div>';
             html += '<div style="display:flex;gap:6px;">';
             if (r.status === 'completed') {
@@ -1093,7 +1097,7 @@ function exportAllRoundsCSV() {
                     timeStr,
                     r.mode || 'group',
                     r.format || 'Stroke',
-                    r.tee || 'wh',
+                    (p && p.tee) || r.tee || 'wh',
                     r.status || 'active',
                     '"' + (p.name || '').replace(/"/g, '""') + '"',
                     fmtExactHcp(p.exactHcp),

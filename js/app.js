@@ -141,6 +141,8 @@ function loadLiveRounds() {
 
             Object.entries(players).forEach(function(pe) {
                 var pid = pe[0], p = pe[1];
+                var playerTee = (p && p.tee) || r.tee || 'wh';
+                var playerTeeBadge = '<span class="tee-pill tee-' + playerTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + playerTee) + '</span>';
                 // Для отображения используем собственные счёта игрока.
                 // Если их нет, но есть счёта маркера — показываем их (с пометкой).
                 var scores = p.scores || {};
@@ -160,7 +162,7 @@ function loadLiveRounds() {
                 var thruText = stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : t('hole') + ' №' + (parseInt(r.startHole)||1));
 
                 pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + '</div>' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + playerTeeBadge + '</div>' +
                     '<div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;">📍 ' + thruText + markerNote + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
@@ -200,7 +202,7 @@ function loadLiveRounds() {
                 pHtml +
                 '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">' +
                 '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + '</span>' +
-                '<span>' + t('tee_select') + ': ' + fmtTeePill(r.tee) + '</span></div>' +
+                '<span>' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span></div>' +
                 '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
                 '<button class="btn btn-og btn-sm" style="' + toggleWidth + '" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
                 startBtnMarkup +
@@ -276,10 +278,12 @@ function loadRecentResults() {
 
             Object.entries(players).forEach(function(pe) {
                 var pid = pe[0], p = pe[1], scores = p.scores || {};
+                var playerTee = (p && p.tee) || r.tee || 'wh';
+                var playerTeeBadge = '<span class="tee-pill tee-' + playerTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + playerTee) + '</span>';
                 var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
 
                 pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + '</div>' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + playerTeeBadge + '</div>' +
                     '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
@@ -294,7 +298,7 @@ function loadRecentResults() {
                 pHtml +
                 '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">' +
                 '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + '</span>' +
-                '<span>' + t('tee_select') + ': ' + fmtTeePill(r.tee) + '</span></div>' +
+                '<span>' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span></div>' +
                 '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
                 '<button class="btn btn-og btn-sm" style="flex:1;" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
                 '<button class="btn btn-g btn-sm" style="flex:1;" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' +

@@ -56,10 +56,12 @@ function renderRound(id, r) {
         return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
     }).map(function(pe) {
         var pid = pe[0], p = pe[1], sc = p.scores || {};
+        var pTee = (p && p.tee) || r.tee || 'wh';
         var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
         return {
             pid: pid,
             name: p.name, 
+            tee: pTee,
             gross: stats.gross, 
             toPar: stats.toPar, 
             stblField: stats.stablefordField, 
@@ -98,11 +100,12 @@ function renderRound(id, r) {
         var posCls = p.position <= 3 ? 'lb-' + p.position : '';
         var holeInfo = p.holesPlayed >= (p.holeCount || 18) ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
         var gross = p.gross || '—';
+        var pTeeBadge = '<span class="tee-pill tee-' + p.tee + '" style="font-size:9px;padding:0 6px;margin-left:6px;vertical-align:middle;line-height:16px;">' + t('tee_' + p.tee) + '</span>';
 
         return '<div class="rlb-row" onclick="openPlayerProfileModal(\'' + p.pid + '\',\'' + id + '\')">' +
             '<span class="rlb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</span>' +
             '<div class="rlb-player">' + fmtUserAvatar(p, 28) +
-            '<div class="rlb-pcol"><span class="rlb-name">' + escapeHtml(p.name || '—') + '</span>' +
+            '<div class="rlb-pcol"><div style="display:flex;align-items:center;min-width:0;"><span class="rlb-name">' + escapeHtml(p.name || '—') + '</span>' + pTeeBadge + '</div>' +
             '<span class="rlb-thru">' + holeInfo + '</span></div></div>' +
             '<span class="rlb-par ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</span>' +
             '<span class="rlb-num">' + gross + '</span>' +
@@ -135,7 +138,7 @@ function renderRound(id, r) {
     return '<div class="card rl-card">' +
         '<div class="rl-head"><div class="rl-hinfo">' +
         '<div class="rl-title"><i class="fas fa-flag"></i>' + fmtDate(ts) + ' · ' + fmtTime(ts) + '</div>' +
-        '<div class="rl-sub">' + (r.format || 'Stroke Play') + ' · ' + fmtTeePill(r.tee) + (r.mode === 'solo' ? soloWord : '') + '</div>' +
+        '<div class="rl-sub">' + (r.format || 'Stroke Play') + ' · ' + fmtRoundTeePills(r) + (r.mode === 'solo' ? soloWord : '') + '</div>' +
         '</div>' + badge + '</div>' +
         '<div class="rlb">' + head + rows + '</div>' +
         downloadBtn + '</div>';

@@ -26,9 +26,10 @@ function loadSc() {
         document.getElementById('sc-body').classList.remove('hidden');
 
         var pl = scRound.players[scPid];
+        var playerTee = (pl && pl.tee) || scRound.tee || 'wh';
         var scorePrefix = currentLang === 'en' ? 'Score: ' : 'Счёт: ';
         document.getElementById('sc-title').textContent = scorePrefix + (pl.name || t('player'));
-        document.getElementById('sc-sub').textContent = (scRound.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(scRound.tee);
+        document.getElementById('sc-sub').textContent = (scRound.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(playerTee);
         renderInfo();
         renderPaceAssistant('sc-pace-assistant', scRound);
         listenForOfficialCallState({
@@ -73,9 +74,11 @@ function renderInfo() {
     if (!el) return;
     var startLbl = t('start');
     var holeLbl = t('hole');
+    var pl = scRound && scRound.players && scRound.players[scPid];
+    var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
     el.innerHTML =
         '<div><b>' + startLbl + ':</b> ' + fmtTime(scRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + scRound.startHole + '</div>' +
-        '<div><b>' + t('tee_select') + ':</b> ' + fmtTeePill(scRound.tee) + '</div>';
+        '<div><b>' + t('tee_select') + ':</b> ' + fmtTeePill(playerTee) + '</div>';
 }
 
 function buildHoles() {
@@ -104,9 +107,11 @@ function goSc(h) {
 
 function renderHole() {
     var par = holePar(scHole);
+    var pl = scRound && scRound.players && scRound.players[scPid];
+    var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
     document.getElementById('sc-hole').textContent = scHole;
     document.getElementById('sc-par').textContent = par;
-    document.getElementById('sc-dist').textContent = holeDist(scHole, scRound.tee) || '—';
+    document.getElementById('sc-dist').textContent = holeDist(scHole, playerTee) || '—';
     document.getElementById('sc-dl').textContent = fmtTime(holeDeadline(scRound.startTime, scRound.startHole, scHole));
 
     var scores = scRound.players[scPid].scores || {};

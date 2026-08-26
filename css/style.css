@@ -504,6 +504,7 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 .tee-bl{background:#1e5799;color:#fff;border:1px solid #337ab7;}
 .tee-wh{background:#f5f5f0;color:#111;border:1px solid #c9a84c;}
 .tee-rd{background:#900C3F;color:#fff;border:1px solid #c0392b;}
+.round-tee-pills{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;flex-wrap:wrap;}
 
 /* LIGHT SHINE ANIMATION EFFECT FOR LEADER BADGES & CTAs */
 .shine-effect{position:relative;overflow:hidden;}

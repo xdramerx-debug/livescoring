@@ -2785,45 +2785,45 @@ function rgUpdateBulkCount() {
     }
 }
 
-/** Обновляет HCP игрока во всех местах: users, кэш, активные/завершённые раунды, история, турниры. */
+/** Обновляет HCP и официальное ФИО игрока во всех местах: users, кэш, раунды, история, турниры. */
 function rgPropagateHcpEverywhere(userId, r, playerData) {
     if (r == null || r.hcp == null) return Promise.resolve();
     var hcp = r.hcp;
     var gender = (playerData && playerData.gender) || r.gender || 'men';
-    var name = (playerData && playerData.name) || r.fio || '';
-    var nameKey = impNormName(name);
-    var existingMiddle = (playerData && playerData.middleName) ? String(playerData.middleName).trim() : '';
-    var shouldAddMiddle = !!r.middleName && !existingMiddle;
+    var remoteFirst = String(r.firstName || '').trim();
+    var remoteMiddle = String(r.middleName || '').trim();
+    var remoteLast = String(r.lastName || '').trim();
+    var hasOfficialName = !!(remoteFirst && remoteLast);
+    var officialName = hasOfficialName ? rgAgrNameSiteOrder(r) : '';
     var updates = {
         handicap: hcp,
-        rusgolfNumber: r.number || null,
-        rusgolfHcpDate: r.hcpDate || null,
         hcpUpdatedAt: Date.now(),
         hcpSource: 'rusgolf'
     };
-    if (r.firstName && !(playerData && playerData.firstName)) updates.firstName = r.firstName;
-    if (r.lastName && !(playerData && playerData.lastName)) updates.lastName = r.lastName;
-    if (shouldAddMiddle) {
-        updates.middleName = r.middleName;
-        updates.name = rgAgrNameSiteOrder(r);
+    if (r.number) updates.rusgolfNumber = r.number;
+    if (r.hcpDate) updates.rusgolfHcpDate = r.hcpDate;
+
+    // ФИО в автодобавлении должно совпадать с последней записью АГР. Обновляем
+    // все части вместе, а не только добавляем отсутствующее отчество: так также
+    // корректно применяются исправления имени или фамилии.
+    if (hasOfficialName) {
+        updates.name = officialName;
+        updates.firstName = remoteFirst;
+        updates.middleName = remoteMiddle;
+        updates.lastName = remoteLast;
     }
+
+    var applyLocalUpdate = function(cur) {
+        cur = cur || {};
+        Object.keys(updates).forEach(function(key) { cur[key] = updates[key]; });
+        return cur;
+    };
 
     if (typeof cachedRegisteredUsers !== 'undefined') {
         if (cachedRegisteredUsers[userId]) {
-            var cur = cachedRegisteredUsers[userId] || {};
-            cur.handicap = hcp;
-            if (r.number) cur.rusgolfNumber = r.number;
-            cur.hcpUpdatedAt = updates.hcpUpdatedAt;
-            cur.hcpSource = 'rusgolf';
-            if (shouldAddMiddle) {
-                cur.middleName = r.middleName;
-                cur.name = updates.name;
-                if (r.firstName) cur.firstName = r.firstName;
-                if (r.lastName) cur.lastName = r.lastName;
-            }
-            cachedRegisteredUsers[userId] = cur;
+            cachedRegisteredUsers[userId] = applyLocalUpdate(cachedRegisteredUsers[userId]);
         } else if (playerData) {
-            cachedRegisteredUsers[userId] = Object.assign({}, playerData, updates);
+            cachedRegisteredUsers[userId] = applyLocalUpdate(Object.assign({}, playerData));
         }
         try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
     }
@@ -2832,15 +2832,7 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
         var existing = localStorage.getItem('pestovo_custom_players');
         if (existing) custom = JSON.parse(existing) || {};
         if (custom[userId]) {
-            var cur2 = custom[userId] || {};
-            cur2.handicap = hcp;
-            if (shouldAddMiddle) {
-                cur2.middleName = r.middleName;
-                cur2.name = updates.name;
-                if (r.firstName) cur2.firstName = r.firstName;
-                if (r.lastName) cur2.lastName = r.lastName;
-            }
-            custom[userId] = cur2;
+            custom[userId] = applyLocalUpdate(custom[userId]);
             localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
         }
     } catch(e) {}
@@ -2848,17 +2840,9 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
     if (typeof db === 'undefined') return Promise.resolve();
 
     var fbUpdates = {};
-    fbUpdates['users/' + userId + '/handicap'] = hcp;
-    fbUpdates['users/' + userId + '/hcpUpdatedAt'] = updates.hcpUpdatedAt;
-    fbUpdates['users/' + userId + '/hcpSource'] = 'rusgolf';
-    if (r.number) fbUpdates['users/' + userId + '/rusgolfNumber'] = r.number;
-    if (r.hcpDate) fbUpdates['users/' + userId + '/rusgolfHcpDate'] = r.hcpDate;
-    if (r.firstName && !(playerData && playerData.firstName)) fbUpdates['users/' + userId + '/firstName'] = r.firstName;
-    if (r.lastName && !(playerData && playerData.lastName)) fbUpdates['users/' + userId + '/lastName'] = r.lastName;
-    if (shouldAddMiddle) {
-        fbUpdates['users/' + userId + '/middleName'] = r.middleName;
-        fbUpdates['users/' + userId + '/name'] = updates.name;
-    }
+    Object.keys(updates).forEach(function(key) {
+        fbUpdates['users/' + userId + '/' + key] = updates[key];
+    });
 
     return Promise.all([
         db.ref('rounds').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
@@ -2874,14 +2858,19 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
             if (!rd || !rd.players) return;
             Object.keys(rd.players).forEach(function(pid) {
                 var p = rd.players[pid];
-                if (!p) return;
-                var sameId = pid === userId;
-                if (!sameId) return;
+                if (!p || pid !== userId) return;
                 var tee = p.tee || rd.tee || 'wh';
                 var g = p.gender || gender;
                 var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(hcp, tee, g) : Math.round(hcp);
-                fbUpdates['rounds/' + rid + '/players/' + pid + '/exactHcp'] = hcp;
-                fbUpdates['rounds/' + rid + '/players/' + pid + '/fieldHcp'] = fieldHcp;
+                var playerPath = 'rounds/' + rid + '/players/' + pid + '/';
+                fbUpdates[playerPath + 'exactHcp'] = hcp;
+                fbUpdates[playerPath + 'fieldHcp'] = fieldHcp;
+                if (hasOfficialName) {
+                    fbUpdates[playerPath + 'name'] = officialName;
+                    fbUpdates[playerPath + 'firstName'] = remoteFirst;
+                    fbUpdates[playerPath + 'middleName'] = remoteMiddle;
+                    fbUpdates[playerPath + 'lastName'] = remoteLast;
+                }
             });
         });
 
@@ -2893,7 +2882,14 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
                 if (!rp) return;
                 var sameId = pid === userId || (rp.uid && rp.uid === userId);
                 if (!sameId) return;
-                fbUpdates['tournaments/' + tid + '/registeredPlayers/' + pid + '/handicap'] = hcp;
+                var playerPath = 'tournaments/' + tid + '/registeredPlayers/' + pid + '/';
+                fbUpdates[playerPath + 'handicap'] = hcp;
+                if (hasOfficialName) {
+                    fbUpdates[playerPath + 'name'] = officialName;
+                    fbUpdates[playerPath + 'firstName'] = remoteFirst;
+                    fbUpdates[playerPath + 'middleName'] = remoteMiddle;
+                    fbUpdates[playerPath + 'lastName'] = remoteLast;
+                }
             });
         });
 
@@ -2903,8 +2899,15 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
             var tee = h.tee || 'wh';
             var g = h.gender || gender;
             var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(hcp, tee, g) : Math.round(hcp);
-            fbUpdates['users/' + userId + '/history/' + hKey + '/exactHcp'] = hcp;
-            fbUpdates['users/' + userId + '/history/' + hKey + '/fieldHcp'] = fieldHcp;
+            var historyPath = 'users/' + userId + '/history/' + hKey + '/';
+            fbUpdates[historyPath + 'exactHcp'] = hcp;
+            fbUpdates[historyPath + 'fieldHcp'] = fieldHcp;
+            if (hasOfficialName) {
+                fbUpdates[historyPath + 'name'] = officialName;
+                fbUpdates[historyPath + 'firstName'] = remoteFirst;
+                fbUpdates[historyPath + 'middleName'] = remoteMiddle;
+                fbUpdates[historyPath + 'lastName'] = remoteLast;
+            }
         });
 
         return db.ref().update(fbUpdates);
@@ -2913,7 +2916,6 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
         return db.ref('users/' + userId).update(updates);
     });
 }
-
 
 function rgUpdateHcpOfSilent(userId, r, playerData) {
     return rgPropagateHcpEverywhere(userId, r, playerData);

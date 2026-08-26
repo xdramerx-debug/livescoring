@@ -5637,26 +5637,33 @@ function initPlayerSearchAutofill(opts) {
             var u = e[1];
             var name = (u.name || '').trim();
             var fn = (u.firstName || '').trim();
+            var mn = (u.middleName || '').trim();
             var ln = (u.lastName || '').trim();
             var email = (u.email || '').trim();
 
-            var full = (fn + ' ' + ln).trim() || name;
+            // В подсказке показываем актуальное полное ФИО. Раньше отчество
+            // терялось, потому что строка собиралась только из firstName + lastName.
+            var full = (fn + ' ' + mn + ' ' + ln).replace(/\s+/g, ' ').trim() || name;
             if (!full) return;
 
             // Защита: не показывать удалённых в админке игроков
             if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, name)) return;
 
-            // Дедупликация по «имя + гандикап» (а не по uid): один человек =
-            // одна строка в подсказках. Дубликаты возможны из-за старых guest-записей.
-            var normKey = normalizeSearchText(full); // дедуп только по ФИО, без HCP — чтобы не было похожих вариантов
+            // Короткая старая запись «Имя Фамилия» и обновлённая запись
+            // «Имя Отчество Фамилия» — один человек. Ключ без HCP и отчества
+            // убирает старый guest-вариант из автодобавления после синхронизации.
+            var normKey = (fn && ln)
+                ? normalizeSearchText(fn + ' ' + ln)
+                : normalizeSearchText(full);
             var isGuestEntry = !!u.isGuest || String(uid).indexOf('guest_') === 0;
             var prevUid = seenKeys[normKey];
             if (prevUid !== undefined) {
-                // Уже есть вариант с этим именем — оставляем более «настоящего» игрока:
-                // зарегистрированный приоритетнее гостя, запись из users приоритетнее ghost-кэша
+                // Приоритет: зарегистрированная запись, затем запись с полным ФИО.
                 var prev = usersData[prevUid] || {};
                 var prevIsGuest = !!prev.isGuest || String(prevUid).indexOf('guest_') === 0;
-                var preferNew = (prevIsGuest && !isGuestEntry);
+                var prevMiddle = String(prev.middleName || '').trim();
+                var preferNew = (prevIsGuest && !isGuestEntry) ||
+                    (prevIsGuest === isGuestEntry && !prevMiddle && !!mn);
                 if (preferNew) {
                     matches = matches.filter(function(m) { return m.uid !== prevUid; });
                 } else {
@@ -5665,11 +5672,12 @@ function initPlayerSearchAutofill(opts) {
             }
 
             var fnLower = fn.toLowerCase();
+            var mnLower = mn.toLowerCase();
             var lnLower = ln.toLowerCase();
             var fullLower = full.toLowerCase();
             var nameLower = name.toLowerCase();
 
-            var isPrefixMatch = (fnLower.startsWith(query) || lnLower.startsWith(query) || fullLower.startsWith(query) || nameLower.startsWith(query) || fullLower.includes(query));
+            var isPrefixMatch = (fnLower.startsWith(query) || mnLower.startsWith(query) || lnLower.startsWith(query) || fullLower.startsWith(query) || nameLower.startsWith(query) || fullLower.includes(query));
 
             if (isPrefixMatch) {
                 seenKeys[normKey] = uid;
@@ -5677,8 +5685,8 @@ function initPlayerSearchAutofill(opts) {
                     uid: uid,
                     name: full,
                     firstName: fn || full.split(' ')[0] || full,
-                    lastName: ln || full.split(' ').slice(1).join(' ') || '',
-                    middleName: u.middleName || '',
+                    lastName: ln || full.split(' ').slice(-1)[0] || '',
+                    middleName: mn,
                     handicap: u.handicap != null ? u.handicap : 0,
                     gender: u.gender || 'men',
                     defaultTee: u.defaultTee || (u.gender === 'women' ? 'rd' : 'bl'),

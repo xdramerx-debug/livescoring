@@ -176,9 +176,10 @@ function startSolo() {
 
     var parsedExact = parseExactHcp(exactHcpStr);
     var fieldHcp = getFieldHcp(parsedExact, tee, gender);
-    var fullName = sanitizeNameRaw(lastName + ' ' + firstName);
+    // Полное имя: «Имя Фамилия» — firstName/lastName остаются в отдельных полях для поиска АГР
     firstName = sanitizeNameRaw(firstName);
     lastName = sanitizeNameRaw(lastName);
+    var fullName = sanitizeNameRaw((firstName + ' ' + lastName).trim());
 
     var parts = timeStr.split(':');
     var now = new Date();
@@ -201,6 +202,43 @@ function startSolo() {
         gender: gender,
         scores: {}
     };
+
+    // Регистрируем/обновляем игрока в users, чтобы синхронизация HCP и профиль видели его
+    if (typeof registerGuestPlayerInDatabase === 'function') {
+        var regId = registerGuestPlayerInDatabase({
+            uid: window.sSelectedUid || null,
+            name: fullName,
+            firstName: firstName,
+            lastName: lastName,
+            exactHcp: parsedExact,
+            gender: gender,
+            tee: tee
+        });
+        if (!window.sSelectedUid && !currentUser && regId) {
+            playerId = regId;
+            isGuest = true;
+            players = {};
+            players[playerId] = {
+                name: fullName,
+                firstName: firstName,
+                lastName: lastName,
+                exactHcp: parsedExact,
+                fieldHcp: fieldHcp,
+                gender: gender,
+                scores: {}
+            };
+        }
+    }
+    // Если выбран существующий uid — обновим его HCP в профиле
+    if (window.sSelectedUid && typeof db !== 'undefined') {
+        db.ref('users/' + window.sSelectedUid).update({
+            handicap: parsedExact,
+            firstName: firstName,
+            lastName: lastName,
+            name: fullName,
+            gender: gender
+        }).catch(function(){});
+    }
 
     var ref = db.ref('rounds').push();
     soloRid = ref.key;

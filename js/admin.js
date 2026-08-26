@@ -1601,17 +1601,52 @@ function impSplitName(name) {
 
 function impCollectPlayers(callback) {
     var localUsers = typeof getKnownPlayersSync === 'function' ? (getKnownPlayersSync() || {}) : {};
-    var renderList = function(remoteData) {
-        var combined = Object.assign({}, localUsers, remoteData || {});
+    var mergePlayers = function(remoteUsers, roundsData) {
+        var combined = Object.assign({}, localUsers, remoteUsers || {});
+        // Добавляем всех, кто играл раунды (гости, временные uid, незарегистрированные)
+        Object.keys(roundsData || {}).forEach(function(rid) {
+            var r = roundsData[rid];
+            if (!r || !r.players) return;
+            Object.keys(r.players).forEach(function(pid) {
+                var p = r.players[pid];
+                if (!p || !p.name) return;
+                if (combined[pid]) {
+                    // Дополняем firstName/lastName, если в users их нет
+                    var existing = combined[pid];
+                    if (!existing.firstName && p.firstName) existing.firstName = p.firstName;
+                    if (!existing.lastName && p.lastName) existing.lastName = p.lastName;
+                    if (existing.handicap == null && p.exactHcp != null) existing.handicap = p.exactHcp;
+                    if (!existing.gender && p.gender) existing.gender = p.gender;
+                    return;
+                }
+                var parts = String(p.name || '').replace(/\s+/g, ' ').trim().split(' ');
+                combined[pid] = {
+                    name: p.name,
+                    firstName: p.firstName || parts[0] || '',
+                    lastName: p.lastName || parts.slice(1).join(' ') || '',
+                    handicap: p.exactHcp != null ? p.exactHcp : (p.handicap != null ? p.handicap : null),
+                    gender: p.gender || 'men',
+                    isGuest: !!p.isGuest || String(pid).indexOf('guest_') === 0,
+                    role: 'player',
+                    roundsPlayed: 1
+                };
+            });
+        });
         callback(Object.entries(combined).map(function(e) {
             return { id: e[0], data: e[1] || {} };
         }));
     };
     if (typeof db !== 'undefined') {
-        db.ref('users').once('value').then(function(sn) { renderList(sn.val()); })
-            .catch(function() { renderList(null); });
+        Promise.all([
+            db.ref('users').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
+            db.ref('rounds').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; })
+        ]).then(function(res) {
+            mergePlayers(res[0], res[1]);
+        }).catch(function() {
+            mergePlayers(null, null);
+        });
     } else {
-        renderList(null);
+        mergePlayers(null, null);
     }
 }
 
@@ -2043,18 +2078,79 @@ function rgParseHcpValue(s) {
 }
 
 function rgMakeResult(num, fio, gender, hi, hcpDate) {
-    var fioParts = String(fio || '').replace(/\s+/g, ' ').trim().split(' ');
+    var fioParts = String(fio || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    // В базе АГР ФИО обычно: «Фамилия Имя Отчество»
     return {
         number: String(num || '').replace(/\s+/g, '').toUpperCase(),
         fio: String(fio || '').replace(/\s+/g, ' ').trim(),
         lastName: fioParts[0] || '',
         firstName: fioParts[1] || '',
+        middleName: fioParts.slice(2).join(' ') || '',
+        nameParts: fioParts,
         gender: /^ж/i.test(String(gender || '').trim()) ? 'women' : 'men',
         genderRaw: String(gender || '').trim(),
         hcp: rgParseHcpValue(hi),
         hcpDisplay: String(hi || '').trim() || '—',
         hcpDate: String(hcpDate || '').trim()
     };
+}
+
+/** Нормализует first/last name локального игрока, учитывая оба порядка: «Имя Фамилия» и «Фамилия Имя». */
+function rgLocalNameParts(u) {
+    u = u || {};
+    var first = impNormName(u.firstName || '');
+    var last = impNormName(u.lastName || '');
+    var full = impNormName(u.name || ((u.firstName || '') + ' ' + (u.lastName || '')).trim());
+    var parts = full ? full.split(' ').filter(Boolean) : [];
+    if (!first && parts.length) first = parts[0];
+    if (!last && parts.length > 1) last = parts[parts.length - 1];
+    // Если firstName/lastName не заданы, parts[0] — либо имя, либо фамилия
+    return { first: first, last: last, full: full, parts: parts };
+}
+
+/** Совпадение имён в обоих порядках: «Фамилия Имя» и «Имя Фамилия». */
+function rgNamesMatch(localFirst, localLast, remoteFirst, remoteLast, localFull, remoteFull) {
+    var lf = impNormName(localFirst);
+    var ll = impNormName(localLast);
+    var rf = impNormName(remoteFirst);
+    var rl = impNormName(remoteLast);
+    var lFull = impNormName(localFull);
+    var rFull = impNormName(remoteFull);
+
+    if (lFull && rFull && lFull === rFull) return 'strong';
+
+    // Прямое: Фамилия=Фамилия, Имя=Имя
+    if (ll && rl && lf && rf && ll === rl && lf === rf) return 'strong';
+    // Обратное: локально Имя Фамилия, в АГР Фамилия Имя (или наоборот)
+    if (ll && rl && lf && rf && ll === rf && lf === rl) return 'strong';
+
+    // Только фамилия + имя (одно из полей пустое)
+    if (ll && rl && ll === rl && (!lf || !rf || lf === rf)) return lf && rf ? 'strong' : 'loose';
+    if (ll && rf && ll === rf && (!lf || !rl || lf === rl)) return lf && rl ? 'strong' : 'loose';
+    if (lf && rl && lf === rl && (!ll || !rf || ll === rf)) return ll && rf ? 'strong' : 'loose';
+
+    // Совпадение по частям ФИО (порядок не важен)
+    if (lFull && rFull) {
+        var lp = lFull.split(' ').filter(Boolean);
+        var rp = rFull.split(' ').filter(Boolean);
+        if (lp.length >= 2 && rp.length >= 2) {
+            var allLocalInRemote = lp.every(function(p) { return rp.indexOf(p) !== -1; });
+            var allRemoteMainInLocal = rp.slice(0, 2).every(function(p) { return lp.indexOf(p) !== -1; });
+            if (allLocalInRemote || allRemoteMainInLocal) return 'strong';
+            // Общая фамилия (одна из частей)
+            var shared = lp.filter(function(p) { return rp.indexOf(p) !== -1; });
+            if (shared.length >= 1 && (lp.indexOf(rl) !== -1 || rp.indexOf(ll) !== -1 || shared.length >= 2)) {
+                return shared.length >= 2 ? 'strong' : 'loose';
+            }
+        }
+    }
+
+    // Слабое: только фамилия
+    if (ll && rl && ll === rl) return 'loose';
+    if (ll && rf && ll === rf) return 'loose';
+    if (lf && rl && lf === rl && lf.length > 2) return 'loose';
+
+    return null;
 }
 
 function rgParseHtmlTable(html) {
@@ -2157,22 +2253,20 @@ function rgFetchViaProxy(query, attempt) {
 
 function rgMatchInList(players, result) {
     var found = null;
+    var foundLoose = null;
     (players || []).some(function(p) {
         var u = p.data || {};
-        var nm = impNormName(u.name || ((u.firstName || '') + ' ' + (u.lastName || '')));
-        if (!nm) return false;
-        var nLastName = impNormName(u.lastName || impSplitName(u.name || '').lastName);
-        var nFirstName = impNormName(u.firstName || impSplitName(u.name || '').firstName);
-        var fullRemote = impNormName(result.fio);
-        if (nm === fullRemote ||
-            (nLastName && nLastName === impNormName(result.lastName) &&
-             (!nFirstName || !result.firstName || nFirstName === impNormName(result.firstName)))) {
+        var local = rgLocalNameParts(u);
+        if (!local.full && !local.first && !local.last) return false;
+        var match = rgNamesMatch(local.first, local.last, result.firstName, result.lastName, local.full, result.fio);
+        if (match === 'strong') {
             found = p;
             return true;
         }
+        if (match === 'loose' && !foundLoose) foundLoose = p;
         return false;
     });
-    return found;
+    return found || foundLoose;
 }
 
 function rgFindLocalMatch(result) {
@@ -2317,21 +2411,153 @@ function rgUpdateBulkCount() {
     }
 }
 
-function rgUpdateHcpOfSilent(userId, r) {
+/** Обновляет HCP игрока во всех местах: users, кэш, активные/завершённые раунды, история, турниры. */
+function rgPropagateHcpEverywhere(userId, r, playerData) {
+    if (r == null || r.hcp == null) return Promise.resolve();
+    var hcp = r.hcp;
+    var gender = (playerData && playerData.gender) || r.gender || 'men';
+    var name = (playerData && playerData.name) || r.fio || '';
+    var nameKey = impNormName(name);
     var updates = {
-        handicap: r.hcp,
-        rusgolfNumber: r.number,
-        rusgolfHcpDate: r.hcpDate,
+        handicap: hcp,
+        rusgolfNumber: r.number || null,
+        rusgolfHcpDate: r.hcpDate || null,
         hcpUpdatedAt: Date.now(),
         hcpSource: 'rusgolf'
     };
-    if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[userId]) {
-        Object.assign(cachedRegisteredUsers[userId], updates);
+    if (r.firstName) updates.firstName = r.firstName;
+    if (r.lastName) updates.lastName = r.lastName;
+
+    // Локальный кэш (профиль, автоподбор, список игроков)
+    if (typeof cachedRegisteredUsers !== 'undefined') {
+        if (cachedRegisteredUsers[userId]) {
+            Object.assign(cachedRegisteredUsers[userId], updates);
+        } else if (playerData) {
+            cachedRegisteredUsers[userId] = Object.assign({}, playerData, updates);
+        }
+        // Синхронизируем ghost/guest-записи с тем же именем
+        if (nameKey) {
+            Object.keys(cachedRegisteredUsers).forEach(function(k) {
+                if (k === userId) return;
+                var u = cachedRegisteredUsers[k];
+                if (!u || !u.name) return;
+                if (impNormName(u.name) === nameKey) {
+                    u.handicap = hcp;
+                    if (r.number) u.rusgolfNumber = r.number;
+                    u.hcpUpdatedAt = updates.hcpUpdatedAt;
+                    u.hcpSource = 'rusgolf';
+                }
+            });
+        }
         try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
     }
-    if (typeof db !== 'undefined') {
-        db.ref('users/' + userId).update(updates).catch(function(){});
-    }
+    try {
+        var custom = {};
+        var existing = localStorage.getItem('pestovo_custom_players');
+        if (existing) custom = JSON.parse(existing) || {};
+        if (custom[userId]) {
+            Object.assign(custom[userId], updates);
+            localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
+        }
+    } catch(e) {}
+
+    if (typeof db === 'undefined') return Promise.resolve();
+
+    var fbUpdates = {};
+    fbUpdates['users/' + userId + '/handicap'] = hcp;
+    fbUpdates['users/' + userId + '/hcpUpdatedAt'] = updates.hcpUpdatedAt;
+    fbUpdates['users/' + userId + '/hcpSource'] = 'rusgolf';
+    if (r.number) fbUpdates['users/' + userId + '/rusgolfNumber'] = r.number;
+    if (r.hcpDate) fbUpdates['users/' + userId + '/rusgolfHcpDate'] = r.hcpDate;
+    if (r.firstName) fbUpdates['users/' + userId + '/firstName'] = r.firstName;
+    if (r.lastName) fbUpdates['users/' + userId + '/lastName'] = r.lastName;
+
+    return Promise.all([
+        db.ref('rounds').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
+        db.ref('tournaments').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
+        db.ref('users/' + userId + '/history').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; })
+    ]).then(function(res) {
+        var rounds = res[0];
+        var tournaments = res[1];
+        var history = res[2];
+
+        Object.keys(rounds).forEach(function(rid) {
+            var rd = rounds[rid];
+            if (!rd || !rd.players) return;
+            Object.keys(rd.players).forEach(function(pid) {
+                var p = rd.players[pid];
+                if (!p) return;
+                var sameId = pid === userId;
+                var sameName = nameKey && p.name && impNormName(p.name) === nameKey;
+                if (!sameId && !sameName) return;
+                var tee = p.tee || rd.tee || 'wh';
+                var g = p.gender || gender;
+                var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(hcp, tee, g) : Math.round(hcp);
+                fbUpdates['rounds/' + rid + '/players/' + pid + '/exactHcp'] = hcp;
+                fbUpdates['rounds/' + rid + '/players/' + pid + '/fieldHcp'] = fieldHcp;
+            });
+        });
+
+        Object.keys(tournaments).forEach(function(tid) {
+            var tn = tournaments[tid];
+            if (!tn || !tn.registeredPlayers) return;
+            Object.keys(tn.registeredPlayers).forEach(function(pid) {
+                var rp = tn.registeredPlayers[pid];
+                if (!rp) return;
+                var sameId = pid === userId || (rp.uid && rp.uid === userId);
+                var sameName = nameKey && rp.name && impNormName(rp.name) === nameKey;
+                if (!sameId && !sameName) return;
+                fbUpdates['tournaments/' + tid + '/registeredPlayers/' + pid + '/handicap'] = hcp;
+            });
+        });
+
+        Object.keys(history).forEach(function(hKey) {
+            var h = history[hKey];
+            if (!h) return;
+            var tee = h.tee || 'wh';
+            var g = h.gender || gender;
+            var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(hcp, tee, g) : Math.round(hcp);
+            fbUpdates['users/' + userId + '/history/' + hKey + '/exactHcp'] = hcp;
+            fbUpdates['users/' + userId + '/history/' + hKey + '/fieldHcp'] = fieldHcp;
+        });
+
+        // Также обновляем history у других uid с тем же именем (гости)
+        if (nameKey) {
+            return db.ref('users').once('value').then(function(usn) {
+                var users = usn.val() || {};
+                Object.keys(users).forEach(function(uid) {
+                    if (uid === userId) return;
+                    var u = users[uid];
+                    if (!u || !u.name || impNormName(u.name) !== nameKey) return;
+                    fbUpdates['users/' + uid + '/handicap'] = hcp;
+                    fbUpdates['users/' + uid + '/hcpUpdatedAt'] = updates.hcpUpdatedAt;
+                    fbUpdates['users/' + uid + '/hcpSource'] = 'rusgolf';
+                    if (r.number) fbUpdates['users/' + uid + '/rusgolfNumber'] = r.number;
+                    if (u.history) {
+                        Object.keys(u.history).forEach(function(hKey) {
+                            var h = u.history[hKey];
+                            if (!h) return;
+                            var tee = h.tee || 'wh';
+                            var g = h.gender || u.gender || gender;
+                            var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(hcp, tee, g) : Math.round(hcp);
+                            fbUpdates['users/' + uid + '/history/' + hKey + '/exactHcp'] = hcp;
+                            fbUpdates['users/' + uid + '/history/' + hKey + '/fieldHcp'] = fieldHcp;
+                        });
+                    }
+                });
+                return db.ref().update(fbUpdates);
+            });
+        }
+        return db.ref().update(fbUpdates);
+    }).catch(function(err) {
+        console.warn('rgPropagateHcpEverywhere:', err);
+        // Fallback: хотя бы users
+        return db.ref('users/' + userId).update(updates);
+    });
+}
+
+function rgUpdateHcpOfSilent(userId, r, playerData) {
+    return rgPropagateHcpEverywhere(userId, r, playerData);
 }
 
 function rgBulkAddSelected() {
@@ -2362,7 +2588,7 @@ function rgBulkAddSelected() {
 
         var existing = rgFindLocalMatch(r);
         if (existing) {
-            rgUpdateHcpOfSilent(existing.id, r);
+            rgUpdateHcpOfSilent(existing.id, r, existing.data);
             updated++;
         } else {
             var newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6) + '_' + Math.floor(Math.random()*10000);
@@ -2451,25 +2677,16 @@ function rgAddFromResults(idx) {
     rgRenderResults(rgLastResults);
 }
 
-function rgUpdateHcpOf(userId, r) {
-    var updates = {
-        handicap: r.hcp,
-        rusgolfNumber: r.number,
-        rusgolfHcpDate: r.hcpDate,
-        hcpUpdatedAt: Date.now(),
-        hcpSource: 'rusgolf'
-    };
-    if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[userId]) {
-        Object.assign(cachedRegisteredUsers[userId], updates);
-        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
-    }
-    toast('🔄 ' + (currentLang === 'en' ? 'HCP updated: ' : 'Гандикап обновлён: ') + r.fio + ' → ' + fmtExactHcp(r.hcp), 'success');
-    if (typeof db !== 'undefined') {
-        db.ref('users/' + userId).update(updates).catch(function(err) {
-            toast('⚠️ ' + (currentLang === 'en' ? 'Save error: ' : 'Ошибка сохранения: ') + err.message, 'error');
-        });
-    }
-    rgRenderResults(rgLastResults);
+function rgUpdateHcpOf(userId, r, playerData) {
+    var localData = playerData || (typeof cachedRegisteredUsers !== 'undefined' ? cachedRegisteredUsers[userId] : null) || {};
+    toast('🔄 ' + (currentLang === 'en' ? 'HCP updated: ' : 'Гандикап обновлён: ') + (r.fio || localData.name || '') + ' → ' + fmtExactHcp(r.hcp), 'success');
+    rgPropagateHcpEverywhere(userId, r, localData).then(function() {
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
+    }).catch(function(err) {
+        toast('⚠️ ' + (currentLang === 'en' ? 'Save error: ' : 'Ошибка сохранения: ') + (err && err.message ? err.message : err), 'error');
+    });
+    if (rgLastResults && rgLastResults.length) rgRenderResults(rgLastResults);
 }
 
 function rgUpdateFromResults(idx) {
@@ -2490,12 +2707,112 @@ function rgSyncProgressHtml(cur, total, stats) {
     var html = '<div class="rg-progress-wrap">';
     html += '<div class="rg-progress"><div class="rg-progress-fill" style="width:' + pct + '%;"></div></div>';
     html += '<div class="rg-progress-text">' + (currentLang === 'en' ? 'Processed ' : 'Обработано ') + cur + '/' + total +
-        ' · <span style="color:#2ecc71;">' + (currentLang === 'en' ? 'updated ' : 'обновлено ') + stats.updated + '</span>' +
-        ' · <span style="color:var(--muted);">' + (currentLang === 'en' ? 'actual ' : 'актуально ') + stats.actual + '</span>' +
+        ' · <span style="color:#2ecc71;">' + (currentLang === 'en' ? 'updated ' : 'обновлено ') + (stats.updatedList ? stats.updatedList.length : stats.updated) + '</span>' +
+        ' · <span style="color:var(--muted);">' + (currentLang === 'en' ? 'actual ' : 'актуально ') + (stats.actualList ? stats.actualList.length : stats.actual) + '</span>' +
         ' · <span style="color:var(--gold);">' + (currentLang === 'en' ? 'need choice ' : 'выбор ') + stats.conflicts.length + '</span>' +
-        ' · <span style="color:var(--red);">' + (currentLang === 'en' ? 'not found ' : 'не найдено ') + stats.notFound + '</span></div>';
+        ' · <span style="color:var(--red);">' + (currentLang === 'en' ? 'not found ' : 'не найдено ') + (stats.notFoundList ? stats.notFoundList.length : stats.notFound) + '</span>' +
+        (stats.noHcpList && stats.noHcpList.length ? ' · <span style="color:var(--muted);">' + (currentLang === 'en' ? 'no HI ' : 'нет HI ') + stats.noHcpList.length + '</span>' : '') +
+        '</div>';
     html += '</div>';
     return html;
+}
+
+function rgPlayerDisplayName(p) {
+    if (!p) return '—';
+    var u = p.data || {};
+    return u.name || ((u.firstName || '') + ' ' + (u.lastName || '')).trim() || p.id || '—';
+}
+
+function rgSyncResultListsHtml(stats) {
+    var en = currentLang === 'en';
+    var sections = [
+        { key: 'updatedList', title: en ? 'Updated' : 'Обновлено', color: '#2ecc71', icon: 'fa-rotate', empty: en ? 'No updates' : 'Нет обновлений',
+          row: function(item) {
+              return escapeHtml(item.name) + ' · HCP ' +
+                  (item.oldHcp != null ? fmtExactHcp(item.oldHcp) : '—') + ' → <b>' + fmtExactHcp(item.newHcp) + '</b>' +
+                  (item.rusgolfNumber ? ' <span class="rg-meta">💳 ' + escapeHtml(item.rusgolfNumber) + '</span>' : '');
+          }
+        },
+        { key: 'actualList', title: en ? 'Already up to date' : 'Уже актуально', color: 'var(--muted)', icon: 'fa-check', empty: en ? 'None' : 'Нет',
+          row: function(item) {
+              return escapeHtml(item.name) + ' · HCP <b>' + (item.hcp != null ? fmtExactHcp(item.hcp) : '—') + '</b>';
+          }
+        },
+        { key: 'notFoundList', title: en ? 'Not found in RGA' : 'Не найдено в базе АГР', color: 'var(--red)', icon: 'fa-circle-xmark', empty: en ? 'All found' : 'Все найдены',
+          row: function(item) {
+              return escapeHtml(item.name) + (item.query ? ' <span class="rg-meta">«' + escapeHtml(item.query) + '»</span>' : '');
+          }
+        },
+        { key: 'noHcpList', title: en ? 'Found but no HI' : 'Найден, но нет HI', color: 'var(--gold)', icon: 'fa-triangle-exclamation', empty: '',
+          row: function(item) {
+              return escapeHtml(item.name) + (item.fio ? ' → ' + escapeHtml(item.fio) : '');
+          }
+        }
+    ];
+    var html = '<div class="rg-sync-results" style="margin-top:16px;">';
+    sections.forEach(function(sec) {
+        var list = stats[sec.key] || [];
+        if (!list.length && sec.key === 'noHcpList') return;
+        html += '<div class="rg-sync-section" style="margin-bottom:14px;">';
+        html += '<div style="font-weight:800;font-size:14px;color:' + sec.color + ';margin-bottom:8px;"><i class="fas ' + sec.icon + '"></i> ' +
+            sec.title + ' <span style="opacity:.8;">(' + list.length + ')</span></div>';
+        if (!list.length) {
+            html += '<p style="color:var(--muted);font-size:12px;margin:0 0 8px;">' + sec.empty + '</p>';
+        } else {
+            html += '<div class="rg-sync-list">';
+            list.forEach(function(item) {
+                html += '<div class="rg-sync-row" style="padding:8px 12px;border:1px solid var(--border);border-left:3px solid ' + sec.color +
+                    ';border-radius:8px;margin-bottom:6px;background:rgba(255,255,255,0.03);font-size:13px;color:var(--white);">' +
+                    sec.row(item) + '</div>';
+            });
+            html += '</div>';
+        }
+        html += '</div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+function rgBuildSearchQuery(u) {
+    var local = rgLocalNameParts(u);
+    var rawName = String(u.name || '').replace(/\s+/g, ' ').trim();
+    var rawFirst = String(u.firstName || '').trim();
+    var rawLast = String(u.lastName || '').trim();
+    // АГР ищет лучше по «Фамилия Имя»
+    if (rawLast && rawFirst) return rawLast + ' ' + rawFirst;
+    if (local.last && local.first) {
+        // Если name = «Имя Фамилия» (как в solo: lastName + ' ' + firstName наоборот),
+        // last/first из полей надёжнее. Иначе берём name as-is.
+        return (rawLast || local.last) + ' ' + (rawFirst || local.first);
+    }
+    if (rawName) {
+        var parts = rawName.split(' ');
+        // Пробуем оба порядка: если 2+ слова, ищем как есть (часто «Фамилия Имя» в solo)
+        return rawName;
+    }
+    return rawLast || rawFirst || '';
+}
+
+function rgClassifyRemoteMatches(u, rows) {
+    var local = rgLocalNameParts(u);
+    var strong = [];
+    var loose = [];
+    (rows || []).forEach(function(r) {
+        var m = rgNamesMatch(local.first, local.last, r.firstName, r.lastName, local.full, r.fio);
+        if (m === 'strong') strong.push(r);
+        else if (m === 'loose') loose.push(r);
+    });
+    // Дедуп по номеру карты
+    var dedupe = function(arr) {
+        var seen = {};
+        return arr.filter(function(r) {
+            var k = (r.number || '') + '|' + impNormName(r.fio);
+            if (seen[k]) return false;
+            seen[k] = true;
+            return true;
+        });
+    };
+    return { strong: dedupe(strong), loose: dedupe(loose) };
 }
 
 function rgSyncStop() {
@@ -2521,40 +2838,98 @@ function rgSyncAll() {
         : 'Проверить гандикап каждого игрока в базе АГР? При большом списке это может занять несколько минут.')) return;
 
     impCollectPlayers(function(players) {
-        var list = players.filter(function(p) { return p.data && (p.data.name || p.data.firstName || p.data.lastName); });
+        // Дедуп по нормализованному имени: один человек из users + rounds не должен синкаться дважды
+        var seenNames = {};
+        var list = [];
+        players.forEach(function(p) {
+            if (!p.data || !(p.data.name || p.data.firstName || p.data.lastName)) return;
+            var key = impNormName(p.data.name || ((p.data.firstName || '') + ' ' + (p.data.lastName || '')));
+            if (key && seenNames[key]) {
+                // Предпочитаем запись без isGuest / с email
+                var prev = seenNames[key];
+                var preferNew = (!p.data.isGuest && prev.data.isGuest) || (p.data.email && !prev.data.email);
+                if (preferNew) {
+                    list[prev.idx] = p;
+                    seenNames[key] = { idx: prev.idx, data: p.data };
+                }
+                return;
+            }
+            if (key) seenNames[key] = { idx: list.length, data: p.data };
+            list.push(p);
+        });
+
         if (!list.length) {
             toast(currentLang === 'en' ? 'No players found' : 'Игроки не найдены', 'error');
             return;
         }
 
-        rgSyncState = { running: true, stop: false, stats: { updated: 0, actual: 0, notFound: 0, conflicts: [], noHcp: 0 } };
+        rgSyncState = {
+            running: true,
+            stop: false,
+            stats: {
+                updated: 0,
+                actual: 0,
+                notFound: 0,
+                noHcp: 0,
+                conflicts: [],
+                updatedList: [],
+                actualList: [],
+                notFoundList: [],
+                noHcpList: []
+            }
+        };
         var stats = rgSyncState.stats;
         rgSyncConflictsRef = stats.conflicts;
         var progressEl = document.getElementById('rg-sync-progress');
         var manualEl = document.getElementById('rg-sync-manual');
+        var resultsEl = document.getElementById('rg-sync-results');
         var syncBtn = document.getElementById('rg-sync-btn');
         var stopBtn = document.getElementById('rg-sync-stop');
-        if (progressEl) progressEl.innerHTML = rgSyncProgressHtml(0, list.length, rgSyncState.stats);
+        if (progressEl) progressEl.innerHTML = rgSyncProgressHtml(0, list.length, stats);
         if (manualEl) manualEl.innerHTML = '';
+        if (resultsEl) resultsEl.innerHTML = '';
         if (syncBtn) syncBtn.disabled = true;
         if (stopBtn) stopBtn.classList.remove('hidden');
 
         var i = 0;
         var processed = 0;
 
+        var refreshProgress = function() {
+            if (!progressEl) return;
+            var fill = progressEl.querySelector('.rg-progress-fill');
+            if (fill) fill.style.width = Math.round((processed / list.length) * 100) + '%';
+            var text = progressEl.querySelector('.rg-progress-text');
+            if (text) {
+                text.innerHTML = (currentLang === 'en' ? 'Processed ' : 'Обработано ') + processed + '/' + list.length +
+                    ' · <span style="color:#2ecc71;">' + (currentLang === 'en' ? 'updated ' : 'обновлено ') + stats.updatedList.length + '</span>' +
+                    ' · <span style="color:var(--muted);">' + (currentLang === 'en' ? 'actual ' : 'актуально ') + stats.actualList.length + '</span>' +
+                    ' · <span style="color:var(--gold);">' + (currentLang === 'en' ? 'need choice ' : 'выбор ') + stats.conflicts.length + '</span>' +
+                    ' · <span style="color:var(--red);">' + (currentLang === 'en' ? 'not found ' : 'не найдено ') + stats.notFoundList.length + '</span>';
+            }
+        };
+
         var renderConflicts = function() {
-            if (!manualEl || !stats.conflicts.length) return;
+            if (!manualEl) return;
+            if (!stats.conflicts.length) {
+                if (!rgSyncState.running) return;
+                return;
+            }
             var html = '<h3 style="color:var(--gold);font-size:15px;margin:18px 0 10px;"><i class="fas fa-user-pen"></i> ' +
                 (currentLang === 'en' ? 'Choose the right player (' : 'Выберите нужного игрока (') + stats.conflicts.length + ')</h3>';
             html += '<p style="color:var(--muted);font-size:12px;margin-bottom:12px;">' +
                 (currentLang === 'en' ? 'Same name found with different handicaps — pick the correct one.' : 'Найдено несколько одинаковых имён с разными гандикапами — выберите правильного.') + '</p>';
             stats.conflicts.forEach(function(c, ci) {
+                if (c.resolved) {
+                    html += '<div class="rg-conflict" data-conflict-idx="' + ci + '"><div style="color:#2ecc71;font-weight:700;font-size:13px;padding:8px 0;"><i class="fas fa-check-circle"></i> ' +
+                        escapeHtml(rgPlayerDisplayName(c.player)) + (c.resolvedHcp != null ? ' → HCP ' + fmtExactHcp(c.resolvedHcp) : '') + '</div></div>';
+                    return;
+                }
                 html += '<div class="rg-conflict" data-conflict-idx="' + ci + '">';
-                html += '<div class="rg-conflict-title">' + (c.player.data.name || c.player.id) +
+                html += '<div class="rg-conflict-title">' + escapeHtml(rgPlayerDisplayName(c.player)) +
                     ' <span class="rg-conflict-hcp">' + (c.player.data.handicap != null ? (currentLang === 'en' ? 'current HCP ' : 'текущий HCP ') + fmtExactHcp(c.player.data.handicap) : (currentLang === 'en' ? 'no HCP' : 'без HCP')) + '</span></div>';
                 c.candidates.forEach(function(r, ri) {
                     html += '<div class="rg-cand">';
-                    html += '<div class="rg-cand-info"><b>' + r.fio + '</b><span class="rg-meta">💳 ' + r.number + ' · ' + (r.gender === 'women' ? 'Жен.' : 'Муж.') + (r.hcpDate ? ' · ' + r.hcpDate : '') + '</span></div>';
+                    html += '<div class="rg-cand-info"><b>' + escapeHtml(r.fio) + '</b><span class="rg-meta">💳 ' + escapeHtml(r.number) + ' · ' + (r.gender === 'women' ? 'Жен.' : 'Муж.') + (r.hcpDate ? ' · ' + escapeHtml(r.hcpDate) : '') + '</span></div>';
                     html += '<div class="rg-hcp">' + (r.hcp != null ? fmtExactHcp(r.hcp) : '—') + '<span class="rg-hcp-label">HI</span></div>';
                     html += '<button type="button" class="btn btn-g btn-sm" ' + (r.hcp == null ? 'disabled' : '') + ' onclick="rgResolveConflict(' + ci + ',' + ri + ')"><i class="fas fa-check"></i> ' + (currentLang === 'en' ? 'This one' : 'Это он') + '</button>';
                     html += '</div>';
@@ -2569,67 +2944,113 @@ function rgSyncAll() {
             if (syncBtn) syncBtn.disabled = false;
             if (stopBtn) stopBtn.classList.add('hidden');
             renderConflicts();
+            stats.updated = stats.updatedList.length;
+            stats.actual = stats.actualList.length;
+            stats.notFound = stats.notFoundList.length;
+            stats.noHcp = stats.noHcpList.length;
+
+            var listsHtml = rgSyncResultListsHtml(stats);
+            if (resultsEl) {
+                resultsEl.innerHTML = listsHtml;
+            } else if (progressEl) {
+                progressEl.insertAdjacentHTML('beforeend', listsHtml);
+            }
+
             var msg = (currentLang === 'en' ? '✅ Sync finished: ' : '✅ Синхронизация завершена: ') +
                 (currentLang === 'en' ? stats.updated + ' updated, ' : stats.updated + ' обновлено, ') +
                 (currentLang === 'en' ? stats.actual + ' up to date, ' : stats.actual + ' актуально, ') +
-                (currentLang === 'en' ? stats.conflicts.length + ' to choose, ' : stats.conflicts.length + ' на выбор, ') +
+                (currentLang === 'en' ? stats.conflicts.filter(function(c){return !c.resolved;}).length + ' to choose, ' : stats.conflicts.filter(function(c){return !c.resolved;}).length + ' на выбор, ') +
                 (currentLang === 'en' ? stats.notFound + ' not found' : stats.notFound + ' не найдено');
             toast(msg, 'success');
             if (progressEl) progressEl.insertAdjacentHTML('beforeend', '<p style="font-size:13px;font-weight:700;color:var(--gold);margin-top:8px;">' + msg + '</p>');
+            if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+            if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
         };
 
         var processNext = function() {
             if (rgSyncState.stop || i >= list.length) { finishAll(); return; }
             var p = list[i++];
-            var u = p.data;
-            var q = impNormName(u.lastName || impSplitName(u.name || '').lastName);
-            var fn = impNormName(u.firstName || impSplitName(u.name || '').firstName);
-            var query = (q && fn) ? (u.lastName || impSplitName(u.name).lastName) + ' ' + (u.firstName || impSplitName(u.name).firstName) : (u.name || '');
+            var u = p.data || {};
+            var displayName = rgPlayerDisplayName(p);
+            var query = rgBuildSearchQuery(u);
+            // Если имя в порядке «Имя Фамилия», дополнительно пробуем reverse-query при пустом результате
+            var altQuery = '';
+            var local = rgLocalNameParts(u);
+            if (local.first && local.last) {
+                var primaryIsLastFirst = impNormName(query).indexOf(local.last) === 0;
+                if (primaryIsLastFirst) {
+                    altQuery = (u.firstName || local.first) + ' ' + (u.lastName || local.last);
+                } else {
+                    altQuery = (u.lastName || local.last) + ' ' + (u.firstName || local.first);
+                }
+                if (impNormName(altQuery) === impNormName(query)) altQuery = '';
+            }
 
-            rgFetchViaProxy(query).then(function(res) {
-                var strong = [], loose = [];
-                res.rows.forEach(function(r) {
-                    var lastMatch = impNormName(r.lastName) === q;
-                    var firstMatch = !fn || !impNormName(r.firstName) || impNormName(r.firstName) === fn;
-                    if (lastMatch && firstMatch) strong.push(r);
-                    else if (lastMatch) loose.push(r);
+            var tryFetch = function(q, allowAlt) {
+                return rgFetchViaProxy(q).then(function(res) {
+                    var classified = rgClassifyRemoteMatches(u, res.rows);
+                    if (!classified.strong.length && !classified.loose.length && allowAlt && altQuery) {
+                        return tryFetch(altQuery, false);
+                    }
+                    return { res: res, classified: classified, usedQuery: q };
                 });
+            };
+
+            tryFetch(query || displayName, true).then(function(pack) {
+                var strong = pack.classified.strong;
+                var loose = pack.classified.loose;
+                var usedQuery = pack.usedQuery;
 
                 if (strong.length === 1 && strong[0].hcp != null) {
                     var curHcp = (u.handicap != null && !isNaN(parseFloat(u.handicap))) ? parseFloat(u.handicap) : null;
                     if (curHcp === null || Math.abs(curHcp - strong[0].hcp) > 0.049) {
-                        rgUpdateHcpOf(p.id, strong[0]);
-                        stats.updated++;
+                        rgUpdateHcpOf(p.id, strong[0], u);
+                        stats.updatedList.push({
+                            id: p.id,
+                            name: displayName,
+                            oldHcp: curHcp,
+                            newHcp: strong[0].hcp,
+                            rusgolfNumber: strong[0].number,
+                            fio: strong[0].fio
+                        });
+                        // Обновляем локальную копию, чтобы дедуп/последующие шаги видели новый HCP
+                        u.handicap = strong[0].hcp;
                     } else {
-                        stats.actual++;
+                        stats.actualList.push({ id: p.id, name: displayName, hcp: curHcp, fio: strong[0].fio });
                     }
                 } else if (strong.length === 1 && strong[0].hcp == null) {
-                    stats.noHcp++;
+                    stats.noHcpList.push({ id: p.id, name: displayName, fio: strong[0].fio, number: strong[0].number });
                 } else if (strong.length > 1) {
                     stats.conflicts.push({ player: p, candidates: strong });
                     renderConflicts();
+                } else if (loose.length === 1 && loose[0].hcp != null && local.first && local.last) {
+                    // Одно нечёткое совпадение при полном ФИО — тоже обновляем
+                    var curHcp2 = (u.handicap != null && !isNaN(parseFloat(u.handicap))) ? parseFloat(u.handicap) : null;
+                    if (curHcp2 === null || Math.abs(curHcp2 - loose[0].hcp) > 0.049) {
+                        rgUpdateHcpOf(p.id, loose[0], u);
+                        stats.updatedList.push({
+                            id: p.id,
+                            name: displayName,
+                            oldHcp: curHcp2,
+                            newHcp: loose[0].hcp,
+                            rusgolfNumber: loose[0].number,
+                            fio: loose[0].fio
+                        });
+                        u.handicap = loose[0].hcp;
+                    } else {
+                        stats.actualList.push({ id: p.id, name: displayName, hcp: curHcp2, fio: loose[0].fio });
+                    }
                 } else if (loose.length) {
                     stats.conflicts.push({ player: p, candidates: loose });
                     renderConflicts();
                 } else {
-                    stats.notFound++;
+                    stats.notFoundList.push({ id: p.id, name: displayName, query: usedQuery });
                 }
             }).catch(function() {
-                stats.notFound++;
+                stats.notFoundList.push({ id: p.id, name: displayName, query: query || displayName });
             }).then(function() {
                 processed++;
-                if (progressEl) {
-                    var fill = progressEl.querySelector('.rg-progress-fill');
-                    if (fill) fill.style.width = Math.round((processed / list.length) * 100) + '%';
-                    var text = progressEl.querySelector('.rg-progress-text');
-                    if (text) {
-                        text.innerHTML = (currentLang === 'en' ? 'Processed ' : 'Обработано ') + processed + '/' + list.length +
-                            ' · <span style="color:#2ecc71;">' + (currentLang === 'en' ? 'updated ' : 'обновлено ') + stats.updated + '</span>' +
-                            ' · <span style="color:var(--muted);">' + (currentLang === 'en' ? 'actual ' : 'актуально ') + stats.actual + '</span>' +
-                            ' · <span style="color:var(--gold);">' + (currentLang === 'en' ? 'need choice ' : 'выбор ') + stats.conflicts.length + '</span>' +
-                            ' · <span style="color:var(--red);">' + (currentLang === 'en' ? 'not found ' : 'не найдено ') + stats.notFound + '</span>';
-                    }
-                }
+                refreshProgress();
                 setTimeout(processNext, 400);
             });
         };
@@ -2648,14 +3069,26 @@ function rgResolveConflict(ci, ri) {
     }
     var r = c.candidates[ri];
     if (!r || r.hcp == null) return;
-    rgUpdateHcpOf(c.player.id, r);
+    rgUpdateHcpOf(c.player.id, r, c.player.data);
+    c.resolved = true;
+    c.resolvedHcp = r.hcp;
+    if (rgSyncState && rgSyncState.stats && rgSyncState.stats.updatedList) {
+        var oldHcp = c.player.data && c.player.data.handicap != null ? parseFloat(c.player.data.handicap) : null;
+        rgSyncState.stats.updatedList.push({
+            id: c.player.id,
+            name: rgPlayerDisplayName(c.player),
+            oldHcp: oldHcp,
+            newHcp: r.hcp,
+            rusgolfNumber: r.number,
+            fio: r.fio
+        });
+    }
     var manualEl = document.getElementById('rg-sync-manual');
     var card = manualEl ? manualEl.querySelector('[data-conflict-idx="' + ci + '"]') : null;
     if (card) {
         card.innerHTML = '<div style="color:#2ecc71;font-weight:700;font-size:13px;padding:8px 0;"><i class="fas fa-check-circle"></i> ' +
-            (c.player.data.name || '') + ' → HCP ' + fmtExactHcp(r.hcp) + '</div>';
+            escapeHtml(rgPlayerDisplayName(c.player)) + ' → HCP ' + fmtExactHcp(r.hcp) + '</div>';
     }
-    c.resolved = true;
 }
 
 // -------- НАСТРОЙКИ ПРОКСИ ---------

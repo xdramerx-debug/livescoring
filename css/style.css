@@ -2013,3 +2013,9 @@ body.has-bottom-tabbar .online-indicator { top: 70px !important; }
 
 /* paper scorecard label alignment polish */
 .psc-lbl-bold{text-align:left!important;padding-left:6px!important;font-weight:700;}
+
+/* RUSGOLF sync result lists */
+.rg-sync-results{margin-top:16px;}
+.rg-sync-section{margin-bottom:14px;}
+.rg-sync-list{max-height:280px;overflow:auto;}
+.rg-sync-row{padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:rgba(255,255,255,0.03);font-size:13px;color:var(--white);}

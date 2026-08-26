@@ -1994,7 +1994,7 @@ function confirmPlayersImport() {
 }
 
 // ==========================================
-// ИНТЕГРАЦИЯ С hcp.rusgolf.ru (БАЗА АГА РОССИИ)
+// ИНТЕГРАЦИЯ С hcp.rusgolf.ru (БАЗА АГР РОССИИ)
 // ==========================================
 var RG_SEARCH_BASE = 'https://hcp.rusgolf.ru/public/player/ru/?search=';
 var rgLastResults = [];
@@ -2199,7 +2199,7 @@ function rgDoSearch(evt) {
         return;
     }
     if (resultsEl) resultsEl.innerHTML = '';
-    rgShowStatus('<i class="fas fa-spinner fa-spin"></i> ' + (currentLang === 'en' ? 'Searching RGA database (hcp.rusgolf.ru)...' : 'Идёт поиск в базе АГА (hcp.rusgolf.ru)...'));
+    rgShowStatus('<i class="fas fa-spinner fa-spin"></i> ' + (currentLang === 'en' ? 'Searching RGA database (hcp.rusgolf.ru)...' : 'Идёт поиск в базе АГР (hcp.rusgolf.ru)...'));
     if (btn) btn.disabled = true;
 
     rgFetchViaProxy(q).then(function(res) {
@@ -2225,24 +2225,47 @@ function rgRenderResults(rows) {
     if (!el) return;
 
     impCollectPlayers(function(players) {
-        var html = '<div class="rg-list">';
+        var hasValid = rows.some(function(r){ return r.hcp != null; });
+        var html = '';
+
+        // Bulk toolbar: select all + bulk add button
+        if (rows.length) {
+            html += '<div class="rg-bulk-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:12px;">';
+            html += '<label class="list-item" style="cursor:pointer;padding:8px 14px;display:flex;align-items:center;gap:10px;margin:0;background:rgba(255,255,255,0.03);border-radius:10px;user-select:none;">';
+            html += '<input type="checkbox" id="rg-check-all" onchange="rgToggleAllResults(this)" style="width:20px;height:20px;cursor:pointer;">';
+            html += '<span style="font-weight:700;font-size:13px;color:var(--white);">' + (currentLang === 'en' ? 'Select all' : 'Выбрать все') + '</span>';
+            html += '</label>';
+            html += '<button type="button" class="btn btn-g imp-big-btn" onclick="rgBulkAddSelected()" ' + (hasValid ? '' : 'disabled') + ' style="min-height:42px;">';
+            html += '<i class="fas fa-users-plus"></i> <span>' + (currentLang === 'en' ? 'Add selected' : 'Добавить выбранных') + ' (<span id="rg-bulk-count">0</span>)</span>';
+            html += '</button>';
+            html += '</div>';
+        }
+
+        html += '<div class="rg-list">';
         rows.forEach(function(r, i) {
             var dup = rgMatchInList(players, r);
             var genderIcon = r.gender === 'women' ? '👩' : '👨';
             var hcpVal = r.hcp != null ? fmtExactHcp(r.hcp) : r.hcpDisplay;
             var hcpChanged = dup && r.hcp != null && dup.data.handicap != null && Math.abs((parseFloat(dup.data.handicap) || 0) - r.hcp) > 0.049;
+            var isDisabled = r.hcp == null;
+            var teeLabel = r.gender === 'women' ? '🟥 ' + (currentLang === 'en' ? 'Red tees' : 'Красные ти') : '🟦 ' + (currentLang === 'en' ? 'Blue tees' : 'Синие ти');
 
-            html += '<div class="rg-card">';
-            html += '<div class="rg-main">';
-            html += '<div class="rg-name">' + genderIcon + ' ' + r.fio + '</div>';
-            html += '<div class="rg-meta">💳 ' + r.number + ' · ' + (r.gender === 'women' ? (currentLang === 'en' ? 'Female' : 'Жен.') : (currentLang === 'en' ? 'Male' : 'Муж.')) +
-                (r.hcpDate ? ' · ' + (currentLang === 'en' ? 'updated ' : 'обновлён ') + r.hcpDate : '') + '</div>';
-            if (dup) html += '<div class="rg-meta" style="color:var(--gold);">' + (currentLang === 'en' ? 'Already on site' : 'Уже есть на сайте') + ': ' + (dup.data.name || dup.id) + '</div>';
+            html += '<div class="rg-card" style="display:flex;align-items:flex-start;gap:10px;">';
+            html += '<input type="checkbox" class="rg-result-check" data-rg-idx="' + i + '" ' + (isDisabled ? 'disabled' : '') + ' onchange="rgUpdateBulkCount()" style="width:20px;height:20px;cursor:pointer;margin-top:6px;flex-shrink:0;">';
+            html += '<div style="flex:1;min-width:0;">';
+            html += '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;">';
+            html += '<div class="rg-main" style="flex:1;min-width:160px;">';
+            html += '<div class="rg-name">' + genderIcon + ' ' + escapeHtml(r.fio) + '</div>';
+            html += '<div class="rg-meta">💳 ' + escapeHtml(r.number) + ' · ' + (r.gender === 'women' ? (currentLang === 'en' ? 'Female' : 'Жен.') : (currentLang === 'en' ? 'Male' : 'Муж.')) +
+                ' · ' + teeLabel +
+                (r.hcpDate ? ' · ' + (currentLang === 'en' ? 'updated ' : 'обновлён ') + escapeHtml(r.hcpDate) : '') + '</div>';
+            if (dup) html += '<div class="rg-meta" style="color:var(--gold);">' + (currentLang === 'en' ? 'Already on site' : 'Уже есть на сайте') + ': ' + escapeHtml(dup.data.name || dup.id) + '</div>';
             html += '</div>';
-            html += '<div class="rg-hcp' + (hcpChanged ? ' rg-hcp-changed' : '') + '">' + hcpVal + '<span class="rg-hcp-label">HI</span></div>';
-            html += '<div class="rg-actions">';
+            html += '<div class="rg-hcp' + (hcpChanged ? ' rg-hcp-changed' : '') + '" style="flex-shrink:0;">' + escapeHtml(hcpVal) + '<span class="rg-hcp-label">HI</span></div>';
+            html += '</div>';
+            html += '<div class="rg-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">';
             if (r.hcp == null) {
-                html += '<span class="imp-badge imp-badge-err">⚠ ' + (currentLang === 'en' ? 'No HI in RGA base' : 'Нет HI в базе АГА') + '</span>';
+                html += '<span class="imp-badge imp-badge-err">⚠ ' + (currentLang === 'en' ? 'No HI in RGA base' : 'Нет HI в базе АГР') + '</span>';
             } else if (dup) {
                 html += '<button type="button" class="btn btn-og btn-sm" onclick="rgUpdateFromResults(' + i + ')"><i class="fas fa-rotate"></i> ' +
                     (hcpChanged
@@ -2253,11 +2276,130 @@ function rgRenderResults(rows) {
                 html += '<button type="button" class="btn btn-g btn-sm" onclick="rgAddFromResults(' + i + ')"><i class="fas fa-plus"></i> ' +
                     (currentLang === 'en' ? 'Add to site' : 'Добавить на сайт') + '</button>';
             }
-            html += '</div></div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
         });
         html += '</div>';
         el.innerHTML = html;
+        rgUpdateBulkCount();
     });
+}
+
+function rgToggleAllResults(master) {
+    var checks = document.querySelectorAll('.rg-result-check:not(:disabled)');
+    checks.forEach(function(cb){ cb.checked = master.checked; });
+    rgUpdateBulkCount();
+}
+
+function rgUpdateBulkCount() {
+    var checked = document.querySelectorAll('.rg-result-check:checked');
+    var label = document.getElementById('rg-bulk-count');
+    if (label) label.textContent = String(checked.length);
+    var master = document.getElementById('rg-check-all');
+    if (master) {
+        var all = document.querySelectorAll('.rg-result-check:not(:disabled)');
+        var allCount = all.length;
+        var checkedCount = checked.length;
+        if (!allCount) {
+            master.checked = false;
+            master.indeterminate = false;
+        } else if (checkedCount === 0) {
+            master.checked = false;
+            master.indeterminate = false;
+        } else if (checkedCount === allCount) {
+            master.checked = true;
+            master.indeterminate = false;
+        } else {
+            master.checked = false;
+            master.indeterminate = true;
+        }
+    }
+}
+
+function rgUpdateHcpOfSilent(userId, r) {
+    var updates = {
+        handicap: r.hcp,
+        rusgolfNumber: r.number,
+        rusgolfHcpDate: r.hcpDate,
+        hcpUpdatedAt: Date.now(),
+        hcpSource: 'rusgolf'
+    };
+    if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[userId]) {
+        Object.assign(cachedRegisteredUsers[userId], updates);
+        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+    }
+    if (typeof db !== 'undefined') {
+        db.ref('users/' + userId).update(updates).catch(function(){});
+    }
+}
+
+function rgBulkAddSelected() {
+    if (!rgIsAdmin()) {
+        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
+        return;
+    }
+    var checks = document.querySelectorAll('.rg-result-check:checked');
+    if (!checks.length) {
+        toast(currentLang === 'en' ? '⚠ Select at least one player' : '⚠ Выберите хотя бы одного игрока', 'error');
+        return;
+    }
+    var indices = [];
+    checks.forEach(function(cb){
+        var v = parseInt(cb.getAttribute('data-rg-idx'));
+        if (!isNaN(v)) indices.push(v);
+    });
+
+    var added = 0, updated = 0, skipped = 0;
+    var seenIds = {};
+
+    indices.forEach(function(idx){
+        var r = rgLastResults[idx];
+        if (!r || r.hcp == null) { skipped++; return; }
+        var uniqKey = (r.number || '') + '|' + (r.fio || '');
+        if (seenIds[uniqKey]) { skipped++; return; }
+        seenIds[uniqKey] = true;
+
+        var existing = rgFindLocalMatch(r);
+        if (existing) {
+            rgUpdateHcpOfSilent(existing.id, r);
+            updated++;
+        } else {
+            var newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6) + '_' + Math.floor(Math.random()*10000);
+            var playerData = {
+                name: r.fio,
+                firstName: r.firstName,
+                lastName: r.lastName,
+                email: '',
+                handicap: r.hcp,
+                gender: r.gender,
+                defaultTee: r.gender === 'women' ? 'rd' : 'bl',
+                role: 'player',
+                createdAt: Date.now(),
+                roundsPlayed: 0,
+                bestGross: null,
+                bestStableford: null,
+                rusgolfNumber: r.number,
+                rusgolfHcpDate: r.hcpDate,
+                hcpUpdatedAt: Date.now(),
+                hcpSource: 'rusgolf'
+            };
+            impSaveLocalPlayer(newId, playerData);
+            if (typeof db !== 'undefined') {
+                db.ref('users/' + newId).set(playerData).catch(function(){});
+            }
+            added++;
+        }
+    });
+
+    var msg = '✅ ' + (currentLang === 'en' ? 'Bulk add: ' : 'Массовое добавление: ') +
+        added + ' ' + (currentLang === 'en' ? 'added' : 'добавлено') +
+        ', ' + updated + ' ' + (currentLang === 'en' ? 'updated' : 'обновлено') +
+        (skipped ? ', ' + skipped + ' ' + (currentLang === 'en' ? 'skipped' : 'пропущено') : '');
+    toast(msg, 'success');
+    if (typeof vib === 'function') vib([50, 30, 50]);
+    if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+    rgRenderResults(rgLastResults);
 }
 
 function rgAddFromResults(idx) {
@@ -2268,7 +2410,7 @@ function rgAddFromResults(idx) {
     var r = rgLastResults[idx];
     if (!r) return;
     if (r.hcp == null) {
-        toast(currentLang === 'en' ? '⚠ This player has no HI in the RGA base' : '⚠ У этого игрока нет HI в базе АГА', 'error');
+        toast(currentLang === 'en' ? '⚠ This player has no HI in the RGA base' : '⚠ У этого игрока нет HI в базе АГР', 'error');
         return;
     }
     var existing = rgFindLocalMatch(r);
@@ -2285,7 +2427,7 @@ function rgAddFromResults(idx) {
         email: '',
         handicap: r.hcp,
         gender: r.gender,
-        defaultTee: r.gender === 'women' ? 'rd' : 'wh',
+        defaultTee: r.gender === 'women' ? 'rd' : 'bl',
         role: 'player',
         createdAt: Date.now(),
         roundsPlayed: 0,
@@ -2376,7 +2518,7 @@ function rgSyncAll() {
     }
     if (!confirm(currentLang === 'en'
         ? 'Check every player handicap in the RGA database? With many players this may take several minutes.'
-        : 'Проверить гандикап каждого игрока в базе АГА? При большом списке это может занять несколько минут.')) return;
+        : 'Проверить гандикап каждого игрока в базе АГР? При большом списке это может занять несколько минут.')) return;
 
     impCollectPlayers(function(players) {
         var list = players.filter(function(p) { return p.data && (p.data.name || p.data.firstName || p.data.lastName); });

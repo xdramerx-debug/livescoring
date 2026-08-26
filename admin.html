@@ -356,9 +356,9 @@
         </div>
 
         <div id="tab-rusgolf" class="admin-section hidden">
-            <!-- ПОИСК ГАНДИКАПА В БАЗЕ АГА -->
+            <!-- ПОИСК ГАНДИКАПА В БАЗЕ АГР -->
             <div class="card" style="margin-bottom:20px;">
-                <h2><i class="fas fa-magnifying-glass-chart"></i> <span data-i18n="rg_title">Проверка гандикапа — база АГА России</span></h2>
+                <h2><i class="fas fa-magnifying-glass-chart"></i> <span data-i18n="rg_title">Проверка гандикапа — база АГР России</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="rg_sub">
                     Поиск точного гандикапа (HI) игрока в официальной базе Ассоциации гольфа России (hcp.rusgolf.ru) с возможностью добавить игрока к себе на сайт.
                 </p>
@@ -376,7 +376,7 @@
             <div class="card" style="margin-bottom:20px;">
                 <h2><i class="fas fa-rotate"></i> <span>Синхронизация гандикапов игроков</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
-                    Проверяет точный гандикап каждого игрока сайта в базе АГА России по фамилии и имени. При однозначном совпадении — обновляет автоматически. Если найдено несколько одинаковых имён с разными гандикапами — предложит выбрать нужного вручную.
+                    Проверяет точный гандикап каждого игрока сайта в базе АГР России по фамилии и имени. При однозначном совпадении — обновляет автоматически. Если найдено несколько одинаковых имён с разными гандикапами — предложит выбрать нужного вручную.
                 </p>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
                     <button type="button" class="btn btn-g imp-big-btn" id="rg-sync-btn" onclick="rgSyncAll()">
@@ -395,7 +395,7 @@
                 <details>
                     <summary style="cursor:pointer;color:var(--gold);font-weight:700;font-size:14px;padding:4px 0;"><i class="fas fa-gear"></i> Настройки подключения (прокси к hcp.rusgolf.ru)</summary>
                     <p style="color:var(--muted);font-size:12px;margin:12px 0;">
-                        Сайт АГА не разрешает прямые запросы из браузера, поэтому используется цепочка публичных CORS-прокси.
+                        Сайт АГР не разрешает прямые запросы из браузера, поэтому используется цепочка публичных CORS-прокси.
                         Если все прокси недоступны — укажите свой прокси-шаблон, где <code style="color:var(--gold);">{url}</code> будет заменён на адрес запроса.<br>
                         Пример: <code style="color:var(--gold);">https://my-proxy.example.com/?target={url}</code>
                     </p>
@@ -482,7 +482,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.0.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.0.1</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>

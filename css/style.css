@@ -849,6 +849,12 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .page-title{font-family:var(--ff);font-size:32px;font-weight:700;color:var(--white);margin-bottom:6px;}
 .page-sub{color:var(--muted);font-size:15px;}
 
+/* ВО ВРЕМЯ РАУНДА блок «Начать раунд» (page-head) скрывается, и фиксированная
+   шапка (nav) начинала перекрывать верх ввода счёта. Компенсируем её высоту
+   отступом main в обоих режимах (одиночный и групповой). Точное значение
+   высоты nav задаётся из JS (--round-nav-offset), 92px — запасной вариант. */
+body.round-active main{padding-top:var(--round-nav-offset,92px)!important;}
+
 .footer{background:var(--gr-d);border-top:1px solid var(--border);padding:50px 0 24px;}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:36px;margin-bottom:36px;}
 .footer-title{font-family:var(--ff);font-size:18px;color:var(--gold);display:flex;align-items:center;gap:8px;margin-bottom:10px;}

@@ -607,6 +607,12 @@ function initRoundView() {
         var pageHeadEl = document.getElementById('page-head');
         if (pageHeadEl) pageHeadEl.classList.add('hidden');
 
+        // Фиксированная шапка (nav) не должна перекрывать ввод счёта: page-head,
+        // дававший отступ, скрыт — компенсируем высотой nav отступ сверху main.
+        document.body.classList.add('round-active');
+        var navEl = document.getElementById('main-nav');
+        if (navEl) document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px');
+
         myUid = getActingUid();
         canEditGroup = (myUid !== null) && (curRoundData.status === 'active');
 

@@ -243,6 +243,9 @@ var I18N = {
 
         my_score: 'Мой счёт',
         marker_for: 'Маркер для',
+        score_of_player: 'Счёт игрока:',
+        score_col_you: '(вы вводите свой счёт)',
+        score_col_marked: '(того, за кем вы ведёте счёт)',
         save_hole: 'Сохранить лунку', finish_round: 'Завершить раунд',
         next_hole_btn: 'На следующую лунку →',
         confirm_final_hole: 'Зафиксировать 18-ю лунку',
@@ -1575,15 +1578,19 @@ function collectRoundVerification(r) {
     var order = getRoundOrder(r);
     var players = Object.entries((r && r.players) || {});
     var mismatch = {}, unconfirmed = {};
+    var missing = {};
     if (r && r.mode === 'solo') {
-        // У сольного раунда нет маркера — «не подтверждено» значит нет введённого счёта
+        // В сольном раунде нет маркера — игрок вводит счёт сам за себя,
+        // поэтому проверка маркеров НЕ нужна: раунд можно завершить в любой момент
+        // (например, после 1–2 лунок). Лунки без счёта показываем только как справку
+        // в списке `missing` и они НЕ блокируют завершение (canFinish остаётся true).
         order.forEach(function(h){
             var allScored = true;
             players.forEach(function(pe){
                 var sc = (pe[1] && pe[1].scores) || {};
                 if (!(parseInt(sc[h]) >= 1)) allScored = false;
             });
-            if (!allScored) unconfirmed[h] = [(currentLang === 'en' ? 'no score' : 'нет счёта')];
+            if (!allScored) missing[h] = true;
         });
     } else {
         order.forEach(function(h){
@@ -1608,7 +1615,7 @@ function collectRoundVerification(r) {
         });
     }
     var canFinish = Object.keys(mismatch).length === 0 && Object.keys(unconfirmed).length === 0;
-    return { order: order, mismatch: mismatch, unconfirmed: unconfirmed, canFinish: canFinish, total: order.length };
+    return { order: order, mismatch: mismatch, unconfirmed: unconfirmed, missing: missing, canFinish: canFinish, total: order.length };
 }
 
 function buildVerificationReportHtml(v) {

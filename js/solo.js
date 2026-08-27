@@ -342,6 +342,11 @@ function loadExistingSolo() {
 
         document.getElementById('setup').classList.add('hidden');
 
+        // Раунд уже начат — блок «Начать раунд / переключайте вкладки» больше не нужен:
+        // показываем только шапку, меню, ввод счёта и остальное содержимое раунда.
+        var pageHeadEl = document.getElementById('page-head');
+        if (pageHeadEl) pageHeadEl.classList.add('hidden');
+
         var localKey = localStorage.getItem('pestovo_solo_key_' + soloRid);
         var isOwnerUser = currentUser && (soloRound.createdBy === currentUser.uid || (soloRound.players && soloRound.players[currentUser.uid]));
         var isOwnerKey = localKey && (soloRound.accessKey === localKey);

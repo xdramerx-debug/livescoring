@@ -602,6 +602,11 @@ function initRoundView() {
         var modeView = document.getElementById('mode-view');
         if (modeView) modeView.classList.add('hidden');
 
+        // Раунд уже начат — блок «Начать раунд / переключайте вкладки» больше не нужен:
+        // показываем только шапку, меню, ввод счёта и остальное содержимое раунда.
+        var pageHeadEl = document.getElementById('page-head');
+        if (pageHeadEl) pageHeadEl.classList.add('hidden');
+
         myUid = getActingUid();
         canEditGroup = (myUid !== null) && (curRoundData.status === 'active');
 

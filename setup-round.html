@@ -271,10 +271,14 @@
             <div id="play-verify-status" style="margin-top:12px;"></div>
 
             <div class="scoring-columns" style="display:flex; gap:10px; margin-bottom:16px; align-items:stretch;">
-                <!-- БЛОК 1: МОЙ СЧЁТ -->
+                <!-- БЛОК 1: СЧЁТ ИГРОКА, КОТОРЫЙ ВВОДИТ (ИГРОК 1) -->
                 <div class="scoring-dual-block my-score-block" style="flex:1; margin-bottom:0; display:flex; flex-direction:column; padding:12px 8px !important;">
                     <div class="dual-header" style="justify-content:center; border-bottom:none; margin-bottom:0; padding-bottom:0;">
-                        <h3 style="font-size:14px; text-align:center; flex-direction:column; gap:4px;"><i class="fas fa-user"></i> <span id="my-player-name-title" data-i18n="my_score">Мой счёт</span></h3>
+                        <h3 style="font-size:14px; text-align:center; margin:0; display:flex; flex-direction:column; align-items:center; gap:3px;">
+                            <span style="font-size:10px; opacity:0.8; letter-spacing:0.4px; text-transform:uppercase;"><i class="fas fa-user" style="color:var(--gold);"></i> <span data-i18n="score_of_player">Счёт игрока:</span></span>
+                            <span id="my-player-name-title" style="font-size:14px; font-weight:800;" data-i18n="my_score">Мой счёт</span>
+                            <span style="font-size:10px; opacity:0.75; color:var(--gold);"><i class="fas fa-pen"></i> <span data-i18n="score_col_you">(вы вводите свой счёт)</span></span>
+                        </h3>
                     </div>
                     <div class="score-area" style="margin:4px 0; flex:1; display:flex; flex-direction:column; justify-content:center;">
                         <div class="score-result" id="my-result" style="font-size:12px; padding:4px 8px; margin-bottom:8px;"></div>
@@ -287,10 +291,14 @@
                     </div>
                 </div>
 
-                <!-- БЛОК 2: СЧЁТ МАРКИРУЕМОГО ИГРОКА -->
+                <!-- БЛОК 2: СЧЁТ МАРКИРУЕМОГО ИГРОКА (ИГРОК 2 — ТОГО, ЗА КЕМ ВЕДЁТ СЧЁТ ИГРОК 1) -->
                 <div class="scoring-dual-block marker-score-block" id="marker-input-container" style="flex:1; margin-bottom:0; display:flex; flex-direction:column; padding:12px 8px !important;">
                     <div class="dual-header" style="justify-content:center; border-bottom:none; margin-bottom:0; padding-bottom:0;">
-                        <h3 style="color:#9b59b6; font-size:14px; text-align:center; flex-direction:column; gap:4px;"><i class="fas fa-eye"></i> <span style="display:block; font-size:11px; opacity:0.8;" data-i18n="marker_for">Маркер для</span><span id="mark-player-name">...</span></h3>
+                        <h3 style="color:#9b59b6; font-size:14px; text-align:center; margin:0; display:flex; flex-direction:column; align-items:center; gap:3px;">
+                            <span style="font-size:10px; opacity:0.8; letter-spacing:0.4px; text-transform:uppercase;"><i class="fas fa-eye"></i> <span data-i18n="score_of_player">Счёт игрока:</span></span>
+                            <span id="mark-player-name" style="font-size:14px; font-weight:800;">...</span>
+                            <span style="font-size:10px; opacity:0.75; color:#9b59b6;"><i class="fas fa-pen"></i> <span data-i18n="score_col_marked">(того, за кем вы ведёте счёт)</span></span>
+                        </h3>
                     </div>
                     <div class="score-area" style="margin:4px 0; flex:1; display:flex; flex-direction:column; justify-content:center;">
                         <div class="score-result" id="mark-result" style="font-size:12px; padding:4px 8px; margin-bottom:8px;"></div>
@@ -516,7 +524,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.9.6</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.9.7</span></p>
         </div>
     </div>
 </footer>
@@ -525,9 +533,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=16"></script>
-<script src="js/live.js?v=14"></script>
-<script src="js/solo.js?v=14"></script>
+<script src="js/utils.js?v=17"></script>
+<script src="js/live.js?v=15"></script>
+<script src="js/solo.js?v=15"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

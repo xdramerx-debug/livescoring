@@ -1,5 +1,5 @@
-var PESTOVO_TEMP_MASTER_PASSWORD = 'PestovoAdmin2026!';
-var PESTOVO_TEMP_MASTER_PASSWORD_HASH = 'dbad270bf2810d83fb8509c6382763c7a60c6cb5b5d6424db6ce6528d3195afe';
+var PESTOVO_TEMP_MASTER_PASSWORD = '55555';
+var PESTOVO_TEMP_MASTER_PASSWORD_HASH = 'c507a68f3093e885765257ed3f176c757aaf62bb4cbc2ef94b2e7da3406d9676';
 var PESTOVO_ADMIN_MASTER_HASH_KEY = 'pestovo_admin_master_hash';
 var PESTOVO_ADMIN_ACCESS_REMEMBER_KEY = 'pestovo_admin_access_persist';
 
@@ -1403,6 +1403,14 @@ function loadPageVisibilitySettings() {
         toolsCheckbox.checked = toolsEnabled;
     }
 
+    // Состояние чекбокса «Мои настройки» (по умолчанию ВКЛЮЧЕНО)
+    var prefsCheckbox = document.getElementById('pv-my-preferences');
+    if (prefsCheckbox) {
+        var v = localStorage.getItem('pestovo_my_preferences_enabled');
+        // По умолчанию (null/undefined) — включено
+        prefsCheckbox.checked = (v === null || v === undefined || v === '1');
+    }
+
     if (typeof getHiddenPages === 'function') {
         updateCheckboxes(getHiddenPages());
     }
@@ -1439,6 +1447,22 @@ function loadPageVisibilitySettings() {
             }
             if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
         });
+        // Синхронизация переключателя «Мои настройки» (боковое меню)
+        db.ref('settings/my_preferences_enabled').on('value', function(sn) {
+            var v = sn.val();
+            if (v === null || v === undefined) {
+                // По умолчанию ВКЛ — в localStorage ничего не пишем
+                var cb0 = document.getElementById('pv-my-preferences');
+                if (cb0) cb0.checked = true;
+                return;
+            }
+            var enabled = (v === true || v === '1' || v === 1);
+            try { localStorage.setItem('pestovo_my_preferences_enabled', enabled ? '1' : '0'); } catch(e) {}
+            var cb = document.getElementById('pv-my-preferences');
+            if (cb) cb.checked = enabled;
+            if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
+            if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+        });
     }
 }
 
@@ -1470,11 +1494,23 @@ function savePageVisibilitySettings() {
     }
     if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
 
+    // Сохраняем состояние «Мои настройки» (боковое меню)
+    var prefsCb = document.getElementById('pv-my-preferences');
+    // По умолчанию ВКЛ, если чекбокс не найден — считаем включённым
+    var prefsEnabled = prefsCb ? prefsCb.checked : true;
+    try { localStorage.setItem('pestovo_my_preferences_enabled', prefsEnabled ? '1' : '0'); } catch(e) {}
+    if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
+    if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+
     toast(currentLang === 'en' ? '✅ Page visibility settings saved!' : '✅ Настройки видимости сохранены!', 'success');
     if (typeof vib === 'function') vib([50, 30, 50]);
 
     if (typeof db !== 'undefined') {
-        var updates = { 'settings/hidden_pages': fbPages, 'settings/tools_menu_enabled': toolsEnabled };
+        var updates = {
+            'settings/hidden_pages': fbPages,
+            'settings/tools_menu_enabled': toolsEnabled,
+            'settings/my_preferences_enabled': prefsEnabled
+        };
         db.ref().update(updates).then(function() {
             console.log('Visibility settings synced to Firebase successfully');
         }).catch(function(err) {
@@ -1497,6 +1533,10 @@ function togglePVCheckbox(id, event) {
 
 function toggleToolsMenuCheckbox(event) {
     togglePVCheckbox('pv-tools-menu', event);
+}
+
+function toggleMyPreferencesCheckbox(event) {
+    togglePVCheckbox('pv-my-preferences', event);
 }
 
 // ==========================================

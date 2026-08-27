@@ -347,6 +347,12 @@ function loadExistingSolo() {
         var pageHeadEl = document.getElementById('page-head');
         if (pageHeadEl) pageHeadEl.classList.add('hidden');
 
+        // Фиксированная шапка (nav) не должна перекрывать ввод счёта: page-head,
+        // дававший отступ, скрыт — компенсируем высотой nav отступ сверху main.
+        document.body.classList.add('round-active');
+        var navEl = document.getElementById('main-nav');
+        if (navEl) document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px');
+
         var localKey = localStorage.getItem('pestovo_solo_key_' + soloRid);
         var isOwnerUser = currentUser && (soloRound.createdBy === currentUser.uid || (soloRound.players && soloRound.players[currentUser.uid]));
         var isOwnerKey = localKey && (soloRound.accessKey === localKey);

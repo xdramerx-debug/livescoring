@@ -347,7 +347,8 @@ var I18N = {
         strong_vibration_mode: 'Усиленная вибрация',
         high_contrast_mode: 'Более заметные цвета статусов',
         battery_saver_mode: 'Экономия батареи',
-        player_modes_title: 'Режимы игрока',
+        player_modes_title: 'Мои настройки',
+        my_preferences_title: 'Мои настройки',
         mode_on: 'Вкл.',
         mode_off: 'Выкл.',
 
@@ -659,7 +660,8 @@ var I18N = {
         strong_vibration_mode: 'Stronger vibration',
         high_contrast_mode: 'High-visibility status colors',
         battery_saver_mode: 'Battery saver',
-        player_modes_title: 'Player modes',
+        player_modes_title: 'My preferences',
+        my_preferences_title: 'My preferences',
         mode_on: 'On',
         mode_off: 'Off',
 
@@ -1295,6 +1297,20 @@ function buildMobileDrawer() {
         '<a href="handicap.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-calculator"></i> <span data-i18n="nav_handicaps">' + t('nav_handicaps') + '</span></a>' +
         '</div>';
 
+    // В самом конце бокового меню — отдельная вкладка «Мои настройки» с тогглами
+    // режимов игрока. Видимость управляется админом (isMyPreferencesEnabled).
+    if (typeof isMyPreferencesEnabled === 'function' ? isMyPreferencesEnabled() : true) {
+        menuBodyMarkup += '<div class="mobile-drawer-group mobile-drawer-group-preferences" data-group="my-preferences">' +
+            '<div class="mobile-drawer-group-title"><i class="fas fa-gear"></i> ' + t('my_preferences_title') + '</div>' +
+            '<div class="my-preferences-inline" data-my-preferences-inline>' +
+                playerModeRow('pestovo_large_ui', 'large_ui_mode', 'fa-text-height') +
+                playerModeRow('pestovo_strong_vibration', 'strong_vibration_mode', 'fa-mobile-screen-button') +
+                playerModeRow('pestovo_high_contrast', 'high_contrast_mode', 'fa-circle-half-stroke') +
+                playerModeRow('pestovo_battery_saver', 'battery_saver_mode', 'fa-battery-quarter') +
+            '</div>' +
+        '</div>';
+    }
+
     var html =
         '<div class="mobile-drawer-backdrop" onclick="closeMobileDrawer()"></div>' +
         '<div class="mobile-drawer-panel">' +
@@ -1309,13 +1325,6 @@ function buildMobileDrawer() {
             '<div class="mobile-drawer-body">' + menuBodyMarkup + '</div>' +
 
             '<div class="mobile-drawer-footer">' +
-            '<div class="player-modes">' +
-                '<div class="player-modes-title"><i class="fas fa-sliders"></i> ' + t('player_modes_title') + '</div>' +
-                playerModeRow('pestovo_large_ui', 'large_ui_mode', 'fa-text-height') +
-                playerModeRow('pestovo_strong_vibration', 'strong_vibration_mode', 'fa-mobile-screen-button') +
-                playerModeRow('pestovo_high_contrast', 'high_contrast_mode', 'fa-circle-half-stroke') +
-                playerModeRow('pestovo_battery_saver', 'battery_saver_mode', 'fa-battery-quarter') +
-            '</div>' +
             '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
                 '<button class="sun-mode-btn" style="flex:1;justify-content:center;" onclick="toggleSunMode()"><i class="' + sunPrefix + ' fa-sun"></i> ' + sunTxt + '</button>' +
                     '<button class="lang-btn" style="flex:1;justify-content:center;" onclick="toggleLang()">' + (isEn ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>' +
@@ -1459,6 +1468,17 @@ function isToolsMenuEnabled() {
     try {
         return localStorage.getItem('pestovo_tools_menu_enabled') === '1';
     } catch(e) { return false; }
+}
+
+// Включение/выключение вкладки «Мои настройки» в боковом меню
+// (тоггл в админ-панели, вкладка «Данные»). По умолчанию ВКЛ — это
+// основной блок настроек игрока, который должен быть у всех.
+function isMyPreferencesEnabled() {
+    try {
+        var v = localStorage.getItem('pestovo_my_preferences_enabled');
+        // По умолчанию — включено. Если ключ явно установлен в '0' — выключено.
+        return v === null || v === undefined || v === '1';
+    } catch(e) { return true; }
 }
 
 function navAuth(u, d) {
@@ -4886,6 +4906,19 @@ function applyPageVisibilitySettings() {
         }
     });
 
+    // Группа «Мои настройки» (без ссылок, но с тогглами) тоже можно скрывать через админку
+    if (typeof isMyPreferencesEnabled === 'function' && !isMyPreferencesEnabled()) {
+        var prefGroups = document.querySelectorAll('.mobile-drawer-group-preferences');
+        prefGroups.forEach(function(g) {
+            g.style.setProperty('display', 'none', 'important');
+        });
+    } else {
+        var prefGroupsShow = document.querySelectorAll('.mobile-drawer-group-preferences');
+        prefGroupsShow.forEach(function(g) {
+            g.style.removeProperty('display');
+        });
+    }
+
     if (MANAGED_PAGES.includes(curPage) && (hiddenPages[curPage] === true || hiddenPages[curPage.replace('.html', '')] === true)) {
         var mainEl = document.querySelector('main') || document.body;
         if (mainEl && !document.getElementById('page-hidden-notice')) {
@@ -4920,6 +4953,16 @@ if (typeof db !== 'undefined') {
                 navAuth(currentUser, currentUserData || null);
             }
             if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
+        });
+        // Синхронизация переключателя «Мои настройки» между устройствами
+        db.ref('settings/my_preferences_enabled').on('value', function(sn) {
+            var v = sn.val();
+            // По умолчанию ВКЛ — если ключа нет, не трогаем localStorage
+            if (v === null || v === undefined) return;
+            var enabled = (v === true || v === '1' || v === 1);
+            try { localStorage.setItem('pestovo_my_preferences_enabled', enabled ? '1' : '0'); } catch(e) {}
+            if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
+            if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
         });
     } catch(e) {}
 }

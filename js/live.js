@@ -900,6 +900,7 @@ function saveHoleScores() {
     if (myTargetUid) {
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerScores/' + myUid + '/' + h] = targetScore;
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerSubmitted/' + myUid + '/' + h] = true;
+        updates['markers/' + curRid + '/' + myTargetUid + '/' + h] = targetScore;
 
         // Синхронизируем verified игрока, за которого вводим счёт: сравниваем с его собственным счётом.
         // Раньше флаг не обновлялся, если игрок сохранил свой счёт раньше маркера — из-за этого
@@ -935,7 +936,6 @@ function saveHoleScores() {
 
     if (bothSubmittedAndMatch) {
         updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
-        if (myMarkerId) updates['rounds/' + curRid + '/players/' + myMarkerId + '/verified/' + h] = true;
     } else if (bothSubmittedAndMismatch) {
         updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = false;
     } else {

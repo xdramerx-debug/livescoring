@@ -270,18 +270,36 @@
             <div id="match-play-tracker-container" style="margin-top:12px;"></div>
             <div id="play-verify-status" style="margin-top:12px;"></div>
 
-            <!-- БЛОК 1: МОЙ СЧЁТ -->
-            <div class="scoring-dual-block my-score-block">
-                <div class="dual-header">
-                    <h3><i class="fas fa-user"></i> <span id="my-player-name-title" data-i18n="my_score">Мой счёт</span></h3>
+            <div class="scoring-columns" style="display:flex; gap:10px; margin-bottom:16px; align-items:stretch;">
+                <!-- БЛОК 1: МОЙ СЧЁТ -->
+                <div class="scoring-dual-block my-score-block" style="flex:1; margin-bottom:0; display:flex; flex-direction:column; padding:12px 8px !important;">
+                    <div class="dual-header" style="justify-content:center; border-bottom:none; margin-bottom:0; padding-bottom:0;">
+                        <h3 style="font-size:14px; text-align:center; flex-direction:column; gap:4px;"><i class="fas fa-user"></i> <span id="my-player-name-title" data-i18n="my_score">Мой счёт</span></h3>
+                    </div>
+                    <div class="score-area" style="margin:4px 0; flex:1; display:flex; flex-direction:column; justify-content:center;">
+                        <div class="score-result" id="my-result" style="font-size:12px; padding:4px 8px; margin-bottom:8px;"></div>
+                        <div class="score-disp" id="my-disp" style="font-size:48px; min-height:50px;">—</div>
+                        <div class="score-btns" style="gap:6px; margin-top:12px; flex-wrap:wrap;">
+                            <button class="score-minus" onclick="adjScore('my', -1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">−</button>
+                            <button class="score-par-btn" onclick="setParScore('my')" style="height:40px;min-height:40px;padding:0 10px;font-size:12px;">Par</button>
+                            <button class="score-plus" onclick="adjScore('my', 1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">+</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="score-area" style="margin:10px 0;">
-                    <div class="score-result" id="my-result"></div>
-                    <div class="score-disp" id="my-disp">—</div>
-                    <div class="score-btns">
-                        <button class="score-minus" onclick="adjScore('my', -1)">−</button>
-                        <button class="score-par-btn" onclick="setParScore('my')">Par</button>
-                        <button class="score-plus" onclick="adjScore('my', 1)">+</button>
+
+                <!-- БЛОК 2: СЧЁТ МАРКИРУЕМОГО ИГРОКА -->
+                <div class="scoring-dual-block marker-score-block" id="marker-input-container" style="flex:1; margin-bottom:0; display:flex; flex-direction:column; padding:12px 8px !important;">
+                    <div class="dual-header" style="justify-content:center; border-bottom:none; margin-bottom:0; padding-bottom:0;">
+                        <h3 style="color:#9b59b6; font-size:14px; text-align:center; flex-direction:column; gap:4px;"><i class="fas fa-eye"></i> <span style="display:block; font-size:11px; opacity:0.8;" data-i18n="marker_for">Маркер для</span><span id="mark-player-name">...</span></h3>
+                    </div>
+                    <div class="score-area" style="margin:4px 0; flex:1; display:flex; flex-direction:column; justify-content:center;">
+                        <div class="score-result" id="mark-result" style="font-size:12px; padding:4px 8px; margin-bottom:8px;"></div>
+                        <div class="score-disp" id="mark-disp" style="font-size:48px; min-height:50px;">—</div>
+                        <div class="score-btns" style="gap:6px; margin-top:12px; flex-wrap:wrap; border-color:#9b59b6;">
+                            <button class="score-minus" onclick="adjScore('mark', -1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">−</button>
+                            <button class="score-par-btn" onclick="setParScore('mark')" style="height:40px;min-height:40px;padding:0 10px;font-size:12px;">Par</button>
+                            <button class="score-plus" onclick="adjScore('mark', 1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">+</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -316,22 +334,6 @@
                             <option value="2">2 Putts</option>
                             <option value="3">3+ Putts</option>
                         </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- БЛОК 2: СЧЁТ МАРКИРУЕМОГО ИГРОКА -->
-            <div class="scoring-dual-block marker-score-block" id="marker-input-container">
-                <div class="dual-header">
-                    <h3 style="color:#9b59b6;"><i class="fas fa-eye"></i> <span data-i18n="marker_for">Маркер для</span>: <span id="mark-player-name">...</span></h3>
-                </div>
-                <div class="score-area" style="margin:10px 0;">
-                    <div class="score-result" id="mark-result"></div>
-                    <div class="score-disp" id="mark-disp">—</div>
-                    <div class="score-btns" style="border-color:#9b59b6;">
-                        <button class="score-minus" onclick="adjScore('mark', -1)">−</button>
-                        <button class="score-par-btn" onclick="setParScore('mark')">Par</button>
-                        <button class="score-plus" onclick="adjScore('mark', 1)">+</button>
                     </div>
                 </div>
             </div>
@@ -514,7 +516,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.9.5</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.9.6</span></p>
         </div>
     </div>
 </footer>

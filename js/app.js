@@ -16,12 +16,14 @@ function buildCourseCard() {
     var teeKeys = ['bk','bl','wh','rd'];
     var isEn = currentLang === 'en';
 
-    var headerStr = isEn ? 'Tee / Hole' : 'ТИ / Лунка';
     var outStr = isEn ? 'OUT' : 'OUT';
     var inStr = isEn ? 'IN' : 'IN';
     var totalStr = isEn ? 'TOTAL' : 'ВСЕГО';
     var parStr = isEn ? 'Par' : 'Пар';
     var indexStr = isEn ? 'Index' : 'Индекс';
+
+    var hdrLblLong = isEn ? 'Tee / Hole' : 'ТИ / Лунка';
+    var hdrLblShort = isEn ? 'Tee' : 'ТИ';
 
     // Front 9 (OUT)
     var html = '<div class="pestovo-modern-scorecard" style="margin-bottom:12px;padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
@@ -29,7 +31,7 @@ function buildCourseCard() {
     html += '<div class="msc-tile-grid msc-grid-9">';
 
     // Header row
-    html += '<div class="msc-tile msc-hdr-lbl">' + headerStr + '</div>';
+    html += '<div class="msc-tile msc-hdr-lbl"><span class="msc-total-long">' + hdrLblLong + '</span><span class="msc-total-short">' + hdrLblShort + '</span></div>';
     for (var h = 1; h <= 9; h++) html += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
     html += '<div class="msc-tile msc-hdr-tot">' + outStr + '</div>';
 
@@ -70,10 +72,10 @@ function buildCourseCard() {
     html += '<div class="msc-tile-grid msc-grid-10">';
 
     // Header row
-    html += '<div class="msc-tile msc-hdr-lbl">' + headerStr + '</div>';
+    html += '<div class="msc-tile msc-hdr-lbl"><span class="msc-total-long">' + hdrLblLong + '</span><span class="msc-total-short">' + hdrLblShort + '</span></div>';
     for (var h = 10; h <= 18; h++) html += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
     html += '<div class="msc-tile msc-hdr-tot">' + inStr + '</div>';
-    html += '<div class="msc-tile msc-hdr-tot" style="background:var(--gold);color:var(--bg);">' + totalStr + '</div>';
+    html += '<div class="msc-tile msc-hdr-tot" style="background:var(--gold);color:var(--bg);"><span class="msc-total-long">' + totalStr + '</span><span class="msc-total-short">Σ</span></div>';
 
     // Tees
     teeKeys.forEach(function(tKey) {
@@ -113,13 +115,77 @@ function buildCourseCard() {
     el.innerHTML = html;
 }
 
+function renderCourseHolesStrip(activeEntries) {
+    var stripEl = document.getElementById('course-holes-strip');
+    if (!stripEl) return;
+
+    var isEn = currentLang === 'en';
+    var holeCount = {};
+    for (var i = 1; i <= 18; i++) holeCount[i] = 0;
+
+    (activeEntries || []).forEach(function(e) {
+        var r = e[1];
+        var players = r.players || {};
+        var order = getRoundOrder(r);
+        Object.entries(players).forEach(function(pe) {
+            var p = pe[1];
+            if (p && typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], p.name)) return;
+            var scores = p.scores || {};
+            var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
+            if (stats.currentHole && holeCount[stats.currentHole] !== undefined) {
+                holeCount[stats.currentHole]++;
+            }
+        });
+    });
+
+    var occupied = 0;
+    for (var hc = 1; hc <= 18; hc++) if (holeCount[hc] > 0) occupied++;
+    var free = 18 - occupied;
+
+    var freeLabel = isEn ? 'Free' : 'Свободны';
+    var busyLabel = isEn ? 'Playing now' : 'Идёт игра';
+    var ruAdjEnd = function(n) {
+        var m10 = n % 10, m100 = n % 100;
+        if (m10 === 1 && m100 !== 11) return 'а';
+        if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'ы';
+        return 'о';
+    };
+    var freeCount = isEn ? free + ' holes free' : free + ' ' + pluralN(free, 'лунка', 'лунки', 'лунок') + ' свободн' + ruAdjEnd(free);
+    var busyCount = isEn ? occupied + ' busy' : occupied + ' ' + pluralN(occupied, 'лунка', 'лунки', 'лунок') + ' занят' + ruAdjEnd(occupied);
+
+    var html = '<div class="chs-legend"><span class="chs-legend-item chs-free-lg"><i class="fas fa-circle chs-dot"></i> ' + freeLabel + ' · <b>' + free + '</b></span>' +
+        '<span class="chs-legend-item chs-busy-lg"><i class="fas fa-circle chs-dot"></i> ' + busyLabel + ' · <b>' + occupied + '</b></span>' +
+        '<span class="chs-count">' + (isEn ? free + ' free · ' + occupied + ' busy' : freeCount + ' · ' + busyCount) + '</span></div>';
+
+    html += '<div class="chs-grid">';
+    for (var h = 1; h <= 18; h++) {
+        var cnt = holeCount[h];
+        var busy = cnt > 0;
+        var title = isEn
+            ? 'Hole ' + h + (busy ? ' — ' + cnt + ' ' + (cnt === 1 ? 'group' : 'groups') + ' playing' : ' — free')
+            : 'Лунка ' + h + (busy ? ' — идёт игра (' + cnt + ' ' + pluralN(cnt, 'группа', 'группы', 'групп') + ')' : ' — свободна');
+        html += '<div class="chs-cell ' + (busy ? 'chs-busy' : 'chs-free') + '" title="' + title + '">' +
+            '<span class="chs-n">' + h + '</span>' +
+            '<i class="fas fa-circle chs-dot' + (busy ? ' chs-live' : '') + '"></i>' +
+            (busy ? '<span class="chs-cnt">' + cnt + '</span>' : '') +
+            '</div>';
+    }
+    html += '</div>';
+    stripEl.innerHTML = html;
+}
+
 function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
-    if (!el || typeof db === 'undefined') return;
+    var stripEl = document.getElementById('course-holes-strip');
+    if (typeof db === 'undefined') return;
 
     bindRealtimeValue('home-live-rounds', db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active'; });
+
+        renderCourseHolesStrip(entries);
+
+        if (!el) return;
 
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';

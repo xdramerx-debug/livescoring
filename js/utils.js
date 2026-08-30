@@ -2541,6 +2541,48 @@ if (typeof window !== 'undefined') {
     window.HCP_TABLE = HCP_TABLE;
 }
 
+// Кол-во ударов полевой форы (course handicap) на конкретной лунке.
+// Фора раздаётся по индексам лунок: индекс 1 — самая сложная лунка, получает удар первой и т.д.
+// fieldHcp = 18 -> по 1 удару на каждой лунке; 19 -> +доп. удар на лунке с индексом 1;
+// отрицательная фора раздаётся с самой простой лунки (индекс 18).
+function hcpStrokesOnHole(holeNum,fieldHcp){
+    fieldHcp=parseInt(fieldHcp)||0;
+    if(!fieldHcp)return 0;
+    var idx=holeHcp(holeNum);
+    if(!idx)return 0;
+    if(fieldHcp>0){
+        var n=Math.floor(fieldHcp/18);
+        if(idx<=(fieldHcp%18))n++;
+        return n;
+    }
+    var a=Math.abs(fieldHcp);
+    var m=-Math.floor(a/18);
+    if((19-idx)<=(a%18))m--;
+    return m;
+}
+
+// Маленькие чёрточки-индикаторы ударов форы для квадратика с номером лунки.
+function hcpStrokesMarksHTML(fieldHcp,holeNum){
+    var n=hcpStrokesOnHole(holeNum,fieldHcp);
+    if(!n)return '';
+    var neg=n<0,cnt=Math.abs(n),bars=[];
+    for(var i=0;i<cnt;i++)bars.push('<span class="hm-bar"></span>');
+    var title;
+    if(currentLang==='en'){
+        title=cnt+(cnt===1?' handicap stroke':' handicap strokes')+(neg?' (given)':'');
+    }else{
+        title='Фора: '+cnt+' '+pluralN(cnt,'удар','удара','ударов')+(neg?' (минусовая)':'');
+    }
+    return '<span class="hcp-marks'+(neg?' hm-minus':'')+'" title="'+title+'">'+bars.join('')+'</span>';
+}
+
+function pluralN(n,one,few,many){
+    var m10=n%10,m100=n%100;
+    if(m10===1&&m100!==11)return one;
+    if(m10>=2&&m10<=4&&(m100<10||m100>=20))return few;
+    return many;
+}
+
 function stablefordField(strokes,holeNum,fieldHcp){
     if(!strokes||strokes<1)return 0;
     var par=holePar(holeNum),hcpIdx=holeHcp(holeNum),extra=0;

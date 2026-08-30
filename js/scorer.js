@@ -84,7 +84,9 @@ function renderInfo() {
 function buildHoles() {
     var el = document.getElementById('sc-holes');
     var order = getRoundOrder(scRound);
-    var scores = scRound.players[scPid].scores || {};
+    var scPlayer = scRound.players[scPid] || {};
+    var scores = scPlayer.scores || {};
+    var scFieldHcp = scPlayer.fieldHcp !== undefined ? scPlayer.fieldHcp : (scRound.fieldHcp || 0);
     var html = '';
     order.forEach(function(h) {
         var s = parseInt(scores[h]) || 0, ms = parseInt(scMarker[h]) || 0;
@@ -92,7 +94,9 @@ function buildHoles() {
         if (s >= 1 && ms >= 1 && s === ms) cls += ' verified';
         else if (s >= 1 && ms >= 1) cls += ' mismatch';
         else if (s >= 1) cls += ' done';
-        html += '<button class="hole-btn ' + cls + '" onclick="goSc(' + h + ')">' + h + '</button>';
+        html += '<button class="hole-btn ' + cls + '" onclick="goSc(' + h + ')">' +
+            '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + hcpStrokesMarksHTML(scFieldHcp, h) + '</span>' +
+            '</button>';
     });
     el.innerHTML = html;
 }

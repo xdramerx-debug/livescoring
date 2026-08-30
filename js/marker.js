@@ -68,6 +68,8 @@ function loadMk() {
 function buildHoles() {
     var el = document.getElementById('mk-holes');
     var order = getRoundOrder(mkRound);
+    var mkPlayer = (mkRound && mkRound.players && mkRound.players[mkPid]) || {};
+    var mkFieldHcp = mkPlayer.fieldHcp !== undefined ? mkPlayer.fieldHcp : (mkRound.fieldHcp || 0);
     var html = '';
     order.forEach(function(h) {
         var ps = parseInt(mkPScores[h]) || 0, ms = parseInt(mkScores[h]) || 0;
@@ -75,7 +77,9 @@ function buildHoles() {
         if (ps >= 1 && ms >= 1 && ps === ms) cls += ' verified';
         else if (ps >= 1 && ms >= 1) cls += ' mismatch';
         else if (ms >= 1 || ps >= 1) cls += ' done';
-        html += '<button class="hole-btn ' + cls + '" onclick="goMk(' + h + ')">' + h + '</button>';
+        html += '<button class="hole-btn ' + cls + '" onclick="goMk(' + h + ')">' +
+            '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + hcpStrokesMarksHTML(mkFieldHcp, h) + '</span>' +
+            '</button>';
     });
     el.innerHTML = html;
 }

@@ -703,6 +703,7 @@ function buildPlayHolesNav() {
     var myPlayer = curRoundData.players && curRoundData.players[myUid];
     var myScores = (myPlayer && myPlayer.scores) || {};
     var mySubmitted = (myPlayer && myPlayer.submitted) || {};
+    var myFieldHcp = (myPlayer && (myPlayer.fieldHcp !== undefined ? myPlayer.fieldHcp : curRoundData.fieldHcp)) || 0;
 
     var html = '';
     order.forEach(function(h) {
@@ -720,7 +721,9 @@ function buildPlayHolesNav() {
             cls += ' done';
         }
 
-        html += '<button class="hole-btn ' + cls + '" onclick="goPlayHole(' + h + ')">' + h + '</button>';
+        html += '<button class="hole-btn ' + cls + '" onclick="goPlayHole(' + h + ')">' +
+            '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + hcpStrokesMarksHTML(myFieldHcp, h) + '</span>' +
+            '</button>';
     });
     el.innerHTML = html;
 }

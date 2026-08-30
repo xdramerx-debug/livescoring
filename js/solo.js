@@ -463,6 +463,7 @@ function buildHoles() {
     if (!uid || !soloRound || !soloRound.players) return;
     var p = soloRound.players[uid];
     var scores = (p && p.scores) || {};
+    var fieldHcp = (p && (p.fieldHcp !== undefined ? p.fieldHcp : soloRound.fieldHcp)) || 0;
 
     var html = '';
     var order = getRoundOrder(soloRound);
@@ -472,7 +473,7 @@ function buildHoles() {
         if (s >= 1 && h !== curHole) cls += ' done';
 
         html += '<button class="hole-btn ' + cls + '" onclick="goHole(' + h + ')" style="min-height:38px;padding:2px;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;">' +
-            '<span style="font-size:9px;opacity:0.75;line-height:1;">#' + h + '</span>' +
+            '<span class="hbn-line" style="line-height:1;"><span class="hbn-num" style="font-size:9px;opacity:0.75;">#' + h + '</span>' + hcpStrokesMarksHTML(fieldHcp, h) + '</span>' +
             '<span style="font-size:13px;font-weight:800;line-height:1.2;margin-top:1px;">' + (s >= 1 ? s : '—') + '</span>' +
             '</button>';
     });

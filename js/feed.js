@@ -22,10 +22,13 @@ function loadLiveFeed() {
         Object.entries(rounds).forEach(function(e) {
             var rid = e[0], r = e[1];
             if (!r || typeof r !== 'object') return;
-            var order = holeOrder(r.startHole || 1);
+            var order = getRoundOrder(r);
+            var roundPlayers = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(r.players || {}) : (r.players || {});
 
-            Object.entries(r.players || {}).forEach(function(pe) {
+            Object.entries(roundPlayers).forEach(function(pe) {
                 var pid = pe[0], p = pe[1];
+                // Удалённые и навсегда заблокированные демо-игроки не показываются в ленте
+                if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
                 var scores = p.scores || {};
 
                 Object.entries(scores).forEach(function(se) {
@@ -73,7 +76,7 @@ function loadLiveFeed() {
 
             html += '<div class="card" style="margin-bottom:16px;">';
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
-            html += '<div><strong style="color:var(--white);font-size:16px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + ev.playerId + '\',\'' + ev.roundId + '\')"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + ev.playerName + '</strong>';
+            html += '<div><strong style="color:var(--white);font-size:16px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + ev.playerId + '\',\'' + ev.roundId + '\')"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(ev.playerName) + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + t('brand_name') + ' · ' + t('hole') + ' #' + ev.hole + ' (' + t('par') + ' ' + ev.par + ')</div></div>';
             html += '<span class="' + ev.badgeCls + '" style="font-size:14px;padding:5px 12px;">' + ev.typeName + ' (' + ev.score + ')</span>';
             html += '</div>';

@@ -12,7 +12,7 @@ function loadLB() {
     var searchInput = document.getElementById('lb-search');
     var query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-    db.ref('rounds').on('value', function(sn) {
+    bindRealtimeValue('leaderboard-rounds', db.ref('rounds'), function(sn) {
         var data = sn.val() || {};
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
 
@@ -47,21 +47,27 @@ function loadLB() {
 
 function renderRound(id, r) {
     var isLive = r.status === 'active';
-    var players = r.players || {};
-    var order = holeOrder(r.startHole || 1);
+    var rawPlayers = r.players || {};
+    // Дедуп по ФИО, чтобы не было сдваивания игроков с одинаковыми именами
+    var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
+    var order = getRoundOrder(r);
 
-    var list = Object.entries(players).map(function(pe) {
+    var list = Object.entries(players).filter(function(pe) {
+        return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
+    }).map(function(pe) {
         var pid = pe[0], p = pe[1], sc = p.scores || {};
+        var pTee = (p && p.tee) || r.tee || 'wh';
         var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
         return {
             pid: pid,
             name: p.name, 
+            tee: pTee,
             gross: stats.gross, 
             toPar: stats.toPar, 
-            net: stats.net,
             stblField: stats.stablefordField, 
             stblExact: stats.stablefordExact,
             holesPlayed: stats.holesPlayed, 
+            holeCount: getRoundHoleCount(r),
             currentHole: stats.currentHole
         };
     });
@@ -92,21 +98,20 @@ function renderRound(id, r) {
 
     var rows = list.map(function(p) {
         var posCls = p.position <= 3 ? 'lb-' + p.position : '';
-        var holeInfo = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
+        var holeInfo = p.holesPlayed >= (p.holeCount || 18) ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
         var gross = p.gross || '—';
-        var net = p.net || '—';
+        var pTeeBadge = '<span class="tee-pill tee-' + p.tee + '" style="font-size:9px;padding:0 6px;margin-left:6px;vertical-align:middle;line-height:16px;">' + t('tee_' + p.tee) + '</span>';
 
         return '<div class="rlb-row" onclick="openPlayerProfileModal(\'' + p.pid + '\',\'' + id + '\')">' +
             '<span class="rlb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</span>' +
             '<div class="rlb-player">' + fmtUserAvatar(p, 28) +
-            '<div class="rlb-pcol"><span class="rlb-name">' + escapeHtml(p.name || '—') + '</span>' +
+            '<div class="rlb-pcol"><div style="display:flex;align-items:center;min-width:0;"><span class="rlb-name">' + escapeHtml(p.name || '—') + '</span>' + pTeeBadge + '</div>' +
             '<span class="rlb-thru">' + holeInfo + '</span></div></div>' +
             '<span class="rlb-par ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</span>' +
             '<span class="rlb-num">' + gross + '</span>' +
-            '<span class="rlb-num">' + net + '</span>' +
             '<span class="rlb-num rlb-stbl">' + p.stblField + '</span>' +
             '<span class="rlb-num rlb-dim">' + p.stblExact + '</span>' +
-            '<div class="rlb-sub">' + holeInfo + ' · Gross ' + gross + ' · Net ' + net + ' · ' + stblShort + ' ' + p.stblField + '/' + p.stblExact + '</div>' +
+            '<div class="rlb-sub">' + holeInfo + ' · Gross ' + gross + ' · ' + stblShort + ' ' + p.stblField + '/' + p.stblExact + '</div>' +
             '</div>';
     }).join('');
 
@@ -124,7 +129,6 @@ function renderRound(id, r) {
         '<span class="rlb-hpl">' + t('player') + '</span>' +
         '<span class="rlb-par">±Par</span>' +
         '<span class="rlb-num">' + t('gross') + '</span>' +
-        '<span class="rlb-num">' + t('net') + '</span>' +
         '<span class="rlb-num">' + stblF + '</span>' +
         '<span class="rlb-num">' + stblE + '</span></div>';
 
@@ -134,7 +138,7 @@ function renderRound(id, r) {
     return '<div class="card rl-card">' +
         '<div class="rl-head"><div class="rl-hinfo">' +
         '<div class="rl-title"><i class="fas fa-flag"></i>' + fmtDate(ts) + ' · ' + fmtTime(ts) + '</div>' +
-        '<div class="rl-sub">' + (r.format || 'Stroke Play') + ' · ' + fmtTeePill(r.tee) + (r.mode === 'solo' ? soloWord : '') + '</div>' +
+        '<div class="rl-sub">' + (r.format || 'Stroke Play') + ' · ' + fmtRoundTeePills(r) + (r.mode === 'solo' ? soloWord : '') + '</div>' +
         '</div>' + badge + '</div>' +
         '<div class="rlb">' + head + rows + '</div>' +
         downloadBtn + '</div>';

@@ -1,6 +1,11 @@
 var mkRid = null, mkPid = null, mkRound = null;
 var mkHole = 1, mkScore = 0, mkScores = {}, mkPScores = {};
 var mkChanging = false;
+var mkPaceTimer = null;
+
+document.addEventListener('pestovo-stableford-default-change', function() {
+    if (mkRound) updDisp();
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
@@ -8,6 +13,9 @@ document.addEventListener('DOMContentLoaded', function() {
     mkRid = p.get('round'); mkPid = p.get('player');
     if (!mkRid || !mkPid) { document.getElementById('mk-err').classList.remove('hidden'); return; }
     loadMk();
+    mkPaceTimer = setInterval(function() {
+        if (mkRound) renderPaceAssistant('mk-pace-assistant', mkRound);
+    }, isBatterySaverEnabled() ? 60000 : 30000);
 });
 
 function loadMk() {
@@ -22,18 +30,34 @@ function loadMk() {
         document.getElementById('mk-body').classList.remove('hidden');
 
         var pl = mkRound.players[mkPid];
+        var playerTee = (pl && pl.tee) || mkRound.tee || 'wh';
         var prefix = t('marker_for');
         document.getElementById('mk-title').textContent = prefix + ': ' + (pl.name || t('player'));
-        document.getElementById('mk-sub').textContent = t('tee_select') + ': ' + fmtTeePill(mkRound.tee);
+        document.getElementById('mk-sub').textContent = t('tee_select') + ': ' + fmtTeePill(playerTee);
         mkPScores = pl.scores || {};
+        renderPaceAssistant('mk-pace-assistant', mkRound);
+        listenForOfficialCallState({
+            roundId: mkRid,
+            playerId: mkPid,
+            prefix: 'mk',
+            canEdit: true,
+            hole: function() { return mkHole; },
+            playerName: 'Marker (' + (pl.name || 'Player') + ')',
+            flightMembers: []
+        });
 
         if (!mkChanging) {
-            var order = holeOrder(mkRound.startHole || 1);
-            var found = false;
-            for (var i = 0; i < order.length; i++) {
-                if (!(parseInt(mkScores[order[i]]) >= 1)) { mkHole = order[i]; found = true; break; }
+            var order = getRoundOrder(mkRound);
+            var savedResumeHole = getSavedResumeHole(mkRid, mkPid, order, pl);
+            if (savedResumeHole) {
+                mkHole = savedResumeHole;
+            } else {
+                var found = false;
+                for (var i = 0; i < order.length; i++) {
+                    if (!(parseInt(mkScores[order[i]]) >= 1)) { mkHole = order[i]; found = true; break; }
+                }
+                if (!found) mkHole = order[order.length - 1];
             }
-            if (!found) mkHole = order[order.length - 1];
         }
 
         buildHoles(); renderHole(); renderSum(); checkVerify();
@@ -47,7 +71,9 @@ function loadMk() {
 
 function buildHoles() {
     var el = document.getElementById('mk-holes');
-    var order = holeOrder(mkRound.startHole || 1);
+    var order = getRoundOrder(mkRound);
+    var mkPlayer = (mkRound && mkRound.players && mkRound.players[mkPid]) || {};
+    var mkFieldHcp = mkPlayer.fieldHcp !== undefined ? mkPlayer.fieldHcp : (mkRound.fieldHcp || 0);
     var html = '';
     order.forEach(function(h) {
         var ps = parseInt(mkPScores[h]) || 0, ms = parseInt(mkScores[h]) || 0;
@@ -55,7 +81,9 @@ function buildHoles() {
         if (ps >= 1 && ms >= 1 && ps === ms) cls += ' verified';
         else if (ps >= 1 && ms >= 1) cls += ' mismatch';
         else if (ms >= 1 || ps >= 1) cls += ' done';
-        html += '<button class="hole-btn ' + cls + '" onclick="goMk(' + h + ')">' + h + '</button>';
+        html += '<button class="hole-btn ' + cls + '" onclick="goMk(' + h + ')">' +
+            '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + hcpStrokesMarksHTML(mkFieldHcp, h) + '</span>' +
+            '</button>';
     });
     el.innerHTML = html;
 }
@@ -63,6 +91,7 @@ function buildHoles() {
 function goMk(h) {
     mkChanging = true;
     mkHole = h; mkScore = 0;
+    rememberResumeHole(mkRid, mkPid, h);
     renderHole(); checkVerify();
     setTimeout(function() { mkChanging = false; }, 100);
 }
@@ -85,10 +114,16 @@ function adjMk(d) {
 
 function updDisp() {
     var par = holePar(mkHole);
-    document.getElementById('mk-disp').textContent = mkScore;
+    var player = mkRound && mkRound.players ? mkRound.players[mkPid] : null;
+    var fieldHcp = player && player.fieldHcp !== undefined
+        ? player.fieldHcp : ((mkRound && mkRound.fieldHcp) || 0);
+    var disp = document.getElementById('mk-disp');
+    if (disp) disp.innerHTML = scoreWithStablefordHTML(mkScore, mkHole, fieldHcp, isPlayerStablefordDisplayEnabled(player));
     var r = document.getElementById('mk-result');
-    r.textContent = holeResName(mkScore, par);
-    r.className = 'score-result ' + holeResClass(mkScore, par);
+    if (r) {
+        r.textContent = holeResName(mkScore, par);
+        r.className = 'score-result ' + holeResClass(mkScore, par);
+    }
 }
 
 function checkVerify() {
@@ -113,7 +148,7 @@ function saveMk() {
             toast(currentLang === 'en' ? '⚠️ Mismatch!' : '⚠️ Несовпадение!', 'error');
         } else { toast(currentLang === 'en' ? '👁️ Waiting for player' : '👁️ Ждём игрока'); vib(); }
 
-        var order = holeOrder(mkRound.startHole || 1);
+        var order = getRoundOrder(mkRound);
         var idx = order.indexOf(savedHole);
         if (idx >= 0 && idx < order.length - 1) { mkHole = order[idx + 1]; mkScore = 0; }
 
@@ -134,10 +169,11 @@ function renderSum() {
     var html = '<div style="overflow-x:auto;"><table class="scorecard"><tr><th>' + holeHeader + '</th><th>' + parHeader + '</th><th>' + playerHeader + '</th><th>' + markerHeader + '</th><th>' + statusHeader + '</th></tr>';
     for (var i = 1; i <= 18; i++) {
         var ps = parseInt(mkPScores[i]) || 0, ms = parseInt(mkScores[i]) || 0, icon = '—', bg = '';
+        var misCls = '';
         if (ps >= 1 && ms >= 1 && ps === ms) { icon = '✅'; bg = 'background:rgba(46,204,113,.05);'; match++; }
-        else if (ps >= 1 && ms >= 1) { icon = '⚠️'; bg = 'background:rgba(224,90,74,.08);'; mis++; }
+        else if (ps >= 1 && ms >= 1) { icon = '⚠️'; bg = 'background:rgba(224,90,74,.08);'; mis++; misCls = ' class="cell-mismatch"'; }
         else if (ps >= 1 || ms >= 1) { icon = '⏳'; pend++; }
-        html += '<tr style="' + bg + '"><td style="font-weight:700;">' + i + '</td><td>' + holePar(i) + '</td><td>' + (ps >= 1 ? ps : '—') + '</td><td>' + (ms >= 1 ? ms : '—') + '</td><td style="font-size:16px;">' + icon + '</td></tr>';
+        html += '<tr style="' + bg + '"><td style="font-weight:700;">' + i + '</td><td>' + holePar(i) + '</td><td' + misCls + '>' + (ps >= 1 ? ps : '—') + '</td><td' + misCls + '>' + (ms >= 1 ? ms : '—') + '</td><td style="font-size:16px;">' + icon + '</td></tr>';
     }
     html += '</table></div>';
     html += '<div style="display:flex;gap:16px;padding:12px;font-size:13px;font-weight:700;"><span style="color:#2ecc71;">✅ ' + match + '</span><span style="color:var(--red);">⚠️ ' + mis + '</span><span style="color:var(--gold);">⏳ ' + pend + '</span></div>';
@@ -145,21 +181,22 @@ function renderSum() {
 }
 
 function callOfficial(type) {
-    var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
-    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + mkHole + '?')) return;
-
-    var pName = (mkRound && mkRound.players[mkPid]) ? mkRound.players[mkPid].name : 'Player';
-
-    db.ref('alerts').push({
+    if (!mkRound || !mkPid) return;
+    var pName = (mkRound.players[mkPid] && mkRound.players[mkPid].name) || 'Player';
+    requestOfficialCall({
         roundId: mkRid,
-        type: type,
-        hole: mkHole,
         playerId: mkPid,
+        prefix: 'mk',
+        type: type,
+        hole: function() { return mkHole; },
         playerName: 'Marker (' + pName + ')',
-        time: Date.now(),
-        status: 'active'
-    }).then(function() {
-        toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + mkHole + '!', 'warn');
-        vib([100, 50, 100]);
+        flightMembers: [],
+        canEdit: true,
+        onSent: function(call) {
+            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, call.playerName, []);
+            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, call.playerName, []);
+            toast('🚨 ' + getOfficialRoleName(type) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
+            vib([100, 50, 100]);
+        }
     });
 }

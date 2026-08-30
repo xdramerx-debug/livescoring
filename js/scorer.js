@@ -1,6 +1,13 @@
 var scRid = null, scPid = null, scRound = null;
 var scHole = 1, scScore = 0, scMarker = {};
 var scChanging = false;
+var scPaceTimer = null;
+
+document.addEventListener('pestovo-stableford-default-change', function() {
+    if (!scRound) return;
+    updateScStablefordToggle();
+    updDisp();
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
@@ -8,6 +15,9 @@ document.addEventListener('DOMContentLoaded', function() {
     scRid = p.get('round'); scPid = p.get('player');
     if (!scRid || !scPid) { document.getElementById('sc-err').classList.remove('hidden'); return; }
     loadSc();
+    scPaceTimer = setInterval(function() {
+        if (scRound) renderPaceAssistant('sc-pace-assistant', scRound);
+    }, isBatterySaverEnabled() ? 60000 : 30000);
 });
 
 function loadSc() {
@@ -22,19 +32,36 @@ function loadSc() {
         document.getElementById('sc-body').classList.remove('hidden');
 
         var pl = scRound.players[scPid];
+        updateScStablefordToggle();
+        var playerTee = (pl && pl.tee) || scRound.tee || 'wh';
         var scorePrefix = currentLang === 'en' ? 'Score: ' : 'Счёт: ';
         document.getElementById('sc-title').textContent = scorePrefix + (pl.name || t('player'));
-        document.getElementById('sc-sub').textContent = (scRound.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(scRound.tee);
+        document.getElementById('sc-sub').textContent = (scRound.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(playerTee);
         renderInfo();
+        renderPaceAssistant('sc-pace-assistant', scRound);
+        listenForOfficialCallState({
+            roundId: scRid,
+            playerId: scPid,
+            prefix: 'sc',
+            canEdit: true,
+            hole: function() { return scHole; },
+            playerName: function() { return pl.name || 'Player'; },
+            flightMembers: []
+        });
 
         if (!scChanging) {
-            var order = holeOrder(scRound.startHole || 1);
+            var order = getRoundOrder(scRound);
             var scores = pl.scores || {};
-            var found = false;
-            for (var i = 0; i < order.length; i++) {
-                if (!(parseInt(scores[order[i]]) >= 1)) { scHole = order[i]; found = true; break; }
+            var savedResumeHole = getSavedResumeHole(scRid, scPid, order, pl);
+            if (savedResumeHole) {
+                scHole = savedResumeHole;
+            } else {
+                var found = false;
+                for (var i = 0; i < order.length; i++) {
+                    if (!(parseInt(scores[order[i]]) >= 1)) { scHole = order[i]; found = true; break; }
+                }
+                if (!found) scHole = order[order.length - 1];
             }
-            if (!found) scHole = order[order.length - 1];
         }
 
         buildHoles();
@@ -54,15 +81,43 @@ function renderInfo() {
     if (!el) return;
     var startLbl = t('start');
     var holeLbl = t('hole');
+    var pl = scRound && scRound.players && scRound.players[scPid];
+    var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
     el.innerHTML =
         '<div><b>' + startLbl + ':</b> ' + fmtTime(scRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + scRound.startHole + '</div>' +
-        '<div><b>' + t('tee_select') + ':</b> ' + fmtTeePill(scRound.tee) + '</div>';
+        '<div><b>' + t('tee_select') + ':</b> ' + fmtTeePill(playerTee) + '</div>';
+}
+
+function updateScStablefordToggle() {
+    var toggle = document.getElementById('sc-stableford-toggle');
+    var control = document.getElementById('sc-stableford-control');
+    if (!toggle) return;
+    var player = scRound && scRound.players ? scRound.players[scPid] : null;
+    toggle.checked = isPlayerStablefordDisplayEnabled(player);
+    toggle.disabled = !player || (scRound && scRound.status !== 'active');
+    if (control) control.classList.toggle('is-disabled', toggle.disabled);
+}
+
+function toggleScStablefordDisplay(enabled) {
+    var player = scRound && scRound.players ? scRound.players[scPid] : null;
+    if (!scRid || !scPid || !player || (scRound && scRound.status !== 'active')) return;
+
+    enabled = !!enabled;
+    player.stablefordDisplay = enabled;
+    updDisp();
+    updateScStablefordToggle();
+    db.ref('rounds/' + scRid + '/players/' + scPid + '/stablefordDisplay').set(enabled).catch(function(error) {
+        console.warn('[Stableford] Cannot save personal display setting', error);
+        toast(currentLang === 'en' ? 'Could not save the Stableford setting' : 'Не удалось сохранить настройку Stableford', 'error');
+    });
 }
 
 function buildHoles() {
     var el = document.getElementById('sc-holes');
-    var order = holeOrder(scRound.startHole || 1);
-    var scores = scRound.players[scPid].scores || {};
+    var order = getRoundOrder(scRound);
+    var scPlayer = scRound.players[scPid] || {};
+    var scores = scPlayer.scores || {};
+    var scFieldHcp = scPlayer.fieldHcp !== undefined ? scPlayer.fieldHcp : (scRound.fieldHcp || 0);
     var html = '';
     order.forEach(function(h) {
         var s = parseInt(scores[h]) || 0, ms = parseInt(scMarker[h]) || 0;
@@ -70,7 +125,9 @@ function buildHoles() {
         if (s >= 1 && ms >= 1 && s === ms) cls += ' verified';
         else if (s >= 1 && ms >= 1) cls += ' mismatch';
         else if (s >= 1) cls += ' done';
-        html += '<button class="hole-btn ' + cls + '" onclick="goSc(' + h + ')">' + h + '</button>';
+        html += '<button class="hole-btn ' + cls + '" onclick="goSc(' + h + ')">' +
+            '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + hcpStrokesMarksHTML(scFieldHcp, h) + '</span>' +
+            '</button>';
     });
     el.innerHTML = html;
 }
@@ -78,15 +135,18 @@ function buildHoles() {
 function goSc(h) {
     scChanging = true;
     scHole = h; scScore = 0;
+    rememberResumeHole(scRid, scPid, h);
     renderHole(); buildHoles(); checkVerify();
     setTimeout(function() { scChanging = false; }, 100);
 }
 
 function renderHole() {
     var par = holePar(scHole);
+    var pl = scRound && scRound.players && scRound.players[scPid];
+    var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
     document.getElementById('sc-hole').textContent = scHole;
     document.getElementById('sc-par').textContent = par;
-    document.getElementById('sc-dist').textContent = holeDist(scHole, scRound.tee) || '—';
+    document.getElementById('sc-dist').textContent = holeDist(scHole, playerTee) || '—';
     document.getElementById('sc-dl').textContent = fmtTime(holeDeadline(scRound.startTime, scRound.startHole, scHole));
 
     var scores = scRound.players[scPid].scores || {};
@@ -104,10 +164,16 @@ function adjSc(d) {
 
 function updDisp() {
     var par = holePar(scHole);
-    document.getElementById('sc-disp').textContent = scScore;
+    var player = scRound && scRound.players ? scRound.players[scPid] : null;
+    var fieldHcp = player && player.fieldHcp !== undefined
+        ? player.fieldHcp : ((scRound && scRound.fieldHcp) || 0);
+    var disp = document.getElementById('sc-disp');
+    if (disp) disp.innerHTML = scoreWithStablefordHTML(scScore, scHole, fieldHcp, isPlayerStablefordDisplayEnabled(player));
     var r = document.getElementById('sc-result');
-    r.textContent = holeResName(scScore, par);
-    r.className = 'score-result ' + holeResClass(scScore, par);
+    if (r) {
+        r.textContent = holeResName(scScore, par);
+        r.className = 'score-result ' + holeResClass(scScore, par);
+    }
 }
 
 function checkVerify() {
@@ -126,6 +192,8 @@ function saveSc() {
     var savedHole = scHole;
 
     db.ref('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole).set(scScore).then(function() {
+        return recordHoleCompletionTime(scRid, scPid, savedHole, Date.now());
+    }).then(function() {
         var ms = parseInt(scMarker[savedHole]) || 0;
         if (ms >= 1 && ms === scScore) {
             db.ref('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole).set(true);
@@ -144,11 +212,13 @@ function saveSc() {
 
         document.getElementById('sc-notice').innerHTML = buildTimingNotice(scRound.startTime, scRound.startHole, savedHole);
 
-        var order = holeOrder(scRound.startHole);
+        var order = getRoundOrder(scRound);
         var idx = order.indexOf(savedHole);
         if (idx >= 0 && idx < order.length - 1) { scHole = order[idx + 1]; scScore = 0; }
+        rememberResumeHole(scRid, scPid, scHole);
 
         renderHole(); buildHoles(); renderCard();
+        renderPaceAssistant('sc-pace-assistant', scRound);
         setTimeout(function() { scChanging = false; }, 200);
     });
 }
@@ -156,7 +226,6 @@ function saveSc() {
 function renderCard() {
     var el = document.getElementById('sc-card');
     var scores = scRound.players[scPid].scores || {};
-    var verified = scRound.players[scPid].verified || {};
 
     var holeHeader = t('hole');
     var parHeader = t('par');
@@ -174,7 +243,9 @@ function renderCard() {
     var gO = 0;
     for (var i = 1; i <= 9; i++) {
         var s = parseInt(scores[i]) || 0, cls = holeResClass(s, holePar(i)), v = '';
-        if (verified[i] === true) v = ' ✅'; else if (verified[i] === false) v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
+        var st = getHoleVerifyState(scRound.players[scPid], i);
+        if (st === 'confirmed') v = ' ✅'; else if (st === 'mismatch') v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
+        if (st === 'mismatch') cls += ' cell-mismatch';
         if (s >= 1) gO += s;
         html += '<td class="' + cls + '">' + (s >= 1 ? s + v : '') + '</td>';
     }
@@ -189,7 +260,9 @@ function renderCard() {
     var gI = 0;
     for (var i = 10; i <= 18; i++) {
         var s = parseInt(scores[i]) || 0, cls = holeResClass(s, holePar(i)), v = '';
-        if (verified[i] === true) v = ' ✅'; else if (verified[i] === false) v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
+        var st = getHoleVerifyState(scRound.players[scPid], i);
+        if (st === 'confirmed') v = ' ✅'; else if (st === 'mismatch') v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
+        if (st === 'mismatch') cls += ' cell-mismatch';
         if (s >= 1) gI += s;
         html += '<td class="' + cls + '">' + (s >= 1 ? s + v : '') + '</td>';
     }
@@ -198,21 +271,22 @@ function renderCard() {
 }
 
 function callOfficial(type) {
-    var typeName = type === 'referee' ? (currentLang === 'en' ? 'referee' : 'судью') : (currentLang === 'en' ? 'marshal' : 'маршала');
-    if (!confirm((currentLang === 'en' ? 'Do you want to call a ' + typeName + ' to hole ' : 'Вы действительно хотите вызвать ' + typeName + ' на лунку ') + scHole + '?')) return;
-
-    var pName = (scRound && scRound.players[scPid]) ? scRound.players[scPid].name : 'Player';
-
-    db.ref('alerts').push({
+    if (!scRound || !scPid) return;
+    var pName = (scRound.players[scPid] && scRound.players[scPid].name) || 'Player';
+    requestOfficialCall({
         roundId: scRid,
-        type: type,
-        hole: scHole,
         playerId: scPid,
+        prefix: 'sc',
+        type: type,
+        hole: function() { return scHole; },
         playerName: pName,
-        time: Date.now(),
-        status: 'active'
-    }).then(function() {
-        toast('🚨 ' + (type === 'referee' ? (currentLang === 'en' ? 'Referee' : 'Судья') : (currentLang === 'en' ? 'Marshal' : 'Маршал')) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + scHole + '!', 'warn');
-        vib([100, 50, 100]);
+        flightMembers: [],
+        canEdit: true,
+        onSent: function(call) {
+            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, pName, []);
+            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, pName, []);
+            toast('🚨 ' + getOfficialRoleName(type) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
+            vib([100, 50, 100]);
+        }
     });
 }

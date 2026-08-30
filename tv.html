@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Pestovo TV Leaderboard</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -42,7 +42,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=5"></script>
+<script src="js/utils.js?v=21"></script>
 <script>
 function updateClock() {
     var now = new Date();
@@ -73,7 +73,7 @@ function loadTVLeaderboard() {
             var list = Object.entries(players).map(function(pe) {
                 var pid = pe[0], p = pe[1], sc = p.scores || {};
                 var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
-                return { pid: pid, name: p.name, gross: stats.gross, toPar: stats.toPar, net: stats.net, stblField: stats.stablefordField, holesPlayed: stats.holesPlayed, currentHole: stats.currentHole };
+                return { pid: pid, name: p.name, tee: (p && p.tee) || r.tee || 'wh', gross: stats.gross, toPar: stats.toPar, stblField: stats.stablefordField, holesPlayed: stats.holesPlayed, currentHole: stats.currentHole };
             });
 
             list.sort(function(a, b) {
@@ -85,15 +85,16 @@ function loadTVLeaderboard() {
 
             var rows = list.map(function(p, i) {
                 var thruTxt = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? 'Hole #' + p.currentHole : '—');
-                return '<tr><td class="tv-pos">' + (i + 1) + '</td><td class="tv-name">' + (p.name || '—') + '</td><td style="color:var(--gold);font-weight:700;">' + thruTxt + '</td><td class="tv-score ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</td><td>' + (p.gross || '—') + '</td><td>' + (p.net || '—') + '</td><td style="color:var(--gold);font-weight:700;">' + p.stblField + '</td></tr>';
+                var pTeeBadge = '<span class="tee-pill tee-' + p.tee + '" style="font-size:12px;padding:2px 8px;margin-left:8px;vertical-align:middle;">' + (TEES[p.tee] || p.tee) + '</span>';
+                return '<tr><td class="tv-pos">' + (i + 1) + '</td><td class="tv-name">' + (p.name || '—') + pTeeBadge + '</td><td style="color:var(--gold);font-weight:700;">' + thruTxt + '</td><td class="tv-score ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</td><td>' + (p.gross || '—') + '</td><td style="color:var(--gold);font-weight:700;">' + p.stblField + '</td></tr>';
             }).join('');
 
             var badge = isLive ? '<span class="live-badge" style="font-size:16px;padding:6px 18px;"><span class="live-dot"></span> LIVE</span>' : '<span class="tn-status tn-d" style="font-size:16px;padding:6px 18px;">COMPLETED</span>';
 
             html += '<div class="tv-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
                 '<div><h2 style="font-family:var(--ff);font-size:32px;color:var(--gold);margin:0;">Pestovo · ' + fmtTime(r.startTime) + '</h2>' +
-                '<div style="font-size:18px;color:var(--muted);margin-top:4px;">' + fmtDate(r.createdAt) + ' · ' + (r.format || 'Stroke') + ' · Tee: ' + TEES[r.tee] + '</div></div>' + badge + '</div>' +
-                '<table class="tv-table"><thead><tr><th style="width:60px;">POS</th><th style="text-align:left;">PLAYER</th><th>THRU</th><th>TO PAR</th><th>GROSS</th><th>NET</th><th>STABLEFORD</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+                '<div style="font-size:18px;color:var(--muted);margin-top:4px;">' + fmtDate(r.createdAt) + ' · ' + (r.format || 'Stroke') + ' · Tee: ' + fmtRoundTeePills(r) + '</div></div>' + badge + '</div>' +
+                '<table class="tv-table"><thead><tr><th style="width:60px;">POS</th><th style="text-align:left;">PLAYER</th><th>THRU</th><th>TO PAR</th><th>GROSS</th><th>STABLEFORD</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
         });
 
         document.getElementById('tv-content').innerHTML = html;
@@ -114,5 +115,6 @@ setInterval(function() {
     }
 }, 50);
 </script>
+<p class="site-version" style="position:fixed;right:12px;bottom:6px;z-index:5;">Версия сайта: <span class="version-number">1.15.0</span></p>
 </body>
 </html>

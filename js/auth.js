@@ -1,3 +1,17 @@
+function getSafeAuthRedirect() {
+    var requested = new URLSearchParams(window.location.search).get('redirect');
+    if (!requested) return 'index.html';
+    try {
+        var target = new URL(requested, window.location.href);
+        if (target.origin !== window.location.origin) return 'index.html';
+        var fileName = target.pathname.split('/').pop() || 'index.html';
+        if (!/^[a-z0-9-]+\.html$/i.test(fileName)) return 'index.html';
+        return fileName + target.search + target.hash;
+    } catch (e) {
+        return 'index.html';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     if (!document.getElementById('auth-page')) return;
 
@@ -7,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (currentUser) { window.location.href = 'index.html'; return; }
+    if (currentUser) { window.location.href = getSafeAuthRedirect(); return; }
 
     // АУДИТ БЕЗОПАСНОСТИ: пароль никогда не хранится локально.
     // Миграция: удаляем пароль, если он остался со старой версии приложения.
@@ -64,9 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         auth.signInWithEmailAndPassword(em, pw).then(function() {
-            var urlP = new URLSearchParams(window.location.search);
-            var red = urlP.get('redirect') || 'index.html';
-            window.location.href = red;
+            window.location.href = getSafeAuthRedirect();
         }).catch(function(err) {
             er.textContent = authErr(err.code);
             er.classList.remove('hidden');
@@ -111,9 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }).then(function() {
             toast(currentLang === 'en' ? '🎉 Account created!' : '🎉 Аккаунт создан!');
-            var urlP = new URLSearchParams(window.location.search);
-            var red = urlP.get('redirect') || 'index.html';
-            window.location.href = red;
+            window.location.href = getSafeAuthRedirect();
         }).catch(function(err) {
             er.textContent = authErr(err.code);
             er.classList.remove('hidden');

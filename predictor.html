@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
     <meta name="description" content="Официальная система лайв-скоринга Гольф-клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_predictor">Симулятор WHS — Пестово</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -31,7 +31,7 @@
     <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
     <div class="nav-menu" id="nav-menu">
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
-        <a href="live.html" class="nav-link" data-i18n="nav_round">Раунд</a>
+        <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
         <a href="guide.html" class="nav-link" data-i18n="nav_guide">Книга поля</a>
         <a href="feed.html" class="nav-link" data-i18n="nav_feed">Лента событий</a>
@@ -54,7 +54,7 @@
             <select id="pred-user-select" class="form-input" onchange="runWHSPredictor()"></select>
         </div>
         <div class="form-row">
-            <div class="form-group"><label data-i18n="gender_label">Пол:</label><select id="pred-gender" class="form-input" onchange="runWHSPredictor()"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Женщина</option></select></div>
+            <div class="form-group"><label data-i18n="gender_label">Пол:</label><select id="pred-gender" class="form-input" onchange="runWHSPredictor()"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Девушка</option></select></div>
             <div class="form-group"><label data-i18n="planned_tee">Планируемый ТИ:</label><select id="pred-tee" class="form-input" onchange="runWHSPredictor()"><option value="bk" data-i18n="tee_opt_bk">⬛ Чёрный</option><option value="bl" data-i18n="tee_opt_bl">🟦 Синий</option><option value="wh" selected data-i18n="tee_opt_wh">⬜ Белый</option><option value="rd" data-i18n="tee_opt_rd">🟥 Красный</option></select></div>
         </div>
     </div>
@@ -62,12 +62,12 @@
     <div id="pred-result"></div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.15.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=5"></script>
+<script src="js/utils.js?v=21"></script>
 <script src="js/predictor.js"></script>
 <script src="js/pwa.js"></script>
 </body>

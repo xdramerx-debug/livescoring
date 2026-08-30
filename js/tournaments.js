@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() { initNav(); loadTourna
 function onAuthReady(u, d) { navAuth(u, d); loadTournaments(); }
 
 function loadTournaments() {
-    db.ref('tournaments').on('value', function(sn) {
+    bindRealtimeValue('tournaments-list', db.ref('tournaments'), function(sn) {
         var data = sn.val() || {};
         var entries = Object.entries(data);
         var el = document.getElementById('tn-list');
@@ -60,9 +60,18 @@ function loadTournaments() {
             } else {
                 html += '<div style="overflow-x:auto;"><table class="lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>ТИ</th><th>' + t('date') + '</th></tr></thead><tbody>';
                 var rIdx = 1;
-                Object.values(regPlayers).forEach(function(rp) {
+                var seenFio = {};
+                var finalReg = [];
+                Object.values(regPlayers).forEach(function(rp){
+                    if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(null, rp && rp.name)) return;
+                    var fioKey = (typeof getPlayerFioKey === 'function') ? getPlayerFioKey({name: rp.name, firstName: rp.name.split(' ')[0], lastName: rp.name.split(' ').slice(1).join(' ')}) : (rp.name||'').toLowerCase();
+                    if (seenFio[fioKey]) return;
+                    seenFio[fioKey]=true;
+                    finalReg.push(rp);
+                });
+                finalReg.forEach(function(rp) {
                     html += '<tr><td>' + (rIdx++) + '</td>';
-                    html += '<td><strong style="color:var(--gold);">' + (rp.name || '—') + '</strong></td>';
+                    html += '<td><strong style="color:var(--gold);">' + escapeHtml(rp.name || '—') + '</strong></td>';
                     html += '<td>' + (rp.handicap != null ? fmtExactHcp(rp.handicap) : '—') + '</td>';
                     html += '<td>' + fmtTeePill(rp.tee) + '</td>';
                     html += '<td>' + fmtDate(rp.registeredAt) + '</td></tr>';
@@ -114,11 +123,11 @@ function openTournamentRegModal(tnId) {
         var allowedTees = tVal.tees || ['wh'];
         var defaultTee = (currentUserData && currentUserData.defaultTee) || allowedTees[0];
 
-        var html = '<h2 style="color:var(--gold);margin-bottom:8px;"><i class="fas fa-trophy"></i> ' + (tVal.name || 'Tournament') + '</h2>';
+        var html = '<h2 style="color:var(--gold);margin-bottom:8px;"><i class="fas fa-trophy"></i> ' + escapeHtml(tVal.name || 'Tournament') + '</h2>';
         html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">' + t('confirm_registration') + '</p>';
 
         html += '<div class="card" style="background:var(--input);padding:16px;text-align:left;margin-bottom:20px;">';
-        html += '<div style="font-size:14px;color:var(--white);font-weight:700;margin-bottom:6px;"><i class="fas fa-user"></i> ' + (currentUserData ? currentUserData.name : 'Player') + '</div>';
+        html += '<div style="font-size:14px;color:var(--white);font-weight:700;margin-bottom:6px;"><i class="fas fa-user"></i> ' + escapeHtml(currentUserData ? currentUserData.name : 'Player') + '</div>';
         html += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">HCP: ' + (currentUserData && currentUserData.handicap != null ? fmtExactHcp(currentUserData.handicap) : '—') + '</div>';
 
         html += '<div class="form-group"><label>' + t('tee_select') + ':</label><select id="reg-tn-tee" class="form-input">';

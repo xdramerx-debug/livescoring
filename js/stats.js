@@ -14,7 +14,12 @@ function loadStats() {
         var users = snaps[1].val() || {};
 
         var totalRounds = 0, completed = 0, active = 0;
-        var totalPlayers = Object.keys(users).length;
+        var filteredUsers = Object.entries(users).filter(function(e){
+            var uid = e[0], u = e[1];
+            return !(u && typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u.name));
+        });
+        var dedupedUsers = (typeof dedupePlayerEntriesByFio === 'function') ? dedupePlayerEntriesByFio(filteredUsers) : filteredUsers;
+        var totalPlayers = dedupedUsers.length;
         var totalHoles = 0;
         var birdies = 0, eagles = 0, pars = 0, hio = 0;
         var bestGross = Infinity, bestGrossPlayer = '—';
@@ -35,14 +40,17 @@ function loadStats() {
             var startTS = r.startTime || r.createdAt;
             var endTS = r.completedAt;
 
+            var roundPlayersForStats = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(r.players || {}) : (r.players || {});
+
             if (r.status === 'completed') {
                 completed++;
                 
                 if (startTS && endTS && endTS > startTS) {
                     var dur = (endTS - startTS) / 60000;
                     if (dur >= 0.5) {
-                        Object.entries(r.players || {}).forEach(function(pe) {
+                        Object.entries(roundPlayersForStats).forEach(function(pe) {
                             var p = pe[1];
+                            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], p && p.name)) return;
                             var sc = p.scores || {};
                             var cnt = 0;
                             Object.values(sc).forEach(function(s) { if (parseInt(s) >= 1) cnt++; });
@@ -59,8 +67,9 @@ function loadStats() {
             if (r.mode === 'solo') soloCount++;
             else groupCount++;
 
-            Object.entries(r.players || {}).forEach(function(pe) {
+            Object.entries(roundPlayersForStats).forEach(function(pe) {
                 var pid = pe[0], p = pe[1];
+                if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
                 var scores = p.scores || {};
                 var fieldHcp = p.fieldHcp || 0;
                 var exactHcp = p.exactHcp || 0;
@@ -170,7 +179,7 @@ function loadStats() {
                 var avgStbl = (p.totalStbl / p.count).toFixed(1);
                 var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
                 thtml += '<div class="list-item">' +
-                    '<span><strong style="color:var(--white);">' + medal + ' ' + p.name + '</strong></span>' +
+                    '<span><strong style="color:var(--white);">' + medal + ' ' + escapeHtml(p.name || 'Player') + '</strong></span>' +
                     '<span>' + avgWord + '<b style="color:var(--gold);">' + avg + '</b> · Stableford: <b style="color:var(--gold);">' + avgStbl + '</b> · ' + p.count + fullRoundsWord + '</span>' +
                     '</div>';
             });

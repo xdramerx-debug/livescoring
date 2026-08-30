@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
     <meta name="description" content="Официальная система лайв-скоринга Гольф-клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -31,7 +31,7 @@
     <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
     <div class="nav-menu" id="nav-menu">
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
-        <a href="live.html" class="nav-link" data-i18n="nav_round">Раунд</a>
+        <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
         <a href="guide.html" class="nav-link" data-i18n="nav_guide">Книга поля</a>
         <a href="feed.html" class="nav-link" data-i18n="nav_feed">Лента событий</a>
@@ -59,16 +59,21 @@
         <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="admin_desc">
             Войдите с мастер-паролем или авторизуйтесь через аккаунт с правами администратора.
         </p>
-        <div class="form-group"><label data-i18n="username">Логин</label><input type="text" id="adm-user" class="form-input" placeholder="admin" autocomplete="username"></div>
-        <div class="form-group"><label data-i18n="password">Пароль</label><input type="password" id="adm-pass" class="form-input" autocomplete="current-password"></div>
-        <div class="form-group" style="margin-bottom:16px;">
-            <label for="adm-remember" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;font-size:13px;color:var(--white);">
-                <input type="checkbox" id="adm-remember" checked style="width:18px;height:18px;cursor:pointer;">
-                <span data-i18n="remember_me">Запомнить меня</span>
-            </label>
-        </div>
-        <div id="adm-error" class="form-err hidden"></div>
-        <button class="btn btn-g btn-block" onclick="adminLogin()" data-i18n="login_btn">Войти</button>
+        <form onsubmit="adminLogin(event)">
+            <div class="form-group">
+                <label data-i18n="password"><i class="fas fa-key"></i> Пароль</label>
+                <input type="password" id="adm-master-pass" class="form-input" autocomplete="current-password" placeholder="••••••••">
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+                <label for="adm-remember" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;font-size:13px;color:var(--white);">
+                    <input type="checkbox" id="adm-remember" style="width:18px;height:18px;cursor:pointer;">
+                    <span data-i18n="remember_me">Запомнить меня</span>
+                </label>
+                <a href="auth.html?redirect=admin.html" style="font-size:12px;color:var(--gold);text-decoration:none;" data-i18n="nav_login">Войти</a>
+            </div>
+            <div id="adm-error" class="form-err hidden"></div>
+            <button id="admin-login-btn" type="submit" class="btn btn-g btn-block"><i class="fas fa-user-shield"></i> Проверить права / Войти</button>
+        </form>
     </div>
 
     <div id="admin-content" class="hidden">
@@ -78,6 +83,7 @@
         <div class="admin-tabs">
             <button class="admin-tab active" onclick="switchTab('alerts',this)" data-i18n="tab_alerts">Вызовы 🚨</button>
             <button class="admin-tab" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
+            <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
             <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры</button>
             <button class="admin-tab" onclick="switchTab('broadcasts',this)" data-i18n="tab_broadcasts">Анонсы 📢</button>
             <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
@@ -88,6 +94,14 @@
 
         <div id="tab-rounds" class="admin-section">
             <div class="card"><h2><i class="fas fa-flag"></i> <span data-i18n="all_rounds">Все раунды</span></h2><div id="adm-rounds"></div></div>
+        </div>
+
+        <div id="tab-groups" class="admin-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-stopwatch"></i> <span data-i18n="admin_groups_title">Группы, которые сейчас играют</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="admin_groups_sub">Контроль темпа игры по активным групповым раундам</p>
+                <div id="adm-groups"></div>
+            </div>
         </div>
 
         <div id="tab-alerts" class="admin-section hidden">
@@ -156,23 +170,41 @@
             <!-- VK API INTEGRATION FOR ALERTS -->
             <div class="card">
                 <h2><i class="fab fa-vk"></i> <span data-i18n="vk_integration_title">Интеграция ВКонтакте (VK API)</span></h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:14px;" data-i18n="vk_integration_sub">
-                    Укажите Токен доступа сообщества ВК и ID беседы/пользователя (Peer ID). При вызове судьи или маршала вызов мгновенно отравится в ваш чат ВК!
+                <p style="color:var(--muted);font-size:13px;margin-bottom:10px;" data-i18n="vk_integration_sub">
+                    При вызове судьи или маршала уведомление мгновенно отправится в вашу беседу или личные сообщения ВКонтакте.
                 </p>
+
+                <!-- Инструкция -->
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);line-height:1.7;">
+                    <b style="color:var(--gold);display:block;margin-bottom:6px;"><i class="fas fa-circle-info"></i> Как получить токен сообщества</b>
+                    <ol style="margin:0;padding-left:18px;">
+                        <li>Войдите в <b>Управление сообществом</b> → <b>Работа с API</b> → <b>Ключи доступа</b></li>
+                        <li>Нажмите <b>«Создать ключ»</b>, выберите права: <b>Сообщения</b> ✅</li>
+                        <li>Скопируйте полученный ключ (<code>vk1.a.…</code>) в поле ниже</li>
+                        <li><b>Peer ID беседы</b>: откройте беседу ВК → ссылка вида <code>vk.com/im?sel=c<b>1</b></code> → Peer ID = <code>2000000001</code> (c + 2000000000)</li>
+                        <li><b>Peer ID пользователя</b>: числовой ID из профиля ВКонтакте</li>
+                        <li>Добавьте сообщество в беседу и <b>разрешите боту писать</b> в настройках беседы</li>
+                    </ol>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label data-i18n="vk_token_lbl"><i class="fas fa-key"></i> VK Access Token Сообщества</label>
-                        <input type="text" id="vk-access-token" class="form-input" placeholder="vk1.a.ExampleAccessToken...">
+                        <input type="text" id="vk-access-token" class="form-input" placeholder="vk1.a.ExampleAccessToken..." autocomplete="off" spellcheck="false">
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-comments"></i> VK Peer ID / Chat ID</label>
-                        <input type="text" id="vk-peer-id" class="form-input" data-i18n-placeholder="placeholder_vk_peer_id" placeholder="2000000001 (беседа) или 123456789">
+                        <input type="number" id="vk-peer-id" class="form-input" data-i18n-placeholder="placeholder_vk_peer_id" placeholder="2000000001 (беседа) или 123456789">
+                        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Для беседы: 2000000000 + номер чата. Для личных сообщений: ID пользователя.</div>
                     </div>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
                     <button class="btn btn-g" onclick="saveVKSettings()"><i class="fas fa-save"></i> <span data-i18n="save_vk">Сохранить настройки ВК</span></button>
                     <button class="btn btn-og" onclick="testVKAlert()"><i class="fab fa-vk"></i> <span data-i18n="test_vk">Проверить отправку в ВК</span></button>
                 </div>
+                <p style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:0;">
+                    <i class="fas fa-shield-halved"></i> Отправка выполняется напрямую через VK API (JSONP) без сторонних серверов. Версия API: 5.199.
+                </p>
             </div>
         </div>
 
@@ -247,7 +279,7 @@
                 <div class="form-row">
                     <div class="form-group" style="flex:1.4 1 140px;">
                         <label>Имя и фамилия</label>
-                        <input type="text" id="adm-new-name" class="form-input" placeholder="например: Вася Петров">
+                        <input type="text" id="adm-new-name" class="form-input" placeholder="например: Иван Тестов">
                     </div>
                     <div class="form-group" style="flex:1 1 100px;">
                         <label>Email (опционально)</label>
@@ -263,7 +295,7 @@
                         <label>Пол</label>
                         <select id="adm-new-gender" class="form-input">
                             <option value="men">👨 Мужчина</option>
-                            <option value="women">👩 Женщина</option>
+                            <option value="women">👩 Девушка</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -297,6 +329,14 @@
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="manage_players_sub">
                     Назначайте права Администратора другим игрокам. Администраторы получают полный доступ к этой панели.
                 </p>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:rgba(224,90,74,0.08);border:1px solid rgba(224,90,74,0.35);border-radius:12px;">
+                    <p style="color:var(--muted);font-size:12px;margin:0;flex:1;min-width:220px;">
+                        <i class="fas fa-triangle-exclamation" style="color:var(--red);"></i> Полное удаление всех игроков: список станет пустым (также удалятся их раунды, история и регистрации на турниры).
+                    </p>
+                    <button type="button" class="btn btn-r imp-big-btn" onclick="clearAllData()">
+                        <i class="fas fa-user-minus"></i> <span>Удалить всех игроков</span>
+                    </button>
+                </div>
                 <div id="adm-players"></div>
             </div>
         </div>
@@ -338,15 +378,15 @@
         </div>
 
         <div id="tab-rusgolf" class="admin-section hidden">
-            <!-- ПОИСК ГАНДИКАПА В БАЗЕ АГА -->
+            <!-- ПОИСК ГАНДИКАПА В БАЗЕ АГР -->
             <div class="card" style="margin-bottom:20px;">
-                <h2><i class="fas fa-magnifying-glass-chart"></i> <span data-i18n="rg_title">Проверка гандикапа — база АГА России</span></h2>
+                <h2><i class="fas fa-magnifying-glass-chart"></i> <span data-i18n="rg_title">Проверка гандикапа — база АГР России</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="rg_sub">
                     Поиск точного гандикапа (HI) игрока в официальной базе Ассоциации гольфа России (hcp.rusgolf.ru) с возможностью добавить игрока к себе на сайт.
                 </p>
                 <form id="rg-search-form" onsubmit="rgDoSearch(event)">
                     <div class="rg-search-row">
-                        <input type="search" id="rg-search-input" class="form-input" placeholder="Например: Петров Сергей или RU000732" autocomplete="off">
+                        <input type="search" id="rg-search-input" class="form-input" placeholder="Например: Тестов Иван или RU000732" autocomplete="off">
                         <button type="submit" class="btn btn-g rg-search-btn" id="rg-search-btn"><i class="fas fa-magnifying-glass"></i> <span>Найти</span></button>
                     </div>
                 </form>
@@ -354,11 +394,34 @@
                 <div id="rg-results"></div>
             </div>
 
+            <!-- МАССОВАЯ ПРОВЕРКА ГАНДИКАПА ИЗ EXCEL -->
+            <div class="card" style="margin-bottom:20px;">
+                <h2><i class="fas fa-file-excel"></i> <span>Проверка гандикапа из таблицы Excel</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+                    Загрузите таблицу Excel со списком игроков (столбцы <b style="color:var(--gold);">Имя</b> и <b style="color:var(--gold);">Фамилия</b>).
+                    Система найдёт каждого в базе АГР России и покажет список найденных результатов — отметьте нужных и добавьте их на сайт одним кликом.
+                </p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                    <label class="imp-file-label" for="rg-batch-file-input" style="margin:0;flex:1 1 280px;">
+                        <i class="fas fa-cloud-arrow-up"></i>
+                        <span><b>Выберите файл Excel</b><br><small style="color:var(--muted);">.xlsx, .xls или .csv · столбцы: Имя, Фамилия</small></span>
+                        <input type="file" id="rg-batch-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="rgBatchHandleFile(this)">
+                    </label>
+                    <button type="button" class="btn btn-og imp-big-btn" onclick="rgBatchDownloadTemplate()">
+                        <i class="fas fa-file-arrow-down"></i> <span>Скачать шаблон</span>
+                    </button>
+                </div>
+                <div id="rg-batch-status"></div>
+                <div id="rg-batch-results"></div>
+            </div>
+
             <!-- МАССОВАЯ СИНХРОНИЗАЦИЯ -->
             <div class="card" style="margin-bottom:20px;">
                 <h2><i class="fas fa-rotate"></i> <span>Синхронизация гандикапов игроков</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
-                    Проверяет точный гандикап каждого игрока сайта в базе АГА России по фамилии и имени. При однозначном совпадении — обновляет автоматически. Если найдено несколько одинаковых имён с разными гандикапами — предложит выбрать нужного вручную.
+                    Проверяет точный гандикап всех зарегистрированных игроков, гостей и участников раундов в базе АГР России.
+                    Совпадение ищется по <b>Фамилия + Имя</b> и по <b>Имя + Фамилия</b>. При однозначном совпадении HCP обновляется
+                    в профиле, раундах, истории и турнирах. В конце показываются списки: обновлено / актуально / не найдено / на выбор.
                 </p>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
                     <button type="button" class="btn btn-g imp-big-btn" id="rg-sync-btn" onclick="rgSyncAll()">
@@ -370,6 +433,7 @@
                 </div>
                 <div id="rg-sync-progress"></div>
                 <div id="rg-sync-manual"></div>
+                <div id="rg-sync-results"></div>
             </div>
 
             <!-- НАСТРОЙКИ ПРОКСИ -->
@@ -377,7 +441,7 @@
                 <details>
                     <summary style="cursor:pointer;color:var(--gold);font-weight:700;font-size:14px;padding:4px 0;"><i class="fas fa-gear"></i> Настройки подключения (прокси к hcp.rusgolf.ru)</summary>
                     <p style="color:var(--muted);font-size:12px;margin:12px 0;">
-                        Сайт АГА не разрешает прямые запросы из браузера, поэтому используется цепочка публичных CORS-прокси.
+                        Сайт АГР не разрешает прямые запросы из браузера, поэтому используется цепочка публичных CORS-прокси.
                         Если все прокси недоступны — укажите свой прокси-шаблон, где <code style="color:var(--gold);">{url}</code> будет заменён на адрес запроса.<br>
                         Пример: <code style="color:var(--gold);">https://my-proxy.example.com/?target={url}</code>
                     </p>
@@ -393,10 +457,43 @@
 
         <div id="tab-data" class="admin-section hidden">
             <div class="card">
-                <h2><i class="fas fa-eye-slash"></i> <span data-i18n="page_visibility_title">Управление видимостью страниц</span></h2>
+                <h2><i class="fas fa-eye-slash"></i> <span data-i18n="page_visibility_title">Управление видимостью страниц и функций</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="page_visibility_sub">
                     Снимите галочку с любой страницы, чтобы полностью скрыть её из меню навигации и закрыть доступ для игроков.
                 </p>
+
+                <!-- Клубный дефолт отображения Stableford. Личный выбор игрока имеет приоритет. -->
+                <div class="list-item" onclick="toggleStablefordDefaultCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:10px;touch-action:manipulation;">
+                    <div>
+                        <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-star"></i> <span data-i18n="stableford_default">Stableford по умолчанию</span></span>
+                        <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="stableford_default_hint">Показывать очки Stableford рядом со счётом всем игрокам, которые ещё не выбрали личную настройку.</div>
+                    </div>
+                    <input type="checkbox" id="pv-stableford-default" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
+                </div>
+                <button type="button" class="btn btn-og btn-sm" onclick="saveStablefordDisplayDefault()" style="margin:0 0 16px;">
+                    <i class="fas fa-save"></i> <span data-i18n="save_stableford_default">Сохранить настройку Stableford</span>
+                </button>
+
+                <!-- Переключатель «Меню инструментов» -->
+                <div class="list-item" onclick="toggleToolsMenuCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:16px;touch-action:manipulation;">
+                    <div>
+                        <span style="font-weight:700;font-size:14px;color:var(--white);">🧰 <span data-i18n="tools_title">Инструменты и функции</span></span>
+                        <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+                            <span data-i18n-ru="Показать/скрыть кнопку «Меню» в шапке (GPS-дальномер, Shot Tracking, ТВ-режим, 1v1)." data-i18n-en="Show/hide the Tools button in the header (GPS rangefinder, Shot Tracking, TV mode, 1v1 duel).">Показать/скрыть кнопку «Меню» в шапке (GPS-дальномер, Shot Tracking, ТВ-режим, 1v1).</span>
+                        </div>
+                    </div>
+                    <input type="checkbox" id="pv-tools-menu" style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
+                </div>
+                <!-- Переключатель «Мои настройки» (боковое меню) -->
+                <div class="list-item" onclick="toggleMyPreferencesCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:16px;touch-action:manipulation;">
+                    <div>
+                        <span style="font-weight:700;font-size:14px;color:var(--white);">⚙️ <span data-i18n="my_preferences_title">Мои настройки</span></span>
+                        <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+                            <span data-i18n-ru="Показать/скрыть вкладку «Мои настройки» в самом конце бокового меню (крупный шрифт, вибрация, цвета статусов, экономия батареи)." data-i18n-en="Show/hide the «My preferences» tab at the very end of the side menu (large UI, vibration, status colors, battery saver).">Показать/скрыть вкладку «Мои настройки» в самом конце бокового меню (крупный шрифт, вибрация, цвета статусов, экономия батареи).</span>
+                        </div>
+                    </div>
+                    <input type="checkbox" id="pv-my-preferences" style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
+                </div>
                 <div id="page-visibility-grid" class="form-row" style="gap:10px;margin-bottom:16px;">
                     <div class="list-item" onclick="togglePVCheckbox('pv-guide', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
                         <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">📖 <span data-i18n="nav_guide">Книга поля</span></span>
@@ -453,14 +550,14 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.15.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=5"></script>
+<script src="js/utils.js?v=21"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/admin.js"></script>
+<script src="js/admin.js?v=15"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

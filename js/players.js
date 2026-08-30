@@ -6,11 +6,16 @@ document.addEventListener('DOMContentLoaded', function() {
 function onAuthReady(u, d) { navAuth(u, d); }
 
 function loadPlayers() {
-    db.ref('users').on('value', function(sn) {
+    bindRealtimeValue('players-list', db.ref('users'), function(sn) {
         var data = sn.val() || {};
         var el = document.getElementById('players-grid');
         if (!el) return;
-        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+        var entries = Object.entries(data).filter(function(e) {
+            if (!e || !e[1] || typeof e[1] !== 'object') return false;
+            // Удалённые и навсегда заблокированные демо-игроки не показываются
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(e[0], e[1].name)) return false;
+            return true;
+        });
 
         var searchInp = document.getElementById('players-search');
         var query = searchInp ? searchInp.value.trim().toLowerCase() : '';
@@ -30,6 +35,35 @@ function loadPlayers() {
         var filterGender = document.getElementById('filter-gender') ? document.getElementById('filter-gender').value : 'all';
         var filterType = document.getElementById('filter-type') ? document.getElementById('filter-type').value : 'all';
         var sortBy = document.getElementById('sort-by') ? document.getElementById('sort-by').value : 'rounds';
+
+        // Скрываем дубликаты одного игрока (могли остаться от старых guest-записей с разными id):
+        // ключ только по ФИО (имя + отчество + фамилия), без гандикапа — чтобы не было похожих вариантов,
+        // когда имена одинаковые, а гандикапы разные. Приоритет — зарегистрированная запись и большее число раундов.
+        var dedupKeyOf = function(e) {
+            var u = e[1] || {};
+            var fio = '';
+            if (typeof getPlayerFioKey === 'function') {
+                fio = getPlayerFioKey(u);
+            } else {
+                var nm = (u.name || '').toString();
+                fio = (typeof normalizeSearchText === 'function' ? normalizeSearchText(nm) : nm.toLowerCase());
+            }
+            return fio;
+        };
+        var byDedupKey = {};
+        entries.forEach(function(e) {
+            var id = e[0], u = e[1] || {};
+            var isGuest = !!u.isGuest || String(id).indexOf('guest_') === 0;
+            var weight = (isGuest ? 0 : 1000) + (u.roundsPlayed || 0);
+            var key = dedupKeyOf(e);
+            if (!byDedupKey[key] || weight > byDedupKey[key].weight) {
+                byDedupKey[key] = { entry: e, weight: weight };
+            }
+        });
+        entries = entries.filter(function(e) {
+            var best = byDedupKey[dedupKeyOf(e)];
+            return !!best && best.entry[0] === e[0];
+        });
 
         if (filterGender !== 'all') {
             entries = entries.filter(function(e) { return e[1].gender === filterGender; });

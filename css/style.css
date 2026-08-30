@@ -504,6 +504,7 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 .tee-bl{background:#1e5799;color:#fff;border:1px solid #337ab7;}
 .tee-wh{background:#f5f5f0;color:#111;border:1px solid #c9a84c;}
 .tee-rd{background:#900C3F;color:#fff;border:1px solid #c0392b;}
+.round-tee-pills{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;flex-wrap:wrap;}
 
 /* LIGHT SHINE ANIMATION EFFECT FOR LEADER BADGES & CTAs */
 .shine-effect{position:relative;overflow:hidden;}
@@ -515,8 +516,6 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 @keyframes score-bounce{0%{transform:scale(.82);opacity:.5;}50%{transform:scale(1.15);}100%{transform:scale(1);opacity:1;}}
 
 /* VICTORY CONFETTI PARTICLES */
-.confetti-particle{position:fixed;width:8px;height:12px;background:var(--gold);z-index:99999;pointer-events:none;border-radius:2px;animation:confetti-fall 1.8s cubic-bezier(.25,1,.5,1) forwards;}
-@keyframes confetti-fall{0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);}100%{opacity:0;transform:translate(var(--dx),100vh) rotate(720deg) scale(.4);}}
 
 /* HEATMAP COLOR CODING FOR SCORECARDS & TABLES */
 .r-eag,.scorecard td.r-eag,.pc-table td.r-eag{background:rgba(243,156,18,0.25)!important;color:#f39c12!important;font-weight:800;}
@@ -573,7 +572,7 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 @media (min-width:720px){
     .rl-card{padding:18px 20px 16px;}
     .rl-head{margin-bottom:8px;}
-    .rlb-row{grid-template-columns:28px minmax(0,1fr) 56px 46px 46px 62px 62px;gap:2px 10px;padding:8px 4px;}
+    .rlb-row{grid-template-columns:28px minmax(0,1fr) 56px 46px 62px 62px;gap:2px 10px;padding:8px 4px;}
     .rlb-head{display:grid;cursor:default;border-bottom:2px solid var(--gold);padding:0 4px 6px;}
     .rlb-head:hover{background:none;}
     .rlb-head span{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold);text-align:center;align-self:center;}
@@ -606,8 +605,16 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .hole-btn.active{background:linear-gradient(135deg, #c9a84c 0%, #e0c76a 100%);border-color:var(--gold-l);color:var(--bg);box-shadow:0 0 16px rgba(201,168,76,0.5);}
 .hole-btn.done{background:var(--gr-d);border-color:var(--gr-l);color:var(--gr-l);}
 .hole-btn.verified{background:rgba(46,204,113,.15)!important;border-color:#2ecc71!important;color:#2ecc71!important;}
-.hole-btn.mismatch{background:rgba(224,90,74,.15)!important;border-color:var(--red)!important;color:var(--red)!important;animation:blink 1.5s infinite;}
+.hole-btn.mismatch{border-color:var(--red)!important;color:var(--red)!important;animation:cell-mismatch-blink 1.2s ease-in-out infinite;}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* Несовпадение счёта с маркером: ячейка мигает серым, чтобы игроки видели, где расхождение.
+   Анимируются box-shadow + filter, чтобы серая пульсация перекрывала любой фон ячейки. */
+.cell-mismatch{animation:cell-mismatch-blink 1.2s ease-in-out infinite;}
+@keyframes cell-mismatch-blink{
+    0%,100%{box-shadow:inset 0 0 0 999px rgba(174,180,186,.10);filter:none;}
+    50%{box-shadow:inset 0 0 0 999px rgba(174,180,186,.62);filter:grayscale(1) brightness(1.35);}
+}
 
 .score-area{text-align:center;margin:24px 0;}
 .score-disp{font-family:var(--fb);font-variant-numeric:tabular-nums;font-size:64px;font-weight:800;color:var(--white);min-height:80px;display:flex;align-items:center;justify-content:center;text-shadow:0 4px 16px rgba(0,0,0,0.5);}
@@ -842,6 +849,12 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .page-title{font-family:var(--ff);font-size:32px;font-weight:700;color:var(--white);margin-bottom:6px;}
 .page-sub{color:var(--muted);font-size:15px;}
 
+/* ВО ВРЕМЯ РАУНДА блок «Начать раунд» (page-head) скрывается, и фиксированная
+   шапка (nav) начинала перекрывать верх ввода счёта. Компенсируем её высоту
+   отступом main в обоих режимах (одиночный и групповой). Точное значение
+   высоты nav задаётся из JS (--round-nav-offset), 92px — запасной вариант. */
+body.round-active main{padding-top:var(--round-nav-offset,92px)!important;}
+
 .footer{background:var(--gr-d);border-top:1px solid var(--border);padding:50px 0 24px;}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:36px;margin-bottom:36px;}
 .footer-title{font-family:var(--ff);font-size:18px;color:var(--gold);display:flex;align-items:center;gap:8px;margin-bottom:10px;}
@@ -850,6 +863,8 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .footer-link{display:block;color:var(--muted);text-decoration:none;font-size:13px;padding:3px 0;}
 .footer-link:hover{color:var(--gold);}
 .footer-bottom{border-top:1px solid var(--border);padding-top:18px;text-align:center;font-size:12px;color:var(--muted);}
+.site-version{margin-top:8px;font-size:11px;color:var(--gold);font-weight:600;opacity:0.8;}
+.site-version:hover{opacity:1;}
 
 .toast{position:fixed;top:max(80px, calc(env(safe-area-inset-top) + 20px));right:20px;padding:12px 22px;border-radius:var(--rs);font-size:13px;font-weight:600;z-index:9999999!important;transform:translateY(-150%);transition:var(--t);box-shadow:var(--shl);max-width:340px;}
 .t-show{transform:translateY(0);}
@@ -876,7 +891,6 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .marker-score-block{border-top:4px solid #9b59b6;background:linear-gradient(180deg,rgba(155,89,182,0.08) 0%,var(--card) 100%);}
 .dual-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
 .dual-header h3{margin:0;font-size:16px;color:var(--white);display:flex;align-items:center;gap:8px;}
-.net-score-badge{background:rgba(46,204,113,0.15);color:#2ecc71;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;}
 
 /* PWA & iOS INSTALL BANNER */
 .online-indicator{position:fixed;top:70px;left:20px;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:600;z-index:999;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s;background:var(--card);}
@@ -1352,7 +1366,7 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
     color: var(--gold);
     background: rgba(201, 168, 76, 0.15);
 }
-.msc-lbl-bk { color: #f39c12; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
+.msc-lbl-bk { color: #000000; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
 .msc-lbl-bl { color: #3498db; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
 .msc-lbl-wh { color: #ecf0f1; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
 .msc-lbl-rd { color: #e74c3c; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
@@ -1687,6 +1701,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     box-sizing: border-box;
 }
+/* Сетка карточек в модалке печати: на экране — 2 в ряд (как на листе A4) */
+.print-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+@media (max-width: 760px) {
+    .print-cards-grid { grid-template-columns: 1fr; }
+}
+.print-cards-grid .paper-scorecard-wrap { margin-top: 0; }
 .psc-top-header {
     display: flex;
     align-items: center;
@@ -1784,7 +1809,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     gap: 10px;
 }
 
-/* OFFICIAL PRINTABLE SCORECARD STYLES (EXACT 1 PAGE A4 LANDSCAPE FIT) */
+/* OFFICIAL PRINTABLE SCORECARD STYLES: A4 LANDSCAPE, 2 CARDs PER SHEET,
+   ONLY THE CARDS VISIBLE (no nav, modals chrome, buttons or other page content) */
 @media print {
     @page {
         size: A4 landscape;
@@ -1801,49 +1827,85 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
+    /* Прячем ВЕСЬ остальной контент страницы — печатается только карточка */
     body > * {
         display: none !important;
     }
-    #print-modal, #printable-scorecard {
+    /* Модалка печати — только как контейнер; её шапка/кнопки/селекторы не печатаются */
+    #print-modal {
         display: block !important;
-        position: relative !important;
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+    }
+    #print-modal .modal-bg,
+    #print-modal .modal-top-bar,
+    #print-modal .no-print,
+    #print-modal h2,
+    #print-modal .print-toolbar,
+    #print-modal .print-player-select,
+    #print-modal button,
+    #print-modal select {
+        display: none !important;
+    }
+    #print-modal .modal-body {
+        display: block !important;
+        position: static !important;
         inset: auto !important;
         width: 100% !important;
         max-width: 100% !important;
-        margin: 0 auto !important;
-        padding: 0 !important;
-        box-shadow: none !important;
-        border: none !important;
-        background: #ffffff !important;
+        height: auto !important;
+        max-height: none !important;
         overflow: visible !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: #ffffff !important;
     }
-    .modal-bg, .modal-top-bar, .no-print, button, select {
-        display: none !important;
+    /* Сетка карточек: ровно 2 карточки на лист A4 (по 2 в ряд, A4 landscape) */
+    #printable-scorecard {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        grid-auto-rows: auto !important;
+        gap: 6mm !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+        background: #ffffff !important;
     }
     .paper-scorecard-wrap {
-        border: 2px solid #1d3d23 !important;
+        border: 1.5px solid #1d3d23 !important;
         border-radius: 6px !important;
-        padding: 10px 12px !important;
-        margin: 0 auto !important;
+        padding: 8px 9px !important;
+        margin: 0 !important;
         page-break-inside: avoid !important;
-        page-break-after: avoid !important;
-        page-break-before: avoid !important;
+        break-inside: avoid !important;
         box-shadow: none !important;
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
         background: #ffffff !important;
         color: #000000 !important;
+        font-size: 10px !important;
     }
+    .psc-top-header { margin-bottom: 8px !important; }
+    .psc-club-title { font-size: 13px !important; }
+    .psc-club-sub { font-size: 10px !important; }
+    .psc-meta-grid { font-size: 10px !important; margin-bottom: 8px !important; }
+    .psc-meta-table { font-size: 9px !important; }
     .psc-grid-table {
         min-width: 0 !important;
         width: 100% !important;
         table-layout: fixed !important;
+        font-size: 9px !important;
     }
     .psc-grid-table th, .psc-grid-table td {
-        padding: 4px 1px !important;
-        font-size: 10px !important;
+        padding: 3px 1px !important;
+        font-size: 8.5px !important;
     }
+    .psc-row-score td { font-size: 10px !important; }
+    .psc-signatures { font-size: 9px !important; margin-top: 8px !important; padding-top: 6px !important; }
 }
 
 /* FLOATING AUTOCOMPLETE SUGGESTIONS */
@@ -1967,26 +2029,6 @@ body.sun-mode .autocomplete-item.active-keyboard {
 }
 
 /* =========================================
-   MOBILE BOTTOM TAB BAR (PRIMARY NAVIGATION)
-   Полностью отключено: нижнее меню больше не используется.
-   Стили оставлены как no-op, чтобы старый CSS/JS-код не падал.
-   ========================================= */
-.bottom-tabbar {
-    display: none !important;
-}
-.bottom-tab {
-    /* на случай если элемент попадёт в DOM — скрываем визуально */
-    display: none !important;
-}
-/* снимаем отступы, которые раньше навешивались на body из-за таб-бара */
-body.has-bottom-tabbar { padding-bottom: 0 !important; }
-body.has-bottom-tabbar .footer { padding-bottom: 24px !important; }
-body.has-bottom-tabbar .offline-queue-badge { bottom: 24px !important; }
-body.has-bottom-tabbar .install-banner.show { bottom: 20px !important; }
-body.has-bottom-tabbar .ios-install-banner.show { bottom: 20px !important; }
-body.has-bottom-tabbar .online-indicator { top: 70px !important; }
-
-/* =========================================
    MOBILE-FIRST FORM & CONTROL POLISH
    ========================================= */
 @media (max-width: 768px) {
@@ -2011,3 +2053,1338 @@ body.has-bottom-tabbar .online-indicator { top: 70px !important; }
 
 /* paper scorecard label alignment polish */
 .psc-lbl-bold{text-align:left!important;padding-left:6px!important;font-weight:700;}
+
+/* RUSGOLF sync result lists */
+.rg-sync-results{margin-top:16px;}
+.rg-sync-section{margin-bottom:14px;}
+.rg-sync-list{max-height:280px;overflow:auto;}
+.rg-sync-row{padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:rgba(255,255,255,0.03);font-size:13px;color:var(--white);}
+
+
+/* ===== v1.7.0: mobile accessibility and safe-area polish ===== */
+html, body { max-width: 100%; overflow-x: clip; }
+button, input, select, textarea { font: inherit; }
+button, .btn, a { -webkit-tap-highlight-color: transparent; }
+.footer { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.site-version { overflow-wrap: anywhere; }
+.modal-body { max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
+.mobile-drawer-panel { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+
+@media (max-width: 480px) {
+    .container { padding-left: 14px; padding-right: 14px; }
+    .card, .setup-card, .auth-card { padding-left: 16px; padding-right: 16px; }
+    .hero { padding-left: 14px; padding-right: 14px; }
+    .hero-btns, .modal-actions { width: 100%; }
+    .hero-btns .btn, .modal-actions .btn { flex: 1 1 100%; }
+    .admin-tabs { scrollbar-width: thin; }
+    .footer-bottom { gap: 6px; text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* =========================================
+   PACE OF PLAY / GROUP MONITORING
+   ========================================= */
+.pace-assistant {
+    --pace-color: var(--gold);
+    border: 2px solid var(--pace-color);
+    border-left-width: 6px;
+    border-radius: var(--r);
+    background: var(--card);
+    padding: 13px 15px;
+    margin: 12px 0 16px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.18);
+}
+.pace-state-ok { --pace-color: #2ecc71; }
+.pace-state-warning { --pace-color: #f39c12; }
+.pace-state-late { --pace-color: #e67e22; }
+.pace-state-severe { --pace-color: #e05a4a; }
+.pace-state-pending { --pace-color: #9eb5a5; }
+.pace-assistant-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    color:var(--pace-color);
+    font-size:14px;
+}
+.pace-status-label {
+    font-size:11px;
+    font-weight:800;
+    padding:4px 9px;
+    border-radius:999px;
+    border:1px solid var(--pace-color);
+    color:var(--pace-color);
+    background:color-mix(in srgb, var(--pace-color) 14%, transparent);
+}
+.pace-assistant-grid {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin-top:12px;
+}
+.pace-assistant-grid > div {
+    background:var(--input);
+    border:1px solid var(--border);
+    border-radius:var(--rs);
+    padding:8px 7px;
+    text-align:center;
+}
+.pace-assistant-grid span {
+    display:block;
+    color:var(--muted);
+    font-size:10px;
+    margin-bottom:3px;
+}
+.pace-assistant-grid b {
+    display:block;
+    color:var(--pace-color);
+    font-size:16px;
+    line-height:1.2;
+}
+.pace-assistant-deadline {
+    color:var(--muted);
+    font-size:12px;
+    margin-top:10px;
+}
+.pace-assistant-deadline b { color:var(--pace-color); }
+.pace-note {
+    color:var(--muted);
+    font-size:11px;
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px solid var(--border);
+}
+.pace-timeline {
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:10px;
+}
+.pace-hole {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:30px;
+    padding:5px 8px;
+    border-radius:8px;
+    border:1px solid var(--pace-color, var(--border));
+    color:var(--pace-color, var(--muted));
+    background:color-mix(in srgb, var(--pace-color, #9eb5a5) 12%, transparent);
+    font-size:11px;
+    font-weight:700;
+    white-space:nowrap;
+}
+.pace-hole-ok { --pace-color:#2ecc71; }
+.pace-hole-warning { --pace-color:#f39c12; }
+.pace-hole-late { --pace-color:#e67e22; }
+.pace-hole-severe { --pace-color:#e05a4a; }
+.pace-hole-pending { --pace-color:#9eb5a5; opacity:.65; }
+.admin-group-card {
+    border:2px solid var(--pace-color, var(--border));
+    border-left-width:6px;
+    border-radius:var(--r);
+    background:var(--card);
+    padding:15px;
+    margin-bottom:12px;
+}
+.admin-group-card-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    flex-wrap:wrap;
+}
+.admin-group-card-header h3 { color:var(--white); font-size:16px; margin:0; }
+.admin-group-players { color:var(--gold); font-size:13px; margin-top:4px; }
+.admin-group-status {
+    color:var(--pace-color);
+    border:1px solid var(--pace-color);
+    border-radius:999px;
+    padding:4px 9px;
+    font-size:10px;
+    font-weight:800;
+    white-space:nowrap;
+}
+.admin-group-meta {
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:7px;
+    margin-top:12px;
+}
+.admin-group-meta > div {
+    background:var(--input);
+    border:1px solid var(--border);
+    border-radius:var(--rs);
+    padding:8px 7px;
+}
+.admin-group-meta span { display:block; color:var(--muted); font-size:10px; margin-bottom:2px; }
+.admin-group-meta b { color:var(--white); font-size:13px; }
+.admin-group-delay { color:var(--pace-color)!important; }
+.admin-group-timeline-title { color:var(--muted); font-size:12px; font-weight:700; margin-top:14px; }
+
+/* =========================================
+   PLAYER MODES: LARGE UI, STATUS CONTRAST, BATTERY
+   ========================================= */
+.player-modes {
+    background:var(--input);
+    border:1px solid var(--border);
+    border-radius:var(--rs);
+    padding:10px;
+    margin-bottom:12px;
+}
+.player-modes-title { color:var(--gold); font-size:12px; font-weight:800; margin-bottom:6px; }
+.player-mode-row {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:7px 0;
+    border-top:1px solid rgba(255,255,255,.06);
+    color:var(--text);
+    font-size:11px;
+}
+.player-mode-row:first-of-type { border-top:0; }
+.player-mode-row > span { display:flex; align-items:center; gap:6px; min-width:0; }
+.player-mode-row i { color:var(--gold); width:14px; text-align:center; }
+.player-mode-button {
+    min-width:50px;
+    min-height:28px;
+    padding:3px 8px;
+    border:1px solid var(--border);
+    border-radius:999px;
+    background:transparent;
+    color:var(--muted);
+    font-size:10px;
+    font-weight:800;
+    cursor:pointer;
+}
+.player-mode-button.active { color:#0b1a0e; background:#2ecc71; border-color:#2ecc71; }
+body.large-ui { font-size:17px; }
+body.large-ui .btn, body.large-ui .nav-link, body.large-ui .form-input { font-size:inherit; }
+body.large-ui .btn { min-height:52px; }
+body.large-ui .btn-sm { min-height:46px; font-size:14px; }
+body.large-ui .hole-btn { min-height:48px; font-size:14px; }
+body.large-ui .score-minus, body.large-ui .score-plus { width:76px; height:76px; font-size:34px; }
+body.large-ui .score-par-btn { min-height:54px; font-size:16px; }
+body.large-ui .score-disp { font-size:78px; }
+body.large-ui .pace-assistant-grid span, body.large-ui .admin-group-meta span { font-size:12px; }
+body.large-ui .pace-assistant-grid b, body.large-ui .admin-group-meta b { font-size:18px; }
+body.high-contrast-status .verify-ok,
+body.high-contrast-status .verify-wait,
+body.high-contrast-status .verify-fail,
+body.high-contrast-status .timing-ok,
+body.high-contrast-status .timing-warn,
+body.high-contrast-status .timing-late {
+    border-width:3px;
+    font-weight:800;
+}
+body.high-contrast-status .verify-ok, body.high-contrast-status .timing-ok { background:#073d1d; color:#7dffae; border-color:#2ecc71; }
+body.high-contrast-status .verify-wait, body.high-contrast-status .timing-warn { background:#4b3000; color:#ffd66b; border-color:#f39c12; }
+body.high-contrast-status .verify-fail, body.high-contrast-status .timing-late { background:#580f0b; color:#ffaaa1; border-color:#ff6254; }
+body.high-contrast-status .hole-btn.done { background:#073d1d!important; color:#7dffae!important; border:2px solid #2ecc71!important; }
+body.high-contrast-status .hole-btn.verified { background:#064c26!important; color:#baffcc!important; border:3px solid #2ecc71!important; }
+body.high-contrast-status .hole-btn.mismatch { background:#580f0b!important; color:#ffaaa1!important; border:3px solid #ff6254!important; }
+body.high-contrast-status .r-bir, body.high-contrast-status .badge-bir { background:#073d1d!important; color:#7dffae!important; border:2px solid #2ecc71!important; }
+body.high-contrast-status .r-dbl, body.high-contrast-status .badge-dbl { background:#580f0b!important; color:#ffaaa1!important; border:2px solid #ff6254!important; }
+body.high-contrast-status .pace-hole { border-width:2px; font-weight:900; }
+body.battery-saver *, body.battery-saver *::before, body.battery-saver *::after {
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.08s!important;
+}
+body.battery-saver .skeleton { animation:none!important; }
+body.battery-saver .live-dot { animation:none!important; opacity:1; }
+body.battery-saver .weather-widget { backdrop-filter:none; -webkit-backdrop-filter:none; }
+
+@media (max-width:640px) {
+    .pace-assistant-grid { grid-template-columns:repeat(3,1fr); gap:5px; }
+    .pace-assistant-grid > div { padding:7px 4px; }
+    .pace-assistant-grid b { font-size:14px; }
+    .admin-group-meta { grid-template-columns:repeat(2,1fr); }
+    .admin-group-card { padding:12px; }
+}
+@media (max-width:380px) {
+    .pace-assistant { padding:11px 10px; }
+    .pace-assistant-header { font-size:12px; }
+    .pace-status-label { font-size:9px; }
+    .pace-assistant-grid span { font-size:9px; }
+    .pace-assistant-grid b { font-size:12px; }
+    .pace-hole { padding:4px 6px; font-size:10px; }
+}
+
+/* OFFICIAL CALL STATUS / FIVE-MINUTE COOLDOWN */
+.official-call-btn:disabled {
+    cursor:not-allowed;
+    opacity:.96;
+    transform:none!important;
+}
+.official-call-btn.official-call-sent {
+    background:linear-gradient(135deg,#8d4a18,#b86d21)!important;
+    color:#fff!important;
+    border-color:#f39c12!important;
+}
+.official-call-btn.official-call-accepted {
+    background:linear-gradient(135deg,#197a43,#2ecc71)!important;
+    color:#fff!important;
+    border-color:#7dffae!important;
+}
+.official-call-status {
+    padding:9px 12px;
+    margin:0 0 8px;
+    border-radius:var(--rs);
+    font-size:12px;
+    line-height:1.5;
+    text-align:center;
+}
+.official-call-status.sent {
+    color:#ffd66b;
+    background:rgba(243,156,18,.12);
+    border:1px solid rgba(243,156,18,.5);
+}
+.official-call-status.accepted {
+    color:#7dffae;
+    background:rgba(46,204,113,.12);
+    border:2px solid rgba(46,204,113,.55);
+}
+body.high-contrast-status .official-call-status.sent { color:#ffe699; background:#4b3000; border:2px solid #f39c12; }
+body.high-contrast-status .official-call-status.accepted { color:#baffcc; background:#073d1d; border:3px solid #2ecc71; }
+.resume-round-meta {
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px 12px;
+    margin-top:8px;
+    color:var(--muted);
+    font-size:12px;
+}
+.resume-round-meta b { color:var(--text); }
+.resume-round-button { white-space:nowrap; }
+
+.player-modes-launcher {
+    background:none;
+    border:1px solid var(--border);
+    color:var(--gold);
+    padding:5px 9px;
+    border-radius:20px;
+    font-size:11px;
+    font-weight:700;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:30px;
+    min-height:28px;
+}
+.player-modes-launcher:hover { background:var(--card-h); }
+
+body.high-contrast-status .cell-mismatch {
+    animation:none!important;
+    filter:none!important;
+    box-shadow:inset 0 0 0 999px rgba(255,80,60,.34)!important;
+    outline:3px solid #ff6254;
+    outline-offset:-3px;
+}
+@media (max-width:768px) {
+    body.large-ui .form-input,
+    body.large-ui select.form-input,
+    body.large-ui input[type="text"],
+    body.large-ui input[type="number"],
+    body.large-ui input[type="time"],
+    body.large-ui input[type="date"],
+    body.large-ui input[type="password"],
+    body.large-ui input[type="email"] {
+        min-height:52px!important;
+        height:52px!important;
+        font-size:18px!important;
+    }
+    body.large-ui .btn { min-height:54px; }
+    body.large-ui .btn-sm { min-height:48px; font-size:14px!important; }
+}
+
+.resume-progress-track {
+    height:6px;
+    width:100%;
+    background:var(--border);
+    border-radius:999px;
+    overflow:hidden;
+    margin-top:9px;
+}
+.resume-progress-track span { display:block; height:100%; border-radius:inherit; min-width:0; transition:width .25s ease; }
+
+/* =========================================
+   v1.10.0: COURSE CARD MOBILE FIX, HOLE OCCUPANCY STRIP, HCP MARKS
+   ========================================= */
+
+/* --- Карточка поля: 100% fit без обрезки последнего столбца --- */
+.msc-tile { min-width: 0 !important; overflow: hidden; white-space: nowrap; }
+.msc-total-long { display: inline; }
+.msc-total-short { display: none; font-weight: 900; }
+
+@media (max-width: 600px) {
+    .msc-grid-9 {
+        grid-template-columns: 1.6fr repeat(9, minmax(0,1fr)) 1.2fr !important;
+        gap: 2px !important;
+    }
+    .msc-grid-10 {
+        grid-template-columns: 1.6fr repeat(9, minmax(0,1fr)) 1.05fr 1.3fr !important;
+        gap: 2px !important;
+    }
+    .msc-tile {
+        font-size: 8px !important;
+        padding: 3px 0 !important;
+        border-radius: 3px;
+    }
+    .msc-tile-top { font-size: 8px; }
+    .msc-tile-bot { font-size: 8px; }
+    .msc-total-long { display: none; }
+    .msc-total-short { display: inline; }
+}
+
+/* --- Полоса занятости лунок «Сейчас на поле» (18 лунок) --- */
+#course-holes-strip {
+    background: rgba(19, 34, 24, 0.85);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: var(--r);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+}
+.chs-legend {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 10px;
+}
+.chs-legend-item { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+.chs-legend-item b { font-size: 13px; color: var(--white); }
+.chs-free-lg .chs-dot { color: #2ecc71; }
+.chs-busy-lg .chs-dot { color: var(--red); }
+.chs-legend-item i { font-size: 8px; }
+.chs-count { margin-left: auto; color: var(--gold); font-weight: 700; font-size: 11px; }
+
+.chs-grid {
+    display: grid;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    gap: 5px;
+}
+@media (min-width: 600px) {
+    .chs-grid { grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 6px; }
+}
+.chs-cell {
+    position: relative;
+    background: rgba(46, 204, 113, 0.08);
+    border: 1px solid rgba(46, 204, 113, 0.35);
+    border-radius: 8px;
+    padding: 6px 2px 5px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+}
+.chs-cell.chs-busy {
+    background: rgba(224, 90, 74, 0.14);
+    border-color: rgba(224, 90, 74, 0.6);
+    box-shadow: 0 0 10px rgba(224, 90, 74, 0.25);
+}
+.chs-n {
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--white);
+}
+.chs-cell.chs-free .chs-n { color: var(--muted); }
+.chs-cell.chs-busy .chs-n { color: var(--red); }
+.chs-dot { font-size: 7px; line-height: 1; font-style: normal; }
+.chs-free .chs-dot { color: #2ecc71; }
+.chs-busy .chs-dot { color: var(--red); }
+.chs-dot.chs-live { animation: pulse 1.5s infinite; }
+.chs-cnt {
+    position: absolute;
+    top: -6px;
+    right: -4px;
+    background: var(--red);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    min-width: 15px;
+    height: 15px;
+    line-height: 15px;
+    border-radius: 8px;
+    padding: 0 3px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+body.sun-mode #course-holes-strip {
+    background: #ffffff;
+    border: 2px solid #000000;
+}
+body.sun-mode .chs-cell.chs-free { background: #e8f5e9; border-color: #2e7d32; }
+body.sun-mode .chs-cell.chs-busy { background: #ffebee; border-color: #c62828; }
+body.sun-mode .chs-cell.chs-busy .chs-n,
+body.sun-mode .chs-busy-lg .chs-dot,
+body.sun-mode .chs-busy .chs-dot { color: #c62828; }
+body.sun-mode .chs-cell.chs-free .chs-n { color: #333333; }
+body.sun-mode .chs-free-lg .chs-dot { color: #2e7d32; }
+body.sun-mode .chs-legend-item b, body.sun-mode .chs-n { color: #000000; }
+body.sun-mode .chs-count { color: #1b5e20; }
+
+/* --- Чёрточки полевой форы в квадратике с номером лунки (ввод счёта) --- */
+.hole-btn { flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.hbn-line { display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 3px; line-height: 1; }
+.hcp-marks {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5px;
+    margin-left: 1px;
+}
+.hm-bar {
+    display: block;
+    width: 7px;
+    height: 2.5px;
+    border-radius: 2px;
+    background: var(--gold-l, var(--gold));
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+}
+.hcp-marks.hm-minus .hm-bar { background: var(--blue); }
+.hole-btn.done .hm-bar { background: var(--gold-l, var(--gold)); }
+.hole-btn.active .hm-bar,
+.hole-btn.active.done .hm-bar,
+.hole-btn.active.verified .hm-bar,
+.hole-btn.active.mismatch .hm-bar { background: #0b1a0e !important; }
+body.sun-mode .hole-btn .hm-bar { background: #8a6d1f; }
+body.sun-mode .hole-btn.active .hm-bar { background: #0b1a0e !important; }
+
+@media (max-width: 480px) {
+    .hm-bar { width: 6px; height: 2px; }
+    .hcp-marks { gap: 1px; margin-left: 1px; }
+    .hbn-line { gap: 2px; }
+}
+
+/* =========================================
+   v1.11.0: LATEST TEE STARTS & STABLEFORD DISPLAY
+   ========================================= */
+
+/* --- Последние старты с 1-го и 10-го ти в блоке «Сейчас на поле» --- */
+.chs-starts {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin: -2px 0 11px;
+    color: var(--muted);
+    font-size: 11px;
+}
+.chs-starts-title {
+    color: var(--gold);
+    font-weight: 700;
+    margin-right: 2px;
+}
+.chs-start-pill {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 3px 7px;
+    border: 1px solid rgba(201, 168, 76, 0.26);
+    border-radius: 999px;
+    background: rgba(201, 168, 76, 0.07);
+    font-variant-numeric: tabular-nums;
+}
+.chs-start-pill span { color: var(--muted); }
+.chs-start-pill b { color: var(--white); font-size: 12px; letter-spacing: .15px; }
+body.sun-mode .chs-starts-title { color: #1b5e20; }
+body.sun-mode .chs-start-pill { background: #fffdf3; border-color: #8a6d1f; }
+body.sun-mode .chs-start-pill b { color: #000; }
+
+/* --- Вертикальные индикаторы полевой форы в правом верхнем углу лунки --- */
+.hole-btn { position: relative; }
+.hole-btn .hcp-marks {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 2px;
+    margin: 0;
+    line-height: 1;
+}
+.hole-btn .hm-bar {
+    display: block;
+    width: 1.5px;
+    height: 9px;
+    border-radius: 2px;
+    transform: rotate(14deg);
+    transform-origin: center;
+    background: var(--gold-l, var(--gold));
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.38);
+}
+@media (max-width: 480px) {
+    .hole-btn .hcp-marks { top: 3px; right: 3px; gap: 1.5px; }
+    .hole-btn .hm-bar { width: 1px; height: 7px; }
+}
+
+/* --- Gross + Stableford в крупном индикаторе введённого счёта --- */
+.score-disp { gap: 8px; }
+.score-gross { font-variant-numeric: tabular-nums; }
+.score-stableford-points {
+    color: var(--gold-l);
+    font-family: var(--ff);
+    font-size: .32em;
+    font-weight: 700;
+    line-height: 1.12;
+    max-width: 9em;
+    text-align: left;
+    text-shadow: none;
+}
+body.sun-mode .score-stableford-points { color: #705313; }
+
+/* Личная настройка доступна после кнопки завершения раунда. */
+.stableford-display-control {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 12px 0 20px;
+    padding: 12px 14px;
+    border: 1px solid rgba(201, 168, 76, .32);
+    border-radius: var(--rs);
+    background: rgba(201, 168, 76, .07);
+    color: var(--text);
+    cursor: pointer;
+}
+.stableford-display-control input {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 auto;
+    margin: 1px 0 0;
+    accent-color: var(--gold);
+    cursor: pointer;
+}
+.stableford-display-control strong {
+    display: block;
+    color: var(--gold-l);
+    font-size: 13px;
+}
+.stableford-display-control small {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.35;
+}
+.stableford-display-control.is-disabled { opacity: .58; cursor: default; }
+body.sun-mode .stableford-display-control { background: #fffdf3; border-color: #8a6d1f; }
+body.sun-mode .stableford-display-control strong { color: #1b5e20; }
+
+/* =========================================
+   v1.12.0: СОХРАНЕНИЕ ТОЛЬКО ПО КНОПКЕ, КОМПАКТНЫЕ КАРТОЧКИ, ПОЛЕВОЙ HCP И ПОДСКАЗКА СТАРТА
+   ========================================= */
+
+/* --- Чип с полевым (игровым) гандикапом рядом с именем игрока (главная) --- */
+.hcp-chip {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(90, 173, 224, 0.35);
+    background: rgba(90, 173, 224, 0.1);
+    color: var(--blue);
+    font-size: 9.5px;
+    font-weight: 700;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+body.sun-mode .hcp-chip { background: #e3f0fb; border-color: #1976d2; }
+
+/* --- Тайлы счётной карточки: фора вертикальными чёрточками, как при вводе счёта --- */
+.noscroll-tile { position: relative; }
+.noscroll-tile .hcp-marks {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 2px;
+    margin: 0;
+    line-height: 1;
+}
+.noscroll-tile .hm-bar {
+    display: block;
+    width: 1.5px;
+    height: 8px;
+    border-radius: 2px;
+    transform: rotate(14deg);
+    transform-origin: center;
+    background: var(--gold-l, var(--gold));
+}
+.noscroll-tile .hcp-marks.hm-minus .hm-bar { background: var(--blue); }
+.noscroll-hole {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: var(--muted);
+    font-weight: 600;
+}
+.noscroll-tile-bot {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 3px;
+    font-size: 9px;
+    color: var(--muted);
+    line-height: 1.2;
+}
+.noscroll-idx { font-variant-numeric: tabular-nums; }
+.noscroll-stbl { color: #2ecc71; font-weight: 700; font-variant-numeric: tabular-nums; }
+body.sun-mode .noscroll-tile .hm-bar { background: #8a6d1f; }
+
+.msc-tile { position: relative; }
+.msc-tile .hcp-marks {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 2px;
+    margin: 0;
+    line-height: 1;
+}
+.msc-tile .hm-bar {
+    display: block;
+    width: 1.5px;
+    height: 8px;
+    border-radius: 2px;
+    transform: rotate(14deg);
+    transform-origin: center;
+    background: var(--gold-l, var(--gold));
+}
+.msc-tile .hcp-marks.hm-minus .hm-bar { background: var(--blue); }
+.msc-tile .msc-hole-idx { font-variant-numeric: tabular-nums; }
+body.sun-mode .msc-tile .hm-bar { background: #8a6d1f; }
+
+/* --- Подсказка о несохранённом счёте (автосохранения больше нет) --- */
+.unsaved-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 9px 12px;
+    border-radius: var(--rs);
+    border: 1px solid rgba(243, 156, 18, 0.45);
+    background: rgba(243, 156, 18, 0.12);
+    color: var(--yellow);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+.btn.has-unsaved {
+    border: 1px solid var(--yellow);
+    animation: unsaved-pulse 1.6s ease-in-out infinite;
+}
+@keyframes unsaved-pulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(243, 156, 18, 0.2); }
+    50% { box-shadow: 0 0 18px rgba(243, 156, 18, 0.55); }
+}
+body.sun-mode .unsaved-hint { background: #fff7e0; border-color: #8a6d1f; color: #7a5c00; }
+
+/* --- Разворачиваемая подсказка «С какой лунки лучше стартовать» --- */
+.chs-hint {
+    margin-top: 10px;
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: var(--rs);
+    background: rgba(201, 168, 76, 0.06);
+    overflow: hidden;
+}
+.chs-hint-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 12px;
+    background: transparent;
+    border: none;
+    color: var(--gold);
+    font-family: var(--fb);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+    transition: var(--t);
+}
+.chs-hint-toggle:hover { background: rgba(201, 168, 76, 0.08); }
+.chs-hint-title { display: flex; align-items: center; gap: 7px; }
+.chs-hint-toggle > i { font-size: 11px; color: var(--muted); }
+.chs-hint-body {
+    padding: 2px 12px 12px;
+    border-top: 1px dashed rgba(201, 168, 76, 0.25);
+}
+.chs-hint-reco {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 0 8px;
+}
+.chs-hint-start {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 600;
+}
+.chs-hint-start i { color: #2ecc71; }
+.chs-hint-start b {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(46, 204, 113, 0.15);
+    border: 1px solid rgba(46, 204, 113, 0.45);
+    color: #2ecc71;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.chs-hint-why { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+.chs-hint-nines {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
+}
+.chs-hint-nine {
+    border: 1px solid var(--border);
+    border-radius: var(--rs);
+    background: var(--input);
+    padding: 8px 10px;
+}
+.chs-hint-nine.is-better {
+    border-color: rgba(46, 204, 113, 0.55);
+    background: rgba(46, 204, 113, 0.08);
+}
+.chs-hint-nine-t {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--white);
+    margin-bottom: 6px;
+}
+.chs-hint-nine.is-better .chs-hint-nine-t { color: #2ecc71; }
+.chs-hint-nine-stats { display: flex; gap: 8px; }
+.chs-hint-stat { flex: 1; text-align: center; }
+.chs-hint-stat b {
+    display: block;
+    font-size: 15px;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+.chs-hint-stat span { font-size: 9.5px; color: var(--muted); }
+.chs-hint-note { margin-top: 9px; font-size: 10.5px; color: var(--muted); line-height: 1.45; }
+body.sun-mode .chs-hint { background: #fffdf3; border-color: #8a6d1f; }
+body.sun-mode .chs-hint-toggle { color: #1b5e20; }
+body.sun-mode .chs-hint-nine { background: #ffffff; }
+body.sun-mode .chs-hint-nine.is-better { background: #e8f5e9; }
+body.sun-mode .chs-hint-why { color: #333333; }
+
+/* =========================================
+   v1.13.0: ВСЕГО ИГРОКОВ НА ПОЛЕ + ТОЧНЫЙ ГАНДИКАП В КАРТОЧКАХ
+   ========================================= */
+
+/* --- Акцентная строка «Всего игроков на поле» (вариант B) --- */
+.chs-total-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    border-radius: var(--rs);
+    background: linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.06));
+    border: 1px solid rgba(201,168,76,0.35);
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 10px rgba(201,168,76,0.12);
+}
+.chs-total-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(201,168,76,0.18);
+    border: 1px solid rgba(201,168,76,0.35);
+    color: var(--gold);
+    font-size: 13px;
+    flex-shrink: 0;
+}
+.chs-total-lbl {
+    color: var(--gold);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 12px;
+}
+.chs-total-val {
+    margin-left: 2px;
+    color: var(--white);
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 6px rgba(201,168,76,0.35);
+}
+
+.chs-legend-detailed {
+    gap: 10px 14px;
+}
+.chs-total-lg .chs-dot {
+    color: var(--gold);
+}
+.chs-legend-detailed .chs-legend-item {
+    font-size: 11.5px;
+}
+.chs-legend-detailed .chs-legend-item b {
+    font-size: 14px;
+}
+
+/* --- Чип точного гандикапа (золотой) рядом с полевым (синий) --- */
+.hcp-chip-exact {
+    border-color: rgba(201,168,76,0.45);
+    background: rgba(201,168,76,0.14);
+    color: var(--gold-l);
+}
+body.sun-mode .hcp-chip-exact {
+    background: #fff8e1;
+    border-color: #8a6d1f;
+    color: #5d4037;
+}
+
+/* На мобильных бейджи переносятся аккуратно */
+.round-p-n {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 0;
+}
+.round-p-n .tee-pill,
+.round-p-n .hcp-chip {
+    margin-left: 6px;
+}
+@media (max-width: 480px) {
+    .chs-total-bar {
+        padding: 9px 12px;
+        font-size: 12px;
+    }
+    .chs-total-val {
+        font-size: 20px;
+    }
+    .chs-legend-detailed {
+        gap: 8px 10px;
+    }
+    .round-p-n {
+        font-size: 13px !important;
+    }
+}
+
+body.sun-mode .chs-total-bar {
+    background: #fffdf3;
+    border-color: #8a6d1f;
+    color: #000;
+    box-shadow: none;
+}
+body.sun-mode .chs-total-icon {
+    background: #fff8e1;
+    border-color: #8a6d1f;
+    color: #5d4037;
+}
+body.sun-mode .chs-total-lbl {
+    color: #1b5e20;
+}
+body.sun-mode .chs-total-val {
+    color: #000;
+    text-shadow: none;
+}
+
+/* =========================================
+   v1.14.0: ЕДИНЫЙ БЛОК «СЕЙЧАС НА ПОЛЕ» + ЦВЕТОВАЯ ГРАДАЦИЯ ПО ГАНДИКАПУ
+   ========================================= */
+
+/* --- Блок «Сейчас на поле» без дублирования статистики --- */
+.chs-starts {
+    margin-top: -4px;
+}
+.chs-total-bar {
+    margin-bottom: 10px;
+}
+
+/* --- Цветовая градация игрового гандикапа: +/- (скретч), 1–10, 11–20, 21–36, 37+ --- */
+.hcp-chip.hcp-band-plus {
+    border-color: rgba(79, 195, 247, 0.45);
+    background: rgba(79, 195, 247, 0.12);
+    color: #4fc3f7;
+}
+.hcp-chip.hcp-band-1-10 {
+    border-color: rgba(46, 204, 113, 0.45);
+    background: rgba(46, 204, 113, 0.12);
+    color: #2ecc71;
+}
+.hcp-chip.hcp-band-11-20 {
+    border-color: rgba(224, 199, 106, 0.48);
+    background: rgba(224, 199, 106, 0.13);
+    color: #e0c76a;
+}
+.hcp-chip.hcp-band-21-36 {
+    border-color: rgba(243, 156, 18, 0.5);
+    background: rgba(243, 156, 18, 0.14);
+    color: #f39c12;
+}
+.hcp-chip.hcp-band-37 {
+    border-color: rgba(224, 90, 74, 0.5);
+    background: rgba(224, 90, 74, 0.14);
+    color: #e05a4a;
+}
+.hcp-chip.hcp-band-unknown {
+    border-color: rgba(158, 181, 165, 0.4);
+    background: rgba(158, 181, 165, 0.1);
+    color: #9eb5a5;
+}
+
+/* --- Та же шкала в заголовке счётной карточки --- */
+.msc-pill.hcp-band-plus {
+    background: rgba(79, 195, 247, 0.12);
+    border: 1px solid rgba(79, 195, 247, 0.45);
+    border-left: 3px solid #4fc3f7;
+    color: #4fc3f7;
+}
+.msc-pill.hcp-band-1-10 {
+    background: rgba(46, 204, 113, 0.12);
+    border: 1px solid rgba(46, 204, 113, 0.45);
+    border-left: 3px solid #2ecc71;
+    color: #2ecc71;
+}
+.msc-pill.hcp-band-11-20 {
+    background: rgba(224, 199, 106, 0.13);
+    border: 1px solid rgba(224, 199, 106, 0.48);
+    border-left: 3px solid #e0c76a;
+    color: #e0c76a;
+}
+.msc-pill.hcp-band-21-36 {
+    background: rgba(243, 156, 18, 0.14);
+    border: 1px solid rgba(243, 156, 18, 0.5);
+    border-left: 3px solid #f39c12;
+    color: #f39c12;
+}
+.msc-pill.hcp-band-37 {
+    background: rgba(224, 90, 74, 0.14);
+    border: 1px solid rgba(224, 90, 74, 0.5);
+    border-left: 3px solid #e05a4a;
+    color: #e05a4a;
+}
+.msc-pill.hcp-band-unknown {
+    background: rgba(158, 181, 165, 0.1);
+    border: 1px solid rgba(158, 181, 165, 0.4);
+    border-left: 3px solid #9eb5a5;
+    color: #9eb5a5;
+}
+
+/* --- Светлый режим: те же диапазоны, но с ясным контрастом --- */
+body.sun-mode .hcp-chip.hcp-band-plus {
+    background: #e3f2fd;
+    border-color: #0277bd;
+    color: #01579b;
+}
+body.sun-mode .hcp-chip.hcp-band-1-10 {
+    background: #e8f5e9;
+    border-color: #2e7d32;
+    color: #1b5e20;
+}
+body.sun-mode .hcp-chip.hcp-band-11-20 {
+    background: #fff8e1;
+    border-color: #8a6d1f;
+    color: #5d4037;
+}
+body.sun-mode .hcp-chip.hcp-band-21-36 {
+    background: #fff3e0;
+    border-color: #e65100;
+    color: #bf360c;
+}
+body.sun-mode .hcp-chip.hcp-band-37 {
+    background: #ffebee;
+    border-color: #b71c1c;
+    color: #8e0000;
+}
+body.sun-mode .hcp-chip.hcp-band-unknown {
+    background: #eceff1;
+    border-color: #607d8b;
+    color: #37474f;
+}
+body.sun-mode .msc-pill.hcp-band-plus {
+    background: #e3f2fd;
+    border-color: #0277bd;
+    color: #01579b;
+}
+body.sun-mode .msc-pill.hcp-band-1-10 {
+    background: #e8f5e9;
+    border-color: #2e7d32;
+    color: #1b5e20;
+}
+body.sun-mode .msc-pill.hcp-band-11-20 {
+    background: #fff8e1;
+    border-color: #8a6d1f;
+    color: #5d4037;
+}
+body.sun-mode .msc-pill.hcp-band-21-36 {
+    background: #fff3e0;
+    border-color: #e65100;
+    color: #bf360c;
+}
+body.sun-mode .msc-pill.hcp-band-37 {
+    background: #ffebee;
+    border-color: #b71c1c;
+    color: #8e0000;
+}
+body.sun-mode .msc-pill.hcp-band-unknown {
+    background: #eceff1;
+    border-color: #607d8b;
+    color: #37474f;
+}
+
+/* ==========================================
+   БЛОК «СЕЙЧАС НА ПОЛЕ»: ТЕКУЩИЙ РАУНД РАЗВЁРНУТ,
+   ОСТАЛЬНЫЕ РАУНДЫ — СВОРАЧИВАЮТСЯ / РАЗВОРАЧИВАЮТСЯ
+   ========================================== */
+.live-rounds-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 0 0 14px;
+    padding: 10px 14px;
+    background: rgba(201, 168, 76, 0.07);
+    border: 1px solid rgba(201, 168, 76, 0.22);
+    border-radius: var(--rs);
+}
+.live-rounds-toolbar .lrt-hint {
+    font-size: 11.5px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.live-rounds-toolbar .lrt-hint i { color: var(--gold); }
+.live-rounds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+.live-rounds-grid .round-card { margin-bottom: 0; }
+/* Развёрнутый раунд занимает всю ширину ряда — это «колонка сейчас на поле» */
+.live-round-card.is-expanded {
+    grid-column: 1 / -1;
+    border-color: var(--gold);
+    box-shadow: 0 6px 24px rgba(201, 168, 76, 0.16);
+}
+.live-round-card.is-collapsed { padding: 12px 14px; }
+.live-round-card.is-collapsed:hover { border-color: var(--gold); }
+.live-round-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.live-round-toggle .lrt-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+.live-round-chev { color: var(--gold); font-size: 14px; flex: 0 0 auto; }
+.live-round-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(201, 168, 76, 0.14);
+    color: var(--gold);
+    border: 1px solid rgba(201, 168, 76, 0.35);
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+}
+.live-round-tag-my {
+    background: rgba(46, 204, 113, 0.16);
+    color: #2ecc71;
+    border-color: rgba(46, 204, 113, 0.4);
+}
+/* Сводка видна только у свёрнутой карточки */
+.live-round-summary { display: none; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.live-round-card.is-collapsed .live-round-summary { display: flex; }
+.live-round-body { display: block; margin-top: 4px; }
+.live-round-card.is-collapsed .live-round-body { display: none; }
+.lrs-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+}
+.lrs-chip i { color: var(--gold); font-size: 10px; }
+.lrs-chip b { font-family: var(--fb); font-variant-numeric: tabular-nums; }
+.lrs-leader { color: var(--white); }
+
+/* ==========================================
+   СЧЁТНАЯ КАРТОЧКА: ВКЛАДКИ ДЕВЯТОК, НАКОПИТЕЛЬНЫЙ TO-PAR,
+   ПОДСВЕТКА ТЕКУЩЕЙ ЛУНКИ И ПЕРЕХОД К НЕЙ
+   ========================================== */
+.sc-tabs { display: flex; gap: 6px; margin: 0 0 10px; flex-wrap: wrap; }
+.sc-tab {
+    flex: 1 1 auto;
+    min-width: 84px;
+    padding: 7px 10px;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: var(--rs);
+    color: var(--muted);
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: var(--t);
+}
+.sc-tab:hover { border-color: var(--gold); color: var(--white); }
+.sc-tab.active { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+/* Девятка, скрытая выбранной вкладкой */
+.sc-tabs-wrap[data-view="front"] .sc-h-back,
+.sc-tabs-wrap[data-view="back"] .sc-h-front { display: none !important; }
+
+/* Накопительный to-par под плитками лунок */
+.sc-topar { margin: 2px 0 10px; }
+.sc-topar-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.sc-topar-lbl i { color: var(--gold); }
+.sc-topar-lbl b { color: var(--gold); font-size: 12px; }
+.sc-topar-row { margin-bottom: 0 !important; }
+.sc-topar-cell {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--rs);
+    padding: 3px 1px;
+    text-align: center;
+    font-family: var(--fb);
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--muted);
+}
+.sc-topar-cell.sc-tp-under { background: rgba(46, 204, 113, 0.18); border-color: rgba(46, 204, 113, 0.55); color: #2ecc71; }
+.sc-topar-cell.sc-tp-even { background: rgba(255, 255, 255, 0.06); color: var(--white); }
+.sc-topar-cell.sc-tp-over { background: rgba(224, 90, 74, 0.18); border-color: rgba(224, 90, 74, 0.5); color: #ff9184; }
+.sc-topar-cell.sc-tp-none { opacity: .45; }
+
+/* Текущая лунка игрока */
+.sc-cur-tile {
+    position: relative;
+    border: 2px solid var(--gold) !important;
+    box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.18);
+    animation: scCurPulse 2s ease-in-out infinite;
+}
+.sc-cur-tile::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+}
+@keyframes scCurPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.2); }
+    50% { box-shadow: 0 0 0 7px rgba(201, 168, 76, 0.06); }
+}
+.sc-cur-flash { animation: scCurFlash .6s ease-in-out 3; }
+@keyframes scCurFlash {
+    0%, 100% { background: rgba(201, 168, 76, 0.12); }
+    50% { background: rgba(201, 168, 76, 0.45); }
+}
+.sc-to-cur-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 4px 10px;
+    background: rgba(201, 168, 76, 0.12);
+    border: 1px solid rgba(201, 168, 76, 0.35);
+    border-radius: 20px;
+    color: var(--gold);
+    font-family: var(--fb);
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--t);
+}
+.sc-to-cur-btn:hover { background: var(--gold); color: var(--bg); }
+
+/* Солнечный (высококонтрастный) режим для новых элементов */
+body.sun-mode .live-rounds-toolbar { background: #e8f5e9 !important; border: 2px solid #1b5e20 !important; }
+body.sun-mode .live-rounds-toolbar .lrt-hint { color: #0b2912 !important; }
+body.sun-mode .lrs-chip { background: #ffffff !important; border: 2px solid #000000 !important; color: #000000 !important; }
+body.sun-mode .live-round-tag { background: #fff8e1 !important; border: 2px solid #8a6d1f !important; color: #5d4037 !important; }
+body.sun-mode .live-round-tag-my { background: #e8f5e9 !important; border-color: #2e7d32 !important; color: #1b5e20 !important; }
+body.sun-mode .live-round-chev { color: #1b5e20 !important; }
+body.sun-mode .sc-tab { background: #ffffff !important; border: 2px solid #000000 !important; color: #000000 !important; }
+body.sun-mode .sc-tab.active { background: #1b5e20 !important; border-color: #1b5e20 !important; color: #ffffff !important; }
+body.sun-mode .sc-topar-lbl { color: #0b2912 !important; }
+body.sun-mode .sc-topar-cell { background: #ffffff !important; border: 2px solid #000000 !important; color: #000000 !important; }
+body.sun-mode .sc-topar-cell.sc-tp-under { background: #e8f5e9 !important; color: #1b5e20 !important; }
+body.sun-mode .sc-topar-cell.sc-tp-over { background: #ffebee !important; color: #b71c1c !important; }
+body.sun-mode .sc-cur-tile { border: 3px solid #1b5e20 !important; box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.2) !important; }
+body.sun-mode .sc-to-cur-btn { background: #e8f5e9 !important; border: 2px solid #1b5e20 !important; color: #1b5e20 !important; }

@@ -121,10 +121,19 @@ function renderCourseHolesStrip(activeEntries) {
 
     var isEn = currentLang === 'en';
     var holeCount = {};
+    var latestStart = { 1: 0, 10: 0 };
     for (var i = 1; i <= 18; i++) holeCount[i] = 0;
 
     (activeEntries || []).forEach(function(e) {
-        var r = e[1];
+        var r = e[1] || {};
+        // В блоке «Сейчас на поле» показываем последний активный старт с
+        // двух стартовых ти. Время берётся из самого раунда, а не из времени
+        // создания записи, поэтому остаётся верным для отложенного старта.
+        var startHole = parseInt(r.startHole) || 1;
+        var startTime = parseInt(r.startTime) || 0;
+        if ((startHole === 1 || startHole === 10) && startTime > latestStart[startHole]) {
+            latestStart[startHole] = startTime;
+        }
         var players = r.players || {};
         var order = getRoundOrder(r);
         Object.entries(players).forEach(function(pe) {
@@ -153,9 +162,18 @@ function renderCourseHolesStrip(activeEntries) {
     var freeCount = isEn ? free + ' holes free' : free + ' ' + pluralN(free, 'лунка', 'лунки', 'лунок') + ' свободн' + ruAdjEnd(free);
     var busyCount = isEn ? occupied + ' busy' : occupied + ' ' + pluralN(occupied, 'лунка', 'лунки', 'лунок') + ' занят' + ruAdjEnd(occupied);
 
+    var lastStartLabel = isEn ? 'Latest tee start' : 'Последний старт';
+    var holeLabel = isEn ? 'Hole' : 'Лунка';
+    var noStartLabel = '—';
+
     var html = '<div class="chs-legend"><span class="chs-legend-item chs-free-lg"><i class="fas fa-circle chs-dot"></i> ' + freeLabel + ' · <b>' + free + '</b></span>' +
         '<span class="chs-legend-item chs-busy-lg"><i class="fas fa-circle chs-dot"></i> ' + busyLabel + ' · <b>' + occupied + '</b></span>' +
-        '<span class="chs-count">' + (isEn ? free + ' free · ' + occupied + ' busy' : freeCount + ' · ' + busyCount) + '</span></div>';
+        '<span class="chs-count">' + (isEn ? free + ' free · ' + occupied + ' busy' : freeCount + ' · ' + busyCount) + '</span></div>' +
+        '<div class="chs-starts" aria-label="' + lastStartLabel + '">' +
+            '<span class="chs-starts-title"><i class="fas fa-clock"></i> ' + lastStartLabel + ':</span>' +
+            '<span class="chs-start-pill"><span>' + holeLabel + ' 1</span><b>' + (latestStart[1] ? fmtTime(latestStart[1]) : noStartLabel) + '</b></span>' +
+            '<span class="chs-start-pill"><span>' + holeLabel + ' 10</span><b>' + (latestStart[10] ? fmtTime(latestStart[10]) : noStartLabel) + '</b></span>' +
+        '</div>';
 
     html += '<div class="chs-grid">';
     for (var h = 1; h <= 18; h++) {

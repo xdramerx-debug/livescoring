@@ -13,6 +13,14 @@ var isChanging = false;
 var canEditGroup = false;
 var groupPaceTimer = null;
 
+// Если администратор меняет клубный дефолт в процессе игры, его получают
+// только игроки без сохранённого личного выбора.
+document.addEventListener('pestovo-stableford-default-change', function() {
+    if (!curRoundData || !canEditGroup) return;
+    updateGroupStablefordToggle();
+    renderPlayHole();
+});
+
 // Защита от гонки: если колбэк авторизации сработает до парсинга этого файла
 // (медленная загрузка/кэш SW), подписываемся на раунд и из DOMContentLoaded.
 var roundViewListening = false;
@@ -552,6 +560,40 @@ function startGroup() {
 }
 
 // ==========================================
+// ЛИЧНОЕ ОТОБРАЖЕНИЕ STABLEFORD В ГРУППОВОМ РАУНДЕ
+// ==========================================
+function updateGroupStablefordToggle() {
+    var toggle = document.getElementById('group-stableford-toggle');
+    var control = document.getElementById('group-stableford-control');
+    if (!toggle) return;
+
+    var player = curRoundData && curRoundData.players && myUid ? curRoundData.players[myUid] : null;
+    toggle.checked = isPlayerStablefordDisplayEnabled(player);
+    toggle.disabled = !canEditGroup || !player;
+    if (control) control.classList.toggle('is-disabled', toggle.disabled);
+}
+
+function toggleGroupStablefordDisplay(enabled) {
+    if (!canEditGroup || !curRid || !myUid || !curRoundData || !curRoundData.players || !curRoundData.players[myUid]) return;
+
+    enabled = !!enabled;
+    // Отображаем новый выбор сразу, а затем сохраняем его именно в карточке
+    // этого игрока текущего раунда — другие игроки не затрагиваются.
+    curRoundData.players[myUid].stablefordDisplay = enabled;
+    renderPlayHole();
+    updateGroupStablefordToggle();
+
+    db.ref('rounds/' + curRid + '/players/' + myUid + '/stablefordDisplay').set(enabled).then(function() {
+        toast(enabled
+            ? (currentLang === 'en' ? 'Stableford points are shown' : 'Очки Stableford показаны')
+            : (currentLang === 'en' ? 'Stableford points are hidden' : 'Очки Stableford скрыты'), 'info');
+    }).catch(function(error) {
+        console.warn('[Stableford] Cannot save personal display setting', error);
+        toast(currentLang === 'en' ? 'Could not save the Stableford setting' : 'Не удалось сохранить настройку Stableford', 'error');
+    });
+}
+
+// ==========================================
 // ПРОВЕРКА ДОСТУПА К РАУНДУ
 // ==========================================
 function getActingUid() {
@@ -626,6 +668,7 @@ function initRoundView() {
             var myPlayer = curRoundData.players && curRoundData.players[myUid];
             var myTitle = document.getElementById('my-player-name-title');
             if (myTitle) myTitle.textContent = myPlayer ? myPlayer.name : t('my_score');
+            updateGroupStablefordToggle();
 
             var markContainer = document.getElementById('marker-input-container');
             if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
@@ -835,26 +878,18 @@ function adjScore(who, delta) {
     vib();
 }
 
-function setParScore(who) {
-    if (!canEditGroup) return;
-    var par = holePar(playHole);
-    if (who === 'my') {
-        myScore = par;
-        updScoreDisplay('my', myScore);
-        animateScoreElement('my-disp');
-    } else {
-        targetScore = par;
-        updScoreDisplay('mark', targetScore);
-        animateScoreElement('mark-disp');
-    }
-    vib();
-}
-
 function updScoreDisplay(who, score) {
     var par = holePar(playHole);
     var dispEl = document.getElementById(who + '-disp');
     var resEl = document.getElementById(who + '-result');
-    if (dispEl) dispEl.textContent = score;
+    var scoredPlayerId = who === 'my' ? myUid : myTargetUid;
+    var scoredPlayer = curRoundData && curRoundData.players && scoredPlayerId
+        ? curRoundData.players[scoredPlayerId] : null;
+    var fieldHcp = scoredPlayer && scoredPlayer.fieldHcp !== undefined
+        ? scoredPlayer.fieldHcp : ((curRoundData && curRoundData.fieldHcp) || 0);
+    var showStableford = isPlayerStablefordDisplayEnabled(scoredPlayer);
+
+    if (dispEl) dispEl.innerHTML = scoreWithStablefordHTML(score, playHole, fieldHcp, showStableford);
     if (resEl) {
         resEl.textContent = holeResName(score, par);
         resEl.className = 'score-result ' + holeResClass(score, par);

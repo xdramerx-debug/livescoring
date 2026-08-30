@@ -86,15 +86,19 @@
         <div id="sc-notice"></div>
         <div id="sc-pace-assistant" style="margin-top:12px;"></div>
         <div class="card"><h2><i class="fas fa-table"></i> <span data-i18n="my_score">Мой счёт</span></h2><div id="sc-card"></div></div>
+        <label class="stableford-display-control" id="sc-stableford-control">
+            <input type="checkbox" id="sc-stableford-toggle" onchange="toggleScStablefordDisplay(this.checked)">
+            <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
+        </label>
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.10.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.11.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=18"></script>
+<script src="js/utils.js?v=19"></script>
 <script src="js/scorer.js"></script>
 <script src="js/pwa.js"></script>
 </body>

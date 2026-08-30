@@ -462,6 +462,18 @@
                     Снимите галочку с любой страницы, чтобы полностью скрыть её из меню навигации и закрыть доступ для игроков.
                 </p>
 
+                <!-- Клубный дефолт отображения Stableford. Личный выбор игрока имеет приоритет. -->
+                <div class="list-item" onclick="toggleStablefordDefaultCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:10px;touch-action:manipulation;">
+                    <div>
+                        <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-star"></i> <span data-i18n="stableford_default">Stableford по умолчанию</span></span>
+                        <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="stableford_default_hint">Показывать очки Stableford рядом со счётом всем игрокам, которые ещё не выбрали личную настройку.</div>
+                    </div>
+                    <input type="checkbox" id="pv-stableford-default" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
+                </div>
+                <button type="button" class="btn btn-og btn-sm" onclick="saveStablefordDisplayDefault()" style="margin:0 0 16px;">
+                    <i class="fas fa-save"></i> <span data-i18n="save_stableford_default">Сохранить настройку Stableford</span>
+                </button>
+
                 <!-- Переключатель «Меню инструментов» -->
                 <div class="list-item" onclick="toggleToolsMenuCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:16px;touch-action:manipulation;">
                     <div>
@@ -538,14 +550,14 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.10.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.11.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=18"></script>
+<script src="js/utils.js?v=19"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/admin.js?v=14"></script>
+<script src="js/admin.js?v=15"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

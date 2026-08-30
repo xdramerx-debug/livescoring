@@ -3172,3 +3172,219 @@ body.sun-mode .msc-pill.hcp-band-unknown {
     border-color: #607d8b;
     color: #37474f;
 }
+
+/* ==========================================
+   БЛОК «СЕЙЧАС НА ПОЛЕ»: ТЕКУЩИЙ РАУНД РАЗВЁРНУТ,
+   ОСТАЛЬНЫЕ РАУНДЫ — СВОРАЧИВАЮТСЯ / РАЗВОРАЧИВАЮТСЯ
+   ========================================== */
+.live-rounds-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 0 0 14px;
+    padding: 10px 14px;
+    background: rgba(201, 168, 76, 0.07);
+    border: 1px solid rgba(201, 168, 76, 0.22);
+    border-radius: var(--rs);
+}
+.live-rounds-toolbar .lrt-hint {
+    font-size: 11.5px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.live-rounds-toolbar .lrt-hint i { color: var(--gold); }
+.live-rounds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+.live-rounds-grid .round-card { margin-bottom: 0; }
+/* Развёрнутый раунд занимает всю ширину ряда — это «колонка сейчас на поле» */
+.live-round-card.is-expanded {
+    grid-column: 1 / -1;
+    border-color: var(--gold);
+    box-shadow: 0 6px 24px rgba(201, 168, 76, 0.16);
+}
+.live-round-card.is-collapsed { padding: 12px 14px; }
+.live-round-card.is-collapsed:hover { border-color: var(--gold); }
+.live-round-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.live-round-toggle .lrt-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+.live-round-chev { color: var(--gold); font-size: 14px; flex: 0 0 auto; }
+.live-round-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(201, 168, 76, 0.14);
+    color: var(--gold);
+    border: 1px solid rgba(201, 168, 76, 0.35);
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+}
+.live-round-tag-my {
+    background: rgba(46, 204, 113, 0.16);
+    color: #2ecc71;
+    border-color: rgba(46, 204, 113, 0.4);
+}
+/* Сводка видна только у свёрнутой карточки */
+.live-round-summary { display: none; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.live-round-card.is-collapsed .live-round-summary { display: flex; }
+.live-round-body { display: block; margin-top: 4px; }
+.live-round-card.is-collapsed .live-round-body { display: none; }
+.lrs-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+}
+.lrs-chip i { color: var(--gold); font-size: 10px; }
+.lrs-chip b { font-family: var(--fb); font-variant-numeric: tabular-nums; }
+.lrs-leader { color: var(--white); }
+
+/* ==========================================
+   СЧЁТНАЯ КАРТОЧКА: ВКЛАДКИ ДЕВЯТОК, НАКОПИТЕЛЬНЫЙ TO-PAR,
+   ПОДСВЕТКА ТЕКУЩЕЙ ЛУНКИ И ПЕРЕХОД К НЕЙ
+   ========================================== */
+.sc-tabs { display: flex; gap: 6px; margin: 0 0 10px; flex-wrap: wrap; }
+.sc-tab {
+    flex: 1 1 auto;
+    min-width: 84px;
+    padding: 7px 10px;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: var(--rs);
+    color: var(--muted);
+    font-family: var(--fb);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: var(--t);
+}
+.sc-tab:hover { border-color: var(--gold); color: var(--white); }
+.sc-tab.active { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+/* Девятка, скрытая выбранной вкладкой */
+.sc-tabs-wrap[data-view="front"] .sc-h-back,
+.sc-tabs-wrap[data-view="back"] .sc-h-front { display: none !important; }
+
+/* Накопительный to-par под плитками лунок */
+.sc-topar { margin: 2px 0 10px; }
+.sc-topar-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.sc-topar-lbl i { color: var(--gold); }
+.sc-topar-lbl b { color: var(--gold); font-size: 12px; }
+.sc-topar-row { margin-bottom: 0 !important; }
+.sc-topar-cell {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--rs);
+    padding: 3px 1px;
+    text-align: center;
+    font-family: var(--fb);
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--muted);
+}
+.sc-topar-cell.sc-tp-under { background: rgba(46, 204, 113, 0.18); border-color: rgba(46, 204, 113, 0.55); color: #2ecc71; }
+.sc-topar-cell.sc-tp-even { background: rgba(255, 255, 255, 0.06); color: var(--white); }
+.sc-topar-cell.sc-tp-over { background: rgba(224, 90, 74, 0.18); border-color: rgba(224, 90, 74, 0.5); color: #ff9184; }
+.sc-topar-cell.sc-tp-none { opacity: .45; }
+
+/* Текущая лунка игрока */
+.sc-cur-tile {
+    position: relative;
+    border: 2px solid var(--gold) !important;
+    box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.18);
+    animation: scCurPulse 2s ease-in-out infinite;
+}
+.sc-cur-tile::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+}
+@keyframes scCurPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.2); }
+    50% { box-shadow: 0 0 0 7px rgba(201, 168, 76, 0.06); }
+}
+.sc-cur-flash { animation: scCurFlash .6s ease-in-out 3; }
+@keyframes scCurFlash {
+    0%, 100% { background: rgba(201, 168, 76, 0.12); }
+    50% { background: rgba(201, 168, 76, 0.45); }
+}
+.sc-to-cur-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 4px 10px;
+    background: rgba(201, 168, 76, 0.12);
+    border: 1px solid rgba(201, 168, 76, 0.35);
+    border-radius: 20px;
+    color: var(--gold);
+    font-family: var(--fb);
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--t);
+}
+.sc-to-cur-btn:hover { background: var(--gold); color: var(--bg); }
+
+/* Солнечный (высококонтрастный) режим для новых элементов */
+body.sun-mode .live-rounds-toolbar { background: #e8f5e9 !important; border: 2px solid #1b5e20 !important; }
+body.sun-mode .live-rounds-toolbar .lrt-hint { color: #0b2912 !important; }
+body.sun-mode .lrs-chip { background: #ffffff !important; border: 2px solid #000000 !important; color: #000000 !important; }
+body.sun-mode .live-round-tag { background: #fff8e1 !important; border: 2px solid #8a6d1f !important; color: #5d4037 !important; }
+body.sun-mode .live-round-tag-my { background: #e8f5e9 !important; border-color: #2e7d32 !important; color: #1b5e20 !important; }
+body.sun-mode .live-round-chev { color: #1b5e20 !important; }
+body.sun-mode .sc-tab { background: #ffffff !important; border: 2px solid #000000 !important; color: #000000 !important; }
+body.sun-mode .sc-tab.active { background: #1b5e20 !important; border-color: #1b5e20 !important; color: #ffffff !important; }
+body.sun-mode .sc-topar-lbl { color: #0b2912 !important; }
+body.sun-mode .sc-topar-cell { background: #ffffff !important; border: 2px solid #000000 !important; color: #000000 !important; }
+body.sun-mode .sc-topar-cell.sc-tp-under { background: #e8f5e9 !important; color: #1b5e20 !important; }
+body.sun-mode .sc-topar-cell.sc-tp-over { background: #ffebee !important; color: #b71c1c !important; }
+body.sun-mode .sc-cur-tile { border: 3px solid #1b5e20 !important; box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.2) !important; }
+body.sun-mode .sc-to-cur-btn { background: #e8f5e9 !important; border: 2px solid #1b5e20 !important; color: #1b5e20 !important; }

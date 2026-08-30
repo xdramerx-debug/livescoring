@@ -322,6 +322,20 @@ var I18N = {
         cancel_btn: 'Отмена',
         expand_scorecard: 'Показать карточку',
         collapse_scorecard: 'Свернуть карточку',
+        expand_round: 'Развернуть раунд',
+        collapse_round: 'Свернуть раунд',
+        expand_all_rounds: 'Развернуть все',
+        collapse_all_rounds: 'Свернуть все',
+        live_rounds_hint: 'Ваш раунд развёрнут, остальные свёрнуты — нажмите на карточку, чтобы изменить',
+        my_round_tag: 'Мой раунд',
+        current_round_tag: 'Текущий',
+        leader_lbl: 'Лидер',
+        sc_tab_front: 'Первые 9',
+        sc_tab_back: 'Вторые 9',
+        sc_tab_all: 'Все 18',
+        sc_topar_lbl: 'To-par по ходу',
+        to_current_hole: 'К текущей лунке',
+        no_current_hole: 'Текущая лунка ещё не определена',
         avatar_label: 'Аватар профиля',
         upload_photo: 'Загрузить фото',
         choose_preset: 'Или выберите иконку',
@@ -650,6 +664,20 @@ var I18N = {
         cancel_btn: 'Cancel',
         expand_scorecard: 'Expand Scorecard',
         collapse_scorecard: 'Collapse Scorecard',
+        expand_round: 'Expand round',
+        collapse_round: 'Collapse round',
+        expand_all_rounds: 'Expand all',
+        collapse_all_rounds: 'Collapse all',
+        live_rounds_hint: 'Your round is expanded, the others are collapsed — tap a card to change it',
+        my_round_tag: 'My round',
+        current_round_tag: 'Current',
+        leader_lbl: 'Leader',
+        sc_tab_front: 'Front 9',
+        sc_tab_back: 'Back 9',
+        sc_tab_all: 'All 18',
+        sc_topar_lbl: 'To-par by hole',
+        to_current_hole: 'To current hole',
+        no_current_hole: 'Current hole is not set yet',
         avatar_label: 'Profile Avatar',
         upload_photo: 'Upload Photo',
         choose_preset: 'Or choose icon preset',
@@ -2758,6 +2786,116 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
     return{played:played,remaining:remaining,holesPlayed:played.length,holesRemaining:remaining.length,currentHole:currentHole,gross:gross,parPlayed:parPlayed,toPar:toPar,net:netTotal,netToPar:netToPar,projected:projected,stablefordField:stblField,stablefordExact:stblExact,birdies:birdies,eagles:eagles,pars:pars,bogeys:bogeys,doubles:doubles,holeInOne:hio};
 }
 
+// ==========================================
+// СЧЁТНАЯ КАРТОЧКА: ВКЛАДКИ ДЕВЯТОК, НАКОПИТЕЛЬНЫЙ TO-PAR,
+// ПОДСВЕТКА ТЕКУЩЕЙ ЛУНКИ И БЫСТРЫЙ ПЕРЕХОД К НЕЙ
+// ==========================================
+
+// Активная вкладка карточки: 'front' | 'back' | 'all'. Состояние общее для всех
+// карточек на странице и запоминается в localStorage, поэтому перерисовка
+// блоков в реальном времени не сбрасывает выбранный вид.
+var scorecardView = (function() {
+    var v = null;
+    try { v = localStorage.getItem('pestovo_sc_view'); } catch (e) {}
+    return (v === 'front' || v === 'back') ? v : 'all';
+})();
+
+function holeNineClass(h) { return h <= 9 ? 'sc-h-front' : 'sc-h-back'; }
+
+function setScorecardView(view) {
+    scorecardView = (view === 'front' || view === 'back') ? view : 'all';
+    try { localStorage.setItem('pestovo_sc_view', scorecardView); } catch (e) {}
+
+    var wraps = document.querySelectorAll('.sc-tabs-wrap');
+    for (var i = 0; i < wraps.length; i++) {
+        // Карточки без вкладок (раунды на 9 лунок) не переключаем: иначе
+        // фильтр по девятке спрятал бы все их лунки.
+        if (!wraps[i].querySelector('.sc-tabs')) continue;
+        wraps[i].setAttribute('data-view', scorecardView);
+    }
+    var btns = document.querySelectorAll('.sc-tab');
+    for (var j = 0; j < btns.length; j++) {
+        var isActive = btns[j].getAttribute('data-sc-view') === scorecardView;
+        btns[j].classList.toggle('active', isActive);
+        btns[j].setAttribute('aria-selected', isActive ? 'true' : 'false');
+    }
+    if (typeof vib === 'function') vib(10);
+}
+
+// Вкладки доступны только для полных раундов: у девятки фильтр по девятке
+// спрятал бы все лунки, поэтому для таких карточек всегда показываем всё.
+function scorecardViewFor(frontCount, backCount) {
+    return (frontCount && backCount) ? scorecardView : 'all';
+}
+
+// Вкладки «Первые 9 / Вторые 9 / Все 18» — рисуются только для полных раундов,
+// где есть обе девятки.
+function buildScorecardTabsHTML(frontCount, backCount) {
+    if (!frontCount || !backCount) return '';
+    var tabs = [
+        { key: 'front', label: t('sc_tab_front') },
+        { key: 'back', label: t('sc_tab_back') },
+        { key: 'all', label: t('sc_tab_all') }
+    ];
+    var html = '<div class="sc-tabs" role="tablist">';
+    tabs.forEach(function(tb) {
+        var isActive = scorecardView === tb.key;
+        html += '<button type="button" role="tab" class="sc-tab' + (isActive ? ' active' : '') + '" data-sc-view="' + tb.key + '" ' +
+            'aria-selected="' + (isActive ? 'true' : 'false') + '" onclick="setScorecardView(\'' + tb.key + '\')">' +
+            tb.label + '</button>';
+    });
+    html += '</div>';
+    return html;
+}
+
+// Строка накопительного to-par: под каждой лункой итог относительно пара
+// на момент её завершения. startRun позволяет продолжить счёт со второй девятки.
+function buildToParRowHTML(order, sc, startRun, gridClass, wrapClass) {
+    var run = startRun || 0;
+    var playedAny = false;
+    var cells = '';
+
+    order.forEach(function(i) {
+        var s = parseInt(sc[i]) || 0;
+        var cls = 'sc-tp-none';
+        var txt = '·';
+        if (s >= 1) {
+            playedAny = true;
+            run += s - holePar(i);
+            cls = run < 0 ? 'sc-tp-under' : (run > 0 ? 'sc-tp-over' : 'sc-tp-even');
+            txt = run > 0 ? '+' + run : (run === 0 ? 'E' : '' + run);
+        }
+        var title = currentLang === 'en'
+            ? 'Hole #' + i + (s >= 1 ? ': ' + s + ' (par ' + holePar(i) + ') — to-par after the hole: ' + fmtScore(run) : ': not played yet')
+            : 'Лунка #' + i + (s >= 1 ? ': ' + s + ' (пар ' + holePar(i) + ') — to-par после лунки: ' + fmtScore(run) : ': ещё не сыграна');
+        cells += '<span class="sc-topar-cell ' + cls + ' ' + holeNineClass(i) + '" title="' + title + '">' + txt + '</span>';
+    });
+
+    if (!playedAny) return { html: '', run: run };
+
+    var html = '<div class="sc-topar ' + (wrapClass || '') + '">' +
+        '<div class="sc-topar-lbl"><i class="fas fa-chart-line"></i> ' + t('sc_topar_lbl') + ': <b>' + fmtScore(run) + '</b></div>' +
+        '<div class="' + (gridClass || 'noscroll-grid') + ' sc-topar-row">' + cells + '</div>' +
+        '</div>';
+    return { html: html, run: run };
+}
+
+// Переход к текущей лунке игрока: плитка подсвечивается и прокручивается в центр экрана.
+function scrollToPlayerCurrentHole(pid) {
+    var tile = document.querySelector('.sc-cur-tile[data-sc-player="' + pid + '"]');
+    if (!tile) {
+        if (typeof toast === 'function') toast(t('no_current_hole'), 'info');
+        return;
+    }
+    // Если лунка скрыта выбранной вкладкой — сначала показываем все 18
+    if (scorecardView !== 'all' && tile.offsetParent === null) setScorecardView('all');
+    if (typeof tile.scrollIntoView === 'function') {
+        tile.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    }
+    tile.classList.add('sc-cur-flash');
+    setTimeout(function() { tile.classList.remove('sc-cur-flash'); }, 1800);
+}
+
 function generateGroupHoleTableHTML(r) {
     var players = r.players || {};
     var playerEntries = Object.entries(players).filter(function(pe) {
@@ -2768,6 +2906,8 @@ function generateGroupHoleTableHTML(r) {
 
     var order = getRoundOrder(r);
     var holeCount = order.length;
+    var frontCount = order.filter(function(h) { return h <= 9; }).length;
+    var backCount = holeCount - frontCount;
 
     // --- NO-SCROLL VERTICAL GRID MATRIX (100% FIT ON MOBILE SCREENS) ---
     var html = '<div class="no-scroll-view-container">';
@@ -2784,33 +2924,57 @@ function generateGroupHoleTableHTML(r) {
         var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
         var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" title="' + fieldHcpBandTitle(fieldHcp) + '">' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
 
+        var isFinished = stats.holesPlayed >= holeCount;
+        var curHole = isFinished ? null : stats.currentHole;
+
         html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
         html += '<div class="noscroll-player-hdr">';
         html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + pHcpBadge + '</span>';
-        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div></div>';
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div>';
+        // Быстрый переход к лунке, на которой игрок стоит прямо сейчас
+        if (curHole) {
+            html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')">' +
+                '<i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
+        }
+        html += '</div>';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '</div>';
+
+        // Вкладки «Первые 9 / Вторые 9 / Все 18» + матрица лунок
+        html += '<div class="sc-tabs-wrap" data-view="' + scorecardViewFor(frontCount, backCount) + '">';
+        html += buildScorecardTabsHTML(frontCount, backCount);
 
         // Hole matrix (9 or 18 holes): фора + № лунки, счёт, индекс, очки Stableford
         html += '<div class="noscroll-grid">';
         order.forEach(function(i) {
             var s = parseInt(sc[i]) || 0;
             var par = holePar(i);
-            var cls = holeResClass(s, par);
+            var cls = holeResClass(s, par) + ' ' + holeNineClass(i);
             // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
             if (getHoleVerifyState(p, i) === 'mismatch') cls += ' cell-mismatch';
+            // Текущая лунка игрока — золотая рамка и пульсация
+            var isCur = (curHole !== null && i === curHole);
+            if (isCur) cls += ' sc-cur-tile';
             var stbl = s > 0 ? stablefordField(s, i, fieldHcp) : null;
             var stblTitle = currentLang === 'en'
                 ? (stbl !== null ? stbl + ' Stableford ' + (stbl === 1 ? 'point' : 'points') : 'No Stableford points yet')
                 : (stbl !== null ? 'Очки Stableford: ' + stbl : 'Очков Stableford пока нет');
+            if (isCur) {
+                stblTitle = (currentLang === 'en' ? 'Current hole. ' : 'Текущая лунка. ') + stblTitle;
+            }
 
-            html += '<div class="noscroll-tile ' + cls + '" title="' + stblTitle + '">';
+            html += '<div class="noscroll-tile ' + cls + '" title="' + stblTitle + '" data-sc-player="' + pid + '" data-sc-hole="' + i + '"' + (isCur ? ' data-sc-current="1"' : '') + '>';
             html += '<div class="noscroll-hole"><span>#' + i + '</span>' + hcpStrokesMarksHTML(fieldHcp, i) + '</div>';
             html += '<div class="noscroll-score">' + (s > 0 ? s : '—') + '</div>';
             html += '<div class="noscroll-tile-bot"><span class="noscroll-idx">idx ' + holeHcp(i) + '</span><span class="noscroll-stbl">' + (stbl !== null ? stbl + ' pt' : '—') + '</span></div>';
             html += '</div>';
         });
         html += '</div>';
+
+        // Накопительный to-par по ходу раунда (строка под плитками)
+        html += buildToParRowHTML(order, sc, 0, 'noscroll-grid').html;
+
+        html += '</div>'; // /sc-tabs-wrap
 
         // Totals
         var totG = 0, parTotal = 0;
@@ -3319,6 +3483,9 @@ function generatePestovoScorecardHTML(player, roundData) {
     var front = order.filter(function(h){ return h <= 9; });
     var back = order.filter(function(h){ return h >= 10; });
 
+    var pStats = calcRoundStats(sc, fHcp || 0, eHcp || 0, order);
+    var pCurHole = pStats.holesPlayed >= order.length ? null : pStats.currentHole;
+
     var totG = 0, totS = 0, totPar = 0;
     order.forEach(function(i) {
         var s = parseInt(sc[i]) || 0;
@@ -3347,15 +3514,21 @@ function generatePestovoScorecardHTML(player, roundData) {
         var s = parseInt(sc[i]) || 0;
         var par = holePar(i);
         var hcp = holeHcp(i);
-        var badgeCls = s > 0 ? holeResClass(s, par) : '';
+        var badgeCls = (s > 0 ? holeResClass(s, par) : '') + ' ' + holeNineClass(i);
         // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
         if (getHoleVerifyState(p, i) === 'mismatch') badgeCls += ' cell-mismatch';
+        // Текущая лунка игрока — золотая рамка и пульсация
+        var isCur = (pCurHole !== null && i === pCurHole);
+        if (isCur) badgeCls += ' sc-cur-tile';
         var stbl = s > 0 ? stablefordField(s, i, fHcp) : null;
         var stblTitle = currentLang === 'en'
             ? (stbl !== null ? stbl + ' Stableford ' + (stbl === 1 ? 'point' : 'points') : 'No Stableford points yet')
             : (stbl !== null ? 'Очки Stableford: ' + stbl : 'Очков Stableford пока нет');
+        if (isCur) {
+            stblTitle = (currentLang === 'en' ? 'Current hole. ' : 'Текущая лунка. ') + stblTitle;
+        }
 
-        var html = '<div class="msc-tile ' + badgeCls + '" title="' + stblTitle + '">';
+        var html = '<div class="msc-tile ' + badgeCls + '" title="' + stblTitle + '" data-sc-hole="' + i + '"' + (isCur ? ' data-sc-current="1"' : '') + '>';
         html += '  <div class="msc-tile-top"><span class="msc-hole-num">#' + i + '</span>' + hcpStrokesMarksHTML(fHcp, i) + '</div>';
         html += '  <div class="msc-tile-score">' + (s > 0 ? s : '—') + '</div>';
         html += '  <div class="msc-tile-bot"><span class="msc-hole-idx">idx ' + hcp + '</span><span class="msc-hole-stbl">' + (stbl !== null ? stbl + ' pt' : '—') + '</span></div>';
@@ -3363,17 +3536,27 @@ function generatePestovoScorecardHTML(player, roundData) {
         return html;
     };
 
+    // Вкладки «Первые 9 / Вторые 9 / Все 18»: скрывают лишнюю девятку через CSS,
+    // поэтому состояние не теряется при перерисовке карточки в реальном времени.
+    html += '<div class="sc-tabs-wrap" data-view="' + scorecardViewFor(front.length, back.length) + '">';
+    html += buildScorecardTabsHTML(front.length, back.length);
+
+    var frontRun = 0;
+
     if (front.length) {
         var pOut = 0; front.forEach(function(i){ pOut += holePar(i); });
-        html += '<div class="msc-sec-hdr"><span>FRONT 9 (OUT)</span> <span>Par ' + pOut + '</span></div>';
+        html += '<div class="msc-sec-hdr sc-h-front"><span>FRONT 9 (OUT)</span> <span>Par ' + pOut + '</span></div>';
         html += '<div class="msc-tile-grid">';
         front.forEach(function(i) {
             html += tileHTML(i);
         });
         html += '</div>';
+        var frontToPar = buildToParRowHTML(front, sc, 0, 'msc-tile-grid', 'sc-h-front');
+        frontRun = frontToPar.run;
+        html += frontToPar.html;
         var outG = 0, outS = 0;
         front.forEach(function(i){ var s=parseInt(sc[i])||0; if(s>0){ outG+=s; outS+=stablefordField(s,i,fHcp);} });
-        html += '<div class="msc-totals-strip">';
+        html += '<div class="msc-totals-strip sc-h-front">';
         html += '  <span>OUT: <b>' + (outG > 0 ? outG : '—') + '</b></span>';
         html += '  <span>Stbl: <b>' + outS + 'p</b></span>';
         html += '</div>';
@@ -3381,19 +3564,22 @@ function generatePestovoScorecardHTML(player, roundData) {
 
     if (back.length) {
         var pIn = 0; back.forEach(function(i){ pIn += holePar(i); });
-        html += '<div class="msc-sec-hdr" style="margin-top:10px;"><span>BACK 9 (IN)</span> <span>Par ' + pIn + '</span></div>';
+        html += '<div class="msc-sec-hdr sc-h-back" style="margin-top:10px;"><span>BACK 9 (IN)</span> <span>Par ' + pIn + '</span></div>';
         html += '<div class="msc-tile-grid">';
         back.forEach(function(i) {
             html += tileHTML(i);
         });
         html += '</div>';
+        html += buildToParRowHTML(back, sc, frontRun, 'msc-tile-grid', 'sc-h-back').html;
         var inG = 0, inS = 0;
         back.forEach(function(i){ var s=parseInt(sc[i])||0; if(s>0){ inG+=s; inS+=stablefordField(s,i,fHcp);} });
-        html += '<div class="msc-totals-strip">';
+        html += '<div class="msc-totals-strip sc-h-back">';
         html += '  <span>IN: <b>' + (inG > 0 ? inG : '—') + '</b></span>';
         html += '  <span>Stbl: <b>' + inS + 'p</b></span>';
         html += '</div>';
     }
+
+    html += '</div>'; // /sc-tabs-wrap
 
     html += '<div class="msc-grand-strip">';
     html += '  <span>GROSS: <b>' + (totG > 0 ? totG : '—') + '</b></span>';

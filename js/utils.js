@@ -444,7 +444,11 @@ var I18N = {
         msg_round_finished: '🏁 Раунд завершён!',
 
         player: 'Игрок', players_label: 'Игроки', guest: 'ГОСТЬ', start: 'Старт', date: 'Дата', format: 'Формат',
-        round_leader: 'Лидер раунда', no_completed: 'Пока нет завершённых раундов'
+        round_leader: 'Лидер раунда', no_completed: 'Пока нет завершённых раундов',
+
+        unsaved_score_hint: 'Счёт не сохранён — нажмите кнопку «Сохранить»',
+        start_hint_title: 'С какой лунки лучше стартовать?',
+        field_hcp_short: 'пол. HCP'
     },
     en: {
         brand_name: 'Pestovo',
@@ -762,7 +766,11 @@ var I18N = {
         msg_round_finished: '🏁 Round Completed!',
 
         player: 'Player', players_label: 'Players', guest: 'GUEST', start: 'Start', date: 'Date', format: 'Format',
-        round_leader: 'Round Leader', no_completed: 'No completed rounds yet'
+        round_leader: 'Round Leader', no_completed: 'No completed rounds yet',
+
+        unsaved_score_hint: 'Score is not saved yet — press the “Save” button',
+        start_hint_title: 'Which hole is best to start from?',
+        field_hcp_short: 'Course HCP'
     }
 };
 
@@ -2728,24 +2736,27 @@ function generateGroupHoleTableHTML(r) {
 
     // --- NO-SCROLL VERTICAL GRID MATRIX (100% FIT ON MOBILE SCREENS) ---
     var html = '<div class="no-scroll-view-container">';
+    var courseHcpLbl = t('field_hcp_short');
 
     playerEntries.forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         var sc = p.scores || {};
-        var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : 0;
+        var stats = calcRoundStats(sc, fieldHcp || 0, p.exactHcp || 0, order);
         var thruText = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '');
 
         var pTee = (p && p.tee) || r.tee || 'wh';
         var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
+        var pHcpBadge = '<span class="hcp-chip">' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
 
         html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
         html += '<div class="noscroll-player-hdr">';
-        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + '</span>';
+        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + pHcpBadge + '</span>';
         html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div></div>';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '</div>';
 
-        // Hole matrix (9 or 18 holes)
+        // Hole matrix (9 or 18 holes): фора + № лунки, счёт, индекс, очки Stableford
         html += '<div class="noscroll-grid">';
         order.forEach(function(i) {
             var s = parseInt(sc[i]) || 0;
@@ -2753,11 +2764,15 @@ function generateGroupHoleTableHTML(r) {
             var cls = holeResClass(s, par);
             // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
             if (getHoleVerifyState(p, i) === 'mismatch') cls += ' cell-mismatch';
+            var stbl = s > 0 ? stablefordField(s, i, fieldHcp) : null;
+            var stblTitle = currentLang === 'en'
+                ? (stbl !== null ? stbl + ' Stableford ' + (stbl === 1 ? 'point' : 'points') : 'No Stableford points yet')
+                : (stbl !== null ? 'Очки Stableford: ' + stbl : 'Очков Stableford пока нет');
 
-            html += '<div class="noscroll-tile ' + cls + '">';
-            html += '<div class="noscroll-hole">#' + i + '</div>';
+            html += '<div class="noscroll-tile ' + cls + '" title="' + stblTitle + '">';
+            html += '<div class="noscroll-hole"><span>#' + i + '</span>' + hcpStrokesMarksHTML(fieldHcp, i) + '</div>';
             html += '<div class="noscroll-score">' + (s > 0 ? s : '—') + '</div>';
-            html += '<div class="noscroll-par">p' + par + '</div>';
+            html += '<div class="noscroll-tile-bot"><span class="noscroll-idx">idx ' + holeHcp(i) + '</span><span class="noscroll-stbl">' + (stbl !== null ? stbl + ' pt' : '—') + '</span></div>';
             html += '</div>';
         });
         html += '</div>';
@@ -3291,25 +3306,34 @@ function generatePestovoScorecardHTML(player, roundData) {
     html += '  </div>';
     html += '</div>';
 
+    // Тайл лунки: фора (как при вводе счёта), номер лунки, счёт, индекс и очки Stableford.
+    // Расстояние на тайле не показывается — карточка остаётся компактной без скроллов.
+    var tileHTML = function(i) {
+        var s = parseInt(sc[i]) || 0;
+        var par = holePar(i);
+        var hcp = holeHcp(i);
+        var badgeCls = s > 0 ? holeResClass(s, par) : '';
+        // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
+        if (getHoleVerifyState(p, i) === 'mismatch') badgeCls += ' cell-mismatch';
+        var stbl = s > 0 ? stablefordField(s, i, fHcp) : null;
+        var stblTitle = currentLang === 'en'
+            ? (stbl !== null ? stbl + ' Stableford ' + (stbl === 1 ? 'point' : 'points') : 'No Stableford points yet')
+            : (stbl !== null ? 'Очки Stableford: ' + stbl : 'Очков Stableford пока нет');
+
+        var html = '<div class="msc-tile ' + badgeCls + '" title="' + stblTitle + '">';
+        html += '  <div class="msc-tile-top"><span class="msc-hole-num">#' + i + '</span>' + hcpStrokesMarksHTML(fHcp, i) + '</div>';
+        html += '  <div class="msc-tile-score">' + (s > 0 ? s : '—') + '</div>';
+        html += '  <div class="msc-tile-bot"><span class="msc-hole-idx">idx ' + hcp + '</span><span class="msc-hole-stbl">' + (stbl !== null ? stbl + ' pt' : '—') + '</span></div>';
+        html += '</div>';
+        return html;
+    };
+
     if (front.length) {
         var pOut = 0; front.forEach(function(i){ pOut += holePar(i); });
         html += '<div class="msc-sec-hdr"><span>FRONT 9 (OUT)</span> <span>Par ' + pOut + '</span></div>';
         html += '<div class="msc-tile-grid">';
         front.forEach(function(i) {
-            var s = parseInt(sc[i]) || 0;
-            var par = holePar(i);
-            var dist = holeDist(i, teeCode);
-            var hcp = holeHcp(i);
-            var badgeCls = s > 0 ? holeResClass(s, par) : '';
-            // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
-            if (getHoleVerifyState(p, i) === 'mismatch') badgeCls += ' cell-mismatch';
-            var stbl = s > 0 ? stablefordField(s, i, fHcp) : null;
-
-            html += '<div class="msc-tile ' + badgeCls + '">';
-            html += '  <div class="msc-tile-top"><span class="msc-hole-num">#' + i + '</span><span class="msc-hole-par">P' + par + ' · ' + dist + 'm</span></div>';
-            html += '  <div class="msc-tile-score">' + (s > 0 ? s : '—') + '</div>';
-            html += '  <div class="msc-tile-bot"><span class="msc-hole-idx">Idx ' + hcp + '</span><span class="msc-hole-stbl">' + (stbl !== null ? stbl + 'p' : '—') + '</span></div>';
-            html += '</div>';
+            html += tileHTML(i);
         });
         html += '</div>';
         var outG = 0, outS = 0;
@@ -3325,20 +3349,7 @@ function generatePestovoScorecardHTML(player, roundData) {
         html += '<div class="msc-sec-hdr" style="margin-top:10px;"><span>BACK 9 (IN)</span> <span>Par ' + pIn + '</span></div>';
         html += '<div class="msc-tile-grid">';
         back.forEach(function(i) {
-            var s = parseInt(sc[i]) || 0;
-            var par = holePar(i);
-            var dist = holeDist(i, teeCode);
-            var hcp = holeHcp(i);
-            var badgeCls = s > 0 ? holeResClass(s, par) : '';
-            // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
-            if (getHoleVerifyState(p, i) === 'mismatch') badgeCls += ' cell-mismatch';
-            var stbl = s > 0 ? stablefordField(s, i, fHcp) : null;
-
-            html += '<div class="msc-tile ' + badgeCls + '">';
-            html += '  <div class="msc-tile-top"><span class="msc-hole-num">#' + i + '</span><span class="msc-hole-par">P' + par + ' · ' + dist + 'm</span></div>';
-            html += '  <div class="msc-tile-score">' + (s > 0 ? s : '—') + '</div>';
-            html += '  <div class="msc-tile-bot"><span class="msc-hole-idx">Idx ' + hcp + '</span><span class="msc-hole-stbl">' + (stbl !== null ? stbl + 'p' : '—') + '</span></div>';
-            html += '</div>';
+            html += tileHTML(i);
         });
         html += '</div>';
         var inG = 0, inS = 0;

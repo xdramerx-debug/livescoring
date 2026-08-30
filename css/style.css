@@ -2908,3 +2908,123 @@ body.sun-mode .chs-hint-toggle { color: #1b5e20; }
 body.sun-mode .chs-hint-nine { background: #ffffff; }
 body.sun-mode .chs-hint-nine.is-better { background: #e8f5e9; }
 body.sun-mode .chs-hint-why { color: #333333; }
+
+/* =========================================
+   v1.13.0: ВСЕГО ИГРОКОВ НА ПОЛЕ + ТОЧНЫЙ ГАНДИКАП В КАРТОЧКАХ
+   ========================================= */
+
+/* --- Акцентная строка «Всего игроков на поле» (вариант B) --- */
+.chs-total-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    border-radius: var(--rs);
+    background: linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.06));
+    border: 1px solid rgba(201,168,76,0.35);
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 10px rgba(201,168,76,0.12);
+}
+.chs-total-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(201,168,76,0.18);
+    border: 1px solid rgba(201,168,76,0.35);
+    color: var(--gold);
+    font-size: 13px;
+    flex-shrink: 0;
+}
+.chs-total-lbl {
+    color: var(--gold);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 12px;
+}
+.chs-total-val {
+    margin-left: 2px;
+    color: var(--white);
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 6px rgba(201,168,76,0.35);
+}
+
+.chs-legend-detailed {
+    gap: 10px 14px;
+}
+.chs-total-lg .chs-dot {
+    color: var(--gold);
+}
+.chs-legend-detailed .chs-legend-item {
+    font-size: 11.5px;
+}
+.chs-legend-detailed .chs-legend-item b {
+    font-size: 14px;
+}
+
+/* --- Чип точного гандикапа (золотой) рядом с полевым (синий) --- */
+.hcp-chip-exact {
+    border-color: rgba(201,168,76,0.45);
+    background: rgba(201,168,76,0.14);
+    color: var(--gold-l);
+}
+body.sun-mode .hcp-chip-exact {
+    background: #fff8e1;
+    border-color: #8a6d1f;
+    color: #5d4037;
+}
+
+/* На мобильных бейджи переносятся аккуратно */
+.round-p-n {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 0;
+}
+.round-p-n .tee-pill,
+.round-p-n .hcp-chip {
+    margin-left: 6px;
+}
+@media (max-width: 480px) {
+    .chs-total-bar {
+        padding: 9px 12px;
+        font-size: 12px;
+    }
+    .chs-total-val {
+        font-size: 20px;
+    }
+    .chs-legend-detailed {
+        gap: 8px 10px;
+    }
+    .round-p-n {
+        font-size: 13px !important;
+    }
+}
+
+body.sun-mode .chs-total-bar {
+    background: #fffdf3;
+    border-color: #8a6d1f;
+    color: #000;
+    box-shadow: none;
+}
+body.sun-mode .chs-total-icon {
+    background: #fff8e1;
+    border-color: #8a6d1f;
+    color: #5d4037;
+}
+body.sun-mode .chs-total-lbl {
+    color: #1b5e20;
+}
+body.sun-mode .chs-total-val {
+    color: #000;
+    text-shadow: none;
+}

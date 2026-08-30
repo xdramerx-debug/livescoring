@@ -448,7 +448,13 @@ var I18N = {
 
         unsaved_score_hint: 'Счёт не сохранён — нажмите кнопку «Сохранить»',
         start_hint_title: 'С какой лунки лучше стартовать?',
-        field_hcp_short: 'пол. HCP'
+        field_hcp_short: 'пол. HCP',
+        exact_hcp_short: 'точн. HCP',
+        total_players_on_course: 'Всего игроков на поле',
+        total_players_label: 'Всего игроков',
+        free_holes_label: 'Свободные лунки',
+        busy_holes_label: 'Занятые лунки',
+        tee_label: 'ТИ'
     },
     en: {
         brand_name: 'Pestovo',
@@ -770,7 +776,13 @@ var I18N = {
 
         unsaved_score_hint: 'Score is not saved yet — press the “Save” button',
         start_hint_title: 'Which hole is best to start from?',
-        field_hcp_short: 'Course HCP'
+        field_hcp_short: 'Course HCP',
+        exact_hcp_short: 'Exact HCP',
+        total_players_on_course: 'Total players on course',
+        total_players_label: 'Total players',
+        free_holes_label: 'Free holes',
+        busy_holes_label: 'Busy holes',
+        tee_label: 'Tee'
     }
 };
 

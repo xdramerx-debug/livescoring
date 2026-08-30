@@ -10,12 +10,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function onAuthReady(u, d) { navAuth(u, d); }
 
-// Чип с полевым (игровым) гандикапом игрока — показывается рядом с именем
-// в списках на главной странице.
+// Чипы с гандикапами игрока — показываются рядом с именем
+// в списках на главной странице: точный и полевой.
+// Отображение: ТИ, точный гандикап, полевой гандикап
 function buildFieldHcpChip(p) {
     var val = p && p.fieldHcp !== undefined && p.fieldHcp !== null && p.fieldHcp !== ''
         ? fmtFieldHcp(p.fieldHcp) : '—';
     return '<span class="hcp-chip">' + t('field_hcp_short') + ' ' + val + '</span>';
+}
+
+function buildExactHcpChip(p) {
+    var val = p && p.exactHcp !== undefined && p.exactHcp !== null && p.exactHcp !== ''
+        ? fmtExactHcp(p.exactHcp) : '—';
+    return '<span class="hcp-chip hcp-chip-exact">' + t('exact_hcp_short') + ' ' + val + '</span>';
+}
+
+function buildPlayerTeeBadge(p, roundData) {
+    var teeCode = (p && p.tee) || (roundData && roundData.tee) || 'wh';
+    return '<span class="tee-pill tee-' + teeCode + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + teeCode) + '</span>';
+}
+
+function buildPlayerBadges(p, roundData) {
+    // Порядок по требованию: ТИ, точный гандикап, полевой гандикап
+    var teeBadge = buildPlayerTeeBadge(p, roundData);
+    var exactBadge = buildExactHcpChip(p);
+    var fieldBadge = buildFieldHcpChip(p);
+    return teeBadge + exactBadge + fieldBadge;
 }
 
 function buildCourseCard() {
@@ -139,6 +159,8 @@ function renderCourseHolesStrip(activeEntries) {
         back: { players: 0, hcpSum: 0 }
     };
 
+    var totalPlayers = 0;
+
     (activeEntries || []).forEach(function(e) {
         var r = e[1] || {};
         // В блоке «Сейчас на поле» показываем последний активный старт с
@@ -154,6 +176,7 @@ function renderCourseHolesStrip(activeEntries) {
         Object.entries(players).forEach(function(pe) {
             var p = pe[1];
             if (p && typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], p.name)) return;
+            totalPlayers++;
             var scores = p.scores || {};
             var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
             if (stats.currentHole && holeCount[stats.currentHole] !== undefined) {
@@ -174,24 +197,34 @@ function renderCourseHolesStrip(activeEntries) {
     for (var hc = 1; hc <= 18; hc++) if (holeCount[hc] > 0) occupied++;
     var free = 18 - occupied;
 
-    var freeLabel = isEn ? 'Free' : 'Свободны';
-    var busyLabel = isEn ? 'Playing now' : 'Идёт игра';
+    var freeLabel = isEn ? t('free_holes_label') : t('free_holes_label');
+    var busyLabel = isEn ? t('busy_holes_label') : t('busy_holes_label');
+    var totalLabel = t('total_players_on_course');
+    var totalShortLabel = t('total_players_label');
+
     var ruAdjEnd = function(n) {
         var m10 = n % 10, m100 = n % 100;
         if (m10 === 1 && m100 !== 11) return 'а';
         if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'ы';
         return 'о';
     };
-    var freeCount = isEn ? free + ' holes free' : free + ' ' + pluralN(free, 'лунка', 'лунки', 'лунок') + ' свободн' + ruAdjEnd(free);
-    var busyCount = isEn ? occupied + ' busy' : occupied + ' ' + pluralN(occupied, 'лунка', 'лунки', 'лунок') + ' занят' + ruAdjEnd(occupied);
+    var freeCount = isEn ? free + ' ' + t('free_holes_label').toLowerCase() : free + ' ' + pluralN(free, 'лунка', 'лунки', 'лунок') + ' свободн' + ruAdjEnd(free);
+    var busyCount = isEn ? occupied + ' ' + t('busy_holes_label').toLowerCase() : occupied + ' ' + pluralN(occupied, 'лунка', 'лунки', 'лунок') + ' занят' + ruAdjEnd(occupied);
 
     var lastStartLabel = isEn ? 'Latest tee start' : 'Последний старт';
     var holeLabel = isEn ? 'Hole' : 'Лунка';
     var noStartLabel = '—';
 
-    var html = '<div class="chs-legend"><span class="chs-legend-item chs-free-lg"><i class="fas fa-circle chs-dot"></i> ' + freeLabel + ' · <b>' + free + '</b></span>' +
-        '<span class="chs-legend-item chs-busy-lg"><i class="fas fa-circle chs-dot"></i> ' + busyLabel + ' · <b>' + occupied + '</b></span>' +
-        '<span class="chs-count">' + (isEn ? free + ' free · ' + occupied + ' busy' : freeCount + ' · ' + busyCount) + '</span></div>' +
+    // Вариант B по выбору пользователя: акцентная строка «Всего игроков на поле: X»
+    // крупно, а ниже детализация: свободные / занятые лунки.
+    var html = '<div class="chs-total-bar"><span class="chs-total-icon"><i class="fas fa-users"></i></span>' +
+        '<span class="chs-total-lbl">' + totalLabel + ':</span>' +
+        '<b class="chs-total-val">' + totalPlayers + '</b></div>' +
+        '<div class="chs-legend chs-legend-detailed">' +
+        '<span class="chs-legend-item chs-total-lg"><i class="fas fa-users chs-dot" style="color:var(--gold);font-size:10px;"></i> ' + totalShortLabel + ': <b>' + totalPlayers + '</b></span>' +
+        '<span class="chs-legend-item chs-free-lg"><i class="fas fa-circle chs-dot"></i> ' + freeLabel + ': <b>' + free + '</b></span>' +
+        '<span class="chs-legend-item chs-busy-lg"><i class="fas fa-circle chs-dot"></i> ' + busyLabel + ': <b>' + occupied + '</b></span>' +
+        '<span class="chs-count">' + (isEn ? totalPlayers + ' players · ' + free + ' free · ' + occupied + ' busy' : totalPlayers + ' ' + pluralN(totalPlayers, 'игрок', 'игрока', 'игроков') + ' · ' + freeCount + ' · ' + busyCount) + '</span></div>' +
         '<div class="chs-starts" aria-label="' + lastStartLabel + '">' +
             '<span class="chs-starts-title"><i class="fas fa-clock"></i> ' + lastStartLabel + ':</span>' +
             '<span class="chs-start-pill"><span>' + holeLabel + ' 1</span><b>' + (latestStart[1] ? fmtTime(latestStart[1]) : noStartLabel) + '</b></span>' +
@@ -203,8 +236,8 @@ function renderCourseHolesStrip(activeEntries) {
         var cnt = holeCount[h];
         var busy = cnt > 0;
         var title = isEn
-            ? 'Hole ' + h + (busy ? ' — ' + cnt + ' ' + (cnt === 1 ? 'group' : 'groups') + ' playing' : ' — free')
-            : 'Лунка ' + h + (busy ? ' — идёт игра (' + cnt + ' ' + pluralN(cnt, 'группа', 'группы', 'групп') + ')' : ' — свободна');
+            ? 'Hole ' + h + (busy ? ' — ' + cnt + ' ' + (cnt === 1 ? 'player' : 'players') + ' playing' : ' — free')
+            : 'Лунка ' + h + (busy ? ' — идёт игра (' + cnt + ' ' + pluralN(cnt, 'игрок', 'игрока', 'игроков') + ')' : ' — свободна');
         html += '<div class="chs-cell ' + (busy ? 'chs-busy' : 'chs-free') + '" title="' + title + '">' +
             '<span class="chs-n">' + h + '</span>' +
             '<i class="fas fa-circle chs-dot' + (busy ? ' chs-live' : '') + '"></i>' +
@@ -375,9 +408,7 @@ function loadLiveRounds() {
 
             Object.entries(players).forEach(function(pe) {
                 var pid = pe[0], p = pe[1];
-                var playerTee = (p && p.tee) || r.tee || 'wh';
-                var playerTeeBadge = '<span class="tee-pill tee-' + playerTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + playerTee) + '</span>';
-                var playerHcpBadge = buildFieldHcpChip(p);
+                var playerBadges = buildPlayerBadges(p, r);
                 // Для отображения используем собственные счёта игрока.
                 // Если их нет, но есть счёта маркера — показываем их (с пометкой).
                 var scores = p.scores || {};
@@ -397,7 +428,7 @@ function loadLiveRounds() {
                 var thruText = stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : t('hole') + ' №' + (parseInt(r.startHole)||1));
 
                 pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + playerTeeBadge + playerHcpBadge + '</div>' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + playerBadges + '</div>' +
                     '<div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;">📍 ' + thruText + markerNote + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
@@ -513,13 +544,11 @@ function loadRecentResults() {
 
             Object.entries(players).forEach(function(pe) {
                 var pid = pe[0], p = pe[1], scores = p.scores || {};
-                var playerTee = (p && p.tee) || r.tee || 'wh';
-                var playerTeeBadge = '<span class="tee-pill tee-' + playerTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + playerTee) + '</span>';
-                var playerHcpBadge = buildFieldHcpChip(p);
+                var playerBadges = buildPlayerBadges(p, r);
                 var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
 
                 pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + playerTeeBadge + playerHcpBadge + '</div>' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + playerBadges + '</div>' +
                     '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +

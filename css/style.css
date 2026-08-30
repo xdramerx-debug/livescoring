@@ -2419,3 +2419,160 @@ body.high-contrast-status .cell-mismatch {
     margin-top:9px;
 }
 .resume-progress-track span { display:block; height:100%; border-radius:inherit; min-width:0; transition:width .25s ease; }
+
+/* =========================================
+   v1.10.0: COURSE CARD MOBILE FIX, HOLE OCCUPANCY STRIP, HCP MARKS
+   ========================================= */
+
+/* --- Карточка поля: 100% fit без обрезки последнего столбца --- */
+.msc-tile { min-width: 0 !important; overflow: hidden; white-space: nowrap; }
+.msc-total-long { display: inline; }
+.msc-total-short { display: none; font-weight: 900; }
+
+@media (max-width: 600px) {
+    .msc-grid-9 {
+        grid-template-columns: 1.6fr repeat(9, minmax(0,1fr)) 1.2fr !important;
+        gap: 2px !important;
+    }
+    .msc-grid-10 {
+        grid-template-columns: 1.6fr repeat(9, minmax(0,1fr)) 1.05fr 1.3fr !important;
+        gap: 2px !important;
+    }
+    .msc-tile {
+        font-size: 8px !important;
+        padding: 3px 0 !important;
+        border-radius: 3px;
+    }
+    .msc-tile-top { font-size: 8px; }
+    .msc-tile-bot { font-size: 8px; }
+    .msc-total-long { display: none; }
+    .msc-total-short { display: inline; }
+}
+
+/* --- Полоса занятости лунок «Сейчас на поле» (18 лунок) --- */
+#course-holes-strip {
+    background: rgba(19, 34, 24, 0.85);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: var(--r);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+}
+.chs-legend {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 10px;
+}
+.chs-legend-item { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+.chs-legend-item b { font-size: 13px; color: var(--white); }
+.chs-free-lg .chs-dot { color: #2ecc71; }
+.chs-busy-lg .chs-dot { color: var(--red); }
+.chs-legend-item i { font-size: 8px; }
+.chs-count { margin-left: auto; color: var(--gold); font-weight: 700; font-size: 11px; }
+
+.chs-grid {
+    display: grid;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    gap: 5px;
+}
+@media (min-width: 600px) {
+    .chs-grid { grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 6px; }
+}
+.chs-cell {
+    position: relative;
+    background: rgba(46, 204, 113, 0.08);
+    border: 1px solid rgba(46, 204, 113, 0.35);
+    border-radius: 8px;
+    padding: 6px 2px 5px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+}
+.chs-cell.chs-busy {
+    background: rgba(224, 90, 74, 0.14);
+    border-color: rgba(224, 90, 74, 0.6);
+    box-shadow: 0 0 10px rgba(224, 90, 74, 0.25);
+}
+.chs-n {
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--white);
+}
+.chs-cell.chs-free .chs-n { color: var(--muted); }
+.chs-cell.chs-busy .chs-n { color: var(--red); }
+.chs-dot { font-size: 7px; line-height: 1; font-style: normal; }
+.chs-free .chs-dot { color: #2ecc71; }
+.chs-busy .chs-dot { color: var(--red); }
+.chs-dot.chs-live { animation: pulse 1.5s infinite; }
+.chs-cnt {
+    position: absolute;
+    top: -6px;
+    right: -4px;
+    background: var(--red);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    min-width: 15px;
+    height: 15px;
+    line-height: 15px;
+    border-radius: 8px;
+    padding: 0 3px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+body.sun-mode #course-holes-strip {
+    background: #ffffff;
+    border: 2px solid #000000;
+}
+body.sun-mode .chs-cell.chs-free { background: #e8f5e9; border-color: #2e7d32; }
+body.sun-mode .chs-cell.chs-busy { background: #ffebee; border-color: #c62828; }
+body.sun-mode .chs-cell.chs-busy .chs-n,
+body.sun-mode .chs-busy-lg .chs-dot,
+body.sun-mode .chs-busy .chs-dot { color: #c62828; }
+body.sun-mode .chs-cell.chs-free .chs-n { color: #333333; }
+body.sun-mode .chs-free-lg .chs-dot { color: #2e7d32; }
+body.sun-mode .chs-legend-item b, body.sun-mode .chs-n { color: #000000; }
+body.sun-mode .chs-count { color: #1b5e20; }
+
+/* --- Чёрточки полевой форы в квадратике с номером лунки (ввод счёта) --- */
+.hole-btn { flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.hbn-line { display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 3px; line-height: 1; }
+.hcp-marks {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5px;
+    margin-left: 1px;
+}
+.hm-bar {
+    display: block;
+    width: 7px;
+    height: 2.5px;
+    border-radius: 2px;
+    background: var(--gold-l, var(--gold));
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+}
+.hcp-marks.hm-minus .hm-bar { background: var(--blue); }
+.hole-btn.done .hm-bar { background: var(--gold-l, var(--gold)); }
+.hole-btn.active .hm-bar,
+.hole-btn.active.done .hm-bar,
+.hole-btn.active.verified .hm-bar,
+.hole-btn.active.mismatch .hm-bar { background: #0b1a0e !important; }
+body.sun-mode .hole-btn .hm-bar { background: #8a6d1f; }
+body.sun-mode .hole-btn.active .hm-bar { background: #0b1a0e !important; }
+
+@media (max-width: 480px) {
+    .hm-bar { width: 6px; height: 2px; }
+    .hcp-marks { gap: 1px; margin-left: 1px; }
+    .hbn-line { gap: 2px; }
+}

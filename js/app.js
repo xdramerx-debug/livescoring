@@ -16,7 +16,9 @@ function onAuthReady(u, d) { navAuth(u, d); }
 function buildFieldHcpChip(p) {
     var val = p && p.fieldHcp !== undefined && p.fieldHcp !== null && p.fieldHcp !== ''
         ? fmtFieldHcp(p.fieldHcp) : '—';
-    return '<span class="hcp-chip">' + t('field_hcp_short') + ' ' + val + '</span>';
+    var bandClass = typeof fieldHcpBandClass === 'function' ? fieldHcpBandClass(p && p.fieldHcp) : '';
+    var bandTitle = typeof fieldHcpBandTitle === 'function' ? fieldHcpBandTitle(p && p.fieldHcp) : '';
+    return '<span class="hcp-chip ' + bandClass + '" title="' + bandTitle + '">' + t('field_hcp_short') + ' ' + val + '</span>';
 }
 
 function buildExactHcpChip(p) {
@@ -193,38 +195,17 @@ function renderCourseHolesStrip(activeEntries) {
         });
     });
 
-    var occupied = 0;
-    for (var hc = 1; hc <= 18; hc++) if (holeCount[hc] > 0) occupied++;
-    var free = 18 - occupied;
-
-    var freeLabel = isEn ? t('free_holes_label') : t('free_holes_label');
-    var busyLabel = isEn ? t('busy_holes_label') : t('busy_holes_label');
     var totalLabel = t('total_players_on_course');
-    var totalShortLabel = t('total_players_label');
-
-    var ruAdjEnd = function(n) {
-        var m10 = n % 10, m100 = n % 100;
-        if (m10 === 1 && m100 !== 11) return 'а';
-        if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'ы';
-        return 'о';
-    };
-    var freeCount = isEn ? free + ' ' + t('free_holes_label').toLowerCase() : free + ' ' + pluralN(free, 'лунка', 'лунки', 'лунок') + ' свободн' + ruAdjEnd(free);
-    var busyCount = isEn ? occupied + ' ' + t('busy_holes_label').toLowerCase() : occupied + ' ' + pluralN(occupied, 'лунка', 'лунки', 'лунок') + ' занят' + ruAdjEnd(occupied);
 
     var lastStartLabel = isEn ? 'Latest tee start' : 'Последний старт';
     var holeLabel = isEn ? 'Hole' : 'Лунка';
     var noStartLabel = '—';
 
-    // Вариант B по выбору пользователя: акцентная строка «Всего игроков на поле: X»
-    // крупно, а ниже детализация: свободные / занятые лунки.
+    // Компактный блок «Сейчас на поле»: одна строка «Всего игроков на поле»,
+    // ниже — «Последний старт». Без дублирования количества игроков и статистики.
     var html = '<div class="chs-total-bar"><span class="chs-total-icon"><i class="fas fa-users"></i></span>' +
         '<span class="chs-total-lbl">' + totalLabel + ':</span>' +
         '<b class="chs-total-val">' + totalPlayers + '</b></div>' +
-        '<div class="chs-legend chs-legend-detailed">' +
-        '<span class="chs-legend-item chs-total-lg"><i class="fas fa-users chs-dot" style="color:var(--gold);font-size:10px;"></i> ' + totalShortLabel + ': <b>' + totalPlayers + '</b></span>' +
-        '<span class="chs-legend-item chs-free-lg"><i class="fas fa-circle chs-dot"></i> ' + freeLabel + ': <b>' + free + '</b></span>' +
-        '<span class="chs-legend-item chs-busy-lg"><i class="fas fa-circle chs-dot"></i> ' + busyLabel + ': <b>' + occupied + '</b></span>' +
-        '<span class="chs-count">' + (isEn ? totalPlayers + ' players · ' + free + ' free · ' + occupied + ' busy' : totalPlayers + ' ' + pluralN(totalPlayers, 'игрок', 'игрока', 'игроков') + ' · ' + freeCount + ' · ' + busyCount) + '</span></div>' +
         '<div class="chs-starts" aria-label="' + lastStartLabel + '">' +
             '<span class="chs-starts-title"><i class="fas fa-clock"></i> ' + lastStartLabel + ':</span>' +
             '<span class="chs-start-pill"><span>' + holeLabel + ' 1</span><b>' + (latestStart[1] ? fmtTime(latestStart[1]) : noStartLabel) + '</b></span>' +

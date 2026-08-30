@@ -3028,3 +3028,147 @@ body.sun-mode .chs-total-val {
     color: #000;
     text-shadow: none;
 }
+
+/* =========================================
+   v1.14.0: ЕДИНЫЙ БЛОК «СЕЙЧАС НА ПОЛЕ» + ЦВЕТОВАЯ ГРАДАЦИЯ ПО ГАНДИКАПУ
+   ========================================= */
+
+/* --- Блок «Сейчас на поле» без дублирования статистики --- */
+.chs-starts {
+    margin-top: -4px;
+}
+.chs-total-bar {
+    margin-bottom: 10px;
+}
+
+/* --- Цветовая градация игрового гандикапа: +/- (скретч), 1–10, 11–20, 21–36, 37+ --- */
+.hcp-chip.hcp-band-plus {
+    border-color: rgba(79, 195, 247, 0.45);
+    background: rgba(79, 195, 247, 0.12);
+    color: #4fc3f7;
+}
+.hcp-chip.hcp-band-1-10 {
+    border-color: rgba(46, 204, 113, 0.45);
+    background: rgba(46, 204, 113, 0.12);
+    color: #2ecc71;
+}
+.hcp-chip.hcp-band-11-20 {
+    border-color: rgba(224, 199, 106, 0.48);
+    background: rgba(224, 199, 106, 0.13);
+    color: #e0c76a;
+}
+.hcp-chip.hcp-band-21-36 {
+    border-color: rgba(243, 156, 18, 0.5);
+    background: rgba(243, 156, 18, 0.14);
+    color: #f39c12;
+}
+.hcp-chip.hcp-band-37 {
+    border-color: rgba(224, 90, 74, 0.5);
+    background: rgba(224, 90, 74, 0.14);
+    color: #e05a4a;
+}
+.hcp-chip.hcp-band-unknown {
+    border-color: rgba(158, 181, 165, 0.4);
+    background: rgba(158, 181, 165, 0.1);
+    color: #9eb5a5;
+}
+
+/* --- Та же шкала в заголовке счётной карточки --- */
+.msc-pill.hcp-band-plus {
+    background: rgba(79, 195, 247, 0.12);
+    border: 1px solid rgba(79, 195, 247, 0.45);
+    border-left: 3px solid #4fc3f7;
+    color: #4fc3f7;
+}
+.msc-pill.hcp-band-1-10 {
+    background: rgba(46, 204, 113, 0.12);
+    border: 1px solid rgba(46, 204, 113, 0.45);
+    border-left: 3px solid #2ecc71;
+    color: #2ecc71;
+}
+.msc-pill.hcp-band-11-20 {
+    background: rgba(224, 199, 106, 0.13);
+    border: 1px solid rgba(224, 199, 106, 0.48);
+    border-left: 3px solid #e0c76a;
+    color: #e0c76a;
+}
+.msc-pill.hcp-band-21-36 {
+    background: rgba(243, 156, 18, 0.14);
+    border: 1px solid rgba(243, 156, 18, 0.5);
+    border-left: 3px solid #f39c12;
+    color: #f39c12;
+}
+.msc-pill.hcp-band-37 {
+    background: rgba(224, 90, 74, 0.14);
+    border: 1px solid rgba(224, 90, 74, 0.5);
+    border-left: 3px solid #e05a4a;
+    color: #e05a4a;
+}
+.msc-pill.hcp-band-unknown {
+    background: rgba(158, 181, 165, 0.1);
+    border: 1px solid rgba(158, 181, 165, 0.4);
+    border-left: 3px solid #9eb5a5;
+    color: #9eb5a5;
+}
+
+/* --- Светлый режим: те же диапазоны, но с ясным контрастом --- */
+body.sun-mode .hcp-chip.hcp-band-plus {
+    background: #e3f2fd;
+    border-color: #0277bd;
+    color: #01579b;
+}
+body.sun-mode .hcp-chip.hcp-band-1-10 {
+    background: #e8f5e9;
+    border-color: #2e7d32;
+    color: #1b5e20;
+}
+body.sun-mode .hcp-chip.hcp-band-11-20 {
+    background: #fff8e1;
+    border-color: #8a6d1f;
+    color: #5d4037;
+}
+body.sun-mode .hcp-chip.hcp-band-21-36 {
+    background: #fff3e0;
+    border-color: #e65100;
+    color: #bf360c;
+}
+body.sun-mode .hcp-chip.hcp-band-37 {
+    background: #ffebee;
+    border-color: #b71c1c;
+    color: #8e0000;
+}
+body.sun-mode .hcp-chip.hcp-band-unknown {
+    background: #eceff1;
+    border-color: #607d8b;
+    color: #37474f;
+}
+body.sun-mode .msc-pill.hcp-band-plus {
+    background: #e3f2fd;
+    border-color: #0277bd;
+    color: #01579b;
+}
+body.sun-mode .msc-pill.hcp-band-1-10 {
+    background: #e8f5e9;
+    border-color: #2e7d32;
+    color: #1b5e20;
+}
+body.sun-mode .msc-pill.hcp-band-11-20 {
+    background: #fff8e1;
+    border-color: #8a6d1f;
+    color: #5d4037;
+}
+body.sun-mode .msc-pill.hcp-band-21-36 {
+    background: #fff3e0;
+    border-color: #e65100;
+    color: #bf360c;
+}
+body.sun-mode .msc-pill.hcp-band-37 {
+    background: #ffebee;
+    border-color: #b71c1c;
+    color: #8e0000;
+}
+body.sun-mode .msc-pill.hcp-band-unknown {
+    background: #eceff1;
+    border-color: #607d8b;
+    color: #37474f;
+}

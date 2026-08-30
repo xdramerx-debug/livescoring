@@ -2293,6 +2293,29 @@ function fmtFieldHcp(val) {
     return String(num);
 }
 
+// Цветовая градация игрового гандикапа для счётных карточек и чипов.
+// Зелёный — свободные лунки, гандикап кодируется отдельной шкалой:
+// +/скретч (<=0), 1–10, 11–20, 21–36, 37+.
+function fieldHcpBandClass(val) {
+    var hcp = parseFloat(val);
+    if (isNaN(hcp)) return 'hcp-band-unknown';
+    if (hcp <= 0) return 'hcp-band-plus';
+    if (hcp <= 10) return 'hcp-band-1-10';
+    if (hcp <= 20) return 'hcp-band-11-20';
+    if (hcp <= 36) return 'hcp-band-21-36';
+    return 'hcp-band-37';
+}
+
+function fieldHcpBandTitle(val) {
+    var hcp = parseFloat(val);
+    if (isNaN(hcp)) return '';
+    if (hcp <= 0) return 'HCP + / scratch';
+    if (hcp <= 10) return 'HCP 1–10';
+    if (hcp <= 20) return 'HCP 11–20';
+    if (hcp <= 36) return 'HCP 21–36';
+    return 'HCP 37+';
+}
+
 const PESTOVO_MEN_HCP_TABLE = {
     bk: [
         { min: -3.5, max: -2.8, hcp: 0 }, { min: -2.7, max: -2.0, hcp: 1 }, { min: -1.9, max: -1.2, hcp: 2 },
@@ -2759,7 +2782,7 @@ function generateGroupHoleTableHTML(r) {
 
         var pTee = (p && p.tee) || r.tee || 'wh';
         var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
-        var pHcpBadge = '<span class="hcp-chip">' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
+        var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" title="' + fieldHcpBandTitle(fieldHcp) + '">' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
 
         html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
         html += '<div class="noscroll-player-hdr">';
@@ -3312,7 +3335,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     html += '<div class="msc-card-hdr">';
     html += '  <div class="msc-player-title"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</div>';
     html += '  <div class="msc-meta-pills">';
-    html += '    <span class="msc-pill">HCP: <b>' + fmtExactHcp(eHcp) + '</b> (' + fmtFieldHcp(fHcp) + ')</span>';
+    html += '    <span class="msc-pill hcp-band ' + fieldHcpBandClass(fHcp) + '" title="' + fieldHcpBandTitle(fHcp) + '">HCP: <b>' + fmtExactHcp(eHcp) + '</b> (' + fmtFieldHcp(fHcp) + ')</span>';
     html += '    <span class="msc-pill">' + fmtTeePill(teeCode) + '</span>';
     html += '    <span class="msc-pill">' + fmt + ' · ' + holeRange + ' · ' + date + '</span>';
     html += '  </div>';

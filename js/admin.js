@@ -282,6 +282,7 @@ function openAdminPanel() {
     loadTelegramSettings();
     loadVKSettings();
     loadPageVisibilitySettings();
+    loadStablefordDisplaySettings();
     updateNotifButton();
 }
 
@@ -319,6 +320,7 @@ function switchTab(t, b) {
     }
     if (t === 'data') {
         loadPageVisibilitySettings();
+        loadStablefordDisplaySettings();
     }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
@@ -1376,6 +1378,63 @@ function testVKAlert() {
 
     sendVKDirectAlert(token, peerId, 'referee', 1,
         currentLang === 'en' ? 'Club Administrator' : 'Администратор Клуба', []);
+}
+
+// ==========================================
+// DEFAULT STABLEFORD DISPLAY MANAGEMENT
+// ==========================================
+function loadStablefordDisplaySettings() {
+    var checkbox = document.getElementById('pv-stableford-default');
+    if (!checkbox) return;
+
+    var applyValue = function(value) {
+        // Ключ ещё не создан → включённый дефолт новой функции.
+        var normalized = typeof normalizeStablefordDisplayValue === 'function'
+            ? normalizeStablefordDisplayValue(value) : null;
+        checkbox.checked = normalized === null ? true : normalized;
+    };
+
+    if (typeof db === 'undefined') {
+        applyValue(null);
+        return;
+    }
+
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-stableford-display-default', db.ref('settings/stableford_display_default'), function(sn) {
+            applyValue(sn.val());
+        });
+    } else {
+        db.ref('settings/stableford_display_default').once('value').then(function(sn) {
+            applyValue(sn.val());
+        }).catch(function() { applyValue(null); });
+    }
+}
+
+function toggleStablefordDefaultCheckbox(event) {
+    togglePVCheckbox('pv-stableford-default', event);
+}
+
+function saveStablefordDisplayDefault() {
+    var checkbox = document.getElementById('pv-stableford-default');
+    var enabled = checkbox ? !!checkbox.checked : true;
+
+    // Обновление мгновенно отражается в этой вкладке; на устройствах игроков
+    // настройка придёт через listener в utils.js. Личные настройки не меняем.
+    if (typeof syncStablefordDisplayDefault === 'function') syncStablefordDisplayDefault(enabled);
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Stableford default saved locally' : 'Настройка Stableford сохранена локально', 'success');
+        return;
+    }
+
+    db.ref('settings/stableford_display_default').set(enabled).then(function() {
+        toast(enabled
+            ? (currentLang === 'en' ? 'Stableford is enabled by default' : 'Stableford включён по умолчанию')
+            : (currentLang === 'en' ? 'Stableford is disabled by default' : 'Stableford выключен по умолчанию'), 'success');
+    }).catch(function(error) {
+        console.warn('[Stableford] Cannot save default display setting', error);
+        toast(currentLang === 'en' ? 'Could not save the Stableford default' : 'Не удалось сохранить настройку Stableford', 'error');
+    });
 }
 
 // ==========================================

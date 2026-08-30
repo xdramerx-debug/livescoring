@@ -3,6 +3,10 @@ var mkHole = 1, mkScore = 0, mkScores = {}, mkPScores = {};
 var mkChanging = false;
 var mkPaceTimer = null;
 
+document.addEventListener('pestovo-stableford-default-change', function() {
+    if (mkRound) updDisp();
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
     var p = new URLSearchParams(window.location.search);
@@ -110,10 +114,16 @@ function adjMk(d) {
 
 function updDisp() {
     var par = holePar(mkHole);
-    document.getElementById('mk-disp').textContent = mkScore;
+    var player = mkRound && mkRound.players ? mkRound.players[mkPid] : null;
+    var fieldHcp = player && player.fieldHcp !== undefined
+        ? player.fieldHcp : ((mkRound && mkRound.fieldHcp) || 0);
+    var disp = document.getElementById('mk-disp');
+    if (disp) disp.innerHTML = scoreWithStablefordHTML(mkScore, mkHole, fieldHcp, isPlayerStablefordDisplayEnabled(player));
     var r = document.getElementById('mk-result');
-    r.textContent = holeResName(mkScore, par);
-    r.className = 'score-result ' + holeResClass(mkScore, par);
+    if (r) {
+        r.textContent = holeResName(mkScore, par);
+        r.className = 'score-result ' + holeResClass(mkScore, par);
+    }
 }
 
 function checkVerify() {

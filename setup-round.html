@@ -285,7 +285,6 @@
                         <div class="score-disp" id="my-disp" style="font-size:48px; min-height:50px;">—</div>
                         <div class="score-btns" style="gap:6px; margin-top:12px; flex-wrap:wrap;">
                             <button class="score-minus" onclick="adjScore('my', -1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">−</button>
-                            <button class="score-par-btn" onclick="setParScore('my')" style="height:40px;min-height:40px;padding:0 10px;font-size:12px;">Par</button>
                             <button class="score-plus" onclick="adjScore('my', 1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">+</button>
                         </div>
                     </div>
@@ -305,7 +304,6 @@
                         <div class="score-disp" id="mark-disp" style="font-size:48px; min-height:50px;">—</div>
                         <div class="score-btns" style="gap:6px; margin-top:12px; flex-wrap:wrap; border-color:#9b59b6;">
                             <button class="score-minus" onclick="adjScore('mark', -1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">−</button>
-                            <button class="score-par-btn" onclick="setParScore('mark')" style="height:40px;min-height:40px;padding:0 10px;font-size:12px;">Par</button>
                             <button class="score-plus" onclick="adjScore('mark', 1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">+</button>
                         </div>
                     </div>
@@ -395,6 +393,10 @@
         <button class="btn btn-og btn-block" onclick="finishGroupRound()">
             <i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span>
         </button>
+        <label class="stableford-display-control" id="group-stableford-control">
+            <input type="checkbox" id="group-stableford-toggle" onchange="toggleGroupStablefordDisplay(this.checked)">
+            <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
+        </label>
     </div>
 
     <!-- ===== ОДИНОЧНЫЙ РАУНД: ИГРА И ВВОД СЧЁТА (ТОЛЬКО ДЛЯ ИГРОКА) ===== -->
@@ -417,7 +419,6 @@
                 <div class="score-disp" id="g-disp">—</div>
                 <div class="score-btns">
                     <button class="score-minus" onclick="adjSolo(-1)">−</button>
-                    <button class="score-par-btn" onclick="setParSolo()">Par</button>
                     <button class="score-plus" onclick="adjSolo(1)">+</button>
                 </div>
 
@@ -494,7 +495,11 @@
             </div>
         </div>
 
-        <button class="btn btn-og btn-block" onclick="finishSolo()" style="margin-bottom:20px;min-height:48px;"><i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span></button>
+        <button class="btn btn-og btn-block" onclick="finishSolo()" style="min-height:48px;"><i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span></button>
+        <label class="stableford-display-control" id="solo-stableford-control">
+            <input type="checkbox" id="solo-stableford-toggle" onchange="toggleSoloStablefordDisplay(this.checked)">
+            <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
+        </label>
     </div>
 
     <!-- ===== ОДИНОЧНЫЙ РАУНД: ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ / ГОСТЕЙ) ===== -->
@@ -524,7 +529,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.10.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.11.0</span></p>
         </div>
     </div>
 </footer>
@@ -533,9 +538,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=18"></script>
-<script src="js/live.js?v=16"></script>
-<script src="js/solo.js?v=16"></script>
+<script src="js/utils.js?v=19"></script>
+<script src="js/live.js?v=17"></script>
+<script src="js/solo.js?v=17"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

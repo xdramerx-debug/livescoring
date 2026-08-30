@@ -248,6 +248,11 @@ var I18N = {
         score_col_marked: '(того, за кем вы ведёте счёт)',
         save_hole: 'Сохранить лунку', finish_round: 'Завершить раунд',
         next_hole_btn: 'На следующую лунку →',
+        show_stableford_points: 'Показывать очки Stableford',
+        show_stableford_points_hint: 'Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.',
+        stableford_default: 'Stableford по умолчанию',
+        stableford_default_hint: 'Показывать очки Stableford рядом со счётом всем игрокам, которые ещё не выбрали личную настройку.',
+        save_stableford_default: 'Сохранить настройку Stableford',
         confirm_final_hole: 'Зафиксировать 18-ю лунку',
         waiting_for_marker: '⏳ Ваш счёт введён. Ожидаем подтверждение от маркера',
         hole_finalized_both: '✅ Счёт зафиксирован и подтверждён обеими сторонами!',
@@ -561,6 +566,11 @@ var I18N = {
         marker_for: 'Marker for',
         save_hole: 'Save Hole', finish_round: 'Finish Round',
         next_hole_btn: 'To Next Hole →',
+        show_stableford_points: 'Show Stableford points',
+        show_stableford_points_hint: 'Handicap-adjusted points will appear next to the entered score. This setting is saved only for you.',
+        stableford_default: 'Default Stableford display',
+        stableford_default_hint: 'Show Stableford points next to the score for every player who has not selected a personal preference.',
+        save_stableford_default: 'Save Stableford setting',
         confirm_final_hole: 'Finalize Hole 18',
         waiting_for_marker: '⏳ Your score is in. Waiting for the marker to confirm',
         hole_finalized_both: '✅ Score confirmed and finalized by both sides!',
@@ -2611,6 +2621,58 @@ function stablefordExact(strokes,holeNum,exactHcp){
     }
     var nett=strokes-extra,diff=nett-par;
     if(diff<=-3)return 5;if(diff===-2)return 4;if(diff===-1)return 3;if(diff===0)return 2;if(diff===1)return 1;return 0;
+}
+
+// Настройка отображения очков Stableford. Если игрок ещё не выбрал своё
+// значение, используется клубный дефолт из settings/stableford_display_default.
+// Дефолт включён: новая подсказка сразу доступна в карточке, но каждый игрок
+// может сохранить собственный выбор в текущем раунде.
+var pestovoStablefordDisplayDefault = true;
+
+function normalizeStablefordDisplayValue(value) {
+    if (value === true || value === 1 || value === '1' || value === 'true') return true;
+    if (value === false || value === 0 || value === '0' || value === 'false') return false;
+    return null;
+}
+
+function isStablefordDisplayDefaultEnabled() {
+    return pestovoStablefordDisplayDefault !== false;
+}
+
+function isPlayerStablefordDisplayEnabled(player) {
+    var personalValue = player && normalizeStablefordDisplayValue(player.stablefordDisplay);
+    return personalValue === null ? isStablefordDisplayDefaultEnabled() : personalValue;
+}
+
+function stablefordPointsText(points) {
+    points = Math.max(0, parseInt(points) || 0);
+    if (currentLang === 'en') {
+        return points + ' Stableford ' + (points === 1 ? 'point' : 'points');
+    }
+    return points + ' ' + pluralN(points, 'очко', 'очка', 'очков') + ' Stableford';
+}
+
+// Разметка крупного счёта: gross остаётся главным, а очки отображаются рядом,
+// например: 4 (3 очка Stableford). Используется в каждом экране ввода счёта.
+function scoreWithStablefordHTML(score, holeNum, fieldHcp, showStableford) {
+    var gross = parseInt(score) || 0;
+    if (gross < 1) return '—';
+    var html = '<span class="score-gross">' + gross + '</span>';
+    if (showStableford) {
+        var points = stablefordField(gross, holeNum, fieldHcp || 0);
+        var label = stablefordPointsText(points);
+        html += '<span class="score-stableford-points" aria-label="' + label + '">(' + label + ')</span>';
+    }
+    return html;
+}
+
+function syncStablefordDisplayDefault(value) {
+    var normalized = normalizeStablefordDisplayValue(value);
+    // Отсутствующий ключ — включённый дефолт для обратной совместимости.
+    pestovoStablefordDisplayDefault = normalized === null ? true : normalized;
+    try {
+        document.dispatchEvent(new CustomEvent('pestovo-stableford-default-change'));
+    } catch (e) {}
 }
 
 function calcNettScore(strokes,par,hcpIdx,fieldHcp){
@@ -4877,6 +4939,17 @@ function sendVKOfficialAlert(type, holeNum, playerName, flightNames) {
             console.warn('⚠️ VK: не удалось загрузить настройки из Firebase:', e);
         });
     }
+}
+
+// Глобальный дефолт показа Stableford синхронизируется на всех страницах.
+// Личный выбор игрока хранится в rounds/<round>/players/<player>/stablefordDisplay
+// и поэтому не перезаписывается этой настройкой.
+if (typeof db !== 'undefined') {
+    try {
+        db.ref('settings/stableford_display_default').on('value', function(sn) {
+            syncStablefordDisplayDefault(sn.val());
+        });
+    } catch (e) {}
 }
 
 // ==========================================

@@ -2576,3 +2576,119 @@ body.sun-mode .hole-btn.active .hm-bar { background: #0b1a0e !important; }
     .hcp-marks { gap: 1px; margin-left: 1px; }
     .hbn-line { gap: 2px; }
 }
+
+/* =========================================
+   v1.11.0: LATEST TEE STARTS & STABLEFORD DISPLAY
+   ========================================= */
+
+/* --- Последние старты с 1-го и 10-го ти в блоке «Сейчас на поле» --- */
+.chs-starts {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin: -2px 0 11px;
+    color: var(--muted);
+    font-size: 11px;
+}
+.chs-starts-title {
+    color: var(--gold);
+    font-weight: 700;
+    margin-right: 2px;
+}
+.chs-start-pill {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 3px 7px;
+    border: 1px solid rgba(201, 168, 76, 0.26);
+    border-radius: 999px;
+    background: rgba(201, 168, 76, 0.07);
+    font-variant-numeric: tabular-nums;
+}
+.chs-start-pill span { color: var(--muted); }
+.chs-start-pill b { color: var(--white); font-size: 12px; letter-spacing: .15px; }
+body.sun-mode .chs-starts-title { color: #1b5e20; }
+body.sun-mode .chs-start-pill { background: #fffdf3; border-color: #8a6d1f; }
+body.sun-mode .chs-start-pill b { color: #000; }
+
+/* --- Вертикальные индикаторы полевой форы в правом верхнем углу лунки --- */
+.hole-btn { position: relative; }
+.hole-btn .hcp-marks {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 2px;
+    margin: 0;
+    line-height: 1;
+}
+.hole-btn .hm-bar {
+    display: block;
+    width: 1.5px;
+    height: 9px;
+    border-radius: 2px;
+    transform: rotate(14deg);
+    transform-origin: center;
+    background: var(--gold-l, var(--gold));
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.38);
+}
+@media (max-width: 480px) {
+    .hole-btn .hcp-marks { top: 3px; right: 3px; gap: 1.5px; }
+    .hole-btn .hm-bar { width: 1px; height: 7px; }
+}
+
+/* --- Gross + Stableford в крупном индикаторе введённого счёта --- */
+.score-disp { gap: 8px; }
+.score-gross { font-variant-numeric: tabular-nums; }
+.score-stableford-points {
+    color: var(--gold-l);
+    font-family: var(--ff);
+    font-size: .32em;
+    font-weight: 700;
+    line-height: 1.12;
+    max-width: 9em;
+    text-align: left;
+    text-shadow: none;
+}
+body.sun-mode .score-stableford-points { color: #705313; }
+
+/* Личная настройка доступна после кнопки завершения раунда. */
+.stableford-display-control {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 12px 0 20px;
+    padding: 12px 14px;
+    border: 1px solid rgba(201, 168, 76, .32);
+    border-radius: var(--rs);
+    background: rgba(201, 168, 76, .07);
+    color: var(--text);
+    cursor: pointer;
+}
+.stableford-display-control input {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 auto;
+    margin: 1px 0 0;
+    accent-color: var(--gold);
+    cursor: pointer;
+}
+.stableford-display-control strong {
+    display: block;
+    color: var(--gold-l);
+    font-size: 13px;
+}
+.stableford-display-control small {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.35;
+}
+.stableford-display-control.is-disabled { opacity: .58; cursor: default; }
+body.sun-mode .stableford-display-control { background: #fffdf3; border-color: #8a6d1f; }
+body.sun-mode .stableford-display-control strong { color: #1b5e20; }

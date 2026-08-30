@@ -3,6 +3,12 @@ var scHole = 1, scScore = 0, scMarker = {};
 var scChanging = false;
 var scPaceTimer = null;
 
+document.addEventListener('pestovo-stableford-default-change', function() {
+    if (!scRound) return;
+    updateScStablefordToggle();
+    updDisp();
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
     var p = new URLSearchParams(window.location.search);
@@ -26,6 +32,7 @@ function loadSc() {
         document.getElementById('sc-body').classList.remove('hidden');
 
         var pl = scRound.players[scPid];
+        updateScStablefordToggle();
         var playerTee = (pl && pl.tee) || scRound.tee || 'wh';
         var scorePrefix = currentLang === 'en' ? 'Score: ' : 'Счёт: ';
         document.getElementById('sc-title').textContent = scorePrefix + (pl.name || t('player'));
@@ -81,6 +88,30 @@ function renderInfo() {
         '<div><b>' + t('tee_select') + ':</b> ' + fmtTeePill(playerTee) + '</div>';
 }
 
+function updateScStablefordToggle() {
+    var toggle = document.getElementById('sc-stableford-toggle');
+    var control = document.getElementById('sc-stableford-control');
+    if (!toggle) return;
+    var player = scRound && scRound.players ? scRound.players[scPid] : null;
+    toggle.checked = isPlayerStablefordDisplayEnabled(player);
+    toggle.disabled = !player || (scRound && scRound.status !== 'active');
+    if (control) control.classList.toggle('is-disabled', toggle.disabled);
+}
+
+function toggleScStablefordDisplay(enabled) {
+    var player = scRound && scRound.players ? scRound.players[scPid] : null;
+    if (!scRid || !scPid || !player || (scRound && scRound.status !== 'active')) return;
+
+    enabled = !!enabled;
+    player.stablefordDisplay = enabled;
+    updDisp();
+    updateScStablefordToggle();
+    db.ref('rounds/' + scRid + '/players/' + scPid + '/stablefordDisplay').set(enabled).catch(function(error) {
+        console.warn('[Stableford] Cannot save personal display setting', error);
+        toast(currentLang === 'en' ? 'Could not save the Stableford setting' : 'Не удалось сохранить настройку Stableford', 'error');
+    });
+}
+
 function buildHoles() {
     var el = document.getElementById('sc-holes');
     var order = getRoundOrder(scRound);
@@ -133,10 +164,16 @@ function adjSc(d) {
 
 function updDisp() {
     var par = holePar(scHole);
-    document.getElementById('sc-disp').textContent = scScore;
+    var player = scRound && scRound.players ? scRound.players[scPid] : null;
+    var fieldHcp = player && player.fieldHcp !== undefined
+        ? player.fieldHcp : ((scRound && scRound.fieldHcp) || 0);
+    var disp = document.getElementById('sc-disp');
+    if (disp) disp.innerHTML = scoreWithStablefordHTML(scScore, scHole, fieldHcp, isPlayerStablefordDisplayEnabled(player));
     var r = document.getElementById('sc-result');
-    r.textContent = holeResName(scScore, par);
-    r.className = 'score-result ' + holeResClass(scScore, par);
+    if (r) {
+        r.textContent = holeResName(scScore, par);
+        r.className = 'score-result ' + holeResClass(scScore, par);
+    }
 }
 
 function checkVerify() {

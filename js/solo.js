@@ -7,6 +7,13 @@ var canEditSolo = false;
 var soloAutoSaveTimer = null;
 var soloPaceTimer = null;
 
+// Новый клубный дефолт применяем только пока игрок не сохранил личный выбор.
+document.addEventListener('pestovo-stableford-default-change', function() {
+    if (!soloRound || !canEditSolo) return;
+    updateSoloStablefordToggle();
+    updateDisplay();
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
     initSoloForm();
@@ -367,6 +374,7 @@ function loadExistingSolo() {
             if (!uid || !soloRound.players) return;
             var player = soloRound.players[uid];
             if (!player) return;
+            updateSoloStablefordToggle();
 
             var scores = player.scores || {};
             var order = getRoundOrder(soloRound);
@@ -435,6 +443,39 @@ function getPlayerId() {
         return currentUser.uid;
     }
     return Object.keys(soloRound.players)[0];
+}
+
+function updateSoloStablefordToggle() {
+    var toggle = document.getElementById('solo-stableford-toggle');
+    var control = document.getElementById('solo-stableford-control');
+    if (!toggle) return;
+
+    var uid = getPlayerId();
+    var player = uid && soloRound && soloRound.players ? soloRound.players[uid] : null;
+    toggle.checked = isPlayerStablefordDisplayEnabled(player);
+    toggle.disabled = !canEditSolo || !player;
+    if (control) control.classList.toggle('is-disabled', toggle.disabled);
+}
+
+function toggleSoloStablefordDisplay(enabled) {
+    var uid = getPlayerId();
+    if (!canEditSolo || !soloRid || !uid || !soloRound || !soloRound.players || !soloRound.players[uid]) return;
+
+    enabled = !!enabled;
+    // Настройка записывается в карточку игрока этого раунда, поэтому не
+    // изменяет вид счёта у других игроков группы или на другом устройстве.
+    soloRound.players[uid].stablefordDisplay = enabled;
+    updateDisplay();
+    updateSoloStablefordToggle();
+
+    db.ref('rounds/' + soloRid + '/players/' + uid + '/stablefordDisplay').set(enabled).then(function() {
+        toast(enabled
+            ? (currentLang === 'en' ? 'Stableford points are shown' : 'Очки Stableford показаны')
+            : (currentLang === 'en' ? 'Stableford points are hidden' : 'Очки Stableford скрыты'), 'info');
+    }).catch(function(error) {
+        console.warn('[Stableford] Cannot save personal display setting', error);
+        toast(currentLang === 'en' ? 'Could not save the Stableford setting' : 'Не удалось сохранить настройку Stableford', 'error');
+    });
 }
 
 function renderRoundInfo(targetId) {
@@ -537,27 +578,22 @@ function adjSolo(delta) {
     }, 800);
 }
 
-function setParSolo() {
-    if (!canEditSolo) return;
-    curScore = holePar(curHole);
-    vib();
-    updateDisplay();
-    animateScoreElement('g-disp');
-
-    clearTimeout(soloAutoSaveTimer);
-    soloAutoSaveTimer = setTimeout(function() {
-        saveSolo(true);
-    }, 800);
-}
-
 function updateDisplay() {
     var par = holePar(curHole);
-    document.getElementById('g-disp').textContent = curScore;
+    var uid = getPlayerId();
+    var player = uid && soloRound && soloRound.players ? soloRound.players[uid] : null;
+    var fieldHcp = player && player.fieldHcp !== undefined
+        ? player.fieldHcp : ((soloRound && soloRound.fieldHcp) || 0);
+    var showStableford = isPlayerStablefordDisplayEnabled(player);
+    var scoreEl = document.getElementById('g-disp');
+    if (scoreEl) scoreEl.innerHTML = scoreWithStablefordHTML(curScore, curHole, fieldHcp, showStableford);
     var name = holeResName(curScore, par);
     var cls = holeResClass(curScore, par);
     var r = document.getElementById('g-result');
-    r.textContent = name;
-    r.className = 'score-result ' + cls;
+    if (r) {
+        r.textContent = name;
+        r.className = 'score-result ' + cls;
+    }
 }
 
 function saveSolo(isAuto) {

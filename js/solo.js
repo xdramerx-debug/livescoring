@@ -4,7 +4,9 @@ var curHole = 1;
 var curScore = 0;
 var soloIsChanging = false;
 var canEditSolo = false;
-var soloAutoSaveTimer = null;
+// Результат записывается только по кнопке «Сохранить»: автосохранения при
+// изменении счёта больше нет. Флаг отмечает ещё не записанный ввод.
+var soloDirty = false;
 var soloPaceTimer = null;
 
 // Новый клубный дефолт применяем только пока игрок не сохранил личный выбор.
@@ -524,6 +526,9 @@ function buildHoles() {
 function goHole(h) {
     if (!canEditSolo) return;
     soloIsChanging = true;
+    // Переход на другую лунку сбрасывает несохранённый ввод: результат
+    // записывается только по кнопке «Сохранить».
+    soloDirty = false;
     curHole = h;
     curScore = 0;
     rememberResumeHole(soloRid, getPlayerId(), h);
@@ -550,7 +555,11 @@ function renderCurrentHole() {
     var scores = (uid && soloRound && soloRound.players && soloRound.players[uid] && soloRound.players[uid].scores) || {};
     var savedScore = parseInt(scores[curHole]) || 0;
 
-    curScore = savedScore > 0 ? savedScore : par;
+    // Живое обновление данных не должно затирать ввод: пока счёт не сохранён
+    // кнопкой, оставляем введённое значение на экране.
+    if (!soloDirty) {
+        curScore = savedScore > 0 ? savedScore : par;
+    }
     updateDisplay();
     updateSoloActionButton();
     updateSoloPaceAssistant();
@@ -571,11 +580,9 @@ function adjSolo(delta) {
     vib();
     updateDisplay();
     animateScoreElement('g-disp');
-
-    clearTimeout(soloAutoSaveTimer);
-    soloAutoSaveTimer = setTimeout(function() {
-        saveSolo(true);
-    }, 800);
+    // Автосохранения нет: счёт попадёт в базу только после нажатия «Сохранить».
+    soloDirty = true;
+    updateSoloActionButton();
 }
 
 function updateDisplay() {
@@ -596,14 +603,15 @@ function updateDisplay() {
     }
 }
 
-function saveSolo(isAuto) {
+function saveSolo() {
     if (!canEditSolo) {
-        if (!isAuto) toast(t('msg_edit_disabled'), 'error');
+        toast(t('msg_edit_disabled'), 'error');
         return;
     }
-    if (curScore < 1) { if (!isAuto) toast(t('msg_score_min'), 'error'); return; }
+    if (curScore < 1) { toast(t('msg_score_min'), 'error'); return; }
 
     soloIsChanging = true;
+    soloDirty = false;
     var savedHole = curHole;
     var scoreToSave = curScore; // фиксируем счёт до колбэка: ниже curScore может сбрасываться в 0
 
@@ -616,20 +624,18 @@ function saveSolo(isAuto) {
         var par = holePar(savedHole);
         var d = scoreToSave - par;
 
-        if (!isAuto) {
-            if (scoreToSave === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); }
-            else if (d <= -2) { toast('🦅 EAGLE!', 'info'); vib([80, 50, 80]); }
-            else if (d === -1) { toast('🐦 Birdie!', 'success'); vib([50, 50]); }
-            else if (d === 0) { toast('✅ Par'); vib(); }
-            else if (d === 1) { toast('Bogey'); vib(); }
-            else { toast('Double+', 'warn'); vib(); }
+        if (scoreToSave === 1) { toast('🎯 HOLE-IN-ONE!!!', 'info'); vib([100, 50, 100, 50, 100]); }
+        else if (d <= -2) { toast('🦅 EAGLE!', 'info'); vib([80, 50, 80]); }
+        else if (d === -1) { toast('🐦 Birdie!', 'success'); vib([50, 50]); }
+        else if (d === 0) { toast('✅ Par'); vib(); }
+        else if (d === 1) { toast('Bogey'); vib(); }
+        else { toast('Double+', 'warn'); vib(); }
 
-            var order = getRoundOrder(soloRound);
-            var idx = order.indexOf(savedHole);
-            if (idx >= 0 && idx < order.length - 1) {
-                curHole = order[idx + 1];
-                curScore = 0;
-            }
+        var order = getRoundOrder(soloRound);
+        var idx = order.indexOf(savedHole);
+        if (idx >= 0 && idx < order.length - 1) {
+            curHole = order[idx + 1];
+            curScore = 0;
         }
 
         rememberResumeHole(soloRid, uid, curHole);
@@ -711,17 +717,30 @@ function updateSoloActionButton() {
         if (parseInt(scores[h]) > 0) playedCount++;
     });
 
-    if (playedCount >= holeCount) {
+    // Несохранённый ввод: счёт изменён, но кнопка «Сохранить» ещё не нажата.
+    var hasUnsaved = canEditSolo && soloDirty && curScore >= 1;
+    var hint = document.getElementById('solo-unsaved-hint');
+    if (hint) hint.classList.toggle('hidden', !hasUnsaved);
+    btn.classList.toggle('has-unsaved', hasUnsaved);
+
+    var icon = btn.querySelector('i');
+
+    if (hasUnsaved) {
+        // Изменения ещё не записаны — кнопка всегда сохраняет результат,
+        // даже на последней лунке (иначе ввод потерялся бы при завершении).
+        btn.onclick = function() { saveSolo(); };
+        btn.className = 'btn btn-g btn-block btn-lg has-unsaved';
+        if (txt) txt.innerHTML = currentLang === 'en' ? '💾 Save Result' : '💾 Сохранить результат';
+        if (icon) icon.className = 'fas fa-save';
+    } else if (playedCount >= holeCount) {
         btn.onclick = function() { finishSolo(); };
         btn.className = 'btn btn-g btn-block btn-lg';
         if (txt) txt.innerHTML = currentLang === 'en' ? '🏆 Finish Round' : '🏆 Завершить раунд';
-        var icon = btn.querySelector('i');
         if (icon) icon.className = 'fas fa-flag-checkered';
     } else {
         btn.onclick = function() { saveSolo(); };
         btn.className = 'btn btn-g btn-block';
         if (txt) txt.innerHTML = currentLang === 'en' ? '➡️ Next Hole' : '➡️ Сохранить и следующая лунка';
-        var icon = btn.querySelector('i');
         if (icon) icon.className = 'fas fa-arrow-right';
     }
 }

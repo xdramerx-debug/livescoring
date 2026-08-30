@@ -2692,3 +2692,219 @@ body.sun-mode .score-stableford-points { color: #705313; }
 .stableford-display-control.is-disabled { opacity: .58; cursor: default; }
 body.sun-mode .stableford-display-control { background: #fffdf3; border-color: #8a6d1f; }
 body.sun-mode .stableford-display-control strong { color: #1b5e20; }
+
+/* =========================================
+   v1.12.0: СОХРАНЕНИЕ ТОЛЬКО ПО КНОПКЕ, КОМПАКТНЫЕ КАРТОЧКИ, ПОЛЕВОЙ HCP И ПОДСКАЗКА СТАРТА
+   ========================================= */
+
+/* --- Чип с полевым (игровым) гандикапом рядом с именем игрока (главная) --- */
+.hcp-chip {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(90, 173, 224, 0.35);
+    background: rgba(90, 173, 224, 0.1);
+    color: var(--blue);
+    font-size: 9.5px;
+    font-weight: 700;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+body.sun-mode .hcp-chip { background: #e3f0fb; border-color: #1976d2; }
+
+/* --- Тайлы счётной карточки: фора вертикальными чёрточками, как при вводе счёта --- */
+.noscroll-tile { position: relative; }
+.noscroll-tile .hcp-marks {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 2px;
+    margin: 0;
+    line-height: 1;
+}
+.noscroll-tile .hm-bar {
+    display: block;
+    width: 1.5px;
+    height: 8px;
+    border-radius: 2px;
+    transform: rotate(14deg);
+    transform-origin: center;
+    background: var(--gold-l, var(--gold));
+}
+.noscroll-tile .hcp-marks.hm-minus .hm-bar { background: var(--blue); }
+.noscroll-hole {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: var(--muted);
+    font-weight: 600;
+}
+.noscroll-tile-bot {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 3px;
+    font-size: 9px;
+    color: var(--muted);
+    line-height: 1.2;
+}
+.noscroll-idx { font-variant-numeric: tabular-nums; }
+.noscroll-stbl { color: #2ecc71; font-weight: 700; font-variant-numeric: tabular-nums; }
+body.sun-mode .noscroll-tile .hm-bar { background: #8a6d1f; }
+
+.msc-tile { position: relative; }
+.msc-tile .hcp-marks {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 2px;
+    margin: 0;
+    line-height: 1;
+}
+.msc-tile .hm-bar {
+    display: block;
+    width: 1.5px;
+    height: 8px;
+    border-radius: 2px;
+    transform: rotate(14deg);
+    transform-origin: center;
+    background: var(--gold-l, var(--gold));
+}
+.msc-tile .hcp-marks.hm-minus .hm-bar { background: var(--blue); }
+.msc-tile .msc-hole-idx { font-variant-numeric: tabular-nums; }
+body.sun-mode .msc-tile .hm-bar { background: #8a6d1f; }
+
+/* --- Подсказка о несохранённом счёте (автосохранения больше нет) --- */
+.unsaved-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 9px 12px;
+    border-radius: var(--rs);
+    border: 1px solid rgba(243, 156, 18, 0.45);
+    background: rgba(243, 156, 18, 0.12);
+    color: var(--yellow);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+.btn.has-unsaved {
+    border: 1px solid var(--yellow);
+    animation: unsaved-pulse 1.6s ease-in-out infinite;
+}
+@keyframes unsaved-pulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(243, 156, 18, 0.2); }
+    50% { box-shadow: 0 0 18px rgba(243, 156, 18, 0.55); }
+}
+body.sun-mode .unsaved-hint { background: #fff7e0; border-color: #8a6d1f; color: #7a5c00; }
+
+/* --- Разворачиваемая подсказка «С какой лунки лучше стартовать» --- */
+.chs-hint {
+    margin-top: 10px;
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: var(--rs);
+    background: rgba(201, 168, 76, 0.06);
+    overflow: hidden;
+}
+.chs-hint-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 12px;
+    background: transparent;
+    border: none;
+    color: var(--gold);
+    font-family: var(--fb);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+    transition: var(--t);
+}
+.chs-hint-toggle:hover { background: rgba(201, 168, 76, 0.08); }
+.chs-hint-title { display: flex; align-items: center; gap: 7px; }
+.chs-hint-toggle > i { font-size: 11px; color: var(--muted); }
+.chs-hint-body {
+    padding: 2px 12px 12px;
+    border-top: 1px dashed rgba(201, 168, 76, 0.25);
+}
+.chs-hint-reco {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 0 8px;
+}
+.chs-hint-start {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 600;
+}
+.chs-hint-start i { color: #2ecc71; }
+.chs-hint-start b {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(46, 204, 113, 0.15);
+    border: 1px solid rgba(46, 204, 113, 0.45);
+    color: #2ecc71;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.chs-hint-why { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+.chs-hint-nines {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
+}
+.chs-hint-nine {
+    border: 1px solid var(--border);
+    border-radius: var(--rs);
+    background: var(--input);
+    padding: 8px 10px;
+}
+.chs-hint-nine.is-better {
+    border-color: rgba(46, 204, 113, 0.55);
+    background: rgba(46, 204, 113, 0.08);
+}
+.chs-hint-nine-t {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--white);
+    margin-bottom: 6px;
+}
+.chs-hint-nine.is-better .chs-hint-nine-t { color: #2ecc71; }
+.chs-hint-nine-stats { display: flex; gap: 8px; }
+.chs-hint-stat { flex: 1; text-align: center; }
+.chs-hint-stat b {
+    display: block;
+    font-size: 15px;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+.chs-hint-stat span { font-size: 9.5px; color: var(--muted); }
+.chs-hint-note { margin-top: 9px; font-size: 10.5px; color: var(--muted); line-height: 1.45; }
+body.sun-mode .chs-hint { background: #fffdf3; border-color: #8a6d1f; }
+body.sun-mode .chs-hint-toggle { color: #1b5e20; }
+body.sun-mode .chs-hint-nine { background: #ffffff; }
+body.sun-mode .chs-hint-nine.is-better { background: #e8f5e9; }
+body.sun-mode .chs-hint-why { color: #333333; }

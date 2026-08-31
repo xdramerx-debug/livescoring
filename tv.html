@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Pestovo TV Leaderboard</title>
-    <link rel="stylesheet" href="css/style.css?v=5">
+    <link rel="stylesheet" href="css/style.css?v=6">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -23,6 +23,22 @@
         .tv-pos { font-size: 28px; font-weight: 900; color: #c9a84c; }
         .tv-name { font-size: 24px; font-weight: 700; color: #fff; text-align: left; }
         .tv-score { font-size: 32px; font-weight: 900; }
+        /* Мобильная адаптация TV-табло (просмотр с телефона) */
+        @media (max-width: 768px) {
+            .tv-header { padding: 10px 14px; gap: 8px; }
+            .tv-logo { height: 34px; }
+            .tv-title { font-size: 15px; line-height: 1.3; }
+            .tv-clock { font-size: 15px; }
+            .tv-container { padding: 14px 10px; height: calc(100vh - 62px); height: calc(100dvh - 62px); -webkit-overflow-scrolling: touch; }
+            .tv-card { padding: 14px 10px; border-radius: 12px; margin-bottom: 14px; }
+            .tv-card h2 { font-size: 18px !important; }
+            .tv-table { font-size: 12px; }
+            .tv-table th { font-size: 9px; padding: 6px 4px; }
+            .tv-table td { padding: 8px 4px; }
+            .tv-pos { font-size: 15px; }
+            .tv-name { font-size: 13px; }
+            .tv-score { font-size: 16px; }
+        }
     </style>
 </head>
 <body>
@@ -42,7 +58,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=22"></script>
+<script src="js/utils.js?v=23"></script>
 <script>
 function updateClock() {
     var now = new Date();
@@ -86,7 +102,7 @@ function loadTVLeaderboard() {
             var rows = list.map(function(p, i) {
                 var thruTxt = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? 'Hole #' + p.currentHole : '—');
                 var pTeeBadge = '<span class="tee-pill tee-' + p.tee + '" style="font-size:12px;padding:2px 8px;margin-left:8px;vertical-align:middle;">' + (TEES[p.tee] || p.tee) + '</span>';
-                return '<tr><td class="tv-pos">' + (i + 1) + '</td><td class="tv-name">' + (p.name || '—') + pTeeBadge + '</td><td style="color:var(--gold);font-weight:700;">' + thruTxt + '</td><td class="tv-score ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</td><td>' + (p.gross || '—') + '</td><td style="color:var(--gold);font-weight:700;">' + p.stblField + '</td></tr>';
+                return '<tr><td class="tv-pos">' + (i + 1) + '</td><td class="tv-name">' + escapeHtml(p.name || '—') + pTeeBadge + '</td><td style="color:var(--gold);font-weight:700;">' + thruTxt + '</td><td class="tv-score ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</td><td>' + (p.gross || '—') + '</td><td style="color:var(--gold);font-weight:700;">' + p.stblField + '</td></tr>';
             }).join('');
 
             var badge = isLive ? '<span class="live-badge" style="font-size:16px;padding:6px 18px;"><span class="live-dot"></span> LIVE</span>' : '<span class="tn-status tn-d" style="font-size:16px;padding:6px 18px;">COMPLETED</span>';
@@ -115,6 +131,6 @@ setInterval(function() {
     }
 }, 50);
 </script>
-<p class="site-version" style="position:fixed;right:12px;bottom:6px;z-index:5;">Версия сайта: <span class="version-number">1.17.1</span></p>
+<p class="site-version" style="position:fixed;right:12px;bottom:6px;z-index:5;">Версия сайта: <span class="version-number">1.17.2</span></p>
 </body>
 </html>

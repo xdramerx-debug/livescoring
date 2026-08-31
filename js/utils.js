@@ -108,6 +108,38 @@ document.addEventListener('error', function(e) {
     if (el && el.tagName === 'IMG') { el.style.display = 'none'; }
 }, true);
 
+// ==========================================
+// ЗАПИСЬ В БД С ПОДДЕРЖКОЙ ОФЛАЙНА
+// Без сети промис Firebase не резолвится до восстановления соединения —
+// UI «замирал» после «Сохранить», а перезагрузка страницы теряла счёт.
+// Дублируем запись в локальную очередь (js/pwa.js) и сразу продолжаем.
+// ==========================================
+function isOfflineNow() {
+    return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+function dbSetWithOfflineQueue(path, value) {
+    var writePromise;
+    try { writePromise = db.ref(path).set(value); } catch (e) { writePromise = Promise.reject(e); }
+    if (isOfflineNow()) {
+        if (typeof queueOfflineWrite === 'function') queueOfflineWrite(path, value);
+        writePromise.catch(function() {});
+        return Promise.resolve({ offline: true });
+    }
+    return writePromise;
+}
+function dbUpdateWithOfflineQueue(updates) {
+    var writePromise;
+    try { writePromise = db.ref().update(updates); } catch (e) { writePromise = Promise.reject(e); }
+    if (isOfflineNow()) {
+        if (typeof queueOfflineWrite === 'function') {
+            Object.keys(updates || {}).forEach(function(p) { queueOfflineWrite(p, updates[p]); });
+        }
+        writePromise.catch(function() {});
+        return Promise.resolve({ offline: true });
+    }
+    return writePromise;
+}
+
 // Санитизация имён/текстов перед записью в БД: убираем HTML/JS-инъекции на входе,
 // чтобы все места, где имя рендерится в innerHTML, были безопасны.
 function sanitizeNameRaw(str){
@@ -599,6 +631,9 @@ var I18N = {
 
         my_score: 'My Score',
         marker_for: 'Marker for',
+        score_of_player: 'Player score:',
+        score_col_you: '(you enter your own score)',
+        score_col_marked: '(the player you are marking for)',
         save_hole: 'Save Hole', finish_round: 'Finish Round',
         next_hole_btn: 'To Next Hole →',
         show_stableford_points: 'Show Stableford points',

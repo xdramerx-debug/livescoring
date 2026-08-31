@@ -102,7 +102,7 @@ function sendEmojiReaction(eventId, emoji) {
         return (val || 0) + 1;
     }).then(function() {
         vib();
-        toast('Reaction ' + emoji + ' sent!');
+        toast(currentLang === 'en' ? 'Reaction ' + emoji + ' sent!' : 'Реакция ' + emoji + ' отправлена!');
         loadLiveFeed();
     });
 }

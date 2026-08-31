@@ -1513,6 +1513,17 @@ body.sun-mode .lb-table td:first-child {
     pointer-events: none;
 }
 
+/* Открыта экранная клавиатура (body.kb-open ставит js/utils.js):
+   прячем плавающие элементы, чтобы они не перекрывали поля ввода */
+body.kb-open .offline-queue-badge,
+body.kb-open .online-indicator,
+body.kb-open .install-banner,
+body.kb-open .ios-install-banner,
+body.kb-open .bottom-tabbar {
+    opacity: 0;
+    pointer-events: none;
+}
+
 /* USER AVATARS & PROFILE CUSTOMIZATION */
 .user-avatar-img {
     border-radius: 50%;
@@ -2063,12 +2074,22 @@ body.sun-mode .autocomplete-item.active-keyboard {
 
 /* ===== v1.7.0: mobile accessibility and safe-area polish ===== */
 html, body { max-width: 100%; overflow-x: clip; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 button, input, select, textarea { font: inherit; }
 button, .btn, a { -webkit-tap-highlight-color: transparent; }
 .footer { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
 .site-version { overflow-wrap: anywhere; }
 .modal-body { max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
 .mobile-drawer-panel { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+
+/* Touch-таргеты: на сенсорных экранах основные кнопки не ниже 44px (рекомендация Apple/Google) */
+@media (pointer: coarse) {
+    .btn { min-height: 44px; }
+    .btn-sm { min-height: 38px; }
+    .nav-toggle { min-width: 44px; min-height: 44px; align-items: center; justify-content: center; }
+    .auth-tab { min-height: 40px; }
+    .form-input, select.form-input { min-height: 44px; }
+}
 
 @media (max-width: 480px) {
     .container { padding-left: 14px; padding-right: 14px; }

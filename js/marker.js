@@ -138,13 +138,15 @@ function checkVerify() {
 function saveMk() {
     mkChanging = true;
     var savedHole = mkHole;
-    db.ref('markers/' + mkRid + '/' + mkPid + '/' + savedHole).set(mkScore).then(function() {
+    dbSetWithOfflineQueue('markers/' + mkRid + '/' + mkPid + '/' + savedHole, mkScore).then(function() {
+        // Локально отражаем ввод маркера: офлайн-слушатель может не успеть
+        mkScores[savedHole] = mkScore;
         var ps = parseInt(mkPScores[savedHole]) || 0;
         if (ps >= 1 && ps === mkScore) {
-            db.ref('rounds/' + mkRid + '/players/' + mkPid + '/verified/' + savedHole).set(true);
+            dbSetWithOfflineQueue('rounds/' + mkRid + '/players/' + mkPid + '/verified/' + savedHole, true);
             toast(currentLang === 'en' ? '✅ Hole ' + savedHole + ' confirmed!' : '✅ Лунка ' + savedHole + ' подтверждена!'); vib([50, 50]);
         } else if (ps >= 1) {
-            db.ref('rounds/' + mkRid + '/players/' + mkPid + '/verified/' + savedHole).set(false);
+            dbSetWithOfflineQueue('rounds/' + mkRid + '/players/' + mkPid + '/verified/' + savedHole, false);
             toast(currentLang === 'en' ? '⚠️ Mismatch!' : '⚠️ Несовпадение!', 'error');
         } else { toast(currentLang === 'en' ? '👁️ Waiting for player' : '👁️ Ждём игрока'); vib(); }
 

@@ -191,15 +191,23 @@ function saveSc() {
     scChanging = true;
     var savedHole = scHole;
 
-    db.ref('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole).set(scScore).then(function() {
+    dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole, scScore).then(function(res) {
+        var wentOffline = res && res.offline;
+        if (wentOffline) return null;
         return recordHoleCompletionTime(scRid, scPid, savedHole, Date.now());
     }).then(function() {
+        // Локально отражаем сохранённый счёт: офлайн-слушатель Firebase может не успеть
+        if (scRound && scRound.players && scRound.players[scPid]) {
+            scRound.players[scPid].scores = scRound.players[scPid].scores || {};
+            scRound.players[scPid].scores[savedHole] = scScore;
+        }
+
         var ms = parseInt(scMarker[savedHole]) || 0;
         if (ms >= 1 && ms === scScore) {
-            db.ref('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole).set(true);
+            dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole, true);
             toast(currentLang === 'en' ? '✅ Confirmed!' : '✅ Подтверждено!'); vib([50, 50]);
         } else if (ms >= 1 && ms !== scScore) {
-            db.ref('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole).set(false);
+            dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole, false);
             toast(currentLang === 'en' ? '⚠️ Mismatch!' : '⚠️ Несовпадение!', 'error');
         } else {
             toast(currentLang === 'en' ? '⏳ Waiting for marker...' : '⏳ Ждём маркера'); vib();

@@ -1049,7 +1049,7 @@ function renderPlaySummary() {
             var mkScores = allPlayers[p.markedBy].markerScores && allPlayers[p.markedBy].markerScores[pid];
             if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
                 displayScores = mkScores;
-                var mkName = allPlayers[p.markedBy].name || '';
+                var mkName = privacyDisplayName(allPlayers[p.markedBy], p.markedBy);
                 markerNote = ' <span style="font-size:10px;color:#9b59b6;">(' + (currentLang === 'en' ? 'marker: ' : 'маркер: ') + mkName + ')</span>';
             }
         }
@@ -1059,7 +1059,7 @@ function renderPlaySummary() {
         var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
 
         html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
-        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + isMe + markerNote + '</strong>';
+        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + pTeeBadge + isMe + markerNote + '</strong>';
         html += '<div style="font-size:12px;color:var(--muted);">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + getRoundHoleCount(curRoundData) + '</div></div>';
         html += '<div style="text-align:right;">';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
@@ -1119,7 +1119,7 @@ function renderInviteQRs() {
         var isMe = pid === myUid ? ' <span style="font-size:11px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
 
         html += '<div class="qr-card" style="padding:14px;text-align:center;">';
-        html += '<div class="qr-name" style="color:var(--white);font-weight:700;font-size:14px;margin-bottom:4px;"><i class="fas fa-mobile-alt"></i> ' + escapeHtml(p.name || t('player')) + isMe + '</div>';
+        html += '<div class="qr-name" style="color:var(--white);font-weight:700;font-size:14px;margin-bottom:4px;"><i class="fas fa-mobile-alt"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + isMe + '</div>';
         html += '<div style="font-size:11px;color:var(--gold);margin-bottom:8px;">' + t('scan_to_play') + '</div>';
         html += '<img src="' + qrUrl(url) + '" alt="QR" style="width:160px;height:160px;border-radius:8px;background:#fff;padding:6px;margin:0 auto 8px;display:block;">';
         html += '<div class="qr-url" style="font-size:10px;word-break:break-all;"><a href="' + url + '" target="_blank" style="color:var(--muted);">' + url + '</a></div>';
@@ -1211,7 +1211,7 @@ function renderGVPlayers(r) {
                 var mkScores = allPlayers[p.markedBy].markerScores && allPlayers[p.markedBy].markerScores[pid];
                 if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
                     displayScores = mkScores;
-                    var mkName = allPlayers[p.markedBy].name || '';
+                    var mkName = privacyDisplayName(allPlayers[p.markedBy], p.markedBy);
                     markerNote = currentLang === 'en' ? ' (marker: ' + mkName + ')' : ' (маркер: ' + mkName + ')';
                 }
             }
@@ -1221,7 +1221,7 @@ function renderGVPlayers(r) {
             var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
 
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
-                '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + '</strong>' +
+                '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + pTeeBadge + '</strong>' +
                 '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + markerNote + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div>' +
                 '</div>' +

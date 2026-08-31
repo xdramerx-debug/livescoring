@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.13.0';
+const CACHE_NAME = 'pestovo-v1.15.0';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
@@ -6,10 +6,10 @@ const STATIC_ASSETS = [
     'guide.html', 'feed.html', 'predictor.html', 'order-of-merit.html', 'tv.html',
     'players.html', 'tournaments.html', 'stats.html', 'handicap.html',
     'admin.html', 'auth.html', 'scorer.html', 'marker.html', 'offline.html',
-    'manifest.json', 'css/style.css?v=2', 'js/firebase-config.js', 'js/utils.js?v=20',
-    'js/auth.js', 'js/app.js?v=2', 'js/live.js?v=17', 'js/solo.js?v=18',
+    'manifest.json', 'css/style.css?v=2', 'js/firebase-config.js', 'js/utils.js?v=21',
+    'js/auth.js', 'js/app.js?v=3', 'js/live.js?v=18', 'js/solo.js?v=18',
     'js/leaderboard.js', 'js/players.js', 'js/tournaments.js',
-    'js/stats.js', 'js/handicap.js', 'js/admin.js?v=15', 'js/scorer.js',
+    'js/stats.js', 'js/handicap.js', 'js/admin.js?v=16', 'js/scorer.js',
     'js/marker.js', 'js/guide.js', 'js/feed.js', 'js/predictor.js',
     'js/order-of-merit.js', 'js/pwa.js', 'img/logo.png',
     'img/icon-192.png', 'img/icon-512.png', 'img/icon-180.png'

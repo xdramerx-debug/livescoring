@@ -154,13 +154,6 @@ function renderCourseHolesStrip(activeEntries) {
     var latestStart = { 1: 0, 10: 0 };
     for (var i = 1; i <= 18; i++) holeCount[i] = 0;
 
-    // Статистика по девяткам для подсказки «С какой лунки лучше стартовать»:
-    // сколько игроков сейчас в поле на каждой девятке и их суммарный гандикап.
-    var nine = {
-        front: { players: 0, hcpSum: 0 },
-        back: { players: 0, hcpSum: 0 }
-    };
-
     var totalPlayers = 0;
 
     (activeEntries || []).forEach(function(e) {
@@ -183,14 +176,6 @@ function renderCourseHolesStrip(activeEntries) {
             var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
             if (stats.currentHole && holeCount[stats.currentHole] !== undefined) {
                 holeCount[stats.currentHole]++;
-                // Игрок физически находится на этой лунке — учитываем его
-                // в загруженности соответствующей девятки вместе с гандикапом.
-                var side = stats.currentHole <= 9 ? nine.front : nine.back;
-                side.players++;
-                var hcpVal = (p.fieldHcp !== undefined && p.fieldHcp !== null && p.fieldHcp !== '')
-                    ? (parseFloat(p.fieldHcp) || 0)
-                    : (parseFloat(p.exactHcp) || 0);
-                side.hcpSum += hcpVal;
             }
         });
     });
@@ -227,133 +212,7 @@ function renderCourseHolesStrip(activeEntries) {
     }
     html += '</div>';
 
-    // Разворачиваемая вкладка-подсказка: с какой лунки лучше стартовать прямо сейчас
-    html += buildStartHintHTML(nine, isEn);
-
     stripEl.innerHTML = html;
-}
-
-// Состояние вкладки-подсказки сохраняется между перерисовками ленты:
-// блок «Сейчас на поле» обновляется в реальном времени.
-var startHintOpen = false;
-
-function toggleStartHint() {
-    startHintOpen = !startHintOpen;
-    var body = document.getElementById('chs-hint-body');
-    var icon = document.getElementById('chs-hint-icon');
-    var btn = document.getElementById('chs-hint-toggle');
-    if (body) body.classList.toggle('hidden', !startHintOpen);
-    if (icon) icon.className = startHintOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
-    if (btn) btn.setAttribute('aria-expanded', startHintOpen ? 'true' : 'false');
-}
-
-function buildStartHintHTML(nine, isEn) {
-    var front = nine.front, back = nine.back;
-    var fAvg = front.players ? front.hcpSum / front.players : 0;
-    var bAvg = back.players ? back.hcpSum / back.players : 0;
-
-    // Совокупная «загруженность» девятки: каждый игрок в поле и высокий средний
-    // гандикап (чем выше гандикап, тем медленнее темп игры) увеличивают риск
-    // задержек. Стартуем с той девятки, где загрузка меньше.
-    var fLoad = front.players * 3 + fAvg;
-    var bLoad = back.players * 3 + bAvg;
-
-    var recoHole = null;
-    var why = '';
-    if (front.players === 0 && back.players === 0) {
-        why = isEn
-            ? '💡 The course is free right now — you can start from any hole (hole 1 by default).'
-            : '💡 Поле сейчас свободно — можно стартовать с любой лунки (по умолчанию с лунки 1).';
-    } else if (Math.abs(fLoad - bLoad) < 1) {
-        why = isEn
-            ? '💡 Both nines are similarly loaded right now — start from any hole (hole 1 by default).'
-            : '💡 Загруженность девяток сейчас примерно одинаковая — можно стартовать с любой лунки (по умолчанию с лунки 1).';
-    } else {
-        var winner = fLoad < bLoad ? front : back;
-        var loser = fLoad < bLoad ? back : front;
-        var winnerAvg = fLoad < bLoad ? fAvg : bAvg;
-        var loserAvg = fLoad < bLoad ? bAvg : fAvg;
-        recoHole = fLoad < bLoad ? 1 : 10;
-
-        var parts = [];
-        if (winner.players === 0) {
-            parts.push(isEn ? 'no one is playing there right now' : 'там сейчас никто не играет');
-        } else {
-            if (winner.players < loser.players) {
-                parts.push(isEn ? 'fewer players on that nine' : 'на этой девятке сейчас меньше игроков');
-            }
-            if (loser.players > 0 && winnerAvg < loserAvg - 0.5) {
-                parts.push(isEn
-                    ? 'their average handicap is lower, so play moves faster'
-                    : 'средний гандикап играющих ниже — игра идёт быстрее');
-            }
-            if (!parts.length) {
-                parts.push(isEn ? 'that nine is lighter right now' : 'эта девятка сейчас менее загружена');
-            }
-        }
-
-        var startPhrase = isEn ? '💡 Better to start from ' : '💡 Лучше стартовать ';
-        var startHoleName = recoHole === 1
-            ? (isEn ? 'the first nine — hole 1' : 'с первой девятки — с лунки 1')
-            : (isEn ? 'the second nine — hole 10' : 'со второй девятки — с лунки 10');
-        why = startPhrase + startHoleName + ': ' + parts.join(', ') + '.';
-    }
-
-    var bodyCls = startHintOpen ? '' : ' hidden';
-    var iconCls = startHintOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
-    var ariaExp = startHintOpen ? 'true' : 'false';
-
-    var recoHtml = '';
-    if (recoHole) {
-        var recoLbl = isEn ? 'Recommended start' : 'Рекомендуемый старт';
-        var holeLbl = isEn ? 'Hole' : 'Лунка';
-        recoHtml = '<span class="chs-hint-start"><i class="fas fa-flag-checkered"></i> ' + recoLbl + ': <b>' + holeLbl + ' ' + recoHole + '</b></span>';
-    }
-
-    var fmtAvg = function (n) { return n > 0 ? (Math.round(n * 10) / 10).toFixed(1) : '—'; };
-    var playersLbl = function (n) {
-        return isEn ? (n === 1 ? 'player in the field' : 'players in the field') : pluralN(n, 'игрок в поле', 'игрока в поле', 'игроков в поле');
-    };
-    var avgLbl = isEn ? 'avg handicap' : 'средний HCP';
-    var frontTitle = isEn ? 'First nine' : 'Первая девятка';
-    var backTitle = isEn ? 'Second nine' : 'Вторая девятка';
-    var holesSpan = function (a, b) { return isEn ? ' (holes ' + a + '–' + b + ')' : ' (лунки ' + a + '–' + b + ')'; };
-
-    var frontBetter = recoHole === 1;
-    var backBetter = recoHole === 10;
-
-    var noteTxt = isEn
-        ? 'The hint takes into account everyone on the course right now: how loaded each nine is and the average handicap of the players (the higher the handicap, the slower the pace). Choose your start hole when you begin a round.'
-        : 'Подсказка учитывает всех, кто сейчас в поле: загруженность каждой девятки и средний гандикап играющих (чем выше гандикап, тем медленнее темп). Стартовую лунку можно выбрать при создании раунда.';
-
-    var html = '<div class="chs-hint">' +
-        '<button type="button" class="chs-hint-toggle" id="chs-hint-toggle" onclick="toggleStartHint()" aria-expanded="' + ariaExp + '">' +
-        '<span class="chs-hint-title"><i class="fas fa-lightbulb"></i> ' + t('start_hint_title') + '</span>' +
-        '<i class="' + iconCls + '" id="chs-hint-icon"></i>' +
-        '</button>' +
-        '<div class="chs-hint-body' + bodyCls + '" id="chs-hint-body">' +
-        '<div class="chs-hint-reco">' + recoHtml + '<span class="chs-hint-why">' + why + '</span></div>' +
-        '<div class="chs-hint-nines">' +
-        '<div class="chs-hint-nine' + (frontBetter ? ' is-better' : '') + '">' +
-        '<div class="chs-hint-nine-t">' + (frontBetter ? '<i class="fas fa-circle-check"></i> ' : '') + frontTitle + holesSpan(1, 9) + '</div>' +
-        '<div class="chs-hint-nine-stats">' +
-        '<div class="chs-hint-stat"><b>' + front.players + '</b><span>' + playersLbl(front.players) + '</span></div>' +
-        '<div class="chs-hint-stat"><b>' + fmtAvg(fAvg) + '</b><span>' + avgLbl + '</span></div>' +
-        '</div>' +
-        '</div>' +
-        '<div class="chs-hint-nine' + (backBetter ? ' is-better' : '') + '">' +
-        '<div class="chs-hint-nine-t">' + (backBetter ? '<i class="fas fa-circle-check"></i> ' : '') + backTitle + holesSpan(10, 18) + '</div>' +
-        '<div class="chs-hint-nine-stats">' +
-        '<div class="chs-hint-stat"><b>' + back.players + '</b><span>' + playersLbl(back.players) + '</span></div>' +
-        '<div class="chs-hint-stat"><b>' + fmtAvg(bAvg) + '</b><span>' + avgLbl + '</span></div>' +
-        '</div>' +
-        '</div>' +
-        '</div>' +
-        '<p class="chs-hint-note">' + noteTxt + '</p>' +
-        '</div>' +
-        '</div>';
-
-    return html;
 }
 
 function loadLiveRounds() {
@@ -382,13 +241,22 @@ function loadLiveRounds() {
         var html = '';
         entries.forEach(function(e) {
             var id = e[0], r = e[1];
+            r.roundId = id;
             var rawPlayers = r.players || {};
             var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
             var pHtml = '';
             var order = getRoundOrder(r);
 
+            var pIdx = 0;
             Object.entries(players).forEach(function(pe) {
+                pIdx++;
                 var pid = pe[0], p = pe[1];
+                // Имя может быть скрыто настройками конфиденциальности.
+                var nameObj = resolvePlayerDisplayName(p, pid, {
+                    index: pIdx,
+                    isSelf: !!(currentUser && currentUser.uid === pid),
+                    round: r
+                });
                 var playerBadges = buildPlayerBadges(p, r);
                 // Для отображения используем собственные счёта игрока.
                 // Если их нет, но есть счёта маркера — показываем их (с пометкой).
@@ -400,7 +268,8 @@ function loadLiveRounds() {
                     var mkScores = players[p.markedBy].markerScores && players[p.markedBy].markerScores[pid];
                     if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
                         displayScores = mkScores;
-                        var mkName = players[p.markedBy].name || '';
+                        var mkNameObj = resolvePlayerDisplayName(players[p.markedBy], p.markedBy, { round: r });
+                        var mkName = mkNameObj.text;
                         markerNote = currentLang === 'en' ? ' (marker: ' + mkName + ')' : ' (маркер: ' + mkName + ')';
                     }
                 }
@@ -409,7 +278,7 @@ function loadLiveRounds() {
                 var thruText = stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : t('hole') + ' №' + (parseInt(r.startHole)||1));
 
                 pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + playerBadges + '</div>' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(nameObj.text) + playerBadges + '</div>' +
                     '<div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;">📍 ' + thruText + markerNote + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
@@ -418,7 +287,6 @@ function loadLiveRounds() {
             });
 
             var link = 'setup-round.html?round=' + id;
-            var panelId = 'live-sc-' + id;
 
             var localGroupKey = localStorage.getItem('pestovo_group_key_' + id);
             var localSoloKey = localStorage.getItem('pestovo_solo_key_' + id);
@@ -441,7 +309,12 @@ function loadLiveRounds() {
                 ? '<a href="' + link + '" class="btn btn-g btn-sm" style="flex:1;"><i class="fas fa-gamepad"></i> ' + (currentLang === 'en' ? 'Continue' : 'Продолжить') + '</a>'
                 : '';
 
-            var toggleWidth = isMyRound ? 'flex:1;' : 'width:100%;';
+            // Блок «Сейчас на поле» всегда полностью развёрнут — карточка раунда
+            // видна сразу, без кнопки «Показать/Свернуть карточку».
+            var scorecardHtml = '';
+            if (typeof generateGroupHoleTableHTML === 'function') {
+                scorecardHtml = generateGroupHoleTableHTML(r);
+            }
 
             html += '<div class="round-card" style="cursor:default;">' +
                 '<div class="round-hdr"><span class="round-course"><i class="fas fa-flag"></i> ' + t('brand_name') + ' · ' + startWord + ' ' + fmtTime(r.startTime) + '</span>' +
@@ -450,45 +323,13 @@ function loadLiveRounds() {
                 '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">' +
                 '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + '</span>' +
                 '<span>' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span></div>' +
-                '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
-                '<button class="btn btn-og btn-sm" style="' + toggleWidth + '" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
-                startBtnMarkup +
-                '</div>' +
-                '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
+                (startBtnMarkup ? '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' + startBtnMarkup + '</div>' : '') +
+                (scorecardHtml ? '<div class="card-scorecard-panel" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">' + scorecardHtml + '</div>' : '') +
                 '</div>';
         });
 
         el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">' + html + '</div>';
     });
-}
-
-function toggleCardScorecard(panelId, roundId) {
-    var panel = document.getElementById(panelId);
-    var icon = document.getElementById(panelId + '-icon');
-    var txt = document.getElementById(panelId + '-txt');
-    if (!panel) return;
-
-    var isHidden = panel.classList.contains('hidden');
-    if (isHidden) {
-        panel.classList.remove('hidden');
-        if (icon) icon.className = 'fas fa-chevron-up';
-        if (txt) txt.textContent = t('collapse_scorecard');
-
-        if (roundId && typeof db !== 'undefined' && panel.innerHTML === '') {
-            panel.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-            db.ref('rounds/' + roundId).once('value').then(function(sn) {
-                var r = sn.val();
-                if (r && typeof generateGroupHoleTableHTML === 'function') {
-                    r.roundId = roundId;
-                    panel.innerHTML = generateGroupHoleTableHTML(r);
-                }
-            });
-        }
-    } else {
-        panel.classList.add('hidden');
-        if (icon) icon.className = 'fas fa-chevron-down';
-        if (txt) txt.textContent = t('expand_scorecard');
-    }
 }
 
 function loadRecentResults() {
@@ -518,25 +359,39 @@ function loadRecentResults() {
         var html = '';
         entries.forEach(function(e) {
             var id = e[0], r = e[1];
+            r.roundId = id;
             var rawPlayers = r.players || {};
             var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
             var pHtml = '';
             var order = getRoundOrder(r);
 
+            var pIdx = 0;
             Object.entries(players).forEach(function(pe) {
+                pIdx++;
                 var pid = pe[0], p = pe[1], scores = p.scores || {};
+                // Имя может быть скрыто настройками конфиденциальности.
+                var nameObj = resolvePlayerDisplayName(p, pid, {
+                    index: pIdx,
+                    isSelf: !!(currentUser && currentUser.uid === pid),
+                    round: r
+                });
                 var playerBadges = buildPlayerBadges(p, r);
                 var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
 
                 pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + playerBadges + '</div>' +
+                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(nameObj.text) + playerBadges + '</div>' +
                     '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div></div>' +
                     '<div style="text-align:right;">' +
                     '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
                     '</div></div>';
             });
 
-            var panelId = 'recent-sc-' + id;
+            // Блок «Сейчас на поле» всегда полностью развёрнут — карточка раунда
+            // видна сразу, без кнопки «Показать/Свернуть карточку».
+            var scorecardHtml = '';
+            if (typeof generateGroupHoleTableHTML === 'function') {
+                scorecardHtml = generateGroupHoleTableHTML(r);
+            }
 
             html += '<div class="round-card" style="cursor:default;">' +
                 '<div class="round-hdr"><span class="round-course"><i class="fas fa-flag"></i> ' + t('brand_name') + ' · ' + fmtDate(r.completedAt || r.createdAt) + '</span>' +
@@ -546,10 +401,9 @@ function loadRecentResults() {
                 '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + '</span>' +
                 '<span>' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span></div>' +
                 '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
-                '<button class="btn btn-og btn-sm" style="flex:1;" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
                 '<button class="btn btn-g btn-sm" style="flex:1;" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' +
                 '</div>' +
-                '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
+                (scorecardHtml ? '<div class="card-scorecard-panel" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">' + scorecardHtml + '</div>' : '') +
                 '</div>';
         });
 

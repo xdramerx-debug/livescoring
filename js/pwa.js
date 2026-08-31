@@ -12,16 +12,47 @@ if('serviceWorker' in navigator){
             console.log('[PWA] SW registered');
             initBackgroundAlertListener();
             checkPWAInstallPrompt();
+            // Периодически проверяем наличие новой версии (для долго открытых вкладок)
+            setInterval(function(){ reg.update().catch(function(){}); }, 30*60*1000);
         }).catch(function(err){console.error('[PWA] SW failed',err);});
     });
     navigator.serviceWorker.addEventListener('message',function(event){
         if(event.data&&event.data.type==='SYNC_SCORES')syncOfflineScores();
+    });
+
+    // Баннер «Доступна новая версия»: sw.js активирует новую версию сразу
+    // (skipWaiting + clients.claim), но загруженная страница продолжает работать
+    // на старых ассетах до перезагрузки — предлагаем её явно.
+    var pwaHadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (pwaRefreshing) return;
+        if (!pwaHadController) { pwaHadController = true; return; } // первая установка SW — не новая версия
+        showUpdateBanner();
     });
 } else {
     window.addEventListener('load', function() {
         checkPWAInstallPrompt();
     });
 }
+
+var pwaRefreshing = false;
+function showUpdateBanner() {
+    if (document.getElementById('update-banner')) return;
+    var b = document.createElement('div');
+    b.id = 'update-banner';
+    b.className = 'update-banner';
+    b.setAttribute('role', 'status');
+    var txt = currentLang === 'en' ? '<b>New version available.</b> Reload the page to update.' : '<b>Доступна новая версия.</b> Перезагрузите страницу, чтобы обновиться.';
+    var btnTxt = currentLang === 'en' ? 'Reload' : 'Обновить';
+    b.innerHTML = '<div class="ub-text">' + txt + '</div><button class="btn btn-g btn-sm" onclick="applyPWAUpdate()"><i class="fas fa-rotate-right"></i> ' + btnTxt + '</button>';
+    if (document.body) document.body.appendChild(b);
+    setTimeout(function(){ b.classList.add('show'); }, 50);
+}
+function applyPWAUpdate() {
+    pwaRefreshing = true;
+    window.location.reload();
+}
+window.applyPWAUpdate = applyPWAUpdate;
 
 var isOnline=navigator.onLine;
 
@@ -74,6 +105,22 @@ function saveOfflineScore(roundId,playerId,hole,score){
     updateOfflineQueueBadge();
 }
 
+// Универсальная офлайн-запись по произвольному пути БД (verified, markers, holeTimes и т.п.).
+// Для одного пути храним только последнее значение.
+function queueOfflineWrite(path,value){
+    if(!path)return;
+    var pending=readOfflineScores();
+    pending=pending.filter(function(item){
+        return !(item.type==='set'&&item.path===path);
+    });
+    pending.push({type:'set',path:path,value:value,timestamp:Date.now()});
+    try { localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending)); } catch (error) {
+        console.error('[PWA] Cannot queue offline write', error);
+        if(typeof toast==='function')toast(currentLang === 'en' ? 'Cannot save data offline' : 'Не удалось сохранить данные офлайн','error');
+    }
+    updateOfflineQueueBadge();
+}
+
 function syncOfflineScores(){
     if(!navigator.onLine||typeof db==='undefined'||offlineSyncInProgress)return;
     var pending=readOfflineScores();
@@ -83,16 +130,22 @@ function syncOfflineScores(){
     }
     offlineSyncInProgress=true;
     var sentIds=pending.map(function(item){
-        return [item.roundId,item.playerId,item.hole,item.timestamp].join('|');
+        return item.type==='set'
+            ? 'set|'+item.path+'|'+item.timestamp
+            : [item.roundId,item.playerId,item.hole,item.timestamp].join('|');
     });
     var promises=pending.map(function(item){
         if(item.type==='score')return db.ref('rounds/'+item.roundId+'/players/'+item.playerId+'/scores/'+item.hole).set(item.score);
+        if(item.type==='set'&&item.path)return db.ref(item.path).set(item.value);
         return Promise.resolve();
     });
     Promise.all(promises).then(function(){
         // Не удаляем записи, добавленные во время синхронизации.
         var remaining=readOfflineScores().filter(function(item){
-            return sentIds.indexOf([item.roundId,item.playerId,item.hole,item.timestamp].join('|'))===-1;
+            var key=item.type==='set'
+                ? 'set|'+item.path+'|'+item.timestamp
+                : [item.roundId,item.playerId,item.hole,item.timestamp].join('|');
+            return sentIds.indexOf(key)===-1;
         });
         if(remaining.length) localStorage.setItem(OFFLINE_KEY,JSON.stringify(remaining));
         else localStorage.removeItem(OFFLINE_KEY);

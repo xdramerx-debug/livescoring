@@ -618,7 +618,8 @@ function saveSolo() {
     var uid = getPlayerId();
     var path = 'rounds/' + soloRid + '/players/' + uid + '/scores/' + savedHole;
 
-    db.ref(path).set(scoreToSave).then(function() {
+    dbSetWithOfflineQueue(path, scoreToSave).then(function(res) {
+        if (res && res.offline) return null;
         return recordHoleCompletionTime(soloRid, uid, savedHole, Date.now());
     }).then(function() {
         var par = holePar(savedHole);

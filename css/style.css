@@ -1196,10 +1196,10 @@ body.round-active main{padding-top:var(--round-nav-offset,92px)!important;}
     .hole-btn {
         width: 100% !important;
         min-width: 0 !important;
-        height: 38px !important;
-        min-height: 38px !important;
+        height: 44px !important;
+        min-height: 44px !important;
         padding: 2px 1px !important;
-        font-size: 11px !important;
+        font-size: 13px !important;
         border-radius: 6px !important;
         display: flex !important;
         flex-direction: column !important;
@@ -1209,10 +1209,10 @@ body.round-active main{padding-top:var(--round-nav-offset,92px)!important;}
     }
     
     .score-area { margin: 6px 0 !important; }
-    .score-disp { font-size: 40px !important; min-height: 40px !important; margin: 2px 0 !important; }
-    .score-btns { gap: 10px !important; margin: 6px 0 !important; }
-    .score-minus, .score-plus { width: 46px !important; height: 46px !important; min-width: 46px !important; min-height: 46px !important; font-size: 22px !important; border-radius: 10px !important; }
-    .score-par-btn { padding: 0 14px !important; font-size: 13px !important; height: 46px !important; min-height: 46px !important; border-radius: 10px !important; }
+    .score-disp { font-size: 48px !important; min-height: 48px !important; margin: 2px 0 !important; }
+    .score-btns { gap: 14px !important; margin: 8px 0 !important; }
+    .score-minus, .score-plus { width: 56px !important; height: 56px !important; min-width: 56px !important; min-height: 56px !important; font-size: 26px !important; border-radius: 12px !important; }
+    .score-par-btn { padding: 0 16px !important; font-size: 14px !important; height: 56px !important; min-height: 56px !important; border-radius: 12px !important; }
     
     .scoring-dual-block { padding: 8px 10px !important; margin-bottom: 8px !important; border-radius: 10px !important; }
     .dual-header h3 { font-size: 13px !important; }
@@ -1510,6 +1510,17 @@ body.sun-mode .lb-table td:first-child {
 .offline-queue-badge.hide {
     opacity: 0;
     transform: translateY(100px);
+    pointer-events: none;
+}
+
+/* Открыта экранная клавиатура (body.kb-open ставит js/utils.js):
+   прячем плавающие элементы, чтобы они не перекрывали поля ввода */
+body.kb-open .offline-queue-badge,
+body.kb-open .online-indicator,
+body.kb-open .install-banner,
+body.kb-open .ios-install-banner,
+body.kb-open .bottom-tabbar {
+    opacity: 0;
     pointer-events: none;
 }
 
@@ -2063,12 +2074,22 @@ body.sun-mode .autocomplete-item.active-keyboard {
 
 /* ===== v1.7.0: mobile accessibility and safe-area polish ===== */
 html, body { max-width: 100%; overflow-x: clip; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 button, input, select, textarea { font: inherit; }
 button, .btn, a { -webkit-tap-highlight-color: transparent; }
 .footer { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
 .site-version { overflow-wrap: anywhere; }
 .modal-body { max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
 .mobile-drawer-panel { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+
+/* Touch-таргеты: на сенсорных экранах основные кнопки не ниже 44px (рекомендация Apple/Google) */
+@media (pointer: coarse) {
+    .btn { min-height: 44px; }
+    .btn-sm { min-height: 38px; }
+    .nav-toggle { min-width: 44px; min-height: 44px; align-items: center; justify-content: center; }
+    .auth-tab { min-height: 40px; }
+    .form-input, select.form-input { min-height: 44px; }
+}
 
 @media (max-width: 480px) {
     .container { padding-left: 14px; padding-right: 14px; }
@@ -3520,3 +3541,89 @@ body.sun-mode .sc-topar-cell.sc-tp-under { background: #e8f5e9 !important; color
 body.sun-mode .sc-topar-cell.sc-tp-over { background: #ffebee !important; color: #b71c1c !important; }
 body.sun-mode .sc-cur-tile { border: 3px solid #1b5e20 !important; box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.2) !important; }
 body.sun-mode .sc-to-cur-btn { background: #e8f5e9 !important; border: 2px solid #1b5e20 !important; color: #1b5e20 !important; }
+
+/* ==========================================
+   v1.18: МОБИЛЬНЫЕ КАРТОЧКИ ВМЕСТО ТАБЛИЦ (< 480px)
+   Таблицы с классом .lb-cards превращаются в вертикальные
+   карточки без горизонтального скролла; подписи берутся
+   из data-label ячеек.
+   ========================================== */
+@media (max-width: 480px) {
+    .lb-table.lb-cards { border-spacing: 0; }
+    .lb-table.lb-cards thead { display: none; }
+    .lb-table.lb-cards, .lb-table.lb-cards tbody,
+    .lb-table.lb-cards tr, .lb-table.lb-cards td { display: block; width: 100%; }
+    .lb-table.lb-cards tr {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 10px;
+        padding: 10px 12px;
+    }
+    .lb-table.lb-cards td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        border-bottom: none;
+        padding: 4px 0;
+        font-size: 13px;
+        text-align: right;
+    }
+    .lb-table.lb-cards td.lb-card-main {
+        justify-content: flex-start;
+        text-align: left;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 4px;
+    }
+    .lb-table.lb-cards td[data-label]::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        text-align: left;
+        flex-shrink: 0;
+    }
+    .lb-table.lb-cards td.lb-pos { font-size: 15px; width: 100%; }
+    body.sun-mode .lb-table.lb-cards tr { background: #ffffff; border: 2px solid #000000; }
+}
+
+/* ===== A11Y: видимый фокус для клавиатурной навигации ===== */
+a:focus-visible, button:focus-visible, .btn:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+body.sun-mode a:focus-visible, body.sun-mode button:focus-visible,
+body.sun-mode input:focus-visible, body.sun-mode select:focus-visible {
+    outline-color: #1b5e20;
+}
+
+/* ===== PWA: баннер «Доступна новая версия» ===== */
+.update-banner {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%) translateY(140%);
+    background: var(--card);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 12px 16px;
+    z-index: 10001;
+    box-shadow: var(--shl);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: min(440px, calc(100vw - 24px));
+    transition: transform .35s cubic-bezier(.4,0,.2,1);
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+.update-banner.show { transform: translateX(-50%) translateY(0); }
+.update-banner .ub-text { font-size: 13px; color: var(--text); line-height: 1.4; }
+.update-banner .ub-text b { color: var(--gold); }
+body.sun-mode .update-banner { background: #ffffff; border: 2px solid #000000; color: #000000; }

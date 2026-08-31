@@ -991,7 +991,7 @@ function saveHoleScores() {
         updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = 'pending';
     }
 
-    db.ref().update(updates).then(function() {
+    dbUpdateWithOfflineQueue(updates).then(function() {
         var order = getRoundOrder(curRoundData);
         var idx = order.indexOf(h);
 

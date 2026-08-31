@@ -58,7 +58,7 @@ function loadTournaments() {
             if (regCount === 0) {
                 html += '<p style="font-size:12px;color:var(--muted);text-align:center;">' + (currentLang === 'en' ? 'No registered participants yet' : 'Пока нет зарегистрированных участников') + '</p>';
             } else {
-                html += '<div style="overflow-x:auto;"><table class="lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>ТИ</th><th>' + t('date') + '</th></tr></thead><tbody>';
+                html += '<div style="overflow-x:auto;"><table class="lb-table lb-cards"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>ТИ</th><th>' + t('date') + '</th></tr></thead><tbody>';
                 var rIdx = 1;
                 var seenFio = {};
                 var finalReg = [];
@@ -72,11 +72,11 @@ function loadTournaments() {
                 });
                 finalReg.forEach(function(en) {
                     var rp = en.rp, rpid = en.pid;
-                    html += '<tr><td>' + (rIdx++) + '</td>';
-                    html += '<td><strong style="color:var(--gold);">' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong></td>';
-                    html += '<td>' + (rp.handicap != null ? fmtExactHcp(rp.handicap) : '—') + '</td>';
-                    html += '<td>' + fmtTeePill(rp.tee) + '</td>';
-                    html += '<td>' + fmtDate(rp.registeredAt) + '</td></tr>';
+                    html += '<tr><td data-label="#">' + (rIdx++) + '</td>';
+                    html += '<td class="lb-card-main"><strong style="color:var(--gold);">' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong></td>';
+                    html += '<td data-label="HCP">' + (rp.handicap != null ? fmtExactHcp(rp.handicap) : '—') + '</td>';
+                    html += '<td data-label="' + (currentLang === 'en' ? 'Tee' : 'ТИ') + '">' + fmtTeePill(rp.tee) + '</td>';
+                    html += '<td data-label="' + t('date') + '">' + fmtDate(rp.registeredAt) + '</td></tr>';
                 });
                 html += '</tbody></table></div>';
             }

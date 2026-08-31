@@ -407,7 +407,6 @@ function toggleLiveWho(roundId, pid) {
     var open = row ? !row.classList.contains('is-open') : !getLiveWhoOpen(roundId, pid);
     setLiveWhoOpen(roundId, pid, open);
     applyLiveWhoOpenUI(row, open);
-    updateLiveRoundsToolbar();
     if (typeof vib === 'function') vib(15);
 }
 
@@ -416,39 +415,6 @@ function liveWhoKey(ev, roundId, pid) {
     if (ev && (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar')) {
         ev.preventDefault();
         toggleLiveWho(roundId, pid);
-    }
-}
-
-// Если есть хотя бы одна свёрнутая строка — разворачиваем все, иначе сворачиваем все
-function setAllLiveRounds() {
-    var rows = document.querySelectorAll('.lwl-row:not(.recent-row)');
-    var anyClosed = false;
-    for (var i = 0; i < rows.length; i++) {
-        if (!rows[i].classList.contains('is-open')) { anyClosed = true; break; }
-    }
-    var open = anyClosed;
-    for (var j = 0; j < rows.length; j++) {
-        setLiveWhoOpen(rows[j].getAttribute('data-round-id'), rows[j].getAttribute('data-pid'), open);
-        applyLiveWhoOpenUI(rows[j], open);
-    }
-    updateLiveRoundsToolbar();
-}
-
-function updateLiveRoundsToolbar() {
-    var bar = document.getElementById('live-rounds-toolbar');
-    if (!bar) return;
-    var rows = document.querySelectorAll('.lwl-row:not(.recent-row)');
-    bar.classList.toggle('hidden', rows.length < 2);
-    var allOpen = rows.length > 0;
-    for (var i = 0; i < rows.length; i++) {
-        if (!rows[i].classList.contains('is-open')) { allOpen = false; break; }
-    }
-    var btn = document.getElementById('live-rounds-toggle-all');
-    if (btn) {
-        var lbl = btn.querySelector('span');
-        var ic = btn.querySelector('i');
-        if (lbl) lbl.textContent = allOpen ? t('collapse_all_rounds') : t('expand_all_rounds');
-        if (ic) ic.className = 'fas ' + (allOpen ? 'fa-compress' : 'fa-expand');
     }
 }
 
@@ -537,7 +503,6 @@ function loadLiveRounds() {
 
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
-            updateLiveRoundsToolbar();
             return;
         }
 
@@ -563,16 +528,10 @@ function loadLiveRounds() {
             });
         });
 
-        var toolbar = '<div class="live-rounds-toolbar" id="live-rounds-toolbar">' +
-            '<button type="button" class="btn btn-og btn-sm" id="live-rounds-toggle-all" onclick="setAllLiveRounds()">' +
-            '<i class="fas fa-expand"></i> <span>' + t('expand_all_rounds') + '</span></button>' +
-            '</div>';
-
-        el.innerHTML = toolbar + '<div class="live-who-list">' + html + '</div>';
+        el.innerHTML = '<div class="live-who-list">' + html + '</div>';
 
         // Перерисовка не должна сворачивать уже открытую счётную карточку
         restoreLiveWhoPanels();
-        updateLiveRoundsToolbar();
     });
 }
 

@@ -2611,7 +2611,8 @@ body.sun-mode .hole-btn.active .hm-bar { background: #0b1a0e !important; }
     display: flex;
     align-items: center;
     gap: 7px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    white-space: nowrap;
     margin: -2px 0 11px;
     color: var(--muted);
     font-size: 11px;
@@ -2861,7 +2862,7 @@ body.sun-mode .unsaved-hint { background: #fff7e0; border-color: #8a6d1f; color:
     transition: var(--t);
 }
 .chs-hint-toggle:hover { background: rgba(201, 168, 76, 0.08); }
-.chs-hint-title { display: flex; align-items: center; gap: 7px; }
+.chs-hint-title { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
 .chs-hint-toggle > i { font-size: 11px; color: var(--muted); }
 .chs-hint-body {
     padding: 2px 12px 12px;

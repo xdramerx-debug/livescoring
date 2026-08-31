@@ -62,20 +62,18 @@ function loadTournaments() {
                 var rIdx = 1;
                 var seenFio = {};
                 var finalReg = [];
-                Object.values(regPlayers).forEach(function(rp){
+                Object.entries(regPlayers).forEach(function(pe){
+                    var rpid = pe[0], rp = pe[1];
                     if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(null, rp && rp.name)) return;
                     var fioKey = (typeof getPlayerFioKey === 'function') ? getPlayerFioKey({name: rp.name, firstName: rp.name.split(' ')[0], lastName: rp.name.split(' ').slice(1).join(' ')}) : (rp.name||'').toLowerCase();
                     if (seenFio[fioKey]) return;
                     seenFio[fioKey]=true;
-                    finalReg.push(rp);
+                    finalReg.push({ rp: rp, pid: rpid });
                 });
-                finalReg.forEach(function(rp) {
-                    // Имя может быть скрыто настройками конфиденциальности.
-                    var nameObj = resolvePlayerDisplayName(rp, rp.uid || null, {
-                        isSelf: !!(currentUser && currentUser.uid === rp.uid)
-                    });
+                finalReg.forEach(function(en) {
+                    var rp = en.rp, rpid = en.pid;
                     html += '<tr><td>' + (rIdx++) + '</td>';
-                    html += '<td><strong style="color:var(--gold);">' + escapeHtml(nameObj.text || '—') + '</strong></td>';
+                    html += '<td><strong style="color:var(--gold);">' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong></td>';
                     html += '<td>' + (rp.handicap != null ? fmtExactHcp(rp.handicap) : '—') + '</td>';
                     html += '<td>' + fmtTeePill(rp.tee) + '</td>';
                     html += '<td>' + fmtDate(rp.registeredAt) + '</td></tr>';

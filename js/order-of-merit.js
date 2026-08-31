@@ -104,15 +104,10 @@ function loadOrderOfMerit() {
         standings.forEach(function(p, i) {
             var posCls = (i + 1) <= 3 ? 'lb-' + (i + 1) : '';
             var crown = (i === 0) ? ' 👑' : '';
-            // Имя может быть скрыто настройками конфиденциальности.
-            var nameObj = resolvePlayerDisplayName(p, p.pid, {
-                index: i + 1,
-                isSelf: !!(currentUser && currentUser.uid === p.pid)
-            });
 
             html += '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + p.pid + '\')">';
             html += '<td class="lb-pos ' + posCls + '">' + (i + 1) + '</td>';
-            html += '<td><div style="display:flex;align-items:center;gap:10px;">' + fmtUserAvatar(nameObj.displayUser || p, 36) + '<div><strong style="color:var(--gold);font-size:15px;">' + escapeHtml(nameObj.text || 'Player') + crown + '</strong></div></div></td>';
+            html += '<td><div style="display:flex;align-items:center;gap:10px;">' + fmtUserAvatar(p, 36) + '<div><strong style="color:var(--gold);font-size:15px;">' + escapeHtml(privacyDisplayName(p, p.pid)) + crown + '</strong></div></div></td>';
             html += '<td style="text-align:center;">' + p.tournamentsPlayed + '</td>';
             html += '<td style="text-align:center;color:var(--gold);font-weight:700;">' + p.wins + '</td>';
             html += '<td style="text-align:center;font-size:20px;font-weight:800;color:var(--white);"><span class="badge-eag">' + p.points + ' PTS</span></td>';

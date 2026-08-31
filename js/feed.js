@@ -45,7 +45,7 @@ function loadLiveFeed() {
                             eventId: rid + '_' + pid + '_' + h,
                             roundId: rid,
                             playerId: pid,
-                            playerName: p.name || 'Player',
+                            playerName: privacyDisplayName(p, pid) || 'Player',
                             hole: h,
                             par: par,
                             score: s,
@@ -74,14 +74,9 @@ function loadLiveFeed() {
             var countTarget = reactCount['🎯'] || 0;
             var countStrong = reactCount['💪'] || 0;
 
-            // Имя может быть скрыто настройками конфиденциальности.
-            var evNameObj = resolvePlayerDisplayName({ name: ev.playerName }, ev.playerId, {
-                isSelf: !!(currentUser && currentUser.uid === ev.playerId)
-            });
-
             html += '<div class="card" style="margin-bottom:16px;">';
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
-            html += '<div><strong style="color:var(--white);font-size:16px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + ev.playerId + '\',\'' + ev.roundId + '\')"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(evNameObj.text) + '</strong>';
+            html += '<div><strong style="color:var(--white);font-size:16px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + ev.playerId + '\',\'' + ev.roundId + '\')"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(ev.playerName) + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + t('brand_name') + ' · ' + t('hole') + ' #' + ev.hole + ' (' + t('par') + ' ' + ev.par + ')</div></div>';
             html += '<span class="' + ev.badgeCls + '" style="font-size:14px;padding:5px 12px;">' + ev.typeName + ' (' + ev.score + ')</span>';
             html += '</div>';

@@ -16,17 +16,12 @@ function initPredictorUsers() {
         if (!sel) return;
 
         sel.innerHTML = '<option value="">' + (currentLang === 'en' ? '— Select Player —' : '— Выберите игрока —') + '</option>';
-        var uIdx = 0;
         Object.entries(users).forEach(function(e) {
             var uid = e[0], u = e[1];
             // Удалённые и навсегда заблокированные демо-игроки не показываются
             if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u && u.name)) return;
-            uIdx++;
             var isCurrent = currentUser && uid === currentUser.uid;
-            // Имя может быть скрыто настройками конфиденциальности.
-            var nameObj = resolvePlayerDisplayName(u, uid, { index: uIdx, isSelf: isCurrent });
-            var youMark = isCurrent ? ' (' + (currentLang === 'en' ? 'You' : 'Вы') + ')' : '';
-            sel.innerHTML += '<option value="' + uid + '" ' + (isCurrent ? 'selected' : '') + '>' + escapeHtml(nameObj.text || 'Player') + youMark + ' (HCP: ' + fmtExactHcp(u.handicap) + ')</option>';
+            sel.innerHTML += '<option value="' + uid + '" ' + (isCurrent ? 'selected' : '') + '>' + (u.name || 'Player') + ' (HCP: ' + fmtExactHcp(u.handicap) + ')</option>';
         });
 
         runWHSPredictor();
@@ -78,9 +73,7 @@ function runWHSPredictor() {
 
             var html = '<div class="card" style="max-width:540px;margin:0 auto;border:2px solid var(--gold);background:linear-gradient(135deg, rgba(201,168,76,0.12), var(--card));">';
             html += '<div style="text-align:center;margin-bottom:20px;">';
-            // Имя может быть скрыто настройками конфиденциальности.
-            var predNameObj = resolvePlayerDisplayName(u, uid, { isSelf: !!(currentUser && currentUser.uid === uid) });
-            html += '<h2 style="font-size:24px;color:var(--white);font-family:var(--ff);">' + escapeHtml(predNameObj.text || 'Player') + '</h2>';
+            html += '<h2 style="font-size:24px;color:var(--white);font-family:var(--ff);">' + escapeHtml(u.name || 'Player') + '</h2>';
             html += '<div style="font-size:13px;color:var(--muted);">' + (currentLang === 'en' ? 'Current WHS Exact Index: ' : 'Текущий точный гандикап WHS: ') + '<b>' + fmtExactHcp(curExact) + '</b> · ' + (currentLang === 'en' ? 'Course HCP: ' : 'Полевой: ') + '<b>' + fmtFieldHcp(curField) + '</b></div>';
             html += '</div>';
 

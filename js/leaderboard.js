@@ -54,20 +54,13 @@ function renderRound(id, r) {
 
     var list = Object.entries(players).filter(function(pe) {
         return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
-    }).map(function(pe, idx) {
+    }).map(function(pe) {
         var pid = pe[0], p = pe[1], sc = p.scores || {};
         var pTee = (p && p.tee) || r.tee || 'wh';
         var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
-        // Имя может быть скрыто настройками конфиденциальности.
-        var nameObj = resolvePlayerDisplayName(p, pid, {
-            index: idx + 1,
-            isSelf: !!(currentUser && currentUser.uid === pid),
-            round: r
-        });
         return {
             pid: pid,
-            name: nameObj.text,
-            avatarUser: nameObj.displayUser,
+            name: p.name, 
             tee: pTee,
             gross: stats.gross, 
             toPar: stats.toPar, 
@@ -111,8 +104,8 @@ function renderRound(id, r) {
 
         return '<div class="rlb-row" onclick="openPlayerProfileModal(\'' + p.pid + '\',\'' + id + '\')">' +
             '<span class="rlb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</span>' +
-            '<div class="rlb-player">' + fmtUserAvatar(p.avatarUser || p, 28) +
-            '<div class="rlb-pcol"><div style="display:flex;align-items:center;min-width:0;"><span class="rlb-name">' + escapeHtml(p.name || '—') + '</span>' + pTeeBadge + '</div>' +
+            '<div class="rlb-player">' + fmtUserAvatar(p, 28) +
+            '<div class="rlb-pcol"><div style="display:flex;align-items:center;min-width:0;"><span class="rlb-name">' + escapeHtml(privacyDisplayName(p, p.pid)) + '</span>' + pTeeBadge + '</div>' +
             '<span class="rlb-thru">' + holeInfo + '</span></div></div>' +
             '<span class="rlb-par ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</span>' +
             '<span class="rlb-num">' + gross + '</span>' +

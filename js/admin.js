@@ -282,8 +282,8 @@ function openAdminPanel() {
     loadTelegramSettings();
     loadVKSettings();
     loadPageVisibilitySettings();
-    loadNamePrivacySettings();
     loadStablefordDisplaySettings();
+    loadPrivacySettings();
     updateNotifButton();
 }
 
@@ -321,11 +321,13 @@ function switchTab(t, b) {
     }
     if (t === 'data') {
         loadPageVisibilitySettings();
-        loadNamePrivacySettings();
         loadStablefordDisplaySettings();
     }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
+    }
+    if (t === 'players') {
+        loadPrivacySettings();
     }
 }
 
@@ -1601,73 +1603,92 @@ function toggleMyPreferencesCheckbox(event) {
 }
 
 // ==========================================
-// КОНФИДЕНЦИАЛЬНОСТЬ ИМЁН ИГРОКОВ
+// КОНФИДЕНЦИАЛЬНОСТЬ ИМЁН (ФИО)
+// Настройки: settings/privacy = { enabled, maskMode, players: { uid: bool } }
 // ==========================================
-function loadNamePrivacySettings() {
-    var update = function(settings) {
-        settings = settings || {};
-        var toBool = function(v) { return v === true || v === 1 || v === '1'; };
-        var guestCb = document.getElementById('pv-name-guests');
-        var playersCb = document.getElementById('pv-name-players');
-        if (guestCb) guestCb.checked = toBool(settings.hideFromGuests);
-        if (playersCb) playersCb.checked = toBool(settings.hideFromPlayers);
+function loadPrivacySettings() {
+    var globalCb = document.getElementById('pv-privacy-global');
+    var maskSel = document.getElementById('pv-privacy-mask');
+
+    var apply = function(v) {
+        v = v || {};
+        if (globalCb) globalCb.checked = v.enabled === true;
+        if (maskSel) maskSel.value = (v.maskMode === 'masked') ? 'masked' : 'initials';
     };
 
-    try {
-        var local = localStorage.getItem('pestovo_name_privacy');
-        if (local) update(JSON.parse(local));
-    } catch(e) {}
-
-    if (typeof db !== 'undefined') {
-        db.ref('settings/name_visibility').on('value', function(sn) {
-            var v = sn.val();
-            if (v && typeof v === 'object') {
-                try { localStorage.setItem('pestovo_name_privacy', JSON.stringify(v)); } catch(e) {}
-                update(v);
-            }
-        });
+    if (typeof db === 'undefined') {
+        apply(null);
+        return;
     }
-}
-
-function toggleNamePrivacyCheckbox(event, id) {
-    togglePVCheckbox(id, event);
-}
-
-function saveNamePrivacySettings() {
-    var guestCb = document.getElementById('pv-name-guests');
-    var playersCb = document.getElementById('pv-name-players');
-    var settings = {
-        hideFromGuests: guestCb ? guestCb.checked : false,
-        hideFromPlayers: playersCb ? playersCb.checked : false
-    };
-    try { localStorage.setItem('pestovo_name_privacy', JSON.stringify(settings)); } catch(e) {}
-    if (typeof applyNamePrivacySettings === 'function') applyNamePrivacySettings(settings);
-    toast(t('name_privacy_saved'), 'success');
-    if (typeof vib === 'function') vib([50, 30, 50]);
-    if (typeof db !== 'undefined') {
-        db.ref('settings/name_visibility').set(settings).catch(function(err) {
-            console.warn('Name privacy sync warning:', err);
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-privacy', db.ref('settings/privacy'), function(sn) {
+            apply(sn.val());
         });
-    }
-}
-
-function setPlayerNamePrivacy(id, value) {
-    if (typeof db === 'undefined' || !id) return;
-    var update = {};
-    if (value === 'visible' || value === 'hidden') {
-        update['users/' + id + '/namePrivacy'] = value;
     } else {
-        update['users/' + id + '/namePrivacy'] = null; // удаляем персональную настройку
+        db.ref('settings/privacy').once('value').then(function(sn) { apply(sn.val()); }).catch(function() { apply(null); });
     }
-    db.ref().update(update).then(function() {
-        if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[id]) {
-            if (value === 'visible' || value === 'hidden') cachedRegisteredUsers[id].namePrivacy = value;
-            else delete cachedRegisteredUsers[id].namePrivacy;
-            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
-        }
-        toast((currentLang === 'en' ? '✅ Name privacy updated' : '✅ Настройка имени обновлена'), 'success');
+}
+
+function togglePrivacyGlobalCheckbox(event) {
+    togglePVCheckbox('pv-privacy-global', event);
+}
+
+function savePrivacySettings() {
+    var globalCb = document.getElementById('pv-privacy-global');
+    var maskSel = document.getElementById('pv-privacy-mask');
+    var enabled = globalCb ? globalCb.checked : false;
+    var maskMode = maskSel && maskSel.value === 'masked' ? 'masked' : 'initials';
+
+    // Обновляем локальное состояние для текущего пользователя сразу
+    if (typeof pestovoPrivacy !== 'undefined') {
+        pestovoPrivacy.enabled = enabled;
+        pestovoPrivacy.maskMode = maskMode;
+    }
+    try {
+        localStorage.setItem('pestovo_privacy', JSON.stringify({ enabled: enabled, maskMode: maskMode, players: pestovoPrivacy.players || {} }));
+    } catch (e) {}
+    if (typeof renderPrivacySensitiveHome === 'function') renderPrivacySensitiveHome();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Privacy settings saved locally' : 'Настройки приватности сохранены локально', 'success');
+        return;
+    }
+
+    db.ref('settings/privacy').once('value').then(function(sn) {
+        var cur = sn.val() || {};
+        db.ref('settings/privacy').update({
+            enabled: enabled,
+            maskMode: maskMode,
+            players: cur.players || {},
+            updatedAt: Date.now()
+        }).then(function() {
+            toast(enabled
+                ? (currentLang === 'en' ? '✅ Names are now hidden from others' : '✅ Имена теперь скрыты от других')
+                : (currentLang === 'en' ? '✅ Names are visible to others' : '✅ Имена снова видны другим'), 'success');
+        }).catch(function(err) {
+            toast('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
     }).catch(function(err) {
-        toast('❌ ' + err.message, 'error');
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+// Переключатель «Скрыть имя» для конкретного игрока (в списке игроков админки).
+// true — скрывать (перекрывает глобальный выключатель), false — показывать.
+function togglePlayerPrivacy(id) {
+    if (!id) return;
+    var ref = db.ref('settings/privacy/players/' + id);
+    ref.once('value').then(function(sn) {
+        var cur = sn.val();
+        var newVal = (cur === true) ? false : true;
+        return ref.set(newVal).then(function() {
+            toast(newVal
+                ? (currentLang === 'en' ? '🙈 Name will be hidden from others' : '🙈 Имя будет скрыто от других')
+                : (currentLang === 'en' ? '🙂 Name will be visible to others' : '🙂 Имя будет видно другим'), 'success');
+            if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        });
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
 }
 
@@ -1741,14 +1762,6 @@ function loadAdmPlayers() {
             html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
             html += roleBadge;
 
-            // Персональная настройка видимости имени игрока
-            var curPrivacy = (u.namePrivacy === 'visible') ? 'visible' : ((u.namePrivacy === 'hidden') ? 'hidden' : '');
-            html += '<select class="form-input" style="padding:4px 8px;font-size:11px;width:auto;" title="' + t('name_privacy_title') + '" onchange="setPlayerNamePrivacy(\'' + id + '\', this.value)">';
-            html += '<option value="" ' + (curPrivacy === '' ? 'selected' : '') + '>' + t('name_privacy_default') + '</option>';
-            html += '<option value="visible" ' + (curPrivacy === 'visible' ? 'selected' : '') + '>' + t('name_privacy_show_all') + '</option>';
-            html += '<option value="hidden" ' + (curPrivacy === 'hidden' ? 'selected' : '') + '>' + t('name_privacy_hide_all') + '</option>';
-            html += '</select>';
-
             if (!currentUser || id !== currentUser.uid) {
                 html += '<select class="form-input" style="padding:4px 8px;font-size:11px;width:auto;" onchange="changeRole(\'' + id + '\', this.value, \'' + (u.name || '').replace(/'/g, "\\'") + '\')">';
                 html += '<option value="player" ' + (curRole === 'player' ? 'selected' : '') + '>' + t('role_player') + '</option>';
@@ -1756,6 +1769,13 @@ function loadAdmPlayers() {
                 html += '<option value="marshal" ' + (curRole === 'marshal' ? 'selected' : '') + '>' + t('role_marshal') + '</option>';
                 html += '<option value="admin" ' + (curRole === 'admin' ? 'selected' : '') + '>' + t('role_admin') + '</option>';
                 html += '</select>';
+
+                // Персональный тумблер приватности имени: скрыть/показывать ФИО этого игрока
+                var privInd = (typeof pestovoPrivacy !== 'undefined' && pestovoPrivacy.players) ? pestovoPrivacy.players[id] : undefined;
+                var privHidden = (privInd === true) || (privInd !== false && (typeof pestovoPrivacy === 'undefined' ? false : pestovoPrivacy.enabled === true));
+                var privLabel = privHidden ? t('privacy_show_btn') : t('privacy_hide_btn');
+                html += '<button class="btn ' + (privHidden ? 'btn-r' : 'btn-og') + ' btn-sm" onclick="togglePlayerPrivacy(\'' + id + '\')" title="' + (currentLang === 'en' ? 'Hide/show full name from others' : 'Скрыть/показывать ФИО от других') + '">' +
+                        '<i class="fas fa-' + (privHidden ? 'eye' : 'eye-slash') + '"></i> ' + privLabel + '</button>';
 
                 html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="' + (currentLang === 'en' ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
 

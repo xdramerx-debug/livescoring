@@ -94,17 +94,13 @@ function loadPlayers() {
         var html = '';
         entries.forEach(function(e) {
             var id = e[0], u = e[1];
-            // Имя может быть скрыто настройками конфиденциальности.
-            var nameObj = resolvePlayerDisplayName(u, id, {
-                isSelf: !!(currentUser && currentUser.uid === id)
-            });
             var gIcon = u.gender === 'women' ? '👩' : '👨';
             var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">' + t('guest') + '</span>' : '';
 
             html += '<div class="card" style="cursor:pointer;" onclick="showPlayer(\'' + id + '\')">' +
                 '<div style="display:flex;align-items:center;gap:14px;">' +
-                fmtUserAvatar(nameObj.displayUser || u, 52) +
-                '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + escapeHtml(nameObj.text || '—') + guestBadge + '</div>' +
+                fmtUserAvatar(u, 52) +
+                '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + escapeHtml(privacyDisplayName(u, id)) + guestBadge + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                 'HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') +
                 ' · ' + roundsWord + (u.roundsPlayed || 0) +

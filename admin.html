@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="stylesheet" href="css/style.css?v=5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -270,6 +270,34 @@
         </div>
 
         <div id="tab-players" class="admin-section hidden">
+            <!-- PRIVACY OF NAMES (FULL NAME) CARD -->
+            <div class="card" style="margin-bottom:20px;">
+                <h2><i class="fas fa-user-shield"></i> <span data-i18n="privacy_title">Конфиденциальность имён (ФИО)</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="privacy_sub">
+                    Скрывать полные имена игроков (имя, фамилия, отчество) от других игроков и гостей. Вместо ФИО показываются инициалы или маска, а гандикап и история раундов остаются видны. Админ и сам игрок всегда видят своё имя.
+                </p>
+
+                <div class="list-item" onclick="togglePrivacyGlobalCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:12px;touch-action:manipulation;">
+                    <div>
+                        <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-eye-slash"></i> <span data-i18n="privacy_global_lbl">Скрывать ФИО всех игроков от других (глобально)</span></span>
+                        <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="privacy_global_sub">Включите, чтобы скрыть полные имена сразу для всех игроков. Для отдельных игроков можно задать исключение ниже.</div>
+                    </div>
+                    <input type="checkbox" id="pv-privacy-global" style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
+                </div>
+
+                <div class="form-group" style="max-width:360px;">
+                    <label data-i18n="privacy_mask_lbl"><i class="fas fa-user-secret"></i> Формат скрытия имени</label>
+                    <select id="pv-privacy-mask" class="form-input">
+                        <option value="initials" data-i18n="privacy_opt_initials">Инициалы (И. Т.)</option>
+                        <option value="masked" data-i18n="privacy_opt_masked">Полная маскировка (Игрок №N)</option>
+                    </select>
+                </div>
+
+                <button type="button" class="btn btn-g btn-block" onclick="savePrivacySettings()" style="min-height:44px;margin-top:12px;">
+                    <i class="fas fa-save"></i> <span data-i18n="privacy_save_btn">Сохранить настройки приватности</span>
+                </button>
+            </div>
+
             <!-- CREATE NEW PLAYER CARD -->
             <div class="card" style="margin-bottom:20px;">
                 <h2><i class="fas fa-user-plus"></i> <span>Создать игрока</span></h2>
@@ -456,38 +484,6 @@
         </div>
 
         <div id="tab-data" class="admin-section hidden">
-            <!-- КОНФИДЕНЦИАЛЬНОСТЬ ИМЁН ИГРОКОВ -->
-            <div class="card" style="margin-bottom:20px;">
-                <h2><i class="fas fa-user-shield"></i> <span data-i18n="name_privacy_title">Конфиденциальность имён игроков</span></h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="name_privacy_sub">
-                    Скрывайте имена, фамилии и отчества игроков от других посетителей сайта. У скрытых игроков остаются видны история раундов, гандикап и статистика — без имени.
-                </p>
-
-                <div class="list-item" onclick="toggleNamePrivacyCheckbox(event, 'pv-name-guests')" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:10px;touch-action:manipulation;">
-                    <div>
-                        <span style="font-weight:700;font-size:14px;color:var(--white);">👀 <span data-i18n="name_privacy_hide_guests">Скрывать имена от гостей</span></span>
-                        <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="name_privacy_hide_guests_hint">Неавторизованные посетители (гости) не увидят имена игроков.</div>
-                    </div>
-                    <input type="checkbox" id="pv-name-guests" style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
-                </div>
-
-                <div class="list-item" onclick="toggleNamePrivacyCheckbox(event, 'pv-name-players')" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:14px;touch-action:manipulation;">
-                    <div>
-                        <span style="font-weight:700;font-size:14px;color:var(--white);">👥 <span data-i18n="name_privacy_hide_players">Скрывать имена от игроков</span></span>
-                        <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="name_privacy_hide_players_hint">Другие авторизованные игроки не увидят имена друг друга.</div>
-                    </div>
-                    <input type="checkbox" id="pv-name-players" style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
-                </div>
-
-                <p style="font-size:12px;color:var(--muted);margin:10px 0 14px;" data-i18n="name_privacy_per_player_hint">
-                    Индивидуальную настройку каждого игрока можно задать во вкладке «Игроки и роли».
-                </p>
-
-                <button type="button" class="btn btn-g btn-block" onclick="saveNamePrivacySettings()" style="min-height:48px;font-size:15px;">
-                    <i class="fas fa-save"></i> <span data-i18n="name_privacy_save">Сохранить настройки конфиденциальности</span>
-                </button>
-            </div>
-
             <div class="card">
                 <h2><i class="fas fa-eye-slash"></i> <span data-i18n="page_visibility_title">Управление видимостью страниц и функций</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="page_visibility_sub">
@@ -582,14 +578,14 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.15.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.17.1</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=21"></script>
+<script src="js/utils.js?v=22"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/admin.js?v=16"></script>
+<script src="js/admin.js?v=15"></script>
 <script src="js/pwa.js"></script>
 </body>
 </html>

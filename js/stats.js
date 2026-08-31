@@ -22,9 +22,9 @@ function loadStats() {
         var totalPlayers = dedupedUsers.length;
         var totalHoles = 0;
         var birdies = 0, eagles = 0, pars = 0, hio = 0;
-        var bestGross = Infinity, bestGrossPlayer = '—', bestGrossPid = null;
-        var bestStableford = 0, bestStablefordPlayer = '—', bestStablefordPid = null;
-        var fastestTime = Infinity, fastestPlayer = '—', fastestPid = null, fastestHoles = 18;
+        var bestGross = Infinity, bestGrossPlayer = '—';
+        var bestStableford = 0, bestStablefordPlayer = '—';
+        var fastestTime = Infinity, fastestPlayer = '—', fastestHoles = 18;
         var soloCount = 0, groupCount = 0;
         var totalStblFieldSum = 0, totalStblExactSum = 0;
 
@@ -57,7 +57,6 @@ function loadStats() {
                             if (cnt > 0 && dur < fastestTime) {
                                 fastestTime = dur;
                                 fastestPlayer = p.name || 'Player';
-                                fastestPid = pe[0];
                                 fastestHoles = cnt;
                             }
                         });
@@ -108,12 +107,10 @@ function loadStats() {
                     if (gross > 0 && gross < bestGross) {
                         bestGross = gross;
                         bestGrossPlayer = p.name;
-                        bestGrossPid = pid;
                     }
                     if (stblF > bestStableford) {
                         bestStableford = stblF;
                         bestStablefordPlayer = p.name;
-                        bestStablefordPid = pid;
                     }
                 }
 
@@ -181,13 +178,8 @@ function loadStats() {
                 var avg = (p.totalGross / p.count).toFixed(1);
                 var avgStbl = (p.totalStbl / p.count).toFixed(1);
                 var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
-                // Имя может быть скрыто настройками конфиденциальности.
-                var nameObj = resolvePlayerDisplayName(p, p.pid, {
-                    index: i + 1,
-                    isSelf: !!(currentUser && currentUser.uid === p.pid)
-                });
                 thtml += '<div class="list-item">' +
-                    '<span><strong style="color:var(--white);">' + medal + ' ' + escapeHtml(nameObj.text || 'Player') + '</strong></span>' +
+                    '<span><strong style="color:var(--white);">' + medal + ' ' + escapeHtml(privacyDisplayName(p, p.pid)) + '</strong></span>' +
                     '<span>' + avgWord + '<b style="color:var(--gold);">' + avg + '</b> · Stableford: <b style="color:var(--gold);">' + avgStbl + '</b> · ' + p.count + fullRoundsWord + '</span>' +
                     '</div>';
             });
@@ -199,16 +191,13 @@ function loadStats() {
         var lFastest18 = currentLang === 'en' ? '⏱️ Fastest Round (18 holes)' : '⏱️ Самый быстрый раунд (18 лунок)';
 
         // Рекорды клуба (только 18 лунок)
-        var bestGrossName = resolvePlayerDisplayName({ name: bestGrossPlayer }, bestGrossPid, { isSelf: !!(currentUser && currentUser.uid === bestGrossPid) }).text;
-        var bestStblName = resolvePlayerDisplayName({ name: bestStablefordPlayer }, bestStablefordPid, { isSelf: !!(currentUser && currentUser.uid === bestStablefordPid) }).text;
-        var fastestName = resolvePlayerDisplayName({ name: fastestPlayer }, fastestPid, { isSelf: !!(currentUser && currentUser.uid === fastestPid) }).text;
         document.getElementById('club-records').innerHTML =
             '<div class="list-item"><span>' + lBestGross18 + '</span>' +
-            '<strong>' + (bestGross < Infinity ? bestGross + ' (' + escapeHtml(bestGrossName) + ')' : '—') + '</strong></div>' +
+            '<strong>' + (bestGross < Infinity ? bestGross + ' (' + bestGrossPlayer + ')' : '—') + '</strong></div>' +
             '<div class="list-item"><span>' + lBestStbl18 + '</span>' +
-            '<strong>' + (bestStableford > 0 ? bestStableford + ' (' + escapeHtml(bestStblName) + ')' : '—') + '</strong></div>' +
+            '<strong>' + (bestStableford > 0 ? bestStableford + ' (' + bestStablefordPlayer + ')' : '—') + '</strong></div>' +
             '<div class="list-item"><span>' + lFastest18 + '</span>' +
-            '<strong>' + fastestStr + (fastestPlayer !== '—' ? ' (' + escapeHtml(fastestName) + ')' : '') + '</strong></div>' +
+            '<strong>' + fastestStr + (fastestPlayer !== '—' ? ' (' + escapeHtml(fastestPlayer) + ')' : '') + '</strong></div>' +
             '<div class="list-item"><span>🎯 Hole-in-One</span><strong>' + hio + '</strong></div>' +
             '<div class="list-item"><span>🦅 Eagles</span><strong>' + eagles + '</strong></div>' +
             '<div class="list-item"><span>🐦 Birdies</span><strong>' + birdies + '</strong></div>' +

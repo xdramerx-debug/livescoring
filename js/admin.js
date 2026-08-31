@@ -282,6 +282,7 @@ function openAdminPanel() {
     loadTelegramSettings();
     loadVKSettings();
     loadPageVisibilitySettings();
+    loadNamePrivacySettings();
     loadStablefordDisplaySettings();
     updateNotifButton();
 }
@@ -320,6 +321,7 @@ function switchTab(t, b) {
     }
     if (t === 'data') {
         loadPageVisibilitySettings();
+        loadNamePrivacySettings();
         loadStablefordDisplaySettings();
     }
     if (t === 'rusgolf') {
@@ -1599,6 +1601,77 @@ function toggleMyPreferencesCheckbox(event) {
 }
 
 // ==========================================
+// КОНФИДЕНЦИАЛЬНОСТЬ ИМЁН ИГРОКОВ
+// ==========================================
+function loadNamePrivacySettings() {
+    var update = function(settings) {
+        settings = settings || {};
+        var toBool = function(v) { return v === true || v === 1 || v === '1'; };
+        var guestCb = document.getElementById('pv-name-guests');
+        var playersCb = document.getElementById('pv-name-players');
+        if (guestCb) guestCb.checked = toBool(settings.hideFromGuests);
+        if (playersCb) playersCb.checked = toBool(settings.hideFromPlayers);
+    };
+
+    try {
+        var local = localStorage.getItem('pestovo_name_privacy');
+        if (local) update(JSON.parse(local));
+    } catch(e) {}
+
+    if (typeof db !== 'undefined') {
+        db.ref('settings/name_visibility').on('value', function(sn) {
+            var v = sn.val();
+            if (v && typeof v === 'object') {
+                try { localStorage.setItem('pestovo_name_privacy', JSON.stringify(v)); } catch(e) {}
+                update(v);
+            }
+        });
+    }
+}
+
+function toggleNamePrivacyCheckbox(event, id) {
+    togglePVCheckbox(id, event);
+}
+
+function saveNamePrivacySettings() {
+    var guestCb = document.getElementById('pv-name-guests');
+    var playersCb = document.getElementById('pv-name-players');
+    var settings = {
+        hideFromGuests: guestCb ? guestCb.checked : false,
+        hideFromPlayers: playersCb ? playersCb.checked : false
+    };
+    try { localStorage.setItem('pestovo_name_privacy', JSON.stringify(settings)); } catch(e) {}
+    if (typeof applyNamePrivacySettings === 'function') applyNamePrivacySettings(settings);
+    toast(t('name_privacy_saved'), 'success');
+    if (typeof vib === 'function') vib([50, 30, 50]);
+    if (typeof db !== 'undefined') {
+        db.ref('settings/name_visibility').set(settings).catch(function(err) {
+            console.warn('Name privacy sync warning:', err);
+        });
+    }
+}
+
+function setPlayerNamePrivacy(id, value) {
+    if (typeof db === 'undefined' || !id) return;
+    var update = {};
+    if (value === 'visible' || value === 'hidden') {
+        update['users/' + id + '/namePrivacy'] = value;
+    } else {
+        update['users/' + id + '/namePrivacy'] = null; // удаляем персональную настройку
+    }
+    db.ref().update(update).then(function() {
+        if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[id]) {
+            if (value === 'visible' || value === 'hidden') cachedRegisteredUsers[id].namePrivacy = value;
+            else delete cachedRegisteredUsers[id].namePrivacy;
+            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+        }
+        toast((currentLang === 'en' ? '✅ Name privacy updated' : '✅ Настройка имени обновлена'), 'success');
+    }).catch(function(err) {
+        toast('❌ ' + err.message, 'error');
+    });
+}
+
+// ==========================================
 // ИГРОКИ И РОЛИ
 // ==========================================
 function loadAdmPlayers() {
@@ -1667,6 +1740,14 @@ function loadAdmPlayers() {
 
             html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
             html += roleBadge;
+
+            // Персональная настройка видимости имени игрока
+            var curPrivacy = (u.namePrivacy === 'visible') ? 'visible' : ((u.namePrivacy === 'hidden') ? 'hidden' : '');
+            html += '<select class="form-input" style="padding:4px 8px;font-size:11px;width:auto;" title="' + t('name_privacy_title') + '" onchange="setPlayerNamePrivacy(\'' + id + '\', this.value)">';
+            html += '<option value="" ' + (curPrivacy === '' ? 'selected' : '') + '>' + t('name_privacy_default') + '</option>';
+            html += '<option value="visible" ' + (curPrivacy === 'visible' ? 'selected' : '') + '>' + t('name_privacy_show_all') + '</option>';
+            html += '<option value="hidden" ' + (curPrivacy === 'hidden' ? 'selected' : '') + '>' + t('name_privacy_hide_all') + '</option>';
+            html += '</select>';
 
             if (!currentUser || id !== currentUser.uid) {
                 html += '<select class="form-input" style="padding:4px 8px;font-size:11px;width:auto;" onchange="changeRole(\'' + id + '\', this.value, \'' + (u.name || '').replace(/'/g, "\\'") + '\')">';

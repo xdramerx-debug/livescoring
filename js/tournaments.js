@@ -70,8 +70,12 @@ function loadTournaments() {
                     finalReg.push(rp);
                 });
                 finalReg.forEach(function(rp) {
+                    // Имя может быть скрыто настройками конфиденциальности.
+                    var nameObj = resolvePlayerDisplayName(rp, rp.uid || null, {
+                        isSelf: !!(currentUser && currentUser.uid === rp.uid)
+                    });
                     html += '<tr><td>' + (rIdx++) + '</td>';
-                    html += '<td><strong style="color:var(--gold);">' + escapeHtml(rp.name || '—') + '</strong></td>';
+                    html += '<td><strong style="color:var(--gold);">' + escapeHtml(nameObj.text || '—') + '</strong></td>';
                     html += '<td>' + (rp.handicap != null ? fmtExactHcp(rp.handicap) : '—') + '</td>';
                     html += '<td>' + fmtTeePill(rp.tee) + '</td>';
                     html += '<td>' + fmtDate(rp.registeredAt) + '</td></tr>';

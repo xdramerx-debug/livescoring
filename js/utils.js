@@ -399,6 +399,18 @@ var I18N = {
         enable_push_notifications: 'Включить Push-уведомления',
         manage_players_roles: 'Управление игроками и ролями',
         manage_players_sub: 'Назначайте права Администратора другим игрокам. Администраторы получают полный доступ к этой панели.',
+        name_privacy_title: 'Конфиденциальность имён игроков',
+        name_privacy_sub: 'Скрывайте имена, фамилии и отчества игроков от других посетителей сайта. У скрытых игроков остаются видны история раундов, гандикап и статистика — без имени.',
+        name_privacy_hide_guests: 'Скрывать имена от гостей',
+        name_privacy_hide_guests_hint: 'Неавторизованные посетители (гости) не увидят имена игроков.',
+        name_privacy_hide_players: 'Скрывать имена от игроков',
+        name_privacy_hide_players_hint: 'Другие авторизованные игроки не увидят имена друг друга.',
+        name_privacy_save: 'Сохранить настройки конфиденциальности',
+        name_privacy_per_player_hint: 'Индивидуальную настройку каждого игрока можно задать во вкладке «Игроки и роли».',
+        name_privacy_saved: '✅ Настройки конфиденциальности сохранены',
+        name_privacy_default: 'Имя: по умолчанию',
+        name_privacy_show_all: 'Имя: показать всем',
+        name_privacy_hide_all: 'Имя: скрыть от всех',
         data_management: 'Управление данными',
         data_danger_sub: 'Осторожно — действия необратимы.',
         page_visibility_title: 'Управление видимостью страниц и функций',
@@ -447,7 +459,6 @@ var I18N = {
         round_leader: 'Лидер раунда', no_completed: 'Пока нет завершённых раундов',
 
         unsaved_score_hint: 'Счёт не сохранён — нажмите кнопку «Сохранить»',
-        start_hint_title: 'С какой лунки лучше стартовать?',
         field_hcp_short: 'пол. HCP',
         exact_hcp_short: 'точн. HCP',
         total_players_on_course: 'Всего игроков на поле',
@@ -727,6 +738,18 @@ var I18N = {
         enable_push_notifications: 'Enable Push Notifications',
         manage_players_roles: 'Manage Players & Roles',
         manage_players_sub: 'Assign Administrator rights to other players. Administrators get full access to this panel.',
+        name_privacy_title: 'Player Name Privacy',
+        name_privacy_sub: 'Hide players\' first names, surnames and patronymics from other site visitors. Hidden players remain visible only by round history, handicap and statistics — without a name.',
+        name_privacy_hide_guests: 'Hide names from guests',
+        name_privacy_hide_guests_hint: 'Unauthenticated visitors (guests) will not see player names.',
+        name_privacy_hide_players: 'Hide names from players',
+        name_privacy_hide_players_hint: 'Other signed-in players will not see each other\'s names.',
+        name_privacy_save: 'Save privacy settings',
+        name_privacy_per_player_hint: 'A per-player override can be set in the «Players & Roles» tab.',
+        name_privacy_saved: '✅ Privacy settings saved',
+        name_privacy_default: 'Name: default',
+        name_privacy_show_all: 'Name: show to everyone',
+        name_privacy_hide_all: 'Name: hide from everyone',
         data_management: 'Data Management',
         data_danger_sub: 'Caution — actions are irreversible.',
         page_visibility_title: 'Manage Page & Feature Visibility',
@@ -775,7 +798,6 @@ var I18N = {
         round_leader: 'Round Leader', no_completed: 'No completed rounds yet',
 
         unsaved_score_hint: 'Score is not saved yet — press the “Save” button',
-        start_hint_title: 'Which hole is best to start from?',
         field_hcp_short: 'Course HCP',
         exact_hcp_short: 'Exact HCP',
         total_players_on_course: 'Total players on course',
@@ -1454,6 +1476,97 @@ function toggleMobileDrawer() {
     } else {
         openMobileDrawer();
     }
+}
+
+// ==========================================
+// КОНФИДЕНЦИАЛЬНОСТЬ ИМЁН ИГРОКОВ
+// Администратор может скрывать имена, фамилии и отчества игроков от других
+// посетителей (гостей или игроков) глобально и персонально для каждого игрока.
+// У скрытых игроков остаются видны только история раундов, гандикап и
+// статистика — без имени.
+// ==========================================
+var PESTOVO_NAME_PRIVACY_STORAGE_KEY = 'pestovo_name_privacy';
+
+var namePrivacySettings = { hideFromGuests: false, hideFromPlayers: false };
+
+function normalizeNamePrivacyValue(value) {
+    value = value || {};
+    var toBool = function(v) { return v === true || v === 1 || v === '1'; };
+    return {
+        hideFromGuests: toBool(value.hideFromGuests),
+        hideFromPlayers: toBool(value.hideFromPlayers)
+    };
+}
+
+function applyNamePrivacySettings(value) {
+    namePrivacySettings = normalizeNamePrivacyValue(value);
+    try { localStorage.setItem(PESTOVO_NAME_PRIVACY_STORAGE_KEY, JSON.stringify(namePrivacySettings)); } catch(e) {}
+}
+
+// Заранее читаем сохранённые настройки, чтобы имена скрывались сразу,
+// ещё до первого ответа Firebase.
+(function() {
+    try {
+        var saved = localStorage.getItem(PESTOVO_NAME_PRIVACY_STORAGE_KEY);
+        if (saved) namePrivacySettings = normalizeNamePrivacyValue(JSON.parse(saved));
+    } catch(e) {}
+})();
+
+if (typeof db !== 'undefined') {
+    try {
+        db.ref('settings/name_visibility').on('value', function(sn) {
+            applyNamePrivacySettings(sn.val());
+        });
+    } catch(e) {}
+}
+
+function isNamePrivacyViewerAdmin() {
+    if (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin') return true;
+    try { if (sessionStorage.getItem('pestovo_is_admin') === 'true') return true; } catch(e) {}
+    return false;
+}
+
+// Персональная настройка игрока (если задана): на самой записи или в кэше users.
+function getPlayerNamePrivacyOverride(player, playerId) {
+    if (player && (player.namePrivacy === 'visible' || player.namePrivacy === 'hidden')) return player.namePrivacy;
+    var cached = (typeof cachedRegisteredUsers !== 'undefined') ? cachedRegisteredUsers : null;
+    var u = cached ? cached[playerId] : null;
+    if (u && (u.namePrivacy === 'visible' || u.namePrivacy === 'hidden')) return u.namePrivacy;
+    return null;
+}
+
+// Показывать ли имя игрока текущему посетителю.
+// Приоритет: сам игрок > администратор > участник того же раунда >
+// персональная настройка > глобальная настройка.
+function shouldHidePlayerName(player, playerId, opts) {
+    opts = opts || {};
+    if (opts.isSelf) return false;
+    if (isNamePrivacyViewerAdmin()) return false;
+    // Игроки одного раунда всегда видят имена друг друга.
+    if (opts.round && typeof currentUser !== 'undefined' && currentUser) {
+        if (opts.round.createdBy === currentUser.uid) return false;
+        if (opts.round.players && opts.round.players[currentUser.uid]) return false;
+    }
+    var override = getPlayerNamePrivacyOverride(player, playerId);
+    if (override === 'visible') return false;
+    if (override === 'hidden') return true;
+    var isGuest = !(typeof currentUser !== 'undefined' && currentUser);
+    if (isGuest) return !!namePrivacySettings.hideFromGuests;
+    return !!namePrivacySettings.hideFromPlayers;
+}
+
+// Возвращает { text, hidden, displayUser }: имя для показа и объект для аватара.
+// У скрытого игрока аватар не содержит буквы имени, чтобы не раскрывать его.
+function resolvePlayerDisplayName(player, playerId, opts) {
+    opts = opts || {};
+    var raw = (player && player.name) || opts.fallback || t('player');
+    var hidden = shouldHidePlayerName(player, playerId, opts);
+    if (!hidden) return { text: raw, hidden: false, displayUser: player };
+    var anonymous = (opts.index != null)
+        ? (currentLang === 'en' ? ('Player ' + opts.index) : ('Игрок ' + opts.index))
+        : t('player');
+    var anonUser = { name: '', gender: (player && player.gender) || 'men' };
+    return { text: anonymous, hidden: true, displayUser: anonUser };
 }
 
 function fmtUserAvatar(u, sizePx) {
@@ -2773,12 +2886,20 @@ function generateGroupHoleTableHTML(r) {
     var html = '<div class="no-scroll-view-container">';
     var courseHcpLbl = t('field_hcp_short');
 
-    playerEntries.forEach(function(pe) {
+    playerEntries.forEach(function(pe, pIdx) {
         var pid = pe[0], p = pe[1];
         var sc = p.scores || {};
         var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : 0;
         var stats = calcRoundStats(sc, fieldHcp || 0, p.exactHcp || 0, order);
         var thruText = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '');
+
+        // Имя может быть скрыто настройками конфиденциальности
+        // (кроме самого игрока, администратора и участников этого раунда).
+        var nameObj = resolvePlayerDisplayName(p, pid, {
+            index: pIdx + 1,
+            isSelf: !!(typeof currentUser !== 'undefined' && currentUser && currentUser.uid === pid),
+            round: r
+        });
 
         var pTee = (p && p.tee) || r.tee || 'wh';
         var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
@@ -2786,7 +2907,7 @@ function generateGroupHoleTableHTML(r) {
 
         html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
         html += '<div class="noscroll-player-hdr">';
-        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + pHcpBadge + '</span>';
+        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(nameObj.text) + pTeeBadge + pHcpBadge + '</span>';
         html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div></div>';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '</div>';
@@ -2887,9 +3008,12 @@ function openPlayerProfileModal(playerId, roundId) {
         var roundsWord = currentLang === 'en' ? 'rounds' : 'раундов';
         var teePillMarkup = u.defaultTee ? fmtTeePill(u.defaultTee) : '';
 
+        // Имя может быть скрыто настройками конфиденциальности (для других посетителей).
+        var profileName = resolvePlayerDisplayName(u, playerId, { isSelf: isMe });
+
         var html = '<div class="profile-head" style="margin-bottom:16px;">';
-        html += fmtUserAvatar(u, 80);
-        html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(u.name || '—') + guestBadge + '</div>';
+        html += fmtUserAvatar(profileName.displayUser || u, 80);
+        html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(profileName.text || '—') + guestBadge + '</div>';
         html += '<div class="profile-meta">';
         html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
         if (teePillMarkup) html += '<span><i class="fas fa-golf-ball-tee"></i> Tee: ' + teePillMarkup + '</span>';
@@ -2913,7 +3037,7 @@ function openPlayerProfileModal(playerId, roundId) {
                     '</h3>';
             
             if (typeof generatePestovoScorecardHTML === 'function') {
-                html += generatePestovoScorecardHTML(roundPlayer, rd);
+                html += generatePestovoScorecardHTML(roundPlayer, rd, { nameOverride: profileName.hidden ? profileName.text : null });
             }
             html += '</div>';
         }
@@ -2984,7 +3108,7 @@ function openPlayerProfileModal(playerId, roundId) {
                     };
 
                     if (typeof generatePestovoScorecardHTML === 'function') {
-                        html += generatePestovoScorecardHTML(pObj, rObj);
+                        html += generatePestovoScorecardHTML(pObj, rObj, { nameOverride: profileName.hidden ? profileName.text : null });
                     }
 
                     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">';
@@ -3305,8 +3429,9 @@ function closeFinishModal() {
 // ==========================================
 // СКОРКАРТА ПЕСТОВО (КАК НА ФОТО — 18 ЛУНОК)
 // ==========================================
-function generatePestovoScorecardHTML(player, roundData) {
+function generatePestovoScorecardHTML(player, roundData, opts) {
     var p = player || {};
+    opts = opts || {};
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
     var eHcp = p.exactHcp || 0;
@@ -3332,8 +3457,9 @@ function generatePestovoScorecardHTML(player, roundData) {
     var html = '<div class="pestovo-modern-scorecard">';
 
     // 1. Top HUD Header
+    var playerTitle = opts.nameOverride != null ? opts.nameOverride : (p.name || '—');
     html += '<div class="msc-card-hdr">';
-    html += '  <div class="msc-player-title"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</div>';
+    html += '  <div class="msc-player-title"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerTitle) + '</div>';
     html += '  <div class="msc-meta-pills">';
     html += '    <span class="msc-pill hcp-band ' + fieldHcpBandClass(fHcp) + '" title="' + fieldHcpBandTitle(fHcp) + '">HCP: <b>' + fmtExactHcp(eHcp) + '</b> (' + fmtFieldHcp(fHcp) + ')</span>';
     html += '    <span class="msc-pill">' + fmtTeePill(teeCode) + '</span>';
@@ -3408,7 +3534,7 @@ function generatePestovoScorecardHTML(player, roundData) {
 // ==========================================
 // ПЕЧАТЬ ОФИЦИАЛЬНОЙ СЧЁТНОЙ КАРТОЧКИ (IMG_1113.JPEG REPLICA)
 // ==========================================
-function generateExactPestovoPaperScorecardHTML(player, roundData) {
+function generateExactPestovoPaperScorecardHTML(player, roundData, displayName) {
     var p = player || {};
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
@@ -3447,7 +3573,7 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
     // Player & Meta Block (Matching IMG_1113.jpeg)
     html += '<div class="psc-meta-grid">';
     html += '  <div class="psc-meta-left">';
-    html += '    <div><b>Игрок:</b> ' + escapeHtml(p.name || '___________________________') + '</div>';
+    html += '    <div><b>Игрок:</b> ' + escapeHtml(displayName != null ? displayName : (p.name || '___________________________')) + '</div>';
     html += '    <div><b>Турнир:</b> ' + escapeHtml(tName || '') + ' &nbsp;&nbsp;&nbsp;&nbsp; <b>Формат:</b> ' + escapeHtml(fmt || '') + '</div>';
     html += '  </div>';
     html += '  <div class="psc-meta-right">';
@@ -3589,8 +3715,13 @@ function openPrintScorecardModal(roundId, playerId) {
     }
 
     html += '<div id="printable-scorecard" class="print-cards-grid">';
-    playersList.forEach(function(pe) {
-        html += generateExactPestovoPaperScorecardHTML(pe[1], r);
+    playersList.forEach(function(pe, idx) {
+        var nameObj = resolvePlayerDisplayName(pe[1], pe[0], {
+            index: idx + 1,
+            isSelf: !!(typeof currentUser !== 'undefined' && currentUser && currentUser.uid === pe[0]),
+            round: r
+        });
+        html += generateExactPestovoPaperScorecardHTML(pe[1], r, nameObj.text);
     });
     html += '</div>';
 
@@ -3711,9 +3842,13 @@ function exportRoundPNG(roundId, playerId) {
         ctx.stroke();
 
         // Player Name
+        var nameObj = resolvePlayerDisplayName(p, pid, {
+            isSelf: !!(typeof currentUser !== 'undefined' && currentUser && currentUser.uid === pid),
+            round: r
+        });
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 48px "Playfair Display", serif';
-        ctx.fillText(p.name || 'Golf Player', 540, 215);
+        ctx.fillText(nameObj.text || 'Golf Player', 540, 215);
 
         // Sub Meta
         var teeName = t('tee_' + ((p && p.tee) || r.tee || 'wh'));

@@ -1211,7 +1211,8 @@ function renderGVPlayers(r) {
                 var mkScores = allPlayers[p.markedBy].markerScores && allPlayers[p.markedBy].markerScores[pid];
                 if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
                     displayScores = mkScores;
-                    var mkName = allPlayers[p.markedBy].name || '';
+                    var mkNameObj = resolvePlayerDisplayName(allPlayers[p.markedBy], p.markedBy, { round: r });
+                    var mkName = mkNameObj.text;
                     markerNote = currentLang === 'en' ? ' (marker: ' + mkName + ')' : ' (маркер: ' + mkName + ')';
                 }
             }
@@ -1220,8 +1221,14 @@ function renderGVPlayers(r) {
             var pTee = (p && p.tee) || r.tee || 'wh';
             var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
 
+            // Имя может быть скрыто настройками конфиденциальности.
+            var nameObj = resolvePlayerDisplayName(p, pid, {
+                isSelf: !!(typeof currentUser !== 'undefined' && currentUser && currentUser.uid === pid),
+                round: r
+            });
+
             html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
-                '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + '</strong>' +
+                '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(nameObj.text || '—') + pTeeBadge + '</strong>' +
                 '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + markerNote + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div>' +
                 '</div>' +

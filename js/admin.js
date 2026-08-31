@@ -283,6 +283,7 @@ function openAdminPanel() {
     loadVKSettings();
     loadPageVisibilitySettings();
     loadStablefordDisplaySettings();
+    loadPrivacySettings();
     updateNotifButton();
 }
 
@@ -324,6 +325,9 @@ function switchTab(t, b) {
     }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
+    }
+    if (t === 'players') {
+        loadPrivacySettings();
     }
 }
 
@@ -1599,6 +1603,96 @@ function toggleMyPreferencesCheckbox(event) {
 }
 
 // ==========================================
+// КОНФИДЕНЦИАЛЬНОСТЬ ИМЁН (ФИО)
+// Настройки: settings/privacy = { enabled, maskMode, players: { uid: bool } }
+// ==========================================
+function loadPrivacySettings() {
+    var globalCb = document.getElementById('pv-privacy-global');
+    var maskSel = document.getElementById('pv-privacy-mask');
+
+    var apply = function(v) {
+        v = v || {};
+        if (globalCb) globalCb.checked = v.enabled === true;
+        if (maskSel) maskSel.value = (v.maskMode === 'masked') ? 'masked' : 'initials';
+    };
+
+    if (typeof db === 'undefined') {
+        apply(null);
+        return;
+    }
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-privacy', db.ref('settings/privacy'), function(sn) {
+            apply(sn.val());
+        });
+    } else {
+        db.ref('settings/privacy').once('value').then(function(sn) { apply(sn.val()); }).catch(function() { apply(null); });
+    }
+}
+
+function togglePrivacyGlobalCheckbox(event) {
+    togglePVCheckbox('pv-privacy-global', event);
+}
+
+function savePrivacySettings() {
+    var globalCb = document.getElementById('pv-privacy-global');
+    var maskSel = document.getElementById('pv-privacy-mask');
+    var enabled = globalCb ? globalCb.checked : false;
+    var maskMode = maskSel && maskSel.value === 'masked' ? 'masked' : 'initials';
+
+    // Обновляем локальное состояние для текущего пользователя сразу
+    if (typeof pestovoPrivacy !== 'undefined') {
+        pestovoPrivacy.enabled = enabled;
+        pestovoPrivacy.maskMode = maskMode;
+    }
+    try {
+        localStorage.setItem('pestovo_privacy', JSON.stringify({ enabled: enabled, maskMode: maskMode, players: pestovoPrivacy.players || {} }));
+    } catch (e) {}
+    if (typeof renderPrivacySensitiveHome === 'function') renderPrivacySensitiveHome();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Privacy settings saved locally' : 'Настройки приватности сохранены локально', 'success');
+        return;
+    }
+
+    db.ref('settings/privacy').once('value').then(function(sn) {
+        var cur = sn.val() || {};
+        db.ref('settings/privacy').update({
+            enabled: enabled,
+            maskMode: maskMode,
+            players: cur.players || {},
+            updatedAt: Date.now()
+        }).then(function() {
+            toast(enabled
+                ? (currentLang === 'en' ? '✅ Names are now hidden from others' : '✅ Имена теперь скрыты от других')
+                : (currentLang === 'en' ? '✅ Names are visible to others' : '✅ Имена снова видны другим'), 'success');
+        }).catch(function(err) {
+            toast('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+// Переключатель «Скрыть имя» для конкретного игрока (в списке игроков админки).
+// true — скрывать (перекрывает глобальный выключатель), false — показывать.
+function togglePlayerPrivacy(id) {
+    if (!id) return;
+    var ref = db.ref('settings/privacy/players/' + id);
+    ref.once('value').then(function(sn) {
+        var cur = sn.val();
+        var newVal = (cur === true) ? false : true;
+        return ref.set(newVal).then(function() {
+            toast(newVal
+                ? (currentLang === 'en' ? '🙈 Name will be hidden from others' : '🙈 Имя будет скрыто от других')
+                : (currentLang === 'en' ? '🙂 Name will be visible to others' : '🙂 Имя будет видно другим'), 'success');
+            if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        });
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+// ==========================================
 // ИГРОКИ И РОЛИ
 // ==========================================
 function loadAdmPlayers() {
@@ -1675,6 +1769,13 @@ function loadAdmPlayers() {
                 html += '<option value="marshal" ' + (curRole === 'marshal' ? 'selected' : '') + '>' + t('role_marshal') + '</option>';
                 html += '<option value="admin" ' + (curRole === 'admin' ? 'selected' : '') + '>' + t('role_admin') + '</option>';
                 html += '</select>';
+
+                // Персональный тумблер приватности имени: скрыть/показывать ФИО этого игрока
+                var privInd = (typeof pestovoPrivacy !== 'undefined' && pestovoPrivacy.players) ? pestovoPrivacy.players[id] : undefined;
+                var privHidden = (privInd === true) || (privInd !== false && (typeof pestovoPrivacy === 'undefined' ? false : pestovoPrivacy.enabled === true));
+                var privLabel = privHidden ? t('privacy_show_btn') : t('privacy_hide_btn');
+                html += '<button class="btn ' + (privHidden ? 'btn-r' : 'btn-og') + ' btn-sm" onclick="togglePlayerPrivacy(\'' + id + '\')" title="' + (currentLang === 'en' ? 'Hide/show full name from others' : 'Скрыть/показывать ФИО от других') + '">' +
+                        '<i class="fas fa-' + (privHidden ? 'eye' : 'eye-slash') + '"></i> ' + privLabel + '</button>';
 
                 html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="' + (currentLang === 'en' ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
 

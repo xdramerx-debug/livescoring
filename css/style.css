@@ -2939,6 +2939,28 @@ body.sun-mode .chs-hint-why { color: #333333; }
    ========================================= */
 
 /* --- Акцентная строка «Всего игроков на поле» (вариант B) --- */
+/* Заголовок всегда развёрнутого блока «Карта лунок и старты» */
+.chs-strip-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--fb);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+}
+.chs-strip-title i { color: var(--gold); font-size: 12px; }
+
+/* Игроки внутри раскрытого блока «Последние результаты» */
+.lwl-recent-players {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
 .chs-total-bar {
     display: flex;
     align-items: center;

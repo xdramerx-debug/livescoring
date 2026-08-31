@@ -3055,7 +3055,7 @@ function openPlayerProfileModal(playerId, roundId) {
 
         var html = '<div class="profile-head" style="margin-bottom:16px;">';
         html += fmtUserAvatar(u, 80);
-        html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(u.name || '—') + guestBadge + '</div>';
+        html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(privacyDisplayName(u, playerId)) + guestBadge + '</div>';
         html += '<div class="profile-meta">';
         html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
         if (teePillMarkup) html += '<span><i class="fas fa-golf-ball-tee"></i> Tee: ' + teePillMarkup + '</span>';
@@ -6375,3 +6375,96 @@ function initPlayerSearchAutofill(opts) {
         }
     });
 }
+
+// ==========================================
+// КОНФИДЕНЦИАЛЬНОСТЬ ИМЁН (ФИО)
+// Админ может скрывать полные имена игроков (имя/фамилия/отчество) от других
+// игроков и гостей. Вместо ФИО показываются инициалы («И. Т.») или маска
+// («Игрок №N»). Гандикап и история раундов остаются доступны. Админ и сам
+// игрок всегда видят своё имя. Настройки: settings/privacy в Firebase:
+//   { enabled: bool, maskMode: 'initials'|'masked', players: { uid: bool } }
+// Для конкретного игрока players[uid]=true — скрыть (перекрывает глобальный
+// выключатель), players[uid]=false — показывать, даже если включено глобально.
+// ==========================================
+var pestovoPrivacy = { enabled: false, maskMode: 'initials', players: {}, loaded: false };
+
+function initPrivacySettings() {
+    // Начальные значения из локального кэша (офлайн/при первом кадре)
+    try {
+        var cached = localStorage.getItem('pestovo_privacy');
+        if (cached) {
+            var c = JSON.parse(cached);
+            if (c && typeof c === 'object') {
+                pestovoPrivacy.enabled = c.enabled === true;
+                pestovoPrivacy.maskMode = c.maskMode === 'masked' ? 'masked' : 'initials';
+                pestovoPrivacy.players = c.players || {};
+            }
+        }
+    } catch (e) {}
+
+    if (typeof db === 'undefined') { pestovoPrivacy.loaded = true; return; }
+    try {
+        db.ref('settings/privacy').on('value', function(sn) {
+            var v = sn.val() || {};
+            pestovoPrivacy.enabled = v.enabled === true;
+            pestovoPrivacy.maskMode = v.maskMode === 'masked' ? 'masked' : 'initials';
+            pestovoPrivacy.players = v.players || {};
+            pestovoPrivacy.loaded = true;
+            try {
+                localStorage.setItem('pestovo_privacy', JSON.stringify({
+                    enabled: pestovoPrivacy.enabled,
+                    maskMode: pestovoPrivacy.maskMode,
+                    players: pestovoPrivacy.players
+                }));
+            } catch (e2) {}
+            // После обновления настроек приватности — перерисуем открытые блоки на главной
+            if (typeof renderPrivacySensitiveHome === 'function') renderPrivacySensitiveHome();
+        }, function() {});
+    } catch (e) { pestovoPrivacy.loaded = true; }
+}
+
+function privacyIsAdmin() {
+    try {
+        if (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin') return true;
+        if (sessionStorage.getItem('pestovo_is_admin') === 'true') return true;
+    } catch (e) {}
+    return false;
+}
+
+function privacyShouldHide(pid) {
+    if (typeof currentUser !== 'undefined' && currentUser && pid && currentUser.uid === pid) return false;
+    if (privacyIsAdmin()) return false;
+    if (!pid) return false;
+    var ind = pestovoPrivacy.players && pestovoPrivacy.players[pid];
+    if (ind === false) return false;   // явное «показывать» для этого игрока
+    if (ind === true) return true;     // явное «скрыть» для этого игрока
+    return pestovoPrivacy.enabled === true;
+}
+
+function privacyMaskNumber(s) {
+    var h = 0;
+    s = String(s || '');
+    for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) >>> 0; }
+    return (h % 999) + 1;
+}
+
+function privacyMaskName(name, pid) {
+    if (pestovoPrivacy.maskMode === 'masked') {
+        var word = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'Player' : 'Игрок';
+        return word + ' №' + privacyMaskNumber(pid || name);
+    }
+    // Инициалы: «Иван Тестов» → «И. Т.»
+    var parts = String(name || '').replace(/\s+/g, ' ').trim().split(' ');
+    var initials = parts.filter(Boolean).slice(0, 2).map(function(w) { return w.charAt(0).toUpperCase() + '.'; }).join(' ');
+    return initials || '?';
+}
+
+function privacyDisplayName(p, pid) {
+    if (!p) return '—';
+    if (privacyShouldHide(pid)) return privacyMaskName(p.name, pid);
+    return p.name || '—';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof initPrivacySettings === 'function') initPrivacySettings();
+});

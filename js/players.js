@@ -100,7 +100,7 @@ function loadPlayers() {
             html += '<div class="card" style="cursor:pointer;" onclick="showPlayer(\'' + id + '\')">' +
                 '<div style="display:flex;align-items:center;gap:14px;">' +
                 fmtUserAvatar(u, 52) +
-                '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + escapeHtml(u.name || '—') + guestBadge + '</div>' +
+                '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + escapeHtml(privacyDisplayName(u, id)) + guestBadge + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                 'HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') +
                 ' · ' + roundsWord + (u.roundsPlayed || 0) +

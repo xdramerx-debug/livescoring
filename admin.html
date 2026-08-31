@@ -270,6 +270,34 @@
         </div>
 
         <div id="tab-players" class="admin-section hidden">
+            <!-- PRIVACY OF NAMES (FULL NAME) CARD -->
+            <div class="card" style="margin-bottom:20px;">
+                <h2><i class="fas fa-user-shield"></i> <span data-i18n="privacy_title">Конфиденциальность имён (ФИО)</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="privacy_sub">
+                    Скрывать полные имена игроков (имя, фамилия, отчество) от других игроков и гостей. Вместо ФИО показываются инициалы или маска, а гандикап и история раундов остаются видны. Админ и сам игрок всегда видят своё имя.
+                </p>
+
+                <div class="list-item" onclick="togglePrivacyGlobalCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:12px;touch-action:manipulation;">
+                    <div>
+                        <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-eye-slash"></i> <span data-i18n="privacy_global_lbl">Скрывать ФИО всех игроков от других (глобально)</span></span>
+                        <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="privacy_global_sub">Включите, чтобы скрыть полные имена сразу для всех игроков. Для отдельных игроков можно задать исключение ниже.</div>
+                    </div>
+                    <input type="checkbox" id="pv-privacy-global" style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
+                </div>
+
+                <div class="form-group" style="max-width:360px;">
+                    <label data-i18n="privacy_mask_lbl"><i class="fas fa-user-secret"></i> Формат скрытия имени</label>
+                    <select id="pv-privacy-mask" class="form-input">
+                        <option value="initials" data-i18n="privacy_opt_initials">Инициалы (И. Т.)</option>
+                        <option value="masked" data-i18n="privacy_opt_masked">Полная маскировка (Игрок №N)</option>
+                    </select>
+                </div>
+
+                <button type="button" class="btn btn-g btn-block" onclick="savePrivacySettings()" style="min-height:44px;margin-top:12px;">
+                    <i class="fas fa-save"></i> <span data-i18n="privacy_save_btn">Сохранить настройки приватности</span>
+                </button>
+            </div>
+
             <!-- CREATE NEW PLAYER CARD -->
             <div class="card" style="margin-bottom:20px;">
                 <h2><i class="fas fa-user-plus"></i> <span>Создать игрока</span></h2>
@@ -550,7 +578,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.16.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.17.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>

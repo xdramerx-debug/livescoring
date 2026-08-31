@@ -45,7 +45,7 @@ function loadLiveFeed() {
                             eventId: rid + '_' + pid + '_' + h,
                             roundId: rid,
                             playerId: pid,
-                            playerName: p.name || 'Player',
+                            playerName: privacyDisplayName(p, pid) || 'Player',
                             hole: h,
                             par: par,
                             score: s,

@@ -50,7 +50,7 @@ function holeResName(s,p){
     if(d===2)return t('res_double');
     return '+'+d;
 }
-function toast(m,toastType){toastType=toastType||'success';var e=document.createElement('div');e.className='toast t-'+toastType;e.innerHTML=m;document.body.appendChild(e);setTimeout(function(){e.classList.add('t-show');},10);setTimeout(function(){e.classList.remove('t-show');setTimeout(function(){e.remove();},300);},4000);}
+function toast(m,toastType){toastType=toastType||'success';var e=document.createElement('div');e.className='toast t-'+toastType;e.setAttribute('role','status');e.setAttribute('aria-live','polite');e.innerHTML=m;document.body.appendChild(e);setTimeout(function(){e.classList.add('t-show');},10);setTimeout(function(){e.classList.remove('t-show');setTimeout(function(){e.remove();},300);},4000);}
 function isPlayerModeEnabled(key){
     try { return localStorage.getItem(key) === '1'; } catch(e) { return false; }
 }
@@ -1346,6 +1346,9 @@ function initNav(){
 
     var tg = document.getElementById('nav-toggle');
     if (tg) {
+        tg.setAttribute('aria-label', currentLang === 'en' ? 'Open menu' : 'Открыть меню');
+        tg.setAttribute('aria-expanded', 'false');
+        tg.setAttribute('aria-controls', 'mobile-drawer-root');
         tg.onclick = function(e) {
             e.stopPropagation();
             toggleMobileDrawer();
@@ -1430,14 +1433,14 @@ function buildMobileDrawer() {
     }
 
     var html =
-        '<div class="mobile-drawer-backdrop" onclick="closeMobileDrawer()"></div>' +
-        '<div class="mobile-drawer-panel">' +
+        '<div class="mobile-drawer-backdrop" onclick="closeMobileDrawer()" aria-hidden="true"></div>' +
+        '<div class="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="' + (isEn ? 'Navigation menu' : 'Меню навигации') + '">' +
             '<div class="mobile-drawer-header">' +
                 '<div style="display:flex;align-items:center;gap:10px;">' +
                     '<img src="img/logo.png" alt="Logo" class="nav-logo" onerror="this.style.display=\'none\'">' +
                     '<span class="nav-brand-text" data-i18n="brand_name">' + t('brand_name') + '</span>' +
                 '</div>' +
-                '<button class="mobile-drawer-close" onclick="closeMobileDrawer()">&times;</button>' +
+                '<button class="mobile-drawer-close" onclick="closeMobileDrawer()" aria-label="' + (isEn ? 'Close menu' : 'Закрыть меню') + '">&times;</button>' +
             '</div>' +
 
             '<div class="mobile-drawer-body">' + menuBodyMarkup + '</div>' +
@@ -1520,7 +1523,7 @@ function openMobileDrawer() {
     var container = document.getElementById('mobile-drawer-root');
     var tg = document.getElementById('nav-toggle');
     if (container) container.classList.add('open');
-    if (tg) tg.classList.add('active');
+    if (tg) { tg.classList.add('active'); tg.setAttribute('aria-expanded', 'true'); }
     if (typeof document !== 'undefined' && document.body && document.body.style) document.body.style.overflow = 'hidden';
 }
 
@@ -1528,9 +1531,23 @@ function closeMobileDrawer() {
     var container = document.getElementById('mobile-drawer-root');
     var tg = document.getElementById('nav-toggle');
     if (container) container.classList.remove('open');
-    if (tg) tg.classList.remove('active');
+    if (tg) { tg.classList.remove('active'); tg.setAttribute('aria-expanded', 'false'); }
     if (typeof document !== 'undefined' && document.body && document.body.style) document.body.style.overflow = '';
 }
+
+// A11Y: клавиша Esc закрывает открытую модалку (верхнюю) или боковое меню
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape' && e.key !== 'Esc') return;
+    var modals = document.querySelectorAll('.modal:not(.hidden)');
+    if (modals.length) {
+        var top = modals[modals.length - 1];
+        var closeBtn = top.querySelector('.modal-close-btn, .modal-close');
+        if (closeBtn) { closeBtn.click(); } else { top.classList.add('hidden'); }
+        return;
+    }
+    var drawer = document.getElementById('mobile-drawer-root');
+    if (drawer && drawer.classList.contains('open')) closeMobileDrawer();
+});
 
 function toggleMobileDrawer() {
     var container = document.getElementById('mobile-drawer-root');

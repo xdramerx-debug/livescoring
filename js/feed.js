@@ -83,10 +83,10 @@ function loadLiveFeed() {
 
             // Reaction Buttons Bar
             html += '<div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap;">';
-            html += '<button class="btn btn-og btn-sm" onclick="sendEmojiReaction(\'' + ev.eventId + '\',\'👏\')">👏 ' + countClap + '</button>';
-            html += '<button class="btn btn-og btn-sm" onclick="sendEmojiReaction(\'' + ev.eventId + '\',\'🔥\')">🔥 ' + countFire + '</button>';
-            html += '<button class="btn btn-og btn-sm" onclick="sendEmojiReaction(\'' + ev.eventId + '\',\'🎯\')">🎯 ' + countTarget + '</button>';
-            html += '<button class="btn btn-og btn-sm" onclick="sendEmojiReaction(\'' + ev.eventId + '\',\'💪\')">💪 ' + countStrong + '</button>';
+            html += '<button class="btn btn-og btn-sm" onclick="sendEmojiReaction(\'' + ev.eventId + '\',\'👏\',this)">👏 ' + countClap + '</button>';
+            html += '<button class="btn btn-og btn-sm" onclick="sendEmojiReaction(\'' + ev.eventId + '\',\'🔥\',this)">🔥 ' + countFire + '</button>';
+            html += '<button class="btn btn-og btn-sm" onclick="sendEmojiReaction(\'' + ev.eventId + '\',\'🎯\',this)">🎯 ' + countTarget + '</button>';
+            html += '<button class="btn btn-og btn-sm" onclick="sendEmojiReaction(\'' + ev.eventId + '\',\'💪\',this)">💪 ' + countStrong + '</button>';
             html += '</div>';
 
             html += '</div>';
@@ -96,13 +96,18 @@ function loadLiveFeed() {
     });
 }
 
-function sendEmojiReaction(eventId, emoji) {
+function sendEmojiReaction(eventId, emoji, btnEl) {
     if (typeof db === 'undefined' || !eventId) return;
     db.ref('reactions/' + eventId + '/' + emoji).transaction(function(val) {
         return (val || 0) + 1;
-    }).then(function() {
+    }).then(function(res) {
         vib();
         toast(currentLang === 'en' ? 'Reaction ' + emoji + ' sent!' : 'Реакция ' + emoji + ' отправлена!');
-        loadLiveFeed();
+        // Обновляем счётчик на месте — без полной перезагрузки ленты
+        if (btnEl && res && res.snapshot) {
+            btnEl.innerHTML = emoji + ' ' + (res.snapshot.val() || 0);
+        } else {
+            loadLiveFeed();
+        }
     });
 }

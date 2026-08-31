@@ -93,7 +93,7 @@ function loadOrderOfMerit() {
         var posHeader = currentLang === 'en' ? 'Rank' : 'Ранг';
         var pointsHeader = currentLang === 'en' ? 'Season Points' : 'Очки сезона';
 
-        var html = '<div style="overflow-x:auto;"><table class="lb-table"><thead><tr>';
+        var html = '<div style="overflow-x:auto;"><table class="lb-table lb-cards"><thead><tr>';
         html += '<th style="width:50px;">' + posHeader + '</th>';
         html += '<th>' + t('player') + '</th>';
         html += '<th style="text-align:center;">' + (currentLang === 'en' ? 'Tournaments' : 'Турниров') + '</th>';
@@ -106,11 +106,11 @@ function loadOrderOfMerit() {
             var crown = (i === 0) ? ' 👑' : '';
 
             html += '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + p.pid + '\')">';
-            html += '<td class="lb-pos ' + posCls + '">' + (i + 1) + '</td>';
-            html += '<td><div style="display:flex;align-items:center;gap:10px;">' + fmtUserAvatar(p, 36) + '<div><strong style="color:var(--gold);font-size:15px;">' + escapeHtml(privacyDisplayName(p, p.pid)) + crown + '</strong></div></div></td>';
-            html += '<td style="text-align:center;">' + p.tournamentsPlayed + '</td>';
-            html += '<td style="text-align:center;color:var(--gold);font-weight:700;">' + p.wins + '</td>';
-            html += '<td style="text-align:center;font-size:20px;font-weight:800;color:var(--white);"><span class="badge-eag">' + p.points + ' PTS</span></td>';
+            html += '<td class="lb-pos ' + posCls + '" data-label="' + posHeader + '">' + (i + 1) + '</td>';
+            html += '<td class="lb-card-main"><div style="display:flex;align-items:center;gap:10px;">' + fmtUserAvatar(p, 36) + '<div><strong style="color:var(--gold);font-size:15px;">' + escapeHtml(privacyDisplayName(p, p.pid)) + crown + '</strong></div></div></td>';
+            html += '<td style="text-align:center;" data-label="' + (currentLang === 'en' ? 'Tournaments' : 'Турниров') + '">' + p.tournamentsPlayed + '</td>';
+            html += '<td style="text-align:center;color:var(--gold);font-weight:700;" data-label="' + (currentLang === 'en' ? 'Wins' : 'Побед') + '">' + p.wins + '</td>';
+            html += '<td style="text-align:center;font-size:20px;font-weight:800;color:var(--white);" data-label="' + pointsHeader + '"><span class="badge-eag">' + p.points + ' PTS</span></td>';
             html += '</tr>';
         });
 

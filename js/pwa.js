@@ -12,16 +12,47 @@ if('serviceWorker' in navigator){
             console.log('[PWA] SW registered');
             initBackgroundAlertListener();
             checkPWAInstallPrompt();
+            // Периодически проверяем наличие новой версии (для долго открытых вкладок)
+            setInterval(function(){ reg.update().catch(function(){}); }, 30*60*1000);
         }).catch(function(err){console.error('[PWA] SW failed',err);});
     });
     navigator.serviceWorker.addEventListener('message',function(event){
         if(event.data&&event.data.type==='SYNC_SCORES')syncOfflineScores();
+    });
+
+    // Баннер «Доступна новая версия»: sw.js активирует новую версию сразу
+    // (skipWaiting + clients.claim), но загруженная страница продолжает работать
+    // на старых ассетах до перезагрузки — предлагаем её явно.
+    var pwaHadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (pwaRefreshing) return;
+        if (!pwaHadController) { pwaHadController = true; return; } // первая установка SW — не новая версия
+        showUpdateBanner();
     });
 } else {
     window.addEventListener('load', function() {
         checkPWAInstallPrompt();
     });
 }
+
+var pwaRefreshing = false;
+function showUpdateBanner() {
+    if (document.getElementById('update-banner')) return;
+    var b = document.createElement('div');
+    b.id = 'update-banner';
+    b.className = 'update-banner';
+    b.setAttribute('role', 'status');
+    var txt = currentLang === 'en' ? '<b>New version available.</b> Reload the page to update.' : '<b>Доступна новая версия.</b> Перезагрузите страницу, чтобы обновиться.';
+    var btnTxt = currentLang === 'en' ? 'Reload' : 'Обновить';
+    b.innerHTML = '<div class="ub-text">' + txt + '</div><button class="btn btn-g btn-sm" onclick="applyPWAUpdate()"><i class="fas fa-rotate-right"></i> ' + btnTxt + '</button>';
+    if (document.body) document.body.appendChild(b);
+    setTimeout(function(){ b.classList.add('show'); }, 50);
+}
+function applyPWAUpdate() {
+    pwaRefreshing = true;
+    window.location.reload();
+}
+window.applyPWAUpdate = applyPWAUpdate;
 
 var isOnline=navigator.onLine;
 

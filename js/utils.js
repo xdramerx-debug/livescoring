@@ -392,7 +392,25 @@ var I18N = {
         nav_guide: 'Книга поля', nav_feed: 'Лента событий', nav_predictor: 'Симулятор WHS', nav_oom: 'Зачёт сезона',
         nav_players: 'Игроки', nav_tournaments: 'Турниры', nav_stats: 'Статистика',
         nav_handicaps: 'Гандикапы', nav_admin: 'Админ', nav_login: 'Войти',
+        nav_assistant: 'Помощник',
         footer_club: '© 2024 Гольф-клуб Пестово',
+        tab_assistant: 'Помощник',
+        assistant_admin_title: 'Настройка «Помощника»',
+        assistant_admin_sub: 'Добавляйте PDF-документы по ссылке — помощник сможет отвечать на вопросы по ним. Нажмите «Сохранить и перестроить», чтобы обновить базу знаний для всех игроков.',
+        assistant_hide_page: 'Скрыть страницу «Помощник» для всех',
+        assistant_hide_page_hint: 'Снимите галочку, чтобы полностью убрать страницу помощника из меню и закрыть к ней доступ.',
+        assistant_add_source_title: 'Добавить документ (PDF по ссылке)',
+        assistant_source_name: 'Название документа',
+        assistant_source_url: 'Ссылка на PDF',
+        assistant_add_btn: 'Добавить',
+        assistant_sources_title: 'Источники базы знаний',
+        assistant_rebuild_btn: 'Сохранить и перестроить индекс',
+        assistant_delete_btn: 'Удалить',
+        assistant_sub: 'Онлайн-помощник по документам клуба',
+        assistant_title: 'Умный помощник Пестово',
+        assistant_clear: 'Очистить',
+        assistant_placeholder: 'Напишите ваш вопрос…',
+        assistant_send: 'Отправить',
 
         hero_sub: 'Цифровая счётная карточка Пестово',
         hero_title: 'Лайв-скоринг и электронные карточки Пестово',
@@ -753,7 +771,24 @@ var I18N = {
         nav_guide: 'Course Guide', nav_feed: 'Live Feed', nav_predictor: 'WHS Predictor', nav_oom: 'Order of Merit',
         nav_players: 'Players', nav_tournaments: 'Tournaments', nav_stats: 'Statistics',
         nav_handicaps: 'Handicaps', nav_admin: 'Admin', nav_login: 'Login',
+        nav_assistant: 'Assistant',
         footer_club: '© 2024 Pestovo Golf Club',
+        tab_assistant: 'Assistant',
+        assistant_admin_title: 'Assistant settings',
+        assistant_admin_sub: 'Add PDF documents by link — the assistant can answer questions based on them. Click "Save and rebuild" to refresh the knowledge base for all players.',
+        assistant_hide_page: 'Hide the "Assistant" page for everyone',
+        assistant_hide_page_hint: 'Uncheck to completely remove the assistant page from the menu and block access to it.',
+        assistant_add_source_title: 'Add document (PDF by link)',
+        assistant_source_name: 'Document name',
+        assistant_source_url: 'PDF link',
+        assistant_add_btn: 'Add',
+        assistant_sources_title: 'Knowledge base sources',
+        assistant_rebuild_btn: 'Save and rebuild index',
+        assistant_delete_btn: 'Delete',
+        assistant_title: 'Pestovo Smart Assistant',
+        assistant_clear: 'Clear',
+        assistant_placeholder: 'Type your question…',
+        assistant_send: 'Send',
 
         hero_sub: 'Pestovo Digital Scorecard',
         hero_title: 'Pestovo Live Scoring & Digital Scorecards',
@@ -1718,6 +1753,7 @@ function buildMobileDrawer() {
         '<a href="tournaments.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-list"></i> <span data-i18n="nav_tournaments">' + t('nav_tournaments') + '</span></a>' +
         '<a href="stats.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_stats">' + t('nav_stats') + '</span></a>' +
         '<a href="handicap.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-calculator"></i> <span data-i18n="nav_handicaps">' + t('nav_handicaps') + '</span></a>' +
+        '<a href="assistant.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-robot"></i> <span data-i18n="nav_assistant">' + t('nav_assistant') + '</span></a>' +
         '</div>';
 
     // В самом конце бокового меню — отдельная вкладка «Мои настройки» с тогглами
@@ -5608,7 +5644,8 @@ var MANAGED_PAGES = [
     'players.html',
     'tournaments.html',
     'stats.html',
-    'handicap.html'
+    'handicap.html',
+    'assistant.html'
 ];
 
 function getHiddenPages() {

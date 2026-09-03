@@ -3701,3 +3701,91 @@ body.sun-mode input:focus-visible, body.sun-mode select:focus-visible {
 .update-banner .ub-text { font-size: 13px; color: var(--text); line-height: 1.4; }
 .update-banner .ub-text b { color: var(--gold); }
 body.sun-mode .update-banner { background: #ffffff; border: 2px solid #000000; color: #000000; }
+
+/* ===== ФИЛЬТР ПО ДАТАМ (период) в списках раундов ===== */
+/* Нативный календарь input[type=date] на тёмном фоне: иначе иконка и текст
+   подсказки «дд.мм.гггг» сливаются с фоном поля. */
+input[type="date"].form-input { color-scheme: dark; }
+body.sun-mode input[type="date"].form-input { color-scheme: light; }
+
+.date-reset-group { display: flex; flex-direction: column; justify-content: flex-end; }
+
+.date-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.date-chip {
+    background: var(--input);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 6px 13px;
+    font-family: var(--fb);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--t);
+    touch-action: manipulation;
+}
+.date-chip:hover { border-color: var(--gold); color: var(--white); }
+.date-chip.active {
+    background: linear-gradient(135deg, #c9a84c 0%, #e0c76a 50%, #b89228 100%);
+    border-color: var(--gold);
+    color: #0b1a0e;
+}
+
+.date-filter-hint {
+    margin: 10px 0 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--red);
+}
+
+/* Сводка «сколько раундов за период» */
+.rounds-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    background: rgba(19, 34, 24, 0.85);
+    border: 1px solid rgba(201, 168, 76, 0.22);
+    border-radius: var(--rs);
+    padding: 10px 14px;
+    margin-bottom: 18px;
+    font-size: 13px;
+    color: var(--muted);
+}
+.rounds-summary:empty { display: none; }
+.rounds-summary i { color: var(--gold); }
+.rounds-summary b { color: var(--white); font-size: 15px; }
+.rounds-summary .rs-period { color: var(--text); font-weight: 600; }
+.rounds-summary .rs-sep { opacity: .5; }
+.rounds-summary .rs-dim { opacity: .75; }
+
+body.sun-mode .date-chip {
+    background: #ffffff;
+    border: 2px solid #000000;
+    color: #000000;
+    font-weight: 700;
+}
+body.sun-mode .date-chip.active { background: #ffe082; border-color: #000000; color: #000000; }
+body.sun-mode .rounds-summary {
+    background: #ffffff;
+    border: 2px solid #000000;
+    color: #000000;
+    font-weight: 700;
+}
+body.sun-mode .rounds-summary b,
+body.sun-mode .rounds-summary .rs-period { color: #000000; }
+
+@media (max-width: 600px) {
+    .date-reset-group { width: 100%; }
+    .date-reset-group .btn { width: 100%; justify-content: center; }
+    .date-chip { flex: 1 1 auto; text-align: center; padding: 8px 10px; }
+    .rounds-summary { font-size: 12px; padding: 9px 12px; }
+}

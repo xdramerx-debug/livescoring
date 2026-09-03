@@ -101,6 +101,234 @@ function bindRealtimeValue(key, firebaseRef, render) {
     }
 }
 
+// ==========================================
+// ФИЛЬТР ПО ДАТАМ (общий для списков раундов)
+// Период задаётся парой input[type=date]: «Дата с» включается с 00:00:00.000,
+// «Дата по» — по 23:59:59.999 того же дня, чтобы вечерние раунды последнего
+// дня периода тоже попадали в выборку.
+// ==========================================
+var DATE_RANGE_PRESETS = ['today', '7d', '30d', 'month', 'year', 'all'];
+
+function dateInputToStartTs(value) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value === null || value === undefined ? '' : value).trim());
+    if (!m) return null;
+    var ts = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0).getTime();
+    return isNaN(ts) ? null : ts;
+}
+
+function dateInputToEndTs(value) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value === null || value === undefined ? '' : value).trim());
+    if (!m) return null;
+    var ts = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999).getTime();
+    return isNaN(ts) ? null : ts;
+}
+
+// Timestamp -> значение для input[type=date] в локальной таймзоне пользователя.
+function tsToDateInputValue(ts) {
+    if (!ts) return '';
+    var d = new Date(ts), mo = d.getMonth() + 1, da = d.getDate();
+    return d.getFullYear() + '-' + (mo < 10 ? '0' : '') + mo + '-' + (da < 10 ? '0' : '') + da;
+}
+
+// Дата раунда для фильтра: время старта, а у старых записей без startTime — создание.
+function getRoundFilterTs(r) {
+    if (!r || typeof r !== 'object') return 0;
+    return Number(r.startTime) || Number(r.createdAt) || 0;
+}
+
+// Быстрые пресеты периода. 'all' — пустые границы (без ограничения).
+function datePresetRange(presetId) {
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var from = null;
+    if (presetId === 'today') from = today;
+    else if (presetId === '7d') from = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+    else if (presetId === '30d') from = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29);
+    else if (presetId === 'month') from = new Date(today.getFullYear(), today.getMonth(), 1);
+    else if (presetId === 'year') from = new Date(today.getFullYear(), 0, 1);
+    if (!from) return { from: '', to: '' };
+    return { from: tsToDateInputValue(from.getTime()), to: tsToDateInputValue(today.getTime()) };
+}
+
+// Текущее состояние фильтра: границы в мс + признак некорректного ввода.
+function readDateRange(fromEl, toEl) {
+    var fromValue = fromEl ? (fromEl.value || '') : '';
+    var toValue = toEl ? (toEl.value || '') : '';
+    var from = fromValue ? dateInputToStartTs(fromValue) : null;
+    var to = toValue ? dateInputToEndTs(toValue) : null;
+    var invalid = (from !== null && to !== null && from > to);
+    return {
+        from: from, to: to, fromValue: fromValue, toValue: toValue,
+        invalid: invalid,
+        active: !invalid && (from !== null || to !== null)
+    };
+}
+
+// Фильтрация пар [id, round] по периоду. Раунды без даты в выборку не попадают.
+function filterEntriesByDateRange(entries, range) {
+    if (!range || !range.active) return entries.slice();
+    return entries.filter(function(e) {
+        var ts = getRoundFilterTs(e && e[1]);
+        if (!ts) return false;
+        if (range.from !== null && ts < range.from) return false;
+        if (range.to !== null && ts > range.to) return false;
+        return true;
+    });
+}
+
+// Сводка «сколько раундов за период» над списком.
+function renderRoundsPeriodSummary(el, range, count, total) {
+    if (!el) return;
+    var isEn = currentLang === 'en';
+    var html = '<i class="fas fa-calendar-check"></i> ';
+    if (range && range.active) {
+        var fromTxt = range.from !== null ? fmtDate(range.from) : (isEn ? 'the beginning' : 'с начала');
+        var toTxt = range.to !== null ? fmtDate(range.to) : (isEn ? 'today' : 'сегодня');
+        html += '<span class="rs-period">' + escapeHtml(fromTxt + ' — ' + toTxt) + '</span>' +
+                '<span class="rs-sep">·</span>' + t('rounds_found_label') + ': <b>' + count + '</b>';
+        if (typeof total === 'number' && total !== count) {
+            html += ' <span class="rs-dim">' + (isEn ? 'of' : 'из') + ' ' + total + '</span>';
+        }
+    } else {
+        html += t('rounds_total_label') + ': <b>' + count + '</b>';
+    }
+    el.innerHTML = html;
+}
+
+var dateRangeFilters = Object.create(null);
+
+// Подключение виджета «дата с / дата по» к списку.
+// cfg: { key, fromId, toId, presetsId, resetId, hintId, summaryId, onChange }
+function initDateRangeFilter(cfg) {
+    if (!cfg) return null;
+    var fromEl = document.getElementById(cfg.fromId);
+    var toEl = document.getElementById(cfg.toId);
+    if (!fromEl || !toEl) return null;
+    var presetsEl = cfg.presetsId ? document.getElementById(cfg.presetsId) : null;
+    var resetEl = cfg.resetId ? document.getElementById(cfg.resetId) : null;
+    var hintEl = cfg.hintId ? document.getElementById(cfg.hintId) : null;
+    var storeKey = 'pestovo_date_filter_' + cfg.key;
+
+    function persist() {
+        try {
+            localStorage.setItem(storeKey, JSON.stringify({ from: fromEl.value || '', to: toEl.value || '' }));
+        } catch (e) {}
+    }
+
+    // Какой пресет соответствует текущим границам ('' — произвольный период).
+    function activePreset() {
+        var r = readDateRange(fromEl, toEl);
+        if (!r.fromValue && !r.toValue) return 'all';
+        for (var i = 0; i < DATE_RANGE_PRESETS.length; i++) {
+            var p = DATE_RANGE_PRESETS[i];
+            if (p === 'all') continue;
+            var pr = datePresetRange(p);
+            if (pr.from === r.fromValue && pr.to === r.toValue) return p;
+        }
+        return '';
+    }
+
+    function renderPresets() {
+        if (!presetsEl) return;
+        var active = activePreset();
+        presetsEl.innerHTML = DATE_RANGE_PRESETS.map(function(p) {
+            return '<button type="button" class="date-chip' + (active === p ? ' active' : '') +
+                   '" data-preset="' + p + '">' + t('date_preset_' + p) + '</button>';
+        }).join('');
+    }
+
+    // Не даём выбрать «с» позже «по» прямо в нативном календаре.
+    function syncMinMax() {
+        if (toEl.value) fromEl.setAttribute('max', toEl.value); else fromEl.removeAttribute('max');
+        if (fromEl.value) toEl.setAttribute('min', fromEl.value); else toEl.removeAttribute('min');
+    }
+
+    function updateHint() {
+        var invalid = readDateRange(fromEl, toEl).invalid;
+        fromEl.classList.toggle('is-invalid', invalid);
+        toEl.classList.toggle('is-invalid', invalid);
+        if (hintEl) {
+            hintEl.textContent = invalid ? t('date_filter_invalid') : '';
+            hintEl.classList.toggle('hidden', !invalid);
+        }
+    }
+
+    function fire() {
+        updateHint();
+        if (typeof cfg.onChange === 'function') cfg.onChange(api.getRange());
+    }
+
+    var api = {
+        key: cfg.key,
+        getRange: function() { return readDateRange(fromEl, toEl); },
+        renderPresets: renderPresets,
+        lastSummary: null,
+        renderSummary: function(count, total) {
+            api.lastSummary = { count: count, total: total };
+            renderRoundsPeriodSummary(cfg.summaryId ? document.getElementById(cfg.summaryId) : null, api.getRange(), count, total);
+        },
+        rerenderSummary: function() {
+            if (api.lastSummary) api.renderSummary(api.lastSummary.count, api.lastSummary.total);
+        }
+    };
+
+    // Возвращаем прошлый период после перезагрузки страницы.
+    try {
+        var saved = JSON.parse(localStorage.getItem(storeKey) || 'null');
+        if (saved && typeof saved === 'object') {
+            if (saved.from) fromEl.value = saved.from;
+            if (saved.to) toEl.value = saved.to;
+        }
+    } catch (e) {}
+
+    fromEl.addEventListener('change', function() { syncMinMax(); persist(); renderPresets(); fire(); });
+    toEl.addEventListener('change', function() { syncMinMax(); persist(); renderPresets(); fire(); });
+
+    if (presetsEl) {
+        presetsEl.addEventListener('click', function(e) {
+            var btn = e.target && e.target.closest ? e.target.closest('.date-chip') : null;
+            var preset = btn && btn.getAttribute('data-preset');
+            if (!preset) return;
+            var r = datePresetRange(preset);
+            fromEl.value = r.from;
+            toEl.value = r.to;
+            syncMinMax();
+            persist();
+            renderPresets();
+            fire();
+        });
+    }
+
+    if (resetEl) {
+        resetEl.addEventListener('click', function() {
+            fromEl.value = '';
+            toEl.value = '';
+            syncMinMax();
+            persist();
+            renderPresets();
+            fire();
+        });
+    }
+
+    syncMinMax();
+    renderPresets();
+    updateHint();
+    dateRangeFilters[api.key] = api;
+    return api;
+}
+
+function getDateRangeFilter(key) { return dateRangeFilters[key] || null; }
+
+// Перерисовка подписей пресетов и сводки при смене языка (зовется из applyTranslations).
+function refreshDateRangeFilters() {
+    Object.keys(dateRangeFilters).forEach(function(k) {
+        var api = dateRangeFilters[k];
+        if (!api) return;
+        api.renderPresets();
+        api.rerenderSummary();
+    });
+}
+
 // Глобальный fallback для битых <img> (заменяет инлайн-обработчики onerror — лучше для CSP).
 // Слушаем в фазе capture: ошибки ресурсов не всплывают.
 document.addEventListener('error', function(e) {
@@ -314,6 +542,14 @@ var I18N = {
         wind_label: 'Ветер',
 
         status_label: 'Статус', status_all: 'Все', status_active: 'Live', status_completed: 'Завершённые',
+        date_filter_label: 'Период', date_from_label: 'Дата с', date_to_label: 'Дата по',
+        date_filter_reset: 'Сбросить',
+        date_preset_today: 'Сегодня', date_preset_7d: '7 дней', date_preset_30d: '30 дней',
+        date_preset_month: 'Этот месяц', date_preset_year: 'Этот год', date_preset_all: 'Всё время',
+        date_filter_invalid: 'Дата «с» позже даты «по»',
+        rounds_found_label: 'Найдено раундов', rounds_total_label: 'Всего раундов',
+        period_label: 'Период', period_all_time: 'за всё время',
+        no_rounds_in_period: 'Нет раундов за выбранный период',
         all_players: 'Все игроки',
         type_registered: 'Только зарегистрированные',
         type_guests: 'Только гости',
@@ -670,6 +906,14 @@ var I18N = {
         wind_label: 'Wind',
 
         status_label: 'Status', status_all: 'All', status_active: 'Live', status_completed: 'Completed',
+        date_filter_label: 'Period', date_from_label: 'From', date_to_label: 'To',
+        date_filter_reset: 'Reset',
+        date_preset_today: 'Today', date_preset_7d: '7 days', date_preset_30d: '30 days',
+        date_preset_month: 'This month', date_preset_year: 'This year', date_preset_all: 'All time',
+        date_filter_invalid: 'Start date is after the end date',
+        rounds_found_label: 'Rounds found', rounds_total_label: 'Total rounds',
+        period_label: 'Period', period_all_time: 'all time',
+        no_rounds_in_period: 'No rounds in the selected period',
         all_players: 'All Players',
         type_registered: 'Registered Only',
         type_guests: 'Guests Only',
@@ -895,6 +1139,12 @@ function toggleLang() {
     if (typeof applyPlayerModes === 'function') applyPlayerModes();
     if (typeof refreshOfficialCallBindings === 'function') refreshOfficialCallBindings();
     if (typeof renderAdmGroups === 'function') renderAdmGroups();
+    // Список раундов в админке перерисовываем только при открытой панели —
+    // иначе подписали бы на данные rounds тех, у кого нет доступа.
+    if (typeof loadAdmRounds === 'function' && typeof hasAdminPanelAccess === 'function' && hasAdminPanelAccess()) {
+        var admContent = document.getElementById('admin-content');
+        if (admContent && !admContent.classList.contains('hidden')) loadAdmRounds();
+    }
     if (typeof buildMobileDrawer === 'function') {
         var drawerRoot = document.getElementById('mobile-drawer-root');
         var wasOpen = drawerRoot && drawerRoot.classList.contains('open');
@@ -952,6 +1202,8 @@ function applyTranslations() {
             el.setAttribute('title', I18N[currentLang][key]);
         }
     });
+    // Подписи пресетов и сводка фильтра по датам строятся через t() — обновляем их тоже.
+    if (typeof refreshDateRangeFilters === 'function') refreshDateRangeFilters();
 }
 
 /* Применяем переводы и тему мгновенно (скрипт внизу <body> — DOM уже распаршен),
@@ -6630,14 +6882,6 @@ function privacyMaskName(name, pid) {
 
 function privacyDisplayName(p, pid) {
     if (!p) return '—';
-    if (privacyShouldHide(pid)) return privacyMaskName(p.name, pid);
-    return p.name || '—';
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof initPrivacySettings === 'function') initPrivacySettings();
-});
-if (!p) return '—';
     if (privacyShouldHide(pid)) return privacyMaskName(p.name, pid);
     return p.name || '—';
 }

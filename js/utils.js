@@ -1361,9 +1361,65 @@ function initNav(){
             if (window.scrollY > 50) n.classList.add('nav-scrolled');
             else n.classList.remove('nav-scrolled');
         }
+        // На каждом скролле пересчитываем высоту шапки: при появлении/скрытии
+        // статус-бара iOS или изменении размеров шапки (mobile-меню) отступы
+        // и scroll-padding должны оставаться синхронными.
+        applyNavHeight();
+    }, { passive: true });
+
+    // resize / orientationchange / visualViewport — высота шапки может
+    // меняться (например, при повороте экрана или открытии клавиатуры).
+    window.addEventListener('resize', applyNavHeight);
+    window.addEventListener('orientationchange', function() {
+        setTimeout(applyNavHeight, 250);
     });
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', applyNavHeight);
+    }
 
     loadPestovoWeather('nav-weather-container');
+    // Высота нужна до первой отрисовки, иначе заголовки страниц на мобильном
+    // на мгновение «прячутся» под фиксированной шапкой.
+    applyNavHeight();
+    setTimeout(applyNavHeight, 50);
+    setTimeout(applyNavHeight, 400);
+}
+
+// ==========================================
+// ДИНАМИЧЕСКАЯ ВЫСОТА ФИКСИРОВАННОЙ ШАПКИ
+// Пересчитывает реальную высоту #main-nav и записывает её в CSS-переменную
+// --nav-h. Все page-head / main / scroll-padding используют эту переменную,
+// поэтому отступы всегда совпадают с шапкой, в том числе:
+//   - на iOS в PWA-режиме (env(safe-area-inset-top) добавляет высоту)
+//   - при переключении состояния .nav-scrolled (шапка становится плотнее)
+//   - при разных размерах шрифта/иконок на мобильных
+// ==========================================
+function applyNavHeight() {
+    if (typeof document === 'undefined') return;
+    var navEl = document.getElementById('main-nav');
+    if (!navEl) return;
+    // offsetHeight учитывает padding, border, но НЕ учитывает safe-area-inset-top.
+    // В PWA на iOS шапка визуально выше из-за статус-бара — добавляем
+    // env(safe-area-inset-top) явно, иначе контент «уезжает» под «чёлку».
+    var baseH = navEl.offsetHeight || 0;
+    var safeTop = 0;
+    try {
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:absolute;top:0;left:0;height:env(safe-area-inset-top);width:1px;pointer-events:none;visibility:hidden;';
+        document.body.appendChild(probe);
+        safeTop = Math.max(0, probe.getBoundingClientRect().height);
+        document.body.removeChild(probe);
+    } catch (e) {
+        safeTop = 0;
+    }
+    // Если шапка уже учитывает safe-area-inset-top в собственном padding-top
+    // (см. media display-mode: standalone в style.css), не дублируем.
+    var padTop = parseFloat(getComputedStyle(navEl).paddingTop) || 0;
+    var extraSafe = safeTop > padTop ? (safeTop - padTop) : 0;
+    var totalH = baseH + extraSafe;
+    if (totalH > 0) {
+        document.documentElement.style.setProperty('--nav-h', totalH + 'px');
+    }
 }
 
 function buildMobileDrawer() {

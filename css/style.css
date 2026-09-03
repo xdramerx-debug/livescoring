@@ -362,12 +362,26 @@ body.sun-mode td {
 .nav-user{display:flex;align-items:center;gap:8px;}
 .nav-uname{color:var(--gold);font-size:13px;font-weight:500;}
 .nav-toggle{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:8px;}
-/* Гарантированно скрываем кнопку-«бургер» бокового меню на десктопе.
-   Она нужна ТОЛЬКО на мобильной версии (max-width: 768px) — там боковое
-   выезжающее меню заменяет горизонтальную панель ссылок, и без «бургера»
-   не открыть навигацию. На десктопе достаточно горизонтального .nav-menu. */
+/* Кнопки открытия бокового меню нужны ТОЛЬКО на мобильной (max-width: 768px):
+   - .nav-toggle (≡) — классический «бургер»,
+   - .player-modes-launcher (fa-sliders) — кнопка «Мои настройки» в шапке,
+   - .nav-tools-btn (fa-toolbox) — кнопка «Инструменты» в шапке (если админ включил).
+   На десктопе достаточно горизонтального .nav-menu + кнопок Sun / RU / Войти,
+   никаких отдельных «бургеров» в шапке быть не должно — иначе визуальный шум
+   и ломается ряд Sun → RU → [Войти] в правом блоке шапки. */
 @media (min-width: 769px) {
-    .nav-toggle { display: none !important; visibility: hidden !important; pointer-events: none !important; }
+    .nav-toggle,
+    .player-modes-launcher,
+    .nav-tools-btn {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
 }
 .nav-toggle span{width:22px;height:2px;background:var(--gold);transition:var(--t);border-radius:2px;}
 .nav-toggle.active span:nth-child(1){transform:rotate(45deg) translate(5px,5px);}

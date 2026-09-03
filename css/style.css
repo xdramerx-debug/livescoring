@@ -3789,3 +3789,33 @@ body.sun-mode .rounds-summary .rs-period { color: #000000; }
     .date-chip { flex: 1 1 auto; text-align: center; padding: 8px 10px; }
     .rounds-summary { font-size: 12px; padding: 9px 12px; }
 }
+
+/* ==========================================
+   СТРАНИЦА «ВСЕ РАУНДЫ»: свёрнутые строки как на главной
+   ========================================== */
+.lb-row .lwl-name { flex: 0 0 auto; }
+.lb-row .lwl-name-txt { white-space: nowrap; }
+.lb-row .lb-names {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lb-row .lwl-score { min-width: 0; display: inline-flex; align-items: center; }
+.lb-row .lwl-score .live-badge { font-size: 10px; padding: 2px 8px; }
+.lb-row .lwl-score .tn-status { font-size: 10px; padding: 2px 8px; }
+.lb-row-live { border-color: rgba(231, 76, 60, 0.45); }
+.lb-row-live.is-open { border-color: var(--gold); }
+.lb-row .lwl-meta .lwl-extra { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.lb-row .lb-rlb { margin-top: 10px; padding-top: 4px; border-top: 1px solid var(--border); }
+.lb-row .lwl-actions .btn { flex: 1 1 140px; }
+.lb-row .card-scorecard-panel { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.lb-row .card-scorecard-panel.hidden { display: none; }
+@media (max-width: 480px) {
+    .lb-row .lwl-toggle { gap: 8px; padding: 10px 10px; }
+    .lb-row .lwl-name { font-size: 13px; }
+    .lb-row .lb-names { font-size: 11px; }
+    .lb-row .lwl-details { padding: 0 10px 10px; }
+}
+body.sun-mode .lb-row-live { border-color: #c0392b !important; }

@@ -696,11 +696,11 @@ function buildRecentRowHTML(id, r) {
     var open = getRecentOpen(id);
     var namesStr = playerNames.length ? playerNames.join(', ') : '—';
 
+    // ВАЖНО: блок «ТИ: ...» уровня раунда здесь НЕ выводится — ТИ уже
+    // показан у каждого игрока (бейдж buildPlayerBadges: ТИ · точн. HCP · пол. HCP).
+    // Раньше дублирующая строка «ТИ: Синий» выводилась дважды подряд.
     var details =
         '<div class="lwl-details">' +
-        '<div class="lwl-meta">' +
-        '<span class="lwl-extra">' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
-        '</div>' +
         '<div class="lwl-recent-players">' + pHtml + '</div>' +
         '<div class="lwl-actions">' +
         '<button class="btn btn-og btn-sm" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +

@@ -196,10 +196,16 @@ function saveSc() {
         if (wentOffline) return null;
         return recordHoleCompletionTime(scRid, scPid, savedHole, Date.now());
     }).then(function() {
-        // Локально отражаем сохранённый счёт: офлайн-слушатель Firebase может не успеть
+        // Локально отражаем сохранённый счёт: офлайн-слушатель Firebase может не успеть.
+        // Время лунки тоже проставляем локально — иначе темп/тайминги на мобильных
+        // не обновлялись до прихода echo Firebase.
         if (scRound && scRound.players && scRound.players[scPid]) {
             scRound.players[scPid].scores = scRound.players[scPid].scores || {};
             scRound.players[scPid].scores[savedHole] = scScore;
+            scRound.players[scPid].holeTimes = scRound.players[scPid].holeTimes || {};
+            if (!(parseInt(scRound.players[scPid].holeTimes[savedHole]) > 0)) {
+                scRound.players[scPid].holeTimes[savedHole] = Date.now();
+            }
         }
 
         var ms = parseInt(scMarker[savedHole]) || 0;

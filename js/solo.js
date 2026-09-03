@@ -640,18 +640,32 @@ function saveSolo() {
         }
 
         rememberResumeHole(soloRid, uid, curHole);
+
+        var p = soloRound.players && soloRound.players[uid];
+        if (p) {
+            // Оптимистично отражаем счёт и время лунки ЛОКАЛЬНО ДО отрисовки.
+            // Раньше данные проставлялись после renderX(), поэтому на мобильных
+            // (медленный/отложенный echo Firebase) тайминги и «Пройдено» не
+            // обновлялись до прихода снапшота. Firebase-снапшот перезапишет
+            // локальную копию фактическими данными (они совпадают).
+            p.scores = p.scores || {};
+            p.scores[savedHole] = scoreToSave;
+            p.holeTimes = p.holeTimes || {};
+            if (!(parseInt(p.holeTimes[savedHole]) > 0)) {
+                p.holeTimes[savedHole] = Date.now();
+            }
+        }
+
         showTimingNotice(savedHole);
         renderCurrentHole();
         buildHoles();
 
-        var p = soloRound.players && soloRound.players[uid];
-        if (p) {
-            p.scores = p.scores || {};
-            p.scores[savedHole] = scoreToSave;
-        }
-
         updateSoloActionButton();
         renderMiniCard('mini-card');
+        // Темп игры/тайминги — пересчёт по уже обновлённым локальным данным,
+        // не дожидаясь echo Firebase (актуально на мобильных сетях).
+        renderLiveStats('live-stats');
+        updateSoloPaceAssistant();
 
         setTimeout(function() { soloIsChanging = false; }, 200);
     });

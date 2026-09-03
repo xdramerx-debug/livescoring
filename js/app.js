@@ -682,8 +682,10 @@ function buildRecentRowHTML(id, r) {
         var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
         playerNames.push(privacyDisplayName(p, pid));
 
+        var showName = Object.keys(players).length > 1;
         pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-            '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + playerBadges + '</div>' +
+            '<div style="flex:1;">' +
+            (showName ? '<div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + playerBadges + '</div>' : '<div class="round-p-n">' + playerBadges + '</div>') +
             '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div></div>' +
             '<div style="text-align:right;">' +
             '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
@@ -697,7 +699,7 @@ function buildRecentRowHTML(id, r) {
     var details =
         '<div class="lwl-details">' +
         '<div class="lwl-meta">' +
-        '<span class="lwl-extra">' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + ' · ' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
+        '<span class="lwl-extra">' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
         '</div>' +
         '<div class="lwl-recent-players">' + pHtml + '</div>' +
         '<div class="lwl-actions">' +

@@ -3147,11 +3147,13 @@ function generateGroupHoleTableHTML(r, opts) {
         var totG = 0, parTotal = 0;
         order.forEach(function(i) { var s = parseInt(sc[i]) || 0; if (s > 0) totG += s; parTotal += holePar(i); });
 
-        html += '<div class="noscroll-totals">';
-        html += '<span>' + (currentLang === 'en' ? 'Holes' : 'Лунки') + ': <b>' + stats.holesPlayed + '/' + holeCount + '</b></span>';
-        html += '<span>' + t('par') + ': <b>' + parTotal + '</b></span>';
-        html += '<span>' + t('total') + ': <b>' + (totG > 0 ? totG : '—') + '</b></span>';
-        html += '</div>';
+        if (!compact) {
+            html += '<div class="noscroll-totals">';
+            html += '<span>' + (currentLang === 'en' ? 'Holes' : 'Лунки') + ': <b>' + stats.holesPlayed + '/' + holeCount + '</b></span>';
+            html += '<span>' + t('par') + ': <b>' + parTotal + '</b></span>';
+            html += '<span>' + t('total') + ': <b>' + (totG > 0 ? totG : '—') + '</b></span>';
+            html += '</div>';
+        }
 
         html += '</div>';
     });
@@ -3244,7 +3246,7 @@ function openPlayerProfileModal(playerId, roundId) {
                     '</h3>';
             
             if (typeof generatePestovoScorecardHTML === 'function') {
-                html += generatePestovoScorecardHTML(roundPlayer, rd);
+                html += generatePestovoScorecardHTML(roundPlayer, rd, { compact: true });
             }
             html += '</div>';
         }
@@ -3315,7 +3317,7 @@ function openPlayerProfileModal(playerId, roundId) {
                     };
 
                     if (typeof generatePestovoScorecardHTML === 'function') {
-                        html += generatePestovoScorecardHTML(pObj, rObj);
+                        html += generatePestovoScorecardHTML(pObj, rObj, { compact: true });
                     }
 
                     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">';
@@ -3636,7 +3638,9 @@ function closeFinishModal() {
 // ==========================================
 // СКОРКАРТА ПЕСТОВО (КАК НА ФОТО — 18 ЛУНОК)
 // ==========================================
-function generatePestovoScorecardHTML(player, roundData) {
+function generatePestovoScorecardHTML(player, roundData, opts) {
+    opts = opts || {};
+    var compact = !!opts.compact;
     var p = player || {};
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
@@ -6626,6 +6630,14 @@ function privacyMaskName(name, pid) {
 
 function privacyDisplayName(p, pid) {
     if (!p) return '—';
+    if (privacyShouldHide(pid)) return privacyMaskName(p.name, pid);
+    return p.name || '—';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof initPrivacySettings === 'function') initPrivacySettings();
+});
+if (!p) return '—';
     if (privacyShouldHide(pid)) return privacyMaskName(p.name, pid);
     return p.name || '—';
 }

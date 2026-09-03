@@ -3026,7 +3026,8 @@ function scrollToPlayerCurrentHole(pid) {
     setTimeout(function() { tile.classList.remove('sc-cur-flash'); }, 1800);
 }
 
-function generateGroupHoleTableHTML(r) {
+function generateGroupHoleTableHTML(r, opts) {
+    opts = opts || {};
     var players = r.players || {};
     var playerEntries = Object.entries(players).filter(function(pe) {
         // Удалённые и навсегда заблокированные демо-игроки не показываются
@@ -3038,6 +3039,7 @@ function generateGroupHoleTableHTML(r) {
     var holeCount = order.length;
     var frontCount = order.filter(function(h) { return h <= 9; }).length;
     var backCount = holeCount - frontCount;
+    var compact = !!opts.compact; // компактный режим для главной страницы: без табов, без кликабельности и без дублирования имени
 
     // --- NO-SCROLL VERTICAL GRID MATRIX (100% FIT ON MOBILE SCREENS) ---
     var html = '<div class="no-scroll-view-container">';
@@ -3057,10 +3059,27 @@ function generateGroupHoleTableHTML(r) {
         var isFinished = stats.holesPlayed >= holeCount;
         var curHole = isFinished ? null : stats.currentHole;
 
-        html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
+        // В компактном режиме (главная страница) карточка НЕ кликабельна —
+        // открывать профиль игрока из общего списка не нужно, имя и так уже
+        // видно в строке над карточкой, и повторный клик по карточке только
+        // мешает (прыгает модалка поверх списка).
+        if (compact) {
+            html += '<div class="noscroll-player-block">';
+        } else {
+            html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
+        }
         html += '<div class="noscroll-player-hdr">';
-        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + pHcpBadge + '</span>';
-        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div>';
+        html += '<div>';
+        if (compact) {
+            // Имя игрока уже видно в строке списка — здесь его не дублируем,
+            // чтобы карточка была «чистой»: сначала ТИ/HCP-чипы и бейдж «сейчас на лунке»,
+            // потом сразу матрица лунок.
+            html += '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">' + pTeeBadge + pHcpBadge + '</div>';
+            html += '<div style="font-size:11px;color:var(--muted);margin-top:4px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div>';
+        } else {
+            html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + pHcpBadge + '</span>';
+            html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div>';
+        }
         // Быстрый переход к лунке, на которой игрок стоит прямо сейчас
         if (curHole) {
             html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')">' +
@@ -3072,7 +3091,11 @@ function generateGroupHoleTableHTML(r) {
 
         // Вкладки «Первые 9 / Вторые 9 / Все 18» + матрица лунок
         html += '<div class="sc-tabs-wrap" data-view="' + scorecardViewFor(frontCount, backCount) + '">';
-        html += buildScorecardTabsHTML(frontCount, backCount);
+        // В компактном режиме (главная страница) табы скрыты: пользователь
+        // видит все 18 лунок сразу, без разбиения на девятки — меньше шумa.
+        if (!compact) {
+            html += buildScorecardTabsHTML(frontCount, backCount);
+        }
 
         // Hole matrix (9 or 18 holes): фора + № лунки, счёт, индекс, очки Stableford
         html += '<div class="noscroll-grid">';

@@ -540,7 +540,12 @@ function fillCardScorecardPanel(panelId, roundId, r) {
     var panel = document.getElementById(panelId);
     if (!panel || !r || typeof generateGroupHoleTableHTML !== 'function') return;
     r.roundId = roundId;
-    var html = generateGroupHoleTableHTML(r);
+    // На главной странице карточка рендерится в «компактном» режиме:
+    //   - без табов «Первые 9 / Вторые 9 / Все 18» (показываем все 18 сразу),
+    //   - без кликабельности по карточке (открытие профиля игрока недоступно —
+    //     имя и так уже видно в строке списка выше),
+    //   - без дублирования имени игрока внутри карточки.
+    var html = generateGroupHoleTableHTML(r, { compact: true });
     cardPanelHTML[panelId] = html;
     panel.innerHTML = html;
 }

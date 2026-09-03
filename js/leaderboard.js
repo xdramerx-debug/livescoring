@@ -63,11 +63,104 @@ function loadLB() {
         }
         var html = '';
         entries.forEach(function(e) { html += renderRound(e[0], e[1]); });
-        el.innerHTML = html;
+        el.innerHTML = '<div class="live-who-list">' + html + '</div>';
+        restoreLbPanels();
     });
 }
 
+// ==========================================
+// Список раундов в свёрнутом виде (как «Последние результаты» на главной):
+// одна строка (дата · игроки · статус · формат), по тапу разворачивается
+// таблица с результатами, кнопки и счётная карточка.
+// ==========================================
+var lbRoundOpen = {};
+var lbRoundsById = {};
+var lbPanelOpen = {};
+
+function lbStoreKey(id) { return 'pestovo_lb_open_' + id; }
+
+function getLbOpen(id) {
+    if (Object.prototype.hasOwnProperty.call(lbRoundOpen, id)) return lbRoundOpen[id];
+    var saved = null;
+    try { saved = localStorage.getItem(lbStoreKey(id)); } catch (e) {}
+    lbRoundOpen[id] = (saved === '1');
+    return lbRoundOpen[id];
+}
+
+function setLbOpen(id, open) {
+    lbRoundOpen[id] = !!open;
+    try { localStorage.setItem(lbStoreKey(id), open ? '1' : '0'); } catch (e) {}
+}
+
+function toggleLbRound(id) {
+    var row = document.querySelector('.lb-row[data-round-id="' + id + '"]');
+    var open = row ? !row.classList.contains('is-open') : !getLbOpen(id);
+    setLbOpen(id, open);
+    if (row) {
+        row.classList.toggle('is-open', open);
+        var chev = row.querySelector('.lwl-chev');
+        if (chev) chev.className = 'fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down');
+        var tg = row.querySelector('.lwl-toggle');
+        if (tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    if (typeof vib === 'function') vib(15);
+}
+
+function lbRowKey(ev, id) {
+    if (ev && (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar')) {
+        ev.preventDefault();
+        toggleLbRound(id);
+    }
+}
+
+// Панель счётной карточки внутри раскрытого раунда
+function fillLbScorecardPanel(panelId, roundId) {
+    var panel = document.getElementById(panelId);
+    var r = lbRoundsById[roundId];
+    if (!panel || !r || typeof generateGroupHoleTableHTML !== 'function') return;
+    r.roundId = roundId;
+    panel.innerHTML = generateGroupHoleTableHTML(r, { compact: true });
+}
+
+function toggleLbScorecard(panelId, roundId) {
+    var panel = document.getElementById(panelId);
+    var icon = document.getElementById(panelId + '-icon');
+    var txt = document.getElementById(panelId + '-txt');
+    if (!panel) return;
+    var isHidden = panel.classList.contains('hidden');
+    if (isHidden) {
+        panel.classList.remove('hidden');
+        lbPanelOpen[panelId] = true;
+        if (icon) icon.className = 'fas fa-chevron-up';
+        if (txt) txt.textContent = t('collapse_scorecard');
+        fillLbScorecardPanel(panelId, roundId);
+    } else {
+        panel.classList.add('hidden');
+        lbPanelOpen[panelId] = false;
+        if (icon) icon.className = 'fas fa-chevron-down';
+        if (txt) txt.textContent = t('expand_scorecard');
+    }
+}
+
+function restoreLbPanels() {
+    var rows = document.querySelectorAll('.lb-row');
+    for (var i = 0; i < rows.length; i++) {
+        var roundId = rows[i].getAttribute('data-round-id');
+        var panelId = 'lb-sc-' + roundId;
+        if (!lbPanelOpen[panelId]) continue;
+        var panel = document.getElementById(panelId);
+        if (!panel) continue;
+        panel.classList.remove('hidden');
+        var icon = document.getElementById(panelId + '-icon');
+        var txt = document.getElementById(panelId + '-txt');
+        if (icon) icon.className = 'fas fa-chevron-up';
+        if (txt) txt.textContent = t('collapse_scorecard');
+        fillLbScorecardPanel(panelId, roundId);
+    }
+}
+
 function renderRound(id, r) {
+    lbRoundsById[id] = r;
     var isLive = r.status === 'active';
     var rawPlayers = r.players || {};
     // Дедуп по ФИО, чтобы не было сдваивания игроков с одинаковыми именами
@@ -140,11 +233,15 @@ function renderRound(id, r) {
     var badge = isLive 
         ? '<span class="live-badge"><span class="live-dot" style="width:7px;height:7px;"></span> LIVE</span>' 
         : '<span class="tn-status tn-d">' + (isEn ? 'Completed' : 'Завершён') + '</span>';
-        
-    var downloadBtn = !isLive 
-        ? '<div class="rl-actions"><button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i> ' + (isEn ? 'Scorecard' : 'Счётная карточка') + '</button>' +
-          '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button></div>'
-        : '';
+
+    var panelId = 'lb-sc-' + id;
+    var actions = '<div class="lwl-actions">' +
+        '<button class="btn btn-og btn-sm" onclick="toggleLbScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
+        (!isLive
+            ? '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i> ' + (isEn ? 'Scorecard' : 'Счётная карточка') + '</button>' +
+              '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>'
+            : '') +
+        '</div>';
 
     var head = '<div class="rlb-row rlb-head">' +
         '<span class="rlb-pos">#</span>' +
@@ -156,12 +253,28 @@ function renderRound(id, r) {
 
     var ts = r.startTime || r.createdAt;
     var soloWord = isEn ? ' · Solo' : ' · Одиночный';
+    var namesStr = list.length ? list.map(function(p) { return privacyDisplayName(p, p.pid); }).join(', ') : '—';
+    var open = getLbOpen(id);
 
-    return '<div class="card rl-card">' +
-        '<div class="rl-head"><div class="rl-hinfo">' +
-        '<div class="rl-title"><i class="fas fa-flag"></i>' + fmtDate(ts) + ' · ' + fmtTime(ts) + '</div>' +
-        '<div class="rl-sub">' + (r.format || 'Stroke Play') + ' · ' + fmtRoundTeePills(r) + (r.mode === 'solo' ? soloWord : '') + '</div>' +
-        '</div>' + badge + '</div>' +
-        '<div class="rlb">' + head + rows + '</div>' +
-        downloadBtn + '</div>';
+    var details = '<div class="lwl-details">' +
+        '<div class="lwl-meta">' +
+        '<span class="lwl-extra">' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + ' · ' + fmtTime(ts) + '</span>' +
+        '<span class="lwl-extra">' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
+        '</div>' +
+        '<div class="rlb lb-rlb">' + head + rows + '</div>' +
+        actions +
+        '<div id="' + panelId + '" class="card-scorecard-panel hidden"></div>' +
+        '</div>';
+
+    return '<div class="lwl-row lb-row' + (open ? ' is-open' : '') + (isLive ? ' lb-row-live' : '') + '" data-round-id="' + id + '">' +
+        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" ' +
+        'onclick="toggleLbRound(\'' + id + '\')" onkeydown="lbRowKey(event,\'' + id + '\')">' +
+        '<span class="lwl-name"><i class="fas ' + (isLive ? 'fa-flag' : 'fa-flag-checkered') + '"></i><span class="lwl-name-txt">' + fmtDate(ts) + '</span></span>' +
+        '<span class="lwl-hole lb-names"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
+        '<span class="lwl-score">' + badge + '</span>' +
+        '<span class="lwl-start">' + (r.format || 'Stroke Play') + '</span>' +
+        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
+        '</div>' +
+        details +
+        '</div>';
 }

@@ -1235,7 +1235,7 @@ function renderGVPlayers(r) {
 
     if (scCardEl) {
         r.roundId = curRid;
-        scCardEl.innerHTML = generateGroupHoleTableHTML(r);
+        scCardEl.innerHTML = generateGroupHoleTableHTML(r, { compact: true });
     }
 }
 

@@ -3172,36 +3172,25 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
 // показывает все лунки выбранного диапазона сразу.
 function holeNineClass(h) { return h <= 9 ? 'sc-h-front' : 'sc-h-back'; }
 
-// Строка накопительного to-par: под каждой лункой итог относительно пара
-// на момент её завершения. startRun позволяет продолжить счёт со второй девятки.
+// Строка накопительного to-par удалена по требованию клуба: блок
+// «To-par по ходу» больше не отображается ни на одной странице.
+// Функция сохранена для совместимости — она по-прежнему считает
+// накопительный run (нужен для продолжения счёта со второй девятки),
+// но не возвращает разметку.
 function buildToParRowHTML(order, sc, startRun, gridClass, wrapClass) {
     var run = startRun || 0;
     var playedAny = false;
-    var cells = '';
 
     order.forEach(function(i) {
         var s = parseInt(sc[i]) || 0;
-        var cls = 'sc-tp-none';
-        var txt = '·';
         if (s >= 1) {
             playedAny = true;
             run += s - holePar(i);
-            cls = run < 0 ? 'sc-tp-under' : (run > 0 ? 'sc-tp-over' : 'sc-tp-even');
-            txt = run > 0 ? '+' + run : (run === 0 ? 'E' : '' + run);
         }
-        var title = currentLang === 'en'
-            ? 'Hole #' + i + (s >= 1 ? ': ' + s + ' (par ' + holePar(i) + ') — to-par after the hole: ' + fmtScore(run) : ': not played yet')
-            : 'Лунка #' + i + (s >= 1 ? ': ' + s + ' (пар ' + holePar(i) + ') — to-par после лунки: ' + fmtScore(run) : ': ещё не сыграна');
-        cells += '<span class="sc-topar-cell ' + cls + ' ' + holeNineClass(i) + '" title="' + title + '">' + txt + '</span>';
     });
 
     if (!playedAny) return { html: '', run: run };
-
-    var html = '<div class="sc-topar ' + (wrapClass || '') + '">' +
-        '<div class="sc-topar-lbl"><i class="fas fa-chart-line"></i> ' + t('sc_topar_lbl') + ': <b>' + fmtScore(run) + '</b></div>' +
-        '<div class="' + (gridClass || 'noscroll-grid') + ' sc-topar-row">' + cells + '</div>' +
-        '</div>';
-    return { html: html, run: run };
+    return { html: '', run: run };
 }
 
 // Переход к текущей лунке игрока: плитка подсвечивается и прокручивается в центр экрана.
@@ -4229,8 +4218,11 @@ function loadPestovoCardLogo() {
     });
 }
 
-// Рисует логотип по центру карточки в фирменном золотом тонировании.
+// Рисует логотип по центру карточки как фоновый водяной знак.
 // Эмблема полностью помещается между рамками (maxW × maxH), без обрезки.
+// Рисуем оригинальный PNG напрямую с невысокой прозрачностью: так видна
+// сама эмблема (ринг, здание, надписи), а не сплошное цветное пятно —
+// перекраска через 'source-in' давала сплошную заливку (зелёное пятно).
 function drawCardLogoWatermark(ctx, img, cx, cy, maxW, maxH, alpha) {
     if (!img || !img.width || !img.height) return;
     var scale = Math.min(maxW / img.width, maxH / img.height);
@@ -4240,23 +4232,10 @@ function drawCardLogoWatermark(ctx, img, cx, cy, maxW, maxH, alpha) {
     var y = cy - h / 2;
 
     ctx.save();
-    ctx.globalAlpha = (alpha === undefined) ? 0.10 : alpha;
-    // Золотое тонирование: перекрашиваем логотип в фирменный цвет через
-    // временный canvas ('source-in'), чтобы водяной знак не выглядел
-    // белой заплаткой на тёмном фоне.
-    try {
-        var off = document.createElement('canvas');
-        off.width = Math.ceil(w);
-        off.height = Math.ceil(h);
-        var offCtx = off.getContext('2d');
-        offCtx.drawImage(img, 0, 0, off.width, off.height);
-        offCtx.globalCompositeOperation = 'source-in';
-        offCtx.fillStyle = '#c9a84c';
-        offCtx.fillRect(0, 0, off.width, off.height);
-        ctx.drawImage(off, x, y, w, h);
-    } catch (e) {
-        ctx.drawImage(img, x, y, w, h);
-    }
+    // Чуть заметнее, чем раньше, чтобы логотип реально читался на фоне,
+    // но оставался позади контента (текст и цифры рисуются поверх).
+    ctx.globalAlpha = (alpha === undefined) ? 0.18 : alpha;
+    ctx.drawImage(img, x, y, w, h);
     ctx.restore();
 }
 
@@ -4301,7 +4280,7 @@ function exportRoundPNG(roundId, playerId) {
         // Фоновый водяной знак — логотип клуба. Полностью помещается
         // во внутреннюю рамку карточки (996 × 996), без обрезки, и лежит
         // под всем контентом (рисуется первым, контент — поверх).
-        drawCardLogoWatermark(ctx, logoImg, 540, 540, 940, 940, 0.10);
+        drawCardLogoWatermark(ctx, logoImg, 540, 540, 940, 940, 0.18);
 
         // Header Title
         ctx.fillStyle = '#c9a84c';

@@ -401,6 +401,51 @@ function applyLiveWhoOpenUI(row, open) {
     if (tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
+// Состояние свёрнутой строки РАУНДА (групповой раунд = один блок на группу).
+// Игроки группы больше не рисуются отдельными строками: на главной один
+// свёрнутый блок раунда, внутри — строки всех игроков с деталями.
+var liveRoundOpen = {};
+function liveRoundStoreKey(id) { return 'pestovo_live_round_open_' + id; }
+
+function getLiveRoundOpen(id) {
+    if (Object.prototype.hasOwnProperty.call(liveRoundOpen, id)) return liveRoundOpen[id];
+    var saved = null;
+    try { saved = localStorage.getItem(liveRoundStoreKey(id)); } catch (e) {}
+    liveRoundOpen[id] = (saved === '1');
+    return liveRoundOpen[id];
+}
+
+function setLiveRoundOpen(id, open, persist) {
+    liveRoundOpen[id] = !!open;
+    if (persist !== false) {
+        try { localStorage.setItem(liveRoundStoreKey(id), open ? '1' : '0'); } catch (e) {}
+    }
+}
+
+function applyLiveRoundOpenUI(row, open) {
+    if (!row) return;
+    row.classList.toggle('is-open', !!open);
+    var chev = row.querySelector('.lwl-chev');
+    if (chev) chev.className = 'fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down');
+    var tg = row.querySelector('.lwl-toggle');
+    if (tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function toggleLiveRound(id) {
+    var row = document.querySelector('.live-round-row[data-round-id="' + id + '"]');
+    var open = row ? !row.classList.contains('is-open') : !getLiveRoundOpen(id);
+    setLiveRoundOpen(id, open);
+    applyLiveRoundOpenUI(row, open);
+    if (typeof vib === 'function') vib(15);
+}
+
+function liveRoundKey(ev, id) {
+    if (ev && (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar')) {
+        ev.preventDefault();
+        toggleLiveRound(id);
+    }
+}
+
 function toggleLiveWho(roundId, pid) {
     var row = document.querySelector('.lwl-row[data-round-id="' + roundId + '"][data-pid="' + pid + '"]');
     var open = row ? !row.classList.contains('is-open') : !getLiveWhoOpen(roundId, pid);
@@ -488,6 +533,62 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
         '</div>';
 }
 
+// Один свёрнутый блок на активный раунд. Внутри раскрытого блока —
+// строки всех игроков группы (имя · лунка · счёт · старт) с кнопками
+// «карточка» и продолжением, как раньше были отдельные строки.
+function buildLiveRoundRowHTML(id, r, players, isMyRound) {
+    var playerEntries = Object.entries(players || {}).filter(function(pe) {
+        return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
+    });
+    if (!playerEntries.length) return '';
+
+    var order = getRoundOrder(r);
+    var isGroup = (r.mode === 'group') || playerEntries.length > 1;
+    var names = [];
+    var bestToPar = null;
+    var playersHtml = '';
+
+    playerEntries.forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        names.push(privacyDisplayName(p, pid));
+        playersHtml += buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound);
+        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+        if (stats.toPar !== null && (bestToPar === null || stats.toPar < bestToPar)) {
+            bestToPar = stats.toPar;
+        }
+    });
+
+    var modeIcon = isGroup ? '<i class="fas fa-users"></i>' : '<i class="fas fa-user"></i>';
+    var modeLabel = escapeHtml(isGroup ? t('group_round') : t('solo_round'));
+    var countLabel = playerEntries.length + ' ' + (currentLang === 'en'
+        ? (playerEntries.length === 1 ? 'player' : 'players')
+        : pluralN(playerEntries.length, 'игрок', 'игрока', 'игроков'));
+    var namesStr = escapeHtml(names.join(', '));
+    var open = getLiveRoundOpen(id);
+    var panelId = 'live-round-panel-' + id;
+
+    var scoreHtml = bestToPar !== null
+        ? '<span class="lwl-score ' + scoreClass(bestToPar) + '">' + fmtScore(bestToPar) + '</span>'
+        : '<span class="lwl-score">—</span>';
+
+    return '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
+        'data-round-id="' + id + '" data-round-row="1">' +
+        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + panelId + '" ' +
+        'onclick="toggleLiveRound(\'' + id + '\')" onkeydown="liveRoundKey(event,\'' + id + '\')">' +
+        '<span class="lwl-name">' + modeIcon + '<span class="lwl-name-txt">' + modeLabel + ' · ' + namesStr + '</span>' +
+        (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
+        '</span>' +
+        '<span class="lwl-hole"><i class="fas fa-user"></i> ' + countLabel + '</span>' +
+        scoreHtml +
+        '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
+        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
+        '</div>' +
+        '<div class="lwl-details" id="' + panelId + '">' +
+        '<div class="live-round-players">' + playersHtml + '</div>' +
+        '</div>' +
+        '</div>';
+}
+
 function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
     if (typeof db === 'undefined') return;
@@ -510,21 +611,16 @@ function loadLiveRounds() {
         cachedRoundsById = {};
         entries.forEach(function(e) { cachedRoundsById[e[0]] = e[1]; });
 
-        // Единый список: игроки всех активных раундов, сгруппированные по
-        // раундам (свежий старт — выше). Строки свёрнуты по умолчанию:
-        // всегда видно имя, лунку и счёт.
+        // Групповой раунд — ОДИН свёрнутый блок на группу (а не отдельные
+        // строки на каждого игрока). Внутри раскрытого блока — строки
+        // всех игроков группы с деталями и счётными карточками.
         var html = '';
         entries.forEach(function(e) {
             var id = e[0], r = e[1];
             var rawPlayers = r.players || {};
             var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
             var isMyRound = isMyLiveRound(id, r);
-
-            Object.entries(players).forEach(function(pe) {
-                var pid = pe[0], p = pe[1];
-                if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
-                html += buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound);
-            });
+            html += buildLiveRoundRowHTML(id, r, players, isMyRound);
         });
 
         el.innerHTML = '<div class="live-who-list">' + html + '</div>';

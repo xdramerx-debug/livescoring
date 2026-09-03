@@ -1149,9 +1149,18 @@ function renderInviteQRs() {
 
     var base = baseUrl();
     var html = '';
+    var qrCount = 0;
 
     Object.entries(curRoundData.players || {}).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
+        if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
+
+        // QR-код нужен ТОЛЬКО тем, кто добавлен в группу, но ещё не начал
+        // раунд: как только игрок ввёл первую лунку — код исчезает.
+        var started = Object.values(p.scores || {}).some(function(v) { return parseInt(v) >= 1; });
+        if (started) return;
+        qrCount++;
+
         var url = base + 'setup-round.html?round=' + curRid + '&as=' + pid;
 
         var isMe = pid === myUid ? ' <span style="font-size:11px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
@@ -1164,7 +1173,13 @@ function renderInviteQRs() {
         html += '</div>';
     });
 
-    activeEl.innerHTML = html;
+    if (!qrCount) {
+        activeEl.innerHTML = '<div class="empty" style="padding:14px 8px;"><i class="fas fa-check-circle"></i><p style="font-size:12px;margin:8px 0 0;">' +
+            (currentLang === 'en' ? 'All players have already started the round' : 'Все игроки уже начали раунд') +
+            '</p></div>';
+    } else {
+        activeEl.innerHTML = html;
+    }
 }
 
 // ==========================================

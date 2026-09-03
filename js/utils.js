@@ -4303,8 +4303,7 @@ function exportRoundPNG(roundId, playerId) {
         ctx.textAlign = 'left';
         ctx.fillText(' OUT: ' + (outGross || '—') + '  |  IN: ' + (inGross || '—') + '  |  TOTAL 18 HOLES: ' + (totalGross18 || '—'), 80, 882);
 
-        ctx.textAlign = 'right';
-        ctx.fillText('STABLEFORD: ' + stats.stablefordField + ' PTS ', 1000, 882);
+        // Stableford now displayed in its own KPI card in the centre.
 
         // Footer Branding
         ctx.textAlign = 'center';

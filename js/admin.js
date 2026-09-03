@@ -412,44 +412,83 @@ function renderAdmGroups() {
 // ==========================================
 // РАУНДЫ
 // ==========================================
-function loadAdmRounds() {
-    db.ref('rounds').on('value', function(sn) {
-        var data = sn.val() || {};
-        var entries = Object.entries(data).sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
-        var el = document.getElementById('adm-rounds');
-        if (!el) return;
-
-        if (!entries.length) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-flag"></i><p>' + (currentLang === 'en' ? 'No rounds' : 'Нет раундов') + '</p></div>';
-            return;
-        }
-
-        var playersStr = currentLang === 'en' ? ' players · ' : ' игр. · ';
-        var soloStr = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
-
-        var html = '';
-        entries.forEach(function(e) {
-            var id = e[0], r = e[1], pc = Object.keys(r.players || {}).length;
-            var badge = r.status === 'active'
-                ? '<span class="tn-status tn-a"><span class="live-dot" style="width:6px;height:6px;"></span> Live</span>'
-                : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>';
-
-            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
-            html += '<div style="flex:1;min-width:200px;"><strong style="color:var(--white);">' + t('brand_name') + '</strong> ' + badge;
-            html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-                    fmtDate(r.createdAt) + ' · ' + fmtTime(r.startTime) + ' · ' + pc + playersStr +
-                    (r.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtRoundTeePills(r) +
-                    (r.mode === 'solo' ? soloStr : '') + '</div></div>';
-            html += '<div style="display:flex;gap:6px;">';
-            if (r.status === 'completed') {
-                html += '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i></button>';
-            }
-            html += '<button class="btn btn-r btn-sm" onclick="deleteRound(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
-            html += '</div></div>';
-        });
-
-        el.innerHTML = html;
+// Виджет «Дата с / Дата по» для вкладки «Все раунды». Подключаем один раз —
+// повторные вызовы просто возвращают уже созданный экземпляр.
+function ensureAdmRoundsDateFilter() {
+    if (typeof getDateRangeFilter === 'function') {
+        var existing = getDateRangeFilter('admin-rounds');
+        if (existing) return existing;
+    }
+    if (typeof initDateRangeFilter !== 'function') return null;
+    return initDateRangeFilter({
+        key: 'admin-rounds',
+        fromId: 'adm-date-from',
+        toId: 'adm-date-to',
+        presetsId: 'adm-date-presets',
+        resetId: 'adm-date-reset',
+        hintId: 'adm-date-hint',
+        summaryId: 'adm-rounds-summary',
+        onChange: function() { loadAdmRounds(); }
     });
+}
+
+function loadAdmRounds() {
+    ensureAdmRoundsDateFilter();
+    // Одна подписка на раунды: повторные вызовы (фильтр по датам, смена языка,
+    // удаление/создание раунда) только перерисовывают список по последнему снимку.
+    bindRealtimeValue('admin-rounds', db.ref('rounds'), function(sn) {
+        renderAdmRounds(sn.val() || {});
+    });
+}
+
+function renderAdmRounds(data) {
+    var el = document.getElementById('adm-rounds');
+    if (!el) return;
+
+    var dateFilter = ensureAdmRoundsDateFilter();
+    var range = dateFilter ? dateFilter.getRange() : { active: false, from: null, to: null, invalid: false };
+
+    var allEntries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+    var totalRounds = allEntries.length;
+    var entries = filterEntriesByDateRange(allEntries, range);
+    entries.sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
+
+    if (dateFilter) dateFilter.renderSummary(entries.length, totalRounds);
+
+    if (!entries.length) {
+        var emptyText = range.active
+            ? (currentLang === 'en' ? 'No rounds in the selected period' : 'Нет раундов за выбранный период')
+            : (currentLang === 'en' ? 'No rounds' : 'Нет раундов');
+        el.innerHTML = '<div class="empty"><i class="fas fa-flag"></i><p>' + emptyText + '</p></div>';
+        return;
+    }
+
+    var playersStr = currentLang === 'en' ? ' players · ' : ' игр. · ';
+    var soloStr = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
+
+    var html = '';
+    entries.forEach(function(e) {
+        var id = e[0], r = e[1], pc = Object.keys(r.players || {}).length;
+        var badge = r.status === 'active'
+            ? '<span class="tn-status tn-a"><span class="live-dot" style="width:6px;height:6px;"></span> Live</span>'
+            : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>';
+
+        html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
+        html += '<div style="flex:1;min-width:200px;"><strong style="color:var(--white);">' + t('brand_name') + '</strong> ' + badge;
+        html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
+                // Дату показываем ту же, по которой работает фильтр периода (старт раунда).
+                fmtDate(getRoundFilterTs(r)) + ' · ' + fmtTime(r.startTime) + ' · ' + pc + playersStr +
+                (r.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtRoundTeePills(r) +
+                (r.mode === 'solo' ? soloStr : '') + '</div></div>';
+        html += '<div style="display:flex;gap:6px;">';
+        if (r.status === 'completed') {
+            html += '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i></button>';
+        }
+        html += '<button class="btn btn-r btn-sm" onclick="deleteRound(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
+        html += '</div></div>';
+    });
+
+    el.innerHTML = html;
 }
 
 function deleteRound(id) {

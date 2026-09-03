@@ -1,5 +1,16 @@
 document.addEventListener('DOMContentLoaded', function() { 
     initNav(); 
+    // Фильтр по датам: «Дата с / Дата по» + быстрые пресеты периода.
+    initDateRangeFilter({
+        key: 'leaderboard',
+        fromId: 'lb-date-from',
+        toId: 'lb-date-to',
+        presetsId: 'lb-date-presets',
+        resetId: 'lb-date-reset',
+        hintId: 'lb-date-hint',
+        summaryId: 'lb-summary',
+        onChange: function() { loadLB(); }
+    });
     loadLB(); 
 });
 
@@ -14,7 +25,13 @@ function loadLB() {
 
     bindRealtimeValue('leaderboard-rounds', db.ref('rounds'), function(sn) {
         var data = sn.val() || {};
-        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+        var allEntries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+        var totalRounds = allEntries.length;
+
+        var dateFilter = (typeof getDateRangeFilter === 'function') ? getDateRangeFilter('leaderboard') : null;
+        var range = dateFilter ? dateFilter.getRange() : { active: false, from: null, to: null, invalid: false };
+
+        var entries = filterEntriesByDateRange(allEntries, range);
 
         if (status !== 'all') {
             entries = entries.filter(function(e) { return e[1].status === status; });
@@ -32,11 +49,16 @@ function loadLB() {
             return (b[1].createdAt || 0) - (a[1].createdAt || 0); 
         });
 
+        if (dateFilter) dateFilter.renderSummary(entries.length, totalRounds);
+
         var el = document.getElementById('lb-container');
         if (!el) return;
 
         if (!entries.length) { 
-            el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + (currentLang === 'en' ? 'No rounds found' : 'Нет раундов') + '</p></div>'; 
+            var emptyText = range.active
+                ? (currentLang === 'en' ? 'No rounds in the selected period' : 'Нет раундов за выбранный период')
+                : (currentLang === 'en' ? 'No rounds found' : 'Нет раундов');
+            el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + emptyText + '</p></div>'; 
             return; 
         }
         var html = '';

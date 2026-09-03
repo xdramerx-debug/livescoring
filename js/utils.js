@@ -3072,9 +3072,9 @@ function stablefordExact(strokes,holeNum,exactHcp){
 
 // Настройка отображения очков Stableford. Если игрок ещё не выбрал своё
 // значение, используется клубный дефолт из settings/stableford_display_default.
-// Дефолт включён: новая подсказка сразу доступна в карточке, но каждый игрок
-// может сохранить собственный выбор в текущем раунде.
-var pestovoStablefordDisplayDefault = true;
+// Дефолт ВЫКЛЮЧЕН: очки Stableford не показываются рядом со счётом, пока игрок
+// (или администратор клуба) явно не включит их в своём раунде/настройках.
+var pestovoStablefordDisplayDefault = false;
 
 function normalizeStablefordDisplayValue(value) {
     if (value === true || value === 1 || value === '1' || value === 'true') return true;
@@ -3115,8 +3115,9 @@ function scoreWithStablefordHTML(score, holeNum, fieldHcp, showStableford) {
 
 function syncStablefordDisplayDefault(value) {
     var normalized = normalizeStablefordDisplayValue(value);
-    // Отсутствующий ключ — включённый дефолт для обратной совместимости.
-    pestovoStablefordDisplayDefault = normalized === null ? true : normalized;
+    // Отсутствующий ключ settings/stableford_display_default — выключенный
+    // дефолт: по умолчанию очки Stableford не показываются ни у кого.
+    pestovoStablefordDisplayDefault = normalized === null ? false : normalized;
     try {
         document.dispatchEvent(new CustomEvent('pestovo-stableford-default-change'));
     } catch (e) {}
@@ -4200,11 +4201,72 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
 // ==========================================
 // ГЕНЕРАТОР PNG-КАРТОЧКИ ДЛЯ СОЦСЕТЕЙ
 // ==========================================
+// Логотип клуба как фоновый водяной знак карточки. Картинка лежит в
+// STATIC_ASSETS SW (img/logo.png), в офлайне берётся из кэша; затемнение
+// на canvas не приводит к tainted-состоянию (origin совпадает).
+var pestovoCardLogoImg = null;
+var pestovoCardLogoLoaded = false;
+function loadPestovoCardLogo() {
+    return new Promise(function(resolve) {
+        if (pestovoCardLogoLoaded) { resolve(pestovoCardLogoImg); return; }
+        try {
+            var img = new Image();
+            img.onload = function() {
+                pestovoCardLogoImg = img;
+                pestovoCardLogoLoaded = true;
+                resolve(img);
+            };
+            img.onerror = function() {
+                pestovoCardLogoLoaded = true;
+                pestovoCardLogoImg = null;
+                resolve(null);
+            };
+            img.src = baseUrl() + 'img/logo.png';
+        } catch (e) {
+            pestovoCardLogoLoaded = true;
+            resolve(null);
+        }
+    });
+}
+
+// Рисует логотип по центру карточки в фирменном золотом тонировании.
+// Эмблема полностью помещается между рамками (maxW × maxH), без обрезки.
+function drawCardLogoWatermark(ctx, img, cx, cy, maxW, maxH, alpha) {
+    if (!img || !img.width || !img.height) return;
+    var scale = Math.min(maxW / img.width, maxH / img.height);
+    var w = img.width * scale;
+    var h = img.height * scale;
+    var x = cx - w / 2;
+    var y = cy - h / 2;
+
+    ctx.save();
+    ctx.globalAlpha = (alpha === undefined) ? 0.10 : alpha;
+    // Золотое тонирование: перекрашиваем логотип в фирменный цвет через
+    // временный canvas ('source-in'), чтобы водяной знак не выглядел
+    // белой заплаткой на тёмном фоне.
+    try {
+        var off = document.createElement('canvas');
+        off.width = Math.ceil(w);
+        off.height = Math.ceil(h);
+        var offCtx = off.getContext('2d');
+        offCtx.drawImage(img, 0, 0, off.width, off.height);
+        offCtx.globalCompositeOperation = 'source-in';
+        offCtx.fillStyle = '#c9a84c';
+        offCtx.fillRect(0, 0, off.width, off.height);
+        ctx.drawImage(off, x, y, w, h);
+    } catch (e) {
+        ctx.drawImage(img, x, y, w, h);
+    }
+    ctx.restore();
+}
+
 function exportRoundPNG(roundId, playerId) {
     if (typeof db === 'undefined' || !roundId) return;
 
     toast(currentLang === 'en' ? '⏳ Generating PNG scorecard...' : '⏳ Генерируем PNG-карточку...', 'info');
 
+    // Логотип грузим (или берём из кэша SW) до отрисовки карточки.
+    loadPestovoCardLogo().then(function(logoImg) {
     db.ref('rounds/' + roundId).once('value').then(function(sn) {
         var r = sn.val();
         if (!r || !r.players) return;
@@ -4235,6 +4297,11 @@ function exportRoundPNG(roundId, playerId) {
         ctx.strokeStyle = 'rgba(201,168,76,0.3)';
         ctx.lineWidth = 2;
         ctx.strokeRect(42, 42, 996, 996);
+
+        // Фоновый водяной знак — логотип клуба. Полностью помещается
+        // во внутреннюю рамку карточки (996 × 996), без обрезки, и лежит
+        // под всем контентом (рисуется первым, контент — поверх).
+        drawCardLogoWatermark(ctx, logoImg, 540, 540, 940, 940, 0.10);
 
         // Header Title
         ctx.fillStyle = '#c9a84c';
@@ -4272,15 +4339,16 @@ function exportRoundPNG(roundId, playerId) {
         ctx.font = '16px "Inter", sans-serif';
         ctx.fillText(dateStr, 540, 288);
 
-        // Score KPIs Cards (To Par, Stableford, Gross)
+        // Score KPIs Cards (To Par, Gross, Stableford)
         var order = getRoundOrder(r);
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
 
         // Карточка NET убрана из PNG (по требованию клуба — без отображения Net).
-        // Stableford — третий квадрат в центре, очки считаются с учётом полевого гандикапа.
+        // Порядок блоков: To Par → Gross → Stableford (Stableford — третий,
+        // очки считаются с учётом полевого гандикапа).
         drawKPICard(ctx, 80, 315, 220, 115, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
-        drawKPICard(ctx, 430, 315, 220, 115, 'STABLEFORD', String(stats.stablefordField), '#2ecc71');
-        drawKPICard(ctx, 780, 315, 220, 115, 'GROSS', String(stats.gross || 0), '#c9a84c');
+        drawKPICard(ctx, 430, 315, 220, 115, 'GROSS', String(stats.gross || 0), '#c9a84c');
+        drawKPICard(ctx, 780, 315, 220, 115, 'STABLEFORD', String(stats.stablefordField), '#2ecc71');
 
         // Hole Grid Rows (Front 9 & Back 9) - TRADITIONAL SCORECARD (HOLE, PAR, SCORE)
         drawScorecardGridRow(ctx, p.scores || {}, 1, 9, 460);
@@ -4292,7 +4360,7 @@ function exportRoundPNG(roundId, playerId) {
         for (var i = 10; i <= 18; i++) { var s = parseInt(p.scores && p.scores[i]) || 0; if (s > 0) inGross += s; }
         var totalGross18 = outGross + inGross;
 
-        ctx.fillStyle = '#101f13';
+        ctx.fillStyle = 'rgba(16,31,19,0.9)';
         ctx.fillRect(60, 850, 960, 50);
         ctx.strokeStyle = '#c9a84c';
         ctx.lineWidth = 1;
@@ -4313,11 +4381,16 @@ function exportRoundPNG(roundId, playerId) {
 
         var dataUrl = canvas.toDataURL('image/png');
         openPNGExportModal(dataUrl, playerDisplayName(p, pid), roundId, pid, playersList);
+    }).catch(function(error) {
+        console.warn('[PNG] Cannot load round for export', error);
+    });
     });
 }
 
 function drawKPICard(ctx, x, y, w, h, label, value, valColor) {
-    ctx.fillStyle = '#132218';
+    // Полупрозрачный фон: фоновый логотип-водяной знак мягко просвечивает
+    // сквозь карточки KPI, текст и цифры остаются полностью читаемыми.
+    ctx.fillStyle = 'rgba(19,34,24,0.82)';
     ctx.strokeStyle = '#1e3525';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -4344,8 +4417,10 @@ function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
     var row2H = 36;
     var row3H = 65;
 
+    // Полупрозрачные подложки строк: водяной знак-логотип просвечивает,
+    // подписи и цифры (в т.ч. бейджи результатов) остаются читаемыми.
     // --- ROW 1: HOLE NUMBERS ---
-    ctx.fillStyle = '#101f13';
+    ctx.fillStyle = 'rgba(16,31,19,0.82)';
     ctx.fillRect(startX, startY, labelW + holeW * 9 + totW, row1H);
     ctx.strokeStyle = '#1e3525';
     ctx.lineWidth = 1;
@@ -4368,7 +4443,7 @@ function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
 
     // --- ROW 2: PAR ---
     var y2 = startY + row1H;
-    ctx.fillStyle = 'rgba(46, 204, 113, 0.08)';
+    ctx.fillStyle = 'rgba(46, 204, 113, 0.10)';
     ctx.fillRect(startX, y2, labelW + holeW * 9 + totW, row2H);
     ctx.strokeStyle = '#1e3525';
     ctx.strokeRect(startX, y2, labelW + holeW * 9 + totW, row2H);
@@ -4389,7 +4464,7 @@ function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
 
     // --- ROW 3: SCORE ---
     var y3 = y2 + row2H;
-    ctx.fillStyle = '#132218';
+    ctx.fillStyle = 'rgba(19,34,24,0.85)';
     ctx.fillRect(startX, y3, labelW + holeW * 9 + totW, row3H);
     ctx.strokeStyle = '#1e3525';
     ctx.strokeRect(startX, y3, labelW + holeW * 9 + totW, row3H);

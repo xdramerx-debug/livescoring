@@ -949,6 +949,10 @@ function saveHoleScores() {
     if (myTargetUid) {
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerScores/' + myUid + '/' + h] = targetScore;
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerSubmitted/' + myUid + '/' + h] = true;
+        // Время завершения лунки для игрока, за которого маркер ввёл счёт.
+        // Без него групповой темп игры на стороне этого игрока «зависал»
+        // до echo Firebase / до следующего его собственного сохранения.
+        updates['rounds/' + curRid + '/players/' + myTargetUid + '/holeTimes/' + h] = savedAt;
         updates['markers/' + curRid + '/' + myTargetUid + '/' + h] = targetScore;
 
         // Синхронизируем verified игрока, за которого вводим счёт: сравниваем с его собственным счётом.
@@ -995,6 +999,37 @@ function saveHoleScores() {
         var order = getRoundOrder(curRoundData);
         var idx = order.indexOf(h);
 
+        // Оптимистично отражаем сохранённые счёта/время лунки в ЛОКАЛЬНОЙ
+        // копии раунда ДО перерисовки. На мобильных (медленный/отложенный echo
+        // Firebase) без этого темп игры и «Пройдено» не обновлялись до прихода
+        // снапшота. Фактические данные из Firebase перезапишут локальную копию.
+        if (curRoundData && curRoundData.players) {
+            var myPlayerLocal = curRoundData.players[myUid];
+            if (myPlayerLocal) {
+                myPlayerLocal.scores = myPlayerLocal.scores || {};
+                myPlayerLocal.scores[h] = myScore;
+                myPlayerLocal.submitted = myPlayerLocal.submitted || {};
+                myPlayerLocal.submitted[h] = true;
+                myPlayerLocal.holeTimes = myPlayerLocal.holeTimes || {};
+                if (!(parseInt(myPlayerLocal.holeTimes[h]) > 0)) myPlayerLocal.holeTimes[h] = savedAt;
+                if (bothSubmittedAndMatch) myPlayerLocal.verified = Object.assign({}, myPlayerLocal.verified, (function(){ var o={}; o[h]=true; return o; })());
+                else if (bothSubmittedAndMismatch) myPlayerLocal.verified = Object.assign({}, myPlayerLocal.verified, (function(){ var o={}; o[h]=false; return o; })());
+            }
+            if (myTargetUid) {
+                var tgtLocal = curRoundData.players[myTargetUid];
+                if (tgtLocal) {
+                    tgtLocal.markerScores = tgtLocal.markerScores || {};
+                    tgtLocal.markerScores[myUid] = tgtLocal.markerScores[myUid] || {};
+                    tgtLocal.markerScores[myUid][h] = targetScore;
+                    tgtLocal.markerSubmitted = tgtLocal.markerSubmitted || {};
+                    tgtLocal.markerSubmitted[myUid] = tgtLocal.markerSubmitted[myUid] || {};
+                    tgtLocal.markerSubmitted[myUid][h] = true;
+                    tgtLocal.holeTimes = tgtLocal.holeTimes || {};
+                    if (!(parseInt(tgtLocal.holeTimes[h]) > 0)) tgtLocal.holeTimes[h] = savedAt;
+                }
+            }
+        }
+
         if (bothSubmittedAndMatch) {
             toast('✅ ' + t('hole') + ' ' + h + ': ' + t('hole_finalized_both'), 'success');
             var par = holePar(h);
@@ -1025,6 +1060,9 @@ function saveHoleScores() {
         renderPlayHole();
         buildPlayHolesNav();
         renderPlaySummary();
+        // Темп игры/тайминги — пересчёт по обновлённым локальным данным,
+        // не дожидаясь echo Firebase (актуально на мобильных сетях).
+        updateGroupPaceAssistant();
         setTimeout(function() { isChanging = false; }, 200);
     });
 }

@@ -1431,10 +1431,11 @@ function loadStablefordDisplaySettings() {
     if (!checkbox) return;
 
     var applyValue = function(value) {
-        // Ключ ещё не создан → включённый дефолт новой функции.
+        // Ключ ещё не создан → дефолт ВЫКЛЮЧЕН: по умолчанию очки Stableford
+        // при вводе счёта не показываются ни у кого, пока админ не включит.
         var normalized = typeof normalizeStablefordDisplayValue === 'function'
             ? normalizeStablefordDisplayValue(value) : null;
-        checkbox.checked = normalized === null ? true : normalized;
+        checkbox.checked = normalized === null ? false : normalized;
     };
 
     if (typeof db === 'undefined') {
@@ -1459,7 +1460,7 @@ function toggleStablefordDefaultCheckbox(event) {
 
 function saveStablefordDisplayDefault() {
     var checkbox = document.getElementById('pv-stableford-default');
-    var enabled = checkbox ? !!checkbox.checked : true;
+    var enabled = checkbox ? !!checkbox.checked : false;
 
     // Обновление мгновенно отражается в этой вкладке; на устройствах игроков
     // настройка придёт через listener в utils.js. Личные настройки не меняем.

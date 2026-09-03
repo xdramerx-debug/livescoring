@@ -629,6 +629,7 @@ var I18N = {
         leader_lbl: 'Лидер',
         sc_topar_lbl: 'To-par по ходу',
         to_current_hole: 'К текущей лунке',
+        card_marker_lbl: 'Маркер',
         no_current_hole: 'Текущая лунка ещё не определена',
         avatar_label: 'Аватар профиля',
         upload_photo: 'Загрузить фото',
@@ -1007,6 +1008,7 @@ var I18N = {
         leader_lbl: 'Leader',
         sc_topar_lbl: 'To-par by hole',
         to_current_hole: 'To current hole',
+        card_marker_lbl: 'Marker',
         no_current_hole: 'Current hole is not set yet',
         avatar_label: 'Profile Avatar',
         upload_photo: 'Upload Photo',
@@ -3288,21 +3290,38 @@ function generateGroupHoleTableHTML(r, opts) {
         }
 
         if (compact) {
-            // Компактный режим (главная страница): вся «опознавательная» инфа
-            // (имя, ТИ, HCP, Gross, текущая лунка, итог к пара) уже видна
-            // в строке списка над карточкой — здесь её НЕ дублируем.
-            // Внутри карточки оставляем ТОЛЬКО функциональную кнопку
-            // «К текущей лунке #N», если игрок сейчас не закончил раунд —
-            // и то, что в строке списка показать нельзя.
+            // Компактный режим (главная «Сейчас на поле», лента раундов):
+            // в раскрытой панели блоков может быть несколько — карточки всех
+            // игроков группы (свои и тех, кого играющий маркирует). Поэтому
+            // над КАЖДОЙ карточкой всегда показываем, чей счёт ниже: имя
+            // игрока, его ТИ и гандикап, а если счёт за него вводит маркер —
+            // и имя маркера. Без этого непонятно, чьи цифры в плитках.
+            html += '<div class="noscroll-player-hdr noscroll-player-hdr--compact">';
+            html += '<div class="npch-id">';
+            var pName = (typeof privacyDisplayName === 'function')
+                ? privacyDisplayName(p, pid)
+                : playerDisplayName(p, pid);
+            html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(pName) + '</span>';
+            html += pTeeBadge + pHcpBadge;
+            // Кто маркирует этого игрока (чей ввод счёта подтверждает лунки)
+            var mkPid = p.markedBy;
+            var mkP = (mkPid && players[mkPid]) ? players[mkPid] : null;
+            if (mkP && !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(mkPid, mkP.name))) {
+                var mkName = (typeof privacyDisplayName === 'function')
+                    ? privacyDisplayName(mkP, mkPid)
+                    : playerDisplayName(mkP, mkPid);
+                if (mkName && mkName !== '—') {
+                    html += '<span class="npch-marker"><i class="fas fa-pen-nib"></i> ' + t('card_marker_lbl') + ': ' + escapeHtml(mkName) + '</span>';
+                }
+            }
+            html += '</div>';
+            // Функциональная кнопка «К текущей лунке #N» — если игрок сейчас
+            // не закончил раунд.
             if (curHole) {
-                html += '<div class="noscroll-player-hdr noscroll-player-hdr--compact">';
                 html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')">' +
                     '<i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
-                html += '</div>';
             }
-            // Если curHole === null (игрок завершил раунд или ещё не начинал) —
-            // шапку в компактном режиме не рисуем вообще, чтобы не оставлять
-            // пустой блок с отступами.
+            html += '</div>';
         } else {
             // Полный режим (страница ввода счёта во время раунда): тут имя
             // игрока и бейджи НЕ показываются нигде больше на странице, поэтому

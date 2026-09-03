@@ -166,24 +166,47 @@ function loadStats() {
             '<div class="stat"><i class="fas fa-circle-dot"></i><div class="stat-n">' + hio + '</div><div class="stat-l">Hole-in-One</div></div>' +
             '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHoles + '</div><div class="stat-l">' + lHoles + '</div></div>';
 
-        // Топ игроков (только полные раунды)
-        var sortedByCount = Object.values(playerRounds).sort(function(a, b) { return b.count - a.count; });
+        // Топ игроков (только полные раунды 18 лунок).
+        // Сортировка по СРЕДНЕМУ GROSS по возрастанию: чем меньше ударов,
+        // тем лучше (без учёта HCP). 60 ударов — лучше, чем 75.
+        var sortedByAvg = Object.values(playerRounds).map(function(p) {
+            return {
+                pid: p.pid, name: p.name,
+                count: p.count,
+                avg: p.totalGross / p.count,
+                avgStbl: p.totalStbl / p.count
+            };
+        }).sort(function(a, b) {
+            if (a.avg !== b.avg) return a.avg - b.avg;      // меньше gross — выше место
+            if (a.avgStbl !== b.avgStbl) return b.avgStbl - a.avgStbl; // при равенстве — больше Stableford
+            return b.count - a.count;
+        });
         var topEl = document.getElementById('top-players');
 
-        if (sortedByCount.length === 0) {
+        if (sortedByAvg.length === 0) {
             topEl.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>' + (currentLang === 'en' ? 'No completed 18-hole rounds yet' : 'Нет завершённых раундов (18 лунок)') + '</p></div>';
         } else {
             var thtml = '';
             var avgWord = currentLang === 'en' ? 'Avg: ' : 'Средний: ';
-            var fullRoundsWord = currentLang === 'en' ? ' full rounds' : ' полн. раундов';
+            var isEn = currentLang === 'en';
 
-            sortedByCount.slice(0, 10).forEach(function(p, i) {
-                var avg = (p.totalGross / p.count).toFixed(1);
-                var avgStbl = (p.totalStbl / p.count).toFixed(1);
-                var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
+            function fullRoundsLabel(n) {
+                if (isEn) return n === 1 ? 'full round' : 'full rounds';
+                var mod10 = n % 10, mod100 = n % 100;
+                if (mod10 === 1 && mod100 !== 11) return 'полный раунд';
+                if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'полных раунда';
+                return 'полных раундов';
+            }
+
+            sortedByAvg.slice(0, 10).forEach(function(p, i) {
+                var place = i + 1;
+                var placeLabel = isEn
+                    ? (i === 0 ? '1st place' : i === 1 ? '2nd place' : i === 2 ? '3rd place' : place + 'th place')
+                    : place + ' место';
+                var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
                 thtml += '<div class="list-item">' +
-                    '<span><strong style="color:var(--white);">' + medal + ' ' + escapeHtml(privacyDisplayName(p, p.pid)) + '</strong></span>' +
-                    '<span>' + avgWord + '<b style="color:var(--gold);">' + avg + '</b> · Stableford: <b style="color:var(--gold);">' + avgStbl + '</b> · ' + p.count + fullRoundsWord + '</span>' +
+                    '<span><strong style="color:var(--white);">' + medal + (medal ? ' ' : '') + placeLabel + ' ' + escapeHtml(privacyDisplayName(p, p.pid)) + '</strong></span>' +
+                    '<span>' + avgWord + '<b style="color:var(--gold);">' + p.avg.toFixed(1) + '</b> · Stableford: <b style="color:var(--gold);">' + p.avgStbl.toFixed(1) + '</b> · ' + p.count + ' ' + fullRoundsLabel(p.count) + '</span>' +
                     '</div>';
             });
             topEl.innerHTML = thtml;

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
-    <meta name="description" content="Официальная система лайв-скоринга Гольф-клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
+    <meta name="description" content="Онлайн-помощник гольф-клуба Пестово: ответы по правилам, бронированию, гандикапу WHS, темпу игры и дресс-коду — прямо из документов клуба.">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,8 +12,9 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
-    <title data-i18n="nav_stats">Статистика — Пестово</title>
+    <title data-i18n="nav_assistant">Помощник — Пестово</title>
     <link rel="stylesheet" href="css/style.css?v=14">
+    <link rel="stylesheet" href="css/assistant.css?v=2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -41,24 +42,40 @@
         <a href="order-of-merit.html" class="nav-link" data-i18n="nav_oom">Зачёт сезона</a>
         <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
-        <a href="stats.html" class="nav-link active" data-i18n="nav_stats">Статистика</a>
-<a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
-        <a href="assistant.html" class="nav-link" data-i18n="nav_assistant">Помощник</a>
+        <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
+        <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
+        <a href="assistant.html" class="nav-link active" data-i18n="nav_assistant">Помощник</a>
         <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
 
 <div class="page-head"><div class="container">
-    <h1 class="page-title"><i class="fas fa-chart-bar"></i> <span data-i18n="page_title_stats">Статистика клуба</span></h1>
-    <p class="page-sub" data-i18n="page_sub_stats">Аналитика по всем раундам</p>
+    <h1 class="page-title"><i class="fas fa-robot"></i> <span data-i18n="nav_assistant">Помощник</span></h1>
+    <p class="page-sub" data-i18n="assistant_sub">Онлайн-помощник по документам клуба</p>
 </div></div>
 
-<main class="container" style="padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:60px;">
-    <div class="card"><h2><i class="fas fa-chart-pie"></i> <span data-i18n="total_stats">Общая статистика</span></h2>
-    <div class="stats-grid" id="general-stats"><div class="loading"><div class="spinner"></div></div></div></div>
-    <div class="card"><h2><i class="fas fa-ranking-star"></i> <span data-i18n="top_players">Топ игроков</span></h2><div id="top-players"></div></div>
-    <div class="card"><h2><i class="fas fa-award"></i> <span data-i18n="club_records">Рекорды клуба</span></h2><div id="club-records"></div></div>
-    <div class="card"><h2><i class="fas fa-flag"></i> <span data-i18n="hole_difficulty">Сложность лунок</span></h2><div id="hole-difficulty"></div></div>
+<main class="container" style="padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:40px;">
+    <div class="assistant-shell">
+        <div class="assistant-head">
+            <div class="as-avatar"><i class="fas fa-robot"></i></div>
+            <div class="as-title">
+                <h2 data-i18n="assistant_title">Умный помощник Пестово</h2>
+                <span class="as-status" id="as-status">Загрузка базы знаний…</span>
+            </div>
+            <div class="assistant-tools">
+                <button class="as-clear" id="as-clear" type="button"><i class="fas fa-eraser"></i>&nbsp;<span data-i18n="assistant_clear">Очистить</span></button>
+            </div>
+        </div>
+
+        <div class="as-messages" id="as-messages" aria-live="polite"></div>
+
+        <div class="as-suggestions" id="as-suggestions"></div>
+
+        <form class="assistant-input" id="as-form" autocomplete="off">
+            <input type="text" id="as-input" data-i18n-placeholder="assistant_placeholder" placeholder="Напишите ваш вопрос…" aria-label="Ваш вопрос">
+            <button type="submit" id="as-send"><i class="fas fa-paper-plane"></i><span data-i18n="assistant_send">Отправить</span></button>
+        </form>
+    </div>
 </main>
 
 <footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.24.0</span></p></div></div></footer>
@@ -67,7 +84,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/utils.js?v=31"></script>
-<script src="js/stats.js?v=2"></script>
+<script src="js/assistant-config.js"></script>
+<script src="js/assistant-build.js?v=2"></script>
+<script src="js/assistant.js?v=2"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>
 </html>

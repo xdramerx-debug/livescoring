@@ -1643,14 +1643,38 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
 }
-/* Компактная шапка карточки на главной: внутри только кнопка
-   «К текущей лунке», поэтому лишние отступы и разделитель убираем. */
+/* Компактная шапка карточки (главная «Сейчас на поле», лента раундов):
+   слева — опознавание игрока (имя, ТИ, HCP, маркер), справа — кнопка
+   «К текущей лунке». Разделитель отделяет шапку от плиток счёта. */
 .noscroll-player-hdr--compact {
-    justify-content: flex-end;
-    margin-bottom: 8px;
-    padding-bottom: 0;
-    border-bottom: 0;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
 }
+.npch-id {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+.npch-marker {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1px 8px;
+    white-space: nowrap;
+}
+body.sun-mode .npch-marker { background: #ffffff !important; border: 1px solid #000000 !important; color: #0b2912 !important; }
 .noscroll-player-name {
     font-size: 15px;
     font-weight: 700;

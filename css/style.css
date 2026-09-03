@@ -362,6 +362,13 @@ body.sun-mode td {
 .nav-user{display:flex;align-items:center;gap:8px;}
 .nav-uname{color:var(--gold);font-size:13px;font-weight:500;}
 .nav-toggle{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:8px;}
+/* Гарантированно скрываем кнопку-«бургер» бокового меню на десктопе.
+   Она нужна ТОЛЬКО на мобильной версии (max-width: 768px) — там боковое
+   выезжающее меню заменяет горизонтальную панель ссылок, и без «бургера»
+   не открыть навигацию. На десктопе достаточно горизонтального .nav-menu. */
+@media (min-width: 769px) {
+    .nav-toggle { display: none !important; visibility: hidden !important; pointer-events: none !important; }
+}
 .nav-toggle span{width:22px;height:2px;background:var(--gold);transition:var(--t);border-radius:2px;}
 .nav-toggle.active span:nth-child(1){transform:rotate(45deg) translate(5px,5px);}
 .nav-toggle.active span:nth-child(2){opacity:0;}

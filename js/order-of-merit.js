@@ -54,7 +54,7 @@ function loadOrderOfMerit() {
             }).map(function(pe) {
                 var pid = pe[0], p = pe[1];
                 var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-                return { pid: pid, name: p.name, toPar: stats.toPar, gross: stats.gross, stbl: stats.stablefordField };
+                return { pid: pid, name: p.name, firstName: p.firstName || '', lastName: p.lastName || '', middleName: p.middleName || '', toPar: stats.toPar, gross: stats.gross, stbl: stats.stablefordField };
             });
 
             players.sort(function(a, b) {
@@ -70,6 +70,9 @@ function loadOrderOfMerit() {
                     seasonPoints[p.pid] = {
                         pid: p.pid,
                         name: p.name || (users[p.pid] ? users[p.pid].name : 'Player'),
+                        firstName: p.firstName || (users[p.pid] ? users[p.pid].firstName || '' : ''),
+                        lastName: p.lastName || (users[p.pid] ? users[p.pid].lastName || '' : ''),
+                        middleName: p.middleName || (users[p.pid] ? users[p.pid].middleName || '' : ''),
                         avatar: users[p.pid] ? users[p.pid].avatar : null,
                         points: 0,
                         tournamentsPlayed: 0,

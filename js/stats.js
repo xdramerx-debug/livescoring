@@ -60,7 +60,7 @@ function loadStats() {
                             Object.values(sc).forEach(function(s) { if (parseInt(s) >= 1) cnt++; });
                             if (cnt === 18 && dur < fastestTime) {
                                 fastestTime = dur;
-                                fastestPlayer = p.name || 'Player';
+                                fastestPlayer = playerDisplayName(p, pe[0]);
                                 fastestHoles = cnt;
                             }
                         });
@@ -110,17 +110,17 @@ function loadStats() {
                 if (holesPlayed === 18) {
                     if (gross > 0 && gross < bestGross) {
                         bestGross = gross;
-                        bestGrossPlayer = p.name;
+                        bestGrossPlayer = playerDisplayName(p, pid);
                     }
                     if (stblF > bestStableford) {
                         bestStableford = stblF;
-                        bestStablefordPlayer = p.name;
+                        bestStablefordPlayer = playerDisplayName(p, pid);
                     }
                 }
 
                 if (r.status === 'completed' && holesPlayed === 18) {
                     if (!playerRounds[pid]) playerRounds[pid] = {
-                        pid: pid, name: p.name, count: 0, totalGross: 0, totalStbl: 0
+                        pid: pid, name: p.name, firstName: p.firstName || '', lastName: p.lastName || '', middleName: p.middleName || '', count: 0, totalGross: 0, totalStbl: 0
                     };
                     playerRounds[pid].count++;
                     playerRounds[pid].totalGross += gross;
@@ -231,7 +231,6 @@ function loadStats() {
         var diffIn = countIn > 0 ? ((sumIn / countIn * 9) - pIn) : null;
 
         var hHtml = '<div class="pestovo-modern-scorecard" style="margin-bottom:12px;padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
-        hHtml += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;padding-left:2px;"><i class="fas fa-flag"></i> ' + (isEn ? 'Front 9 (Holes 1–9)' : 'Первые 9 лунок (1–9)') + '</div>';
         hHtml += '<div class="msc-tile-grid msc-grid-9">';
 
         // Header Row
@@ -275,7 +274,6 @@ function loadStats() {
 
         // Back 9 (IN & TOTAL)
         hHtml += '<div class="pestovo-modern-scorecard" style="padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
-        hHtml += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;padding-left:2px;"><i class="fas fa-flag-checkered"></i> ' + (isEn ? 'Back 9 (Holes 10–18 & Total)' : 'Вторые 9 лунок (10–18 и Итог)') + '</div>';
         hHtml += '<div class="msc-tile-grid msc-grid-10">';
 
         // Header Row

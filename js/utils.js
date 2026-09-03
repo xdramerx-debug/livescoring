@@ -3068,26 +3068,40 @@ function generateGroupHoleTableHTML(r, opts) {
         } else {
             html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
         }
-        html += '<div class="noscroll-player-hdr">';
-        html += '<div>';
+
         if (compact) {
-            // Имя игрока уже видно в строке списка — здесь его не дублируем,
-            // чтобы карточка была «чистой»: сначала ТИ/HCP-чипы и бейдж «сейчас на лунке»,
-            // потом сразу матрица лунок.
-            html += '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">' + pTeeBadge + pHcpBadge + '</div>';
-            html += '<div style="font-size:11px;color:var(--muted);margin-top:4px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div>';
+            // Компактный режим (главная страница): вся «опознавательная» инфа
+            // (имя, ТИ, HCP, Gross, текущая лунка, итог к пара) уже видна
+            // в строке списка над карточкой — здесь её НЕ дублируем.
+            // Внутри карточки оставляем ТОЛЬКО функциональную кнопку
+            // «К текущей лунке #N», если игрок сейчас не закончил раунд —
+            // и то, что в строке списка показать нельзя.
+            if (curHole) {
+                html += '<div class="noscroll-player-hdr noscroll-player-hdr--compact">';
+                html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')">' +
+                    '<i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
+                html += '</div>';
+            }
+            // Если curHole === null (игрок завершил раунд или ещё не начинал) —
+            // шапку в компактном режиме не рисуем вообще, чтобы не оставлять
+            // пустой блок с отступами.
         } else {
+            // Полный режим (страница ввода счёта во время раунда): тут имя
+            // игрока и бейджи НЕ показываются нигде больше на странице, поэтому
+            // оставляем всю шапку с именем, ТИ, HCP, «📍 Лунка · Gross»,
+            // большим счётом к пара и (опционально) кнопкой «к текущей лунке».
+            html += '<div class="noscroll-player-hdr">';
+            html += '<div>';
             html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + pHcpBadge + '</span>';
             html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div>';
+            if (curHole) {
+                html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')">' +
+                    '<i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
+            }
+            html += '</div>';
+            html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
+            html += '</div>';
         }
-        // Быстрый переход к лунке, на которой игрок стоит прямо сейчас
-        if (curHole) {
-            html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')">' +
-                '<i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
-        }
-        html += '</div>';
-        html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
-        html += '</div>';
 
         // Вкладки «Первые 9 / Вторые 9 / Все 18» + матрица лунок
         html += '<div class="sc-tabs-wrap" data-view="' + scorecardViewFor(frontCount, backCount) + '">';

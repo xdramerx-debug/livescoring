@@ -1643,6 +1643,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
 }
+/* Компактная шапка карточки на главной: внутри только кнопка
+   «К текущей лунке», поэтому лишние отступы и разделитель убираем. */
+.noscroll-player-hdr--compact {
+    justify-content: flex-end;
+    margin-bottom: 8px;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
 .noscroll-player-name {
     font-size: 15px;
     font-weight: 700;

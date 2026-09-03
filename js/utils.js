@@ -609,9 +609,6 @@ var I18N = {
         my_round_tag: 'Мой раунд',
         current_round_tag: 'Текущий',
         leader_lbl: 'Лидер',
-        sc_tab_front: 'Первые 9',
-        sc_tab_back: 'Вторые 9',
-        sc_tab_all: 'Все 18',
         sc_topar_lbl: 'To-par по ходу',
         to_current_hole: 'К текущей лунке',
         no_current_hole: 'Текущая лунка ещё не определена',
@@ -973,9 +970,6 @@ var I18N = {
         my_round_tag: 'My round',
         current_round_tag: 'Current',
         leader_lbl: 'Leader',
-        sc_tab_front: 'Front 9',
-        sc_tab_back: 'Back 9',
-        sc_tab_all: 'All 18',
         sc_topar_lbl: 'To-par by hole',
         to_current_hole: 'To current hole',
         no_current_hole: 'Current hole is not set yet',
@@ -3173,62 +3167,9 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
 // ПОДСВЕТКА ТЕКУЩЕЙ ЛУНКИ И БЫСТРЫЙ ПЕРЕХОД К НЕЙ
 // ==========================================
 
-// Активная вкладка карточки: 'front' | 'back' | 'all'. Состояние общее для всех
-// карточек на странице и запоминается в localStorage, поэтому перерисовка
-// блоков в реальном времени не сбрасывает выбранный вид.
-var scorecardView = (function() {
-    var v = null;
-    try { v = localStorage.getItem('pestovo_sc_view'); } catch (e) {}
-    return (v === 'front' || v === 'back') ? v : 'all';
-})();
-
+// Вкладки «Первые 9 / Вторые 9 / Все 18» удалены: карточка всегда
+// показывает все лунки выбранного диапазона сразу.
 function holeNineClass(h) { return h <= 9 ? 'sc-h-front' : 'sc-h-back'; }
-
-function setScorecardView(view) {
-    scorecardView = (view === 'front' || view === 'back') ? view : 'all';
-    try { localStorage.setItem('pestovo_sc_view', scorecardView); } catch (e) {}
-
-    var wraps = document.querySelectorAll('.sc-tabs-wrap');
-    for (var i = 0; i < wraps.length; i++) {
-        // Карточки без вкладок (раунды на 9 лунок) не переключаем: иначе
-        // фильтр по девятке спрятал бы все их лунки.
-        if (!wraps[i].querySelector('.sc-tabs')) continue;
-        wraps[i].setAttribute('data-view', scorecardView);
-    }
-    var btns = document.querySelectorAll('.sc-tab');
-    for (var j = 0; j < btns.length; j++) {
-        var isActive = btns[j].getAttribute('data-sc-view') === scorecardView;
-        btns[j].classList.toggle('active', isActive);
-        btns[j].setAttribute('aria-selected', isActive ? 'true' : 'false');
-    }
-    if (typeof vib === 'function') vib(10);
-}
-
-// Вкладки доступны только для полных раундов: у девятки фильтр по девятке
-// спрятал бы все лунки, поэтому для таких карточек всегда показываем всё.
-function scorecardViewFor(frontCount, backCount) {
-    return (frontCount && backCount) ? scorecardView : 'all';
-}
-
-// Вкладки «Первые 9 / Вторые 9 / Все 18» — рисуются только для полных раундов,
-// где есть обе девятки.
-function buildScorecardTabsHTML(frontCount, backCount) {
-    if (!frontCount || !backCount) return '';
-    var tabs = [
-        { key: 'front', label: t('sc_tab_front') },
-        { key: 'back', label: t('sc_tab_back') },
-        { key: 'all', label: t('sc_tab_all') }
-    ];
-    var html = '<div class="sc-tabs" role="tablist">';
-    tabs.forEach(function(tb) {
-        var isActive = scorecardView === tb.key;
-        html += '<button type="button" role="tab" class="sc-tab' + (isActive ? ' active' : '') + '" data-sc-view="' + tb.key + '" ' +
-            'aria-selected="' + (isActive ? 'true' : 'false') + '" onclick="setScorecardView(\'' + tb.key + '\')">' +
-            tb.label + '</button>';
-    });
-    html += '</div>';
-    return html;
-}
 
 // Строка накопительного to-par: под каждой лункой итог относительно пара
 // на момент её завершения. startRun позволяет продолжить счёт со второй девятки.
@@ -3269,8 +3210,7 @@ function scrollToPlayerCurrentHole(pid) {
         if (typeof toast === 'function') toast(t('no_current_hole'), 'info');
         return;
     }
-    // Если лунка скрыта выбранной вкладкой — сначала показываем все 18
-    if (scorecardView !== 'all' && tile.offsetParent === null) setScorecardView('all');
+    // Все лунки всегда видны (вкладки девяток удалены).
     if (typeof tile.scrollIntoView === 'function') {
         tile.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     }
@@ -3344,7 +3284,7 @@ function generateGroupHoleTableHTML(r, opts) {
             // большим счётом к пара и (опционально) кнопкой «к текущей лунке».
             html += '<div class="noscroll-player-hdr">';
             html += '<div>';
-            html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + pHcpBadge + '</span>';
+            html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, pid)) + pTeeBadge + pHcpBadge + '</span>';
             html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div>';
             if (curHole) {
                 html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')">' +
@@ -3355,13 +3295,9 @@ function generateGroupHoleTableHTML(r, opts) {
             html += '</div>';
         }
 
-        // Вкладки «Первые 9 / Вторые 9 / Все 18» + матрица лунок
-        html += '<div class="sc-tabs-wrap" data-view="' + scorecardViewFor(frontCount, backCount) + '">';
-        // В компактном режиме (главная страница) табы скрыты: пользователь
-        // видит все 18 лунок сразу, без разбиения на девятки — меньше шумa.
-        if (!compact) {
-            html += buildScorecardTabsHTML(frontCount, backCount);
-        }
+        // Матрица лунок. Вкладки «Первые 9 / Вторые 9 / Все 18» удалены:
+        // карточка всегда показывает все лунки выбранного диапазона сразу.
+        html += '<div class="sc-tabs-wrap" data-view="all">';
 
         // Hole matrix (9 or 18 holes): фора + № лунки, счёт, индекс, очки Stableford
         html += '<div class="noscroll-grid">';
@@ -3451,8 +3387,9 @@ function openPlayerProfileModal(playerId, roundId) {
 
         if (!u && rd && rd.players && rd.players[playerId]) {
             var p = rd.players[playerId];
+            var displayName = playerDisplayName(p, playerId);
             u = {
-                name: p.name || t('guest'),
+                name: displayName !== '—' ? displayName : t('guest'),
                 handicap: p.exactHcp || null,
                 gender: p.gender || 'men',
                 isGuest: true,
@@ -3837,7 +3774,7 @@ function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback) {
             var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
 
             html += '<div class="list-item" style="padding:14px;margin-bottom:10px;flex-wrap:wrap;gap:8px;">';
-            html += '<div style="flex:1;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</strong>';
+            html += '<div style="flex:1;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, pid)) + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + holeCount + ' · Gross: ' + (stats.gross || 0) + '</div></div>';
             html += '<div style="text-align:right;"><div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;font-size:18px;">' + fmtScore(stats.toPar) + '</div></div>';
             html += '</div>';
@@ -3921,15 +3858,18 @@ function generatePestovoScorecardHTML(player, roundData, opts) {
 
     var html = '<div class="pestovo-modern-scorecard">';
 
-    // 1. Top HUD Header
-    html += '<div class="msc-card-hdr">';
-    html += '  <div class="msc-player-title"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</div>';
-    html += '  <div class="msc-meta-pills">';
-    html += '    <span class="msc-pill hcp-band ' + fieldHcpBandClass(fHcp) + '" title="' + fieldHcpBandTitle(fHcp) + '">HCP: <b>' + fmtExactHcp(eHcp) + '</b> (' + fmtFieldHcp(fHcp) + ')</span>';
-    html += '    <span class="msc-pill">' + fmtTeePill(teeCode) + '</span>';
-    html += '    <span class="msc-pill">' + fmt + ' · ' + holeRange + ' · ' + date + '</span>';
-    html += '  </div>';
-    html += '</div>';
+    // 1. Top HUD Header. В компактном режиме шапка не выводится: имя, ТИ,
+    // HCP, формат и дата уже показаны на странице над карточкой.
+    if (!compact) {
+        html += '<div class="msc-card-hdr">';
+        html += '  <div class="msc-player-title"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, null)) + '</div>';
+        html += '  <div class="msc-meta-pills">';
+        html += '    <span class="msc-pill hcp-band ' + fieldHcpBandClass(fHcp) + '" title="' + fieldHcpBandTitle(fHcp) + '">HCP: <b>' + fmtExactHcp(eHcp) + '</b> (' + fmtFieldHcp(fHcp) + ')</span>';
+        html += '    <span class="msc-pill">' + fmtTeePill(teeCode) + '</span>';
+        html += '    <span class="msc-pill">' + fmt + ' · ' + holeRange + ' · ' + date + '</span>';
+        html += '  </div>';
+        html += '</div>';
+    }
 
     // Тайл лунки: фора (как при вводе счёта), номер лунки, счёт, индекс и очки Stableford.
     // Расстояние на тайле не показывается — карточка остаётся компактной без скроллов.
@@ -3959,16 +3899,13 @@ function generatePestovoScorecardHTML(player, roundData, opts) {
         return html;
     };
 
-    // Вкладки «Первые 9 / Вторые 9 / Все 18»: скрывают лишнюю девятку через CSS,
-    // поэтому состояние не теряется при перерисовке карточки в реальном времени.
-    html += '<div class="sc-tabs-wrap" data-view="' + scorecardViewFor(front.length, back.length) + '">';
-    html += buildScorecardTabsHTML(front.length, back.length);
+    // Вкладки «Первые 9 / Вторые 9 / Все 18» удалены: карточка всегда
+    // показывает все лунки выбранного диапазона сразу.
+    html += '<div class="sc-tabs-wrap" data-view="all">';
 
     var frontRun = 0;
 
     if (front.length) {
-        var pOut = 0; front.forEach(function(i){ pOut += holePar(i); });
-        html += '<div class="msc-sec-hdr sc-h-front"><span>FRONT 9 (OUT)</span> <span>Par ' + pOut + '</span></div>';
         html += '<div class="msc-tile-grid">';
         front.forEach(function(i) {
             html += tileHTML(i);
@@ -3986,9 +3923,7 @@ function generatePestovoScorecardHTML(player, roundData, opts) {
     }
 
     if (back.length) {
-        var pIn = 0; back.forEach(function(i){ pIn += holePar(i); });
-        html += '<div class="msc-sec-hdr sc-h-back" style="margin-top:10px;"><span>BACK 9 (IN)</span> <span>Par ' + pIn + '</span></div>';
-        html += '<div class="msc-tile-grid">';
+        html += '<div class="msc-tile-grid" style="margin-top:10px;">';
         back.forEach(function(i) {
             html += tileHTML(i);
         });
@@ -4322,7 +4257,7 @@ function exportRoundPNG(roundId, playerId) {
         // Player Name
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 48px "Playfair Display", serif';
-        ctx.fillText(p.name || 'Golf Player', 540, 215);
+        ctx.fillText(playerDisplayName(p, pid), 540, 215);
 
         // Sub Meta
         var teeName = t('tee_' + ((p && p.tee) || r.tee || 'wh'));
@@ -4337,13 +4272,15 @@ function exportRoundPNG(roundId, playerId) {
         ctx.font = '16px "Inter", sans-serif';
         ctx.fillText(dateStr, 540, 288);
 
-        // Score KPIs Cards (Gross, Net, ToPar)
+        // Score KPIs Cards (To Par, Stableford, Gross)
         var order = getRoundOrder(r);
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
 
-        // Карточка NET убрана из PNG (по требованию клуба — без отображения Net)
-        drawKPICard(ctx, 160, 315, 220, 115, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
-        drawKPICard(ctx, 430, 315, 220, 115, 'GROSS', String(stats.gross || 0), '#c9a84c');
+        // Карточка NET убрана из PNG (по требованию клуба — без отображения Net).
+        // Stableford — третий квадрат в центре, очки считаются с учётом полевого гандикапа.
+        drawKPICard(ctx, 80, 315, 220, 115, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
+        drawKPICard(ctx, 430, 315, 220, 115, 'STABLEFORD', String(stats.stablefordField), '#2ecc71');
+        drawKPICard(ctx, 780, 315, 220, 115, 'GROSS', String(stats.gross || 0), '#c9a84c');
 
         // Hole Grid Rows (Front 9 & Back 9) - TRADITIONAL SCORECARD (HOLE, PAR, SCORE)
         drawScorecardGridRow(ctx, p.scores || {}, 1, 9, 460);
@@ -4376,7 +4313,7 @@ function exportRoundPNG(roundId, playerId) {
         ctx.fillText('⛳ GOLF CLUB PESTOVO · LIVE SCORING SYSTEM', 540, 995);
 
         var dataUrl = canvas.toDataURL('image/png');
-        openPNGExportModal(dataUrl, p.name, roundId, pid, playersList);
+        openPNGExportModal(dataUrl, playerDisplayName(p, pid), roundId, pid, playersList);
     });
 }
 
@@ -4689,7 +4626,7 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
         playersList.forEach(function(pe) {
             var pid = pe[0], p = pe[1];
             var sel = pid === activePid ? 'selected' : '';
-            html += '<option value="' + pid + '" ' + sel + '>' + escapeHtml(p.name || 'Player') + '</option>';
+            html += '<option value="' + pid + '" ' + sel + '>' + escapeHtml(playerDisplayName(p, pid)) + '</option>';
         });
         html += '</select></div>';
     }
@@ -6119,8 +6056,6 @@ var BLOCKED_DEMO_PLAYER_IDS = [
     'user_petr_odin_21',
     'user_petr_p',
     'user_vasya_p',
-    'user_vladimir_v',
-    'user_vladimir_v2',
     'user_anna_v',
     'user_alex_i',
     'user_ekaterina_p',
@@ -6137,8 +6072,6 @@ var BLOCKED_DEMO_PLAYER_NAMES = [
     'петров петр',
     'вася петров',
     'петров вася',
-    'владимир воробьев',
-    'воробьев владимир',
     'анна воробьева',
     'воробьева анна',
     'александр иванов',
@@ -6880,10 +6813,22 @@ function privacyMaskName(name, pid) {
     return initials || '?';
 }
 
+function playerDisplayName(p, pid) {
+    if (!p) return '—';
+    var name = p.name && String(p.name).trim();
+    if (!name && (p.firstName || p.lastName || p.middleName)) {
+        name = [p.firstName, p.middleName, p.lastName].filter(function(x) {
+            return x && String(x).trim();
+        }).map(function(x) { return String(x).trim(); }).join(' ');
+    }
+    return name || '—';
+}
+
 function privacyDisplayName(p, pid) {
     if (!p) return '—';
-    if (privacyShouldHide(pid)) return privacyMaskName(p.name, pid);
-    return p.name || '—';
+    var name = playerDisplayName(p, pid);
+    if (privacyShouldHide(pid)) return privacyMaskName(name, pid);
+    return name;
 }
 
 document.addEventListener('DOMContentLoaded', function() {

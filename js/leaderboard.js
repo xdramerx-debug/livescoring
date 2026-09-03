@@ -40,8 +40,8 @@ function loadLB() {
         if (query) {
             entries = entries.filter(function(e) {
                 var r = e[1];
-                var players = Object.values(r.players || {});
-                return players.some(function(p) { return (p.name || '').toLowerCase().includes(query); });
+                var players = Object.entries(r.players || {});
+                return players.some(function(pe) { return (playerDisplayName(pe[1], pe[0]) || '').toLowerCase().includes(query); });
             });
         }
 
@@ -175,7 +175,10 @@ function renderRound(id, r) {
         var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
         return {
             pid: pid,
-            name: p.name, 
+            name: p.name,
+            firstName: p.firstName || '',
+            lastName: p.lastName || '',
+            middleName: p.middleName || '',
             tee: pTee,
             gross: stats.gross, 
             toPar: stats.toPar, 
@@ -253,7 +256,9 @@ function renderRound(id, r) {
 
     var ts = r.startTime || r.createdAt;
     var soloWord = isEn ? ' · Solo' : ' · Одиночный';
-    var namesStr = list.length ? list.map(function(p) { return privacyDisplayName(p, p.pid); }).join(', ') : '—';
+    // Имена игроков показываем в развёрнутой таблице, чтобы не дублировать
+    // их в свёрнутой строке раунда.
+    var namesStr = list.length ? t('players_label') + ': ' + list.length : '—';
     var open = getLbOpen(id);
 
     var details = '<div class="lwl-details">' +

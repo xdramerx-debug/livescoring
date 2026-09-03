@@ -55,9 +55,9 @@ function buildCourseCard() {
     var hdrLblLong = isEn ? 'Tee / Hole' : 'ТИ / Лунка';
     var hdrLblShort = isEn ? 'Tee' : 'ТИ';
 
-    // Front 9 (OUT)
+    // Front 9 (OUT). Заголовками «Первые 9 / Вторые 9» больше не дублируем
+    // разбиение девяток — оно и так читается из колонок OUT/IN.
     var html = '<div class="pestovo-modern-scorecard" style="margin-bottom:12px;padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
-    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;padding-left:2px;"><i class="fas fa-flag"></i> ' + (isEn ? 'Front 9 (Holes 1–9)' : 'Первые 9 лунок (1–9)') + '</div>';
     html += '<div class="msc-tile-grid msc-grid-9">';
 
     // Header row
@@ -98,7 +98,6 @@ function buildCourseCard() {
 
     // Back 9 (IN & TOTAL)
     html += '<div class="pestovo-modern-scorecard" style="padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
-    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;padding-left:2px;"><i class="fas fa-flag-checkered"></i> ' + (isEn ? 'Back 9 (Holes 10–18 & Total)' : 'Вторые 9 лунок (10–18 и Итог)') + '</div>';
     html += '<div class="msc-tile-grid msc-grid-10">';
 
     // Header row
@@ -682,10 +681,11 @@ function buildRecentRowHTML(id, r) {
         var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
         playerNames.push(privacyDisplayName(p, pid));
 
-        var showName = Object.keys(players).length > 1;
+        // Имена игроков уже перечислены в свёрнутой строке раунда выше,
+        // поэтому в развёрнутых деталях не дублируем их — оставляем ТИ, HCP и результат.
         pHtml += '<div class="round-p" style="align-items:flex-start;">' +
             '<div style="flex:1;">' +
-            (showName ? '<div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + playerBadges + '</div>' : '<div class="round-p-n">' + playerBadges + '</div>') +
+            '<div class="round-p-n">' + playerBadges + '</div>' +
             '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div></div>' +
             '<div style="text-align:right;">' +
             '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +

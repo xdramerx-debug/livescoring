@@ -3487,31 +3487,10 @@ body.sun-mode .msc-pill.hcp-band-unknown {
 .lwl-row .card-scorecard-panel { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 
 /* ==========================================
-   СЧЁТНАЯ КАРТОЧКА: ВКЛАДКИ ДЕВЯТОК, НАКОПИТЕЛЬНЫЙ TO-PAR,
+   СЧЁТНАЯ КАРТОЧКА: НАКОПИТЕЛЬНЫЙ TO-PAR,
    ПОДСВЕТКА ТЕКУЩЕЙ ЛУНКИ И ПЕРЕХОД К НЕЙ
    ========================================== */
-.sc-tabs { display: flex; gap: 6px; margin: 0 0 10px; flex-wrap: wrap; }
-.sc-tab {
-    flex: 1 1 auto;
-    min-width: 84px;
-    padding: 7px 10px;
-    background: var(--input);
-    border: 1px solid var(--border);
-    border-radius: var(--rs);
-    color: var(--muted);
-    font-family: var(--fb);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .4px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: var(--t);
-}
-.sc-tab:hover { border-color: var(--gold); color: var(--white); }
-.sc-tab.active { background: var(--gold); border-color: var(--gold); color: var(--bg); }
-/* Девятка, скрытая выбранной вкладкой */
-.sc-tabs-wrap[data-view="front"] .sc-h-back,
-.sc-tabs-wrap[data-view="back"] .sc-h-front { display: none !important; }
+/* Вкладки «Первые 9 / Вторые 9 / Все 18» удалены полностью. */
 
 /* Накопительный to-par под плитками лунок */
 .sc-topar { margin: 2px 0 10px; }
@@ -3607,8 +3586,6 @@ body.sun-mode .chs-toggle-title i { color: #1b5e20 !important; }
 body.sun-mode .live-round-tag { background: #fff8e1 !important; border: 2px solid #8a6d1f !important; color: #5d4037 !important; }
 body.sun-mode .live-round-tag-my { background: #e8f5e9 !important; border-color: #2e7d32 !important; color: #1b5e20 !important; }
 body.sun-mode .live-round-chev { color: #1b5e20 !important; }
-body.sun-mode .sc-tab { background: #ffffff !important; border: 2px solid #000000 !important; color: #000000 !important; }
-body.sun-mode .sc-tab.active { background: #1b5e20 !important; border-color: #1b5e20 !important; color: #ffffff !important; }
 body.sun-mode .sc-topar-lbl { color: #0b2912 !important; }
 body.sun-mode .sc-topar-cell { background: #ffffff !important; border: 2px solid #000000 !important; color: #000000 !important; }
 body.sun-mode .sc-topar-cell.sc-tp-under { background: #e8f5e9 !important; color: #1b5e20 !important; }

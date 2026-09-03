@@ -44,17 +44,21 @@ function loadStats() {
 
             if (r.status === 'completed') {
                 completed++;
-                
+
                 if (startTS && endTS && endTS > startTS) {
                     var dur = (endTS - startTS) / 60000;
-                    if (dur >= 0.5) {
+                    // Рекорд «самый быстрый раунд» учитывается ТОЛЬКО для
+                    // полных 18-луночных раундов (без пропусков) и при
+                    // длительности не менее 45 минут — иначе короткие или
+                    // незавершённые «фантомные» раунды искажали бы рекорд.
+                    if (dur >= 45) {
                         Object.entries(roundPlayersForStats).forEach(function(pe) {
                             var p = pe[1];
                             if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], p && p.name)) return;
                             var sc = p.scores || {};
                             var cnt = 0;
                             Object.values(sc).forEach(function(s) { if (parseInt(s) >= 1) cnt++; });
-                            if (cnt > 0 && dur < fastestTime) {
+                            if (cnt === 18 && dur < fastestTime) {
                                 fastestTime = dur;
                                 fastestPlayer = p.name || 'Player';
                                 fastestHoles = cnt;
@@ -137,9 +141,8 @@ function loadStats() {
             } else {
                 fastestStr = Math.max(1, Math.round(fastestTime)) + minUnit;
             }
-            if (fastestHoles < 18) {
-                fastestStr += ' (' + fastestHoles + (currentLang === 'en' ? 'h' : 'л') + ')';
-            }
+            // fastestHoles всегда = 18: рекорд показывается только для полных
+            // 18-луночных раундов длительностью ≥ 45 мин (см. логику выше).
         }
 
         var lTotalRounds = currentLang === 'en' ? 'Total Rounds' : 'Всего раундов';

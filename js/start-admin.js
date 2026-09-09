@@ -1131,6 +1131,17 @@ function psGenderFromCell(v) {
     return 'men';
 }
 
+// Если колонка пола не указана, определяем его по имени. Это намеренно
+// консервативный словарь: неизвестное имя остаётся мужским, чтобы не
+// назначить игроку женские ТИ случайно.
+function psGenderFromName(firstName) {
+    var s = psNorm(firstName).replace(/[.]/g, '');
+    var female = ['анна','мария','елена','ольга','наталья','наталия','ирина','светлана','екатерина','татьяна','юлия','юлия','александра','дарья','дарина','виктория','полина','ксения','евгения','людмила','галина','валерия','вероника','карина','кристина','марина','надежда','нина','раиса','софия','софья','алина','алиса','милана','таисия','варвара','маргарита','лариса','любовь','вера','зоя','инна'];
+    if (female.indexOf(s) !== -1 || /(?:а|я)$/.test(s) && ['никита','илья'].indexOf(s) === -1) return 'women';
+    return 'men';
+}
+
+
 // Строгая проверка «это ячейка с полом?» — нужна для авто-определения колонок.
 function psGenderCellSure(v) {
     var s = psNorm(v).replace(/[.]/g, '');
@@ -1208,7 +1219,7 @@ function psParseExcelRows(json) {
 
         var rawHcp = keys.hcp ? r[keys.hcp] : null;
         var hcp = psParseHcpFromCell(rawHcp);
-        var gender = keys.gender ? psGenderFromCell(r[keys.gender]) : 'men';
+        var gender = keys.gender ? psGenderFromCell(r[keys.gender]) : psGenderFromName(firstName);
         var tee = keys.tee ? psTeeFromCell(r[keys.tee]) : null;
 
         if (fio && !lastName && !firstName) {
@@ -1438,7 +1449,7 @@ function psParseExcelGrid(aoa) {
             middleName = p2.middleName || middleName;
         }
         var hcp = roles.hcp !== null ? psParseHcpFromCell(cells[roles.hcp]) : null;
-        var gender = roles.gender !== null ? psGenderFromCell(cells[roles.gender]) : 'men';
+        var gender = roles.gender !== null ? psGenderFromCell(cells[roles.gender]) : psGenderFromName(firstName);
         var tee = roles.tee !== null ? psTeeFromCell(cells[roles.tee]) : null;
 
         if (psIsFooterRowText(lastName) || psIsFooterRowText(firstName)) return;
@@ -1690,7 +1701,8 @@ function psRenderDistributeInner(proto) {
 
     var schemes = [
         ['1', psL('Все группы — с 1-й лунки', 'All groups from hole 1')],
-        ['1-10', psL('Шотган: с 1-й и 10-й лунок', 'Shotgun: holes 1 and 10')]
+        ['1-10', psL('Шотган: с 1-й и 10-й лунок', 'Shotgun: holes 1 and 10')],
+        ['all18', psL('Шотган со всех 18 лунок', 'Shotgun from all 18 holes')]
     ];
     var schemeOpts = '';
     schemes.forEach(function(s) {
@@ -1794,6 +1806,13 @@ function psGroupSchedule(i, totalGroups) {
     var base = psStartBaseTs(proto);
     var intervalMs = Math.max(3, parseInt(proto.interval, 10) || 8) * 60000;
 
+    if (proto.scheme === 'all18') {
+        // Круговой проход по лункам: 1-я группа с 1-й, 2-я со 2-й ...;
+        // при большом поле следующая группа получает ту же лунку в следующий слот.
+        var allHole = (idx % 18) + 1;
+        var allSlot = Math.floor(idx / 18);
+        return { startHole: allHole, startTime: base + allSlot * intervalMs + (idx % 18) * intervalMs };
+    }
     if (proto.scheme === '1-10') {
         var hole = (i % 2 === 0) ? 1 : 10;
         var half = Math.round(intervalMs / 2);
@@ -2147,6 +2166,13 @@ function psNewGroupSchedule(prevGroups) {
     var base = psStartBaseTs(proto);
     var intervalMs = Math.max(3, parseInt(proto.interval, 10) || 8) * 60000;
     var idx = prevGroups.length;
+    if (proto.scheme === 'all18') {
+        // Круговой проход по лункам: 1-я группа с 1-й, 2-я со 2-й ...;
+        // при большом поле следующая группа получает ту же лунку в следующий слот.
+        var allHole = (idx % 18) + 1;
+        var allSlot = Math.floor(idx / 18);
+        return { startHole: allHole, startTime: base + allSlot * intervalMs + (idx % 18) * intervalMs };
+    }
     if (proto.scheme === '1-10') {
         var hole = (idx % 2 === 0) ? 1 : 10;
         var t = base + Math.floor(idx / 2) * intervalMs + (idx % 2) * Math.round(intervalMs / 2);

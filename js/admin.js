@@ -689,7 +689,13 @@ function createTournament() {
 }
 
 function loadTournaments() {
-    db.ref('tournaments').on('value', function(sn) {
+    if (typeof db === 'undefined' || !db) {
+        var tnEmpty = document.getElementById('tn-list');
+        if (tnEmpty) tnEmpty.innerHTML = '<div class="empty"><i class="fas fa-wifi"></i><p>' + (currentLang === 'en' ? 'No database connection' : 'Нет соединения с базой') + '</p></div>';
+        return;
+    }
+    // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+    bindRealtimeValue('admin-tournaments-list', db.ref('tournaments'), function(sn) {
         var data = sn.val() || {};
         var entries = Object.entries(data);
         var el = document.getElementById('tn-list');
@@ -946,7 +952,9 @@ function tnDeleteDivision(tnId, divId) {
 var knownAlertIds = {};
 
 function listenForAlerts() {
-    db.ref('alerts').orderByChild('status').equalTo('active').on('value', function(sn) {
+    if (typeof db === 'undefined' || !db) return;
+    // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+    bindRealtimeValue('admin-alerts-active', db.ref('alerts').orderByChild('status').equalTo('active'), function(sn) {
         var alerts = sn.val() || {};
         var c = document.getElementById('admin-alerts-list');
         var bannerEl = document.getElementById('admin-top-alerts-banner');
@@ -1132,8 +1140,9 @@ function sendClubBroadcast() {
 }
 
 function loadClubBroadcastsHistory() {
-    if (typeof db === 'undefined') return;
-    db.ref('broadcasts').on('value', function(sn) {
+    if (typeof db === 'undefined' || !db) return;
+    // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+    bindRealtimeValue('admin-broadcasts', db.ref('broadcasts'), function(sn) {
         var data = sn.val() || {};
         var entries = Object.entries(data).sort(function(a, b) { return b[1].time - a[1].time; });
         var el = document.getElementById('admin-broadcasts-list');
@@ -1932,8 +1941,9 @@ function loadPageVisibilitySettings() {
         if (asMainCb) asMainCb.checked = !isHidden;
     }
 
-    if (typeof db !== 'undefined') {
-        db.ref('settings/hidden_pages').on('value', function(sn) {
+    if (typeof db !== 'undefined' && db) {
+        // Подписки через bindRealtimeValue — без дублей при повторных заходах на вкладку.
+        bindRealtimeValue('admin-hidden-pages', db.ref('settings/hidden_pages'), function(sn) {
             var fbVal = sn.val();
             if (fbVal !== null && typeof fbVal === 'object') {
                 var hp = {};
@@ -1953,7 +1963,7 @@ function loadPageVisibilitySettings() {
             }
         });
         // Синхронизация переключателя «Меню инструментов»
-        db.ref('settings/tools_menu_enabled').on('value', function(sn) {
+        bindRealtimeValue('admin-tools-menu', db.ref('settings/tools_menu_enabled'), function(sn) {
             var v = sn.val();
             var enabled = (v === true || v === '1' || v === 1);
             try { localStorage.setItem('pestovo_tools_menu_enabled', enabled ? '1' : '0'); } catch(e) {}
@@ -2215,6 +2225,20 @@ function admTogglePlayerRow(id) {
 }
 
 // Компактный список игроков: одна строка на игрока, действия — в раскрывающейся панели.
+// Экранирование строки для JS-строки в одинарных кавычках внутри HTML-атрибута
+// (onclick="fn('...')"). Один escapeHtml здесь НЕ подходит: браузер декодирует
+// &#39; обратно в ' ДО выполнения JS, ломая синтаксис при именах с кавычками.
+function admJsStr(v) {
+    return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '&quot;')
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n')
+        .replace(/</g, '\\x3c');
+}
+
 function renderAdmPlayersList(remoteData) {
     var el = document.getElementById('adm-players');
     if (!el) return;
@@ -2288,7 +2312,7 @@ function renderAdmPlayersList(remoteData) {
             ' · ' + escapeHtml(roleTxt) + roundsStr + (u.roundsPlayed || 0) + '</span></span>' +
             '<span class="adm-role-dot ' + dotCls + '"></span></div>';
 
-        var nameJs = (u.name || '').replace(/'/g, "\'");
+        var nameJs = admJsStr(u.name);
         html += '<div id="adm-p-' + id + '" class="adm-player-actions' + (admPlayersExpanded[id] ? '' : ' hidden') + '">';
         html += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">' +
             escapeHtml(u.email || (en ? 'No email' : 'Без email')) +
@@ -2338,8 +2362,9 @@ function loadAdmPlayers() {
 
     renderWithData();
 
-    if (typeof db !== 'undefined') {
-        db.ref('users').on('value', function(sn) {
+    if (typeof db !== 'undefined' && db) {
+        // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+        bindRealtimeValue('admin-users', db.ref('users'), function(sn) {
             renderWithData(sn.val());
         });
     }
@@ -2435,10 +2460,11 @@ function deletePlayer(id, name) {
         // 3) Удаляем историю раундов
         db.ref('users/' + id + '/history').remove().then(check, check);
 
-        // 4) Удаляем саму ноду users/<id> и уведомления этого игрока
+        // 4) Удаляем саму ноду users/<id> (вместе с ней уходят и notifications —
+        // отдельный путь users/<id>/notifications сюда добавлять нельзя: update()
+        // падает на пересекающихся путях и удаление вообще не происходит)
         var userUpdates = {};
         userUpdates['users/' + id] = null;
-        userUpdates['users/' + id + '/notifications'] = null;
         db.ref().update(userUpdates).then(check, check);
     };
 
@@ -2551,6 +2577,13 @@ function createPlayerInAdmin() {
 
     var email = emailInp ? emailInp.value.trim() : '';
     var hcpRaw = hcpInp ? hcpInp.value.trim() : '0';
+    // parseExactHcp молча превращает мусор в 0 — проверяем ввод явно, чтобы
+    // опечатка вроде «12ж» не записывала игроку нулевой гандикап
+    if (hcpRaw !== '' && !/^[+-]?(\d+([.,]\d+)?|\.\d+)$/.test(hcpRaw.replace(/\s+/g, ''))) {
+        toast((currentLang === 'en' ? '⚠️ Invalid handicap value: ' : '⚠️ Некорректный гандикап: ') + hcpRaw, 'error');
+        if (hcpInp) hcpInp.focus();
+        return;
+    }
     var parsedHcp = parseExactHcp(hcpRaw);
     var gender = genderSel ? genderSel.value : 'men';
     var defaultTee = teeSel ? teeSel.value : 'wh';
@@ -2806,7 +2839,7 @@ function impHeaderKey(raw) {
 
 function impGenderFromCell(v) {
     var s = impNormName(v);
-    if (['ж', 'жен', 'ж', 'жeн', 'f', 'female', 'w', 'women', 'женский', 'женщина'].indexOf(s) !== -1 || s.indexOf('жен') === 0) return 'women';
+    if (['ж', 'жен', 'f', 'female', 'w', 'women', 'женский', 'женщина'].indexOf(s) !== -1 || s.indexOf('жен') === 0) return 'women';
     if (['м', 'муж', 'm', 'male', 'men', 'мужской', 'мужчина'].indexOf(s) !== -1 || s.indexOf('муж') === 0) return 'men';
     return 'men';
 }
@@ -3080,7 +3113,17 @@ function confirmPlayersImport() {
 
     selected.forEach(function(r) {
         if (r.dup) {
-            if (typeof db !== 'undefined') {
+            // Синхронизируем локальный кэш, иначе список игроков покажет старый HCP до перезагрузки
+            try {
+                if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[r.dup.id]) {
+                    cachedRegisteredUsers[r.dup.id].handicap = r.hcp;
+                    cachedRegisteredUsers[r.dup.id].gender = r.gender;
+                    cachedRegisteredUsers[r.dup.id].hcpUpdatedAt = Date.now();
+                    cachedRegisteredUsers[r.dup.id].hcpSource = 'excel';
+                    try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e2) {}
+                }
+            } catch(e) {}
+            if (typeof db !== 'undefined' && db) {
                 db.ref('users/' + r.dup.id).update({
                     handicap: r.hcp,
                     gender: r.gender,
@@ -3110,7 +3153,7 @@ function confirmPlayersImport() {
             };
             impSaveLocalPlayer(newId, playerData);
             created++;
-            if (typeof db !== 'undefined') {
+            if (typeof db !== 'undefined' && db) {
                 db.ref('users/' + newId).set(playerData).then(finish).catch(finish);
             } else {
                 finish();
@@ -3500,7 +3543,7 @@ function rgRenderResults(rows) {
                 // Выбор: обновить СУЩЕСТВУЮЩЕГО игрока (каждого из совпавших)
                 // или добавить НОВОГО — чтобы не плодить дублей с разным HCP
                 dups.forEach(function(d) {
-                    var dIdAttr = String(d.id).replace(/'/g, "\\'");
+                    var dIdAttr = admJsStr(d.id);
                     var oldH = d.data.handicap != null ? fmtExactHcp(d.data.handicap) : '—';
                     var dChanged = d.data.handicap != null && Math.abs((parseFloat(d.data.handicap) || 0) - r.hcp) > 0.049;
                     html += '<button type="button" class="btn btn-og btn-sm" onclick="rgUpdateLocalFromResults(' + i + ', \'' + dIdAttr + '\')"><i class="fas fa-rotate"></i> ' +
@@ -3963,7 +4006,7 @@ function rgRenderDuplicateGroups(groups) {
             html += '<span style="font-size:12px;color:var(--muted);">' + (en ? 'Current HCP' : 'Текущий HCP') + ': <b>' + curHcp + '</b></span>';
             html += '<input type="text" id="' + inputId + '" class="form-input" style="width:90px;padding:6px 8px;font-size:13px;" placeholder="' + curHcp + '" value="' + (u.handicap!=null? String(u.handicap).replace('+','') : '') + '">';
             html += '<button class="btn btn-g btn-sm" onclick="rgChangeDuplicateHcp(\'' + safeId + '\', \'' + inputId + '\')"><i class="fas fa-rotate"></i> ' + (en ? 'Change HCP' : 'Изменить гандикап') + '</button>';
-            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + safeId + '\', \'' + escapeHtml(u.name||'').replace(/'/g, "\\'") + '\')"><i class="fas fa-trash"></i></button>';
+            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + safeId + '\', \'' + admJsStr(u.name) + '\')"><i class="fas fa-trash"></i></button>';
             html += '</div></div>';
         });
         html += '</div>';
@@ -4654,7 +4697,7 @@ function rgBatchBuildQueries(row) {
 }
 
 function rgBatchStartSearch(rows) {
-    rgBatchState = { running: true, stop: false };
+    rgBatchState = { running: true, stop: false, players: null };
     rgBatchRows = rows.map(function(r) {
         return { idx: r.idx, firstName: r.firstName, lastName: r.lastName, name: r.name, query: '', proxy: '', error: '', done: false, results: [] };
     });
@@ -4712,11 +4755,23 @@ function rgBatchStartSearch(rows) {
     processNext();
 }
 
+// Список игроков для пакетного поиска — с кэшем на время прогона: без него
+// каждый перерендер rgBatchRender дёргал бы users+rounds из базы заново
+// (десятки лишних чтений на один запуск). Сбрасывается при старте поиска
+// и после любого добавления/обновления игрока из результатов.
+function rgBatchGetPlayers(callback) {
+    if (rgBatchState.players) { callback(rgBatchState.players); return; }
+    impCollectPlayers(function(players) {
+        rgBatchState.players = players || [];
+        callback(rgBatchState.players);
+    });
+}
+
 function rgBatchRender(processed, total) {
     var resultsEl = document.getElementById('rg-batch-results');
     if (!resultsEl) return;
 
-    impCollectPlayers(function(players) {
+    rgBatchGetPlayers(function(players) {
         var html = '';
         var pct = total ? Math.round((processed / total) * 100) : 0;
         var doneRows = rgBatchRows.filter(function(r) { return r.done; });
@@ -4867,6 +4922,7 @@ function rgBatchAddOne(ri, ii) {
     if (typeof vib === 'function') vib([50, 30, 50]);
     if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
     r.selected = false;
+    rgBatchState.players = null;
     rgBatchRender(rgBatchRows.filter(function(x) { return x.done; }).length, rgBatchRows.length);
 }
 
@@ -4881,6 +4937,7 @@ function rgBatchUpdateOne(ri, ii) {
     if (existing) {
         rgUpdateHcpOf(existing.id, r);
         r.selected = false;
+        rgBatchState.players = null;
         rgBatchRender(rgBatchRows.filter(function(x) { return x.done; }).length, rgBatchRows.length);
     }
 }
@@ -4925,6 +4982,7 @@ function rgBatchAddSelected() {
     if (typeof vib === 'function') vib([50, 30, 50]);
     if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
     if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
+    rgBatchState.players = null;
     rgBatchRender(rgBatchRows.filter(function(x) { return x.done; }).length, rgBatchRows.length);
 }
 
@@ -5296,8 +5354,9 @@ function saveAssistantSources(sources) {
 
 // Синхронизация источника из Firebase (на устройствах админа)
 function loadAssistantSourcesFromFirebase() {
-    if (typeof db === 'undefined') return;
-    db.ref('settings/assistant_sources').on('value', function (sn) {
+    if (typeof db === 'undefined' || !db) return;
+    // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+    bindRealtimeValue('admin-assistant-sources', db.ref('settings/assistant_sources'), function (sn) {
         var v = sn.val();
         var arr = [];
         if (v && typeof v === 'object') {
@@ -5313,7 +5372,7 @@ function loadAssistantSourcesFromFirebase() {
 // Пересборка индекса (база + добавленные источники) и сохранение
 function assistantRebuildIndex() {
     var status = document.getElementById('as-rebuild-status');
-    var btn = document.getElementById('as-add-btn');
+    var btn = document.getElementById('as-rebuild-btn');
     if (status) { status.className = 'as-status'; status.textContent = currentLang === 'en' ? 'Building index…' : 'Собираю индекс…'; }
     if (btn) btn.disabled = true;
 

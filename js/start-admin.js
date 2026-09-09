@@ -188,10 +188,78 @@ function psParseHcp(raw) {
 }
 function psCalcFieldHcp(p) {
     if (p == null) return 0;
+    // Полевой гандикап всегда считается от ОБРЕЗАННОГО точного гандикапа
+    // (см. подсказку в psRenderCutBox), а не от исходного p.hcp.
+    var eff = psEffectiveExact(p);
     if (typeof getFieldHcp === 'function') {
-        try { return getFieldHcp(p.hcp == null ? 0 : p.hcp, p.tee || 'wh', p.gender || 'men'); } catch (e) {}
+        try { return getFieldHcp(eff, p.tee || 'wh', p.gender || 'men'); } catch (e) {}
     }
-    return Math.round(parseFloat(p.hcp) || 0);
+    return Math.round(eff);
+}
+// Точный гандикап С УЧЁТОМ обрезки турнира (максимум по полу + процент).
+// Без настроенной обрезки равен исходному p.hcp. Используется для полевого
+// гандикапа, записи в раунд/протокол и чипов-подсказок в интерфейсе.
+function psEffectiveExact(p) {
+    var raw = 0;
+    if (p && p.hcp !== null && p.hcp !== undefined && p.hcp !== '') {
+        raw = parseFloat(p.hcp);
+        if (isNaN(raw)) raw = 0;
+    }
+    var proto = (typeof psState !== 'undefined' && psState.proto) ? psState.proto : {};
+    var cut = {
+        enabled: proto.hcpCutEnabled === true,
+        percent: proto.hcpCutPercent,
+        maxMen: proto.hcpMaxMen,
+        maxWomen: proto.hcpMaxWomen
+    };
+    // Единая логика обрезки живёт в js/utils.js — используем её, чтобы старт
+    // считал точно так же, как страница турнира.
+    if (typeof tnApplyHcpCut === 'function') {
+        try { return tnApplyHcpCut(raw, (p && p.gender) || 'men', cut).effective; } catch (e) {}
+    }
+    // Запасной вариант (например, в юнит-тестах без utils.js): та же логика —
+    // сначала максимум по полу, затем процент.
+    var gender = (p && p.gender) || 'men';
+    var maxV = gender === 'women' ? cut.maxWomen : cut.maxMen;
+    maxV = (maxV === '' || maxV == null) ? null : parseFloat(maxV);
+    var capped = (maxV != null && !isNaN(maxV) && raw > maxV) ? maxV : raw;
+    var eff = capped;
+    if (cut.enabled) {
+        var pct = parseFloat(cut.percent);
+        if (isNaN(pct) || pct <= 0) pct = 100;
+        if (pct > 100) pct = 100;
+        if (pct < 100 - 1e-9) eff = Math.round(capped * pct) / 100;
+    }
+    return Math.round(eff * 10) / 10;
+}
+// Подсказка «✂ 36 → 25.2» рядом с именем, если обрезка турнира изменила
+// точный гандикап игрока. Пустая строка — обрезка не действует.
+function psCutHintHtml(p) {
+    if (!p || p.hcp === null || p.hcp === undefined || p.hcp === '') return '';
+    var raw = parseFloat(p.hcp);
+    if (isNaN(raw)) return '';
+    var eff = psEffectiveExact(p);
+    if (Math.abs(eff - raw) < 0.049) return '';
+    var title = (psL('Обрезка турнира', 'Tournament cut') + ': ' + psHcpFmt(raw) + ' → ' + psHcpFmt(eff)).replace(/"/g, '&quot;');
+    return ' <span class="hcp-chip" style="background:rgba(201,168,76,.14);border-color:rgba(201,168,76,.5);color:var(--gold);font-size:10.5px;" title="' + title + '"><i class="fas fa-scissors"></i> ' + psHcpFmt(raw) + ' → ' + psHcpFmt(eff) + '</span>';
+}
+// Чип группы по гандикапу («Мужчины 0–12»), заданной во вкладке «Турниры».
+// Группа определяется по ИСХОДНОМУ точному гандикапу (обрезка — уже игровая
+// поправка и на принадлежность к группе не влияет). Пустая строка — нет групп.
+function psDivisionChipHtml(p) {
+    try {
+        if (!p || p.hcp === null || p.hcp === undefined || p.hcp === '') return '';
+        if (typeof tnFindDivision !== 'function') return '';
+        var tn = (typeof psGetSelTournament === 'function') ? psGetSelTournament() : null;
+        if (!tn || !tn.divisions) return '';
+        var d = tnFindDivision(tn, parseFloat(p.hcp), p.gender || 'men');
+        if (!d || !d.name) return '';
+        var escFn = (typeof escapeHtml === 'function') ? escapeHtml : function(x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+        var label = escFn(d.name);
+        var range = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
+        if (range) label += ' · ' + escFn(range);
+        return '<span class="tn-div-chip">' + label + '</span>';
+    } catch (e) { return ''; }
 }
 function psHcpFmt(v) {
     if (v === null || v === undefined || isNaN(v)) return '—';
@@ -834,7 +902,6 @@ function psLoadRegistered() {
     var tn = psGetSelTournament();
     if (!tn) return;
     if (typeof db === 'undefined' || !db) return;
-    var btn = event && event.target ? event.target : null;
     db.ref('tournaments/' + psState.selId + '/registeredPlayers').once('value').then(function(sn) {
         var reg = sn.val() || {};
         var keys = Object.keys(reg);
@@ -2059,7 +2126,7 @@ function psGAddPlayer(gi) {
                 og.members.splice(mj, 1);
                 if (og.markerTargets) delete og.markerTargets[om.id];
                 og.dirty = true;
-                g.members.push(psState.editingId ? om : om);
+                g.members.push(om);
                 g.dirty = true;
                 psGAddToggle(gi, true);
                 psRender();
@@ -2112,6 +2179,10 @@ function psSaveProtocol() {
     }
     if (!proto.players.length && !(psState.groups && psState.groups.length)) {
         toast(psL('⚠️ Добавьте участников (блок 2)', '⚠️ Add players (block 2)'), 'error');
+        return;
+    }
+    if (typeof db === 'undefined' || !db) {
+        toast(psL('⚠️ Нет соединения с базой', '⚠️ No database connection'), 'error');
         return;
     }
     if (psState.busy) return;

@@ -186,5 +186,81 @@ eq(sandbox.psGroupMarkersResolved(gg).length, 3, 'маркеры: «сам се�
 let solo = { members: [gm('A', 10)], markerTargets: {} };
 eq(sandbox.psGroupMarkersResolved(solo), [], 'маркеры: одиночка без маркеров');
 
+
+// ── Обрезка гандикапа: psEffectiveExact ──
+sandbox.psState = { proto: { hcpCutEnabled: false, hcpCutPercent: 90, hcpMaxMen: '', hcpMaxWomen: '' } };
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36)), 36, 'cut: без обрезки = исходный');
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', null)), 0, 'cut: пустой hcp → 0');
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 0)), 0, 'cut: hcp 0 → 0');
+eq(sandbox.psEffectiveExact(null), 0, 'cut: null-игрок → 0');
+sandbox.psState.proto.hcpCutEnabled = true;
+sandbox.psState.proto.hcpCutPercent = 90;
+sandbox.psState.proto.hcpMaxMen = 28;
+sandbox.psState.proto.hcpMaxWomen = '';
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 25.2, 'cut: 36 → макс 28 → 90% = 25.2');
+eq(sandbox.psEffectiveExact(mkPlayer('B', 'И', 20, 'men')), 18, 'cut: 20 → 90% = 18');
+eq(sandbox.psEffectiveExact(mkPlayer('C', 'И', 36, 'women')), 32.4, 'cut: женщины без макса: 36 → 90% = 32.4');
+sandbox.psState.proto.hcpMaxWomen = 30;
+eq(sandbox.psEffectiveExact(mkPlayer('C', 'И', 36, 'women')), 27, 'cut: женщины макс 30 → 90% = 27');
+sandbox.psState.proto.hcpCutPercent = 100;
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 28, 'cut: 100% — действует только макс');
+sandbox.psState.proto.hcpCutEnabled = false;
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 28, 'cut: процент выкл — макс всё равно действует');
+// делегирование в tnApplyHcpCut из utils.js, если он загружен
+sandbox.tnApplyHcpCut = function(raw, gender, cut) { return { effective: raw + 1000 }; };
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 10, 'men')), 1010, 'cut: используется tnApplyHcpCut из utils.js');
+delete sandbox.tnApplyHcpCut;
+
+// ── psCutHintHtml ──
+sandbox.psState.proto.hcpCutEnabled = true;
+sandbox.psState.proto.hcpCutPercent = 90;
+sandbox.psState.proto.hcpMaxMen = 28;
+sandbox.psState.proto.hcpMaxWomen = '';
+var hint = sandbox.psCutHintHtml(mkPlayer('A', 'И', 36, 'men'));
+eq(hint.indexOf('fa-scissors') !== -1 && hint.indexOf('→') !== -1, true, 'cut hint: чип при обрезке 36 → 25.2');
+eq(hint.indexOf('25.2') !== -1, true, 'cut hint: в чипе обрезанное значение');
+eq(sandbox.psCutHintHtml(mkPlayer('B', 'И', 20, 'men')).indexOf('fa-scissors') !== -1, true, 'cut hint: чип при 20→18');
+sandbox.psState.proto.hcpCutEnabled = false;
+sandbox.psState.proto.hcpMaxMen = '';
+eq(sandbox.psCutHintHtml(mkPlayer('A', 'И', 36, 'men')), '', 'cut hint: пусто без обрезки');
+eq(sandbox.psCutHintHtml(mkPlayer('A', 'И', null)), '', 'cut hint: пусто без hcp');
+
+// ── psCalcFieldHcp считает от ОБРЕЗАННОГО (запасная ветка без utils.js — Math.round) ──
+sandbox.psState.proto.hcpCutEnabled = true;
+sandbox.psState.proto.hcpCutPercent = 90;
+sandbox.psState.proto.hcpMaxMen = 28;
+eq(sandbox.psCalcFieldHcp(mkPlayer('A', 'И', 36, 'men')), 25, 'field hcp: round(25.2)=25 от обрезанного');
+eq(sandbox.psCalcFieldHcp(null), 0, 'field hcp: null → 0');
+
+// ── psDivisionChipHtml ──
+eq(typeof sandbox.psDivisionChipHtml, 'function', 'division chip: функция определена');
+eq(sandbox.psDivisionChipHtml(mkPlayer('A', 'И', 10, 'men')), '', 'division chip: пусто без tnFindDivision');
+sandbox.psState = {
+    proto: { hcpCutEnabled: false, hcpCutPercent: 90, hcpMaxMen: '', hcpMaxWomen: '' },
+    tournaments: [{ id: 't1', divisions: [{ id: 'd1', name: 'Мужчины 0–12' }] }],
+    selId: 't1'
+};
+sandbox.tnFindDivision = function(tn, hcp, gender) {
+    return (tn && tn.id === 't1' && gender === 'men' && hcp <= 12) ? tn.divisions[0] : null;
+};
+eq(sandbox.psDivisionChipHtml(mkPlayer('A', 'И', 10, 'men')), '<span class="tn-div-chip">Мужчины 0–12</span>', 'division chip: чип группы');
+eq(sandbox.psDivisionChipHtml(mkPlayer('B', 'И', 20, 'men')), '', 'division chip: пусто вне диапазона');
+eq(sandbox.psDivisionChipHtml(mkPlayer('C', 'И', null, 'men')), '', 'division chip: пусто без hcp');
+
+// ── Рендер ростера и групп не падает (регрессия: бывшие undefined-функции) ──
+sandbox.fmtFieldHcp = function(v) { return String(v); };
+sandbox.fmtDate = function() { return '—'; };
+sandbox.escapeHtml = function(x) { return String(x == null ? '' : x); };
+sandbox.psState = {
+    proto: { hcpCutEnabled: true, hcpCutPercent: 90, hcpMaxMen: 28, hcpMaxWomen: '', format: 'Stroke Play', formatCustom: '', tee: 'wh', startTime: '09:00', interval: 8, scheme: '1', date: '2026-09-09', name: 'T' },
+    tournaments: [], selId: '', editingId: null, groups: []
+};
+var fullP = { id: 'p1', lastName: 'Тестов', firstName: 'Иван', middleName: 'Петрович', gender: 'men', tee: 'wh', hcp: 36, source: 'registered', uidMatched: true };
+var rowHtml = sandbox.psRosterRowHtml(fullP, 0);
+eq(typeof rowHtml === 'string' && rowHtml.indexOf('Тестов') !== -1 && rowHtml.indexOf('fa-scissors') !== -1, true, 'roster row: рендерится, чип обрезки на месте');
+sandbox.psState.groups = [{ members: [fullP, { id: 'p2', lastName: 'Смирнов', firstName: 'Пётр', middleName: '', gender: 'men', tee: 'bl', hcp: 4.2, source: 'manual' }], startHole: 1, startTime: Date.now(), format: '', markerTargets: {} }];
+var groupsHtml = sandbox.psRenderGroupsResult();
+eq(typeof groupsHtml === 'string' && groupsHtml.indexOf('Группа 1') !== -1 && groupsHtml.indexOf('Смирнов') !== -1, true, 'groups: предпросмотр рендерится без ошибок');
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nAll tests passed ✔');
 process.exit(failures ? 1 : 0);

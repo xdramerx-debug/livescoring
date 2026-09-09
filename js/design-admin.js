@@ -12,6 +12,33 @@
 
     var D = function() { return global.PestovoDesign; };
 
+    /* ---------------------------------------------------------
+       Доступ к базе.
+       Раньше здесь стояла только проверка global.db. Но db объявлена в
+       js/firebase-config.js, и если её объявить через const/let, свойство
+       window.db не создаётся — модуль решал, что базы нет, и «сохранял»
+       оформление только в localStorage. Поэтому базу ищем несколькими
+       способами, а не полагаемся на единственный глобальный алиас.
+       --------------------------------------------------------- */
+    function getDb() {
+        try { if (global.db && typeof global.db.ref === 'function') return global.db; } catch (e) {}
+        try {
+            // eslint-disable-next-line no-undef
+            if (typeof db !== 'undefined' && db && typeof db.ref === 'function') return db;
+        } catch (e) {}
+        try {
+            if (global.firebase && typeof global.firebase.database === 'function') {
+                var inst = global.firebase.database();
+                if (inst && typeof inst.ref === 'function') return inst;
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    // Админ поменял шаблон, но ещё не нажал «Сохранить». Пока правки не
+    // сохранены, слушатель/повторное открытие вкладки не должны их затирать.
+    var dirty = false;
+
     function esc(s) {
         return String(s === undefined || s === null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -217,6 +244,7 @@
     function setMode(mode) {
         var d = D(); if (!d) return;
         vibrate(20);
+        dirty = true;
         d.setMode(mode);
         renderAll();
     }
@@ -224,6 +252,7 @@
     function setGlobal(id) {
         var d = D(); if (!d) return;
         vibrate(20);
+        dirty = true;
         d.setGlobalPreset(id);
         renderAll();
     }
@@ -231,6 +260,7 @@
     function setPage(pageKey, id) {
         var d = D(); if (!d) return;
         vibrate(15);
+        dirty = true;
         d.setPagePreset(pageKey, id);
         renderAll();
     }
@@ -238,6 +268,7 @@
     function setBlock(blockKey, id) {
         var d = D(); if (!d) return;
         vibrate(15);
+        dirty = true;
         d.setBlockPreset(blockKey, id);
         renderAll();
     }
@@ -246,6 +277,7 @@
         var d = D(); if (!d) return;
         var s = d.getSettings();
         vibrate(30);
+        dirty = true;
         d.applyPresetEverywhere(s.global);
         renderAll();
         toastMsg(L('Шаблон «' + d.presetName(s.global) + '» назначен всем страницам и блокам',
@@ -254,12 +286,14 @@
 
     function resetPages() {
         var d = D(); if (!d) return;
+        dirty = true;
         d.resetPages(); renderAll();
         toastMsg(L('Страницы вернулись к базовому шаблону', 'Pages follow the base template again'), 'info');
     }
 
     function resetBlocks() {
         var d = D(); if (!d) return;
+        dirty = true;
         d.resetBlocks(); renderAll();
         toastMsg(L('Блоки вернулись к базовому шаблону', 'Blocks follow the base template again'), 'info');
     }
@@ -267,6 +301,7 @@
     function resetAll() {
         var d = D(); if (!d) return;
         vibrate(30);
+        dirty = true;
         d.resetAll(); renderAll();
         toastMsg(L('Включён текущий дизайн сайта по умолчанию', 'Default site design restored'), 'info');
     }
@@ -287,15 +322,22 @@
         if (typeof global.currentUser !== 'undefined' && global.currentUser && global.currentUser.uid) {
             payload.updatedBy = global.currentUser.uid;
         }
-        if (typeof global.db === 'undefined' || !global.db) {
+        var database = getDb();
+        if (!database) {
             toastMsg(L('Оформление сохранено локально (нет подключения к базе)', 'Design saved locally (no database connection)'), 'info');
             return;
         }
-        global.db.ref(d.FIREBASE_PATH).set(payload).then(function() {
+        database.ref(d.FIREBASE_PATH).set(payload).then(function() {
+            // Сохранилось у всех — локальные правки больше не «несохранённые».
+            dirty = false;
             toastMsg(L('✅ Оформление сохранено для всех пользователей', '✅ Design saved for all users'), 'success');
         }).catch(function(err) {
             console.warn('[Design] save error', err);
-            toastMsg(L('⚠️ Не удалось сохранить оформление', '⚠️ Could not save the design'), 'error');
+            // Показываем настоящую причину (например, отказ по правилам доступа),
+            // иначе админ видит «сохранено» и не понимает, почему дизайн не применился.
+            var reason = (err && (err.message || err.code)) ? ' (' + (err.message || err.code) + ')' : '';
+            toastMsg(L('⚠️ Не удалось сохранить оформление' + reason,
+                '⚠️ Could not save the design' + reason), 'error');
         });
     }
 
@@ -304,10 +346,13 @@
        --------------------------------------------------------- */
     function loadFromFirebase() {
         var d = D(); if (!d) return;
-        if (typeof global.db === 'undefined' || !global.db) { renderAll(); return; }
-        global.db.ref(d.FIREBASE_PATH).once('value').then(function(sn) {
+        var database = getDb();
+        if (!database) { renderAll(); return; }
+        database.ref(d.FIREBASE_PATH).once('value').then(function(sn) {
             var val = sn.val();
-            if (val) d.applySettings(val, { silent: true });
+            // Если админ уже что-то выбрал, но не нажал «Сохранить», повторное
+            // открытие вкладки не должно откатывать его выбор к тому, что в базе.
+            if (val && !dirty) d.applySettings(val, { silent: true });
             renderAll();
         }).catch(function() { renderAll(); });
     }

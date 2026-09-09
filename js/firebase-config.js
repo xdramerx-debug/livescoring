@@ -9,13 +9,22 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const auth = firebase.auth();
+
+// ВАЖНО: именно var, а не const/let.
+// Объявления const/let на верхнем уровне скрипта НЕ создают свойство window,
+// поэтому модули в IIFE (js/design-admin.js и т.п.), которые обращаются к
+// window.db / window.currentUser, видели undefined и считали, что базы нет —
+// из-за этого настройки (например, шаблон оформления) сохранялись только
+// локально и не доходили до остальных пользователей.
+// var создаёт свойство window и, в отличие от ручного window.x = x,
+// сохраняет связь при последующих переприсваиваниях (currentUser).
+var db = firebase.database();
+var auth = firebase.auth();
 
 try { firebase.database().goOnline(); } catch (e) {}
 
-let currentUser = null;
-let currentUserData = null;
+var currentUser = null;
+var currentUserData = null;
 
 auth.onAuthStateChanged(function(user) {
     currentUser = user;

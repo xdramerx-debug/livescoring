@@ -16,8 +16,8 @@ var fs = require('fs');
 var path = require('path');
 
 var ROOT = path.join(__dirname, '..');
-var NEW_VERSION = '1.34.0';
-var OLD_VERSION = '1.33.0';
+var NEW_VERSION = '1.35.0';
+var OLD_VERSION = '1.34.0';
 
 var BUMPS = [
     ['js/utils.js?v=39', 'js/utils.js?v=40'],

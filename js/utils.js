@@ -750,6 +750,12 @@ var I18N = {
         social_card_variant_1: '1 · Классика',
         social_card_variant_2: '2 · Акцент на результате',
         social_card_variant_3: '3 · Турнирная',
+        group_card_variant_title: 'Отображение группового раунда на главной',
+        group_card_variant_sub: 'Выберите стиль единой карточки группового раунда для главной страницы. Настройка применяется для всех пользователей.',
+        group_card_variant_1: '1 · Сводная матрица',
+        group_card_variant_2: '2 · Сравнительная таблица',
+        group_card_variant_3: '3 · Лидерборд флайта',
+        all_players_joined: 'Все игроки уже вошли в раунд',
         tab_broadcasts: 'Анонсы 📢',
         delete_all_rounds: 'Удалить все раунды',
         delete_all_data: 'Удалить всех игроков и раунды',
@@ -1139,6 +1145,12 @@ var I18N = {
         social_card_variant_1: '1 · Classic',
         social_card_variant_2: '2 · Result focus',
         social_card_variant_3: '3 · Tournament',
+        group_card_variant_title: 'Group round card layout on home page',
+        group_card_variant_sub: 'Choose the layout for the unified group round card on the home page. Applies to all users.',
+        group_card_variant_1: '1 · Summary Matrix',
+        group_card_variant_2: '2 · Comparison Table',
+        group_card_variant_3: '3 · Flight Leaderboard',
+        all_players_joined: 'All players have already joined the round',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
         delete_all_data: 'Delete All Players & Rounds',
@@ -3306,143 +3318,399 @@ function generateGroupHoleTableHTML(r, opts) {
     if (!playerEntries.length) return '';
 
     var order = getRoundOrder(r);
+
+    // Если в раунде 1 игрок — показываем одиночную карточку
+    if (playerEntries.length === 1) {
+        return renderSinglePlayerScorecardHTML(r, playerEntries[0], order, opts);
+    }
+
+    // Для группового раунда показываем единую карточку в одном из 3 вариантов:
+    // 1 · Сводная матрица (Summary Matrix)
+    // 2 · Сравнительная таблица (Comparison Table)
+    // 3 · Лидерборд флайта (Flight Leaderboard)
+    var variant = opts.variant || getGroupCardVariant();
+    if (variant === '2') {
+        return renderGroupTableHTML(r, playerEntries, order, opts);
+    } else if (variant === '3') {
+        return renderGroupLeaderboardHTML(r, playerEntries, order, opts);
+    } else {
+        return renderGroupMatrixHTML(r, playerEntries, order, opts);
+    }
+}
+
+function renderSinglePlayerScorecardHTML(r, pe, order, opts) {
+    opts = opts || {};
+    var compact = !!opts.compact;
     var holeCount = order.length;
-    var frontCount = order.filter(function(h) { return h <= 9; }).length;
-    var backCount = holeCount - frontCount;
-    var compact = !!opts.compact; // компактный режим для главной страницы: без табов, без кликабельности и без дублирования имени
-
-    // --- NO-SCROLL VERTICAL GRID MATRIX (100% FIT ON MOBILE SCREENS) ---
-    var html = '<div class="no-scroll-view-container">';
     var courseHcpLbl = t('field_hcp_short');
+    var pid = pe[0], p = pe[1];
+    var sc = p.scores || {};
+    var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+    var stats = calcRoundStats(sc, fieldHcp || 0, p.exactHcp || 0, order);
+    var thruText = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '');
 
+    var pTee = (p && p.tee) || r.tee || 'wh';
+    var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
+    var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" title="' + fieldHcpBandTitle(fieldHcp) + '">' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
+
+    var isFinished = stats.holesPlayed >= holeCount;
+    var curHole = isFinished ? null : stats.currentHole;
+
+    var html = '<div class="no-scroll-view-container">';
+    if (compact) {
+        html += '<div class="noscroll-player-block">';
+        html += '<div class="noscroll-player-hdr noscroll-player-hdr--compact">';
+        html += '<div class="npch-id">';
+        var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
+        html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(pName) + '</span>' + pTeeBadge + pHcpBadge;
+        var mkPid = p.markedBy;
+        var mkP = (mkPid && r.players && r.players[mkPid]) ? r.players[mkPid] : null;
+        if (mkP && !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(mkPid, mkP.name))) {
+            var mkName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(mkP, mkPid) : playerDisplayName(mkP, mkPid);
+            if (mkName && mkName !== '—') {
+                html += '<span class="npch-marker"><i class="fas fa-pen-nib"></i> ' + t('card_marker_lbl') + ': ' + escapeHtml(mkName) + '</span>';
+            }
+        }
+        html += '</div>';
+        if (curHole) {
+            html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')"><i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
+        }
+        html += '</div>';
+    } else {
+        html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
+        html += '<div class="noscroll-player-hdr">';
+        html += '<div>';
+        html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, pid)) + pTeeBadge + pHcpBadge + '</span>';
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div>';
+        if (curHole) {
+            html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')"><i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
+        }
+        html += '</div>';
+        html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
+        html += '</div>';
+    }
+
+    html += '<div class="sc-tabs-wrap" data-view="all">';
+    html += '<div class="noscroll-grid">';
+    order.forEach(function(i) {
+        var s = parseInt(sc[i]) || 0;
+        var par = holePar(i);
+        var cls = holeResClass(s, par) + ' ' + holeNineClass(i);
+        if (getHoleVerifyState(p, i) === 'mismatch') cls += ' cell-mismatch';
+        var isCur = (curHole !== null && i === curHole);
+        if (isCur) cls += ' sc-cur-tile';
+        var stbl = s > 0 ? stablefordField(s, i, fieldHcp) : null;
+        var stblTitle = currentLang === 'en'
+            ? (stbl !== null ? stbl + ' Stableford ' + (stbl === 1 ? 'point' : 'points') : 'No Stableford points yet')
+            : (stbl !== null ? 'Очки Stableford: ' + stbl : 'Очков Stableford пока нет');
+        if (isCur) {
+            stblTitle = (currentLang === 'en' ? 'Current hole. ' : 'Текущая лунка. ') + stblTitle;
+        }
+
+        html += '<div class="noscroll-tile ' + cls + '" title="' + stblTitle + '" data-sc-player="' + pid + '" data-sc-hole="' + i + '"' + (isCur ? ' data-sc-current="1"' : '') + '>';
+        html += '<div class="noscroll-hole"><span>#' + i + '</span>' + hcpStrokesMarksHTML(fieldHcp, i) + '</div>';
+        html += '<div class="noscroll-score">' + (s > 0 ? s : '—') + '</div>';
+        html += '<div class="noscroll-tile-bot"><span class="noscroll-idx">idx ' + holeHcp(i) + '</span><span class="noscroll-stbl">' + (stbl !== null ? stbl + ' pt' : '—') + '</span></div>';
+        html += '</div>';
+    });
+    html += '</div>';
+
+    html += buildToParRowHTML(order, sc, 0, 'noscroll-grid').html;
+    html += '</div>';
+
+    var totG = 0, parTotal = 0;
+    order.forEach(function(i) { var s = parseInt(sc[i]) || 0; if (s > 0) totG += s; parTotal += holePar(i); });
+    if (!compact) {
+        html += '<div class="noscroll-totals">';
+        html += '<span>' + (currentLang === 'en' ? 'Holes' : 'Лунки') + ': <b>' + stats.holesPlayed + '/' + holeCount + '</b></span>';
+        html += '<span>' + t('par') + ': <b>' + parTotal + '</b></span>';
+        html += '<span>' + t('total') + ': <b>' + (totG > 0 ? totG : '—') + '</b></span>';
+        html += '</div>';
+    }
+
+    html += '</div></div>';
+    return html;
+}
+
+// ВАРИАНТ 1: СВОДНАЯ МАТРИЦА ФЛАЙТА
+function renderGroupMatrixHTML(r, playerEntries, order, opts) {
+    var holeCount = order.length;
+    var html = '<div class="group-matrix-card">';
+
+    // 1. Шапка со всеми игроками группы в один ряд
+    html += '<div class="group-matrix-players">';
+    playerEntries.forEach(function(pe, pIdx) {
+        var pid = pe[0], p = pe[1];
+        var sc = p.scores || {};
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+        var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+        var pTee = (p && p.tee) || r.tee || 'wh';
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 6px;">' + t('tee_' + pTee) + '</span>';
+        var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" style="font-size:9.5px;padding:1px 6px;">' + t('field_hcp_short') + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
+        var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
+        var thruTxt = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
+
+        html += '<div class="gm-player-chip">';
+        html += '<div class="gm-p-top"><strong class="gm-p-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(pName) + '</strong>' + pTeeBadge + pHcpBadge + '</div>';
+        html += '<div class="gm-p-stats">';
+        html += '<span>📍 ' + thruTxt + '</span>';
+        html += '<span>Gross: <b>' + (stats.gross || 0) + '</b></span>';
+        html += '<span class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</span>';
+        html += '<span style="color:#2ecc71;font-weight:700;">' + stats.stablefordField + ' pt</span>';
+        html += '</div></div>';
+    });
+    html += '</div>';
+
+    // 2. Сводная матрица по лункам
+    html += '<div class="gm-grid-wrap"><div class="noscroll-grid gm-noscroll-grid">';
+    order.forEach(function(i) {
+        var par = holePar(i);
+        var idx = holeHcp(i);
+        var isCurHoleAny = false;
+        var tilesForHole = '';
+
+        playerEntries.forEach(function(pe, pIdx) {
+            var pid = pe[0], p = pe[1];
+            var sc = p.scores || {};
+            var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+            var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+            var s = parseInt(sc[i]) || 0;
+            var isCur = (stats.currentHole === i && stats.holesPlayed < holeCount);
+            if (isCur) isCurHoleAny = true;
+
+            var cls = (s > 0 ? holeResClass(s, par) : 'r-empty') + (isCur ? ' sc-cur-tile' : '');
+            if (getHoleVerifyState(p, i) === 'mismatch') cls += ' cell-mismatch';
+            var stbl = s > 0 ? stablefordField(s, i, fieldHcp) : null;
+            var pInitial = (p.name || '').trim().split(/\s+/)[0] || ('P' + (pIdx + 1));
+
+            tilesForHole += '<div class="gm-tile-row ' + cls + '" title="' + escapeHtml(p.name || '') + ' · #' + i + ': ' + (s > 0 ? s : '—') + '">' +
+                '<span class="gm-tile-pname">' + escapeHtml(pInitial.substring(0, 5)) + '</span>' +
+                '<span class="gm-tile-score">' + (s > 0 ? s : '—') + '</span>' +
+                '<span class="gm-tile-stbl">' + (stbl !== null ? stbl + 'p' : '·') + '</span>' +
+                '</div>';
+        });
+
+        html += '<div class="gm-hole-col' + (isCurHoleAny ? ' gm-cur-col' : '') + '">' +
+            '<div class="gm-hole-hdr"><span>#' + i + '</span><small>P' + par + ' · i' + idx + '</small></div>' +
+            '<div class="gm-hole-scores">' + tilesForHole + '</div>' +
+            '</div>';
+    });
+    html += '</div></div>';
+
+    // 3. Итоги флайта
+    html += '<div class="gm-totals-row">';
+    html += '<div class="gm-tot-title"><i class="fas fa-calculator"></i> ' + t('total') + ':</div>';
+    html += '<div class="gm-tot-items">';
     playerEntries.forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         var sc = p.scores || {};
-        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : 0;
-        var stats = calcRoundStats(sc, fieldHcp || 0, p.exactHcp || 0, order);
-        var thruText = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '');
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+        var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+        var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
+        var pInitial = pName.split(/\s+/)[0] || pName;
 
+        html += '<div class="gm-tot-item">' +
+            '<span class="gm-tot-name">' + escapeHtml(pInitial) + ':</span>' +
+            '<b class="gm-tot-val">' + (stats.gross || 0) + '</b>' +
+            '<span class="gm-tot-topar ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
+            '<span class="gm-tot-stbl">' + stats.stablefordField + ' pt</span>' +
+            '</div>';
+    });
+    html += '</div></div>';
+
+    html += '</div>';
+    return html;
+}
+
+// ВАРИАНТ 2: СРАВНИТЕЛЬНАЯ ТАБЛИЦА ФЛАЙТА
+function renderGroupTableHTML(r, playerEntries, order, opts) {
+    var html = '<div class="group-flight-table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;margin-bottom:10px;">';
+    html += '<table class="group-flight-table" style="width:100%;min-width:320px;border-collapse:collapse;font-size:12px;text-align:center;">';
+
+    // thead: Player headers
+    html += '<thead><tr style="background:rgba(201,168,76,0.14);border-bottom:1px solid var(--border);">';
+    html += '<th style="padding:8px 6px;text-align:left;white-space:nowrap;min-width:85px;color:var(--gold);">' + (currentLang === 'en' ? 'Hole · Par' : 'Лунка · Пар') + '</th>';
+    playerEntries.forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
         var pTee = (p && p.tee) || r.tee || 'wh';
-        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
-        var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" title="' + fieldHcpBandTitle(fieldHcp) + '">' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9px;padding:0 5px;">' + t('tee_' + pTee) + '</span>';
+        var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
+        var sc = p.scores || {};
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+        var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
 
-        var isFinished = stats.holesPlayed >= holeCount;
-        var curHole = isFinished ? null : stats.currentHole;
+        html += '<th style="padding:8px 6px;min-width:95px;border-left:1px solid rgba(255,255,255,0.06);">';
+        html += '<div style="font-weight:700;color:var(--white);">' + escapeHtml(pName) + '</div>';
+        html += '<div style="margin-top:2px;">' + pTeeBadge + ' <span class="hcp-chip" style="font-size:9.5px;padding:0 5px;">' + fmtFieldHcp(fieldHcp) + '</span></div>';
+        html += '<div style="font-size:11px;margin-top:2px;color:var(--gold);">Gross: <b>' + (stats.gross || 0) + '</b> <span class="' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span></div>';
+        html += '</th>';
+    });
+    html += '</tr></thead>';
 
-        // В компактном режиме (главная страница) карточка НЕ кликабельна —
-        // открывать профиль игрока из общего списка не нужно, имя и так уже
-        // видно в строке над карточкой, и повторный клик по карточке только
-        // мешает (прыгает модалка поверх списка).
-        if (compact) {
-            html += '<div class="noscroll-player-block">';
-        } else {
-            html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
-        }
+    // tbody
+    html += '<tbody>';
+    var frontHoles = order.filter(function(h) { return h <= 9; });
+    var backHoles = order.filter(function(h) { return h > 9; });
 
-        if (compact) {
-            // Компактный режим (главная «Сейчас на поле», лента раундов):
-            // в раскрытой панели блоков может быть несколько — карточки всех
-            // игроков группы (свои и тех, кого играющий маркирует). Поэтому
-            // над КАЖДОЙ карточкой всегда показываем, чей счёт ниже: имя
-            // игрока, его ТИ и гандикап, а если счёт за него вводит маркер —
-            // и имя маркера. Без этого непонятно, чьи цифры в плитках.
-            html += '<div class="noscroll-player-hdr noscroll-player-hdr--compact">';
-            html += '<div class="npch-id">';
-            var pName = (typeof privacyDisplayName === 'function')
-                ? privacyDisplayName(p, pid)
-                : playerDisplayName(p, pid);
-            html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(pName) + '</span>';
-            html += pTeeBadge + pHcpBadge;
-            // Кто маркирует этого игрока (чей ввод счёта подтверждает лунки)
-            var mkPid = p.markedBy;
-            var mkP = (mkPid && players[mkPid]) ? players[mkPid] : null;
-            if (mkP && !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(mkPid, mkP.name))) {
-                var mkName = (typeof privacyDisplayName === 'function')
-                    ? privacyDisplayName(mkP, mkPid)
-                    : playerDisplayName(mkP, mkPid);
-                if (mkName && mkName !== '—') {
-                    html += '<span class="npch-marker"><i class="fas fa-pen-nib"></i> ' + t('card_marker_lbl') + ': ' + escapeHtml(mkName) + '</span>';
-                }
-            }
-            html += '</div>';
-            // Функциональная кнопка «К текущей лунке #N» — если игрок сейчас
-            // не закончил раунд.
-            if (curHole) {
-                html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')">' +
-                    '<i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
-            }
-            html += '</div>';
-        } else {
-            // Полный режим (страница ввода счёта во время раунда): тут имя
-            // игрока и бейджи НЕ показываются нигде больше на странице, поэтому
-            // оставляем всю шапку с именем, ТИ, HCP, «📍 Лунка · Gross»,
-            // большим счётом к пара и (опционально) кнопкой «к текущей лунке».
-            html += '<div class="noscroll-player-hdr">';
-            html += '<div>';
-            html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, pid)) + pTeeBadge + pHcpBadge + '</span>';
-            html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div>';
-            if (curHole) {
-                html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')">' +
-                    '<i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
-            }
-            html += '</div>';
-            html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
-            html += '</div>';
-        }
-
-        // Матрица лунок. Вкладки «Первые 9 / Вторые 9 / Все 18» удалены:
-        // карточка всегда показывает все лунки выбранного диапазона сразу.
-        html += '<div class="sc-tabs-wrap" data-view="all">';
-
-        // Hole matrix (9 or 18 holes): фора + № лунки, счёт, индекс, очки Stableford
-        html += '<div class="noscroll-grid">';
-        order.forEach(function(i) {
-            var s = parseInt(sc[i]) || 0;
-            var par = holePar(i);
-            var cls = holeResClass(s, par) + ' ' + holeNineClass(i);
-            // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
-            if (getHoleVerifyState(p, i) === 'mismatch') cls += ' cell-mismatch';
-            // Текущая лунка игрока — золотая рамка и пульсация
-            var isCur = (curHole !== null && i === curHole);
-            if (isCur) cls += ' sc-cur-tile';
-            var stbl = s > 0 ? stablefordField(s, i, fieldHcp) : null;
-            var stblTitle = currentLang === 'en'
-                ? (stbl !== null ? stbl + ' Stableford ' + (stbl === 1 ? 'point' : 'points') : 'No Stableford points yet')
-                : (stbl !== null ? 'Очки Stableford: ' + stbl : 'Очков Stableford пока нет');
-            if (isCur) {
-                stblTitle = (currentLang === 'en' ? 'Current hole. ' : 'Текущая лунка. ') + stblTitle;
-            }
-
-            html += '<div class="noscroll-tile ' + cls + '" title="' + stblTitle + '" data-sc-player="' + pid + '" data-sc-hole="' + i + '"' + (isCur ? ' data-sc-current="1"' : '') + '>';
-            html += '<div class="noscroll-hole"><span>#' + i + '</span>' + hcpStrokesMarksHTML(fieldHcp, i) + '</div>';
-            html += '<div class="noscroll-score">' + (s > 0 ? s : '—') + '</div>';
-            html += '<div class="noscroll-tile-bot"><span class="noscroll-idx">idx ' + holeHcp(i) + '</span><span class="noscroll-stbl">' + (stbl !== null ? stbl + ' pt' : '—') + '</span></div>';
-            html += '</div>';
+    // Front 9
+    frontHoles.forEach(function(h) {
+        var par = holePar(h);
+        var idx = holeHcp(h);
+        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">';
+        html += '<td style="padding:6px 6px;text-align:left;font-weight:600;color:var(--gold);">#' + h + ' <span style="color:var(--muted);font-weight:400;font-size:11px;">(P' + par + ' · i' + idx + ')</span></td>';
+        playerEntries.forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var s = parseInt(p.scores && p.scores[h]) || 0;
+            var cls = s > 0 ? holeResClass(s, par) : 'r-empty';
+            var stbl = s > 0 ? stablefordField(s, h, p.fieldHcp || 0) : null;
+            html += '<td style="padding:4px 6px;border-left:1px solid rgba(255,255,255,0.04);">';
+            html += '<span class="ft-score-cell ' + cls + '" style="display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;min-width:24px;">' + (s > 0 ? s : '—') + '</span>';
+            if (stbl !== null) html += ' <small style="color:#2ecc71;font-size:10px;font-weight:600;">' + stbl + 'p</small>';
+            html += '</td>';
         });
+        html += '</tr>';
+    });
+
+    // OUT Subtotal
+    if (frontHoles.length > 0) {
+        var outPar = frontHoles.reduce(function(acc, h) { return acc + holePar(h); }, 0);
+        html += '<tr style="background:rgba(255,255,255,0.06);font-weight:700;border-bottom:1px solid var(--border);">';
+        html += '<td style="padding:6px 6px;text-align:left;color:var(--white);">OUT (1-9) <small style="color:var(--muted);">(' + outPar + ')</small></td>';
+        playerEntries.forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var outGross = frontHoles.reduce(function(acc, h) { return acc + (parseInt(p.scores && p.scores[h]) || 0); }, 0);
+            var outStbl = frontHoles.reduce(function(acc, h) {
+                var s = parseInt(p.scores && p.scores[h]) || 0;
+                return acc + (s > 0 ? stablefordField(s, h, p.fieldHcp || 0) : 0);
+            }, 0);
+            html += '<td style="padding:6px 6px;color:var(--gold);border-left:1px solid rgba(255,255,255,0.06);">' + (outGross > 0 ? outGross : '—') + ' <small style="color:#2ecc71;">(' + outStbl + ' pt)</small></td>';
+        });
+        html += '</tr>';
+    }
+
+    // Back 9
+    backHoles.forEach(function(h) {
+        var par = holePar(h);
+        var idx = holeHcp(h);
+        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">';
+        html += '<td style="padding:6px 6px;text-align:left;font-weight:600;color:var(--gold);">#' + h + ' <span style="color:var(--muted);font-weight:400;font-size:11px;">(P' + par + ' · i' + idx + ')</span></td>';
+        playerEntries.forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var s = parseInt(p.scores && p.scores[h]) || 0;
+            var cls = s > 0 ? holeResClass(s, par) : 'r-empty';
+            var stbl = s > 0 ? stablefordField(s, h, p.fieldHcp || 0) : null;
+            html += '<td style="padding:4px 6px;border-left:1px solid rgba(255,255,255,0.04);">';
+            html += '<span class="ft-score-cell ' + cls + '" style="display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;min-width:24px;">' + (s > 0 ? s : '—') + '</span>';
+            if (stbl !== null) html += ' <small style="color:#2ecc71;font-size:10px;font-weight:600;">' + stbl + 'p</small>';
+            html += '</td>';
+        });
+        html += '</tr>';
+    });
+
+    // IN Subtotal
+    if (backHoles.length > 0) {
+        var inPar = backHoles.reduce(function(acc, h) { return acc + holePar(h); }, 0);
+        html += '<tr style="background:rgba(255,255,255,0.06);font-weight:700;border-bottom:1px solid var(--border);">';
+        html += '<td style="padding:6px 6px;text-align:left;color:var(--white);">IN (10-18) <small style="color:var(--muted);">(' + inPar + ')</small></td>';
+        playerEntries.forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var inGross = backHoles.reduce(function(acc, h) { return acc + (parseInt(p.scores && p.scores[h]) || 0); }, 0);
+            var inStbl = backHoles.reduce(function(acc, h) {
+                var s = parseInt(p.scores && p.scores[h]) || 0;
+                return acc + (s > 0 ? stablefordField(s, h, p.fieldHcp || 0) : 0);
+            }, 0);
+            html += '<td style="padding:6px 6px;color:var(--gold);border-left:1px solid rgba(255,255,255,0.06);">' + (inGross > 0 ? inGross : '—') + ' <small style="color:#2ecc71;">(' + inStbl + ' pt)</small></td>';
+        });
+        html += '</tr>';
+    }
+
+    // TOTAL Row
+    var totPar = order.reduce(function(acc, h) { return acc + holePar(h); }, 0);
+    html += '<tr style="background:rgba(201,168,76,0.18);font-weight:800;border-top:2px solid var(--gold);">';
+    html += '<td style="padding:8px 6px;text-align:left;color:var(--gold);font-size:13px;">' + t('total') + ' <small style="color:var(--white);">(' + totPar + ')</small></td>';
+    playerEntries.forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        var sc = p.scores || {};
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+        var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+        html += '<td style="padding:8px 6px;border-left:1px solid rgba(255,255,255,0.08);">';
+        html += '<div style="font-size:15px;color:var(--white);">' + (stats.gross || 0) + ' <span class="' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span></div>';
+        html += '<div style="color:#2ecc71;font-size:11px;font-weight:700;">' + stats.stablefordField + ' pt Stbl</div>';
+        html += '</td>';
+    });
+    html += '</tr>';
+
+    html += '</tbody></table></div>';
+    return html;
+}
+
+// ВАРИАНТ 3: ЛИДЕРБОРД ФЛАЙТА И ВИЗУАЛЬНЫЙ ТРЕК
+function renderGroupLeaderboardHTML(r, playerEntries, order, opts) {
+    var holeCount = order.length;
+    var html = '<div class="flight-leaderboard-card">';
+
+    // Сортировка участников флайта по результату toPar, затем по gross
+    var ranked = playerEntries.slice().sort(function(a, b) {
+        var statsA = calcRoundStats(a[1].scores || {}, a[1].fieldHcp || 0, a[1].exactHcp || 0, order);
+        var statsB = calcRoundStats(b[1].scores || {}, b[1].fieldHcp || 0, b[1].exactHcp || 0, order);
+        if (statsA.toPar === null && statsB.toPar === null) return 0;
+        if (statsA.toPar === null) return 1;
+        if (statsB.toPar === null) return -1;
+        if (statsA.toPar !== statsB.toPar) return statsA.toPar - statsB.toPar;
+        return (statsA.gross || 0) - (statsB.gross || 0);
+    });
+
+    var rankMedals = ['🥇', '🥈', '🥉'];
+
+    ranked.forEach(function(pe, rankIdx) {
+        var pid = pe[0], p = pe[1];
+        var sc = p.scores || {};
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+        var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+        var pTee = (p && p.tee) || r.tee || 'wh';
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 6px;">' + t('tee_' + pTee) + '</span>';
+        var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" style="font-size:9.5px;padding:1px 6px;">' + t('field_hcp_short') + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
+        var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
+        var rankLabel = rankIdx < 3 ? rankMedals[rankIdx] : ('#' + (rankIdx + 1));
+        var thruTxt = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? (t('hole') + ' №' + stats.currentHole + ' · ' + stats.holesPlayed + '/' + holeCount) : '—');
+
+        html += '<div class="flb-player-card" style="background:rgba(19,34,24,0.85);border:1px solid var(--border);border-radius:var(--rs);padding:12px;margin-bottom:8px;">';
+
+        // Top Row: Rank, Player Name, Badges, To Par, Gross, Stbl
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;min-width:0;">';
+        html += '<span class="flb-rank" style="font-size:16px;font-weight:800;color:var(--gold);min-width:26px;text-align:center;">' + rankLabel + '</span>';
+        html += '<div><span style="font-weight:700;color:var(--white);font-size:14px;">' + escapeHtml(pName) + '</span> ' + pTeeBadge + pHcpBadge;
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruTxt + '</div></div>';
         html += '</div>';
 
-        // Накопительный to-par по ходу раунда (строка под плитками)
-        html += buildToParRowHTML(order, sc, 0, 'noscroll-grid').html;
+        html += '<div style="text-align:right;">';
+        html += '<div style="font-size:18px;font-weight:800;" class="' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</div>';
+        html += '<div style="font-size:11px;color:var(--muted);">Gross: <b>' + (stats.gross || 0) + '</b> · <span style="color:#2ecc71;font-weight:700;">' + stats.stablefordField + ' pt</span></div>';
+        html += '</div>';
+        html += '</div>';
 
-        html += '</div>'; // /sc-tabs-wrap
+        // Bottom Row: Hole-by-Hole Mini Visual Strip
+        html += '<div class="flb-hole-strip" style="display:flex;gap:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:4px 0;">';
+        order.forEach(function(h) {
+            var s = parseInt(sc[h]) || 0;
+            var par = holePar(h);
+            var cls = s > 0 ? holeResClass(s, par) : 'r-empty';
+            var isCur = (stats.currentHole === h && stats.holesPlayed < holeCount);
+            var stbl = s > 0 ? stablefordField(s, h, fieldHcp) : null;
+            var tip = '#' + h + ' (P' + par + '): ' + (s > 0 ? (s + (stbl !== null ? ' · ' + stbl + 'p' : '')) : '—');
 
-        // Totals
-        var totG = 0, parTotal = 0;
-        order.forEach(function(i) { var s = parseInt(sc[i]) || 0; if (s > 0) totG += s; parTotal += holePar(i); });
-
-        if (!compact) {
-            html += '<div class="noscroll-totals">';
-            html += '<span>' + (currentLang === 'en' ? 'Holes' : 'Лунки') + ': <b>' + stats.holesPlayed + '/' + holeCount + '</b></span>';
-            html += '<span>' + t('par') + ': <b>' + parTotal + '</b></span>';
-            html += '<span>' + t('total') + ': <b>' + (totG > 0 ? totG : '—') + '</b></span>';
-            html += '</div>';
-        }
+            html += '<div class="flb-mini-tile ' + cls + (isCur ? ' flb-cur' : '') + '" title="' + tip + '" style="flex:1;min-width:18px;height:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;font-size:9.5px;font-weight:700;">' +
+                '<span style="font-size:7.5px;opacity:0.75;line-height:1;">' + h + '</span>' +
+                '<span style="font-size:10px;line-height:1;font-weight:800;">' + (s > 0 ? s : '·') + '</span>' +
+                '</div>';
+        });
+        html += '</div>';
 
         html += '</div>';
     });
 
     html += '</div>';
-
     return html;
 }
 
@@ -4498,6 +4766,41 @@ function applySocialCardVariant(value) {
     try { localStorage.setItem('pestovo_social_card_variant', variant); } catch (e) {}
     try {
         if (typeof markAdmSocialCardVariantButtons === 'function') markAdmSocialCardVariantButtons();
+    } catch (e) {}
+    return variant;
+}
+
+// ==========================================
+// ОТОБРАЖЕНИЕ КАРТОЧКИ ГРУППОВОГО РАУНДА
+// ==========================================
+// Стиль единой карточки группового раунда на главной странице.
+// Варианты: '1' - Сводная матрица, '2' - Сравнительная таблица, '3' - Лидерборд флайта
+var GROUP_CARD_VARIANTS = ['1', '2', '3'];
+
+function normalizeGroupCardVariant(value) {
+    value = String(value === undefined || value === null ? '' : value);
+    return GROUP_CARD_VARIANTS.indexOf(value) !== -1 ? value : '1';
+}
+
+var pestovoGroupCardVariant = (function() {
+    try { return normalizeGroupCardVariant(localStorage.getItem('pestovo_group_card_variant')); } catch (e) {}
+    return '1';
+})();
+
+function getGroupCardVariant() {
+    return pestovoGroupCardVariant;
+}
+
+function applyGroupCardVariant(value) {
+    var variant = normalizeGroupCardVariant(value);
+    pestovoGroupCardVariant = variant;
+    try { localStorage.setItem('pestovo_group_card_variant', variant); } catch (e) {}
+    try {
+        if (typeof markAdmGroupCardVariantButtons === 'function') markAdmGroupCardVariantButtons();
+    } catch (e) {}
+    try {
+        if (typeof loadLiveRounds === 'function') loadLiveRounds();
+        if (typeof loadRecentResults === 'function') loadRecentResults();
     } catch (e) {}
     return variant;
 }
@@ -6150,6 +6453,13 @@ if (typeof db !== 'undefined') {
             var v = sn.val();
             if (SOCIAL_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoSocialCardVariant) {
                 applySocialCardVariant(String(v));
+            }
+        });
+        // Глобальный выбор стиля карточки группового раунда на главной.
+        db.ref('settings/group_round_card_variant').on('value', function(sn) {
+            var v = sn.val();
+            if (GROUP_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoGroupCardVariant) {
+                applyGroupCardVariant(String(v));
             }
         });
     } catch(e) {}

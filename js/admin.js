@@ -284,6 +284,7 @@ function openAdminPanel() {
     loadPageVisibilitySettings();
     loadStablefordDisplaySettings();
     loadSocialCardDisplaySettings();
+    loadGroupCardDisplaySettings();
     loadPrivacySettings();
     renderAssistantSources();
     loadAssistantSourcesFromFirebase();
@@ -326,6 +327,7 @@ function switchTab(t, b) {
         loadPageVisibilitySettings();
         loadStablefordDisplaySettings();
         loadSocialCardDisplaySettings();
+        loadGroupCardDisplaySettings();
     }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
@@ -1527,6 +1529,72 @@ function markAdmSocialCardVariantButtons() {
         if (!btn) return;
         btn.classList.toggle('social-card-variant-active', v === cur);
         btn.setAttribute('aria-pressed', v === cur ? 'true' : 'false');
+    });
+}
+
+// ==========================================
+// GROUP ROUND CARD DISPLAY MANAGEMENT
+// ==========================================
+// Вариант сохраняется глобально в settings/group_round_card_variant.
+// Выбор стиля единой карточки группового раунда для главной страницы.
+function loadGroupCardDisplaySettings() {
+    var applyValue = function(value) {
+        if (value !== null && value !== undefined && typeof applyGroupCardVariant === 'function') {
+            applyGroupCardVariant(value);
+        }
+        markAdmGroupCardVariantButtons();
+    };
+
+    if (typeof db === 'undefined') {
+        applyValue(null);
+        return;
+    }
+
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-group-card-variant', db.ref('settings/group_round_card_variant'), function(sn) {
+            applyValue(sn.val());
+        });
+    } else {
+        db.ref('settings/group_round_card_variant').once('value').then(function(sn) {
+            applyValue(sn.val());
+        }).catch(function() { applyValue(null); });
+    }
+}
+
+function saveGroupCardVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    if (typeof vib === 'function') vib(30);
+
+    if (typeof applyGroupCardVariant === 'function') applyGroupCardVariant(v);
+    else markAdmGroupCardVariantButtons();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Group card style saved locally' : 'Стиль групповой карточки сохранён локально', 'info');
+        return;
+    }
+
+    db.ref('settings/group_round_card_variant').set(v).then(function() {
+        toast(currentLang === 'en'
+            ? '✅ Group round card style saved for all users'
+            : '✅ Стиль карточки группового раунда сохранён для всех пользователей', 'success');
+    }).catch(function(err) {
+        console.warn('Group card variant save error:', err);
+        toast(currentLang === 'en'
+            ? 'Could not save the group card style to the cloud'
+            : '⚠️ Не удалось сохранить стиль групповой карточки в облако', 'error');
+    });
+}
+
+function markAdmGroupCardVariantButtons() {
+    var cur = (typeof getGroupCardVariant === 'function') ? getGroupCardVariant() : '1';
+    ['1', '2', '3'].forEach(function(v) {
+        var btn = document.getElementById('group-card-opt-' + v);
+        if (!btn) return;
+        var active = (v === cur);
+        btn.classList.toggle('btn-g', active);
+        btn.classList.toggle('btn-og', !active);
+        btn.classList.toggle('group-card-variant-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
 }
 

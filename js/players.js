@@ -5,6 +5,54 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function onAuthReady(u, d) { navAuth(u, d); }
 
+function playerOpenAttrs(id) {
+    return ' role="button" tabindex="0" data-player-id="' + escapeHtml(String(id || '')) + '" onclick="showPlayer(this.dataset.playerId)"';
+}
+
+function buildPlayerDisplayHTML(id, u, index, variant, roundsWord) {
+    var gIcon = u.gender === 'women' ? '👩' : '👨';
+    var guestBadge = u.isGuest ? '<span class="players-guest-badge">' + t('guest') + '</span>' : '';
+    var hcpInfo = (typeof getHcpSyncInfo === 'function') ? getHcpSyncInfo(u) : { ok: false };
+    var avatarHtml = fmtUserAvatar(u, variant === '3' ? 68 : (variant === '2' ? 44 : 52));
+    if (hcpInfo.ok && (typeof getHcpBadgeVariant === 'function' ? getHcpBadgeVariant() : '1') === '3') {
+        avatarHtml = hcpAvatarWrapHtml(avatarHtml, hcpInfo);
+    }
+    var name = escapeHtml(privacyDisplayName(u, id));
+    var hcp = u.handicap != null ? fmtExactHcp(u.handicap) : '—';
+    var rounds = u.roundsPlayed || 0;
+    var gross = u.bestGross || '—';
+    var stableford = u.bestStableford || '—';
+    var attrs = playerOpenAttrs(id);
+
+    if (variant === '2') {
+        return '<div class="player-layout-card player-layout-card-2 list-item"' + attrs + '>' +
+            '<div class="players-v2-avatar">' + avatarHtml + '</div>' +
+            '<div class="players-v2-main"><div class="players-v2-name">' + gIcon + ' ' + name + guestBadge + '</div>' +
+            '<div class="players-v2-meta">HCP: ' + hcp + (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') +
+            ' · ' + roundsWord + rounds + (u.bestGross ? ' · Gross: ' + u.bestGross : '') + '</div></div>' +
+            '<div class="players-v2-rounds"><b>' + rounds + '</b><span>' + (currentLang === 'en' ? 'rounds' : 'раундов') + '</span></div>' +
+            '</div>';
+    }
+
+    if (variant === '3') {
+        return '<div class="player-layout-card player-layout-card-3 card"' + attrs + '>' +
+            '<div class="players-v3-top"><span class="players-v3-rank">' + (index + 1 < 10 ? '0' : '') + (index + 1) + '</span>' + avatarHtml +
+            '<div class="players-v3-name-wrap"><div class="players-v3-name">' + gIcon + ' ' + name + guestBadge + '</div><div class="players-v3-hcp">HCP <b>' + hcp + '</b>' + (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') + '</div></div></div>' +
+            '<div class="players-v3-metrics"><div><span>' + (currentLang === 'en' ? 'Rounds' : 'Раунды') + '</span><b>' + rounds + '</b></div><div><span>Gross 18</span><b>' + gross + '</b></div><div><span>Stableford</span><b>' + stableford + '</b></div></div>' +
+            '<div class="players-v3-open"><i class="fas fa-arrow-up-right-from-square"></i> ' + (currentLang === 'en' ? 'Open profile' : 'Открыть профиль') + '</div>' +
+            '</div>';
+    }
+
+    // Вариант 1 — действующий вид карточек, оставленный по умолчанию.
+    return '<div class="card player-layout-card player-layout-card-1" style="cursor:pointer;"' + attrs + '>' +
+        '<div style="display:flex;align-items:center;gap:14px;">' + avatarHtml +
+        '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + name + guestBadge + '</div>' +
+        '<div style="font-size:12px;color:var(--muted);margin-top:4px;">HCP: ' + hcp +
+        (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') + ' · ' + roundsWord + rounds +
+        (u.bestGross ? ' · Gross (18h): ' + u.bestGross : '') + (u.bestStableford ? ' · Stableford (18h): ' + u.bestStableford : '') +
+        '</div></div></div></div>';
+}
+
 function loadPlayers() {
     bindRealtimeValue('players-list', db.ref('users'), function(sn) {
         var data = sn.val() || {};
@@ -90,31 +138,14 @@ function loadPlayers() {
         });
 
         var roundsWord = currentLang === 'en' ? 'Rounds: ' : 'Раундов: ';
+        var variant = (typeof getPlayersDisplayVariant === 'function') ? getPlayersDisplayVariant() : '1';
+        variant = (variant === '2' || variant === '3') ? variant : '1';
+        el.classList.remove('players-layout-1', 'players-layout-2', 'players-layout-3');
+        el.classList.add('players-layout-' + variant);
 
         var html = '';
-        entries.forEach(function(e) {
-            var id = e[0], u = e[1];
-            var gIcon = u.gender === 'women' ? '👩' : '👨';
-            var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">' + t('guest') + '</span>' : '';
-
-            // Статус синхронизации гандикапа: зелёная галочка + дата обновления
-            var hcpInfo = (typeof getHcpSyncInfo === 'function') ? getHcpSyncInfo(u) : { ok: false };
-            var avatarHtml = fmtUserAvatar(u, 52);
-            if (hcpInfo.ok && (typeof getHcpBadgeVariant === 'function' ? getHcpBadgeVariant() : '1') === '3') {
-                avatarHtml = hcpAvatarWrapHtml(avatarHtml, hcpInfo);
-            }
-
-            html += '<div class="card" style="cursor:pointer;" onclick="showPlayer(\'' + id + '\')">' +
-                '<div style="display:flex;align-items:center;gap:14px;">' +
-                avatarHtml +
-                '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + escapeHtml(privacyDisplayName(u, id)) + guestBadge + '</div>' +
-                '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-                'HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') +
-                (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') +
-                ' · ' + roundsWord + (u.roundsPlayed || 0) +
-                (u.bestGross ? ' · Gross (18h): ' + u.bestGross : '') +
-                (u.bestStableford ? ' · Stableford (18h): ' + u.bestStableford : '') +
-                '</div></div></div></div>';
+        entries.forEach(function(e, index) {
+            html += buildPlayerDisplayHTML(e[0], e[1], index, variant, roundsWord);
         });
 
         el.innerHTML = html;

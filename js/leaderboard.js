@@ -67,7 +67,9 @@ function loadLB() {
         try {
             entries.forEach(function(e) { try { html += renderRound(e[0], e[1]); } catch(err){} });
         } catch(e){}
-        try { el.innerHTML = '<div class="live-who-list">' + html + '</div>'; } catch(e){}
+        var displayVariant = (typeof getAllRoundsDisplayVariant === 'function') ? getAllRoundsDisplayVariant() : '1';
+        displayVariant = (displayVariant === '2' || displayVariant === '3') ? displayVariant : '1';
+        try { el.innerHTML = '<div class="live-who-list rounds-layout-' + displayVariant + '" data-display-variant="' + displayVariant + '">' + html + '</div>'; } catch(e){}
         try { restoreLbPanels(); } catch(e){}
     });
 }
@@ -244,7 +246,7 @@ function renderRound(id, r) {
     var panelId = 'lb-sc-' + id;
     var actions = '<div class="lwl-actions">' +
         '<button class="btn btn-og btn-sm" onclick="toggleLbScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
-        (!isLive
+        (r.status === 'completed'
             ? '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i> ' + (isEn ? 'Scorecard' : 'Счётная карточка') + '</button>' +
               '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>'
             : '') +

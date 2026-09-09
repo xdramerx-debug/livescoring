@@ -285,6 +285,7 @@ function openAdminPanel() {
     loadStablefordDisplaySettings();
     loadSocialCardDisplaySettings();
     loadGroupCardDisplaySettings();
+    loadPageDisplaySettings();
     loadPrivacySettings();
     renderAssistantSources();
     loadAssistantSourcesFromFirebase();
@@ -328,6 +329,7 @@ function switchTab(t, b) {
         loadStablefordDisplaySettings();
         loadSocialCardDisplaySettings();
         loadGroupCardDisplaySettings();
+        loadPageDisplaySettings();
     }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
@@ -1594,6 +1596,69 @@ function markAdmGroupCardVariantButtons() {
         btn.classList.toggle('btn-g', active);
         btn.classList.toggle('btn-og', !active);
         btn.classList.toggle('group-card-variant-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
+// ==========================================
+// ВАРИАНТЫ ОТОБРАЖЕНИЯ ОСНОВНЫХ СТРАНИЦ
+// ==========================================
+var ADMIN_PAGE_DISPLAY_CONFIG = {
+    players: { path: 'settings/players_display_variant', label: 'Игроки' },
+    stats: { path: 'settings/stats_display_variant', label: 'Статистика' },
+    rounds: { path: 'settings/all_rounds_display_variant', label: 'Все раунды' }
+};
+
+function loadPageDisplaySettings() {
+    Object.keys(ADMIN_PAGE_DISPLAY_CONFIG).forEach(function(page) {
+        var cfg = ADMIN_PAGE_DISPLAY_CONFIG[page];
+        var applyValue = function(value) {
+            if (value !== null && value !== undefined && typeof applyPageDisplayVariant === 'function') {
+                applyPageDisplayVariant(page, value);
+            }
+            markAdmPageDisplayVariantButtons(page);
+        };
+        if (typeof db === 'undefined') {
+            applyValue(null);
+        } else if (typeof bindRealtimeValue === 'function') {
+            bindRealtimeValue('admin-page-display-' + page, db.ref(cfg.path), function(sn) {
+                applyValue(sn.val());
+            });
+        } else {
+            db.ref(cfg.path).once('value').then(function(sn) { applyValue(sn.val()); }).catch(function() { applyValue(null); });
+        }
+    });
+}
+
+function savePageDisplayVariant(page, value) {
+    var cfg = ADMIN_PAGE_DISPLAY_CONFIG[page];
+    if (!cfg || ['1', '2', '3'].indexOf(String(value)) === -1) return;
+    value = String(value);
+    if (typeof vib === 'function') vib(30);
+    if (typeof applyPageDisplayVariant === 'function') applyPageDisplayVariant(page, value);
+    markAdmPageDisplayVariantButtons(page);
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Layout saved locally' : 'Вариант отображения сохранён локально', 'info');
+        return;
+    }
+    db.ref(cfg.path).set(value).then(function() {
+        toast(currentLang === 'en'
+            ? '✅ ' + cfg.label + ' layout saved for all users'
+            : '✅ Вариант отображения «' + cfg.label + '» сохранён для всех пользователей', 'success');
+    }).catch(function(err) {
+        console.warn('Page display variant save error:', err);
+        toast(currentLang === 'en' ? 'Could not save the layout' : '⚠️ Не удалось сохранить вариант отображения', 'error');
+    });
+}
+
+function markAdmPageDisplayVariantButtons(page) {
+    var cur = (typeof getPageDisplayVariant === 'function') ? getPageDisplayVariant(page) : '1';
+    ['1', '2', '3'].forEach(function(v) {
+        var btn = document.getElementById(page + '-display-opt-' + v);
+        if (!btn) return;
+        var active = v === cur;
+        btn.classList.toggle('page-display-variant-active', active);
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
 }

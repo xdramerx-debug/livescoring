@@ -10,6 +10,149 @@ function safeSetHTML(id, html) {
     if (el) el.innerHTML = html;
 }
 
+function statsDisplayVariant() {
+    var v = (typeof getStatsDisplayVariant === 'function') ? getStatsDisplayVariant() : '1';
+    return v === '2' || v === '3' ? v : '1';
+}
+
+function applyStatsHostVariant(variant) {
+    var host = document.getElementById('general-stats');
+    if (!host) return;
+    host.classList.remove('stats-grid', 'stats-variant-host', 'stats-variant-host-2', 'stats-variant-host-3');
+    if (variant === '1') host.classList.add('stats-grid');
+    else host.classList.add('stats-variant-host', 'stats-variant-host-' + variant);
+}
+
+function renderGeneralStatsDisplay(items, variant) {
+    var html = '';
+    if (variant === '2') {
+        html = '<div class="stats-summary-grid stats-summary-grid-2">';
+        items.forEach(function(item) {
+            html += '<div class="stats-summary-item"><span><i class="fas ' + item.icon + '"></i> ' + item.label + '</span><b>' + item.value + '</b></div>';
+        });
+        return html + '</div>';
+    }
+    if (variant === '3') {
+        html = '<div class="stats-dashboard stats-dashboard-3">';
+        items.slice(0, 4).forEach(function(item, index) {
+            html += '<div class="stats-dashboard-feature feature-' + index + '"><i class="fas ' + item.icon + '"></i><span>' + item.label + '</span><b>' + item.value + '</b></div>';
+        });
+        html += '<div class="stats-dashboard-mini">';
+        items.slice(4).forEach(function(item) {
+            html += '<div><i class="fas ' + item.icon + '"></i><span>' + item.label + '</span><b>' + item.value + '</b></div>';
+        });
+        return html + '</div></div>';
+    }
+    items.forEach(function(item) {
+        html += '<div class="stat"><i class="fas ' + item.icon + '"></i><div class="stat-n">' + item.value + '</div><div class="stat-l">' + item.label + '</div></div>';
+    });
+    return html;
+}
+
+function renderTopPlayersDisplay(players, langIsEn, variant) {
+    if (!players.length) {
+        return '<div class="empty"><i class="fas fa-users"></i><p>' + (langIsEn ? 'No completed 18-hole rounds yet' : 'Нет завершённых раундов (18 лунок)') + '</p></div>';
+    }
+    function fullRoundsLabel(n) {
+        if (langIsEn) return n === 1 ? 'full round' : 'full rounds';
+        var mod10 = n % 10, mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return 'полный раунд';
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'полных раунда';
+        return 'полных раундов';
+    }
+    function placeLabel(i) {
+        if (!langIsEn) return (i + 1) + ' место';
+        return i === 0 ? '1st place' : i === 1 ? '2nd place' : i === 2 ? '3rd place' : (i + 1) + 'th place';
+    }
+    function playerName(p) {
+        var n = typeof privacyDisplayName === 'function' ? privacyDisplayName(p, p.pid) : (p.name || '—');
+        return typeof escapeHtml === 'function' ? escapeHtml(n) : n;
+    }
+
+    if (variant === '2') {
+        var table = '<div class="stats-top-table"><div class="stats-top-table-head"><span>#</span><span>' + (langIsEn ? 'Player' : 'Игрок') + '</span><span>' + (langIsEn ? 'Avg gross' : 'Средний gross') + '</span><span>Stableford</span><span>' + (langIsEn ? 'Rounds' : 'Раунды') + '</span></div>';
+        players.slice(0, 10).forEach(function(p, i) {
+            table += '<div class="stats-top-table-row"><b>' + (i + 1) + '</b><strong>' + playerName(p) + '</strong><span>' + p.avg.toFixed(1) + '</span><span>' + p.avgStbl.toFixed(1) + '</span><span>' + p.count + '</span></div>';
+        });
+        return table + '</div>';
+    }
+
+    if (variant === '3') {
+        var podium = '<div class="stats-podium">';
+        players.slice(0, 3).forEach(function(p, i) {
+            var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+            podium += '<div class="stats-podium-card podium-' + (i + 1) + '"><span class="stats-podium-medal">' + medal + '</span><strong>' + playerName(p) + '</strong><b>' + p.avg.toFixed(1) + '</b><small>' + (langIsEn ? 'avg gross · ' : 'средний gross · ') + p.count + ' ' + fullRoundsLabel(p.count) + '</small></div>';
+        });
+        podium += '</div><div class="stats-rank-list">';
+        players.slice(3, 10).forEach(function(p, i) {
+            podium += '<div class="stats-rank-row"><b>' + (i + 4) + '</b><span>' + playerName(p) + '</span><strong>' + p.avg.toFixed(1) + '</strong><em>' + p.avgStbl.toFixed(1) + ' Stb</em></div>';
+        });
+        return podium + '</div>';
+    }
+
+    var html = '';
+    players.slice(0, 10).forEach(function(p, i) {
+        var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+        html += '<div class="list-item"><span><strong style="color:var(--white);">' + medal + (medal ? ' ' : '') + placeLabel(i) + ' ' + playerName(p) + '</strong></span>' +
+            '<span>' + (langIsEn ? 'Avg: ' : 'Средний: ') + '<b style="color:var(--gold);">' + p.avg.toFixed(1) + '</b> · Stableford: <b style="color:var(--gold);">' + p.avgStbl.toFixed(1) + '</b> · ' + p.count + ' ' + fullRoundsLabel(p.count) + '</span></div>';
+    });
+    return html;
+}
+
+function renderStatsRecordsDisplay(records, variant) {
+    if (variant === '2') {
+        return '<div class="stats-record-grid">' + records.map(function(r) {
+            return '<div class="stats-record-chip"><span>' + r.label + '</span><b>' + r.value + '</b></div>';
+        }).join('') + '</div>';
+    }
+    if (variant === '3') {
+        return '<div class="stats-record-dashboard">' + records.slice(0, 3).map(function(r, i) {
+            return '<div class="stats-record-feature feature-' + i + '"><i class="fas ' + r.icon + '"></i><span>' + r.label + '</span><b>' + r.value + '</b></div>';
+        }).join('') + '<div class="stats-record-secondary">' + records.slice(3).map(function(r) {
+            return '<div><span>' + r.label + '</span><b>' + r.value + '</b></div>';
+        }).join('') + '</div></div>';
+    }
+    return records.map(function(r) {
+        return '<div class="list-item"><span>' + r.label + '</span><strong>' + r.value + '</strong></div>';
+    }).join('');
+}
+
+function renderHoleDifficultyVariant(holeScores, variant, langIsEn) {
+    var rows = [];
+    for (var h = 1; h <= 18; h++) {
+        var item = holeScores[h] || { sum: 0, count: 0 };
+        var par = typeof holePar === 'function' ? holePar(h) : 4;
+        var avg = item.count ? item.sum / item.count : null;
+        rows.push({ hole: h, par: par, avg: avg, diff: avg === null ? null : avg - par, count: item.count });
+    }
+    var played = rows.filter(function(r) { return r.avg !== null; });
+    var hardest = played.slice().sort(function(a, b) { return b.diff - a.diff; }).slice(0, 3);
+    var easiest = played.slice().sort(function(a, b) { return a.diff - b.diff; }).slice(0, 3);
+    var fmtDiff = function(d) { return d === null ? '—' : (d > 0 ? '+' : '') + d.toFixed(1); };
+    var holeLabel = langIsEn ? 'Hole' : 'Лунка';
+    var avgLabel = langIsEn ? 'Average' : 'Средний';
+    var countLabel = langIsEn ? 'Scores' : 'Счётов';
+
+    if (variant === '3') {
+        var html3 = '<div class="hole-difficulty-dashboard"><div class="hole-difficulty-highlights"><div><h4>🔥 ' + (langIsEn ? 'Hardest' : 'Самые сложные') + '</h4>';
+        hardest.forEach(function(r) { html3 += '<span class="hole-highlight hard">' + holeLabel + ' ' + r.hole + ' <b>' + fmtDiff(r.diff) + '</b></span>'; });
+        html3 += '</div><div><h4>✅ ' + (langIsEn ? 'Easiest' : 'Самые лёгкие') + '</h4>';
+        easiest.forEach(function(r) { html3 += '<span class="hole-highlight easy">' + holeLabel + ' ' + r.hole + ' <b>' + fmtDiff(r.diff) + '</b></span>'; });
+        html3 += '</div></div><div class="hole-difficulty-bars">';
+        rows.forEach(function(r) {
+            var width = r.diff === null ? 0 : Math.min(100, Math.max(8, 50 + r.diff * 35));
+            html3 += '<div class="hole-bar-row"><span>' + r.hole + '</span><div><i style="width:' + width + '%"></i></div><b>' + fmtDiff(r.diff) + '</b></div>';
+        });
+        return html3 + '</div></div>';
+    }
+
+    var html2 = '<div class="hole-difficulty-table"><div class="hole-difficulty-table-head"><span>' + holeLabel + '</span><span>' + (langIsEn ? 'Par' : 'Пар') + '</span><span>' + avgLabel + '</span><span>±Par</span><span>' + countLabel + '</span></div>';
+    rows.forEach(function(r) {
+        html2 += '<div class="hole-difficulty-table-row"><b>' + r.hole + '</b><span>' + r.par + '</span><span>' + (r.avg === null ? '—' : r.avg.toFixed(1)) + '</span><strong class="' + (r.diff !== null && r.diff > 0 ? 'hole-over' : 'hole-under') + '">' + fmtDiff(r.diff) + '</strong><small>' + r.count + '</small></div>';
+    });
+    return html2 + '</div>';
+}
+
 function loadStats() {
     if (typeof db === 'undefined') {
         safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-wifi-slash"></i><p>' + (typeof t === 'function' ? t('offline_title') : 'Нет соединения') + '</p></div>');
@@ -156,17 +299,21 @@ function loadStats() {
         var lGroup = langIsEn ? 'Group Rounds' : 'Групповых';
         var lHoles = langIsEn ? 'Holes Played' : 'Лунок сыграно';
 
-        safeSetHTML('general-stats',
-            '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + totalRounds + '</div><div class="stat-l">' + lTotalRounds + '</div></div>' +
-            '<div class="stat"><i class="fas fa-circle-play"></i><div class="stat-n">' + active + '</div><div class="stat-l">' + lActiveRounds + '</div></div>' +
-            '<div class="stat"><i class="fas fa-check-circle"></i><div class="stat-n">' + completed + '</div><div class="stat-l">' + lCompletedRounds + '</div></div>' +
-            '<div class="stat"><i class="fas fa-users"></i><div class="stat-n">' + totalPlayers + '</div><div class="stat-l">' + lPlayers + '</div></div>' +
-            '<div class="stat"><i class="fas fa-user"></i><div class="stat-n">' + soloCount + '</div><div class="stat-l">' + lSolo + '</div></div>' +
-            '<div class="stat"><i class="fas fa-user-group"></i><div class="stat-n">' + groupCount + '</div><div class="stat-l">' + lGroup + '</div></div>' +
-            '<div class="stat"><i class="fas fa-fire"></i><div class="stat-n">' + birdies + '</div><div class="stat-l">Birdies</div></div>' +
-            '<div class="stat"><i class="fas fa-bolt"></i><div class="stat-n">' + eagles + '</div><div class="stat-l">Eagles</div></div>' +
-            '<div class="stat"><i class="fas fa-circle-dot"></i><div class="stat-n">' + hio + '</div><div class="stat-l">Hole-in-One</div></div>' +
-            '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHoles + '</div><div class="stat-l">' + lHoles + '</div></div>');
+        var variant = statsDisplayVariant();
+        applyStatsHostVariant(variant);
+        var generalItems = [
+            { icon: 'fa-flag', value: totalRounds, label: lTotalRounds },
+            { icon: 'fa-circle-play', value: active, label: lActiveRounds },
+            { icon: 'fa-check-circle', value: completed, label: lCompletedRounds },
+            { icon: 'fa-users', value: totalPlayers, label: lPlayers },
+            { icon: 'fa-user', value: soloCount, label: lSolo },
+            { icon: 'fa-user-group', value: groupCount, label: lGroup },
+            { icon: 'fa-fire', value: birdies, label: 'Birdies' },
+            { icon: 'fa-bolt', value: eagles, label: 'Eagles' },
+            { icon: 'fa-circle-dot', value: hio, label: 'Hole-in-One' },
+            { icon: 'fa-golf-ball-tee', value: totalHoles, label: lHoles }
+        ];
+        safeSetHTML('general-stats', renderGeneralStatsDisplay(generalItems, variant));
 
         var sortedByAvg = Object.values(playerRounds).map(function(p) {
             return {
@@ -183,54 +330,31 @@ function loadStats() {
         var topEl = document.getElementById('top-players');
 
         if (topEl) {
-            if (sortedByAvg.length === 0) {
-                topEl.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>' + (langIsEn ? 'No completed 18-hole rounds yet' : 'Нет завершённых раундов (18 лунок)') + '</p></div>';
-            } else {
-                var thtml = '';
-                var avgWord = langIsEn ? 'Avg: ' : 'Средний: ';
-                function fullRoundsLabel(n) {
-                    if (langIsEn) return n === 1 ? 'full round' : 'full rounds';
-                    var mod10 = n % 10, mod100 = n % 100;
-                    if (mod10 === 1 && mod100 !== 11) return 'полный раунд';
-                    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'полных раунда';
-                    return 'полных раундов';
-                }
-                sortedByAvg.slice(0, 10).forEach(function(p, i) {
-                    var place = i + 1;
-                    var placeLabel = langIsEn
-                        ? (i === 0 ? '1st place' : i === 1 ? '2nd place' : i === 2 ? '3rd place' : place + 'th place')
-                        : place + ' место';
-                    var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
-                    var displayName = (typeof privacyDisplayName === 'function' ? privacyDisplayName(p, p.pid) : (p.name || '—'));
-                    thtml += '<div class="list-item">' +
-                        '<span><strong style="color:var(--white);">' + medal + (medal ? ' ' : '') + placeLabel + ' ' + (typeof escapeHtml === 'function' ? escapeHtml(displayName) : displayName) + '</strong></span>' +
-                        '<span>' + avgWord + '<b style="color:var(--gold);">' + p.avg.toFixed(1) + '</b> · Stableford: <b style="color:var(--gold);">' + p.avgStbl.toFixed(1) + '</b> · ' + p.count + ' ' + fullRoundsLabel(p.count) + '</span>' +
-                        '</div>';
-                });
-                topEl.innerHTML = thtml;
-            }
+            topEl.innerHTML = renderTopPlayersDisplay(sortedByAvg, langIsEn, variant);
         }
 
         var lBestGross18 = langIsEn ? '🏆 Best Gross (18 holes)' : '🏆 Лучший gross (18 лунок)';
         var lBestStbl18 = langIsEn ? '⭐ Best Stableford (18 holes)' : '⭐ Лучший stableford (18 лунок)';
         var lFastest18 = langIsEn ? '⏱️ Fastest Round (18 holes)' : '⏱️ Самый быстрый раунд (18 лунок)';
 
-        safeSetHTML('club-records',
-            '<div class="list-item"><span>' + lBestGross18 + '</span>' +
-            '<strong>' + (bestGross < Infinity ? bestGross + ' (' + (typeof escapeHtml === 'function' ? escapeHtml(bestGrossPlayer) : bestGrossPlayer) + ')' : '—') + '</strong></div>' +
-            '<div class="list-item"><span>' + lBestStbl18 + '</span>' +
-            '<strong>' + (bestStableford > 0 ? bestStableford + ' (' + (typeof escapeHtml === 'function' ? escapeHtml(bestStablefordPlayer) : bestStablefordPlayer) + ')' : '—') + '</strong></div>' +
-            '<div class="list-item"><span>' + lFastest18 + '</span>' +
-            '<strong>' + fastestStr + (fastestPlayer !== '—' ? ' (' + (typeof escapeHtml === 'function' ? escapeHtml(fastestPlayer) : fastestPlayer) + ')' : '') + '</strong></div>' +
-            '<div class="list-item"><span>🎯 Hole-in-One</span><strong>' + hio + '</strong></div>' +
-            '<div class="list-item"><span>🦅 Eagles</span><strong>' + eagles + '</strong></div>' +
-            '<div class="list-item"><span>🐦 Birdies</span><strong>' + birdies + '</strong></div>' +
-            '<div class="list-item"><span>✅ Pars</span><strong>' + pars + '</strong></div>');
+        var records = [
+            { icon: 'fa-trophy', label: lBestGross18, value: bestGross < Infinity ? bestGross + ' (' + (typeof escapeHtml === 'function' ? escapeHtml(bestGrossPlayer) : bestGrossPlayer) + ')' : '—' },
+            { icon: 'fa-star', label: lBestStbl18, value: bestStableford > 0 ? bestStableford + ' (' + (typeof escapeHtml === 'function' ? escapeHtml(bestStablefordPlayer) : bestStablefordPlayer) + ')' : '—' },
+            { icon: 'fa-stopwatch', label: lFastest18, value: fastestStr + (fastestPlayer !== '—' ? ' (' + (typeof escapeHtml === 'function' ? escapeHtml(fastestPlayer) : fastestPlayer) + ')' : '') },
+            { icon: 'fa-bullseye', label: '🎯 Hole-in-One', value: hio },
+            { icon: 'fa-bolt', label: '🦅 Eagles', value: eagles },
+            { icon: 'fa-fire', label: '🐦 Birdies', value: birdies },
+            { icon: 'fa-circle-check', label: '✅ Pars', value: pars }
+        ];
+        safeSetHTML('club-records', renderStatsRecordsDisplay(records, variant));
 
         var holeHeader = (typeof t === 'function' ? t('hole') : 'Hole');
         var parHeader = (typeof t === 'function' ? t('par') : 'Par');
         var avgHeader = langIsEn ? 'Average' : 'Средний';
 
+        if (variant !== '1') {
+            safeSetHTML('hole-difficulty', renderHoleDifficultyVariant(holeScores, variant, langIsEn));
+        } else {
         var pOut = 0, pIn = 0;
         var sumOut = 0, countOut = 0;
         var sumIn = 0, countIn = 0;
@@ -323,6 +447,7 @@ function loadStats() {
         hHtml += '<div class="msc-tile msc-tot-idx" style="' + colorTotStyle + '">' + totDiffStr + '</div>';
         hHtml += '</div></div>';
         safeSetHTML('hole-difficulty', hHtml);
+        }
     }).catch(function(err){
         console.error('[stats] load failed', err);
         safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-triangle-exclamation"></i><p>Ошибка загрузки статистики</p></div>');

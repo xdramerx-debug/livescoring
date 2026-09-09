@@ -51,6 +51,27 @@ document.addEventListener('DOMContentLoaded', function() {
         inp.addEventListener('input', function() { inp.classList.remove('is-invalid'); });
     });
 
+    if (typeof initPlayerSearchAutofill === 'function' && document.getElementById('reg-name')) {
+        initPlayerSearchAutofill({
+            searchInputId: 'reg-name',
+            onSelect: function(matchedUser) {
+                var nm = document.getElementById('reg-name');
+                var hcp = document.getElementById('reg-hcp');
+                var gd = document.getElementById('reg-gender');
+                var parts = (typeof resolvePlayerNameParts === 'function')
+                    ? resolvePlayerNameParts(matchedUser)
+                    : matchedUser;
+                if (nm) {
+                    nm.value = ((parts.firstName || '') + ' ' + (parts.lastName || '')).trim() || matchedUser.name || '';
+                }
+                if (hcp && matchedUser.handicap != null && typeof fmtExactHcp === 'function') {
+                    hcp.value = fmtExactHcp(matchedUser.handicap);
+                }
+                if (gd && matchedUser.gender) gd.value = matchedUser.gender;
+            }
+        });
+    }
+
     document.getElementById('login-form').addEventListener('submit', function(e) {
         e.preventDefault();
         var emInp = document.getElementById('login-email');

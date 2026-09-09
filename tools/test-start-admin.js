@@ -303,5 +303,11 @@ var rowsDup = [
 ];
 eq(sandbox.psDedupeExcelRows(rowsDup).length, 2, 'excel: дедуп строк одного человека с разных листов');
 
+// ── Название турнира пишется в раунд (для баннера и главной) ──
+const startSrc = fs.readFileSync(__dirname + '/../js/start-admin.js', 'utf8');
+eq(startSrc.indexOf('tournamentName: proto.tournamentName || \'\'') !== -1, true, 'save: roundData содержит tournamentName');
+eq(startSrc.indexOf("sets['rounds/' + rid + '/tournamentName']") !== -1, true, 'edit save: tournamentName обновляется в раунде');
+eq(typeof sandbox.psAttachPlayerAutofill, 'function', 'autofill: psAttachPlayerAutofill определена');
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nAll tests passed ✔');
 process.exit(failures ? 1 : 0);

@@ -1584,6 +1584,10 @@ function loadPageVisibilitySettings() {
             if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
         });
     }
+
+    // Подсветка активного стиля галочки гандикапа (значение из localStorage,
+    // актуализируется listener'ом utils.js из Firebase)
+    if (typeof markAdmHcpVariantButtons === 'function') markAdmHcpVariantButtons();
 }
 
 function savePageVisibilitySettings() {
@@ -1657,6 +1661,41 @@ function toggleToolsMenuCheckbox(event) {
 
 function toggleMyPreferencesCheckbox(event) {
     togglePVCheckbox('pv-my-preferences', event);
+}
+
+// ==========================================
+// СТИЛЬ ГАЛОЧКИ ГАНДИКАПА (глобально, для всех игроков)
+// Вариант 1/2/3 хранится в Firebase settings/hcp_badge_variant.
+// utils.js подписан на это поле и сам перерисовывает списки.
+// ==========================================
+function saveHcpBadgeVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    if (typeof vib === 'function') vib(30);
+
+    // Применяем мгновенно локально: перерисовка списков + подсветка кнопок
+    if (typeof applyHcpBadgeVariant === 'function') applyHcpBadgeVariant(v);
+    else markAdmHcpVariantButtons();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Style saved locally (no cloud connection)' : 'Стиль сохранён локально (нет связи с облаком)', 'info');
+        return;
+    }
+    db.ref('settings/hcp_badge_variant').set(v).then(function() {
+        toast(currentLang === 'en' ? '✅ Handicap checkmark style saved for all players' : '✅ Стиль галочки гандикапа сохранён для всех игроков', 'success');
+    }).catch(function(err) {
+        console.warn('HCP badge variant save error:', err);
+        toast(currentLang === 'en' ? 'Could not save the style to the cloud' : '⚠️ Не удалось сохранить стиль в облако', 'error');
+    });
+}
+
+// Подсветка выбранного стиля галочки гандикапа в кнопках админ-панели.
+function markAdmHcpVariantButtons() {
+    var cur = (typeof getHcpBadgeVariant === 'function') ? getHcpBadgeVariant() : '1';
+    ['1', '2', '3'].forEach(function(v) {
+        var btn = document.getElementById('hcp-badge-opt-' + v);
+        if (!btn) return;
+        btn.classList.toggle('hcp-variant-active', v === cur);
+    });
 }
 
 function toggleAssistantPageHidden(event) {
@@ -1822,7 +1861,7 @@ function loadAdmPlayers() {
             html += '<div style="flex:1;min-width:200px;">';
             html += '<strong style="color:var(--white);">' + gIcon + ' ' + escapeHtml(u.name || '—') + guestBadge + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">';
-            html += escapeHtml(u.email || (currentLang === 'en' ? 'No email' : 'Без email')) + ' · HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + roundsStr + (u.roundsPlayed || 0);
+            html += escapeHtml(u.email || (currentLang === 'en' ? 'No email' : 'Без email')) + ' · HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') + roundsStr + (u.roundsPlayed || 0);
             html += '</div></div>';
 
             html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';

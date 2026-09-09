@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.16.0';
+const CACHE_NAME = 'pestovo-v1.41.0';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
@@ -6,13 +6,21 @@ const STATIC_ASSETS = [
     'guide.html', 'feed.html', 'predictor.html', 'order-of-merit.html', 'tv.html',
     'players.html', 'tournaments.html', 'stats.html', 'handicap.html',
     'admin.html', 'auth.html', 'scorer.html', 'marker.html', 'offline.html',
-    'manifest.json', 'css/style.css?v=4', 'js/firebase-config.js', 'js/utils.js?v=22',
-    'js/auth.js', 'js/app.js?v=4', 'js/live.js?v=17', 'js/solo.js?v=18',
-    'js/leaderboard.js', 'js/players.js', 'js/tournaments.js',
-    'js/stats.js', 'js/handicap.js', 'js/admin.js?v=15', 'js/scorer.js',
-    'js/marker.js', 'js/guide.js', 'js/feed.js', 'js/predictor.js',
-    'js/order-of-merit.js', 'js/pwa.js', 'img/logo.png',
-    'img/icon-192.png', 'img/icon-512.png', 'img/icon-180.png'
+    'assistant.html', 'design-preview.html',
+    'manifest.json', 'css/style.css?v=24', 'css/assistant.css?v=2',
+    'css/design-presets.css?v=1',
+    'js/firebase-config.js?v=2', 'js/utils.js?v=43', 'js/name-variants.js?v=1',
+    'js/design-system.js?v=1', 'js/design-admin.js?v=2', 'js/design-preview.js?v=1',
+    'js/auth.js', 'js/app.js?v=14', 'js/live.js?v=24', 'js/solo.js?v=24',
+    'js/leaderboard.js?v=6', 'js/players.js?v=3', 'js/tournaments.js?v=4',
+    'js/stats.js?v=3', 'js/handicap.js', 'js/admin.js?v=31', 'js/scorer.js?v=3',
+    'js/marker.js?v=2', 'js/guide.js', 'js/feed.js?v=2', 'js/predictor.js',
+    'js/order-of-merit.js?v=3', 'js/pwa.js?v=2', 'js/start-admin.js?v=5', 'js/qr-start.js?v=2', 'qr-start.html',
+    'js/assistant-config.js', 'js/assistant-build.js?v=2', 'js/assistant.js?v=2',
+    'docs/assistant-index.json', 'docs/assistant-sources.json',
+    'docs/pravila-pestovo.pdf',
+    'vendor/pdfjs/pdf.min.js', 'vendor/pdfjs/pdf.worker.min.js',
+    'img/logo.png', 'img/icon-192.png', 'img/icon-512.png', 'img/icon-180.png'
 ];
 
 self.addEventListener('install', function(event) {

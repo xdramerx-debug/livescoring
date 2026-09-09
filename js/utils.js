@@ -50,7 +50,20 @@ function holeResName(s,p){
     if(d===2)return t('res_double');
     return '+'+d;
 }
-function toast(m,toastType){toastType=toastType||'success';var e=document.createElement('div');e.className='toast t-'+toastType;e.innerHTML=m;document.body.appendChild(e);setTimeout(function(){e.classList.add('t-show');},10);setTimeout(function(){e.classList.remove('t-show');setTimeout(function(){e.remove();},300);},4000);}
+function toast(m,toastType){
+    toastType=toastType||'success';
+    try {
+        if (typeof document === 'undefined' || !document.body) return;
+        var e=document.createElement('div');
+        e.className='toast t-'+toastType;
+        e.setAttribute('role','status');
+        e.setAttribute('aria-live','polite');
+        e.innerHTML=m;
+        document.body.appendChild(e);
+        setTimeout(function(){e.classList.add('t-show');},10);
+        setTimeout(function(){e.classList.remove('t-show');setTimeout(function(){try{e.remove();}catch(_){}},300);},4000);
+    } catch(err) { try{ console.log('[toast]', m); }catch(_){} }
+}
 function isPlayerModeEnabled(key){
     try { return localStorage.getItem(key) === '1'; } catch(e) { return false; }
 }
@@ -70,8 +83,46 @@ function vib(pattern){
     }
     try { navigator.vibrate(value); } catch(e) {}
 }
-function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'ru-RU',{day:'2-digit',month:'short',year:'numeric'});}
-function fmtTime(ts){if(!ts)return'—';var d=new Date(ts),h=d.getHours(),m=d.getMinutes();return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
+function fmtDate(ts){
+    if(!ts)return'—';
+    var lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'ru';
+    try {
+        return new Date(ts).toLocaleDateString(lang === 'en' ? 'en-US' : 'ru-RU',{day:'2-digit',month:'short',year:'numeric'});
+    } catch(e) {
+        var d=new Date(ts); return (d.getDate()<10?'0':'')+d.getDate()+'.'+((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1)+'.'+d.getFullYear();
+    }
+}
+function fmtTime(ts){
+    if(!ts)return'—';
+    try {
+        var d=new Date(ts),h=d.getHours(),m=d.getMinutes();
+        return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+    } catch(e){ return '—'; }
+}
+
+// Сравнивает дату раунда с текущим локальным днём. Старые записи могли
+// хранить timestamp в секундах, поэтому принимаем оба формата.
+function normalizeTimestampMs(ts) {
+    if (ts instanceof Date) return ts.getTime() || 0;
+    var value = Number(ts);
+    if (!isFinite(value) || value <= 0) {
+        value = (typeof ts === 'string') ? Date.parse(ts) : 0;
+    }
+    if (value > 0 && value < 100000000000) value *= 1000;
+    return isFinite(value) && value > 0 ? value : 0;
+}
+
+function isTodayTimestamp(ts, nowTs) {
+    var value = normalizeTimestampMs(ts);
+    if (!value) return false;
+    var current = new Date(normalizeTimestampMs(nowTs || Date.now()));
+    var date = new Date(value);
+    return !isNaN(date.getTime()) && !isNaN(current.getTime()) &&
+        date.getFullYear() === current.getFullYear() &&
+        date.getMonth() === current.getMonth() &&
+        date.getDate() === current.getDate();
+}
+
 function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
 function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
 function escapeHtml(str){
@@ -101,12 +152,272 @@ function bindRealtimeValue(key, firebaseRef, render) {
     }
 }
 
+// ==========================================
+// ФИЛЬТР ПО ДАТАМ (общий для списков раундов)
+// Период задаётся парой input[type=date]: «Дата с» включается с 00:00:00.000,
+// «Дата по» — по 23:59:59.999 того же дня, чтобы вечерние раунды последнего
+// дня периода тоже попадали в выборку.
+// ==========================================
+var DATE_RANGE_PRESETS = ['today', '7d', '30d', 'month', 'year', 'all'];
+
+function dateInputToStartTs(value) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value === null || value === undefined ? '' : value).trim());
+    if (!m) return null;
+    var ts = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0).getTime();
+    return isNaN(ts) ? null : ts;
+}
+
+function dateInputToEndTs(value) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value === null || value === undefined ? '' : value).trim());
+    if (!m) return null;
+    var ts = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999).getTime();
+    return isNaN(ts) ? null : ts;
+}
+
+// Timestamp -> значение для input[type=date] в локальной таймзоне пользователя.
+function tsToDateInputValue(ts) {
+    if (!ts) return '';
+    var d = new Date(ts), mo = d.getMonth() + 1, da = d.getDate();
+    return d.getFullYear() + '-' + (mo < 10 ? '0' : '') + mo + '-' + (da < 10 ? '0' : '') + da;
+}
+
+// Дата раунда для фильтра: время старта, а у старых записей без startTime — создание.
+function getRoundFilterTs(r) {
+    if (!r || typeof r !== 'object') return 0;
+    return Number(r.startTime) || Number(r.createdAt) || 0;
+}
+
+// Быстрые пресеты периода. 'all' — пустые границы (без ограничения).
+function datePresetRange(presetId) {
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var from = null;
+    if (presetId === 'today') from = today;
+    else if (presetId === '7d') from = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+    else if (presetId === '30d') from = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29);
+    else if (presetId === 'month') from = new Date(today.getFullYear(), today.getMonth(), 1);
+    else if (presetId === 'year') from = new Date(today.getFullYear(), 0, 1);
+    if (!from) return { from: '', to: '' };
+    return { from: tsToDateInputValue(from.getTime()), to: tsToDateInputValue(today.getTime()) };
+}
+
+// Текущее состояние фильтра: границы в мс + признак некорректного ввода.
+function readDateRange(fromEl, toEl) {
+    var fromValue = fromEl ? (fromEl.value || '') : '';
+    var toValue = toEl ? (toEl.value || '') : '';
+    var from = fromValue ? dateInputToStartTs(fromValue) : null;
+    var to = toValue ? dateInputToEndTs(toValue) : null;
+    var invalid = (from !== null && to !== null && from > to);
+    return {
+        from: from, to: to, fromValue: fromValue, toValue: toValue,
+        invalid: invalid,
+        active: !invalid && (from !== null || to !== null)
+    };
+}
+
+// Фильтрация пар [id, round] по периоду. Раунды без даты в выборку не попадают.
+function filterEntriesByDateRange(entries, range) {
+    if (!range || !range.active) return entries.slice();
+    return entries.filter(function(e) {
+        var ts = getRoundFilterTs(e && e[1]);
+        if (!ts) return false;
+        if (range.from !== null && ts < range.from) return false;
+        if (range.to !== null && ts > range.to) return false;
+        return true;
+    });
+}
+
+// Сводка «сколько раундов за период» над списком.
+function renderRoundsPeriodSummary(el, range, count, total) {
+    if (!el) return;
+    var isEn = currentLang === 'en';
+    var html = '<i class="fas fa-calendar-check"></i> ';
+    if (range && range.active) {
+        var fromTxt = range.from !== null ? fmtDate(range.from) : (isEn ? 'the beginning' : 'с начала');
+        var toTxt = range.to !== null ? fmtDate(range.to) : (isEn ? 'today' : 'сегодня');
+        html += '<span class="rs-period">' + escapeHtml(fromTxt + ' — ' + toTxt) + '</span>' +
+                '<span class="rs-sep">·</span>' + t('rounds_found_label') + ': <b>' + count + '</b>';
+        if (typeof total === 'number' && total !== count) {
+            html += ' <span class="rs-dim">' + (isEn ? 'of' : 'из') + ' ' + total + '</span>';
+        }
+    } else {
+        html += t('rounds_total_label') + ': <b>' + count + '</b>';
+    }
+    el.innerHTML = html;
+}
+
+var dateRangeFilters = Object.create(null);
+
+// Подключение виджета «дата с / дата по» к списку.
+// cfg: { key, fromId, toId, presetsId, resetId, hintId, summaryId, onChange }
+function initDateRangeFilter(cfg) {
+    if (!cfg) return null;
+    var fromEl = document.getElementById(cfg.fromId);
+    var toEl = document.getElementById(cfg.toId);
+    if (!fromEl || !toEl) return null;
+    var presetsEl = cfg.presetsId ? document.getElementById(cfg.presetsId) : null;
+    var resetEl = cfg.resetId ? document.getElementById(cfg.resetId) : null;
+    var hintEl = cfg.hintId ? document.getElementById(cfg.hintId) : null;
+    var storeKey = 'pestovo_date_filter_' + cfg.key;
+
+    function persist() {
+        try {
+            localStorage.setItem(storeKey, JSON.stringify({ from: fromEl.value || '', to: toEl.value || '' }));
+        } catch (e) {}
+    }
+
+    // Какой пресет соответствует текущим границам ('' — произвольный период).
+    function activePreset() {
+        var r = readDateRange(fromEl, toEl);
+        if (!r.fromValue && !r.toValue) return 'all';
+        for (var i = 0; i < DATE_RANGE_PRESETS.length; i++) {
+            var p = DATE_RANGE_PRESETS[i];
+            if (p === 'all') continue;
+            var pr = datePresetRange(p);
+            if (pr.from === r.fromValue && pr.to === r.toValue) return p;
+        }
+        return '';
+    }
+
+    function renderPresets() {
+        if (!presetsEl) return;
+        var active = activePreset();
+        presetsEl.innerHTML = DATE_RANGE_PRESETS.map(function(p) {
+            return '<button type="button" class="date-chip' + (active === p ? ' active' : '') +
+                   '" data-preset="' + p + '">' + t('date_preset_' + p) + '</button>';
+        }).join('');
+    }
+
+    // Не даём выбрать «с» позже «по» прямо в нативном календаре.
+    function syncMinMax() {
+        if (toEl.value) fromEl.setAttribute('max', toEl.value); else fromEl.removeAttribute('max');
+        if (fromEl.value) toEl.setAttribute('min', fromEl.value); else toEl.removeAttribute('min');
+    }
+
+    function updateHint() {
+        var invalid = readDateRange(fromEl, toEl).invalid;
+        fromEl.classList.toggle('is-invalid', invalid);
+        toEl.classList.toggle('is-invalid', invalid);
+        if (hintEl) {
+            hintEl.textContent = invalid ? t('date_filter_invalid') : '';
+            hintEl.classList.toggle('hidden', !invalid);
+        }
+    }
+
+    function fire() {
+        updateHint();
+        if (typeof cfg.onChange === 'function') cfg.onChange(api.getRange());
+    }
+
+    var api = {
+        key: cfg.key,
+        getRange: function() { return readDateRange(fromEl, toEl); },
+        renderPresets: renderPresets,
+        lastSummary: null,
+        renderSummary: function(count, total) {
+            api.lastSummary = { count: count, total: total };
+            renderRoundsPeriodSummary(cfg.summaryId ? document.getElementById(cfg.summaryId) : null, api.getRange(), count, total);
+        },
+        rerenderSummary: function() {
+            if (api.lastSummary) api.renderSummary(api.lastSummary.count, api.lastSummary.total);
+        }
+    };
+
+    // Возвращаем прошлый период после перезагрузки страницы.
+    try {
+        var saved = JSON.parse(localStorage.getItem(storeKey) || 'null');
+        if (saved && typeof saved === 'object') {
+            if (saved.from) fromEl.value = saved.from;
+            if (saved.to) toEl.value = saved.to;
+        }
+    } catch (e) {}
+
+    fromEl.addEventListener('change', function() { syncMinMax(); persist(); renderPresets(); fire(); });
+    toEl.addEventListener('change', function() { syncMinMax(); persist(); renderPresets(); fire(); });
+
+    if (presetsEl) {
+        presetsEl.addEventListener('click', function(e) {
+            var btn = e.target && e.target.closest ? e.target.closest('.date-chip') : null;
+            var preset = btn && btn.getAttribute('data-preset');
+            if (!preset) return;
+            var r = datePresetRange(preset);
+            fromEl.value = r.from;
+            toEl.value = r.to;
+            syncMinMax();
+            persist();
+            renderPresets();
+            fire();
+        });
+    }
+
+    if (resetEl) {
+        resetEl.addEventListener('click', function() {
+            fromEl.value = '';
+            toEl.value = '';
+            syncMinMax();
+            persist();
+            renderPresets();
+            fire();
+        });
+    }
+
+    syncMinMax();
+    renderPresets();
+    updateHint();
+    dateRangeFilters[api.key] = api;
+    return api;
+}
+
+function getDateRangeFilter(key) { return dateRangeFilters[key] || null; }
+
+// Перерисовка подписей пресетов и сводки при смене языка (зовется из applyTranslations).
+function refreshDateRangeFilters() {
+    Object.keys(dateRangeFilters).forEach(function(k) {
+        var api = dateRangeFilters[k];
+        if (!api) return;
+        api.renderPresets();
+        api.rerenderSummary();
+    });
+}
+
 // Глобальный fallback для битых <img> (заменяет инлайн-обработчики onerror — лучше для CSP).
 // Слушаем в фазе capture: ошибки ресурсов не всплывают.
 document.addEventListener('error', function(e) {
     var el = e && e.target;
     if (el && el.tagName === 'IMG') { el.style.display = 'none'; }
 }, true);
+
+// ==========================================
+// ЗАПИСЬ В БД С ПОДДЕРЖКОЙ ОФЛАЙНА
+// Без сети промис Firebase не резолвится до восстановления соединения —
+// UI «замирал» после «Сохранить», а перезагрузка страницы теряла счёт.
+// Дублируем запись в локальную очередь (js/pwa.js) и сразу продолжаем.
+// ==========================================
+function isOfflineNow() {
+    return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+function dbSetWithOfflineQueue(path, value) {
+    var writePromise;
+    try { writePromise = db.ref(path).set(value); } catch (e) { writePromise = Promise.reject(e); }
+    if (isOfflineNow()) {
+        if (typeof queueOfflineWrite === 'function') queueOfflineWrite(path, value);
+        writePromise.catch(function() {});
+        return Promise.resolve({ offline: true });
+    }
+    return writePromise;
+}
+function dbUpdateWithOfflineQueue(updates) {
+    var writePromise;
+    try { writePromise = db.ref().update(updates); } catch (e) { writePromise = Promise.reject(e); }
+    if (isOfflineNow()) {
+        if (typeof queueOfflineWrite === 'function') {
+            Object.keys(updates || {}).forEach(function(p) { queueOfflineWrite(p, updates[p]); });
+        }
+        writePromise.catch(function() {});
+        return Promise.resolve({ offline: true });
+    }
+    return writePromise;
+}
 
 // Санитизация имён/текстов перед записью в БД: убираем HTML/JS-инъекции на входе,
 // чтобы все места, где имя рендерится в innerHTML, были безопасны.
@@ -132,7 +443,38 @@ var I18N = {
         nav_guide: 'Книга поля', nav_feed: 'Лента событий', nav_predictor: 'Симулятор WHS', nav_oom: 'Зачёт сезона',
         nav_players: 'Игроки', nav_tournaments: 'Турниры', nav_stats: 'Статистика',
         nav_handicaps: 'Гандикапы', nav_admin: 'Админ', nav_login: 'Войти',
+        nav_assistant: 'Помощник',
         footer_club: '© 2024 Гольф-клуб Пестово',
+        tab_design: 'Дизайн 🎨',
+        design_admin_title: 'Шаблоны оформления сайта',
+        design_admin_sub: 'Текущий дизайн + 5 альтернативных шаблонов. Шаблон можно назначить всему сайту, отдельной странице или отдельному блоку — так собирается собственный дизайн из готовых частей.',
+        design_mode_title: 'Режим оформления',
+        design_global_title: 'Базовый шаблон сайта',
+        design_preview_title: 'Живой предпросмотр',
+        design_preview_sub: 'Слева — как сайт выглядит сейчас с выбранными настройками, дальше — каждый шаблон целиком.',
+        design_save_btn: 'Сохранить оформление для всех',
+        design_reset_btn: 'Вернуть текущий дизайн',
+        design_pages_title: 'Шаблон для каждой страницы',
+        design_pages_sub: 'Работает в режиме «Сборка из шаблонов». Значение «Текущий» — страница оформлена базовым шаблоном сайта.',
+        design_blocks_title: 'Шаблон для каждого блока',
+        design_blocks_sub: 'Блок со своим шаблоном перекрывает шаблон страницы — так собирается уникальный дизайн из разных частей.',
+        tab_assistant: 'Помощник',
+        assistant_admin_title: 'Настройка «Помощника»',
+        assistant_admin_sub: 'Добавляйте PDF-документы по ссылке — помощник сможет отвечать на вопросы по ним. Нажмите «Сохранить и перестроить», чтобы обновить базу знаний для всех игроков.',
+        assistant_hide_page: 'Скрыть страницу «Помощник» для всех',
+        assistant_hide_page_hint: 'Снимите галочку, чтобы полностью убрать страницу помощника из меню и закрыть к ней доступ.',
+        assistant_add_source_title: 'Добавить документ (PDF по ссылке)',
+        assistant_source_name: 'Название документа',
+        assistant_source_url: 'Ссылка на PDF',
+        assistant_add_btn: 'Добавить',
+        assistant_sources_title: 'Источники базы знаний',
+        assistant_rebuild_btn: 'Сохранить и перестроить индекс',
+        assistant_delete_btn: 'Удалить',
+        assistant_sub: 'Онлайн-помощник по документам клуба',
+        assistant_title: 'Умный помощник Пестово',
+        assistant_clear: 'Очистить',
+        assistant_placeholder: 'Напишите ваш вопрос…',
+        assistant_send: 'Отправить',
 
         hero_sub: 'Цифровая счётная карточка Пестово',
         hero_title: 'Лайв-скоринг и электронные карточки Пестово',
@@ -271,6 +613,19 @@ var I18N = {
         connect_players_title: 'Подключение игроков группы',
         connect_players_desc: 'Дайте отсканировать QR-код другим игрокам, чтобы они открыли счётную карточку со своих телефонов.',
         scan_to_play: 'Сканируй, чтобы играть за этого игрока',
+        invite_qrs_collapse: 'Свернуть QR-коды подключения',
+        invite_qrs_expand: 'Развернуть QR-коды подключения',
+        joined_in_game: 'В игре',
+        waiting_join: 'Ожидает подключения',
+        ready_to_score: 'готовы вводить счёт',
+        ready_to_score_one: 'готов вводить счёт',
+        of_word: 'из',
+        all_joined: 'Все игроки подключены',
+        qr_reconnect_hint: 'QR сохранён — можно переподключиться',
+        marker_score_short: 'М',
+        legend_player_score: 'счёт игрока',
+        legend_marker_score: 'счёт маркера',
+        legend_mismatch: 'расхождение',
         round_progress: 'Прогресс раунда',
         finished_f: 'Завершил (F)',
 
@@ -282,6 +637,14 @@ var I18N = {
         wind_label: 'Ветер',
 
         status_label: 'Статус', status_all: 'Все', status_active: 'Live', status_completed: 'Завершённые',
+        date_filter_label: 'Период', date_from_label: 'Дата с', date_to_label: 'Дата по',
+        date_filter_reset: 'Сбросить',
+        date_preset_today: 'Сегодня', date_preset_7d: '7 дней', date_preset_30d: '30 дней',
+        date_preset_month: 'Этот месяц', date_preset_year: 'Этот год', date_preset_all: 'Всё время',
+        date_filter_invalid: 'Дата «с» позже даты «по»',
+        rounds_found_label: 'Найдено раундов', rounds_total_label: 'Всего раундов',
+        period_label: 'Период', period_all_time: 'за всё время',
+        no_rounds_in_period: 'Нет раундов за выбранный период',
         all_players: 'Все игроки',
         type_registered: 'Только зарегистрированные',
         type_guests: 'Только гости',
@@ -328,14 +691,22 @@ var I18N = {
         collapse_all_rounds: 'Свернуть все',
         live_rounds_hint: 'Видно, кто сейчас на поле. Нажмите на строку, чтобы развернуть детали',
         field_map_title: 'Карта лунок и старты',
+        privacy_title: 'Конфиденциальность имён (ФИО)',
+        privacy_sub: 'Скрывать полные имена игроков (имя, фамилия, отчество) от других игроков и гостей. Вместо ФИО показываются инициалы или маска, а гандикап и история раундов остаются видны.',
+        privacy_global_lbl: 'Скрывать ФИО всех игроков от других (глобально)',
+        privacy_global_sub: 'Включите, чтобы скрыть полные имена сразу для всех игроков.',
+        privacy_mask_lbl: 'Формат скрытия имени',
+        privacy_opt_initials: 'Инициалы (И. Т.)',
+        privacy_opt_masked: 'Полная маскировка (Игрок №N)',
+        privacy_save_btn: 'Сохранить настройки приватности',
+        privacy_hide_btn: 'Скрыть имя',
+        privacy_show_btn: 'Показать имя',
         my_round_tag: 'Мой раунд',
         current_round_tag: 'Текущий',
         leader_lbl: 'Лидер',
-        sc_tab_front: 'Первые 9',
-        sc_tab_back: 'Вторые 9',
-        sc_tab_all: 'Все 18',
         sc_topar_lbl: 'To-par по ходу',
         to_current_hole: 'К текущей лунке',
+        card_marker_lbl: 'Маркер',
         no_current_hole: 'Текущая лунка ещё не определена',
         avatar_label: 'Аватар профиля',
         upload_photo: 'Загрузить фото',
@@ -388,6 +759,7 @@ var I18N = {
         login_btn: 'Войти', register_btn: 'Регистрация', create_account: 'Создать аккаунт',
         continue_guest: 'Продолжить как гость',
         tab_rounds: 'Раунды', tab_alerts: 'Вызовы 🚨', tab_groups: 'Группы сейчас ⏱️', tab_tournaments: 'Турниры',
+        tab_start: 'Старт турнира 🏁',
         tab_players: 'Игроки и роли', tab_data: 'Данные',
         tab_importexport: 'Импорт/Экспорт 📊', tab_rusgolf: 'RUSGOLF 🇷🇺',
         imp_exp_title: 'Импорт и экспорт игроков (Excel)',
@@ -419,6 +791,77 @@ var I18N = {
         page_visibility_title: 'Управление видимостью страниц и функций',
         page_visibility_sub: 'Снимите галочку с любой страницы или функции, чтобы полностью скрыть её из меню навигации для игроков.',
         save_visibility_btn: 'Сохранить настройки',
+        hcp_variant_title: 'Стиль галочки гандикапа',
+        hcp_variant_sub: 'Зелёная галочка «гандикап синхронизирован» и дата обновления показаны во вкладке «Игроки», личном профиле и в списке админки. Выбор действует для всех игроков.',
+        hcp_variant_1: '1 · Компактная галочка',
+        hcp_variant_2: '2 · Пилюля «обновлён»',
+        hcp_variant_3: '3 · Галочка на аватаре',
+        social_card_variant_title: 'Оформление PNG-карточки для соцсетей',
+        social_card_variant_sub: 'Выберите один из трёх вариантов. Выбранное оформление применится ко всем новым PNG-карточкам при экспорте.',
+        social_card_variant_1: '1 · Классика',
+        social_card_variant_2: '2 · Акцент на результате',
+        social_card_variant_3: '3 · Турнирная',
+        group_card_variant_title: 'Отображение группового раунда на главной',
+        group_card_variant_sub: 'Выберите стиль единой карточки группового раунда для главной страницы. Настройка применяется для всех пользователей.',
+        group_card_variant_1: '1 · Сводная матрица',
+        group_card_variant_2: '2 · Сравнительная таблица',
+        group_card_variant_3: '3 · Лидерборд флайта',
+        players_display_title: 'Отображение страницы «Игроки»',
+        players_display_sub: 'Выберите один из трёх вариантов оформления списка игроков. Настройка применяется для всех пользователей.',
+        players_display_variant_1: '1 · Карточки',
+        players_display_variant_2: '2 · Компактный список',
+        players_display_variant_3: '3 · Витрина',
+        stats_display_title: 'Отображение страницы «Статистика»',
+        stats_display_sub: 'Выберите один из трёх вариантов оформления статистики клуба. Настройка применяется для всех пользователей.',
+        stats_display_variant_1: '1 · Карточки',
+        stats_display_variant_2: '2 · Сводка',
+        stats_display_variant_3: '3 · Дашборд',
+        rounds_display_title: 'Отображение страницы «Все раунды»',
+        rounds_display_sub: 'Выберите один из трёх вариантов списка раундов. Настройка применяется для всех пользователей.',
+        rounds_display_variant_1: '1 · Текущий список',
+        rounds_display_variant_2: '2 · Таблица',
+        rounds_display_variant_3: '3 · Витрина раундов',
+        home_display_title: 'Отображение страницы «Главная»',
+        home_display_sub: 'Выберите один из трёх вариантов оформления главной страницы. Настройка применяется для всех пользователей.',
+        home_display_variant_1: '1 · Классика',
+        home_display_variant_2: '2 · Компактная',
+        home_display_variant_3: '3 · Витрина',
+        guide_display_title: 'Отображение страницы «Книга поля»',
+        guide_display_sub: 'Выберите один из трёх вариантов оформления книги поля. Настройка применяется для всех пользователей.',
+        guide_display_variant_1: '1 · Карточка лунки',
+        guide_display_variant_2: '2 · Компактная',
+        guide_display_variant_3: '3 · Таблоид',
+        feed_display_title: 'Отображение страницы «Лента событий»',
+        feed_display_sub: 'Выберите один из трёх вариантов оформления ленты событий. Настройка применяется для всех пользователей.',
+        feed_display_variant_1: '1 · Лента',
+        feed_display_variant_2: '2 · Компактная',
+        feed_display_variant_3: '3 · Афиша',
+        predictor_display_title: 'Отображение страницы «Симулятор WHS»',
+        predictor_display_sub: 'Выберите один из трёх вариантов оформления симулятора. Настройка применяется для всех пользователей.',
+        predictor_display_variant_1: '1 · Стандарт',
+        predictor_display_variant_2: '2 · Компактный',
+        predictor_display_variant_3: '3 · Дашборд',
+        'order-of-merit_display_title': 'Отображение страницы «Зачёт сезона»',
+        'order-of-merit_display_sub': 'Выберите один из трёх вариантов оформления таблицы зачёта сезона. Настройка применяется для всех пользователей.',
+        'order-of-merit_display_variant_1': '1 · Таблица',
+        'order-of-merit_display_variant_2': '2 · Компактная',
+        'order-of-merit_display_variant_3': '3 · Пьедестал',
+        tournaments_display_title: 'Отображение страницы «Турниры»',
+        tournaments_display_sub: 'Выберите один из трёх вариантов оформления списка турниров. Настройка применяется для всех пользователей.',
+        tournaments_display_variant_1: '1 · Список',
+        tournaments_display_variant_2: '2 · Компактный',
+        tournaments_display_variant_3: '3 · Витрина',
+        handicap_display_title: 'Отображение страницы «Гандикапы»',
+        handicap_display_sub: 'Выберите один из трёх вариантов оформления калькулятора и таблиц гандикапов. Настройка применяется для всех пользователей.',
+        handicap_display_variant_1: '1 · Стандарт',
+        handicap_display_variant_2: '2 · Компактный',
+        handicap_display_variant_3: '3 · Витрина',
+        assistant_display_title: 'Отображение страницы «Помощник»',
+        assistant_display_sub: 'Выберите один из трёх вариантов оформления чата помощника. Настройка применяется для всех пользователей.',
+        assistant_display_variant_1: '1 · Классический чат',
+        assistant_display_variant_2: '2 · Компактный',
+        assistant_display_variant_3: '3 · Крупный',
+        all_players_joined: 'Все игроки уже вошли в раунд',
         tab_broadcasts: 'Анонсы 📢',
         delete_all_rounds: 'Удалить все раунды',
         delete_all_data: 'Удалить всех игроков и раунды',
@@ -478,7 +921,37 @@ var I18N = {
         nav_guide: 'Course Guide', nav_feed: 'Live Feed', nav_predictor: 'WHS Predictor', nav_oom: 'Order of Merit',
         nav_players: 'Players', nav_tournaments: 'Tournaments', nav_stats: 'Statistics',
         nav_handicaps: 'Handicaps', nav_admin: 'Admin', nav_login: 'Login',
+        nav_assistant: 'Assistant',
         footer_club: '© 2024 Pestovo Golf Club',
+        tab_design: 'Design 🎨',
+        design_admin_title: 'Site design templates',
+        design_admin_sub: 'The current design + 5 alternative templates. A template can be applied to the whole site, to a single page or to a single block — this is how a custom design is assembled from ready-made parts.',
+        design_mode_title: 'Design mode',
+        design_global_title: 'Base site template',
+        design_preview_title: 'Live preview',
+        design_preview_sub: 'On the left — how the site looks now with the current settings, then every template in full.',
+        design_save_btn: 'Save the design for everyone',
+        design_reset_btn: 'Restore the current design',
+        design_pages_title: 'Template for each page',
+        design_pages_sub: 'Works in the "Mix templates" mode. "Current" means the page follows the base site template.',
+        design_blocks_title: 'Template for each block',
+        design_blocks_sub: 'A block with its own template overrides the page template — this is how a unique design is assembled from different parts.',
+        tab_assistant: 'Assistant',
+        assistant_admin_title: 'Assistant settings',
+        assistant_admin_sub: 'Add PDF documents by link — the assistant can answer questions based on them. Click "Save and rebuild" to refresh the knowledge base for all players.',
+        assistant_hide_page: 'Hide the "Assistant" page for everyone',
+        assistant_hide_page_hint: 'Uncheck to completely remove the assistant page from the menu and block access to it.',
+        assistant_add_source_title: 'Add document (PDF by link)',
+        assistant_source_name: 'Document name',
+        assistant_source_url: 'PDF link',
+        assistant_add_btn: 'Add',
+        assistant_sources_title: 'Knowledge base sources',
+        assistant_rebuild_btn: 'Save and rebuild index',
+        assistant_delete_btn: 'Delete',
+        assistant_title: 'Pestovo Smart Assistant',
+        assistant_clear: 'Clear',
+        assistant_placeholder: 'Type your question…',
+        assistant_send: 'Send',
 
         hero_sub: 'Pestovo Digital Scorecard',
         hero_title: 'Pestovo Live Scoring & Digital Scorecards',
@@ -589,6 +1062,9 @@ var I18N = {
 
         my_score: 'My Score',
         marker_for: 'Marker for',
+        score_of_player: 'Player score:',
+        score_col_you: '(you enter your own score)',
+        score_col_marked: '(the player you are marking for)',
         save_hole: 'Save Hole', finish_round: 'Finish Round',
         next_hole_btn: 'To Next Hole →',
         show_stableford_points: 'Show Stableford points',
@@ -614,6 +1090,19 @@ var I18N = {
         connect_players_title: 'Connect Group Players',
         connect_players_desc: 'Let other players scan their QR code to open their scorecard on their phones.',
         scan_to_play: 'Scan to play for this player',
+        invite_qrs_collapse: 'Collapse player QR codes',
+        invite_qrs_expand: 'Expand player QR codes',
+        joined_in_game: 'In game',
+        waiting_join: 'Waiting to join',
+        ready_to_score: 'ready to score',
+        ready_to_score_one: 'ready to score',
+        of_word: 'of',
+        all_joined: 'All players connected',
+        qr_reconnect_hint: 'QR kept — you can reconnect',
+        marker_score_short: 'M',
+        legend_player_score: "player's score",
+        legend_marker_score: "marker's score",
+        legend_mismatch: 'mismatch',
         round_progress: 'Round Progress',
         finished_f: 'Finished (F)',
 
@@ -625,6 +1114,14 @@ var I18N = {
         wind_label: 'Wind',
 
         status_label: 'Status', status_all: 'All', status_active: 'Live', status_completed: 'Completed',
+        date_filter_label: 'Period', date_from_label: 'From', date_to_label: 'To',
+        date_filter_reset: 'Reset',
+        date_preset_today: 'Today', date_preset_7d: '7 days', date_preset_30d: '30 days',
+        date_preset_month: 'This month', date_preset_year: 'This year', date_preset_all: 'All time',
+        date_filter_invalid: 'Start date is after the end date',
+        rounds_found_label: 'Rounds found', rounds_total_label: 'Total rounds',
+        period_label: 'Period', period_all_time: 'all time',
+        no_rounds_in_period: 'No rounds in the selected period',
         all_players: 'All Players',
         type_registered: 'Registered Only',
         type_guests: 'Guests Only',
@@ -671,14 +1168,22 @@ var I18N = {
         collapse_all_rounds: 'Collapse all',
         live_rounds_hint: 'You can see who is on the course now. Tap a row to expand details',
         field_map_title: 'Hole map & starts',
+        privacy_title: 'Name privacy (Full name)',
+        privacy_sub: 'Hide players\' full names (first, last, patronymic) from other players and guests. Initials or a mask are shown instead, while handicap and round history remain visible.',
+        privacy_global_lbl: 'Hide all players\' full names from others (globally)',
+        privacy_global_sub: 'Enable to hide full names for all players at once.',
+        privacy_mask_lbl: 'Hidden name format',
+        privacy_opt_initials: 'Initials (I. T.)',
+        privacy_opt_masked: 'Full mask (Player #N)',
+        privacy_save_btn: 'Save privacy settings',
+        privacy_hide_btn: 'Hide name',
+        privacy_show_btn: 'Show name',
         my_round_tag: 'My round',
         current_round_tag: 'Current',
         leader_lbl: 'Leader',
-        sc_tab_front: 'Front 9',
-        sc_tab_back: 'Back 9',
-        sc_tab_all: 'All 18',
         sc_topar_lbl: 'To-par by hole',
         to_current_hole: 'To current hole',
+        card_marker_lbl: 'Marker',
         no_current_hole: 'Current hole is not set yet',
         avatar_label: 'Profile Avatar',
         upload_photo: 'Upload Photo',
@@ -731,6 +1236,7 @@ var I18N = {
         login_btn: 'Log In', register_btn: 'Register', create_account: 'Create Account',
         continue_guest: 'Continue as Guest',
         tab_rounds: 'Rounds', tab_alerts: 'Alerts 🚨', tab_groups: 'Groups now ⏱️', tab_tournaments: 'Tournaments',
+        tab_start: 'Tournament Start 🏁',
         tab_players: 'Players & Roles', tab_data: 'Data',
         tab_importexport: 'Import/Export 📊', tab_rusgolf: 'RUSGOLF 🇷🇺',
         imp_exp_title: 'Player Import & Export (Excel)',
@@ -762,8 +1268,81 @@ var I18N = {
         page_visibility_title: 'Manage Page & Feature Visibility',
         page_visibility_sub: 'Uncheck any page or feature to completely hide it from the navigation menu for players.',
         save_visibility_btn: 'Save Settings',
+        hcp_variant_title: 'Handicap checkmark style',
+        hcp_variant_sub: 'The green “handicap synced” checkmark and update date are shown in the Players tab, player profile and the admin list. The choice applies to all players.',
+        hcp_variant_1: '1 · Compact check',
+        hcp_variant_2: '2 · “Updated” pill',
+        hcp_variant_3: '3 · Check on avatar',
+        social_card_variant_title: 'Social PNG scorecard style',
+        social_card_variant_sub: 'Choose one of three layouts. The selected design is used for every newly exported PNG scorecard.',
+        social_card_variant_1: '1 · Classic',
+        social_card_variant_2: '2 · Result focus',
+        social_card_variant_3: '3 · Tournament',
+        group_card_variant_title: 'Group round card layout on home page',
+        group_card_variant_sub: 'Choose the layout for the unified group round card on the home page. Applies to all users.',
+        group_card_variant_1: '1 · Summary Matrix',
+        group_card_variant_2: '2 · Comparison Table',
+        group_card_variant_3: '3 · Flight Leaderboard',
+        players_display_title: '“Players” page layout',
+        players_display_sub: 'Choose one of three player-list layouts. The setting applies to all users.',
+        players_display_variant_1: '1 · Cards',
+        players_display_variant_2: '2 · Compact list',
+        players_display_variant_3: '3 · Showcase',
+        stats_display_title: '“Statistics” page layout',
+        stats_display_sub: 'Choose one of three club-statistics layouts. The setting applies to all users.',
+        stats_display_variant_1: '1 · Cards',
+        stats_display_variant_2: '2 · Summary',
+        stats_display_variant_3: '3 · Dashboard',
+        rounds_display_title: '“All Rounds” page layout',
+        rounds_display_sub: 'Choose one of three round-list layouts. The setting applies to all users.',
+        rounds_display_variant_1: '1 · Current list',
+        rounds_display_variant_2: '2 · Table',
+        rounds_display_variant_3: '3 · Round showcase',
+        home_display_title: '“Home” page layout',
+        home_display_sub: 'Choose one of three home page layouts. The setting applies to all users.',
+        home_display_variant_1: '1 · Classic',
+        home_display_variant_2: '2 · Compact',
+        home_display_variant_3: '3 · Showcase',
+        guide_display_title: '“Course Guide” page layout',
+        guide_display_sub: 'Choose one of three course-guide layouts. The setting applies to all users.',
+        guide_display_variant_1: '1 · Hole card',
+        guide_display_variant_2: '2 · Compact',
+        guide_display_variant_3: '3 · Tabloid',
+        feed_display_title: '“Event Feed” page layout',
+        feed_display_sub: 'Choose one of three feed layouts. The setting applies to all users.',
+        feed_display_variant_1: '1 · Feed',
+        feed_display_variant_2: '2 · Compact',
+        feed_display_variant_3: '3 · Poster',
+        predictor_display_title: '“WHS Simulator” page layout',
+        predictor_display_sub: 'Choose one of three simulator layouts. The setting applies to all users.',
+        predictor_display_variant_1: '1 · Standard',
+        predictor_display_variant_2: '2 · Compact',
+        predictor_display_variant_3: '3 · Dashboard',
+        'order-of-merit_display_title': '“Season Ranking” page layout',
+        'order-of-merit_display_sub': 'Choose one of three season-ranking layouts. The setting applies to all users.',
+        'order-of-merit_display_variant_1': '1 · Table',
+        'order-of-merit_display_variant_2': '2 · Compact',
+        'order-of-merit_display_variant_3': '3 · Podium',
+        tournaments_display_title: '“Tournaments” page layout',
+        tournaments_display_sub: 'Choose one of three tournament-list layouts. The setting applies to all users.',
+        tournaments_display_variant_1: '1 · List',
+        tournaments_display_variant_2: '2 · Compact',
+        tournaments_display_variant_3: '3 · Showcase',
+        handicap_display_title: '“Handicaps” page layout',
+        handicap_display_sub: 'Choose one of three handicap calculator and table layouts. The setting applies to all users.',
+        handicap_display_variant_1: '1 · Standard',
+        handicap_display_variant_2: '2 · Compact',
+        handicap_display_variant_3: '3 · Showcase',
+        assistant_display_title: '“Assistant” page layout',
+        assistant_display_sub: 'Choose one of three assistant-chat layouts. The setting applies to all users.',
+        assistant_display_variant_1: '1 · Classic chat',
+        assistant_display_variant_2: '2 · Compact',
+        assistant_display_variant_3: '3 · Large',
+        all_players_joined: 'All players have already joined the round',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
+        delete_all_data: 'Delete All Players & Rounds',
+        delete_all_data_sub: 'Permanently removes every player and every round. Data disappears from all lists, stats and autocomplete and will not real Rounds',
         delete_all_data: 'Delete All Players & Rounds',
         delete_all_data_sub: 'Permanently removes every player and every round. Data disappears from all lists, stats and autocomplete and will not reappear.',
         full_name: 'Full Name',
@@ -820,12 +1399,15 @@ var I18N = {
 (function(){ var y = new Date().getFullYear(); if (I18N.ru) I18N.ru.footer_club = '© ' + y + ' Гольф-клуб Пестово'; if (I18N.en) I18N.en.footer_club = '© ' + y + ' Pestovo Golf Club'; })();
 
 function t(key) {
-    if (I18N[currentLang] && I18N[currentLang][key] !== undefined) {
-        return I18N[currentLang][key];
-    }
-    if (I18N['ru'] && I18N['ru'][key] !== undefined) {
-        return I18N['ru'][key];
-    }
+    var lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'ru';
+    try {
+        if (I18N[lang] && I18N[lang][key] !== undefined) {
+            return I18N[lang][key];
+        }
+        if (I18N['ru'] && I18N['ru'][key] !== undefined) {
+            return I18N['ru'][key];
+        }
+    } catch(e) {}
     return key;
 }
 
@@ -840,6 +1422,12 @@ function toggleLang() {
     if (typeof applyPlayerModes === 'function') applyPlayerModes();
     if (typeof refreshOfficialCallBindings === 'function') refreshOfficialCallBindings();
     if (typeof renderAdmGroups === 'function') renderAdmGroups();
+    // Список раундов в админке перерисовываем только при открытой панели —
+    // иначе подписали бы на данные rounds тех, у кого нет доступа.
+    if (typeof loadAdmRounds === 'function' && typeof hasAdminPanelAccess === 'function' && hasAdminPanelAccess()) {
+        var admContent = document.getElementById('admin-content');
+        if (admContent && !admContent.classList.contains('hidden')) loadAdmRounds();
+    }
     if (typeof buildMobileDrawer === 'function') {
         var drawerRoot = document.getElementById('mobile-drawer-root');
         var wasOpen = drawerRoot && drawerRoot.classList.contains('open');
@@ -853,6 +1441,7 @@ function toggleLang() {
     if (typeof loadRecentResults === 'function') loadRecentResults();
     if (typeof loadLB === 'function') loadLB();
     if (typeof loadPlayers === 'function') loadPlayers();
+    if (typeof loadStats === 'function') loadStats();
     if (typeof loadPestovoWeather === 'function') loadPestovoWeather('nav-weather-container');
     if (typeof showGroupSetup === 'function' && document.getElementById('group-setup') && !document.getElementById('group-setup').classList.contains('hidden')) {
         showGroupSetup();
@@ -897,6 +1486,8 @@ function applyTranslations() {
             el.setAttribute('title', I18N[currentLang][key]);
         }
     });
+    // Подписи пресетов и сводка фильтра по датам строятся через t() — обновляем их тоже.
+    if (typeof refreshDateRangeFilters === 'function') refreshDateRangeFilters();
 }
 
 /* Применяем переводы и тему мгновенно (скрипт внизу <body> — DOM уже распаршен),
@@ -927,6 +1518,7 @@ function loadMyActiveRounds(targetId) {
 
     bindRealtimeValue('my-active-rounds:' + targetId, db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
+        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
         var myActive = [];
 
         Object.entries(data).forEach(function(e) {
@@ -1291,6 +1883,9 @@ function initNav(){
 
     var tg = document.getElementById('nav-toggle');
     if (tg) {
+        tg.setAttribute('aria-label', currentLang === 'en' ? 'Open menu' : 'Открыть меню');
+        tg.setAttribute('aria-expanded', 'false');
+        tg.setAttribute('aria-controls', 'mobile-drawer-root');
         tg.onclick = function(e) {
             e.stopPropagation();
             toggleMobileDrawer();
@@ -1303,9 +1898,65 @@ function initNav(){
             if (window.scrollY > 50) n.classList.add('nav-scrolled');
             else n.classList.remove('nav-scrolled');
         }
+        // На каждом скролле пересчитываем высоту шапки: при появлении/скрытии
+        // статус-бара iOS или изменении размеров шапки (mobile-меню) отступы
+        // и scroll-padding должны оставаться синхронными.
+        applyNavHeight();
+    }, { passive: true });
+
+    // resize / orientationchange / visualViewport — высота шапки может
+    // меняться (например, при повороте экрана или открытии клавиатуры).
+    window.addEventListener('resize', applyNavHeight);
+    window.addEventListener('orientationchange', function() {
+        setTimeout(applyNavHeight, 250);
     });
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', applyNavHeight);
+    }
 
     loadPestovoWeather('nav-weather-container');
+    // Высота нужна до первой отрисовки, иначе заголовки страниц на мобильном
+    // на мгновение «прячутся» под фиксированной шапкой.
+    applyNavHeight();
+    setTimeout(applyNavHeight, 50);
+    setTimeout(applyNavHeight, 400);
+}
+
+// ==========================================
+// ДИНАМИЧЕСКАЯ ВЫСОТА ФИКСИРОВАННОЙ ШАПКИ
+// Пересчитывает реальную высоту #main-nav и записывает её в CSS-переменную
+// --nav-h. Все page-head / main / scroll-padding используют эту переменную,
+// поэтому отступы всегда совпадают с шапкой, в том числе:
+//   - на iOS в PWA-режиме (env(safe-area-inset-top) добавляет высоту)
+//   - при переключении состояния .nav-scrolled (шапка становится плотнее)
+//   - при разных размерах шрифта/иконок на мобильных
+// ==========================================
+function applyNavHeight() {
+    if (typeof document === 'undefined') return;
+    var navEl = document.getElementById('main-nav');
+    if (!navEl) return;
+    // offsetHeight учитывает padding, border, но НЕ учитывает safe-area-inset-top.
+    // В PWA на iOS шапка визуально выше из-за статус-бара — добавляем
+    // env(safe-area-inset-top) явно, иначе контент «уезжает» под «чёлку».
+    var baseH = navEl.offsetHeight || 0;
+    var safeTop = 0;
+    try {
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:absolute;top:0;left:0;height:env(safe-area-inset-top);width:1px;pointer-events:none;visibility:hidden;';
+        document.body.appendChild(probe);
+        safeTop = Math.max(0, probe.getBoundingClientRect().height);
+        document.body.removeChild(probe);
+    } catch (e) {
+        safeTop = 0;
+    }
+    // Если шапка уже учитывает safe-area-inset-top в собственном padding-top
+    // (см. media display-mode: standalone в style.css), не дублируем.
+    var padTop = parseFloat(getComputedStyle(navEl).paddingTop) || 0;
+    var extraSafe = safeTop > padTop ? (safeTop - padTop) : 0;
+    var totalH = baseH + extraSafe;
+    if (totalH > 0) {
+        document.documentElement.style.setProperty('--nav-h', totalH + 'px');
+    }
 }
 
 function buildMobileDrawer() {
@@ -1358,6 +2009,7 @@ function buildMobileDrawer() {
         '<a href="tournaments.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-list"></i> <span data-i18n="nav_tournaments">' + t('nav_tournaments') + '</span></a>' +
         '<a href="stats.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_stats">' + t('nav_stats') + '</span></a>' +
         '<a href="handicap.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-calculator"></i> <span data-i18n="nav_handicaps">' + t('nav_handicaps') + '</span></a>' +
+        '<a href="assistant.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-robot"></i> <span data-i18n="nav_assistant">' + t('nav_assistant') + '</span></a>' +
         '</div>';
 
     // В самом конце бокового меню — отдельная вкладка «Мои настройки» с тогглами
@@ -1375,14 +2027,14 @@ function buildMobileDrawer() {
     }
 
     var html =
-        '<div class="mobile-drawer-backdrop" onclick="closeMobileDrawer()"></div>' +
-        '<div class="mobile-drawer-panel">' +
+        '<div class="mobile-drawer-backdrop" onclick="closeMobileDrawer()" aria-hidden="true"></div>' +
+        '<div class="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="' + (isEn ? 'Navigation menu' : 'Меню навигации') + '">' +
             '<div class="mobile-drawer-header">' +
                 '<div style="display:flex;align-items:center;gap:10px;">' +
                     '<img src="img/logo.png" alt="Logo" class="nav-logo" onerror="this.style.display=\'none\'">' +
                     '<span class="nav-brand-text" data-i18n="brand_name">' + t('brand_name') + '</span>' +
                 '</div>' +
-                '<button class="mobile-drawer-close" onclick="closeMobileDrawer()">&times;</button>' +
+                '<button class="mobile-drawer-close" onclick="closeMobileDrawer()" aria-label="' + (isEn ? 'Close menu' : 'Закрыть меню') + '">&times;</button>' +
             '</div>' +
 
             '<div class="mobile-drawer-body">' + menuBodyMarkup + '</div>' +
@@ -1465,7 +2117,7 @@ function openMobileDrawer() {
     var container = document.getElementById('mobile-drawer-root');
     var tg = document.getElementById('nav-toggle');
     if (container) container.classList.add('open');
-    if (tg) tg.classList.add('active');
+    if (tg) { tg.classList.add('active'); tg.setAttribute('aria-expanded', 'true'); }
     if (typeof document !== 'undefined' && document.body && document.body.style) document.body.style.overflow = 'hidden';
 }
 
@@ -1473,9 +2125,23 @@ function closeMobileDrawer() {
     var container = document.getElementById('mobile-drawer-root');
     var tg = document.getElementById('nav-toggle');
     if (container) container.classList.remove('open');
-    if (tg) tg.classList.remove('active');
+    if (tg) { tg.classList.remove('active'); tg.setAttribute('aria-expanded', 'false'); }
     if (typeof document !== 'undefined' && document.body && document.body.style) document.body.style.overflow = '';
 }
+
+// A11Y: клавиша Esc закрывает открытую модалку (верхнюю) или боковое меню
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape' && e.key !== 'Esc') return;
+    var modals = document.querySelectorAll('.modal:not(.hidden)');
+    if (modals.length) {
+        var top = modals[modals.length - 1];
+        var closeBtn = top.querySelector('.modal-close-btn, .modal-close');
+        if (closeBtn) { closeBtn.click(); } else { top.classList.add('hidden'); }
+        return;
+    }
+    var drawer = document.getElementById('mobile-drawer-root');
+    if (drawer && drawer.classList.contains('open')) closeMobileDrawer();
+});
 
 function toggleMobileDrawer() {
     var container = document.getElementById('mobile-drawer-root');
@@ -2698,9 +3364,9 @@ function stablefordExact(strokes,holeNum,exactHcp){
 
 // Настройка отображения очков Stableford. Если игрок ещё не выбрал своё
 // значение, используется клубный дефолт из settings/stableford_display_default.
-// Дефолт включён: новая подсказка сразу доступна в карточке, но каждый игрок
-// может сохранить собственный выбор в текущем раунде.
-var pestovoStablefordDisplayDefault = true;
+// Дефолт ВЫКЛЮЧЕН: очки Stableford не показываются рядом со счётом, пока игрок
+// (или администратор клуба) явно не включит их в своём раунде/настройках.
+var pestovoStablefordDisplayDefault = false;
 
 function normalizeStablefordDisplayValue(value) {
     if (value === true || value === 1 || value === '1' || value === 'true') return true;
@@ -2741,8 +3407,9 @@ function scoreWithStablefordHTML(score, holeNum, fieldHcp, showStableford) {
 
 function syncStablefordDisplayDefault(value) {
     var normalized = normalizeStablefordDisplayValue(value);
-    // Отсутствующий ключ — включённый дефолт для обратной совместимости.
-    pestovoStablefordDisplayDefault = normalized === null ? true : normalized;
+    // Отсутствующий ключ settings/stableford_display_default — выключенный
+    // дефолт: по умолчанию очки Stableford не показываются ни у кого.
+    pestovoStablefordDisplayDefault = normalized === null ? false : normalized;
     try {
         document.dispatchEvent(new CustomEvent('pestovo-stableford-default-change'));
     } catch (e) {}
@@ -2793,93 +3460,29 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
 // ПОДСВЕТКА ТЕКУЩЕЙ ЛУНКИ И БЫСТРЫЙ ПЕРЕХОД К НЕЙ
 // ==========================================
 
-// Активная вкладка карточки: 'front' | 'back' | 'all'. Состояние общее для всех
-// карточек на странице и запоминается в localStorage, поэтому перерисовка
-// блоков в реальном времени не сбрасывает выбранный вид.
-var scorecardView = (function() {
-    var v = null;
-    try { v = localStorage.getItem('pestovo_sc_view'); } catch (e) {}
-    return (v === 'front' || v === 'back') ? v : 'all';
-})();
-
+// Вкладки «Первые 9 / Вторые 9 / Все 18» удалены: карточка всегда
+// показывает все лунки выбранного диапазона сразу.
 function holeNineClass(h) { return h <= 9 ? 'sc-h-front' : 'sc-h-back'; }
 
-function setScorecardView(view) {
-    scorecardView = (view === 'front' || view === 'back') ? view : 'all';
-    try { localStorage.setItem('pestovo_sc_view', scorecardView); } catch (e) {}
-
-    var wraps = document.querySelectorAll('.sc-tabs-wrap');
-    for (var i = 0; i < wraps.length; i++) {
-        // Карточки без вкладок (раунды на 9 лунок) не переключаем: иначе
-        // фильтр по девятке спрятал бы все их лунки.
-        if (!wraps[i].querySelector('.sc-tabs')) continue;
-        wraps[i].setAttribute('data-view', scorecardView);
-    }
-    var btns = document.querySelectorAll('.sc-tab');
-    for (var j = 0; j < btns.length; j++) {
-        var isActive = btns[j].getAttribute('data-sc-view') === scorecardView;
-        btns[j].classList.toggle('active', isActive);
-        btns[j].setAttribute('aria-selected', isActive ? 'true' : 'false');
-    }
-    if (typeof vib === 'function') vib(10);
-}
-
-// Вкладки доступны только для полных раундов: у девятки фильтр по девятке
-// спрятал бы все лунки, поэтому для таких карточек всегда показываем всё.
-function scorecardViewFor(frontCount, backCount) {
-    return (frontCount && backCount) ? scorecardView : 'all';
-}
-
-// Вкладки «Первые 9 / Вторые 9 / Все 18» — рисуются только для полных раундов,
-// где есть обе девятки.
-function buildScorecardTabsHTML(frontCount, backCount) {
-    if (!frontCount || !backCount) return '';
-    var tabs = [
-        { key: 'front', label: t('sc_tab_front') },
-        { key: 'back', label: t('sc_tab_back') },
-        { key: 'all', label: t('sc_tab_all') }
-    ];
-    var html = '<div class="sc-tabs" role="tablist">';
-    tabs.forEach(function(tb) {
-        var isActive = scorecardView === tb.key;
-        html += '<button type="button" role="tab" class="sc-tab' + (isActive ? ' active' : '') + '" data-sc-view="' + tb.key + '" ' +
-            'aria-selected="' + (isActive ? 'true' : 'false') + '" onclick="setScorecardView(\'' + tb.key + '\')">' +
-            tb.label + '</button>';
-    });
-    html += '</div>';
-    return html;
-}
-
-// Строка накопительного to-par: под каждой лункой итог относительно пара
-// на момент её завершения. startRun позволяет продолжить счёт со второй девятки.
+// Строка накопительного to-par удалена по требованию клуба: блок
+// «To-par по ходу» больше не отображается ни на одной странице.
+// Функция сохранена для совместимости — она по-прежнему считает
+// накопительный run (нужен для продолжения счёта со второй девятки),
+// но не возвращает разметку.
 function buildToParRowHTML(order, sc, startRun, gridClass, wrapClass) {
     var run = startRun || 0;
     var playedAny = false;
-    var cells = '';
 
     order.forEach(function(i) {
         var s = parseInt(sc[i]) || 0;
-        var cls = 'sc-tp-none';
-        var txt = '·';
         if (s >= 1) {
             playedAny = true;
             run += s - holePar(i);
-            cls = run < 0 ? 'sc-tp-under' : (run > 0 ? 'sc-tp-over' : 'sc-tp-even');
-            txt = run > 0 ? '+' + run : (run === 0 ? 'E' : '' + run);
         }
-        var title = currentLang === 'en'
-            ? 'Hole #' + i + (s >= 1 ? ': ' + s + ' (par ' + holePar(i) + ') — to-par after the hole: ' + fmtScore(run) : ': not played yet')
-            : 'Лунка #' + i + (s >= 1 ? ': ' + s + ' (пар ' + holePar(i) + ') — to-par после лунки: ' + fmtScore(run) : ': ещё не сыграна');
-        cells += '<span class="sc-topar-cell ' + cls + ' ' + holeNineClass(i) + '" title="' + title + '">' + txt + '</span>';
     });
 
     if (!playedAny) return { html: '', run: run };
-
-    var html = '<div class="sc-topar ' + (wrapClass || '') + '">' +
-        '<div class="sc-topar-lbl"><i class="fas fa-chart-line"></i> ' + t('sc_topar_lbl') + ': <b>' + fmtScore(run) + '</b></div>' +
-        '<div class="' + (gridClass || 'noscroll-grid') + ' sc-topar-row">' + cells + '</div>' +
-        '</div>';
-    return { html: html, run: run };
+    return { html: '', run: run };
 }
 
 // Переход к текущей лунке игрока: плитка подсвечивается и прокручивается в центр экрана.
@@ -2889,8 +3492,7 @@ function scrollToPlayerCurrentHole(pid) {
         if (typeof toast === 'function') toast(t('no_current_hole'), 'info');
         return;
     }
-    // Если лунка скрыта выбранной вкладкой — сначала показываем все 18
-    if (scorecardView !== 'all' && tile.offsetParent === null) setScorecardView('all');
+    // Все лунки всегда видны (вкладки девяток удалены).
     if (typeof tile.scrollIntoView === 'function') {
         tile.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     }
@@ -2898,7 +3500,48 @@ function scrollToPlayerCurrentHole(pid) {
     setTimeout(function() { tile.classList.remove('sc-cur-flash'); }, 1800);
 }
 
-function generateGroupHoleTableHTML(r) {
+// Счёт, который маркер игрока ввёл ЗА этого игрока на лунке.
+// Хранится в карточке самого игрока: p.markerScores[markedBy][hole].
+// Возвращает { score, markerId } (score = 0, если маркер ещё не вводил).
+function getPlayerMarkerScoreForHole(p, h) {
+    p = p || {};
+    var mkId = p.markedBy || null;
+    var ms = 0;
+    if (mkId && p.markerScores && p.markerScores[mkId]) {
+        ms = parseInt(p.markerScores[mkId][h]) || 0;
+    }
+    // Запасной вариант: маркер мог ввести счёт под другим ключом
+    // (например, после переназначения маркеров) — ищем любое значение на лунке.
+    if (!ms && p.markerScores) {
+        var keys = Object.keys(p.markerScores);
+        for (var i = 0; i < keys.length; i++) {
+            var v = parseInt(p.markerScores[keys[i]] && p.markerScores[keys[i]][h]) || 0;
+            if (v >= 1) { ms = v; if (!mkId) mkId = keys[i]; break; }
+        }
+    }
+    return { score: ms, markerId: mkId };
+}
+
+// Есть ли у игрока хоть один введённый маркером счёт (для компактных слоёв).
+function playerHasAnyMarkerScore(p, order) {
+    if (!p || !p.markerScores) return false;
+    for (var i = 0; i < (order || []).length; i++) {
+        if (getPlayerMarkerScoreForHole(p, order[i]).score >= 1) return true;
+    }
+    return false;
+}
+
+// Мини-легенда двойной карточки «игрок + маркер» (страница ввода результатов).
+function buildDualScorecardLegendHTML() {
+    return '<div class="dual-card-legend">' +
+        '<span class="dcl-item"><i class="fas fa-user"></i> ' + t('legend_player_score') + '</span>' +
+        '<span class="dcl-item dcl-marker"><i class="fas fa-pen-nib"></i> ' + t('marker_score_short') + ' — ' + t('legend_marker_score') + '</span>' +
+        '<span class="dcl-item dcl-mismatch"><i class="fas fa-triangle-exclamation"></i> ' + t('legend_mismatch') + '</span>' +
+        '</div>';
+}
+
+function generateGroupHoleTableHTML(r, opts) {
+    opts = opts || {};
     var players = r.players || {};
     var playerEntries = Object.entries(players).filter(function(pe) {
         // Удалённые и навсегда заблокированные демо-игроки не показываются
@@ -2907,93 +3550,635 @@ function generateGroupHoleTableHTML(r) {
     if (!playerEntries.length) return '';
 
     var order = getRoundOrder(r);
+
+    // Режим showMarker (страница ввода результатов группового раунда):
+    // формат карточки — тот же, что на главной («Сейчас на поле»), но рядом
+    // со счётом игрока виден и счёт, который ввёл его маркер.
+    var legend = opts.showMarker ? buildDualScorecardLegendHTML() : '';
+
+    // Если в раунде 1 игрок — показываем одиночную карточку
+    if (playerEntries.length === 1) {
+        return legend + renderSinglePlayerScorecardHTML(r, playerEntries[0], order, opts);
+    }
+
+    // Для группового раунда показываем единую карточку в одном из 3 вариантов:
+    // 1 · Сводная матрица (Summary Matrix)
+    // 2 · Сравнительная таблица (Comparison Table)
+    // 3 · Лидерборд флайта (Flight Leaderboard)
+    var variant = opts.variant || getGroupCardVariant();
+    if (variant === '2') {
+        return legend + renderGroupTableHTML(r, playerEntries, order, opts);
+    } else if (variant === '3') {
+        return legend + renderGroupLeaderboardHTML(r, playerEntries, order, opts);
+    } else {
+        return legend + renderGroupMatrixHTML(r, playerEntries, order, opts);
+    }
+}
+
+function renderSinglePlayerScorecardHTML(r, pe, order, opts) {
+    opts = opts || {};
+    var compact = !!opts.compact;
     var holeCount = order.length;
-    var frontCount = order.filter(function(h) { return h <= 9; }).length;
-    var backCount = holeCount - frontCount;
-
-    // --- NO-SCROLL VERTICAL GRID MATRIX (100% FIT ON MOBILE SCREENS) ---
-    var html = '<div class="no-scroll-view-container">';
     var courseHcpLbl = t('field_hcp_short');
+    var pid = pe[0], p = pe[1];
+    var sc = p.scores || {};
+    var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+    var stats = calcRoundStats(sc, fieldHcp || 0, p.exactHcp || 0, order);
+    var thruText = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '');
 
-    playerEntries.forEach(function(pe) {
-        var pid = pe[0], p = pe[1];
-        var sc = p.scores || {};
-        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : 0;
-        var stats = calcRoundStats(sc, fieldHcp || 0, p.exactHcp || 0, order);
-        var thruText = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '');
+    var pTee = (p && p.tee) || r.tee || 'wh';
+    var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
+    var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" title="' + fieldHcpBandTitle(fieldHcp) + '">' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
 
-        var pTee = (p && p.tee) || r.tee || 'wh';
-        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
-        var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" title="' + fieldHcpBandTitle(fieldHcp) + '">' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
+    var isFinished = stats.holesPlayed >= holeCount;
+    var curHole = isFinished ? null : stats.currentHole;
 
-        var isFinished = stats.holesPlayed >= holeCount;
-        var curHole = isFinished ? null : stats.currentHole;
-
+    var html = '<div class="no-scroll-view-container">';
+    if (compact) {
+        html += '<div class="noscroll-player-block">';
+        html += '<div class="noscroll-player-hdr noscroll-player-hdr--compact">';
+        html += '<div class="npch-id">';
+        var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
+        html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(pName) + '</span>' + pTeeBadge + pHcpBadge;
+        var mkPid = p.markedBy;
+        var mkP = (mkPid && r.players && r.players[mkPid]) ? r.players[mkPid] : null;
+        if (mkP && !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(mkPid, mkP.name))) {
+            var mkName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(mkP, mkPid) : playerDisplayName(mkP, mkPid);
+            if (mkName && mkName !== '—') {
+                html += '<span class="npch-marker"><i class="fas fa-pen-nib"></i> ' + t('card_marker_lbl') + ': ' + escapeHtml(mkName) + '</span>';
+            }
+        }
+        html += '</div>';
+        if (curHole) {
+            html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')"><i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
+        }
+        html += '</div>';
+    } else {
         html += '<div class="noscroll-player-block" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + (r.roundId || '') + '\')" style="cursor:pointer;">';
         html += '<div class="noscroll-player-hdr">';
-        html += '<div><span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + pTeeBadge + pHcpBadge + '</span>';
+        html += '<div>';
+        html += '<span class="noscroll-player-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, pid)) + pTeeBadge + pHcpBadge + '</span>';
         html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruText + ' · Gross: ' + (stats.gross || 0) + '</div>';
-        // Быстрый переход к лунке, на которой игрок стоит прямо сейчас
         if (curHole) {
-            html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')">' +
-                '<i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
+            html += '<button type="button" class="sc-to-cur-btn" onclick="event.stopPropagation();scrollToPlayerCurrentHole(\'' + pid + '\')"><i class="fas fa-location-crosshairs"></i> ' + t('to_current_hole') + ' · #' + curHole + '</button>';
         }
         html += '</div>';
         html += '<div class="' + scoreClass(stats.toPar) + '" style="font-size:22px;font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
         html += '</div>';
+    }
 
-        // Вкладки «Первые 9 / Вторые 9 / Все 18» + матрица лунок
-        html += '<div class="sc-tabs-wrap" data-view="' + scorecardViewFor(frontCount, backCount) + '">';
-        html += buildScorecardTabsHTML(frontCount, backCount);
+    html += '<div class="sc-tabs-wrap" data-view="all">';
+    html += '<div class="noscroll-grid">';
+    order.forEach(function(i) {
+        var s = parseInt(sc[i]) || 0;
+        var par = holePar(i);
+        var cls = holeResClass(s, par) + ' ' + holeNineClass(i);
+        if (getHoleVerifyState(p, i) === 'mismatch') cls += ' cell-mismatch';
+        var isCur = (curHole !== null && i === curHole);
+        if (isCur) cls += ' sc-cur-tile';
+        var stbl = s > 0 ? stablefordField(s, i, fieldHcp) : null;
+        var stblTitle = currentLang === 'en'
+            ? (stbl !== null ? stbl + ' Stableford ' + (stbl === 1 ? 'point' : 'points') : 'No Stableford points yet')
+            : (stbl !== null ? 'Очки Stableford: ' + stbl : 'Очков Stableford пока нет');
+        if (isCur) {
+            stblTitle = (currentLang === 'en' ? 'Current hole. ' : 'Текущая лунка. ') + stblTitle;
+        }
 
-        // Hole matrix (9 or 18 holes): фора + № лунки, счёт, индекс, очки Stableford
-        html += '<div class="noscroll-grid">';
-        order.forEach(function(i) {
-            var s = parseInt(sc[i]) || 0;
-            var par = holePar(i);
-            var cls = holeResClass(s, par) + ' ' + holeNineClass(i);
-            // Несовпадение с маркером — ячейка мигает серым, чтобы игроки видели расхождение
-            if (getHoleVerifyState(p, i) === 'mismatch') cls += ' cell-mismatch';
-            // Текущая лунка игрока — золотая рамка и пульсация
-            var isCur = (curHole !== null && i === curHole);
-            if (isCur) cls += ' sc-cur-tile';
-            var stbl = s > 0 ? stablefordField(s, i, fieldHcp) : null;
-            var stblTitle = currentLang === 'en'
-                ? (stbl !== null ? stbl + ' Stableford ' + (stbl === 1 ? 'point' : 'points') : 'No Stableford points yet')
-                : (stbl !== null ? 'Очки Stableford: ' + stbl : 'Очков Stableford пока нет');
-            if (isCur) {
-                stblTitle = (currentLang === 'en' ? 'Current hole. ' : 'Текущая лунка. ') + stblTitle;
+        var mkLineHtml = '';
+        if (opts.showMarker) {
+            var mk = getPlayerMarkerScoreForHole(p, i);
+            if (mk.score >= 1) {
+                var mkMm = (s >= 1 && s !== mk.score) ? ' mk-mismatch' : '';
+                mkLineHtml = '<div class="noscroll-marker' + mkMm + '">' + t('marker_score_short') + ' ' + mk.score + '</div>';
             }
-
-            html += '<div class="noscroll-tile ' + cls + '" title="' + stblTitle + '" data-sc-player="' + pid + '" data-sc-hole="' + i + '"' + (isCur ? ' data-sc-current="1"' : '') + '>';
-            html += '<div class="noscroll-hole"><span>#' + i + '</span>' + hcpStrokesMarksHTML(fieldHcp, i) + '</div>';
-            html += '<div class="noscroll-score">' + (s > 0 ? s : '—') + '</div>';
-            html += '<div class="noscroll-tile-bot"><span class="noscroll-idx">idx ' + holeHcp(i) + '</span><span class="noscroll-stbl">' + (stbl !== null ? stbl + ' pt' : '—') + '</span></div>';
-            html += '</div>';
-        });
+        }
+        html += '<div class="noscroll-tile ' + cls + '" title="' + stblTitle + '" data-sc-player="' + pid + '" data-sc-hole="' + i + '"' + (isCur ? ' data-sc-current="1"' : '') + '>';
+        html += '<div class="noscroll-hole"><span>#' + i + '</span>' + hcpStrokesMarksHTML(fieldHcp, i) + '</div>';
+        html += '<div class="noscroll-score">' + (s > 0 ? s : '—') + '</div>';
+        html += mkLineHtml;
+        html += '<div class="noscroll-tile-bot"><span class="noscroll-idx">idx ' + holeHcp(i) + '</span><span class="noscroll-stbl">' + (stbl !== null ? stbl + ' pt' : '—') + '</span></div>';
         html += '</div>';
+    });
+    html += '</div>';
 
-        // Накопительный to-par по ходу раунда (строка под плитками)
-        html += buildToParRowHTML(order, sc, 0, 'noscroll-grid').html;
+    html += buildToParRowHTML(order, sc, 0, 'noscroll-grid').html;
+    html += '</div>';
 
-        html += '</div>'; // /sc-tabs-wrap
-
-        // Totals
-        var totG = 0, parTotal = 0;
-        order.forEach(function(i) { var s = parseInt(sc[i]) || 0; if (s > 0) totG += s; parTotal += holePar(i); });
-
+    var totG = 0, parTotal = 0;
+    order.forEach(function(i) { var s = parseInt(sc[i]) || 0; if (s > 0) totG += s; parTotal += holePar(i); });
+    if (!compact) {
         html += '<div class="noscroll-totals">';
         html += '<span>' + (currentLang === 'en' ? 'Holes' : 'Лунки') + ': <b>' + stats.holesPlayed + '/' + holeCount + '</b></span>';
         html += '<span>' + t('par') + ': <b>' + parTotal + '</b></span>';
         html += '<span>' + t('total') + ': <b>' + (totG > 0 ? totG : '—') + '</b></span>';
         html += '</div>';
+    }
+
+    html += '</div></div>';
+    return html;
+}
+
+// ВАРИАНТ 1: СВОДНАЯ МАТРИЦА ФЛАЙТА
+function renderGroupMatrixHTML(r, playerEntries, order, opts) {
+    var holeCount = order.length;
+    var html = '<div class="group-matrix-card">';
+
+    // 1. Шапка со всеми игроками группы в один ряд
+    html += '<div class="group-matrix-players">';
+    playerEntries.forEach(function(pe, pIdx) {
+        var pid = pe[0], p = pe[1];
+        var sc = p.scores || {};
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+        var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+        var pTee = (p && p.tee) || r.tee || 'wh';
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 6px;">' + t('tee_' + pTee) + '</span>';
+        var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" style="font-size:9.5px;padding:1px 6px;">' + t('field_hcp_short') + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
+        var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
+        var thruTxt = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
+
+        html += '<div class="gm-player-chip">';
+        html += '<div class="gm-p-top"><strong class="gm-p-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(pName) + '</strong>' + pTeeBadge + pHcpBadge + '</div>';
+        html += '<div class="gm-p-stats">';
+        html += '<span>📍 ' + thruTxt + '</span>';
+        html += '<span>Gross: <b>' + (stats.gross || 0) + '</b></span>';
+        html += '<span class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</span>';
+        html += '<span style="color:#2ecc71;font-weight:700;">' + stats.stablefordField + ' pt</span>';
+        html += '</div></div>';
+    });
+    html += '</div>';
+
+    // 2. Сводная матрица по лункам
+    html += '<div class="gm-grid-wrap"><div class="noscroll-grid gm-noscroll-grid">';
+    order.forEach(function(i) {
+        var par = holePar(i);
+        var idx = holeHcp(i);
+        var isCurHoleAny = false;
+        var tilesForHole = '';
+
+        playerEntries.forEach(function(pe, pIdx) {
+            var pid = pe[0], p = pe[1];
+            var sc = p.scores || {};
+            var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+            var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+            var s = parseInt(sc[i]) || 0;
+            var isCur = (stats.currentHole === i && stats.holesPlayed < holeCount);
+            if (isCur) isCurHoleAny = true;
+
+            var cls = (s > 0 ? holeResClass(s, par) : 'r-empty') + (isCur ? ' sc-cur-tile' : '');
+            if (getHoleVerifyState(p, i) === 'mismatch') cls += ' cell-mismatch';
+            var stbl = s > 0 ? stablefordField(s, i, fieldHcp) : null;
+            var pInitial = (p.name || '').trim().split(/\s+/)[0] || ('P' + (pIdx + 1));
+
+            // Слой маркера (только страница ввода результатов): под счётом
+            // игрока — счёт, который ввёл его маркер. При расхождении —
+            // красная обводка ячейки.
+            var mkRowHtml = '';
+            var mkCellCls = '';
+            if (opts.showMarker) {
+                var mk = getPlayerMarkerScoreForHole(p, i);
+                if (mk.score >= 1) {
+                    var mkMm = (s >= 1 && s !== mk.score);
+                    if (mkMm) mkCellCls = ' gm-mismatch';
+                    mkRowHtml = '<div class="gm-tile-marker' + (mkMm ? ' mk-mismatch' : '') + '">' +
+                        '<span class="gm-tile-mname">' + t('marker_score_short') + '</span>' +
+                        '<span class="gm-tile-mscore">' + mk.score + '</span>' +
+                        '</div>';
+                }
+            }
+
+            tilesForHole += '<div class="gm-tile-cell' + mkCellCls + '" title="' + escapeHtml(p.name || '') + ' · #' + i + ': ' + (s > 0 ? s : '—') + '">' +
+                '<div class="gm-tile-row ' + cls + '">' +
+                '<span class="gm-tile-pname">' + escapeHtml(pInitial.substring(0, 5)) + '</span>' +
+                '<span class="gm-tile-score">' + (s > 0 ? s : '—') + '</span>' +
+                '<span class="gm-tile-stbl">' + (stbl !== null ? stbl + 'p' : '·') + '</span>' +
+                '</div>' + mkRowHtml +
+                '</div>';
+        });
+
+        html += '<div class="gm-hole-col' + (isCurHoleAny ? ' gm-cur-col' : '') + '">' +
+            '<div class="gm-hole-hdr"><span>#' + i + '</span><small>P' + par + ' · i' + idx + '</small></div>' +
+            '<div class="gm-hole-scores">' + tilesForHole + '</div>' +
+            '</div>';
+    });
+    html += '</div></div>';
+
+    // 3. Итоги флайта
+    html += '<div class="gm-totals-row">';
+    html += '<div class="gm-tot-title"><i class="fas fa-calculator"></i> ' + t('total') + ':</div>';
+    html += '<div class="gm-tot-items">';
+    playerEntries.forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        var sc = p.scores || {};
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+        var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+        var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
+        var pInitial = pName.split(/\s+/)[0] || pName;
+
+        html += '<div class="gm-tot-item">' +
+            '<span class="gm-tot-name">' + escapeHtml(pInitial) + ':</span>' +
+            '<b class="gm-tot-val">' + (stats.gross || 0) + '</b>' +
+            '<span class="gm-tot-topar ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
+            '<span class="gm-tot-stbl">' + stats.stablefordField + ' pt</span>' +
+            '</div>';
+    });
+    html += '</div></div>';
+
+    html += '</div>';
+    return html;
+}
+
+// ВАРИАНТ 2: СРАВНИТЕЛЬНАЯ ТАБЛИЦА ФЛАЙТА
+// Строка счёта маркера под счётом игрока (только страница ввода результатов).
+function buildFlightTableMarkerCellHTML(p, h, ownScore) {
+    var mk = getPlayerMarkerScoreForHole(p, h);
+    if (mk.score < 1) return '';
+    var mm = (ownScore >= 1 && ownScore !== mk.score) ? ' mk-mismatch' : '';
+    return '<div class="ft-marker' + mm + '">' + t('marker_score_short') + ': ' + mk.score + '</div>';
+}
+
+function renderGroupTableHTML(r, playerEntries, order, opts) {
+    var html = '<div class="group-flight-table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;margin-bottom:10px;">';
+    html += '<table class="group-flight-table" style="width:100%;min-width:320px;border-collapse:collapse;font-size:12px;text-align:center;">';
+
+    // thead: Player headers
+    html += '<thead><tr style="background:rgba(201,168,76,0.14);border-bottom:1px solid var(--border);">';
+    html += '<th style="padding:8px 6px;text-align:left;white-space:nowrap;min-width:85px;color:var(--gold);">' + (currentLang === 'en' ? 'Hole · Par' : 'Лунка · Пар') + '</th>';
+    playerEntries.forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        var pTee = (p && p.tee) || r.tee || 'wh';
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9px;padding:0 5px;">' + t('tee_' + pTee) + '</span>';
+        var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
+        var sc = p.scores || {};
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+        var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+
+        html += '<th style="padding:8px 6px;min-width:95px;border-left:1px solid rgba(255,255,255,0.06);">';
+        html += '<div style="font-weight:700;color:var(--white);">' + escapeHtml(pName) + '</div>';
+        html += '<div style="margin-top:2px;">' + pTeeBadge + ' <span class="hcp-chip" style="font-size:9.5px;padding:0 5px;">' + fmtFieldHcp(fieldHcp) + '</span></div>';
+        html += '<div style="font-size:11px;margin-top:2px;color:var(--gold);">Gross: <b>' + (stats.gross || 0) + '</b> <span class="' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span></div>';
+        html += '</th>';
+    });
+    html += '</tr></thead>';
+
+    // tbody
+    html += '<tbody>';
+    var frontHoles = order.filter(function(h) { return h <= 9; });
+    var backHoles = order.filter(function(h) { return h > 9; });
+
+    // Front 9
+    frontHoles.forEach(function(h) {
+        var par = holePar(h);
+        var idx = holeHcp(h);
+        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">';
+        html += '<td style="padding:6px 6px;text-align:left;font-weight:600;color:var(--gold);">#' + h + ' <span style="color:var(--muted);font-weight:400;font-size:11px;">(P' + par + ' · i' + idx + ')</span></td>';
+        playerEntries.forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var s = parseInt(p.scores && p.scores[h]) || 0;
+            var cls = s > 0 ? holeResClass(s, par) : 'r-empty';
+            var stbl = s > 0 ? stablefordField(s, h, p.fieldHcp || 0) : null;
+            html += '<td style="padding:4px 6px;border-left:1px solid rgba(255,255,255,0.04);">';
+            html += '<span class="ft-score-cell ' + cls + '" style="display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;min-width:24px;">' + (s > 0 ? s : '—') + '</span>';
+            if (stbl !== null) html += ' <small style="color:#2ecc71;font-size:10px;font-weight:600;">' + stbl + 'p</small>';
+            if (opts.showMarker) html += buildFlightTableMarkerCellHTML(p, h, s);
+            html += '</td>';
+        });
+        html += '</tr>';
+    });
+
+    // OUT Subtotal
+    if (frontHoles.length > 0) {
+        var outPar = frontHoles.reduce(function(acc, h) { return acc + holePar(h); }, 0);
+        html += '<tr style="background:rgba(255,255,255,0.06);font-weight:700;border-bottom:1px solid var(--border);">';
+        html += '<td style="padding:6px 6px;text-align:left;color:var(--white);">OUT (1-9) <small style="color:var(--muted);">(' + outPar + ')</small></td>';
+        playerEntries.forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var outGross = frontHoles.reduce(function(acc, h) { return acc + (parseInt(p.scores && p.scores[h]) || 0); }, 0);
+            var outStbl = frontHoles.reduce(function(acc, h) {
+                var s = parseInt(p.scores && p.scores[h]) || 0;
+                return acc + (s > 0 ? stablefordField(s, h, p.fieldHcp || 0) : 0);
+            }, 0);
+            html += '<td style="padding:6px 6px;color:var(--gold);border-left:1px solid rgba(255,255,255,0.06);">' + (outGross > 0 ? outGross : '—') + ' <small style="color:#2ecc71;">(' + outStbl + ' pt)</small></td>';
+        });
+        html += '</tr>';
+    }
+
+    // Back 9
+    backHoles.forEach(function(h) {
+        var par = holePar(h);
+        var idx = holeHcp(h);
+        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">';
+        html += '<td style="padding:6px 6px;text-align:left;font-weight:600;color:var(--gold);">#' + h + ' <span style="color:var(--muted);font-weight:400;font-size:11px;">(P' + par + ' · i' + idx + ')</span></td>';
+        playerEntries.forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var s = parseInt(p.scores && p.scores[h]) || 0;
+            var cls = s > 0 ? holeResClass(s, par) : 'r-empty';
+            var stbl = s > 0 ? stablefordField(s, h, p.fieldHcp || 0) : null;
+            html += '<td style="padding:4px 6px;border-left:1px solid rgba(255,255,255,0.04);">';
+            html += '<span class="ft-score-cell ' + cls + '" style="display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;min-width:24px;">' + (s > 0 ? s : '—') + '</span>';
+            if (stbl !== null) html += ' <small style="color:#2ecc71;font-size:10px;font-weight:600;">' + stbl + 'p</small>';
+            if (opts.showMarker) html += buildFlightTableMarkerCellHTML(p, h, s);
+            html += '</td>';
+        });
+        html += '</tr>';
+    });
+
+    // IN Subtotal
+    if (backHoles.length > 0) {
+        var inPar = backHoles.reduce(function(acc, h) { return acc + holePar(h); }, 0);
+        html += '<tr style="background:rgba(255,255,255,0.06);font-weight:700;border-bottom:1px solid var(--border);">';
+        html += '<td style="padding:6px 6px;text-align:left;color:var(--white);">IN (10-18) <small style="color:var(--muted);">(' + inPar + ')</small></td>';
+        playerEntries.forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            var inGross = backHoles.reduce(function(acc, h) { return acc + (parseInt(p.scores && p.scores[h]) || 0); }, 0);
+            var inStbl = backHoles.reduce(function(acc, h) {
+                var s = parseInt(p.scores && p.scores[h]) || 0;
+                return acc + (s > 0 ? stablefordField(s, h, p.fieldHcp || 0) : 0);
+            }, 0);
+            html += '<td style="padding:6px 6px;color:var(--gold);border-left:1px solid rgba(255,255,255,0.06);">' + (inGross > 0 ? inGross : '—') + ' <small style="color:#2ecc71;">(' + inStbl + ' pt)</small></td>';
+        });
+        html += '</tr>';
+    }
+
+    // TOTAL Row
+    var totPar = order.reduce(function(acc, h) { return acc + holePar(h); }, 0);
+    html += '<tr style="background:rgba(201,168,76,0.18);font-weight:800;border-top:2px solid var(--gold);">';
+    html += '<td style="padding:8px 6px;text-align:left;color:var(--gold);font-size:13px;">' + t('total') + ' <small style="color:var(--white);">(' + totPar + ')</small></td>';
+    playerEntries.forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        var sc = p.scores || {};
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+        var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+        html += '<td style="padding:8px 6px;border-left:1px solid rgba(255,255,255,0.08);">';
+        html += '<div style="font-size:15px;color:var(--white);">' + (stats.gross || 0) + ' <span class="' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span></div>';
+        html += '<div style="color:#2ecc71;font-size:11px;font-weight:700;">' + stats.stablefordField + ' pt Stbl</div>';
+        html += '</td>';
+    });
+    html += '</tr>';
+
+    html += '</tbody></table></div>';
+    return html;
+}
+
+// ВАРИАНТ 3: ЛИДЕРБОРД ФЛАЙТА И ВИЗУАЛЬНЫЙ ТРЕК
+function renderGroupLeaderboardHTML(r, playerEntries, order, opts) {
+    var holeCount = order.length;
+    var html = '<div class="flight-leaderboard-card">';
+
+    // Сортировка участников флайта по результату toPar, затем по gross
+    var ranked = playerEntries.slice().sort(function(a, b) {
+        var statsA = calcRoundStats(a[1].scores || {}, a[1].fieldHcp || 0, a[1].exactHcp || 0, order);
+        var statsB = calcRoundStats(b[1].scores || {}, b[1].fieldHcp || 0, b[1].exactHcp || 0, order);
+        if (statsA.toPar === null && statsB.toPar === null) return 0;
+        if (statsA.toPar === null) return 1;
+        if (statsB.toPar === null) return -1;
+        if (statsA.toPar !== statsB.toPar) return statsA.toPar - statsB.toPar;
+        return (statsA.gross || 0) - (statsB.gross || 0);
+    });
+
+    var rankMedals = ['🥇', '🥈', '🥉'];
+
+    ranked.forEach(function(pe, rankIdx) {
+        var pid = pe[0], p = pe[1];
+        var sc = p.scores || {};
+        var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
+        var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
+        var pTee = (p && p.tee) || r.tee || 'wh';
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 6px;">' + t('tee_' + pTee) + '</span>';
+        var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" style="font-size:9.5px;padding:1px 6px;">' + t('field_hcp_short') + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
+        var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
+        var rankLabel = rankIdx < 3 ? rankMedals[rankIdx] : ('#' + (rankIdx + 1));
+        var thruTxt = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? (t('hole') + ' №' + stats.currentHole + ' · ' + stats.holesPlayed + '/' + holeCount) : '—');
+
+        html += '<div class="flb-player-card" style="background:rgba(19,34,24,0.85);border:1px solid var(--border);border-radius:var(--rs);padding:12px;margin-bottom:8px;">';
+
+        // Top Row: Rank, Player Name, Badges, To Par, Gross, Stbl
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;min-width:0;">';
+        html += '<span class="flb-rank" style="font-size:16px;font-weight:800;color:var(--gold);min-width:26px;text-align:center;">' + rankLabel + '</span>';
+        html += '<div><span style="font-weight:700;color:var(--white);font-size:14px;">' + escapeHtml(pName) + '</span> ' + pTeeBadge + pHcpBadge;
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">📍 ' + thruTxt + '</div></div>';
+        html += '</div>';
+
+        html += '<div style="text-align:right;">';
+        html += '<div style="font-size:18px;font-weight:800;" class="' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</div>';
+        html += '<div style="font-size:11px;color:var(--muted);">Gross: <b>' + (stats.gross || 0) + '</b> · <span style="color:#2ecc71;font-weight:700;">' + stats.stablefordField + ' pt</span></div>';
+        html += '</div>';
+        html += '</div>';
+
+        // Bottom Row: Hole-by-Hole Mini Visual Strip
+        html += '<div class="flb-hole-strip" style="display:flex;gap:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:4px 0;">';
+        order.forEach(function(h) {
+            var s = parseInt(sc[h]) || 0;
+            var par = holePar(h);
+            var cls = s > 0 ? holeResClass(s, par) : 'r-empty';
+            var isCur = (stats.currentHole === h && stats.holesPlayed < holeCount);
+            var stbl = s > 0 ? stablefordField(s, h, fieldHcp) : null;
+            var tip = '#' + h + ' (P' + par + '): ' + (s > 0 ? (s + (stbl !== null ? ' · ' + stbl + 'p' : '')) : '—');
+            var mmCls = '';
+            if (opts.showMarker) {
+                var mkOwn = getPlayerMarkerScoreForHole(p, h);
+                if (mkOwn.score >= 1) {
+                    tip += ' · ' + t('marker_score_short') + ': ' + mkOwn.score;
+                    if (s >= 1 && s !== mkOwn.score) mmCls = ' flb-mm';
+                }
+            }
+
+            html += '<div class="flb-mini-tile ' + cls + (isCur ? ' flb-cur' : '') + mmCls + '" title="' + tip + '" style="flex:1;min-width:18px;height:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;font-size:9.5px;font-weight:700;">' +
+                '<span style="font-size:7.5px;opacity:0.75;line-height:1;">' + h + '</span>' +
+                '<span style="font-size:10px;line-height:1;font-weight:800;">' + (s > 0 ? s : '·') + '</span>' +
+                '</div>';
+        });
+        html += '</div>';
+
+        // Вторая полоса — счёта маркера этого игрока (только страница ввода).
+        if (opts.showMarker && playerHasAnyMarkerScore(p, order)) {
+            html += '<div class="flb-marker-cap"><i class="fas fa-pen-nib"></i> ' + t('marker_score_short') + ' — ' + t('legend_marker_score') + '</div>';
+            html += '<div class="flb-hole-strip flb-marker-strip" style="display:flex;gap:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px 0 4px;">';
+            order.forEach(function(h) {
+                var mk = getPlayerMarkerScoreForHole(p, h);
+                var ownS = parseInt(sc[h]) || 0;
+                var mm = (mk.score >= 1 && ownS >= 1 && ownS !== mk.score) ? ' flb-mm' : '';
+                var tipM = '#' + h + ': ' + t('marker_score_short') + ' ' + (mk.score >= 1 ? mk.score : '—');
+                html += '<div class="flb-mini-tile flb-marker-tile' + mm + '" title="' + tipM + '" style="flex:1;min-width:18px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:3px;font-size:10px;font-weight:800;">' +
+                    (mk.score >= 1 ? mk.score : '·') +
+                    '</div>';
+            });
+            html += '</div>';
+        }
 
         html += '</div>';
     });
 
     html += '</div>';
-
     return html;
+}
+
+// ==========================================
+// ГАНДИКАП: ЗЕЛЁНАЯ ГАЛОЧКА СИНХРОНИЗАЦИИ + ДАТА ОБНОВЛЕНИЯ
+// Гандикап считается «синхронизированным», если он установлен и у записи
+// есть hcpUpdatedAt — он проставляется при синхронизации с базой АГР
+// (RUSGOLF), импорте Excel и ручном изменении в админ-панели.
+// ==========================================
+function getHcpSyncInfo(u) {
+    u = u || {};
+    if (u.handicap === null || u.handicap === undefined || !u.hcpUpdatedAt) {
+        return { ok: false };
+    }
+    return {
+        ok: true,
+        ts: Number(u.hcpUpdatedAt),
+        dateStr: fmtDate(u.hcpUpdatedAt),
+        source: u.hcpSource || '',
+        sourceLabel: hcpSourceLabel(u.hcpSource)
+    };
+}
+
+function hcpSourceLabel(src) {
+    var isEn = currentLang === 'en';
+    if (src === 'rusgolf') return isEn ? 'RUSGOLF (AGR database)' : 'База АГР России (RUSGOLF)';
+    if (src === 'excel') return isEn ? 'Excel import' : 'Импорт Excel';
+    if (src === 'manual') return isEn ? 'Manual update' : 'Ручное обновление';
+    return isEn ? 'Handicap sync' : 'Синхронизация гандикапа';
+}
+
+function hcpSyncTooltip(info) {
+    var isEn = currentLang === 'en';
+    return (isEn ? 'Handicap updated: ' : 'Гандикап обновлён: ') + info.dateStr +
+        ' · ' + (isEn ? 'Source: ' : 'Источник: ') + info.sourceLabel;
+}
+
+// Короткая дата «09.09.26» для компактных бейджей.
+function fmtHcpShortDate(ts) {
+    var d = new Date(Number(ts));
+    if (!d.getTime()) return '';
+    var mo = d.getMonth() + 1, da = d.getDate();
+    return (da < 10 ? '0' : '') + da + '.' + (mo < 10 ? '0' : '') + mo + '.' + String(d.getFullYear()).slice(2);
+}
+
+// Выбранный вариант оформления бейджа: 1/2/3.
+// ГЛОБАЛЬНЫЙ выбор делается в админ-панели (вкладка «Данные» → «Стиль
+// галочки гандикапа») и хранится в Firebase settings/hcp_badge_variant —
+// он применяется на всех устройствах игроков. Кэшируем в localStorage
+// для офлайн-режима; hcp-badge-preview.html использует тот же ключ
+// для локального предпросмотра.
+var pestovoHcpBadgeVariant = (function() {
+    try {
+        var v = localStorage.getItem('pestovo_hcp_badge_variant');
+        if (v === '1' || v === '2' || v === '3') return v;
+    } catch (e) {}
+    return '1';
+})();
+
+function getHcpBadgeVariant() {
+    return pestovoHcpBadgeVariant;
+}
+
+// Локальный выбор (страница предпросмотра) — обновляет только состояние
+// этого браузера, не трогая глобальную настройку в Firebase.
+function setHcpBadgeVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    pestovoHcpBadgeVariant = v;
+    try { localStorage.setItem('pestovo_hcp_badge_variant', v); } catch (e) {}
+}
+
+// Применяет глобальный вариант (из админ-панели или Firebase) и
+// перерисовывает открытые списки/элементы.
+function applyHcpBadgeVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    pestovoHcpBadgeVariant = v;
+    try { localStorage.setItem('pestovo_hcp_badge_variant', v); } catch (e) {}
+    refreshHcpBadgeVariantUI();
+}
+
+function refreshHcpBadgeVariantUI() {
+    // Вкладка «Игроки» (players.html)
+    try {
+        if (typeof loadPlayers === 'function' && document.getElementById('players-grid')) loadPlayers();
+    } catch (e) {}
+    // Админ-панель: список «Игроки и роли» (только при открытой панели)
+    try {
+        if (typeof hasAdminPanelAccess === 'function' && hasAdminPanelAccess() &&
+            typeof loadAdmPlayers === 'function' &&
+            document.getElementById('admin-content') &&
+            !document.getElementById('admin-content').classList.contains('hidden')) {
+            loadAdmPlayers();
+        }
+    } catch (e) {}
+    // Подсветка выбранного варианта в админ-панели
+    try {
+        if (typeof markAdmHcpVariantButtons === 'function') markAdmHcpVariantButtons();
+    } catch (e) {}
+    // Страница предпросмотра вариантов (если открыта)
+    try {
+        if (typeof window !== 'undefined' && typeof window.hcpBadgePreviewRerender === 'function') window.hcpBadgePreviewRerender();
+    } catch (e) {}
+}
+
+// Зелёная галочка на углу аватара (вариант 3): оборачивает разметку аватара.
+function hcpAvatarWrapHtml(avatarHtml, info) {
+    if (!info || !info.ok) return avatarHtml;
+    return '<span class="hcp-avatar-wrap">' + avatarHtml +
+        '<span class="hcp-avatar-badge" title="' + escapeHtml(hcpSyncTooltip(info)) + '"><i class="fas fa-check"></i></span></span>';
+}
+
+// Фрагмент для карточки игрока (вкладка «Игроки» и админка): вставляется
+// сразу после значения HCP. Возвращает '' у игроков без синхронизации.
+function hcpSyncBadgeHtml(u) {
+    var info = getHcpSyncInfo(u);
+    if (!info.ok) return '';
+    var v = getHcpBadgeVariant();
+    var isEn = currentLang === 'en';
+    var short = fmtHcpShortDate(info.ts);
+    var tip = escapeHtml(hcpSyncTooltip(info));
+    if (v === '2') {
+        // Вариант 2: светящийся зелёный «пилюля»-бейдж
+        return '<span class="hcp-sync-pill" title="' + tip + '"><i class="fas fa-circle-check"></i> ' +
+            (isEn ? 'updated ' : 'обновлён ') + short + '</span>';
+    }
+    if (v === '3') {
+        // Вариант 3: текст даты (галочка уже на аватаре)
+        return ' <span class="hcp-date" title="' + tip + '">' + (isEn ? 'updated ' : 'обновлён ') + short + '</span>';
+    }
+    // Вариант 1: компактная галочка + дата рядом с HCP
+    return ' <i class="fas fa-circle-check hcp-check" title="' + tip + '"></i> <span class="hcp-date" title="' + tip + '">' + short + '</span>';
+}
+
+// Разметка статуса гандикапа для личного профиля игрока.
+// Возвращает { meta: ..., banner: ... }:
+//   meta — замена строки «HCP: …» в шапке профиля (null = обычный вид)
+//   banner — отдельный зелёный баннер (используется только вариантом 2)
+function buildHcpProfileSyncHtml(u) {
+    var info = getHcpSyncInfo(u);
+    if (!info.ok) return { meta: null, banner: '' };
+    var v = getHcpBadgeVariant();
+    var isEn = currentLang === 'en';
+    var hcpVal = fmtExactHcp(u.handicap);
+    var tip = escapeHtml(hcpSyncTooltip(info));
+
+    if (v === '2') {
+        return {
+            meta: null,
+            banner: '<div class="hcp-sync-banner">' +
+                '<span class="hsb-icon"><i class="fas fa-circle-check"></i></span>' +
+                '<span style="flex:1;min-width:180px;">' +
+                '<span style="display:block;font-size:14px;font-weight:800;color:#2ecc71;">' +
+                (isEn ? 'Handicap synced & up to date' : 'Гандикап синхронизирован') + '</span>' +
+                '<span style="display:block;font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;">' +
+                '<i class="fas fa-golf-ball"></i> HCP: ' + hcpVal + ' · ' +
+                '<i class="fas fa-calendar-check"></i> ' + (isEn ? 'Updated ' : 'Обновлено ') + info.dateStr +
+                ' · ' + (isEn ? 'Source: ' : 'Источник: ') + info.sourceLabel + '</span></span>' +
+                '</div>'
+        };
+    }
+
+    // Варианты 1 и 3 — зелёная строка HCP с галочкой, датой и источником
+    return {
+        meta: '<span class="hcp-profile-sync" title="' + tip + '">' +
+            '<i class="fas fa-circle-check"></i> <i class="fas fa-golf-ball"></i> HCP: ' + hcpVal +
+            ' · ' + (isEn ? 'updated ' : 'обновлён ') + info.dateStr +
+            ' <span class="hcp-source">(' + info.sourceLabel + ')</span></span>',
+        banner: ''
+    };
 }
 
 // ==========================================
@@ -3032,8 +4217,9 @@ function openPlayerProfileModal(playerId, roundId) {
 
         if (!u && rd && rd.players && rd.players[playerId]) {
             var p = rd.players[playerId];
+            var displayName = playerDisplayName(p, playerId);
             u = {
-                name: p.name || t('guest'),
+                name: displayName !== '—' ? displayName : t('guest'),
                 handicap: p.exactHcp || null,
                 gender: p.gender || 'men',
                 isGuest: true,
@@ -3048,21 +4234,33 @@ function openPlayerProfileModal(playerId, roundId) {
 
         var isMe = (currentUser && currentUser.uid === playerId);
         var gIcon = u.gender === 'women' ? '👩' : '👨';
-        var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">' + t('guest') + '</span>' : '';
+        // Бейдж «Гость» убран везде по требованию клуба — гости никак не помечаются.
+        var guestBadge = '';
 
         var roundsWord = currentLang === 'en' ? 'rounds' : 'раундов';
         var teePillMarkup = u.defaultTee ? fmtTeePill(u.defaultTee) : '';
 
+        // Статус синхронизации гандикапа: зелёная галочка + дата обновления
+        var hcpSync = (typeof buildHcpProfileSyncHtml === 'function') ? buildHcpProfileSyncHtml(u) : { meta: null, banner: '' };
+        var plainHcpSpan = '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
+
         var html = '<div class="profile-head" style="margin-bottom:16px;">';
-        html += fmtUserAvatar(u, 80);
-        html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(u.name || '—') + guestBadge + '</div>';
+        var profileAvatarHtml = fmtUserAvatar(u, 80);
+        if (hcpSync.meta !== null && getHcpBadgeVariant() === '3') {
+            // Вариант 3: зелёная галочка-«верификация» на углу аватара
+            var hcpInfo3 = getHcpSyncInfo(u);
+            profileAvatarHtml = hcpAvatarWrapHtml(profileAvatarHtml, hcpInfo3);
+        }
+        html += profileAvatarHtml;
+        html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(privacyDisplayName(u, playerId)) + guestBadge + '</div>';
         html += '<div class="profile-meta">';
-        html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
+        html += hcpSync.meta !== null ? hcpSync.meta : plainHcpSpan;
         if (teePillMarkup) html += '<span><i class="fas fa-golf-ball-tee"></i> Tee: ' + teePillMarkup + '</span>';
         html += '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' ' + roundsWord + '</span>';
         var hTag = currentLang === 'en' ? 'h' : 'л';
         if (u.bestGross) html += '<span><i class="fas fa-trophy"></i> Gross (18' + hTag + '): ' + u.bestGross + '</span>';
         html += '</div>';
+        if (hcpSync.banner) html += hcpSync.banner;
 
         if (isMe) {
             html += '<button class="btn btn-og btn-sm" style="margin-top:10px;" onclick="renderProfileEditForm(\'' + playerId + '\')"><i class="fas fa-user-pen"></i> ' + t('edit_profile') + '</button>';
@@ -3079,7 +4277,7 @@ function openPlayerProfileModal(playerId, roundId) {
                     '</h3>';
             
             if (typeof generatePestovoScorecardHTML === 'function') {
-                html += generatePestovoScorecardHTML(roundPlayer, rd);
+                html += generatePestovoScorecardHTML(roundPlayer, rd, { compact: true });
             }
             html += '</div>';
         }
@@ -3150,13 +4348,15 @@ function openPlayerProfileModal(playerId, roundId) {
                     };
 
                     if (typeof generatePestovoScorecardHTML === 'function') {
-                        html += generatePestovoScorecardHTML(pObj, rObj);
+                        html += generatePestovoScorecardHTML(pObj, rObj, { compact: true });
                     }
 
                     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">';
                     if (r.roundId) {
                         html += '<button class="btn btn-og btn-sm" onclick="openPrintScorecardModal(\'' + r.roundId + '\')"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print (A4)' : 'Печать (A4)') + '</button>';
-                        html += '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + r.roundId + '\')"><i class="fas fa-image"></i> PNG</button>';
+                        if (r.status === 'completed') {
+                            html += '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + r.roundId + '\')"><i class="fas fa-image"></i> PNG</button>';
+                        }
                     }
                     html += '</div>';
 
@@ -3418,7 +4618,7 @@ function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback) {
             var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
 
             html += '<div class="list-item" style="padding:14px;margin-bottom:10px;flex-wrap:wrap;gap:8px;">';
-            html += '<div style="flex:1;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</strong>';
+            html += '<div style="flex:1;"><strong style="color:var(--white);font-size:15px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, pid)) + '</strong>';
             html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + holeCount + ' · Gross: ' + (stats.gross || 0) + '</div></div>';
             html += '<div style="text-align:right;"><div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;font-size:18px;">' + fmtScore(stats.toPar) + '</div></div>';
             html += '</div>';
@@ -3471,7 +4671,9 @@ function closeFinishModal() {
 // ==========================================
 // СКОРКАРТА ПЕСТОВО (КАК НА ФОТО — 18 ЛУНОК)
 // ==========================================
-function generatePestovoScorecardHTML(player, roundData) {
+function generatePestovoScorecardHTML(player, roundData, opts) {
+    opts = opts || {};
+    var compact = !!opts.compact;
     var p = player || {};
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
@@ -3500,15 +4702,18 @@ function generatePestovoScorecardHTML(player, roundData) {
 
     var html = '<div class="pestovo-modern-scorecard">';
 
-    // 1. Top HUD Header
-    html += '<div class="msc-card-hdr">';
-    html += '  <div class="msc-player-title"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(p.name || '—') + '</div>';
-    html += '  <div class="msc-meta-pills">';
-    html += '    <span class="msc-pill hcp-band ' + fieldHcpBandClass(fHcp) + '" title="' + fieldHcpBandTitle(fHcp) + '">HCP: <b>' + fmtExactHcp(eHcp) + '</b> (' + fmtFieldHcp(fHcp) + ')</span>';
-    html += '    <span class="msc-pill">' + fmtTeePill(teeCode) + '</span>';
-    html += '    <span class="msc-pill">' + fmt + ' · ' + holeRange + ' · ' + date + '</span>';
-    html += '  </div>';
-    html += '</div>';
+    // 1. Top HUD Header. В компактном режиме шапка не выводится: имя, ТИ,
+    // HCP, формат и дата уже показаны на странице над карточкой.
+    if (!compact) {
+        html += '<div class="msc-card-hdr">';
+        html += '  <div class="msc-player-title"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, null)) + '</div>';
+        html += '  <div class="msc-meta-pills">';
+        html += '    <span class="msc-pill hcp-band ' + fieldHcpBandClass(fHcp) + '" title="' + fieldHcpBandTitle(fHcp) + '">HCP: <b>' + fmtExactHcp(eHcp) + '</b> (' + fmtFieldHcp(fHcp) + ')</span>';
+        html += '    <span class="msc-pill">' + fmtTeePill(teeCode) + '</span>';
+        html += '    <span class="msc-pill">' + fmt + ' · ' + holeRange + ' · ' + date + '</span>';
+        html += '  </div>';
+        html += '</div>';
+    }
 
     // Тайл лунки: фора (как при вводе счёта), номер лунки, счёт, индекс и очки Stableford.
     // Расстояние на тайле не показывается — карточка остаётся компактной без скроллов.
@@ -3538,16 +4743,13 @@ function generatePestovoScorecardHTML(player, roundData) {
         return html;
     };
 
-    // Вкладки «Первые 9 / Вторые 9 / Все 18»: скрывают лишнюю девятку через CSS,
-    // поэтому состояние не теряется при перерисовке карточки в реальном времени.
-    html += '<div class="sc-tabs-wrap" data-view="' + scorecardViewFor(front.length, back.length) + '">';
-    html += buildScorecardTabsHTML(front.length, back.length);
+    // Вкладки «Первые 9 / Вторые 9 / Все 18» удалены: карточка всегда
+    // показывает все лунки выбранного диапазона сразу.
+    html += '<div class="sc-tabs-wrap" data-view="all">';
 
     var frontRun = 0;
 
     if (front.length) {
-        var pOut = 0; front.forEach(function(i){ pOut += holePar(i); });
-        html += '<div class="msc-sec-hdr sc-h-front"><span>FRONT 9 (OUT)</span> <span>Par ' + pOut + '</span></div>';
         html += '<div class="msc-tile-grid">';
         front.forEach(function(i) {
             html += tileHTML(i);
@@ -3565,9 +4767,7 @@ function generatePestovoScorecardHTML(player, roundData) {
     }
 
     if (back.length) {
-        var pIn = 0; back.forEach(function(i){ pIn += holePar(i); });
-        html += '<div class="msc-sec-hdr sc-h-back" style="margin-top:10px;"><span>BACK 9 (IN)</span> <span>Par ' + pIn + '</span></div>';
-        html += '<div class="msc-tile-grid">';
+        html += '<div class="msc-tile-grid" style="margin-top:10px;">';
         back.forEach(function(i) {
             html += tileHTML(i);
         });
@@ -3831,7 +5031,7 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
         mode:rd.mode||'group',startHole:rd.startHole||1,holeRange:rd.holeRange||'1-18',gross:stats.gross,toPar:stats.toPar,
         net:stats.net,netToPar:stats.netToPar,stablefordField:stats.stablefordField,stablefordExact:stats.stablefordExact,
         holes:stats.holesPlayed,scores:p.scores||{},birdies:stats.birdies,eagles:stats.eagles,
-        pars:stats.pars,holeInOne:stats.holeInOne,exactHcp:p.exactHcp||0,fieldHcp:p.fieldHcp||0,gender:p.gender||'men'
+        pars:stats.pars,holeInOne:stats.holeInOne,exactHcp:p.exactHcp||0,fieldHcp:p.fieldHcp||0,gender:p.gender||'men',status:'completed'
     });
     db.ref('users/'+userId+'/roundsPlayed').transaction(function(v){return(v||0)+1;});
     if(stats.holesPlayed===getRoundHoleCount(rd)){
@@ -3842,124 +5042,549 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
 
 
 // ==========================================
-// ГЕНЕРАТОР PNG-КАРТОЧКИ ДЛЯ СОЦСЕТЕЙ
+// АВТОЗАВЕРШЕНИЕ ПРОСРОЧЕННЫХ РАУНДОВ
 // ==========================================
+// Раунд «живёт» только день старта: если игрок начал раунд вчера и не
+// завершил его, на следующий день раунд автоматически переводится в статус
+// «завершён автоматически» (autoCompleted=true). Проверка выполняется на
+// клиентах при чтении списка раундов (главная, все раунды, админка) —
+// первый открывший приложение игрок «подметает» базу за всех.
+var __pestovoStaleRoundSweepIds = {};
+
+function getRoundDayStartMs(ts) {
+    var d = new Date(parseInt(ts, 10) || 0);
+    if (isNaN(d.getTime())) return 0;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+function isRoundStaleForAutoComplete(r) {
+    if (!r || typeof r !== 'object' || r.status !== 'active') return false;
+    var startTs = parseInt(r.startTime, 10) || parseInt(r.createdAt, 10) || 0;
+    if (!startTs) return false;
+    var startDay = getRoundDayStartMs(startTs);
+    if (!startDay) return false;
+    var todayDay = getRoundDayStartMs(Date.now());
+    // Раунд считается «вчерашним», если день его старта строго раньше сегодняшнего дня
+    return startDay < todayDay;
+}
+
+// Принимает объект rounds из снапшота, переводит просроченные активные раунды
+// в «completed» (локально сразу + записью в Firebase) и возвращает тот же объект.
+function sweepStaleRounds(data) {
+    if (!data || typeof data !== 'object') return data;
+    Object.keys(data).forEach(function(id) {
+        var r = data[id];
+        if (!isRoundStaleForAutoComplete(r)) return;
+
+        var nowMs = Date.now();
+        // Локальный патч — чтобы текущий рендер сразу показал раунд завершённым
+        r.status = 'completed';
+        r.autoCompleted = true;
+        r.autoCompletedAt = nowMs;
+        if (!r.completedAt) r.completedAt = nowMs;
+
+        // Пишем в базу только один раз за жизнь вкладки на каждый раунд
+        if (typeof db === 'undefined' || __pestovoStaleRoundSweepIds[id]) return;
+        __pestovoStaleRoundSweepIds[id] = true;
+
+        var roundId = id;
+        var roundData = r;
+        var update = {
+            status: 'completed',
+            autoCompleted: true,
+            autoCompletedAt: nowMs,
+            completedAt: roundData.completedAt
+        };
+        db.ref('rounds/' + roundId).update(update).then(function() {
+            // Историю сохраняем атомарно ровно один раз (транзакция-клейм):
+            // даже если sweep запустили одновременно несколько клиентов,
+            // записи в users/<uid>/history не задвоятся.
+            var claimId = 'sweep_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+            return db.ref('rounds/' + roundId + '/historyRecorded').transaction(function(v) {
+                if (v === null || v === undefined || v === false) return claimId;
+                return undefined; // кто-то уже забрал — отменяем транзакцию
+            }).then(function(res) {
+                var claimed = res && res.committed && res.snapshot && String(res.snapshot.val()) === claimId;
+                if (claimed && typeof saveHistory === 'function') {
+                    try { saveHistory(roundId, roundData); } catch (e) {}
+                }
+            });
+        }).catch(function() {
+            delete __pestovoStaleRoundSweepIds[roundId];
+        });
+    });
+    return data;
+}
+
+// Бейдж статуса завершённого раунда:
+//  — авто-завершение: «Завершён автоматически»;
+//  — обычное завершение: имя игрока, который завершил раунд;
+//  — старые записи без данных о завершении: просто «Завершён».
+function buildRoundCompletedBadgeHTML(r) {
+    var isEn = (typeof currentLang !== 'undefined') && currentLang === 'en';
+    if (r && r.autoCompleted) {
+        return '<span class="tn-status tn-auto" title="' + (isEn ? 'The round was closed automatically the next day' : 'Раунд закрыт автоматически на следующий день') + '"><i class="fas fa-clock-rotate-left"></i> ' + (isEn ? 'Auto-completed' : 'Завершён автоматически') + '</span>';
+    }
+    var who = r && r.completedByName ? String(r.completedByName).trim() : '';
+    if (who) {
+        var shown = (typeof escapeHtml === 'function') ? escapeHtml(who) : who;
+        return '<span class="tn-status tn-d"><i class="fas fa-user-check"></i> ' + (isEn ? 'Completed by ' : 'Завершил(а) · ') + shown + '</span>';
+    }
+    return '<span class="tn-status tn-d">' + (isEn ? 'Completed' : 'Завершён') + '</span>';
+}
+
+
+// ==========================================
+// ГЛОБАЛЬНЫЕ ВАРИАНТЫ ОТОБРАЖЕНИЯ СТРАНИЦ
+// ==========================================
+// Администратор выбирает оформление один раз для всего клуба. Значение
+// дублируется в localStorage только как офлайн-резерв, а Firebase остаётся
+// источником истины для новых устройств. Вариант 1 — текущий вид страниц.
+var PAGE_DISPLAY_VARIANTS = ['1', '2', '3'];
+var PAGE_DISPLAY_VARIANT_CONFIG = {
+    home: { storage: 'pestovo_home_display_variant', firebase: 'settings/home_display_variant' },
+    players: { storage: 'pestovo_players_display_variant', firebase: 'settings/players_display_variant' },
+    stats: { storage: 'pestovo_stats_display_variant', firebase: 'settings/stats_display_variant' },
+    rounds: { storage: 'pestovo_all_rounds_display_variant', firebase: 'settings/all_rounds_display_variant' },
+    guide: { storage: 'pestovo_guide_display_variant', firebase: 'settings/guide_display_variant' },
+    feed: { storage: 'pestovo_feed_display_variant', firebase: 'settings/feed_display_variant' },
+    predictor: { storage: 'pestovo_predictor_display_variant', firebase: 'settings/predictor_display_variant' },
+    'order-of-merit': { storage: 'pestovo_oom_display_variant', firebase: 'settings/oom_display_variant' },
+    tournaments: { storage: 'pestovo_tournaments_display_variant', firebase: 'settings/tournaments_display_variant' },
+    handicap: { storage: 'pestovo_handicap_display_variant', firebase: 'settings/handicap_display_variant' },
+    assistant: { storage: 'pestovo_assistant_display_variant', firebase: 'settings/assistant_display_variant' }
+};
+
+var pestovoPageDisplayVariants = (function() {
+    var state = {};
+    Object.keys(PAGE_DISPLAY_VARIANT_CONFIG).forEach(function(page) {
+        var cfg = PAGE_DISPLAY_VARIANT_CONFIG[page];
+        var value = '';
+        try { value = localStorage.getItem(cfg.storage) || ''; } catch (e) {}
+        state[page] = PAGE_DISPLAY_VARIANTS.indexOf(String(value)) !== -1 ? String(value) : '1';
+    });
+    return state;
+})();
+
+function normalizePageDisplayVariant(page, value) {
+    return PAGE_DISPLAY_VARIANTS.indexOf(String(value === undefined || value === null ? '' : value)) !== -1
+        ? String(value) : '1';
+}
+
+function getPageDisplayVariant(page) {
+    return PAGE_DISPLAY_VARIANT_CONFIG[page] ? (pestovoPageDisplayVariants[page] || '1') : '1';
+}
+
+function applyPageDisplayVariant(page, value) {
+    if (!PAGE_DISPLAY_VARIANT_CONFIG[page]) return '1';
+    var variant = normalizePageDisplayVariant(page, value);
+    pestovoPageDisplayVariants[page] = variant;
+    try { localStorage.setItem(PAGE_DISPLAY_VARIANT_CONFIG[page].storage, variant); } catch (e) {}
+    syncPageDisplayBodyClasses();
+
+    // Перерисовка выполняется только если соответствующая страница открыта.
+    // Это позволяет менять оформление в админке без перезагрузки вкладки.
+    try {
+        if (page === 'players' && typeof loadPlayers === 'function' && document.getElementById('players-grid')) loadPlayers();
+        if (page === 'stats' && typeof loadStats === 'function' && document.getElementById('general-stats')) loadStats();
+        if (page === 'rounds' && typeof loadLB === 'function' && document.getElementById('lb-container')) loadLB();
+    } catch (e) {}
+    try {
+        if (typeof markAdmPageDisplayVariantButtons === 'function') markAdmPageDisplayVariantButtons(page);
+    } catch (e) {}
+    return variant;
+}
+
+// Синхронизирует CSS-классы вида «pd-<страница>-v2/v3» на <body>.
+// Варианты большинства страниц реализованы чисто на CSS, поэтому переключение
+// класса мгновенно меняет оформление без перерендера данных. Вариант «1»
+// сохраняет исходный вид (классов нет).
+function syncPageDisplayBodyClasses() {
+    if (typeof document === 'undefined' || !document.body) return;
+    try {
+        Object.keys(PAGE_DISPLAY_VARIANT_CONFIG).forEach(function(page) {
+            var cur = getPageDisplayVariant(page);
+            ['2', '3'].forEach(function(v) {
+                document.body.classList.toggle('pd-' + page + '-v' + v, cur === v);
+            });
+        });
+    } catch (e) {}
+}
+
+function normalizePlayersDisplayVariant(value) { return normalizePageDisplayVariant('players', value); }
+function getPlayersDisplayVariant() { return getPageDisplayVariant('players'); }
+function applyPlayersDisplayVariant(value) { return applyPageDisplayVariant('players', value); }
+function normalizeStatsDisplayVariant(value) { return normalizePageDisplayVariant('stats', value); }
+function getStatsDisplayVariant() { return getPageDisplayVariant('stats'); }
+function applyStatsDisplayVariant(value) { return applyPageDisplayVariant('stats', value); }
+function normalizeAllRoundsDisplayVariant(value) { return normalizePageDisplayVariant('rounds', value); }
+function getAllRoundsDisplayVariant() { return getPageDisplayVariant('rounds'); }
+function applyAllRoundsDisplayVariant(value) { return applyPageDisplayVariant('rounds', value); }
+function normalizeHomeDisplayVariant(value) { return normalizePageDisplayVariant('home', value); }
+function getHomeDisplayVariant() { return getPageDisplayVariant('home'); }
+function applyHomeDisplayVariant(value) { return applyPageDisplayVariant('home', value); }
+function getGuideDisplayVariant() { return getPageDisplayVariant('guide'); }
+function getFeedDisplayVariant() { return getPageDisplayVariant('feed'); }
+function getPredictorDisplayVariant() { return getPageDisplayVariant('predictor'); }
+function getOomDisplayVariant() { return getPageDisplayVariant('order-of-merit'); }
+function getTournamentsDisplayVariant() { return getPageDisplayVariant('tournaments'); }
+function getHandicapDisplayVariant() { return getPageDisplayVariant('handicap'); }
+function getAssistantDisplayVariant() { return getPageDisplayVariant('assistant'); }
+
+// Применяем выбранные варианты сразу (скрипт подключён в конце <body>),
+// чтобы страница не «мигала» исходным оформлением при загрузке.
+try { syncPageDisplayBodyClasses(); } catch (e) {}
+document.addEventListener('DOMContentLoaded', function() { syncPageDisplayBodyClasses(); });
+
+// ==========================================
+// PNG-КАРТОЧКИ ДЛЯ СОЦСЕТЕЙ
+// ==========================================
+// Оформление выбирается администратором для всего клуба. Значение держим и
+// локально, чтобы экспорт продолжал работать в офлайне.
+var SOCIAL_CARD_VARIANTS = ['1', '2', '3'];
+
+function normalizeSocialCardVariant(value) {
+    value = String(value === undefined || value === null ? '' : value);
+    return SOCIAL_CARD_VARIANTS.indexOf(value) !== -1 ? value : '1';
+}
+
+var pestovoSocialCardVariant = (function() {
+    try { return normalizeSocialCardVariant(localStorage.getItem('pestovo_social_card_variant')); } catch (e) {}
+    return '1';
+})();
+
+function getSocialCardVariant() {
+    return pestovoSocialCardVariant;
+}
+
+function applySocialCardVariant(value) {
+    var variant = normalizeSocialCardVariant(value);
+    pestovoSocialCardVariant = variant;
+    try { localStorage.setItem('pestovo_social_card_variant', variant); } catch (e) {}
+    try {
+        if (typeof markAdmSocialCardVariantButtons === 'function') markAdmSocialCardVariantButtons();
+    } catch (e) {}
+    return variant;
+}
+
+// ==========================================
+// ОТОБРАЖЕНИЕ КАРТОЧКИ ГРУППОВОГО РАУНДА
+// ==========================================
+// Стиль единой карточки группового раунда на главной странице.
+// Варианты: '1' - Сводная матрица, '2' - Сравнительная таблица, '3' - Лидерборд флайта
+var GROUP_CARD_VARIANTS = ['1', '2', '3'];
+
+function normalizeGroupCardVariant(value) {
+    value = String(value === undefined || value === null ? '' : value);
+    return GROUP_CARD_VARIANTS.indexOf(value) !== -1 ? value : '1';
+}
+
+var pestovoGroupCardVariant = (function() {
+    try { return normalizeGroupCardVariant(localStorage.getItem('pestovo_group_card_variant')); } catch (e) {}
+    return '1';
+})();
+
+function getGroupCardVariant() {
+    return pestovoGroupCardVariant;
+}
+
+function applyGroupCardVariant(value) {
+    var variant = normalizeGroupCardVariant(value);
+    pestovoGroupCardVariant = variant;
+    try { localStorage.setItem('pestovo_group_card_variant', variant); } catch (e) {}
+    try {
+        if (typeof markAdmGroupCardVariantButtons === 'function') markAdmGroupCardVariantButtons();
+    } catch (e) {}
+    try {
+        if (typeof loadLiveRounds === 'function') loadLiveRounds();
+        if (typeof loadRecentResults === 'function') loadRecentResults();
+    } catch (e) {}
+    return variant;
+}
+
+// Логотип нужен только как обычный элемент шапки — фон PNG намеренно остаётся
+// чистым, без водяного знака.
+var pestovoCardLogoImg = null;
+var pestovoCardLogoLoaded = false;
+function loadPestovoCardLogo() {
+    return new Promise(function(resolve) {
+        if (pestovoCardLogoLoaded) { resolve(pestovoCardLogoImg); return; }
+        try {
+            var img = new Image();
+            img.onload = function() {
+                pestovoCardLogoImg = img;
+                pestovoCardLogoLoaded = true;
+                resolve(img);
+            };
+            img.onerror = function() {
+                pestovoCardLogoLoaded = true;
+                pestovoCardLogoImg = null;
+                resolve(null);
+            };
+            img.src = baseUrl() + 'img/logo.png';
+        } catch (e) {
+            pestovoCardLogoLoaded = true;
+            resolve(null);
+        }
+    });
+}
+
+function drawSocialCardFrame(ctx, variant) {
+    // Чистый фон без логотипа: это сохраняет контраст счёта и делает карточку
+    // аккуратной в лентах соцсетей.
+    var bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
+    bgGrad.addColorStop(0, variant === '2' ? '#152e1a' : '#0b1a0e');
+    bgGrad.addColorStop(0.5, '#132817');
+    bgGrad.addColorStop(1, '#071209');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 1080, 1080);
+
+    ctx.strokeStyle = '#c9a84c';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(30, 30, 1020, 1020);
+    ctx.strokeStyle = 'rgba(201,168,76,0.35)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(42, 42, 996, 996);
+}
+
+function drawCardForegroundLogo(ctx, img, cx, cy, maxW, maxH) {
+    if (!img || !img.width || !img.height) return;
+    var scale = Math.min(maxW / img.width, maxH / img.height);
+    var w = img.width * scale;
+    var h = img.height * scale;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 3;
+    ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+    ctx.restore();
+}
+
+function drawFittedCanvasText(ctx, text, x, y, maxWidth, size, minSize, fontFamily) {
+    text = String(text === undefined || text === null ? '' : text);
+    var currentSize = size;
+    var family = fontFamily || '"Inter", sans-serif';
+    ctx.font = 'bold ' + currentSize + 'px ' + family;
+    while (currentSize > minSize && ctx.measureText(text).width > maxWidth) {
+        currentSize -= 2;
+        ctx.font = 'bold ' + currentSize + 'px ' + family;
+    }
+    if (ctx.measureText(text).width > maxWidth) {
+        while (text.length > 1 && ctx.measureText(text + '…').width > maxWidth) {
+            text = text.slice(0, -1);
+        }
+        text += '…';
+    }
+    ctx.fillText(text, x, y);
+}
+
+function drawSocialCardHeader(ctx, data, cfg) {
+    cfg = cfg || {};
+    var isEn = typeof currentLang !== 'undefined' && currentLang === 'en';
+    var label = cfg.label || (isEn ? 'LIVE SCORECARD' : 'СЧЁТНАЯ КАРТОЧКА');
+    var meta = data.format + ' · ' + (isEn ? 'TEE' : 'ТИ') + ': ' + data.teeName + ' · HCP: ' + data.hcp;
+
+    // Небольшой логотип расположен непосредственно над именем, а не в фоне.
+    drawCardForegroundLogo(ctx, data.logoImg, 540, cfg.logoY || 142, 165, 110);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = '700 17px "Inter", sans-serif';
+    ctx.fillText(label, 540, cfg.labelY || 78);
+
+    var dividerY = cfg.dividerY || 222;
+    ctx.beginPath();
+    ctx.moveTo(250, dividerY);
+    ctx.lineTo(830, dividerY);
+    ctx.strokeStyle = 'rgba(201,168,76,0.78)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Имя начинается заметно ниже, чем в прежней карточке: под знаком клуба.
+    ctx.fillStyle = '#ffffff';
+    drawFittedCanvasText(ctx, data.playerName, 540, cfg.nameY || 286, 880, 48, 30, '"Playfair Display", Georgia, serif');
+
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = '600 18px "Inter", sans-serif';
+    drawFittedCanvasText(ctx, meta, 540, cfg.metaY || 324, 900, 18, 13, '"Inter", sans-serif');
+
+    ctx.fillStyle = '#9eb5a5';
+    ctx.font = '500 16px "Inter", sans-serif';
+    ctx.fillText(data.date, 540, cfg.dateY || 350);
+}
+
+function drawSocialCardTotalBar(ctx, outGross, inGross, totalGross, y) {
+    y = y || 870;
+    ctx.fillStyle = '#101f13';
+    ctx.fillRect(60, y, 960, 50);
+    ctx.strokeStyle = '#c9a84c';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(60, y, 960, 50);
+
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 18px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('OUT: ' + (outGross || '—') + '   ·   IN: ' + (inGross || '—') + '   ·   TOTAL 18: ' + (totalGross || '—'), 540, y + 32);
+}
+
+function drawSocialCardFooter(ctx, variant) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = variant === '2' ? 'rgba(201,168,76,0.88)' : 'rgba(201,168,76,0.65)';
+    ctx.font = '600 17px "Inter", sans-serif';
+    ctx.fillText('GOLF CLUB PESTOVO · LIVE SCORING', 540, 996);
+}
+
+function drawSocialCardResultHero(ctx, stats) {
+    ctx.fillStyle = '#132218';
+    ctx.strokeStyle = '#c9a84c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(60, 376, 960, 142, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#9eb5a5';
+    ctx.font = '700 15px "Inter", sans-serif';
+    ctx.fillText('GROSS', 240, 416);
+    ctx.fillText('STABLEFORD', 840, 416);
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 42px "Inter", sans-serif';
+    ctx.fillText(String(stats.gross || 0), 240, 470);
+    ctx.fillStyle = '#2ecc71';
+    ctx.fillText(String(stats.stablefordField || 0), 840, 470);
+
+    ctx.strokeStyle = 'rgba(201,168,76,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(380, 400);
+    ctx.lineTo(380, 494);
+    ctx.moveTo(700, 400);
+    ctx.lineTo(700, 494);
+    ctx.stroke();
+
+    ctx.fillStyle = '#9eb5a5';
+    ctx.font = '700 14px "Inter", sans-serif';
+    ctx.fillText('TO PAR', 540, 414);
+    ctx.fillStyle = stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff';
+    ctx.font = 'bold 58px "Playfair Display", Georgia, serif';
+    ctx.fillText(fmtScore(stats.toPar), 540, 477);
+}
+
+function drawSocialCardLayout(ctx, data) {
+    var variant = normalizeSocialCardVariant(data.variant);
+    var scoreColor = data.stats.toPar < 0 ? '#2ecc71' : data.stats.toPar > 0 ? '#e05a4a' : '#ffffff';
+
+    drawSocialCardFrame(ctx, variant);
+
+    if (variant === '2') {
+        drawSocialCardHeader(ctx, data, {
+            label: typeof currentLang !== 'undefined' && currentLang === 'en' ? 'ROUND RESULT' : 'РЕЗУЛЬТАТ РАУНДА',
+            nameY: 286, metaY: 324, dateY: 350
+        });
+        drawSocialCardResultHero(ctx, data.stats);
+        drawScorecardGridRow(ctx, data.scores, 1, 9, 550);
+        drawScorecardGridRow(ctx, data.scores, 10, 18, 738);
+    } else if (variant === '3') {
+        drawSocialCardHeader(ctx, data, {
+            label: typeof currentLang !== 'undefined' && currentLang === 'en' ? 'TOURNAMENT SCORECARD' : 'ТУРНИРНАЯ КАРТОЧКА',
+            nameY: 276, metaY: 342, dateY: 364
+        });
+        if (data.tournamentName) {
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#9eb5a5';
+            drawFittedCanvasText(ctx, data.tournamentName, 540, 312, 860, 17, 13, '"Inter", sans-serif');
+        }
+        drawKPICard(ctx, 80, 388, 220, 108, 'TO PAR', fmtScore(data.stats.toPar), scoreColor);
+        drawKPICard(ctx, 430, 388, 220, 108, 'GROSS', String(data.stats.gross || 0), '#c9a84c');
+        drawKPICard(ctx, 780, 388, 220, 108, 'STABLEFORD', String(data.stats.stablefordField || 0), '#2ecc71');
+        drawScorecardGridRow(ctx, data.scores, 1, 9, 530);
+        drawScorecardGridRow(ctx, data.scores, 10, 18, 712);
+        drawSocialCardTotalBar(ctx, data.outGross, data.inGross, data.totalGross, 875);
+    } else {
+        drawSocialCardHeader(ctx, data, { nameY: 286, metaY: 324, dateY: 350 });
+        drawKPICard(ctx, 80, 376, 220, 108, 'TO PAR', fmtScore(data.stats.toPar), scoreColor);
+        drawKPICard(ctx, 430, 376, 220, 108, 'GROSS', String(data.stats.gross || 0), '#c9a84c');
+        drawKPICard(ctx, 780, 376, 220, 108, 'STABLEFORD', String(data.stats.stablefordField || 0), '#2ecc71');
+        drawScorecardGridRow(ctx, data.scores, 1, 9, 518);
+        drawScorecardGridRow(ctx, data.scores, 10, 18, 700);
+        drawSocialCardTotalBar(ctx, data.outGross, data.inGross, data.totalGross, 870);
+    }
+
+    drawSocialCardFooter(ctx, variant);
+}
+
 function exportRoundPNG(roundId, playerId) {
     if (typeof db === 'undefined' || !roundId) return;
 
     toast(currentLang === 'en' ? '⏳ Generating PNG scorecard...' : '⏳ Генерируем PNG-карточку...', 'info');
 
-    db.ref('rounds/' + roundId).once('value').then(function(sn) {
-        var r = sn.val();
-        if (!r || !r.players) return;
+    // Логотип рисуется компактно в шапке, непосредственно над именем игрока.
+    loadPestovoCardLogo().then(function(logoImg) {
+        db.ref('rounds/' + roundId).once('value').then(function(sn) {
+            var r = sn.val();
+            // PNG/социальная карточка разрешена только для завершённого раунда.
+            // Проверка остаётся и в UI, и здесь — прямой вызов функции не должен
+            // позволить поделиться незавершённым результатом.
+            if (!r || r.status !== 'completed' || !r.players) {
+                toast(currentLang === 'en'
+                    ? 'A social scorecard is available after the round is completed.'
+                    : 'Поделиться карточкой можно только после завершения раунда.', 'info');
+                return;
+            }
 
-        var playersList = Object.entries(r.players);
-        var pid = playerId || playersList[0][0];
-        var p = r.players[pid] || playersList[0][1];
-        if (!p) return;
+            var playersList = Object.entries(r.players);
+            if (!playersList.length) return;
+            var pid = playerId || playersList[0][0];
+            if (!r.players[pid]) pid = playersList[0][0];
+            var p = r.players[pid];
+            if (!p) return;
 
-        var canvas = document.createElement('canvas');
-        canvas.width = 1080;
-        canvas.height = 1080;
-        var ctx = canvas.getContext('2d');
+            var canvas = document.createElement('canvas');
+            canvas.width = 1080;
+            canvas.height = 1080;
+            var ctx = canvas.getContext('2d');
+            var scores = p.scores || {};
+            var order = getRoundOrder(r);
+            var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
+            var outGross = 0, inGross = 0;
+            for (var i = 1; i <= 9; i++) {
+                var frontScore = parseInt(scores[i]) || 0;
+                if (frontScore > 0) outGross += frontScore;
+            }
+            for (var j = 10; j <= 18; j++) {
+                var backScore = parseInt(scores[j]) || 0;
+                if (backScore > 0) inGross += backScore;
+            }
 
-        // Background Gradient
-        var bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
-        bgGrad.addColorStop(0, '#0b1a0e');
-        bgGrad.addColorStop(0.5, '#132817');
-        bgGrad.addColorStop(1, '#071209');
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, 1080, 1080);
+            var teeName = t('tee_' + ((p && p.tee) || r.tee || 'wh'));
+            drawSocialCardLayout(ctx, {
+                variant: getSocialCardVariant(),
+                logoImg: logoImg,
+                playerName: playerDisplayName(p, pid),
+                format: r.format || 'Stroke Play',
+                teeName: teeName,
+                hcp: fmtExactHcp(p.exactHcp),
+                date: fmtDate(r.completedAt || r.createdAt || Date.now()),
+                tournamentName: r.tournamentName || '',
+                scores: scores,
+                stats: stats,
+                outGross: outGross,
+                inGross: inGross,
+                totalGross: outGross + inGross
+            });
 
-        // Gold Border Frame
-        ctx.strokeStyle = '#c9a84c';
-        ctx.lineWidth = 8;
-        ctx.strokeRect(30, 30, 1020, 1020);
-
-        ctx.strokeStyle = 'rgba(201,168,76,0.3)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(42, 42, 996, 996);
-
-        // Header Title
-        ctx.fillStyle = '#c9a84c';
-        ctx.font = 'bold 36px "Playfair Display", Georgia, serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('PESTOVO GOLF CLUB', 540, 95);
-
-        ctx.fillStyle = '#9eb5a5';
-        ctx.font = '500 18px "Inter", sans-serif';
-        ctx.fillText('OFFICIAL DIGITAL SCORECARD', 540, 130);
-
-        // Gold Divider
-        ctx.beginPath();
-        ctx.moveTo(180, 150);
-        ctx.lineTo(900, 150);
-        ctx.strokeStyle = '#c9a84c';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Player Name
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 48px "Playfair Display", serif';
-        ctx.fillText(p.name || 'Golf Player', 540, 215);
-
-        // Sub Meta
-        var teeName = t('tee_' + ((p && p.tee) || r.tee || 'wh'));
-        var fmtStr = (r.format || 'Stroke Play') + ' · Tee: ' + teeName + ' · HCP: ' + fmtExactHcp(p.exactHcp);
-        var dateStr = fmtDate(r.completedAt || r.createdAt || Date.now());
-
-        ctx.fillStyle = '#c9a84c';
-        ctx.font = '600 20px "Inter", sans-serif';
-        ctx.fillText(fmtStr, 540, 255);
-
-        ctx.fillStyle = '#9eb5a5';
-        ctx.font = '16px "Inter", sans-serif';
-        ctx.fillText(dateStr, 540, 288);
-
-        // Score KPIs Cards (Gross, Net, ToPar)
-        var order = getRoundOrder(r);
-        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-
-        // Карточка NET убрана из PNG (по требованию клуба — без отображения Net)
-        drawKPICard(ctx, 160, 315, 220, 115, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
-        drawKPICard(ctx, 430, 315, 220, 115, 'GROSS', String(stats.gross || 0), '#c9a84c');
-
-        // Hole Grid Rows (Front 9 & Back 9) - TRADITIONAL SCORECARD (HOLE, PAR, SCORE)
-        drawScorecardGridRow(ctx, p.scores || {}, 1, 9, 460);
-        drawScorecardGridRow(ctx, p.scores || {}, 10, 18, 680);
-
-        // Total 18 Holes Summary Bar
-        var outGross = 0, inGross = 0;
-        for (var i = 1; i <= 9; i++) { var s = parseInt(p.scores && p.scores[i]) || 0; if (s > 0) outGross += s; }
-        for (var i = 10; i <= 18; i++) { var s = parseInt(p.scores && p.scores[i]) || 0; if (s > 0) inGross += s; }
-        var totalGross18 = outGross + inGross;
-
-        ctx.fillStyle = '#101f13';
-        ctx.fillRect(60, 850, 960, 50);
-        ctx.strokeStyle = '#c9a84c';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(60, 850, 960, 50);
-
-        ctx.fillStyle = '#c9a84c';
-        ctx.font = 'bold 18px "Inter", sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(' OUT: ' + (outGross || '—') + '  |  IN: ' + (inGross || '—') + '  |  TOTAL 18 HOLES: ' + (totalGross18 || '—'), 80, 882);
-
-        ctx.textAlign = 'right';
-        ctx.fillText('STABLEFORD: ' + stats.stablefordField + ' PTS ', 1000, 882);
-
-        // Footer Branding
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(201,168,76,0.6)';
-        ctx.font = '600 18px "Inter", sans-serif';
-        ctx.fillText('⛳ GOLF CLUB PESTOVO · LIVE SCORING SYSTEM', 540, 995);
-
-        var dataUrl = canvas.toDataURL('image/png');
-        openPNGExportModal(dataUrl, p.name, roundId, pid, playersList);
+            var dataUrl = canvas.toDataURL('image/png');
+            openPNGExportModal(dataUrl, playerDisplayName(p, pid), roundId, pid, playersList);
+        }).catch(function(error) {
+            console.warn('[PNG] Cannot load round for export', error);
+            toast(currentLang === 'en' ? 'Could not generate the PNG scorecard' : 'Не удалось сформировать PNG-карточку', 'error');
+        });
     });
 }
 
 function drawKPICard(ctx, x, y, w, h, label, value, valColor) {
+    // Непрозрачная подложка сохраняет KPI контрастными на чистом фоне.
     ctx.fillStyle = '#132218';
     ctx.strokeStyle = '#1e3525';
     ctx.lineWidth = 2;
@@ -4011,7 +5636,7 @@ function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
 
     // --- ROW 2: PAR ---
     var y2 = startY + row1H;
-    ctx.fillStyle = 'rgba(46, 204, 113, 0.08)';
+    ctx.fillStyle = 'rgba(46, 204, 113, 0.10)';
     ctx.fillRect(startX, y2, labelW + holeW * 9 + totW, row2H);
     ctx.strokeStyle = '#1e3525';
     ctx.strokeRect(startX, y2, labelW + holeW * 9 + totW, row2H);
@@ -4268,7 +5893,7 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
         playersList.forEach(function(pe) {
             var pid = pe[0], p = pe[1];
             var sel = pid === activePid ? 'selected' : '';
-            html += '<option value="' + pid + '" ' + sel + '>' + escapeHtml(p.name || 'Player') + '</option>';
+            html += '<option value="' + pid + '" ' + sel + '>' + escapeHtml(playerDisplayName(p, pid)) + '</option>';
         });
         html += '</select></div>';
     }
@@ -5197,7 +6822,8 @@ var MANAGED_PAGES = [
     'players.html',
     'tournaments.html',
     'stats.html',
-    'handicap.html'
+    'handicap.html',
+    'assistant.html'
 ];
 
 function getHiddenPages() {
@@ -5319,6 +6945,51 @@ if (typeof db !== 'undefined') {
             try { localStorage.setItem('pestovo_my_preferences_enabled', enabled ? '1' : '0'); } catch(e) {}
             if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
             if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+        });
+        // Глобальный выбор стиля галочки гандикапа (админ-панель → «Данные»)
+        db.ref('settings/hcp_badge_variant').on('value', function(sn) {
+            var v = sn.val();
+            if ((v === '1' || v === '2' || v === '3') && v !== pestovoHcpBadgeVariant) {
+                applyHcpBadgeVariant(v);
+            }
+        });
+        // Глобальный выбор оформления PNG-карточки для социальных сетей.
+        db.ref('settings/social_card_variant').on('value', function(sn) {
+            var v = sn.val();
+            if (SOCIAL_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoSocialCardVariant) {
+                applySocialCardVariant(String(v));
+            }
+        });
+        // Глобальный выбор стиля карточки группового раунда на главной.
+        db.ref('settings/group_round_card_variant').on('value', function(sn) {
+            var v = sn.val();
+            if (GROUP_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoGroupCardVariant) {
+                applyGroupCardVariant(String(v));
+            }
+        });
+        // Шаблоны оформления сайта (админ-панель → «Дизайн 🎨»).
+        // Ключа settings/design может не быть — тогда работает текущий дизайн,
+        // ничего не переопределяется.
+        db.ref('settings/design').on('value', function(sn) {
+            var val = sn.val();
+            if (typeof PestovoDesign === 'undefined') return;
+            if (val && typeof val === 'object') {
+                PestovoDesign.applySettings(val);
+            } else {
+                // Админ сбросил оформление: возвращаем базовый дизайн.
+                PestovoDesign.applySettings(null);
+            }
+        });
+        // Глобальные варианты страниц: по умолчанию используется вариант 1,
+        // поэтому отсутствие ключа в старой базе ничего не меняет.
+        Object.keys(PAGE_DISPLAY_VARIANT_CONFIG).forEach(function(page) {
+            var cfg = PAGE_DISPLAY_VARIANT_CONFIG[page];
+            db.ref(cfg.firebase).on('value', function(sn) {
+                var value = sn.val();
+                if (PAGE_DISPLAY_VARIANTS.indexOf(String(value)) !== -1 && String(value) !== getPageDisplayVariant(page)) {
+                    applyPageDisplayVariant(page, String(value));
+                }
+            });
         });
     } catch(e) {}
 }
@@ -5698,8 +7369,6 @@ var BLOCKED_DEMO_PLAYER_IDS = [
     'user_petr_odin_21',
     'user_petr_p',
     'user_vasya_p',
-    'user_vladimir_v',
-    'user_vladimir_v2',
     'user_anna_v',
     'user_alex_i',
     'user_ekaterina_p',
@@ -5716,8 +7385,6 @@ var BLOCKED_DEMO_PLAYER_NAMES = [
     'петров петр',
     'вася петров',
     'петров вася',
-    'владимир воробьев',
-    'воробьев владимир',
     'анна воробьева',
     'воробьева анна',
     'александр иванов',
@@ -5762,22 +7429,34 @@ var cachedRegisteredUsers = {};
 function purgeBlockedFromPlayerCaches() {
     var clean = function(raw) {
         if (!raw) return raw;
-        var obj = JSON.parse(raw);
-        if (obj && typeof obj === 'object') {
-            Object.keys(obj).forEach(function(k) {
-                var u = obj[k];
-                if (isBlockedDemoPlayer(k, u && u.name)) delete obj[k];
-            });
+        try {
+            var obj = JSON.parse(raw);
+            if (obj && typeof obj === 'object') {
+                Object.keys(obj).forEach(function(k) {
+                    try {
+                        var u = obj[k];
+                        if (isBlockedDemoPlayer(k, u && u.name)) delete obj[k];
+                    } catch(_){}
+                });
+            }
+            return obj;
+        } catch(e) {
+            return {};
         }
-        return obj;
     };
     try {
         var c1 = localStorage.getItem('pestovo_cached_users');
-        if (c1) localStorage.setItem('pestovo_cached_users', JSON.stringify(clean(c1)));
+        if (c1) {
+            var cleaned1 = clean(c1);
+            localStorage.setItem('pestovo_cached_users', JSON.stringify(cleaned1));
+        }
     } catch(e) {}
     try {
         var c2 = localStorage.getItem('pestovo_custom_players');
-        if (c2) localStorage.setItem('pestovo_custom_players', JSON.stringify(clean(c2)));
+        if (c2) {
+            var cleaned2 = clean(c2);
+            localStorage.setItem('pestovo_custom_players', JSON.stringify(cleaned2));
+        }
     } catch(e) {}
 }
 
@@ -6304,7 +7983,8 @@ function initPlayerSearchAutofill(opts) {
         matches.slice(0, 8).forEach(function(m, idx) {
             var gIcon = m.gender === 'women' ? '👩' : '👨';
             var hcpText = fmtExactHcp(m.handicap) + ' HCP';
-            var guestTag = m.isGuest ? ' <span style="font-size:10px;color:var(--gold);">(Гость)</span>' : '';
+            // Пометка «Гость» в подсказках убрана — все игроки выглядят одинаково.
+            var guestTag = '';
 
             html += '<div class="autocomplete-item" data-idx="' + idx + '" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.08);min-height:44px;">';
             html += '<span>' + gIcon + ' <strong style="color:var(--white);font-size:14px;">' + escapeHtml(m.name) + '</strong>' + guestTag + '</span>';
@@ -6374,4 +8054,228 @@ function initPlayerSearchAutofill(opts) {
             highlightedIdx = -1;
         }
     });
+}
+
+// ==========================================
+// КОНФИДЕНЦИАЛЬНОСТЬ ИМЁН (ФИО)
+// Админ может скрывать полные имена игроков (имя/фамилия/отчество) от других
+// игроков и гостей. Вместо ФИО показываются инициалы («И. Т.») или маска
+// («Игрок №N»). Гандикап и история раундов остаются доступны. Админ и сам
+// игрок всегда видят своё имя. Настройки: settings/privacy в Firebase:
+//   { enabled: bool, maskMode: 'initials'|'masked', players: { uid: bool } }
+// Для конкретного игрока players[uid]=true — скрыть (перекрывает глобальный
+// выключатель), players[uid]=false — показывать, даже если включено глобально.
+// ==========================================
+var pestovoPrivacy = { enabled: false, maskMode: 'initials', players: {}, loaded: false };
+
+function initPrivacySettings() {
+    // Начальные значения из локального кэша (офлайн/при первом кадре)
+    try {
+        var cached = localStorage.getItem('pestovo_privacy');
+        if (cached) {
+            var c = JSON.parse(cached);
+            if (c && typeof c === 'object') {
+                pestovoPrivacy.enabled = c.enabled === true;
+                pestovoPrivacy.maskMode = c.maskMode === 'masked' ? 'masked' : 'initials';
+                pestovoPrivacy.players = c.players || {};
+            }
+        }
+    } catch (e) {}
+
+    if (typeof db === 'undefined') { pestovoPrivacy.loaded = true; return; }
+    try {
+        db.ref('settings/privacy').on('value', function(sn) {
+            var v = sn.val() || {};
+            pestovoPrivacy.enabled = v.enabled === true;
+            pestovoPrivacy.maskMode = v.maskMode === 'masked' ? 'masked' : 'initials';
+            pestovoPrivacy.players = v.players || {};
+            pestovoPrivacy.loaded = true;
+            try {
+                localStorage.setItem('pestovo_privacy', JSON.stringify({
+                    enabled: pestovoPrivacy.enabled,
+                    maskMode: pestovoPrivacy.maskMode,
+                    players: pestovoPrivacy.players
+                }));
+            } catch (e2) {}
+            // После обновления настроек приватности — перерисуем открытые блоки на главной
+            if (typeof renderPrivacySensitiveHome === 'function') renderPrivacySensitiveHome();
+        }, function() {});
+    } catch (e) { pestovoPrivacy.loaded = true; }
+}
+
+function privacyIsAdmin() {
+    try {
+        if (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin') return true;
+        if (sessionStorage.getItem('pestovo_is_admin') === 'true') return true;
+    } catch (e) {}
+    return false;
+}
+
+function privacyShouldHide(pid) {
+    if (typeof currentUser !== 'undefined' && currentUser && pid && currentUser.uid === pid) return false;
+    if (privacyIsAdmin()) return false;
+    if (!pid) return false;
+    var ind = pestovoPrivacy.players && pestovoPrivacy.players[pid];
+    if (ind === false) return false;   // явное «показывать» для этого игрока
+    if (ind === true) return true;     // явное «скрыть» для этого игрока
+    return pestovoPrivacy.enabled === true;
+}
+
+function privacyMaskNumber(s) {
+    var h = 0;
+    s = String(s || '');
+    for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) >>> 0; }
+    return (h % 999) + 1;
+}
+
+function privacyMaskName(name, pid) {
+    if (pestovoPrivacy.maskMode === 'masked') {
+        var word = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'Player' : 'Игрок';
+        return word + ' №' + privacyMaskNumber(pid || name);
+    }
+    // Инициалы: «Иван Тестов» → «И. Т.»
+    var parts = String(name || '').replace(/\s+/g, ' ').trim().split(' ');
+    var initials = parts.filter(Boolean).slice(0, 2).map(function(w) { return w.charAt(0).toUpperCase() + '.'; }).join(' ');
+    return initials || '?';
+}
+
+function playerDisplayName(p, pid) {
+    if (!p) return '—';
+    var name = p.name && String(p.name).trim();
+    if (!name && (p.firstName || p.lastName || p.middleName)) {
+        name = [p.firstName, p.middleName, p.lastName].filter(function(x) {
+            return x && String(x).trim();
+        }).map(function(x) { return String(x).trim(); }).join(' ');
+    }
+    return name || '—';
+}
+
+function privacyDisplayName(p, pid) {
+    if (!p) return '—';
+    var name = playerDisplayName(p, pid);
+    if (privacyShouldHide(pid)) return privacyMaskName(name, pid);
+    return name;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof initPrivacySettings === 'function') initPrivacySettings();
+});
+
+// ============================================================
+// ТУРНИРНЫЕ ГРУППЫ ПО ГАНДИКАПУ (дивизионы) + ОБРЕЗКА ГАНДИКАПА
+// ------------------------------------------------------------
+// Дивизион турнира: { id, name, gender: 'men'|'women'|'all',
+//                     hcpFrom, hcpTo, tee: 'bk'|'bl'|'wh'|'rd'|'' }
+// Хранится в tournaments/<id>/divisions (объект или массив).
+// Обрезка гандикапа (только для текущего турнира):
+//   cut = { enabled, percent, maxMen, maxWomen }
+// Сначала применяется максимум по полу, затем процент.
+// ============================================================
+function tnNormalizeDivisions(tVal) {
+    var raw = tVal ? tVal.divisions : null;
+    if (!raw) return [];
+    var arr = Array.isArray(raw) ? raw.slice() : Object.keys(raw).map(function(k) {
+        var d = raw[k] || {};
+        if (!d.id) d.id = k;
+        return d;
+    });
+    arr = arr.filter(function(d) { return d && (d.name || d.hcpFrom != null || d.hcpTo != null); });
+    arr.sort(function(a, b) {
+        var ga = (a.gender || 'all'), gb = (b.gender || 'all');
+        var order = { men: 0, women: 1, all: 2 };
+        if ((order[ga] == null ? 3 : order[ga]) !== (order[gb] == null ? 3 : order[gb])) {
+            return (order[ga] == null ? 3 : order[ga]) - (order[gb] == null ? 3 : order[gb]);
+        }
+        var fa = (a.hcpFrom === '' || a.hcpFrom == null) ? -999 : parseFloat(a.hcpFrom);
+        var fb = (b.hcpFrom === '' || b.hcpFrom == null) ? -999 : parseFloat(b.hcpFrom);
+        if (isNaN(fa)) fa = -999;
+        if (isNaN(fb)) fb = -999;
+        return fa - fb;
+    });
+    return arr;
+}
+
+function tnDivisionGenderOk(divGender, playerGender) {
+    var g = divGender || 'all';
+    if (g === 'all') return true;
+    return (playerGender || 'men') === g;
+}
+
+function tnFindDivision(tVal, handicap, gender) {
+    var divs = tnNormalizeDivisions(tVal);
+    if (!divs.length) return null;
+    var h = (handicap === '' || handicap == null) ? null : parseFloat(handicap);
+    if (h == null || isNaN(h)) return null;
+    gender = gender || 'men';
+    for (var i = 0; i < divs.length; i++) {
+        var d = divs[i];
+        if (!tnDivisionGenderOk(d.gender, gender)) continue;
+        var from = (d.hcpFrom === '' || d.hcpFrom == null) ? -999 : parseFloat(d.hcpFrom);
+        var to = (d.hcpTo === '' || d.hcpTo == null) ? 999 : parseFloat(d.hcpTo);
+        if (isNaN(from)) from = -999;
+        if (isNaN(to)) to = 999;
+        if (h + 1e-9 >= from && h - 1e-9 <= to) return d;
+    }
+    return null;
+}
+
+function tnDivisionRangeText(div) {
+    if (!div) return '';
+    var f = (div.hcpFrom === '' || div.hcpFrom == null) ? null : parseFloat(div.hcpFrom);
+    var t = (div.hcpTo === '' || div.hcpTo == null) ? null : parseFloat(div.hcpTo);
+    var fmt = function(v) {
+        if (v == null || isNaN(v)) return '';
+        if (typeof fmtExactHcp === 'function') return fmtExactHcp(v);
+        return String(v);
+    };
+    if (f != null && !isNaN(f) && t != null && !isNaN(t)) return fmt(f) + '–' + fmt(t);
+    if (f != null && !isNaN(f)) return fmt(f) + '+';
+    if (t != null && !isNaN(t)) return '–' + fmt(t);
+    return '';
+}
+
+function tnDivisionGenderText(g) {
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    if (g === 'men') return en ? 'Men' : 'Мужчины';
+    if (g === 'women') return en ? 'Women' : 'Девушки';
+    return en ? 'All' : 'Все';
+}
+
+// Обрезка точного гандикапа для турнира.
+// cut = { enabled: bool, percent: 1..100, maxMen: number|null, maxWomen: number|null }
+// Возвращает { raw, capped, effective, cappedByMax, cutApplied }.
+function tnApplyHcpCut(exactHcp, gender, cut) {
+    var raw = (exactHcp === '' || exactHcp == null) ? 0 : parseFloat(exactHcp);
+    if (isNaN(raw)) raw = 0;
+    var out = { raw: raw, capped: raw, effective: raw, cappedByMax: false, cutApplied: false };
+    cut = cut || {};
+    var maxV = null;
+    if ((gender || 'men') === 'women') maxV = (cut.maxWomen === '' || cut.maxWomen == null) ? null : parseFloat(cut.maxWomen);
+    else maxV = (cut.maxMen === '' || cut.maxMen == null) ? null : parseFloat(cut.maxMen);
+    if (maxV != null && !isNaN(maxV) && raw > maxV) {
+        out.capped = maxV;
+        out.cappedByMax = true;
+    }
+    var eff = out.capped;
+    if (cut.enabled) {
+        var pct = parseFloat(cut.percent);
+        if (isNaN(pct) || pct <= 0) pct = 100;
+        if (pct > 100) pct = 100;
+        if (pct < 100 - 1e-9) {
+            eff = Math.round(out.capped * pct) / 100;
+            out.cutApplied = true;
+        }
+    }
+    out.effective = Math.round(eff * 10) / 10;
+    if (out.cappedByMax) out.cutApplied = true;
+    return out;
+}
+
+// Полевой гандикап турнира с учётом обрезки (максимум + процент).
+function tnTournamentFieldHcp(exactHcp, teeCode, gender, cut) {
+    var eff = tnApplyHcpCut(exactHcp, gender, cut).effective;
+    if (typeof getFieldHcp === 'function') {
+        try { return getFieldHcp(eff, teeCode || 'wh', gender || 'men'); } catch (e) {}
+    }
+    return Math.round(eff || 0);
 }

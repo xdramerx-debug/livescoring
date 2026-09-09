@@ -12,11 +12,15 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <title data-i18n="nav_round">Раунд — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=4">
+    <link rel="stylesheet" href="css/style.css?v=24">
+    <link rel="stylesheet" href="css/design-presets.css?v=1">
+    <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
     <style>
         /* ===== ВКЛАДКИ РЕЖИМА: ОДИНОЧНЫЙ / ГРУППОВОЙ ===== */
         .mode-toggle-group {
@@ -95,7 +99,8 @@
         <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
-        <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
+<a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
+        <a href="assistant.html" class="nav-link" data-i18n="nav_assistant">Помощник</a>
         <div class="nav-auth" id="nav-auth"></div>
         </div>
     </div>
@@ -108,7 +113,7 @@
     </div>
 </div>
 
-<main class="container" style="padding:24px 20px 80px;">
+<main class="container" style="padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:80px;">
 
     <!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" -->
     <div id="my-active-rounds-container" class="hidden"></div>
@@ -243,7 +248,7 @@
         </div>
 
         <div class="round-card" style="margin:12px 0;">
-            <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('gv-sc-panel')" style="width:100%;">
+            <button class="btn btn-og btn-sm btn-block" onclick="togglePersistedScorecard('gv-sc-panel')" style="width:100%;">
                 <i class="fas fa-chevron-down" id="gv-sc-panel-icon"></i> 
                 <span id="gv-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
             </button>
@@ -352,7 +357,7 @@
         <div id="group-pace-assistant" style="margin-top:12px;"></div>
 
         <div class="round-card" style="margin:12px 0;">
-            <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('group-sc-panel')" style="width:100%;">
+            <button class="btn btn-og btn-sm btn-block" onclick="togglePersistedScorecard('group-sc-panel')" style="width:100%;">
                 <i class="fas fa-chevron-down" id="group-sc-panel-icon"></i> 
                 <span id="group-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
             </button>
@@ -378,6 +383,7 @@
 
         <!-- QR КОДЫ ДЛЯ ПОДКЛЮЧЕНИЯ ДРУГИХ ИГРОКОВ -->
         <div class="card" id="invite-qrs-card">
+            <div id="invite-join-status"></div>
             <button type="button" class="btn btn-og btn-sm btn-block" style="width:100%;justify-content:center;" onclick="toggleInviteQRs()">
                 <i class="fas fa-chevron-down" id="invite-qrs-icon"></i> 
                 <span id="invite-qrs-txt" data-i18n="connect_players_title">Подключение игроков группы</span>
@@ -532,7 +538,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.16.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.42.0</span></p>
         </div>
     </div>
 </footer>
@@ -540,10 +546,10 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=22"></script>
-<script src="js/live.js?v=17"></script>
-<script src="js/solo.js?v=18"></script>
-<script src="js/pwa.js"></script>
+<script src="js/firebase-config.js?v=2"></script>
+<script src="js/utils.js?v=43"></script>
+<script src="js/live.js?v=24"></script>
+<script src="js/solo.js?v=24"></script>
+<script src="js/pwa.js?v=2"></script>
 </body>
 </html>

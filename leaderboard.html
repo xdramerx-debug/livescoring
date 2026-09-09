@@ -13,11 +13,15 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_leaderboard">Все раунды — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=4">
+    <link rel="stylesheet" href="css/style.css?v=24">
+    <link rel="stylesheet" href="css/design-presets.css?v=1">
+    <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
@@ -40,14 +44,15 @@
         <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
-        <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
+<a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
+        <a href="assistant.html" class="nav-link" data-i18n="nav_assistant">Помощник</a>
         <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
 
 <div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">Все раунды</span></h1></div></div>
 
-<main class="container" style="padding:24px 20px 60px;">
+<main class="container" style="padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:60px;">
     <div class="card"><div class="form-row">
         <div class="form-group" style="flex:2;min-width:200px;">
             <label data-i18n="search_label">Поиск игрока</label>
@@ -55,17 +60,26 @@
         </div>
         <div class="form-group" style="flex:1;min-width:140px;"><label data-i18n="status_label">Статус</label><select id="lb-status" class="form-input" onchange="loadLB()">
             <option value="all" selected data-i18n="status_all">Все</option><option value="active" data-i18n="status_active">Live</option><option value="completed" data-i18n="status_completed">Завершённые</option></select></div>
-    </div></div>
+        <div class="form-group" style="flex:1;min-width:150px;"><label data-i18n="date_from_label">Дата с</label><input type="date" id="lb-date-from" class="form-input"></div>
+        <div class="form-group" style="flex:1;min-width:150px;"><label data-i18n="date_to_label">Дата по</label><input type="date" id="lb-date-to" class="form-input"></div>
+        <div class="form-group date-reset-group" style="flex:0 0 auto;">
+            <label aria-hidden="true">&nbsp;</label>
+            <button type="button" id="lb-date-reset" class="btn btn-ol btn-sm"><i class="fas fa-rotate-left"></i> <span data-i18n="date_filter_reset">Сбросить</span></button>
+        </div>
+    </div>
+    <div class="date-presets" id="lb-date-presets"></div>
+    <p class="date-filter-hint hidden" id="lb-date-hint" role="alert"></p></div>
+    <div class="rounds-summary" id="lb-summary"></div>
     <div id="lb-container"><div class="loading"><div class="spinner"></div></div></div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.16.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.42.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=22"></script>
-<script src="js/leaderboard.js"></script>
-<script src="js/pwa.js"></script>
+<script src="js/firebase-config.js?v=2"></script>
+<script src="js/utils.js?v=43"></script>
+<script src="js/leaderboard.js?v=6"></script>
+<script src="js/pwa.js?v=2"></script>
 </body>
 </html>

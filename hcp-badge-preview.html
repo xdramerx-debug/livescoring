@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0b1a0e">
+    <title>Гандикап: зелёная галочка — выбор варианта</title>
+    <link rel="icon" type="image/png" href="img/logo.png">
+    <link rel="stylesheet" href="css/style.css?v=24">
+    <link rel="stylesheet" href="css/design-presets.css?v=1">
+    <script src="js/design-system.js?v=1"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .hcp-preview-main{padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:60px;max-width:1100px;margin:0 auto;}
+        .hcp-preview-note{font-size:13px;color:var(--muted);line-height:1.7;}
+        .hcp-preview-note b{color:var(--text);}
+        .variant-section{border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:24px;background:rgba(19,34,24,0.5);transition:all .3s;}
+        .variant-section.variant-selected{border-color:#2ecc71;box-shadow:0 0 24px rgba(46,204,113,0.28);background:rgba(46,204,113,0.05);}
+        .variant-title{font-family:var(--ff);font-size:20px;font-weight:800;color:var(--white);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+        .variant-num{background:#2ecc71;color:#fff;width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 0 12px rgba(46,204,113,0.5);}
+        .variant-desc{font-size:13px;color:var(--muted);margin:8px 0 16px;line-height:1.6;max-width:760px;}
+        .variant-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+        @media (max-width:860px){.variant-grid{grid-template-columns:1fr;}}
+        .variant-col-title{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+        .mock-cards .card{margin-bottom:12px;}
+        .mock-cards .card:last-child{margin-bottom:0;}
+        .choose-btn{margin-top:16px;}
+        .choose-btn.chosen{background:rgba(46,204,113,0.15);border-color:#2ecc71;color:#2ecc71;}
+    </style>
+</head>
+<body>
+<nav class="nav" id="main-nav"><div class="container nav-c">
+    <div style="display:flex;align-items:center;gap:14px;">
+        <a href="index.html" class="nav-brand">
+            <img src="img/logo.png" alt="Pestovo" class="nav-logo">
+            <span class="nav-brand-text">Пестово</span>
+        </a>
+    </div>
+</div></nav>
+
+<div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-circle-check" style="color:#2ecc71;"></i> Галочка гандикапа: выбор варианта</h1></div></div>
+
+<main class="hcp-preview-main">
+    <div class="card">
+        <h2><i class="fas fa-info-circle"></i> Как это работает</h2>
+        <p class="hcp-preview-note">
+            <b>Зелёная галочка</b> появляется, когда гандикап игрока <b>синхронизирован и изменён</b>:
+            при синхронизации с базой АГР России (RUSGOLF), при импорте Excel или при ручном изменении в админ-панели.
+            Рядом показывается <b>дата последнего обновления</b> гандикапа, а источник — при наведении
+            (в профиле — открыто). Игроки, у которых гандикап ещё не синхронизирован, галочку <b>не получают</b>
+            (см. карточку «Иван Кузнецов» в каждом варианте).<br><br>
+            Вариант отображается: во <b>вкладке «Игроки»</b>, в <b>личном профиле игрока</b> и в
+            <b>админ-панели</b> («Игроки и роли»). Ниже — живые примеры на реальных данных разметки сайта.
+            Кнопка <b>«Выбрать этот вариант»</b> включает его <b>в этом браузере</b> для предпросмотра.
+            <b>Глобальный выбор для всех игроков</b> — в <a href="admin.html" style="color:var(--gold);">Админ-панели</a>,
+            вкладка <b>«Данные» → «Стиль галочки гандикапа»</b>: он сохраняется в облако и мгновенно
+            применяется на всех устройствах (эта страница подхватит его при обновлении).
+        </p>
+    </div>
+
+    <div class="variant-section" data-variant="1">
+        <div class="variant-title"><span class="variant-num">1</span> Компактная галочка <span style="font-size:12px;color:var(--muted);font-weight:500;">— минимализм</span></div>
+        <p class="variant-desc">Небольшая зелёная галочка <i class="fas fa-circle-check" style="color:#2ecc71;"></i> и дата обновления (ДД.ММ.ГГ) сразу после значения HCP. Не загромождает карточку, но статус и дата всегда на виду. В профиле — полная дата и источник обновления.</p>
+        <div class="variant-grid">
+            <div><div class="variant-col-title"><i class="fas fa-users"></i> Вкладка «Игроки»</div><div class="mock-cards"></div></div>
+            <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> Личный профиль игрока</div><div class="mock-profile"></div></div>
+        </div>
+        <button type="button" class="btn btn-g btn-sm choose-btn" onclick="chooseVariant('1')"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
+    </div>
+
+    <div class="variant-section" data-variant="2">
+        <div class="variant-title"><span class="variant-num">2</span> Светящийся бейдж «пилюля» <span style="font-size:12px;color:var(--muted);font-weight:500;">— максимальная заметность</span></div>
+        <p class="variant-desc">Зелёная «пилюля» <span class="hcp-sync-pill"><i class="fas fa-circle-check"></i> обновлён</span> с лёгким свечением рядом с HCP. В профиле — отдельный крупный зелёный баннер «Гандикап синхронизирован» с полной датой обновления и источником (RUSGOLF / Excel / вручную).</p>
+        <div class="variant-grid">
+            <div><div class="variant-col-title"><i class="fas fa-users"></i> Вкладка «Игроки»</div><div class="mock-cards"></div></div>
+            <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> Личный профиль игрока</div><div class="mock-profile"></div></div>
+        </div>
+        <button type="button" class="btn btn-g btn-sm choose-btn" onclick="chooseVariant('2')"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
+    </div>
+
+    <div class="variant-section" data-variant="3">
+        <div class="variant-title"><span class="variant-num">3</span> «Верифицированный» аватар <span style="font-size:12px;color:var(--muted);font-weight:500;">— как в соцсетях</span></div>
+        <p class="variant-desc">Зелёная галочка-«верификация» закрепляется на углу аватара игрока (как подтверждённый аккаунт), а дата обновления показывается рядом с HCP в списке и профиле. Статус виден «с первого взгляда» по аватару.</p>
+        <div class="variant-grid">
+            <div><div class="variant-col-title"><i class="fas fa-users"></i> Вкладка «Игроки»</div><div class="mock-cards"></div></div>
+            <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> Личный профиль игрока</div><div class="mock-profile"></div></div>
+        </div>
+        <button type="button" class="btn btn-g btn-sm choose-btn" onclick="chooseVariant('3')"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
+    </div>
+
+    <div class="card" style="text-align:center;">
+        <a href="players.html" class="btn btn-og"><i class="fas fa-users"></i> Открыть вкладку «Игроки»</a>
+        <p class="hcp-preview-note" style="margin-top:12px;">Примеры — демонстрационные данные. На сайте галочка появится автоматически у всех игроков, у кого гандикап уже синхронизирован (есть дата обновления).</p>
+    </div>
+</main>
+
+<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; Пестово — подбор варианта отображения гандикапа</p></div></div></footer>
+
+<script src="js/utils.js?v=43"></script>
+<script>
+(function() {
+    'use strict';
+
+    // Демо-игроки: два синхронизированных (RUSGOLF и Excel) + один без даты обновления
+    var MO = function(y, m, d, h, mi) { return new Date(y, m - 1, d, h || 10, mi || 0).getTime(); };
+    var MOCK_PLAYERS = [
+        { id: 'demo-1', name: 'Александр Петров', gender: 'men', handicap: 12.4, roundsPlayed: 18, hcpUpdatedAt: MO(2026, 9, 5, 10, 30), hcpSource: 'rusgolf' },
+        { id: 'demo-2', name: 'Мария Смирнова', gender: 'women', handicap: 8.1, roundsPlayed: 12, hcpUpdatedAt: MO(2026, 8, 12, 18, 5), hcpSource: 'excel' },
+        { id: 'demo-3', name: 'Иван Кузнецов', gender: 'men', handicap: 15.2, roundsPlayed: 4 }
+    ];
+
+    // Точная копия разметки карточки из js/players.js
+    function renderMockCard(u) {
+        var hcpInfo = getHcpSyncInfo(u);
+        var avatarHtml = fmtUserAvatar(u, 52);
+        if (hcpInfo.ok && getHcpBadgeVariant() === '3') {
+            avatarHtml = hcpAvatarWrapHtml(avatarHtml, hcpInfo);
+        }
+        var gIcon = u.gender === 'women' ? '👩' : '👨';
+        return '<div class="card">' +
+            '<div style="display:flex;align-items:center;gap:14px;">' + avatarHtml +
+            '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + escapeHtml(u.name) + '</div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
+            'HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + hcpSyncBadgeHtml(u) +
+            ' · Раундов: ' + (u.roundsPlayed || 0) + '</div></div></div></div>';
+    }
+
+    // Точная копия шапки профиля из openPlayerProfileModal (js/utils.js)
+    function renderMockProfile(u) {
+        var hcpSync = buildHcpProfileSyncHtml(u);
+        var avatarHtml = fmtUserAvatar(u, 80);
+        if (hcpSync.meta !== null && getHcpBadgeVariant() === '3') {
+            avatarHtml = hcpAvatarWrapHtml(avatarHtml, getHcpSyncInfo(u));
+        }
+        var gIcon = u.gender === 'women' ? '👩' : '👨';
+        return '<div class="card">' +
+            '<div class="profile-head">' + avatarHtml +
+            '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(u.name) + '</div>' +
+            '<div class="profile-meta">' +
+            (hcpSync.meta !== null ? hcpSync.meta : '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>') +
+            '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' раундов</span>' +
+            '</div>' + (hcpSync.banner || '') + '</div></div></div>';
+    }
+
+    function markSelected() {
+        var cur = getHcpBadgeVariant();
+        document.querySelectorAll('.variant-section').forEach(function(sec) {
+            var isCur = sec.getAttribute('data-variant') === cur;
+            sec.classList.toggle('variant-selected', isCur);
+            var btn = sec.querySelector('.choose-btn');
+            if (btn) {
+                btn.classList.toggle('chosen', isCur);
+                btn.innerHTML = isCur
+                    ? '<i class="fas fa-check-circle"></i> Выбран (текущий)'
+                    : '<i class="fas fa-hand-pointer"></i> Выбрать этот вариант';
+            }
+        });
+    }
+
+    window.chooseVariant = function(v) {
+        setHcpBadgeVariant(v);
+        markSelected();
+        toast('✅ Вариант ' + v + ' выбран — применён на сайте (вкладка «Игроки», профиль, админка)', 'success');
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var saved = getHcpBadgeVariant();
+        document.querySelectorAll('.variant-section').forEach(function(sec) {
+            var v = sec.getAttribute('data-variant');
+            setHcpBadgeVariant(v);
+            var cardsEl = sec.querySelector('.mock-cards');
+            var profileEl = sec.querySelector('.mock-profile');
+            if (cardsEl) cardsEl.innerHTML = MOCK_PLAYERS.map(renderMockCard).join('');
+            if (profileEl) profileEl.innerHTML = renderMockProfile(MOCK_PLAYERS[0]);
+        });
+        setHcpBadgeVariant(saved);
+        markSelected();
+    });
+})();
+</script>
+</body>
+</html>

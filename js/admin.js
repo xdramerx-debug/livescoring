@@ -283,6 +283,12 @@ function openAdminPanel() {
     loadVKSettings();
     loadPageVisibilitySettings();
     loadStablefordDisplaySettings();
+    loadSocialCardDisplaySettings();
+    loadGroupCardDisplaySettings();
+    loadPageDisplaySettings();
+    loadPrivacySettings();
+    renderAssistantSources();
+    loadAssistantSourcesFromFirebase();
     updateNotifButton();
 }
 
@@ -321,9 +327,30 @@ function switchTab(t, b) {
     if (t === 'data') {
         loadPageVisibilitySettings();
         loadStablefordDisplaySettings();
+        loadSocialCardDisplaySettings();
+        loadGroupCardDisplaySettings();
+        loadPageDisplaySettings();
     }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
+        nmLoadSettings();
+    }
+    if (t === 'players') {
+        loadPrivacySettings();
+    }
+    if (t === 'assistant') {
+        renderAssistantSources();
+        loadAssistantSourcesFromFirebase();
+    }
+    if (t === 'start') {
+        // Вкладка «Старт турнира 🏁»: стартовые протоколы и QR-коды (js/start-admin.js)
+        if (typeof psSwitchTo === 'function') {
+            try { psSwitchTo(); } catch (e) { console.error('[start] switch error', e); }
+        }
+    }
+    if (t === 'design') {
+        // Вкладка «Дизайн 🎨»: шаблоны оформления сайта (js/design-admin.js)
+        if (typeof dspAdminLoad === 'function') dspAdminLoad();
     }
 }
 
@@ -408,44 +435,88 @@ function renderAdmGroups() {
 // ==========================================
 // РАУНДЫ
 // ==========================================
-function loadAdmRounds() {
-    db.ref('rounds').on('value', function(sn) {
-        var data = sn.val() || {};
-        var entries = Object.entries(data).sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
-        var el = document.getElementById('adm-rounds');
-        if (!el) return;
-
-        if (!entries.length) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-flag"></i><p>' + (currentLang === 'en' ? 'No rounds' : 'Нет раундов') + '</p></div>';
-            return;
-        }
-
-        var playersStr = currentLang === 'en' ? ' players · ' : ' игр. · ';
-        var soloStr = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
-
-        var html = '';
-        entries.forEach(function(e) {
-            var id = e[0], r = e[1], pc = Object.keys(r.players || {}).length;
-            var badge = r.status === 'active'
-                ? '<span class="tn-status tn-a"><span class="live-dot" style="width:6px;height:6px;"></span> Live</span>'
-                : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>';
-
-            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
-            html += '<div style="flex:1;min-width:200px;"><strong style="color:var(--white);">' + t('brand_name') + '</strong> ' + badge;
-            html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-                    fmtDate(r.createdAt) + ' · ' + fmtTime(r.startTime) + ' · ' + pc + playersStr +
-                    (r.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtRoundTeePills(r) +
-                    (r.mode === 'solo' ? soloStr : '') + '</div></div>';
-            html += '<div style="display:flex;gap:6px;">';
-            if (r.status === 'completed') {
-                html += '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i></button>';
-            }
-            html += '<button class="btn btn-r btn-sm" onclick="deleteRound(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
-            html += '</div></div>';
-        });
-
-        el.innerHTML = html;
+// Виджет «Дата с / Дата по» для вкладки «Все раунды». Подключаем один раз —
+// повторные вызовы просто возвращают уже созданный экземпляр.
+function ensureAdmRoundsDateFilter() {
+    if (typeof getDateRangeFilter === 'function') {
+        var existing = getDateRangeFilter('admin-rounds');
+        if (existing) return existing;
+    }
+    if (typeof initDateRangeFilter !== 'function') return null;
+    return initDateRangeFilter({
+        key: 'admin-rounds',
+        fromId: 'adm-date-from',
+        toId: 'adm-date-to',
+        presetsId: 'adm-date-presets',
+        resetId: 'adm-date-reset',
+        hintId: 'adm-date-hint',
+        summaryId: 'adm-rounds-summary',
+        onChange: function() { loadAdmRounds(); }
     });
+}
+
+function loadAdmRounds() {
+    ensureAdmRoundsDateFilter();
+    // Одна подписка на раунды: повторные вызовы (фильтр по датам, смена языка,
+    // удаление/создание раунда) только перерисовывают список по последнему снимку.
+    bindRealtimeValue('admin-rounds', db.ref('rounds'), function(sn) {
+        var data = sn.val() || {};
+        // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
+        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
+        renderAdmRounds(data);
+    });
+}
+
+function renderAdmRounds(data) {
+    var el = document.getElementById('adm-rounds');
+    if (!el) return;
+
+    var dateFilter = ensureAdmRoundsDateFilter();
+    var range = dateFilter ? dateFilter.getRange() : { active: false, from: null, to: null, invalid: false };
+
+    var allEntries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+    var totalRounds = allEntries.length;
+    var entries = filterEntriesByDateRange(allEntries, range);
+    entries.sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
+
+    if (dateFilter) dateFilter.renderSummary(entries.length, totalRounds);
+
+    if (!entries.length) {
+        var emptyText = range.active
+            ? (currentLang === 'en' ? 'No rounds in the selected period' : 'Нет раундов за выбранный период')
+            : (currentLang === 'en' ? 'No rounds' : 'Нет раундов');
+        el.innerHTML = '<div class="empty"><i class="fas fa-flag"></i><p>' + emptyText + '</p></div>';
+        return;
+    }
+
+    var playersStr = currentLang === 'en' ? ' players · ' : ' игр. · ';
+    var soloStr = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
+
+    var html = '';
+    entries.forEach(function(e) {
+        var id = e[0], r = e[1], pc = Object.keys(r.players || {}).length;
+        var badge = r.status === 'active'
+            ? '<span class="tn-status tn-a"><span class="live-dot" style="width:6px;height:6px;"></span> Live</span>'
+            : ((typeof buildRoundCompletedBadgeHTML === 'function')
+                ? buildRoundCompletedBadgeHTML(r)
+                : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>');
+
+        html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
+        html += '<div style="flex:1;min-width:200px;"><strong style="color:var(--white);">' + t('brand_name') + '</strong> ' + badge;
+        html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
+                // Дату показываем ту же, по которой работает фильтр периода (старт раунда).
+                fmtDate(getRoundFilterTs(r)) + ' · ' + fmtTime(r.startTime) + ' · ' + pc + playersStr +
+                (r.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtRoundTeePills(r) +
+                (r.mode === 'solo' ? soloStr : '') + '</div></div>';
+        html += '<div style="display:flex;gap:6px;">';
+        if (r.status === 'completed') {
+            html += '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i></button>';
+        }
+        html += '<button class="btn btn-r btn-sm" onclick="deleteRound(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
+        html += '</div></div>';
+    });
+
+    el.innerHTML = html;
 }
 
 function deleteRound(id) {
@@ -499,6 +570,7 @@ function clearRounds() {
         db.ref('markers').remove();
         db.ref('markerAssignments').remove();
         db.ref('alerts').remove();
+        db.ref('protocols').remove();
 
         db.ref('users').once('value').then(function(sn) {
             var users = sn.val() || {};
@@ -547,7 +619,8 @@ function clearAllData() {
         'markerAssignments': null,
         'alerts': null,
         'users': null,
-        'broadcasts': null
+        'broadcasts': null,
+        'protocols': null
     };
 
     // Регистрации игроков на турнирах тоже нужно снять, иначе удалённые
@@ -582,6 +655,26 @@ function clearAllData() {
 // ==========================================
 // ТУРНИРЫ
 // ==========================================
+// Уникальное число заявленных участников: гостевые записи и синхронизированные
+// записи одного человека могут лежать под разными ключами — считаем по ФИО.
+function admUniqueRegCount(regPlayers) {
+    var seen = {};
+    var n = 0;
+    Object.keys(regPlayers || {}).forEach(function(k) {
+        var rp = regPlayers[k] || {};
+        var key = '';
+        if (typeof getPlayerFioKey === 'function') {
+            try { key = getPlayerFioKey(rp); } catch (e) {}
+        }
+        if (!key) {
+            var nm = String(rp.name || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+            key = nm || ('id:' + k);
+        }
+        if (!seen[key]) { seen[key] = true; n++; }
+    });
+    return n;
+}
+
 function createTournament() {
     var name = document.getElementById('tn-name').value.trim();
     var date = document.getElementById('tn-date').value;
@@ -616,7 +709,13 @@ function createTournament() {
 }
 
 function loadTournaments() {
-    db.ref('tournaments').on('value', function(sn) {
+    if (typeof db === 'undefined' || !db) {
+        var tnEmpty = document.getElementById('tn-list');
+        if (tnEmpty) tnEmpty.innerHTML = '<div class="empty"><i class="fas fa-wifi"></i><p>' + (currentLang === 'en' ? 'No database connection' : 'Нет соединения с базой') + '</p></div>';
+        return;
+    }
+    // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+    bindRealtimeValue('admin-tournaments-list', db.ref('tournaments'), function(sn) {
         var data = sn.val() || {};
         var entries = Object.entries(data);
         var el = document.getElementById('tn-list');
@@ -638,20 +737,48 @@ function loadTournaments() {
             var formatsStr = (tVal.formats || []).join(', ') || '—';
             var teesStr = (tVal.tees || []).map(function(k) { return t('tee_' + k); }).join(', ') || '—';
             var regPlayers = tVal.registeredPlayers || {};
-            var regCount = Object.keys(regPlayers).length;
+            var regCount = admUniqueRegCount(regPlayers);
 
-            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
+            var tnStatus = tVal.status || 'upcoming';
+            var tnEn = currentLang === 'en';
+            var tnDivisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
+            var tnStatusHtml = tnStatus === 'active'
+                ? '<span class="tn-status tn-a">🔴 ' + (tnEn ? 'Active' : 'Активный') + '</span>'
+                : tnStatus === 'completed'
+                ? '<span class="tn-status tn-d">✅ ' + (tnEn ? 'Completed' : 'Завершён') + '</span>'
+                : '<span class="tn-status tn-u">📅 ' + (tnEn ? 'Upcoming' : 'Предстоящий') + '</span>';
+
+            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;flex-direction:column;align-items:stretch;">';
+            html += '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;">';
             html += '<div style="flex:1;min-width:200px;">';
-            html += '<strong style="color:var(--white);">' + escapeHtml(tVal.name || '—') + '</strong>';
+            html += '<strong style="color:var(--white);">' + escapeHtml(tVal.name || '—') + '</strong> ' + tnStatusHtml;
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-                    fmtDate(new Date(tVal.date).getTime()) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + ' · Participants: ' + regCount + '</div>';
+                    fmtDate(new Date(tVal.date).getTime()) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + ' · ' + (tnEn ? 'Players: ' : 'Заявлено: ') + regCount + '</div>';
+            if (tnDivisions.length) {
+                html += '<div style="margin-top:6px;">';
+                tnDivisions.forEach(function(d) {
+                    var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
+                    html += '<span class="tn-div-chip">' + escapeHtml(d.name || '') + (rg ? ' · ' + escapeHtml(rg) : '') + '</span>';
+                });
+                html += '</div>';
+            }
             html += '</div>';
-            html += '<div style="display:flex;gap:6px;">';
+            html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;">';
+            if (tnStatus === 'upcoming') {
+                html += '<button class="btn btn-g btn-sm" onclick="tnStartTournament(\'' + id + '\')" title="' + (tnEn ? 'Start before the scheduled time' : 'Начать раньше запланированного времени') + '"><i class="fas fa-play"></i> ' + (tnEn ? 'Start' : 'Старт') + '</button>';
+            } else if (tnStatus === 'active') {
+                html += '<button class="btn btn-og btn-sm" onclick="tnFinishTournament(\'' + id + '\')"><i class="fas fa-flag-checkered"></i> ' + (tnEn ? 'Finish' : 'Финиш') + '</button>';
+            } else {
+                html += '<button class="btn btn-og btn-sm" onclick="tnReopenTournament(\'' + id + '\')"><i class="fas fa-rotate-left"></i> ' + (tnEn ? 'Reopen' : 'Открыть снова') + '</button>';
+            }
+            html += '<button class="btn btn-og btn-sm" onclick="tnToggleDivPanel(\'' + id + '\')"><i class="fas fa-layer-group"></i> ' + (tnEn ? 'HCP groups' : 'Группы HCP') + ' (' + tnDivisions.length + ')</button>';
             if (regCount > 0) {
                 html += '<button class="btn btn-og btn-sm" onclick="exportTournamentRosterCSV(\'' + id + '\')"><i class="fas fa-file-csv"></i> CSV</button>';
             }
             html += '<button class="btn btn-r btn-sm" onclick="deleteTn(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
             html += '</div></div>';
+            html += '<div id="tn-div-' + id + '" class="tn-div-block' + (tnDivOpen[id] ? '' : ' hidden') + '">' + tnDivisionsEditorHtml(id, tnDivisions) + '</div>';
+            html += '</div>';
         });
 
         el.innerHTML = html;
@@ -666,7 +793,15 @@ function exportTournamentRosterCSV(tnId) {
 
         var rows = [['#', 'Name', 'Handicap', 'Gender', 'Tee', 'Registered Date']];
         var idx = 1;
+        var seenCsv = {};
         Object.values(tVal.registeredPlayers).forEach(function(p) {
+            var key = '';
+            if (typeof getPlayerFioKey === 'function') {
+                try { key = getPlayerFioKey(p); } catch (e) {}
+            }
+            if (!key) key = String(p.name || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+            if (key && seenCsv[key]) return; // дубликат того же игрока — пропускаем
+            if (key) seenCsv[key] = true;
             rows.push([
                 idx++,
                 '"' + (p.name || '').replace(/"/g, '""') + '"',
@@ -693,13 +828,161 @@ function deleteTn(id) {
     if (confirm(currentLang === 'en' ? 'Delete tournament?' : 'Удалить турнир?')) db.ref('tournaments/' + id).remove();
 }
 
+// Запоминаем открытые панели дивизионов, чтобы realtime-перерисовка их не закрывала.
+var tnDivOpen = {};
+
+// ==========================================
+// СТАТУС ТУРНИРА: СТАРТ (в т.ч. досрочный) / ФИНИШ
+// ==========================================
+function tnStartTournament(id) {
+    var en = currentLang === 'en';
+    if (!confirm(en ? 'Start this tournament now (before the scheduled time)? The live leaderboard will become available.' : 'Начать турнир сейчас (раньше запланированного времени)? Станет доступен live-лидерборд.')) return;
+    db.ref('tournaments/' + id).update({ status: 'active', startedAt: Date.now() }).then(function() {
+        toast(en ? '🚀 Tournament started!' : '🚀 Турнир начат!', 'success');
+        if (typeof vib === 'function') vib([60, 40, 60]);
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+function tnFinishTournament(id) {
+    var en = currentLang === 'en';
+    if (!confirm(en ? 'Finish this tournament? Results will be marked as final.' : 'Завершить турнир? Результаты будут помечены как итоговые.')) return;
+    db.ref('tournaments/' + id).update({ status: 'completed', finishedAt: Date.now() }).then(function() {
+        toast(en ? '🏁 Tournament completed!' : '🏁 Турнир завершён!', 'success');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+function tnReopenTournament(id) {
+    var en = currentLang === 'en';
+    if (!confirm(en ? 'Reopen this tournament (back to upcoming)?' : 'Открыть турнир снова (вернуть в предстоящие)?')) return;
+    db.ref('tournaments/' + id).update({ status: 'upcoming' }).then(function() {
+        toast(en ? '↩️ Tournament reopened' : '↩️ Турнир снова открыт', 'info');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+// ==========================================
+// ГРУППЫ УЧАСТНИКОВ ПО ГАНДИКАПУ (дивизионы)
+// Пример: «Мужчины 0–12» (мужчины, HCP 0–12, синие ТИ).
+// Хранятся в tournaments/<id>/divisions.
+// ==========================================
+function tnToggleDivPanel(id) {
+    var panel = document.getElementById('tn-div-' + id);
+    if (panel) {
+        var willOpen = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden');
+        tnDivOpen[id] = willOpen;
+    }
+}
+
+function tnDivisionsEditorHtml(tnId, divisions) {
+    var en = currentLang === 'en';
+    divisions = divisions || [];
+    var html = '<div style="font-weight:800;color:var(--gold);font-size:13.5px;margin-bottom:8px;"><i class="fas fa-layer-group"></i> ' +
+        (en ? 'Handicap groups' : 'Группы участников по гандикапу') + '</div>';
+    if (!divisions.length) {
+        html += '<p style="font-size:12px;color:var(--muted);margin:0 0 10px;">' +
+            (en ? 'No groups yet. Example: “Men 0–12” (men, HCP 0–12, blue tees) and “Men 12.1–28” (men, HCP 12.1–28, white tees).'
+                : 'Групп пока нет. Пример: «Мужчины 0–12» (мужчины, HCP 0–12, синие ТИ) и «Мужчины 12.1–28» (мужчины, HCP 12.1–28, белые ТИ).') + '</p>';
+    } else {
+        divisions.forEach(function(d) {
+            var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
+            var g = (typeof tnDivisionGenderText === 'function') ? tnDivisionGenderText(d.gender) : (d.gender || '');
+            var teeTxt = d.tee ? (' · ' + t('tee_' + d.tee)) : '';
+            html += '<div class="tn-div-row"><span class="tn-div-name">' + escapeHtml(d.name || '—') + '</span>' +
+                '<span class="tn-div-meta">' + escapeHtml(g) + (rg ? ' · HCP ' + escapeHtml(rg) : '') + escapeHtml(teeTxt) + '</span>' +
+                '<button class="btn btn-r btn-sm" style="margin-left:auto;" onclick="tnDeleteDivision(\'' + tnId + '\',\'' + d.id + '\')"><i class="fas fa-trash"></i></button></div>';
+        });
+    }
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:flex-end;">';
+    html += '<div class="form-group" style="flex:2 1 150px;margin:0;"><label style="font-size:11px;">' + (en ? 'Group name' : 'Название группы') + '</label>' +
+        '<input type="text" id="tnd-name-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" placeholder="' + (en ? 'Men 0–12' : 'Мужчины 0–12') + '"></div>';
+    html += '<div class="form-group" style="flex:1 1 100px;margin:0;"><label style="font-size:11px;">' + (en ? 'Gender' : 'Пол') + '</label>' +
+        '<select id="tnd-gender-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' +
+        '<option value="men">' + (en ? 'Men' : 'Мужчины') + '</option>' +
+        '<option value="women">' + (en ? 'Women' : 'Девушки') + '</option>' +
+        '<option value="all">' + (en ? 'All' : 'Все') + '</option></select></div>';
+    html += '<div class="form-group" style="flex:0 1 76px;margin:0;"><label style="font-size:11px;">HCP ' + (en ? 'from' : 'от') + '</label>' +
+        '<input type="text" id="tnd-from-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" placeholder="0"></div>';
+    html += '<div class="form-group" style="flex:0 1 76px;margin:0;"><label style="font-size:11px;">HCP ' + (en ? 'to' : 'до') + '</label>' +
+        '<input type="text" id="tnd-to-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" placeholder="12"></div>';
+    html += '<div class="form-group" style="flex:1 1 110px;margin:0;"><label style="font-size:11px;">' + t('tee_select') + '</label>' +
+        '<select id="tnd-tee-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' +
+        '<option value="">—</option><option value="bk">' + t('tee_bk') + '</option><option value="bl">' + t('tee_bl') + '</option>' +
+        '<option value="wh">' + t('tee_wh') + '</option><option value="rd">' + t('tee_rd') + '</option></select></div>';
+    html += '<button class="btn btn-g btn-sm" onclick="tnAddDivision(\'' + tnId + '\')"><i class="fas fa-plus"></i> ' + (en ? 'Add' : 'Добавить') + '</button>';
+    html += '</div>';
+    return html;
+}
+
+function tnParseDivBound(raw) {
+    var s = String(raw == null ? '' : raw).trim().replace(',', '.');
+    if (s === '') return '';
+    var v = (typeof parseExactHcp === 'function') ? parseExactHcp(s) : parseFloat(s);
+    return isNaN(v) ? NaN : Math.round(v * 10) / 10;
+}
+
+function tnAddDivision(tnId) {
+    var en = currentLang === 'en';
+    var g = function(id) { return document.getElementById(id); };
+    var nameEl = g('tnd-name-' + tnId);
+    var name = nameEl ? nameEl.value.trim() : '';
+    if (!name) {
+        toast(en ? '⚠️ Enter the group name' : '⚠️ Укажите название группы', 'error');
+        if (nameEl && nameEl.focus) nameEl.focus();
+        return;
+    }
+    var genderEl = g('tnd-gender-' + tnId);
+    var teeEl = g('tnd-tee-' + tnId);
+    var from = tnParseDivBound(g('tnd-from-' + tnId) ? g('tnd-from-' + tnId).value : '');
+    var to = tnParseDivBound(g('tnd-to-' + tnId) ? g('tnd-to-' + tnId).value : '');
+    if (isNaN(from) || isNaN(to)) {
+        toast(en ? '⚠️ Invalid HCP range (use numbers like 0, 12.1)' : '⚠️ Некорректный диапазон HCP (нужны числа, например 0, 12.1)', 'error');
+        return;
+    }
+    if (from !== '' && to !== '' && from > to) {
+        toast(en ? '⚠️ “HCP from” must be less than “HCP to”' : '⚠️ «HCP от» должен быть меньше «HCP до»', 'error');
+        return;
+    }
+    tnDivOpen[tnId] = true;
+    db.ref('tournaments/' + tnId + '/divisions').push({
+        name: name,
+        gender: genderEl ? genderEl.value : 'men',
+        hcpFrom: from,
+        hcpTo: to,
+        tee: teeEl ? teeEl.value : '',
+        createdAt: Date.now()
+    }).then(function() {
+        toast(en ? '✅ Group added' : '✅ Группа добавлена', 'success');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+function tnDeleteDivision(tnId, divId) {
+    var en = currentLang === 'en';
+    if (!confirm(en ? 'Delete this handicap group?' : 'Удалить эту группу по гандикапу?')) return;
+    tnDivOpen[tnId] = true;
+    db.ref('tournaments/' + tnId + '/divisions/' + divId).remove().then(function() {
+        toast(en ? 'Group deleted' : 'Группа удалена', 'info');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
 // ==========================================
 // ВЫЗОВЫ СУДЕЙ/МАРШАЛОВ И УВЕДОМЛЕНИЯ
 // ==========================================
 var knownAlertIds = {};
 
 function listenForAlerts() {
-    db.ref('alerts').orderByChild('status').equalTo('active').on('value', function(sn) {
+    if (typeof db === 'undefined' || !db) return;
+    // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+    bindRealtimeValue('admin-alerts-active', db.ref('alerts').orderByChild('status').equalTo('active'), function(sn) {
         var alerts = sn.val() || {};
         var c = document.getElementById('admin-alerts-list');
         var bannerEl = document.getElementById('admin-top-alerts-banner');
@@ -885,8 +1168,9 @@ function sendClubBroadcast() {
 }
 
 function loadClubBroadcastsHistory() {
-    if (typeof db === 'undefined') return;
-    db.ref('broadcasts').on('value', function(sn) {
+    if (typeof db === 'undefined' || !db) return;
+    // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+    bindRealtimeValue('admin-broadcasts', db.ref('broadcasts'), function(sn) {
         var data = sn.val() || {};
         var entries = Object.entries(data).sort(function(a, b) { return b[1].time - a[1].time; });
         var el = document.getElementById('admin-broadcasts-list');
@@ -1388,10 +1672,11 @@ function loadStablefordDisplaySettings() {
     if (!checkbox) return;
 
     var applyValue = function(value) {
-        // Ключ ещё не создан → включённый дефолт новой функции.
+        // Ключ ещё не создан → дефолт ВЫКЛЮЧЕН: по умолчанию очки Stableford
+        // при вводе счёта не показываются ни у кого, пока админ не включит.
         var normalized = typeof normalizeStablefordDisplayValue === 'function'
             ? normalizeStablefordDisplayValue(value) : null;
-        checkbox.checked = normalized === null ? true : normalized;
+        checkbox.checked = normalized === null ? false : normalized;
     };
 
     if (typeof db === 'undefined') {
@@ -1414,9 +1699,209 @@ function toggleStablefordDefaultCheckbox(event) {
     togglePVCheckbox('pv-stableford-default', event);
 }
 
+// ==========================================
+// SOCIAL SCORECARD DISPLAY MANAGEMENT
+// ==========================================
+// Вариант сохраняется глобально в settings/social_card_variant. Экспорт PNG
+// читает это значение из utils.js, а localStorage остаётся офлайн-резервом.
+function loadSocialCardDisplaySettings() {
+    var applyValue = function(value) {
+        if (value !== null && value !== undefined && typeof applySocialCardVariant === 'function') {
+            applySocialCardVariant(value);
+        }
+        markAdmSocialCardVariantButtons();
+    };
+
+    if (typeof db === 'undefined') {
+        applyValue(null);
+        return;
+    }
+
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-social-card-variant', db.ref('settings/social_card_variant'), function(sn) {
+            applyValue(sn.val());
+        });
+    } else {
+        db.ref('settings/social_card_variant').once('value').then(function(sn) {
+            applyValue(sn.val());
+        }).catch(function() { applyValue(null); });
+    }
+}
+
+function saveSocialCardVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    if (typeof vib === 'function') vib(30);
+
+    if (typeof applySocialCardVariant === 'function') applySocialCardVariant(v);
+    else markAdmSocialCardVariantButtons();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Card style saved locally' : 'Стиль карточки сохранён локально', 'info');
+        return;
+    }
+
+    db.ref('settings/social_card_variant').set(v).then(function() {
+        toast(currentLang === 'en'
+            ? '✅ Social scorecard style saved for all players'
+            : '✅ Стиль PNG-карточки сохранён для всех игроков', 'success');
+    }).catch(function(err) {
+        console.warn('Social card variant save error:', err);
+        toast(currentLang === 'en'
+            ? 'Could not save the card style to the cloud'
+            : '⚠️ Не удалось сохранить стиль карточки в облако', 'error');
+    });
+}
+
+function markAdmSocialCardVariantButtons() {
+    var cur = (typeof getSocialCardVariant === 'function') ? getSocialCardVariant() : '1';
+    ['1', '2', '3'].forEach(function(v) {
+        var btn = document.getElementById('social-card-opt-' + v);
+        if (!btn) return;
+        btn.classList.toggle('social-card-variant-active', v === cur);
+        btn.setAttribute('aria-pressed', v === cur ? 'true' : 'false');
+    });
+}
+
+// ==========================================
+// GROUP ROUND CARD DISPLAY MANAGEMENT
+// ==========================================
+// Вариант сохраняется глобально в settings/group_round_card_variant.
+// Выбор стиля единой карточки группового раунда для главной страницы.
+function loadGroupCardDisplaySettings() {
+    var applyValue = function(value) {
+        if (value !== null && value !== undefined && typeof applyGroupCardVariant === 'function') {
+            applyGroupCardVariant(value);
+        }
+        markAdmGroupCardVariantButtons();
+    };
+
+    if (typeof db === 'undefined') {
+        applyValue(null);
+        return;
+    }
+
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-group-card-variant', db.ref('settings/group_round_card_variant'), function(sn) {
+            applyValue(sn.val());
+        });
+    } else {
+        db.ref('settings/group_round_card_variant').once('value').then(function(sn) {
+            applyValue(sn.val());
+        }).catch(function() { applyValue(null); });
+    }
+}
+
+function saveGroupCardVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    if (typeof vib === 'function') vib(30);
+
+    if (typeof applyGroupCardVariant === 'function') applyGroupCardVariant(v);
+    else markAdmGroupCardVariantButtons();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Group card style saved locally' : 'Стиль групповой карточки сохранён локально', 'info');
+        return;
+    }
+
+    db.ref('settings/group_round_card_variant').set(v).then(function() {
+        toast(currentLang === 'en'
+            ? '✅ Group round card style saved for all users'
+            : '✅ Стиль карточки группового раунда сохранён для всех пользователей', 'success');
+    }).catch(function(err) {
+        console.warn('Group card variant save error:', err);
+        toast(currentLang === 'en'
+            ? 'Could not save the group card style to the cloud'
+            : '⚠️ Не удалось сохранить стиль групповой карточки в облако', 'error');
+    });
+}
+
+function markAdmGroupCardVariantButtons() {
+    var cur = (typeof getGroupCardVariant === 'function') ? getGroupCardVariant() : '1';
+    ['1', '2', '3'].forEach(function(v) {
+        var btn = document.getElementById('group-card-opt-' + v);
+        if (!btn) return;
+        var active = (v === cur);
+        btn.classList.toggle('btn-g', active);
+        btn.classList.toggle('btn-og', !active);
+        btn.classList.toggle('group-card-variant-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
+// ==========================================
+// ВАРИАНТЫ ОТОБРАЖЕНИЯ ОСНОВНЫХ СТРАНИЦ
+// ==========================================
+var ADMIN_PAGE_DISPLAY_CONFIG = {
+    home: { path: 'settings/home_display_variant', label: 'Главная' },
+    players: { path: 'settings/players_display_variant', label: 'Игроки' },
+    stats: { path: 'settings/stats_display_variant', label: 'Статистика' },
+    rounds: { path: 'settings/all_rounds_display_variant', label: 'Все раунды' },
+    guide: { path: 'settings/guide_display_variant', label: 'Книга поля' },
+    feed: { path: 'settings/feed_display_variant', label: 'Лента событий' },
+    predictor: { path: 'settings/predictor_display_variant', label: 'Симулятор WHS' },
+    'order-of-merit': { path: 'settings/oom_display_variant', label: 'Зачёт сезона' },
+    tournaments: { path: 'settings/tournaments_display_variant', label: 'Турниры' },
+    handicap: { path: 'settings/handicap_display_variant', label: 'Гандикапы' },
+    assistant: { path: 'settings/assistant_display_variant', label: 'Помощник' }
+};
+
+function loadPageDisplaySettings() {
+    Object.keys(ADMIN_PAGE_DISPLAY_CONFIG).forEach(function(page) {
+        var cfg = ADMIN_PAGE_DISPLAY_CONFIG[page];
+        var applyValue = function(value) {
+            if (value !== null && value !== undefined && typeof applyPageDisplayVariant === 'function') {
+                applyPageDisplayVariant(page, value);
+            }
+            markAdmPageDisplayVariantButtons(page);
+        };
+        if (typeof db === 'undefined') {
+            applyValue(null);
+        } else if (typeof bindRealtimeValue === 'function') {
+            bindRealtimeValue('admin-page-display-' + page, db.ref(cfg.path), function(sn) {
+                applyValue(sn.val());
+            });
+        } else {
+            db.ref(cfg.path).once('value').then(function(sn) { applyValue(sn.val()); }).catch(function() { applyValue(null); });
+        }
+    });
+}
+
+function savePageDisplayVariant(page, value) {
+    var cfg = ADMIN_PAGE_DISPLAY_CONFIG[page];
+    if (!cfg || ['1', '2', '3'].indexOf(String(value)) === -1) return;
+    value = String(value);
+    if (typeof vib === 'function') vib(30);
+    if (typeof applyPageDisplayVariant === 'function') applyPageDisplayVariant(page, value);
+    markAdmPageDisplayVariantButtons(page);
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Layout saved locally' : 'Вариант отображения сохранён локально', 'info');
+        return;
+    }
+    db.ref(cfg.path).set(value).then(function() {
+        toast(currentLang === 'en'
+            ? '✅ ' + cfg.label + ' layout saved for all users'
+            : '✅ Вариант отображения «' + cfg.label + '» сохранён для всех пользователей', 'success');
+    }).catch(function(err) {
+        console.warn('Page display variant save error:', err);
+        toast(currentLang === 'en' ? 'Could not save the layout' : '⚠️ Не удалось сохранить вариант отображения', 'error');
+    });
+}
+
+function markAdmPageDisplayVariantButtons(page) {
+    var cur = (typeof getPageDisplayVariant === 'function') ? getPageDisplayVariant(page) : '1';
+    ['1', '2', '3'].forEach(function(v) {
+        var btn = document.getElementById(page + '-display-opt-' + v);
+        if (!btn) return;
+        var active = v === cur;
+        btn.classList.toggle('page-display-variant-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
 function saveStablefordDisplayDefault() {
     var checkbox = document.getElementById('pv-stableford-default');
-    var enabled = checkbox ? !!checkbox.checked : true;
+    var enabled = checkbox ? !!checkbox.checked : false;
 
     // Обновление мгновенно отражается в этой вкладке; на устройствах игроков
     // настройка придёт через listener в utils.js. Личные настройки не меняем.
@@ -1474,8 +1959,19 @@ function loadPageVisibilitySettings() {
         updateCheckboxes(getHiddenPages());
     }
 
-    if (typeof db !== 'undefined') {
-        db.ref('settings/hidden_pages').on('value', function(sn) {
+    // Отдельный чекбокс «Скрыть помощника» во вкладке «Помощник»
+    var asHide = document.getElementById('as-hide-page');
+    var asMainCb = document.getElementById('pv-assistant');
+    if (asHide) {
+        var hidden = getHiddenPages();
+        var isHidden = (hidden['assistant.html'] === true || hidden['assistant'] === true);
+        asHide.checked = !isHidden;
+        if (asMainCb) asMainCb.checked = !isHidden;
+    }
+
+    if (typeof db !== 'undefined' && db) {
+        // Подписки через bindRealtimeValue — без дублей при повторных заходах на вкладку.
+        bindRealtimeValue('admin-hidden-pages', db.ref('settings/hidden_pages'), function(sn) {
             var fbVal = sn.val();
             if (fbVal !== null && typeof fbVal === 'object') {
                 var hp = {};
@@ -1495,7 +1991,7 @@ function loadPageVisibilitySettings() {
             }
         });
         // Синхронизация переключателя «Меню инструментов»
-        db.ref('settings/tools_menu_enabled').on('value', function(sn) {
+        bindRealtimeValue('admin-tools-menu', db.ref('settings/tools_menu_enabled'), function(sn) {
             var v = sn.val();
             var enabled = (v === true || v === '1' || v === 1);
             try { localStorage.setItem('pestovo_tools_menu_enabled', enabled ? '1' : '0'); } catch(e) {}
@@ -1523,6 +2019,10 @@ function loadPageVisibilitySettings() {
             if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
         });
     }
+
+    // Подсветка активного стиля галочки гандикапа (значение из localStorage,
+    // актуализируется listener'ом utils.js из Firebase)
+    if (typeof markAdmHcpVariantButtons === 'function') markAdmHcpVariantButtons();
 }
 
 function savePageVisibilitySettings() {
@@ -1599,102 +2099,300 @@ function toggleMyPreferencesCheckbox(event) {
 }
 
 // ==========================================
+// СТИЛЬ ГАЛОЧКИ ГАНДИКАПА (глобально, для всех игроков)
+// Вариант 1/2/3 хранится в Firebase settings/hcp_badge_variant.
+// utils.js подписан на это поле и сам перерисовывает списки.
+// ==========================================
+function saveHcpBadgeVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    if (typeof vib === 'function') vib(30);
+
+    // Применяем мгновенно локально: перерисовка списков + подсветка кнопок
+    if (typeof applyHcpBadgeVariant === 'function') applyHcpBadgeVariant(v);
+    else markAdmHcpVariantButtons();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Style saved locally (no cloud connection)' : 'Стиль сохранён локально (нет связи с облаком)', 'info');
+        return;
+    }
+    db.ref('settings/hcp_badge_variant').set(v).then(function() {
+        toast(currentLang === 'en' ? '✅ Handicap checkmark style saved for all players' : '✅ Стиль галочки гандикапа сохранён для всех игроков', 'success');
+    }).catch(function(err) {
+        console.warn('HCP badge variant save error:', err);
+        toast(currentLang === 'en' ? 'Could not save the style to the cloud' : '⚠️ Не удалось сохранить стиль в облако', 'error');
+    });
+}
+
+// Подсветка выбранного стиля галочки гандикапа в кнопках админ-панели.
+function markAdmHcpVariantButtons() {
+    var cur = (typeof getHcpBadgeVariant === 'function') ? getHcpBadgeVariant() : '1';
+    ['1', '2', '3'].forEach(function(v) {
+        var btn = document.getElementById('hcp-badge-opt-' + v);
+        if (!btn) return;
+        btn.classList.toggle('hcp-variant-active', v === cur);
+    });
+}
+
+function toggleAssistantPageHidden(event) {
+    // Переключаем чекбокс во вкладке «Помощник» и синхронизируем с сеткой «Данные»
+    togglePVCheckbox('as-hide-page', event);
+    var tab = document.getElementById('as-hide-page');
+    var main = document.getElementById('pv-assistant');
+    if (tab && main) main.checked = tab.checked;
+    savePageVisibilitySettings();
+}
+
+// ==========================================
+// КОНФИДЕНЦИАЛЬНОСТЬ ИМЁН (ФИО)
+// Настройки: settings/privacy = { enabled, maskMode, players: { uid: bool } }
+// ==========================================
+function loadPrivacySettings() {
+    var globalCb = document.getElementById('pv-privacy-global');
+    var maskSel = document.getElementById('pv-privacy-mask');
+
+    var apply = function(v) {
+        v = v || {};
+        if (globalCb) globalCb.checked = v.enabled === true;
+        if (maskSel) maskSel.value = (v.maskMode === 'masked') ? 'masked' : 'initials';
+    };
+
+    if (typeof db === 'undefined') {
+        apply(null);
+        return;
+    }
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-privacy', db.ref('settings/privacy'), function(sn) {
+            apply(sn.val());
+        });
+    } else {
+        db.ref('settings/privacy').once('value').then(function(sn) { apply(sn.val()); }).catch(function() { apply(null); });
+    }
+}
+
+function togglePrivacyGlobalCheckbox(event) {
+    togglePVCheckbox('pv-privacy-global', event);
+}
+
+function savePrivacySettings() {
+    var globalCb = document.getElementById('pv-privacy-global');
+    var maskSel = document.getElementById('pv-privacy-mask');
+    var enabled = globalCb ? globalCb.checked : false;
+    var maskMode = maskSel && maskSel.value === 'masked' ? 'masked' : 'initials';
+
+    // Обновляем локальное состояние для текущего пользователя сразу
+    if (typeof pestovoPrivacy !== 'undefined') {
+        pestovoPrivacy.enabled = enabled;
+        pestovoPrivacy.maskMode = maskMode;
+    }
+    try {
+        localStorage.setItem('pestovo_privacy', JSON.stringify({ enabled: enabled, maskMode: maskMode, players: pestovoPrivacy.players || {} }));
+    } catch (e) {}
+    if (typeof renderPrivacySensitiveHome === 'function') renderPrivacySensitiveHome();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Privacy settings saved locally' : 'Настройки приватности сохранены локально', 'success');
+        return;
+    }
+
+    db.ref('settings/privacy').once('value').then(function(sn) {
+        var cur = sn.val() || {};
+        db.ref('settings/privacy').update({
+            enabled: enabled,
+            maskMode: maskMode,
+            players: cur.players || {},
+            updatedAt: Date.now()
+        }).then(function() {
+            toast(enabled
+                ? (currentLang === 'en' ? '✅ Names are now hidden from others' : '✅ Имена теперь скрыты от других')
+                : (currentLang === 'en' ? '✅ Names are visible to others' : '✅ Имена снова видны другим'), 'success');
+        }).catch(function(err) {
+            toast('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+// Переключатель «Скрыть имя» для конкретного игрока (в списке игроков админки).
+// true — скрывать (перекрывает глобальный выключатель), false — показывать.
+function togglePlayerPrivacy(id) {
+    if (!id) return;
+    var ref = db.ref('settings/privacy/players/' + id);
+    ref.once('value').then(function(sn) {
+        var cur = sn.val();
+        var newVal = (cur === true) ? false : true;
+        return ref.set(newVal).then(function() {
+            toast(newVal
+                ? (currentLang === 'en' ? '🙈 Name will be hidden from others' : '🙈 Имя будет скрыто от других')
+                : (currentLang === 'en' ? '🙂 Name will be visible to others' : '🙂 Имя будет видно другим'), 'success');
+            if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        });
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+// ==========================================
 // ИГРОКИ И РОЛИ
 // ==========================================
+var admPlayersQuery = '';
+var admPlayersLastData = null;
+var admPlayersExpanded = {};
+
+// Живой поиск по списку игроков (имя, email, телефон) — без новых подписок Firebase.
+function admPlayersSearch(v) {
+    admPlayersQuery = v || '';
+    admPlayersExpanded = {};
+    renderAdmPlayersList(admPlayersLastData);
+}
+
+function admTogglePlayerRow(id) {
+    admPlayersExpanded[id] = !admPlayersExpanded[id];
+    var panel = document.getElementById('adm-p-' + id);
+    if (panel) panel.classList.toggle('hidden', !admPlayersExpanded[id]);
+}
+
+// Компактный список игроков: одна строка на игрока, действия — в раскрывающейся панели.
+// Экранирование строки для JS-строки в одинарных кавычках внутри HTML-атрибута
+// (onclick="fn('...')"). Один escapeHtml здесь НЕ подходит: браузер декодирует
+// &#39; обратно в ' ДО выполнения JS, ломая синтаксис при именах с кавычками.
+function admJsStr(v) {
+    return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '&quot;')
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n')
+        .replace(/</g, '\\x3c');
+}
+
+function renderAdmPlayersList(remoteData) {
+    var el = document.getElementById('adm-players');
+    if (!el) return;
+    var en = currentLang === 'en';
+
+    var localUsers = typeof getKnownPlayersSync === 'function' ? (getKnownPlayersSync() || {}) : {};
+    var combined = Object.assign({}, localUsers, remoteData || {});
+    var entries = Object.entries(combined).filter(function(e) {
+        return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(e[0], e[1] && e[1].name));
+    });
+
+    // Дедуп по ФИО, чтобы не было сдваивания в админ-списке
+    if (typeof dedupePlayerEntriesByFio === 'function') {
+        entries = dedupePlayerEntriesByFio(entries);
+    } else if (typeof rgGetFioKey === 'function') {
+        var seenFio = {};
+        var deduped = [];
+        entries.forEach(function(en2) {
+            var uu = en2[1] || {};
+            var key = rgGetFioKey(uu) || impNormName(uu.name || '');
+            if (!key) { deduped.push(en2); return; }
+            if (seenFio[key]) return;
+            seenFio[key] = true;
+            deduped.push(en2);
+        });
+        entries = deduped;
+    }
+
+    var q = (admPlayersQuery || '').trim().toLowerCase();
+    if (q) {
+        entries = entries.filter(function(e) {
+            var u = e[1] || {};
+            var hay = ((u.name || '') + ' ' + (u.email || '') + ' ' + (u.phone || '') + ' ' + (u.homeClub || '')).toLowerCase();
+            return hay.indexOf(q) !== -1;
+        });
+    }
+
+    if (!entries.length) {
+        el.innerHTML = '<div class="empty"><i class="fas fa-' + (q ? 'search' : 'users') + '"></i><p>' +
+            (q ? (en ? 'Nothing found' : 'Ничего не найдено') : (en ? 'No players' : 'Нет игроков')) + '</p></div>';
+        return;
+    }
+
+    entries.sort(function(a, b) {
+        var roleA = a[1].role === 'admin' ? 0 : a[1].role === 'referee' ? 1 : a[1].role === 'marshal' ? 2 : 3;
+        var roleB = b[1].role === 'admin' ? 0 : b[1].role === 'referee' ? 1 : b[1].role === 'marshal' ? 2 : 3;
+        if (roleA !== roleB) return roleA - roleB;
+        return (a[1].name || '').localeCompare(b[1].name || '');
+    });
+
+    var roundsStr = en ? ' · Rounds: ' : ' · Раундов: ';
+    var html = '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-users"></i> ' +
+        entries.length + ' ' + (en ? 'players — tap a row for actions' : 'строк — нажмите на игрока для действий') + '</div>';
+
+    entries.forEach(function(e) {
+        var id = e[0], u = e[1];
+        var curRole = u.role || 'player';
+        var name = u.name || '—';
+        var initials = name === '—' ? '?' : name.split(/\s+/).map(function(w) { return w.charAt(0); }).join('').slice(0, 2).toUpperCase();
+        var roleTxt = curRole === 'admin' ? t('role_admin') : curRole === 'referee' ? t('role_referee') : curRole === 'marshal' ? t('role_marshal') : t('role_player');
+        var dotCls = curRole === 'admin' ? 'adm-role-admin' : curRole === 'referee' ? 'adm-role-ref' : curRole === 'marshal' ? 'adm-role-mar' : 'adm-role-pl';
+        var hcpTxt = u.handicap != null ? fmtExactHcp(u.handicap) : '—';
+        var selfMark = (typeof currentUser !== 'undefined' && currentUser && id === currentUser.uid)
+            ? ' <span style="color:var(--gold);font-size:11px;">(' + (en ? 'You' : 'Это вы') + ')</span>' : '';
+
+        html += '<div class="adm-player-row" onclick="admTogglePlayerRow(\'' + id + '\')">' +
+            '<span class="adm-player-ava">' + escapeHtml(initials) + '</span>' +
+            '<span class="adm-player-main"><span class="adm-player-name">' + escapeHtml(name) + selfMark + '</span>' +
+            '<span class="adm-player-meta">HCP ' + escapeHtml(String(hcpTxt)) +
+            (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') +
+            ' · ' + escapeHtml(roleTxt) + roundsStr + (u.roundsPlayed || 0) + '</span></span>' +
+            '<span class="adm-role-dot ' + dotCls + '"></span></div>';
+
+        var nameJs = admJsStr(u.name);
+        html += '<div id="adm-p-' + id + '" class="adm-player-actions' + (admPlayersExpanded[id] ? '' : ' hidden') + '">';
+        html += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">' +
+            escapeHtml(u.email || (en ? 'No email' : 'Без email')) +
+            (u.phone ? ' · 📞 ' + escapeHtml(u.phone) : '') +
+            (u.tee ? ' · ⛳ ' + escapeHtml(t('tee_' + u.tee)) : '') +
+            (u.homeClub ? ' · ' + escapeHtml(u.homeClub) : '') + '</div>';
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">';
+
+        if (typeof currentUser === 'undefined' || !currentUser || id !== currentUser.uid) {
+            html += '<select class="form-input" style="padding:5px 8px;font-size:11.5px;width:auto;" onchange="changeRole(\'' + id + '\', this.value, \'' + nameJs + '\')">';
+            html += '<option value="player" ' + (curRole === 'player' ? 'selected' : '') + '>' + t('role_player') + '</option>';
+            html += '<option value="referee" ' + (curRole === 'referee' ? 'selected' : '') + '>' + t('role_referee') + '</option>';
+            html += '<option value="marshal" ' + (curRole === 'marshal' ? 'selected' : '') + '>' + t('role_marshal') + '</option>';
+            html += '<option value="admin" ' + (curRole === 'admin' ? 'selected' : '') + '>' + t('role_admin') + '</option>';
+            html += '</select>';
+
+            var privInd = (typeof pestovoPrivacy !== 'undefined' && pestovoPrivacy.players) ? pestovoPrivacy.players[id] : undefined;
+            var privHidden = (privInd === true) || (privInd !== false && (typeof pestovoPrivacy === 'undefined' ? false : pestovoPrivacy.enabled === true));
+            html += '<button class="btn ' + (privHidden ? 'btn-r' : 'btn-og') + ' btn-sm" onclick="togglePlayerPrivacy(\'' + id + '\')" title="' +
+                (en ? 'Hide/show full name from others' : 'Скрыть/показывать ФИО от других') + '">' +
+                '<i class="fas fa-' + (privHidden ? 'eye' : 'eye-slash') + '"></i> ' + t(privHidden ? 'privacy_show_btn' : 'privacy_hide_btn') + '</button>';
+
+            html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + nameJs + '\')" title="' +
+                (en ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
+
+            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + id + '\',\'' + nameJs + '\')" title="Delete">' +
+                '<i class="fas fa-trash"></i></button>';
+        } else {
+            html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + nameJs + '\')" title="' +
+                (en ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
+        }
+
+        html += '</div></div>';
+    });
+
+    el.innerHTML = html;
+}
+
 function loadAdmPlayers() {
     var el = document.getElementById('adm-players');
     if (!el) return;
 
     var renderWithData = function(remoteData) {
-        var localUsers = typeof getKnownPlayersSync === 'function' ? (getKnownPlayersSync() || {}) : {};
-        var combined = Object.assign({}, localUsers, remoteData || {});
-        var entries = Object.entries(combined).filter(function(e) {
-            return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(e[0], e[1] && e[1].name));
-        });
-
-        // Дедуп по ФИО, чтобы не было сдваивания в админ-списке
-        if (typeof dedupePlayerEntriesByFio === 'function') {
-            entries = dedupePlayerEntriesByFio(entries);
-        } else if (typeof rgGetFioKey === 'function') {
-            var seenFio = {};
-            var deduped = [];
-            entries.forEach(function(en){
-                var u = en[1] || {};
-                var key = rgGetFioKey(u) || impNormName(u.name||'');
-                if (!key) { deduped.push(en); return; }
-                if (seenFio[key]) return;
-                seenFio[key]=true;
-                deduped.push(en);
-            });
-            entries = deduped;
-        }
-
-        if (!entries.length) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>' + (currentLang === 'en' ? 'No players' : 'Нет игроков') + '</p></div>';
-            return;
-        }
-
-        entries.sort(function(a, b) {
-            var roleA = a[1].role === 'admin' ? 0 : a[1].role === 'referee' ? 1 : a[1].role === 'marshal' ? 2 : 3;
-            var roleB = b[1].role === 'admin' ? 0 : b[1].role === 'referee' ? 1 : b[1].role === 'marshal' ? 2 : 3;
-            if (roleA !== roleB) return roleA - roleB;
-            return (a[1].name || '').localeCompare(b[1].name || '');
-        });
-
-        var roundsStr = currentLang === 'en' ? ' · Rounds: ' : ' · Раундов: ';
-
-        var html = '';
-        entries.forEach(function(e) {
-            var id = e[0], u = e[1];
-            var gIcon = u.gender === 'women' ? '👩' : '👨';
-            var guestBadge = u.isGuest ? ' <span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 6px;border-radius:8px;font-size:10px;">' + t('guest') + '</span>' : '';
-            var curRole = u.role || 'player';
-
-            var roleBadge = curRole === 'admin'
-                ? '<span style="color:#2ecc71;font-size:12px;font-weight:700;"><i class="fas fa-shield-halved"></i> ' + t('role_admin') + '</span>'
-                : curRole === 'referee'
-                ? '<span style="color:var(--red);font-size:12px;font-weight:700;"><i class="fas fa-gavel"></i> ' + t('role_referee') + '</span>'
-                : curRole === 'marshal'
-                ? '<span style="color:var(--blue);font-size:12px;font-weight:700;"><i class="fas fa-shield"></i> ' + t('role_marshal') + '</span>'
-                : '<span style="color:var(--muted);font-size:12px;">' + t('role_player') + '</span>';
-
-            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
-            html += '<div style="flex:1;min-width:200px;">';
-            html += '<strong style="color:var(--white);">' + gIcon + ' ' + escapeHtml(u.name || '—') + guestBadge + '</strong>';
-            html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">';
-            html += escapeHtml(u.email || (currentLang === 'en' ? 'No email' : 'Без email')) + ' · HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + roundsStr + (u.roundsPlayed || 0);
-            html += '</div></div>';
-
-            html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
-            html += roleBadge;
-
-            if (!currentUser || id !== currentUser.uid) {
-                html += '<select class="form-input" style="padding:4px 8px;font-size:11px;width:auto;" onchange="changeRole(\'' + id + '\', this.value, \'' + (u.name || '').replace(/'/g, "\\'") + '\')">';
-                html += '<option value="player" ' + (curRole === 'player' ? 'selected' : '') + '>' + t('role_player') + '</option>';
-                html += '<option value="referee" ' + (curRole === 'referee' ? 'selected' : '') + '>' + t('role_referee') + '</option>';
-                html += '<option value="marshal" ' + (curRole === 'marshal' ? 'selected' : '') + '>' + t('role_marshal') + '</option>';
-                html += '<option value="admin" ' + (curRole === 'admin' ? 'selected' : '') + '>' + t('role_admin') + '</option>';
-                html += '</select>';
-
-                html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="' + (currentLang === 'en' ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
-
-                html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="Delete">' +
-                        '<i class="fas fa-trash"></i></button>';
-            } else {
-                html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="' + (currentLang === 'en' ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
-                html += '<span style="font-size:11px;color:var(--gold);font-weight:600;">(' + (currentLang === 'en' ? 'You' : 'Это вы') + ')</span>';
-            }
-
-            html += '</div></div>';
-        });
-
-        el.innerHTML = html;
+        admPlayersLastData = remoteData;
+        renderAdmPlayersList(remoteData);
     };
 
     renderWithData();
 
-    if (typeof db !== 'undefined') {
-        db.ref('users').on('value', function(sn) {
+    if (typeof db !== 'undefined' && db) {
+        // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+        bindRealtimeValue('admin-users', db.ref('users'), function(sn) {
             renderWithData(sn.val());
         });
     }
@@ -1790,10 +2488,11 @@ function deletePlayer(id, name) {
         // 3) Удаляем историю раундов
         db.ref('users/' + id + '/history').remove().then(check, check);
 
-        // 4) Удаляем саму ноду users/<id> и уведомления этого игрока
+        // 4) Удаляем саму ноду users/<id> (вместе с ней уходят и notifications —
+        // отдельный путь users/<id>/notifications сюда добавлять нельзя: update()
+        // падает на пересекающихся путях и удаление вообще не происходит)
         var userUpdates = {};
         userUpdates['users/' + id] = null;
-        userUpdates['users/' + id + '/notifications'] = null;
         db.ref().update(userUpdates).then(check, check);
     };
 
@@ -1906,6 +2605,13 @@ function createPlayerInAdmin() {
 
     var email = emailInp ? emailInp.value.trim() : '';
     var hcpRaw = hcpInp ? hcpInp.value.trim() : '0';
+    // parseExactHcp молча превращает мусор в 0 — проверяем ввод явно, чтобы
+    // опечатка вроде «12ж» не записывала игроку нулевой гандикап
+    if (hcpRaw !== '' && !/^[+-]?(\d+([.,]\d+)?|\.\d+)$/.test(hcpRaw.replace(/\s+/g, ''))) {
+        toast((currentLang === 'en' ? '⚠️ Invalid handicap value: ' : '⚠️ Некорректный гандикап: ') + hcpRaw, 'error');
+        if (hcpInp) hcpInp.focus();
+        return;
+    }
     var parsedHcp = parseExactHcp(hcpRaw);
     var gender = genderSel ? genderSel.value : 'men';
     var defaultTee = teeSel ? teeSel.value : 'wh';
@@ -2024,6 +2730,17 @@ var impParsedRows = [];
 
 function impNormName(s) {
     return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+}
+
+/** Ключ игрока для поиска дублей. В режимах A/B/C учитывает формы имени
+ *  («Наташа Смирнова» = «Смирнова Наталия»), в режиме «off» — как раньше. */
+function impNameKey(d) {
+    d = d || {};
+    if (typeof NameVariants !== 'undefined' && NameVariants.isOn()) {
+        var k = NameVariants.groupKey(d);
+        if (k) return k;
+    }
+    return impNormName(d.name || ((d.firstName || '') + ' ' + (d.lastName || '')).trim());
 }
 
 function impSplitName(name) {
@@ -2150,7 +2867,7 @@ function impHeaderKey(raw) {
 
 function impGenderFromCell(v) {
     var s = impNormName(v);
-    if (['ж', 'жен', 'ж', 'жeн', 'f', 'female', 'w', 'women', 'женский', 'женщина'].indexOf(s) !== -1 || s.indexOf('жен') === 0) return 'women';
+    if (['ж', 'жен', 'f', 'female', 'w', 'women', 'женский', 'женщина'].indexOf(s) !== -1 || s.indexOf('жен') === 0) return 'women';
     if (['м', 'муж', 'm', 'male', 'men', 'мужской', 'мужчина'].indexOf(s) !== -1 || s.indexOf('муж') === 0) return 'men';
     return 'men';
 }
@@ -2294,12 +3011,12 @@ function impRenderPreview(validRows, invalidRows) {
     impCollectPlayers(function(existingPlayers) {
         var byName = {};
         existingPlayers.forEach(function(p) {
-            var nm = impNormName(p.data.name || ((p.data.firstName || '') + ' ' + (p.data.lastName || '')));
+            var nm = impNameKey(p.data);
             if (nm) byName[nm] = p;
         });
 
         validRows.forEach(function(r) {
-            var key = impNormName(r.firstName + ' ' + r.lastName);
+            var key = impNameKey({ firstName: r.firstName, lastName: r.lastName });
             r.dup = byName[key] || null;
             r.checked = true;
         });
@@ -2424,7 +3141,17 @@ function confirmPlayersImport() {
 
     selected.forEach(function(r) {
         if (r.dup) {
-            if (typeof db !== 'undefined') {
+            // Синхронизируем локальный кэш, иначе список игроков покажет старый HCP до перезагрузки
+            try {
+                if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[r.dup.id]) {
+                    cachedRegisteredUsers[r.dup.id].handicap = r.hcp;
+                    cachedRegisteredUsers[r.dup.id].gender = r.gender;
+                    cachedRegisteredUsers[r.dup.id].hcpUpdatedAt = Date.now();
+                    cachedRegisteredUsers[r.dup.id].hcpSource = 'excel';
+                    try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e2) {}
+                }
+            } catch(e) {}
+            if (typeof db !== 'undefined' && db) {
                 db.ref('users/' + r.dup.id).update({
                     handicap: r.hcp,
                     gender: r.gender,
@@ -2454,7 +3181,7 @@ function confirmPlayersImport() {
             };
             impSaveLocalPlayer(newId, playerData);
             created++;
-            if (typeof db !== 'undefined') {
+            if (typeof db !== 'undefined' && db) {
                 db.ref('users/' + newId).set(playerData).then(finish).catch(finish);
             } else {
                 finish();
@@ -2543,8 +3270,23 @@ function rgLocalNameParts(u) {
     return { first: first, last: last, full: full, parts: parts };
 }
 
-/** Совпадение имён в обоих порядках: «Фамилия Имя» и «Имя Фамилия». */
+/** Совпадение имён в обоих порядках: «Фамилия Имя» и «Имя Фамилия».
+ *  Учитывает формы имён (Наташа = Наталья = Наталия) — режим задаётся в
+ *  админке (вкладка «АГР» → «Формы имён»), см. js/name-variants.js.
+ *  Режим «off» = прежнее поведение (только точное совпадение строк). */
 function rgNamesMatch(localFirst, localLast, remoteFirst, remoteLast, localFull, remoteFull) {
+    var legacy = rgNamesMatchLegacy(localFirst, localLast, remoteFirst, remoteLast, localFull, remoteFull);
+    var nm = (typeof NameVariants !== 'undefined') ? NameVariants : null;
+    if (!nm || !nm.isOn()) return legacy;
+    var variant = nm.match(localFirst, localLast, remoteFirst, remoteLast, localFull, remoteFull);
+    if (legacy === 'strong') return 'strong';
+    if (variant === 'strong') return 'strong';
+    if (legacy === 'loose' || variant === 'loose') return 'loose';
+    return null;
+}
+
+/** Прежнее сравнение строк (без учёта форм имени) — режим «off». */
+function rgNamesMatchLegacy(localFirst, localLast, remoteFirst, remoteLast, localFull, remoteFull) {
     var lf = impNormName(localFirst);
     var ll = impNormName(localLast);
     var rf = impNormName(remoteFirst);
@@ -2829,7 +3571,7 @@ function rgRenderResults(rows) {
                 // Выбор: обновить СУЩЕСТВУЮЩЕГО игрока (каждого из совпавших)
                 // или добавить НОВОГО — чтобы не плодить дублей с разным HCP
                 dups.forEach(function(d) {
-                    var dIdAttr = String(d.id).replace(/'/g, "\\'");
+                    var dIdAttr = admJsStr(d.id);
                     var oldH = d.data.handicap != null ? fmtExactHcp(d.data.handicap) : '—';
                     var dChanged = d.data.handicap != null && Math.abs((parseFloat(d.data.handicap) || 0) - r.hcp) > 0.049;
                     html += '<button type="button" class="btn btn-og btn-sm" onclick="rgUpdateLocalFromResults(' + i + ', \'' + dIdAttr + '\')"><i class="fas fa-rotate"></i> ' +
@@ -3218,6 +3960,12 @@ function rgPlayerDisplayName(p) {
 
 function rgGetFioKey(u) {
     if (!u) return '';
+    // С учётом форм имени: «Наташа Смирнова» и «Смирнова Наталия» — один ключ.
+    // Отчество в ключ не входит (отец/сын разделяются rgSplitByPatronymic).
+    if (typeof NameVariants !== 'undefined' && NameVariants.isOn()) {
+        var vk = NameVariants.groupKey(u);
+        if (vk) return vk;
+    }
     var fn = (u.firstName || '').toString().trim();
     var mn = (u.middleName || '').toString().trim();
     var ln = (u.lastName || '').toString().trim();
@@ -3238,11 +3986,31 @@ function rgFindDuplicateGroups(allPlayers) {
     var result = [];
     Object.keys(groups).forEach(function(k) {
         var g = groups[k];
-        if (g.players.length > 1) {
-            result.push(g);
-        }
+        // «Иванов Иван Иванович» и «Иванов Иван Петрович» — разные люди,
+        // поэтому группу с одинаковым именем+фамилией делим по отчеству.
+        rgSplitByPatronymic(g.players).forEach(function(sub) {
+            if (sub.length > 1) {
+                result.push({ key: k, displayName: rgPlayerDisplayName(sub[0]), players: sub });
+            }
+        });
     });
     return result;
+}
+
+/** Делит игроков с одинаковым именем+фамилией на подгруппы по отчеству. */
+function rgSplitByPatronymic(players) {
+    var nm = (typeof NameVariants !== 'undefined') ? NameVariants : null;
+    if (!nm || !nm.isOn()) return [players || []];
+    var out = [];
+    (players || []).forEach(function(p) {
+        var data = p.data || {};
+        for (var i = 0; i < out.length; i++) {
+            var clash = out[i].some(function(q) { return nm.patronymicClash(data, q.data || {}); });
+            if (!clash) { out[i].push(p); return; }
+        }
+        out.push([p]);
+    });
+    return out;
 }
 
 function rgRenderDuplicateGroups(groups) {
@@ -3261,12 +4029,12 @@ function rgRenderDuplicateGroups(groups) {
             var inputId = 'rg-dup-hcp-' + gi + '-' + pi;
             html += '<div class="list-item" style="padding:10px;gap:10px;flex-wrap:wrap;">';
             html += '<div style="flex:1;min-width:160px;"><strong style="color:var(--gold);">' + escapeHtml(rgPlayerDisplayName(pl)) + '</strong>';
-            html += '<div style="font-size:12px;color:var(--muted);">ID: ' + escapeHtml(pl.id) + (u.isGuest ? ' · ' + (en ? 'Guest' : 'Гость') : '') + (u.rusgolfNumber ? ' · 💳 ' + escapeHtml(u.rusgolfNumber) : '') + '</div></div>';
+            html += '<div style="font-size:12px;color:var(--muted);">ID: ' + escapeHtml(pl.id) + (u.rusgolfNumber ? ' · 💳 ' + escapeHtml(u.rusgolfNumber) : '') + '</div></div>';
             html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
             html += '<span style="font-size:12px;color:var(--muted);">' + (en ? 'Current HCP' : 'Текущий HCP') + ': <b>' + curHcp + '</b></span>';
             html += '<input type="text" id="' + inputId + '" class="form-input" style="width:90px;padding:6px 8px;font-size:13px;" placeholder="' + curHcp + '" value="' + (u.handicap!=null? String(u.handicap).replace('+','') : '') + '">';
             html += '<button class="btn btn-g btn-sm" onclick="rgChangeDuplicateHcp(\'' + safeId + '\', \'' + inputId + '\')"><i class="fas fa-rotate"></i> ' + (en ? 'Change HCP' : 'Изменить гандикап') + '</button>';
-            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + safeId + '\', \'' + escapeHtml(u.name||'').replace(/'/g, "\\'") + '\')"><i class="fas fa-trash"></i></button>';
+            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + safeId + '\', \'' + admJsStr(u.name) + '\')"><i class="fas fa-trash"></i></button>';
             html += '</div></div>';
         });
         html += '</div>';
@@ -3407,6 +4175,42 @@ function rgBuildSearchQuery(u) {
         return rawName;
     }
     return rawLast || rawFirst || '';
+}
+
+/**
+ * Список запросов к базе АГР: сначала «как записано на сайте», затем —
+ * с полными (паспортными) формами имени («Наташа» → «Наталья», «Наталия»),
+ * в конце — обратный порядок слов. Запросы пробуются по очереди и только
+ * если предыдущий ничего не нашёл, поэтому лишнего трафика почти нет.
+ */
+function rgBuildSearchQueries(u) {
+    var local = rgLocalNameParts(u);
+    var first = (u && u.firstName) || local.first;
+    var last = (u && u.lastName) || local.last;
+    var nm = (typeof NameVariants !== 'undefined') ? NameVariants : null;
+    var mode = nm ? nm.getMode() : 'off';
+    var list = [];
+
+    var primary = rgBuildSearchQuery(u);
+    if (primary) list.push(primary);
+    if (nm && nm.isOn()) {
+        (nm.queryVariants(first, last) || []).forEach(function(q) { list.push(q); });
+    }
+    if (local.first && local.last) {
+        var primaryIsLastFirst = impNormName(primary).indexOf(local.last) === 0;
+        list.push(primaryIsLastFirst ? (first + ' ' + last) : (last + ' ' + first));
+    }
+
+    var seen = {}, out = [];
+    list.forEach(function(q) {
+        var clean = String(q || '').replace(/\s+/g, ' ').trim();
+        var k = impNormName(clean);
+        if (!k || seen[k]) return;
+        seen[k] = true;
+        out.push(clean);
+    });
+    var limit = { off: 2, A: 3, B: 4, C: 5 }[mode] || 2;
+    return out.slice(0, limit);
 }
 
 function rgClassifyRemoteMatches(u, rows) {
@@ -3558,7 +4362,7 @@ function rgSyncAll() {
                 // 2) Несколько ЛОКАЛЬНЫХ игроков с таким именем — выбрать, кого обновить
                 (c.localCandidates || []).forEach(function(lc, li) {
                     html += '<div class="rg-cand" style="border-left:3px solid var(--gold);">';
-                    html += '<div class="rg-cand-info"><b>' + escapeHtml(rgPlayerDisplayName(lc)) + '</b><span class="rg-meta">' + (currentLang === 'en' ? 'on site' : 'на сайте') + (lc.data.rusgolfNumber ? ' · 💳 ' + escapeHtml(lc.data.rusgolfNumber) : '') + (lc.data.isGuest || String(lc.id).indexOf('guest_') === 0 ? ' · ' + t('guest') : '') + '</span></div>';
+                    html += '<div class="rg-cand-info"><b>' + escapeHtml(rgPlayerDisplayName(lc)) + '</b><span class="rg-meta">' + (currentLang === 'en' ? 'on site' : 'на сайте') + (lc.data.rusgolfNumber ? ' · 💳 ' + escapeHtml(lc.data.rusgolfNumber) : '') + '</span></div>';
                     html += '<div class="rg-hcp">' + (lc.data.handicap != null ? fmtExactHcp(lc.data.handicap) : '—') + '<span class="rg-hcp-label">HCP</span></div>';
                     html += '<button type="button" class="btn btn-g btn-sm" onclick="rgResolveLocalConflict(' + ci + ',' + li + ')"><i class="fas fa-rotate"></i> ' + (currentLang === 'en' ? 'Update this one' : 'Обновить этого') + '</button>';
                     html += '</div>';
@@ -3625,25 +4429,21 @@ function rgSyncAll() {
             var p = list[i++];
             var u = p.data || {};
             var displayName = rgPlayerDisplayName(p);
-            var query = rgBuildSearchQuery(u);
-            // Если имя в порядке «Имя Фамилия», дополнительно пробуем reverse-query при пустом результате
-            var altQuery = '';
             var local = rgLocalNameParts(u);
-            if (local.first && local.last) {
-                var primaryIsLastFirst = impNormName(query).indexOf(local.last) === 0;
-                if (primaryIsLastFirst) {
-                    altQuery = (u.firstName || local.first) + ' ' + (u.lastName || local.last);
-                } else {
-                    altQuery = (u.lastName || local.last) + ' ' + (u.firstName || local.first);
-                }
-                if (impNormName(altQuery) === impNormName(query)) altQuery = '';
-            }
+            // Список запросов: как записано → полные формы имени → обратный порядок слов.
+            // Пример: «Смирнова Наташа» → «Смирнова Наташа», «Смирнова Наталья»,
+            // «Смирнова Наталия», «Наташа Смирнова».
+            var queries = rgBuildSearchQueries(u);
+            if (!queries.length) queries = [displayName];
+            var query = queries[0];
 
-            var tryFetch = function(q, allowAlt) {
+            var tryFetch = function(idx) {
+                var q = queries[idx];
+                if (!q) return Promise.reject(new Error('empty query'));
                 return rgFetchViaProxy(q).then(function(res) {
                     var classified = rgClassifyRemoteMatches(u, res.rows);
-                    if (!classified.strong.length && !classified.loose.length && allowAlt && altQuery) {
-                        return tryFetch(altQuery, false);
+                    if (!classified.strong.length && !classified.loose.length && idx + 1 < queries.length) {
+                        return tryFetch(idx + 1);
                     }
                     return { res: res, classified: classified, usedQuery: q };
                 });
@@ -3679,7 +4479,7 @@ function rgSyncAll() {
                 }
             };
 
-            tryFetch(query || displayName, true).then(function(pack) {
+            tryFetch(0).then(function(pack) {
                 var strong = pack.classified.strong;
                 var loose = pack.classified.loose;
                 var usedQuery = pack.usedQuery;
@@ -3917,18 +4717,15 @@ function rgBatchHandleFile(input) {
     reader.readAsArrayBuffer(file);
 }
 
+/** Все запросы для строки таблицы: как записано + полные формы имени + обратный порядок. */
 function rgBatchBuildQueries(row) {
-    var q = (row.lastName && row.firstName) ? (row.lastName + ' ' + row.firstName) : row.name;
-    var alt = '';
-    if (row.firstName && row.lastName) {
-        alt = row.firstName + ' ' + row.lastName;
-        if (impNormName(alt) === impNormName(q)) alt = '';
-    }
-    return { q: q, alt: alt };
+    var list = rgBuildSearchQueries({ firstName: row.firstName, lastName: row.lastName, name: row.name });
+    var q = list[0] || row.name;
+    return { q: q, alt: list.slice(1) };
 }
 
 function rgBatchStartSearch(rows) {
-    rgBatchState = { running: true, stop: false };
+    rgBatchState = { running: true, stop: false, players: null };
     rgBatchRows = rows.map(function(r) {
         return { idx: r.idx, firstName: r.firstName, lastName: r.lastName, name: r.name, query: '', proxy: '', error: '', done: false, results: [] };
     });
@@ -3958,14 +4755,17 @@ function rgBatchStartSearch(rows) {
         var queries = rgBatchBuildQueries(row);
         row.query = queries.q;
 
-        var tryFetch = function(q, allowAlt) {
+        var allQueries = [queries.q].concat(queries.alt || []);
+        var tryFetch = function(idx) {
+            var q = allQueries[idx];
+            if (!q) return Promise.reject(new Error('empty query'));
             return rgFetchViaProxy(q).then(function(res) {
-                if (!res.rows.length && allowAlt && queries.alt) return tryFetch(queries.alt, false);
+                if (!res.rows.length && idx + 1 < allQueries.length) return tryFetch(idx + 1);
                 return res;
             });
         };
 
-        tryFetch(queries.q, true).then(function(res) {
+        tryFetch(0).then(function(res) {
             row.query = queries.q;
             row.results = res.rows;
             row.proxy = res.proxy;
@@ -3983,11 +4783,23 @@ function rgBatchStartSearch(rows) {
     processNext();
 }
 
+// Список игроков для пакетного поиска — с кэшем на время прогона: без него
+// каждый перерендер rgBatchRender дёргал бы users+rounds из базы заново
+// (десятки лишних чтений на один запуск). Сбрасывается при старте поиска
+// и после любого добавления/обновления игрока из результатов.
+function rgBatchGetPlayers(callback) {
+    if (rgBatchState.players) { callback(rgBatchState.players); return; }
+    impCollectPlayers(function(players) {
+        rgBatchState.players = players || [];
+        callback(rgBatchState.players);
+    });
+}
+
 function rgBatchRender(processed, total) {
     var resultsEl = document.getElementById('rg-batch-results');
     if (!resultsEl) return;
 
-    impCollectPlayers(function(players) {
+    rgBatchGetPlayers(function(players) {
         var html = '';
         var pct = total ? Math.round((processed / total) * 100) : 0;
         var doneRows = rgBatchRows.filter(function(r) { return r.done; });
@@ -4138,6 +4950,7 @@ function rgBatchAddOne(ri, ii) {
     if (typeof vib === 'function') vib([50, 30, 50]);
     if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
     r.selected = false;
+    rgBatchState.players = null;
     rgBatchRender(rgBatchRows.filter(function(x) { return x.done; }).length, rgBatchRows.length);
 }
 
@@ -4152,6 +4965,7 @@ function rgBatchUpdateOne(ri, ii) {
     if (existing) {
         rgUpdateHcpOf(existing.id, r);
         r.selected = false;
+        rgBatchState.players = null;
         rgBatchRender(rgBatchRows.filter(function(x) { return x.done; }).length, rgBatchRows.length);
     }
 }
@@ -4196,7 +5010,236 @@ function rgBatchAddSelected() {
     if (typeof vib === 'function') vib([50, 30, 50]);
     if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
     if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
+    rgBatchState.players = null;
     rgBatchRender(rgBatchRows.filter(function(x) { return x.done; }).length, rgBatchRows.length);
+}
+
+// ==========================================
+// ФОРМЫ ИМЁН (Наташа = Наталья = Наталия)
+// ==========================================
+// Словарь и три режима совпадения — в js/name-variants.js.
+var NM_MODE_KEY = 'pestovo_name_match_mode';
+var NM_ALIASES_KEY = 'pestovo_name_aliases';
+var NM_AUTO_KEY = 'pestovo_name_autoapply';
+
+var NM_MODE_INFO = [
+    {
+        id: 'off',
+        title: { ru: 'Не учитывать формы имени (как сейчас)', en: 'Ignore name forms (current behaviour)' },
+        text: {
+            ru: 'Имя сравнивается как текст: «Наташа» не найдёт «Наталья» и не объединит дубли.',
+            en: 'Names are compared as plain text: «Natasha» will not find «Natalia».'
+        }
+    },
+    {
+        id: 'A',
+        title: { ru: 'Вариант 1 — Словарь форм имени', en: 'Option 1 — Dictionary of name forms' },
+        text: {
+            ru: 'Известные формы (Наташа = Наталья = Наталия, Катя = Екатерина, Саша = Александр…) и латиница (Natalia = Наталия). Фамилия должна совпасть точно. Автоматически HCP обновится только при точной фамилии.',
+            en: 'Known forms (Natasha = Natalia, Kate = Catherine…) and latin spelling. Surname must match exactly.'
+        }
+    },
+    {
+        id: 'B',
+        title: { ru: 'Вариант 2 — Словарь + допуск (рекомендуется)', en: 'Option 2 — Dictionary + tolerance (recommended)' },
+        text: {
+            ru: 'Всё из варианта 1 плюс: мужской/женский род фамилии (Смирнов/Смирнова), транслитерация фамилии (Smirnova = Смирнова), опечатки (Ноталья), отчества не мешают. Нечёткие совпадения не применяются сами, а попадают в блок «Выберите нужного игрока».',
+            en: 'Option 1 plus surname gender (Smirnov/Smirnova), transliteration and typos. Fuzzy matches go to the manual choice block.'
+        }
+    },
+    {
+        id: 'C',
+        title: { ru: 'Вариант 3 — Максимум + свой словарь', en: 'Option 3 — Maximum + custom dictionary' },
+        text: {
+            ru: 'Всё из варианта 2 плюс: инициалы («Н. Смирнова» = «Наталья Смирнова»), основа фамилии (Смирн/Смирнова) и ваши собственные формы имён в поле ниже. Максимальный охват, но чаще придётся выбирать вручную.',
+            en: 'Option 2 plus initials, surname stems and your own name forms.'
+        }
+    }
+];
+
+/** Применяет сохранённый режим сразу при загрузке админки. */
+function nmApplyStored() {
+    if (typeof NameVariants === 'undefined') return;
+    // По умолчанию: формы имени не учитываются, автоприменение выключено —
+    // нужный режим администратор включает сам в блоке «Формы имён».
+    var mode = 'off', aliases = '', auto = false;
+    try {
+        mode = localStorage.getItem(NM_MODE_KEY) || 'off';
+        aliases = localStorage.getItem(NM_ALIASES_KEY) || '';
+        auto = localStorage.getItem(NM_AUTO_KEY) === '1';
+    } catch (e) {}
+    NameVariants.setMode(mode);
+    NameVariants.setCustomAliases(aliases);
+    NameVariants.setAutoApply(auto);
+}
+nmApplyStored();
+
+function nmCurrentMode() {
+    return (typeof NameVariants !== 'undefined') ? NameVariants.getMode() : 'off';
+}
+
+function nmLoadSettings(fromRemote) {
+    var list = document.getElementById('nm-mode-list');
+    if (!list) return;
+    var en = currentLang === 'en';
+    var mode = nmCurrentMode();
+    var html = '';
+    NM_MODE_INFO.forEach(function(m) {
+        html += '<label class="nm-mode" style="display:block;gap:10px;align-items:flex-start;padding:10px 12px;margin-bottom:8px;' +
+            'background:rgba(255,255,255,0.03);border:1px solid ' + (m.id === mode ? 'var(--gold)' : 'var(--border)') +
+            ';border-radius:10px;cursor:pointer;">' +
+            '<input type="radio" name="nm-mode" value="' + m.id + '" ' + (m.id === mode ? 'checked' : '') +
+            ' onchange="nmToggleCustomBlock()" style="width:18px;height:18px;margin-top:3px;cursor:pointer;">' +
+            '<span><b style="color:' + (m.id === mode ? 'var(--gold)' : 'var(--white)') + ';font-size:13px;">' +
+            escapeHtml(en ? m.title.en : m.title.ru) + '</b>' +
+            '<br><span style="color:var(--muted);font-size:12px;">' + escapeHtml(en ? m.text.en : m.text.ru) + '</span></span></label>';
+    });
+    list.innerHTML = html;
+
+    var autoEl = document.getElementById('nm-autoapply');
+    if (autoEl && typeof NameVariants !== 'undefined') autoEl.checked = NameVariants.getAutoApply();
+
+    var ta = document.getElementById('nm-custom-aliases');
+    if (ta) {
+        var saved = '';
+        try { saved = localStorage.getItem(NM_ALIASES_KEY) || ''; } catch (e) {}
+        ta.value = saved;
+    }
+    nmToggleCustomBlock();
+
+    if (typeof db !== 'undefined' && !fromRemote) {
+        db.ref('settings/nameMatching').once('value').then(function(sn) {
+            var v = sn.val() || {};
+            if (!v || typeof v !== 'object') return;
+            if (v.mode && typeof NameVariants !== 'undefined') {
+                NameVariants.setMode(v.mode);
+                try { localStorage.setItem(NM_MODE_KEY, v.mode); } catch (e) {}
+            }
+            if (typeof v.aliases === 'string') {
+                if (typeof NameVariants !== 'undefined') NameVariants.setCustomAliases(v.aliases);
+                try { localStorage.setItem(NM_ALIASES_KEY, v.aliases); } catch (e) {}
+                if (ta) ta.value = v.aliases;
+            }
+            if (v.autoApply != null && typeof NameVariants !== 'undefined') {
+                NameVariants.setAutoApply(v.autoApply === true);
+                try { localStorage.setItem(NM_AUTO_KEY, v.autoApply === true ? '1' : '0'); } catch (e) {}
+                if (autoEl) autoEl.checked = (v.autoApply === true);
+            }
+            nmLoadSettings(true);
+        }).catch(function() {});
+    }
+}
+
+function nmToggleCustomBlock() {
+    var box = document.getElementById('nm-custom-block');
+    if (!box) return;
+    var anyChecked = document.querySelector('input[name="nm-mode"]:checked');
+    box.classList.toggle('hidden', !anyChecked || anyChecked.value !== 'C');
+}
+
+function nmSaveSettings() {
+    if (!rgIsAdmin()) {
+        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
+        return;
+    }
+    if (typeof NameVariants === 'undefined') return;
+    var checked = document.querySelector('input[name="nm-mode"]:checked');
+    var mode = checked ? checked.value : 'off';
+    var autoEl = document.getElementById('nm-autoapply');
+    var ta = document.getElementById('nm-custom-aliases');
+    var aliases = ta ? ta.value : '';
+
+    NameVariants.setMode(mode);
+    NameVariants.setAutoApply(autoEl ? autoEl.checked : true);
+    NameVariants.setCustomAliases(aliases);
+    try {
+        localStorage.setItem(NM_MODE_KEY, mode);
+        localStorage.setItem(NM_ALIASES_KEY, aliases);
+        localStorage.setItem(NM_AUTO_KEY, (autoEl && !autoEl.checked) ? '0' : '1');
+    } catch (e) {}
+    if (typeof db !== 'undefined') {
+        db.ref('settings/nameMatching').update({
+            mode: mode,
+            aliases: aliases,
+            autoApply: !!(autoEl && autoEl.checked),
+            updatedAt: Date.now()
+        }).catch(function() {});
+    }
+    nmLoadSettings(true);
+    toast(currentLang === 'en' ? '✅ Name matching settings saved' : '✅ Настройки сравнения имён сохранены', 'success');
+}
+
+/** Показывает, какие имена игроков система теперь считает одинаковыми
+ *  и какие формы имени будет искать в базе АГР. */
+function nmAnalyzeNames() {
+    var out = document.getElementById('nm-analyze-results');
+    if (!out || typeof NameVariants === 'undefined') return;
+    var en = currentLang === 'en';
+    out.innerHTML = '<p style="color:var(--muted);font-size:12px;"><i class="fas fa-spinner fa-spin"></i> ' +
+        (en ? 'Analysing player names…' : 'Анализирую имена игроков…') + '</p>';
+
+    impCollectPlayers(function(players) {
+        var savedMode = NameVariants.getMode();
+        // анализ показываем по максимуму — независимо от выбранного режима
+        NameVariants.setMode('C');
+        var collisions = NameVariants.findFormCollisions(players);
+
+        var withForms = [];
+        (players || []).forEach(function(p) {
+            var d = p.data || {};
+            var first = NameVariants.norm(d.firstName || NameVariants.splitNameParts(d).first);
+            if (!first) return;
+            var forms = NameVariants.officialFormsOf(first);
+            var others = forms.filter(function(f) { return f !== first; });
+            if (forms.length || NameVariants.hasKnownForms(first)) {
+                withForms.push({ name: rgPlayerDisplayName(p), first: first, forms: NameVariants.formsOf(first), others: others });
+            }
+        });
+        NameVariants.setMode(savedMode);
+
+        var html = '';
+        html += '<div class="imp-note" style="margin-top:14px;"><i class="fas fa-circle-info"></i> ' +
+            (en
+                ? 'Players: <b>' + (players || []).length + '</b> · with known name forms: <b>' + withForms.length + '</b> · collisions found: <b>' + collisions.length + '</b>'
+                : 'Игроков: <b>' + (players || []).length + '</b> · с известными формами имени: <b>' + withForms.length + '</b> · найдено совпадений: <b>' + collisions.length + '</b>') +
+            '</div>';
+
+        if (collisions.length) {
+            html += '<h3 style="color:var(--gold);font-size:14px;margin:14px 0 8px;"><i class="fas fa-clone"></i> ' +
+                (en ? 'Same player written differently' : 'Один и тот же игрок, записанный по-разному') + ' (' + collisions.length + ')</h3>';
+            collisions.forEach(function(c) {
+                html += '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;">';
+                html += '<div style="font-weight:700;font-size:13px;color:var(--white);">' +
+                    escapeHtml(NameVariants.cap(c.canon)) + ' ' + escapeHtml(NameVariants.cap(c.lastName)) +
+                    ' <span style="color:var(--muted);font-weight:400;">· ' + escapeHtml(c.forms.join(' / ')) + '</span></div>';
+                c.players.forEach(function(pl) {
+                    var d = pl.data || {};
+                    html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">• ' + escapeHtml(rgPlayerDisplayName(pl)) +
+                        ' · HCP ' + (d.handicap != null ? fmtExactHcp(d.handicap) : '—') +
+                        (d.rusgolfNumber ? ' · 💳 ' + escapeHtml(d.rusgolfNumber) : '') + '</div>';
+                });
+                html += '</div>';
+            });
+        }
+
+        if (withForms.length) {
+            html += '<h3 style="color:var(--gold);font-size:14px;margin:14px 0 8px;"><i class="fas fa-magnifying-glass"></i> ' +
+                (en ? 'Which name forms will be searched in the RGA database' : 'Какие формы имени будут проверены в базе АГР') + '</h3>';
+            html += '<div style="font-size:12px;color:var(--muted);line-height:1.9;">';
+            withForms.forEach(function(w) {
+                html += '<div>• <b style="color:var(--white);">' + escapeHtml(w.name) + '</b>' +
+                    (w.others.length ? ' <span style="color:var(--muted);">→ в АГР ищем также: ' +
+                    escapeHtml(w.others.map(function(f) { return NameVariants.cap(f); }).join(', ')) + '</span>' : '') + '</div>';
+            });
+            html += '</div>';
+        }
+
+        if (!collisions.length && !withForms.length) {
+            html += '<div class="imp-note"><i class="fas fa-check"></i> ' +
+                (en ? 'No name forms to normalise.' : 'Формы имён приводить не нужно.') + '</div>';
+        }
+        out.innerHTML = html;
+    });
 }
 
 // -------- НАСТРОЙКИ ПРОКСИ ---------
@@ -4237,4 +5280,158 @@ function saveRusgolfProxySettings() {
     var note = document.getElementById('rg-proxy-status');
     if (note) note.textContent = v ? '✅' : '✓';
     toast(currentLang === 'en' ? '✅ Proxy settings saved' : '✅ Настройки прокси сохранены', 'success');
+}
+
+// ==========================================
+// «ПОМОЩНИК» — УПРАВЛЕНИЕ ИСТОЧНИКАМИ (PDF ПО ССЫЛКЕ)
+// ==========================================
+var ASSISTANT_SOURCES_KEY = 'pestovo_assistant_sources';
+var ASSISTANT_INDEX_KEY = 'pestovo_assistant_index';
+
+function getAssistantCustomSources() {
+    try {
+        var raw = localStorage.getItem(ASSISTANT_SOURCES_KEY);
+        var arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+}
+
+function getAssistantCustomIndex() {
+    try {
+        var raw = localStorage.getItem(ASSISTANT_INDEX_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+}
+
+function renderAssistantSources() {
+    var cont = document.getElementById('as-source-list');
+    if (!cont) return;
+    var sources = getAssistantCustomSources();
+    if (!sources.length) {
+        cont.innerHTML = '<p style="color:var(--muted);font-size:13px;margin:0;">' +
+            (currentLang === 'en' ? 'No additional sources yet — only the base PDFs in docs/ are used.' : 'Дополнительных источников пока нет — используются базовые PDF из папки docs/.') + '</p>';
+        return;
+    }
+    cont.innerHTML = '';
+    sources.forEach(function (s, i) {
+        var item = document.createElement('div');
+        item.className = 'list-item';
+        item.style.cssText = 'padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex:1 1 280px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;';
+        item.innerHTML =
+            '<div style="min-width:0;">' +
+                '<div style="font-weight:700;font-size:13px;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-file-pdf"></i> ' + escAttr(s.title || '—') + '</div>' +
+                '<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escAttr(String(s.url || '')) + '</div>' +
+            '</div>' +
+            '<button type="button" class="btn btn-r btn-sm" onclick="assistantRemoveSource(' + i + ')"><i class="fas fa-trash"></i> ' +
+            (currentLang === 'en' ? 'Delete' : 'Удалить') + '</button>';
+        cont.appendChild(item);
+    });
+}
+
+function escAttr(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function assistantAddSource() {
+    var titleEl = document.getElementById('as-add-title');
+    var urlEl = document.getElementById('as-add-url');
+    var title = titleEl ? titleEl.value.trim() : '';
+    var url = urlEl ? urlEl.value.trim() : '';
+    var status = document.getElementById('as-add-status');
+    if (status) status.className = 'as-status';
+    if (!title) { if (status) { status.textContent = currentLang === 'en' ? 'Enter a document name' : 'Введите название документа'; } return; }
+    if (!url) { if (status) { status.textContent = currentLang === 'en' ? 'Enter the PDF link' : 'Введите ссылку на PDF'; } return; }
+    // Валидация: относительный путь или http(s)
+    if (!/^(https?:\/\/|\/|docs\/|\.\/|[A-Za-z]:\\)/i.test(url) && !/\.pdf$/i.test(url)) {
+        if (status) { status.textContent = currentLang === 'en' ? 'Link must point to a PDF or a relative path' : 'Ссылка должна вести на PDF или быть относительным путём'; }
+        return;
+    }
+
+    var sources = getAssistantCustomSources();
+    if (sources.some(function (s) { return s.url === url; })) {
+        if (status) { status.textContent = currentLang === 'en' ? 'This source is already added' : 'Такой источник уже добавлен'; }
+        return;
+    }
+    sources.push({ id: 'src-' + Date.now(), title: title, url: url });
+    saveAssistantSources(sources);
+    if (titleEl) titleEl.value = '';
+    if (urlEl) urlEl.value = '';
+    if (status) { status.textContent = currentLang === 'en' ? 'Source added. Click "Save and rebuild".' : 'Источник добавлен. Нажмите «Сохранить и перестроить».'; }
+    renderAssistantSources();
+}
+
+function assistantRemoveSource(index) {
+    var sources = getAssistantCustomSources();
+    if (index < 0 || index >= sources.length) return;
+    sources.splice(index, 1);
+    saveAssistantSources(sources);
+    renderAssistantSources();
+}
+
+function saveAssistantSources(sources) {
+    try { localStorage.setItem(ASSISTANT_SOURCES_KEY, JSON.stringify(sources)); } catch (e) {}
+    if (typeof db !== 'undefined') {
+        var obj = {};
+        sources.forEach(function (s, i) { obj[i] = s; });
+        db.ref('settings/assistant_sources').set(obj).catch(function (err) {
+            console.warn('Cannot sync assistant_source to Firebase', err);
+        });
+    }
+}
+
+// Синхронизация источника из Firebase (на устройствах админа)
+function loadAssistantSourcesFromFirebase() {
+    if (typeof db === 'undefined' || !db) return;
+    // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+    bindRealtimeValue('admin-assistant-sources', db.ref('settings/assistant_sources'), function (sn) {
+        var v = sn.val();
+        var arr = [];
+        if (v && typeof v === 'object') {
+            Object.keys(v).forEach(function (k) {
+                if (v[k] && v[k].url) arr.push(v[k]);
+            });
+        }
+        try { localStorage.setItem(ASSISTANT_SOURCES_KEY, JSON.stringify(arr)); } catch (e) {}
+        renderAssistantSources();
+    });
+}
+
+// Пересборка индекса (база + добавленные источники) и сохранение
+function assistantRebuildIndex() {
+    var status = document.getElementById('as-rebuild-status');
+    var btn = document.getElementById('as-rebuild-btn');
+    if (status) { status.className = 'as-status'; status.textContent = currentLang === 'en' ? 'Building index…' : 'Собираю индекс…'; }
+    if (btn) btn.disabled = true;
+
+    var sources = getAssistantCustomSources();
+    if (typeof AssistantBuild === 'undefined') {
+        if (status) { status.className = 'as-status as-err'; status.textContent = currentLang === 'en' ? 'Index builder not loaded' : 'Не удалось загрузить сборщик индекса'; }
+        if (btn) btn.disabled = false;
+        return;
+    }
+
+    // Загружаем базовый индекс
+    var basePromise = fetch('docs/assistant-index.json', { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    }).catch(function () { return { name: 'База знаний', sources: [], chunks: [], df: {}, docCount: 0 }; });
+
+    basePromise.then(function (baseIndex) {
+        return AssistantBuild.buildIndex(baseIndex, sources, function (title, phase) {
+            if (status) status.textContent = (phase === 'fetch' ? 'Загружаю' : 'Читаю') + ': ' + title;
+        });
+    }).then(function (merged) {
+        try { localStorage.setItem(ASSISTANT_INDEX_KEY, JSON.stringify(merged)); } catch (e) {}
+        if (typeof db !== 'undefined') {
+            db.ref('settings/assistant_index').set(JSON.stringify(merged)).catch(function (err) {
+                console.warn('Cannot sync assistant_index to Firebase', err);
+            });
+        }
+        if (status) { status.className = 'as-status as-ok'; status.textContent = (currentLang === 'en' ? '✅ Index rebuilt' : '✅ Индекс пересобран') + ': ' + merged.chunks.length + (currentLang === 'en' ? ' fragments' : ' фрагментов') + ' · ' + merged.sources.length + (currentLang === 'en' ? ' sources' : ' источников'); }
+    }).catch(function (e) {
+        if (status) { status.className = 'as-status as-err'; status.textContent = (currentLang === 'en' ? '⚠ Build failed: ' : '⚠ Ошибка сборки: ') + (e && e.message ? e.message : e); }
+    }).finally(function () {
+        if (btn) btn.disabled = false;
+    });
 }

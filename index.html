@@ -13,11 +13,15 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="brand_name">Гольф-клуб Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=4">
+    <link rel="stylesheet" href="css/style.css?v=24">
+    <link rel="stylesheet" href="css/design-presets.css?v=1">
+    <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
@@ -40,7 +44,8 @@
         <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
-        <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
+<a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
+        <a href="assistant.html" class="nav-link" data-i18n="nav_assistant">Помощник</a>
         <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
@@ -115,16 +120,16 @@
     </div>
     <div class="footer-bottom">
                 <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-                <p class="site-version">Версия сайта: <span class="version-number">1.16.0</span></p>
+                <p class="site-version">Версия сайта: <span class="version-number">1.42.0</span></p>
             </div>
 </div></footer>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=22"></script>
-<script src="js/app.js?v=4"></script>
-<script src="js/pwa.js"></script>
+<script src="js/firebase-config.js?v=2"></script>
+<script src="js/utils.js?v=43"></script>
+<script src="js/app.js?v=14"></script>
+<script src="js/pwa.js?v=2"></script>
 </body>
 </html>

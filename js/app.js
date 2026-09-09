@@ -55,9 +55,9 @@ function buildCourseCard() {
     var hdrLblLong = isEn ? 'Tee / Hole' : 'ТИ / Лунка';
     var hdrLblShort = isEn ? 'Tee' : 'ТИ';
 
-    // Front 9 (OUT)
+    // Front 9 (OUT). Заголовками «Первые 9 / Вторые 9» больше не дублируем
+    // разбиение девяток — оно и так читается из колонок OUT/IN.
     var html = '<div class="pestovo-modern-scorecard" style="margin-bottom:12px;padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
-    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;padding-left:2px;"><i class="fas fa-flag"></i> ' + (isEn ? 'Front 9 (Holes 1–9)' : 'Первые 9 лунок (1–9)') + '</div>';
     html += '<div class="msc-tile-grid msc-grid-9">';
 
     // Header row
@@ -98,7 +98,6 @@ function buildCourseCard() {
 
     // Back 9 (IN & TOTAL)
     html += '<div class="pestovo-modern-scorecard" style="padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
-    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;padding-left:2px;"><i class="fas fa-flag-checkered"></i> ' + (isEn ? 'Back 9 (Holes 10–18 & Total)' : 'Вторые 9 лунок (10–18 и Итог)') + '</div>';
     html += '<div class="msc-tile-grid msc-grid-10">';
 
     // Header row
@@ -169,8 +168,15 @@ function renderCourseHolesStrip(activeEntries) {
         // двух стартовых ти. Время берётся из самого раунда, а не из времени
         // создания записи, поэтому остаётся верным для отложенного старта.
         var startHole = parseInt(r.startHole) || 1;
-        var startTime = parseInt(r.startTime) || 0;
-        if ((startHole === 1 || startHole === 10) && startTime > latestStart[startHole]) {
+        var startTime = typeof normalizeTimestampMs === 'function'
+            ? normalizeTimestampMs(r.startTime)
+            : (parseInt(r.startTime) || 0);
+        // «Последний старт» относится только к сегодняшнему игровому дню.
+        // Старый активный раунд, оставшийся со вчера, не должен показывать
+        // вчерашнее время (например, 15:53) в сегодняшнем блоке.
+        if ((startHole === 1 || startHole === 10) &&
+            typeof isTodayTimestamp === 'function' && isTodayTimestamp(startTime) &&
+            startTime > latestStart[startHole]) {
             latestStart[startHole] = startTime;
         }
         var players = r.players || {};
@@ -203,7 +209,8 @@ function renderCourseHolesStrip(activeEntries) {
 
     // Компактный блок «Сейчас на поле»: одна строка «Всего игроков на поле»,
     // ниже — «Последний старт». Без дублирования количества игроков и статистики.
-    var html = '<div class="chs-total-bar"><span class="chs-total-icon"><i class="fas fa-users"></i></span>' +
+    var html = '<div class="chs-strip-title"><i class="fas fa-map"></i> ' + t('field_map_title') + '</div>' +
+        '<div class="chs-total-bar"><span class="chs-total-icon"><i class="fas fa-users"></i></span>' +
         '<span class="chs-total-lbl">' + totalLabel + ':</span>' +
         '<b class="chs-total-val">' + totalPlayers + '</b></div>' +
         '<div class="chs-starts" aria-label="' + lastStartLabel + '">' +
@@ -227,38 +234,13 @@ function renderCourseHolesStrip(activeEntries) {
     }
     html += '</div>';
 
-    // Разворачиваемая вкладка-подсказка: с какой лунки лучше стартовать прямо сейчас
+    // Разворачиваемая вкладка-подсказка: с какой лунки лучше стартовать прямо сейчас.
+    // По умолчанию свёрнута («карточки свёрнуты»).
     html += buildStartHintHTML(nine, isEn);
 
-    // Карта лунок, счётчик игроков и старты — «остальная информация» блока
-    // «Сейчас на поле»: по умолчанию полностью свёрнута, виден только список
-    // «кто сейчас на поле». Состояние сохраняется между перерисовками.
-    var openAttr = chsStripOpen ? 'true' : 'false';
-    var iconCls = chsStripOpen ? 'fa-chevron-up' : 'fa-chevron-down';
-    html = '<button type="button" class="chs-toggle" id="chs-strip-toggle" ' +
-        'onclick="toggleChsStrip()" aria-expanded="' + openAttr + '">' +
-        '<span class="chs-toggle-title"><i class="fas fa-map"></i> ' + t('field_map_title') + '</span>' +
-        '<i class="fas chs-toggle-icon ' + iconCls + '" id="chs-strip-icon"></i>' +
-        '</button>' +
-        '<div class="chs-body' + (chsStripOpen ? '' : ' hidden') + '" id="chs-strip-body">' + html + '</div>';
-
+    // Блок «Карта лунок и старты» всегда полностью развёрнут: без кнопки
+    // свернуть/развернуть. Внутри — счётчик игроков, старты и карта лунок.
     stripEl.innerHTML = html;
-}
-
-// Состояние блока «карта поля и старты»: по умолчанию свёрнут
-var chsStripOpen = (function () {
-    try { return localStorage.getItem('pestovo_chs_strip_open') === '1'; } catch (e) { return false; }
-})();
-
-function toggleChsStrip() {
-    chsStripOpen = !chsStripOpen;
-    try { localStorage.setItem('pestovo_chs_strip_open', chsStripOpen ? '1' : '0'); } catch (e) {}
-    var body = document.getElementById('chs-strip-body');
-    var icon = document.getElementById('chs-strip-icon');
-    var btn = document.getElementById('chs-strip-toggle');
-    if (body) body.classList.toggle('hidden', !chsStripOpen);
-    if (icon) icon.className = 'fas chs-toggle-icon ' + (chsStripOpen ? 'fa-chevron-up' : 'fa-chevron-down');
-    if (btn) btn.setAttribute('aria-expanded', chsStripOpen ? 'true' : 'false');
 }
 
 // Состояние вкладки-подсказки сохраняется между перерисовками ленты:
@@ -426,12 +408,56 @@ function applyLiveWhoOpenUI(row, open) {
     if (tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
+// Состояние свёрнутой строки РАУНДА (групповой раунд = один блок на группу).
+// Игроки группы больше не рисуются отдельными строками: на главной один
+// свёрнутый блок раунда, внутри — строки всех игроков с деталями.
+var liveRoundOpen = {};
+function liveRoundStoreKey(id) { return 'pestovo_live_round_open_' + id; }
+
+function getLiveRoundOpen(id) {
+    if (Object.prototype.hasOwnProperty.call(liveRoundOpen, id)) return liveRoundOpen[id];
+    var saved = null;
+    try { saved = localStorage.getItem(liveRoundStoreKey(id)); } catch (e) {}
+    liveRoundOpen[id] = (saved === '1');
+    return liveRoundOpen[id];
+}
+
+function setLiveRoundOpen(id, open, persist) {
+    liveRoundOpen[id] = !!open;
+    if (persist !== false) {
+        try { localStorage.setItem(liveRoundStoreKey(id), open ? '1' : '0'); } catch (e) {}
+    }
+}
+
+function applyLiveRoundOpenUI(row, open) {
+    if (!row) return;
+    row.classList.toggle('is-open', !!open);
+    var chev = row.querySelector('.lwl-chev');
+    if (chev) chev.className = 'fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down');
+    var tg = row.querySelector('.lwl-toggle');
+    if (tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function toggleLiveRound(id) {
+    var row = document.querySelector('.live-round-row[data-round-id="' + id + '"]');
+    var open = row ? !row.classList.contains('is-open') : !getLiveRoundOpen(id);
+    setLiveRoundOpen(id, open);
+    applyLiveRoundOpenUI(row, open);
+    if (typeof vib === 'function') vib(15);
+}
+
+function liveRoundKey(ev, id) {
+    if (ev && (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar')) {
+        ev.preventDefault();
+        toggleLiveRound(id);
+    }
+}
+
 function toggleLiveWho(roundId, pid) {
     var row = document.querySelector('.lwl-row[data-round-id="' + roundId + '"][data-pid="' + pid + '"]');
     var open = row ? !row.classList.contains('is-open') : !getLiveWhoOpen(roundId, pid);
     setLiveWhoOpen(roundId, pid, open);
     applyLiveWhoOpenUI(row, open);
-    updateLiveRoundsToolbar();
     if (typeof vib === 'function') vib(15);
 }
 
@@ -440,39 +466,6 @@ function liveWhoKey(ev, roundId, pid) {
     if (ev && (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar')) {
         ev.preventDefault();
         toggleLiveWho(roundId, pid);
-    }
-}
-
-// Если есть хотя бы одна свёрнутая строка — разворачиваем все, иначе сворачиваем все
-function setAllLiveRounds() {
-    var rows = document.querySelectorAll('.lwl-row');
-    var anyClosed = false;
-    for (var i = 0; i < rows.length; i++) {
-        if (!rows[i].classList.contains('is-open')) { anyClosed = true; break; }
-    }
-    var open = anyClosed;
-    for (var j = 0; j < rows.length; j++) {
-        setLiveWhoOpen(rows[j].getAttribute('data-round-id'), rows[j].getAttribute('data-pid'), open);
-        applyLiveWhoOpenUI(rows[j], open);
-    }
-    updateLiveRoundsToolbar();
-}
-
-function updateLiveRoundsToolbar() {
-    var bar = document.getElementById('live-rounds-toolbar');
-    if (!bar) return;
-    var rows = document.querySelectorAll('.lwl-row');
-    bar.classList.toggle('hidden', rows.length < 2);
-    var allOpen = rows.length > 0;
-    for (var i = 0; i < rows.length; i++) {
-        if (!rows[i].classList.contains('is-open')) { allOpen = false; break; }
-    }
-    var btn = document.getElementById('live-rounds-toggle-all');
-    if (btn) {
-        var lbl = btn.querySelector('span');
-        var ic = btn.querySelector('i');
-        if (lbl) lbl.textContent = allOpen ? t('collapse_all_rounds') : t('expand_all_rounds');
-        if (ic) ic.className = 'fas ' + (allOpen ? 'fa-compress' : 'fa-expand');
     }
 }
 
@@ -504,7 +497,7 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
         var mkScores = players[p.markedBy].markerScores && players[p.markedBy].markerScores[pid];
         if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
             displayScores = mkScores;
-            var mkName = players[p.markedBy].name || '';
+            var mkName = privacyDisplayName(players[p.markedBy], p.markedBy) || '';
             markerNote = currentLang === 'en' ? ' (marker: ' + mkName + ')' : ' (маркер: ' + mkName + ')';
         }
     }
@@ -535,7 +528,7 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
         'data-round-id="' + id + '" data-pid="' + pid + '" data-panel-id="' + panelId + '">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + panelId + '" ' +
         'onclick="toggleLiveWho(\'' + id + '\',\'' + pid + '\')" onkeydown="liveWhoKey(event,\'' + id + '\',\'' + pid + '\')">' +
-        '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(p.name || '—') + '</span>' +
+        '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
         (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
         '</span>' +
         '<span class="lwl-hole"><i class="fas fa-location-dot"></i> ' + thruText + '</span>' +
@@ -547,12 +540,82 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
         '</div>';
 }
 
+// Один свёрнутый блок на активный раунд. Для группового раунда —
+// единая на всех участников карточка на главной странице с выбранным стилем оформления.
+function buildLiveRoundRowHTML(id, r, players, isMyRound) {
+    var playerEntries = Object.entries(players || {}).filter(function(pe) {
+        return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
+    });
+    if (!playerEntries.length) return '';
+
+    var order = getRoundOrder(r);
+    var isGroup = (r.mode === 'group') || playerEntries.length > 1;
+
+    // Одиночный раунд (1 игрок) — стандартная строка одиночного раунда
+    if (!isGroup && playerEntries.length === 1) {
+        var pe = playerEntries[0];
+        return buildLiveWhoRowHTML(id, r, pe[0], pe[1], players, isMyRound);
+    }
+
+    var names = [];
+    var bestToPar = null;
+
+    playerEntries.forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        names.push(privacyDisplayName(p, pid));
+        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+        if (stats.toPar !== null && (bestToPar === null || stats.toPar < bestToPar)) {
+            bestToPar = stats.toPar;
+        }
+    });
+
+    var modeIcon = '<i class="fas fa-users"></i>';
+    var modeLabel = escapeHtml(t('group_round'));
+    var countLabel = playerEntries.length + ' ' + (currentLang === 'en'
+        ? (playerEntries.length === 1 ? 'player' : 'players')
+        : pluralN(playerEntries.length, 'игрок', 'игрока', 'игроков'));
+    var namesStr = escapeHtml(names.join(', '));
+    var open = getLiveRoundOpen(id);
+    var panelId = 'live-round-panel-' + id;
+    var link = 'setup-round.html?round=' + id;
+
+    var scoreHtml = bestToPar !== null
+        ? '<span class="lwl-score ' + scoreClass(bestToPar) + '">' + fmtScore(bestToPar) + '</span>'
+        : '<span class="lwl-score">—</span>';
+
+    // Единая карточка на всех участников группового раунда (вариант 1, 2 или 3)
+    var groupScorecardHtml = generateGroupHoleTableHTML(r, { compact: true });
+
+    return '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
+        'data-round-id="' + id + '" data-round-row="1">' +
+        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + panelId + '" ' +
+        'onclick="toggleLiveRound(\'' + id + '\')" onkeydown="liveRoundKey(event,\'' + id + '\')">' +
+        '<span class="lwl-name">' + modeIcon + '<span class="lwl-name-txt">' + modeLabel + ' · ' + namesStr + '</span>' +
+        (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
+        '</span>' +
+        '<span class="lwl-hole"><i class="fas fa-user-group"></i> ' + countLabel + '</span>' +
+        scoreHtml +
+        '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
+        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
+        '</div>' +
+        '<div class="lwl-details" id="' + panelId + '">' +
+        '<div class="lwl-actions" style="margin-bottom:10px;">' +
+        (isMyRound ? '<a href="' + link + '" class="btn btn-g btn-sm"><i class="fas fa-gamepad"></i> ' + (currentLang === 'en' ? 'Continue round' : 'Продолжить раунд') + '</a>' : '') +
+        '</div>' +
+        '<div class="live-group-unified-card">' + groupScorecardHtml + '</div>' +
+        '</div>' +
+        '</div>';
+}
+
 function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
     if (typeof db === 'undefined') return;
 
     bindRealtimeValue('home-live-rounds', db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
+        // Вчерашние незавершённые раунды автоматически закрываем со статусом
+        // «завершён автоматически» — они исчезнут из блока «Сейчас на поле».
+        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active'; });
 
         renderCourseHolesStrip(entries);
@@ -561,7 +624,6 @@ function loadLiveRounds() {
 
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
-            updateLiveRoundsToolbar();
             return;
         }
 
@@ -570,34 +632,22 @@ function loadLiveRounds() {
         cachedRoundsById = {};
         entries.forEach(function(e) { cachedRoundsById[e[0]] = e[1]; });
 
-        // Единый список: игроки всех активных раундов, сгруппированные по
-        // раундам (свежий старт — выше). Строки свёрнуты по умолчанию:
-        // всегда видно имя, лунку и счёт.
+        // Групповой раунд — ОДИН свёрнутый блок на группу (а не отдельные
+        // строки на каждого игрока). Внутри раскрытого блока — строки
+        // всех игроков группы с деталями и счётными карточками.
         var html = '';
         entries.forEach(function(e) {
             var id = e[0], r = e[1];
             var rawPlayers = r.players || {};
             var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
             var isMyRound = isMyLiveRound(id, r);
-
-            Object.entries(players).forEach(function(pe) {
-                var pid = pe[0], p = pe[1];
-                if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
-                html += buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound);
-            });
+            html += buildLiveRoundRowHTML(id, r, players, isMyRound);
         });
 
-        var toolbar = '<div class="live-rounds-toolbar" id="live-rounds-toolbar">' +
-            '<span class="lrt-hint"><i class="fas fa-circle-info"></i> ' + t('live_rounds_hint') + '</span>' +
-            '<button type="button" class="btn btn-og btn-sm" id="live-rounds-toggle-all" onclick="setAllLiveRounds()">' +
-            '<i class="fas fa-expand"></i> <span>' + t('expand_all_rounds') + '</span></button>' +
-            '</div>';
-
-        el.innerHTML = toolbar + '<div class="live-who-list">' + html + '</div>';
+        el.innerHTML = '<div class="live-who-list">' + html + '</div>';
 
         // Перерисовка не должна сворачивать уже открытую счётную карточку
         restoreLiveWhoPanels();
-        updateLiveRoundsToolbar();
     });
 }
 
@@ -606,7 +656,14 @@ function fillCardScorecardPanel(panelId, roundId, r) {
     var panel = document.getElementById(panelId);
     if (!panel || !r || typeof generateGroupHoleTableHTML !== 'function') return;
     r.roundId = roundId;
-    var html = generateGroupHoleTableHTML(r);
+    // На главной странице карточка рендерится в «компактном» режиме:
+    //   - без табов «Первые 9 / Вторые 9 / Все 18» (показываем все 18 сразу),
+    //   - без кликабельности по карточке (открытие профиля игрока недоступно —
+    //     имя и так уже видно в строке списка выше),
+    //   - но С компактной шапкой в каждом блоке (имя игрока, ТИ, HCP, маркер):
+    //     в групповом раунде панель показывает карточки нескольких игроков,
+    //     и без подписи непонятно, чей счёт в плитках ниже.
+    var html = generateGroupHoleTableHTML(r, { compact: true });
     cardPanelHTML[panelId] = html;
     panel.innerHTML = html;
 }
@@ -678,12 +735,122 @@ function toggleCardScorecard(panelId, roundId) {
     }
 }
 
+// ==========================================
+// БЛОК «ПОСЛЕДНИЕ РЕЗУЛЬТАТЫ»: список раундов в одну строку
+// Внешний вид совпадает с «Сейчас на поле»: каждая завершённая карточка —
+// одна строка (дата · игроки · итог), по тапу разворачивается с деталями,
+// счётной карточкой и кнопками.
+// ==========================================
+var recentRoundOpen = {};
+
+function recentRowStoreKey(id) { return 'pestovo_recent_open_' + id; }
+
+function getRecentOpen(id) {
+    if (Object.prototype.hasOwnProperty.call(recentRoundOpen, id)) return recentRoundOpen[id];
+    var saved = null;
+    try { saved = localStorage.getItem(recentRowStoreKey(id)); } catch (e) {}
+    recentRoundOpen[id] = (saved === '1');
+    return recentRoundOpen[id];
+}
+
+function setRecentOpen(id, open, persist) {
+    recentRoundOpen[id] = !!open;
+    if (persist !== false) {
+        try { localStorage.setItem(recentRowStoreKey(id), open ? '1' : '0'); } catch (e) {}
+    }
+}
+
+function applyRecentOpenUI(row, open) {
+    if (!row) return;
+    row.classList.toggle('is-open', !!open);
+    var chev = row.querySelector('.lwl-chev');
+    if (chev) chev.className = 'fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down');
+    var tg = row.querySelector('.lwl-toggle');
+    if (tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function toggleRecentRound(id) {
+    var row = document.querySelector('.recent-row[data-round-id="' + id + '"]');
+    var open = row ? !row.classList.contains('is-open') : !getRecentOpen(id);
+    setRecentOpen(id, open);
+    applyRecentOpenUI(row, open);
+    if (typeof vib === 'function') vib(15);
+}
+
+function recentKey(ev, id) {
+    if (ev && (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar')) {
+        ev.preventDefault();
+        toggleRecentRound(id);
+    }
+}
+
+function buildRecentRowHTML(id, r) {
+    var rawPlayers = r.players || {};
+    var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
+    var order = getRoundOrder(r);
+    var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
+    // Статус завершённого раунда: «автоматически» либо имя игрока, завершившего раунд
+    var completedBadge = (typeof buildRoundCompletedBadgeHTML === 'function')
+        ? buildRoundCompletedBadgeHTML(r)
+        : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>';
+    var dateStr = fmtDate(r.completedAt || r.createdAt);
+
+    var playerNames = [];
+    var pHtml = '';
+    Object.entries(players).forEach(function(pe) {
+        var pid = pe[0], p = pe[1], scores = p.scores || {};
+        var playerBadges = buildPlayerBadges(p, r);
+        var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
+        playerNames.push(privacyDisplayName(p, pid));
+
+        // Имена игроков уже перечислены в свёрнутой строке раунда выше,
+        // поэтому в развёрнутых деталях не дублируем их — оставляем ТИ, HCP и результат.
+        pHtml += '<div class="round-p" style="align-items:flex-start;">' +
+            '<div style="flex:1;">' +
+            '<div class="round-p-n">' + playerBadges + '</div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div></div>' +
+            '<div style="text-align:right;">' +
+            '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
+            '</div></div>';
+    });
+
+    var panelId = 'recent-sc-' + id;
+    var open = getRecentOpen(id);
+    var namesStr = playerNames.length ? playerNames.join(', ') : '—';
+
+    // ВАЖНО: блок «ТИ: ...» уровня раунда здесь НЕ выводится — ТИ уже
+    // показан у каждого игрока (бейдж buildPlayerBadges: ТИ · точн. HCP · пол. HCP).
+    // Раньше дублирующая строка «ТИ: Синий» выводилась дважды подряд.
+    var details =
+        '<div class="lwl-details">' +
+        '<div class="lwl-recent-players">' + pHtml + '</div>' +
+        '<div class="lwl-actions">' +
+        '<button class="btn btn-og btn-sm" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
+        (r.status === 'completed' ? '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' : '') +
+        '</div>' +
+        '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
+        '</div>';
+
+    return '<div class="lwl-row recent-row' + (open ? ' is-open' : '') + '" data-round-id="' + id + '">' +
+        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" ' +
+        'onclick="toggleRecentRound(\'' + id + '\')" onkeydown="recentKey(event,\'' + id + '\')">' +
+        '<span class="lwl-name"><i class="fas fa-flag-checkered"></i><span class="lwl-name-txt">' + dateStr + '</span></span>' +
+        '<span class="lwl-hole"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
+        '<span class="lwl-score">' + completedBadge + '</span>' +
+        '<span class="lwl-start">' + (r.format || 'Stroke Play') + '</span>' +
+        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
+        '</div>' +
+        details +
+        '</div>';
+}
+
 function loadRecentResults() {
     var el = document.getElementById('recent-results');
     if (!el || typeof db === 'undefined') return;
 
     bindRealtimeValue('home-recent-results', db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
+        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'completed'; });
 
         if (entries.length === 0) {
@@ -699,48 +866,16 @@ function loadRecentResults() {
 
         entries = entries.slice(0, 5);
 
-        var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
-        var completedWord = currentLang === 'en' ? 'Completed' : 'Завершён';
-
         var html = '';
         entries.forEach(function(e) {
             var id = e[0], r = e[1];
-            var rawPlayers = r.players || {};
-            var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
-            var pHtml = '';
-            var order = getRoundOrder(r);
-
-            Object.entries(players).forEach(function(pe) {
-                var pid = pe[0], p = pe[1], scores = p.scores || {};
-                var playerBadges = buildPlayerBadges(p, r);
-                var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
-
-                pHtml += '<div class="round-p" style="align-items:flex-start;">' +
-                    '<div style="flex:1;"><div class="round-p-n" style="font-size:14px;color:var(--gold);"><i class="fas fa-user-circle"></i> ' + escapeHtml(p.name || '—') + playerBadges + '</div>' +
-                    '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div></div>' +
-                    '<div style="text-align:right;">' +
-                    '<div class="round-p-score ' + scoreClass(stats.toPar) + '" style="font-size:16px;">' + fmtScore(stats.toPar) + '</div>' +
-                    '</div></div>';
-            });
-
-            var panelId = 'recent-sc-' + id;
-
-            html += '<div class="round-card" style="cursor:default;">' +
-                '<div class="round-hdr"><span class="round-course"><i class="fas fa-flag"></i> ' + t('brand_name') + ' · ' + fmtDate(r.completedAt || r.createdAt) + '</span>' +
-                '<span class="tn-status tn-d">' + completedWord + '</span></div>' +
-                pHtml +
-                '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">' +
-                '<span>' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + '</span>' +
-                '<span>' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span></div>' +
-                '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
-                '<button class="btn btn-og btn-sm" style="flex:1;" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
-                '<button class="btn btn-g btn-sm" style="flex:1;" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' +
-                '</div>' +
-                '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
-                '</div>';
+            html += buildRecentRowHTML(id, r);
         });
 
-        el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">' + html + '</div>';
+        el.innerHTML = '<div class="live-who-list">' + html + '</div>';
+
+        // Восстанавливаем уже открытые панели счётных карточек после перерисовки
+        restoreLiveWhoPanels();
     });
 }
 
@@ -798,4 +933,12 @@ function loadClubStats() {
             '<div class="stat"><i class="fas fa-circle-xmark"></i><div class="stat-n">' + bogeys + '</div><div class="stat-l">Bogeys</div></div>' +
             '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHolesPlayed + '</div><div class="stat-l">' + lHolesPlayed + '</div></div>';
     });
+}
+
+// Перерисовка блоков главной после изменения настроек приватности имён.
+// bindRealtimeValue кэширует последний snapshot, поэтому повторный вызов
+// loadLiveRounds()/loadRecentResults() перерисовывает из него же.
+function renderPrivacySensitiveHome() {
+    if (typeof loadLiveRounds === 'function') loadLiveRounds();
+    if (typeof loadRecentResults === 'function') loadRecentResults();
 }

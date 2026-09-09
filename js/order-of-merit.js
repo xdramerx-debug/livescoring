@@ -14,6 +14,8 @@ function loadOrderOfMerit() {
     ]).then(function(snaps) {
         var users = snaps[0].val() || {};
         var rounds = snaps[1].val() || {};
+        // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
+        if (typeof sweepStaleRounds === 'function') rounds = sweepStaleRounds(rounds) || {};
         var el = document.getElementById('oom-list');
         if (!el) return;
 
@@ -54,7 +56,7 @@ function loadOrderOfMerit() {
             }).map(function(pe) {
                 var pid = pe[0], p = pe[1];
                 var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-                return { pid: pid, name: p.name, toPar: stats.toPar, gross: stats.gross, stbl: stats.stablefordField };
+                return { pid: pid, name: p.name, firstName: p.firstName || '', lastName: p.lastName || '', middleName: p.middleName || '', toPar: stats.toPar, gross: stats.gross, stbl: stats.stablefordField };
             });
 
             players.sort(function(a, b) {
@@ -70,6 +72,9 @@ function loadOrderOfMerit() {
                     seasonPoints[p.pid] = {
                         pid: p.pid,
                         name: p.name || (users[p.pid] ? users[p.pid].name : 'Player'),
+                        firstName: p.firstName || (users[p.pid] ? users[p.pid].firstName || '' : ''),
+                        lastName: p.lastName || (users[p.pid] ? users[p.pid].lastName || '' : ''),
+                        middleName: p.middleName || (users[p.pid] ? users[p.pid].middleName || '' : ''),
                         avatar: users[p.pid] ? users[p.pid].avatar : null,
                         points: 0,
                         tournamentsPlayed: 0,
@@ -93,7 +98,7 @@ function loadOrderOfMerit() {
         var posHeader = currentLang === 'en' ? 'Rank' : 'Ранг';
         var pointsHeader = currentLang === 'en' ? 'Season Points' : 'Очки сезона';
 
-        var html = '<div style="overflow-x:auto;"><table class="lb-table"><thead><tr>';
+        var html = '<div style="overflow-x:auto;"><table class="lb-table lb-cards"><thead><tr>';
         html += '<th style="width:50px;">' + posHeader + '</th>';
         html += '<th>' + t('player') + '</th>';
         html += '<th style="text-align:center;">' + (currentLang === 'en' ? 'Tournaments' : 'Турниров') + '</th>';
@@ -106,11 +111,11 @@ function loadOrderOfMerit() {
             var crown = (i === 0) ? ' 👑' : '';
 
             html += '<tr style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + p.pid + '\')">';
-            html += '<td class="lb-pos ' + posCls + '">' + (i + 1) + '</td>';
-            html += '<td><div style="display:flex;align-items:center;gap:10px;">' + fmtUserAvatar(p, 36) + '<div><strong style="color:var(--gold);font-size:15px;">' + escapeHtml(p.name || 'Player') + crown + '</strong></div></div></td>';
-            html += '<td style="text-align:center;">' + p.tournamentsPlayed + '</td>';
-            html += '<td style="text-align:center;color:var(--gold);font-weight:700;">' + p.wins + '</td>';
-            html += '<td style="text-align:center;font-size:20px;font-weight:800;color:var(--white);"><span class="badge-eag">' + p.points + ' PTS</span></td>';
+            html += '<td class="lb-pos ' + posCls + '" data-label="' + posHeader + '">' + (i + 1) + '</td>';
+            html += '<td class="lb-card-main"><div style="display:flex;align-items:center;gap:10px;">' + fmtUserAvatar(p, 36) + '<div><strong style="color:var(--gold);font-size:15px;">' + escapeHtml(privacyDisplayName(p, p.pid)) + crown + '</strong></div></div></td>';
+            html += '<td style="text-align:center;" data-label="' + (currentLang === 'en' ? 'Tournaments' : 'Турниров') + '">' + p.tournamentsPlayed + '</td>';
+            html += '<td style="text-align:center;color:var(--gold);font-weight:700;" data-label="' + (currentLang === 'en' ? 'Wins' : 'Побед') + '">' + p.wins + '</td>';
+            html += '<td style="text-align:center;font-size:20px;font-weight:800;color:var(--white);" data-label="' + pointsHeader + '"><span class="badge-eag">' + p.points + ' PTS</span></td>';
             html += '</tr>';
         });
 

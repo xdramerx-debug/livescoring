@@ -3,56 +3,76 @@ var scHole = 1, scScore = 0, scMarker = {};
 var scChanging = false;
 var scPaceTimer = null;
 
+function scGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
+
 document.addEventListener('pestovo-stableford-default-change', function() {
     if (!scRound) return;
-    updateScStablefordToggle();
-    updDisp();
+    if (typeof updateScStablefordToggle === 'function') updateScStablefordToggle();
+    if (typeof updDisp === 'function') updDisp();
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-    initNav();
+    if (typeof initNav === 'function') initNav();
     var p = new URLSearchParams(window.location.search);
     scRid = p.get('round'); scPid = p.get('player');
-    if (!scRid || !scPid) { document.getElementById('sc-err').classList.remove('hidden'); return; }
+    if (!scRid || !scPid) {
+        var errEl = scGet('sc-err');
+        if (errEl) errEl.classList.remove('hidden');
+        return;
+    }
     loadSc();
     scPaceTimer = setInterval(function() {
-        if (scRound) renderPaceAssistant('sc-pace-assistant', scRound);
-    }, isBatterySaverEnabled() ? 60000 : 30000);
+        if (scRound && typeof renderPaceAssistant === 'function' && typeof isBatterySaverEnabled === 'function') {
+            try { renderPaceAssistant('sc-pace-assistant', scRound); }catch(e){}
+        }
+    }, (typeof isBatterySaverEnabled === 'function' && isBatterySaverEnabled()) ? 60000 : 30000);
 });
 
 function loadSc() {
+    if (typeof db === 'undefined') {
+        var errEl = scGet('sc-err');
+        if (errEl) errEl.classList.remove('hidden');
+        return;
+    }
     db.ref('rounds/' + scRid).on('value', function(sn) {
         scRound = sn.val();
         if (!scRound || !scRound.players || !scRound.players[scPid]) {
-            document.getElementById('sc-err').classList.remove('hidden');
-            document.getElementById('sc-body').classList.add('hidden');
+            var e1 = scGet('sc-err'); if (e1) e1.classList.remove('hidden');
+            var b1 = scGet('sc-body'); if (b1) b1.classList.add('hidden');
             return;
         }
-        document.getElementById('sc-err').classList.add('hidden');
-        document.getElementById('sc-body').classList.remove('hidden');
+        var e2 = scGet('sc-err'); if (e2) e2.classList.add('hidden');
+        var b2 = scGet('sc-body'); if (b2) b2.classList.remove('hidden');
 
         var pl = scRound.players[scPid];
-        updateScStablefordToggle();
-        var playerTee = (pl && pl.tee) || scRound.tee || 'wh';
-        var scorePrefix = currentLang === 'en' ? 'Score: ' : 'Счёт: ';
-        document.getElementById('sc-title').textContent = scorePrefix + (pl.name || t('player'));
-        document.getElementById('sc-sub').textContent = (scRound.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(playerTee);
-        renderInfo();
-        renderPaceAssistant('sc-pace-assistant', scRound);
-        listenForOfficialCallState({
-            roundId: scRid,
-            playerId: scPid,
-            prefix: 'sc',
-            canEdit: true,
-            hole: function() { return scHole; },
-            playerName: function() { return pl.name || 'Player'; },
-            flightMembers: []
-        });
+        if (typeof updateScStablefordToggle === 'function') updateScStablefordToggle();
+        var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
+        var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+        var scorePrefix = langIsEn ? 'Score: ' : 'Счёт: ';
+        var titleEl = scGet('sc-title');
+        if (titleEl) titleEl.textContent = scorePrefix + (pl.name || (typeof t === 'function' ? t('player') : 'Player'));
+        var subEl = scGet('sc-sub');
+        if (subEl) subEl.textContent = (scRound.format || 'Stroke') + ' · ' + (typeof t === 'function' ? t('tee_select') : 'Tee') + ': ' + (typeof fmtTeePill === 'function' ? fmtTeePill(playerTee) : playerTee);
+        if (typeof renderInfo === 'function') renderInfo();
+        if (typeof renderPaceAssistant === 'function') { try{ renderPaceAssistant('sc-pace-assistant', scRound); }catch(e){} }
+        if (typeof listenForOfficialCallState === 'function') {
+            try{
+                listenForOfficialCallState({
+                    roundId: scRid,
+                    playerId: scPid,
+                    prefix: 'sc',
+                    canEdit: true,
+                    hole: function() { return scHole; },
+                    playerName: function() { return pl.name || 'Player'; },
+                    flightMembers: []
+                });
+            }catch(e){}
+        }
 
         if (!scChanging) {
-            var order = getRoundOrder(scRound);
+            var order = (typeof getRoundOrder === 'function' ? getRoundOrder(scRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);
             var scores = pl.scores || {};
-            var savedResumeHole = getSavedResumeHole(scRid, scPid, order, pl);
+            var savedResumeHole = (typeof getSavedResumeHole === 'function' ? getSavedResumeHole(scRid, scPid, order, pl) : null);
             if (savedResumeHole) {
                 scHole = savedResumeHole;
             } else {
@@ -64,36 +84,40 @@ function loadSc() {
             }
         }
 
-        buildHoles();
-        renderHole();
-        renderCard();
+        if (typeof buildHoles === 'function') buildHoles();
+        if (typeof renderHole === 'function') renderHole();
+        if (typeof renderCard === 'function') renderCard();
     });
 
-    db.ref('markers/' + scRid + '/' + scPid).on('value', function(sn) {
-        scMarker = sn.val() || {};
-        buildHoles();
-        checkVerify();
-    });
+    try {
+        db.ref('markers/' + scRid + '/' + scPid).on('value', function(sn) {
+            scMarker = sn.val() || {};
+            if (typeof buildHoles === 'function') buildHoles();
+            if (typeof checkVerify === 'function') checkVerify();
+        });
+    } catch(e){}
 }
 
 function renderInfo() {
-    var el = document.getElementById('sc-info');
+    var el = scGet('sc-info');
     if (!el) return;
-    var startLbl = t('start');
-    var holeLbl = t('hole');
+    var startLbl = (typeof t === 'function' ? t('start') : 'Start');
+    var holeLbl = (typeof t === 'function' ? t('hole') : 'Hole');
     var pl = scRound && scRound.players && scRound.players[scPid];
     var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
-    el.innerHTML =
-        '<div><b>' + startLbl + ':</b> ' + fmtTime(scRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + scRound.startHole + '</div>' +
-        '<div><b>' + t('tee_select') + ':</b> ' + fmtTeePill(playerTee) + '</div>';
+    try {
+        el.innerHTML =
+            '<div><b>' + startLbl + ':</b> ' + (typeof fmtTime === 'function' ? fmtTime(scRound.startTime) : '') + ' · <b>' + holeLbl + ':</b> ' + scRound.startHole + '</div>' +
+            '<div><b>' + (typeof t === 'function' ? t('tee_select') : 'Tee') + ':</b> ' + (typeof fmtTeePill === 'function' ? fmtTeePill(playerTee) : playerTee) + '</div>';
+    } catch(e){}
 }
 
 function updateScStablefordToggle() {
-    var toggle = document.getElementById('sc-stableford-toggle');
-    var control = document.getElementById('sc-stableford-control');
+    var toggle = scGet('sc-stableford-toggle');
+    var control = scGet('sc-stableford-control');
     if (!toggle) return;
     var player = scRound && scRound.players ? scRound.players[scPid] : null;
-    toggle.checked = isPlayerStablefordDisplayEnabled(player);
+    if (typeof isPlayerStablefordDisplayEnabled === 'function') toggle.checked = isPlayerStablefordDisplayEnabled(player);
     toggle.disabled = !player || (scRound && scRound.status !== 'active');
     if (control) control.classList.toggle('is-disabled', toggle.disabled);
 }
@@ -101,23 +125,26 @@ function updateScStablefordToggle() {
 function toggleScStablefordDisplay(enabled) {
     var player = scRound && scRound.players ? scRound.players[scPid] : null;
     if (!scRid || !scPid || !player || (scRound && scRound.status !== 'active')) return;
-
     enabled = !!enabled;
     player.stablefordDisplay = enabled;
-    updDisp();
+    if (typeof updDisp === 'function') updDisp();
     updateScStablefordToggle();
-    db.ref('rounds/' + scRid + '/players/' + scPid + '/stablefordDisplay').set(enabled).catch(function(error) {
-        console.warn('[Stableford] Cannot save personal display setting', error);
-        toast(currentLang === 'en' ? 'Could not save the Stableford setting' : 'Не удалось сохранить настройку Stableford', 'error');
-    });
+    if (typeof db !== 'undefined') {
+        db.ref('rounds/' + scRid + '/players/' + scPid + '/stablefordDisplay').set(enabled).catch(function(error) {
+            console.warn('[Stableford] Cannot save personal display setting', error);
+            if (typeof toast === 'function') toast((typeof currentLang !== 'undefined' && currentLang === 'en' ? 'Could not save the Stableford setting' : 'Не удалось сохранить настройку Stableford'), 'error');
+        });
+    }
 }
 
 function buildHoles() {
-    var el = document.getElementById('sc-holes');
-    var order = getRoundOrder(scRound);
+    var el = scGet('sc-holes');
+    if (!el) return;
+    if (!scRound || !scRound.players || !scRound.players[scPid]) return;
+    var order = (typeof getRoundOrder === 'function' ? getRoundOrder(scRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);
     var scPlayer = scRound.players[scPid] || {};
     var scores = scPlayer.scores || {};
-    var scFieldHcp = scPlayer.fieldHcp !== undefined ? scPlayer.fieldHcp : (scRound.fieldHcp || 0);
+    var scFieldHcp = scPlayer.fieldHcp !== undefined ? scPlayer.fieldHcp : ((scRound && scRound.fieldHcp) || 0);
     var html = '';
     order.forEach(function(h) {
         var s = parseInt(scores[h]) || 0, ms = parseInt(scMarker[h]) || 0;
@@ -126,7 +153,7 @@ function buildHoles() {
         else if (s >= 1 && ms >= 1) cls += ' mismatch';
         else if (s >= 1) cls += ' done';
         html += '<button class="hole-btn ' + cls + '" onclick="goSc(' + h + ')">' +
-            '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + hcpStrokesMarksHTML(scFieldHcp, h) + '</span>' +
+            '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + (typeof hcpStrokesMarksHTML === 'function' ? hcpStrokesMarksHTML(scFieldHcp, h) : '') + '</span>' +
             '</button>';
     });
     el.innerHTML = html;
@@ -135,117 +162,145 @@ function buildHoles() {
 function goSc(h) {
     scChanging = true;
     scHole = h; scScore = 0;
-    rememberResumeHole(scRid, scPid, h);
-    renderHole(); buildHoles(); checkVerify();
+    if (typeof rememberResumeHole === 'function') rememberResumeHole(scRid, scPid, h);
+    if (typeof renderHole === 'function') renderHole();
+    if (typeof buildHoles === 'function') buildHoles();
+    if (typeof checkVerify === 'function') checkVerify();
     setTimeout(function() { scChanging = false; }, 100);
 }
 
 function renderHole() {
-    var par = holePar(scHole);
+    var par = (typeof holePar === 'function' ? holePar(scHole) : 4);
     var pl = scRound && scRound.players && scRound.players[scPid];
     var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
-    document.getElementById('sc-hole').textContent = scHole;
-    document.getElementById('sc-par').textContent = par;
-    document.getElementById('sc-dist').textContent = holeDist(scHole, playerTee) || '—';
-    document.getElementById('sc-dl').textContent = fmtTime(holeDeadline(scRound.startTime, scRound.startHole, scHole));
-
+    var holeEl = scGet('sc-hole'); if (holeEl) holeEl.textContent = scHole;
+    var parEl = scGet('sc-par'); if (parEl) parEl.textContent = par;
+    var distEl = scGet('sc-dist'); if (distEl) distEl.textContent = (typeof holeDist === 'function' ? holeDist(scHole, playerTee) : '—') || '—';
+    var dlEl = scGet('sc-dl'); if (dlEl) dlEl.textContent = (typeof holeDeadline === 'function' && typeof fmtTime === 'function' ? fmtTime(holeDeadline(scRound.startTime, scRound.startHole, scHole)) : '—');
+    if (!scRound || !scRound.players || !scRound.players[scPid]) return;
     var scores = scRound.players[scPid].scores || {};
     var saved = parseInt(scores[scHole]) || 0;
     scScore = saved >= 1 ? saved : par;
-    updDisp();
+    if (typeof updDisp === 'function') updDisp();
 }
 
 function adjSc(d) {
     scScore = Math.max(1, Math.min(15, scScore + d));
-    vib();
-    updDisp();
-    animateScoreElement('sc-disp');
+    if (typeof vib === 'function') vib();
+    if (typeof updDisp === 'function') updDisp();
+    if (typeof animateScoreElement === 'function') animateScoreElement('sc-disp');
 }
 
 function updDisp() {
-    var par = holePar(scHole);
+    var par = (typeof holePar === 'function' ? holePar(scHole) : 4);
     var player = scRound && scRound.players ? scRound.players[scPid] : null;
     var fieldHcp = player && player.fieldHcp !== undefined
         ? player.fieldHcp : ((scRound && scRound.fieldHcp) || 0);
-    var disp = document.getElementById('sc-disp');
-    if (disp) disp.innerHTML = scoreWithStablefordHTML(scScore, scHole, fieldHcp, isPlayerStablefordDisplayEnabled(player));
-    var r = document.getElementById('sc-result');
+    var disp = scGet('sc-disp');
+    if (disp && typeof scoreWithStablefordHTML === 'function' && typeof isPlayerStablefordDisplayEnabled === 'function') {
+        disp.innerHTML = scoreWithStablefordHTML(scScore, scHole, fieldHcp, isPlayerStablefordDisplayEnabled(player));
+    }
+    var r = scGet('sc-result');
     if (r) {
-        r.textContent = holeResName(scScore, par);
-        r.className = 'score-result ' + holeResClass(scScore, par);
+        if (typeof holeResName === 'function') r.textContent = holeResName(scScore, par);
+        if (typeof holeResClass === 'function') r.className = 'score-result ' + holeResClass(scScore, par);
     }
 }
 
 function checkVerify() {
-    var box = document.getElementById('sc-verify');
+    var box = scGet('sc-verify');
+    if (!box) return;
+    if (!scRound || !scRound.players || !scRound.players[scPid]) return;
     var scores = scRound.players[scPid].scores || {};
     var ps = parseInt(scores[scHole]) || 0, ms = parseInt(scMarker[scHole]) || 0;
-    if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (currentLang === 'en' ? 'Confirmed by marker: ' + ps : 'Подтверждено маркером: ' + ps + ' уд.') + '</div>';
-    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (currentLang === 'en' ? 'You: ' : 'Вы: ') + ps + ' | ' + (currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + ms + '</div>';
-    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">⏳ ' + (currentLang === 'en' ? 'Awaiting marker confirmation...' : 'Ждём подтверждение маркера') + '</div>';
+    var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (langIsEn ? 'Confirmed by marker: ' + ps : 'Подтверждено маркером: ' + ps + ' уд.') + '</div>';
+    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (langIsEn ? 'You: ' : 'Вы: ') + ps + ' | ' + (langIsEn ? 'Marker: ' : 'Маркер: ') + ms + '</div>';
+    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">⏳ ' + (langIsEn ? 'Awaiting marker confirmation...' : 'Ждём подтверждение маркера') + '</div>';
     else box.innerHTML = '';
 }
 
 function saveSc() {
-    if (scScore < 1) { toast(t('msg_score_min'), 'error'); return; }
+    if (scScore < 1) { if (typeof toast === 'function' && typeof t === 'function') toast(t('msg_score_min'), 'error'); return; }
     scChanging = true;
     var savedHole = scHole;
-
-    db.ref('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole).set(scScore).then(function() {
-        return recordHoleCompletionTime(scRid, scPid, savedHole, Date.now());
+    var setPromise = (typeof dbSetWithOfflineQueue === 'function' ? dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole, scScore) : (typeof db !== 'undefined' ? db.ref('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole).set(scScore) : Promise.resolve()));
+    setPromise.then(function(res) {
+        var wentOffline = res && res.offline;
+        if (wentOffline) return null;
+        if (typeof recordHoleCompletionTime === 'function') return recordHoleCompletionTime(scRid, scPid, savedHole, Date.now());
+        return null;
     }).then(function() {
+        if (scRound && scRound.players && scRound.players[scPid]) {
+            scRound.players[scPid].scores = scRound.players[scPid].scores || {};
+            scRound.players[scPid].scores[savedHole] = scScore;
+            scRound.players[scPid].holeTimes = scRound.players[scPid].holeTimes || {};
+            if (!(parseInt(scRound.players[scPid].holeTimes[savedHole]) > 0)) {
+                scRound.players[scPid].holeTimes[savedHole] = Date.now();
+            }
+        }
         var ms = parseInt(scMarker[savedHole]) || 0;
+        var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ms >= 1 && ms === scScore) {
-            db.ref('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole).set(true);
-            toast(currentLang === 'en' ? '✅ Confirmed!' : '✅ Подтверждено!'); vib([50, 50]);
+            if (typeof dbSetWithOfflineQueue === 'function') dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole, true);
+            if (typeof toast === 'function') toast(langIsEn ? '✅ Confirmed!' : '✅ Подтверждено!'); 
+            if (typeof vib === 'function') vib([50, 50]);
         } else if (ms >= 1 && ms !== scScore) {
-            db.ref('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole).set(false);
-            toast(currentLang === 'en' ? '⚠️ Mismatch!' : '⚠️ Несовпадение!', 'error');
+            if (typeof dbSetWithOfflineQueue === 'function') dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole, false);
+            if (typeof toast === 'function') toast(langIsEn ? '⚠️ Mismatch!' : '⚠️ Несовпадение!', 'error');
         } else {
-            toast(currentLang === 'en' ? '⏳ Waiting for marker...' : '⏳ Ждём маркера'); vib();
+            if (typeof toast === 'function') toast(langIsEn ? '⏳ Waiting for marker...' : '⏳ Ждём маркера');
+            if (typeof vib === 'function') vib();
         }
-
-        var par = holePar(savedHole);
+        var par = (typeof holePar === 'function' ? holePar(savedHole) : 4);
         if (scScore === 1 || (scScore - par) <= -1) {
-            triggerVictoryConfetti();
+            if (typeof triggerVictoryConfetti === 'function') triggerVictoryConfetti();
         }
-
-        document.getElementById('sc-notice').innerHTML = buildTimingNotice(scRound.startTime, scRound.startHole, savedHole);
-
-        var order = getRoundOrder(scRound);
+        var noticeEl = scGet('sc-notice');
+        if (noticeEl && typeof buildTimingNotice === 'function') noticeEl.innerHTML = buildTimingNotice(scRound.startTime, scRound.startHole, savedHole);
+        var order = (typeof getRoundOrder === 'function' ? getRoundOrder(scRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);
         var idx = order.indexOf(savedHole);
         if (idx >= 0 && idx < order.length - 1) { scHole = order[idx + 1]; scScore = 0; }
-        rememberResumeHole(scRid, scPid, scHole);
-
-        renderHole(); buildHoles(); renderCard();
-        renderPaceAssistant('sc-pace-assistant', scRound);
+        if (typeof rememberResumeHole === 'function') rememberResumeHole(scRid, scPid, scHole);
+        if (typeof renderHole === 'function') renderHole();
+        if (typeof buildHoles === 'function') buildHoles();
+        if (typeof renderCard === 'function') renderCard();
+        if (typeof renderPaceAssistant === 'function') { try{ renderPaceAssistant('sc-pace-assistant', scRound); }catch(e){} }
         setTimeout(function() { scChanging = false; }, 200);
+    }).catch(function(err){
+        console.error('[scorer] save failed', err);
+        scChanging = false;
+        if (typeof toast === 'function') toast('Ошибка сохранения', 'error');
     });
 }
 
 function renderCard() {
-    var el = document.getElementById('sc-card');
+    var el = scGet('sc-card');
+    if (!el) return;
+    if (!scRound || !scRound.players || !scRound.players[scPid]) return;
     var scores = scRound.players[scPid].scores || {};
-
-    var holeHeader = t('hole');
-    var parHeader = t('par');
-    var scoreHeader = currentLang === 'en' ? 'Score' : 'Счёт';
-    var outHeader = t('out');
-    var inHeader = t('in_side');
-    var totalHeader = t('total');
+    var holeHeader = (typeof t === 'function' ? t('hole') : 'Hole');
+    var parHeader = (typeof t === 'function' ? t('par') : 'Par');
+    var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var scoreHeader = langIsEn ? 'Score' : 'Счёт';
+    var outHeader = (typeof t === 'function' ? t('out') : 'OUT');
+    var inHeader = (typeof t === 'function' ? t('in_side') : 'IN');
+    var totalHeader = (typeof t === 'function' ? t('total') : 'TOTAL');
 
     var html = '<div class="scorecard"><table><tr><th>' + holeHeader + '</th>';
     for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
     html += '<th>' + outHeader + '</th></tr><tr class="row-par"><td>' + parHeader + '</td>';
     var pO = 0;
-    for (var i = 1; i <= 9; i++) { var pv = holePar(i); pO += pv; html += '<td>' + pv + '</td>'; }
+    for (var i = 1; i <= 9; i++) { var pv = (typeof holePar === 'function' ? holePar(i) : 4); pO += pv; html += '<td>' + pv + '</td>'; }
     html += '<td>' + pO + '</td></tr><tr><td>' + scoreHeader + '</td>';
     var gO = 0;
     for (var i = 1; i <= 9; i++) {
-        var s = parseInt(scores[i]) || 0, cls = holeResClass(s, holePar(i)), v = '';
-        var st = getHoleVerifyState(scRound.players[scPid], i);
-        if (st === 'confirmed') v = ' ✅'; else if (st === 'mismatch') v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
-        if (st === 'mismatch') cls += ' cell-mismatch';
+        var s = parseInt(scores[i]) || 0, cls = (typeof holeResClass === 'function' ? holeResClass(s, (typeof holePar === 'function' ? holePar(i) : 4)) : ''), v = '';
+        if (typeof getHoleVerifyState === 'function') {
+            var st = getHoleVerifyState(scRound.players[scPid], i);
+            if (st === 'confirmed') v = ' ✅'; else if (st === 'mismatch') v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
+            if (st === 'mismatch') cls += ' cell-mismatch';
+        }
         if (s >= 1) gO += s;
         html += '<td class="' + cls + '">' + (s >= 1 ? s + v : '') + '</td>';
     }
@@ -255,14 +310,16 @@ function renderCard() {
     for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
     html += '<th>' + inHeader + '</th><th>' + totalHeader + '</th></tr><tr class="row-par"><td>' + parHeader + '</td>';
     var pI = 0;
-    for (var i = 10; i <= 18; i++) { var pv = holePar(i); pI += pv; html += '<td>' + pv + '</td>'; }
+    for (var i = 10; i <= 18; i++) { var pv = (typeof holePar === 'function' ? holePar(i) : 4); pI += pv; html += '<td>' + pv + '</td>'; }
     html += '<td>' + pI + '</td><td>' + (pO + pI) + '</td></tr><tr><td>' + scoreHeader + '</td>';
     var gI = 0;
     for (var i = 10; i <= 18; i++) {
-        var s = parseInt(scores[i]) || 0, cls = holeResClass(s, holePar(i)), v = '';
-        var st = getHoleVerifyState(scRound.players[scPid], i);
-        if (st === 'confirmed') v = ' ✅'; else if (st === 'mismatch') v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
-        if (st === 'mismatch') cls += ' cell-mismatch';
+        var s = parseInt(scores[i]) || 0, cls = (typeof holeResClass === 'function' ? holeResClass(s, (typeof holePar === 'function' ? holePar(i) : 4)) : ''), v = '';
+        if (typeof getHoleVerifyState === 'function') {
+            var st = getHoleVerifyState(scRound.players[scPid], i);
+            if (st === 'confirmed') v = ' ✅'; else if (st === 'mismatch') v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
+            if (st === 'mismatch') cls += ' cell-mismatch';
+        }
         if (s >= 1) gI += s;
         html += '<td class="' + cls + '">' + (s >= 1 ? s + v : '') + '</td>';
     }
@@ -273,6 +330,7 @@ function renderCard() {
 function callOfficial(type) {
     if (!scRound || !scPid) return;
     var pName = (scRound.players[scPid] && scRound.players[scPid].name) || 'Player';
+    if (typeof requestOfficialCall !== 'function') return;
     requestOfficialCall({
         roundId: scRid,
         playerId: scPid,
@@ -285,8 +343,8 @@ function callOfficial(type) {
         onSent: function(call) {
             if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, pName, []);
             if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, pName, []);
-            toast('🚨 ' + getOfficialRoleName(type) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
-            vib([100, 50, 100]);
+            if (typeof toast === 'function' && typeof getOfficialRoleName === 'function') toast('🚨 ' + getOfficialRoleName(type) + ((typeof currentLang !== 'undefined' && currentLang === 'en') ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
+            if (typeof vib === 'function') vib([100, 50, 100]);
         }
     });
 }

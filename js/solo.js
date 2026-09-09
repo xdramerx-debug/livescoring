@@ -108,6 +108,14 @@ function initSoloForm() {
             onClear: handleSoloClear
         });
     }
+    var midSearch = document.getElementById('s-middlename');
+    if (midSearch && typeof initPlayerSearchAutofill === 'function') {
+        initPlayerSearchAutofill({
+            searchInputId: 's-middlename',
+            onSelect: handleSoloSelect,
+            onClear: handleSoloClear
+        });
+    }
 }
 
 function initSoloView() {
@@ -356,6 +364,7 @@ function loadExistingSolo() {
         var setupEl = sGet('setup'); if (setupEl) setupEl.classList.add('hidden');
         var pageHeadEl = sGet('page-head');
         if (pageHeadEl) pageHeadEl.classList.add('hidden');
+        if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(soloRound);
         try { document.body.classList.add('round-active'); } catch(e){}
         var navEl = sGet('main-nav');
         if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch(e){} }

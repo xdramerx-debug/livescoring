@@ -49,10 +49,19 @@ function loadSc() {
         var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         var scorePrefix = langIsEn ? 'Score: ' : 'Счёт: ';
+        var playerLabel = scorePrefix + (pl.name || (typeof t === 'function' ? t('player') : 'Player'));
+        var tnName = (typeof roundTournamentName === 'function') ? roundTournamentName(scRound) : (scRound.tournamentName || '');
         var titleEl = scGet('sc-title');
-        if (titleEl) titleEl.textContent = scorePrefix + (pl.name || (typeof t === 'function' ? t('player') : 'Player'));
+        if (titleEl) titleEl.textContent = tnName || playerLabel;
         var subEl = scGet('sc-sub');
-        if (subEl) subEl.textContent = (scRound.format || 'Stroke') + ' · ' + (typeof t === 'function' ? t('tee_select') : 'Tee') + ': ' + (typeof fmtTeePill === 'function' ? fmtTeePill(playerTee) : playerTee);
+        if (subEl) {
+            var bits = [];
+            if (tnName) bits.push(playerLabel);
+            bits.push(scRound.format || 'Stroke');
+            bits.push((typeof t === 'function' ? t('tee_select') : 'Tee') + ': ' + (typeof fmtTeePill === 'function' ? fmtTeePill(playerTee) : playerTee));
+            subEl.innerHTML = bits.join(' · ');
+        }
+        if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(scRound);
         if (typeof renderInfo === 'function') renderInfo();
         if (typeof renderPaceAssistant === 'function') { try{ renderPaceAssistant('sc-pace-assistant', scRound); }catch(e){} }
         if (typeof listenForOfficialCallState === 'function') {

@@ -1,4 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
+    var roundQ = new URLSearchParams(window.location.search).get('round');
+    if (roundQ) {
+        var asQ = new URLSearchParams(window.location.search).get('as');
+        var dest = 'setup-round.html?round=' + encodeURIComponent(roundQ);
+        if (asQ) dest += '&as=' + encodeURIComponent(asQ);
+        window.location.replace(dest);
+        return;
+    }
     initNav();
     buildCourseCard();
     loadLiveRounds();
@@ -570,7 +578,11 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound) {
     });
 
     var modeIcon = '<i class="fas fa-users"></i>';
-    var modeLabel = escapeHtml(t('group_round'));
+    var tnLabel = (typeof roundTournamentName === 'function') ? roundTournamentName(r) : (r.tournamentName || '');
+    var modeLabel = tnLabel
+        ? escapeHtml(tnLabel)
+        : escapeHtml(t('group_round'));
+    if (tnLabel) modeIcon = '<i class="fas fa-trophy"></i>';
     var countLabel = playerEntries.length + ' ' + (currentLang === 'en'
         ? (playerEntries.length === 1 ? 'player' : 'players')
         : pluralN(playerEntries.length, 'игрок', 'игрока', 'игроков'));
@@ -620,10 +632,15 @@ function loadLiveRounds() {
 
         renderCourseHolesStrip(entries);
 
+        var tnEl = document.getElementById('live-tournament-rounds');
+        var tnSec = document.getElementById('active-tournament-section');
+
         if (!el) return;
 
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
+            if (tnEl) tnEl.innerHTML = '';
+            if (tnSec) tnSec.classList.add('hidden');
             return;
         }
 
@@ -632,19 +649,36 @@ function loadLiveRounds() {
         cachedRoundsById = {};
         entries.forEach(function(e) { cachedRoundsById[e[0]] = e[1]; });
 
-        // Групповой раунд — ОДИН свёрнутый блок на группу (а не отдельные
-        // строки на каждого игрока). Внутри раскрытого блока — строки
-        // всех игроков группы с деталями и счётными карточками.
-        var html = '';
-        entries.forEach(function(e) {
-            var id = e[0], r = e[1];
-            var rawPlayers = r.players || {};
-            var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
-            var isMyRound = isMyLiveRound(id, r);
-            html += buildLiveRoundRowHTML(id, r, players, isMyRound);
-        });
+        var isTnRound = function(r) {
+            return (typeof isTournamentRound === 'function') ? isTournamentRound(r) : !!(r && (r.tournamentId || r.protocolId || r.tournamentName));
+        };
+        var tnEntries = entries.filter(function(e) { return isTnRound(e[1]); });
+        var casualEntries = entries.filter(function(e) { return !isTnRound(e[1]); });
 
-        el.innerHTML = '<div class="live-who-list">' + html + '</div>';
+        var rowHtml = function(list) {
+            var html = '';
+            list.forEach(function(e) {
+                var id = e[0], r = e[1];
+                var rawPlayers = r.players || {};
+                var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
+                var isMyRound = isMyLiveRound(id, r);
+                html += buildLiveRoundRowHTML(id, r, players, isMyRound);
+            });
+            return html;
+        };
+
+        if (tnSec) tnSec.classList.toggle('hidden', tnEntries.length === 0);
+        if (tnEl) {
+            tnEl.innerHTML = tnEntries.length ? '<div class="live-who-list">' + rowHtml(tnEntries) + '</div>' : '';
+        }
+
+        if (casualEntries.length === 0) {
+            el.innerHTML = tnEntries.length
+                ? ''
+                : '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
+        } else {
+            el.innerHTML = '<div class="live-who-list">' + rowHtml(casualEntries) + '</div>';
+        }
 
         // Перерисовка не должна сворачивать уже открытую счётную карточку
         restoreLiveWhoPanels();

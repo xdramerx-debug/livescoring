@@ -436,6 +436,74 @@ function psRender() {
     html += psRenderSavedCard();
     root.innerHTML = html;
     psRenderExcelBox();
+    psAttachPlayerAutofill();
+}
+
+function psFillFromMatchedUser(matchedUser, lastId, firstId, midId, hcpId, genderId, teeId) {
+    if (!matchedUser) return;
+    var parts = (typeof resolvePlayerNameParts === 'function')
+        ? resolvePlayerNameParts(matchedUser)
+        : matchedUser;
+    var lastEl = lastId ? psEl(lastId) : null;
+    var firstEl = firstId ? psEl(firstId) : null;
+    var midEl = midId ? psEl(midId) : null;
+    var hcpEl = hcpId ? psEl(hcpId) : null;
+    var gEl = genderId ? psEl(genderId) : null;
+    var tEl = teeId ? psEl(teeId) : null;
+    if (lastEl) lastEl.value = parts.lastName || '';
+    if (firstEl) firstEl.value = parts.firstName || '';
+    if (midEl) midEl.value = parts.middleName || '';
+    if (hcpEl && matchedUser.handicap != null) {
+        hcpEl.value = (typeof fmtExactHcp === 'function') ? fmtExactHcp(matchedUser.handicap) : String(matchedUser.handicap);
+    }
+    if (gEl && matchedUser.gender) gEl.value = matchedUser.gender;
+    if (tEl) {
+        if (matchedUser.defaultTee) tEl.value = matchedUser.defaultTee;
+        else if (matchedUser.gender === 'women') tEl.value = 'rd';
+    }
+}
+
+function psAttachPlayerAutofill() {
+    if (typeof initPlayerSearchAutofill !== 'function') return;
+    ['ps-m-last', 'ps-m-first', 'ps-m-mid'].forEach(function(id) {
+        if (!psEl(id)) return;
+        initPlayerSearchAutofill({
+            searchInputId: id,
+            onSelect: function(matchedUser) {
+                psFillFromMatchedUser(matchedUser, 'ps-m-last', 'ps-m-first', 'ps-m-mid', 'ps-m-hcp', 'ps-m-gender', 'ps-m-tee');
+            }
+        });
+    });
+    var groups = psState.groups || [];
+    groups.forEach(function(_, gi) {
+        var fioId = 'ps-ga-fio-' + gi;
+        if (!psEl(fioId)) return;
+        initPlayerSearchAutofill({
+            searchInputId: fioId,
+            onSelect: function(matchedUser) {
+                var parts = (typeof resolvePlayerNameParts === 'function')
+                    ? resolvePlayerNameParts(matchedUser)
+                    : matchedUser;
+                var fioEl = psEl(fioId);
+                if (fioEl) {
+                    var rus = [parts.lastName, parts.firstName, parts.middleName]
+                        .filter(function(w) { return String(w || '').trim(); }).join(' ');
+                    fioEl.value = rus || matchedUser.name || '';
+                }
+                var hcpEl = psEl('ps-ga-hcp-' + gi);
+                if (hcpEl && matchedUser.handicap != null) {
+                    hcpEl.value = (typeof fmtExactHcp === 'function') ? fmtExactHcp(matchedUser.handicap) : String(matchedUser.handicap);
+                }
+                var gEl = psEl('ps-ga-gender-' + gi);
+                if (gEl && matchedUser.gender) gEl.value = matchedUser.gender;
+                var tEl = psEl('ps-ga-tee-' + gi);
+                if (tEl) {
+                    if (matchedUser.defaultTee) tEl.value = matchedUser.defaultTee;
+                    else if (matchedUser.gender === 'women') tEl.value = 'rd';
+                }
+            }
+        });
+    });
 }
 
 function psRenderHelpCard() {
@@ -1003,7 +1071,7 @@ function psLoadRegistered() {
                 p.source = 'registered';
                 p.hcp = (r.handicap !== undefined && r.handicap !== null) ? parseFloat(r.handicap) : null;
                 p.tee = r.tee || psState.proto.tee || 'wh';
-                p.gender = r.gender || 'men';
+                p.gender = r.gender || psGenderFromName(p.firstName);
                 var u = users[uid] || (r.uid ? users[r.uid] : null) || {};
                 var up = psUserParts(u);
                 if (up.lastName || up.firstName) {
@@ -1122,6 +1190,14 @@ function psHcpHeaderBetterThan(cur, h) {
         return 0;
     }
     return precise(s) > precise(c);
+}
+
+function psGenderFromName(firstName) {
+    var n = psNorm(firstName).replace(/ь$/,'');
+    if (!n) return 'men';
+    // Common Russian and international feminine first-name endings/names.
+    if (/^(мария|анна|ольга|елена|наталья|ирина|светлана|екатерина|юлия|татьяна|марина|дарья|александра|виктория|полина|алина|людмила|надежда|валентина|любовь|sofia|sophia|maria|anna|olga|elena|irina|julia|victoria)$/.test(n) || /(а|я|ия)$/.test(n)) return 'women';
+    return 'men';
 }
 
 function psGenderFromCell(v) {
@@ -1526,7 +1602,7 @@ function psExcelPick(input) {
                         var u = psState.users[uid] || {};
                         if ((r.hcp === null || r.hcp === undefined) && u.handicap !== undefined && u.handicap !== null && String(u.handicap).trim() !== '') r.hcp = parseFloat(u.handicap);
                         if (!r.tee && u.defaultTee) r.tee = u.defaultTee;
-                        r.gender = r.gender || u.gender || 'men';
+                        r.gender = r.gender || u.gender || psGenderFromName(r.firstName);
                     }
                 }
                 merged.valid.forEach(tryMatch);
@@ -1807,6 +1883,10 @@ function psGroupSchedule(i, totalGroups) {
     var intervalMs = Math.max(3, parseInt(proto.interval, 10) || 8) * 60000;
 
     if (proto.scheme === 'all18') {
+        // Равномерно раскладываем группы по всем лункам. Если групп больше 18,
+        // следующая волна получает тот же старт через полный интервал.
+        var wave = Math.floor(i / 18), holeIdx = i % 18;
+        return { startHole: holeIdx + 1, startTime: base + (wave * intervalMs) + holeIdx * intervalMs };
         // Круговой проход по лункам: 1-я группа с 1-й, 2-я со 2-й ...;
         // при большом поле следующая группа получает ту же лунку в следующий слот.
         var allHole = (idx % 18) + 1;
@@ -2167,6 +2247,10 @@ function psNewGroupSchedule(prevGroups) {
     var intervalMs = Math.max(3, parseInt(proto.interval, 10) || 8) * 60000;
     var idx = prevGroups.length;
     if (proto.scheme === 'all18') {
+        // Равномерно раскладываем группы по всем лункам. Если групп больше 18,
+        // следующая волна получает тот же старт через полный интервал.
+        var wave = Math.floor(idx / 18), holeIdx = idx % 18;
+        return { startHole: holeIdx + 1, startTime: base + (wave * intervalMs) + holeIdx * intervalMs };
         // Круговой проход по лункам: 1-я группа с 1-й, 2-я со 2-й ...;
         // при большом поле следующая группа получает ту же лунку в следующий слот.
         var allHole = (idx % 18) + 1;
@@ -2511,6 +2595,7 @@ function psSaveProtocol() {
             participantsList: participants,
             status: 'active',
             tournamentId: proto.tournamentId,
+            tournamentName: proto.tournamentName || '',
             protocolId: pid,
             protocolName: proto.name || '',
             groupNo: gi + 1,
@@ -2792,6 +2877,7 @@ function psSaveEdits() {
             participantsList: participants,
             status: 'active',
             tournamentId: proto.tournamentId,
+            tournamentName: proto.tournamentName || '',
             protocolId: pid,
             protocolName: proto.name || '',
             groupNo: 0, // проставим после создания
@@ -2914,12 +3000,14 @@ function psSaveEdits() {
                 sets['rounds/' + rid + '/startTime'] = g.startTime;
                 sets['rounds/' + rid + '/groupNo'] = giNum;
                 sets['rounds/' + rid + '/protocolName'] = proto.name || '';
+                sets['rounds/' + rid + '/tournamentName'] = proto.tournamentName || '';
                 // Если раунд был удалён/повреждён вне редактора — восстанавливаем его полностью
                 if (!oldRound || !oldRound.players || !oldRound.mode) {
                     sets['rounds/' + rid + '/mode'] = 'group';
                     sets['rounds/' + rid + '/holeRange'] = '1-18';
                     sets['rounds/' + rid + '/status'] = 'active';
                     sets['rounds/' + rid + '/tournamentId'] = proto.tournamentId;
+                    sets['rounds/' + rid + '/tournamentName'] = proto.tournamentName || '';
                     sets['rounds/' + rid + '/protocolId'] = pid;
                     sets['rounds/' + rid + '/accessKey'] = 'protocol_' + pid + '_' + (giNum - 1);
                     if (!oldRound || !oldRound.createdAt) sets['rounds/' + rid + '/createdAt'] = Date.now();

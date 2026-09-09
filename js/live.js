@@ -51,7 +51,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var actingAs = p.get('as');
     if (actingAs && curRid) {
         localStorage.setItem('pestovo_acting_as_' + curRid, actingAs);
-        window.history.replaceState(null, null, window.location.pathname + '?round=' + curRid);
+        // Keep `as` in the URL: Safari/ITP and camera-opened tabs otherwise
+        // drop localStorage and fall back to view-only.
+        window.history.replaceState(null, null, window.location.pathname + '?round=' + encodeURIComponent(curRid) + '&as=' + encodeURIComponent(actingAs));
     }
 
     // не ждём авторизацию: гость с ключом раунда тоже должен сразу попасть в счёт
@@ -548,7 +550,11 @@ function startGroup() {
             accessKey: accessKey
         };
 
-        if (tournamentId) data.tournamentId = tournamentId;
+        if (tournamentId) {
+            data.tournamentId = tournamentId;
+            var tn = availableTournaments[tournamentId];
+            if (tn && tn.name) data.tournamentName = tn.name;
+        }
 
         var ref = db.ref('rounds').push();
         var newRoundId = ref.key;
@@ -609,6 +615,12 @@ function toggleGroupStablefordDisplay(enabled) {
 function getActingUid() {
     if (!curRoundData || !curRoundData.players) return null;
 
+    var urlAs = null;
+    try { urlAs = new URLSearchParams(window.location.search).get('as'); } catch (e) {}
+    if (urlAs && curRoundData.players[urlAs]) {
+        return urlAs;
+    }
+
     var storedUid = localStorage.getItem('pestovo_acting_as_' + curRid);
     if (storedUid && curRoundData.players[storedUid]) {
         return storedUid;
@@ -658,6 +670,7 @@ function initRoundView() {
         // показываем только шапку, меню, ввод счёта и остальное содержимое раунда.
         var pageHeadEl = lGet('page-head');
         if (pageHeadEl) pageHeadEl.classList.add('hidden');
+        if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(curRoundData);
         try { document.body.classList.add('round-active'); } catch(e){}
         var navEl = lGet('main-nav');
         if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch(e){} }

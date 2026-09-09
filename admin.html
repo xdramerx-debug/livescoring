@@ -90,6 +90,7 @@
             <button class="admin-tab" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
             <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
             <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры</button>
+            <button class="admin-tab" onclick="switchTab('start',this)" data-i18n="tab_start">Старт турнира 🏁</button>
             <button class="admin-tab" onclick="switchTab('broadcasts',this)" data-i18n="tab_broadcasts">Анонсы 📢</button>
             <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
             <button class="admin-tab" onclick="switchTab('importexport',this)" data-i18n="tab_importexport">Импорт/Экспорт 📊</button>
@@ -287,6 +288,11 @@
                 <button class="btn btn-g" onclick="createTournament()"><i class="fas fa-save"></i> <span data-i18n="create_btn">Создать</span></button>
             </div>
             <div class="card"><h2><i class="fas fa-list"></i> <span data-i18n="all_tournaments">Турниры</span></h2><div id="tn-list"></div></div>
+        </div>
+
+        <!-- СТАРТ ТУРНИРА: стартовые протоколы, группы и QR-коды игроков -->
+        <div id="tab-start" class="admin-section hidden">
+            <div id="tab-start-content"></div>
         </div>
 
         <div id="tab-players" class="admin-section hidden">
@@ -866,17 +872,18 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.36.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.37.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=41"></script>
+<script src="js/utils.js?v=42"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/assistant-config.js"></script>
 <script src="js/assistant-build.js?v=2"></script>
 <script src="js/name-variants.js?v=1"></script>
-<script src="js/admin.js?v=27"></script>
+<script src="js/admin.js?v=28"></script>
+<script src="js/start-admin.js?v=1"></script>
 <script src="js/design-admin.js?v=2"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>

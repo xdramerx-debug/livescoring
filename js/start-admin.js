@@ -7,7 +7,7 @@
 //    полевой гандикап (считается автоматически), ТИ, формат,
 //  — автоматическое распределение на группы (1–4 человека):
 //    в порядке списка / по алфавиту / по гандикапу / «змейкой» / случайно,
-//  — стартовые времена и стартовые лунки (с 1-й или шотган 1+10),
+//  — стартовые времена и стартовые лунки (с 1-й, шотган 1+10 или со всех 18),
 //  — маркеры внутри группы (каждый игрок маркирует следующего),
 //  — создание раундов (rounds/<id>) со всей метаинформацией,
 //  — печатные QR-карточки: игрок сканирует и сразу вводит результат.
@@ -1794,13 +1794,27 @@ function psRenderDistributeInner(proto) {
         '<select class="form-input" onchange="psDistScheme(this.value)">' + schemeOpts + '</select></div>';
     html += '</div>';
 
+    var isAll18 = proto.scheme === 'all18';
+    var timeLabel = isAll18
+        ? psL('Время старта (все лунки одновременно)', 'Start time (all holes together)')
+        : psL('Время старта первой группы', 'First group start time');
+    var intervalLabel = isAll18
+        ? psL('Интервал второй группы на лунке (мин)', 'Second group on same hole interval (min)')
+        : psL('Интервал между группами (мин)', 'Interval between groups (min)');
+
     html += '<div class="form-row form-row-3">';
-    html += '<div class="form-group"><label>' + psL('Время старта первой группы', 'First group start time') + '</label>' +
+    html += '<div class="form-group"><label>' + timeLabel + '</label>' +
         '<input type="time" class="form-input" value="' + (proto.startTime || '09:00') + '" onchange="psDistTime(this.value)"></div>';
-    html += '<div class="form-group"><label>' + psL('Интервал между группами (мин)', 'Interval between groups (min)') + '</label>' +
+    html += '<div class="form-group"><label>' + intervalLabel + '</label>' +
         '<input type="number" class="form-input" min="3" max="30" step="1" value="' + (proto.interval || 8) + '" onchange="psDistInterval(this.value)"></div>';
     html += '<div class="form-group"><label>&nbsp;</label><button class="btn btn-g btn-block" onclick="psDistPreview()" style="min-height:40px;"><i class="fas fa-shuffle"></i> ' + psL('Показать раскладку', 'Show distribution') + '</button></div>';
     html += '</div>';
+    if (isAll18) {
+        html += '<p style="font-size:11.5px;color:var(--muted);margin:-4px 0 10px;"><i class="fas fa-circle-info"></i> ' +
+            psL('При шотгане со всех лунок все группы стартуют в одно время. Интервал применяется только если на одной лунке две группы (например 11:00 и 11:10 с 1-й лунки).',
+                'In a shotgun start from all holes every group tees off at the same time. The interval is used only when two groups share a hole (e.g. 11:00 and 11:10 from hole 1).') +
+            '</p>';
+    }
 
     // Результат раскладки
     html += '<div id="ps-groups-result" style="margin-top:8px;">' + psRenderGroupsResult() + '</div>';
@@ -1818,8 +1832,19 @@ function psExitEditModeSoft() {
 function psDistSize(v) { if (!psConfirmGroupReset()) { psRender(); return; } if (psState.proto) psState.proto.size = parseInt(v, 10) || 4; if (psState.groups.length) { psState.groups = []; psExitEditModeSoft(); } psRender(); }
 function psDistMethod(v) { if (!psConfirmGroupReset()) { psRender(); return; } if (psState.proto) psState.proto.method = v; if (psState.groups.length) { psState.groups = []; psExitEditModeSoft(); } psRender(); }
 function psDistScheme(v) { if (!psConfirmGroupReset()) { psRender(); return; } if (psState.proto) psState.proto.scheme = v; if (psState.groups.length) { psState.groups = []; psExitEditModeSoft(); } psRender(); }
-function psDistTime(v) { if (!psConfirmGroupReset()) { psRender(); return; } if (psState.proto) psState.proto.startTime = v; if (psState.groups.length) { psState.groups = []; psExitEditModeSoft(); } psRender(); }
-function psDistInterval(v) { if (!psConfirmGroupReset()) { psRender(); return; } if (psState.proto) psState.proto.interval = parseInt(v, 10) || 8; if (psState.groups.length) { psState.groups = []; psExitEditModeSoft(); } psRender(); }
+function psDistTime(v) {
+    if (!psState.proto) return;
+    psState.proto.startTime = v;
+    // Время/интервал не ломают состав групп — только пересчитывают старт.
+    psRescheduleExistingGroups();
+    psRender();
+}
+function psDistInterval(v) {
+    if (!psState.proto) return;
+    psState.proto.interval = parseInt(v, 10) || 8;
+    psRescheduleExistingGroups();
+    psRender();
+}
 
 // ── Логика раскладки ──
 function psShuffle(arr) {
@@ -1877,21 +1902,55 @@ function psBuildGroups() {
     return groups;
 }
 
-function psGroupSchedule(i, totalGroups) {
-    var proto = psState.proto;
+function psIntervalMs(proto) {
+    proto = proto || {};
+    return Math.max(3, parseInt(proto.interval, 10) || 8) * 60000;
+}
+
+// Шотган со всех 18: все лунки стартуют одновременно.
+// Интервал — только для второй (третьей…) группы на той же лунке.
+function psAll18Schedule(i, proto) {
+    proto = proto || psState.proto || {};
     var base = psStartBaseTs(proto);
-    var intervalMs = Math.max(3, parseInt(proto.interval, 10) || 8) * 60000;
+    var intervalMs = psIntervalMs(proto);
+    var wave = Math.floor(i / 18);
+    var holeIdx = ((i % 18) + 18) % 18;
+    return { startHole: holeIdx + 1, startTime: base + wave * intervalMs };
+}
+
+// Пересчёт стартовых времён без сброса состава групп (время/интервал в админке).
+function psRescheduleExistingGroups() {
+    var proto = psState.proto;
+    var groups = psState.groups || [];
+    if (!proto || !groups.length) return;
+    if (proto.scheme === 'all18') {
+        var occupancy = {};
+        groups.forEach(function(g, i) {
+            var hole = parseInt(g.startHole, 10);
+            if (!hole || hole < 1 || hole > 18) hole = (i % 18) + 1;
+            occupancy[hole] = occupancy[hole] || 0;
+            var wave = occupancy[hole];
+            occupancy[hole]++;
+            var sch = psAll18Schedule(wave * 18 + (hole - 1), proto);
+            g.startHole = hole;
+            g.startTime = sch.startTime;
+        });
+        return;
+    }
+    groups.forEach(function(g, i) {
+        var sch = psGroupSchedule(i, groups.length);
+        g.startHole = sch.startHole;
+        g.startTime = sch.startTime;
+    });
+}
+
+function psGroupSchedule(i, totalGroups) {
+    var proto = psState.proto || {};
+    var base = psStartBaseTs(proto);
+    var intervalMs = psIntervalMs(proto);
 
     if (proto.scheme === 'all18') {
-        // Равномерно раскладываем группы по всем лункам. Если групп больше 18,
-        // следующая волна получает тот же старт через полный интервал.
-        var wave = Math.floor(i / 18), holeIdx = i % 18;
-        return { startHole: holeIdx + 1, startTime: base + (wave * intervalMs) + holeIdx * intervalMs };
-        // Круговой проход по лункам: 1-я группа с 1-й, 2-я со 2-й ...;
-        // при большом поле следующая группа получает ту же лунку в следующий слот.
-        var allHole = (idx % 18) + 1;
-        var allSlot = Math.floor(idx / 18);
-        return { startHole: allHole, startTime: base + allSlot * intervalMs + (idx % 18) * intervalMs };
+        return psAll18Schedule(i, proto);
     }
     if (proto.scheme === '1-10') {
         var hole = (i % 2 === 0) ? 1 : 10;
@@ -2244,18 +2303,10 @@ function psGMarkersAuto() {
 function psNewGroupSchedule(prevGroups) {
     var proto = psState.proto || {};
     var base = psStartBaseTs(proto);
-    var intervalMs = Math.max(3, parseInt(proto.interval, 10) || 8) * 60000;
-    var idx = prevGroups.length;
+    var intervalMs = psIntervalMs(proto);
+    var idx = (prevGroups || []).length;
     if (proto.scheme === 'all18') {
-        // Равномерно раскладываем группы по всем лункам. Если групп больше 18,
-        // следующая волна получает тот же старт через полный интервал.
-        var wave = Math.floor(idx / 18), holeIdx = idx % 18;
-        return { startHole: holeIdx + 1, startTime: base + (wave * intervalMs) + holeIdx * intervalMs };
-        // Круговой проход по лункам: 1-я группа с 1-й, 2-я со 2-й ...;
-        // при большом поле следующая группа получает ту же лунку в следующий слот.
-        var allHole = (idx % 18) + 1;
-        var allSlot = Math.floor(idx / 18);
-        return { startHole: allHole, startTime: base + allSlot * intervalMs + (idx % 18) * intervalMs };
+        return psAll18Schedule(idx, proto);
     }
     if (proto.scheme === '1-10') {
         var hole = (idx % 2 === 0) ? 1 : 10;

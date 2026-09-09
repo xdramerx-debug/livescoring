@@ -126,9 +126,15 @@ eq(sandbox.psParseHcpFromCell('HCP 12.4'), 12.4, 'hcp из «HCP 12.4»');
 eq(sandbox.psParseHcpFromCell('(13)'), 13, 'hcp из «(13)»');
 eq(sandbox.psParseHcpFromCell('нет'), null, 'hcp «нет» → null');
 eq(sandbox.psHeaderKey('Гандикап WHS'), 'hcp', 'header «Гандикап WHS» → hcp');
+eq(sandbox.psHeaderKey('EHCP'), 'hcp', 'header «EHCP» → hcp (точный гандикап)');
+eq(sandbox.psHeaderKey('E.HCP'), 'hcp', 'header «E.HCP» → hcp (точный гандикап)');
+eq(sandbox.psHeaderKey('Exact handicap'), 'hcp', 'header «Exact handicap» → hcp');
+eq(sandbox.psHeaderKey('Точный HCP'), 'hcp', 'header «Точный HCP» → hcp');
 eq(sandbox.psHeaderKey('Участник'), 'fio', 'header «Участник» → fio');
 eq(sandbox.psHeaderKey('ФИО участника'), 'fio', 'header «ФИО участника» → fio');
-eq(sandbox.psHeaderKey('Полевой гандикап'), 'hcp', 'header «Полевой гандикап» → hcp (не пол)');
+eq(sandbox.psHeaderKey('Полевой гандикап'), null, 'header «Полевой гандикап» игнорируется (не точный)');
+eq(sandbox.psHeaderKey('Игровой гандикап'), null, 'header «Игровой гандикап» игнорируется (не точный)');
+eq(sandbox.psHeaderKey('Field handicap'), null, 'header «Field handicap» игнорируется (не точный)');
 
 // ── Гибкий импорт: заголовки не в первой строке ──
 let gridShifted = [
@@ -261,6 +267,41 @@ eq(typeof rowHtml === 'string' && rowHtml.indexOf('Тестов') !== -1 && rowH
 sandbox.psState.groups = [{ members: [fullP, { id: 'p2', lastName: 'Смирнов', firstName: 'Пётр', middleName: '', gender: 'men', tee: 'bl', hcp: 4.2, source: 'manual' }], startHole: 1, startTime: Date.now(), format: '', markerTargets: {} }];
 var groupsHtml = sandbox.psRenderGroupsResult();
 eq(typeof groupsHtml === 'string' && groupsHtml.indexOf('Группа 1') !== -1 && groupsHtml.indexOf('Смирнов') !== -1, true, 'groups: предпросмотр рендерится без ошибок');
+
+// ── Дедупликация людей (заявка без отчества vs список с отчеством) ──
+function mkPerson(last, first, middle, id) { return { id: id || '', lastName: last, firstName: first, middleName: middle || '' }; }
+eq(sandbox.psSamePerson(mkPerson('Тестов', 'Иван', 'Петрович'), mkPerson('Тестов', 'Иван', 'Петрович')), true, 'same: полное ФИО');
+eq(sandbox.psSamePerson(mkPerson('Тестов', 'Иван', 'Петрович'), mkPerson('Тестов', 'Иван', '')), true, 'same: заявка без отчества');
+eq(sandbox.psSamePerson(mkPerson('Тестов', 'Иван', ''), mkPerson('Тестов', 'Иван', 'Петрович')), true, 'same: список без отчества');
+eq(sandbox.psSamePerson(mkPerson('Тестов', 'Иван', 'Петрович'), mkPerson('Тестов', 'Иван', 'Сергеевич')), false, 'same: разные отчества — разные люди');
+eq(sandbox.psSamePerson(mkPerson('Тестов', 'Иван', ''), mkPerson('Смирнов', 'Иван', '')), false, 'same: разные фамилии');
+eq(sandbox.psSamePerson(mkPerson('Тестов', 'Иван', '', 'u1'), mkPerson('Тестов', 'Иван', '', 'u1')), true, 'same: одинаковый id');
+eq(sandbox.psSamePerson(mkPerson('Тестов', 'Иван', '', 'u1'), mkPerson('Тестов', 'Иван', '', 'u2')), true, 'same: один человек, разные id-ключи');
+
+// ── Несколько форматов игры ──
+sandbox.psState = { proto: { formats: ['Stableford', 'Stroke Play'], format: 'Stableford', formatCustom: '' }, tournaments: [], selId: '', groups: [] };
+eq(sandbox.psFormatsSelectedList(sandbox.psState.proto), ['Stableford', 'Stroke Play'], 'formats: список выбранных');
+eq(sandbox.psResolvedFormats(), ['Stableford', 'Stroke Play'], 'formats: resolved (несколько)');
+eq(sandbox.psResolvedFormat(), 'Stableford', 'formats: первый = основной');
+sandbox.psState.proto.formatCustom = 'Гросс, 2 из 4';
+eq(sandbox.psResolvedFormats(), ['Stableford', 'Stroke Play', 'Гросс, 2 из 4'], 'formats: свой формат добавляется');
+sandbox.psState.proto = { formats: [], format: '', formatCustom: '' };
+eq(sandbox.psResolvedFormats(), ['Stroke Play'], 'formats: пусто → Stroke Play');
+sandbox.psState.proto = { formats: ['Stableford'], format: 'Stableford', formatCustom: '' };
+sandbox.psState.tournaments = [{ id: 't1', formats: ['Stableford', 'Stroke Play'] }];
+sandbox.psState.selId = 't1';
+var chipsHtml = sandbox.psFormatChipsHtml(sandbox.psState.proto);
+eq(chipsHtml.indexOf('checked') !== -1 && chipsHtml.indexOf('Stableford') !== -1 && chipsHtml.indexOf('Stroke Play') !== -1, true, 'formats: чипы с выбранным Stableford и кандидатом Stroke Play');
+sandbox.psState.proto.formats = ['Stableford', 'Stroke Play'];
+eq(sandbox.psGroupFormatOptions({ format: '' }).indexOf('Stableford + Stroke Play') !== -1, true, 'formats: группа «как у протокола» показывает несколько форматов');
+
+// ── Excel: дедуп одинаковых игроков с разных страниц ──
+var rowsDup = [
+    { lastName: 'Тестов', firstName: 'Иван', middleName: '', hcp: 12, errors: [] },
+    { lastName: 'Тестов', firstName: 'Иван', middleName: 'Петрович', hcp: 12.4, errors: [] },
+    { lastName: 'Смирнов', firstName: 'Пётр', middleName: '', hcp: 4.2, errors: [] }
+];
+eq(sandbox.psDedupeExcelRows(rowsDup).length, 2, 'excel: дедуп строк одного человека с разных листов');
 
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nAll tests passed ✔');
 process.exit(failures ? 1 : 0);

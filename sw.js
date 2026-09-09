@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.40.0';
+const CACHE_NAME = 'pestovo-v1.41.0';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
@@ -12,10 +12,10 @@ const STATIC_ASSETS = [
     'js/firebase-config.js?v=2', 'js/utils.js?v=43', 'js/name-variants.js?v=1',
     'js/design-system.js?v=1', 'js/design-admin.js?v=2', 'js/design-preview.js?v=1',
     'js/auth.js', 'js/app.js?v=14', 'js/live.js?v=24', 'js/solo.js?v=24',
-    'js/leaderboard.js?v=6', 'js/players.js?v=3', 'js/tournaments.js?v=3',
-    'js/stats.js?v=3', 'js/handicap.js', 'js/admin.js?v=30', 'js/scorer.js?v=3',
+    'js/leaderboard.js?v=6', 'js/players.js?v=3', 'js/tournaments.js?v=4',
+    'js/stats.js?v=3', 'js/handicap.js', 'js/admin.js?v=31', 'js/scorer.js?v=3',
     'js/marker.js?v=2', 'js/guide.js', 'js/feed.js?v=2', 'js/predictor.js',
-    'js/order-of-merit.js?v=3', 'js/pwa.js?v=2', 'js/start-admin.js?v=4', 'js/qr-start.js?v=2', 'qr-start.html',
+    'js/order-of-merit.js?v=3', 'js/pwa.js?v=2', 'js/start-admin.js?v=5', 'js/qr-start.js?v=2', 'qr-start.html',
     'js/assistant-config.js', 'js/assistant-build.js?v=2', 'js/assistant.js?v=2',
     'docs/assistant-index.json', 'docs/assistant-sources.json',
     'docs/pravila-pestovo.pdf',

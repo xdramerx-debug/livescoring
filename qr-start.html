@@ -37,6 +37,9 @@
         .grp-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
         .grp-badge { background:var(--dark); color:#fff; border-radius:7px; padding:3px 9px; font-size:12px; font-weight:800; letter-spacing:.4px; }
         .time-badge { background:#f3ecdb; border:1px solid var(--gold); color:#6d5717; border-radius:7px; padding:3px 8px; font-size:11.5px; font-weight:700; }
+        .div-badge { background:#eaf3ff; border:1px solid #9db9e8; color:#23407a; border-radius:7px; padding:3px 8px; font-size:11.5px; font-weight:700; }
+        .div-inline { color:#23407a; font-size:11px; font-weight:600; white-space:nowrap; }
+        .qr-fail { border:1px dashed #c0392b; background:#fdecea; color:#922b21; border-radius:8px; padding:10px 8px; font-size:11px; font-weight:700; }
         .pname { font-size:17px; font-weight:800; line-height:1.2; }
         .pmeta { color:var(--gray); font-size:11.5px; margin:3px 0 8px; display:flex; gap:4px 10px; flex-wrap:wrap; }
         .pmeta b { color:var(--dark); }
@@ -72,25 +75,30 @@
             .time-badge { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             a { color:inherit; text-decoration:none; }
             /* 10 QR-карточек на лист А4: сетка 2×5, карточка 52мм —
-               5 рядов × 52мм + 4 промежутка × 4мм = 276мм < 281мм печатной зоны. */
+               5 рядов × 52мм + 4 промежутка × 4мм = 276мм < 281мм печатной зоны.
+               Всё внутри карточки ужато, чтобы длинные ФИО и список группы
+               не вылезали за 52мм и не съезжали на следующий лист. */
             body.print-cards .qr-cards-head { display:none !important; }
             body.print-cards .pcards { display:grid !important; grid-template-columns:1fr 1fr !important; gap:4mm !important; }
             body.print-cards .pcard {
                 height:52mm; max-height:52mm; overflow:hidden;
-                padding:2.5mm 3mm; border:1px solid #999; border-radius:2mm;
+                padding:2mm 2.5mm; border:1px solid #999; border-radius:2mm;
                 page-break-inside:avoid; break-inside:avoid;
             }
-            body.print-cards .grp-row { margin-bottom:1mm; gap:2mm; }
-            body.print-cards .grp-badge { font-size:7.5pt; padding:0.8mm 2mm; border-radius:1.5mm; }
-            body.print-cards .time-badge { font-size:7pt; padding:0.8mm 2mm; border-radius:1.5mm; }
-            body.print-cards .pname { font-size:11pt; line-height:1.15; }
-            body.print-cards .pmeta { font-size:7.5pt; margin:0.8mm 0 1mm; gap:1mm 2.5mm; }
-            body.print-cards .qr-grid { margin-top:0.5mm; }
-            body.print-cards .qr-box { padding:1.2mm 1mm; border-radius:1.5mm; }
-            body.print-cards .qr-box img { width:auto; max-width:27mm; max-height:27mm; }
-            body.print-cards .qr-lbl { font-size:6.5pt; margin-bottom:1mm; line-height:1.25; }
+            body.print-cards .grp-row { margin-bottom:0.8mm; gap:1.2mm; }
+            body.print-cards .grp-badge { font-size:7.5pt; padding:0.6mm 1.8mm; border-radius:1.5mm; }
+            body.print-cards .time-badge { font-size:7pt; padding:0.6mm 1.8mm; border-radius:1.5mm; }
+            body.print-cards .div-badge { font-size:6.5pt; padding:0.6mm 1.8mm; border-radius:1.5mm; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            body.print-cards .pname { font-size:10pt; line-height:1.12; max-height:8mm; overflow:hidden; }
+            body.print-cards .pmeta { font-size:7pt; margin:0.6mm 0 0.8mm; gap:0.8mm 2.2mm; }
+            body.print-cards .qr-grid { margin-top:0.4mm; }
+            body.print-cards .qr-box { padding:1mm 1mm; border-radius:1.5mm; }
+            body.print-cards .qr-box img { width:auto; max-width:23mm; max-height:23mm; }
+            body.print-cards .qr-lbl { font-size:6.5pt; margin-bottom:0.8mm; line-height:1.2; }
             body.print-cards .qr-url { display:none !important; }
-            body.print-cards .members-note { font-size:6.5pt; margin-top:1mm; padding-top:0.8mm; line-height:1.3; }
+            body.print-cards .members-note { font-size:6pt; margin-top:0.8mm; padding-top:0.6mm; line-height:1.25; max-height:5.2mm; overflow:hidden; }
+            body.print-cards .qr-fail { font-size:7pt; padding:2mm; }
+            body.print-cards .div-inline { font-size:10px; }
         }
     </style>
 </head>
@@ -100,6 +108,8 @@
         <button class="btn btn-ol" onclick="location.href='admin.html'">← Админка</button>
         <button class="btn btn-g" onclick="qrPrintMode('cards')"><i>🖨</i> Печать QR-карточек</button>
         <button class="btn btn-og" onclick="qrPrintMode('sheet')"><i>📋</i> Печать стартового листа</button>
+        <button class="btn btn-ol" id="qr-retry-btn" onclick="qrRetryFailed()"><i>🔄</i> QR заново</button>
+        <span id="qr-status" style="font-size:12px;color:#ffe9a8;margin-left:auto;"></span>
     </div>
     <div id="qr-body">
         <div class="spinner" id="qr-loading">Загрузка протокола…</div>
@@ -111,6 +121,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="js/firebase-config.js?v=2"></script>
-    <script src="js/qr-start.js?v=2"></script>
+    <script src="js/qr-start.js?v=3"></script>
 </body>
 </html>

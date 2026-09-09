@@ -28,6 +28,7 @@ var psState = {
     editingId: null,       // id редактируемого сохранённого протокола (null = создаём новый)
     editRounds: {},        // roundId -> данные раунда из базы (чтобы не потерять счёт при правке)
     editDeletedRounds: [], // roundId групп, удалённых при редактировании
+    rosterCollapsed: {},   // свёрнутые группы компактного стартового листа (ключ группы -> true)
     busy: false
 };
 
@@ -52,9 +53,12 @@ function psDefaultProto() {
         interval: 8,
         startTime: '09:00',
         // Обрезка точного гандикапа — только для текущего турнира:
-        // сначала максимум по полу, затем процент (например 90%).
+        // сначала процент (например 90%), затем максимум по полу.
+        // Процент и максимум включаются независимо (галочками): можно резать
+        // только процентами, только максимумом или и тем, и другим сразу.
         hcpCutEnabled: false,
         hcpCutPercent: 90,
+        hcpCutMaxEnabled: false,
         hcpMaxMen: '',
         hcpMaxWomen: '',
         players: []           // см. psNewPlayer
@@ -124,13 +128,32 @@ function psLooksLikeSurname(w) {
     return /(ов|ев|ёв|ин|ын|ский|цкий|ской|цкой|ко|ук|юк|ич|енко|ова|ева|ина)$/.test(w);
 }
 
+// «Мусорный» токен внутри ФИО: возраст («Кирилл 17 Дунаев»),
+// год рождения, номер по порядку и т.п. В именах цифр не бывает,
+// поэтому такие токены при разборе ФИО просто выбрасываем.
+function psIsAgeToken(tok) {
+    var s = String(tok == null ? '' : tok).replace(/^[(\[]+|[)\],.;:]+$/g, '').trim();
+    if (!s) return true;
+    // Чистое число («17», «2008», «12.5») — всегда мусор в ФИО.
+    if (/^\d+([.,]\d+)?$/.test(s)) return true;
+    // Число с единицей («17 лет», «17л», «17 г.») — тоже возраст.
+    if (/^\d+\s*(лет|год|года|л\.?|г\.?)$/i.test(s)) return true;
+    return false;
+}
+
+function psStripAgeTokens(raw) {
+    return String(raw || '').replace(/\s+/g, ' ').trim().split(' ')
+        .filter(function(w) { return w && !psIsAgeToken(w); });
+}
+
 // Разбор «сырого» ФИО (строка) на части. Поддерживает оба порядка:
 //   «Тестов Иван Петрович» / «Иван Петрович Тестов»
 //   «Тестов Иван» / «Иван Тестов»
 // А также составные (нерусские) фамилии с частицами:
 //   «ван дер Берг Иван», «Иван ван дер Берг», «John van der Berg»
+// Возраст и другие числа внутри строки («Кирилл 17 Дунаев») отбрасываются.
 function psSplitFio(raw) {
-    var parts = String(raw || '').replace(/\s+/g, ' ').trim().split(' ');
+    var parts = psStripAgeTokens(raw);
     var res = { lastName: '', firstName: '', middleName: '' };
     if (!parts.length || !parts[0]) return res;
     if (parts.length === 1) { res.firstName = parts[0]; return res; }
@@ -221,7 +244,7 @@ function psCalcFieldHcp(p) {
     }
     return Math.round(eff);
 }
-// Точный гандикап С УЧЁТОМ обрезки турнира (максимум по полу + процент).
+// Точный гандикап С УЧЁТОМ обрезки турнира (сначала процент, затем максимум).
 // Без настроенной обрезки равен исходному p.hcp. Используется для полевого
 // гандикапа, записи в раунд/протокол и чипов-подсказок в интерфейсе.
 function psEffectiveExact(p) {
@@ -230,31 +253,42 @@ function psEffectiveExact(p) {
         raw = parseFloat(p.hcp);
         if (isNaN(raw)) raw = 0;
     }
+    return psEffectiveExactFor(raw, (p && p.gender) || 'men');
+}
+
+// То же, но по готовым значениям (удобно для Excel-превью и авто-групп).
+function psEffectiveExactFor(hcp, gender) {
+    var raw = (hcp === '' || hcp == null) ? 0 : parseFloat(hcp);
+    if (isNaN(raw)) raw = 0;
+    gender = gender || 'men';
     var proto = (typeof psState !== 'undefined' && psState.proto) ? psState.proto : {};
     var cut = {
         enabled: proto.hcpCutEnabled === true,
         percent: proto.hcpCutPercent,
+        maxEnabled: proto.hcpCutMaxEnabled,
         maxMen: proto.hcpMaxMen,
         maxWomen: proto.hcpMaxWomen
     };
     // Единая логика обрезки живёт в js/utils.js — используем её, чтобы старт
     // считал точно так же, как страница турнира.
     if (typeof tnApplyHcpCut === 'function') {
-        try { return tnApplyHcpCut(raw, (p && p.gender) || 'men', cut).effective; } catch (e) {}
+        try { return tnApplyHcpCut(raw, gender, cut).effective; } catch (e) {}
     }
     // Запасной вариант (например, в юнит-тестах без utils.js): та же логика —
-    // сначала максимум по полу, затем процент.
-    var gender = (p && p.gender) || 'men';
-    var maxV = gender === 'women' ? cut.maxWomen : cut.maxMen;
-    maxV = (maxV === '' || maxV == null) ? null : parseFloat(maxV);
-    var capped = (maxV != null && !isNaN(maxV) && raw > maxV) ? maxV : raw;
-    var eff = capped;
+    // сначала процент, затем максимум по полу.
+    var eff = raw;
     if (cut.enabled) {
         var pct = parseFloat(cut.percent);
         if (isNaN(pct) || pct <= 0) pct = 100;
         if (pct > 100) pct = 100;
-        if (pct < 100 - 1e-9) eff = Math.round(capped * pct) / 100;
+        if (pct < 100 - 1e-9) eff = Math.round(raw * pct) / 100;
     }
+    var maxOn = (cut.maxEnabled === undefined || cut.maxEnabled === null)
+        ? ((cut.maxMen !== '' && cut.maxMen != null) || (cut.maxWomen !== '' && cut.maxWomen != null))
+        : (cut.maxEnabled === true);
+    var maxV = gender === 'women' ? cut.maxWomen : cut.maxMen;
+    maxV = (maxV === '' || maxV == null) ? null : parseFloat(maxV);
+    if (maxOn && maxV != null && !isNaN(maxV) && eff > maxV) eff = maxV;
     return Math.round(eff * 10) / 10;
 }
 // Подсказка «✂ 36 → 25.2» рядом с именем, если обрезка турнира изменила
@@ -269,15 +303,16 @@ function psCutHintHtml(p) {
     return ' <span class="hcp-chip" style="background:rgba(201,168,76,.14);border-color:rgba(201,168,76,.5);color:var(--gold);font-size:10.5px;" title="' + title + '"><i class="fas fa-scissors"></i> ' + psHcpFmt(raw) + ' → ' + psHcpFmt(eff) + '</span>';
 }
 // Чип группы по гандикапу («Мужчины 0–12»), заданной во вкладке «Турниры».
-// Группа определяется по ИСХОДНОМУ точному гандикапу (обрезка — уже игровая
-// поправка и на принадлежность к группе не влияет). Пустая строка — нет групп.
+// Группа определяется по ОБРЕЗАННОМУ точному гандикапу (если обрезка настроена),
+// чтобы стартовый лист сразу показывал, в какой группе игрок реально играет.
+// Пустая строка — нет групп.
 function psDivisionChipHtml(p) {
     try {
         if (!p || p.hcp === null || p.hcp === undefined || p.hcp === '') return '';
         if (typeof tnFindDivision !== 'function') return '';
         var tn = (typeof psGetSelTournament === 'function') ? psGetSelTournament() : null;
         if (!tn || !tn.divisions) return '';
-        var d = tnFindDivision(tn, parseFloat(p.hcp), p.gender || 'men');
+        var d = tnFindDivision(tn, psEffectiveExact(p), p.gender || 'men');
         if (!d || !d.name) return '';
         var escFn = (typeof escapeHtml === 'function') ? escapeHtml : function(x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
         var label = escFn(d.name);
@@ -311,6 +346,39 @@ function psTeeOptionsHtml(selCode) {
         html += '<option value="' + code + '"' + sel + '>' + (marks[code] || '') + ' ' + psTeeName(code) + '</option>';
     });
     return html;
+}
+
+// Группа турнира (дивизион) для готовых значений гандикапа и пола.
+// Использует ОБРЕЗАННЫЙ точный гандикап, как и весь стартовый лист.
+function psFindDivisionFor(hcp, gender) {
+    try {
+        if (hcp === null || hcp === undefined || hcp === '') return null;
+        if (typeof tnFindDivision !== 'function') return null;
+        var tn = (typeof psGetSelTournament === 'function') ? psGetSelTournament() : null;
+        if (!tn || !tn.divisions) return null;
+        return tnFindDivision(tn, psEffectiveExactFor(hcp, gender || 'men'), gender || 'men');
+    } catch (e) { return null; }
+}
+
+// ТИ по умолчанию для игрока при импорте/добавлении:
+//  1) ТИ его группы турнира (дивизиона), если группа задана и ТИ разрешены;
+//  2) иначе для девушек — красные (или белые, если красных нет в турнире);
+//  3) иначе ТИ протокола по умолчанию.
+function psDefaultTeeFor(gender, hcp) {
+    gender = gender || 'men';
+    var allowed = [];
+    try { allowed = psAllowedTees() || []; } catch (e) { allowed = []; }
+    if (!allowed.length) allowed = ['bk', 'bl', 'wh', 'rd'];
+    var div = psFindDivisionFor(hcp, gender);
+    if (div && div.tee && allowed.indexOf(div.tee) !== -1) return div.tee;
+    if (gender === 'women') {
+        if (allowed.indexOf('rd') !== -1) return 'rd';
+        if (allowed.indexOf('wh') !== -1) return 'wh';
+        return allowed[0];
+    }
+    var proto = (typeof psState !== 'undefined' && psState.proto) ? psState.proto : {};
+    if (proto.tee && allowed.indexOf(proto.tee) !== -1) return proto.tee;
+    return allowed[0] || 'wh';
 }
 
 // ----------------------------------------------------------
@@ -593,31 +661,69 @@ function psRenderTournamentCard() {
 }
 
 // Блок «Обрезка гандикапа» — только для текущего турнира.
-// Сначала максимум по полу, затем процент (например 36 → макс. 28 → 90% = 25.2).
+// Порядок: сначала процент, затем максимум по полу
+// (например 36 → 90% = 32.4 → макс. 28 = 28.0).
+// Процент и максимум включаются независимо — можно резать только процентами,
+// только максимумом по полу или и тем, и другим сразу.
 function psRenderCutBox(proto) {
     proto = proto || {};
     var cutOn = proto.hcpCutEnabled === true;
+    var maxOn = proto.hcpCutMaxEnabled === true;
     var pct = (proto.hcpCutPercent === '' || proto.hcpCutPercent == null) ? 90 : proto.hcpCutPercent;
     var maxM = (proto.hcpMaxMen === '' || proto.hcpMaxMen == null) ? '' : proto.hcpMaxMen;
     var maxW = (proto.hcpMaxWomen === '' || proto.hcpMaxWomen == null) ? '' : proto.hcpMaxWomen;
     var html = '<div class="ps-cut-box">';
     html += '<h4><i class="fas fa-scissors"></i> ' + psL('Обрезка гандикапа (только для этого турнира)', 'Handicap cut (this tournament only)') + '</h4>';
-    html += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--white);font-weight:700;margin-bottom:10px;">' +
+    html += '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;">';
+    html += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--white);font-weight:700;">' +
         '<input type="checkbox" id="ps-cut-enabled" ' + (cutOn ? 'checked' : '') + ' onchange="psCutField(\'hcpCutEnabled\', this.checked)" style="width:20px;height:20px;cursor:pointer;"> ' +
-        psL('Обрезать точный гандикап на процент', 'Cut exact handicap by percent') + '</label>';
+        psL('✂ Обрезать на процент', '✂ Cut by percent') + '</label>';
+    html += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--white);font-weight:700;">' +
+        '<input type="checkbox" id="ps-cut-max-enabled" ' + (maxOn ? 'checked' : '') + ' onchange="psCutField(\'hcpCutMaxEnabled\', this.checked)" style="width:20px;height:20px;cursor:pointer;"> ' +
+        psL('✂ Ограничить максимум по полу', '✂ Cap by gender max') + '</label>';
+    html += '</div>';
     html += '<div class="form-row form-row-3">';
     html += '<div class="form-group"><label>' + psL('Процент (например 90 = 90%)', 'Percent (e.g. 90 = 90%)') + '</label>' +
-        '<input type="number" class="form-input" min="1" max="100" step="1" value="' + pct + '" ' + (cutOn ? '' : 'disabled') + ' onchange="psCutField(\'hcpCutPercent\', this.value)"></div>';
+        '<input type="number" id="ps-cut-percent" class="form-input" min="1" max="100" step="1" value="' + pct + '" ' + (cutOn ? '' : 'disabled') + ' onchange="psCutField(\'hcpCutPercent\', this.value)"></div>';
     html += '<div class="form-group"><label>' + psL('Макс. точный HCP — мужчины', 'Max exact HCP — men') + '</label>' +
-        '<input type="text" class="form-input" placeholder="' + psL('без лимита', 'no limit') + '" value="' + String(maxM).replace(/"/g, '&quot;') + '" onchange="psCutField(\'hcpMaxMen\', this.value)"></div>';
+        '<input type="text" id="ps-cut-maxmen" class="form-input" placeholder="' + psL('без лимита', 'no limit') + '" value="' + String(maxM).replace(/"/g, '&quot;') + '" ' + (maxOn ? '' : 'disabled') + ' oninput="psCutMaxAutocheck()" onchange="psCutField(\'hcpMaxMen\', this.value)"></div>';
     html += '<div class="form-group"><label>' + psL('Макс. точный HCP — девушки', 'Max exact HCP — women') + '</label>' +
-        '<input type="text" class="form-input" placeholder="' + psL('без лимита', 'no limit') + '" value="' + String(maxW).replace(/"/g, '&quot;') + '" onchange="psCutField(\'hcpMaxWomen\', this.value)"></div>';
+        '<input type="text" id="ps-cut-maxwomen" class="form-input" placeholder="' + psL('без лимита', 'no limit') + '" value="' + String(maxW).replace(/"/g, '&quot;') + '" ' + (maxOn ? '' : 'disabled') + ' oninput="psCutMaxAutocheck()" onchange="psCutField(\'hcpMaxWomen\', this.value)"></div>';
     html += '</div>';
-    html += '<p style="font-size:11px;color:var(--muted);margin:4px 0 0;"><i class="fas fa-circle-info"></i> ' +
-        psL('Сначала применяется максимум по полу, затем процент. Полевой гандикап считается от обрезанного точного. Пример: точный 36, макс. 28, 90% → играет с 25.2.',
-            'The gender max applies first, then the percent. Course handicap is calculated from the cut exact value. Example: exact 36, max 28, 90% → plays off 25.2.') + '</p>';
+    html += '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;">';
+    html += '<button class="btn btn-g btn-sm" onclick="psCutApply()"><i class="fas fa-check"></i> ' + psL('Применить', 'Apply') + '</button>';
+    var aff = psCutAffectedCount();
+    if (aff.total) {
+        html += '<span style="font-size:12px;color:var(--muted);"><i class="fas fa-users"></i> ' +
+            psL('Затронет игроков стартового листа', 'Affects start-list players') + ': <b style="color:var(--gold);">' + aff.hit + ' / ' + aff.total + '</b></span>';
+    }
+    html += '</div>';
+    html += '<p style="font-size:11px;color:var(--muted);margin:8px 0 0;"><i class="fas fa-circle-info"></i> ' +
+        psL('Сначала применяется процент, затем максимум по полу. Полевой гандикап считается от обрезанного точного. Пример: точный 36 → 90% = 32.4 → макс. 28 → играет с 28.0. После «Применить» стартовый лист и группы пересчитаются сразу.',
+            'The percent applies first, then the gender max. Course handicap is calculated from the cut exact value. Example: exact 36 → 90% = 32.4 → max 28 → plays off 28.0. “Apply” recalculates the start list and groups immediately.') + '</p>';
     html += '</div>';
     return html;
+}
+
+// Сколько игроков текущего стартового листа изменит обрезка (для подписи).
+function psCutAffectedCount() {
+    var total = 0, hit = 0;
+    try {
+        var players = (psState.proto && psState.proto.players) || [];
+        var seen = {};
+        function scan(p) {
+            if (!p || p.hcp === null || p.hcp === undefined || p.hcp === '') return;
+            var k = p.id || (psKeyOf(p) + '|' + p.hcp);
+            if (seen[k]) return;
+            seen[k] = true;
+            total++;
+            var raw = parseFloat(p.hcp);
+            if (!isNaN(raw) && Math.abs(psEffectiveExact(p) - raw) >= 0.049) hit++;
+        }
+        players.forEach(scan);
+        ((psState.groups) || []).forEach(function(g) { (g.members || []).forEach(scan); });
+    } catch (e) {}
+    return { hit: hit, total: total };
 }
 
 // Изменение настроек обрезки: только перерисовка (состав групп не меняется,
@@ -625,6 +731,7 @@ function psRenderCutBox(proto) {
 function psCutField(field, val) {
     if (!psState.proto) return;
     if (field === 'hcpCutEnabled') psState.proto.hcpCutEnabled = (val === true || val === 'true' || val === 'on');
+    else if (field === 'hcpCutMaxEnabled') psState.proto.hcpCutMaxEnabled = (val === true || val === 'true' || val === 'on');
     else if (field === 'hcpCutPercent') {
         var n = parseFloat(val);
         psState.proto.hcpCutPercent = isNaN(n) ? 100 : Math.max(1, Math.min(100, n));
@@ -637,6 +744,54 @@ function psCutField(field, val) {
         }
     }
     psRender();
+}
+
+// Если начали вводить максимум — сразу включаем галочку «максимум по полу».
+function psCutMaxAutocheck() {
+    try {
+        var cb = psEl('ps-cut-max-enabled');
+        if (cb && !cb.checked) cb.checked = true;
+    } catch (e) {}
+}
+
+// Кнопка «Применить»: забирает значения прямо из полей (даже если фокус ещё
+// в поле ввода) и сразу пересчитывает стартовый лист и группы.
+function psCutApply() {
+    if (!psState.proto) return;
+    try {
+        var enCb = psEl('ps-cut-enabled');
+        var maxCb = psEl('ps-cut-max-enabled');
+        var pctEl = psEl('ps-cut-percent');
+        var mmEl = psEl('ps-cut-maxmen');
+        var mwEl = psEl('ps-cut-maxwomen');
+        if (enCb) psState.proto.hcpCutEnabled = !!enCb.checked;
+        if (maxCb) psState.proto.hcpCutMaxEnabled = !!maxCb.checked;
+        if (pctEl) {
+            var n = parseFloat(pctEl.value);
+            psState.proto.hcpCutPercent = isNaN(n) ? 100 : Math.max(1, Math.min(100, n));
+        }
+        [['hcpMaxMen', mmEl], ['hcpMaxWomen', mwEl]].forEach(function(pair) {
+            if (!pair[1]) return;
+            var s = String(pair[1].value == null ? '' : pair[1].value).trim().replace(',', '.');
+            if (s === '') psState.proto[pair[0]] = '';
+            else {
+                var m = parseFloat(s);
+                psState.proto[pair[0]] = isNaN(m) ? '' : m;
+            }
+        });
+    } catch (e) {}
+    psRender();
+    var aff = psCutAffectedCount();
+    var parts = [];
+    if (psState.proto.hcpCutEnabled) parts.push(psState.proto.hcpCutPercent + '%');
+    if (psState.proto.hcpCutMaxEnabled) {
+        var lims = [];
+        if (psState.proto.hcpMaxMen !== '' && psState.proto.hcpMaxMen != null) lims.push(psL('муж', 'men') + ' ≤ ' + psState.proto.hcpMaxMen);
+        if (psState.proto.hcpMaxWomen !== '' && psState.proto.hcpMaxWomen != null) lims.push(psL('жен', 'women') + ' ≤ ' + psState.proto.hcpMaxWomen);
+        parts.push(psL('макс', 'max') + (lims.length ? ' (' + lims.join(', ') + ')' : ''));
+    }
+    if (!parts.length) toast(psL('✂ Обрезка выключена — стартовый лист без изменений', '✂ Cut is off — start list unchanged'), 'info');
+    else toast(psL('✂ Обрезка применена (' + parts.join(' + ') + '): затронуто ' + aff.hit + ' из ' + aff.total, '✂ Cut applied (' + parts.join(' + ') + '): affects ' + aff.hit + ' of ' + aff.total), 'success');
 }
 
 function psFormatsSelectedList(proto) {
@@ -817,15 +972,15 @@ function psRenderProtoCard() {
     var html = '';
 
     // ── Карточка участников ──
-    html += '<div class="card" style="margin-bottom:20px;">';
+    html += '<div class="card" id="ps-roster-card" style="margin-bottom:20px;">';
     html += '<h2 style="margin-top:0;"><i class="fas fa-users"></i> ' + psL('2. Участники стартового листа', '2. Start list players') +
         ' <span style="color:var(--gold);font-size:15px;">(' + (proto ? proto.players.length : 0) + ')</span></h2>';
 
     if (psState.editingId) {
         html += '<p style="background:rgba(90,173,224,0.08);border:1px solid rgba(90,173,224,0.4);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--muted);margin:0 0 12px;">' +
             '<i class="fas fa-circle-info" style="color:var(--blue);"></i> ' +
-            psL('Редактируется сохранённый протокол: игроки уже распределены и находятся в группах (блок 3). Добавленные здесь участники попадут в общий список — их можно перенести в любую группу.',
-                'Editing a saved protocol: players are already distributed and live in the groups (block 3). Players added here go to the shared roster — they can then be moved into any group.') + '</p>';
+            psL('Редактируется сохранённый протокол: ниже сразу показаны все заявленные на турнир участники, которых ещё нет в группах (блок 3). Добавленные здесь участники попадут в общий список — их можно перенести в любую группу кнопкой «В группу…».',
+                'Editing a saved protocol: everyone registered for the tournament who is not yet in a group is shown here at once; distributed players live in the groups (block 3). Players added here go to the shared roster — move them into any group with “Into group…”.') + '</p>';
     }
 
     if (!tournament) {
@@ -847,9 +1002,9 @@ function psRenderProtoCard() {
     html += '<div id="ps-manual-form" class="hidden" style="background:var(--input);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">';
     html += '<h3 style="color:var(--gold);font-size:14px;margin:0 0 10px;"><i class="fas fa-user-pen"></i> ' + psL('Новый игрок', 'New player') + '</h3>';
     html += '<div class="form-row form-row-3">';
-    html += '<div class="form-group"><label>' + psL('Фамилия', 'Last name') + '</label><input type="text" id="ps-m-last" class="form-input" placeholder="' + psL('Тестов', 'Smith') + '"></div>';
-    html += '<div class="form-group"><label>' + psL('Имя', 'First name') + '</label><input type="text" id="ps-m-first" class="form-input" placeholder="' + psL('Иван', 'John') + '"></div>';
-    html += '<div class="form-group"><label>' + psL('Отчество (если есть)', 'Middle name (optional)') + '</label><input type="text" id="ps-m-mid" class="form-input" placeholder="' + psL('Петрович', '') + '"></div>';
+    html += '<div class="form-group"><label>' + psL('Фамилия', 'Last name') + '</label><input type="text" id="ps-m-last" class="form-input" oninput="psManualFioAuto()" placeholder="' + psL('Тестов', 'Smith') + '"></div>';
+    html += '<div class="form-group"><label>' + psL('Имя', 'First name') + '</label><input type="text" id="ps-m-first" class="form-input" oninput="psManualFioAuto()" placeholder="' + psL('Иван', 'John') + '"></div>';
+    html += '<div class="form-group"><label>' + psL('Отчество (если есть)', 'Middle name (optional)') + '</label><input type="text" id="ps-m-mid" class="form-input" oninput="psManualFioAuto()" placeholder="' + psL('Петрович', '') + '"></div>';
     html += '</div>';
     html += '<div class="form-row form-row-3">';
     html += '<div class="form-group"><label>' + psL('Точный гандикап', 'Exact handicap') + '</label><input type="text" id="ps-m-hcp" class="form-input" placeholder="13.0 или +2.4"></div>';
@@ -884,21 +1039,66 @@ function psAddManualOpen(cancel) {
     var f = psEl('ps-m-first'); if (f) f.focus();
 }
 
+// Авто-подстановка пола и ТИ при ручном вводе ФИО: женское имя/фамилия/отчество
+// сразу переключают форму на «Женщина» и женские ТИ (красные/белые по группе).
+function psManualFioAuto() {
+    try {
+        var last = (psEl('ps-m-last') || {}).value || '';
+        var first = (psEl('ps-m-first') || {}).value || '';
+        var mid = (psEl('ps-m-mid') || {}).value || '';
+        if (!String(first + last + mid).replace(/\s+/g, '')) return;
+        var gEl = psEl('ps-m-gender');
+        if (!gEl) return;
+        var guess = psGuessGender(last, first, mid);
+        if (guess === 'women' && gEl.value !== 'women') {
+            gEl.value = 'women';
+            var tEl = psEl('ps-m-tee');
+            if (tEl) {
+                var hcpEl = psEl('ps-m-hcp');
+                var hv = hcpEl ? psParseHcp(hcpEl.value) : null;
+                tEl.value = psDefaultTeeFor('women', hv);
+            }
+            toast(psL('👩 Похоже на женское имя — подставлены пол «Женщина» и женские ТИ', '👩 Looks like a feminine name — gender and ladies tees set'), 'info');
+        }
+    } catch (e) {}
+}
+
+// То же для формы «Игрок в эту группу»: ФИО одной строкой.
+function psGroupFioAuto(gi) {
+    try {
+        var fioEl = psEl('ps-ga-fio-' + gi);
+        if (!fioEl || !String(fioEl.value || '').trim()) return;
+        var parsed = psSplitFio(fioEl.value);
+        var gEl = psEl('ps-ga-gender-' + gi);
+        if (!gEl) return;
+        var guess = psGuessGender(parsed.lastName, parsed.firstName, parsed.middleName);
+        if (guess === 'women' && gEl.value !== 'women') {
+            gEl.value = 'women';
+            var tEl = psEl('ps-ga-tee-' + gi);
+            if (tEl) {
+                var hcpEl = psEl('ps-ga-hcp-' + gi);
+                var hv = hcpEl ? psParseHcp(hcpEl.value) : null;
+                tEl.value = psDefaultTeeFor('women', hv);
+            }
+        }
+    } catch (e) {}
+}
+
 function psRosterRowHtml(p, idx) {
     var hcpVal = p.hcp === null || p.hcp === undefined ? '' : psHcpFmt(p.hcp).replace(/\+/g, '+');
-    var hcpInput = '<input type="text" class="form-input" style="width:86px;padding:6px 8px;font-size:13px;" value="' + hcpVal.replace(/"/g, '&quot;') + '" ' +
-        'onchange="psRowHcp(' + idx + ', this.value)" placeholder="13.0">';
+    var hcpInput = '<input type="text" class="form-input ps-rrow-inp" value="' + hcpVal.replace(/"/g, '&quot;') + '" ' +
+        'onchange="psRowHcp(' + idx + ', this.value)" placeholder="13.0" title="' + psL('Точный HCP', 'Exact HCP') + '">';
     var fieldHcp = psCalcFieldHcp(p);
-    var fieldChip = '<span class="hcp-chip hcp-band-' + (fieldHcp <= 0 ? 'plus' : fieldHcp <= 10 ? '1-10' : fieldHcp <= 20 ? '11-20' : fieldHcp <= 36 ? '21-36' : '37') + '" style="font-size:12px;">' +
+    var fieldChip = '<span class="hcp-chip hcp-band-' + (fieldHcp <= 0 ? 'plus' : fieldHcp <= 10 ? '1-10' : fieldHcp <= 20 ? '11-20' : fieldHcp <= 36 ? '21-36' : '37') + ' ps-rrow-chip" title="' + psL('Полевой HCP (авто)', 'Course HCP (auto)') + '">' +
         psL('Полевой', 'Course') + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
 
-    var genderSel = '<select class="form-input" style="width:auto;min-width:130px;padding:6px 8px;font-size:13px;" onchange="psRowGender(' + idx + ', this.value)">' +
-        '<option value="men"' + (p.gender === 'men' ? ' selected' : '') + '>' + psL('Мужчина', 'Male') + '</option>' +
-        '<option value="women"' + (p.gender === 'women' ? ' selected' : '') + '>' + psL('Женщина', 'Female') + '</option></select>';
+    var genderSel = '<select class="form-input ps-rrow-sel" onchange="psRowGender(' + idx + ', this.value)" title="' + psL('Пол', 'Gender') + '">' +
+        '<option value="men"' + (p.gender === 'men' ? ' selected' : '') + '>👨 ' + psL('Мужчина', 'Male') + '</option>' +
+        '<option value="women"' + (p.gender === 'women' ? ' selected' : '') + '>👩 ' + psL('Женщина', 'Female') + '</option></select>';
 
-    var teeSel = '<select class="form-input" style="width:auto;min-width:120px;padding:6px 8px;font-size:13px;" onchange="psRowTee(' + idx + ', this.value)">' + psTeeOptionsHtml(p.tee) + '</select>';
+    var teeSel = '<select class="form-input ps-rrow-sel" onchange="psRowTee(' + idx + ', this.value)" title="' + psL('ТИ', 'Tee') + '">' + psTeeOptionsHtml(p.tee) + '</select>';
 
-    var fio = '<b style="color:var(--white);font-size:14px;">' + escapeHtml(psFullRus(p) || '?') + '</b>';
+    var fio = '<b class="ps-rrow-name">' + escapeHtml(psFullRus(p) || '?') + '</b>';
     if (p.uidMatched) {
         fio += ' <span class="hcp-chip" style="background:rgba(46,204,113,.18);border-color:rgba(46,204,113,.5);color:#2ecc71;" title="' + psL('Найден аккаунт игрока — раунд появится в его профиле', 'Player account matched — the round will appear in their profile') + '"><i class="fas fa-circle-check"></i></span>';
     }
@@ -907,36 +1107,126 @@ function psRosterRowHtml(p, idx) {
     var divChip = psDivisionChipHtml(p);
     if (divChip) fio += ' ' + divChip;
     var srcTxt = p.source === 'registered' ? psL('регистрация', 'registration') : p.source === 'excel' ? psL('Excel', 'Excel') : psL('вручную', 'manual');
-    var rowHtml = '<div class="list-item" style="padding:12px 14px;flex-wrap:wrap;gap:10px;align-items:center;">';
+    var rowHtml = '<div class="list-item ps-rrow">';
 
-    rowHtml += '<div style="flex:1.6;min-width:200px;">' + fio +
-        '<div style="font-size:11px;color:var(--muted);margin-top:3px;"><i class="fas fa-tag"></i> ' + srcTxt + ' · ID: ' + escapeHtml(String(p.id).slice(0, 24)) + '</div>' +
+    rowHtml += '<div class="ps-rrow-main">' + fio +
+        '<div class="ps-rrow-src"><i class="fas fa-tag"></i> ' + srcTxt + '</div>' +
         '</div>';
 
-    rowHtml += '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">';
-    rowHtml += '<div class="form-group" style="margin:0;"><label style="font-size:10px;color:var(--muted);margin-bottom:2px;">' + psL('Точный HCP', 'Exact HCP') + '</label><div>' + hcpInput + '</div></div>';
-    rowHtml += '<div class="form-group" style="margin:0;"><label style="font-size:10px;color:var(--muted);margin-bottom:2px;">' + psL('Полевой HCP (авто)', 'Course HCP (auto)') + '</label><div>' + fieldChip + '</div></div>';
-    rowHtml += '<div class="form-group" style="margin:0;"><label style="font-size:10px;color:var(--muted);margin-bottom:2px;">' + psL('Пол', 'Gender') + '</label><div>' + genderSel + '</div></div>';
-    rowHtml += '<div class="form-group" style="margin:0;"><label style="font-size:10px;color:var(--muted);margin-bottom:2px;">' + psL('ТИ', 'Tee') + '</label><div>' + teeSel + '</div></div>';
+    rowHtml += '<div class="ps-rrow-ctrls">';
+    rowHtml += hcpInput + fieldChip + genderSel + teeSel;
     rowHtml += '</div>';
 
-    rowHtml += '<div style="display:flex;gap:4px;align-items:center;margin-left:auto;flex-wrap:wrap;">';
-    if (!psState.editingId && psState.groups && psState.groups.length) {
+    rowHtml += '<div class="ps-rrow-actions">';
+    if (psState.groups && psState.groups.length) {
         var toG = '';
         psState.groups.forEach(function(g2, gj) {
             if ((g2.members || []).length >= 4) return;
             toG += '<option value="' + gj + '">→ ' + psL('Группа', 'Group') + ' ' + (gj + 1) + '</option>';
         });
         toG += '<option value="new">＋ ' + psL('Новая группа', 'New group') + '</option>';
-        rowHtml += '<select class="form-input" style="width:auto;padding:5px 9px;font-size:11.5px;" title="' + psL('Отправить игрока сразу в группу', 'Send the player straight into a group') + '" onchange="if(this.value!==\'\')psRosterToGroup(' + idx + ',this.value)">' +
+        rowHtml += '<select class="form-input ps-rrow-sel" title="' + psL('Отправить игрока сразу в группу', 'Send the player straight into a group') + '" onchange="if(this.value!==\'\')psRosterToGroup(' + idx + ',this.value)">' +
             '<option value="">' + psL('В группу…', 'Into group…') + '</option>' + toG + '</select>';
     }
-    rowHtml += '<button class="btn btn-ol btn-sm" style="padding:5px 9px;font-size:12px;" title="' + psL('Выше', 'Up') + '" onclick="psMovePlayer(' + idx + ',-1)"><i class="fas fa-arrow-up"></i></button>' +
-        '<button class="btn btn-ol btn-sm" style="padding:5px 9px;font-size:12px;" title="' + psL('Ниже', 'Down') + '" onclick="psMovePlayer(' + idx + ',1)"><i class="fas fa-arrow-down"></i></button>' +
-        '<button class="btn btn-r btn-sm" style="padding:5px 9px;font-size:12px;" title="' + psL('Удалить', 'Delete') + '" onclick="psRemovePlayer(' + idx + ')"><i class="fas fa-trash"></i></button>' +
+    rowHtml += '<button class="btn btn-ol btn-sm ps-rrow-btn" title="' + psL('Выше', 'Up') + '" onclick="psMovePlayer(' + idx + ',-1)"><i class="fas fa-arrow-up"></i></button>' +
+        '<button class="btn btn-ol btn-sm ps-rrow-btn" title="' + psL('Ниже', 'Down') + '" onclick="psMovePlayer(' + idx + ',1)"><i class="fas fa-arrow-down"></i></button>' +
+        '<button class="btn btn-r btn-sm ps-rrow-btn" title="' + psL('Удалить', 'Delete') + '" onclick="psRemovePlayer(' + idx + ')"><i class="fas fa-trash"></i></button>' +
         '</div>';
     rowHtml += '</div>';
     return rowHtml;
+}
+
+// Полоса гандикапа для авто-групп стартового листа (когда у турнира нет своих групп).
+function psAutoHcpBand(eff) {
+    if (eff === null || eff === undefined || isNaN(eff)) return { key: 'na', title: '—' };
+    if (eff <= 0) return { key: 'plus', title: '+ / 0' };
+    if (eff <= 12) return { key: '0-12', title: '0–12' };
+    if (eff <= 20) return { key: '12-20', title: '12.1–20' };
+    if (eff <= 28) return { key: '20-28', title: '20.1–28' };
+    if (eff <= 36) return { key: '28-36', title: '28.1–36' };
+    return { key: '36p', title: '36+' };
+}
+
+// Стартовый лист, разбитый на группы по полу и гандикапу С УЧЁТОМ обрезки:
+// если у турнира заданы свои группы (дивизионы) — раскладываем по ним,
+// иначе строим авто-группы «пол + полоса HCP».
+function psRosterGroups(players) {
+    var tn = null;
+    try { tn = psGetSelTournament(); } catch (e) { tn = null; }
+    var divs = [];
+    try { divs = (tn && tn.divisions && typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tn) : []; } catch (e) { divs = []; }
+    var useDivs = !!(divs && divs.length && typeof tnFindDivision === 'function');
+    var buckets = [];
+    var byKey = {};
+
+    function bucket(key, title, sub) {
+        if (!byKey[key]) {
+            var b = { key: key, title: title, sub: sub || '', items: [] };
+            byKey[key] = b;
+            buckets.push(b);
+        }
+        return byKey[key];
+    }
+
+    (players || []).forEach(function(p, idx) {
+        var gender = (p && p.gender) || 'men';
+        var eff = (p && p.hcp !== null && p.hcp !== undefined && p.hcp !== '') ? psEffectiveExact(p) : null;
+        if (useDivs) {
+            var d = (eff === null) ? null : tnFindDivision(tn, eff, gender);
+            if (d && d.name) {
+                var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
+                var teeTxt = d.tee ? (' · ' + psTeeName(d.tee)) : '';
+                bucket('div:' + (d.id || d.name), d.name, (rg ? 'HCP ' + rg : '') + teeTxt).items.push({ p: p, idx: idx });
+            } else {
+                bucket('none', psL('Без группы', 'Without group'), '').items.push({ p: p, idx: idx });
+            }
+        } else {
+            var band = psAutoHcpBand(eff === null ? NaN : eff);
+            var gTxt = gender === 'women' ? ('👩 ' + psL('Девушки', 'Women')) : ('👨 ' + psL('Мужчины', 'Men'));
+            var key = 'auto:' + gender + ':' + band.key;
+            var order = (gender === 'women' ? '1' : '0') + band.key;
+            var b = bucket(key, gTxt + ' · HCP ' + band.title, '');
+            b.order = order;
+            b.items.push({ p: p, idx: idx });
+        }
+    });
+
+    if (!useDivs) {
+        buckets.sort(function(a, b) { return String(a.order || '').localeCompare(String(b.order || '')); });
+    } else {
+        // «Без группы» — всегда в конце.
+        buckets.sort(function(a, b) {
+            if (a.key === 'none') return 1;
+            if (b.key === 'none') return -1;
+            return 0;
+        });
+    }
+    return { buckets: buckets, useDivs: useDivs };
+}
+
+function psRosterGroupDomId(key) {
+    return 'ps-rg-' + String(key || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function psToggleRosterGroup(key) {
+    if (!psState.rosterCollapsed) psState.rosterCollapsed = {};
+    psState.rosterCollapsed[key] = !psState.rosterCollapsed[key];
+    var collapsed = !!psState.rosterCollapsed[key];
+    try {
+        var body = document.getElementById(psRosterGroupDomId(key));
+        var icon = document.getElementById(psRosterGroupDomId(key) + '-icon');
+        if (body) body.classList.toggle('hidden', collapsed);
+        if (icon) icon.className = collapsed ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+    } catch (e) {}
+}
+
+function psRosterExpandAll(expand) {
+    try {
+        var groups = psRosterGroups(psState.proto ? psState.proto.players : []);
+        if (!psState.rosterCollapsed) psState.rosterCollapsed = {};
+        groups.buckets.forEach(function(b) { psState.rosterCollapsed[b.key] = !expand; });
+    } catch (e) {}
+    psRender();
 }
 
 function psRenderRosterTable(proto) {
@@ -945,11 +1235,41 @@ function psRenderRosterTable(proto) {
         return '<p style="color:var(--muted);font-size:13px;margin:0;"><i class="fas fa-circle-info"></i> ' +
             psL('Список пуст. Загрузите участников из регистрации турнира, импортируйте Excel или добавьте вручную.', 'List is empty. Load players from the tournament registration, import an Excel file or add them manually.') + '</p>';
     }
-    var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
-    players.forEach(function(p, i) { html += psRosterRowHtml(p, i); });
+    var grouped = psRosterGroups(players);
+    var cutActive = false;
+    try {
+        cutActive = (psCutAffectedCount().hit > 0);
+    } catch (e) {}
+    var html = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">';
+    html += '<span style="font-size:11.5px;color:var(--muted);"><i class="fas fa-layer-group"></i> ' +
+        (grouped.useDivs
+            ? psL('Группы турнира', 'Tournament groups')
+            : psL('Авто-группы: пол + гандикап', 'Auto groups: gender + handicap')) +
+        (cutActive ? ' ' + psL('(с учётом обрезки ✂)', '(with cut ✂)') : '') + '</span>';
+    html += '<span style="flex:1;"></span>';
+    html += '<button class="btn btn-ol btn-sm" style="padding:3px 10px;font-size:11px;" onclick="psRosterExpandAll(true)"><i class="fas fa-chevrons-up"></i> ' + psL('Развернуть все', 'Expand all') + '</button>';
+    html += '<button class="btn btn-ol btn-sm" style="padding:3px 10px;font-size:11px;" onclick="psRosterExpandAll(false)"><i class="fas fa-chevrons-down"></i> ' + psL('Свернуть все', 'Collapse all') + '</button>';
+    html += '</div>';
+
+    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+    grouped.buckets.forEach(function(b) {
+        var collapsed = !!(psState.rosterCollapsed && psState.rosterCollapsed[b.key]);
+        var domId = psRosterGroupDomId(b.key);
+        var safeKey = String(b.key).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        html += '<div class="ps-rgroup">';
+        html += '<button type="button" class="ps-rgroup-head" onclick="psToggleRosterGroup(\'' + safeKey + '\')">' +
+            '<i id="' + domId + '-icon" class="' + (collapsed ? 'fas fa-chevron-down' : 'fas fa-chevron-up') + '"></i> ' +
+            '<span class="ps-rgroup-title">' + escapeHtml(b.title) + '</span>' +
+            (b.sub ? '<span class="ps-rgroup-sub">' + escapeHtml(b.sub) + '</span>' : '') +
+            '<span class="ps-rgroup-count">' + b.items.length + '</span>' +
+            '</button>';
+        html += '<div id="' + domId + '" class="ps-rgroup-body' + (collapsed ? ' hidden' : '') + '">';
+        b.items.forEach(function(it) { html += psRosterRowHtml(it.p, it.idx); });
+        html += '</div></div>';
+    });
     html += '</div>';
     html += '<p style="color:var(--muted);font-size:11px;margin:12px 0 0;"><i class="fas fa-lightbulb"></i> ' +
-        psL('Полевой гандикап пересчитывается автоматически при изменении точного гандикапа, пола или ТИ. Порядок списка важен для раскладки «в порядке списка».', 'The course handicap is recalculated automatically when the exact handicap, gender or tee changes. List order matters for the “as listed” distribution.') + '</p>';
+        psL('Полевой гандикап пересчитывается автоматически при изменении точного гандикапа, пола или ТИ. Группы можно сворачивать. Порядок списка важен для раскладки «в порядке списка».', 'The course handicap is recalculated automatically when the exact handicap, gender or tee changes. Groups can be collapsed. List order matters for the “as listed” distribution.') + '</p>';
     return html;
 }
 
@@ -1016,6 +1336,12 @@ function psAddManual() {
     p.hcp = psParseHcp((psEl('ps-m-hcp') || {}).value);
     p.gender = (psEl('ps-m-gender') || {}).value || 'men';
     p.tee = (psEl('ps-m-tee') || {}).value || psState.proto.tee || 'wh';
+    // Страховка: женское имя/фамилия при нетронутом селекте пола —
+    // всё равно девушка с женскими ТИ (живой авто-подбор — в psManualFioAuto).
+    if (p.gender === 'men' && psGuessGender(p.lastName, p.firstName, p.middleName) === 'women') {
+        p.gender = 'women';
+        if (p.tee === (psState.proto.tee || 'wh')) p.tee = psDefaultTeeFor('women', p.hcp);
+    }
     if (!p.lastName && !p.firstName) {
         toast(psL('⚠️ Укажите фамилию и имя игрока', '⚠️ Enter the player\'s name'), 'error');
         return;
@@ -1070,8 +1396,6 @@ function psLoadRegistered() {
                 p.id = uid;
                 p.source = 'registered';
                 p.hcp = (r.handicap !== undefined && r.handicap !== null) ? parseFloat(r.handicap) : null;
-                p.tee = r.tee || psState.proto.tee || 'wh';
-                p.gender = r.gender || psGenderFromName(p.firstName);
                 var u = users[uid] || (r.uid ? users[r.uid] : null) || {};
                 var up = psUserParts(u);
                 if (up.lastName || up.firstName) {
@@ -1079,7 +1403,6 @@ function psLoadRegistered() {
                     p.firstName = up.firstName;
                     p.middleName = up.middleName;
                     if (!p.hcp && u.handicap !== undefined && u.handicap !== null) p.hcp = parseFloat(u.handicap);
-                    if (!p.tee && u.defaultTee) p.tee = u.defaultTee;
                     // Гостевая запись со случайным ключом, но под ней может быть uid аккаунта
                     if (r.uid && users[r.uid] && !users[uid]) p.id = r.uid;
                 } else {
@@ -1092,6 +1415,11 @@ function psLoadRegistered() {
                 if (p.hcp === null || isNaN(p.hcp)) {
                     if (u && u.handicap !== undefined && u.handicap !== null) p.hcp = parseFloat(u.handicap);
                 }
+                // Пол и ТИ определяем ПОСЛЕ разбора имени: женские имена
+                // автоматически получают пол «women» и женские ТИ
+                // (красные/белые — по группе турнира или по умолчанию).
+                p.gender = r.gender || u.gender || psGuessGender(p.lastName, p.firstName, p.middleName);
+                p.tee = r.tee || u.defaultTee || psDefaultTeeFor(p.gender, p.hcp);
                 if (!p.lastName && !p.firstName) return;
                 items.push({ uid: uid, r: r, p: p });
             });
@@ -1172,6 +1500,9 @@ function psHeaderKey(raw) {
     if (/отчеств|middle|patronymic/.test(s)) return 'middleName';
     if (/(^|\s)фио($|\s)|участник|игрок|спортсмен|полное имя|full ?name|гольфист|(^|\s)player($|\s)/.test(s)) return 'fio';
     if (/(^|\s)имя($|\s)|first ?name|given ?name/.test(s)) return 'firstName';
+    // ВАЖНО: «возраст», «лет», «год рождения», «age», «birth» — это НЕ гандикап.
+    // Иначе возраст игрока (например 17) импортировался бы как HCP 17.
+    if (/возраст|год рождения|года рождения|дата рождения|age|birth|born/.test(s)) return 'age';
     if (/гандикап|hcp|handicap|(^|\s)hi($|\s)|индекс/.test(s)) return 'hcp';
     if (/(^|\s)пол($|\s)|(^|\s)пол\(|gender|(^|\s)sex($|\s)/.test(s)) return 'gender';
     if (/(^|\s)ти($|\s)|(^|\s)ти\s|ти-бокс|тибокс|tee/.test(s)) return 'tee';
@@ -1192,28 +1523,44 @@ function psHcpHeaderBetterThan(cur, h) {
     return precise(s) > precise(c);
 }
 
-function psGenderFromName(firstName) {
-    var n = psNorm(firstName).replace(/ь$/,'');
-    if (!n) return 'men';
-    // Common Russian and international feminine first-name endings/names.
-    if (/^(мария|анна|ольга|елена|наталья|ирина|светлана|екатерина|юлия|татьяна|марина|дарья|александра|виктория|полина|алина|людмила|надежда|валентина|любовь|sofia|sophia|maria|anna|olga|elena|irina|julia|victoria)$/.test(n) || /(а|я|ия)$/.test(n)) return 'women';
+// Пол по ФИО (когда колонка пола в таблице не указана).
+// Приоритет признаков: отчество → фамилия → имя.
+// Женские имена/фамилии автоматически получают пол «women» и дальше —
+// женские ТИ и женскую группу турнира.
+function psGenderFromName(firstName, lastName, middleName) {
+    var mid = psNorm(middleName).replace(/[.]/g, '');
+    // Отчество — самый надёжный признак: -овна/-евна/-ична (ж), -ович/-евич/-ич (м).
+    if (mid.length > 3 && /(овна|евна|ична|инична)$/.test(mid)) return 'women';
+    if (mid.length > 2 && /(ович|евич|ич)$/.test(mid)) return 'men';
+    var last = psNorm(lastName).replace(/[.]/g, '');
+    // Женские фамилии: -ова/-ева/-ина/-ая/-яя/-ская/-цкая.
+    if (last.length > 3 && /(ова|ева|ина|ая|яя|ская|цкая)$/.test(last)) return 'women';
+    // Мужские фамилии (-ов/-ев/-ин/-ский) — тоже уверенный признак.
+    if (last.length > 3 && /(ов|ев|ин|ын|ский|цкий|ой)$/.test(last)) return 'men';
+    var s = psNorm(firstName).replace(/[.]/g, '');
+    if (!s) return 'men';
+    // Мужские имена на -а/-я — исключения из правила окончаний.
+    // («Саша»/«Женя» тут нет специально: они бывают и женскими.)
+    var maleA = ['никита', 'илья', 'фома', 'кузьма', 'савва', 'лука', 'данила', 'захара', 'миша', 'паша', 'дима', 'коля'];
+    if (maleA.indexOf(s) !== -1) return 'men';
+    var female = ['анна', 'мария', 'елена', 'ольга', 'наталья', 'наталия', 'ирина', 'светлана', 'екатерина', 'татьяна', 'юлия', 'юлия', 'александра', 'дарья', 'дарина', 'виктория', 'полина', 'ксения', 'евгения', 'людмила', 'галина', 'валерия', 'вероника', 'карина', 'кристина', 'марина', 'надежда', 'нина', 'раиса', 'софия', 'софья', 'алина', 'алиса', 'милана', 'таисия', 'варвара', 'маргарита', 'лариса', 'любовь', 'вера', 'зоя', 'инна', 'елизавета', 'анастасия', 'оксана', 'жанна', 'регина', 'элина', 'камила', 'лилия', 'эмма', 'валентина', 'albina', 'sofia', 'sophia', 'maria', 'anna', 'olga', 'elena', 'irina', 'julia', 'victoria', 'emma', 'sarah', 'kate', 'elena', 'nina'];
+    if (female.indexOf(s) !== -1) return 'women';
+    // Общее правило: русские женские имена оканчиваются на -а/-я.
+    if (/(а|я)$/.test(s)) return 'women';
     return 'men';
+}
+
+// Удобная обёртка: пол по частям ФИО в порядке «Фамилия, Имя, Отчество».
+function psGuessGender(lastName, firstName, middleName) {
+    try {
+        return psGenderFromName(firstName, lastName, middleName);
+    } catch (e) { return 'men'; }
 }
 
 function psGenderFromCell(v) {
     var s = psNorm(v).replace(/[.]/g, '');
     if (!s) return 'men';
     if (['ж', 'жен', 'женский', 'женщина', 'девушка', 'девочка', 'f', 'female', 'w', 'women', 'woman'].indexOf(s) !== -1 || s.indexOf('жен') === 0 || s.indexOf('дев') === 0) return 'women';
-    return 'men';
-}
-
-// Если колонка пола не указана, определяем его по имени. Это намеренно
-// консервативный словарь: неизвестное имя остаётся мужским, чтобы не
-// назначить игроку женские ТИ случайно.
-function psGenderFromName(firstName) {
-    var s = psNorm(firstName).replace(/[.]/g, '');
-    var female = ['анна','мария','елена','ольга','наталья','наталия','ирина','светлана','екатерина','татьяна','юлия','юлия','александра','дарья','дарина','виктория','полина','ксения','евгения','людмила','галина','валерия','вероника','карина','кристина','марина','надежда','нина','раиса','софия','софья','алина','алиса','милана','таисия','варвара','маргарита','лариса','любовь','вера','зоя','инна'];
-    if (female.indexOf(s) !== -1 || /(?:а|я)$/.test(s) && ['никита','илья'].indexOf(s) === -1) return 'women';
     return 'men';
 }
 
@@ -1256,6 +1603,11 @@ function psTeeFromCell(v) {
 function psParseHcpFromCell(raw) {
     if (typeof raw === 'number') return isFinite(raw) ? raw : null;
     if (raw === 0 || raw === '0') return 0;
+    // Даты («12.05.2010», «2010-05-12», «12/05/2010») — это дни рождения,
+    // а не гандикапы. Без этой проверки из даты вытаскивалось бы «12.05».
+    var s0 = String(raw == null ? '' : raw).trim();
+    if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(s0)) return null;
+    if (/^\d{4}[./-]\d{1,2}[./-]\d{1,2}$/.test(s0)) return null;
     var direct = psParseHcp(raw);
     if (direct !== null) return direct;
     // Строки вида «HCP 12.4», «(13)», «гандикап: 8,5» — вытаскиваем первое число
@@ -1295,8 +1647,6 @@ function psParseExcelRows(json) {
 
         var rawHcp = keys.hcp ? r[keys.hcp] : null;
         var hcp = psParseHcpFromCell(rawHcp);
-        var gender = keys.gender ? psGenderFromCell(r[keys.gender]) : psGenderFromName(firstName);
-        var tee = keys.tee ? psTeeFromCell(r[keys.tee]) : null;
 
         if (fio && !lastName && !firstName) {
             // «Тестов Иван Петрович» или «Иван Петрович Тестов»
@@ -1322,6 +1672,12 @@ function psParseExcelRows(json) {
             invalid.push({ row: i + 2, name: fio, err: psL('нет имени', 'no name') });
             return;
         }
+        // Пол и ТИ — ПОСЛЕ полного разбора имени: женские имена/фамилии
+        // автоматически получают пол «women» и женские ТИ.
+        var gender = keys.gender ? psGenderFromCell(r[keys.gender]) : psGuessGender(lastName, firstName, middleName);
+        var tee = keys.tee ? psTeeFromCell(r[keys.tee]) : psDefaultTeeFor(gender, hcp);
+        // Гандикап 0/плюс из голой колонки «Группа» не восстанавливаем —
+        // psParseHcpFromCell уже вернул null для мусорных значений.
 
         var errors = [];
         if (hcp === null) errors.push(psL('нет/неверный гандикап', 'missing/invalid handicap'));
@@ -1432,12 +1788,20 @@ function psParseExcelGrid(aoa) {
 
     var colInfo = [];
     for (var c = 0; c < colCount; c++) {
-        var nn = 0, hcpH = 0, teeH = 0, genH = 0, txtH = 0, wordSum = 0, surnameH = 0;
+        var nn = 0, hcpH = 0, teeH = 0, genH = 0, txtH = 0, wordSum = 0, surnameH = 0, dateH = 0, fracH = 0, bigH = 0;
         sample.forEach(function(r) {
             var v = r.cells[c];
             if (String(v == null ? '' : v).trim() === '') return;
             nn++;
-            if (psParseHcpFromCell(v) !== null) hcpH++;
+            var hv = psParseHcpFromCell(v);
+            if (hv !== null) {
+                hcpH++;
+                // Точного гандикапа больше 54.0 не бывает — это возраст/номер/мусор.
+                if (Math.abs(hv) > 54.0001) bigH++;
+                else if (Math.abs(hv - Math.round(hv)) > 1e-9) fracH++;
+            } else if (typeof v === 'string' && /^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(v.trim())) {
+                dateH++;
+            }
             if (psTeeFromCell(v) !== null) teeH++;
             if (psGenderCellSure(v)) genH++;
             if (typeof v === 'string' && /[A-Za-zА-Яа-яЁё]/.test(v)) {
@@ -1446,7 +1810,7 @@ function psParseExcelGrid(aoa) {
                 if (psLooksLikeSurname(v.trim().split(/\s+/)[0])) surnameH++;
             }
         });
-        colInfo.push({ c: c, nn: nn, hcpH: hcpH, teeH: teeH, genH: genH, txtH: txtH, avgWords: nn ? wordSum / nn : 0, surnameH: surnameH });
+        colInfo.push({ c: c, nn: nn, hcpH: hcpH, teeH: teeH, genH: genH, txtH: txtH, avgWords: nn ? wordSum / nn : 0, surnameH: surnameH, dateH: dateH, fracH: fracH, bigH: bigH });
     }
 
     function colFree(ci, roles) {
@@ -1462,22 +1826,37 @@ function psParseExcelGrid(aoa) {
         if (!ci.nn || ci.c === roles.tee) return;
         if (roles.gender === null && psGenderColDominant(ci)) roles.gender = ci.c;
     });
+    // Колонка гандикапа: среди всех «похожих на числа» колонок выбираем лучшую.
+    // Штрафуем даты рождения, неправдоподобно большие значения (>54 — точного
+    // гандикапа таким не бывает) и голые целые без дробей (часто это возраст).
+    // Поощряем дробные значения: «12,4» — почти наверняка гандикап.
+    var hcpCands = [];
     colInfo.forEach(function(ci) {
-        if (!ci.nn || roles.hcp !== null) return;
-        if (ci.teeH / ci.nn < 0.4 && ci.genH / ci.nn < 0.4 && ci.hcpH / ci.nn >= 0.8 && ci.txtH / ci.nn <= 0.6) {
-            // не порядковый ли это столбец (1,2,3… или N,N+1,…)?
-            var base = null, isSeq = true;
-            for (var si = 0; si < sample.length; si++) {
-                var v = sample[si].cells[ci.c];
-                if (String(v).trim() === '') continue;
-                var num = parseFloat(String(v).replace(',', '.'));
-                if (isNaN(num)) { isSeq = false; break; }
-                if (base === null) base = num - si;
-                if (num !== base + si) { isSeq = false; break; }
-            }
-            if (!isSeq) roles.hcp = ci.c;
+        if (!ci.nn) return;
+        if (ci.c === roles.tee || ci.c === roles.gender) return;
+        if (ci.teeH / ci.nn >= 0.4 || ci.genH / ci.nn >= 0.4) return;
+        if (ci.hcpH / ci.nn < 0.8 || ci.txtH / ci.nn > 0.6) return;
+        // не порядковый ли это столбец (1,2,3… или N,N+1,…)?
+        var base = null, isSeq = true, nSeq = 0;
+        for (var si = 0; si < sample.length; si++) {
+            var v = sample[si].cells[ci.c];
+            if (String(v == null ? '' : v).trim() === '') continue;
+            var num = parseFloat(String(v).replace(',', '.'));
+            if (isNaN(num)) { isSeq = false; break; }
+            nSeq++;
+            if (base === null) base = num - si;
+            if (num !== base + si) { isSeq = false; break; }
         }
+        if (isSeq && nSeq >= 2) return;
+        var score = ci.hcpH / ci.nn;
+        if (ci.dateH / ci.nn >= 0.3) score -= 2;
+        if (ci.bigH / ci.nn >= 0.3) score -= 2;
+        if (!ci.fracH) score -= 0.4;
+        else score += (ci.fracH / ci.nn) * 1.5;
+        hcpCands.push({ c: ci.c, score: score });
     });
+    hcpCands.sort(function(a, b) { return b.score - a.score; });
+    if (hcpCands.length && hcpCands[0].score > 0.5) roles.hcp = hcpCands[0].c;
 
     // Текстовые колонки — кандидаты на ФИО
     var textCols = colInfo.filter(function(ci) {
@@ -1525,14 +1904,16 @@ function psParseExcelGrid(aoa) {
             middleName = p2.middleName || middleName;
         }
         var hcp = roles.hcp !== null ? psParseHcpFromCell(cells[roles.hcp]) : null;
-        var gender = roles.gender !== null ? psGenderFromCell(cells[roles.gender]) : psGenderFromName(firstName);
-        var tee = roles.tee !== null ? psTeeFromCell(cells[roles.tee]) : null;
 
         if (psIsFooterRowText(lastName) || psIsFooterRowText(firstName)) return;
         if (!lastName && !firstName) {
             invalid.push({ row: dr.rowNum, name: '', err: psL('нет имени', 'no name') });
             return;
         }
+        // Пол и ТИ — ПОСЛЕ полного разбора имени: женские имена/фамилии
+        // автоматически получают пол «women» и женские ТИ.
+        var gender = roles.gender !== null ? psGenderFromCell(cells[roles.gender]) : psGuessGender(lastName, firstName, middleName);
+        var tee = roles.tee !== null ? psTeeFromCell(cells[roles.tee]) : psDefaultTeeFor(gender, hcp);
         var errors = [];
         if (hcp === null) errors.push(psL('нет/неверный гандикап', 'missing/invalid handicap'));
         var rec = { row: dr.rowNum, lastName: lastName, firstName: firstName, middleName: middleName || '', hcp: hcp, gender: gender, tee: tee, errors: errors, matchedUid: null };
@@ -1602,7 +1983,7 @@ function psExcelPick(input) {
                         var u = psState.users[uid] || {};
                         if ((r.hcp === null || r.hcp === undefined) && u.handicap !== undefined && u.handicap !== null && String(u.handicap).trim() !== '') r.hcp = parseFloat(u.handicap);
                         if (!r.tee && u.defaultTee) r.tee = u.defaultTee;
-                        r.gender = r.gender || u.gender || psGenderFromName(r.firstName);
+                        r.gender = r.gender || u.gender || psGuessGender(r.lastName, r.firstName, r.middleName);
                     }
                 }
                 merged.valid.forEach(tryMatch);
@@ -1678,17 +2059,44 @@ function psRenderExcelBox() {
         html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">';
         html += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:rgba(255,255,255,.04);">' +
             '<th style="padding:8px;text-align:left;">#</th><th style="padding:8px;text-align:left;">' + psL('ФИО', 'Name') + '</th>' +
+            '<th style="padding:8px;text-align:left;">' + psL('Пол', 'Gender') + '</th>' +
             '<th style="padding:8px;text-align:left;">' + psL('Точный гандикап', 'Exact handicap') + '</th>' +
+            '<th style="padding:8px;text-align:left;">' + psL('ТИ', 'Tee') + '</th>' +
+            '<th style="padding:8px;text-align:left;" title="' + psL('Точный гандикап после обрезки турнира', 'Exact handicap after the tournament cut') + '">✂</th>' +
+            '<th style="padding:8px;text-align:left;">' + psL('Группа', 'Group') + '</th>' +
             (multi ? '<th style="padding:8px;text-align:left;">' + psL('Страница', 'Sheet') + '</th>' : '') +
             '<th style="padding:8px;text-align:left;"></th></tr></thead><tbody>';
         data.valid.forEach(function(r, i) {
             var fio = [r.lastName, r.firstName, r.middleName].filter(function(w) { return String(w || '').trim(); }).join(' ');
             var hcpTxt = r.hcp !== null ? psHcpFmt(r.hcp) : '<span style="color:var(--red);">—</span>';
+            var gTxt = r.gender === 'women' ? ('👩 ' + psL('Ж', 'F')) : ('👨 ' + psL('М', 'M'));
+            var teeTxt = r.tee ? psTeeName(r.tee) : '—';
+            var effTxt = '—';
+            if (r.hcp !== null && r.hcp !== undefined) {
+                try {
+                    var eff = psEffectiveExactFor(r.hcp, r.gender || 'men');
+                    effTxt = (Math.abs(eff - r.hcp) >= 0.049)
+                        ? ('<b style="color:var(--gold);">' + psHcpFmt(eff) + '</b>')
+                        : ('<span style="color:var(--muted);">' + psHcpFmt(eff) + '</span>');
+                } catch (e) { effTxt = '—'; }
+            }
+            var divTxt = '—';
+            try {
+                var dv = psFindDivisionFor(r.hcp, r.gender || 'men');
+                if (dv && dv.name) {
+                    var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(dv) : '';
+                    divTxt = '<span class="tn-div-chip">' + escapeHtml(dv.name) + (rg ? ' · ' + escapeHtml(rg) : '') + '</span>';
+                }
+            } catch (e) {}
             html += '<tr style="border-top:1px solid var(--border);">' +
                 '<td style="padding:6px 8px;">' + (i + 1) + '</td>' +
                 '<td style="padding:6px 8px;"><b>' + escapeHtml(fio) + '</b>' +
                 (r.matchedUid ? ' <span class="hcp-chip" style="background:rgba(46,204,113,.15);color:#2ecc71;font-size:10px;"><i class="fas fa-circle-check"></i></span>' : '') + '</td>' +
+                '<td style="padding:6px 8px;white-space:nowrap;">' + gTxt + '</td>' +
                 '<td style="padding:6px 8px;">' + hcpTxt + '</td>' +
+                '<td style="padding:6px 8px;white-space:nowrap;">' + escapeHtml(teeTxt) + '</td>' +
+                '<td style="padding:6px 8px;white-space:nowrap;">' + effTxt + '</td>' +
+                '<td style="padding:6px 8px;">' + divTxt + '</td>' +
                 (multi ? '<td style="padding:6px 8px;color:var(--muted);font-size:11px;">' + escapeHtml(r.sheet || '') + '</td>' : '') +
                 '<td style="padding:6px 8px;"><input type="checkbox" id="ps-exc-cb-' + i + '" checked style="width:17px;height:17px;cursor:pointer;"></td></tr>';
         });
@@ -1721,7 +2129,7 @@ function psExcelAdd() {
         var p = psNewPlayer();
         p.lastName = r.lastName; p.firstName = r.firstName; p.middleName = r.middleName || '';
         p.gender = r.gender || 'men';
-        p.tee = r.tee || psState.proto.tee || 'wh';
+        p.tee = r.tee || psDefaultTeeFor(p.gender, r.hcp);
         p.hcp = r.hcp;
         p.source = 'excel';
         p.uidMatched = !!r.matchedUid;
@@ -2185,7 +2593,7 @@ function psRenderGroupsResult() {
         // Добавить игрока прямо в группу
         html += '<div id="ps-ga-form-' + gi + '" class="hidden" style="background:rgba(201,168,76,0.07);border:1px dashed var(--gold);border-radius:8px;padding:10px;margin-bottom:8px;">';
         html += '<div class="form-row" style="gap:6px;margin-bottom:6px;">' +
-            '<div class="form-group" style="flex:2 1 140px;margin:0;"><label style="font-size:10px;color:var(--muted);">' + psL('ФИО (одной строкой)', 'Full name (one line)') + '</label><input type="text" id="ps-ga-fio-' + gi + '" class="form-input" style="padding:6px 8px;font-size:12.5px;" placeholder="' + psL('Тестов Иван Петрович', 'Smith John') + '"></div>' +
+            '<div class="form-group" style="flex:2 1 140px;margin:0;"><label style="font-size:10px;color:var(--muted);">' + psL('ФИО (одной строкой)', 'Full name (one line)') + '</label><input type="text" id="ps-ga-fio-' + gi + '" class="form-input" oninput="psGroupFioAuto(' + gi + ')" style="padding:6px 8px;font-size:12.5px;" placeholder="' + psL('Тестов Иван Петрович', 'Smith John') + '"></div>' +
             '<div class="form-group" style="flex:0 1 82px;margin:0;"><label style="font-size:10px;color:var(--muted);">HCP</label><input type="text" id="ps-ga-hcp-' + gi + '" class="form-input" style="padding:6px 8px;font-size:12.5px;" placeholder="13.0"></div>' +
             '</div>';
         html += '<div class="form-row" style="gap:6px;margin-bottom:8px;">' +
@@ -2419,8 +2827,8 @@ function psGAddPlayer(gi) {
     }
     var fio = (psEl('ps-ga-fio-' + gi) || {}).value || '';
     var hcpRaw = (psEl('ps-ga-hcp-' + gi) || {}).value || '';
-    var gender = (psEl('ps-ga-gender-' + gi) || {}).value || 'men';
-    var tee = (psEl('ps-ga-tee-' + gi) || {}).value || (psState.proto && psState.proto.tee) || 'wh';
+    var genderSel = (psEl('ps-ga-gender-' + gi) || {}).value || 'men';
+    var teeSel = (psEl('ps-ga-tee-' + gi) || {}).value || null;
     var parsed = psSplitFio(fio);
     if (!parsed.lastName && !parsed.firstName) {
         toast(psL('⚠️ Введите ФИО игрока', '⚠️ Enter the player name'), 'error');
@@ -2430,6 +2838,13 @@ function psGAddPlayer(gi) {
     if (hcp === null) {
         toast(psL('⚠️ Укажите корректный точный гандикап', '⚠️ Enter a valid exact handicap'), 'error');
         return;
+    }
+    // Женское имя/фамилия при нетронутом селекте пола — тоже девушка.
+    var gender = genderSel;
+    if (genderSel === 'men' && psGuessGender(parsed.lastName, parsed.firstName, parsed.middleName) === 'women') gender = 'women';
+    var tee = teeSel || psDefaultTeeFor(gender, hcp);
+    if (gender === 'women' && teeSel === ((psState.proto && psState.proto.tee) || 'wh') && teeSel !== psDefaultTeeFor('women', hcp)) {
+        tee = psDefaultTeeFor('women', hcp);
     }
     var p = psNewPlayer();
     p.lastName = parsed.lastName; p.firstName = parsed.firstName; p.middleName = parsed.middleName || '';
@@ -2682,7 +3097,7 @@ function psSaveProtocol() {
             method: proto.method || 'hcpSnake',
             interval: parseInt(proto.interval, 10) || 8,
             startTime: proto.startTime || '09:00',
-            hcpCut: { enabled: proto.hcpCutEnabled === true, percent: proto.hcpCutPercent || 100, maxMen: (proto.hcpMaxMen === '' ? null : proto.hcpMaxMen), maxWomen: (proto.hcpMaxWomen === '' ? null : proto.hcpMaxWomen) },
+            hcpCut: { enabled: proto.hcpCutEnabled === true, percent: proto.hcpCutPercent || 100, maxEnabled: proto.hcpCutMaxEnabled === true, maxMen: (proto.hcpMaxMen === '' ? null : proto.hcpMaxMen), maxWomen: (proto.hcpMaxWomen === '' ? null : proto.hcpMaxWomen) },
             playersCount: totalPlayers,
             groupsCount: groups.length,
             status: 'ready',
@@ -2723,6 +3138,79 @@ function psSaveProtocol() {
 // розданные QR-коды продолжают работать (новичку достаточно
 // QR-карточки игрока, которого он заменяет).
 // ----------------------------------------------------------
+// При открытии протокола на правку подтягиваем в «Участники стартового листа»
+// всех заявленных на турнир игроков, которых ещё нет ни в одной группе.
+// Источник приоритета: регистрация турнира → аккаунты найденных игроков.
+// Если регистрации нет (старый протокол), достраиваем по аккаунтам всех
+// участников групп. Без базы тихо выходим — правка групп всё равно работает.
+function psPrefillEditRoster() {
+    if (typeof db === 'undefined' || !db) return;
+    if (!psState.proto || !psState.selId) return;
+    var inGroups = {};
+    (psState.groups || []).forEach(function(g) {
+        (g.members || []).forEach(function(m) {
+            var k = psKeyOf(m);
+            if (k) inGroups[k] = true;
+        });
+    });
+    db.ref('tournaments/' + psState.selId + '/registeredPlayers').once('value').then(function(sn) {
+        var reg = sn.val() || {};
+        var keys = Object.keys(reg);
+        if (!keys.length) return;
+        psLoadUsers(function(users) {
+            if (!psState.editingId || !psState.proto) return; // правку уже закрыли
+            var added = 0;
+            keys.forEach(function(uid) {
+                var r = reg[uid] || {};
+                var p = psNewPlayer();
+                p.id = uid;
+                p.source = 'registered';
+                p.hcp = (r.handicap !== undefined && r.handicap !== null) ? parseFloat(r.handicap) : null;
+                var u = users[uid] || (r.uid ? users[r.uid] : null) || {};
+                var up = psUserParts(u);
+                if (up.lastName || up.firstName) {
+                    p.lastName = up.lastName;
+                    p.firstName = up.firstName;
+                    p.middleName = up.middleName;
+                    if (!p.hcp && u.handicap !== undefined && u.handicap !== null) p.hcp = parseFloat(u.handicap);
+                    if (r.uid && users[r.uid] && !users[uid]) p.id = r.uid;
+                } else {
+                    var parsed = psSplitFio(r.name || '');
+                    p.lastName = parsed.lastName;
+                    p.firstName = parsed.firstName;
+                    p.middleName = parsed.middleName;
+                    if (r.uid && users[r.uid]) p.id = r.uid;
+                }
+                if ((p.hcp === null || isNaN(p.hcp)) && u && u.handicap !== undefined && u.handicap !== null) p.hcp = parseFloat(u.handicap);
+                if (!p.lastName && !p.firstName) return;
+                p.gender = r.gender || u.gender || psGuessGender(p.lastName, p.firstName, p.middleName);
+                p.tee = r.tee || u.defaultTee || psDefaultTeeFor(p.gender, p.hcp);
+                var k = psKeyOf(p);
+                if (k && inGroups[k]) return; // уже играет в одной из групп
+                var dup = false;
+                psState.proto.players.forEach(function(ex) { if (!dup && psSamePerson(ex, p)) dup = true; });
+                if (dup) return;
+                p.uidMatched = !!p.id && String(p.id).indexOf('gst_') !== 0 && !!users[p.id];
+                psState.proto.players.push(p);
+                if (k) inGroups[k] = true;
+                added++;
+            });
+            if (added > 0) {
+                psRender();
+                psScrollToRoster();
+                toast(psL('📋 В стартовый лист подтянуто ' + added + ' заявленных (их нет в группах) — переносите кнопкой «В группу…»', '📋 Pulled ' + added + ' registered players into the start list (not in any group) — move them with “Into group…”'), 'info');
+            }
+        });
+    }).catch(function() {});
+}
+
+function psScrollToRoster() {
+    var el = psEl('ps-roster-card');
+    if (el && el.scrollIntoView) {
+        try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { el.scrollIntoView(); }
+    }
+}
+
 function psEditProtocol(pid) {
     if (!pid || typeof db === 'undefined' || !db || psState.busy) return;
     toast(psL('⏳ Загружаю протокол…', '⏳ Loading protocol…'), 'info');
@@ -2754,10 +3242,13 @@ function psEditProtocol(pid) {
         if (doc.hcpCut) {
             proto.hcpCutEnabled = doc.hcpCut.enabled === true;
             proto.hcpCutPercent = (doc.hcpCut.percent == null || doc.hcpCut.percent === '') ? 100 : doc.hcpCut.percent;
+            proto.hcpCutMaxEnabled = (doc.hcpCut.maxEnabled === undefined || doc.hcpCut.maxEnabled === null)
+                ? (doc.hcpCut.maxMen != null || doc.hcpCut.maxWomen != null)
+                : (doc.hcpCut.maxEnabled === true);
             proto.hcpMaxMen = (doc.hcpCut.maxMen == null) ? '' : doc.hcpCut.maxMen;
             proto.hcpMaxWomen = (doc.hcpCut.maxWomen == null) ? '' : doc.hcpCut.maxWomen;
         }
-        proto.players = []; // участники редактируются прямо в группах
+        proto.players = []; // ниже подтянем всех заявленных, кого ещё нет в группах
         psState.proto = proto;
 
         var gkeys = Object.keys(doc.groups).sort(function(a, b) {
@@ -2804,6 +3295,7 @@ function psEditProtocol(pid) {
         });
         psState.groups = groups;
         psState.editRounds = {};
+        psPrefillEditRoster(); // всех заявленных, кого нет в группах, — в стартовый лист
         psRender();
         if (!roundIds.length) {
             psScrollToGroups();
@@ -3096,7 +3588,7 @@ function psSaveEdits() {
         sets['protocols/' + pid + '/formats'] = formatsList;
         sets['protocols/' + pid + '/startTime'] = proto.startTime || '09:00';
         sets['protocols/' + pid + '/interval'] = parseInt(proto.interval, 10) || 8;
-        sets['protocols/' + pid + '/hcpCut'] = { enabled: proto.hcpCutEnabled === true, percent: proto.hcpCutPercent || 100, maxMen: (proto.hcpMaxMen === '' ? null : proto.hcpMaxMen), maxWomen: (proto.hcpMaxWomen === '' ? null : proto.hcpMaxWomen) };
+        sets['protocols/' + pid + '/hcpCut'] = { enabled: proto.hcpCutEnabled === true, percent: proto.hcpCutPercent || 100, maxEnabled: proto.hcpCutMaxEnabled === true, maxMen: (proto.hcpMaxMen === '' ? null : proto.hcpMaxMen), maxWomen: (proto.hcpMaxWomen === '' ? null : proto.hcpMaxWomen) };
         sets['protocols/' + pid + '/playersCount'] = totalPlayers;
         sets['protocols/' + pid + '/groupsCount'] = groups.length;
         sets['protocols/' + pid + '/groups'] = groupStore;

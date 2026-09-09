@@ -8185,8 +8185,8 @@ document.addEventListener('DOMContentLoaded', function() {
 //                     hcpFrom, hcpTo, tee: 'bk'|'bl'|'wh'|'rd'|'' }
 // Хранится в tournaments/<id>/divisions (объект или массив).
 // Обрезка гандикапа (только для текущего турнира):
-//   cut = { enabled, percent, maxMen, maxWomen }
-// Сначала применяется максимум по полу, затем процент.
+//   cut = { enabled, percent, maxEnabled, maxMen, maxWomen }
+// Сначала применяется процент, затем максимум по полу.
 // ============================================================
 function tnNormalizeDivisions(tVal) {
     var raw = tVal ? tVal.divisions : null;
@@ -8259,36 +8259,50 @@ function tnDivisionGenderText(g) {
 }
 
 // Обрезка точного гандикапа для турнира.
-// cut = { enabled: bool, percent: 1..100, maxMen: number|null, maxWomen: number|null }
-// Возвращает { raw, capped, effective, cappedByMax, cutApplied }.
+// cut = { enabled: bool, percent: 1..100,
+//         maxEnabled: bool, maxMen: number|null, maxWomen: number|null }
+// Порядок (с v1.46.0): СНАЧАЛА процент, ЗАТЕМ максимум по полу.
+//   точный HCP → процент → новый точный обрезанный → (максимум по полу) → полевой.
+// Процент и максимум включаются НЕЗАВИСИМО: можно резать только процентами,
+// только максимумом по полу или и тем, и другим сразу.
+// Возвращает { raw, afterPercent, capped, effective, cappedByMax, cutApplied }.
 function tnApplyHcpCut(exactHcp, gender, cut) {
     var raw = (exactHcp === '' || exactHcp == null) ? 0 : parseFloat(exactHcp);
     if (isNaN(raw)) raw = 0;
-    var out = { raw: raw, capped: raw, effective: raw, cappedByMax: false, cutApplied: false };
+    var out = { raw: raw, afterPercent: raw, capped: raw, effective: raw, cappedByMax: false, cutApplied: false };
     cut = cut || {};
-    var maxV = null;
-    if ((gender || 'men') === 'women') maxV = (cut.maxWomen === '' || cut.maxWomen == null) ? null : parseFloat(cut.maxWomen);
-    else maxV = (cut.maxMen === '' || cut.maxMen == null) ? null : parseFloat(cut.maxMen);
-    if (maxV != null && !isNaN(maxV) && raw > maxV) {
-        out.capped = maxV;
-        out.cappedByMax = true;
-    }
-    var eff = out.capped;
+    // Шаг 1: процент (если включён).
+    var eff = raw;
     if (cut.enabled) {
         var pct = parseFloat(cut.percent);
         if (isNaN(pct) || pct <= 0) pct = 100;
         if (pct > 100) pct = 100;
         if (pct < 100 - 1e-9) {
-            eff = Math.round(out.capped * pct) / 100;
+            eff = Math.round(raw * pct) / 100;
             out.cutApplied = true;
         }
     }
+    out.afterPercent = Math.round(eff * 10) / 10;
+    // Шаг 2: максимум по полу (если включён).
+    // Старые протоколы (до v1.46.0) флага maxEnabled не имеют — для них максимум
+    // действует, как раньше, если значение задано.
+    var maxOn = (cut.maxEnabled === undefined || cut.maxEnabled === null)
+        ? ((cut.maxMen !== '' && cut.maxMen != null) || (cut.maxWomen !== '' && cut.maxWomen != null))
+        : (cut.maxEnabled === true);
+    var maxV = null;
+    if ((gender || 'men') === 'women') maxV = (cut.maxWomen === '' || cut.maxWomen == null) ? null : parseFloat(cut.maxWomen);
+    else maxV = (cut.maxMen === '' || cut.maxMen == null) ? null : parseFloat(cut.maxMen);
+    if (maxOn && maxV != null && !isNaN(maxV) && eff > maxV) {
+        eff = maxV;
+        out.cappedByMax = true;
+        out.cutApplied = true;
+    }
+    out.capped = eff;
     out.effective = Math.round(eff * 10) / 10;
-    if (out.cappedByMax) out.cutApplied = true;
     return out;
 }
 
-// Полевой гандикап турнира с учётом обрезки (максимум + процент).
+// Полевой гандикап турнира с учётом обрезки (сначала процент, затем максимум по полу).
 function tnTournamentFieldHcp(exactHcp, teeCode, gender, cut) {
     var eff = tnApplyHcpCut(exactHcp, gender, cut).effective;
     if (typeof getFieldHcp === 'function') {

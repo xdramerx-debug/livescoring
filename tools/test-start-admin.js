@@ -230,24 +230,41 @@ eq(sandbox.psGroupMarkersResolved(solo), [], 'маркеры: одиночка �
 
 
 // ── Обрезка гандикапа: psEffectiveExact ──
-sandbox.psState = { proto: { hcpCutEnabled: false, hcpCutPercent: 90, hcpMaxMen: '', hcpMaxWomen: '' } };
+// Порядок: сначала процент, затем максимум по полу (36 → 90% = 32.4 → макс 28).
+sandbox.psState = { proto: { hcpCutEnabled: false, hcpCutPercent: 90, hcpCutMaxEnabled: false, hcpMaxMen: '', hcpMaxWomen: '' } };
 eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36)), 36, 'cut: без обрезки = исходный');
 eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', null)), 0, 'cut: пустой hcp → 0');
 eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 0)), 0, 'cut: hcp 0 → 0');
 eq(sandbox.psEffectiveExact(null), 0, 'cut: null-игрок → 0');
 sandbox.psState.proto.hcpCutEnabled = true;
 sandbox.psState.proto.hcpCutPercent = 90;
+sandbox.psState.proto.hcpCutMaxEnabled = true;
 sandbox.psState.proto.hcpMaxMen = 28;
 sandbox.psState.proto.hcpMaxWomen = '';
-eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 25.2, 'cut: 36 → макс 28 → 90% = 25.2');
-eq(sandbox.psEffectiveExact(mkPlayer('B', 'И', 20, 'men')), 18, 'cut: 20 → 90% = 18');
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 28, 'cut: 36 → 90% = 32.4 → макс 28');
+eq(sandbox.psEffectiveExact(mkPlayer('B', 'И', 20, 'men')), 18, 'cut: 20 → 90% = 18 (макс не задет)');
 eq(sandbox.psEffectiveExact(mkPlayer('C', 'И', 36, 'women')), 32.4, 'cut: женщины без макса: 36 → 90% = 32.4');
 sandbox.psState.proto.hcpMaxWomen = 30;
-eq(sandbox.psEffectiveExact(mkPlayer('C', 'И', 36, 'women')), 27, 'cut: женщины макс 30 → 90% = 27');
+eq(sandbox.psEffectiveExact(mkPlayer('C', 'И', 36, 'women')), 30, 'cut: женщины 36 → 90% = 32.4 → макс 30');
 sandbox.psState.proto.hcpCutPercent = 100;
 eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 28, 'cut: 100% — действует только макс');
+// Режимы: только процент / только максимум / всё выключено
+sandbox.psState.proto.hcpCutEnabled = true;
+sandbox.psState.proto.hcpCutPercent = 90;
+sandbox.psState.proto.hcpCutMaxEnabled = false;
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 32.4, 'cut: только процент (макс выкл): 36 → 32.4');
 sandbox.psState.proto.hcpCutEnabled = false;
-eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 28, 'cut: процент выкл — макс всё равно действует');
+sandbox.psState.proto.hcpCutMaxEnabled = true;
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 28, 'cut: только максимум (процент выкл): 36 → 28');
+sandbox.psState.proto.hcpCutMaxEnabled = false;
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 36, 'cut: всё выключено = исходный');
+// Совместимость: старые протоколы без флага hcpCutMaxEnabled —
+// максимум считается включённым, если значения максимумов заданы.
+delete sandbox.psState.proto.hcpCutMaxEnabled;
+sandbox.psState.proto.hcpCutEnabled = true;
+sandbox.psState.proto.hcpCutPercent = 90;
+eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 28, 'cut: старый протокол без флага — макс активен');
+sandbox.psState.proto.hcpCutMaxEnabled = true;
 // делегирование в tnApplyHcpCut из utils.js, если он загружен
 sandbox.tnApplyHcpCut = function(raw, gender, cut) { return { effective: raw + 1000 }; };
 eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 10, 'men')), 1010, 'cut: используется tnApplyHcpCut из utils.js');
@@ -256,13 +273,15 @@ delete sandbox.tnApplyHcpCut;
 // ── psCutHintHtml ──
 sandbox.psState.proto.hcpCutEnabled = true;
 sandbox.psState.proto.hcpCutPercent = 90;
+sandbox.psState.proto.hcpCutMaxEnabled = true;
 sandbox.psState.proto.hcpMaxMen = 28;
 sandbox.psState.proto.hcpMaxWomen = '';
 var hint = sandbox.psCutHintHtml(mkPlayer('A', 'И', 36, 'men'));
-eq(hint.indexOf('fa-scissors') !== -1 && hint.indexOf('→') !== -1, true, 'cut hint: чип при обрезке 36 → 25.2');
-eq(hint.indexOf('25.2') !== -1, true, 'cut hint: в чипе обрезанное значение');
+eq(hint.indexOf('fa-scissors') !== -1 && hint.indexOf('→') !== -1, true, 'cut hint: чип при обрезке 36 → 28.0');
+eq(hint.indexOf('28.0') !== -1, true, 'cut hint: в чипе обрезанное значение');
 eq(sandbox.psCutHintHtml(mkPlayer('B', 'И', 20, 'men')).indexOf('fa-scissors') !== -1, true, 'cut hint: чип при 20→18');
 sandbox.psState.proto.hcpCutEnabled = false;
+sandbox.psState.proto.hcpCutMaxEnabled = false;
 sandbox.psState.proto.hcpMaxMen = '';
 eq(sandbox.psCutHintHtml(mkPlayer('A', 'И', 36, 'men')), '', 'cut hint: пусто без обрезки');
 eq(sandbox.psCutHintHtml(mkPlayer('A', 'И', null)), '', 'cut hint: пусто без hcp');
@@ -270,8 +289,9 @@ eq(sandbox.psCutHintHtml(mkPlayer('A', 'И', null)), '', 'cut hint: пусто �
 // ── psCalcFieldHcp считает от ОБРЕЗАННОГО (запасная ветка без utils.js — Math.round) ──
 sandbox.psState.proto.hcpCutEnabled = true;
 sandbox.psState.proto.hcpCutPercent = 90;
+sandbox.psState.proto.hcpCutMaxEnabled = true;
 sandbox.psState.proto.hcpMaxMen = 28;
-eq(sandbox.psCalcFieldHcp(mkPlayer('A', 'И', 36, 'men')), 25, 'field hcp: round(25.2)=25 от обрезанного');
+eq(sandbox.psCalcFieldHcp(mkPlayer('A', 'И', 36, 'men')), 28, 'field hcp: round(28.0)=28 от обрезанного');
 eq(sandbox.psCalcFieldHcp(null), 0, 'field hcp: null → 0');
 
 // ── psDivisionChipHtml ──
@@ -294,7 +314,7 @@ sandbox.fmtFieldHcp = function(v) { return String(v); };
 sandbox.fmtDate = function() { return '—'; };
 sandbox.escapeHtml = function(x) { return String(x == null ? '' : x); };
 sandbox.psState = {
-    proto: { hcpCutEnabled: true, hcpCutPercent: 90, hcpMaxMen: 28, hcpMaxWomen: '', format: 'Stroke Play', formatCustom: '', tee: 'wh', startTime: '09:00', interval: 8, scheme: '1', date: '2026-09-09', name: 'T' },
+    proto: { hcpCutEnabled: true, hcpCutPercent: 90, hcpCutMaxEnabled: true, hcpMaxMen: 28, hcpMaxWomen: '', format: 'Stroke Play', formatCustom: '', tee: 'wh', startTime: '09:00', interval: 8, scheme: '1', date: '2026-09-09', name: 'T' },
     tournaments: [], selId: '', editingId: null, groups: []
 };
 var fullP = { id: 'p1', lastName: 'Тестов', firstName: 'Иван', middleName: 'Петрович', gender: 'men', tee: 'wh', hcp: 36, source: 'registered', uidMatched: true };
@@ -338,6 +358,85 @@ var rowsDup = [
     { lastName: 'Смирнов', firstName: 'Пётр', middleName: '', hcp: 4.2, errors: [] }
 ];
 eq(sandbox.psDedupeExcelRows(rowsDup).length, 2, 'excel: дедуп строк одного человека с разных листов');
+
+// ── Возраст внутри ФИО отбрасывается («Кирилл 17 Дунаев») ──
+eq(sandbox.psSplitFio('Кирилл 17 Дунаев'), { lastName: 'Дунаев', firstName: 'Кирилл', middleName: '' }, 'split: возраст между именем и фамилией');
+eq(sandbox.psSplitFio('Тестов Иван 17 Петрович'), { lastName: 'Тестов', firstName: 'Иван', middleName: 'Петрович' }, 'split: возраст между именем и отчеством');
+eq(sandbox.psSplitFio('Тестов Иван Петрович'), { lastName: 'Тестов', firstName: 'Иван', middleName: 'Петрович' }, 'split: без возраста — как раньше');
+
+// ── Пол по ФИО: женские имена/фамилии/отчества ──
+eq(sandbox.psGuessGender('Тестова', 'Мария', 'Ивановна'), 'women', 'gender: Мария Тестова — women');
+eq(sandbox.psGuessGender('Тестов', 'Иван', 'Петрович'), 'men', 'gender: Иван Тестов — men');
+eq(sandbox.psGuessGender('', 'Анна', ''), 'women', 'gender: Анна — women');
+eq(sandbox.psGuessGender('', 'Никита', ''), 'men', 'gender: Никита — men (исключение)');
+eq(sandbox.psGuessGender('Тестов', 'Саша', ''), 'men', 'gender: Саша Тестов — men по фамилии');
+eq(sandbox.psGuessGender('Тестова', 'Саша', ''), 'women', 'gender: Саша Тестова — women по фамилии');
+eq(sandbox.psGuessGender('Ким', 'Анна', ''), 'women', 'gender: Анна Ким — women по имени');
+
+// ── Excel: «Возраст» — не гандикап, даты рождения — не гандикап ──
+eq(sandbox.psHeaderKey('Возраст'), 'age', 'header: Возраст → age');
+eq(sandbox.psHeaderKey('Гандикап'), 'hcp', 'header: Гандикап → hcp');
+eq(sandbox.psParseHcpFromCell('12.05.2010'), null, 'cell: дата рождения — не гандикап');
+eq(sandbox.psParseHcpFromCell('2010-05-12'), null, 'cell: дата ISO — не гандикап');
+eq(sandbox.psParseHcpFromCell('12,4'), 12.4, 'cell: 12,4 → 12.4');
+eq(sandbox.psParseHcpFromCell('HCP 8,5'), 8.5, 'cell: «HCP 8,5» → 8.5');
+
+// ── Excel-строки: пол/ТИ после разбора имени, возраст в ФИО режется ──
+sandbox.psState = {
+    proto: { tee: 'wh', hcpCutEnabled: false, hcpCutPercent: 90, hcpCutMaxEnabled: false, hcpMaxMen: '', hcpMaxWomen: '' },
+    tournaments: [], selId: ''
+};
+var excelParsed = sandbox.psParseExcelRows([
+    { 'Фамилия': 'Тестова', 'Имя': 'Мария', 'Гандикап': '12,4' },
+    { 'Фамилия': 'Дунаев', 'Имя': 'Кирилл', 'Гандикап': '20' }
+]);
+eq(excelParsed.valid.length, 2, 'excel rows: обе строки валидны');
+eq(excelParsed.valid[0].gender, 'women', 'excel rows: Мария — women');
+eq(excelParsed.valid[0].tee, 'rd', 'excel rows: Марии — красные ТИ');
+eq(excelParsed.valid[1].gender, 'men', 'excel rows: Кирилл — men');
+eq(excelParsed.valid[1].tee, 'wh', 'excel rows: мужчине — ТИ протокола');
+var excelFio = sandbox.psParseExcelRows([
+    { 'ФИО': 'Кирилл 17 Дунаев', 'Гандикап': '20' }
+]);
+eq(excelFio.valid.length, 1, 'excel rows: ФИО с возрастом валидна');
+eq(excelFio.valid[0].lastName, 'Дунаев', 'excel rows: «17» не стало частью имени');
+eq(excelFio.valid[0].firstName, 'Кирилл', 'excel rows: имя Кирилл');
+
+// ── ТИ по умолчанию: группа турнира → женские → ТИ протокола ──
+eq(sandbox.psDefaultTeeFor('women', 20), 'rd', 'tee: девушке без групп — красные');
+eq(sandbox.psDefaultTeeFor('men', 10), 'wh', 'tee: мужчине — ТИ протокола');
+sandbox.psState.tournaments = [{ id: 't1', tees: ['wh', 'rd'] }];
+sandbox.psState.selId = 't1';
+eq(sandbox.psDefaultTeeFor('women', 20), 'rd', 'tee: красные есть в турнире — красные');
+sandbox.psState.tournaments = [{ id: 't1', tees: ['wh'] }];
+eq(sandbox.psDefaultTeeFor('women', 20), 'wh', 'tee: красных нет — белые');
+sandbox.psState.tournaments = [];
+sandbox.psState.selId = '';
+
+// ── Компактный стартовый лист: авто-группы по полу и гандикапу ──
+sandbox.psState = {
+    proto: { hcpCutEnabled: false, hcpCutPercent: 90, hcpCutMaxEnabled: false, hcpMaxMen: '', hcpMaxWomen: '', tee: 'wh', players: [] },
+    tournaments: [], selId: '', editingId: null, groups: [], rosterCollapsed: {}
+};
+var rgPlayers = [
+    mkPlayer('Муж1', 'Иван', 5, 'men'),
+    mkPlayer('Муж2', 'Пётр', 20, 'men'),
+    mkPlayer('Жен1', 'Мария', 30, 'women')
+];
+var rg = sandbox.psRosterGroups(rgPlayers);
+eq(rg.useDivs, false, 'roster groups: без дивизионов — авто-группы');
+eq(rg.buckets.length, 3, 'roster groups: три авто-группы');
+eq(rg.buckets[0].items.length + rg.buckets[1].items.length + rg.buckets[2].items.length, 3, 'roster groups: все игроки разложены');
+var rosterHtml = sandbox.psRenderRosterTable({ players: rgPlayers });
+eq(rosterHtml.indexOf('ps-rgroup') !== -1 && rosterHtml.indexOf('HCP 0–12') !== -1, true, 'roster: сворачиваемые группы в разметке');
+eq(rosterHtml.indexOf('Развернуть все') !== -1, true, 'roster: кнопки свернуть/развернуть');
+// Кнопка «В группу…» доступна и при правке протокола
+sandbox.psState.editingId = 'pr_test';
+sandbox.psState.groups = [{ members: [] }];
+var rowEdit = sandbox.psRosterRowHtml({ id: 'p1', lastName: 'Тестов', firstName: 'Иван', middleName: '', gender: 'men', tee: 'wh', hcp: 10, source: 'registered' }, 0);
+eq(rowEdit.indexOf('В группу') !== -1, true, 'roster: «В группу…» при редактировании');
+sandbox.psState.editingId = null;
+sandbox.psState.groups = [];
 
 // ── Название турнира пишется в раунд (для баннера и главной) ──
 const startSrc = fs.readFileSync(__dirname + '/../js/start-admin.js', 'utf8');

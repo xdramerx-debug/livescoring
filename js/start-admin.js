@@ -2641,6 +2641,16 @@ function psSaveProtocol() {
         };
         return db.ref('protocols/' + pid).set(protocolDoc);
     }).then(function() {
+        // Раунды созданы и игра началась — турнир переходит в active,
+        // запись на него закрывается. Завершённые турниры не трогаем.
+        return db.ref('tournaments/' + proto.tournamentId + '/status').once('value').then(function(stSn) {
+            var st = stSn.val();
+            if (!st || st === 'upcoming') {
+                return db.ref('tournaments/' + proto.tournamentId).update({ status: 'active', startedAt: Date.now() });
+            }
+            return null;
+        }).catch(function() { return null; });
+    }).then(function() {
         psState.savedId = pid;
         psState.busy = false;
         psState.groups = [];
@@ -3078,13 +3088,22 @@ function psRenderSavedCard() {
 }
 
 var psSavedBound = false;
+var psSavedCache = null;
 
 function psBindSavedList() {
     if (typeof db === 'undefined' || !db) return;
-    if (psSavedBound) return;
+    if (psSavedBound) {
+        // Подписка уже есть, а контейнер psRender() пересоздал заново —
+        // перерисовываем из кэша, иначе список залипнет на «Загрузка…».
+        if (psSavedCache) {
+            try { psRenderSavedListContent(psSavedCache); } catch (e) {}
+        }
+        return;
+    }
     psSavedBound = true;
     db.ref('protocols').orderByChild('createdAt').on('value', function(sn) {
-        psRenderSavedListContent(sn.val() || {});
+        psSavedCache = sn.val() || {};
+        psRenderSavedListContent(psSavedCache);
     });
 }
 

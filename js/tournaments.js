@@ -43,17 +43,31 @@ function loadTournaments() {
             var regCount = (typeof tnDedupeRoster === 'function') ? tnDedupeRoster(regPlayers).length : Object.keys(regPlayers).length;
             var isRegistered = !!(currentUser && regPlayers[currentUser.uid]);
 
+            // Запись открыта ТОЛЬКО для предстоящих турниров: на активном
+            // запись закрыта (уже записанные видят статичный бейдж без отмены),
+            // на завершённом кнопок нет.
             var regBtn = '';
-            if (isRegistered) {
+            var tnStatus = tVal.status || 'upcoming';
+            if (tnStatus === 'active') {
+                if (isRegistered) {
+                    regBtn = '<span style="font-size:12px;font-weight:700;color:#2ecc71;"><i class="fas fa-check-circle"></i> ' + t('registered_badge') + '</span>';
+                } else {
+                    regBtn = '<span style="font-size:12px;font-weight:700;color:var(--muted);"><i class="fas fa-lock"></i> ' + (en ? 'Registration closed — tournament in progress' : 'Запись закрыта — турнир идёт') + '</span>';
+                }
+            } else if (tnStatus === 'completed') {
+                if (isRegistered) {
+                    regBtn = '<span style="font-size:12px;font-weight:700;color:var(--muted);"><i class="fas fa-check-circle"></i> ' + t('registered_badge') + '</span>';
+                }
+            } else if (isRegistered) {
                 regBtn = '<button class="btn btn-og btn-sm" onclick="cancelTournamentRegistration(\'' + tnId + '\')"><i class="fas fa-check-circle"></i> ' + t('registered_badge') + '</button>';
-            } else if (tVal.status !== 'completed') {
+            } else {
                 regBtn = '<button class="btn btn-g btn-sm" onclick="openTournamentRegModal(\'' + tnId + '\')"><i class="fas fa-user-plus"></i> ' + t('register_tournament_btn') + '</button>';
             }
 
             html += '<div class="tn-card">';
             html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">';
             html += '<div style="flex:1;min-width:200px;"><div class="tn-name">' + escapeHtml(tVal.name || '—') + '</div>';
-            html += '<div class="tn-meta"><span><i class="fas fa-calendar"></i> ' + fmtDate(new Date(tVal.date).getTime()) + '</span></div>';
+            html += '<div class="tn-meta"><span><i class="fas fa-calendar"></i> ' + fmtDate((typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date)) + '</span></div>';
             html += '<div style="margin-top:8px;font-size:12px;color:var(--muted);">' + formatLabel + escapeHtml(formatsStr) + '</div>';
             html += '<div style="font-size:12px;color:var(--muted);">' + teeLabel + escapeHtml(teesStr) + '</div>';
             if (divisions.length) {
@@ -163,7 +177,6 @@ function tnRosterGroupedHtml(tVal, regPlayers, regCount) {
     }
     var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
     var list = tnDedupeRoster(regPlayers);
-    var defaultTee = (tVal.tees && tVal.tees[0]) || 'wh';
 
     var buckets = [];
     var byDiv = {};
@@ -176,10 +189,9 @@ function tnRosterGroupedHtml(tVal, regPlayers, regCount) {
 
     list.forEach(function(en2) {
         var rp = en2.rp;
-        var tee = rp.tee || defaultTee;
         var hcp = (rp.handicap != null && rp.handicap !== '') ? rp.handicap : null;
         var gender = rp.gender || 'men';
-        var div = (typeof tnFindDivision === 'function') ? tnFindDivision(tee, hcp, gender, divisions) : null;
+        var div = (typeof tnFindDivision === 'function') ? tnFindDivision(tVal, hcp, gender) : null;
         if (div && byDiv[div.id]) byDiv[div.id].list.push(en2);
         else unassigned.list.push(en2);
     });
@@ -304,13 +316,11 @@ function renderTnLeaderboard(tnId) {
         var rp = tVal.registeredPlayers[uid] || {};
         regByFio[tnNormName(rp.name || '')] = rp;
     });
-    var defaultTee = (tVal.tees && tVal.tees[0]) || 'wh';
     list.forEach(function(en2) {
         var rp = regByFio[tnNormName(en2.name)] || {};
         var hcp = (rp.handicap != null && rp.handicap !== '') ? rp.handicap : en2.hcpRaw;
         var gender = rp.gender || en2.gender || 'men';
-        var tee = rp.tee || en2.tee || defaultTee;
-        en2.div = (typeof tnFindDivision === 'function') ? tnFindDivision(tee, hcp, gender, divisions) : null;
+        en2.div = (typeof tnFindDivision === 'function') ? tnFindDivision(tVal, hcp, gender) : null;
         en2.toPar = en2.holes > 0 ? en2.gross - en2.parPlayed : null;
         en2.netToPar = en2.holes > 0 ? en2.net - en2.parPlayed : null;
         en2.dispName = privacyDisplayName({ name: en2.name }, en2.pid);
@@ -374,11 +384,40 @@ function renderTnLeaderboard(tnId) {
 // ==========================================
 // ЗАПИСЬ НА ТУРНИР: участники + гости без регистрации
 // ==========================================
+function tnRegistrationClosedText() {
+    return currentLang === 'en'
+        ? '⛔ Registration is closed — the tournament has already started'
+        : '⛔ Запись закрыта — турнир уже начался';
+}
+
+// Перепроверка статуса турнира в БД перед записью/отменой: карточка могла
+// устареть, пока окно было открыто. Пустой статус считаем upcoming (старые записи).
+function tnEnsureRegistrationOpen(tnId, proceed) {
+    if (typeof db === 'undefined' || !db) return;
+    db.ref('tournaments/' + tnId + '/status').once('value').then(function(sn) {
+        var st = sn.val();
+        if (st && st !== 'upcoming') {
+            toast(tnRegistrationClosedText(), 'error');
+            closeRegTnModal();
+            return;
+        }
+        if (typeof proceed === 'function') proceed();
+    }).catch(function() {
+        // Не смогли проверить (сеть) — пропускаем дальше, запись всё равно видна админу.
+        if (typeof proceed === 'function') proceed();
+    });
+}
+
 function openTournamentRegModal(tnId) {
     // Гостям больше не нужен редирект на регистрацию — записываем прямо здесь.
+    if (typeof db === 'undefined' || !db) return;
     db.ref('tournaments/' + tnId).once('value').then(function(sn) {
         var tVal = sn.val();
         if (!tVal) return;
+        if (tVal.status && tVal.status !== 'upcoming') {
+            toast(tnRegistrationClosedText(), 'error');
+            return;
+        }
 
         var modalEl = tGet('reg-tn-modal');
         if (!modalEl) {
@@ -482,7 +521,13 @@ function closeRegTnModal() {
 }
 
 function submitTournamentRegistration(tnId) {
+    // Повторная проверка статуса: турнир могли активировать, пока окно открыто.
+    tnEnsureRegistrationOpen(tnId, function() { submitTournamentRegistrationInner(tnId); });
+}
+
+function submitTournamentRegistrationInner(tnId) {
     var en = currentLang === 'en';
+    if (typeof db === 'undefined' || !db) return;
 
     if (currentUser) {
         var teeInp = document.getElementById('reg-tn-tee');
@@ -580,10 +625,22 @@ function submitTournamentRegistration(tnId) {
 
 function cancelTournamentRegistration(tnId) {
     if (!currentUser) return;
+    if (typeof db === 'undefined' || !db) return;
     if (!confirm(currentLang === 'en' ? 'Cancel registration for this tournament?' : 'Отменить запись на этот турнир?')) return;
 
-    db.ref('tournaments/' + tnId + '/registeredPlayers/' + currentUser.uid).remove().then(function() {
+    // Отмена возможна только до старта: на активном/завершённом состав фиксирован.
+    db.ref('tournaments/' + tnId + '/status').once('value').then(function(sn) {
+        var st = sn.val();
+        if (st && st !== 'upcoming') {
+            toast(tnRegistrationClosedText(), 'error');
+            return { blocked: true };
+        }
+        return db.ref('tournaments/' + tnId + '/registeredPlayers/' + currentUser.uid).remove();
+    }).then(function(res) {
+        if (res && res.blocked) return;
         toast(t('msg_registration_cancelled'), 'info');
         loadTournaments();
+    }).catch(function(err) {
+        if (err) toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
 }

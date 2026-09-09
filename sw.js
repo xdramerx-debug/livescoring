@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.37.0';
+const CACHE_NAME = 'pestovo-v1.38.0';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
@@ -15,7 +15,7 @@ const STATIC_ASSETS = [
     'js/leaderboard.js?v=6', 'js/players.js?v=3', 'js/tournaments.js?v=2',
     'js/stats.js?v=3', 'js/handicap.js', 'js/admin.js?v=28', 'js/scorer.js?v=3',
     'js/marker.js?v=2', 'js/guide.js', 'js/feed.js?v=2', 'js/predictor.js',
-    'js/order-of-merit.js?v=3', 'js/pwa.js?v=2', 'js/start-admin.js?v=1', 'js/qr-start.js?v=1', 'qr-start.html',
+    'js/order-of-merit.js?v=3', 'js/pwa.js?v=2', 'js/start-admin.js?v=2', 'js/qr-start.js?v=2', 'qr-start.html',
     'js/assistant-config.js', 'js/assistant-build.js?v=2', 'js/assistant.js?v=2',
     'docs/assistant-index.json', 'docs/assistant-sources.json',
     'docs/pravila-pestovo.pdf',

@@ -4078,6 +4078,240 @@ body.sun-mode .group-flight-table td {
     border: 1px solid #000000 !important;
     color: #000000 !important;
 }
+
+/* ===== ДВОЙНАЯ КАРТОЧКА «ИГРОК + МАРКЕР» (страница ввода результатов) ===== */
+/* Формат — как на главной («Сейчас на поле»), плюс слой маркера. */
+.dual-card-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    align-items: center;
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    padding: 7px 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--rs);
+}
+.dcl-item { display: inline-flex; align-items: center; gap: 5px; }
+.dcl-marker { color: #c39bd3; font-weight: 600; }
+.dcl-mismatch { color: #ff8a8a; font-weight: 600; }
+
+/* Одиночная плитка: строка счёта маркера */
+.noscroll-marker {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #c39bd3;
+    background: rgba(155,89,182,0.14);
+    border: 1px solid rgba(155,89,182,0.35);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-top: 3px;
+    text-align: center;
+    line-height: 1.5;
+}
+.noscroll-marker.mk-mismatch {
+    color: #ff8a8a;
+    background: rgba(231,76,60,0.16);
+    border-color: rgba(231,76,60,0.6);
+}
+
+/* Матрица: ячейка игрока + строка счёта маркера */
+.gm-tile-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-radius: 5px;
+    padding: 1px;
+    border: 1px solid transparent;
+}
+.gm-tile-cell.gm-mismatch {
+    border-color: rgba(231,76,60,0.75);
+    box-shadow: 0 0 6px rgba(231,76,60,0.45);
+}
+.gm-tile-marker {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #c39bd3;
+    padding: 0 5px 1px;
+    line-height: 1.3;
+}
+.gm-tile-mname { opacity: 0.8; font-weight: 600; }
+.gm-tile-mscore { font-size: 11px; font-weight: 800; }
+.gm-tile-marker.mk-mismatch { color: #ff8a8a; }
+
+/* Сравнительная таблица: строка счёта маркера */
+.ft-marker {
+    font-size: 10px;
+    font-weight: 700;
+    color: #c39bd3;
+    margin-top: 2px;
+    line-height: 1.4;
+}
+.ft-marker.mk-mismatch { color: #ff8a8a; }
+
+/* Лидерборд: полоса счётов маркера */
+.flb-marker-cap {
+    font-size: 10px;
+    font-weight: 700;
+    color: #c39bd3;
+    margin: 2px 0 1px;
+}
+.flb-marker-cap i { margin-right: 3px; }
+.flb-marker-tile {
+    background: rgba(155,89,182,0.16);
+    border-color: rgba(155,89,182,0.35);
+    color: #d7bde2;
+}
+.flb-mini-tile.flb-mm {
+    border-color: rgba(231,76,60,0.8) !important;
+    box-shadow: 0 0 6px rgba(231,76,60,0.5);
+}
+
+/* ===== СТАТУС ПОДКЛЮЧЕНИЯ ИГРОКОВ (не мешает вводу счёта) ===== */
+#invite-join-status { margin-bottom: 10px; }
+#invite-join-status:empty { display: none; }
+.join-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    background: rgba(201,168,76,0.07);
+    border: 1px solid rgba(201,168,76,0.28);
+    border-radius: 12px;
+}
+.join-status.all-joined {
+    justify-content: center;
+    gap: 8px;
+    background: rgba(46,204,113,0.08);
+    border-color: rgba(46,204,113,0.35);
+    color: #2ecc71;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 12px;
+}
+.join-check { font-size: 15px; }
+.join-dots { display: flex; align-items: center; flex: 0 0 auto; }
+.join-dot {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid var(--muted);
+    color: var(--muted);
+    margin-left: -7px;
+}
+.join-dot:first-child { margin-left: 0; }
+.join-dot.is-joined {
+    background: rgba(46,204,113,0.18);
+    border-color: #2ecc71;
+    color: #2ecc71;
+}
+.join-dot:not(.is-joined) { animation: join-pulse 2s ease-in-out infinite; }
+@keyframes join-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0); }
+    50% { box-shadow: 0 0 0 4px rgba(201,168,76,0.18); }
+}
+.join-mid { flex: 1; min-width: 0; }
+.join-text {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.join-text b { color: var(--white); font-size: 13px; }
+.join-bar {
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+}
+.join-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #8a6d1f, var(--gold), #e8d189);
+    transition: width 0.5s ease;
+}
+
+/* ===== QR-КАРТОЧКИ ПОДКЛЮЧЕНИЯ (не исчезают) ===== */
+.qr-card .qr-status-badge {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+}
+.qr-card.qr-joined { border-color: rgba(46,204,113,0.45) !important; }
+.qr-card.qr-joined .qr-status-badge {
+    background: rgba(46,204,113,0.14);
+    color: #2ecc71;
+    border: 1px solid rgba(46,204,113,0.4);
+}
+.qr-card.qr-waiting { border-color: rgba(201,168,76,0.45) !important; }
+.qr-card.qr-waiting .qr-status-badge {
+    background: rgba(201,168,76,0.14);
+    color: var(--gold);
+    border: 1px solid rgba(201,168,76,0.4);
+}
+.qr-card .qr-hint {
+    font-size: 11px;
+    color: var(--gold);
+    margin-bottom: 8px;
+}
+.qr-card.qr-joined .qr-hint { color: var(--muted); font-size: 10.5px; }
+.qr-card .qr-img {
+    width: 160px;
+    height: 160px;
+    border-radius: 8px;
+    background: #fff;
+    padding: 6px;
+    margin: 0 auto 8px;
+    display: block;
+}
+.qr-card.qr-joined .qr-img { width: 132px; height: 132px; opacity: 0.9; }
+
+/* Sun-режим для двойной карточки и статуса подключения */
+body.sun-mode .dual-card-legend { background: #f8faf9; border-color: #000; color: #333; }
+body.sun-mode .dcl-marker,
+body.sun-mode .gm-tile-marker,
+body.sun-mode .ft-marker,
+body.sun-mode .flb-marker-cap { color: #7d3c98; }
+body.sun-mode .noscroll-marker {
+    color: #7d3c98;
+    background: rgba(155,89,182,0.12);
+    border-color: #7d3c98;
+}
+body.sun-mode .flb-marker-tile {
+    background: rgba(155,89,182,0.15);
+    color: #6c3483;
+    border-color: #7d3c98;
+}
+body.sun-mode .dcl-mismatch,
+body.sun-mode .noscroll-marker.mk-mismatch,
+body.sun-mode .gm-tile-marker.mk-mismatch,
+body.sun-mode .ft-marker.mk-mismatch { color: #c0392b; }
+body.sun-mode .join-status { background: #fff8e1; border-color: #000; }
+body.sun-mode .join-status.all-joined { background: #e8f8f0; border-color: #1b5e20; color: #1b5e20; }
+body.sun-mode .join-text b { color: #000; }
+body.sun-mode .join-bar { background: rgba(0,0,0,0.1); }
+body.sun-mode .join-dot { background: #fff; }
+body.sun-mode .join-dot.is-joined { background: #e8f8f0; }
+body.sun-mode .qr-card.qr-joined { border-color: #1b5e20 !important; }
+body.sun-mode .qr-card.qr-waiting { border-color: #000 !important; }
 body.sun-mode .r-empty {
     background: #f0f0f0 !important;
     border-color: #999999 !important;
@@ -4133,12 +4367,12 @@ body.sun-mode .r-empty {
 .players-v3-name { color: var(--white); font-size: 14px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .players-v3-hcp { color: var(--muted); font-size: 11px; margin-top: 5px; }
 .players-v3-hcp b { color: var(--gold); font-size: 16px; margin-left: 3px; }
-.players-v3-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--border); }
+.players-v3-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 5px; margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--border); }
 .players-v3-metrics div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .players-v3-metrics span { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .25px; }
 .players-v3-metrics b { color: var(--white); font: 800 17px var(--fb); overflow: hidden; text-overflow: ellipsis; }
 .players-v3-open { color: var(--gold); font-size: 10px; font-weight: 700; margin-top: 12px; text-align: right; }
-.players-guest-badge { background: rgba(201,168,76,0.15); color: var(--gold); padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-left: 6px; }
+/* Бейдж «Гость» убран везде по требованию клуба. */
 
 /* «Статистика»: компактная сводка, дашборд и дополнительные таблицы */
 .stats-grid-1 { width: 100%; }

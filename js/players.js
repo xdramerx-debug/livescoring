@@ -9,47 +9,64 @@ function playerOpenAttrs(id) {
     return ' role="button" tabindex="0" data-player-id="' + escapeHtml(String(id || '')) + '" onclick="showPlayer(this.dataset.playerId)"';
 }
 
+// Полное ФИО для списка игроков: «Имя Отчество Фамилия»
+// (отчество — если есть). Приватность respected: скрытым игрокам
+// показываем маску/инициалы вместо ФИО.
+function playerListFullName(u, id) {
+    var full = '';
+    if (typeof resolvePlayerNameParts === 'function') {
+        var parts = resolvePlayerNameParts(u || {});
+        full = [parts.firstName, parts.middleName, parts.lastName].filter(function(x) { return !!x; }).join(' ');
+    }
+    if (!full) full = ((u && u.name) || '').replace(/\s+/g, ' ').trim();
+    if ((typeof privacyShouldHide === 'function') && privacyShouldHide(id)) {
+        return privacyMaskName(full || (u && u.name) || '', id);
+    }
+    return full || '—';
+}
+
 function buildPlayerDisplayHTML(id, u, index, variant, roundsWord) {
     var gIcon = u.gender === 'women' ? '👩' : '👨';
-    var guestBadge = u.isGuest ? '<span class="players-guest-badge">' + t('guest') + '</span>' : '';
+    // Бейдж «Гость» убран везде — гости никак не помечаются.
     var hcpInfo = (typeof getHcpSyncInfo === 'function') ? getHcpSyncInfo(u) : { ok: false };
     var avatarHtml = fmtUserAvatar(u, variant === '3' ? 68 : (variant === '2' ? 44 : 52));
     if (hcpInfo.ok && (typeof getHcpBadgeVariant === 'function' ? getHcpBadgeVariant() : '1') === '3') {
         avatarHtml = hcpAvatarWrapHtml(avatarHtml, hcpInfo);
     }
-    var name = escapeHtml(privacyDisplayName(u, id));
-    var hcp = u.handicap != null ? fmtExactHcp(u.handicap) : '—';
+    var name = escapeHtml(playerListFullName(u, id));
+    // Гандикап — только если обновлён (есть hcpUpdatedAt), иначе «—».
+    var hcpVal = hcpInfo.ok ? fmtExactHcp(u.handicap) : '—';
+    var hcpBadge = (typeof hcpSyncBadgeHtml === 'function') ? hcpSyncBadgeHtml(u) : '';
     var rounds = u.roundsPlayed || 0;
-    var gross = u.bestGross || '—';
-    var stableford = u.bestStableford || '—';
     var attrs = playerOpenAttrs(id);
 
     if (variant === '2') {
         return '<div class="player-layout-card player-layout-card-2 list-item"' + attrs + '>' +
             '<div class="players-v2-avatar">' + avatarHtml + '</div>' +
-            '<div class="players-v2-main"><div class="players-v2-name">' + gIcon + ' ' + name + guestBadge + '</div>' +
-            '<div class="players-v2-meta">HCP: ' + hcp + (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') +
-            ' · ' + roundsWord + rounds + (u.bestGross ? ' · Gross: ' + u.bestGross : '') + '</div></div>' +
+            '<div class="players-v2-main"><div class="players-v2-name">' + gIcon + ' ' + name + '</div>' +
+            '<div class="players-v2-meta">HCP: ' + hcpVal + hcpBadge + '</div></div>' +
             '<div class="players-v2-rounds"><b>' + rounds + '</b><span>' + (currentLang === 'en' ? 'rounds' : 'раундов') + '</span></div>' +
             '</div>';
     }
 
     if (variant === '3') {
+        var updDate = hcpInfo.ok ? fmtHcpShortDate(hcpInfo.ts) : '—';
+        var updLbl = currentLang === 'en' ? 'Updated' : 'Обновлён';
         return '<div class="player-layout-card player-layout-card-3 card"' + attrs + '>' +
             '<div class="players-v3-top"><span class="players-v3-rank">' + (index + 1 < 10 ? '0' : '') + (index + 1) + '</span>' + avatarHtml +
-            '<div class="players-v3-name-wrap"><div class="players-v3-name">' + gIcon + ' ' + name + guestBadge + '</div><div class="players-v3-hcp">HCP <b>' + hcp + '</b>' + (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') + '</div></div></div>' +
-            '<div class="players-v3-metrics"><div><span>' + (currentLang === 'en' ? 'Rounds' : 'Раунды') + '</span><b>' + rounds + '</b></div><div><span>Gross 18</span><b>' + gross + '</b></div><div><span>Stableford</span><b>' + stableford + '</b></div></div>' +
+            '<div class="players-v3-name-wrap"><div class="players-v3-name">' + gIcon + ' ' + name + '</div><div class="players-v3-hcp">HCP <b>' + hcpVal + '</b>' + hcpBadge + '</div></div></div>' +
+            '<div class="players-v3-metrics"><div><span>' + (currentLang === 'en' ? 'Rounds' : 'Раунды') + '</span><b>' + rounds + '</b></div><div><span>' + updLbl + '</span><b>' + updDate + '</b></div></div>' +
             '<div class="players-v3-open"><i class="fas fa-arrow-up-right-from-square"></i> ' + (currentLang === 'en' ? 'Open profile' : 'Открыть профиль') + '</div>' +
             '</div>';
     }
 
-    // Вариант 1 — действующий вид карточек, оставленный по умолчанию.
+    // Вариант 1 — действующий вид карточек, оставленный по умолчанию:
+    // ФИО, гандикап (если обновлён) и количество раундов.
     return '<div class="card player-layout-card player-layout-card-1" style="cursor:pointer;"' + attrs + '>' +
         '<div style="display:flex;align-items:center;gap:14px;">' + avatarHtml +
-        '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + name + guestBadge + '</div>' +
-        '<div style="font-size:12px;color:var(--muted);margin-top:4px;">HCP: ' + hcp +
-        (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') + ' · ' + roundsWord + rounds +
-        (u.bestGross ? ' · Gross (18h): ' + u.bestGross : '') + (u.bestStableford ? ' · Stableford (18h): ' + u.bestStableford : '') +
+        '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + name + '</div>' +
+        '<div style="font-size:12px;color:var(--muted);margin-top:4px;">HCP: ' + hcpVal + hcpBadge +
+        ' · ' + roundsWord + rounds +
         '</div></div></div></div>';
 }
 

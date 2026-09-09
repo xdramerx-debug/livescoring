@@ -613,6 +613,19 @@ var I18N = {
         connect_players_title: 'Подключение игроков группы',
         connect_players_desc: 'Дайте отсканировать QR-код другим игрокам, чтобы они открыли счётную карточку со своих телефонов.',
         scan_to_play: 'Сканируй, чтобы играть за этого игрока',
+        invite_qrs_collapse: 'Свернуть QR-коды подключения',
+        invite_qrs_expand: 'Развернуть QR-коды подключения',
+        joined_in_game: 'В игре',
+        waiting_join: 'Ожидает подключения',
+        ready_to_score: 'готовы вводить счёт',
+        ready_to_score_one: 'готов вводить счёт',
+        of_word: 'из',
+        all_joined: 'Все игроки подключены',
+        qr_reconnect_hint: 'QR сохранён — можно переподключиться',
+        marker_score_short: 'М',
+        legend_player_score: 'счёт игрока',
+        legend_marker_score: 'счёт маркера',
+        legend_mismatch: 'расхождение',
         round_progress: 'Прогресс раунда',
         finished_f: 'Завершил (F)',
 
@@ -1076,6 +1089,19 @@ var I18N = {
         connect_players_title: 'Connect Group Players',
         connect_players_desc: 'Let other players scan their QR code to open their scorecard on their phones.',
         scan_to_play: 'Scan to play for this player',
+        invite_qrs_collapse: 'Collapse player QR codes',
+        invite_qrs_expand: 'Expand player QR codes',
+        joined_in_game: 'In game',
+        waiting_join: 'Waiting to join',
+        ready_to_score: 'ready to score',
+        ready_to_score_one: 'ready to score',
+        of_word: 'of',
+        all_joined: 'All players connected',
+        qr_reconnect_hint: 'QR kept — you can reconnect',
+        marker_score_short: 'M',
+        legend_player_score: "player's score",
+        legend_marker_score: "marker's score",
+        legend_mismatch: 'mismatch',
         round_progress: 'Round Progress',
         finished_f: 'Finished (F)',
 
@@ -1313,6 +1339,8 @@ var I18N = {
         all_players_joined: 'All players have already joined the round',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
+        delete_all_data: 'Delete All Players & Rounds',
+        delete_all_data_sub: 'Permanently removes every player and every round. Data disappears from all lists, stats and autocomplete and will not real Rounds',
         delete_all_data: 'Delete All Players & Rounds',
         delete_all_data_sub: 'Permanently removes every player and every round. Data disappears from all lists, stats and autocomplete and will not reappear.',
         full_name: 'Full Name',
@@ -3470,6 +3498,46 @@ function scrollToPlayerCurrentHole(pid) {
     setTimeout(function() { tile.classList.remove('sc-cur-flash'); }, 1800);
 }
 
+// Счёт, который маркер игрока ввёл ЗА этого игрока на лунке.
+// Хранится в карточке самого игрока: p.markerScores[markedBy][hole].
+// Возвращает { score, markerId } (score = 0, если маркер ещё не вводил).
+function getPlayerMarkerScoreForHole(p, h) {
+    p = p || {};
+    var mkId = p.markedBy || null;
+    var ms = 0;
+    if (mkId && p.markerScores && p.markerScores[mkId]) {
+        ms = parseInt(p.markerScores[mkId][h]) || 0;
+    }
+    // Запасной вариант: маркер мог ввести счёт под другим ключом
+    // (например, после переназначения маркеров) — ищем любое значение на лунке.
+    if (!ms && p.markerScores) {
+        var keys = Object.keys(p.markerScores);
+        for (var i = 0; i < keys.length; i++) {
+            var v = parseInt(p.markerScores[keys[i]] && p.markerScores[keys[i]][h]) || 0;
+            if (v >= 1) { ms = v; if (!mkId) mkId = keys[i]; break; }
+        }
+    }
+    return { score: ms, markerId: mkId };
+}
+
+// Есть ли у игрока хоть один введённый маркером счёт (для компактных слоёв).
+function playerHasAnyMarkerScore(p, order) {
+    if (!p || !p.markerScores) return false;
+    for (var i = 0; i < (order || []).length; i++) {
+        if (getPlayerMarkerScoreForHole(p, order[i]).score >= 1) return true;
+    }
+    return false;
+}
+
+// Мини-легенда двойной карточки «игрок + маркер» (страница ввода результатов).
+function buildDualScorecardLegendHTML() {
+    return '<div class="dual-card-legend">' +
+        '<span class="dcl-item"><i class="fas fa-user"></i> ' + t('legend_player_score') + '</span>' +
+        '<span class="dcl-item dcl-marker"><i class="fas fa-pen-nib"></i> ' + t('marker_score_short') + ' — ' + t('legend_marker_score') + '</span>' +
+        '<span class="dcl-item dcl-mismatch"><i class="fas fa-triangle-exclamation"></i> ' + t('legend_mismatch') + '</span>' +
+        '</div>';
+}
+
 function generateGroupHoleTableHTML(r, opts) {
     opts = opts || {};
     var players = r.players || {};
@@ -3481,9 +3549,14 @@ function generateGroupHoleTableHTML(r, opts) {
 
     var order = getRoundOrder(r);
 
+    // Режим showMarker (страница ввода результатов группового раунда):
+    // формат карточки — тот же, что на главной («Сейчас на поле»), но рядом
+    // со счётом игрока виден и счёт, который ввёл его маркер.
+    var legend = opts.showMarker ? buildDualScorecardLegendHTML() : '';
+
     // Если в раунде 1 игрок — показываем одиночную карточку
     if (playerEntries.length === 1) {
-        return renderSinglePlayerScorecardHTML(r, playerEntries[0], order, opts);
+        return legend + renderSinglePlayerScorecardHTML(r, playerEntries[0], order, opts);
     }
 
     // Для группового раунда показываем единую карточку в одном из 3 вариантов:
@@ -3492,11 +3565,11 @@ function generateGroupHoleTableHTML(r, opts) {
     // 3 · Лидерборд флайта (Flight Leaderboard)
     var variant = opts.variant || getGroupCardVariant();
     if (variant === '2') {
-        return renderGroupTableHTML(r, playerEntries, order, opts);
+        return legend + renderGroupTableHTML(r, playerEntries, order, opts);
     } else if (variant === '3') {
-        return renderGroupLeaderboardHTML(r, playerEntries, order, opts);
+        return legend + renderGroupLeaderboardHTML(r, playerEntries, order, opts);
     } else {
-        return renderGroupMatrixHTML(r, playerEntries, order, opts);
+        return legend + renderGroupMatrixHTML(r, playerEntries, order, opts);
     }
 }
 
@@ -3569,9 +3642,18 @@ function renderSinglePlayerScorecardHTML(r, pe, order, opts) {
             stblTitle = (currentLang === 'en' ? 'Current hole. ' : 'Текущая лунка. ') + stblTitle;
         }
 
+        var mkLineHtml = '';
+        if (opts.showMarker) {
+            var mk = getPlayerMarkerScoreForHole(p, i);
+            if (mk.score >= 1) {
+                var mkMm = (s >= 1 && s !== mk.score) ? ' mk-mismatch' : '';
+                mkLineHtml = '<div class="noscroll-marker' + mkMm + '">' + t('marker_score_short') + ' ' + mk.score + '</div>';
+            }
+        }
         html += '<div class="noscroll-tile ' + cls + '" title="' + stblTitle + '" data-sc-player="' + pid + '" data-sc-hole="' + i + '"' + (isCur ? ' data-sc-current="1"' : '') + '>';
         html += '<div class="noscroll-hole"><span>#' + i + '</span>' + hcpStrokesMarksHTML(fieldHcp, i) + '</div>';
         html += '<div class="noscroll-score">' + (s > 0 ? s : '—') + '</div>';
+        html += mkLineHtml;
         html += '<div class="noscroll-tile-bot"><span class="noscroll-idx">idx ' + holeHcp(i) + '</span><span class="noscroll-stbl">' + (stbl !== null ? stbl + ' pt' : '—') + '</span></div>';
         html += '</div>';
     });
@@ -3645,10 +3727,29 @@ function renderGroupMatrixHTML(r, playerEntries, order, opts) {
             var stbl = s > 0 ? stablefordField(s, i, fieldHcp) : null;
             var pInitial = (p.name || '').trim().split(/\s+/)[0] || ('P' + (pIdx + 1));
 
-            tilesForHole += '<div class="gm-tile-row ' + cls + '" title="' + escapeHtml(p.name || '') + ' · #' + i + ': ' + (s > 0 ? s : '—') + '">' +
+            // Слой маркера (только страница ввода результатов): под счётом
+            // игрока — счёт, который ввёл его маркер. При расхождении —
+            // красная обводка ячейки.
+            var mkRowHtml = '';
+            var mkCellCls = '';
+            if (opts.showMarker) {
+                var mk = getPlayerMarkerScoreForHole(p, i);
+                if (mk.score >= 1) {
+                    var mkMm = (s >= 1 && s !== mk.score);
+                    if (mkMm) mkCellCls = ' gm-mismatch';
+                    mkRowHtml = '<div class="gm-tile-marker' + (mkMm ? ' mk-mismatch' : '') + '">' +
+                        '<span class="gm-tile-mname">' + t('marker_score_short') + '</span>' +
+                        '<span class="gm-tile-mscore">' + mk.score + '</span>' +
+                        '</div>';
+                }
+            }
+
+            tilesForHole += '<div class="gm-tile-cell' + mkCellCls + '" title="' + escapeHtml(p.name || '') + ' · #' + i + ': ' + (s > 0 ? s : '—') + '">' +
+                '<div class="gm-tile-row ' + cls + '">' +
                 '<span class="gm-tile-pname">' + escapeHtml(pInitial.substring(0, 5)) + '</span>' +
                 '<span class="gm-tile-score">' + (s > 0 ? s : '—') + '</span>' +
                 '<span class="gm-tile-stbl">' + (stbl !== null ? stbl + 'p' : '·') + '</span>' +
+                '</div>' + mkRowHtml +
                 '</div>';
         });
 
@@ -3685,6 +3786,14 @@ function renderGroupMatrixHTML(r, playerEntries, order, opts) {
 }
 
 // ВАРИАНТ 2: СРАВНИТЕЛЬНАЯ ТАБЛИЦА ФЛАЙТА
+// Строка счёта маркера под счётом игрока (только страница ввода результатов).
+function buildFlightTableMarkerCellHTML(p, h, ownScore) {
+    var mk = getPlayerMarkerScoreForHole(p, h);
+    if (mk.score < 1) return '';
+    var mm = (ownScore >= 1 && ownScore !== mk.score) ? ' mk-mismatch' : '';
+    return '<div class="ft-marker' + mm + '">' + t('marker_score_short') + ': ' + mk.score + '</div>';
+}
+
 function renderGroupTableHTML(r, playerEntries, order, opts) {
     var html = '<div class="group-flight-table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;margin-bottom:10px;">';
     html += '<table class="group-flight-table" style="width:100%;min-width:320px;border-collapse:collapse;font-size:12px;text-align:center;">';
@@ -3728,6 +3837,7 @@ function renderGroupTableHTML(r, playerEntries, order, opts) {
             html += '<td style="padding:4px 6px;border-left:1px solid rgba(255,255,255,0.04);">';
             html += '<span class="ft-score-cell ' + cls + '" style="display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;min-width:24px;">' + (s > 0 ? s : '—') + '</span>';
             if (stbl !== null) html += ' <small style="color:#2ecc71;font-size:10px;font-weight:600;">' + stbl + 'p</small>';
+            if (opts.showMarker) html += buildFlightTableMarkerCellHTML(p, h, s);
             html += '</td>';
         });
         html += '</tr>';
@@ -3764,6 +3874,7 @@ function renderGroupTableHTML(r, playerEntries, order, opts) {
             html += '<td style="padding:4px 6px;border-left:1px solid rgba(255,255,255,0.04);">';
             html += '<span class="ft-score-cell ' + cls + '" style="display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;min-width:24px;">' + (s > 0 ? s : '—') + '</span>';
             if (stbl !== null) html += ' <small style="color:#2ecc71;font-size:10px;font-weight:600;">' + stbl + 'p</small>';
+            if (opts.showMarker) html += buildFlightTableMarkerCellHTML(p, h, s);
             html += '</td>';
         });
         html += '</tr>';
@@ -3861,13 +3972,37 @@ function renderGroupLeaderboardHTML(r, playerEntries, order, opts) {
             var isCur = (stats.currentHole === h && stats.holesPlayed < holeCount);
             var stbl = s > 0 ? stablefordField(s, h, fieldHcp) : null;
             var tip = '#' + h + ' (P' + par + '): ' + (s > 0 ? (s + (stbl !== null ? ' · ' + stbl + 'p' : '')) : '—');
+            var mmCls = '';
+            if (opts.showMarker) {
+                var mkOwn = getPlayerMarkerScoreForHole(p, h);
+                if (mkOwn.score >= 1) {
+                    tip += ' · ' + t('marker_score_short') + ': ' + mkOwn.score;
+                    if (s >= 1 && s !== mkOwn.score) mmCls = ' flb-mm';
+                }
+            }
 
-            html += '<div class="flb-mini-tile ' + cls + (isCur ? ' flb-cur' : '') + '" title="' + tip + '" style="flex:1;min-width:18px;height:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;font-size:9.5px;font-weight:700;">' +
+            html += '<div class="flb-mini-tile ' + cls + (isCur ? ' flb-cur' : '') + mmCls + '" title="' + tip + '" style="flex:1;min-width:18px;height:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;font-size:9.5px;font-weight:700;">' +
                 '<span style="font-size:7.5px;opacity:0.75;line-height:1;">' + h + '</span>' +
                 '<span style="font-size:10px;line-height:1;font-weight:800;">' + (s > 0 ? s : '·') + '</span>' +
                 '</div>';
         });
         html += '</div>';
+
+        // Вторая полоса — счёта маркера этого игрока (только страница ввода).
+        if (opts.showMarker && playerHasAnyMarkerScore(p, order)) {
+            html += '<div class="flb-marker-cap"><i class="fas fa-pen-nib"></i> ' + t('marker_score_short') + ' — ' + t('legend_marker_score') + '</div>';
+            html += '<div class="flb-hole-strip flb-marker-strip" style="display:flex;gap:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px 0 4px;">';
+            order.forEach(function(h) {
+                var mk = getPlayerMarkerScoreForHole(p, h);
+                var ownS = parseInt(sc[h]) || 0;
+                var mm = (mk.score >= 1 && ownS >= 1 && ownS !== mk.score) ? ' flb-mm' : '';
+                var tipM = '#' + h + ': ' + t('marker_score_short') + ' ' + (mk.score >= 1 ? mk.score : '—');
+                html += '<div class="flb-mini-tile flb-marker-tile' + mm + '" title="' + tipM + '" style="flex:1;min-width:18px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:3px;font-size:10px;font-weight:800;">' +
+                    (mk.score >= 1 ? mk.score : '·') +
+                    '</div>';
+            });
+            html += '</div>';
+        }
 
         html += '</div>';
     });
@@ -4097,7 +4232,8 @@ function openPlayerProfileModal(playerId, roundId) {
 
         var isMe = (currentUser && currentUser.uid === playerId);
         var gIcon = u.gender === 'women' ? '👩' : '👨';
-        var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">' + t('guest') + '</span>' : '';
+        // Бейдж «Гость» убран везде по требованию клуба — гости никак не помечаются.
+        var guestBadge = '';
 
         var roundsWord = currentLang === 'en' ? 'rounds' : 'раундов';
         var teePillMarkup = u.defaultTee ? fmtTeePill(u.defaultTee) : '';
@@ -7845,7 +7981,8 @@ function initPlayerSearchAutofill(opts) {
         matches.slice(0, 8).forEach(function(m, idx) {
             var gIcon = m.gender === 'women' ? '👩' : '👨';
             var hcpText = fmtExactHcp(m.handicap) + ' HCP';
-            var guestTag = m.isGuest ? ' <span style="font-size:10px;color:var(--gold);">(Гость)</span>' : '';
+            // Пометка «Гость» в подсказках убрана — все игроки выглядят одинаково.
+            var guestTag = '';
 
             html += '<div class="autocomplete-item" data-idx="' + idx + '" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.08);min-height:44px;">';
             html += '<span>' + gIcon + ' <strong style="color:var(--white);font-size:14px;">' + escapeHtml(m.name) + '</strong>' + guestTag + '</span>';

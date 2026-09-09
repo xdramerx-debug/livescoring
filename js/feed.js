@@ -13,6 +13,8 @@ function loadLiveFeed() {
         db.ref('reactions').once('value')
     ]).then(function(snaps) {
         var rounds = snaps[0].val() || {};
+        // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
+        if (typeof sweepStaleRounds === 'function') rounds = sweepStaleRounds(rounds) || {};
         var reactions = snaps[1].val() || {};
         var el = document.getElementById('feed-list');
         if (!el) return;

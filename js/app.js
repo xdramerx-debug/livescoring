@@ -613,6 +613,9 @@ function loadLiveRounds() {
 
     bindRealtimeValue('home-live-rounds', db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
+        // Вчерашние незавершённые раунды автоматически закрываем со статусом
+        // «завершён автоматически» — они исчезнут из блока «Сейчас на поле».
+        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active'; });
 
         renderCourseHolesStrip(entries);
@@ -786,7 +789,10 @@ function buildRecentRowHTML(id, r) {
     var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
     var order = getRoundOrder(r);
     var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
-    var completedWord = currentLang === 'en' ? 'Completed' : 'Завершён';
+    // Статус завершённого раунда: «автоматически» либо имя игрока, завершившего раунд
+    var completedBadge = (typeof buildRoundCompletedBadgeHTML === 'function')
+        ? buildRoundCompletedBadgeHTML(r)
+        : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>';
     var dateStr = fmtDate(r.completedAt || r.createdAt);
 
     var playerNames = [];
@@ -830,7 +836,7 @@ function buildRecentRowHTML(id, r) {
         'onclick="toggleRecentRound(\'' + id + '\')" onkeydown="recentKey(event,\'' + id + '\')">' +
         '<span class="lwl-name"><i class="fas fa-flag-checkered"></i><span class="lwl-name-txt">' + dateStr + '</span></span>' +
         '<span class="lwl-hole"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
-        '<span class="lwl-score"><span class="tn-status tn-d">' + completedWord + '</span></span>' +
+        '<span class="lwl-score">' + completedBadge + '</span>' +
         '<span class="lwl-start">' + (r.format || 'Stroke Play') + '</span>' +
         '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
         '</div>' +
@@ -844,6 +850,7 @@ function loadRecentResults() {
 
     bindRealtimeValue('home-recent-results', db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
+        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'completed'; });
 
         if (entries.length === 0) {

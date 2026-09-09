@@ -4227,6 +4227,166 @@ body.sun-mode .r-empty {
 .rounds-layout-3 .lb-row .lwl-chev { grid-column: 2; grid-row: 1; align-self: start; }
 .rounds-layout-3 .lb-row .lwl-details { padding: 0 16px 16px; }
 
+/* ==========================================
+   ВАРИАНТЫ ОТОБРАЖЕНИЯ ОСТАЛЬНЫХ СТРАНИЦ
+   Классы ставятся на <body> функцией syncPageDisplayBodyClasses().
+   Вариант 1 — без классов (исходный вид); 2 — «Компактный»; 3 — «Витрина».
+   ========================================== */
+
+/* Статус «завершён автоматически» у карточек раундов */
+.tn-auto{background:rgba(148,163,184,.16);color:#aab8c6;}
+
+/* ---------- ГЛАВНАЯ (pd-home-*) ---------- */
+/* Вариант 2 · Компактная: низкий hero, плотные списки и цифры */
+body.pd-home-v2 .hero{min-height:58vh;min-height:58svh;padding:84px 16px 30px;}
+body.pd-home-v2 .hero-logo{max-height:76px !important;max-width:110px !important;margin-bottom:10px !important;}
+body.pd-home-v2 .hero-sub{font-size:10px;letter-spacing:2px;margin-bottom:6px;}
+body.pd-home-v2 .hero-title{font-size:clamp(22px,5vw,34px);margin-bottom:8px;}
+body.pd-home-v2 .hero-desc{font-size:12px;margin-bottom:16px;}
+body.pd-home-v2 .hero-btns .btn{padding:8px 16px;font-size:11px;}
+body.pd-home-v2 .section{padding:32px 0;}
+body.pd-home-v2 .sec-t{font-size:18px;}
+body.pd-home-v2 .live-who-list .lwl-row{margin-bottom:5px;border-radius:8px;}
+body.pd-home-v2 .live-who-list .lwl-toggle{padding:7px 10px;font-size:12px;gap:8px;}
+body.pd-home-v2 .live-who-list .lwl-details{padding:0 12px 10px;}
+body.pd-home-v2 .stats-grid{grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;}
+body.pd-home-v2 .stats-grid .stat{padding:12px 8px;border-radius:10px;}
+body.pd-home-v2 .stats-grid .stat-n{font-size:22px;}
+body.pd-home-v2 .stats-grid .stat-l{font-size:10px;}
+/* Вариант 3 · Витрина: крупный hero, золотые рамки, большие цифры */
+body.pd-home-v3 .hero{padding:120px 20px 80px;background:linear-gradient(160deg,#0b1a0e 0%,#1a472a 35%,#123420 60%,#0b1a0e 100%);}
+body.pd-home-v3 .hero::before{background:radial-gradient(ellipse at 30% 50%,rgba(201,168,76,.14) 0%,transparent 60%);}
+body.pd-home-v3 .hero-logo{max-height:220px !important;max-width:280px !important;margin-bottom:26px !important;}
+body.pd-home-v3 .hero-title{font-size:clamp(40px,8vw,68px);margin-bottom:20px;text-shadow:0 4px 30px rgba(201,168,76,.25);}
+body.pd-home-v3 .hero-sub{font-size:15px;letter-spacing:4px;}
+body.pd-home-v3 .hero-desc{font-size:17px;margin-bottom:40px;}
+body.pd-home-v3 .sec-t{font-size:30px;padding-bottom:12px;border-bottom:2px solid rgba(201,168,76,.35);}
+body.pd-home-v3 .section{padding:84px 0;}
+body.pd-home-v3 .live-who-list .lwl-row{border:1px solid rgba(201,168,76,.38);background:linear-gradient(145deg,rgba(201,168,76,.13),rgba(19,34,24,.92) 55%);border-radius:var(--r);margin-bottom:12px;}
+body.pd-home-v3 .live-who-list .lwl-toggle{padding:16px 18px;font-size:15px;}
+body.pd-home-v3 .live-who-list .lwl-details{padding:0 18px 16px;}
+body.pd-home-v3 .stats-grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px;}
+body.pd-home-v3 .stats-grid .stat{padding:30px 18px;background:linear-gradient(145deg,rgba(201,168,76,.14),rgba(19,34,24,.94) 55%);border-color:rgba(201,168,76,.42);}
+body.pd-home-v3 .stats-grid .stat-n{font-size:40px;color:var(--gold);}
+
+/* ---------- КНИГА ПОЛЯ (pd-guide-*) ---------- */
+/* Вариант 2 · Компактная */
+body.pd-guide-v2 .page-head .page-title{font-size:24px;}
+body.pd-guide-v2 .card{padding:14px;margin-bottom:12px;}
+body.pd-guide-v2 .card h2{font-size:15px !important;}
+body.pd-guide-v2 .hole-nav{gap:3px;margin:10px 0;}
+body.pd-guide-v2 .hole-btn{padding:5px 2px;font-size:11px;border-width:1px;}
+body.pd-guide-v2 #hole-guide-card h2{font-size:21px !important;}
+body.pd-guide-v2 #hole-guide-card .stat{padding:10px 6px !important;}
+body.pd-guide-v2 #hole-guide-card .stat-n{font-size:18px;}
+body.pd-guide-v2 #hole-guide-card .card p{font-size:12.5px !important;}
+body.pd-guide-v2 #hole-guide-card .card h3{font-size:13px !important;}
+/* Вариант 3 · Таблоид: крупная типографика журнальной подачи */
+body.pd-guide-v3 .card{padding:28px;}
+body.pd-guide-v3 .hole-nav{gap:8px;margin:18px 0;}
+body.pd-guide-v3 .hole-btn{padding:13px 4px;font-size:16px;border-width:2px;}
+body.pd-guide-v3 .hole-btn.active{box-shadow:0 0 16px rgba(201,168,76,.5);}
+body.pd-guide-v3 #hole-guide-card > .card{border-width:3px !important;}
+body.pd-guide-v3 #hole-guide-card h2{font-size:40px !important;}
+body.pd-guide-v3 #hole-guide-card .stat{padding:22px 12px;background:linear-gradient(145deg,rgba(201,168,76,.15),rgba(19,34,24,.95) 60%);border-color:rgba(201,168,76,.45);}
+body.pd-guide-v3 #hole-guide-card .stat-n{font-size:27px;color:var(--gold);}
+body.pd-guide-v3 #hole-guide-card .card p{font-size:16px !important;line-height:1.75 !important;}
+body.pd-guide-v3 #hole-guide-card .card h3{font-size:18px !important;}
+
+/* ---------- ЛЕНТА СОБЫТИЙ (pd-feed-*) ---------- */
+/* Вариант 2 · Компактная */
+body.pd-feed-v2 #feed-list .card{padding:11px 14px;margin-bottom:8px;border-radius:10px;}
+body.pd-feed-v2 #feed-list .card strong{font-size:13.5px !important;}
+body.pd-feed-v2 #feed-list .card>div:first-of-type{margin-bottom:6px !important;}
+body.pd-feed-v2 #feed-list .badge-eag,body.pd-feed-v2 #feed-list .badge-bir{font-size:11px !important;padding:3px 9px !important;}
+body.pd-feed-v2 #feed-list .btn{padding:4px 9px;font-size:12px;}
+/* Вариант 3 · Афиша: крупные афишные карточки событий */
+body.pd-feed-v3 #feed-list .card{padding:26px;margin-bottom:22px;background:linear-gradient(145deg,rgba(201,168,76,.14),rgba(19,34,24,.93) 55%);border-color:rgba(201,168,76,.45);box-shadow:0 14px 36px rgba(0,0,0,.42);}
+body.pd-feed-v3 #feed-list .card strong{font-size:19px !important;}
+body.pd-feed-v3 #feed-list .badge-eag,body.pd-feed-v3 #feed-list .badge-bir{font-size:16px !important;padding:7px 16px !important;}
+body.pd-feed-v3 #feed-list .btn{padding:8px 14px;font-size:14px;}
+
+/* ---------- СИМУЛЯТОР WHS (pd-predictor-*) ---------- */
+/* Вариант 2 · Компактный */
+body.pd-predictor-v2 .card{padding:15px;margin-bottom:14px;}
+body.pd-predictor-v2 .card h2{font-size:15px;}
+body.pd-predictor-v2 .form-group{margin-bottom:10px;}
+body.pd-predictor-v2 .form-input{padding:8px 11px;font-size:13px;}
+body.pd-predictor-v2 #pred-result .stat{padding:14px 8px;}
+body.pd-predictor-v2 #pred-result .stat-n{font-size:24px;}
+body.pd-predictor-v2 #pred-result h2{font-size:19px !important;}
+/* Вариант 3 · Дашборд: крупные аналитические плашки */
+body.pd-predictor-v3 .card{padding:28px;}
+body.pd-predictor-v3 .form-input{padding:14px 15px;font-size:15px;}
+body.pd-predictor-v3 #pred-result .card{border:2px solid rgba(201,168,76,.5) !important;background:linear-gradient(145deg,rgba(201,168,76,.15),rgba(19,34,24,.94) 55%) !important;}
+body.pd-predictor-v3 #pred-result h2{font-size:28px !important;}
+body.pd-predictor-v3 #pred-result .stat{padding:24px 12px;background:linear-gradient(145deg,rgba(201,168,76,.14),rgba(19,34,24,.95) 60%);border-color:rgba(201,168,76,.45);}
+body.pd-predictor-v3 #pred-result .stat-n{font-size:34px;color:var(--gold);}
+body.pd-predictor-v3 #pred-result h3{font-size:17px !important;}
+
+/* ---------- ЗАЧЁТ СЕЗОНА (pd-order-of-merit-*) ---------- */
+/* Вариант 2 · Компактная */
+body.pd-order-of-merit-v2 .card{padding:14px;}
+body.pd-order-of-merit-v2 .lb-table th{font-size:9px;padding:8px 8px;}
+body.pd-order-of-merit-v2 .lb-table td{font-size:12px;padding:8px 8px;}
+body.pd-order-of-merit-v2 .lb-table .badge-eag{font-size:11px !important;padding:2px 8px;}
+/* Вариант 3 · Пьедестал: золотая таблица, акцент на лидерах */
+body.pd-order-of-merit-v3 .card{padding:28px;background:linear-gradient(145deg,rgba(201,168,76,.1),rgba(19,34,24,.93) 55%);border-color:rgba(201,168,76,.4);}
+body.pd-order-of-merit-v3 .lb-table th{font-size:12px;padding:16px 12px;letter-spacing:1.5px;}
+body.pd-order-of-merit-v3 .lb-table td{font-size:16px;padding:18px 12px;}
+body.pd-order-of-merit-v3 .lb-table tbody tr:first-child{background:linear-gradient(90deg,rgba(201,168,76,.22),rgba(201,168,76,.05));}
+body.pd-order-of-merit-v3 .lb-table tbody tr:nth-child(2){background:linear-gradient(90deg,rgba(201,168,76,.12),transparent);}
+body.pd-order-of-merit-v3 .lb-table tbody tr:nth-child(3){background:linear-gradient(90deg,rgba(201,168,76,.07),transparent);}
+body.pd-order-of-merit-v3 .lb-table .badge-eag{font-size:16px !important;padding:6px 14px;}
+
+/* ---------- ТУРНИРЫ (pd-tournaments-*) ---------- */
+/* Вариант 2 · Компактный */
+body.pd-tournaments-v2 .card{padding:14px;margin-bottom:12px;}
+body.pd-tournaments-v2 .tn-card{padding:13px;margin-bottom:8px;border-radius:10px;}
+body.pd-tournaments-v2 .tn-name{font-size:15px;}
+body.pd-tournaments-v2 .tn-meta{font-size:11px;}
+/* Вариант 3 · Витрина: крупные турнирные афиши */
+body.pd-tournaments-v3 .tn-card{padding:28px;margin-bottom:20px;background:linear-gradient(145deg,rgba(201,168,76,.15),rgba(19,34,24,.93) 55%);border-color:rgba(201,168,76,.48);box-shadow:0 14px 34px rgba(0,0,0,.42);}
+body.pd-tournaments-v3 .tn-name{font-size:24px;}
+body.pd-tournaments-v3 .tn-meta{font-size:14px;}
+body.pd-tournaments-v3 .tn-status{font-size:14px;padding:6px 16px;}
+
+/* ---------- ГАНДИКАПЫ (pd-handicap-*) ---------- */
+/* Вариант 2 · Компактный */
+body.pd-handicap-v2 .card{padding:14px;margin-bottom:12px;}
+body.pd-handicap-v2 .card h2{font-size:15px;}
+body.pd-handicap-v2 .form-input{padding:8px 11px;font-size:13px;}
+body.pd-handicap-v2 .hcp-result-val{font-size:30px !important;}
+body.pd-handicap-v2 .hcp-tbl th,body.pd-handicap-v2 .hcp-tbl td{padding:6px 8px;font-size:12px;}
+/* Вариант 3 · Витрина: золотая рамка и крупный результат */
+body.pd-handicap-v3 .card{padding:28px;border-color:rgba(201,168,76,.45);}
+body.pd-handicap-v3 .hcp-result{background:linear-gradient(145deg,rgba(201,168,76,.18),transparent 70%);border:1px solid rgba(201,168,76,.5);border-radius:var(--r);padding:22px;margin-top:14px;}
+body.pd-handicap-v3 .hcp-result-val{font-size:56px !important;color:var(--gold);text-shadow:0 0 26px rgba(201,168,76,.35);}
+body.pd-handicap-v3 #hcp-tables .card{border-width:2px;border-color:rgba(201,168,76,.5);background:linear-gradient(145deg,rgba(201,168,76,.12),rgba(19,34,24,.94) 55%);}
+body.pd-handicap-v3 .hcp-tbl th{font-size:13px;padding:14px 12px;}
+body.pd-handicap-v3 .hcp-tbl td{font-size:15px;padding:13px 12px;border-bottom:1px solid rgba(201,168,76,.22);}
+
+/* ---------- ПОМОЩНИК (pd-assistant-*) ---------- */
+/* Вариант 2 · Компактный */
+body.pd-assistant-v2 .assistant-shell{min-height:56vh;border-radius:14px;}
+body.pd-assistant-v2 .assistant-head{padding:10px 14px;}
+body.pd-assistant-v2 .assistant-head .as-avatar{width:34px;height:34px;flex-basis:34px;font-size:16px;}
+body.pd-assistant-v2 .assistant-head .as-title h2{font-size:16px;}
+body.pd-assistant-v2 .as-messages{padding:12px 12px 6px;gap:8px;min-height:220px;}
+body.pd-assistant-v2 .as-bubble{font-size:12.5px;padding:8px 11px;border-radius:11px;}
+body.pd-assistant-v2 .as-chip{padding:4px 10px;font-size:11px;}
+body.pd-assistant-v2 .assistant-input input{padding:9px 11px;font-size:12.5px;}
+body.pd-assistant-v2 .assistant-input button{padding:9px 14px;font-size:12px;}
+/* Вариант 3 · Крупный: максимальная читаемость */
+body.pd-assistant-v3 .assistant-shell{max-width:980px;border-radius:24px;border:1px solid rgba(201,168,76,.4);}
+body.pd-assistant-v3 .assistant-head .as-avatar{width:56px;height:56px;flex-basis:56px;font-size:28px;box-shadow:0 0 18px rgba(201,168,76,.45);}
+body.pd-assistant-v3 .assistant-head .as-title h2{font-size:26px;}
+body.pd-assistant-v3 .as-messages{padding:24px 24px 10px;gap:18px;}
+body.pd-assistant-v3 .as-bubble{font-size:17px;line-height:1.7;padding:16px 20px;border-radius:18px;}
+body.pd-assistant-v3 .as-chip{padding:11px 18px;font-size:15px;}
+body.pd-assistant-v3 .assistant-input input{padding:17px 18px;font-size:17px;}
+body.pd-assistant-v3 .assistant-input button{padding:17px 26px;font-size:16px;}
+
 @media (max-width: 900px) {
     .page-display-settings-grid { grid-template-columns: 1fr; }
     .stats-dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }

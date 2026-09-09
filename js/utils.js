@@ -794,6 +794,46 @@ var I18N = {
         rounds_display_variant_1: '1 · Текущий список',
         rounds_display_variant_2: '2 · Таблица',
         rounds_display_variant_3: '3 · Витрина раундов',
+        home_display_title: 'Отображение страницы «Главная»',
+        home_display_sub: 'Выберите один из трёх вариантов оформления главной страницы. Настройка применяется для всех пользователей.',
+        home_display_variant_1: '1 · Классика',
+        home_display_variant_2: '2 · Компактная',
+        home_display_variant_3: '3 · Витрина',
+        guide_display_title: 'Отображение страницы «Книга поля»',
+        guide_display_sub: 'Выберите один из трёх вариантов оформления книги поля. Настройка применяется для всех пользователей.',
+        guide_display_variant_1: '1 · Карточка лунки',
+        guide_display_variant_2: '2 · Компактная',
+        guide_display_variant_3: '3 · Таблоид',
+        feed_display_title: 'Отображение страницы «Лента событий»',
+        feed_display_sub: 'Выберите один из трёх вариантов оформления ленты событий. Настройка применяется для всех пользователей.',
+        feed_display_variant_1: '1 · Лента',
+        feed_display_variant_2: '2 · Компактная',
+        feed_display_variant_3: '3 · Афиша',
+        predictor_display_title: 'Отображение страницы «Симулятор WHS»',
+        predictor_display_sub: 'Выберите один из трёх вариантов оформления симулятора. Настройка применяется для всех пользователей.',
+        predictor_display_variant_1: '1 · Стандарт',
+        predictor_display_variant_2: '2 · Компактный',
+        predictor_display_variant_3: '3 · Дашборд',
+        'order-of-merit_display_title': 'Отображение страницы «Зачёт сезона»',
+        'order-of-merit_display_sub': 'Выберите один из трёх вариантов оформления таблицы зачёта сезона. Настройка применяется для всех пользователей.',
+        'order-of-merit_display_variant_1': '1 · Таблица',
+        'order-of-merit_display_variant_2': '2 · Компактная',
+        'order-of-merit_display_variant_3': '3 · Пьедестал',
+        tournaments_display_title: 'Отображение страницы «Турниры»',
+        tournaments_display_sub: 'Выберите один из трёх вариантов оформления списка турниров. Настройка применяется для всех пользователей.',
+        tournaments_display_variant_1: '1 · Список',
+        tournaments_display_variant_2: '2 · Компактный',
+        tournaments_display_variant_3: '3 · Витрина',
+        handicap_display_title: 'Отображение страницы «Гандикапы»',
+        handicap_display_sub: 'Выберите один из трёх вариантов оформления калькулятора и таблиц гандикапов. Настройка применяется для всех пользователей.',
+        handicap_display_variant_1: '1 · Стандарт',
+        handicap_display_variant_2: '2 · Компактный',
+        handicap_display_variant_3: '3 · Витрина',
+        assistant_display_title: 'Отображение страницы «Помощник»',
+        assistant_display_sub: 'Выберите один из трёх вариантов оформления чата помощника. Настройка применяется для всех пользователей.',
+        assistant_display_variant_1: '1 · Классический чат',
+        assistant_display_variant_2: '2 · Компактный',
+        assistant_display_variant_3: '3 · Крупный',
         all_players_joined: 'Все игроки уже вошли в раунд',
         tab_broadcasts: 'Анонсы 📢',
         delete_all_rounds: 'Удалить все раунды',
@@ -1204,6 +1244,46 @@ var I18N = {
         rounds_display_variant_1: '1 · Current list',
         rounds_display_variant_2: '2 · Table',
         rounds_display_variant_3: '3 · Round showcase',
+        home_display_title: '“Home” page layout',
+        home_display_sub: 'Choose one of three home page layouts. The setting applies to all users.',
+        home_display_variant_1: '1 · Classic',
+        home_display_variant_2: '2 · Compact',
+        home_display_variant_3: '3 · Showcase',
+        guide_display_title: '“Course Guide” page layout',
+        guide_display_sub: 'Choose one of three course-guide layouts. The setting applies to all users.',
+        guide_display_variant_1: '1 · Hole card',
+        guide_display_variant_2: '2 · Compact',
+        guide_display_variant_3: '3 · Tabloid',
+        feed_display_title: '“Event Feed” page layout',
+        feed_display_sub: 'Choose one of three feed layouts. The setting applies to all users.',
+        feed_display_variant_1: '1 · Feed',
+        feed_display_variant_2: '2 · Compact',
+        feed_display_variant_3: '3 · Poster',
+        predictor_display_title: '“WHS Simulator” page layout',
+        predictor_display_sub: 'Choose one of three simulator layouts. The setting applies to all users.',
+        predictor_display_variant_1: '1 · Standard',
+        predictor_display_variant_2: '2 · Compact',
+        predictor_display_variant_3: '3 · Dashboard',
+        'order-of-merit_display_title': '“Season Ranking” page layout',
+        'order-of-merit_display_sub': 'Choose one of three season-ranking layouts. The setting applies to all users.',
+        'order-of-merit_display_variant_1': '1 · Table',
+        'order-of-merit_display_variant_2': '2 · Compact',
+        'order-of-merit_display_variant_3': '3 · Podium',
+        tournaments_display_title: '“Tournaments” page layout',
+        tournaments_display_sub: 'Choose one of three tournament-list layouts. The setting applies to all users.',
+        tournaments_display_variant_1: '1 · List',
+        tournaments_display_variant_2: '2 · Compact',
+        tournaments_display_variant_3: '3 · Showcase',
+        handicap_display_title: '“Handicaps” page layout',
+        handicap_display_sub: 'Choose one of three handicap calculator and table layouts. The setting applies to all users.',
+        handicap_display_variant_1: '1 · Standard',
+        handicap_display_variant_2: '2 · Compact',
+        handicap_display_variant_3: '3 · Showcase',
+        assistant_display_title: '“Assistant” page layout',
+        assistant_display_sub: 'Choose one of three assistant-chat layouts. The setting applies to all users.',
+        assistant_display_variant_1: '1 · Classic chat',
+        assistant_display_variant_2: '2 · Compact',
+        assistant_display_variant_3: '3 · Large',
         all_players_joined: 'All players have already joined the round',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
@@ -1382,6 +1462,7 @@ function loadMyActiveRounds(targetId) {
 
     bindRealtimeValue('my-active-rounds:' + targetId, db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
+        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
         var myActive = [];
 
         Object.entries(data).forEach(function(e) {
@@ -4797,6 +4878,99 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
 
 
 // ==========================================
+// АВТОЗАВЕРШЕНИЕ ПРОСРОЧЕННЫХ РАУНДОВ
+// ==========================================
+// Раунд «живёт» только день старта: если игрок начал раунд вчера и не
+// завершил его, на следующий день раунд автоматически переводится в статус
+// «завершён автоматически» (autoCompleted=true). Проверка выполняется на
+// клиентах при чтении списка раундов (главная, все раунды, админка) —
+// первый открывший приложение игрок «подметает» базу за всех.
+var __pestovoStaleRoundSweepIds = {};
+
+function getRoundDayStartMs(ts) {
+    var d = new Date(parseInt(ts, 10) || 0);
+    if (isNaN(d.getTime())) return 0;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+function isRoundStaleForAutoComplete(r) {
+    if (!r || typeof r !== 'object' || r.status !== 'active') return false;
+    var startTs = parseInt(r.startTime, 10) || parseInt(r.createdAt, 10) || 0;
+    if (!startTs) return false;
+    var startDay = getRoundDayStartMs(startTs);
+    if (!startDay) return false;
+    var todayDay = getRoundDayStartMs(Date.now());
+    // Раунд считается «вчерашним», если день его старта строго раньше сегодняшнего дня
+    return startDay < todayDay;
+}
+
+// Принимает объект rounds из снапшота, переводит просроченные активные раунды
+// в «completed» (локально сразу + записью в Firebase) и возвращает тот же объект.
+function sweepStaleRounds(data) {
+    if (!data || typeof data !== 'object') return data;
+    Object.keys(data).forEach(function(id) {
+        var r = data[id];
+        if (!isRoundStaleForAutoComplete(r)) return;
+
+        var nowMs = Date.now();
+        // Локальный патч — чтобы текущий рендер сразу показал раунд завершённым
+        r.status = 'completed';
+        r.autoCompleted = true;
+        r.autoCompletedAt = nowMs;
+        if (!r.completedAt) r.completedAt = nowMs;
+
+        // Пишем в базу только один раз за жизнь вкладки на каждый раунд
+        if (typeof db === 'undefined' || __pestovoStaleRoundSweepIds[id]) return;
+        __pestovoStaleRoundSweepIds[id] = true;
+
+        var roundId = id;
+        var roundData = r;
+        var update = {
+            status: 'completed',
+            autoCompleted: true,
+            autoCompletedAt: nowMs,
+            completedAt: roundData.completedAt
+        };
+        db.ref('rounds/' + roundId).update(update).then(function() {
+            // Историю сохраняем атомарно ровно один раз (транзакция-клейм):
+            // даже если sweep запустили одновременно несколько клиентов,
+            // записи в users/<uid>/history не задвоятся.
+            var claimId = 'sweep_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+            return db.ref('rounds/' + roundId + '/historyRecorded').transaction(function(v) {
+                if (v === null || v === undefined || v === false) return claimId;
+                return undefined; // кто-то уже забрал — отменяем транзакцию
+            }).then(function(res) {
+                var claimed = res && res.committed && res.snapshot && String(res.snapshot.val()) === claimId;
+                if (claimed && typeof saveHistory === 'function') {
+                    try { saveHistory(roundId, roundData); } catch (e) {}
+                }
+            });
+        }).catch(function() {
+            delete __pestovoStaleRoundSweepIds[roundId];
+        });
+    });
+    return data;
+}
+
+// Бейдж статуса завершённого раунда:
+//  — авто-завершение: «Завершён автоматически»;
+//  — обычное завершение: имя игрока, который завершил раунд;
+//  — старые записи без данных о завершении: просто «Завершён».
+function buildRoundCompletedBadgeHTML(r) {
+    var isEn = (typeof currentLang !== 'undefined') && currentLang === 'en';
+    if (r && r.autoCompleted) {
+        return '<span class="tn-status tn-auto" title="' + (isEn ? 'The round was closed automatically the next day' : 'Раунд закрыт автоматически на следующий день') + '"><i class="fas fa-clock-rotate-left"></i> ' + (isEn ? 'Auto-completed' : 'Завершён автоматически') + '</span>';
+    }
+    var who = r && r.completedByName ? String(r.completedByName).trim() : '';
+    if (who) {
+        var shown = (typeof escapeHtml === 'function') ? escapeHtml(who) : who;
+        return '<span class="tn-status tn-d"><i class="fas fa-user-check"></i> ' + (isEn ? 'Completed by ' : 'Завершил(а) · ') + shown + '</span>';
+    }
+    return '<span class="tn-status tn-d">' + (isEn ? 'Completed' : 'Завершён') + '</span>';
+}
+
+
+// ==========================================
 // ГЛОБАЛЬНЫЕ ВАРИАНТЫ ОТОБРАЖЕНИЯ СТРАНИЦ
 // ==========================================
 // Администратор выбирает оформление один раз для всего клуба. Значение
@@ -4804,9 +4978,17 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
 // источником истины для новых устройств. Вариант 1 — текущий вид страниц.
 var PAGE_DISPLAY_VARIANTS = ['1', '2', '3'];
 var PAGE_DISPLAY_VARIANT_CONFIG = {
+    home: { storage: 'pestovo_home_display_variant', firebase: 'settings/home_display_variant' },
     players: { storage: 'pestovo_players_display_variant', firebase: 'settings/players_display_variant' },
     stats: { storage: 'pestovo_stats_display_variant', firebase: 'settings/stats_display_variant' },
-    rounds: { storage: 'pestovo_all_rounds_display_variant', firebase: 'settings/all_rounds_display_variant' }
+    rounds: { storage: 'pestovo_all_rounds_display_variant', firebase: 'settings/all_rounds_display_variant' },
+    guide: { storage: 'pestovo_guide_display_variant', firebase: 'settings/guide_display_variant' },
+    feed: { storage: 'pestovo_feed_display_variant', firebase: 'settings/feed_display_variant' },
+    predictor: { storage: 'pestovo_predictor_display_variant', firebase: 'settings/predictor_display_variant' },
+    'order-of-merit': { storage: 'pestovo_oom_display_variant', firebase: 'settings/oom_display_variant' },
+    tournaments: { storage: 'pestovo_tournaments_display_variant', firebase: 'settings/tournaments_display_variant' },
+    handicap: { storage: 'pestovo_handicap_display_variant', firebase: 'settings/handicap_display_variant' },
+    assistant: { storage: 'pestovo_assistant_display_variant', firebase: 'settings/assistant_display_variant' }
 };
 
 var pestovoPageDisplayVariants = (function() {
@@ -4834,6 +5016,7 @@ function applyPageDisplayVariant(page, value) {
     var variant = normalizePageDisplayVariant(page, value);
     pestovoPageDisplayVariants[page] = variant;
     try { localStorage.setItem(PAGE_DISPLAY_VARIANT_CONFIG[page].storage, variant); } catch (e) {}
+    syncPageDisplayBodyClasses();
 
     // Перерисовка выполняется только если соответствующая страница открыта.
     // Это позволяет менять оформление в админке без перезагрузки вкладки.
@@ -4848,6 +5031,22 @@ function applyPageDisplayVariant(page, value) {
     return variant;
 }
 
+// Синхронизирует CSS-классы вида «pd-<страница>-v2/v3» на <body>.
+// Варианты большинства страниц реализованы чисто на CSS, поэтому переключение
+// класса мгновенно меняет оформление без перерендера данных. Вариант «1»
+// сохраняет исходный вид (классов нет).
+function syncPageDisplayBodyClasses() {
+    if (typeof document === 'undefined' || !document.body) return;
+    try {
+        Object.keys(PAGE_DISPLAY_VARIANT_CONFIG).forEach(function(page) {
+            var cur = getPageDisplayVariant(page);
+            ['2', '3'].forEach(function(v) {
+                document.body.classList.toggle('pd-' + page + '-v' + v, cur === v);
+            });
+        });
+    } catch (e) {}
+}
+
 function normalizePlayersDisplayVariant(value) { return normalizePageDisplayVariant('players', value); }
 function getPlayersDisplayVariant() { return getPageDisplayVariant('players'); }
 function applyPlayersDisplayVariant(value) { return applyPageDisplayVariant('players', value); }
@@ -4857,6 +5056,21 @@ function applyStatsDisplayVariant(value) { return applyPageDisplayVariant('stats
 function normalizeAllRoundsDisplayVariant(value) { return normalizePageDisplayVariant('rounds', value); }
 function getAllRoundsDisplayVariant() { return getPageDisplayVariant('rounds'); }
 function applyAllRoundsDisplayVariant(value) { return applyPageDisplayVariant('rounds', value); }
+function normalizeHomeDisplayVariant(value) { return normalizePageDisplayVariant('home', value); }
+function getHomeDisplayVariant() { return getPageDisplayVariant('home'); }
+function applyHomeDisplayVariant(value) { return applyPageDisplayVariant('home', value); }
+function getGuideDisplayVariant() { return getPageDisplayVariant('guide'); }
+function getFeedDisplayVariant() { return getPageDisplayVariant('feed'); }
+function getPredictorDisplayVariant() { return getPageDisplayVariant('predictor'); }
+function getOomDisplayVariant() { return getPageDisplayVariant('order-of-merit'); }
+function getTournamentsDisplayVariant() { return getPageDisplayVariant('tournaments'); }
+function getHandicapDisplayVariant() { return getPageDisplayVariant('handicap'); }
+function getAssistantDisplayVariant() { return getPageDisplayVariant('assistant'); }
+
+// Применяем выбранные варианты сразу (скрипт подключён в конце <body>),
+// чтобы страница не «мигала» исходным оформлением при загрузке.
+try { syncPageDisplayBodyClasses(); } catch (e) {}
+document.addEventListener('DOMContentLoaded', function() { syncPageDisplayBodyClasses(); });
 
 // ==========================================
 // PNG-КАРТОЧКИ ДЛЯ СОЦСЕТЕЙ

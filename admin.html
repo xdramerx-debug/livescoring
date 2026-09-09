@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=21">
+    <link rel="stylesheet" href="css/style.css?v=22">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -610,6 +610,15 @@
                 <!-- Глобальные варианты отображения основных страниц -->
                 <div class="page-display-settings-grid">
                     <div class="list-item page-display-setting-card">
+                        <span class="page-display-setting-title"><i class="fas fa-house" style="color:var(--gold);"></i> <span data-i18n="home_display_title">Отображение страницы «Главная»</span></span>
+                        <div class="page-display-setting-sub" data-i18n="home_display_sub">Выберите один из трёх вариантов оформления главной страницы. Настройка применяется для всех пользователей.</div>
+                        <div class="page-display-variant-buttons">
+                            <button type="button" id="home-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('home','1')" aria-pressed="true"><i class="fas fa-star"></i> <span data-i18n="home_display_variant_1">1 · Классика</span></button>
+                            <button type="button" id="home-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('home','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="home_display_variant_2">2 · Компактная</span></button>
+                            <button type="button" id="home-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('home','3')" aria-pressed="false"><i class="fas fa-gem"></i> <span data-i18n="home_display_variant_3">3 · Витрина</span></button>
+                        </div>
+                    </div>
+                    <div class="list-item page-display-setting-card">
                         <span class="page-display-setting-title"><i class="fas fa-users" style="color:var(--gold);"></i> <span data-i18n="players_display_title">Отображение страницы «Игроки»</span></span>
                         <div class="page-display-setting-sub" data-i18n="players_display_sub">Выберите один из трёх вариантов оформления списка игроков. Настройка применяется для всех пользователей.</div>
                         <div class="page-display-variant-buttons">
@@ -634,6 +643,69 @@
                             <button type="button" id="rounds-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('rounds','1')" aria-pressed="true"><i class="fas fa-bars"></i> <span data-i18n="rounds_display_variant_1">1 · Текущий список</span></button>
                             <button type="button" id="rounds-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('rounds','2')" aria-pressed="false"><i class="fas fa-table-list"></i> <span data-i18n="rounds_display_variant_2">2 · Таблица</span></button>
                             <button type="button" id="rounds-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('rounds','3')" aria-pressed="false"><i class="fas fa-layer-group"></i> <span data-i18n="rounds_display_variant_3">3 · Витрина раундов</span></button>
+                        </div>
+                    </div>
+                    <div class="list-item page-display-setting-card">
+                        <span class="page-display-setting-title"><i class="fas fa-book-bookmark" style="color:var(--gold);"></i> <span data-i18n="guide_display_title">Отображение страницы «Книга поля»</span></span>
+                        <div class="page-display-setting-sub" data-i18n="guide_display_sub">Выберите один из трёх вариантов оформления книги поля. Настройка применяется для всех пользователей.</div>
+                        <div class="page-display-variant-buttons">
+                            <button type="button" id="guide-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('guide','1')" aria-pressed="true"><i class="fas fa-id-card"></i> <span data-i18n="guide_display_variant_1">1 · Карточка лунки</span></button>
+                            <button type="button" id="guide-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('guide','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="guide_display_variant_2">2 · Компактная</span></button>
+                            <button type="button" id="guide-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('guide','3')" aria-pressed="false"><i class="fas fa-newspaper"></i> <span data-i18n="guide_display_variant_3">3 · Таблоид</span></button>
+                        </div>
+                    </div>
+                    <div class="list-item page-display-setting-card">
+                        <span class="page-display-setting-title"><i class="fas fa-rss" style="color:var(--gold);"></i> <span data-i18n="feed_display_title">Отображение страницы «Лента событий»</span></span>
+                        <div class="page-display-setting-sub" data-i18n="feed_display_sub">Выберите один из трёх вариантов оформления ленты событий. Настройка применяется для всех пользователей.</div>
+                        <div class="page-display-variant-buttons">
+                            <button type="button" id="feed-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('feed','1')" aria-pressed="true"><i class="fas fa-stream"></i> <span data-i18n="feed_display_variant_1">1 · Лента</span></button>
+                            <button type="button" id="feed-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('feed','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="feed_display_variant_2">2 · Компактная</span></button>
+                            <button type="button" id="feed-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('feed','3')" aria-pressed="false"><i class="fas fa-bullhorn"></i> <span data-i18n="feed_display_variant_3">3 · Афиша</span></button>
+                        </div>
+                    </div>
+                    <div class="list-item page-display-setting-card">
+                        <span class="page-display-setting-title"><i class="fas fa-calculator" style="color:var(--gold);"></i> <span data-i18n="predictor_display_title">Отображение страницы «Симулятор WHS»</span></span>
+                        <div class="page-display-setting-sub" data-i18n="predictor_display_sub">Выберите один из трёх вариантов оформления симулятора. Настройка применяется для всех пользователей.</div>
+                        <div class="page-display-variant-buttons">
+                            <button type="button" id="predictor-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('predictor','1')" aria-pressed="true"><i class="fas fa-square-check"></i> <span data-i18n="predictor_display_variant_1">1 · Стандарт</span></button>
+                            <button type="button" id="predictor-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('predictor','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="predictor_display_variant_2">2 · Компактный</span></button>
+                            <button type="button" id="predictor-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('predictor','3')" aria-pressed="false"><i class="fas fa-gauge-high"></i> <span data-i18n="predictor_display_variant_3">3 · Дашборд</span></button>
+                        </div>
+                    </div>
+                    <div class="list-item page-display-setting-card">
+                        <span class="page-display-setting-title"><i class="fas fa-crown" style="color:var(--gold);"></i> <span data-i18n="order-of-merit_display_title">Отображение страницы «Зачёт сезона»</span></span>
+                        <div class="page-display-setting-sub" data-i18n="order-of-merit_display_sub">Выберите один из трёх вариантов оформления таблицы зачёта сезона. Настройка применяется для всех пользователей.</div>
+                        <div class="page-display-variant-buttons">
+                            <button type="button" id="order-of-merit-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('order-of-merit','1')" aria-pressed="true"><i class="fas fa-table"></i> <span data-i18n="order-of-merit_display_variant_1">1 · Таблица</span></button>
+                            <button type="button" id="order-of-merit-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('order-of-merit','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="order-of-merit_display_variant_2">2 · Компактная</span></button>
+                            <button type="button" id="order-of-merit-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('order-of-merit','3')" aria-pressed="false"><i class="fas fa-ranking-star"></i> <span data-i18n="order-of-merit_display_variant_3">3 · Пьедестал</span></button>
+                        </div>
+                    </div>
+                    <div class="list-item page-display-setting-card">
+                        <span class="page-display-setting-title"><i class="fas fa-trophy" style="color:var(--gold);"></i> <span data-i18n="tournaments_display_title">Отображение страницы «Турниры»</span></span>
+                        <div class="page-display-setting-sub" data-i18n="tournaments_display_sub">Выберите один из трёх вариантов оформления списка турниров. Настройка применяется для всех пользователей.</div>
+                        <div class="page-display-variant-buttons">
+                            <button type="button" id="tournaments-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('tournaments','1')" aria-pressed="true"><i class="fas fa-list"></i> <span data-i18n="tournaments_display_variant_1">1 · Список</span></button>
+                            <button type="button" id="tournaments-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('tournaments','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="tournaments_display_variant_2">2 · Компактный</span></button>
+                            <button type="button" id="tournaments-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('tournaments','3')" aria-pressed="false"><i class="fas fa-layer-group"></i> <span data-i18n="tournaments_display_variant_3">3 · Витрина</span></button>
+                        </div>
+                    </div>
+                    <div class="list-item page-display-setting-card">
+                        <span class="page-display-setting-title"><i class="fas fa-percent" style="color:var(--gold);"></i> <span data-i18n="handicap_display_title">Отображение страницы «Гандикапы»</span></span>
+                        <div class="page-display-setting-sub" data-i18n="handicap_display_sub">Выберите один из трёх вариантов оформления калькулятора и таблиц гандикапов. Настройка применяется для всех пользователей.</div>
+                        <div class="page-display-variant-buttons">
+                            <button type="button" id="handicap-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('handicap','1')" aria-pressed="true"><i class="fas fa-square-check"></i> <span data-i18n="handicap_display_variant_1">1 · Стандарт</span></button>
+                            <button type="button" id="handicap-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('handicap','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="handicap_display_variant_2">2 · Компактный</span></button>
+                            <button type="button" id="handicap-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('handicap','3')" aria-pressed="false"><i class="fas fa-table-cells-large"></i> <span data-i18n="handicap_display_variant_3">3 · Витрина</span></button>
+                        </div>
+                    </div>
+                    <div class="list-item page-display-setting-card">
+                        <span class="page-display-setting-title"><i class="fas fa-robot" style="color:var(--gold);"></i> <span data-i18n="assistant_display_title">Отображение страницы «Помощник»</span></span>
+                        <div class="page-display-setting-sub" data-i18n="assistant_display_sub">Выберите один из трёх вариантов оформления чата помощника. Настройка применяется для всех пользователей.</div>
+                        <div class="page-display-variant-buttons">
+                            <button type="button" id="assistant-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('assistant','1')" aria-pressed="true"><i class="fas fa-comments"></i> <span data-i18n="assistant_display_variant_1">1 · Классический чат</span></button>
+                            <button type="button" id="assistant-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('assistant','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="assistant_display_variant_2">2 · Компактный</span></button>
+                            <button type="button" id="assistant-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('assistant','3')" aria-pressed="false"><i class="fas fa-magnifying-glass-plus"></i> <span data-i18n="assistant_display_variant_3">3 · Крупный</span></button>
                         </div>
                     </div>
                 </div>
@@ -744,17 +816,17 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.32.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.33.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
-<script src="js/utils.js?v=38"></script>
+<script src="js/utils.js?v=39"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/assistant-config.js"></script>
 <script src="js/assistant-build.js?v=2"></script>
 <script src="js/name-variants.js?v=1"></script>
-<script src="js/admin.js?v=24"></script>
+<script src="js/admin.js?v=25"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>
 </html>

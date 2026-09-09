@@ -14,6 +14,8 @@ function loadOrderOfMerit() {
     ]).then(function(snaps) {
         var users = snaps[0].val() || {};
         var rounds = snaps[1].val() || {};
+        // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
+        if (typeof sweepStaleRounds === 'function') rounds = sweepStaleRounds(rounds) || {};
         var el = document.getElementById('oom-list');
         if (!el) return;
 

@@ -27,6 +27,8 @@ function loadLB() {
     if (typeof db === 'undefined' || !db.ref) return;
     bindRealtimeValue('leaderboard-rounds', db.ref('rounds'), function(sn) {
         var data = sn.val() || {};
+        // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
+        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
         var allEntries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
         var totalRounds = allEntries.length;
 
@@ -241,7 +243,9 @@ function renderRound(id, r) {
 
     var badge = isLive 
         ? '<span class="live-badge"><span class="live-dot" style="width:7px;height:7px;"></span> LIVE</span>' 
-        : '<span class="tn-status tn-d">' + (isEn ? 'Completed' : 'Завершён') + '</span>';
+        : ((typeof buildRoundCompletedBadgeHTML === 'function')
+            ? buildRoundCompletedBadgeHTML(r)
+            : '<span class="tn-status tn-d">' + (isEn ? 'Completed' : 'Завершён') + '</span>');
 
     var panelId = 'lb-sc-' + id;
     var actions = '<div class="lwl-actions">' +

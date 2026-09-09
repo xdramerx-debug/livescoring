@@ -1355,8 +1355,14 @@ function finishGroupRound() {
     groupFinishing = true;
 
     var finalizeGroup = function() {
-        db.ref('rounds/' + curRid + '/status').set('completed').catch(function(){ groupFinishing = false; });
-        db.ref('rounds/' + curRid + '/completedAt').set(Date.now());
+        // Фиксируем, кто завершил раунд: в карточках раунда показываем имя завершившего
+        var finisherUid = myUid;
+        var finisherName = (finisherUid && curRoundData && curRoundData.players && curRoundData.players[finisherUid])
+            ? (curRoundData.players[finisherUid].name || '') : '';
+        var finishUpdate = { status: 'completed', completedAt: Date.now(), autoCompleted: false };
+        if (finisherUid) finishUpdate.completedBy = finisherUid;
+        if (finisherName) finishUpdate.completedByName = finisherName;
+        db.ref('rounds/' + curRid).update(finishUpdate).catch(function(){ groupFinishing = false; });
 
         db.ref('rounds/' + curRid).once('value').then(function(sn) {
             var r = sn.val();

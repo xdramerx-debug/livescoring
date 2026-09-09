@@ -58,17 +58,24 @@ var isOnline=navigator.onLine;
 
 function updateOnlineStatus(){
     var wasOnline=isOnline;isOnline=navigator.onLine;
-    var indicator=document.getElementById('online-indicator');
-    if(!indicator){indicator=document.createElement('div');indicator.id='online-indicator';indicator.className='online-indicator';document.body.appendChild(indicator);}
+    var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var indicator=null;
+    try { indicator=document.getElementById('online-indicator'); } catch(e){ indicator=null; }
+    if(!indicator){
+        try {
+            if (!document.body) return;
+            indicator=document.createElement('div');indicator.id='online-indicator';indicator.className='online-indicator';document.body.appendChild(indicator);
+        } catch(e){ return; }
+    }
     if(isOnline){
         indicator.className='online-indicator online';
-        indicator.innerHTML='<i class="fas fa-wifi"></i> ' + (currentLang === 'en' ? 'Online' : 'Онлайн');
-        if(!wasOnline){if(typeof toast==='function')toast(currentLang === 'en' ? '🌐 Connection restored' : '🌐 Соединение восстановлено','success');syncOfflineScores();}
-        setTimeout(function(){if(indicator)indicator.classList.add('hide');},3000);
+        indicator.innerHTML='<i class="fas fa-wifi"></i> ' + (langIsEn ? 'Online' : 'Онлайн');
+        if(!wasOnline){try{ if(typeof toast==='function')toast(langIsEn ? '🌐 Connection restored' : '🌐 Соединение восстановлено','success'); }catch(e){} try{ syncOfflineScores(); }catch(e){} }
+        setTimeout(function(){try{ if(indicator)indicator.classList.add('hide'); }catch(e){}},3000);
     }else{
         indicator.className='online-indicator offline';
-        indicator.innerHTML='<i class="fas fa-wifi-slash"></i> ' + (currentLang === 'en' ? 'Offline' : 'Оффлайн');
-        if(wasOnline)if(typeof toast==='function')toast(currentLang === 'en' ? '📡 Connection lost' : '📡 Нет соединения','warn');
+        indicator.innerHTML='<i class="fas fa-wifi-slash"></i> ' + (langIsEn ? 'Offline' : 'Оффлайн');
+        if(wasOnline) try{ if(typeof toast==='function')toast(langIsEn ? '📡 Connection lost' : '📡 Нет соединения','warn'); }catch(e){}
     }
 }
 
@@ -160,27 +167,31 @@ function syncOfflineScores(){
 }
 
 function updateOfflineQueueBadge() {
-    var pending = readOfflineScores();
-    var badgeEl = document.getElementById('offline-queue-badge');
-
+    var pending;
+    try { pending = readOfflineScores(); } catch(e){ pending=[]; }
+    var badgeEl = null;
+    try { badgeEl = document.getElementById('offline-queue-badge'); } catch(e){}
+    var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     if (!pending.length) {
-        if (badgeEl) badgeEl.classList.add('hide');
+        if (badgeEl) { try{ badgeEl.classList.add('hide'); }catch(e){} }
         return;
     }
-
     if (!badgeEl) {
-        badgeEl = document.createElement('div');
-        badgeEl.id = 'offline-queue-badge';
-        badgeEl.className = 'offline-queue-badge';
-        if (document.body) document.body.appendChild(badgeEl);
+        try {
+            if (!document.body) return;
+            badgeEl = document.createElement('div');
+            badgeEl.id = 'offline-queue-badge';
+            badgeEl.className = 'offline-queue-badge';
+            document.body.appendChild(badgeEl);
+        } catch(e){ return; }
     }
-
-    var badgeText = currentLang === 'en'
+    var badgeText = langIsEn
         ? pending.length + ' pending scores waiting for sync'
         : pending.length + ' записей ожидают отправки';
-
-    badgeEl.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> ⏳ ' + badgeText;
-    badgeEl.classList.remove('hide');
+    try {
+        badgeEl.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> ⏳ ' + badgeText;
+        badgeEl.classList.remove('hide');
+    } catch(e){}
 }
 
 window.addEventListener('load', function() { updateOfflineQueueBadge(); });
@@ -204,22 +215,22 @@ function checkPWAInstallPrompt() {
 }
 
 function showInstallBanner(){
-    if(localStorage.getItem('pwa_install_dismissed'))return;
+    try { if(localStorage.getItem('pwa_install_dismissed'))return; } catch(e){}
     var banner=document.createElement('div');
     banner.id='install-banner';banner.className='install-banner';
-    var titleStr = currentLang === 'en' ? '📱 Install Web App' : '📱 Установить приложение';
-    var subStr = currentLang === 'en' ? 'Works offline' : 'Работает оффлайн';
-    var laterStr = currentLang === 'en' ? 'Later' : 'Позже';
-    var installStr = currentLang === 'en' ? 'Install' : 'Установить';
-
+    var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var titleStr = langIsEn ? '📱 Install Web App' : '📱 Установить приложение';
+    var subStr = langIsEn ? 'Works offline' : 'Работает оффлайн';
+    var laterStr = langIsEn ? 'Later' : 'Позже';
+    var installStr = langIsEn ? 'Install' : 'Установить';
     banner.innerHTML='<div class="install-content"><div><strong>' + titleStr + '</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">' + subStr + '</div></div><div style="display:flex;gap:8px;"><button class="btn btn-og btn-sm" onclick="dismissInstall()">' + laterStr + '</button><button class="btn btn-g btn-sm" onclick="installPWA()">' + installStr + '</button></div></div>';
-    document.body.appendChild(banner);
-    setTimeout(function(){banner.classList.add('show');},100);
+    try { if(document.body) document.body.appendChild(banner); } catch(e){ return; }
+    setTimeout(function(){try{banner.classList.add('show');}catch(e){}},100);
 }
 
 function showIOSInstallBanner() {
-    if (localStorage.getItem('pwa_install_dismissed')) return;
-    if (document.getElementById('ios-install-banner')) return;
+    try { if (localStorage.getItem('pwa_install_dismissed')) return; } catch(e){}
+    try { if (document.getElementById('ios-install-banner')) return; } catch(e){}
 
     var banner = document.createElement('div');
     banner.id = 'ios-install-banner';
@@ -243,15 +254,15 @@ function showIOSInstallBanner() {
         '<div class="ios-step"><span class="ios-num">3</span> ' + step3Str + '</div>' +
         '</div>';
 
-    document.body.appendChild(banner);
-    setTimeout(function() { banner.classList.add('show'); }, 100);
+    try { if(document.body) document.body.appendChild(banner); } catch(e){ return; }
+    setTimeout(function() { try{ banner.classList.add('show'); }catch(e){} }, 100);
 }
 
-function installPWA(){if(!deferredPrompt)return;deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;var b=document.getElementById('install-banner');if(b)b.remove();});}
-function dismissInstall(){localStorage.setItem('pwa_install_dismissed','1');var b=document.getElementById('install-banner');if(b)b.remove();}
-function dismissIOSInstall(){localStorage.setItem('pwa_install_dismissed','1');var b=document.getElementById('ios-install-banner');if(b)b.remove();}
+function installPWA(){if(!deferredPrompt)return;try{deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;try{var b=document.getElementById('install-banner');if(b)b.remove();}catch(e){}});}catch(e){}}
+function dismissInstall(){try{localStorage.setItem('pwa_install_dismissed','1');}catch(e){}try{var b=document.getElementById('install-banner');if(b)b.remove();}catch(e){}}
+function dismissIOSInstall(){try{localStorage.setItem('pwa_install_dismissed','1');}catch(e){}try{var b=document.getElementById('ios-install-banner');if(b)b.remove();}catch(e){}}
 window.installPWA=installPWA;window.dismissInstall=dismissInstall;window.dismissIOSInstall=dismissIOSInstall;
-setInterval(function(){if(navigator.onLine)syncOfflineScores();},60000);
+setInterval(function(){try{ if(navigator.onLine && typeof db !== 'undefined') syncOfflineScores(); }catch(e){}},60000);
 
 // ==========================================
 // ПУШ-УВЕДОМЛЕНИЯ ВЫЗОВОВ (СУДЬЯ / МАРШАЛ)

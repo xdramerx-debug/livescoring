@@ -16,13 +16,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function onAuthReady(u, d) { navAuth(u, d); }
 
+function lbGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 function loadLB() {
-    var statusSelect = document.getElementById('lb-status');
+    if (typeof db === 'undefined' || !db) return;
+    if (typeof bindRealtimeValue !== 'function') return;
+    var statusSelect = lbGet('lb-status');
     var status = statusSelect ? statusSelect.value : 'all';
-
-    var searchInput = document.getElementById('lb-search');
-    var query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-
+    var searchInput = lbGet('lb-search');
+    var query = searchInput ? (searchInput.value || '').trim().toLowerCase() : '';
+    if (typeof db === 'undefined' || !db.ref) return;
     bindRealtimeValue('leaderboard-rounds', db.ref('rounds'), function(sn) {
         var data = sn.val() || {};
         var allEntries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
@@ -51,20 +53,22 @@ function loadLB() {
 
         if (dateFilter) dateFilter.renderSummary(entries.length, totalRounds);
 
-        var el = document.getElementById('lb-container');
+        var el = lbGet('lb-container');
         if (!el) return;
-
-        if (!entries.length) { 
+        if (!entries.length) {
+            var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
             var emptyText = range.active
-                ? (currentLang === 'en' ? 'No rounds in the selected period' : 'Нет раундов за выбранный период')
-                : (currentLang === 'en' ? 'No rounds found' : 'Нет раундов');
-            el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + emptyText + '</p></div>'; 
-            return; 
+                ? (langIsEn ? 'No rounds in the selected period' : 'Нет раундов за выбранный период')
+                : (langIsEn ? 'No rounds found' : 'Нет раундов');
+            try { el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + emptyText + '</p></div>'; } catch(e){}
+            return;
         }
         var html = '';
-        entries.forEach(function(e) { html += renderRound(e[0], e[1]); });
-        el.innerHTML = '<div class="live-who-list">' + html + '</div>';
-        restoreLbPanels();
+        try {
+            entries.forEach(function(e) { try { html += renderRound(e[0], e[1]); } catch(err){} });
+        } catch(e){}
+        try { el.innerHTML = '<div class="live-who-list">' + html + '</div>'; } catch(e){}
+        try { restoreLbPanels(); } catch(e){}
     });
 }
 

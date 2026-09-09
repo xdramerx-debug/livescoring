@@ -50,7 +50,20 @@ function holeResName(s,p){
     if(d===2)return t('res_double');
     return '+'+d;
 }
-function toast(m,toastType){toastType=toastType||'success';var e=document.createElement('div');e.className='toast t-'+toastType;e.setAttribute('role','status');e.setAttribute('aria-live','polite');e.innerHTML=m;document.body.appendChild(e);setTimeout(function(){e.classList.add('t-show');},10);setTimeout(function(){e.classList.remove('t-show');setTimeout(function(){e.remove();},300);},4000);}
+function toast(m,toastType){
+    toastType=toastType||'success';
+    try {
+        if (typeof document === 'undefined' || !document.body) return;
+        var e=document.createElement('div');
+        e.className='toast t-'+toastType;
+        e.setAttribute('role','status');
+        e.setAttribute('aria-live','polite');
+        e.innerHTML=m;
+        document.body.appendChild(e);
+        setTimeout(function(){e.classList.add('t-show');},10);
+        setTimeout(function(){e.classList.remove('t-show');setTimeout(function(){try{e.remove();}catch(_){}},300);},4000);
+    } catch(err) { try{ console.log('[toast]', m); }catch(_){} }
+}
 function isPlayerModeEnabled(key){
     try { return localStorage.getItem(key) === '1'; } catch(e) { return false; }
 }
@@ -70,8 +83,22 @@ function vib(pattern){
     }
     try { navigator.vibrate(value); } catch(e) {}
 }
-function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'ru-RU',{day:'2-digit',month:'short',year:'numeric'});}
-function fmtTime(ts){if(!ts)return'—';var d=new Date(ts),h=d.getHours(),m=d.getMinutes();return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
+function fmtDate(ts){
+    if(!ts)return'—';
+    var lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'ru';
+    try {
+        return new Date(ts).toLocaleDateString(lang === 'en' ? 'en-US' : 'ru-RU',{day:'2-digit',month:'short',year:'numeric'});
+    } catch(e) {
+        var d=new Date(ts); return (d.getDate()<10?'0':'')+d.getDate()+'.'+((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1)+'.'+d.getFullYear();
+    }
+}
+function fmtTime(ts){
+    if(!ts)return'—';
+    try {
+        var d=new Date(ts),h=d.getHours(),m=d.getMinutes();
+        return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+    } catch(e){ return '—'; }
+}
 function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
 function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
 function escapeHtml(str){
@@ -1150,12 +1177,15 @@ var I18N = {
 (function(){ var y = new Date().getFullYear(); if (I18N.ru) I18N.ru.footer_club = '© ' + y + ' Гольф-клуб Пестово'; if (I18N.en) I18N.en.footer_club = '© ' + y + ' Pestovo Golf Club'; })();
 
 function t(key) {
-    if (I18N[currentLang] && I18N[currentLang][key] !== undefined) {
-        return I18N[currentLang][key];
-    }
-    if (I18N['ru'] && I18N['ru'][key] !== undefined) {
-        return I18N['ru'][key];
-    }
+    var lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'ru';
+    try {
+        if (I18N[lang] && I18N[lang][key] !== undefined) {
+            return I18N[lang][key];
+        }
+        if (I18N['ru'] && I18N['ru'][key] !== undefined) {
+            return I18N['ru'][key];
+        }
+    } catch(e) {}
     return key;
 }
 
@@ -6225,22 +6255,34 @@ var cachedRegisteredUsers = {};
 function purgeBlockedFromPlayerCaches() {
     var clean = function(raw) {
         if (!raw) return raw;
-        var obj = JSON.parse(raw);
-        if (obj && typeof obj === 'object') {
-            Object.keys(obj).forEach(function(k) {
-                var u = obj[k];
-                if (isBlockedDemoPlayer(k, u && u.name)) delete obj[k];
-            });
+        try {
+            var obj = JSON.parse(raw);
+            if (obj && typeof obj === 'object') {
+                Object.keys(obj).forEach(function(k) {
+                    try {
+                        var u = obj[k];
+                        if (isBlockedDemoPlayer(k, u && u.name)) delete obj[k];
+                    } catch(_){}
+                });
+            }
+            return obj;
+        } catch(e) {
+            return {};
         }
-        return obj;
     };
     try {
         var c1 = localStorage.getItem('pestovo_cached_users');
-        if (c1) localStorage.setItem('pestovo_cached_users', JSON.stringify(clean(c1)));
+        if (c1) {
+            var cleaned1 = clean(c1);
+            localStorage.setItem('pestovo_cached_users', JSON.stringify(cleaned1));
+        }
     } catch(e) {}
     try {
         var c2 = localStorage.getItem('pestovo_custom_players');
-        if (c2) localStorage.setItem('pestovo_custom_players', JSON.stringify(clean(c2)));
+        if (c2) {
+            var cleaned2 = clean(c2);
+            localStorage.setItem('pestovo_custom_players', JSON.stringify(cleaned2));
+        }
     } catch(e) {}
 }
 

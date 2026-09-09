@@ -4700,3 +4700,26 @@ body.sun-mode .hole-difficulty-highlights > div { background: #ffffff !important
 .ps-cut-box { background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.35); border-radius:10px; padding:12px 14px; margin-top:12px; }
 .ps-cut-box h4 { margin:0 0 8px; color:var(--gold); font-size:13.5px; }
 .hcp-eff-chip { display:inline-block; background:rgba(90,173,224,0.14); border:1px solid rgba(90,173,224,0.5); color:var(--blue); border-radius:12px; padding:1px 8px; font-size:11px; font-weight:700; margin-left:6px; white-space:nowrap; }
+/* --- Компактный стартовый лист: сворачиваемые группы + плотные строки --- */
+.ps-rgroup { border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.ps-rgroup-head { width:100%; display:flex; align-items:center; gap:8px; background:rgba(201,168,76,0.1); border:none; border-bottom:1px solid rgba(201,168,76,0.25); padding:7px 12px; cursor:pointer; font-family:inherit; text-align:left; }
+.ps-rgroup-head i { color:var(--gold); font-size:11px; }
+.ps-rgroup-title { color:var(--white); font-weight:800; font-size:13px; }
+.ps-rgroup-sub { color:var(--muted); font-size:11px; }
+.ps-rgroup-count { margin-left:auto; background:rgba(201,168,76,0.2); border:1px solid rgba(201,168,76,0.45); color:var(--gold); border-radius:12px; padding:0 9px; font-size:11px; font-weight:800; }
+.ps-rgroup-body { display:flex; flex-direction:column; gap:5px; padding:7px; }
+.ps-rrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 10px !important; }
+.ps-rrow-main { flex:1.6; min-width:190px; line-height:1.35; }
+.ps-rrow-name { color:var(--white); font-size:13px; }
+.ps-rrow-src { font-size:10.5px; color:var(--muted); margin-top:1px; }
+.ps-rrow-src .fa { font-size:9px; }
+.ps-rrow-ctrls { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.ps-rrow-inp { width:64px !important; padding:4px 6px !important; font-size:12px !important; }
+.ps-rrow-sel { width:auto !important; padding:4px 6px !important; font-size:12px !important; }
+.ps-rrow-chip { font-size:11px !important; white-space:nowrap; }
+.ps-rrow-actions { display:flex; align-items:center; gap:4px; margin-left:auto; flex-wrap:wrap; }
+.ps-rrow-btn { padding:4px 8px !important; font-size:11px !important; }
+@media (max-width:640px) {
+    .ps-rrow-main { flex:1 1 100%; }
+    .ps-rrow-actions { margin-left:0; }
+}

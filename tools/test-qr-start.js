@@ -93,6 +93,18 @@ check((html.match(/qrserver\.com/g) || []).length === 4, 'по одному QR �
 check(html.indexOf('Маркирует:') !== -1 && html.indexOf('Тестова Мария Ивановна') !== -1, 'компактный чип «Маркирует: …» на карточке u1');
 check(html.indexOf('10:00') !== -1 || html.indexOf('09:00') !== -1, 'время старта');
 check(html.indexOf('Полевой HCP: <b>13.0</b>') !== -1, 'полевой hcp');
+// Надёжная загрузка QR: eager + цепочка провайдеров через onerror
+check(html.indexOf('loading="eager"') !== -1, 'QR грузятся сразу (eager, не lazy)');
+check(html.indexOf('onerror="qrImgFail(this)"') !== -1, 'QR: повтор через запасной провайдер');
+check(html.indexOf('data-qr=') !== -1, 'QR: данные для повтора в data-qr');
+const provs = sandbox.qrProviders('https://club.example/x', 420);
+check(provs.length === 3 && provs[0].indexOf('qrserver.com') !== -1 && provs[1].indexOf('quickchart.io') !== -1, 'цепочка QR-провайдеров: qrserver → quickchart → повтор');
+
+// Зачётная группа игрока на карточке и в таблице
+sandbox.qrRender(doc, [{ id: 'd1', name: 'Девушки', gender: 'women', hcpFrom: '', hcpTo: 36 }]);
+const html2 = els['qr-content'].innerHTML || '';
+check(html2.indexOf('div-badge') !== -1 && html2.indexOf('Девушки') !== -1, 'бейдж зачётной группы на карточке');
+check(html2.indexOf('div-inline') !== -1, 'зачётная группа в строке стартового листа');
 
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nqr-start render tests passed ✔');
 process.exit(failures ? 1 : 0);

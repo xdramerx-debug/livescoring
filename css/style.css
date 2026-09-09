@@ -571,6 +571,10 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 .hcp-variant-btn{color:var(--muted);border-color:var(--border);background:transparent;}
 .hcp-variant-btn:hover{color:var(--text);background:var(--card-h);}
 .hcp-variant-btn.hcp-variant-active{background:rgba(46,204,113,0.16);border-color:#2ecc71;color:#2ecc71;box-shadow:0 0 10px rgba(46,204,113,0.25);}
+/* Админ-панель: выбранное оформление PNG-карточки для соцсетей */
+.social-card-variant-btn{color:var(--muted);border-color:var(--border);background:transparent;}
+.social-card-variant-btn:hover{color:var(--text);background:var(--card-h);}
+.social-card-variant-btn.social-card-variant-active{background:rgba(201,168,76,0.16);border-color:var(--gold);color:var(--gold);box-shadow:0 0 10px rgba(201,168,76,0.22);}
 
 /* LIGHT SHINE ANIMATION EFFECT FOR LEADER BADGES & CTAs */
 .shine-effect{position:relative;overflow:hidden;}

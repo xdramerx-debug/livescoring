@@ -283,6 +283,7 @@ function openAdminPanel() {
     loadVKSettings();
     loadPageVisibilitySettings();
     loadStablefordDisplaySettings();
+    loadSocialCardDisplaySettings();
     loadPrivacySettings();
     renderAssistantSources();
     loadAssistantSourcesFromFirebase();
@@ -324,6 +325,7 @@ function switchTab(t, b) {
     if (t === 'data') {
         loadPageVisibilitySettings();
         loadStablefordDisplaySettings();
+        loadSocialCardDisplaySettings();
     }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
@@ -1463,6 +1465,69 @@ function loadStablefordDisplaySettings() {
 
 function toggleStablefordDefaultCheckbox(event) {
     togglePVCheckbox('pv-stableford-default', event);
+}
+
+// ==========================================
+// SOCIAL SCORECARD DISPLAY MANAGEMENT
+// ==========================================
+// Вариант сохраняется глобально в settings/social_card_variant. Экспорт PNG
+// читает это значение из utils.js, а localStorage остаётся офлайн-резервом.
+function loadSocialCardDisplaySettings() {
+    var applyValue = function(value) {
+        if (value !== null && value !== undefined && typeof applySocialCardVariant === 'function') {
+            applySocialCardVariant(value);
+        }
+        markAdmSocialCardVariantButtons();
+    };
+
+    if (typeof db === 'undefined') {
+        applyValue(null);
+        return;
+    }
+
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-social-card-variant', db.ref('settings/social_card_variant'), function(sn) {
+            applyValue(sn.val());
+        });
+    } else {
+        db.ref('settings/social_card_variant').once('value').then(function(sn) {
+            applyValue(sn.val());
+        }).catch(function() { applyValue(null); });
+    }
+}
+
+function saveSocialCardVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    if (typeof vib === 'function') vib(30);
+
+    if (typeof applySocialCardVariant === 'function') applySocialCardVariant(v);
+    else markAdmSocialCardVariantButtons();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Card style saved locally' : 'Стиль карточки сохранён локально', 'info');
+        return;
+    }
+
+    db.ref('settings/social_card_variant').set(v).then(function() {
+        toast(currentLang === 'en'
+            ? '✅ Social scorecard style saved for all players'
+            : '✅ Стиль PNG-карточки сохранён для всех игроков', 'success');
+    }).catch(function(err) {
+        console.warn('Social card variant save error:', err);
+        toast(currentLang === 'en'
+            ? 'Could not save the card style to the cloud'
+            : '⚠️ Не удалось сохранить стиль карточки в облако', 'error');
+    });
+}
+
+function markAdmSocialCardVariantButtons() {
+    var cur = (typeof getSocialCardVariant === 'function') ? getSocialCardVariant() : '1';
+    ['1', '2', '3'].forEach(function(v) {
+        var btn = document.getElementById('social-card-opt-' + v);
+        if (!btn) return;
+        btn.classList.toggle('social-card-variant-active', v === cur);
+        btn.setAttribute('aria-pressed', v === cur ? 'true' : 'false');
+    });
 }
 
 function saveStablefordDisplayDefault() {

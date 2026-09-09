@@ -148,7 +148,7 @@ function showGroupSetup() {
                 Object.entries(availableTournaments).forEach(function(e) {
                     var tVal = e[1];
                     if (tVal.status === 'completed') return;
-                    tnSel.innerHTML += '<option value="' + e[0] + '">' + (tVal.name || '—') + ' · ' + fmtDate(new Date(tVal.date).getTime()) + '</option>';
+                    tnSel.innerHTML += '<option value="' + e[0] + '">' + (tVal.name || '—') + ' · ' + fmtDate((typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date)) + '</option>';
                 });
                 tnSel.addEventListener('change', onTournamentSelect);
             }

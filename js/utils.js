@@ -100,6 +100,23 @@ function fmtTime(ts){
     } catch(e){ return '—'; }
 }
 
+// Дата турнира из input[type=date] («YYYY-MM-DD») в timestamp.
+// new Date('2026-09-15') парсится как UTC-полночь и в Москве показывает 14-е,
+// поэтому разбираем строку как ЛОКАЛЬНУЮ дату (полдень — защита от DST-сдвигов).
+// Числовой timestamp и прочие форматы возвращаем как есть через Date.parse.
+function tnDateTs(dateStr) {
+    if (typeof dateStr === 'number' && isFinite(dateStr)) return dateStr;
+    var s = String(dateStr == null ? '' : dateStr).trim();
+    if (!s) return NaN;
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (m) {
+        var ts = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0).getTime();
+        return isNaN(ts) ? NaN : ts;
+    }
+    var parsed = Date.parse(s);
+    return isNaN(parsed) ? NaN : parsed;
+}
+
 // Сравнивает дату раунда с текущим локальным днём. Старые записи могли
 // хранить timestamp в секундах, поэтому принимаем оба формата.
 function normalizeTimestampMs(ts) {
@@ -461,7 +478,7 @@ var I18N = {
         tab_assistant: 'Помощник',
         assistant_admin_title: 'Настройка «Помощника»',
         assistant_admin_sub: 'Добавляйте PDF-документы по ссылке — помощник сможет отвечать на вопросы по ним. Нажмите «Сохранить и перестроить», чтобы обновить базу знаний для всех игроков.',
-        assistant_hide_page: 'Скрыть страницу «Помощник» для всех',
+        assistant_hide_page: 'Показывать страницу «Помощник» всем',
         assistant_hide_page_hint: 'Снимите галочку, чтобы полностью убрать страницу помощника из меню и закрыть к ней доступ.',
         assistant_add_source_title: 'Добавить документ (PDF по ссылке)',
         assistant_source_name: 'Название документа',
@@ -940,7 +957,7 @@ var I18N = {
         tab_assistant: 'Assistant',
         assistant_admin_title: 'Assistant settings',
         assistant_admin_sub: 'Add PDF documents by link — the assistant can answer questions based on them. Click "Save and rebuild" to refresh the knowledge base for all players.',
-        assistant_hide_page: 'Hide the "Assistant" page for everyone',
+        assistant_hide_page: 'Show the "Assistant" page to everyone',
         assistant_hide_page_hint: 'Uncheck to completely remove the assistant page from the menu and block access to it.',
         assistant_add_source_title: 'Add document (PDF by link)',
         assistant_source_name: 'Document name',
@@ -1343,8 +1360,6 @@ var I18N = {
         all_players_joined: 'All players have already joined the round',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
-        delete_all_data: 'Delete All Players & Rounds',
-        delete_all_data_sub: 'Permanently removes every player and every round. Data disappears from all lists, stats and autocomplete and will not real Rounds',
         delete_all_data: 'Delete All Players & Rounds',
         delete_all_data_sub: 'Permanently removes every player and every round. Data disappears from all lists, stats and autocomplete and will not reappear.',
         full_name: 'Full Name',

@@ -482,6 +482,7 @@ function ensureAdmRoundsDateFilter() {
 }
 
 function loadAdmRounds() {
+    if (typeof db === 'undefined' || !db) return;
     ensureAdmRoundsDateFilter();
     // Одна подписка на раунды: повторные вызовы (фильтр по датам, смена языка,
     // удаление/создание раунда) только перерисовывают список по последнему снимку.
@@ -546,40 +547,44 @@ function renderAdmRounds(data) {
 }
 
 function deleteRound(id) {
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     if (!confirm(currentLang === 'en' ? 'Delete round?' : 'Удалить раунд?')) return;
 
     db.ref('rounds/' + id).once('value').then(function(sn) {
         var r = sn.val();
         if (r && r.players) {
-            var playerIds = Object.keys(r.players);
-            playerIds.forEach(function(pid) {
+            Object.keys(r.players).forEach(function(pid) {
                 db.ref('users/' + pid + '/history').once('value').then(function(hSn) {
+                    // Всё считаем из ОДНОГО снимка: повторное чтение сразу после
+                    // remove() возвращало бы ещё не удалённые записи из кэша и
+                    // портило bestGross/bestStableford.
                     var hist = hSn.val() || {};
+                    var updates = {};
+                    var remaining = [];
                     Object.entries(hist).forEach(function(he) {
                         if (he[1] && he[1].roundId === id) {
-                            db.ref('users/' + pid + '/history/' + he[0]).remove();
+                            updates['users/' + pid + '/history/' + he[0]] = null;
+                        } else if (he[1]) {
+                            remaining.push(he[1]);
                         }
                     });
-                    db.ref('users/' + pid + '/history').once('value').then(function(hSn2) {
-                        var history = hSn2.val() || {};
-                        var rounds = Object.values(history);
-                        var count = rounds.length;
-                        var bestG = null, bestS = null;
-                        rounds.forEach(function(item) {
-                            if (item.holes === 18 && item.gross) {
-                                if (bestG === null || item.gross < bestG) bestG = item.gross;
-                            }
-                            if (item.holes === 18 && item.stablefordField) {
-                                if (bestS === null || item.stablefordField > bestS) bestS = item.stablefordField;
-                            }
-                        });
-                        db.ref('users/' + pid).update({
-                            roundsPlayed: count,
-                            bestGross: bestG,
-                            bestStableford: bestS
-                        });
+                    var bestG = null, bestS = null;
+                    remaining.forEach(function(item) {
+                        if (item.holes === 18 && item.gross) {
+                            if (bestG === null || item.gross < bestG) bestG = item.gross;
+                        }
+                        if (item.holes === 18 && item.stablefordField) {
+                            if (bestS === null || item.stablefordField > bestS) bestS = item.stablefordField;
+                        }
                     });
-                });
+                    updates['users/' + pid + '/roundsPlayed'] = remaining.length;
+                    updates['users/' + pid + '/bestGross'] = bestG;
+                    updates['users/' + pid + '/bestStableford'] = bestS;
+                    db.ref().update(updates).catch(function() {});
+                }).catch(function() {});
             });
         }
 
@@ -587,6 +592,8 @@ function deleteRound(id) {
         db.ref('markers/' + id).remove();
         db.ref('markerAssignments/' + id).remove();
         toast(currentLang === 'en' ? 'Round deleted' : 'Раунд удалён', 'info');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
 }
 
@@ -702,6 +709,10 @@ function admUniqueRegCount(regPlayers) {
 }
 
 function createTournament() {
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     var name = document.getElementById('tn-name').value.trim();
     var date = document.getElementById('tn-date').value;
 
@@ -779,7 +790,7 @@ function loadTournaments() {
             html += '<div style="flex:1;min-width:200px;">';
             html += '<strong style="color:var(--white);">' + escapeHtml(tVal.name || '—') + '</strong> ' + tnStatusHtml;
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-                    fmtDate(new Date(tVal.date).getTime()) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + ' · ' + (tnEn ? 'Players: ' : 'Заявлено: ') + regCount + '</div>';
+                    fmtDate((typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date)) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + ' · ' + (tnEn ? 'Players: ' : 'Заявлено: ') + regCount + '</div>';
             if (tnDivisions.length) {
                 html += '<div style="margin-top:6px;">';
                 tnDivisions.forEach(function(d) {
@@ -796,6 +807,9 @@ function loadTournaments() {
                 html += '<button class="btn btn-og btn-sm" onclick="tnFinishTournament(\'' + id + '\')"><i class="fas fa-flag-checkered"></i> ' + (tnEn ? 'Finish' : 'Финиш') + '</button>';
             } else {
                 html += '<button class="btn btn-og btn-sm" onclick="tnReopenTournament(\'' + id + '\')"><i class="fas fa-rotate-left"></i> ' + (tnEn ? 'Reopen' : 'Открыть снова') + '</button>';
+            }
+            if (tnStatus === 'upcoming' && regCount > 0) {
+                html += '<button class="btn btn-og btn-sm" onclick="openFlightGeneratorModal(\'' + id + '\')"><i class="fas fa-users-gear"></i> ' + (tnEn ? 'Flights' : 'Флайты') + '</button>';
             }
             html += '<button class="btn btn-og btn-sm" onclick="tnToggleDivPanel(\'' + id + '\')"><i class="fas fa-layer-group"></i> ' + (tnEn ? 'HCP groups' : 'Группы HCP') + ' (' + tnDivisions.length + ')</button>';
             if (regCount > 0) {
@@ -851,7 +865,16 @@ function exportTournamentRosterCSV(tnId) {
 }
 
 function deleteTn(id) {
-    if (confirm(currentLang === 'en' ? 'Delete tournament?' : 'Удалить турнир?')) db.ref('tournaments/' + id).remove();
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
+    if (!confirm(currentLang === 'en' ? 'Delete tournament?' : 'Удалить турнир?')) return;
+    db.ref('tournaments/' + id).remove().then(function() {
+        toast(currentLang === 'en' ? 'Tournament deleted' : 'Турнир удалён', 'info');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
 }
 
 // Запоминаем открытые панели дивизионов, чтобы realtime-перерисовка их не закрывала.
@@ -862,6 +885,10 @@ var tnDivOpen = {};
 // ==========================================
 function tnStartTournament(id) {
     var en = currentLang === 'en';
+    if (typeof db === 'undefined' || !db) {
+        toast(en ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     if (!confirm(en ? 'Start this tournament now (before the scheduled time)? The live leaderboard will become available.' : 'Начать турнир сейчас (раньше запланированного времени)? Станет доступен live-лидерборд.')) return;
     db.ref('tournaments/' + id).update({ status: 'active', startedAt: Date.now() }).then(function() {
         toast(en ? '🚀 Tournament started!' : '🚀 Турнир начат!', 'success');
@@ -873,6 +900,10 @@ function tnStartTournament(id) {
 
 function tnFinishTournament(id) {
     var en = currentLang === 'en';
+    if (typeof db === 'undefined' || !db) {
+        toast(en ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     if (!confirm(en ? 'Finish this tournament? Results will be marked as final.' : 'Завершить турнир? Результаты будут помечены как итоговые.')) return;
     db.ref('tournaments/' + id).update({ status: 'completed', finishedAt: Date.now() }).then(function() {
         toast(en ? '🏁 Tournament completed!' : '🏁 Турнир завершён!', 'success');
@@ -883,8 +914,12 @@ function tnFinishTournament(id) {
 
 function tnReopenTournament(id) {
     var en = currentLang === 'en';
+    if (typeof db === 'undefined' || !db) {
+        toast(en ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     if (!confirm(en ? 'Reopen this tournament (back to upcoming)?' : 'Открыть турнир снова (вернуть в предстоящие)?')) return;
-    db.ref('tournaments/' + id).update({ status: 'upcoming' }).then(function() {
+    db.ref('tournaments/' + id).update({ status: 'upcoming', finishedAt: null }).then(function() {
         toast(en ? '↩️ Tournament reopened' : '↩️ Турнир снова открыт', 'info');
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
@@ -954,6 +989,10 @@ function tnParseDivBound(raw) {
 
 function tnAddDivision(tnId) {
     var en = currentLang === 'en';
+    if (typeof db === 'undefined' || !db) {
+        toast(en ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     var g = function(id) { return document.getElementById(id); };
     var nameEl = g('tnd-name-' + tnId);
     var name = nameEl ? nameEl.value.trim() : '';
@@ -991,6 +1030,10 @@ function tnAddDivision(tnId) {
 
 function tnDeleteDivision(tnId, divId) {
     var en = currentLang === 'en';
+    if (typeof db === 'undefined' || !db) {
+        toast(en ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     if (!confirm(en ? 'Delete this handicap group?' : 'Удалить эту группу по гандикапу?')) return;
     tnDivOpen[tnId] = true;
     db.ref('tournaments/' + tnId + '/divisions/' + divId).remove().then(function() {
@@ -1112,7 +1155,13 @@ function listenForAlerts() {
 }
 
 function closeAlert(id) {
-    db.ref('alerts/' + id + '/status').set('resolved');
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
+    db.ref('alerts/' + id + '/status').set('resolved').catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
 }
 
 // Ответ админа на вызов: записывает в `alerts/<id>/response` и шлёт уведомление
@@ -1120,6 +1169,10 @@ function closeAlert(id) {
 // заходе в live/solo и покажет тост «Судья/маршал едет».
 function respondToAlert(alertId, alertType, playerId) {
     if (!alertId) return;
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     if (!playerId) {
         toast(currentLang === 'en' ? '⚠️ Player ID is unknown for this alert' : '⚠️ Не удалось определить игрока для ответа', 'error');
         return;
@@ -1162,6 +1215,10 @@ function respondToAlert(alertId, alertType, playerId) {
 // PUSH-АНОНСЫ И РАССЫЛКИ КЛУБА
 // ==========================================
 function sendClubBroadcast() {
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     var titleInp = document.getElementById('bc-title');
     var bodyInp = document.getElementById('bc-body');
     var linkInp = document.getElementById('bc-link');
@@ -1225,9 +1282,14 @@ function loadClubBroadcastsHistory() {
 }
 
 function deleteBroadcast(id) {
-    if (confirm(currentLang === 'en' ? 'Delete announcement?' : 'Удалить анонс?')) {
-        db.ref('broadcasts/' + id).remove();
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
     }
+    if (!confirm(currentLang === 'en' ? 'Delete announcement?' : 'Удалить анонс?')) return;
+    db.ref('broadcasts/' + id).remove().catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
 }
 
 // ==========================================
@@ -1297,18 +1359,46 @@ function closeFlightGenModal() {
 }
 
 function confirmFlightGeneration(tnId) {
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     db.ref('tournaments/' + tnId).once('value').then(function(sn) {
         var tVal = sn.val();
         if (!tVal || !tVal.registeredPlayers) return;
 
-        var players = Object.values(tVal.registeredPlayers);
-        var flightSize = parseInt(document.getElementById('fg-size').value) || 4;
-        var startTimeStr = document.getElementById('fg-time').value || '10:00';
-        var intervalMin = parseInt(document.getElementById('fg-interval').value) || 10;
+        // Дедуп по uid/имени: один человек не должен попасть в два флайта.
+        var normOf = function(nm) {
+            if (typeof normalizeSearchText === 'function') {
+                try { return normalizeSearchText(nm); } catch (e) {}
+            }
+            return String(nm || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+        };
+        var seen = {};
+        var players = [];
+        Object.keys(tVal.registeredPlayers).forEach(function(rk) {
+            var rp = tVal.registeredPlayers[rk] || {};
+            var key = rp.uid ? ('uid:' + rp.uid) : ('name:' + normOf(rp.name));
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            players.push({ key: rk, rp: rp });
+        });
+        if (!players.length) return;
 
-        var parts = startTimeStr.split(':');
-        var now = new Date(tVal.date || Date.now());
-        var baseStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0).getTime();
+        var sizeEl = document.getElementById('fg-size');
+        var timeEl = document.getElementById('fg-time');
+        var intEl = document.getElementById('fg-interval');
+        var flightSize = Math.min(4, Math.max(1, parseInt(sizeEl ? sizeEl.value : '4', 10) || 4));
+        var startTimeStr = (timeEl && timeEl.value) || '10:00';
+        var intervalMin = parseInt(intEl ? intEl.value : '10', 10) || 10;
+
+        var parts = String(startTimeStr).split(':');
+        // Дату турнира разбираем как локальную (tnDateTs), иначе старт
+        // уедет на день назад из-за UTC-полуночи.
+        var baseTs = (typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date);
+        if (!baseTs || isNaN(baseTs)) baseTs = Date.now();
+        var now = new Date(baseTs);
+        var baseStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0], 10) || 10, parseInt(parts[1], 10) || 0, 0).getTime();
 
         var tournamentTees = tVal.tees || ['wh'];
         var tournamentFormat = (tVal.formats && tVal.formats[0]) || 'Stroke Play';
@@ -1324,18 +1414,24 @@ function confirmFlightGeneration(tnId) {
             var roundPlayers = {};
             var pOrder = [];
 
-            chunk.forEach(function(rp, idx) {
-                var pid = rp.uid || 'guest_' + Date.now() + '_' + idx;
+            chunk.forEach(function(item) {
+                var rp = item.rp;
+                // Гостям — стабильный ключ заявки, а не Date.now()+idx:
+                // старый вариант давал одинаковые pid в разных флайтах.
+                var pid = rp.uid || ('guest_' + item.key);
                 var tee = rp.tee || tournamentTees[0];
                 var gender = rp.gender || 'men';
-                var exactHcp = rp.handicap || 0;
-                var fieldHcp = getFieldHcp(exactHcp, tee, gender);
+                var exactHcp = (rp.handicap == null || rp.handicap === '') ? 0 : rp.handicap;
+                var fieldHcp = (typeof getFieldHcp === 'function')
+                    ? getFieldHcp(exactHcp, tee, gender)
+                    : Math.round(parseFloat(exactHcp) || 0);
 
                 roundPlayers[pid] = {
                     name: rp.name || 'Player',
                     exactHcp: exactHcp,
                     fieldHcp: fieldHcp,
                     gender: gender,
+                    tee: tee,
                     scores: {},
                     markerScores: {},
                     submitted: {},
@@ -1364,8 +1460,9 @@ function confirmFlightGeneration(tnId) {
                 participantsList: pOrder,
                 status: 'active',
                 tournamentId: tnId,
+                tournamentName: tVal.name || '',
                 createdAt: Date.now(),
-                createdBy: currentUser ? currentUser.uid : 'admin',
+                createdBy: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : 'admin',
                 accessKey: 'group_key_' + Math.random().toString(36).substring(2)
             };
 
@@ -1373,11 +1470,16 @@ function confirmFlightGeneration(tnId) {
             flightsCreated++;
         }
 
-        db.ref('tournaments/' + tnId + '/status').set('active');
-        toast((currentLang === 'en' ? '🎉 Created ' : '🎉 Создано ') + flightsCreated + (currentLang === 'en' ? ' active flights!' : ' активных флайтов!'), 'success');
-        closeFlightGenModal();
-        if (typeof loadTournaments === 'function') loadTournaments();
-        if (typeof loadAdmRounds === 'function') loadAdmRounds();
+        db.ref('tournaments/' + tnId).update({ status: 'active', startedAt: Date.now() }).then(function() {
+            toast((currentLang === 'en' ? '🎉 Created ' : '🎉 Создано ') + flightsCreated + (currentLang === 'en' ? ' active flights!' : ' активных флайтов!'), 'success');
+            closeFlightGenModal();
+            if (typeof loadTournaments === 'function') loadTournaments();
+            if (typeof loadAdmRounds === 'function') loadAdmRounds();
+        }).catch(function(err) {
+            toast('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
 }
 
@@ -1401,7 +1503,12 @@ function exportAllRoundsCSV() {
             var dateStr = fmtDate(r.createdAt);
             var timeStr = fmtTime(r.startTime);
 
-            Object.values(r.players || {}).forEach(function(p) {
+            Object.entries(r.players || {}).forEach(function(pe) {
+                var p = pe[1] || {};
+                // Удалённые в админке игроки в архив не попадают.
+                if (typeof isPlayerDeleted === 'function') {
+                    try { if (isPlayerDeleted(pe[0], p.name)) return; } catch (e) {}
+                }
                 var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, getRoundOrder(r));
                 var row = [
                     rid,
@@ -2029,7 +2136,7 @@ function loadPageVisibilitySettings() {
             if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
         });
         // Синхронизация переключателя «Мои настройки» (боковое меню)
-        db.ref('settings/my_preferences_enabled').on('value', function(sn) {
+        bindRealtimeValue('admin-my-preferences', db.ref('settings/my_preferences_enabled'), function(sn) {
             var v = sn.val();
             if (v === null || v === undefined) {
                 // По умолчанию ВКЛ — в localStorage ничего не пишем
@@ -2243,6 +2350,10 @@ function savePrivacySettings() {
 // true — скрывать (перекрывает глобальный выключатель), false — показывать.
 function togglePlayerPrivacy(id) {
     if (!id) return;
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
     var ref = db.ref('settings/privacy/players/' + id);
     ref.once('value').then(function(sn) {
         var cur = sn.val();
@@ -2425,16 +2536,23 @@ function loadAdmPlayers() {
 }
 
 function changeRole(id, newRole, name) {
-    var roleText = newRole === 'admin' ? (currentLang === 'en' ? 'Administrator' : 'Администратора') : (currentLang === 'en' ? 'Player' : 'Игрока');
+    var roleText = t('role_' + newRole);
+    if (!roleText || roleText === 'role_' + newRole) {
+        roleText = newRole === 'admin' ? (currentLang === 'en' ? 'Administrator' : 'Администратор') : (currentLang === 'en' ? 'Player' : 'Игрок');
+    }
     if (!confirm((currentLang === 'en' ? 'Set ' + (name || 'user') + ' role to ' + roleText + '?' : 'Назначить ' + (name || 'пользователя') + ' на роль ' + roleText + '?'))) return;
 
-    if (typeof db !== 'undefined') {
-        db.ref('users/' + id + '/role').set(newRole).then(function() {
-            toast('✅ ' + (name || 'User') + (currentLang === 'en' ? ' is now ' : ' теперь ') + roleText);
-        }).catch(function(err) {
-            toast('❌ Error: ' + err.message, 'error');
-        });
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        return;
     }
+    db.ref('users/' + id + '/role').set(newRole).then(function() {
+        toast('✅ ' + (name || 'User') + (currentLang === 'en' ? ' is now ' : ' теперь ') + roleText);
+    }).catch(function(err) {
+        toast('❌ Error: ' + (err && err.message ? err.message : err), 'error');
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+    });
 }
 
 function deletePlayer(id, name) {
@@ -2463,6 +2581,12 @@ function deletePlayer(id, name) {
         var tasksLeft = tasksPending;
         var check = function() { tasksLeft--; if (tasksLeft === 0) callback(); };
 
+        var normOf = function(nm) {
+            if (typeof normalizeSearchText === 'function') {
+                try { return normalizeSearchText(nm); } catch (e) {}
+            }
+            return String(nm || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+        };
         // 1) Удаляем упоминания в `rounds` (включая marker* и verified поля)
         db.ref('rounds').once('value').then(function(sn) {
             var rounds = sn.val() || {};
@@ -2470,23 +2594,43 @@ function deletePlayer(id, name) {
             Object.keys(rounds).forEach(function(rid) {
                 var r = rounds[rid];
                 if (!r) return;
-                if (r.players && r.players[id]) {
-                    updates['rounds/' + rid + '/players/' + id] = null;
+                var purgePids = {};
+                purgePids[id] = true;
+                // Однофамильцы-гости (ключи guest_*): их записи «воскрешают»
+                // удалённого игрока в автоподборе на других устройствах —
+                // чистим по нормализованному имени тоже. Зарегистрированных
+                // (не guest) однофамильцев не трогаем — это другие люди.
+                if (r.players) {
+                    Object.keys(r.players).forEach(function(tid) {
+                        var gp = r.players[tid] || {};
+                        if (tid !== id && normKey && String(tid).indexOf('guest_') === 0 && gp.name && normOf(gp.name) === normKey) {
+                            purgePids[tid] = true;
+                        }
+                    });
                 }
-                if (r.markerAssignments && r.markerAssignments[id]) {
-                    updates['rounds/' + rid + '/markerAssignments/' + id] = null;
+                if (r.players) {
+                    Object.keys(r.players).forEach(function(tid) {
+                        if (purgePids[tid]) updates['rounds/' + rid + '/players/' + tid] = null;
+                    });
+                }
+                if (r.markerAssignments) {
+                    Object.keys(r.markerAssignments).forEach(function(mid) {
+                        if (purgePids[mid]) updates['rounds/' + rid + '/markerAssignments/' + mid] = null;
+                    });
                 }
                 // markerScores и markerSubmitted хранятся под ключом целевого игрока
                 if (r.players) {
                     Object.keys(r.players).forEach(function(tid) {
-                        if (tid === id) return;
+                        if (purgePids[tid]) return;
                         var p = r.players[tid] || {};
-                        if (p.markerScores && p.markerScores[id]) {
-                            updates['rounds/' + rid + '/players/' + tid + '/markerScores/' + id] = null;
-                        }
-                        if (p.markerSubmitted && p.markerSubmitted[id]) {
-                            updates['rounds/' + rid + '/players/' + tid + '/markerSubmitted/' + id] = null;
-                        }
+                        Object.keys(purgePids).forEach(function(pid2) {
+                            if (p.markerScores && p.markerScores[pid2]) {
+                                updates['rounds/' + rid + '/players/' + tid + '/markerScores/' + pid2] = null;
+                            }
+                            if (p.markerSubmitted && p.markerSubmitted[pid2]) {
+                                updates['rounds/' + rid + '/players/' + tid + '/markerSubmitted/' + pid2] = null;
+                            }
+                        });
                     });
                 }
             });
@@ -2497,15 +2641,22 @@ function deletePlayer(id, name) {
             applyRoundUpdates();
         }, check);
 
-        // 2) Снимаем регистрации во всех турнирах (по uid)
+        // 2) Снимаем регистрации во всех турнирах: по uid + гостевые
+        // записи того же имени (push-ключи), иначе игрок останется в ростере.
         db.ref('tournaments').once('value').then(function(sn) {
             var tournaments = sn.val() || {};
             var tnUpdates = {};
             Object.keys(tournaments).forEach(function(tid) {
                 var t = tournaments[tid];
-                if (t && t.registeredPlayers && t.registeredPlayers[id]) {
-                    tnUpdates['tournaments/' + tid + '/registeredPlayers/' + id] = null;
-                }
+                if (!t || !t.registeredPlayers) return;
+                Object.keys(t.registeredPlayers).forEach(function(rk) {
+                    var rp = t.registeredPlayers[rk] || {};
+                    if (rk === id) {
+                        tnUpdates['tournaments/' + tid + '/registeredPlayers/' + rk] = null;
+                    } else if (normKey && rp.guest === true && rp.name && normOf(rp.name) === normKey) {
+                        tnUpdates['tournaments/' + tid + '/registeredPlayers/' + rk] = null;
+                    }
+                });
             });
             if (Object.keys(tnUpdates).length === 0) { check(); return; }
             db.ref().update(tnUpdates).then(check, check);
@@ -3066,7 +3217,7 @@ function impRenderPreview(validRows, invalidRows) {
         var renderRow = function(r, i, invalid) {
             var badge = '';
             if (invalid) {
-                badge = '<span class="imp-badge imp-badge-err">⚠ ' + r.error + '</span>';
+                badge = '<span class="imp-badge imp-badge-err">⚠ ' + escapeHtml(r.error) + '</span>';
             } else if (r.dup) {
                 var oldHcp = r.dup.data.handicap != null ? fmtExactHcp(r.dup.data.handicap) : '—';
                 badge = '<span class="imp-badge imp-badge-dup">' + (currentLang === 'en' ? 'Update' : 'Обновит') + ' HCP ' + oldHcp + ' → ' + fmtExactHcp(r.hcp) + '</span>';
@@ -3076,7 +3227,7 @@ function impRenderPreview(validRows, invalidRows) {
             var genderIcon = r.gender === 'women' ? '👩' : '👨';
             return '<label class="imp-row">' +
                 '<input type="checkbox" ' + (invalid ? 'disabled' : (r.checked ? 'checked' : '')) + ' data-imp-idx="' + r.idx + '" onchange="impRowToggle(this)">' +
-                '<span class="imp-info"><span class="imp-name">' + genderIcon + ' ' + (r.firstName + ' ' + r.lastName) + '</span>' +
+                '<span class="imp-info"><span class="imp-name">' + genderIcon + ' ' + escapeHtml((r.firstName || '') + ' ' + (r.lastName || '')) + '</span>' +
                 '<span class="imp-sub">HCP: ' + (r.hcp != null ? fmtExactHcp(r.hcp) : '—') + '</span></span>' +
                 badge + '</label>';
         };

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.26.0';
+const CACHE_NAME = 'pestovo-v1.27.0';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
@@ -8,10 +8,10 @@ const STATIC_ASSETS = [
     'admin.html', 'auth.html', 'scorer.html', 'marker.html', 'offline.html',
     'assistant.html',
     'manifest.json', 'css/style.css?v=16', 'css/assistant.css?v=2',
-    'js/firebase-config.js', 'js/utils.js?v=33',
+    'js/firebase-config.js', 'js/utils.js?v=33', 'js/name-variants.js?v=1',
     'js/auth.js', 'js/app.js?v=11', 'js/live.js?v=21', 'js/solo.js?v=22',
     'js/leaderboard.js?v=3', 'js/players.js', 'js/tournaments.js?v=3',
-    'js/stats.js?v=3', 'js/handicap.js', 'js/admin.js?v=19', 'js/scorer.js?v=4',
+    'js/stats.js?v=3', 'js/handicap.js', 'js/admin.js?v=20', 'js/scorer.js?v=4',
     'js/marker.js?v=3', 'js/guide.js', 'js/feed.js?v=2', 'js/predictor.js',
     'js/order-of-merit.js?v=2', 'js/pwa.js?v=3',
     'js/assistant-config.js', 'js/assistant-build.js?v=2', 'js/assistant.js?v=2',

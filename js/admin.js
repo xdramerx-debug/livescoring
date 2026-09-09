@@ -327,6 +327,7 @@ function switchTab(t, b) {
     }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
+        nmLoadSettings();
     }
     if (t === 'players') {
         loadPrivacySettings();
@@ -2192,6 +2193,17 @@ function impNormName(s) {
     return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
 }
 
+/** Ключ игрока для поиска дублей. В режимах A/B/C учитывает формы имени
+ *  («Наташа Смирнова» = «Смирнова Наталия»), в режиме «off» — как раньше. */
+function impNameKey(d) {
+    d = d || {};
+    if (typeof NameVariants !== 'undefined' && NameVariants.isOn()) {
+        var k = NameVariants.groupKey(d);
+        if (k) return k;
+    }
+    return impNormName(d.name || ((d.firstName || '') + ' ' + (d.lastName || '')).trim());
+}
+
 function impSplitName(name) {
     var parts = String(name || '').replace(/\s+/g, ' ').trim().split(' ');
     return { firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '' };
@@ -2460,12 +2472,12 @@ function impRenderPreview(validRows, invalidRows) {
     impCollectPlayers(function(existingPlayers) {
         var byName = {};
         existingPlayers.forEach(function(p) {
-            var nm = impNormName(p.data.name || ((p.data.firstName || '') + ' ' + (p.data.lastName || '')));
+            var nm = impNameKey(p.data);
             if (nm) byName[nm] = p;
         });
 
         validRows.forEach(function(r) {
-            var key = impNormName(r.firstName + ' ' + r.lastName);
+            var key = impNameKey({ firstName: r.firstName, lastName: r.lastName });
             r.dup = byName[key] || null;
             r.checked = true;
         });
@@ -2709,8 +2721,23 @@ function rgLocalNameParts(u) {
     return { first: first, last: last, full: full, parts: parts };
 }
 
-/** Совпадение имён в обоих порядках: «Фамилия Имя» и «Имя Фамилия». */
+/** Совпадение имён в обоих порядках: «Фамилия Имя» и «Имя Фамилия».
+ *  Учитывает формы имён (Наташа = Наталья = Наталия) — режим задаётся в
+ *  админке (вкладка «АГР» → «Формы имён»), см. js/name-variants.js.
+ *  Режим «off» = прежнее поведение (только точное совпадение строк). */
 function rgNamesMatch(localFirst, localLast, remoteFirst, remoteLast, localFull, remoteFull) {
+    var legacy = rgNamesMatchLegacy(localFirst, localLast, remoteFirst, remoteLast, localFull, remoteFull);
+    var nm = (typeof NameVariants !== 'undefined') ? NameVariants : null;
+    if (!nm || !nm.isOn()) return legacy;
+    var variant = nm.match(localFirst, localLast, remoteFirst, remoteLast, localFull, remoteFull);
+    if (legacy === 'strong') return 'strong';
+    if (variant === 'strong') return 'strong';
+    if (legacy === 'loose' || variant === 'loose') return 'loose';
+    return null;
+}
+
+/** Прежнее сравнение строк (без учёта форм имени) — режим «off». */
+function rgNamesMatchLegacy(localFirst, localLast, remoteFirst, remoteLast, localFull, remoteFull) {
     var lf = impNormName(localFirst);
     var ll = impNormName(localLast);
     var rf = impNormName(remoteFirst);
@@ -3384,6 +3411,12 @@ function rgPlayerDisplayName(p) {
 
 function rgGetFioKey(u) {
     if (!u) return '';
+    // С учётом форм имени: «Наташа Смирнова» и «Смирнова Наталия» — один ключ.
+    // Отчество в ключ не входит (отец/сын разделяются rgSplitByPatronymic).
+    if (typeof NameVariants !== 'undefined' && NameVariants.isOn()) {
+        var vk = NameVariants.groupKey(u);
+        if (vk) return vk;
+    }
     var fn = (u.firstName || '').toString().trim();
     var mn = (u.middleName || '').toString().trim();
     var ln = (u.lastName || '').toString().trim();
@@ -3404,11 +3437,31 @@ function rgFindDuplicateGroups(allPlayers) {
     var result = [];
     Object.keys(groups).forEach(function(k) {
         var g = groups[k];
-        if (g.players.length > 1) {
-            result.push(g);
-        }
+        // «Иванов Иван Иванович» и «Иванов Иван Петрович» — разные люди,
+        // поэтому группу с одинаковым именем+фамилией делим по отчеству.
+        rgSplitByPatronymic(g.players).forEach(function(sub) {
+            if (sub.length > 1) {
+                result.push({ key: k, displayName: rgPlayerDisplayName(sub[0]), players: sub });
+            }
+        });
     });
     return result;
+}
+
+/** Делит игроков с одинаковым именем+фамилией на подгруппы по отчеству. */
+function rgSplitByPatronymic(players) {
+    var nm = (typeof NameVariants !== 'undefined') ? NameVariants : null;
+    if (!nm || !nm.isOn()) return [players || []];
+    var out = [];
+    (players || []).forEach(function(p) {
+        var data = p.data || {};
+        for (var i = 0; i < out.length; i++) {
+            var clash = out[i].some(function(q) { return nm.patronymicClash(data, q.data || {}); });
+            if (!clash) { out[i].push(p); return; }
+        }
+        out.push([p]);
+    });
+    return out;
 }
 
 function rgRenderDuplicateGroups(groups) {
@@ -3573,6 +3626,42 @@ function rgBuildSearchQuery(u) {
         return rawName;
     }
     return rawLast || rawFirst || '';
+}
+
+/**
+ * Список запросов к базе АГР: сначала «как записано на сайте», затем —
+ * с полными (паспортными) формами имени («Наташа» → «Наталья», «Наталия»),
+ * в конце — обратный порядок слов. Запросы пробуются по очереди и только
+ * если предыдущий ничего не нашёл, поэтому лишнего трафика почти нет.
+ */
+function rgBuildSearchQueries(u) {
+    var local = rgLocalNameParts(u);
+    var first = (u && u.firstName) || local.first;
+    var last = (u && u.lastName) || local.last;
+    var nm = (typeof NameVariants !== 'undefined') ? NameVariants : null;
+    var mode = nm ? nm.getMode() : 'off';
+    var list = [];
+
+    var primary = rgBuildSearchQuery(u);
+    if (primary) list.push(primary);
+    if (nm && nm.isOn()) {
+        (nm.queryVariants(first, last) || []).forEach(function(q) { list.push(q); });
+    }
+    if (local.first && local.last) {
+        var primaryIsLastFirst = impNormName(primary).indexOf(local.last) === 0;
+        list.push(primaryIsLastFirst ? (first + ' ' + last) : (last + ' ' + first));
+    }
+
+    var seen = {}, out = [];
+    list.forEach(function(q) {
+        var clean = String(q || '').replace(/\s+/g, ' ').trim();
+        var k = impNormName(clean);
+        if (!k || seen[k]) return;
+        seen[k] = true;
+        out.push(clean);
+    });
+    var limit = { off: 2, A: 3, B: 4, C: 5 }[mode] || 2;
+    return out.slice(0, limit);
 }
 
 function rgClassifyRemoteMatches(u, rows) {
@@ -3791,25 +3880,21 @@ function rgSyncAll() {
             var p = list[i++];
             var u = p.data || {};
             var displayName = rgPlayerDisplayName(p);
-            var query = rgBuildSearchQuery(u);
-            // Если имя в порядке «Имя Фамилия», дополнительно пробуем reverse-query при пустом результате
-            var altQuery = '';
             var local = rgLocalNameParts(u);
-            if (local.first && local.last) {
-                var primaryIsLastFirst = impNormName(query).indexOf(local.last) === 0;
-                if (primaryIsLastFirst) {
-                    altQuery = (u.firstName || local.first) + ' ' + (u.lastName || local.last);
-                } else {
-                    altQuery = (u.lastName || local.last) + ' ' + (u.firstName || local.first);
-                }
-                if (impNormName(altQuery) === impNormName(query)) altQuery = '';
-            }
+            // Список запросов: как записано → полные формы имени → обратный порядок слов.
+            // Пример: «Смирнова Наташа» → «Смирнова Наташа», «Смирнова Наталья»,
+            // «Смирнова Наталия», «Наташа Смирнова».
+            var queries = rgBuildSearchQueries(u);
+            if (!queries.length) queries = [displayName];
+            var query = queries[0];
 
-            var tryFetch = function(q, allowAlt) {
+            var tryFetch = function(idx) {
+                var q = queries[idx];
+                if (!q) return Promise.reject(new Error('empty query'));
                 return rgFetchViaProxy(q).then(function(res) {
                     var classified = rgClassifyRemoteMatches(u, res.rows);
-                    if (!classified.strong.length && !classified.loose.length && allowAlt && altQuery) {
-                        return tryFetch(altQuery, false);
+                    if (!classified.strong.length && !classified.loose.length && idx + 1 < queries.length) {
+                        return tryFetch(idx + 1);
                     }
                     return { res: res, classified: classified, usedQuery: q };
                 });
@@ -3845,7 +3930,7 @@ function rgSyncAll() {
                 }
             };
 
-            tryFetch(query || displayName, true).then(function(pack) {
+            tryFetch(0).then(function(pack) {
                 var strong = pack.classified.strong;
                 var loose = pack.classified.loose;
                 var usedQuery = pack.usedQuery;
@@ -4083,14 +4168,11 @@ function rgBatchHandleFile(input) {
     reader.readAsArrayBuffer(file);
 }
 
+/** Все запросы для строки таблицы: как записано + полные формы имени + обратный порядок. */
 function rgBatchBuildQueries(row) {
-    var q = (row.lastName && row.firstName) ? (row.lastName + ' ' + row.firstName) : row.name;
-    var alt = '';
-    if (row.firstName && row.lastName) {
-        alt = row.firstName + ' ' + row.lastName;
-        if (impNormName(alt) === impNormName(q)) alt = '';
-    }
-    return { q: q, alt: alt };
+    var list = rgBuildSearchQueries({ firstName: row.firstName, lastName: row.lastName, name: row.name });
+    var q = list[0] || row.name;
+    return { q: q, alt: list.slice(1) };
 }
 
 function rgBatchStartSearch(rows) {
@@ -4124,14 +4206,17 @@ function rgBatchStartSearch(rows) {
         var queries = rgBatchBuildQueries(row);
         row.query = queries.q;
 
-        var tryFetch = function(q, allowAlt) {
+        var allQueries = [queries.q].concat(queries.alt || []);
+        var tryFetch = function(idx) {
+            var q = allQueries[idx];
+            if (!q) return Promise.reject(new Error('empty query'));
             return rgFetchViaProxy(q).then(function(res) {
-                if (!res.rows.length && allowAlt && queries.alt) return tryFetch(queries.alt, false);
+                if (!res.rows.length && idx + 1 < allQueries.length) return tryFetch(idx + 1);
                 return res;
             });
         };
 
-        tryFetch(queries.q, true).then(function(res) {
+        tryFetch(0).then(function(res) {
             row.query = queries.q;
             row.results = res.rows;
             row.proxy = res.proxy;
@@ -4363,6 +4448,234 @@ function rgBatchAddSelected() {
     if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
     if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
     rgBatchRender(rgBatchRows.filter(function(x) { return x.done; }).length, rgBatchRows.length);
+}
+
+// ==========================================
+// ФОРМЫ ИМЁН (Наташа = Наталья = Наталия)
+// ==========================================
+// Словарь и три режима совпадения — в js/name-variants.js.
+var NM_MODE_KEY = 'pestovo_name_match_mode';
+var NM_ALIASES_KEY = 'pestovo_name_aliases';
+var NM_AUTO_KEY = 'pestovo_name_autoapply';
+
+var NM_MODE_INFO = [
+    {
+        id: 'off',
+        title: { ru: 'Не учитывать формы имени (как сейчас)', en: 'Ignore name forms (current behaviour)' },
+        text: {
+            ru: 'Имя сравнивается как текст: «Наташа» не найдёт «Наталья» и не объединит дубли.',
+            en: 'Names are compared as plain text: «Natasha» will not find «Natalia».'
+        }
+    },
+    {
+        id: 'A',
+        title: { ru: 'Вариант 1 — Словарь форм имени', en: 'Option 1 — Dictionary of name forms' },
+        text: {
+            ru: 'Известные формы (Наташа = Наталья = Наталия, Катя = Екатерина, Саша = Александр…) и латиница (Natalia = Наталия). Фамилия должна совпасть точно. Автоматически HCP обновится только при точной фамилии.',
+            en: 'Known forms (Natasha = Natalia, Kate = Catherine…) and latin spelling. Surname must match exactly.'
+        }
+    },
+    {
+        id: 'B',
+        title: { ru: 'Вариант 2 — Словарь + допуск (рекомендуется)', en: 'Option 2 — Dictionary + tolerance (recommended)' },
+        text: {
+            ru: 'Всё из варианта 1 плюс: мужской/женский род фамилии (Смирнов/Смирнова), транслитерация фамилии (Smirnova = Смирнова), опечатки (Ноталья), отчества не мешают. Нечёткие совпадения не применяются сами, а попадают в блок «Выберите нужного игрока».',
+            en: 'Option 1 plus surname gender (Smirnov/Smirnova), transliteration and typos. Fuzzy matches go to the manual choice block.'
+        }
+    },
+    {
+        id: 'C',
+        title: { ru: 'Вариант 3 — Максимум + свой словарь', en: 'Option 3 — Maximum + custom dictionary' },
+        text: {
+            ru: 'Всё из варианта 2 плюс: инициалы («Н. Смирнова» = «Наталья Смирнова»), основа фамилии (Смирн/Смирнова) и ваши собственные формы имён в поле ниже. Максимальный охват, но чаще придётся выбирать вручную.',
+            en: 'Option 2 plus initials, surname stems and your own name forms.'
+        }
+    }
+];
+
+/** Применяет сохранённый режим сразу при загрузке админки. */
+function nmApplyStored() {
+    if (typeof NameVariants === 'undefined') return;
+    // По умолчанию: формы имени не учитываются, автоприменение выключено —
+    // нужный режим администратор включает сам в блоке «Формы имён».
+    var mode = 'off', aliases = '', auto = false;
+    try {
+        mode = localStorage.getItem(NM_MODE_KEY) || 'off';
+        aliases = localStorage.getItem(NM_ALIASES_KEY) || '';
+        auto = localStorage.getItem(NM_AUTO_KEY) === '1';
+    } catch (e) {}
+    NameVariants.setMode(mode);
+    NameVariants.setCustomAliases(aliases);
+    NameVariants.setAutoApply(auto);
+}
+nmApplyStored();
+
+function nmCurrentMode() {
+    return (typeof NameVariants !== 'undefined') ? NameVariants.getMode() : 'off';
+}
+
+function nmLoadSettings(fromRemote) {
+    var list = document.getElementById('nm-mode-list');
+    if (!list) return;
+    var en = currentLang === 'en';
+    var mode = nmCurrentMode();
+    var html = '';
+    NM_MODE_INFO.forEach(function(m) {
+        html += '<label class="nm-mode" style="display:block;gap:10px;align-items:flex-start;padding:10px 12px;margin-bottom:8px;' +
+            'background:rgba(255,255,255,0.03);border:1px solid ' + (m.id === mode ? 'var(--gold)' : 'var(--border)') +
+            ';border-radius:10px;cursor:pointer;">' +
+            '<input type="radio" name="nm-mode" value="' + m.id + '" ' + (m.id === mode ? 'checked' : '') +
+            ' onchange="nmToggleCustomBlock()" style="width:18px;height:18px;margin-top:3px;cursor:pointer;">' +
+            '<span><b style="color:' + (m.id === mode ? 'var(--gold)' : 'var(--white)') + ';font-size:13px;">' +
+            escapeHtml(en ? m.title.en : m.title.ru) + '</b>' +
+            '<br><span style="color:var(--muted);font-size:12px;">' + escapeHtml(en ? m.text.en : m.text.ru) + '</span></span></label>';
+    });
+    list.innerHTML = html;
+
+    var autoEl = document.getElementById('nm-autoapply');
+    if (autoEl && typeof NameVariants !== 'undefined') autoEl.checked = NameVariants.getAutoApply();
+
+    var ta = document.getElementById('nm-custom-aliases');
+    if (ta) {
+        var saved = '';
+        try { saved = localStorage.getItem(NM_ALIASES_KEY) || ''; } catch (e) {}
+        ta.value = saved;
+    }
+    nmToggleCustomBlock();
+
+    if (typeof db !== 'undefined' && !fromRemote) {
+        db.ref('settings/nameMatching').once('value').then(function(sn) {
+            var v = sn.val() || {};
+            if (!v || typeof v !== 'object') return;
+            if (v.mode && typeof NameVariants !== 'undefined') {
+                NameVariants.setMode(v.mode);
+                try { localStorage.setItem(NM_MODE_KEY, v.mode); } catch (e) {}
+            }
+            if (typeof v.aliases === 'string') {
+                if (typeof NameVariants !== 'undefined') NameVariants.setCustomAliases(v.aliases);
+                try { localStorage.setItem(NM_ALIASES_KEY, v.aliases); } catch (e) {}
+                if (ta) ta.value = v.aliases;
+            }
+            if (v.autoApply != null && typeof NameVariants !== 'undefined') {
+                NameVariants.setAutoApply(v.autoApply === true);
+                try { localStorage.setItem(NM_AUTO_KEY, v.autoApply === true ? '1' : '0'); } catch (e) {}
+                if (autoEl) autoEl.checked = (v.autoApply === true);
+            }
+            nmLoadSettings(true);
+        }).catch(function() {});
+    }
+}
+
+function nmToggleCustomBlock() {
+    var box = document.getElementById('nm-custom-block');
+    if (!box) return;
+    var anyChecked = document.querySelector('input[name="nm-mode"]:checked');
+    box.classList.toggle('hidden', !anyChecked || anyChecked.value !== 'C');
+}
+
+function nmSaveSettings() {
+    if (!rgIsAdmin()) {
+        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
+        return;
+    }
+    if (typeof NameVariants === 'undefined') return;
+    var checked = document.querySelector('input[name="nm-mode"]:checked');
+    var mode = checked ? checked.value : 'off';
+    var autoEl = document.getElementById('nm-autoapply');
+    var ta = document.getElementById('nm-custom-aliases');
+    var aliases = ta ? ta.value : '';
+
+    NameVariants.setMode(mode);
+    NameVariants.setAutoApply(autoEl ? autoEl.checked : true);
+    NameVariants.setCustomAliases(aliases);
+    try {
+        localStorage.setItem(NM_MODE_KEY, mode);
+        localStorage.setItem(NM_ALIASES_KEY, aliases);
+        localStorage.setItem(NM_AUTO_KEY, (autoEl && !autoEl.checked) ? '0' : '1');
+    } catch (e) {}
+    if (typeof db !== 'undefined') {
+        db.ref('settings/nameMatching').update({
+            mode: mode,
+            aliases: aliases,
+            autoApply: !!(autoEl && autoEl.checked),
+            updatedAt: Date.now()
+        }).catch(function() {});
+    }
+    nmLoadSettings(true);
+    toast(currentLang === 'en' ? '✅ Name matching settings saved' : '✅ Настройки сравнения имён сохранены', 'success');
+}
+
+/** Показывает, какие имена игроков система теперь считает одинаковыми
+ *  и какие формы имени будет искать в базе АГР. */
+function nmAnalyzeNames() {
+    var out = document.getElementById('nm-analyze-results');
+    if (!out || typeof NameVariants === 'undefined') return;
+    var en = currentLang === 'en';
+    out.innerHTML = '<p style="color:var(--muted);font-size:12px;"><i class="fas fa-spinner fa-spin"></i> ' +
+        (en ? 'Analysing player names…' : 'Анализирую имена игроков…') + '</p>';
+
+    impCollectPlayers(function(players) {
+        var savedMode = NameVariants.getMode();
+        // анализ показываем по максимуму — независимо от выбранного режима
+        NameVariants.setMode('C');
+        var collisions = NameVariants.findFormCollisions(players);
+
+        var withForms = [];
+        (players || []).forEach(function(p) {
+            var d = p.data || {};
+            var first = NameVariants.norm(d.firstName || NameVariants.splitNameParts(d).first);
+            if (!first) return;
+            var forms = NameVariants.officialFormsOf(first);
+            var others = forms.filter(function(f) { return f !== first; });
+            if (forms.length || NameVariants.hasKnownForms(first)) {
+                withForms.push({ name: rgPlayerDisplayName(p), first: first, forms: NameVariants.formsOf(first), others: others });
+            }
+        });
+        NameVariants.setMode(savedMode);
+
+        var html = '';
+        html += '<div class="imp-note" style="margin-top:14px;"><i class="fas fa-circle-info"></i> ' +
+            (en
+                ? 'Players: <b>' + (players || []).length + '</b> · with known name forms: <b>' + withForms.length + '</b> · collisions found: <b>' + collisions.length + '</b>'
+                : 'Игроков: <b>' + (players || []).length + '</b> · с известными формами имени: <b>' + withForms.length + '</b> · найдено совпадений: <b>' + collisions.length + '</b>') +
+            '</div>';
+
+        if (collisions.length) {
+            html += '<h3 style="color:var(--gold);font-size:14px;margin:14px 0 8px;"><i class="fas fa-clone"></i> ' +
+                (en ? 'Same player written differently' : 'Один и тот же игрок, записанный по-разному') + ' (' + collisions.length + ')</h3>';
+            collisions.forEach(function(c) {
+                html += '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;">';
+                html += '<div style="font-weight:700;font-size:13px;color:var(--white);">' +
+                    escapeHtml(NameVariants.cap(c.canon)) + ' ' + escapeHtml(NameVariants.cap(c.lastName)) +
+                    ' <span style="color:var(--muted);font-weight:400;">· ' + escapeHtml(c.forms.join(' / ')) + '</span></div>';
+                c.players.forEach(function(pl) {
+                    var d = pl.data || {};
+                    html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">• ' + escapeHtml(rgPlayerDisplayName(pl)) +
+                        ' · HCP ' + (d.handicap != null ? fmtExactHcp(d.handicap) : '—') +
+                        (d.rusgolfNumber ? ' · 💳 ' + escapeHtml(d.rusgolfNumber) : '') + '</div>';
+                });
+                html += '</div>';
+            });
+        }
+
+        if (withForms.length) {
+            html += '<h3 style="color:var(--gold);font-size:14px;margin:14px 0 8px;"><i class="fas fa-magnifying-glass"></i> ' +
+                (en ? 'Which name forms will be searched in the RGA database' : 'Какие формы имени будут проверены в базе АГР') + '</h3>';
+            html += '<div style="font-size:12px;color:var(--muted);line-height:1.9;">';
+            withForms.forEach(function(w) {
+                html += '<div>• <b style="color:var(--white);">' + escapeHtml(w.name) + '</b>' +
+                    (w.others.length ? ' <span style="color:var(--muted);">→ в АГР ищем также: ' +
+                    escapeHtml(w.others.map(function(f) { return NameVariants.cap(f); }).join(', ')) + '</span>' : '') + '</div>';
+            });
+            html += '</div>';
+        }
+
+        if (!collisions.length && !withForms.length) {
+            html += '<div class="imp-note"><i class="fas fa-check"></i> ' +
+                (en ? 'No name forms to normalise.' : 'Формы имён приводить не нужно.') + '</div>';
+        }
+        out.innerHTML = html;
+    });
 }
 
 // -------- НАСТРОЙКИ ПРОКСИ ---------

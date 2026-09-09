@@ -533,9 +533,8 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
         '</div>';
 }
 
-// Один свёрнутый блок на активный раунд. Внутри раскрытого блока —
-// строки всех игроков группы (имя · лунка · счёт · старт) с кнопками
-// «карточка» и продолжением, как раньше были отдельные строки.
+// Один свёрнутый блок на активный раунд. Для группового раунда —
+// единая на всех участников карточка на главной странице с выбранным стилем оформления.
 function buildLiveRoundRowHTML(id, r, players, isMyRound) {
     var playerEntries = Object.entries(players || {}).filter(function(pe) {
         return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
@@ -544,32 +543,41 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound) {
 
     var order = getRoundOrder(r);
     var isGroup = (r.mode === 'group') || playerEntries.length > 1;
+
+    // Одиночный раунд (1 игрок) — стандартная строка одиночного раунда
+    if (!isGroup && playerEntries.length === 1) {
+        var pe = playerEntries[0];
+        return buildLiveWhoRowHTML(id, r, pe[0], pe[1], players, isMyRound);
+    }
+
     var names = [];
     var bestToPar = null;
-    var playersHtml = '';
 
     playerEntries.forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         names.push(privacyDisplayName(p, pid));
-        playersHtml += buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound);
         var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
         if (stats.toPar !== null && (bestToPar === null || stats.toPar < bestToPar)) {
             bestToPar = stats.toPar;
         }
     });
 
-    var modeIcon = isGroup ? '<i class="fas fa-users"></i>' : '<i class="fas fa-user"></i>';
-    var modeLabel = escapeHtml(isGroup ? t('group_round') : t('solo_round'));
+    var modeIcon = '<i class="fas fa-users"></i>';
+    var modeLabel = escapeHtml(t('group_round'));
     var countLabel = playerEntries.length + ' ' + (currentLang === 'en'
         ? (playerEntries.length === 1 ? 'player' : 'players')
         : pluralN(playerEntries.length, 'игрок', 'игрока', 'игроков'));
     var namesStr = escapeHtml(names.join(', '));
     var open = getLiveRoundOpen(id);
     var panelId = 'live-round-panel-' + id;
+    var link = 'setup-round.html?round=' + id;
 
     var scoreHtml = bestToPar !== null
         ? '<span class="lwl-score ' + scoreClass(bestToPar) + '">' + fmtScore(bestToPar) + '</span>'
         : '<span class="lwl-score">—</span>';
+
+    // Единая карточка на всех участников группового раунда (вариант 1, 2 или 3)
+    var groupScorecardHtml = generateGroupHoleTableHTML(r, { compact: true });
 
     return '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
         'data-round-id="' + id + '" data-round-row="1">' +
@@ -578,13 +586,17 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound) {
         '<span class="lwl-name">' + modeIcon + '<span class="lwl-name-txt">' + modeLabel + ' · ' + namesStr + '</span>' +
         (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
         '</span>' +
-        '<span class="lwl-hole"><i class="fas fa-user"></i> ' + countLabel + '</span>' +
+        '<span class="lwl-hole"><i class="fas fa-user-group"></i> ' + countLabel + '</span>' +
         scoreHtml +
         '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
         '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
         '</div>' +
         '<div class="lwl-details" id="' + panelId + '">' +
-        '<div class="live-round-players">' + playersHtml + '</div>' +
+        '<div class="lwl-actions" style="margin-bottom:10px;">' +
+        (isMyRound ? '<a href="' + link + '" class="btn btn-g btn-sm"><i class="fas fa-gamepad"></i> ' + (currentLang === 'en' ? 'Continue round' : 'Продолжить раунд') + '</a>' : '') +
+        '<button class="btn btn-og btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' +
+        '</div>' +
+        '<div class="live-group-unified-card">' + groupScorecardHtml + '</div>' +
         '</div>' +
         '</div>';
 }

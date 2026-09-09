@@ -523,6 +523,13 @@ function startGroup() {
 
         var flightTee = (pOrder.length > 0 && players[pOrder[0]] && players[pOrder[0]].tee) ? players[pOrder[0]].tee : 'wh';
 
+        // Создатель раунда — первый игрок (pOrder[0]). Он уже вошёл в раунд на своём устройстве.
+        if (pOrder.length > 0 && players[pOrder[0]]) {
+            players[pOrder[0]].isCreator = true;
+            players[pOrder[0]].joined = true;
+            players[pOrder[0]].joinedAt = Date.now();
+        }
+
         var data = {
             mode: 'group',
             tee: flightTee,
@@ -537,6 +544,7 @@ function startGroup() {
             status: 'active',
             createdAt: Date.now(),
             createdBy: creatorId,
+            creatorPlayerId: pOrder[0],
             accessKey: accessKey
         };
 
@@ -656,6 +664,16 @@ function initRoundView() {
 
         myUid = getActingUid();
         canEditGroup = (myUid !== null) && (curRoundData.status === 'active');
+
+        // Если текущий игрок подключился/вошёл в раунд — отмечаем его в базе
+        if (canEditGroup && myUid && curRoundData.players && curRoundData.players[myUid]) {
+            if (!curRoundData.players[myUid].joined) {
+                try {
+                    db.ref('rounds/' + curRid + '/players/' + myUid + '/joined').set(true);
+                    db.ref('rounds/' + curRid + '/players/' + myUid + '/joinedAt').set(Date.now());
+                } catch(e) {}
+            }
+        }
 
         var activeView = lGet('active-scoring-view');
         var groupView = lGet('group-view');
@@ -1108,6 +1126,30 @@ function renderPlaySummary() {
 // ==========================================
 // ГЕНЕРАЦИЯ QR ДЛЯ ПОДКЛЮЧЕНИЯ ИГРОКОВ
 // ==========================================
+// Проверка: вошёл ли уже игрок в раунд (создатель, подключившийся, с введённым счётом)
+function isPlayerEnteredRound(p, pid, roundData) {
+    if (!p) return false;
+    // 1. Создатель раунда — QR никогда не показывается
+    if (p.isCreator) return true;
+    var curUser = (typeof currentUser !== 'undefined') ? currentUser : null;
+    if (roundData) {
+        if (roundData.creatorPlayerId && roundData.creatorPlayerId === pid) return true;
+        if (roundData.createdBy && (roundData.createdBy === pid || (curUser && roundData.createdBy === curUser.uid && pid === (roundData.participantsList && roundData.participantsList[0])))) return true;
+        if (roundData.participantsList && roundData.participantsList[0] === pid) return true;
+    }
+    // 2. Игрок уже вошёл в раунд (открыл карточку/подключился)
+    if (p.joined === true || p.entered === true || p.joinedAt || p.connected === true) return true;
+    // 3. Игрок начал вводить счёт или подтверждать лунки
+    if (p.scores && Object.values(p.scores).some(function(v) { return parseInt(v) >= 1; })) return true;
+    if (p.submitted && Object.keys(p.submitted).length > 0) return true;
+    if (p.markerScores && Object.values(p.markerScores).some(function(tgt) {
+        return tgt && Object.values(tgt).some(function(v) { return parseInt(v) >= 1; });
+    })) return true;
+    // 4. Текущий пользователь на этом устройстве
+    if (typeof myUid !== 'undefined' && myUid && myUid === pid) return true;
+    return false;
+}
+
 // Сворачивание / разворачивание QR-кодов подключения игроков
 function toggleInviteQRs() {
     var panel = lGet('invite-qrs-panel');
@@ -1148,18 +1190,15 @@ function renderInviteQRs() {
         var pid = pe[0], p = pe[1];
         if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
 
-        // QR-код нужен ТОЛЬКО тем, кто добавлен в группу, но ещё не начал
-        // раунд: как только игрок ввёл первую лунку — код исчезает.
-        var started = Object.values(p.scores || {}).some(function(v) { return parseInt(v) >= 1; });
-        if (started) return;
+        // Показываем QR-коды ТОЛЬКО тем, кто ещё не вошёл в раунд.
+        // Для создателя раунда и тех, кто уже вошёл — QR не отображается.
+        if (isPlayerEnteredRound(p, pid, curRoundData)) return;
         qrCount++;
 
         var url = base + 'setup-round.html?round=' + curRid + '&as=' + pid;
 
-        var isMe = pid === myUid ? ' <span style="font-size:11px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
-
         html += '<div class="qr-card" style="padding:14px;text-align:center;">';
-        html += '<div class="qr-name" style="color:var(--white);font-weight:700;font-size:14px;margin-bottom:4px;"><i class="fas fa-mobile-alt"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + isMe + '</div>';
+        html += '<div class="qr-name" style="color:var(--white);font-weight:700;font-size:14px;margin-bottom:4px;"><i class="fas fa-mobile-alt"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + '</div>';
         html += '<div style="font-size:11px;color:var(--gold);margin-bottom:8px;">' + t('scan_to_play') + '</div>';
         html += '<img src="' + qrUrl(url) + '" alt="QR" style="width:160px;height:160px;border-radius:8px;background:#fff;padding:6px;margin:0 auto 8px;display:block;">';
         html += '<div class="qr-url" style="font-size:10px;word-break:break-all;"><a href="' + url + '" target="_blank" style="color:var(--muted);">' + url + '</a></div>';
@@ -1167,8 +1206,8 @@ function renderInviteQRs() {
     });
 
     if (!qrCount) {
-        activeEl.innerHTML = '<div class="empty" style="padding:14px 8px;"><i class="fas fa-check-circle"></i><p style="font-size:12px;margin:8px 0 0;">' +
-            (currentLang === 'en' ? 'All players have already started the round' : 'Все игроки уже начали раунд') +
+        activeEl.innerHTML = '<div class="empty" style="padding:14px 8px;"><i class="fas fa-check-circle" style="color:#2ecc71;"></i><p style="font-size:12px;margin:8px 0 0;color:var(--white);">' +
+            (currentLang === 'en' ? 'All players have already joined the round' : 'Все игроки уже вошли в раунд') +
             '</p></div>';
     } else {
         activeEl.innerHTML = html;

@@ -2,9 +2,11 @@
 // QR-СТАРТОВЫЙ ЛИСТ (qr-start.html)
 // Печать QR-карточек игроков турнирного протокола.
 // Данные читаются из protocols/<pid> (создаётся во вкладке
-// админки «Старт турнира 🏁»). Карточка каждого игрока
-// содержит QR «Моя карточка» (scorer.html) и, если игрок
-// кого-то маркирует, QR карточки маркера (marker.html).
+// админки «Старт турнира 🏁»). У каждого игрока ОДИН QR:
+//  • группа из 2+ игроков → групповая счётная карточка
+//    (setup-round.html?round&as) — в ней игрок вводит и свой
+//    счёт, и счёт маркируемого партнёра;
+//  • группа из одного игрока → одиночная карточка scorer.html.
 // ==========================================================
 
 function qrGet(id) { try { return document.getElementById(id); } catch (e) { return null; } }
@@ -126,14 +128,19 @@ function qrRender(doc) {
         var startHoleTxt = (g.startHole === 10 ? '10' : String(g.startHole || 1));
         members.forEach(function(p) {
             if (!p || !p.id) return;
-            var scoreUrl = qrPageUrl('scorer.html', 'round=' + encodeURIComponent(rid) + '&player=' + encodeURIComponent(p.id));
+            // Один QR на игрока:
+            //   группа 2+ → групповая карточка (свой счёт + счёт маркируемого партнёра);
+            //   группа из одного → одиночная карточка scorer.html.
+            var isGroupCard = members.length > 1;
+            var scoreUrl = isGroupCard
+                ? qrPageUrl('setup-round.html', 'round=' + encodeURIComponent(rid) + '&as=' + encodeURIComponent(p.id))
+                : qrPageUrl('scorer.html', 'round=' + encodeURIComponent(rid) + '&player=' + encodeURIComponent(p.id));
             // Кого маркирует этот игрок?
             var markTarget = null;
             (g.markers || []).forEach(function(mk) {
                 if (mk.markerId === p.id) markTarget = mk;
             });
-            var isMarked = false;
-            (g.markers || []).forEach(function(mk) { if (mk.targetId === p.id) isMarked = true; });
+            var markName = markTarget ? qrFio(findPl(g, markTarget.targetId)) : '';
 
             cardsHtml += '<div class="pcard">';
             cardsHtml += '<div class="grp-row">' +
@@ -145,29 +152,17 @@ function qrRender(doc) {
                 '<span>ТИ: <b>' + qrTeeName(p.tee) + '</b></span>' +
                 '<span>Точный HCP: <b>' + qrHcp(p.exactHcp) + '</b></span>' +
                 '<span>Полевой HCP: <b>' + qrHcp(p.fieldHcp) + '</b></span>' +
+                (markName ? '<span class="mark-chip">👁 Маркирует: <b>' + qrEsc(markName) + '</b></span>' : '') +
                 '</div>';
 
             cardsHtml += '<div class="qr-grid">';
-            cardsHtml += '<div class="qr-box"><div class="qr-lbl">📱 Моя карточка — ввод счёта</div>' +
+            cardsHtml += '<div class="qr-box"><div class="qr-lbl">' +
+                (isGroupCard
+                    ? '📱 Моя карточка — свой счёт и счёт маркируемого партнёра'
+                    : '📱 Моя карточка — ввод счёта') +
+                '</div>' +
                 '<img src="' + qrUrl(scoreUrl) + '" alt="QR"><div class="qr-url">' + qrEsc(scoreUrl) + '</div></div>';
-            if (markTarget) {
-                var mkUrl = qrPageUrl('marker.html', 'round=' + encodeURIComponent(rid) + '&player=' + encodeURIComponent(markTarget.targetId));
-                cardsHtml += '<div class="qr-box"><div class="qr-lbl">👁 Маркер: счёт игрока<br>' + qrEsc(qrFio(findPl(g, markTarget.targetId))) + '</div>' +
-                    '<img src="' + qrUrl(mkUrl) + '" alt="QR"><div class="qr-url">' + qrEsc(mkUrl) + '</div></div>';
-            } else if (members.length === 1) {
-                cardsHtml += '<div class="qr-box" style="display:flex;align-items:center;justify-content:center;border:none;background:transparent;"><div style="color:#999;font-size:10.5px;line-height:1.5;">Группа из одного<br>игрока — маркер<br>не назначается</div></div>';
-            } else {
-                cardsHtml += '<div class="qr-box" style="display:flex;align-items:center;justify-content:center;border:none;background:transparent;"><div style="color:#999;font-size:10.5px;line-height:1.5;">Карточки партнёров<br>сканируют они сами</div></div>';
-            }
             cardsHtml += '</div>';
-
-            if (markTarget) {
-                cardsHtml += '<div class="mark-note">👁 <b>Вы маркируете: ' + qrEsc(qrFio(findPl(g, markTarget.targetId))) + '</b> — сканируйте QR справа после каждого удара партнёра, чтобы подтвердить его счёт.</div>';
-            } else if (isMarked) {
-                var mkName = '';
-                (g.markers || []).forEach(function(mk) { if (mk.targetId === p.id) mkName = qrFio(findPl(g, mk.markerId)); });
-                cardsHtml += '<div class="mark-note">👁 Ваш маркер: <b>' + qrEsc(mkName) + '</b> — он подтверждает ваши результаты.</div>';
-            }
 
             var memberNames = members.map(function(m) {
                 if (m.id === p.id) return '<b style="color:#6d5717;">' + qrEsc(qrFio(m)) + '</b>';

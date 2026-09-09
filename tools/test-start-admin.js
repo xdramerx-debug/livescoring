@@ -114,5 +114,77 @@ eq([parsedFio.valid[1].lastName, parsedFio.valid[1].firstName, parsedFio.valid[1
 // ── Проверка разбора числового hcp из Excel (значение-число и строка) ──
 eq(sandbox.psParseHcpFromCell('+1.5'), -1.5, 'hcp cell +1.5');
 
+// ── Расширенные парсеры ячеек ──
+eq(sandbox.psTeeFromCell('⬜ Белый'), 'wh', 'tee эмодзи ⬜');
+eq(sandbox.psTeeFromCell('🟦'), 'bl', 'tee эмодзи 🟦');
+eq(sandbox.psTeeFromCell('белые'), 'wh', 'tee белые (мн.ч.)');
+eq(sandbox.psTeeFromCell('с'), 'bl', 'tee одна буква «с»');
+eq(sandbox.psGenderFromCell('м'), 'men', 'пол м');
+eq(sandbox.psGenderFromCell('Женский'), 'women', 'пол Женский');
+eq(sandbox.psGenderFromCell('девушка'), 'women', 'пол девушка');
+eq(sandbox.psParseHcpFromCell('HCP 12.4'), 12.4, 'hcp из «HCP 12.4»');
+eq(sandbox.psParseHcpFromCell('(13)'), 13, 'hcp из «(13)»');
+eq(sandbox.psParseHcpFromCell('нет'), null, 'hcp «нет» → null');
+eq(sandbox.psHeaderKey('Гандикап WHS'), 'hcp', 'header «Гандикап WHS» → hcp');
+eq(sandbox.psHeaderKey('Участник'), 'fio', 'header «Участник» → fio');
+eq(sandbox.psHeaderKey('ФИО участника'), 'fio', 'header «ФИО участника» → fio');
+eq(sandbox.psHeaderKey('Полевой гандикап'), 'hcp', 'header «Полевой гандикап» → hcp (не пол)');
+
+// ── Гибкий импорт: заголовки не в первой строке ──
+let gridShifted = [
+    ['Стартовый список · Кубок клуба', '', '', '', ''],
+    ['', '', '', '', ''],
+    ['№', 'ФИО', 'Гандикап', 'Пол', 'ТИ'],
+    [1, 'Тестов Иван Петрович', 12.0, 'м', 'белый'],
+    [2, 'Тестова Мария', 20, 'ж', '🟥 красный'],
+    [3, 'Смирнов Пётр', 4.2, 'муж', 'синий']
+];
+let g1 = sandbox.psParseExcelGrid(gridShifted);
+eq(g1.guessed, false, 'grid: заголовки найдены (не угадывание)');
+eq(g1.headerRow, 3, 'grid: строка заголовков = 3');
+eq(g1.valid.length, 3, 'grid: 3 валидные строки');
+eq([g1.valid[0].lastName, g1.valid[0].firstName, g1.valid[0].middleName], ['Тестов', 'Иван', 'Петрович'], 'grid: ФИО из одной колонки');
+eq(g1.valid[1].tee, 'rd', 'grid: ти с эмодзи');
+eq(g1.valid[2].gender, 'men', 'grid: пол муж');
+
+// ── Гибкий импорт: вообще без заголовков ──
+let gridRaw = [
+    ['Иванов Сергей', 14.3, 'м', 'белый'],
+    ['Петрова Анна Михайловна', 22.1, 'ж', 'красный'],
+    ['', '', '', ''],
+    ['Сидоров Олег', '+1.2', 'м', 'чёрный'],
+    ['Итого участников: 3', '', '', '']
+];
+let g2 = sandbox.psParseExcelGrid(gridRaw);
+eq(g2.guessed, true, 'grid-raw: режим угадывания');
+eq(g2.valid.length, 3, 'grid-raw: 3 валидные строки (итоговая отброшена)');
+eq([g2.valid[0].lastName, g2.valid[0].firstName], ['Иванов', 'Сергей'], 'grid-raw: ФИО разобрано');
+eq(g2.valid[0].hcp, 14.3, 'grid-raw: hcp найден');
+eq(g2.valid[1].tee, 'rd', 'grid-raw: ти найден');
+eq(g2.valid[1].gender, 'women', 'grid-raw: пол жен');
+eq(g2.valid[2].hcp, -1.2, 'grid-raw: плюсовой гандикап из «+1.2»');
+
+// ── Гибкий импорт: отдельные колонки Фамилия/Имя без заголовков ──
+let gridCols = [
+    ['Кузнецов', 'Андрей', 18.9],
+    ['Кузнецова', 'Елена', 25.0]
+];
+let g3 = sandbox.psParseExcelGrid(gridCols);
+eq(g3.valid.length, 2, 'grid-cols: 2 строки');
+eq([g3.valid[0].lastName, g3.valid[0].firstName], ['Кузнецов', 'Андрей'], 'grid-cols: фамилия/имя по колонкам');
+
+// ── Маркеры: ручные назначения и автокольцо ──
+function gm(last, hcp) { return { id: 'id_' + last, lastName: last, firstName: 'И', middleName: '', gender: 'men', tee: 'wh', hcp: hcp }; }
+let gg = { members: [gm('A', 10), gm('B', 20), gm('C', 30)], markerTargets: {} };
+let ring = sandbox.psGroupMarkersResolved(gg);
+eq(ring.map(function(m) { return m.markerId + '>' + m.targetId; }), ['id_A>id_B', 'id_B>id_C', 'id_C>id_A'], 'маркеры: автокольцо');
+gg.markerTargets = { id_A: 'id_C' };
+let manual = sandbox.psGroupMarkersResolved(gg);
+eq(manual.map(function(m) { return m.markerId + '>' + m.targetId; }), ['id_A>id_C'], 'маркеры: ручное назначение A→C');
+gg.markerTargets = { id_A: 'id_A' }; // сам себя — невалидно, откат на кольцо
+eq(sandbox.psGroupMarkersResolved(gg).length, 3, 'маркеры: «сам себя» игнорируется');
+let solo = { members: [gm('A', 10)], markerTargets: {} };
+eq(sandbox.psGroupMarkersResolved(solo), [], 'маркеры: одиночка без маркеров');
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nAll tests passed ✔');
 process.exit(failures ? 1 : 0);

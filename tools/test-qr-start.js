@@ -79,15 +79,20 @@ const content = els['qr-content'];
 check(!!content, 'qr-content создан');
 const html = content.innerHTML || '';
 check(html.indexOf('Тестов Иван Петрович') !== -1, 'ФИО на карточке');
-check(html.indexOf('scorer.html?round=r1&amp;player=u1') !== -1 || html.indexOf('scorer.html?round=r1&player=u1') !== -1, 'ссылка игрока на scorer');
-check(html.indexOf('marker.html?round=r1&amp;player=u2') !== -1 || html.indexOf('marker.html?round=r1&player=u2') !== -1, 'ссылка маркера (u1→u2)');
+// Группа из нескольких человек → QR открывает карточку группового формата
+check(html.indexOf('setup-round.html?round=r1&amp;as=u1') !== -1 || html.indexOf('setup-round.html?round=r1&as=u1') !== -1, 'QR группы → групповая карточка (setup-round?as)');
+// Группа из одного → одиночная карточка scorer.html
+check(html.indexOf('scorer.html?round=r2&amp;player=u9') !== -1 || html.indexOf('scorer.html?round=r2&player=u9') !== -1, 'QR одиночки → scorer.html');
+// Один QR на игрока: ни QR, ни ссылок на marker.html не должно быть
+check(html.indexOf('marker.html') === -1, 'нет QR/ссылок на marker.html');
+check(html.indexOf('Вы маркируете') === -1, 'удалён блок «Вы маркируете…»');
 check(html.indexOf('ГРУППА №2') !== -1, 'группа 2 на карточке');
 check(html.indexOf('Смирнов Пётр') !== -1, 'имя гостя на карточке');
-check((html.match(/qrserver\.com/g) || []).length >= 7, 'QR изображения для всех карточек');
-check(html.indexOf('Тестова Мария Ивановна') !== -1, 'маркер-инфо на карточке u1');
-check(html.indexOf('Группа из одного') !== -1, 'solo без маркера');
+// 4 игрока → ровно 4 QR-картинки (по одной на игрока)
+check((html.match(/qrserver\.com/g) || []).length === 4, 'по одному QR на игрока (4 шт.)');
+check(html.indexOf('Маркирует:') !== -1 && html.indexOf('Тестова Мария Ивановна') !== -1, 'компактный чип «Маркирует: …» на карточке u1');
 check(html.indexOf('10:00') !== -1 || html.indexOf('09:00') !== -1, 'время старта');
-check(html.indexOf('13</b>') !== -1 || html.indexOf('Полевой HCP: <b>13') !== -1, 'полевой hcp');
+check(html.indexOf('Полевой HCP: <b>13.0</b>') !== -1, 'полевой hcp');
 
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nqr-start render tests passed ✔');
 process.exit(failures ? 1 : 0);

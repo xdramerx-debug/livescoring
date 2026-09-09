@@ -2,35 +2,46 @@ document.addEventListener('DOMContentLoaded', function() { initNav(); loadTourna
 function onAuthReady(u, d) { navAuth(u, d); loadTournaments(); }
 
 function tGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
+
+// Кэш турниров для лидерборда/группировки, общий снапшот раундов и состояние панелей.
+var tnCache = {};
+var tnLbRounds = null;
+var tnLbSubscribed = false;
+var tnLbOpen = {};
+var tnRosterOpen = {};
+
 function loadTournaments() {
     if (typeof db === 'undefined' || !db) return;
     if (typeof bindRealtimeValue !== 'function') return;
     bindRealtimeValue('tournaments-list', db.ref('tournaments'), function(sn) {
         var data = (sn && sn.val && sn.val()) || {};
+        tnCache = data;
         var entries = Object.entries(data);
         var el = tGet('tn-list');
         if (!el) return;
 
         if (!entries.length) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + (currentLang === 'en' ? 'No tournaments created yet' : 'Нет турниров') + '</p><p style="font-size:12px;margin-top:8px;">' + t('admin_only_tournaments') + '</p></div>';
+            el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + (currentLang === 'en' ? 'No tournaments created yet' : 'Пока нет турниров') + '</p></div>';
             return;
         }
         entries.sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
-        
-        var formatLabel = currentLang === 'en' ? 'Formats: ' : 'Форматы: ';
-        var teeLabel = currentLang === 'en' ? 'Tees: ' : 'ТИ: ';
+
+        var en = currentLang === 'en';
+        var formatLabel = en ? 'Formats: ' : 'Форматы: ';
+        var teeLabel = en ? 'Tees: ' : 'ТИ: ';
 
         var html = '';
         entries.forEach(function(e) {
             var tnId = e[0], tVal = e[1];
             var statusCls = tVal.status === 'active' ? 'tn-a' : tVal.status === 'completed' ? 'tn-d' : 'tn-u';
-            var statusText = tVal.status === 'active' ? (currentLang === 'en' ? '🔴 Active' : '🔴 Активный') : tVal.status === 'completed' ? (currentLang === 'en' ? '✅ Completed' : '✅ Завершён') : (currentLang === 'en' ? '📅 Upcoming' : '📅 Предстоящий');
+            var statusText = tVal.status === 'active' ? (en ? '🔴 Active' : '🔴 Активный') : tVal.status === 'completed' ? (en ? '✅ Completed' : '✅ Завершён') : (en ? '📅 Upcoming' : '📅 Предстоящий');
             var formatsStr = (tVal.formats || []).join(' · ') || '—';
             var teesStr = (tVal.tees || []).map(function(k) { return t('tee_' + k); }).join(' · ');
+            var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
 
             var regPlayers = tVal.registeredPlayers || {};
             var regCount = Object.keys(regPlayers).length;
-            var isRegistered = currentUser && regPlayers[currentUser.uid];
+            var isRegistered = !!(currentUser && regPlayers[currentUser.uid]);
 
             var regBtn = '';
             if (isRegistered) {
@@ -41,10 +52,18 @@ function loadTournaments() {
 
             html += '<div class="tn-card">';
             html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">';
-            html += '<div style="flex:1;"><div class="tn-name">' + escapeHtml(tVal.name || '—') + '</div>';
+            html += '<div style="flex:1;min-width:200px;"><div class="tn-name">' + escapeHtml(tVal.name || '—') + '</div>';
             html += '<div class="tn-meta"><span><i class="fas fa-calendar"></i> ' + fmtDate(new Date(tVal.date).getTime()) + '</span></div>';
-            html += '<div style="margin-top:8px;font-size:12px;color:var(--muted);">' + formatLabel + formatsStr + '</div>';
-            html += '<div style="font-size:12px;color:var(--muted);">' + teeLabel + teesStr + '</div>';
+            html += '<div style="margin-top:8px;font-size:12px;color:var(--muted);">' + formatLabel + escapeHtml(formatsStr) + '</div>';
+            html += '<div style="font-size:12px;color:var(--muted);">' + teeLabel + escapeHtml(teesStr) + '</div>';
+            if (divisions.length) {
+                html += '<div style="margin-top:6px;">';
+                divisions.forEach(function(d) {
+                    var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
+                    html += '<span class="tn-div-chip">' + escapeHtml(d.name || '') + (rg ? ' · ' + escapeHtml(rg) : '') + '</span>';
+                });
+                html += '</div>';
+            }
             html += '<div style="font-size:12px;color:var(--gold);font-weight:700;margin-top:6px;"><i class="fas fa-users"></i> ' + t('registered_count') + ': ' + regCount + '</div>';
             html += '</div>';
 
@@ -52,64 +71,311 @@ function loadTournaments() {
             html += '<span class="tn-status ' + statusCls + '">' + statusText + '</span>';
             html += regBtn;
             html += '<button class="btn btn-og btn-sm" onclick="toggleRosterPanel(\'' + tnId + '\')"><i class="fas fa-list-ul"></i> ' + t('participants_list') + ' (' + regCount + ')</button>';
+            html += '<button class="btn btn-og btn-sm" onclick="toggleTnLb(\'' + tnId + '\')"><i class="fas fa-ranking-star"></i> ' + (en ? 'Live leaderboard' : 'Live-лидерборд') + '</button>';
             html += '</div>';
 
             html += '</div>';
 
-            // Roster Panel
-            html += '<div id="roster-' + tnId + '" class="card-scorecard-panel hidden" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">';
-            if (regCount === 0) {
-                html += '<p style="font-size:12px;color:var(--muted);text-align:center;">' + (currentLang === 'en' ? 'No registered participants yet' : 'Пока нет зарегистрированных участников') + '</p>';
-            } else {
-                html += '<div style="overflow-x:auto;"><table class="lb-table lb-cards"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>ТИ</th><th>' + t('date') + '</th></tr></thead><tbody>';
-                var rIdx = 1;
-                var seenFio = {};
-                var finalReg = [];
-                Object.entries(regPlayers).forEach(function(pe){
-                    var rpid = pe[0], rp = pe[1] || {};
-                    if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(null, rp && rp.name)) return; } catch(e){} }
-                    var fioKey;
-                    try {
-                        if (typeof getPlayerFioKey === 'function') {
-                            fioKey = getPlayerFioKey({name: rp.name || '', firstName: rp.firstName || (rp.name||'').split(' ')[0] || '', lastName: rp.lastName || (rp.name||'').split(' ').slice(1).join(' ') || '', middleName: rp.middleName || ''});
-                        } else {
-                            fioKey = (rp.name||'').toLowerCase();
-                        }
-                    } catch(e){ fioKey = (rp.name||'').toLowerCase(); }
-                    if (seenFio[fioKey]) return;
-                    seenFio[fioKey]=true;
-                    finalReg.push({ rp: rp, pid: rpid });
-                });
-                finalReg.forEach(function(en) {
-                    var rp = en.rp, rpid = en.pid;
-                    html += '<tr><td data-label="#">' + (rIdx++) + '</td>';
-                    html += '<td class="lb-card-main"><strong style="color:var(--gold);">' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong></td>';
-                    html += '<td data-label="HCP">' + (rp.handicap != null ? fmtExactHcp(rp.handicap) : '—') + '</td>';
-                    html += '<td data-label="' + (currentLang === 'en' ? 'Tee' : 'ТИ') + '">' + fmtTeePill(rp.tee) + '</td>';
-                    html += '<td data-label="' + t('date') + '">' + fmtDate(rp.registeredAt) + '</td></tr>';
-                });
-                html += '</tbody></table></div>';
-            }
+            // Панель участников — сразу сгруппирована по группам гандикапа.
+            html += '<div id="roster-' + tnId + '" class="card-scorecard-panel' + (tnRosterOpen[tnId] ? '' : ' hidden') + '" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">';
+            html += tnRosterGroupedHtml(tVal, regPlayers, regCount);
             html += '</div>';
+
+            // Внутритурнирный live-лидерборд.
+            html += '<div id="tnlb-' + tnId + '"' + (tnLbOpen[tnId] ? '' : ' class="hidden"') + ' style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);"></div>';
 
             html += '</div>';
         });
         el.innerHTML = html;
+
+        // Восстанавливаем открытые панели после перерисовки.
+        Object.keys(tnLbOpen).forEach(function(tnId) {
+            if (tnLbOpen[tnId]) {
+                ensureTnLbSubscription();
+                renderTnLeaderboard(tnId);
+            }
+        });
     });
 }
 
 function toggleRosterPanel(tnId) {
     var panel = tGet('roster-' + tnId);
-    if (panel) { try { panel.classList.toggle('hidden'); } catch(e){} }
+    if (panel) {
+        try {
+            panel.classList.toggle('hidden');
+            tnRosterOpen[tnId] = !panel.classList.contains('hidden');
+        } catch(e){}
+    }
 }
 
-function openTournamentRegModal(tnId) {
-    if (!currentUser) {
-        toast(currentLang === 'en' ? 'Please log in to register for tournaments' : 'Войдите в аккаунт для записи на турниры', 'error');
-        window.location.href = 'auth.html?redirect=tournaments.html';
+function toggleTnLb(tnId) {
+    var panel = tGet('tnlb-' + tnId);
+    if (!panel) return;
+    try {
+        panel.classList.toggle('hidden');
+        tnLbOpen[tnId] = !panel.classList.contains('hidden');
+        if (tnLbOpen[tnId]) {
+            ensureTnLbSubscription();
+            renderTnLeaderboard(tnId);
+        }
+    } catch(e){}
+}
+
+// Нормализация ФИО для сопоставления (своя кроха, без внешних зависимостей).
+function tnNormName(s) {
+    return String(s == null ? '' : s).toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function tnFioKey(p, pid) {
+    try {
+        if (typeof getPlayerFioKey === 'function') {
+            return getPlayerFioKey({
+                name: p.name || '',
+                firstName: p.firstName || '',
+                lastName: p.lastName || '',
+                middleName: p.middleName || ''
+            }) || ('pid:' + pid);
+        }
+    } catch(e){}
+    return tnNormName(p.name || '') || ('pid:' + pid);
+}
+
+// Дедуп заявленных по ФИО (как было) → [{rp, pid}].
+function tnDedupeRoster(regPlayers) {
+    var seenFio = {};
+    var out = [];
+    Object.entries(regPlayers || {}).forEach(function(pe) {
+        var rpid = pe[0], rp = pe[1] || {};
+        if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(null, rp && rp.name)) return; } catch(e){} }
+        var fioKey = tnFioKey(rp, rpid);
+        if (seenFio[fioKey]) return;
+        seenFio[fioKey] = true;
+        out.push({ rp: rp, pid: rpid });
+    });
+    return out;
+}
+
+// Список участников, сгруппированный по группам гандикапа турнира.
+function tnRosterGroupedHtml(tVal, regPlayers, regCount) {
+    var en = currentLang === 'en';
+    if (!regCount) {
+        return '<p style="font-size:12px;color:var(--muted);text-align:center;">' + (en ? 'No registered participants yet' : 'Пока нет зарегистрированных участников') + '</p>';
+    }
+    var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
+    var list = tnDedupeRoster(regPlayers);
+    var defaultTee = (tVal.tees && tVal.tees[0]) || 'wh';
+
+    var buckets = [];
+    var byDiv = {};
+    divisions.forEach(function(d) {
+        var b = { div: d, list: [] };
+        buckets.push(b);
+        byDiv[d.id] = b;
+    });
+    var unassigned = { div: null, list: [] };
+
+    list.forEach(function(en2) {
+        var rp = en2.rp;
+        var tee = rp.tee || defaultTee;
+        var hcp = (rp.handicap != null && rp.handicap !== '') ? rp.handicap : null;
+        var gender = rp.gender || 'men';
+        var div = (typeof tnFindDivision === 'function') ? tnFindDivision(tee, hcp, gender, divisions) : null;
+        if (div && byDiv[div.id]) byDiv[div.id].list.push(en2);
+        else unassigned.list.push(en2);
+    });
+    if (unassigned.list.length) buckets.push(unassigned);
+
+    var html = '';
+    buckets.forEach(function(b) {
+        if (b.div) {
+            var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(b.div) : '';
+            var teeTxt = b.div.tee ? (' · ' + t('tee_' + b.div.tee)) : '';
+            html += '<div class="tn-group-head"><i class="fas fa-layer-group"></i> ' + escapeHtml(b.div.name || '') +
+                (rg ? ' <span style="color:var(--muted);font-weight:600;">HCP ' + escapeHtml(rg) + '</span>' : '') +
+                '<span style="color:var(--muted);font-weight:600;">' + escapeHtml(teeTxt) + '</span>' +
+                ' <span style="color:var(--gold);">· ' + b.list.length + '</span></div>';
+        } else if (buckets.length > 1) {
+            html += '<div class="tn-group-head"><i class="fas fa-user-group"></i> ' + (en ? 'Without group' : 'Без группы') +
+                ' <span style="color:var(--gold);">· ' + b.list.length + '</span></div>';
+        }
+        html += '<div style="overflow-x:auto;margin-bottom:10px;"><table class="lb-table lb-cards"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>' + (en ? 'Tee' : 'ТИ') + '</th><th>' + t('date') + '</th></tr></thead><tbody>';
+        var rIdx = 1;
+        b.list.forEach(function(en2) {
+            var rp = en2.rp, rpid = en2.pid;
+            html += '<tr><td data-label="#">' + (rIdx++) + '</td>';
+            html += '<td class="lb-card-main"><strong style="color:var(--gold);">' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong></td>';
+            html += '<td data-label="HCP">' + (rp.handicap != null && rp.handicap !== '' ? fmtExactHcp(rp.handicap) : '—') + '</td>';
+            html += '<td data-label="' + (en ? 'Tee' : 'ТИ') + '">' + fmtTeePill(rp.tee) + '</td>';
+            html += '<td data-label="' + t('date') + '">' + fmtDate(rp.registeredAt) + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+    });
+    return html;
+}
+
+// ==========================================
+// ВНУТРИТУРНИРНЫЙ LIVE-ЛИДЕРБОРД
+// Одна общая подписка на раунды + перерисовка открытых панелей.
+// ==========================================
+function ensureTnLbSubscription() {
+    if (tnLbSubscribed) return;
+    if (typeof db === 'undefined' || !db || typeof bindRealtimeValue !== 'function') return;
+    tnLbSubscribed = true;
+    bindRealtimeValue('tn-lb-rounds', db.ref('rounds'), function(sn) {
+        tnLbRounds = (sn && sn.val && sn.val()) || {};
+        Object.keys(tnLbOpen).forEach(function(tnId) {
+            if (tnLbOpen[tnId]) renderTnLeaderboard(tnId);
+        });
+    });
+}
+
+function tnLbSort(a, b) {
+    if (a.netToPar === null && b.netToPar === null) return (a.name || '').localeCompare(b.name || '');
+    if (a.netToPar === null) return 1;
+    if (b.netToPar === null) return -1;
+    if (a.netToPar !== b.netToPar) return a.netToPar - b.netToPar;
+    var at = a.toPar === null ? 999 : a.toPar, bt = b.toPar === null ? 999 : b.toPar;
+    if (at !== bt) return at - bt;
+    return (a.name || '').localeCompare(b.name || '');
+}
+
+function renderTnLeaderboard(tnId) {
+    var panel = tGet('tnlb-' + tnId);
+    if (!panel) return;
+    var en = currentLang === 'en';
+    var tVal = tnCache[tnId];
+    if (!tVal) { panel.innerHTML = ''; return; }
+    if (tnLbRounds === null) {
+        ensureTnLbSubscription();
+        panel.innerHTML = '<p style="font-size:12px;color:var(--muted);text-align:center;">' + (en ? 'Loading scores…' : 'Загрузка счёта…') + '</p>';
         return;
     }
 
+    var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
+    var agg = {};
+    var anyLive = false;
+
+    Object.keys(tnLbRounds).forEach(function(rid) {
+        var r = tnLbRounds[rid] || {};
+        if (r.tournamentId !== tnId) return;
+        if (r.status === 'active') anyLive = true;
+        var order = (typeof getRoundOrder === 'function') ? getRoundOrder(r) : undefined;
+        var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(r.players || {}) : (r.players || {});
+        Object.keys(players).forEach(function(pid) {
+            var p = players[pid] || {};
+            if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(pid, p.name)) return; } catch(e){} }
+            var key = tnFioKey(p, pid);
+            var stats;
+            try {
+                stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+            } catch(e){ return; }
+            var cur = agg[key];
+            if (!cur) {
+                cur = agg[key] = {
+                    pid: pid, name: p.name || '—',
+                    gender: p.gender || '', tee: p.tee || r.tee || '',
+                    hcpRaw: (p.exactHcpRaw != null ? p.exactHcpRaw : (p.exactHcp != null ? p.exactHcp : (p.handicap != null ? p.handicap : null))),
+                    gross: 0, parPlayed: 0, net: 0, stbl: 0, holes: 0, live: false, upd: 0
+                };
+            }
+            cur.gross += stats.gross || 0;
+            cur.parPlayed += stats.parPlayed || 0;
+            cur.net += stats.net || 0;
+            cur.stbl += stats.stablefordField || 0;
+            cur.holes += stats.holesPlayed || 0;
+            if (r.status === 'active' && stats.holesPlayed > 0) cur.live = true;
+            var ts = r.updatedAt || r.createdAt || 0;
+            if (ts > cur.upd) cur.upd = ts;
+            if (!cur.tee) cur.tee = p.tee || r.tee || '';
+            if (!cur.gender && p.gender) cur.gender = p.gender;
+        });
+    });
+
+    var list = Object.keys(agg).map(function(k) { return agg[k]; });
+    if (!list.length) {
+        panel.innerHTML = '<p style="font-size:12px;color:var(--muted);text-align:center;">' +
+            (en ? 'No scores yet — results will appear here live as soon as the game starts.' : 'Счёта пока нет — результаты появятся здесь live, как только начнётся игра.') + '</p>';
+        return;
+    }
+
+    // Данные заявки точнее для распределения по группам (настоящие HCP/пол/ТИ).
+    var regByFio = {};
+    Object.keys(tVal.registeredPlayers || {}).forEach(function(uid) {
+        var rp = tVal.registeredPlayers[uid] || {};
+        regByFio[tnNormName(rp.name || '')] = rp;
+    });
+    var defaultTee = (tVal.tees && tVal.tees[0]) || 'wh';
+    list.forEach(function(en2) {
+        var rp = regByFio[tnNormName(en2.name)] || {};
+        var hcp = (rp.handicap != null && rp.handicap !== '') ? rp.handicap : en2.hcpRaw;
+        var gender = rp.gender || en2.gender || 'men';
+        var tee = rp.tee || en2.tee || defaultTee;
+        en2.div = (typeof tnFindDivision === 'function') ? tnFindDivision(tee, hcp, gender, divisions) : null;
+        en2.toPar = en2.holes > 0 ? en2.gross - en2.parPlayed : null;
+        en2.netToPar = en2.holes > 0 ? en2.net - en2.parPlayed : null;
+        en2.dispName = privacyDisplayName({ name: en2.name }, en2.pid);
+    });
+
+    var buckets = [];
+    var byDiv = {};
+    divisions.forEach(function(d) {
+        var b = { div: d, list: [] };
+        buckets.push(b);
+        byDiv[d.id] = b;
+    });
+    var unassigned = { div: null, list: [] };
+    list.forEach(function(en2) {
+        if (en2.div && byDiv[en2.div.id]) byDiv[en2.div.id].list.push(en2);
+        else unassigned.list.push(en2);
+    });
+    if (unassigned.list.length) buckets.push(unassigned);
+
+    var statusLine = anyLive
+        ? '<span class="tn-lb-live"><span class="tn-lb-dot"></span>' + (en ? 'LIVE — scores update instantly' : 'LIVE — счёт обновляется мгновенно') + '</span>'
+        : (tVal.status === 'completed'
+            ? '<span style="font-size:12px;color:#2ecc71;font-weight:700;">✅ ' + (en ? 'Final results' : 'Итоговые результаты') + '</span>'
+            : '<span style="font-size:12px;color:var(--muted);">' + (en ? 'Last published scores' : 'Последние опубликованные счета') + '</span>');
+
+    var html = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;"><strong style="color:var(--gold);font-size:15px;"><i class="fas fa-ranking-star"></i> ' +
+        (en ? 'Tournament leaderboard' : 'Лидерборд турнира') + '</strong>' + statusLine + '</div>';
+
+    buckets.forEach(function(b) {
+        if (!b.list.length) return;
+        b.list.sort(tnLbSort);
+        if (b.div) {
+            var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(b.div) : '';
+            html += '<div class="tn-group-head"><i class="fas fa-layer-group"></i> ' + escapeHtml(b.div.name || '') +
+                (rg ? ' <span style="color:var(--muted);font-weight:600;">HCP ' + escapeHtml(rg) + '</span>' : '') + '</div>';
+        } else if (buckets.length > 1) {
+            html += '<div class="tn-group-head"><i class="fas fa-user-group"></i> ' + (en ? 'Without group' : 'Без группы') + '</div>';
+        }
+        html += '<div style="overflow-x:auto;margin-bottom:12px;"><table class="lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th><th>' +
+            (en ? 'Thru' : 'Лунки') + '</th><th>' + (en ? 'Gross' : 'Гросс') + '</th><th>±</th><th>' + (en ? 'Net' : 'Нетто') + '</th><th>' + (en ? 'Stbl' : 'Стбл') + '</th></tr></thead><tbody>';
+        var pos = 0;
+        b.list.forEach(function(en2, i) {
+            if (i === 0 || en2.netToPar !== b.list[i - 1].netToPar || en2.toPar !== b.list[i - 1].toPar) pos = i + 1;
+            var medal = pos === 1 ? '🥇 ' : pos === 2 ? '🥈 ' : pos === 3 ? '🥉 ' : '';
+            var thru = en2.holes > 0 ? en2.holes : '—';
+            html += '<tr><td><strong style="color:var(--gold);">' + medal + pos + '</strong></td>';
+            html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' +
+                (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + '</td>';
+            html += '<td>' + thru + '</td>';
+            html += '<td>' + (en2.holes > 0 ? en2.gross : '—') + '</td>';
+            html += '<td><strong class="' + scoreClass(en2.toPar) + '">' + fmtScore(en2.toPar) + '</strong></td>';
+            html += '<td>' + (en2.netToPar === null ? '—' : en2.net + ' (' + fmtScore(en2.netToPar) + ')') + '</td>';
+            html += '<td>' + (en2.holes > 0 ? en2.stbl : '—') + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+    });
+
+    panel.innerHTML = html;
+}
+
+// ==========================================
+// ЗАПИСЬ НА ТУРНИР: участники + гости без регистрации
+// ==========================================
+function openTournamentRegModal(tnId) {
+    // Гостям больше не нужен редирект на регистрацию — записываем прямо здесь.
     db.ref('tournaments/' + tnId).once('value').then(function(sn) {
         var tVal = sn.val();
         if (!tVal) return;
@@ -123,7 +389,7 @@ function openTournamentRegModal(tnId) {
                 var backTxt = (typeof t === 'function') ? t('back_btn') : 'Back';
                 modalEl.innerHTML =
                     '<div class="modal-bg" onclick="closeRegTnModal()"></div>' +
-                    '<div class="modal-body" style="max-width:480px;text-align:center;">' +
+                    '<div class="modal-body" style="max-width:520px;text-align:center;">' +
                     '<div class="modal-top-bar">' +
                     '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeRegTnModal()"><i class="fas fa-arrow-left"></i> <span>' + backTxt + '</span></button>' +
                     '<button type="button" class="modal-close-btn" onclick="closeRegTnModal()">&times;</button>' +
@@ -136,29 +402,77 @@ function openTournamentRegModal(tnId) {
 
         var bodyEl = tGet('reg-tn-modal-body');
         var allowedTees = tVal.tees || ['wh'];
-        var defaultTee = (currentUserData && currentUserData.defaultTee) || allowedTees[0];
+        var en = currentLang === 'en';
 
         var html = '<h2 style="color:var(--gold);margin-bottom:8px;"><i class="fas fa-trophy"></i> ' + escapeHtml(tVal.name || 'Tournament') + '</h2>';
-        html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">' + t('confirm_registration') + '</p>';
 
-        html += '<div class="card" style="background:var(--input);padding:16px;text-align:left;margin-bottom:20px;">';
-        html += '<div style="font-size:14px;color:var(--white);font-weight:700;margin-bottom:6px;"><i class="fas fa-user"></i> ' + escapeHtml(currentUserData ? currentUserData.name : 'Player') + '</div>';
-        html += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">HCP: ' + (currentUserData && currentUserData.handicap != null ? fmtExactHcp(currentUserData.handicap) : '—') + '</div>';
-
-        html += '<div class="form-group"><label>' + t('tee_select') + ':</label><select id="reg-tn-tee" class="form-input">';
-        allowedTees.forEach(function(tk) {
-            var sel = tk === defaultTee ? 'selected' : '';
-            html += '<option value="' + tk + '" ' + sel + '>' + fmtTeePill(tk) + '</option>';
-        });
-        html += '</select></div></div>';
+        if (currentUser) {
+            var defaultTee = (currentUserData && currentUserData.defaultTee) || allowedTees[0];
+            html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">' + t('confirm_registration') + '</p>';
+            html += '<div class="card" style="background:var(--input);padding:16px;text-align:left;margin-bottom:20px;">';
+            html += '<div style="font-size:14px;color:var(--white);font-weight:700;margin-bottom:6px;"><i class="fas fa-user"></i> ' + escapeHtml(currentUserData ? currentUserData.name : 'Player') + '</div>';
+            html += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">HCP: ' + (currentUserData && currentUserData.handicap != null ? fmtExactHcp(currentUserData.handicap) : '—') + '</div>';
+            html += '<div class="form-group" style="margin:0;"><label>' + t('tee_select') + ':</label><select id="reg-tn-tee" class="form-input">';
+            allowedTees.forEach(function(tk) {
+                var sel = tk === defaultTee ? 'selected' : '';
+                html += '<option value="' + tk + '" ' + sel + '>' + t('tee_' + tk) + '</option>';
+            });
+            html += '</select></div></div>';
+        } else {
+            html += '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">' +
+                (en ? 'No account needed — just enter your details. Start typing your name for a hint.' : 'Аккаунт не нужен — просто укажите данные. Начните вводить фамилию — появится подсказка.') + '</p>';
+            html += '<div class="guest-reg-grid">';
+            html += '<div class="form-group" style="margin:0;"><label>' + (en ? 'Full name *' : 'Фамилия Имя Отчество *') + '</label>' +
+                '<input type="text" id="reg-guest-name" class="form-input" placeholder="' + (en ? 'Ivanov Ivan' : 'Иванов Иван Иванович') + '" autocomplete="off"></div>';
+            html += '<div class="form-group" style="margin:0;"><label>' + (en ? 'Exact handicap' : 'Точный гандикап') + '</label>' +
+                '<input type="text" id="reg-guest-hcp" class="form-input" placeholder="12.4" inputmode="decimal"></div>';
+            html += '<div class="form-group" style="margin:0;"><label>' + (en ? 'Gender' : 'Пол') + '</label>' +
+                '<select id="reg-guest-gender" class="form-input"><option value="men">' + (en ? 'Men' : 'Мужской') + '</option>' +
+                '<option value="women">' + (en ? 'Women' : 'Женский') + '</option></select></div>';
+            html += '<div class="form-group" style="margin:0;"><label>' + t('tee_select') + '</label>' +
+                '<select id="reg-guest-tee" class="form-input">';
+            allowedTees.forEach(function(tk) {
+                html += '<option value="' + tk + '">' + t('tee_' + tk) + '</option>';
+            });
+            html += '</select></div>';
+            html += '<div class="form-group" style="margin:0;grid-column:1/-1;"><label>' + (en ? 'Phone (optional)' : 'Телефон (необязательно)') + '</label>' +
+                '<input type="tel" id="reg-guest-phone" class="form-input" placeholder="+7 …"></div>';
+            html += '</div>';
+            html += '<p style="font-size:12px;color:var(--muted);margin:12px 0 16px;">' +
+                (en ? 'Already have an account?' : 'Уже есть аккаунт?') + ' <a href="auth.html?redirect=tournaments.html" style="color:var(--gold);font-weight:700;">' +
+                (en ? 'Log in' : 'Войти') + '</a></p>';
+        }
 
         html += '<div style="display:flex;gap:12px;">';
         html += '<button class="btn btn-og" style="flex:1;" onclick="closeRegTnModal()">' + t('cancel_btn') + '</button>';
-        html += '<button class="btn btn-g" style="flex:1;" onclick="submitTournamentRegistration(\'' + tnId + '\')"><i class="fas fa-check"></i> ' + (currentLang === 'en' ? 'Register' : 'Записаться') + '</button>';
+        html += '<button class="btn btn-g" style="flex:1;" onclick="submitTournamentRegistration(\'' + tnId + '\')"><i class="fas fa-check"></i> ' + (en ? 'Register' : 'Записаться') + '</button>';
         html += '</div>';
 
         bodyEl.innerHTML = html;
         modalEl.classList.remove('hidden');
+
+        // Автоподсказка по известным игрокам для гостевой записи.
+        if (!currentUser && typeof initPlayerSearchAutofill === 'function') {
+            try {
+                initPlayerSearchAutofill({
+                    searchInputId: 'reg-guest-name',
+                    onSelect: function(m) {
+                        var nEl = tGet('reg-guest-name');
+                        var hEl = tGet('reg-guest-hcp');
+                        var gEl = tGet('reg-guest-gender');
+                        var tEl = tGet('reg-guest-tee');
+                        if (nEl) nEl.value = m.name || '';
+                        if (hEl && m.handicap != null) hEl.value = String(m.handicap).replace('.', ',');
+                        if (gEl && m.gender) gEl.value = m.gender;
+                        if (tEl && m.defaultTee) {
+                            for (var i = 0; i < tEl.options.length; i++) {
+                                if (tEl.options[i].value === m.defaultTee) { tEl.selectedIndex = i; break; }
+                            }
+                        }
+                    }
+                });
+            } catch(e){}
+        }
     });
 }
 
@@ -168,23 +482,81 @@ function closeRegTnModal() {
 }
 
 function submitTournamentRegistration(tnId) {
-    if (!currentUser) return;
-    var teeInp = document.getElementById('reg-tn-tee');
-    var selectedTee = teeInp ? teeInp.value : 'wh';
+    var en = currentLang === 'en';
 
-    var regData = {
-        uid: currentUser.uid,
-        name: currentUserData ? currentUserData.name : 'Player',
-        handicap: currentUserData && currentUserData.handicap != null ? currentUserData.handicap : 0,
-        gender: currentUserData ? currentUserData.gender : 'men',
-        tee: selectedTee,
-        registeredAt: Date.now()
-    };
+    if (currentUser) {
+        var teeInp = document.getElementById('reg-tn-tee');
+        var selectedTee = teeInp ? teeInp.value : 'wh';
 
-    db.ref('tournaments/' + tnId + '/registeredPlayers/' + currentUser.uid).set(regData).then(function() {
-        toast(t('msg_tournament_registered'), 'success');
-        closeRegTnModal();
-        loadTournaments();
+        var regData = {
+            uid: currentUser.uid,
+            name: currentUserData ? currentUserData.name : 'Player',
+            handicap: currentUserData && currentUserData.handicap != null ? currentUserData.handicap : 0,
+            gender: currentUserData ? currentUserData.gender : 'men',
+            tee: selectedTee,
+            registeredAt: Date.now()
+        };
+
+        db.ref('tournaments/' + tnId + '/registeredPlayers/' + currentUser.uid).set(regData).then(function() {
+            toast(t('msg_tournament_registered'), 'success');
+            closeRegTnModal();
+            loadTournaments();
+        });
+        return;
+    }
+
+    // Гостевая запись без аккаунта.
+    var nameEl = tGet('reg-guest-name');
+    var hcpEl = tGet('reg-guest-hcp');
+    var genderEl = tGet('reg-guest-gender');
+    var teeEl = tGet('reg-guest-tee');
+    var phoneEl = tGet('reg-guest-phone');
+    var name = nameEl ? nameEl.value.trim().replace(/\s+/g, ' ') : '';
+    if (name.length < 3 || name.split(' ').length < 2) {
+        toast(en ? '⚠️ Please enter your first and last name' : '⚠️ Укажите фамилию и имя', 'error');
+        if (nameEl && nameEl.focus) nameEl.focus();
+        return;
+    }
+    var hcpRaw = hcpEl ? hcpEl.value.trim() : '';
+    var handicap = null;
+    if (hcpRaw !== '') {
+        handicap = (typeof parseExactHcp === 'function') ? parseExactHcp(hcpRaw) : parseFloat(hcpRaw.replace(',', '.'));
+        if (isNaN(handicap)) {
+            toast(en ? '⚠️ Invalid handicap (example: 12.4)' : '⚠️ Некорректный гандикап (пример: 12,4)', 'error');
+            if (hcpEl && hcpEl.focus) hcpEl.focus();
+            return;
+        }
+        handicap = Math.round(handicap * 10) / 10;
+    }
+
+    db.ref('tournaments/' + tnId + '/registeredPlayers').once('value').then(function(sn) {
+        var existing = sn.val() || {};
+        var norm = tnNormName(name);
+        var dup = Object.keys(existing).some(function(k) {
+            return tnNormName((existing[k] || {}).name || '') === norm;
+        });
+        if (dup) {
+            toast(en ? '⚠️ This name is already registered' : '⚠️ Такое имя уже записано', 'error');
+            return;
+        }
+        var guestData = {
+            name: name,
+            handicap: handicap,
+            gender: genderEl ? genderEl.value : 'men',
+            tee: teeEl ? teeEl.value : 'wh',
+            phone: phoneEl ? phoneEl.value.trim() : '',
+            guest: true,
+            registeredAt: Date.now()
+        };
+        db.ref('tournaments/' + tnId + '/registeredPlayers').push(guestData).then(function() {
+            toast(en ? '✅ You are registered! See you at the tournament.' : '✅ Вы записаны! До встречи на турнире.', 'success');
+            closeRegTnModal();
+            if (typeof vib === 'function') { try { vib(60); } catch(e){} }
+        }).catch(function(err) {
+            toast('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
 }
 

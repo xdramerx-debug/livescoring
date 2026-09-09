@@ -8160,3 +8160,122 @@ function privacyDisplayName(p, pid) {
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof initPrivacySettings === 'function') initPrivacySettings();
 });
+
+// ============================================================
+// ТУРНИРНЫЕ ГРУППЫ ПО ГАНДИКАПУ (дивизионы) + ОБРЕЗКА ГАНДИКАПА
+// ------------------------------------------------------------
+// Дивизион турнира: { id, name, gender: 'men'|'women'|'all',
+//                     hcpFrom, hcpTo, tee: 'bk'|'bl'|'wh'|'rd'|'' }
+// Хранится в tournaments/<id>/divisions (объект или массив).
+// Обрезка гандикапа (только для текущего турнира):
+//   cut = { enabled, percent, maxMen, maxWomen }
+// Сначала применяется максимум по полу, затем процент.
+// ============================================================
+function tnNormalizeDivisions(tVal) {
+    var raw = tVal ? tVal.divisions : null;
+    if (!raw) return [];
+    var arr = Array.isArray(raw) ? raw.slice() : Object.keys(raw).map(function(k) {
+        var d = raw[k] || {};
+        if (!d.id) d.id = k;
+        return d;
+    });
+    arr = arr.filter(function(d) { return d && (d.name || d.hcpFrom != null || d.hcpTo != null); });
+    arr.sort(function(a, b) {
+        var ga = (a.gender || 'all'), gb = (b.gender || 'all');
+        var order = { men: 0, women: 1, all: 2 };
+        if ((order[ga] == null ? 3 : order[ga]) !== (order[gb] == null ? 3 : order[gb])) {
+            return (order[ga] == null ? 3 : order[ga]) - (order[gb] == null ? 3 : order[gb]);
+        }
+        var fa = (a.hcpFrom === '' || a.hcpFrom == null) ? -999 : parseFloat(a.hcpFrom);
+        var fb = (b.hcpFrom === '' || b.hcpFrom == null) ? -999 : parseFloat(b.hcpFrom);
+        if (isNaN(fa)) fa = -999;
+        if (isNaN(fb)) fb = -999;
+        return fa - fb;
+    });
+    return arr;
+}
+
+function tnDivisionGenderOk(divGender, playerGender) {
+    var g = divGender || 'all';
+    if (g === 'all') return true;
+    return (playerGender || 'men') === g;
+}
+
+function tnFindDivision(tVal, handicap, gender) {
+    var divs = tnNormalizeDivisions(tVal);
+    if (!divs.length) return null;
+    var h = (handicap === '' || handicap == null) ? null : parseFloat(handicap);
+    if (h == null || isNaN(h)) return null;
+    gender = gender || 'men';
+    for (var i = 0; i < divs.length; i++) {
+        var d = divs[i];
+        if (!tnDivisionGenderOk(d.gender, gender)) continue;
+        var from = (d.hcpFrom === '' || d.hcpFrom == null) ? -999 : parseFloat(d.hcpFrom);
+        var to = (d.hcpTo === '' || d.hcpTo == null) ? 999 : parseFloat(d.hcpTo);
+        if (isNaN(from)) from = -999;
+        if (isNaN(to)) to = 999;
+        if (h + 1e-9 >= from && h - 1e-9 <= to) return d;
+    }
+    return null;
+}
+
+function tnDivisionRangeText(div) {
+    if (!div) return '';
+    var f = (div.hcpFrom === '' || div.hcpFrom == null) ? null : parseFloat(div.hcpFrom);
+    var t = (div.hcpTo === '' || div.hcpTo == null) ? null : parseFloat(div.hcpTo);
+    var fmt = function(v) {
+        if (v == null || isNaN(v)) return '';
+        if (typeof fmtExactHcp === 'function') return fmtExactHcp(v);
+        return String(v);
+    };
+    if (f != null && !isNaN(f) && t != null && !isNaN(t)) return fmt(f) + '–' + fmt(t);
+    if (f != null && !isNaN(f)) return fmt(f) + '+';
+    if (t != null && !isNaN(t)) return '–' + fmt(t);
+    return '';
+}
+
+function tnDivisionGenderText(g) {
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    if (g === 'men') return en ? 'Men' : 'Мужчины';
+    if (g === 'women') return en ? 'Women' : 'Девушки';
+    return en ? 'All' : 'Все';
+}
+
+// Обрезка точного гандикапа для турнира.
+// cut = { enabled: bool, percent: 1..100, maxMen: number|null, maxWomen: number|null }
+// Возвращает { raw, capped, effective, cappedByMax, cutApplied }.
+function tnApplyHcpCut(exactHcp, gender, cut) {
+    var raw = (exactHcp === '' || exactHcp == null) ? 0 : parseFloat(exactHcp);
+    if (isNaN(raw)) raw = 0;
+    var out = { raw: raw, capped: raw, effective: raw, cappedByMax: false, cutApplied: false };
+    cut = cut || {};
+    var maxV = null;
+    if ((gender || 'men') === 'women') maxV = (cut.maxWomen === '' || cut.maxWomen == null) ? null : parseFloat(cut.maxWomen);
+    else maxV = (cut.maxMen === '' || cut.maxMen == null) ? null : parseFloat(cut.maxMen);
+    if (maxV != null && !isNaN(maxV) && raw > maxV) {
+        out.capped = maxV;
+        out.cappedByMax = true;
+    }
+    var eff = out.capped;
+    if (cut.enabled) {
+        var pct = parseFloat(cut.percent);
+        if (isNaN(pct) || pct <= 0) pct = 100;
+        if (pct > 100) pct = 100;
+        if (pct < 100 - 1e-9) {
+            eff = Math.round(out.capped * pct) / 100;
+            out.cutApplied = true;
+        }
+    }
+    out.effective = Math.round(eff * 10) / 10;
+    if (out.cappedByMax) out.cutApplied = true;
+    return out;
+}
+
+// Полевой гандикап турнира с учётом обрезки (максимум + процент).
+function tnTournamentFieldHcp(exactHcp, teeCode, gender, cut) {
+    var eff = tnApplyHcpCut(exactHcp, gender, cut).effective;
+    if (typeof getFieldHcp === 'function') {
+        try { return getFieldHcp(eff, teeCode || 'wh', gender || 'men'); } catch (e) {}
+    }
+    return Math.round(eff || 0);
+}

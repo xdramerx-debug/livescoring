@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=23">
+    <link rel="stylesheet" href="css/style.css?v=24">
     <link rel="stylesheet" href="css/design-presets.css?v=1">
     <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -390,6 +390,10 @@
                     <button type="button" class="btn btn-r imp-big-btn" onclick="clearAllData()">
                         <i class="fas fa-user-minus"></i> <span>Удалить всех игроков</span>
                     </button>
+                </div>
+                <div style="position:relative;margin-bottom:12px;">
+                    <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;"></i>
+                    <input type="text" id="adm-players-search" class="form-input" style="padding-left:34px;" placeholder="🔍 Поиск: имя, email, телефон… / Search…" oninput="admPlayersSearch(this.value)">
                 </div>
                 <div id="adm-players"></div>
             </div>
@@ -872,18 +876,18 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.38.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.39.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=42"></script>
+<script src="js/utils.js?v=43"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/assistant-config.js"></script>
 <script src="js/assistant-build.js?v=2"></script>
 <script src="js/name-variants.js?v=1"></script>
-<script src="js/admin.js?v=28"></script>
-<script src="js/start-admin.js?v=2"></script>
+<script src="js/admin.js?v=29"></script>
+<script src="js/start-admin.js?v=3"></script>
 <script src="js/design-admin.js?v=2"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>

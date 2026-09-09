@@ -57,19 +57,40 @@
             .pcards { grid-template-columns:1fr; }
         }
         @media print {
+            @page { size:A4; margin:8mm; }
             body { background:#fff; }
             .toolbar { display:none !important; }
             .sheet-wrap, .cards-wrap { max-width:none; padding:0; margin:0; }
             body.print-cards .sheet-wrap { display:none !important; }
             body.print-sheet .cards-wrap { display:none !important; }
             .sheet { border:none; border-radius:0; padding:0; margin:0 0 10px; }
+            .sheet table { font-size:11px; }
             .pcards { gap:8px; }
             .pcard { border-radius:8px; padding:10px; border:1px solid #bbb; }
             .pcard::before { display:none; }
-            .qr-box img { max-width:27mm; }
             .grp-badge { background:#222 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .time-badge { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             a { color:inherit; text-decoration:none; }
+            /* 10 QR-карточек на лист А4: сетка 2×5, карточка 52мм —
+               5 рядов × 52мм + 4 промежутка × 4мм = 276мм < 281мм печатной зоны. */
+            body.print-cards .qr-cards-head { display:none !important; }
+            body.print-cards .pcards { display:grid !important; grid-template-columns:1fr 1fr !important; gap:4mm !important; }
+            body.print-cards .pcard {
+                height:52mm; max-height:52mm; overflow:hidden;
+                padding:2.5mm 3mm; border:1px solid #999; border-radius:2mm;
+                page-break-inside:avoid; break-inside:avoid;
+            }
+            body.print-cards .grp-row { margin-bottom:1mm; gap:2mm; }
+            body.print-cards .grp-badge { font-size:7.5pt; padding:0.8mm 2mm; border-radius:1.5mm; }
+            body.print-cards .time-badge { font-size:7pt; padding:0.8mm 2mm; border-radius:1.5mm; }
+            body.print-cards .pname { font-size:11pt; line-height:1.15; }
+            body.print-cards .pmeta { font-size:7.5pt; margin:0.8mm 0 1mm; gap:1mm 2.5mm; }
+            body.print-cards .qr-grid { margin-top:0.5mm; }
+            body.print-cards .qr-box { padding:1.2mm 1mm; border-radius:1.5mm; }
+            body.print-cards .qr-box img { width:auto; max-width:27mm; max-height:27mm; }
+            body.print-cards .qr-lbl { font-size:6.5pt; margin-bottom:1mm; line-height:1.25; }
+            body.print-cards .qr-url { display:none !important; }
+            body.print-cards .members-note { font-size:6.5pt; margin-top:1mm; padding-top:0.8mm; line-height:1.3; }
         }
     </style>
 </head>

@@ -655,6 +655,26 @@ function clearAllData() {
 // ==========================================
 // ТУРНИРЫ
 // ==========================================
+// Уникальное число заявленных участников: гостевые записи и синхронизированные
+// записи одного человека могут лежать под разными ключами — считаем по ФИО.
+function admUniqueRegCount(regPlayers) {
+    var seen = {};
+    var n = 0;
+    Object.keys(regPlayers || {}).forEach(function(k) {
+        var rp = regPlayers[k] || {};
+        var key = '';
+        if (typeof getPlayerFioKey === 'function') {
+            try { key = getPlayerFioKey(rp); } catch (e) {}
+        }
+        if (!key) {
+            var nm = String(rp.name || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+            key = nm || ('id:' + k);
+        }
+        if (!seen[key]) { seen[key] = true; n++; }
+    });
+    return n;
+}
+
 function createTournament() {
     var name = document.getElementById('tn-name').value.trim();
     var date = document.getElementById('tn-date').value;
@@ -717,7 +737,7 @@ function loadTournaments() {
             var formatsStr = (tVal.formats || []).join(', ') || '—';
             var teesStr = (tVal.tees || []).map(function(k) { return t('tee_' + k); }).join(', ') || '—';
             var regPlayers = tVal.registeredPlayers || {};
-            var regCount = Object.keys(regPlayers).length;
+            var regCount = admUniqueRegCount(regPlayers);
 
             var tnStatus = tVal.status || 'upcoming';
             var tnEn = currentLang === 'en';
@@ -773,7 +793,15 @@ function exportTournamentRosterCSV(tnId) {
 
         var rows = [['#', 'Name', 'Handicap', 'Gender', 'Tee', 'Registered Date']];
         var idx = 1;
+        var seenCsv = {};
         Object.values(tVal.registeredPlayers).forEach(function(p) {
+            var key = '';
+            if (typeof getPlayerFioKey === 'function') {
+                try { key = getPlayerFioKey(p); } catch (e) {}
+            }
+            if (!key) key = String(p.name || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+            if (key && seenCsv[key]) return; // дубликат того же игрока — пропускаем
+            if (key) seenCsv[key] = true;
             rows.push([
                 idx++,
                 '"' + (p.name || '').replace(/"/g, '""') + '"',

@@ -40,7 +40,7 @@ function loadTournaments() {
             var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
 
             var regPlayers = tVal.registeredPlayers || {};
-            var regCount = Object.keys(regPlayers).length;
+            var regCount = (typeof tnDedupeRoster === 'function') ? tnDedupeRoster(regPlayers).length : Object.keys(regPlayers).length;
             var isRegistered = !!(currentUser && regPlayers[currentUser.uid]);
 
             var regBtn = '';
@@ -497,10 +497,28 @@ function submitTournamentRegistration(tnId) {
             registeredAt: Date.now()
         };
 
-        db.ref('tournaments/' + tnId + '/registeredPlayers/' + currentUser.uid).set(regData).then(function() {
+        // Пишем под своим uid, но сначала убираем возможные дубли этого же игрока:
+        // гостевые записи со случайным ключом и записи, ссылающиеся на наш uid.
+        db.ref('tournaments/' + tnId + '/registeredPlayers').once('value').then(function(sn) {
+            var updates = {};
+            var myName = tnNormName(regData.name);
+            Object.keys(sn.val() || {}).forEach(function(k) {
+                var rp = (sn.val() || {})[k] || {};
+                if (k === currentUser.uid) return;
+                if (rp.uid && rp.uid === currentUser.uid) { updates['tournaments/' + tnId + '/registeredPlayers/' + k] = null; return; }
+                if (rp.guest === true && tnNormName(rp.name || '') === myName) updates['tournaments/' + tnId + '/registeredPlayers/' + k] = null;
+                // Сгенерированная из стартового листа запись (user_*) того же
+                // человека — тоже дубль: теперь игрок записывается аккаунтом.
+                if (rp.uid && String(rp.uid).indexOf('user_') === 0 && rp.guest !== true && tnNormName(rp.name || '') === myName) updates['tournaments/' + tnId + '/registeredPlayers/' + k] = null;
+            });
+            updates['tournaments/' + tnId + '/registeredPlayers/' + currentUser.uid] = regData;
+            return db.ref().update(updates);
+        }).then(function() {
             toast(t('msg_tournament_registered'), 'success');
             closeRegTnModal();
             loadTournaments();
+        }).catch(function(err) {
+            toast('❌ ' + (err && err.message ? err.message : err), 'error');
         });
         return;
     }

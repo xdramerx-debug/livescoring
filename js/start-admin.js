@@ -42,7 +42,8 @@ function psDefaultProto() {
         tournamentId: '',
         tournamentName: '',
         date: '',
-        format: 'Stroke Play',
+        format: 'Stroke Play',   // первый (основной) формат — для обратной совместимости
+        formats: [],             // выбранные форматы игры (можно несколько, напр. Stableford + Gross)
         formatCustom: '',
         tee: 'wh',
         scheme: '1',          // '1' — все с 1-й лунки, '1-10' — шотган с 1-й и 10-й
@@ -93,6 +94,30 @@ function psNameForRound(p) { return [p.firstName, p.middleName, p.lastName].filt
 function psKeyOf(p) {
     return [psNorm(p.lastName), psNorm(p.firstName), psNorm(p.middleName)].join('|');
 }
+
+// Считает двух игроков ОДНИМ человеком (для дедупликации списков):
+//  — совпали id,
+//  — совпало полное ФИО,
+//  — совпали фамилия+имя, и хотя бы у одного нет отчества
+//    (заявка могла быть без отчества, а стартовый лист — с отчеством).
+function psSamePerson(a, b) {
+    a = a || {}; b = b || {};
+    var idA = String(a.id || '').trim(), idB = String(b.id || '').trim();
+    if (idA && idB && idA === idB) return true;
+    var la = psNorm(a.lastName), lb = psNorm(b.lastName);
+    var fa = psNorm(a.firstName), fb = psNorm(b.firstName);
+    if (!la || !fa || !lb || !fb) {
+        // у одной из сторон нет разобранных частей — сравниваем по полной строке имени
+        var fullA = psNorm([a.lastName, a.firstName, a.middleName].filter(function(w) { return String(w || '').trim(); }).join(' '));
+        var fullB = psNorm([b.lastName, b.firstName, b.middleName].filter(function(w) { return String(w || '').trim(); }).join(' '));
+        return !!(fullA && fullB && fullA === fullB);
+    }
+    if (la !== lb || fa !== fb) return false;
+    var ma = psNorm(a.middleName), mb = psNorm(b.middleName);
+    if (ma && mb && ma !== mb) return false; // разные отчества — вероятно, разные люди
+    return true;
+}
+
 function psLooksLikeSurname(w) {
     w = psNorm(w);
     if (!w) return false;
@@ -464,30 +489,26 @@ function psRenderTournamentCard() {
     html += '<div class="form-group"><label>' + psL('Турнир', 'Tournament') + '</label>' +
         '<select id="ps-sel-tn" class="form-input" onchange="psOnTournamentChange(this.value)">' + opts + '</select></div>';
 
-    if (tournament) {
-        var frm = tournament.formats || [];
-        var fmtHint = frm.length ? frm.join(' · ') : psL('форматы не указаны', 'no formats set');
-        html += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;"><i class="fas fa-circle-info"></i> ' +
-            psL('Форматы турнира: ', 'Tournament formats: ') + '<b style="color:var(--gold);">' + fmtHint.replace(/</g, '&lt;') + '</b></div>';
-    }
-
-    var formatHtml = psFormatsSelect(proto);
-    var formatWrap = tournament
-        ? formatHtml
-        : '<select class="form-input" disabled>' + formatHtml.replace(/ onchange="[^"]*"/g, '').replace(/selected/g, '') + '</select>';
-
     html += '<div class="form-row form-row-3">';
     html += '<div class="form-group"><label>' + psL('Название протокола', 'Protocol name') + '</label>' +
         '<input type="text" id="ps-name" class="form-input"' + disabled + ' value="' + (proto.name || '').replace(/"/g, '&quot;') + '" onchange="psField(\'name\', this.value)"></div>';
     html += '<div class="form-group"><label>' + psL('Дата', 'Date') + '</label>' +
         '<input type="date" id="ps-date" class="form-input"' + disabled + ' value="' + (proto.date || '') + '" onchange="psField(\'date\', this.value)"></div>';
-    html += '<div class="form-group"><label>' + psL('Формат игры', 'Game format') + '</label>' + formatWrap + '</div>';
     html += '</div>';
 
+    // Форматы игры — можно выбрать НЕСКОЛЬКО (например Stableford + Gross).
+    var resolvedFmts = psResolvedFormats();
     html += '<div class="form-row">';
     html += '<div class="form-group" style="flex:0 1 240px;"><label>' + psL('ТИ по умолчанию (для новых игроков)', 'Default tee (for new players)') + '</label>' +
         '<select id="ps-tee" class="form-input"' + disabled + ' onchange="psField(\'tee\', this.value)">' + teesOptions + '</select></div>';
-    html += '<div class="form-group" style="flex:1 1 260px;"><label>' + psL('Формат (свой, если выбран «Другой»)', 'Custom format (if “Other” is selected)') + '</label>' +
+    html += '<div class="form-group" style="flex:1 1 320px;"><label>' +
+        '<i class="fas fa-check-double"></i> ' + psL('Форматы игры (можно выбрать несколько)', 'Game formats (multiple allowed)') +
+        (tournament ? ' <span style="color:var(--muted);font-weight:400;font-size:11px;">' + psL('— форматы турнира', '— tournament formats') + '</span>' : '') +
+        '</label>' + psFormatChipsHtml(proto) +
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px;"><i class="fas fa-circle-info"></i> ' +
+        psL('Результаты будут вестись по каждому выбранному формату. Сейчас: ', 'Results will be kept for every selected format. Currently: ') +
+        '<b style="color:var(--gold);">' + resolvedFmts.map(function(f) { return String(f).replace(/</g, '&lt;'); }).join(' + ') + '</b></div></div>';
+    html += '<div class="form-group" style="flex:0 1 250px;"><label>' + psL('Свой формат (добавится к выбранным)', 'Custom format (added to the selected ones)') + '</label>' +
         '<input type="text" id="ps-format-custom" class="form-input"' + disabled + ' placeholder="' + psL('например: Гросс, 2 из 4 лучших', 'e.g. Gross, best 2 of 4') + '" value="' + (proto.formatCustom || '').replace(/"/g, '&quot;') + '" onchange="psField(\'formatCustom\', this.value)"></div>';
     html += '</div>';
 
@@ -550,30 +571,101 @@ function psCutField(field, val) {
     psRender();
 }
 
-function psFormatsSelect(proto) {
-    var tournament = psGetSelTournament();
-    function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
-    var preset = ['Stroke Play', 'Stableford', 'Match Play 1v1', 'Match Play 2v2', 'Scramble', 'Texas Scramble', 'Greensomes'];
-    var options = [];
-    var used = {};
-    function addOpt(val, label) {
-        if (used[val]) return;
-        used[val] = true;
-        options.push('<option value="' + esc(val) + '"' + (proto.format === val ? ' selected' : '') + '>' + esc(label) + '</option>');
+function psFormatsSelectedList(proto) {
+    var out = [];
+    function add(f) {
+        f = String(f == null ? '' : f).trim();
+        if (f && f !== '__custom__' && out.indexOf(f) === -1) out.push(f);
     }
-    (tournament ? tournament.formats : []).forEach(function(f) { addOpt(f, f); });
-    preset.forEach(function(f) {
-        var label = f;
-        if (f === 'Stroke Play') label = psL('Stroke Play (гросс)', 'Stroke Play (gross)');
-        if (f === 'Stableford') label = psL('Stableford (очки)', 'Stableford (points)');
-        addOpt(f, label);
-    });
-    if (proto.format && !used[proto.format]) addOpt(proto.format, proto.format);
-    options.push('<option value="__custom__"' + (proto.format === '__custom__' ? ' selected' : '') + '>' + psL('Другой (свой формат)', 'Other (custom format)') + '</option>');
-    return '<select id="ps-format" class="form-input" onchange="psFormatChanged(this.value)">' + options.join('') + '</select>';
+    (proto && proto.formats ? proto.formats : []).forEach(add);
+    // Старые черновики, где хранился только одиночный format
+    if (proto && (!proto.formats || !proto.formats.length) && proto.format && proto.format !== '__custom__') add(proto.format);
+    return out;
 }
 
-// Подтверждение сброса текущей разбивки групп (если были ручные правки)
+function psResolvedFormats() {
+    var proto = (typeof psState !== 'undefined' && psState) ? psState.proto : null;
+    var out = psFormatsSelectedList(proto);
+    // Свой текстовый формат автоматически добавляется к выбранным, пока заполнен
+    if (proto && proto.formatCustom && String(proto.formatCustom).trim()) {
+        var c = String(proto.formatCustom).trim();
+        if (out.indexOf(c) === -1) out.push(c);
+    }
+    return out.length ? out : ['Stroke Play'];
+}
+
+// Первый (основной) формат — для совместимости со старыми полями format.
+function psResolvedFormat() {
+    var list = psResolvedFormats();
+    return list[0] || 'Stroke Play';
+}
+
+// Чипы-переключатели форматов (можно выбрать несколько).
+function psFormatChipsHtml(proto) {
+    var tournament = psGetSelTournament();
+    function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+    function labelOf(f) {
+        if (f === 'Stroke Play') return psL('Stroke Play (гросс)', 'Stroke Play (gross)');
+        if (f === 'Stableford') return psL('Stableford (очки)', 'Stableford (points)');
+        if (f === 'Match Play 1v1') return psL('Match Play (1×1)', 'Match Play (1v1)');
+        return f;
+    }
+    var candidates = [];
+    function add(f) {
+        f = String(f == null ? '' : f).trim();
+        if (f && f !== '__custom__' && candidates.indexOf(f) === -1) candidates.push(f);
+    }
+    (tournament ? tournament.formats : []).forEach(add);
+    ['Stroke Play', 'Stableford', 'Match Play 1v1', 'Match Play 2v2', 'Scramble', 'Texas Scramble', 'Greensomes'].forEach(add);
+    (proto.formats || []).forEach(add);
+    if (proto.format && proto.format !== '__custom__') add(proto.format);
+
+    var sel = psFormatsSelectedList(proto);
+    var usable = !!tournament;
+    var html = '<div id="ps-formats-chips" style="display:flex;flex-wrap:wrap;gap:6px;">';
+    candidates.forEach(function(f) {
+        var on = sel.indexOf(f) !== -1;
+        html += '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;' +
+            'border:1px solid ' + (on ? 'var(--gold)' : 'var(--border)') + ';' +
+            'background:' + (on ? 'rgba(201,168,76,0.18)' : 'var(--input)') + ';' +
+            'border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;' +
+            (usable ? '' : 'opacity:.5;pointer-events:none;') + '">' +
+            '<input type="checkbox" value="' + esc(f) + '"' + (on ? ' checked' : '') +
+            (usable ? '' : ' disabled') +
+            ' onchange="psFormatToggle(this.value, this.checked)" style="width:15px;height:15px;cursor:pointer;"> ' +
+            esc(labelOf(f)) + '</label>';
+    });
+    html += '</div>';
+    return html;
+}
+
+// Переключение формата в блоке 1 (мультивыбор).
+function psFormatToggle(val, checked) {
+    if (!psState.proto) return;
+    val = String(val == null ? '' : val).trim();
+    if (!val) return;
+    var list = psFormatsSelectedList(psState.proto);
+    var idx = list.indexOf(val);
+    if (checked) {
+        if (idx === -1) list.push(val);
+    } else {
+        if (idx !== -1) list.splice(idx, 1);
+    }
+    if (!list.length) {
+        toast(psL('⚠️ Выберите хотя бы один формат игры', '⚠️ Select at least one game format'), 'warn');
+        psRender(); // возвращаем визуальное состояние
+        return;
+    }
+    psState.proto.formats = list;
+    psState.proto.format = list[0]; // первый — основной
+    if (psState.groups && psState.groups.length) {
+        if (!psConfirmGroupReset()) { psRender(); return; }
+        psState.groups = [];
+        psExitEditModeSoft();
+    }
+    psRender();
+}
+
 function psConfirmGroupReset() {
     if (!psState.groups || !psState.groups.length) return true;
     var manual = !!psState.editingId;
@@ -586,6 +678,12 @@ function psField(field, val) {
     if (!psState.proto) return;
     if (field === 'name' || field === 'date' || field === 'formatCustom' || field === 'format' || field === 'scheme' || field === 'tee' || field === 'startTime') {
         psState.proto[field] = String(val || '');
+        if (field === 'format' && val && val !== '__custom__') {
+            // одиночный выбор (старый код/совместимость) → синхронизируем список
+            var list = psFormatsSelectedList(psState.proto);
+            if (list.indexOf(String(val)) === -1) list.push(String(val));
+            psState.proto.formats = list;
+        }
         if (field === 'date' && val && !psState.proto.name) {
             var tn = psGetSelTournament();
             if (tn) psState.proto.name = tn.name + ' · ' + psL('старт', 'start');
@@ -603,25 +701,6 @@ function psField(field, val) {
         psExitEditModeSoft();
     }
     psRender();
-}
-
-function psFormatChanged(val) {
-    if (!psState.proto) return;
-    if (val === '__custom__') {
-        psState.proto.format = '__custom__';
-    } else {
-        psState.proto.format = val;
-        psState.proto.formatCustom = '';
-    }
-    if (psState.groups.length) psState.groups = [];
-    psRender();
-}
-
-function psResolvedFormat() {
-    var p = psState.proto;
-    if (!p) return 'Stroke Play';
-    if (p.format === '__custom__') return (p.formatCustom && p.formatCustom.trim()) ? p.formatCustom.trim() : psL('Другой формат', 'Other format');
-    return p.format;
 }
 
 function psGetSelTournament() {
@@ -650,7 +729,11 @@ function psOnTournamentChange(id) {
         psState.proto.name = (t.name || '') + ' · ' + psL('старт', 'start');
         psState.proto.date = t.date || psTodayStr();
         psState.proto.tee = (t.tees && t.tees[0]) || 'wh';
-        if (t.formats && t.formats.length) psState.proto.format = t.formats[0];
+        if (t.formats && t.formats.length) {
+            // По умолчанию отмечаем ВСЕ форматы турнира (можно снять лишние)
+            psState.proto.formats = t.formats.slice();
+            psState.proto.format = t.formats[0]; // основной — первый
+        }
     }
     psState.groups = [];
     psState.savedId = null;
@@ -883,13 +966,14 @@ function psAddManual() {
 function psAddPlayerToDraft(p, source) {
     var proto = psState.proto;
     p.source = source || 'manual';
-    // Дубликат ФИО внутри протокола?
-    var key = psKeyOf(p);
-    var dup = false;
-    proto.players.forEach(function(ex) { if (psKeyOf(ex) === key && key) dup = true; });
+    // Дубликат внутри протокола? Сравниваем по id, точному ФИО и по
+    // «фамилия+имя без отчества» — заявки часто приходят без отчества,
+    // а в списке тот же игрок уже добавлен с отчеством (или наоборот).
+    var dup = null;
+    proto.players.forEach(function(ex) { if (!dup && psSamePerson(ex, p)) dup = ex; });
     if (!p.id) p.id = 'gst_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
     if (dup) {
-        toast(psL('⚠️ Игрок «' + psFullRus(p) + '» уже есть в списке — пропущен', '⚠️ Player “' + psFullRus(p) + '” is already in the list — skipped'), 'warn');
+        toast(psL('⚠️ Игрок «' + psFullRus(p) + '» уже есть в списке (как «' + psFullRus(dup) + '») — пропущен', '⚠️ Player “' + psFullRus(p) + '” is already in the list (as “' + psFullRus(dup) + '”) — skipped'), 'warn');
         return false;
     }
     proto.players.push(p);
@@ -910,7 +994,8 @@ function psLoadRegistered() {
             return;
         }
         psLoadUsers(function(users) {
-            var added = 0, skipped = 0;
+            // Собираем игроков из всех записей регистрации…
+            var items = [];
             keys.forEach(function(uid) {
                 var r = reg[uid] || {};
                 var p = psNewPlayer();
@@ -919,7 +1004,7 @@ function psLoadRegistered() {
                 p.hcp = (r.handicap !== undefined && r.handicap !== null) ? parseFloat(r.handicap) : null;
                 p.tee = r.tee || psState.proto.tee || 'wh';
                 p.gender = r.gender || 'men';
-                var u = users[uid] || {};
+                var u = users[uid] || (r.uid ? users[r.uid] : null) || {};
                 var up = psUserParts(u);
                 if (up.lastName || up.firstName) {
                     p.lastName = up.lastName;
@@ -927,17 +1012,47 @@ function psLoadRegistered() {
                     p.middleName = up.middleName;
                     if (!p.hcp && u.handicap !== undefined && u.handicap !== null) p.hcp = parseFloat(u.handicap);
                     if (!p.tee && u.defaultTee) p.tee = u.defaultTee;
+                    // Гостевая запись со случайным ключом, но под ней может быть uid аккаунта
+                    if (r.uid && users[r.uid] && !users[uid]) p.id = r.uid;
                 } else {
                     var parsed = psSplitFio(r.name || '');
                     p.lastName = parsed.lastName;
                     p.firstName = parsed.firstName;
                     p.middleName = parsed.middleName;
+                    if (r.uid && users[r.uid]) p.id = r.uid;
                 }
                 if (p.hcp === null || isNaN(p.hcp)) {
                     if (u && u.handicap !== undefined && u.handicap !== null) p.hcp = parseFloat(u.handicap);
                 }
-                if (!p.lastName && !p.firstName) { skipped++; return; }
-                if (psAddPlayerToDraft(p, 'registered')) added++;
+                if (!p.lastName && !p.firstName) return;
+                items.push({ uid: uid, r: r, p: p });
+            });
+
+            // …и убираем дубликаты ДО добавления: если один человек записан несколько
+            // раз (гость со случайным ключом + запись с аккаунтом, повторная заявка),
+            // оставляем лучшую запись: с привязанным аккаунтом, иначе — самую свежую.
+            function psRegRank(it, users) {
+                var linked = users[it.uid] || (it.r && it.r.uid ? users[it.r.uid] : null);
+                if (linked) return 2;
+                if (it.r && it.r.guest === true) return 0;
+                return 1;
+            }
+            var keep = [];
+            items.forEach(function(it) {
+                var idx = -1;
+                for (var i = 0; i < keep.length; i++) {
+                    if (psSamePerson(keep[i].p, it.p)) { idx = i; break; }
+                }
+                if (idx === -1) { keep.push(it); return; }
+                var cur = keep[idx];
+                var curTs = (cur.r && cur.r.registeredAt) || 0;
+                var newTs = (it.r && it.r.registeredAt) || 0;
+                if (psRegRank(it, users) > psRegRank(cur, users) || (psRegRank(it, users) === psRegRank(cur, users) && newTs > curTs)) keep[idx] = it;
+            });
+
+            var added = 0, skipped = 0;
+            keep.forEach(function(it) {
+                if (psAddPlayerToDraft(it.p, 'registered')) added++;
                 else skipped++;
             });
             toast(psL('✅ Загружено из регистрации: ' + added + (skipped ? ', пропущено дублей: ' + skipped : ''), '✅ Loaded from registration: ' + added + (skipped ? ', duplicates skipped: ' + skipped : '')), 'success');
@@ -976,9 +1091,14 @@ function psHeaderKey(raw) {
     if (['имя', 'first name', 'firstname', 'first_name', 'given name', 'имя игрока', 'и'].indexOf(s) !== -1) return 'firstName';
     if (['отчество', 'middle name', 'middlename', 'middle_name', 'patronymic', 'отчество игрока', 'о'].indexOf(s) !== -1) return 'middleName';
     if (['фио', 'имя фамилия', 'full name', 'фамилия имя отчество', 'ф.и.о.', 'ф и о', 'игрок', 'player', 'имя и фамилия'].indexOf(s) !== -1) return 'fio';
-    if (['точный гандикап', 'точный hcp', 'гандикап', 'точный гандикап (hcp)', 'hcp', 'hi', 'handicap', 'handicap index', 'гандикап index'].indexOf(s) !== -1) return 'hcp';
+    // Точный гандикап. HCP / EHCP / «exact handicap» и т.п. — всегда ТОЧНЫЙ гандикап.
+    if (['точный гандикап', 'точный hcp', 'точный гандикап (hcp)', 'гандикап', 'гандикап hcp', 'гандикап whs',
+         'hcp', 'ehcp', 'e hcp', 'hi', 'handicap', 'exact handicap', 'exact hcp', 'exacthcp', 'handicap index',
+         'гандикап index', 'whs', 'whs hcp', 'whs handicap', 'индекс гандикапа'].indexOf(s) !== -1) return 'hcp';
     if (['пол', 'gender', 'sex'].indexOf(s) !== -1) return 'gender';
     if (['ти', 'tee', 'tees', 'ти игрока', 'тис'].indexOf(s) !== -1) return 'tee';
+    // Полевой/игровой гандикап — НЕ точный, такие колонки игнорируем
+    if (/(игровой|полевой|игра\s*гандикап|play\s*handicap|playing\s*handicap|course\s*handicap|field\s*handicap)/.test(s)) return null;
     // Мягкие совпадения — для таблиц «не по шаблону»
     if (/фамил|surname|family/.test(s)) return 'lastName';
     if (/отчеств|middle|patronymic/.test(s)) return 'middleName';
@@ -988,6 +1108,20 @@ function psHeaderKey(raw) {
     if (/(^|\s)пол($|\s)|(^|\s)пол\(|gender|(^|\s)sex($|\s)/.test(s)) return 'gender';
     if (/(^|\s)ти($|\s)|(^|\s)ти\s|ти-бокс|тибокс|tee/.test(s)) return 'tee';
     return null;
+}
+
+// Приоритет колонки гандикапа: если в таблице есть и «Гандикап», и «Точный
+// гандикап»/«EHCP» — берём ту, что точнее (HCP/EHCP = точный гандикап).
+function psHcpHeaderBetterThan(cur, h) {
+    if (!cur) return true;
+    var c = psNorm(cur).replace(/[.:]/g, '');
+    var s = psNorm(h).replace(/[.:]/g, '');
+    function precise(x) {
+        if (/(точн|exact|^ehcp$|e ?hcp|handicap index|^hi$|^hcp$|индекс)/.test(x)) return 2;
+        if (/hcp|handicap|гандикап|индекс/.test(x)) return 1;
+        return 0;
+    }
+    return precise(s) > precise(c);
 }
 
 function psGenderFromCell(v) {
@@ -1048,7 +1182,9 @@ function psParseExcelRows(json) {
     if (json && json.length) {
         Object.keys(json[0]).forEach(function(h) {
             var k = psHeaderKey(h);
-            if (k && !keys[k]) keys[k] = h;
+            if (!k) return;
+            if (!keys[k]) keys[k] = h;
+            else if (k === 'hcp' && psHcpHeaderBetterThan(keys[k], h)) keys[k] = h;
         });
     }
     // Если не нашли ни одного столбца имён — попробуем первый столбец как ФИО
@@ -1145,7 +1281,9 @@ function psParseExcelGrid(aoa) {
         var keys = {}, hits = 0, hasName = false;
         rowsArr[i].cells.forEach(function(cell, ci) {
             var k = psHeaderKey(cell);
-            if (k && !keys[k]) { keys[k] = ci; hits++; if (k === 'lastName' || k === 'firstName' || k === 'fio') hasName = true; }
+            if (!k) return;
+            if (keys[k] === undefined) { keys[k] = ci; hits++; if (k === 'lastName' || k === 'firstName' || k === 'fio') hasName = true; }
+            else if (k === 'hcp' && psHcpHeaderBetterThan(rowsArr[i].cells[keys[k]], cell)) keys[k] = ci;
         });
         if (hasName && hits >= 2) { headerRowIdx = i; headerKeys = keys; break; }
     }
@@ -1335,11 +1473,36 @@ function psExcelPick(input) {
     reader.onload = function(e) {
         try {
             var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-            var sheet = wb.Sheets[wb.SheetNames[0]];
-            if (!sheet) throw new Error('no sheets');
-            // Читаем лист как сетку: заголовки ищем сами, где бы они ни были
-            var grid = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-            var parsed = psParseExcelGrid(grid);
+            var sheetNames = (wb.SheetNames || []).filter(function(n) { return !!wb.Sheets[n]; });
+            if (!sheetNames.length) throw new Error('no sheets');
+
+            // Сканируем ВСЕ страницы документа (а не только первую):
+            // каждая страница разбирается независимо, строки объединяются.
+            var merged = { valid: [], invalid: [], guessed: false, headerRow: 0, sheetsCount: sheetNames.length };
+            var anyGuessed = false;
+            var lastHeaderRow = 0;
+            sheetNames.forEach(function(name, si) {
+                var grid = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '' });
+                if (!grid || !grid.length) return;
+                var parsed = psParseExcelGrid(grid);
+                if (parsed.guessed) anyGuessed = true;
+                if (parsed.headerRow) lastHeaderRow = parsed.headerRow;
+                var sheetLabel = sheetNames.length > 1 ? String(name || (psL('Лист', 'Sheet') + ' ' + (si + 1))) : '';
+                (parsed.valid || []).forEach(function(r) { r.sheet = sheetLabel; merged.valid.push(r); });
+                (parsed.invalid || []).forEach(function(r) { r.sheet = sheetLabel; merged.invalid.push(r); });
+            });
+            if (!merged.valid.length && !merged.invalid.length) {
+                toast(psL('⚠️ В файле не найдено ни одной таблицы с именами и гандикапом (HCP/EHCP)', '⚠️ No table with player names and handicap (HCP/EHCP) found in the file'), 'error');
+                psState.excel = null;
+                psRender();
+                return;
+            }
+            merged.guessed = !!(anyGuessed && sheetNames.length === 1);
+            merged.headerRow = (sheetNames.length === 1) ? lastHeaderRow : 0;
+            merged.sheetsCount = sheetNames.length;
+            // Дедуп строк: один и тот же игрок на разных страницах не должен попасть дважды
+            merged.valid = psDedupeExcelRows(merged.valid);
+
             // Ищем соответствия пользователям (для uid и дозаполнения данных)
             psLoadUsers(function() {
                 function tryMatch(r) {
@@ -1355,19 +1518,20 @@ function psExcelPick(input) {
                         r.gender = r.gender || u.gender || 'men';
                     }
                 }
-                parsed.valid.forEach(tryMatch);
+                merged.valid.forEach(tryMatch);
                 // Строки без гандикапа: дозаполняем из профиля найденного игрока, иначе — в ошибки
                 var stillBad = [];
-                parsed.invalid.forEach(function(r) {
+                merged.invalid.forEach(function(r) {
                     if (r.hcp === null && r.errors && r.errors.length && (r.lastName || r.firstName)) {
                         tryMatch(r);
                         if (r.hcp !== null && r.errors && r.errors.length) { r.errors = []; }
-                        if (r.errors && !r.errors.length) { parsed.valid.push(r); return; }
+                        if (r.errors && !r.errors.length) { merged.valid.push(r); return; }
                     }
-                    stillBad.push({ row: r.row, name: [r.lastName, r.firstName, r.middleName].filter(function(w) { return String(w || '').trim(); }).join(' '), err: (r.errors || []).join(', ') || psL('нет имени', 'no name') });
+                    stillBad.push({ row: r.row, sheet: r.sheet || '', name: [r.lastName, r.firstName, r.middleName].filter(function(w) { return String(w || '').trim(); }).join(' '), err: (r.errors || []).join(', ') || psL('нет имени', 'no name') });
                 });
-                parsed.invalid = stillBad;
-                psState.excel = parsed;
+                merged.invalid = stillBad;
+                merged.valid = psDedupeExcelRows(merged.valid);
+                psState.excel = merged;
                 psRender();
             });
         } catch (err) {
@@ -1383,17 +1547,40 @@ function psExcelPick(input) {
     reader.readAsArrayBuffer(file);
 }
 
+// Убирает одинаковых игроков из объединённых строк всех страниц Excel.
+function psDedupeExcelRows(rows) {
+    var out = [];
+    var used = [];
+    (rows || []).forEach(function(r) {
+        var key = { lastName: r.lastName || '', firstName: r.firstName || '', middleName: r.middleName || '', id: r.matchedUid || '' };
+        var dup = false;
+        for (var i = 0; i < used.length; i++) {
+            if (psSamePerson(used[i], key)) { dup = true; break; }
+        }
+        if (dup) return;
+        used.push(key);
+        out.push(r);
+    });
+    return out;
+}
+
 function psRenderExcelBox() {
     var box = psEl('ps-excel-box');
     if (!box) return;
     if (!psState.excel) { box.innerHTML = ''; return; }
     var data = psState.excel;
+    var multi = data.sheetsCount > 1;
     var html = '<div style="background:var(--input);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">';
     html += '<h3 style="color:var(--gold);font-size:14px;margin:0 0 6px;"><i class="fas fa-file-excel"></i> ' + psL('Excel: строки из файла', 'Excel: rows from the file') + '</h3>';
+    if (multi) {
+        html += '<p style="font-size:11.5px;color:var(--muted);margin:0 0 8px;"><i class="fas fa-circle-info"></i> ' +
+            psL('Просмотрены все страницы документа (' + data.sheetsCount + '). Из остальных колонок берутся только Фамилия, Имя и точный гандикап (HCP/EHCP).',
+                'All sheets of the document were scanned (' + data.sheetsCount + '). Only last name, first name and the exact handicap (HCP/EHCP) are taken from other columns.') + '</p>';
+    }
     if (data.guessed) {
         html += '<p style="font-size:11.5px;color:var(--gold);margin:0 0 8px;"><i class="fas fa-wand-magic-sparkles"></i> ' +
-            psL('Таблица не по шаблону — колонки (ФИО, гандикап, пол, ТИ) найдены автоматически. Проверьте результат ниже.',
-                'Non-template table — columns (name, handicap, gender, tee) were detected automatically. Please review the result below.') + '</p>';
+            psL('Таблица не по шаблону — колонки ФИО и гандикапа найдены автоматически. Проверьте результат ниже.',
+                'Non-template table — name and handicap columns were detected automatically. Please review the result below.') + '</p>';
     } else if (data.headerRow && data.headerRow > 1) {
         html += '<p style="font-size:11.5px;color:var(--muted);margin:0 0 8px;"><i class="fas fa-circle-info"></i> ' +
             psL('Заголовки найдены в строке ' + data.headerRow + '.', 'Header row detected at row ' + data.headerRow + '.') + '</p>';
@@ -1404,8 +1591,9 @@ function psRenderExcelBox() {
         html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">';
         html += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:rgba(255,255,255,.04);">' +
             '<th style="padding:8px;text-align:left;">#</th><th style="padding:8px;text-align:left;">' + psL('ФИО', 'Name') + '</th>' +
-            '<th style="padding:8px;text-align:left;">HCP</th><th style="padding:8px;text-align:left;">' + psL('Пол', 'Gender') + '</th>' +
-            '<th style="padding:8px;text-align:left;">ТИ</th><th style="padding:8px;text-align:left;"></th></tr></thead><tbody>';
+            '<th style="padding:8px;text-align:left;">' + psL('Точный гандикап', 'Exact handicap') + '</th>' +
+            (multi ? '<th style="padding:8px;text-align:left;">' + psL('Страница', 'Sheet') + '</th>' : '') +
+            '<th style="padding:8px;text-align:left;"></th></tr></thead><tbody>';
         data.valid.forEach(function(r, i) {
             var fio = [r.lastName, r.firstName, r.middleName].filter(function(w) { return String(w || '').trim(); }).join(' ');
             var hcpTxt = r.hcp !== null ? psHcpFmt(r.hcp) : '<span style="color:var(--red);">—</span>';
@@ -1414,8 +1602,7 @@ function psRenderExcelBox() {
                 '<td style="padding:6px 8px;"><b>' + escapeHtml(fio) + '</b>' +
                 (r.matchedUid ? ' <span class="hcp-chip" style="background:rgba(46,204,113,.15);color:#2ecc71;font-size:10px;"><i class="fas fa-circle-check"></i></span>' : '') + '</td>' +
                 '<td style="padding:6px 8px;">' + hcpTxt + '</td>' +
-                '<td style="padding:6px 8px;">' + (r.gender === 'women' ? psL('жен', 'F') : psL('муж', 'M')) + '</td>' +
-                '<td style="padding:6px 8px;">' + (r.tee ? psTeeName(r.tee) : '—') + '</td>' +
+                (multi ? '<td style="padding:6px 8px;color:var(--muted);font-size:11px;">' + escapeHtml(r.sheet || '') + '</td>' : '') +
                 '<td style="padding:6px 8px;"><input type="checkbox" id="ps-exc-cb-' + i + '" checked style="width:17px;height:17px;cursor:pointer;"></td></tr>';
         });
         html += '</tbody></table></div>';
@@ -1424,13 +1611,13 @@ function psRenderExcelBox() {
         html += '<button class="btn btn-ol btn-sm" onclick="psExcelCancel()">' + psL('Отмена', 'Cancel') + '</button>';
         html += '</div>';
     } else {
-        html += '<p style="color:var(--muted);font-size:13px;margin:4px 0 0;"><i class="fas fa-triangle-exclamation" style="color:var(--red);"></i> ' + psL('Валидных строк нет — проверьте шаблон (нужны Фамилия/Имя и точный гандикап).', 'No valid rows — check the template (last/first name and exact handicap required).') + '</p>';
+        html += '<p style="color:var(--muted);font-size:13px;margin:4px 0 0;"><i class="fas fa-triangle-exclamation" style="color:var(--red);"></i> ' + psL('Валидных строк нет — проверьте шаблон (нужны Фамилия/Имя и точный гандикап HCP/EHCP).', 'No valid rows — check the template (last/first name and exact handicap HCP/EHCP required).') + '</p>';
     }
     if (data.invalid && data.invalid.length) {
         html += '<p style="font-size:12px;color:var(--muted);margin:10px 0 4px;">' + psL('Строки с ошибками (пропущены)', 'Rows with errors (skipped)') + ': <b style="color:var(--red);">' + data.invalid.length + '</b></p>';
         html += '<div style="max-height:150px;overflow-y:auto;font-size:11px;color:var(--muted);">';
         data.invalid.forEach(function(r) {
-            html += '<div style="padding:2px 0;">' + psL('Строка', 'Row') + ' ' + r.row + ': ' + escapeHtml(r.name || '') + ' — <span style="color:var(--red);">' + escapeHtml(r.err) + '</span></div>';
+            html += '<div style="padding:2px 0;">' + (r.sheet ? escapeHtml(r.sheet) + ' · ' : '') + psL('Строка', 'Row') + ' ' + r.row + ': ' + escapeHtml(r.name || '') + ' — <span style="color:var(--red);">' + escapeHtml(r.err) + '</span></div>';
         });
         html += '</div>';
     }
@@ -1716,7 +1903,7 @@ function psToTimeInput(ts) {
 // Форматы, доступные для выбора на уровне группы
 function psGroupFormatOptions(g) {
     var proto = psState.proto || {};
-    var resolved = psResolvedFormat();
+    var resolved = psResolvedFormats().join(' + ');
     function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
     var opts = ['<option value="">' + psL('— как у протокола: ', '— same as protocol: ') + esc(resolved) + ' —</option>'];
     var preset = ['Stroke Play', 'Stableford', 'Match Play 1v1', 'Match Play 2v2', 'Scramble', 'Texas Scramble', 'Greensomes'];
@@ -2204,17 +2391,19 @@ function psSaveProtocol() {
         return;
     }
 
-    var format = psResolvedFormat();
+    var formatsList = psResolvedFormats();
+    var format = formatsList[0] || 'Stroke Play';
+    var fmtTxt = formatsList.join(' + ');
     var totalPlayers = 0;
     groups.forEach(function(g) { totalPlayers += g.members.length; });
 
     var alreadySaved = !!psState.savedId;
     var msg = psL(
         'Создать ' + groups.length + ' групп-раундов для ' + totalPlayers + ' игроков?\n\n' +
-        'Будут созданы раунды (формат: ' + format + '). После этого каждый игрок получит QR-код на свою карточку.' +
+        'Будут созданы раунды (форматы: ' + fmtTxt + '). После этого каждый игрок получит QR-код на свою карточку.' +
         (alreadySaved ? '\n\n⚠️ Протокол уже сохранён ранее — будет создан ещё один, новый.' : ''),
         'Create ' + groups.length + ' group rounds for ' + totalPlayers + ' players?\n\n' +
-        'Rounds will be created (format: ' + format + '). Every player will then get a QR code to their scorecard.' +
+        'Rounds will be created (formats: ' + fmtTxt + '). Every player will then get a QR code to their scorecard.' +
         (alreadySaved ? '\n\n⚠️ A protocol was already saved — one more, new copy will be created.' : '')
     );
     if (!confirm(msg)) return;
@@ -2245,6 +2434,8 @@ function psSaveProtocol() {
         var markerAssignments = {};
 
         var groupFormat = (g.format && String(g.format).trim()) ? String(g.format).trim() : format;
+        // Группа без своего формата играет по ВСЕМ форматам протокола
+        var groupFormats = (g.format && String(g.format).trim()) ? [groupFormat] : formatsList;
         var groupPlayers = g.members.map(function(p) {
             var key = ensureKey(p);
             p.id = key;
@@ -2285,6 +2476,7 @@ function psSaveProtocol() {
             mode: 'group',
             tee: g.members[0].tee || 'wh',
             format: groupFormat,
+            formats: groupFormats,
             startHole: g.startHole || 1,
             startTime: g.startTime,
             holeRange: '1-18', // 18 лунок (порядок — со стартовой лунки)
@@ -2322,6 +2514,7 @@ function psSaveProtocol() {
             tournamentName: proto.tournamentName || '',
             date: proto.date || '',
             format: format,
+            formats: formatsList,
             scheme: proto.scheme || '1',
             size: parseInt(proto.size, 10) || 4,
             method: proto.method || 'hcpSnake',
@@ -2379,6 +2572,7 @@ function psEditProtocol(pid) {
         proto.tournamentName = doc.tournamentName || '';
         proto.date = doc.date || '';
         proto.format = doc.format || 'Stroke Play';
+        proto.formats = (doc.formats && doc.formats.length) ? doc.formats.slice() : [];
         proto.size = parseInt(doc.size, 10) || 4;
         proto.method = 'order';
         proto.scheme = doc.scheme || '1';
@@ -2429,7 +2623,7 @@ function psEditProtocol(pid) {
                 members: members,
                 startHole: parseInt(gd.startHole || 1, 10) || 1,
                 startTime: gd.startTime || psStartBaseTs(proto),
-                format: (gd.format && gd.format !== (doc.format || '')) ? gd.format : '',
+                format: (gd.format && gd.format !== (doc.format || '') && (!doc.formats || doc.formats.indexOf(gd.format) === -1)) ? gd.format : '',
                 markerTargets: autoRing ? {} : mt,
                 roundId: gd.roundId || null,
                 dirty: false
@@ -2497,7 +2691,8 @@ function psSaveEdits() {
         toast(psL('⚠️ В протоколе не осталось игроков — удалите протокол вместо сохранения', '⚠️ No players left in the protocol — delete it instead of saving'), 'error');
         return;
     }
-    var format = psResolvedFormat();
+    var formatsList = psResolvedFormats();
+    var format = formatsList[0] || 'Stroke Play';
     var totalPlayers = 0;
     groups.forEach(function(g) { totalPlayers += g.members.length; });
 
@@ -2533,6 +2728,7 @@ function psSaveEdits() {
     groups.forEach(function(g, gi) {
         if (g.roundId) return;
         var groupFormat = (g.format && String(g.format).trim()) ? String(g.format).trim() : format;
+        var groupFormats = (g.format && String(g.format).trim()) ? [groupFormat] : formatsList;
         var roundPlayers = {}, participants = [], markerAssignments = {}, groupPlayers = [], groupMarkers = [];
         g.members.forEach(function(p) {
             var key = p.id || ('gst_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7));
@@ -2561,6 +2757,7 @@ function psSaveEdits() {
             mode: 'group',
             tee: g.members[0].tee || 'wh',
             format: groupFormat,
+            formats: groupFormats,
             startHole: g.startHole || 1,
             startTime: g.startTime,
             holeRange: '1-18',
@@ -2603,6 +2800,7 @@ function psSaveEdits() {
             giNum++;
             var rid = g.roundId;
             var groupFormat = (g.format && String(g.format).trim()) ? String(g.format).trim() : format;
+            var groupFormats = (g.format && String(g.format).trim()) ? [groupFormat] : formatsList;
             var oldRound = (rid && psState.editRounds[rid]) || null;
             var oldPlayers = (oldRound && oldRound.players) || {};
             var groupPlayers = g.__newPlayers || [];
@@ -2684,6 +2882,7 @@ function psSaveEdits() {
                 sets['rounds/' + rid + '/markerAssignments'] = Object.keys(markerAssignments).length ? markerAssignments : null;
                 sets['rounds/' + rid + '/participantsList'] = participants;
                 sets['rounds/' + rid + '/format'] = groupFormat;
+                sets['rounds/' + rid + '/formats'] = groupFormats;
                 sets['rounds/' + rid + '/tee'] = (g.members[0] && g.members[0].tee) || 'wh';
                 sets['rounds/' + rid + '/startHole'] = g.startHole || 1;
                 sets['rounds/' + rid + '/startTime'] = g.startTime;
@@ -2719,6 +2918,7 @@ function psSaveEdits() {
         sets['protocols/' + pid + '/name'] = proto.name || '';
         sets['protocols/' + pid + '/date'] = proto.date || '';
         sets['protocols/' + pid + '/format'] = format;
+        sets['protocols/' + pid + '/formats'] = formatsList;
         sets['protocols/' + pid + '/startTime'] = proto.startTime || '09:00';
         sets['protocols/' + pid + '/interval'] = parseInt(proto.interval, 10) || 8;
         sets['protocols/' + pid + '/hcpCut'] = { enabled: proto.hcpCutEnabled === true, percent: proto.hcpCutPercent || 100, maxMen: (proto.hcpMaxMen === '' ? null : proto.hcpMaxMen), maxWomen: (proto.hcpMaxWomen === '' ? null : proto.hcpMaxWomen) };
@@ -2814,7 +3014,8 @@ function psRenderSavedListContent(data) {
         html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">';
         html += fmtDate(d.createdAt) + ' · ' + psL('групп', 'groups') + ': ' + (d.groupsCount || groupRows.length) + ' · ' + psL('игроков', 'players') + ': ' + (d.playersCount || 0);
         if (d.tournamentName) html += ' · 🏆 ' + escapeHtml(d.tournamentName);
-        if (d.format) html += ' · ' + escapeHtml(d.format);
+        var dFmts = (d.formats && d.formats.length) ? d.formats : (d.format ? [d.format] : []);
+        if (dFmts.length) html += ' · ' + escapeHtml(dFmts.join(' + '));
         html += '</div></div>';
         html += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
         html += '<button class="btn btn-g btn-sm" onclick="window.open(\'qr-start.html?p=' + e.id + '\',\'_blank\')"><i class="fas fa-print"></i> ' + psL('QR / печать', 'QR / print') + '</button>';
@@ -2999,6 +3200,32 @@ function psSyncEntriesToTournament(entries, tnId, opts, cb) {
         var now = Date.now();
         var usedNewIds = {};
 
+        // Разбор частей ФИО записи заявки (у гостей заполнен только r.name).
+        function regRecParts(r) {
+            var last = String((r && r.lastName) || '').trim();
+            var first = String((r && r.firstName) || '').trim();
+            var middle = String((r && r.middleName) || '').trim();
+            if ((!last || !first) && r && r.name) {
+                var parsed = psSplitFio(r.name);
+                if (!last) last = parsed.lastName || '';
+                if (!first) first = parsed.firstName || '';
+                if (!middle) middle = parsed.middleName || '';
+            }
+            return { id: (r && r.uid) || '', lastName: last, firstName: first, middleName: middle };
+        }
+
+        // Индекс существующих записей заявок: гость записывается под случайным
+        // ключом, и повторное сохранение стартового листа не должно плодить для
+        // него второй ключ (user_xxx) — иначе участник дублируется.
+        var regEntries = [];
+        Object.keys(existing || {}).forEach(function(rk) {
+            var r = existing[rk] || {};
+            var linkedUid = '';
+            if (r.uid && users[r.uid]) linkedUid = r.uid;
+            else if (users[rk]) linkedUid = rk;
+            regEntries.push({ key: rk, rec: r, linkedUid: linkedUid, parts: regRecParts(r) });
+        });
+
         entries.forEach(function(e) {
             var probe = { lastName: e.lastName, firstName: e.firstName, middleName: e.middleName };
             var key = psKeyOf(probe);
@@ -3009,6 +3236,14 @@ function psSyncEntriesToTournament(entries, tnId, opts, cb) {
             }
             // Уже привязанный реальный uid из черновика (загрузка из регистрации)
             if (!uid && e.id && users[e.id]) uid = e.id;
+            // Тот же человек уже записан в заявках под ключом с аккаунтом —
+            // используем этот аккаунт, чтобы не создавать второй.
+            if (!uid) {
+                for (var ri = 0; ri < regEntries.length; ri++) {
+                    var rx = regEntries[ri];
+                    if (rx.linkedUid && psSamePerson(probe, rx.parts)) { uid = rx.linkedUid; break; }
+                }
+            }
 
             if (!uid) {
                 uid = 'user_' + now.toString(36) + '_' + Math.random().toString(36).substring(2, 7);
@@ -3047,6 +3282,22 @@ function psSyncEntriesToTournament(entries, tnId, opts, cb) {
                 if (!u.gender && e.gender) updates['users/' + uid + '/gender'] = e.gender;
             }
 
+            // Зачистка дублей в заявках: старые ключи того же человека (гостевая
+            // запись, прежний user_xxx) удаляются — остаётся одна запись на игрока.
+            var prevRegAt = (existing[uid] && existing[uid].registeredAt) || 0;
+            var prevSource = (existing[uid] && existing[uid].source) || '';
+            regEntries.forEach(function(rx) {
+                if (!rx.rec || rx.key === uid) return;
+                if (!psSamePerson(probe, rx.parts)) return;
+                var linked = rx.linkedUid;
+                // Два разных реальных аккаунта с похожим ФИО не трогаем —
+                // это могут быть разные люди.
+                if (linked && linked !== uid && String(linked).indexOf('user_') !== 0 && String(uid).indexOf('user_') !== 0) return;
+                updates['tournaments/' + tnId + '/registeredPlayers/' + rx.key] = null;
+                if (!prevRegAt && rx.rec && rx.rec.registeredAt) prevRegAt = rx.rec.registeredAt;
+                if (!prevSource && rx.rec && rx.rec.source) prevSource = rx.rec.source;
+            });
+
             var prev = existing[uid] || {};
             updates['tournaments/' + tnId + '/registeredPlayers/' + uid] = {
                 uid: uid,
@@ -3057,8 +3308,8 @@ function psSyncEntriesToTournament(entries, tnId, opts, cb) {
                 handicap: (e.hcp === null || e.hcp === undefined || isNaN(e.hcp)) ? null : e.hcp,
                 gender: e.gender || 'men',
                 tee: e.tee || 'wh',
-                registeredAt: prev.registeredAt || now,
-                source: prev.source || 'start-list'
+                registeredAt: prevRegAt || prev.registeredAt || now,
+                source: prevSource || prev.source || 'start-list'
             };
         });
 

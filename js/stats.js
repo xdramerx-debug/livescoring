@@ -159,7 +159,14 @@ function loadStats() {
         return Promise.resolve();
     }
     return Promise.all([
-        db.ref('rounds').once('value'),
+        db.ref('rounds').once('value').then(function(sn) {
+            // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
+            if (typeof sweepStaleRounds === 'function') {
+                var patched = sweepStaleRounds(sn.val() || {});
+                return { val: function() { return patched; } };
+            }
+            return sn;
+        }),
         db.ref('users').once('value')
     ]).then(function(snaps) {
         var rounds = snaps[0].val() || {};

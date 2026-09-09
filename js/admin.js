@@ -450,7 +450,10 @@ function loadAdmRounds() {
     // Одна подписка на раунды: повторные вызовы (фильтр по датам, смена языка,
     // удаление/создание раунда) только перерисовывают список по последнему снимку.
     bindRealtimeValue('admin-rounds', db.ref('rounds'), function(sn) {
-        renderAdmRounds(sn.val() || {});
+        var data = sn.val() || {};
+        // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
+        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
+        renderAdmRounds(data);
     });
 }
 
@@ -484,7 +487,9 @@ function renderAdmRounds(data) {
         var id = e[0], r = e[1], pc = Object.keys(r.players || {}).length;
         var badge = r.status === 'active'
             ? '<span class="tn-status tn-a"><span class="live-dot" style="width:6px;height:6px;"></span> Live</span>'
-            : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>';
+            : ((typeof buildRoundCompletedBadgeHTML === 'function')
+                ? buildRoundCompletedBadgeHTML(r)
+                : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>');
 
         html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
         html += '<div style="flex:1;min-width:200px;"><strong style="color:var(--white);">' + t('brand_name') + '</strong> ' + badge;
@@ -1604,9 +1609,17 @@ function markAdmGroupCardVariantButtons() {
 // ВАРИАНТЫ ОТОБРАЖЕНИЯ ОСНОВНЫХ СТРАНИЦ
 // ==========================================
 var ADMIN_PAGE_DISPLAY_CONFIG = {
+    home: { path: 'settings/home_display_variant', label: 'Главная' },
     players: { path: 'settings/players_display_variant', label: 'Игроки' },
     stats: { path: 'settings/stats_display_variant', label: 'Статистика' },
-    rounds: { path: 'settings/all_rounds_display_variant', label: 'Все раунды' }
+    rounds: { path: 'settings/all_rounds_display_variant', label: 'Все раунды' },
+    guide: { path: 'settings/guide_display_variant', label: 'Книга поля' },
+    feed: { path: 'settings/feed_display_variant', label: 'Лента событий' },
+    predictor: { path: 'settings/predictor_display_variant', label: 'Симулятор WHS' },
+    'order-of-merit': { path: 'settings/oom_display_variant', label: 'Зачёт сезона' },
+    tournaments: { path: 'settings/tournaments_display_variant', label: 'Турниры' },
+    handicap: { path: 'settings/handicap_display_variant', label: 'Гандикапы' },
+    assistant: { path: 'settings/assistant_display_variant', label: 'Помощник' }
 };
 
 function loadPageDisplaySettings() {

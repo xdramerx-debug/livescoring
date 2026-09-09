@@ -785,8 +785,14 @@ function finishSolo() {
     soloFinishing = true;
 
     var finalizeSolo = function() {
-        db.ref('rounds/' + soloRid + '/status').set('completed').catch(function(){ soloFinishing = false; });
-        db.ref('rounds/' + soloRid + '/completedAt').set(Date.now());
+        // Фиксируем, кто завершил раунд: в карточках раунда показываем имя завершившего
+        var finisherUid = getPlayerId();
+        var finisherName = (finisherUid && soloRound && soloRound.players && soloRound.players[finisherUid])
+            ? (soloRound.players[finisherUid].name || '') : '';
+        var finishUpdate = { status: 'completed', completedAt: Date.now(), autoCompleted: false };
+        if (finisherUid) finishUpdate.completedBy = finisherUid;
+        if (finisherName) finishUpdate.completedByName = finisherName;
+        db.ref('rounds/' + soloRid).update(finishUpdate).catch(function(){ soloFinishing = false; });
 
         db.ref('rounds/' + soloRid).once('value').then(function(sn) {
             var r = sn.val();

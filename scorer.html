@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script>(function(){try{var q=new URLSearchParams(location.search);if(q.get('round')&&(q.get('as')||q.get('player'))){document.documentElement.classList.add('score-kiosk');}}catch(e){}})();</script>
     <meta name="theme-color" content="#0b1a0e">
     <meta name="description" content="Официальная система лайв-скоринга Гольф-клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
@@ -13,7 +14,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="scorer_title">Ввод счёта — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=25">
+    <link rel="stylesheet" href="css/style.css?v=26">
     <link rel="stylesheet" href="css/design-presets.css?v=1">
     <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -57,20 +58,6 @@
     <div id="sc-err" class="card hidden"><h2 style="color:var(--red);" data-i18n="error_title">Ошибка</h2><p data-i18n="qr_invalid">QR-код недействителен.</p><a href="index.html" class="btn btn-g" style="margin-top:12px;" data-i18n="nav_home">На главную</a></div>
     
     <div id="sc-body" class="hidden">
-        <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
-        <div style="display:flex;gap:10px;margin-bottom:6px;">
-            <button id="sc-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
-                <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
-            </button>
-            <button id="sc-marshal-call-btn" class="btn btn-warning official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
-                <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
-            </button>
-        </div>
-        <div id="sc-referee-call-status" class="official-call-status hidden" aria-live="polite"></div>
-        <div id="sc-marshal-call-status" class="official-call-status hidden" aria-live="polite"></div>
-
-        <div class="timing-info" id="sc-info"></div>
-        <div id="sc-verify"></div>
         <div class="card">
             <div class="hole-display">
                 <div class="hole-box"><div class="hole-lbl" data-i18n="hole_lbl">Лунка</div><div class="hole-val" id="sc-hole">1</div></div>
@@ -89,6 +76,20 @@
                 <button class="btn btn-g btn-block" onclick="saveSc()" style="padding:16px;font-size:15px;"><i class="fas fa-save"></i> <span data-i18n="save_hole">Сохранить</span></button>
             </div>
         </div>
+        <div id="sc-verify"></div>
+        <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
+        <div style="display:flex;gap:10px;margin-bottom:6px;">
+            <button id="sc-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
+                <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
+            </button>
+            <button id="sc-marshal-call-btn" class="btn btn-warning official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
+                <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
+            </button>
+        </div>
+        <div id="sc-referee-call-status" class="official-call-status hidden" aria-live="polite"></div>
+        <div id="sc-marshal-call-status" class="official-call-status hidden" aria-live="polite"></div>
+
+        <div class="timing-info" id="sc-info"></div>
         <div id="sc-notice"></div>
         <div id="sc-pace-assistant" style="margin-top:12px;"></div>
         <div class="card"><h2><i class="fas fa-table"></i> <span data-i18n="my_score">Мой счёт</span></h2><div id="sc-card"></div></div>
@@ -99,13 +100,13 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.46.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.47.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
 <script src="js/utils.js?v=46"></script>
-<script src="js/scorer.js?v=4"></script>
+<script src="js/scorer.js?v=5"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>
 </html>

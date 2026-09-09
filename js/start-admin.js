@@ -1122,7 +1122,7 @@ function psRosterRowHtml(p, idx) {
         var toG = '';
         psState.groups.forEach(function(g2, gj) {
             if ((g2.members || []).length >= 4) return;
-            toG += '<option value="' + gj + '">→ ' + psL('Группа', 'Group') + ' ' + (gj + 1) + '</option>';
+            toG += '<option value="' + gj + '">→ ' + psGroupTitle(g2, gj) + '</option>';
         });
         toG += '<option value="new">＋ ' + psL('Новая группа', 'New group') + '</option>';
         rowHtml += '<select class="form-input ps-rrow-sel" title="' + psL('Отправить игрока сразу в группу', 'Send the player straight into a group') + '" onchange="if(this.value!==\'\')psRosterToGroup(' + idx + ',this.value)">' +
@@ -1321,11 +1321,65 @@ function psRemovePlayer(idx) {
 }
 
 function psClearPlayers() {
-    if (!psState.proto.players.length) return;
-    if (!confirm(psL('Очистить весь список участников?', 'Clear the whole player list?'))) return;
-    psState.proto.players = [];
-    psState.groups = [];
+    var proto = psState.proto || {};
+    var players = proto.players || [];
+    var groups = psState.groups || [];
+    var hasAny = players.length > 0 || groups.some(function(g) { return (g.members || []).length > 0; });
+    if (!hasAny && !psState.selId) return;
+    if (!confirm(psL(
+        'Оставить только игроков, записавшихся на сайте? Excel, стартовый лист и вручную добавленные будут удалены из турнира. Записи с сайта сохранятся.',
+        'Keep only players who registered on the website? Excel, start-list and manually added players will be removed from the tournament. Website registrations stay.'
+    ))) return;
+
+    var keptPlayers = players.filter(psIsWebsiteRosterPlayer);
+    var keptIds = {};
+    keptPlayers.forEach(function(p) { if (p && p.id) keptIds[p.id] = true; });
+    var keptGroups = groups.map(function(g) {
+        var members = (g.members || []).filter(function(m) {
+            return m && (keptIds[m.id] || psIsWebsiteRosterPlayer(m));
+        });
+        return {
+            members: members,
+            startHole: g.startHole,
+            startTime: g.startTime,
+            format: g.format || '',
+            markerTargets: g.markerTargets || {},
+            roundId: g.roundId || null,
+            dirty: true
+        };
+    }).filter(function(g) { return (g.members || []).length > 0; });
+    proto.players = keptPlayers;
+    psState.groups = keptGroups;
     psRender();
+
+    var tnId = psState.selId || proto.tournamentId || '';
+    if (!tnId || typeof db === 'undefined' || !db) {
+        toast(keptPlayers.length
+            ? psL('Оставлены только записавшиеся на сайте', 'Only website registrations kept')
+            : psL('Список игроков очищен', 'Player list cleared'), 'info');
+        return;
+    }
+    Promise.all([
+        db.ref('tournaments/' + tnId + '/registeredPlayers').once('value'),
+        db.ref('users').once('value')
+    ]).then(function(res) {
+        var reg = (res[0] && res[0].val()) || {};
+        var users = (res[1] && res[1].val()) || {};
+        var updates = {};
+        Object.keys(reg).forEach(function(k) {
+            if (!psIsWebsiteTournamentReg(k, reg[k], users)) {
+                updates['tournaments/' + tnId + '/registeredPlayers/' + k] = null;
+            }
+        });
+        if (!Object.keys(updates).length) return null;
+        return db.ref().update(updates);
+    }).then(function() {
+        toast(keptPlayers.length
+            ? psL('Оставлены только записавшиеся на сайте', 'Only website registrations kept')
+            : psL('Список игроков очищен', 'Player list cleared'), 'info');
+    }).catch(function(err) {
+        toast(psL('⚠️ Ошибка очистки: ' + (err && err.message || err), '⚠️ Clear error: ' + (err && err.message || err)), 'error');
+    });
 }
 
 function psAddManual() {
@@ -2326,11 +2380,86 @@ function psAll18Schedule(i, proto) {
     return { startHole: holeIdx + 1, startTime: base + wave * intervalMs };
 }
 
+// Шотган: подписи «Группа 1А / 1Б» (лунка + волна), не порядковый номер.
+// Для схемы «все с 1-й» остаётся «Группа 1, 2, 3…».
+function psShotgunLetterScheme(scheme) {
+    scheme = scheme || (psState && psState.proto && psState.proto.scheme);
+    return scheme === 'all18' || scheme === '1-10';
+}
+function psWaveLetter(idx) {
+    idx = Math.max(0, parseInt(idx, 10) || 0);
+    var alphabet = (typeof currentLang !== 'undefined' && currentLang === 'en')
+        ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        : 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ';
+    if (idx < alphabet.length) return alphabet.charAt(idx);
+    return String(idx + 1);
+}
+function psGroupWaveIndex(groups, gi) {
+    groups = groups || [];
+    var g = groups[gi];
+    if (!g) return 0;
+    var hole = parseInt(g.startHole, 10) || 1;
+    var n = 0;
+    for (var i = 0; i < gi; i++) {
+        if ((parseInt(groups[i].startHole, 10) || 1) === hole) n++;
+    }
+    return n;
+}
+function psGroupTitle(g, gi, groups) {
+    groups = groups || (psState && psState.groups) || [];
+    var proto = (psState && psState.proto) || {};
+    if (psShotgunLetterScheme(proto.scheme)) {
+        var hole = parseInt((g && g.startHole) || 1, 10) || 1;
+        return psL('Группа', 'Group') + ' ' + hole + psWaveLetter(psGroupWaveIndex(groups, gi));
+    }
+    return psL('Группа', 'Group') + ' ' + (gi + 1);
+}
+// Порядок показа шотгана: лунка, затем волна (время). 1А, 1Б, 2А… а не 18 A-групп подряд.
+function psSortGroupsShotgun(groups, scheme) {
+    groups = groups || (psState && psState.groups) || [];
+    if (!psShotgunLetterScheme(scheme)) return groups;
+    groups.sort(function(a, b) {
+        var ha = parseInt(a && a.startHole, 10) || 1;
+        var hb = parseInt(b && b.startHole, 10) || 1;
+        if (ha !== hb) return ha - hb;
+        var ta = (a && a.startTime) || 0;
+        var tb = (b && b.startTime) || 0;
+        if (ta !== tb) return ta - tb;
+        return 0;
+    });
+    return groups;
+}
+
+// Запись с сайта (форма турнира): source === 'registered'.
+// Excel / ручные / стартовый лист — нет.
+function psIsWebsiteRosterPlayer(p) {
+    return !!(p && p.source === 'registered');
+}
+// Заявки tournaments/*/registeredPlayers: гости и аккаунты с сайта
+// (без source или guest:true). Импорт стартового листа — source 'start-list'.
+function psIsWebsiteTournamentReg(key, rp, users) {
+    rp = rp || {};
+    var src = String(rp.source || '');
+    if (src === 'start-list' || src === 'excel' || src === 'manual' || src === 'protocol' || src === 'edit') return false;
+    if (rp.guest === true) return true;
+    if (src === 'registered') return true;
+    if (!src) {
+        var uid = rp.uid || key;
+        var u = users && users[uid];
+        if (u && u.hcpSource === 'start-list') return false;
+        if (String(uid).indexOf('user_') === 0) return false;
+        if (String(uid).indexOf('gst_') === 0) return false;
+        return true;
+    }
+    return false;
+}
+
 // Пересчёт стартовых времён без сброса состава групп (время/интервал в админке).
 function psRescheduleExistingGroups() {
     var proto = psState.proto;
     var groups = psState.groups || [];
     if (!proto || !groups.length) return;
+    psSortGroupsShotgun(groups, proto.scheme);
     if (proto.scheme === 'all18') {
         var occupancy = {};
         groups.forEach(function(g, i) {
@@ -2395,6 +2524,7 @@ function psDistPreview() {
         var sch = psGroupSchedule(i, groups.length);
         return { members: members, startHole: sch.startHole, startTime: sch.startTime, format: '', markerTargets: {} };
     });
+    psSortGroupsShotgun(psState.groups, psState.proto && psState.proto.scheme);
     psRender();
     psScrollToGroups();
 }
@@ -2499,6 +2629,7 @@ function psRenderGroupsResult() {
     if (!psState.groups || !psState.groups.length) {
         return '';
     }
+    psSortGroupsShotgun(psState.groups, psState.proto && psState.proto.scheme);
     var totalPlayersInGroups = 0;
     psState.groups.forEach(function(g) { totalPlayersInGroups += g.members.length; });
 
@@ -2523,7 +2654,7 @@ function psRenderGroupsResult() {
         var dateStr = fmtDate(g.startTime);
         html += '<div class="card" style="padding:14px;margin:0;border:1px solid rgba(201,168,76,0.4);">';
         html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">';
-        html += '<b style="color:var(--white);font-size:15px;"><i class="fas fa-flag"></i> ' + psL('Группа', 'Group') + ' ' + (gi + 1) + '</b>';
+        html += '<b style="color:var(--white);font-size:15px;"><i class="fas fa-flag"></i> ' + psGroupTitle(g, gi) + '</b>';
         html += '<button class="btn btn-r btn-sm" style="padding:3px 8px;font-size:11px;" title="' + psL('Удалить группу', 'Delete group') + '" onclick="psGRemoveGroup(' + gi + ')"><i class="fas fa-trash"></i></button>';
         html += '</div>';
 
@@ -2557,7 +2688,7 @@ function psRenderGroupsResult() {
                 var moveOpts = '';
                 psState.groups.forEach(function(g2, gj) {
                     if (gj === gi) return;
-                    moveOpts += '<option value="' + gj + '">→ ' + psL('Группа', 'Group') + ' ' + (gj + 1) + '</option>';
+                    moveOpts += '<option value="' + gj + '">→ ' + psGroupTitle(g2, gj) + '</option>';
                 });
                 moveOpts += '<option value="new">＋ ' + psL('Новая группа', 'New group') + '</option>';
                 html += '<select class="form-input" style="width:auto;padding:3px 6px;font-size:10.5px;" title="' + psL('Переместить в другую группу', 'Move to another group') + '" onchange="if(this.value!==\'\')psGMove(' + gi + ',' + mi + ',this.value)">' +
@@ -2772,7 +2903,8 @@ function psGRemove(gi, mi) {
             warn += '\n⚠️ ' + psL('У игрока уже есть введённый счёт в раунде — он будет удалён вместе с игроком при сохранении.', 'The player already has scores in the round — they will be deleted together with the player on save.');
         }
     }
-    if (!confirm(psL('Убрать игрока «' + psFullRus(p) + '» из группы ' + (gi + 1) + '?', 'Remove player “' + psFullRus(p) + '” from group ' + (gi + 1) + '?') + warn)) return;
+    var gTitle = psGroupTitle(g, gi);
+    if (!confirm(psL('Убрать игрока «' + psFullRus(p) + '» из ' + gTitle + '?', 'Remove player “' + psFullRus(p) + '” from ' + gTitle + '?') + warn)) return;
     g.members.splice(mi, 1);
     if (g.markerTargets) {
         delete g.markerTargets[p.id];
@@ -2785,9 +2917,10 @@ function psGRemove(gi, mi) {
 function psGRemoveGroup(gi) {
     var g = psState.groups[gi];
     if (!g) return;
+    var gTitle = psGroupTitle(g, gi);
     var msg = g.members.length
-        ? psL('Удалить группу ' + (gi + 1) + ' (' + g.members.length + ' игр.)?', 'Delete group ' + (gi + 1) + ' (' + g.members.length + ' players)?')
-        : psL('Удалить пустую группу ' + (gi + 1) + '?', 'Delete empty group ' + (gi + 1) + '?');
+        ? psL('Удалить ' + gTitle + ' (' + g.members.length + ' игр.)?', 'Delete ' + gTitle + ' (' + g.members.length + ' players)?')
+        : psL('Удалить пустую ' + gTitle + '?', 'Delete empty ' + gTitle + '?');
     if (psState.editingId && g.roundId) {
         msg += '\n\n⚠️ ' + psL('Связанный раунд и весь введённый в нём счёт будут удалены при сохранении.', 'The linked round and all of its scores will be deleted on save.');
     } else if (g.members.length) {
@@ -2870,7 +3003,7 @@ function psGAddPlayer(gi) {
                 g.dirty = true;
                 psGAddToggle(gi, true);
                 psRender();
-                toast(psL('✅ ' + psFullRus(ex) + ' — перенесён из списка участников в группу ' + (gi + 1), '✅ ' + psFullRus(ex) + ' — moved from the roster into group ' + (gi + 1)), 'success');
+                toast(psL('✅ ' + psFullRus(ex) + ' — перенесён из списка участников в ' + psGroupTitle(g, gi), '✅ ' + psFullRus(ex) + ' — moved from the roster into ' + psGroupTitle(g, gi)), 'success');
                 return;
             }
         }
@@ -2883,7 +3016,7 @@ function psGAddPlayer(gi) {
             if (psKeyOf(om) === key && key) {
                 if (og.members.length <= 1) {
                     // группу из одного не опустошаем молча
-                    toast(psL('⚠️ Игрок уже в группе ' + (gj + 1), '⚠️ The player is already in group ' + (gj + 1)), 'warn');
+                    toast(psL('⚠️ Игрок уже в ' + psGroupTitle(og, gj), '⚠️ The player is already in ' + psGroupTitle(og, gj)), 'warn');
                     return;
                 }
                 og.members.splice(mj, 1);
@@ -2893,7 +3026,7 @@ function psGAddPlayer(gi) {
                 g.dirty = true;
                 psGAddToggle(gi, true);
                 psRender();
-                toast(psL('✅ ' + psFullRus(om) + ' — перемещён из группы ' + (gj + 1) + ' в группу ' + (gi + 1), '✅ ' + psFullRus(om) + ' — moved from group ' + (gj + 1) + ' to group ' + (gi + 1)), 'success');
+                toast(psL('✅ ' + psFullRus(om) + ' — перемещён из ' + psGroupTitle(og, gj) + ' в ' + psGroupTitle(g, gi), '✅ ' + psFullRus(om) + ' — moved from ' + psGroupTitle(og, gj) + ' to ' + psGroupTitle(g, gi)), 'success');
                 return;
             }
         }
@@ -2902,7 +3035,7 @@ function psGAddPlayer(gi) {
     g.dirty = true;
     psGAddToggle(gi, true);
     psRender();
-    toast(psL('✅ ' + psFullRus(p) + ' ' + psL('добавлен в группу', 'added to the group') + ' ' + (gi + 1), '✅ ' + psFullRus(p) + ' added to group ' + (gi + 1)), 'success');
+    toast(psL('✅ ' + psFullRus(p) + ' ' + psL('добавлен в', 'added to') + ' ' + psGroupTitle(g, gi), '✅ ' + psFullRus(p) + ' added to ' + psGroupTitle(g, gi)), 'success');
 }
 
 // Перенос игрока из списка участников сразу в нужную группу
@@ -2962,6 +3095,7 @@ function psSaveProtocol() {
     }
     // пустые группы не сохраняем
     groups = groups.filter(function(g) { return (g.members || []).length > 0; });
+    psSortGroupsShotgun(groups, proto.scheme);
     if (!groups.length) {
         toast(psL('⚠️ Во всех группах пусто — добавьте игроков', '⚠️ All groups are empty — add players'), 'error');
         return;
@@ -3294,6 +3428,7 @@ function psEditProtocol(pid) {
             if (gd.roundId) roundIds.push(gd.roundId);
         });
         psState.groups = groups;
+        psSortGroupsShotgun(psState.groups, proto.scheme);
         psState.editRounds = {};
         psPrefillEditRoster(); // всех заявленных, кого нет в группах, — в стартовый лист
         psRender();
@@ -3351,6 +3486,7 @@ function psSaveEdits() {
     if (typeof db === 'undefined' || !db) return;
 
     var groups = (psState.groups || []).filter(function(g) { return (g.members || []).length > 0; });
+    psSortGroupsShotgun(groups, proto.scheme);
     if (!groups.length) {
         toast(psL('⚠️ В протоколе не осталось игроков — удалите протокол вместо сохранения', '⚠️ No players left in the protocol — delete it instead of saving'), 'error');
         return;

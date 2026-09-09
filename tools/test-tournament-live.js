@@ -22,6 +22,7 @@ const qr = fs.readFileSync(path.join(ROOT, 'js', 'qr-start.js'), 'utf8');
 const startAdmin = fs.readFileSync(path.join(ROOT, 'js', 'start-admin.js'), 'utf8');
 const auth = fs.readFileSync(path.join(ROOT, 'js', 'auth.js'), 'utf8');
 const admin = fs.readFileSync(path.join(ROOT, 'js', 'admin.js'), 'utf8');
+const css = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
 
 check(utils.indexOf("sec_active_tournament: 'Активный турнир'") !== -1, 'i18n ru: sec_active_tournament');
 check(utils.indexOf("sec_active_tournament: 'Active tournament'") !== -1, 'i18n en: sec_active_tournament');
@@ -62,6 +63,28 @@ check(sandbox.roundTournamentName({ protocolName: 'Open · start' }) === 'Open',
 check(sandbox.isTournamentRound({ tournamentId: 't1' }) === true, 'isTournamentRound: tournamentId');
 check(sandbox.isTournamentRound({ protocolId: 'pr1' }) === true, 'isTournamentRound: protocolId');
 check(sandbox.isTournamentRound({ mode: 'group' }) === false, 'isTournamentRound: обычная группа');
+
+check(setupHtml.indexOf('score-kiosk') !== -1, 'setup-round: ранний класс score-kiosk');
+check(scorerHtml.indexOf('score-kiosk') !== -1, 'scorer: ранний класс score-kiosk');
+check(css.indexOf('html.score-kiosk') !== -1, 'css: kiosk прячет шапку/меню');
+check(live.indexOf('function applyScoreKiosk') !== -1 && scorer.indexOf('function applyScoreKiosk') !== -1, 'live/scorer: applyScoreKiosk');
+check(live.indexOf('if (p.isCreator) return true') !== -1, 'join: isCreator');
+check(live.indexOf('creatorPlayerId') !== -1 && live.indexOf('p.joined === true') !== -1, 'join: creatorPlayerId / joined');
+check(live.indexOf('participantsList[0]') === -1 || live.indexOf('НЕ считаются') !== -1, 'join: participantsList[0] не даёт «В игре»');
+const scBody = scorerHtml.slice(scorerHtml.indexOf('id="sc-body"'));
+check(scBody.indexOf('hole-display') < scBody.indexOf('call_referee'), 'scorer: блок счёта выше вызова судьи');
+
+const joinStart = live.indexOf('function isPlayerEnteredRound');
+const joinEnd = live.indexOf('\nfunction countJoinedPlayers');
+check(joinStart !== -1 && joinEnd > joinStart, 'live: isPlayerEnteredRound извлечена');
+const joinBox = { console };
+vm.createContext(joinBox);
+vm.runInContext(live.slice(joinStart, joinEnd) + '\nthis.isPlayerEnteredRound = isPlayerEnteredRound;', joinBox);
+check(joinBox.isPlayerEnteredRound({ isCreator: true }, 'p1', {}) === true, 'join: создатель ручной группы — в игре');
+check(joinBox.isPlayerEnteredRound({}, 'p0', { creatorPlayerId: 'p0' }) === true, 'join: creatorPlayerId — в игре');
+check(joinBox.isPlayerEnteredRound({ joined: true }, 'p2', {}) === true, 'join: joined после QR');
+check(joinBox.isPlayerEnteredRound({}, 'p0', { createdBy: 'admin', participantsList: ['p0'] }) === false, 'join: админ/первый в протоколе без QR — не в игре');
+check(joinBox.isPlayerEnteredRound({}, 'p3', { createdBy: 'admin' }) === false, 'join: createdBy админа не считается входом');
 
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nAll tournament/live tests passed ✔');
 process.exit(failures ? 1 : 0);

@@ -84,15 +84,41 @@ sandbox.psDistInterval(10);
 eq(sandbox.psState.editingId, 'pr_test', 'all18 interval: режим правки не сбрасывается');
 eq(sandbox.psState.groups.length, 3, 'all18 interval: состав групп сохраняется');
 eq(sandbox.psState.proto.interval, 10, 'all18 interval: значение сохраняется');
-eq(sandbox.psState.groups[0].startTime, all18Base, 'all18 interval: группа A с 1-й — 11:00');
-eq(sandbox.psState.groups[1].startTime, all18Base, 'all18 interval: группа с 2-й — тоже 11:00');
-eq(sandbox.psState.groups[2].startTime, all18Base + 10 * 60000, 'all18 interval: группа B с 1-й — 11:10');
-eq(sandbox.psState.groups[0].members[0].id, 'a', 'all18 interval: игроки на месте');
+eq(sandbox.psState.groups.map(function(g) { return g.startHole; }), [1, 1, 2], 'all18 interval: порядок лунка→волна (1,1,2)');
+eq(sandbox.psState.groups[0].startTime, all18Base, 'all18 interval: 1А — 11:00');
+eq(sandbox.psState.groups[1].startTime, all18Base + 10 * 60000, 'all18 interval: 1Б — 11:10');
+eq(sandbox.psState.groups[2].startTime, all18Base, 'all18 interval: 2А — 11:00');
+eq(sandbox.psState.groups[0].members[0].id, 'a', 'all18 interval: 1А — игрок a');
+eq(sandbox.psState.groups[1].members[0].id, 'c', 'all18 interval: 1Б — игрок c');
+eq(sandbox.psState.groups[2].members[0].id, 'b', 'all18 interval: 2А — игрок b');
+eq(sandbox.psGroupTitle(sandbox.psState.groups[0], 0), 'Группа 1А', 'all18 title: 1А');
+eq(sandbox.psGroupTitle(sandbox.psState.groups[1], 1), 'Группа 1Б', 'all18 title: 1Б');
+eq(sandbox.psGroupTitle(sandbox.psState.groups[2], 2), 'Группа 2А', 'all18 title: 2А');
+eq(sandbox.psIsWebsiteRosterPlayer({ source: 'registered' }), true, 'clear: website roster kept');
+eq(sandbox.psIsWebsiteRosterPlayer({ source: 'excel' }), false, 'clear: excel dropped');
+eq(sandbox.psIsWebsiteRosterPlayer({ source: 'manual' }), false, 'clear: manual dropped');
+eq(sandbox.psIsWebsiteTournamentReg('abc', { guest: true }, {}), true, 'clear: website guest kept');
+eq(sandbox.psIsWebsiteTournamentReg('user_x', { source: 'start-list' }, {}), false, 'clear: start-list dropped');
+sandbox.psState.proto.scheme = '1-10';
+sandbox.psState.groups = [
+    { startHole: 10, startTime: all18Base },
+    { startHole: 1, startTime: all18Base },
+    { startHole: 10, startTime: all18Base + 300000 },
+    { startHole: 1, startTime: all18Base + 600000 }
+];
+sandbox.psSortGroupsShotgun(sandbox.psState.groups, '1-10');
+eq([
+    sandbox.psGroupTitle(sandbox.psState.groups[0], 0),
+    sandbox.psGroupTitle(sandbox.psState.groups[1], 1),
+    sandbox.psGroupTitle(sandbox.psState.groups[2], 2),
+    sandbox.psGroupTitle(sandbox.psState.groups[3], 3)
+], ['Группа 1А', 'Группа 1Б', 'Группа 10А', 'Группа 10Б'], '1-10 titles after sort: 1А,1Б,10А,10Б');
 sandbox.psState.editingId = null;
 sandbox.psState.groups = [];
 sandbox.psState.proto.scheme = '1';
 sandbox.psState.proto.startTime = '09:00';
 sandbox.psState.proto.interval = 10;
+eq(sandbox.psGroupTitle({ startHole: 1 }, 0), 'Группа 1', 'sequential stays Группа 1');
 
 // ── Маркеры в группе ──
 let g4 = [mkPlayer('A', 'И', 10), mkPlayer('B', 'И', 20), mkPlayer('C', 'И', 30), mkPlayer('D', 'И', 40)];

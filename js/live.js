@@ -2,6 +2,7 @@ var curRid = null;
 var curRoundData = null;
 var registeredUsers = {};
 var availableTournaments = {};
+function lGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 
 // Переменные активной игры
 var playHole = 1;
@@ -181,8 +182,9 @@ function onTournamentSelect() {
 }
 
 function buildPlayerSlots() {
-    var count = parseInt(document.getElementById('grp-count').value) || 2;
-    var el = document.getElementById('player-slots');
+    var cntEl = lGet('grp-count');
+    var count = cntEl ? (parseInt(cntEl.value) || 2) : 2;
+    var el = lGet('player-slots'); if (!el) return;
     var html = '<h3 class="setup-subhead"><i class="fas fa-user-plus"></i> ' + t('players_label') + '</h3>';
 
     var namePlaceholder = currentLang === 'en' ? 'John Doe' : 'Имя Фамилия';
@@ -646,35 +648,32 @@ function initRoundView() {
 
         // Раунд уже начат — блок «Начать раунд / переключайте вкладки» больше не нужен:
         // показываем только шапку, меню, ввод счёта и остальное содержимое раунда.
-        var pageHeadEl = document.getElementById('page-head');
+        var pageHeadEl = lGet('page-head');
         if (pageHeadEl) pageHeadEl.classList.add('hidden');
-
-        // Фиксированная шапка (nav) не должна перекрывать ввод счёта: page-head,
-        // дававший отступ, скрыт — компенсируем высотой nav отступ сверху main.
-        document.body.classList.add('round-active');
-        var navEl = document.getElementById('main-nav');
-        if (navEl) document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px');
+        try { document.body.classList.add('round-active'); } catch(e){}
+        var navEl = lGet('main-nav');
+        if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch(e){} }
 
         myUid = getActingUid();
         canEditGroup = (myUid !== null) && (curRoundData.status === 'active');
 
-        var activeView = document.getElementById('active-scoring-view');
-        var groupView = document.getElementById('group-view');
+        var activeView = lGet('active-scoring-view');
+        var groupView = lGet('group-view');
 
         if (canEditGroup) {
             if (activeView) activeView.classList.remove('hidden');
             if (groupView) groupView.classList.add('hidden');
 
             var myPlayer = curRoundData.players && curRoundData.players[myUid];
-            var myTitle = document.getElementById('my-player-name-title');
-            if (myTitle) myTitle.textContent = myPlayer ? myPlayer.name : t('my_score');
+            var myTitle = lGet('my-player-name-title');
+            if (myTitle) myTitle.textContent = myPlayer ? myPlayer.name : (typeof t === 'function' ? t('my_score') : 'My score');
             updateGroupStablefordToggle();
 
-            var markContainer = document.getElementById('marker-input-container');
+            var markContainer = lGet('marker-input-container');
             if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
                 myTargetUid = curRoundData.markerAssignments[myUid].targetId;
                 var targetPlayer = curRoundData.players && curRoundData.players[myTargetUid];
-                var markTitle = document.getElementById('mark-player-name');
+                var markTitle = lGet('mark-player-name');
                 if (markTitle) markTitle.textContent = targetPlayer ? targetPlayer.name : (currentLang === 'en' ? 'Partner' : 'Партнёр');
                 if (markContainer) markContainer.classList.remove('hidden');
             } else {
@@ -740,7 +739,7 @@ function findCurrentHole() {
 // ==========================================
 function buildPlayHolesNav() {
     if (!canEditGroup) return;
-    var el = document.getElementById('play-holes-nav');
+    var el = lGet('play-holes-nav');
     if (!el) return;
     var order = getRoundOrder(curRoundData);
     var myPlayer = curRoundData.players && curRoundData.players[myUid];
@@ -790,10 +789,9 @@ function renderPlayHole() {
     var myTee = myPlayer.tee || curRoundData.tee || 'wh';
     var dist = holeDist(playHole, myTee);
 
-    var playHoleEl = document.getElementById('play-hole');
-    var playParEl = document.getElementById('play-par');
-    var playDistEl = document.getElementById('play-dist');
-
+    var playHoleEl = lGet('play-hole');
+    var playParEl = lGet('play-par');
+    var playDistEl = lGet('play-dist');
     if (playHoleEl) playHoleEl.textContent = playHole;
     if (playParEl) playParEl.textContent = par;
     if (playDistEl) playDistEl.textContent = dist > 0 ? dist : '—';
@@ -804,9 +802,9 @@ function renderPlayHole() {
     var myPlayer = curRoundData.players[myUid] || {};
     var mySubmittedLast = !!(myPlayer.submitted && myPlayer.submitted[playHole] === true);
 
-    var btnIcon = document.getElementById('save-hole-btn-icon');
-    var btnText = document.getElementById('save-hole-btn-text');
-    var btn = document.getElementById('save-hole-btn');
+    var btnIcon = lGet('save-hole-btn-icon');
+    var btnText = lGet('save-hole-btn-text');
+    var btn = lGet('save-hole-btn');
 
     if (btnIcon && btnText && btn) {
         if (isLastHole && mySubmittedLast) {
@@ -836,17 +834,14 @@ function renderPlayHole() {
     updScoreDisplay('my', myScore);
     updScoreDisplay('mark', targetScore);
 
-    var trackContainer = document.getElementById('gr-shot-tracking-container');
+    var trackContainer = lGet('gr-shot-tracking-container');
     if (trackContainer) {
-        if (localStorage.getItem('pestovo_shot_tracking_enabled') === '1') {
-            trackContainer.classList.remove('hidden');
-        } else {
-            trackContainer.classList.add('hidden');
-        }
+        try {
+            if (localStorage.getItem('pestovo_shot_tracking_enabled') === '1') trackContainer.classList.remove('hidden');
+            else trackContainer.classList.add('hidden');
+        } catch(e){}
     }
-
-    // Render Match Play Tracker if Match Play format
-    var trackerEl = document.getElementById('match-play-tracker-container');
+    var trackerEl = lGet('match-play-tracker-container');
     if (trackerEl) {
         if (curRoundData && (curRoundData.format === 'Match Play 1v1' || curRoundData.format === 'Match Play 2v2') && myTargetUid) {
             var myScoresObj = (curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
@@ -879,9 +874,10 @@ function adjScore(who, delta) {
 }
 
 function updScoreDisplay(who, score) {
+    if (typeof holePar !== 'function') return;
     var par = holePar(playHole);
-    var dispEl = document.getElementById(who + '-disp');
-    var resEl = document.getElementById(who + '-result');
+    var dispEl = lGet(who + '-disp');
+    var resEl = lGet(who + '-result');
     var scoredPlayerId = who === 'my' ? myUid : myTargetUid;
     var scoredPlayer = curRoundData && curRoundData.players && scoredPlayerId
         ? curRoundData.players[scoredPlayerId] : null;
@@ -897,7 +893,7 @@ function updScoreDisplay(who, score) {
 }
 
 function checkPlayVerification() {
-    var box = document.getElementById('play-verify-status');
+    var box = lGet('play-verify-status');
     if (!box || !curRoundData || !curRoundData.players) return;
 
     var myPlayer = curRoundData.players[myUid];
@@ -1068,7 +1064,7 @@ function saveHoleScores() {
 }
 
 function renderPlaySummary() {
-    var el = document.getElementById('play-group-summary');
+    var el = lGet('play-group-summary');
     if (!el) return;
     var order = getRoundOrder(curRoundData);
     var allPlayers = curRoundData.players || {};
@@ -1114,9 +1110,9 @@ function renderPlaySummary() {
 // ==========================================
 // Сворачивание / разворачивание QR-кодов подключения игроков
 function toggleInviteQRs() {
-    var panel = document.getElementById('invite-qrs-panel');
-    var icon = document.getElementById('invite-qrs-icon');
-    var txt = document.getElementById('invite-qrs-txt');
+    var panel = lGet('invite-qrs-panel');
+    var icon = lGet('invite-qrs-icon');
+    var txt = lGet('invite-qrs-txt');
     if (!panel) return;
     if (panel.classList.contains('hidden')) {
         panel.classList.remove('hidden');
@@ -1130,20 +1126,17 @@ function toggleInviteQRs() {
 }
 
 function renderInviteQRs() {
-    var cardEl = document.getElementById('invite-qrs-card');
-    var activeEl = document.getElementById('invite-qrs-grid');
-    
+    var cardEl = lGet('invite-qrs-card');
+    var activeEl = lGet('invite-qrs-grid');
     if (!canEditGroup || !curRoundData || !activeEl) {
-        if (cardEl) cardEl.classList.add('hidden');
+        if (cardEl) { try{ cardEl.classList.add('hidden'); }catch(e){} }
         return;
     }
-
-    if (cardEl) cardEl.classList.remove('hidden');
-    // QR-коды развёрнуты по умолчанию при открытии раунда
-    var panel = document.getElementById('invite-qrs-panel');
+    if (cardEl) { try{ cardEl.classList.remove('hidden'); }catch(e){} }
+    var panel = lGet('invite-qrs-panel');
     if (panel && panel.classList.contains('hidden')) {
-        panel.classList.remove('hidden');
-        var icon = document.getElementById('invite-qrs-icon');
+        try{ panel.classList.remove('hidden'); }catch(e){}
+        var icon = lGet('invite-qrs-icon');
         if (icon) icon.className = 'fas fa-chevron-up';
     }
 
@@ -1244,8 +1237,8 @@ function listenForCallResponses() {
 // РЕЖИМ ПРОСМОТРА (ЗРИТЕЛЬ)
 // ==========================================
 function renderGVPlayers(r) {
-    var el = document.getElementById('gv-players');
-    var scCardEl = document.getElementById('gv-scorecard-card');
+    var el = lGet('gv-players');
+    var scCardEl = lGet('gv-scorecard-card');
     var order = getRoundOrder(r);
     var allPlayers = r.players || {};
     

@@ -62,76 +62,115 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/utils.js?v=32"></script>
 <script>
+function tvGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 function updateClock() {
-    var now = new Date();
-    document.getElementById('tv-clock').textContent = fmtTime(now.getTime());
+    try {
+        var el = tvGet('tv-clock');
+        if (!el) return;
+        if (typeof fmtTime === 'function') el.textContent = fmtTime(new Date().getTime());
+        else el.textContent = new Date().toLocaleTimeString();
+    } catch(e){}
 }
 setInterval(updateClock, 1000);
 updateClock();
 
 function loadTVLeaderboard() {
-    db.ref('rounds').on('value', function(sn) {
-        var data = sn.val() || {};
-        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+    if (typeof db === 'undefined' || !db) { setTimeout(loadTVLeaderboard, 1000); return; }
+    try {
+        db.ref('rounds').on('value', function(sn) {
+            try {
+                var data = (sn && sn.val && sn.val()) || {};
+                var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+                var contentEl = tvGet('tv-content');
+                if (!contentEl) return;
 
-        if (!entries.length) {
-            document.getElementById('tv-content').innerHTML = '<h2 style="text-align:center;color:var(--muted);margin-top:100px;">NO ACTIVE ROUNDS</h2>';
-            return;
-        }
+                if (!entries.length) {
+                    contentEl.innerHTML = '<h2 style="text-align:center;color:var(--muted);margin-top:100px;">NO ACTIVE ROUNDS</h2>';
+                    return;
+                }
 
-        entries.sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
+                entries.sort(function(a, b) { return (b[1].createdAt || 0) - (a[1].createdAt || 0); });
 
-        var html = '';
-        entries.forEach(function(e) {
-            var id = e[0], r = e[1];
-            var isLive = r.status === 'active';
-            var players = r.players || {};
-            var order = holeOrder(r.startHole || 1);
+                var html = '';
+                entries.forEach(function(e) {
+                    var id = e[0], r = e[1];
+                    if (!r) return;
+                    var isLive = r.status === 'active';
+                    var players = r.players || {};
+                    var order = (typeof getRoundOrder === 'function') ? getRoundOrder(r) : ((typeof holeOrder === 'function') ? holeOrder(r.startHole || 1) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);
 
-            var list = Object.entries(players).map(function(pe) {
-                var pid = pe[0], p = pe[1], sc = p.scores || {};
-                var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
-                return { pid: pid, name: p.name, tee: (p && p.tee) || r.tee || 'wh', gross: stats.gross, toPar: stats.toPar, stblField: stats.stablefordField, holesPlayed: stats.holesPlayed, currentHole: stats.currentHole };
-            });
+                    var list = Object.entries(players).map(function(pe) {
+                        var pid = pe[0], p = pe[1] || {}, sc = p.scores || {};
+                        var stats = (typeof calcRoundStats === 'function') ? calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order) : { gross: null, toPar: null, stablefordField: 0, holesPlayed: 0, currentHole: null };
+                        return { pid: pid, name: p.name, tee: (p && p.tee) || r.tee || 'wh', gross: stats.gross, toPar: stats.toPar, stblField: stats.stablefordField, holesPlayed: stats.holesPlayed, currentHole: stats.currentHole };
+                    });
 
-            list.sort(function(a, b) {
-                if (a.toPar === null && b.toPar === null) return 0;
-                if (a.toPar === null) return 1;
-                if (b.toPar === null) return -1;
-                return a.toPar - b.toPar;
-            });
+                    list.sort(function(a, b) {
+                        if (a.toPar === null && b.toPar === null) return 0;
+                        if (a.toPar === null) return 1;
+                        if (b.toPar === null) return -1;
+                        return a.toPar - b.toPar;
+                    });
 
-            var rows = list.map(function(p, i) {
-                var thruTxt = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? 'Hole #' + p.currentHole : '—');
-                var pTeeBadge = '<span class="tee-pill tee-' + p.tee + '" style="font-size:12px;padding:2px 8px;margin-left:8px;vertical-align:middle;">' + (TEES[p.tee] || p.tee) + '</span>';
-                return '<tr><td class="tv-pos">' + (i + 1) + '</td><td class="tv-name">' + escapeHtml(p.name || '—') + pTeeBadge + '</td><td style="color:var(--gold);font-weight:700;">' + thruTxt + '</td><td class="tv-score ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</td><td>' + (p.gross || '—') + '</td><td style="color:var(--gold);font-weight:700;">' + p.stblField + '</td></tr>';
-            }).join('');
+                    var rows = list.map(function(p, i) {
+                        var thruTxt = p.holesPlayed >= 18 ? 'F' : (p.currentHole ? 'Hole #' + p.currentHole : '—');
+                        var teeLabel = (typeof TEES !== 'undefined' && TEES[p.tee]) ? TEES[p.tee] : (p.tee || '');
+                        var pTeeBadge = '<span class="tee-pill tee-' + (p.tee || 'wh') + '" style="font-size:12px;padding:2px 8px;margin-left:8px;vertical-align:middle;">' + teeLabel + '</span>';
+                        var escName = (typeof escapeHtml === 'function') ? escapeHtml(p.name || '—') : (p.name || '—');
+                        var scCls = (typeof scoreClass === 'function') ? scoreClass(p.toPar) : '';
+                        var scTxt = (typeof fmtScore === 'function') ? fmtScore(p.toPar) : (p.toPar != null ? String(p.toPar) : '—');
+                        return '<tr><td class="tv-pos">' + (i + 1) + '</td><td class="tv-name">' + escName + pTeeBadge + '</td><td style="color:var(--gold);font-weight:700;">' + thruTxt + '</td><td class="tv-score ' + scCls + '">' + scTxt + '</td><td>' + (p.gross || '—') + '</td><td style="color:var(--gold);font-weight:700;">' + (p.stblField || 0) + '</td></tr>';
+                    }).join('');
 
-            var badge = isLive ? '<span class="live-badge" style="font-size:16px;padding:6px 18px;"><span class="live-dot"></span> LIVE</span>' : '<span class="tn-status tn-d" style="font-size:16px;padding:6px 18px;">COMPLETED</span>';
+                    var badge = isLive ? '<span class="live-badge" style="font-size:16px;padding:6px 18px;"><span class="live-dot"></span> LIVE</span>' : '<span class="tn-status tn-d" style="font-size:16px;padding:6px 18px;">COMPLETED</span>';
+                    var timeStr = (typeof fmtTime === 'function' && r.startTime) ? fmtTime(r.startTime) : '';
+                    var dateStr = (typeof fmtDate === 'function' && r.createdAt) ? fmtDate(r.createdAt) : '';
+                    var teePills = (typeof fmtRoundTeePills === 'function') ? fmtRoundTeePills(r) : (r.tee || '');
 
-            html += '<div class="tv-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
-                '<div><h2 style="font-family:var(--ff);font-size:32px;color:var(--gold);margin:0;">Pestovo · ' + fmtTime(r.startTime) + '</h2>' +
-                '<div style="font-size:18px;color:var(--muted);margin-top:4px;">' + fmtDate(r.createdAt) + ' · ' + (r.format || 'Stroke') + ' · Tee: ' + fmtRoundTeePills(r) + '</div></div>' + badge + '</div>' +
-                '<table class="tv-table"><thead><tr><th style="width:60px;">POS</th><th style="text-align:left;">PLAYER</th><th>THRU</th><th>TO PAR</th><th>GROSS</th><th>STABLEFORD</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+                    html += '<div class="tv-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+                        '<div><h2 style="font-family:var(--ff);font-size:32px;color:var(--gold);margin:0;">Pestovo · ' + timeStr + '</h2>' +
+                        '<div style="font-size:18px;color:var(--muted);margin-top:4px;">' + dateStr + ' · ' + (r.format || 'Stroke') + ' · Tee: ' + teePills + '</div></div>' + badge + '</div>' +
+                        '<table class="tv-table"><thead><tr><th style="width:60px;">POS</th><th style="text-align:left;">PLAYER</th><th>THRU</th><th>TO PAR</th><th>GROSS</th><th>STABLEFORD</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+                });
+
+                contentEl.innerHTML = html;
+            } catch(err) { console.warn('[TV] render error', err); }
         });
-
-        document.getElementById('tv-content').innerHTML = html;
-    });
+    } catch(err) { console.warn('[TV] load error', err); setTimeout(loadTVLeaderboard, 2000); }
 }
 
 loadTVLeaderboard();
 
-// Auto Scroll for TV
-setInterval(function() {
-    var c = document.getElementById('tv-container');
+// Auto Scroll for TV — RAF + pause on hover
+var tvScrollDir = 1;
+var tvScrollPaused = false;
+var tvScrollRaf = null;
+(function(){
+    var c = tvGet('tv-container');
     if (c) {
-        if (c.scrollTop + c.clientHeight >= c.scrollHeight - 20) {
-            c.scrollTop = 0;
-        } else {
-            c.scrollTop += 2;
-        }
+        c.addEventListener('mouseenter', function(){ tvScrollPaused = true; });
+        c.addEventListener('mouseleave', function(){ tvScrollPaused = false; });
+        c.addEventListener('touchstart', function(){ tvScrollPaused = true; }, {passive:true});
+        c.addEventListener('touchend', function(){ setTimeout(function(){ tvScrollPaused = false; }, 3000); }, {passive:true});
     }
-}, 50);
+    function tick(){
+        try {
+            var cont = tvGet('tv-container');
+            if (cont && !tvScrollPaused) {
+                if (cont.scrollHeight <= cont.clientHeight + 5) {
+                    // no scroll needed
+                } else if (cont.scrollTop + cont.clientHeight >= cont.scrollHeight - 5) {
+                    tvScrollDir = -1;
+                } else if (cont.scrollTop <= 0) {
+                    tvScrollDir = 1;
+                }
+                if (cont.scrollHeight > cont.clientHeight) cont.scrollTop += tvScrollDir * 0.6;
+            }
+        } catch(e){}
+        tvScrollRaf = requestAnimationFrame(tick);
+    }
+    tvScrollRaf = requestAnimationFrame(tick);
+})();
 </script>
 <p class="site-version" style="position:fixed;right:12px;bottom:6px;z-index:5;">Версия сайта: <span class="version-number">1.25.0</span></p>
 </body>

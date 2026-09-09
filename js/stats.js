@@ -5,7 +5,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function onAuthReady(u, d) { navAuth(u, d); }
 
+function safeSetHTML(id, html) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+}
+
 function loadStats() {
+    if (typeof db === 'undefined') {
+        safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-wifi-slash"></i><p>' + (typeof t === 'function' ? t('offline_title') : 'Нет соединения') + '</p></div>');
+        return Promise.resolve();
+    }
     return Promise.all([
         db.ref('rounds').once('value'),
         db.ref('users').once('value')
@@ -44,13 +53,8 @@ function loadStats() {
 
             if (r.status === 'completed') {
                 completed++;
-
                 if (startTS && endTS && endTS > startTS) {
                     var dur = (endTS - startTS) / 60000;
-                    // Рекорд «самый быстрый раунд» учитывается ТОЛЬКО для
-                    // полных 18-луночных раундов (без пропусков) и при
-                    // длительности не менее 45 минут — иначе короткие или
-                    // незавершённые «фантомные» раунды искажали бы рекорд.
                     if (dur >= 45) {
                         Object.entries(roundPlayersForStats).forEach(function(pe) {
                             var p = pe[1];
@@ -60,7 +64,7 @@ function loadStats() {
                             Object.values(sc).forEach(function(s) { if (parseInt(s) >= 1) cnt++; });
                             if (cnt === 18 && dur < fastestTime) {
                                 fastestTime = dur;
-                                fastestPlayer = playerDisplayName(p, pe[0]);
+                                fastestPlayer = (typeof playerDisplayName === 'function' ? playerDisplayName(p, pe[0]) : (p.name || '—'));
                                 fastestHoles = cnt;
                             }
                         });
@@ -83,8 +87,8 @@ function loadStats() {
                     var h = parseInt(se[0]);
                     var s = parseInt(se[1]) || 0;
                     if (s < 1) return;
-
-                    var par = holePar(h);
+                    if (isNaN(h) || h < 1 || h > 18) return;
+                    var par = (typeof holePar === 'function' ? holePar(h) : 4);
                     gross += s;
                     totalHoles++;
                     holesPlayed++;
@@ -100,8 +104,8 @@ function loadStats() {
                     else if (d === -1) birdies++;
                     else if (d === 0) pars++;
 
-                    stblF += stablefordField(s, h, fieldHcp);
-                    stblE += stablefordExact(s, h, exactHcp);
+                    if (typeof stablefordField === 'function') stblF += stablefordField(s, h, fieldHcp);
+                    if (typeof stablefordExact === 'function') stblE += stablefordExact(s, h, exactHcp);
                 });
 
                 totalStblFieldSum += stblF;
@@ -110,11 +114,11 @@ function loadStats() {
                 if (holesPlayed === 18) {
                     if (gross > 0 && gross < bestGross) {
                         bestGross = gross;
-                        bestGrossPlayer = playerDisplayName(p, pid);
+                        bestGrossPlayer = (typeof playerDisplayName === 'function' ? playerDisplayName(p, pid) : (p.name || '—'));
                     }
                     if (stblF > bestStableford) {
                         bestStableford = stblF;
-                        bestStablefordPlayer = playerDisplayName(p, pid);
+                        bestStablefordPlayer = (typeof playerDisplayName === 'function' ? playerDisplayName(p, pid) : (p.name || '—'));
                     }
                 }
 
@@ -129,8 +133,9 @@ function loadStats() {
             });
         });
 
-        var hourUnit = currentLang === 'en' ? 'h ' : 'ч ';
-        var minUnit = currentLang === 'en' ? 'm' : 'м';
+        var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+        var hourUnit = langIsEn ? 'h ' : 'ч ';
+        var minUnit = langIsEn ? 'm' : 'м';
         var fastestStr = '—';
 
         if (fastestTime < Infinity) {
@@ -141,20 +146,17 @@ function loadStats() {
             } else {
                 fastestStr = Math.max(1, Math.round(fastestTime)) + minUnit;
             }
-            // fastestHoles всегда = 18: рекорд показывается только для полных
-            // 18-луночных раундов длительностью ≥ 45 мин (см. логику выше).
         }
 
-        var lTotalRounds = currentLang === 'en' ? 'Total Rounds' : 'Всего раундов';
-        var lActiveRounds = currentLang === 'en' ? 'Active Rounds' : 'Активных';
-        var lCompletedRounds = currentLang === 'en' ? 'Completed' : 'Завершено';
-        var lPlayers = currentLang === 'en' ? 'Players' : 'Игроков';
-        var lSolo = currentLang === 'en' ? 'Solo Rounds' : 'Одиночных';
-        var lGroup = currentLang === 'en' ? 'Group Rounds' : 'Групповых';
-        var lHoles = currentLang === 'en' ? 'Holes Played' : 'Лунок сыграно';
+        var lTotalRounds = langIsEn ? 'Total Rounds' : 'Всего раундов';
+        var lActiveRounds = langIsEn ? 'Active Rounds' : 'Активных';
+        var lCompletedRounds = langIsEn ? 'Completed' : 'Завершено';
+        var lPlayers = langIsEn ? 'Players' : 'Игроков';
+        var lSolo = langIsEn ? 'Solo Rounds' : 'Одиночных';
+        var lGroup = langIsEn ? 'Group Rounds' : 'Групповых';
+        var lHoles = langIsEn ? 'Holes Played' : 'Лунок сыграно';
 
-        // Общая статистика
-        document.getElementById('general-stats').innerHTML =
+        safeSetHTML('general-stats',
             '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + totalRounds + '</div><div class="stat-l">' + lTotalRounds + '</div></div>' +
             '<div class="stat"><i class="fas fa-circle-play"></i><div class="stat-n">' + active + '</div><div class="stat-l">' + lActiveRounds + '</div></div>' +
             '<div class="stat"><i class="fas fa-check-circle"></i><div class="stat-n">' + completed + '</div><div class="stat-l">' + lCompletedRounds + '</div></div>' +
@@ -164,11 +166,8 @@ function loadStats() {
             '<div class="stat"><i class="fas fa-fire"></i><div class="stat-n">' + birdies + '</div><div class="stat-l">Birdies</div></div>' +
             '<div class="stat"><i class="fas fa-bolt"></i><div class="stat-n">' + eagles + '</div><div class="stat-l">Eagles</div></div>' +
             '<div class="stat"><i class="fas fa-circle-dot"></i><div class="stat-n">' + hio + '</div><div class="stat-l">Hole-in-One</div></div>' +
-            '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHoles + '</div><div class="stat-l">' + lHoles + '</div></div>';
+            '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHoles + '</div><div class="stat-l">' + lHoles + '</div></div>');
 
-        // Топ игроков (только полные раунды 18 лунок).
-        // Сортировка по СРЕДНЕМУ GROSS по возрастанию: чем меньше ударов,
-        // тем лучше (без учёта HCP). 60 ударов — лучше, чем 75.
         var sortedByAvg = Object.values(playerRounds).map(function(p) {
             return {
                 pid: p.pid, name: p.name,
@@ -177,75 +176,72 @@ function loadStats() {
                 avgStbl: p.totalStbl / p.count
             };
         }).sort(function(a, b) {
-            if (a.avg !== b.avg) return a.avg - b.avg;      // меньше gross — выше место
-            if (a.avgStbl !== b.avgStbl) return b.avgStbl - a.avgStbl; // при равенстве — больше Stableford
+            if (a.avg !== b.avg) return a.avg - b.avg;
+            if (a.avgStbl !== b.avgStbl) return b.avgStbl - a.avgStbl;
             return b.count - a.count;
         });
         var topEl = document.getElementById('top-players');
 
-        if (sortedByAvg.length === 0) {
-            topEl.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>' + (currentLang === 'en' ? 'No completed 18-hole rounds yet' : 'Нет завершённых раундов (18 лунок)') + '</p></div>';
-        } else {
-            var thtml = '';
-            var avgWord = currentLang === 'en' ? 'Avg: ' : 'Средний: ';
-            var isEn = currentLang === 'en';
-
-            function fullRoundsLabel(n) {
-                if (isEn) return n === 1 ? 'full round' : 'full rounds';
-                var mod10 = n % 10, mod100 = n % 100;
-                if (mod10 === 1 && mod100 !== 11) return 'полный раунд';
-                if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'полных раунда';
-                return 'полных раундов';
+        if (topEl) {
+            if (sortedByAvg.length === 0) {
+                topEl.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>' + (langIsEn ? 'No completed 18-hole rounds yet' : 'Нет завершённых раундов (18 лунок)') + '</p></div>';
+            } else {
+                var thtml = '';
+                var avgWord = langIsEn ? 'Avg: ' : 'Средний: ';
+                function fullRoundsLabel(n) {
+                    if (langIsEn) return n === 1 ? 'full round' : 'full rounds';
+                    var mod10 = n % 10, mod100 = n % 100;
+                    if (mod10 === 1 && mod100 !== 11) return 'полный раунд';
+                    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'полных раунда';
+                    return 'полных раундов';
+                }
+                sortedByAvg.slice(0, 10).forEach(function(p, i) {
+                    var place = i + 1;
+                    var placeLabel = langIsEn
+                        ? (i === 0 ? '1st place' : i === 1 ? '2nd place' : i === 2 ? '3rd place' : place + 'th place')
+                        : place + ' место';
+                    var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+                    var displayName = (typeof privacyDisplayName === 'function' ? privacyDisplayName(p, p.pid) : (p.name || '—'));
+                    thtml += '<div class="list-item">' +
+                        '<span><strong style="color:var(--white);">' + medal + (medal ? ' ' : '') + placeLabel + ' ' + (typeof escapeHtml === 'function' ? escapeHtml(displayName) : displayName) + '</strong></span>' +
+                        '<span>' + avgWord + '<b style="color:var(--gold);">' + p.avg.toFixed(1) + '</b> · Stableford: <b style="color:var(--gold);">' + p.avgStbl.toFixed(1) + '</b> · ' + p.count + ' ' + fullRoundsLabel(p.count) + '</span>' +
+                        '</div>';
+                });
+                topEl.innerHTML = thtml;
             }
-
-            sortedByAvg.slice(0, 10).forEach(function(p, i) {
-                var place = i + 1;
-                var placeLabel = isEn
-                    ? (i === 0 ? '1st place' : i === 1 ? '2nd place' : i === 2 ? '3rd place' : place + 'th place')
-                    : place + ' место';
-                var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
-                thtml += '<div class="list-item">' +
-                    '<span><strong style="color:var(--white);">' + medal + (medal ? ' ' : '') + placeLabel + ' ' + escapeHtml(privacyDisplayName(p, p.pid)) + '</strong></span>' +
-                    '<span>' + avgWord + '<b style="color:var(--gold);">' + p.avg.toFixed(1) + '</b> · Stableford: <b style="color:var(--gold);">' + p.avgStbl.toFixed(1) + '</b> · ' + p.count + ' ' + fullRoundsLabel(p.count) + '</span>' +
-                    '</div>';
-            });
-            topEl.innerHTML = thtml;
         }
 
-        var lBestGross18 = currentLang === 'en' ? '🏆 Best Gross (18 holes)' : '🏆 Лучший gross (18 лунок)';
-        var lBestStbl18 = currentLang === 'en' ? '⭐ Best Stableford (18 holes)' : '⭐ Лучший stableford (18 лунок)';
-        var lFastest18 = currentLang === 'en' ? '⏱️ Fastest Round (18 holes)' : '⏱️ Самый быстрый раунд (18 лунок)';
+        var lBestGross18 = langIsEn ? '🏆 Best Gross (18 holes)' : '🏆 Лучший gross (18 лунок)';
+        var lBestStbl18 = langIsEn ? '⭐ Best Stableford (18 holes)' : '⭐ Лучший stableford (18 лунок)';
+        var lFastest18 = langIsEn ? '⏱️ Fastest Round (18 holes)' : '⏱️ Самый быстрый раунд (18 лунок)';
 
-        // Рекорды клуба (только 18 лунок)
-        document.getElementById('club-records').innerHTML =
+        safeSetHTML('club-records',
             '<div class="list-item"><span>' + lBestGross18 + '</span>' +
-            '<strong>' + (bestGross < Infinity ? bestGross + ' (' + bestGrossPlayer + ')' : '—') + '</strong></div>' +
+            '<strong>' + (bestGross < Infinity ? bestGross + ' (' + (typeof escapeHtml === 'function' ? escapeHtml(bestGrossPlayer) : bestGrossPlayer) + ')' : '—') + '</strong></div>' +
             '<div class="list-item"><span>' + lBestStbl18 + '</span>' +
-            '<strong>' + (bestStableford > 0 ? bestStableford + ' (' + bestStablefordPlayer + ')' : '—') + '</strong></div>' +
+            '<strong>' + (bestStableford > 0 ? bestStableford + ' (' + (typeof escapeHtml === 'function' ? escapeHtml(bestStablefordPlayer) : bestStablefordPlayer) + ')' : '—') + '</strong></div>' +
             '<div class="list-item"><span>' + lFastest18 + '</span>' +
-            '<strong>' + fastestStr + (fastestPlayer !== '—' ? ' (' + escapeHtml(fastestPlayer) + ')' : '') + '</strong></div>' +
+            '<strong>' + fastestStr + (fastestPlayer !== '—' ? ' (' + (typeof escapeHtml === 'function' ? escapeHtml(fastestPlayer) : fastestPlayer) + ')' : '') + '</strong></div>' +
             '<div class="list-item"><span>🎯 Hole-in-One</span><strong>' + hio + '</strong></div>' +
             '<div class="list-item"><span>🦅 Eagles</span><strong>' + eagles + '</strong></div>' +
             '<div class="list-item"><span>🐦 Birdies</span><strong>' + birdies + '</strong></div>' +
-            '<div class="list-item"><span>✅ Pars</span><strong>' + pars + '</strong></div>';
+            '<div class="list-item"><span>✅ Pars</span><strong>' + pars + '</strong></div>');
 
-        // Сложность лунок (100% без скролла вбок)
-        var holeHeader = t('hole');
-        var parHeader = t('par');
-        var avgHeader = currentLang === 'en' ? 'Average' : 'Средний';
-        var isEn = currentLang === 'en';
+        var holeHeader = (typeof t === 'function' ? t('hole') : 'Hole');
+        var parHeader = (typeof t === 'function' ? t('par') : 'Par');
+        var avgHeader = langIsEn ? 'Average' : 'Средний';
 
         var pOut = 0, pIn = 0;
         var sumOut = 0, countOut = 0;
         var sumIn = 0, countIn = 0;
 
         for (var h = 1; h <= 9; h++) {
-            pOut += holePar(h);
+            pOut += (typeof holePar === 'function' ? holePar(h) : 4);
             var hs = holeScores[h];
             if (hs && hs.count > 0) { sumOut += hs.sum; countOut += hs.count; }
         }
         for (var h = 10; h <= 18; h++) {
-            pIn += holePar(h);
+            pIn += (typeof holePar === 'function' ? holePar(h) : 4);
             var hs = holeScores[h];
             if (hs && hs.count > 0) { sumIn += hs.sum; countIn += hs.count; }
         }
@@ -255,18 +251,12 @@ function loadStats() {
 
         var hHtml = '<div class="pestovo-modern-scorecard" style="margin-bottom:12px;padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
         hHtml += '<div class="msc-tile-grid msc-grid-9">';
-
-        // Header Row
-        hHtml += '<div class="msc-tile msc-hdr-lbl">' + (isEn ? 'Hole' : 'Лунка') + '</div>';
+        hHtml += '<div class="msc-tile msc-hdr-lbl">' + (langIsEn ? 'Hole' : 'Лунка') + '</div>';
         for (var h = 1; h <= 9; h++) hHtml += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
         hHtml += '<div class="msc-tile msc-hdr-tot">OUT</div>';
-
-        // Par Row
         hHtml += '<div class="msc-tile msc-lbl-par">' + parHeader + '</div>';
-        for (var h = 1; h <= 9; h++) hHtml += '<div class="msc-tile msc-val-par">' + holePar(h) + '</div>';
+        for (var h = 1; h <= 9; h++) hHtml += '<div class="msc-tile msc-val-par">' + (typeof holePar === 'function' ? holePar(h) : 4) + '</div>';
         hHtml += '<div class="msc-tile msc-tot-par">' + pOut + '</div>';
-
-        // Avg Row
         hHtml += '<div class="msc-tile msc-lbl-wh">' + avgHeader + '</div>';
         for (var h = 1; h <= 9; h++) {
             var hs = holeScores[h];
@@ -275,15 +265,13 @@ function loadStats() {
         }
         var avgOutStr = (countOut > 0) ? (sumOut / (countOut / 9)).toFixed(1) : '—';
         hHtml += '<div class="msc-tile msc-tot-wh">' + avgOutStr + '</div>';
-
-        // Diff Row (±Par)
         hHtml += '<div class="msc-tile msc-lbl-idx">±Par</div>';
         for (var h = 1; h <= 9; h++) {
             var hs = holeScores[h];
             if (!hs || hs.count === 0) {
                 hHtml += '<div class="msc-tile msc-val-idx">—</div>';
             } else {
-                var diff = (hs.sum / hs.count) - holePar(h);
+                var diff = (hs.sum / hs.count) - (typeof holePar === 'function' ? holePar(h) : 4);
                 var diffStr = (diff > 0 ? '+' : '') + diff.toFixed(1);
                 var colorStyle = diff > 0.3 ? 'color:#e74c3c;font-weight:800;' : diff < -0.1 ? 'color:#2ecc71;font-weight:800;' : 'color:var(--white);';
                 hHtml += '<div class="msc-tile msc-val-idx" style="' + colorStyle + '">' + diffStr + '</div>';
@@ -292,26 +280,18 @@ function loadStats() {
         var diffOutStr = diffOut !== null ? (diffOut > 0 ? '+' : '') + diffOut.toFixed(1) : '—';
         var colorOutStyle = (diffOut !== null && diffOut > 0) ? 'color:#e74c3c;font-weight:800;' : 'color:#2ecc71;font-weight:800;';
         hHtml += '<div class="msc-tile msc-tot-idx" style="' + colorOutStyle + '">' + diffOutStr + '</div>';
-
         hHtml += '</div></div>';
 
-        // Back 9 (IN & TOTAL)
         hHtml += '<div class="pestovo-modern-scorecard" style="padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
         hHtml += '<div class="msc-tile-grid msc-grid-10">';
-
-        // Header Row
-        hHtml += '<div class="msc-tile msc-hdr-lbl">' + (isEn ? 'Hole' : 'Лунка') + '</div>';
+        hHtml += '<div class="msc-tile msc-hdr-lbl">' + (langIsEn ? 'Hole' : 'Лунка') + '</div>';
         for (var h = 10; h <= 18; h++) hHtml += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
         hHtml += '<div class="msc-tile msc-hdr-tot">IN</div>';
-        hHtml += '<div class="msc-tile msc-hdr-tot" style="background:var(--gold);color:var(--bg);">' + (isEn ? 'TOT' : 'ВСЕГО') + '</div>';
-
-        // Par Row
+        hHtml += '<div class="msc-tile msc-hdr-tot" style="background:var(--gold);color:var(--bg);">' + (langIsEn ? 'TOT' : 'ВСЕГО') + '</div>';
         hHtml += '<div class="msc-tile msc-lbl-par">' + parHeader + '</div>';
-        for (var h = 10; h <= 18; h++) hHtml += '<div class="msc-tile msc-val-par">' + holePar(h) + '</div>';
+        for (var h = 10; h <= 18; h++) hHtml += '<div class="msc-tile msc-val-par">' + (typeof holePar === 'function' ? holePar(h) : 4) + '</div>';
         hHtml += '<div class="msc-tile msc-tot-par">' + pIn + '</div>';
         hHtml += '<div class="msc-tile msc-tot-par" style="font-weight:900;">' + (pOut + pIn) + '</div>';
-
-        // Avg Row
         hHtml += '<div class="msc-tile msc-lbl-wh">' + avgHeader + '</div>';
         for (var h = 10; h <= 18; h++) {
             var hs = holeScores[h];
@@ -322,15 +302,13 @@ function loadStats() {
         hHtml += '<div class="msc-tile msc-tot-wh">' + avgInStr + '</div>';
         var totAvgStr = (countOut > 0 && countIn > 0) ? ((sumOut / (countOut / 9)) + (sumIn / (countIn / 9))).toFixed(1) : '—';
         hHtml += '<div class="msc-tile msc-tot-wh" style="font-weight:900;">' + totAvgStr + '</div>';
-
-        // Diff Row (±Par)
         hHtml += '<div class="msc-tile msc-lbl-idx">±Par</div>';
         for (var h = 10; h <= 18; h++) {
             var hs = holeScores[h];
             if (!hs || hs.count === 0) {
                 hHtml += '<div class="msc-tile msc-val-idx">—</div>';
             } else {
-                var diff = (hs.sum / hs.count) - holePar(h);
+                var diff = (hs.sum / hs.count) - (typeof holePar === 'function' ? holePar(h) : 4);
                 var diffStr = (diff > 0 ? '+' : '') + diff.toFixed(1);
                 var colorStyle = diff > 0.3 ? 'color:#e74c3c;font-weight:800;' : diff < -0.1 ? 'color:#2ecc71;font-weight:800;' : 'color:var(--white);';
                 hHtml += '<div class="msc-tile msc-val-idx" style="' + colorStyle + '">' + diffStr + '</div>';
@@ -339,13 +317,14 @@ function loadStats() {
         var diffInStr = diffIn !== null ? (diffIn > 0 ? '+' : '') + diffIn.toFixed(1) : '—';
         var colorInStyle = (diffIn !== null && diffIn > 0) ? 'color:#e74c3c;font-weight:800;' : 'color:#2ecc71;font-weight:800;';
         hHtml += '<div class="msc-tile msc-tot-idx" style="' + colorInStyle + '">' + diffInStr + '</div>';
-
         var totDiff = (diffOut !== null && diffIn !== null) ? (diffOut + diffIn) : null;
         var totDiffStr = totDiff !== null ? (totDiff > 0 ? '+' : '') + totDiff.toFixed(1) : '—';
         var colorTotStyle = (totDiff !== null && totDiff > 0) ? 'color:#e74c3c;font-weight:900;' : 'color:#2ecc71;font-weight:900;';
         hHtml += '<div class="msc-tile msc-tot-idx" style="' + colorTotStyle + '">' + totDiffStr + '</div>';
-
         hHtml += '</div></div>';
-        document.getElementById('hole-difficulty').innerHTML = hHtml;
+        safeSetHTML('hole-difficulty', hHtml);
+    }).catch(function(err){
+        console.error('[stats] load failed', err);
+        safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-triangle-exclamation"></i><p>Ошибка загрузки статистики</p></div>');
     });
 }

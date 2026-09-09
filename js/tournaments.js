@@ -1,11 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() { initNav(); loadTournaments(); });
 function onAuthReady(u, d) { navAuth(u, d); loadTournaments(); }
 
+function tGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 function loadTournaments() {
+    if (typeof db === 'undefined' || !db) return;
+    if (typeof bindRealtimeValue !== 'function') return;
     bindRealtimeValue('tournaments-list', db.ref('tournaments'), function(sn) {
-        var data = sn.val() || {};
+        var data = (sn && sn.val && sn.val()) || {};
         var entries = Object.entries(data);
-        var el = document.getElementById('tn-list');
+        var el = tGet('tn-list');
         if (!el) return;
 
         if (!entries.length) {
@@ -63,9 +66,16 @@ function loadTournaments() {
                 var seenFio = {};
                 var finalReg = [];
                 Object.entries(regPlayers).forEach(function(pe){
-                    var rpid = pe[0], rp = pe[1];
-                    if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(null, rp && rp.name)) return;
-                    var fioKey = (typeof getPlayerFioKey === 'function') ? getPlayerFioKey({name: rp.name, firstName: rp.name.split(' ')[0], lastName: rp.name.split(' ').slice(1).join(' ')}) : (rp.name||'').toLowerCase();
+                    var rpid = pe[0], rp = pe[1] || {};
+                    if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(null, rp && rp.name)) return; } catch(e){} }
+                    var fioKey;
+                    try {
+                        if (typeof getPlayerFioKey === 'function') {
+                            fioKey = getPlayerFioKey({name: rp.name || '', firstName: rp.firstName || (rp.name||'').split(' ')[0] || '', lastName: rp.lastName || (rp.name||'').split(' ').slice(1).join(' ') || '', middleName: rp.middleName || ''});
+                        } else {
+                            fioKey = (rp.name||'').toLowerCase();
+                        }
+                    } catch(e){ fioKey = (rp.name||'').toLowerCase(); }
                     if (seenFio[fioKey]) return;
                     seenFio[fioKey]=true;
                     finalReg.push({ rp: rp, pid: rpid });
@@ -89,8 +99,8 @@ function loadTournaments() {
 }
 
 function toggleRosterPanel(tnId) {
-    var panel = document.getElementById('roster-' + tnId);
-    if (panel) panel.classList.toggle('hidden');
+    var panel = tGet('roster-' + tnId);
+    if (panel) { try { panel.classList.toggle('hidden'); } catch(e){} }
 }
 
 function openTournamentRegModal(tnId) {
@@ -104,24 +114,27 @@ function openTournamentRegModal(tnId) {
         var tVal = sn.val();
         if (!tVal) return;
 
-        var modalEl = document.getElementById('reg-tn-modal');
+        var modalEl = tGet('reg-tn-modal');
         if (!modalEl) {
-            modalEl = document.createElement('div');
-            modalEl.id = 'reg-tn-modal';
-            modalEl.className = 'modal hidden';
-            modalEl.innerHTML =
-                '<div class="modal-bg" onclick="closeRegTnModal()"></div>' +
-                '<div class="modal-body" style="max-width:480px;text-align:center;">' +
-                '<div class="modal-top-bar">' +
-                '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeRegTnModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
-                '<button type="button" class="modal-close-btn" onclick="closeRegTnModal()">&times;</button>' +
-                '</div>' +
-                '<div id="reg-tn-modal-body"></div>' +
-                '</div>';
-            if (document.body) document.body.appendChild(modalEl);
+            try {
+                modalEl = document.createElement('div');
+                modalEl.id = 'reg-tn-modal';
+                modalEl.className = 'modal hidden';
+                var backTxt = (typeof t === 'function') ? t('back_btn') : 'Back';
+                modalEl.innerHTML =
+                    '<div class="modal-bg" onclick="closeRegTnModal()"></div>' +
+                    '<div class="modal-body" style="max-width:480px;text-align:center;">' +
+                    '<div class="modal-top-bar">' +
+                    '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeRegTnModal()"><i class="fas fa-arrow-left"></i> <span>' + backTxt + '</span></button>' +
+                    '<button type="button" class="modal-close-btn" onclick="closeRegTnModal()">&times;</button>' +
+                    '</div>' +
+                    '<div id="reg-tn-modal-body"></div>' +
+                    '</div>';
+                if (document.body) document.body.appendChild(modalEl);
+            } catch(e){ return; }
         }
 
-        var bodyEl = document.getElementById('reg-tn-modal-body');
+        var bodyEl = tGet('reg-tn-modal-body');
         var allowedTees = tVal.tees || ['wh'];
         var defaultTee = (currentUserData && currentUserData.defaultTee) || allowedTees[0];
 

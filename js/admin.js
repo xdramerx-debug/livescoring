@@ -276,6 +276,32 @@ function openAdminPanel() {
     loadAdmRounds();
     loadAdmGroups();
     loadAdmPlayers();
+    if (typeof initPlayerSearchAutofill === 'function' && document.getElementById('adm-new-name') && !window._pestovoAdmNameAutofill) {
+        window._pestovoAdmNameAutofill = true;
+        initPlayerSearchAutofill({
+            searchInputId: 'adm-new-name',
+            onSelect: function(matchedUser) {
+                var nameInp = document.getElementById('adm-new-name');
+                var hcpInp = document.getElementById('adm-new-hcp');
+                var genderSel = document.getElementById('adm-new-gender');
+                var teeSel = document.getElementById('adm-new-tee');
+                var parts = (typeof resolvePlayerNameParts === 'function')
+                    ? resolvePlayerNameParts(matchedUser)
+                    : matchedUser;
+                if (nameInp) {
+                    nameInp.value = ((parts.firstName || '') + ' ' + (parts.lastName || '')).trim() || matchedUser.name || '';
+                }
+                if (hcpInp && matchedUser.handicap != null && typeof fmtExactHcp === 'function') {
+                    hcpInp.value = fmtExactHcp(matchedUser.handicap);
+                }
+                if (genderSel && matchedUser.gender) genderSel.value = matchedUser.gender;
+                if (teeSel) {
+                    if (matchedUser.defaultTee) teeSel.value = matchedUser.defaultTee;
+                    else if (matchedUser.gender === 'women') teeSel.value = 'rd';
+                }
+            }
+        });
+    }
     loadTournaments();
     loadClubBroadcastsHistory();
     listenForAlerts();

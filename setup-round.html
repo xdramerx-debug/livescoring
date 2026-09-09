@@ -74,6 +74,31 @@
             .mode-toggle-btn { font-size: 12.5px; padding: 12px 6px; gap: 6px; }
             .mode-toggle-btn i { font-size: 13px; }
         }
+        .round-event-banner {
+            padding: calc(var(--nav-h, 70px) + 18px) 0 14px;
+            background: linear-gradient(180deg, rgba(201,168,76,0.16), transparent);
+            border-bottom: 1px solid rgba(201,168,76,0.28);
+        }
+        .round-event-kicker {
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--gold);
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        .round-event-title {
+            margin: 0;
+            font-size: 22px;
+            color: var(--white);
+            font-weight: 800;
+        }
+        .round-event-sub {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        body.round-active .round-event-banner:not(.hidden) { display: block; }
     </style>
 </head>
 <body>
@@ -110,6 +135,14 @@
     <div class="container">
         <h1 class="page-title" id="page-title" data-i18n="page_title_live">Начать раунд</h1>
         <p class="page-sub" id="page-sub" data-i18n="page_sub_live">Одиночный или групповой раунд — переключайте вкладки</p>
+    </div>
+</div>
+
+<div class="round-event-banner hidden" id="round-event-banner">
+    <div class="container">
+        <div class="round-event-kicker"><i class="fas fa-trophy"></i> <span data-i18n="sec_active_tournament">Активный турнир</span></div>
+        <h2 class="round-event-title" id="round-event-title"></h2>
+        <p class="round-event-sub" id="round-event-sub"></p>
     </div>
 </div>
 
@@ -538,7 +571,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.41.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.42.0</span></p>
         </div>
     </div>
 </footer>
@@ -547,9 +580,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=43"></script>
-<script src="js/live.js?v=24"></script>
-<script src="js/solo.js?v=24"></script>
+<script src="js/utils.js?v=44"></script>
+<script src="js/live.js?v=25"></script>
+<script src="js/solo.js?v=25"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>
 </html>

@@ -436,6 +436,74 @@ function psRender() {
     html += psRenderSavedCard();
     root.innerHTML = html;
     psRenderExcelBox();
+    psAttachPlayerAutofill();
+}
+
+function psFillFromMatchedUser(matchedUser, lastId, firstId, midId, hcpId, genderId, teeId) {
+    if (!matchedUser) return;
+    var parts = (typeof resolvePlayerNameParts === 'function')
+        ? resolvePlayerNameParts(matchedUser)
+        : matchedUser;
+    var lastEl = lastId ? psEl(lastId) : null;
+    var firstEl = firstId ? psEl(firstId) : null;
+    var midEl = midId ? psEl(midId) : null;
+    var hcpEl = hcpId ? psEl(hcpId) : null;
+    var gEl = genderId ? psEl(genderId) : null;
+    var tEl = teeId ? psEl(teeId) : null;
+    if (lastEl) lastEl.value = parts.lastName || '';
+    if (firstEl) firstEl.value = parts.firstName || '';
+    if (midEl) midEl.value = parts.middleName || '';
+    if (hcpEl && matchedUser.handicap != null) {
+        hcpEl.value = (typeof fmtExactHcp === 'function') ? fmtExactHcp(matchedUser.handicap) : String(matchedUser.handicap);
+    }
+    if (gEl && matchedUser.gender) gEl.value = matchedUser.gender;
+    if (tEl) {
+        if (matchedUser.defaultTee) tEl.value = matchedUser.defaultTee;
+        else if (matchedUser.gender === 'women') tEl.value = 'rd';
+    }
+}
+
+function psAttachPlayerAutofill() {
+    if (typeof initPlayerSearchAutofill !== 'function') return;
+    ['ps-m-last', 'ps-m-first', 'ps-m-mid'].forEach(function(id) {
+        if (!psEl(id)) return;
+        initPlayerSearchAutofill({
+            searchInputId: id,
+            onSelect: function(matchedUser) {
+                psFillFromMatchedUser(matchedUser, 'ps-m-last', 'ps-m-first', 'ps-m-mid', 'ps-m-hcp', 'ps-m-gender', 'ps-m-tee');
+            }
+        });
+    });
+    var groups = psState.groups || [];
+    groups.forEach(function(_, gi) {
+        var fioId = 'ps-ga-fio-' + gi;
+        if (!psEl(fioId)) return;
+        initPlayerSearchAutofill({
+            searchInputId: fioId,
+            onSelect: function(matchedUser) {
+                var parts = (typeof resolvePlayerNameParts === 'function')
+                    ? resolvePlayerNameParts(matchedUser)
+                    : matchedUser;
+                var fioEl = psEl(fioId);
+                if (fioEl) {
+                    var rus = [parts.lastName, parts.firstName, parts.middleName]
+                        .filter(function(w) { return String(w || '').trim(); }).join(' ');
+                    fioEl.value = rus || matchedUser.name || '';
+                }
+                var hcpEl = psEl('ps-ga-hcp-' + gi);
+                if (hcpEl && matchedUser.handicap != null) {
+                    hcpEl.value = (typeof fmtExactHcp === 'function') ? fmtExactHcp(matchedUser.handicap) : String(matchedUser.handicap);
+                }
+                var gEl = psEl('ps-ga-gender-' + gi);
+                if (gEl && matchedUser.gender) gEl.value = matchedUser.gender;
+                var tEl = psEl('ps-ga-tee-' + gi);
+                if (tEl) {
+                    if (matchedUser.defaultTee) tEl.value = matchedUser.defaultTee;
+                    else if (matchedUser.gender === 'women') tEl.value = 'rd';
+                }
+            }
+        });
+    });
 }
 
 function psRenderHelpCard() {
@@ -2485,6 +2553,7 @@ function psSaveProtocol() {
             participantsList: participants,
             status: 'active',
             tournamentId: proto.tournamentId,
+            tournamentName: proto.tournamentName || '',
             protocolId: pid,
             protocolName: proto.name || '',
             groupNo: gi + 1,
@@ -2766,6 +2835,7 @@ function psSaveEdits() {
             participantsList: participants,
             status: 'active',
             tournamentId: proto.tournamentId,
+            tournamentName: proto.tournamentName || '',
             protocolId: pid,
             protocolName: proto.name || '',
             groupNo: 0, // проставим после создания
@@ -2888,12 +2958,14 @@ function psSaveEdits() {
                 sets['rounds/' + rid + '/startTime'] = g.startTime;
                 sets['rounds/' + rid + '/groupNo'] = giNum;
                 sets['rounds/' + rid + '/protocolName'] = proto.name || '';
+                sets['rounds/' + rid + '/tournamentName'] = proto.tournamentName || '';
                 // Если раунд был удалён/повреждён вне редактора — восстанавливаем его полностью
                 if (!oldRound || !oldRound.players || !oldRound.mode) {
                     sets['rounds/' + rid + '/mode'] = 'group';
                     sets['rounds/' + rid + '/holeRange'] = '1-18';
                     sets['rounds/' + rid + '/status'] = 'active';
                     sets['rounds/' + rid + '/tournamentId'] = proto.tournamentId;
+                    sets['rounds/' + rid + '/tournamentName'] = proto.tournamentName || '';
                     sets['rounds/' + rid + '/protocolId'] = pid;
                     sets['rounds/' + rid + '/accessKey'] = 'protocol_' + pid + '_' + (giNum - 1);
                     if (!oldRound || !oldRound.createdAt) sets['rounds/' + rid + '/createdAt'] = Date.now();

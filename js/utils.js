@@ -482,6 +482,7 @@ var I18N = {
         btn_start_game: 'Начать игру',
         btn_view_scores: 'Все раунды',
         sec_now_playing: 'Сейчас на поле',
+        sec_active_tournament: 'Активный турнир',
         sec_my_active: 'Мои активные раунды',
         continue_round: 'Продолжить игру',
         sec_club_stats: 'Клуб в цифрах',
@@ -959,6 +960,7 @@ var I18N = {
         btn_start_game: 'Start Game',
         btn_view_scores: 'All Rounds',
         sec_now_playing: 'Currently Playing',
+        sec_active_tournament: 'Active tournament',
         sec_my_active: 'My Active Rounds',
         continue_round: 'Continue Playing',
         sec_club_stats: 'Club Statistics',
@@ -8278,4 +8280,48 @@ function tnTournamentFieldHcp(exactHcp, teeCode, gender, cut) {
         try { return getFieldHcp(eff, teeCode || 'wh', gender || 'men'); } catch (e) {}
     }
     return Math.round(eff || 0);
+}
+
+// Название турнира для баннера и главной. Протокол хранит «Кубок · старт» в protocolName —
+// суффикс старта убираем, чтобы на карточке и главной было имя турнира.
+function roundTournamentName(r) {
+    if (!r || typeof r !== 'object') return '';
+    var name = String(r.tournamentName || '').trim();
+    if (!name) {
+        var proto = String(r.protocolName || '').trim();
+        if (proto) name = proto.replace(/\s*[·•]\s*(старт|start)\s*$/i, '').trim();
+    }
+    return name;
+}
+
+function isTournamentRound(r) {
+    if (!r || typeof r !== 'object') return false;
+    if (r.tournamentId || r.protocolId) return true;
+    return !!roundTournamentName(r);
+}
+
+function updateRoundEventBanner(roundData) {
+    var banner = (typeof document !== 'undefined') ? document.getElementById('round-event-banner') : null;
+    if (!banner) return;
+    var name = roundTournamentName(roundData);
+    if (!name) {
+        banner.classList.add('hidden');
+        return;
+    }
+    banner.classList.remove('hidden');
+    var title = document.getElementById('round-event-title');
+    var sub = document.getElementById('round-event-sub');
+    if (title) title.textContent = name;
+    if (sub) {
+        var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+        var bits = [];
+        if (roundData && roundData.groupNo) bits.push((isEn ? 'Group ' : 'Группа ') + roundData.groupNo);
+        if (roundData && roundData.format) bits.push(roundData.format);
+        sub.textContent = bits.join(' · ');
+    }
+}
+if (typeof window !== 'undefined') {
+    window.roundTournamentName = roundTournamentName;
+    window.isTournamentRound = isTournamentRound;
+    window.updateRoundEventBanner = updateRoundEventBanner;
 }

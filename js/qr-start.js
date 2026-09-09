@@ -161,7 +161,7 @@ function qrRender(doc) {
                     ? '📱 Моя карточка — свой счёт и счёт маркируемого партнёра'
                     : '📱 Моя карточка — ввод счёта') +
                 '</div>' +
-                '<img src="' + qrUrl(scoreUrl) + '" alt="QR"><div class="qr-url">' + qrEsc(scoreUrl) + '</div></div>';
+                '<img loading="lazy" decoding="async" src="' + qrUrl(scoreUrl) + '" alt="QR"><div class="qr-url">' + qrEsc(scoreUrl) + '</div></div>';
             cardsHtml += '</div>';
 
             var memberNames = members.map(function(m) {

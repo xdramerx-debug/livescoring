@@ -745,6 +745,11 @@ var I18N = {
         hcp_variant_1: '1 · Компактная галочка',
         hcp_variant_2: '2 · Пилюля «обновлён»',
         hcp_variant_3: '3 · Галочка на аватаре',
+        social_card_variant_title: 'Оформление PNG-карточки для соцсетей',
+        social_card_variant_sub: 'Выберите один из трёх вариантов. Выбранное оформление применится ко всем новым PNG-карточкам при экспорте.',
+        social_card_variant_1: '1 · Классика',
+        social_card_variant_2: '2 · Акцент на результате',
+        social_card_variant_3: '3 · Турнирная',
         tab_broadcasts: 'Анонсы 📢',
         delete_all_rounds: 'Удалить все раунды',
         delete_all_data: 'Удалить всех игроков и раунды',
@@ -1129,6 +1134,11 @@ var I18N = {
         hcp_variant_1: '1 · Compact check',
         hcp_variant_2: '2 · “Updated” pill',
         hcp_variant_3: '3 · Check on avatar',
+        social_card_variant_title: 'Social PNG scorecard style',
+        social_card_variant_sub: 'Choose one of three layouts. The selected design is used for every newly exported PNG scorecard.',
+        social_card_variant_1: '1 · Classic',
+        social_card_variant_2: '2 · Result focus',
+        social_card_variant_3: '3 · Tournament',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
         delete_all_data: 'Delete All Players & Rounds',
@@ -4462,11 +4472,38 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
 
 
 // ==========================================
-// ГЕНЕРАТОР PNG-КАРТОЧКИ ДЛЯ СОЦСЕТЕЙ
+// PNG-КАРТОЧКИ ДЛЯ СОЦСЕТЕЙ
 // ==========================================
-// Логотип клуба как фоновый водяной знак карточки. Картинка лежит в
-// STATIC_ASSETS SW (img/logo.png), в офлайне берётся из кэша; затемнение
-// на canvas не приводит к tainted-состоянию (origin совпадает).
+// Оформление выбирается администратором для всего клуба. Значение держим и
+// локально, чтобы экспорт продолжал работать в офлайне.
+var SOCIAL_CARD_VARIANTS = ['1', '2', '3'];
+
+function normalizeSocialCardVariant(value) {
+    value = String(value === undefined || value === null ? '' : value);
+    return SOCIAL_CARD_VARIANTS.indexOf(value) !== -1 ? value : '1';
+}
+
+var pestovoSocialCardVariant = (function() {
+    try { return normalizeSocialCardVariant(localStorage.getItem('pestovo_social_card_variant')); } catch (e) {}
+    return '1';
+})();
+
+function getSocialCardVariant() {
+    return pestovoSocialCardVariant;
+}
+
+function applySocialCardVariant(value) {
+    var variant = normalizeSocialCardVariant(value);
+    pestovoSocialCardVariant = variant;
+    try { localStorage.setItem('pestovo_social_card_variant', variant); } catch (e) {}
+    try {
+        if (typeof markAdmSocialCardVariantButtons === 'function') markAdmSocialCardVariantButtons();
+    } catch (e) {}
+    return variant;
+}
+
+// Логотип нужен только как обычный элемент шапки — фон PNG намеренно остаётся
+// чистым, без водяного знака.
 var pestovoCardLogoImg = null;
 var pestovoCardLogoLoaded = false;
 function loadPestovoCardLogo() {
@@ -4492,25 +4529,189 @@ function loadPestovoCardLogo() {
     });
 }
 
-// Рисует логотип по центру карточки как фоновый водяной знак.
-// Эмблема полностью помещается между рамками (maxW × maxH), без обрезки.
-// Рисуем оригинальный PNG напрямую с невысокой прозрачностью: так видна
-// сама эмблема (ринг, здание, надписи), а не сплошное цветное пятно —
-// перекраска через 'source-in' давала сплошную заливку (зелёное пятно).
-function drawCardLogoWatermark(ctx, img, cx, cy, maxW, maxH, alpha) {
+function drawSocialCardFrame(ctx, variant) {
+    // Чистый фон без логотипа: это сохраняет контраст счёта и делает карточку
+    // аккуратной в лентах соцсетей.
+    var bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
+    bgGrad.addColorStop(0, variant === '2' ? '#152e1a' : '#0b1a0e');
+    bgGrad.addColorStop(0.5, '#132817');
+    bgGrad.addColorStop(1, '#071209');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 1080, 1080);
+
+    ctx.strokeStyle = '#c9a84c';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(30, 30, 1020, 1020);
+    ctx.strokeStyle = 'rgba(201,168,76,0.35)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(42, 42, 996, 996);
+}
+
+function drawCardForegroundLogo(ctx, img, cx, cy, maxW, maxH) {
     if (!img || !img.width || !img.height) return;
     var scale = Math.min(maxW / img.width, maxH / img.height);
     var w = img.width * scale;
     var h = img.height * scale;
-    var x = cx - w / 2;
-    var y = cy - h / 2;
-
     ctx.save();
-    // Чуть заметнее, чем раньше, чтобы логотип реально читался на фоне,
-    // но оставался позади контента (текст и цифры рисуются поверх).
-    ctx.globalAlpha = (alpha === undefined) ? 0.18 : alpha;
-    ctx.drawImage(img, x, y, w, h);
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 3;
+    ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
     ctx.restore();
+}
+
+function drawFittedCanvasText(ctx, text, x, y, maxWidth, size, minSize, fontFamily) {
+    text = String(text === undefined || text === null ? '' : text);
+    var currentSize = size;
+    var family = fontFamily || '"Inter", sans-serif';
+    ctx.font = 'bold ' + currentSize + 'px ' + family;
+    while (currentSize > minSize && ctx.measureText(text).width > maxWidth) {
+        currentSize -= 2;
+        ctx.font = 'bold ' + currentSize + 'px ' + family;
+    }
+    if (ctx.measureText(text).width > maxWidth) {
+        while (text.length > 1 && ctx.measureText(text + '…').width > maxWidth) {
+            text = text.slice(0, -1);
+        }
+        text += '…';
+    }
+    ctx.fillText(text, x, y);
+}
+
+function drawSocialCardHeader(ctx, data, cfg) {
+    cfg = cfg || {};
+    var isEn = typeof currentLang !== 'undefined' && currentLang === 'en';
+    var label = cfg.label || (isEn ? 'LIVE SCORECARD' : 'СЧЁТНАЯ КАРТОЧКА');
+    var meta = data.format + ' · ' + (isEn ? 'TEE' : 'ТИ') + ': ' + data.teeName + ' · HCP: ' + data.hcp;
+
+    // Небольшой логотип расположен непосредственно над именем, а не в фоне.
+    drawCardForegroundLogo(ctx, data.logoImg, 540, cfg.logoY || 142, 165, 110);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = '700 17px "Inter", sans-serif';
+    ctx.fillText(label, 540, cfg.labelY || 78);
+
+    var dividerY = cfg.dividerY || 222;
+    ctx.beginPath();
+    ctx.moveTo(250, dividerY);
+    ctx.lineTo(830, dividerY);
+    ctx.strokeStyle = 'rgba(201,168,76,0.78)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Имя начинается заметно ниже, чем в прежней карточке: под знаком клуба.
+    ctx.fillStyle = '#ffffff';
+    drawFittedCanvasText(ctx, data.playerName, 540, cfg.nameY || 286, 880, 48, 30, '"Playfair Display", Georgia, serif');
+
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = '600 18px "Inter", sans-serif';
+    drawFittedCanvasText(ctx, meta, 540, cfg.metaY || 324, 900, 18, 13, '"Inter", sans-serif');
+
+    ctx.fillStyle = '#9eb5a5';
+    ctx.font = '500 16px "Inter", sans-serif';
+    ctx.fillText(data.date, 540, cfg.dateY || 350);
+}
+
+function drawSocialCardTotalBar(ctx, outGross, inGross, totalGross, y) {
+    y = y || 870;
+    ctx.fillStyle = '#101f13';
+    ctx.fillRect(60, y, 960, 50);
+    ctx.strokeStyle = '#c9a84c';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(60, y, 960, 50);
+
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 18px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('OUT: ' + (outGross || '—') + '   ·   IN: ' + (inGross || '—') + '   ·   TOTAL 18: ' + (totalGross || '—'), 540, y + 32);
+}
+
+function drawSocialCardFooter(ctx, variant) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = variant === '2' ? 'rgba(201,168,76,0.88)' : 'rgba(201,168,76,0.65)';
+    ctx.font = '600 17px "Inter", sans-serif';
+    ctx.fillText('GOLF CLUB PESTOVO · LIVE SCORING', 540, 996);
+}
+
+function drawSocialCardResultHero(ctx, stats) {
+    ctx.fillStyle = '#132218';
+    ctx.strokeStyle = '#c9a84c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(60, 376, 960, 142, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#9eb5a5';
+    ctx.font = '700 15px "Inter", sans-serif';
+    ctx.fillText('GROSS', 240, 416);
+    ctx.fillText('STABLEFORD', 840, 416);
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 42px "Inter", sans-serif';
+    ctx.fillText(String(stats.gross || 0), 240, 470);
+    ctx.fillStyle = '#2ecc71';
+    ctx.fillText(String(stats.stablefordField || 0), 840, 470);
+
+    ctx.strokeStyle = 'rgba(201,168,76,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(380, 400);
+    ctx.lineTo(380, 494);
+    ctx.moveTo(700, 400);
+    ctx.lineTo(700, 494);
+    ctx.stroke();
+
+    ctx.fillStyle = '#9eb5a5';
+    ctx.font = '700 14px "Inter", sans-serif';
+    ctx.fillText('TO PAR', 540, 414);
+    ctx.fillStyle = stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff';
+    ctx.font = 'bold 58px "Playfair Display", Georgia, serif';
+    ctx.fillText(fmtScore(stats.toPar), 540, 477);
+}
+
+function drawSocialCardLayout(ctx, data) {
+    var variant = normalizeSocialCardVariant(data.variant);
+    var scoreColor = data.stats.toPar < 0 ? '#2ecc71' : data.stats.toPar > 0 ? '#e05a4a' : '#ffffff';
+
+    drawSocialCardFrame(ctx, variant);
+
+    if (variant === '2') {
+        drawSocialCardHeader(ctx, data, {
+            label: typeof currentLang !== 'undefined' && currentLang === 'en' ? 'ROUND RESULT' : 'РЕЗУЛЬТАТ РАУНДА',
+            nameY: 286, metaY: 324, dateY: 350
+        });
+        drawSocialCardResultHero(ctx, data.stats);
+        drawScorecardGridRow(ctx, data.scores, 1, 9, 550);
+        drawScorecardGridRow(ctx, data.scores, 10, 18, 738);
+    } else if (variant === '3') {
+        drawSocialCardHeader(ctx, data, {
+            label: typeof currentLang !== 'undefined' && currentLang === 'en' ? 'TOURNAMENT SCORECARD' : 'ТУРНИРНАЯ КАРТОЧКА',
+            nameY: 276, metaY: 342, dateY: 364
+        });
+        if (data.tournamentName) {
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#9eb5a5';
+            drawFittedCanvasText(ctx, data.tournamentName, 540, 312, 860, 17, 13, '"Inter", sans-serif');
+        }
+        drawKPICard(ctx, 80, 388, 220, 108, 'TO PAR', fmtScore(data.stats.toPar), scoreColor);
+        drawKPICard(ctx, 430, 388, 220, 108, 'GROSS', String(data.stats.gross || 0), '#c9a84c');
+        drawKPICard(ctx, 780, 388, 220, 108, 'STABLEFORD', String(data.stats.stablefordField || 0), '#2ecc71');
+        drawScorecardGridRow(ctx, data.scores, 1, 9, 530);
+        drawScorecardGridRow(ctx, data.scores, 10, 18, 712);
+        drawSocialCardTotalBar(ctx, data.outGross, data.inGross, data.totalGross, 875);
+    } else {
+        drawSocialCardHeader(ctx, data, { nameY: 286, metaY: 324, dateY: 350 });
+        drawKPICard(ctx, 80, 376, 220, 108, 'TO PAR', fmtScore(data.stats.toPar), scoreColor);
+        drawKPICard(ctx, 430, 376, 220, 108, 'GROSS', String(data.stats.gross || 0), '#c9a84c');
+        drawKPICard(ctx, 780, 376, 220, 108, 'STABLEFORD', String(data.stats.stablefordField || 0), '#2ecc71');
+        drawScorecardGridRow(ctx, data.scores, 1, 9, 518);
+        drawScorecardGridRow(ctx, data.scores, 10, 18, 700);
+        drawSocialCardTotalBar(ctx, data.outGross, data.inGross, data.totalGross, 870);
+    }
+
+    drawSocialCardFooter(ctx, variant);
 }
 
 function exportRoundPNG(roundId, playerId) {
@@ -4518,132 +4719,65 @@ function exportRoundPNG(roundId, playerId) {
 
     toast(currentLang === 'en' ? '⏳ Generating PNG scorecard...' : '⏳ Генерируем PNG-карточку...', 'info');
 
-    // Логотип грузим (или берём из кэша SW) до отрисовки карточки.
+    // Логотип рисуется компактно в шапке, непосредственно над именем игрока.
     loadPestovoCardLogo().then(function(logoImg) {
-    db.ref('rounds/' + roundId).once('value').then(function(sn) {
-        var r = sn.val();
-        if (!r || !r.players) return;
+        db.ref('rounds/' + roundId).once('value').then(function(sn) {
+            var r = sn.val();
+            if (!r || !r.players) return;
 
-        var playersList = Object.entries(r.players);
-        var pid = playerId || playersList[0][0];
-        var p = r.players[pid] || playersList[0][1];
-        if (!p) return;
+            var playersList = Object.entries(r.players);
+            if (!playersList.length) return;
+            var pid = playerId || playersList[0][0];
+            if (!r.players[pid]) pid = playersList[0][0];
+            var p = r.players[pid];
+            if (!p) return;
 
-        var canvas = document.createElement('canvas');
-        canvas.width = 1080;
-        canvas.height = 1080;
-        var ctx = canvas.getContext('2d');
+            var canvas = document.createElement('canvas');
+            canvas.width = 1080;
+            canvas.height = 1080;
+            var ctx = canvas.getContext('2d');
+            var scores = p.scores || {};
+            var order = getRoundOrder(r);
+            var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
+            var outGross = 0, inGross = 0;
+            for (var i = 1; i <= 9; i++) {
+                var frontScore = parseInt(scores[i]) || 0;
+                if (frontScore > 0) outGross += frontScore;
+            }
+            for (var j = 10; j <= 18; j++) {
+                var backScore = parseInt(scores[j]) || 0;
+                if (backScore > 0) inGross += backScore;
+            }
 
-        // Background Gradient
-        var bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
-        bgGrad.addColorStop(0, '#0b1a0e');
-        bgGrad.addColorStop(0.5, '#132817');
-        bgGrad.addColorStop(1, '#071209');
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, 1080, 1080);
+            var teeName = t('tee_' + ((p && p.tee) || r.tee || 'wh'));
+            drawSocialCardLayout(ctx, {
+                variant: getSocialCardVariant(),
+                logoImg: logoImg,
+                playerName: playerDisplayName(p, pid),
+                format: r.format || 'Stroke Play',
+                teeName: teeName,
+                hcp: fmtExactHcp(p.exactHcp),
+                date: fmtDate(r.completedAt || r.createdAt || Date.now()),
+                tournamentName: r.tournamentName || '',
+                scores: scores,
+                stats: stats,
+                outGross: outGross,
+                inGross: inGross,
+                totalGross: outGross + inGross
+            });
 
-        // Gold Border Frame
-        ctx.strokeStyle = '#c9a84c';
-        ctx.lineWidth = 8;
-        ctx.strokeRect(30, 30, 1020, 1020);
-
-        ctx.strokeStyle = 'rgba(201,168,76,0.3)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(42, 42, 996, 996);
-
-        // Фоновый водяной знак — логотип клуба. Полностью помещается
-        // во внутреннюю рамку карточки (996 × 996), без обрезки, и лежит
-        // под всем контентом (рисуется первым, контент — поверх).
-        drawCardLogoWatermark(ctx, logoImg, 540, 540, 940, 940, 0.18);
-
-        // Header Title
-        ctx.fillStyle = '#c9a84c';
-        ctx.font = 'bold 36px "Playfair Display", Georgia, serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('PESTOVO GOLF CLUB', 540, 95);
-
-        ctx.fillStyle = '#9eb5a5';
-        ctx.font = '500 18px "Inter", sans-serif';
-        ctx.fillText('OFFICIAL DIGITAL SCORECARD', 540, 130);
-
-        // Gold Divider
-        ctx.beginPath();
-        ctx.moveTo(180, 150);
-        ctx.lineTo(900, 150);
-        ctx.strokeStyle = '#c9a84c';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Player Name
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 48px "Playfair Display", serif';
-        ctx.fillText(playerDisplayName(p, pid), 540, 215);
-
-        // Sub Meta
-        var teeName = t('tee_' + ((p && p.tee) || r.tee || 'wh'));
-        var fmtStr = (r.format || 'Stroke Play') + ' · Tee: ' + teeName + ' · HCP: ' + fmtExactHcp(p.exactHcp);
-        var dateStr = fmtDate(r.completedAt || r.createdAt || Date.now());
-
-        ctx.fillStyle = '#c9a84c';
-        ctx.font = '600 20px "Inter", sans-serif';
-        ctx.fillText(fmtStr, 540, 255);
-
-        ctx.fillStyle = '#9eb5a5';
-        ctx.font = '16px "Inter", sans-serif';
-        ctx.fillText(dateStr, 540, 288);
-
-        // Score KPIs Cards (To Par, Gross, Stableford)
-        var order = getRoundOrder(r);
-        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
-
-        // Карточка NET убрана из PNG (по требованию клуба — без отображения Net).
-        // Порядок блоков: To Par → Gross → Stableford (Stableford — третий,
-        // очки считаются с учётом полевого гандикапа).
-        drawKPICard(ctx, 80, 315, 220, 115, 'TO PAR', fmtScore(stats.toPar), stats.toPar < 0 ? '#2ecc71' : stats.toPar > 0 ? '#e05a4a' : '#ffffff');
-        drawKPICard(ctx, 430, 315, 220, 115, 'GROSS', String(stats.gross || 0), '#c9a84c');
-        drawKPICard(ctx, 780, 315, 220, 115, 'STABLEFORD', String(stats.stablefordField), '#2ecc71');
-
-        // Hole Grid Rows (Front 9 & Back 9) - TRADITIONAL SCORECARD (HOLE, PAR, SCORE)
-        drawScorecardGridRow(ctx, p.scores || {}, 1, 9, 460);
-        drawScorecardGridRow(ctx, p.scores || {}, 10, 18, 680);
-
-        // Total 18 Holes Summary Bar
-        var outGross = 0, inGross = 0;
-        for (var i = 1; i <= 9; i++) { var s = parseInt(p.scores && p.scores[i]) || 0; if (s > 0) outGross += s; }
-        for (var i = 10; i <= 18; i++) { var s = parseInt(p.scores && p.scores[i]) || 0; if (s > 0) inGross += s; }
-        var totalGross18 = outGross + inGross;
-
-        ctx.fillStyle = 'rgba(16,31,19,0.9)';
-        ctx.fillRect(60, 850, 960, 50);
-        ctx.strokeStyle = '#c9a84c';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(60, 850, 960, 50);
-
-        ctx.fillStyle = '#c9a84c';
-        ctx.font = 'bold 18px "Inter", sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(' OUT: ' + (outGross || '—') + '  |  IN: ' + (inGross || '—') + '  |  TOTAL 18 HOLES: ' + (totalGross18 || '—'), 80, 882);
-
-        // Stableford now displayed in its own KPI card in the centre.
-
-        // Footer Branding
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(201,168,76,0.6)';
-        ctx.font = '600 18px "Inter", sans-serif';
-        ctx.fillText('⛳ GOLF CLUB PESTOVO · LIVE SCORING SYSTEM', 540, 995);
-
-        var dataUrl = canvas.toDataURL('image/png');
-        openPNGExportModal(dataUrl, playerDisplayName(p, pid), roundId, pid, playersList);
-    }).catch(function(error) {
-        console.warn('[PNG] Cannot load round for export', error);
-    });
+            var dataUrl = canvas.toDataURL('image/png');
+            openPNGExportModal(dataUrl, playerDisplayName(p, pid), roundId, pid, playersList);
+        }).catch(function(error) {
+            console.warn('[PNG] Cannot load round for export', error);
+            toast(currentLang === 'en' ? 'Could not generate the PNG scorecard' : 'Не удалось сформировать PNG-карточку', 'error');
+        });
     });
 }
 
 function drawKPICard(ctx, x, y, w, h, label, value, valColor) {
-    // Полупрозрачный фон: фоновый логотип-водяной знак мягко просвечивает
-    // сквозь карточки KPI, текст и цифры остаются полностью читаемыми.
-    ctx.fillStyle = 'rgba(19,34,24,0.82)';
+    // Непрозрачная подложка сохраняет KPI контрастными на чистом фоне.
+    ctx.fillStyle = '#132218';
     ctx.strokeStyle = '#1e3525';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -4670,10 +4804,8 @@ function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
     var row2H = 36;
     var row3H = 65;
 
-    // Полупрозрачные подложки строк: водяной знак-логотип просвечивает,
-    // подписи и цифры (в т.ч. бейджи результатов) остаются читаемыми.
     // --- ROW 1: HOLE NUMBERS ---
-    ctx.fillStyle = 'rgba(16,31,19,0.82)';
+    ctx.fillStyle = '#101f13';
     ctx.fillRect(startX, startY, labelW + holeW * 9 + totW, row1H);
     ctx.strokeStyle = '#1e3525';
     ctx.lineWidth = 1;
@@ -4717,7 +4849,7 @@ function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
 
     // --- ROW 3: SCORE ---
     var y3 = y2 + row2H;
-    ctx.fillStyle = 'rgba(19,34,24,0.85)';
+    ctx.fillStyle = '#132218';
     ctx.fillRect(startX, y3, labelW + holeW * 9 + totW, row3H);
     ctx.strokeStyle = '#1e3525';
     ctx.strokeRect(startX, y3, labelW + holeW * 9 + totW, row3H);
@@ -6011,6 +6143,13 @@ if (typeof db !== 'undefined') {
             var v = sn.val();
             if ((v === '1' || v === '2' || v === '3') && v !== pestovoHcpBadgeVariant) {
                 applyHcpBadgeVariant(v);
+            }
+        });
+        // Глобальный выбор оформления PNG-карточки для социальных сетей.
+        db.ref('settings/social_card_variant').on('value', function(sn) {
+            var v = sn.val();
+            if (SOCIAL_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoSocialCardVariant) {
+                applySocialCardVariant(String(v));
             }
         });
     } catch(e) {}

@@ -342,6 +342,10 @@ function switchTab(t, b) {
         renderAssistantSources();
         loadAssistantSourcesFromFirebase();
     }
+    if (t === 'design') {
+        // Вкладка «Дизайн 🎨»: шаблоны оформления сайта (js/design-admin.js)
+        if (typeof dspAdminLoad === 'function') dspAdminLoad();
+    }
 }
 
 // ==========================================

@@ -88,6 +88,22 @@ check('в HTML есть поле своих форм #nm-custom-aliases', !!win.
 check('в HTML есть кнопка анализа #nm-analyze-results', !!win.document.getElementById('nm-analyze-results'));
 check('в HTML подключён js/name-variants.js', html.indexOf('js/name-variants.js') !== -1);
 
+console.log('\n=== Дефолтная вкладка и кнопка пересборки ===\n');
+var alertsTabBtn = win.document.querySelector('[data-i18n="tab_alerts"]');
+check('кнопка «Вызовы» активна по умолчанию', !!alertsTabBtn && alertsTabBtn.classList.contains('active'));
+check('вкладка «Вызовы» видима по умолчанию', !win.document.getElementById('tab-alerts').classList.contains('hidden'));
+check('вкладка «Раунды» скрыта по умолчанию', win.document.getElementById('tab-rounds').classList.contains('hidden'));
+check('кнопка пересборки индекса #as-rebuild-btn есть', !!win.document.getElementById('as-rebuild-btn'));
+
+console.log('\n=== admJsStr: экранирование для onclick ===\n');
+check('admJsStr определена', typeof win.admJsStr === 'function');
+check('апостроф в имени экранируется', win.admJsStr("O'Brien") === "O\\'Brien", win.admJsStr("O'Brien"));
+check('двойная кавычка → &quot;', win.admJsStr('a"b') === 'a&quot;b', win.admJsStr('a"b'));
+check('перевод строки → \\n', win.admJsStr('a\nb') === 'a\\nb', JSON.stringify(win.admJsStr('a\nb')));
+check('тег → \\x3c', win.admJsStr('<x>') === '\\x3cx>', win.admJsStr('<x>'));
+check('null/undefined → пусто', win.admJsStr(null) === '' && win.admJsStr(undefined) === '');
+
+
 check('по умолчанию формы имени выключены', win.NameVariants.getMode() === 'off', 'mode=' + win.NameVariants.getMode());
 check('по умолчанию автоприменение выключено', win.NameVariants.getAutoApply() === false, 'autoApply=' + win.NameVariants.getAutoApply());
 

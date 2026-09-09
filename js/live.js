@@ -4,6 +4,29 @@ var registeredUsers = {};
 var availableTournaments = {};
 function lGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 
+// QR турнира (?round=&as= / ?player=): без меню, сверху сразу счёт.
+function isScoreKioskUrl() {
+    try {
+        var q = new URLSearchParams(window.location.search);
+        return !!(q.get('round') && (q.get('as') || q.get('player')));
+    } catch (e) { return false; }
+}
+function applyScoreKiosk() {
+    if (!isScoreKioskUrl()) return false;
+    try {
+        document.documentElement.classList.add('score-kiosk');
+        document.documentElement.style.setProperty('--nav-h', '0px');
+        document.documentElement.style.setProperty('--round-nav-offset', '0px');
+        ['main-nav', 'page-head', 'my-active-rounds-container', 'invite-qrs-card'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+        var hideSel = document.querySelectorAll('footer, .footer, #mobile-drawer-root, .mobile-drawer-container, .nav-toggle');
+        for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
+    } catch (e) {}
+    return true;
+}
+
 // Переменные активной игры
 var playHole = 1;
 var myUid = null;
@@ -45,6 +68,7 @@ function startGroupPaceTicker() {
 
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
+    applyScoreKiosk();
     var p = new URLSearchParams(window.location.search);
     curRid = p.get('round');
 
@@ -674,6 +698,7 @@ function initRoundView() {
         try { document.body.classList.add('round-active'); } catch(e){}
         var navEl = lGet('main-nav');
         if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch(e){} }
+        applyScoreKiosk();
 
         myUid = getActingUid();
         canEditGroup = (myUid !== null) && (curRoundData.status === 'active');
@@ -1136,14 +1161,11 @@ function renderPlaySummary() {
 // Проверка: вошёл ли уже игрок в раунд (создатель, подключившийся, с введённым счётом)
 function isPlayerEnteredRound(p, pid, roundData) {
     if (!p) return false;
-    // 1. Создатель раунда — QR никогда не показывается
+    // 1. Создатель ручного группового раунда — QR не нужен.
+    // Турнирный протокол: createdBy = админ и participantsList[0] НЕ считаются «в игре»
+    // до скана QR (запись joined / joinedAt).
     if (p.isCreator) return true;
-    var curUser = (typeof currentUser !== 'undefined') ? currentUser : null;
-    if (roundData) {
-        if (roundData.creatorPlayerId && roundData.creatorPlayerId === pid) return true;
-        if (roundData.createdBy && (roundData.createdBy === pid || (curUser && roundData.createdBy === curUser.uid && pid === (roundData.participantsList && roundData.participantsList[0])))) return true;
-        if (roundData.participantsList && roundData.participantsList[0] === pid) return true;
-    }
+    if (roundData && roundData.creatorPlayerId && roundData.creatorPlayerId === pid) return true;
     // 2. Игрок уже вошёл в раунд (открыл карточку/подключился)
     if (p.joined === true || p.entered === true || p.joinedAt || p.connected === true) return true;
     // 3. Игрок начал вводить счёт или подтверждать лунки

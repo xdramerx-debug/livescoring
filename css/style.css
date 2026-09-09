@@ -943,6 +943,47 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
    высоты nav задаётся из JS (--round-nav-offset), 92px — запасной вариант. */
 body.round-active main{padding-top:var(--round-nav-offset,92px)!important;}
 
+/* QR турнира (setup-round?round=&as= / scorer?round=&player=):
+   без шапки, меню и подвала — сверху название турнира и сразу счёт. */
+html.score-kiosk {
+    --nav-h: 0px;
+    --round-nav-offset: 0px;
+}
+html.score-kiosk #main-nav,
+html.score-kiosk .page-head,
+html.score-kiosk .footer,
+html.score-kiosk footer,
+html.score-kiosk #my-active-rounds-container,
+html.score-kiosk #invite-qrs-card,
+html.score-kiosk #mobile-drawer-root,
+html.score-kiosk .mobile-drawer-container,
+html.score-kiosk .nav-toggle,
+html.score-kiosk #nav-weather-container,
+html.score-kiosk .round-event-kicker,
+html.score-kiosk .round-event-sub {
+    display: none !important;
+}
+html.score-kiosk body.round-active main,
+html.score-kiosk main {
+    padding-top: 8px !important;
+    padding-bottom: 16px !important;
+}
+html.score-kiosk .round-event-banner {
+    padding: 8px 0 6px !important;
+    background: transparent;
+    border-bottom: none;
+}
+html.score-kiosk .round-event-title {
+    font-size: 16px !important;
+    line-height: 1.25;
+}
+html.score-kiosk .toast {
+    top: 8px;
+}
+html.score-kiosk .hole-display {
+    margin: 8px 0 !important;
+}
+
 .footer{background:var(--gr-d);border-top:1px solid var(--border);padding:50px 0 24px;}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:36px;margin-bottom:36px;}
 .footer-title{font-family:var(--ff);font-size:18px;color:var(--gold);display:flex;align-items:center;gap:8px;margin-bottom:10px;}

@@ -284,7 +284,7 @@ function loadDesign(ctx) {
         ok(html.indexOf('css/design-presets.css') !== -1, file + ': не подключён css/design-presets.css');
         ok(html.indexOf('js/design-system.js') !== -1, file + ': не подключён js/design-system.js');
         if (html.indexOf('version-number') !== -1) {
-            ok(html.indexOf('1.46.0') !== -1, file + ': версия сайта не обновлена до 1.46.0');
+            ok(html.indexOf('1.47.0') !== -1, file + ': версия сайта не обновлена до 1.47.0');
             ok(html.indexOf('1.38.0') === -1, file + ': осталась старая версия 1.38.0');
         }
     });
@@ -307,7 +307,7 @@ function loadDesign(ctx) {
     ok(utils.indexOf("tab_design: 'Design") !== -1, 'В utils.js нет английского перевода tab_design');
 
     var sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-    ok(sw.indexOf("pestovo-v1.46.0") !== -1, 'sw.js: кэш не обновлён до 1.46.0');
+    ok(sw.indexOf("pestovo-v1.47.0") !== -1, 'sw.js: кэш не обновлён до 1.47.0');
     ok(sw.indexOf('css/design-presets.css?v=1') !== -1, 'sw.js: не кэшируется design-presets.css');
     ok(sw.indexOf('js/design-system.js?v=1') !== -1, 'sw.js: не кэшируется design-system.js');
     ok(sw.indexOf('design-preview.html') !== -1, 'sw.js: не кэшируется design-preview.html');

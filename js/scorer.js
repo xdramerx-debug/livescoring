@@ -5,6 +5,28 @@ var scPaceTimer = null;
 
 function scGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 
+function isScoreKioskUrl() {
+    try {
+        var q = new URLSearchParams(window.location.search);
+        return !!(q.get('round') && (q.get('as') || q.get('player')));
+    } catch (e) { return false; }
+}
+function applyScoreKiosk() {
+    if (!isScoreKioskUrl()) return false;
+    try {
+        document.documentElement.classList.add('score-kiosk');
+        document.documentElement.style.setProperty('--nav-h', '0px');
+        document.documentElement.style.setProperty('--round-nav-offset', '0px');
+        ['main-nav', 'page-head', 'my-active-rounds-container', 'invite-qrs-card'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+        var hideSel = document.querySelectorAll('footer, .footer, .page-head, #mobile-drawer-root, .mobile-drawer-container, .nav-toggle');
+        for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
+    } catch (e) {}
+    return true;
+}
+
 document.addEventListener('pestovo-stableford-default-change', function() {
     if (!scRound) return;
     if (typeof updateScStablefordToggle === 'function') updateScStablefordToggle();
@@ -13,6 +35,7 @@ document.addEventListener('pestovo-stableford-default-change', function() {
 
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof initNav === 'function') initNav();
+    applyScoreKiosk();
     var p = new URLSearchParams(window.location.search);
     scRid = p.get('round'); scPid = p.get('player');
     if (!scRid || !scPid) {
@@ -45,6 +68,13 @@ function loadSc() {
         var b2 = scGet('sc-body'); if (b2) b2.classList.remove('hidden');
 
         var pl = scRound.players[scPid];
+        if (pl && !pl.joined) {
+            try {
+                db.ref('rounds/' + scRid + '/players/' + scPid + '/joined').set(true);
+                db.ref('rounds/' + scRid + '/players/' + scPid + '/joinedAt').set(Date.now());
+            } catch (e) {}
+        }
+        applyScoreKiosk();
         if (typeof updateScStablefordToggle === 'function') updateScStablefordToggle();
         var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');

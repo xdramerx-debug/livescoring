@@ -106,5 +106,36 @@ const html2 = els['qr-content'].innerHTML || '';
 check(html2.indexOf('div-badge') !== -1 && html2.indexOf('Девушки') !== -1, 'бейдж зачётной группы на карточке');
 check(html2.indexOf('div-inline') !== -1, 'зачётная группа в строке стартового листа');
 
+check(typeof sandbox.qrSortGroups === 'function' && typeof sandbox.qrGroupLabel === 'function', 'qr: sort/label helpers');
+const shotgunDoc = {
+    scheme: 'all18', name: 'Шотган',
+    groups: {
+        g1: { groupNo: 1, roundId: 'r18', startHole: 18, startTime: 1000, players: [{ id: 'a', lastName: 'Ааа', firstName: 'А', middleName: '', gender: 'men', tee: 'wh', exactHcp: 10, fieldHcp: 10 }], markers: [] },
+        g2: { groupNo: 2, roundId: 'r1b', startHole: 1, startTime: 2000, players: [{ id: 'b', lastName: 'Ббб', firstName: 'Б', middleName: '', gender: 'men', tee: 'wh', exactHcp: 10, fieldHcp: 10 }], markers: [] },
+        g3: { groupNo: 3, roundId: 'r1a', startHole: 1, startTime: 1000, players: [{ id: 'c', lastName: 'Ввв', firstName: 'В', middleName: '', gender: 'men', tee: 'wh', exactHcp: 10, fieldHcp: 10 }], markers: [] }
+    }
+};
+sandbox.qrRender(shotgunDoc);
+const htmlS = els['qr-content'].innerHTML || '';
+const i1a = htmlS.indexOf('Группа 1А');
+const i1b = htmlS.indexOf('Группа 1Б');
+const i18 = htmlS.indexOf('Группа 18А');
+check(i1a !== -1 && i1b !== -1 && i18 !== -1, 'shotgun labels: 1А / 1Б / 18А');
+check(i1a < i1b && i1b < i18, 'shotgun order: 1А, 1Б, 18А (не 18А первой)');
+check(htmlS.indexOf('ГРУППА №1') === -1, 'shotgun: нет порядкового ГРУППА №1');
+const tenDoc = {
+    scheme: '1-10', name: '1-10',
+    groups: {
+        g1: { groupNo: 1, roundId: 't10a', startHole: 10, startTime: 1000, players: [{ id: 'p1', lastName: 'П', firstName: '1', middleName: '', gender: 'men', tee: 'wh', exactHcp: 1, fieldHcp: 1 }], markers: [] },
+        g2: { groupNo: 2, roundId: 't1a', startHole: 1, startTime: 1000, players: [{ id: 'p2', lastName: 'П', firstName: '2', middleName: '', gender: 'men', tee: 'wh', exactHcp: 1, fieldHcp: 1 }], markers: [] },
+        g3: { groupNo: 3, roundId: 't10b', startHole: 10, startTime: 2000, players: [{ id: 'p3', lastName: 'П', firstName: '3', middleName: '', gender: 'men', tee: 'wh', exactHcp: 1, fieldHcp: 1 }], markers: [] },
+        g4: { groupNo: 4, roundId: 't1b', startHole: 1, startTime: 2000, players: [{ id: 'p4', lastName: 'П', firstName: '4', middleName: '', gender: 'men', tee: 'wh', exactHcp: 1, fieldHcp: 1 }], markers: [] }
+    }
+};
+sandbox.qrRender(tenDoc);
+const htmlT = els['qr-content'].innerHTML || '';
+check(htmlT.indexOf('Группа 1А') !== -1 && htmlT.indexOf('Группа 1Б') !== -1 && htmlT.indexOf('Группа 10А') !== -1 && htmlT.indexOf('Группа 10Б') !== -1, '1-10 labels: 1А,1Б,10А,10Б');
+check(htmlT.indexOf('Группа 1А') < htmlT.indexOf('Группа 1Б') && htmlT.indexOf('Группа 1Б') < htmlT.indexOf('Группа 10А'), '1-10 order: 1А, 1Б, 10А…');
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nqr-start render tests passed ✔');
 process.exit(failures ? 1 : 0);

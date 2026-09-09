@@ -234,6 +234,57 @@ if (typeof window !== 'undefined' && window.addEventListener) {
     });
 }
 
+// Шотган: подписи «Группа 1А / 1Б» (лунка + волна), порядок — лунка, затем волна.
+function qrShotgunLetterScheme(scheme) {
+    return scheme === 'all18' || scheme === '1-10';
+}
+function qrWaveLetter(idx) {
+    idx = Math.max(0, parseInt(idx, 10) || 0);
+    var alphabet = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ';
+    if (idx < alphabet.length) return alphabet.charAt(idx);
+    return String(idx + 1);
+}
+function qrGroupWaveIndex(entries, i) {
+    entries = entries || [];
+    var g = entries[i] && entries[i].g;
+    if (!g) return 0;
+    var hole = parseInt(g.startHole, 10) || 1;
+    var n = 0;
+    for (var j = 0; j < i; j++) {
+        if ((parseInt((entries[j].g || {}).startHole, 10) || 1) === hole) n++;
+    }
+    return n;
+}
+function qrGroupLabel(g, i, entries, scheme) {
+    g = g || {};
+    entries = entries || [];
+    if (qrShotgunLetterScheme(scheme)) {
+        var hole = parseInt(g.startHole, 10) || 1;
+        return 'Группа ' + hole + qrWaveLetter(qrGroupWaveIndex(entries, i));
+    }
+    var gno = g.groupNo || ((entries[i] && entries[i].key) ? String(entries[i].key).replace('g', '') : (i + 1));
+    return 'ГРУППА №' + gno;
+}
+function qrSortGroups(entries, scheme) {
+    entries = entries || [];
+    if (!qrShotgunLetterScheme(scheme)) {
+        entries.sort(function(a, b) {
+            return (parseInt(String(a.key).replace('g', ''), 10) || 0) - (parseInt(String(b.key).replace('g', ''), 10) || 0);
+        });
+        return entries;
+    }
+    entries.sort(function(a, b) {
+        var ha = parseInt((a.g || {}).startHole, 10) || 1;
+        var hb = parseInt((b.g || {}).startHole, 10) || 1;
+        if (ha !== hb) return ha - hb;
+        var ta = (a.g && a.g.startTime) || 0;
+        var tb = (b.g && b.g.startTime) || 0;
+        if (ta !== tb) return ta - tb;
+        return 0;
+    });
+    return entries;
+}
+
 function qrRender(doc, divs) {
     var content = qrGet('qr-content');
     if (!content) return;
@@ -241,9 +292,10 @@ function qrRender(doc, divs) {
     content.classList.remove('hidden');
     divs = divs || [];
 
-    var groupEntries = Object.keys(doc.groups || {})
-        .sort(function(a, b) { return (parseInt(a.replace('g', '')) || 0) - (parseInt(b.replace('g', '')) || 0); })
-        .map(function(k) { return { key: k, g: doc.groups[k] || {} }; });
+    var groupEntries = Object.keys(doc.groups || {}).map(function(k) {
+        return { key: k, g: doc.groups[k] || {} };
+    });
+    qrSortGroups(groupEntries, doc.scheme);
 
     var totalPlayers = 0;
     groupEntries.forEach(function(ge) { totalPlayers += (ge.g.players || []).length; });
@@ -261,13 +313,13 @@ function qrRender(doc, divs) {
     sheetHtml += '<table><thead><tr>' +
         '<th>Группа</th><th>Время</th><th>Лунка</th><th>Игрок</th><th>ТИ</th><th>Точный HCP</th><th>Полевой HCP</th><th>Маркирует</th>' +
         '</tr></thead><tbody>';
-    groupEntries.forEach(function(ge) {
+    groupEntries.forEach(function(ge, geIdx) {
         var g = ge.g;
         var members = g.players || [];
         members.forEach(function(p, i) {
-            var gno = g.groupNo || ge.key.replace('g', '');
+            var glabel = qrGroupLabel(g, geIdx, groupEntries, doc.scheme);
             sheetHtml += '<tr>' +
-                (i === 0 ? '<td rowspan="' + members.length + '" class="flag-g"><b>№' + gno + '</b></td>' : '') +
+                (i === 0 ? '<td rowspan="' + members.length + '" class="flag-g"><b>' + qrEsc(glabel) + '</b></td>' : '') +
                 (i === 0 ? '<td rowspan="' + members.length + '"><b>' + qrTime(g.startTime) + '</b></td>' : '') +
                 (i === 0 ? '<td rowspan="' + members.length + '">' + (g.startHole === 10 ? '10' : String(g.startHole || 1)) + '</td>' : '') +
                 '<td><b>' + qrEsc(qrFio(p)) + '</b>' + qrDivInline(p, divs) + '</td>' +
@@ -282,7 +334,7 @@ function qrRender(doc, divs) {
 
     // ── QR-карточки ──
     var cardsHtml = '<div class="pcards">';
-    groupEntries.forEach(function(ge) {
+    groupEntries.forEach(function(ge, geIdx) {
         var g = ge.g;
         var members = g.players || [];
         var rid = g.roundId;
@@ -313,7 +365,7 @@ function qrRender(doc, divs) {
 
             cardsHtml += '<div class="pcard">';
             cardsHtml += '<div class="grp-row">' +
-                '<span class="grp-badge">ГРУППА №' + (g.groupNo || ge.key.replace('g', '')) + '</span>' +
+                '<span class="grp-badge">' + qrEsc(qrGroupLabel(g, geIdx, groupEntries, doc.scheme)) + '</span>' +
                 '<span class="time-badge">⏱ ' + qrTime(g.startTime) + ' · ЛУНКА ' + startHoleTxt + '</span>' +
                 pdivHtml +
                 '</div>';

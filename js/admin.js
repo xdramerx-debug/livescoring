@@ -2061,7 +2061,8 @@ function loadAdmPlayers() {
         entries.forEach(function(e) {
             var id = e[0], u = e[1];
             var gIcon = u.gender === 'women' ? '👩' : '👨';
-            var guestBadge = u.isGuest ? ' <span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 6px;border-radius:8px;font-size:10px;">' + t('guest') + '</span>' : '';
+            // Бейдж «Гость» убран везде по требованию клуба.
+            var guestBadge = '';
             var curRole = u.role || 'player';
 
             var roleBadge = curRole === 'admin'
@@ -3734,7 +3735,7 @@ function rgRenderDuplicateGroups(groups) {
             var inputId = 'rg-dup-hcp-' + gi + '-' + pi;
             html += '<div class="list-item" style="padding:10px;gap:10px;flex-wrap:wrap;">';
             html += '<div style="flex:1;min-width:160px;"><strong style="color:var(--gold);">' + escapeHtml(rgPlayerDisplayName(pl)) + '</strong>';
-            html += '<div style="font-size:12px;color:var(--muted);">ID: ' + escapeHtml(pl.id) + (u.isGuest ? ' · ' + (en ? 'Guest' : 'Гость') : '') + (u.rusgolfNumber ? ' · 💳 ' + escapeHtml(u.rusgolfNumber) : '') + '</div></div>';
+            html += '<div style="font-size:12px;color:var(--muted);">ID: ' + escapeHtml(pl.id) + (u.rusgolfNumber ? ' · 💳 ' + escapeHtml(u.rusgolfNumber) : '') + '</div></div>';
             html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
             html += '<span style="font-size:12px;color:var(--muted);">' + (en ? 'Current HCP' : 'Текущий HCP') + ': <b>' + curHcp + '</b></span>';
             html += '<input type="text" id="' + inputId + '" class="form-input" style="width:90px;padding:6px 8px;font-size:13px;" placeholder="' + curHcp + '" value="' + (u.handicap!=null? String(u.handicap).replace('+','') : '') + '">';
@@ -4067,7 +4068,7 @@ function rgSyncAll() {
                 // 2) Несколько ЛОКАЛЬНЫХ игроков с таким именем — выбрать, кого обновить
                 (c.localCandidates || []).forEach(function(lc, li) {
                     html += '<div class="rg-cand" style="border-left:3px solid var(--gold);">';
-                    html += '<div class="rg-cand-info"><b>' + escapeHtml(rgPlayerDisplayName(lc)) + '</b><span class="rg-meta">' + (currentLang === 'en' ? 'on site' : 'на сайте') + (lc.data.rusgolfNumber ? ' · 💳 ' + escapeHtml(lc.data.rusgolfNumber) : '') + (lc.data.isGuest || String(lc.id).indexOf('guest_') === 0 ? ' · ' + t('guest') : '') + '</span></div>';
+                    html += '<div class="rg-cand-info"><b>' + escapeHtml(rgPlayerDisplayName(lc)) + '</b><span class="rg-meta">' + (currentLang === 'en' ? 'on site' : 'на сайте') + (lc.data.rusgolfNumber ? ' · 💳 ' + escapeHtml(lc.data.rusgolfNumber) : '') + '</span></div>';
                     html += '<div class="rg-hcp">' + (lc.data.handicap != null ? fmtExactHcp(lc.data.handicap) : '—') + '<span class="rg-hcp-label">HCP</span></div>';
                     html += '<button type="button" class="btn btn-g btn-sm" onclick="rgResolveLocalConflict(' + ci + ',' + li + ')"><i class="fas fa-rotate"></i> ' + (currentLang === 'en' ? 'Update this one' : 'Обновить этого') + '</button>';
                     html += '</div>';

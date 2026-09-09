@@ -1081,46 +1081,40 @@ function saveHoleScores() {
     });
 }
 
+// Состояние панелей счётных карточек на странице раунда: по умолчанию
+// карточка группы развёрнута (это рабочий документ игроков), а ручной выбор
+// запоминается и переживает перерисовки в реальном времени.
+function scorecardPrefKey(panelId) { return 'pestovo_sc_' + panelId + '_' + (curRid || ''); }
+
+function ensureScorecardOpen(panelId) {
+    var panel = lGet(panelId);
+    if (!panel || !panel.classList.contains('hidden')) return;
+    var pref = null;
+    try { pref = localStorage.getItem(scorecardPrefKey(panelId)); } catch (e) {}
+    if (pref === 'closed') return;
+    if (typeof toggleActiveScorecard === 'function') toggleActiveScorecard(panelId);
+}
+
+function togglePersistedScorecard(panelId) {
+    if (typeof toggleActiveScorecard === 'function') toggleActiveScorecard(panelId);
+    try {
+        var panel = lGet(panelId);
+        localStorage.setItem(scorecardPrefKey(panelId),
+            (panel && panel.classList.contains('hidden')) ? 'closed' : 'open');
+    } catch (e) {}
+    if (typeof vib === 'function') vib(15);
+}
+
 function renderPlaySummary() {
     var el = lGet('play-group-summary');
-    if (!el) return;
-    var order = getRoundOrder(curRoundData);
-    var allPlayers = curRoundData.players || {};
-    var html = '';
-
-    Object.entries(allPlayers).forEach(function(pe) {
-        var pid = pe[0], p = pe[1];
-        // Удалённые и навсегда заблокированные демо-игроки не показываются
-        if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
-        // Для сводки: если нет своих счётов, берём счёты маркера
-        var scores = p.scores || {};
-        var hasOwnScores = Object.values(scores).some(function(v) { return parseInt(v) >= 1; });
-        var displayScores = scores;
-        var markerNote = '';
-        if (!hasOwnScores && p.markedBy && allPlayers[p.markedBy]) {
-            var mkScores = allPlayers[p.markedBy].markerScores && allPlayers[p.markedBy].markerScores[pid];
-            if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
-                displayScores = mkScores;
-                var mkName = privacyDisplayName(allPlayers[p.markedBy], p.markedBy);
-                markerNote = ' <span style="font-size:10px;color:#9b59b6;">(' + (currentLang === 'en' ? 'marker: ' : 'маркер: ') + mkName + ')</span>';
-            }
-        }
-        var stats = calcRoundStats(displayScores, p.fieldHcp || 0, p.exactHcp || 0, order);
-        var isMe = pid === myUid ? ' <span style="font-size:10px;color:var(--gold);">(' + (currentLang === 'en' ? 'You' : 'Вы') + ')</span>' : '';
-        var pTee = (p && p.tee) || curRoundData.tee || 'wh';
-        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
-
-        html += '<div class="list-item" style="padding:10px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">';
-        html += '<div><strong style="color:var(--white);"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + pTeeBadge + isMe + markerNote + '</strong>';
-        html += '<div style="font-size:12px;color:var(--muted);">' + t('hole') + 's: ' + stats.holesPlayed + ' / ' + getRoundHoleCount(curRoundData) + '</div></div>';
-        html += '<div style="text-align:right;">';
-        html += '<div class="' + scoreClass(stats.toPar) + '" style="font-weight:800;">' + fmtScore(stats.toPar) + '</div>';
-        html += '<div style="font-size:11px;color:var(--muted);">Gross: ' + (stats.gross || 0) + '</div>';
-        html += '<button class="btn btn-og btn-sm" style="margin-top:4px;padding:2px 6px;font-size:10px;"><i class="fas fa-id-card"></i> ' + (currentLang === 'en' ? 'Card' : 'Карточка') + '</button>';
-        html += '</div></div>';
-    });
-
-    el.innerHTML = html;
+    if (!el || !curRoundData) return;
+    // Единая карточка группы — в том же формате, что на главной странице
+    // («Сейчас на поле», одна на всех), плюс слой маркера: рядом со счётом
+    // игрока виден и счёт, который ввёл его маркер.
+    curRoundData.roundId = curRid;
+    el.innerHTML = '<div class="live-group-unified-card">' +
+        generateGroupHoleTableHTML(curRoundData, { showMarker: true }) + '</div>';
+    ensureScorecardOpen('group-sc-panel');
 }
 
 // ==========================================
@@ -1150,70 +1144,137 @@ function isPlayerEnteredRound(p, pid, roundData) {
     return false;
 }
 
-// Сворачивание / разворачивание QR-кодов подключения игроков
+// Ключ запомненного состояния панели QR-кодов этого раунда.
+function invitePrefKey() { return 'pestovo_invite_open_' + (curRid || ''); }
+
+// Сколько игроков уже подключились к раунду (готовы вводить счёт).
+function countJoinedPlayers() {
+    var total = 0, joined = 0;
+    Object.entries((curRoundData && curRoundData.players) || {}).forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
+        total++;
+        if (isPlayerEnteredRound(p, pid, curRoundData)) joined++;
+    });
+    return { joined: joined, total: total };
+}
+
+function playerInitials(name) {
+    var words = String(name || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    if (!words.length) return '?';
+    var ini = words[0].charAt(0).toUpperCase();
+    if (words.length > 1) ini += words[words.length - 1].charAt(0).toUpperCase();
+    return ini;
+}
+
+// Компактная полоса «N из M готовы вводить счёт»: видна всегда, но не мешает
+// основной задаче — вводу счёта. Когда все подключились — slim-плашка.
+function renderJoinStatus() {
+    var box = lGet('invite-join-status');
+    if (!box || !curRoundData) return;
+    var counts = countJoinedPlayers();
+    var joined = counts.joined, total = counts.total;
+    if (!total) { box.innerHTML = ''; return; }
+    var pct = Math.max(0, Math.min(100, Math.round(joined / total * 100)));
+    if (joined >= total) {
+        box.innerHTML = '<div class="join-status all-joined"><span class="join-check"><i class="fas fa-circle-check"></i></span>' +
+            '<span>' + t('all_joined') + ' · ' + joined + '/' + total + '</span></div>';
+        return;
+    }
+    var dots = '';
+    Object.entries(curRoundData.players || {}).forEach(function(pe) {
+        var pid = pe[0], p = pe[1];
+        if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
+        var entered = isPlayerEnteredRound(p, pid, curRoundData);
+        var nm = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : (p.name || '');
+        dots += '<span class="join-dot' + (entered ? ' is-joined' : '') + '" title="' + escapeHtml(nm) + '">' + escapeHtml(playerInitials(nm)) + '</span>';
+    });
+    var readyWord = (joined === 1) ? t('ready_to_score_one') : t('ready_to_score');
+    box.innerHTML = '<div class="join-status">' +
+        '<div class="join-dots">' + dots + '</div>' +
+        '<div class="join-mid"><div class="join-text"><b>' + joined + ' ' + t('of_word') + ' ' + total + '</b> ' + readyWord + '</div>' +
+        '<div class="join-bar"><div class="join-fill" style="width:' + pct + '%"></div></div></div>' +
+        '</div>';
+}
+
+function updateInviteToggleLabel() {
+    var txt = lGet('invite-qrs-txt');
+    var panel = lGet('invite-qrs-panel');
+    if (!txt) return;
+    var counts = (typeof curRoundData !== 'undefined' && curRoundData) ? countJoinedPlayers() : { joined: 0, total: 0 };
+    var suffix = counts.total ? (' · ' + counts.joined + '/' + counts.total) : '';
+    var open = panel && !panel.classList.contains('hidden');
+    txt.textContent = (open ? t('invite_qrs_collapse') : t('invite_qrs_expand')) + suffix;
+}
+
+// Сворачивание / разворачивание QR-кодов подключения игроков.
+// Выбор запоминается для этого раунда.
 function toggleInviteQRs() {
     var panel = lGet('invite-qrs-panel');
     var icon = lGet('invite-qrs-icon');
-    var txt = lGet('invite-qrs-txt');
     if (!panel) return;
-    if (panel.classList.contains('hidden')) {
-        panel.classList.remove('hidden');
-        if (icon) icon.className = 'fas fa-chevron-up';
-        if (txt) txt.textContent = currentLang === 'en' ? 'Collapse player QR codes' : 'Свернуть QR-коды подключения';
-    } else {
-        panel.classList.add('hidden');
-        if (icon) icon.className = 'fas fa-chevron-down';
-        if (txt) txt.textContent = currentLang === 'en' ? 'Expand player QR codes' : 'Развернуть QR-коды подключения';
-    }
+    var willOpen = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !willOpen);
+    if (icon) icon.className = willOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+    try { localStorage.setItem(invitePrefKey(), willOpen ? 'open' : 'closed'); } catch (e) {}
+    updateInviteToggleLabel();
+    if (typeof vib === 'function') vib(15);
 }
 
 function renderInviteQRs() {
     var cardEl = lGet('invite-qrs-card');
     var activeEl = lGet('invite-qrs-grid');
     if (!canEditGroup || !curRoundData || !activeEl) {
-        if (cardEl) { try{ cardEl.classList.add('hidden'); }catch(e){} }
+        if (cardEl) { try { cardEl.classList.add('hidden'); } catch (e) {} }
         return;
     }
-    if (cardEl) { try{ cardEl.classList.remove('hidden'); }catch(e){} }
-    var panel = lGet('invite-qrs-panel');
-    if (panel && panel.classList.contains('hidden')) {
-        try{ panel.classList.remove('hidden'); }catch(e){}
-        var icon = lGet('invite-qrs-icon');
-        if (icon) icon.className = 'fas fa-chevron-up';
-    }
+    if (cardEl) { try { cardEl.classList.remove('hidden'); } catch (e) {} }
 
+    renderJoinStatus();
+
+    // QR-коды НЕ исчезают после подключения: показываем всех игроков группы.
+    // Подключившиеся помечены зелёным «В игре», ожидающие — «Ожидает».
     var base = baseUrl();
     var html = '';
-    var qrCount = 0;
 
     Object.entries(curRoundData.players || {}).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
-
-        // Показываем QR-коды ТОЛЬКО тем, кто ещё не вошёл в раунд.
-        // Для создателя раунда и тех, кто уже вошёл — QR не отображается.
-        if (isPlayerEnteredRound(p, pid, curRoundData)) return;
-        qrCount++;
-
+        var entered = isPlayerEnteredRound(p, pid, curRoundData);
         var url = base + 'setup-round.html?round=' + curRid + '&as=' + pid;
+        var nm = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : (p.name || '');
 
-        html += '<div class="qr-card" style="padding:14px;text-align:center;">';
-        html += '<div class="qr-name" style="color:var(--white);font-weight:700;font-size:14px;margin-bottom:4px;"><i class="fas fa-mobile-alt"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + '</div>';
-        html += '<div style="font-size:11px;color:var(--gold);margin-bottom:8px;">' + t('scan_to_play') + '</div>';
-        html += '<img src="' + qrUrl(url) + '" alt="QR" style="width:160px;height:160px;border-radius:8px;background:#fff;padding:6px;margin:0 auto 8px;display:block;">';
+        html += '<div class="qr-card ' + (entered ? 'qr-joined' : 'qr-waiting') + '" style="padding:14px;text-align:center;">';
+        html += '<div class="qr-status-badge">' + (entered
+            ? '<i class="fas fa-circle-check"></i> ' + t('joined_in_game')
+            : '<i class="fas fa-hourglass-half"></i> ' + t('waiting_join')) + '</div>';
+        html += '<div class="qr-name" style="color:var(--white);font-weight:700;font-size:14px;margin-bottom:4px;"><i class="fas fa-mobile-alt"></i> ' + escapeHtml(nm) + '</div>';
+        html += '<div class="qr-hint">' + (entered ? t('qr_reconnect_hint') : t('scan_to_play')) + '</div>';
+        html += '<img src="' + qrUrl(url) + '" alt="QR" class="qr-img">';
         html += '<div class="qr-url" style="font-size:10px;word-break:break-all;"><a href="' + url + '" target="_blank" style="color:var(--muted);">' + url + '</a></div>';
         html += '</div>';
     });
 
-    if (!qrCount) {
-        activeEl.innerHTML = '<div class="empty" style="padding:14px 8px;"><i class="fas fa-check-circle" style="color:#2ecc71;"></i><p style="font-size:12px;margin:8px 0 0;color:var(--white);">' +
-            (currentLang === 'en' ? 'All players have already joined the round' : 'Все игроки уже вошли в раунд') +
-            '</p></div>';
-    } else {
-        activeEl.innerHTML = html;
+    activeEl.innerHTML = html;
+
+    // Панель QR: ручной выбор важнее всего; по умолчанию открыта, пока не все
+    // подключились, а когда все в игре — сворачивается в slim-полосу,
+    // чтобы не мешать вводу счёта.
+    var panel = lGet('invite-qrs-panel');
+    var icon = lGet('invite-qrs-icon');
+    if (panel) {
+        var pref = null;
+        try { pref = localStorage.getItem(invitePrefKey()); } catch (e) {}
+        var counts = countJoinedPlayers();
+        var allJoined = counts.total > 0 && counts.joined >= counts.total;
+        var shouldOpen = pref ? (pref === 'open') : !allJoined;
+        panel.classList.toggle('hidden', !shouldOpen);
+        if (icon) icon.className = shouldOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
     }
+    updateInviteToggleLabel();
 }
 
+// ==========================================
 // ==========================================
 // ВЫЗОВ СУДЬИ / МАРШАЛА
 // ==========================================
@@ -1320,7 +1381,8 @@ function renderGVPlayers(r) {
 
     if (scCardEl) {
         r.roundId = curRid;
-        scCardEl.innerHTML = generateGroupHoleTableHTML(r, { compact: true });
+        scCardEl.innerHTML = generateGroupHoleTableHTML(r, { compact: true, showMarker: true });
+        ensureScorecardOpen('gv-sc-panel');
     }
 }
 

@@ -485,7 +485,8 @@ function renderRoundInfo(targetId) {
     if (!uid || !soloRound || !soloRound.players) return;
     var p = soloRound.players[uid];
     if (!p) return;
-    var guestBadge = soloRound.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">' + t('guest') + '</span>' : '';
+    // Бейдж «Гость» убран везде по требованию клуба.
+    var guestBadge = '';
 
     var courseHcpLbl = currentLang === 'en' ? 'Course' : 'пол.';
     var startLbl = t('start');

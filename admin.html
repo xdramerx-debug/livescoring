@@ -460,12 +460,43 @@
                 <div id="rg-batch-results"></div>
             </div>
 
+            <!-- ФОРМЫ ИМЁН -->
+            <div class="card" style="margin-bottom:20px;">
+                <h2><i class="fas fa-spell-check"></i> <span>Формы имён — «Наташа» = «Наталья»</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">
+                    На сайте игрок может быть записан коротким или иным вариантом имени
+                    (<b style="color:var(--gold);">Наташа</b>, <b style="color:var(--gold);">Наталия</b>,
+                    <b style="color:var(--gold);">Natalia</b>), а в базе АГР — полным. Выберите, как сопоставлять имена
+                    при поиске и синхронизации гандикапов. Словарь форм: <code style="color:var(--gold);">js/name-variants.js</code>.
+                </p>
+                <div id="nm-mode-list" style="margin-bottom:10px;"></div>
+                <label class="list-item" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:8px 12px;margin-bottom:10px;background:rgba(255,255,255,0.03);border-radius:10px;">
+                    <input type="checkbox" id="nm-autoapply" checked style="width:18px;height:18px;margin-top:2px;cursor:pointer;">
+                    <span style="font-size:12px;color:var(--muted);">
+                        <b style="color:var(--white);">Применять однозначные совпадения автоматически.</b><br>
+                        Если снять — любое совпадение по форме имени будет попадать в блок «Выберите нужного игрока», ничего не обновляя само.
+                    </span>
+                </label>
+                <div id="nm-custom-block" class="hidden" style="margin-bottom:10px;">
+                    <div class="form-group" style="margin-bottom:6px;">
+                        <label>Свои формы имён (вариант 3) — по одной в строке, например: <code style="color:var(--gold);">Лёля = Ольга</code></label>
+                        <textarea id="nm-custom-aliases" class="form-input" rows="4" placeholder="Лёля = Ольга&#10;Каталина = Наталия" style="resize:vertical;"></textarea>
+                    </div>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-g" onclick="nmSaveSettings()"><i class="fas fa-save"></i> <span>Сохранить</span></button>
+                    <button type="button" class="btn btn-og" onclick="nmAnalyzeNames()"><i class="fas fa-magnifying-glass-chart"></i> <span>Проверить имена игроков</span></button>
+                </div>
+                <div id="nm-analyze-results"></div>
+            </div>
+
             <!-- МАССОВАЯ СИНХРОНИЗАЦИЯ -->
             <div class="card" style="margin-bottom:20px;">
                 <h2><i class="fas fa-rotate"></i> <span>Синхронизация гандикапов игроков</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
                     Проверяет точный гандикап всех зарегистрированных игроков, гостей и участников раундов в базе АГР России.
-                    Совпадение ищется по <b>Фамилия + Имя</b> и по <b>Имя + Фамилия</b>. При однозначном совпадении HCP обновляется
+                    Совпадение ищется по <b>Фамилия + Имя</b> и по <b>Имя + Фамилия</b>, а также по формам имени
+                    («Наташа» → «Наталья», «Наталия» — см. блок «Формы имён» выше). При однозначном совпадении HCP обновляется
                     в профиле, раундах, истории и турнирах. В конце показываются списки: обновлено / актуально / не найдено / на выбор.
                 </p>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
@@ -655,7 +686,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/assistant-config.js"></script>
 <script src="js/assistant-build.js?v=2"></script>
-<script src="js/admin.js?v=18"></script>
+<script src="js/name-variants.js?v=1"></script>
+<script src="js/admin.js?v=19"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>
 </html>

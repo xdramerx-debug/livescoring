@@ -445,6 +445,19 @@ var I18N = {
         nav_handicaps: 'Гандикапы', nav_admin: 'Админ', nav_login: 'Войти',
         nav_assistant: 'Помощник',
         footer_club: '© 2024 Гольф-клуб Пестово',
+        tab_design: 'Дизайн 🎨',
+        design_admin_title: 'Шаблоны оформления сайта',
+        design_admin_sub: 'Текущий дизайн + 5 альтернативных шаблонов. Шаблон можно назначить всему сайту, отдельной странице или отдельному блоку — так собирается собственный дизайн из готовых частей.',
+        design_mode_title: 'Режим оформления',
+        design_global_title: 'Базовый шаблон сайта',
+        design_preview_title: 'Живой предпросмотр',
+        design_preview_sub: 'Слева — как сайт выглядит сейчас с выбранными настройками, дальше — каждый шаблон целиком.',
+        design_save_btn: 'Сохранить оформление для всех',
+        design_reset_btn: 'Вернуть текущий дизайн',
+        design_pages_title: 'Шаблон для каждой страницы',
+        design_pages_sub: 'Работает в режиме «Сборка из шаблонов». Значение «Текущий» — страница оформлена базовым шаблоном сайта.',
+        design_blocks_title: 'Шаблон для каждого блока',
+        design_blocks_sub: 'Блок со своим шаблоном перекрывает шаблон страницы — так собирается уникальный дизайн из разных частей.',
         tab_assistant: 'Помощник',
         assistant_admin_title: 'Настройка «Помощника»',
         assistant_admin_sub: 'Добавляйте PDF-документы по ссылке — помощник сможет отвечать на вопросы по ним. Нажмите «Сохранить и перестроить», чтобы обновить базу знаний для всех игроков.',
@@ -896,6 +909,19 @@ var I18N = {
         nav_handicaps: 'Handicaps', nav_admin: 'Admin', nav_login: 'Login',
         nav_assistant: 'Assistant',
         footer_club: '© 2024 Pestovo Golf Club',
+        tab_design: 'Design 🎨',
+        design_admin_title: 'Site design templates',
+        design_admin_sub: 'The current design + 5 alternative templates. A template can be applied to the whole site, to a single page or to a single block — this is how a custom design is assembled from ready-made parts.',
+        design_mode_title: 'Design mode',
+        design_global_title: 'Base site template',
+        design_preview_title: 'Live preview',
+        design_preview_sub: 'On the left — how the site looks now with the current settings, then every template in full.',
+        design_save_btn: 'Save the design for everyone',
+        design_reset_btn: 'Restore the current design',
+        design_pages_title: 'Template for each page',
+        design_pages_sub: 'Works in the "Mix templates" mode. "Current" means the page follows the base site template.',
+        design_blocks_title: 'Template for each block',
+        design_blocks_sub: 'A block with its own template overrides the page template — this is how a unique design is assembled from different parts.',
         tab_assistant: 'Assistant',
         assistant_admin_title: 'Assistant settings',
         assistant_admin_sub: 'Add PDF documents by link — the assistant can answer questions based on them. Click "Save and rebuild" to refresh the knowledge base for all players.',
@@ -6801,6 +6827,19 @@ if (typeof db !== 'undefined') {
             var v = sn.val();
             if (GROUP_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoGroupCardVariant) {
                 applyGroupCardVariant(String(v));
+            }
+        });
+        // Шаблоны оформления сайта (админ-панель → «Дизайн 🎨»).
+        // Ключа settings/design может не быть — тогда работает текущий дизайн,
+        // ничего не переопределяется.
+        db.ref('settings/design').on('value', function(sn) {
+            var val = sn.val();
+            if (typeof PestovoDesign === 'undefined') return;
+            if (val && typeof val === 'object') {
+                PestovoDesign.applySettings(val);
+            } else {
+                // Админ сбросил оформление: возвращаем базовый дизайн.
+                PestovoDesign.applySettings(null);
             }
         });
         // Глобальные варианты страниц: по умолчанию используется вариант 1,

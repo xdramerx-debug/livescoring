@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0b1a0e">
+    <meta name="description" content="Сравнение шаблонов оформления сайта Пестово: текущий дизайн и 5 альтернативных шаблонов для страниц и блоков.">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Pestovo">
+    <link rel="icon" type="image/png" href="img/logo.png">
+    <link rel="apple-touch-icon" href="img/icon-180.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
+    <title>Шаблоны оформления — Пестово</title>
+    <link rel="stylesheet" href="css/style.css?v=22">
+    <link rel="stylesheet" href="css/design-presets.css?v=1">
+    <script src="js/design-system.js?v=1"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
+</head>
+<body>
+<nav class="nav" id="main-nav"><div class="container nav-c">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
+        <a href="index.html" class="nav-brand">
+            <img src="img/logo.png" alt="Pestovo" class="nav-logo">
+            <span class="nav-brand-text" data-i18n="brand_name">Пестово</span>
+        </a>
+        <div id="nav-weather-container"></div>
+    </div>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+    <div class="nav-menu" id="nav-menu">
+        <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
+        <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
+        <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
+        <a href="guide.html" class="nav-link" data-i18n="nav_guide">Книга поля</a>
+        <a href="feed.html" class="nav-link" data-i18n="nav_feed">Лента событий</a>
+        <a href="predictor.html" class="nav-link" data-i18n="nav_predictor">Симулятор WHS</a>
+        <a href="order-of-merit.html" class="nav-link" data-i18n="nav_oom">Зачёт сезона</a>
+        <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
+        <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
+        <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
+        <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
+        <a href="assistant.html" class="nav-link" data-i18n="nav_assistant">Помощник</a>
+        <div class="nav-auth" id="nav-auth"></div>
+    </div>
+</div></nav>
+
+<div class="page-head"><div class="container">
+    <h1 class="page-title"><i class="fas fa-palette"></i> Шаблоны оформления</h1>
+    <p class="page-sub">Текущий дизайн + 5 альтернативных шаблонов: для всего сайта, для каждой страницы и для каждого блока</p>
+</div></div>
+
+<main class="container" style="padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:60px;">
+
+    <div class="card">
+        <h2><i class="fas fa-circle-info"></i> Как это работает</h2>
+        <p class="dsp-note">
+            Каждый шаблон меняет оформление целиком: цвета, фон, рамки, тени, типографику, форму кнопок и бейджей,
+            вид таблиц, шапки и подвала — все детали и мелочи. Ниже видно характерные отличия каждого шаблона
+            от предыдущего. Выбор сохраняется в <b>Админ-панель → Дизайн 🎨</b> и применяется у всех игроков.
+        </p>
+        <p class="dsp-note" style="margin-top:8px;">
+            Дизайн можно <b>собрать из шаблонов</b>: выбрать базовый шаблон, а затем назначить свой шаблон
+            отдельной странице (Главная, Статистика, Турниры и т.д.) или отдельному блоку (шапка, карточки,
+            кнопки, таблицы, бейджи, подвал...). Конструктор — в самом низу страницы.
+        </p>
+        <p class="dsp-note" style="margin-top:8px;">
+            Быстрый предпросмотр любой страницы в конкретном шаблоне: добавьте к адресу <b>?dsp=1…5</b>
+            (например, <code>stats.html?dsp=4</code>). Ничего не сохраняется.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2><i class="fas fa-table-columns"></i> Все шаблоны целиком</h2>
+        <p class="dsp-note" style="margin-bottom:14px;">Один и тот же образец разметки в шести оформлениях.</p>
+        <div class="dsp-gallery" id="dsp-gal"></div>
+    </div>
+
+    <div class="card">
+        <h2><i class="fas fa-shapes"></i> Отличия по блокам</h2>
+        <p class="dsp-note" style="margin-bottom:14px;">Каждый блок показан отдельно — видно, чем именно шаблоны различаются.</p>
+        <div id="dsp-blocks"></div>
+    </div>
+
+    <div class="card">
+        <h2><i class="fas fa-list-check"></i> Матрица характерных отличий</h2>
+        <div class="dsp-matrix" id="dsp-matrix"></div>
+    </div>
+
+    <div class="card">
+        <h2><i class="fas fa-puzzle-piece"></i> Конструктор: собрать дизайн из шаблонов</h2>
+        <p class="dsp-note" style="margin-bottom:10px;">
+            Выберите базовый шаблон, затем — свой шаблон для любого блока. Справа сразу видно результат.
+            Сохранить собранный дизайн для всего сайта можно в админ-панели.
+        </p>
+        <div class="form-row" style="align-items:flex-start;gap:18px;">
+            <div style="flex:1 1 380px;min-width:280px;" id="dsp-builder-controls"></div>
+            <div style="flex:1 1 420px;min-width:300px;">
+                <div class="dsp-preview-head" style="border:1px solid var(--border);border-radius:12px 12px 0 0;">
+                    <b>Результат сборки</b><span id="dsp-builder-label">—</span>
+                </div>
+                <div id="dsp-builder-view" style="max-height:620px;overflow:auto;border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2><i class="fas fa-arrow-right"></i> Дальше</h2>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <a class="btn btn-g" href="admin.html"><i class="fas fa-shield-halved"></i> Открыть админ-панель</a>
+            <a class="btn btn-og" href="index.html"><i class="fas fa-house"></i> На главную</a>
+        </div>
+    </div>
+</main>
+
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.34.0</span></p></div></div></footer>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js?v=40"></script>
+<script src="js/design-preview.js?v=1"></script>
+<script src="js/pwa.js?v=2"></script>
+</body>
+</html>

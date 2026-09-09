@@ -58,6 +58,42 @@ eq(sandbox.psGroupSchedule(1, 4), { startHole: 10, startTime: base + 5 * 60000 }
 eq(sandbox.psGroupSchedule(2, 4), { startHole: 1, startTime: base + 10 * 60000 }, 'shotgun g2 → 1 (+10м)');
 eq(sandbox.psGroupSchedule(3, 4), { startHole: 10, startTime: base + 15 * 60000 }, 'shotgun g3 → 10 (+15м)');
 
+// Шотган со всех 18 лунок: все стартуют одновременно.
+// Интервал — только для второй группы на той же лунке (волна 2).
+sandbox.psState.proto.scheme = 'all18';
+sandbox.psState.proto.interval = 10;
+eq(sandbox.psGroupSchedule(0, 20), { startHole: 1, startTime: base }, 'all18 g0 → 1 @ 09:00');
+eq(sandbox.psGroupSchedule(1, 20), { startHole: 2, startTime: base }, 'all18 g1 → 2 @ 09:00 (то же время)');
+eq(sandbox.psGroupSchedule(17, 20), { startHole: 18, startTime: base }, 'all18 g17 → 18 @ 09:00');
+eq(sandbox.psGroupSchedule(18, 20), { startHole: 1, startTime: base + 10 * 60000 }, 'all18 g18 → 1 @ 09:10 (вторая группа на лунке)');
+eq(sandbox.psGroupSchedule(19, 20), { startHole: 2, startTime: base + 10 * 60000 }, 'all18 g19 → 2 @ 09:10');
+eq(sandbox.psNewGroupSchedule(new Array(18)), { startHole: 1, startTime: base + 10 * 60000 }, 'all18 новая 19-я группа → лунка 1 + интервал');
+
+// Смена интервала в админке НЕ сбрасывает группы (в т.ч. при правке протокола)
+// и двигает только вторую группу на той же лунке.
+sandbox.psState.editingId = 'pr_test';
+sandbox.psState.groups = [
+    { members: [{ id: 'a' }], startHole: 1, startTime: 0 },
+    { members: [{ id: 'b' }], startHole: 2, startTime: 0 },
+    { members: [{ id: 'c' }], startHole: 1, startTime: 0 }
+];
+sandbox.psState.proto.startTime = '11:00';
+sandbox.psState.proto.interval = 8;
+var all18Base = new Date('2026-09-09T11:00:00').getTime();
+sandbox.psDistInterval(10);
+eq(sandbox.psState.editingId, 'pr_test', 'all18 interval: режим правки не сбрасывается');
+eq(sandbox.psState.groups.length, 3, 'all18 interval: состав групп сохраняется');
+eq(sandbox.psState.proto.interval, 10, 'all18 interval: значение сохраняется');
+eq(sandbox.psState.groups[0].startTime, all18Base, 'all18 interval: группа A с 1-й — 11:00');
+eq(sandbox.psState.groups[1].startTime, all18Base, 'all18 interval: группа с 2-й — тоже 11:00');
+eq(sandbox.psState.groups[2].startTime, all18Base + 10 * 60000, 'all18 interval: группа B с 1-й — 11:10');
+eq(sandbox.psState.groups[0].members[0].id, 'a', 'all18 interval: игроки на месте');
+sandbox.psState.editingId = null;
+sandbox.psState.groups = [];
+sandbox.psState.proto.scheme = '1';
+sandbox.psState.proto.startTime = '09:00';
+sandbox.psState.proto.interval = 10;
+
 // ── Маркеры в группе ──
 let g4 = [mkPlayer('A', 'И', 10), mkPlayer('B', 'И', 20), mkPlayer('C', 'И', 30), mkPlayer('D', 'И', 40)];
 let markers = sandbox.psMarkersForGroup(g4);

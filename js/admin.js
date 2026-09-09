@@ -713,18 +713,46 @@ function loadTournaments() {
             var regPlayers = tVal.registeredPlayers || {};
             var regCount = Object.keys(regPlayers).length;
 
-            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;">';
+            var tnStatus = tVal.status || 'upcoming';
+            var tnEn = currentLang === 'en';
+            var tnDivisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
+            var tnStatusHtml = tnStatus === 'active'
+                ? '<span class="tn-status tn-a">🔴 ' + (tnEn ? 'Active' : 'Активный') + '</span>'
+                : tnStatus === 'completed'
+                ? '<span class="tn-status tn-d">✅ ' + (tnEn ? 'Completed' : 'Завершён') + '</span>'
+                : '<span class="tn-status tn-u">📅 ' + (tnEn ? 'Upcoming' : 'Предстоящий') + '</span>';
+
+            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;flex-direction:column;align-items:stretch;">';
+            html += '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;">';
             html += '<div style="flex:1;min-width:200px;">';
-            html += '<strong style="color:var(--white);">' + escapeHtml(tVal.name || '—') + '</strong>';
+            html += '<strong style="color:var(--white);">' + escapeHtml(tVal.name || '—') + '</strong> ' + tnStatusHtml;
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-                    fmtDate(new Date(tVal.date).getTime()) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + ' · Participants: ' + regCount + '</div>';
+                    fmtDate(new Date(tVal.date).getTime()) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + ' · ' + (tnEn ? 'Players: ' : 'Заявлено: ') + regCount + '</div>';
+            if (tnDivisions.length) {
+                html += '<div style="margin-top:6px;">';
+                tnDivisions.forEach(function(d) {
+                    var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
+                    html += '<span class="tn-div-chip">' + escapeHtml(d.name || '') + (rg ? ' · ' + escapeHtml(rg) : '') + '</span>';
+                });
+                html += '</div>';
+            }
             html += '</div>';
-            html += '<div style="display:flex;gap:6px;">';
+            html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;">';
+            if (tnStatus === 'upcoming') {
+                html += '<button class="btn btn-g btn-sm" onclick="tnStartTournament(\'' + id + '\')" title="' + (tnEn ? 'Start before the scheduled time' : 'Начать раньше запланированного времени') + '"><i class="fas fa-play"></i> ' + (tnEn ? 'Start' : 'Старт') + '</button>';
+            } else if (tnStatus === 'active') {
+                html += '<button class="btn btn-og btn-sm" onclick="tnFinishTournament(\'' + id + '\')"><i class="fas fa-flag-checkered"></i> ' + (tnEn ? 'Finish' : 'Финиш') + '</button>';
+            } else {
+                html += '<button class="btn btn-og btn-sm" onclick="tnReopenTournament(\'' + id + '\')"><i class="fas fa-rotate-left"></i> ' + (tnEn ? 'Reopen' : 'Открыть снова') + '</button>';
+            }
+            html += '<button class="btn btn-og btn-sm" onclick="tnToggleDivPanel(\'' + id + '\')"><i class="fas fa-layer-group"></i> ' + (tnEn ? 'HCP groups' : 'Группы HCP') + ' (' + tnDivisions.length + ')</button>';
             if (regCount > 0) {
                 html += '<button class="btn btn-og btn-sm" onclick="exportTournamentRosterCSV(\'' + id + '\')"><i class="fas fa-file-csv"></i> CSV</button>';
             }
             html += '<button class="btn btn-r btn-sm" onclick="deleteTn(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
             html += '</div></div>';
+            html += '<div id="tn-div-' + id + '" class="tn-div-block' + (tnDivOpen[id] ? '' : ' hidden') + '">' + tnDivisionsEditorHtml(id, tnDivisions) + '</div>';
+            html += '</div>';
         });
 
         el.innerHTML = html;
@@ -764,6 +792,152 @@ function exportTournamentRosterCSV(tnId) {
 
 function deleteTn(id) {
     if (confirm(currentLang === 'en' ? 'Delete tournament?' : 'Удалить турнир?')) db.ref('tournaments/' + id).remove();
+}
+
+// Запоминаем открытые панели дивизионов, чтобы realtime-перерисовка их не закрывала.
+var tnDivOpen = {};
+
+// ==========================================
+// СТАТУС ТУРНИРА: СТАРТ (в т.ч. досрочный) / ФИНИШ
+// ==========================================
+function tnStartTournament(id) {
+    var en = currentLang === 'en';
+    if (!confirm(en ? 'Start this tournament now (before the scheduled time)? The live leaderboard will become available.' : 'Начать турнир сейчас (раньше запланированного времени)? Станет доступен live-лидерборд.')) return;
+    db.ref('tournaments/' + id).update({ status: 'active', startedAt: Date.now() }).then(function() {
+        toast(en ? '🚀 Tournament started!' : '🚀 Турнир начат!', 'success');
+        if (typeof vib === 'function') vib([60, 40, 60]);
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+function tnFinishTournament(id) {
+    var en = currentLang === 'en';
+    if (!confirm(en ? 'Finish this tournament? Results will be marked as final.' : 'Завершить турнир? Результаты будут помечены как итоговые.')) return;
+    db.ref('tournaments/' + id).update({ status: 'completed', finishedAt: Date.now() }).then(function() {
+        toast(en ? '🏁 Tournament completed!' : '🏁 Турнир завершён!', 'success');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+function tnReopenTournament(id) {
+    var en = currentLang === 'en';
+    if (!confirm(en ? 'Reopen this tournament (back to upcoming)?' : 'Открыть турнир снова (вернуть в предстоящие)?')) return;
+    db.ref('tournaments/' + id).update({ status: 'upcoming' }).then(function() {
+        toast(en ? '↩️ Tournament reopened' : '↩️ Турнир снова открыт', 'info');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+// ==========================================
+// ГРУППЫ УЧАСТНИКОВ ПО ГАНДИКАПУ (дивизионы)
+// Пример: «Мужчины 0–12» (мужчины, HCP 0–12, синие ТИ).
+// Хранятся в tournaments/<id>/divisions.
+// ==========================================
+function tnToggleDivPanel(id) {
+    var panel = document.getElementById('tn-div-' + id);
+    if (panel) {
+        var willOpen = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden');
+        tnDivOpen[id] = willOpen;
+    }
+}
+
+function tnDivisionsEditorHtml(tnId, divisions) {
+    var en = currentLang === 'en';
+    divisions = divisions || [];
+    var html = '<div style="font-weight:800;color:var(--gold);font-size:13.5px;margin-bottom:8px;"><i class="fas fa-layer-group"></i> ' +
+        (en ? 'Handicap groups' : 'Группы участников по гандикапу') + '</div>';
+    if (!divisions.length) {
+        html += '<p style="font-size:12px;color:var(--muted);margin:0 0 10px;">' +
+            (en ? 'No groups yet. Example: “Men 0–12” (men, HCP 0–12, blue tees) and “Men 12.1–28” (men, HCP 12.1–28, white tees).'
+                : 'Групп пока нет. Пример: «Мужчины 0–12» (мужчины, HCP 0–12, синие ТИ) и «Мужчины 12.1–28» (мужчины, HCP 12.1–28, белые ТИ).') + '</p>';
+    } else {
+        divisions.forEach(function(d) {
+            var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
+            var g = (typeof tnDivisionGenderText === 'function') ? tnDivisionGenderText(d.gender) : (d.gender || '');
+            var teeTxt = d.tee ? (' · ' + t('tee_' + d.tee)) : '';
+            html += '<div class="tn-div-row"><span class="tn-div-name">' + escapeHtml(d.name || '—') + '</span>' +
+                '<span class="tn-div-meta">' + escapeHtml(g) + (rg ? ' · HCP ' + escapeHtml(rg) : '') + escapeHtml(teeTxt) + '</span>' +
+                '<button class="btn btn-r btn-sm" style="margin-left:auto;" onclick="tnDeleteDivision(\'' + tnId + '\',\'' + d.id + '\')"><i class="fas fa-trash"></i></button></div>';
+        });
+    }
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:flex-end;">';
+    html += '<div class="form-group" style="flex:2 1 150px;margin:0;"><label style="font-size:11px;">' + (en ? 'Group name' : 'Название группы') + '</label>' +
+        '<input type="text" id="tnd-name-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" placeholder="' + (en ? 'Men 0–12' : 'Мужчины 0–12') + '"></div>';
+    html += '<div class="form-group" style="flex:1 1 100px;margin:0;"><label style="font-size:11px;">' + (en ? 'Gender' : 'Пол') + '</label>' +
+        '<select id="tnd-gender-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' +
+        '<option value="men">' + (en ? 'Men' : 'Мужчины') + '</option>' +
+        '<option value="women">' + (en ? 'Women' : 'Девушки') + '</option>' +
+        '<option value="all">' + (en ? 'All' : 'Все') + '</option></select></div>';
+    html += '<div class="form-group" style="flex:0 1 76px;margin:0;"><label style="font-size:11px;">HCP ' + (en ? 'from' : 'от') + '</label>' +
+        '<input type="text" id="tnd-from-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" placeholder="0"></div>';
+    html += '<div class="form-group" style="flex:0 1 76px;margin:0;"><label style="font-size:11px;">HCP ' + (en ? 'to' : 'до') + '</label>' +
+        '<input type="text" id="tnd-to-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" placeholder="12"></div>';
+    html += '<div class="form-group" style="flex:1 1 110px;margin:0;"><label style="font-size:11px;">' + t('tee_select') + '</label>' +
+        '<select id="tnd-tee-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' +
+        '<option value="">—</option><option value="bk">' + t('tee_bk') + '</option><option value="bl">' + t('tee_bl') + '</option>' +
+        '<option value="wh">' + t('tee_wh') + '</option><option value="rd">' + t('tee_rd') + '</option></select></div>';
+    html += '<button class="btn btn-g btn-sm" onclick="tnAddDivision(\'' + tnId + '\')"><i class="fas fa-plus"></i> ' + (en ? 'Add' : 'Добавить') + '</button>';
+    html += '</div>';
+    return html;
+}
+
+function tnParseDivBound(raw) {
+    var s = String(raw == null ? '' : raw).trim().replace(',', '.');
+    if (s === '') return '';
+    var v = (typeof parseExactHcp === 'function') ? parseExactHcp(s) : parseFloat(s);
+    return isNaN(v) ? NaN : Math.round(v * 10) / 10;
+}
+
+function tnAddDivision(tnId) {
+    var en = currentLang === 'en';
+    var g = function(id) { return document.getElementById(id); };
+    var nameEl = g('tnd-name-' + tnId);
+    var name = nameEl ? nameEl.value.trim() : '';
+    if (!name) {
+        toast(en ? '⚠️ Enter the group name' : '⚠️ Укажите название группы', 'error');
+        if (nameEl && nameEl.focus) nameEl.focus();
+        return;
+    }
+    var genderEl = g('tnd-gender-' + tnId);
+    var teeEl = g('tnd-tee-' + tnId);
+    var from = tnParseDivBound(g('tnd-from-' + tnId) ? g('tnd-from-' + tnId).value : '');
+    var to = tnParseDivBound(g('tnd-to-' + tnId) ? g('tnd-to-' + tnId).value : '');
+    if (isNaN(from) || isNaN(to)) {
+        toast(en ? '⚠️ Invalid HCP range (use numbers like 0, 12.1)' : '⚠️ Некорректный диапазон HCP (нужны числа, например 0, 12.1)', 'error');
+        return;
+    }
+    if (from !== '' && to !== '' && from > to) {
+        toast(en ? '⚠️ “HCP from” must be less than “HCP to”' : '⚠️ «HCP от» должен быть меньше «HCP до»', 'error');
+        return;
+    }
+    tnDivOpen[tnId] = true;
+    db.ref('tournaments/' + tnId + '/divisions').push({
+        name: name,
+        gender: genderEl ? genderEl.value : 'men',
+        hcpFrom: from,
+        hcpTo: to,
+        tee: teeEl ? teeEl.value : '',
+        createdAt: Date.now()
+    }).then(function() {
+        toast(en ? '✅ Group added' : '✅ Группа добавлена', 'success');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+function tnDeleteDivision(tnId, divId) {
+    var en = currentLang === 'en';
+    if (!confirm(en ? 'Delete this handicap group?' : 'Удалить эту группу по гандикапу?')) return;
+    tnDivOpen[tnId] = true;
+    db.ref('tournaments/' + tnId + '/divisions/' + divId).remove().then(function() {
+        toast(en ? 'Group deleted' : 'Группа удалена', 'info');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
 }
 
 // ==========================================
@@ -2023,102 +2197,143 @@ function togglePlayerPrivacy(id) {
 // ==========================================
 // ИГРОКИ И РОЛИ
 // ==========================================
+var admPlayersQuery = '';
+var admPlayersLastData = null;
+var admPlayersExpanded = {};
+
+// Живой поиск по списку игроков (имя, email, телефон) — без новых подписок Firebase.
+function admPlayersSearch(v) {
+    admPlayersQuery = v || '';
+    admPlayersExpanded = {};
+    renderAdmPlayersList(admPlayersLastData);
+}
+
+function admTogglePlayerRow(id) {
+    admPlayersExpanded[id] = !admPlayersExpanded[id];
+    var panel = document.getElementById('adm-p-' + id);
+    if (panel) panel.classList.toggle('hidden', !admPlayersExpanded[id]);
+}
+
+// Компактный список игроков: одна строка на игрока, действия — в раскрывающейся панели.
+function renderAdmPlayersList(remoteData) {
+    var el = document.getElementById('adm-players');
+    if (!el) return;
+    var en = currentLang === 'en';
+
+    var localUsers = typeof getKnownPlayersSync === 'function' ? (getKnownPlayersSync() || {}) : {};
+    var combined = Object.assign({}, localUsers, remoteData || {});
+    var entries = Object.entries(combined).filter(function(e) {
+        return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(e[0], e[1] && e[1].name));
+    });
+
+    // Дедуп по ФИО, чтобы не было сдваивания в админ-списке
+    if (typeof dedupePlayerEntriesByFio === 'function') {
+        entries = dedupePlayerEntriesByFio(entries);
+    } else if (typeof rgGetFioKey === 'function') {
+        var seenFio = {};
+        var deduped = [];
+        entries.forEach(function(en2) {
+            var uu = en2[1] || {};
+            var key = rgGetFioKey(uu) || impNormName(uu.name || '');
+            if (!key) { deduped.push(en2); return; }
+            if (seenFio[key]) return;
+            seenFio[key] = true;
+            deduped.push(en2);
+        });
+        entries = deduped;
+    }
+
+    var q = (admPlayersQuery || '').trim().toLowerCase();
+    if (q) {
+        entries = entries.filter(function(e) {
+            var u = e[1] || {};
+            var hay = ((u.name || '') + ' ' + (u.email || '') + ' ' + (u.phone || '') + ' ' + (u.homeClub || '')).toLowerCase();
+            return hay.indexOf(q) !== -1;
+        });
+    }
+
+    if (!entries.length) {
+        el.innerHTML = '<div class="empty"><i class="fas fa-' + (q ? 'search' : 'users') + '"></i><p>' +
+            (q ? (en ? 'Nothing found' : 'Ничего не найдено') : (en ? 'No players' : 'Нет игроков')) + '</p></div>';
+        return;
+    }
+
+    entries.sort(function(a, b) {
+        var roleA = a[1].role === 'admin' ? 0 : a[1].role === 'referee' ? 1 : a[1].role === 'marshal' ? 2 : 3;
+        var roleB = b[1].role === 'admin' ? 0 : b[1].role === 'referee' ? 1 : b[1].role === 'marshal' ? 2 : 3;
+        if (roleA !== roleB) return roleA - roleB;
+        return (a[1].name || '').localeCompare(b[1].name || '');
+    });
+
+    var roundsStr = en ? ' · Rounds: ' : ' · Раундов: ';
+    var html = '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-users"></i> ' +
+        entries.length + ' ' + (en ? 'players — tap a row for actions' : 'строк — нажмите на игрока для действий') + '</div>';
+
+    entries.forEach(function(e) {
+        var id = e[0], u = e[1];
+        var curRole = u.role || 'player';
+        var name = u.name || '—';
+        var initials = name === '—' ? '?' : name.split(/\s+/).map(function(w) { return w.charAt(0); }).join('').slice(0, 2).toUpperCase();
+        var roleTxt = curRole === 'admin' ? t('role_admin') : curRole === 'referee' ? t('role_referee') : curRole === 'marshal' ? t('role_marshal') : t('role_player');
+        var dotCls = curRole === 'admin' ? 'adm-role-admin' : curRole === 'referee' ? 'adm-role-ref' : curRole === 'marshal' ? 'adm-role-mar' : 'adm-role-pl';
+        var hcpTxt = u.handicap != null ? fmtExactHcp(u.handicap) : '—';
+        var selfMark = (typeof currentUser !== 'undefined' && currentUser && id === currentUser.uid)
+            ? ' <span style="color:var(--gold);font-size:11px;">(' + (en ? 'You' : 'Это вы') + ')</span>' : '';
+
+        html += '<div class="adm-player-row" onclick="admTogglePlayerRow(\'' + id + '\')">' +
+            '<span class="adm-player-ava">' + escapeHtml(initials) + '</span>' +
+            '<span class="adm-player-main"><span class="adm-player-name">' + escapeHtml(name) + selfMark + '</span>' +
+            '<span class="adm-player-meta">HCP ' + escapeHtml(String(hcpTxt)) +
+            (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') +
+            ' · ' + escapeHtml(roleTxt) + roundsStr + (u.roundsPlayed || 0) + '</span></span>' +
+            '<span class="adm-role-dot ' + dotCls + '"></span></div>';
+
+        var nameJs = (u.name || '').replace(/'/g, "\'");
+        html += '<div id="adm-p-' + id + '" class="adm-player-actions' + (admPlayersExpanded[id] ? '' : ' hidden') + '">';
+        html += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">' +
+            escapeHtml(u.email || (en ? 'No email' : 'Без email')) +
+            (u.phone ? ' · 📞 ' + escapeHtml(u.phone) : '') +
+            (u.tee ? ' · ⛳ ' + escapeHtml(t('tee_' + u.tee)) : '') +
+            (u.homeClub ? ' · ' + escapeHtml(u.homeClub) : '') + '</div>';
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">';
+
+        if (typeof currentUser === 'undefined' || !currentUser || id !== currentUser.uid) {
+            html += '<select class="form-input" style="padding:5px 8px;font-size:11.5px;width:auto;" onchange="changeRole(\'' + id + '\', this.value, \'' + nameJs + '\')">';
+            html += '<option value="player" ' + (curRole === 'player' ? 'selected' : '') + '>' + t('role_player') + '</option>';
+            html += '<option value="referee" ' + (curRole === 'referee' ? 'selected' : '') + '>' + t('role_referee') + '</option>';
+            html += '<option value="marshal" ' + (curRole === 'marshal' ? 'selected' : '') + '>' + t('role_marshal') + '</option>';
+            html += '<option value="admin" ' + (curRole === 'admin' ? 'selected' : '') + '>' + t('role_admin') + '</option>';
+            html += '</select>';
+
+            var privInd = (typeof pestovoPrivacy !== 'undefined' && pestovoPrivacy.players) ? pestovoPrivacy.players[id] : undefined;
+            var privHidden = (privInd === true) || (privInd !== false && (typeof pestovoPrivacy === 'undefined' ? false : pestovoPrivacy.enabled === true));
+            html += '<button class="btn ' + (privHidden ? 'btn-r' : 'btn-og') + ' btn-sm" onclick="togglePlayerPrivacy(\'' + id + '\')" title="' +
+                (en ? 'Hide/show full name from others' : 'Скрыть/показывать ФИО от других') + '">' +
+                '<i class="fas fa-' + (privHidden ? 'eye' : 'eye-slash') + '"></i> ' + t(privHidden ? 'privacy_show_btn' : 'privacy_hide_btn') + '</button>';
+
+            html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + nameJs + '\')" title="' +
+                (en ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
+
+            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + id + '\',\'' + nameJs + '\')" title="Delete">' +
+                '<i class="fas fa-trash"></i></button>';
+        } else {
+            html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + nameJs + '\')" title="' +
+                (en ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
+        }
+
+        html += '</div></div>';
+    });
+
+    el.innerHTML = html;
+}
+
 function loadAdmPlayers() {
     var el = document.getElementById('adm-players');
     if (!el) return;
 
     var renderWithData = function(remoteData) {
-        var localUsers = typeof getKnownPlayersSync === 'function' ? (getKnownPlayersSync() || {}) : {};
-        var combined = Object.assign({}, localUsers, remoteData || {});
-        var entries = Object.entries(combined).filter(function(e) {
-            return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(e[0], e[1] && e[1].name));
-        });
-
-        // Дедуп по ФИО, чтобы не было сдваивания в админ-списке
-        if (typeof dedupePlayerEntriesByFio === 'function') {
-            entries = dedupePlayerEntriesByFio(entries);
-        } else if (typeof rgGetFioKey === 'function') {
-            var seenFio = {};
-            var deduped = [];
-            entries.forEach(function(en){
-                var u = en[1] || {};
-                var key = rgGetFioKey(u) || impNormName(u.name||'');
-                if (!key) { deduped.push(en); return; }
-                if (seenFio[key]) return;
-                seenFio[key]=true;
-                deduped.push(en);
-            });
-            entries = deduped;
-        }
-
-        if (!entries.length) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-users"></i><p>' + (currentLang === 'en' ? 'No players' : 'Нет игроков') + '</p></div>';
-            return;
-        }
-
-        entries.sort(function(a, b) {
-            var roleA = a[1].role === 'admin' ? 0 : a[1].role === 'referee' ? 1 : a[1].role === 'marshal' ? 2 : 3;
-            var roleB = b[1].role === 'admin' ? 0 : b[1].role === 'referee' ? 1 : b[1].role === 'marshal' ? 2 : 3;
-            if (roleA !== roleB) return roleA - roleB;
-            return (a[1].name || '').localeCompare(b[1].name || '');
-        });
-
-        var roundsStr = currentLang === 'en' ? ' · Rounds: ' : ' · Раундов: ';
-
-        var html = '';
-        entries.forEach(function(e) {
-            var id = e[0], u = e[1];
-            var gIcon = u.gender === 'women' ? '👩' : '👨';
-            // Бейдж «Гость» убран везде по требованию клуба.
-            var guestBadge = '';
-            var curRole = u.role || 'player';
-
-            var roleBadge = curRole === 'admin'
-                ? '<span style="color:#2ecc71;font-size:12px;font-weight:700;"><i class="fas fa-shield-halved"></i> ' + t('role_admin') + '</span>'
-                : curRole === 'referee'
-                ? '<span style="color:var(--red);font-size:12px;font-weight:700;"><i class="fas fa-gavel"></i> ' + t('role_referee') + '</span>'
-                : curRole === 'marshal'
-                ? '<span style="color:var(--blue);font-size:12px;font-weight:700;"><i class="fas fa-shield"></i> ' + t('role_marshal') + '</span>'
-                : '<span style="color:var(--muted);font-size:12px;">' + t('role_player') + '</span>';
-
-            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
-            html += '<div style="flex:1;min-width:200px;">';
-            html += '<strong style="color:var(--white);">' + gIcon + ' ' + escapeHtml(u.name || '—') + guestBadge + '</strong>';
-            html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">';
-            html += escapeHtml(u.email || (currentLang === 'en' ? 'No email' : 'Без email')) + ' · HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') + roundsStr + (u.roundsPlayed || 0);
-            html += '</div></div>';
-
-            html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
-            html += roleBadge;
-
-            if (!currentUser || id !== currentUser.uid) {
-                html += '<select class="form-input" style="padding:4px 8px;font-size:11px;width:auto;" onchange="changeRole(\'' + id + '\', this.value, \'' + (u.name || '').replace(/'/g, "\\'") + '\')">';
-                html += '<option value="player" ' + (curRole === 'player' ? 'selected' : '') + '>' + t('role_player') + '</option>';
-                html += '<option value="referee" ' + (curRole === 'referee' ? 'selected' : '') + '>' + t('role_referee') + '</option>';
-                html += '<option value="marshal" ' + (curRole === 'marshal' ? 'selected' : '') + '>' + t('role_marshal') + '</option>';
-                html += '<option value="admin" ' + (curRole === 'admin' ? 'selected' : '') + '>' + t('role_admin') + '</option>';
-                html += '</select>';
-
-                // Персональный тумблер приватности имени: скрыть/показывать ФИО этого игрока
-                var privInd = (typeof pestovoPrivacy !== 'undefined' && pestovoPrivacy.players) ? pestovoPrivacy.players[id] : undefined;
-                var privHidden = (privInd === true) || (privInd !== false && (typeof pestovoPrivacy === 'undefined' ? false : pestovoPrivacy.enabled === true));
-                var privLabel = privHidden ? t('privacy_show_btn') : t('privacy_hide_btn');
-                html += '<button class="btn ' + (privHidden ? 'btn-r' : 'btn-og') + ' btn-sm" onclick="togglePlayerPrivacy(\'' + id + '\')" title="' + (currentLang === 'en' ? 'Hide/show full name from others' : 'Скрыть/показывать ФИО от других') + '">' +
-                        '<i class="fas fa-' + (privHidden ? 'eye' : 'eye-slash') + '"></i> ' + privLabel + '</button>';
-
-                html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="' + (currentLang === 'en' ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
-
-                html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="Delete">' +
-                        '<i class="fas fa-trash"></i></button>';
-            } else {
-                html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="' + (currentLang === 'en' ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
-                html += '<span style="font-size:11px;color:var(--gold);font-weight:600;">(' + (currentLang === 'en' ? 'You' : 'Это вы') + ')</span>';
-            }
-
-            html += '</div></div>';
-        });
-
-        el.innerHTML = html;
+        admPlayersLastData = remoteData;
+        renderAdmPlayersList(remoteData);
     };
 
     renderWithData();

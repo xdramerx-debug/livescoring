@@ -50,6 +50,12 @@ function psDefaultProto() {
         method: 'hcpSnake',   // order|alpha|hcpAsc|hcpDesc|hcpSnake|random
         interval: 8,
         startTime: '09:00',
+        // Обрезка точного гандикапа — только для текущего турнира:
+        // сначала максимум по полу, затем процент (например 90%).
+        hcpCutEnabled: false,
+        hcpCutPercent: 90,
+        hcpMaxMen: '',
+        hcpMaxWomen: '',
         players: []           // см. psNewPlayer
     };
 }
@@ -295,7 +301,8 @@ function psLoadTournaments(cb) {
                 date: t.date || '',
                 formats: t.formats || [],
                 tees: t.tees || ['wh'],
-                status: t.status || 'upcoming'
+                status: t.status || 'upcoming',
+                divisions: t.divisions || null
             };
         }).sort(function(a, b) {
             return String(a.date).localeCompare(String(b.date)) || (b.name || '').localeCompare(a.name || '');
@@ -314,16 +321,16 @@ function psLoadTournaments(cb) {
 function psOpen() {
     var root = psEl('tab-start-content');
     if (!root) return;
-    if (psState.selId) {
-        // повторное открытие — просто перерисовываем
-        psRender();
-        return;
+    if (!psState.proto) {
+        psState.savedId = null;
+        psState.excel = null;
+        psState.proto = psDefaultProto();
     }
-    psState.savedId = null;
-    psState.excel = null;
-    psState.proto = psDefaultProto();
+    // Турниры (включая группы по гандикапу) подтягиваем при каждом открытии —
+    // их могли создать/изменить во вкладке «Турниры». Черновик при этом не трогаем.
     psLoadUsers();
     psLoadTournaments(function() { psRender(); });
+    psRender();
 }
 
 function psRender() {
@@ -421,9 +428,58 @@ function psRenderTournamentCard() {
             psL('Протокол привязывается к турниру: именно его зарегистрированные игроки, форматы и ТИ будут использованы. Протоколы без турнира создавать нельзя.',
                 'A start protocol is linked to a tournament: its registered players, formats and tees are used. Protocols without a tournament cannot be created.') +
             '</div>';
+    } else {
+        html += psRenderCutBox(proto);
     }
     html += '</div>';
     return html;
+}
+
+// Блок «Обрезка гандикапа» — только для текущего турнира.
+// Сначала максимум по полу, затем процент (например 36 → макс. 28 → 90% = 25.2).
+function psRenderCutBox(proto) {
+    proto = proto || {};
+    var cutOn = proto.hcpCutEnabled === true;
+    var pct = (proto.hcpCutPercent === '' || proto.hcpCutPercent == null) ? 90 : proto.hcpCutPercent;
+    var maxM = (proto.hcpMaxMen === '' || proto.hcpMaxMen == null) ? '' : proto.hcpMaxMen;
+    var maxW = (proto.hcpMaxWomen === '' || proto.hcpMaxWomen == null) ? '' : proto.hcpMaxWomen;
+    var html = '<div class="ps-cut-box">';
+    html += '<h4><i class="fas fa-scissors"></i> ' + psL('Обрезка гандикапа (только для этого турнира)', 'Handicap cut (this tournament only)') + '</h4>';
+    html += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--white);font-weight:700;margin-bottom:10px;">' +
+        '<input type="checkbox" id="ps-cut-enabled" ' + (cutOn ? 'checked' : '') + ' onchange="psCutField(\'hcpCutEnabled\', this.checked)" style="width:20px;height:20px;cursor:pointer;"> ' +
+        psL('Обрезать точный гандикап на процент', 'Cut exact handicap by percent') + '</label>';
+    html += '<div class="form-row form-row-3">';
+    html += '<div class="form-group"><label>' + psL('Процент (например 90 = 90%)', 'Percent (e.g. 90 = 90%)') + '</label>' +
+        '<input type="number" class="form-input" min="1" max="100" step="1" value="' + pct + '" ' + (cutOn ? '' : 'disabled') + ' onchange="psCutField(\'hcpCutPercent\', this.value)"></div>';
+    html += '<div class="form-group"><label>' + psL('Макс. точный HCP — мужчины', 'Max exact HCP — men') + '</label>' +
+        '<input type="text" class="form-input" placeholder="' + psL('без лимита', 'no limit') + '" value="' + String(maxM).replace(/"/g, '&quot;') + '" onchange="psCutField(\'hcpMaxMen\', this.value)"></div>';
+    html += '<div class="form-group"><label>' + psL('Макс. точный HCP — девушки', 'Max exact HCP — women') + '</label>' +
+        '<input type="text" class="form-input" placeholder="' + psL('без лимита', 'no limit') + '" value="' + String(maxW).replace(/"/g, '&quot;') + '" onchange="psCutField(\'hcpMaxWomen\', this.value)"></div>';
+    html += '</div>';
+    html += '<p style="font-size:11px;color:var(--muted);margin:4px 0 0;"><i class="fas fa-circle-info"></i> ' +
+        psL('Сначала применяется максимум по полу, затем процент. Полевой гандикап считается от обрезанного точного. Пример: точный 36, макс. 28, 90% → играет с 25.2.',
+            'The gender max applies first, then the percent. Course handicap is calculated from the cut exact value. Example: exact 36, max 28, 90% → plays off 25.2.') + '</p>';
+    html += '</div>';
+    return html;
+}
+
+// Изменение настроек обрезки: только перерисовка (состав групп не меняется,
+// полевые гандикапы пересчитаются автоматически при отображении и сохранении).
+function psCutField(field, val) {
+    if (!psState.proto) return;
+    if (field === 'hcpCutEnabled') psState.proto.hcpCutEnabled = (val === true || val === 'true' || val === 'on');
+    else if (field === 'hcpCutPercent') {
+        var n = parseFloat(val);
+        psState.proto.hcpCutPercent = isNaN(n) ? 100 : Math.max(1, Math.min(100, n));
+    } else if (field === 'hcpMaxMen' || field === 'hcpMaxWomen') {
+        var s = String(val == null ? '' : val).trim().replace(',', '.');
+        if (s === '') psState.proto[field] = '';
+        else {
+            var m = parseFloat(s);
+            psState.proto[field] = isNaN(m) ? '' : m;
+        }
+    }
+    psRender();
 }
 
 function psFormatsSelect(proto) {
@@ -564,6 +620,7 @@ function psRenderProtoCard() {
     html += '<label class="btn btn-og btn-sm" style="cursor:pointer;margin:0;"><i class="fas fa-file-excel"></i> ' + psL('Импорт Excel', 'Excel import') +
         '<input type="file" id="ps-excel-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="psExcelPick(this)"></label>';
     html += '<button class="btn btn-og btn-sm" onclick="psTemplateDownload()"><i class="fas fa-file-arrow-down"></i> ' + psL('Шаблон Excel', 'Excel template') + '</button>';
+    html += '<button class="btn btn-g btn-sm" onclick="psSaveRosterToTournament()"><i class="fas fa-cloud-arrow-up"></i> ' + psL('Сохранить список на турнир', 'Save roster to tournament') + '</button>';
     html += '<button class="btn btn-r btn-sm" onclick="psClearPlayers()"><i class="fas fa-trash"></i> ' + psL('Очистить список', 'Clear list') + '</button>';
     html += '</div>';
 
@@ -626,6 +683,10 @@ function psRosterRowHtml(p, idx) {
     if (p.uidMatched) {
         fio += ' <span class="hcp-chip" style="background:rgba(46,204,113,.18);border-color:rgba(46,204,113,.5);color:#2ecc71;" title="' + psL('Найден аккаунт игрока — раунд появится в его профиле', 'Player account matched — the round will appear in their profile') + '"><i class="fas fa-circle-check"></i></span>';
     }
+    var cutHint = psCutHintHtml(p);
+    if (cutHint) fio += cutHint;
+    var divChip = psDivisionChipHtml(p);
+    if (divChip) fio += ' ' + divChip;
     var srcTxt = p.source === 'registered' ? psL('регистрация', 'registration') : p.source === 'excel' ? psL('Excel', 'Excel') : psL('вручную', 'manual');
     var rowHtml = '<div class="list-item" style="padding:12px 14px;flex-wrap:wrap;gap:10px;align-items:center;">';
 
@@ -1567,7 +1628,8 @@ function psPlayerRoundEntry(p, fieldHcp) {
         lastName: p.lastName || '',
         gender: p.gender || 'men',
         tee: p.tee || 'wh',
-        exactHcp: p.hcp === null || p.hcp === undefined ? 0 : parseFloat(p.hcp),
+        exactHcp: psEffectiveExact(p),
+        exactHcpRaw: (p.hcp === null || p.hcp === undefined || p.hcp === '') ? 0 : (parseFloat(p.hcp) || 0),
         fieldHcp: fieldHcp,
         scores: {},
         markerScores: {},
@@ -1668,7 +1730,7 @@ function psRenderGroupsResult() {
             var hasScores = psPlayerHasScores(g, p.id);
             html += '<div style="padding:8px 10px;background:var(--input);border-radius:8px;margin-bottom:6px;border-left:3px solid ' + (mi === 0 ? 'var(--gold)' : 'var(--border)') + ';">';
             html += '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;">';
-            html += '<b style="font-size:13px;color:var(--white);">' + escapeHtml(psFullRus(p)) + '</b>' +
+            html += '<b style="font-size:13px;color:var(--white);">' + escapeHtml(psFullRus(p)) + '</b>' + psCutHintHtml(p) + ' ' + psDivisionChipHtml(p) +
                 (hasScores ? ' <span class="hcp-chip" style="background:rgba(90,173,224,.15);color:var(--blue);font-size:10px;" title="' + psL('В раунде уже есть введённый счёт этого игрока', 'This player already has scores in the round') + '"><i class="fas fa-flag-checkered"></i> ' + psL('есть счёт', 'has scores') + '</span>' : '');
             html += '<div style="display:flex;gap:4px;align-items:center;">';
             if (psState.groups.length > 1 || g.members.length > 0) {
@@ -2114,6 +2176,7 @@ function psSaveProtocol() {
         var groupFormat = (g.format && String(g.format).trim()) ? String(g.format).trim() : format;
         var groupPlayers = g.members.map(function(p) {
             var key = ensureKey(p);
+            p.id = key;
             var fieldHcp = psCalcFieldHcp(p);
             roundPlayers[key] = psPlayerRoundEntry(p, fieldHcp);
             participants.push(key);
@@ -2124,7 +2187,8 @@ function psSaveProtocol() {
                 middleName: p.middleName || '',
                 gender: p.gender || 'men',
                 tee: p.tee || 'wh',
-                exactHcp: p.hcp === null || p.hcp === undefined ? 0 : parseFloat(p.hcp),
+                exactHcp: psEffectiveExact(p),
+                exactHcpRaw: (p.hcp === null || p.hcp === undefined || p.hcp === '') ? 0 : (parseFloat(p.hcp) || 0),
                 fieldHcp: fieldHcp
             };
         });
@@ -2192,6 +2256,7 @@ function psSaveProtocol() {
             method: proto.method || 'hcpSnake',
             interval: parseInt(proto.interval, 10) || 8,
             startTime: proto.startTime || '09:00',
+            hcpCut: { enabled: proto.hcpCutEnabled === true, percent: proto.hcpCutPercent || 100, maxMen: (proto.hcpMaxMen === '' ? null : proto.hcpMaxMen), maxWomen: (proto.hcpMaxWomen === '' ? null : proto.hcpMaxWomen) },
             playersCount: totalPlayers,
             groupsCount: groups.length,
             status: 'ready',
@@ -2207,6 +2272,7 @@ function psSaveProtocol() {
         psRender();
         toast(psL('🎉 Протокол сохранён: ' + groups.length + ' групп, ' + totalPlayers + ' игроков', '🎉 Protocol saved: ' + groups.length + ' groups, ' + totalPlayers + ' players'), 'success');
         if (typeof vib === 'function') vib([60, 40, 60]);
+        try { psAutoSyncSavedGroups(groups); } catch (e) { console.warn('[start] autosync', e); }
     }).catch(function(err) {
         psState.busy = false;
         console.error('[start] save error', err);
@@ -2248,6 +2314,12 @@ function psEditProtocol(pid) {
         proto.interval = parseInt(doc.interval, 10) || 8;
         proto.startTime = doc.startTime || '09:00';
         proto.tee = doc.tee || 'wh';
+        if (doc.hcpCut) {
+            proto.hcpCutEnabled = doc.hcpCut.enabled === true;
+            proto.hcpCutPercent = (doc.hcpCut.percent == null || doc.hcpCut.percent === '') ? 100 : doc.hcpCut.percent;
+            proto.hcpMaxMen = (doc.hcpCut.maxMen == null) ? '' : doc.hcpCut.maxMen;
+            proto.hcpMaxWomen = (doc.hcpCut.maxWomen == null) ? '' : doc.hcpCut.maxWomen;
+        }
         proto.players = []; // участники редактируются прямо в группах
         psState.proto = proto;
 
@@ -2266,7 +2338,7 @@ function psEditProtocol(pid) {
                     middleName: pl.middleName || '',
                     gender: pl.gender || 'men',
                     tee: pl.tee || 'wh',
-                    hcp: (pl.exactHcp === 0 || pl.exactHcp) ? parseFloat(pl.exactHcp) : null,
+                    hcp: (pl.exactHcpRaw === 0 || pl.exactHcpRaw) ? parseFloat(pl.exactHcpRaw) : ((pl.exactHcp === 0 || pl.exactHcp) ? parseFloat(pl.exactHcp) : null),
                     source: 'protocol',
                     uidMatched: !!pl.id && String(pl.id).indexOf('gst_') !== 0
                 };
@@ -2400,7 +2472,8 @@ function psSaveEdits() {
             groupPlayers.push({
                 id: key, lastName: p.lastName || '', firstName: p.firstName || '', middleName: p.middleName || '',
                 gender: p.gender || 'men', tee: p.tee || 'wh',
-                exactHcp: p.hcp === null || p.hcp === undefined ? 0 : parseFloat(p.hcp),
+                exactHcp: psEffectiveExact(p),
+                exactHcpRaw: (p.hcp === null || p.hcp === undefined || p.hcp === '') ? 0 : (parseFloat(p.hcp) || 0),
                 fieldHcp: fieldHcp
             });
         });
@@ -2519,7 +2592,8 @@ function psSaveEdits() {
                         entry.lastName = p.lastName || '';
                         entry.gender = p.gender || entry.gender || 'men';
                         entry.tee = p.tee || entry.tee || 'wh';
-                        entry.exactHcp = p.hcp === null || p.hcp === undefined ? 0 : parseFloat(p.hcp);
+                        entry.exactHcp = psEffectiveExact(p);
+                        entry.exactHcpRaw = (p.hcp === null || p.hcp === undefined || p.hcp === '') ? 0 : (parseFloat(p.hcp) || 0);
                         entry.fieldHcp = fieldHcp;
                     } else {
                         entry = psPlayerRoundEntry(p, fieldHcp);
@@ -2530,7 +2604,8 @@ function psSaveEdits() {
                     groupPlayers.push({
                         id: p.id, lastName: p.lastName || '', firstName: p.firstName || '', middleName: p.middleName || '',
                         gender: p.gender || 'men', tee: p.tee || 'wh',
-                        exactHcp: p.hcp === null || p.hcp === undefined ? 0 : parseFloat(p.hcp),
+                        exactHcp: psEffectiveExact(p),
+                        exactHcpRaw: (p.hcp === null || p.hcp === undefined || p.hcp === '') ? 0 : (parseFloat(p.hcp) || 0),
                         fieldHcp: fieldHcp
                     });
                 });
@@ -2575,6 +2650,7 @@ function psSaveEdits() {
         sets['protocols/' + pid + '/format'] = format;
         sets['protocols/' + pid + '/startTime'] = proto.startTime || '09:00';
         sets['protocols/' + pid + '/interval'] = parseInt(proto.interval, 10) || 8;
+        sets['protocols/' + pid + '/hcpCut'] = { enabled: proto.hcpCutEnabled === true, percent: proto.hcpCutPercent || 100, maxMen: (proto.hcpMaxMen === '' ? null : proto.hcpMaxMen), maxWomen: (proto.hcpMaxWomen === '' ? null : proto.hcpMaxWomen) };
         sets['protocols/' + pid + '/playersCount'] = totalPlayers;
         sets['protocols/' + pid + '/groupsCount'] = groups.length;
         sets['protocols/' + pid + '/groups'] = groupStore;
@@ -2597,6 +2673,7 @@ function psSaveEdits() {
         psRender();
         toast(psL('✅ Протокол обновлён — QR-коды игроков остались прежними', '✅ Protocol updated — players’ QR codes stayed the same'), 'success');
         if (typeof vib === 'function') vib([60, 40, 60]);
+        try { psAutoSyncSavedGroups(groups); } catch (e) { console.warn('[start] autosync', e); }
     }).catch(function(err) {
         psState.busy = false;
         console.error('[start] edit save error', err);
@@ -2727,4 +2804,201 @@ function psSwitchTo() {
             psBindSavedList();
         } catch (e) { console.error('[start] psOpen error', e); }
     }
+}
+
+// ----------------------------------------------------------
+// СИНХРОНИЗАЦИЯ С ТУРНИРОМ И СПИСКОМ ИГРОКОВ САЙТА
+// ----------------------------------------------------------
+// Участники стартового листа («Участники стартового листа» + все группы)
+// записываются в tournaments/<id>/registeredPlayers — счётчик
+// «Заявлено участников» на странице турнира обновляется сам.
+// Игроков, которых нет в users, автоматически добавляем в список игроков сайта.
+// ----------------------------------------------------------
+
+// Все участники черновика: общий список + все группы, без дублей (по id и по ФИО).
+function psCollectAllRosterPlayers() {
+    var out = [];
+    var seenId = {};
+    var seenFio = {};
+    function push(p) {
+        if (!p) return;
+        var id = p.id || '';
+        var key = psKeyOf(p);
+        if (id && seenId[id]) return;
+        if (key && seenFio[key]) return;
+        if (!(p.lastName || p.firstName)) return;
+        if (id) seenId[id] = true;
+        if (key) seenFio[key] = true;
+        out.push({
+            id: id,
+            lastName: p.lastName || '',
+            firstName: p.firstName || '',
+            middleName: p.middleName || '',
+            gender: p.gender || 'men',
+            tee: p.tee || 'wh',
+            hcp: (p.hcp === null || p.hcp === undefined || p.hcp === '') ? null : parseFloat(p.hcp)
+        });
+    }
+    if (psState.proto && psState.proto.players) psState.proto.players.forEach(push);
+    if (psState.groups) psState.groups.forEach(function(g) { (g.members || []).forEach(push); });
+    return out;
+}
+
+// Кнопка «Сохранить список на турнир» (блок 2).
+function psSaveRosterToTournament() {
+    var tnId = psState.selId || (psState.proto && psState.proto.tournamentId) || '';
+    if (!tnId) {
+        toast(psL('⚠️ Сначала выберите турнир (блок 1)', '⚠️ Pick a tournament first (block 1)'), 'error');
+        return;
+    }
+    if (typeof db === 'undefined' || !db) {
+        toast(psL('⚠️ Нет соединения с базой', '⚠️ No database connection'), 'error');
+        return;
+    }
+    var entries = psCollectAllRosterPlayers();
+    if (!entries.length) {
+        toast(psL('⚠️ Список участников пуст — добавьте игроков', '⚠️ Roster is empty — add players'), 'error');
+        return;
+    }
+    toast(psL('⏳ Сохраняю список на турнир…', '⏳ Saving roster to tournament…'), 'info');
+    psSyncEntriesToTournament(entries, tnId, { silent: false }, function(err, res) {
+        if (err) {
+            toast(psL('⚠️ Ошибка сохранения: ' + err, '⚠️ Save error: ' + err), 'error');
+            return;
+        }
+        var msg = psL('✅ На турнир записано: ' + res.total +
+            (res.usersCreated ? ' · новых в списке игроков: ' + res.usersCreated : ''),
+            '✅ Written to tournament: ' + res.total +
+            (res.usersCreated ? ' · new site players: ' + res.usersCreated : ''));
+        toast(msg, 'success');
+        if (typeof vib === 'function') vib([60, 40, 60]);
+    });
+}
+
+// Тихая синхронизация групп после сохранения протокола/правок.
+function psAutoSyncSavedGroups(groups) {
+    var tnId = psState.selId || (psState.proto && psState.proto.tournamentId) || '';
+    if (!tnId || typeof db === 'undefined' || !db) return;
+    var entries = [];
+    (groups || []).forEach(function(g) {
+        (g.members || []).forEach(function(p) {
+            if (!(p.lastName || p.firstName)) return;
+            entries.push({
+                id: p.id || '',
+                lastName: p.lastName || '',
+                firstName: p.firstName || '',
+                middleName: p.middleName || '',
+                gender: p.gender || 'men',
+                tee: p.tee || 'wh',
+                hcp: (p.hcp === null || p.hcp === undefined || p.hcp === '') ? null : parseFloat(p.hcp)
+            });
+        });
+    });
+    if (!entries.length) return;
+    psSyncEntriesToTournament(entries, tnId, { silent: true }, function() {});
+}
+
+// Ядро синхронизации: entries → tournaments/<tnId>/registeredPlayers (+ users).
+// cb(err, { total, usersCreated })
+function psSyncEntriesToTournament(entries, tnId, opts, cb) {
+    opts = opts || {};
+    cb = cb || function() {};
+    if (typeof db === 'undefined' || !db) { cb('no-db'); return; }
+    Promise.all([
+        db.ref('users').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
+        db.ref('tournaments/' + tnId + '/registeredPlayers').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; })
+    ]).then(function(res) {
+        var users = res[0] || {};
+        var existing = res[1] || {};
+        psState.users = users;
+
+        // Индекс пользователей по ФИО (точное + без отчества)
+        var fioIndex = {};
+        Object.keys(users).forEach(function(uid) {
+            var u = users[uid] || {};
+            var parts = psUserParts(u);
+            var key = psKeyOf(parts);
+            if (key && !fioIndex[key]) fioIndex[key] = uid;
+            var short = psNorm(parts.lastName) + '|' + psNorm(parts.firstName) + '|';
+            if (short !== '||' && !fioIndex['s:' + short]) fioIndex['s:' + short] = uid;
+        });
+
+        var updates = {};
+        var usersCreated = 0;
+        var now = Date.now();
+        var usedNewIds = {};
+
+        entries.forEach(function(e) {
+            var probe = { lastName: e.lastName, firstName: e.firstName, middleName: e.middleName };
+            var key = psKeyOf(probe);
+            var uid = (key && fioIndex[key]) || null;
+            if (!uid) {
+                var short = psNorm(e.lastName) + '|' + psNorm(e.firstName) + '|';
+                if (short !== '||') uid = fioIndex['s:' + short] || null;
+            }
+            // Уже привязанный реальный uid из черновика (загрузка из регистрации)
+            if (!uid && e.id && users[e.id]) uid = e.id;
+
+            if (!uid) {
+                uid = 'user_' + now.toString(36) + '_' + Math.random().toString(36).substring(2, 7);
+                while (users[uid] || usedNewIds[uid]) {
+                    uid = 'user_' + now.toString(36) + '_' + Math.random().toString(36).substring(2, 7);
+                }
+                usedNewIds[uid] = true;
+                usersCreated++;
+                var fullName = [e.firstName, e.middleName, e.lastName].filter(function(w) { return String(w || '').trim(); }).join(' ');
+                var newUser = {
+                    name: fullName || 'Player',
+                    firstName: e.firstName || '',
+                    middleName: e.middleName || '',
+                    lastName: e.lastName || '',
+                    email: '',
+                    handicap: (e.hcp === null || e.hcp === undefined || isNaN(e.hcp)) ? null : e.hcp,
+                    gender: e.gender || 'men',
+                    defaultTee: e.tee || 'wh',
+                    role: 'player',
+                    createdAt: now,
+                    roundsPlayed: 0,
+                    bestGross: null,
+                    bestStableford: null,
+                    hcpSource: 'start-list'
+                };
+                updates['users/' + uid] = newUser;
+                users[uid] = newUser;
+                if (key) fioIndex[key] = uid;
+            } else if (users[uid]) {
+                // Профиль есть: добиваем недостающие данные, гандикап не затираем
+                var u = users[uid];
+                if ((u.handicap === null || u.handicap === undefined || u.handicap === '') && e.hcp !== null && !isNaN(e.hcp)) {
+                    updates['users/' + uid + '/handicap'] = e.hcp;
+                }
+                if (!u.defaultTee && e.tee) updates['users/' + uid + '/defaultTee'] = e.tee;
+                if (!u.gender && e.gender) updates['users/' + uid + '/gender'] = e.gender;
+            }
+
+            var prev = existing[uid] || {};
+            updates['tournaments/' + tnId + '/registeredPlayers/' + uid] = {
+                uid: uid,
+                name: [e.firstName, e.middleName, e.lastName].filter(function(w) { return String(w || '').trim(); }).join(' ') || 'Player',
+                firstName: e.firstName || '',
+                middleName: e.middleName || '',
+                lastName: e.lastName || '',
+                handicap: (e.hcp === null || e.hcp === undefined || isNaN(e.hcp)) ? null : e.hcp,
+                gender: e.gender || 'men',
+                tee: e.tee || 'wh',
+                registeredAt: prev.registeredAt || now,
+                source: prev.source || 'start-list'
+            };
+        });
+
+        if (!Object.keys(updates).length) { cb(null, { total: 0, usersCreated: 0 }); return; }
+        db.ref().update(updates).then(function() {
+            psState.users = users;
+            cb(null, { total: entries.length, usersCreated: usersCreated });
+        }).catch(function(err) {
+            cb(err && err.message ? err.message : String(err));
+        });
+    }).catch(function(err) {
+        cb(err && err.message ? err.message : String(err));
+    });
 }

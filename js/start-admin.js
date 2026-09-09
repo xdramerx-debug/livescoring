@@ -1207,6 +1207,17 @@ function psGenderFromCell(v) {
     return 'men';
 }
 
+// Если колонка пола не указана, определяем его по имени. Это намеренно
+// консервативный словарь: неизвестное имя остаётся мужским, чтобы не
+// назначить игроку женские ТИ случайно.
+function psGenderFromName(firstName) {
+    var s = psNorm(firstName).replace(/[.]/g, '');
+    var female = ['анна','мария','елена','ольга','наталья','наталия','ирина','светлана','екатерина','татьяна','юлия','юлия','александра','дарья','дарина','виктория','полина','ксения','евгения','людмила','галина','валерия','вероника','карина','кристина','марина','надежда','нина','раиса','софия','софья','алина','алиса','милана','таисия','варвара','маргарита','лариса','любовь','вера','зоя','инна'];
+    if (female.indexOf(s) !== -1 || /(?:а|я)$/.test(s) && ['никита','илья'].indexOf(s) === -1) return 'women';
+    return 'men';
+}
+
+
 // Строгая проверка «это ячейка с полом?» — нужна для авто-определения колонок.
 function psGenderCellSure(v) {
     var s = psNorm(v).replace(/[.]/g, '');
@@ -1876,6 +1887,11 @@ function psGroupSchedule(i, totalGroups) {
         // следующая волна получает тот же старт через полный интервал.
         var wave = Math.floor(i / 18), holeIdx = i % 18;
         return { startHole: holeIdx + 1, startTime: base + (wave * intervalMs) + holeIdx * intervalMs };
+        // Круговой проход по лункам: 1-я группа с 1-й, 2-я со 2-й ...;
+        // при большом поле следующая группа получает ту же лунку в следующий слот.
+        var allHole = (idx % 18) + 1;
+        var allSlot = Math.floor(idx / 18);
+        return { startHole: allHole, startTime: base + allSlot * intervalMs + (idx % 18) * intervalMs };
     }
     if (proto.scheme === '1-10') {
         var hole = (i % 2 === 0) ? 1 : 10;
@@ -2235,6 +2251,11 @@ function psNewGroupSchedule(prevGroups) {
         // следующая волна получает тот же старт через полный интервал.
         var wave = Math.floor(idx / 18), holeIdx = idx % 18;
         return { startHole: holeIdx + 1, startTime: base + (wave * intervalMs) + holeIdx * intervalMs };
+        // Круговой проход по лункам: 1-я группа с 1-й, 2-я со 2-й ...;
+        // при большом поле следующая группа получает ту же лунку в следующий слот.
+        var allHole = (idx % 18) + 1;
+        var allSlot = Math.floor(idx / 18);
+        return { startHole: allHole, startTime: base + allSlot * intervalMs + (idx % 18) * intervalMs };
     }
     if (proto.scheme === '1-10') {
         var hole = (idx % 2 === 0) ? 1 : 10;

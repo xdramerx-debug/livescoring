@@ -154,6 +154,16 @@ sandbox.NameVariants.setMode('off');
 var qsOff = sandbox.rgBuildSearchQueries({ firstName: 'Наташа', lastName: 'Смирнова', name: 'Смирнова Наташа' });
 check('режим off   | прежние 2 запроса, без форм имени', qsOff, ['Смирнова Наташа', 'Наташа Смирнова']);
 
+console.log('\n=== автоприменение выключено (настройка по умолчанию) ===\n');
+sandbox.NameVariants.setMode('B');
+sandbox.NameVariants.setCustomAliases('');
+sandbox.NameVariants.setAutoApply(false);
+check('режим B, autoApply=off | «Смирнова Наташа» vs «Смирнова Наталия»',
+    sandbox.rgNamesMatch('наташа', 'смирнова', 'наталия', 'смирнова', 'наташа смирнова', 'смирнова наталия'), 'loose');
+check('режим B, autoApply=off | точное совпадение по-прежнему обновляет HCP',
+    sandbox.rgNamesMatch('ольга', 'морозова', 'ольга', 'морозова', 'ольга морозова', 'морозова ольга'), 'strong');
+sandbox.NameVariants.setAutoApply(true);
+
 console.log('\n=== js/admin.js: rgGetFioKey — дубли игроков ===\n');
 function keyOf(mode, u) {
     sandbox.NameVariants.setMode(mode);

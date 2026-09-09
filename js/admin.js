@@ -4496,11 +4496,13 @@ var NM_MODE_INFO = [
 /** Применяет сохранённый режим сразу при загрузке админки. */
 function nmApplyStored() {
     if (typeof NameVariants === 'undefined') return;
-    var mode = 'off', aliases = '', auto = true;
+    // По умолчанию: формы имени не учитываются, автоприменение выключено —
+    // нужный режим администратор включает сам в блоке «Формы имён».
+    var mode = 'off', aliases = '', auto = false;
     try {
         mode = localStorage.getItem(NM_MODE_KEY) || 'off';
         aliases = localStorage.getItem(NM_ALIASES_KEY) || '';
-        auto = localStorage.getItem(NM_AUTO_KEY) !== '0';
+        auto = localStorage.getItem(NM_AUTO_KEY) === '1';
     } catch (e) {}
     NameVariants.setMode(mode);
     NameVariants.setCustomAliases(aliases);
@@ -4555,9 +4557,9 @@ function nmLoadSettings(fromRemote) {
                 if (ta) ta.value = v.aliases;
             }
             if (v.autoApply != null && typeof NameVariants !== 'undefined') {
-                NameVariants.setAutoApply(!!v.autoApply);
-                try { localStorage.setItem(NM_AUTO_KEY, v.autoApply ? '1' : '0'); } catch (e) {}
-                if (autoEl) autoEl.checked = !!v.autoApply;
+                NameVariants.setAutoApply(v.autoApply === true);
+                try { localStorage.setItem(NM_AUTO_KEY, v.autoApply === true ? '1' : '0'); } catch (e) {}
+                if (autoEl) autoEl.checked = (v.autoApply === true);
             }
             nmLoadSettings(true);
         }).catch(function() {});

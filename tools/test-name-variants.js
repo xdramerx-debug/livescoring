@@ -192,15 +192,34 @@ console.log('\n=== Отчества: отец и сын не должны скл
     console.log((clash === c[2] ? ' ok  ' : 'FAIL ') + ' | «' + c[0].middleName + '» vs «' + c[1].middleName + '» → конфликт=' + clash);
 });
 
-console.log('\n=== Флаг «не применять автоматически» (autoApply = false) ===\n');
+console.log('\n=== Флаг «не применять автоматически» (autoApply = false — по умолчанию) ===\n');
 NV.setMode('B');
 NV.setCustomAliases('');
 NV.setAutoApply(false);
-var safeGot = NV.match('наташа', 'смирнова', 'наталия', 'смирнова', 'наташа смирнова', 'наталия смирнова');
+[
+    ['наташа', 'смирнова', 'наталия', 'смирнова', 'loose', 'форма имени → только «на выбор»'],
+    ['ольга', 'морозова', 'ольга', 'морозова', 'strong', 'точное совпадение → HCP обновляется'],
+    ['наташа', 'смирнова', 'наталия', 'смирнов', 'loose', 'род фамилии → «на выбор»']
+].forEach(function(c) {
+    var got = NV.match(c[0], c[1], c[2], c[3], c[0] + ' ' + c[1], c[2] + ' ' + c[3]);
+    total++;
+    if (got !== c[4]) fails++;
+    console.log((got === c[4] ? ' ok  ' : 'FAIL ') + ' | «' + c[1] + ' ' + c[0] + '» vs «' + c[3] + ' ' + c[2] + '» → ' +
+        pad(show(got), 6) + ' (ожид. ' + c[4] + ')  ' + c[5]);
+});
+check_default_autoapply();
+function check_default_autoapply() {
+    // модуль «из коробки» не должен ничего применять сам
+    // (перечитываем файл заново: тест выше уже менял режим)
+    var modPath = require.resolve('../js/name-variants.js');
+    delete require.cache[modPath];
+    var fresh = require(modPath);
+    total++;
+    var ok = fresh.getAutoApply() === false && fresh.getMode() === 'off';
+    if (!ok) fails++;
+    console.log((ok ? ' ok  ' : 'FAIL ') + ' | настройки по умолчанию: mode=' + fresh.getMode() + ', autoApply=' + fresh.getAutoApply());
+}
 NV.setAutoApply(true);
-total++;
-if (safeGot !== 'loose') fails++;
-console.log((safeGot === 'loose' ? ' ok  ' : 'FAIL ') + ' | «Смирнова Наташа» vs «Смирнова Наталия» → ' + safeGot + ' (ожид. loose)');
 
 console.log('\nИтого: ' + total + ' проверок, ошибок: ' + fails);
 if (fails) process.exit(1);

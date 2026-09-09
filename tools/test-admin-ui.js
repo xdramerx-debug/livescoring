@@ -88,8 +88,12 @@ check('в HTML есть поле своих форм #nm-custom-aliases', !!win.
 check('в HTML есть кнопка анализа #nm-analyze-results', !!win.document.getElementById('nm-analyze-results'));
 check('в HTML подключён js/name-variants.js', html.indexOf('js/name-variants.js') !== -1);
 
+check('по умолчанию формы имени выключены', win.NameVariants.getMode() === 'off', 'mode=' + win.NameVariants.getMode());
+check('по умолчанию автоприменение выключено', win.NameVariants.getAutoApply() === false, 'autoApply=' + win.NameVariants.getAutoApply());
+
 console.log('');
 win.switchTab('rusgolf');
+check('флажок автоприменения снят', !win.document.getElementById('nm-autoapply').checked);
 var radios = win.document.querySelectorAll('input[name="nm-mode"]');
 check('переключение на вкладку «АГР» рисует режимы', radios.length, radios.length + ' режимов');
 check('режимов ровно 4 (off, A, B, C)', radios.length === 4,
@@ -115,16 +119,20 @@ check('свой словарь сохранён', win.NameVariants.getCustomAlia
     win.NameVariants.getCustomAliases()['леля']);
 
 console.log('\n=== кнопка «Проверить имена игроков» ===\n');
+// анализ обязан работать при любом режиме и не менять выбранный режим
+var modeBefore = win.NameVariants.getMode();
 win.nmAnalyzeNames();
 
 setTimeout(function() {
     var out = win.document.getElementById('nm-analyze-results').innerHTML;
-    check('анализ отрисовал результат', out.length > 50, out.length + ' символов');
+    check('анализ отрисовал результат (режим ' + modeBefore + ')', out.length > 50, out.length + ' символов');
     check('найдена пара Наташа/Наталия Смирнова', out.indexOf('наташа') !== -1 && out.indexOf('наталия') !== -1);
     check('показаны формы имени, которые ищем в АГР', out.indexOf('Наталья') !== -1);
     check('в блоке «один и тот же игрок» ровно 1 пара',
         out.indexOf('записанный по-разному (1)') !== -1,
         (out.match(/записанный по-разному \((\d+)\)/) || [])[0]);
+    check('режим после анализа не изменился', win.NameVariants.getMode() === modeBefore,
+        modeBefore + ' → ' + win.NameVariants.getMode());
 
     console.log('\nИтого: ' + total + ' проверок, ошибок: ' + fails);
     process.exit(fails ? 1 : 0);

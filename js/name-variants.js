@@ -387,7 +387,7 @@
     // --------------------------------------------------
     var state = {
         mode: 'off',            // 'off' | 'A' | 'B' | 'C'
-        autoApply: true,        // false → совпадения по формам имени идут в «на выбор»
+        autoApply: false,       // true → словарные формы применяются сами; false → всегда «на выбор»
         customAliases: {}       // свои формы: 'наташа' -> 'наталья' (вариант C)
     };
 
@@ -508,9 +508,11 @@
         var lk = compareLastNames(localLast, remoteLast);
 
         if (fk && lk) {
-            // точная фамилия + точное имя / известная форма имени / свой словарь
-            // → сильное совпадение (HCP можно обновлять автоматически)
-            if (lk === 'exact' && (fk === 'exact' || fk === 'alias' || fk === 'custom')) {
+            // Точные имя и фамилия — сильное совпадение всегда: флаг
+            // «не применять автоматически» относится только к формам имени.
+            if (lk === 'exact' && fk === 'exact') return 'strong';
+            // известная форма имени / свой словарь — по флагу autoApply
+            if (lk === 'exact' && (fk === 'alias' || fk === 'custom')) {
                 return state.autoApply ? 'strong' : 'loose';
             }
             // всё остальное (род фамилии, транслитерация, опечатки) — только «на выбор»
@@ -526,7 +528,7 @@
         // разбор полных строк (когда first/last не разобраны, есть отчество и т.п.)
         var lf = tokens(localFull), rf = tokens(remoteFull);
         if (lf.length >= 2 && rf.length >= 2) {
-            var hits = 0, weak = 0;
+            var hits = 0, weak = 0, soft = 0;
             lf.forEach(function(lp) {
                 var best = null, bestRank = 0;
                 rf.forEach(function(rp) {
@@ -535,10 +537,11 @@
                     var k = k1 || k2;
                     if (k && STRONG_KINDS[k] > bestRank) { best = k; bestRank = STRONG_KINDS[k]; }
                 });
-                if (best === 'exact' || best === 'alias' || best === 'custom') hits++;
+                if (best === 'exact') hits++;
+                else if (best === 'alias' || best === 'custom') { hits++; soft++; }
                 else if (best) weak++;
             });
-            if (hits >= 2) return state.autoApply ? 'strong' : 'loose';
+            if (hits >= 2) return (soft === 0 || state.autoApply) ? 'strong' : 'loose';
             if (hits === 1 && weak >= 1) return 'loose';
             if (weak >= 2) return 'loose';
         }

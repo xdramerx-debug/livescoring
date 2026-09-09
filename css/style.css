@@ -4083,3 +4083,179 @@ body.sun-mode .r-empty {
     border-color: #999999 !important;
     color: #666666 !important;
 }
+
+/* ==========================================
+   ГЛОБАЛЬНЫЕ ВАРИАНТЫ СТРАНИЦ (админ-панель)
+   Вариант 1 сохраняет прежний вид; 2 и 3 меняют композицию данных.
+   ========================================== */
+.page-display-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 16px;
+}
+.page-display-setting-card {
+    display: block;
+    padding: 14px 16px;
+    margin: 0;
+    background: rgba(201,168,76,0.06);
+    border: 1px solid rgba(201,168,76,0.42);
+    border-radius: 10px;
+}
+.page-display-setting-title { display: block; color: var(--white); font-size: 14px; font-weight: 700; }
+.page-display-setting-sub { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.page-display-variant-buttons { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.page-display-variant-btn { color: var(--muted); border-color: var(--border); background: transparent; }
+.page-display-variant-btn:hover { color: var(--text); background: var(--card-h); }
+.page-display-variant-btn.page-display-variant-active {
+    color: var(--gold);
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.16);
+    box-shadow: 0 0 10px rgba(201,168,76,0.18);
+}
+
+/* «Игроки»: вариант 1 — сетка карточек, вариант 2 — список, вариант 3 — витрина */
+.players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.players-layout-2 { grid-template-columns: 1fr; gap: 8px; }
+.player-layout-card-2 { margin: 0; min-height: 64px; padding: 10px 14px; cursor: pointer; }
+.players-v2-avatar { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.players-v2-main { min-width: 0; flex: 1 1 auto; }
+.players-v2-name { color: var(--white); font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.players-v2-meta { color: var(--muted); font-size: 11px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.players-v2-rounds { display: flex; flex-direction: column; align-items: center; min-width: 56px; padding-left: 10px; border-left: 1px solid var(--border); color: var(--gold); }
+.players-v2-rounds b { font: 800 20px var(--fb); line-height: 1; }
+.players-v2-rounds span { color: var(--muted); font-size: 9px; margin-top: 3px; }
+.players-layout-3 { grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 14px; }
+.player-layout-card-3 { margin: 0; padding: 16px; cursor: pointer; background: linear-gradient(145deg, rgba(201,168,76,0.12), rgba(19,34,24,0.9) 48%); border-color: rgba(201,168,76,0.38); }
+.players-v3-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.players-v3-rank { color: rgba(201,168,76,0.55); font: 800 14px var(--fb); min-width: 22px; }
+.players-v3-name-wrap { min-width: 0; flex: 1; }
+.players-v3-name { color: var(--white); font-size: 14px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.players-v3-hcp { color: var(--muted); font-size: 11px; margin-top: 5px; }
+.players-v3-hcp b { color: var(--gold); font-size: 16px; margin-left: 3px; }
+.players-v3-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--border); }
+.players-v3-metrics div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.players-v3-metrics span { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .25px; }
+.players-v3-metrics b { color: var(--white); font: 800 17px var(--fb); overflow: hidden; text-overflow: ellipsis; }
+.players-v3-open { color: var(--gold); font-size: 10px; font-weight: 700; margin-top: 12px; text-align: right; }
+.players-guest-badge { background: rgba(201,168,76,0.15); color: var(--gold); padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-left: 6px; }
+
+/* «Статистика»: компактная сводка, дашборд и дополнительные таблицы */
+.stats-grid-1 { width: 100%; }
+.stats-variant-host { display: block; width: 100%; }
+.stats-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stats-summary-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: var(--rs); background: var(--input); border: 1px solid var(--border); }
+.stats-summary-item span { color: var(--muted); font-size: 12px; }
+.stats-summary-item i { color: var(--gold); margin-right: 4px; }
+.stats-summary-item b { color: var(--white); font: 800 19px var(--fb); }
+.stats-dashboard { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.stats-dashboard-feature, .stats-dashboard-mini > div { background: var(--input); border: 1px solid var(--border); border-radius: var(--rs); padding: 13px; }
+.stats-dashboard-feature { min-height: 96px; display: flex; flex-direction: column; justify-content: space-between; }
+.stats-dashboard-feature i { color: var(--gold); font-size: 18px; }
+.stats-dashboard-feature span, .stats-dashboard-mini span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .35px; }
+.stats-dashboard-feature b { color: var(--white); font: 800 28px var(--fb); }
+.stats-dashboard-mini { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.stats-dashboard-mini > div { display: flex; flex-direction: column; gap: 5px; }
+.stats-dashboard-mini i { color: var(--gold); font-size: 13px; }
+.stats-dashboard-mini b { color: var(--white); font: 800 18px var(--fb); }
+.stats-top-table { overflow-x: auto; }
+.stats-top-table-head, .stats-top-table-row { display: grid; grid-template-columns: 34px minmax(150px, 1fr) 110px 110px 75px; gap: 8px; align-items: center; min-width: 510px; }
+.stats-top-table-head { padding: 0 10px 7px; color: var(--gold); border-bottom: 2px solid var(--gold); font-size: 10px; text-transform: uppercase; }
+.stats-top-table-row { padding: 10px; color: var(--muted); border-bottom: 1px solid var(--border); font-size: 12px; }
+.stats-top-table-row strong { color: var(--white); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-top-table-row b { color: var(--gold); }
+.stats-top-table-row span { font: 700 13px var(--fb); text-align: right; }
+.stats-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.stats-podium-card { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 124px; padding: 15px 10px; text-align: center; background: var(--input); border: 1px solid var(--border); border-radius: var(--rs); }
+.stats-podium-card.podium-1 { min-height: 150px; border-color: var(--gold); background: rgba(201,168,76,0.14); }
+.stats-podium-medal { font-size: 24px; }
+.stats-podium-card strong { color: var(--white); font-size: 12px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
+.stats-podium-card b { color: var(--gold); font: 800 26px var(--fb); }
+.stats-podium-card small { color: var(--muted); font-size: 9px; }
+.stats-rank-list { margin-top: 9px; }
+.stats-rank-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) 60px 75px; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.stats-rank-row b { color: var(--gold); }
+.stats-rank-row span { color: var(--white); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-rank-row strong { color: var(--gold); text-align: right; }
+.stats-rank-row em { color: var(--muted); font-size: 10px; font-style: normal; text-align: right; }
+.stats-record-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stats-record-chip { display: flex; flex-direction: column; justify-content: space-between; gap: 8px; padding: 13px; min-height: 54px; background: var(--input); border: 1px solid var(--border); border-radius: var(--rs); }
+.stats-record-chip span { color: var(--muted); font-size: 11px; }
+.stats-record-chip b { color: var(--gold); font: 800 15px var(--fb); }
+.stats-record-dashboard { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stats-record-feature { display: flex; flex-direction: column; gap: 7px; padding: 14px; background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.4); border-radius: var(--rs); }
+.stats-record-feature i { color: var(--gold); }
+.stats-record-feature span, .stats-record-secondary span { color: var(--muted); font-size: 10px; }
+.stats-record-feature b { color: var(--white); font: 800 18px var(--fb); }
+.stats-record-secondary { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.stats-record-secondary div { display: flex; flex-direction: column; gap: 5px; padding: 10px; background: var(--input); border: 1px solid var(--border); border-radius: var(--rs); }
+.stats-record-secondary b { color: var(--gold); font: 800 18px var(--fb); }
+.hole-difficulty-table { overflow-x: auto; }
+.hole-difficulty-table-head, .hole-difficulty-table-row { display: grid; grid-template-columns: 70px 70px minmax(100px, 1fr) 90px 75px; gap: 8px; align-items: center; min-width: 420px; }
+.hole-difficulty-table-head { padding: 0 10px 7px; color: var(--gold); border-bottom: 2px solid var(--gold); font-size: 10px; text-transform: uppercase; }
+.hole-difficulty-table-row { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+.hole-difficulty-table-row b { color: var(--white); }
+.hole-difficulty-table-row strong { font: 800 13px var(--fb); }
+.hole-difficulty-table-row small { color: var(--muted); }
+.hole-over { color: #e05a4a; }
+.hole-under { color: #2ecc71; }
+.hole-difficulty-highlights { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.hole-difficulty-highlights > div { padding: 12px; background: var(--input); border: 1px solid var(--border); border-radius: var(--rs); }
+.hole-difficulty-highlights h4 { color: var(--gold); margin-bottom: 8px; font-size: 12px; }
+.hole-highlight { display: inline-flex; justify-content: space-between; width: 100%; gap: 6px; color: var(--muted); font-size: 11px; padding: 4px 0; }
+.hole-highlight b { color: var(--white); }
+.hole-highlight.hard b { color: #e05a4a; }
+.hole-highlight.easy b { color: #2ecc71; }
+.hole-bar-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) 45px; gap: 8px; align-items: center; margin: 7px 0; color: var(--muted); font: 700 11px var(--fb); }
+.hole-bar-row > div { height: 9px; border-radius: 8px; background: var(--input); overflow: hidden; }
+.hole-bar-row i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2ecc71, var(--gold), #e05a4a); }
+.hole-bar-row b { color: var(--white); text-align: right; }
+
+/* «Все раунды»: вариант 2 — табличные строки, вариант 3 — крупная витрина */
+.rounds-layout-2 .lb-row { border-radius: 5px; border-left: 3px solid rgba(201,168,76,0.55); background: rgba(19,34,24,0.58); }
+.rounds-layout-2 .lb-row .lwl-toggle { gap: 12px; padding: 12px 14px; }
+.rounds-layout-2 .lb-row .lwl-name { min-width: 125px; font-size: 13px; }
+.rounds-layout-2 .lb-row .lb-names { color: var(--white); font-size: 12px; }
+.rounds-layout-2 .lb-row .lwl-start { color: var(--gold); }
+.rounds-layout-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(285px, 1fr)); gap: 12px; }
+.rounds-layout-3 .lb-row { margin: 0; background: linear-gradient(145deg, rgba(201,168,76,0.13), rgba(19,34,24,0.92) 52%); border-color: rgba(201,168,76,0.38); }
+.rounds-layout-3 .lb-row .lwl-toggle { min-height: 104px; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 8px 10px; padding: 16px; }
+.rounds-layout-3 .lb-row .lwl-name { grid-column: 1 / -1; font-size: 15px; }
+.rounds-layout-3 .lb-row .lb-names { grid-column: 1; grid-row: 2; }
+.rounds-layout-3 .lb-row .lwl-score { grid-column: 2; grid-row: 2; }
+.rounds-layout-3 .lb-row .lwl-start { display: none; }
+.rounds-layout-3 .lb-row .lwl-chev { grid-column: 2; grid-row: 1; align-self: start; }
+.rounds-layout-3 .lb-row .lwl-details { padding: 0 16px 16px; }
+
+@media (max-width: 900px) {
+    .page-display-settings-grid { grid-template-columns: 1fr; }
+    .stats-dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stats-dashboard-mini { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+    .players-grid, .players-layout-3 { grid-template-columns: 1fr; }
+    .stats-summary-grid, .stats-record-grid { grid-template-columns: 1fr; }
+    .stats-podium { gap: 5px; }
+    .stats-podium-card { padding-left: 4px; padding-right: 4px; }
+    .stats-podium-card b { font-size: 21px; }
+    .stats-dashboard { gap: 6px; }
+    .stats-dashboard-feature { padding: 10px; min-height: 82px; }
+    .stats-dashboard-feature b { font-size: 23px; }
+    .stats-dashboard-mini { gap: 5px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stats-record-dashboard { grid-template-columns: 1fr; }
+    .stats-record-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hole-difficulty-highlights { grid-template-columns: 1fr; }
+    .rounds-layout-3 { display: block; }
+    .rounds-layout-3 .lb-row { margin-bottom: 10px; }
+}
+body.sun-mode .page-display-setting-card,
+body.sun-mode .player-layout-card-3,
+body.sun-mode .stats-summary-item,
+body.sun-mode .stats-dashboard-feature,
+body.sun-mode .stats-dashboard-mini > div,
+body.sun-mode .stats-podium-card,
+body.sun-mode .stats-record-chip,
+body.sun-mode .stats-record-feature,
+body.sun-mode .stats-record-secondary div,
+body.sun-mode .hole-difficulty-table-row,
+body.sun-mode .hole-difficulty-highlights > div { background: #ffffff !important; border-color: #000000 !important; color: #000000 !important; }

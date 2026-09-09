@@ -168,8 +168,15 @@ function renderCourseHolesStrip(activeEntries) {
         // двух стартовых ти. Время берётся из самого раунда, а не из времени
         // создания записи, поэтому остаётся верным для отложенного старта.
         var startHole = parseInt(r.startHole) || 1;
-        var startTime = parseInt(r.startTime) || 0;
-        if ((startHole === 1 || startHole === 10) && startTime > latestStart[startHole]) {
+        var startTime = typeof normalizeTimestampMs === 'function'
+            ? normalizeTimestampMs(r.startTime)
+            : (parseInt(r.startTime) || 0);
+        // «Последний старт» относится только к сегодняшнему игровому дню.
+        // Старый активный раунд, оставшийся со вчера, не должен показывать
+        // вчерашнее время (например, 15:53) в сегодняшнем блоке.
+        if ((startHole === 1 || startHole === 10) &&
+            typeof isTodayTimestamp === 'function' && isTodayTimestamp(startTime) &&
+            startTime > latestStart[startHole]) {
             latestStart[startHole] = startTime;
         }
         var players = r.players || {};
@@ -594,7 +601,6 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound) {
         '<div class="lwl-details" id="' + panelId + '">' +
         '<div class="lwl-actions" style="margin-bottom:10px;">' +
         (isMyRound ? '<a href="' + link + '" class="btn btn-g btn-sm"><i class="fas fa-gamepad"></i> ' + (currentLang === 'en' ? 'Continue round' : 'Продолжить раунд') + '</a>' : '') +
-        '<button class="btn btn-og btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' +
         '</div>' +
         '<div class="live-group-unified-card">' + groupScorecardHtml + '</div>' +
         '</div>' +
@@ -814,7 +820,7 @@ function buildRecentRowHTML(id, r) {
         '<div class="lwl-recent-players">' + pHtml + '</div>' +
         '<div class="lwl-actions">' +
         '<button class="btn btn-og btn-sm" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
-        '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' +
+        (r.status === 'completed' ? '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' : '') +
         '</div>' +
         '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
         '</div>';

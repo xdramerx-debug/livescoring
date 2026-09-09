@@ -99,6 +99,30 @@ function fmtTime(ts){
         return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
     } catch(e){ return '—'; }
 }
+
+// Сравнивает дату раунда с текущим локальным днём. Старые записи могли
+// хранить timestamp в секундах, поэтому принимаем оба формата.
+function normalizeTimestampMs(ts) {
+    if (ts instanceof Date) return ts.getTime() || 0;
+    var value = Number(ts);
+    if (!isFinite(value) || value <= 0) {
+        value = (typeof ts === 'string') ? Date.parse(ts) : 0;
+    }
+    if (value > 0 && value < 100000000000) value *= 1000;
+    return isFinite(value) && value > 0 ? value : 0;
+}
+
+function isTodayTimestamp(ts, nowTs) {
+    var value = normalizeTimestampMs(ts);
+    if (!value) return false;
+    var current = new Date(normalizeTimestampMs(nowTs || Date.now()));
+    var date = new Date(value);
+    return !isNaN(date.getTime()) && !isNaN(current.getTime()) &&
+        date.getFullYear() === current.getFullYear() &&
+        date.getMonth() === current.getMonth() &&
+        date.getDate() === current.getDate();
+}
+
 function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
 function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
 function escapeHtml(str){
@@ -755,6 +779,21 @@ var I18N = {
         group_card_variant_1: '1 · Сводная матрица',
         group_card_variant_2: '2 · Сравнительная таблица',
         group_card_variant_3: '3 · Лидерборд флайта',
+        players_display_title: 'Отображение страницы «Игроки»',
+        players_display_sub: 'Выберите один из трёх вариантов оформления списка игроков. Настройка применяется для всех пользователей.',
+        players_display_variant_1: '1 · Карточки',
+        players_display_variant_2: '2 · Компактный список',
+        players_display_variant_3: '3 · Витрина',
+        stats_display_title: 'Отображение страницы «Статистика»',
+        stats_display_sub: 'Выберите один из трёх вариантов оформления статистики клуба. Настройка применяется для всех пользователей.',
+        stats_display_variant_1: '1 · Карточки',
+        stats_display_variant_2: '2 · Сводка',
+        stats_display_variant_3: '3 · Дашборд',
+        rounds_display_title: 'Отображение страницы «Все раунды»',
+        rounds_display_sub: 'Выберите один из трёх вариантов списка раундов. Настройка применяется для всех пользователей.',
+        rounds_display_variant_1: '1 · Текущий список',
+        rounds_display_variant_2: '2 · Таблица',
+        rounds_display_variant_3: '3 · Витрина раундов',
         all_players_joined: 'Все игроки уже вошли в раунд',
         tab_broadcasts: 'Анонсы 📢',
         delete_all_rounds: 'Удалить все раунды',
@@ -1150,6 +1189,21 @@ var I18N = {
         group_card_variant_1: '1 · Summary Matrix',
         group_card_variant_2: '2 · Comparison Table',
         group_card_variant_3: '3 · Flight Leaderboard',
+        players_display_title: '“Players” page layout',
+        players_display_sub: 'Choose one of three player-list layouts. The setting applies to all users.',
+        players_display_variant_1: '1 · Cards',
+        players_display_variant_2: '2 · Compact list',
+        players_display_variant_3: '3 · Showcase',
+        stats_display_title: '“Statistics” page layout',
+        stats_display_sub: 'Choose one of three club-statistics layouts. The setting applies to all users.',
+        stats_display_variant_1: '1 · Cards',
+        stats_display_variant_2: '2 · Summary',
+        stats_display_variant_3: '3 · Dashboard',
+        rounds_display_title: '“All Rounds” page layout',
+        rounds_display_sub: 'Choose one of three round-list layouts. The setting applies to all users.',
+        rounds_display_variant_1: '1 · Current list',
+        rounds_display_variant_2: '2 · Table',
+        rounds_display_variant_3: '3 · Round showcase',
         all_players_joined: 'All players have already joined the round',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
@@ -1251,6 +1305,7 @@ function toggleLang() {
     if (typeof loadRecentResults === 'function') loadRecentResults();
     if (typeof loadLB === 'function') loadLB();
     if (typeof loadPlayers === 'function') loadPlayers();
+    if (typeof loadStats === 'function') loadStats();
     if (typeof loadPestovoWeather === 'function') loadPestovoWeather('nav-weather-container');
     if (typeof showGroupSetup === 'function' && document.getElementById('group-setup') && !document.getElementById('group-setup').classList.contains('hidden')) {
         showGroupSetup();
@@ -4054,7 +4109,9 @@ function openPlayerProfileModal(playerId, roundId) {
                     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">';
                     if (r.roundId) {
                         html += '<button class="btn btn-og btn-sm" onclick="openPrintScorecardModal(\'' + r.roundId + '\')"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print (A4)' : 'Печать (A4)') + '</button>';
-                        html += '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + r.roundId + '\')"><i class="fas fa-image"></i> PNG</button>';
+                        if (r.status === 'completed') {
+                            html += '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + r.roundId + '\')"><i class="fas fa-image"></i> PNG</button>';
+                        }
                     }
                     html += '</div>';
 
@@ -4729,7 +4786,7 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
         mode:rd.mode||'group',startHole:rd.startHole||1,holeRange:rd.holeRange||'1-18',gross:stats.gross,toPar:stats.toPar,
         net:stats.net,netToPar:stats.netToPar,stablefordField:stats.stablefordField,stablefordExact:stats.stablefordExact,
         holes:stats.holesPlayed,scores:p.scores||{},birdies:stats.birdies,eagles:stats.eagles,
-        pars:stats.pars,holeInOne:stats.holeInOne,exactHcp:p.exactHcp||0,fieldHcp:p.fieldHcp||0,gender:p.gender||'men'
+        pars:stats.pars,holeInOne:stats.holeInOne,exactHcp:p.exactHcp||0,fieldHcp:p.fieldHcp||0,gender:p.gender||'men',status:'completed'
     });
     db.ref('users/'+userId+'/roundsPlayed').transaction(function(v){return(v||0)+1;});
     if(stats.holesPlayed===getRoundHoleCount(rd)){
@@ -4738,6 +4795,68 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
     }
 }
 
+
+// ==========================================
+// ГЛОБАЛЬНЫЕ ВАРИАНТЫ ОТОБРАЖЕНИЯ СТРАНИЦ
+// ==========================================
+// Администратор выбирает оформление один раз для всего клуба. Значение
+// дублируется в localStorage только как офлайн-резерв, а Firebase остаётся
+// источником истины для новых устройств. Вариант 1 — текущий вид страниц.
+var PAGE_DISPLAY_VARIANTS = ['1', '2', '3'];
+var PAGE_DISPLAY_VARIANT_CONFIG = {
+    players: { storage: 'pestovo_players_display_variant', firebase: 'settings/players_display_variant' },
+    stats: { storage: 'pestovo_stats_display_variant', firebase: 'settings/stats_display_variant' },
+    rounds: { storage: 'pestovo_all_rounds_display_variant', firebase: 'settings/all_rounds_display_variant' }
+};
+
+var pestovoPageDisplayVariants = (function() {
+    var state = {};
+    Object.keys(PAGE_DISPLAY_VARIANT_CONFIG).forEach(function(page) {
+        var cfg = PAGE_DISPLAY_VARIANT_CONFIG[page];
+        var value = '';
+        try { value = localStorage.getItem(cfg.storage) || ''; } catch (e) {}
+        state[page] = PAGE_DISPLAY_VARIANTS.indexOf(String(value)) !== -1 ? String(value) : '1';
+    });
+    return state;
+})();
+
+function normalizePageDisplayVariant(page, value) {
+    return PAGE_DISPLAY_VARIANTS.indexOf(String(value === undefined || value === null ? '' : value)) !== -1
+        ? String(value) : '1';
+}
+
+function getPageDisplayVariant(page) {
+    return PAGE_DISPLAY_VARIANT_CONFIG[page] ? (pestovoPageDisplayVariants[page] || '1') : '1';
+}
+
+function applyPageDisplayVariant(page, value) {
+    if (!PAGE_DISPLAY_VARIANT_CONFIG[page]) return '1';
+    var variant = normalizePageDisplayVariant(page, value);
+    pestovoPageDisplayVariants[page] = variant;
+    try { localStorage.setItem(PAGE_DISPLAY_VARIANT_CONFIG[page].storage, variant); } catch (e) {}
+
+    // Перерисовка выполняется только если соответствующая страница открыта.
+    // Это позволяет менять оформление в админке без перезагрузки вкладки.
+    try {
+        if (page === 'players' && typeof loadPlayers === 'function' && document.getElementById('players-grid')) loadPlayers();
+        if (page === 'stats' && typeof loadStats === 'function' && document.getElementById('general-stats')) loadStats();
+        if (page === 'rounds' && typeof loadLB === 'function' && document.getElementById('lb-container')) loadLB();
+    } catch (e) {}
+    try {
+        if (typeof markAdmPageDisplayVariantButtons === 'function') markAdmPageDisplayVariantButtons(page);
+    } catch (e) {}
+    return variant;
+}
+
+function normalizePlayersDisplayVariant(value) { return normalizePageDisplayVariant('players', value); }
+function getPlayersDisplayVariant() { return getPageDisplayVariant('players'); }
+function applyPlayersDisplayVariant(value) { return applyPageDisplayVariant('players', value); }
+function normalizeStatsDisplayVariant(value) { return normalizePageDisplayVariant('stats', value); }
+function getStatsDisplayVariant() { return getPageDisplayVariant('stats'); }
+function applyStatsDisplayVariant(value) { return applyPageDisplayVariant('stats', value); }
+function normalizeAllRoundsDisplayVariant(value) { return normalizePageDisplayVariant('rounds', value); }
+function getAllRoundsDisplayVariant() { return getPageDisplayVariant('rounds'); }
+function applyAllRoundsDisplayVariant(value) { return applyPageDisplayVariant('rounds', value); }
 
 // ==========================================
 // PNG-КАРТОЧКИ ДЛЯ СОЦСЕТЕЙ
@@ -5026,7 +5145,15 @@ function exportRoundPNG(roundId, playerId) {
     loadPestovoCardLogo().then(function(logoImg) {
         db.ref('rounds/' + roundId).once('value').then(function(sn) {
             var r = sn.val();
-            if (!r || !r.players) return;
+            // PNG/социальная карточка разрешена только для завершённого раунда.
+            // Проверка остаётся и в UI, и здесь — прямой вызов функции не должен
+            // позволить поделиться незавершённым результатом.
+            if (!r || r.status !== 'completed' || !r.players) {
+                toast(currentLang === 'en'
+                    ? 'A social scorecard is available after the round is completed.'
+                    : 'Поделиться карточкой можно только после завершения раунда.', 'info');
+                return;
+            }
 
             var playersList = Object.entries(r.players);
             if (!playersList.length) return;
@@ -6461,6 +6588,17 @@ if (typeof db !== 'undefined') {
             if (GROUP_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoGroupCardVariant) {
                 applyGroupCardVariant(String(v));
             }
+        });
+        // Глобальные варианты страниц: по умолчанию используется вариант 1,
+        // поэтому отсутствие ключа в старой базе ничего не меняет.
+        Object.keys(PAGE_DISPLAY_VARIANT_CONFIG).forEach(function(page) {
+            var cfg = PAGE_DISPLAY_VARIANT_CONFIG[page];
+            db.ref(cfg.firebase).on('value', function(sn) {
+                var value = sn.val();
+                if (PAGE_DISPLAY_VARIANTS.indexOf(String(value)) !== -1 && String(value) !== getPageDisplayVariant(page)) {
+                    applyPageDisplayVariant(page, String(value));
+                }
+            });
         });
     } catch(e) {}
 }

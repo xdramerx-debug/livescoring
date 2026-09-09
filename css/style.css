@@ -552,6 +552,26 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 .tee-rd{background:#900C3F;color:#fff;border:1px solid #c0392b;}
 .round-tee-pills{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;flex-wrap:wrap;}
 
+/* ГАНДИКАП: ЗЕЛЁНАЯ ГАЛОЧКА СИНХРОНИЗАЦИИ + ДАТА ОБНОВЛЕНИЯ */
+/* Вариант 1: компактная галочка + дата рядом со значением HCP */
+.hcp-check{color:#2ecc71;font-size:0.95em;vertical-align:-1px;text-shadow:0 0 8px rgba(46,204,113,0.55);}
+.hcp-date{color:#2ecc71;font-size:0.92em;font-weight:600;white-space:nowrap;}
+/* Вариант 2: светящаяся зелёная «пилюля» */
+.hcp-sync-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(46,204,113,0.14);color:#2ecc71;border:1px solid rgba(46,204,113,0.45);padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 0 10px rgba(46,204,113,0.25);vertical-align:middle;}
+/* Вариант 3: зелёная галочка-«верификация» на углу аватара */
+.hcp-avatar-wrap{position:relative;display:inline-block;line-height:0;}
+.hcp-avatar-badge{position:absolute;right:-3px;bottom:-3px;width:19px;height:19px;border-radius:50%;background:#2ecc71;border:2px solid var(--card,#132218);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;line-height:1;box-shadow:0 0 10px rgba(46,204,113,0.65);z-index:2;}
+/* Личный профиль: зелёная строка HCP с галочкой и датой */
+.hcp-profile-sync{color:#2ecc71;font-weight:700;}
+.hcp-profile-sync .hcp-source{color:var(--muted);font-weight:500;font-size:11px;}
+/* Личный профиль (вариант 2): зелёный баннер синхронизации */
+.hcp-sync-banner{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px 14px;border-radius:var(--rs);background:linear-gradient(135deg,rgba(46,204,113,0.16),rgba(46,204,113,0.04));border:1px solid rgba(46,204,113,0.4);box-shadow:0 0 18px rgba(46,204,113,0.12);}
+.hcp-sync-banner .hsb-icon{flex:none;width:42px;height:42px;border-radius:50%;background:rgba(46,204,113,0.18);border:1px solid rgba(46,204,113,0.5);display:flex;align-items:center;justify-content:center;color:#2ecc71;font-size:20px;box-shadow:0 0 14px rgba(46,204,113,0.35);}
+/* Админ-панель: кнопки выбора стиля галочки гандикапа */
+.hcp-variant-btn{color:var(--muted);border-color:var(--border);background:transparent;}
+.hcp-variant-btn:hover{color:var(--text);background:var(--card-h);}
+.hcp-variant-btn.hcp-variant-active{background:rgba(46,204,113,0.16);border-color:#2ecc71;color:#2ecc71;box-shadow:0 0 10px rgba(46,204,113,0.25);}
+
 /* LIGHT SHINE ANIMATION EFFECT FOR LEADER BADGES & CTAs */
 .shine-effect{position:relative;overflow:hidden;}
 .shine-effect::after{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:linear-gradient(60deg,transparent 30%,rgba(255,255,255,0.25) 50%,transparent 70%);transform:rotate(30deg);animation:shine-sweep 5s infinite;}

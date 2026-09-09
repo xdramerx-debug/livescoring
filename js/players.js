@@ -97,12 +97,20 @@ function loadPlayers() {
             var gIcon = u.gender === 'women' ? '👩' : '👨';
             var guestBadge = u.isGuest ? '<span style="background:rgba(201,168,76,0.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:6px;">' + t('guest') + '</span>' : '';
 
+            // Статус синхронизации гандикапа: зелёная галочка + дата обновления
+            var hcpInfo = (typeof getHcpSyncInfo === 'function') ? getHcpSyncInfo(u) : { ok: false };
+            var avatarHtml = fmtUserAvatar(u, 52);
+            if (hcpInfo.ok && (typeof getHcpBadgeVariant === 'function' ? getHcpBadgeVariant() : '1') === '3') {
+                avatarHtml = hcpAvatarWrapHtml(avatarHtml, hcpInfo);
+            }
+
             html += '<div class="card" style="cursor:pointer;" onclick="showPlayer(\'' + id + '\')">' +
                 '<div style="display:flex;align-items:center;gap:14px;">' +
-                fmtUserAvatar(u, 52) +
+                avatarHtml +
                 '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + escapeHtml(privacyDisplayName(u, id)) + guestBadge + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                 'HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') +
+                (typeof hcpSyncBadgeHtml === 'function' ? hcpSyncBadgeHtml(u) : '') +
                 ' · ' + roundsWord + (u.roundsPlayed || 0) +
                 (u.bestGross ? ' · Gross (18h): ' + u.bestGross : '') +
                 (u.bestStableford ? ' · Stableford (18h): ' + u.bestStableford : '') +

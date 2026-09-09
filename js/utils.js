@@ -740,6 +740,11 @@ var I18N = {
         page_visibility_title: 'Управление видимостью страниц и функций',
         page_visibility_sub: 'Снимите галочку с любой страницы или функции, чтобы полностью скрыть её из меню навигации для игроков.',
         save_visibility_btn: 'Сохранить настройки',
+        hcp_variant_title: 'Стиль галочки гандикапа',
+        hcp_variant_sub: 'Зелёная галочка «гандикап синхронизирован» и дата обновления показаны во вкладке «Игроки», личном профиле и в списке админки. Выбор действует для всех игроков.',
+        hcp_variant_1: '1 · Компактная галочка',
+        hcp_variant_2: '2 · Пилюля «обновлён»',
+        hcp_variant_3: '3 · Галочка на аватаре',
         tab_broadcasts: 'Анонсы 📢',
         delete_all_rounds: 'Удалить все раунды',
         delete_all_data: 'Удалить всех игроков и раунды',
@@ -1119,6 +1124,11 @@ var I18N = {
         page_visibility_title: 'Manage Page & Feature Visibility',
         page_visibility_sub: 'Uncheck any page or feature to completely hide it from the navigation menu for players.',
         save_visibility_btn: 'Save Settings',
+        hcp_variant_title: 'Handicap checkmark style',
+        hcp_variant_sub: 'The green “handicap synced” checkmark and update date are shown in the Players tab, player profile and the admin list. The choice applies to all players.',
+        hcp_variant_1: '1 · Compact check',
+        hcp_variant_2: '2 · “Updated” pill',
+        hcp_variant_3: '3 · Check on avatar',
         tab_broadcasts: 'Announcements 📢',
         delete_all_rounds: 'Delete All Rounds',
         delete_all_data: 'Delete All Players & Rounds',
@@ -3427,6 +3437,174 @@ function generateGroupHoleTableHTML(r, opts) {
 }
 
 // ==========================================
+// ГАНДИКАП: ЗЕЛЁНАЯ ГАЛОЧКА СИНХРОНИЗАЦИИ + ДАТА ОБНОВЛЕНИЯ
+// Гандикап считается «синхронизированным», если он установлен и у записи
+// есть hcpUpdatedAt — он проставляется при синхронизации с базой АГР
+// (RUSGOLF), импорте Excel и ручном изменении в админ-панели.
+// ==========================================
+function getHcpSyncInfo(u) {
+    u = u || {};
+    if (u.handicap === null || u.handicap === undefined || !u.hcpUpdatedAt) {
+        return { ok: false };
+    }
+    return {
+        ok: true,
+        ts: Number(u.hcpUpdatedAt),
+        dateStr: fmtDate(u.hcpUpdatedAt),
+        source: u.hcpSource || '',
+        sourceLabel: hcpSourceLabel(u.hcpSource)
+    };
+}
+
+function hcpSourceLabel(src) {
+    var isEn = currentLang === 'en';
+    if (src === 'rusgolf') return isEn ? 'RUSGOLF (AGR database)' : 'База АГР России (RUSGOLF)';
+    if (src === 'excel') return isEn ? 'Excel import' : 'Импорт Excel';
+    if (src === 'manual') return isEn ? 'Manual update' : 'Ручное обновление';
+    return isEn ? 'Handicap sync' : 'Синхронизация гандикапа';
+}
+
+function hcpSyncTooltip(info) {
+    var isEn = currentLang === 'en';
+    return (isEn ? 'Handicap updated: ' : 'Гандикап обновлён: ') + info.dateStr +
+        ' · ' + (isEn ? 'Source: ' : 'Источник: ') + info.sourceLabel;
+}
+
+// Короткая дата «09.09.26» для компактных бейджей.
+function fmtHcpShortDate(ts) {
+    var d = new Date(Number(ts));
+    if (!d.getTime()) return '';
+    var mo = d.getMonth() + 1, da = d.getDate();
+    return (da < 10 ? '0' : '') + da + '.' + (mo < 10 ? '0' : '') + mo + '.' + String(d.getFullYear()).slice(2);
+}
+
+// Выбранный вариант оформления бейджа: 1/2/3.
+// ГЛОБАЛЬНЫЙ выбор делается в админ-панели (вкладка «Данные» → «Стиль
+// галочки гандикапа») и хранится в Firebase settings/hcp_badge_variant —
+// он применяется на всех устройствах игроков. Кэшируем в localStorage
+// для офлайн-режима; hcp-badge-preview.html использует тот же ключ
+// для локального предпросмотра.
+var pestovoHcpBadgeVariant = (function() {
+    try {
+        var v = localStorage.getItem('pestovo_hcp_badge_variant');
+        if (v === '1' || v === '2' || v === '3') return v;
+    } catch (e) {}
+    return '1';
+})();
+
+function getHcpBadgeVariant() {
+    return pestovoHcpBadgeVariant;
+}
+
+// Локальный выбор (страница предпросмотра) — обновляет только состояние
+// этого браузера, не трогая глобальную настройку в Firebase.
+function setHcpBadgeVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    pestovoHcpBadgeVariant = v;
+    try { localStorage.setItem('pestovo_hcp_badge_variant', v); } catch (e) {}
+}
+
+// Применяет глобальный вариант (из админ-панели или Firebase) и
+// перерисовывает открытые списки/элементы.
+function applyHcpBadgeVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    pestovoHcpBadgeVariant = v;
+    try { localStorage.setItem('pestovo_hcp_badge_variant', v); } catch (e) {}
+    refreshHcpBadgeVariantUI();
+}
+
+function refreshHcpBadgeVariantUI() {
+    // Вкладка «Игроки» (players.html)
+    try {
+        if (typeof loadPlayers === 'function' && document.getElementById('players-grid')) loadPlayers();
+    } catch (e) {}
+    // Админ-панель: список «Игроки и роли» (только при открытой панели)
+    try {
+        if (typeof hasAdminPanelAccess === 'function' && hasAdminPanelAccess() &&
+            typeof loadAdmPlayers === 'function' &&
+            document.getElementById('admin-content') &&
+            !document.getElementById('admin-content').classList.contains('hidden')) {
+            loadAdmPlayers();
+        }
+    } catch (e) {}
+    // Подсветка выбранного варианта в админ-панели
+    try {
+        if (typeof markAdmHcpVariantButtons === 'function') markAdmHcpVariantButtons();
+    } catch (e) {}
+    // Страница предпросмотра вариантов (если открыта)
+    try {
+        if (typeof window !== 'undefined' && typeof window.hcpBadgePreviewRerender === 'function') window.hcpBadgePreviewRerender();
+    } catch (e) {}
+}
+
+// Зелёная галочка на углу аватара (вариант 3): оборачивает разметку аватара.
+function hcpAvatarWrapHtml(avatarHtml, info) {
+    if (!info || !info.ok) return avatarHtml;
+    return '<span class="hcp-avatar-wrap">' + avatarHtml +
+        '<span class="hcp-avatar-badge" title="' + escapeHtml(hcpSyncTooltip(info)) + '"><i class="fas fa-check"></i></span></span>';
+}
+
+// Фрагмент для карточки игрока (вкладка «Игроки» и админка): вставляется
+// сразу после значения HCP. Возвращает '' у игроков без синхронизации.
+function hcpSyncBadgeHtml(u) {
+    var info = getHcpSyncInfo(u);
+    if (!info.ok) return '';
+    var v = getHcpBadgeVariant();
+    var isEn = currentLang === 'en';
+    var short = fmtHcpShortDate(info.ts);
+    var tip = escapeHtml(hcpSyncTooltip(info));
+    if (v === '2') {
+        // Вариант 2: светящийся зелёный «пилюля»-бейдж
+        return '<span class="hcp-sync-pill" title="' + tip + '"><i class="fas fa-circle-check"></i> ' +
+            (isEn ? 'updated ' : 'обновлён ') + short + '</span>';
+    }
+    if (v === '3') {
+        // Вариант 3: текст даты (галочка уже на аватаре)
+        return ' <span class="hcp-date" title="' + tip + '">' + (isEn ? 'updated ' : 'обновлён ') + short + '</span>';
+    }
+    // Вариант 1: компактная галочка + дата рядом с HCP
+    return ' <i class="fas fa-circle-check hcp-check" title="' + tip + '"></i> <span class="hcp-date" title="' + tip + '">' + short + '</span>';
+}
+
+// Разметка статуса гандикапа для личного профиля игрока.
+// Возвращает { meta: ..., banner: ... }:
+//   meta — замена строки «HCP: …» в шапке профиля (null = обычный вид)
+//   banner — отдельный зелёный баннер (используется только вариантом 2)
+function buildHcpProfileSyncHtml(u) {
+    var info = getHcpSyncInfo(u);
+    if (!info.ok) return { meta: null, banner: '' };
+    var v = getHcpBadgeVariant();
+    var isEn = currentLang === 'en';
+    var hcpVal = fmtExactHcp(u.handicap);
+    var tip = escapeHtml(hcpSyncTooltip(info));
+
+    if (v === '2') {
+        return {
+            meta: null,
+            banner: '<div class="hcp-sync-banner">' +
+                '<span class="hsb-icon"><i class="fas fa-circle-check"></i></span>' +
+                '<span style="flex:1;min-width:180px;">' +
+                '<span style="display:block;font-size:14px;font-weight:800;color:#2ecc71;">' +
+                (isEn ? 'Handicap synced & up to date' : 'Гандикап синхронизирован') + '</span>' +
+                '<span style="display:block;font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;">' +
+                '<i class="fas fa-golf-ball"></i> HCP: ' + hcpVal + ' · ' +
+                '<i class="fas fa-calendar-check"></i> ' + (isEn ? 'Updated ' : 'Обновлено ') + info.dateStr +
+                ' · ' + (isEn ? 'Source: ' : 'Источник: ') + info.sourceLabel + '</span></span>' +
+                '</div>'
+        };
+    }
+
+    // Варианты 1 и 3 — зелёная строка HCP с галочкой, датой и источником
+    return {
+        meta: '<span class="hcp-profile-sync" title="' + tip + '">' +
+            '<i class="fas fa-circle-check"></i> <i class="fas fa-golf-ball"></i> HCP: ' + hcpVal +
+            ' · ' + (isEn ? 'updated ' : 'обновлён ') + info.dateStr +
+            ' <span class="hcp-source">(' + info.sourceLabel + ')</span></span>',
+        banner: ''
+    };
+}
+
+// ==========================================
 // УНИВЕРСАЛЬНОЕ МОДАЛЬНОЕ ОКНО ПРОФИЛЯ И СЧЁТНОЙ КАРТОЧКИ
 // ==========================================
 function openPlayerProfileModal(playerId, roundId) {
@@ -3484,16 +3662,27 @@ function openPlayerProfileModal(playerId, roundId) {
         var roundsWord = currentLang === 'en' ? 'rounds' : 'раундов';
         var teePillMarkup = u.defaultTee ? fmtTeePill(u.defaultTee) : '';
 
+        // Статус синхронизации гандикапа: зелёная галочка + дата обновления
+        var hcpSync = (typeof buildHcpProfileSyncHtml === 'function') ? buildHcpProfileSyncHtml(u) : { meta: null, banner: '' };
+        var plainHcpSpan = '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
+
         var html = '<div class="profile-head" style="margin-bottom:16px;">';
-        html += fmtUserAvatar(u, 80);
+        var profileAvatarHtml = fmtUserAvatar(u, 80);
+        if (hcpSync.meta !== null && getHcpBadgeVariant() === '3') {
+            // Вариант 3: зелёная галочка-«верификация» на углу аватара
+            var hcpInfo3 = getHcpSyncInfo(u);
+            profileAvatarHtml = hcpAvatarWrapHtml(profileAvatarHtml, hcpInfo3);
+        }
+        html += profileAvatarHtml;
         html += '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(privacyDisplayName(u, playerId)) + guestBadge + '</div>';
         html += '<div class="profile-meta">';
-        html += '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>';
+        html += hcpSync.meta !== null ? hcpSync.meta : plainHcpSpan;
         if (teePillMarkup) html += '<span><i class="fas fa-golf-ball-tee"></i> Tee: ' + teePillMarkup + '</span>';
         html += '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' ' + roundsWord + '</span>';
         var hTag = currentLang === 'en' ? 'h' : 'л';
         if (u.bestGross) html += '<span><i class="fas fa-trophy"></i> Gross (18' + hTag + '): ' + u.bestGross + '</span>';
         html += '</div>';
+        if (hcpSync.banner) html += hcpSync.banner;
 
         if (isMe) {
             html += '<button class="btn btn-og btn-sm" style="margin-top:10px;" onclick="renderProfileEditForm(\'' + playerId + '\')"><i class="fas fa-user-pen"></i> ' + t('edit_profile') + '</button>';
@@ -5816,6 +6005,13 @@ if (typeof db !== 'undefined') {
             try { localStorage.setItem('pestovo_my_preferences_enabled', enabled ? '1' : '0'); } catch(e) {}
             if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
             if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
+        });
+        // Глобальный выбор стиля галочки гандикапа (админ-панель → «Данные»)
+        db.ref('settings/hcp_badge_variant').on('value', function(sn) {
+            var v = sn.val();
+            if ((v === '1' || v === '2' || v === '3') && v !== pestovoHcpBadgeVariant) {
+                applyHcpBadgeVariant(v);
+            }
         });
     } catch(e) {}
 }

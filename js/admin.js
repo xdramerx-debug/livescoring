@@ -342,6 +342,12 @@ function switchTab(t, b) {
         renderAssistantSources();
         loadAssistantSourcesFromFirebase();
     }
+    if (t === 'start') {
+        // Вкладка «Старт турнира 🏁»: стартовые протоколы и QR-коды (js/start-admin.js)
+        if (typeof psSwitchTo === 'function') {
+            try { psSwitchTo(); } catch (e) { console.error('[start] switch error', e); }
+        }
+    }
     if (t === 'design') {
         // Вкладка «Дизайн 🎨»: шаблоны оформления сайта (js/design-admin.js)
         if (typeof dspAdminLoad === 'function') dspAdminLoad();
@@ -564,6 +570,7 @@ function clearRounds() {
         db.ref('markers').remove();
         db.ref('markerAssignments').remove();
         db.ref('alerts').remove();
+        db.ref('protocols').remove();
 
         db.ref('users').once('value').then(function(sn) {
             var users = sn.val() || {};
@@ -612,7 +619,8 @@ function clearAllData() {
         'markerAssignments': null,
         'alerts': null,
         'users': null,
-        'broadcasts': null
+        'broadcasts': null,
+        'protocols': null
     };
 
     // Регистрации игроков на турнирах тоже нужно снять, иначе удалённые

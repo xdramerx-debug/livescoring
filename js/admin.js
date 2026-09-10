@@ -3877,6 +3877,20 @@ function rgUpdateBulkCount() {
     }
 }
 
+/** Обрезка гандикапа для турнирного раунда: сначала tournaments/<id>/hcpCut,
+ *  затем (legacy) protocols/<pid>/hcpCut. null — обрезки нет. */
+function rgCutForRound(rd, tournaments, protocols) {
+    if (rd && rd.tournamentId && tournaments && tournaments[rd.tournamentId] &&
+        tournaments[rd.tournamentId].hcpCut && typeof tournaments[rd.tournamentId].hcpCut === 'object') {
+        return tournaments[rd.tournamentId].hcpCut;
+    }
+    if (rd && rd.protocolId && protocols && protocols[rd.protocolId] &&
+        protocols[rd.protocolId].hcpCut && typeof protocols[rd.protocolId].hcpCut === 'object') {
+        return protocols[rd.protocolId].hcpCut;
+    }
+    return null;
+}
+
 /** Обновляет HCP и официальное ФИО игрока во всех местах: users, кэш, раунды, история, турниры. */
 function rgPropagateHcpEverywhere(userId, r, playerData) {
     if (r == null || r.hcp == null) return Promise.resolve();
@@ -3939,11 +3953,13 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
     return Promise.all([
         db.ref('rounds').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
         db.ref('tournaments').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
-        db.ref('users/' + userId + '/history').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; })
+        db.ref('users/' + userId + '/history').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; }),
+        db.ref('protocols').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; })
     ]).then(function(res) {
         var rounds = res[0];
         var tournaments = res[1];
         var history = res[2];
+        var protocols = res[3] || {};
 
         Object.keys(rounds).forEach(function(rid) {
             var rd = rounds[rid];
@@ -3953,9 +3969,18 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
                 if (!p || pid !== userId) return;
                 var tee = p.tee || rd.tee || 'wh';
                 var g = p.gender || gender;
-                var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(hcp, tee, g) : Math.round(hcp);
+                // Турнирный раунд: точный гандикап пересчитываем С УЧЁТОМ обрезки
+                // турнира, чтобы после смены HCP игрок попал в правильную группу.
+                var isTn = (typeof isTournamentRound === 'function') ? isTournamentRound(rd) : !!(rd.tournamentId || rd.protocolId);
+                var cut = isTn ? rgCutForRound(rd, tournaments, protocols) : null;
+                var exact = hcp;
+                if (cut && typeof tnApplyHcpCut === 'function') {
+                    try { exact = tnApplyHcpCut(hcp, g, cut).effective; } catch (e) {}
+                }
+                var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(exact, tee, g) : Math.round(exact);
                 var playerPath = 'rounds/' + rid + '/players/' + pid + '/';
-                fbUpdates[playerPath + 'exactHcp'] = hcp;
+                fbUpdates[playerPath + 'exactHcp'] = exact;
+                if (isTn || p.exactHcpRaw !== undefined) fbUpdates[playerPath + 'exactHcpRaw'] = hcp;
                 fbUpdates[playerPath + 'fieldHcp'] = fieldHcp;
                 if (hasOfficialName) {
                     fbUpdates[playerPath + 'name'] = officialName;

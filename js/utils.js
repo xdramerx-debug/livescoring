@@ -4542,11 +4542,20 @@ function openPlayerProfileModal(playerId, roundId) {
                     html += '<div class="card" style="padding:14px;margin-bottom:12px;border:1px solid var(--border);background:var(--card-bg);">';
                     
                     html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">';
+                    // Турнирный раунд подписываем НАЗВАНИЕМ ТУРНИРА и датой —
+                    // без повтора бренда и лишней служебной строки.
+                    var isTnRound = !!(r.tournamentId || r.tournamentName);
+                    var headTitle = isTnRound
+                        ? escapeHtml(r.tournamentName || (currentLang === 'en' ? 'Tournament' : 'Турнир'))
+                        : t('brand_name');
                     html += '<div style="flex:1;min-width:180px;">';
-                    html += '<strong style="color:var(--white);font-size:15px;">' + t('brand_name') + '</strong>' + fullTag;
+                    html += '<strong style="color:var(--white);font-size:15px;"><i class="fas ' + (isTnRound ? 'fa-trophy' : 'fa-golf-ball-tee') + '" style="color:var(--gold);font-size:12px;"></i> ' + headTitle + '</strong>' + fullTag;
                     html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
                             fmtDate(r.date) + ' · ' + (r.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + (r.tee ? fmtTeePill(r.tee) : '—') +
-                            ' · ' + (r.mode === 'solo' ? '👤 Solo' : '👥 Group') + '</div>';
+                            (isTnRound ? '' : ' · ' + (r.mode === 'solo' ? '👤 Solo' : '👥 Group')) + '</div>';
+                    if (isTnRound && r.roundName) {
+                        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' + escapeHtml(r.roundName) + '</div>';
+                    }
                     html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' +
                             (r.holeInOne ? '🎯 ' + r.holeInOne + ' · ' : '') +
                             '🦅 ' + (r.eagles || 0) + ' · 🐦 ' + (r.birdies || 0) + ' · Par ' + (r.pars || 0) + '</div></div>';
@@ -5298,7 +5307,10 @@ function saveHistory(roundId,rd){
 }
 
 function saveHistoryEntry(userId,roundId,rd,p,stats){
-    db.ref('users/'+userId+'/history').push({
+    // Турнирные раунды помечаем турниром: в профиле игрока показываем название
+    // турнира и дату (без дублирования «Пестово · Пестово»).
+    var tnName=(rd.tournamentName||'').toString().trim();
+    var entry={
         roundId:roundId,date:rd.completedAt||Date.now(),tee:(p&&p.tee)||rd.tee||'wh',format:rd.format||'Stroke Play',
         mode:rd.mode||'group',startHole:rd.startHole||1,holeRange:rd.holeRange||'1-18',gross:stats.gross,toPar:stats.toPar,
         net:stats.net,netToPar:stats.netToPar,stablefordField:stats.stablefordField,stablefordExact:stats.stablefordExact,
@@ -5306,7 +5318,12 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
         pars:stats.pars,holeInOne:stats.holeInOne,exactHcp:p.exactHcp||0,
         exactHcpRaw:(p.exactHcpRaw!=null&&p.exactHcpRaw!=='')?p.exactHcpRaw:(p.exactHcp||0),
         fieldHcp:p.fieldHcp||0,gender:p.gender||'men',status:'completed'
-    });
+    };
+    if(rd.tournamentId)entry.tournamentId=rd.tournamentId;
+    if(tnName)entry.tournamentName=tnName;
+    var roundName=(rd.roundName||rd.protocolName||'').toString().trim();
+    if(rd.tournamentId&&roundName)entry.roundName=roundName;
+    db.ref('users/'+userId+'/history').push(entry);
     db.ref('users/'+userId+'/roundsPlayed').transaction(function(v){return(v||0)+1;});
     if(stats.holesPlayed===getRoundHoleCount(rd)){
         db.ref('users/'+userId+'/bestGross').transaction(function(v){if(!v||stats.gross<v)return stats.gross;return v;});
@@ -7385,19 +7402,10 @@ function applyPageVisibilitySettings() {
     var hiddenPages = getHiddenPages();
     var curPage = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.split('/').pop() || 'index.html' : 'index.html';
 
+    // «Турнир (опционально)» в групповом раунде больше не показывается:
+    // участие в турнире — только через регистрацию в разделе «Турниры».
     var isTournamentsHidden = (hiddenPages['tournaments.html'] === true || hiddenPages['tournaments'] === true);
-    var tnSel = document.getElementById('grp-tournament');
-    if (tnSel) {
-        var tnGroup = tnSel.closest('.form-group');
-        if (tnGroup) {
-            if (isTournamentsHidden) {
-                tnGroup.style.setProperty('display', 'none', 'important');
-                tnSel.value = '';
-            } else {
-                tnGroup.style.removeProperty('display');
-            }
-        }
-    }
+    void isTournamentsHidden;
 
     MANAGED_PAGES.forEach(function(page) {
         var key = page.replace('.html', '');
@@ -8892,9 +8900,60 @@ function tnDivisionGenderOk(divGender, playerGender) {
     return p === g;
 }
 
-function tnFindDivision(tVal, handicap, gender) {
+// Точный состав группы, созданной «Умными группами» (auto).
+// Хранится как { <ключ заявки>: <нормализованное ФИО> } — это позволяет
+// однозначно определить группу игрока даже там, где ключ в раунде отличается
+// от ключа заявки (турнирный протокол создаёт игроков по uid/ФИО).
+function tnDivisionMembers(d) {
+    if (!d || !d.members || typeof d.members !== 'object') return null;
+    return d.members;
+}
+
+// Нормализованный ключ ФИО (для сопоставления по имени, как в tnDedupeRoster).
+function tnDivisionFioKey(name) {
+    var s = String(name == null ? '' : name).toLowerCase().replace(/ё/g, 'е')
+        .replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
+    return s;
+}
+
+// Входит ли игрок в точный состав группы. memberRef — строка (pid) либо
+// объект { pid, name, fioKey }.
+function tnDivisionHasMember(d, memberRef) {
+    var members = tnDivisionMembers(d);
+    if (!members) return false;
+    var pid = '', fio = '';
+    if (memberRef && typeof memberRef === 'object') {
+        pid = memberRef.pid != null ? String(memberRef.pid) : '';
+        fio = memberRef.fioKey || tnDivisionFioKey(memberRef.name || memberRef.fio || '');
+    } else if (memberRef != null) {
+        pid = String(memberRef);
+        fio = tnDivisionFioKey(memberRef);
+    }
+    if (pid && Object.prototype.hasOwnProperty.call(members, pid)) return true;
+    if (fio) {
+        var keys = Object.keys(members);
+        for (var i = 0; i < keys.length; i++) {
+            if (String(members[keys[i]] || '') === fio) return true;
+        }
+    }
+    return false;
+}
+
+function tnFindDivision(tVal, handicap, gender, memberRef) {
     var divs = tnNormalizeDivisions(tVal);
     if (!divs.length) return null;
+    gender = gender || 'men';
+    // 1. Точный состав «умных групп» важнее диапазона гандикапа: границы
+    //    соседних групп могут соприкасаться (28–28 и 28–28), и по диапазону
+    //    игрок попадал бы не в свою группу.
+    if (memberRef) {
+        for (var mi = 0; mi < divs.length; mi++) {
+            var dm = divs[mi];
+            if (!tnDivisionGenderOk(dm.gender, gender)) continue;
+            if (tnDivisionHasMember(dm, memberRef)) return dm;
+        }
+    }
+    // 2. Диапазон гандикапа (ручные группы и старые данные без состава).
     // Округляем до 0.1 — точный гандикап и границы групп хранятся с шагом
     // 0.1, а сравнение «в лоб» плавает из-за двоичных ошибок (35.9 против
     // границы 36, 36.04 и т.п.). Без этого игрок на границе мог выпасть
@@ -8902,7 +8961,6 @@ function tnFindDivision(tVal, handicap, gender) {
     var h = (handicap === '' || handicap == null) ? null : parseFloat(handicap);
     if (h == null || isNaN(h)) return null;
     h = Math.round(h * 10) / 10;
-    gender = gender || 'men';
     for (var i = 0; i < divs.length; i++) {
         var d = divs[i];
         if (!tnDivisionGenderOk(d.gender, gender)) continue;
@@ -9070,7 +9128,11 @@ function roundScheduledStartTs(r) {
 // «active» — всегда; «scheduled» — только когда наступил момент старта;
 // «completed» и прочие — нет. Раунды без статуса (старые данные) считаем
 // активными, чтобы не ломать обычные раунды.
-function isRoundOpenForScoring(r, nowTs) {
+// Открыт ли раунд для ввода счёта. playerId (необязательный) — если раунд
+// уже завершён, но ИМЕННО ЭТОТ игрок ещё не сдал свою карточку (не отмечен в
+// finishedPlayers), ввод ему остаётся доступен: раньше первый завершивший
+// переводил всю группу в «режим просмотра», и остальные не могли доиграть.
+function isRoundOpenForScoring(r, nowTs, playerId) {
     if (!r || typeof r !== 'object') return false;
     var st = String(r.status || 'active');
     if (st === 'scheduled') {
@@ -9078,7 +9140,37 @@ function isRoundOpenForScoring(r, nowTs) {
         if (!startTs) return false;             // без времени старта не открываем
         return (parseInt(nowTs, 10) || Date.now()) >= startTs;
     }
+    if (st === 'completed') {
+        if (!playerId) return false;
+        var pid = String(playerId);
+        var players = r.players || {};
+        if (!players[pid]) return false;        // наблюдателю ввод не открываем
+        if (r.finishedPlayers && r.finishedPlayers[pid]) return false;
+        return true;
+    }
     return st === 'active' || st === '';
+}
+
+// Игрок уже завершил свою карточку в этом раунде?
+function isPlayerFinishedRound(r, playerId) {
+    if (!r || !playerId) return false;
+    var pid = String(playerId);
+    if (r.finishedPlayers && r.finishedPlayers[pid]) return true;
+    if (String(r.status || '') === 'completed' && String(r.completedBy || '') === pid) return true;
+    return false;
+}
+
+// Есть ли в раунде игроки, которые ещё не сдали карточку (и повод держать
+// раунд открытым, даже если кто-то уже нажал «Завершить»).
+function roundPendingPlayers(r) {
+    if (!r || typeof r !== 'object') return [];
+    var players = r.players || {};
+    var fin = r.finishedPlayers || {};
+    return Object.keys(players).filter(function(pid) {
+        if (fin[pid]) return false;
+        if (String(r.status || '') === 'completed' && String(r.completedBy || '') === pid) return false;
+        return true;
+    });
 }
 
 // Раунд «заперт» стартом турнира: создан заранее, старт ещё не наступил.

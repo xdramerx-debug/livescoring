@@ -125,6 +125,22 @@ ok(sandbox.isRoundOpenForScoring(scheduled, startTs) === true, 'в момент 
 ok(sandbox.isRoundGatedByStart(scheduled, startTs + 1000) === false, 'после старта: уже не gated');
 ok(sandbox.isRoundOpenForScoring(active, startTs - 60000) === true, 'активный раунд открыт всегда');
 ok(sandbox.isRoundOpenForScoring(completed, startTs + 1000) === false, 'завершённый раунд закрыт');
+// Завершённый раунд: тот, кто ещё не сдал карточку, продолжает вводить счёт
+// (иначе после первого финишёра группа видела только «режим просмотра»).
+const partialRound = {
+    status: 'completed', tournamentId: 'tn1', mode: 'group',
+    completedBy: 'p1', finishedPlayers: { p1: { at: 1 } },
+    players: { p1: { name: 'Игорь' }, p2: { name: 'Пётр' }, p3: { name: 'Семён' } }
+};
+ok(sandbox.isRoundOpenForScoring(partialRound, startTs + 1000, 'p2') === true,
+    'завершённый раунд: не сдавший карточку p2 продолжает ввод');
+ok(sandbox.isRoundOpenForScoring(partialRound, startTs + 1000, 'p1') === false,
+    'завершённый раунд: сдавший карточку p1 — только просмотр');
+ok(sandbox.isRoundOpenForScoring(partialRound, startTs + 1000, 'наблюдатель') === false,
+    'завершённый раунд: посторонний — только просмотр');
+ok(sandbox.isPlayerFinishedRound(partialRound, 'p1') === true, 'финишёр отмечен в finishedPlayers');
+ok(sandbox.isPlayerFinishedRound(partialRound, 'p2') === false, 'не финишировавший не отмечен');
+eq(sandbox.roundPendingPlayers(partialRound).sort().join(','), 'p2,p3', 'в раунде ещё двое не сдали карточки');
 ok(sandbox.isRoundOpenForScoring(legacy, startTs - 60000) === true, 'раунд без статуса (старые данные) открыт');
 ok(sandbox.isRoundOpenForScoring({ status: 'scheduled' }, startTs + 1000) === false, 'scheduled без времени старта не открывается');
 eq(sandbox.roundStartCountdownMs(scheduled, startTs - 90000), 90000, 'отсчёт: 90 секунд до старта');

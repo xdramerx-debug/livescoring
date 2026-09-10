@@ -153,6 +153,22 @@ eq(sandbox.psGroupSchedule(0, 4), { startHole: 10, startTime: base }, 'scheme 10
 eq(sandbox.psGroupSchedule(2, 4), { startHole: 10, startTime: base + 16 * 60000 }, 'scheme 10: g2 → лунка 10 @ 09:16');
 eq(sandbox.psGroupTitle({ startHole: 10 }, 0, [{ startHole: 10 }, { startHole: 10 }]), 'Группа 1', 'scheme 10: обычные номера групп, без букв');
 
+// ── Группы по гандикапу: номера в протоколе идут по возрастанию HCP ──
+// (1А — самые низкие, 1Б — следующие, потом 10А…). Лунки режутся блоками,
+// а не «по кругу», иначе 1Б получалась бы уже с высокими гандикапами.
+sandbox.psState.proto.scheme = '1-10-shot';
+sandbox.psState.proto.method = 'hcpAsc';
+sandbox.psState.proto.interval = 10;
+eq(sandbox.psGroupSchedule(0, 6), { startHole: 1, startTime: base }, 'hcp-группы: g0 (низкий HCP) → 1А @ 09:00');
+eq(sandbox.psGroupSchedule(1, 6), { startHole: 1, startTime: base + 10 * 60000 }, 'hcp-группы: g1 → 1Б (следующий по HCP)');
+eq(sandbox.psGroupSchedule(2, 6), { startHole: 1, startTime: base + 20 * 60000 }, 'hcp-группы: g2 → 1В');
+eq(sandbox.psGroupSchedule(3, 6), { startHole: 10, startTime: base }, 'hcp-группы: g3 → 10А');
+eq(sandbox.psGroupSchedule(5, 6), { startHole: 10, startTime: base + 20 * 60000 }, 'hcp-группы: g5 → 10В');
+sandbox.psState.proto.scheme = '1-10';
+eq(sandbox.psGroupSchedule(0, 4), { startHole: 1, startTime: base }, 'hcp-группы (поочерёдно): g0 → 1А');
+eq(sandbox.psGroupSchedule(1, 4), { startHole: 1, startTime: base + 10 * 60000 }, 'hcp-группы (поочерёдно): g1 → 1Б');
+eq(sandbox.psGroupSchedule(2, 4), { startHole: 10, startTime: base + 5 * 60000 }, 'hcp-группы (поочерёдно): g2 → 10А (+пол-интервала)');
+sandbox.psState.proto.method = 'order';
 sandbox.psState.proto.scheme = '1-10-shot';
 sandbox.psState.proto.interval = 10;
 eq(sandbox.psGroupSchedule(0, 6), { startHole: 1, startTime: base }, 'shotgun 1-10: g0 → лунка 1 @ 09:00');

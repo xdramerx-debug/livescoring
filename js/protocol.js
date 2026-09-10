@@ -180,7 +180,9 @@ function tpBuildData() {
         if (cut && typeof tnApplyHcpCut === 'function' && hcpSrc != null && hcpSrc !== '') {
             try { en2.effHcp = tnApplyHcpCut(hcpSrc, en2.gender, cut).effective; } catch (e) {}
         }
-        en2.div = (typeof tnFindDivision === 'function') ? tnFindDivision(tVal, en2.effHcp, en2.gender) : null;
+        en2.div = (typeof tnFindDivision === 'function')
+            ? tnFindDivision(tVal, en2.effHcp, en2.gender, { pid: en2.pid, name: en2.name || '' })
+            : null;
         en2.toPar = en2.holes > 0 ? en2.gross - en2.parPlayed : null;
         en2.netToPar = en2.holes > 0 ? en2.net - en2.parPlayed : null;
         var dispP = { name: en2.name };

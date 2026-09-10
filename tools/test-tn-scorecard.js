@@ -347,7 +347,10 @@ has('вкладка «Девушки» отсутствует (нет таких
 has('заголовок группы с префиксом', lbHtml.indexOf('Группа:') !== -1, true);
 has('название группы в заголовке', lbHtml.indexOf('tn-group-title') !== -1, true);
 has('строка лидерборда кликабельна', lbHtml.indexOf('tnScOpen(') !== -1, true);
-has('клик передаёт ФИО-ключ игрока', lbHtml.indexOf("tnScOpen('" + TN + "','иван петров')") !== -1, true);
+// Ключ строки — идентификатор игрока (uid), а не ФИО: однофамильцы в разных
+// группах больше не склеиваются в одну строку и не открывают чужую карточку.
+has('клик передаёт ключ игрока (uid)', lbHtml.indexOf("tnScOpen('" + TN + "','u1')") !== -1, true);
+has('клик по второму игроку — свой ключ', lbHtml.indexOf("tnScOpen('" + TN + "','u2')") !== -1, true);
 has('метка гостя в таблице', lbHtml.indexOf('tn-guest-chip') !== -1, true);
 
 // Второй раунд турнира (9 лунок, старт с 10-й) — карточка должна собрать
@@ -372,7 +375,7 @@ renderedPanels[panelId] = el('div');
 G.renderTnLeaderboard(TN);
 var lbHtml2 = renderedPanels[panelId].innerHTML;
 
-var card1 = G.tnScGetCard(TN, 'иван петров');
+var card1 = G.tnScGetCard(TN, 'u1');
 check('карточка зарегистрирована', !!card1, true);
 check('HCP до обрезки = 54', card1.hcpRaw, 54);
 check('HCP после обрезки = 28', card1.effHcp, 28);
@@ -394,11 +397,11 @@ check('группа/флайт в шапке', card1.groupLabel, 'Группа 3
 check('маркирует — имя маркируемого', card1.markerName, 'Пётр Сидоров');
 check('место в группе попало в карточку', typeof card1.position, 'number');
 has('в карточке показано место', G.tnScRender(card1), 'tnsc-pos');
-check('гость помечен', G.tnScGetCard(TN, 'гость иванов').isGuest, true);
-check('игрок без аккаунта тоже в карточках', !!G.tnScGetCard(TN, 'нет аккаунта'), true);
-check('u2 без обрезки (нет cutNote)', G.tnScGetCard(TN, 'петр сидоров').cutNote, '');
-check('u2 отнесён к группе «Мужчины»', G.tnScGetCard(TN, 'петр сидоров').divName, 'Мужчины');
-has('ТИ в шапке карточки', G.tnScGetCard(TN, 'петр сидоров').teeTxt, 'Синий');
+check('гость помечен', G.tnScGetCard(TN, 'guest_9').isGuest, true);
+check('игрок без аккаунта тоже в карточках', !!G.tnScGetCard(TN, 'u_gone'), true);
+check('u2 без обрезки (нет cutNote)', G.tnScGetCard(TN, 'u2').cutNote, '');
+check('u2 отнесён к группе «Мужчины»', G.tnScGetCard(TN, 'u2').divName, 'Мужчины');
+has('ТИ в шапке карточки', G.tnScGetCard(TN, 'u2').teeTxt, 'Синий');
 
 // ══════════════════════════════════════════════════════════
 section('3 · Три варианта оформления');

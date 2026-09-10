@@ -174,8 +174,37 @@ function qrNormDivs(raw) {
     });
     return arr;
 }
-function qrFindDivision(divs, hcp, gender) {
+// Нормализация ФИО для сопоставления с составом «умных групп»
+// (та же нормализация, что в js/utils.js → tnDivisionFioKey).
+function qrNormFio(name) {
+    return String(name == null ? '' : name).toLowerCase().replace(/ё/g, 'е')
+        .replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+function qrFindDivision(divs, hcp, gender, memberRef) {
     if (!divs || !divs.length) return null;
+    // Точный состав «умных групп» важнее диапазона HCP (границы соседних
+    // групп могут соприкасаться).
+    if (memberRef) {
+        var pid = '', fio = '';
+        if (typeof memberRef === 'object') {
+            pid = memberRef.pid != null ? String(memberRef.pid) : '';
+            fio = String(memberRef.fio || '');
+        } else {
+            pid = String(memberRef);
+        }
+        for (var mi = 0; mi < divs.length; mi++) {
+            var dm = divs[mi] || {};
+            var mm = dm.members;
+            if (!mm || typeof mm !== 'object') continue;
+            if (pid && Object.prototype.hasOwnProperty.call(mm, pid)) return dm;
+            if (fio) {
+                var mkeys = Object.keys(mm);
+                for (var mk = 0; mk < mkeys.length; mk++) {
+                    if (String(mm[mkeys[mk]] || '') === fio) return dm;
+                }
+            }
+        }
+    }
     var h = (hcp === '' || hcp == null) ? null : parseFloat(hcp);
     if (h == null || isNaN(h)) return null;
     gender = gender || 'men';
@@ -360,7 +389,7 @@ function qrPlayerColHtml(g, geIdx, groupEntries, scheme, p) {
     // Имя группы ИЛИ диапазон HCP — но не оба сразу: названия вида
     // «Мужчины 0–12» уже содержат диапазон, и старый бейдж «название · 0–12»
     // двоил информацию.
-    var pdiv = qrFindDivision(qrLastDivs, p.exactHcp, p.gender);
+    var pdiv = qrFindDivision(qrLastDivs, p.exactHcp, p.gender, { pid: p.id, fio: qrNormFio(qrFio(p)) });
     var pdivHtml = '';
     if (pdiv) {
         var prg = qrDivRange(pdiv);
@@ -388,7 +417,9 @@ function qrPlayerColHtml(g, geIdx, groupEntries, scheme, p) {
         '</div>' +
         // loading="eager": все коды грузятся сразу, а не при прокрутке —
         // иначе в печать уходят пустые места. onerror — цепочка провайдеров.
-        '<img loading="eager" decoding="async" src="' + qrUrl(scoreUrl) + '" data-qr="' + encodeURIComponent(scoreUrl) + '" data-qr-try="0" onload="qrImgOk(this)" onerror="qrImgFail(this)" alt="QR"><div class="qr-url">' + qrEsc(scoreUrl) + '</div></div>';
+        // Ссылку под QR-кодом не печатаем (требование клуба): код крупнее
+        // и считывается с телефона быстрее. Адрес остаётся в data-qr.
+        '<img loading="eager" decoding="async" src="' + qrUrl(scoreUrl) + '" data-qr="' + encodeURIComponent(scoreUrl) + '" data-qr-try="0" onload="qrImgOk(this)" onerror="qrImgFail(this)" alt="QR"></div>';
     html += '</div>';
     html += '</div>';
     return html;

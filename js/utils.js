@@ -904,6 +904,12 @@ var I18N = {
         group_card_variant_1: '1 · Сводная матрица',
         group_card_variant_2: '2 · Сравнительная таблица',
         group_card_variant_3: '3 · Лидерборд флайта',
+        tn_card_variant_title: 'Счётная карточка игрока в лидерборде турнира',
+        tn_card_variant_sub: 'Игрок нажимает на свою строку в лидерборде турнира (страница «Турниры») — открывается его счётная карточка. Выберите один из трёх видов. Настройка применяется для всех пользователей.',
+        tn_card_variant_1: '1 · Официальный бланк',
+        tn_card_variant_2: '2 · Плитки лунок',
+        tn_card_variant_3: '3 · Турнирная сводка',
+        tn_card_preview: 'Примеры — так карточка выглядит у игрока:',
         players_display_title: 'Отображение страницы «Игроки»',
         players_display_sub: 'Выберите один из трёх вариантов оформления списка игроков. Настройка применяется для всех пользователей.',
         players_display_variant_1: '1 · Карточки',
@@ -1384,6 +1390,12 @@ var I18N = {
         group_card_variant_1: '1 · Summary Matrix',
         group_card_variant_2: '2 · Comparison Table',
         group_card_variant_3: '3 · Flight Leaderboard',
+        tn_card_variant_title: 'Player scorecard in the tournament leaderboard',
+        tn_card_variant_sub: 'A player taps their row in the tournament leaderboard (Tournaments page) and their scorecard opens. Pick one of three styles. Applies to all users.',
+        tn_card_variant_1: '1 · Official card',
+        tn_card_variant_2: '2 · Hole tiles',
+        tn_card_variant_3: '3 · Tournament board',
+        tn_card_preview: 'Preview — how the card looks for a player:',
         players_display_title: '“Players” page layout',
         players_display_sub: 'Choose one of three player-list layouts. The setting applies to all users.',
         players_display_variant_1: '1 · Cards',
@@ -4423,7 +4435,9 @@ function openPlayerProfileModal(playerId, roundId) {
             var displayName = playerDisplayName(p, playerId);
             u = {
                 name: displayName !== '—' ? displayName : t('guest'),
-                handicap: p.exactHcp || null,
+                // Для турнира в раунде может стоять обрезанный HCP — в карточке
+                // профиля показываем настоящий (exactHcpRaw), если он записан.
+                handicap: (p.exactHcpRaw != null && p.exactHcpRaw !== '') ? p.exactHcpRaw : (p.exactHcp || null),
                 gender: p.gender || 'men',
                 isGuest: true,
                 roundsPlayed: 1
@@ -5237,6 +5251,12 @@ function saveHistory(roundId,rd){
         var stats=calcRoundStats(sc,fH,eH,getRoundOrder(rd));
         if(stats.gross<=0)return;
         var isGuestPlayer=String(pid).indexOf('guest_')===0;
+        // В профиль игрока всегда идёт НАСТОЯЩИЙ гандикап: турнирная обрезка
+        // (hcpCut) относится только к этому турниру и не должна менять HCP
+        // игрока глобально. exactHcpRaw — значение до обрезки.
+        var rawHcp=(p.exactHcpRaw!=null&&p.exactHcpRaw!=='')?p.exactHcpRaw:eH;
+        var cutApplied=(p.exactHcpRaw!=null&&p.exactHcpRaw!==''&&
+            (parseFloat(p.exactHcpRaw)||0)!==(parseFloat(p.exactHcp)||0));
         if(isGuestPlayer && typeof resolveOrCreatePlayerUser==='function'){
             // Идемпотентное разрешение игрока: переиспользуем существующую запись
             // (по детерминированному id или по имени) вместо создания новой —
@@ -5246,7 +5266,10 @@ function saveHistory(roundId,rd){
                 name:p.name||'Гость',
                 firstName:p.firstName||'',
                 lastName:p.lastName||'',
-                exactHcp:eH,
+                exactHcp:rawHcp,
+                exactHcpRaw:rawHcp,
+                // флаг: в раунде значение было обрезано турниром
+                hcpFromTournamentCut:cutApplied,
                 gender:p.gender||'men',
                 isGuest:true
             }).then(function(userId){
@@ -5262,7 +5285,9 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
         mode:rd.mode||'group',startHole:rd.startHole||1,holeRange:rd.holeRange||'1-18',gross:stats.gross,toPar:stats.toPar,
         net:stats.net,netToPar:stats.netToPar,stablefordField:stats.stablefordField,stablefordExact:stats.stablefordExact,
         holes:stats.holesPlayed,scores:p.scores||{},birdies:stats.birdies,eagles:stats.eagles,
-        pars:stats.pars,holeInOne:stats.holeInOne,exactHcp:p.exactHcp||0,fieldHcp:p.fieldHcp||0,gender:p.gender||'men',status:'completed'
+        pars:stats.pars,holeInOne:stats.holeInOne,exactHcp:p.exactHcp||0,
+        exactHcpRaw:(p.exactHcpRaw!=null&&p.exactHcpRaw!=='')?p.exactHcpRaw:(p.exactHcp||0),
+        fieldHcp:p.fieldHcp||0,gender:p.gender||'men',status:'completed'
     });
     db.ref('users/'+userId+'/roundsPlayed').transaction(function(v){return(v||0)+1;});
     if(stats.holesPlayed===getRoundHoleCount(rd)){
@@ -5335,12 +5360,7 @@ function sweepStaleRounds(data) {
             // Историю сохраняем атомарно ровно один раз (транзакция-клейм):
             // даже если sweep запустили одновременно несколько клиентов,
             // записи в users/<uid>/history не задвоятся.
-            var claimId = 'sweep_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-            return db.ref('rounds/' + roundId + '/historyRecorded').transaction(function(v) {
-                if (v === null || v === undefined || v === false) return claimId;
-                return undefined; // кто-то уже забрал — отменяем транзакцию
-            }).then(function(res) {
-                var claimed = res && res.committed && res.snapshot && String(res.snapshot.val()) === claimId;
+            return pestovoClaimRoundHistory(roundId).then(function(claimed) {
                 if (claimed && typeof saveHistory === 'function') {
                     try { saveHistory(roundId, roundData); } catch (e) {}
                 }
@@ -5350,6 +5370,193 @@ function sweepStaleRounds(data) {
         });
     });
     return data;
+}
+
+// ==========================================
+// ЗАЯВКА НА ЗАПИСЬ ИСТОРИИ РАУНДА (идемпотентно)
+// ==========================================
+// Раунд могут «закрывать» несколько клиентов одновременно (игрок, маркер,
+// автозакрытие, завершение турнира). Право записать историю получает только
+// один — через транзакцию по rounds/<rid>/historyRecorded.
+// Возвращает Promise<boolean>: true — можно писать историю этого раунда.
+function pestovoClaimRoundHistory(roundId) {
+    if (!roundId || typeof db === 'undefined' || !db) return Promise.resolve(false);
+    var claimId = 'claim_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    return db.ref('rounds/' + roundId + '/historyRecorded').transaction(function(v) {
+        if (v === null || v === undefined || v === false) return claimId;
+        return undefined; // кто-то уже забрал — отменяем транзакцию
+    }).then(function(res) {
+        return !!(res && res.committed && res.snapshot && String(res.snapshot.val()) === claimId);
+    }).catch(function() { return false; });
+}
+
+// Общая работа с раундами турнира при его завершении или удалении.
+//   mode 'complete' — кнопка «Завершить»: открытые раунды переводятся в
+//     completed и ПОСЛЕ этого попадают в историю игроков (как любой
+//     завершённый раунд). Результаты никуда не деваются: турнир остаётся
+//     в «Истории» и статистике каждого игрока.
+//   mode 'delete'   — кнопка «Удалить»: сначала убираем раунды из истории
+//     игроков (с пересчётом bestGross/bestStableford), затем сносим сами
+//     раунды вместе с маркерами. Удалённый турнир не оставляет следов.
+// Возвращает Promise<{ closed, rounds, players }>.
+function pestovoFinalizeTournamentRounds(tnId, mode) {
+    var out = { closed: 0, rounds: 0, players: 0 };
+    if (!tnId || typeof db === 'undefined' || !db) return Promise.resolve(out);
+
+    if (mode === 'delete') {
+        return pestovoTournamentRoundIdsFull(tnId).then(function(ids) {
+            out.rounds = ids.length;
+            if (!ids.length) return out;
+            return Promise.all(ids.map(function(rid) {
+                return db.ref('rounds/' + rid).once('value').then(function(rs) {
+                    var rd = (rs && rs.val()) || {};
+                    return pestovoRemoveRoundFromPlayers(rid, rd.players || {});
+                }).catch(function() { return 0; });
+            })).then(function(list) {
+                out.players = list.reduce(function(a, b) { return a + (b || 0); }, 0);
+                var updates = {};
+                ids.forEach(function(rid) {
+                    updates['rounds/' + rid] = null;
+                    updates['markers/' + rid] = null;
+                    updates['markerAssignments/' + rid] = null;
+                });
+                return db.ref().update(updates).catch(function() {}).then(function() { return out; });
+            });
+        }).catch(function() { return out; });
+    }
+
+    return db.ref('rounds').orderByChild('tournamentId').equalTo(tnId).once('value').then(function(sn) {
+        var rounds = (sn && sn.val()) || {};
+        var ids = Object.keys(rounds);
+        out.rounds = ids.length;
+        if (!ids.length) return out;
+        return Promise.all(ids.map(function(rid) {
+            var rd = rounds[rid] || {};
+            var needClose = rd.status !== 'completed';
+            var patch = needClose
+                ? { status: 'completed', completedAt: Date.now(), closedByTournamentFinish: true }
+                : null;
+            return (patch ? db.ref('rounds/' + rid).update(patch) : Promise.resolve())
+                .then(function() {
+                    if (patch) { rd.status = 'completed'; if (!rd.completedAt) rd.completedAt = Date.now(); }
+                    // Идемпотентно: раунд, уже записанный в историю, повторно
+                    // не удваивается.
+                    return pestovoClaimRoundHistory(rid);
+                })
+                .then(function(claimed) {
+                    if (!claimed) return false;
+                    if (typeof saveHistory === 'function') { try { saveHistory(rid, rd); } catch (e) {} }
+                    return true;
+                })
+                .catch(function() { return false; });
+        })).then(function(res) {
+            out.closed = res.filter(function(x) { return x; }).length;
+            return out;
+        });
+    }).catch(function() { return out; });
+}
+
+// Все раунды турнира: и те, где записан tournamentId, и те, что пришли из
+// протокола групп (у части старых записей tournamentId отсутствует).
+function pestovoTournamentRoundIdsFull(tnId) {
+    if (typeof db === 'undefined' || !db) return Promise.resolve([]);
+    var found = {};
+    return db.ref('protocols').once('value').catch(function() { return null; }).then(function(psn) {
+        var protocols = (psn && psn.val()) || {};
+        var protoIds = [];
+        Object.keys(protocols).forEach(function(pid) {
+            var p = protocols[pid];
+            if (p && (p.tournamentId === tnId || p.tnId === tnId)) protoIds.push(pid);
+        });
+        return db.ref('rounds').orderByChild('tournamentId').equalTo(tnId).once('value').then(function(sn) {
+            var rounds = (sn && sn.val()) || {};
+            Object.keys(rounds).forEach(function(rid) { found[rid] = true; });
+            if (!protoIds.length) return null;
+            return Promise.all(protoIds.map(function(pid) {
+                return db.ref('rounds').orderByChild('protocolId').equalTo(pid).once('value').then(function(s2) {
+                    var rr = (s2 && s2.val()) || {};
+                    Object.keys(rr).forEach(function(rid) { found[rid] = true; });
+                }).catch(function() {});
+            }));
+        });
+    }).then(function() { return Object.keys(found); }).catch(function() { return Object.keys(found); });
+}
+
+// Удаляет раунд из истории всех его игроков и пересчитывает статистику
+// (roundsPlayed / bestGross / bestStableford) по оставшимся раундам.
+// Аккаунты, у которых истории нет (гостевые id), не создаём.
+function pestovoRemoveRoundFromPlayers(rid, players) {
+    if (typeof db === 'undefined' || !db) return Promise.resolve(0);
+    var pids = Object.keys(players || {});
+    if (!pids.length) return Promise.resolve(0);
+    var touched = 0;
+    return Promise.all(pids.map(function(pid) {
+        return db.ref('users/' + pid).once('value').then(function(sn) {
+            var u = sn.val();
+            if (!u || !u.history) return null;
+            var hist = u.history;
+            var updates = {};
+            var remaining = [];
+            var hit = false;
+            Object.keys(hist).forEach(function(hk) {
+                var item = hist[hk];
+                if (!item) return;
+                if (item.roundId === rid) { updates['users/' + pid + '/history/' + hk] = null; hit = true; }
+                else remaining.push(item);
+            });
+            if (!hit) return null;
+            var bestG = null, bestS = null;
+            remaining.forEach(function(item) {
+                if (item.holes === 18 && item.gross) {
+                    if (bestG === null || item.gross < bestG) bestG = item.gross;
+                }
+                if (item.holes === 18 && item.stablefordField) {
+                    if (bestS === null || item.stablefordField > bestS) bestS = item.stablefordField;
+                }
+            });
+            touched++;
+            updates['users/' + pid + '/roundsPlayed'] = remaining.length;
+            updates['users/' + pid + '/bestGross'] = bestG;
+            updates['users/' + pid + '/bestStableford'] = bestS;
+            return db.ref().update(updates).catch(function() {});
+        }).catch(function() { return null; });
+    })).then(function() { return touched; });
+}
+
+// Публичная обёртка для кнопки «Завершить» в админке.
+function pestovoPreserveTournamentRounds(tnId) {
+    return pestovoFinalizeTournamentRounds(tnId, 'complete').then(function(res) { return res.closed; });
+}
+
+// Публичная обёртка для кнопки «Удалить»: раунды + их влияние на историю.
+function pestovoDeleteTournamentRounds(tnId) {
+    return pestovoFinalizeTournamentRounds(tnId, 'delete');
+}
+
+// Полный каскад удаления турнира: раунды (и их влияние на историю игроков) →
+// протоколы групп → карточка турнира → маркеры. Возвращает Promise со сводкой
+// { rounds, protocols }, чтобы админ видел, что именно было удалено.
+function pestovoDeleteTournamentCascade(tnId) {
+    var summary = { rounds: 0, protocols: 0 };
+    if (!tnId || typeof db === 'undefined' || !db) return Promise.resolve(summary);
+    return pestovoDeleteTournamentRounds(tnId).then(function(res) {
+        summary.rounds = (res && res.rounds) || 0;
+        summary.players = (res && res.players) || 0;
+        return db.ref('protocols').once('value').catch(function() { return null; });
+    }).then(function(sn) {
+        var protocols = (sn && sn.val()) || {};
+        var updates = {};
+        var n = 0;
+        Object.keys(protocols).forEach(function(pid) {
+            var p = protocols[pid];
+            if (p && (p.tournamentId === tnId || p.tnId === tnId)) { updates['protocols/' + pid] = null; n++; }
+        });
+        summary.protocols = n;
+        // Карточка турнира удаляется в ту же мульти-запись: если связь
+        // оборвётся на середине, протоколы не останутся «висячими».
+        updates['tournaments/' + tnId] = null;
+        return db.ref().update(updates).catch(function() {});
+    }).then(function() { return summary; });
 }
 
 // ==========================================
@@ -5381,9 +5588,12 @@ function pestovoAutoFinishTournament(tnId) {
                 finishedAt: Date.now(),
                 finishedAutomatically: true
             }).then(function() {
+                // Уведомление о завершении и о доступном протоколе — ТОЛЬКО
+                // администратору: игроки не должны видеть служебное сообщение
+                // о протоколе завершения (он нужен судейской коллегии).
                 try {
                     var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-                    if (typeof toast === 'function') toast(isEn
+                    if (pestovoIsAdminViewer() && typeof toast === 'function') toast(isEn
                         ? '🏁 All rounds completed — the tournament is finished automatically. The results protocol (PDF) is now available.'
                         : '🏁 Все раунды завершены — турнир завершён автоматически. Протокол результатов (PDF) теперь доступен.', 'success');
                 } catch (e) {}
@@ -5575,6 +5785,45 @@ function applyGroupCardVariant(value) {
     try {
         if (typeof loadLiveRounds === 'function') loadLiveRounds();
         if (typeof loadRecentResults === 'function') loadRecentResults();
+    } catch (e) {}
+    return variant;
+}
+
+// ==========================================
+// СЧЁТНАЯ КАРТОЧКА ИГРОКА В ЛИДЕРБОРДЕ ТУРНИРА
+// ==========================================
+// На странице «Турниры» клик по игроку в лидерборде открывает его счётную
+// карточку. Оформление выбирает администратор для всего клуба
+// (админ-панель → «Данные»): 1 · Официальный бланк, 2 · Плитки лунок,
+// 3 · Турнирная сводка. Хранится в settings/tn_scorecard_variant.
+var TN_CARD_VARIANTS = ['1', '2', '3'];
+
+function normalizeTnCardVariant(value) {
+    value = String(value === undefined || value === null ? '' : value);
+    return TN_CARD_VARIANTS.indexOf(value) !== -1 ? value : '1';
+}
+
+var pestovoTnCardVariant = (function() {
+    try { return normalizeTnCardVariant(localStorage.getItem('pestovo_tn_scorecard_variant')); } catch (e) {}
+    return '1';
+})();
+
+function getTnCardVariant() {
+    return pestovoTnCardVariant;
+}
+
+function applyTnCardVariant(value) {
+    var variant = normalizeTnCardVariant(value);
+    pestovoTnCardVariant = variant;
+    try { localStorage.setItem('pestovo_tn_scorecard_variant', variant); } catch (e) {}
+    try {
+        if (typeof markAdmTnCardVariantButtons === 'function') markAdmTnCardVariantButtons();
+    } catch (e) {}
+    // Открытая карточка/лидерборд перерисовываются сразу — админ видит
+    // результат без перезагрузки страницы.
+    try {
+        if (typeof tnScRerender === 'function') tnScRerender();
+        if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards();
     } catch (e) {}
     return variant;
 }
@@ -7244,6 +7493,13 @@ if (typeof db !== 'undefined') {
                 applyGroupCardVariant(String(v));
             }
         });
+        // Глобальный выбор оформления счётной карточки игрока в лидерборде турнира.
+        db.ref('settings/tn_scorecard_variant').on('value', function(sn) {
+            var v = sn.val();
+            if (TN_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnCardVariant) {
+                applyTnCardVariant(String(v));
+            }
+        });
         // Шаблоны оформления сайта (админ-панель → «Дизайн 🎨»).
         // Ключа settings/design может не быть — тогда работает текущий дизайн,
         // ничего не переопределяется.
@@ -7402,13 +7658,25 @@ function resolveOrCreatePlayerUser(p) {
     var middleName = p.middleName ? sanitizeNameRaw(p.middleName) : '';
     var lastName = p.lastName ? sanitizeNameRaw(p.lastName) : (parts.slice(1).join(' ') || '');
     var exactHcp = parseExactHcp(p.exactHcp != null ? p.exactHcp : (p.handicap || 0));
+    // Гандикап для ПРОФИЛЯ: всегда исходный (до турнирной обрезки). Обрезка
+    // гандикапа — настройка конкретного турнира, она не имеет права менять
+    // глобальный HCP игрока (требование: «игрок с 54 и максимумом 28 остаётся
+    // 54 в профиле, на главной и в RusGolf»).
+    var profileHcp = (p.exactHcpRaw != null && p.exactHcpRaw !== '')
+        ? parseExactHcp(p.exactHcpRaw)
+        : (p.handicap != null && p.handicap !== '' ? parseExactHcp(p.handicap) : exactHcp);
+    var fromTnCut = p.hcpFromTournamentCut === true;
     var gender = p.gender || 'men';
     var defaultTee = p.tee || p.defaultTee || (gender === 'women' ? 'rd' : 'bl');
 
-    // Патч для обновления: гандикап всегда, отчество только если было пусто и теперь есть
+    // Патч для обновления: гандикап — только настоящий, отчество только если было пусто и теперь есть
     var buildPatchForExisting = function(existingData) {
         existingData = existingData || {};
-        var patch = { handicap: exactHcp };
+        var patch = {};
+        // Если значение пришло из турнира с обрезкой, а у игрока уже есть
+        // свой HCP — профиль не трогаем вообще.
+        var hasOwn = existingData.handicap !== null && existingData.handicap !== undefined && existingData.handicap !== '';
+        if (!(fromTnCut && hasOwn)) patch.handicap = profileHcp;
         // Имя/фамилия — обновляем только если у существующего они пустые
         if (!existingData.firstName && firstName) patch.firstName = firstName;
         if (!existingData.lastName && lastName) patch.lastName = lastName;
@@ -7469,7 +7737,7 @@ function resolveOrCreatePlayerUser(p) {
     };
 
     var finish = function(id, finalData) {
-        var cacheData = { name: finalData && finalData.name ? finalData.name : cleanName, firstName: firstName, lastName: lastName, handicap: exactHcp, gender: gender, defaultTee: defaultTee };
+        var cacheData = { name: finalData && finalData.name ? finalData.name : cleanName, firstName: firstName, lastName: lastName, handicap: profileHcp, gender: gender, defaultTee: defaultTee };
         if (middleName) cacheData.middleName = middleName;
         if (finalData && finalData.middleName) cacheData.middleName = finalData.middleName;
         if (finalData && finalData.name) cacheData.name = finalData.name;
@@ -7484,7 +7752,7 @@ function resolveOrCreatePlayerUser(p) {
             name: cleanName,
             firstName: firstName,
             lastName: lastName,
-            handicap: exactHcp,
+            handicap: profileHcp,
             gender: gender,
             defaultTee: defaultTee,
             role: 'player',
@@ -7500,19 +7768,20 @@ function resolveOrCreatePlayerUser(p) {
             }
             var existing = sn.val() || {};
             var patch = buildPatchForExisting(existing);
-            // Для uid — гандикап всегда обновляем, отчество добавляем если не было
+            // Гандикап обновляем только настоящим значением (см. profileHcp):
+            // турнирная обрезка в профиль не пишется. Отчество добавляем, если не было
             return db.ref('users/' + uidKey).update(patch).catch(function(){}).then(function() { return uidKey; });
         }).catch(function() { return uidKey; }).then(function(id){ return finish(id, uidData); });
     }
 
-    var candidateId = buildGuestUserId(cleanName, exactHcp);
+    var candidateId = buildGuestUserId(cleanName, profileHcp);
     if (!candidateId || candidateId === 'guest__') return Promise.resolve(null);
 
     var guestData = {
         name: cleanName,
         firstName: firstName,
         lastName: lastName,
-        handicap: exactHcp,
+        handicap: profileHcp,
         gender: gender,
         defaultTee: defaultTee,
         role: 'player',
@@ -7933,7 +8202,7 @@ if (typeof db !== 'undefined') {
                                         name: pName,
                                         firstName: parts[0] || pName,
                                         lastName: parts.slice(1).join(' ') || '',
-                                        handicap: p.exactHcp != null ? p.exactHcp : (p.fieldHcp || 0),
+                                        handicap: (p.exactHcpRaw != null ? p.exactHcpRaw : (p.exactHcp != null ? p.exactHcp : (p.fieldHcp || 0))),
                                         gender: p.gender || 'men',
                                         defaultTee: p.tee || (p.gender === 'women' ? 'rd' : 'bl'),
                                         isGuest: true
@@ -8380,12 +8649,22 @@ function initPrivacySettings() {
     } catch (e) { pestovoPrivacy.loaded = true; }
 }
 
-function privacyIsAdmin() {
+// Текущий пользователь — администратор (по данным профиля или флагу сессии).
+// Нужен для служебных уведомлений, которые видны только админу
+// (завершение турнира, доступность протокола результатов).
+function pestovoIsAdminViewer() {
+    try {
+        if (typeof hasAdminPanelAccess === 'function') return !!hasAdminPanelAccess();
+    } catch (e) {}
     try {
         if (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin') return true;
         if (sessionStorage.getItem('pestovo_is_admin') === 'true') return true;
     } catch (e) {}
     return false;
+}
+
+function privacyIsAdmin() {
+    return pestovoIsAdminViewer();
 }
 
 function privacyShouldHide(pid) {

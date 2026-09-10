@@ -884,6 +884,8 @@ var I18N = {
         delete_all_rounds: 'Удалить все раунды',
         delete_all_data: 'Удалить всех игроков и раунды',
         delete_all_data_sub: 'Полностью удаляет всех игроков и все раунды. Данные исчезнут из всех списков, статистики и автоподбора и не появятся снова.',
+        wipe_everything: 'Удалить все данные',
+        wipe_everything_sub: 'Удаляет абсолютно всё: турниры, игроков, раунды, историю, маркеры, протоколы, трансляции, реакции, демо-имена и все локальные кэши. Настройки дизайна и доступа в админку сохраняются.',
         full_name: 'Имя и фамилия',
         repeat_password: 'Повторите пароль',
 
@@ -1362,6 +1364,8 @@ var I18N = {
         delete_all_rounds: 'Delete All Rounds',
         delete_all_data: 'Delete All Players & Rounds',
         delete_all_data_sub: 'Permanently removes every player and every round. Data disappears from all lists, stats and autocomplete and will not reappear.',
+        wipe_everything: 'Delete all data',
+        wipe_everything_sub: 'Erases absolutely everything: tournaments, players, rounds, history, markers, protocols, broadcasts, reactions, demo names and all local caches. Design and admin access settings are kept.',
         full_name: 'Full Name',
         repeat_password: 'Repeat Password',
 

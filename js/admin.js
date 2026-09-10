@@ -685,6 +685,76 @@ function clearAllData() {
     });
 }
 
+// Удаляет АБСОЛЮТНО ВСЕ данные: турниры, игроков, раунды, историю, маркеры,
+// протоколы, трансляции, реакции, алерты, а также все локальные кэши и
+// «демо-имена». Настройки (дизайн, доступ в админку, интеграции) сохраняются,
+// чтобы после очистки админка осталась доступной.
+var WIPE_ALL_DB_BRANCHES = [
+    'rounds', 'users', 'tournaments', 'markers', 'markerAssignments',
+    'alerts', 'protocols', 'broadcasts', 'reactions'
+];
+var WIPE_ALL_KEEP_LOCAL_KEYS = [
+    'pestovo_is_admin', 'pestovo_admin_access_source', 'pestovo_admin_access_remember',
+    'pestovo_adm_logged_in', 'pestovo_adm_remember', 'pestovo_lang', 'pestovo_theme',
+    'pestovo_saved_email', 'pestovo_saved_remember'
+];
+
+function wipeAllLocalData() {
+    [localStorage, sessionStorage].forEach(function(storageObj) {
+        var keys = [];
+        try {
+            for (var i = 0; i < storageObj.length; i++) keys.push(storageObj.key(i));
+        } catch(e) { return; }
+        keys.forEach(function(k) {
+            if (!k) return;
+            if (WIPE_ALL_KEEP_LOCAL_KEYS.indexOf(k) !== -1) return;
+            if (k.indexOf('pestovo_') !== 0 && k !== 'pwa_install_dismissed') return;
+            safeStorageRemove(storageObj, k);
+        });
+    });
+    if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
+    try { localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([])); } catch(e) {}
+    try { localStorage.setItem('pestovo_defaults_cleared', 'true'); } catch(e) {}
+}
+
+function wipeEverything() {
+    var en = currentLang === 'en';
+    var msg1 = en
+        ? 'Delete ABSOLUTELY EVERYTHING? Tournaments, players, rounds, history, markers, protocols, broadcasts, demo names and all local caches will be permanently erased!'
+        : 'Удалить АБСОЛЮТНО ВСЕ данные? Турниры, игроки, раунды, история, маркеры, протоколы, трансляции, демо-имена и все локальные кэши будут стёрты безвозвратно!';
+    var msg2 = en
+        ? 'This cannot be undone. Type DELETE to confirm.'
+        : 'Это действие необратимо. Введите УДАЛИТЬ для подтверждения.';
+    var word = en ? 'DELETE' : 'УДАЛИТЬ';
+
+    if (!confirm(msg1)) return;
+    var typed = prompt(msg2, '');
+    if (typed === null) return;
+    if (String(typed).trim().toUpperCase() !== word && String(typed).trim().toUpperCase() !== 'DELETE') {
+        toast(en ? 'Cancelled: confirmation word did not match' : 'Отменено: слово подтверждения не совпало', 'info');
+        return;
+    }
+
+    var finish = function() {
+        wipeAllLocalData();
+        if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
+        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
+        if (typeof loadAdmRounds === 'function') loadAdmRounds();
+        if (typeof loadAdmTournaments === 'function') loadAdmTournaments();
+        toast(en ? 'All data deleted' : 'Все данные полностью удалены', 'info');
+        if (typeof vib === 'function') vib([60, 40, 60]);
+        setTimeout(function() { location.reload(); }, 1200);
+    };
+
+    if (typeof db === 'undefined') { finish(); return; }
+
+    var updates = {};
+    WIPE_ALL_DB_BRANCHES.forEach(function(b) { updates[b] = null; });
+    db.ref().update(updates).then(finish).catch(function(err) {
+        toast((en ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err), 'error');
+    });
+}
+
 // ==========================================
 // ТУРНИРЫ
 // ==========================================

@@ -374,10 +374,10 @@ function tnEffectiveHcp(tVal, tnId, rawHcp, gender) {
 }
 
 // Группа по гандикапу с учётом обрезки турнира.
-function tnDivisionForHcp(tVal, tnId, rawHcp, gender) {
+function tnDivisionForHcp(tVal, tnId, rawHcp, gender, memberRef) {
     if (typeof tnFindDivision !== 'function') return null;
     if (rawHcp === '' || rawHcp == null) return null;
-    return tnFindDivision(tVal, tnEffectiveHcp(tVal, tnId, rawHcp, gender), gender);
+    return tnFindDivision(tVal, tnEffectiveHcp(tVal, tnId, rawHcp, gender), gender, memberRef);
 }
 
 // Подсказка «✂ 38.5 → 28.0» рядом с HCP, если обрезка изменила гандикап.
@@ -416,7 +416,9 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
         var hcp = (rp.handicap != null && rp.handicap !== '') ? rp.handicap : null;
         var gender = rp.gender || 'men';
         en2.effHcp = (hcp != null) ? tnEffectiveHcp(tVal, tnId, hcp, gender) : null;
-        var div = (typeof tnFindDivision === 'function') ? tnFindDivision(tVal, en2.effHcp, gender) : null;
+        var div = (typeof tnFindDivision === 'function')
+            ? tnFindDivision(tVal, en2.effHcp, gender, { pid: en2.pid, name: rp.name || '' })
+            : null;
         if (div && byDiv[div.id]) byDiv[div.id].list.push(en2);
         else unassigned.list.push(en2);
         if (tnIsGuestRoster(rp)) guests.list.push(en2);
@@ -534,7 +536,11 @@ function renderTnLeaderboard(tnId) {
         Object.keys(players).forEach(function(pid) {
             var p = players[pid] || {};
             if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(pid, p.name)) return; } catch(e){} }
-            var key = tnFioKey(p, pid);
+            // Ключ — ИДЕНТИФИКАТОР игрока (uid/гостевой ключ), а не ФИО:
+            // раньше два разных человека с одинаковым именем (в разных
+            // группах) склеивались в одну строку, и в счётной карточке
+            // показывались обе карточки сразу.
+            var key = (pid != null && String(pid) !== '') ? String(pid) : tnFioKey(p, pid);
             var stats;
             try {
                 stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
@@ -542,7 +548,7 @@ function renderTnLeaderboard(tnId) {
             var cur = agg[key];
             if (!cur) {
                 cur = agg[key] = {
-                    pid: pid, name: p.name || '—',
+                    key: key, pid: pid, name: p.name || '—',
                     gender: p.gender || '', tee: p.tee || r.tee || '',
                     hcpRaw: (p.exactHcpRaw != null ? p.exactHcpRaw : (p.exactHcp != null ? p.exactHcp : (p.handicap != null ? p.handicap : null))),
                     hcpPlayed: (p.exactHcp != null ? p.exactHcp : null),
@@ -606,7 +612,7 @@ function renderTnLeaderboard(tnId) {
         var rp = regByFio[tnNormName(en2.name)] || {};
         var hcp = (rp.handicap != null && rp.handicap !== '') ? rp.handicap : en2.hcpRaw;
         var gender = rp.gender || en2.gender || 'men';
-        en2.div = tnDivisionForHcp(tVal, tnId, hcp, gender);
+        en2.div = tnDivisionForHcp(tVal, tnId, hcp, gender, { pid: en2.pid, name: en2.name || '' });
         en2.toPar = en2.holes > 0 ? en2.gross - en2.parPlayed : null;
         en2.netToPar = en2.holes > 0 ? en2.net - en2.parPlayed : null;
         en2.dispName = privacyDisplayName({ name: en2.name }, en2.pid);
@@ -693,7 +699,7 @@ function renderTnLeaderboard(tnId) {
             var pos = en2.position || (i + 1);
             var medal = pos === 1 ? '🥇 ' : pos === 2 ? '🥈 ' : pos === 3 ? '🥉 ' : '';
             var thru = en2.holes > 0 ? en2.holes : '—';
-            var fioKey = escapeHtml(tnFioKey({ name: en2.name }, en2.pid));
+            var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
             // Вся строка — кнопка: клик открывает счётную карточку игрока.
             html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')" title="' +
                 (en ? 'Scorecard' : 'Счётная карточка') + '">';
@@ -738,7 +744,7 @@ function tnScBuildCards(tnId, tVal, list) {
     var map = {};
     var cut = tnTournamentCut(tVal, tnId);
     (list || []).forEach(function(en2) {
-        var key = tnFioKey({ name: en2.name }, en2.pid);
+        var key = en2.key || tnFioKey({ name: en2.name }, en2.pid);
         if (!key) return;
         var totals = { holes: 0, gross: 0, par: 0, toPar: null, net: 0, netToPar: null, stbl: 0, birdies: 0, eagles: 0 };
         var rounds = (en2.rounds || []).map(function(rd) {

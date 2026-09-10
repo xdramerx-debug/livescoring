@@ -154,58 +154,12 @@ function showGroupSetup() {
         buildPlayerSlots();
     });
 
-    var hiddenPages = typeof getHiddenPages === 'function' ? getHiddenPages() : {};
-    var isTournamentsHidden = (hiddenPages['tournaments.html'] === true || hiddenPages['tournaments'] === true);
-
-    var tnSel = document.getElementById('grp-tournament');
-    var tnGroup = tnSel ? tnSel.closest('.form-group') : null;
-
-    if (isTournamentsHidden) {
-        if (tnGroup) tnGroup.style.setProperty('display', 'none', 'important');
-        if (tnSel) tnSel.value = '';
-    } else {
-        if (tnGroup) tnGroup.style.removeProperty('display');
-        db.ref('tournaments').once('value').then(function(sn) {
-            availableTournaments = sn.val() || {};
-            if (tnSel) {
-                tnSel.innerHTML = '<option value="">' + t('no_tournament') + '</option>';
-                Object.entries(availableTournaments).forEach(function(e) {
-                    var tVal = e[1];
-                    if (tVal.status === 'completed') return;
-                    tnSel.innerHTML += '<option value="' + e[0] + '">' + (tVal.name || '—') + ' · ' + fmtDate((typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date)) + '</option>';
-                });
-                tnSel.addEventListener('change', onTournamentSelect);
-            }
-        });
-    }
 }
 
-function onTournamentSelect() {
-    var tid = document.getElementById('grp-tournament') ? document.getElementById('grp-tournament').value : '';
-    var fmtSel = document.getElementById('grp-format');
-
-    if (!tid) {
-        if (fmtSel) fmtSel.innerHTML = '<option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option>';
-        return;
-    }
-    var tVal = availableTournaments[tid];
-    if (!tVal) return;
-    if (fmtSel) {
-        fmtSel.innerHTML = ''; 
-        (tVal.formats || ['Stroke Play']).forEach(function(f) { fmtSel.innerHTML += '<option value="' + f + '">' + f + '</option>'; });
-    }
-    if (tVal.tees && tVal.tees.length) {
-        var count = parseInt(document.getElementById('grp-count').value) || 2;
-        for (var i = 1; i <= count; i++) {
-            var plTeeSel = document.getElementById('pl-tee-' + i);
-            if (plTeeSel) {
-                plTeeSel.innerHTML = '';
-                tVal.tees.forEach(function(tk) { plTeeSel.innerHTML += '<option value="' + tk + '">' + fmtTeePill(tk) + '</option>'; });
-                calcPlayerFieldHcp(i);
-            }
-        }
-    }
-}
+// Турнир в групповом раунде больше не выбирается: в турнир попадают только
+// зарегистрированные участники (раздел «Турниры»). Функция оставлена
+// для совместимости — на странице больше нет селекта #grp-tournament.
+function onTournamentSelect() {}
 
 function buildPlayerSlots() {
     var cntEl = lGet('grp-count');
@@ -407,7 +361,6 @@ function startGroup() {
     var format = document.getElementById('grp-format').value;
     var holeRange = document.getElementById('grp-range') ? document.getElementById('grp-range').value : '1-18';
     var count = parseInt(document.getElementById('grp-count').value) || 2;
-    var tournamentId = document.getElementById('grp-tournament') ? document.getElementById('grp-tournament').value : '';
 
     if (!timeStr) { toast(t('msg_start_time_req'), 'error'); return; }
 
@@ -573,12 +526,6 @@ function startGroup() {
             creatorPlayerId: pOrder[0],
             accessKey: accessKey
         };
-
-        if (tournamentId) {
-            data.tournamentId = tournamentId;
-            var tn = availableTournaments[tournamentId];
-            if (tn && tn.name) data.tournamentName = tn.name;
-        }
 
         var ref = db.ref('rounds').push();
         var newRoundId = ref.key;
@@ -754,7 +701,7 @@ function applyRoundState(data) {
     // Раунд открывается для ввода счёта ровно в момент старта турнира:
     // созданные протоколом заранее раунды имеют status='scheduled' и ждут
     // времени старта (или кнопки «Старт» в админ-меню).
-    canEditGroup = (myUid !== null) && isRoundOpenForScoring(curRoundData, Date.now());
+    canEditGroup = (myUid !== null) && isRoundOpenForScoring(curRoundData, Date.now(), myUid);
 
     // Если текущий игрок подключился/вошёл в раунд — отмечаем его в базе.
     // До старта турнира не отмечаем: игрок ещё не в игре.
@@ -1720,7 +1667,8 @@ function finishGroupRound() {
     if (!canEditGroup) return;
     // Защита от повторного завершения (двойной клик): иначе история и roundsPlayed задваивались
     if (groupFinishing) return;
-    if (curRoundData && curRoundData.status === 'completed') return;
+    // Уже сдал карточку в этом раунде — повторно не завершаем.
+    if (typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(curRoundData, myUid)) return;
 
     // Турнирная проверка: ТОЛЬКО я и мой маркер (другие пары группы не блокируют финиш).
     // Раунд не завершается, пока есть неподтверждённые лунки или несовпадения.
@@ -1749,9 +1697,26 @@ function finishGroupRound() {
         var finisherUid = myUid;
         var finisherName = (finisherUid && curRoundData && curRoundData.players && curRoundData.players[finisherUid])
             ? (curRoundData.players[finisherUid].name || '') : '';
-        var finishUpdate = { status: 'completed', completedAt: Date.now(), autoCompleted: false };
-        if (finisherUid) finishUpdate.completedBy = finisherUid;
+        var finishUpdate = { autoCompleted: false };
+        if (finisherUid) {
+            finishUpdate['finishedPlayers/' + finisherUid] = { at: Date.now(), name: finisherName || '' };
+            finishUpdate.completedBy = finisherUid;
+        }
         if (finisherName) finishUpdate.completedByName = finisherName;
+        // Раунд закрывается только когда ВСЕ участники сдали карточки:
+        // иначе те, кто ещё не ввёл счёт, видели «режим просмотра».
+        var finMap = {};
+        Object.keys(curRoundData.finishedPlayers || {}).forEach(function(k) { finMap[k] = true; });
+        if (finisherUid) finMap[finisherUid] = true;
+        var pending = Object.keys(curRoundData.players || {}).filter(function(id) { return !finMap[id]; });
+        if (!pending.length) {
+            finishUpdate.status = 'completed';
+            finishUpdate.completedAt = Date.now();
+        } else {
+            // Частичное завершение: группа продолжает играть, кто не сдал —
+            // вводит счёт; в раунде видно, кто уже финишировал.
+            finishUpdate.partialFinish = true;
+        }
         db.ref('rounds/' + curRid).update(finishUpdate).catch(function(){ groupFinishing = false; });
 
         // Если это турнирный раунд и после него сыграны все раунды турнира —

@@ -61,7 +61,7 @@
         .pmeta b { color:var(--dark); }
         .qr-grid { display:flex; gap:8px; margin-top:4px; }
         .qr-box { flex:1; border:1px dashed #cbbf9f; background:#fcfaf4; border-radius:10px; padding:6px 6px 5px; text-align:center; min-width:0; }
-        .qr-box img { width:100%; max-width:108px; height:auto; display:block; margin:0 auto; }
+        .qr-box img { width:100%; max-width:150px; height:auto; display:block; margin:0 auto; }
         .qr-lbl { font-size:10px; font-weight:800; margin-bottom:3px; }
         .qr-lbl .fa { color:var(--gold); }
         .qr-url { font-size:7.6px; color:#999; word-break:break-all; margin-top:4px; line-height:1.3; }
@@ -126,7 +126,7 @@
             body.print-cards .pmeta { font-size:6.5pt; margin:0.5mm 0 0.6mm; gap:0.6mm 2mm; }
             body.print-cards .qr-grid { margin-top:0.3mm; }
             body.print-cards .qr-box { padding:0.8mm 0.8mm; border-radius:1.5mm; flex:1; }
-            body.print-cards .qr-box img { width:auto; max-width:16mm; max-height:16mm; }
+            body.print-cards .qr-box img { width:auto; max-width:21mm; max-height:21mm; }
             body.print-cards .qr-lbl { font-size:5.8pt; margin-bottom:0.6mm; line-height:1.2; }
             body.print-cards .qr-url { display:none !important; }
             /* Раскладка pair: карточка = две вертикальные части (у каждого
@@ -135,12 +135,12 @@
             body.print-cards .pcard-pair .pcard-halves { display:flex; align-items:stretch; flex:1; }
             body.print-cards .pcard-pair .pcol { flex:1; min-width:0; }
             body.print-cards .pcol-divider { margin:0 2mm; }
-            body.print-cards .pcard-pair .qr-box img { width:auto; max-width:28mm; max-height:28mm; }
+            body.print-cards .pcard-pair .qr-box img { width:auto; max-width:32mm; max-height:32mm; }
             body.print-cards .pcard-pair .pname { font-size:8.5pt; }
             body.print-cards .pcard-pair .pmeta { font-size:6pt; }
             /* Раскладка quad: сетка 2×2 — компакт, QR 22мм. */
             body.print-cards .pcard-quad .pgrid4 { display:grid; grid-template-columns:1fr 1fr; gap:1mm 2.5mm; flex:1; }
-            body.print-cards .pcard-quad .qr-box img { width:auto; max-width:22mm; max-height:22mm; }
+            body.print-cards .pcard-quad .qr-box img { width:auto; max-width:26mm; max-height:26mm; }
             body.print-cards .pcard-quad .qr-box { padding:0.6mm; }
             body.print-cards .pcard-quad .pname { font-size:8pt; }
             body.print-cards .pcard-quad .pmeta { font-size:5.8pt; gap:0.4mm 1.6mm; }
@@ -189,6 +189,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="js/firebase-config.js?v=2"></script>
-    <script src="js/qr-start.js?v=7"></script>
+    <script src="js/qr-start.js?v=8"></script>
 </body>
 </html>

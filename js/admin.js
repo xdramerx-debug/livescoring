@@ -528,6 +528,31 @@ function renderAdmGroups() {
 
 var adminAutoStartTimer = null;
 
+// Последний снимок раундов: нужен, чтобы смена периода (пресет/даты)
+// перерисовывала список без повторного чтения базы.
+var admRoundsLastData = {};
+var admRoundsDateFilter = null;
+
+// Фильтр периода во вкладке «Раунды» (поля adm-date-from / adm-date-to,
+// пресеты и сводка «показано N из M» уже есть в admin.html). Функция
+// создаёт фильтр при первом обращении и переиспользует его дальше —
+// её вызывают loadAdmRounds() и renderAdmRounds().
+function ensureAdmRoundsDateFilter() {
+    if (admRoundsDateFilter) return admRoundsDateFilter;
+    if (typeof initDateRangeFilter !== 'function') return null;
+    admRoundsDateFilter = initDateRangeFilter({
+        key: 'adm-rounds',
+        fromId: 'adm-date-from',
+        toId: 'adm-date-to',
+        presetsId: 'adm-date-presets',
+        resetId: 'adm-date-reset',
+        hintId: 'adm-date-hint',
+        summaryId: 'adm-rounds-summary',
+        onChange: function() { renderAdmRounds(admRoundsLastData || {}); }
+    });
+    return admRoundsDateFilter;
+}
+
 function loadAdmRounds() {
     if (typeof db === 'undefined' || !db) return;
     ensureAdmRoundsDateFilter();
@@ -535,6 +560,7 @@ function loadAdmRounds() {
     // удаление/создание раунда) только перерисовывают список по последнему снимку.
     bindRealtimeValue('admin-rounds', db.ref('rounds'), function(sn) {
         var data = sn.val() || {};
+        admRoundsLastData = data;
         // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
         if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
         // Автостарт турнира: раунды, созданные протоколом заранее, открываются
@@ -801,21 +827,29 @@ function clearAllData() {
     }, function(){}).then(function() {
         return db.ref().update(wipeUpdates);
     }).then(function() {
-        // 2) Чистим локальные кэши и «прячем» встроенных демо-игроков
-        if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
-        // Сбрасываем список «удалённых», т.к. база уже полностью пуста
-        try { localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([])); } catch(e) {}
-        if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
-
-        // 3) Обновляем открытые списки в админке
-        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
-        if (typeof loadAdmRounds === 'function') loadAdmRounds();
+        // 2) Чистим локальные кэши и «прячем» встроенных демо-игроков.
+        // Каждый шаг — в своём try/catch: раньше падение любого из них
+        // (например, локального кэша) превращало УСПЕШНОЕ удаление данных
+        // в красную «Ошибку», хотя база уже была пуста.
+        safeAfterWipeStep(function() { if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches(); });
+        safeAfterWipeStep(function() { localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([])); });
+        safeAfterWipeStep(function() { if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache(); });
+        safeAfterWipeStep(function() { if (typeof loadAdmPlayers === 'function') loadAdmPlayers(); });
+        safeAfterWipeStep(function() { if (typeof loadAdmRounds === 'function') loadAdmRounds(); });
 
         toast(currentLang === 'en' ? 'All players and rounds deleted everywhere' : 'Все игроки и раунды полностью удалены', 'info');
-        if (typeof vib === 'function') vib([60, 40, 60]);
+        if (typeof vib === 'function') { try { vib([60, 40, 60]); } catch (e) {} }
     }).catch(function(err) {
-        toast((currentLang === 'en' ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err), 'error');
+        // Ошибка базы: данные НЕ удалены — сообщаем честно.
+        toast((currentLang === 'en' ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err) +
+            (currentLang === 'en' ? ' — data was NOT deleted' : ' — данные НЕ удалены'), 'error');
     });
+}
+
+// Любой шаг после успешного удаления данных не должен «превращаться» в
+// ошибку удаления: локалку и открытые списки обновляем «мягко».
+function safeAfterWipeStep(fn) {
+    try { fn(); } catch (e) { try { console.warn('[wipe] step failed', e); } catch (_) {} }
 }
 
 // Удаляет АБСОЛЮТНО ВСЕ данные: турниры, игроков, раунды, историю, маркеры,
@@ -869,13 +903,13 @@ function wipeEverything() {
     }
 
     var finish = function() {
-        wipeAllLocalData();
-        if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache();
-        if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
-        if (typeof loadAdmRounds === 'function') loadAdmRounds();
-        if (typeof loadAdmTournaments === 'function') loadAdmTournaments();
+        safeAfterWipeStep(function() { wipeAllLocalData(); });
+        safeAfterWipeStep(function() { if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache(); });
+        safeAfterWipeStep(function() { if (typeof loadAdmPlayers === 'function') loadAdmPlayers(); });
+        safeAfterWipeStep(function() { if (typeof loadAdmRounds === 'function') loadAdmRounds(); });
+        safeAfterWipeStep(function() { if (typeof loadAdmTournaments === 'function') loadAdmTournaments(); });
         toast(en ? 'All data deleted' : 'Все данные полностью удалены', 'info');
-        if (typeof vib === 'function') vib([60, 40, 60]);
+        if (typeof vib === 'function') { try { vib([60, 40, 60]); } catch (e) {} }
         setTimeout(function() { location.reload(); }, 1200);
     };
 
@@ -884,7 +918,8 @@ function wipeEverything() {
     var updates = {};
     WIPE_ALL_DB_BRANCHES.forEach(function(b) { updates[b] = null; });
     db.ref().update(updates).then(finish).catch(function(err) {
-        toast((en ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err), 'error');
+        toast((en ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err) +
+            (en ? ' — data was NOT deleted' : ' — данные НЕ удалены'), 'error');
     });
 }
 
@@ -1383,8 +1418,14 @@ function tnDivisionsEditorHtml(tnId, divisions, tVal) {
                 var autoMark = d.auto === true
                     ? ' <i class="fas fa-wand-magic-sparkles" style="color:var(--gold);font-size:10.5px;" title="' + (en ? 'Created by smart groups' : 'Создана «Умными группами»') + '"></i>'
                     : '';
+                // «Умные группы» хранят точный состав — показываем число игроков,
+                // чтобы админ сразу видел равенство групп (22/22/22).
+                var membersObj = (d.members && typeof d.members === 'object') ? d.members : null;
+                var membersTxt = membersObj
+                    ? '<span class="tn-div-meta" style="color:var(--blue);"><i class="fas fa-users"></i> ' + Object.keys(membersObj).length + '</span>'
+                    : '';
                 html += '<div class="tn-div-row"><span class="tn-div-name">' + escapeHtml(d.name || '—') + autoMark + '</span>' +
-                    (meta ? '<span class="tn-div-meta">' + meta + '</span>' : '') +
+                    (meta ? '<span class="tn-div-meta">' + meta + '</span>' : '') + membersTxt +
                     '<span style="margin-left:auto;display:flex;gap:6px;">' +
                     '<button class="btn btn-og btn-sm" title="' + (en ? 'Edit group' : 'Изменить группу') + '" onclick="tnEditDivision(\'' + tnId + '\',\'' + d.id + '\')"><i class="fas fa-pen"></i></button>' +
                     '<button class="btn btn-r btn-sm" title="' + (en ? 'Delete group' : 'Удалить группу') + '" onclick="tnDeleteDivision(\'' + tnId + '\',\'' + d.id + '\')"><i class="fas fa-trash"></i></button>' +
@@ -1392,10 +1433,23 @@ function tnDivisionsEditorHtml(tnId, divisions, tVal) {
             }
         });
     }
-    // Умное создание: равные по числу игроков группы по фактическим HCP
-    // (С УЧЁТОМ обрезки — блок выше: сначала обрезка, потом распределение).
-    html += '<div style="margin-top:10px;"><button class="btn btn-g btn-sm" onclick="tnAutoDivisions(\'' + tnId + '\')"><i class="fas fa-wand-magic-sparkles"></i> ' +
-        (en ? 'Smart groups (equal counts)' : '✨ Умные группы (поровну игроков)') + '</button></div>';
+    // Умное создание: РАВНЫЕ по числу игроков группы по фактическим HCP,
+    // минимум 3 мужские + 3 женские (С УЧЁТОМ обрезки — блок выше:
+    // сначала обрезка, потом распределение).
+    var autoCnt = parseInt((tVal && tVal.autoGroupCount) || 0, 10) || 0;
+    var cntOpts = '<option value="0"' + (autoCnt === 0 ? ' selected' : '') + '>' + (en ? 'Auto (min. 3)' : 'Авто (мин. 3)') + '</option>';
+    [2, 3, 4, 5, 6, 8].forEach(function(n) {
+        cntOpts += '<option value="' + n + '"' + (autoCnt === n ? ' selected' : '') + '>' + n + '</option>';
+    });
+    html += '<div style="margin-top:10px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">';
+    html += '<div class="form-group" style="flex:0 1 170px;margin:0;"><label style="font-size:11px;">' + (en ? 'Groups per gender' : 'Групп на каждый пол') + '</label>' +
+        '<select id="tnd-count-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' + cntOpts + '</select></div>';
+    html += '<button class="btn btn-g btn-sm" onclick="tnAutoDivisions(\'' + tnId + '\')"><i class="fas fa-wand-magic-sparkles"></i> ' +
+        (en ? 'Smart groups (equal counts)' : '✨ Умные группы (поровну игроков)') + '</button>';
+    html += '</div>';
+    html += '<p style="font-size:11px;color:var(--muted);margin:6px 0 0;"><i class="fas fa-circle-info"></i> ' +
+        (en ? 'Groups are equal by player count and go from the lowest handicap (group 1) to the highest. The exact list of players is saved in each group.'
+            : 'Группы равны по числу игроков и идут от самых низких гандикапов (группа 1) к высоким. Точный список игроков сохраняется в каждой группе.') + '</p>';
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:flex-end;">';
     html += '<div class="form-group" style="flex:2 1 150px;margin:0;"><label style="font-size:11px;">' + (en ? 'Group name' : 'Название группы') + '</label>' +
         '<input type="text" id="tnd-name-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" placeholder="' + (en ? 'Men 0–12' : 'Мужчины 0–12') + '"></div>';
@@ -1545,6 +1599,30 @@ function tnBandNum(v) {
     return String(s).replace(/\.0$/, '');
 }
 
+// ── Умные группы: правила распределения ──
+//   • МИНИМУМ 3 группы на каждый пол (если игроков этого пола ≥ 3);
+//   • больше 3 — только когда игроков реально много: в группе не больше
+//     TN_AUTO_MAX_PER_GROUP человек (мягкий предел);
+//   • группы РАВНЫ по числу игроков (22/22/22, а не 22/44);
+//   • состав каждой группы фиксируется явно (members), поэтому игрок
+//     никогда не «теряется» между диапазонами HCP, а группа не бывает пустой;
+//   • группы нумеруются по возрастанию гандикапа: 1 — самые низкие HCP.
+var TN_AUTO_MIN_PER_GENDER = 3;
+var TN_AUTO_MAX_PER_GROUP = 24;
+
+// Сколько групп создавать для n игроков одного пола. wanted — число из поля
+// в админке (0/пусто = авто).
+function tnAutoGroupCount(n, wanted) {
+    n = parseInt(n, 10) || 0;
+    if (n <= 0) return 0;
+    var cnt = parseInt(wanted, 10);
+    if (!cnt || cnt < 1) {
+        cnt = Math.max(TN_AUTO_MIN_PER_GENDER, Math.ceil(n / TN_AUTO_MAX_PER_GROUP));
+    }
+    if (cnt > n) cnt = n;
+    return Math.max(1, cnt);
+}
+
 // Умное создание групп по гандикапу: участники турнира делятся по полу,
 // сортируются по точному HCP и режутся на равные по числу игроков bands
 // (по умолчанию 3 мужские + 3 женские). Границы bands — по реальным
@@ -1584,13 +1662,15 @@ function tnAutoDivisions(tnId) {
             if (h != null && tVal && tVal.hcpCut && typeof tnApplyHcpCut === 'function') {
                 try { h = tnApplyHcpCut(h, rp.gender || 'men', tVal.hcpCut).effective; } catch (e) {}
             }
-            var item = { hcp: h, sortHcp: (h == null ? 54 : h) };
+            var item = { key: k, fioKey: fioKey, name: rp.name || '', hcp: h, sortHcp: (h == null ? 54 : h) };
             if ((rp.gender || 'men') === 'women') women.push(item);
             else men.push(item);
         });
 
         var bandsOf = function(arr, count) {
-            arr.sort(function(a, b) { return a.sortHcp - b.sortHcp; });
+            arr.sort(function(a, b) {
+                return (a.sortHcp - b.sortHcp) || String(a.name || '').localeCompare(String(b.name || ''));
+            });
             var n = arr.length;
             if (!n) return [];
             count = Math.max(1, Math.min(count, n));
@@ -1599,6 +1679,8 @@ function tnAutoDivisions(tnId) {
             var bands = [];
             var pos = 0;
             for (var i = 0; i < count; i++) {
+                // Лишние игроки распределяются по первым группам — разница
+                // в размерах не больше одного человека.
                 var take = base + (i < rem ? 1 : 0);
                 if (take <= 0) break;
                 bands.push(arr.slice(pos, pos + take));
@@ -1609,30 +1691,49 @@ function tnAutoDivisions(tnId) {
 
         var r1 = function(v) { return Math.round(v * 10) / 10; };
         var plan = [];
-        var prevTo = null;
+        // Сколько групп просит админ (0/пусто — авто: минимум 3, но не больше
+        // TN_AUTO_MAX_PER_GROUP игроков в группе).
+        var wantedEl = document.getElementById('tnd-count-' + tnId);
+        var wanted = wantedEl ? wantedEl.value : (tVal.autoGroupCount || 0);
         var addGender = function(arr, gender, teeStrong, teeRest, titleWord) {
-            var bands = bandsOf(arr, 3);
+            var count = tnAutoGroupCount(arr.length, wanted);
+            if (!count) return;
+            var bands = bandsOf(arr, count);
+            // Границы диапазонов идут «встык»: следующая группа начинается
+            // с (максимум предыдущей + 0.1), поэтому у игроков на границе
+            // не возникает двух подходящих групп.
+            var prevTo = null;
             bands.forEach(function(band, bi) {
+                if (!band.length) return; // пустых групп не создаём
                 var known = band.map(function(x) { return x.hcp; }).filter(function(v) { return v != null; });
                 var mn = known.length ? Math.min.apply(null, known) : 54;
                 var mx = known.length ? Math.max.apply(null, known) : 54;
-                var from = (bi === 0) ? r1(mn) : r1(prevTo + 0.1);
+                var from = (prevTo == null) ? r1(mn) : r1(prevTo + 0.1);
                 var to = r1(mx);
                 if (from > to) from = to;
                 prevTo = to;
+                // Точный состав группы (ключ заявки → нормализованное ФИО):
+                // в ростере и лидерборде группа определяется по составу, а не
+                // по границам HCP — игрок на границе не «уплывёт» в соседнюю.
+                var members = {};
+                band.forEach(function(x) {
+                    if (x.key) members[x.key] = x.fioKey || '';
+                });
                 plan.push({
-                    name: titleWord + ' ' + tnBandNum(from) + '–' + tnBandNum(to),
+                    // «Мужчины 1 · 0–12»: номер группы сразу показывает порядок
+                    // по гандикапу, скобки с диапазоном не дублируют название.
+                    name: titleWord + ' ' + (bi + 1) + ' · ' + tnBandNum(from) + '–' + tnBandNum(to),
                     gender: gender,
                     hcpFrom: from,
                     hcpTo: to,
                     tee: bi === 0 ? teeStrong : teeRest,
-                    count: band.length
+                    count: band.length,
+                    bandNo: bi + 1,
+                    members: members
                 });
             });
         };
-        prevTo = null;
         addGender(men, 'men', 'bl', 'wh', en ? 'Men' : 'Мужчины');
-        prevTo = null;
         addGender(women, 'women', 'rd', 'rd', en ? 'Women' : 'Девушки');
 
         if (!plan.length) {
@@ -1668,6 +1769,12 @@ function tnAutoDivisions(tnId) {
             chain = chain.then(function() { return ref.child(d.id).remove(); });
         });
         chain = chain.then(function() {
+            // Запоминаем выбранное число групп на пол (0 = авто), чтобы
+            // повторный запуск и перезагрузка страницы сохраняли настройку.
+            return db.ref('tournaments/' + tnId + '/autoGroupCount')
+                .set(parseInt(wanted, 10) || 0).catch(function() {});
+        });
+        chain = chain.then(function() {
             var c = Promise.resolve();
             plan.forEach(function(d) {
                 c = c.then(function() {
@@ -1677,6 +1784,8 @@ function tnAutoDivisions(tnId) {
                         hcpFrom: d.hcpFrom,
                         hcpTo: d.hcpTo,
                         tee: d.tee,
+                        members: d.members || {},
+                        bandNo: d.bandNo || null,
                         createdAt: Date.now(),
                         auto: true
                     });
@@ -1685,7 +1794,10 @@ function tnAutoDivisions(tnId) {
             return c;
         });
         chain.then(function() {
-            toast((en ? '✨ Smart groups created: ' : '✨ Умные группы созданы: ') + plan.length, 'success');
+            var menN = plan.filter(function(d) { return d.gender === 'men'; }).length;
+            var womenN = plan.filter(function(d) { return d.gender === 'women'; }).length;
+            toast((en ? '✨ Smart groups created: ' : '✨ Умные группы созданы: ') + plan.length +
+                ' (' + (en ? 'men ' : 'муж. ') + menN + (en ? ', women ' : ', жен. ') + womenN + ')', 'success');
         }).catch(function(err) {
             toast('❌ ' + (err && err.message ? err.message : err), 'error');
         });
@@ -1697,11 +1809,21 @@ function tnAutoDivisions(tnId) {
 function listenForAlerts() {
     if (typeof db === 'undefined' || !db) return;
     // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
-    bindRealtimeValue('admin-alerts-active', db.ref('alerts').orderByChild('status').equalTo('active'), function(sn) {
-        var alerts = sn.val() || {};
+    // ВАЖНО: слушаем ветку alerts ЦЕЛИКОМ и фильтруем «активные» на клиенте.
+    // Запрос orderByChild('status').equalTo('active') в базе без индекса
+    // (правила Firebase) молча ничего не возвращал — из-за этого вызов судьи
+    // или маршала не появлялся в админ-меню.
+    bindRealtimeValue('admin-alerts-all', db.ref('alerts'), function(sn) {
+        var allAlerts = sn.val() || {};
+        var alerts = {};
+        Object.keys(allAlerts).forEach(function(k) {
+            var a = allAlerts[k] || {};
+            if (String(a.status || 'active') === 'active') alerts[k] = a;
+        });
         var c = document.getElementById('admin-alerts-list');
         var bannerEl = document.getElementById('admin-top-alerts-banner');
         var entries = Object.entries(alerts);
+        updateAdminAlertsBadge(entries.length);
 
         if (bannerEl) {
             if (entries.length > 0) {
@@ -1732,16 +1854,17 @@ function listenForAlerts() {
             var id = e[0], a = e[1];
             if (!knownAlertIds[id]) {
                 knownAlertIds[id] = true;
-                if (!isFirstRun) {
-                    hasNewAlert = true;
-                    var title = a.type === 'referee' ? (currentLang === 'en' ? '🚨 REFEREE CALL!' : '🚨 ВЫЗОВ СУДЬИ!') : (currentLang === 'en' ? '🚨 MARSHAL CALL!' : '🚨 ВЫЗОВ МАРШАЛА!');
-                    var body = (currentLang === 'en' ? 'Hole #' : 'Лунка №') + a.hole + ' | ' + (currentLang === 'en' ? 'Player: ' : 'Игрок: ') + (a.playerName || 'Player') + ' (' + fmtTime(a.time) + ')';
-                    if (a.flightMembers && a.flightMembers.length) {
-                        body += ' | ' + (currentLang === 'en' ? 'Flight: ' : 'Флайт: ') + a.flightMembers.join(', ');
-                    }
-                    if (typeof showPushNotification === 'function') {
-                        showPushNotification(title, body, 'admin.html');
-                    }
+                hasNewAlert = true;
+                var title = a.type === 'referee' ? (currentLang === 'en' ? '🚨 REFEREE CALL!' : '🚨 ВЫЗОВ СУДЬИ!') : (currentLang === 'en' ? '🚨 MARSHAL CALL!' : '🚨 ВЫЗОВ МАРШАЛА!');
+                var body = (currentLang === 'en' ? 'Hole #' : 'Лунка №') + a.hole + ' | ' + (currentLang === 'en' ? 'Player: ' : 'Игрок: ') + (a.playerName || 'Player') + ' (' + fmtTime(a.time) + ')';
+                if (a.flightMembers && a.flightMembers.length) {
+                    body += ' | ' + (currentLang === 'en' ? 'Flight: ' : 'Флайт: ') + a.flightMembers.join(', ');
+                }
+                // Уведомление показываем и на первом снимке (админ только что
+                // открыл панель, а вызов уже висит) — раньше такой вызов
+                // оставался «незамеченным»: ни тоста, ни push.
+                if (typeof showPushNotification === 'function') {
+                    try { showPushNotification(title, body, 'admin.html'); } catch (ePush) {}
                 }
             }
         });
@@ -1794,10 +1917,31 @@ function listenForAlerts() {
         }
 
         if (hasNewAlert) {
-            toast(currentLang === 'en' ? '🚨 ON-COURSE ALERT!' : '🚨 ВЫЗОВ НА ПОЛЕ!', 'error');
-            vib([200, 100, 200]);
+            var first = entries[0] && entries[0][1] ? entries[0][1] : {};
+            var firstWho = first.type === 'marshal'
+                ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
+                : (currentLang === 'en' ? 'Referee' : 'Судья');
+            toast((currentLang === 'en'
+                ? '🚨 ' + firstWho + ' called to hole ' + (first.hole || '—')
+                : '🚨 ' + firstWho + ' вызван на лунку ' + (first.hole || '—')) +
+                (entries.length > 1 ? (currentLang === 'en' ? ' (+' + (entries.length - 1) + ' more)' : ' (+' + (entries.length - 1) + ' ещё)') : ''),
+                'error');
+            try { vib([200, 100, 200]); } catch (eVib) {}
         }
     });
+}
+
+// Счётчик активных вызовов прямо на вкладке «Вызовы 🚨» — админ видит
+// необработанный вызов судьи/маршала из любой вкладки панели.
+function updateAdminAlertsBadge(count) {
+    var tabBtn = document.querySelector('.admin-tab[onclick*="\'alerts\'"]');
+    if (!tabBtn) return;
+    var base = (currentLang === 'en') ? 'Calls' : 'Вызовы';
+    var icon = '🚨';
+    var n = parseInt(count, 10) || 0;
+    tabBtn.setAttribute('data-i18n', 'tab_alerts');
+    tabBtn.innerHTML = base + ' ' + icon +
+        (n > 0 ? ' <span class="adm-alerts-badge" style="display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center;">' + n + '</span>' : '');
 }
 
 function closeAlert(id) {
@@ -6035,6 +6179,54 @@ function rgBatchParseRows(jsonRows) {
     });
 }
 
+
+// Чтение игроков из файла для проверки гандикапа: сканируем ВСЕ листы
+// (как «Участники стартового листа») и все столбцы — имена ищутся по
+// заголовкам «Имя/Фамилия/ФИО/Отчество…», а не только в первых двух
+// колонках первой страницы. Возвращает [{idx, firstName, lastName, name, sheet}].
+function rgBatchRowsFromWorkbook(wb) {
+    var sheetNames = (wb && wb.SheetNames) ? wb.SheetNames.filter(function(n) { return !!wb.Sheets[n]; }) : [];
+    var multi = sheetNames.length > 1;
+    var rows = [];
+    sheetNames.forEach(function(name, si) {
+        var label = multi ? String(name || ('Лист ' + (si + 1))) : '';
+        var parsed = null;
+        try {
+            if (typeof XLSX !== 'undefined' && typeof psParseExcelGrid === 'function') {
+                var grid = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '' });
+                parsed = psParseExcelGrid(grid);
+            }
+        } catch (e) { parsed = null; }
+        var valid = (parsed && parsed.valid && parsed.valid.length) ? parsed.valid : [];
+        if (!valid.length) {
+            // Заголовков/распознавания не хватило — пробуем простой разбор
+            // (объекты по первой строке) как запасной вариант.
+            try {
+                var json = (typeof XLSX !== 'undefined') ? XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: '' }) : [];
+                valid = rgBatchParseRows(json || []).map(function(r) {
+                    return { firstName: r.firstName, lastName: r.lastName, middleName: '', name: r.name };
+                });
+            } catch (e2) { valid = []; }
+        }
+        valid.forEach(function(r) {
+            var firstName = String((r && r.firstName) || '').trim();
+            var lastName = String((r && r.lastName) || '').trim();
+            var middleName = String((r && r.middleName) || '').trim();
+            var name = (r && r.name) ? String(r.name).trim() : [firstName, middleName, lastName].filter(Boolean).join(' ');
+            if (!name) return;
+            rows.push({ idx: rows.length, firstName: firstName, lastName: lastName, middleName: middleName, name: name, sheet: label });
+        });
+    });
+    // Дедуп по нормализованному ФИО: один игрок на нескольких листах — один раз.
+    var seen = {};
+    return rows.filter(function(r) {
+        var k = impNormName(r.name);
+        if (!k || seen[k]) return false;
+        seen[k] = true;
+        return true;
+    });
+}
+
 function rgBatchHandleFile(input) {
     var file = input.files && input.files[0];
     if (!file) return;
@@ -6059,15 +6251,20 @@ function rgBatchHandleFile(input) {
     reader.onload = function(e) {
         try {
             var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-            var sheet = wb.Sheets[wb.SheetNames[0]];
-            if (!sheet) throw new Error(currentLang === 'en' ? 'no sheets' : 'нет листов в файле');
-            var json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-            var rows = rgBatchParseRows(json || []);
+            var sheetNames = (wb.SheetNames || []).filter(function(n) { return !!wb.Sheets[n]; });
+            if (!sheetNames.length) throw new Error(currentLang === 'en' ? 'no sheets' : 'нет листов в файле');
+            // Все листы и все столбцы: имена находятся по заголовкам, а не
+            // только в первых двух колонках первой страницы.
+            var rows = rgBatchRowsFromWorkbook(wb);
             if (!rows.length) {
                 if (statusEl) statusEl.innerHTML = '<div class="imp-note imp-note-err"><i class="fas fa-triangle-exclamation"></i> ' +
-                    (currentLang === 'en' ? 'No player rows found. Expected columns «Имя» and «Фамилия».' : 'Строки с игроками не найдены. Ожидаются столбцы «Имя» и «Фамилия».') + '</div>';
+                    (currentLang === 'en' ? 'No player rows found on any sheet. Name columns (Имя / Фамилия / ФИО) are required.' : 'Строки с игроками не найдены ни на одном листе. Нужны столбцы с именами («Имя», «Фамилия», «ФИО»).') + '</div>';
                 return;
             }
+            if (statusEl) statusEl.innerHTML = '<div class="imp-note"><i class="fas fa-table-list"></i> ' +
+                (currentLang === 'en'
+                    ? 'Sheets: ' + sheetNames.length + ' · players found: ' + rows.length
+                    : 'Листов: ' + sheetNames.length + ' · найдено игроков: ' + rows.length) + '</div>';
             rgBatchStartSearch(rows);
         } catch (err) {
             console.warn('RGA batch parse error:', err);
@@ -6093,7 +6290,7 @@ function rgBatchBuildQueries(row) {
 function rgBatchStartSearch(rows) {
     rgBatchState = { running: true, stop: false, players: null };
     rgBatchRows = rows.map(function(r) {
-        return { idx: r.idx, firstName: r.firstName, lastName: r.lastName, name: r.name, query: '', proxy: '', error: '', done: false, results: [] };
+        return { idx: r.idx, firstName: r.firstName, lastName: r.lastName, name: r.name, sheet: r.sheet || '', query: '', proxy: '', error: '', done: false, results: [] };
     });
 
     var statusEl = document.getElementById('rg-batch-status');
@@ -6207,7 +6404,9 @@ function rgBatchRender(processed, total) {
             }
             html += '<div class="rg-card" style="flex-direction:column;align-items:stretch;gap:8px;">';
             html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">' +
-                '<div style="font-weight:800;font-size:15px;color:var(--white);">' + escapeHtml(row.name) + '</div>' + statusBadge + '</div>';
+                '<div style="font-weight:800;font-size:15px;color:var(--white);">' + escapeHtml(row.name) +
+                (row.sheet ? ' <span class="imp-badge" style="font-weight:600;">' + escapeHtml(row.sheet) + '</span>' : '') +
+                '</div>' + statusBadge + '</div>';
             if (row.error) {
                 html += '<div class="rg-meta" style="color:var(--red);">' + escapeHtml(row.error) + '</div>';
             }

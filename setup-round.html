@@ -220,13 +220,9 @@
             <div class="card setup-card">
                 <h2><i class="fas fa-users"></i> <span data-i18n="group_setup_title">Настройка группы</span></h2>
 
+                <!-- Турнир в групповом раунде не выбирается: участие в турнире —
+                     только через регистрацию в разделе «Турниры». -->
                 <div class="form-row">
-                    <div class="form-group" style="flex:1.4 1 130px;">
-                        <label><i class="fas fa-trophy"></i> <span data-i18n="tournament_opt">Турнир (опционально)</span></label>
-                        <select id="grp-tournament" class="form-input">
-                            <option value="" data-i18n="no_tournament">— Без турнира —</option>
-                        </select>
-                    </div>
                     <div class="form-group" style="flex:1 1 100px;">
                         <label><i class="fas fa-hashtag"></i> <span data-i18n="player_count">Игроки</span></label>
                         <select id="grp-count" class="form-input" onchange="buildPlayerSlots()">
@@ -592,7 +588,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.56.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.57.0</span></p>
         </div>
     </div>
 </footer>
@@ -601,8 +597,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=53"></script>
-<script src="js/live.js?v=30"></script>
+<script src="js/utils.js?v=54"></script>
+<script src="js/live.js?v=31"></script>
 <script src="js/solo.js?v=26"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>

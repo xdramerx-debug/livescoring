@@ -79,10 +79,13 @@ const content = els['qr-content'];
 check(!!content, 'qr-content создан');
 const html = content.innerHTML || '';
 check(html.indexOf('Тестов Иван Петрович') !== -1, 'ФИО на карточке');
-// Группа из нескольких человек → QR открывает карточку группового формата
-check(html.indexOf('setup-round.html?round=r1&amp;as=u1') !== -1 || html.indexOf('setup-round.html?round=r1&as=u1') !== -1, 'QR группы → групповая карточка (setup-round?as)');
+// Группа из нескольких человек → QR открывает карточку группового формата.
+// Ссылка под кодом больше не печатается — адрес лежит в data-qr (для генератора QR).
+check(html.indexOf('as%3Du1') !== -1 || html.indexOf('as=u1') !== -1, 'QR группы → групповая карточка (setup-round?as)');
 // Группа из одного → одиночная карточка scorer.html
-check(html.indexOf('scorer.html?round=r2&amp;player=u9') !== -1 || html.indexOf('scorer.html?round=r2&player=u9') !== -1, 'QR одиночки → scorer.html');
+check(html.indexOf('player%3Du9') !== -1 || html.indexOf('player=u9') !== -1, 'QR одиночки → scorer.html');
+// Подпись со ссылкой под QR убрана (код стал крупнее)
+check(html.indexOf('class="qr-url"') === -1, 'под QR нет подписи со ссылкой');
 // Один QR на игрока: ни QR, ни ссылок на marker.html не должно быть
 check(html.indexOf('marker.html') === -1, 'нет QR/ссылок на marker.html');
 check(html.indexOf('Вы маркируете') === -1, 'удалён блок «Вы маркируете…»');

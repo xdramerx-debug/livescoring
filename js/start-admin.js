@@ -380,7 +380,7 @@ function psDivisionChipHtml(p) {
         if (typeof tnFindDivision !== 'function') return '';
         var tn = (typeof psGetSelTournament === 'function') ? psGetSelTournament() : null;
         if (!tn || !tn.divisions) return '';
-        var d = tnFindDivision(tn, psEffectiveExact(p), p.gender || 'men');
+        var d = tnFindDivision(tn, psEffectiveExact(p), p.gender || 'men', { pid: p.id, name: psFullRus(p) });
         if (!d || !d.name) return '';
         var escFn = (typeof escapeHtml === 'function') ? escapeHtml : function(x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
         var label = escFn(d.name);
@@ -418,13 +418,13 @@ function psTeeOptionsHtml(selCode) {
 
 // Группа турнира (дивизион) для готовых значений гандикапа и пола.
 // Использует ОБРЕЗАННЫЙ точный гандикап, как и весь стартовый лист.
-function psFindDivisionFor(hcp, gender) {
+function psFindDivisionFor(hcp, gender, memberRef) {
     try {
         if (hcp === null || hcp === undefined || hcp === '') return null;
         if (typeof tnFindDivision !== 'function') return null;
         var tn = (typeof psGetSelTournament === 'function') ? psGetSelTournament() : null;
         if (!tn || !tn.divisions) return null;
-        return tnFindDivision(tn, psEffectiveExactFor(hcp, gender || 'men'), gender || 'men');
+        return tnFindDivision(tn, psEffectiveExactFor(hcp, gender || 'men'), gender || 'men', memberRef);
     } catch (e) { return null; }
 }
 
@@ -1285,7 +1285,7 @@ function psRosterGroups(players) {
         var gender = (p && p.gender) || 'men';
         var eff = (p && p.hcp !== null && p.hcp !== undefined && p.hcp !== '') ? psEffectiveExact(p) : null;
         if (useDivs) {
-            var d = (eff === null) ? null : tnFindDivision(tn, eff, gender);
+            var d = (eff === null) ? null : tnFindDivision(tn, eff, gender, { pid: p && p.id, name: p ? psFullRus(p) : '' });
             if (d && d.name) {
                 // Название ИЛИ подпись — но не дублируем: если у группы есть
                 // название вида «Мужчины 0–12», подсказываем только ТИ.
@@ -2591,14 +2591,39 @@ function psStartSchemeHint(scheme) {
     return '';
 }
 
+// Группы, упорядоченные по гандикапу (сильнейшие первыми или слабейшие
+// первыми): тогда НОМЕРА групп в протоколе должны идти по возрастанию HCP —
+// 1А (самые низкие), 1Б, 1В… — а не «1А низкие, 1Б уже высокие».
+function psHcpOrderedMethod(proto) {
+    proto = proto || (psState && psState.proto) || {};
+    return proto.method === 'hcpAsc' || proto.method === 'hcpDesc';
+}
+
+// Раскладка по «блокам»: первые группы — на первую лунку схемы, следующие —
+// на вторую и т.д. Внутри лунки буква волны идёт подряд (1А, 1Б, 1В):
+// подписи совпадают с порядком групп по гандикапу.
+function psBlockSchedule(i, total, proto, holes) {
+    var idx = Math.max(0, parseInt(i, 10) || 0);
+    var n = Math.max(idx + 1, parseInt(total, 10) || 0);
+    var perHole = Math.max(1, Math.ceil(n / holes.length));
+    var holeIdx = Math.min(holes.length - 1, Math.floor(idx / perHole));
+    var wave = idx - holeIdx * perHole;
+    return { holeIdx: holeIdx, wave: wave };
+}
+
 // Раскладка по волнам: лунка берётся по кругу из списка лунок схемы,
 // время сдвигается на интервал для каждой следующей волны.
-function psWaveSchedule(i, proto, holes) {
+// Для гандикапных методов лунки режутся блоками (см. psBlockSchedule).
+function psWaveSchedule(i, proto, holes, total) {
     proto = proto || psState.proto || {};
     holes = (holes && holes.length) ? holes : psSchemeHoles(proto.scheme);
     var base = psStartBaseTs(proto);
     var intervalMs = psIntervalMs(proto);
     var idx = Math.max(0, parseInt(i, 10) || 0);
+    if (psHcpOrderedMethod(proto)) {
+        var b = psBlockSchedule(idx, total, proto, holes);
+        return { startHole: holes[b.holeIdx], startTime: base + b.wave * intervalMs };
+    }
     return {
         startHole: holes[idx % holes.length],
         startTime: base + Math.floor(idx / holes.length) * intervalMs
@@ -2710,7 +2735,7 @@ function psRescheduleExistingGroups() {
             var hole = parseInt(g.startHole, 10);
             // Лунок в схеме может быть меньше 18 (шотган с 1 и 10) — свою лунку
             // сохраняем, недоступную «переселяем» на первую лунку схемы.
-            if (!hole || holes.indexOf(hole) === -1) hole = psWaveSchedule(i, proto, holes).startHole;
+            if (!hole || holes.indexOf(hole) === -1) hole = psWaveSchedule(i, proto, holes, groups.length).startHole;
             occupancy[hole] = occupancy[hole] || 0;
             var wave = occupancy[hole];
             occupancy[hole]++;
@@ -2733,9 +2758,17 @@ function psGroupSchedule(i, totalGroups) {
     var holes = psSchemeHoles(proto.scheme);
 
     if (psSchemeSimultaneous(proto.scheme)) {
-        return psWaveSchedule(i, proto, holes);
+        return psWaveSchedule(i, proto, holes, totalGroups);
     }
     if (holes.length > 1) {
+        if (psHcpOrderedMethod(proto)) {
+            // Гандикапные группы: блоки по лункам. Внутри лунки — свой
+            // интервал, вторая лунка сдвинута на пол-интервала, чтобы
+            // оба тея были загружены (1А, 1Б… затем 10А, 10Б…).
+            var b = psBlockSchedule(i, totalGroups, proto, holes);
+            var shift = Math.round(intervalMs / 2) * b.holeIdx;
+            return { startHole: holes[b.holeIdx], startTime: base + b.wave * intervalMs + shift };
+        }
         // Поочерёдный старт с 1-й и 10-й: лунки чередуются, вторая лунка
         // стартует со сдвигом в пол-интервала — теи не простаивают.
         var half = Math.round(intervalMs / 2);
@@ -3126,7 +3159,12 @@ function psNewGroupSchedule(prevGroups) {
     var holes = psSchemeHoles(scheme);
     var idx = (prevGroups || []).length;
     // Волновые (одновременные) схемы — строго по расписанию волн.
-    if (psSchemeSimultaneous(scheme)) return psWaveSchedule(idx, proto, holes);
+    if (psSchemeSimultaneous(scheme)) return psWaveSchedule(idx, proto, holes, idx + 1);
+    // Гандикапные группы — блочная раскладка по лункам.
+    if (holes.length > 1 && psHcpOrderedMethod(proto)) {
+        var b = psBlockSchedule(idx, idx + 1, proto, holes);
+        return { startHole: holes[b.holeIdx], startTime: base + b.wave * intervalMs + Math.round(intervalMs / 2) * b.holeIdx };
+    }
     // Поочерёдный старт с 1 и 10 — тоже по общей раскладке, чтобы лунки
     // не «съезжали», если группу добавили в середину.
     if (holes.length > 1) {

@@ -182,13 +182,19 @@ if (typeof document !== 'undefined' && document.addEventListener) {
 // ── Шапка карточки (общая для всех вариантов) ──
 function tnScHeadHtml(card, variant) {
     var variants = ['1', '2', '3'];
-    var switcher = '<div class="tnsc-variants">' +
-        '<span class="tnsc-variants-lbl">' + tnScL('Вид карточки', 'Card style') + '</span>' +
-        variants.map(function(v) {
-            return '<button type="button" class="tnsc-var' + (v === variant ? ' on' : '') + '" onclick="tnScSetVariant(\'' + v + '\')" title="' +
-                tnScEsc(tnScVariantTitle(v)) + '">' + v + '</button>';
-        }).join('') +
-        '</div>';
+    // Вид карточки выбирает ТОЛЬКО администратор (админ-панель → «Данные»):
+    // его выбор применяется ко всем игрокам по умолчанию. Игрокам кнопки
+    // переключения не показываем — раньше вид мог поменять любой желающий.
+    var isAdmin = (typeof pestovoIsAdminViewer === 'function') ? !!pestovoIsAdminViewer() : false;
+    var switcher = isAdmin
+        ? '<div class="tnsc-variants">' +
+            '<span class="tnsc-variants-lbl">' + tnScL('Вид карточки (админ)', 'Card style (admin)') + '</span>' +
+            variants.map(function(v) {
+                return '<button type="button" class="tnsc-var' + (v === variant ? ' on' : '') + '" onclick="tnScSetVariant(\'' + v + '\')" title="' +
+                    tnScEsc(tnScVariantTitle(v)) + '">' + v + '</button>';
+            }).join('') +
+            '</div>'
+        : '';
     var meta = '';
     if (card.divName) meta += '<span class="tnsc-chip tnsc-chip-div"><i class="fas fa-layer-group"></i> ' + tnScL('Группа:', 'Group:') + ' ' + tnScEsc(card.divName) + '</span>';
     if (card.groupLabel) meta += '<span class="tnsc-chip tnsc-chip-flight"><i class="fas fa-users"></i> ' + tnScEsc(card.groupLabel) + (card.startHole ? ' · ' + tnScL('лунка ', 'hole ') + card.startHole : '') + '</span>';

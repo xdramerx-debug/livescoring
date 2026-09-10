@@ -877,6 +877,7 @@ function loadTournaments() {
                 html += '<button class="btn btn-og btn-sm" onclick="tnFinishTournament(\'' + id + '\')"><i class="fas fa-flag-checkered"></i> ' + (tnEn ? 'Finish' : 'Финиш') + '</button>';
             } else {
                 html += '<button class="btn btn-og btn-sm" onclick="tnReopenTournament(\'' + id + '\')"><i class="fas fa-rotate-left"></i> ' + (tnEn ? 'Reopen' : 'Открыть снова') + '</button>';
+                html += '<button class="btn btn-g btn-sm" onclick="tnOpenProtocolModal(\'' + id + '\')"><i class="fas fa-file-pdf"></i> ' + (tnEn ? 'Protocol PDF' : 'Протокол (PDF)') + '</button>';
             }
             if (tnStatus === 'upcoming' && regCount > 0) {
                 html += '<button class="btn btn-og btn-sm" onclick="openFlightGeneratorModal(\'' + id + '\')"><i class="fas fa-users-gear"></i> ' + (tnEn ? 'Flights' : 'Флайты') + '</button>';

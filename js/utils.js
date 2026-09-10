@@ -50,8 +50,10 @@ function holeResName(s,p){
     if(d===2)return t('res_double');
     return '+'+d;
 }
-// Длительность всех уведомлений — 5 секунд (единый стандарт Pestovo).
-var TOAST_DURATION_MS = 5000;
+// Длительность всех уведомлений — 3 секунды (единый стандарт Pestovo).
+// Внизу каждого уведомления идёт зелёная полоса, которая плавно угасает
+// (сжимается и теряет яркость) ровно за это время.
+var TOAST_DURATION_MS = 3000;
 function ensureToastRoot(){
     if (typeof document === 'undefined' || !document.body) return null;
     var root = document.getElementById('toast-root');
@@ -71,8 +73,9 @@ function toastIconFor(toastType){
     return '<i class="fas fa-circle-check"></i>';
 }
 // Красивые неблокирующие уведомления: стек сверху по центру, иконка,
-// текст, кнопка закрытия и прогресс-бар на 5 секунд. Тап по уведомлению
-// закрывает его (или выполняет opts.onClick, если задан).
+// текст, кнопка закрытия и зелёная полоса-таймер на 3 секунды, которая
+// наглядно угасает по истечению времени. Тап по уведомлению закрывает его
+// (или выполняет opts.onClick, если задан).
 function toast(m,toastType,opts){
     toastType=toastType||'success';
     opts=opts||{};
@@ -2484,7 +2487,7 @@ function verificationIssueToastHtml(issue, v) {
     return (isEn ? ('⏳ <b>Hole ' + h + ' is not confirmed</b><br>' + what) : ('⏳ <b>Лунка ' + h + ' не подтверждена</b><br>' + what)) + moreU;
 }
 
-// Показывает уведомление о первой проблемной лунке (5 сек, тап — перейти к лунке).
+// Показывает уведомление о первой проблемной лунке (3 сек, тап — перейти к лунке).
 // onGoToHole(hole) — callback для перехода (например, goPlayHole).
 function showVerificationIssueToast(v, onGoToHole) {
     var issue = (v && v.firstIssue) || getFirstVerificationIssue(v);
@@ -5324,6 +5327,11 @@ function sweepStaleRounds(data) {
             completedAt: roundData.completedAt
         };
         db.ref('rounds/' + roundId).update(update).then(function() {
+            // Все раунды турнира могут оказаться завершёнными после этого
+            // авто-закрытия — проверяем и закрываем сам турнир автоматически.
+            if (roundData.tournamentId) {
+                try { pestovoAutoFinishTournament(roundData.tournamentId); } catch (e) {}
+            }
             // Историю сохраняем атомарно ровно один раз (транзакция-клейм):
             // даже если sweep запустили одновременно несколько клиентов,
             // записи в users/<uid>/history не задвоятся.
@@ -5342,6 +5350,47 @@ function sweepStaleRounds(data) {
         });
     });
     return data;
+}
+
+// ==========================================
+// АВТОЗАВЕРШЕНИЕ ТУРНИРА: ВСЕ РАУНДЫ СЫГРАНЫ
+// ==========================================
+// Турнир помечается «завершённым» не только вручную (кнопка «Финиш» в
+// админке), но и автоматически: как только у турнира появляется хотя бы
+// один раунд и ВСЕ его раунды в статусе completed (все игроки ввели
+// счета и завершили игру) — статус турнира переводится в completed.
+// Это открывает карточку турнира для экспорта протокола (PDF).
+// Возвращает Promise<boolean> — стал ли турнир завершённым именно сейчас.
+var __pestovoTnAutoFinishInFlight = {};
+function pestovoAutoFinishTournament(tnId) {
+    if (!tnId || typeof db === 'undefined' || !db) return Promise.resolve(false);
+    if (__pestovoTnAutoFinishInFlight[tnId]) return Promise.resolve(false);
+    __pestovoTnAutoFinishInFlight[tnId] = true;
+    var done = function(v){ delete __pestovoTnAutoFinishInFlight[tnId]; return v; };
+    return db.ref('rounds').orderByChild('tournamentId').equalTo(tnId).once('value').then(function(sn) {
+        var rounds = (sn && sn.val()) || {};
+        var ids = Object.keys(rounds);
+        if (!ids.length) return done(false);
+        var allDone = ids.every(function(rid) { return rounds[rid] && rounds[rid].status === 'completed'; });
+        if (!allDone) return done(false);
+        return db.ref('tournaments/' + tnId + '/status').once('value').then(function(stSn) {
+            var st = stSn && stSn.val();
+            if (st !== 'active') return done(false); // ещё не начинали или уже завершён
+            return db.ref('tournaments/' + tnId).update({
+                status: 'completed',
+                finishedAt: Date.now(),
+                finishedAutomatically: true
+            }).then(function() {
+                try {
+                    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+                    if (typeof toast === 'function') toast(isEn
+                        ? '🏁 All rounds completed — the tournament is finished automatically. The results protocol (PDF) is now available.'
+                        : '🏁 Все раунды завершены — турнир завершён автоматически. Протокол результатов (PDF) теперь доступен.', 'success');
+                } catch (e) {}
+                return done(true);
+            }).catch(function() { return done(false); });
+        });
+    }).catch(function() { return done(false); });
 }
 
 // Бейдж статуса завершённого раунда:

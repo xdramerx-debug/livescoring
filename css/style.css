@@ -1016,8 +1016,28 @@ html.score-kiosk .hole-display {
 .toast-x{position:absolute;top:6px;right:6px;width:24px;height:24px;border:none;background:transparent;color:inherit;opacity:.55;font-size:17px;line-height:1;cursor:pointer;border-radius:6px;padding:0;}
 .toast-x:hover{opacity:1;background:rgba(255,255,255,.12);}
 .toast-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.14);overflow:hidden;}
-.toast-bar span{display:block;height:100%;width:100%;transform-origin:left center;background:currentColor;opacity:.9;animation:toast-bar-shrink linear forwards;}
-@keyframes toast-bar-shrink{from{transform:scaleX(1);}to{transform:scaleX(0);}}
+.toast-bar span{display:block;height:100%;width:100%;transform-origin:left center;background:linear-gradient(90deg,#27ae60,#2ecc71);opacity:.95;box-shadow:0 0 8px rgba(46,204,113,.65);animation:toast-bar-shrink linear forwards;}
+@keyframes toast-bar-shrink{from{transform:scaleX(1);opacity:.95;}90%{opacity:.55;}to{transform:scaleX(0);opacity:.25;}}
+
+/* Протокол завершения турнира (номинации → печать/PDF) */
+.tp-wrap{display:flex;flex-direction:column;gap:10px;}
+.tp-hint{font-size:12px;color:var(--muted);background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.25);border-radius:10px;padding:8px 12px;}
+.tp-tools{display:flex;gap:8px;flex-wrap:wrap;}
+.tp-scope{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.02);}
+.tp-scope-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--gold);font-size:13.5px;}
+.tp-scope-tag{font-size:10.5px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:1px 8px;}
+.tp-scope-count{margin-left:auto;font-size:11px;color:var(--muted);}
+.tp-noms{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 10px;margin-top:8px;}
+.tp-nom{display:flex;gap:8px;align-items:center;font-size:12px;padding:5px 8px;border-radius:8px;cursor:pointer;border:1px solid transparent;transition:background .15s ease;}
+.tp-nom:hover{background:rgba(201,168,76,.08);}
+.tp-nom.dis{opacity:.38;cursor:default;text-decoration:line-through;}
+.tp-nom.dis:hover{background:transparent;}
+.tp-nom input{width:15px;height:15px;accent-color:#2ecc71;flex-shrink:0;}
+.tp-modes{display:flex;flex-direction:column;gap:6px;font-size:12.5px;padding:10px 12px;border:1px dashed var(--border);border-radius:12px;}
+.tp-modes b{color:var(--gold);font-size:12px;}
+.tp-radio{display:flex;gap:8px;align-items:center;cursor:pointer;color:var(--white,#fff);}
+.tp-radio input{accent-color:#2ecc71;width:15px;height:15px;}
+.tp-foot{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px;}
 .t-show{transform:translateY(0);}
 .t-success{background:rgba(13,60,30,.94);border-color:rgba(46,204,113,.5);color:#7dffae;}
 .t-success .toast-ico{background:rgba(46,204,113,.2);color:#2ecc71;}

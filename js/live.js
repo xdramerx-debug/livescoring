@@ -979,7 +979,7 @@ function checkPlayVerification() {
     } else if (myS > 0 && markerS > 0 && myS !== markerS) {
         box.innerHTML = '<div class="verify-fail">⚠️ ' + t('mismatch_error') + ' (' + (currentLang === 'en' ? 'You: ' : 'Вы: ') + myS + ' | ' + (currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + markerS + ')</div>';
     } else {
-        // Ожидание маркера отдельным блоком НЕ показываем — только уведомление 5 сек при сохранении.
+        // Ожидание маркера отдельным блоком НЕ показываем — только уведомление 3 сек при сохранении.
         box.innerHTML = '';
     }
 }
@@ -1463,6 +1463,14 @@ function finishGroupRound() {
         if (finisherUid) finishUpdate.completedBy = finisherUid;
         if (finisherName) finishUpdate.completedByName = finisherName;
         db.ref('rounds/' + curRid).update(finishUpdate).catch(function(){ groupFinishing = false; });
+
+        // Если это турнирный раунд и после него сыграны все раунды турнира —
+        // турнир завершается автоматически (открывается экспорт протокола).
+        if (curRoundData && curRoundData.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
+            db.ref('rounds/' + curRid).once('value').then(function() {
+                try { pestovoAutoFinishTournament(curRoundData.tournamentId); } catch (_) {}
+            });
+        }
 
         db.ref('rounds/' + curRid).once('value').then(function(sn) {
             var r = sn.val();

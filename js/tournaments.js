@@ -150,6 +150,9 @@ function tnRenderList() {
             html += regBtn;
             html += '<button class="btn btn-og btn-sm" onclick="toggleRosterPanel(\'' + tnId + '\')"><i class="fas fa-list-ul"></i> ' + t('participants_list') + ' (' + regCount + ')</button>';
             html += '<button class="btn btn-og btn-sm" onclick="toggleTnLb(\'' + tnId + '\')"><i class="fas fa-ranking-star"></i> ' + (en ? 'Live leaderboard' : 'Live-лидерборд') + '</button>';
+            if (tnStatus === 'completed') {
+                html += '<button class="btn btn-g btn-sm" onclick="tnOpenProtocolModal(\'' + tnId + '\')"><i class="fas fa-file-pdf"></i> ' + (en ? 'Results protocol (PDF)' : 'Протокол результатов (PDF)') + '</button>';
+            }
             html += '</div>';
 
             html += '</div>';

@@ -111,9 +111,62 @@ eq(sandbox.psState.groups[2].startTime, all18Base, 'all18 interval: 2А — 11:0
 eq(sandbox.psState.groups[0].members[0].id, 'a', 'all18 interval: 1А — игрок a');
 eq(sandbox.psState.groups[1].members[0].id, 'c', 'all18 interval: 1Б — игрок c');
 eq(sandbox.psState.groups[2].members[0].id, 'b', 'all18 interval: 2А — игрок b');
-eq(sandbox.psGroupTitle(sandbox.psState.groups[0], 0), 'Группа 1А', 'all18 title: 1А');
+eq(sandbox.psGroupTitle(sandbox.psState.groups[0], 0), 'Группа 1А', 'all18 title: 1А (на лунке 1 две группы)');
 eq(sandbox.psGroupTitle(sandbox.psState.groups[1], 1), 'Группа 1Б', 'all18 title: 1Б');
-eq(sandbox.psGroupTitle(sandbox.psState.groups[2], 2), 'Группа 2А', 'all18 title: 2А');
+// На лунке 2 группа одна → буквы не нужно: «Группа 2», а не «Группа 2А».
+eq(sandbox.psGroupTitle(sandbox.psState.groups[2], 2), 'Группа 2', 'all18 title: одиночная группа на лунке — без буквы');
+// Добавляем вторую группу на лунку 2 → обе получают буквы.
+sandbox.psState.groups.push({ members: [{ id: 'd' }], startHole: 2, startTime: all18Base + 10 * 60000 });
+eq(sandbox.psGroupTitle(sandbox.psState.groups[2], 2), 'Группа 2А', 'all18 title: 2А после второй группы на лунке');
+eq(sandbox.psGroupTitle(sandbox.psState.groups[3], 3), 'Группа 2Б', 'all18 title: 2Б');
+sandbox.psState.groups.pop();
+
+// ── НОВЫЕ СХЕМЫ СТАРТА: только с 10-й и шотган с 1-й и 10-й ──
+sandbox.psState.proto.startTime = '09:00';
+sandbox.psState.proto.interval = 8;
+base = new Date('2026-09-09T09:00:00').getTime();
+eq(sandbox.psSchemeHoles('10'), [10], 'scheme 10: лунка 10');
+eq(sandbox.psSchemeHoles('1-10-shot'), [1, 10], 'scheme 1-10-shot: лунки 1 и 10');
+eq(sandbox.psSchemeSimultaneous('1-10-shot'), true, 'scheme 1-10-shot: волновая');
+eq(sandbox.psSchemeSimultaneous('1-10'), false, 'scheme 1-10: не волновая (поочерёдная)');
+
+sandbox.psState.proto.scheme = '10';
+eq(sandbox.psGroupSchedule(0, 4), { startHole: 10, startTime: base }, 'scheme 10: g0 → лунка 10 @ 09:00');
+eq(sandbox.psGroupSchedule(2, 4), { startHole: 10, startTime: base + 16 * 60000 }, 'scheme 10: g2 → лунка 10 @ 09:16');
+eq(sandbox.psGroupTitle({ startHole: 10 }, 0, [{ startHole: 10 }, { startHole: 10 }]), 'Группа 1', 'scheme 10: обычные номера групп, без букв');
+
+sandbox.psState.proto.scheme = '1-10-shot';
+sandbox.psState.proto.interval = 10;
+eq(sandbox.psGroupSchedule(0, 6), { startHole: 1, startTime: base }, 'shotgun 1-10: g0 → лунка 1 @ 09:00');
+eq(sandbox.psGroupSchedule(1, 6), { startHole: 10, startTime: base }, 'shotgun 1-10: g1 → лунка 10 @ 09:00 (пара одновременно)');
+eq(sandbox.psGroupSchedule(2, 6), { startHole: 1, startTime: base + 10 * 60000 }, 'shotgun 1-10: g2 → лунка 1 @ 09:10');
+eq(sandbox.psGroupSchedule(3, 6), { startHole: 10, startTime: base + 10 * 60000 }, 'shotgun 1-10: g3 → лунка 10 @ 09:10');
+eq(sandbox.psNewGroupSchedule([{ startHole: 1, startTime: base }, { startHole: 10, startTime: base }]),
+    { startHole: 1, startTime: base + 10 * 60000 }, 'shotgun 1-10: новая 3-я группа → лунка 1, вторая волна');
+eq(sandbox.psShotgunLetterScheme('1-10-shot'), true, 'shotgun 1-10: буквенные подписи');
+// Правка интервала не должна «переселять» группы с их лунок в парном шотгане.
+sandbox.psState.groups = [
+    { members: [{ id: 'a' }], startHole: 1, startTime: base },
+    { members: [{ id: 'b' }], startHole: 10, startTime: base },
+    { members: [{ id: 'c' }], startHole: 1, startTime: base + 10 * 60000 }
+];
+sandbox.psDistInterval(12);
+// Порядок показа — лунка, затем волна: 1А, 1Б, 10А.
+eq(sandbox.psState.groups.map(function(g) { return g.startHole; }), [1, 1, 10], 'shotgun 1-10: лунки сохранены при смене интервала');
+eq(sandbox.psState.groups[0].startTime, base, 'shotgun 1-10: 1А — 09:00');
+eq(sandbox.psState.groups[1].startTime, base + 12 * 60000, 'shotgun 1-10: 1Б — 09:12 (новый интервал)');
+eq(sandbox.psState.groups[2].startTime, base, 'shotgun 1-10: 10А — 09:00');
+eq(sandbox.psGroupTitle(sandbox.psState.groups[2], 2), 'Группа 10', 'shotgun 1-10: на лунке 10 одна группа → без буквы');
+eq(sandbox.psGroupTitle(sandbox.psState.groups[0], 0), 'Группа 1А', 'shotgun 1-10: на лунке 1 две группы → с буквами');
+// Схема «поочерёдный старт с 1 и 10» сохраняет чередование при пересчёте.
+sandbox.psState.proto.scheme = '1-10';
+sandbox.psState.proto.interval = 10;
+sandbox.psState.groups = [
+    { members: [{ id: 'a' }], startHole: 1, startTime: base },
+    { members: [{ id: 'b' }], startHole: 10, startTime: base }
+];
+sandbox.psDistInterval(10);
+eq(sandbox.psState.groups[1].startTime, base + 5 * 60000, 'поочерёдный 1-10: вторая группа смещена на пол-интервала');
 eq(sandbox.psIsWebsiteRosterPlayer({ source: 'registered' }), true, 'clear: website roster kept');
 eq(sandbox.psIsWebsiteRosterPlayer({ source: 'excel' }), false, 'clear: excel dropped');
 eq(sandbox.psIsWebsiteRosterPlayer({ source: 'manual' }), false, 'clear: manual dropped');

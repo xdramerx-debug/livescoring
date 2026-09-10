@@ -3,6 +3,17 @@ function onAuthReady(u, d) { navAuth(u, d); loadTournaments(); }
 
 function tGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 
+// Протокол завершения турнира (PDF) виден только администратору.
+// Данные о роли берутся из общего хелпера utils.js; если его нет
+// (например, страница открыта без utils.js) — считаем, что это игрок.
+function tnCanSeeProtocol() {
+    try {
+        if (typeof pestovoIsAdminViewer === 'function') return !!pestovoIsAdminViewer();
+        if (typeof hasAdminPanelAccess === 'function') return !!hasAdminPanelAccess();
+    } catch (e) {}
+    return false;
+}
+
 // Кэш турниров для лидерборда/группировки, общий снапшот раундов и состояние панелей.
 var tnCache = {};
 var tnProtocols = null;
@@ -10,6 +21,86 @@ var tnLbRounds = null;
 var tnLbSubscribed = false;
 var tnLbOpen = {};
 var tnRosterOpen = {};
+
+// Выбор вкладки групп (заявка и лидерборд): «все», конкретная группа
+// (дивизион) или «Гости». Состояние переживает перерисовки и перезагрузку.
+var tnTabSel = {};
+try { tnTabSel = JSON.parse(localStorage.getItem('pestovo_tn_tabs') || '{}') || {}; } catch(e) { tnTabSel = {}; }
+function tnGetTab(tnId) { return tnTabSel[tnId] || 'all'; }
+function tnSetTab(tnId, key) {
+    tnTabSel[tnId] = key || 'all';
+    try { localStorage.setItem('pestovo_tn_tabs', JSON.stringify(tnTabSel)); } catch(e) {}
+    if (typeof tnRenderList === 'function') tnRenderList();
+}
+
+// Гость турнира: заявка без аккаунта (гостевая запись формы/стартового листа).
+function tnIsGuestRoster(rec) {
+    if (!rec) return false;
+    if (rec.guest === true) return true;
+    var k = String(rec.uid || rec.key || '');
+    if (k && (k.indexOf('gst_') === 0 || k.indexOf('guest_') === 0)) return true;
+    return !rec.uid;
+}
+function tnIsGuestPlayer(pid, p) {
+    if (p && p.isGuest === true) return true;
+    var k = String(pid || '');
+    return k.indexOf('gst_') === 0 || k.indexOf('guest_') === 0;
+}
+
+// Панель вкладок над таблицей групп: «Все · Мужчины · Девушки · … · Гости».
+// Показывается только когда групп (или гостей) больше одной — иначе вкладки лишние.
+function tnTabsHtml(tnId, tabs) {
+    if (!tabs || tabs.length < 2) return '';
+    var cur = tnGetTab(tnId);
+    var en = currentLang === 'en';
+    var html = '<div class="tn-tabs" role="tablist">';
+    tabs.forEach(function(t) {
+        if (!t || !t.count) return;
+        var active = (t.key === cur) || (cur === 'all' && t.key === 'all');
+        html += '<button type="button" role="tab" class="tn-tab' + (active ? ' active' : '') + '"' +
+            ' aria-selected="' + (active ? 'true' : 'false') + '"' +
+            ' onclick="tnSetTab(\'' + escapeHtml(tnId) + '\',\'' + escapeHtml(t.key) + '\')">' +
+            (t.icon ? '<i class="fas ' + t.icon + '"></i> ' : '') +
+            escapeHtml(t.label) + '<span class="tn-tab-count">' + t.count + '</span></button>';
+    });
+    html += '</div>';
+    return html;
+}
+
+// Фильтр вкладок: «all» — всё, «__guests» — гости, иначе id дивизиона.
+function tnFilterByTab(tnId, buckets, guestList) {
+    var tab = tnGetTab(tnId);
+    if (tab === 'all') return { show: buckets, note: '' };
+    if (tab === '__guests') return { show: [{ div: null, list: (guestList || []).slice(), guestTab: true }], note: '' };
+    var picked = buckets.filter(function(b) {
+        var k = b.div ? (b.div.id || '') : '__none';
+        return k === tab;
+    });
+    return { show: picked, note: '' };
+}
+
+// Заголовок группы: «Группа: Мужчины · HCP 0–12 · Синие ТИ» + счётчик.
+function tnGroupHeadHtml(b, en) {
+    var count = '<span class="tn-group-count">' + b.list.length + '</span><i class="fas fa-chevron-down tn-chev"></i>';
+    if (b.guestTab) {
+        return '<i class="fas fa-user-tie tn-group-ico"></i><span class="tn-group-kind">' + (en ? 'Group:' : 'Группа:') + '</span>' +
+            '<b class="tn-group-title">' + (en ? 'Guests' : 'Гости') + '</b>' + count;
+    }
+    if (!b.div) {
+        return '<i class="fas fa-user-group tn-group-ico"></i><span class="tn-group-kind">' + (en ? 'Group:' : 'Группа:') + '</span>' +
+            '<b class="tn-group-title">' + (en ? 'Without group' : 'Без группы') + '</b>' + count;
+    }
+    var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(b.div) : '';
+    var teeTxt = b.div.tee && typeof t === 'function' ? t('tee_' + b.div.tee) : '';
+    var genderTxt = (typeof tnDivisionGenderText === 'function' && b.div.gender && b.div.gender !== 'all') ? tnDivisionGenderText(b.div.gender) : '';
+    var ico = b.div.gender === 'women' ? 'fa-venus' : b.div.gender === 'men' ? 'fa-mars' : 'fa-layer-group';
+    return '<i class="fas ' + ico + ' tn-group-ico"></i><span class="tn-group-kind">' + (en ? 'Group:' : 'Группа:') + '</span>' +
+        '<b class="tn-group-title">' + escapeHtml(b.div.name || (en ? 'Group' : 'Группа')) + '</b>' +
+        (rg ? '<span class="tn-group-badge"><i class="fas fa-gauge-high"></i> HCP ' + escapeHtml(rg) + '</span>' : '') +
+        (teeTxt ? '<span class="tn-group-badge"><i class="fas fa-flag"></i> ' + escapeHtml(teeTxt) + '</span>' : '') +
+        (genderTxt ? '<span class="tn-group-badge"><i class="fas fa-venus-mars"></i> ' + escapeHtml(genderTxt) + '</span>' : '') +
+        count;
+}
 
 // Раскрытые/свёрнутые группы гандикапа (заявка и лидерборд): состояние
 // переживает перерисовки и перезагрузки страницы.
@@ -148,9 +239,14 @@ function tnRenderList() {
             html += '<div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">';
             html += '<span class="tn-status ' + statusCls + '">' + statusText + '</span>';
             html += regBtn;
-            html += '<button class="btn btn-og btn-sm" onclick="toggleRosterPanel(\'' + tnId + '\')"><i class="fas fa-list-ul"></i> ' + t('participants_list') + ' (' + regCount + ')</button>';
+            // Кнопка списка — без надписи (обрезалась на мобильных): только
+            // иконка и количество в скобках.
+            html += '<button class="btn btn-og btn-sm tn-roster-toggle" title="' + escapeHtml(en ? 'Participants' : 'Список участников') + '" onclick="toggleRosterPanel(\'' + tnId + '\')"><i class="fas fa-list-ul"></i> (' + regCount + ')</button>';
             html += '<button class="btn btn-og btn-sm" onclick="toggleTnLb(\'' + tnId + '\')"><i class="fas fa-ranking-star"></i> ' + (en ? 'Live leaderboard' : 'Live-лидерборд') + '</button>';
-            if (tnStatus === 'completed') {
+            if (tnStatus === 'completed' && tnCanSeeProtocol()) {
+                // Протокол завершения турнира — только для администратора:
+                // уведомление о его доступности и кнопка игрокам не показываются,
+                // итоговые результаты они видят в лидерборде.
                 html += '<button class="btn btn-g btn-sm" onclick="tnOpenProtocolModal(\'' + tnId + '\')"><i class="fas fa-file-pdf"></i> ' + (en ? 'Results protocol (PDF)' : 'Протокол результатов (PDF)') + '</button>';
             }
             html += '</div>';
@@ -285,6 +381,8 @@ function tnCutChipHtml(raw, eff) {
 }
 
 // Список участников, сгруппированный по группам гандикапа турнира.
+// Над таблицей — вкладки групп («Все · Мужчины · Девушки · … · Гости»),
+// выбранные администратором дивизионы и гости видны отдельными вкладками.
 function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
     var en = currentLang === 'en';
     if (!regCount) {
@@ -301,6 +399,7 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
         byDiv[d.id] = b;
     });
     var unassigned = { div: null, list: [] };
+    var guests = { div: null, list: [], guestTab: true };
 
     list.forEach(function(en2) {
         var rp = en2.rp;
@@ -310,39 +409,50 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
         var div = (typeof tnFindDivision === 'function') ? tnFindDivision(tVal, en2.effHcp, gender) : null;
         if (div && byDiv[div.id]) byDiv[div.id].list.push(en2);
         else unassigned.list.push(en2);
+        if (tnIsGuestRoster(rp)) guests.list.push(en2);
     });
     if (unassigned.list.length) buckets.push(unassigned);
 
-    var html = '';
-    if (buckets.length > 1) {
+    var tabs = [{ key: 'all', label: en ? 'All' : 'Все', count: list.length, icon: 'fa-layer-group' }];
+    buckets.forEach(function(b, bi) {
+        if (!b.list.length) return;
+        tabs.push({
+            key: b.div ? (b.div.id || ('d' + bi)) : '__none',
+            label: b.div ? (b.div.name || (en ? 'Group' : 'Группа')) : (en ? 'Without group' : 'Без группы'),
+            count: b.list.length,
+            icon: b.div ? (b.div.gender === 'women' ? 'fa-venus' : b.div.gender === 'men' ? 'fa-mars' : 'fa-layer-group') : 'fa-user-group'
+        });
+    });
+    // «Гости» — отдельная вкладка, только если такие участники есть и их
+    // ещё не показывает какая-то из групп администратора.
+    var hasGuestDiv = divisions.some(function(d) { return /гост|guest/i.test(String(d.name || '')); });
+    if (guests.list.length && !hasGuestDiv) {
+        tabs.push({ key: '__guests', label: en ? 'Guests' : 'Гости', count: guests.list.length, icon: 'fa-user-tie' });
+    }
+
+    var shown = tnFilterByTab(tnId, buckets, guests.list).show.filter(function(b) { return b.list.length > 0; });
+    if (!shown.length) shown = buckets.filter(function(b) { return b.list.length > 0; });
+
+    var html = tnTabsHtml(tnId, tabs);
+    if (shown.length > 1) {
         html += '<div class="tn-groups-toggle">' +
             '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'roster\',true)"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
             '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'roster\',false)"><i class="fas fa-angles-up"></i> ' + (en ? 'Collapse all' : 'Свернуть все') + '</button>' +
             '</div>';
     }
-    buckets.forEach(function(b, bi) {
-        var divId = b.div ? (b.div.id || ('d' + bi)) : '__none';
-        var isOpen = tnGroupIsOpen(tnId, 'roster', divId, bi === 0);
-        var headInner = '';
-        if (b.div) {
-            var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(b.div) : '';
-            var teeTxt = b.div.tee ? (' · ' + t('tee_' + b.div.tee)) : '';
-            headInner = '<i class="fas fa-layer-group"></i> <b>' + escapeHtml(b.div.name || '') + '</b>' +
-                (rg ? ' <span>HCP ' + escapeHtml(rg) + '</span>' : '') +
-                (teeTxt ? ' <span>' + escapeHtml(teeTxt) + '</span>' : '');
-        } else {
-            headInner = '<i class="fas fa-user-group"></i> <b>' + (en ? 'Without group' : 'Без группы') + '</b>';
-        }
-        headInner += ' <span class="tn-group-count">' + b.list.length + '</span><i class="fas fa-chevron-down tn-chev"></i>';
+    shown.forEach(function(b) {
+        var divId = b.guestTab ? '__guests' : (b.div ? (b.div.id || '') : '__none');
+        var isOpen = tnGroupIsOpen(tnId, 'roster', divId, true);
         html += '<div class="tn-group' + (isOpen ? ' open' : '') + '">';
-        html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="roster" data-div="' + escapeHtml(divId) + '" onclick="toggleTnGroupEl(this)">' + headInner + '</button>';
+        html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="roster" data-div="' + escapeHtml(divId) + '" onclick="toggleTnGroupEl(this)">' + tnGroupHeadHtml(b, en) + '</button>';
         html += '<div class="tn-group-body' + (isOpen ? '' : ' tn-collapsed') + '">';
         html += '<div style="overflow-x:auto;"><table class="lb-table lb-cards"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>' + (en ? 'Tee' : 'ТИ') + '</th><th>' + t('date') + '</th></tr></thead><tbody>';
         var rIdx = 1;
         b.list.forEach(function(en2) {
             var rp = en2.rp, rpid = en2.pid;
             html += '<tr><td data-label="#">' + (rIdx++) + '</td>';
-            html += '<td class="lb-card-main"><strong style="color:var(--gold);">' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong></td>';
+            html += '<td class="lb-card-main"><strong style="color:var(--gold);">' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong>' +
+                (tnIsGuestRoster(rp) ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '') + '</td>';
             html += '<td data-label="HCP">' + (rp.handicap != null && rp.handicap !== '' ? fmtExactHcp(rp.handicap) + tnCutChipHtml(rp.handicap, en2.effHcp) : '—') + '</td>';
             html += '<td data-label="' + (en ? 'Tee' : 'ТИ') + '">' + fmtTeePill(rp.tee) + '</td>';
             html += '<td data-label="' + t('date') + '">' + fmtDate(rp.registeredAt) + '</td></tr>';
@@ -415,9 +525,37 @@ function renderTnLeaderboard(tnId) {
                     pid: pid, name: p.name || '—',
                     gender: p.gender || '', tee: p.tee || r.tee || '',
                     hcpRaw: (p.exactHcpRaw != null ? p.exactHcpRaw : (p.exactHcp != null ? p.exactHcp : (p.handicap != null ? p.handicap : null))),
-                    gross: 0, parPlayed: 0, net: 0, stbl: 0, holes: 0, live: false, upd: 0
+                    hcpPlayed: (p.exactHcp != null ? p.exactHcp : null),
+                    fieldHcp: (p.fieldHcp != null ? p.fieldHcp : null),
+                    isGuest: tnIsGuestPlayer(pid, p),
+                    gross: 0, parPlayed: 0, net: 0, stbl: 0, holes: 0, live: false, upd: 0,
+                    rounds: []
                 };
             }
+            // Данные по раундам — для счётной карточки по клику игрока.
+            var markerName = '';
+            if (r.markerAssignments && r.markerAssignments[pid]) {
+                var mtid = r.markerAssignments[pid].targetId;
+                markerName = r.markerAssignments[pid].targetName ||
+                    (r.players && r.players[mtid] ? (r.players[mtid].name || '') : '');
+            }
+            if (!markerName && p.markedBy && r.players && r.players[p.markedBy]) markerName = r.players[p.markedBy].name || '';
+            cur.rounds.push({
+                rid: rid,
+                round: r,
+                scores: p.scores || {},
+                fieldHcp: p.fieldHcp || 0,
+                exactHcp: p.exactHcp,
+                exactHcpRaw: p.exactHcpRaw,
+                tee: p.tee || r.tee || '',
+                label: (r.roundName || r.protocolName || t('round') + ' ' + rid),
+                groupNo: r.groupNo || null,
+                startHole: r.startHole || 1,
+                startTime: r.startTime || null,
+                markerName: markerName,
+                status: r.status || 'active',
+                played: stats.holesPlayed || 0
+            });
             cur.gross += stats.gross || 0;
             cur.parPlayed += stats.parPlayed || 0;
             cur.net += stats.net || 0;
@@ -452,6 +590,8 @@ function renderTnLeaderboard(tnId) {
         en2.toPar = en2.holes > 0 ? en2.gross - en2.parPlayed : null;
         en2.netToPar = en2.holes > 0 ? en2.net - en2.parPlayed : null;
         en2.dispName = privacyDisplayName({ name: en2.name }, en2.pid);
+        if (tnIsGuestRoster(rp) || en2.isGuest) en2.isGuest = true;
+        en2.rp = rp;
     });
 
     var buckets = [];
@@ -462,11 +602,44 @@ function renderTnLeaderboard(tnId) {
         byDiv[d.id] = b;
     });
     var unassigned = { div: null, list: [] };
+    var guests = { div: null, list: [], guestTab: true };
     list.forEach(function(en2) {
         if (en2.div && byDiv[en2.div.id]) byDiv[en2.div.id].list.push(en2);
         else unassigned.list.push(en2);
+        if (en2.isGuest) guests.list.push(en2);
     });
     if (unassigned.list.length) buckets.push(unassigned);
+
+    // Вкладки групп: «Все» + каждая группа, которую создал администратор,
+    // + «Гости», если на турнире есть гости (и их не показывает отдельная группа).
+    var lbTabs = [{ key: 'all', label: en ? 'All' : 'Все', count: list.length, icon: 'fa-layer-group' }];
+    buckets.forEach(function(b, bi) {
+        if (!b.list.length) return;
+        lbTabs.push({
+            key: b.div ? (b.div.id || ('d' + bi)) : '__none',
+            label: b.div ? (b.div.name || (en ? 'Group' : 'Группа')) : (en ? 'Without group' : 'Без группы'),
+            count: b.list.length,
+            icon: b.div ? (b.div.gender === 'women' ? 'fa-venus' : b.div.gender === 'men' ? 'fa-mars' : 'fa-layer-group') : 'fa-user-group'
+        });
+    });
+    var lbHasGuestDiv = divisions.some(function(d) { return /гост|guest/i.test(String(d.name || '')); });
+    if (guests.list.length && !lbHasGuestDiv) {
+        lbTabs.push({ key: '__guests', label: en ? 'Guests' : 'Гости', count: guests.list.length, icon: 'fa-user-tie' });
+    }
+
+    // Место в группе считаем один раз для всех групп — и карточка игрока,
+    // и таблица показывают одинаковые номера (в т.ч. при делёже мест).
+    buckets.forEach(function(b) {
+        b.list.sort(tnLbSort);
+        var p = 0;
+        b.list.forEach(function(en2, i) {
+            if (i === 0 || en2.netToPar !== b.list[i - 1].netToPar || en2.toPar !== b.list[i - 1].toPar) p = i + 1;
+            en2.position = p;
+        });
+    });
+
+    // Счётные карточки игроков этого лидерборда — для клика по строке.
+    tnScBuildCards(tnId, tVal, list);
 
     var statusLine = anyLive
         ? '<span class="tn-lb-live"><span class="tn-lb-dot"></span>' + (en ? 'LIVE — scores update instantly' : 'LIVE — счёт обновляется мгновенно') + '</span>'
@@ -477,50 +650,155 @@ function renderTnLeaderboard(tnId) {
     var html = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;"><strong style="color:var(--gold);font-size:15px;"><i class="fas fa-ranking-star"></i> ' +
         (en ? 'Tournament leaderboard' : 'Лидерборд турнира') + '</strong>' + statusLine + '</div>';
 
-    var lbBuckets = buckets.filter(function(b) { return b.list.length > 0; });
-    if (lbBuckets.length > 1) {
+    // Вкладки фильтруют вывод: показываем только выбранную группу.
+    var lbShown = tnFilterByTab(tnId, buckets, guests.list).show.filter(function(b) { return b.list.length > 0; });
+    if (!lbShown.length) lbShown = buckets.filter(function(b) { return b.list.length > 0; });
+    html += tnTabsHtml(tnId, lbTabs);
+    if (lbShown.length > 1) {
         html += '<div class="tn-groups-toggle">' +
             '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'lb\',true)"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
             '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'lb\',false)"><i class="fas fa-angles-up"></i> ' + (en ? 'Collapse all' : 'Свернуть все') + '</button>' +
             '</div>';
     }
-    lbBuckets.forEach(function(b, bi) {
+    lbShown.forEach(function(b, bi) {
         b.list.sort(tnLbSort);
-        var lbDivId = b.div ? (b.div.id || ('d' + bi)) : '__none';
-        var lbOpen = tnGroupIsOpen(tnId, 'lb', lbDivId, bi === 0);
-        var lbHead = '';
-        if (b.div) {
-            var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(b.div) : '';
-            lbHead = '<i class="fas fa-layer-group"></i> <b>' + escapeHtml(b.div.name || '') + '</b>' +
-                (rg ? ' <span>HCP ' + escapeHtml(rg) + '</span>' : '');
-        } else {
-            lbHead = '<i class="fas fa-user-group"></i> <b>' + (en ? 'Without group' : 'Без группы') + '</b>';
-        }
-        lbHead += ' <span class="tn-group-count">' + b.list.length + '</span><i class="fas fa-chevron-down tn-chev"></i>';
+        var lbDivId = b.guestTab ? '__guests' : (b.div ? (b.div.id || ('d' + bi)) : '__none');
+        var lbOpen = tnGroupIsOpen(tnId, 'lb', lbDivId, true);
         html += '<div class="tn-group' + (lbOpen ? ' open' : '') + '">';
-        html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="lb" data-div="' + escapeHtml(lbDivId) + '" onclick="toggleTnGroupEl(this)">' + lbHead + '</button>';
+        html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="lb" data-div="' + escapeHtml(lbDivId) + '" onclick="toggleTnGroupEl(this)">' + tnGroupHeadHtml(b, en) + '</button>';
         html += '<div class="tn-group-body' + (lbOpen ? '' : ' tn-collapsed') + '">';
-        html += '<div style="overflow-x:auto;"><table class="lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th><th>' +
-            (en ? 'Thru' : 'Лунки') + '</th><th>' + (en ? 'Gross' : 'Гросс') + '</th><th>±</th><th>' + (en ? 'Net' : 'Нетто') + '</th><th>' + (en ? 'Stbl' : 'Стбл') + '</th></tr></thead><tbody>';
-        var pos = 0;
+        html += '<div style="overflow-x:auto;"><table class="lb-table tn-lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th><th>' +
+            (en ? 'Thru' : 'Лунки') + '</th><th>' + (en ? 'Gross' : 'Гросс') + '</th><th>±</th><th>' + (en ? 'Net' : 'Нетто') + '</th><th>' + (en ? 'Stbl' : 'Стбл') + '</th><th></th></tr></thead><tbody>';
         b.list.forEach(function(en2, i) {
-            if (i === 0 || en2.netToPar !== b.list[i - 1].netToPar || en2.toPar !== b.list[i - 1].toPar) pos = i + 1;
+            var pos = en2.position || (i + 1);
             var medal = pos === 1 ? '🥇 ' : pos === 2 ? '🥈 ' : pos === 3 ? '🥉 ' : '';
             var thru = en2.holes > 0 ? en2.holes : '—';
-            html += '<tr><td><strong style="color:var(--gold);">' + medal + pos + '</strong></td>';
+            var fioKey = escapeHtml(tnFioKey({ name: en2.name }, en2.pid));
+            // Вся строка — кнопка: клик открывает счётную карточку игрока.
+            html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')" title="' +
+                (en ? 'Scorecard' : 'Счётная карточка') + '">';
+            html += '<td><strong style="color:var(--gold);">' + medal + pos + '</strong></td>';
             html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' +
-                (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + '</td>';
+                (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') +
+                (en2.isGuest ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '') + '</td>';
             html += '<td>' + thru + '</td>';
             html += '<td>' + (en2.holes > 0 ? en2.gross : '—') + '</td>';
             html += '<td><strong class="' + scoreClass(en2.toPar) + '">' + fmtScore(en2.toPar) + '</strong></td>';
             html += '<td>' + (en2.netToPar === null ? '—' : en2.net + ' (' + fmtScore(en2.netToPar) + ')') + '</td>';
-            html += '<td>' + (en2.holes > 0 ? en2.stbl : '—') + '</td></tr>';
+            html += '<td>' + (en2.holes > 0 ? en2.stbl : '—') + '</td>';
+            html += '<td class="tn-lb-card-btn"><i class="fas fa-table-list"></i></td></tr>';
         });
         html += '</tbody></table></div>';
         html += '</div></div>';
     });
 
     panel.innerHTML = html;
+}
+
+// ==========================================
+// СЧЁТНЫЕ КАРТОЧКИ ИГРОКОВ ЛИДЕРБОРДА (клик по строке)
+// ==========================================
+// Перерисовывает все открытые панели лидерборда — нужно, когда админ сменил
+// вид счётной карточки (settings/tn_scorecard_variant) или пришли новые счета.
+function rerenderOpenTnLeaderboards() {
+    try {
+        Object.keys(tnLbOpen || {}).forEach(function(tnId) {
+            if (tnLbOpen[tnId]) renderTnLeaderboard(tnId);
+        });
+    } catch (e) {}
+    try {
+        if (typeof tnScRerender === 'function') tnScRerender();
+    } catch (e) {}
+}
+
+// Данные берутся из того же снапшота раундов, что и лидерборд, и передаются
+// модулю js/tn-scorecard.js, который рисует три оформления на выбор админа.
+function tnScBuildCards(tnId, tVal, list) {
+    if (typeof tnScSetCards !== 'function') return;
+    var map = {};
+    var cut = tnTournamentCut(tVal, tnId);
+    (list || []).forEach(function(en2) {
+        var key = tnFioKey({ name: en2.name }, en2.pid);
+        if (!key) return;
+        var totals = { holes: 0, gross: 0, par: 0, toPar: null, net: 0, netToPar: null, stbl: 0, birdies: 0, eagles: 0 };
+        var rounds = (en2.rounds || []).map(function(rd) {
+            var r = rd.round || {};
+            var labelBits = [];
+            if (r.format) labelBits.push(r.format);
+            if (rd.startTime) labelBits.push(fmtTime(rd.startTime));
+            if (rd.groupNo) labelBits.push((currentLang === 'en' ? 'Group ' : 'Группа ') + rd.groupNo);
+            if (rd.startHole) labelBits.push((currentLang === 'en' ? 'hole ' : 'лунка ') + rd.startHole);
+            var block = (typeof tnScRoundBlock === 'function')
+                ? tnScRoundBlock({
+                    scores: rd.scores, fieldHcp: rd.fieldHcp, round: r,
+                    label: labelBits.join(' · ')
+                })
+                : null;
+            if (block) {
+                totals.holes += block.totals.holes || 0;
+                totals.gross += block.totals.gross || 0;
+                totals.par += block.totals.par || 0;
+                totals.net += block.totals.net || 0;
+                totals.stbl += block.totals.stbl || 0;
+                totals.birdies += block.totals.birdies || 0;
+                totals.eagles += block.totals.eagles || 0;
+            }
+            return { block: block, raw: rd };
+        }).filter(function(x) { return x.block; });
+
+        totals.toPar = totals.holes ? totals.gross - totals.par : null;
+        totals.netToPar = totals.holes ? totals.net - totals.par : null;
+
+        // Раунды упорядочиваем по времени старта (ключи Firebase идут в
+        // произвольном порядке), а данные для шапки берём из последнего
+        // раунда; если в нём нет флайта/маркера — из последнего, где они есть.
+        rounds.sort(function(a, b) {
+            var ta = (a.raw.startTime || (a.raw.round && a.raw.round.createdAt) || 0);
+            var tb = (b.raw.startTime || (b.raw.round && b.raw.round.createdAt) || 0);
+            return ta - tb;
+        });
+        var cardRounds = rounds.map(function(x) { return x.block; });
+        var lastRaw = rounds.length ? rounds[rounds.length - 1].raw : {};
+        for (var ri = rounds.length - 1; ri >= 0; ri--) {
+            if (rounds[ri].raw.groupNo || rounds[ri].raw.markerName) { lastRaw = rounds[ri].raw; break; }
+        }
+        var effHcp = (typeof tnApplyHcpCut === 'function' && en2.hcpRaw != null && cut)
+            ? (function() { try { return tnApplyHcpCut(en2.hcpRaw, en2.gender || 'men', cut).effective; } catch (e) { return en2.hcpPlayed; } })()
+            : en2.hcpPlayed;
+        var cutChanged = (en2.hcpRaw != null && effHcp != null &&
+            Math.abs(parseFloat(effHcp) - parseFloat(en2.hcpRaw)) >= 0.05);
+
+        map[key] = {
+            key: key,
+            name: en2.dispName || en2.name || '—',
+            tournamentName: tVal.name || '',
+            dateTxt: tVal.date ? fmtDate((typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date)) : '',
+            format: (tVal.formats || []).join(' + ') || (rounds.length && rounds[0].raw.round && rounds[0].raw.round.format) || 'Stroke Play',
+            teeTxt: (typeof fmtTeePill === 'function' && (en2.tee || (lastRaw.tee))) ? fmtTeePill(en2.tee || lastRaw.tee) : '',
+            divName: en2.div ? (en2.div.name || '') : '',
+            groupLabel: lastRaw.groupNo ? ((currentLang === 'en' ? 'Group ' : 'Группа ') + lastRaw.groupNo) : '',
+            startHole: lastRaw.startHole || 1,
+            startTimeTxt: lastRaw.startTime ? fmtTime(lastRaw.startTime) : '',
+            markerName: lastRaw.markerName || '',
+            markerNote: lastRaw.markerName
+                ? (currentLang === 'en' ? 'Marker: this player kept the scorecard of ' + lastRaw.markerName : 'Маркировал счёт игрока: ' + lastRaw.markerName)
+                : '',
+            hcpRaw: en2.hcpRaw,
+            effHcp: effHcp,
+            fieldHcp: lastRaw.fieldHcp != null ? lastRaw.fieldHcp : en2.fieldHcp,
+            cutNote: cutChanged
+                ? ((currentLang === 'en' ? 'Handicap cut for this tournament only: ' : 'Обрезка гандикапа только на этом турнире: ') +
+                   (typeof fmtExactHcp === 'function' ? fmtExactHcp(en2.hcpRaw) : en2.hcpRaw) + ' → ' +
+                   (typeof fmtExactHcp === 'function' ? fmtExactHcp(effHcp) : effHcp))
+                : '',
+            position: en2.position || null,
+            isGuest: !!en2.isGuest,
+            live: !!en2.live,
+            rounds: cardRounds,
+            totals: totals
+        };
+    });
+    tnScSetCards(tnId, map);
 }
 
 // ==========================================

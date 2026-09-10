@@ -234,9 +234,11 @@ if (typeof window !== 'undefined' && window.addEventListener) {
     });
 }
 
-// Шотган: подписи «Группа 1А / 1Б» (лунка + волна), порядок — лунка, затем волна.
+// Схемы старта, где группу подписывают «лунка + буква волны» (1А, 1Б, 10А, 18А…):
+// шотган со всех лунок, шотган/поочерёдный старт с 1-й и 10-й.
+// При старте только с одной лунки («1», «10») номера групп — простые.
 function qrShotgunLetterScheme(scheme) {
-    return scheme === 'all18' || scheme === '1-10';
+    return scheme === 'all18' || scheme === '1-10' || scheme === '1-10-shot';
 }
 function qrWaveLetter(idx) {
     idx = Math.max(0, parseInt(idx, 10) || 0);
@@ -255,15 +257,28 @@ function qrGroupWaveIndex(entries, i) {
     }
     return n;
 }
+// Сколько групп стартует с той же лунки, что и i-я. Одна — буква не нужна:
+// «Группа 1», а не «Группа 1А» (требование клуба: буква только при 2+ группах
+// на лунке, тогда идут 1А и 1Б).
+function qrHoleGroupCount(entries, i) {
+    entries = entries || [];
+    var hole = parseInt((entries[i] && entries[i].g || {}).startHole, 10) || 1;
+    var n = 0;
+    for (var j = 0; j < entries.length; j++) {
+        if ((parseInt((entries[j].g || {}).startHole, 10) || 1) === hole) n++;
+    }
+    return n;
+}
 function qrGroupLabel(g, i, entries, scheme) {
     g = g || {};
     entries = entries || [];
     if (qrShotgunLetterScheme(scheme)) {
         var hole = parseInt(g.startHole, 10) || 1;
-        return 'Группа ' + hole + qrWaveLetter(qrGroupWaveIndex(entries, i));
+        var letter = qrHoleGroupCount(entries, i) > 1 ? qrWaveLetter(qrGroupWaveIndex(entries, i)) : '';
+        return 'Группа ' + hole + letter;
     }
     var gno = g.groupNo || ((entries[i] && entries[i].key) ? String(entries[i].key).replace('g', '') : (i + 1));
-    return 'ГРУППА №' + gno;
+    return 'Группа ' + gno;
 }
 function qrSortGroups(entries, scheme) {
     entries = entries || [];

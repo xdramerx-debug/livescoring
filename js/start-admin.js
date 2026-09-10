@@ -47,7 +47,8 @@ function psDefaultProto() {
         formats: [],             // выбранные форматы игры (можно несколько, напр. Stableford + Gross)
         formatCustom: '',
         tee: 'wh',
-        scheme: '1',          // '1' — все с 1-й лунки, '1-10' — шотган с 1-й и 10-й
+        // Схема старта: '1' | '10' | '1-10' | '1-10-shot' | 'all18' (PS_START_SCHEMES)
+        scheme: '1',
         size: 4,
         method: 'hcpSnake',   // order|alpha|hcpAsc|hcpDesc|hcpSnake|random
         interval: 8,
@@ -2370,11 +2371,7 @@ function psRenderDistributeInner(proto) {
         methodOpts += '<option value="' + m[0] + '"' + (proto.method === m[0] ? ' selected' : '') + '>' + m[1] + '</option>';
     });
 
-    var schemes = [
-        ['1', psL('Все группы — с 1-й лунки', 'All groups from hole 1')],
-        ['1-10', psL('Шотган: с 1-й и 10-й лунок', 'Shotgun: holes 1 and 10')],
-        ['all18', psL('Шотган со всех 18 лунок', 'Shotgun from all 18 holes')]
-    ];
+    var schemes = psStartSchemeOptions();
     var schemeOpts = '';
     schemes.forEach(function(s) {
         schemeOpts += '<option value="' + s[0] + '"' + (proto.scheme === s[0] ? ' selected' : '') + '>' + s[1] + '</option>';
@@ -2389,13 +2386,18 @@ function psRenderDistributeInner(proto) {
         '<select class="form-input" onchange="psDistScheme(this.value)">' + schemeOpts + '</select></div>';
     html += '</div>';
 
-    var isAll18 = proto.scheme === 'all18';
-    var timeLabel = isAll18
+    var isSimultaneous = psSchemeSimultaneous(proto.scheme);
+    var isMultiHole = psSchemeHoles(proto.scheme).length > 1;
+    var timeLabel = isSimultaneous
         ? psL('Время старта (все лунки одновременно)', 'Start time (all holes together)')
-        : psL('Время старта первой группы', 'First group start time');
-    var intervalLabel = isAll18
+        : (isMultiHole
+            ? psL('Время старта первой группы (лунка 1)', 'First group start time (hole 1)')
+            : psL('Время старта первой группы', 'First group start time'));
+    var intervalLabel = isSimultaneous
         ? psL('Интервал второй группы на лунке (мин)', 'Second group on same hole interval (min)')
-        : psL('Интервал между группами (мин)', 'Interval between groups (min)');
+        : (isMultiHole
+            ? psL('Интервал между группами на одной лунке (мин)', 'Interval between groups on one hole (min)')
+            : psL('Интервал между группами (мин)', 'Interval between groups (min)'));
 
     html += '<div class="form-row form-row-3">';
     html += '<div class="form-group"><label>' + timeLabel + '</label>' +
@@ -2404,11 +2406,10 @@ function psRenderDistributeInner(proto) {
         '<input type="number" class="form-input" min="3" max="30" step="1" value="' + (proto.interval || 8) + '" onchange="psDistInterval(this.value)"></div>';
     html += '<div class="form-group"><label>&nbsp;</label><button class="btn btn-g btn-block" onclick="psDistPreview()" style="min-height:40px;"><i class="fas fa-shuffle"></i> ' + psL('Показать раскладку', 'Show distribution') + '</button></div>';
     html += '</div>';
-    if (isAll18) {
+    var schemeHint = psStartSchemeHint(proto.scheme);
+    if (schemeHint) {
         html += '<p style="font-size:11.5px;color:var(--muted);margin:-4px 0 10px;"><i class="fas fa-circle-info"></i> ' +
-            psL('При шотгане со всех лунок все группы стартуют в одно время. Интервал применяется только если на одной лунке две группы (например 11:00 и 11:10 с 1-й лунки).',
-                'In a shotgun start from all holes every group tees off at the same time. The interval is used only when two groups share a hole (e.g. 11:00 and 11:10 from hole 1).') +
-            '</p>';
+            schemeHint + '</p>';
     }
 
     // Результат раскладки
@@ -2502,6 +2503,90 @@ function psIntervalMs(proto) {
     return Math.max(3, parseInt(proto.interval, 10) || 8) * 60000;
 }
 
+// ── СХЕМЫ СТАРТА ──────────────────────────────────────────
+//   '1'         — старт только с 1-й лунки: группы идут последовательно
+//                 через интервал (тей-таймы 09:00, 09:08, 09:16…).
+//   '10'        — старт только с 10-й лунки: то же, но с 10-го тея.
+//   '1-10'      — поочерёдный старт с 1-й и 10-й лунок: лунки чередуются
+//                 (09:00 л.1, 09:04 л.10, 09:08 л.1, 09:12 л.10…), сдвиг —
+//                 половина интервала. Оба тея загружены равномерно.
+//   '1-10-shot' — шотган с 1-й и 10-й лунок: группы стартуют ПАРАМИ
+//                 одновременно (09:00 л.1 + 09:00 л.10), следующая пара —
+//                 через интервал.
+//   'all18'     — шотган со всех 18 лунок: по группе на лунку в одно время,
+//                 19-я группа — лунка 1, вторая волна (через интервал).
+// Схемы с несколькими лунками подписываются «лунка + буква волны» (1А, 1Б),
+// но буква нужна только когда на лунке больше одной группы (см. psGroupTitle).
+var PS_START_SCHEMES = ['1', '10', '1-10', '1-10-shot', 'all18'];
+
+function psStartSchemeOptions() {
+    return [
+        ['1', psL('Старт только с 1-й лунки (последовательно)', 'Start from hole 1 only (sequential)')],
+        ['10', psL('Старт только с 10-й лунки (последовательно)', 'Start from hole 10 only (sequential)')],
+        ['1-10', psL('Поочерёдный старт с 1-й и 10-й лунок', 'Alternating start from holes 1 and 10')],
+        ['1-10-shot', psL('Шотган с 1-й и 10-й лунок (пары одновременно)', 'Shotgun from holes 1 and 10 (pairs at once)')],
+        ['all18', psL('Шотган со всех 18 лунок', 'Shotgun from all 18 holes')]
+    ];
+}
+
+// Номера лунок, которые задействованы в схеме старта.
+function psSchemeHoles(scheme) {
+    if (scheme === '10') return [10];
+    if (scheme === '1-10' || scheme === '1-10-shot') return [1, 10];
+    if (scheme === 'all18') {
+        var h = [];
+        for (var i = 1; i <= 18; i++) h.push(i);
+        return h;
+    }
+    return [1];
+}
+
+// Одновременная (волновая) схема: все группы волны стартуют в одно время,
+// следующая волна — через интервал.
+function psSchemeSimultaneous(scheme) {
+    return scheme === 'all18' || scheme === '1-10-shot';
+}
+
+// Подписи групп с буквой волны: 1А / 1Б / 10А…
+function psShotgunLetterScheme(scheme) {
+    scheme = scheme || (psState && psState.proto && psState.proto.scheme);
+    return scheme === 'all18' || scheme === '1-10' || scheme === '1-10-shot';
+}
+
+function psStartSchemeHint(scheme) {
+    if (scheme === 'all18') {
+        return psL('При шотгане со всех лунок все группы стартуют в одно время. Интервал применяется только если на одной лунке две группы (например 11:00 и 11:10 с 1-й лунки).',
+            'In a shotgun start from all holes every group tees off at the same time. The interval is used only when two groups share a hole (e.g. 11:00 and 11:10 from hole 1).');
+    }
+    if (scheme === '1-10-shot') {
+        return psL('Шотган с двух лунок: группы стартуют парами — одновременно с 1-й и с 10-й лунки, следующая пара через интервал. Поле разбирается вдвое быстрее, чем при старте только с 1-й лунки.',
+            'Two-hole shotgun: groups tee off in pairs — hole 1 and hole 10 at the same time, the next pair after the interval.');
+    }
+    if (scheme === '1-10') {
+        return psL('Поочерёдный старт: каждая следующая группа стартует с другой лунки (1 → 10 → 1 → 10) со сдвигом в пол-интервала. Работают оба тея, группы друг другу не мешают.',
+            'Alternating start: every next group tees off from the other hole (1 → 10 → 1 → 10) with a half-interval offset.');
+    }
+    if (scheme === '10') {
+        return psL('Все группы стартуют с 10-й лунки и идут поле, начиная с задней девятки. Удобно, когда 1-й тей занят или утро начинается с 10-й лунки.',
+            'Every group starts from hole 10 and plays the back nine first. Useful when the 1st tee is busy.');
+    }
+    return '';
+}
+
+// Раскладка по волнам: лунка берётся по кругу из списка лунок схемы,
+// время сдвигается на интервал для каждой следующей волны.
+function psWaveSchedule(i, proto, holes) {
+    proto = proto || psState.proto || {};
+    holes = (holes && holes.length) ? holes : psSchemeHoles(proto.scheme);
+    var base = psStartBaseTs(proto);
+    var intervalMs = psIntervalMs(proto);
+    var idx = Math.max(0, parseInt(i, 10) || 0);
+    return {
+        startHole: holes[idx % holes.length],
+        startTime: base + Math.floor(idx / holes.length) * intervalMs
+    };
+}
+
 // Шотган со всех 18: все лунки стартуют одновременно.
 // Интервал — только для второй (третьей…) группы на той же лунке.
 function psAll18Schedule(i, proto) {
@@ -2511,13 +2596,6 @@ function psAll18Schedule(i, proto) {
     var wave = Math.floor(i / 18);
     var holeIdx = ((i % 18) + 18) % 18;
     return { startHole: holeIdx + 1, startTime: base + wave * intervalMs };
-}
-
-// Шотган: подписи «Группа 1А / 1Б» (лунка + волна), не порядковый номер.
-// Для схемы «все с 1-й» остаётся «Группа 1, 2, 3…».
-function psShotgunLetterScheme(scheme) {
-    scheme = scheme || (psState && psState.proto && psState.proto.scheme);
-    return scheme === 'all18' || scheme === '1-10';
 }
 function psWaveLetter(idx) {
     idx = Math.max(0, parseInt(idx, 10) || 0);
@@ -2538,12 +2616,26 @@ function psGroupWaveIndex(groups, gi) {
     }
     return n;
 }
+// Сколько групп стартует с той же лунки, что и группа gi.
+function psHoleGroupCount(groups, gi) {
+    groups = groups || [];
+    var hole = parseInt((groups[gi] && groups[gi].startHole) || 1, 10) || 1;
+    var n = 0;
+    for (var i = 0; i < groups.length; i++) {
+        if ((parseInt((groups[i] || {}).startHole, 10) || 1) === hole) n++;
+    }
+    return n;
+}
+// Название группы. Шотган: «лунка + буква волны» (1А, 1Б…). Буква нужна
+// ТОЛЬКО когда на этой лунке играет больше одной группы: если группа на лунке
+// одна — пишем просто «Группа 1», без «А» (требование клуба).
 function psGroupTitle(g, gi, groups) {
     groups = groups || (psState && psState.groups) || [];
     var proto = (psState && psState.proto) || {};
     if (psShotgunLetterScheme(proto.scheme)) {
         var hole = parseInt((g && g.startHole) || 1, 10) || 1;
-        return psL('Группа', 'Group') + ' ' + hole + psWaveLetter(psGroupWaveIndex(groups, gi));
+        var letter = psHoleGroupCount(groups, gi) > 1 ? psWaveLetter(psGroupWaveIndex(groups, gi)) : '';
+        return psL('Группа', 'Group') + ' ' + hole + letter;
     }
     return psL('Группа', 'Group') + ' ' + (gi + 1);
 }
@@ -2593,17 +2685,19 @@ function psRescheduleExistingGroups() {
     var groups = psState.groups || [];
     if (!proto || !groups.length) return;
     psSortGroupsShotgun(groups, proto.scheme);
-    if (proto.scheme === 'all18') {
+    if (psSchemeSimultaneous(proto.scheme)) {
+        var holes = psSchemeHoles(proto.scheme);
         var occupancy = {};
         groups.forEach(function(g, i) {
             var hole = parseInt(g.startHole, 10);
-            if (!hole || hole < 1 || hole > 18) hole = (i % 18) + 1;
+            // Лунок в схеме может быть меньше 18 (шотган с 1 и 10) — свою лунку
+            // сохраняем, недоступную «переселяем» на первую лунку схемы.
+            if (!hole || holes.indexOf(hole) === -1) hole = psWaveSchedule(i, proto, holes).startHole;
             occupancy[hole] = occupancy[hole] || 0;
             var wave = occupancy[hole];
             occupancy[hole]++;
-            var sch = psAll18Schedule(wave * 18 + (hole - 1), proto);
             g.startHole = hole;
-            g.startTime = sch.startTime;
+            g.startTime = psStartBaseTs(proto) + wave * psIntervalMs(proto);
         });
         return;
     }
@@ -2618,18 +2712,21 @@ function psGroupSchedule(i, totalGroups) {
     var proto = psState.proto || {};
     var base = psStartBaseTs(proto);
     var intervalMs = psIntervalMs(proto);
+    var holes = psSchemeHoles(proto.scheme);
 
-    if (proto.scheme === 'all18') {
-        return psAll18Schedule(i, proto);
+    if (psSchemeSimultaneous(proto.scheme)) {
+        return psWaveSchedule(i, proto, holes);
     }
-    if (proto.scheme === '1-10') {
-        var hole = (i % 2 === 0) ? 1 : 10;
+    if (holes.length > 1) {
+        // Поочерёдный старт с 1-й и 10-й: лунки чередуются, вторая лунка
+        // стартует со сдвигом в пол-интервала — теи не простаивают.
         var half = Math.round(intervalMs / 2);
-        // 1-я лунка: 0, 2, 4… (шаг = интервал); 10-я: 1, 3, 5… (со сдвигом на половину интервала)
-        var t = base + Math.floor(i / 2) * intervalMs + (i % 2) * half;
-        return { startHole: hole, startTime: t };
+        var t = base + Math.floor(i / holes.length) * intervalMs + (i % holes.length) * half;
+        return { startHole: holes[i % holes.length], startTime: t };
     }
-    return { startHole: parseInt(proto.baseHole || 1, 10) || 1, startTime: base + i * intervalMs };
+    // Одна лунка ('1' или '10'): последовательные тей-таймы через интервал.
+    var singleHole = parseInt(proto.baseHole || holes[0], 10) || holes[0];
+    return { startHole: singleHole, startTime: base + i * intervalMs };
 }
 
 function psStartBaseTs(proto) {
@@ -2984,21 +3081,26 @@ function psGMarkersAuto() {
 
 function psNewGroupSchedule(prevGroups) {
     var proto = psState.proto || {};
+    var scheme = proto.scheme || '1';
     var base = psStartBaseTs(proto);
     var intervalMs = psIntervalMs(proto);
+    var holes = psSchemeHoles(scheme);
     var idx = (prevGroups || []).length;
-    if (proto.scheme === 'all18') {
-        return psAll18Schedule(idx, proto);
-    }
-    if (proto.scheme === '1-10') {
-        var hole = (idx % 2 === 0) ? 1 : 10;
-        var t = base + Math.floor(idx / 2) * intervalMs + (idx % 2) * Math.round(intervalMs / 2);
-        return { startHole: hole, startTime: t };
+    // Волновые (одновременные) схемы — строго по расписанию волн.
+    if (psSchemeSimultaneous(scheme)) return psWaveSchedule(idx, proto, holes);
+    // Поочерёдный старт с 1 и 10 — тоже по общей раскладке, чтобы лунки
+    // не «съезжали», если группу добавили в середину.
+    if (holes.length > 1) {
+        var half = Math.round(intervalMs / 2);
+        return {
+            startHole: holes[idx % holes.length],
+            startTime: base + Math.floor(idx / holes.length) * intervalMs + (idx % holes.length) * half
+        };
     }
     // если у последней группы время сдвинуто вручную — продолжаем от него
-    var last = prevGroups[prevGroups.length - 1];
-    if (last && last.startTime) return { startHole: parseInt(last.startHole || 1, 10) || 1, startTime: last.startTime + intervalMs };
-    return { startHole: 1, startTime: base + idx * intervalMs };
+    var last = prevGroups && prevGroups[prevGroups.length - 1];
+    if (last && last.startTime) return { startHole: parseInt(last.startHole || holes[0], 10) || holes[0], startTime: last.startTime + intervalMs };
+    return { startHole: holes[0], startTime: base + idx * intervalMs };
 }
 
 function psAddGroup() {

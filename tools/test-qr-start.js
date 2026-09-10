@@ -86,7 +86,12 @@ check(html.indexOf('scorer.html?round=r2&amp;player=u9') !== -1 || html.indexOf(
 // Один QR на игрока: ни QR, ни ссылок на marker.html не должно быть
 check(html.indexOf('marker.html') === -1, 'нет QR/ссылок на marker.html');
 check(html.indexOf('Вы маркируете') === -1, 'удалён блок «Вы маркируете…»');
-check(html.indexOf('ГРУППА №2') !== -1, 'группа 2 на карточке');
+check(html.indexOf('Группа 2') !== -1, 'группа 2 на карточке');
+check(html.indexOf('ГРУППА №') === -1, 'старая капслок-подпись «ГРУППА №» больше не используется');
+// Состав флайта виден целиком: карточка в печати не режется (CSS), а имена
+// партнёров выводятся списком в блоке members-note.
+const mn = (html.match(/<div class="members-note">([\s\S]*?)<\/div>/) || [])[1] || '';
+check(mn.indexOf('Состав флайта') !== -1 && mn.indexOf('Тестова Мария Ивановна') !== -1 && mn.indexOf('Смирнов Пётр') !== -1, 'состав флайта: все партнёры в карточке');
 check(html.indexOf('Смирнов Пётр') !== -1, 'имя гостя на карточке');
 // 4 игрока → ровно 4 QR-картинки (по одной на игрока)
 check((html.match(/qrserver\.com/g) || []).length === 4, 'по одному QR на игрока (4 шт.)');
@@ -119,9 +124,11 @@ sandbox.qrRender(shotgunDoc);
 const htmlS = els['qr-content'].innerHTML || '';
 const i1a = htmlS.indexOf('Группа 1А');
 const i1b = htmlS.indexOf('Группа 1Б');
-const i18 = htmlS.indexOf('Группа 18А');
-check(i1a !== -1 && i1b !== -1 && i18 !== -1, 'shotgun labels: 1А / 1Б / 18А');
-check(i1a < i1b && i1b < i18, 'shotgun order: 1А, 1Б, 18А (не 18А первой)');
+const i18 = htmlS.indexOf('Группа 18');
+check(i1a !== -1 && i1b !== -1 && i18 !== -1, 'shotgun labels: 1А / 1Б / 18');
+check(i1a < i1b && i1b < i18, 'shotgun order: 1А, 1Б, 18 (не 18А первой)');
+// Одиночная группа на лунке — без буквы: «Группа 18», а не «Группа 18А».
+check(htmlS.indexOf('Группа 18А') === -1, 'shotgun: одна группа на лунке — без буквы');
 check(htmlS.indexOf('ГРУППА №1') === -1, 'shotgun: нет порядкового ГРУППА №1');
 const tenDoc = {
     scheme: '1-10', name: '1-10',
@@ -136,6 +143,35 @@ sandbox.qrRender(tenDoc);
 const htmlT = els['qr-content'].innerHTML || '';
 check(htmlT.indexOf('Группа 1А') !== -1 && htmlT.indexOf('Группа 1Б') !== -1 && htmlT.indexOf('Группа 10А') !== -1 && htmlT.indexOf('Группа 10Б') !== -1, '1-10 labels: 1А,1Б,10А,10Б');
 check(htmlT.indexOf('Группа 1А') < htmlT.indexOf('Группа 1Б') && htmlT.indexOf('Группа 1Б') < htmlT.indexOf('Группа 10А'), '1-10 order: 1А, 1Б, 10А…');
+
+// Новый парный шотган (1-10-shot): пары стартуют одновременно, порядок — лунка, волна.
+const shotPairDoc = {
+    scheme: '1-10-shot', name: 'Шотган 1 и 10',
+    groups: {
+        g1: { groupNo: 1, roundId: 's1', startHole: 1, startTime: 1000, players: [{ id: 'q1', lastName: 'К', firstName: '1', middleName: '', gender: 'men', tee: 'wh', exactHcp: 5, fieldHcp: 5 }], markers: [] },
+        g2: { groupNo: 2, roundId: 's2', startHole: 10, startTime: 1000, players: [{ id: 'q2', lastName: 'К', firstName: '2', middleName: '', gender: 'men', tee: 'wh', exactHcp: 5, fieldHcp: 5 }], markers: [] },
+        g3: { groupNo: 3, roundId: 's3', startHole: 1, startTime: 2000, players: [{ id: 'q3', lastName: 'К', firstName: '3', middleName: '', gender: 'men', tee: 'wh', exactHcp: 5, fieldHcp: 5 }], markers: [] }
+    }
+};
+sandbox.qrRender(shotPairDoc);
+const htmlP = els['qr-content'].innerHTML || '';
+check(htmlP.indexOf('Группа 1А') !== -1 && htmlP.indexOf('Группа 1Б') !== -1, '1-10-shot: буквы на лунке 1 (две группы)');
+check(htmlP.indexOf('Группа 10') !== -1 && htmlP.indexOf('Группа 10А') === -1, '1-10-shot: одна группа с 10-й — без буквы');
+check(htmlP.indexOf('Группа 1А') < htmlP.indexOf('Группа 1Б') && htmlP.indexOf('Группа 1Б') < htmlP.indexOf('Группа 10'), '1-10-shot: порядок 1А, 1Б, 10');
+
+// Старт только с 10-й лунки: обычные порядковые номера групп, без букв.
+const onlyTenDoc = {
+    scheme: '10', name: 'Старт с 10-й',
+    groups: {
+        g1: { groupNo: 1, roundId: 'o1', startHole: 10, startTime: 1000, players: [{ id: 'z1', lastName: 'О', firstName: '1', middleName: '', gender: 'men', tee: 'wh', exactHcp: 5, fieldHcp: 5 }], markers: [] },
+        g2: { groupNo: 2, roundId: 'o2', startHole: 10, startTime: 2000, players: [{ id: 'z2', lastName: 'О', firstName: '2', middleName: '', gender: 'men', tee: 'wh', exactHcp: 5, fieldHcp: 5 }], markers: [] }
+    }
+};
+sandbox.qrRender(onlyTenDoc);
+const htmlO = els['qr-content'].innerHTML || '';
+check(htmlO.indexOf('Группа 1') !== -1 && htmlO.indexOf('Группа 2') !== -1, 'scheme 10: «Группа 1», «Группа 2»');
+check(htmlO.indexOf('10А') === -1, 'scheme 10: без буквенных волн');
+check(htmlO.indexOf('Лунка 10') !== -1, 'scheme 10: в шапке флайта указана лунка 10');
 
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nqr-start render tests passed ✔');
 process.exit(failures ? 1 : 0);

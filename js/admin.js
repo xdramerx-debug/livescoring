@@ -311,6 +311,7 @@ function openAdminPanel() {
     loadStablefordDisplaySettings();
     loadSocialCardDisplaySettings();
     loadGroupCardDisplaySettings();
+    loadTnCardDisplaySettings();
     loadPageDisplaySettings();
     loadPrivacySettings();
     renderAssistantSources();
@@ -355,6 +356,7 @@ function switchTab(t, b) {
         loadStablefordDisplaySettings();
         loadSocialCardDisplaySettings();
         loadGroupCardDisplaySettings();
+        loadTnCardDisplaySettings();
         loadPageDisplaySettings();
     }
     if (t === 'rusgolf') {
@@ -886,7 +888,8 @@ function loadTournaments() {
             if (regCount > 0) {
                 html += '<button class="btn btn-og btn-sm" onclick="exportTournamentRosterCSV(\'' + id + '\')"><i class="fas fa-file-csv"></i> CSV</button>';
             }
-            html += '<button class="btn btn-r btn-sm" onclick="deleteTn(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
+            // Удаление турнира всегда каскадное: вместе с раундами и протоколами.
+            html += '<button class="btn btn-r btn-sm" title="' + (tnEn ? 'Delete tournament with all its rounds and group protocols' : 'Удалить турнир вместе со всеми его раундами и протоколами групп') + '" onclick="deleteTn(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
             html += '</div></div>';
             html += '<div id="tn-div-' + id + '" class="tn-div-block' + (tnDivOpen[id] ? '' : ' hidden') + '">' + tnDivisionsEditorHtml(id, tnDivisions) + '</div>';
             html += '</div>';
@@ -935,25 +938,56 @@ function exportTournamentRosterCSV(tnId) {
     });
 }
 
+// Удаление турнира — полный каскад: карточка турнира, протоколы групп и
+// ВСЕ раунды этого турнира. Раунды убираются и из истории игроков (с
+// пересчётом roundsPlayed / bestGross / bestStableford), чтобы после
+// удаления турнира в «Истории» и статистике не оставалось его следов.
 function deleteTn(id) {
-    if (typeof db === 'undefined' || !db) {
-        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+    var en = currentLang === 'en';
+    if (typeof db === 'undefined' || !db || typeof pestovoDeleteTournamentCascade !== 'function') {
+        toast(en ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
         return;
     }
-    if (!confirm(currentLang === 'en' ? 'Delete tournament?' : 'Удалить турнир?')) return;
-    db.ref('tournaments/' + id).remove().then(function() {
-        toast(currentLang === 'en' ? 'Tournament deleted' : 'Турнир удалён', 'info');
+    // Сначала считаем, что именно уйдёт (раунды турнира + протоколы групп),
+    // и только потом просим подтверждение с цифрами: удаление турнира — это
+    // удаление и всех его раундов, включая записи в истории игроков.
+    Promise.all([
+        db.ref('tournaments/' + id).once('value').catch(function() { return null; }),
+        pestovoTournamentRoundIdsFull(id).catch(function() { return []; }),
+        db.ref('protocols').once('value').catch(function() { return null; })
+    ]).then(function(res) {
+        var tv = (res[0] && res[0].val()) || {};
+        var tnName = tv.name || (en ? 'this tournament' : 'этот турнир');
+        var roundIds = res[1] || [];
+        var protos = (res[2] && res[2].val()) || {};
+        var protoIds = Object.keys(protos).filter(function(pid) {
+            var p = protos[pid] || {};
+            return p.tournamentId === id || p.tnId === id;
+        });
+        var rc = roundIds.length, pc = protoIds.length;
+        var msg = en
+            ? 'Delete tournament "' + tnName + '" together with ' + rc + ' round(s) and ' + pc +
+              ' group protocol(s)? Rounds of this tournament will be removed from the players history and statistics too. This cannot be undone.'
+            : 'Удалить турнир «' + tnName + '» вместе со всеми его раундами (' + rc + ') и протоколами групп (' + pc + ')? ' +
+              'Раунды этого турнира исчезнут и из истории игроков, и из их статистики. Отменить это будет нельзя.';
+        if (!confirm(msg)) return null;
+        return pestovoDeleteTournamentCascade(id).then(function(sum) {
+            var parts = en
+                ? 'Tournament deleted · rounds: ' + (sum.rounds || 0) + ' · protocols: ' + (sum.protocols || 0)
+                : 'Турнир удалён · раундов удалено: ' + (sum.rounds || 0) + ' · протоколов: ' + (sum.protocols || 0);
+            if (sum.players) {
+                parts += en ? ' · history recalculated for ' + sum.players + ' player(s)'
+                            : ' · история ' + sum.players + ' игрока(ов) пересчитана';
+            }
+            toast(parts, 'info');
+            if (typeof loadTournaments === 'function') loadTournaments();
+            if (typeof loadAdmRounds === 'function') loadAdmRounds();
+            if (typeof myplayRenderToday === 'function') { try { myplayRenderToday(); } catch (e) {} }
+        });
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
 }
-
-// Запоминаем открытые панели дивизионов, чтобы realtime-перерисовка их не закрывала.
-var tnDivOpen = {};
-
-// ==========================================
-// СТАТУС ТУРНИРА: СТАРТ (в т.ч. досрочный) / ФИНИШ
-// ==========================================
 function tnStartTournament(id) {
     var en = currentLang === 'en';
     if (typeof db === 'undefined' || !db) {
@@ -977,7 +1011,16 @@ function tnFinishTournament(id) {
     }
     if (!confirm(en ? 'Finish this tournament? Results will be marked as final.' : 'Завершить турнир? Результаты будут помечены как итоговые.')) return;
     db.ref('tournaments/' + id).update({ status: 'completed', finishedAt: Date.now() }).then(function() {
-        toast(en ? '🏁 Tournament completed!' : '🏁 Турнир завершён!', 'success');
+        // Завершение ≠ удаление: счета, введённые на турнире, сохраняем.
+        // Открытые раунды этого турнира доводим до «завершён» и записываем
+        // в историю игроков — как после обычного финиша раунда.
+        return pestovoPreserveTournamentRounds(id).then(function(kept) {
+            var extra = kept
+                ? (en ? ' · ' + kept + ' round(s) saved to player history' : ' · раундов сохранено в историю игроков: ' + kept)
+                : '';
+            toast((en ? '🏁 Tournament completed!' : '🏁 Турнир завершён!') + extra, 'success');
+            if (typeof loadTournaments === 'function') loadTournaments();
+        });
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
@@ -2033,6 +2076,72 @@ function markAdmGroupCardVariantButtons() {
 }
 
 // ==========================================
+// СЧЁТНАЯ КАРТОЧКА ИГРОКА В ЛИДЕРБОРДЕ ТУРНИРА
+// ==========================================
+// Админ выбирает оформление один раз для всего клуба:
+// settings/tn_scorecard_variant → «Турниры → лидерборд → карточка игрока».
+function loadTnCardDisplaySettings() {
+    var applyValue = function(value) {
+        if (value !== null && value !== undefined && typeof applyTnCardVariant === 'function') {
+            applyTnCardVariant(value);
+        }
+        markAdmTnCardVariantButtons();
+    };
+
+    if (typeof db === 'undefined') {
+        applyValue(null);
+        return;
+    }
+
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-tn-card-variant', db.ref('settings/tn_scorecard_variant'), function(sn) {
+            applyValue(sn.val());
+        });
+    } else {
+        db.ref('settings/tn_scorecard_variant').once('value').then(function(sn) {
+            applyValue(sn.val());
+        }).catch(function() { applyValue(null); });
+    }
+}
+
+function saveTnCardVariant(v) {
+    if (v !== '1' && v !== '2' && v !== '3') return;
+    if (typeof vib === 'function') vib(30);
+
+    if (typeof applyTnCardVariant === 'function') applyTnCardVariant(v);
+    else markAdmTnCardVariantButtons();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Tournament scorecard style saved locally' : 'Вид счётной карточки сохранён локально', 'info');
+        return;
+    }
+
+    db.ref('settings/tn_scorecard_variant').set(v).then(function() {
+        toast(currentLang === 'en'
+            ? '✅ Tournament scorecard style saved for all users'
+            : '✅ Вид счётной карточки в лидерборде сохранён для всех пользователей', 'success');
+    }).catch(function(err) {
+        console.warn('Tournament scorecard variant save error:', err);
+        toast(currentLang === 'en'
+            ? 'Could not save the scorecard style to the cloud'
+            : '⚠️ Не удалось сохранить вид счётной карточки в облако', 'error');
+    });
+}
+
+function markAdmTnCardVariantButtons() {
+    var cur = (typeof getTnCardVariant === 'function') ? getTnCardVariant() : '1';
+    ['1', '2', '3'].forEach(function(v) {
+        var btn = document.getElementById('tn-card-opt-' + v);
+        if (!btn) return;
+        var active = (v === cur);
+        btn.classList.toggle('btn-g', active);
+        btn.classList.toggle('btn-og', !active);
+        btn.classList.toggle('tn-card-variant-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
+// ==========================================
 // ВАРИАНТЫ ОТОБРАЖЕНИЯ ОСНОВНЫХ СТРАНИЦ
 // ==========================================
 var ADMIN_PAGE_DISPLAY_CONFIG = {
@@ -3012,7 +3121,10 @@ function impCollectPlayers(callback) {
                     var existing = combined[pid];
                     if (!existing.firstName && p.firstName) existing.firstName = p.firstName;
                     if (!existing.lastName && p.lastName) existing.lastName = p.lastName;
-                    if (existing.handicap == null && p.exactHcp != null) existing.handicap = p.exactHcp;
+                    if (existing.handicap == null) {
+                        var rawImp = (p.exactHcpRaw != null) ? p.exactHcpRaw : p.exactHcp;
+                        if (rawImp != null) existing.handicap = rawImp;
+                    }
                     if (!existing.gender && p.gender) existing.gender = p.gender;
                     return;
                 }
@@ -3021,7 +3133,7 @@ function impCollectPlayers(callback) {
                     name: p.name,
                     firstName: p.firstName || parts[0] || '',
                     lastName: p.lastName || parts.slice(1).join(' ') || '',
-                    handicap: p.exactHcp != null ? p.exactHcp : (p.handicap != null ? p.handicap : null),
+                    handicap: (p.exactHcpRaw != null ? p.exactHcpRaw : (p.exactHcp != null ? p.exactHcp : (p.handicap != null ? p.handicap : null))),
                     gender: p.gender || 'men',
                     isGuest: !!p.isGuest || String(pid).indexOf('guest_') === 0,
                     role: 'player',

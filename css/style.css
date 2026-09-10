@@ -4756,6 +4756,7 @@ body.sun-mode .hole-difficulty-highlights > div { background: #ffffff !important
 .ps-rrow-src .fa { font-size:9px; }
 .ps-rrow-ctrls { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .ps-rrow-inp { width:64px !important; padding:4px 6px !important; font-size:12px !important; }
+.ps-rrow-inp.ps-rrow-cut { border-color:rgba(201,168,76,.65) !important; color:var(--gold); font-weight:700; }
 .ps-rrow-sel { width:auto !important; padding:4px 6px !important; font-size:12px !important; }
 .ps-rrow-chip { font-size:11px !important; white-space:nowrap; }
 .ps-rrow-actions { display:flex; align-items:center; gap:4px; margin-left:auto; flex-wrap:wrap; }

@@ -8215,14 +8215,27 @@ function tnNormalizeDivisions(tVal) {
 function tnDivisionGenderOk(divGender, playerGender) {
     var g = divGender || 'all';
     if (g === 'all') return true;
-    return (playerGender || 'men') === g;
+    // Страховка от неканоничных значений пола в старых данных
+    // ('f'/'female'/'жен' → 'women', прочее — 'men').
+    var p = playerGender;
+    if (p !== 'men' && p !== 'women') {
+        var s = String(p == null ? '' : p).toLowerCase();
+        if (s === 'w' || s === 'f' || s === 'women' || s === 'woman' || s === 'female' || s.indexOf('жен') === 0 || s.indexOf('дев') === 0) p = 'women';
+        else p = 'men';
+    }
+    return p === g;
 }
 
 function tnFindDivision(tVal, handicap, gender) {
     var divs = tnNormalizeDivisions(tVal);
     if (!divs.length) return null;
+    // Округляем до 0.1 — точный гандикап и границы групп хранятся с шагом
+    // 0.1, а сравнение «в лоб» плавает из-за двоичных ошибок (35.9 против
+    // границы 36, 36.04 и т.п.). Без этого игрок на границе мог выпасть
+    // в «Без группы».
     var h = (handicap === '' || handicap == null) ? null : parseFloat(handicap);
     if (h == null || isNaN(h)) return null;
+    h = Math.round(h * 10) / 10;
     gender = gender || 'men';
     for (var i = 0; i < divs.length; i++) {
         var d = divs[i];
@@ -8231,6 +8244,8 @@ function tnFindDivision(tVal, handicap, gender) {
         var to = (d.hcpTo === '' || d.hcpTo == null) ? 999 : parseFloat(d.hcpTo);
         if (isNaN(from)) from = -999;
         if (isNaN(to)) to = 999;
+        from = Math.round(from * 10) / 10;
+        to = Math.round(to * 10) / 10;
         if (h + 1e-9 >= from && h - 1e-9 <= to) return d;
     }
     return null;

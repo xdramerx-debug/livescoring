@@ -4,8 +4,28 @@
 const fs = require('fs');
 const vm = require('vm');
 const code = fs.readFileSync(__dirname + '/../js/start-admin.js', 'utf8');
-const sandbox = { console, Date, Math, JSON, parseInt, parseFloat, isFinite, isNaN, String, Number, Array, Object, setTimeout, clearTimeout, URLSearchParams: {} };
+// Минимальный DOM-станд: utils.js (группы по гандикапу + обрезка) грузится
+// рядом со start-admin.js, чтобы тесты проверяли реальную tnFindDivision/
+// tnApplyHcpCut, а не fallback-копии.
+function fakeEl() {
+    return { style: {}, value: '', textContent: '', innerHTML: '', checked: false, hidden: false, className: '',
+        classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } },
+        getAttribute: () => null, setAttribute(){}, removeAttribute(){}, appendChild(){}, removeChild(){}, remove(){},
+        addEventListener(){}, removeEventListener(){}, focus(){}, blur(){}, click(){},
+        querySelector: () => null, querySelectorAll: () => [], getBoundingClientRect: () => ({ top:0, left:0, width:0, height:0 }),
+        scrollTop: 0, scrollIntoView(){} };
+}
+const sandbox = { console, Date, Math, JSON, parseInt, parseFloat, isFinite, isNaN, String, Number, Array, Object, setTimeout, clearTimeout, URLSearchParams: {},
+    // getElementById → null: DOM-элементов «нет» (как на странице без вкладки),
+    // psRender() сам выходит на null, а psEl() зашит в try/catch.
+    document: { getElementById: () => null, createElement: () => fakeEl(), querySelector: () => null, querySelectorAll: () => [],
+        addEventListener: () => {}, documentElement: { style: {}, setAttribute(){} },
+        body: { style: {}, classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } } } },
+    localStorage: { getItem: () => null, setItem(){}, removeItem(){} },
+    navigator: { language: 'ru' } };
+sandbox.window = sandbox;
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/utils.js', 'utf8'), sandbox);
 vm.runInContext(code, sandbox);
 
 let failures = 0;
@@ -291,10 +311,12 @@ sandbox.psState.proto.hcpCutEnabled = true;
 sandbox.psState.proto.hcpCutPercent = 90;
 eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 36, 'men')), 28, 'cut: старый протокол без флага — макс активен');
 sandbox.psState.proto.hcpCutMaxEnabled = true;
-// делегирование в tnApplyHcpCut из utils.js, если он загружен
+// делегирование в tnApplyHcpCut из utils.js (utils.js загружен в песочнице —
+// подменяем и восстанавливаем реальный)
+var _realTnApplyHcpCut = sandbox.tnApplyHcpCut;
 sandbox.tnApplyHcpCut = function(raw, gender, cut) { return { effective: raw + 1000 }; };
 eq(sandbox.psEffectiveExact(mkPlayer('A', 'И', 10, 'men')), 1010, 'cut: используется tnApplyHcpCut из utils.js');
-delete sandbox.tnApplyHcpCut;
+sandbox.tnApplyHcpCut = _realTnApplyHcpCut;
 
 // ── psCutHintHtml ──
 sandbox.psState.proto.hcpCutEnabled = true;
@@ -312,28 +334,35 @@ sandbox.psState.proto.hcpMaxMen = '';
 eq(sandbox.psCutHintHtml(mkPlayer('A', 'И', 36, 'men')), '', 'cut hint: пусто без обрезки');
 eq(sandbox.psCutHintHtml(mkPlayer('A', 'И', null)), '', 'cut hint: пусто без hcp');
 
-// ── psCalcFieldHcp считает от ОБРЕЗАННОГО (запасная ветка без utils.js — Math.round) ──
+// ── psCalcFieldHcp считает от ОБРЕЗАННОГО (реальная таблица: 28.0 на белых = 33) ──
 sandbox.psState.proto.hcpCutEnabled = true;
 sandbox.psState.proto.hcpCutPercent = 90;
 sandbox.psState.proto.hcpCutMaxEnabled = true;
 sandbox.psState.proto.hcpMaxMen = 28;
-eq(sandbox.psCalcFieldHcp(mkPlayer('A', 'И', 36, 'men')), 28, 'field hcp: round(28.0)=28 от обрезанного');
+eq(sandbox.psCalcFieldHcp(mkPlayer('A', 'И', 36, 'men')), 33, 'field hcp: от обрезанного 36→28.0 (белые) = 33');
 eq(sandbox.psCalcFieldHcp(null), 0, 'field hcp: null → 0');
 
 // ── psDivisionChipHtml ──
 eq(typeof sandbox.psDivisionChipHtml, 'function', 'division chip: функция определена');
+// utils.js загружен — «нет tnFindDivision» проверяем временным удалением
+var _realTnFindDivision = sandbox.tnFindDivision;
+delete sandbox.tnFindDivision;
 eq(sandbox.psDivisionChipHtml(mkPlayer('A', 'И', 10, 'men')), '', 'division chip: пусто без tnFindDivision');
+sandbox.tnFindDivision = _realTnFindDivision;
 sandbox.psState = {
     proto: { hcpCutEnabled: false, hcpCutPercent: 90, hcpMaxMen: '', hcpMaxWomen: '' },
-    tournaments: [{ id: 't1', divisions: [{ id: 'd1', name: 'Мужчины 0–12' }] }],
+    tournaments: [{ id: 't1', divisions: [{ id: 'd1', name: 'Мужчины 0–12', gender: 'men', hcpFrom: 0, hcpTo: 12 }] }],
     selId: 't1'
 };
+// Подмена на тестовый дублёр (диапазон 0–12) и последующее восстановление:
+// реальный tnFindDivision из utils.js нужен тестам ниже.
 sandbox.tnFindDivision = function(tn, hcp, gender) {
     return (tn && tn.id === 't1' && gender === 'men' && hcp <= 12) ? tn.divisions[0] : null;
 };
-eq(sandbox.psDivisionChipHtml(mkPlayer('A', 'И', 10, 'men')), '<span class="tn-div-chip">Мужчины 0–12</span>', 'division chip: чип группы');
+eq(sandbox.psDivisionChipHtml(mkPlayer('A', 'И', 10, 'men')), '<span class="tn-div-chip">Мужчины 0–12 · 0.0–12.0</span>', 'division chip: чип группы');
 eq(sandbox.psDivisionChipHtml(mkPlayer('B', 'И', 20, 'men')), '', 'division chip: пусто вне диапазона');
 eq(sandbox.psDivisionChipHtml(mkPlayer('C', 'И', null, 'men')), '', 'division chip: пусто без hcp');
+sandbox.tnFindDivision = _realTnFindDivision;
 
 // ── Рендер ростера и групп не падает (регрессия: бывшие undefined-функции) ──
 sandbox.fmtFieldHcp = function(v) { return String(v); };
@@ -469,6 +498,101 @@ const startSrc = fs.readFileSync(__dirname + '/../js/start-admin.js', 'utf8');
 eq(startSrc.indexOf('tournamentName: proto.tournamentName || \'\'') !== -1, true, 'save: roundData содержит tournamentName');
 eq(startSrc.indexOf("sets['rounds/' + rid + '/tournamentName']") !== -1, true, 'edit save: tournamentName обновляется в раунде');
 eq(typeof sandbox.psAttachPlayerAutofill, 'function', 'autofill: psAttachPlayerAutofill определена');
+
+// ── v1.48.0: разбор ФИО «Фамилия Имя Отчество» без типовых окончаний ──
+eq(sandbox.psSplitFio('Парасочка Максим Геннадиевич'), { lastName: 'Парасочка', firstName: 'Максим', middleName: 'Геннадиевич' }, 'split: Фамилия(-ка) Имя Отчество');
+eq(sandbox.psSplitFio('Парасочка Максим'), { lastName: 'Парасочка', firstName: 'Максим', middleName: '' }, 'split: два слова, фамилия на -ка');
+eq(sandbox.psSplitFio('Кузнец Иван Петрович'), { lastName: 'Кузнец', firstName: 'Иван', middleName: 'Петрович' }, 'split: Фамилия(б/оконч.) Имя Отчество');
+eq(sandbox.psSplitFio('Иван Петрович Ковалевич'), { lastName: 'Ковалевич', firstName: 'Иван', middleName: 'Петрович' }, 'split: Имя Отчество Фамилия(-ич)');
+
+// ── v1.48.0: пол по имени (имена, которые раньше ломились в «женские» группы) ──
+eq(sandbox.psGuessGender('Парасочка', 'Максим', 'Геннадиевич'), 'men', 'gender: Парасочка Максим Геннадиевич → муж');
+eq(sandbox.psGuessGender('Казначеев', 'Александр', ''), 'men', 'gender: Казначеев Александр → муж');
+eq(sandbox.psGuessGender('Савинов', 'Евгений', 'Олегович'), 'men', 'gender: Савинов Евгений Олегович → муж');
+eq(sandbox.psGuessGender('Дивина', 'Маргарита', 'Юрьевна'), 'women', 'gender: Дивина Маргарита Юрьевна → жен');
+eq(sandbox.psGuessGender('Бушнева', 'Ксения', 'Сергеевна'), 'women', 'gender: Бушнева Ксения Сергеевна → жен');
+
+// ── v1.48.0: пустая/нераспознанная ячейка «Пол» → null (определяем по имени) ──
+eq(sandbox.psGenderFromCell(''), null, 'пол: пустая ячейка → null');
+eq(sandbox.psGenderFromCell('—'), null, 'пол: «—» → null');
+eq(sandbox.psGenderFromCell('Женщина'), 'women', 'пол: «Женщина» → women');
+eq(sandbox.psGenderFromCell('м'), 'men', 'пол: «м» → men');
+eq(sandbox.psNormalizeGender('f'), 'women', 'норм.: «f» → women');
+eq(sandbox.psNormalizeGender('юноша'), 'men', 'норм.: «юноша» → men');
+eq(sandbox.psNormalizeGender('Женщина'), 'women', 'норм.: «Женщина» → women');
+eq(sandbox.psNormalizeGender(undefined), null, 'норм.: пусто → null');
+
+// ── v1.48.0: Excel-импорт — пустые «Пол»/«ТИ», пол и ТИ по имени ──
+const impRows = [
+    { 'Фамилия': 'Дивина', 'Имя': 'Маргарита', 'Отчество': 'Юрьевна', 'Точный гандикап': 36.4, 'Пол': '', 'ТИ': '' },
+    { 'Фамилия': 'Бушнева', 'Имя': 'Ксения', 'Отчество': 'Сергеевна', 'Точный гандикап': 51, 'Пол': '', 'ТИ': '' },
+    { 'Фамилия': 'Казначеев', 'Имя': 'Александр', 'Отчество': '', 'Точный гандикап': 18.2, 'Пол': '', 'ТИ': '' },
+    { 'Фамилия': 'Парасочка', 'Имя': 'Максим', 'Отчество': 'Геннадиевич', 'Точный гандикап': 24.6, 'Пол': '', 'ТИ': '' }
+];
+const imp = sandbox.psParseExcelRows(impRows);
+eq(imp.valid.length, 4, 'excel: все 4 строки валидны');
+function impRow(last) { return imp.valid.filter(function(r) { return r.lastName === last; })[0]; }
+eq(impRow('Дивина').gender, 'women', 'excel: Дивина → women (пустой «Пол»)');
+eq(impRow('Дивина').tee, 'rd', 'excel: Дивина → красные ТИ');
+eq(impRow('Бушнева').gender, 'women', 'excel: Бушнева → women');
+eq(impRow('Казначеев').gender, 'men', 'excel: Казначеев → men');
+eq(impRow('Казначеев').tee, 'wh', 'excel: Казначеев → белые (ТИ протокола)');
+eq(impRow('Парасочка').gender, 'men', 'excel: Парасочка → men (не «женщина» из-за разбора)');
+eq(impRow('Парасочка').tee !== 'rd', true, 'excel: Парасочка не на красных ТИ');
+
+// ── v1.48.0: группы с обрезкой — девушки в группе по ОБРЕЗАННОМУ HCP ──
+sandbox.psState = {
+    tournaments: [{
+        id: 't1', name: 'Кубок', sel: true,
+        divisions: {
+            m1: { id: 'm1', name: 'Мужчины 0–12', gender: 'men', hcpFrom: 0, hcpTo: 12, tee: 'bl' },
+            m2: { id: 'm2', name: 'Мужчины 12.1–36', gender: 'men', hcpFrom: 12.1, hcpTo: 36, tee: 'wh' },
+            w1: { id: 'w1', name: 'Девушки 0–12', gender: 'women', hcpFrom: 0, hcpTo: 12, tee: 'rd' },
+            w2: { id: 'w2', name: '12.1-36', gender: 'women', hcpFrom: 12.1, hcpTo: 36, tee: 'rd' }
+        }
+    }],
+    selId: 't1', editingId: null, groups: [], rosterCollapsed: {},
+    proto: { players: [
+        { id: 'p1', lastName: 'Дивина', firstName: 'Маргарита', middleName: 'Юрьевна', gender: 'women', tee: 'rd', hcp: 36.4, source: 'excel' },
+        { id: 'p2', lastName: 'Бушнева', firstName: 'Ксения', middleName: 'Сергеевна', gender: 'women', tee: 'rd', hcp: 51, source: 'excel' },
+        { id: 'p3', lastName: 'Иванова', firstName: 'Анна', middleName: 'Петровна', gender: 'women', tee: 'rd', hcp: 35.9, source: 'excel' },
+        { id: 'p4', lastName: 'Казначеев', firstName: 'Александр', middleName: '', gender: 'men', tee: 'wh', hcp: 18.2, source: 'excel' }
+    ], hcpCutEnabled: false, hcpCutPercent: 90, hcpCutMaxEnabled: true, hcpMaxMen: '', hcpMaxWomen: 36, tee: 'wh' }
+};
+// psGetSelTournament берёт по psState.selId
+eq(sandbox.psEffectiveExactFor(51, 'women'), 36, 'обрезка: 51 → 36 (макс. девушки)');
+eq(sandbox.psEffectiveExactFor(35.9, 'women'), 35.9, 'обрезка: 35.9 не трогается');
+eq(sandbox.tnFindDivision(sandbox.psState.tournaments[0], 36, 'women').name, '12.1-36', 'группа: 36 → 12.1-36');
+eq(sandbox.tnFindDivision(sandbox.psState.tournaments[0], 35.9, 'women').name, '12.1-36', 'группа: 35.9 → 12.1-36');
+eq(sandbox.tnFindDivision(sandbox.psState.tournaments[0], 36.04, 'women').name, '12.1-36', 'группа: 36.04 (округление) → 12.1-36');
+eq(sandbox.tnFindDivision(sandbox.psState.tournaments[0], 51, 'women'), null, 'группа: 51 без обрезки — вне групп');
+var rgCut = sandbox.psRosterGroups(sandbox.psState.proto.players);
+eq(rgCut.useDivs, true, 'roster: дивизионы используются');
+function rgBucketOf(last) {
+    for (var i = 0; i < rgCut.buckets.length; i++) {
+        var items = rgCut.buckets[i].items;
+        for (var j = 0; j < items.length; j++) if (items[j].p.lastName === last) return rgCut.buckets[i];
+    }
+    return null;
+}
+eq(rgBucketOf('Дивина') && rgBucketOf('Дивина').key, 'div:w2', 'roster: Дивина (36.4→36) в 12.1-36');
+eq(rgBucketOf('Бушнева') && rgBucketOf('Бушнева').key, 'div:w2', 'roster: Бушнева (51→36) в 12.1-36');
+eq(rgBucketOf('Иванова') && rgBucketOf('Иванова').key, 'div:w2', 'roster: Иванова (35.9) в 12.1-36');
+eq(rgBucketOf('Казначеев') && rgBucketOf('Казначеев').key, 'div:m2', 'roster: Казначеев (18.2) в Мужчины 12.1–36');
+eq(rgCut.buckets.filter(function(b) { return b.key === 'none'; }).length, 0, 'roster: никто не в «Без группы»');
+
+// ── v1.48.0: «Точный HCP» показывает обрезанное значение ──
+var rowCut = sandbox.psRosterRowHtml(sandbox.psState.proto.players[1], 1); // Бушнева 51 → 36
+eq(/value="36\.0"/.test(rowCut), true, 'строка: поле «Точный HCP» Бушневой = 36.0 (обрезка от 51)');
+eq(rowCut.indexOf('fa-scissors') !== -1, true, 'строка: метка обрезки у поля HCP');
+var rowNoCut = sandbox.psRosterRowHtml(sandbox.psState.proto.players[2], 2); // Иванова 35.9
+eq(/value="35\.9"/.test(rowNoCut), true, 'строка: поле HCP Ивановой (без обрезки) = 35.9');
+
+// ── v1.48.0: неканоничный пол в данных не ломает подбор группы ──
+eq(sandbox.tnDivisionGenderOk('women', 'f'), true, 'div gender: «f» = women');
+eq(sandbox.tnDivisionGenderOk('women', 'жен'), true, 'div gender: «жен» = women');
+eq(sandbox.tnDivisionGenderOk('men', 'male'), true, 'div gender: «male» = men');
+eq(sandbox.tnDivisionGenderOk('women', 'men'), false, 'div gender: men ≠ women');
 
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nAll tests passed ✔');
 process.exit(failures ? 1 : 0);

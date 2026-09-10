@@ -125,7 +125,50 @@ function psSamePerson(a, b) {
 function psLooksLikeSurname(w) {
     w = psNorm(w);
     if (!w) return false;
-    return /(ов|ев|ёв|ин|ын|ский|цкий|ской|цкой|ко|ук|юк|ич|енко|ова|ева|ина)$/.test(w);
+    // -ка/-ха — характерные окончания русских фамилий (Парасочка, Ватруха);
+    // мужских имён на -ка/-ха не существует, поэтому признак безопасен.
+    return /(ов|ев|ёв|ин|ын|ский|цкий|ской|цкой|ко|ук|юк|ич|енко|ова|ева|ина|ка|ха)$/.test(w);
+}
+
+// ── Списки имён для разбора ФИО и определения пола ──
+// Используются в двух местах: (1) чтобы в паре «слово + слово» понять,
+// где фамилия, а где имя («Парасочка Максим» → фамилия + имя), и
+// (2) чтобы определить пол, когда и фамилия и отчество не дали ответа.
+var PS_MALE_FIRST_NAMES = [
+    'август', 'авраам', 'амброзий', 'александр', 'алексей', 'анатолий', 'андрей', 'антон', 'аркадий',
+    'арсений', 'артём', 'артем', 'артур', 'асхат', 'богдан', 'бронислав', 'вадим', 'валентин', 'валерий',
+    'владимир', 'владислав', 'владлен', 'влас', 'власий', 'виталий', 'виктор', 'геннадий', 'гавриил',
+    'георгий', 'григорий', 'густав', 'давид', 'даниил', 'данила', 'демьян', 'денис', 'дмитрий', 'егор',
+    'евгений', 'елисей', 'игнат', 'игнатий', 'илия', 'илья', 'иннокентий', 'иосиф', 'иван', 'игорь',
+    'исаак', 'карл', 'костя', 'константин', 'кирилл', 'климент', 'корней', 'косьма', 'кузьма', 'лаврентий',
+    'лазарь', 'леонид', 'леон', 'лука', 'магнус', 'мак', 'максим', 'макс', 'мартин', 'матвей',
+    'михаил', 'миха', 'мирон', 'мисаил', 'нестор', 'никита', 'николай', 'олег', 'осип', 'отто',
+    'павел', 'платон', 'пётр', 'петр', 'радислав', 'рафаил', 'роман', 'роберто', 'ростислав', 'себастьян',
+    'семен', 'семён', 'серафим', 'сергей', 'сидор', 'славен', 'станислав', 'стефан', 'степан', 'тихон',
+    'тимур', 'тимофей', 'томас', 'трофим', 'фаддей', 'фёдор', 'федор', 'феликс', 'филипп', 'флориан',
+    'франц', 'флавиан', 'харлампий', 'хенрик', 'цезарь', 'юлиан', 'юрий', 'юхан', 'яков', 'ярослав',
+    'захар', 'nikita', 'artem', 'dmitry', 'alexander', 'michael', 'david', 'john', 'peter', 'andrew',
+    'ivan', 'vladimir', 'konstantin', 'sergey', 'maxim'
+];
+var PS_FEMALE_FIRST_NAMES = [
+    'анна', 'мария', 'елена', 'ольга', 'наталья', 'наталия', 'ирина', 'светлана', 'екатерина', 'катерина',
+    'татьяна', 'юлия', 'юля', 'александра', 'дарья', 'дарина', 'виктория', 'полина', 'ксения', 'евгения',
+    'людмила', 'галина', 'валерия', 'вероника', 'карина', 'кристина', 'марина', 'надежда', 'нина', 'раиса',
+    'софия', 'софья', 'алина', 'алиса', 'милана', 'таисия', 'варвара', 'маргарита', 'лариса', 'любовь',
+    'вера', 'зоя', 'инна', 'елизавета', 'анастасия', 'оксана', 'жанна', 'регина', 'элина', 'камила',
+    'лилия', 'эмма', 'валентина', 'алёна', 'алена', 'арина', 'диана', 'елина', 'изабелла', 'изольда',
+    'ивоника', 'калина', 'кира', 'лея', 'лиана', 'милена', 'марта', 'никола', 'олга', 'рада',
+    'риза', 'сара', 'стелла', 'хана', 'эва', 'эвелин', 'даша', 'маша', 'оля', 'наташа', 'иринка',
+    'albina', 'sofia', 'sophia', 'maria', 'anna', 'olga', 'elena', 'irina', 'julia', 'victoria',
+    'emma', 'sarah', 'kate', 'nina', 'olivia', 'amelia', 'ava', 'mia'
+];
+// Слово похоже на имя (по словарю)? Без отчества/фамилии это главный
+// признак, отличающий имя от фамилии в коротких записях «Слово1 Слово2».
+function psLooksLikeFirstName(w) {
+    var s = psNorm(w).replace(/[.]/g, '');
+    if (!s) return false;
+    if (s.length < 2) return false;
+    return PS_MALE_FIRST_NAMES.indexOf(s) !== -1 || PS_FEMALE_FIRST_NAMES.indexOf(s) !== -1;
 }
 
 // «Мусорный» токен внутри ФИО: возраст («Кирилл 17 Дунаев»),
@@ -158,7 +201,17 @@ function psSplitFio(raw) {
     if (!parts.length || !parts[0]) return res;
     if (parts.length === 1) { res.firstName = parts[0]; return res; }
     if (parts.length === 2) {
-        if (psLooksLikeSurname(parts[0])) { res.lastName = parts[0]; res.firstName = parts[1]; }
+        // Два слова — разбираем по признакам обоих: окончание-фамилия и
+        // словарь имён. «Парасочка Максим» (фамилия на -ка) и «Иван Кузнец»
+        // (фамилия без типовых окончаний) раньше путались местами — из-за
+        // этого пол и ТИ назначались неверно.
+        var s0 = psLooksLikeSurname(parts[0]), s1 = psLooksLikeSurname(parts[1]);
+        var f0 = psLooksLikeFirstName(parts[0]), f1 = psLooksLikeFirstName(parts[1]);
+        if (s0 && !f0) { res.lastName = parts[0]; res.firstName = parts[1]; }
+        else if (f1 && !s1) { res.lastName = parts[0]; res.firstName = parts[1]; }
+        else if (s1 && !f1) { res.firstName = parts[0]; res.lastName = parts[1]; }
+        else if (f0 && !s0) { res.firstName = parts[0]; res.lastName = parts[1]; }
+        else if (s0) { res.lastName = parts[0]; res.firstName = parts[1]; }
         else { res.firstName = parts[0]; res.lastName = parts[1]; }
         return res;
     }
@@ -209,6 +262,20 @@ function psSplitFio(raw) {
         res.firstName = parts[0];
         res.middleName = parts[1];
         res.lastName = parts[2];
+        return res;
+    }
+    // «Парасочка Максим Геннадиевич» — порядок «Фамилия Имя Отчество», но
+    // фамилия без типовых окончаний (-ка/-ха и т.п.), поэтому п.1 выше не сработал.
+    // Отчество на последнем месте — надёжный ориентир: определяем, какое из
+    // первых двух слов имя (по словарю), а какое фамилия.
+    if (parts.length === 3 && isPatronymic(parts[2]) && !isPatronymic(parts[0]) && !isPatronymic(parts[1])) {
+        var fA = psLooksLikeFirstName(parts[0]), fB = psLooksLikeFirstName(parts[1]);
+        var sA = psLooksLikeSurname(parts[0]), sB = psLooksLikeSurname(parts[1]);
+        if (fB && !fA) { res.lastName = parts[0]; res.firstName = parts[1]; }
+        else if (fA && !fB) { res.firstName = parts[0]; res.middleName = parts[2]; res.lastName = parts[1]; }
+        else if (sB && !sA) { res.firstName = parts[0]; res.middleName = parts[2]; res.lastName = parts[1]; }
+        else { res.lastName = parts[0]; res.firstName = parts[1]; }
+        res.middleName = parts[2];
         return res;
     }
     res.firstName = parts[0];
@@ -1085,9 +1152,21 @@ function psGroupFioAuto(gi) {
 }
 
 function psRosterRowHtml(p, idx) {
-    var hcpVal = p.hcp === null || p.hcp === undefined ? '' : psHcpFmt(p.hcp).replace(/\+/g, '+');
-    var hcpInput = '<input type="text" class="form-input ps-rrow-inp" value="' + hcpVal.replace(/"/g, '&quot;') + '" ' +
-        'onchange="psRowHcp(' + idx + ', this.value)" placeholder="13.0" title="' + psL('Точный HCP', 'Exact HCP') + '">';
+    // Если у турнира включена обрезка и она сработала — в поле «Точный HCP»
+    // показываем ОБРЕЗАННЫЙ гандикап: именно от него считаются полевой HCP
+    // и группа. Подсказка-«ножницы» у имени объясняет, откуда взялось число.
+    var rawHcp = (p.hcp === null || p.hcp === undefined || p.hcp === '') ? null : parseFloat(p.hcp);
+    if (rawHcp !== null && isNaN(rawHcp)) rawHcp = null;
+    var effHcp = (rawHcp === null) ? null : psEffectiveExact(p);
+    var cutApplied = (rawHcp !== null && effHcp !== null && Math.abs(effHcp - rawHcp) >= 0.049);
+    var hcpVal = (rawHcp === null) ? '' : psHcpFmt(cutApplied ? effHcp : rawHcp).replace(/\+/g, '+');
+    var hcpTitle = cutApplied
+        ? psL('Точный HCP после обрезки: ' + psHcpFmt(rawHcp) + ' → ' + psHcpFmt(effHcp) + '. Полевой HCP и группа считаются от ' + psHcpFmt(effHcp) + '.',
+              'Exact HCP after cut: ' + psHcpFmt(rawHcp) + ' → ' + psHcpFmt(effHcp) + '. Course HCP and group are calculated from ' + psHcpFmt(effHcp) + '.')
+        : psL('Точный HCP', 'Exact HCP');
+    var hcpInput = '<input type="text" class="form-input ps-rrow-inp' + (cutApplied ? ' ps-rrow-cut' : '') + '" value="' + hcpVal.replace(/"/g, '&quot;') + '" ' +
+        'onchange="psRowHcp(' + idx + ', this.value)" placeholder="13.0" title="' + hcpTitle.replace(/"/g, '&quot;') + '">' +
+        (cutApplied ? ' <i class="fas fa-scissors" style="color:var(--gold);font-size:11px;" title="' + psL('Гандикап обрезан настройками турнира', 'Handicap cut by tournament settings').replace(/"/g, '&quot;') + '"></i>' : '');
     var fieldHcp = psCalcFieldHcp(p);
     var fieldChip = '<span class="hcp-chip hcp-band-' + (fieldHcp <= 0 ? 'plus' : fieldHcp <= 10 ? '1-10' : fieldHcp <= 20 ? '11-20' : fieldHcp <= 36 ? '21-36' : '37') + ' ps-rrow-chip" title="' + psL('Полевой HCP (авто)', 'Course HCP (auto)') + '">' +
         psL('Полевой', 'Course') + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
@@ -1472,7 +1551,9 @@ function psLoadRegistered() {
                 // Пол и ТИ определяем ПОСЛЕ разбора имени: женские имена
                 // автоматически получают пол «women» и женские ТИ
                 // (красные/белые — по группе турнира или по умолчанию).
-                p.gender = r.gender || u.gender || psGuessGender(p.lastName, p.firstName, p.middleName);
+                // Нормализуем пол из записи/профиля ('f'/'жен'/'Женщина'…) —
+                // иначе неканоничное значение не совпало бы ни с одной группой.
+                p.gender = psNormalizeGender(r.gender) || psNormalizeGender(u.gender) || psGuessGender(p.lastName, p.firstName, p.middleName);
                 p.tee = r.tee || u.defaultTee || psDefaultTeeFor(p.gender, p.hcp);
                 if (!p.lastName && !p.firstName) return;
                 items.push({ uid: uid, r: r, p: p });
@@ -1593,12 +1674,10 @@ function psGenderFromName(firstName, lastName, middleName) {
     if (last.length > 3 && /(ов|ев|ин|ын|ский|цкий|ой)$/.test(last)) return 'men';
     var s = psNorm(firstName).replace(/[.]/g, '');
     if (!s) return 'men';
-    // Мужские имена на -а/-я — исключения из правила окончаний.
-    // («Саша»/«Женя» тут нет специально: они бывают и женскими.)
-    var maleA = ['никита', 'илья', 'фома', 'кузьма', 'савва', 'лука', 'данила', 'захара', 'миша', 'паша', 'дима', 'коля'];
-    if (maleA.indexOf(s) !== -1) return 'men';
-    var female = ['анна', 'мария', 'елена', 'ольга', 'наталья', 'наталия', 'ирина', 'светлана', 'екатерина', 'татьяна', 'юлия', 'юлия', 'александра', 'дарья', 'дарина', 'виктория', 'полина', 'ксения', 'евгения', 'людмила', 'галина', 'валерия', 'вероника', 'карина', 'кристина', 'марина', 'надежда', 'нина', 'раиса', 'софия', 'софья', 'алина', 'алиса', 'милана', 'таисия', 'варвара', 'маргарита', 'лариса', 'любовь', 'вера', 'зоя', 'инна', 'елизавета', 'анастасия', 'оксана', 'жанна', 'регина', 'элина', 'камила', 'лилия', 'эмма', 'валентина', 'albina', 'sofia', 'sophia', 'maria', 'anna', 'olga', 'elena', 'irina', 'julia', 'victoria', 'emma', 'sarah', 'kate', 'elena', 'nina'];
-    if (female.indexOf(s) !== -1) return 'women';
+    // Словари имён — надёжнее правила окончаний: «Саша»/«Женя» на -а/-я
+    // бывают и мужскими, а вот «максим»/«маргарита» — однозначны.
+    if (PS_MALE_FIRST_NAMES.indexOf(s) !== -1) return 'men';
+    if (PS_FEMALE_FIRST_NAMES.indexOf(s) !== -1) return 'women';
     // Общее правило: русские женские имена оканчиваются на -а/-я.
     if (/(а|я)$/.test(s)) return 'women';
     return 'men';
@@ -1611,11 +1690,23 @@ function psGuessGender(lastName, firstName, middleName) {
     } catch (e) { return 'men'; }
 }
 
+// Пол из ячейки таблицы. ВАЖНО: пустая или нераспознанная ячейка даёт null —
+// тогда пол определяем по имени. Раньше «пустая ячейка → мужчина» превращала
+// всех девушек в таблице (без заполненной колонки «Пол») в мужчин: они
+// оказывались в мужских группах/ТИ и выпадали в «Без группы».
 function psGenderFromCell(v) {
     var s = psNorm(v).replace(/[.]/g, '');
-    if (!s) return 'men';
-    if (['ж', 'жен', 'женский', 'женщина', 'девушка', 'девочка', 'f', 'female', 'w', 'women', 'woman'].indexOf(s) !== -1 || s.indexOf('жен') === 0 || s.indexOf('дев') === 0) return 'women';
-    return 'men';
+    if (!s) return null;
+    if (['ж', 'жен', 'женский', 'женщина', 'девушка', 'девочка', 'f', 'female', 'w', 'women', 'woman', 'fe', 'fem'].indexOf(s) !== -1 || s.indexOf('жен') === 0 || s.indexOf('дев') === 0) return 'women';
+    if (['м', 'муж', 'мужской', 'мужчина', 'юноша', 'мальчик', 'm', 'male', 'men', 'man'].indexOf(s) !== -1) return 'men';
+    return null;
+}
+
+// Нормализация любого «пола» из данных (регистрация, профиль, таблица):
+// 'f'/'female'/'жен'/'Женщина'… → 'women', 'm'/'male'/'муж'… → 'men',
+// прочее (включая числовые коды 0/1) → null — определяем по имени.
+function psNormalizeGender(v) {
+    return psGenderFromCell(v) || null;
 }
 
 
@@ -1727,9 +1818,12 @@ function psParseExcelRows(json) {
             return;
         }
         // Пол и ТИ — ПОСЛЕ полного разбора имени: женские имена/фамилии
-        // автоматически получают пол «women» и женские ТИ.
-        var gender = keys.gender ? psGenderFromCell(r[keys.gender]) : psGuessGender(lastName, firstName, middleName);
-        var tee = keys.tee ? psTeeFromCell(r[keys.tee]) : psDefaultTeeFor(gender, hcp);
+        // автоматически получают пол «women» и женские ТИ. Пустые/нераспознанные
+        // ячейки «Пол» не переопределяют имя — пол угадываем по ФИО.
+        var gender = keys.gender ? psGenderFromCell(r[keys.gender]) : null;
+        if (gender !== 'men' && gender !== 'women') gender = psGuessGender(lastName, firstName, middleName);
+        var tee = keys.tee ? psTeeFromCell(r[keys.tee]) : null;
+        if (!tee) tee = psDefaultTeeFor(gender, hcp);
         // Гандикап 0/плюс из голой колонки «Группа» не восстанавливаем —
         // psParseHcpFromCell уже вернул null для мусорных значений.
 
@@ -1965,9 +2059,12 @@ function psParseExcelGrid(aoa) {
             return;
         }
         // Пол и ТИ — ПОСЛЕ полного разбора имени: женские имена/фамилии
-        // автоматически получают пол «women» и женские ТИ.
-        var gender = roles.gender !== null ? psGenderFromCell(cells[roles.gender]) : psGuessGender(lastName, firstName, middleName);
-        var tee = roles.tee !== null ? psTeeFromCell(cells[roles.tee]) : psDefaultTeeFor(gender, hcp);
+        // автоматически получают пол «women» и женские ТИ. Пустые/нераспознанные
+        // ячейки не переопределяют имя — пол угадываем по ФИО.
+        var gender = roles.gender !== null ? psGenderFromCell(cells[roles.gender]) : null;
+        if (gender !== 'men' && gender !== 'women') gender = psGuessGender(lastName, firstName, middleName);
+        var tee = roles.tee !== null ? psTeeFromCell(cells[roles.tee]) : null;
+        if (!tee) tee = psDefaultTeeFor(gender, hcp);
         var errors = [];
         if (hcp === null) errors.push(psL('нет/неверный гандикап', 'missing/invalid handicap'));
         var rec = { row: dr.rowNum, lastName: lastName, firstName: firstName, middleName: middleName || '', hcp: hcp, gender: gender, tee: tee, errors: errors, matchedUid: null };
@@ -2701,9 +2798,19 @@ function psRenderGroupsResult() {
             html += '<div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;margin-top:6px;">';
             html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px;">' + psL('ТИ', 'Tee') + '</label>' +
                 '<select class="form-input" style="width:auto;padding:4px 6px;font-size:12px;" onchange="psGTee(' + gi + ',' + mi + ', this.value)">' + psTeeOptionsHtml(p.tee) + '</select></div>';
-            var gHcpVal = (p.hcp === null || p.hcp === undefined) ? '' : psHcpFmt(p.hcp);
+            // Как и в списке участников: при включённой обрезке показываем
+            // обрезанное значение — от него считаются полевой HCP и группа.
+            var gRaw = (p.hcp === null || p.hcp === undefined || p.hcp === '') ? null : parseFloat(p.hcp);
+            if (gRaw !== null && isNaN(gRaw)) gRaw = null;
+            var gEff = (gRaw === null) ? null : psEffectiveExact(p);
+            var gCut = (gRaw !== null && gEff !== null && Math.abs(gEff - gRaw) >= 0.049);
+            var gHcpVal = (gRaw === null) ? '' : psHcpFmt(gCut ? gEff : gRaw);
+            var gHcpTitle = gCut
+                ? psL('После обрезки: ' + psHcpFmt(gRaw) + ' → ' + psHcpFmt(gEff), 'After cut: ' + psHcpFmt(gRaw) + ' → ' + psHcpFmt(gEff))
+                : psL('Точный HCP', 'Exact HCP');
             html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px;">' + psL('Точный HCP', 'Exact HCP') + '</label>' +
-                '<input type="text" class="form-input" style="width:74px;padding:4px 6px;font-size:12px;" value="' + gHcpVal.replace(/"/g, '&quot;') + '" onchange="psGHcp(' + gi + ',' + mi + ', this.value)" placeholder="13.0"></div>';
+                '<input type="text" class="form-input' + (gCut ? ' ps-rrow-cut' : '') + '" style="width:74px;padding:4px 6px;font-size:12px;" title="' + gHcpTitle.replace(/"/g, '&quot;') + '" value="' + gHcpVal.replace(/"/g, '&quot;') + '" onchange="psGHcp(' + gi + ',' + mi + ', this.value)" placeholder="13.0">' +
+                (gCut ? ' <i class="fas fa-scissors" style="color:var(--gold);font-size:11px;"></i>' : '') + '</div>';
             html += '<span class="hcp-chip" style="font-size:10.5px;margin-bottom:4px;">' + psL('Полевой', 'Course') + ' ' + fmtFieldHcp(psCalcFieldHcp(p)) + '</span>';
             html += '</div>';
 

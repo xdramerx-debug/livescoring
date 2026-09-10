@@ -5,6 +5,7 @@ function tGet(id){ try{ return document.getElementById(id); }catch(e){ return nu
 
 // Кэш турниров для лидерборда/группировки, общий снапшот раундов и состояние панелей.
 var tnCache = {};
+var tnProtocols = null;
 var tnLbRounds = null;
 var tnLbSubscribed = false;
 var tnLbOpen = {};
@@ -14,11 +15,23 @@ function loadTournaments() {
     if (typeof db === 'undefined' || !db) return;
     if (typeof bindRealtimeValue !== 'function') return;
     bindRealtimeValue('tournaments-list', db.ref('tournaments'), function(sn) {
-        var data = (sn && sn.val && sn.val()) || {};
-        tnCache = data;
-        var entries = Object.entries(data);
-        var el = tGet('tn-list');
-        if (!el) return;
+        tnCache = (sn && sn.val && sn.val()) || {};
+        tnRenderList();
+    });
+    // Протоколы — для обратной совместимости: старые данные хранят обрезку
+    // гандикапа только в protocols/<pid>/hcpCut. Пока обрезка не перенесена
+    // на турнир, группировка участников на странице турнира берёт её отсюда.
+    bindRealtimeValue('tn-protocols', db.ref('protocols'), function(sn) {
+        tnProtocols = (sn && sn.val && sn.val()) || {};
+        tnRenderList();
+    });
+}
+
+function tnRenderList() {
+    var data = tnCache || {};
+    var entries = Object.entries(data);
+    var el = tGet('tn-list');
+    if (!el) return;
 
         if (!entries.length) {
             el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + (currentLang === 'en' ? 'No tournaments created yet' : 'Пока нет турниров') + '</p></div>';
@@ -92,7 +105,7 @@ function loadTournaments() {
 
             // Панель участников — сразу сгруппирована по группам гандикапа.
             html += '<div id="roster-' + tnId + '" class="card-scorecard-panel' + (tnRosterOpen[tnId] ? '' : ' hidden') + '" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">';
-            html += tnRosterGroupedHtml(tVal, regPlayers, regCount);
+            html += tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount);
             html += '</div>';
 
             // Внутритурнирный live-лидерборд.
@@ -109,7 +122,6 @@ function loadTournaments() {
                 renderTnLeaderboard(tnId);
             }
         });
-    });
 }
 
 function toggleRosterPanel(tnId) {
@@ -169,8 +181,57 @@ function tnDedupeRoster(regPlayers) {
     return out;
 }
 
+// ── Обрезка гандикапа турнира (единая со «Стартом турнира») ──
+// Основной источник — tournaments/<id>/hcpCut. Для старых данных, где обрезка
+// хранилась только в protocols/<pid>/hcpCut, берём её из последнего протокола.
+function tnCutFromProtocols(tnId) {
+    if (!tnId || !tnProtocols) return null;
+    var best = null, bestTs = -1;
+    Object.keys(tnProtocols).forEach(function(pid) {
+        var doc = tnProtocols[pid] || {};
+        if (doc.tournamentId !== tnId) return;
+        if (!doc.hcpCut || typeof doc.hcpCut !== 'object') return;
+        var ts = doc.updatedAt || doc.createdAt || 0;
+        if (ts >= bestTs) { bestTs = ts; best = doc.hcpCut; }
+    });
+    return best;
+}
+
+function tnTournamentCut(tVal, tnId) {
+    if (tVal && tVal.hcpCut && typeof tVal.hcpCut === 'object') return tVal.hcpCut;
+    return tnCutFromProtocols(tnId);
+}
+
+// Точный гандикап с учётом обрезки (сначала процент, затем максимум по полу).
+function tnEffectiveHcp(tVal, tnId, rawHcp, gender) {
+    if (rawHcp === '' || rawHcp == null) return rawHcp;
+    var cut = tnTournamentCut(tVal, tnId);
+    if (!cut) return rawHcp;
+    if (typeof tnApplyHcpCut === 'function') {
+        try { return tnApplyHcpCut(rawHcp, gender || 'men', cut).effective; } catch (e) {}
+    }
+    return rawHcp;
+}
+
+// Группа по гандикапу с учётом обрезки турнира.
+function tnDivisionForHcp(tVal, tnId, rawHcp, gender) {
+    if (typeof tnFindDivision !== 'function') return null;
+    if (rawHcp === '' || rawHcp == null) return null;
+    return tnFindDivision(tVal, tnEffectiveHcp(tVal, tnId, rawHcp, gender), gender);
+}
+
+// Подсказка «✂ 38.5 → 28.0» рядом с HCP, если обрезка изменила гандикап.
+function tnCutChipHtml(raw, eff) {
+    if (raw == null || raw === '' || eff == null || eff === '') return '';
+    var r = parseFloat(raw), e = parseFloat(eff);
+    if (isNaN(r) || isNaN(e) || Math.abs(e - r) < 0.049) return '';
+    var f = (typeof fmtExactHcp === 'function') ? fmtExactHcp : function(v) { return String(v); };
+    var title = ('Обрезка турнира: ' + f(r) + ' → ' + f(e)).replace(/"/g, '&quot;');
+    return ' <span class="hcp-chip" style="background:rgba(201,168,76,.14);border-color:rgba(201,168,76,.5);color:var(--gold);font-size:10.5px;" title="' + title + '"><i class="fas fa-scissors"></i> ' + f(r) + ' → ' + f(e) + '</span>';
+}
+
 // Список участников, сгруппированный по группам гандикапа турнира.
-function tnRosterGroupedHtml(tVal, regPlayers, regCount) {
+function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
     var en = currentLang === 'en';
     if (!regCount) {
         return '<p style="font-size:12px;color:var(--muted);text-align:center;">' + (en ? 'No registered participants yet' : 'Пока нет зарегистрированных участников') + '</p>';
@@ -191,7 +252,8 @@ function tnRosterGroupedHtml(tVal, regPlayers, regCount) {
         var rp = en2.rp;
         var hcp = (rp.handicap != null && rp.handicap !== '') ? rp.handicap : null;
         var gender = rp.gender || 'men';
-        var div = (typeof tnFindDivision === 'function') ? tnFindDivision(tVal, hcp, gender) : null;
+        en2.effHcp = (hcp != null) ? tnEffectiveHcp(tVal, tnId, hcp, gender) : null;
+        var div = (typeof tnFindDivision === 'function') ? tnFindDivision(tVal, en2.effHcp, gender) : null;
         if (div && byDiv[div.id]) byDiv[div.id].list.push(en2);
         else unassigned.list.push(en2);
     });
@@ -216,7 +278,7 @@ function tnRosterGroupedHtml(tVal, regPlayers, regCount) {
             var rp = en2.rp, rpid = en2.pid;
             html += '<tr><td data-label="#">' + (rIdx++) + '</td>';
             html += '<td class="lb-card-main"><strong style="color:var(--gold);">' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong></td>';
-            html += '<td data-label="HCP">' + (rp.handicap != null && rp.handicap !== '' ? fmtExactHcp(rp.handicap) : '—') + '</td>';
+            html += '<td data-label="HCP">' + (rp.handicap != null && rp.handicap !== '' ? fmtExactHcp(rp.handicap) + tnCutChipHtml(rp.handicap, en2.effHcp) : '—') + '</td>';
             html += '<td data-label="' + (en ? 'Tee' : 'ТИ') + '">' + fmtTeePill(rp.tee) + '</td>';
             html += '<td data-label="' + t('date') + '">' + fmtDate(rp.registeredAt) + '</td></tr>';
         });
@@ -320,7 +382,7 @@ function renderTnLeaderboard(tnId) {
         var rp = regByFio[tnNormName(en2.name)] || {};
         var hcp = (rp.handicap != null && rp.handicap !== '') ? rp.handicap : en2.hcpRaw;
         var gender = rp.gender || en2.gender || 'men';
-        en2.div = (typeof tnFindDivision === 'function') ? tnFindDivision(tVal, hcp, gender) : null;
+        en2.div = tnDivisionForHcp(tVal, tnId, hcp, gender);
         en2.toPar = en2.holes > 0 ? en2.gross - en2.parPlayed : null;
         en2.netToPar = en2.holes > 0 ? en2.net - en2.parPlayed : null;
         en2.dispName = privacyDisplayName({ name: en2.name }, en2.pid);

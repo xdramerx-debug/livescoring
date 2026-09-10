@@ -530,7 +530,8 @@ function psLoadTournaments(cb) {
                 formats: t.formats || [],
                 tees: t.tees || ['wh'],
                 status: t.status || 'upcoming',
-                divisions: t.divisions || null
+                divisions: t.divisions || null,
+                hcpCut: t.hcpCut || null
             };
         }).sort(function(a, b) {
             return String(a.date).localeCompare(String(b.date)) || (b.name || '').localeCompare(a.name || '');
@@ -821,6 +822,27 @@ function psCutMaxAutocheck() {
     } catch (e) {}
 }
 
+// Объект обрезки в формате protocols/<pid>/hcpCut (и tournaments/<id>/hcpCut).
+function psCutObject(proto) {
+    proto = proto || {};
+    return {
+        enabled: proto.hcpCutEnabled === true,
+        percent: proto.hcpCutPercent || 100,
+        maxEnabled: proto.hcpCutMaxEnabled === true,
+        maxMen: (proto.hcpMaxMen === '' || proto.hcpMaxMen == null) ? null : proto.hcpMaxMen,
+        maxWomen: (proto.hcpMaxWomen === '' || proto.hcpMaxWomen == null) ? null : proto.hcpMaxWomen
+    };
+}
+
+// Записывает обрезку на турнир, чтобы страница турнира и будущие протоколы
+// считали одинаково. Безопасно вызывать без выбранного турнира/без базы.
+function psPersistTournamentCut() {
+    if (typeof db === 'undefined' || !db) return;
+    var proto = psState && psState.proto;
+    if (!proto || !proto.tournamentId) return;
+    try { db.ref('tournaments/' + proto.tournamentId + '/hcpCut').set(psCutObject(proto)).catch(function() {}); } catch (e) {}
+}
+
 // Кнопка «Применить»: забирает значения прямо из полей (даже если фокус ещё
 // в поле ввода) и сразу пересчитывает стартовый лист и группы.
 function psCutApply() {
@@ -859,6 +881,9 @@ function psCutApply() {
     }
     if (!parts.length) toast(psL('✂ Обрезка выключена — стартовый лист без изменений', '✂ Cut is off — start list unchanged'), 'info');
     else toast(psL('✂ Обрезка применена (' + parts.join(' + ') + '): затронуто ' + aff.hit + ' из ' + aff.total, '✂ Cut applied (' + parts.join(' + ') + '): affects ' + aff.hit + ' of ' + aff.total), 'success');
+    // Синхронизируем с турниром: страница «Турниры» и будущие протоколы
+    // должны видеть ту же обрезку сразу.
+    psPersistTournamentCut();
 }
 
 function psFormatsSelectedList(proto) {
@@ -1023,6 +1048,17 @@ function psOnTournamentChange(id) {
             // По умолчанию отмечаем ВСЕ форматы турнира (можно снять лишние)
             psState.proto.formats = t.formats.slice();
             psState.proto.format = t.formats[0]; // основной — первый
+        }
+        // Обрезка гандикапа — общая с турниром: подтягиваем её из tournaments/<id>/hcpCut,
+        // чтобы стартовый лист и страница турнира считали одинаково.
+        if (t.hcpCut && typeof t.hcpCut === 'object') {
+            psState.proto.hcpCutEnabled = t.hcpCut.enabled === true;
+            psState.proto.hcpCutPercent = (t.hcpCut.percent == null || t.hcpCut.percent === '') ? 100 : t.hcpCut.percent;
+            psState.proto.hcpCutMaxEnabled = (t.hcpCut.maxEnabled === undefined || t.hcpCut.maxEnabled === null)
+                ? (t.hcpCut.maxMen != null || t.hcpCut.maxWomen != null)
+                : (t.hcpCut.maxEnabled === true);
+            psState.proto.hcpMaxMen = (t.hcpCut.maxMen == null) ? '' : t.hcpCut.maxMen;
+            psState.proto.hcpMaxWomen = (t.hcpCut.maxWomen == null) ? '' : t.hcpCut.maxWomen;
         }
     }
     psState.groups = [];
@@ -3338,7 +3374,7 @@ function psSaveProtocol() {
             method: proto.method || 'hcpSnake',
             interval: parseInt(proto.interval, 10) || 8,
             startTime: proto.startTime || '09:00',
-            hcpCut: { enabled: proto.hcpCutEnabled === true, percent: proto.hcpCutPercent || 100, maxEnabled: proto.hcpCutMaxEnabled === true, maxMen: (proto.hcpMaxMen === '' ? null : proto.hcpMaxMen), maxWomen: (proto.hcpMaxWomen === '' ? null : proto.hcpMaxWomen) },
+            hcpCut: psCutObject(proto),
             playersCount: totalPlayers,
             groupsCount: groups.length,
             status: 'ready',
@@ -3348,6 +3384,9 @@ function psSaveProtocol() {
         };
         return db.ref('protocols/' + pid).set(protocolDoc);
     }).then(function() {
+        // Обрезка — общая с турниром: фиксируем её на турнире, чтобы страница
+        // «Турниры» и будущие протоколы считали одинаково.
+        psPersistTournamentCut();
         // Раунды созданы и игра началась — турнир переходит в active,
         // запись на него закрывается. Завершённые турниры не трогаем.
         return db.ref('tournaments/' + proto.tournamentId + '/status').once('value').then(function(stSn) {
@@ -3831,7 +3870,9 @@ function psSaveEdits() {
         sets['protocols/' + pid + '/formats'] = formatsList;
         sets['protocols/' + pid + '/startTime'] = proto.startTime || '09:00';
         sets['protocols/' + pid + '/interval'] = parseInt(proto.interval, 10) || 8;
-        sets['protocols/' + pid + '/hcpCut'] = { enabled: proto.hcpCutEnabled === true, percent: proto.hcpCutPercent || 100, maxEnabled: proto.hcpCutMaxEnabled === true, maxMen: (proto.hcpMaxMen === '' ? null : proto.hcpMaxMen), maxWomen: (proto.hcpMaxWomen === '' ? null : proto.hcpMaxWomen) };
+        sets['protocols/' + pid + '/hcpCut'] = psCutObject(proto);
+        // Обрезка — общая с турниром: дублируем на турнир для страницы «Турниры».
+        if (proto.tournamentId) sets['tournaments/' + proto.tournamentId + '/hcpCut'] = psCutObject(proto);
         sets['protocols/' + pid + '/playersCount'] = totalPlayers;
         sets['protocols/' + pid + '/groupsCount'] = groups.length;
         sets['protocols/' + pid + '/groups'] = groupStore;

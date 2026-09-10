@@ -324,7 +324,7 @@ function psEffectiveExact(p) {
     return psEffectiveExactFor(raw, (p && p.gender) || 'men');
 }
 
-// То же, но по готовым значениям (удобно для Excel-превью и авто-групп).
+// То же, но по готовым значениям (удобно для Excel-превью и групп листа).
 function psEffectiveExactFor(hcp, gender) {
     var raw = (hcp === '' || hcp == null) ? 0 : parseFloat(hcp);
     if (isNaN(raw)) raw = 0;
@@ -1258,20 +1258,11 @@ function psRosterRowHtml(p, idx) {
     return rowHtml;
 }
 
-// Полоса гандикапа для авто-групп стартового листа (когда у турнира нет своих групп).
-function psAutoHcpBand(eff) {
-    if (eff === null || eff === undefined || isNaN(eff)) return { key: 'na', title: '—' };
-    if (eff <= 0) return { key: 'plus', title: '+ / 0' };
-    if (eff <= 12) return { key: '0-12', title: '0–12' };
-    if (eff <= 20) return { key: '12-20', title: '12.1–20' };
-    if (eff <= 28) return { key: '20-28', title: '20.1–28' };
-    if (eff <= 36) return { key: '28-36', title: '28.1–36' };
-    return { key: '36p', title: '36+' };
-}
-
-// Стартовый лист, разбитый на группы по полу и гандикапу С УЧЁТОМ обрезки:
-// если у турнира заданы свои группы (дивизионы) — раскладываем по ним,
-// иначе строим авто-группы «пол + полоса HCP».
+// Стартовый лист по группам турнира С УЧЁТОМ обрезки.
+// ВАЖНО: автосоздания групп НЕТ. Показываем ТОЛЬКО группы, которые создал
+// администратор (в карточке турнира: ручное добавление или «✨ Умные
+// группы»). Если групп нет — единый общий список (одна «группа» без
+// разбивки) с подсказкой, где группы создаются.
 function psRosterGroups(players) {
     var tn = null;
     try { tn = psGetSelTournament(); } catch (e) { tn = null; }
@@ -1296,26 +1287,24 @@ function psRosterGroups(players) {
         if (useDivs) {
             var d = (eff === null) ? null : tnFindDivision(tn, eff, gender);
             if (d && d.name) {
+                // Название ИЛИ подпись — но не дублируем: если у группы есть
+                // название вида «Мужчины 0–12», подсказываем только ТИ.
                 var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
-                var teeTxt = d.tee ? (' · ' + psTeeName(d.tee)) : '';
-                bucket('div:' + (d.id || d.name), d.name, (rg ? 'HCP ' + rg : '') + teeTxt).items.push({ p: p, idx: idx });
+                var teeTxt = d.tee ? psTeeName(d.tee) : '';
+                var sub = d.name
+                    ? teeTxt
+                    : (rg ? 'HCP ' + rg : '') + (teeTxt ? (rg ? ' · ' : '') + teeTxt : '');
+                bucket('div:' + (d.id || d.name), d.name, sub).items.push({ p: p, idx: idx });
             } else {
                 bucket('none', psL('Без группы', 'Without group'), '').items.push({ p: p, idx: idx });
             }
         } else {
-            var band = psAutoHcpBand(eff === null ? NaN : eff);
-            var gTxt = gender === 'women' ? ('👩 ' + psL('Девушки', 'Women')) : ('👨 ' + psL('Мужчины', 'Men'));
-            var key = 'auto:' + gender + ':' + band.key;
-            var order = (gender === 'women' ? '1' : '0') + band.key;
-            var b = bucket(key, gTxt + ' · HCP ' + band.title, '');
-            b.order = order;
-            b.items.push({ p: p, idx: idx });
+            // Без групп у турнира — единый общий список (без авто-разбивки).
+            bucket('flat', psL('Участники', 'Players'), '').items.push({ p: p, idx: idx });
         }
     });
 
-    if (!useDivs) {
-        buckets.sort(function(a, b) { return String(a.order || '').localeCompare(String(b.order || '')); });
-    } else {
+    if (useDivs) {
         // «Без группы» — всегда в конце.
         buckets.sort(function(a, b) {
             if (a.key === 'none') return 1;
@@ -1366,8 +1355,15 @@ function psRenderRosterTable(proto) {
     html += '<span style="font-size:11.5px;color:var(--muted);"><i class="fas fa-layer-group"></i> ' +
         (grouped.useDivs
             ? psL('Группы турнира', 'Tournament groups')
-            : psL('Авто-группы: пол + гандикап', 'Auto groups: gender + handicap')) +
+            : psL('Группы не заданы — общий список', 'No groups set — shared list')) +
         (cutActive ? ' ' + psL('(с учётом обрезки ✂)', '(with cut ✂)') : '') + '</span>';
+    // Без групп — подсказка, где их создать: в карточке турнира (выше),
+    // либо кнопкой «✨ Умные группы». Автоматически группы НЕ создаются.
+    if (!grouped.useDivs) {
+        html += '<span style="font-size:11px;color:var(--muted);"><i class="fas fa-circle-info"></i> ' +
+            psL('Группы создаются в карточке турнира (кнопка «Группы HCP» или «✨ Умные группы») — автоматически они не создаются.',
+                'Groups are created in the tournament card (“HCP groups” button or “✨ Smart groups”) — they are never created automatically.') + '</span>';
+    }
     html += '<span style="flex:1;"></span>';
     html += '<button class="btn btn-ol btn-sm" style="padding:3px 10px;font-size:11px;" onclick="psRosterExpandAll(true)"><i class="fas fa-chevrons-up"></i> ' + psL('Развернуть все', 'Expand all') + '</button>';
     html += '<button class="btn btn-ol btn-sm" style="padding:3px 10px;font-size:11px;" onclick="psRosterExpandAll(false)"><i class="fas fa-chevrons-down"></i> ' + psL('Свернуть все', 'Collapse all') + '</button>';

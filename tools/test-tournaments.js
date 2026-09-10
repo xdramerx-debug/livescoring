@@ -102,5 +102,16 @@ var htmlLegacy = sandbox.tnRosterGroupedHtml('t1', mkTn(null, false), regPlayers
 check(htmlLegacy.indexOf('Мужчины 12.1–28') !== -1 && htmlLegacy.indexOf('Без группы') === -1, 'roster: legacy-обрезка из протокола применяется');
 sandbox.tnProtocols = null;
 
+// ── v1.55.0: заголовок группы — название ИЛИ бейджи, без дубля ──
+// Название «Мужчины 0–12» уже содержит пол и диапазон: бейджи HCP/пол
+// рядом двоили информацию — показываем только название.
+var headNamed = sandbox.tnGroupHeadHtml({ div: { id: 'm1', name: 'Мужчины 0–12', gender: 'men', hcpFrom: 0, hcpTo: 12, tee: 'wh' }, list: [1] }, false);
+check(headNamed.indexOf('Мужчины 0–12') !== -1, 'group head: название группы');
+check(headNamed.indexOf('tn-group-badge') === -1, 'group head: с названием — без бейджей (HCP/пол/ТИ)');
+// Группа без названия — показываем бейджи (есть что показать).
+var headUnnamed = sandbox.tnGroupHeadHtml({ div: { id: 'x', name: '', gender: 'women', hcpFrom: 0, hcpTo: 36, tee: 'rd' }, list: [1, 2] }, false);
+check(headUnnamed.indexOf('tn-group-badge') !== -1 && headUnnamed.indexOf('HCP 0.0–36.0') !== -1, 'group head: без названия — бейдж HCP');
+check(headUnnamed.indexOf('Девушки') !== -1, 'group head: без названия — бейдж пола');
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nAll tournaments cut tests passed ✔');
 process.exit(failures ? 1 : 0);

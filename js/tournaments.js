@@ -94,8 +94,15 @@ function tnGroupHeadHtml(b, en) {
     var teeTxt = b.div.tee && typeof t === 'function' ? t('tee_' + b.div.tee) : '';
     var genderTxt = (typeof tnDivisionGenderText === 'function' && b.div.gender && b.div.gender !== 'all') ? tnDivisionGenderText(b.div.gender) : '';
     var ico = b.div.gender === 'women' ? 'fa-venus' : b.div.gender === 'men' ? 'fa-mars' : 'fa-layer-group';
+    // Название группы ИЛИ бейджи (HCP/ТИ/пол) — но не оба сразу: названия
+    // вида «Мужчины 0–12» уже содержат пол и диапазон, и бейджи рядом
+    // двоили ту же информацию.
+    if (b.div.name) {
+        return '<i class="fas ' + ico + ' tn-group-ico"></i><span class="tn-group-kind">' + (en ? 'Group:' : 'Группа:') + '</span>' +
+            '<b class="tn-group-title">' + escapeHtml(b.div.name) + '</b>' + count;
+    }
     return '<i class="fas ' + ico + ' tn-group-ico"></i><span class="tn-group-kind">' + (en ? 'Group:' : 'Группа:') + '</span>' +
-        '<b class="tn-group-title">' + escapeHtml(b.div.name || (en ? 'Group' : 'Группа')) + '</b>' +
+        '<b class="tn-group-title">' + (en ? 'Group' : 'Группа') + '</b>' +
         (rg ? '<span class="tn-group-badge"><i class="fas fa-gauge-high"></i> HCP ' + escapeHtml(rg) + '</span>' : '') +
         (teeTxt ? '<span class="tn-group-badge"><i class="fas fa-flag"></i> ' + escapeHtml(teeTxt) + '</span>' : '') +
         (genderTxt ? '<span class="tn-group-badge"><i class="fas fa-venus-mars"></i> ' + escapeHtml(genderTxt) + '</span>' : '') +
@@ -228,8 +235,11 @@ function tnRenderList() {
             if (divisions.length) {
                 html += '<div style="margin-top:6px;">';
                 divisions.forEach(function(d) {
+                    // Имя группы ИЛИ диапазон HCP — но не оба сразу: названия
+                    // вида «Мужчины 0–12» уже содержат диапазон, и бейдж с
+                    // ним двоил информацию.
                     var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
-                    html += '<span class="tn-div-chip">' + escapeHtml(d.name || '') + (rg ? ' · ' + escapeHtml(rg) : '') + '</span>';
+                    html += '<span class="tn-div-chip">' + escapeHtml(d.name || rg || '—') + '</span>';
                 });
                 html += '</div>';
             }

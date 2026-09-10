@@ -111,6 +111,45 @@ const html2 = els['qr-content'].innerHTML || '';
 check(html2.indexOf('div-badge') !== -1 && html2.indexOf('Девушки') !== -1, 'бейдж зачётной группы на карточке');
 check(html2.indexOf('div-inline') !== -1, 'зачётная группа в строке стартового листа');
 
+// v1.55.0: информация НЕ дублируется — бейдж группы: ИМЯ ИЛИ диапазон HCP,
+// но не «название · 0–12» (диапазон уже внутри названия).
+sandbox.qrRender(doc, [{ id: 'd1', name: 'Девушки 0–36', gender: 'women', hcpFrom: 0, hcpTo: 36 }]);
+const htmlDup = els['qr-content'].innerHTML || '';
+check(htmlDup.indexOf('🏆 Девушки 0–36') !== -1, 'бейдж группы: только название');
+check(htmlDup.indexOf('🏆 Девушки 0–36 · 0.0–36.0') === -1, 'бейдж группы: без дубля диапазона из названия');
+check(htmlDup.indexOf('· Девушки 0–36') !== -1, 'строка листа: группа с названием');
+check(htmlDup.indexOf('Девушки 0–36 (0.0–36.0)') === -1, 'строка листа: без дубля диапазона');
+// Группа без названия — показываем диапазон (есть что показать).
+sandbox.qrRender(doc, [{ id: 'd2', name: '', gender: 'women', hcpFrom: 0, hcpTo: 36 }]);
+const htmlNoName = els['qr-content'].innerHTML || '';
+check(htmlNoName.indexOf('HCP 0.0–36.0') !== -1, 'группа без названия: бейдж с диапазоном HCP');
+
+// v1.55.0: 3 варианта раскладки QR-карточек.
+check(typeof sandbox.qrSetLayout === 'function' && typeof sandbox.qrGetLayout === 'function', 'layout: helper-ы раскладки определены');
+// pair: карточка поделена на две части вертикально (2 игрока на карточку).
+sandbox.qrRender(doc, [{ id: 'd1', name: 'Девушки', gender: 'women', hcpFrom: '', hcpTo: 36 }]);
+sandbox.qrSetLayout('pair');
+const htmlPair = els['qr-content'].innerHTML || '';
+check(htmlPair.indexOf('pcard-pair') !== -1, 'pair: карточки пары');
+check(htmlPair.indexOf('pcol-divider') !== -1, 'pair: вертикальный разделитель');
+check(htmlPair.indexOf('pcards-pair') !== -1, 'pair: класс сетки pair');
+// g1 из 3 игроков → 2 карточки (пара + одиночка), g2 из 1 → 1 карточка.
+check((htmlPair.match(/class="pcard pcard-pair"/g) || []).length === 3, 'pair: 3 карточки на 4 игроков (2+1)');
+check((htmlPair.match(/qrserver\.com/g) || []).length === 4, 'pair: по одному QR на игрока (4 шт.)');
+// quad: 4 игрока на карточку (сетка 2×2).
+sandbox.qrSetLayout('quad');
+const htmlQuad = els['qr-content'].innerHTML || '';
+check(htmlQuad.indexOf('pcard-quad') !== -1 && htmlQuad.indexOf('pgrid4') !== -1, 'quad: карточки 2×2');
+check((htmlQuad.match(/class="pcard pcard-quad"/g) || []).length === 2, 'quad: 2 карточки на 4 игроков');
+check((htmlQuad.match(/qrserver\.com/g) || []).length === 4, 'quad: по одному QR на игрока (4 шт.)');
+// Парная карточка держит ВСЁ (ФИО обоих, QR, состав флайта).
+check(htmlPair.indexOf('Тестов Иван Петрович') !== -1 && htmlPair.indexOf('Тестова Мария Ивановна') !== -1, 'pair: ФИО обоих игроков на карточках');
+check(htmlPair.indexOf('Состав флайта') !== -1, 'pair: состав флайта на карточке');
+// Возврат к одиночной раскладке.
+sandbox.qrSetLayout('single');
+const htmlSingle = els['qr-content'].innerHTML || '';
+check(htmlSingle.indexOf('pcard-single') !== -1 && (htmlSingle.match(/class="pcard pcard-single"/g) || []).length === 4, 'single: по карточке на игрока');
+
 check(typeof sandbox.qrSortGroups === 'function' && typeof sandbox.qrGroupLabel === 'function', 'qr: sort/label helpers');
 const shotgunDoc = {
     scheme: 'all18', name: 'Шотган',

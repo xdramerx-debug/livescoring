@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <title data-i18n="nav_round">Раунд — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=30">
+    <link rel="stylesheet" href="css/style.css?v=31">
     <link rel="stylesheet" href="css/design-presets.css?v=1">
     <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -151,6 +151,16 @@
 
     <!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" -->
     <div id="my-active-rounds-container" class="hidden"></div>
+
+    <!-- ===== ТУРНИР ЕЩЁ НЕ НАЧАЛСЯ: ОТСЧЁТ ДО СТАРТА (QR раньше времени) ===== -->
+    <div class="card start-gate hidden" id="round-start-gate">
+        <div class="start-gate-icon"><i class="fas fa-flag-checkered"></i></div>
+        <h2 class="start-gate-title" id="round-start-title" data-i18n="tn_start_pending_title">Турнир ещё не начался</h2>
+        <div class="start-gate-label" id="round-start-label" data-i18n="tn_start_countdown_label">До старта осталось</div>
+        <div class="start-gate-timer" id="round-start-countdown">--:--</div>
+        <div class="start-gate-at"><i class="fas fa-clock"></i> <span data-i18n="tn_start_at">Старт:</span> <b id="round-start-at">—</b></div>
+        <p class="start-gate-hint" id="round-start-hint" data-i18n="tn_start_gate_hint">Ввод счёта откроется автоматически ровно в момент старта — обновлять страницу не нужно.</p>
+    </div>
 
     <!-- ===== НАСТРОЙКА РАУНДА: 2 ВКЛАДКИ НА ОДНОЙ СТРАНИЦЕ ===== -->
     <div id="setup">
@@ -390,8 +400,11 @@
                 </div>
             </div>
 
+            <!-- Предупреждение «раунд нельзя завершить»: горит, пока лунки не подтверждены -->
+            <div id="finish-block-notice" class="hidden" style="margin-top:12px;"></div>
+
             <button class="btn btn-g btn-block" id="save-hole-btn" onclick="saveHoleScores()" style="padding:16px;font-size:16px;margin-top:20px;">
-                <i class="fas fa-arrow-right" id="save-hole-btn-icon"></i> <span id="save-hole-btn-text" data-i18n="next_hole_btn">На следующую лунку →</span>
+                <i class="fas fa-check" id="save-hole-btn-icon"></i> <span id="save-hole-btn-text" data-i18n="next_hole_btn">Подтвердить ✓</span>
             </button>
         </div>
 
@@ -508,7 +521,7 @@
 
                 <!-- MAIN ACTION BUTTON (СЛЕДУЮЩАЯ ЛУНКА / ЗАВЕРШИТЬ РАУНД) -->
                 <button class="btn btn-g btn-block" id="btn-solo-action" onclick="saveSolo()" style="padding:16px;font-size:16px;min-height:52px;margin-top:14px;">
-                    <i class="fas fa-arrow-right"></i> <span id="btn-solo-action-txt" data-i18n="next_hole_btn">Следующая лунка</span>
+                    <i class="fas fa-arrow-right"></i> <span id="btn-solo-action-txt" data-i18n="solo_next_hole_btn">Следующая лунка</span>
                 </button>
             </div>
         </div>
@@ -579,7 +592,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.55.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.56.0</span></p>
         </div>
     </div>
 </footer>
@@ -588,8 +601,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=52"></script>
-<script src="js/live.js?v=29"></script>
+<script src="js/utils.js?v=53"></script>
+<script src="js/live.js?v=30"></script>
 <script src="js/solo.js?v=26"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>

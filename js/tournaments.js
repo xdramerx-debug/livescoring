@@ -515,10 +515,20 @@ function renderTnLeaderboard(tnId) {
     var agg = {};
     var anyLive = false;
 
+    var nowTs = Date.now();
+    // Раунд считается «идущим», если он активен или его старт уже наступил
+    // (созданные протоколом заранее раунды открываются по времени).
+    var roundIsLive = function(r) {
+        if (!r) return false;
+        if (r.status === 'active') return true;
+        return (typeof isRoundOpenForScoring === 'function')
+            ? (String(r.status || '') === 'scheduled' && isRoundOpenForScoring(r, nowTs))
+            : false;
+    };
     Object.keys(tnLbRounds).forEach(function(rid) {
         var r = tnLbRounds[rid] || {};
         if (r.tournamentId !== tnId) return;
-        if (r.status === 'active') anyLive = true;
+        if (roundIsLive(r)) anyLive = true;
         var order = (typeof getRoundOrder === 'function') ? getRoundOrder(r) : undefined;
         var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(r.players || {}) : (r.players || {});
         Object.keys(players).forEach(function(pid) {
@@ -571,7 +581,7 @@ function renderTnLeaderboard(tnId) {
             cur.net += stats.net || 0;
             cur.stbl += stats.stablefordField || 0;
             cur.holes += stats.holesPlayed || 0;
-            if (r.status === 'active' && stats.holesPlayed > 0) cur.live = true;
+            if (roundIsLive(r) && stats.holesPlayed > 0) cur.live = true;
             var ts = r.updatedAt || r.createdAt || 0;
             if (ts > cur.upd) cur.upd = ts;
             if (!cur.tee) cur.tee = p.tee || r.tee || '';

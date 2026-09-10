@@ -687,7 +687,17 @@ var I18N = {
         score_col_you: '(вы вводите свой счёт)',
         score_col_marked: '(того, за кем вы ведёте счёт)',
         save_hole: 'Сохранить лунку', finish_round: 'Завершить раунд',
-        next_hole_btn: 'На следующую лунку →',
+        // Кнопка ввода счёта: игрок ПОДТВЕРЖДАЕТ результат лунки (переход к
+        // следующей лунке происходит автоматически, поэтому в названии его нет).
+        next_hole_btn: 'Подтвердить ✓',
+        solo_next_hole_btn: 'Следующая лунка',
+        tn_start_pending_title: 'Турнир ещё не начался',
+        tn_start_countdown_label: 'До старта осталось',
+        tn_start_at: 'Старт:',
+        tn_start_gate_hint: 'Ввод счёта откроется автоматически ровно в момент старта — обновлять страницу не нужно.',
+        tn_start_gate_started: '🏁 Турнир стартовал — можно вводить счёт!',
+        finish_blocked_title: 'Раунд пока нельзя завершить',
+        finish_blocked_hint: 'Уведомление исчезнет само, как только все лунки будут подтверждены.',
         show_stableford_points: 'Показывать очки Stableford',
         show_stableford_points_hint: 'Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.',
         stableford_default: 'Stableford по умолчанию',
@@ -1173,7 +1183,15 @@ var I18N = {
         score_col_you: '(you enter your own score)',
         score_col_marked: '(the player you are marking for)',
         save_hole: 'Save Hole', finish_round: 'Finish Round',
-        next_hole_btn: 'To Next Hole →',
+        next_hole_btn: 'Confirm ✓',
+        solo_next_hole_btn: 'Next Hole',
+        tn_start_pending_title: 'The tournament has not started yet',
+        tn_start_countdown_label: 'Starts in',
+        tn_start_at: 'Start:',
+        tn_start_gate_hint: 'Score entry opens automatically at the start time — no need to refresh the page.',
+        tn_start_gate_started: '🏁 The tournament has started — you can enter scores now!',
+        finish_blocked_title: 'The round cannot be finished yet',
+        finish_blocked_hint: 'This notice disappears on its own as soon as every hole is confirmed.',
         show_stableford_points: 'Show Stableford points',
         show_stableford_points_hint: 'Handicap-adjusted points will appear next to the entered score. This setting is saved only for you.',
         stableford_default: 'Default Stableford display',
@@ -9012,8 +9030,194 @@ function updateRoundEventBanner(roundData) {
         sub.textContent = bits.join(' · ');
     }
 }
+// ==========================================================
+// СТАРТ ТУРНИРА: РАУНДЫ АКТИВНЫ ТОЛЬКО ПОСЛЕ СТАРТА
+// ----------------------------------------------------------
+// Раунды, созданные из стартового протокола заранее, получают статус
+// «scheduled» и поле scheduledStart (момент старта турнира). Игрок, который
+// отсканировал QR раньше времени, видит таймер обратного отсчёта и НЕ может
+// вводить счёт. Раунд становится игровым ровно в момент старта:
+//   1) автоматически — по совпадению даты и времени (см. pestovoAutoStartRounds),
+//   2) вручную — кнопкой «Старт» в админ-меню (tnStartTournament).
+// ==========================================================
+
+// Статус раунда, который ещё не стартовал (создан протоколом заранее).
+var ROUND_STATUS_SCHEDULED = 'scheduled';
+
+// Время старта турнира из даты (YYYY-MM-DD) и времени (HH:MM).
+function pestovoStartTsFromParts(dateStr, timeStr) {
+    var d = String(dateStr || '').trim();
+    var tm = String(timeStr || '').trim();
+    if (!d) return 0;
+    if (!tm) tm = '09:00';
+    var ts = new Date(d + 'T' + (tm.indexOf(':') === 4 ? tm : tm + ':00')).getTime();
+    if (!isNaN(ts)) return ts;
+    // Запасной разбор: «9:00» / «09:00:00»
+    var parts = tm.split(':');
+    var base = new Date(d + 'T00:00:00').getTime();
+    if (isNaN(base)) return 0;
+    return base + ((parseInt(parts[0], 10) || 0) * 3600 + (parseInt(parts[1], 10) || 0) * 60) * 1000;
+}
+
+// Момент старта раунда: явное поле scheduledStart (ставится при создании из
+// протокола) → startTime раунда → 0, если раунд не турнирный/без времени.
+function roundScheduledStartTs(r) {
+    if (!r || typeof r !== 'object') return 0;
+    return parseInt(r.scheduledStart, 10) || parseInt(r.startTime, 10) || 0;
+}
+
+// Открыт ли раунд для ввода счёта прямо сейчас.
+// «active» — всегда; «scheduled» — только когда наступил момент старта;
+// «completed» и прочие — нет. Раунды без статуса (старые данные) считаем
+// активными, чтобы не ломать обычные раунды.
+function isRoundOpenForScoring(r, nowTs) {
+    if (!r || typeof r !== 'object') return false;
+    var st = String(r.status || 'active');
+    if (st === 'scheduled') {
+        var startTs = roundScheduledStartTs(r);
+        if (!startTs) return false;             // без времени старта не открываем
+        return (parseInt(nowTs, 10) || Date.now()) >= startTs;
+    }
+    return st === 'active' || st === '';
+}
+
+// Раунд «заперт» стартом турнира: создан заранее, старт ещё не наступил.
+function isRoundGatedByStart(r, nowTs) {
+    if (!r || typeof r !== 'object') return false;
+    if (String(r.status || 'active') !== ROUND_STATUS_SCHEDULED) return false;
+    return !isRoundOpenForScoring(r, nowTs);
+}
+
+// Сколько миллисекунд осталось до старта (0 — если уже можно играть).
+function roundStartCountdownMs(r, nowTs) {
+    if (!isRoundGatedByStart(r, nowTs)) return 0;
+    var startTs = roundScheduledStartTs(r);
+    var left = startTs - ((parseInt(nowTs, 10) || Date.now()));
+    return left > 0 ? left : 0;
+}
+
+// «01:05:09» — часы:минуты:секунды; до часа показываем «05:09»,
+// больше суток — «2 дн. 05:09:00».
+function formatStartCountdown(ms) {
+    var total = Math.max(0, Math.ceil((parseInt(ms, 10) || 0) / 1000));
+    var d = Math.floor(total / 86400);
+    var h = Math.floor((total % 86400) / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    var hh = (h < 10 ? '0' : '') + h;
+    var mm = (m < 10 ? '0' : '') + m;
+    var ss = (s < 10 ? '0' : '') + s;
+    if (d > 0) {
+        var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+        return d + (isEn ? 'd ' : ' дн. ') + hh + ':' + mm + ':' + ss;
+    }
+    return h > 0 ? (hh + ':' + mm + ':' + ss) : (mm + ':' + ss);
+}
+
+// Какие «запланированные» раунды пора открыть (старт наступил).
+// Возвращает { roundIds: [...], tournamentIds: [...] } — чистая функция,
+// её проверяют автотесты; запись в базу делает pestovoActivateRounds.
+function roundsDueForStart(roundsData, nowTs) {
+    var now = parseInt(nowTs, 10) || Date.now();
+    var roundIds = [], tournamentIds = [], seenTn = {};
+    Object.keys(roundsData || {}).forEach(function(rid) {
+        var r = roundsData[rid];
+        if (!r || typeof r !== 'object') return;
+        if (String(r.status || '') !== ROUND_STATUS_SCHEDULED) return;
+        if (!isRoundOpenForScoring(r, now)) return;
+        roundIds.push(rid);
+        var tnId = r.tournamentId;
+        if (tnId && !seenTn[tnId]) { seenTn[tnId] = true; tournamentIds.push(tnId); }
+    });
+    return { roundIds: roundIds, tournamentIds: tournamentIds };
+}
+
+// Открывает раунды, у которых наступил старт, и переводит их турниры в active.
+// Вызывается админ-панелью (подписка на раунды + таймер) и страницей игрока,
+// когда отсчёт дошёл до нуля. Ошибки записи не критичны: статус пересчитается
+// у других клиентов по времени (isRoundOpenForScoring).
+function pestovoActivateRounds(due, opts) {
+    opts = opts || {};
+    if (typeof db === 'undefined' || !db || !due) return Promise.resolve({ rounds: 0, tournaments: 0 });
+    var updates = {};
+    var now = Date.now();
+    (due.roundIds || []).forEach(function(rid) {
+        updates['rounds/' + rid + '/status'] = 'active';
+        updates['rounds/' + rid + '/activatedAt'] = now;
+    });
+    (due.tournamentIds || []).forEach(function(tnId) {
+        updates['tournaments/' + tnId + '/status'] = 'active';
+        updates['tournaments/' + tnId + '/startedAt'] = now;
+    });
+    if (!Object.keys(updates).length) return Promise.resolve({ rounds: 0, tournaments: 0 });
+    return db.ref().update(updates).then(function() {
+        return { rounds: (due.roundIds || []).length, tournaments: (due.tournamentIds || []).length };
+    }).catch(function(err) {
+        if (!opts.silent && typeof console !== 'undefined') {
+            try { console.warn('[Tournament start] cannot activate rounds', err); } catch (e) {}
+        }
+        return { rounds: 0, tournaments: 0, error: err };
+    });
+}
+
+// Проход по снимку раундов: открыть всё, что пора, и сообщить об этом.
+// Используется админ-панелью на каждом обновлении списка раундов.
+function pestovoAutoStartRounds(roundsData, opts) {
+    opts = opts || {};
+    var due = roundsDueForStart(roundsData, Date.now());
+    if (!due.roundIds.length) return Promise.resolve(null);
+    return pestovoActivateRounds(due, opts).then(function(res) {
+        if (res && res.rounds && opts.notify !== false && typeof toast === 'function') {
+            var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+            toast('🏁 ' + (isEn
+                ? 'Tournament started: ' + res.rounds + ' round(s) opened for scoring'
+                : 'Турнир стартовал: открыто раундов для ввода счёта — ' + res.rounds), 'success');
+        }
+        return res;
+    });
+}
+
+// Старт турнира вручную из админ-меню: сам турнир + все его запланированные
+// раунды становятся активными сразу, не дожидаясь времени.
+function pestovoStartTournamentNow(tnId) {
+    if (typeof db === 'undefined' || !db || !tnId) return Promise.resolve(false);
+    var now = Date.now();
+    return db.ref('rounds').once('value').then(function(sn) {
+        var data = sn.val() || {};
+        var updates = {};
+        updates['tournaments/' + tnId + '/status'] = 'active';
+        updates['tournaments/' + tnId + '/startedAt'] = now;
+        var opened = 0;
+        Object.keys(data).forEach(function(rid) {
+            var r = data[rid];
+            if (!r || typeof r !== 'object') return;
+            if (String(r.tournamentId || '') !== String(tnId)) return;
+            if (String(r.status || '') !== ROUND_STATUS_SCHEDULED) return;
+            updates['rounds/' + rid + '/status'] = 'active';
+            updates['rounds/' + rid + '/activatedAt'] = now;
+            opened++;
+        });
+        return db.ref().update(updates).then(function() { return opened; });
+    }).catch(function() {
+        // Нет доступа к ветке rounds — стартуем хотя бы сам турнир
+        return db.ref('tournaments/' + tnId).update({ status: 'active', startedAt: now }).then(function() { return 0; });
+    });
+}
+
 if (typeof window !== 'undefined') {
     window.roundTournamentName = roundTournamentName;
     window.isTournamentRound = isTournamentRound;
     window.updateRoundEventBanner = updateRoundEventBanner;
+    window.isRoundOpenForScoring = isRoundOpenForScoring;
+    window.isRoundGatedByStart = isRoundGatedByStart;
+    window.roundScheduledStartTs = roundScheduledStartTs;
+    window.roundStartCountdownMs = roundStartCountdownMs;
+    window.formatStartCountdown = formatStartCountdown;
+    window.roundsDueForStart = roundsDueForStart;
+    window.pestovoActivateRounds = pestovoActivateRounds;
+    window.pestovoAutoStartRounds = pestovoAutoStartRounds;
+    window.pestovoStartTournamentNow = pestovoStartTournamentNow;
+    window.pestovoStartTsFromParts = pestovoStartTsFromParts;
+    window.ROUND_STATUS_SCHEDULED = ROUND_STATUS_SCHEDULED;
 }
+

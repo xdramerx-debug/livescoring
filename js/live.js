@@ -664,116 +664,172 @@ function getActingUid() {
 
 var roundViewHandler = null;
 
+// ==========================================
+// ОДНА ТЯЖЁЛАЯ ПЕРЕРИСОВКА НА КАДР
+// ==========================================
+// Быстрый ввод счёта (несколько нажатий подряд) рождает серию снимков
+// Firebase. Раньше на КАЖДЫЙ снимок заново строились карточка группы,
+// QR-коды, темп игры и кнопки вызова судьи — на телефоне эти перерисовки
+// складывались в очередь и главный поток вставал намертво.
+// Теперь: состояние обновляется сразу, а тяжёлый рендер выполняется не чаще
+// одного раза за кадр и пропускается, если данные не изменились.
+var roundRenderQueued = false;
+var roundRenderTimer = null;
+
+function scheduleRoundRender() {
+    if (roundRenderQueued) return;
+    roundRenderQueued = true;
+    var run = function() {
+        if (!roundRenderQueued) return;
+        roundRenderQueued = false;
+        if (roundRenderTimer) { clearTimeout(roundRenderTimer); roundRenderTimer = null; }
+        try { renderRoundViewParts(); } catch (e) { try { console.warn('[round render]', e); } catch (_) {} }
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+    else setTimeout(run, 16);
+    // requestAnimationFrame не срабатывает в фоновой вкладке — страховка,
+    // чтобы после возврата на страницу данные не остались «вчерашними».
+    roundRenderTimer = setTimeout(run, 300);
+}
+
+function renderRoundViewParts() {
+    if (!curRoundData) return;
+    renderStartGate();
+    if (canEditGroup) {
+        renderPlayHole();
+        buildPlayHolesNav();
+        renderPlaySummary();
+        renderInviteQRs();
+        startGroupPaceTicker();
+    } else {
+        renderGVPlayers(curRoundData);
+    }
+    renderFinishBlockNotice();
+}
+
 function initRoundView() {
     // Защита от дублей подписки (например, при смене языка страница перерисовывается)
     if (roundViewHandler) {
         try { db.ref('rounds/' + curRid).off('value', roundViewHandler); } catch (e) {}
     }
-    roundViewHandler = function(sn) {
-        curRoundData = sn.val();
-        if (!curRoundData || typeof curRoundData !== 'object') {
-            toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден', 'error');
-            return;
-        }
-
-        // Раунд с mode='solo' обслуживает solo.js — делегируем ему
-        if (curRoundData.mode === 'solo') {
-            try { db.ref('rounds/' + curRid).off('value', roundViewHandler); } catch (e) {}
-            roundViewHandler = null;
-            roundViewListening = false;
-            if (typeof bootSoloRoundView === 'function') bootSoloRoundView(curRid);
-            return;
-        }
-
-        var setupEl = document.getElementById('setup');
-        if (setupEl) setupEl.classList.add('hidden');
-        var modeView = document.getElementById('mode-view');
-        if (modeView) modeView.classList.add('hidden');
-
-        // Раунд уже начат — блок «Начать раунд / переключайте вкладки» больше не нужен:
-        // показываем только шапку, меню, ввод счёта и остальное содержимое раунда.
-        var pageHeadEl = lGet('page-head');
-        if (pageHeadEl) pageHeadEl.classList.add('hidden');
-        if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(curRoundData);
-        try { document.body.classList.add('round-active'); } catch(e){}
-        var navEl = lGet('main-nav');
-        if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch(e){} }
-        applyScoreKiosk();
-
-        myUid = getActingUid();
-        canEditGroup = (myUid !== null) && (curRoundData.status === 'active');
-
-        // Если текущий игрок подключился/вошёл в раунд — отмечаем его в базе
-        if (canEditGroup && myUid && curRoundData.players && curRoundData.players[myUid]) {
-            if (!curRoundData.players[myUid].joined) {
-                try {
-                    db.ref('rounds/' + curRid + '/players/' + myUid + '/joined').set(true);
-                    db.ref('rounds/' + curRid + '/players/' + myUid + '/joinedAt').set(Date.now());
-                } catch(e) {}
-            }
-        }
-
-        var activeView = lGet('active-scoring-view');
-        var groupView = lGet('group-view');
-
-        if (canEditGroup) {
-            if (activeView) activeView.classList.remove('hidden');
-            if (groupView) groupView.classList.add('hidden');
-
-            var myPlayer = curRoundData.players && curRoundData.players[myUid];
-            var myTitle = lGet('my-player-name-title');
-            if (myTitle) myTitle.textContent = myPlayer ? myPlayer.name : (typeof t === 'function' ? t('my_score') : 'My score');
-            updateGroupStablefordToggle();
-
-            var markContainer = lGet('marker-input-container');
-            if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
-                myTargetUid = curRoundData.markerAssignments[myUid].targetId;
-                var targetPlayer = curRoundData.players && curRoundData.players[myTargetUid];
-                var markTitle = lGet('mark-player-name');
-                if (markTitle) markTitle.textContent = targetPlayer ? targetPlayer.name : (currentLang === 'en' ? 'Partner' : 'Партнёр');
-                if (markContainer) markContainer.classList.remove('hidden');
-            } else {
-                if (markContainer) markContainer.classList.add('hidden');
-            }
-
-            if (!isChanging) {
-                findCurrentHole();
-            }
-
-            renderPlayHole();
-            buildPlayHolesNav();
-            renderPlaySummary();
-            renderInviteQRs();
-            listenForCallResponses();
-            listenForOfficialCallState({
-                roundId: curRid,
-                playerId: myUid,
-                prefix: 'group',
-                canEdit: function() { return canEditGroup; },
-                hole: function() { return playHole; },
-                playerName: function() {
-                    return curRoundData.players && curRoundData.players[myUid]
-                        ? curRoundData.players[myUid].name : 'Player';
-                },
-                flightMembers: function() {
-                    return typeof getFlightPlayerNames === 'function'
-                        ? getFlightPlayerNames(curRoundData, myUid) : [];
-                }
-            });
-            startGroupPaceTicker();
-
-        } else {
-            if (activeView) activeView.classList.add('hidden');
-            if (groupView) groupView.classList.remove('hidden');
-
-            renderGVPlayers(curRoundData);
-        }
-    };
+    roundViewHandler = function(sn) { applyRoundState(sn.val()); };
     db.ref('rounds/' + curRid).on('value', roundViewHandler);
 }
 
-function findCurrentHole() {
+// Применение снимка раунда: только состояние и видимость блоков. Тяжёлый
+// рендер уходит в scheduleRoundRender() (не чаще одного раза за кадр).
+// Эту же функцию вызывает таймер старта — когда отсчёт дошёл до нуля.
+function applyRoundState(data) {
+    curRoundData = data;
+    if (!curRoundData || typeof curRoundData !== 'object') {
+        toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден', 'error');
+        return;
+    }
+
+    // Раунд с mode='solo' обслуживает solo.js — делегируем ему
+    if (curRoundData.mode === 'solo') {
+        try { db.ref('rounds/' + curRid).off('value', roundViewHandler); } catch (e) {}
+        roundViewHandler = null;
+        roundViewListening = false;
+        if (typeof bootSoloRoundView === 'function') bootSoloRoundView(curRid);
+        return;
+    }
+
+    var setupEl = document.getElementById('setup');
+    if (setupEl) setupEl.classList.add('hidden');
+    var modeView = document.getElementById('mode-view');
+    if (modeView) modeView.classList.add('hidden');
+
+    // Раунд уже начат — блок «Начать раунд / переключайте вкладки» больше не нужен:
+    // показываем только шапку, меню, ввод счёта и остальное содержимое раунда.
+    var pageHeadEl = lGet('page-head');
+    if (pageHeadEl) pageHeadEl.classList.add('hidden');
+    if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(curRoundData);
+    try { document.body.classList.add('round-active'); } catch(e){}
+    var navEl = lGet('main-nav');
+    if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch(e){} }
+    applyScoreKiosk();
+
+    myUid = getActingUid();
+    // Раунд открывается для ввода счёта ровно в момент старта турнира:
+    // созданные протоколом заранее раунды имеют status='scheduled' и ждут
+    // времени старта (или кнопки «Старт» в админ-меню).
+    canEditGroup = (myUid !== null) && isRoundOpenForScoring(curRoundData, Date.now());
+
+    // Если текущий игрок подключился/вошёл в раунд — отмечаем его в базе.
+    // До старта турнира не отмечаем: игрок ещё не в игре.
+    if (canEditGroup && myUid && curRoundData.players && curRoundData.players[myUid]) {
+        if (!curRoundData.players[myUid].joined) {
+            try {
+                db.ref('rounds/' + curRid + '/players/' + myUid + '/joined').set(true);
+                db.ref('rounds/' + curRid + '/players/' + myUid + '/joinedAt').set(Date.now());
+            } catch(e) {}
+        }
+    }
+
+    var activeView = lGet('active-scoring-view');
+    var groupView = lGet('group-view');
+
+    if (canEditGroup) {
+        if (activeView) activeView.classList.remove('hidden');
+        if (groupView) groupView.classList.add('hidden');
+
+        var myPlayer = curRoundData.players && curRoundData.players[myUid];
+        var myTitle = lGet('my-player-name-title');
+        if (myTitle) myTitle.textContent = myPlayer ? myPlayer.name : (typeof t === 'function' ? t('my_score') : 'My score');
+        updateGroupStablefordToggle();
+
+        var markContainer = lGet('marker-input-container');
+        if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
+            myTargetUid = curRoundData.markerAssignments[myUid].targetId;
+            var targetPlayer = curRoundData.players && curRoundData.players[myTargetUid];
+            var markTitle = lGet('mark-player-name');
+            if (markTitle) markTitle.textContent = targetPlayer ? targetPlayer.name : (currentLang === 'en' ? 'Partner' : 'Партнёр');
+            if (markContainer) markContainer.classList.remove('hidden');
+        } else {
+            if (markContainer) markContainer.classList.add('hidden');
+        }
+
+        if (!isChanging) {
+            findCurrentHole();
+        }
+
+        listenForCallResponses();
+        listenForOfficialCallState({
+            roundId: curRid,
+            playerId: myUid,
+            prefix: 'group',
+            canEdit: function() { return canEditGroup; },
+            hole: function() { return playHole; },
+            playerName: function() {
+                return curRoundData.players && curRoundData.players[myUid]
+                    ? curRoundData.players[myUid].name : 'Player';
+            },
+            flightMembers: function() {
+                return typeof getFlightPlayerNames === 'function'
+                    ? getFlightPlayerNames(curRoundData, myUid) : [];
+            }
+        });
+
+    } else {
+        if (activeView) activeView.classList.add('hidden');
+        if (groupView) groupView.classList.remove('hidden');
+    }
+
+    // Тяжёлые блоки (карточка группы, QR, темп игры, баннеры) рисуем через
+    // планировщик: максимум один раз за кадр, даже если снимков пришло много.
+    scheduleRoundRender();
+}
+
+// Текущая лунка игрока. Пересчитывается только при смене раунда: пока игрок
+// стоит на своей лунке, обновления базы НЕ перебрасывают его на первую
+// неподтверждённую (раньше при каждом снимке его кидало на лунку 1).
+var playHoleRoundId = null;
+
+function findCurrentHole(force) {
     var order = getRoundOrder(curRoundData);
+    if (!force && playHoleRoundId === curRid && order.indexOf(playHole) !== -1) return;
+    playHoleRoundId = curRid;
     var myPlayer = (curRoundData.players && curRoundData.players[myUid]) || {};
     var savedResumeHole = getSavedResumeHole(curRid, myUid, order, myPlayer);
     if (savedResumeHole) {
@@ -869,12 +925,9 @@ function renderPlayHole() {
             btnIcon.className = 'fas fa-flag-checkered';
             btnText.textContent = t('finish_round');
             btn.onclick = function() { finishGroupRound(); };
-        } else if (isLastHole) {
-            btnIcon.className = 'fas fa-check';
-            btnText.textContent = currentLang === 'en' ? 'Save Result' : 'Сохранить результат';
-            btn.onclick = function() { saveHoleScores(); };
         } else {
-            btnIcon.className = 'fas fa-arrow-right';
+            // Кнопка ПОДТВЕРЖДАЕТ результат лунки (переход дальше — автоматически).
+            btnIcon.className = 'fas fa-check';
             btnText.textContent = t('next_hole_btn');
             btn.onclick = function() { saveHoleScores(); };
         }
@@ -984,9 +1037,44 @@ function checkPlayVerification() {
     }
 }
 
+// ==========================================
+// ЗАЩИТА ОТ «ПУЛЕМЁТНОГО» НАЖАТИЯ КНОПКИ
+// ==========================================
+// Пока запись лунки не завершилась, повторные нажатия игнорируются, а сама
+// кнопка блокируется. Без этого серия быстрых taps ставила в очередь десятки
+// записей и перерисовок — на телефоне интерфейс вставал намертво.
+var saveHoleInFlight = false;
+var saveHoleWatchdog = null;
+
+function setSaveBtnBusy(busy) {
+    var btn = lGet('save-hole-btn');
+    if (!btn) return;
+    btn.disabled = !!busy;
+    if (btn.classList) btn.classList.toggle('btn-busy', !!busy);
+    var icon = lGet('save-hole-btn-icon');
+    if (icon && busy) icon.className = 'fas fa-circle-notch fa-spin';
+}
+
+function releaseSaveLock() {
+    saveHoleInFlight = false;
+    if (saveHoleWatchdog) { clearTimeout(saveHoleWatchdog); saveHoleWatchdog = null; }
+    setSaveBtnBusy(false);
+    try { renderPlayHole(); } catch (e) {}
+    setTimeout(function() { isChanging = false; }, 200);
+}
+
 function saveHoleScores() {
     if (!canEditGroup) { toast(t('msg_edit_disabled'), 'error'); return; }
+    if (saveHoleInFlight) return;
     if (myScore < 1 || (myTargetUid && targetScore < 1)) { toast(t('msg_score_min'), 'error'); return; }
+
+    saveHoleInFlight = true;
+    setSaveBtnBusy(true);
+    // Страховка: если сеть «зависла» и обещание не разрешится, кнопка
+    // разблокируется сама — иначе игрок не сможет продолжить раунд.
+    saveHoleWatchdog = setTimeout(function() {
+        if (saveHoleInFlight) releaseSaveLock();
+    }, 8000);
 
     isChanging = true;
     var h = playHole;
@@ -1122,8 +1210,14 @@ function saveHoleScores() {
         // Темп игры/тайминги — пересчёт по обновлённым локальным данным,
         // не дожидаясь echo Firebase (актуально на мобильных сетях).
         updateGroupPaceAssistant();
-        setTimeout(function() { isChanging = false; }, 200);
-    });
+    }, function(err) {
+        // Запись не прошла (нет сети / правила базы) — кнопку обязательно
+        // разблокируем, иначе игрок не сможет продолжить раунд.
+        try { console.warn('[live] save hole failed', err); } catch (e) {}
+        toast(currentLang === 'en'
+            ? '⚠️ Could not save the score — check the connection and try again'
+            : '⚠️ Не удалось сохранить счёт — проверьте соединение и попробуйте ещё раз', 'error');
+    }).then(releaseSaveLock, releaseSaveLock);
 }
 
 // Состояние панелей счётных карточек на странице раунда: по умолчанию
@@ -1153,6 +1247,11 @@ function togglePersistedScorecard(panelId) {
 function renderPlaySummary() {
     var el = lGet('play-group-summary');
     if (!el || !curRoundData) return;
+    // Перестраиваем карточку группы только когда её данные действительно
+    // изменились: сборка таблицы на 18 лунок — самая дорогая операция страницы.
+    var sig = groupSummarySignature();
+    if (sig && sig === lastSummarySig) return;
+    lastSummarySig = sig;
     // Единая карточка группы — в том же формате, что на главной странице
     // («Сейчас на поле», одна на всех), плюс слой маркера: рядом со счётом
     // игрока виден и счёт, который ввёл его маркер.
@@ -1160,6 +1259,186 @@ function renderPlaySummary() {
     el.innerHTML = '<div class="live-group-unified-card">' +
         generateGroupHoleTableHTML(curRoundData, { showMarker: true }) + '</div>';
     ensureScorecardOpen('group-sc-panel');
+}
+
+// ==========================================
+// МЕМОИЗАЦИЯ ТЯЖЁЛЫХ БЛОКОВ
+// ==========================================
+// Подписи данных: если ничего не изменилось — блок не перерисовывается.
+// Особенно важно для QR-кодов: каждая перерисовка заново создаёт <img> и
+// браузер перезапрашивает картинки у внешнего сервиса.
+var lastSummarySig = null;
+var lastInviteSig = null;
+
+function groupSummarySignature() {
+    var r = curRoundData;
+    if (!r || !r.players) return '';
+    var parts = [String(curRid), String(currentLang || 'ru'), String(r.status || ''), String(r.markerAssignments ? Object.keys(r.markerAssignments).length : 0)];
+    Object.keys(r.players).sort().forEach(function(pid) {
+        var p = r.players[pid] || {};
+        parts.push(pid,
+            JSON.stringify(p.scores || {}),
+            JSON.stringify(p.submitted || {}),
+            JSON.stringify(p.verified || {}),
+            JSON.stringify(p.markerScores || {}),
+            String(p.fieldHcp == null ? '' : p.fieldHcp));
+    });
+    return parts.join('|');
+}
+
+function inviteSignature() {
+    var r = curRoundData;
+    if (!r || !r.players) return '';
+    var parts = [String(curRid), String(currentLang || 'ru'), canEditGroup ? '1' : '0'];
+    Object.keys(r.players).sort().forEach(function(pid) {
+        var p = r.players[pid] || {};
+        parts.push(pid, String(p.name || ''), isPlayerEnteredRound(p, pid, r) ? '1' : '0');
+    });
+    try { parts.push('pref:' + String(localStorage.getItem(invitePrefKey()) || '')); } catch (e) {}
+    return parts.join('|');
+}
+
+// Сброс подписей — когда нужно гарантированно перерисовать (смена языка и т.п.).
+function invalidateRoundViewCache() {
+    lastSummarySig = null;
+    lastInviteSig = null;
+}
+
+// ==========================================
+// ОТСЧЁТ ДО СТАРТА ТУРНИРА
+// ==========================================
+// Игрок, отсканировавший QR раньше времени, видит таймер и НЕ может вводить
+// счёт: раунд откроется сам ровно в момент старта (или по кнопке «Старт»
+// в админ-меню).
+var startGateTimer = null;
+var startGateLastText = null;
+
+function renderStartGate() {
+    var gate = lGet('round-start-gate');
+    if (!gate || !curRoundData) return;
+    var now = Date.now();
+    var gated = isRoundGatedByStart(curRoundData, now);
+
+    if (!gated) {
+        if (startGateTimer) { clearInterval(startGateTimer); startGateTimer = null; }
+        startGateLastText = null;
+        gate.classList.add('hidden');
+        return;
+    }
+
+    gate.classList.remove('hidden');
+
+    var titleEl = lGet('round-start-title');
+    if (titleEl) titleEl.textContent = t('tn_start_pending_title');
+    var labelEl = lGet('round-start-label');
+    if (labelEl) labelEl.textContent = t('tn_start_countdown_label');
+    var hintEl = lGet('round-start-hint');
+    if (hintEl) hintEl.textContent = t('tn_start_gate_hint');
+    var atEl = lGet('round-start-at');
+    if (atEl) atEl.textContent = fmtTime(roundScheduledStartTs(curRoundData));
+
+    // Текст таймера меняем только когда он изменился — раз в секунду.
+    var txt = formatStartCountdown(roundStartCountdownMs(curRoundData, now));
+    if (startGateLastText !== txt) {
+        startGateLastText = txt;
+        var valEl = lGet('round-start-countdown');
+        if (valEl) valEl.textContent = txt;
+    }
+
+    if (!startGateTimer) {
+        startGateTimer = setInterval(function() {
+            if (!curRoundData) return;
+            if (isRoundGatedByStart(curRoundData, Date.now())) { renderStartGate(); return; }
+            // Время старта наступило — открываем раунд.
+            clearInterval(startGateTimer);
+            startGateTimer = null;
+            openScheduledRound();
+        }, 1000);
+    }
+}
+
+// Старт наступил прямо на открытой странице игрока: открываем раунд локально
+// и пробуем зафиксировать статус в базе (админ-панель сделает то же самое).
+function openScheduledRound() {
+    var snap = {};
+    snap[curRid] = curRoundData;
+    try { pestovoActivateRounds(roundsDueForStart(snap, Date.now()), { silent: true, notify: false }); } catch (e) {}
+    if (curRoundData) curRoundData.status = 'active';
+    toast(t('tn_start_gate_started'), 'success');
+    if (typeof vib === 'function') vib([80, 40, 80]);
+    applyRoundState(curRoundData);
+}
+
+// ==========================================
+// ПОСТОЯННОЕ ПРЕДУПРЕЖДЕНИЕ ПЕРЕД ЗАВЕРШЕНИЕМ
+// ==========================================
+// Раунд нельзя завершить, пока есть неподтверждённые лунки или несовпадения.
+// Предупреждение «горит» на экране, пока проблема не исправлена, и НЕ
+// перебрасывает игрока на эти лунки (счёт за него там вводит маркер).
+var finishBlockShown = false;
+
+function buildFinishBlockHtml(v) {
+    var isEn = currentLang === 'en';
+    var order = v.order || [];
+    var markerName = v.markerName ? escapeHtml(v.markerName) : (isEn ? 'the marker' : 'маркера');
+    var rows = '', count = 0, hidden = 0;
+    order.forEach(function(h) {
+        var d = (v.details && v.details[h]) || {};
+        var text = '', cls = '';
+        if (v.mismatch[h]) {
+            cls = 'fbn-bad';
+            text = isEn
+                ? ('Hole ' + h + ': you <b>' + (parseInt(d.ps) || 0) + '</b> ≠ marker <b>' + (parseInt(d.ms) || 0) + '</b>')
+                : ('Лунка ' + h + ': у вас <b>' + (parseInt(d.ps) || 0) + '</b> ≠ у маркера <b>' + (parseInt(d.ms) || 0) + '</b>');
+        } else if (v.unconfirmed[h]) {
+            cls = 'fbn-warn';
+            text = (parseInt(d.ps) >= 1)
+                ? (isEn
+                    ? ('Hole ' + h + ': your <b>' + d.ps + '</b> is not confirmed by ' + markerName)
+                    : ('Лунка ' + h + ': ваш счёт <b>' + d.ps + '</b> не подтверждён — ждём ' + markerName))
+                : (isEn ? ('Hole ' + h + ': no score entered') : ('Лунка ' + h + ': счёт не введён'));
+        } else {
+            return;
+        }
+        count++;
+        if (count > 6) { hidden++; return; }
+        rows += '<li class="fbn-row ' + cls + '"><i class="fas ' +
+            (cls === 'fbn-bad' ? 'fa-triangle-exclamation' : 'fa-hourglass-half') +
+            '"></i><span>' + text + '</span></li>';
+    });
+    if (hidden > 0) {
+        rows += '<li class="fbn-row fbn-more">' + (isEn ? 'and ' + hidden + ' more…' : 'и ещё ' + hidden + '…') + '</li>';
+    }
+    return '<div class="finish-block">' +
+        '<div class="fbn-head"><i class="fas fa-ban"></i> ' + t('finish_blocked_title') + '</div>' +
+        '<ul class="fbn-list">' + rows + '</ul>' +
+        '<div class="fbn-hint"><i class="fas fa-circle-info"></i> ' + t('finish_blocked_hint') + '</div>' +
+        '</div>';
+}
+
+function renderFinishBlockNotice(v) {
+    var box = lGet('finish-block-notice');
+    if (!box) return;
+    if (!v && finishBlockShown && canEditGroup && curRoundData && myUid && typeof collectPlayerVerification === 'function') {
+        try { v = collectPlayerVerification(curRoundData, myUid); } catch (e) { v = null; }
+    }
+    if (!finishBlockShown) {
+        if (box.innerHTML) box.innerHTML = '';
+        box.classList.add('hidden');
+        return;
+    }
+    if (!v || v.canFinish) {
+        // Всё исправлено — предупреждение гаснет само.
+        finishBlockShown = false;
+        box.innerHTML = '';
+        box.classList.add('hidden');
+        toast(currentLang === 'en'
+            ? '✅ All holes are confirmed — the round can be finished'
+            : '✅ Все лунки подтверждены — раунд можно завершить', 'success');
+        return;
+    }
+    box.classList.remove('hidden');
+    box.innerHTML = buildFinishBlockHtml(v);
 }
 
 // ==========================================
@@ -1271,6 +1550,13 @@ function renderInviteQRs() {
         return;
     }
     if (cardEl) { try { cardEl.classList.remove('hidden'); } catch (e) {} }
+
+    // QR-картинки пересоздаём только при реальном изменении списка игроков или
+    // их статуса «в игре»: иначе каждое обновление базы перезапрашивало все
+    // QR-коды у внешнего сервиса и тормозило страницу на телефоне.
+    var invSig = inviteSignature();
+    if (invSig && invSig === lastInviteSig) return;
+    lastInviteSig = invSig;
 
     renderJoinStatus();
 
@@ -1437,19 +1723,23 @@ function finishGroupRound() {
     if (curRoundData && curRoundData.status === 'completed') return;
 
     // Турнирная проверка: ТОЛЬКО я и мой маркер (другие пары группы не блокируют финиш).
-    // Отдельного блока со списком лунок НЕТ — показываем ОДНО уведомление о первой
-    // проблемной лунке по порядку и сразу переходим к ней для исправления.
+    // Раунд не завершается, пока есть неподтверждённые лунки или несовпадения.
+    // Показываем ПОСТОЯННОЕ предупреждение списком проблемных лунок — оно
+    // гаснет само, когда всё исправлено. На эти лунки игрока НЕ перебрасываем:
+    // счёт там подтверждает маркер, а не он.
     var verification = (typeof collectPlayerVerification === 'function')
         ? collectPlayerVerification(curRoundData, myUid)
         : collectRoundVerification(curRoundData, myUid);
     if (!verification.canFinish) {
-        var issue = verification.firstIssue || getFirstVerificationIssue(verification);
-        showVerificationIssueToast(verification, function(hole){ try { goPlayHole(hole); } catch(_) {} });
-        if (issue && issue.hole) {
-            try { goPlayHole(issue.hole); } catch(_) {}
-        }
+        finishBlockShown = true;
+        renderFinishBlockNotice(verification);
         vib([200, 100, 200]);
         return;
+    }
+    // Все лунки подтверждены — предупреждение (если висело) убираем.
+    if (finishBlockShown) {
+        finishBlockShown = false;
+        renderFinishBlockNotice(verification);
     }
 
     groupFinishing = true;

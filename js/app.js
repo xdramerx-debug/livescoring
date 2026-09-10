@@ -628,6 +628,18 @@ function loadLiveRounds() {
         // Вчерашние незавершённые раунды автоматически закрываем со статусом
         // «завершён автоматически» — они исчезнут из блока «Сейчас на поле».
         if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
+        // Авто-старт турнира: раунды, созданные протоколом заранее (status
+        // 'scheduled'), открываются ровно в момент старта — не дожидаясь,
+        // пока админ откроет админ-панель или нажмёт «Старт».
+        if (typeof roundsDueForStart === 'function') {
+            var due = roundsDueForStart(data, Date.now());
+            if (due.roundIds.length) {
+                due.roundIds.forEach(function(rid) { if (data[rid]) data[rid].status = 'active'; });
+                if (typeof pestovoActivateRounds === 'function') {
+                    try { pestovoActivateRounds(due, { silent: true }); } catch (e) {}
+                }
+            }
+        }
         var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active'; });
 
         renderCourseHolesStrip(entries);

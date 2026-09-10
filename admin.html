@@ -89,8 +89,7 @@
             <button class="admin-tab active" onclick="switchTab('alerts',this)" data-i18n="tab_alerts">Вызовы 🚨</button>
             <button class="admin-tab" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
             <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
-            <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры</button>
-            <button class="admin-tab" onclick="switchTab('start',this)" data-i18n="tab_start">Старт турнира 🏁</button>
+            <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры 🏆</button>
             <button class="admin-tab" onclick="switchTab('broadcasts',this)" data-i18n="tab_broadcasts">Анонсы 📢</button>
             <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
             <button class="admin-tab" onclick="switchTab('importexport',this)" data-i18n="tab_importexport">Импорт/Экспорт 📊</button>
@@ -113,6 +112,10 @@
                 <div class="date-presets" id="adm-date-presets"></div>
                 <p class="date-filter-hint hidden" id="adm-date-hint" role="alert"></p>
                 <div class="rounds-summary" id="adm-rounds-summary"></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                    <button type="button" class="btn btn-ol btn-sm" onclick="admRoundsExpandAll(true)"><i class="fas fa-angles-down"></i> Развернуть все</button>
+                    <button type="button" class="btn btn-ol btn-sm" onclick="admRoundsExpandAll(false)"><i class="fas fa-angles-up"></i> Свернуть все</button>
+                </div>
                 <div id="adm-rounds"></div>
             </div>
         </div>
@@ -120,7 +123,19 @@
         <div id="tab-groups" class="admin-section hidden">
             <div class="card">
                 <h2><i class="fas fa-stopwatch"></i> <span data-i18n="admin_groups_title">Группы, которые сейчас играют</span></h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="admin_groups_sub">Контроль темпа игры по активным групповым раундам</p>
+                <p style="color:var(--muted);font-size:13px;margin-bottom:12px;" data-i18n="admin_groups_sub">Контроль темпа игры по активным групповым раундам</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
+                    <div class="form-group" style="flex:1;min-width:170px;max-width:260px;margin:0;">
+                        <label style="font-size:11px;">Сортировка</label>
+                        <select id="adm-groups-sort" class="form-input" style="padding:7px 10px;font-size:12.5px;" onchange="admGroupsSort(this.value)">
+                            <option value="delay" selected>Сначала отстающие</option>
+                            <option value="start">По времени старта</option>
+                            <option value="hole">По текущей лунке</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-ol btn-sm" onclick="admGroupsExpandAll(true)"><i class="fas fa-angles-down"></i> Развернуть все</button>
+                    <button type="button" class="btn btn-ol btn-sm" onclick="admGroupsExpandAll(false)"><i class="fas fa-angles-up"></i> Свернуть все</button>
+                </div>
                 <div id="adm-groups"></div>
             </div>
         </div>
@@ -271,6 +286,8 @@
                     <label data-i18n="available_formats">Доступные форматы</label>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
                         <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-stroke" checked> Stroke Play</label>
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-gross"> Gross (без HCP)</label>
+                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-net"> Net (с HCP)</label>
                         <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-stbl"> Stableford</label>
                         <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-m1v1"> Match Play (1v1)</label>
                         <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-scram"> Scramble</label>
@@ -288,10 +305,8 @@
                 <button class="btn btn-g" onclick="createTournament()"><i class="fas fa-save"></i> <span data-i18n="create_btn">Создать</span></button>
             </div>
             <div class="card"><h2><i class="fas fa-list"></i> <span data-i18n="all_tournaments">Турниры</span></h2><div id="tn-list"></div></div>
-        </div>
-
-        <!-- СТАРТ ТУРНИРА: стартовые протоколы, группы и QR-коды игроков -->
-        <div id="tab-start" class="admin-section hidden">
+            <!-- СТАРТ ТУРНИРА: единая страница — протоколы, группы и QR-коды живут здесь же -->
+            <div id="tn-start-anchor"></div>
             <div id="tab-start-content"></div>
         </div>
 
@@ -513,9 +528,20 @@
                     («Наташа» → «Наталья», «Наталия» — см. блок «Формы имён» выше). При однозначном совпадении HCP обновляется
                     в профиле, раундах, истории и турнирах. В конце показываются списки: обновлено / актуально / не найдено / на выбор.
                 </p>
+                <div class="form-group" style="max-width:340px;">
+                    <label>Кого синхронизировать</label>
+                    <select id="rg-sync-scope" class="form-input" onchange="rgRefreshSyncScopeHint()">
+                        <option value="all" selected>Всех игроков</option>
+                        <option value="notfound">Не найденных в прошлый раз</option>
+                        <option value="new">Новых (без HCP / без прошлой синхронизации)</option>
+                        <option value="stale">С устаревшими данными (старше 30 дней)</option>
+                        <option value="conflicts">Требующих ручного выбора</option>
+                    </select>
+                </div>
+                <div id="rg-sync-scope-hint" style="margin:-6px 0 12px;"></div>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
                     <button type="button" class="btn btn-g imp-big-btn" id="rg-sync-btn" onclick="rgSyncAll()">
-                        <i class="fas fa-rotate"></i> <span>Синхронизировать всех игроков</span>
+                        <i class="fas fa-rotate"></i> <span>Синхронизировать гандикапы</span>
                     </button>
                     <button type="button" class="btn btn-r imp-big-btn hidden" id="rg-sync-stop" onclick="rgSyncStop()">
                         <i class="fas fa-stop"></i> <span>Остановить</span>
@@ -920,19 +946,19 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.53.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.54.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=51"></script>
+<script src="js/utils.js?v=52"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/assistant-config.js"></script>
 <script src="js/assistant-build.js?v=2"></script>
 <script src="js/name-variants.js?v=1"></script>
-<script src="js/admin.js?v=36"></script>
+<script src="js/admin.js?v=37"></script>
 <script src="js/protocol.js?v=1"></script>
-<script src="js/start-admin.js?v=12"></script>
+<script src="js/start-admin.js?v=13"></script>
 <script src="js/design-admin.js?v=2"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>

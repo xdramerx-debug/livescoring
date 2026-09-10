@@ -50,10 +50,10 @@ function holeResName(s,p){
     if(d===2)return t('res_double');
     return '+'+d;
 }
-// Длительность всех уведомлений — 3 секунды (единый стандарт Pestovo).
+// Длительность всех уведомлений — 2 секунды (единый стандарт Pestovo).
 // Внизу каждого уведомления идёт зелёная полоса, которая плавно угасает
 // (сжимается и теряет яркость) ровно за это время.
-var TOAST_DURATION_MS = 3000;
+var TOAST_DURATION_MS = 2000;
 function ensureToastRoot(){
     if (typeof document === 'undefined' || !document.body) return null;
     var root = document.getElementById('toast-root');
@@ -856,7 +856,7 @@ var I18N = {
         username: 'Логин', password: 'Пароль',
         login_btn: 'Войти', register_btn: 'Регистрация', create_account: 'Создать аккаунт',
         continue_guest: 'Продолжить как гость',
-        tab_rounds: 'Раунды', tab_alerts: 'Вызовы 🚨', tab_groups: 'Группы сейчас ⏱️', tab_tournaments: 'Турниры',
+        tab_rounds: 'Раунды', tab_alerts: 'Вызовы 🚨', tab_groups: 'Группы сейчас ⏱️', tab_tournaments: 'Турниры 🏆',
         tab_start: 'Старт турнира 🏁',
         tab_players: 'Игроки и роли', tab_data: 'Данные',
         tab_importexport: 'Импорт/Экспорт 📊', tab_rusgolf: 'RUSGOLF 🇷🇺',
@@ -1342,7 +1342,7 @@ var I18N = {
         username: 'Username', password: 'Password',
         login_btn: 'Log In', register_btn: 'Register', create_account: 'Create Account',
         continue_guest: 'Continue as Guest',
-        tab_rounds: 'Rounds', tab_alerts: 'Alerts 🚨', tab_groups: 'Groups now ⏱️', tab_tournaments: 'Tournaments',
+        tab_rounds: 'Rounds', tab_alerts: 'Alerts 🚨', tab_groups: 'Groups now ⏱️', tab_tournaments: 'Tournaments 🏆',
         tab_start: 'Tournament Start 🏁',
         tab_players: 'Players & Roles', tab_data: 'Data',
         tab_importexport: 'Import/Export 📊', tab_rusgolf: 'RUSGOLF 🇷🇺',
@@ -8716,6 +8716,115 @@ function privacyDisplayName(p, pid) {
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof initPrivacySettings === 'function') initPrivacySettings();
 });
+
+// ============================================================
+// РАЗМЕРЫ ФЛАЙТОВ БЕЗ ГРУПП ПО 2 ЧЕЛОВЕКА
+// ------------------------------------------------------------
+// pestovoBalancedFlightSizes(total, preferSize) возвращает массив размеров
+// флайтов (сумма = total), в котором нет групп по 1–2 человека, если это
+// вообще возможно. Хвост по 2 перераспределяется: вместо 4+4+…+2 получаются
+// тройки (например 14 игроков → 4+4+3+3, 9 игроков → 3+3+3).
+// Неизбежные исключения: total<=5 при preferSize>=3 (5 = 3+2) и total<=2.
+// preferSize 1–2 означает явный выбор админа — уважаем его как есть.
+// Используется и в «Старте турнира», и в генераторе флайтов.
+// ============================================================
+function pestovoBalancedFlightSizes(total, preferSize) {
+    total = Math.max(0, parseInt(total, 10) || 0);
+    preferSize = parseInt(preferSize, 10) || 4;
+    if (total <= 0) return [];
+    if (total === 1) return [1];
+    if (total === 2) return [2];
+    if (preferSize <= 2) {
+        // Явный выбор админа: режем строго по размеру, хвост как есть.
+        var outSmall = [];
+        var left = total;
+        while (left > preferSize) { outSmall.push(preferSize); left -= preferSize; }
+        outSmall.push(left);
+        return outSmall;
+    }
+    if (preferSize >= 4) {
+        var full = Math.floor(total / 4);
+        var rem = total % 4;
+        var out = [];
+        var i;
+        if (rem === 0) {
+            for (i = 0; i < full; i++) out.push(4);
+            return out;
+        }
+        if (rem === 3) {
+            for (i = 0; i < full; i++) out.push(4);
+            out.push(3);
+            return out;
+        }
+        if (rem === 2) {
+            // total>=6 здесь всегда (меньшие разобраны выше): 6 → 3+3, 10 → 4+3+3.
+            for (i = 0; i < full - 1; i++) out.push(4);
+            out.push(3); out.push(3);
+            return out;
+        }
+        // rem === 1: забираем две четвёрки и делаем три тройки (13 → 4+3+3+3)
+        if (full >= 2) {
+            for (i = 0; i < full - 2; i++) out.push(4);
+            out.push(3); out.push(3); out.push(3);
+            return out;
+        }
+        // total = 5 или 9: 5 → 3+2 (неизбежно), 9 → 3+3+3
+        if (total === 9) return [3, 3, 3];
+        return [3, 2];
+    }
+    // preferSize === 3: базовые тройки, хвост по 1–2 чиним четвёрками.
+    var full3 = Math.floor(total / 3);
+    var rem3 = total % 3;
+    var out3 = [];
+    var j;
+    if (rem3 === 0) {
+        for (j = 0; j < full3; j++) out3.push(3);
+        return out3;
+    }
+    if (rem3 === 1) {
+        if (full3 < 1) return [total]; // total=1 уже обработан выше
+        for (j = 0; j < full3 - 1; j++) out3.push(3);
+        out3.push(4); // 7 → 3+4, 4 → 4
+        return out3;
+    }
+    // rem3 === 2: две тройки + хвост 2 → две четвёрки (8 → 4+4)
+    if (full3 >= 2) {
+        for (j = 0; j < full3 - 2; j++) out3.push(3);
+        out3.push(4); out3.push(4);
+        return out3;
+    }
+    return [3, 2]; // total = 5, неизбежно
+}
+
+// ============================================================
+// ФОРМАТЫ ИГРЫ ТУРНИРА (единый список для всего сайта)
+// ------------------------------------------------------------
+// Gross — игра на валовые удары без учёта гандикапа,
+// Net — с учётом гандикапа. Строки хранятся как есть в поле
+// tournaments/<id>/formats и rounds/<id>/format.
+// ============================================================
+var PESTOVO_FORMAT_PRESETS = [
+    'Stroke Play',
+    'Stroke Play (Gross)',
+    'Stroke Play (Net)',
+    'Stableford',
+    'Match Play 1v1',
+    'Match Play 2v2',
+    'Scramble',
+    'Texas Scramble',
+    'Greensomes'
+];
+
+function pestovoFormatLabel(f) {
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    if (f === 'Stroke Play') return en ? 'Stroke Play' : 'Stroke Play';
+    if (f === 'Stroke Play (Gross)') return en ? 'Gross (no handicap)' : 'Гросс (без учёта HCP)';
+    if (f === 'Stroke Play (Net)') return en ? 'Net (with handicap)' : 'Нетто (с учётом HCP)';
+    if (f === 'Stableford') return en ? 'Stableford (points)' : 'Stableford (очки)';
+    if (f === 'Match Play 1v1') return en ? 'Match Play (1v1)' : 'Match Play (1×1)';
+    if (f === 'Match Play 2v2') return en ? 'Match Play (2v2)' : 'Match Play (2×2)';
+    return String(f == null ? '' : f);
+}
 
 // ============================================================
 // ТУРНИРНЫЕ ГРУППЫ ПО ГАНДИКАПУ (дивизионы) + ОБРЕЗКА ГАНДИКАПА

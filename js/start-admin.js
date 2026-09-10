@@ -574,6 +574,10 @@ function psRender() {
     root.innerHTML = html;
     psRenderExcelBox();
     psAttachPlayerAutofill();
+    // Контейнер «QR-коды и сохранённые протоколы» только что пересоздан
+    // с текстом «Загрузка…»: перерисовываем список из кэша (подписка уже
+    // есть, вызывать безопасно — psBindSavedList идемпотентен).
+    try { if (typeof psBindSavedList === 'function') psBindSavedList(); } catch (ePsBind) {}
 }
 
 function psFillFromMatchedUser(matchedUser, lastId, firstId, midId, hcpId, genderId, teeId) {
@@ -922,6 +926,8 @@ function psFormatChipsHtml(proto) {
     function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
     function labelOf(f) {
         if (f === 'Stroke Play') return psL('Stroke Play (гросс)', 'Stroke Play (gross)');
+        if (f === 'Stroke Play (Gross)') return psL('Гросс (без учёта HCP)', 'Gross (no handicap)');
+        if (f === 'Stroke Play (Net)') return psL('Нетто (с учётом HCP)', 'Net (with handicap)');
         if (f === 'Stableford') return psL('Stableford (очки)', 'Stableford (points)');
         if (f === 'Match Play 1v1') return psL('Match Play (1×1)', 'Match Play (1v1)');
         return f;
@@ -932,7 +938,7 @@ function psFormatChipsHtml(proto) {
         if (f && f !== '__custom__' && candidates.indexOf(f) === -1) candidates.push(f);
     }
     (tournament ? tournament.formats : []).forEach(add);
-    ['Stroke Play', 'Stableford', 'Match Play 1v1', 'Match Play 2v2', 'Scramble', 'Texas Scramble', 'Greensomes'].forEach(add);
+    ['Stroke Play', 'Stroke Play (Gross)', 'Stroke Play (Net)', 'Stableford', 'Match Play 1v1', 'Match Play 2v2', 'Scramble', 'Texas Scramble', 'Greensomes'].forEach(add);
     (proto.formats || []).forEach(add);
     if (proto.format && proto.format !== '__custom__') add(proto.format);
 
@@ -2451,6 +2457,26 @@ function psShuffle(arr) {
     return arr;
 }
 
+// Нарезка на группы сбалансированными размерами: никаких групп по 2 человека,
+// если этого можно избежать (хвост перераспределяется в тройки).
+function psSliceBalanced(players, size) {
+    var sizes = null;
+    if (typeof pestovoBalancedFlightSizes === 'function') {
+        try { sizes = pestovoBalancedFlightSizes(players.length, size); } catch (e) { sizes = null; }
+    }
+    var groups = [];
+    if (!sizes || !sizes.length) {
+        for (var f = 0; f < players.length; f += size) groups.push(players.slice(f, f + size));
+        return groups;
+    }
+    var pos = 0;
+    sizes.forEach(function(sz) {
+        groups.push(players.slice(pos, pos + sz));
+        pos += sz;
+    });
+    return groups;
+}
+
 function psBuildGroups() {
     var proto = psState.proto;
     var players = proto.players.slice();
@@ -2488,14 +2514,10 @@ function psBuildGroups() {
         return groups;
     }
     if (proto.method === 'order' || proto.method === 'alpha' || proto.method === 'hcpAsc' || proto.method === 'hcpDesc' || proto.method === 'random') {
-        for (var g = 0; g < players.length; g += size) {
-            groups.push(players.slice(g, g + size));
-        }
-        return groups;
+        return psSliceBalanced(players, size);
     }
     // на всякий случай
-    for (var g2 = 0; g2 < players.length; g2 += size) groups.push(players.slice(g2, g2 + size));
-    return groups;
+    return psSliceBalanced(players, size);
 }
 
 function psIntervalMs(proto) {
@@ -2832,7 +2854,7 @@ function psGroupFormatOptions(g) {
     var resolved = psResolvedFormats().join(' + ');
     function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
     var opts = ['<option value="">' + psL('— как у протокола: ', '— same as protocol: ') + esc(resolved) + ' —</option>'];
-    var preset = ['Stroke Play', 'Stableford', 'Match Play 1v1', 'Match Play 2v2', 'Scramble', 'Texas Scramble', 'Greensomes'];
+    var preset = ['Stroke Play', 'Stroke Play (Gross)', 'Stroke Play (Net)', 'Stableford', 'Match Play 1v1', 'Match Play 2v2', 'Scramble', 'Texas Scramble', 'Greensomes'];
     var tn = psGetSelTournament();
     var used = {};
     (tn && tn.formats ? tn.formats : []).concat(preset).forEach(function(f) {
@@ -3366,6 +3388,7 @@ function psSaveProtocol() {
     psState.busy = true;
 
     var pid = 'pr_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
+    var savedDoc = null; // протокол для оптимистичного обновления кэша списка
     var roundsRef = db.ref('rounds');
     var groupStore = {};
     var usedKeys = {};
@@ -3484,6 +3507,7 @@ function psSaveProtocol() {
             createdAt: Date.now(),
             createdBy: (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) ? currentUser.uid : 'admin'
         };
+        savedDoc = protocolDoc;
         return db.ref('protocols/' + pid).set(protocolDoc);
     }).then(function() {
         // Обрезка — общая с турниром: фиксируем её на турнире, чтобы страница
@@ -3502,7 +3526,19 @@ function psSaveProtocol() {
         psState.savedId = pid;
         psState.busy = false;
         psState.groups = [];
+        // Оптимистично кладём протокол в кэш: блок 4 перерисуется мгновенно,
+        // не дожидаясь события Firebase (иначе он залипает на «Загрузка…»).
+        try {
+            if (savedDoc) {
+                if (!psSavedCache) psSavedCache = {};
+                psSavedCache[pid] = savedDoc;
+            }
+        } catch (eCache) {}
         psRender();
+        try {
+            var savedCard = psEl('ps-saved-content');
+            if (savedCard && savedCard.scrollIntoView) savedCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (eScroll) {}
         toast(psL('🎉 Протокол сохранён: ' + groups.length + ' групп, ' + totalPlayers + ' игроков', '🎉 Protocol saved: ' + groups.length + ' groups, ' + totalPlayers + ' players'), 'success');
         if (typeof vib === 'function') vib([60, 40, 60]);
         try { psAutoSyncSavedGroups(groups); } catch (e) { console.warn('[start] autosync', e); }

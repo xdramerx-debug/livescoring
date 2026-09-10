@@ -362,6 +362,7 @@ function switchTab(t, b) {
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
         nmLoadSettings();
+        try { if (typeof rgRefreshSyncScopeHint === 'function') rgRefreshSyncScopeHint(); } catch (eRg) {}
     }
     if (t === 'players') {
         loadPrivacySettings();
@@ -370,10 +371,27 @@ function switchTab(t, b) {
         renderAssistantSources();
         loadAssistantSourcesFromFirebase();
     }
-    if (t === 'start') {
-        // Вкладка «Старт турнира 🏁»: стартовые протоколы и QR-коды (js/start-admin.js)
+    if (t === 'tournaments' || t === 'start') {
+        // Вкладка «Турниры 🏆» — единая страница создания турнира: создание,
+        // список, HCP-группы, флайты + стартовые протоколы и QR-коды
+        // (js/start-admin.js) живут в одном месте. Старое имя 'start'
+        // оставлено для совместимости и ведёт на ту же вкладку.
+        if (t === 'start') {
+            var tnTab = document.getElementById('tab-tournaments');
+            if (tnTab) tnTab.classList.remove('hidden');
+            document.querySelectorAll('.admin-tab').forEach(function(x) {
+                if (x.getAttribute('onclick') && x.getAttribute('onclick').indexOf("'tournaments'") !== -1) x.classList.add('active');
+            });
+        }
+        try { if (typeof loadTournaments === 'function') loadTournaments(); } catch (eTn) {}
         if (typeof psSwitchTo === 'function') {
-            try { psSwitchTo(); } catch (e) { console.error('[start] switch error', e); }
+            try { psSwitchTo(); } catch (ePs) { console.error('[start] switch error', ePs); }
+        }
+        if (t === 'start') {
+            setTimeout(function() {
+                var anchor = document.getElementById('tn-start-anchor');
+                if (anchor && anchor.scrollIntoView) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 120);
         }
     }
     if (t === 'design') {
@@ -399,9 +417,33 @@ function loadAdmGroups() {
     }
 }
 
+// Компактный список групп: одна строка на группу (свёрнуто по умолчанию),
+// детали — в раскрывающейся панели. Сортировка: отстающие / старт / лунка.
+var admGroupsExpanded = {};
+var admGroupsSortMode = 'delay';
+
+function admGroupsSort(v) {
+    admGroupsSortMode = v || 'delay';
+    renderAdmGroups();
+}
+
+function admToggleGroupRow(id) {
+    admGroupsExpanded[id] = !admGroupsExpanded[id];
+    renderAdmGroups();
+}
+
+function admGroupsExpandAll(expand) {
+    var data = adminGroupsSnapshot && typeof adminGroupsSnapshot.val === 'function'
+        ? (adminGroupsSnapshot.val() || {}) : {};
+    Object.keys(data).forEach(function(id) { admGroupsExpanded[id] = !!expand; });
+    renderAdmGroups();
+}
+
 function renderAdmGroups() {
     var el = document.getElementById('adm-groups');
     if (!el) return;
+    var sortSel = document.getElementById('adm-groups-sort');
+    if (sortSel && sortSel.value) admGroupsSortMode = sortSel.value;
     var data = adminGroupsSnapshot && typeof adminGroupsSnapshot.val === 'function'
         ? (adminGroupsSnapshot.val() || {}) : {};
     var groups = Object.entries(data).filter(function(entry) {
@@ -415,34 +457,59 @@ function renderAdmGroups() {
         return;
     }
 
-    groups.sort(function(a, b) {
-        var delayA = getRoundPaceMetrics(a[1]).overallDelay || 0;
-        var delayB = getRoundPaceMetrics(b[1]).overallDelay || 0;
-        return delayB - delayA;
+    var metricsCache = {};
+    groups.forEach(function(entry) {
+        try { metricsCache[entry[0]] = getRoundPaceMetrics(entry[1]); } catch (e) { metricsCache[entry[0]] = { overallDelay: 0 }; }
     });
+    var curHoleOf = function(entry) {
+        var m = metricsCache[entry[0]] || {};
+        var rd = entry[1] || {};
+        return m.currentHole || ((m.order && m.order.length) ? m.order[0] : rd.startHole || 1);
+    };
+    if (admGroupsSortMode === 'start') {
+        groups.sort(function(a, b) { return (a[1].startTime || 0) - (b[1].startTime || 0); });
+    } else if (admGroupsSortMode === 'hole') {
+        groups.sort(function(a, b) { return curHoleOf(a) - curHoleOf(b); });
+    } else {
+        // «Сначала отстающие»: по величине отставания от графика.
+        groups.sort(function(a, b) {
+            var delayA = (metricsCache[a[0]] && metricsCache[a[0]].overallDelay) || 0;
+            var delayB = (metricsCache[b[0]] && metricsCache[b[0]].overallDelay) || 0;
+            return delayB - delayA;
+        });
+    }
 
     var html = '';
     groups.forEach(function(entry, index) {
+        var rid = entry[0];
         var roundData = entry[1];
-        var metrics = getRoundPaceMetrics(roundData);
+        var metrics = metricsCache[rid] || {};
         var state = paceStatus(metrics.overallDelay);
         var participants = getPaceParticipants(roundData);
         var names = participants.map(function(item) {
             var pTee = (item.player && item.player.tee) || roundData.tee || 'wh';
             return escapeHtml(item.player.name || t('player')) + ' ' + fmtTeePill(pTee);
         }).join(' · ');
-        var currentHole = metrics.currentHole || (metrics.order.length ? metrics.order[0] : roundData.startHole || 1);
+        var currentHole = curHoleOf(entry);
         var noTimingNote = !metrics.hasTimingData
             ? '<div class="pace-note">' + t('pace_pending') + '</div>' : '';
         var groupLabel = currentLang === 'en' ? 'Group ' + (index + 1) : 'Группа ' + (index + 1);
+        var expanded = !!admGroupsExpanded[rid];
 
-        html += '<div class="admin-group-card pace-state-' + state.key + '" style="--pace-color:' + state.color + ';">';
-        html += '<div class="admin-group-card-header">';
-        html += '<div><h3><span class="live-dot" style="width:8px;height:8px;margin-right:5px;"></span>' + groupLabel + '</h3>';
-        html += '<div class="admin-group-players"><i class="fas fa-users"></i> ' + names + '</div></div>';
-        html += '<span class="admin-group-status">' + state.label + '</span>';
+        // Компактная строка: название, лунка, отставание, статус.
+        html += '<div class="list-item adm-group-row pace-state-' + state.key + '" style="--pace-color:' + state.color + ';padding:9px 12px;gap:8px;cursor:pointer;border-left:3px solid ' + state.color + ';" onclick="admToggleGroupRow(\'' + rid + '\')">';
+        html += '<i class="fas ' + (expanded ? 'fa-chevron-up' : 'fa-chevron-down') + '" style="color:var(--gold);font-size:11px;"></i>';
+        html += '<span class="live-dot" style="width:7px;height:7px;"></span>';
+        html += '<b style="color:var(--white);font-size:13px;">' + groupLabel + '</b>';
+        html += '<span style="font-size:12px;color:var(--muted);">' + participants.length + ' ' + (currentLang === 'en' ? 'pl.' : 'игр.') + ' · №' + currentHole + '</span>';
+        html += '<b class="admin-group-delay" style="font-size:13px;">' + formatPaceDelta(metrics.overallDelay) + '</b>';
+        html += '<span class="admin-group-status" style="margin-left:auto;">' + state.label + '</span>';
         html += '</div>';
 
+        // Раскрытая панель: состав, метрики, тайминги лунок.
+        html += '<div class="' + (expanded ? '' : 'hidden') + '" style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:10px 12px;margin:-6px 0 6px;">';
+        html += '<div class="admin-group-card pace-state-' + state.key + '" style="--pace-color:' + state.color + ';margin:0;border:none;background:transparent;padding:0;">';
+        html += '<div class="admin-group-players" style="margin-bottom:8px;"><i class="fas fa-users"></i> ' + names + '</div>';
         html += '<div class="admin-group-meta">';
         html += '<div><span>' + t('admin_start_time') + '</span><b>' + fmtTime(roundData.startTime) + '</b></div>';
         html += '<div><span>' + t('admin_start_hole') + '</span><b>№' + (roundData.startHole || 1) + '</b></div>';
@@ -450,37 +517,13 @@ function renderAdmGroups() {
         html += '<div><span>' + t('tee_select') + '</span><b>' + fmtRoundTeePills(roundData) + '</b></div>';
         html += '<div><span>' + t('admin_total_delay') + '</span><b class="admin-group-delay">' + formatPaceDelta(metrics.overallDelay) + '</b></div>';
         html += '</div>';
-
         html += '<div class="admin-group-timeline-title"><i class="fas fa-list-ol"></i> ' + t('admin_hole_timings') + '</div>';
         html += '<div class="pace-timeline">' + renderPaceHoleTimeline(metrics) + '</div>';
         html += noTimingNote;
-        html += '</div>';
+        html += '</div></div>';
     });
 
     el.innerHTML = html;
-}
-
-// ==========================================
-// РАУНДЫ
-// ==========================================
-// Виджет «Дата с / Дата по» для вкладки «Все раунды». Подключаем один раз —
-// повторные вызовы просто возвращают уже созданный экземпляр.
-function ensureAdmRoundsDateFilter() {
-    if (typeof getDateRangeFilter === 'function') {
-        var existing = getDateRangeFilter('admin-rounds');
-        if (existing) return existing;
-    }
-    if (typeof initDateRangeFilter !== 'function') return null;
-    return initDateRangeFilter({
-        key: 'admin-rounds',
-        fromId: 'adm-date-from',
-        toId: 'adm-date-to',
-        presetsId: 'adm-date-presets',
-        resetId: 'adm-date-reset',
-        hintId: 'adm-date-hint',
-        summaryId: 'adm-rounds-summary',
-        onChange: function() { loadAdmRounds(); }
-    });
 }
 
 function loadAdmRounds() {
@@ -494,6 +537,68 @@ function loadAdmRounds() {
         if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
         renderAdmRounds(data);
     });
+}
+
+// Компактный список раундов: одна строка на раунд, детали — в раскрывающейся
+// панели. По умолчанию всё свёрнуто; состояние запоминается при обновлениях.
+var admRoundsExpanded = {};
+
+function admToggleRoundRow(id) {
+    admRoundsExpanded[id] = !admRoundsExpanded[id];
+    var panel = document.getElementById('adm-r-' + id);
+    var chev = document.getElementById('adm-r-chev-' + id);
+    if (panel) panel.classList.toggle('hidden', !admRoundsExpanded[id]);
+    if (chev) chev.className = 'fas ' + (admRoundsExpanded[id] ? 'fa-chevron-up' : 'fa-chevron-down');
+}
+
+function admRoundsExpandAll(expand) {
+    document.querySelectorAll('#adm-rounds [id^="adm-r-"]').forEach(function(panel) {
+        var id = panel.id.replace(/^adm-r-/, '');
+        if (!id || id.indexOf('chev-') === 0) return;
+        admRoundsExpanded[id] = !!expand;
+        panel.classList.toggle('hidden', !expand);
+        var chev = document.getElementById('adm-r-chev-' + id);
+        if (chev) chev.className = 'fas ' + (expand ? 'fa-chevron-up' : 'fa-chevron-down');
+    });
+}
+
+function admRoundDetailsHtml(id, r) {
+    var html = '';
+    var tnName = (typeof roundTournamentName === 'function') ? roundTournamentName(r) : (r.tournamentName || '');
+    if (tnName) {
+        html += '<div style="font-size:12px;color:var(--gold);margin-bottom:8px;"><i class="fas fa-trophy"></i> ' + escapeHtml(tnName) +
+            (r.groupNo ? ' · ' + (currentLang === 'en' ? 'Group ' : 'Группа ') + r.groupNo : '') + '</div>';
+    }
+    var plist = Object.entries(r.players || {});
+    if (!plist.length) {
+        html += '<div style="font-size:12px;color:var(--muted);">' + (currentLang === 'en' ? 'No players' : 'Нет игроков') + '</div>';
+        return html;
+    }
+    var order = [];
+    try { order = (typeof getRoundOrder === 'function') ? getRoundOrder(r) : []; } catch (eOrd) { order = []; }
+    html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+    plist.forEach(function(pe) {
+        var p = pe[1] || {};
+        var stats = { gross: 0, toPar: null, net: 0, stablefordField: 0, holesPlayed: 0 };
+        try {
+            if (typeof calcRoundStats === 'function') {
+                stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order) || stats;
+            }
+        } catch (eSt) {}
+        var pTee = (p && p.tee) || r.tee || 'wh';
+        html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:8px;">';
+        html += '<span style="color:var(--white);font-weight:600;flex:1;min-width:120px;">' + escapeHtml(p.name || t('player')) + '</span> ';
+        html += fmtTeePill(pTee);
+        html += '<span style="color:var(--muted);">HCP ' + (p.exactHcp != null ? fmtExactHcp(p.exactHcp) : '—') + '</span>';
+        html += '<span style="color:var(--muted);">Gross <b style="color:var(--white);">' + (stats.gross || 0) + '</b></span>';
+        html += '<span class="' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>';
+        html += '<span style="color:var(--muted);">Net <b style="color:var(--white);">' + (stats.net || 0) + '</b></span>';
+        html += '<span style="color:var(--muted);">Stbl <b style="color:var(--gold);">' + (stats.stablefordField || 0) + '</b></span>';
+        html += '<span style="color:var(--muted);font-size:11px;">' + (stats.holesPlayed || 0) + '/18</span>';
+        html += '</div>';
+    });
+    html += '</div>';
+    return html;
 }
 
 function renderAdmRounds(data) {
@@ -518,31 +623,33 @@ function renderAdmRounds(data) {
         return;
     }
 
-    var playersStr = currentLang === 'en' ? ' players · ' : ' игр. · ';
-    var soloStr = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
+    var playersStr = currentLang === 'en' ? ' pl.' : ' игр.';
+    var soloStr = currentLang === 'en' ? ' · Solo' : ' · Соло';
 
     var html = '';
     entries.forEach(function(e) {
         var id = e[0], r = e[1], pc = Object.keys(r.players || {}).length;
+        var expanded = !!admRoundsExpanded[id];
         var badge = r.status === 'active'
             ? '<span class="tn-status tn-a"><span class="live-dot" style="width:6px;height:6px;"></span> Live</span>'
             : ((typeof buildRoundCompletedBadgeHTML === 'function')
                 ? buildRoundCompletedBadgeHTML(r)
                 : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>');
 
-        html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;">';
-        html += '<div style="flex:1;min-width:200px;"><strong style="color:var(--white);">' + t('brand_name') + '</strong> ' + badge;
-        html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
+        html += '<div class="list-item adm-round-row" style="padding:9px 12px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="admToggleRoundRow(\'' + id + '\')">';
+        html += '<i id="adm-r-chev-' + id + '" class="fas ' + (expanded ? 'fa-chevron-up' : 'fa-chevron-down') + '" style="color:var(--gold);font-size:11px;"></i>';
+        html += '<div style="flex:1;min-width:180px;font-size:12.5px;"><strong style="color:var(--white);">' +
                 // Дату показываем ту же, по которой работает фильтр периода (старт раунда).
-                fmtDate(getRoundFilterTs(r)) + ' · ' + fmtTime(r.startTime) + ' · ' + pc + playersStr +
-                (r.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtRoundTeePills(r) +
-                (r.mode === 'solo' ? soloStr : '') + '</div></div>';
-        html += '<div style="display:flex;gap:6px;">';
+                fmtDate(getRoundFilterTs(r)) + '</strong> <span style="color:var(--muted);">' + fmtTime(r.startTime) + ' · ' + pc + playersStr + ' · ' +
+                escapeHtml(r.format || 'Stroke') + (r.mode === 'solo' ? soloStr : '') + '</span> ' + badge + '</div>';
+        html += '<div style="display:flex;gap:6px;" onclick="event.stopPropagation()">';
         if (r.status === 'completed') {
             html += '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i></button>';
         }
         html += '<button class="btn btn-r btn-sm" onclick="deleteRound(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
         html += '</div></div>';
+        html += '<div id="adm-r-' + id + '" class="' + (expanded ? '' : 'hidden') + '" style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:10px 12px;margin:-6px 0 6px;">' +
+            admRoundDetailsHtml(id, r) + '</div>';
     });
 
     el.innerHTML = html;
@@ -792,6 +899,8 @@ function createTournament() {
 
     var formats = [];
     if (document.getElementById('tn-f-stroke').checked) formats.push('Stroke Play');
+    if (document.getElementById('tn-f-gross') && document.getElementById('tn-f-gross').checked) formats.push('Stroke Play (Gross)');
+    if (document.getElementById('tn-f-net') && document.getElementById('tn-f-net').checked) formats.push('Stroke Play (Net)');
     if (document.getElementById('tn-f-stbl').checked) formats.push('Stableford');
     if (document.getElementById('tn-f-m1v1') && document.getElementById('tn-f-m1v1').checked) formats.push('Match Play 1v1');
     if (document.getElementById('tn-f-scram') && document.getElementById('tn-f-scram').checked) formats.push('Scramble');
@@ -816,6 +925,10 @@ function createTournament() {
         document.getElementById('tn-name').value = '';
     });
 }
+
+// Какие HCP-панели турниров раскрыты (иначе loadTournaments падал с
+// ReferenceError и созданные турниры не появлялись в списке).
+var tnDivOpen = {};
 
 function loadTournaments() {
     if (typeof db === 'undefined' || !db) {
@@ -1073,6 +1186,9 @@ function tnDivisionsEditorHtml(tnId, divisions) {
                 '<button class="btn btn-r btn-sm" style="margin-left:auto;" onclick="tnDeleteDivision(\'' + tnId + '\',\'' + d.id + '\')"><i class="fas fa-trash"></i></button></div>';
         });
     }
+    // Умное создание: равные по числу игроков группы по фактическим HCP.
+    html += '<div style="margin-top:10px;"><button class="btn btn-g btn-sm" onclick="tnAutoDivisions(\'' + tnId + '\')"><i class="fas fa-wand-magic-sparkles"></i> ' +
+        (en ? 'Smart groups (equal counts)' : '✨ Умные группы (поровну игроков)') + '</button></div>';
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:flex-end;">';
     html += '<div class="form-group" style="flex:2 1 150px;margin:0;"><label style="font-size:11px;">' + (en ? 'Group name' : 'Название группы') + '</label>' +
         '<input type="text" id="tnd-name-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" placeholder="' + (en ? 'Men 0–12' : 'Мужчины 0–12') + '"></div>';
@@ -1161,6 +1277,135 @@ function tnDeleteDivision(tnId, divId) {
 // ВЫЗОВЫ СУДЕЙ/МАРШАЛОВ И УВЕДОМЛЕНИЯ
 // ==========================================
 var knownAlertIds = {};
+
+// Число для названия умной группы: целые — без «.0», плюсовые — с «+».
+function tnBandNum(v) {
+    var s = (typeof fmtExactHcp === 'function') ? fmtExactHcp(v) : String(v);
+    return String(s).replace(/\.0$/, '');
+}
+
+// Умное создание групп по гандикапу: участники турнира делятся по полу,
+// сортируются по точному HCP и режутся на равные по числу игроков bands
+// (по умолчанию 3 мужские + 3 женские). Границы bands — по реальным
+// гандикапам участников, чтобы в каждой группе было поровну игроков.
+function tnAutoDivisions(tnId) {
+    var en = currentLang === 'en';
+    if (typeof db === 'undefined' || !db) {
+        toast(en ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
+    db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+        var tVal = sn.val();
+        if (!tVal) return;
+        var reg = tVal.registeredPlayers || {};
+        var keys = Object.keys(reg);
+        if (!keys.length) {
+            toast(en ? '⚠️ No registered players — nobody to split into groups' : '⚠️ Нет заявленных участников — некого делить на группы', 'error');
+            return;
+        }
+        // Дедуп по ФИО: один человек — один голос в разбивке.
+        var seen = {};
+        var men = [];
+        var women = [];
+        keys.forEach(function(k) {
+            var rp = reg[k] || {};
+            var fioKey = '';
+            if (typeof getPlayerFioKey === 'function') {
+                try { fioKey = getPlayerFioKey(rp); } catch (e) {}
+            }
+            if (!fioKey) fioKey = String(rp.name || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+            if (fioKey && seen[fioKey]) return;
+            if (fioKey) seen[fioKey] = true;
+            var h = (rp.handicap === '' || rp.handicap == null) ? null : parseFloat(rp.handicap);
+            if (h != null && isNaN(h)) h = null;
+            var item = { hcp: h, sortHcp: (h == null ? 54 : h) };
+            if ((rp.gender || 'men') === 'women') women.push(item);
+            else men.push(item);
+        });
+
+        var bandsOf = function(arr, count) {
+            arr.sort(function(a, b) { return a.sortHcp - b.sortHcp; });
+            var n = arr.length;
+            if (!n) return [];
+            count = Math.max(1, Math.min(count, n));
+            var base = Math.floor(n / count);
+            var rem = n % count;
+            var bands = [];
+            var pos = 0;
+            for (var i = 0; i < count; i++) {
+                var take = base + (i < rem ? 1 : 0);
+                if (take <= 0) break;
+                bands.push(arr.slice(pos, pos + take));
+                pos += take;
+            }
+            return bands;
+        };
+
+        var r1 = function(v) { return Math.round(v * 10) / 10; };
+        var plan = [];
+        var prevTo = null;
+        var addGender = function(arr, gender, teeStrong, teeRest, titleWord) {
+            var bands = bandsOf(arr, 3);
+            bands.forEach(function(band, bi) {
+                var known = band.map(function(x) { return x.hcp; }).filter(function(v) { return v != null; });
+                var mn = known.length ? Math.min.apply(null, known) : 54;
+                var mx = known.length ? Math.max.apply(null, known) : 54;
+                var from = (bi === 0) ? r1(mn) : r1(prevTo + 0.1);
+                var to = r1(mx);
+                if (from > to) from = to;
+                prevTo = to;
+                plan.push({
+                    name: titleWord + ' ' + tnBandNum(from) + '–' + tnBandNum(to),
+                    gender: gender,
+                    hcpFrom: from,
+                    hcpTo: to,
+                    tee: bi === 0 ? teeStrong : teeRest,
+                    count: band.length
+                });
+            });
+        };
+        prevTo = null;
+        addGender(men, 'men', 'bl', 'wh', en ? 'Men' : 'Мужчины');
+        prevTo = null;
+        addGender(women, 'women', 'rd', 'rd', en ? 'Women' : 'Девушки');
+
+        if (!plan.length) {
+            toast(en ? '⚠️ Nobody to split into groups' : '⚠️ Некого делить на группы', 'error');
+            return;
+        }
+        var preview = plan.map(function(d) {
+            return '• ' + d.name + ' (' + d.count + ' ' + (en ? 'pl.' : 'игр.') + ')';
+        }).join('\n');
+        var q = en
+            ? 'Create ' + plan.length + ' handicap groups by actual handicaps (equal player counts)?\n\n' + preview
+            : 'Создать ' + plan.length + ' групп по фактическим гандикапам (поровну игроков)?\n\n' + preview;
+        if (!confirm(q)) return;
+
+        tnDivOpen[tnId] = true;
+        var ref = db.ref('tournaments/' + tnId + '/divisions');
+        var chain = Promise.resolve();
+        plan.forEach(function(d) {
+            chain = chain.then(function() {
+                return ref.push({
+                    name: d.name,
+                    gender: d.gender,
+                    hcpFrom: d.hcpFrom,
+                    hcpTo: d.hcpTo,
+                    tee: d.tee,
+                    createdAt: Date.now(),
+                    auto: true
+                });
+            });
+        });
+        chain.then(function() {
+            toast((en ? '✨ Smart groups created: ' : '✨ Умные группы созданы: ') + plan.length, 'success');
+        }).catch(function(err) {
+            toast('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
 
 function listenForAlerts() {
     if (typeof db === 'undefined' || !db) return;
@@ -1409,6 +1654,120 @@ function deleteBroadcast(id) {
 // ==========================================
 // АВТОМАТИЧЕСКАЯ РАЗБИВКА НА ФЛАЙТЫ
 // ==========================================
+// Состояние предпросмотра флайтов: состав, формат каждого флайта, настройки.
+var fgPreviewState = null;
+var fgPlayersCount = 0;
+
+// Дедуп по uid/имени: один человек не должен попасть в два флайта.
+function fgCollectPlayers(tVal) {
+    var normOf = function(nm) {
+        if (typeof normalizeSearchText === 'function') {
+            try { return normalizeSearchText(nm); } catch (e) {}
+        }
+        return String(nm || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+    };
+    var seen = {};
+    var players = [];
+    Object.keys((tVal && tVal.registeredPlayers) || {}).forEach(function(rk) {
+        var rp = tVal.registeredPlayers[rk] || {};
+        var key = rp.uid ? ('uid:' + rp.uid) : ('name:' + normOf(rp.name));
+        if (!key || seen[key]) return;
+        seen[key] = true;
+        players.push({ key: rk, rp: rp });
+    });
+    return players;
+}
+
+// Варианты формата для флайта: сначала форматы турнира, потом общие.
+function fgFlightFormatOptions(tVal) {
+    var out = [];
+    var seen = {};
+    var push = function(f) {
+        if (!f || seen[f]) return;
+        seen[f] = true;
+        out.push(f);
+    };
+    ((tVal && tVal.formats) || []).forEach(push);
+    if (typeof PESTOVO_FORMAT_PRESETS !== 'undefined') PESTOVO_FORMAT_PRESETS.forEach(push);
+    else ['Stroke Play', 'Stroke Play (Gross)', 'Stroke Play (Net)', 'Stableford', 'Match Play 1v1', 'Scramble'].forEach(push);
+    return out;
+}
+
+function fgFormatLabel(f) {
+    if (typeof pestovoFormatLabel === 'function') {
+        try { return pestovoFormatLabel(f); } catch (e) {}
+    }
+    return String(f);
+}
+
+function fgFlightSizes(total, size) {
+    if (typeof pestovoBalancedFlightSizes === 'function') {
+        try { return pestovoBalancedFlightSizes(total, size); } catch (e) {}
+    }
+    // Запасной вариант: обычная нарезка (без балансировки).
+    var out = [];
+    var left = total;
+    while (left > size) { out.push(size); left -= size; }
+    if (left > 0) out.push(left);
+    return out;
+}
+
+// Строка-подсказка: как разобьются игроки при выбранном размере.
+function fgSizesPreviewText(total, size) {
+    var en = currentLang === 'en';
+    var sizes = fgFlightSizes(total, size);
+    if (!sizes.length) return '';
+    var txt = sizes.join(' + ');
+    var small = sizes.filter(function(x) { return x < 3; });
+    var warn = '';
+    if (size >= 3 && small.length) {
+        warn = ' <span style="color:var(--red,#e74c3c);">⚠️ ' +
+            (en ? 'a flight of 2 is unavoidable — add players or pick pairs' : 'двойки не избежать — добавьте игроков или выберите пары') + '</span>';
+    }
+    return (en ? 'Flights: ' : 'Флайты: ') + '<b>' + txt + '</b>' + warn;
+}
+
+function fgUpdateSizesPreview() {
+    var sizeEl = document.getElementById('fg-size');
+    var prevEl = document.getElementById('fg-sizes-preview');
+    if (!sizeEl || !prevEl) return;
+    var size = parseInt(sizeEl.value, 10) || 4;
+    prevEl.innerHTML = fgSizesPreviewText(fgPlayersCount, size);
+}
+
+// Шаг 1: настройки разбивки.
+function fgSettingsHtml(tnId, tVal, players, d) {
+    d = d || {};
+    var en = currentLang === 'en';
+    var html = '<h2 style="color:var(--gold);margin-bottom:8px;"><i class="fas fa-users-gear"></i> ' + (en ? 'Flight Generator' : 'Разбивка на Флайты') + '</h2>';
+    html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">' + (en ? 'Total participants: ' : 'Всего участников: ') + '<b>' + players.length + '</b></p>';
+
+    html += '<div class="card" style="background:var(--input);padding:16px;text-align:left;margin-bottom:12px;">';
+    html += '<div class="form-group"><label>' + (en ? 'Players per flight:' : 'Игроков во флайте:') + '</label>';
+    var p4Str = en ? '4 Players' : '4 игрока';
+    var p3Str = en ? '3 Players' : '3 игрока';
+    var p2Str = en ? '2 Players' : '2 игрока';
+    var sz = d.size || '4';
+    html += '<select id="fg-size" class="form-input" onchange="fgUpdateSizesPreview()">' +
+        '<option value="4"' + (sz === '4' ? ' selected' : '') + '>' + p4Str + '</option>' +
+        '<option value="3"' + (sz === '3' ? ' selected' : '') + '>' + p3Str + '</option>' +
+        '<option value="2"' + (sz === '2' ? ' selected' : '') + '>' + p2Str + '</option></select></div>';
+    html += '<div id="fg-sizes-preview" style="font-size:12.5px;color:var(--muted);margin:-6px 0 10px;"></div>';
+
+    html += '<div class="form-group"><label>' + (en ? 'First Flight Start Time:' : 'Время старта 1-го флайта:') + '</label>';
+    html += '<input type="time" id="fg-time" class="form-input" value="' + (d.time || '10:00') + '"></div>';
+
+    html += '<div class="form-group"><label>' + (en ? 'Interval between flights (min):' : 'Интервал между флайтами (мин):') + '</label>';
+    html += '<input type="number" id="fg-interval" class="form-input" value="' + (d.interval || '10') + '" min="5" max="30"></div>';
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:12px;">';
+    html += '<button class="btn btn-og" style="flex:1;" onclick="closeFlightGenModal()">' + t('cancel_btn') + '</button>';
+    html += '<button class="btn btn-g" style="flex:1;" onclick="fgBuildPreview(\'' + tnId + '\')"><i class="fas fa-eye"></i> ' + (en ? 'Preview' : 'Предпросмотр') + '</button>';
+    html += '</div>';
+    return html;
+}
+
 function openFlightGeneratorModal(tnId) {
     if (typeof db === 'undefined') return;
     db.ref('tournaments/' + tnId).once('value').then(function(sn) {
@@ -1418,8 +1777,13 @@ function openFlightGeneratorModal(tnId) {
             return;
         }
 
-        var players = Object.values(tVal.registeredPlayers);
-        if (!players.length) return;
+        var players = fgCollectPlayers(tVal);
+        if (!players.length) {
+            toast(currentLang === 'en' ? 'No registered players for this tournament' : 'Нет зарегистрированных участников для разбивки', 'error');
+            return;
+        }
+        fgPlayersCount = players.length;
+        fgPreviewState = null;
 
         var modalEl = document.getElementById('flight-gen-modal');
         if (!modalEl) {
@@ -1428,7 +1792,7 @@ function openFlightGeneratorModal(tnId) {
             modalEl.className = 'modal hidden';
             modalEl.innerHTML =
                 '<div class="modal-bg" onclick="closeFlightGenModal()"></div>' +
-                '<div class="modal-body" style="max-width:520px;text-align:center;">' +
+                '<div class="modal-body" style="max-width:640px;text-align:center;">' +
                 '<div class="modal-top-bar">' +
                 '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeFlightGenModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
                 '<button type="button" class="modal-close-btn" onclick="closeFlightGenModal()">&times;</button>' +
@@ -1439,30 +1803,8 @@ function openFlightGeneratorModal(tnId) {
         }
 
         var bodyEl = document.getElementById('flight-gen-modal-body');
-
-        var html = '<h2 style="color:var(--gold);margin-bottom:8px;"><i class="fas fa-users-gear"></i> ' + (currentLang === 'en' ? 'Flight Generator' : 'Разбивка на Флайты') + '</h2>';
-        html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">' + (currentLang === 'en' ? 'Total Registered: ' : 'Всего участников: ') + '<b>' + players.length + '</b></p>';
-
-        html += '<div class="card" style="background:var(--input);padding:16px;text-align:left;margin-bottom:20px;">';
-        html += '<div class="form-group"><label>' + (currentLang === 'en' ? 'Players per flight:' : 'Игроков во флайте:') + '</label>';
-        var p4Str = currentLang === 'en' ? '4 Players' : '4 игрока';
-        var p3Str = currentLang === 'en' ? '3 Players' : '3 игрока';
-        var p2Str = currentLang === 'en' ? '2 Players' : '2 игрока';
-        html += '<select id="fg-size" class="form-input"><option value="4" selected>' + p4Str + '</option><option value="3">' + p3Str + '</option><option value="2">' + p2Str + '</option></select></div>';
-
-        html += '<div class="form-group"><label>' + (currentLang === 'en' ? 'First Flight Start Time:' : 'Время старта 1-го флайта:') + '</label>';
-        html += '<input type="time" id="fg-time" class="form-input" value="10:00"></div>';
-
-        html += '<div class="form-group"><label>' + (currentLang === 'en' ? 'Interval between flights (min):' : 'Интервал между флайтами (мин):') + '</label>';
-        html += '<input type="number" id="fg-interval" class="form-input" value="10" min="5" max="30"></div>';
-        html += '</div>';
-
-        html += '<div style="display:flex;gap:12px;">';
-        html += '<button class="btn btn-og" style="flex:1;" onclick="closeFlightGenModal()">' + t('cancel_btn') + '</button>';
-        html += '<button class="btn btn-g" style="flex:1;" onclick="confirmFlightGeneration(\'' + tnId + '\')"><i class="fas fa-play"></i> ' + (currentLang === 'en' ? 'Create Flights' : 'Создать флайты') + '</button>';
-        html += '</div>';
-
-        bodyEl.innerHTML = html;
+        bodyEl.innerHTML = fgSettingsHtml(tnId, tVal, players, { size: '4', time: '10:00', interval: '10' });
+        fgUpdateSizesPreview();
         modalEl.classList.remove('hidden');
     });
 }
@@ -1470,6 +1812,186 @@ function openFlightGeneratorModal(tnId) {
 function closeFlightGenModal() {
     var modalEl = document.getElementById('flight-gen-modal');
     if (modalEl) modalEl.classList.add('hidden');
+}
+
+// Шаг 2: строим предпросмотр флайтов по настройкам шага 1.
+function fgBuildPreview(tnId) {
+    if (typeof db === 'undefined') return;
+    var sizeEl = document.getElementById('fg-size');
+    var timeEl = document.getElementById('fg-time');
+    var intEl = document.getElementById('fg-interval');
+    var flightSize = Math.min(4, Math.max(1, parseInt(sizeEl ? sizeEl.value : '4', 10) || 4));
+    var settings = {
+        size: String(flightSize),
+        time: (timeEl && timeEl.value) || '10:00',
+        interval: String(parseInt(intEl ? intEl.value : '10', 10) || 10)
+    };
+    db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+        var tVal = sn.val();
+        if (!tVal || !tVal.registeredPlayers) return;
+        var players = fgCollectPlayers(tVal);
+        if (!players.length) return;
+        var sizes = fgFlightSizes(players.length, flightSize);
+        var defFormat = (tVal.formats && tVal.formats[0]) || 'Stroke Play';
+        var flights = [];
+        var pos = 0;
+        sizes.forEach(function(sz) {
+            flights.push({ players: players.slice(pos, pos + sz), format: defFormat });
+            pos += sz;
+        });
+        fgPreviewState = { tnId: tnId, flights: flights, settings: settings };
+        fgPlayersCount = players.length;
+        fgRenderPreview(tVal);
+    });
+}
+
+function fgFlightTimeStr(tVal, settings, idx) {
+    var parts = String(settings.time || '10:00').split(':');
+    var baseTs = (typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date);
+    if (!baseTs || isNaN(baseTs)) baseTs = Date.now();
+    var now = new Date(baseTs);
+    var ts = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
+        parseInt(parts[0], 10) || 10, parseInt(parts[1], 10) || 0, 0).getTime();
+    ts += idx * (parseInt(settings.interval, 10) || 10) * 60000;
+    return (typeof fmtTime === 'function') ? fmtTime(ts) : settings.time;
+}
+
+// Шаг 2: отрисовка предпросмотра — формат на каждый флайт + перемещение игроков.
+function fgRenderPreview(tVal) {
+    var st = fgPreviewState;
+    if (!st) return;
+    var en = currentLang === 'en';
+    var bodyEl = document.getElementById('flight-gen-modal-body');
+    if (!bodyEl) return;
+    var formats = fgFlightFormatOptions(tVal);
+
+    var html = '<h2 style="color:var(--gold);margin-bottom:4px;"><i class="fas fa-eye"></i> ' + (en ? 'Flights Preview' : 'Предпросмотр флайтов') + '</h2>';
+    html += '<p style="font-size:12px;color:var(--muted);margin-bottom:12px;">' +
+        (en ? 'Set a format per flight, move players with arrows.' : 'Формат — свой у каждого флайта, игроков двигайте стрелками.') + '</p>';
+
+    html += '<div class="card" style="background:var(--input);padding:12px 14px;text-align:left;margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">';
+    html += '<div class="form-group" style="flex:1;min-width:120px;margin:0;"><label style="font-size:11px;">' + (en ? 'First flight:' : 'Первый флайт:') + '</label>' +
+        '<input type="time" id="fg-time" class="form-input" value="' + st.settings.time + '"></div>';
+    html += '<div class="form-group" style="flex:1;min-width:120px;margin:0;"><label style="font-size:11px;">' + (en ? 'Interval (min):' : 'Интервал (мин):') + '</label>' +
+        '<input type="number" id="fg-interval" class="form-input" value="' + st.settings.interval + '" min="5" max="30"></div>';
+    html += '</div>';
+
+    st.flights.forEach(function(fl, fi) {
+        var timeStr = fgFlightTimeStr(tVal, st.settings, fi);
+        var smallWarn = (fl.players.length > 0 && fl.players.length < 3)
+            ? ' <span style="color:var(--red,#e74c3c);font-size:11px;">⚠️ ' + (en ? 'less than 3 players' : 'меньше 3 игроков') + '</span>' : '';
+        html += '<div class="card" style="background:var(--input);padding:12px 14px;text-align:left;margin-bottom:10px;">';
+        html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">';
+        html += '<b style="color:var(--white);font-size:13.5px;">' + (en ? 'Flight ' : 'Флайт ') + (fi + 1) + ' · ' + timeStr + '</b>' + smallWarn;
+        html += '<select class="form-input" style="flex:1;min-width:150px;padding:6px 8px;font-size:12px;" onchange="fgSetFlightFormat(' + fi + ',this.value)">';
+        formats.forEach(function(f) {
+            html += '<option value="' + f.replace(/"/g, '&quot;') + '"' + (fl.format === f ? ' selected' : '') + '>' + fgFormatLabel(f) + '</option>';
+        });
+        html += '</select></div>';
+        if (!fl.players.length) {
+            html += '<div style="font-size:12px;color:var(--muted);">' + (en ? 'Empty flight — will be skipped' : 'Пустой флайт — будет пропущен') + '</div>';
+        }
+        fl.players.forEach(function(item, pi) {
+            var rp = item.rp || {};
+            var hcpTxt = '—';
+            if (rp.handicap != null && rp.handicap !== '') {
+                var hv = parseFloat(rp.handicap);
+                hcpTxt = isNaN(hv) ? String(rp.handicap) : ((typeof fmtExactHcp === 'function') ? fmtExactHcp(hv) : String(hv));
+            }
+            var teePill = '';
+            try { teePill = (typeof fmtTeePill === 'function') ? fmtTeePill(rp.tee || 'wh') : ''; } catch (e) {}
+            html += '<div style="display:flex;align-items:center;gap:6px;font-size:12.5px;padding:5px 8px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:4px;">';
+            html += '<span style="color:var(--white);font-weight:600;flex:1;min-width:90px;">' + escapeHtml(rp.name || 'Player') + '</span> ' + teePill;
+            html += '<span style="color:var(--muted);font-size:11.5px;">HCP ' + hcpTxt + '</span>';
+            html += '<span style="display:flex;gap:3px;">';
+            html += '<button class="btn btn-og btn-sm" style="padding:3px 7px;" title="↑" onclick="fgMovePlayer(' + fi + ',' + pi + ',\'up\')">↑</button>';
+            html += '<button class="btn btn-og btn-sm" style="padding:3px 7px;" title="↓" onclick="fgMovePlayer(' + fi + ',' + pi + ',\'down\')">↓</button>';
+            html += '<button class="btn btn-og btn-sm" style="padding:3px 7px;" title="←" onclick="fgMovePlayer(' + fi + ',' + pi + ',\'prev\')">←</button>';
+            html += '<button class="btn btn-og btn-sm" style="padding:3px 7px;" title="→" onclick="fgMovePlayer(' + fi + ',' + pi + ',\'next\')">→</button>';
+            html += '</span></div>';
+        });
+        html += '</div>';
+    });
+
+    html += '<div style="display:flex;gap:12px;margin-top:4px;">';
+    html += '<button class="btn btn-og" style="flex:1;" onclick="fgBackToSettings()"><i class="fas fa-arrow-left"></i> ' + (en ? 'Settings' : 'Настройки') + '</button>';
+    html += '<button class="btn btn-g" style="flex:1;" onclick="confirmFlightGeneration(\'' + st.tnId + '\')"><i class="fas fa-play"></i> ' + (en ? 'Create Flights' : 'Создать флайты') + '</button>';
+    html += '</div>';
+
+    bodyEl.innerHTML = html;
+}
+
+function fgSetFlightFormat(fi, value) {
+    if (fgPreviewState && fgPreviewState.flights[fi]) {
+        fgPreviewState.flights[fi].format = value;
+    }
+}
+
+// Перемещение игрока: up/down — внутри флайта, prev/next — в соседний флайт.
+function fgMovePlayer(fi, pi, dir) {
+    var st = fgPreviewState;
+    if (!st || !st.flights[fi]) return;
+    if (dir === 'up' || dir === 'down') {
+        var arr = st.flights[fi].players;
+        var ni = dir === 'up' ? pi - 1 : pi + 1;
+        if (ni < 0 || ni >= arr.length) return;
+        var tmp = arr[pi]; arr[pi] = arr[ni]; arr[ni] = tmp;
+    } else {
+        var nfi = dir === 'prev' ? fi - 1 : fi + 1;
+        if (nfi < 0 || nfi >= st.flights.length) return;
+        var moved = st.flights[fi].players.splice(pi, 1)[0];
+        if (!moved) return;
+        st.flights[nfi].players.push(moved);
+    }
+    if (typeof db === 'undefined') return;
+    db.ref('tournaments/' + st.tnId).once('value').then(function(sn) {
+        // Время/интервал могли поменять — забираем из полей перед перерисовкой.
+        var timeEl = document.getElementById('fg-time');
+        var intEl = document.getElementById('fg-interval');
+        if (timeEl && timeEl.value) st.settings.time = timeEl.value;
+        if (intEl && intEl.value) st.settings.interval = intEl.value;
+        fgRenderPreview(sn.val());
+    });
+}
+
+function fgBackToSettings() {
+    var st = fgPreviewState;
+    if (!st || typeof db === 'undefined') return;
+    db.ref('tournaments/' + st.tnId).once('value').then(function(sn) {
+        var tVal = sn.val();
+        if (!tVal) return;
+        var timeEl = document.getElementById('fg-time');
+        var intEl = document.getElementById('fg-interval');
+        if (timeEl && timeEl.value) st.settings.time = timeEl.value;
+        if (intEl && intEl.value) st.settings.interval = intEl.value;
+        var players = fgCollectPlayers(tVal);
+        fgPlayersCount = players.length;
+        var bodyEl = document.getElementById('flight-gen-modal-body');
+        if (bodyEl) bodyEl.innerHTML = fgSettingsHtml(st.tnId, tVal, players, st.settings);
+        fgUpdateSizesPreview();
+    });
+}
+
+// Сверяем предпросмотр с актуальными заявками: убранных игроков выкидываем,
+// новых — добавляем в последний флайт, пустые флайты удаляем.
+function fgSyncStatePlayers(st, players) {
+    var byKey = {};
+    players.forEach(function(item) { byKey[item.key] = item; });
+    var seenKeys = {};
+    st.flights.forEach(function(fl) {
+        fl.players = fl.players.filter(function(item) {
+            if (!byKey[item.key]) return false;
+            if (seenKeys[item.key]) return false;
+            seenKeys[item.key] = true;
+            return true;
+        });
+    });
+    var missing = players.filter(function(item) { return !seenKeys[item.key]; });
+    if (missing.length && st.flights.length) {
+        st.flights[st.flights.length - 1].players =
+            st.flights[st.flights.length - 1].players.concat(missing);
+    }
+    st.flights = st.flights.filter(function(fl) { return fl.players.length > 0; });
 }
 
 function confirmFlightGeneration(tnId) {
@@ -1481,54 +2003,67 @@ function confirmFlightGeneration(tnId) {
         var tVal = sn.val();
         if (!tVal || !tVal.registeredPlayers) return;
 
-        // Дедуп по uid/имени: один человек не должен попасть в два флайта.
-        var normOf = function(nm) {
-            if (typeof normalizeSearchText === 'function') {
-                try { return normalizeSearchText(nm); } catch (e) {}
-            }
-            return String(nm || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
-        };
-        var seen = {};
-        var players = [];
-        Object.keys(tVal.registeredPlayers).forEach(function(rk) {
-            var rp = tVal.registeredPlayers[rk] || {};
-            var key = rp.uid ? ('uid:' + rp.uid) : ('name:' + normOf(rp.name));
-            if (!key || seen[key]) return;
-            seen[key] = true;
-            players.push({ key: rk, rp: rp });
-        });
+        var players = fgCollectPlayers(tVal);
         if (!players.length) return;
 
-        var sizeEl = document.getElementById('fg-size');
-        var timeEl = document.getElementById('fg-time');
-        var intEl = document.getElementById('fg-interval');
-        var flightSize = Math.min(4, Math.max(1, parseInt(sizeEl ? sizeEl.value : '4', 10) || 4));
-        var startTimeStr = (timeEl && timeEl.value) || '10:00';
-        var intervalMin = parseInt(intEl ? intEl.value : '10', 10) || 10;
+        var st = (fgPreviewState && fgPreviewState.tnId === tnId) ? fgPreviewState : null;
+        if (!st || !st.flights || !st.flights.length) {
+            // Прямой путь без предпросмотра: сбалансированная нарезка.
+            var sizeEl = document.getElementById('fg-size');
+            var flightSize = Math.min(4, Math.max(1, parseInt(sizeEl ? sizeEl.value : '4', 10) || 4));
+            var sizes = fgFlightSizes(players.length, flightSize);
+            var defFormat = (tVal.formats && tVal.formats[0]) || 'Stroke Play';
+            var flights = [];
+            var pos = 0;
+            sizes.forEach(function(sz) {
+                flights.push({ players: players.slice(pos, pos + sz), format: defFormat });
+                pos += sz;
+            });
+            var timeEl = document.getElementById('fg-time');
+            var intEl = document.getElementById('fg-interval');
+            st = {
+                tnId: tnId,
+                flights: flights,
+                settings: {
+                    size: String(flightSize),
+                    time: (timeEl && timeEl.value) || '10:00',
+                    interval: String(parseInt(intEl ? intEl.value : '10', 10) || 10)
+                }
+            };
+        } else {
+            // Забираем время/интервал из полей предпросмотра.
+            var pTimeEl = document.getElementById('fg-time');
+            var pIntEl = document.getElementById('fg-interval');
+            if (pTimeEl && pTimeEl.value) st.settings.time = pTimeEl.value;
+            if (pIntEl && pIntEl.value) st.settings.interval = pIntEl.value;
+            fgSyncStatePlayers(st, players);
+        }
+        if (!st.flights.length) {
+            toast(currentLang === 'en' ? 'No players for flights' : 'Нет игроков для флайтов', 'error');
+            return;
+        }
 
-        var parts = String(startTimeStr).split(':');
+        var parts = String(st.settings.time || '10:00').split(':');
         // Дату турнира разбираем как локальную (tnDateTs), иначе старт
         // уедет на день назад из-за UTC-полуночи.
         var baseTs = (typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date);
         if (!baseTs || isNaN(baseTs)) baseTs = Date.now();
         var now = new Date(baseTs);
         var baseStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0], 10) || 10, parseInt(parts[1], 10) || 0, 0).getTime();
+        var intervalMin = parseInt(st.settings.interval, 10) || 10;
 
         var tournamentTees = tVal.tees || ['wh'];
         var tournamentFormat = (tVal.formats && tVal.formats[0]) || 'Stroke Play';
 
         var flightsCreated = 0;
-        var pIdx = 0;
 
-        while (pIdx < players.length) {
-            var chunk = players.slice(pIdx, pIdx + flightSize);
-            pIdx += flightSize;
-
+        st.flights.forEach(function(fl) {
+            if (!fl.players.length) return;
             var flightStartTime = baseStartTime + (flightsCreated * intervalMin * 60000);
             var roundPlayers = {};
             var pOrder = [];
 
-            chunk.forEach(function(item) {
+            fl.players.forEach(function(item) {
                 var rp = item.rp;
                 // Гостям — стабильный ключ заявки, а не Date.now()+idx:
                 // старый вариант давал одинаковые pid в разных флайтах.
@@ -1566,7 +2101,7 @@ function confirmFlightGeneration(tnId) {
             var roundData = {
                 mode: 'group',
                 tee: tournamentTees[0],
-                format: tournamentFormat,
+                format: fl.format || tournamentFormat,
                 startHole: 1,
                 startTime: flightStartTime,
                 players: roundPlayers,
@@ -1582,9 +2117,10 @@ function confirmFlightGeneration(tnId) {
 
             db.ref('rounds').push(roundData);
             flightsCreated++;
-        }
+        });
 
         db.ref('tournaments/' + tnId).update({ status: 'active', startedAt: Date.now() }).then(function() {
+            fgPreviewState = null;
             toast((currentLang === 'en' ? '🎉 Created ' : '🎉 Создано ') + flightsCreated + (currentLang === 'en' ? ' active flights!' : ' активных флайтов!'), 'success');
             closeFlightGenModal();
             if (typeof loadTournaments === 'function') loadTournaments();
@@ -1597,9 +2133,6 @@ function confirmFlightGeneration(tnId) {
     });
 }
 
-// ==========================================
-// ПОЛНЫЙ ЭКСПОРТ АРХИВА CSV И JSON БЭКАП
-// ==========================================
 function exportAllRoundsCSV() {
     if (typeof db === 'undefined') return;
     db.ref('rounds').once('value').then(function(sn) {
@@ -4632,38 +5165,196 @@ function rgShowSyncProgressNote(text) {
     if (el) el.insertAdjacentHTML('beforeend', '<p style="color:var(--muted);font-size:12px;margin-top:6px;">' + text + '</p>');
 }
 
+// -------- ВЫБОР КАТЕГОРИИ СИНХРОНИЗАЦИИ ---------
+// all — все игроки; notfound — не найденные в прошлый раз; new — новые
+// (без HCP или ни разу не синхронизированные через АГР); stale — с
+// устаревшими данными (синхронизация старше 30 дней); conflicts —
+// требующие ручного выбора по итогам прошлого запуска.
+var RG_SYNC_SCOPE_KEY = 'pestovo_rg_sync_scope';
+var RG_LAST_SYNC_KEY = 'pestovo_rg_last_sync';
+
+function rgGetSyncScope() {
+    var sel = document.getElementById('rg-sync-scope');
+    var v = sel ? sel.value : 'all';
+    if (['all', 'notfound', 'new', 'stale', 'conflicts'].indexOf(v) === -1) v = 'all';
+    try { localStorage.setItem(RG_SYNC_SCOPE_KEY, v); } catch (e) {}
+    return v;
+}
+
+function rgRestoreSyncScope() {
+    try {
+        var v = localStorage.getItem(RG_SYNC_SCOPE_KEY) || 'all';
+        var sel = document.getElementById('rg-sync-scope');
+        if (sel) sel.value = v;
+        return v;
+    } catch (e) { return 'all'; }
+}
+
+function rgSyncScopeLabel(scope) {
+    var en = currentLang === 'en';
+    if (scope === 'notfound') return en ? 'not found last time' : 'не найденные в прошлый раз';
+    if (scope === 'new') return en ? 'new players' : 'новые игроки';
+    if (scope === 'stale') return en ? 'outdated data' : 'с устаревшими данными';
+    if (scope === 'conflicts') return en ? 'need manual choice' : 'требующие выбора';
+    return en ? 'all players' : 'все игроки';
+}
+
+function rgLoadLastSyncSummary() {
+    try {
+        var raw = localStorage.getItem(RG_LAST_SYNC_KEY);
+        var v = raw ? JSON.parse(raw) : null;
+        if (v && typeof v === 'object') {
+            return {
+                ts: v.ts || 0,
+                notFound: Array.isArray(v.notFound) ? v.notFound : [],
+                conflicts: Array.isArray(v.conflicts) ? v.conflicts : []
+            };
+        }
+    } catch (e) {}
+    return { ts: 0, notFound: [], conflicts: [] };
+}
+
+function rgSaveLastSyncSummary(stats) {
+    try {
+        var nf = (stats.notFoundList || []).map(function(item) {
+            return { id: item.id || '', name: item.name || '' };
+        });
+        var cf = (stats.conflicts || []).filter(function(c) { return c && !c.resolved; }).map(function(c) {
+            return { id: (c.player && c.player.id) || '', name: rgPlayerDisplayName(c.player) };
+        });
+        localStorage.setItem(RG_LAST_SYNC_KEY, JSON.stringify({ ts: Date.now(), notFound: nf, conflicts: cf }));
+    } catch (e) {}
+}
+
+function rgInStoredList(p, storedList) {
+    if (!storedList || !storedList.length) return false;
+    var pid = p.id || '';
+    var pname = rgPlayerDisplayName(p);
+    var pnm = '';
+    try { pnm = impNormName(pname); } catch (e) { pnm = String(pname || '').toLowerCase().trim(); }
+    for (var i = 0; i < storedList.length; i++) {
+        var st = storedList[i] || {};
+        if (pid && st.id && st.id === pid) return true;
+        var snm = '';
+        try { snm = impNormName(st.name || ''); } catch (e2) { snm = String(st.name || '').toLowerCase().trim(); }
+        if (pnm && snm && pnm === snm) return true;
+    }
+    return false;
+}
+
+function rgIsSyncNew(u) {
+    u = u || {};
+    if (u.handicap == null || u.handicap === '') return true;
+    return !u.hcpUpdatedAt && u.hcpSource !== 'rusgolf' && !u.rusgolfNumber;
+}
+
+function rgIsSyncStale(u) {
+    u = u || {};
+    var ts = parseInt(u.hcpUpdatedAt, 10) || 0;
+    if (!ts) return false;
+    return (Date.now() - ts) > 30 * 86400000;
+}
+
+// Дедуп по ФИО (имя + отчество + фамилия), без учета HCP — чтобы не было сдваивания.
+function rgDedupeSyncList(players) {
+    var seenNames = {};
+    var list = [];
+    (players || []).forEach(function(p) {
+        if (!p.data || !(p.data.name || p.data.firstName || p.data.lastName)) return;
+        var key = rgGetFioKey(p.data) || impNormName(p.data.name || ((p.data.firstName || '') + ' ' + (p.data.lastName || '')));
+        if (key && seenNames[key]) {
+            var prev = seenNames[key];
+            var preferNew = (!p.data.isGuest && prev.data.isGuest) || (p.data.email && !prev.data.email);
+            if (preferNew) {
+                list[prev.idx] = p;
+                seenNames[key] = { idx: prev.idx, data: p.data };
+            }
+            return;
+        }
+        if (key) seenNames[key] = { idx: list.length, data: p.data };
+        list.push(p);
+    });
+    return list;
+}
+
+function rgFilterSyncListByScope(list, scope) {
+    if (scope === 'all' || !scope) return list;
+    var last = rgLoadLastSyncSummary();
+    if (scope === 'notfound') {
+        return list.filter(function(p) { return rgInStoredList(p, last.notFound); });
+    }
+    if (scope === 'conflicts') {
+        return list.filter(function(p) { return rgInStoredList(p, last.conflicts); });
+    }
+    if (scope === 'new') {
+        return list.filter(function(p) { return rgIsSyncNew(p.data); });
+    }
+    if (scope === 'stale') {
+        return list.filter(function(p) { return rgIsSyncStale(p.data); });
+    }
+    return list;
+}
+
+// Подсказка со счётчиками по каждой категории под кнопкой синхронизации.
+function rgRefreshSyncScopeHint() {
+    rgRestoreSyncScope();
+    var hintEl = document.getElementById('rg-sync-scope-hint');
+    if (!hintEl) return;
+    var en = currentLang === 'en';
+    hintEl.innerHTML = '<span style="color:var(--muted);font-size:12px;"><i class="fas fa-spinner fa-spin"></i> ' +
+        (en ? 'Counting players…' : 'Считаю игроков…') + '</span>';
+    try {
+        impCollectPlayers(function(players) {
+            var list = rgDedupeSyncList(players);
+            var last = rgLoadLastSyncSummary();
+            var cNew = 0, cStale = 0, cNf = 0, cCf = 0;
+            list.forEach(function(p) {
+                if (rgIsSyncNew(p.data)) cNew++;
+                if (rgIsSyncStale(p.data)) cStale++;
+                if (rgInStoredList(p, last.notFound)) cNf++;
+                if (rgInStoredList(p, last.conflicts)) cCf++;
+            });
+            var bits = [
+                (en ? 'Total: <b>' : 'Всего: <b>') + list.length + '</b>',
+                (en ? 'New: <b>' : 'Новых: <b>') + cNew + '</b>',
+                (en ? 'Not found last time: <b>' : 'Не найдено в прошлый раз: <b>') + cNf + '</b>',
+                (en ? 'Need choice: <b>' : 'На выбор: <b>') + cCf + '</b>',
+                (en ? 'Outdated: <b>' : 'Устаревших: <b>') + cStale + '</b>'
+            ];
+            hintEl.innerHTML = '<span style="color:var(--muted);font-size:12px;"><i class="fas fa-users"></i> ' +
+                bits.join(' · ') + '</span>';
+        });
+    } catch (e) {
+        hintEl.innerHTML = '';
+    }
+}
+
 function rgSyncAll() {
     if (rgSyncState.running) return;
     if (!rgIsAdmin()) {
         toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
         return;
     }
+    var syncScope = rgGetSyncScope();
+    var scopeTxt = rgSyncScopeLabel(syncScope);
     if (!confirm(currentLang === 'en'
-        ? 'Check every player handicap in the RGA database? With many players this may take several minutes.'
-        : 'Проверить гандикап каждого игрока в базе АГР? При большом списке это может занять несколько минут.')) return;
+        ? 'Check handicaps in the RGA database (' + scopeTxt + ')? With many players this may take several minutes.'
+        : 'Проверить гандикапы в базе АГР (' + scopeTxt + ')? При большом списке это может занять несколько минут.')) return;
 
     impCollectPlayers(function(players) {
-        // Дедуп по ФИО (имя + отчество + фамилия), без учета HCP — чтобы не было сдваивания
-        var seenNames = {};
-        var list = [];
-        players.forEach(function(p) {
-            if (!p.data || !(p.data.name || p.data.firstName || p.data.lastName)) return;
-            var key = rgGetFioKey(p.data) || impNormName(p.data.name || ((p.data.firstName || '') + ' ' + (p.data.lastName || '')));
-            if (key && seenNames[key]) {
-                var prev = seenNames[key];
-                var preferNew = (!p.data.isGuest && prev.data.isGuest) || (p.data.email && !prev.data.email);
-                if (preferNew) {
-                    list[prev.idx] = p;
-                    seenNames[key] = { idx: prev.idx, data: p.data };
-                }
-                return;
-            }
-            if (key) seenNames[key] = { idx: list.length, data: p.data };
-            list.push(p);
-        });
+        var list = rgDedupeSyncList(players);
 
         if (!list.length) {
             toast(currentLang === 'en' ? 'No players found' : 'Игроки не найдены', 'error');
+            return;
+        }
+
+        // Фильтр категории: только выбранные игроки (не найденные, новые и т.д.).
+        list = rgFilterSyncListByScope(list, syncScope);
+        if (!list.length) {
+            toast(currentLang === 'en'
+                ? 'No players in this category (' + scopeTxt + ')'
+                : 'Нет игроков в этой категории (' + scopeTxt + ')', 'info');
             return;
         }
 
@@ -4803,6 +5494,9 @@ function rgSyncAll() {
                 (currentLang === 'en' ? stats.actual + ' up to date, ' : stats.actual + ' актуально, ') +
                 (currentLang === 'en' ? stats.conflicts.filter(function(c){return !c.resolved;}).length + ' to choose, ' : stats.conflicts.filter(function(c){return !c.resolved;}).length + ' на выбор, ') +
                 (currentLang === 'en' ? stats.notFound + ' not found' : stats.notFound + ' не найдено');
+            // Запоминаем «не найдено» и «на выбор» — их можно догнать отдельно.
+            try { rgSaveLastSyncSummary(stats); } catch (eSave) {}
+            try { rgRefreshSyncScopeHint(); } catch (eHint) {}
             toast(msg, 'success');
             if (progressEl) progressEl.insertAdjacentHTML('beforeend', '<p style="font-size:13px;font-weight:700;color:var(--gold);margin-top:8px;">' + msg + '</p>');
             if (typeof loadAdmPlayers === 'function') loadAdmPlayers();

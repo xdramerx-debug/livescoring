@@ -63,7 +63,25 @@ eq(runMethod('hcpAsc', p8, 4), [['H', 'G', 'F', 'E'], ['D', 'C', 'B', 'A']], 'г
 // hcp: A=30, B=26.7, C=23.4, D=20.1, E=16.8, F=13.5, G=10.2, H=6.9
 eq(runMethod('hcpSnake', p8, 4), [['H', 'E', 'D', 'A'], ['G', 'F', 'C', 'B']], 'группы hcpSnake (змейка, равные)');
 eq(runMethod('alpha', p8.slice().reverse(), 2), [['A', 'B'], ['C', 'D'], ['E', 'F'], ['G', 'H']], 'группы alpha');
-eq(runMethod('order', p8, 3), [['A', 'B', 'C'], ['D', 'E', 'F'], ['G', 'H']], 'группы order (3 в группе)');
+eq(runMethod('order', p8, 3), [['A', 'B', 'C', 'D'], ['E', 'F', 'G', 'H']], 'группы order: 8 при размере 3 → 4+4 (без двоек)');
+// ── Балансировка: никаких групп по 2, если можно избежать ──
+function mkN(n) { var arr = []; for (var i = 1; i <= n; i++) arr.push(mkPlayer('P' + i, 'И', 36 - i, 'men')); return arr; }
+function runSizes(n, size) { return runMethod('order', mkN(n), size).map(function(g) { return g.length; }); }
+eq(runSizes(10, 4), [4, 3, 3], 'баланс: 10 → 4+3+3');
+eq(runSizes(14, 4), [4, 4, 3, 3], 'баланс: 14 → 4+4+3+3');
+eq(runSizes(9, 4), [3, 3, 3], 'баланс: 9 → 3+3+3');
+eq(runSizes(6, 4), [3, 3], 'баланс: 6 → 3+3');
+eq(runSizes(13, 4), [4, 3, 3, 3], 'баланс: 13 → 4+3+3+3');
+eq(runSizes(11, 3), [3, 4, 4], 'баланс: 11 при размере 3 → 3+4+4');
+eq(runSizes(7, 3), [3, 4], 'баланс: 7 при размере 3 → 3+4');
+eq(runSizes(5, 4), [3, 2], 'баланс: 5 → 3+2 (неизбежно)');
+eq(runSizes(8, 2), [2, 2, 2, 2], 'пары: явный выбор размера 2 уважается');
+eq(runMethod('order', mkN(6), 4), [['P1', 'P2', 'P3'], ['P4', 'P5', 'P6']], 'баланс: порядок игроков сохраняется (6 → 3+3)');
+eq(sandbox.pestovoBalancedFlightSizes(22, 4), [4, 4, 4, 4, 3, 3], 'sizes: 22 → 4×4+3+3');
+eq(sandbox.pestovoBalancedFlightSizes(4, 3), [4], 'sizes: 4 при размере 3 → 4');
+eq(sandbox.pestovoBalancedFlightSizes(2, 4), [2], 'sizes: 2 → [2]');
+eq(sandbox.pestovoBalancedFlightSizes(1, 4), [1], 'sizes: 1 → [1]');
+eq(sandbox.pestovoBalancedFlightSizes(0, 4), [], 'sizes: 0 → []');
 eq(runMethod('order', [mkPlayer('One', 'Соло', 5)], 4), [['One']], 'группа из одного игрока');
 eq(runMethod('hcpSnake', [mkPlayer('A', 'x', 10), mkPlayer('B', 'x', 20), mkPlayer('C', 'x', 30)], 4), [['A', 'B', 'C']], 'snake малая группа');
 

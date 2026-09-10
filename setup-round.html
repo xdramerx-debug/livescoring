@@ -188,7 +188,7 @@
                 <div class="form-row form-row-3">
                     <div class="form-group"><label data-i18n="gender_label">Пол</label><select id="s-gender" class="form-input" onchange="onSoloGenderChange()"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Девушка</option></select></div>
                     <div class="form-group"><label data-i18n="tee_select">ТИ</label><select id="s-tee" class="form-input" onchange="calcSoloFieldHcp()"><option value="bk" data-i18n="tee_opt_bk">⬛ Чёрный</option><option value="bl" selected data-i18n="tee_opt_bl">🟦 Синий</option><option value="wh" data-i18n="tee_opt_wh">⬜ Белый</option><option value="rd" data-i18n="tee_opt_rd">🟥 Красный</option></select></div>
-                    <div class="form-group"><label data-i18n="format_select">Формат</label><select id="s-format" class="form-input"><option value="Stroke Play">Stroke Play</option><option value="Stableford">Stableford</option></select></div>
+                    <div class="form-group"><label data-i18n="format_select">Формат</label><select id="s-format" class="form-input"><option value="Stroke Play">Stroke Play</option><option value="Stroke Play (Gross)">Gross (без HCP)</option><option value="Stroke Play (Net)">Net (с HCP)</option><option value="Stableford">Stableford</option><option value="Match Play 1v1">Match Play (1×1)</option><option value="Match Play 2v2">Match Play (2×2)</option><option value="Scramble">Scramble</option><option value="Texas Scramble">Texas Scramble</option><option value="Greensomes">Greensomes</option></select></div>
                 </div>
 
                 <div class="form-row">
@@ -251,7 +251,14 @@
                         <label><i class="fas fa-gamepad"></i> <span data-i18n="format_select">Формат</span></label>
                         <select id="grp-format" class="form-input">
                             <option value="Stroke Play">Stroke Play</option>
+                            <option value="Stroke Play (Gross)">Gross (без HCP)</option>
+                            <option value="Stroke Play (Net)">Net (с HCP)</option>
                             <option value="Stableford">Stableford</option>
+                            <option value="Match Play 1v1">Match Play (1×1)</option>
+                            <option value="Match Play 2v2">Match Play (2×2)</option>
+                            <option value="Scramble">Scramble</option>
+                            <option value="Texas Scramble">Texas Scramble</option>
+                            <option value="Greensomes">Greensomes</option>
                         </select>
                     </div>
                 </div>
@@ -572,7 +579,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.53.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.54.0</span></p>
         </div>
     </div>
 </footer>
@@ -581,7 +588,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=51"></script>
+<script src="js/utils.js?v=52"></script>
 <script src="js/live.js?v=29"></script>
 <script src="js/solo.js?v=26"></script>
 <script src="js/pwa.js?v=2"></script>

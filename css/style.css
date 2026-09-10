@@ -207,6 +207,11 @@ body.sun-mode .hole-btn.active {
     border-color: #000000 !important;
 }
 /* LIGHT GREEN FOR COMPLETED HOLES IN SUN MODE */
+body.sun-mode .hole-btn.pending {
+    background:#e8eaec!important;
+    border-color:#6b7280!important;
+    color:#374151!important;
+}
 body.sun-mode .hole-btn.done {
     background: #d4edda !important;
     color: #0b2912 !important;
@@ -674,16 +679,22 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .hole-btn:hover{border-color:var(--gold);}
 .hole-btn.active{background:linear-gradient(135deg, #c9a84c 0%, #e0c76a 100%);border-color:var(--gold-l);color:var(--bg);box-shadow:0 0 16px rgba(201,168,76,0.5);}
 .hole-btn.done{background:var(--gr-d);border-color:var(--gr-l);color:var(--gr-l);}
-.hole-btn.verified{background:rgba(46,204,113,.15)!important;border-color:#2ecc71!important;color:#2ecc71!important;}
-.hole-btn.mismatch{border-color:var(--red)!important;color:var(--red)!important;animation:cell-mismatch-blink 1.2s ease-in-out infinite;}
+.hole-btn.verified{background:rgba(46,204,113,.18)!important;border-color:#2ecc71!important;color:#2ecc71!important;box-shadow:0 0 0 1px rgba(46,204,113,.35),0 0 12px rgba(46,204,113,.25);}
+.hole-btn.pending{border-color:#8a939b!important;color:#c9d2d9!important;background:rgba(174,180,186,.08)!important;animation:cell-pending-blink 1.6s ease-in-out infinite;}
+.hole-btn.mismatch{border-color:var(--red)!important;color:#ff8a7a!important;background:rgba(224,90,74,.10)!important;animation:cell-mismatch-blink 1s ease-in-out infinite;}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
 
-/* Несовпадение счёта с маркером: ячейка мигает серым, чтобы игроки видели, где расхождение.
-   Анимируются box-shadow + filter, чтобы серая пульсация перекрывала любой фон ячейки. */
-.cell-mismatch{animation:cell-mismatch-blink 1.2s ease-in-out infinite;}
+/* Ожидание маркера — ячейка/кнопка мигает СЕРЫМ; несовпадение с маркером — мигает КРАСНЫМ.
+   Анимируются box-shadow + filter, чтобы пульсация перекрывала любой фон ячейки. */
+.cell-pending{animation:cell-pending-blink 1.6s ease-in-out infinite;}
+@keyframes cell-pending-blink{
+    0%,100%{box-shadow:inset 0 0 0 999px rgba(174,180,186,.08);filter:none;}
+    50%{box-shadow:inset 0 0 0 999px rgba(174,180,186,.55);filter:grayscale(1) brightness(1.3);}
+}
+.cell-mismatch{animation:cell-mismatch-blink 1s ease-in-out infinite;}
 @keyframes cell-mismatch-blink{
-    0%,100%{box-shadow:inset 0 0 0 999px rgba(174,180,186,.10);filter:none;}
-    50%{box-shadow:inset 0 0 0 999px rgba(174,180,186,.62);filter:grayscale(1) brightness(1.35);}
+    0%,100%{box-shadow:inset 0 0 0 999px rgba(224,90,74,.10),0 0 0 0 rgba(224,90,74,0);filter:none;}
+    50%{box-shadow:inset 0 0 0 999px rgba(224,90,74,.55),0 0 14px 2px rgba(224,90,74,.65);filter:saturate(1.4) brightness(1.15);}
 }
 
 .score-area{text-align:center;margin:24px 0;}
@@ -995,12 +1006,31 @@ html.score-kiosk .hole-display {
 .site-version{margin-top:8px;font-size:11px;color:var(--gold);font-weight:600;opacity:0.8;}
 .site-version:hover{opacity:1;}
 
-.toast{position:fixed;top:max(calc(var(--nav-h, 70px) + 8px), calc(env(safe-area-inset-top) + 20px));right:20px;padding:12px 22px;border-radius:var(--rs);font-size:13px;font-weight:600;z-index:9999999!important;transform:translateY(-150%);transition:var(--t);box-shadow:var(--shl);max-width:340px;}
+.toast-root{position:fixed;top:max(calc(var(--nav-h, 70px) + 8px),calc(env(safe-area-inset-top) + 12px));left:50%;transform:translateX(-50%);z-index:9999999!important;display:flex;flex-direction:column;gap:8px;align-items:stretch;pointer-events:none;width:min(460px,calc(100vw - 24px));}
+.toast{pointer-events:auto;position:relative;display:flex;align-items:flex-start;gap:10px;width:100%;box-sizing:border-box;padding:12px 36px 15px 12px;border-radius:14px;font-size:13px;font-weight:500;line-height:1.45;box-shadow:0 10px 32px rgba(0,0,0,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid;opacity:0;transform:translateY(-16px) scale(.97);transition:opacity .28s ease,transform .28s ease;cursor:pointer;overflow:hidden;}
+.toast.t-show{opacity:1;transform:translateY(0) scale(1);}
+.toast.t-hide{opacity:0;transform:translateY(-12px) scale(.97);}
+.toast-ico{flex-shrink:0;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;margin-top:1px;}
+.toast-msg{flex:1;word-break:break-word;}
+.toast-msg b{font-weight:800;}
+.toast-x{position:absolute;top:6px;right:6px;width:24px;height:24px;border:none;background:transparent;color:inherit;opacity:.55;font-size:17px;line-height:1;cursor:pointer;border-radius:6px;padding:0;}
+.toast-x:hover{opacity:1;background:rgba(255,255,255,.12);}
+.toast-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.14);overflow:hidden;}
+.toast-bar span{display:block;height:100%;width:100%;transform-origin:left center;background:currentColor;opacity:.9;animation:toast-bar-shrink linear forwards;}
+@keyframes toast-bar-shrink{from{transform:scaleX(1);}to{transform:scaleX(0);}}
 .t-show{transform:translateY(0);}
-.t-success{background:var(--gr-l);color:var(--white);}
-.t-error{background:var(--red);color:var(--white);}
-.t-info{background:var(--gold);color:var(--bg);}
-.t-warn{background:var(--yellow);color:var(--bg);}
+.t-success{background:rgba(13,60,30,.94);border-color:rgba(46,204,113,.5);color:#7dffae;}
+.t-success .toast-ico{background:rgba(46,204,113,.2);color:#2ecc71;}
+.t-success .toast-msg{color:#eafff0;}
+.t-error{background:rgba(70,16,12,.95);border-color:rgba(224,90,74,.55);color:#ff9d92;}
+.t-error .toast-ico{background:rgba(224,90,74,.2);color:#ff6b5e;}
+.t-error .toast-msg{color:#fff0ed;}
+.t-info{background:rgba(24,32,26,.95);border-color:rgba(201,168,76,.5);color:#e0c76a;}
+.t-info .toast-ico{background:rgba(201,168,76,.18);color:var(--gold-l);}
+.t-info .toast-msg{color:#f4efe0;}
+.t-warn{background:rgba(62,42,4,.95);border-color:rgba(243,156,18,.55);color:#ffc46b;}
+.t-warn .toast-ico{background:rgba(243,156,18,.2);color:#f39c12;}
+.t-warn .toast-msg{color:#fff4e2;}
 
 .loading{text-align:center;padding:40px;color:var(--muted);}
 .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
@@ -1339,10 +1369,14 @@ html.score-kiosk .hole-display {
         box-sizing: border-box !important;
     }
     
-    .score-area { margin: 6px 0 !important; }
-    .score-disp { font-size: 48px !important; min-height: 48px !important; margin: 2px 0 !important; }
-    .score-btns { gap: 14px !important; margin: 8px 0 !important; }
-    .score-minus, .score-plus { width: 56px !important; height: 56px !important; min-width: 56px !important; min-height: 56px !important; font-size: 26px !important; border-radius: 12px !important; }
+    .hole-display { gap: 6px !important; margin: 8px 0 !important; }
+    .hole-box { padding: 6px 4px !important; }
+    .hole-lbl { font-size: 9px !important; }
+    .score-area { margin: 4px 0 !important; }
+    .score-disp { font-size: 42px !important; min-height: 44px !important; margin: 0 !important; line-height: 1.1 !important; }
+    .score-btns { gap: 12px !important; margin: 6px 0 !important; }
+    .score-minus, .score-plus { width: 52px !important; height: 52px !important; min-width: 52px !important; min-height: 52px !important; font-size: 24px !important; border-radius: 14px !important; }
+    .score-result { font-size: 13px !important; padding: 4px 14px !important; margin-bottom: 8px !important; }
     .score-par-btn { padding: 0 16px !important; font-size: 14px !important; height: 56px !important; min-height: 56px !important; border-radius: 12px !important; }
     
     .scoring-dual-block { padding: 8px 10px !important; margin-bottom: 8px !important; border-radius: 10px !important; }
@@ -2222,7 +2256,8 @@ body.sun-mode .autocomplete-item.active-keyboard {
     .hole-btn { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
     .nav-toggle { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
     /* toasts never collide with the nav / indicator */
-    .toast { right: 12px; left: 12px; max-width: none; }
+    .toast-root { width: calc(100vw - 24px); }
+    .toast { font-size: 12.5px; padding: 10px 32px 13px 10px; }
 }
 
 /* paper scorecard label alignment polish */
@@ -2476,6 +2511,7 @@ body.high-contrast-status .verify-ok, body.high-contrast-status .timing-ok { bac
 body.high-contrast-status .verify-wait, body.high-contrast-status .timing-warn { background:#4b3000; color:#ffd66b; border-color:#f39c12; }
 body.high-contrast-status .verify-fail, body.high-contrast-status .timing-late { background:#580f0b; color:#ffaaa1; border-color:#ff6254; }
 body.high-contrast-status .hole-btn.done { background:#073d1d!important; color:#7dffae!important; border:2px solid #2ecc71!important; }
+body.high-contrast-status .hole-btn.pending { background:#3a3f45!important; color:#ffffff!important; border:3px solid #c9ced4!important; }
 body.high-contrast-status .hole-btn.verified { background:#064c26!important; color:#baffcc!important; border:3px solid #2ecc71!important; }
 body.high-contrast-status .hole-btn.mismatch { background:#580f0b!important; color:#ffaaa1!important; border:3px solid #ff6254!important; }
 body.high-contrast-status .r-bir, body.high-contrast-status .badge-bir { background:#073d1d!important; color:#7dffae!important; border:2px solid #2ecc71!important; }
@@ -4717,11 +4753,20 @@ body.sun-mode .hole-difficulty-highlights > div { background: #ffffff !important
 .tn-div-row:last-child { border-bottom:none; }
 .tn-div-name { font-weight:800; color:var(--white); }
 .tn-div-meta { font-size:11.5px; color:var(--muted); }
-/* --- Группировка участников по дивизионам --- */
-.tn-group-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:14px 0 6px; padding:8px 12px; background:rgba(201,168,76,0.1); border:1px solid rgba(201,168,76,0.35); border-radius:10px; }
-.tn-group-head:first-child { margin-top:0; }
+/* --- Группировка участников по дивизионам (раскрываемые/сворачиваемые) --- */
+.tn-group { margin:12px 0 4px; border:1px solid var(--border); border-radius:12px; overflow:hidden; background:rgba(255,255,255,0.02); }
+.tn-group:first-child { margin-top:0; }
+.tn-group-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0; padding:10px 12px; background:rgba(201,168,76,0.1); border:none; border-radius:0; width:100%; text-align:left; cursor:pointer; color:inherit; font:inherit; transition:background .2s ease; }
+button.tn-group-head:hover { background:rgba(201,168,76,0.18); }
 .tn-group-head b { color:var(--gold); font-size:13.5px; }
 .tn-group-head span { font-size:11.5px; color:var(--muted); }
+.tn-group-head .tn-chev { margin-left:auto; color:var(--gold); font-size:12px; transition:transform .25s ease; flex-shrink:0; }
+.tn-group.open .tn-group-head .tn-chev { transform:rotate(180deg); }
+.tn-group-count { display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:22px; padding:0 7px; border-radius:11px; background:rgba(201,168,76,0.2); color:var(--gold-l); font-size:11.5px; font-weight:800; }
+.tn-group-body { padding:0 10px 10px; }
+.tn-group-body.tn-collapsed { display:none; }
+.tn-groups-toggle { display:flex; gap:8px; margin:8px 0 4px; flex-wrap:wrap; }
+.tn-groups-toggle .btn { padding:5px 12px; font-size:11.5px; }
 /* --- Лидерборд турнира --- */
 .tn-lb-wrap { margin-top:12px; border-top:1px solid var(--border); padding-top:12px; }
 .tn-lb-table { width:100%; border-collapse:collapse; font-size:12.5px; }
@@ -4764,4 +4809,18 @@ body.sun-mode .hole-difficulty-highlights > div { background: #ffffff !important
 @media (max-width:640px) {
     .ps-rrow-main { flex:1 1 100%; }
     .ps-rrow-actions { margin-left:0; }
+}
+
+/* --- Компактный двойной ввод счёта (групповой раунд, телефоны) --- */
+.scoring-compact .scoring-dual-block { min-width:0; }
+@media (max-width:640px){
+    /* Пояснения «вы вводите свой счёт» прячем на телефоне — экономит высоту блока */
+    .scoring-compact .score-hint { display:none !important; }
+    .scoring-compact { gap:6px !important; margin-bottom:10px !important; }
+    .scoring-compact .scoring-dual-block { padding:7px 5px !important; border-radius:10px !important; }
+    .scoring-compact .dual-header h3 { font-size:12.5px !important; gap:2px !important; }
+    .scoring-compact .score-disp { font-size:38px !important; min-height:40px !important; }
+    .scoring-compact .score-btns { gap:10px !important; margin:6px 0 0 !important; }
+    .scoring-compact .score-minus, .scoring-compact .score-plus { width:48px !important; height:48px !important; min-width:48px !important; min-height:48px !important; font-size:22px !important; }
+    .scoring-compact .score-result { font-size:11px !important; margin-bottom:4px !important; }
 }

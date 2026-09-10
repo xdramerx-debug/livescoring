@@ -25,14 +25,22 @@
         h1.qr-h { font-family:'Playfair Display',Georgia,serif; font-size:26px; margin:6px 0 2px; }
         .sub { color:var(--gray); font-size:13px; margin:0 0 12px; }
         .sheet { background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:18px; }
+        .flights { display:flex; flex-direction:column; gap:12px; }
+        .flight-block { border:1px solid var(--line); border-radius:12px; overflow:hidden; page-break-inside:avoid; break-inside:avoid; }
+        .flight-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--dark); color:#fff; padding:8px 12px; }
+        .flight-title { font-weight:800; font-size:13px; letter-spacing:.3px; }
+        .flight-hole { background:var(--gold); color:#1a1a12; border-radius:7px; padding:2px 10px; font-size:12px; font-weight:800; }
+        .flight-time { background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.25); border-radius:7px; padding:2px 9px; font-size:12px; font-weight:700; }
+        .flight-count { margin-left:auto; font-size:11.5px; color:#e8d9a8; font-weight:700; }
         .sheet table { width:100%; border-collapse:collapse; font-size:12px; }
-        .sheet th { background:var(--dark); color:#fff; padding:7px 8px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+        .sheet th { background:#f3efe2; color:var(--dark); padding:6px 8px; text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; border-bottom:2px solid var(--gold); }
         .sheet td { padding:6px 8px; border-bottom:1px solid #eee4d0; }
         .sheet tr:nth-child(even) td { background:#faf7ef; }
+        .flight-num { color:var(--gray); font-weight:700; text-align:center; }
         .flag-g { border-left:4px solid var(--gold); padding-left:6px; }
         /* Карточки */
         .pcards { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-        .pcard { background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px 13px 11px; page-break-inside:avoid; break-inside:avoid; position:relative; overflow:hidden; }
+        .pcard { background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 10px 8px; page-break-inside:avoid; break-inside:avoid; position:relative; overflow:hidden; }
         .pcard::before { content:''; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--gold); }
         .grp-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
         .grp-badge { background:var(--dark); color:#fff; border-radius:7px; padding:3px 9px; font-size:12px; font-weight:800; letter-spacing:.4px; }
@@ -40,18 +48,19 @@
         .div-badge { background:#eaf3ff; border:1px solid #9db9e8; color:#23407a; border-radius:7px; padding:3px 8px; font-size:11.5px; font-weight:700; }
         .div-inline { color:#23407a; font-size:11px; font-weight:600; white-space:nowrap; }
         .qr-fail { border:1px dashed #c0392b; background:#fdecea; color:#922b21; border-radius:8px; padding:10px 8px; font-size:11px; font-weight:700; }
-        .pname { font-size:17px; font-weight:800; line-height:1.2; }
-        .pmeta { color:var(--gray); font-size:11.5px; margin:3px 0 8px; display:flex; gap:4px 10px; flex-wrap:wrap; }
+        .pname { font-size:15px; font-weight:800; line-height:1.2; }
+        .pmeta { color:var(--gray); font-size:10.5px; margin:2px 0 6px; display:flex; gap:3px 8px; flex-wrap:wrap; }
         .pmeta b { color:var(--dark); }
-        .qr-grid { display:flex; gap:10px; margin-top:6px; }
-        .qr-box { flex:1; border:1px dashed #cbbf9f; background:#fcfaf4; border-radius:10px; padding:8px 8px 6px; text-align:center; min-width:0; }
-        .qr-box img { width:100%; max-width:150px; height:auto; display:block; margin:0 auto; }
-        .qr-lbl { font-size:10.5px; font-weight:800; margin-bottom:4px; }
+        .qr-grid { display:flex; gap:8px; margin-top:4px; }
+        .qr-box { flex:1; border:1px dashed #cbbf9f; background:#fcfaf4; border-radius:10px; padding:6px 6px 5px; text-align:center; min-width:0; }
+        .qr-box img { width:100%; max-width:108px; height:auto; display:block; margin:0 auto; }
+        .qr-lbl { font-size:10px; font-weight:800; margin-bottom:3px; }
         .qr-lbl .fa { color:var(--gold); }
         .qr-url { font-size:7.6px; color:#999; word-break:break-all; margin-top:4px; line-height:1.3; }
         .mark-chip { background:#f3ecdb; border:1px solid #e0d3ac; border-radius:6px; padding:1px 7px; }
         .mark-chip b { color:#6d5717; }
-        .members-note { font-size:10px; color:var(--gray); margin-top:6px; border-top:1px dotted #ddd; padding-top:4px; line-height:1.45; }
+        .members-note { font-size:9.5px; color:var(--gray); margin-top:5px; border-top:1px dotted #ddd; padding-top:3px; line-height:1.4; }
+        .members-note b { color:#6d5717; }
         .errbox { max-width:520px; margin:60px auto; background:#fff; border:1px solid var(--line); border-radius:14px; padding:30px; text-align:center; }
         .errbox h2 { margin:0 0 8px; font-family:'Playfair Display',serif; }
         .spinner { text-align:center; padding:70px 0; color:var(--gray); }
@@ -67,38 +76,46 @@
             body.print-cards .sheet-wrap { display:none !important; }
             body.print-sheet .cards-wrap { display:none !important; }
             .sheet { border:none; border-radius:0; padding:0; margin:0 0 10px; }
-            .sheet table { font-size:11px; }
+            .sheet table { font-size:10.5px; }
+            .flights { gap:8px; }
+            .flight-block { border:1px solid #999; border-radius:2mm; }
+            .flight-head { background:#222 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; padding:4px 8px; gap:6px; }
+            .flight-title { font-size:11px; }
+            .flight-hole { font-size:10px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .flight-time { font-size:10px; }
+            .flight-count { font-size:10px; }
+            .sheet th { font-size:9px; padding:4px 6px; }
+            .sheet td { padding:4px 6px; }
             .pcards { gap:8px; }
             .pcard { border-radius:8px; padding:10px; border:1px solid #bbb; }
             .pcard::before { display:none; }
             .grp-badge { background:#222 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .time-badge { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             a { color:inherit; text-decoration:none; }
-            /* 10 QR-карточек на лист А4: сетка 2×5, карточка 52мм —
-               5 рядов × 52мм + 4 промежутка × 4мм = 276мм < 281мм печатной зоны.
-               Всё внутри карточки ужато, чтобы длинные ФИО и список группы
-               не вылезали за 52мм и не съезжали на следующий лист. */
+            /* 12 QR-карточек на лист А4: сетка 2×6, карточка 44мм —
+               6 рядов × 44мм + 5 промежутков × 3мм = 279мм < 281мм печатной зоны.
+               QR и информация уменьшены, состав флайта умещается в карточку. */
             body.print-cards .qr-cards-head { display:none !important; }
-            body.print-cards .pcards { display:grid !important; grid-template-columns:1fr 1fr !important; gap:4mm !important; }
+            body.print-cards .pcards { display:grid !important; grid-template-columns:1fr 1fr !important; gap:3mm !important; }
             body.print-cards .pcard {
-                height:52mm; max-height:52mm; overflow:hidden;
-                padding:2mm 2.5mm; border:1px solid #999; border-radius:2mm;
+                height:44mm; max-height:44mm; overflow:hidden;
+                padding:1.6mm 2mm; border:1px solid #999; border-radius:2mm;
                 page-break-inside:avoid; break-inside:avoid;
             }
-            body.print-cards .grp-row { margin-bottom:0.8mm; gap:1.2mm; }
-            body.print-cards .grp-badge { font-size:7.5pt; padding:0.6mm 1.8mm; border-radius:1.5mm; }
-            body.print-cards .time-badge { font-size:7pt; padding:0.6mm 1.8mm; border-radius:1.5mm; }
-            body.print-cards .div-badge { font-size:6.5pt; padding:0.6mm 1.8mm; border-radius:1.5mm; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-            body.print-cards .pname { font-size:10pt; line-height:1.12; max-height:8mm; overflow:hidden; }
-            body.print-cards .pmeta { font-size:7pt; margin:0.6mm 0 0.8mm; gap:0.8mm 2.2mm; }
-            body.print-cards .qr-grid { margin-top:0.4mm; }
-            body.print-cards .qr-box { padding:1mm 1mm; border-radius:1.5mm; }
-            body.print-cards .qr-box img { width:auto; max-width:23mm; max-height:23mm; }
-            body.print-cards .qr-lbl { font-size:6.5pt; margin-bottom:0.8mm; line-height:1.2; }
+            body.print-cards .grp-row { margin-bottom:0.6mm; gap:1mm; }
+            body.print-cards .grp-badge { font-size:7pt; padding:0.5mm 1.6mm; border-radius:1.5mm; }
+            body.print-cards .time-badge { font-size:6.5pt; padding:0.5mm 1.6mm; border-radius:1.5mm; }
+            body.print-cards .div-badge { font-size:6pt; padding:0.5mm 1.6mm; border-radius:1.5mm; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            body.print-cards .pname { font-size:9pt; line-height:1.1; max-height:6.5mm; overflow:hidden; }
+            body.print-cards .pmeta { font-size:6.5pt; margin:0.5mm 0 0.6mm; gap:0.6mm 2mm; }
+            body.print-cards .qr-grid { margin-top:0.3mm; }
+            body.print-cards .qr-box { padding:0.8mm 0.8mm; border-radius:1.5mm; }
+            body.print-cards .qr-box img { width:auto; max-width:17mm; max-height:17mm; }
+            body.print-cards .qr-lbl { font-size:6pt; margin-bottom:0.6mm; line-height:1.2; }
             body.print-cards .qr-url { display:none !important; }
-            body.print-cards .members-note { font-size:6pt; margin-top:0.8mm; padding-top:0.6mm; line-height:1.25; max-height:5.2mm; overflow:hidden; }
-            body.print-cards .qr-fail { font-size:7pt; padding:2mm; }
-            body.print-cards .div-inline { font-size:10px; }
+            body.print-cards .members-note { font-size:5.8pt; margin-top:0.6mm; padding-top:0.5mm; line-height:1.25; max-height:5mm; overflow:hidden; }
+            body.print-cards .qr-fail { font-size:6.5pt; padding:1.5mm; }
+            body.print-cards .div-inline { font-size:9px; }
         }
     </style>
 </head>
@@ -121,6 +138,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="js/firebase-config.js?v=2"></script>
-    <script src="js/qr-start.js?v=4"></script>
+    <script src="js/qr-start.js?v=5"></script>
 </body>
 </html>

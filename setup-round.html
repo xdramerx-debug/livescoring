@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <title data-i18n="nav_round">Раунд — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=27">
+    <link rel="stylesheet" href="css/style.css?v=28">
     <link rel="stylesheet" href="css/design-presets.css?v=1">
     <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -309,41 +309,41 @@
             <div id="match-play-tracker-container" style="margin-top:12px;"></div>
             <div id="play-verify-status" style="margin-top:12px;"></div>
 
-            <div class="scoring-columns" style="display:flex; gap:10px; margin-bottom:16px; align-items:stretch;">
+            <div class="scoring-columns scoring-compact" style="display:flex; gap:8px; margin-bottom:12px; align-items:stretch;">
                 <!-- БЛОК 1: СЧЁТ ИГРОКА, КОТОРЫЙ ВВОДИТ (ИГРОК 1) -->
-                <div class="scoring-dual-block my-score-block" style="flex:1; margin-bottom:0; display:flex; flex-direction:column; padding:12px 8px !important;">
+                <div class="scoring-dual-block my-score-block" style="flex:1; margin-bottom:0; display:flex; flex-direction:column; padding:8px 6px;">
                     <div class="dual-header" style="justify-content:center; border-bottom:none; margin-bottom:0; padding-bottom:0;">
                         <h3 style="font-size:14px; text-align:center; margin:0; display:flex; flex-direction:column; align-items:center; gap:3px;">
                             <span style="font-size:10px; opacity:0.8; letter-spacing:0.4px; text-transform:uppercase;"><i class="fas fa-user" style="color:var(--gold);"></i> <span data-i18n="score_of_player">Счёт игрока:</span></span>
                             <span id="my-player-name-title" style="font-size:14px; font-weight:800;" data-i18n="my_score">Мой счёт</span>
-                            <span style="font-size:10px; opacity:0.75; color:var(--gold);"><i class="fas fa-pen"></i> <span data-i18n="score_col_you">(вы вводите свой счёт)</span></span>
+                            <span class="score-hint" style="font-size:10px; opacity:0.75; color:var(--gold);"><i class="fas fa-pen"></i> <span data-i18n="score_col_you">(вы вводите свой счёт)</span></span>
                         </h3>
                     </div>
-                    <div class="score-area" style="margin:4px 0; flex:1; display:flex; flex-direction:column; justify-content:center;">
-                        <div class="score-result" id="my-result" style="font-size:12px; padding:4px 8px; margin-bottom:8px;"></div>
-                        <div class="score-disp" id="my-disp" style="font-size:48px; min-height:50px;">—</div>
-                        <div class="score-btns" style="gap:6px; margin-top:12px; flex-wrap:wrap;">
-                            <button class="score-minus" onclick="adjScore('my', -1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">−</button>
-                            <button class="score-plus" onclick="adjScore('my', 1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">+</button>
+                    <div class="score-area" style="margin:2px 0; flex:1; display:flex; flex-direction:column; justify-content:center;">
+                        <div class="score-result" id="my-result" style="font-size:11px; padding:3px 10px; margin-bottom:4px;"></div>
+                        <div class="score-disp" id="my-disp" style="font-size:40px; min-height:44px; line-height:1.1;">—</div>
+                        <div class="score-btns" style="gap:8px; margin-top:8px; margin-bottom:0; flex-wrap:wrap;">
+                            <button class="score-minus" onclick="adjScore('my', -1)" style="width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px;border-radius:12px;">−</button>
+                            <button class="score-plus" onclick="adjScore('my', 1)" style="width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px;border-radius:12px;">+</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- БЛОК 2: СЧЁТ МАРКИРУЕМОГО ИГРОКА (ИГРОК 2 — ТОГО, ЗА КЕМ ВЕДЁТ СЧЁТ ИГРОК 1) -->
-                <div class="scoring-dual-block marker-score-block" id="marker-input-container" style="flex:1; margin-bottom:0; display:flex; flex-direction:column; padding:12px 8px !important;">
+                <div class="scoring-dual-block marker-score-block" id="marker-input-container" style="flex:1; margin-bottom:0; display:flex; flex-direction:column; padding:8px 6px;">
                     <div class="dual-header" style="justify-content:center; border-bottom:none; margin-bottom:0; padding-bottom:0;">
                         <h3 style="color:#9b59b6; font-size:14px; text-align:center; margin:0; display:flex; flex-direction:column; align-items:center; gap:3px;">
                             <span style="font-size:10px; opacity:0.8; letter-spacing:0.4px; text-transform:uppercase;"><i class="fas fa-eye"></i> <span data-i18n="score_of_player">Счёт игрока:</span></span>
                             <span id="mark-player-name" style="font-size:14px; font-weight:800;">...</span>
-                            <span style="font-size:10px; opacity:0.75; color:#9b59b6;"><i class="fas fa-pen"></i> <span data-i18n="score_col_marked">(того, за кем вы ведёте счёт)</span></span>
+                            <span class="score-hint" style="font-size:10px; opacity:0.75; color:#9b59b6;"><i class="fas fa-pen"></i> <span data-i18n="score_col_marked">(того, за кем вы ведёте счёт)</span></span>
                         </h3>
                     </div>
-                    <div class="score-area" style="margin:4px 0; flex:1; display:flex; flex-direction:column; justify-content:center;">
-                        <div class="score-result" id="mark-result" style="font-size:12px; padding:4px 8px; margin-bottom:8px;"></div>
-                        <div class="score-disp" id="mark-disp" style="font-size:48px; min-height:50px;">—</div>
-                        <div class="score-btns" style="gap:6px; margin-top:12px; flex-wrap:wrap; border-color:#9b59b6;">
-                            <button class="score-minus" onclick="adjScore('mark', -1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">−</button>
-                            <button class="score-plus" onclick="adjScore('mark', 1)" style="width:40px;height:40px;min-width:40px;min-height:40px;font-size:20px;">+</button>
+                    <div class="score-area" style="margin:2px 0; flex:1; display:flex; flex-direction:column; justify-content:center;">
+                        <div class="score-result" id="mark-result" style="font-size:11px; padding:3px 10px; margin-bottom:4px;"></div>
+                        <div class="score-disp" id="mark-disp" style="font-size:40px; min-height:44px; line-height:1.1;">—</div>
+                        <div class="score-btns" style="gap:8px; margin-top:8px; margin-bottom:0; flex-wrap:wrap; border-color:#9b59b6;">
+                            <button class="score-minus" onclick="adjScore('mark', -1)" style="width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px;border-radius:12px;">−</button>
+                            <button class="score-plus" onclick="adjScore('mark', 1)" style="width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px;border-radius:12px;">+</button>
                         </div>
                     </div>
                 </div>
@@ -572,7 +572,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.50.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.51.0</span></p>
         </div>
     </div>
 </footer>
@@ -581,8 +581,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=48"></script>
-<script src="js/live.js?v=27"></script>
+<script src="js/utils.js?v=49"></script>
+<script src="js/live.js?v=28"></script>
 <script src="js/solo.js?v=25"></script>
 <script src="js/pwa.js?v=2"></script>
 </body>

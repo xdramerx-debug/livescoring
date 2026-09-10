@@ -308,20 +308,29 @@ function qrRender(doc, divs) {
         (doc.format ? ' · ' + qrEsc(doc.format) : '') +
         ' · групп: ' + groupEntries.length + ' · игроков: ' + totalPlayers + '</p>';
 
-    // ── Стартовый лист (таблица) ──
-    var sheetHtml = '<div class="sheet">';
-    sheetHtml += '<table><thead><tr>' +
-        '<th>Группа</th><th>Время</th><th>Лунка</th><th>Игрок</th><th>ТИ</th><th>Точный HCP</th><th>Полевой HCP</th><th>Маркирует</th>' +
-        '</tr></thead><tbody>';
+    // ── Стартовый лист: визуально отделённые флайты (группы) ──
+    // Каждый флайт — свой блок с шапкой «Группа · Лунка · Время»:
+    // сразу видно, что с 1-й лунки стартуют эти игроки, а со 2-й — эти.
+    var sheetHtml = '<div class="sheet"><div class="flights">';
     groupEntries.forEach(function(ge, geIdx) {
         var g = ge.g;
         var members = g.players || [];
+        var glabel = qrGroupLabel(g, geIdx, groupEntries, doc.scheme);
+        var holeTxt = (g.startHole === 10 ? '10' : String(g.startHole || 1));
+        var cntTxt = members.length + ' ' + (members.length === 1 ? 'игрок' : (members.length < 5 ? 'игрока' : 'игроков'));
+        sheetHtml += '<div class="flight-block">';
+        sheetHtml += '<div class="flight-head">' +
+            '<span class="flight-title">🚩 ' + qrEsc(glabel) + '</span>' +
+            '<span class="flight-hole">Лунка ' + qrEsc(holeTxt) + '</span>' +
+            '<span class="flight-time">⏱ ' + qrTime(g.startTime) + '</span>' +
+            '<span class="flight-count">' + qrEsc(cntTxt) + '</span>' +
+            '</div>';
+        sheetHtml += '<table><thead><tr>' +
+            '<th style="width:26px;">№</th><th>Игрок</th><th>ТИ</th><th>Точный HCP</th><th>Полевой HCP</th><th>Маркирует</th>' +
+            '</tr></thead><tbody>';
         members.forEach(function(p, i) {
-            var glabel = qrGroupLabel(g, geIdx, groupEntries, doc.scheme);
             sheetHtml += '<tr>' +
-                (i === 0 ? '<td rowspan="' + members.length + '" class="flag-g"><b>' + qrEsc(glabel) + '</b></td>' : '') +
-                (i === 0 ? '<td rowspan="' + members.length + '"><b>' + qrTime(g.startTime) + '</b></td>' : '') +
-                (i === 0 ? '<td rowspan="' + members.length + '">' + (g.startHole === 10 ? '10' : String(g.startHole || 1)) + '</td>' : '') +
+                '<td class="flight-num">' + (i + 1) + '</td>' +
                 '<td><b>' + qrEsc(qrFio(p)) + '</b>' + qrDivInline(p, divs) + '</td>' +
                 '<td>' + qrTeeName(p.tee) + '</td>' +
                 '<td>' + qrHcp(p.exactHcp) + '</td>' +
@@ -329,8 +338,9 @@ function qrRender(doc, divs) {
                 '<td>' + qrEsc(qrMarkedName(g, p)) + '</td>' +
                 '</tr>';
         });
+        sheetHtml += '</tbody></table></div>';
     });
-    sheetHtml += '</tbody></table></div>';
+    sheetHtml += '</div></div>';
 
     // ── QR-карточки ──
     var cardsHtml = '<div class="pcards">';
@@ -392,7 +402,7 @@ function qrRender(doc, divs) {
                 if (m.id === p.id) return '<b style="color:#6d5717;">' + qrEsc(qrFio(m)) + '</b>';
                 return qrEsc(qrFio(m));
             });
-            cardsHtml += '<div class="members-note">Группа: ' + memberNames.join(' · ') + '</div>';
+            cardsHtml += '<div class="members-note"><b>Состав флайта:</b> ' + memberNames.join(' · ') + '</div>';
             cardsHtml += '</div>';
         });
     });

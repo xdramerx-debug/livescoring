@@ -256,7 +256,7 @@ function checkVerify() {
     var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (langIsEn ? 'Confirmed by marker: ' + ps : 'Подтверждено маркером: ' + ps + ' уд.') + '</div>';
     else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (langIsEn ? 'You: ' : 'Вы: ') + ps + ' | ' + (langIsEn ? 'Marker: ' : 'Маркер: ') + ms + '</div>';
-    // Ожидание маркера отдельным блоком НЕ показываем — только уведомление 5 сек при сохранении.
+    // Ожидание маркера отдельным блоком НЕ показываем — только уведомление 3 сек при сохранении.
     else box.innerHTML = '';
 }
 

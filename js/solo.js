@@ -804,6 +804,13 @@ function finishSolo() {
         if (finisherName) finishUpdate.completedByName = finisherName;
         db.ref('rounds/' + soloRid).update(finishUpdate).catch(function(){ soloFinishing = false; });
 
+        // Турнирный соло-раунд: возможное автозавершение турнира (все раунды сыграны).
+        if (soloRound && soloRound.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
+            db.ref('rounds/' + soloRid).once('value').then(function() {
+                try { pestovoAutoFinishTournament(soloRound.tournamentId); } catch (_) {}
+            });
+        }
+
         db.ref('rounds/' + soloRid).once('value').then(function(sn) {
             var r = sn.val();
             if (r) saveHistory(soloRid, r);

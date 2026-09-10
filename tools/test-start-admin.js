@@ -499,20 +499,20 @@ eq(startSrc.indexOf('tournamentName: proto.tournamentName || \'\'') !== -1, true
 eq(startSrc.indexOf("sets['rounds/' + rid + '/tournamentName']") !== -1, true, 'edit save: tournamentName обновляется в раунде');
 eq(typeof sandbox.psAttachPlayerAutofill, 'function', 'autofill: psAttachPlayerAutofill определена');
 
-// ── v1.48.0: разбор ФИО «Фамилия Имя Отчество» без типовых окончаний ──
+// ── v1.49.0: разбор ФИО «Фамилия Имя Отчество» без типовых окончаний ──
 eq(sandbox.psSplitFio('Парасочка Максим Геннадиевич'), { lastName: 'Парасочка', firstName: 'Максим', middleName: 'Геннадиевич' }, 'split: Фамилия(-ка) Имя Отчество');
 eq(sandbox.psSplitFio('Парасочка Максим'), { lastName: 'Парасочка', firstName: 'Максим', middleName: '' }, 'split: два слова, фамилия на -ка');
 eq(sandbox.psSplitFio('Кузнец Иван Петрович'), { lastName: 'Кузнец', firstName: 'Иван', middleName: 'Петрович' }, 'split: Фамилия(б/оконч.) Имя Отчество');
 eq(sandbox.psSplitFio('Иван Петрович Ковалевич'), { lastName: 'Ковалевич', firstName: 'Иван', middleName: 'Петрович' }, 'split: Имя Отчество Фамилия(-ич)');
 
-// ── v1.48.0: пол по имени (имена, которые раньше ломились в «женские» группы) ──
+// ── v1.49.0: пол по имени (имена, которые раньше ломились в «женские» группы) ──
 eq(sandbox.psGuessGender('Парасочка', 'Максим', 'Геннадиевич'), 'men', 'gender: Парасочка Максим Геннадиевич → муж');
 eq(sandbox.psGuessGender('Казначеев', 'Александр', ''), 'men', 'gender: Казначеев Александр → муж');
 eq(sandbox.psGuessGender('Савинов', 'Евгений', 'Олегович'), 'men', 'gender: Савинов Евгений Олегович → муж');
 eq(sandbox.psGuessGender('Дивина', 'Маргарита', 'Юрьевна'), 'women', 'gender: Дивина Маргарита Юрьевна → жен');
 eq(sandbox.psGuessGender('Бушнева', 'Ксения', 'Сергеевна'), 'women', 'gender: Бушнева Ксения Сергеевна → жен');
 
-// ── v1.48.0: пустая/нераспознанная ячейка «Пол» → null (определяем по имени) ──
+// ── v1.49.0: пустая/нераспознанная ячейка «Пол» → null (определяем по имени) ──
 eq(sandbox.psGenderFromCell(''), null, 'пол: пустая ячейка → null');
 eq(sandbox.psGenderFromCell('—'), null, 'пол: «—» → null');
 eq(sandbox.psGenderFromCell('Женщина'), 'women', 'пол: «Женщина» → women');
@@ -522,7 +522,7 @@ eq(sandbox.psNormalizeGender('юноша'), 'men', 'норм.: «юноша» �
 eq(sandbox.psNormalizeGender('Женщина'), 'women', 'норм.: «Женщина» → women');
 eq(sandbox.psNormalizeGender(undefined), null, 'норм.: пусто → null');
 
-// ── v1.48.0: Excel-импорт — пустые «Пол»/«ТИ», пол и ТИ по имени ──
+// ── v1.49.0: Excel-импорт — пустые «Пол»/«ТИ», пол и ТИ по имени ──
 const impRows = [
     { 'Фамилия': 'Дивина', 'Имя': 'Маргарита', 'Отчество': 'Юрьевна', 'Точный гандикап': 36.4, 'Пол': '', 'ТИ': '' },
     { 'Фамилия': 'Бушнева', 'Имя': 'Ксения', 'Отчество': 'Сергеевна', 'Точный гандикап': 51, 'Пол': '', 'ТИ': '' },
@@ -540,7 +540,7 @@ eq(impRow('Казначеев').tee, 'wh', 'excel: Казначеев → бел
 eq(impRow('Парасочка').gender, 'men', 'excel: Парасочка → men (не «женщина» из-за разбора)');
 eq(impRow('Парасочка').tee !== 'rd', true, 'excel: Парасочка не на красных ТИ');
 
-// ── v1.48.0: группы с обрезкой — девушки в группе по ОБРЕЗАННОМУ HCP ──
+// ── v1.49.0: группы с обрезкой — девушки в группе по ОБРЕЗАННОМУ HCP ──
 sandbox.psState = {
     tournaments: [{
         id: 't1', name: 'Кубок', sel: true,
@@ -581,14 +581,14 @@ eq(rgBucketOf('Иванова') && rgBucketOf('Иванова').key, 'div:w2', '
 eq(rgBucketOf('Казначеев') && rgBucketOf('Казначеев').key, 'div:m2', 'roster: Казначеев (18.2) в Мужчины 12.1–36');
 eq(rgCut.buckets.filter(function(b) { return b.key === 'none'; }).length, 0, 'roster: никто не в «Без группы»');
 
-// ── v1.48.0: «Точный HCP» показывает обрезанное значение ──
+// ── v1.49.0: «Точный HCP» показывает обрезанное значение ──
 var rowCut = sandbox.psRosterRowHtml(sandbox.psState.proto.players[1], 1); // Бушнева 51 → 36
 eq(/value="36\.0"/.test(rowCut), true, 'строка: поле «Точный HCP» Бушневой = 36.0 (обрезка от 51)');
 eq(rowCut.indexOf('fa-scissors') !== -1, true, 'строка: метка обрезки у поля HCP');
 var rowNoCut = sandbox.psRosterRowHtml(sandbox.psState.proto.players[2], 2); // Иванова 35.9
 eq(/value="35\.9"/.test(rowNoCut), true, 'строка: поле HCP Ивановой (без обрезки) = 35.9');
 
-// ── v1.48.0: неканоничный пол в данных не ломает подбор группы ──
+// ── v1.49.0: неканоничный пол в данных не ломает подбор группы ──
 eq(sandbox.tnDivisionGenderOk('women', 'f'), true, 'div gender: «f» = women');
 eq(sandbox.tnDivisionGenderOk('women', 'жен'), true, 'div gender: «жен» = women');
 eq(sandbox.tnDivisionGenderOk('men', 'male'), true, 'div gender: «male» = men');

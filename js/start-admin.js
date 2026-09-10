@@ -2747,6 +2747,27 @@ function psGroupSchedule(i, totalGroups) {
     return { startHole: singleHole, startTime: base + i * intervalMs };
 }
 
+// ----------------------------------------------------------
+// СТАТУС НОВЫХ РАУНДОВ ПРОТОКОЛА
+// Раунды создаются ЗАРАНЕЕ (без них не работают QR-коды игроков), но
+// активными становятся только в момент старта турнира:
+//   • автоматически — когда совпали дата и время старта,
+//   • вручную — кнопкой «Старт» в админ-меню (вкладка «Турниры»).
+// До старта раунд имеет статус «scheduled»: игрок, открывший QR раньше
+// времени, видит отсчёт и не может вводить счёт.
+// ----------------------------------------------------------
+function psRoundStartStatus(proto) {
+    var tnId = proto && proto.tournamentId ? String(proto.tournamentId) : '';
+    var st = '';
+    (psState.tournaments || []).forEach(function(x) {
+        if (x && String(x.id) === tnId) st = String(x.status || '');
+    });
+    if (st === 'active' || st === 'completed') return 'active';
+    var startTs = psStartBaseTs(proto);
+    if (startTs && Date.now() >= startTs) return 'active';
+    return (typeof ROUND_STATUS_SCHEDULED !== 'undefined') ? ROUND_STATUS_SCHEDULED : 'scheduled';
+}
+
 function psStartBaseTs(proto) {
     var dateStr = proto.date || psTodayStr();
     var timeStr = proto.startTime || '09:00';
@@ -3386,6 +3407,10 @@ function psSaveProtocol() {
     var pid = 'pr_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
     var savedDoc = null; // протокол для оптимистичного обновления кэша списка
     var roundsRef = db.ref('rounds');
+    // Раунды создаются «запланированными», если турнир ещё не стартовал:
+    // они откроются ровно в момент старта (или кнопкой «Старт» в админ-меню).
+    var roundStatus = psRoundStartStatus(proto);
+    var schedStart = psStartBaseTs(proto);
     var groupStore = {};
     var usedKeys = {};
 
@@ -3457,7 +3482,8 @@ function psSaveProtocol() {
             players: roundPlayers,
             markerAssignments: markerAssignments,
             participantsList: participants,
-            status: 'active',
+            status: roundStatus,
+            scheduledStart: schedStart,
             tournamentId: proto.tournamentId,
             tournamentName: proto.tournamentName || '',
             protocolId: pid,
@@ -3509,8 +3535,10 @@ function psSaveProtocol() {
         // Обрезка — общая с турниром: фиксируем её на турнире, чтобы страница
         // «Турниры» и будущие протоколы считали одинаково.
         psPersistTournamentCut();
-        // Раунды созданы и игра началась — турнир переходит в active,
-        // запись на него закрывается. Завершённые турниры не трогаем.
+        // Турнир стартует НЕ сохранением протокола: статус active он получает
+        // в момент старта (по дате и времени) или кнопкой «Старт» в админ-меню.
+        // Если старт уже наступил — фиксируем это здесь же.
+        if (roundStatus !== 'active') return null;
         return db.ref('tournaments/' + proto.tournamentId + '/status').once('value').then(function(stSn) {
             var st = stSn.val();
             if (!st || st === 'upcoming') {
@@ -3802,6 +3830,10 @@ function psSaveEdits() {
 
     psState.busy = true;
     var roundsRef = db.ref('rounds');
+    // Новые группы получают тот же статус, что и весь протокол: до старта
+    // турнира раунд «запланирован» и откроется в момент старта.
+    var roundStatus = psRoundStartStatus(proto);
+    var schedStart = psStartBaseTs(proto);
 
     // 1) Создаём раунды для НОВЫХ групп (у которых ещё нет roundId)
     var createJobs = [];
@@ -3844,7 +3876,8 @@ function psSaveEdits() {
             players: roundPlayers,
             markerAssignments: markerAssignments,
             participantsList: participants,
-            status: 'active',
+            status: roundStatus,
+            scheduledStart: schedStart,
             tournamentId: proto.tournamentId,
             tournamentName: proto.tournamentName || '',
             protocolId: pid,
@@ -3974,7 +4007,8 @@ function psSaveEdits() {
                 if (!oldRound || !oldRound.players || !oldRound.mode) {
                     sets['rounds/' + rid + '/mode'] = 'group';
                     sets['rounds/' + rid + '/holeRange'] = '1-18';
-                    sets['rounds/' + rid + '/status'] = 'active';
+                    sets['rounds/' + rid + '/status'] = roundStatus;
+                    sets['rounds/' + rid + '/scheduledStart'] = schedStart;
                     sets['rounds/' + rid + '/tournamentId'] = proto.tournamentId;
                     sets['rounds/' + rid + '/tournamentName'] = proto.tournamentName || '';
                     sets['rounds/' + rid + '/protocolId'] = pid;
@@ -4088,6 +4122,20 @@ function psRenderSavedListContent(data) {
         html += '<button class="btn btn-og" onclick="psEditProtocol(\'' + psState.savedId + '\')"><i class="fas fa-pen-to-square"></i> ' + psL('Изменить состав / маркеров', 'Edit players / markers') + '</button>';
         html += '</div>';
         html += '<p style="font-size:11px;color:var(--muted);margin:10px 0 0;">' + psL('У каждого игрока один QR: в группе из 2+ человек он открывает общую карточку (свой счёт и счёт маркируемого партнёра), одиночный игрок — личную карточку. Правки протокола не меняют QR-коды.', 'Each player has a single QR: in a group of 2+ it opens the shared scorecard (own score and the marked partner’s score), a solo player gets their personal card. Protocol edits never change QR codes.') + '</p>';
+        // Статус раундов: до старта турнира они «запланированные» — игроки видят
+        // отсчёт и не могут вводить счёт раньше времени.
+        try {
+            var protoStart = psStartBaseTs(savedProto || {});
+            if (protoStart && Date.now() < protoStart) {
+                html += '<p style="font-size:11.5px;color:var(--gold);margin:8px 0 0;"><i class="fas fa-hourglass-half"></i> ' +
+                    psL('Раунды созданы как «запланированные»: ввод счёта откроется ровно в момент старта — ' +
+                        fmtDate(protoStart) + ' ' + fmtTime(protoStart) +
+                        ' (или сразу после кнопки «Старт» во вкладке «Турниры»). До этого игроки видят отсчёт до старта.',
+                        'Rounds are created as “scheduled”: score entry opens exactly at the start — ' +
+                        fmtDate(protoStart) + ' ' + fmtTime(protoStart) +
+                        ' (or right after the “Start” button in the Tournaments tab). Until then players see a countdown.') + '</p>';
+            }
+        } catch (eStart) {}
         html += '</div>';
     }
 

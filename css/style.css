@@ -5018,3 +5018,53 @@ button.tn-group-head:hover { background:rgba(201,168,76,0.18); }
 .adm-round-row:hover, .adm-group-row:hover { background: rgba(201,168,76,0.07); }
 .adm-round-row .fa-chevron-down, .adm-round-row .fa-chevron-up,
 .adm-group-row .fa-chevron-down, .adm-group-row .fa-chevron-up { transition: transform 0.15s ease; }
+
+/* ==========================================================
+   ОТСЧЁТ ДО СТАРТА ТУРНИРА (игрок открыл QR раньше времени)
+   ========================================================== */
+.start-gate{
+    text-align:center;
+    padding:26px 18px;
+    border:1px solid rgba(201,168,76,.35);
+    background:linear-gradient(180deg, rgba(201,168,76,.10), transparent);
+}
+.start-gate-icon{font-size:34px;color:var(--gold);margin-bottom:8px;}
+.start-gate-title{font-family:var(--ff);color:var(--gold);font-size:20px;margin:0 0 14px;}
+.start-gate-label{
+    font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);font-weight:800;margin-bottom:4px;
+}
+.start-gate-timer{
+    font-variant-numeric:tabular-nums;
+    font-size:44px;line-height:1.1;font-weight:800;color:var(--white);
+    letter-spacing:.04em;margin-bottom:10px;
+}
+.start-gate-at{font-size:13px;color:var(--muted);margin-bottom:10px;}
+.start-gate-at b{color:var(--gold);}
+.start-gate-hint{font-size:12.5px;color:var(--muted);line-height:1.5;margin:0;}
+@media (max-width:380px){
+    .start-gate-timer{font-size:36px;}
+    .start-gate-title{font-size:18px;}
+}
+
+/* ==========================================================
+   ПОСТОЯННОЕ ПРЕДУПРЕЖДЕНИЕ «РАУД НЕЛЬЗЯ ЗАВЕРШИТЬ»
+   Горит, пока лунки не подтверждены; игрока на лунки не перебрасывает.
+   ========================================================== */
+.finish-block{
+    padding:14px 16px;border-radius:var(--rs);
+    background:rgba(224,90,74,.12);border:2px solid var(--red);
+}
+.fbn-head{color:var(--red);font-weight:800;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.fbn-list{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:7px;}
+.fbn-row{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.45;}
+.fbn-row i{margin-top:2px;flex-shrink:0;}
+.fbn-row b{font-weight:800;}
+.fbn-bad{color:var(--red);}
+.fbn-warn{color:var(--yellow);}
+.fbn-warn i{color:var(--yellow);}
+.fbn-more{color:var(--muted);font-size:12px;padding-left:22px;}
+.fbn-hint{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+
+/* Кнопка ввода счёта в момент записи (защита от повторных нажатий) */
+.btn-busy{opacity:.75;pointer-events:none;}

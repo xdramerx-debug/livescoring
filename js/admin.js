@@ -526,6 +526,8 @@ function renderAdmGroups() {
     el.innerHTML = html;
 }
 
+var adminAutoStartTimer = null;
+
 function loadAdmRounds() {
     if (typeof db === 'undefined' || !db) return;
     ensureAdmRoundsDateFilter();
@@ -535,8 +537,27 @@ function loadAdmRounds() {
         var data = sn.val() || {};
         // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
         if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
+        // Автостарт турнира: раунды, созданные протоколом заранее, открываются
+        // в момент старта (совпадение даты и времени) — статус active пишется
+        // в базу, а их турнир переходит из «предстоящий» в «активный».
+        if (typeof pestovoAutoStartRounds === 'function') {
+            try { pestovoAutoStartRounds(data, { notify: true, silent: true }); } catch (e) {}
+        }
         renderAdmRounds(data);
     });
+    // Таймер автостарта: турнир стартует по времени, даже если в базе
+    // ничего не меняется и новые снимки раундов не приходят.
+    if (!adminAutoStartTimer) {
+        adminAutoStartTimer = setInterval(function() {
+            if (typeof db === 'undefined' || !db) return;
+            db.ref('rounds').once('value').then(function(sn) {
+                var data = sn.val() || {};
+                if (typeof pestovoAutoStartRounds === 'function') {
+                    pestovoAutoStartRounds(data, { notify: true, silent: true });
+                }
+            }).catch(function() {});
+        }, 30000);
+    }
 }
 
 // Компактный список раундов: одна строка на раунд, детали — в раскрывающейся
@@ -632,9 +653,12 @@ function renderAdmRounds(data) {
         var expanded = !!admRoundsExpanded[id];
         var badge = r.status === 'active'
             ? '<span class="tn-status tn-a"><span class="live-dot" style="width:6px;height:6px;"></span> Live</span>'
-            : ((typeof buildRoundCompletedBadgeHTML === 'function')
-                ? buildRoundCompletedBadgeHTML(r)
-                : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>');
+            : (r.status === 'scheduled'
+                ? '<span class="tn-status tn-u"><i class="fas fa-hourglass-half"></i> ' +
+                  (currentLang === 'en' ? 'Scheduled' : 'Запланирован') + '</span>'
+                : ((typeof buildRoundCompletedBadgeHTML === 'function')
+                    ? buildRoundCompletedBadgeHTML(r)
+                    : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>'));
 
         html += '<div class="list-item adm-round-row" style="padding:9px 12px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="admToggleRoundRow(\'' + id + '\')">';
         html += '<i id="adm-r-chev-' + id + '" class="fas ' + (expanded ? 'fa-chevron-up' : 'fa-chevron-down') + '" style="color:var(--gold);font-size:11px;"></i>';
@@ -1117,10 +1141,18 @@ function tnStartTournament(id) {
         toast(en ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
         return;
     }
-    if (!confirm(en ? 'Start this tournament now (before the scheduled time)? The live leaderboard will become available.' : 'Начать турнир сейчас (раньше запланированного времени)? Станет доступен live-лидерборд.')) return;
-    db.ref('tournaments/' + id).update({ status: 'active', startedAt: Date.now() }).then(function() {
-        toast(en ? '🚀 Tournament started!' : '🚀 Турнир начат!', 'success');
+    if (!confirm(en ? 'Start this tournament now (before the scheduled time)? The live leaderboard will become available and the planned rounds will open for scoring.' : 'Начать турнир сейчас (раньше запланированного времени)? Станет доступен live-лидерборд, а запланированные раунды откроются для ввода счёта.')) return;
+    // Старт турнира открывает и его раунды: созданные протоколом заранее
+    // раунды (status='scheduled') становятся активными — игроки могут вводить счёт.
+    var startJob = (typeof pestovoStartTournamentNow === 'function')
+        ? pestovoStartTournamentNow(id)
+        : db.ref('tournaments/' + id).update({ status: 'active', startedAt: Date.now() }).then(function() { return 0; });
+    startJob.then(function(opened) {
+        toast((en ? '🚀 Tournament started!' : '🚀 Турнир начат!') +
+            (opened ? (en ? ' Rounds opened: ' + opened : ' · открыто раундов: ' + opened) : ''), 'success');
         if (typeof vib === 'function') vib([60, 40, 60]);
+        if (typeof loadTournaments === 'function') loadTournaments();
+        if (typeof loadAdmRounds === 'function') loadAdmRounds();
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });

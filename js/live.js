@@ -809,14 +809,15 @@ function buildPlayHolesNav() {
         var sub = mySubmitted[h] === true;
         var cls = h === playHole ? 'active' : '';
 
-        // Состояние по фактическим данным (мой счёт vs счёт маркера), флаг verified — только запасной вариант
+        // Состояние лунки: confirmed — зелёная, mismatch — мигает красным,
+        // счёт введён, но маркер не подтвердил — мигает серым (pending), а не зелёная.
         var vState = getHoleVerifyState(myPlayer, h);
         if (vState === 'confirmed') {
             cls += ' verified';
         } else if (vState === 'mismatch') {
             cls += ' mismatch';
         } else if (sub || s > 0) {
-            cls += ' done';
+            cls += ' pending';
         }
 
         html += '<button class="hole-btn ' + cls + '" onclick="goPlayHole(' + h + ')">' +
@@ -977,10 +978,8 @@ function checkPlayVerification() {
         box.innerHTML = '<div class="verify-ok">✅ ' + (currentLang === 'en' ? 'Hole ' + playHole + ' score confirmed & finalized by both sides (' + myS + ')' : 'Счёт на лунке ' + playHole + ' подтверждён и зафиксирован обеими сторонами (' + myS + ' уд.)') + '</div>';
     } else if (myS > 0 && markerS > 0 && myS !== markerS) {
         box.innerHTML = '<div class="verify-fail">⚠️ ' + t('mismatch_error') + ' (' + (currentLang === 'en' ? 'You: ' : 'Вы: ') + myS + ' | ' + (currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + markerS + ')</div>';
-    } else if (mySub || myS > 0) {
-        var markerName = (myMarkerId && curRoundData.players[myMarkerId] && curRoundData.players[myMarkerId].name) || (currentLang === 'en' ? 'marker' : 'маркера');
-        box.innerHTML = '<div class="verify-wait">' + t('waiting_for_marker') + ' (' + markerName + ')</div>';
     } else {
+        // Ожидание маркера отдельным блоком НЕ показываем — только уведомление 5 сек при сохранении.
         box.innerHTML = '';
     }
 }
@@ -1082,8 +1081,12 @@ function saveHoleScores() {
             }
         }
 
+        var saveMarkerName = '';
+        try { saveMarkerName = (myMarkerId && curRoundData.players[myMarkerId] && curRoundData.players[myMarkerId].name) || ''; } catch(_) {}
         if (bothSubmittedAndMatch) {
-            toast('✅ ' + t('hole') + ' ' + h + ': ' + t('hole_finalized_both'), 'success');
+            toast(currentLang === 'en'
+                ? ('✅ <b>Hole ' + h + ' confirmed:</b> ' + myScore + ' strokes')
+                : ('✅ <b>Лунка ' + h + ' подтверждена:</b> ' + myScore + ' уд.'), 'success');
             var par = holePar(h);
             var d = myScore - par;
             if (myScore === 1 || d <= -1) {
@@ -1095,10 +1098,14 @@ function saveHoleScores() {
                 targetScore = 0;
             }
         } else if (bothSubmittedAndMismatch) {
-            toast(t('mismatch_error'), 'error');
+            toast(currentLang === 'en'
+                ? ('⚠️ <b>Mismatch on hole ' + h + '!</b><br>You: <b>' + myScore + '</b>, marker' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + ': <b>' + markerS + '</b>')
+                : ('⚠️ <b>Несовпадение на лунке ' + h + '!</b><br>Вы: <b>' + myScore + '</b>, маркер' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + ': <b>' + markerS + '</b>'), 'error');
             vib([200, 100, 200]);
         } else {
-            toast(t('waiting_for_marker'), 'info');
+            toast(currentLang === 'en'
+                ? ('⏳ <b>Hole ' + h + ':</b> your score <b>' + myScore + '</b> is saved. Waiting for marker' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + '.')
+                : ('⏳ <b>Лунка ' + h + ':</b> ваш счёт <b>' + myScore + '</b> сохранён. Ждём маркера' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + '.'), 'info');
             vib();
             if (idx >= 0 && idx < order.length - 1) {
                 playHole = order[idx + 1];
@@ -1429,23 +1436,19 @@ function finishGroupRound() {
     if (groupFinishing) return;
     if (curRoundData && curRoundData.status === 'completed') return;
 
-    // Проверка: если есть несовпадения или неподтверждённые лунки — завершать нельзя
-    var verification = collectRoundVerification(curRoundData);
+    // Турнирная проверка: ТОЛЬКО я и мой маркер (другие пары группы не блокируют финиш).
+    // Отдельного блока со списком лунок НЕТ — показываем ОДНО уведомление о первой
+    // проблемной лунке по порядку и сразу переходим к ней для исправления.
+    var verification = (typeof collectPlayerVerification === 'function')
+        ? collectPlayerVerification(curRoundData, myUid)
+        : collectRoundVerification(curRoundData, myUid);
     if (!verification.canFinish) {
-        var report = buildVerificationReportHtml(verification);
-        var hasMismatch = Object.keys(verification.mismatch || {}).length > 0;
-        if (currentLang === 'en') {
-            toast(hasMismatch
-                ? '⚠️ The round cannot be finished — score mismatches must be resolved first.'
-                : '⚠️ The round cannot be finished yet — some scores are not confirmed.', 'error');
-        } else {
-            toast(hasMismatch
-                ? '⚠️ Раунд нельзя завершить — сначала устраните несовпадения счёта.'
-                : '⚠️ Раунд нельзя завершить — не все счета подтверждены.', 'error');
+        var issue = verification.firstIssue || getFirstVerificationIssue(verification);
+        showVerificationIssueToast(verification, function(hole){ try { goPlayHole(hole); } catch(_) {} });
+        if (issue && issue.hole) {
+            try { goPlayHole(issue.hole); } catch(_) {}
         }
-        var statusBox = document.getElementById('play-verify-status');
-        if (statusBox) statusBox.innerHTML = report;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        vib([200, 100, 200]);
         return;
     }
 
@@ -1481,7 +1484,7 @@ function finishGroupRound() {
         }, function() {
             // Модалка закрыта без подтверждения — снимаем блокировку повторного завершения
             groupFinishing = false;
-        });
+        }, { playerId: myUid, onGoToHole: function(hole){ try { goPlayHole(hole); } catch(_) {} } });
     } else {
         if (!confirm(t('msg_finish_confirm'))) { groupFinishing = false; return; }
 

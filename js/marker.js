@@ -102,9 +102,10 @@ function buildHoles() {
     order.forEach(function(h) {
         var ps = parseInt(mkPScores[h]) || 0, ms = parseInt(mkScores[h]) || 0;
         var cls = h === mkHole ? 'active' : '';
+        // confirmed — зелёная, mismatch — мигает красным, введён один счёт — мигает серым
         if (ps >= 1 && ms >= 1 && ps === ms) cls += ' verified';
         else if (ps >= 1 && ms >= 1) cls += ' mismatch';
-        else if (ms >= 1 || ps >= 1) cls += ' done';
+        else if (ms >= 1 || ps >= 1) cls += ' pending';
         html += '<button class="hole-btn ' + cls + '" onclick="goMk(' + h + ')">' +
             '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + (typeof hcpStrokesMarksHTML === 'function' ? hcpStrokesMarksHTML(mkFieldHcp, h) : '') + '</span>' +
             '</button>';
@@ -174,13 +175,13 @@ function saveMk() {
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ps >= 1 && ps === mkScore) {
             if (typeof dbSetWithOfflineQueue === 'function') dbSetWithOfflineQueue('rounds/' + mkRid + '/players/' + mkPid + '/verified/' + savedHole, true);
-            if (typeof toast === 'function') toast(langIsEn ? '✅ Hole ' + savedHole + ' confirmed!' : '✅ Лунка ' + savedHole + ' подтверждена!');
+            if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + savedHole + ' confirmed:</b> ' + mkScore) : ('✅ <b>Лунка ' + savedHole + ' подтверждена:</b> ' + mkScore + ' уд.'));
             if (typeof vib === 'function') vib([50, 50]);
         } else if (ps >= 1) {
             if (typeof dbSetWithOfflineQueue === 'function') dbSetWithOfflineQueue('rounds/' + mkRid + '/players/' + mkPid + '/verified/' + savedHole, false);
-            if (typeof toast === 'function') toast(langIsEn ? '⚠️ Mismatch!' : '⚠️ Несовпадение!', 'error');
+            if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + savedHole + '!</b><br>Player: <b>' + ps + '</b>, marker (you): <b>' + mkScore + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + savedHole + '!</b><br>Игрок: <b>' + ps + '</b>, маркер (вы): <b>' + mkScore + '</b>'), 'error');
         } else {
-            if (typeof toast === 'function') toast(langIsEn ? '👁️ Waiting for player' : '👁️ Ждём игрока');
+            if (typeof toast === 'function') toast(langIsEn ? ('👁️ <b>Hole ' + savedHole + ':</b> marker score <b>' + mkScore + '</b> saved. Waiting for player.') : ('👁️ <b>Лунка ' + savedHole + ':</b> счёт маркера <b>' + mkScore + '</b> сохранён. Ждём игрока.'), 'info');
             if (typeof vib === 'function') vib();
         }
         var order = (typeof getRoundOrder === 'function' ? getRoundOrder(mkRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);

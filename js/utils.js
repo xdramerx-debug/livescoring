@@ -50,19 +50,96 @@ function holeResName(s,p){
     if(d===2)return t('res_double');
     return '+'+d;
 }
-function toast(m,toastType){
+// Длительность всех уведомлений — 5 секунд (единый стандарт Pestovo).
+var TOAST_DURATION_MS = 5000;
+function ensureToastRoot(){
+    if (typeof document === 'undefined' || !document.body) return null;
+    var root = document.getElementById('toast-root');
+    if (!root) {
+        root = document.createElement('div');
+        root.id = 'toast-root';
+        root.className = 'toast-root';
+        root.setAttribute('aria-live', 'polite');
+        document.body.appendChild(root);
+    }
+    return root;
+}
+function toastIconFor(toastType){
+    if (toastType === 'error') return '<i class="fas fa-triangle-exclamation"></i>';
+    if (toastType === 'warn') return '<i class="fas fa-bell"></i>';
+    if (toastType === 'info') return '<i class="fas fa-circle-info"></i>';
+    return '<i class="fas fa-circle-check"></i>';
+}
+// Красивые неблокирующие уведомления: стек сверху по центру, иконка,
+// текст, кнопка закрытия и прогресс-бар на 5 секунд. Тап по уведомлению
+// закрывает его (или выполняет opts.onClick, если задан).
+function toast(m,toastType,opts){
     toastType=toastType||'success';
+    opts=opts||{};
+    var duration = parseInt(opts.duration) > 0 ? parseInt(opts.duration) : TOAST_DURATION_MS;
     try {
-        if (typeof document === 'undefined' || !document.body) return;
+        if (typeof document === 'undefined' || !document.body) return null;
+        var root = ensureToastRoot();
+        if (!root) return null;
+        // Не больше 3 уведомлений на экране — старые убираем, чтобы не мешали вводу счёта
+        while (root.children.length >= 3) {
+            try {
+                var oldest = root.firstChild;
+                if (oldest && oldest._pestovoDismiss) oldest._pestovoDismiss(true);
+                else root.removeChild(oldest);
+            } catch(_) { break; }
+        }
         var e=document.createElement('div');
         e.className='toast t-'+toastType;
         e.setAttribute('role','status');
-        e.setAttribute('aria-live','polite');
-        e.innerHTML=m;
-        document.body.appendChild(e);
-        setTimeout(function(){e.classList.add('t-show');},10);
-        setTimeout(function(){e.classList.remove('t-show');setTimeout(function(){try{e.remove();}catch(_){}},300);},4000);
-    } catch(err) { try{ console.log('[toast]', m); }catch(_){} }
+        var barMs = duration;
+        e.innerHTML='<span class="toast-ico">'+toastIconFor(toastType)+'</span>'+
+            '<span class="toast-msg">'+m+'</span>'+
+            '<button type="button" class="toast-x" aria-label="×">×</button>'+
+            '<span class="toast-bar"><span style="animation-duration:'+barMs+'ms"></span></span>';
+        var dismissed=false;
+        var dismiss=function(instant){
+            if (dismissed) return; dismissed=true;
+            try {
+                e.classList.remove('t-show');
+                e.classList.add('t-hide');
+                setTimeout(function(){ try{ e.remove(); }catch(_){} }, instant ? 0 : 320);
+            } catch(_) {}
+        };
+        e._pestovoDismiss=dismiss;
+        e.addEventListener('click', function(ev){
+            if (ev && ev.target && ev.target.classList && ev.target.classList.contains('toast-x')) {
+                ev.stopPropagation(); dismiss(false); return;
+            }
+            if (typeof opts.onClick === 'function') {
+                try { opts.onClick(); } catch(_) {}
+                dismiss(false);
+            } else {
+                dismiss(false);
+            }
+        });
+        root.appendChild(e);
+        // Анимация появления на следующем кадре
+        setTimeout(function(){ try{ e.classList.add('t-show'); }catch(_){} },10);
+        setTimeout(function(){ dismiss(false); }, duration);
+        return e;
+    } catch(err) { try{ console.log('[toast]', m); }catch(_){} return null; }
+}
+// Последовательный показ уведомлений: каждое следующее — после исчезновения
+// предыдущего (интервал = длительность + небольшая пауза). Используется для
+// поочерёдных предупреждений о лунках (сначала лунка 1, потом 2 и т.д.).
+function toastSequence(items, opts){
+    opts = opts || {};
+    var list = (items || []).slice();
+    if (!list.length) return;
+    var gap = parseInt(opts.gap) > 0 ? parseInt(opts.gap) : 350;
+    var step = TOAST_DURATION_MS + gap;
+    list.forEach(function(it, idx){
+        setTimeout(function(){
+            if (typeof it === 'string') toast(it, opts.type || 'warn', opts.toastOpts || {});
+            else toast(it.msg || it.html || '', it.type || opts.type || 'warn', it.opts || opts.toastOpts || {});
+        }, idx * step);
+    });
 }
 function isPlayerModeEnabled(key){
     try { return localStorage.getItem(key) === '1'; } catch(e) { return false; }
@@ -2318,12 +2395,114 @@ function getHoleVerifyState(p, h) {
     return 'none';
 }
 
+// Проверка счёта ТОЛЬКО для одного игрока и его маркера (турнирное правило):
+// чужой флайт / другие пары группы не блокируют финиш. Возвращает те же поля,
+// что и collectRoundVerification, но только по лункам игрока pid, плюс детали
+// details[h] = { ps, ms, playerName, markerName, state } для уведомлений.
+function collectPlayerVerification(r, pid) {
+    var order = getRoundOrder(r);
+    var players = Object.entries((r && r.players) || {}).filter(function(pe){ return pe[0] === pid; });
+    var mismatch = {}, unconfirmed = {}, missing = {}, details = {};
+    if (!pid || !players.length) {
+        return { order: order, mismatch: mismatch, unconfirmed: unconfirmed, missing: missing, details: details, canFinish: true, total: order.length, pid: pid || null, firstIssue: null };
+    }
+    var p = players[0][1] || {};
+    var playerName = p.name || (currentLang === 'en' ? 'Player' : 'Игрок');
+    var markerId = p.markedBy;
+    var markerName = '';
+    try {
+        var mk = markerId && r.players ? r.players[markerId] : null;
+        markerName = (mk && mk.name) ? mk.name : '';
+    } catch(_) { markerName = ''; }
+    if (r && r.mode === 'solo') {
+        order.forEach(function(h){
+            var sc = (p.scores) || {};
+            if (!(parseInt(sc[h]) >= 1)) missing[h] = true;
+        });
+    } else {
+        order.forEach(function(h){
+            var st = getHoleVerifyState(p, h);
+            var ps = parseInt(p.scores && p.scores[h]) || 0;
+            var ms = markerId ? (parseInt(p.markerScores && p.markerScores[markerId] && p.markerScores[markerId][h]) || 0) : 0;
+            details[h] = { ps: ps, ms: ms, playerName: playerName, markerName: markerName, state: st };
+            if (st === 'mismatch') {
+                var label = (ps >= 1 && ms >= 1) ? (playerName + ' (' + ps + '\u2260' + ms + ')') : playerName;
+                mismatch[h] = [label];
+            } else if (st !== 'confirmed') {
+                unconfirmed[h] = [playerName];
+            }
+        });
+    }
+    var canFinish = Object.keys(mismatch).length === 0 && Object.keys(unconfirmed).length === 0;
+    var v = { order: order, mismatch: mismatch, unconfirmed: unconfirmed, missing: missing, details: details, canFinish: canFinish, total: order.length, pid: pid, playerName: playerName, markerName: markerName };
+    v.firstIssue = getFirstVerificationIssue(v);
+    return v;
+}
+
+// Первая проблемная лунка в порядке раунда: сначала несовпадения, затем
+// неподтверждённые. Возвращает { kind:'mismatch'|'unconfirmed', hole, detail }
+// или null, если всё подтверждено.
+function getFirstVerificationIssue(v) {
+    if (!v || v.canFinish) return null;
+    var order = v.order || Object.keys(v.mismatch || {}).concat(Object.keys(v.unconfirmed || {}));
+    var mis = v.mismatch || {}, unc = v.unconfirmed || {};
+    var i, h;
+    for (i = 0; i < order.length; i++) {
+        h = order[i];
+        if (mis[h]) return { kind: 'mismatch', hole: h, detail: (v.details && v.details[h]) || null, totalMismatches: Object.keys(mis).length, totalUnconfirmed: Object.keys(unc).length };
+    }
+    for (i = 0; i < order.length; i++) {
+        h = order[i];
+        if (unc[h]) return { kind: 'unconfirmed', hole: h, detail: (v.details && v.details[h]) || null, totalMismatches: Object.keys(mis).length, totalUnconfirmed: Object.keys(unc).length };
+    }
+    return null;
+}
+
+// Красивый текст уведомления о первой проблемной лунке (показываем ОДНУ лунку,
+// а не все сразу; счётчик «ещё N» подсказывает, сколько осталось).
+function verificationIssueToastHtml(issue, v) {
+    if (!issue) return '';
+    var isEn = currentLang === 'en';
+    var h = issue.hole;
+    var d = issue.detail || {};
+    var ps = parseInt(d.ps) || 0, ms = parseInt(d.ms) || 0;
+    var markerBit = d.markerName ? ' (' + escapeHtml(d.markerName) + ')' : '';
+    if (issue.kind === 'mismatch') {
+        var scoreBit = (ps >= 1 && ms >= 1)
+            ? (isEn ? ('You: <b>' + ps + '</b>, marker' + markerBit + ': <b>' + ms + '</b>') : ('Вы: <b>' + ps + '</b>, маркер' + markerBit + ': <b>' + ms + '</b>'))
+            : (isEn ? 'scores do not match' : 'счета не совпадают');
+        var more = '';
+        var rest = (issue.totalMismatches - 1) + issue.totalUnconfirmed;
+        if (rest > 0) more = isEn ? ('<br><span style="opacity:.85;font-size:12px;">+' + rest + ' more hole' + (rest === 1 ? '' : 's') + ' to check</span>') : ('<br><span style="opacity:.85;font-size:12px;">ещё лунок к проверке: ' + rest + '</span>');
+        return (isEn ? ('⚠️ <b>Mismatch on hole ' + h + '</b><br>' + scoreBit) : ('⚠️ <b>Несовпадение на лунке ' + h + '</b><br>' + scoreBit)) + more;
+    }
+    var what = ps >= 1
+        ? (isEn ? ('Your score <b>' + ps + '</b> is waiting for marker' + markerBit + ' confirmation') : ('Ваш счёт <b>' + ps + '</b> ждёт подтверждения маркера' + markerBit))
+        : (isEn ? 'score is not entered yet' : 'счёт ещё не введён');
+    var restU = issue.totalUnconfirmed - 1;
+    var moreU = restU > 0 ? (isEn ? ('<br><span style="opacity:.85;font-size:12px;">+' + restU + ' more unconfirmed hole' + (restU === 1 ? '' : 's') + '</span>') : ('<br><span style="opacity:.85;font-size:12px;">ещё неподтверждённых лунок: ' + restU + '</span>')) : '';
+    return (isEn ? ('⏳ <b>Hole ' + h + ' is not confirmed</b><br>' + what) : ('⏳ <b>Лунка ' + h + ' не подтверждена</b><br>' + what)) + moreU;
+}
+
+// Показывает уведомление о первой проблемной лунке (5 сек, тап — перейти к лунке).
+// onGoToHole(hole) — callback для перехода (например, goPlayHole).
+function showVerificationIssueToast(v, onGoToHole) {
+    var issue = (v && v.firstIssue) || getFirstVerificationIssue(v);
+    if (!issue) return null;
+    var html = verificationIssueToastHtml(issue, v);
+    var type = issue.kind === 'mismatch' ? 'error' : 'warn';
+    return toast(html, type, { onClick: function(){ if (typeof onGoToHole === 'function') onGoToHole(issue.hole); } });
+}
+
 // Собирает информацию о «незавершённых» лунках раунда для проверки перед финишем:
 //  - mismatch: лунки, где есть несовпадение счёта (по фактическим данным игрок/маркер или флагу verified === false)
 //  - unconfirmed: лунки, где счёт ещё не подтверждён всеми / не введён
-function collectRoundVerification(r) {
+// onlyPid (опционально): проверять только одного игрока и его маркера.
+//  Групповой финиш всегда вызывает с onlyPid = текущий игрок.
+function collectRoundVerification(r, onlyPid) {
     var order = getRoundOrder(r);
     var players = Object.entries((r && r.players) || {});
+    if (onlyPid) players = players.filter(function(pe){ return pe[0] === onlyPid; });
     var mismatch = {}, unconfirmed = {};
     var missing = {};
     if (r && r.mode === 'solo') {
@@ -4592,9 +4771,15 @@ function saveUserProfileData(playerId) {
 // ==========================================
 // МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ЗАВЕРШЕНИЯ РАУНДА
 // ==========================================
-function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback) {
+function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback, opts) {
     if (typeof db === 'undefined' || !roundId) return;
     window._pestovoFinishModalOnClose = (typeof onCloseCallback === 'function') ? onCloseCallback : null;
+    // opts: { playerId } — турнирное завершение проверяет ТОЛЬКО игрока и его маркера,
+    // а не всю группу. onGoToHole(hole) — переход к проблемной лунке из модалки.
+    var scopedPid = null, modalGoToHole = null;
+    if (opts && typeof opts === 'object') { scopedPid = opts.playerId || null; modalGoToHole = opts.onGoToHole || null; }
+    else if (typeof opts === 'string' && opts) { scopedPid = opts; }
+    window._pestovoFinishModalGoToHole = (typeof modalGoToHole === 'function') ? modalGoToHole : null;
 
     db.ref('rounds/' + roundId).once('value').then(function(sn) {
         var r = sn.val();
@@ -4622,9 +4807,12 @@ function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback) {
         var holeCount = order.length;
         var players = Object.entries(r.players || {}).filter(function(pe) {
             // Удалённые и навсегда заблокированные демо-игроки не показываются
-            return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name)) return false;
+            // Турнирное завершение: в модалке показываем только меня (проверка — я + мой маркер)
+            if (scopedPid && pe[0] !== scopedPid) return false;
+            return true;
         });
-        var verification = collectRoundVerification(r);
+        var verification = scopedPid ? collectPlayerVerification(r, scopedPid) : collectRoundVerification(r);
 
         var titleStr = currentLang === 'en' ? '🏁 Finish Round Confirmation' : '🏁 Подтверждение завершения раунда';
         var subStr = currentLang === 'en' ? 'Please review final scores before finishing:' : 'Пожалуйста, проверьте итоговые результаты перед завершением:';
@@ -4646,11 +4834,22 @@ function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback) {
         });
 
         if (!verification.canFinish) {
-            html += '<div style="margin:16px 0;" id="finish-verification-report">' + buildVerificationReportHtml(verification) + '</div>';
-            if (currentLang === 'en') {
-                html += '<div class="timing-alert timing-late" style="margin-bottom:4px;"><i class="fas fa-ban"></i><div><strong>The round cannot be finished until all scores are confirmed and matches are resolved.</strong></div></div>';
+            if (scopedPid && verification.firstIssue) {
+                // Компактная подсказка вместо большого блока: только ПЕРВАЯ проблемная
+                // лунка по порядку + кнопка перехода к ней. Остальное — через уведомления.
+                var fIssue = verification.firstIssue;
+                var fHtml = verificationIssueToastHtml(fIssue, verification);
+                html += '<div style="margin:16px 0;" id="finish-verification-report">';
+                html += '<div class="timing-alert ' + (fIssue.kind === 'mismatch' ? 'timing-late' : 'timing-warn') + '"><i class="fas ' + (fIssue.kind === 'mismatch' ? 'fa-triangle-exclamation' : 'fa-clock') + '"></i><div>' + fHtml + '</div></div>';
+                html += '<button type="button" class="btn btn-og btn-block" style="margin-top:10px;" onclick="finishModalGoToHole(' + fIssue.hole + ')"><i class="fas fa-arrow-right"></i> ' + (currentLang === 'en' ? 'Go to hole ' + fIssue.hole : 'Перейти к лунке ' + fIssue.hole) + '</button>';
+                html += '</div>';
             } else {
-                html += '<div class="timing-alert timing-late" style="margin-bottom:4px;"><i class="fas fa-ban"></i><div><strong>Раунд нельзя завершить, пока все счета не подтверждены и не устранены несовпадения.</strong></div></div>';
+                html += '<div style="margin:16px 0;" id="finish-verification-report">' + buildVerificationReportHtml(verification) + '</div>';
+            }
+            if (currentLang === 'en') {
+                html += '<div class="timing-alert timing-late" style="margin-bottom:4px;"><i class="fas fa-ban"></i><div><strong>' + (scopedPid ? 'The round cannot be finished until your scores are confirmed by your marker.' : 'The round cannot be finished until all scores are confirmed and matches are resolved.') + '</strong></div></div>';
+            } else {
+                html += '<div class="timing-alert timing-late" style="margin-bottom:4px;"><i class="fas fa-ban"></i><div><strong>' + (scopedPid ? 'Раунд нельзя завершить, пока ваш маркер не подтвердит ваши счета.' : 'Раунд нельзя завершить, пока все счета не подтверждены и не устранены несовпадения.') + '</strong></div></div>';
             }
         }
 
@@ -4686,6 +4885,14 @@ function closeFinishModal() {
         var cb = window._pestovoFinishModalOnClose;
         window._pestovoFinishModalOnClose = null;
         cb();
+    }
+}
+
+// Переход к проблемной лунке из модалки завершения (закрывает модалку и зовёт onGoToHole).
+function finishModalGoToHole(hole) {
+    closeFinishModal();
+    if (typeof window._pestovoFinishModalGoToHole === 'function') {
+        try { window._pestovoFinishModalGoToHole(hole); } catch(_) {}
     }
 }
 

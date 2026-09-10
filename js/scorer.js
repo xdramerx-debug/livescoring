@@ -188,9 +188,10 @@ function buildHoles() {
     order.forEach(function(h) {
         var s = parseInt(scores[h]) || 0, ms = parseInt(scMarker[h]) || 0;
         var cls = h === scHole ? 'active' : '';
+        // confirmed — зелёная, mismatch — мигает красным, счёт введён без подтверждения — мигает серым
         if (s >= 1 && ms >= 1 && s === ms) cls += ' verified';
         else if (s >= 1 && ms >= 1) cls += ' mismatch';
-        else if (s >= 1) cls += ' done';
+        else if (s >= 1) cls += ' pending';
         html += '<button class="hole-btn ' + cls + '" onclick="goSc(' + h + ')">' +
             '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + (typeof hcpStrokesMarksHTML === 'function' ? hcpStrokesMarksHTML(scFieldHcp, h) : '') + '</span>' +
             '</button>';
@@ -255,7 +256,7 @@ function checkVerify() {
     var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (langIsEn ? 'Confirmed by marker: ' + ps : 'Подтверждено маркером: ' + ps + ' уд.') + '</div>';
     else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (langIsEn ? 'You: ' : 'Вы: ') + ps + ' | ' + (langIsEn ? 'Marker: ' : 'Маркер: ') + ms + '</div>';
-    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">⏳ ' + (langIsEn ? 'Awaiting marker confirmation...' : 'Ждём подтверждение маркера') + '</div>';
+    // Ожидание маркера отдельным блоком НЕ показываем — только уведомление 5 сек при сохранении.
     else box.innerHTML = '';
 }
 
@@ -282,13 +283,13 @@ function saveSc() {
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ms >= 1 && ms === scScore) {
             if (typeof dbSetWithOfflineQueue === 'function') dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole, true);
-            if (typeof toast === 'function') toast(langIsEn ? '✅ Confirmed!' : '✅ Подтверждено!'); 
+            if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + savedHole + ' confirmed:</b> ' + scScore) : ('✅ <b>Лунка ' + savedHole + ' подтверждена:</b> ' + scScore + ' уд.'));
             if (typeof vib === 'function') vib([50, 50]);
         } else if (ms >= 1 && ms !== scScore) {
             if (typeof dbSetWithOfflineQueue === 'function') dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole, false);
-            if (typeof toast === 'function') toast(langIsEn ? '⚠️ Mismatch!' : '⚠️ Несовпадение!', 'error');
+            if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + savedHole + '!</b><br>You: <b>' + scScore + '</b>, marker: <b>' + ms + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + savedHole + '!</b><br>Вы: <b>' + scScore + '</b>, маркер: <b>' + ms + '</b>'), 'error');
         } else {
-            if (typeof toast === 'function') toast(langIsEn ? '⏳ Waiting for marker...' : '⏳ Ждём маркера');
+            if (typeof toast === 'function') toast(langIsEn ? ('⏳ <b>Hole ' + savedHole + ':</b> your score <b>' + scScore + '</b> is saved. Waiting for marker.') : ('⏳ <b>Лунка ' + savedHole + ':</b> ваш счёт <b>' + scScore + '</b> сохранён. Ждём маркера.'), 'info');
             if (typeof vib === 'function') vib();
         }
         var par = (typeof holePar === 'function' ? holePar(savedHole) : 4);

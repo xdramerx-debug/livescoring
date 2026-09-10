@@ -11,6 +11,57 @@ var tnLbSubscribed = false;
 var tnLbOpen = {};
 var tnRosterOpen = {};
 
+// Раскрытые/свёрнутые группы гандикапа (заявка и лидерборд): состояние
+// переживает перерисовки и перезагрузки страницы.
+var tnGroupOpen = {};
+try { tnGroupOpen = JSON.parse(localStorage.getItem('pestovo_tn_groups') || '{}') || {}; } catch(e) { tnGroupOpen = {}; }
+function tnGroupKey(tnId, ctx, divId) { return tnId + '|' + ctx + '|' + divId; }
+function tnGroupIsOpen(tnId, ctx, divId, defaultOpen) {
+    var k = tnGroupKey(tnId, ctx, divId);
+    if (Object.prototype.hasOwnProperty.call(tnGroupOpen, k)) return !!tnGroupOpen[k];
+    return !!defaultOpen;
+}
+function tnGroupSetOpen(tnId, ctx, divId, open) {
+    tnGroupOpen[tnGroupKey(tnId, ctx, divId)] = !!open;
+    try { localStorage.setItem('pestovo_tn_groups', JSON.stringify(tnGroupOpen)); } catch(e) {}
+}
+function toggleTnGroupEl(btn) {
+    if (!btn) return;
+    var tnId = btn.getAttribute('data-tn'), ctx = btn.getAttribute('data-ctx'), div = btn.getAttribute('data-div');
+    var wrap = btn.closest ? btn.closest('.tn-group') : btn.parentNode;
+    var body = wrap ? wrap.querySelector('.tn-group-body') : null;
+    var nowOpen = true;
+    if (body) {
+        body.classList.toggle('tn-collapsed');
+        nowOpen = !body.classList.contains('tn-collapsed');
+    }
+    if (wrap) {
+        if (wrap.classList) {
+            if (nowOpen) wrap.classList.add('open'); else wrap.classList.remove('open');
+        }
+    }
+    tnGroupSetOpen(tnId, ctx, div || '', nowOpen);
+}
+function toggleTnAllGroups(tnId, ctx, open) {
+    var panelId = ctx === 'lb' ? 'tnlb-' + tnId : 'roster-' + tnId;
+    var panel = tGet(panelId);
+    if (!panel || !panel.querySelectorAll) return;
+    var groups = panel.querySelectorAll('.tn-group');
+    for (var i = 0; i < groups.length; i++) {
+        var g = groups[i];
+        var btn = g.querySelector('.tn-group-head');
+        var body = g.querySelector('.tn-group-body');
+        if (body) {
+            if (open) body.classList.remove('tn-collapsed');
+            else body.classList.add('tn-collapsed');
+        }
+        if (g.classList) {
+            if (open) g.classList.add('open'); else g.classList.remove('open');
+        }
+        if (btn) tnGroupSetOpen(tnId, ctx, btn.getAttribute('data-div') || '', !!open);
+    }
+}
+
 function loadTournaments() {
     if (typeof db === 'undefined' || !db) return;
     if (typeof bindRealtimeValue !== 'function') return;
@@ -260,19 +311,30 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
     if (unassigned.list.length) buckets.push(unassigned);
 
     var html = '';
-    buckets.forEach(function(b) {
+    if (buckets.length > 1) {
+        html += '<div class="tn-groups-toggle">' +
+            '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'roster\',true)"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
+            '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'roster\',false)"><i class="fas fa-angles-up"></i> ' + (en ? 'Collapse all' : 'Свернуть все') + '</button>' +
+            '</div>';
+    }
+    buckets.forEach(function(b, bi) {
+        var divId = b.div ? (b.div.id || ('d' + bi)) : '__none';
+        var isOpen = tnGroupIsOpen(tnId, 'roster', divId, bi === 0);
+        var headInner = '';
         if (b.div) {
             var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(b.div) : '';
             var teeTxt = b.div.tee ? (' · ' + t('tee_' + b.div.tee)) : '';
-            html += '<div class="tn-group-head"><i class="fas fa-layer-group"></i> ' + escapeHtml(b.div.name || '') +
-                (rg ? ' <span style="color:var(--muted);font-weight:600;">HCP ' + escapeHtml(rg) + '</span>' : '') +
-                '<span style="color:var(--muted);font-weight:600;">' + escapeHtml(teeTxt) + '</span>' +
-                ' <span style="color:var(--gold);">· ' + b.list.length + '</span></div>';
-        } else if (buckets.length > 1) {
-            html += '<div class="tn-group-head"><i class="fas fa-user-group"></i> ' + (en ? 'Without group' : 'Без группы') +
-                ' <span style="color:var(--gold);">· ' + b.list.length + '</span></div>';
+            headInner = '<i class="fas fa-layer-group"></i> <b>' + escapeHtml(b.div.name || '') + '</b>' +
+                (rg ? ' <span>HCP ' + escapeHtml(rg) + '</span>' : '') +
+                (teeTxt ? ' <span>' + escapeHtml(teeTxt) + '</span>' : '');
+        } else {
+            headInner = '<i class="fas fa-user-group"></i> <b>' + (en ? 'Without group' : 'Без группы') + '</b>';
         }
-        html += '<div style="overflow-x:auto;margin-bottom:10px;"><table class="lb-table lb-cards"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>' + (en ? 'Tee' : 'ТИ') + '</th><th>' + t('date') + '</th></tr></thead><tbody>';
+        headInner += ' <span class="tn-group-count">' + b.list.length + '</span><i class="fas fa-chevron-down tn-chev"></i>';
+        html += '<div class="tn-group' + (isOpen ? ' open' : '') + '">';
+        html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="roster" data-div="' + escapeHtml(divId) + '" onclick="toggleTnGroupEl(this)">' + headInner + '</button>';
+        html += '<div class="tn-group-body' + (isOpen ? '' : ' tn-collapsed') + '">';
+        html += '<div style="overflow-x:auto;"><table class="lb-table lb-cards"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>' + (en ? 'Tee' : 'ТИ') + '</th><th>' + t('date') + '</th></tr></thead><tbody>';
         var rIdx = 1;
         b.list.forEach(function(en2) {
             var rp = en2.rp, rpid = en2.pid;
@@ -283,6 +345,7 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
             html += '<td data-label="' + t('date') + '">' + fmtDate(rp.registeredAt) + '</td></tr>';
         });
         html += '</tbody></table></div>';
+        html += '</div></div>';
     });
     return html;
 }
@@ -411,17 +474,30 @@ function renderTnLeaderboard(tnId) {
     var html = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;"><strong style="color:var(--gold);font-size:15px;"><i class="fas fa-ranking-star"></i> ' +
         (en ? 'Tournament leaderboard' : 'Лидерборд турнира') + '</strong>' + statusLine + '</div>';
 
-    buckets.forEach(function(b) {
-        if (!b.list.length) return;
+    var lbBuckets = buckets.filter(function(b) { return b.list.length > 0; });
+    if (lbBuckets.length > 1) {
+        html += '<div class="tn-groups-toggle">' +
+            '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'lb\',true)"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
+            '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'lb\',false)"><i class="fas fa-angles-up"></i> ' + (en ? 'Collapse all' : 'Свернуть все') + '</button>' +
+            '</div>';
+    }
+    lbBuckets.forEach(function(b, bi) {
         b.list.sort(tnLbSort);
+        var lbDivId = b.div ? (b.div.id || ('d' + bi)) : '__none';
+        var lbOpen = tnGroupIsOpen(tnId, 'lb', lbDivId, bi === 0);
+        var lbHead = '';
         if (b.div) {
             var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(b.div) : '';
-            html += '<div class="tn-group-head"><i class="fas fa-layer-group"></i> ' + escapeHtml(b.div.name || '') +
-                (rg ? ' <span style="color:var(--muted);font-weight:600;">HCP ' + escapeHtml(rg) + '</span>' : '') + '</div>';
-        } else if (buckets.length > 1) {
-            html += '<div class="tn-group-head"><i class="fas fa-user-group"></i> ' + (en ? 'Without group' : 'Без группы') + '</div>';
+            lbHead = '<i class="fas fa-layer-group"></i> <b>' + escapeHtml(b.div.name || '') + '</b>' +
+                (rg ? ' <span>HCP ' + escapeHtml(rg) + '</span>' : '');
+        } else {
+            lbHead = '<i class="fas fa-user-group"></i> <b>' + (en ? 'Without group' : 'Без группы') + '</b>';
         }
-        html += '<div style="overflow-x:auto;margin-bottom:12px;"><table class="lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th><th>' +
+        lbHead += ' <span class="tn-group-count">' + b.list.length + '</span><i class="fas fa-chevron-down tn-chev"></i>';
+        html += '<div class="tn-group' + (lbOpen ? ' open' : '') + '">';
+        html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="lb" data-div="' + escapeHtml(lbDivId) + '" onclick="toggleTnGroupEl(this)">' + lbHead + '</button>';
+        html += '<div class="tn-group-body' + (lbOpen ? '' : ' tn-collapsed') + '">';
+        html += '<div style="overflow-x:auto;"><table class="lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th><th>' +
             (en ? 'Thru' : 'Лунки') + '</th><th>' + (en ? 'Gross' : 'Гросс') + '</th><th>±</th><th>' + (en ? 'Net' : 'Нетто') + '</th><th>' + (en ? 'Stbl' : 'Стбл') + '</th></tr></thead><tbody>';
         var pos = 0;
         b.list.forEach(function(en2, i) {
@@ -438,6 +514,7 @@ function renderTnLeaderboard(tnId) {
             html += '<td>' + (en2.holes > 0 ? en2.stbl : '—') + '</td></tr>';
         });
         html += '</tbody></table></div>';
+        html += '</div></div>';
     });
 
     panel.innerHTML = html;

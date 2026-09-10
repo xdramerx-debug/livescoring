@@ -929,6 +929,11 @@ function createTournament() {
 // Какие HCP-панели турниров раскрыты (иначе loadTournaments падал с
 // ReferenceError и созданные турниры не появлялись в списке).
 var tnDivOpen = {};
+// Инлайн-редактирование группы: tnDivEditing[tnId] = divId.
+var tnDivEditing = {};
+// Кэш последних значений турниров из подписки — для перерисовки
+// панели «Группы HCP» без обращения к базе.
+var tnTnVals = {};
 
 function loadTournaments() {
     if (typeof db === 'undefined' || !db) {
@@ -954,8 +959,10 @@ function loadTournaments() {
         var teeLabel = currentLang === 'en' ? 'Tees: ' : 'ТИ: ';
 
         var html = '';
+        tnTnVals = {};
         entries.forEach(function(e) {
             var id = e[0], tVal = e[1];
+            tnTnVals[id] = tVal;
             var formatsStr = (tVal.formats || []).join(', ') || '—';
             var teesStr = (tVal.tees || []).map(function(k) { return t('tee_' + k); }).join(', ') || '—';
             var regPlayers = tVal.registeredPlayers || {};
@@ -979,8 +986,11 @@ function loadTournaments() {
             if (tnDivisions.length) {
                 html += '<div style="margin-top:6px;">';
                 tnDivisions.forEach(function(d) {
+                    // Имя группы ИЛИ диапазон HCP — но не оба сразу: названия
+                    // вида «Мужчины 0–12» уже содержат диапазон, и бейдж с
+                    // ним двоил информацию.
                     var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
-                    html += '<span class="tn-div-chip">' + escapeHtml(d.name || '') + (rg ? ' · ' + escapeHtml(rg) : '') + '</span>';
+                    html += '<span class="tn-div-chip">' + escapeHtml(d.name || rg || '—') + '</span>';
                 });
                 html += '</div>';
             }
@@ -1004,7 +1014,7 @@ function loadTournaments() {
             // Удаление турнира всегда каскадное: вместе с раундами и протоколами.
             html += '<button class="btn btn-r btn-sm" title="' + (tnEn ? 'Delete tournament with all its rounds and group protocols' : 'Удалить турнир вместе со всеми его раундами и протоколами групп') + '" onclick="deleteTn(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
             html += '</div></div>';
-            html += '<div id="tn-div-' + id + '" class="tn-div-block' + (tnDivOpen[id] ? '' : ' hidden') + '">' + tnDivisionsEditorHtml(id, tnDivisions) + '</div>';
+            html += '<div id="tn-div-' + id + '" class="tn-div-block' + (tnDivOpen[id] ? '' : ' hidden') + '">' + tnDivisionsEditorHtml(id, tnDivisions, tVal) + '</div>';
             html += '</div>';
         });
 
@@ -1167,10 +1177,135 @@ function tnToggleDivPanel(id) {
     }
 }
 
-function tnDivisionsEditorHtml(tnId, divisions) {
+// ── БЛОК «ОБРЕЗКА ГАНДИКАПА» В КАРТОЧКЕ ТУРНИРА ──
+// СТОИТ ВЫШЕ групп и умного распределения: сначала админ указывает, будет ли
+// гандикап обрезан (процент / максимум по полу), и только потом запускает
+// «Умные группы» — те режут по ОБРЕЗАННЫМ гандикапам (tnApplyHcpCut).
+// Данные — те же, что у стартового листа: tournaments/<id>/hcpCut.
+function tnCutBoxHtml(tnId, tVal) {
+    var en = currentLang === 'en';
+    var cut = (tVal && typeof tVal.hcpCut === 'object' && tVal.hcpCut) ? tVal.hcpCut : null;
+    var cutOn = !!(cut && cut.enabled === true);
+    var maxOn = cut
+        ? ((cut.maxEnabled === undefined || cut.maxEnabled === null)
+            ? ((cut.maxMen !== '' && cut.maxMen != null) || (cut.maxWomen !== '' && cut.maxWomen != null))
+            : (cut.maxEnabled === true))
+        : false;
+    var pct = (cut && cut.percent !== '' && cut.percent != null) ? cut.percent : 90;
+    var maxM = (cut && cut.maxMen !== '' && cut.maxMen != null) ? String(cut.maxMen) : '';
+    var maxW = (cut && cut.maxWomen !== '' && cut.maxWomen != null) ? String(cut.maxWomen) : '';
+    var stateTxt = (cutOn || maxOn)
+        ? (en ? 'Cut is ON — smart groups and the start list use the cut handicaps' : 'Обрезка включена — умные группы и стартовый лист считают от обрезанного HCP')
+        : (en ? 'Cut is off — handicaps are used as-is' : 'Обрезка выключена — гандикапы используются как есть');
+    var html = '<div class="tn-cut-box" style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.35);border-radius:10px;padding:10px 12px;margin-bottom:12px;">';
+    html += '<div style="font-weight:800;color:var(--gold);font-size:13.5px;margin-bottom:6px;"><i class="fas fa-scissors"></i> ' +
+        (en ? 'Handicap cut (this tournament only)' : 'Обрезка гандикапа (только для этого турнира)') + '</div>';
+    html += '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px;">';
+    html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--white);font-weight:700;">' +
+        '<input type="checkbox" id="tn-cut-enabled-' + tnId + '" ' + (cutOn ? 'checked' : '') + ' style="width:18px;height:18px;cursor:pointer;"> ' +
+        (en ? '✂ Cut by percent' : '✂ Обрезать на процент') + '</label>';
+    html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--white);font-weight:700;">' +
+        '<input type="checkbox" id="tn-cut-max-enabled-' + tnId + '" ' + (maxOn ? 'checked' : '') + ' style="width:18px;height:18px;cursor:pointer;"> ' +
+        (en ? '✂ Cap by gender max' : '✂ Ограничить максимум по полу') + '</label>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">';
+    html += '<div class="form-group" style="flex:0 1 120px;margin:0;"><label style="font-size:11px;">' + (en ? 'Percent (e.g. 90 = 90%)' : 'Процент (напр. 90 = 90%)') + '</label>' +
+        '<input type="number" id="tn-cut-percent-' + tnId + '" class="form-input" min="1" max="100" step="1" style="padding:7px 10px;font-size:12.5px;" value="' + pct + '"></div>';
+    html += '<div class="form-group" style="flex:1 1 110px;margin:0;"><label style="font-size:11px;">' + (en ? 'Max exact HCP — men' : 'Макс. точный HCP — мужчины') + '</label>' +
+        '<input type="text" id="tn-cut-maxmen-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" placeholder="' + (en ? 'no limit' : 'без лимита') + '" value="' + maxM.replace(/"/g, '&quot;') + '"></div>';
+    html += '<div class="form-group" style="flex:1 1 110px;margin:0;"><label style="font-size:11px;">' + (en ? 'Max exact HCP — women' : 'Макс. точный HCP — девушки') + '</label>' +
+        '<input type="text" id="tn-cut-maxwomen-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" placeholder="' + (en ? 'no limit' : 'без лимита') + '" value="' + maxW.replace(/"/g, '&quot;') + '"></div>';
+    html += '<button class="btn btn-g btn-sm" onclick="tnApplyCutBox(\'' + tnId + '\')"><i class="fas fa-check"></i> ' + (en ? 'Apply cut' : 'Применить обрезку') + '</button>';
+    html += '</div>';
+    html += '<div style="font-size:11.5px;color:var(--muted);margin-top:6px;"><i class="fas fa-circle-info"></i> ' + stateTxt + '.</div>';
+    html += '<p style="font-size:11px;color:var(--muted);margin:6px 0 0;"><i class="fas fa-circle-info"></i> ' +
+        (en ? 'The percent applies first, then the gender max. Course handicap is calculated from the cut exact value. Example: exact 36 → 90% = 32.4 → max 28 → plays off 28.0. After “Apply” the start list and groups recalculate immediately.'
+            : 'Сначала применяется процент, затем максимум по полу. Полевой гандикап считается от обрезанного точного. Пример: точный 36 → 90% = 32.4 → макс. 28 → играет с 28.0. После «Применить» стартовый лист и группы пересчитаются сразу.') + '</p>';
+    html += '</div>';
+    return html;
+}
+
+// «Применить обрезку» в карточке турнира: значения — из полей (даже если
+// фокус ещё в поле), записываем в tournaments/<id>/hcpCut в том же формате,
+// что и стартовый лист (psCutObject), — везде считают одинаково.
+function tnApplyCutBox(tnId) {
+    var en = currentLang === 'en';
+    if (typeof db === 'undefined' || !db) {
+        toast(en ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
+    var g = function(id) { return document.getElementById(id); };
+    var enCb = g('tn-cut-enabled-' + tnId);
+    var maxCb = g('tn-cut-max-enabled-' + tnId);
+    var pctEl = g('tn-cut-percent-' + tnId);
+    var mmEl = g('tn-cut-maxmen-' + tnId);
+    var mwEl = g('tn-cut-maxwomen-' + tnId);
+    var cut = { enabled: !!(enCb && enCb.checked), maxEnabled: !!(maxCb && maxCb.checked), percent: 100, maxMen: null, maxWomen: null };
+    if (pctEl) {
+        var n = parseFloat(pctEl.value);
+        cut.percent = isNaN(n) ? 100 : Math.max(1, Math.min(100, n));
+    }
+    [['maxMen', mmEl], ['maxWomen', mwEl]].forEach(function(pair) {
+        if (!pair[1]) return;
+        var s = String(pair[1].value == null ? '' : pair[1].value).trim().replace(',', '.');
+        if (s === '') return;
+        var m = parseFloat(s);
+        if (!isNaN(m)) cut[pair[0]] = m;
+    });
+    // Сколько заявленных участников затронет (по ОБРЕЗАННОМУ HCP).
+    var tVal = tnTnVals[tnId];
+    var reg = (tVal && tVal.registeredPlayers) || {};
+    var total = 0, hit = 0;
+    Object.keys(reg).forEach(function(k) {
+        var rp = reg[k] || {};
+        var raw = (rp.handicap === '' || rp.handicap == null) ? null : parseFloat(rp.handicap);
+        if (raw == null || isNaN(raw)) return;
+        total++;
+        try {
+            var eff = tnApplyHcpCut(raw, rp.gender || 'men', cut).effective;
+            if (Math.abs(eff - raw) >= 0.049) hit++;
+        } catch (e) {}
+    });
+    db.ref('tournaments/' + tnId + '/hcpCut').set(cut).then(function() {
+        var parts = [];
+        if (cut.enabled) parts.push(cut.percent + '%');
+        if (cut.maxEnabled) {
+            var lims = [];
+            if (cut.maxMen != null) lims.push((en ? 'men' : 'муж') + ' ≤ ' + cut.maxMen);
+            if (cut.maxWomen != null) lims.push((en ? 'women' : 'жен') + ' ≤ ' + cut.maxWomen);
+            parts.push((en ? 'max' : 'макс') + (lims.length ? ' (' + lims.join(', ') + ')' : ''));
+        }
+        if (!parts.length) {
+            toast(en ? '✂ Cut is off — start list unchanged' : '✂ Обрезка выключена — стартовый лист без изменений', 'info');
+        } else {
+            toast((en ? '✂ Cut applied (' : '✂ Обрезка применена (') + parts.join(' + ') + '): ' +
+                (en ? 'affects' : 'затронуто') + ' ' + hit + ' / ' + total, 'success');
+        }
+        if (typeof vib === 'function') vib([40, 30, 40]);
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+// Перерисовка только панели «Группы HCP» конкретного турнира (по кэшу
+// tnTnVals, без обращения к базе) — для инлайн-редактирования групп.
+function tnReRenderDivPanel(tnId) {
+    var tVal = tnTnVals[tnId];
+    if (!tVal) return;
+    var panel = document.getElementById('tn-div-' + tnId);
+    if (!panel) return;
+    var divs = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
+    panel.innerHTML = tnDivisionsEditorHtml(tnId, divs, tVal);
+}
+
+function tnDivisionsEditorHtml(tnId, divisions, tVal) {
     var en = currentLang === 'en';
     divisions = divisions || [];
-    var html = '<div style="font-weight:800;color:var(--gold);font-size:13.5px;margin-bottom:8px;"><i class="fas fa-layer-group"></i> ' +
+    // СНАЧАЛА — обрезка гандикапа (выше групп и умного распределения):
+    // админ сначала указывает, будет ли HCP порезан, и только потом
+    // запускает умное распределение — оно режет по обрезанным гандикапам.
+    var html = tnCutBoxHtml(tnId, tVal || {});
+    html += '<div style="font-weight:800;color:var(--gold);font-size:13.5px;margin-bottom:8px;"><i class="fas fa-layer-group"></i> ' +
         (en ? 'Handicap groups' : 'Группы участников по гандикапу') + '</div>';
     if (!divisions.length) {
         html += '<p style="font-size:12px;color:var(--muted);margin:0 0 10px;">' +
@@ -1180,13 +1315,53 @@ function tnDivisionsEditorHtml(tnId, divisions) {
         divisions.forEach(function(d) {
             var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(d) : '';
             var g = (typeof tnDivisionGenderText === 'function') ? tnDivisionGenderText(d.gender) : (d.gender || '');
-            var teeTxt = d.tee ? (' · ' + t('tee_' + d.tee)) : '';
-            html += '<div class="tn-div-row"><span class="tn-div-name">' + escapeHtml(d.name || '—') + '</span>' +
-                '<span class="tn-div-meta">' + escapeHtml(g) + (rg ? ' · HCP ' + escapeHtml(rg) : '') + escapeHtml(teeTxt) + '</span>' +
-                '<button class="btn btn-r btn-sm" style="margin-left:auto;" onclick="tnDeleteDivision(\'' + tnId + '\',\'' + d.id + '\')"><i class="fas fa-trash"></i></button></div>';
+            var teeTxt = d.tee ? t('tee_' + d.tee) : '';
+            if (tnDivEditing[tnId] === d.id) {
+                // Инлайн-редактирование группы: название, пол, диапазон HCP, ТИ.
+                html += '<div class="tn-div-edit" style="background:rgba(255,255,255,0.04);border:1px solid rgba(201,168,76,0.4);border-radius:10px;padding:10px;margin-bottom:8px;">';
+                html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">';
+                html += '<div class="form-group" style="flex:2 1 150px;margin:0;"><label style="font-size:11px;">' + (en ? 'Group name' : 'Название группы') + '</label>' +
+                    '<input type="text" id="tnde-name-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" value="' + String(d.name || '').replace(/"/g, '&quot;') + '"></div>';
+                html += '<div class="form-group" style="flex:1 1 100px;margin:0;"><label style="font-size:11px;">' + (en ? 'Gender' : 'Пол') + '</label>' +
+                    '<select id="tnde-gender-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' +
+                    '<option value="men"' + (d.gender === 'men' ? ' selected' : '') + '>' + (en ? 'Men' : 'Мужчины') + '</option>' +
+                    '<option value="women"' + (d.gender === 'women' ? ' selected' : '') + '>' + (en ? 'Women' : 'Девушки') + '</option>' +
+                    '<option value="all"' + ((d.gender || 'all') === 'all' ? ' selected' : '') + '>' + (en ? 'All' : 'Все') + '</option></select></div>';
+                html += '<div class="form-group" style="flex:0 1 76px;margin:0;"><label style="font-size:11px;">HCP ' + (en ? 'from' : 'от') + '</label>' +
+                    '<input type="text" id="tnde-from-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" value="' + (d.hcpFrom === '' || d.hcpFrom == null ? '' : d.hcpFrom) + '"></div>';
+                html += '<div class="form-group" style="flex:0 1 76px;margin:0;"><label style="font-size:11px;">HCP ' + (en ? 'to' : 'до') + '</label>' +
+                    '<input type="text" id="tnde-to-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" value="' + (d.hcpTo === '' || d.hcpTo == null ? '' : d.hcpTo) + '"></div>';
+                html += '<div class="form-group" style="flex:1 1 110px;margin:0;"><label style="font-size:11px;">' + t('tee_select') + '</label>' +
+                    '<select id="tnde-tee-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' +
+                    '<option value=""' + (!d.tee ? ' selected' : '') + '>—</option><option value="bk"' + (d.tee === 'bk' ? ' selected' : '') + '>' + t('tee_bk') + '</option>' +
+                    '<option value="bl"' + (d.tee === 'bl' ? ' selected' : '') + '>' + t('tee_bl') + '</option>' +
+                    '<option value="wh"' + (d.tee === 'wh' ? ' selected' : '') + '>' + t('tee_wh') + '</option>' +
+                    '<option value="rd"' + (d.tee === 'rd' ? ' selected' : '') + '>' + t('tee_rd') + '</option></select></div>';
+                html += '<button class="btn btn-g btn-sm" onclick="tnSaveDivision(\'' + tnId + '\',\'' + d.id + '\')"><i class="fas fa-check"></i> ' + (en ? 'Save' : 'Сохранить') + '</button>';
+                html += '<button class="btn btn-og btn-sm" onclick="tnCancelEditDiv(\'' + tnId + '\')"><i class="fas fa-xmark"></i> ' + (en ? 'Cancel' : 'Отмена') + '</button>';
+                html += '</div></div>';
+            } else {
+                // Мета: если есть название — только ТИ (название вида
+                // «Мужчины 0–12» уже содержит пол и диапазон — не дублируем).
+                var meta = d.name
+                    ? (teeTxt ? escapeHtml(teeTxt) : '')
+                    : escapeHtml(g) + (rg ? ' · HCP ' + escapeHtml(rg) : '') + (teeTxt ? ' · ' + escapeHtml(teeTxt) : '');
+                // ✨ — группа создана «Умными группами» (auto): повторный
+                // запуск распределителя заменит только такие.
+                var autoMark = d.auto === true
+                    ? ' <i class="fas fa-wand-magic-sparkles" style="color:var(--gold);font-size:10.5px;" title="' + (en ? 'Created by smart groups' : 'Создана «Умными группами»') + '"></i>'
+                    : '';
+                html += '<div class="tn-div-row"><span class="tn-div-name">' + escapeHtml(d.name || '—') + autoMark + '</span>' +
+                    (meta ? '<span class="tn-div-meta">' + meta + '</span>' : '') +
+                    '<span style="margin-left:auto;display:flex;gap:6px;">' +
+                    '<button class="btn btn-og btn-sm" title="' + (en ? 'Edit group' : 'Изменить группу') + '" onclick="tnEditDivision(\'' + tnId + '\',\'' + d.id + '\')"><i class="fas fa-pen"></i></button>' +
+                    '<button class="btn btn-r btn-sm" title="' + (en ? 'Delete group' : 'Удалить группу') + '" onclick="tnDeleteDivision(\'' + tnId + '\',\'' + d.id + '\')"><i class="fas fa-trash"></i></button>' +
+                    '</span></div>';
+            }
         });
     }
-    // Умное создание: равные по числу игроков группы по фактическим HCP.
+    // Умное создание: равные по числу игроков группы по фактическим HCP
+    // (С УЧЁТОМ обрезки — блок выше: сначала обрезка, потом распределение).
     html += '<div style="margin-top:10px;"><button class="btn btn-g btn-sm" onclick="tnAutoDivisions(\'' + tnId + '\')"><i class="fas fa-wand-magic-sparkles"></i> ' +
         (en ? 'Smart groups (equal counts)' : '✨ Умные группы (поровну игроков)') + '</button></div>';
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:flex-end;">';
@@ -1209,6 +1384,60 @@ function tnDivisionsEditorHtml(tnId, divisions) {
     html += '</div>';
     return html;
 }
+
+// Инлайн-редактирование группы: режим правки одной группы + перерисовка
+// панели. Данные берутся из кэша tnTnVals (заполняется подпиской).
+function tnEditDivision(tnId, divId) {
+    tnDivEditing[tnId] = divId;
+    tnReRenderDivPanel(tnId);
+}
+
+function tnCancelEditDiv(tnId) {
+    delete tnDivEditing[tnId];
+    tnReRenderDivPanel(tnId);
+}
+
+// Сохранение правок группы: имя, пол, HCP от/до, ТИ.
+function tnSaveDivision(tnId, divId) {
+    var en = currentLang === 'en';
+    if (typeof db === 'undefined' || !db) {
+        toast(en ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
+        return;
+    }
+    var g = function(id) { return document.getElementById(id); };
+    var nameEl = g('tnde-name-' + tnId + '-' + divId);
+    var name = nameEl ? nameEl.value.trim() : '';
+    if (!name) {
+        toast(en ? '⚠️ Enter the group name' : '⚠️ Укажите название группы', 'error');
+        if (nameEl && nameEl.focus) nameEl.focus();
+        return;
+    }
+    var from = tnParseDivBound(g('tnde-from-' + tnId + '-' + divId) ? g('tnde-from-' + tnId + '-' + divId).value : '');
+    var to = tnParseDivBound(g('tnde-to-' + tnId + '-' + divId) ? g('tnde-to-' + tnId + '-' + divId).value : '');
+    if (isNaN(from) || isNaN(to)) {
+        toast(en ? '⚠️ Invalid HCP range (use numbers like 0, 12.1)' : '⚠️ Некорректный диапазон HCP (нужны числа, например 0, 12.1)', 'error');
+        return;
+    }
+    if (from !== '' && to !== '' && from > to) {
+        toast(en ? '⚠️ “HCP from” must be less than “HCP to”' : '⚠️ «HCP от» должен быть меньше «HCP до»', 'error');
+        return;
+    }
+    var genderEl = g('tnde-gender-' + tnId + '-' + divId);
+    var teeEl = g('tnde-tee-' + tnId + '-' + divId);
+    delete tnDivEditing[tnId];
+    db.ref('tournaments/' + tnId + '/divisions/' + divId).update({
+        name: name,
+        gender: genderEl ? genderEl.value : 'men',
+        hcpFrom: from,
+        hcpTo: to,
+        tee: teeEl ? teeEl.value : ''
+    }).then(function() {
+        toast(en ? '✅ Group updated' : '✅ Группа обновлена', 'success');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
 
 function tnParseDivBound(raw) {
     var s = String(raw == null ? '' : raw).trim().replace(',', '.');
@@ -1318,6 +1547,11 @@ function tnAutoDivisions(tnId) {
             if (fioKey) seen[fioKey] = true;
             var h = (rp.handicap === '' || rp.handicap == null) ? null : parseFloat(rp.handicap);
             if (h != null && isNaN(h)) h = null;
+            // Обрезка гандикапа (блок в панели выше): режем по ОБРЕЗАННОМУ
+            // точному HCP — именно с ним играет игрок, и группы строим от него.
+            if (h != null && tVal && tVal.hcpCut && typeof tnApplyHcpCut === 'function') {
+                try { h = tnApplyHcpCut(h, rp.gender || 'men', tVal.hcpCut).effective; } catch (e) {}
+            }
             var item = { hcp: h, sortHcp: (h == null ? 54 : h) };
             if ((rp.gender || 'men') === 'women') women.push(item);
             else men.push(item);
@@ -1376,26 +1610,47 @@ function tnAutoDivisions(tnId) {
         var preview = plan.map(function(d) {
             return '• ' + d.name + ' (' + d.count + ' ' + (en ? 'pl.' : 'игр.') + ')';
         }).join('\n');
+        // Если на турнире включена обрезка — показываем, что границы групп
+        // считались от ОБРЕЗАННЫХ гандикапов.
+        var cut = (tVal && typeof tVal.hcpCut === 'object' && tVal.hcpCut) ? tVal.hcpCut : null;
+        var cutOn = !!(cut && (cut.enabled === true ||
+            (cut.maxEnabled !== false && ((cut.maxMen !== '' && cut.maxMen != null) || (cut.maxWomen !== '' && cut.maxWomen != null)))));
+        var cutNote = cutOn
+            ? (en ? '\n\n✂ Uses the CUT handicaps (cut settings from the block above).' : '\n\n✂ Границы считаются от ОБРЕЗАННЫХ гандикапов (настройки обрезки — в блоке выше).')
+            : '';
         var q = en
-            ? 'Create ' + plan.length + ' handicap groups by actual handicaps (equal player counts)?\n\n' + preview
-            : 'Создать ' + plan.length + ' групп по фактическим гандикапам (поровну игроков)?\n\n' + preview;
+            ? 'Create ' + plan.length + ' handicap groups by actual handicaps (equal player counts)?\n\n' + preview + cutNote
+            : 'Создать ' + plan.length + ' групп по фактическим гандикапам (поровну игроков)?\n\n' + preview + cutNote;
         if (!confirm(q)) return;
 
         tnDivOpen[tnId] = true;
         var ref = db.ref('tournaments/' + tnId + '/divisions');
+        // Повторный запуск: сначала убираем группы, созданные РАЗЫМ умным
+        // распределителем (flag auto) — ручные группы админа не трогаем.
+        var oldAuto = (typeof tnNormalizeDivisions === 'function')
+            ? tnNormalizeDivisions(tVal).filter(function(d) { return d.auto === true; })
+            : [];
         var chain = Promise.resolve();
-        plan.forEach(function(d) {
-            chain = chain.then(function() {
-                return ref.push({
-                    name: d.name,
-                    gender: d.gender,
-                    hcpFrom: d.hcpFrom,
-                    hcpTo: d.hcpTo,
-                    tee: d.tee,
-                    createdAt: Date.now(),
-                    auto: true
+        oldAuto.forEach(function(d) {
+            if (!d.id) return;
+            chain = chain.then(function() { return ref.child(d.id).remove(); });
+        });
+        chain = chain.then(function() {
+            var c = Promise.resolve();
+            plan.forEach(function(d) {
+                c = c.then(function() {
+                    return ref.push({
+                        name: d.name,
+                        gender: d.gender,
+                        hcpFrom: d.hcpFrom,
+                        hcpTo: d.hcpTo,
+                        tee: d.tee,
+                        createdAt: Date.now(),
+                        auto: true
+                    });
                 });
             });
+            return c;
         });
         chain.then(function() {
             toast((en ? '✨ Smart groups created: ' : '✨ Умные группы созданы: ') + plan.length, 'success');

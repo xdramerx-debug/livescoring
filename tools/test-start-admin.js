@@ -550,11 +550,14 @@ var rgPlayers = [
     mkPlayer('Жен1', 'Мария', 30, 'women')
 ];
 var rg = sandbox.psRosterGroups(rgPlayers);
-eq(rg.useDivs, false, 'roster groups: без дивизионов — авто-группы');
-eq(rg.buckets.length, 3, 'roster groups: три авто-группы');
-eq(rg.buckets[0].items.length + rg.buckets[1].items.length + rg.buckets[2].items.length, 3, 'roster groups: все игроки разложены');
+eq(rg.useDivs, false, 'roster groups: без дивизионов — без авто-групп');
+eq(rg.buckets.length, 1, 'roster groups: без дивизионов — единый общий список');
+eq(rg.buckets[0].key, 'flat', 'roster groups: плоский список (ключ flat)');
+eq(rg.buckets[0].items.length, 3, 'roster groups: все игроки в общем списке');
 var rosterHtml = sandbox.psRenderRosterTable({ players: rgPlayers });
-eq(rosterHtml.indexOf('ps-rgroup') !== -1 && rosterHtml.indexOf('HCP 0–12') !== -1, true, 'roster: сворачиваемые группы в разметке');
+eq(rosterHtml.indexOf('ps-rgroup') !== -1, true, 'roster: блок списка в разметке');
+eq(rosterHtml.indexOf('HCP 0–12') === -1, true, 'roster: авто-группы по HCP больше НЕ создаются');
+eq(rosterHtml.indexOf('Группы не заданы') !== -1, true, 'roster: подсказка «группы не заданы»');
 eq(rosterHtml.indexOf('Развернуть все') !== -1, true, 'roster: кнопки свернуть/развернуть');
 // Кнопка «В группу…» доступна и при правке протокола
 sandbox.psState.editingId = 'pr_test';
@@ -651,6 +654,9 @@ eq(rgBucketOf('Бушнева') && rgBucketOf('Бушнева').key, 'div:w2', '
 eq(rgBucketOf('Иванова') && rgBucketOf('Иванова').key, 'div:w2', 'roster: Иванова (35.9) в 12.1-36');
 eq(rgBucketOf('Казначеев') && rgBucketOf('Казначеев').key, 'div:m2', 'roster: Казначеев (18.2) в Мужчины 12.1–36');
 eq(rgCut.buckets.filter(function(b) { return b.key === 'none'; }).length, 0, 'roster: никто не в «Без группы»');
+// Название группы + подпись: если название есть («Мужчины 12.1–36») —
+// в подписи только ТИ, без дубля диапазона HCP из названия.
+eq(rgBucketOf('Казначеев').sub, 'Белый', 'roster: у группы с названием — в подписи только ТИ');
 
 // ── v1.49.0: «Точный HCP» показывает обрезанное значение ──
 var rowCut = sandbox.psRosterRowHtml(sandbox.psState.proto.players[1], 1); // Бушнева 51 → 36

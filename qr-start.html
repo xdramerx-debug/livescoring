@@ -42,6 +42,14 @@
         .pcards { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
         .pcard { background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 10px 8px; page-break-inside:avoid; break-inside:avoid; position:relative; overflow:hidden; }
         .pcard::before { content:''; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--gold); }
+        /* Колонка игрока внутри карточки (общая для 3 раскладок) */
+        .pcol { min-width:0; }
+        /* Раскладка pair: карточка поделена на две части ВЕРТИКАЛЬНО */
+        .pcard-pair .pcard-halves { display:flex; align-items:stretch; }
+        .pcard-pair .pcard-halves .pcol { flex:1; }
+        .pcol-divider { width:0; border-left:1px dashed #cbbf9f; margin:0 10px; flex:0 0 auto; }
+        /* Раскладка quad: сетка 2×2 */
+        .pcard-quad .pgrid4 { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; }
         .grp-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
         .grp-badge { background:var(--dark); color:#fff; border-radius:7px; padding:3px 9px; font-size:12px; font-weight:800; letter-spacing:.4px; }
         .time-badge { background:#f3ecdb; border:1px solid var(--gold); color:#6d5717; border-radius:7px; padding:3px 8px; font-size:11.5px; font-weight:700; }
@@ -121,6 +129,25 @@
             body.print-cards .qr-box img { width:auto; max-width:16mm; max-height:16mm; }
             body.print-cards .qr-lbl { font-size:5.8pt; margin-bottom:0.6mm; line-height:1.2; }
             body.print-cards .qr-url { display:none !important; }
+            /* Раскладка pair: карточка = две вертикальные части (у каждого
+               игрока свой QR). QR чуть меньше одиночной карточки, но остаётся
+               крупным для считывания с телефона. */
+            body.print-cards .pcard-pair .pcard-halves { display:flex; align-items:stretch; flex:1; }
+            body.print-cards .pcard-pair .pcol { flex:1; min-width:0; }
+            body.print-cards .pcol-divider { margin:0 2mm; }
+            body.print-cards .pcard-pair .qr-box img { width:auto; max-width:28mm; max-height:28mm; }
+            body.print-cards .pcard-pair .pname { font-size:8.5pt; }
+            body.print-cards .pcard-pair .pmeta { font-size:6pt; }
+            /* Раскладка quad: сетка 2×2 — компакт, QR 22мм. */
+            body.print-cards .pcard-quad .pgrid4 { display:grid; grid-template-columns:1fr 1fr; gap:1mm 2.5mm; flex:1; }
+            body.print-cards .pcard-quad .qr-box img { width:auto; max-width:22mm; max-height:22mm; }
+            body.print-cards .pcard-quad .qr-box { padding:0.6mm; }
+            body.print-cards .pcard-quad .pname { font-size:8pt; }
+            body.print-cards .pcard-quad .pmeta { font-size:5.8pt; gap:0.4mm 1.6mm; }
+            body.print-cards .pcard-quad .grp-row { gap:0.8mm; }
+            body.print-cards .pcard-quad .grp-badge { font-size:6.5pt; }
+            body.print-cards .pcard-quad .time-badge { font-size:6pt; }
+            body.print-cards .pcard-quad .div-badge { font-size:5.8pt; }
             /* Состав флайта — нижняя строка карточки: не режем, переносим по словам.
                margin-top:auto прижимает её к низу, чтобы карточки в ряду были одинаковыми. */
             body.print-cards .members-note {
@@ -139,6 +166,14 @@
     <div class="toolbar no-print" id="qr-toolbar">
         <div class="t-title"><img src="img/logo.png" alt=""> Пестово · Стартовый протокол</div>
         <button class="btn btn-ol" onclick="location.href='admin.html'">← Админка</button>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#e8d9a8;">
+            <span>📐 QR-карточки:</span>
+            <select id="qr-layout" onchange="qrSetLayout(this.value)" style="background:#fff;color:#0b1a0e;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
+                <option value="single">1 игрок — 1 карточка</option>
+                <option value="pair">2 игрока — 1 карточка (по вертикали)</option>
+                <option value="quad">4 игрока — 1 карточка (2×2)</option>
+            </select>
+        </label>
         <button class="btn btn-g" onclick="qrPrintMode('cards')"><i>🖨</i> Печать QR-карточек</button>
         <button class="btn btn-og" onclick="qrPrintMode('sheet')"><i>📋</i> Печать стартового листа</button>
         <button class="btn btn-ol" id="qr-retry-btn" onclick="qrRetryFailed()"><i>🔄</i> QR заново</button>
@@ -154,6 +189,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="js/firebase-config.js?v=2"></script>
-    <script src="js/qr-start.js?v=6"></script>
+    <script src="js/qr-start.js?v=7"></script>
 </body>
 </html>

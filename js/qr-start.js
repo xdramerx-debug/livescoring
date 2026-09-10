@@ -300,12 +300,123 @@ function qrSortGroups(entries, scheme) {
     return entries;
 }
 
+// ── РАСКЛАДКА QR-КАРТОЧЕК: 3 ВАРИАНТА ОТОБРАЖЕНИЯ ──
+//   single — 1 игрок на карточку (2 карточки в ряду) — классика;
+//   pair   — 2 игрока на карточку, ПОДЕЛЕНУЮ НА ДВЕ ЧАСТИ ВЕРТИКАЛЬНО
+//            (лево/право, у каждого свой QR);
+//   quad   — 4 игрока на карточку (сетка 2×2).
+// Выбор сохраняется в localStorage и дублируется в ?layout= (ссылку можно
+// пересылать — получатель увидит ту же раскладку).
+var QR_LAYOUTS = ['single', 'pair', 'quad'];
+var qrLastDoc = null, qrLastDivs = null;
+// Запасной вариант, если localStorage недоступен (приватный режим и т.п.).
+var qrLayoutMemory = null;
+
+function qrGetLayout() {
+    try {
+        var param = new URLSearchParams(window.location.search).get('layout');
+        if (param && QR_LAYOUTS.indexOf(param) !== -1) return param;
+    } catch (e) {}
+    try {
+        var saved = window.localStorage.getItem('pestovo_qr_layout');
+        if (saved && QR_LAYOUTS.indexOf(saved) !== -1) return saved;
+    } catch (e) {}
+    if (qrLayoutMemory && QR_LAYOUTS.indexOf(qrLayoutMemory) !== -1) return qrLayoutMemory;
+    return 'single';
+}
+
+function qrSetLayout(mode) {
+    if (QR_LAYOUTS.indexOf(mode) === -1) mode = 'single';
+    qrLayoutMemory = mode;
+    try { window.localStorage.setItem('pestovo_qr_layout', mode); } catch (e) {}
+    // Дублируем выбор в URL: пересланная ссылка открывает ту же раскладку.
+    try {
+        var u = new URL(window.location.href);
+        u.searchParams.set('layout', mode);
+        window.history.replaceState(null, '', u.toString());
+    } catch (e) {}
+    var sel = qrGet('qr-layout');
+    if (sel) sel.value = mode;
+    if (qrLastDoc) qrRender(qrLastDoc, qrLastDivs);
+}
+
+// Колонка одного игрока внутри карточки (единая для всех трёх раскладок).
+function qrPlayerColHtml(g, geIdx, groupEntries, scheme, p) {
+    var members = g.players || [];
+    var rid = g.roundId;
+    var startHoleTxt = (g.startHole === 10 ? '10' : String(g.startHole || 1));
+    // Один QR на игрока:
+    //   группа 2+ → групповая карточка (свой счёт + счёт маркируемого партнёра);
+    //   группа из одного → одиночная карточка scorer.html.
+    var isGroupCard = members.length > 1;
+    var scoreUrl = isGroupCard
+        ? qrPageUrl('setup-round.html', 'round=' + encodeURIComponent(rid) + '&as=' + encodeURIComponent(p.id))
+        : qrPageUrl('scorer.html', 'round=' + encodeURIComponent(rid) + '&player=' + encodeURIComponent(p.id));
+    var markTarget = null;
+    (g.markers || []).forEach(function(mk) { if (mk.markerId === p.id) markTarget = mk; });
+    var markName = markTarget ? qrFio(findPl(g, markTarget.targetId)) : '';
+
+    // Зачётная группа игрока (по обрезанному гандикапу — он записан в exactHcp).
+    // Имя группы ИЛИ диапазон HCP — но не оба сразу: названия вида
+    // «Мужчины 0–12» уже содержат диапазон, и старый бейдж «название · 0–12»
+    // двоил информацию.
+    var pdiv = qrFindDivision(qrLastDivs, p.exactHcp, p.gender);
+    var pdivHtml = '';
+    if (pdiv) {
+        var prg = qrDivRange(pdiv);
+        var pdivTxt = pdiv.name ? pdiv.name : (prg ? 'HCP ' + prg : '');
+        if (pdivTxt) pdivHtml = '<span class="div-badge">🏆 ' + qrEsc(pdivTxt) + '</span>';
+    }
+
+    var html = '<div class="pcol">';
+    html += '<div class="grp-row">';
+    html += '<span class="grp-badge">' + qrEsc(qrGroupLabel(g, geIdx, groupEntries, scheme)) + '</span>';
+    html += '<span class="time-badge">⏱ ' + qrTime(g.startTime) + ' · ЛУНКА ' + startHoleTxt + '</span>';
+    html += pdivHtml + '</div>';
+    html += '<div class="pname">' + qrEsc(qrFio(p)) + '</div>';
+    html += '<div class="pmeta">';
+    html += '<span>ТИ: <b>' + qrTeeName(p.tee) + '</b></span>';
+    html += '<span>Точный HCP: <b>' + qrHcp(p.exactHcp) + '</b></span>';
+    html += '<span>Полевой HCP: <b>' + qrHcp(p.fieldHcp) + '</b></span>';
+    html += (markName ? '<span class="mark-chip">👁 Маркирует: <b>' + qrEsc(markName) + '</b></span>' : '');
+    html += '</div>';
+    html += '<div class="qr-grid">';
+    html += '<div class="qr-box"><div class="qr-lbl">' +
+        (isGroupCard
+            ? '📱 Моя карточка — свой счёт и счёт маркируемого партнёра'
+            : '📱 Моя карточка — ввод счёта') +
+        '</div>' +
+        // loading="eager": все коды грузятся сразу, а не при прокрутке —
+        // иначе в печать уходят пустые места. onerror — цепочка провайдеров.
+        '<img loading="eager" decoding="async" src="' + qrUrl(scoreUrl) + '" data-qr="' + encodeURIComponent(scoreUrl) + '" data-qr-try="0" onload="qrImgOk(this)" onerror="qrImgFail(this)" alt="QR"><div class="qr-url">' + qrEsc(scoreUrl) + '</div></div>';
+    html += '</div>';
+    html += '</div>';
+    return html;
+}
+
+// «Состав флайта» под карточкой: игроки карточки выделяются жирным.
+function qrMembersNote(members, cardIds) {
+    cardIds = cardIds || [];
+    var names = members.map(function(m) {
+        return cardIds.indexOf(m.id) !== -1
+            ? '<b style="color:#6d5717;">' + qrEsc(qrFio(m)) + '</b>'
+            : qrEsc(qrFio(m));
+    });
+    return '<div class="members-note"><b>Состав флайта:</b> ' + names.join(' · ') + '</div>';
+}
+
 function qrRender(doc, divs) {
     var content = qrGet('qr-content');
     if (!content) return;
     var loading = qrGet('qr-loading'); if (loading) loading.classList.add('hidden');
     content.classList.remove('hidden');
     divs = divs || [];
+    qrLastDoc = doc;
+    qrLastDivs = divs;
+
+    var layout = qrGetLayout();
+    var layoutSel = qrGet('qr-layout');
+    if (layoutSel) layoutSel.value = layout;
 
     var groupEntries = Object.keys(doc.groups || {}).map(function(k) {
         return { key: k, g: doc.groups[k] || {} };
@@ -357,69 +468,43 @@ function qrRender(doc, divs) {
     });
     sheetHtml += '</div></div>';
 
-    // ── QR-карточки ──
-    var cardsHtml = '<div class="pcards">';
+    // ── QR-карточки: раскладка — из селектора в панели (3 варианта) ──
+    var cardsHtml = '<div class="pcards pcards-' + layout + '">';
     groupEntries.forEach(function(ge, geIdx) {
         var g = ge.g;
         var members = g.players || [];
-        var rid = g.roundId;
-        var startHoleTxt = (g.startHole === 10 ? '10' : String(g.startHole || 1));
-        members.forEach(function(p) {
-            if (!p || !p.id) return;
-            // Один QR на игрока:
-            //   группа 2+ → групповая карточка (свой счёт + счёт маркируемого партнёра);
-            //   группа из одного → одиночная карточка scorer.html.
-            var isGroupCard = members.length > 1;
-            var scoreUrl = isGroupCard
-                ? qrPageUrl('setup-round.html', 'round=' + encodeURIComponent(rid) + '&as=' + encodeURIComponent(p.id))
-                : qrPageUrl('scorer.html', 'round=' + encodeURIComponent(rid) + '&player=' + encodeURIComponent(p.id));
-            // Кого маркирует этот игрок?
-            var markTarget = null;
-            (g.markers || []).forEach(function(mk) {
-                if (mk.markerId === p.id) markTarget = mk;
-            });
-            var markName = markTarget ? qrFio(findPl(g, markTarget.targetId)) : '';
-
-            // Зачётная группа игрока (по обрезанному гандикапу — он записан в exactHcp).
-            var pdiv = qrFindDivision(divs, p.exactHcp, p.gender);
-            var pdivHtml = '';
-            if (pdiv && pdiv.name) {
-                var prg = qrDivRange(pdiv);
-                pdivHtml = '<span class="div-badge">🏆 ' + qrEsc(pdiv.name) + (prg ? ' · ' + qrEsc(prg) : '') + '</span>';
+        var cardWrap = function(sub, cls, inner) {
+            var ids = sub.map(function(m) { return m.id; });
+            return '<div class="pcard ' + cls + '">' + inner + qrMembersNote(members, ids) + '</div>';
+        };
+        if (layout === 'pair') {
+            // Пары по порядку флайта: 2 игрока на карточку, разделённую
+            // вертикально на две части (у каждого свой QR и данные).
+            for (var pi = 0; pi < members.length; pi += 2) {
+                var pair = members.slice(pi, pi + 2);
+                if (!pair.length) continue;
+                var innerPair = '<div class="pcard-halves">' +
+                    pair.map(function(m) { return qrPlayerColHtml(g, geIdx, groupEntries, doc.scheme, m); }).join('<div class="pcol-divider"></div>') +
+                    '</div>';
+                cardsHtml += cardWrap(pair, 'pcard-pair', innerPair);
             }
-
-            cardsHtml += '<div class="pcard">';
-            cardsHtml += '<div class="grp-row">' +
-                '<span class="grp-badge">' + qrEsc(qrGroupLabel(g, geIdx, groupEntries, doc.scheme)) + '</span>' +
-                '<span class="time-badge">⏱ ' + qrTime(g.startTime) + ' · ЛУНКА ' + startHoleTxt + '</span>' +
-                pdivHtml +
-                '</div>';
-            cardsHtml += '<div class="pname">' + qrEsc(qrFio(p)) + '</div>';
-            cardsHtml += '<div class="pmeta">' +
-                '<span>ТИ: <b>' + qrTeeName(p.tee) + '</b></span>' +
-                '<span>Точный HCP: <b>' + qrHcp(p.exactHcp) + '</b></span>' +
-                '<span>Полевой HCP: <b>' + qrHcp(p.fieldHcp) + '</b></span>' +
-                (markName ? '<span class="mark-chip">👁 Маркирует: <b>' + qrEsc(markName) + '</b></span>' : '') +
-                '</div>';
-
-            cardsHtml += '<div class="qr-grid">';
-            cardsHtml += '<div class="qr-box"><div class="qr-lbl">' +
-                (isGroupCard
-                    ? '📱 Моя карточка — свой счёт и счёт маркируемого партнёра'
-                    : '📱 Моя карточка — ввод счёта') +
-                '</div>' +
-                // loading="eager": все коды грузятся сразу, а не при прокрутке —
-                // иначе в печать уходят пустые места. onerror — цепочка провайдеров.
-                '<img loading="eager" decoding="async" src="' + qrUrl(scoreUrl) + '" data-qr="' + encodeURIComponent(scoreUrl) + '" data-qr-try="0" onload="qrImgOk(this)" onerror="qrImgFail(this)" alt="QR"><div class="qr-url">' + qrEsc(scoreUrl) + '</div></div>';
-            cardsHtml += '</div>';
-
-            var memberNames = members.map(function(m) {
-                if (m.id === p.id) return '<b style="color:#6d5717;">' + qrEsc(qrFio(m)) + '</b>';
-                return qrEsc(qrFio(m));
+        } else if (layout === 'quad') {
+            // По 4 игрока на карточку (сетка 2×2).
+            for (var qi = 0; qi < members.length; qi += 4) {
+                var quad = members.slice(qi, qi + 4);
+                if (!quad.length) continue;
+                var innerQuad = '<div class="pgrid4">' +
+                    quad.map(function(m) { return qrPlayerColHtml(g, geIdx, groupEntries, doc.scheme, m); }).join('') +
+                    '</div>';
+                cardsHtml += cardWrap(quad, 'pcard-quad', innerQuad);
+            }
+        } else {
+            // Классика: 1 игрок — 1 карточка.
+            members.forEach(function(p) {
+                if (!p || !p.id) return;
+                cardsHtml += cardWrap([p], 'pcard-single', qrPlayerColHtml(g, geIdx, groupEntries, doc.scheme, p));
             });
-            cardsHtml += '<div class="members-note"><b>Состав флайта:</b> ' + memberNames.join(' · ') + '</div>';
-            cardsHtml += '</div>';
-        });
+        }
     });
     cardsHtml += '</div>';
 
@@ -436,13 +521,17 @@ function qrRender(doc, divs) {
 }
 
 // Подпись зачётной группы в строке стартового листа (таблица).
+// Имя группы ИЛИ диапазон HCP — но не оба сразу (чтобы не дублировать).
 function qrDivInline(p, divs) {
     if (!divs || !divs.length) return '';
     var d = qrFindDivision(divs, p.exactHcp, p.gender);
-    if (!d || !d.name) return '';
+    if (!d) return '';
     var rg = qrDivRange(d);
-    return ' <span class="div-inline">· ' + qrEsc(d.name) + (rg ? ' (' + qrEsc(rg) + ')' : '') + '</span>';
+    var txt = d.name ? d.name : (rg ? 'HCP ' + rg : '');
+    if (!txt) return '';
+    return ' <span class="div-inline">· ' + qrEsc(txt) + '</span>';
 }
+
 
 function findPl(g, id) {
     var players = g.players || [];

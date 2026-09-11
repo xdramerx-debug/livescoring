@@ -453,6 +453,58 @@ function psDefaultTeeFor(gender, hcp) {
     return allowed[0] || 'wh';
 }
 
+// Ожидаемый ТИ игрока НА ЭТОМ ТУРНИРЕ: ТИ его HCP-группы (дивизиона).
+// Если группа/дивизион не заданы или ТИ вне разрешённых — fallback.
+function psDivisionTeeFor(p, fallbackTee) {
+    var allowed = [];
+    try { allowed = psAllowedTees() || []; } catch (e) { allowed = []; }
+    if (!allowed.length) allowed = ['bk', 'bl', 'wh', 'rd'];
+    var div = null;
+    try {
+        div = (typeof psFindDivisionFor === 'function')
+            ? psFindDivisionFor(p.hcp, p.gender || 'men', { pid: p.id || '', name: psFullRus(p) || '' })
+            : null;
+    } catch (e) { div = null; }
+    if (div && div.tee && allowed.indexOf(div.tee) !== -1) return div.tee;
+    if (fallbackTee && allowed.indexOf(fallbackTee) !== -1) return fallbackTee;
+    return (p.tee && allowed.indexOf(p.tee) !== -1) ? p.tee : (allowed[0] || 'wh');
+}
+
+// ТИ группы по её составу: самый частый ТИ среди игроков (если группа
+// однородна по дивизиону — это ТИ дивизиона), иначе ТИ первого игрока.
+function psGroupTeeFromMembers(members, fallbackTee) {
+    var counts = {}, best = null, bestN = 0;
+    (members || []).forEach(function(p) {
+        var t = p.tee || fallbackTee || 'wh';
+        counts[t] = (counts[t] || 0) + 1;
+        if (counts[t] > bestN) { bestN = counts[t]; best = t; }
+    });
+    return best || fallbackTee || 'wh';
+}
+
+// Проставляет ТИ по HCP-группам: сначала всем игрокам в списке участников
+// (раздел «2. Участники стартового листа»), затем каждому в распределённых
+// группах; групповой ТИ берётся по большинству состава.
+function psApplyTournamentTees(silent) {
+    var tn = psGetSelTournament();
+    var tournamentTee = (tn && tn.tees && tn.tees.length) ? tn.tees[0]
+        : ((psState.proto && psState.proto.tee) || 'wh');
+    (psState.proto.players || []).forEach(function(p) {
+        p.tee = psDivisionTeeFor(p, tournamentTee);
+    });
+    (psState.groups || []).forEach(function(g) {
+        var fallback = g.tee || tournamentTee;
+        (g.members || []).forEach(function(p) {
+            p.tee = psDivisionTeeFor(p, fallback);
+        });
+        g.tee = psGroupTeeFromMembers(g.members, fallback);
+    });
+    if (!silent) {
+        toast(psL('🎯 ТИ проставлены по HCP-группам турнира', '🎯 Tees set by tournament HCP groups'), 'success');
+        psRender();
+    }
+}
+
 // ----------------------------------------------------------
 // ПОЛЬЗОВАТЕЛИ (для сопоставления импортированных игроков с аккаунтами)
 // ----------------------------------------------------------
@@ -1113,6 +1165,7 @@ function psRenderProtoCard() {
         '<input type="file" id="ps-excel-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="psExcelPick(this)"></label>';
     html += '<button class="btn btn-og btn-sm" onclick="psTemplateDownload()"><i class="fas fa-file-arrow-down"></i> ' + psL('Шаблон Excel', 'Excel template') + '</button>';
     html += '<button class="btn btn-g btn-sm" onclick="psSaveRosterToTournament()"><i class="fas fa-cloud-arrow-up"></i> ' + psL('Сохранить список на турнир', 'Save roster to tournament') + '</button>';
+    html += '<button class="btn btn-og btn-sm" onclick="psApplyTournamentTees(false)"><i class="fas fa-bullseye"></i> ' + psL('ТИ по HCP-группам', 'Tees by HCP groups') + '</button>';
     html += '<button class="btn btn-r btn-sm" onclick="psClearPlayers()"><i class="fas fa-trash"></i> ' + psL('Очистить список', 'Clear list') + '</button>';
     html += '</div>';
 
@@ -1240,9 +1293,11 @@ function psAddExistingById(uid) {
         middleName: parts.middleName || '',
         gender: u.gender || 'men',
         hcp: (u.handicap === null || u.handicap === undefined || u.handicap === '') ? null : (parseFloat(u.handicap) || 0),
-        tee: u.defaultTee || tnTee,
+        tee: tnTee,
         source: 'existing'
     };
+    // ТИ на этом турнире — по HCP-группе (дивизиону), а не дефолт игрока.
+    p.tee = psDivisionTeeFor(p, u.defaultTee || tnTee);
     if (psAddPlayerToDraft(p, 'existing')) {
         toast(psL('✅ Добавлен: ' + psFullRus(p), '✅ Added: ' + psFullRus(p)), 'success');
         psRender();
@@ -1508,6 +1563,8 @@ function psRowHcp(idx, raw) {
         toast(psL('⚠️ Некорректный гандикап: ' + raw, '⚠️ Invalid handicap: ' + raw), 'error');
     }
     p.hcp = parsed;
+    // ТИ на турнире зависит от HCP-группы (дивизиона) — сразу обновляем.
+    p.tee = psDivisionTeeFor(p, p.tee || ((psState.proto && psState.proto.tee) || 'wh'));
     if (psState.groups.length) psState.groups = [];
     psRender();
 }
@@ -1515,6 +1572,7 @@ function psRowGender(idx, val) {
     var p = psState.proto && psState.proto.players[idx];
     if (!p) return;
     p.gender = val;
+    p.tee = psDivisionTeeFor(p, p.tee || ((psState.proto && psState.proto.tee) || 'wh'));
     if (psState.groups.length) psState.groups = [];
     psRender();
 }
@@ -1623,6 +1681,8 @@ function psAddManual() {
         p.gender = 'women';
         if (p.tee === (psState.proto.tee || 'wh')) p.tee = psDefaultTeeFor('women', p.hcp);
     }
+    // Финальный приоритет — ТИ HCP-дивизиона этого турнира.
+    p.tee = psDivisionTeeFor(p, p.tee || psState.proto.tee || 'wh');
     if (!p.lastName && !p.firstName) {
         toast(psL('⚠️ Укажите фамилию и имя игрока', '⚠️ Enter the player\'s name'), 'error');
         return;
@@ -2432,8 +2492,9 @@ function psExcelAdd() {
         var p = psNewPlayer();
         p.lastName = r.lastName; p.firstName = r.firstName; p.middleName = r.middleName || '';
         p.gender = r.gender || 'men';
-        p.tee = r.tee || psDefaultTeeFor(p.gender, r.hcp);
         p.hcp = r.hcp;
+        // ТИ на этом турнире определяется HCP-группой (дивизионом).
+        p.tee = psDivisionTeeFor(p, r.tee || psDefaultTeeFor(p.gender, r.hcp));
         p.source = 'excel';
         p.uidMatched = !!r.matchedUid;
         if (r.matchedUid) p.id = r.matchedUid;
@@ -3026,8 +3087,10 @@ function psDistPreview() {
         if (psState.editingId) psExitEditModeSoft();
     }
     var groups = psBuildGroups();
-    // ТИ группы = ТИ начала игры (турнира). Умное распределение назначает
-    // ТИ по группе: у всех участников группы один и тот же ТИ (#1.60).
+    // Иерархия: игроки загружены (регистрация/Excel) → распределение по
+    // группам («Умные группы») → ТИ выставляются по HCP-группе (дивизиону)
+    // турнира: если игроку по дефолту стоят синие, а его группа 0–12 HCP
+    // играет с чёрных, на ЭТОМ турнире у него становятся чёрные.
     var tournamentTee = (function() {
         var tn = psGetSelTournament();
         if (tn && tn.tees && tn.tees.length) return tn.tees[0];
@@ -3035,8 +3098,9 @@ function psDistPreview() {
     })();
     psState.groups = groups.map(function(members, i) {
         var sch = psGroupSchedule(i, groups.length);
-        members.forEach(function(p) { p.tee = tournamentTee; });
-        return { members: members, startHole: sch.startHole, startTime: sch.startTime, format: '', tee: tournamentTee, markerTargets: {} };
+        members.forEach(function(p) { p.tee = psDivisionTeeFor(p, tournamentTee); });
+        var gTee = psGroupTeeFromMembers(members, tournamentTee);
+        return { members: members, startHole: sch.startHole, startTime: sch.startTime, format: '', tee: gTee, markerTargets: {} };
     });
     psSortGroupsShotgun(psState.groups, psState.proto && psState.proto.scheme);
     // Раскладка после построения — в СВЁРНУТОМ виде (кнопка «Развернуть раскладку»)
@@ -3479,8 +3543,9 @@ function psGMove(gi, mi, target) {
     if (target === 'new') {
         var sch = psNewGroupSchedule(psState.groups);
         var tnTeeNew = (function() { var tn = psGetSelTournament(); return (tn && tn.tees && tn.tees.length) ? tn.tees[0] : ((psState.proto && psState.proto.tee) || 'wh'); })();
-        p.tee = tnTeeNew;
-        psState.groups.push({ members: [p], startHole: sch.startHole, startTime: sch.startTime, format: '', tee: tnTeeNew, markerTargets: {}, dirty: true });
+        p.tee = psDivisionTeeFor(p, tnTeeNew);
+        var gTeeNew = psGroupTeeFromMembers([p], tnTeeNew);
+        psState.groups.push({ members: [p], startHole: sch.startHole, startTime: sch.startTime, format: '', tee: gTeeNew, markerTargets: {}, dirty: true });
     } else {
         var tIdx = parseInt(target, 10);
         var tg = psState.groups[tIdx];
@@ -3491,8 +3556,9 @@ function psGMove(gi, mi, target) {
             psRender();
             return;
         }
-        // ТИ зависит от группы: в новой группе игрок получает её ТИ
-        if (tg.tee) p.tee = tg.tee;
+        // ТИ зависит от HCP-группы турнира: дивизион важнее ТИ флайта
+        p.tee = psDivisionTeeFor(p, tg.tee);
+        tg.tee = psGroupTeeFromMembers(tg.members.concat([p]), tg.tee);
         tg.members.push(p);
         tg.dirty = true;
     }
@@ -3593,7 +3659,7 @@ function psGAddPlayer(gi) {
     p.hcp = hcp; p.gender = gender;
     // ТИ игрока = ТИ его группы (настройка «ТИ по умолчанию» удалена в 1.60)
     var gTeeAdd = (g && g.tee) ? g.tee : null;
-    p.tee = gTeeAdd || tee;
+    p.tee = psDivisionTeeFor(p, gTeeAdd || tee);
     p.source = psState.editingId ? 'edit' : 'manual';
     p.id = 'gst_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
 
@@ -3659,8 +3725,9 @@ function psRosterToGroup(idx, target) {
     if (target === 'new') {
         var sch = psNewGroupSchedule(psState.groups);
         var tnTeeR = (function() { var tn = psGetSelTournament(); return (tn && tn.tees && tn.tees.length) ? tn.tees[0] : ((psState.proto && psState.proto.tee) || 'wh'); })();
-        p.tee = tnTeeR;
-        psState.groups.push({ members: [p], startHole: sch.startHole, startTime: sch.startTime, format: '', tee: tnTeeR, markerTargets: {}, dirty: true });
+        p.tee = psDivisionTeeFor(p, tnTeeR);
+        var gTeeR = psGroupTeeFromMembers([p], tnTeeR);
+        psState.groups.push({ members: [p], startHole: sch.startHole, startTime: sch.startTime, format: '', tee: gTeeR, markerTargets: {}, dirty: true });
     } else {
         var tIdx = parseInt(target, 10);
         var tg = psState.groups[tIdx];
@@ -3670,8 +3737,9 @@ function psRosterToGroup(idx, target) {
             psRender();
             return;
         }
-        // ТИ зависит от группы: новый игрок получает ТИ этой группы
-        if (tg.tee) p.tee = tg.tee;
+        // ТИ зависит от HCP-группы турнира (дивизиона), затем — ТИ флайта
+        p.tee = psDivisionTeeFor(p, tg.tee);
+        tg.tee = psGroupTeeFromMembers(tg.members.concat([p]), tg.tee);
         tg.members.push(p);
         tg.dirty = true;
     }
@@ -4745,6 +4813,9 @@ function psSaveRosterToTournament() {
         toast(psL('⚠️ Нет соединения с базой', '⚠️ No database connection'), 'error');
         return;
     }
+    // Финальный пересчёт ТИ по HCP-дивизионам — в облако и в экспорт
+    // должны уйти турнирные ТИ, а не дефолтные/профильные.
+    try { psApplyTournamentTees(true); } catch (e) {}
     var entries = psCollectAllRosterPlayers();
     if (!entries.length) {
         toast(psL('⚠️ Список участников пуст — добавьте игроков', '⚠️ Roster is empty — add players'), 'error');
@@ -4879,7 +4950,6 @@ function psSyncEntriesToTournament(entries, tnId, opts, cb) {
                     email: '',
                     handicap: (e.hcp === null || e.hcp === undefined || isNaN(e.hcp)) ? null : e.hcp,
                     gender: e.gender || 'men',
-                    defaultTee: e.tee || 'wh',
                     role: 'player',
                     createdAt: now,
                     roundsPlayed: 0,
@@ -4896,7 +4966,8 @@ function psSyncEntriesToTournament(entries, tnId, opts, cb) {
                 if ((u.handicap === null || u.handicap === undefined || u.handicap === '') && e.hcp !== null && !isNaN(e.hcp)) {
                     updates['users/' + uid + '/handicap'] = e.hcp;
                 }
-                if (!u.defaultTee && e.tee) updates['users/' + uid + '/defaultTee'] = e.tee;
+                // ТИ дивизиона действует только на этом турнире —
+                // дефолтный ТИ игрока им не перезаписываем.
                 if (!u.gender && e.gender) updates['users/' + uid + '/gender'] = e.gender;
             }
 

@@ -1,0 +1,14 @@
+{
+  "name": "livescoring-functions",
+  "description": "Cloud Functions for Pestovo Live Scoring: background Web Push (announcements + referee/marshal calls)",
+  "engines": {
+    "node": "18"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.9.0",
+    "web-push": "^3.6.7"
+  },
+  "private": true
+}

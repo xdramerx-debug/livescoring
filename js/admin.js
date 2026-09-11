@@ -309,6 +309,7 @@ function openAdminPanel() {
     loadGroupCardDisplaySettings();
     loadTnCardDisplaySettings();
     loadTnLbDisplaySettings();
+    loadTnGroupsSettings();
     loadPageDisplaySettings();
     loadAdmView5Settings();
     loadPrivacySettings();
@@ -349,6 +350,12 @@ function switchTab(t, b) {
     if (t === 'groups') {
         renderAdmGroups();
     }
+    if (t === 'broadcasts') {
+        try { pushAdminRefreshStatus(); } catch (e) {}
+    }
+    if (t === 'protocol') {
+        try { if (typeof peInit === 'function') peInit(); } catch (e) {}
+    }
     if (t === 'scores') {
         seRender();
     }
@@ -359,6 +366,7 @@ function switchTab(t, b) {
         loadGroupCardDisplaySettings();
         loadTnCardDisplaySettings();
         loadTnLbDisplaySettings();
+        loadTnGroupsSettings();
         loadPageDisplaySettings();
         loadAdmView5Settings();
     }
@@ -978,6 +986,9 @@ function clearRounds() {
         db.ref('markerAssignments').remove();
         db.ref('alerts').remove();
         db.ref('protocols').remove();
+        // Сбрасываем игровые сессии на всех устройствах.
+        db.ref('settings/sessions_reset_ts').set(Date.now());
+        try { if (typeof pestovoWipeLocalSessions === 'function') pestovoWipeLocalSessions(); } catch (e) {}
 
         db.ref('users').once('value').then(function(sn) {
             var users = sn.val() || {};
@@ -1048,6 +1059,10 @@ function clearAllData() {
         // в красную «Ошибку», хотя база уже была пуста.
         safeAfterWipeStep(function() { if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches(); });
         safeAfterWipeStep(function() { localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([])); });
+        safeAfterWipeStep(function() { if (typeof pestovoWipeLocalSessions === 'function') pestovoWipeLocalSessions(); });
+        // Сброс ВСЕХ сессий на устройствах игроков (доступ к раундам,
+        // текущие лунки, FIO-сессии) — клиенты слушают этот ключ.
+        wipeUpdates['settings/sessions_reset_ts'] = Date.now();
         safeAfterWipeStep(function() { if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache(); });
         safeAfterWipeStep(function() { if (typeof loadAdmPlayers === 'function') loadAdmPlayers(); });
         safeAfterWipeStep(function() { if (typeof loadAdmRounds === 'function') loadAdmRounds(); });
@@ -1119,6 +1134,12 @@ function wipeEverything() {
 
     var finish = function() {
         safeAfterWipeStep(function() { wipeAllLocalData(); });
+        // Сбрасываем локальные сессии на всех устройствах после полной очистки.
+        safeAfterWipeStep(function() {
+            if (typeof db !== 'undefined' && db) {
+                db.ref('settings/sessions_reset_ts').set(Date.now()).catch(function() {});
+            }
+        });
         safeAfterWipeStep(function() { if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache(); });
         safeAfterWipeStep(function() { if (typeof loadAdmPlayers === 'function') loadAdmPlayers(); });
         safeAfterWipeStep(function() { if (typeof loadAdmRounds === 'function') loadAdmRounds(); });
@@ -2422,6 +2443,67 @@ function bcRefreshAudienceCount() {
     });
 }
 
+// ============================================
+// ФОНОВЫЕ WEB PUSH: статус и инициализация VAPID
+// ============================================
+function pushAdminDefaultFnUrl() {
+    var projectId = 'livescore-b77e4';
+    try {
+        if (typeof firebaseConfig !== 'undefined' && firebaseConfig.projectId) projectId = firebaseConfig.projectId;
+        else if (typeof db !== 'undefined' && db && db.app && db.app.options) projectId = db.app.options.projectId || projectId;
+    } catch (e) {}
+    return 'https://us-central1-' + projectId + '.cloudfunctions.net/vapidSetup';
+}
+
+function pushAdminRefreshStatus() {
+    var box = document.getElementById('push-status');
+    if (!box) return;
+    if (typeof db === 'undefined' || !db) { box.textContent = '⚠️ Нет соединения с базой'; return; }
+    var urlInp = document.getElementById('push-fn-url');
+    if (urlInp && !urlInp.value) {
+        db.ref('settings/push_function_url').once('value').then(function(sn) {
+            if (sn.val() && urlInp) urlInp.value = sn.val();
+        });
+    }
+    Promise.all([
+        db.ref('settings/vapid_public_key').once('value'),
+        db.ref('push_subscriptions').once('value')
+    ]).then(function(res) {
+        var pub = res[0].val();
+        var subs = res[1].val() || {};
+        var n = Object.keys(subs).length;
+        var nUsers = Object.keys(subs).filter(function(k) { return subs[k] && subs[k].uid; }).length;
+        var nAdmins = Object.keys(subs).filter(function(k) { return subs[k] && subs[k].isAdmin; }).length;
+        box.innerHTML = (pub
+            ? '✅ VAPID публичный ключ: <code>' + String(pub).slice(0, 24) + '…</code><br>'
+            : '⚠️ VAPID-ключи ещё не созданы — нажмите «Создать/проверить VAPID-ключи».<br>') +
+            'Устройств с подпиской: <strong>' + n + '</strong> · из них игроков: ' + nUsers + ' · админов: ' + nAdmins;
+    }).catch(function(err) { box.textContent = '⚠️ ' + (err && err.message ? err.message : err); });
+}
+
+function pushAdminInit() {
+    var urlInp = document.getElementById('push-fn-url');
+    var url = (urlInp && urlInp.value.trim()) || pushAdminDefaultFnUrl();
+    if (urlInp && urlInp.value.trim() && typeof db !== 'undefined' && db) {
+        db.ref('settings/push_function_url').set(urlInp.value.trim()).catch(function() {});
+    }
+    var box = document.getElementById('push-status');
+    if (box) box.textContent = '⏳ Вызываю Cloud Function… (' + url + ')';
+    fetch(url, { method: 'GET' }).then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    }).then(function(data) {
+        if (!data || !data.publicKey) throw new Error('Функция не вернула публичный ключ');
+        if (typeof db !== 'undefined' && db) db.ref('settings/vapid_public_key').set(data.publicKey).catch(function() {});
+        if (box) box.innerHTML = '✅ Ключи готовы. Игроки с включёнными уведомлениями начнут получать пуши при закрытом приложении в течение минуты.';
+        toast('✅ VAPID готов: фоновые пуши включены', 'success');
+        setTimeout(pushAdminRefreshStatus, 1500);
+    }).catch(function(err) {
+        if (box) box.innerHTML = '⚠️ Не удалось вызвать функцию: ' + (err && err.message ? err.message : err) +
+            '<br>Проверьте деплой: <code>cd functions && npm i && firebase deploy --only functions</code>';
+    });
+}
+
 function sendClubBroadcast() {
     if (typeof db === 'undefined' || !db) {
         toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
@@ -3691,6 +3773,80 @@ function markAdmTnLbVariantButtons() {
         btn.classList.toggle('tn-lb-variant-active', active);
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
+}
+
+// ==========================================
+// ГРУППЫ НА СТРАНИЦЕ ТУРНИРОВ (вкл/выкл) + 4 ВИДА СПИСКА
+// ==========================================
+function markAdmTnGroupsVisible() {
+    var btn = document.getElementById('tn-groups-visible-btn');
+    var lbl = document.getElementById('tn-groups-visible-label');
+    var on = (typeof getTnGroupsVisible === 'function') ? getTnGroupsVisible() : false;
+    var en = currentLang === 'en';
+    if (btn) {
+        btn.classList.toggle('btn-g', on);
+        btn.classList.toggle('btn-ol', !on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        var ic = btn.querySelector('i');
+        if (ic) ic.className = on ? 'fas fa-eye' : 'fas fa-eye-slash';
+    }
+    if (lbl) lbl.textContent = on
+        ? (en ? 'Show groups: ON' : 'Показывать группы: включено')
+        : (en ? 'Show groups: OFF' : 'Показывать группы: выключено');
+}
+
+function saveTnGroupsVisible() {
+    var next = !(typeof getTnGroupsVisible === 'function' && getTnGroupsVisible());
+    if (typeof vib === 'function') vib(30);
+    if (typeof applyTnGroupsVisible === 'function') applyTnGroupsVisible(next);
+    if (typeof db === 'undefined' || !db) {
+        toast('Сохранено локально', 'info');
+        return;
+    }
+    db.ref('settings/tn_groups_visible').set(next).then(function() {
+        toast(next ? '✅ Группы включены для всех' : '✅ Группы скрыты для всех', 'success');
+    }).catch(function() { toast('⚠️ Не удалось сохранить в облако', 'error'); });
+}
+
+function loadTnGroupsSettings() {
+    if (typeof db !== 'undefined' && db && typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-tn-groups-visible', db.ref('settings/tn_groups_visible'), function(sn) {
+            var v = sn.val();
+            if (v === null || typeof v === 'undefined') v = true; // дефолт — группы видны
+            if (typeof applyTnGroupsVisible === 'function') applyTnGroupsVisible(v === true || v === '1' || v === 1);
+            markAdmTnGroupsVisible();
+        });
+        bindRealtimeValue('admin-tn-roster-variant', db.ref('settings/tn_roster_variant'), function(sn) {
+            var v = sn.val();
+            if (v !== null && typeof v !== 'undefined' && typeof applyTnRosterVariant === 'function') applyTnRosterVariant(v);
+            markAdmTnRosterVariantButtons();
+        });
+    } else {
+        markAdmTnGroupsVisible();
+        markAdmTnRosterVariantButtons();
+    }
+}
+
+function markAdmTnRosterVariantButtons() {
+    var cur = (typeof getTnRosterVariant === 'function') ? getTnRosterVariant() : '1';
+    ['1', '2', '3', '4'].forEach(function(v) {
+        var btn = document.getElementById('tn-roster-opt-' + v);
+        if (!btn) return;
+        var active = String(v) === String(cur);
+        btn.classList.toggle('btn-g', active);
+        btn.classList.toggle('btn-og', !active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
+function saveTnRosterVariant(v) {
+    if (['1', '2', '3', '4'].indexOf(String(v)) === -1) return;
+    if (typeof vib === 'function') vib(30);
+    if (typeof applyTnRosterVariant === 'function') applyTnRosterVariant(v);
+    if (typeof db === 'undefined' || !db) { toast('Сохранено локально', 'info'); return; }
+    db.ref('settings/tn_roster_variant').set(String(v)).then(function() {
+        toast('✅ Вид списка участников сохранён для всех', 'success');
+    }).catch(function() { toast('⚠️ Не удалось сохранить в облако', 'error'); });
 }
 
 // ==========================================

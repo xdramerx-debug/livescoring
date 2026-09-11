@@ -334,7 +334,9 @@ function startSolo() {
             if (matches && matches.length) {
                 soloStarting = false;
                 if (typeof pestovoShowFioConflictModal === 'function') {
-                    pestovoShowFioConflictModal(matches);
+                    // Владелец может продолжить незавершённый раунд или, если
+                    // это чужая/застрявшая сессия, всё равно начать новый раунд.
+                    pestovoShowFioConflictModal(matches, function() { proceedToCreate(); });
                 } else {
                     toast(currentLang === 'en' ? 'Player already has active round' : 'У игрока уже есть активный раунд', 'error');
                 }
@@ -387,8 +389,19 @@ function loadExistingSolo() {
         var localKey = localStorage.getItem('pestovo_solo_key_' + soloRid);
         var isOwnerUser = currentUser && (soloRound.createdBy === currentUser.uid || (soloRound.players && soloRound.players[currentUser.uid]));
         var isOwnerKey = localKey && (soloRound.accessKey === localKey);
+        // Продолжение по ФИО с другого устройства (?as=<playerId>): ввод счёта
+        // разрешён, а завершение защищено отдельной проверкой владельца.
+        var isAsResume = false;
+        try {
+            var asPid = new URLSearchParams(window.location.search).get('as');
+            isAsResume = !!(asPid && soloRound.players && soloRound.players[asPid]);
+        } catch (e) {}
 
-        canEditSolo = (isOwnerUser || isOwnerKey) && soloRound.status === 'active';
+        var resumeUid = getPlayerId();
+        canEditSolo = (isOwnerUser || isOwnerKey || isAsResume) &&
+            (typeof isRoundOpenForScoring === 'function'
+                ? isRoundOpenForScoring(soloRound, Date.now(), resumeUid)
+                : soloRound.status === 'active');
 
         if (canEditSolo) {
             var gameEl = sGet('game'); if (gameEl) gameEl.classList.remove('hidden');
@@ -438,6 +451,12 @@ function loadExistingSolo() {
             });
             startSoloPaceTicker();
 
+            // Ссылка «Завершить раунд» из поиска по ФИО (?finish=1).
+            if (typeof pestovoUrlWantsFinish === 'function' && pestovoUrlWantsFinish()
+                && typeof pestovoConsumeFinishOnce === 'function' && pestovoConsumeFinishOnce(soloRid)) {
+                setTimeout(function() { try { finishSolo(); } catch (e) {} }, 1200);
+            }
+
         } else {
             var gameEl2 = sGet('game'); if (gameEl2) gameEl2.classList.add('hidden');
             var roEl2 = sGet('read-only-view'); if (roEl2) roEl2.classList.remove('hidden');
@@ -463,6 +482,12 @@ function bootSoloRoundView(rid) {
 
 function getPlayerId() {
     if (!soloRound || !soloRound.players) return null;
+    // Продолжение по ФИО с другого устройства: ссылка содержит ?as=<playerId>
+    // (как в групповых раундах через getActingUid).
+    try {
+        var urlAs = new URLSearchParams(window.location.search).get('as');
+        if (urlAs && soloRound.players[urlAs]) return urlAs;
+    } catch (e) {}
     if (currentUser && soloRound.players[currentUser.uid]) {
         return currentUser.uid;
     }
@@ -549,8 +574,7 @@ function buildHoles() {
     el.innerHTML = html;
 }
 
-function goHole(h) {
-    if (!canEditSolo) return;
+function doGoHole(h) {
     soloIsChanging = true;
     // Переход на другую лунку сбрасывает несохранённый ввод: результат
     // записывается только по кнопке «Сохранить».
@@ -560,8 +584,25 @@ function goHole(h) {
     rememberResumeHole(soloRid, getPlayerId(), h);
     renderCurrentHole();
     buildHoles();
-    try { showSkippedHolesWarning('solo-skipped-box'); } catch (e) {}
     setTimeout(function() { soloIsChanging = false; }, 100);
+}
+
+function goHole(h) {
+    if (!canEditSolo) return;
+    var uid = getPlayerId();
+    if (!uid || !soloRound) { doGoHole(h); return; }
+    var p = soloRound.players && soloRound.players[uid];
+    var scores = (p && p.scores) || {};
+    var order = getRoundOrder(soloRound);
+    // При перепрыгивании через лунки без счёта — компактный выбор
+    // (ввести на пропущенной / пропустить). Учитывается порядок игры
+    // со стартовой лунки: будущие лунки игрока не считаются пропущенными.
+    pestovoGuardHoleJump({
+        rid: soloRid, pid: uid, order: order, from: curHole, to: h,
+        isMissing: function(x) { return !(parseInt(scores[x]) > 0); },
+        performJump: function(target) { doGoHole(target); },
+        enterHole: function(missed) { doGoHole(missed); }
+    });
 }
 
 function renderCurrentHole() {
@@ -659,6 +700,9 @@ function saveSolo() {
     var uid = getPlayerId();
     var path = 'rounds/' + soloRid + '/players/' + uid + '/scores/' + savedHole;
 
+    // Ввод/исправление счёта снимает ранее нажатый «Пропустить».
+    try { if (typeof pestovoSkipDropAckHoles === 'function') pestovoSkipDropAckHoles(soloRid, uid, [savedHole]); } catch (e) {}
+
     dbSetWithOfflineQueue(path, scoreToSave).then(function(res) {
         if (res && res.offline) return null;
         return recordHoleCompletionTime(soloRid, uid, savedHole, Date.now());
@@ -700,7 +744,8 @@ function saveSolo() {
         showTimingNotice(savedHole);
         renderCurrentHole();
         buildHoles();
-        try { showSkippedHolesWarning('solo-skipped-box'); } catch (e) {}
+        // Уведомление о пропущенных лунках больше не всплывает автоматически:
+        // компактный выбор показывается только при ручном переходе через лунку.
 
         updateSoloActionButton();
         renderMiniCard('mini-card');
@@ -862,17 +907,54 @@ function renderMiniCard(targetId) {
 
 var soloFinishing = false;
 
+// Сессия открыта по ФИО с чужого устройства (?as=...), а не владельцем
+// (свой аккаунт или access-key на устройстве). Завершать такой раунд можно
+// только после проверки владения — другой игрок не должен закрыть чужую игру.
+function soloIsFioResume() {
+    if (!soloRound) return false;
+    try {
+        var as = new URLSearchParams(window.location.search).get('as');
+        if (!as) return false;
+    } catch (e) { return false; }
+    var uid = getPlayerId();
+    if (!uid) return false;
+    if (currentUser && (soloRound.createdBy === currentUser.uid ||
+        (soloRound.players && soloRound.players[currentUser.uid]))) return false;
+    var localKey = localStorage.getItem('pestovo_solo_key_' + soloRid);
+    if (localKey && soloRound.accessKey === localKey) return false;
+    return true;
+}
+
 function finishSolo() {
     if (!canEditSolo) return;
-    // Пропущенные лунки: предупреждаем и даём choice — вернуться к вводу
-    // или завершить раунд с «дырками» в счёте.
-    var skipped = soloSkippedHoles();
-    if (skipped.length) {
-        var q = (t('skipped_holes_finish_q') || '').replace('{holes}', skipped.slice(0, 8).join(', ') + (skipped.length > 8 ? '…' : ''));
-        if (!confirm(q)) { goHole(skipped[0]); return; }
-    }
     if (soloFinishing) return;
     if (soloRound && soloRound.status === 'completed') return;
+
+    // 1) Чужое устройство по ФИО: завершать может только владелец раунда.
+    var finishUid = getPlayerId();
+    if (soloIsFioResume() && !(typeof pestovoFioVerified === 'function' && pestovoFioVerified(soloRid, finishUid))) {
+        if (typeof pestovoVerifyRoundOwner === 'function') {
+            pestovoVerifyRoundOwner(soloRound, soloRid, finishUid, function(ok) { if (ok) finishSolo(); });
+            return;
+        }
+    }
+
+    // 2) Пропущенные лунки: компактный выбор — исправить или завершить как есть.
+    var skipped = soloSkippedHoles();
+    if (skipped.length) {
+        pestovoShowFinishMissingModal(skipped, {
+            onEnter: function(h) { goHole(h); },
+            onContinue: function() { goHole(skipped[0]); },
+            onFinishAnyway: function() { doFinishSolo(); }
+        });
+        return;
+    }
+    doFinishSolo();
+}
+
+function doFinishSolo() {
+    if (soloFinishing) return;
+    if (!soloRound || soloRound.status === 'completed') return;
     soloFinishing = true;
 
     var finalizeSolo = function() {

@@ -106,6 +106,8 @@ function buildHoles() {
         if (ps >= 1 && ms >= 1 && ps === ms) cls += ' verified';
         else if (ps >= 1 && ms >= 1) cls += ' mismatch';
         else if (ms >= 1 || ps >= 1) cls += ' pending';
+        // Текущая лунка, где маркер ещё не ввёл счёт, мигает серым.
+        if (h === mkHole && !(ms >= 1)) cls += ' cur-blink';
         html += '<button class="hole-btn ' + cls + '" onclick="goMk(' + h + ')">' +
             '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + (typeof hcpStrokesMarksHTML === 'function' ? hcpStrokesMarksHTML(mkFieldHcp, h) : '') + '</span>' +
             '</button>';

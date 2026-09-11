@@ -569,7 +569,7 @@ function startGroup() {
                 var flat = [];
                 conflicts.forEach(function(c) { flat = flat.concat(c.matches || []); });
                 if (typeof pestovoShowFioConflictModal === 'function' && flat.length) {
-                    pestovoShowFioConflictModal(flat);
+                    pestovoShowFioConflictModal(flat, function() { proceedWithGroupStart(); });
                 } else {
                     var names = conflicts.map(function(c){ return c.fio; }).join(', ');
                     toast('⚠️ У игроков уже есть активные раунды: ' + names, 'error');
@@ -805,6 +805,25 @@ function applyRoundState(data) {
     // Тяжёлые блоки (карточка группы, QR, темп игры, баннеры) рисуем через
     // планировщик: максимум один раз за кадр, даже если снимков пришло много.
     scheduleRoundRender();
+
+    // Ссылка «Завершить раунд» из поиска по ФИО (?finish=1): открываем диалог
+    // завершения один раз на сессию вкладки, после того как данные прогрузились.
+    if (canEditGroup && typeof pestovoUrlWantsFinish === 'function' && pestovoUrlWantsFinish()
+        && typeof pestovoConsumeFinishOnce === 'function' && pestovoConsumeFinishOnce(curRid)) {
+        setTimeout(function() { try { finishGroupRound(); } catch (e) {} }, 1200);
+    }
+}
+
+function pestovoUrlWantsFinish() {
+    try { return new URLSearchParams(window.location.search).get('finish') === '1'; } catch (e) { return false; }
+}
+function pestovoConsumeFinishOnce(rid) {
+    var k = 'pestovo_finish_req_' + rid;
+    try {
+        if (sessionStorage.getItem(k) === '1') return false;
+        sessionStorage.setItem(k, '1');
+    } catch (e) {}
+    return true;
 }
 
 // Текущая лунка игрока. Пересчитывается только при смене раунда: пока игрок
@@ -872,8 +891,7 @@ function buildPlayHolesNav() {
     el.innerHTML = html;
 }
 
-function goPlayHole(h) {
-    if (!canEditGroup) return;
+function doPlayHole(h) {
     isChanging = true;
     playHole = h;
     myScore = 0;
@@ -882,6 +900,21 @@ function goPlayHole(h) {
     renderPlayHole();
     buildPlayHolesNav();
     setTimeout(function() { isChanging = false; }, 100);
+}
+
+function goPlayHole(h) {
+    if (!canEditGroup) return;
+    var myPlayer = curRoundData && curRoundData.players && curRoundData.players[myUid];
+    var scores = (myPlayer && myPlayer.scores) || {};
+    var order = getRoundOrder(curRoundData);
+    // Компактный выбор при перепрыгивании через лунки без счёта.
+    // Учитывается порядок игры со стартовой лунки группы (шотган).
+    pestovoGuardHoleJump({
+        rid: curRid, pid: myUid, order: order, from: playHole, to: h,
+        isMissing: function(x) { return !(parseInt(scores[x]) > 0); },
+        performJump: function(target) { doPlayHole(target); },
+        enterHole: function(missed) { doPlayHole(missed); }
+    });
 }
 
 function renderPlayHole() {
@@ -964,7 +997,8 @@ function renderPlayHole() {
 
     checkPlayVerification();
     updateGroupPaceAssistant();
-    try { showGroupSkippedHolesWarning(); } catch (eSk2) {}
+    // Уведомление о пропущенных лунках показывается только при ручном
+    // переходе через лунку (компактный выбор), но не на каждом рендере.
 }
 
 function adjScore(who, delta) {
@@ -1103,6 +1137,9 @@ function saveHoleScores() {
     var h = playHole;
     var updates = {};
 
+    // Ввод/исправление счёта снимает «Пропустить и не напоминать».
+    try { if (typeof pestovoSkipDropAckHoles === 'function') pestovoSkipDropAckHoles(curRid, myUid, [h]); } catch (e) {}
+
     var savedAt = Date.now();
     updates['rounds/' + curRid + '/players/' + myUid + '/scores/' + h] = myScore;
     updates['rounds/' + curRid + '/players/' + myUid + '/submitted/' + h] = true;
@@ -1237,7 +1274,6 @@ function saveHoleScores() {
         renderPlayHole();
         buildPlayHolesNav();
         renderPlaySummary();
-        try { showGroupSkippedHolesWarning(); } catch (eSk) {}
         // Темп игры/тайминги — пересчёт по обновлённым локальным данным,
         // не дожидаясь echo Firebase (актуально на мобильных сетях).
         updateGroupPaceAssistant();
@@ -1796,6 +1832,15 @@ function showGroupSkippedHolesWarning() {
 
 function finishGroupRound() {
     if (!canEditGroup) return;
+    // Чужое устройство по ссылке «Продолжить по ФИО»: завершить раунд может
+    // только владелец (проверка телефона/ФИО), но не тот, кто ввёл чужое имя.
+    if (typeof pestovoIsFioResume === 'function' && pestovoIsFioResume(curRoundData, curRid, myUid) &&
+        !(typeof pestovoFioVerified === 'function' && pestovoFioVerified(curRid, myUid))) {
+        if (typeof pestovoVerifyRoundOwner === 'function') {
+            pestovoVerifyRoundOwner(curRoundData, curRid, myUid, function(ok) { if (ok) finishGroupRound(); });
+            return;
+        }
+    }
     // Защита от повторного завершения (двойной клик): иначе история и roundsPlayed задваивались
     if (groupFinishing) return;
     // Уже сдал карточку в этом раунде — повторно не завершаем.
@@ -1821,6 +1866,24 @@ function finishGroupRound() {
         renderFinishBlockNotice(verification);
     }
 
+    // Компактное уведомление о незаполненных/неподтверждённых лунках
+    // (как в одиночном раунде): ввести сейчас, перейти к первой, либо
+    // завершить как есть.
+    var skipped = groupSkippedHoles();
+    if (skipped.length && typeof pestovoShowFinishMissingModal === 'function') {
+        pestovoShowFinishMissingModal(skipped, {
+            onEnter: function(h) { try { goPlayHole(h); } catch (e) {} },
+            onContinue: function() { try { goPlayHole(skipped[0]); } catch (e) {} },
+            onFinishAnyway: function() { doFinishGroupRound(); }
+        });
+        return;
+    }
+
+    doFinishGroupRound();
+}
+
+function doFinishGroupRound() {
+    if (groupFinishing) return;
     groupFinishing = true;
 
     var finalizeGroup = function() {

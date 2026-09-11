@@ -87,7 +87,7 @@ function loadSc() {
         if (subEl) {
             var bits = [];
             if (tnName) bits.push(playerLabel);
-            bits.push(scRound.format || 'Stroke');
+            bits.push((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(scRound, 'Stroke') : (scRound.format || 'Stroke'));
             bits.push((typeof t === 'function' ? t('tee_select') : 'Tee') + ': ' + (typeof fmtTeePill === 'function' ? fmtTeePill(playerTee) : playerTee));
             subEl.innerHTML = bits.join(' · ');
         }

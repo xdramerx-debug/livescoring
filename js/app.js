@@ -523,7 +523,7 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
         '<div class="lwl-details">' +
         '<div class="lwl-meta">' +
         '<span class="lwl-badges">' + buildPlayerBadges(p, r) + '</span>' +
-        '<span class="lwl-extra">Gross: ' + (stats.gross || 0) + ' · ' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + markerNote + '</span>' +
+        '<span class="lwl-extra">Gross: ' + (stats.gross || 0) + ' · ' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + (r.mode === 'solo' ? soloWord : '') + markerNote + '</span>' +
         '</div>' +
         '<div class="lwl-actions">' +
         '<button class="btn btn-og btn-sm" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
@@ -883,7 +883,7 @@ function buildRecentRowHTML(id, r) {
         '<span class="lwl-name"><i class="fas fa-flag-checkered"></i><span class="lwl-name-txt">' + dateStr + '</span></span>' +
         '<span class="lwl-hole"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-score">' + completedBadge + '</span>' +
-        '<span class="lwl-start">' + (r.format || 'Stroke Play') + '</span>' +
+        '<span class="lwl-start">' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + '</span>' +
         '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
         '</div>' +
         details +

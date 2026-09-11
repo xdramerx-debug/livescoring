@@ -1,7 +1,51 @@
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
     loadLiveFeed();
+    loadClubAnnouncements();
 });
+
+// ── Анонсы клуба ──────────────────────────────────────────
+// Push живёт один миг, поэтому те же записи broadcasts показываем и в ленте:
+// адресные анонсы видят только адресаты (общий фильтр из js/utils.js).
+function loadClubAnnouncements() {
+    if (typeof db === 'undefined' || !db) return;
+    var bind = (typeof bindRealtimeValue === 'function') ? bindRealtimeValue : null;
+    var render = function(data) {
+        var el = document.getElementById('feed-announcements');
+        if (!el) return;
+        var list = (typeof pestovoBroadcastFeed === 'function')
+            ? pestovoBroadcastFeed(data, (typeof pestovoBroadcastViewerCtx === 'function') ? pestovoBroadcastViewerCtx() : {}, 3)
+            : [];
+        if (!list.length) {
+            el.innerHTML = '';
+            return;
+        }
+        var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+        var html = '<div class="card" style="margin-bottom:18px;border:1px solid rgba(201,168,76,.45);">';
+        html += '<h2 style="font-size:17px;margin:0 0 12px;"><i class="fas fa-bullhorn" style="color:var(--gold);"></i> ' +
+            (en ? 'Club announcements' : 'Анонсы клуба') + '</h2>';
+        list.forEach(function(b) {
+            html += '<div style="padding:10px 0;border-top:1px dashed var(--border);">';
+            html += '<div style="font-weight:700;color:var(--gold);">' + (typeof escapeHtml === 'function' ? escapeHtml(b.title) : b.title) + '</div>';
+            html += '<div style="font-size:13.5px;margin:4px 0 6px;">' + (typeof escapeHtml === 'function' ? escapeHtml(b.body) : b.body) + '</div>';
+            html += '<div style="font-size:11.5px;color:var(--muted);">';
+            if (typeof fmtDate === 'function' && typeof fmtTime === 'function' && b.time) {
+                html += fmtDate(b.time) + ' · ' + fmtTime(b.time) + ' · ';
+            }
+            if (typeof pestovoBroadcastAudienceLabel === 'function') html += pestovoBroadcastAudienceLabel(b) + ' · ';
+            html += '<a href="' + (typeof escapeHtml === 'function' ? escapeHtml(b.link || 'tournaments.html') : (b.link || 'tournaments.html')) + '">' +
+                (en ? 'open' : 'открыть') + '</a></div>';
+            html += '</div>';
+        });
+        html += '</div>';
+        el.innerHTML = html;
+    };
+    if (bind) {
+        bind('feed-announcements', db.ref('broadcasts'), function(sn) { render(sn.val() || {}); });
+    } else {
+        db.ref('broadcasts').once('value').then(function(sn) { render(sn.val() || {}); }).catch(function() {});
+    }
+}
 
 function onAuthReady(u, d) { navAuth(u, d); }
 

@@ -266,6 +266,30 @@
                         <option value="leaderboard.html" data-i18n="nav_leaderboard">Все раунды</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label data-i18n="bc_audience_lbl">Кому отправить</label>
+                    <select id="bc-audience" class="form-input" onchange="bcAudienceTypeChange()">
+                        <option value="all" data-i18n="bc_aud_all">Всем игрокам клуба</option>
+                        <option value="roster" data-i18n="bc_aud_tournament">Турниру (его registrations)</option>
+                        <option value="protocol" data-i18n="bc_aud_protocol">Игрокам стартового протокола</option>
+                    </select>
+                </div>
+                <div class="form-row hidden" id="bc-aud-pick">
+                    <div class="form-group" style="flex:1 1 220px;">
+                        <label data-i18n="bc_aud_tn_lbl">Турнир</label>
+                        <select id="bc-aud-tn" class="form-input" onchange="bcAudienceSourceChange()">
+                            <option value="">&mdash;</option>
+                        </select>
+                    </div>
+                    <div class="form-group hidden" id="bc-aud-proto-group" style="flex:1 1 220px;">
+                        <label data-i18n="bc_aud_proto_lbl">Стартовый протокол</label>
+                        <select id="bc-aud-proto" class="form-input" onchange="bcAudienceSourceChange()">
+                            <option value="">&mdash;</option>
+                        </select>
+                    </div>
+                </div>
+                <p style="font-size:12px;color:var(--muted);margin:0 0 10px;" data-i18n="bc_aud_hint">Адресный анонс увидят только адресаты: страница игрока проверяет, есть ли он в списке получателей, и лишнего не показывает.</p>
+                <div id="bc-aud-count" class="hcp-chip" style="display:inline-block;font-size:12px;margin-bottom:12px;color:var(--muted);">Получателей: все игроки клуба</div>
                 <button class="btn btn-g" onclick="sendClubBroadcast()"><i class="fas fa-paper-plane"></i> <span data-i18n="send_broadcast_btn">Отправить анонс всем игрокам</span></button>
             </div>
 
@@ -951,15 +975,15 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=54"></script>
+<script src="js/utils.js?v=55"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/assistant-config.js"></script>
 <script src="js/assistant-build.js?v=2"></script>
 <script src="js/name-variants.js?v=1"></script>
-<script src="js/admin.js?v=40"></script>
+<script src="js/admin.js?v=41"></script>
 <script src="js/protocol.js?v=2"></script>
-<script src="js/start-admin.js?v=16"></script>
+<script src="js/start-admin.js?v=17"></script>
 <script src="js/design-admin.js?v=2"></script>
-<script src="js/pwa.js?v=2"></script>
+<script src="js/pwa.js?v=3"></script>
 </body>
 </html>

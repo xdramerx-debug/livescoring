@@ -9,6 +9,10 @@
 //    в порядке списка / по алфавиту / по гандикапу / «змейкой» / случайно,
 //  — стартовые времена и стартовые лунки (с 1-й, шотган 1+10 или со всех 18),
 //  — маркеры внутри группы (каждый игрок маркирует следующего),
+//  — иерархию старта (турнир → протокол → волна → лунка → группа):№ волны на
+//    лунке, её буква и очередь tee-off записываются в каждый раунд, поэтому
+//    админка, печать QR-карточек и TV подписывают «1А / 1Б» одинаково
+//    (общий слой — js/utils.js, pestovoStartRows / pestovoStartHierarchy),
 //  — создание раундов (rounds/<id>) со всей метаинформацией,
 //  — печатные QR-карточки: игрок сканирует и сразу вводит результат.
 //
@@ -925,6 +929,9 @@ function psFormatChipsHtml(proto) {
     var tournament = psGetSelTournament();
     function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
     function labelOf(f) {
+        // Единый словарь названий форматов (js/utils.js) — иначе подписи
+        // разъезжаются между админкой, протоколом и TV.
+        if (typeof pestovoFormatLabel === 'function' && f !== 'Stroke Play') return pestovoFormatLabel(f);
         if (f === 'Stroke Play') return psL('Stroke Play (гросс)', 'Stroke Play (gross)');
         if (f === 'Stroke Play (Gross)') return psL('Гросс (без учёта HCP)', 'Gross (no handicap)');
         if (f === 'Stroke Play (Net)') return psL('Нетто (с учётом HCP)', 'Net (with handicap)');
@@ -2641,6 +2648,9 @@ function psAll18Schedule(i, proto) {
     return { startHole: holeIdx + 1, startTime: base + wave * intervalMs };
 }
 function psWaveLetter(idx) {
+    // Алфавит волн один на весь сайт (js/utils.js): админка, печать QR-карточек
+    // и TV обязаны подписывать «1А/1Б» одинаково.
+    if (typeof pestovoWaveLetter === 'function') return pestovoWaveLetter(idx);
     idx = Math.max(0, parseInt(idx, 10) || 0);
     var alphabet = (typeof currentLang !== 'undefined' && currentLang === 'en')
         ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -2696,6 +2706,79 @@ function psSortGroupsShotgun(groups, scheme) {
         return 0;
     });
     return groups;
+}
+
+// Иерархия старта расклада: строки общего слоя (js/utils.js), привязанные к
+// индексам groups[] (row.order — входной порядок), чтобы поле за полем можно
+// было положить и в черновик, и в документ раунда. null, если utils.js нет.
+function psStartHierarchyByIndex(groups) {
+    if (typeof pestovoStartRows !== 'function') return null;
+    var out = {};
+    try {
+        pestovoStartRows(groups || []).forEach(function(r) { out[r.order] = r; });
+    } catch (eHier) { return null; }
+    return out;
+}
+
+// ── ПАНЕЛЬ «ИЕРАРХИЯ СТАРТА» ───────────────────────────────
+// Турнир → протокол → волна (время) → лунка → группа → игроки. Считается тем
+// же кодом, что и запись в базу, поэтому предпросмотр, QR-карточки, TV и
+// протокол показывают одинаковые «1А / 1Б» и одинаковый порядок tee-off.
+function psRenderStartHierarchyHtml(opts) {
+    opts = opts || {};
+    if (typeof pestovoStartHierarchy !== 'function') return '';
+    var groups = opts.groups || (psState && psState.groups) || [];
+    var proto = opts.proto || (psState && psState.proto) || {};
+    var playable = groups.filter(function(g) { return (g && g.members || []).length > 0; });
+    if (!playable.length) return '';
+    var letterScheme = psShotgunLetterScheme(proto.scheme);
+    var tree = pestovoStartHierarchy(playable);
+    var timeOf = function(ts) {
+        return (typeof fmtTime === 'function' && ts) ? fmtTime(ts) : '—';
+    };
+    var schemeName = proto.scheme || '1';
+    var fmtLine = (typeof pestovoRoundFormatsLabel === 'function')
+        ? pestovoRoundFormatsLabel(proto, { localize: true }) : '';
+
+    var html = '<details id="ps-start-hierarchy" style="margin-top:14px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--input);">' +
+        '<summary style="cursor:pointer;font-weight:700;color:var(--gold);font-size:13px;">' +
+        '<i class="fas fa-sitemap"></i> ' + psL('Иерархия старта', 'Start hierarchy') +
+        ' · ' + tree.total + ' ' + psL('групп', 'groups') +
+        ' · ' + tree.waves.length + ' ' + psL('волн', 'waves') +
+        ' · ' + tree.players + ' ' + psL('игроков', 'players') + '</summary>';
+    html += '<div style="font-size:11.5px;color:var(--muted);margin:8px 0 10px;">' +
+        '<i class="fas fa-trophy"></i> ' + escapeHtml(proto.tournamentName || proto.name || psL('без турнира', 'no tournament')) +
+        ' · ' + psL('схема', 'scheme') + ' <b>' + escapeHtml(schemeName) + '</b>' +
+        (fmtLine ? ' · ' + psL('форматы', 'formats') + ' <b>' + escapeHtml(fmtLine) + '</b>' : '') + '</div>';
+    tree.waves.forEach(function(w) {
+        html += '<div style="margin-bottom:8px;">' +
+            '<div style="font-size:12px;font-weight:700;color:var(--white);border-left:3px solid var(--gold);padding-left:8px;margin-bottom:6px;">' +
+            psL('Волна', 'Wave') + ' ' + w.no + ' · ' + timeOf(w.ts) +
+            ' <span style="font-weight:400;color:var(--muted);">(' + w.count + ' ' + psL('групп', 'groups') + ')</span></div>';
+        w.holes.forEach(function(h) {
+            html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;padding:2px 0 2px 12px;font-size:12px;">' +
+                '<span style="color:var(--muted);min-width:74px;"><i class="fas fa-flag" style="font-size:10px;"></i> ' +
+                psL('лунка', 'hole') + ' ' + h.hole + '</span>';
+            h.groups.forEach(function(r) {
+                var g = playable[r.order] || {};
+                var names = (g.members || []).map(function(p) { return psFullRus(p); }).join(', ');
+                var gfmt = (typeof pestovoRoundFormatsLabel === 'function') ? pestovoRoundFormatsLabel(g.format ? { format: g.format, formats: [g.format] } : proto) : '';
+                html += '<span style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px 8px;">' +
+                    '<b>' + escapeHtml(pestovoStartGroupTitle(r, { holeLetter: letterScheme })) + '</b>' +
+                    ' <span style="color:var(--muted);">' + r.count + ' ' + psL('игр.', 'pl.') + '</span>' +
+                    (gfmt ? ' <span style="color:var(--gold);font-size:10.5px;">' + escapeHtml(gfmt) + '</span>' : '') +
+                    (names ? ' <span style="color:var(--white);font-size:11px;">' + escapeHtml(names) + '</span>' : '') +
+                    '</span>';
+            });
+            html += '</div>';
+        });
+        html += '</div>';
+    });
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:6px;"><i class="fas fa-circle-info"></i> ' +
+        psL('Порядок tee-off (столбец «№» в печатном протоколе) и буквы волн берутся отсюда же — правки времени или лунки меняют иерархию сразу во всех местах.',
+            'The tee-off order (the “№” column in the printed protocol) and the wave letters come from the same calculation — changing a time or a hole updates the hierarchy everywhere.') + '</div>';
+    html += '</details>';
+    return html;
 }
 
 // Запись с сайта (форма турнира): source === 'registered'.
@@ -3073,6 +3156,7 @@ function psRenderGroupsResult() {
                   'Rounds are updated in place without changing any links: if a player was replaced, just hand the newcomer their printed card — the old QR will open the updated scorecard.')
             : psL('После сохранения будут созданы отдельные раунды для каждой группы (видны во вкладке «Раунды»). У каждого игрока — один QR: в группе он открывает общую карточку, где вводится и свой счёт, и счёт маркируемого партнёра. QR-карточки для печати откроются отдельной страницей.',
                   'After saving, a separate round is created for every group (visible in the “Rounds” tab). Each player gets a single QR: in a group it opens the shared scorecard where both their own and the marked partner’s scores are entered. Printable QR cards open on a separate page.')) + '</p>';
+    html += psRenderStartHierarchyHtml();
     html += '</div>';
     return html;
 }
@@ -3452,6 +3536,11 @@ function psSaveProtocol() {
     var groupStore = {};
     var usedKeys = {};
 
+    // Иерархия старта (волна на лунке, её буква, общий порядок tee-off)
+    // считается ОДИН раз и ложится в каждый раунд: печать QR-карточек, TV и
+    // счётная страница тогда ничего не пересчитывают по-своему.
+    var hierByIndex = psStartHierarchyByIndex(groups);
+
     // Стабильный ключ игрока в раунде: реальный uid, если игрок найден в базе,
     // иначе сгенерированный гостевой ключ. Ключ един для раунда и протокола.
     function ensureKey(p) {
@@ -3473,6 +3562,7 @@ function psSaveProtocol() {
         var groupFormat = (g.format && String(g.format).trim()) ? String(g.format).trim() : format;
         // Группа без своего формата играет по ВСЕМ форматам протокола
         var groupFormats = (g.format && String(g.format).trim()) ? [groupFormat] : formatsList;
+        var hier = (hierByIndex && hierByIndex[gi]) || null;
         var groupPlayers = g.members.map(function(p) {
             var key = ensureKey(p);
             p.id = key;
@@ -3516,6 +3606,12 @@ function psSaveProtocol() {
             formats: groupFormats,
             startHole: g.startHole || 1,
             startTime: g.startTime,
+            // Иерархия старта: № волны на своей лунке, её буква («А»/«» для
+            // одиночной группы), порядковый номер tee-off и размер протокола.
+            startWave: hier ? hier.startWave : 0,
+            startWaveLetter: hier ? (hier.letter || '') : '',
+            startOrder: hier ? hier.seq : (gi + 1),
+            groupsTotal: groups.length,
             holeRange: '1-18', // 18 лунок (порядок — со стартовой лунки)
             players: roundPlayers,
             markerAssignments: markerAssignments,
@@ -3538,6 +3634,9 @@ function psSaveProtocol() {
                 groupNo: gi + 1,
                 startHole: g.startHole || 1,
                 startTime: g.startTime,
+                startWave: hier ? hier.startWave : 0,
+                startWaveLetter: hier ? (hier.letter || '') : '',
+                startOrder: hier ? hier.seq : (gi + 1),
                 format: groupFormat,
                 players: groupPlayers,
                 markers: groupMarkers
@@ -3766,6 +3865,10 @@ function psEditProtocol(pid) {
                 members: members,
                 startHole: parseInt(gd.startHole || 1, 10) || 1,
                 startTime: gd.startTime || psStartBaseTs(proto),
+                // Сохранённая иерархия (волна/буква) — чтобы при правке буквы
+                // «1А/1Б» не поехали, пока админ не тронул время или лунку.
+                startWave: (gd.startWave === null || gd.startWave === undefined) ? null : parseInt(gd.startWave, 10),
+                startWaveLetter: gd.startWaveLetter || '',
                 format: (gd.format && gd.format !== (doc.format || '') && (!doc.formats || doc.formats.indexOf(gd.format) === -1)) ? gd.format : '',
                 markerTargets: autoRing ? {} : mt,
                 roundId: gd.roundId || null,
@@ -3873,10 +3976,13 @@ function psSaveEdits() {
     var roundStatus = psRoundStartStatus(proto);
     var schedStart = psStartBaseTs(proto);
 
+    var hierByIndex = psStartHierarchyByIndex(groups);
+
     // 1) Создаём раунды для НОВЫХ групп (у которых ещё нет roundId)
     var createJobs = [];
     groups.forEach(function(g, gi) {
         if (g.roundId) return;
+        var hier = (hierByIndex && hierByIndex[gi]) || null;
         var groupFormat = (g.format && String(g.format).trim()) ? String(g.format).trim() : format;
         var groupFormats = (g.format && String(g.format).trim()) ? [groupFormat] : formatsList;
         var roundPlayers = {}, participants = [], markerAssignments = {}, groupPlayers = [], groupMarkers = [];
@@ -3910,6 +4016,10 @@ function psSaveEdits() {
             formats: groupFormats,
             startHole: g.startHole || 1,
             startTime: g.startTime,
+            startWave: hier ? hier.startWave : 0,
+            startWaveLetter: hier ? (hier.letter || '') : '',
+            startOrder: hier ? hier.seq : (gi + 1),
+            groupsTotal: groups.length,
             holeRange: '1-18',
             players: roundPlayers,
             markerAssignments: markerAssignments,
@@ -3948,9 +4058,10 @@ function psSaveEdits() {
         // Документ протокола: устаревшие группы затираем целиком
         nulls['protocols/' + pid + '/groups'] = null;
 
-        groups.forEach(function(g) {
+        groups.forEach(function(g, gi) {
             giNum++;
             var rid = g.roundId;
+            var hier = (hierByIndex && hierByIndex[gi]) || null;
             var groupFormat = (g.format && String(g.format).trim()) ? String(g.format).trim() : format;
             var groupFormats = (g.format && String(g.format).trim()) ? [groupFormat] : formatsList;
             var oldRound = (rid && psState.editRounds[rid]) || null;
@@ -4039,6 +4150,12 @@ function psSaveEdits() {
                 sets['rounds/' + rid + '/startHole'] = g.startHole || 1;
                 sets['rounds/' + rid + '/startTime'] = g.startTime;
                 sets['rounds/' + rid + '/groupNo'] = giNum;
+                // Иерархия старта пересчитывается при каждой правке: группы
+                // могли переставить местами или перенести на другую лунку.
+                sets['rounds/' + rid + '/startWave'] = hier ? hier.startWave : 0;
+                sets['rounds/' + rid + '/startWaveLetter'] = hier ? (hier.letter || '') : '';
+                sets['rounds/' + rid + '/startOrder'] = hier ? hier.seq : giNum;
+                sets['rounds/' + rid + '/groupsTotal'] = groups.length;
                 sets['rounds/' + rid + '/protocolName'] = proto.name || '';
                 sets['rounds/' + rid + '/tournamentName'] = proto.tournamentName || '';
                 // Если раунд был удалён/повреждён вне редактора — восстанавливаем его полностью
@@ -4061,6 +4178,9 @@ function psSaveEdits() {
                 groupNo: giNum,
                 startHole: g.startHole || 1,
                 startTime: g.startTime,
+                startWave: hier ? hier.startWave : 0,
+                startWaveLetter: hier ? (hier.letter || '') : '',
+                startOrder: hier ? hier.seq : giNum,
                 format: groupFormat,
                 players: groupPlayers,
                 markers: groupMarkers

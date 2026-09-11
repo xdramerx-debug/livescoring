@@ -273,7 +273,7 @@ function renderRound(id, r) {
 
     var details = '<div class="lwl-details">' +
         '<div class="lwl-meta">' +
-        '<span class="lwl-extra">' + (r.format || 'Stroke Play') + (r.mode === 'solo' ? soloWord : '') + ' · ' + fmtTime(ts) + '</span>' +
+        '<span class="lwl-extra">' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + (r.mode === 'solo' ? soloWord : '') + ' · ' + fmtTime(ts) + '</span>' +
         '<span class="lwl-extra">' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
         '</div>' +
         '<div class="rlb lb-rlb">' + head + rows + '</div>' +
@@ -287,7 +287,7 @@ function renderRound(id, r) {
         '<span class="lwl-name"><i class="fas ' + (isLive ? 'fa-flag' : 'fa-flag-checkered') + '"></i><span class="lwl-name-txt">' + fmtDate(ts) + '</span></span>' +
         '<span class="lwl-hole lb-names"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-score">' + badge + '</span>' +
-        '<span class="lwl-start">' + (r.format || 'Stroke Play') + '</span>' +
+        '<span class="lwl-start">' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + '</span>' +
         '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
         '</div>' +
         details +

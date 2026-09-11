@@ -216,7 +216,7 @@ function tnScHeadHtml(card, variant) {
     return '<div class="tnsc-head">' +
         '<div class="tnsc-head-main">' +
         '<div class="tnsc-name">' + tnScEsc(card.name || '—') + (card.position ? ' <span class="tnsc-pos">' + (card.position === 1 ? '🥇' : card.position === 2 ? '🥈' : card.position === 3 ? '🥉' : '') + ' ' + card.position + '</span>' : '') + '</div>' +
-        '<div class="tnsc-sub">' + tnScEsc(card.tournamentName || '') + (card.dateTxt ? ' · ' + tnScEsc(card.dateTxt) : '') + ' · ' + tnScEsc(card.format || 'Stroke Play') + '</div>' +
+        '<div class="tnsc-sub">' + tnScEsc(card.tournamentName || '') + (card.dateTxt ? ' · ' + tnScEsc(card.dateTxt) : '') + ' · ' + tnScEsc((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(card, 'Stroke Play') : (card.format || 'Stroke Play')) + '</div>' +
         '<div class="tnsc-meta">' + meta + '</div>' +
         '</div>' +
         '<div class="tnsc-head-right">' + hcpLine + switcher + '</div>' +

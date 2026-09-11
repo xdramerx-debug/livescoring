@@ -270,15 +270,46 @@ function qrShotgunLetterScheme(scheme) {
     return scheme === 'all18' || scheme === '1-10' || scheme === '1-10-shot';
 }
 function qrWaveLetter(idx) {
+    // Алфавит волн — общий с админкой и TV (js/utils.js), включая английскую
+    // раскладку букв. Без utils.js (печать офлайн/тесты) остаётся русский.
+    if (typeof pestovoWaveLetter === 'function') return pestovoWaveLetter(idx);
     idx = Math.max(0, parseInt(idx, 10) || 0);
     var alphabet = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ';
     if (idx < alphabet.length) return alphabet.charAt(idx);
     return String(idx + 1);
 }
+// Форматная линия записи: вся из протокола или своя у группы.
+function qrFormatsList(obj) {
+    if (typeof pestovoRoundFormats === 'function') return pestovoRoundFormats(obj);
+    var out = [];
+    function add(f) {
+        f = String(f == null ? '' : f).trim();
+        if (f && f !== '__custom__' && out.indexOf(f) === -1) out.push(f);
+    }
+    if (obj) {
+        if (Array.isArray(obj.formats)) obj.formats.forEach(add);
+        add(obj.format);
+    }
+    return out;
+}
+function qrFormatsLabel(obj) {
+    var list = qrFormatsList(obj);
+    return list.length ? list.join(' + ') : '';
+}
+// Формат группы: если у группы свой формат — только он, иначе — вся линия протокола.
+function qrGroupFormatsLabel(g, doc) {
+    var own = (g && g.format) ? String(g.format).trim() : '';
+    if (own) return own;
+    return qrFormatsLabel(doc);
+}
 function qrGroupWaveIndex(entries, i) {
     entries = entries || [];
     var g = entries[i] && entries[i].g;
     if (!g) return 0;
+    // Волна, записанная админкой при сохранении протокола, важнее пересчёта:
+    // группы после сохранения могли переставить, а её номер должен остаться.
+    var saved = parseInt(g.startWave, 10);
+    if (g.startWave !== null && g.startWave !== undefined && !isNaN(saved)) return saved;
     var hole = parseInt(g.startHole, 10) || 1;
     var n = 0;
     for (var j = 0; j < i; j++) {
@@ -301,13 +332,21 @@ function qrHoleGroupCount(entries, i) {
 function qrGroupLabel(g, i, entries, scheme) {
     g = g || {};
     entries = entries || [];
+    var lang = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'en' : 'ru';
+    var base = lang === 'en' ? 'Group ' : 'Группа ';
     if (qrShotgunLetterScheme(scheme)) {
         var hole = parseInt(g.startHole, 10) || 1;
-        var letter = qrHoleGroupCount(entries, i) > 1 ? qrWaveLetter(qrGroupWaveIndex(entries, i)) : '';
-        return 'Группа ' + hole + letter;
+        var letter;
+        if (g.startWaveLetter !== null && g.startWaveLetter !== undefined) {
+            // Пустая строка тут осмысленна: группа на лунке одна — буквы нет.
+            letter = String(g.startWaveLetter);
+        } else {
+            letter = qrHoleGroupCount(entries, i) > 1 ? qrWaveLetter(qrGroupWaveIndex(entries, i)) : '';
+        }
+        return base + hole + letter;
     }
     var gno = g.groupNo || ((entries[i] && entries[i].key) ? String(entries[i].key).replace('g', '') : (i + 1));
-    return 'Группа ' + gno;
+    return base + gno;
 }
 function qrSortGroups(entries, scheme) {
     entries = entries || [];
@@ -462,7 +501,7 @@ function qrRender(doc, divs) {
     titleHtml += '<p class="sub">' +
         (doc.tournamentName ? '🏆 ' + qrEsc(doc.tournamentName) + ' · ' : '') +
         qrEsc(doc.name || '') + (doc.date ? ' · ' + qrDate(new Date(doc.date + 'T00:00:00')) : '') +
-        (doc.format ? ' · ' + qrEsc(doc.format) : '') +
+        (qrFormatsLabel(doc) ? ' · ' + qrEsc(qrFormatsLabel(doc)) : '') +
         ' · групп: ' + groupEntries.length + ' · игроков: ' + totalPlayers + '</p>';
 
     // ── Стартовый лист: визуально отделённые флайты (группы) ──
@@ -480,6 +519,8 @@ function qrRender(doc, divs) {
             '<span class="flight-title">🚩 ' + qrEsc(glabel) + '</span>' +
             '<span class="flight-hole">Лунка ' + qrEsc(holeTxt) + '</span>' +
             '<span class="flight-time">⏱ ' + qrTime(g.startTime) + '</span>' +
+            (qrGroupFormatsLabel(g, doc) ? '<span class="flight-fmt">🏌 ' + qrEsc(qrGroupFormatsLabel(g, doc)) + '</span>' : '') +
+            (parseInt(g.startOrder, 10) ? '<span class="flight-queue">' + qrEsc((typeof currentLang !== 'undefined' && currentLang === 'en') ? 'tee-off #' : 'старт №') + ' ' + parseInt(g.startOrder, 10) + '</span>' : '') +
             '<span class="flight-count">' + qrEsc(cntTxt) + '</span>' +
             '</div>';
         sheetHtml += '<table><thead><tr>' +
@@ -541,7 +582,7 @@ function qrRender(doc, divs) {
 
     var cardsTitle = '<h1 class="qr-h" style="font-size:19px;">🏌️ QR-карточки игроков</h1>' +
         '<p class="sub">' + (doc.tournamentName ? '🏆 ' + qrEsc(doc.tournamentName) + ' · ' : '') + qrEsc(doc.name || '') +
-        ' · групп: ' + groupEntries.length + ' · игроков: ' + totalPlayers + (doc.format ? ' · ' + qrEsc(doc.format) : '') + '</p>';
+        ' · групп: ' + groupEntries.length + ' · игроков: ' + totalPlayers + (qrFormatsLabel(doc) ? ' · ' + qrEsc(qrFormatsLabel(doc)) : '') + '</p>';
     content.innerHTML = '<div class="sheet-wrap">' + titleHtml + sheetHtml + '</div>' +
         '<div class="cards-wrap"><div class="qr-cards-head">' + cardsTitle + '</div>' + cardsHtml + '</div>';
 

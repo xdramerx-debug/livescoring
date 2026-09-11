@@ -62,7 +62,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=54"></script>
+<script src="js/utils.js?v=55"></script>
 <script>
 function tvGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 function updateClock() {
@@ -130,10 +130,24 @@ function loadTVLeaderboard() {
                     var timeStr = (typeof fmtTime === 'function' && r.startTime) ? fmtTime(r.startTime) : '';
                     var dateStr = (typeof fmtDate === 'function' && r.createdAt) ? fmtDate(r.createdAt) : '';
                     var teePills = (typeof fmtRoundTeePills === 'function') ? fmtRoundTeePills(r) : (r.tee || '');
+                    // Форматная линия раунда (Stableford + Gross) и его место в
+                    // иерархии старта: лунка с буквой волны и очередь tee-off.
+                    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+                    var fmtTxt = (typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke') : (r.format || 'Stroke');
+                    var startBits = [];
+                    if (timeStr) startBits.push(timeStr);
+                    var holeNo = parseInt(r.startHole, 10) || 1;
+                    startBits.push((en ? 'Hole ' : 'Лунка ') + holeNo + (r.startWaveLetter ? String(r.startWaveLetter) : ''));
+                    var gt = parseInt(r.groupsTotal, 10) || 0;
+                    if (gt > 1) {
+                        var so = parseInt(r.startOrder, 10) || 0;
+                        startBits.push((en ? 'tee-off ' : 'старт ') + (so || '—') + '/' + gt);
+                    }
+                    var startTxt = startBits.join(' · ');
 
                     html += '<div class="tv-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
                         '<div><h2 style="font-family:var(--ff);font-size:32px;color:var(--gold);margin:0;">Pestovo · ' + timeStr + '</h2>' +
-                        '<div style="font-size:18px;color:var(--muted);margin-top:4px;">' + dateStr + ' · ' + (r.format || 'Stroke') + ' · Tee: ' + teePills + '</div></div>' + badge + '</div>' +
+                        '<div style="font-size:18px;color:var(--muted);margin-top:4px;">' + dateStr + (startTxt ? ' · ' + startTxt : '') + ' · ' + fmtTxt + ' · Tee: ' + teePills + '</div></div>' + badge + '</div>' +
                         '<table class="tv-table"><thead><tr><th style="width:60px;">POS</th><th style="text-align:left;">PLAYER</th><th>THRU</th><th>TO PAR</th><th>GROSS</th><th>STABLEFORD</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
                 });
 

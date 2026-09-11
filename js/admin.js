@@ -313,6 +313,7 @@ function openAdminPanel() {
     loadSocialCardDisplaySettings();
     loadGroupCardDisplaySettings();
     loadTnCardDisplaySettings();
+    loadTnLbDisplaySettings();
     loadPageDisplaySettings();
     loadPrivacySettings();
     renderAssistantSources();
@@ -358,6 +359,7 @@ function switchTab(t, b) {
         loadSocialCardDisplaySettings();
         loadGroupCardDisplaySettings();
         loadTnCardDisplaySettings();
+        loadTnLbDisplaySettings();
         loadPageDisplaySettings();
     }
     if (t === 'rusgolf') {
@@ -1822,9 +1824,58 @@ function listenForAlerts() {
             if (String(a.status || 'active') === 'active') alerts[k] = a;
         });
         var c = document.getElementById('admin-alerts-list');
+        var statsEl = document.getElementById('admin-alerts-stats');
         var bannerEl = document.getElementById('admin-top-alerts-banner');
         var entries = Object.entries(alerts);
         updateAdminAlertsBadge(entries.length);
+
+        // === Статистика всех вызовов (требование #5) ===
+        if (statsEl) {
+            try {
+                var allEntries = Object.entries(allAlerts);
+                var totalRef = 0, totalMar = 0, activeRef = 0, activeMar = 0, resolved = 0;
+                allEntries.forEach(function(e) {
+                    var a = e[1] || {};
+                    var isRef = (a.type === 'referee');
+                    var isMar = (a.type === 'marshal');
+                    if (isRef) totalRef++; else if (isMar) totalMar++; else { totalRef++; } // fallback referee
+                    if (String(a.status || 'active') === 'active') {
+                        if (isRef || (!isMar && !isRef)) activeRef += isRef || (!isMar && !isRef) ? 1 : 0;
+                        if (isMar) activeMar++;
+                    } else {
+                        resolved++;
+                    }
+                });
+                // Корректный подсчёт активных по типу из alerts
+                activeRef = 0; activeMar = 0;
+                entries.forEach(function(e) {
+                    var a = e[1] || {};
+                    if (a.type === 'marshal') activeMar++; else activeRef++;
+                });
+                var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+                var totalAll = totalRef + totalMar;
+                statsEl.innerHTML =
+                    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">' +
+                    '<div class="card" style="margin:0;padding:12px 14px;background:rgba(224,90,74,0.08);border:1px solid rgba(224,90,74,0.25);">' +
+                    '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">' + (isEn ? 'Total calls' : 'Всего вызовов') + '</div>' +
+                    '<div style="font-size:22px;font-weight:800;color:var(--white);margin-top:4px;">' + totalAll + '</div>' +
+                    '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + (isEn ? 'Referee' : 'Судья') + ': <b style="color:var(--white);">' + totalRef + '</b> · ' + (isEn ? 'Marshal' : 'Маршал') + ': <b style="color:var(--white);">' + totalMar + '</b></div>' +
+                    '</div>' +
+                    '<div class="card" style="margin:0;padding:12px 14px;background:rgba(255,193,7,0.06);border:1px solid rgba(255,193,7,0.25);">' +
+                    '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">' + (isEn ? 'Active now' : 'Активных сейчас') + '</div>' +
+                    '<div style="font-size:22px;font-weight:800;color:var(--white);margin-top:4px;">' + entries.length + '</div>' +
+                    '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + (isEn ? 'Referee' : 'Судья') + ': <b style="color:var(--white);">' + activeRef + '</b> · ' + (isEn ? 'Marshal' : 'Маршал') + ': <b style="color:var(--white);">' + activeMar + '</b></div>' +
+                    '</div>' +
+                    '<div class="card" style="margin:0;padding:12px 14px;background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.25);">' +
+                    '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">' + (isEn ? 'Resolved' : 'Закрыто') + '</div>' +
+                    '<div style="font-size:22px;font-weight:800;color:var(--white);margin-top:4px;">' + resolved + '</div>' +
+                    '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + (isEn ? 'All time' : 'За всё время') + '</div>' +
+                    '</div>' +
+                    '</div>';
+            } catch (eStats) {
+                console.warn('[alerts stats]', eStats);
+            }
+        }
 
         if (bannerEl) {
             if (entries.length > 0) {
@@ -3308,6 +3359,62 @@ function markAdmTnCardVariantButtons() {
         btn.classList.toggle('btn-g', active);
         btn.classList.toggle('btn-og', !active);
         btn.classList.toggle('tn-card-variant-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
+function loadTnLbDisplaySettings() {
+    var applyValue = function(value) {
+        if (value !== null && value !== undefined && typeof applyTnLbVariant === 'function') {
+            applyTnLbVariant(value);
+        }
+        markAdmTnLbVariantButtons();
+    };
+    if (typeof db === 'undefined') {
+        applyValue(null);
+        return;
+    }
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-tn-lb-variant', db.ref('settings/tournament_leaderboard_variant'), function(sn) {
+            applyValue(sn.val());
+        });
+    } else {
+        db.ref('settings/tournament_leaderboard_variant').once('value').then(function(sn) {
+            applyValue(sn.val());
+        }).catch(function() { applyValue(null); });
+    }
+}
+
+function saveTnLbVariant(v) {
+    if (['1','2','3','4','5'].indexOf(String(v)) === -1) return;
+    if (typeof vib === 'function') vib(30);
+    if (typeof applyTnLbVariant === 'function') applyTnLbVariant(v);
+    else markAdmTnLbVariantButtons();
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Leaderboard style saved locally' : 'Вид лидерборда сохранён локально', 'info');
+        return;
+    }
+    db.ref('settings/tournament_leaderboard_variant').set(String(v)).then(function() {
+        toast(currentLang === 'en'
+            ? '✅ Tournament leaderboard style saved for all users'
+            : '✅ Вид лидерборда турнира сохранён для всех пользователей', 'success');
+    }).catch(function(err) {
+        console.warn('Tournament leaderboard variant save error:', err);
+        toast(currentLang === 'en'
+            ? 'Could not save the leaderboard style to the cloud'
+            : '⚠️ Не удалось сохранить вид лидерборда в облако', 'error');
+    });
+}
+
+function markAdmTnLbVariantButtons() {
+    var cur = (typeof getTnLbVariant === 'function') ? getTnLbVariant() : '1';
+    ['1','2','3','4','5'].forEach(function(v) {
+        var btn = document.getElementById('tn-lb-opt-' + v);
+        if (!btn) return;
+        var active = (String(v) === String(cur));
+        btn.classList.toggle('btn-g', active);
+        btn.classList.toggle('btn-og', !active);
+        btn.classList.toggle('tn-lb-variant-active', active);
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
 }

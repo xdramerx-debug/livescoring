@@ -214,7 +214,6 @@ function updateTimingPreview() {
 var soloStarting = false;
 
 function startSolo() {
-    // Защита от двойного нажатия: иначе создавалось два раунда и два игрока
     if (soloStarting) return;
 
     var fnInp = document.getElementById('s-firstname');
@@ -241,100 +240,114 @@ function startSolo() {
 
     var parsedExact = parseExactHcp(exactHcpStr);
     var fieldHcp = getFieldHcp(parsedExact, tee, gender);
-    // Полное имя: «Имя [Отчество] Фамилия» — firstName/middleName/lastName
-    // остаются в отдельных полях для поиска АГР
     firstName = sanitizeNameRaw(firstName);
     middleName = sanitizeNameRaw(middleName);
     lastName = sanitizeNameRaw(lastName);
     var fullName = sanitizeNameRaw(((firstName + ' ' + (middleName ? middleName + ' ' : '')) + lastName).trim());
 
-    var parts = timeStr.split(':');
-    var now = new Date();
-    var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
-        parseInt(parts[0]), parseInt(parts[1]), 0);
-    var startTime = startDate.getTime();
+    function proceedToCreate() {
+        var parts = timeStr.split(':');
+        var now = new Date();
+        var startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
+            parseInt(parts[0]), parseInt(parts[1]), 0);
+        var startTime = startDate.getTime();
+        var accessKey = 'key_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        var chosenUid = window.sSelectedUid || (currentUser ? currentUser.uid : null);
 
-    var accessKey = 'key_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-
-    // Идемпотентное определение id игрока: существующий (по uid или имени) не создаётся заново,
-    // новый игрок получает один детерминированный guest-id на все режимы
-    var chosenUid = window.sSelectedUid || (currentUser ? currentUser.uid : null);
-
-    var createRound = function(playerId) {
-        playerId = playerId || chosenUid || ('guest_' + Date.now());
-        var isGuest = String(playerId).indexOf('guest_') === 0;
-
-        var players = {};
-        players[playerId] = {
-            name: fullName,
-            firstName: firstName,
-            lastName: lastName,
-            middleName: middleName,
-            exactHcp: parsedExact,
-            fieldHcp: fieldHcp,
-            gender: gender,
-            scores: {},
-            holeTimes: {}
-        };
-
-        var ref = db.ref('rounds').push();
-        soloRid = ref.key;
-
-        localStorage.setItem('pestovo_solo_key_' + soloRid, accessKey);
-
-        var roundData = {
-            mode: 'solo',
-            tee: tee,
-            format: format,
-            holeRange: holeRange,
-            startHole: startHole,
-            startTime: startTime,
-            players: players,
-            status: 'active',
-            createdAt: Date.now(),
-            createdBy: currentUser ? currentUser.uid : playerId,
-            accessKey: accessKey,
-            isGuest: isGuest
-        };
-
-        ref.set(roundData).then(function() {
-            toast(t('msg_round_started'));
-            window.location.href = 'setup-round.html?round=' + soloRid;
-        }).catch(function(err) {
-            soloStarting = false;
-            toast('⚠️ ' + (currentLang === 'en' ? 'Round start error: ' : 'Ошибка запуска раунда: ') + err.message, 'error');
-        });
-    };
-
-    soloStarting = true;
-
-    var resolver = typeof resolveOrCreatePlayerUser === 'function'
-        ? resolveOrCreatePlayerUser
-        : (typeof registerGuestPlayerInDatabase === 'function' ? registerGuestPlayerInDatabase : null);
-
-    if (resolver) {
-        try {
-            resolver({
-                uid: chosenUid,
+        var createRound = function(playerId) {
+            playerId = playerId || chosenUid || ('guest_' + Date.now());
+            var isGuest = String(playerId).indexOf('guest_') === 0;
+            var players = {};
+            players[playerId] = {
                 name: fullName,
                 firstName: firstName,
                 lastName: lastName,
                 middleName: middleName,
                 exactHcp: parsedExact,
+                fieldHcp: fieldHcp,
                 gender: gender,
-                tee: tee
-            }).then(function(resolvedId) {
-                createRound(resolvedId);
-            }).catch(function() {
-                createRound(null);
+                scores: {},
+                holeTimes: {}
+            };
+            var ref = db.ref('rounds').push();
+            soloRid = ref.key;
+            localStorage.setItem('pestovo_solo_key_' + soloRid, accessKey);
+            var roundData = {
+                mode: 'solo',
+                tee: tee,
+                format: format,
+                holeRange: holeRange,
+                startHole: startHole,
+                startTime: startTime,
+                players: players,
+                status: 'active',
+                createdAt: Date.now(),
+                createdBy: currentUser ? currentUser.uid : playerId,
+                accessKey: accessKey,
+                isGuest: isGuest
+            };
+            ref.set(roundData).then(function() {
+                toast(t('msg_round_started'));
+                window.location.href = 'setup-round.html?round=' + soloRid;
+            }).catch(function(err) {
+                soloStarting = false;
+                toast('⚠️ ' + (currentLang === 'en' ? 'Round start error: ' : 'Ошибка запуска раунда: ') + err.message, 'error');
             });
-        } catch (e) {
-            // Совместимость со старым кэшем utils.js (синхронная версия регистрации)
-            createRound(typeof e === 'string' ? e : null);
+        };
+
+        soloStarting = true;
+        var resolver = typeof resolveOrCreatePlayerUser === 'function'
+            ? resolveOrCreatePlayerUser
+            : (typeof registerGuestPlayerInDatabase === 'function' ? registerGuestPlayerInDatabase : null);
+
+        if (resolver) {
+            try {
+                resolver({
+                    uid: chosenUid,
+                    name: fullName,
+                    firstName: firstName,
+                    lastName: lastName,
+                    middleName: middleName,
+                    exactHcp: parsedExact,
+                    gender: gender,
+                    tee: tee
+                }).then(function(resolvedId) {
+                    createRound(resolvedId);
+                }).catch(function() {
+                    createRound(null);
+                });
+            } catch (e) {
+                createRound(typeof e === 'string' ? e : null);
+            }
+        } else {
+            createRound(null);
         }
-    } else {
-        createRound(null);
     }
+
+    // 1 сессия на игрока по ФИО: проверяем активные раунды перед стартом
+    if (typeof pestovoFindActiveRoundsByFio === 'function') {
+        soloStarting = true;
+        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Checking active sessions...' : '⏳ Проверка активных сессий...', 'info');
+        pestovoFindActiveRoundsByFio(fullName).then(function(matches) {
+            if (matches && matches.length) {
+                soloStarting = false;
+                if (typeof pestovoShowFioConflictModal === 'function') {
+                    pestovoShowFioConflictModal(matches);
+                } else {
+                    toast(currentLang === 'en' ? 'Player already has active round' : 'У игрока уже есть активный раунд', 'error');
+                }
+                return;
+            }
+            soloStarting = false;
+            proceedToCreate();
+        }).catch(function() {
+            soloStarting = false;
+            proceedToCreate();
+        });
+        return;
+    }
+
+    proceedToCreate();
 }
 
 var soloRoundHandler = null;

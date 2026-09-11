@@ -2620,13 +2620,23 @@ function psBlockSchedule(i, total, proto, holes) {
 
 // Раскладка по волнам: лунка берётся по кругу из списка лунок схемы,
 // время сдвигается на интервал для каждой следующей волны.
-// Для гандикапных методов лунки режутся блоками (см. psBlockSchedule).
+// Для гандикапных методов лунки режутся блоками (см. psBlockSchedule),
+// кроме шотгана со всех 18 — там строго по гандикапам + приоритет пар5→пар4→пар3 для переполнения.
 function psWaveSchedule(i, proto, holes, total) {
     proto = proto || psState.proto || {};
     holes = (holes && holes.length) ? holes : psSchemeHoles(proto.scheme);
     var base = psStartBaseTs(proto);
     var intervalMs = psIntervalMs(proto);
     var idx = Math.max(0, parseInt(i, 10) || 0);
+    // Шотган со всех 18 — особый порядок: первые 18 групп по 1 на лунку (1..18),
+    // далее переполнение по приоритету пар5 → пар4 → пар3, строго в порядке групп (hcp-порядок уже учтён в сортировке игроков).
+    if (proto.scheme === 'all18') {
+        var overflow = [3,9,10,15, 1,2,5,6,7,11,12,14,16,18, 4,8,13,17];
+        var hole;
+        if (idx < 18) hole = idx + 1;
+        else hole = overflow[(idx - 18) % overflow.length];
+        return { startHole: hole, startTime: base + Math.floor(idx / 18) * intervalMs };
+    }
     if (psHcpOrderedMethod(proto)) {
         var b = psBlockSchedule(idx, total, proto, holes);
         return { startHole: holes[b.holeIdx], startTime: base + b.wave * intervalMs };
@@ -2639,13 +2649,18 @@ function psWaveSchedule(i, proto, holes, total) {
 
 // Шотган со всех 18: все лунки стартуют одновременно.
 // Интервал — только для второй (третьей…) группы на той же лунке.
+// Переполнение: сначала пар5 (3,9,10,15), затем пар4, в конце пар3 — чтобы длинные лунки не стояли в очереди.
 function psAll18Schedule(i, proto) {
     proto = proto || psState.proto || {};
     var base = psStartBaseTs(proto);
     var intervalMs = psIntervalMs(proto);
-    var wave = Math.floor(i / 18);
-    var holeIdx = ((i % 18) + 18) % 18;
-    return { startHole: holeIdx + 1, startTime: base + wave * intervalMs };
+    var idx = Math.max(0, parseInt(i, 10) || 0);
+    var overflow = [3,9,10,15, 1,2,5,6,7,11,12,14,16,18, 4,8,13,17];
+    var hole;
+    if (idx < 18) hole = idx + 1;
+    else hole = overflow[(idx - 18) % overflow.length];
+    var wave = Math.floor(idx / 18);
+    return { startHole: hole, startTime: base + wave * intervalMs };
 }
 function psWaveLetter(idx) {
     // Алфавит волн один на весь сайт (js/utils.js): админка, печать QR-карточек

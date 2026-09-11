@@ -787,6 +787,19 @@ var I18N = {
         broadcast_body_lbl: 'Текст сообщения',
         broadcast_link_lbl: 'Ссылка (опционально)',
         send_broadcast_btn: 'Отправить анонс всем игрокам',
+        bc_audience_lbl: 'Кому отправить',
+        bc_aud_all: 'Всем игрокам клуба',
+        bc_aud_tournament: 'Турниру (его registrations)',
+        bc_aud_protocol: 'Игрокам стартового протокола',
+        bc_aud_tn_lbl: 'Турнир',
+        bc_aud_proto_lbl: 'Стартовый протокол',
+        bc_aud_none: '— выберите —',
+        bc_aud_hint: 'Адресный анонс увидят только адресаты: страница игрока проверяет, есть ли он в списке получателей, и лишнего не показывает.',
+        bc_aud_count: 'Получателей',
+        bc_aud_none_sel: 'Анонс некому отправлять: в списке получателей нет ни одного игрока',
+        bc_aud_count_btn: 'Отправить анонс',
+        feed_announcements_title: 'Анонсы клуба',
+        feed_announcements_empty: 'Пока нет анонсов',
         broadcast_history_title: 'История отправленных анонсов',
         edit_profile: 'Редактировать профиль',
         save_profile: 'Сохранить профиль',
@@ -1281,6 +1294,19 @@ var I18N = {
         broadcast_body_lbl: 'Message Text',
         broadcast_link_lbl: 'Link (optional)',
         send_broadcast_btn: 'Send Broadcast to All Players',
+        bc_audience_lbl: 'Audience',
+        bc_aud_all: 'All club players',
+        bc_aud_tournament: 'Tournament (its registrations)',
+        bc_aud_protocol: 'Players of the start list',
+        bc_aud_tn_lbl: 'Tournament',
+        bc_aud_proto_lbl: 'Start protocol',
+        bc_aud_none: '— pick one —',
+        bc_aud_hint: 'A targeted announcement is shown to its addressees only: the player page checks the recipient list and hides everything else.',
+        bc_aud_count: 'Recipients',
+        bc_aud_none_sel: 'Nobody to send to: the recipient list is empty',
+        bc_aud_count_btn: 'Send announcement',
+        feed_announcements_title: 'Club announcements',
+        feed_announcements_empty: 'No announcements yet',
         broadcast_history_title: 'Sent Announcements History',
         edit_profile: 'Edit Profile',
         save_profile: 'Save Profile',
@@ -4508,7 +4534,7 @@ function openPlayerProfileModal(playerId, roundId) {
             var roundPlayerTee = (roundPlayer && roundPlayer.tee) || (rd && rd.tee) || 'wh';
             html += '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">';
             html += '<h3 style="color:var(--gold);margin-bottom:14px;font-family:var(--ff);font-size:18px;">' +
-                    '<i class="fas fa-table"></i> ' + (currentLang === 'en' ? 'Round Scorecard' : 'Счётная карточка раунда') + ' (' + (rd.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(roundPlayerTee) + ')' +
+                    '<i class="fas fa-table"></i> ' + (currentLang === 'en' ? 'Round Scorecard' : 'Счётная карточка раунда') + ' (' + pestovoRoundFormatBadge(rd, 'Stroke') + ' · ' + t('tee_select') + ': ' + fmtTeePill(roundPlayerTee) + ')' +
                     '</h3>';
             
             if (typeof generatePestovoScorecardHTML === 'function') {
@@ -4551,7 +4577,7 @@ function openPlayerProfileModal(playerId, roundId) {
                     html += '<div style="flex:1;min-width:180px;">';
                     html += '<strong style="color:var(--white);font-size:15px;"><i class="fas ' + (isTnRound ? 'fa-trophy' : 'fa-golf-ball-tee') + '" style="color:var(--gold);font-size:12px;"></i> ' + headTitle + '</strong>' + fullTag;
                     html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
-                            fmtDate(r.date) + ' · ' + (r.format || 'Stroke') + ' · ' + t('tee_select') + ': ' + (r.tee ? fmtTeePill(r.tee) : '—') +
+                            fmtDate(r.date) + ' · ' + pestovoRoundFormatBadge(r, 'Stroke') + ' · ' + t('tee_select') + ': ' + (r.tee ? fmtTeePill(r.tee) : '—') +
                             (isTnRound ? '' : ' · ' + (r.mode === 'solo' ? '👤 Solo' : '👥 Group')) + '</div>';
                     if (isTnRound && r.roundName) {
                         html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' + escapeHtml(r.roundName) + '</div>';
@@ -4586,6 +4612,7 @@ function openPlayerProfileModal(playerId, roundId) {
                     var rObj = {
                         tee: r.tee || 'wh',
                         format: r.format || 'Stroke Play',
+                        formats: r.formats || null,
                         holeRange: r.holeRange || '1-18',
                         startHole: r.startHole || 1,
                         completedAt: r.date
@@ -4951,7 +4978,8 @@ function generatePestovoScorecardHTML(player, roundData, opts) {
     var fHcp = p.fieldHcp || 0;
     var eHcp = p.exactHcp || 0;
     var teeCode = (p && p.tee) || (roundData && roundData.tee) || 'wh';
-    var fmt = (roundData && roundData.format) || 'Stroke Play';
+    // Форматная линия целиком («Stableford + Gross»), а не только основной формат.
+    var fmt = pestovoRoundFormatsLabel(roundData) || (roundData && roundData.format) || 'Stroke Play';
     var date = fmtDate((roundData && (roundData.completedAt || roundData.createdAt)) || Date.now());
 
     var order = getRoundOrder(roundData);
@@ -5074,7 +5102,8 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
     var fHcp = p.fieldHcp || 0;
     var eHcp = p.exactHcp || 0;
     var teeCode = (p && p.tee) || (roundData && roundData.tee) || 'wh';
-    var fmt = (roundData && roundData.format) || 'Stroke Play';
+    // Форматная линия целиком («Stableford + Gross»), а не только основной формат.
+    var fmt = pestovoRoundFormatsLabel(roundData) || (roundData && roundData.format) || 'Stroke Play';
     var tName = (roundData && roundData.tournamentName) || '—';
     var date = fmtDate((roundData && (roundData.completedAt || roundData.createdAt)) || Date.now());
     var startTime = fmtTime(roundData && roundData.startTime);
@@ -6123,7 +6152,7 @@ function exportRoundPNG(roundId, playerId) {
                 variant: getSocialCardVariant(),
                 logoImg: logoImg,
                 playerName: playerDisplayName(p, pid),
-                format: r.format || 'Stroke Play',
+                format: pestovoRoundFormatBadge(r, 'Stroke Play'),
                 teeName: teeName,
                 hcp: fmtExactHcp(p.exactHcp),
                 date: fmtDate(r.completedAt || r.createdAt || Date.now()),
@@ -6862,7 +6891,7 @@ function downloadOfficialScorecardPDF(roundData) {
     var dateStr = fmtDate(roundData.createdAt || Date.now());
     var timeStr = fmtTime(roundData.createdAt || Date.now());
     var teeCode = roundData.tee || 'wh';
-    var format = roundData.format || 'Stroke Play';
+    var format = pestovoRoundFormatsLabel(roundData) || roundData.format || 'Stroke Play';
     var exactHcp = roundData.exactHandicap != null ? fmtExactHcp(roundData.exactHandicap) : '—';
     var fieldHcp = roundData.fieldHandicap != null ? fmtFieldHcp(roundData.fieldHandicap) : '—';
 
@@ -9296,6 +9325,325 @@ function pestovoStartTournamentNow(tnId) {
     });
 }
 
+// =========================================================
+// ФОРМАТЫ ИГРЫ · ИЕРАРХИЯ СТАРТА · АДРЕСНЫЕ PUSH-АНОНСЫ
+// ---------------------------------------------------------
+// Общий слой для админки старта (js/start-admin.js), печати
+// QR-карточек (js/qr-start.js), TV-экрана (tv.html), страницы счёта
+// (js/scorer.js), ленты (js/feed.js) и рассылки анонсов (js/admin.js).
+//
+// ФОРМАТЫ. Раунд несёт формат в двух полях: format — основной
+// (обратная совместимость со старыми записями) и formats — вся
+// форматная линия протокола (например Stableford + Gross). Группа со
+// своим форматом пишет один формат, группа без своего — всю линию.
+//
+// ИЕРАРХИЯ СТАРТА: турнир → протокол → волна (время) → лунка → группа
+// → игроки. При сохранении протокола в каждый раунд записываются
+// startWave / startWaveLetter / startOrder / groupsTotal, поэтому
+// буквы волн («1А», «1Б») не пересчитываются в каждом экране по-своему.
+// Буква нужна только когда на лунке две и больше групп — требование клуба.
+//
+// АНОНСЫ. broadcast.audience решает, кому показывать сообщение:
+// 'all' — всем, 'roster' — участникам турнира, 'protocol' — игрокам
+// стартового протокола. uids — снимок адресатов на момент отправки,
+// чтобы страница игрока проверяла только свой uid и не читала базу.
+// =========================================================
+
+var PS_WAVE_ALPHABET_RU = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ';
+var PS_WAVE_ALPHABET_EN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+function pestovoLang() {
+    try { return (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'en' : 'ru'; } catch (e) { return 'ru'; }
+}
+
+// Буква волны: 0 → «А», 1 → «Б»… дальше — номер (27-я волна редка, но пусть будет).
+function pestovoWaveLetter(idx, lang) {
+    var i = Math.max(0, parseInt(idx, 10) || 0);
+    var alpha = (lang || pestovoLang()) === 'en' ? PS_WAVE_ALPHABET_EN : PS_WAVE_ALPHABET_RU;
+    if (i < alpha.length) return alpha.charAt(i);
+    return String(i + 1);
+}
+
+// Форматы игры одной записи: раунда, протокола или группы.
+// Принимает и массив, и «разреженный объект» из Firebase ({0:…,1:…}),
+// и старую запись без formats (только format).
+function pestovoRoundFormats(src) {
+    var out = [];
+    function add(f) {
+        f = String(f == null ? '' : f).trim();
+        if (!f || f === '__custom__') return;
+        if (out.indexOf(f) === -1) out.push(f);
+    }
+    if (!src) return out;
+    if (typeof src !== 'object') { add(src); return out; }
+    var list = src.formats;
+    if (list && !Array.isArray(list) && typeof list === 'object') {
+        list = Object.keys(list)
+            .sort(function(a, b) { return (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0); })
+            .map(function(k) { return list[k]; });
+    }
+    if (Array.isArray(list)) list.forEach(add);
+    else if (typeof list === 'string') add(list);
+    add(src.format);                     // основной формат (для старых записей — единственный)
+    if (src.formatCustom) add(src.formatCustom); // свой формат одной строкой — всегда последним
+    return out;
+}
+
+// Подпись формата для списков и шапок: вся форматная линия раунда, а не
+// только основной формат (старые раунды без formats подписываются как раньше).
+function pestovoRoundFormatBadge(r, fallback) {
+    var txt = pestovoRoundFormatsLabel(r);
+    if (!txt) txt = String((r && r.format) || '').trim();
+    return txt || (fallback || 'Stroke Play');
+}
+
+// Подпись форматов для шапок и карточек: «Stableford + Gross».
+// opts.localize — человеческие названия («Stableford (очки) + …»),
+// opts.sep — разделитель (по умолчанию « + », для списков удобно « · »).
+function pestovoRoundFormatsLabel(src, opts) {
+    opts = opts || {};
+    var list = pestovoRoundFormats(src);
+    if (!list.length) return '';
+    if (!opts.localize) return list.join(opts.sep || ' + ');
+    var names = list.map(function(f) {
+        return (typeof pestovoFormatLabel === 'function') ? pestovoFormatLabel(f) : f;
+    });
+    return names.join(opts.sep || ' + ');
+}
+
+// Одна строка раскладки к единому виду: и черновик админки
+// ({members, startHole, startTime, format}), и раунд из базы
+// ({players, groupNo, startWave, startWaveLetter, …}).
+function pestovoStartRow(src, i) {
+    src = src || {};
+    var hole = parseInt(src.startHole, 10) || 1;
+    if (hole < 1 || hole > 18) hole = 1;
+    var members = Array.isArray(src.members) ? src.members : null;
+    var count;
+    if (members) count = members.length;
+    else if (src.players && typeof src.players === 'object') count = Object.keys(src.players).length;
+    else if (typeof src.playersCount === 'number') count = src.playersCount;
+    else count = 0;
+    return {
+        key: String(src.roundId || src.id || src.key || ('row' + i)),
+        order: i,          // индекс во ВХОДЯЩЕМ списке — чтобы после сортировки
+                           // можно было вернуться к своей группе
+        hole: hole,
+        ts: Number(src.startTime) || 0,
+        groupNo: parseInt(src.groupNo, 10) || (i + 1),
+        count: count,
+        members: members,
+        status: String(src.status || ''),
+        startWave: (src.startWave === null || src.startWave === undefined) ? null : parseInt(src.startWave, 10),
+        startWaveLetter: (src.startWaveLetter === null || src.startWaveLetter === undefined) ? '' : String(src.startWaveLetter),
+        startOrder: (src.startOrder === null || src.startOrder === undefined) ? null : parseInt(src.startOrder, 10),
+        groupsTotal: (src.groupsTotal === null || src.groupsTotal === undefined) ? null : parseInt(src.groupsTotal, 10),
+        tournamentName: String(src.tournamentName || ''),
+        protocolName: String(src.protocolName || ''),
+        formats: pestovoRoundFormats(src),
+        raw: src
+    };
+}
+
+// Строки, упорядоченные по очереди tee-off: время → лунка → номер группы.
+//
+// Волна (порядковый номер группы на своей лунке) и буква пересчитываются
+// ВСЕГДА, когда в списке виден весь протокол: после переноса группы на другую
+// лунку записанные раньше буквы устарели, и две группы получили бы «1А».
+// Если передана частичная выборка (TV или счётная страница открывают один
+// раунд из восьми) — считать нечего, берём startWave/startWaveLetter из базы.
+function pestovoStartRows(list) {
+    var arr = list ? Array.prototype.slice.call(list) : [];
+    var rows = arr.map(pestovoStartRow);
+    rows.sort(function(a, b) {
+        if (a.ts !== b.ts) return a.ts - b.ts;
+        if (a.hole !== b.hole) return a.hole - b.hole;
+        return a.groupNo - b.groupNo;
+    });
+    var declaredTotal = 0;
+    rows.forEach(function(r) {
+        if (r.groupsTotal && r.groupsTotal > declaredTotal) declaredTotal = r.groupsTotal;
+    });
+    var partial = declaredTotal > rows.length;   // видны не все группы протокола
+    var onHole = {};
+    rows.forEach(function(r) {
+        r.derivedWave = onHole[r.hole] || 0;
+        onHole[r.hole] = r.derivedWave + 1;
+    });
+    rows.forEach(function(r, i) {
+        r.holeTotal = onHole[r.hole] || 1;
+        r.seq = (partial && r.startOrder !== null && !isNaN(r.startOrder)) ? r.startOrder : (i + 1);
+        r.startWave = (partial && r.startWave !== null && !isNaN(r.startWave)) ? r.startWave : r.derivedWave;
+        var savedLetter = (partial && r.startWaveLetter) ? String(r.startWaveLetter) : '';
+        r.letter = savedLetter || (r.holeTotal > 1 ? pestovoWaveLetter(r.startWave) : '');
+        if (!r.groupsTotal || isNaN(r.groupsTotal)) r.groupsTotal = rows.length;
+    });
+    return rows;
+}
+
+// Порядок показа стартового листа: лунка → время (1А, 1Б, …, 10А) — так его
+// сортируют админка и печать QR. Очередь tee-off остаётся хронологической
+// (rows): это очередь на первый тей, а не список лунок.
+function pestovoStartDisplayOrder(rows) {
+    return (rows || []).slice().sort(function(a, b) {
+        if (a.hole !== b.hole) return a.hole - b.hole;
+        if (a.ts !== b.ts) return a.ts - b.ts;
+        return a.groupNo - b.groupNo;
+    });
+}
+
+// Подпись группы в иерархии. shotgun-схемы (лунка + буква) — «Группа 1А»,
+// остальные — «Группа 3» по номеру группы.
+function pestovoStartGroupTitle(row, opts) {
+    opts = opts || {};
+    if (!row) return '';
+    var base = (opts.lang || pestovoLang()) === 'en' ? 'Group ' : 'Группа ';
+    if (!opts.holeLetter) return base + row.groupNo;
+    return base + row.hole + (row.letter || '');
+}
+
+// Дерево иерархии: волны (по времени старта) → лунки → группы.
+// Нужно TV-экрану, печати QR-карточек и предпросмотру в админке.
+function pestovoStartHierarchy(list, opts) {
+    opts = opts || {};
+    var rows = opts.rows ? list : pestovoStartRows(list);
+    var waves = [];
+    var byTs = {};
+    rows.forEach(function(r) {
+        var w = byTs[r.ts];
+        if (!w) {
+            w = byTs[r.ts] = { ts: r.ts, holes: [], holesById: {}, groups: [], count: 0, players: 0 };
+            waves.push(w);
+        }
+        var h = w.holesById[r.hole];
+        if (!h) {
+            h = w.holesById[r.hole] = { hole: r.hole, groups: [], count: 0, players: 0 };
+            w.holes.push(h);
+        }
+        h.groups.push(r); h.count++; h.players += r.count;
+        w.groups.push(r); w.count++; w.players += r.count;
+    });
+    waves.sort(function(a, b) { return a.ts - b.ts; });
+    waves.forEach(function(w, wi) {
+        w.no = wi + 1;
+        w.holes.sort(function(a, b) { return a.hole - b.hole; });
+        w.holes.forEach(function(h) {
+            h.groups.sort(function(a, b) {
+                if (a.startWave !== b.startWave) return a.startWave - b.startWave;
+                return a.groupNo - b.groupNo;
+            });
+        });
+    });
+    var players = 0;
+    rows.forEach(function(r) { players += r.count; });
+    return { waves: waves, rows: rows, display: pestovoStartDisplayOrder(rows), total: rows.length, players: players };
+}
+
+// ── PUSH-АНОНСЫ: КОМУ АДРЕСОВАНО ──────────────────────────
+// Аудитория приводится к одному виду; записей без audience (все, что
+// отправлены до этого релиза) это не меняет: они по-прежнему адресованы всем.
+function pestovoBroadcastAudience(a) {
+    if (!a || typeof a !== 'object') return { type: 'all', tournamentId: '', tournamentName: '', protocolId: '', protocolName: '', uids: null, count: 0 };
+    var type = String(a.type || 'all');
+    if (type !== 'roster' && type !== 'protocol') type = 'all';
+    var uids = null, n = 0;
+    if (a.uids && typeof a.uids === 'object') {
+        uids = {};
+        Object.keys(a.uids).forEach(function(k) {
+            var v = a.uids[k];
+            if (!k || v === false || v === null) return;
+            uids[String(k)] = true;
+            n++;
+        });
+    }
+    return {
+        type: type,
+        tournamentId: String(a.tournamentId || ''),
+        tournamentName: String(a.tournamentName || ''),
+        protocolId: String(a.protocolId || ''),
+        protocolName: String(a.protocolName || ''),
+        uids: uids,
+        count: n
+    };
+}
+
+// Запись в broadcasts/<id>.
+function pestovoBroadcastPayload(o) {
+    o = o || {};
+    var link = String(o.link || '').trim() || 'tournaments.html';
+    return {
+        title: String(o.title || '').trim(),
+        body: String(o.body || '').trim(),
+        link: link,
+        time: Number(o.time) || Date.now(),
+        sentBy: String(o.sentBy || 'admin'),
+        audience: pestovoBroadcastAudience(o.audience)
+    };
+}
+
+// Показать ли анонс этому зрителю: ctx = { uid, isAdmin }.
+// Адресный анонс видят только адресаты (и админ — чтобы проверить текст);
+// гость без uid видит только общие анонсы.
+function pestovoBroadcastMatches(b, ctx) {
+    ctx = ctx || {};
+    var aud = pestovoBroadcastAudience(b && b.audience);
+    if (aud.type === 'all') return true;
+    if (ctx.isAdmin) return true;
+    var uid = (ctx.uid === null || ctx.uid === undefined) ? '' : String(ctx.uid);
+    if (!uid) return false;
+    if (!aud.uids || !aud.count) return false;
+    return !!aud.uids[uid];
+}
+
+// Кто смотрит анонсы прямо сейчас: uid вошедшего игрока + признак админа.
+// Нужен одному месту, иначе pwa-уведомление и лента начнут фильтровать по-разному.
+function pestovoBroadcastViewerCtx() {
+    var uid = '';
+    try {
+        if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) uid = String(currentUser.uid);
+    } catch (e) {}
+    return {
+        uid: uid,
+        isAdmin: (typeof pestovoIsAdminViewer === 'function') ? pestovoIsAdminViewer() : false
+    };
+}
+
+// Подпись аудитории для истории админки и карточек ленты.
+function pestovoBroadcastAudienceLabel(b, lang) {
+    var L = lang || pestovoLang();
+    var aud = pestovoBroadcastAudience(b && b.audience);
+    if (aud.type === 'all') return L === 'en' ? 'All club players' : 'Всем игрокам клуба';
+    var name = aud.type === 'protocol' ? (aud.protocolName || aud.tournamentName || '') : (aud.tournamentName || '');
+    var who = aud.type === 'protocol'
+        ? (L === 'en' ? 'Start list' : 'Стартовый протокол')
+        : (L === 'en' ? 'Tournament' : 'Турнир');
+    var out = who + (name ? ': ' + name : '');
+    if (aud.count) out += ' · ' + aud.count + (L === 'en' ? ' players' : ' игр.');
+    return out;
+}
+
+// Лента анонсов зрителю: новые сверху, только адресованные ему.
+function pestovoBroadcastFeed(data, ctx, limit) {
+    var src = data || {};
+    var arr = [];
+    Object.keys(src).forEach(function(k) {
+        var b = src[k];
+        if (!b || typeof b !== 'object') return;
+        if (!pestovoBroadcastMatches(b, ctx)) return;
+        arr.push({
+            id: k,
+            title: String(b.title || ''),
+            body: String(b.body || ''),
+            link: String(b.link || 'tournaments.html'),
+            time: Number(b.time) || 0,
+            audience: b.audience
+        });
+    });
+    arr.sort(function(a, b) { return b.time - a.time; });
+    if (limit && limit > 0) arr = arr.slice(0, limit);
+    return arr;
+}
+
 if (typeof window !== 'undefined') {
     window.roundTournamentName = roundTournamentName;
     window.isTournamentRound = isTournamentRound;
@@ -9311,5 +9659,20 @@ if (typeof window !== 'undefined') {
     window.pestovoStartTournamentNow = pestovoStartTournamentNow;
     window.pestovoStartTsFromParts = pestovoStartTsFromParts;
     window.ROUND_STATUS_SCHEDULED = ROUND_STATUS_SCHEDULED;
+    window.pestovoWaveLetter = pestovoWaveLetter;
+    window.pestovoRoundFormats = pestovoRoundFormats;
+    window.pestovoRoundFormatsLabel = pestovoRoundFormatsLabel;
+    window.pestovoRoundFormatBadge = pestovoRoundFormatBadge;
+    window.pestovoStartRow = pestovoStartRow;
+    window.pestovoStartRows = pestovoStartRows;
+    window.pestovoStartDisplayOrder = pestovoStartDisplayOrder;
+    window.pestovoStartHierarchy = pestovoStartHierarchy;
+    window.pestovoStartGroupTitle = pestovoStartGroupTitle;
+    window.pestovoBroadcastAudience = pestovoBroadcastAudience;
+    window.pestovoBroadcastPayload = pestovoBroadcastPayload;
+    window.pestovoBroadcastMatches = pestovoBroadcastMatches;
+    window.pestovoBroadcastViewerCtx = pestovoBroadcastViewerCtx;
+    window.pestovoBroadcastAudienceLabel = pestovoBroadcastAudienceLabel;
+    window.pestovoBroadcastFeed = pestovoBroadcastFeed;
 }
 

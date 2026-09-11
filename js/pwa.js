@@ -334,6 +334,9 @@ function initBackgroundAlertListener() {
 
 var globalBroadcastsKnown = {};
 var bgBroadcastListenerAttached = false;
+// Первый СНИМОК базы (а не первая непустая пачка): игрок, открывший сайт до
+// первого анонса клуба, иначе не получал бы ни одного пуша в этой сессии.
+var bgBroadcastsFirstSeen = false;
 
 function initBackgroundBroadcastListener() {
     if (typeof db === 'undefined' || bgBroadcastListenerAttached) return;
@@ -341,12 +344,17 @@ function initBackgroundBroadcastListener() {
 
     db.ref('broadcasts').on('value', function(sn) {
         var broadcasts = sn.val() || {};
-        var isFirstRun = Object.keys(globalBroadcastsKnown).length === 0;
+        var isFirstRun = !bgBroadcastsFirstSeen;
+        bgBroadcastsFirstSeen = true;
 
         Object.entries(broadcasts).forEach(function(e) {
             var id = e[0], b = e[1];
             if (!globalBroadcastsKnown[id]) {
                 globalBroadcastsKnown[id] = true;
+                // Адресный анонс («турниру», «стартовому протоколу») показываем
+                // только адресатам: снимок uid лежит прямо в записи broadcasts.
+                if (typeof pestovoBroadcastMatches === 'function' &&
+                    !pestovoBroadcastMatches(b, pestovoBroadcastViewerCtx())) return;
                 if (!isFirstRun) {
                     var title = b.title || (currentLang === 'en' ? '📢 Pestovo Announcement' : '📢 Анонс Пестово');
                     var body = b.body || '';

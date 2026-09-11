@@ -470,6 +470,27 @@ function psDivisionTeeFor(p, fallbackTee) {
     return (p.tee && allowed.indexOf(p.tee) !== -1) ? p.tee : (allowed[0] || 'wh');
 }
 
+// Формат группы по её дивизиону: если ВСЕ игроки группы относятся к одному
+// дивизиону с заданным форматом — возвращаем его, иначе fallback (пусто =
+// наследуется от протокола).
+function psDivisionFormatFor(members, fallback) {
+    fallback = fallback || '';
+    if (!members || !members.length) return fallback;
+    var tn = null;
+    try { tn = psGetSelTournament(); } catch (e) { tn = null; }
+    if (!tn || !tn.divisions || typeof tnFindDivision !== 'function') return fallback;
+    var div = null;
+    for (var i = 0; i < members.length; i++) {
+        var p = members[i];
+        var d = tnFindDivision(tn, psEffectiveExactFor(p.hcp, p.gender || 'men'), p.gender || 'men',
+            { pid: p.id || '', name: psFullRus(p) || '' });
+        if (!d || !d.format) return fallback; // игрок без группы или без формата
+        if (div && div !== d) return fallback; // смешанные дивизионы
+        div = d;
+    }
+    return div && div.format ? div.format : fallback;
+}
+
 // ТИ группы по её составу: самый частый ТИ среди игроков (если группа
 // однородна по дивизиону — это ТИ дивизиона), иначе ТИ первого игрока.
 function psGroupTeeFromMembers(members, fallbackTee) {
@@ -2789,24 +2810,59 @@ function psBlockSchedule(i, total, proto, holes) {
 // время сдвигается на интервал для каждой следующей волны.
 // Для гандикапных методов лунки режутся блоками (см. psBlockSchedule),
 // кроме шотгана со всех 18 — там строго по гандикапам + приоритет пар5→пар4→пар3 для переполнения.
+// Шотган со всех 18 лунок при гандикапной сортировке (hcpAsc/hcpDesc):
+// группы ложатся на лунки БЛОКАМИ подряд по HCP — 1А и 1Б обе «низкие»,
+// 18А и 18Б обе «высокие», а не «первая волна 1..18 низкие, вторая волна
+// 1..18 высокие». Лишние группы (когда число групп не кратно 18) добавляются
+// на ПЕРВЫЕ лунки, чтобы самые низкие гандикапы шли парами; при этом все
+// 18 лунок всегда заняты.
+function psAll18HcpSchedule(i, total) {
+    var idx = Math.max(0, parseInt(i, 10) || 0);
+    var n = Math.max(idx + 1, parseInt(total, 10) || 0);
+    var H = 18;
+    var full = Math.floor(n / H); // базовое число групп на лунку
+    var extra = n % H;            // первые extra лунок получают на группу больше
+    var firstBlock = extra * (full + 1);
+    var holeIdx, wave;
+    if (extra === 0) {
+        holeIdx = Math.min(H - 1, Math.floor(idx / full));
+        wave = idx % full;
+    } else if (idx < firstBlock) {
+        holeIdx = Math.floor(idx / (full + 1));
+        wave = idx % (full + 1);
+    } else {
+        var rem = idx - firstBlock;
+        holeIdx = extra + Math.floor(rem / full);
+        wave = rem % full;
+    }
+    return { holeIdx: holeIdx, wave: wave };
+}
+
 function psWaveSchedule(i, proto, holes, total) {
     proto = proto || psState.proto || {};
     holes = (holes && holes.length) ? holes : psSchemeHoles(proto.scheme);
     var base = psStartBaseTs(proto);
     var intervalMs = psIntervalMs(proto);
     var idx = Math.max(0, parseInt(i, 10) || 0);
-    // Шотган со всех 18 — особый порядок: первые 18 групп по 1 на лунку (1..18),
-    // далее переполнение по приоритету пар5 → пар4 → пар3, строго в порядке групп (hcp-порядок уже учтён в сортировке игроков).
+    // Гандикапные методы: соседние по HCP группы идут на одну лунку блоками,
+    // чтобы 1А и 1Б были обе «низкие», а не «1А–18А низкие, потом 1Б–18Б высокие».
+    if (psHcpOrderedMethod(proto)) {
+        if (proto.scheme === 'all18') {
+            var ab = psAll18HcpSchedule(idx, total);
+            return { startHole: ab.holeIdx + 1, startTime: base + ab.wave * intervalMs };
+        }
+        var b = psBlockSchedule(idx, total, proto, holes);
+        return { startHole: holes[b.holeIdx], startTime: base + b.wave * intervalMs };
+    }
+    // Шотган со всех 18 (без гандикапной сортировки) — особый порядок: первые
+    // 18 групп по 1 на лунку (1..18), далее переполнение по приоритету
+    // пар5 → пар4 → пар3, чтобы длинные лунки не стояли в очереди.
     if (proto.scheme === 'all18') {
         var overflow = [3,9,10,15, 1,2,5,6,7,11,12,14,16,18, 4,8,13,17];
         var hole;
         if (idx < 18) hole = idx + 1;
         else hole = overflow[(idx - 18) % overflow.length];
         return { startHole: hole, startTime: base + Math.floor(idx / 18) * intervalMs };
-    }
-    if (psHcpOrderedMethod(proto)) {
-        var b = psBlockSchedule(idx, total, proto, holes);
-        return { startHole: holes[b.holeIdx], startTime: base + b.wave * intervalMs };
     }
     return {
         startHole: holes[idx % holes.length],
@@ -3100,7 +3156,8 @@ function psDistPreview() {
         var sch = psGroupSchedule(i, groups.length);
         members.forEach(function(p) { p.tee = psDivisionTeeFor(p, tournamentTee); });
         var gTee = psGroupTeeFromMembers(members, tournamentTee);
-        return { members: members, startHole: sch.startHole, startTime: sch.startTime, format: '', tee: gTee, markerTargets: {} };
+        var gFmt = psDivisionFormatFor(members, '');
+        return { members: members, startHole: sch.startHole, startTime: sch.startTime, format: gFmt, tee: gTee, markerTargets: {} };
     });
     psSortGroupsShotgun(psState.groups, psState.proto && psState.proto.scheme);
     // Раскладка после построения — в СВЁРНУТОМ виде (кнопка «Развернуть раскладку»)
@@ -3773,7 +3830,8 @@ function psSaveProtocol() {
         var built = psBuildGroups();
         groups = built.map(function(members, i) {
             var sch = psGroupSchedule(i, built.length);
-            return { members: members, startHole: sch.startHole, startTime: sch.startTime };
+            var gFmt = psDivisionFormatFor(members, '');
+            return { members: members, startHole: sch.startHole, startTime: sch.startTime, format: gFmt };
         });
         psState.groups = groups;
     }

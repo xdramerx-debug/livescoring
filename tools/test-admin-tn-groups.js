@@ -218,7 +218,7 @@ setTimeout(function() {
             setTimeout(function() {
                 const upd = dbWrites.filter(function(w) { return w.path === 'tournaments/t1/divisions/manual1' && w.type === 'update'; });
                 eq(upd.length, 1, 'сохранение группы: update по id');
-                eq(upd[0].value, { name: 'Ручная группа 2', gender: 'men', hcpFrom: 0.5, hcpTo: 40, tee: 'bl' },
+                eq(upd[0].value, { name: 'Ручная группа 2', gender: 'men', hcpFrom: 0.5, hcpTo: 40, tee: 'bl', format: '' },
                     'сохранение группы: новые значения (включая запятую в HCP)');
                 check(!sb.tnDivEditing.t1, 'сохранение группы: режим правки закрыт');
 
@@ -237,11 +237,37 @@ setTimeout(function() {
                 sb.tnSaveDivision('t1', 'manual1');
                 setTimeout(function finish() {
                     check(dbWrites.length === 0, 'редактирование: некорректный диапазон HCP — без записи');
-                    if (failures) {
-                        console.log('\n✗ Провалено: ' + failures);
-                        process.exit(1);
-                    }
-                    console.log('\nAll admin tournament-groups tests passed ✔');
+
+                    // ── 7. Синхронизация ТИ/формата групп обратно в список участников ──
+                    dbState['tournaments/t2'] = {
+                        divisions: {
+                            d1: { id: 'd1', name: 'Мужчины 0–12', gender: 'men', hcpFrom: 0, hcpTo: 12, tee: 'bl', format: 'Stableford',
+                                  members: { u1: 'иванов иван' } },
+                            d2: { id: 'd2', name: 'Девушки', gender: 'women', hcpFrom: 0, hcpTo: 36, tee: 'rd', format: '' }
+                        },
+                        registeredPlayers: {
+                            u1: { name: 'Иванов Иван', handicap: 5, gender: 'men', tee: 'wh' },
+                            w1: { name: 'Петрова Анна', handicap: 20, gender: 'women', tee: 'wh' }
+                        },
+                        hcpCut: null
+                    };
+                    dbWrites = [];
+                    sb.tnSyncDivisionsToRoster('t2');
+                    setTimeout(function finishSync() {
+                        const syncUpd = dbWrites.filter(function(w) { return w.path === '' && w.type === 'update'; })[0];
+                        check(!!syncUpd, 'синхронизация: root update выполнен');
+                        eq(syncUpd && syncUpd.value['tournaments/t2/registeredPlayers/u1/tee'], 'bl', 'синхронизация: ТИ мужчины → синие');
+                        eq(syncUpd && syncUpd.value['tournaments/t2/registeredPlayers/u1/format'], 'Stableford', 'синхронизация: формат группы → в список');
+                        eq(syncUpd && syncUpd.value['tournaments/t2/registeredPlayers/w1/tee'], 'rd', 'синхронизация: ТИ девушки → красные');
+                        check(syncUpd && syncUpd.value['tournaments/t2/registeredPlayers/w1/format'] === undefined, 'синхронизация: без формата группы формат не пишется');
+                        const fmtOpts = sb.tnFormatOptionsHtml({ formats: ['Stroke Play', 'Stableford'] }, 'Stableford');
+                        check(fmtOpts.indexOf('Stableford') !== -1 && fmtOpts.indexOf('selected') !== -1, 'формат: селектор содержит форматы турнира');
+                        if (failures) {
+                            console.log('\n✗ Провалено: ' + failures);
+                            process.exit(1);
+                        }
+                        console.log('\nAll admin tournament-groups tests passed ✔');
+                    }, 20);
                 }, 20);
             }, 20);
         }, 20);

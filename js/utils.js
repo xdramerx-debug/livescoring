@@ -1876,6 +1876,16 @@ function pestovoCollectActiveRoundsByFio(data, searchFio) {
     return out;
 }
 
+// Из списка активных сессий (результат pestovoCollectActiveRoundsByFio /
+// pestovoFindActiveRoundsByFio) — только ТУРНИРНЫЕ раунды. Турнирные раунды
+// живут отдельно от соло/групповых: игрок в турнире не может начать новый
+// обычный раунд.
+function pestovoTournamentRounds(matches) {
+    return (matches || []).filter(function(m) {
+        return (typeof isTournamentRound === 'function') && isTournamentRound(m && m.round);
+    });
+}
+
 function pestovoFindActiveRoundsByFio(fio) {
     return new Promise(function(resolve, reject) {
         if (typeof db === 'undefined' || !db) { resolve([]); return; }
@@ -3826,6 +3836,24 @@ function hcpStrokesMarksHTML(fieldHcp,holeNum){
         title='Фора: '+cnt+' '+pluralN(cnt,'удар','удара','ударов')+(neg?' (минусовая)':'');
     }
     return '<span class="hcp-marks'+(neg?' hm-minus':'')+'" title="'+title+'">'+bars.join('')+'</span>';
+}
+
+// Счёт игрока и маркера внутри квадратика лунки (страницы ввода результата).
+// Строка абсолютно позиционирована внизу кнопки и не меняет её размер, поэтому
+// сетка лунок остаётся стабильной. Счёт игрока — без метки, счёт маркера —
+// с меткой «М» (marker_score_short) и синим цветом, чтобы было видно, чей он.
+function hbnScoresHtml(playerScore, markerScore) {
+    var p = parseInt(playerScore) >= 1 ? parseInt(playerScore) : 0;
+    var m = parseInt(markerScore) >= 1 ? parseInt(markerScore) : 0;
+    if (!p && !m) return '';
+    var pTitle = (typeof t === 'function' ? t('legend_player_score') : 'счёт игрока');
+    var mTitle = (typeof t === 'function' ? t('legend_marker_score') : 'счёт маркера');
+    var mLbl = (typeof t === 'function' ? t('marker_score_short') : 'M');
+    var html = '<span class="hbn-scores">';
+    if (p) html += '<span class="hbn-s hbn-s-player" title="' + pTitle + '">' + p + '</span>';
+    if (m) html += '<span class="hbn-s hbn-s-marker" title="' + mTitle + '"><span class="hbn-s-lbl">' + mLbl + '</span>' + m + '</span>';
+    html += '</span>';
+    return html;
 }
 
 function pluralN(n,one,few,many){

@@ -39,6 +39,39 @@
         return p.hcp == null ? '' : p.hcp;
     }
 
+    // Время старта в стартовом листе — числовой timestamp (мс), а поле
+    // <input type="time"> работает со строкой «ЧЧ:ММ». Конвертируем туда и
+    // обратно, чтобы правка не затирала время на «ЧЧ:ММ».
+    function peTimeToInput(ts) {
+        if (ts === '' || ts == null) return '';
+        var n = parseInt(ts, 10);
+        if (!isNaN(n) && n > 1000000000) {
+            var d = new Date(n);
+            if (!isNaN(d.getTime())) {
+                return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+            }
+        }
+        if (/^\d{1,2}:\d{2}$/.test(String(ts))) return String(ts);
+        return '';
+    }
+    function peTsFromTime(s, fallbackTs) {
+        var str = String(s == null ? '' : s).trim();
+        if (str === '') return fallbackTs || '';
+        if (!/^\d{1,2}:\d{2}$/.test(str)) return s; // уже timestamp или иное
+        var hh = parseInt(str.split(':')[0], 10) || 0;
+        var mm = parseInt(str.split(':')[1], 10) || 0;
+        var dateStr = (state.proto && state.proto.date) || '';
+        var d = null;
+        if (dateStr) {
+            d = new Date(dateStr + 'T' + str + ':00');
+        } else {
+            var base = (fallbackTs && !isNaN(parseInt(fallbackTs, 10))) ? new Date(parseInt(fallbackTs, 10)) : new Date();
+            if (!isNaN(base.getTime())) d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), hh, mm, 0, 0);
+        }
+        if (d && !isNaN(d.getTime())) return d.getTime();
+        return str; // нет даты — оставляем строку времени
+    }
+
     // ── Загрузка списка турниров в селектор ──
     function loadTournaments() {
         var sel = document.getElementById('pe-tn-select');
@@ -94,24 +127,72 @@
         });
     }
 
+    // Приводит группы протокола к единому виду [{ key, g }]:
+    //   • объект g1..gN (стартовый лист start-admin.js) — основной формат;
+    //   • массив (старые протоколы из «быстрого» редактора);
+    //   • groupsFlat (совсем старые данные без групп, только связи id→rid).
+    function peGroupList(proto) {
+        proto = proto || {};
+        var raw = proto.groups;
+        var list = [];
+        if (Array.isArray(raw)) {
+            raw.forEach(function(g, i) { if (g) list.push({ key: i, g: g }); });
+        } else if (raw && typeof raw === 'object') {
+            Object.keys(raw).forEach(function(k) {
+                if (raw[k]) list.push({ key: k, g: raw[k] });
+            });
+            // Порядок групп — по groupNo (g1..gN), иначе по числу в ключе.
+            list.sort(function(a, b) {
+                var na = (a.g && a.g.groupNo) || 0;
+                var nb = (b.g && b.g.groupNo) || 0;
+                if (na !== nb) return na - nb;
+                return parseInt(String(a.key).replace(/[^0-9]/g, ''), 10) - parseInt(String(b.key).replace(/[^0-9]/g, ''), 10);
+            });
+        } else if (Array.isArray(proto.groupsFlat)) {
+            // Только связи id→rid: группируем игроков по rid.
+            var byRid = {};
+            proto.groupsFlat.forEach(function(fl) {
+                if (!fl || !fl.id || !fl.rid) return;
+                if (!byRid[fl.rid]) byRid[fl.rid] = [];
+                byRid[fl.rid].push(fl.id);
+            });
+            Object.keys(byRid).forEach(function(rid, i) {
+                list.push({ key: i, g: { roundId: rid, members: byRid[rid].map(function(id) { return { id: id }; }) } });
+            });
+        }
+        return list;
+    }
+
     function buildModel(tnId, tn, pid, proto, roundsAll) {
         state.tnId = tnId; state.tn = tn; state.pid = pid; state.proto = proto;
         state.rounds = {}; state.groups = []; state.roster = [];
 
-        var idsOfProto = {};
-        (proto.groupsFlat || []).forEach(function(g) { idsOfProto[g.id] = g.rid; });
+        var groupList = peGroupList(proto);
+
+        // Соответствие группы → rid (объектная форма хранит roundId явно).
+        var groupRidOf = {};
+        var groupIds = {};
+        groupList.forEach(function(ge) {
+            var g = ge.g || {};
+            var rid = g.roundId || g.rid || g.id || null;
+            if (rid) groupRidOf[ge.key] = rid;
+            if (g.id) groupIds[g.id] = ge.key;
+        });
 
         Object.keys(roundsAll).forEach(function(rid) {
             var r = roundsAll[rid];
             if (!r) return;
-            if (r.protocolId === pid || (r.tournamentId === tnId && (proto.groupsFlat || []).some(function(g) { return g.rid === rid; }))) {
+            var inGroups = false;
+            Object.keys(groupRidOf).forEach(function(k) { if (groupRidOf[k] === rid) inGroups = true; });
+            if (r.protocolId === pid || (r.tournamentId === tnId && inGroups)) {
                 state.rounds[rid] = r;
             }
         });
 
         var assigned = {};
-        (proto.groups || []).forEach(function(g, gi) {
-            var rid = (g.members || []).map(function(m) { return idsOfProto[m.id]; }).filter(Boolean)[0];
+        groupList.forEach(function(ge, gi) {
+            var g = ge.g || {};
+            var rid = groupRidOf[ge.key] || null;
             if (!rid) {
                 // сопоставление по groupIdx
                 Object.keys(state.rounds).forEach(function(k) {
@@ -120,16 +201,29 @@
             }
             var r = rid ? state.rounds[rid] : null;
             var members = [];
+            // Игроки группы: объектная форма — g.players (массив), старая — g.members.
+            var gPlayers = Array.isArray(g.players) ? g.players : (g.members || []);
             var srcMembers = (r && r.players) ? r.players : {};
-            var pOrder = (r && r.pOrder) || (g.members || []).map(function(m) { return m.id; });
+            var pOrder = (r && r.pOrder) || gPlayers.map(function(m) { return m.id; });
             pOrder.forEach(function(pid2) {
-                var p = srcMembers[pid2] || (g.members || []).find(function(m) { return m.id === pid2; });
+                var p = srcMembers[pid2] || gPlayers.find(function(m) { return m.id === pid2; });
                 if (p) { members.push(Object.assign({ id: pid2 }, p)); assigned[pid2] = true; }
+            });
+            // Игроки g.players, которых нет в pOrder (страховка от рассинхрона).
+            gPlayers.forEach(function(m) {
+                if (!m || !m.id) return;
+                if (members.some(function(x) { return x.id === m.id; })) return;
+                members.push(Object.assign({ id: m.id }, m));
+                assigned[m.id] = true;
             });
             var markerTargets = {};
             if (r && r.markerAssignments) {
                 Object.keys(r.markerAssignments).forEach(function(mk) {
                     markerTargets[mk] = r.markerAssignments[mk].targetId;
+                });
+            } else if (Array.isArray(g.markers)) {
+                g.markers.forEach(function(mk) {
+                    if (mk && mk.markerId && mk.targetId) markerTargets[mk.markerId] = mk.targetId;
                 });
             } else if (g.markerTargets) {
                 markerTargets = Object.assign({}, g.markerTargets);
@@ -150,9 +244,15 @@
 
         // участники протокола без группы
         var pp = proto.players || {};
-        Object.keys(pp).forEach(function(pid2) {
-            if (!assigned[pid2]) state.roster.push(Object.assign({ id: pid2 }, pp[pid2]));
-        });
+        if (Array.isArray(pp)) {
+            pp.forEach(function(p) {
+                if (p && p.id && !assigned[p.id]) state.roster.push(Object.assign({ id: p.id }, p));
+            });
+        } else {
+            Object.keys(pp).forEach(function(pid2) {
+                if (!assigned[pid2]) state.roster.push(Object.assign({ id: pid2 }, pp[pid2]));
+            });
+        }
     }
 
     // ── Рендер редактора ──
@@ -204,7 +304,7 @@
                 '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">' +
                 '<strong style="min-width:90px">' + esc(L('Группа', 'Group')) + ' ' + (i + 1) + '</strong>' +
                 '<label style="font-size:12px">' + esc(L('лунка', 'hole')) + ' <input type="number" min="1" max="18" class="pe-hole" data-gid="' + i + '" value="' + esc(g.startHole) + '" style="width:56px;padding:4px"></label>' +
-                '<label style="font-size:12px">' + esc(L('время', 'time')) + ' <input type="time" class="pe-time" data-gid="' + i + '" value="' + esc(g.startTime || '') + '" style="padding:4px"></label>' +
+                '<label style="font-size:12px">' + esc(L('время', 'time')) + ' <input type="time" class="pe-time" data-gid="' + i + '" value="' + esc(peTimeToInput(g.startTime)) + '" style="padding:4px"></label>' +
                 '<label style="font-size:12px">' + esc(L('ТИ группы', 'group tee')) + ' <select class="pe-gtee" data-gid="' + i + '">' + teeOpts(g.tee) + '</select></label>' +
                 '<label style="font-size:12px">' + esc(L('формат', 'format')) + ' <select class="pe-gfmt" data-gid="' + i + '">' + fmtOpts(g.format) + '</select></label>' +
                 (!g.rid && g.members.length === 0 ? '<button class="btn btn-r btn-sm" onclick="peDelGroup(' + i + ')">✕</button>' : '') +
@@ -290,7 +390,7 @@
     function collectForm() {
         try {
             document.querySelectorAll('.pe-hole').forEach(function(el) { state.groups[+el.dataset.gid].startHole = parseInt(el.value, 10) || 1; });
-            document.querySelectorAll('.pe-time').forEach(function(el) { state.groups[+el.dataset.gid].startTime = el.value || ''; });
+            document.querySelectorAll('.pe-time').forEach(function(el) { state.groups[+el.dataset.gid]._timeInput = el.value || ''; });
             document.querySelectorAll('.pe-gtee').forEach(function(el) { state.groups[+el.dataset.gid].tee = el.value; });
             document.querySelectorAll('.pe-gfmt').forEach(function(el) { state.groups[+el.dataset.gid].format = el.value; });
 
@@ -364,8 +464,9 @@
 
         var sets = {};
         var t = state.tn;
-        var newProtoGroups = [];
-        var groupsFlat = [];
+        // Группы сохраняем ОБЪЕКТОМ g1..gN (формат стартового листа) — так
+        // протокол читают qr-start.js, admin.js (рассылки) и start-admin.js.
+        var newProtoGroups = {};
         var regPlayers = Object.assign({}, state.tn.registeredPlayers || {});
 
         var droppedRids = {};
@@ -381,7 +482,7 @@
                 }
                 return;
             }
-            var newIdx = newProtoGroups.length;
+            var newIdx = Object.keys(newProtoGroups).length;
             var g = g0;
             // Полевой HCP: эффективный (с обрезкой турнира) → таблица по ТИ/полу.
             g.members.forEach(function(p) {
@@ -421,7 +522,8 @@
             round.protocolId = state.pid;
             round.type = 'group';
             round.startHole = parseInt(g.startHole, 10) || 1;
-            round.startTime = g.startTime || '';
+            round.startTime = peTsFromTime(g._timeInput || null, g.startTime);
+            g.startTime = round.startTime;
             round.tee = g.tee;
             round.format = g.format || '';
             round.status = round.status || 'scheduled';
@@ -467,21 +569,44 @@
             sets['rounds/' + rid] = round;
             g.rid = rid;
 
-            // протокольная группа
+            // протокольная группа — в формате стартового листа (объект g1..gN)
             var pg = Object.assign({}, (g._orig || {}));
+            pg.roundId = rid;
+            pg.groupNo = newIdx + 1;
             pg.startHole = round.startHole;
             pg.startTime = round.startTime;
             pg.tee = g.tee;
             pg.format = g.format || '';
+            // Иерархия старта для новых групп (для сохранённых остаётся из _orig)
+            if (g.isNew || !g._orig || !g._orig.roundId) {
+                pg.startWave = 0;
+                pg.startWaveLetter = '';
+                pg.startOrder = newIdx + 1;
+            }
             var cleanMT = {};
             Object.keys(markerAssignments).forEach(function(mk2) { cleanMT[mk2] = markerAssignments[mk2].targetId; });
-            pg.markerTargets = Object.keys(cleanMT).length ? cleanMT : null;
             g.markerTargets = cleanMT;
-            pg.members = g.members.map(function(p) {
-                return { id: p.id, name: pname(p), hcp: (p.exactHcp !== undefined ? p.exactHcp : p.hcp), gender: p.gender, tee: p.tee, fieldHcp: p.fieldHcp };
+            // Список игроков группы (профили) и маркеры — как у стартового листа
+            pg.players = g.members.map(function(p) {
+                return {
+                    id: p.id,
+                    name: pname(p) || '',
+                    lastName: p.lastName || '',
+                    firstName: p.firstName || '',
+                    middleName: p.middleName || '',
+                    gender: p.gender || 'men',
+                    tee: p.tee || 'wh',
+                    exactHcp: (p.exactHcp !== undefined && p.exactHcp !== null && p.exactHcp !== '') ? p.exactHcp : p.hcp,
+                    exactHcpRaw: (p.hcp === null || p.hcp === undefined || p.hcp === '') ? 0 : (parseFloat(p.hcp) || 0),
+                    fieldHcp: p.fieldHcp
+                };
             });
-            newProtoGroups.push(pg);
-            g.members.forEach(function(p) { groupsFlat.push({ id: p.id, gid: newIdx, rid: rid }); });
+            pg.markers = g.members.map(function(marker) {
+                var tid = cleanMT[marker.id];
+                if (!tid || !byId[tid]) return null;
+                return { markerId: marker.id, targetId: tid, targetName: pname(byId[tid]) };
+            }).filter(Boolean);
+            newProtoGroups['g' + (newIdx + 1)] = pg;
         });
 
         // удалённые/исчезнувшие старые раунды (группа стала пустой и не новая)
@@ -523,7 +648,9 @@
         var newProto = Object.assign({}, state.proto);
         newProto.players = protoPlayers;
         newProto.groups = newProtoGroups;
-        newProto.groupsFlat = groupsFlat;
+        newProto.groupsFlat = null; // устаревший формат — больше не пишем
+        newProto.groupsCount = Object.keys(newProtoGroups).length;
+        newProto.playersCount = state.groups.reduce(function(n, g2) { return n + g2.members.length; }, 0);
         newProto.editedAt = Date.now();
         sets['protocols/' + state.pid] = newProto;
         sets['tournaments/' + state.tnId + '/registeredPlayers'] = regPlayers;
@@ -550,6 +677,12 @@
     window.peSave = peSave;
     window.peAddGroup = peAddGroup;
     window.peDelGroup = peDelGroup;
+    // Внутренние точки для автотестов (tools/test-pe-edit.js)
+    window.peGroupList = peGroupList;
+    window.peBuildModel = buildModel;
+    window.peState = function() { return state; };
+    window.peTimeToInput = peTimeToInput;
+    window.peTsFromTime = peTsFromTime;
     // Инициализация — при открытии вкладки «Протокол» (switchTab в admin.js);
     // на всякий случай ещё раз после полной загрузки DOM (гард не даёт
     // подписаться дважды).

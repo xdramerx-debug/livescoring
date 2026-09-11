@@ -139,6 +139,37 @@ eq(sandbox.psGroupTitle(sandbox.psState.groups[2], 2), 'Группа 2А', 'all1
 eq(sandbox.psGroupTitle(sandbox.psState.groups[3], 3), 'Группа 2Б', 'all18 title: 2Б');
 sandbox.psState.groups.pop();
 
+// ── Шотган со всех 18 + группы ПО ГАНДИКАПУ: лунки режутся блоками ──
+// 1А и 1Б обе «низкие» HCP, 18А и 18Б обе «высокие» — а не «первая волна
+// 1..18 низкие, потом вторая волна 1..18 высокие». Лишние группы (когда
+// число групп не кратно 18) добавляются на ПЕРВЫЕ лунки — там играют
+// самые низкие гандикапы, поэтому пары на лунке получаются однородными.
+sandbox.psState.proto.scheme = 'all18';
+sandbox.psState.proto.method = 'hcpAsc';
+sandbox.psState.proto.interval = 10;
+sandbox.psState.proto.startTime = '09:00';
+sandbox.psState.editingId = null;
+base = new Date('2026-09-09T09:00:00').getTime();
+// 20 групп: по 2 группы на первых двух лунках (самые низкие HCP), дальше по 1.
+eq(sandbox.psGroupSchedule(0, 20), { startHole: 1, startTime: base }, 'all18 hcp: g0 (самый низкий) → 1А @ 09:00');
+eq(sandbox.psGroupSchedule(1, 20), { startHole: 1, startTime: base + 10 * 60000 }, 'all18 hcp: g1 → 1Б @ 09:10 (следующий низкий)');
+eq(sandbox.psGroupSchedule(2, 20), { startHole: 2, startTime: base }, 'all18 hcp: g2 → 2А @ 09:00');
+eq(sandbox.psGroupSchedule(3, 20), { startHole: 2, startTime: base + 10 * 60000 }, 'all18 hcp: g3 → 2Б @ 09:10');
+eq(sandbox.psGroupSchedule(4, 20), { startHole: 3, startTime: base }, 'all18 hcp: g4 → 3');
+eq(sandbox.psGroupSchedule(17, 20), { startHole: 16, startTime: base }, 'all18 hcp: g17 → 16');
+eq(sandbox.psGroupSchedule(18, 20), { startHole: 17, startTime: base }, 'all18 hcp: g18 → 17 (высокий)');
+eq(sandbox.psGroupSchedule(19, 20), { startHole: 18, startTime: base }, 'all18 hcp: g19 → 18 (самый высокий)');
+// 36 групп ровно: по 2 группы на каждой лунке, волны 0 и 1.
+eq(sandbox.psGroupSchedule(0, 36), { startHole: 1, startTime: base }, 'all18 hcp 36: g0 → 1А');
+eq(sandbox.psGroupSchedule(1, 36), { startHole: 1, startTime: base + 10 * 60000 }, 'all18 hcp 36: g1 → 1Б');
+eq(sandbox.psGroupSchedule(34, 36), { startHole: 18, startTime: base }, 'all18 hcp 36: g34 → 18А');
+eq(sandbox.psGroupSchedule(35, 36), { startHole: 18, startTime: base + 10 * 60000 }, 'all18 hcp 36: g35 → 18Б');
+// 19 групп: одна «лишняя» — на лунку 1 (вторая волна на первой лунке).
+eq(sandbox.psGroupSchedule(0, 19), { startHole: 1, startTime: base }, 'all18 hcp 19: g0 → 1А');
+eq(sandbox.psGroupSchedule(1, 19), { startHole: 1, startTime: base + 10 * 60000 }, 'all18 hcp 19: g1 → 1Б');
+eq(sandbox.psGroupSchedule(2, 19), { startHole: 2, startTime: base }, 'all18 hcp 19: g2 → 2');
+eq(sandbox.psGroupSchedule(18, 19), { startHole: 18, startTime: base }, 'all18 hcp 19: g18 → 18');
+
 // ── НОВЫЕ СХЕМЫ СТАРТА: только с 10-й и шотган с 1-й и 10-й ──
 sandbox.psState.proto.startTime = '09:00';
 sandbox.psState.proto.interval = 8;

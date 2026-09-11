@@ -113,5 +113,10 @@ var headUnnamed = sandbox.tnGroupHeadHtml({ div: { id: 'x', name: '', gender: 'w
 check(headUnnamed.indexOf('tn-group-badge') !== -1 && headUnnamed.indexOf('HCP 0.0–36.0') !== -1, 'group head: без названия — бейдж HCP');
 check(headUnnamed.indexOf('Девушки') !== -1, 'group head: без названия — бейдж пола');
 
+// ── v1.56.0: бейдж «гость» убран везде ──
+var guestLine = sandbox.tnRosterPlayerLine({ rp: { name: 'Иванов Иван', uid: 'guest_x1', guest: true, handicap: 12 }, pid: 'guest_x1', effHcp: 12 }, 0, 2, false);
+check(guestLine.indexOf('tn-guest-chip') === -1, 'roster: бейдж «гость» убран (нет tn-guest-chip)');
+check(guestLine.indexOf('гость') === -1 && guestLine.indexOf('guest') === -1, 'roster: текст «гость»/«guest» не выводится');
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nAll tournaments cut tests passed ✔');
 process.exit(failures ? 1 : 0);

@@ -710,18 +710,18 @@ function psRenderTournamentCard() {
     html += '</div>';
 
     // Форматы игры — можно выбрать НЕСКОЛЬКО (например Stableford + Gross).
+    // Настройка «ТИ по умолчанию» УДАЛЕНА (требование 1.60): ТИ определяется
+    // турниром («ти начала игры») и назначается по группам в блоке 3.
     var resolvedFmts = psResolvedFormats();
     html += '<div class="form-row">';
-    html += '<div class="form-group" style="flex:0 1 240px;"><label>' + psL('ТИ по умолчанию (для новых игроков)', 'Default tee (for new players)') + '</label>' +
-        '<select id="ps-tee" class="form-input"' + disabled + ' onchange="psField(\'tee\', this.value)">' + teesOptions + '</select></div>';
     html += '<div class="form-group" style="flex:1 1 320px;"><label>' +
         '<i class="fas fa-check-double"></i> ' + psL('Форматы игры (можно выбрать несколько)', 'Game formats (multiple allowed)') +
         (tournament ? ' <span style="color:var(--muted);font-weight:400;font-size:11px;">' + psL('— форматы турнира', '— tournament formats') + '</span>' : '') +
         '</label>' + psFormatChipsHtml(proto) +
         '<div style="font-size:11px;color:var(--muted);margin-top:6px;"><i class="fas fa-circle-info"></i> ' +
         psL('Результаты будут вестись по каждому выбранному формату. Сейчас: ', 'Results will be kept for every selected format. Currently: ') +
-        '<b style="color:var(--gold);">' + resolvedFmts.map(function(f) { return String(f).replace(/</g, '&lt;'); }).join(' + ') + '</b></div></div>';
-    html += '<div class="form-group" style="flex:0 1 250px;"><label>' + psL('Свой формат (добавится к выбранным)', 'Custom format (added to the selected ones)') + '</label>' +
+        '<b style="color:var(--gold);">' + resolvedFmts.map(function(f) { return String(f).replace(/</g, '&lt;'); }).join(' + ') + '</b></div></div>' +
+        '<div class="form-group" style="flex:0 1 250px;"><label>' + psL('Свой формат (добавится к выбранным)', 'Custom format (added to the selected ones)') + '</label>' +
         '<input type="text" id="ps-format-custom" class="form-input"' + disabled + ' placeholder="' + psL('например: Гросс, 2 из 4 лучших', 'e.g. Gross, best 2 of 4') + '" value="' + (proto.formatCustom || '').replace(/"/g, '&quot;') + '" onchange="psField(\'formatCustom\', this.value)"></div>';
     html += '</div>';
 
@@ -1107,6 +1107,7 @@ function psRenderProtoCard() {
 
     html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">';
     html += '<button class="btn btn-g btn-sm" onclick="psAddManualOpen()"><i class="fas fa-user-plus"></i> ' + psL('Добавить вручную', 'Add manually') + '</button>';
+    html += '<button class="btn btn-g btn-sm" onclick="psAddExistingToggle()"><i class="fas fa-address-book"></i> ' + psL('Добавить из существующих', 'Add existing player') + '</button>';
     html += '<button class="btn btn-g btn-sm" onclick="psLoadRegistered()"><i class="fas fa-download"></i> ' + psL('Загрузить из регистрации', 'Load registered players') + '</button>';
     html += '<label class="btn btn-og btn-sm" style="cursor:pointer;margin:0;"><i class="fas fa-file-excel"></i> ' + psL('Импорт Excel', 'Excel import') +
         '<input type="file" id="ps-excel-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="psExcelPick(this)"></label>';
@@ -1134,6 +1135,17 @@ function psRenderProtoCard() {
         '<button class="btn btn-ol btn-sm" onclick="psAddManualOpen(true)">' + psL('Отмена', 'Cancel') + '</button>' +
         '</div></div>';
 
+    // ── ПАНЕЛЬ «ДОБАВИТЬ ИЗ СУЩЕСТВУЮЩИХ»: поиск по ФИО и др. (#3) ──
+    html += '<div id="ps-existing-form" class="hidden" style="background:var(--input);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">';
+    html += '<h3 style="color:var(--gold);font-size:14px;margin:0 0 10px;"><i class="fas fa-address-book"></i> ' + psL('Игроки клуба', 'Club players') + '</h3>';
+    html += '<div class="form-row" style="align-items:flex-end;">';
+    html += '<div class="form-group" style="flex:1 1 220px;margin:0;"><label>' + psL('Поиск: ФИО, гандикап…', 'Search: name, handicap…') + '</label>' +
+        '<input type="text" id="ps-exist-q" class="form-input" oninput="psExistingSearchRender()" placeholder="' + psL('Иванов Пётр', 'Smith John') + '"></div>';
+    html += '</div>';
+    html += '<div id="ps-exist-results" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto;">' +
+        '<p style="color:var(--muted);font-size:12.5px;margin:0;">' + psL('Начните вводить фамилию или имя — совпадения появятся здесь.', 'Start typing a name — matches will appear here.') + '</p></div>';
+    html += '</div>';
+
     // Excel-превью
     html += '<div id="ps-excel-box"></div>';
 
@@ -1146,6 +1158,96 @@ function psRenderProtoCard() {
     html += psRenderDistributeCard(proto);
 
     return html;
+}
+
+// ── ДОБАВЛЕНИЕ СУЩЕСТВУЮЩЕГО ИГРОКА КЛУБА (#3) ──
+function psAddExistingToggle(cancel) {
+    var form = psEl('ps-existing-form');
+    if (!form) return;
+    if (cancel) { form.classList.add('hidden'); return; }
+    form.classList.toggle('hidden');
+    if (!form.classList.contains('hidden')) {
+        var q = psEl('ps-exist-q');
+        if (q) { q.focus(); psExistingSearchRender(); }
+    }
+}
+
+// Фильтр по ФИО/гандикапу: все слова запроса должны найтись в строке игрока.
+function psExistingMatchesQuery(u, query) {
+    var parts = psUserParts(u);
+    var hay = psNorm([parts.lastName, parts.firstName, parts.middleName].join(' ')) + ' ' +
+        psNorm(u.name || '') + ' ' + String(u.handicap == null ? '' : u.handicap);
+    hay = hay.toLowerCase();
+    var words = psNorm(query).split(' ').filter(function(w) { return w.length >= 1; });
+    for (var i = 0; i < words.length; i++) {
+        if (hay.indexOf(words[i]) === -1) return false;
+    }
+    return words.length > 0;
+}
+
+function psExistingSearchRender() {
+    var box = psEl('ps-exist-results');
+    if (!box) return;
+    var q = (psEl('ps-exist-q') || {}).value || '';
+    if (!psState.users) { box.innerHTML = '<p style="color:var(--muted);font-size:12.5px;margin:0;">' + psL('Загрузка игроков…', 'Loading players…') + '</p>'; psLoadUsers(function() { psExistingSearchRender(); }); return; }
+    if (!q.trim()) {
+        box.innerHTML = '<p style="color:var(--muted);font-size:12.5px;margin:0;">' + psL('Начните вводить фамилию или имя — совпадения появятся здесь.', 'Start typing a name — matches will appear here.') + '</p>';
+        return;
+    }
+    var matches = [];
+    Object.keys(psState.users).forEach(function(uid) {
+        var u = psState.users[uid] || {};
+        if (psExistingMatchesQuery(u, q)) matches.push({ uid: uid, u: u });
+    });
+    matches.sort(function(a, b) {
+        var pa = psUserParts(a.u), pb = psUserParts(b.u);
+        return String(pa.lastName || '').localeCompare(String(pb.lastName || ''));
+    });
+    if (!matches.length) {
+        box.innerHTML = '<p style="color:var(--muted);font-size:12.5px;margin:0;">' + psL('Никого не найдено. Добавьте игрока вручную.', 'No players found. Add one manually.') + '</p>';
+        return;
+    }
+    var inDraft = {};
+    (psState.proto ? psState.proto.players : []).forEach(function(p) { if (p.id) inDraft[p.id] = true; });
+    var html = '';
+    matches.slice(0, 30).forEach(function(m) {
+        var parts = psUserParts(m.u);
+        var fio = [parts.lastName, parts.firstName, parts.middleName].filter(function(w) { return String(w || '').trim(); }).join(' ');
+        var already = inDraft[m.uid];
+        html += '<div style="display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:9px;padding:8px 10px;">';
+        html += '<div style="flex:1;min-width:0;"><b style="color:var(--white);font-size:13px;">' + escapeHtml(fio || m.u.name || '—') + '</b>' +
+            '<span style="color:var(--muted);font-size:11px;margin-left:8px;">HCP: ' + (m.u.handicap != null ? escapeHtml(String(m.u.handicap)) : '—') +
+            (m.u.gender === 'women' ? ' · 👩' : ' · 👨') + '</span></div>';
+        html += already
+            ? '<span style="color:#2ecc71;font-size:11.5px;font-weight:700;"><i class="fas fa-check"></i> в списке</span>'
+            : '<button class="btn btn-g btn-sm" onclick="psAddExistingById(\'' + m.uid + '\')"><i class="fas fa-plus"></i> ' + psL('Добавить', 'Add') + '</button>';
+        html += '</div>';
+    });
+    box.innerHTML = html;
+}
+
+// Добавление существующего игрока в стартовый лист (черновик протокола)
+function psAddExistingById(uid) {
+    var u = (psState.users || {})[uid];
+    if (!u) return;
+    var parts = (typeof resolvePlayerNameParts === 'function') ? resolvePlayerNameParts(u) : psUserParts(u);
+    var tn = psGetSelTournament();
+    var tnTee = (tn && tn.tees && tn.tees.length) ? tn.tees[0] : ((psState.proto && psState.proto.tee) || 'wh');
+    var p = {
+        id: uid,
+        lastName: parts.lastName || '',
+        firstName: parts.firstName || '',
+        middleName: parts.middleName || '',
+        gender: u.gender || 'men',
+        hcp: (u.handicap === null || u.handicap === undefined || u.handicap === '') ? null : (parseFloat(u.handicap) || 0),
+        tee: u.defaultTee || tnTee,
+        source: 'existing'
+    };
+    if (psAddPlayerToDraft(p, 'existing')) {
+        toast(psL('✅ Добавлен: ' + psFullRus(p), '✅ Added: ' + psFullRus(p)), 'success');
+        psRender();
+        psExistingSearchRender();
+    }
 }
 
 function psAddManualOpen(cancel) {
@@ -1600,7 +1702,11 @@ function psLoadRegistered() {
                 // Нормализуем пол из записи/профиля ('f'/'жен'/'Женщина'…) —
                 // иначе неканоничное значение не совпало бы ни с одной группой.
                 p.gender = psNormalizeGender(r.gender) || psNormalizeGender(u.gender) || psGuessGender(p.lastName, p.firstName, p.middleName);
-                p.tee = r.tee || u.defaultTee || psDefaultTeeFor(p.gender, p.hcp);
+                // ТИ = ТИ начала игры (турнира); индивидуальный ТИ можно
+                // переопределить в группе. «ТИ по умолчанию игрока» больше не используется.
+                var tnForTee = psGetSelTournament();
+                var tnTee = (tnForTee && tnForTee.tees && tnForTee.tees.length) ? tnForTee.tees[0] : null;
+                p.tee = r.tee || tnTee || (psState.proto && psState.proto.tee) || psDefaultTeeFor(p.gender, p.hcp);
                 if (!p.lastName && !p.firstName) return;
                 items.push({ uid: uid, r: r, p: p });
             });
@@ -2920,11 +3026,21 @@ function psDistPreview() {
         if (psState.editingId) psExitEditModeSoft();
     }
     var groups = psBuildGroups();
+    // ТИ группы = ТИ начала игры (турнира). Умное распределение назначает
+    // ТИ по группе: у всех участников группы один и тот же ТИ (#1.60).
+    var tournamentTee = (function() {
+        var tn = psGetSelTournament();
+        if (tn && tn.tees && tn.tees.length) return tn.tees[0];
+        return (psState.proto && psState.proto.tee) || 'wh';
+    })();
     psState.groups = groups.map(function(members, i) {
         var sch = psGroupSchedule(i, groups.length);
-        return { members: members, startHole: sch.startHole, startTime: sch.startTime, format: '', markerTargets: {} };
+        members.forEach(function(p) { p.tee = tournamentTee; });
+        return { members: members, startHole: sch.startHole, startTime: sch.startTime, format: '', tee: tournamentTee, markerTargets: {} };
     });
     psSortGroupsShotgun(psState.groups, psState.proto && psState.proto.scheme);
+    // Раскладка после построения — в СВЁРНУТОМ виде (кнопка «Развернуть раскладку»)
+    psState.groupsExpanded = false;
     psRender();
     psScrollToGroups();
 }
@@ -3025,6 +3141,20 @@ function psPlayerHasScores(g, pid) {
     return has;
 }
 
+// Раскладка показывается СВЁРНУТОЙ (#2): после «Показать раскладку» видна
+// компактная сводка (группы/игроки), полный список раскрывается кнопкой.
+var psGroupsSearchQ = '';
+
+function psGroupsSearchRender() {
+    try { psRender(); } catch (e) {}
+}
+
+function psToggleGroupsExpand(force) {
+    psState.groupsExpanded = (force === undefined) ? !psState.groupsExpanded : !!force;
+    psRender();
+    if (psState.groupsExpanded) psScrollToGroups();
+}
+
 function psRenderGroupsResult() {
     if (!psState.groups || !psState.groups.length) {
         return '';
@@ -3034,8 +3164,40 @@ function psRenderGroupsResult() {
     psState.groups.forEach(function(g) { totalPlayersInGroups += g.members.length; });
 
     var html = '<div style="margin-top:10px;border-top:1px dashed var(--border);padding-top:12px;">';
-    html += '<h3 style="color:var(--gold);font-size:14px;margin:0 0 10px;"><i class="fas fa-list-check"></i> ' + psL('Раскладка', 'Distribution') + ': ' +
+    html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;">';
+    html += '<h3 style="color:var(--gold);font-size:14px;margin:0;"><i class="fas fa-list-check"></i> ' + psL('Раскладка', 'Distribution') + ': ' +
         psState.groups.length + ' ' + psL('групп', 'groups') + ' · ' + totalPlayersInGroups + ' ' + psL('игроков', 'players') + '</h3>';
+    html += '<button class="btn btn-og btn-sm" style="margin-left:auto;" onclick="psToggleGroupsExpand()">' +
+        '<i class="fas ' + (psState.groupsExpanded ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i> ' +
+        (psState.groupsExpanded ? psL('Свернуть раскладку', 'Collapse') : psL('Развернуть раскладку', 'Expand')) + '</button>';
+    html += '</div>';
+
+    // Поиск по ФИО для быстрой правки в раскладке (#13): группа с игроком
+    // подсвечивается, чужие игроки приглушаются.
+    if (psState.groupsExpanded) {
+        html += '<div class="form-row" style="align-items:flex-end;margin:0 0 10px;">';
+        html += '<div class="form-group" style="flex:1 1 240px;margin:0;"><label>' + psL('Быстрый поиск игрока в группах', 'Quick player search in groups') + '</label>' +
+            '<input type="text" class="form-input" value="' + String(psGroupsSearchQ || '').replace(/"/g, '&quot;') + '" oninput="psGroupsSearchQ=this.value;psGroupsSearchRender()" placeholder="' + psL('Фамилия или имя…', 'Last or first name…') + '"></div>';
+        html += '</div>';
+    }
+
+    // Свёрнутый режим: только сводка состава по группам
+    if (!psState.groupsExpanded) {
+        html += '<div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);">';
+        psState.groups.forEach(function(g, gi) {
+            var names = (g.members || []).map(function(p) { return escapeHtml(psFullRus(p)); }).join(', ');
+            var meta = [];
+            if (g.startTime) meta.push((typeof fmtTime === 'function') ? fmtTime(g.startTime) : '');
+            meta.push(psL('л.' + (g.startHole || 1), 'h.' + (g.startHole || 1)));
+            if (g.tee) meta.push(psTeeName(g.tee));
+            html += '<div>• <b style="color:var(--white);">' + psGroupTitle(g, gi) + '</b> <span style="opacity:.7;">(' + meta.join(' · ') + ')</span>' +
+                (names ? ' — ' + names : '') + '</div>';
+        });
+        html += '</div>';
+        html += psRenderStartHierarchyHtml();
+        html += '</div>';
+        return html;
+    }
 
     if (psState.editingId) {
         html += '<div style="background:rgba(90,173,224,0.1);border:1px solid rgba(90,173,224,0.5);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--white);margin-bottom:12px;">' +
@@ -3066,6 +3228,8 @@ function psRenderGroupsResult() {
             '<select class="form-input" style="width:70px;padding:5px 7px;font-size:12.5px;" onchange="psGHole(' + gi + ', this.value)">' +
             (function() { var o = ''; for (var h = 1; h <= 18; h++) o += '<option value="' + h + '"' + (parseInt(g.startHole || 1, 10) === h ? ' selected' : '') + '>' + h + '</option>'; return o; })() +
             '</select></div>';
+        html += '<div style="flex:0 0 auto;"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px;">' + psL('ТИ группы', 'Group tee') + '</label>' +
+            '<select class="form-input" style="width:auto;padding:5px 7px;font-size:12.5px;" onchange="psGTeeGroup(' + gi + ', this.value)" title="' + psL('ТИ группы — применяется ко всем игрокам группы', 'Group tee — applied to every player in the group') + '">' + psTeeOptionsHtml(g.tee || (g.members[0] && g.members[0].tee) || 'wh') + '</select></div>';
         html += '<div style="flex:1 1 150px;"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px;">' + psL('Формат группы', 'Group format') + '</label>' +
             '<select class="form-input" style="padding:5px 7px;font-size:12.5px;" onchange="psGFormat(' + gi + ', this.value)">' + psGroupFormatOptions(g) + '</select></div>';
         html += '</div>';
@@ -3077,9 +3241,16 @@ function psRenderGroupsResult() {
         var resolvedMarkers = psGroupMarkersResolved(g);
         var markerOf = {};
         resolvedMarkers.forEach(function(m) { markerOf[m.markerId] = m.targetId; });
+        var sq = psNorm(psGroupsSearchQ || '');
+        var groupHasHit = false;
         g.members.forEach(function(p, mi) {
             var hasScores = psPlayerHasScores(g, p.id);
-            html += '<div style="padding:8px 10px;background:var(--input);border-radius:8px;margin-bottom:6px;border-left:3px solid ' + (mi === 0 ? 'var(--gold)' : 'var(--border)') + ';">';
+            var isHit = !!(sq && psNorm(psFullRus(p)).indexOf(sq) !== -1);
+            if (isHit) groupHasHit = true;
+            // Поиск: несовпадающих игроков приглушаем, совпадение подсвечиваем
+            var dimStyle = (sq && !isHit) ? 'opacity:.3;' : '';
+            var hitStyle = isHit ? 'border-left:3px solid #f3b23c;background:rgba(243,156,18,.09);' : '';
+            html += '<div style="padding:8px 10px;background:var(--input);border-radius:8px;margin-bottom:6px;border-left:3px solid ' + (isHit ? '#f3b23c' : (mi === 0 ? 'var(--gold)' : 'var(--border)')) + ';' + dimStyle + hitStyle + '">';
             html += '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;">';
             html += '<b style="font-size:13px;color:var(--white);">' + escapeHtml(psFullRus(p)) + '</b>' + psCutHintHtml(p) + ' ' + psDivisionChipHtml(p) +
                 (hasScores ? ' <span class="hcp-chip" style="background:rgba(90,173,224,.15);color:var(--blue);font-size:10px;" title="' + psL('В раунде уже есть введённый счёт этого игрока', 'This player already has scores in the round') + '"><i class="fas fa-flag-checkered"></i> ' + psL('есть счёт', 'has scores') + '</span>' : '');
@@ -3210,6 +3381,19 @@ function psGFormat(gi, val) {
     psRender();
 }
 
+// ТИ ГРУППЫ: меняет ТИ сразу у всех игроков группы (#1.60 — ТИ зависят
+// от того, в какой группе игрок). Отдельный ТИ у конкретного игрока
+// можно после этого переопределить точечно (выбор у игрока).
+function psGTeeGroup(gi, val) {
+    var g = psState.groups[gi];
+    if (!g || !val) return;
+    g.tee = val;
+    (g.members || []).forEach(function(p) { p.tee = val; });
+    g.dirty = true;
+    psRender();
+    toast(psL('🎯 ТИ группы изменён для всех её игроков: ' + psTeeName(val), '🎯 Group tee changed for all its players: ' + psTeeName(val)), 'success');
+}
+
 function psGTee(gi, mi, val) {
     var g = psState.groups[gi];
     var p = g && g.members[mi];
@@ -3294,7 +3478,9 @@ function psGMove(gi, mi, target) {
     if (g.markerTargets) delete g.markerTargets[p.id];
     if (target === 'new') {
         var sch = psNewGroupSchedule(psState.groups);
-        psState.groups.push({ members: [p], startHole: sch.startHole, startTime: sch.startTime, format: '', markerTargets: {}, dirty: true });
+        var tnTeeNew = (function() { var tn = psGetSelTournament(); return (tn && tn.tees && tn.tees.length) ? tn.tees[0] : ((psState.proto && psState.proto.tee) || 'wh'); })();
+        p.tee = tnTeeNew;
+        psState.groups.push({ members: [p], startHole: sch.startHole, startTime: sch.startTime, format: '', tee: tnTeeNew, markerTargets: {}, dirty: true });
     } else {
         var tIdx = parseInt(target, 10);
         var tg = psState.groups[tIdx];
@@ -3305,6 +3491,8 @@ function psGMove(gi, mi, target) {
             psRender();
             return;
         }
+        // ТИ зависит от группы: в новой группе игрок получает её ТИ
+        if (tg.tee) p.tee = tg.tee;
         tg.members.push(p);
         tg.dirty = true;
     }
@@ -3402,7 +3590,10 @@ function psGAddPlayer(gi) {
     }
     var p = psNewPlayer();
     p.lastName = parsed.lastName; p.firstName = parsed.firstName; p.middleName = parsed.middleName || '';
-    p.hcp = hcp; p.gender = gender; p.tee = tee;
+    p.hcp = hcp; p.gender = gender;
+    // ТИ игрока = ТИ его группы (настройка «ТИ по умолчанию» удалена в 1.60)
+    var gTeeAdd = (g && g.tee) ? g.tee : null;
+    p.tee = gTeeAdd || tee;
     p.source = psState.editingId ? 'edit' : 'manual';
     p.id = 'gst_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
 
@@ -3467,7 +3658,9 @@ function psRosterToGroup(idx, target) {
     proto.players.splice(idx, 1);
     if (target === 'new') {
         var sch = psNewGroupSchedule(psState.groups);
-        psState.groups.push({ members: [p], startHole: sch.startHole, startTime: sch.startTime, format: '', markerTargets: {}, dirty: true });
+        var tnTeeR = (function() { var tn = psGetSelTournament(); return (tn && tn.tees && tn.tees.length) ? tn.tees[0] : ((psState.proto && psState.proto.tee) || 'wh'); })();
+        p.tee = tnTeeR;
+        psState.groups.push({ members: [p], startHole: sch.startHole, startTime: sch.startTime, format: '', tee: tnTeeR, markerTargets: {}, dirty: true });
     } else {
         var tIdx = parseInt(target, 10);
         var tg = psState.groups[tIdx];
@@ -3477,6 +3670,8 @@ function psRosterToGroup(idx, target) {
             psRender();
             return;
         }
+        // ТИ зависит от группы: новый игрок получает ТИ этой группы
+        if (tg.tee) p.tee = tg.tee;
         tg.members.push(p);
         tg.dirty = true;
     }
@@ -3616,7 +3811,7 @@ function psSaveProtocol() {
 
         var roundData = {
             mode: 'group',
-            tee: g.members[0].tee || 'wh',
+            tee: g.tee || (g.members[0] && g.members[0].tee) || 'wh',
             format: groupFormat,
             formats: groupFormats,
             startHole: g.startHole || 1,
@@ -3876,8 +4071,12 @@ function psEditProtocol(pid) {
             ring.forEach(function(m) { ringMap[m.marker.id] = m.target.id; });
             Object.keys(mt).forEach(function(k) { if (ringMap[k] !== mt[k]) diffCnt++; });
             if (diffCnt > 0) autoRing = false;
+            // ТИ группы сохранён в протоколе — при правке он не сбрасывается
+            var gTeeSaved = gd.tee || (members[0] && members[0].tee) || proto.tee || 'wh';
+            members.forEach(function(mp) { if (!mp.tee) mp.tee = gTeeSaved; });
             groups.push({
                 members: members,
+                tee: gTeeSaved,
                 startHole: parseInt(gd.startHole || 1, 10) || 1,
                 startTime: gd.startTime || psStartBaseTs(proto),
                 // Сохранённая иерархия (волна/буква) — чтобы при правке буквы
@@ -3893,6 +4092,8 @@ function psEditProtocol(pid) {
         });
         psState.groups = groups;
         psSortGroupsShotgun(psState.groups, proto.scheme);
+        // При правке сохранённого протокола раскладка сразу развёрнута
+        psState.groupsExpanded = true;
         psState.editRounds = {};
         psPrefillEditRoster(); // всех заявленных, кого нет в группах, — в стартовый лист
         psRender();
@@ -4026,7 +4227,7 @@ function psSaveEdits() {
         }
         var roundData = {
             mode: 'group',
-            tee: g.members[0].tee || 'wh',
+            tee: g.tee || (g.members[0] && g.members[0].tee) || 'wh',
             format: groupFormat,
             formats: groupFormats,
             startHole: g.startHole || 1,
@@ -4161,7 +4362,7 @@ function psSaveEdits() {
                 sets['rounds/' + rid + '/participantsList'] = participants;
                 sets['rounds/' + rid + '/format'] = groupFormat;
                 sets['rounds/' + rid + '/formats'] = groupFormats;
-                sets['rounds/' + rid + '/tee'] = (g.members[0] && g.members[0].tee) || 'wh';
+                sets['rounds/' + rid + '/tee'] = g.tee || (g.members[0] && g.members[0].tee) || 'wh';
                 sets['rounds/' + rid + '/startHole'] = g.startHole || 1;
                 sets['rounds/' + rid + '/startTime'] = g.startTime;
                 sets['rounds/' + rid + '/groupNo'] = giNum;
@@ -4269,10 +4470,43 @@ function psBindSavedList() {
         return;
     }
     psSavedBound = true;
-    db.ref('protocols').orderByChild('createdAt').on('value', function(sn) {
+    db.ref('protocols').on('value', function(sn) {
         psSavedCache = sn.val() || {};
         psRenderSavedListContent(psSavedCache);
+    }, function(err) {
+        console.warn('[start] protocols listener error', err);
+        try {
+            db.ref('protocols').once('value').then(function(sn2) {
+                psSavedCache = sn2.val() || {};
+                psRenderSavedListContent(psSavedCache);
+            }).catch(function() {});
+        } catch (e2) {}
     });
+}
+
+// Поиск по сохранённым протоколам: ФИО игрока или название протокола (#13).
+// Находит игрока в группах протокола и подсказывает, где он играет.
+function psProtocolPlayerGroups(doc, query) {
+    var q = psNorm(query);
+    if (!q) return null;
+    var hits = [];
+    var groups = (doc && doc.groups) || {};
+    Object.keys(groups).forEach(function(gk) {
+        var gd = groups[gk] || {};
+        (gd.players || []).forEach(function(pl) {
+            var fio = [pl.lastName, pl.firstName, pl.middleName].filter(function(w) { return String(w || '').trim(); }).join(' ') || (pl.name || '');
+            if (psNorm(fio).indexOf(q) !== -1) {
+                hits.push({ groupKey: gk, groupId: parseInt(String(gk).replace('g', ''), 10) || 0, player: fio, startTime: gd.startTime, startHole: gd.startHole });
+            }
+        });
+    });
+    return hits;
+}
+
+var psSavedSearchQ = '';
+
+function psSavedSearchRender() {
+    try { psRenderSavedListContent(psSavedCache || {}); } catch (e) {}
 }
 
 function psRenderSavedListContent(data) {
@@ -4282,6 +4516,23 @@ function psRenderSavedListContent(data) {
     entries.sort(function(a, b) { return (b.d.createdAt || 0) - (a.d.createdAt || 0); });
 
     var html = '';
+    // ── Строка поиска по протоколам и игрокам (#13) ──
+    html += '<div class="form-row" style="align-items:flex-end;margin-bottom:12px;">';
+    html += '<div class="form-group" style="flex:1 1 240px;margin:0;"><label>' + psL('Поиск: игрок или протокол', 'Search: player or protocol') + '</label>' +
+        '<input type="text" id="ps-saved-q" class="form-input" value="' + String(psSavedSearchQ || '').replace(/"/g, '&quot;') + '" oninput="psSavedSearchQ=this.value;psSavedSearchRender()" placeholder="' + psL('Иванов или «Чемпионат»', 'Smith or “Championship”') + '"></div>';
+    html += '</div>';
+
+    // Фильтрация: по названию протокола ИЛИ по ФИО игрока в группах
+    var q = psNorm(psSavedSearchQ || '');
+    if (q) {
+        entries = entries.filter(function(e) {
+            var d = e.d;
+            if (psNorm(d.name || '').indexOf(q) !== -1) return true;
+            if (psNorm(d.tournamentName || '').indexOf(q) !== -1) return true;
+            return (psProtocolPlayerGroups(d, psSavedSearchQ) || []).length > 0;
+        });
+    }
+
     if (psState.savedId) {
         html += '<div style="background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.45);border-radius:10px;padding:14px;margin-bottom:16px;">';
         var savedProto = null;
@@ -4292,7 +4543,6 @@ function psRenderSavedListContent(data) {
         }
         html += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
         html += '<button class="btn btn-g" onclick="window.open(\'qr-start.html?p=' + psState.savedId + '\',\'_blank\')"><i class="fas fa-print"></i> ' + psL('Открыть QR-листы для печати', 'Open printable QR cards') + '</button>';
-        html += '<button class="btn btn-og" onclick="psEditProtocol(\'' + psState.savedId + '\')"><i class="fas fa-pen-to-square"></i> ' + psL('Изменить состав / маркеров', 'Edit players / markers') + '</button>';
         html += '</div>';
         html += '<p style="font-size:11px;color:var(--muted);margin:10px 0 0;">' + psL('У каждого игрока один QR: в группе из 2+ человек он открывает общую карточку (свой счёт и счёт маркируемого партнёра), одиночный игрок — личную карточку. Правки протокола не меняют QR-коды.', 'Each player has a single QR: in a group of 2+ it opens the shared scorecard (own score and the marked partner’s score), a solo player gets their personal card. Protocol edits never change QR codes.') + '</p>';
         // Статус раундов: до старта турнира они «запланированные» — игроки видят
@@ -4323,9 +4573,16 @@ function psRenderSavedListContent(data) {
     entries.forEach(function(e) {
         var d = e.d;
         var groupRows = d.groups ? Object.keys(d.groups) : [];
+        var isOpen = psState.savedOpen === e.id;
+        // Подсветка групп, где найден искомый игрок (#13)
+        var hitGroups = q ? (psProtocolPlayerGroups(d, psSavedSearchQ) || []) : [];
+        var hitMap = {};
+        hitGroups.forEach(function(hg) { hitMap[hg.groupKey] = hg.player; });
+
         html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:10px;align-items:center;">';
-        html += '<div style="flex:1;min-width:220px;">';
-        html += '<b style="color:var(--white);">' + escapeHtml(d.name || '—') + '</b>';
+        html += '<div style="flex:1;min-width:220px;cursor:pointer;" onclick="psSavedToggle(\'' + e.id + '\')">';
+        html += '<b style="color:var(--white);">' + escapeHtml(d.name || '—') + '</b>' +
+            ' <i class="fas fa-chevron-' + (isOpen ? 'up' : 'down') + '" style="color:var(--gold);font-size:12px;margin-left:6px;"></i>';
         html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">';
         html += fmtDate(d.createdAt) + ' · ' + psL('групп', 'groups') + ': ' + (d.groupsCount || groupRows.length) + ' · ' + psL('игроков', 'players') + ': ' + (d.playersCount || 0);
         if (d.tournamentName) html += ' · 🏆 ' + escapeHtml(d.tournamentName);
@@ -4337,10 +4594,56 @@ function psRenderSavedListContent(data) {
         html += '<button class="btn btn-og btn-sm" onclick="psEditProtocol(\'' + e.id + '\')" title="' + psL('Править группы, игроков и маркеров — QR-коды не изменятся', 'Edit groups, players and markers — QR codes stay the same') + '"><i class="fas fa-pen-to-square"></i> ' + psL('Изменить', 'Edit') + '</button>';
         html += '<button class="btn btn-og btn-sm" onclick="psCopyProtocolLink(\'' + e.id + '\')"><i class="fas fa-link"></i> ' + psL('Ссылка', 'Link') + '</button>';
         html += '<button class="btn btn-r btn-sm" onclick="psDeleteProtocol(\'' + e.id + '\')"><i class="fas fa-trash"></i> ' + psL('Удалить', 'Delete') + '</button>';
-        html += '</div></div>';
+        html += '</div>';
+
+        // ── Развёрнутый состав: группы → игроки (быстрая правка маркера/ТИ) ──
+        if (isOpen) {
+            html += '<div style="flex:1 1 100%;border-top:1px dashed var(--border);padding-top:10px;margin-top:4px;">';
+            var gKeys = groupRows.slice().sort(function(a, b) {
+                return (parseInt(String(a).replace('g', ''), 10) || 0) - (parseInt(String(b).replace('g', ''), 10) || 0);
+            });
+            if (!gKeys.length) {
+                html += '<p style="color:var(--muted);font-size:12px;margin:0;">' + psL('В протоколе нет групп.', 'No groups in this protocol.') + '</p>';
+            }
+            gKeys.forEach(function(gk) {
+                var gd = d.groups[gk] || {};
+                var pls = (gd.players || []);
+                var gLabel = psL('Группа', 'Group') + ' ' + (parseInt(String(gk).replace('g', ''), 10) || 0);
+                var meta = [];
+                if (gd.startTime) meta.push(fmtTime(gd.startTime));
+                if (gd.startHole) meta.push(psL('лунка ' + gd.startHole, 'hole ' + gd.startHole));
+                if (gd.format) meta.push(String(gd.format));
+                html += '<div style="margin-bottom:8px;">';
+                html += '<div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:4px;"><i class="fas fa-flag"></i> ' + escapeHtml(gLabel) +
+                    ' ' + (gd.roundId ? '' : '<span style="color:var(--muted);font-weight:400;">(' + psL('без раунда', 'no round') + ')</span>') +
+                    (meta.length ? ' <span style="color:var(--muted);font-weight:400;">· ' + escapeHtml(meta.join(' · ')) + '</span>' : '') +
+                    (hitMap[gk] ? ' <span class="hcp-chip" style="background:rgba(243,156,18,.15);color:#f3b23c;font-size:10px;">🔍 ' + escapeHtml(hitMap[gk]) + '</span>' : '') +
+                    '</div>';
+                html += '<div style="display:flex;flex-wrap:wrap;gap:5px;">';
+                pls.forEach(function(pl) {
+                    var fio = [pl.lastName, pl.firstName, pl.middleName].filter(function(w) { return String(w || '').trim(); }).join(' ') || (pl.name || '');
+                    var teeMark = { bk: '⬛', bl: '🟦', wh: '⬜', rd: '🟥' }[pl.tee] || '';
+                    html += '<span style="font-size:11.5px;background:var(--input);border:1px solid var(--border);border-radius:8px;padding:3px 8px;color:var(--white);">' +
+                        teeMark + ' ' + escapeHtml(fio) +
+                        (pl.exactHcp != null ? ' <span style="color:var(--muted);">HCP ' + escapeHtml(String(pl.exactHcp)) + '</span>' : '') +
+                        '</span>';
+                });
+                html += '</div></div>';
+            });
+            html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">';
+            html += '<button class="btn btn-og btn-sm" onclick="psEditProtocol(\'' + e.id + '\')"><i class="fas fa-pen-to-square"></i> ' + psL('Редактировать состав / маркеров / ТИ / формат', 'Edit players / markers / tees / format') + '</button>';
+            html += '</div>';
+            html += '</div>';
+        }
+        html += '</div>';
     });
     html += '</div>';
     box.innerHTML = html;
+}
+
+function psSavedToggle(pid) {
+    psState.savedOpen = (psState.savedOpen === pid) ? null : pid;
+    psSavedSearchRender();
 }
 
 function psCopyProtocolLink(pid) {

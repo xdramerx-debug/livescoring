@@ -103,9 +103,9 @@ sandbox.psState.proto.interval = 10;
 eq(sandbox.psGroupSchedule(0, 20), { startHole: 1, startTime: base }, 'all18 g0 → 1 @ 09:00');
 eq(sandbox.psGroupSchedule(1, 20), { startHole: 2, startTime: base }, 'all18 g1 → 2 @ 09:00 (то же время)');
 eq(sandbox.psGroupSchedule(17, 20), { startHole: 18, startTime: base }, 'all18 g17 → 18 @ 09:00');
-eq(sandbox.psGroupSchedule(18, 20), { startHole: 1, startTime: base + 10 * 60000 }, 'all18 g18 → 1 @ 09:10 (вторая группа на лунке)');
-eq(sandbox.psGroupSchedule(19, 20), { startHole: 2, startTime: base + 10 * 60000 }, 'all18 g19 → 2 @ 09:10');
-eq(sandbox.psNewGroupSchedule(new Array(18)), { startHole: 1, startTime: base + 10 * 60000 }, 'all18 новая 19-я группа → лунка 1 + интервал');
+eq(sandbox.psGroupSchedule(18, 20), { startHole: 3, startTime: base + 10 * 60000 }, 'all18 g18 → 3 @ 09:10 (переполнение: par5 первой волной)');
+eq(sandbox.psGroupSchedule(19, 20), { startHole: 9, startTime: base + 10 * 60000 }, 'all18 g19 → 9 @ 09:10 (переполнение)');
+eq(sandbox.psNewGroupSchedule(new Array(18)), { startHole: 3, startTime: base + 10 * 60000 }, 'all18 новая 19-я группа → лунка 3 (переполнение) + интервал');
 
 // Смена интервала в админке НЕ сбрасывает группы (в т.ч. при правке протокола)
 // и двигает только вторую группу на той же лунке.

@@ -460,18 +460,32 @@ function startGroup() {
         var players = {};
         var pOrder = [];
         var seenIds = {};
+        var seenNames = {};
 
         for (var j = 0; j < inputs.length; j++) {
             var inp = inputs[j];
             var pid = resolvedIds[j] || ('guest_' + Date.now() + '_' + inp.idx);
             // Два разных поля с одним игроком (одинаковое имя без выбора из списка)
-            // после разрешения дают одинаковый id — не допускаем дубль в раунде
+            // после разрешения дают одинаковый id — это настоящий дубль.
+            // Если же имена РАЗНЫЕ, а id совпал (записи случайно слиплись по
+            // похожему ФИО), не блокируем старт — выдаём второму игроку
+            // уникальный гостевой id, иначе группа не создавалась вовсе.
             if (seenIds[pid]) {
-                toast((currentLang === 'en' ? 'Duplicate player in group: ' : 'Дублирующий игрок в группе: ') + inp.name, 'error');
-                groupStarting = false;
-                return;
+                var normName = (typeof normalizeSearchText === 'function')
+                    ? normalizeSearchText(inp.name)
+                    : String(inp.name || '').toLowerCase().trim();
+                if (!normName || seenNames[pid] === normName) {
+                    toast((currentLang === 'en' ? 'Duplicate player in group: ' : 'Дублирующий игрок в группе: ') + inp.name, 'error');
+                    groupStarting = false;
+                    return;
+                }
+                pid = 'guest_' + Date.now() + '_' + inp.idx + '_' + Math.random().toString(36).slice(2, 7);
+                while (seenIds[pid]) pid += 'x';
             }
             seenIds[pid] = true;
+            seenNames[pid] = (typeof normalizeSearchText === 'function')
+                ? normalizeSearchText(inp.name)
+                : String(inp.name || '').toLowerCase().trim();
 
             players[pid] = {
                 name: inp.name,
@@ -1832,15 +1846,6 @@ function showGroupSkippedHolesWarning() {
 
 function finishGroupRound() {
     if (!canEditGroup) return;
-    // Чужое устройство по ссылке «Продолжить по ФИО»: завершить раунд может
-    // только владелец (проверка телефона/ФИО), но не тот, кто ввёл чужое имя.
-    if (typeof pestovoIsFioResume === 'function' && pestovoIsFioResume(curRoundData, curRid, myUid) &&
-        !(typeof pestovoFioVerified === 'function' && pestovoFioVerified(curRid, myUid))) {
-        if (typeof pestovoVerifyRoundOwner === 'function') {
-            pestovoVerifyRoundOwner(curRoundData, curRid, myUid, function(ok) { if (ok) finishGroupRound(); });
-            return;
-        }
-    }
     // Защита от повторного завершения (двойной клик): иначе история и roundsPlayed задваивались
     if (groupFinishing) return;
     // Уже сдал карточку в этом раунде — повторно не завершаем.
@@ -1851,6 +1856,9 @@ function finishGroupRound() {
     // Показываем ПОСТОЯННОЕ предупреждение списком проблемных лунок — оно
     // гаснет само, когда всё исправлено. На эти лунки игрока НЕ перебрасываем:
     // счёт там подтверждает маркер, а не он.
+    // ВАЖНО: эта проверка идёт ДО проверки владельца — иначе гость, открывший
+    // раунд по ссылке (?as=), вместо списка неподтверждённых лунок получал
+    // модалку «подтвердите, что это ваш раунд» и не понимал, что делать.
     var verification = (typeof collectPlayerVerification === 'function')
         ? collectPlayerVerification(curRoundData, myUid)
         : collectRoundVerification(curRoundData, myUid);
@@ -1864,6 +1872,17 @@ function finishGroupRound() {
     if (finishBlockShown) {
         finishBlockShown = false;
         renderFinishBlockNotice(verification);
+    }
+
+    // Чужое устройство по ссылке «Продолжить по ФИО»: завершить раунд может
+    // только владелец (проверка телефона/ФИО), но не тот, кто ввёл чужое имя.
+    // Проверяется ПОСЛЕ неподтверждённых лунок — см. комментарий выше.
+    if (typeof pestovoIsFioResume === 'function' && pestovoIsFioResume(curRoundData, curRid, myUid) &&
+        !(typeof pestovoFioVerified === 'function' && pestovoFioVerified(curRid, myUid))) {
+        if (typeof pestovoVerifyRoundOwner === 'function') {
+            pestovoVerifyRoundOwner(curRoundData, curRid, myUid, function(ok) { if (ok) finishGroupRound(); });
+            return;
+        }
     }
 
     // Компактное уведомление о незаполненных/неподтверждённых лунках

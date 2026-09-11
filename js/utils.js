@@ -1834,14 +1834,20 @@ function pestovoFioTokens(str) {
     return n.split(' ').filter(function(w) { return w.length >= 2; });
 }
 
-// Совпадение ФИО: все токены поиска должны быть подстрокой имени игрока.
-// Пример: поиск "Иван Петров" найдёт "Иван Петрович Петров".
+// Совпадение ФИО: все токены поиска должны присутствовать в имени игрока
+// КАК ОТДЕЛЬНЫЕ СЛОВА (с точностью до «ё»→«е»). Пример: поиск «Иван Петров»
+// найдёт «Иван Петрович Петров», но НЕ найдёт «Иван Петровский» — раньше
+// подстрочное совпадение («петров» ⊂ «петровский») ложно блокировало старт
+// нового раунда из-за чужой активной сессии.
 function pestovoFioTokensMatch(playerName, searchFio) {
     var pNorm = pestovoNormalizeFio(playerName);
     var searchTokens = pestovoFioTokens(searchFio);
     if (!pNorm || !searchTokens.length) return false;
+    var playerWords = pNorm.split(' ').filter(Boolean);
     for (var i = 0; i < searchTokens.length; i++) {
-        if (pNorm.indexOf(searchTokens[i]) === -1) return false;
+        var tok = searchTokens[i];
+        var found = playerWords.some(function(w) { return w === tok; });
+        if (!found) return false;
     }
     return true;
 }
@@ -1955,11 +1961,30 @@ function pestovoShowFioConflictModal(conflicts, onContinueAnyway) {
         pestovoRenderFioResumeListHtml(conflicts) +
         '<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">' +
         '<button class="btn btn-ol btn-sm" onclick="document.getElementById(\'' + overlayId + '\').remove()"><i class="fas fa-xmark"></i> ' + (currentLang === 'en' ? 'Cancel' : 'Отмена') + '</button>' +
-        (onContinueAnyway ? '<button class="btn btn-r btn-sm" onclick="document.getElementById(\'' + overlayId + '\').remove(); (' + onContinueAnyway + ')()"><i class="fas fa-forward"></i> ' + (currentLang === 'en' ? 'Start anyway (admin)' : 'Начать всё равно') + '</button>' : '') +
+        (onContinueAnyway ? '<button class="btn btn-r btn-sm" id="fio-conflict-continue"><i class="fas fa-forward"></i> ' + (currentLang === 'en' ? 'Start anyway (admin)' : 'Начать всё равно') + '</button>' : '') +
         '</div></div></div>';
     var div = document.createElement('div');
     div.innerHTML = html;
     document.body.appendChild(div.firstChild);
+    // Колбэк «Начать всё равно» вешаем слушателем, а не сериализуем в
+    // inline-onclick: там он терял замыкание (proceedWithGroupStart /
+    // proceedToCreate — локальные функции), и кнопка молча не работала —
+    // игрок не мог ни создать раунд, ни закрыть чужую зависшую сессию.
+    var continueBtn = document.getElementById('fio-conflict-continue');
+    if (continueBtn && onContinueAnyway) {
+        continueBtn.addEventListener('click', function() {
+            var overlay = document.getElementById(overlayId);
+            if (overlay) overlay.remove();
+            try {
+                if (typeof onContinueAnyway === 'function') onContinueAnyway();
+                else if (typeof onContinueAnyway === 'string') {
+                    try { (new Function(onContinueAnyway))(); } catch (e) { console.warn('[fio-conflict]', e); }
+                }
+            } catch (e) {
+                console.warn('[fio-conflict] continue failed', e);
+            }
+        });
+    }
 }
 
 // ==========================================
@@ -8380,22 +8405,29 @@ function getNamePartsNormalized(nameStr) {
 
 // Проверка совпадения по ФИО: учитывает оба порядка «Имя Фамилия» и «Фамилия Имя»
 // и наличие отчества. Возвращает 'strong', 'loose' или null.
+//
+// ВАЖНО: 'strong' означает «точно тот же человек» — только такие записи
+// объединяются автоматически. Раньше сюда попадали РАЗНЫЕ люди с одной
+// общей частью ФИО (например, однофамильцы или тёзки) — из-за этого при
+// создании группового раунда два игрока получали один id и раунд не
+// создавался с ошибкой «дублирующий игрок».
 function isSamePersonByFio(localParts, remoteParts, localFullNorm, remoteFullNorm) {
     if (!localParts.length || !remoteParts.length) return null;
+    // Полное совпадение нормализованной строки
     if (localFullNorm && remoteFullNorm && localFullNorm === remoteFullNorm) return 'strong';
-    if (localParts.length >= 2 && remoteParts.length >= 2) {
-        var allLocalInRemote = localParts.every(function(p) { return remoteParts.indexOf(p) !== -1; });
-        if (allLocalInRemote) return 'strong';
-        var allRemoteMainInLocal = remoteParts.slice(0, 2).every(function(p) { return localParts.indexOf(p) !== -1; });
-        if (allRemoteMainInLocal && localParts.length >= 2) return 'strong';
-    }
-    if (localParts.length >= 2 && remoteParts.length >= 2) {
-        var lf = localParts[0], ll = localParts[localParts.length - 1];
-        var rf = remoteParts[0], rl = remoteParts[remoteParts.length - 1];
-        if ((lf === rf && ll === rl) || (lf === rl && ll === rf)) return 'strong';
-    }
+    var allLocalInRemote = localParts.every(function(p) { return remoteParts.indexOf(p) !== -1; });
+    var allRemoteInLocal = remoteParts.every(function(p) { return localParts.indexOf(p) !== -1; });
+    // Одинаковый набор частей в любом порядке («Иван Петров» = «Петров Иван»)
+    if (allLocalInRemote && allRemoteInLocal) return 'strong';
+    // Одно ФИО — подмножество другого, отличающийся максимум на одно слово:
+    // например, добавили отчество («Иван Петров» → «Иван Петрович Петров»).
+    // Больший разрыв (совпала только фамилия из трёх слов) объединять нельзя.
+    var diff = Math.abs(localParts.length - remoteParts.length);
+    if (diff <= 1 && (allLocalInRemote || allRemoteInLocal)) return 'strong';
+    // Одна общая длинная часть (например, только фамилия или только имя) —
+    // разные люди совпасть не должны: возвращаем 'loose' как подсказку,
+    // но НЕ как основание для автоматического объединения.
     var shared = localParts.filter(function(p) { return remoteParts.indexOf(p) !== -1; });
-    if (shared.length >= 2) return 'strong';
     if (shared.length === 1 && shared[0].length > 2) {
         return 'loose';
     }
@@ -8628,8 +8660,12 @@ function resolveOrCreatePlayerUser(p) {
             var existingFullNorm = normalizeSearchText(u.name || '');
             var match = isSamePersonByFio(existingParts, cleanParts, existingFullNorm, cleanFullNorm);
             // Также проверяем прямое совпадение ключа
-            if (!match && existingFioKey === cleanFullNorm) match = 'strong';
-            if (!match) return;
+            if (match !== 'strong' && existingFioKey === cleanFullNorm) match = 'strong';
+            // Только 'strong' объединяет записи. 'loose' (совпала одна часть —
+            // например, только фамилия у однофамильцев) обязан создавать
+            // ОТДЕЛЬНУЮ запись, иначе два разных игрока слипаются в один id
+            // и групповой раунд не создаётся («дублирующий игрок»).
+            if (match !== 'strong') return;
             // Выбираем лучшего: не гость приоритетнее, больше раундов приоритетнее
             var better;
             if (!found) better = true;

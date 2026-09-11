@@ -1717,6 +1717,7 @@ function loadMyActiveRounds(targetId) {
             var localActingAs = localStorage.getItem('pestovo_acting_as_' + id);
 
             var isCreatedByMe = false;
+            var resumePid = null;
 
             if (currentUser && r.createdBy === currentUser.uid) {
                 isCreatedByMe = true;
@@ -1731,7 +1732,14 @@ function loadMyActiveRounds(targetId) {
             }
 
             if (isCreatedByMe) {
-                myActive.push({ id: id, round: r });
+                // Жёстко прописываем ?as=<игрок>: даже если localStorage
+                // стёрся (другое устройство/кэш), продолжение НЕ откроется
+                // в режиме «только просмотр».
+                if (localActingAs && r.players && r.players[localActingAs]) resumePid = localActingAs;
+                else if (currentUser && r.players && r.players[currentUser.uid]) resumePid = currentUser.uid;
+                else if (r.creatorPlayerId && r.players && r.players[r.creatorPlayerId]) resumePid = r.creatorPlayerId;
+                else if (r.mode === 'solo') resumePid = Object.keys(r.players || {})[0] || null;
+                myActive.push({ id: id, round: r, resumePid: resumePid });
             }
         });
 
@@ -1749,7 +1757,7 @@ function loadMyActiveRounds(targetId) {
 
         myActive.forEach(function(item) {
             var id = item.id, r = item.round;
-            var link = 'setup-round.html?round=' + id;
+            var link = 'setup-round.html?round=' + id + (item.resumePid ? '&as=' + encodeURIComponent(item.resumePid) : '');
             var modeIcon = r.mode === 'solo' ? '<i class="fas fa-user"></i> ' + t('solo_round') : '<i class="fas fa-users"></i> ' + t('group_round');
             var teePill = fmtRoundTeePills(r);
             var resume = getRoundResumeState(id, r);
@@ -1787,6 +1795,31 @@ function loadMyActiveRounds(targetId) {
 // ==========================================
 // СЕССИЯ ИГРОКА ПО ФИО (1 активная сессия)
 // ==========================================
+// Стирание ВСЕХ локальных игровых сессий (после «Удалить все данные»
+// в админке): ключи доступа к раундам, роль «действующего игрока»,
+// сохранённые текущие лунки и отметки пропусков.
+function pestovoWipeLocalSessions(reload) {
+    var prefixes = [
+        'pestovo_solo_key_', 'pestovo_group_key_', 'pestovo_acting_as_',
+        'pestovo_resume_hole_', 'pestovo_skip_ack_', 'pestovo_finish_req_'
+    ];
+    [localStorage, sessionStorage].forEach(function(store) {
+        var keys = [];
+        try {
+            for (var i = 0; i < store.length; i++) keys.push(store.key(i));
+        } catch (e) { return; }
+        keys.forEach(function(k) {
+            if (!k) return;
+            for (var j = 0; j < prefixes.length; j++) {
+                if (k.indexOf(prefixes[j]) === 0) { try { store.removeItem(k); } catch (e) {} break; }
+            }
+        });
+    });
+    if (reload && typeof window !== 'undefined' && /setup-round\.html/.test(window.location.pathname + window.location.search)) {
+        try { window.location.reload(); } catch (e) {}
+    }
+}
+
 // Сессия привязана к имени и фамилии. Если телефон разрядился —
 // игрок может зайти с другого устройства по ФИО и продолжить игру.
 // Блокировка повторного старта: нельзя создать новый раунд, если
@@ -1899,8 +1932,10 @@ function pestovoRenderFioResumeListHtml(matches, opts) {
             '<div style=\"font-size:12px;color:var(--muted);margin-top:4px;\">' + (currentLang === 'en' ? 'Start' : 'Старт') + ': ' + dateStr + ' · ' + (currentLang === 'en' ? 'Hole' : 'Лунка') + ': №' + curHole + ' · ' + played + '/' + total + '</div>' +
             (r.tournamentName ? '<div style=\"font-size:11px;color:var(--gold);margin-top:2px;\"><i class=\"fas fa-trophy\"></i> ' + escapeHtml(r.tournamentName) + '</div>' : '') +
             '</div>' +
-            '<a href=\"' + link + '\" class=\"btn btn-g btn-sm\" style=\"align-self:center;\"><i class=\"fas fa-play\"></i> ' + (currentLang === 'en' ? 'Continue' : 'Продолжить') + '</a>' +
-            '</div>';
+            '<div style=\"display:flex;flex-direction:column;gap:6px;align-self:center;\">' +
+            '<a href=\"' + link + '\" class=\"btn btn-g btn-sm\"><i class=\"fas fa-play\"></i> ' + (currentLang === 'en' ? 'Continue' : 'Продолжить') + '</a>' +
+            '<a href=\"' + link + '&finish=1\" class=\"btn btn-ol btn-sm\"><i class=\"fas fa-flag-checkered\"></i> ' + (currentLang === 'en' ? 'Finish round' : 'Завершить раунд') + '</a>' +
+            '</div></div>';
     });
     html += '</div>';
     return html;
@@ -5159,6 +5194,289 @@ function finishModalGoToHole(hole) {
 }
 
 // ==========================================
+// ПРОПУЩЕННЫЕ ЛУНКИ — КОМПАКТНЫЙ ВЫБОР ПРИ ПЕРЕХОДЕ
+// ==========================================
+// При ручном переходе на другую лунку проверяем только лунки, которые
+// игрок ПЕРЕПРЫГИВАЕТ по своему порядку игры (с учётом стартовой лунки
+// и шотгана). Лунки, до которых он ещё не дошёл, пропущенными не считаются.
+// Нажатая кнопка «Пропустить» запоминает решение до конца раунда:
+// уведомление больше не мешает вводу и снова показывается только при
+// завершении раунда (исправление результата).
+function pestovoSkipAckKey(rid, pid) { return 'pestovo_skip_ack_' + rid + '_' + pid; }
+
+function pestovoSkipGetAck(rid, pid) {
+    try {
+        var raw = localStorage.getItem(pestovoSkipAckKey(rid, pid));
+        return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+}
+
+function pestovoSkipAddAck(rid, pid, holes) {
+    var map = pestovoSkipGetAck(rid, pid);
+    (holes || []).forEach(function(h) { map[h] = Date.now(); });
+    try { localStorage.setItem(pestovoSkipAckKey(rid, pid), JSON.stringify(map)); } catch (e) {}
+    return map;
+}
+
+function pestovoSkipClearAck(rid, pid) {
+    try { localStorage.removeItem(pestovoSkipAckKey(rid, pid)); } catch (e) {}
+}
+
+// Исправление/ввод результата на лунке снимает ранее нажатый «Пропустить»
+// именно для этих лунок (блок снова может предупреждать о пропусках).
+function pestovoSkipDropAckHoles(rid, pid, holes) {
+    var map = pestovoSkipGetAck(rid, pid);
+    var changed = false;
+    (holes || []).forEach(function(h) {
+        var k = String(h);
+        if (map[k] !== undefined) { delete map[k]; changed = true; }
+    });
+    if (!changed) return;
+    try {
+        if (Object.keys(map).length) localStorage.setItem(pestovoSkipAckKey(rid, pid), JSON.stringify(map));
+        else localStorage.removeItem(pestovoSkipAckKey(rid, pid));
+    } catch (e) {}
+}
+
+// Лунки без счёта на отрезке [fromIdx; toIdx) по порядку игры игрока.
+// acked-лунки (на которые игрок осознанно нажал «Пропустить») исключаются.
+function pestovoMissingHolesAhead(order, isMissing, fromHole, toHole, ackMap) {
+    var fromIdx = order.indexOf(fromHole);
+    var toIdx = order.indexOf(toHole);
+    var out = [];
+    if (fromIdx < 0 || toIdx < 0 || toIdx <= fromIdx) return out;
+    for (var i = fromIdx; i < toIdx; i++) {
+        var h = order[i];
+        if (ackMap && ackMap[h]) continue;
+        try { if (isMissing(h)) out.push(h); } catch (e) {}
+    }
+    return out;
+}
+
+function pestovoCloseSkipModal() {
+    var m = document.getElementById('pestovo-skip-modal');
+    if (m) m.classList.add('hidden');
+}
+
+// Компактная модалка-выбор: ровно ОДНА пропущенная лунка + действия.
+// cb('enter', h)  — ввести счёт на пропущенной лунке;
+// cb('skip', h)   — пропустить её и продолжить переход;
+// cb('skipall', holes) — пропустить все перепрыгиваемые лунки до конца раунда.
+function pestovoShowSkipChoiceModal(hole, allMissing, cb) {
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var modal = document.getElementById('pestovo-skip-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'pestovo-skip-modal';
+        modal.className = 'modal hidden';
+        modal.innerHTML =
+            '<div class="modal-bg" onclick="pestovoCloseSkipModal()"></div>' +
+            '<div class="modal-body" style="max-width:440px;">' +
+            '<button type="button" class="modal-close-btn" onclick="pestovoCloseSkipModal()">&times;</button>' +
+            '<div id="pestovo-skip-modal-body"></div>' +
+            '</div>';
+        document.body.appendChild(modal);
+    }
+    var moreCnt = Math.max(0, (allMissing || []).length - 1);
+    var body =
+        '<div class="skip-choice"><div class="skip-choice-ic"><i class="fas fa-triangle-exclamation"></i></div>' +
+        '<h2 style="color:#f3b23c;margin:0 0 6px;">' + (en ? 'Hole ' + hole + ' has no score' : 'Лунка ' + hole + ' — счёт не введён') + '</h2>' +
+        '<p style="font-size:13px;color:var(--muted);margin:0 0 16px;">' +
+        (en ? 'Enter the score on this hole, or skip it and keep moving.' : 'Введите счёт на этой лунке или пропустите её и двигайтесь дальше.') +
+        (moreCnt ? ' ' + (en ? (moreCnt + ' more hole(s) ahead without a score.') : ('Ещё пропущено лунок впереди: ' + moreCnt + '.')) : '') +
+        '</p>' +
+        '<button type="button" class="btn btn-g btn-block" id="psk-enter"><i class="fas fa-pen"></i> ' +
+        (en ? 'Enter score on hole ' + hole : 'Ввести счёт на лунке ' + hole) + '</button>' +
+        '<button type="button" class="btn btn-ol btn-block" style="margin-top:8px;" id="psk-skip"><i class="fas fa-forward"></i> ' +
+        (en ? 'Skip and continue' : 'Пропустить и продолжить') + '</button>' +
+        '<button type="button" class="skip-choice-all" id="psk-skipall">' +
+        (en ? 'Continue with skips until the round is finished' : 'Продолжить с пропуском (не напоминать до завершения раунда)') +
+        '</button></div>';
+    document.getElementById('pestovo-skip-modal-body').innerHTML = body;
+    modal.classList.remove('hidden');
+    document.getElementById('psk-enter').onclick = function() { pestovoCloseSkipModal(); cb && cb('enter', hole); };
+    document.getElementById('psk-skip').onclick = function() { pestovoCloseSkipModal(); cb && cb('skip', hole); };
+    var allBtn = document.getElementById('psk-skipall');
+    if (allBtn) allBtn.onclick = function() { pestovoCloseSkipModal(); cb && cb('skipall', allMissing); };
+}
+
+// Перехват перехода по лункам: при пропуске показываем компактный выбор.
+// opts = { rid, pid, order, isMissing(h), from, to, performJump(h), enterHole(h) }
+// performJump(to) вызывается, когда переход разрешён (или пропуск подтверждён).
+// enterHole(h) — перейти к вводу пропущенной лунки.
+function pestovoGuardHoleJump(opts) {
+    if (!opts) return;
+    var ack = pestovoSkipGetAck(opts.rid, opts.pid);
+    var missing = pestovoMissingHolesAhead(opts.order || [], opts.isMissing, opts.from, opts.to, ack);
+    if (!missing.length) { opts.performJump && opts.performJump(opts.to); return; }
+    pestovoShowSkipChoiceModal(missing[0], missing, function(action, val) {
+        if (action === 'enter') {
+            opts.enterHole ? opts.enterHole(val) : opts.performJump && opts.performJump(val);
+        } else if (action === 'skip') {
+            pestovoSkipAddAck(opts.rid, opts.pid, [val]);
+            // рекурсия: если впереди остались ещё непропущенные лунки — спросим про следующую
+            pestovoGuardHoleJump(opts);
+        } else if (action === 'skipall') {
+            pestovoSkipAddAck(opts.rid, opts.pid, (val || []).slice());
+            opts.performJump && opts.performJump(opts.to);
+        }
+    });
+}
+
+// Сессия открыта по ссылке «Продолжить по ФИО» (?as=<pid>) с устройства,
+// которое не является владельцем (нет аккаунта игрока и нет access-key).
+function pestovoIsFioResume(rd, rid, pid) {
+    if (!rd || !pid) return false;
+    var asParam = null;
+    try { asParam = new URLSearchParams(window.location.search).get('as'); } catch (e) { return false; }
+    if (!asParam || String(asParam) !== String(pid)) return false;
+    if (typeof currentUser !== 'undefined' && currentUser) {
+        if (rd.createdBy === currentUser.uid) return false;
+        if (rd.players && rd.players[currentUser.uid]) return false;
+    }
+    var key = (rd.mode === 'solo')
+        ? localStorage.getItem('pestovo_solo_key_' + rid)
+        : localStorage.getItem('pestovo_group_key_' + rid);
+    if (key && rd.accessKey === key) return false;
+    return true;
+}
+
+function pestovoFioVerified(rid, pid) {
+    try { return sessionStorage.getItem('pestovo_fio_verified_' + rid + '_' + pid) === '1'; }
+    catch (e) { return false; }
+}
+function pestovoFioMarkVerified(rid, pid) {
+    try { sessionStorage.setItem('pestovo_fio_verified_' + rid + '_' + pid, '1'); } catch (e) {}
+}
+
+// Проверка владения раундом перед завершением на не-своём устройстве:
+// последние 4 цифры телефона из профиля; если телефона нет — полное ФИО.
+function pestovoVerifyRoundOwner(rd, rid, pid, cb) {
+    var p = rd && rd.players ? rd.players[pid] : null;
+    if (!p) { cb && cb(false); return; }
+    if (pestovoFioVerified(rid, pid)) { cb && cb(true); return; }
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var modal = document.getElementById('pestovo-skip-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'pestovo-skip-modal';
+        modal.className = 'modal hidden';
+        modal.innerHTML =
+            '<div class="modal-bg" onclick="pestovoCloseVerifyModal()"></div>' +
+            '<div class="modal-body" style="max-width:440px;">' +
+            '<button type="button" class="modal-close-btn" onclick="pestovoCloseVerifyModal()">&times;</button>' +
+            '<div id="pestovo-skip-modal-body"></div></div>';
+        document.body.appendChild(modal);
+    }
+    window.pestovoCloseVerifyModal = function() { modal.classList.add('hidden'); cb && cb(false); };
+
+    var askName = function() {
+        var full = p.name || ((p.firstName || '') + ' ' + (p.lastName || '')).trim();
+        document.getElementById('pestovo-skip-modal-body').innerHTML =
+            '<div class="skip-choice"><div class="skip-choice-ic"><i class="fas fa-shield-halved"></i></div>' +
+            '<h2 style="color:var(--gold);margin:0 0 6px;">' + (en ? 'Confirm it is your round' : 'Подтвердите, что это ваш раунд') + '</h2>' +
+            '<p style="font-size:13px;color:var(--muted);">' +
+            (en ? 'Another player cannot finish this round. Type the full name of the card holder exactly.' : 'Другой игрок не может завершить этот раунд. Введите полное ФИО владельца карточки.') + '</p>' +
+            '<input type="text" class="form-input" id="psk-owner-name" placeholder="' + (en ? 'Full name' : 'Полное ФИО') + '">' +
+            '<button class="btn btn-g btn-block" id="psk-owner-ok" style="margin-top:10px;">' + (en ? 'Confirm and finish' : 'Подтвердить и завершить') + '</button></div>';
+        modal.classList.remove('hidden');
+        document.getElementById('psk-owner-ok').onclick = function() {
+            var v = (document.getElementById('psk-owner-name').value || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+            var want = full.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+            if (v && want && v === want) {
+                modal.classList.add('hidden');
+                pestovoFioMarkVerified(rid, pid);
+                cb && cb(true);
+            } else if (typeof toast === 'function') {
+                toast(en ? 'Name does not match the card' : 'ФИО не совпадает с карточкой', 'error');
+            }
+        };
+    };
+
+    if (typeof db === 'undefined' || !db) { askName(); return; }
+    db.ref('users/' + pid).once('value').then(function(sn) {
+        var u = sn.val() || {};
+        var digits = String(u.phone || '').replace(/\D/g, '');
+        if (digits.length >= 4) {
+            var last4 = digits.slice(-4);
+            document.getElementById('pestovo-skip-modal-body').innerHTML =
+                '<div class="skip-choice"><div class="skip-choice-ic"><i class="fas fa-shield-halved"></i></div>' +
+                '<h2 style="color:var(--gold);margin:0 0 6px;">' + (en ? 'Confirm it is your round' : 'Подтвердите, что это ваш раунд') + '</h2>' +
+                '<p style="font-size:13px;color:var(--muted);">' +
+                (en ? 'Another player cannot finish this round. Enter the last 4 digits of the phone number from the profile.' : 'Другой игрок не может завершить этот раунд. Введите последние 4 цифры телефона из профиля.') + '</p>' +
+                '<input type="tel" inputmode="numeric" class="form-input" id="psk-owner-phone" placeholder="••••">' +
+                '<button class="btn btn-g btn-block" id="psk-owner-ok" style="margin-top:10px;">' + (en ? 'Confirm and finish' : 'Подтвердить и завершить') + '</button></div>';
+            modal.classList.remove('hidden');
+            var inp = document.getElementById('psk-owner-phone');
+            if (inp) inp.focus();
+            document.getElementById('psk-owner-ok').onclick = function() {
+                var v = (inp.value || '').replace(/\D/g, '').slice(-4);
+                if (v === last4) {
+                    modal.classList.add('hidden');
+                    pestovoFioMarkVerified(rid, pid);
+                    cb && cb(true);
+                } else if (typeof toast === 'function') {
+                    toast(en ? 'Phone digits do not match' : 'Цифры телефона не совпадают', 'error');
+                }
+            };
+        } else {
+            askName();
+        }
+    }).catch(askName);
+}
+
+// Модалка при завершении раунда: все лунки без счёта (независимо от
+// нажатых ранее «Пропустить») + выбор «исправить» или «завершить как есть».
+function pestovoShowFinishMissingModal(missing, opts) {
+    opts = opts || {};
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var modal = document.getElementById('pestovo-skip-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'pestovo-skip-modal';
+        modal.className = 'modal hidden';
+        modal.innerHTML =
+            '<div class="modal-bg" onclick="pestovoCloseSkipModal()"></div>' +
+            '<div class="modal-body" style="max-width:480px;">' +
+            '<button type="button" class="modal-close-btn" onclick="pestovoCloseSkipModal()">&times;</button>' +
+            '<div id="pestovo-skip-modal-body"></div>' +
+            '</div>';
+        document.body.appendChild(modal);
+    }
+    var chips = (missing || []).map(function(h) {
+        return '<button type="button" class="shb-hole-btn" data-hole="' + h + '">' +
+            (en ? 'Hole ' : 'Лунка ') + h + '</button>';
+    }).join('');
+    var body =
+        '<div class="skip-choice"><div class="skip-choice-ic"><i class="fas fa-flag-checkered"></i></div>' +
+        '<h2 style="color:#f3b23c;margin:0 0 6px;">' + (en ? 'Some holes have no score' : 'Не на всех лунках введён счёт') + '</h2>' +
+        '<p style="font-size:13px;color:var(--muted);margin:0 0 10px;">' +
+        (en ? 'Tap a hole to enter the score, or finish the round anyway.' : 'Нажмите на лунку, чтобы ввести счёт, либо завершите раунд без них.') + '</p>' +
+        '<div class="skip-finish-holes">' + chips + '</div>' +
+        '<button type="button" class="btn btn-g btn-block" id="psk-finish-anyway" style="margin-top:14px;"><i class="fas fa-flag-checkered"></i> ' +
+        (en ? 'Finish anyway' : 'Завершить раунд') + '</button>' +
+        '<button type="button" class="btn btn-og btn-block" style="margin-top:8px;" id="psk-continue"><i class="fas fa-arrow-left"></i> ' +
+        (en ? 'Continue playing' : 'Продолжить игру') + '</button></div>';
+    document.getElementById('pestovo-skip-modal-body').innerHTML = body;
+    modal.classList.remove('hidden');
+    Array.prototype.forEach.call(modal.querySelectorAll('.shb-hole-btn'), function(btn) {
+        btn.onclick = function() {
+            var h = parseInt(btn.getAttribute('data-hole'), 10);
+            pestovoCloseSkipModal();
+            if (typeof opts.onEnter === 'function') opts.onEnter(h);
+        };
+    });
+    document.getElementById('psk-finish-anyway').onclick = function() {
+        pestovoCloseSkipModal();
+        if (typeof opts.onFinishAnyway === 'function') opts.onFinishAnyway();
+    };
+    document.getElementById('psk-continue').onclick = function() {
+        pestovoCloseSkipModal();
+        if (typeof opts.onContinue === 'function') opts.onContinue();
+    };
+}
+
+// ==========================================
 // СКОРКАРТА ПЕСТОВО (КАК НА ФОТО — 18 ЛУНОК)
 // ==========================================
 function generatePestovoScorecardHTML(player, roundData, opts) {
@@ -6116,6 +6434,49 @@ function applyTnLbVariant(value) {
         if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards();
     } catch (e) {}
     return variant;
+}
+
+// ==========================================
+// ГРУППЫ НА СТРАНИЦЕ ТУРНИРОВ (вкл/выкл для всех)
+// ==========================================
+// По умолчанию дивизионы/гандикапные группы игрокам НЕ показываются:
+// на активном турнире сразу открывается лидерборд. Включает только админ
+// (settings/tn_groups_visible).
+// По умолчанию группы видны (поведение до появления настройки);
+// админ может полностью скрыть их переключателем (хранится '0').
+var pestovoTnGroupsVisible = true;
+try {
+    var pestovoTnGroupsStored = localStorage.getItem('pestovo_tn_groups_visible');
+    if (pestovoTnGroupsStored !== null) pestovoTnGroupsVisible = pestovoTnGroupsStored === '1';
+} catch (e) {}
+
+function getTnGroupsVisible() { return !!pestovoTnGroupsVisible; }
+function applyTnGroupsVisible(v) {
+    pestovoTnGroupsVisible = (v === true || v === '1' || v === 1);
+    try { localStorage.setItem('pestovo_tn_groups_visible', pestovoTnGroupsVisible ? '1' : '0'); } catch (e) {}
+    try { if (typeof markAdmTnGroupsVisible === 'function') markAdmTnGroupsVisible(); } catch (e) {}
+    try { if (typeof tnRenderList === 'function') tnRenderList(); } catch (e) {}
+    try { if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards(); } catch (e) {}
+    return pestovoTnGroupsVisible;
+}
+
+// ==========================================
+// 4 ВАРИАНТА СПИСКА УЧАСТНИКОВ/ГРУПП (settings/tn_roster_variant)
+// ==========================================
+var TN_ROSTER_VARIANTS = ['1', '2', '3', '4'];
+function normalizeTnRosterVariant(v) {
+    v = String(v === undefined || v === null ? '' : v);
+    return TN_ROSTER_VARIANTS.indexOf(v) !== -1 ? v : '1';
+}
+var pestovoTnRosterVariant = '1';
+try { pestovoTnRosterVariant = normalizeTnRosterVariant(localStorage.getItem('pestovo_tn_roster_variant')); } catch (e) {}
+function getTnRosterVariant() { return pestovoTnRosterVariant; }
+function applyTnRosterVariant(v) {
+    pestovoTnRosterVariant = normalizeTnRosterVariant(v);
+    try { localStorage.setItem('pestovo_tn_roster_variant', pestovoTnRosterVariant); } catch (e) {}
+    try { if (typeof markAdmTnRosterVariantButtons === 'function') markAdmTnRosterVariantButtons(); } catch (e) {}
+    try { if (typeof tnRenderList === 'function') tnRenderList(); } catch (e) {}
+    return pestovoTnRosterVariant;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -7930,6 +8291,32 @@ if (typeof db !== 'undefined') {
                 applyTnLbVariant(String(v));
             }
         });
+        // Видимость гандикапных групп/дивизионов на странице турниров.
+        // Нет настройки в базе → дефолт «показывать» (группы скрывает
+        // только явный false/0 из админки).
+        db.ref('settings/tn_groups_visible').on('value', function(sn) {
+            var v = sn.val();
+            if (v === null || typeof v === 'undefined') v = true;
+            applyTnGroupsVisible(v === true || v === '1' || v === 1);
+        });
+        // 4 варианта списка участников/групп.
+        db.ref('settings/tn_roster_variant').on('value', function(sn) {
+            var v = sn.val();
+            if (TN_ROSTER_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnRosterVariant) {
+                applyTnRosterVariant(String(v));
+            }
+        });
+        // Сброс ВСЕХ локальных сессий после очистки данных в админке.
+        db.ref('settings/sessions_reset_ts').on('value', function(sn) {
+            var ts = parseInt(sn.val(), 10) || 0;
+            if (!ts) return;
+            var known = 0;
+            try { known = parseInt(localStorage.getItem('pestovo_sessions_reset_last') || '0', 10) || 0; } catch (e) {}
+            if (ts > known) {
+                try { localStorage.setItem('pestovo_sessions_reset_last', String(ts)); } catch (e) {}
+                pestovoWipeLocalSessions();
+            }
+        });
         // Шаблоны оформления сайта (админ-панель → «Дизайн 🎨»).
         // Ключа settings/design может не быть — тогда работает текущий дизайн,
         // ничего не переопределяется.
@@ -8973,20 +9360,58 @@ function initPlayerSearchAutofill(opts) {
         dropdown.classList.remove('hidden');
 
         dropdown.querySelectorAll('.autocomplete-item').forEach(function(item) {
-            var handleTap = function(evt) {
-                if (evt.cancelable) evt.preventDefault();
-                evt.stopPropagation();
-                var idxAttr = item.getAttribute('data-idx');
-                var idx = parseInt(idxAttr);
-                var match = activeMatches[idx];
-                if (match) {
-                    triggerSelection(match);
-                }
-            };
+            // На телефоне список нужно уметь ПРОКРУЧИВАТЬ: раньше touchstart
+            // с preventDefault мгновенно выбирал строку под пальцем и не давал
+            // скроллу сработать (было видно только ~3 имени из 7+).
+            // Теперь выбор происходит на touchend только если палец не
+            // сместился (это был тап, а не прокрутка списка).
+            var touch = null;
+            var suppressClick = false;
 
-            item.addEventListener('touchstart', handleTap, { passive: false });
-            item.addEventListener('mousedown', handleTap);
-            item.addEventListener('click', handleTap);
+            item.addEventListener('touchstart', function(evt) {
+                var t = evt.touches && evt.touches[0];
+                touch = t ? { x: t.clientX, y: t.clientY, t: Date.now() } : null;
+            }, { passive: true });
+
+            item.addEventListener('touchmove', function(evt) {
+                if (!touch) return;
+                var t = evt.touches && evt.touches[0];
+                if (t && (Math.abs(t.clientY - touch.y) > 10 || Math.abs(t.clientX - touch.x) > 10)) {
+                    touch.moved = true; // это жест прокрутки, а не тап
+                }
+            }, { passive: true });
+
+            item.addEventListener('touchend', function(evt) {
+                if (!touch) return;
+                var dt = Date.now() - touch.t;
+                var wasTap = !touch.moved && dt < 600;
+                touch = null;
+                if (!wasTap) { suppressClick = true; setTimeout(function(){ suppressClick = false; }, 400); return; }
+                evt.preventDefault();
+                evt.stopPropagation();
+                var idx = parseInt(item.getAttribute('data-idx'));
+                var match = activeMatches[idx];
+                if (match) triggerSelection(match);
+                suppressClick = true;
+                setTimeout(function(){ suppressClick = false; }, 400);
+            });
+
+            item.addEventListener('mousedown', function(evt) {
+                if (suppressClick) return;
+                evt.preventDefault();
+                evt.stopPropagation();
+                var idx = parseInt(item.getAttribute('data-idx'));
+                var match = activeMatches[idx];
+                if (match) triggerSelection(match);
+            });
+
+            item.addEventListener('click', function(evt) {
+                if (suppressClick) { evt.preventDefault(); evt.stopPropagation(); return; }
+                evt.stopPropagation();
+                var idx = parseInt(item.getAttribute('data-idx'));
+                var match = activeMatches[idx];
+                if (match) triggerSelection(match);
+            });
         });
     };
 

@@ -3672,12 +3672,12 @@ body.sun-mode .msc-pill.hcp-band-unknown {
 .sc-topar-cell.sc-tp-over { background: rgba(224, 90, 74, 0.18); border-color: rgba(224, 90, 74, 0.5); color: #ff9184; }
 .sc-topar-cell.sc-tp-none { opacity: .45; }
 
-/* Текущая лунка игрока */
+/* Текущая лунка игрока — МИГАЕТ СЕРЫМ во всех счётных карточках
+   (та же индикация, что и у кнопок лунок на странице ввода счёта). */
 .sc-cur-tile {
     position: relative;
-    border: 2px solid var(--gold) !important;
-    box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.18);
-    animation: scCurPulse 2s ease-in-out infinite;
+    border: 2px dashed #8a939b !important;
+    animation: pestovo-hole-gray-blink 1.6s ease-in-out infinite;
 }
 .sc-cur-tile::after {
     content: '';
@@ -3687,11 +3687,11 @@ body.sun-mode .msc-pill.hcp-band-unknown {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--gold);
+    background: #aeb4ba;
 }
 @keyframes scCurPulse {
-    0%, 100% { box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.2); }
-    50% { box-shadow: 0 0 0 7px rgba(201, 168, 76, 0.06); }
+    0%, 100% { box-shadow: 0 0 0 3px rgba(174, 180, 186, 0.2); }
+    50% { box-shadow: 0 0 0 7px rgba(174, 180, 186, 0.06); }
 }
 .sc-cur-flash { animation: scCurFlash .6s ease-in-out 3; }
 @keyframes scCurFlash {
@@ -3737,7 +3737,7 @@ body.sun-mode .sc-topar-lbl { color: #0b2912 !important; }
 body.sun-mode .sc-topar-cell { background: #ffffff !important; border: 2px solid #000000 !important; color: #000000 !important; }
 body.sun-mode .sc-topar-cell.sc-tp-under { background: #e8f5e9 !important; color: #1b5e20 !important; }
 body.sun-mode .sc-topar-cell.sc-tp-over { background: #ffebee !important; color: #b71c1c !important; }
-body.sun-mode .sc-cur-tile { border: 3px solid #1b5e20 !important; box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.2) !important; }
+body.sun-mode .sc-cur-tile { border: 2px dashed #6a6252 !important; animation: pestovo-hole-gray-blink-sun 1.6s ease-in-out infinite; }
 body.sun-mode .sc-to-cur-btn { background: #e8f5e9 !important; border: 2px solid #1b5e20 !important; color: #1b5e20 !important; }
 
 /* ==========================================
@@ -4021,8 +4021,8 @@ body.sun-mode .lb-row-live { border-color: #c0392b !important; }
     gap: 4px;
 }
 .gm-cur-col {
-    border-color: var(--gold) !important;
-    box-shadow: 0 0 8px rgba(201, 168, 76, 0.35);
+    border-color: #8a939b !important;
+    animation: pestovo-hole-gray-blink 1.6s ease-in-out infinite;
 }
 .gm-hole-hdr {
     display: flex;
@@ -5113,23 +5113,59 @@ button.tn-group-head:hover { background:rgba(201,168,76,0.18); }
    1.60.0 — ВИДЫ ОТОБРАЖЕНИЯ И ИСПРАВЛЕНИЯ
    ========================================================== */
 
-/* ── ТЕКУЩАЯ ЛУНКА БЕЗ СЧЁТА: МИГАЕТ СЕРЫМ (видно, где игрок) ── */
+/* ── ТЕКУЩАЯ ЛУНКА БЕЗ СЧЁТА: МИГАЕТ СЕРЫМ (видно, где игрок) ──
+   ВАЖНО: !important внутри keyframes и в базовом правиле гасил саму
+   анимацию (author-important перекрывает animation-origin), из-за чего
+   на телефоне лунка не мигала. */
 @keyframes pestovo-hole-gray-blink{
-    0%,100%{background:rgba(174,180,186,.07)!important;border-color:var(--border)!important;color:var(--muted)!important;box-shadow:none!important;}
-    50%{background:rgba(174,180,186,.45)!important;border-color:#8a939b!important;color:var(--text)!important;box-shadow:inset 0 0 0 999px rgba(174,180,186,.12)!important;}
+    0%,100%{background:rgba(174,180,186,.07);border-color:var(--border);color:var(--muted);box-shadow:none;}
+    50%{background:rgba(174,180,186,.48);border-color:#8a939b;color:var(--text);box-shadow:inset 0 0 0 999px rgba(174,180,186,.14);}
 }
-.hole-btn.cur-blink{
-    animation:pestovo-hole-gray-blink 1.6s ease-in-out infinite!important;
-    border-style:dashed!important;
-    background:rgba(174,180,186,.07)!important;
-    border-color:var(--border)!important;
-    color:var(--muted)!important;
-    box-shadow:none!important;
+.hole-btn.cur-blink,
+.hole-btn.active.cur-blink,
+.hole-btn.pending.cur-blink{
+    animation:pestovo-hole-gray-blink 1.6s ease-in-out infinite;
+    border-style:dashed;
+    background:rgba(174,180,186,.07);
+    border-color:var(--border);
+    color:var(--muted);
+    box-shadow:none;
 }
 .hole-btn.cur-blink .hbn-num{color:inherit;}
-body.sun-mode .hole-btn.cur-blink{
-    animation:pestovo-hole-gray-blink 1.6s ease-in-out infinite!important;
-    background:#efe9d8!important;border-color:#b9b19a!important;color:#6a6252!important;
+@keyframes pestovo-hole-gray-blink-sun{
+    0%,100%{background:#efe9d8;border-color:#b9b19a;color:#6a6252;}
+    50%{background:#d8cfb4;border-color:#6a6252;color:#2f2b1f;}
+}
+body.sun-mode .hole-btn.cur-blink,
+body.sun-mode .hole-btn.active.cur-blink{
+    animation:pestovo-hole-gray-blink-sun 1.6s ease-in-out infinite;
+    background:#efe9d8;border-color:#b9b19a;color:#6a6252;
+}
+@media (max-width:768px){
+    /* На телефоне мигание обязано работать поверх мобильных стилей кнопок,
+       включая .active/.pending и их !important-фоны. */
+    .hole-btn.cur-blink,
+    .hole-btn.active.cur-blink,
+    .hole-btn.pending.cur-blink{
+        border-style:dashed!important;
+        box-shadow:none!important;
+        -webkit-animation-name:pestovo-hole-gray-blink!important;
+        animation-name:pestovo-hole-gray-blink!important;
+        -webkit-animation-duration:1.4s!important;
+        animation-duration:1.4s!important;
+        -webkit-animation-iteration-count:infinite!important;
+        animation-iteration-count:infinite!important;
+        -webkit-animation-timing-function:ease-in-out!important;
+        animation-timing-function:ease-in-out!important;
+        -webkit-animation-fill-mode:both!important;
+        animation-fill-mode:both!important;
+        will-change:background-color;
+    }
+    body.sun-mode .hole-btn.cur-blink,
+    body.sun-mode .hole-btn.active.cur-blink{
+        -webkit-animation-name:pestovo-hole-gray-blink-sun!important;
+        animation-name:pestovo-hole-gray-blink-sun!important;
+    }
 }
 
 /* ── УВЕДОМЛЕНИЕ О ПРОПУЩЕННЫХ ЛУНКАХ ── */
@@ -5309,3 +5345,68 @@ body.st-homeTournament-v5 .htv-top3-item .htv-meta{display:none;}
 .tn-lb-variant[data-single="1"] .tn-group-head{cursor:default;background:rgba(201,168,76,.07);}
 .tn-lb-variant[data-single="1"] .tn-group-head .tn-chev{display:none;}
 .tn-lb-variant[data-single="1"] .tn-group-body{max-height:none!important;}
+
+/* ==========================================================
+   1.62.0 — КОМПАКТНЫЕ ПРОПУСКИ, ВЫБОР ВЛАДЕЛЬЦА, ПРАВКИ АДМИНА
+   ========================================================== */
+
+/* Блок «Продолжить игру по ФИО» не мешает вводу счёта: во время
+   активного раунда страница ввода его не показывает. */
+body.round-active #fio-resume-card{display:none!important;}
+
+/* Компактная модалка выбора при пропуске лунки */
+.skip-choice{text-align:center;padding:6px 2px 2px;}
+.skip-choice-ic{font-size:30px;color:#f3b23c;margin-bottom:10px;}
+.skip-choice .btn{margin-left:0;margin-right:0;}
+.skip-finish-holes{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0 4px;max-height:180px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px;}
+.skip-finish-holes .shb-hole-btn{min-width:54px;}
+.skip-choice-all{margin-top:10px;background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px 4px;}
+.skip-choice-all:hover{color:var(--gold);}
+
+/* Автоподбор имён: список должен свободно прокручиваться на телефоне
+   (раньше touchstart с preventDefault блокировал скролл и выбирал не того) */
+.autocomplete-suggestions{touch-action:pan-y!important;over-scroll-behavior:contain;}
+.autocomplete-item{touch-action:pan-y!important;}
+
+/* Быстрый редактор протоколов в админке */
+.pe-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.pe-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--rs);}
+table.pe-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:860px;}
+.pe-table th,.pe-table td{padding:7px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle;white-space:nowrap;}
+.pe-table th{background:var(--input);color:var(--gold);position:sticky;top:0;z-index:2;}
+.pe-table tr:hover td{background:rgba(201,168,76,.06);}
+.pe-table select,.pe-table input{padding:5px 7px;font-size:12.5px;min-height:36px;background:var(--input);color:var(--text);border:1px solid var(--border);border-radius:8px;}
+.pe-table .pe-name{font-weight:700;color:var(--white);white-space:normal;min-width:150px;}
+.pe-group-head td{background:rgba(201,168,76,.1);font-weight:800;color:var(--gold)!important;}
+.pe-search{min-width:220px;flex:1;max-width:380px;}
+.pe-hint{font-size:12px;color:var(--muted);margin:6px 0 12px;}
+
+/* Варианты списка участников на странице турниров */
+.tn-roster-v2 .tn-roster-group-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;}
+.tn-roster-v2 .tn-roster-player-row{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--input);}
+.tn-roster-v3 .tn-roster-player-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:999px;border:1px solid var(--border);background:var(--input);}
+.tn-roster-v4 .tn-roster-table{font-size:12px;}
+.tn-no-rank{color:var(--muted);font-weight:700;opacity:.65;}
+
+/* На телефоне список автоподбора показывает больше имён и свободно
+   прокручивается (видно все совпадения, а не только первые три). */
+@media (max-width:768px){
+    .autocomplete-suggestions{max-height:60vh!important;}
+    .autocomplete-item{min-height:48px!important;font-size:15px!important;}
+}
+
+/* ==========================================================
+   1.62.0 — БЫСТРЫЙ РЕДАКТОР ПРОТОКОЛА (вкладка админки «Протокол»)
+   ========================================================== */
+.pe-table th{padding:6px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--border);text-align:center;}
+.pe-table td{padding:4px 6px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:middle;}
+.pe-table td.pe-name{text-align:left;font-weight:600;color:var(--white);font-size:13px;}
+.pe-table select,.pe-table input{background:var(--input);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;box-sizing:border-box;}
+.pe-table select:focus,.pe-table input:focus{outline:none;border-color:var(--gold);}
+.pe-muted{color:var(--muted);font-size:12px;}
+.pe-group{border:1px solid var(--border);}
+#pe-editor .pe-toolbar{background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.3);}
+@media (max-width:768px){
+    .pe-table{display:block;overflow-x:auto;white-space:nowrap;}
+    .pe-table thead,.pe-table tbody{display:table;width:100%;min-width:640px;}
+}

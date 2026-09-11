@@ -287,6 +287,12 @@ function tnRenderList() {
             // на завершённом кнопок нет.
             var regBtn = '';
             var tnStatus = tVal.status || 'upcoming';
+
+            // Активный турнир открывается сразу на LIVE-лидерборде, а не на
+            // списке участников/групп. Выбор пользователя позже не трогаем.
+            if (tnLbOpen[tnId] === undefined) {
+                tnLbOpen[tnId] = (tnStatus === 'active');
+            }
             if (tnStatus === 'active') {
                 if (isRegistered) {
                     regBtn = '<span style="font-size:12px;font-weight:700;color:#2ecc71;"><i class="fas fa-check-circle"></i> ' + t('registered_badge') + '</span>';
@@ -309,8 +315,9 @@ function tnRenderList() {
             html += '<div class="tn-meta"><span><i class="fas fa-calendar"></i> ' + fmtDate((typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date)) + '</span></div>';
             html += '<div style="margin-top:8px;font-size:12px;color:var(--muted);">' + formatLabel + escapeHtml(formatsStr) + '</div>';
             html += '<div style="font-size:12px;color:var(--muted);">' + teeLabel + escapeHtml(teesStr) + '</div>';
-            if (divisions.length) {
-                // Гандикапные группы — свёрнуты («Показать группы»), #8
+            if (divisions.length && (typeof getTnGroupsVisible === 'function' ? getTnGroupsVisible() : false)) {
+                // Гандикапные группы видны только когда админ включил их
+                // отображение для всех (settings/tn_groups_visible).
                 html += tnDivsCollapsedHtml(tnId, divisions);
             }
             // Время старта и формат старта (шотган / последовательно с 1-й / 10-й), #8
@@ -472,12 +479,65 @@ function tnCutChipHtml(raw, eff) {
 // Список участников, сгруппированный по группам гандикапа турнира.
 // Над таблицей — вкладки групп («Все · Мужчины · Девушки · … · Гости»),
 // выбранные администратором дивизионы и гости видны отдельными вкладками.
+// Строка одного участника для 4 вариантов оформления списка.
+function tnRosterPlayerLine(en2, idx, variant, en) {
+    var rp = en2.rp, rpid = en2.pid;
+    var name = '<strong>' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong>' +
+        (tnIsGuestRoster(rp) ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '');
+    var hcp = (rp.handicap != null && rp.handicap !== '')
+        ? fmtExactHcp(rp.handicap) + tnCutChipHtml(rp.handicap, en2.effHcp) : '—';
+    var tee = fmtTeePill(rp.tee);
+    if (variant === '2') {
+        return '<div class="tn-roster-player-row">' +
+            '<div style="color:var(--gold);">' + name + '</div>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);"><span>HCP: <b style="color:var(--text);">' + hcp + '</b></span><span>' + tee + '</span></div>' +
+            '</div>';
+    }
+    if (variant === '3') {
+        return '<div class="tn-roster-player-row">' + name +
+            ' <span style="color:var(--muted);font-size:12px;">' + hcp + '</span> ' + tee + '</div>';
+    }
+    if (variant === '4') {
+        return '<tr><td class="lb-card-main">' + name + '</td>' +
+            '<td>' + hcp + '</td><td>' + tee + '</td></tr>';
+    }
+    return '<tr><td data-label="#">' + (idx + 1) + '</td>' +
+        '<td class="lb-card-main" style="color:var(--gold);">' + name + '</td>' +
+        '<td data-label="HCP">' + hcp + '</td>' +
+        '<td data-label="' + (en ? 'Tee' : 'ТИ') + '">' + tee + '</td>' +
+        '<td data-label="' + t('date') + '">' + fmtDate(rp.registeredAt) + '</td></tr>';
+}
+
+function tnRosterBucketHtml(list, variant, en) {
+    if (variant === '2' || variant === '3') {
+        var rows = list.map(function(en2) { return tnRosterPlayerLine(en2, 0, variant, en); }).join('');
+        return '<div class="tn-roster-group-list">' + rows + '</div>';
+    }
+    if (variant === '4') {
+        return '<div style="overflow-x:auto;"><table class="lb-table lb-cards tn-roster-table"><thead><tr><th>' + t('player') +
+            '</th><th>HCP</th><th>' + (en ? 'Tee' : 'ТИ') + '</th></tr></thead><tbody>' +
+            list.map(function(en2) { return tnRosterPlayerLine(en2, 0, '4', en); }).join('') +
+            '</tbody></table></div>';
+    }
+    return '<div style="overflow-x:auto;"><table class="lb-table lb-cards"><thead><tr><th>#</th><th>' + t('player') +
+        '</th><th>HCP</th><th>' + (en ? 'Tee' : 'ТИ') + '</th><th>' + t('date') + '</th></tr></thead><tbody>' +
+        list.map(function(en2, i) { return tnRosterPlayerLine(en2, i, '1', en); }).join('') +
+        '</tbody></table></div>';
+}
+
+// Список участников, сгруппированный по группам гандикапа турнира.
+// Если админ выключил отображение групп (settings/tn_groups_visible),
+// список выводится одним плоским блоком. Оформление (4 варианта) выбирает
+// администратор в админ-меню (settings/tn_roster_variant) — действует для всех.
 function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
     var en = currentLang === 'en';
     if (!regCount) {
         return '<p style="font-size:12px;color:var(--muted);text-align:center;">' + (en ? 'No registered participants yet' : 'Пока нет зарегистрированных участников') + '</p>';
     }
-    var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
+    var groupsVisible = (typeof getTnGroupsVisible === 'function') ? getTnGroupsVisible() : false;
+    var variant = (typeof getTnRosterVariant === 'function') ? getTnRosterVariant() : '1';
+    if (['1', '2', '3', '4'].indexOf(String(variant)) === -1) variant = '1';
+    var divisions = groupsVisible && (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
     var list = tnDedupeRoster(regPlayers);
 
     var buckets = [];
@@ -495,7 +555,7 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
         var hcp = (rp.handicap != null && rp.handicap !== '') ? rp.handicap : null;
         var gender = rp.gender || 'men';
         en2.effHcp = (hcp != null) ? tnEffectiveHcp(tVal, tnId, hcp, gender) : null;
-        var div = (typeof tnFindDivision === 'function')
+        var div = divisions.length && (typeof tnFindDivision === 'function')
             ? tnFindDivision(tVal, en2.effHcp, gender, { pid: en2.pid, name: rp.name || '' })
             : null;
         if (div && byDiv[div.id]) byDiv[div.id].list.push(en2);
@@ -503,6 +563,10 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
         if (tnIsGuestRoster(rp)) guests.list.push(en2);
     });
     if (unassigned.list.length) buckets.push(unassigned);
+
+    if (!groupsVisible) {
+        return '<div class="tn-roster-v' + variant + '">' + tnRosterBucketHtml(list, variant, en) + '</div>';
+    }
 
     var tabs = [{ key: 'all', label: en ? 'All' : 'Все', count: list.length, icon: 'fa-layer-group' }];
     buckets.forEach(function(b, bi) {
@@ -514,8 +578,6 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
             icon: b.div ? (b.div.gender === 'women' ? 'fa-venus' : b.div.gender === 'men' ? 'fa-mars' : 'fa-layer-group') : 'fa-user-group'
         });
     });
-    // «Гости» — отдельная вкладка, только если такие участники есть и их
-    // ещё не показывает какая-то из групп администратора.
     var hasGuestDiv = divisions.some(function(d) { return /гост|guest/i.test(String(d.name || '')); });
     if (guests.list.length && !hasGuestDiv) {
         tabs.push({ key: '__guests', label: en ? 'Guests' : 'Гости', count: guests.list.length, icon: 'fa-user-tie' });
@@ -524,7 +586,8 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
     var shown = tnFilterByTab(tnId, buckets, guests.list).show.filter(function(b) { return b.list.length > 0; });
     if (!shown.length) shown = buckets.filter(function(b) { return b.list.length > 0; });
 
-    var html = tnTabsHtml(tnId, tabs);
+    var html = '<div class="tn-roster-v' + variant + '">';
+    html += tnTabsHtml(tnId, tabs);
     if (shown.length > 1) {
         html += '<div class="tn-groups-toggle">' +
             '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'roster\',true)"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
@@ -537,20 +600,10 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
         html += '<div class="tn-group' + (isOpen ? ' open' : '') + '">';
         html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="roster" data-div="' + escapeHtml(divId) + '" onclick="toggleTnGroupEl(this)">' + tnGroupHeadHtml(b, en) + '</button>';
         html += '<div class="tn-group-body' + (isOpen ? '' : ' tn-collapsed') + '">';
-        html += '<div style="overflow-x:auto;"><table class="lb-table lb-cards"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>' + (en ? 'Tee' : 'ТИ') + '</th><th>' + t('date') + '</th></tr></thead><tbody>';
-        var rIdx = 1;
-        b.list.forEach(function(en2) {
-            var rp = en2.rp, rpid = en2.pid;
-            html += '<tr><td data-label="#">' + (rIdx++) + '</td>';
-            html += '<td class="lb-card-main"><strong style="color:var(--gold);">' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong>' +
-                (tnIsGuestRoster(rp) ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '') + '</td>';
-            html += '<td data-label="HCP">' + (rp.handicap != null && rp.handicap !== '' ? fmtExactHcp(rp.handicap) + tnCutChipHtml(rp.handicap, en2.effHcp) : '—') + '</td>';
-            html += '<td data-label="' + (en ? 'Tee' : 'ТИ') + '">' + fmtTeePill(rp.tee) + '</td>';
-            html += '<td data-label="' + t('date') + '">' + fmtDate(rp.registeredAt) + '</td></tr>';
-        });
-        html += '</tbody></table></div>';
+        html += tnRosterBucketHtml(b.list, variant, en);
         html += '</div></div>';
     });
+    html += '</div>';
     return html;
 }
 
@@ -568,6 +621,20 @@ function ensureTnLbSubscription() {
             if (tnLbOpen[tnId]) renderTnLeaderboard(tnId);
         });
     });
+}
+
+// Место в лидерборде: медали для топ-3, #N — дальше, «—» без результатов.
+function tnLbPosMedal(en2) {
+    var p = en2.position;
+    if (p === null || p === undefined) return '';
+    return p === 1 ? '🥇' : p === 2 ? '🥈' : p === 3 ? '🥉' : '';
+}
+function tnLbPosHtml(en2, hashPrefix) {
+    var p = en2.position;
+    if (p === null || p === undefined) return '<span class="tn-no-rank">—</span>';
+    var medal = tnLbPosMedal(en2);
+    if (medal) return medal;
+    return (hashPrefix ? '#' : '') + p;
 }
 
 function tnLbSort(a, b) {
@@ -722,13 +789,19 @@ function renderTnLeaderboard(tnId) {
         lbTabs.push({ key: '__guests', label: en ? 'Guests' : 'Гости', count: guests.list.length, icon: 'fa-user-tie' });
     }
 
+    // Места считаются только среди игроков с результатами. Игроки без
+    // единственной лунки получают «—» и не занимают первых мест.
+    function tnAssignPositions(arr) {
+        var scored = arr.filter(function(e) { return e.holes > 0; });
+        scored.forEach(function(e, i) {
+            if (i === 0 || e.netToPar !== scored[i - 1].netToPar || e.toPar !== scored[i - 1].toPar) e.position = i + 1;
+            else e.position = scored[i - 1].position;
+        });
+        arr.forEach(function(e) { if (!(e.holes > 0)) e.position = null; });
+    }
     buckets.forEach(function(b) {
         b.list.sort(tnLbSort);
-        var p = 0;
-        b.list.forEach(function(en2, i) {
-            if (i === 0 || en2.netToPar !== b.list[i - 1].netToPar || en2.toPar !== b.list[i - 1].toPar) p = i + 1;
-            en2.position = p;
-        });
+        tnAssignPositions(b.list);
     });
 
     tnScBuildCards(tnId, tVal, list);
@@ -749,20 +822,20 @@ function renderTnLeaderboard(tnId) {
 
     // «Все» — один общий блок без групп (#9). Конкретную группу смотрят,
     // выбрав её вкладкой: тогда показываются только её участники.
-    var curLbTab = tnGetTab(tnId);
+    // Если админ выключил группы — вкладок и заголовков групп нет вообще.
+    var groupsVisibleLB = (typeof getTnGroupsVisible === 'function') ? getTnGroupsVisible() : false;
+    var curLbTab = groupsVisibleLB ? tnGetTab(tnId) : 'all';
+    var allSorted = list.slice().sort(tnLbSort);
+    tnAssignPositions(allSorted);
     if (curLbTab === 'all') {
-        var allSorted = list.slice().sort(tnLbSort);
-        var gPos = 0;
-        allSorted.forEach(function(en2, i) {
-            if (i === 0 || en2.netToPar !== allSorted[i - 1].netToPar || en2.toPar !== allSorted[i - 1].toPar) gPos = i + 1;
-            en2.position = gPos;
-        });
         buckets = [{ div: null, list: allSorted, singleAll: true }];
     }
-    var lbShown = tnFilterByTab(tnId, buckets, guests.list).show.filter(function(b) { return b.list.length > 0; });
+    var lbShown = curLbTab === 'all'
+        ? buckets.filter(function(b) { return b.list.length > 0; })
+        : tnFilterByTab(tnId, buckets, guests.list).show.filter(function(b) { return b.list.length > 0; });
     if (!lbShown.length) lbShown = buckets.filter(function(b) { return b.list.length > 0; });
-    html += tnTabsHtml(tnId, lbTabs);
-    if (lbShown.length > 1 && curLbTab !== 'all') {
+    if (groupsVisibleLB) html += tnTabsHtml(tnId, lbTabs);
+    if (groupsVisibleLB && lbShown.length > 1 && curLbTab !== 'all') {
         html += '<div class="tn-groups-toggle">' +
             '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'lb\',true)"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
             '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'lb\',false)"><i class="fas fa-angles-up"></i> ' + (en ? 'Collapse all' : 'Свернуть все') + '</button>' +
@@ -773,19 +846,23 @@ function renderTnLeaderboard(tnId) {
         b.list.sort(tnLbSort);
         var lbDivId = b.guestTab ? '__guests' : (b.div ? (b.div.id || ('d' + bi)) : '__none');
         var lbOpen = tnGroupIsOpen(tnId, 'lb', lbDivId, true);
-        html += '<div class="tn-group' + (lbOpen ? ' open' : '') + '">';
-        html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="lb" data-div="' + escapeHtml(lbDivId) + '" onclick="toggleTnGroupEl(this)">' + tnGroupHeadHtml(b, en) + '</button>';
-        html += '<div class="tn-group-body' + (lbOpen ? '' : ' tn-collapsed') + '">';
+        // Заголовок есть и во вкладке «Все» («Все участники»), и у отдельных
+        // групп; сворачиваемым он является только для конкретной группы.
+        var showHead = groupsVisibleLB;
+        html += '<div class="tn-group' + (lbOpen || !showHead ? ' open' : '') + '">';
+        if (showHead) {
+            html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="lb" data-div="' + escapeHtml(lbDivId) + '" onclick="toggleTnGroupEl(this)">' + tnGroupHeadHtml(b, en) + '</button>';
+        }
+        html += '<div class="tn-group-body' + ((lbOpen || !showHead) ? '' : ' tn-collapsed') + '">';
 
         if (lbVariant === '3') {
             html += '<div class="tn-lb-cards-grid">';
             b.list.forEach(function(en2, i) {
-                var pos = en2.position || (i + 1);
-                var medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : ('#' + pos);
+                var posHtml = tnLbPosHtml(en2, true);
                 var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 var thru = en2.holes > 0 ? en2.holes + '/18' : '—';
                 html += '<div class="tn-lb-card" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')">';
-                html += '<div class="tn-lb-card-top"><span class="tn-lb-card-pos">' + medal + '</span>' +
+                html += '<div class="tn-lb-card-top"><span class="tn-lb-card-pos">' + posHtml + '</span>' +
                     (en2.live ? '<span class="tn-lb-live"><span class="tn-lb-dot"></span>LIVE</span>' : '') +
                     '<span class="tn-lb-card-thru">' + thru + '</span></div>';
                 html += '<div class="tn-lb-card-name">' + escapeHtml(en2.dispName) +
@@ -803,20 +880,19 @@ function renderTnLeaderboard(tnId) {
         } else if (lbVariant === '5') {
             html += '<div class="tn-lb-live-list">';
             b.list.forEach(function(en2, i) {
-                var pos = en2.position || (i + 1);
-                var medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : '';
+                var posHtml = tnLbPosHtml(en2, false);
                 var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 var progress = Math.min(100, Math.round((en2.holes/18)*100));
                 var toParCls = scoreClass(en2.toPar);
                 html += '<div class="tn-lb-live-row' + (en2.live ? ' is-live' : '') + '" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')">';
-                html += '<div class="tn-lb-live-pos"><b>' + pos + '</b>' + (medal ? '<span>' + medal + '</span>' : '') + '</div>';
+                html += '<div class="tn-lb-live-pos">' + (en2.position ? '<b>' + en2.position + '</b><span>' + tnLbPosMedal(en2) + '</span>' : '<b class="tn-no-rank">—</b>') + '</div>';
                 html += '<div class="tn-lb-live-main">';
                 html += '<div class="tn-lb-live-name">' + escapeHtml(en2.dispName) + (en2.isGuest ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '') + '</div>';
                 html += '<div class="tn-lb-live-bar"><div class="tn-lb-live-fill" style="width:' + progress + '%;"></div></div>';
                 html += '<div class="tn-lb-live-meta">' + en2.holes + '/18 · ' + fmtTeePill(en2.tee) + (en2.rp && en2.rp.handicap!=null ? ' · HCP ' + fmtExactHcp(en2.rp.handicap) : '') + '</div>';
                 html += '</div>';
                 html += '<div class="tn-lb-live-scores">';
-                html += '<div class="tn-lb-live-toPar ' + toParCls + '">' + fmtScore(en2.toPar) + '</div>';
+                html += '<div class="tn-lb-live-toPar ' + toParCls + '">' + (en2.holes > 0 ? fmtScore(en2.toPar) : '—') + '</div>';
                 html += '<div class="tn-lb-live-gross">' + (en2.holes>0?en2.gross:'—') + '</div>';
                 html += '</div>';
                 html += '<div class="tn-lb-live-arrow"><i class="fas fa-chevron-right"></i></div>';
@@ -826,12 +902,11 @@ function renderTnLeaderboard(tnId) {
         } else if (lbVariant === '2') {
             html += '<div style="overflow-x:auto;"><table class="lb-table tn-lb-table tn-lb-compact"><thead><tr><th>#</th><th>' + t('player') + '</th><th>' + (en ? 'Thru' : 'Лунки') + '</th><th>±</th><th></th></tr></thead><tbody>';
             b.list.forEach(function(en2, i) {
-                var pos = en2.position || (i + 1);
-                var medal = pos === 1 ? '🥇 ' : pos === 2 ? '🥈 ' : pos === 3 ? '🥉 ' : '';
+                var posHtml = tnLbPosHtml(en2, true);
                 var thru = en2.holes > 0 ? en2.holes : '—';
                 var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
-                html += '<td><strong style="color:var(--gold);">' + medal + pos + '</strong></td>';
+                html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
                 html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' + (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + '</td>';
                 html += '<td>' + thru + '</td>';
                 html += '<td><strong class="' + scoreClass(en2.toPar) + '">' + fmtScore(en2.toPar) + '</strong></td>';
@@ -841,14 +916,13 @@ function renderTnLeaderboard(tnId) {
         } else if (lbVariant === '4') {
             html += '<div style="overflow-x:auto;"><table class="lb-table tn-lb-table tn-lb-detailed"><thead><tr><th>#</th><th>' + t('player') + '</th><th>HCP</th><th>' + (en ? 'Tee' : 'ТИ') + '</th><th>' + (en ? 'Group' : 'Группа') + '</th><th>' + (en ? 'Thru' : 'Лунки') + '</th><th>' + (en ? 'Gross' : 'Гросс') + '</th><th>±</th><th>' + (en ? 'Net' : 'Нетто') + '</th><th>' + (en ? 'Stbl' : 'Стбл') + '</th><th></th></tr></thead><tbody>';
             b.list.forEach(function(en2, i) {
-                var pos = en2.position || (i + 1);
-                var medal = pos === 1 ? '🥇 ' : pos === 2 ? '🥈 ' : pos === 3 ? '🥉 ' : '';
+                var posHtml = tnLbPosHtml(en2, true);
                 var thru = en2.holes > 0 ? en2.holes : '—';
                 var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 var hcpTxt = (en2.rp && en2.rp.handicap!=null && en2.rp.handicap!=='') ? fmtExactHcp(en2.rp.handicap) : (en2.hcpRaw!=null ? fmtExactHcp(en2.hcpRaw) : '—');
                 var groupTxt = en2.div ? (en2.div.name || '') : '—';
                 html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
-                html += '<td><strong style="color:var(--gold);">' + medal + pos + '</strong></td>';
+                html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
                 html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' + (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + (en2.isGuest ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '') + '</td>';
                 html += '<td>' + hcpTxt + '</td>';
                 html += '<td>' + fmtTeePill(en2.tee) + '</td>';
@@ -865,13 +939,12 @@ function renderTnLeaderboard(tnId) {
             html += '<div style="overflow-x:auto;"><table class="lb-table tn-lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th><th>' +
                 (en ? 'Thru' : 'Лунки') + '</th><th>' + (en ? 'Gross' : 'Гросс') + '</th><th>±</th><th>' + (en ? 'Net' : 'Нетто') + '</th><th>' + (en ? 'Stbl' : 'Стбл') + '</th><th></th></tr></thead><tbody>';
             b.list.forEach(function(en2, i) {
-                var pos = en2.position || (i + 1);
-                var medal = pos === 1 ? '🥇 ' : pos === 2 ? '🥈 ' : pos === 3 ? '🥉 ' : '';
+                var posHtml = tnLbPosHtml(en2, true);
                 var thru = en2.holes > 0 ? en2.holes : '—';
                 var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')" title="' +
                     (en ? 'Scorecard' : 'Счётная карточка') + '">';
-                html += '<td><strong style="color:var(--gold);">' + medal + pos + '</strong></td>';
+                html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
                 html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' +
                     (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') +
                     (en2.isGuest ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '') + '</td>';

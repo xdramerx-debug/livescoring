@@ -525,7 +525,11 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
     // для блока «Активный турнир», где раунды показываются развёрнутыми.
     var open = (forceOpen === true) ? true : getLiveRoundOpen(id);
     var panelId = 'live-round-panel-' + id;
-    var link = 'setup-round.html?round=' + id;
+    // ?as=<игрок> для устройства, действующего от его имени (продолжение
+    // по ФИО): без него «Продолжить» могло открыться в режиме просмотра.
+    var soloActing = null;
+    try { soloActing = localStorage.getItem('pestovo_acting_as_' + id); } catch (e) {}
+    var link = 'setup-round.html?round=' + id + ((soloActing && pid === soloActing) ? '&as=' + encodeURIComponent(pid) : '');
     var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
 
     // Детали: бейджи, gross, формат, кнопка «Продолжить» и счётная карточка.

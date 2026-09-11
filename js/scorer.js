@@ -192,6 +192,8 @@ function buildHoles() {
         if (s >= 1 && ms >= 1 && s === ms) cls += ' verified';
         else if (s >= 1 && ms >= 1) cls += ' mismatch';
         else if (s >= 1) cls += ' pending';
+        // Текущая лунка без введённого счёта мигает серым (как в основном вводе).
+        if (h === scHole && !(s >= 1)) cls += ' cur-blink';
         html += '<button class="hole-btn ' + cls + '" onclick="goSc(' + h + ')">' +
             '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + (typeof hcpStrokesMarksHTML === 'function' ? hcpStrokesMarksHTML(scFieldHcp, h) : '') + '</span>' +
             '</button>';

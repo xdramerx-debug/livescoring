@@ -275,9 +275,11 @@ function requestNotificationPermission(callback) {
     }
     Notification.requestPermission().then(function(perm) {
         if (perm === 'granted') {
-            if (typeof toast === 'function') toast(currentLang === 'en' ? '🔔 Call push notifications enabled!' : '🔔 Пуш-уведомления вызовов включены!', 'success');
+            if (typeof toast === 'function') toast(currentLang === 'en' ? '🔔 Push notifications enabled!' : '🔔 Пуш-уведомления включены!', 'success');
             markPwaPushEnabled();
             initBackgroundAlertListener();
+            // Фоновая VAPID-подписка (пуши при закрытом приложении).
+            try { if (typeof pestovoPushSubscribe === 'function') pestovoPushSubscribe(); } catch (e) {}
             if (typeof callback === 'function') callback(true);
         } else {
             if (typeof toast === 'function') toast(currentLang === 'en' ? 'Notifications declined by browser' : 'Уведомления отклонены браузером', 'warn');
@@ -398,3 +400,136 @@ function initBackgroundBroadcastListener() {
 window.addEventListener('load', function() {
     initBackgroundBroadcastListener();
 });
+
+// ============================================================
+// ФОНОВЫЕ WEB PUSH (работают при ЗАКРЫТОМ PWA)
+// VAPID-подписка pushManager; отправка — Cloud Function
+// (functions/index.js: onBroadcastCreated / onAlertCreated).
+// ============================================================
+function pestovoUrlB64ToU8(base64String) {
+    var padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = atob(base64);
+    var out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; ++i) out[i] = raw.charCodeAt(i);
+    return out;
+}
+
+function pestovoPushKeyForEndpoint(endpoint) {
+    var tail = String(endpoint || '').split('/').pop() || String(Date.now());
+    return 'sub_' + tail.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 120);
+}
+
+var pestovoPushBusy = false;
+function pestovoPushSubscribe() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return Promise.resolve(null);
+    if (!('Notification' in window) || Notification.permission !== 'granted') return Promise.resolve(null);
+    if (typeof db === 'undefined' || !db) return Promise.resolve(null);
+    if (pestovoPushBusy) return Promise.resolve(null);
+    pestovoPushBusy = true;
+
+    return db.ref('settings/vapid_public_key').once('value').then(function(sn) {
+        var pub = sn.val();
+        if (!pub) throw new Error('no-vapid');
+        return navigator.serviceWorker.ready.then(function(reg) {
+            return reg.pushManager.getSubscription().then(function(existing) {
+                if (existing) {
+                    // Подписка с другим VAPID-ключом — пересоздаём.
+                    var curKey = existing.options && existing.options.applicationServerKey;
+                    if (curKey) {
+                        var b64 = btoa(String.fromCharCode.apply(null, new Uint8Array(curKey))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                        if (b64 === pub) return existing;
+                    } else return existing;
+                    return existing.unsubscribe().then(function() {
+                        return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pestovoUrlB64ToU8(pub) });
+                    });
+                }
+                return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pestovoUrlB64ToU8(pub) });
+            });
+        }).then(function(sub) { return pestovoPushSave(sub); });
+    }).catch(function(err) {
+        if (err && err.message !== 'no-vapid') console.warn('push subscribe failed', err);
+        return null;
+    }).then(function(v) { pestovoPushBusy = false; return v; });
+}
+
+function pestovoPushSave(sub) {
+    if (!sub) return Promise.resolve(null);
+    var j = sub.toJSON ? sub.toJSON() : sub;
+    var endpoint = j.endpoint;
+    var rec = {
+        endpoint: endpoint,
+        keys: j.keys || {},
+        lang: (typeof currentLang !== 'undefined' ? currentLang : 'ru'),
+        platform: (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '',
+        updatedAt: Date.now()
+    };
+    var uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) ? currentUser.uid : null;
+    if (uid) rec.uid = uid;
+
+    return db.ref('push_subscriptions').orderByChild('endpoint').equalTo(endpoint).once('value').then(function(sn) {
+        var val = sn.val() || {};
+        var keys = Object.keys(val);
+        var updates = {};
+        var key;
+        if (keys.length) {
+            key = keys[0];
+            var merged = Object.assign({}, val[key], rec);
+            // uid не затираем неизвестностью: если запись уже привязана —
+            // оставляем, пока вход не даст явный uid.
+            if (val[key].uid && !uid) merged.uid = val[key].uid;
+            updates['/push_subscriptions/' + key] = merged;
+            keys.slice(1).forEach(function(k2) { updates['/push_subscriptions/' + k2] = null; });
+        } else {
+            var localKey = null;
+            try { localKey = localStorage.getItem('pestovo_push_key'); } catch (e) {}
+            key = localKey || pestovoPushKeyForEndpoint(endpoint);
+            updates['/push_subscriptions/' + key] = rec;
+        }
+        try { localStorage.setItem('pestovo_push_key', key); } catch (e) {}
+        return db.ref().update(updates).then(function() {
+            if (uid) return pestovoPushPatchProfile(key, uid);
+            return key;
+        });
+    });
+}
+
+// Привязка подписки к вошедшему игроку + флаг админа (для пушей вызовов).
+function pestovoPushPatchProfile(key, uid) {
+    if (!key || !uid || typeof db === 'undefined' || !db) return Promise.resolve(key);
+    var patch = { uid: uid, updatedAt: Date.now() };
+    return db.ref('users/' + uid + '/role').once('value').then(function(sn) {
+        if (sn.val() === 'admin') patch.isAdmin = true;
+        return db.ref('push_subscriptions/' + key).update(patch).catch(function() {});
+    }).then(function() { return key; }).catch(function() { return key; });
+}
+
+function pestovoPushBindAuth() {
+    try {
+        var auth = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth() : null;
+        if (!auth) return;
+        auth.onAuthStateChanged(function(user) {
+            var key = null;
+            try { key = localStorage.getItem('pestovo_push_key'); } catch (e) {}
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            if (!key) { pestovoPushSubscribe(); return; }
+            if (user) pestovoPushPatchProfile(key, user.uid);
+        });
+    } catch (e) {}
+}
+
+window.addEventListener('load', function() {
+    try {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            pestovoPushSubscribe();
+        }
+        pestovoPushBindAuth();
+        // SW мог молча переподписаться (pushsubscriptionchange)
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.addEventListener('message', function(ev) {
+                if (ev.data && ev.data.type === 'pestovo-push-resubscribed') pestovoPushSubscribe();
+            });
+        }
+    } catch (e) {}
+});
+window.pestovoPushSubscribe = pestovoPushSubscribe;

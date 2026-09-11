@@ -324,6 +324,22 @@ setTimeout(function () {
     ok(gate.classList.contains('hidden') === true, 'отсчёт: после старта блок скрыт');
     ok(sandbox.isRoundOpenForScoring(sandbox.curRoundData, Date.now()) === true, 'отсчёт: раунд открыт для ввода счёта');
 
+    // ══════════════════════════════════════════════════════
+    // 8. ТУРНИРНЫЕ РАУНДЫ ОТДЕЛЬНЫ ОТ СОЛО/ГРУППОВЫХ
+    // ══════════════════════════════════════════════════════
+    const tnRound = { status: 'active', tournamentId: 'tn1', protocolId: 'p1', mode: 'group', players: {} };
+    const soloRound = { status: 'active', mode: 'solo', players: {} };
+    const plainGroup = { status: 'active', mode: 'group', players: {} };
+    const scheduledTn = { status: 'scheduled', tournamentId: 'tn1', mode: 'group', players: {} };
+    const tnRounds = sandbox.pestovoTournamentRounds([
+        { round: tnRound }, { round: soloRound }, { round: plainGroup }, { round: scheduledTn }
+    ]);
+    eq(tnRounds.length, 2, 'турнирные раунды: отобраны только турнирные (активный + запланированный)');
+    ok(sandbox.isTournamentRound(tnRound) === true, 'турнирные раунды: протокольный раунд — турнирный');
+    ok(sandbox.isTournamentRound(soloRound) === false, 'турнирные раунды: соло — не турнирный');
+    ok(sandbox.isTournamentRound(plainGroup) === false, 'турнирные раунды: обычный групповой — не турнирный');
+    eq(sandbox.pestovoTournamentRounds([]), [], 'турнирные раунды: пустой список → []');
+
     console.log(failures ? '\n' + failures + ' проверок провалено ✘' : '\nВсе проверки старта турнира пройдены ✔');
     process.exit(failures ? 1 : 0);
 }, 60);

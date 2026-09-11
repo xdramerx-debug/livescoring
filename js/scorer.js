@@ -1,6 +1,7 @@
 var scRid = null, scPid = null, scRound = null;
 var scHole = 1, scScore = 0, scMarker = {};
 var scChanging = false;
+var scSaving = false;
 var scPaceTimer = null;
 
 function scGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
@@ -123,9 +124,15 @@ function loadSc() {
             }
         }
 
-        if (typeof buildHoles === 'function') buildHoles();
-        if (typeof renderHole === 'function') renderHole();
-        if (typeof renderCard === 'function') renderCard();
+        // Во время активного ввода счёта (scChanging) и пока идёт запись в базу
+        // (scSaving) полную перерисовку не запускаем: каждый set() в Firebase
+        // прилетает обратно в этот listener, и на быстрых нажатиях цепочка
+        // «запись → value → перерисовка ×3 блоков» замораживала страницу на телефоне.
+        if (!scChanging && !scSaving) {
+            if (typeof buildHoles === 'function') buildHoles();
+            if (typeof renderHole === 'function') renderHole();
+            if (typeof renderCard === 'function') renderCard();
+        }
     });
 
     try {
@@ -196,6 +203,7 @@ function buildHoles() {
         if (h === scHole && !(s >= 1)) cls += ' cur-blink';
         html += '<button class="hole-btn ' + cls + '" onclick="goSc(' + h + ')">' +
             '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + (typeof hcpStrokesMarksHTML === 'function' ? hcpStrokesMarksHTML(scFieldHcp, h) : '') + '</span>' +
+            (typeof hbnScoresHtml === 'function' ? hbnScoresHtml(s, ms) : '') +
             '</button>';
     });
     el.innerHTML = html;
@@ -262,8 +270,20 @@ function checkVerify() {
     else box.innerHTML = '';
 }
 
+function scSetSaving(on) {
+    scSaving = !!on;
+    var btn = scGet('sc-save-btn');
+    if (btn) btn.disabled = !!on;
+}
+
 function saveSc() {
     if (scScore < 1) { if (typeof toast === 'function' && typeof t === 'function') toast(t('msg_score_min'), 'error'); return; }
+    // Защита от «пулемётного» нажатия кнопки: пока запись в базу не завершилась,
+    // повторные вызовы игнорируем. Раньше каждый тап запускал свой saveSc →
+    // несколько параллельных set() и перерисовок, что вешало страницу на телефоне.
+    if (scSaving) return;
+    scSaving = true;
+    scSetSaving(true);
     scChanging = true;
     var savedHole = scHole;
     var setPromise = (typeof dbSetWithOfflineQueue === 'function' ? dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole, scScore) : (typeof db !== 'undefined' ? db.ref('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole).set(scScore) : Promise.resolve()));
@@ -309,9 +329,11 @@ function saveSc() {
         if (typeof renderCard === 'function') renderCard();
         if (typeof renderPaceAssistant === 'function') { try{ renderPaceAssistant('sc-pace-assistant', scRound); }catch(e){} }
         setTimeout(function() { scChanging = false; }, 200);
+        scSetSaving(false);
     }).catch(function(err){
         console.error('[scorer] save failed', err);
         scChanging = false;
+        scSetSaving(false);
         if (typeof toast === 'function') toast('Ошибка сохранения', 'error');
     });
 }

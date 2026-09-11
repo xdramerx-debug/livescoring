@@ -1,6 +1,7 @@
 var mkRid = null, mkPid = null, mkRound = null;
 var mkHole = 1, mkScore = 0, mkScores = {}, mkPScores = {};
 var mkChanging = false;
+var mkSaving = false;
 var mkPaceTimer = null;
 
 function mkGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
@@ -75,10 +76,14 @@ function loadMk() {
             }
         }
 
-        if (typeof buildHoles === 'function') buildHoles();
-        if (typeof renderHole === 'function') renderHole();
-        if (typeof renderSum === 'function') renderSum();
-        if (typeof checkVerify === 'function') checkVerify();
+        // Во время ввода/записи полную перерисовку не запускаем (см. scorer.js):
+        // каждый set() возвращается в listener и на быстрых нажатиях замораживал страницу.
+        if (!mkChanging && !mkSaving) {
+            if (typeof buildHoles === 'function') buildHoles();
+            if (typeof renderHole === 'function') renderHole();
+            if (typeof renderSum === 'function') renderSum();
+            if (typeof checkVerify === 'function') checkVerify();
+        }
     });
 
     try{
@@ -110,6 +115,7 @@ function buildHoles() {
         if (h === mkHole && !(ms >= 1)) cls += ' cur-blink';
         html += '<button class="hole-btn ' + cls + '" onclick="goMk(' + h + ')">' +
             '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + (typeof hcpStrokesMarksHTML === 'function' ? hcpStrokesMarksHTML(mkFieldHcp, h) : '') + '</span>' +
+            (typeof hbnScoresHtml === 'function' ? hbnScoresHtml(ps, ms) : '') +
             '</button>';
     });
     el.innerHTML = html;
@@ -167,7 +173,17 @@ function checkVerify() {
     else box.innerHTML = '';
 }
 
+function mkSetSaving(on) {
+    mkSaving = !!on;
+    var btn = mkGet('mk-save-btn');
+    if (btn) btn.disabled = !!on;
+}
+
 function saveMk() {
+    // Защита от «пулемётного» нажатия кнопки (см. scorer.js).
+    if (mkSaving) return;
+    mkSaving = true;
+    mkSetSaving(true);
     mkChanging = true;
     var savedHole = mkHole;
     var p = (typeof dbSetWithOfflineQueue === 'function' ? dbSetWithOfflineQueue('markers/' + mkRid + '/' + mkPid + '/' + savedHole, mkScore) : (typeof db !== 'undefined' ? db.ref('markers/' + mkRid + '/' + mkPid + '/' + savedHole).set(mkScore) : Promise.resolve()));
@@ -194,9 +210,11 @@ function saveMk() {
         if (typeof renderSum === 'function') renderSum();
         if (typeof checkVerify === 'function') checkVerify();
         setTimeout(function() { mkChanging = false; }, 200);
+        mkSetSaving(false);
     }).catch(function(err){
         console.error('[marker] save failed', err);
         mkChanging = false;
+        mkSetSaving(false);
         if (typeof toast === 'function') toast('Ошибка сохранения', 'error');
     });
 }

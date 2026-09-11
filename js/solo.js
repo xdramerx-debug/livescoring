@@ -332,6 +332,21 @@ function startSolo() {
         if (typeof toast === 'function') toast(currentLang === 'en' ? 'Checking active sessions...' : '⏳ Проверка активных сессий...', 'info');
         pestovoFindActiveRoundsByFio(fullName).then(function(matches) {
             if (matches && matches.length) {
+                // Турнирные раунды отдельны от соло/групповых: игрок в турнире
+                // не может начать новый обычный раунд (жёсткий запрет, без
+                // кнопки «начать всё равно»).
+                var tnRounds = (typeof pestovoTournamentRounds === 'function')
+                    ? pestovoTournamentRounds(matches)
+                    : matches.filter(function(m) {
+                        return (typeof isTournamentRound === 'function') && isTournamentRound(m.round);
+                    });
+                if (tnRounds.length) {
+                    soloStarting = false;
+                    toast(currentLang === 'en'
+                        ? '⛔ Player is in a tournament round — solo/group rounds are not available.'
+                        : '⛔ Игрок участвует в турнирном раунде — соло/групповые раунды недоступны.', 'error');
+                    return;
+                }
                 soloStarting = false;
                 if (typeof pestovoShowFioConflictModal === 'function') {
                     // Владелец может продолжить незавершённый раунд или, если

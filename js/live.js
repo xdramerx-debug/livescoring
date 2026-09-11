@@ -580,12 +580,24 @@ function startGroup() {
         try { if (typeof toast === 'function') toast('Проверка активных сессий...', 'info'); } catch(e){}
         pestovoCheckFioConflictsForGroup(fullNamesForCheck).then(function(conflicts) {
             if (conflicts && conflicts.length) {
-                var flat = [];
-                conflicts.forEach(function(c) { flat = flat.concat(c.matches || []); });
-                if (typeof pestovoShowFioConflictModal === 'function' && flat.length) {
-                    pestovoShowFioConflictModal(flat, function() { proceedWithGroupStart(); });
+                // Турнирные раунды отдельны от соло/групповых: игрок в турнире
+                // не может начать новый групповой раунд (жёсткий запрет).
+                var tnRounds = (typeof pestovoTournamentRounds === 'function')
+                    ? pestovoTournamentRounds(conflicts)
+                    : conflicts.filter(function(c) {
+                        return (typeof isTournamentRound === 'function') && isTournamentRound(c.round);
+                    });
+                if (tnRounds.length) {
+                    groupStarting = false;
+                    toast(currentLang === 'en'
+                        ? '⛔ A player is in a tournament round — group rounds are not available.'
+                        : '⛔ Игрок участвует в турнирном раунде — новый групповой раунд недоступен.', 'error');
+                    return;
+                }
+                if (typeof pestovoShowFioConflictModal === 'function') {
+                    pestovoShowFioConflictModal(conflicts, function() { proceedWithGroupStart(); });
                 } else {
-                    var names = conflicts.map(function(c){ return c.fio; }).join(', ');
+                    var names = conflicts.map(function(c){ return c.fio || c.inputFio || ''; }).join(', ');
                     toast('⚠️ У игроков уже есть активные раунды: ' + names, 'error');
                 }
                 return;
@@ -898,8 +910,10 @@ function buildPlayHolesNav() {
         // видно, на какой лунке игрок находится прямо сейчас.
         if (h === playHole && vState !== 'confirmed' && !(sub && s > 0)) cls += ' cur-blink';
 
+        var mkForHole = (typeof getPlayerMarkerScoreForHole === 'function') ? getPlayerMarkerScoreForHole(myPlayer, h).score : 0;
         html += '<button class="hole-btn ' + cls + '" onclick="goPlayHole(' + h + ')">' +
             '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + hcpStrokesMarksHTML(myFieldHcp, h) + '</span>' +
+            (typeof hbnScoresHtml === 'function' ? hbnScoresHtml(s, mkForHole) : '') +
             '</button>';
     });
     el.innerHTML = html;

@@ -482,8 +482,7 @@ function tnCutChipHtml(raw, eff) {
 // Строка одного участника для 4 вариантов оформления списка.
 function tnRosterPlayerLine(en2, idx, variant, en) {
     var rp = en2.rp, rpid = en2.pid;
-    var name = '<strong>' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong>' +
-        (tnIsGuestRoster(rp) ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '');
+    var name = '<strong>' + escapeHtml(privacyDisplayName(rp, rpid)) + '</strong>';
     var hcp = (rp.handicap != null && rp.handicap !== '')
         ? fmtExactHcp(rp.handicap) + tnCutChipHtml(rp.handicap, en2.effHcp) : '—';
     var tee = fmtTeePill(rp.tee);
@@ -865,8 +864,7 @@ function renderTnLeaderboard(tnId) {
                 html += '<div class="tn-lb-card-top"><span class="tn-lb-card-pos">' + posHtml + '</span>' +
                     (en2.live ? '<span class="tn-lb-live"><span class="tn-lb-dot"></span>LIVE</span>' : '') +
                     '<span class="tn-lb-card-thru">' + thru + '</span></div>';
-                html += '<div class="tn-lb-card-name">' + escapeHtml(en2.dispName) +
-                    (en2.isGuest ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '') + '</div>';
+                html += '<div class="tn-lb-card-name">' + escapeHtml(en2.dispName) + '</div>';
                 html += '<div class="tn-lb-card-scores">';
                 html += '<div class="tn-lb-card-score"><span>' + (en ? 'Gross' : 'Гросс') + '</span><b>' + (en2.holes>0?en2.gross:'—') + '</b></div>';
                 html += '<div class="tn-lb-card-score tn-lb-card-toPar"><span>±</span><b class="' + scoreClass(en2.toPar) + '">' + fmtScore(en2.toPar) + '</b></div>';
@@ -887,7 +885,7 @@ function renderTnLeaderboard(tnId) {
                 html += '<div class="tn-lb-live-row' + (en2.live ? ' is-live' : '') + '" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')">';
                 html += '<div class="tn-lb-live-pos">' + (en2.position ? '<b>' + en2.position + '</b><span>' + tnLbPosMedal(en2) + '</span>' : '<b class="tn-no-rank">—</b>') + '</div>';
                 html += '<div class="tn-lb-live-main">';
-                html += '<div class="tn-lb-live-name">' + escapeHtml(en2.dispName) + (en2.isGuest ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '') + '</div>';
+                html += '<div class="tn-lb-live-name">' + escapeHtml(en2.dispName) + '</div>';
                 html += '<div class="tn-lb-live-bar"><div class="tn-lb-live-fill" style="width:' + progress + '%;"></div></div>';
                 html += '<div class="tn-lb-live-meta">' + en2.holes + '/18 · ' + fmtTeePill(en2.tee) + (en2.rp && en2.rp.handicap!=null ? ' · HCP ' + fmtExactHcp(en2.rp.handicap) : '') + '</div>';
                 html += '</div>';
@@ -923,7 +921,7 @@ function renderTnLeaderboard(tnId) {
                 var groupTxt = en2.div ? (en2.div.name || '') : '—';
                 html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
                 html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
-                html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' + (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + (en2.isGuest ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '') + '</td>';
+                html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' + (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + '</td>';
                 html += '<td>' + hcpTxt + '</td>';
                 html += '<td>' + fmtTeePill(en2.tee) + '</td>';
                 html += '<td style="font-size:11px;color:var(--muted);">' + escapeHtml(groupTxt) + '</td>';
@@ -946,8 +944,7 @@ function renderTnLeaderboard(tnId) {
                     (en ? 'Scorecard' : 'Счётная карточка') + '">';
                 html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
                 html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' +
-                    (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') +
-                    (en2.isGuest ? ' <span class="tn-guest-chip">' + (en ? 'guest' : 'гость') + '</span>' : '') + '</td>';
+                    (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + '</td>';
                 html += '<td>' + thru + '</td>';
                 html += '<td>' + (en2.holes > 0 ? en2.gross : '—') + '</td>';
                 html += '<td><strong class="' + scoreClass(en2.toPar) + '">' + fmtScore(en2.toPar) + '</strong></td>';

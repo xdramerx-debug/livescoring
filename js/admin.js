@@ -1601,6 +1601,60 @@ function tnReRenderDivPanel(tnId) {
     panel.innerHTML = tnDivisionsEditorHtml(tnId, divs, tVal);
 }
 
+// Селектор формата группы по гандикапу: форматы турнира (+ стандартные),
+// пусто — «наследуется» от протокола/турнира.
+function tnFormatOptionsHtml(tVal, sel) {
+    var en = currentLang === 'en';
+    var list = (tVal && Array.isArray(tVal.formats) && tVal.formats.length)
+        ? tVal.formats.slice()
+        : ['Stroke Play', 'Stableford'];
+    var used = {};
+    var html = '<option value=""' + (!sel ? ' selected' : '') + '>' + (en ? '— (inherit)' : '— (наследуется)') + '</option>';
+    list.forEach(function(f) {
+        if (!f || used[f]) return;
+        used[f] = true;
+        var v = escapeHtml(String(f)).replace(/"/g, '&quot;');
+        html += '<option value="' + v + '"' + (String(f) === String(sel || '') ? ' selected' : '') + '>' + escapeHtml(String(f)) + '</option>';
+    });
+    if (sel && !used[sel]) {
+        html += '<option value="' + escapeHtml(String(sel)).replace(/"/g, '&quot;') + '" selected>' + escapeHtml(String(sel)) + '</option>';
+    }
+    return html;
+}
+
+// Синхронизирует ТИ и формат групп по гандикапу обратно в список участников
+// турнира (registeredPlayers): игрок «мужчины 0–12 · стабфорд · белые ТИ»
+// получает в списке именно эти ТИ и формат.
+function tnSyncDivisionsToRoster(tnId) {
+    if (typeof db === 'undefined' || !db) return;
+    db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+        var tVal = sn.val();
+        if (!tVal) return;
+        var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
+        if (!divisions.length) return;
+        var reg = tVal.registeredPlayers || {};
+        var updates = {};
+        Object.keys(reg).forEach(function(k) {
+            var rp = reg[k] || {};
+            var rawHcp = (rp.handicap === '' || rp.handicap == null) ? null : parseFloat(rp.handicap);
+            var gender = rp.gender || 'men';
+            var eff = rawHcp;
+            if (rawHcp != null && tVal.hcpCut && typeof tnApplyHcpCut === 'function') {
+                try { eff = tnApplyHcpCut(rawHcp, gender, tVal.hcpCut).effective; } catch (e) {}
+            }
+            var d = (typeof tnFindDivision === 'function')
+                ? tnFindDivision(tVal, eff, gender, { pid: k, name: rp.name || '' })
+                : null;
+            if (!d) return;
+            if (d.tee) updates['tournaments/' + tnId + '/registeredPlayers/' + k + '/tee'] = d.tee;
+            if (d.format) updates['tournaments/' + tnId + '/registeredPlayers/' + k + '/format'] = d.format;
+        });
+        if (Object.keys(updates).length) {
+            return db.ref().update(updates).catch(function() {});
+        }
+    }).catch(function() {});
+}
+
 function tnDivisionsEditorHtml(tnId, divisions, tVal) {
     var en = currentLang === 'en';
     divisions = divisions || [];
@@ -1640,15 +1694,18 @@ function tnDivisionsEditorHtml(tnId, divisions, tVal) {
                     '<option value="bl"' + (d.tee === 'bl' ? ' selected' : '') + '>' + t('tee_bl') + '</option>' +
                     '<option value="wh"' + (d.tee === 'wh' ? ' selected' : '') + '>' + t('tee_wh') + '</option>' +
                     '<option value="rd"' + (d.tee === 'rd' ? ' selected' : '') + '>' + t('tee_rd') + '</option></select></div>';
+                html += '<div class="form-group" style="flex:1 1 150px;margin:0;"><label style="font-size:11px;">' + (en ? 'Format' : 'Формат') + '</label>' +
+                    '<select id="tnde-format-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' + tnFormatOptionsHtml(tVal, d.format) + '</select></div>';
                 html += '<button class="btn btn-g btn-sm" onclick="tnSaveDivision(\'' + tnId + '\',\'' + d.id + '\')"><i class="fas fa-check"></i> ' + (en ? 'Save' : 'Сохранить') + '</button>';
                 html += '<button class="btn btn-og btn-sm" onclick="tnCancelEditDiv(\'' + tnId + '\')"><i class="fas fa-xmark"></i> ' + (en ? 'Cancel' : 'Отмена') + '</button>';
                 html += '</div></div>';
             } else {
                 // Мета: если есть название — только ТИ (название вида
                 // «Мужчины 0–12» уже содержит пол и диапазон — не дублируем).
+                var fmtTxt = d.format ? escapeHtml(String(d.format)) : '';
                 var meta = d.name
-                    ? (teeTxt ? escapeHtml(teeTxt) : '')
-                    : escapeHtml(g) + (rg ? ' · HCP ' + escapeHtml(rg) : '') + (teeTxt ? ' · ' + escapeHtml(teeTxt) : '');
+                    ? ((teeTxt ? escapeHtml(teeTxt) : '') + (fmtTxt ? ' · ' + fmtTxt : ''))
+                    : escapeHtml(g) + (rg ? ' · HCP ' + escapeHtml(rg) : '') + (teeTxt ? ' · ' + escapeHtml(teeTxt) : '') + (fmtTxt ? ' · ' + fmtTxt : '');
                 // ✨ — группа создана «Умными группами» (auto): повторный
                 // запуск распределителя заменит только такие.
                 var autoMark = d.auto === true
@@ -1702,6 +1759,8 @@ function tnDivisionsEditorHtml(tnId, divisions, tVal) {
         '<select id="tnd-tee-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' +
         '<option value="">—</option><option value="bk">' + t('tee_bk') + '</option><option value="bl">' + t('tee_bl') + '</option>' +
         '<option value="wh">' + t('tee_wh') + '</option><option value="rd">' + t('tee_rd') + '</option></select></div>';
+    html += '<div class="form-group" style="flex:1 1 150px;margin:0;"><label style="font-size:11px;">' + (en ? 'Format' : 'Формат') + '</label>' +
+        '<select id="tnd-format-' + tnId + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' + tnFormatOptionsHtml(tVal, '') + '</select></div>';
     html += '<button class="btn btn-g btn-sm" onclick="tnAddDivision(\'' + tnId + '\')"><i class="fas fa-plus"></i> ' + (en ? 'Add' : 'Добавить') + '</button>';
     html += '</div>';
     return html;
@@ -1746,15 +1805,18 @@ function tnSaveDivision(tnId, divId) {
     }
     var genderEl = g('tnde-gender-' + tnId + '-' + divId);
     var teeEl = g('tnde-tee-' + tnId + '-' + divId);
+    var fmtEl = g('tnde-format-' + tnId + '-' + divId);
     delete tnDivEditing[tnId];
     db.ref('tournaments/' + tnId + '/divisions/' + divId).update({
         name: name,
         gender: genderEl ? genderEl.value : 'men',
         hcpFrom: from,
         hcpTo: to,
-        tee: teeEl ? teeEl.value : ''
+        tee: teeEl ? teeEl.value : '',
+        format: fmtEl ? fmtEl.value : ''
     }).then(function() {
         toast(en ? '✅ Group updated' : '✅ Группа обновлена', 'success');
+        try { tnSyncDivisionsToRoster(tnId); } catch (eSync) {}
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
@@ -1784,6 +1846,7 @@ function tnAddDivision(tnId) {
     }
     var genderEl = g('tnd-gender-' + tnId);
     var teeEl = g('tnd-tee-' + tnId);
+    var fmtEl = g('tnd-format-' + tnId);
     var from = tnParseDivBound(g('tnd-from-' + tnId) ? g('tnd-from-' + tnId).value : '');
     var to = tnParseDivBound(g('tnd-to-' + tnId) ? g('tnd-to-' + tnId).value : '');
     if (isNaN(from) || isNaN(to)) {
@@ -1801,9 +1864,11 @@ function tnAddDivision(tnId) {
         hcpFrom: from,
         hcpTo: to,
         tee: teeEl ? teeEl.value : '',
+        format: fmtEl ? fmtEl.value : '',
         createdAt: Date.now()
     }).then(function() {
         toast(en ? '✅ Group added' : '✅ Группа добавлена', 'success');
+        try { tnSyncDivisionsToRoster(tnId); } catch (eSync) {}
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
@@ -1819,6 +1884,7 @@ function tnDeleteDivision(tnId, divId) {
     tnDivOpen[tnId] = true;
     db.ref('tournaments/' + tnId + '/divisions/' + divId).remove().then(function() {
         toast(en ? 'Group deleted' : 'Группа удалена', 'info');
+        try { tnSyncDivisionsToRoster(tnId); } catch (eSync) {}
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
@@ -1963,6 +2029,7 @@ function tnAutoDivisions(tnId) {
                     hcpFrom: from,
                     hcpTo: to,
                     tee: bi === 0 ? teeStrong : teeRest,
+                    format: '',
                     count: band.length,
                     bandNo: bi + 1,
                     members: members
@@ -2020,6 +2087,7 @@ function tnAutoDivisions(tnId) {
                         hcpFrom: d.hcpFrom,
                         hcpTo: d.hcpTo,
                         tee: d.tee,
+                        format: d.format || '',
                         members: d.members || {},
                         bandNo: d.bandNo || null,
                         createdAt: Date.now(),
@@ -2032,6 +2100,9 @@ function tnAutoDivisions(tnId) {
         chain.then(function() {
             var menN = plan.filter(function(d) { return d.gender === 'men'; }).length;
             var womenN = plan.filter(function(d) { return d.gender === 'women'; }).length;
+            // ТИ групп уходят обратно в список участников турнира: игроки
+            // «Мужчины 0–12» получают синие ТИ, «Девушки» — красные и т.д.
+            try { tnSyncDivisionsToRoster(tnId); } catch (eSync) {}
             toast((en ? '✨ Smart groups created: ' : '✨ Умные группы созданы: ') + plan.length +
                 ' (' + (en ? 'men ' : 'муж. ') + menN + (en ? ', women ' : ', жен. ') + womenN + ')', 'success');
         }).catch(function(err) {

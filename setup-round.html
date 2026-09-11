@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <title data-i18n="nav_round">Раунд — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=31">
+    <link rel="stylesheet" href="css/style.css?v=32">
     <link rel="stylesheet" href="css/design-presets.css?v=1">
     <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -152,16 +152,9 @@
     <!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" -->
     <div id="my-active-rounds-container" class="hidden"></div>
 
-    <!-- БЛОК "ПРОДОЛЖИТЬ ПО ФИО" — сессия привязана к имени и фамилии -->
-    <div class="card" id="fio-resume-card" style="margin-bottom:20px;">
-        <h2 style="margin-top:0;"><i class="fas fa-rotate-left"></i> <span data-i18n="fio_resume_title">Продолжить игру по ФИО</span></h2>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:10px;" data-i18n="fio_resume_desc">Если телефон разрядился — введите имя и фамилию, чтобы найти незавершённый раунд и продолжить (дата/время старта, текущая лунка).</p>
-        <div class="form-row" style="align-items:flex-end;">
-            <div class="form-group" style="flex:1 1 200px;"><label data-i18n="fio_label">Имя Фамилия</label><input type="text" id="fio-resume-input" class="form-input" placeholder="Иван Петров"></div>
-            <div class="form-group" style="flex:0 0 auto;"><label>&nbsp;</label><button class="btn btn-g" onclick="searchFioResume()" style="min-height:40px;"><i class="fas fa-search"></i> <span data-i18n="search_btn">Найти</span></button></div>
-        </div>
-        <div id="fio-resume-results" style="margin-top:12px;"></div>
-    </div>
+    <!-- БЛОК "ПРОДОЛЖИТЬ ПО ФИО" перенесён в самый низ страницы (требование UX):
+         поиск игры — второстепенное действие после начала раунда. -->
+    <div id="fio-resume-placeholder"></div>
 
     <!-- ===== ТУРНИР ЕЩЁ НЕ НАЧАЛСЯ: ОТСЧЁТ ДО СТАРТА (QR раньше времени) ===== -->
     <div class="card start-gate hidden" id="round-start-gate">
@@ -332,13 +325,14 @@
             <div class="hole-nav" id="play-holes-nav"></div>
             <div id="match-play-tracker-container" style="margin-top:12px;"></div>
             <div id="play-verify-status" style="margin-top:12px;"></div>
+            <div id="play-verify-status-mark" style="margin-top:6px;"></div>
+            <div id="group-skipped-box"></div>
 
             <div class="scoring-columns scoring-compact" style="display:flex; gap:8px; margin-bottom:12px; align-items:stretch;">
                 <!-- БЛОК 1: СЧЁТ ИГРОКА, КОТОРЫЙ ВВОДИТ (ИГРОК 1) -->
                 <div class="scoring-dual-block my-score-block" style="flex:1; margin-bottom:0; display:flex; flex-direction:column; padding:8px 6px;">
                     <div class="dual-header" style="justify-content:center; border-bottom:none; margin-bottom:0; padding-bottom:0;">
                         <h3 style="font-size:14px; text-align:center; margin:0; display:flex; flex-direction:column; align-items:center; gap:3px;">
-                            <span style="font-size:10px; opacity:0.8; letter-spacing:0.4px; text-transform:uppercase;"><i class="fas fa-user" style="color:var(--gold);"></i> <span data-i18n="score_of_player">Счёт игрока:</span></span>
                             <span id="my-player-name-title" style="font-size:14px; font-weight:800;" data-i18n="my_score">Мой счёт</span>
                             <span class="score-hint" style="font-size:10px; opacity:0.75; color:var(--gold);"><i class="fas fa-pen"></i> <span data-i18n="score_col_you">(вы вводите свой счёт)</span></span>
                         </h3>
@@ -357,9 +351,8 @@
                 <div class="scoring-dual-block marker-score-block" id="marker-input-container" style="flex:1; margin-bottom:0; display:flex; flex-direction:column; padding:8px 6px;">
                     <div class="dual-header" style="justify-content:center; border-bottom:none; margin-bottom:0; padding-bottom:0;">
                         <h3 style="color:#9b59b6; font-size:14px; text-align:center; margin:0; display:flex; flex-direction:column; align-items:center; gap:3px;">
-                            <span style="font-size:10px; opacity:0.8; letter-spacing:0.4px; text-transform:uppercase;"><i class="fas fa-eye"></i> <span data-i18n="score_of_player">Счёт игрока:</span></span>
+                            <span style="font-size:10px; opacity:0.8; letter-spacing:0.4px; text-transform:uppercase;"><i class="fas fa-eye"></i> <span data-i18n="score_of_marked">Счёт маркируемого</span></span>
                             <span id="mark-player-name" style="font-size:14px; font-weight:800;">...</span>
-                            <span class="score-hint" style="font-size:10px; opacity:0.75; color:#9b59b6;"><i class="fas fa-pen"></i> <span data-i18n="score_col_marked">(того, за кем вы ведёте счёт)</span></span>
                         </h3>
                     </div>
                     <div class="score-area" style="margin:2px 0; flex:1; display:flex; flex-direction:column; justify-content:center;">
@@ -480,6 +473,8 @@
 
             <!-- HOLE NAVIGATION (2 ROWS OF 9 HOLES - 100% NO-SCROLL GRID MATRIX) -->
             <div class="hole-nav" id="g-holes" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-bottom:16px;width:100%;box-sizing:border-box;"></div>
+            <!-- ПРЕДУПРЕЖДЕНИЕ: ПРОПУЩЕННЫЕ ЛУНКИ (счёт не введён) -->
+            <div id="solo-skipped-box"></div>
 
             <div class="score-area">
                 <div class="score-result" id="g-result"></div>
@@ -523,10 +518,7 @@
                     </div>
                 </div>
 
-                <!-- ПОДСКАЗКА: СЧЁТ ИЗМЕНЁН, НО ЕЩЁ НЕ СОХРАНЁН (АВТОСОХРАНЕНИЯ НЕТ) -->
-                <div id="solo-unsaved-hint" class="unsaved-hint hidden"><i class="fas fa-circle-exclamation"></i> <span data-i18n="unsaved_score_hint">Счёт не сохранён — нажмите кнопку «Сохранить»</span></div>
-
-                <!-- MAIN ACTION BUTTON (СЛЕДУЮЩАЯ ЛУНКА / ЗАВЕРШИТЬ РАУНД) -->
+                <!-- MAIN ACTION BUTTON (ПОДТВЕРДИТЬ РЕЗУЛЬТАТ / ЗАВЕРШИТЬ РАУНД) -->
                 <button class="btn btn-g btn-block" id="btn-solo-action" onclick="saveSolo()" style="padding:16px;font-size:16px;min-height:52px;margin-top:14px;">
                     <i class="fas fa-arrow-right"></i> <span id="btn-solo-action-txt" data-i18n="solo_next_hole_btn">Следующая лунка</span>
                 </button>
@@ -593,13 +585,24 @@
         </div>
     </div>
 
+    <!-- БЛОК "ПРОДОЛЖИТЬ ПО ФИО" — в самом низу страницы -->
+    <div class="card" id="fio-resume-card" style="margin-top:24px;">
+        <h2 style="margin-top:0;"><i class="fas fa-rotate-left"></i> <span data-i18n="fio_resume_title">Продолжить игру по ФИО</span></h2>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px;" data-i18n="fio_resume_desc">Если телефон разрядился — введите имя и фамилию, чтобы найти незавершённый раунд и продолжить (дата/время старта, текущая лунка).</p>
+        <div class="form-row" style="align-items:flex-end;">
+            <div class="form-group" style="flex:1 1 200px;"><label data-i18n="fio_label">Имя Фамилия</label><input type="text" id="fio-resume-input" class="form-input" placeholder="Иван Петров"></div>
+            <div class="form-group" style="flex:0 0 auto;"><label>&nbsp;</label><button class="btn btn-g" onclick="searchFioResume()" style="min-height:40px;"><i class="fas fa-search"></i> <span data-i18n="search_btn">Найти</span></button></div>
+        </div>
+        <div id="fio-resume-results" style="margin-top:12px;"></div>
+    </div>
+
 </main>
 
 <footer class="footer">
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.59.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.60.0</span></p>
         </div>
     </div>
 </footer>
@@ -608,10 +611,10 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=55"></script>
-<script src="js/live.js?v=31"></script>
-<script src="js/solo.js?v=26"></script>
-<script src="js/pwa.js?v=3"></script>
+<script src="js/utils.js?v=56"></script>
+<script src="js/live.js?v=32"></script>
+<script src="js/solo.js?v=27"></script>
+<script src="js/pwa.js?v=4"></script>
 <script>
 function searchFioResume() {
     var inp = document.getElementById('fio-resume-input');

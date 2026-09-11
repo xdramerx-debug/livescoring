@@ -276,12 +276,34 @@ function requestNotificationPermission(callback) {
     Notification.requestPermission().then(function(perm) {
         if (perm === 'granted') {
             if (typeof toast === 'function') toast(currentLang === 'en' ? '🔔 Call push notifications enabled!' : '🔔 Пуш-уведомления вызовов включены!', 'success');
+            markPwaPushEnabled();
             initBackgroundAlertListener();
             if (typeof callback === 'function') callback(true);
         } else {
             if (typeof toast === 'function') toast(currentLang === 'en' ? 'Notifications declined by browser' : 'Уведомления отклонены браузером', 'warn');
             if (typeof callback === 'function') callback(false);
         }
+    });
+}
+
+// Отметка «PWA-уведомления включены»: в профиле игрока (для адресных
+// рассалок админа) и локально (для гостей без аккаунта). (#17)
+function markPwaPushEnabled() {
+    try { localStorage.setItem('pestovo_push_enabled', '1'); } catch (e) {}
+    try {
+        if (typeof db !== 'undefined' && db && typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
+            db.ref('users/' + currentUser.uid + '/pushEnabled').set(true).catch(function() {});
+        }
+    } catch (e) {}
+}
+window.markPwaPushEnabled = markPwaPushEnabled;
+
+// Если разрешение уже выдано — отметка ставится при каждом запуске приложения
+if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('load', function() {
+        try {
+            if ('Notification' in window && Notification.permission === 'granted') markPwaPushEnabled();
+        } catch (e) {}
     });
 }
 

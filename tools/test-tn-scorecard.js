@@ -344,7 +344,7 @@ has('вкладка «Все» со счётчиком', /Все<span class="tn-
 has('вкладка «Мужчины»', lbHtml.indexOf('Мужчины') !== -1, true);
 has('вкладка «Гости»', lbHtml.indexOf('Гости') !== -1, true);
 has('вкладка «Девушки» отсутствует (нет таких заявок)', /Гости/.test(lbHtml) && lbHtml.indexOf('tn-tab-count">0') === -1, true);
-has('заголовок группы с префиксом', lbHtml.indexOf('Группа:') !== -1, true);
+has('лидерборд открывается на вкладке «Все» (один блок, без групп)', lbHtml.indexOf("tnSetTab('tn_demo','all')") !== -1, true);
 has('название группы в заголовке', lbHtml.indexOf('tn-group-title') !== -1, true);
 has('строка лидерборда кликабельна', lbHtml.indexOf('tnScOpen(') !== -1, true);
 // Ключ строки — идентификатор игрока (uid), а не ФИО: однофамильцы в разных
@@ -542,7 +542,7 @@ section('7 · Кнопка протокола — только админист�
     var asPlayer = String(renderedPanels['tn-list'].innerHTML);
     hasnt('игроку кнопка «Протокол результатов (PDF)» не показывают', asPlayer, 'Протокол результатов (PDF)');
     var rosterBtn = (asPlayer.match(/<button class="btn btn-og btn-sm tn-roster-toggle"[^>]*>[\s\S]*?<\/button>/) || [''])[0];
-    check('кнопка списка — только иконка и число (подпись убрана)', rosterBtn.replace(/^[^>]*>/, '').replace(/<\/button>$/, ''), '<i class="fas fa-list-ul"></i> (1)');
+    check('кнопка списка — иконка, подпись и число', rosterBtn.replace(/^[^>]*>/, '').replace(/<\/button>$/, ''), '<i class="fas fa-list-ul"></i> Участники (1)');
     has('подсказка кнопки осталась в title', rosterBtn, 'title="Список участников"');
     has('ТИ без дублирующей подписи', /ТИ:\s*Синие/.test(asPlayer) === false, true);
     session.pestovo_is_admin = 'true';

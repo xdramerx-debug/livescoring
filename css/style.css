@@ -1006,16 +1006,16 @@ html.score-kiosk .hole-display {
 .site-version{margin-top:8px;font-size:11px;color:var(--gold);font-weight:600;opacity:0.8;}
 .site-version:hover{opacity:1;}
 
-.toast-root{position:fixed;top:max(calc(var(--nav-h, 70px) + 8px),calc(env(safe-area-inset-top) + 12px));left:50%;transform:translateX(-50%);z-index:9999999!important;display:flex;flex-direction:column;gap:8px;align-items:stretch;pointer-events:none;width:min(460px,calc(100vw - 24px));}
-.toast{pointer-events:auto;position:relative;display:flex;align-items:flex-start;gap:10px;width:100%;box-sizing:border-box;padding:12px 36px 15px 12px;border-radius:14px;font-size:13px;font-weight:500;line-height:1.45;box-shadow:0 10px 32px rgba(0,0,0,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid;opacity:0;transform:translateY(-16px) scale(.97);transition:opacity .28s ease,transform .28s ease;cursor:pointer;overflow:hidden;}
+.toast-root{position:fixed;top:max(calc(var(--nav-h, 70px) + 8px),calc(env(safe-area-inset-top) + 12px));left:50%;transform:translateX(-50%);z-index:9999999!important;display:flex;flex-direction:column;gap:5px;align-items:center;pointer-events:none;width:min(340px,calc(100vw - 32px));}
+.toast{pointer-events:auto;position:relative;display:flex;align-items:center;gap:7px;width:auto;max-width:100%;box-sizing:border-box;padding:6px 30px 8px 9px;border-radius:10px;font-size:11.5px;font-weight:500;line-height:1.35;box-shadow:0 6px 22px rgba(0,0,0,.4);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid;opacity:0;transform:translateY(-16px) scale(.97);transition:opacity .28s ease,transform .28s ease;cursor:pointer;overflow:hidden;}
 .toast.t-show{opacity:1;transform:translateY(0) scale(1);}
 .toast.t-hide{opacity:0;transform:translateY(-12px) scale(.97);}
-.toast-ico{flex-shrink:0;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;margin-top:1px;}
+.toast-ico{flex-shrink:0;width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;margin-top:0;}
 .toast-msg{flex:1;word-break:break-word;}
 .toast-msg b{font-weight:800;}
-.toast-x{position:absolute;top:6px;right:6px;width:24px;height:24px;border:none;background:transparent;color:inherit;opacity:.55;font-size:17px;line-height:1;cursor:pointer;border-radius:6px;padding:0;}
+.toast-x{position:absolute;top:3px;right:4px;width:20px;height:20px;border:none;background:transparent;color:inherit;opacity:.55;font-size:14px;line-height:1;cursor:pointer;border-radius:6px;padding:0;}
 .toast-x:hover{opacity:1;background:rgba(255,255,255,.12);}
-.toast-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.14);overflow:hidden;}
+.toast-bar{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.14);overflow:hidden;}
 .toast-bar span{display:block;height:100%;width:100%;transform-origin:left center;background:linear-gradient(90deg,#27ae60,#2ecc71);opacity:.95;box-shadow:0 0 8px rgba(46,204,113,.65);animation:toast-bar-shrink linear forwards;}
 @keyframes toast-bar-shrink{from{transform:scaleX(1);opacity:.95;}90%{opacity:.55;}to{transform:scaleX(0);opacity:.25;}}
 
@@ -1143,7 +1143,9 @@ html.score-kiosk .hole-display {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
+    /* iPhone / notch: контент шапки не должен заходить под статус-бар */
+    padding: max(12px, env(safe-area-inset-top)) 20px 12px;
+    padding-top: max(12px, calc(env(safe-area-inset-top) + 8px));
     border-bottom: 1px solid var(--border);
     background: var(--bg2);
 }
@@ -1219,7 +1221,7 @@ html.score-kiosk .hole-display {
         height:100vh;
         background:var(--card);
         flex-direction:column;
-        padding:70px 20px max(60px, calc(env(safe-area-inset-bottom) + 40px));
+        padding:max(70px, calc(env(safe-area-inset-top) + 64px)) 20px max(60px, calc(env(safe-area-inset-bottom) + 40px));
         transition:var(--t);
         border-left:1px solid var(--border);
         gap:2px;
@@ -2277,7 +2279,7 @@ body.sun-mode .autocomplete-item.active-keyboard {
     .nav-toggle { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
     /* toasts never collide with the nav / indicator */
     .toast-root { width: calc(100vw - 24px); }
-    .toast { font-size: 12.5px; padding: 10px 32px 13px 10px; }
+    .toast { font-size: 11px; padding: 5px 28px 7px 8px; }
 }
 
 /* paper scorecard label alignment polish */
@@ -5106,3 +5108,204 @@ button.tn-group-head:hover { background:rgba(201,168,76,0.18); }
 
 /* Кнопка ввода счёта в момент записи (защита от повторных нажатий) */
 .btn-busy{opacity:.75;pointer-events:none;}
+
+/* ==========================================================
+   1.60.0 — ВИДЫ ОТОБРАЖЕНИЯ И ИСПРАВЛЕНИЯ
+   ========================================================== */
+
+/* ── ТЕКУЩАЯ ЛУНКА БЕЗ СЧЁТА: МИГАЕТ СЕРЫМ (видно, где игрок) ── */
+@keyframes pestovo-hole-gray-blink{
+    0%,100%{background:rgba(174,180,186,.07)!important;border-color:var(--border)!important;color:var(--muted)!important;box-shadow:none!important;}
+    50%{background:rgba(174,180,186,.45)!important;border-color:#8a939b!important;color:var(--text)!important;box-shadow:inset 0 0 0 999px rgba(174,180,186,.12)!important;}
+}
+.hole-btn.cur-blink{
+    animation:pestovo-hole-gray-blink 1.6s ease-in-out infinite!important;
+    border-style:dashed!important;
+    background:rgba(174,180,186,.07)!important;
+    border-color:var(--border)!important;
+    color:var(--muted)!important;
+    box-shadow:none!important;
+}
+.hole-btn.cur-blink .hbn-num{color:inherit;}
+body.sun-mode .hole-btn.cur-blink{
+    animation:pestovo-hole-gray-blink 1.6s ease-in-out infinite!important;
+    background:#efe9d8!important;border-color:#b9b19a!important;color:#6a6252!important;
+}
+
+/* ── УВЕДОМЛЕНИЕ О ПРОПУЩЕННЫХ ЛУНКАХ ── */
+.skipped-holes-box{
+    display:flex;flex-direction:column;gap:8px;
+    background:rgba(243,156,18,.1);border:1px solid rgba(243,156,18,.45);
+    border-radius:12px;padding:12px 14px;margin:10px 0;
+}
+.skipped-holes-box .shb-title{color:#f3b23c;font-weight:800;font-size:13px;display:flex;align-items:center;gap:7px;}
+.skipped-holes-box .shb-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.skipped-holes-box .shb-hole-btn{min-width:40px;min-height:36px;padding:6px 10px;border-radius:9px;border:1px solid rgba(243,156,18,.5);background:rgba(243,156,18,.12);color:#ffc46b;font-weight:800;font-size:13px;cursor:pointer;}
+.skipped-holes-box .shb-hole-btn:hover{background:rgba(243,156,18,.22);}
+
+/* ── СТРАНИЦА ВВОДА СЧЁТА: 5 ВИДОВ (body.st-scoring-vN, выбирает админ) ── */
+/* v1 — классика (без изменений) */
+/* v2 — «Крупный счёт»: большие цифры и кнопки ± */
+body.st-scoring-v2 .score-disp{font-size:64px!important;min-height:68px;}
+body.st-scoring-v2 .score-btns .score-minus,
+body.st-scoring-v2 .score-btns .score-plus{width:64px!important;height:64px!important;min-width:64px!important;min-height:64px!important;font-size:30px!important;border-radius:16px!important;}
+body.st-scoring-v2 .hole-val{font-size:34px!important;}
+body.st-scoring-v2 .hole-lbl{font-size:11px;letter-spacing:.6px;}
+body.st-scoring-v2 .score-result{font-size:14px!important;}
+body.st-scoring-v2 .hole-btn{font-size:14px;min-height:46px;}
+
+/* v3 — «Компакт»: всё плотнее, влезает один экран телефона */
+body.st-scoring-v3 .card{padding:12px 10px!important;margin-bottom:10px!important;}
+body.st-scoring-v3 .hole-display{gap:6px;margin-bottom:8px;}
+body.st-scoring-v3 .hole-box{padding:5px 6px;}
+body.st-scoring-v3 .hole-val{font-size:20px!important;}
+body.st-scoring-v3 .hole-nav{gap:3px!important;margin-bottom:8px!important;}
+body.st-scoring-v3 .hole-btn{padding:5px 2px;font-size:11px;min-height:34px;}
+body.st-scoring-v3 .score-disp{font-size:34px!important;min-height:38px;}
+body.st-scoring-v3 .score-result{font-size:10px!important;padding:2px 8px!important;}
+body.st-scoring-v3 .score-minus,body.st-scoring-v3 .score-plus{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;font-size:19px!important;}
+body.st-scoring-v3 .dual-header h3{font-size:12px!important;}
+body.st-scoring-v3 .scoring-columns{margin-bottom:8px!important;gap:6px!important;}
+body.st-scoring-v3 .scoring-dual-block{padding:6px 4px!important;}
+
+/* v4 — «Контраст»: тёмные плашки, крупная текущая лунка, золотой акцент */
+body.st-scoring-v4 .scoring-dual-block{background:rgba(0,0,0,.42);border-width:2px;}
+body.st-scoring-v4 .my-score-block{border-top:5px solid var(--gold);}
+body.st-scoring-v4 .marker-score-block{border-top:5px solid #9b59b6;}
+body.st-scoring-v4 .score-disp{font-weight:900;letter-spacing:1px;}
+body.st-scoring-v4 .hole-box{background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.35);border-radius:12px;}
+body.st-scoring-v4 .hole-box .hole-val{color:var(--gold-l);}
+body.st-scoring-v4 .hole-btn.active{box-shadow:0 0 0 3px rgba(201,168,76,.35),0 0 22px rgba(201,168,76,.55);}
+
+/* v5 — «Минимализм»: тонкие рамки, без теней и лишнего веса */
+body.st-scoring-v5 .scoring-dual-block{box-shadow:none;background:transparent;border:1px solid var(--border);}
+body.st-scoring-v5 .hole-btn{border-width:1px;font-weight:600;}
+body.st-scoring-v5 .hole-btn.active{box-shadow:none;background:var(--input);border-color:var(--gold);color:var(--gold);}
+body.st-scoring-v5 .score-disp{font-size:44px;font-weight:300;}
+body.st-scoring-v5 .score-btns .score-minus,
+body.st-scoring-v5 .score-btns .score-plus{background:transparent;border:1px solid var(--border);box-shadow:none;}
+body.st-scoring-v5 .card{box-shadow:none;}
+body.st-scoring-v5 .dual-header .score-hint{display:none;}
+
+/* Групповой раунд: блоки счёта в одну колонку на узких экранах для v2/v4 */
+@media(max-width:520px){
+    body.st-scoring-v2 .scoring-columns,
+    body.st-scoring-v4 .scoring-columns{flex-direction:column;}
+}
+
+/* ── СЧЁТНАЯ КАРТОЧКА ПО ЛУНКАМ: 5 ВИДОВ (body.st-scorecard-vN) ── */
+/* v2 — «Крупные клетки» */
+body.st-scorecard-v2 .pestovo-modern-scorecard td,
+body.st-scorecard-v2 .pestovo-modern-scorecard th{padding:8px 6px!important;font-size:14px!important;}
+body.st-scorecard-v2 .msc-cell{min-width:34px;min-height:34px;font-size:14px!important;}
+/* v3 — «Зебра + итог» */
+body.st-scorecard-v3 .pestovo-modern-scorecard tr:nth-child(even) td{background:rgba(255,255,255,.045);}
+body.st-scorecard-v3 .pestovo-modern-scorecard .msc-total,
+body.st-scorecard-v3 .pestovo-modern-scorecard tfoot td,
+body.st-scorecard-v3 .pestovo-modern-scorecard tr:last-child td{font-weight:900;color:var(--gold-l);}
+/* v4 — «Плотный» */
+body.st-scorecard-v4 .pestovo-modern-scorecard{font-size:11px;}
+body.st-scorecard-v4 .pestovo-modern-scorecard td,
+body.st-scorecard-v4 .pestovo-modern-scorecard th{padding:2px 3px!important;font-size:11px!important;}
+body.st-scorecard-v4 .pestovo-modern-scorecard .msc-card-hdr{display:none!important;}
+/* v5 — «Плитки»: счёт каждой лунки — цветной квадрат */
+body.st-scorecard-v5 .pestovo-modern-scorecard table,
+body.st-scorecard-v5 .pestovo-modern-scorecard tbody,
+body.st-scorecard-v5 .pestovo-modern-scorecard tr{display:block;width:100%;}
+body.st-scorecard-v5 .pestovo-modern-scorecard td{display:inline-block;width:9.5%;min-width:32px;margin:2px;text-align:center;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid var(--border);padding:7px 2px!important;font-weight:800;}
+body.st-scorecard-v5 .pestovo-modern-scorecard td:first-child{width:100%;min-width:0;text-align:left;background:none;border:none;font-size:11px;color:var(--muted);font-weight:700;padding:4px 2px 2px!important;}
+
+/* ── БЛОК «АКТИВНЫЙ ТУРНИР» НА ГЛАВНОЙ: 5 ВИДОВ (body.st-homeTournament-vN) ── */
+.htv-top3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.htv-top3-item{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:10px 8px;text-align:center;position:relative;overflow:hidden;}
+.htv-top3-item .htv-pos{font-size:20px;line-height:1;}
+.htv-top3-item .htv-name{font-size:12px;font-weight:800;color:var(--white);margin:6px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.htv-top3-item .htv-meta{font-size:10px;color:var(--muted);}
+.htv-top3-item .htv-score{font-size:17px;font-weight:900;margin-top:4px;}
+.htv-top3-item.p1{border-color:rgba(201,168,76,.65);background:linear-gradient(180deg,rgba(201,168,76,.16),rgba(201,168,76,.04));}
+.htv-top3-item.p2{border-color:rgba(192,192,192,.45);}
+.htv-top3-item.p3{border-color:rgba(205,127,50,.45);}
+.htv-fmt-row{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;}
+.htv-fmt-chip{font-size:10.5px;padding:3px 9px;border-radius:999px;border:1px solid rgba(201,168,76,.4);background:rgba(201,168,76,.1);color:var(--gold-l);font-weight:700;}
+/* v2 — витрина: крупные карточки топ-3 вертикально */
+body.st-homeTournament-v2 .htv-top3{grid-template-columns:1fr;gap:6px;}
+body.st-homeTournament-v2 .htv-top3-item{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;}
+body.st-homeTournament-v2 .htv-top3-item .htv-name{margin:0;flex:1;font-size:14px;}
+body.st-homeTournament-v2 .htv-top3-item .htv-score{margin:0;font-size:20px;}
+/* v3 — компактные строки (как «сейчас на поле») */
+body.st-homeTournament-v3 .htv-top3{grid-template-columns:1fr;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+body.st-homeTournament-v3 .htv-top3-item{display:flex;gap:8px;align-items:center;border:none;border-bottom:1px solid var(--border);border-radius:0;padding:8px 12px;}
+body.st-homeTournament-v3 .htv-top3-item:last-child{border-bottom:none;}
+body.st-homeTournament-v3 .htv-top3-item .htv-name{margin:0;flex:1;text-align:left;}
+body.st-homeTournament-v3 .htv-top3-item .htv-score{margin:0;}
+/* v4 — тёмный лидерборд-плитки */
+body.st-homeTournament-v4 .htv-top3{grid-template-columns:repeat(3,1fr);gap:6px;}
+body.st-homeTournament-v4 .htv-top3-item{background:rgba(0,0,0,.45);border-width:2px;}
+body.st-homeTournament-v4 .htv-top3-item .htv-score{font-size:22px;}
+/* v5 — минимализм: одна строка-подиум */
+body.st-homeTournament-v5 .htv-top3{display:flex;flex-wrap:wrap;gap:6px;}
+body.st-homeTournament-v5 .htv-top3-item{display:flex;gap:8px;align-items:center;border-radius:999px;padding:6px 12px;}
+body.st-homeTournament-v5 .htv-top3-item .htv-name{margin:0;}
+body.st-homeTournament-v5 .htv-top3-item .htv-meta{display:none;}
+
+@media(max-width:480px){
+    .htv-top3{grid-template-columns:repeat(3,1fr);}
+    .htv-top3-item .htv-name{font-size:11px;}
+}
+
+/* «Активный турнир» на главной — список раундов сразу развёрнут */
+.st-homeTournament-expanded .lwl-details{display:block!important;}
+.st-homeTournament-expanded .lwl-row .lwl-chev{display:none!important;}
+
+/* ── ЛИДЕРБОРД ТУРНИРА ОДНИМ БЛОКОМ (режим «Все») ── */
+.tn-lb-single{border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.tn-lb-single .tn-group{margin:0;border:none;border-radius:0;}
+.tn-lb-single .tn-group-head{cursor:default;background:rgba(201,168,76,.06);}
+.tn-lb-single .tn-group-head .tn-chev{display:none;}
+
+/* ── ГАНДИКАПНЫЕ ГРУППЫ НА СТРАНИЦЕ «ТУРНИРЫ»: СВЁРНУТО ПО УМОЛЧАНИЮ ── */
+.tn-divs-wrap{margin-top:6px;}
+.tn-divs-toggle{font-size:12px;font-weight:700;color:var(--gold);background:rgba(201,168,76,.08);border:1px dashed rgba(201,168,76,.45);border-radius:10px;padding:7px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .2s ease;}
+.tn-divs-toggle:hover{background:rgba(201,168,76,.16);}
+.tn-divs-toggle i{transition:transform .25s ease;}
+.tn-divs-toggle.open i{transform:rotate(180deg);}
+.tn-divs-collapsed{display:none;}
+.tn-divs-expanded{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+
+/* ── МЕТА ТУРНИРА: ВРЕМЯ И ФОРМАТ СТАРТА ── */
+.tn-start-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.tn-start-meta .tn-meta-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(90,173,224,.1);border:1px solid rgba(90,173,224,.35);color:var(--blue);}
+.tn-start-meta .tn-meta-chip i{font-size:10px;}
+
+/* ── АДМИН: КОМПАКТНЫЙ РЕДАКТОР СЧЁТА ВСЕХ РАУНДОВ ── */
+.se-editor-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;}
+.se-editor-toolbar .form-group{margin-bottom:0;}
+.se-round-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;}
+.se-round-card{background:var(--input);border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
+.se-round-card.se-status-active{border-left:4px solid #2ecc71;}
+.se-round-card.se-status-scheduled{border-left:4px solid var(--blue);}
+.se-round-card.se-status-completed{border-left:4px solid var(--muted);}
+.se-round-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;}
+.se-round-name{font-weight:800;color:var(--white);font-size:13.5px;flex:1;min-width:140px;}
+.se-round-meta{font-size:11px;color:var(--muted);margin-bottom:6px;}
+.se-player-row{display:flex;gap:6px;align-items:center;padding:5px 0;border-top:1px dashed rgba(255,255,255,.06);flex-wrap:wrap;}
+.se-player-row .se-p-name{flex:1;min-width:120px;font-size:12.5px;color:var(--white);font-weight:600;}
+.se-player-row .se-p-holes{flex:2;min-width:170px;display:flex;gap:3px;flex-wrap:wrap;}
+.se-hole-inp{width:34px;min-height:28px;padding:2px 3px!important;font-size:11.5px!important;text-align:center;border-radius:6px!important;height:28px!important;}
+.se-hole-inp.has-score{border-color:rgba(46,204,113,.55);background:rgba(46,204,113,.08);}
+.se-hole-inp.is-cur{border-color:var(--gold);box-shadow:0 0 0 1px rgba(201,168,76,.5);}
+.se-mini-badge{font-size:10px;padding:2px 7px;border-radius:999px;font-weight:800;letter-spacing:.3px;}
+.se-mini-badge.st-active{background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.4);}
+.se-mini-badge.st-scheduled{background:rgba(90,173,224,.14);color:var(--blue);border:1px solid rgba(90,173,224,.4);}
+.se-mini-badge.st-completed{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);}
+
+.htv-podium{margin-bottom:12px;}
+.htv-podium-cap{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;}
+.htv-block{margin-bottom:14px;}
+
+/* Лидерборд турнира вкладкой «Все»: один общий блок без разделения на группы */
+.tn-lb-variant[data-single="1"]{border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.tn-lb-variant[data-single="1"] .tn-group{margin:0;border:none;border-radius:0;background:transparent;}
+.tn-lb-variant[data-single="1"] .tn-group-head{cursor:default;background:rgba(201,168,76,.07);}
+.tn-lb-variant[data-single="1"] .tn-group-head .tn-chev{display:none;}
+.tn-lb-variant[data-single="1"] .tn-group-body{max-height:none!important;}

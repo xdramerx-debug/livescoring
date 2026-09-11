@@ -50,10 +50,10 @@ function holeResName(s,p){
     if(d===2)return t('res_double');
     return '+'+d;
 }
-// Длительность всех уведомлений — 2 секунды (единый стандарт Pestovo).
+// Длительность всех уведомлений — 3 секунды (единый стандарт Pestovo).
 // Внизу каждого уведомления идёт зелёная полоса, которая плавно угасает
 // (сжимается и теряет яркость) ровно за это время.
-var TOAST_DURATION_MS = 2000;
+var TOAST_DURATION_MS = 3000;
 function ensureToastRoot(){
     if (typeof document === 'undefined' || !document.body) return null;
     var root = document.getElementById('toast-root');
@@ -689,8 +689,16 @@ var I18N = {
         save_hole: 'Сохранить лунку', finish_round: 'Завершить раунд',
         // Кнопка ввода счёта: игрок ПОДТВЕРЖДАЕТ результат лунки (переход к
         // следующей лунке происходит автоматически, поэтому в названии его нет).
-        next_hole_btn: 'Подтвердить ✓',
-        solo_next_hole_btn: 'Следующая лунка',
+        next_hole_btn: 'Подтвердить результат',
+        solo_next_hole_btn: 'Подтвердить результат',
+        solo_save_result_btn: '✅ Подтвердить результат',
+        solo_next_keep_btn: '➡️ Следующая лунка',
+        skipped_holes_title: 'Не введён счёт',
+        skipped_holes_goto: 'Перейти к лунке',
+        skipped_holes_skip: 'Продолжить с пропуском',
+        skipped_holes_finish_q: 'На лунке(ах) {holes} нет счёта. Завершить раунд всё равно?',
+        score_of_player: 'Ваш счёт',
+        score_of_marked: 'Счёт маркируемого',
         tn_start_pending_title: 'Турнир ещё не начался',
         tn_start_countdown_label: 'До старта осталось',
         tn_start_at: 'Старт:',
@@ -788,6 +796,13 @@ var I18N = {
         broadcast_link_lbl: 'Ссылка (опционально)',
         send_broadcast_btn: 'Отправить анонс всем игрокам',
         bc_audience_lbl: 'Кому отправить',
+        bc_aud_all_pwa: 'Всем + PWA-уведомления (включая гостей)',
+        tab_scores: 'Счёт ⛳',
+        scores_editor_title: 'Редактор счёта всех раундов',
+        scores_editor_sub: 'Редактируйте счёт любой лунки любого игрока — активного, запланированного или завершённого раунда. Найдите игрока или раунд поиском, раскройте карточку, внесите правки и сохраните.',
+        scores_search_fio: 'Поиск по ФИО игрока',
+        scores_search_date: 'Дата раунда',
+        scores_search_status: 'Статус раунда',
         bc_aud_all: 'Всем игрокам клуба',
         bc_aud_tournament: 'Турниру (его registrations)',
         bc_aud_protocol: 'Игрокам стартового протокола',
@@ -1196,8 +1211,16 @@ var I18N = {
         score_col_you: '(you enter your own score)',
         score_col_marked: '(the player you are marking for)',
         save_hole: 'Save Hole', finish_round: 'Finish Round',
-        next_hole_btn: 'Confirm ✓',
-        solo_next_hole_btn: 'Next Hole',
+        next_hole_btn: 'Confirm result',
+        solo_next_hole_btn: 'Confirm result',
+        solo_save_result_btn: '✅ Confirm result',
+        solo_next_keep_btn: '➡️ Next hole',
+        skipped_holes_title: 'Score not entered',
+        skipped_holes_goto: 'Go to hole',
+        skipped_holes_skip: 'Continue with gaps',
+        skipped_holes_finish_q: 'No score on hole(s) {holes}. Finish the round anyway?',
+        score_of_player: 'Your score',
+        score_of_marked: 'Marked player’s score',
         tn_start_pending_title: 'The tournament has not started yet',
         tn_start_countdown_label: 'Starts in',
         tn_start_at: 'Start:',
@@ -1295,6 +1318,13 @@ var I18N = {
         broadcast_link_lbl: 'Link (optional)',
         send_broadcast_btn: 'Send Broadcast to All Players',
         bc_audience_lbl: 'Audience',
+        bc_aud_all_pwa: 'Everyone + PWA notifications (incl. guests)',
+        tab_scores: 'Scores ⛳',
+        scores_editor_title: 'All-rounds score editor',
+        scores_editor_sub: 'Edit any hole of any player — active, scheduled or completed round. Find a player or round via search, expand the card, make changes and save.',
+        scores_search_fio: 'Search by player name',
+        scores_search_date: 'Round date',
+        scores_search_status: 'Round status',
         bc_aud_all: 'All club players',
         bc_aud_tournament: 'Tournament (its registrations)',
         bc_aud_protocol: 'Players of the start list',
@@ -1881,16 +1911,16 @@ function pestovoShowFioConflictModal(conflicts, onContinueAnyway) {
     var overlayId = 'fio-conflict-modal';
     var existing = document.getElementById(overlayId);
     if (existing) existing.remove();
-    var html = '<div id=\"' + overlayId + '\" style=\"position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:16px;\">' +
-        '<div class=\"card\" style=\"max-width:520px;width:100%;max-height:85vh;overflow:auto;border:2px solid var(--gold);\">' +
-        '<h2 style=\"color:var(--gold);\"><i class=\"fas fa-triangle-exclamation\"></i> ' + (currentLang === 'en' ? 'Active round exists' : 'Есть незавершённый раунд') + '</h2>' +
-        '<p style=\"font-size:13px;color:var(--muted);margin-bottom:12px;\">' +
+    var html = '<div id="' + overlayId + '" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:16px;">' +
+        '<div class="card" style="max-width:520px;width:100%;max-height:85vh;overflow:auto;border:2px solid var(--gold);">' +
+        '<h2 style="color:var(--gold);"><i class="fas fa-triangle-exclamation"></i> ' + (currentLang === 'en' ? 'Active round exists' : 'Есть незавершённый раунд') + '</h2>' +
+        '<p style="font-size:13px;color:var(--muted);margin-bottom:12px;">' +
         (currentLang === 'en' ? 'This player already has an active round. You cannot start a new one until the previous is finished. You can continue the existing round:' : 'У этого игрока уже есть незавершённый раунд. Нельзя создать новый, пока предыдущий не завершён. Можно продолжить существующий:') +
         '</p>' +
         pestovoRenderFioResumeListHtml(conflicts) +
-        '<div style=\"display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;\">' +
-        '<button class=\"btn btn-ol btn-sm\" onclick=\"document.getElementById(\\'' + overlayId + '\\').remove()\"><i class=\"fas fa-xmark\"></i> ' + (currentLang === 'en' ? 'Cancel' : 'Отмена') + '</button>' +
-        (onContinueAnyway ? '<button class=\"btn btn-r btn-sm\" onclick=\"document.getElementById(\\'' + overlayId + '\\').remove(); (' + onContinueAnyway + ')()\"><i class=\"fas fa-forward\"></i> ' + (currentLang === 'en' ? 'Start anyway (admin)' : 'Начать всё равно') + '</button>' : '') +
+        '<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">' +
+        '<button class="btn btn-ol btn-sm" onclick="document.getElementById(\'' + overlayId + '\').remove()"><i class="fas fa-xmark"></i> ' + (currentLang === 'en' ? 'Cancel' : 'Отмена') + '</button>' +
+        (onContinueAnyway ? '<button class="btn btn-r btn-sm" onclick="document.getElementById(\'' + overlayId + '\').remove(); (' + onContinueAnyway + ')()"><i class="fas fa-forward"></i> ' + (currentLang === 'en' ? 'Start anyway (admin)' : 'Начать всё равно') + '</button>' : '') +
         '</div></div></div>';
     var div = document.createElement('div');
     div.innerHTML = html;
@@ -6088,6 +6118,148 @@ function applyTnLbVariant(value) {
     return variant;
 }
 
+// ─────────────────────────────────────────────────────────
+// АДМИНСКИЕ ВИДЫ ОТОБРАЖЕНИЯ (5 вариантов, выбирает только админ)
+//   homeTournament — блок «Активный турнир» на главной;
+//   scorecard      — счётная карточка по лункам во время раунда;
+//   scoring        — страница ввода счёта (одиночный и групповой раунд).
+// Хранение: settings/<key> в Firebase + кэш в localStorage, применяется
+// для ВСЕХ пользователей (читается при загрузке страницы).
+// ─────────────────────────────────────────────────────────
+var PESTOVO_VIEW5_KEYS = ['1', '2', '3', '4', '5'];
+var PESTOVO_VIEW5_CONFIG = {
+    homeTournament: { storage: 'pestovo_home_tournament_view', firebase: 'settings/home_tournament_view' },
+    scorecard:      { storage: 'pestovo_scorecard_view',       firebase: 'settings/scorecard_view' },
+    scoring:        { storage: 'pestovo_scoring_view',         firebase: 'settings/scoring_view' }
+};
+
+function normalizeView5(value) {
+    value = String(value === undefined || value === null ? '' : value);
+    return PESTOVO_VIEW5_KEYS.indexOf(value) !== -1 ? value : '1';
+}
+
+var pestovoView5State = (function() {
+    var st = {};
+    Object.keys(PESTOVO_VIEW5_CONFIG).forEach(function(k) {
+        var v = '';
+        try { v = localStorage.getItem(PESTOVO_VIEW5_CONFIG[k].storage) || ''; } catch (e) {}
+        st[k] = normalizeView5(v);
+    });
+    return st;
+})();
+
+function getView5(name) {
+    return PESTOVO_VIEW5_CONFIG[name] ? (pestovoView5State[name] || '1') : '1';
+}
+
+function applyView5(name, value) {
+    if (!PESTOVO_VIEW5_CONFIG[name]) return '1';
+    var v = normalizeView5(value);
+    pestovoView5State[name] = v;
+    try { localStorage.setItem(PESTOVO_VIEW5_CONFIG[name].storage, v); } catch (e) {}
+    try { syncView5BodyClasses(); } catch (e) {}
+    try { if (typeof markAdmView5Buttons === 'function') markAdmView5Buttons(name); } catch (e) {}
+    return v;
+}
+
+// CSS-классы на <body>: st-scoring-v2 … st-scorecard-v5 — варианты
+// оформления применяются мгновенно, без перезагрузки страницы.
+function syncView5BodyClasses() {
+    if (typeof document === 'undefined' || !document.body) return;
+    try {
+        Object.keys(PESTOVO_VIEW5_CONFIG).forEach(function(name) {
+            var cur = getView5(name);
+            PESTOVO_VIEW5_KEYS.forEach(function(v) {
+                if (v === '1') return;
+                document.body.classList.toggle('st-' + name + '-v' + v, cur === v);
+            });
+        });
+    } catch (e) {}
+}
+
+// Живая подписка на значение из Firebase: вызывается страницами при старте.
+// cb вызывается и когда настройки нет (значение по умолчанию «1»).
+function pestovoBindView5(name, cb) {
+    var cfg = PESTOVO_VIEW5_CONFIG[name];
+    if (!cfg) return;
+    var fire = function(val) { try { cb(applyView5(name, val)); } catch (e) {} };
+    if (typeof db === 'undefined' || !db) { fire(null); return; }
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('view5-' + name, db.ref(cfg.firebase), function(sn) { fire(sn.val()); });
+    } else {
+        db.ref(cfg.firebase).once('value').then(function(sn) { fire(sn.val()); }).catch(function() { fire(null); });
+    }
+}
+
+function getHomeTournamentView() { return getView5('homeTournament'); }
+function getRoundScorecardView() { return getView5('scorecard'); }
+function getScoringView() { return getView5('scoring'); }
+
+if (typeof window !== 'undefined') {
+    window.getView5 = getView5;
+    window.applyView5 = applyView5;
+    window.normalizeView5 = normalizeView5;
+    window.pestovoBindView5 = pestovoBindView5;
+    window.syncView5BodyClasses = syncView5BodyClasses;
+    window.getHomeTournamentView = getHomeTournamentView;
+    window.getRoundScorecardView = getRoundScorecardView;
+    window.getScoringView = getScoringView;
+}
+
+// QR-картинка с цепочкой провайдеров (основной → запасной → повтор):
+// внешний сервис иногда отдаёт таймаут — тогда код автоматически
+// перегружается с другого провайдера, «пустых» QR у игроков не остаётся.
+function pestovoQrImgHtml(data, size, cls) {
+    size = size || 200;
+    var urls = [
+        'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size + '&margin=2&data=' + encodeURIComponent(data),
+        'https://quickchart.io/qr?size=' + size + '&margin=1&text=' + encodeURIComponent(data),
+        'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size + '&margin=2&color=111111&bgcolor=ffffff&data=' + encodeURIComponent(data)
+    ];
+    return '<img src="' + urls[0] + '" data-qr-src="' + encodeURIComponent(data) + '" data-qr-try="0"' +
+        (cls ? ' class="' + cls + '"' : '') + ' alt="QR" loading="eager" decoding="async"' +
+        ' onload="pestovoQrImgOk(this)" onerror="pestovoQrImgFail(this)">';
+}
+function pestovoQrImgOk(img) {
+    try { img.setAttribute('data-qr-done', '1'); } catch (e) {}
+}
+function pestovoQrImgFail(img) {
+    var n = 0;
+    try { n = parseInt(img.getAttribute('data-qr-try') || '0', 10) || 0; } catch (e) {}
+    var data = '';
+    try { data = decodeURIComponent(img.getAttribute('data-qr-src') || ''); } catch (e) {}
+    var urls = [
+        'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=2&data=' + encodeURIComponent(data),
+        'https://quickchart.io/qr?size=200&margin=1&text=' + encodeURIComponent(data),
+        'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=2&color=111111&bgcolor=ffffff&data=' + encodeURIComponent(data)
+    ];
+    if (data && n + 1 < urls.length) {
+        try {
+            img.setAttribute('data-qr-try', String(n + 1));
+            img.src = urls[n + 1];
+        } catch (e) {}
+    }
+}
+if (typeof window !== 'undefined') {
+    window.pestovoQrImgHtml = pestovoQrImgHtml;
+    window.pestovoQrImgOk = pestovoQrImgOk;
+    window.pestovoQrImgFail = pestovoQrImgFail;
+}
+
+// Предзагрузка QR-картинок в кэш браузера: вызывается сразу после создания
+// группового раунда, чтобы коды были готовы к сканированию мгновенно.
+function pestovoPrewarmQrImages(urls) {
+    (urls || []).forEach(function(u) {
+        try {
+            var im = new Image();
+            im.onload = function() {};
+            im.onerror = function() {};
+            im.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=2&data=' + encodeURIComponent(u);
+        } catch (e) {}
+    });
+}
+if (typeof window !== 'undefined') window.pestovoPrewarmQrImages = pestovoPrewarmQrImages;
+
 // Логотип нужен только как обычный элемент шапки — фон PNG намеренно остаётся
 // чистым, без водяного знака.
 var pestovoCardLogoImg = null;
@@ -9506,8 +9678,17 @@ function pestovoAutoStartRounds(roundsData, opts) {
 function pestovoStartTournamentNow(tnId) {
     if (typeof db === 'undefined' || !db || !tnId) return Promise.resolve(false);
     var now = Date.now();
-    return db.ref('rounds').once('value').then(function(sn) {
-        var data = sn.val() || {};
+    // При старте подтягиваем гандикапные группы турнира: ТИ группы («ти
+    // стартовой группы» = ТИ дивизиона из «умных групп» или ручной группы)
+    // применяется к игрокам раунда этой группы (#1.60). Если группы нет —
+    // действует ТИ, сохранённый в раунде при создании протокола.
+    return Promise.all([
+        db.ref('rounds').once('value'),
+        db.ref('tournaments/' + tnId + '/divisions').once('value').catch(function() { return null; })
+    ]).then(function(res) {
+        var data = res[0].val() || {};
+        var divRaw = (res[1] && res[1].val) ? res[1].val() : null;
+        var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions({ divisions: divRaw }) : [];
         var updates = {};
         updates['tournaments/' + tnId + '/status'] = 'active';
         updates['tournaments/' + tnId + '/startedAt'] = now;
@@ -9516,10 +9697,25 @@ function pestovoStartTournamentNow(tnId) {
             var r = data[rid];
             if (!r || typeof r !== 'object') return;
             if (String(r.tournamentId || '') !== String(tnId)) return;
-            if (String(r.status || '') !== ROUND_STATUS_SCHEDULED) return;
-            updates['rounds/' + rid + '/status'] = 'active';
-            updates['rounds/' + rid + '/activatedAt'] = now;
-            opened++;
+            var isScheduled = String(r.status || '') === ROUND_STATUS_SCHEDULED;
+            if (isScheduled) {
+                updates['rounds/' + rid + '/status'] = 'active';
+                updates['rounds/' + rid + '/activatedAt'] = now;
+                opened++;
+            }
+            // ТИ по гандикапной группе игрока
+            if (divisions.length && r.players) {
+                Object.keys(r.players).forEach(function(pid) {
+                    var p = r.players[pid] || {};
+                    var hcp = (p.exactHcp != null) ? p.exactHcp : (p.exactHcpRaw != null ? p.exactHcpRaw : p.handicap);
+                    var div = (typeof tnFindDivision === 'function')
+                        ? tnFindDivision({ divisions: divRaw }, hcp, p.gender || 'men', { pid: pid, name: p.name || '' })
+                        : null;
+                    if (div && div.tee && div.tee !== p.tee) {
+                        updates['rounds/' + rid + '/players/' + pid + '/tee'] = div.tee;
+                    }
+                });
+            }
         });
         return db.ref().update(updates).then(function() { return opened; });
     }).catch(function() {
@@ -9761,6 +9957,7 @@ function pestovoBroadcastAudience(a) {
     }
     return {
         type: type,
+        includePwa: a.includePwa === true,
         tournamentId: String(a.tournamentId || ''),
         tournamentName: String(a.tournamentName || ''),
         protocolId: String(a.protocolId || ''),
@@ -9815,7 +10012,10 @@ function pestovoBroadcastViewerCtx() {
 function pestovoBroadcastAudienceLabel(b, lang) {
     var L = lang || pestovoLang();
     var aud = pestovoBroadcastAudience(b && b.audience);
-    if (aud.type === 'all') return L === 'en' ? 'All club players' : 'Всем игрокам клуба';
+    if (aud.type === 'all') {
+        if (aud.includePwa) return L === 'en' ? 'All players + PWA push (incl. guests)' : 'Всем игрокам + PWA-уведомления (включая гостей)';
+        return L === 'en' ? 'All club players' : 'Всем игрокам клуба';
+    }
     var name = aud.type === 'protocol' ? (aud.protocolName || aud.tournamentName || '') : (aud.tournamentName || '');
     var who = aud.type === 'protocol'
         ? (L === 'en' ? 'Start list' : 'Стартовый протокол')

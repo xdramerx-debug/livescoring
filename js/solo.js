@@ -18,6 +18,8 @@ document.addEventListener('pestovo-stableford-default-change', function() {
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
     initSoloForm();
+    // Вид страницы ввода счёта (5 вариантов) — выбирает админ, действует для всех.
+    if (typeof pestovoBindView5 === 'function') pestovoBindView5('scoring', function() { try { syncView5BodyClasses(); } catch (e) {} });
     var urlP = new URLSearchParams(window.location.search);
     var rid = urlP.get('round');
     if (rid) {
@@ -535,6 +537,9 @@ function buildHoles() {
         var cls = h === curHole ? 'active' : '';
         var s = parseInt(scores[h]) || 0;
         if (s >= 1 && h !== curHole) cls += ' done';
+        // Текущая лунка, на которой счёт ещё НЕ записан, мигает серым —
+        // сразу видно, где игрок сейчас находится (вместо цветовой подсветки).
+        if (h === curHole && !(s >= 1) && canEditSolo) cls += ' cur-blink';
 
         html += '<button class="hole-btn ' + cls + '" onclick="goHole(' + h + ')" style="min-height:38px;padding:2px;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;">' +
             '<span class="hbn-line" style="line-height:1;"><span class="hbn-num" style="font-size:9px;opacity:0.75;">#' + h + '</span>' + hcpStrokesMarksHTML(fieldHcp, h) + '</span>' +
@@ -555,6 +560,7 @@ function goHole(h) {
     rememberResumeHole(soloRid, getPlayerId(), h);
     renderCurrentHole();
     buildHoles();
+    try { showSkippedHolesWarning('solo-skipped-box'); } catch (e) {}
     setTimeout(function() { soloIsChanging = false; }, 100);
 }
 
@@ -628,12 +634,22 @@ function updateDisplay() {
     }
 }
 
+var soloSaveInFlight = false;
+var soloSaveWatchdog = null;
+
 function saveSolo() {
     if (!canEditSolo) {
         toast(t('msg_edit_disabled'), 'error');
         return;
     }
+    // Защита от «пулемётного» ввода (#15): пока запись лунки не завершилась,
+    // повторные нажатия игнорируются, а сторожевой таймер (3 c) гарантирует
+    // разблокировку — интерфейс больше не зависает от быстрых тапов.
+    if (soloSaveInFlight) return;
     if (curScore < 1) { toast(t('msg_score_min'), 'error'); return; }
+
+    soloSaveInFlight = true;
+    soloSaveWatchdog = setTimeout(function() { soloSaveInFlight = false; }, 3000);
 
     soloIsChanging = true;
     soloDirty = false;
@@ -684,6 +700,7 @@ function saveSolo() {
         showTimingNotice(savedHole);
         renderCurrentHole();
         buildHoles();
+        try { showSkippedHolesWarning('solo-skipped-box'); } catch (e) {}
 
         updateSoloActionButton();
         renderMiniCard('mini-card');
@@ -693,6 +710,14 @@ function saveSolo() {
         updateSoloPaceAssistant();
 
         setTimeout(function() { soloIsChanging = false; }, 200);
+        if (soloSaveWatchdog) { clearTimeout(soloSaveWatchdog); soloSaveWatchdog = null; }
+        soloSaveInFlight = false;
+    }).catch(function(errSave) {
+        try { console.warn('[solo] save failed', errSave); } catch (e) {}
+        toast(currentLang === 'en' ? '⚠️ Could not save — check connection' : '⚠️ Не удалось сохранить — проверьте соединение', 'error');
+        if (soloSaveWatchdog) { clearTimeout(soloSaveWatchdog); soloSaveWatchdog = null; }
+        soloSaveInFlight = false;
+        soloIsChanging = false;
     });
 }
 
@@ -757,32 +782,69 @@ function updateSoloActionButton() {
         if (parseInt(scores[h]) > 0) playedCount++;
     });
 
-    // Несохранённый ввод: счёт изменён, но кнопка «Сохранить» ещё не нажата.
+    // Несохранённый ввод: счёт изменён, но ещё не подтверждён.
+    // Отдельного уведомления больше нет — состояние показывает сама кнопка.
     var hasUnsaved = canEditSolo && soloDirty && curScore >= 1;
-    var hint = document.getElementById('solo-unsaved-hint');
-    if (hint) hint.classList.toggle('hidden', !hasUnsaved);
     btn.classList.toggle('has-unsaved', hasUnsaved);
 
     var icon = btn.querySelector('i');
 
-    if (hasUnsaved) {
-        // Изменения ещё не записаны — кнопка всегда сохраняет результат,
-        // даже на последней лунке (иначе ввод потерялся бы при завершении).
-        btn.onclick = function() { saveSolo(); };
-        btn.className = 'btn btn-g btn-block btn-lg has-unsaved';
-        if (txt) txt.innerHTML = currentLang === 'en' ? '💾 Save Result' : '💾 Сохранить результат';
-        if (icon) icon.className = 'fas fa-save';
-    } else if (playedCount >= holeCount) {
+    if (playedCount >= holeCount && !hasUnsaved) {
         btn.onclick = function() { finishSolo(); };
         btn.className = 'btn btn-g btn-block btn-lg';
         if (txt) txt.innerHTML = currentLang === 'en' ? '🏆 Finish Round' : '🏆 Завершить раунд';
         if (icon) icon.className = 'fas fa-flag-checkered';
+    } else if (hasUnsaved) {
+        // Изменения ещё не записаны — кнопка всегда сохраняет результат,
+        // даже на последней лунке (иначе ввод потерялся бы при завершении).
+        btn.onclick = function() { saveSolo(); };
+        btn.className = 'btn btn-g btn-block btn-lg has-unsaved';
+        if (txt) txt.innerHTML = t('solo_save_result_btn');
+        if (icon) icon.className = 'fas fa-check';
     } else {
         btn.onclick = function() { saveSolo(); };
         btn.className = 'btn btn-g btn-block';
-        if (txt) txt.innerHTML = currentLang === 'en' ? '➡️ Next Hole' : '➡️ Сохранить и следующая лунка';
+        if (txt) txt.innerHTML = t('solo_next_keep_btn');
         if (icon) icon.className = 'fas fa-arrow-right';
     }
+}
+
+// ── ПРОПУЩЕННЫЕ ЛУНКИ ──
+// Список лунок раунда, на которых счёт ещё не введён (до текущей включительно).
+function soloSkippedHoles() {
+    if (!soloRound) return [];
+    var uid = getPlayerId();
+    var p = uid && soloRound.players && soloRound.players[uid];
+    var scores = (p && p.scores) || {};
+    var order = getRoundOrder(soloRound);
+    var out = [];
+    order.forEach(function(h) {
+        if (!(parseInt(scores[h]) > 0)) out.push(h);
+    });
+    return out;
+}
+
+// Предупреждение о пропущенных лунках: список с кнопками перехода
+// («вбить счёт») и вариантом «продолжить с пропуском».
+function showSkippedHolesWarning(containerId, onContinue) {
+    var box = document.getElementById(containerId);
+    if (!box) { if (typeof onContinue === 'function') onContinue(); return; }
+    var skipped = soloSkippedHoles();
+    if (!skipped.length) { box.innerHTML = ''; if (typeof onContinue === 'function') onContinue(); return; }
+    var shown = skipped.slice(0, 6);
+    var btns = '';
+    shown.forEach(function(h) {
+        btns += '<button type="button" class="shb-hole-btn" onclick="goHole(' + h + ');document.getElementById(' + JSON.stringify(containerId) + ').innerHTML=\'\';">' +
+            t('skipped_holes_goto') + ' ' + h + '</button>';
+    });
+    var more = skipped.length > shown.length ? ' …' : '';
+    box.innerHTML = '<div class="skipped-holes-box">' +
+        '<div class="shb-title"><i class="fas fa-triangle-exclamation"></i> ' + t('skipped_holes_title') + ': ' +
+        skipped.join(', ') + more + '</div>' +
+        '<div class="shb-actions">' + btns +
+        '<button type="button" class="btn btn-ol btn-sm" onclick="document.getElementById(' + JSON.stringify(containerId) + ').innerHTML=\'\';">' +
+        t('skipped_holes_skip') + '</button>' +
+        '</div></div>';
 }
 
 function renderMiniCard(targetId) {
@@ -802,7 +864,13 @@ var soloFinishing = false;
 
 function finishSolo() {
     if (!canEditSolo) return;
-    // Защита от повторного завершения (двойной клик): иначе история и roundsPlayed задваивались
+    // Пропущенные лунки: предупреждаем и даём choice — вернуться к вводу
+    // или завершить раунд с «дырками» в счёте.
+    var skipped = soloSkippedHoles();
+    if (skipped.length) {
+        var q = (t('skipped_holes_finish_q') || '').replace('{holes}', skipped.slice(0, 8).join(', ') + (skipped.length > 8 ? '…' : ''));
+        if (!confirm(q)) { goHole(skipped[0]); return; }
+    }
     if (soloFinishing) return;
     if (soloRound && soloRound.status === 'completed') return;
     soloFinishing = true;

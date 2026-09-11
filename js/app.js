@@ -493,6 +493,9 @@ function isMyLiveRound(id, r) {
 // Строка единого списка «кто сейчас на поле»: имя, текущая лунка, счёт и
 // время старта раунда. Детали (бейджи, gross, кнопки) — в раскрытой строке.
 function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
+    // false → карточка с кнопкой сворачивания (не используется для соло-строк),
+    // соло-строки всегда развёрнуты (требование UX 1.60).
+    var isMyGroupRow = false;
     var order = getRoundOrder(r);
 
     // Для отображения используем собственные счёта игрока.
@@ -514,11 +517,13 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
         ? t('finished_f')
         : t('hole') + ' №' + (stats.currentHole || (parseInt(r.startHole) || 1));
 
-    var open = getLiveWhoOpen(id, pid);
+    var soloRoundCard = !isMyGroupRow;
+    var open = soloRoundCard ? true : getLiveWhoOpen(id, pid);
     var panelId = 'live-sc-' + id + '-' + pid;
     var link = 'setup-round.html?round=' + id;
     var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
 
+    // Одиночный раунд: карточка сразу развёрнута — без кнопки «свернуть/развернуть».
     var details =
         '<div class="lwl-details">' +
         '<div class="lwl-meta">' +
@@ -526,31 +531,43 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
         '<span class="lwl-extra">Gross: ' + (stats.gross || 0) + ' · ' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + (r.mode === 'solo' ? soloWord : '') + markerNote + '</span>' +
         '</div>' +
         '<div class="lwl-actions">' +
-        '<button class="btn btn-og btn-sm" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
         (isMyRound ? '<a href="' + link + '" class="btn btn-g btn-sm"><i class="fas fa-gamepad"></i> ' + (currentLang === 'en' ? 'Continue' : 'Продолжить') + '</a>' : '') +
         '</div>' +
-        '<div id="' + panelId + '" class="card-scorecard-panel hidden"></div>' +
+        (soloRoundCard
+            ? '<div class="live-group-unified-card">' + generateGroupHoleTableHTML(r, { compact: true }) + '</div>'
+            : '<div id="' + panelId + '" class="card-scorecard-panel hidden"></div>') +
         '</div>';
 
-    return '<div class="lwl-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
-        'data-round-id="' + id + '" data-pid="' + pid + '" data-panel-id="' + panelId + '">' +
-        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + panelId + '" ' +
-        'onclick="toggleLiveWho(\'' + id + '\',\'' + pid + '\')" onkeydown="liveWhoKey(event,\'' + id + '\',\'' + pid + '\')">' +
-        '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
-        (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
-        '</span>' +
-        '<span class="lwl-hole"><i class="fas fa-location-dot"></i> ' + thruText + '</span>' +
-        '<span class="lwl-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
-        '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
-        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
-        '</div>' +
+    // Одиночный раунд не сворачивается: вся карточка и счёт видны сразу.
+    var rowHtml = '<div class="lwl-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
+        'data-round-id="' + id + '" data-pid="' + pid + '"' + (soloRoundCard ? '' : ' data-panel-id="' + panelId + '"') + '>' +
+        (soloRoundCard
+            ? '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="true">' +
+              '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
+              (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
+              '</span>' +
+              '<span class="lwl-hole"><i class="fas fa-location-dot"></i> ' + thruText + '</span>' +
+              '<span class="lwl-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
+              '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
+              '</div>'
+            : '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + panelId + '" ' +
+              'onclick="toggleLiveWho(\'' + id + '\',\'' + pid + '\')" onkeydown="liveWhoKey(event,\'' + id + '\',\'' + pid + '\')">' +
+              '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
+              (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
+              '</span>' +
+              '<span class="lwl-hole"><i class="fas fa-location-dot"></i> ' + thruText + '</span>' +
+              '<span class="lwl-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
+              '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
+              '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
+              '</div>') +
         details +
         '</div>';
+    return rowHtml;
 }
 
 // Один свёрнутый блок на активный раунд. Для группового раунда —
 // единая на всех участников карточка на главной странице с выбранным стилем оформления.
-function buildLiveRoundRowHTML(id, r, players, isMyRound) {
+function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
     var playerEntries = Object.entries(players || {}).filter(function(pe) {
         return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
     });
@@ -587,7 +604,7 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound) {
         ? (playerEntries.length === 1 ? 'player' : 'players')
         : pluralN(playerEntries.length, 'игрок', 'игрока', 'игроков'));
     var namesStr = escapeHtml(names.join(', '));
-    var open = getLiveRoundOpen(id);
+    var open = (forceOpen === true) ? true : getLiveRoundOpen(id);
     var panelId = 'live-round-panel-' + id;
     var link = 'setup-round.html?round=' + id;
 
@@ -619,9 +636,110 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound) {
         '</div>';
 }
 
+// ── БЛОК «АКТИВНЫЙ ТУРНИР» НА ГЛАВНОЙ ──
+// Турнирная сводка: топ-3 каждого формата турнира (Gross / Net / Stableford),
+// собранные по всем активным раундам турнира, плюс список раундов — сразу
+// развёрнутый (без сворачивания). Вид блока (5 вариантов) выбирает админ.
+function homeTnTop3Entry(tnId, tnName, tnEntries) {
+    var agg = {};
+    var fmts = {};
+    var startTs = null;
+    tnEntries.forEach(function(e) {
+        var r = e[1];
+        var order = (typeof getRoundOrder === 'function') ? getRoundOrder(r) : null;
+        var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(r.players || {}) : (r.players || {});
+        Object.keys(players).forEach(function(pid) {
+            var p = players[pid] || {};
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p.name)) return;
+            var stats;
+            try { stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order); } catch (err) { return; }
+            if (!stats.holesPlayed) return;
+            var key = pid;
+            var cur = agg[key];
+            if (!cur) {
+                cur = agg[key] = {
+                    pid: pid, name: p.name || '—', gross: 0, par: 0, net: 0, stbl: 0, holes: 0
+                };
+            }
+            cur.gross += stats.gross || 0;
+            cur.par += stats.parPlayed || 0;
+            cur.net += stats.net || 0;
+            cur.stbl += stats.stablefordField || 0;
+            cur.holes += stats.holesPlayed || 0;
+        });
+        (r.formats || []).forEach(function(f) { if (f) fmts[f] = true; });
+        if (r.format) fmts[r.format] = true;
+        if (r.startTime && (!startTs || r.startTime < startTs)) startTs = r.startTime;
+    });
+    var list = Object.keys(agg).map(function(k) { return agg[k]; });
+    if (!list.length) return '';
+    list.forEach(function(x) {
+        x.toPar = x.holes > 0 ? (x.gross - x.par) : null;
+        x.netToPar = x.holes > 0 ? (x.net - x.par) : null;
+        x.dispName = (typeof privacyDisplayName === 'function') ? privacyDisplayName({ name: x.name }, x.pid) : x.name;
+    });
+    var byGross = list.slice().sort(function(a, b) { return (a.toPar - b.toPar) || (a.name || '').localeCompare(b.name || ''); }).slice(0, 3);
+    var byNet = list.slice().sort(function(a, b) { return (a.netToPar - b.netToPar) || (a.name || '').localeCompare(b.name || ''); }).slice(0, 3);
+    var byStbl = list.slice().sort(function(a, b) { return (b.stbl - a.stbl) || (a.name || '').localeCompare(b.name || ''); }).slice(0, 3);
+
+    function podium(caption, arr, valFn, clsFn) {
+        if (!arr.length) return '';
+        var items = '';
+        arr.forEach(function(x, i) {
+            var cls = (typeof clsFn === 'function') ? clsFn(x) : '';
+            items += '<div class="htv-top3-item ' + (i === 0 ? 'p1' : i === 1 ? 'p2' : 'p3') + '">' +
+                '<div class="htv-pos">' + (i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉') + '</div>' +
+                '<div class="htv-name">' + escapeHtml(x.dispName || x.name || '') + '</div>' +
+                '<div class="htv-meta">' + x.holes + '/18</div>' +
+                '<div class="htv-score ' + cls + '">' + valFn(x) + '</div>' +
+                '</div>';
+        });
+        return '<div class="htv-podium"><div class="htv-podium-cap">' + caption + '</div>' +
+            '<div class="htv-top3">' + items + '</div></div>';
+    }
+
+    var fmtChips = '';
+    Object.keys(fmts).slice(0, 4).forEach(function(f) {
+        fmtChips += '<span class="htv-fmt-chip">' + escapeHtml(f) + '</span>';
+    });
+
+    var v = (typeof getHomeTournamentView === 'function') ? getHomeTournamentView() : '1';
+    var rowsOpen = true;
+
+    var html = '<div class="htv-block htv-v' + v + '">';
+    html += '<div class="htv-head" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">' +
+        '<b style="color:var(--gold);font-size:14px;"><i class="fas fa-trophy"></i> ' + escapeHtml(tnName || '') + '</b>' +
+        (startTs ? '<span class="htv-fmt-chip"><i class="fas fa-clock"></i> ' + (typeof fmtTime === 'function' ? fmtTime(startTs) : '') + '</span>' : '') +
+        fmtChips + '</div>';
+    html += podium((currentLang === 'en' ? 'Top-3 · Gross' : 'Топ-3 · Гросс'), byGross, function(x) { return fmtScore(x.toPar); }, function(x) { return scoreClass(x.toPar); });
+    if (Object.keys(fmts).some(function(f) { return /net/i.test(f); }) || byNet.length) {
+        html += podium((currentLang === 'en' ? 'Top-3 · Net' : 'Топ-3 · Нетто'), byNet, function(x) { return fmtScore(x.netToPar); }, function(x) { return scoreClass(x.netToPar); });
+    }
+    if (Object.keys(fmts).some(function(f) { return /stableford/i.test(f); })) {
+        html += podium((currentLang === 'en' ? 'Top-3 · Stableford' : 'Топ-3 · Стейблфорд'), byStbl, function(x) { return String(x.stbl) + ' ' + (currentLang === 'en' ? 'pts' : 'оч.'); }, null);
+    }
+    html += '<div class="htv-rounds live-who-list">' + homeTnRowsHtml(tnEntries, rowsOpen) + '</div>';
+    html += '</div>';
+    return html;
+}
+
+function homeTnRowsHtml(tnEntries, forceOpen) {
+    var html = '';
+    tnEntries.forEach(function(e) {
+        var id = e[0], r = e[1];
+        var rawPlayers = r.players || {};
+        var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(rawPlayers) : rawPlayers;
+        var isMyRound = isMyLiveRound(id, r);
+        html += buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen === true);
+    });
+    return html;
+}
+
 function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
     if (typeof db === 'undefined') return;
+    // Вид блока «Активный турнир» (5 вариантов) — выбирает только админ.
+    if (typeof pestovoBindView5 === 'function') pestovoBindView5('homeTournament', function() { try { syncView5BodyClasses(); } catch (e) {} });
 
     bindRealtimeValue('home-live-rounds', db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
@@ -681,7 +799,24 @@ function loadLiveRounds() {
 
         if (tnSec) tnSec.classList.toggle('hidden', tnEntries.length === 0);
         if (tnEl) {
-            tnEl.innerHTML = tnEntries.length ? '<div class="live-who-list">' + rowHtml(tnEntries) + '</div>' : '';
+            if (tnEntries.length) {
+                // Группируем турнирные раунды по турниру: сводка + развёрнутые раунды
+                var byTn = {};
+                var tnOrder = [];
+                tnEntries.forEach(function(e) {
+                    var tid = e[1].tournamentId || e[1].protocolId || 'tn';
+                    if (!byTn[tid]) { byTn[tid] = { name: e[1].tournamentName || '', list: [] }; tnOrder.push(tid); }
+                    if (!byTn[tid].name && e[1].tournamentName) byTn[tid].name = e[1].tournamentName;
+                    byTn[tid].list.push(e);
+                });
+                var tnHtml = '';
+                tnOrder.forEach(function(tid) {
+                    tnHtml += homeTnTop3Entry(tid, byTn[tid].name, byTn[tid].list);
+                });
+                tnEl.innerHTML = tnHtml;
+            } else {
+                tnEl.innerHTML = '';
+            }
         }
 
         if (casualEntries.length === 0) {

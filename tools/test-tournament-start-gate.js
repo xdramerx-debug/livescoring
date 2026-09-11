@@ -187,8 +187,8 @@ ok(/if \(roundStatus !== 'active'\) return null;/.test(startAdmin), 'start-admin
 // ══════════════════════════════════════════════════════════
 // 3. КНОПКА «ПОДТВЕРДИТЬ»
 // ══════════════════════════════════════════════════════════
-eq(sandbox.I18N.ru.next_hole_btn, 'Подтвердить ✓', 'i18n ru: кнопка «Подтвердить ✓»');
-eq(sandbox.I18N.en.next_hole_btn, 'Confirm ✓', 'i18n en: кнопка «Confirm ✓»');
+eq(sandbox.I18N.ru.next_hole_btn, 'Подтвердить результат', 'i18n ru: кнопка «Подтвердить результат»');
+eq(sandbox.I18N.en.next_hole_btn, 'Confirm result', 'i18n en: кнопка «Confirm result»');
 const setupHtml = fs.readFileSync(path.join(ROOT, 'setup-round.html'), 'utf8');
 ok(setupHtml.indexOf('На следующую лунку') === -1, 'setup-round: старой подписи кнопки нет');
 ok(setupHtml.indexOf('id="round-start-gate"') !== -1, 'setup-round: есть блок отсчёта до старта');

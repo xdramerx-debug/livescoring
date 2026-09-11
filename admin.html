@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=31">
+    <link rel="stylesheet" href="css/style.css?v=32">
     <link rel="stylesheet" href="css/design-presets.css?v=1">
     <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -88,6 +88,7 @@
         <div class="admin-tabs">
             <button class="admin-tab active" onclick="switchTab('alerts',this)" data-i18n="tab_alerts">Вызовы 🚨</button>
             <button class="admin-tab" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
+            <button class="admin-tab" onclick="switchTab('scores',this)" data-i18n="tab_scores">Счёт ⛳</button>
             <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
             <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры 🏆</button>
             <button class="admin-tab" onclick="switchTab('broadcasts',this)" data-i18n="tab_broadcasts">Анонсы 📢</button>
@@ -117,6 +118,38 @@
                     <button type="button" class="btn btn-ol btn-sm" onclick="admRoundsExpandAll(false)"><i class="fas fa-angles-up"></i> Свернуть все</button>
                 </div>
                 <div id="adm-rounds"></div>
+            </div>
+        </div>
+        <div id="tab-scores" class="admin-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-pen-to-square"></i> <span data-i18n="scores_editor_title">Редактор счёта всех раундов</span></h2>
+                <p style="color:var(--muted);font-size:13px;margin:0 0 14px;" data-i18n="scores_editor_sub">
+                    Редактируйте счёт любой лунки любого игрока — активного, запланированного или завершённого раунда. Найдите игрока или раунд поиском, раскройте карточку, внесите правки и сохраните.
+                </p>
+                <div class="se-editor-toolbar">
+                    <div class="form-group" style="flex:1 1 220px;">
+                        <label data-i18n="scores_search_fio">Поиск по ФИО игрока</label>
+                        <input type="text" id="se-q-fio" class="form-input" placeholder="Иванов Пётр" oninput="seRender()">
+                    </div>
+                    <div class="form-group" style="flex:0 1 150px;">
+                        <label data-i18n="scores_search_date">Дата раунда</label>
+                        <input type="date" id="se-q-date" class="form-input" onchange="seRender()">
+                    </div>
+                    <div class="form-group" style="flex:0 1 170px;">
+                        <label data-i18n="scores_search_status">Статус раунда</label>
+                        <select id="se-q-status" class="form-input" onchange="seRender()">
+                            <option value="">— все —</option>
+                            <option value="active">🔴 Активный</option>
+                            <option value="scheduled">⏳ Запланированный</option>
+                            <option value="completed">✅ Завершённый</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:0 0 auto;">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-og btn-sm" onclick="seRender()"><i class="fas fa-rotate"></i> Обновить</button>
+                    </div>
+                </div>
+                <div id="se-list"><p style="color:var(--muted);text-align:center;padding:20px;">Загрузка раундов…</p></div>
             </div>
         </div>
 
@@ -271,6 +304,7 @@
                     <label data-i18n="bc_audience_lbl">Кому отправить</label>
                     <select id="bc-audience" class="form-input" onchange="bcAudienceTypeChange()">
                         <option value="all" data-i18n="bc_aud_all">Всем игрокам клуба</option>
+                        <option value="all_pwa" data-i18n="bc_aud_all_pwa">Всем + PWA-уведомления (включая гостей)</option>
                         <option value="roster" data-i18n="bc_aud_tournament">Турниру (его registrations)</option>
                         <option value="protocol" data-i18n="bc_aud_protocol">Игрокам стартового протокола</option>
                     </select>
@@ -368,7 +402,7 @@
             <div class="card" style="margin-bottom:20px;">
                 <h2><i class="fas fa-user-plus"></i> <span>Создать игрока</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
-                    Добавьте нового игрока в систему клуба (укажите имя, точный HCP, пол и ТИ по умолчанию).
+                    Добавьте нового игрока в систему клуба (имя, точный HCP и пол). ТИ игрока определяется его группой в стартовом протоколе.
                 </p>
                 <div class="form-row">
                     <div class="form-group" style="flex:1.4 1 140px;">
@@ -390,15 +424,6 @@
                         <select id="adm-new-gender" class="form-input">
                             <option value="men">👨 Мужчина</option>
                             <option value="women">👩 Девушка</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>ТИ по умолчанию</label>
-                        <select id="adm-new-tee" class="form-input">
-                            <option value="bk">⬛ Чёрный</option>
-                            <option value="bl">🟦 Синий</option>
-                            <option value="wh" selected>⬜ Белый</option>
-                            <option value="rd">🟥 Красный</option>
                         </select>
                     </div>
                 </div>
@@ -734,6 +759,48 @@
                         </div>
                     </div>
                 </div>
+                <!-- Вид блока «Активный турнир» на главной — 5 вариантов -->
+                <div class="list-item" style="padding:14px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.45);border-radius:10px;margin-bottom:16px;">
+                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-trophy" style="color:var(--gold);"></i> <span>Блок «Активный турнир» на главной (5 видов)</span></span>
+                    <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+                        Выберите один из 5 видов блока активного турнира на главной странице — с топ-3 в разных форматах. Выбирает только админ, применяется для всех пользователей. Виды удобно смотреть и с телефона, и с компьютера.
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                        <button type="button" id="v5-homeTournament-1" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','1')" aria-pressed="true"><i class="fas fa-table-cells"></i> 1 · Подиум</button>
+                        <button type="button" id="v5-homeTournament-2" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','2')" aria-pressed="false"><i class="fas fa-list"></i> 2 · Витрина</button>
+                        <button type="button" id="v5-homeTournament-3" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','3')" aria-pressed="false"><i class="fas fa-align-left"></i> 3 · Строки</button>
+                        <button type="button" id="v5-homeTournament-4" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','4')" aria-pressed="false"><i class="fas fa-moon"></i> 4 · Тёмный</button>
+                        <button type="button" id="v5-homeTournament-5" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','5')" aria-pressed="false"><i class="fas fa-feather"></i> 5 · Мини</button>
+                    </div>
+                </div>
+                <!-- Вид счётной карточки по лункам — 5 вариантов -->
+                <div class="list-item" style="padding:14px 16px;background:rgba(90,173,224,0.07);border:1px solid rgba(90,173,224,0.4);border-radius:10px;margin-bottom:16px;">
+                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-clipboard-list" style="color:var(--blue);"></i> <span>Счётная карточка «Развернуть счётную карточку» (5 видов)</span></span>
+                    <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+                        Вид счётной карточки по лункам под таймингами во время раунда. Выбирает только админ — применяется ко всем игрокам.
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                        <button type="button" id="v5-scorecard-1" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scorecard','1')" aria-pressed="true"><i class="fas fa-table"></i> 1 · Стандарт</button>
+                        <button type="button" id="v5-scorecard-2" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scorecard','2')" aria-pressed="false"><i class="fas fa-expand"></i> 2 · Крупные клетки</button>
+                        <button type="button" id="v5-scorecard-3" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scorecard','3')" aria-pressed="false"><i class="fas fa-bars-staggered"></i> 3 · Зебра + итог</button>
+                        <button type="button" id="v5-scorecard-4" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scorecard','4')" aria-pressed="false"><i class="fas fa-compress"></i> 4 · Плотный</button>
+                        <button type="button" id="v5-scorecard-5" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scorecard','5')" aria-pressed="false"><i class="fas fa-border-all"></i> 5 · Плитки</button>
+                    </div>
+                </div>
+                <!-- Вид страницы ввода счёта — 5 вариантов -->
+                <div class="list-item" style="padding:14px 16px;background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.4);border-radius:10px;margin-bottom:16px;">
+                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-gamepad" style="color:#2ecc71;"></i> <span>Страница ввода счёта (5 видов)</span></span>
+                    <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+                        Оформление всех блоков страницы ввода счёта — одиночный и групповой раунд: панель лунок, цифры счёта, кнопки ±, блок маркера. Выбирает только админ, применяется ко всем игрокам.
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                        <button type="button" id="v5-scoring-1" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scoring','1')" aria-pressed="true"><i class="fas fa-check"></i> 1 · Классика</button>
+                        <button type="button" id="v5-scoring-2" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scoring','2')" aria-pressed="false"><i class="fas fa-font"></i> 2 · Крупный счёт</button>
+                        <button type="button" id="v5-scoring-3" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scoring','3')" aria-pressed="false"><i class="fas fa-compress"></i> 3 · Компакт</button>
+                        <button type="button" id="v5-scoring-4" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scoring','4')" aria-pressed="false"><i class="fas fa-circle-half-stroke"></i> 4 · Контраст</button>
+                        <button type="button" id="v5-scoring-5" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scoring','5')" aria-pressed="false"><i class="fas fa-feather"></i> 5 · Минимализм</button>
+                    </div>
+                </div>
                 <!-- Глобальные варианты отображения основных страниц -->
                 <div class="page-display-settings-grid">
                     <div class="list-item page-display-setting-card">
@@ -995,20 +1062,20 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.59.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.60.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=55"></script>
+<script src="js/utils.js?v=56"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/assistant-config.js"></script>
 <script src="js/assistant-build.js?v=2"></script>
 <script src="js/name-variants.js?v=1"></script>
-<script src="js/admin.js?v=41"></script>
+<script src="js/admin.js?v=42"></script>
 <script src="js/protocol.js?v=2"></script>
-<script src="js/start-admin.js?v=17"></script>
+<script src="js/start-admin.js?v=18"></script>
 <script src="js/design-admin.js?v=2"></script>
-<script src="js/pwa.js?v=3"></script>
+<script src="js/pwa.js?v=4"></script>
 </body>
 </html>

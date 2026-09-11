@@ -284,7 +284,6 @@ function openAdminPanel() {
                 var nameInp = document.getElementById('adm-new-name');
                 var hcpInp = document.getElementById('adm-new-hcp');
                 var genderSel = document.getElementById('adm-new-gender');
-                var teeSel = document.getElementById('adm-new-tee');
                 var parts = (typeof resolvePlayerNameParts === 'function')
                     ? resolvePlayerNameParts(matchedUser)
                     : matchedUser;
@@ -295,10 +294,6 @@ function openAdminPanel() {
                     hcpInp.value = fmtExactHcp(matchedUser.handicap);
                 }
                 if (genderSel && matchedUser.gender) genderSel.value = matchedUser.gender;
-                if (teeSel) {
-                    if (matchedUser.defaultTee) teeSel.value = matchedUser.defaultTee;
-                    else if (matchedUser.gender === 'women') teeSel.value = 'rd';
-                }
             }
         });
     }
@@ -315,6 +310,7 @@ function openAdminPanel() {
     loadTnCardDisplaySettings();
     loadTnLbDisplaySettings();
     loadPageDisplaySettings();
+    loadAdmView5Settings();
     loadPrivacySettings();
     renderAssistantSources();
     loadAssistantSourcesFromFirebase();
@@ -353,6 +349,9 @@ function switchTab(t, b) {
     if (t === 'groups') {
         renderAdmGroups();
     }
+    if (t === 'scores') {
+        seRender();
+    }
     if (t === 'data') {
         loadPageVisibilitySettings();
         loadStablefordDisplaySettings();
@@ -361,6 +360,7 @@ function switchTab(t, b) {
         loadTnCardDisplaySettings();
         loadTnLbDisplaySettings();
         loadPageDisplaySettings();
+        loadAdmView5Settings();
     }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
@@ -554,6 +554,218 @@ function ensureAdmRoundsDateFilter() {
         onChange: function() { renderAdmRounds(admRoundsLastData || {}); }
     });
     return admRoundsDateFilter;
+}
+
+// ==========================================
+// РЕДАКТОР СЧЁТА ВСЕХ РАУНДОВ (#16, вкладка «Счёт ⛳»)
+// Активные, запланированные и завершённые раунды: поиск по ФИО/дате/статусу,
+// раскрытие карточки, правка счёта любой лунки любого игрока, сохранение.
+// ==========================================
+var seCache = null;          // снимок rounds
+var seOpenId = null;         // раскрытый раунд
+var seDraft = {};            // черновик правок: { roundId: { pid: { hole: value } } }
+
+function seGet(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+
+function seEnsureSubscription() {
+    if (typeof db === 'undefined' || !db || typeof bindRealtimeValue !== 'function') return;
+    bindRealtimeValue('adm-scores-editor', db.ref('rounds'), function(sn) {
+        seCache = sn.val() || {};
+        seRender();
+    });
+}
+
+// Хелпер: «Фамилия Имя» игрока раунда (или name как есть).
+function sePlayerFio(p) {
+    if (!p) return '';
+    if (p.lastName || p.firstName) {
+        return [p.lastName, p.firstName, p.middleName].filter(function(w) { return String(w || '').trim(); }).join(' ');
+    }
+    return String(p.name || '');
+}
+
+function seHolePar(h) {
+    try { return holePar(h); } catch (e) { return 0; }
+}
+
+function seStatusBadge(status) {
+    var map = {
+        active: '<span class="se-mini-badge st-active">● АКТИВНЫЙ</span>',
+        scheduled: '<span class="se-mini-badge st-scheduled">⏳ ЗАПЛАНИРОВАН</span>',
+        completed: '<span class="se-mini-badge st-completed">✓ ЗАВЕРШЁН</span>'
+    };
+    return map[status] || ('<span class="se-mini-badge st-completed">' + escapeHtml(String(status || '—')) + '</span>');
+}
+
+function seFilteredEntries() {
+    var data = seCache || {};
+    var fioQ = seNorm((seGet('se-q-fio') || {}).value || '');
+    var dateQ = (seGet('se-q-date') || {}).value || '';
+    var statusQ = (seGet('se-q-status') || {}).value || '';
+    var entries = Object.keys(data).map(function(rid) { return { id: rid, r: data[rid] || {} }; });
+    // Свежие сверху
+    entries.sort(function(a, b) { return (b.r.startTime || b.r.createdAt || 0) - (a.r.startTime || a.r.createdAt || 0); });
+    if (!fioQ && !dateQ && !statusQ) return entries;
+    return entries.filter(function(e) {
+        var r = e.r;
+        if (statusQ && String(r.status || '') !== statusQ) return false;
+        if (dateQ) {
+            var day = new Date(r.startTime || r.createdAt || Date.now());
+            var iso = day.getFullYear() + '-' + String(day.getMonth() + 1).padStart(2, '0') + '-' + String(day.getDate()).padStart(2, '0');
+            if (iso !== dateQ) return false;
+        }
+        if (fioQ) {
+            var players = r.players || {};
+            var found = Object.keys(players).some(function(pid) {
+                return seNorm(sePlayerFio(players[pid])).indexOf(fioQ) !== -1;
+            });
+            if (!found) return false;
+        }
+        return true;
+    });
+}
+
+function seNorm(s) {
+    return String(s == null ? '' : s).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+}
+
+function seRoundTitle(r) {
+    var parts = [];
+    if (r.tournamentName) parts.push('🏆 ' + r.tournamentName);
+    if (r.protocolName) parts.push(r.protocolName);
+    if (r.roundName) parts.push(r.roundName);
+    if (!parts.length) parts.push(r.mode === 'solo' ? 'Одиночный раунд' : 'Групповой раунд');
+    return parts.join(' · ');
+}
+
+function seToggleRound(rid) {
+    seOpenId = (seOpenId === rid) ? null : rid;
+    seRender();
+}
+
+// Правка черновика: ввод счёта лунки
+function seDraftSet(rid, pid, h, val) {
+    if (!seDraft[rid]) seDraft[rid] = {};
+    if (!seDraft[rid][pid]) seDraft[rid][pid] = {};
+    var num = String(val).trim();
+    if (num === '') delete seDraft[rid][pid][h];
+    else seDraft[rid][pid][h] = Math.max(0, Math.min(15, parseInt(num, 10) || 0));
+    // Подсветка заполненных клеток — без полной перерисовки (не терять фокус)
+    var inp = seGet('se-inp-' + rid + '-' + pid + '-' + h);
+    if (inp) inp.classList.toggle('has-score', num !== '');
+}
+
+// Сохранение всех правок раскрытого раунда
+function seSaveRound(rid) {
+    if (typeof db === 'undefined' || !db) return;
+    var draft = seDraft[rid];
+    if (!draft) { toast(currentLang === 'en' ? 'No changes' : 'Нет изменений', 'info'); return; }
+    var updates = {};
+    var changed = 0;
+    Object.keys(draft).forEach(function(pid) {
+        Object.keys(draft[pid]).forEach(function(h) {
+            var v = draft[pid][h];
+            updates['rounds/' + rid + '/players/' + pid + '/scores/' + h] = v;
+            changed++;
+            // Если у игрока есть маркер — синхронизируем его markerScores (карточка «как введено маркером»)
+        });
+    });
+    if (!changed) { toast(currentLang === 'en' ? 'No changes' : 'Нет изменений', 'info'); return; }
+    updates['rounds/' + rid + '/updatedAt'] = Date.now();
+    db.ref().update(updates).then(function() {
+        toast((currentLang === 'en' ? '✅ Saved: ' : '✅ Сохранено лунок: ') + changed, 'success');
+        delete seDraft[rid];
+        seRender();
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+function seDiscardRound(rid) {
+    delete seDraft[rid];
+    seRender();
+}
+
+function seClearHole(rid, pid, h) {
+    if (!seDraft[rid]) seDraft[rid] = {};
+    if (!seDraft[rid][pid]) seDraft[rid][pid] = {};
+    seDraft[rid][pid][h] = 0; // 0 = удалить счёт лунки
+    seRender();
+}
+
+function seRender() {
+    var root = seGet('se-list');
+    if (!root) return;
+    if (seCache === null) {
+        seEnsureSubscription();
+        root.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">' +
+            (currentLang === 'en' ? 'Loading rounds…' : 'Загрузка раундов…') + '</p>';
+        return;
+    }
+    var entries = seFilteredEntries();
+    if (!entries.length) {
+        root.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">' +
+            (currentLang === 'en' ? 'No rounds match the filters' : 'Раундов по фильтрам не найдено') + '</p>';
+        return;
+    }
+    var html = '<div class="se-round-grid">';
+    entries.forEach(function(e) {
+        var rid = e.id, r = e.r;
+        var players = r.players || {};
+        var pIds = Object.keys(players);
+        var isOpen = seOpenId === rid;
+        var day = new Date(r.startTime || r.createdAt || Date.now());
+        var dateTxt = (typeof fmtDate === 'function') ? fmtDate(day.getTime()) : day.toLocaleDateString();
+        var timeTxt = (typeof fmtTime === 'function') ? fmtTime(day.getTime()) : '';
+        var draft = seDraft[rid] || {};
+        var draftCnt = Object.keys(draft).reduce(function(n, pid) { return n + Object.keys(draft[pid]).length; }, 0);
+
+        html += '<div class="se-round-card se-status-' + escapeHtml(String(r.status || 'active')) + '">';
+        html += '<div class="se-round-head">';
+        html += '<span class="se-round-name">' + escapeHtml(seRoundTitle(r)) + '</span>';
+        html += seStatusBadge(String(r.status || ''));
+        html += '<button class="btn btn-og btn-sm" onclick="seToggleRound(\'' + rid + '\')"><i class="fas fa-chevron-' + (isOpen ? 'up' : 'down') + '"></i> ' +
+            (isOpen ? (currentLang === 'en' ? 'Close' : 'Свернуть') : (currentLang === 'en' ? 'Open' : 'Открыть')) + '</button>';
+        html += '</div>';
+        html += '<div class="se-round-meta">' + dateTxt + ' ' + timeTxt +
+            ' · ' + (currentLang === 'en' ? 'players' : 'игроков') + ': ' + pIds.length +
+            (r.startHole ? ' · ' + (currentLang === 'en' ? 'tee' : 'старт') + ': ' + r.startHole : '') +
+            (r.format ? ' · ' + escapeHtml(String(r.format)) : '') +
+            (draftCnt ? ' · <b style="color:var(--gold);">' + (currentLang === 'en' ? 'unsaved: ' : 'не сохранено: ') + draftCnt + '</b>' : '') +
+            '</div>';
+
+        if (isOpen) {
+            var order = (typeof getRoundOrder === 'function') ? getRoundOrder(r) : (function() { var a = []; for (var h = 1; h <= 18; h++) a.push(h); return a; })();
+            pIds.forEach(function(pid) {
+                var p = players[pid] || {};
+                var scores = (p.scores || {});
+                var pd = draft[pid] || {};
+                html += '<div class="se-player-row">';
+                html += '<span class="se-p-name" title="' + escapeHtml(pid) + '">' + escapeHtml(sePlayerFio(p) || pid) +
+                    (p.fieldHcp != null ? ' <span style="color:var(--muted);font-size:10.5px;">FH ' + escapeHtml(String(p.fieldHcp)) + '</span>' : '') + '</span>';
+                html += '<span class="se-p-holes">';
+                order.forEach(function(h) {
+                    var cur = (pd[h] !== undefined) ? pd[h] : (parseInt(scores[h]) || 0);
+                    var isCur = pd[h] !== undefined;
+                    html += '<input type="number" min="0" max="15" class="form-input se-hole-inp' + (cur > 0 ? ' has-score' : '') + (isCur ? ' is-cur' : '') + '" ' +
+                        'id="se-inp-' + rid + '-' + pid + '-' + h + '" value="' + (cur > 0 ? cur : '') + '" placeholder="' + h + '"' +
+                        ' title="' + h + ' (пар ' + seHolePar(h) + ')"' +
+                        ' oninput="seDraftSet(\'' + rid + '\',\'' + pid + '\',' + h + ',this.value)">';
+                });
+                html += '</span>';
+                html += '</div>';
+            });
+            html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">';
+            html += '<button class="btn btn-g btn-sm" onclick="seSaveRound(\'' + rid + '\')"><i class="fas fa-save"></i> ' + (currentLang === 'en' ? 'Save scores' : 'Сохранить счёт') + '</button>';
+            if (draftCnt) {
+                html += '<button class="btn btn-ol btn-sm" onclick="seDiscardRound(\'' + rid + '\')"><i class="fas fa-rotate-left"></i> ' + (currentLang === 'en' ? 'Discard' : 'Отменить правки') + '</button>';
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+    });
+    html += '</div>';
+    root.innerHTML = html;
 }
 
 function loadAdmRounds() {
@@ -2234,7 +2446,30 @@ function sendClubBroadcast() {
     var tnId = tnSel ? (tnSel.value || '') : '';
     var protoId = prSel ? (prSel.value || '') : '';
 
-    if (type === 'all') { bcSendBroadcast(title, body, link, { type: 'all' }, null); return; }
+    if (type === 'all' || type === 'all_pwa') {
+        // «Все + PWA»: анонс получают все открытые приложения (включая гостей
+        // без аккаунта) с включёнными уведомлениями — push показывается на
+        // каждом устройстве с разрешением Notification.
+        var audAll = { type: 'all', includePwa: type === 'all_pwa' };
+        var who = (type === 'all_pwa')
+            ? (currentLang === 'en' ? 'all players + PWA push subscribers' : 'всем игрокам и PWA-подписчикам')
+            : (currentLang === 'en' ? 'all club players' : 'всем игрокам клуба');
+        var rec0 = (typeof pestovoBroadcastPayload === 'function')
+            ? pestovoBroadcastPayload({ title: title, body: body, link: link, time: Date.now(), sentBy: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : 'admin', audience: audAll })
+            : { title: title, body: body, link: link || 'tournaments.html', time: Date.now(), sentBy: 'admin', audience: audAll };
+        var ask0 = (currentLang === 'en' ? 'Send push to ' : 'Отправить Push-анонс ') + who + '?\n\n' + (currentLang === 'en' ? 'Title: ' : 'Заголовок: ') + title;
+        if (!confirm(ask0)) return;
+        db.ref('broadcasts').push(rec0).then(function() {
+            var tInp = document.getElementById('bc-title');
+            var bInp = document.getElementById('bc-body');
+            if (tInp) tInp.value = '';
+            if (bInp) bInp.value = '';
+            try { bcRefreshAudienceCount(); } catch (eR) {}
+            toast('📢 ' + (currentLang === 'en' ? 'Announcement sent to ' : 'Анонс отправлен: ') + who);
+            if (typeof showPushNotification === 'function') showPushNotification(rec0.title, rec0.body, rec0.link);
+        });
+        return;
+    }
 
     bcAudienceUids(type, tnId, protoId, function(res) {
         if (!res.real) {
@@ -3385,6 +3620,45 @@ function loadTnLbDisplaySettings() {
     }
 }
 
+// ── ВИДЫ ОТОБРАЖЕНИЯ (5 вариантов): сохранение в settings/* для всех ──
+function markAdmView5Buttons(name) {
+    if (typeof getView5 !== 'function') return;
+    var cur = getView5(name);
+    ['1', '2', '3', '4', '5'].forEach(function(v) {
+        var btn = document.getElementById('v5-' + name + '-' + v);
+        if (!btn) return;
+        var active = (String(v) === String(cur));
+        btn.classList.toggle('btn-g', active);
+        btn.classList.toggle('btn-og', !active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
+function saveView5Setting(name, v) {
+    if (typeof applyView5 !== 'function') return;
+    if (typeof vib === 'function') vib(30);
+    applyView5(name, v);
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? 'Saved locally (no database)' : 'Сохранено локально (нет базы)', 'info');
+        return;
+    }
+    var path = { homeTournament: 'settings/home_tournament_view', scorecard: 'settings/scorecard_view', scoring: 'settings/scoring_view' }[name];
+    if (!path) return;
+    db.ref(path).set(String(v)).then(function() {
+        toast(currentLang === 'en' ? '✅ View saved for all users' : '✅ Вид сохранён для всех пользователей', 'success');
+    }).catch(function(err) {
+        console.warn('view5 save error', err);
+        toast(currentLang === 'en' ? 'Could not save to the cloud' : '⚠️ Не удалось сохранить в облако', 'error');
+    });
+}
+
+function loadAdmView5Settings() {
+    ['homeTournament', 'scorecard', 'scoring'].forEach(function(name) {
+        if (typeof pestovoBindView5 === 'function') pestovoBindView5(name, function() {});
+        else if (typeof markAdmView5Buttons === 'function') markAdmView5Buttons(name);
+    });
+}
+
 function saveTnLbVariant(v) {
     if (['1','2','3','4','5'].indexOf(String(v)) === -1) return;
     if (typeof vib === 'function') vib(30);
@@ -4227,7 +4501,6 @@ function createPlayerInAdmin() {
     var emailInp = document.getElementById('adm-new-email');
     var hcpInp = document.getElementById('adm-new-hcp');
     var genderSel = document.getElementById('adm-new-gender');
-    var teeSel = document.getElementById('adm-new-tee');
     var roleSel = document.getElementById('adm-new-role');
 
     if (!nameInp) return;
@@ -4249,7 +4522,8 @@ function createPlayerInAdmin() {
     }
     var parsedHcp = parseExactHcp(hcpRaw);
     var gender = genderSel ? genderSel.value : 'men';
-    var defaultTee = teeSel ? teeSel.value : 'wh';
+    // ТИ по умолчанию удалено (1.60): ТИ игрока определяется его группой в протоколе.
+    var defaultTee = gender === 'women' ? 'rd' : 'wh';
     var role = roleSel ? roleSel.value : 'player';
 
     var parts = name.split(' ');

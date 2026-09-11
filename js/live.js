@@ -69,6 +69,8 @@ function startGroupPaceTicker() {
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
     applyScoreKiosk();
+    // Вид страницы ввода счёта (5 вариантов) — выбирает админ, действует для всех.
+    if (typeof pestovoBindView5 === 'function') pestovoBindView5('scoring', function() { try { syncView5BodyClasses(); } catch (e) {} });
     var p = new URLSearchParams(window.location.search);
     curRid = p.get('round');
 
@@ -352,6 +354,20 @@ document.addEventListener('change', function(e) {
 // ==========================================
 var groupStarting = false;
 
+// Предзагрузка QR-кодов подключения: вызывается сразу после создания раунда,
+// чтобы к моменту открытия панели «Подключение игроков» коды были в кэше
+// браузера и открывались мгновенно (иногда внешний сервис отвечал медленно).
+function prewarmInviteQrImages(roundId, players) {
+    if (typeof pestovoPrewarmQrImages !== 'function') return;
+    var base = baseUrl();
+    var urls = [];
+    Object.entries(players || {}).forEach(function(pe) {
+        var pid = pe[0];
+        urls.push(base + 'setup-round.html?round=' + roundId + '&as=' + pid);
+    });
+    pestovoPrewarmQrImages(urls);
+}
+
 function startGroup() {
     if (groupStarting) return;
 
@@ -529,6 +545,9 @@ function startGroup() {
         localStorage.setItem('pestovo_group_key_' + newRoundId, accessKey);
         localStorage.setItem('pestovo_acting_as_' + newRoundId, pOrder[0]);
 
+        // QR-коды подключения начинаем генерировать СРАЗУ после нажатия
+        // «Начать раунд» — к моменту открытия панели они уже в кэше браузера.
+        prewarmInviteQrImages(newRoundId, players);
         ref.set(data).then(function() {
             toast(t('msg_round_started'));
             window.location.href = 'setup-round.html?round=' + newRoundId;
@@ -842,6 +861,9 @@ function buildPlayHolesNav() {
         } else if (sub || s > 0) {
             cls += ' pending';
         }
+        // Текущая лунка, где свой счёт ещё не подтверждён, мигает серым:
+        // видно, на какой лунке игрок находится прямо сейчас.
+        if (h === playHole && vState !== 'confirmed' && !(sub && s > 0)) cls += ' cur-blink';
 
         html += '<button class="hole-btn ' + cls + '" onclick="goPlayHole(' + h + ')">' +
             '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + hcpStrokesMarksHTML(myFieldHcp, h) + '</span>' +
@@ -942,6 +964,7 @@ function renderPlayHole() {
 
     checkPlayVerification();
     updateGroupPaceAssistant();
+    try { showGroupSkippedHolesWarning(); } catch (eSk2) {}
 }
 
 function adjScore(who, delta) {
@@ -1009,6 +1032,31 @@ function checkPlayVerification() {
     } else {
         // Ожидание маркера отдельным блоком НЕ показываем — только уведомление 3 сек при сохранении.
         box.innerHTML = '';
+    }
+
+    // ОБРАТНАЯ СВЕРКА: игрок вводит счёт того, кого маркирует. Если тот уже
+    // подтвердил СВОЙ счёт и он отличается — несовпадение видно обоим:
+    // и маркируемому (блок выше), и тому, кто вводит счёт маркером.
+    var boxMark = lGet('play-verify-status-mark');
+    if (boxMark) {
+        if (myTargetUid) {
+            var tp = curRoundData.players[myTargetUid] || {};
+            var tOwn = parseInt(tp.scores && tp.scores[playHole]) || 0;
+            var tOwnSub = !!(tp.submitted && tp.submitted[playHole] === true);
+            var tMine = parseInt(curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].markerScores && curRoundData.players[myTargetUid].markerScores[myUid] && curRoundData.players[myTargetUid].markerScores[myUid][playHole]) || 0;
+            var tName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(tp, myTargetUid) : (tp.name || '');
+            if (tOwn > 0 && tMine > 0 && tOwn !== tMine) {
+                boxMark.innerHTML = '<div class="verify-fail">⚠️ ' +
+                    (currentLang === 'en'
+                        ? 'Mismatch for ' + escapeHtml(tName) + ': entered ' + tMine + ', player confirmed ' + tOwn
+                        : 'Несовпадение у ' + escapeHtml(tName) + ': вы ввели ' + tMine + ', игрок подтвердил ' + tOwn) +
+                    '</div>';
+            } else {
+                boxMark.innerHTML = '';
+            }
+        } else {
+            boxMark.innerHTML = '';
+        }
     }
 }
 
@@ -1189,6 +1237,7 @@ function saveHoleScores() {
         renderPlayHole();
         buildPlayHolesNav();
         renderPlaySummary();
+        try { showGroupSkippedHolesWarning(); } catch (eSk) {}
         // Темп игры/тайминги — пересчёт по обновлённым локальным данным,
         // не дожидаясь echo Firebase (актуально на мобильных сетях).
         updateGroupPaceAssistant();
@@ -1542,14 +1591,21 @@ function renderInviteQRs() {
 
     renderJoinStatus();
 
-    // QR-коды НЕ исчезают после подключения: показываем всех игроков группы.
-    // Подключившиеся помечены зелёным «В игре», ожидающие — «Ожидает».
+    // Фоновая предзагрузка всех QR этой группы — даже если панель ещё
+    // свёрнута, коды уже загружаются и будут готовы мгновенно.
+    try { prewarmInviteQrImages(curRid, curRoundData.players); } catch (ePrew) {}
+
+    // QR-коды НЕ исчезают после подключения: показываем всех игроков группы,
+    // КРОМЕ того, кто создал раунд (его телефон уже в игре — QR ему не нужен).
+    // Ссылка под QR больше не показывается — только сам код (требование клуба).
     var base = baseUrl();
     var html = '';
 
     Object.entries(curRoundData.players || {}).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
+        // QR создателя раунда (текущего игрока) не показываем
+        if (pid === myUid) return;
         var entered = isPlayerEnteredRound(p, pid, curRoundData);
         var url = base + 'setup-round.html?round=' + curRid + '&as=' + pid;
         var nm = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : (p.name || '');
@@ -1560,8 +1616,10 @@ function renderInviteQRs() {
             : '<i class="fas fa-hourglass-half"></i> ' + t('waiting_join')) + '</div>';
         html += '<div class="qr-name" style="color:var(--white);font-weight:700;font-size:14px;margin-bottom:4px;"><i class="fas fa-mobile-alt"></i> ' + escapeHtml(nm) + '</div>';
         html += '<div class="qr-hint">' + (entered ? t('qr_reconnect_hint') : t('scan_to_play')) + '</div>';
-        html += '<img src="' + qrUrl(url) + '" alt="QR" class="qr-img">';
-        html += '<div class="qr-url" style="font-size:10px;word-break:break-all;"><a href="' + url + '" target="_blank" style="color:var(--muted);">' + url + '</a></div>';
+        // Цепочка провайдеров: основной → запасной → повтор (QR больше не «пропадает»).
+        html += (typeof pestovoQrImgHtml === 'function')
+            ? pestovoQrImgHtml(url, 200, 'qr-img')
+            : '<img src="' + qrUrl(url) + '" alt="QR" class="qr-img">';
         html += '</div>';
     });
 
@@ -1697,6 +1755,44 @@ function renderGVPlayers(r) {
 }
 
 var groupFinishing = false;
+
+// ── ПРОПУЩЕННЫЕ ЛУНКИ (групповой раунд) ──
+// Лунки, на которых игрок ещё не подтвердил свой счёт.
+function groupSkippedHoles() {
+    if (!curRoundData) return [];
+    var myPlayer = curRoundData.players && curRoundData.players[myUid];
+    var scores = (myPlayer && myPlayer.scores) || {};
+    var submitted = (myPlayer && myPlayer.submitted) || {};
+    var order = getRoundOrder(curRoundData);
+    var out = [];
+    order.forEach(function(h) {
+        if (!(parseInt(scores[h]) > 0) || submitted[h] !== true) out.push(h);
+    });
+    return out;
+}
+
+// Предупреждение о пропущенных лунках с кнопками перехода
+// («вбить счёт») и вариантом «продолжить с пропуском».
+function showGroupSkippedHolesWarning() {
+    var box = lGet('group-skipped-box');
+    if (!box || !canEditGroup) return;
+    var skipped = groupSkippedHoles();
+    if (!skipped.length) { box.innerHTML = ''; return; }
+    var shown = skipped.slice(0, 6);
+    var btns = '';
+    shown.forEach(function(h) {
+        btns += '<button type="button" class="shb-hole-btn" onclick="goPlayHole(' + h + ');var b=document.getElementById(\'group-skipped-box\');if(b)b.innerHTML=\'\';">' +
+            t('skipped_holes_goto') + ' ' + h + '</button>';
+    });
+    var more = skipped.length > shown.length ? ' …' : '';
+    box.innerHTML = '<div class="skipped-holes-box">' +
+        '<div class="shb-title"><i class="fas fa-triangle-exclamation"></i> ' + t('skipped_holes_title') + ': ' +
+        skipped.join(', ') + more + '</div>' +
+        '<div class="shb-actions">' + btns +
+        '<button type="button" class="btn btn-ol btn-sm" onclick="var b=document.getElementById(\'group-skipped-box\');if(b)b.innerHTML=\'\';">' +
+        t('skipped_holes_skip') + '</button>' +
+        '</div></div>';
+}
 
 function finishGroupRound() {
     if (!canEditGroup) return;

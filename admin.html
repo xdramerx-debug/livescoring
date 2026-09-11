@@ -148,6 +148,7 @@
                         <i class="fas fa-bell"></i> <span data-i18n="enable_push_notifications">Включить Push-уведомления</span>
                     </button>
                 </div>
+                <div id="admin-alerts-stats" style="margin-bottom:16px;"></div>
                 <div id="admin-alerts-list"></div>
             </div>
 
@@ -709,6 +710,30 @@
                         </div>
                     </div>
                 </div>
+                <!-- Вид лидерборда турнира — 5 вариантов (требование #7) -->
+                <div class="list-item" style="padding:14px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.45);border-radius:10px;margin-bottom:16px;">
+                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-ranking-star" style="color:var(--gold);"></i> <span data-i18n="tn_lb_variant_title">Вид лидерборда турнира (страница «Турниры»)</span></span>
+                    <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="tn_lb_variant_sub">
+                        Выберите один из 5 вариантов отображения live-лидерборда турнира. Настройка выбирается только админом и применяется для всех участников на странице «Турниры».
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                        <button type="button" id="tn-lb-opt-1" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('1')" aria-pressed="true"><i class="fas fa-table-list"></i> <span>1 · Классика (таблица)</span></button>
+                        <button type="button" id="tn-lb-opt-2" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('2')" aria-pressed="false"><i class="fas fa-compress"></i> <span>2 · Компактный</span></button>
+                        <button type="button" id="tn-lb-opt-3" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('3')" aria-pressed="false"><i class="fas fa-id-card"></i> <span>3 · Карточки</span></button>
+                        <button type="button" id="tn-lb-opt-4" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('4')" aria-pressed="false"><i class="fas fa-table-cells-large"></i> <span>4 · Детальный</span></button>
+                        <button type="button" id="tn-lb-opt-5" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('5')" aria-pressed="false"><i class="fas fa-bolt"></i> <span>5 · Live-лента</span></button>
+                    </div>
+                    <div style="margin-top:10px;padding:10px 12px;border:1px dashed rgba(201,168,76,.5);border-radius:10px;background:rgba(201,168,76,.05);">
+                        <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> Предпросмотр:</div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:11px;color:var(--muted);">
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">1 · Классика</b><br>Таблица: место, игрок, лунки, гросс, ±, нетто, стейблфорд</div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">2 · Компактный</b><br>Только место, игрок, лунки, ± (минимализм)</div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">3 · Карточки</b><br>Каждый игрок — карточка с крупными цифрами</div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">4 · Детальный</b><br>Все поля: HCP, гросс, нетто, стейблфорд, группа, ТИ</div>
+                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">5 · Live-лента</b><br>Современный live с индикаторами и анимацией</div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Глобальные варианты отображения основных страниц -->
                 <div class="page-display-settings-grid">
                     <div class="list-item page-display-setting-card">
@@ -970,7 +995,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.58.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.59.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>

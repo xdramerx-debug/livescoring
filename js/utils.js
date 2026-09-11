@@ -1755,6 +1755,149 @@ function loadMyActiveRounds(targetId) {
 }
 
 // ==========================================
+// СЕССИЯ ИГРОКА ПО ФИО (1 активная сессия)
+// ==========================================
+// Сессия привязана к имени и фамилии. Если телефон разрядился —
+// игрок может зайти с другого устройства по ФИО и продолжить игру.
+// Блокировка повторного старта: нельзя создать новый раунд, если
+// предыдущий не завершён.
+function pestovoNormalizeFio(str) {
+    return String(str == null ? '' : str).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+}
+
+function pestovoFioTokens(str) {
+    var n = pestovoNormalizeFio(str);
+    if (!n) return [];
+    return n.split(' ').filter(function(w) { return w.length >= 2; });
+}
+
+// Совпадение ФИО: все токены поиска должны быть подстрокой имени игрока.
+// Пример: поиск "Иван Петров" найдёт "Иван Петрович Петров".
+function pestovoFioTokensMatch(playerName, searchFio) {
+    var pNorm = pestovoNormalizeFio(playerName);
+    var searchTokens = pestovoFioTokens(searchFio);
+    if (!pNorm || !searchTokens.length) return false;
+    for (var i = 0; i < searchTokens.length; i++) {
+        if (pNorm.indexOf(searchTokens[i]) === -1) return false;
+    }
+    return true;
+}
+
+function pestovoCollectActiveRoundsByFio(data, searchFio) {
+    var out = [];
+    var normSearch = pestovoNormalizeFio(searchFio);
+    if (!normSearch) return out;
+    Object.entries(data || {}).forEach(function(e) {
+        var rid = e[0], r = e[1];
+        if (!r || (r.status !== 'active' && r.status !== 'scheduled')) return;
+        var players = r.players || {};
+        Object.entries(players).forEach(function(pe) {
+            var pid = pe[0], p = pe[1];
+            if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
+            var name = (p && p.name) || '';
+            // также проверяем firstName+lastName отдельно
+            if (!name && p) {
+                name = ((p.firstName || '') + ' ' + (p.middleName || '') + ' ' + (p.lastName || '')).trim();
+            }
+            if (pestovoFioTokensMatch(name, normSearch)) {
+                out.push({ roundId: rid, round: r, playerId: pid, player: p });
+            }
+        });
+    });
+    return out;
+}
+
+function pestovoFindActiveRoundsByFio(fio) {
+    return new Promise(function(resolve, reject) {
+        if (typeof db === 'undefined' || !db) { resolve([]); return; }
+        db.ref('rounds').once('value').then(function(sn) {
+            var data = sn.val() || {};
+            if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
+            var res = pestovoCollectActiveRoundsByFio(data, fio);
+            resolve(res);
+        }).catch(function(err) {
+            console.warn('[session] find by fio failed', err);
+            resolve([]);
+        });
+    });
+}
+
+function pestovoCheckFioConflictsForGroup(fioList) {
+    // fioList: array of strings (full names)
+    return new Promise(function(resolve) {
+        if (!fioList || !fioList.length) { resolve([]); return; }
+        pestovoFindActiveRoundsByFio('').then(function() {}); // dummy to ensure db ready
+        if (typeof db === 'undefined' || !db) { resolve([]); return; }
+        db.ref('rounds').once('value').then(function(sn) {
+            var data = sn.val() || {};
+            if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
+            var conflicts = [];
+            fioList.forEach(function(fio) {
+                if (!pestovoNormalizeFio(fio)) return;
+                var matches = pestovoCollectActiveRoundsByFio(data, fio);
+                if (matches.length) {
+                    matches.forEach(function(m) {
+                        conflicts.push({ inputFio: fio, roundId: m.roundId, round: m.round, playerId: m.playerId, player: m.player });
+                    });
+                }
+            });
+            resolve(conflicts);
+        }).catch(function() { resolve([]); });
+    });
+}
+
+function pestovoRenderFioResumeListHtml(matches, opts) {
+    opts = opts || {};
+    if (!matches || !matches.length) {
+        return '<div class=\"empty\" style=\"padding:12px;\"><p>' + (currentLang === 'en' ? 'No active rounds found for this name.' : 'Активных раундов для этого имени не найдено.') + '</p></div>';
+    }
+    var html = '<div style=\"display:flex;flex-direction:column;gap:10px;\">';
+    matches.forEach(function(item) {
+        var r = item.round, rid = item.roundId;
+        var link = 'setup-round.html?round=' + rid + '&as=' + item.playerId;
+        var resume = (typeof getRoundResumeState === 'function') ? getRoundResumeState(rid, r) : { currentHole: r.startHole || 1, holesPlayed: 0, holeCount: 18, metrics: { overallDelay: 0 } };
+        var modeIcon = r.mode === 'solo' ? '<i class=\"fas fa-user\"></i> ' + (typeof t === 'function' ? t('solo_round') : 'Solo') : '<i class=\"fas fa-users\"></i> ' + (typeof t === 'function' ? t('group_round') : 'Group');
+        var startDate = r.startTime ? new Date(r.startTime) : null;
+        var dateStr = startDate ? (startDate.toLocaleDateString() + ' ' + fmtTime(r.startTime)) : '—';
+        var curHole = resume.currentHole || r.startHole || 1;
+        var played = resume.holesPlayed || 0;
+        var total = resume.holeCount || getRoundHoleCount(r) || 18;
+        var playerName = item.player && item.player.name ? item.player.name : (item.inputFio || '');
+        html += '<div class=\"list-item\" style=\"padding:12px;flex-wrap:wrap;gap:8px;\">' +
+            '<div style=\"flex:1;min-width:180px;\">' +
+            '<div style=\"font-weight:800;color:var(--white);\"><i class=\"fas fa-circle-play\" style=\"color:var(--gold);\"></i> ' + escapeHtml(playerName) + ' · ' + modeIcon + '</div>' +
+            '<div style=\"font-size:12px;color:var(--muted);margin-top:4px;\">' + (currentLang === 'en' ? 'Start' : 'Старт') + ': ' + dateStr + ' · ' + (currentLang === 'en' ? 'Hole' : 'Лунка') + ': №' + curHole + ' · ' + played + '/' + total + '</div>' +
+            (r.tournamentName ? '<div style=\"font-size:11px;color:var(--gold);margin-top:2px;\"><i class=\"fas fa-trophy\"></i> ' + escapeHtml(r.tournamentName) + '</div>' : '') +
+            '</div>' +
+            '<a href=\"' + link + '\" class=\"btn btn-g btn-sm\" style=\"align-self:center;\"><i class=\"fas fa-play\"></i> ' + (currentLang === 'en' ? 'Continue' : 'Продолжить') + '</a>' +
+            '</div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+// Блокировка старта нового раунда, если у игрока уже есть активный
+function pestovoShowFioConflictModal(conflicts, onContinueAnyway) {
+    var overlayId = 'fio-conflict-modal';
+    var existing = document.getElementById(overlayId);
+    if (existing) existing.remove();
+    var html = '<div id=\"' + overlayId + '\" style=\"position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:16px;\">' +
+        '<div class=\"card\" style=\"max-width:520px;width:100%;max-height:85vh;overflow:auto;border:2px solid var(--gold);\">' +
+        '<h2 style=\"color:var(--gold);\"><i class=\"fas fa-triangle-exclamation\"></i> ' + (currentLang === 'en' ? 'Active round exists' : 'Есть незавершённый раунд') + '</h2>' +
+        '<p style=\"font-size:13px;color:var(--muted);margin-bottom:12px;\">' +
+        (currentLang === 'en' ? 'This player already has an active round. You cannot start a new one until the previous is finished. You can continue the existing round:' : 'У этого игрока уже есть незавершённый раунд. Нельзя создать новый, пока предыдущий не завершён. Можно продолжить существующий:') +
+        '</p>' +
+        pestovoRenderFioResumeListHtml(conflicts) +
+        '<div style=\"display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;\">' +
+        '<button class=\"btn btn-ol btn-sm\" onclick=\"document.getElementById(\\'' + overlayId + '\\').remove()\"><i class=\"fas fa-xmark\"></i> ' + (currentLang === 'en' ? 'Cancel' : 'Отмена') + '</button>' +
+        (onContinueAnyway ? '<button class=\"btn btn-r btn-sm\" onclick=\"document.getElementById(\\'' + overlayId + '\\').remove(); (' + onContinueAnyway + ')()\"><i class=\"fas fa-forward\"></i> ' + (currentLang === 'en' ? 'Start anyway (admin)' : 'Начать всё равно') + '</button>' : '') +
+        '</div></div></div>';
+    var div = document.createElement('div');
+    div.innerHTML = html;
+    document.body.appendChild(div.firstChild);
+}
+
+// ==========================================
 // ПОГОДНЫЙ ВИДЖЕТ И ВЕКТОР ВЕТРА В ШАПКЕ
 // ==========================================
 function getWindCardinal(deg) {
@@ -2753,11 +2896,12 @@ function getRoundPaceMetrics(roundData, nowValue) {
     var startHole = parseInt(roundData && roundData.startHole) || 1;
     var timeline = [];
     var completedHoles = [];
-    var currentHole = order.length ? order[order.length - 1] : startHole;
+    var currentHole = order.length ? order[0] : startHole;
     var previousTime = startTime || now;
     var hasTimingData = false;
+    var lastCompletedIdx = -1;
 
-    order.forEach(function(hole) {
+    order.forEach(function(hole, idx) {
         var complete;
         if (isGroup) {
             complete = participants.length > 0 && participants.every(function(item) {
@@ -2776,14 +2920,13 @@ function getRoundPaceMetrics(roundData, nowValue) {
 
         if (complete) {
             completedHoles.push(hole);
+            lastCompletedIdx = idx;
             if (completedAt && startTime) {
                 hasTimingData = true;
                 durationMin = Math.max(0, (completedAt - previousTime) / 60000);
                 holeDelay = durationMin - holeTiming(hole);
                 previousTime = Math.max(previousTime, completedAt);
             }
-        } else if (currentHole === order[order.length - 1] || completedHoles.length === order.indexOf(currentHole)) {
-            currentHole = hole;
         }
 
         timeline.push({
@@ -2797,20 +2940,31 @@ function getRoundPaceMetrics(roundData, nowValue) {
         });
     });
 
-    // Первый незавершённый элемент — текущая лунка. Если всё записано,
-    // оставляем последнюю лунку, чтобы показывать итоговый темп до финиша.
-    var firstIncompleteIndex = -1;
-    for (var i = 0; i < timeline.length; i++) {
-        if (!timeline[i].complete) { firstIncompleteIndex = i; break; }
+    // Текущая лунка — после самой дальней сыгранной (не первой пропущенной).
+    // Если введены 1,2,3 и 7 — закончил 7, сейчас на 8.
+    var currentIdx = -1;
+    if (lastCompletedIdx >= 0) {
+        if (lastCompletedIdx + 1 < timeline.length) {
+            currentIdx = lastCompletedIdx + 1;
+            currentHole = timeline[currentIdx].hole;
+        } else {
+            // Все лунки сыграны — оставляем последнюю для итогового темпа
+            currentHole = order.length ? order[order.length - 1] : startHole;
+            currentIdx = -1;
+        }
+    } else {
+        currentHole = order.length ? order[0] : startHole;
+        currentIdx = 0;
     }
-    if (firstIncompleteIndex >= 0) {
-        currentHole = timeline[firstIncompleteIndex].hole;
-        var currentItem = timeline[firstIncompleteIndex];
+    if (currentIdx >= 0 && timeline[currentIdx]) {
+        var currentItem = timeline[currentIdx];
         var currentStart = previousTime;
         currentItem.inProgress = true;
         currentItem.durationMin = startTime ? Math.max(0, (now - currentStart) / 60000) : null;
         currentItem.delayMin = startTime ? currentItem.durationMin - currentItem.expectedMin : null;
     }
+    var firstIncompleteIndex = currentIdx >= 0 ? currentIdx : -1;
+    // Если все завершены — firstIncompleteIndex остаётся -1, actualReference = previousTime
 
     var expectedDeadline = startTime ? holeDeadline(startTime, startHole, currentHole) : null;
     var actualReference = firstIncompleteIndex >= 0 ? now : (previousTime || now);
@@ -3692,6 +3846,7 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
     holesOrder=holesOrder||[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
     var played=[],remaining=[],gross=0,parPlayed=0,netTotal=0,stblField=0,stblExact=0;
     var birdies=0,eagles=0,pars=0,bogeys=0,doubles=0,hio=0,currentHole=null;
+    var maxPlayedIdx=-1;
 
     for(var i=0;i<holesOrder.length;i++){
         var h=holesOrder[i],s=scores[h]?parseInt(scores[h]):0,par=holePar(h);
@@ -3703,10 +3858,16 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
             if(s===1)hio++;
             stblField+=stablefordField(s,h,fieldHcp||0);
             stblExact+=stablefordExact(s,h,exactHcp||0);
+            if(i>maxPlayedIdx) maxPlayedIdx=i;
         }else{
             remaining.push(h);
-            if(currentHole===null)currentHole=h;
         }
+    }
+    if(maxPlayedIdx>=0){
+        if(maxPlayedIdx+1<holesOrder.length) currentHole=holesOrder[maxPlayedIdx+1];
+        else currentHole=null;
+    }else{
+        currentHole=holesOrder.length?holesOrder[0]:null;
     }
     var toPar=played.length>0?gross-parPlayed:null;
     var netToPar=played.length>0?netTotal-parPlayed:null;
@@ -5892,6 +6053,41 @@ function applyTnCardVariant(value) {
     return variant;
 }
 
+// ==========================================
+// ЛИДЕРБОРД ТУРНИРА — 5 вариантов (требование #7)
+// ==========================================
+// На странице «Турниры» live-лидерборд турнира может отображаться 5 способами.
+// Выбор делает только админ (админ-панель → «Данные» → вид лидерборда турнира),
+// хранится в settings/tournament_leaderboard_variant, применяется для всех.
+var TN_LB_VARIANTS = ['1', '2', '3', '4', '5'];
+
+function normalizeTnLbVariant(value) {
+    value = String(value === undefined || value === null ? '' : value);
+    return TN_LB_VARIANTS.indexOf(value) !== -1 ? value : '1';
+}
+
+var pestovoTnLbVariant = (function() {
+    try { return normalizeTnLbVariant(localStorage.getItem('pestovo_tn_lb_variant')); } catch (e) {}
+    return '1';
+})();
+
+function getTnLbVariant() {
+    return pestovoTnLbVariant;
+}
+
+function applyTnLbVariant(value) {
+    var variant = normalizeTnLbVariant(value);
+    pestovoTnLbVariant = variant;
+    try { localStorage.setItem('pestovo_tn_lb_variant', variant); } catch (e) {}
+    try {
+        if (typeof markAdmTnLbVariantButtons === 'function') markAdmTnLbVariantButtons();
+    } catch (e) {}
+    try {
+        if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards();
+    } catch (e) {}
+    return variant;
+}
+
 // Логотип нужен только как обычный элемент шапки — фон PNG намеренно остаётся
 // чистым, без водяного знака.
 var pestovoCardLogoImg = null;
@@ -7553,6 +7749,13 @@ if (typeof db !== 'undefined') {
             var v = sn.val();
             if (TN_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnCardVariant) {
                 applyTnCardVariant(String(v));
+            }
+        });
+        // Глобальный выбор вида лидерборда турнира — 5 вариантов (требование #7).
+        db.ref('settings/tournament_leaderboard_variant').on('value', function(sn) {
+            var v = sn.val();
+            if (TN_LB_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnLbVariant) {
+                applyTnLbVariant(String(v));
             }
         });
         // Шаблоны оформления сайта (админ-панель → «Дизайн 🎨»).

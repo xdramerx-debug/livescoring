@@ -353,7 +353,6 @@ document.addEventListener('change', function(e) {
 var groupStarting = false;
 
 function startGroup() {
-    // Защита от двойного нажатия: иначе создавалось два раунда
     if (groupStarting) return;
 
     var timeStr = document.getElementById('grp-time').value;
@@ -367,7 +366,6 @@ function startGroup() {
     var selectedUids = [];
     var inputs = [];
 
-    // 1) Собираем и валидируем ввод
     for (var i = 1; i <= count; i++) {
         var uidEl = document.getElementById('pl-uid-' + i);
         var uid = uidEl ? uidEl.value : '';
@@ -375,7 +373,6 @@ function startGroup() {
         var name = nameEl ? sanitizeNameRaw(nameEl.value) : '';
         var midEl = document.getElementById('pl-mid-' + i);
         var midName = midEl ? sanitizeNameRaw(midEl.value) : '';
-        // Полное имя с отчеством: «Имя [Отчество] Фамилия»
         var nameParts = name ? name.split(' ') : [];
         var fullName = name;
         if (midName) {
@@ -413,38 +410,37 @@ function startGroup() {
         });
     }
 
-    groupStarting = true;
+    function proceedWithGroupStart() {
+        groupStarting = true;
 
-    var resolver = typeof resolveOrCreatePlayerUser === 'function'
-        ? resolveOrCreatePlayerUser
-        : (typeof registerGuestPlayerInDatabase === 'function' ? registerGuestPlayerInDatabase : null);
+        var resolver = typeof resolveOrCreatePlayerUser === 'function'
+            ? resolveOrCreatePlayerUser
+            : (typeof registerGuestPlayerInDatabase === 'function' ? registerGuestPlayerInDatabase : null);
 
-    // 2) Идемпотентно разрешаем id игроков: существующие не создаются заново,
-    //    новые гости получают детерминированный id (одинаков для всех режимов)
-    var resolveOne = function(inp) {
-        if (inp.uid) return Promise.resolve(inp.uid);
-        if (resolver) {
-            try {
-                return resolver({
-                    uid: null,
-                    name: inp.name,
-                    firstName: inp.firstName,
-                    lastName: inp.lastName,
-                    middleName: inp.middleName,
-                    exactHcp: inp.parsedHcp,
-                    gender: inp.gender,
-                    tee: inp.tee
-                }).catch(function() { return null; });
-            } catch (e) {
-                return Promise.resolve(null);
+        var resolveOne = function(inp) {
+            if (inp.uid) return Promise.resolve(inp.uid);
+            if (resolver) {
+                try {
+                    return resolver({
+                        uid: null,
+                        name: inp.name,
+                        firstName: inp.firstName,
+                        lastName: inp.lastName,
+                        middleName: inp.middleName,
+                        exactHcp: inp.parsedHcp,
+                        gender: inp.gender,
+                        tee: inp.tee
+                    }).catch(function() { return null; });
+                } catch (e) {
+                    return Promise.resolve(null);
+                }
             }
-        }
-        return Promise.resolve(null);
-    };
+            return Promise.resolve(null);
+        };
 
-    var resolveAll = Promise.all(inputs.map(resolveOne));
+        var resolveAll = Promise.all(inputs.map(resolveOne));
 
-    resolveAll.then(function(resolvedIds) {
+        resolveAll.then(function(resolvedIds) {
         var players = {};
         var pOrder = [];
         var seenIds = {};
@@ -544,6 +540,30 @@ function startGroup() {
         groupStarting = false;
         toast('⚠️ Ошибка запуска раунда: ' + (err && err.message ? err.message : err), 'error');
     });
+    }
+
+    var fullNamesForCheck = inputs.map(function(x) { return x.name; });
+    if (typeof pestovoCheckFioConflictsForGroup === 'function') {
+        try { if (typeof toast === 'function') toast('Проверка активных сессий...', 'info'); } catch(e){}
+        pestovoCheckFioConflictsForGroup(fullNamesForCheck).then(function(conflicts) {
+            if (conflicts && conflicts.length) {
+                var flat = [];
+                conflicts.forEach(function(c) { flat = flat.concat(c.matches || []); });
+                if (typeof pestovoShowFioConflictModal === 'function' && flat.length) {
+                    pestovoShowFioConflictModal(flat);
+                } else {
+                    var names = conflicts.map(function(c){ return c.fio; }).join(', ');
+                    toast('⚠️ У игроков уже есть активные раунды: ' + names, 'error');
+                }
+                return;
+            }
+            proceedWithGroupStart();
+        }).catch(function() {
+            proceedWithGroupStart();
+        });
+    } else {
+        proceedWithGroupStart();
+    }
 }
 
 // ==========================================
@@ -881,11 +901,19 @@ function renderPlayHole() {
     }
 
     var mySaved = parseInt(curRoundData.players[myUid] && curRoundData.players[myUid].scores && curRoundData.players[myUid].scores[playHole]) || 0;
-    myScore = mySaved > 0 ? mySaved : par;
+    if (mySaved > 0) {
+        myScore = mySaved;
+    } else if (!(myScore >= 1)) {
+        myScore = par;
+    }
 
     if (myTargetUid) {
         var targetSaved = parseInt(curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].markerScores && curRoundData.players[myTargetUid].markerScores[myUid] && curRoundData.players[myTargetUid].markerScores[myUid][playHole]) || 0;
-        targetScore = targetSaved > 0 ? targetSaved : par;
+        if (targetSaved > 0) {
+            targetScore = targetSaved;
+        } else if (!(targetScore >= 1)) {
+            targetScore = par;
+        }
     }
 
     updScoreDisplay('my', myScore);
@@ -1030,15 +1058,22 @@ function saveHoleScores() {
     var savedAt = Date.now();
     updates['rounds/' + curRid + '/players/' + myUid + '/scores/' + h] = myScore;
     updates['rounds/' + curRid + '/players/' + myUid + '/submitted/' + h] = true;
-    updates['rounds/' + curRid + '/players/' + myUid + '/holeTimes/' + h] = savedAt;
+    // holeTimes — только если ещё не было (как в solo.js через transaction), чтобы не переписывать время первой сдачи
+    var myPlForTime = curRoundData.players && curRoundData.players[myUid];
+    var myExistingHT = parseInt(myPlForTime && myPlForTime.holeTimes && myPlForTime.holeTimes[h]) || 0;
+    if (!(myExistingHT > 0)) {
+        updates['rounds/' + curRid + '/players/' + myUid + '/holeTimes/' + h] = savedAt;
+    }
 
     if (myTargetUid) {
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerScores/' + myUid + '/' + h] = targetScore;
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerSubmitted/' + myUid + '/' + h] = true;
         // Время завершения лунки для игрока, за которого маркер ввёл счёт.
-        // Без него групповой темп игры на стороне этого игрока «зависал»
-        // до echo Firebase / до следующего его собственного сохранения.
-        updates['rounds/' + curRid + '/players/' + myTargetUid + '/holeTimes/' + h] = savedAt;
+        var tgtPlForTime = curRoundData.players && curRoundData.players[myTargetUid];
+        var tgtExistingHT = parseInt(tgtPlForTime && tgtPlForTime.holeTimes && tgtPlForTime.holeTimes[h]) || 0;
+        if (!(tgtExistingHT > 0)) {
+            updates['rounds/' + curRid + '/players/' + myTargetUid + '/holeTimes/' + h] = savedAt;
+        }
         updates['markers/' + curRid + '/' + myTargetUid + '/' + h] = targetScore;
 
         // Синхронизируем verified игрока, за которого вводим счёт: сравниваем с его собственным счётом.

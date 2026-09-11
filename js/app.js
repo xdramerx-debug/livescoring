@@ -383,6 +383,9 @@ function buildStartHintHTML(nine, isEn) {
 
 // Блок перерисовывается в реальном времени, поэтому состояние раскрытия
 // строк храним отдельно от DOM и дублируем в localStorage.
+// liveWho* — состояние строки ОТДЕЛЬНОГО игрока (наследие режима «строка на
+// игрока»). С версии 1.61 и соло-, и групповые раунды сворачиваются общим
+// состоянием liveRoundOpen; эти функции оставлены для совместимости.
 var liveWhoOpen = {};
 // Последние данные раундов из подписки: перерисовка списка и открытие счётной
 // карточки не должны делать повторных запросов к БД.
@@ -490,12 +493,11 @@ function isMyLiveRound(id, r) {
     return false;
 }
 
-// Строка единого списка «кто сейчас на поле»: имя, текущая лунка, счёт и
-// время старта раунда. Детали (бейджи, gross, кнопки) — в раскрытой строке.
-function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
-    // false → карточка с кнопкой сворачивания (не используется для соло-строк),
-    // соло-строки всегда развёрнуты (требование UX 1.60).
-    var isMyGroupRow = false;
+// Строка СОЛО-раунда в списке «Сейчас на поле»: имя, текущая лунка, счёт и
+// время старта раунда. Как и групповой раунд, по умолчанию свёрнута —
+// детали (бейджи, gross, кнопка «Продолжить») и счётная карточка
+// раскрываются по тапу на строку (требование UX 1.61).
+function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
     var order = getRoundOrder(r);
 
     // Для отображения используем собственные счёта игрока.
@@ -517,15 +519,18 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
         ? t('finished_f')
         : t('hole') + ' №' + (stats.currentHole || (parseInt(r.startHole) || 1));
 
-    var soloRoundCard = !isMyGroupRow;
-    var open = soloRoundCard ? true : getLiveWhoOpen(id, pid);
-    var panelId = 'live-sc-' + id + '-' + pid;
+    // Соло-раунд сворачивается точно так же, как групповой: состояние одно
+    // на раунд (ключ pestovo_live_round_open_<id>), поэтому повторная
+    // перерисовка списка не раскрывает его обратно. forceOpen=true — только
+    // для блока «Активный турнир», где раунды показываются развёрнутыми.
+    var open = (forceOpen === true) ? true : getLiveRoundOpen(id);
+    var panelId = 'live-round-panel-' + id;
     var link = 'setup-round.html?round=' + id;
     var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
 
-    // Одиночный раунд: карточка сразу развёрнута — без кнопки «свернуть/развернуть».
+    // Детали: бейджи, gross, формат, кнопка «Продолжить» и счётная карточка.
     var details =
-        '<div class="lwl-details">' +
+        '<div class="lwl-details" id="' + panelId + '">' +
         '<div class="lwl-meta">' +
         '<span class="lwl-badges">' + buildPlayerBadges(p, r) + '</span>' +
         '<span class="lwl-extra">Gross: ' + (stats.gross || 0) + ' · ' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + (r.mode === 'solo' ? soloWord : '') + markerNote + '</span>' +
@@ -533,33 +538,24 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound) {
         '<div class="lwl-actions">' +
         (isMyRound ? '<a href="' + link + '" class="btn btn-g btn-sm"><i class="fas fa-gamepad"></i> ' + (currentLang === 'en' ? 'Continue' : 'Продолжить') + '</a>' : '') +
         '</div>' +
-        (soloRoundCard
-            ? '<div class="live-group-unified-card">' + generateGroupHoleTableHTML(r, { compact: true }) + '</div>'
-            : '<div id="' + panelId + '" class="card-scorecard-panel hidden"></div>') +
+        '<div class="live-group-unified-card">' + generateGroupHoleTableHTML(r, { compact: true }) + '</div>' +
         '</div>';
 
-    // Одиночный раунд не сворачивается: вся карточка и счёт видны сразу.
-    var rowHtml = '<div class="lwl-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
-        'data-round-id="' + id + '" data-pid="' + pid + '"' + (soloRoundCard ? '' : ' data-panel-id="' + panelId + '"') + '>' +
-        (soloRoundCard
-            ? '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="true">' +
-              '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
-              (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
-              '</span>' +
-              '<span class="lwl-hole"><i class="fas fa-location-dot"></i> ' + thruText + '</span>' +
-              '<span class="lwl-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
-              '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
-              '</div>'
-            : '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + panelId + '" ' +
-              'onclick="toggleLiveWho(\'' + id + '\',\'' + pid + '\')" onkeydown="liveWhoKey(event,\'' + id + '\',\'' + pid + '\')">' +
-              '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
-              (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
-              '</span>' +
-              '<span class="lwl-hole"><i class="fas fa-location-dot"></i> ' + thruText + '</span>' +
-              '<span class="lwl-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
-              '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
-              '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
-              '</div>') +
+    // Свёрнутая строка соло-раунда: имя · лунка · счёт · старт · шеврон.
+    // Класс live-round-row и data-round-id — те же, что у группового блока,
+    // поэтому сворачивание/разворачивание работает общей функцией toggleLiveRound.
+    var rowHtml = '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
+        'data-round-id="' + id + '" data-pid="' + pid + '" data-round-row="1">' +
+        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + panelId + '" ' +
+        'onclick="toggleLiveRound(\'' + id + '\')" onkeydown="liveRoundKey(event,\'' + id + '\')">' +
+        '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
+        (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
+        '</span>' +
+        '<span class="lwl-hole"><i class="fas fa-location-dot"></i> ' + thruText + '</span>' +
+        '<span class="lwl-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
+        '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
+        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
+        '</div>' +
         details +
         '</div>';
     return rowHtml;
@@ -576,10 +572,10 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
     var order = getRoundOrder(r);
     var isGroup = (r.mode === 'group') || playerEntries.length > 1;
 
-    // Одиночный раунд (1 игрок) — стандартная строка одиночного раунда
+    // Одиночный раунд (1 игрок) — своя свёрнутая строка соло-раунда
     if (!isGroup && playerEntries.length === 1) {
         var pe = playerEntries[0];
-        return buildLiveWhoRowHTML(id, r, pe[0], pe[1], players, isMyRound);
+        return buildLiveWhoRowHTML(id, r, pe[0], pe[1], players, isMyRound, forceOpen === true);
     }
 
     var names = [];

@@ -62,7 +62,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=57"></script>
+<script src="js/utils.js?v=58"></script>
 <script>
 function tvGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 function updateClock() {
@@ -84,7 +84,12 @@ function loadTVLeaderboard() {
                 var data = (sn && sn.val && sn.val()) || {};
                 // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
                 if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
-                var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+                // Раунды 'scheduled' (турнир ещё не стартовал) на табло не
+                // показываем — до старта они ещё «не существуют».
+                var entries = Object.entries(data).filter(function(e) {
+                    if (!e || !e[1] || typeof e[1] !== 'object') return false;
+                    return String((e[1] || {}).status || 'active') !== 'scheduled';
+                });
                 var contentEl = tvGet('tv-content');
                 if (!contentEl) return;
 
@@ -190,6 +195,6 @@ var tvScrollRaf = null;
     tvScrollRaf = requestAnimationFrame(tick);
 })();
 </script>
-<p class="site-version" style="position:fixed;right:12px;bottom:6px;z-index:5;">Версия сайта: <span class="version-number">1.63.0</span></p>
+<p class="site-version" style="position:fixed;right:12px;bottom:6px;z-index:5;">Версия сайта: <span class="version-number">1.64.0</span></p>
 </body>
 </html>

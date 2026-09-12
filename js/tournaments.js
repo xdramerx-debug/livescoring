@@ -279,8 +279,10 @@ function tnRenderList() {
             var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];
 
             var regPlayers = tVal.registeredPlayers || {};
+            var waitlist = tVal.waitlist || {};
             var regCount = (typeof tnDedupeRoster === 'function') ? tnDedupeRoster(regPlayers).length : Object.keys(regPlayers).length;
             var isRegistered = !!(currentUser && regPlayers[currentUser.uid]);
+            var isWaitlisted = !!(currentUser && waitlist[currentUser.uid]);
 
             // Запись открыта ТОЛЬКО для предстоящих турниров: на активном
             // запись закрыта (уже записанные видят статичный бейдж без отмены),
@@ -304,7 +306,11 @@ function tnRenderList() {
                     regBtn = '<span style="font-size:12px;font-weight:700;color:var(--muted);"><i class="fas fa-check-circle"></i> ' + t('registered_badge') + '</span>';
                 }
             } else if (isRegistered) {
-                regBtn = '<button class="btn btn-og btn-sm" onclick="cancelTournamentRegistration(\'' + tnId + '\')"><i class="fas fa-check-circle"></i> ' + t('registered_badge') + '</button>';
+                // Подтверждён в составе — бейдж без отмены: из состава
+                // игрока снимает только администратор.
+                regBtn = '<span style="font-size:12px;font-weight:700;color:#2ecc71;"><i class="fas fa-check-circle"></i> ' + t('registered_badge') + '</span>';
+            } else if (isWaitlisted) {
+                regBtn = '<button class="btn btn-og btn-sm" onclick="cancelTournamentRegistration(\'' + tnId + '\')" title="' + escapeHtml(en ? 'Remove from waitlist' : 'Убрать из списка ожидания') + '"><i class="fas fa-hourglass-half"></i> ' + (en ? 'On waitlist' : 'В списке ожидания') + '</button>';
             } else {
                 regBtn = '<button class="btn btn-g btn-sm" onclick="openTournamentRegModal(\'' + tnId + '\')"><i class="fas fa-user-plus"></i> ' + t('register_tournament_btn') + '</button>';
             }
@@ -350,6 +356,14 @@ function tnRenderList() {
                 var isRosterOpen = tnRosterOpen[tnId] !== false; // default true
                 html += '<div id="roster-' + tnId + '" class="card-scorecard-panel' + (isRosterOpen ? '' : ' hidden') + '" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">';
                 html += tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount);
+                html += '</div>';
+            }
+
+            // Лист ожидания — отдельный от состава: заявившиеся попадают сюда,
+            // администратор переносит их в турнир из админ-панели.
+            if (tnStatus === 'upcoming' && Object.keys(waitlist).length) {
+                html += '<div id="waitlist-' + tnId + '" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">';
+                html += tnWaitlistedHtml(tnId, waitlist);
                 html += '</div>';
             }
 
@@ -563,6 +577,13 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
     });
     if (unassigned.list.length) buckets.push(unassigned);
 
+    // ПО ДЕФОЛТУ список — ПО ГАНДИКАПУ (меньший выше), а не по алфавиту.
+    if (typeof tnSortByHandicap === 'function') {
+        tnSortByHandicap(list);
+        buckets.forEach(function(b) { tnSortByHandicap(b.list); });
+        tnSortByHandicap(guests.list);
+    }
+
     if (!groupsVisible) {
         return '<div class="tn-roster-v' + variant + '">' + tnRosterBucketHtml(list, variant, en) + '</div>';
     }
@@ -637,13 +658,156 @@ function tnLbPosHtml(en2, hashPrefix) {
 }
 
 function tnLbSort(a, b) {
-    if (a.netToPar === null && b.netToPar === null) return (a.name || '').localeCompare(b.name || '');
+    // Игроки без результатов — ПО ГАНДИКАПУ (по умолчанию), а не по алфавиту.
+    if (a.netToPar === null && b.netToPar === null) return tnLbHcpTieSort(a, b);
     if (a.netToPar === null) return 1;
     if (b.netToPar === null) return -1;
     if (a.netToPar !== b.netToPar) return a.netToPar - b.netToPar;
     var at = a.toPar === null ? 999 : a.toPar, bt = b.toPar === null ? 999 : b.toPar;
     if (at !== bt) return at - bt;
+    return tnLbHcpTieSort(a, b);
+}
+
+// Тир-брейк: сначала гандикап (меньший выше), потом ФИО.
+function tnLbHcpTieSort(a, b) {
+    var ha = (typeof tnHcpSortValue === 'function') ? tnHcpSortValue(a) : null;
+    var hb = (typeof tnHcpSortValue === 'function') ? tnHcpSortValue(b) : null;
+    if (ha === null && hb === null) return (a.name || '').localeCompare(b.name || '');
+    if (ha === null) return 1;
+    if (hb === null) return -1;
+    if (ha !== hb) return ha - hb;
     return (a.name || '').localeCompare(b.name || '');
+}
+
+// Выбор пола во вкладах лидерборда (вид 2 «По полу»): «all» | «men» | «women».
+// Выбранное значение переживает перерисовки и перезагрузку.
+var tnGenderSel = {};
+try { tnGenderSel = JSON.parse(localStorage.getItem('pestovo_tn_gender_sel') || '{}') || {}; } catch(e) { tnGenderSel = {}; }
+function tnGetGenderSel(tnId) { return tnGenderSel[tnId] || 'all'; }
+function tnSetGenderSel(tnId, key) {
+    tnGenderSel[tnId] = key || 'all';
+    try { localStorage.setItem('pestovo_tn_gender_sel', JSON.stringify(tnGenderSel)); } catch(e) {}
+    if (tnLbOpen[tnId] && typeof renderTnLeaderboard === 'function') renderTnLeaderboard(tnId);
+}
+
+// Вкладки «Все · Мужчины · Девушки» (вид разделения по полу №2).
+function tnGenderTabsHtml(tnId, allCount, menCount, womenCount) {
+    var en = currentLang === 'en';
+    var cur = tnGetGenderSel(tnId);
+    var defs = [
+        { key: 'all', label: en ? 'All' : 'Все', count: allCount, icon: 'fa-layer-group' },
+        { key: 'men', label: en ? 'Men' : 'Мужчины', count: menCount, icon: 'fa-mars' },
+        { key: 'women', label: en ? 'Women' : 'Девушки', count: womenCount, icon: 'fa-venus' }
+    ];
+    var html = '<div class="tn-tabs" role="tablist" style="margin-bottom:10px;">';
+    defs.forEach(function(t) {
+        var active = (t.key === cur);
+        html += '<button type="button" role="tab" class="tn-tab' + (active ? ' active' : '') + '"' +
+            ' aria-selected="' + (active ? 'true' : 'false') + '"' +
+            ' onclick="tnSetGenderSel(\'' + escapeHtml(tnId) + '\',\'' + t.key + '\')">' +
+            '<i class="fas ' + t.icon + '"></i> ' + escapeHtml(t.label) +
+            '<span class="tn-tab-count">' + t.count + '</span></button>';
+    });
+    html += '</div>';
+    return html;
+}
+
+// Раздельная таблица одного пола (вид разделения по полу №3):
+// свои места, свой подсчёт.
+function tnGenderBoardHtml(tnId, en, title, icon, list) {
+    var html = '<div class="tn-group open">';
+    html += '<div class="tn-group-head" style="cursor:default;">' +
+        '<i class="fas ' + icon + ' tn-group-ico"></i>' +
+        '<b class="tn-group-title">' + escapeHtml(title) + '</b>' +
+        '<span class="tn-group-count">' + list.length + '</span></div>';
+    html += '<div class="tn-group-body">';
+    if (!list.length) {
+        html += '<p style="font-size:12px;color:var(--muted);text-align:center;">' +
+            (en ? 'No players of this gender yet' : 'Игроков этой категории пока нет') + '</p>';
+    } else {
+        html += '<div style="overflow-x:auto;"><table class="lb-table tn-lb-table"><thead><tr><th>#</th><th>' + t('player') + '</th>' +
+            (en ? '<th>Thru</th>' : '<th>Лунки</th>') + '<th>' + (en ? 'Gross</th>' : '<th>Гросс</th>') + '<th>±</th><th>' +
+            (en ? 'Net</th>' : '<th>Нетто</th>') + '<th>' + (en ? 'Stbl</th>' : '<th>Стбл</th>') + '</tr></thead><tbody>';
+        list.forEach(function(en2) {
+            var posHtml = tnLbPosHtml(en2, true);
+            var thru = en2.holes > 0 ? en2.holes + '/18' : '—';
+            html += '<tr><td><strong style="color:var(--gold);">' + posHtml + '</strong></td>' +
+                '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' +
+                (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + '</td>' +
+                '<td>' + thru + '</td>' +
+                '<td>' + (en2.holes > 0 ? en2.gross : '—') + '</td>' +
+                '<td><strong class="' + scoreClass(en2.toPar) + '">' + fmtScore(en2.toPar) + '</strong></td>' +
+                '<td>' + (en2.netToPar === null ? '—' : en2.net + ' (' + fmtScore(en2.netToPar) + ')') + '</td>' +
+                '<td>' + (en2.holes > 0 ? en2.stbl : '—') + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+    }
+    html += '</div></div>';
+    return html;
+}
+
+// Блок результатов MATCH PLAY (1v1 / 2v2) в лидерборде турнира:
+// матчи по раундам (кто с кем, текущий счёт лунок) + сводка W/L.
+function tnMatchBoardHtml(matchRounds, en) {
+    if (typeof pestovoRoundMatches !== 'function') return '';
+    var html = '<div style="margin-top:12px;padding:12px;border:1px solid rgba(201,168,76,.45);border-radius:10px;background:rgba(201,168,76,.06);">';
+    html += '<div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:4px;"><i class="fas fa-swords"></i> ' +
+        (en ? 'Match Play — match results' : 'Match Play — результаты матчей') + '</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">' +
+        (en ? 'A hole is won by the side with fewer strokes (team — best ball of the pair).' : 'Лунку выигрывает сторона с меньшим числом ударов (команда — лучший удар пары).') + '</div>';
+
+    var summary = {};
+    matchRounds.forEach(function(r) {
+        var label = r.roundName || r.protocolName || ((en ? 'Round' : 'Раунд') + (r.groupNo ? ' ' + r.groupNo : ''));
+        var labelTxt = label + (r.startTime ? ' · ' + fmtTime(r.startTime) : '');
+        var matches = pestovoRoundMatches(r);
+        html += '<div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:8px;">' + escapeHtml(labelTxt) +
+            (r.format === 'Match Play 2v2' ? ' <span style="font-weight:400;">· 2×2</span>' : '') + '</div>';
+        if (!matches.length) {
+            html += '<div style="font-size:12px;color:var(--muted);padding-left:8px;">' +
+                (en ? 'No pairs in this round yet' : 'В раунде пока нет пар') + '</div>';
+            return;
+        }
+        matches.forEach(function(m) {
+            var st = m.status;
+            var stateCls = st.state === 'final' ? '#2ecc71' : (st.state === 'dormie' ? '#e05a4a' : 'var(--muted)');
+            [m.a, m.b].forEach(function(side) {
+                side.forEach(function(p) {
+                    summary[p.name || p.pid] = summary[p.name || p.pid] || { w: 0, l: 0, holes: 0 };
+                });
+            });
+            if (st.state === 'final') {
+                (st.lead > 0 ? m.a : m.b).forEach(function(p) { summary[p.name || p.pid].w++; });
+                (st.lead > 0 ? m.b : m.a).forEach(function(p) { summary[p.name || p.pid].l++; });
+            }
+            html += '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 10px;margin-top:4px;background:rgba(0,0,0,.25);border-radius:8px;font-size:13px;align-items:center;">';
+            html += '<span style="font-weight:700;color:var(--text);">' + escapeHtml(m.sideAName) +
+                ' <span style="color:var(--muted);font-weight:400;">vs</span> ' + escapeHtml(m.sideBName) + '</span>';
+            html += '<span style="font-weight:800;color:' + stateCls + ';">' + escapeHtml(st.statusText) +
+                ' <span style="font-weight:400;color:var(--muted);font-size:11px;">(' + st.holesDone + '/18)</span></span>';
+            html += '</div>';
+        });
+    });
+
+    // Сводка W/L по турниру (если матчей больше одного).
+    if (matchRounds.length > 1 || Object.keys(summary).length > 2) {
+        var rows = Object.keys(summary).map(function(n) { return { name: n, w: summary[n].w, l: summary[n].l }; });
+        rows.sort(function(a, b) { return (b.w - a.w) || (a.l - b.l) || a.name.localeCompare(b.name); });
+        if (rows.length) {
+            html += '<div style="font-size:12px;font-weight:700;color:var(--muted);margin-top:10px;">' +
+                (en ? 'Tournament record (finished matches)' : 'Итоги турнира (завершённые матчи)') + '</div>';
+            html += '<div style="overflow-x:auto;"><table class="lb-table tn-lb-table" style="margin-top:4px;"><thead><tr><th>' +
+                t('player') + '</th><th>W</th><th>L</th></tr></thead><tbody>';
+            rows.forEach(function(r) {
+                html += '<tr><td class="lb-card-main">' + escapeHtml(r.name) + '</td>' +
+                    '<td style="color:#2ecc71;font-weight:800;">' + r.w + '</td>' +
+                    '<td style="color:#e05a4a;font-weight:800;">' + r.l + '</td></tr>';
+            });
+            html += '</tbody></table></div>';
+        }
+    }
+    html += '</div>';
+    return html;
 }
 
 function renderTnLeaderboard(tnId) {
@@ -748,7 +912,10 @@ function renderTnLeaderboard(tnId) {
     list.forEach(function(en2) {
         var rp = regByFio[tnNormName(en2.name)] || {};
         var hcp = (rp.handicap != null && rp.handicap !== '') ? rp.handicap : en2.hcpRaw;
-        var gender = rp.gender || en2.gender || 'men';
+        var gender = (typeof pestovoNormGender === 'function')
+            ? pestovoNormGender(rp.gender || en2.gender || 'men')
+            : (rp.gender || en2.gender || 'men');
+        en2.gender = gender;
         en2.div = tnDivisionForHcp(tVal, tnId, hcp, gender, { pid: en2.pid, name: en2.name || '' });
         en2.toPar = en2.holes > 0 ? en2.gross - en2.parPlayed : null;
         en2.netToPar = en2.holes > 0 ? en2.net - en2.parPlayed : null;
@@ -756,6 +923,84 @@ function renderTnLeaderboard(tnId) {
         if (tnIsGuestRoster(rp) || en2.isGuest) en2.isGuest = true;
         en2.rp = rp;
     });
+
+    // ── MATCH PLAY (1v1 / 2v2): матчи раундов и их результаты ──
+    // Раунды турнира в матче формате считаются отдельно от зачёта на
+    // удары: победитель = тот, кто взял больше лунок (команда — best ball).
+    var matchRounds = [];
+    var strokeRoundExists = false;
+    Object.keys(tnLbRounds).forEach(function(rid) {
+        var r = tnLbRounds[rid] || {};
+        if (r.tournamentId !== tnId) return;
+        if (typeof pestovoIsMatchFormat === 'function' && pestovoIsMatchFormat(r.format)) {
+            matchRounds.push(r);
+        } else if (r.status === 'active' || r.status === 'completed') {
+            strokeRoundExists = true;
+        }
+    });
+    matchRounds.sort(function(a, b) {
+        return (a.startTime || a.createdAt || 0) - (b.startTime || b.createdAt || 0);
+    });
+    var onlyMatch = matchRounds.length > 0 && !strokeRoundExists;
+
+    // Итоги матчей по игроку (W/L) — только завершённые матчи.
+    var matchRecord = {};
+    matchRounds.forEach(function(r) {
+        (typeof pestovoRoundMatches === 'function' ? pestovoRoundMatches(r) : []).forEach(function(m) {
+            if (!m.status || m.status.state !== 'final') return;
+            var won = m.status.lead > 0 ? m.a : m.b;
+            var lost = m.status.lead > 0 ? m.b : m.a;
+            won.forEach(function(p) {
+                matchRecord[p.pid] = matchRecord[p.pid] || { w: 0, l: 0 };
+                matchRecord[p.pid].w++;
+            });
+            lost.forEach(function(p) {
+                matchRecord[p.pid] = matchRecord[p.pid] || { w: 0, l: 0 };
+                matchRecord[p.pid].l++;
+            });
+        });
+    });
+    list.forEach(function(en2) {
+        var rec = matchRecord[en2.pid];
+        en2.matchW = rec ? rec.w : 0;
+        en2.matchL = rec ? rec.l : 0;
+    });
+
+    // ── РАЗДЕЛЕНИЕ ПО ПОЛУ (3 вида, выбирает админ) ──
+    // '1' — смешанный лидерборд; '2' — вкладки Все/Мужчины/Девушки с
+    // отдельным счётом мест; '3' — два раздельных лидерборда.
+    var gs = (typeof getTnGenderSplit === 'function') ? getTnGenderSplit() : '1';
+    var menList = list.filter(function(e) { return e.gender !== 'women'; });
+    var womenList = list.filter(function(e) { return e.gender === 'women'; });
+    var genderSplitMode = (gs === '2' || gs === '3');
+
+    // Места считаются только среди игроков с результатами. Игроки без
+    // единственной лунки получают «—» и не занимают первых мест.
+    function tnAssignPositions(arr) {
+        var scored = arr.filter(function(e) { return e.holes > 0; });
+        scored.forEach(function(e, i) {
+            if (i === 0 || e.netToPar !== scored[i - 1].netToPar || e.toPar !== scored[i - 1].toPar) e.position = i + 1;
+            else e.position = scored[i - 1].position;
+        });
+        arr.forEach(function(e) { if (!(e.holes > 0)) e.position = null; });
+    }
+
+    var mainList = list;
+    var genderTabKey = 'all';
+    if (gs === '3') {
+        // Раздельные таблицы: места внутри каждого пола (повторно
+        // назначаются ещё перед отрисовкой, чтобы общий «all»-счёт
+        // их не затёр).
+        menList.sort(tnLbSort);
+        tnAssignPositions(menList);
+        womenList.sort(tnLbSort);
+        tnAssignPositions(womenList);
+    } else if (gs === '2') {
+        genderTabKey = tnGetGenderSel(tnId);
+        if (genderTabKey === 'men') mainList = menList;
+        else if (genderTabKey === 'women') mainList = womenList;
+        else mainList = list;
+    }
 
     var buckets = [];
     var byDiv = {};
@@ -766,14 +1011,14 @@ function renderTnLeaderboard(tnId) {
     });
     var unassigned = { div: null, list: [] };
     var guests = { div: null, list: [], guestTab: true };
-    list.forEach(function(en2) {
+    mainList.forEach(function(en2) {
         if (en2.div && byDiv[en2.div.id]) byDiv[en2.div.id].list.push(en2);
         else unassigned.list.push(en2);
         if (en2.isGuest) guests.list.push(en2);
     });
     if (unassigned.list.length) buckets.push(unassigned);
 
-    var lbTabs = [{ key: 'all', label: en ? 'All' : 'Все', count: list.length, icon: 'fa-layer-group' }];
+    var lbTabs = [{ key: 'all', label: en ? 'All' : 'Все', count: mainList.length, icon: 'fa-layer-group' }];
     buckets.forEach(function(b, bi) {
         if (!b.list.length) return;
         lbTabs.push({
@@ -787,21 +1032,14 @@ function renderTnLeaderboard(tnId) {
     if (guests.list.length && !lbHasGuestDiv) {
         lbTabs.push({ key: '__guests', label: en ? 'Guests' : 'Гости', count: guests.list.length, icon: 'fa-user-tie' });
     }
-
-    // Места считаются только среди игроков с результатами. Игроки без
-    // единственной лунки получают «—» и не занимают первых мест.
-    function tnAssignPositions(arr) {
-        var scored = arr.filter(function(e) { return e.holes > 0; });
-        scored.forEach(function(e, i) {
-            if (i === 0 || e.netToPar !== scored[i - 1].netToPar || e.toPar !== scored[i - 1].toPar) e.position = i + 1;
-            else e.position = scored[i - 1].position;
+    // Вид 3 (раздельные таблицы по полу) местами управляет сам: общая
+    // разбивка по дивизионам не должна пересчитывать его места.
+    if (gs !== '3') {
+        buckets.forEach(function(b) {
+            b.list.sort(tnLbSort);
+            tnAssignPositions(b.list);
         });
-        arr.forEach(function(e) { if (!(e.holes > 0)) e.position = null; });
     }
-    buckets.forEach(function(b) {
-        b.list.sort(tnLbSort);
-        tnAssignPositions(b.list);
-    });
 
     tnScBuildCards(tnId, tVal, list);
 
@@ -824,8 +1062,10 @@ function renderTnLeaderboard(tnId) {
     // Если админ выключил группы — вкладок и заголовков групп нет вообще.
     var groupsVisibleLB = (typeof getTnGroupsVisible === 'function') ? getTnGroupsVisible() : false;
     var curLbTab = groupsVisibleLB ? tnGetTab(tnId) : 'all';
-    var allSorted = list.slice().sort(tnLbSort);
-    tnAssignPositions(allSorted);
+    var allSorted = mainList.slice().sort(tnLbSort);
+    // Общий (смешанный) пересчёт мест — не для вида 3: там свои места
+    // внутри каждого пола, и смешанный их затрёт.
+    if (gs !== '3') tnAssignPositions(allSorted);
     if (curLbTab === 'all') {
         buckets = [{ div: null, list: allSorted, singleAll: true }];
     }
@@ -833,7 +1073,36 @@ function renderTnLeaderboard(tnId) {
         ? buckets.filter(function(b) { return b.list.length > 0; })
         : tnFilterByTab(tnId, buckets, guests.list).show.filter(function(b) { return b.list.length > 0; });
     if (!lbShown.length) lbShown = buckets.filter(function(b) { return b.list.length > 0; });
-    if (groupsVisibleLB) html += tnTabsHtml(tnId, lbTabs);
+    if (groupsVisibleLB && gs !== '3') html += tnTabsHtml(tnId, lbTabs);
+
+    // Вид по полу №2 — вкладки «Все / Мужчины / Девушки»: места считаются
+    // отдельно внутри выбранного пола (mainList уже отфильтрован).
+    if (gs === '2') html += tnGenderTabsHtml(tnId, list.length, menList.length, womenList.length);
+
+    // Результаты Match Play (1v1 / 2v2) — отдельный блок со счётом матчей.
+    if (matchRounds.length) html += tnMatchBoardHtml(matchRounds, en);
+
+    // Чисто матчевый турнир — зачёт на удары не применяется.
+    if (onlyMatch) {
+        panel.innerHTML = html;
+        return;
+    }
+
+    // Вид по полу №3 — раздельные таблицы «Мужчины» и «Девушки» рядом.
+    if (gs === '3') {
+        // Места внутри каждого пола назначаем прямо перед отрисовкой.
+        menList.sort(tnLbSort);
+        tnAssignPositions(menList);
+        womenList.sort(tnLbSort);
+        tnAssignPositions(womenList);
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px;margin-top:8px;">';
+        html += tnGenderBoardHtml(tnId, en, en ? 'Men' : 'Мужчины', 'fa-mars', menList);
+        html += tnGenderBoardHtml(tnId, en, en ? 'Women' : 'Девушки', 'fa-venus', womenList);
+        html += '</div>';
+        panel.innerHTML = html;
+        return;
+    }
+
     if (groupsVisibleLB && lbShown.length > 1 && curLbTab !== 'all') {
         html += '<div class="tn-groups-toggle">' +
             '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnId + '\',\'lb\',true)"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
@@ -1213,6 +1482,47 @@ function submitTournamentRegistration(tnId) {
     tnEnsureRegistrationOpen(tnId, function() { submitTournamentRegistrationInner(tnId); });
 }
 
+// Лист ожидания: заявившийся игрок попадает НЕ в состав турнира,
+// а в отдельный список tournaments/<id>/waitlist. Администратор из
+// админ-панели выбирает оттуда участников и добавляет их в турнир
+// (registeredPlayers) — до этого они в составе не фигурируют.
+function tnWaitlistedHtml(tnId, waitlist) {
+    var en = currentLang === 'en';
+    var items = [];
+    Object.keys(waitlist || {}).forEach(function(k) {
+        items.push({ key: k, w: waitlist[k] || {} });
+    });
+    items.sort(function(a, b) {
+        var ha = parseFloat(a.w.handicap), hb = parseFloat(b.w.handicap);
+        if (isNaN(ha) && isNaN(hb)) return String(a.w.name || '').localeCompare(String(b.w.name || ''));
+        if (isNaN(ha)) return 1;
+        if (isNaN(hb)) return -1;
+        if (ha !== hb) return ha - hb;
+        return String(a.w.name || '').localeCompare(String(b.w.name || ''));
+    });
+    if (!items.length) {
+        return '<p style="font-size:12px;color:var(--muted);text-align:center;">' +
+            (en ? 'Waitlist is empty' : 'Список ожидания пуст') + '</p>';
+    }
+    var html = '<div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:8px;"><i class="fas fa-hourglass-half"></i> ' +
+        (en ? 'Waitlist — admin picks participants from this list in the admin panel' : 'Лист ожидания — участников выбирает и добавляет в турнир администратор из админ-панели') + '</div>';
+    html += '<div class="tn-roster-group-list">';
+    items.forEach(function(it, i) {
+        var w = it.w;
+        var hcp = (w.handicap != null && w.handicap !== '') ? fmtExactHcp(w.handicap) : '—';
+        var gIcon = (typeof pestovoNormGender === 'function' && pestovoNormGender(w.gender) === 'women') ? '👩' : '👨';
+        html += '<div class="tn-roster-player-row">' +
+            '<div style="color:var(--gold);font-weight:700;">' + (i + 1) + '. ' + gIcon + ' ' + escapeHtml(w.name || '—') + '</div>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);">' +
+            '<span>HCP: <b style="color:var(--text);">' + hcp + '</b></span>' +
+            '<span>' + fmtTeePill(w.tee || 'wh') + '</span>' +
+            (w.registeredAt ? '<span><i class="fas fa-clock"></i> ' + fmtDate(w.registeredAt) + '</span>' : '') +
+            '</div></div>';
+    });
+    html += '</div>';
+    return html;
+}
+
 function submitTournamentRegistrationInner(tnId) {
     var en = currentLang === 'en';
     if (typeof db === 'undefined' || !db) return;
@@ -1230,24 +1540,37 @@ function submitTournamentRegistrationInner(tnId) {
             registeredAt: Date.now()
         };
 
-        // Пишем под своим uid, но сначала убираем возможные дубли этого же игрока:
-        // гостевые записи со случайным ключом и записи, ссылающиеся на наш uid.
-        db.ref('tournaments/' + tnId + '/registeredPlayers').once('value').then(function(sn) {
-            var updates = {};
+        // Игрок попадает в ЛИСТ ОЖИДАНИЯ (waitlist), а не сразу в состав:
+        // в турнир его добавляет администратор. Сначала убираем дубли этого
+        // же человека (гостевая запись / старый uid-ключ) и проверяем,
+        // что он уже не подтверждён в составе.
+        db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+            var tVal = sn.val() || {};
+            var regPlayers = tVal.registeredPlayers || {};
+            var waitlist = tVal.waitlist || {};
+            if (regPlayers[currentUser.uid]) {
+                toast(en ? 'You are already in the tournament' : 'Вы уже в составе турнира', 'info');
+                closeRegTnModal();
+                loadTournaments();
+                return { done: 'roster' };
+            }
             var myName = tnNormName(regData.name);
-            Object.keys(sn.val() || {}).forEach(function(k) {
-                var rp = (sn.val() || {})[k] || {};
+            var updates = {};
+            Object.keys(waitlist).forEach(function(k) {
+                var wp = waitlist[k] || {};
                 if (k === currentUser.uid) return;
-                if (rp.uid && rp.uid === currentUser.uid) { updates['tournaments/' + tnId + '/registeredPlayers/' + k] = null; return; }
-                if (rp.guest === true && tnNormName(rp.name || '') === myName) updates['tournaments/' + tnId + '/registeredPlayers/' + k] = null;
-                // Сгенерированная из стартового листа запись (user_*) того же
-                // человека — тоже дубль: теперь игрок записывается аккаунтом.
-                if (rp.uid && String(rp.uid).indexOf('user_') === 0 && rp.guest !== true && tnNormName(rp.name || '') === myName) updates['tournaments/' + tnId + '/registeredPlayers/' + k] = null;
+                if (wp.uid && wp.uid === currentUser.uid) { updates['tournaments/' + tnId + '/waitlist/' + k] = null; return; }
+                if (wp.guest === true && tnNormName(wp.name || '') === myName) updates['tournaments/' + tnId + '/waitlist/' + k] = null;
             });
-            updates['tournaments/' + tnId + '/registeredPlayers/' + currentUser.uid] = regData;
-            return db.ref().update(updates);
-        }).then(function() {
-            toast(t('msg_tournament_registered'), 'success');
+            updates['tournaments/' + tnId + '/waitlist/' + currentUser.uid] = regData;
+            return (Object.keys(updates).length ? db.ref().update(updates) : Promise.resolve())
+                .then(function() { return { done: 'waitlist' }; });
+        }).then(function(res) {
+            if (res && res.done === 'waitlist') {
+                toast(en
+                    ? '⏳ You are on the waitlist — the admin will add you to the tournament'
+                    : '⏳ Вы в списке ожидания — администратор добавит вас в турнир', 'success');
+            }
             closeRegTnModal();
             loadTournaments();
         }).catch(function(err) {
@@ -1280,14 +1603,25 @@ function submitTournamentRegistrationInner(tnId) {
         handicap = Math.round(handicap * 10) / 10;
     }
 
-    db.ref('tournaments/' + tnId + '/registeredPlayers').once('value').then(function(sn) {
-        var existing = sn.val() || {};
+    // Гость тоже в лист ожидания (waitlist): администратор добавит его
+    // в состав tournaments/<id>/registeredPlayers из админ-панели.
+    db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+        var tVal = sn.val() || {};
+        var regPlayers = tVal.registeredPlayers || {};
+        var waitlist = tVal.waitlist || {};
         var norm = tnNormName(name);
-        var dup = Object.keys(existing).some(function(k) {
-            return tnNormName((existing[k] || {}).name || '') === norm;
+        var inRoster = Object.keys(regPlayers).some(function(k) {
+            return tnNormName((regPlayers[k] || {}).name || '') === norm;
+        });
+        if (inRoster) {
+            toast(en ? '⚠️ This name is already registered' : '⚠️ Такое имя уже записано', 'error');
+            return;
+        }
+        var dup = Object.keys(waitlist).some(function(k) {
+            return tnNormName((waitlist[k] || {}).name || '') === norm;
         });
         if (dup) {
-            toast(en ? '⚠️ This name is already registered' : '⚠️ Такое имя уже записано', 'error');
+            toast(en ? '⚠️ This name is already on the waitlist' : '⚠️ Такое имя уже в списке ожидания', 'error');
             return;
         }
         var guestData = {
@@ -1299,8 +1633,10 @@ function submitTournamentRegistrationInner(tnId) {
             guest: true,
             registeredAt: Date.now()
         };
-        db.ref('tournaments/' + tnId + '/registeredPlayers').push(guestData).then(function() {
-            toast(en ? '✅ You are registered! See you at the tournament.' : '✅ Вы записаны! До встречи на турнире.', 'success');
+        db.ref('tournaments/' + tnId + '/waitlist').push(guestData).then(function() {
+            toast(en
+                ? '⏳ You are on the waitlist! The admin will confirm your place at the tournament.'
+                : '⏳ Вы в списке ожидания! Администратор подтвердит ваше место на турнире.', 'success');
             closeRegTnModal();
             if (typeof vib === 'function') { try { vib(60); } catch(e){} }
         }).catch(function(err) {
@@ -1314,19 +1650,39 @@ function submitTournamentRegistrationInner(tnId) {
 function cancelTournamentRegistration(tnId) {
     if (!currentUser) return;
     if (typeof db === 'undefined' || !db) return;
-    if (!confirm(currentLang === 'en' ? 'Cancel registration for this tournament?' : 'Отменить запись на этот турнир?')) return;
+    if (!confirm(currentLang === 'en' ? 'Cancel your place on the waitlist for this tournament?' : 'Убрать вас из списка ожидания этого турнира?')) return;
 
     // Отмена возможна только до старта: на активном/завершённом состав фиксирован.
-    db.ref('tournaments/' + tnId + '/status').once('value').then(function(sn) {
-        var st = sn.val();
-        if (st && st !== 'upcoming') {
+    var en = currentLang === 'en';
+    db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+        var tVal = sn.val() || {};
+        var st = tVal.status || 'upcoming';
+        if (st !== 'upcoming') {
             toast(tnRegistrationClosedText(), 'error');
             return { blocked: true };
         }
-        return db.ref('tournaments/' + tnId + '/registeredPlayers/' + currentUser.uid).remove();
+        // В ЛИСТЕ ОЖИДАНИЯ — просто убираем запись.
+        if (tVal.waitlist && tVal.waitlist[currentUser.uid]) {
+            return db.ref('tournaments/' + tnId + '/waitlist/' + currentUser.uid).remove()
+                .then(function() { return { done: 'waitlist' }; });
+        }
+        // В ПОДТВЕРЖДЁННОМ СОСТАВЕ — списывает только администратор
+        // (лист ожидания → состав — его прерогатива).
+        if (tVal.registeredPlayers && tVal.registeredPlayers[currentUser.uid]) {
+            return { roster: true };
+        }
+        return { none: true };
     }).then(function(res) {
-        if (res && res.blocked) return;
-        toast(t('msg_registration_cancelled'), 'info');
+        if (!res || res.blocked) return;
+        if (res.roster) {
+            toast(en
+                ? 'You are confirmed in the tournament — only the admin can remove you'
+                : 'Вы подтверждены в составе турнира — убрать вас может только администратор', 'info');
+        } else if (res.waitlist) {
+            toast(t('msg_registration_cancelled'), 'info');
+        } else {
+            toast(en ? 'You are not registered for this tournament' : 'Вы не записаны на этот турнир', 'info');
+        }
         loadTournaments();
     }).catch(function(err) {
         if (err) toast('❌ ' + (err && err.message ? err.message : err), 'error');

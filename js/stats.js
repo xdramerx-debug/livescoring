@@ -194,6 +194,9 @@ function loadStats() {
 
         Object.values(rounds).forEach(function(r) {
             if (!r || typeof r !== 'object') return;
+            // Раунды 'scheduled' (созданы протоколом заранее, а турнир ещё
+            // не стартовал) в статистику НЕ входят: их ещё «нет».
+            if (String((r || {}).status || 'active') === 'scheduled') return;
             totalRounds++;
 
             var startTS = r.startTime || r.createdAt;

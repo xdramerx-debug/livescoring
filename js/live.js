@@ -1011,16 +1011,37 @@ function renderPlayHole() {
     }
     var trackerEl = lGet('match-play-tracker-container');
     if (trackerEl) {
-        if (curRoundData && (curRoundData.format === 'Match Play 1v1' || curRoundData.format === 'Match Play 2v2') && myTargetUid) {
-            var myScoresObj = (curRoundData.players[myUid] && curRoundData.players[myUid].scores) || {};
-            var targetScoresObj = (curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].scores) || {};
-            var myName = (curRoundData.players[myUid] && curRoundData.players[myUid].name) || (currentUserData && currentUserData.name) || 'Player 1';
-            var targetName = (curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].name) || 'Opponent';
-            var mStatus = calcMatchPlayStatus(myScoresObj, targetScoresObj, myName, targetName);
-            trackerEl.innerHTML = renderMatchPlayTrackerHTML(mStatus);
-        } else {
-            trackerEl.innerHTML = '';
+        var mStatus = null;
+        var playersM = (curRoundData && curRoundData.players) || {};
+        var isMatchFmt = (typeof pestovoIsMatchFormat === 'function')
+            ? pestovoIsMatchFormat(curRoundData && curRoundData.format)
+            : (curRoundData && (curRoundData.format === 'Match Play 1v1' || curRoundData.format === 'Match Play 2v2'));
+        if (curRoundData && isMatchFmt && myTargetUid) {
+            var myScoresObj = (playersM[myUid] && playersM[myUid].scores) || {};
+            var targetScoresObj = (playersM[myTargetUid] && playersM[myTargetUid].scores) || {};
+            var myName = (playersM[myUid] && playersM[myUid].name) || (currentUserData && currentUserData.name) || 'Player 1';
+            var targetName = (playersM[myTargetUid] && playersM[myTargetUid].name) || 'Opponent';
+            var is2v2 = curRoundData.format === 'Match Play 2v2';
+            if (is2v2 && Object.keys(playersM).length >= 4 && typeof calcMatchPlayStatusSides === 'function') {
+                // 2v2: моя команда — я + напарник (myTargetUid), соперники —
+                // остальные игроки группы. Счёт команды на лунке = лучший
+                // удар пары (best ball).
+                var oppPids = Object.keys(playersM).filter(function(pid) {
+                    return pid !== myUid && pid !== myTargetUid;
+                }).slice(0, 2);
+                if (oppPids.length) {
+                    var sideB = oppPids.map(function(pid) { return (playersM[pid] || {}).scores || {}; });
+                    var aName2 = myName + ' + ' + targetName;
+                    var bName2 = oppPids.map(function(pid) { return (playersM[pid] || {}).name || '—'; }).join(' + ');
+                    mStatus = calcMatchPlayStatusSides([myScoresObj, targetScoresObj], sideB, aName2, bName2);
+                }
+            }
+            if (!mStatus && typeof calcMatchPlayStatus === 'function') {
+                // 1v1 (или неполная четвёрка) — классический матч лок к лок.
+                mStatus = calcMatchPlayStatus(myScoresObj, targetScoresObj, myName, targetName);
+            }
         }
+        trackerEl.innerHTML = mStatus ? renderMatchPlayTrackerHTML(mStatus) : '';
     }
 
     checkPlayVerification();

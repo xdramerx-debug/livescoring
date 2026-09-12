@@ -310,6 +310,7 @@ function openAdminPanel() {
     loadTnCardDisplaySettings();
     loadTnLbDisplaySettings();
     loadTnGroupsSettings();
+    loadTnGenderSplitSettings();
     loadPageDisplaySettings();
     loadAdmView5Settings();
     loadPrivacySettings();
@@ -367,6 +368,7 @@ function switchTab(t, b) {
         loadTnCardDisplaySettings();
         loadTnLbDisplaySettings();
         loadTnGroupsSettings();
+        loadTnGenderSplitSettings();
         loadPageDisplaySettings();
         loadAdmView5Settings();
     }
@@ -1192,13 +1194,21 @@ function createTournament() {
 
     if (!name || !date) { toast(currentLang === 'en' ? 'Specify name and date' : 'Заполните название и дату', 'error'); return; }
 
+    // ВСЕ форматы турнира — единый список (js/utils.js PESTOVO_FORMAT_PRESETS).
     var formats = [];
-    if (document.getElementById('tn-f-stroke').checked) formats.push('Stroke Play');
-    if (document.getElementById('tn-f-gross') && document.getElementById('tn-f-gross').checked) formats.push('Stroke Play (Gross)');
-    if (document.getElementById('tn-f-net') && document.getElementById('tn-f-net').checked) formats.push('Stroke Play (Net)');
-    if (document.getElementById('tn-f-stbl').checked) formats.push('Stableford');
-    if (document.getElementById('tn-f-m1v1') && document.getElementById('tn-f-m1v1').checked) formats.push('Match Play 1v1');
-    if (document.getElementById('tn-f-scram') && document.getElementById('tn-f-scram').checked) formats.push('Scramble');
+    var formatCheck = function(id, fmt) {
+        var el = document.getElementById(id);
+        if (el && el.checked) formats.push(fmt);
+    };
+    formatCheck('tn-f-stroke', 'Stroke Play');
+    formatCheck('tn-f-gross', 'Stroke Play (Gross)');
+    formatCheck('tn-f-net', 'Stroke Play (Net)');
+    formatCheck('tn-f-stbl', 'Stableford');
+    formatCheck('tn-f-m1v1', 'Match Play 1v1');
+    formatCheck('tn-f-m2v2', 'Match Play 2v2');
+    formatCheck('tn-f-scram', 'Scramble');
+    formatCheck('tn-f-txscram', 'Texas Scramble');
+    formatCheck('tn-f-greens', 'Greensomes');
     if (!formats.length) { toast(currentLang === 'en' ? 'Select at least one format' : 'Выберите хотя бы один формат', 'error'); return; }
 
     var tees = [];
@@ -1224,6 +1234,177 @@ function createTournament() {
 // Какие HCP-панели турниров раскрыты (иначе loadTournaments падал с
 // ReferenceError и созданные турниры не появлялись в списке).
 var tnDivOpen = {};
+// Какие панели «Лист ожидания» турниров раскрыты.
+var tnWaitOpen = {};
+
+// ==========================================
+// ЛИСТ ОЖИДАНИЯ ТУРНИРА (waitlist)
+// ------------------------------------------------------------
+// Игроки, записавшиеся на турнир (страница «Турниры»), попадают не
+// сразу в состав (registeredPlayers), а в отдельный список
+// tournaments/<id>/waitlist. Здесь администратор выбирает, кого
+// добавить в турнир (или убрать из ожидания).
+// ==========================================
+function tnToggleWaitlist(tnId) {
+    tnWaitOpen[tnId] = !tnWaitOpen[tnId];
+    var panel = document.getElementById('tn-waitlist-' + tnId);
+    if (panel) panel.classList.toggle('hidden', !tnWaitOpen[tnId]);
+    if (typeof vib === 'function') { try { vib(20); } catch (e) {} }
+}
+
+function tnWaitNameNorm(s) {
+    return String(s == null ? '' : s).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+}
+
+function tnWaitlistAdminHtml(tnId, tVal) {
+    var en = currentLang === 'en';
+    var waitlist = tVal.waitlist || {};
+    var items = [];
+    Object.keys(waitlist).forEach(function(k) {
+        items.push({ key: k, w: waitlist[k] || {} });
+    });
+    items.sort(function(a, b) {
+        var ha = parseFloat(a.w.handicap), hb = parseFloat(b.w.handicap);
+        if (isNaN(ha) && isNaN(hb)) return String(a.w.name || '').localeCompare(String(b.w.name || ''));
+        if (isNaN(ha)) return 1;
+        if (isNaN(hb)) return -1;
+        if (ha !== hb) return ha - hb;
+        return String(a.w.name || '').localeCompare(String(b.w.name || ''));
+    });
+
+    var html = '<div style="padding:10px 4px 4px;border-top:1px dashed var(--border);margin-top:8px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">';
+    html += '<span style="font-size:13px;font-weight:800;color:var(--gold);"><i class="fas fa-hourglass-half"></i> ' +
+        (en ? 'Waitlist' : 'Лист ожидания') + ' · ' + items.length + '</span>';
+    if (items.length) {
+        html += '<button type="button" class="btn btn-g btn-sm" onclick="tnWaitlistAddAll(\'' + tnId + '\')"><i class="fas fa-user-check"></i> ' +
+            (en ? 'Add all to tournament' : 'Добавить всех в турнир') + '</button>';
+    }
+    html += '</div>';
+    html += '<div style="font-size:11.5px;color:var(--muted);margin-top:4px;">' +
+        (en ? 'Players sign up here from the site. Add them to the tournament roster (or remove them) — only added players count for the start list and the leaderboard.' :
+              'Игроки записываются сюда со страницы «Турниры». Добавляйте их в состав турнира (или убирайте) — только добавленные попадают в стартовый лист и лидерборд.') + '</div>';
+    if (!items.length) {
+        html += '<p style="font-size:12px;color:var(--muted);text-align:center;padding:10px 0;">' + (en ? 'Waitlist is empty' : 'Список ожидания пуст') + '</p>';
+    }
+    items.forEach(function(it) {
+        var w = it.w;
+        var gIcon = (typeof pestovoNormGender === 'function' && pestovoNormGender(w.gender) === 'women') ? '👩' : '👨';
+        var hcp = (w.handicap != null && w.handicap !== '') ? fmtExactHcp(w.handicap) : '—';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;margin-top:6px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;">';
+        html += '<div style="min-width:180px;flex:1;">';
+        html += '<div style="font-weight:700;color:var(--white);">' + gIcon + ' ' + escapeHtml(w.name || '—') + '</div>';
+        html += '<div style="font-size:11.5px;color:var(--muted);margin-top:2px;">' +
+            'HCP: <b style="color:var(--text);">' + hcp + '</b>' +
+            ' · ' + fmtTeePill(w.tee || 'wh') +
+            (w.phone ? ' · ' + escapeHtml(w.phone) : '') +
+            (w.registeredAt ? ' · ' + (en ? 'signed up' : 'записан') + ' ' + fmtDate(w.registeredAt) : '') +
+            '</div></div>';
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+        html += '<button type="button" class="btn btn-g btn-sm" onclick="tnWaitlistAddToTournament(\'' + tnId + '\',\'' + escapeHtml(it.key) + '\')"><i class="fas fa-user-check"></i> ' + (en ? 'Add to tournament' : 'Добавить в турнир') + '</button>';
+        html += '<button type="button" class="btn btn-r btn-sm" onclick="tnWaitlistRemove(\'' + tnId + '\',\'' + escapeHtml(it.key) + '\')" title="' + (en ? 'Remove from waitlist' : 'Убрать из ожидания') + '"><i class="fas fa-xmark"></i></button>';
+        html += '</div></div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+// Перенос одного игрока из листа ожидания в состав (registeredPlayers).
+// Дубли по ФИО не создаются: если игрок уже в составе — просто убираем
+// его из ожидания. Ключ записи в составе: uid для игроков с аккаунтом
+// (бейдж «Вы записаны» работает по нему), иначе уникальный ключ.
+function tnWaitlistAddToTournament(tnId, wKey) {
+    if (typeof db === 'undefined' || !db) return;
+    var en = currentLang === 'en';
+    db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+        var tVal = sn.val() || {};
+        var w = (tVal.waitlist || {})[wKey];
+        if (!w) return;
+        var reg = tVal.registeredPlayers || {};
+        var normName = tnWaitNameNorm(w.name);
+        var existingKey = null;
+        Object.keys(reg).forEach(function(k) {
+            if (existingKey) return;
+            if (tnWaitNameNorm((reg[k] || {}).name) === normName) existingKey = k;
+        });
+        var updates = {};
+        if (existingKey) {
+            updates['tournaments/' + tnId + '/waitlist/' + wKey] = null;
+            return db.ref().update(updates).then(function() {
+                toast((en ? 'Already in the roster — removed from waitlist: ' : 'Уже в составе — убран из ожидания: ') + (w.name || ''), 'info');
+            });
+        }
+        var key = (w.uid && !/^user_/.test(String(w.uid))) ? String(w.uid) :
+            ('wl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8));
+        var entry = {};
+        Object.keys(w).forEach(function(f) { entry[f] = w[f]; });
+        entry.addedAt = Date.now();
+        updates['tournaments/' + tnId + '/registeredPlayers/' + key] = entry;
+        updates['tournaments/' + tnId + '/waitlist/' + wKey] = null;
+        return db.ref().update(updates).then(function() {
+            toast('✅ ' + (en ? 'Added to the tournament: ' : 'Добавлен в турнир: ') + (w.name || ''), 'success');
+        });
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+// «Добавить всех»: одна пакетная запись (update) на весь список ожидания.
+function tnWaitlistAddAll(tnId) {
+    if (typeof db === 'undefined' || !db) return;
+    var en = currentLang === 'en';
+    var waitlist = (typeof tnTnVals !== 'undefined' && tnTnVals[tnId] && tnTnVals[tnId].waitlist) || {};
+    var keys = Object.keys(waitlist);
+    if (!keys.length) { toast(en ? 'Waitlist is empty' : 'Список ожидания пуст', 'info'); return; }
+    if (!confirm((en ? 'Add all ' : 'Добавить всех ') + keys.length + (en ? ' players to the tournament?' : ' игроков в турнир?'))) return;
+    db.ref('tournaments/' + tnId).once('value').then(function(sn) {
+        var tVal = sn.val() || {};
+        var reg = tVal.registeredPlayers || {};
+        var knownNames = {};
+        Object.keys(reg).forEach(function(k) {
+            var nm = tnWaitNameNorm((reg[k] || {}).name);
+            if (nm) knownNames[nm] = true;
+        });
+        var wl = tVal.waitlist || {};
+        var updates = {};
+        var added = 0, skipped = 0;
+        Object.keys(wl).forEach(function(k) {
+            var w = wl[k] || {};
+            var normName = tnWaitNameNorm(w.name);
+            if (normName && knownNames[normName]) {
+                updates['tournaments/' + tnId + '/waitlist/' + k] = null;
+                skipped++;
+                return;
+            }
+            var key = (w.uid && !/^user_/.test(String(w.uid))) ? String(w.uid) :
+                ('wl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8));
+            var entry = {};
+            Object.keys(w).forEach(function(f) { entry[f] = w[f]; });
+            entry.addedAt = Date.now();
+            if (normName) knownNames[normName] = true;
+            updates['tournaments/' + tnId + '/registeredPlayers/' + key] = entry;
+            updates['tournaments/' + tnId + '/waitlist/' + k] = null;
+            added++;
+        });
+        return db.ref().update(updates).then(function() {
+            toast('✅ ' + (en ? 'Added to the tournament: ' : 'Добавлено в турнир: ') + added +
+                (skipped ? (en ? ' · already in roster: ' : ' · уже в составе: ') + skipped : ''), 'success');
+        });
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+// Убрать игрока из листа ожидания (без подтверждения — запись обратима:
+// игрок может записаться повторно со страницы «Турниры»).
+function tnWaitlistRemove(tnId, wKey) {
+    if (typeof db === 'undefined' || !db) return;
+    db.ref('tournaments/' + tnId + '/waitlist/' + wKey).remove().then(function() {
+        toast(currentLang === 'en' ? 'Removed from the waitlist' : 'Убран из списка ожидания', 'info');
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
 // Инлайн-редактирование группы: tnDivEditing[tnId] = divId.
 var tnDivEditing = {};
 // Кэш последних значений турниров из подписки — для перерисовки
@@ -1252,6 +1433,7 @@ function loadTournaments() {
 
         var formatLabel = currentLang === 'en' ? 'Formats: ' : 'Форматы: ';
         var teeLabel = currentLang === 'en' ? 'Tees: ' : 'ТИ: ';
+        var waitLabel = currentLang === 'en' ? 'Waitlist: ' : 'Ожидание: ';
 
         var html = '';
         tnTnVals = {};
@@ -1262,6 +1444,8 @@ function loadTournaments() {
             var teesStr = (tVal.tees || []).map(function(k) { return t('tee_' + k); }).join(', ') || '—';
             var regPlayers = tVal.registeredPlayers || {};
             var regCount = admUniqueRegCount(regPlayers);
+            var waitlistVal = tVal.waitlist || {};
+            var waitCount = Object.keys(waitlistVal).length;
 
             var tnStatus = tVal.status || 'upcoming';
             var tnEn = currentLang === 'en';
@@ -1277,7 +1461,8 @@ function loadTournaments() {
             html += '<div style="flex:1;min-width:200px;">';
             html += '<strong style="color:var(--white);">' + escapeHtml(tVal.name || '—') + '</strong> ' + tnStatusHtml;
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-                    fmtDate((typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date)) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + ' · ' + (tnEn ? 'Players: ' : 'Заявлено: ') + regCount + '</div>';
+                    fmtDate((typeof tnDateTs === 'function') ? tnDateTs(tVal.date) : Date.parse(tVal.date)) + ' · ' + formatLabel + formatsStr + ' · ' + teeLabel + teesStr + ' · ' + (tnEn ? 'Players: ' : 'Заявлено: ') + regCount +
+                    (waitCount ? ' · ' + waitLabel + '<b style="color:var(--gold);">' + waitCount + '</b>' : '') + '</div>';
             if (tnDivisions.length) {
                 html += '<div style="margin-top:6px;">';
                 tnDivisions.forEach(function(d) {
@@ -1306,10 +1491,14 @@ function loadTournaments() {
             if (regCount > 0) {
                 html += '<button class="btn btn-og btn-sm" onclick="exportTournamentRosterCSV(\'' + id + '\')"><i class="fas fa-file-csv"></i> CSV</button>';
             }
+            // ЛИСТ ОЖИДАНИЯ: заявившиеся игроки (ещё не в составе) — сюда.
+            // Администратор выбирает оттуда участников и добавляет в турнир.
+            html += '<button class="btn btn-og btn-sm" onclick="tnToggleWaitlist(\'' + id + '\')" title="' + (tnEn ? 'Players who signed up but are not in the roster yet. Pick who gets a place.' : 'Игроки, записавшиеся, но ещё не в составе. Выберите, кого добавить в турнир.') + '"><i class="fas fa-hourglass-half"></i> ' + (tnEn ? 'Waitlist' : 'Ожидание') + ' (' + waitCount + ')</button>';
             // Удаление турнира всегда каскадное: вместе с раундами и протоколами.
             html += '<button class="btn btn-r btn-sm" title="' + (tnEn ? 'Delete tournament with all its rounds and group protocols' : 'Удалить турнир вместе со всеми его раундами и протоколами групп') + '" onclick="deleteTn(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
             html += '</div></div>';
             html += '<div id="tn-div-' + id + '" class="tn-div-block' + (tnDivOpen[id] ? '' : ' hidden') + '">' + tnDivisionsEditorHtml(id, tnDivisions, tVal) + '</div>';
+            html += '<div id="tn-waitlist-' + id + '" class="tn-div-block' + (tnWaitOpen[id] ? '' : ' hidden') + '">' + tnWaitlistAdminHtml(id, tVal) + '</div>';
             html += '</div>';
         });
 
@@ -2113,30 +2302,41 @@ function tnAutoDivisions(tnId) {
     });
 }
 
-function listenForAlerts() {
-    if (typeof db === 'undefined' || !db) return;
-    // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
-    // ВАЖНО: слушаем ветку alerts ЦЕЛИКОМ и фильтруем «активные» на клиенте.
-    // Запрос orderByChild('status').equalTo('active') в базе без индекса
-    // (правила Firebase) молча ничего не возвращал — из-за этого вызов судьи
-    // или маршала не появлялся в админ-меню.
-    bindRealtimeValue('admin-alerts-all', db.ref('alerts'), function(sn) {
-        var allAlerts = sn.val() || {};
-        var alerts = {};
-        Object.keys(allAlerts).forEach(function(k) {
-            var a = allAlerts[k] || {};
-            if (String(a.status || 'active') === 'active') alerts[k] = a;
-        });
-        var c = document.getElementById('admin-alerts-list');
-        var statsEl = document.getElementById('admin-alerts-stats');
-        var bannerEl = document.getElementById('admin-top-alerts-banner');
-        var entries = Object.entries(alerts);
-        updateAdminAlertsBadge(entries.length);
+// ============================================================
+// ДЕБАУНС ПАНЕЛИ «ВЫЗОВЫ» АДМИНА (фикс зависания сайта)
+// ------------------------------------------------------------
+// Во время активной игры вызовы судьи/маршала приходят подряд —
+// каждый это новый снимок ветки alerts. Раньше на КАЖДЫЙ снимок
+// перерисовывались статистика + баннер + весь список вызовов, и
+// частые уведомления «зависали намертво» админ-панель. Теперь:
+// лёгкая обработка на каждый снимок (счётчик на вкладке + пуш через
+// глобальный троттлер pwa.js), а тяжёлая перерисовка — не чаще
+// одного раза за 300 мс («волна» уведомлений = один рендер).
+// ============================================================
+var admAlertsRenderTimer = null;
+var admAlertsPending = null;
+function admAlertsScheduleRender() {
+    if (admAlertsRenderTimer) return;
+    admAlertsRenderTimer = setTimeout(function() {
+        admAlertsRenderTimer = null;
+        var p = admAlertsPending;
+        admAlertsPending = null;
+        if (p) { try { admAlertsRenderPanel(p); } catch (e) { console.warn('[alerts render]', e); } }
+    }, 300);
+}
+
+function admAlertsRenderPanel(p) {
+    var entries = p.entries;
+    var allEntries = p.allEntries;
+    var hasNewAlert = p.hasNewAlert;
+    var c = document.getElementById('admin-alerts-list');
+    var statsEl = document.getElementById('admin-alerts-stats');
+    var bannerEl = document.getElementById('admin-top-alerts-banner');
 
         // === Статистика всех вызовов (требование #5) ===
         if (statsEl) {
             try {
-                var allEntries = Object.entries(allAlerts);
+                var allEntries = Object.entries(p.allEntries);
                 var totalRef = 0, totalMar = 0, activeRef = 0, activeMar = 0, resolved = 0;
                 allEntries.forEach(function(e) {
                     var a = e[1] || {};
@@ -2203,28 +2403,6 @@ function listenForAlerts() {
             return;
         }
 
-        var hasNewAlert = false;
-        var isFirstRun = Object.keys(knownAlertIds).length === 0;
-
-        entries.forEach(function(e) {
-            var id = e[0], a = e[1];
-            if (!knownAlertIds[id]) {
-                knownAlertIds[id] = true;
-                hasNewAlert = true;
-                var title = a.type === 'referee' ? (currentLang === 'en' ? '🚨 REFEREE CALL!' : '🚨 ВЫЗОВ СУДЬИ!') : (currentLang === 'en' ? '🚨 MARSHAL CALL!' : '🚨 ВЫЗОВ МАРШАЛА!');
-                var body = (currentLang === 'en' ? 'Hole #' : 'Лунка №') + a.hole + ' | ' + (currentLang === 'en' ? 'Player: ' : 'Игрок: ') + (a.playerName || 'Player') + ' (' + fmtTime(a.time) + ')';
-                if (a.flightMembers && a.flightMembers.length) {
-                    body += ' | ' + (currentLang === 'en' ? 'Flight: ' : 'Флайт: ') + a.flightMembers.join(', ');
-                }
-                // Уведомление показываем и на первом снимке (админ только что
-                // открыл панель, а вызов уже висит) — раньше такой вызов
-                // оставался «незамеченным»: ни тоста, ни push.
-                if (typeof showPushNotification === 'function') {
-                    try { showPushNotification(title, body, 'admin.html'); } catch (ePush) {}
-                }
-            }
-        });
-
         if (c) {
             var html = '';
             entries.sort(function(a, b) { return b[1].time - a[1].time; }).forEach(function(e) {
@@ -2284,6 +2462,61 @@ function listenForAlerts() {
                 'error');
             try { vib([200, 100, 200]); } catch (eVib) {}
         }
+}
+
+function listenForAlerts() {
+    if (typeof db === 'undefined' || !db) return;
+    // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
+    // ВАЖНО: слушаем ветку alerts ЦЕЛИКОМ и фильтруем «активные» на клиенте.
+    // Запрос orderByChild('status').equalTo('active') в базе без индекса
+    // (правила Firebase) молча ничего не возвращал — из-за этого вызов судьи
+    // или маршала не появлялся в админ-меню.
+    bindRealtimeValue('admin-alerts-all', db.ref('alerts'), function(sn) {
+        var allAlerts = sn.val() || {};
+        var alerts = {};
+        Object.keys(allAlerts).forEach(function(k) {
+            var a = allAlerts[k] || {};
+            if (String(a.status || 'active') === 'active') alerts[k] = a;
+        });
+        var entries = Object.entries(alerts);
+
+        // Лёгкая обработка на каждый снимок: счётчик на вкладке (без рендера).
+        updateAdminAlertsBadge(entries.length);
+
+        // Новые вызовы: пуш-уведомление — через ГЛОБАЛЬНЫЙ ТРОТТЛЕР в pwa.js
+        // (не чаще 1 раза в 4 секунды, с дедупликацией), чтобы шквал
+        // уведомлений не «зависал» страницу.
+        var hasNewAlert = false;
+        entries.forEach(function(e) {
+            var id = e[0], a = e[1];
+            if (!knownAlertIds[id]) {
+                knownAlertIds[id] = true;
+                hasNewAlert = true;
+                var title = a.type === 'referee' ? (currentLang === 'en' ? '🚨 REFEREE CALL!' : '🚨 ВЫЗОВ СУДЬИ!') : (currentLang === 'en' ? '🚨 MARSHAL CALL!' : '🚨 ВЫЗОВ МАРШАЛА!');
+                var body = (currentLang === 'en' ? 'Hole #' : 'Лунка №') + a.hole + ' | ' + (currentLang === 'en' ? 'Player: ' : 'Игрок: ') + (a.playerName || 'Player') + ' (' + fmtTime(a.time) + ')';
+                if (a.flightMembers && a.flightMembers.length) {
+                    body += ' | ' + (currentLang === 'en' ? 'Flight: ' : 'Флайт: ') + a.flightMembers.join(', ');
+                }
+                // Уведомление показываем и на первом снимке (админ только что
+                // открыл панель, а вызов уже висит) — раньше такой вызов
+                // оставался «незамеченным»: ни тоста, ни push.
+                if (typeof showPushNotification === 'function') {
+                    try { showPushNotification(title, body, 'admin.html'); } catch (ePush) {}
+                }
+            }
+        });
+
+        // Подборка памяти: вызовы, исчезнувшие из базы, в «известных» не нужны.
+        var knownKeys = Object.keys(knownAlertIds);
+        if (knownKeys.length > 200) {
+            var presentNow = {};
+            Object.keys(allAlerts).forEach(function(k) { presentNow[k] = true; });
+            knownKeys.forEach(function(k) { if (!presentNow[k]) delete knownAlertIds[k]; });
+        }
+
+        // Тяжёлая перерисовка панели — не чаще одного раза за 300 мс.
+        admAlertsPending = { entries: entries, allEntries: Object.entries(allAlerts), hasNewAlert: hasNewAlert };
+        admAlertsScheduleRender();
     });
 }
 
@@ -2461,10 +2694,17 @@ function bcAudienceUids(type, tnId, protoId, cb) {
     if (type === 'roster') {
         if (!tnId) { cb(out); return; }
         if (bcAudience.reg[tnId]) { Object.keys(bcAudience.reg[tnId]).forEach(addId); cb(out); return; }
-        db.ref('tournaments/' + tnId + '/registeredPlayers').once('value').then(function(sn) {
-            var reg = sn.val() || {};
+        // Аудитория «турниру» = состав + лист ожидания: записавшиеся
+        // (ещё не подтверждённые) игроки тоже должны получать анонсы.
+        Promise.all([
+            db.ref('tournaments/' + tnId + '/registeredPlayers').once('value').catch(function() { return null; }),
+            db.ref('tournaments/' + tnId + '/waitlist').once('value').catch(function() { return null; })
+        ]).then(function(sn) {
+            var reg = (sn[0] && sn[0].val && sn[0].val()) || {};
+            var wl = (sn[1] && sn[1].val && sn[1].val()) || {};
             bcAudience.reg[tnId] = reg;
             Object.keys(reg).forEach(addId);
+            Object.keys(wl).forEach(addId);
             cb(out);
         }).catch(function() { cb(out); });
         return;
@@ -3921,6 +4161,62 @@ function saveTnRosterVariant(v) {
 }
 
 // ==========================================
+// РАЗДЕЛЕНИЕ ЛИДЕРБОРДА ТУРНИРА ПО ПОЛУ (3 вида)
+// ==========================================
+function markAdmTnGenderSplitButtons() {
+    var cur = (typeof getTnGenderSplit === 'function') ? getTnGenderSplit() : '1';
+    ['1', '2', '3'].forEach(function(v) {
+        var btn = document.getElementById('tn-gs-opt-' + v);
+        if (!btn) return;
+        var active = String(v) === String(cur);
+        btn.classList.toggle('btn-g', active);
+        btn.classList.toggle('btn-og', !active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
+function saveTnGenderSplit(v) {
+    if (['1', '2', '3'].indexOf(String(v)) === -1) return;
+    if (typeof vib === 'function') vib(30);
+    if (typeof applyTnGenderSplit === 'function') applyTnGenderSplit(v);
+    else markAdmTnGenderSplitButtons();
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Saved locally (no database)' : 'Сохранено локально (нет базы)', 'info');
+        return;
+    }
+    db.ref('settings/tn_gender_split').set(String(v)).then(function() {
+        toast(currentLang === 'en'
+            ? '✅ Gender split for the tournament leaderboard saved for all users'
+            : '✅ Разделение лидерборда по полу сохранено для всех', 'success');
+    }).catch(function(err) {
+        console.warn('tn_gender_split save error:', err);
+        toast(currentLang === 'en' ? '⚠️ Could not save to the cloud' : '⚠️ Не удалось сохранить в облако', 'error');
+    });
+}
+
+function loadTnGenderSplitSettings() {
+    var applyValue = function(value) {
+        if (value !== null && value !== undefined && typeof applyTnGenderSplit === 'function') {
+            applyTnGenderSplit(value);
+        }
+        markAdmTnGenderSplitButtons();
+    };
+    if (typeof db === 'undefined') {
+        applyValue(null);
+        return;
+    }
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-tn-gender-split', db.ref('settings/tn_gender_split'), function(sn) {
+            applyValue(sn.val());
+        });
+    } else {
+        db.ref('settings/tn_gender_split').once('value').then(function(sn) {
+            applyValue(sn.val());
+        }).catch(function() { applyValue(null); });
+    }
+}
+
+// ==========================================
 // ВАРИАНТЫ ОТОБРАЖЕНИЯ ОСНОВНЫХ СТРАНИЦ
 // ==========================================
 var ADMIN_PAGE_DISPLAY_CONFIG = {
@@ -5030,18 +5326,85 @@ function handlePlayersFileSelect(input) {
     reader.onload = function(e) {
         try {
             var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-            var sheet = wb.Sheets[wb.SheetNames[0]];
-            if (!sheet) throw new Error(currentLang === 'en' ? 'no sheets' : 'нет листов в файле');
+            if (!wb.SheetNames.length) throw new Error(currentLang === 'en' ? 'no sheets' : 'нет листов в файле');
 
-            var json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-            var mapped = impMapRows(json || []);
-            if (!mapped.validRows.length && !mapped.invalidRows.length) {
+            // ТО ЖЕ ЧТЕНИЕ, ЧТО И «УЧАСТНИКИ СТАРТОВОГО ЛИСТА» (start-admin.js):
+            // сканируем ВСЕ листы и ВСЕ столбцы каждого — имена ищутся по
+            // заголовкам (ИФ/ФИО/Имя+Фамилия, Точный гандикап/HCP, Пол, ТИ),
+            // а не только первый лист с известными заголовками.
+            var validRows = [];
+            var invalidRows = [];
+            var seenNameKey = {};
+            var en = currentLang === 'en';
+            var useGrid = (typeof psParseExcelGrid === 'function' && typeof XLSX !== 'undefined');
+            if (useGrid) {
+                wb.SheetNames.forEach(function(sheetName) {
+                    var ws = wb.Sheets[sheetName];
+                    if (!ws) return;
+                    var grid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                    var res = psParseExcelGrid(grid);
+                    (res.valid || []).forEach(function(rec) {
+                        var name = ((rec.firstName || '') + ' ' + (rec.lastName || '')).replace(/\s+/g, ' ').trim();
+                        if (!name) return;
+                        // Дубль того же человека в пределах файла — одна строка
+                        // (поздний лист переопределяет ранний, как в стартовом листе).
+                        var key = impNameKey({ firstName: rec.firstName, lastName: rec.lastName });
+                        for (var i = 0; i < validRows.length; i++) {
+                            if (impNameKey({ firstName: validRows[i].firstName, lastName: validRows[i].lastName }) === key) {
+                                validRows.splice(i, 1);
+                                break;
+                            }
+                        }
+                        validRows.push({
+                            idx: 0, // перенумеруем ниже
+                            firstName: rec.firstName || '',
+                            lastName: rec.lastName || '',
+                            name: name,
+                            hcp: (rec.hcp != null && rec.hcp !== '') ? rec.hcp : null,
+                            hcpRaw: (rec.hcp != null && rec.hcp !== '') ? String(rec.hcp) : '',
+                            gender: rec.gender || 'men',
+                            dup: null,
+                            error: null
+                        });
+                    });
+                    (res.invalid || []).forEach(function(rec) {
+                        var name = String(rec.name || ((rec.firstName || '') + ' ' + (rec.lastName || ''))).replace(/\s+/g, ' ').trim();
+                        invalidRows.push({
+                            idx: 0,
+                            firstName: rec.firstName || '',
+                            lastName: rec.lastName || '',
+                            name: name,
+                            hcp: null,
+                            hcpRaw: '',
+                            gender: 'men',
+                            dup: null,
+                            error: String(rec.err || (rec.errors && rec.errors.length ? rec.errors.join(', ') : (en ? 'no name' : 'нет имени')))
+                        });
+                    });
+                });
+            }
+            // Резерв: если парсер стартового листа недоступен — старая логика
+            // по первому листу (заголовки из первой строки).
+            if (!useGrid || (!validRows.length && !invalidRows.length)) {
+                var first = wb.Sheets[wb.SheetNames[0]];
+                var json = first ? XLSX.utils.sheet_to_json(first, { defval: '' }) : [];
+                var mapped = impMapRows(json || []);
+                validRows = validRows.length || invalidRows.length ? validRows : mapped.validRows;
+                invalidRows = invalidRows.length || validRows.length ? invalidRows : mapped.invalidRows;
+            }
+
+            // Нумерация строк для чекбоксов предпросмотра.
+            var nIdx = 0;
+            validRows.forEach(function(r) { r.idx = nIdx++; });
+            invalidRows.forEach(function(r) { r.idx = nIdx++; });
+
+            if (!validRows.length && !invalidRows.length) {
                 if (statusEl) statusEl.innerHTML = '<div class="imp-note imp-note-err"><i class="fas fa-triangle-exclamation"></i> ' +
-                    (currentLang === 'en' ? 'No data rows found in the file.' : 'В файле не найдено ни одной строки с данными.') + '</div>';
+                    (en ? 'No data rows found in the file (all sheets scanned).' : 'Во всех листах файла не найдено строк с данными.') + '</div>';
                 return;
             }
-            impParsedRows = mapped.validRows.concat(mapped.invalidRows);
-            impRenderPreview(mapped.validRows, mapped.invalidRows);
+            impParsedRows = validRows.concat(invalidRows);
+            impRenderPreview(validRows, invalidRows);
             if (statusEl) statusEl.innerHTML = '';
         } catch (err) {
             console.warn('Import parse error:', err);

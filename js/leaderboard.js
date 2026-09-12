@@ -29,7 +29,14 @@ function loadLB() {
         var data = sn.val() || {};
         // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
         if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
-        var allEntries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object'; });
+        // Раунды 'scheduled' — это будущие раунды ЕЩЁ НЕ СТАРТОВАВШЕГО
+        // турнира (созданы из стартового протокола заранее). До начала
+        // турнира на «Все раунды» их не показываем: раньше они виделись
+        // со статусом «Завершён», хотя по сути ещё не существуют.
+        var allEntries = Object.entries(data).filter(function(e) {
+            if (!e || !e[1] || typeof e[1] !== 'object') return false;
+            return String((e[1] || {}).status || 'active') !== 'scheduled';
+        });
         var totalRounds = allEntries.length;
 
         var dateFilter = (typeof getDateRangeFilter === 'function') ? getDateRangeFilter('leaderboard') : null;

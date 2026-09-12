@@ -735,14 +735,64 @@ function homeTnRowsHtml(tnEntries, forceOpen) {
     return html;
 }
 
+// Активные турниры для главной: блок «Активный турнир» должен
+// показываться, как только турнир СТАРТОВАЛ (status='active'), даже
+// если первого результата по раундам ещё не было — раньше он
+// «не появлялся», пока не находилось ни одного активного турнирарного
+// раунда.
+var homeActiveTournaments = {};
+var homeLastRoundsData = null;
+function homeActiveTnList() {
+    var out = [];
+    Object.keys(homeActiveTournaments || {}).forEach(function(id) {
+        var tVal = homeActiveTournaments[id] || {};
+        if (tVal.status === 'active') out.push([id, tVal]);
+    });
+    out.sort(function(a, b) {
+        return ((b[1].startedAt || b[1].createdAt || 0) - (a[1].startedAt || a[1].createdAt || 0));
+    });
+    return out;
+}
+
+// Активный турнир без активных раундов/счётов — компактный блок-заглушка.
+function homeTnPlaceholderHtml(tnId, tVal) {
+    var en = currentLang === 'en';
+    var html = '<div class="htv-block" style="padding:12px 14px;background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.35);border-radius:12px;margin-top:10px;">';
+    html += '<div class="htv-head" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">' +
+        '<b style="color:var(--gold);font-size:14px;"><i class="fas fa-trophy"></i> ' + escapeHtml(tVal.name || '') + '</b>' +
+        '<span class="htv-fmt-chip" style="color:#e74c3c;"><i class="fas fa-satellite-dish"></i> ' + (en ? 'In progress' : 'Турнир идёт') + '</span></div>';
+    html += '<div style="font-size:12.5px;color:var(--muted);">' +
+        (en ? 'Scores will appear here as soon as the first results come in.' : 'Счета появятся здесь, как только придут первые результаты.') + '</div>';
+    html += '<a href="tournaments.html" class="btn btn-og btn-sm" style="margin-top:8px;display:inline-block;">' +
+        (en ? 'To the tournament' : 'К турниру') + ' <i class="fas fa-arrow-right"></i></a>';
+    html += '</div>';
+    return html;
+}
+
 function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
     if (typeof db === 'undefined') return;
     // Вид блока «Активный турнир» (5 вариантов) — выбирает только админ.
     if (typeof pestovoBindView5 === 'function') pestovoBindView5('homeTournament', function() { try { syncView5BodyClasses(); } catch (e) {} });
 
+    // Статусы турниров: по ним блок «Активный турнир» показывается сразу
+    // после старта, даже без активного раунда (фикс «активный турнир
+    // не виден на главной»).
+    bindRealtimeValue('home-active-tournaments', db.ref('tournaments'), function(sn) {
+        homeActiveTournaments = (sn && sn.val && sn.val()) || {};
+        if (homeLastRoundsData !== null) renderHomeLiveRounds(homeLastRoundsData);
+    });
+
     bindRealtimeValue('home-live-rounds', db.ref('rounds'), function(snap) {
         var data = snap.val() || {};
+        homeLastRoundsData = data;
+        renderHomeLiveRounds(data);
+    });
+}
+
+function renderHomeLiveRounds(data) {
+    (function() {
+        var el = document.getElementById('live-rounds');
         // Вчерашние незавершённые раунды автоматически закрываем со статусом
         // «завершён автоматически» — они исчезнут из блока «Сейчас на поле».
         if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
@@ -767,10 +817,17 @@ function loadLiveRounds() {
 
         if (!el) return;
 
+        // Активные турниры (status='active') — блок показывается по их
+        // статусу, даже если активных раундов/счётов пока нет.
+        var activeTnNow = homeActiveTnList();
+
         if (entries.length === 0) {
             el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
-            if (tnEl) tnEl.innerHTML = '';
-            if (tnSec) tnSec.classList.add('hidden');
+            if (tnEl) {
+                // Турнир стартует, а счётов ещё нет — не прячем его.
+                tnEl.innerHTML = activeTnNow.map(function(e) { return homeTnPlaceholderHtml(e[0], e[1]); }).join('');
+            }
+            if (tnSec) tnSec.classList.toggle('hidden', activeTnNow.length === 0);
             return;
         }
 
@@ -797,9 +854,9 @@ function loadLiveRounds() {
             return html;
         };
 
-        if (tnSec) tnSec.classList.toggle('hidden', tnEntries.length === 0);
+        if (tnSec) tnSec.classList.toggle('hidden', !(tnEntries.length || activeTnNow.length));
         if (tnEl) {
-            if (tnEntries.length) {
+            if (tnEntries.length || activeTnNow.length) {
                 // Группируем турнирные раунды по турниру: сводка + развёрнутые раунды
                 var byTn = {};
                 var tnOrder = [];
@@ -812,6 +869,11 @@ function loadLiveRounds() {
                 var tnHtml = '';
                 tnOrder.forEach(function(tid) {
                     tnHtml += homeTnTop3Entry(tid, byTn[tid].name, byTn[tid].list);
+                });
+                // Активные турниры, у которых активных раундов пока нет —
+                // компактный блок-заглушка, чтобы турнир не «исчезал» с главной.
+                activeTnNow.forEach(function(e) {
+                    if (!byTn[e[0]]) tnHtml += homeTnPlaceholderHtml(e[0], e[1]);
                 });
                 tnEl.innerHTML = tnHtml;
             } else {
@@ -829,7 +891,7 @@ function loadLiveRounds() {
 
         // Перерисовка не должна сворачивать уже открытую счётную карточку
         restoreLiveWhoPanels();
-    });
+    })();
 }
 
 // Заполнение панели счётной карточки: данные берём из подписки, если они есть
@@ -1067,7 +1129,13 @@ function loadClubStats() {
     Promise.all([db.ref('rounds').once('value'), db.ref('users').once('value')]).then(function(snaps) {
         var rounds = snaps[0].val() || {};
         var users = snaps[1].val() || {};
-        var totalRounds = Object.keys(rounds).length;
+        // Раунды со статусом 'scheduled' (созданные протоколом заранее, но
+        // турнир ещё не стартовал) в статистику НЕ попадают — «раундов,
+        // которых нет», в цифрах не должно быть.
+        var countedRounds = Object.values(rounds).filter(function(r) {
+            return r && String((r || {}).status || 'active') !== 'scheduled';
+        });
+        var totalRounds = countedRounds.length;
         var totalPlayers = Object.keys(users).filter(function(uid) {
             var u = users[uid];
             return !(u && typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u.name));
@@ -1076,7 +1144,7 @@ function loadClubStats() {
         var birdies = 0, eagles = 0, pars = 0, bogeys = 0;
         var best = Infinity, totalHolesPlayed = 0;
 
-        Object.values(rounds).forEach(function(r) {
+        countedRounds.forEach(function(r) {
             if (r.status === 'completed') completedRounds++;
             if (r.status === 'active') activeRounds++;
             Object.values(r.players || {}).forEach(function(p) {

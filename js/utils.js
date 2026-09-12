@@ -6532,6 +6532,64 @@ function applyTnRosterVariant(v) {
     return pestovoTnRosterVariant;
 }
 
+// ==========================================
+// РАЗДЕЛЕНИЕ ЛИДЕРБОРДА ТУРНИРА ПО ПОЛУ (3 вида, выбирает админ)
+// ============================================================
+// Вид 1 — Смешанный: все игроки в одной таблице (как раньше).
+// Вид 2 — По полу (вкладки): «Все · Мужчины · Девушки», места считаются
+//         отдельно внутри каждого пола.
+// Вид 3 — Раздельные таблицы: отдельные лидерборды «Мужчины» и «Девушки»
+//         рядом, места в каждом считаются независимо.
+// Настройка: settings/tn_gender_split, применяется для всех.
+var TN_GENDER_SPLIT_VARIANTS = ['1', '2', '3'];
+function normalizeTnGenderSplit(v) {
+    v = String(v === undefined || v === null ? '' : v);
+    return TN_GENDER_SPLIT_VARIANTS.indexOf(v) !== -1 ? v : '1';
+}
+var pestovoTnGenderSplit = '1';
+try { pestovoTnGenderSplit = normalizeTnGenderSplit(localStorage.getItem('pestovo_tn_gender_split')); } catch (e) {}
+function getTnGenderSplit() { return pestovoTnGenderSplit; }
+function applyTnGenderSplit(v) {
+    pestovoTnGenderSplit = normalizeTnGenderSplit(v);
+    try { localStorage.setItem('pestovo_tn_gender_split', pestovoTnGenderSplit); } catch (e) {}
+    try { if (typeof markAdmTnGenderSplitButtons === 'function') markAdmTnGenderSplitButtons(); } catch (e) {}
+    try { if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards(); } catch (e) {}
+    return pestovoTnGenderSplit;
+}
+
+// Нормализация пола участника (один на весь сайт): 'men' | 'women'.
+// Старые записи могли содержать 'f'/'female'/'жен' и т.п.
+function pestovoNormGender(g) {
+    var s = String(g == null ? '' : g).toLowerCase();
+    if (s === 'w' || s === 'f' || s === 'women' || s === 'woman' || s === 'female' || s.indexOf('жен') === 0 || s.indexOf('дев') === 0) return 'women';
+    return 'men';
+}
+
+// Сортировка списка участников ПО ГАНДИКАПУ (по умолчанию, вместо алфавита):
+// меньший гандикап выше (как в гольф-таблицах), без гандикапа — в конце,
+// затем по имени. Работает со строками { rp, effHcp } (список участников)
+// и с записями лидерборда (hcpRaw/hcpPlayed + effHcp).
+function tnHcpSortValue(en2) {
+    var v = null;
+    if (en2 && en2.effHcp != null && en2.effHcp !== '') v = en2.effHcp;
+    if (v == null && en2 && en2.rp && en2.rp.handicap != null && en2.rp.handicap !== '') v = en2.rp.handicap;
+    if (v == null && en2 && en2.hcpPlayed != null && en2.hcpPlayed !== '') v = en2.hcpPlayed;
+    if (v == null && en2 && en2.hcpRaw != null && en2.hcpRaw !== '') v = en2.hcpRaw;
+    var n = parseFloat(v);
+    return isNaN(n) ? null : n;
+}
+function tnSortByHandicap(list) {
+    (list || []).sort(function(a, b) {
+        var ha = tnHcpSortValue(a), hb = tnHcpSortValue(b);
+        if (ha === null && hb === null) return String(a.name || '').localeCompare(String(b.name || ''));
+        if (ha === null) return 1;
+        if (hb === null) return -1;
+        if (ha !== hb) return ha - hb;
+        return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+    return list;
+}
+
 // ─────────────────────────────────────────────────────────
 // АДМИНСКИЕ ВИДЫ ОТОБРАЖЕНИЯ (5 вариантов, выбирает только админ)
 //   homeTournament — блок «Активный турнир» на главной;
@@ -7840,6 +7898,140 @@ function renderMatchPlayTrackerHTML(matchStatus) {
     return html;
 }
 
+// ============================================================
+// ФОРМАТЫ ТУРНИРА: класс формата + расчёт МЭТЧ-РЕЗУЛЬТАТОВ
+// ------------------------------------------------------------
+// Stroke Play / Gross / Net / Stableford — на удары (считает
+// calcRoundStats). Match Play 1v1 / 2v2 — матчи: победитель лунок,
+// Skramble / Texas Skramble / Greensomes — командные форматы, где
+// счёт группы на лунке = лучший удар игроков группы.
+// ============================================================
+function pestovoFormatType(f) {
+    var s = String(f == null ? '' : f);
+    if (s === 'Match Play 1v1') return 'match1v1';
+    if (s === 'Match Play 2v2') return 'match2v2';
+    if (s === 'Scramble' || s === 'Texas Scramble' || s === 'Greensomes') return 'team';
+    return 'stroke';
+}
+function pestovoIsMatchFormat(f) {
+    var t = pestovoFormatType(f);
+    return t === 'match1v1' || t === 'match2v2';
+}
+
+// Счёт СТОРОНЫ (игрока или команды) на конкретной лунке.
+// sideScores = массив объектов с полем scores (лунка -> удары).
+// Команда (foursomes/fourball в этой системе): лучший результат
+// среди членов команды (best ball) — логично и для скрембля.
+function pestovoSideHoleScore(sideScores, hole) {
+    var best = null;
+    for (var i = 0; i < (sideScores || []).length; i++) {
+        var sc = sideScores[i] && sideScores[i].scores;
+        if (!sc) continue;
+        var v = parseInt(sc[hole]);
+        if (v != null && v > 0 && (best === null || v < best)) best = v;
+    }
+    return best;
+}
+
+// Матч между двумя сторонами (по 1 или по 2 игрока). Считается по
+// лункам: ниже удары — взята лунка; равные — на равных. Финал,
+// когда перевес больше оставшихся лунок (как в 1v1).
+function calcMatchPlayStatusSides(sideAScores, sideBScores, nameA, nameB) {
+    var aWon = 0, bWon = 0, holesDone = 0;
+    var history = [];
+    for (var h = 1; h <= 18; h++) {
+        var sa = pestovoSideHoleScore(sideAScores, h);
+        var sb = pestovoSideHoleScore(sideBScores, h);
+        if (sa != null && sb != null) {
+            holesDone++;
+            if (sa < sb) { aWon++; history.push({ hole: h, winner: 1 }); }
+            else if (sb < sa) { bWon++; history.push({ hole: h, winner: 2 }); }
+            else { history.push({ hole: h, winner: 0 }); }
+        }
+    }
+    var lead = aWon - bWon;
+    var absLead = Math.abs(lead);
+    var remaining = 18 - holesDone;
+    var state = 'active', statusText = '';
+    var leadName = lead >= 0 ? nameA : nameB;
+    var trailName = lead >= 0 ? nameB : nameA;
+    if (absLead > remaining && holesDone > 0) {
+        state = 'final';
+        statusText = '\u{1F3C6} ' + (lead > 0 ? nameA : nameB).toUpperCase() +
+            ' \u041F\u041E\u0411\u0415\u0414\u0418\u041B ' + absLead + ' & ' + remaining;
+    } else if (absLead === remaining && remaining > 0) {
+        state = 'dormie';
+        statusText = '\uD83D\uDD25 ' + leadName.toUpperCase() + ' ' + absLead + ' UP (DORMIE)';
+    } else if (lead === 0) {
+        statusText = '\u2696\uFE0F ALL SQUARE (\u041D\u0438\u0447\u044C\u044F)';
+    } else {
+        statusText = '\u26A1 ' + leadName.toUpperCase() + ' ' + absLead + ' UP (' + remaining + ' \u043B. \u043E\u0441\u0442.)';
+    }
+    return {
+        sideA: nameA, sideB: nameB,
+        aWon: aWon, bWon: bWon,
+        holesDone: holesDone, remaining: remaining,
+        lead: lead, state: state, statusText: statusText,
+        winner: state === 'final' ? (lead > 0 ? nameA : nameB) : (absLead > 0 ? leadName : null),
+        holeHistory: history
+    };
+}
+
+// Матчи раунда: игроки группы паруются ПО ПОРЯДКУ (как при старте):
+// 1v1 — (1-й с 2-м), (3-й с 4-м) …; 2v2 — (1-2) против (3-4), (5-6) против (7-8).
+// Возвращает массив { a, b, status }, где a/b — массивы игроков {pid,name}.
+function pestovoRoundMatches(round) {
+    var out = [];
+    if (!round || !pestovoIsMatchFormat(round.format)) return out;
+    var is2v2 = String(round.format) === 'Match Play 2v2';
+    var pids = Object.keys(round.players || {});
+    var size = is2v2 ? 4 : 2;
+    for (var i = 0; i + size - 1 < pids.length; i += size) {
+        var chunk = pids.slice(i, i + size);
+        var a = [], b = [];
+        (is2v2 ? chunk.slice(0, 2) : chunk.slice(0, 1)).forEach(function(pid) {
+            a.push({ pid: pid, name: (round.players[pid] || {}).name || '—', scores: (round.players[pid] || {}).scores || {} });
+        });
+        (is2v2 ? chunk.slice(2, 4) : chunk.slice(1, 2)).forEach(function(pid) {
+            b.push({ pid: pid, name: (round.players[pid] || {}).name || '—', scores: (round.players[pid] || {}).scores || {} });
+        });
+        if (!a.length || !b.length) continue;
+        out.push({
+            a: a, b: b,
+            sideAName: is2v2 ? a.map(function(p) { return p.name; }).join(' + ') : a[0].name,
+            sideBName: is2v2 ? b.map(function(p) { return p.name; }).join(' + ') : b[0].name,
+            status: calcMatchPlayStatusSides(a, b,
+                is2v2 ? a.map(function(p) { return p.name; }).join(' + ') : a[0].name,
+                is2v2 ? b.map(function(p) { return p.name; }).join(' + ') : b[0].name)
+        });
+    }
+    return out;
+}
+
+// Командный (scramble/texas/greensomes) счёт группы на лунке — лучший удар.
+function pestovoTeamHoleScore(players, hole) {
+    var best = null;
+    Object.keys(players || {}).forEach(function(pid) {
+        var sc = (players[pid] || {}).scores;
+        if (!sc) return;
+        var v = parseInt(sc[hole]);
+        if (v != null && v > 0 && (best === null || v < best)) best = v;
+    });
+    return best;
+}
+
+// Командные итоги группы за раунд (для скрембла и аналогов):
+// { holes, gross, toPar } по лучшему удару на лунке.
+function pestovoTeamRoundStats(round) {
+    var gross = 0, par = 0, holes = 0;
+    var players = (round && round.players) || {};
+    for (var h = 1; h <= 18; h++) {
+        var s = pestovoTeamHoleScore(players, h);
+        if (s != null) { gross += s; par += holePar(h); holes++; }
+    }
+    return { holes: holes, gross: gross, parPlayed: par, toPar: holes ? gross - par : null };
+}
+
 function toggleActiveScorecard(panelId) {
     var panel = document.getElementById(panelId);
     var icon = document.getElementById(panelId + '-icon');
@@ -8357,6 +8549,13 @@ if (typeof db !== 'undefined') {
             var v = sn.val();
             if (TN_ROSTER_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnRosterVariant) {
                 applyTnRosterVariant(String(v));
+            }
+        });
+        // Разделение лидерборда турнира по полу — 3 вида (выбирает админ).
+        db.ref('settings/tn_gender_split').on('value', function(sn) {
+            var v = sn.val();
+            if (TN_GENDER_SPLIT_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnGenderSplit) {
+                applyTnGenderSplit(String(v));
             }
         });
         // Сброс ВСЕХ локальных сессий после очистки данных в админке.

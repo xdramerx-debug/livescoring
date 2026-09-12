@@ -1854,7 +1854,7 @@ function psHeaderKey(raw) {
     if (['фамилия', 'last name', 'lastname', 'last_name', 'surname', 'family name', 'фамилия игрока', 'ф'].indexOf(s) !== -1) return 'lastName';
     if (['имя', 'first name', 'firstname', 'first_name', 'given name', 'имя игрока', 'и'].indexOf(s) !== -1) return 'firstName';
     if (['отчество', 'middle name', 'middlename', 'middle_name', 'patronymic', 'отчество игрока', 'о'].indexOf(s) !== -1) return 'middleName';
-    if (['фио', 'имя фамилия', 'full name', 'фамилия имя отчество', 'ф.и.о.', 'ф и о', 'игрок', 'player', 'имя и фамилия'].indexOf(s) !== -1) return 'fio';
+    if (['фио', 'фио.', 'иф', 'имя фамилия', 'full name', 'фамилия имя отчество', 'ф.и.о.', 'ф и о', 'игрок', 'player', 'имя и фамилия'].indexOf(s) !== -1) return 'fio';
     // Точный гандикап. HCP / EHCP / «exact handicap» и т.п. — всегда ТОЧНЫЙ гандикап.
     if (['точный гандикап', 'точный hcp', 'точный гандикап (hcp)', 'гандикап', 'гандикап hcp', 'гандикап whs',
          'hcp', 'ehcp', 'e hcp', 'hi', 'handicap', 'exact handicap', 'exact hcp', 'exacthcp', 'handicap index',

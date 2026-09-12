@@ -309,7 +309,37 @@ if (typeof window !== 'undefined' && window.addEventListener) {
     });
 }
 
-function showPushNotification(title, body, targetUrl) {
+// ============================================================
+// ТРОТТЛЕР УВЕДОМЛЕНИЙ (фикс зависания сайта из-за частых
+// уведомлений)
+// ------------------------------------------------------------
+// Во время игры уведомления (вызовы судьи/маршала, анонсы) могут
+// приходить шквалом. Без троттлера каждое из них дёргает сервис-
+// воркера, создаёт new Notification и вибрирует — «шторм» копился
+// на главном потоке и сайт «зависал намертво». Здесь:
+//   • дедупликация — одинаковое (title+body) не показывается
+//     повторно в течение 15 секунд;
+//   • частота — не более одного пуша за 4 секунды, средние
+//     складываются в очередь и выходят по одному;
+//   • ожидание сервис-воркера ограничено 3 секундами (раньше
+//     «зависший» navigator.serviceWorker.ready копил промисы);
+//   • tag — повторы заменяют предыдущее уведомление, а не
+//     складываются в стопку.
+// ============================================================
+var pestovoNotifQueue = [];
+var pestovoNotifLastShown = 0;
+var pestovoNotifLastKey = '';
+var pestovoNotifTimer = null;
+var PESTOVO_NOTIF_INTERVAL_MS = 4000;
+var PESTOVO_NOTIF_DEDUP_MS = 15000;
+
+function pestovoNotifKey(title, body) {
+    return String(title || '') + '||' + String(body || '');
+}
+
+function pestovoShowNotifNow(title, body, targetUrl, extra) {
+    pestovoNotifLastShown = Date.now();
+    pestovoNotifLastKey = pestovoNotifKey(title, body);
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
     var options = {
@@ -317,18 +347,53 @@ function showPushNotification(title, body, targetUrl) {
         icon: 'img/logo.png',
         badge: 'img/logo.png',
         vibrate: [200, 100, 200],
+        tag: (extra && extra.tag) || pestovoNotifKey(title, body).replace(/[^\wа-яА-ЯёЁ \-]/g, '').slice(0, 60) || 'pestovo-push',
         data: { url: targetUrl || 'admin.html' }
     };
 
     if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-        navigator.serviceWorker.ready.then(function(reg) {
-            reg.showNotification(title, options);
+        // Ограничение ожидания: медленный/умирающий SW не должен
+        // копить очередь промисов showNotification.
+        Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise(function(res) { setTimeout(res, 3000); })
+        ]).then(function(reg) {
+            if (reg && typeof reg.showNotification === 'function') reg.showNotification(title, options);
         }).catch(function() {
             try { new Notification(title, options); } catch(e) {}
         });
     } else {
         try { new Notification(title, options); } catch(e) {}
     }
+}
+
+function pestovoNotifFlushTick() {
+    pestovoNotifTimer = null;
+    var n = pestovoNotifQueue.shift();
+    if (n) pestovoShowNotifNow(n.title, n.body, n.url, n.extra);
+    if (pestovoNotifQueue.length) pestovoNotifTimer = setTimeout(pestovoNotifFlushTick, 200);
+}
+
+function showPushNotification(title, body, targetUrl, extra) {
+    var key = pestovoNotifKey(title, body);
+    // Дедупликация: то же самое только что показывали — пропускаем.
+    if (key === pestovoNotifLastKey && Date.now() - pestovoNotifLastShown < PESTOVO_NOTIF_DEDUP_MS) return;
+
+    var now = Date.now();
+    if (now - pestovoNotifLastShown < PESTOVO_NOTIF_INTERVAL_MS) {
+        // Троттлинг: в очередь, дубли в ней удаляем (оставляем свежий).
+        for (var i = pestovoNotifQueue.length - 1; i >= 0; i--) {
+            if (pestovoNotifQueue[i].key === key) pestovoNotifQueue.splice(i, 1);
+        }
+        pestovoNotifQueue.push({ title: title, body: body, url: targetUrl, key: key, extra: extra });
+        if (pestovoNotifQueue.length > 3) pestovoNotifQueue.shift();
+        if (!pestovoNotifTimer) {
+            pestovoNotifTimer = setTimeout(pestovoNotifFlushTick,
+                PESTOVO_NOTIF_INTERVAL_MS - (now - pestovoNotifLastShown));
+        }
+        return;
+    }
+    pestovoShowNotifNow(title, body, targetUrl, extra);
 }
 
 var globalAlertsKnown = {};
@@ -338,21 +403,42 @@ function initBackgroundAlertListener() {
     if (!('Notification' in window) || Notification.permission !== 'granted' || typeof db === 'undefined' || bgAlertsListenerAttached) return;
     bgAlertsListenerAttached = true;
 
-    db.ref('alerts').orderByChild('status').equalTo('active').on('value', function(sn) {
-        var alerts = sn.val() || {};
+    // Слушаем ветку alerts ЦЕЛИКОМ (запрос orderByChild('status') без
+    // индекса в правилах Firebase молча возвращал пусто) и фильтруем
+    // «активные» на клиенте — как в админ-панели.
+    // ВАЖНО: вызовы судьи/маршала интересуют только АДМИНОВ (фоновая
+    // Cloud Function пушит лишь подпискам isAdmin) — игрокам такие пуши
+    // шквалом спамить нельзя: это был основной источник «частых
+    // уведомлений», из-за которых сайт «зависал намертво».
+    db.ref('alerts').on('value', function(sn) {
+        var all = sn.val() || {};
+        var alerts = {};
+        Object.keys(all).forEach(function(k) {
+            var a = all[k] || {};
+            if (String(a.status || 'active') === 'active') alerts[k] = a;
+        });
+        if (!Object.keys(alerts).length) return;
+        var isAdmin = (typeof pestovoIsAdminViewer === 'function' && pestovoIsAdminViewer());
         var isFirstRun = Object.keys(globalAlertsKnown).length === 0;
 
         Object.entries(alerts).forEach(function(e) {
             var id = e[0], a = e[1];
             if (!globalAlertsKnown[id]) {
                 globalAlertsKnown[id] = true;
-                if (!isFirstRun) {
+                if (isAdmin && !isFirstRun) {
                     var title = a.type === 'referee' ? (currentLang === 'en' ? '🚨 REFEREE CALL!' : '🚨 ВЫЗОВ СУДЬИ!') : (currentLang === 'en' ? '🚨 MARSHAL CALL!' : '🚨 ВЫЗОВ МАРШАЛА!');
                     var body = (currentLang === 'en' ? 'Hole #' : 'Лунка №') + a.hole + ' | ' + (currentLang === 'en' ? 'Player: ' : 'Игрок: ') + (a.playerName || 'Player') + (typeof fmtTime === 'function' ? ' (' + fmtTime(a.time) + ')' : '');
-                    showPushNotification(title, body, 'admin.html');
+                    showPushNotification(title, body, 'admin.html', { tag: 'alert-' + id });
                 }
             }
         });
+
+        // Подборка памяти: закрытые/удалённые вызовы в «известных» не нужны.
+        if (Object.keys(globalAlertsKnown).length > 100) {
+            var present = {};
+            Object.keys(all).forEach(function(k) { present[k] = true; });
+            Object.keys(globalAlertsKnown).forEach(function(k) { if (!present[k]) delete globalAlertsKnown[k]; });
+        }
     });
 }
 
@@ -384,8 +470,10 @@ function initBackgroundBroadcastListener() {
                     var body = b.body || '';
                     var targetUrl = b.link || 'tournaments.html';
 
+                    // Пуш — через троттлер showPushNotification: даже если
+                    // админ шлёт анонсы подряд, страница не «захлёбывается».
                     if (typeof showPushNotification === 'function') {
-                        showPushNotification(title, body, targetUrl);
+                        showPushNotification(title, body, targetUrl, { tag: 'broadcast-' + id });
                     }
                     if (typeof toast === 'function') {
                         toast('📢 <b>' + title + '</b><br>' + body, 'info');
@@ -394,6 +482,13 @@ function initBackgroundBroadcastListener() {
                 }
             }
         });
+
+        // Подборка памяти: удалённые анонсы в «известных» не нужны.
+        if (Object.keys(globalBroadcastsKnown).length > 100) {
+            var present = {};
+            Object.keys(broadcasts).forEach(function(k) { present[k] = true; });
+            Object.keys(globalBroadcastsKnown).forEach(function(k) { if (!present[k]) delete globalBroadcastsKnown[k]; });
+        }
     });
 }
 

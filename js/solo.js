@@ -980,19 +980,27 @@ function doFinishSolo() {
         var finishUpdate = { status: 'completed', completedAt: Date.now(), autoCompleted: false };
         if (finisherUid) finishUpdate.completedBy = finisherUid;
         if (finisherName) finishUpdate.completedByName = finisherName;
-        db.ref('rounds/' + soloRid).update(finishUpdate).catch(function(){ soloFinishing = false; });
+        db.ref('rounds/' + soloRid).update(finishUpdate).then(function() {
+            // Перечитываем раунд после записи и пишем историю ровно один раз
+            // (транзакция-клейм): двойной клик/второе устройство/маркер не
+            // должны оставлять в профиле дубль раунда.
+            return db.ref('rounds/' + soloRid).once('value');
+        }).then(function(sn) {
+            var fresh = sn && sn.val();
+            if (!fresh) return;
 
-        // Турнирный соло-раунд: возможное автозавершение турнира (все раунды сыграны).
-        if (soloRound && soloRound.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
-            db.ref('rounds/' + soloRid).once('value').then(function() {
-                try { pestovoAutoFinishTournament(soloRound.tournamentId); } catch (_) {}
+            // Турнирный соло-раунд: возможное автозавершение турнира (все раунды сыграны).
+            if (fresh.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
+                try { pestovoAutoFinishTournament(fresh.tournamentId); } catch (_) {}
+            }
+
+            if (fresh.status !== 'completed') return;
+            return pestovoClaimRoundHistory(soloRid).then(function(claimed) {
+                if (claimed && typeof saveHistory === 'function') {
+                    try { saveHistory(soloRid, fresh); } catch (e) {}
+                }
             });
-        }
-
-        db.ref('rounds/' + soloRid).once('value').then(function(sn) {
-            var r = sn.val();
-            if (r) saveHistory(soloRid, r);
-        });
+        }).catch(function() { soloFinishing = false; });
     };
 
     // После завершения раунда карточка не предлагается к печати/скачиванию —

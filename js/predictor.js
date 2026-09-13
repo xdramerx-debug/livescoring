@@ -46,7 +46,11 @@ function runWHSPredictor() {
         var u = sn.val() || {};
         db.ref('users/' + uid + '/history').once('value').then(function(hSn) {
             var history = hSn.val() || {};
-            var rounds = Object.values(history).filter(function(r) { return r.holes === 18 && r.gross > 0; });
+            // Дубли раундов (один roundId) не должны искажать выборку и WHS.
+            var unique = (typeof pestovoPickHistoryUnique === 'function')
+                ? pestovoPickHistoryUnique(Object.entries(history))
+                : Object.values(history);
+            var rounds = unique.filter(function(r) { return r.holes === 18 && r.gross > 0; });
             rounds.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
 
             var curExact = parseExactHcp(u.handicap);

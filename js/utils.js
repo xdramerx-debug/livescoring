@@ -9044,6 +9044,50 @@ function isSamePersonByFio(localParts, remoteParts, localFullNorm, remoteFullNor
     return null;
 }
 
+// Имя записи (состав/ожидание) строкой: name либо «Имя Отчество Фамилия».
+function pestovoRecName(rec) {
+    if (!rec) return '';
+    if (rec.name) return String(rec.name);
+    return [rec.firstName, rec.middleName, rec.lastName].filter(Boolean).join(' ');
+}
+
+// Совпадает ли человек (name) с ЛЮБОЙ записью из списка
+// { key: {name|firstName/middleName/lastName} } — strong-совпадение ФИО:
+// порядок слов не важен («Фамилия Имя» = «Имя Фамилия»), отчество может
+// отсутствовать у одной из сторон. false для пустых имён.
+function pestovoNameInList(name, list) {
+    if (!name || !list) return false;
+    var myFull = normalizeSearchText(name);
+    if (!myFull) return false;
+    var myParts = getNamePartsNormalized(name);
+    for (var k in list) {
+        var other = normalizeSearchText(pestovoRecName(list[k]));
+        if (!other) continue;
+        var res = isSamePersonByFio(myParts, getNamePartsNormalized(other), myFull, other);
+        if (res === 'strong') return true;
+    }
+    return false;
+}
+// То же, но возвращает КЛЮЧ совпавшей записи ('' — не найдено).
+function pestovoNameKeyInList(name, list) {
+    if (!name || !list) return '';
+    var myFull = normalizeSearchText(name);
+    if (!myFull) return '';
+    var myParts = getNamePartsNormalized(name);
+    for (var k in list) {
+        var other = normalizeSearchText(pestovoRecName(list[k]));
+        if (!other) continue;
+        var res = isSamePersonByFio(myParts, getNamePartsNormalized(other), myFull, other);
+        if (res === 'strong') return k;
+    }
+    return '';
+}
+if (typeof window !== 'undefined') {
+    window.pestovoNameInList = pestovoNameInList;
+    window.pestovoNameKeyInList = pestovoNameKeyInList;
+    window.pestovoRecName = pestovoRecName;
+}
+
 function dedupePlayerEntriesByFio(entries) {
     // entries: array of [id, userData] or array of player objects with name
     // Возвращает отфильтрованный массив без дублей по ФИО
@@ -10391,8 +10435,20 @@ function tnDivisionFioKey(name) {
     return s;
 }
 
+// Канонический ключ ФИО НЕЗАВИСИМЫЙ от порядка слов:
+// «Тестов Иван Петрович» и «Иван Петрович Тестов» дают один ключ.
+// Используется для сопоставления состава групп, где имя могло быть
+// записано в любом порядке (заявка vs стартовый лист).
+function tnDivisionFioSetKey(name) {
+    var s = tnDivisionFioKey(name);
+    if (!s) return '';
+    return s.split(' ').sort().join(' ');
+}
+
 // Входит ли игрок в точный состав группы. memberRef — строка (pid) либо
-// объект { pid, name, fioKey }.
+// объект { pid, name, fioKey }. Совпадение по ФИО ищем и точным ключом,
+// и независимым от порядка (старые данные хранят «Имя Отчество Фамилия»,
+// а вызывающий код может передать «Фамилия Имя Отчество»).
 function tnDivisionHasMember(d, memberRef) {
     var members = tnDivisionMembers(d);
     if (!members) return false;
@@ -10406,9 +10462,11 @@ function tnDivisionHasMember(d, memberRef) {
     }
     if (pid && Object.prototype.hasOwnProperty.call(members, pid)) return true;
     if (fio) {
+        var fioSet = tnDivisionFioSetKey(fio);
         var keys = Object.keys(members);
         for (var i = 0; i < keys.length; i++) {
-            if (String(members[keys[i]] || '') === fio) return true;
+            var v = String(members[keys[i]] || '');
+            if (v === fio || (fioSet && tnDivisionFioSetKey(v) === fioSet)) return true;
         }
     }
     return false;

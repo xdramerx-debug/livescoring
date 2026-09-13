@@ -83,7 +83,9 @@ function ok(cond, label) {
     eq(st.groups.map(function(g) { return g.rid; }), ['r1', 'r2'], 'объектная форма: rid по roundId');
     eq(st.groups[0].members.map(function(m) { return m.id; }), ['p1', 'p2'], 'объектная форма: состав группы 1');
     eq(st.groups[0].tee, 'wh', 'объектная форма: ТИ группы 1');
-    eq(st.groups[0].format, 'gross', 'объектная форма: формат группы 1');
+    // Короткий код 'gross' из старой версии редактора канонизируется в
+    // полное имя формата — селектор «все форматы» работает единообразно.
+    eq(st.groups[0].format, 'Stroke Play (Gross)', 'объектная форма: формат группы 1 (gross → Stroke Play (Gross))');
     eq(st.groups[0].startHole, 1, 'объектная форма: стартовая лунка группы 1');
     eq(st.groups[0].markerTargets, { p1: 'p2' }, 'объектная форма: маркеры группы 1');
     eq(st.groups[1].members.map(function(m) { return m.id; }), ['p3'], 'объектная форма: состав группы 2');
@@ -106,7 +108,7 @@ function ok(cond, label) {
     const st = sandbox.peState();
     eq(st.groups.length, 1, 'без раундов: 1 группа');
     eq(st.groups[0].tee, 'bl', 'без раундов: ТИ из протокола');
-    eq(st.groups[0].format, 'stbl', 'без раундов: формат из протокола');
+    eq(st.groups[0].format, 'Stableford', 'без раундов: формат из протокола (stbl → Stableford)');
     eq(st.groups[0].members[0].id, 'a', 'без раундов: игрок из g.players');
 })();
 

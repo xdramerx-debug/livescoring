@@ -1321,12 +1321,18 @@ function tnWaitlistAddToTournament(tnId, wKey) {
         var w = (tVal.waitlist || {})[wKey];
         if (!w) return;
         var reg = tVal.registeredPlayers || {};
-        var normName = tnWaitNameNorm(w.name);
-        var existingKey = null;
-        Object.keys(reg).forEach(function(k) {
-            if (existingKey) return;
-            if (tnWaitNameNorm((reg[k] || {}).name) === normName) existingKey = k;
-        });
+        // Дедуп по ФИО НЕЗАВИСИМО от порядка слов: запись в составе могла
+        // сохраниться как «Имя Отчество Фамилия», а в ожидании — наоборот.
+        var existingKey = (typeof pestovoNameKeyInList === 'function')
+            ? pestovoNameKeyInList(w.name, reg)
+            : '';
+        if (!existingKey) {
+            var normName = tnWaitNameNorm(w.name);
+            Object.keys(reg).forEach(function(k) {
+                if (existingKey) return;
+                if (tnWaitNameNorm((reg[k] || {}).name) === normName) existingKey = k;
+            });
+        }
         var updates = {};
         if (existingKey) {
             updates['tournaments/' + tnId + '/waitlist/' + wKey] = null;
@@ -1360,18 +1366,21 @@ function tnWaitlistAddAll(tnId) {
     db.ref('tournaments/' + tnId).once('value').then(function(sn) {
         var tVal = sn.val() || {};
         var reg = tVal.registeredPlayers || {};
-        var knownNames = {};
-        Object.keys(reg).forEach(function(k) {
-            var nm = tnWaitNameNorm((reg[k] || {}).name);
-            if (nm) knownNames[nm] = true;
-        });
+        // Состав для проверки дублей: записи + то, что добавляем сейчас.
+        // Совпадение — strong по ФИО (порядок слов не важен).
+        var known = {};
+        Object.keys(reg).forEach(function(k) { known[k] = reg[k]; });
         var wl = tVal.waitlist || {};
         var updates = {};
         var added = 0, skipped = 0;
         Object.keys(wl).forEach(function(k) {
             var w = wl[k] || {};
-            var normName = tnWaitNameNorm(w.name);
-            if (normName && knownNames[normName]) {
+            var isDup = (typeof pestovoNameInList === 'function')
+                ? pestovoNameInList(w.name, known)
+                : (Object.keys(known).some(function(kk) {
+                    return tnWaitNameNorm((known[kk] || {}).name) === tnWaitNameNorm(w.name);
+                }));
+            if (isDup) {
                 updates['tournaments/' + tnId + '/waitlist/' + k] = null;
                 skipped++;
                 return;
@@ -1381,7 +1390,7 @@ function tnWaitlistAddAll(tnId) {
             var entry = {};
             Object.keys(w).forEach(function(f) { entry[f] = w[f]; });
             entry.addedAt = Date.now();
-            if (normName) knownNames[normName] = true;
+            known[key] = entry;
             updates['tournaments/' + tnId + '/registeredPlayers/' + key] = entry;
             updates['tournaments/' + tnId + '/waitlist/' + k] = null;
             added++;

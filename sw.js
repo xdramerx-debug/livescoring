@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.65.0';
+const CACHE_NAME = 'pestovo-v1.66.0';
 const OFFLINE_URL = 'offline.html';
 
 const STATIC_ASSETS = [
@@ -9,13 +9,13 @@ const STATIC_ASSETS = [
     'assistant.html', 'design-preview.html',
     'manifest.json', 'css/style.css?v=32', 'css/assistant.css?v=2',
     'css/design-presets.css?v=1',
-    'js/firebase-config.js?v=2', 'js/utils.js?v=59', 'js/name-variants.js?v=1',
+    'js/firebase-config.js?v=2', 'js/utils.js?v=60', 'js/name-variants.js?v=1',
     'js/design-system.js?v=1', 'js/design-admin.js?v=2', 'js/design-preview.js?v=1',
     'js/auth.js', 'js/app.js?v=20', 'js/live.js?v=35', 'js/solo.js?v=28',
-    'js/leaderboard.js?v=8', 'js/players.js?v=4', 'js/tournaments.js?v=12', 'js/protocol.js?v=2',
-    'js/stats.js?v=4', 'js/handicap.js', 'js/admin.js?v=44', 'js/scorer.js?v=8',
+    'js/leaderboard.js?v=8', 'js/players.js?v=4', 'js/tournaments.js?v=13', 'js/protocol.js?v=2',
+    'js/stats.js?v=4', 'js/handicap.js', 'js/admin.js?v=45', 'js/scorer.js?v=8',
     'js/marker.js?v=4', 'js/guide.js', 'js/feed.js?v=3', 'js/predictor.js?v=1',
-    'js/order-of-merit.js?v=3', 'js/pwa.js?v=6', 'js/start-admin.js?v=20', 'js/pe-edit.js?v=1', 'js/qr-start.js?v=10', 'qr-start.html',
+    'js/order-of-merit.js?v=3', 'js/pwa.js?v=6', 'js/start-admin.js?v=21', 'js/pe-edit.js?v=2', 'js/qr-start.js?v=10', 'qr-start.html',
     'js/tn-scorecard.js?v=3',
     'js/assistant-config.js', 'js/assistant-build.js?v=2', 'js/assistant.js?v=2',
     'docs/assistant-index.json', 'docs/assistant-sources.json',

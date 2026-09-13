@@ -282,7 +282,15 @@ function tnRenderList() {
             var waitlist = tVal.waitlist || {};
             var regCount = (typeof tnDedupeRoster === 'function') ? tnDedupeRoster(regPlayers).length : Object.keys(regPlayers).length;
             var isRegistered = !!(currentUser && regPlayers[currentUser.uid]);
+            // Бейдж «Вы записаны» — и по ФИО: админ мог добавить игрока
+            // из ожидания под другим ключом (wl_…/user_…/гость).
+            if (!isRegistered && currentUser && typeof currentUserData !== 'undefined' && currentUserData && currentUserData.name) {
+                isRegistered = tnNameMatchesAny(regPlayers, currentUserData.name);
+            }
             var isWaitlisted = !!(currentUser && waitlist[currentUser.uid]);
+            if (!isWaitlisted && currentUser && typeof currentUserData !== 'undefined' && currentUserData && currentUserData.name) {
+                isWaitlisted = tnNameMatchesAny(waitlist, currentUserData.name);
+            }
 
             // Запись открыта ТОЛЬКО для предстоящих турниров: на активном
             // запись закрыта (уже записанные видят статичный бейдж без отмены),
@@ -290,10 +298,11 @@ function tnRenderList() {
             var regBtn = '';
             var tnStatus = tVal.status || 'upcoming';
 
-            // Активный турнир открывается сразу на LIVE-лидерборде, а не на
-            // списке участников/групп. Выбор пользователя позже не трогаем.
+            // Страница турнира открывается сразу на ЛИДЕРБОРДЕ (для любого
+            // турнира, а не только активного), а не на списке участников.
+            // Явный выбор пользователя (открыл/закрыл панель) не трогаем.
             if (tnLbOpen[tnId] === undefined) {
-                tnLbOpen[tnId] = (tnStatus === 'active');
+                tnLbOpen[tnId] = true;
             }
             if (tnStatus === 'active') {
                 if (isRegistered) {
@@ -353,7 +362,9 @@ function tnRenderList() {
             // Пока турнир ИДЁТ (статус «активный»), список участников прячется
             // для всех — актуальные места смотрите в live-лидерборде (#10).
             if (tnStatus !== 'active') {
-                var isRosterOpen = tnRosterOpen[tnId] !== false; // default true
+                // Список участников скрыт ПО УМОЛЧАНИЮ: страница открывается
+                // сразу с лидербордом выше; список — по кнопке «Участники».
+                var isRosterOpen = tnRosterOpen[tnId] === true; // default false
                 html += '<div id="roster-' + tnId + '" class="card-scorecard-panel' + (isRosterOpen ? '' : ' hidden') + '" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">';
                 html += tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount);
                 html += '</div>';
@@ -410,6 +421,29 @@ function toggleTnLb(tnId) {
 // Нормализация ФИО для сопоставления (своя кроха, без внешних зависимостей).
 function tnNormName(s) {
     return String(s == null ? '' : s).toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Имя записи (состав/ожидание) в виде строки.
+function tnRecName(rec) {
+    if (!rec) return '';
+    if (rec.name) return rec.name;
+    return [rec.firstName, rec.middleName, rec.lastName].filter(Boolean).join(' ');
+}
+
+// Тот ли это человек, что в записях (strong-совпадение ФИО: порядок слов
+// «Фамилия Имя» / «Имя Фамилия» не важен, отчество может отсутствовать).
+function tnNameMatchesAny(list, name) {
+    if (typeof pestovoNameInList === 'function') {
+        return pestovoNameInList(name, list);
+    }
+    // Fallback без utils.js: точное совпадение после нормализации.
+    if (!name || !list) return false;
+    var myFull = tnNormName(name);
+    if (!myFull) return false;
+    for (var k2 in list) {
+        if (tnNormName(tnRecName(list[k2])) === myFull) return true;
+    }
+    return false;
 }
 
 function tnFioKey(p, pid) {
@@ -1541,18 +1575,31 @@ function submitTournamentRegistrationInner(tnId) {
         };
 
         // Игрок попадает в ЛИСТ ОЖИДАНИЯ (waitlist), а не сразу в состав:
-        // в турнир его добавляет администратор. Сначала убираем дубли этого
-        // же человека (гостевая запись / старый uid-ключ) и проверяем,
-        // что он уже не подтверждён в составе.
+        // в турнир его добавляет администратор. Сначала проверяем дубли:
+        //  — уже в составе (по uid ИЛИ по ФИО — админ мог добавить запись
+        //    под другим ключом) → «вы уже зарегистрированы на данный турнир»;
+        //  — уже в списке ожидания (по uid ИЛИ по ФИО) → не плодим дубль.
         db.ref('tournaments/' + tnId).once('value').then(function(sn) {
             var tVal = sn.val() || {};
             var regPlayers = tVal.registeredPlayers || {};
             var waitlist = tVal.waitlist || {};
-            if (regPlayers[currentUser.uid]) {
-                toast(en ? 'You are already in the tournament' : 'Вы уже в составе турнира', 'info');
+            var inRoster = !!(regPlayers[currentUser.uid]) || tnNameMatchesAny(regPlayers, regData.name);
+            if (inRoster) {
+                toast(en
+                    ? 'You are already registered for this tournament'
+                    : 'Вы уже зарегистрированы на данный турнир', 'info');
                 closeRegTnModal();
                 loadTournaments();
                 return { done: 'roster' };
+            }
+            var inWait = !!(waitlist[currentUser.uid]) || tnNameMatchesAny(waitlist, regData.name);
+            if (inWait) {
+                toast(en
+                    ? 'You are already on the waitlist for this tournament'
+                    : 'Вы уже подали заявку на данный турнир (в списке ожидания)', 'info');
+                closeRegTnModal();
+                loadTournaments();
+                return { done: 'wait' };
             }
             var myName = tnNormName(regData.name);
             var updates = {};
@@ -1605,23 +1652,22 @@ function submitTournamentRegistrationInner(tnId) {
 
     // Гость тоже в лист ожидания (waitlist): администратор добавит его
     // в состав tournaments/<id>/registeredPlayers из админ-панели.
+    // Проверка дублей: тот же игрок (по ФИО, порядок слов не важен) —
+    // и в составе, и в списке ожидания — НЕ добавляем повторно.
     db.ref('tournaments/' + tnId).once('value').then(function(sn) {
         var tVal = sn.val() || {};
         var regPlayers = tVal.registeredPlayers || {};
         var waitlist = tVal.waitlist || {};
-        var norm = tnNormName(name);
-        var inRoster = Object.keys(regPlayers).some(function(k) {
-            return tnNormName((regPlayers[k] || {}).name || '') === norm;
-        });
-        if (inRoster) {
-            toast(en ? '⚠️ This name is already registered' : '⚠️ Такое имя уже записано', 'error');
+        if (tnNameMatchesAny(regPlayers, name)) {
+            toast(en
+                ? '⚠️ You are already registered for this tournament'
+                : '⚠️ Вы уже зарегистрированы на данный турнир', 'error');
             return;
         }
-        var dup = Object.keys(waitlist).some(function(k) {
-            return tnNormName((waitlist[k] || {}).name || '') === norm;
-        });
-        if (dup) {
-            toast(en ? '⚠️ This name is already on the waitlist' : '⚠️ Такое имя уже в списке ожидания', 'error');
+        if (tnNameMatchesAny(waitlist, name)) {
+            toast(en
+                ? '⚠️ This name is already on the waitlist for this tournament'
+                : '⚠️ Такой игрок уже подал заявку на данный турнир (список ожидания)', 'error');
             return;
         }
         var guestData = {

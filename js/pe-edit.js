@@ -6,7 +6,10 @@
 (function() {
     'use strict';
 
-    var TEE_KEYS = ['wh', 'yl', 'bl', 'rd', 'bk'];
+    // ТИ, которые реально есть на поле. «Жёлтых» (yl) на поле НЕТ —
+    // их нельзя выбирать (фикс: раньше в селекте были).
+    var TEE_KEYS = ['wh', 'bl', 'rd', 'bk'];
+    var TEE_NAMES = { wh: ['белые', 'white'], bl: ['синие', 'blue'], rd: ['красные', 'red'], bk: ['чёрные', 'black'] };
     var state = {
         tnId: null,
         tn: null,
@@ -14,20 +17,60 @@
         proto: null,
         groups: [],   // { idx, rid, startHole, startTime, tee, format, members:[entry...], markerTargets:{marker:target}, deleted:false, isNew:false }
         roster: [],   // players not in any group
-        rounds: {}    // rid -> round snapshot (исходные, для сохранения данных)
+        rounds: {},   // rid -> round snapshot (исходные, для сохранения данных)
+        collapsed: {} // idx группы -> true (свернута); по умолчанию ВСЕ свёрнуты
     };
+    // Счётчик «развёрнуты ли группы поиском» (не сохраняем в state.collapsed).
+    var searchActive = false;
 
     function L(ru, en) { return currentLang === 'en' ? en : ru; }
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function norm(s) { return String(s == null ? '' : s).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim(); }
     function teeOpts(sel) {
-        return TEE_KEYS.map(function(k) {
-            var names = { wh: ['белые', 'white'], yl: ['жёлтые', 'yellow'], bl: ['синие', 'blue'], rd: ['красные', 'red'], bk: ['чёрные', 'black'] };
-            return '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + (names[k][currentLang === 'en' ? 1 : 0]) + '</option>';
+        // Если у группы/игрока стоит ТИ, которого нет в списке (например,
+        // старый «желтый»), показываем его как отдельный вариант — чтобы
+        // сохранение не «случайно» сменило ТИ.
+        var keys = TEE_KEYS.slice();
+        if (sel && keys.indexOf(sel) === -1) keys.unshift(sel);
+        return keys.map(function(k) {
+            var names = TEE_NAMES[k] || [k, k];
+            return '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(names[currentLang === 'en' ? 1 : 0]) + '</option>';
         }).join('');
     }
+    // Полный список форматов: форматы турнира + форматы протокола +
+    // стандартные. Можно выбрать ЛЮБОЙ имеющийся (не только Гросс/Стбл.).
+    function allFormats() {
+        var list = [];
+        function add(f) { f = String(f == null ? '' : f).trim(); if (f && list.indexOf(f) === -1) list.push(f); }
+        if (state.tn && state.tn.formats) state.tn.formats.forEach(add);
+        if (state.proto && state.proto.formats) state.proto.formats.forEach(add);
+        if (state.proto && state.proto.format) add(state.proto.format);
+        ['Stroke Play', 'Stroke Play (Gross)', 'Stroke Play (Net)', 'Stableford', 'Match Play 1v1', 'Match Play 2v2'].forEach(add);
+        return list;
+    }
+    function fmtLabel(f) {
+        if (f === 'gross') return L('Гросс', 'Gross');
+        if (f === 'stbl') return L('Стбл.', 'Stbl.');
+        if (typeof pestovoFormatLabel === 'function' && f !== 'Stroke Play') return pestovoFormatLabel(f);
+        return f;
+    }
+    // Старые короткие коды формата из ранней версии редактора приводим
+    // к каноническим именам (общий словарь форматов системы).
+    function peFmtNorm(f) {
+        f = String(f == null ? '' : f).trim();
+        if (f === 'gross') return 'Stroke Play (Gross)';
+        if (f === 'stbl') return 'Stableford';
+        return f;
+    }
     function fmtOpts(sel) {
-        return [['', '—'], ['gross', L('Гросс', 'Gross')], ['stbl', L('Стбл.', 'Stbl.')]]
-            .map(function(o) { return '<option value="' + o[0] + '"' + (o[0] === sel ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+        var html = '<option value=""' + (!sel ? ' selected' : '') + '>—</option>';
+        allFormats().forEach(function(f) {
+            html += '<option value="' + esc(f) + '"' + (f === sel ? ' selected' : '') + '>' + esc(fmtLabel(f)) + '</option>';
+        });
+        if (sel && allFormats().indexOf(sel) === -1) {
+            html += '<option value="' + esc(sel) + '" selected>' + esc(fmtLabel(sel)) + '</option>';
+        }
+        return html;
     }
     function pname(p) {
         if (!p) return '';
@@ -216,6 +259,15 @@
                 members.push(Object.assign({ id: m.id }, m));
                 assigned[m.id] = true;
             });
+            // Канонизируем формат каждого игрока (старые коды gross/stbl).
+            // Формат из протокольной группы — запасной источник, если его
+            // нет в данных раунда (раунд хранит «сырой» счёт).
+            var gPlayersById = {};
+            gPlayers.forEach(function(m) { if (m && m.id) gPlayersById[m.id] = m; });
+            members.forEach(function(m2) {
+                var src = (gPlayersById[m2.id] && gPlayersById[m2.id].format) ? gPlayersById[m2.id].format : '';
+                m2.format = peFmtNorm(m2.format || src);
+            });
             var markerTargets = {};
             if (r && r.markerAssignments) {
                 Object.keys(r.markerAssignments).forEach(function(mk) {
@@ -235,7 +287,7 @@
                 startHole: r ? (r.startHole || 1) : (g.startHole || 1),
                 startTime: r ? (r.startTime || '') : (g.startTime || ''),
                 tee: r ? (r.tee || 'wh') : (g.tee || tn.tee || 'wh'),
-                format: r ? (r.format || '') : (g.format || ''),
+                format: peFmtNorm(r ? (r.format || '') : (g.format || '')),
                 members: members,
                 markerTargets: markerTargets,
                 _orig: g
@@ -272,7 +324,7 @@
             });
         }
 
-        return '<tr class="pe-row" data-pe-name="' + esc((pname(p) || '').toLowerCase()) + '">' +
+        return '<tr class="pe-row" data-pe-name="' + esc(norm(pname(p))) + '">' +
             '<td class="pe-name">' + esc(pname(p) || pid) + '</td>' +
             '<td><input type="number" step="0.1" min="-20" max="54" class="pe-hcp" data-gid="' + gid + '" data-pid="' + esc(pid) + '" value="' + esc(pHcp(p)) + '" style="width:64px"></td>' +
             '<td><select class="pe-gender" data-gid="' + gid + '" data-pid="' + esc(pid) + '" style="width:96px">' +
@@ -280,19 +332,40 @@
                 '<option value="women"' + (p.gender === 'women' ? ' selected' : '') + '>♀ ' + esc(L('жен.', 'women')) + '</option>' +
             '</select></td>' +
             '<td><select class="pe-tee" data-gid="' + gid + '" data-pid="' + esc(pid) + '" style="width:92px">' + teeOpts(p.tee || 'wh') + '</select></td>' +
+            '<td><select class="pe-pfmt" data-gid="' + gid + '" data-pid="' + esc(pid) + '" style="width:170px" title="' + esc(L('Формат игры игрока (— = формат группы)', 'Player game format (— = group format)')) + '">' + fmtOpts(p.format || '') + '</select></td>' +
             (gid === '' ? '<td class="pe-muted">—</td>' :
                 '<td><select class="pe-marker" data-gid="' + gid + '" data-pid="' + esc(pid) + '" style="width:150px">' + markerSel + '</select></td>') +
             '<td><select class="pe-move" data-gid="' + gid + '" data-pid="' + esc(pid) + '" style="width:120px">' + groupSel + '</select></td>' +
             '</tr>';
     }
 
+    // Текстовый «индекс» группы для поиска: номер, лунка, время, ТИ,
+    // формат и имена игроков — поиск находит и группу, и человека.
+    function groupSearchText(g, i) {
+        var parts = ['группа ' + (i + 1), String(i + 1),
+            L('лунка', 'hole') + ' ' + (g.startHole || 1), String(g.startHole || 1),
+            peTimeToInput(g.startTime) || String(g.startTime || ''),
+            (TEE_NAMES[g.tee] || [g.tee, g.tee])[currentLang === 'en' ? 1 : 0] || g.tee,
+            g.tee || '', fmtLabel(g.format) || g.format || ''];
+        g.members.forEach(function(p) { parts.push(pname(p)); });
+        return norm(parts.join(' '));
+    }
+
+    // ── Рендер редактора. Группы по умолчанию СВЁРНУТЫ: видны номер,
+    // лунка, время, ТИ, формат и число игроков (настройки правятся прямо
+    // в шапке, не разворачивая состав). ──
     function render() {
         var box = document.getElementById('pe-editor');
         if (!box) return;
         var tn = state.tn;
+        state.groups.forEach(function(g, i) {
+            if (state.collapsed[i] === undefined) state.collapsed[i] = true;
+        });
         var html = '';
         html += '<div class="pe-toolbar card" style="padding:10px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">' +
-            '<input type="search" id="pe-q" placeholder="' + esc(L('🔍 Поиск по ФИО…', '🔍 Search by name…')) + '" style="flex:1;min-width:200px;padding:8px 10px">' +
+            '<input type="search" id="pe-q" placeholder="' + esc(L('🔍 Поиск: ФИО, группа, лунка, время, ТИ, формат…', '🔍 Search: name, group, hole, time, tee, format…')) + '" style="flex:1;min-width:200px;padding:8px 10px">' +
+            '<button class="btn btn-o" onclick="peExpandAll(true)" title="' + esc(L('Развернуть все группы', 'Expand all groups')) + '"><i class="fas fa-angles-down"></i> ' + esc(L('Развернуть все', 'Expand all')) + '</button>' +
+            '<button class="btn btn-o" onclick="peExpandAll(false)" title="' + esc(L('Свернуть все группы', 'Collapse all groups')) + '"><i class="fas fa-angles-up"></i> ' + esc(L('Свернуть все', 'Collapse all')) + '</button>' +
             '<button class="btn btn-g" onclick="peSave()"><i class="fas fa-save"></i> ' + esc(L('Сохранить', 'Save')) + '</button>' +
             '<button class="btn btn-o" onclick="peAddGroup()"><i class="fas fa-plus"></i> ' + esc(L('Группа', 'Group')) + '</button>' +
             '<button class="btn btn-o" onclick="window.open(\'qr-start.html?p=' + encodeURIComponent(state.pid) + '\',\'_blank\')"><i class="fas fa-print"></i> ' + esc(L('Печать стартовых карточек', 'Print start cards')) + '</button>' +
@@ -300,68 +373,108 @@
             '</div>';
 
         state.groups.forEach(function(g, i) {
-            html += '<div class="card pe-group" data-gid="' + i + '" style="margin-bottom:10px;padding:10px">' +
+            var collapsed = !!state.collapsed[i] && !searchActive;
+            html += '<div class="card pe-group' + (collapsed ? ' pe-collapsed' : '') + '" data-gid="' + i + '" data-pe-gsearch="' + esc(groupSearchText(g, i)) + '" style="margin-bottom:10px;padding:10px">' +
                 '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">' +
+                '<button type="button" class="btn btn-ol btn-sm pe-chev" id="pe-chip-' + i + '" onclick="peToggleGroup(' + i + ')" title="' + esc(L('Развернуть/свернуть группу', 'Expand/collapse group')) + '" style="padding:4px 9px"><i class="fas fa-' + (collapsed ? 'chevron-right' : 'chevron-down') + '"></i></button>' +
                 '<strong style="min-width:90px">' + esc(L('Группа', 'Group')) + ' ' + (i + 1) + '</strong>' +
                 '<label style="font-size:12px">' + esc(L('лунка', 'hole')) + ' <input type="number" min="1" max="18" class="pe-hole" data-gid="' + i + '" value="' + esc(g.startHole) + '" style="width:56px;padding:4px"></label>' +
                 '<label style="font-size:12px">' + esc(L('время', 'time')) + ' <input type="time" class="pe-time" data-gid="' + i + '" value="' + esc(peTimeToInput(g.startTime)) + '" style="padding:4px"></label>' +
                 '<label style="font-size:12px">' + esc(L('ТИ группы', 'group tee')) + ' <select class="pe-gtee" data-gid="' + i + '">' + teeOpts(g.tee) + '</select></label>' +
                 '<label style="font-size:12px">' + esc(L('формат', 'format')) + ' <select class="pe-gfmt" data-gid="' + i + '">' + fmtOpts(g.format) + '</select></label>' +
+                '<span class="pe-muted" style="font-size:11.5px"><i class="fas fa-users"></i> ' + g.members.length + '</span>' +
                 (!g.rid && g.members.length === 0 ? '<button class="btn btn-r btn-sm" onclick="peDelGroup(' + i + ')">✕</button>' : '') +
                 (g.rid ? '<span class="pe-muted" style="font-size:11px">QR/раунд: ' + esc(g.rid.slice(0, 6)) + '…</span>' : '<span class="pe-muted" style="font-size:11px">🆕 ' + esc(L('новая группа', 'new group')) + '</span>') +
                 '</div>' +
+                '<div class="pe-group-body' + (collapsed ? ' hidden' : '') + '">' +
                 '<table class="pe-table" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>' +
                 '<th align="left">' + esc(L('Участник', 'Player')) + '</th>' +
                 '<th>' + esc(L('HCP', 'HCP')) + '</th>' +
                 '<th>' + esc(L('Пол', 'Sex')) + '</th>' +
                 '<th>' + esc(L('ТИ', 'Tee')) + '</th>' +
+                '<th>' + esc(L('Формат', 'Format')) + '</th>' +
                 '<th>' + esc(L('Кого отмечает (маркер)', 'Marks (marker)')) + '</th>' +
                 '<th>' + esc(L('Группа', 'Group')) + '</th>' +
                 '</tr></thead><tbody>' +
                 g.members.map(function(p) { return rowHtml(p, i); }).join('') +
-                (g.members.length === 0 ? '<tr><td colspan="6" class="pe-muted" style="padding:8px">' + esc(L('Пустая группа — переместите участника из другой группы или из резерва', 'Empty group — move a player here from another group or roster')) + '</td></tr>' : '') +
-                '</tbody></table></div>';
+                (g.members.length === 0 ? '<tr><td colspan="7" class="pe-muted" style="padding:8px">' + esc(L('Пустая группа — переместите участника из другой группы или из резерва', 'Empty group — move a player here from another group or roster')) + '</td></tr>' : '') +
+                '</tbody></table>' +
+                '</div></div>';
         });
 
-        html += '<div class="card" style="margin-bottom:10px;padding:10px">' +
+        html += '<div class="card pe-roster-card" style="margin-bottom:10px;padding:10px">' +
             '<strong>' + esc(L('Участники без группы (резерв)', 'Players without group (roster)')) + ' (' + state.roster.length + ')</strong>' +
             (state.roster.length ? '<table class="pe-table" style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px"><thead><tr>' +
-                '<th align="left">' + esc(L('Участник', 'Player')) + '</th><th>HCP</th><th>' + esc(L('Пол', 'Sex')) + '</th><th>' + esc(L('ТИ', 'Tee')) + '</th><th></th><th>' + esc(L('Группа', 'Group')) + '</th></tr></thead><tbody>' +
+                '<th align="left">' + esc(L('Участник', 'Player')) + '</th><th>HCP</th><th>' + esc(L('Пол', 'Sex')) + '</th><th>' + esc(L('ТИ', 'Tee')) + '</th><th>' + esc(L('Формат', 'Format')) + '</th><th></th><th>' + esc(L('Группа', 'Group')) + '</th></tr></thead><tbody>' +
                 state.roster.map(function(p) { return rowHtml(p, ''); }).join('') +
                 '</tbody></table>' : '<div class="pe-muted" style="padding:8px;font-size:13px">' + esc(L('пусто', 'empty')) + '</div>') +
             '</div>';
 
         box.innerHTML = html;
+        searchActive = false;
         bindSearch();
+    }
+
+    // Развернуть/свернуть одну группу (состояние — state.collapsed).
+    function peToggleGroup(i) {
+        if (!collectForm()) return;
+        state.collapsed[i] = !state.collapsed[i];
+        var body = document.querySelector('.pe-group[data-gid="' + i + '"] .pe-group-body');
+        var chip = document.getElementById('pe-chip-' + i);
+        if (body) body.classList.toggle('hidden', !!state.collapsed[i]);
+        if (chip) {
+            var ic = chip.querySelector('i');
+            if (ic) ic.className = 'fas fa-' + (state.collapsed[i] ? 'chevron-right' : 'chevron-down');
+        }
+        if (typeof vib === 'function') { try { vib(10); } catch (e) {} }
+    }
+    function peExpandAll(open) {
+        if (!collectForm()) return;
+        state.groups.forEach(function(g, i) { state.collapsed[i] = !open; });
+        render();
     }
 
     function bindSearch() {
         var q = document.getElementById('pe-q');
         if (!q) return;
-        q.addEventListener('input', function() {
-            var val = String(q.value || '').trim().toLowerCase();
-            document.querySelectorAll('.pe-group').forEach(function(card) {
-                var any = false;
-                card.querySelectorAll('.pe-row').forEach(function(row) {
-                    var ok = !val || row.getAttribute('data-pe-name').indexOf(val) >= 0;
-                    row.style.display = ok ? '' : 'none';
-                    if (ok) any = true;
-                });
-                card.style.display = (val && !any) ? 'none' : '';
+        q.addEventListener('input', function() { applySearch(String(q.value || '')); });
+    }
+
+    // Поиск по ВСЕМУ: ФИО игрока, номер группы («группа 5» или просто «5»),
+    // лунка, время, ТИ, формат. Совпавшая группа показывается и
+    // РАЗВЁРТЫВАЕТСЯ; при очищении поиска составы снова сворачиваются.
+    function applySearch(raw) {
+        var val = norm(raw);
+        searchActive = !!val;
+        document.querySelectorAll('#pe-editor .pe-group').forEach(function(card) {
+            var gsearch = norm(card.getAttribute('data-pe-gsearch') || '');
+            var gMatch = !val || gsearch.indexOf(val) !== -1;
+            var anyRow = false;
+            card.querySelectorAll('.pe-row').forEach(function(row) {
+                var ok = !val || norm(row.getAttribute('data-pe-name') || '').indexOf(val) !== -1;
+                row.style.display = ok ? '' : 'none';
+                if (ok) anyRow = true;
             });
-            // карточка резерва
-            var cards = document.querySelectorAll('#pe-editor > .card');
-            var rosterCard = cards[cards.length - 1];
-            if (rosterCard) {
-                var anyR = false;
-                rosterCard.querySelectorAll('.pe-row').forEach(function(row) {
-                    var ok = !val || row.getAttribute('data-pe-name').indexOf(val) >= 0;
-                    row.style.display = ok ? '' : 'none';
-                    if (ok) anyR = true;
-                });
-                rosterCard.style.display = (val && !anyR) ? 'none' : '';
+            card.style.display = (!val || gMatch || anyRow) ? '' : 'none';
+            // Свернуто ли тело группы: при поиске — только несовпавшие.
+            var body = card.querySelector('.pe-group-body');
+            if (body) {
+                var gi = +card.getAttribute('data-gid');
+                var hide = searchActive ? !(gMatch || anyRow) : !!state.collapsed[gi];
+                body.classList.toggle('hidden', hide);
             }
         });
+        // карточка резерва
+        var rosterCard = document.querySelector('#pe-editor .pe-roster-card');
+        if (rosterCard) {
+            var anyR = false;
+            rosterCard.querySelectorAll('.pe-row').forEach(function(row) {
+                var ok = !val || norm(row.getAttribute('data-pe-name') || '').indexOf(val) !== -1;
+                row.style.display = ok ? '' : 'none';
+                if (ok) anyR = true;
+            });
+            rosterCard.style.display = (val && !anyR) ? 'none' : '';
+        }
     }
 
     function peAddGroup() {
@@ -409,6 +522,7 @@
             document.querySelectorAll('.pe-hcp').forEach(function(el) { applyRow(el, 'hcp'); });
             document.querySelectorAll('.pe-gender').forEach(function(el) { applyRow(el, 'gender'); });
             document.querySelectorAll('.pe-tee').forEach(function(el) { applyRow(el, 'tee'); });
+            document.querySelectorAll('.pe-pfmt').forEach(function(el) { applyRow(el, 'format'); });
             document.querySelectorAll('.pe-marker').forEach(function(el) {
                 var gi = +el.dataset.gid, pid = el.dataset.pid;
                 state.groups[gi].markerTargets[pid] = el.value || null;
@@ -544,7 +658,8 @@
                     tee: p.tee,
                     exactHcp: (p.exactHcp !== undefined && p.exactHcp !== null && p.exactHcp !== '') ? p.exactHcp : p.hcp,
                     exactHcpRaw: (p.hcp === null || p.hcp === undefined || p.hcp === '') ? 0 : (parseFloat(p.hcp) || 0),
-                    fieldHcp: p.fieldHcp
+                    fieldHcp: p.fieldHcp,
+                    format: p.format || ''
                 });
                 delete entry.markedBy; // зададим ниже по маркерам
                 newPlayers[p.id] = entry;
@@ -598,7 +713,8 @@
                     tee: p.tee || 'wh',
                     exactHcp: (p.exactHcp !== undefined && p.exactHcp !== null && p.exactHcp !== '') ? p.exactHcp : p.hcp,
                     exactHcpRaw: (p.hcp === null || p.hcp === undefined || p.hcp === '') ? 0 : (parseFloat(p.hcp) || 0),
-                    fieldHcp: p.fieldHcp
+                    fieldHcp: p.fieldHcp,
+                    format: p.format || ''
                 };
             });
             pg.markers = g.members.map(function(marker) {
@@ -635,12 +751,16 @@
                 protoPlayers[p.id] = Object.assign({}, protoPlayers[p.id] || {}, {
                     id: p.id, name: pname(p) || (protoPlayers[p.id] && protoPlayers[p.id].name) || p.id,
                     hcp: (p.exactHcp !== undefined && p.exactHcp !== null && p.exactHcp !== '') ? p.exactHcp : p.hcp,
-                    gender: p.gender || 'men', tee: p.tee
+                    gender: p.gender || 'men', tee: p.tee,
+                    format: p.format || ''
                 });
                 if (regPlayers[p.id]) {
                     regPlayers[p.id] = Object.assign({}, regPlayers[p.id], {
                         hcp: protoPlayers[p.id].hcp, gender: protoPlayers[p.id].gender, tee: p.tee, fieldHcp: p.fieldHcp
                     });
+                    // Формат игры игрока на турнире — тоже на турнире:
+                    // «—» (пусто) не затирает формат, заданный группой HCP.
+                    if (p.format) regPlayers[p.id].format = p.format;
                 }
             });
         });
@@ -677,6 +797,8 @@
     window.peSave = peSave;
     window.peAddGroup = peAddGroup;
     window.peDelGroup = peDelGroup;
+    window.peToggleGroup = peToggleGroup;
+    window.peExpandAll = peExpandAll;
     // Внутренние точки для автотестов (tools/test-pe-edit.js)
     window.peGroupList = peGroupList;
     window.peBuildModel = buildModel;

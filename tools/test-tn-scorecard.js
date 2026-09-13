@@ -111,7 +111,13 @@ function ref(p, orderChild, equalToVal) {
             }
             return Promise.resolve({
                 val: function() { return v; },
-                exists: function() { return v !== null && v !== undefined; }
+                // В реальном RTDB снапшот пустого результата запроса
+                // (ни одного дочернего совпадения) → exists() === false.
+                exists: function() {
+                    return v !== null && v !== undefined &&
+                        !(typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0);
+                },
+                numChildren: function() { return v && typeof v === 'object' ? Object.keys(v).length : 0; }
             });
         },
         set: function(v) { writes.push({ path: p, op: 'set', value: v }); setAt(p, v); return Promise.resolve(); },

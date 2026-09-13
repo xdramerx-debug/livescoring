@@ -1965,20 +1965,36 @@ function doFinishGroupRound() {
             // вводит счёт; в раунде видно, кто уже финишировал.
             finishUpdate.partialFinish = true;
         }
-        db.ref('rounds/' + curRid).update(finishUpdate).catch(function(){ groupFinishing = false; });
+        db.ref('rounds/' + curRid).update(finishUpdate).then(function() {
+            // Перечитываем раунд ПОСЛЕ записи: статус 'completed' появляется,
+            // только когда карточки сдали ВСЕ участники группы.
+            return db.ref('rounds/' + curRid).once('value');
+        }).then(function(sn) {
+            var fresh = sn && sn.val();
+            if (!fresh) return;
 
-        // Если это турнирный раунд и после него сыграны все раунды турнира —
-        // турнир завершается автоматически (открывается экспорт протокола).
-        if (curRoundData && curRoundData.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
-            db.ref('rounds/' + curRid).once('value').then(function() {
-                try { pestovoAutoFinishTournament(curRoundData.tournamentId); } catch (_) {}
+            // Если это турнирный раунд и после него сыграны все раунды турнира —
+            // турнир завершается автоматически (открывается экспорт протокола).
+            if (fresh.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
+                try { pestovoAutoFinishTournament(fresh.tournamentId); } catch (_) {}
+            }
+
+            // ВАЖНО: история пишется один раз на раунд и только когда раунд
+            // действительно завершён. Раньше saveHistory вызывался на КАЖДОМ
+            // частичном завершении (каждый сдавший карточку клиент писал
+            // историю всем участникам) — из-за этого в профилях появлялись
+            // одинаковые дубли раундов. Транзакция-клейм гарантирует запись
+            // ровно один раз, даже если финишируют несколько клиентов сразу.
+            // При частичном завершении (часть группы ещё играет) в историю
+            // не пишем: её запишет последний сдавший, либо авто-завершение
+            // просроченного раунда на следующий день.
+            if (fresh.status !== 'completed') return;
+            return pestovoClaimRoundHistory(curRid).then(function(claimed) {
+                if (claimed && typeof saveHistory === 'function') {
+                    try { saveHistory(curRid, fresh); } catch (e) {}
+                }
             });
-        }
-
-        db.ref('rounds/' + curRid).once('value').then(function(sn) {
-            var r = sn.val();
-            if (r) saveHistory(curRid, r);
-        });
+        }).catch(function() { groupFinishing = false; });
     };
 
     // После завершения раунда карточка не предлагается к печати/скачиванию —

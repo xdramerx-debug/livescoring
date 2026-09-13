@@ -4824,101 +4824,286 @@ function openPlayerProfileModal(playerId, roundId) {
 
         db.ref('users/' + playerId + '/history').once('value').then(function(hSn) {
             var history = hSn.val() || {};
-            var entries = Object.entries(history);
-            entries.sort(function(a, b) { return (b[1].date || 0) - (a[1].date || 0); });
+            // Дубли раундов (один roundId несколько раз — следствие старого
+            // группового финиша) схлопываем в один раунд ещё при чтении.
+            var allRounds = pestovoPickHistoryUnique(Object.entries(history));
+            allRounds.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
 
-            if (entries.length > 0) {
-                var roundsList = entries.map(function(e) { return Object.assign({}, e[1], { _key: e[0] }); });
-                html += renderTrophyCabinet(u, roundsList);
-                html += renderScoringDistributionBar(roundsList);
+            if (allRounds.length > 0) {
+                html += renderTrophyCabinet(u, allRounds);
+                html += renderScoringDistributionBar(allRounds);
 
-                html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> ' + t('round_history') + ' (' + entries.length + ')</h3>';
-
-                entries.forEach(function(entry, idx) {
-                    var hKey = entry[0];
-                    var r = entry[1];
-                    var cardId = 'pr-card-' + idx;
-                    var btnTxtId = 'pr-btn-txt-' + idx;
-                    var btnIconId = 'pr-btn-icon-' + idx;
-
-                    var isFull = r.holes === 18;
-                    var fullTag = isFull ? ' <span style="color:#2ecc71;font-size:10px;font-weight:700;">(18' + hTag + ')</span>' : ' <span style="color:var(--muted);font-size:10px;">(' + (r.holes || 1) + hTag + ')</span>';
-
-                    html += '<div class="card" style="padding:14px;margin-bottom:12px;border:1px solid var(--border);background:var(--card-bg);">';
-                    
-                    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">';
-                    // Турнирный раунд подписываем НАЗВАНИЕМ ТУРНИРА и датой —
-                    // без повтора бренда и лишней служебной строки.
-                    var isTnRound = !!(r.tournamentId || r.tournamentName);
-                    var headTitle = isTnRound
-                        ? escapeHtml(r.tournamentName || (currentLang === 'en' ? 'Tournament' : 'Турнир'))
-                        : t('brand_name');
-                    html += '<div style="flex:1;min-width:180px;">';
-                    html += '<strong style="color:var(--white);font-size:15px;"><i class="fas ' + (isTnRound ? 'fa-trophy' : 'fa-golf-ball-tee') + '" style="color:var(--gold);font-size:12px;"></i> ' + headTitle + '</strong>' + fullTag;
-                    html += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
-                            fmtDate(r.date) + ' · ' + pestovoRoundFormatBadge(r, 'Stroke') + ' · ' + t('tee_select') + ': ' + (r.tee ? fmtTeePill(r.tee) : '—') +
-                            (isTnRound ? '' : ' · ' + (r.mode === 'solo' ? '👤 Solo' : '👥 Group')) + '</div>';
-                    if (isTnRound && r.roundName) {
-                        html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' + escapeHtml(r.roundName) + '</div>';
-                    }
-                    html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' +
-                            (r.holeInOne ? '🎯 ' + r.holeInOne + ' · ' : '') +
-                            '🦅 ' + (r.eagles || 0) + ' · 🐦 ' + (r.birdies || 0) + ' · Par ' + (r.pars || 0) + '</div></div>';
-
-                    html += '<div style="text-align:right;">';
-                    html += '<div style="font-size:22px;font-weight:800;color:var(--white);">' + r.gross + ' <span style="font-size:12px;color:var(--muted);font-weight:600;">Gross</span></div>';
-                    html += '<div class="' + scoreClass(r.toPar) + '" style="font-size:14px;font-weight:700;">' + fmtScore(r.toPar) + '</div>';
-                    html += '</div></div>';
-
-                    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;gap:8px;">';
-                    html += '<button class="btn btn-og btn-sm" onclick="toggleProfileRoundCard(\'' + cardId + '\')"><i class="fas fa-chevron-down" id="' + btnIconId + '"></i> <span id="' + btnTxtId + '">' + (currentLang === 'en' ? 'Expand Scorecard' : 'Развернуть карточку') + '</span></button>';
-
-                    var isAdminOrOwner = (currentUser && (currentUser.uid === playerId || (currentUserData && currentUserData.role === 'admin') || sessionStorage.getItem('pestovo_is_admin') === 'true'));
-                    if (isAdminOrOwner) {
-                        html += '<button class="btn btn-r btn-sm" onclick="deletePlayerHistoryRecord(\'' + playerId + '\', \'' + hKey + '\')" title="' + (currentLang === 'en' ? 'Delete Round' : 'Удалить из истории') + '"><i class="fas fa-trash"></i></button>';
-                    }
-                    html += '</div>';
-
-                    html += '<div id="' + cardId + '" class="hidden" style="display:none;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);">';
-                    
-                    var pObj = {
-                        name: u.name || 'Игрок',
-                        scores: r.scores || {},
-                        fieldHcp: r.fieldHcp || 0,
-                        exactHcp: r.exactHcp || 0,
-                        tee: r.tee || 'wh'
-                    };
-                    var rObj = {
-                        tee: r.tee || 'wh',
-                        format: r.format || 'Stroke Play',
-                        formats: r.formats || null,
-                        holeRange: r.holeRange || '1-18',
-                        startHole: r.startHole || 1,
-                        completedAt: r.date
-                    };
-
-                    if (typeof generatePestovoScorecardHTML === 'function') {
-                        html += generatePestovoScorecardHTML(pObj, rObj, { compact: true });
-                    }
-
-                    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">';
-                    if (r.roundId) {
-                        html += '<button class="btn btn-og btn-sm" onclick="openPrintScorecardModal(\'' + r.roundId + '\')"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print (A4)' : 'Печать (A4)') + '</button>';
-                        if (r.status === 'completed') {
-                            html += '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + r.roundId + '\')"><i class="fas fa-image"></i> PNG</button>';
-                        }
-                    }
-                    html += '</div>';
-
-                    html += '</div></div>';
-                });
+                html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> ' + t('round_history') + ' (' + allRounds.length + ')</h3>';
+                // Вкладки «Клубные раунды» / «Турнирные раунды» и фильтры
+                // рисуются отдельным рендером (pestovoInitProfileHistory).
+                html += '<div id="pr-history-root" data-player-id="' + escapeHtml(playerId) + '"></div>';
             }
 
             if (bodyEl) bodyEl.innerHTML = html;
+            if (allRounds.length > 0) {
+                pestovoInitProfileHistory(playerId, u, allRounds);
+            }
+            // На всякий случай чистим дубли этого игрока прямо в базе
+            // (идемпотентно, без блокировки отрисовки).
+            try { pestovoDedupeUserHistory(playerId); } catch (e) {}
         }).catch(function() {
             if (bodyEl) bodyEl.innerHTML = html;
         });
     });
+}
+
+// ==========================================
+// ПРОФИЛЬ ИГРОКА: ВКЛАДКИ И ФИЛЬТРЫ ИСТОРИИ
+// ==========================================
+// Турнирные раунды вынесены в отдельную вкладку и НЕ дублируются в общем
+// списке. Все карточки по умолчанию свёрнуты.
+var __pestovoProfileHistory = {};
+var __pestovoProfileCardSeq = 0;
+
+function pestovoProfileIsTournamentRound(r) {
+    if (!r) return false;
+    if (r.tournamentId || r.tournamentName || r.protocolId) return true;
+    // На случай иных турнирных форматов — общий признак турнирного раунда.
+    if (typeof isTournamentRound === 'function') { try { return !!isTournamentRound(r); } catch (e) {} }
+    return false;
+}
+
+function pestovoInitProfileHistory(playerId, u, rounds) {
+    __pestovoProfileHistory[playerId] = {
+        rounds: rounds || [],
+        u: u,
+        tab: 'club',
+        sort: 'date_desc',
+        onlyFull: false
+    };
+    __pestovoProfileCardSeq = 0;
+    var root = document.getElementById('pr-history-root');
+    if (root) pestovoRenderProfileHistory(playerId);
+}
+
+function pestovoProfileHistorySetTab(playerId, tab) {
+    var st = __pestovoProfileHistory[playerId];
+    if (!st || st.tab === tab) return;
+    st.tab = tab;
+    pestovoRenderProfileHistory(playerId);
+}
+
+function pestovoProfileHistorySetSort(playerId, sort) {
+    var st = __pestovoProfileHistory[playerId];
+    if (!st) return;
+    st.sort = sort;
+    pestovoRenderProfileHistory(playerId);
+}
+
+function pestovoProfileHistoryToggleFull(playerId) {
+    var st = __pestovoProfileHistory[playerId];
+    if (!st) return;
+    st.onlyFull = !st.onlyFull;
+    pestovoRenderProfileHistory(playerId);
+}
+
+function pestovoSortHistoryItems(items, sort) {
+    items.sort(function(a, b) {
+        if (sort === 'date_asc') return (a.date || 0) - (b.date || 0) || String(a._key).localeCompare(String(b._key));
+        if (sort === 'gross_best') {
+            var ga = a.gross || 0, gb = b.gross || 0;
+            if (ga !== gb) return ga - gb;
+            return (b.date || 0) - (a.date || 0);
+        }
+        if (sort === 'stableford_best') {
+            var sa = a.stablefordField || 0, sb = b.stablefordField || 0;
+            if (sb !== sa) return sb - sa;
+            return (b.date || 0) - (a.date || 0);
+        }
+        if (sort === 'birdies') {
+            var ba = a.birdies || 0, bb = b.birdies || 0;
+            if (bb !== ba) return bb - ba;
+            return (b.date || 0) - (a.date || 0);
+        }
+        // date_desc по умолчанию
+        return (b.date || 0) - (a.date || 0) || String(b._key).localeCompare(String(a._key));
+    });
+}
+
+function pestovoProfileHistoryToolbarHtml(playerId) {
+    var st = __pestovoProfileHistory[playerId];
+    if (!st) return '';
+    var en = currentLang === 'en';
+    var rounds = st.rounds;
+    var clubCount = rounds.filter(function(r) { return !pestovoProfileIsTournamentRound(r); }).length;
+    var tnCount = rounds.length - clubCount;
+
+    var sortOptions = [
+        { v: 'date_desc', l: en ? 'Newest first (by date)' : 'Сначала новые (по дате)' },
+        { v: 'date_asc', l: en ? 'Oldest first (by date)' : 'Сначала старые (по дате)' },
+        { v: 'gross_best', l: en ? 'Best Gross score' : 'Лучший счёт Gross' },
+        { v: 'stableford_best', l: en ? 'Best Stableford' : 'Лучший Stableford' },
+        { v: 'birdies', l: en ? 'Most birdies' : 'Больше всего бёрди' }
+    ];
+    var optionsHtml = sortOptions.map(function(o) {
+        return '<option value="' + o.v + '"' + (st.sort === o.v ? ' selected' : '') + '>' + o.l + '</option>';
+    }).join('');
+
+    var h = '';
+    h += '<div class="tn-tabs" role="tablist" style="margin:2px 0 10px;">';
+    h += '<button type="button" class="tn-tab' + (st.tab === 'club' ? ' active' : '') + '" onclick="pestovoProfileHistorySetTab(\'' + playerId + '\',\'club\')">' +
+         '<i class="fas fa-golf-ball-tee"></i> ' + (en ? 'Club rounds' : 'Клубные раунды') +
+         ' <span class="tn-tab-count">' + clubCount + '</span></button>';
+    h += '<button type="button" class="tn-tab' + (st.tab === 'tn' ? ' active' : '') + '" onclick="pestovoProfileHistorySetTab(\'' + playerId + '\',\'tn\')">' +
+         '<i class="fas fa-trophy"></i> ' + (en ? 'Tournament rounds' : 'Турнирные раунды') +
+         ' <span class="tn-tab-count">' + tnCount + '</span></button>';
+    h += '</div>';
+
+    h += '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">';
+    h += '<div class="form-group" style="flex:1;min-width:180px;margin:0;">';
+    h += '<label style="font-size:11px;margin-bottom:4px;">' + (en ? 'Sort / filter rounds' : 'Сортировка и фильтр раундов') + '</label>';
+    h += '<select class="form-input" style="padding:8px 10px;font-size:12.5px;" onchange="pestovoProfileHistorySetSort(\'' + playerId + '\',this.value)">' + optionsHtml + '</select>';
+    h += '</div>';
+    h += '<button type="button" class="tn-tab' + (st.onlyFull ? ' active' : '') + '" style="padding:8px 12px;" onclick="pestovoProfileHistoryToggleFull(\'' + playerId + '\')">' +
+         '<i class="fas fa-list-ol"></i> ' + (en ? '18 holes only' : 'Только 18 лунок') + '</button>';
+    h += '</div>';
+    return h;
+}
+
+function pestovoProfileRoundCardHtml(playerId, u, r) {
+    var en = currentLang === 'en';
+    var hTag = en ? 'h' : 'л';
+    var seq = ++__pestovoProfileCardSeq;
+    var cardId = 'pr-card-' + seq;
+    var btnTxtId = 'pr-btn-txt-' + seq;
+    var btnIconId = 'pr-btn-icon-' + seq;
+
+    var isFull = r.holes === 18;
+    var fullTag = isFull ? ' <span style="color:#2ecc71;font-size:10px;font-weight:700;">(18' + hTag + ')</span>' : ' <span style="color:var(--muted);font-size:10px;">(' + (r.holes || 1) + hTag + ')</span>';
+
+    var h = '<div class="card" style="padding:12px 14px;margin-bottom:10px;border:1px solid var(--border);background:var(--card-bg);">';
+    // Вся шапка — сворачивает/разворачивает карточку (по умолчанию свёрнута).
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;cursor:pointer;" onclick="toggleProfileRoundCard(\'' + cardId + '\')">';
+    // Турнирный раунд подписываем НАЗВАНИЕМ ТУРНИРА и датой —
+    // без повтора бренда и лишней служебной строки.
+    var isTnRound = pestovoProfileIsTournamentRound(r);
+    var tnTitle = r.tournamentName
+        || (r.roundName ? String(r.roundName).replace(/\s*[·•]\s*(старт|start)\s*$/i, '').trim() : '')
+        || (en ? 'Tournament' : 'Турнир');
+    var headTitle = isTnRound ? escapeHtml(tnTitle) : t('brand_name');
+    h += '<div style="flex:1;min-width:180px;">';
+    h += '<strong style="color:var(--white);font-size:14.5px;"><i class="fas ' + (isTnRound ? 'fa-trophy' : 'fa-golf-ball-tee') + '" style="color:var(--gold);font-size:12px;"></i> ' + headTitle + '</strong>' + fullTag;
+    h += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
+            fmtDate(r.date) + ' · ' + pestovoRoundFormatBadge(r, 'Stroke') + ' · ' + t('tee_select') + ': ' + (r.tee ? fmtTeePill(r.tee) : '—') +
+            (isTnRound ? '' : ' · ' + (r.mode === 'solo' ? '👤 Solo' : '👥 Group')) + '</div>';
+    if (isTnRound && r.roundName) {
+        h += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' + escapeHtml(r.roundName) + '</div>';
+    }
+    h += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' +
+            (r.holeInOne ? '🎯 ' + r.holeInOne + ' · ' : '') +
+            '🦅 ' + (r.eagles || 0) + ' · 🐦 ' + (r.birdies || 0) + ' · Par ' + (r.pars || 0) + '</div></div>';
+
+    h += '<div style="text-align:right;display:flex;align-items:center;gap:10px;">';
+    h += '<div><div style="font-size:22px;font-weight:800;color:var(--white);line-height:1;">' + r.gross + ' <span style="font-size:12px;color:var(--muted);font-weight:600;">Gross</span></div>' +
+         '<div class="' + scoreClass(r.toPar) + '" style="font-size:14px;font-weight:700;">' + fmtScore(r.toPar) + '</div></div>';
+    h += '<i class="fas fa-chevron-down" id="' + btnIconId + '" style="color:var(--gold);font-size:12px;width:14px;"></i>';
+    h += '</div></div>';
+
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;gap:8px;">';
+    h += '<button type="button" class="btn btn-og btn-sm" onclick="event.stopPropagation();toggleProfileRoundCard(\'' + cardId + '\')"><span id="' + btnTxtId + '">' + (en ? 'Expand scorecard' : 'Развернуть карточку') + '</span></button>';
+
+    var isAdminOrOwner = (currentUser && (currentUser.uid === playerId || (currentUserData && currentUserData.role === 'admin') || sessionStorage.getItem('pestovo_is_admin') === 'true'));
+    if (isAdminOrOwner) {
+        h += '<button type="button" class="btn btn-r btn-sm" onclick="event.stopPropagation();deletePlayerHistoryRecord(\'' + playerId + '\', \'' + r._key + '\')" title="' + (en ? 'Delete Round' : 'Удалить из истории') + '"><i class="fas fa-trash"></i></button>';
+    }
+    h += '</div>';
+
+    // Свёрнуто по умолчанию: класс hidden + display:none.
+    h += '<div id="' + cardId + '" class="hidden" style="display:none;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);">';
+
+    var pObj = {
+        name: (u && u.name) || 'Игрок',
+        scores: r.scores || {},
+        fieldHcp: r.fieldHcp || 0,
+        exactHcp: r.exactHcp || 0,
+        tee: r.tee || 'wh'
+    };
+    var rObj = {
+        tee: r.tee || 'wh',
+        format: r.format || 'Stroke Play',
+        formats: r.formats || null,
+        holeRange: r.holeRange || '1-18',
+        startHole: r.startHole || 1,
+        completedAt: r.date
+    };
+
+    if (typeof generatePestovoScorecardHTML === 'function') {
+        h += generatePestovoScorecardHTML(pObj, rObj, { compact: true });
+    }
+
+    h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">';
+    if (r.roundId) {
+        h += '<button type="button" class="btn btn-og btn-sm" onclick="event.stopPropagation();openPrintScorecardModal(\'' + r.roundId + '\')"><i class="fas fa-print"></i> ' + (en ? 'Print (A4)' : 'Печать (A4)') + '</button>';
+        if (r.status === 'completed') {
+            h += '<button type="button" class="btn btn-g btn-sm" onclick="event.stopPropagation();exportRoundPNG(\'' + r.roundId + '\')"><i class="fas fa-image"></i> PNG</button>';
+        }
+    }
+    h += '</div>';
+
+    h += '</div></div>';
+    return h;
+}
+
+function pestovoRenderProfileHistory(playerId) {
+    var st = __pestovoProfileHistory[playerId];
+    var root = document.getElementById('pr-history-root');
+    if (!st || !root) return;
+    var en = currentLang === 'en';
+
+    root.innerHTML = pestovoProfileHistoryToolbarHtml(playerId) + '<div id="pr-history-list"></div>';
+    var listEl = document.getElementById('pr-history-list');
+    var wantTn = st.tab === 'tn';
+    var items = st.rounds.filter(function(r) { return pestovoProfileIsTournamentRound(r) === wantTn; });
+    if (st.onlyFull) items = items.filter(function(r) { return r.holes === 18; });
+    pestovoSortHistoryItems(items, st.sort);
+
+    if (!items.length) {
+        var msg = wantTn
+            ? (st.onlyFull
+                ? (en ? 'No 18-hole tournament rounds' : 'Нет турнирных раундов на 18 лунок')
+                : (en ? 'No tournament rounds yet' : 'Турнирных раундов пока нет'))
+            : (st.onlyFull
+                ? (en ? 'No 18-hole club rounds' : 'Нет клубных раундов на 18 лунок')
+                : (en ? 'No club rounds yet' : 'Клубных раундов пока нет'));
+        listEl.innerHTML = '<div class="empty" style="padding:24px;"><i class="fas ' + (wantTn ? 'fa-trophy' : 'fa-golf-ball-tee') + '"></i><p>' + msg + '</p></div>';
+        return;
+    }
+
+    var html = '';
+    if (wantTn) {
+        // Группируем турнирные раунды по турнирам: отдельный турнир —
+        // отдельный блок с заголовком, раунды не перемешаны с клубными.
+        var groups = {};
+        var gOrder = [];
+        items.forEach(function(r) {
+            var gk = r.tournamentId || r.protocolId || ('name:' + (r.tournamentName || (en ? 'Tournament' : 'Турнир')));
+            if (!Object.prototype.hasOwnProperty.call(groups, gk)) { groups[gk] = []; gOrder.push(gk); }
+            groups[gk].push(r);
+        });
+        gOrder.sort(function(a, b) {
+            var ma = Math.max.apply(null, groups[a].map(function(x) { return x.date || 0; }));
+            var mb = Math.max.apply(null, groups[b].map(function(x) { return x.date || 0; }));
+            return mb - ma;
+        });
+        gOrder.forEach(function(gk) {
+            var list = groups[gk];
+            var name = list[0].tournamentName
+                || (list[0].roundName ? String(list[0].roundName).replace(/\s*[·•]\s*(старт|start)\s*$/i, '').trim() : '')
+                || (en ? 'Tournament' : 'Турнир');
+            html += '<div style="margin:14px 0 8px;padding:8px 12px;border-radius:10px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.28);">' +
+                    '<strong style="color:var(--gold);font-size:13px;"><i class="fas fa-trophy"></i> ' + escapeHtml(name) + '</strong>' +
+                    ' <span class="tn-tab-count" style="margin-left:6px;">' + list.length + '</span></div>';
+            list.forEach(function(r) { html += pestovoProfileRoundCardHtml(playerId, st.u, r); });
+        });
+    } else {
+        items.forEach(function(r) { html += pestovoProfileRoundCardHtml(playerId, st.u, r); });
+    }
+    listEl.innerHTML = html;
 }
 
 function toggleProfileRoundCard(cardId) {
@@ -5899,8 +6084,13 @@ function saveHistory(roundId,rd){
 
 function saveHistoryEntry(userId,roundId,rd,p,stats){
     // Турнирные раунды помечаем турниром: в профиле игрока показываем название
-    // турнира и дату (без дублирования «Пестово · Пестово»).
+    // турнира и дату (без дублирования «Пестово · Пестово»). Для раундов,
+    // заведённых через протокол турнира (без tournamentId), название берём
+    // из protocolName — иначе раунд не попал бы во вкладку «Турнирные».
     var tnName=(rd.tournamentName||'').toString().trim();
+    if(!tnName && typeof roundTournamentName==='function'){
+        tnName=(roundTournamentName(rd)||'').toString().trim();
+    }
     var entry={
         roundId:roundId,date:rd.completedAt||Date.now(),tee:(p&&p.tee)||rd.tee||'wh',format:rd.format||'Stroke Play',
         mode:rd.mode||'group',startHole:rd.startHole||1,holeRange:rd.holeRange||'1-18',gross:stats.gross,toPar:stats.toPar,
@@ -5911,15 +6101,208 @@ function saveHistoryEntry(userId,roundId,rd,p,stats){
         fieldHcp:p.fieldHcp||0,gender:p.gender||'men',status:'completed'
     };
     if(rd.tournamentId)entry.tournamentId=rd.tournamentId;
+    if(rd.protocolId)entry.protocolId=rd.protocolId;
     if(tnName)entry.tournamentName=tnName;
     var roundName=(rd.roundName||rd.protocolName||'').toString().trim();
-    if(rd.tournamentId&&roundName)entry.roundName=roundName;
-    db.ref('users/'+userId+'/history').push(entry);
-    db.ref('users/'+userId+'/roundsPlayed').transaction(function(v){return(v||0)+1;});
-    if(stats.holesPlayed===getRoundHoleCount(rd)){
-        db.ref('users/'+userId+'/bestGross').transaction(function(v){if(!v||stats.gross<v)return stats.gross;return v;});
-        db.ref('users/'+userId+'/bestStableford').transaction(function(v){if(!v||stats.stablefordField>v)return stats.stablefordField;return v;});
+    if((rd.tournamentId||rd.protocolId||tnName)&&roundName)entry.roundName=roundName;
+
+    function writeEntry() {
+        db.ref('users/'+userId+'/history').push(entry);
+        db.ref('users/'+userId+'/roundsPlayed').transaction(function(v){return(v||0)+1;});
+        if(stats.holesPlayed===getRoundHoleCount(rd)){
+            db.ref('users/'+userId+'/bestGross').transaction(function(v){if(!v||stats.gross<v)return stats.gross;return v;});
+            db.ref('users/'+userId+'/bestStableford').transaction(function(v){if(!v||stats.stablefordField>v)return stats.stablefordField;return v;});
+        }
     }
+
+    // Идемпотентность на уровне игрока: если этот раунд УЖЕ лежит в его
+    // истории (записал другой клиент, завершавший групповой раунд, либо
+    // это повторный вызов), второй раз не пишем — иначе в профиле
+    // появлялись одинаковые дубли раундов и задваивался roundsPlayed.
+    // Если проверку выполнить не удалось (сбой чтения/прав), пишем как
+    // раньше: дубли на уровне раунда всё равно отсекает клейм
+    // historyRecorded и плановая дедупликация.
+    try {
+        db.ref('users/'+userId+'/history').orderByChild('roundId').equalTo(roundId).limitToFirst(1).once('value').then(function(sn){
+            var exists = !!(sn && (typeof sn.exists === 'function' ? sn.exists() : (sn.numChildren && sn.numChildren() > 0)));
+            if (!exists) writeEntry();
+        }).catch(writeEntry);
+    } catch (e) {
+        writeEntry();
+    }
+}
+
+// ==========================================
+// ДЕДУПЛИКАЦИЯ ИСТОРИИ РАУНДОВ
+// ==========================================
+// Ключ группы «одинаковых» записей: по roundId, а для старых записей без
+// roundId — по детерминированной сигнатуре (дата + итог + счёт по лункам).
+function pestovoHistoryEntryGroupKey(r) {
+    r = r || {};
+    if (r.roundId) return 'rid:' + r.roundId;
+    var scoresSig = '';
+    try { scoresSig = JSON.stringify(r.scores || {}); } catch (e) { scoresSig = ''; }
+    return 'sig:' + [r.date, r.gross, r.holes, r.toPar, r.net, r.stablefordField, scoresSig].join('|');
+}
+
+// Из списка пар [key, entry] оставляет по одной запись на раунд.
+// Из дублей выбирается самая полная: больше сыгранных лунок, затем больше
+// gross (запись не «обрезана» на середине), затем самая ранняя по ключу.
+// Возвращает массив объектов записи с добавленным полем _key.
+function pestovoPickHistoryUnique(entries) {
+    var groups = {};
+    var order = [];
+    (entries || []).forEach(function(e) {
+        if (!e || !e[1] || typeof e[1] !== 'object') return;
+        var gk = pestovoHistoryEntryGroupKey(e[1]);
+        if (!Object.prototype.hasOwnProperty.call(groups, gk)) { groups[gk] = []; order.push(gk); }
+        groups[gk].push(e);
+    });
+    var out = [];
+    order.forEach(function(gk) {
+        var list = groups[gk];
+        if (list.length === 1) {
+            out.push(Object.assign({}, list[0][1], { _key: list[0][0] }));
+            return;
+        }
+        var tnFlag = function(e) {
+            return (e[1].tournamentId || e[1].tournamentName || e[1].protocolId) ? 1 : 0;
+        };
+        list.sort(function(a, b) {
+            var ha = a[1].holes || 0, hb = b[1].holes || 0;
+            if (hb !== ha) return hb - ha;
+            var ga = a[1].gross || 0, gb = b[1].gross || 0;
+            if (gb !== ga) return gb - ga;
+            // При равной полноте сохраняем запись с турнирной пометкой,
+            // чтобы раунд попал в турнирную вкладку.
+            var ta = tnFlag(a), tb = tnFlag(b);
+            if (tb !== ta) return tb - ta;
+            var da = a[1].date || 0, db2 = b[1].date || 0;
+            if (da !== db2) return da - db2;
+            return String(a[0]) < String(b[0]) ? -1 : (String(a[0]) > String(b[0]) ? 1 : 0);
+        });
+        out.push(Object.assign({}, list[0][1], { _key: list[0][0] }));
+    });
+    return out;
+}
+
+// Сводные показатели по списку уникальных записей истории:
+// roundsPlayed / bestGross / bestStableford.
+function pestovoHistoryBestStats(rounds) {
+    var bestG = null, bestS = null;
+    (rounds || []).forEach(function(item) {
+        if (item && item.holes === 18 && item.gross) {
+            if (bestG === null || item.gross < bestG) bestG = item.gross;
+        }
+        if (item && item.holes === 18 && item.stablefordField) {
+            if (bestS === null || item.stablefordField > bestS) bestS = item.stablefordField;
+        }
+    });
+    return { roundsPlayed: (rounds || []).length, bestGross: bestG, bestStableford: bestS };
+}
+
+var __pestovoUserHistoryDeduped = {};
+
+// Чистит дубли раундов в истории ОДНОГО игрока и выравнивает счётчики
+// (roundsPlayed / bestGross / bestStableford). Идемпотентно: если дублей
+// нет и счётчики верные, ничего не пишет. Возвращает Promise<boolean>
+// (true — в базу внесены изменения).
+function pestovoDedupeUserHistory(userId, userVal) {
+    if (!userId || typeof db === 'undefined' || !db) return Promise.resolve(false);
+    var run = function(u) {
+        if (!u) return false;
+        var hist = u.history || {};
+        var pairs = Object.entries(hist);
+        var unique = pestovoPickHistoryUnique(pairs);
+        var keepKeys = {};
+        unique.forEach(function(r) { keepKeys[r._key] = true; });
+        var removeKeys = pairs.map(function(e) { return e[0]; }).filter(function(k) { return !keepKeys[k]; });
+        var stats = pestovoHistoryBestStats(unique);
+        var updates = {};
+        removeKeys.forEach(function(k) { updates['users/' + userId + '/history/' + k] = null; });
+        if ((u.roundsPlayed || 0) !== stats.roundsPlayed) updates['users/' + userId + '/roundsPlayed'] = stats.roundsPlayed;
+        if ((u.bestGross || null) !== stats.bestGross) updates['users/' + userId + '/bestGross'] = stats.bestGross;
+        if ((u.bestStableford || null) !== stats.bestStableford) updates['users/' + userId + '/bestStableford'] = stats.bestStableford;
+        if (!Object.keys(updates).length) return false;
+        return db.ref().update(updates).then(function() { return true; }).catch(function() { return false; });
+    };
+    if (userVal) {
+        try { return Promise.resolve(run(userVal)); } catch (e) { return Promise.resolve(false); }
+    }
+    if (__pestovoUserHistoryDeduped[userId]) return Promise.resolve(false);
+    __pestovoUserHistoryDeduped[userId] = true;
+    return db.ref('users/' + userId).once('value').then(function(sn) {
+        return run(sn && sn.val());
+    }).catch(function() { return false; });
+}
+
+var __pestovoGlobalHistoryDedupeRunning = false;
+
+// Глобальная разовая чистка дублей по ВСЕМ игрокам (запускает админ).
+// Защита от параллельного/повторного запуска — транзакция-клейм по
+// settings/migrations/historyDedupeV2. Дубли раньше плодил групповой
+// финиш (saveHistory вызывал каждый завершающий клиент).
+function pestovoDedupeAllPlayerHistoryOnce() {
+    if (typeof db === 'undefined' || !db || __pestovoGlobalHistoryDedupeRunning) return Promise.resolve(0);
+    __pestovoGlobalHistoryDedupeRunning = true;
+    var release = function(v) { __pestovoGlobalHistoryDedupeRunning = false; return v; };
+    var claimId = 'claim_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    var flagPath = 'settings/migrations/historyDedupeV2';
+
+    // Клейм допускает «зависший» running старше 30 минут.
+    return db.ref(flagPath).transaction(function(v) {
+        if (v && v.status === 'done') return undefined;
+        if (v && v.status === 'running' && v.at && (Date.now() - v.at) < 30 * 60 * 1000) return undefined;
+        return { status: 'running', at: Date.now(), claim: claimId,
+                 by: (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) || 'admin' };
+    }).then(function(res) {
+        if (!res.committed || !res.snapshot || res.snapshot.child('claim').val() !== claimId) return release(0);
+
+        var listUserIds = function() {
+            // Лёгкий список пользователей через REST shallow=true (без вытягивания
+            // всех scorecard'ов), с фолбэком на полное чтение SDK.
+            if (typeof fetch === 'function' && typeof firebaseConfig !== 'undefined' && firebaseConfig && firebaseConfig.databaseURL) {
+                return fetch(firebaseConfig.databaseURL + '/users.json?shallow=true').then(function(resp) {
+                    if (!resp.ok) throw new Error('shallow failed');
+                    return resp.json();
+                }).then(function(obj) {
+                    return obj && typeof obj === 'object' ? Object.keys(obj) : [];
+                }).catch(function() {
+                    return db.ref('users').once('value').then(function(sn) { return Object.keys(sn.val() || {}); });
+                });
+            }
+            return db.ref('users').once('value').then(function(sn) { return Object.keys(sn.val() || {}); });
+        };
+
+        return listUserIds().then(function(ids) {
+            var removedUsers = 0, removedEntries = 0;
+            var chain = Promise.resolve();
+            ids.forEach(function(uid) {
+                chain = chain.then(function() {
+                    return db.ref('users/' + uid).once('value').then(function(sn) {
+                        var u = sn && sn.val();
+                        if (!u || !u.history) return;
+                        var before = Object.keys(u.history).length;
+                        return Promise.resolve(pestovoDedupeUserHistory(uid, u)).then(function(changed) {
+                            if (changed) {
+                                removedUsers++;
+                                var after = pestovoPickHistoryUnique(Object.entries(u.history)).length;
+                                removedEntries += Math.max(0, before - after);
+                            }
+                        }).catch(function() {});
+                    }).catch(function() {});
+                });
+            });
+            return chain.then(function() {
+                return db.ref(flagPath).update({
+                    status: 'done', at: Date.now(), claim: claimId,
+                    finishedAt: Date.now(), users: removedUsers, removedEntries: removedEntries
+                }).catch(function() {});
+            }).then(function() {
+                return release(removedEntries);
+            });
+        });
+    }).catch(function() { return release(0); });
 }
 
 
@@ -10735,7 +11118,59 @@ function pestovoBroadcastFeed(data, ctx, limit) {
     return arr;
 }
 
+// ==========================================
+// АВТО-ЧИСТКА ДУБЛЕЙ ИСТОРИИ (один раз на сессию)
+// ==========================================
+// Любой вошедший игрок чистит СВОЮ историю от случайных дублей; админ
+// дополнительно запускает разовый глобальный проход по всем игрокам
+// (гостевые записи в том числе). Идемпотентно, помечается флагом
+// settings/migrations/historyDedupeV2.
+(function pestovoScheduleHistoryDedupe() {
+    function run() {
+        if (typeof auth === 'undefined' || !auth || typeof db === 'undefined' || !db) return;
+        auth.onAuthStateChanged(function(user) {
+            if (!user || !user.uid) return;
+            // Своя история — сразу, без всяких прав админа.
+            try {
+                pestovoDedupeUserHistory(user.uid).then(function(changed) {
+                    if (changed && typeof toast === 'function') {
+                        // Молча чиним; в тостах не шумим.
+                    }
+                }).catch(function() {});
+            } catch (e) {}
+            // Глобальная чистка — только для админа.
+            try {
+                db.ref('users/' + user.uid).once('value').then(function(sn) {
+                    var u = sn && sn.val();
+                    var isAdmin = (u && u.role === 'admin') ||
+                        (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('pestovo_is_admin') === 'true');
+                    if (isAdmin) {
+                        setTimeout(function() {
+                            try { pestovoDedupeAllPlayerHistoryOnce(); } catch (e) {}
+                        }, 2500);
+                    }
+                }).catch(function() {});
+            } catch (e) {}
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run);
+    } else {
+        run();
+    }
+})();
+
 if (typeof window !== 'undefined') {
+    window.pestovoPickHistoryUnique = pestovoPickHistoryUnique;
+    window.pestovoHistoryEntryGroupKey = pestovoHistoryEntryGroupKey;
+    window.pestovoHistoryBestStats = pestovoHistoryBestStats;
+    window.pestovoDedupeUserHistory = pestovoDedupeUserHistory;
+    window.pestovoDedupeAllPlayerHistoryOnce = pestovoDedupeAllPlayerHistoryOnce;
+    window.pestovoInitProfileHistory = pestovoInitProfileHistory;
+    window.pestovoProfileHistorySetTab = pestovoProfileHistorySetTab;
+    window.pestovoProfileHistorySetSort = pestovoProfileHistorySetSort;
+    window.pestovoProfileHistoryToggleFull = pestovoProfileHistoryToggleFull;
+    window.pestovoRenderProfileHistory = pestovoRenderProfileHistory;
     window.roundTournamentName = roundTournamentName;
     window.isTournamentRound = isTournamentRound;
     window.updateRoundEventBanner = updateRoundEventBanner;

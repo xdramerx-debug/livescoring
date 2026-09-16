@@ -278,11 +278,11 @@
         });
         try {
             document.body.setAttribute('data-dsp-ready', '1');
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
     }
 
     function persistLocal() {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch (e) {}
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch (e) { console.warn("[silent]", e); }
     }
 
     /* ---------------------------------------------------------
@@ -418,11 +418,11 @@
             if (typeof global.loadStats === 'function' && document.getElementById('general-stats')) global.loadStats();
             if (typeof global.loadLB === 'function' && document.getElementById('lb-container')) global.loadLB();
             if (typeof global.loadTournaments === 'function' && document.getElementById('tournaments-list')) global.loadTournaments();
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
         try {
             var ev = document.createEvent ? document.createEvent('Event') : null;
             if (ev) { ev.initEvent('pestovo:design-applied', true, false); document.dispatchEvent(ev); }
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
     }
 
     /* ---------------------------------------------------------

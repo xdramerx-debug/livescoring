@@ -231,12 +231,6 @@ body.sun-mode .score-plus {
     border: 2px solid #000000 !important;
     font-weight: 900 !important;
 }
-body.sun-mode .score-par-btn {
-    background: #e8f5e9 !important;
-    color: #0b2912 !important;
-    border: 2px solid #1b5e20 !important;
-    font-weight: 800 !important;
-}
 
 /* LIGHT GREEN & LIGHT GOLD CTA BUTTONS IN SUN MODE */
 body.sun-mode .btn-g {
@@ -700,7 +694,7 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .score-area{text-align:center;margin:24px 0;}
 .score-disp{font-family:var(--fb);font-variant-numeric:tabular-nums;font-size:64px;font-weight:800;color:var(--white);min-height:80px;display:flex;align-items:center;justify-content:center;text-shadow:0 4px 16px rgba(0,0,0,0.5);}
 .score-btns{display:flex;gap:20px;justify-content:center;margin:16px 0;}
-.score-minus,.score-plus{width:64px;height:64px;border-radius:50%;font-size:28px;font-weight:900;border:2px solid var(--border);background:rgba(19,34,24,0.9);color:var(--white);cursor:pointer;transition:var(--t);display:flex;align-items:center;justify-content:center;}
+.score-minus,.score-plus{width:var(--score-btn,64px);height:var(--score-btn,64px);min-width:var(--score-btn,64px);min-height:var(--score-btn,64px);border-radius:50%;font-size:var(--score-btn-fs,28px);font-weight:900;border:2px solid var(--border);background:rgba(19,34,24,0.9);color:var(--white);cursor:pointer;transition:var(--t);display:flex;align-items:center;justify-content:center;}
 .score-minus:hover{border-color:var(--blue);color:var(--blue);box-shadow:0 0 12px rgba(90,173,224,0.4);}
 .score-plus:hover{border-color:var(--red);color:var(--red);box-shadow:0 0 12px rgba(224,90,74,0.4);}
 .score-result{font-size:16px;font-weight:700;padding:6px 18px;border-radius:20px;display:inline-block;margin-bottom:16px;}
@@ -1255,7 +1249,6 @@ html.score-kiosk .hole-display {
     .stats-grid{grid-template-columns:repeat(2,1fr);}
     .stat-n{font-size:24px;}
     .footer-grid{grid-template-columns:1fr;gap:20px;}
-    .hole-nav{grid-template-columns:repeat(6,1fr);}
     .score-disp{font-size:48px;}
     .page-title{font-size:26px;}
     .lb-table th,.lb-table td{padding:10px 6px;font-size:12px;}
@@ -1397,9 +1390,8 @@ html.score-kiosk .hole-display {
     .score-area { margin: 4px 0 !important; }
     .score-disp { font-size: 42px !important; min-height: 44px !important; margin: 0 !important; line-height: 1.1 !important; }
     .score-btns { gap: 12px !important; margin: 6px 0 !important; }
-    .score-minus, .score-plus { width: 52px !important; height: 52px !important; min-width: 52px !important; min-height: 52px !important; font-size: 24px !important; border-radius: 14px !important; }
+    .score-minus, .score-plus { border-radius: 14px !important; }
     .score-result { font-size: 13px !important; padding: 4px 14px !important; margin-bottom: 8px !important; }
-    .score-par-btn { padding: 0 16px !important; font-size: 14px !important; height: 56px !important; min-height: 56px !important; border-radius: 12px !important; }
     
     .scoring-dual-block { padding: 8px 10px !important; margin-bottom: 8px !important; border-radius: 10px !important; }
     .dual-header h3 { font-size: 13px !important; }
@@ -1421,7 +1413,6 @@ html.score-kiosk .hole-display {
     .nav-brand-text{font-size:12px;}
     .weather-widget{padding:1px 4px;font-size:9px;}
     .sun-mode-btn, .lang-btn{padding:2px 4px;font-size:9px;}
-    .hole-nav{grid-template-columns:repeat(9,1fr) !important;gap:2px !important;}
     .hole-box{padding:6px 2px;min-width:0;}
     .hole-val{font-size:18px;}
 }
@@ -1654,25 +1645,6 @@ body.sun-mode .pc-table td:first-child,
 body.sun-mode .lb-table th:first-child,
 body.sun-mode .lb-table td:first-child {
     background: var(--card);
-}
-
-/* QUICK PAR BUTTON */
-.score-par-btn{
-    background: rgba(201,168,76,0.15);
-    border: 1px solid var(--gold);
-    color: var(--gold);
-    font-weight: 700;
-    font-size: 13px;
-    padding: 6px 14px;
-    border-radius: var(--rs);
-    cursor: pointer;
-    transition: var(--t);
-    white-space: nowrap;
-    align-self: center;
-}
-.score-par-btn:hover,.score-par-btn:active{
-    background: var(--gold);
-    color: var(--bg);
 }
 
 /* OFFLINE QUEUE VISUALIZER BADGE */
@@ -2274,7 +2246,7 @@ body.sun-mode .autocomplete-item.active-keyboard {
     .form-row > .form-group { min-width: 120px !important; }
     .btn { min-height: 44px; }
     .btn-sm { min-height: 40px; }
-    .score-minus, .score-plus, .score-par-btn { touch-action: manipulation; }
+    .score-minus, .score-plus { touch-action: manipulation; }
     .hole-btn { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
     .nav-toggle { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
     /* toasts never collide with the nav / indicator */
@@ -2515,8 +2487,6 @@ body.large-ui .btn, body.large-ui .nav-link, body.large-ui .form-input { font-si
 body.large-ui .btn { min-height:52px; }
 body.large-ui .btn-sm { min-height:46px; font-size:14px; }
 body.large-ui .hole-btn { min-height:48px; font-size:14px; }
-body.large-ui .score-minus, body.large-ui .score-plus { width:76px; height:76px; font-size:34px; }
-body.large-ui .score-par-btn { min-height:54px; font-size:16px; }
 body.large-ui .score-disp { font-size:78px; }
 body.large-ui .pace-assistant-grid span, body.large-ui .admin-group-meta span { font-size:12px; }
 body.large-ui .pace-assistant-grid b, body.large-ui .admin-group-meta b { font-size:18px; }
@@ -4871,7 +4841,6 @@ button.tn-group-head:hover { background:rgba(201,168,76,0.18); }
     .scoring-compact .dual-header h3 { font-size:12.5px !important; gap:2px !important; }
     .scoring-compact .score-disp { font-size:38px !important; min-height:40px !important; }
     .scoring-compact .score-btns { gap:10px !important; margin:6px 0 0 !important; }
-    .scoring-compact .score-minus, .scoring-compact .score-plus { width:48px !important; height:48px !important; min-width:48px !important; min-height:48px !important; font-size:22px !important; }
     .scoring-compact .score-result { font-size:11px !important; margin-bottom:4px !important; }
 }
 
@@ -5212,7 +5181,7 @@ body.sun-mode .hole-btn.active.cur-blink{
 /* v2 — «Крупный счёт»: большие цифры и кнопки ± */
 body.st-scoring-v2 .score-disp{font-size:64px!important;min-height:68px;}
 body.st-scoring-v2 .score-btns .score-minus,
-body.st-scoring-v2 .score-btns .score-plus{width:64px!important;height:64px!important;min-width:64px!important;min-height:64px!important;font-size:30px!important;border-radius:16px!important;}
+body.st-scoring-v2 .score-btns .score-plus{border-radius:16px!important;}
 body.st-scoring-v2 .hole-val{font-size:34px!important;}
 body.st-scoring-v2 .hole-lbl{font-size:11px;letter-spacing:.6px;}
 body.st-scoring-v2 .score-result{font-size:14px!important;}
@@ -5227,7 +5196,6 @@ body.st-scoring-v3 .hole-nav{gap:3px!important;margin-bottom:8px!important;}
 body.st-scoring-v3 .hole-btn{padding:5px 2px;font-size:11px;min-height:34px;}
 body.st-scoring-v3 .score-disp{font-size:34px!important;min-height:38px;}
 body.st-scoring-v3 .score-result{font-size:10px!important;padding:2px 8px!important;}
-body.st-scoring-v3 .score-minus,body.st-scoring-v3 .score-plus{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;font-size:19px!important;}
 body.st-scoring-v3 .dual-header h3{font-size:12px!important;}
 body.st-scoring-v3 .scoring-columns{margin-bottom:8px!important;gap:6px!important;}
 body.st-scoring-v3 .scoring-dual-block{padding:6px 4px!important;}
@@ -5480,10 +5448,10 @@ body.kb-open .bottom-tabbar.btb-autohide{transform:translateY(100%);opacity:0;po
 
 /* --- Scorer: hole-nav larger, snap, sticky actions --- */
 @media(max-width:768px){
-    .hole-nav{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;scroll-padding:0 8px;gap:6px!important;padding-bottom:4px;scrollbar-width:none;}
+    .hole-nav{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;scroll-padding:0 8px;gap:6px!important;padding-bottom:4px;scrollbar-width:none;}
     .hole-nav::-webkit-scrollbar{display:none;}
     .hole-nav .hole-btn{scroll-snap-align:center;min-width:48px;min-height:48px!important;height:48px!important;flex:0 0 auto;font-size:13px!important;}
-    .score-minus,.score-plus{width:72px!important;height:72px!important;min-width:72px!important;min-height:72px!important;font-size:28px!important;border-radius:18px!important;touch-action:manipulation;user-select:none;-webkit-user-select:none;}
+    .score-minus,.score-plus{border-radius:18px!important;touch-action:manipulation;user-select:none;-webkit-user-select:none;}
     .score-minus:active,.score-plus:active{transform:scale(.94);}
 }
 .p0-sticky-actions{position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom));z-index:9997;display:none;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(11,26,14,.98);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);box-shadow:0 -6px 24px rgba(0,0,0,.35);}
@@ -5513,14 +5481,105 @@ html.score-kiosk .p0-sticky-actions{display:none!important;}
     .p0-wizard-steps .p0-step span{width:20px;height:20px;font-size:10px;}
 }
 .setup-player-card{transition:var(--t);}
-.setup-player-card:not(.open){padding-bottom:6px;}
-.setup-player-card:not(.open) .form-row,
-.setup-player-card:not(.open) .form-group:not(.setup-player-head){display:none;}
+@media(max-width:768px){
+    .setup-player-card:not(.open){padding-bottom:6px;}
+    .setup-player-card:not(.open) .form-row,
+    .setup-player-card:not(.open) .form-group:not(.setup-player-head){display:none;}
+}
 .setup-player-card.open{border-color:rgba(201,168,76,.35);box-shadow:0 2px 12px rgba(201,168,76,.12);}
+.setup-player-head{cursor:pointer;}
+.setup-player-head .fa-chevron-down{margin-left:auto;opacity:.6;transition:transform .22s ease;}
 .setup-player-card .setup-player-head i.fa-chevron-down{transition:transform .22s ease;}
 .setup-player-card.open .setup-player-head i.fa-chevron-down{transform:rotate(180deg);}
 /* --- Lists/tables: fallback to cards <720px already exists, ensure no 560px min scroll on scorer/setup --- */
 @media(max-width:720px){
     .scorecard{overflow-x:auto;-webkit-overflow-scrolling:touch;}
     .scorecard table{min-width:0;width:100%;}
+}
+
+
+/* ==========================================================
+   РАЗМЕР КНОПОК ± (ВВОД СЧЁТА) — ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ
+   ----------------------------------------------------------
+   Раньше размер задавался в пяти местах через width:…!important
+   (базовое правило, @480px, @640px, @768px и пресеты body.st-scoring-vN),
+   из-за чего одна и та же кнопка была 72px на scorer.html, 48px на
+   setup-round.html и 42px при пресете «Компакт» — меньше минимальных
+   44px, которые проект сам объявляет в @media (pointer: coarse).
+
+   Теперь все варианты меняют ТОЛЬКО две переменные на <body>, а правило
+   .score-minus/.score-plus читает их. Порядок ниже значим: при равной
+   специфичности (0,1,1) побеждает последнее правило, поэтому режим
+   доступности body.large-ui объявлен последним и всегда выигрывает.
+   ========================================================== */
+body{--score-btn:64px;--score-btn-fs:28px;}
+@media(max-width:768px){ body{--score-btn:72px;--score-btn-fs:28px;} }
+/* Двойной ввод «Я / Маркер» на странице раунда — компактнее, но не мельче 44px */
+body.score-compact{--score-btn:48px;--score-btn-fs:22px;}
+/* Пресет «Крупный счёт» */
+body.st-scoring-v2{--score-btn:64px;--score-btn-fs:30px;}
+/* Пресет «Компакт»: было 42px — меньше touch-минимума, стало 48px */
+body.st-scoring-v3{--score-btn:48px;--score-btn-fs:22px;}
+/* Режим доступности «Крупный интерфейс» — объявлен последним намеренно */
+body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
+
+/* Страховка: кнопки ± не бывают меньше 44px ни при одном пресете
+   (WCAG 2.5.5 / Apple HIG). min-* по спецификации перебивает width/height. */
+.score-minus,.score-plus{min-width:44px!important;min-height:44px!important;}
+
+/* ==========================================================
+   МОБИЛЬНАЯ ЭРГОНОМИКА (v1.68.0)
+   ========================================================== */
+
+/* На сенсорных экранах :hover «залипает» после тапа: кнопка остаётся
+   приподнятой или подсвеченной. Отключаем декоративные hover-эффекты. */
+@media (hover: none), (pointer: coarse) {
+    .btn:hover, .stat:hover, .mode-card:hover, .round-card:hover,
+    .hole-btn:hover, .list-item:hover, .rlb-row:hover, .mode-card:hover,
+    .tn-tab:hover, .rg-card:hover, .admin-tab:hover {
+        transform: none; box-shadow: none;
+    }
+    .score-minus:hover, .score-plus:hover {
+        border-color: var(--border); color: var(--white); box-shadow: none;
+    }
+}
+
+/* Touch-таргеты не меньше 44px на сенсорных экранах (Apple HIG / WCAG 2.5.5).
+   Область нажатия расширяется отдельно от размера текста/иконки. */
+@media (pointer: coarse) {
+    .tn-tab, .admin-tab, .sun-mode-btn, .lang-btn, .shb-hole-btn { min-height: 44px; }
+    .modal-close, .mobile-drawer-close {
+        min-width: 44px; min-height: 44px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .pe-table input, .pe-table select { min-height: 44px; }
+    .bottom-tabbar .btb-item span { font-size: 10px; }
+    .tn-group-kind { font-size: 10.5px; }
+}
+
+/* Админ-вкладки на телефоне: одна строка со скроллом, закреплена под шапкой.
+   Раньше 14 вкладок переносились в 4–5 рядов (~180px) и уезжали при скролле. */
+@media (max-width:768px) {
+    .admin-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+        position: sticky; top: var(--nav-h, 70px); z-index: 60;
+        background: var(--bg); padding: 8px 0;
+        scroll-snap-type: x proximity;
+        margin-bottom: 12px;
+    }
+    .admin-tab { scroll-snap-align: center; min-height: 40px; flex: 0 0 auto; }
+}
+
+/* ── uiConfirm: bottom-sheet на телефоне, центр на десктопе ── */
+.uic-body{max-width:420px;width:calc(100% - 32px);padding:20px;}
+.uic-title{color:var(--white);font-size:16px;font-weight:800;margin-bottom:8px;}
+.uic-text{color:var(--text);font-size:14px;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere;}
+.uic-actions{display:flex;gap:10px;margin-top:18px;}
+.uic-actions .btn{flex:1;min-height:48px;justify-content:center;}
+@media (max-width:600px){
+    .uic-root{align-items:flex-end;padding:0;}
+    .uic-body{max-width:none;width:100%;border-radius:20px 20px 0 0;
+        padding:20px 20px max(20px, calc(env(safe-area-inset-bottom) + 16px));}
+    .uic-actions{flex-direction:column-reverse;}
 }

@@ -8,11 +8,11 @@ function safeStorageGet(storageObj, key) {
 }
 
 function safeStorageSet(storageObj, key, value) {
-    try { storageObj.setItem(key, value); } catch (e) {}
+    try { storageObj.setItem(key, value); } catch (e) { console.warn("[silent]", e); }
 }
 
 function safeStorageRemove(storageObj, key) {
-    try { storageObj.removeItem(key); } catch (e) {}
+    try { storageObj.removeItem(key); } catch (e) { console.warn("[silent]", e); }
 }
 
 function normalizeMasterHash(val) {
@@ -347,15 +347,20 @@ function switchTab(t, b) {
     var tabEl = document.getElementById('tab-' + t);
     if (tabEl) tabEl.classList.remove('hidden');
     if (b) b.classList.add('active');
+    // На телефоне вкладки — горизонтальная липкая полоса: активную
+    // прокручиваем в центр, чтобы её не приходилось искать.
+    if (b && typeof b.scrollIntoView === 'function') {
+        try { b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); } catch (e) { console.warn("[silent]", e); }
+    }
 
     if (t === 'groups') {
         renderAdmGroups();
     }
     if (t === 'broadcasts') {
-        try { pushAdminRefreshStatus(); } catch (e) {}
+        try { pushAdminRefreshStatus(); } catch (e) { console.warn("[silent]", e); }
     }
     if (t === 'protocol') {
-        try { if (typeof peInit === 'function') peInit(); } catch (e) {}
+        try { if (typeof peInit === 'function') peInit(); } catch (e) { console.warn("[silent]", e); }
     }
     if (t === 'scores') {
         seRender();
@@ -375,7 +380,7 @@ function switchTab(t, b) {
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
         nmLoadSettings();
-        try { if (typeof rgRefreshSyncScopeHint === 'function') rgRefreshSyncScopeHint(); } catch (eRg) {}
+        try { if (typeof rgRefreshSyncScopeHint === 'function') rgRefreshSyncScopeHint(); } catch (eRg) { console.warn("[silent]", eRg); }
     }
     if (t === 'players') {
         loadPrivacySettings();
@@ -396,7 +401,7 @@ function switchTab(t, b) {
                 if (x.getAttribute('onclick') && x.getAttribute('onclick').indexOf("'tournaments'") !== -1) x.classList.add('active');
             });
         }
-        try { if (typeof loadTournaments === 'function') loadTournaments(); } catch (eTn) {}
+        try { if (typeof loadTournaments === 'function') loadTournaments(); } catch (eTn) { console.warn("[silent]", eTn); }
         if (typeof psSwitchTo === 'function') {
             try { psSwitchTo(); } catch (ePs) { console.error('[start] switch error', ePs); }
         }
@@ -792,7 +797,7 @@ function loadAdmRounds() {
         // в момент старта (совпадение даты и времени) — статус active пишется
         // в базу, а их турнир переходит из «предстоящий» в «активный».
         if (typeof pestovoAutoStartRounds === 'function') {
-            try { pestovoAutoStartRounds(data, { notify: true, silent: true }); } catch (e) {}
+            try { pestovoAutoStartRounds(data, { notify: true, silent: true }); } catch (e) { console.warn("[silent]", e); }
         }
         renderAdmRounds(data);
     });
@@ -856,7 +861,7 @@ function admRoundDetailsHtml(id, r) {
             if (typeof calcRoundStats === 'function') {
                 stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order) || stats;
             }
-        } catch (eSt) {}
+        } catch (eSt) { console.warn("[silent]", eSt); }
         var pTee = (p && p.tee) || r.tee || 'wh';
         html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:8px;">';
         html += '<span style="color:var(--white);font-weight:600;flex:1;min-width:120px;">' + escapeHtml(p.name || t('player')) + '</span> ';
@@ -990,7 +995,7 @@ function clearRounds() {
         db.ref('protocols').remove();
         // Сбрасываем игровые сессии на всех устройствах.
         db.ref('settings/sessions_reset_ts').set(Date.now());
-        try { if (typeof pestovoWipeLocalSessions === 'function') pestovoWipeLocalSessions(); } catch (e) {}
+        try { if (typeof pestovoWipeLocalSessions === 'function') pestovoWipeLocalSessions(); } catch (e) { console.warn("[silent]", e); }
 
         db.ref('users').once('value').then(function(sn) {
             var users = sn.val() || {};
@@ -1025,7 +1030,7 @@ function clearAllData() {
         if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
         try {
             localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([]));
-        } catch(e) {}
+        } catch (e) { console.warn("[silent]", e); }
         if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
         if (typeof loadAdmRounds === 'function') loadAdmRounds();
         toast(currentLang === 'en' ? 'All data deleted' : 'Все данные удалены', 'info');
@@ -1070,7 +1075,7 @@ function clearAllData() {
         safeAfterWipeStep(function() { if (typeof loadAdmRounds === 'function') loadAdmRounds(); });
 
         toast(currentLang === 'en' ? 'All players and rounds deleted everywhere' : 'Все игроки и раунды полностью удалены', 'info');
-        if (typeof vib === 'function') { try { vib([60, 40, 60]); } catch (e) {} }
+        if (typeof vib === 'function') { try { vib([60, 40, 60]); } catch (e) { console.warn("[silent]", e); } }
     }).catch(function(err) {
         // Ошибка базы: данные НЕ удалены — сообщаем честно.
         toast((currentLang === 'en' ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err) +
@@ -1081,7 +1086,7 @@ function clearAllData() {
 // Любой шаг после успешного удаления данных не должен «превращаться» в
 // ошибку удаления: локалку и открытые списки обновляем «мягко».
 function safeAfterWipeStep(fn) {
-    try { fn(); } catch (e) { try { console.warn('[wipe] step failed', e); } catch (_) {} }
+    try { fn(); } catch (e) { try { console.warn('[wipe] step failed', e); } catch (_) { console.warn("[silent]", _); } }
 }
 
 // Удаляет АБСОЛЮТНО ВСЕ данные: турниры, игроков, раунды, историю, маркеры,
@@ -1112,8 +1117,8 @@ function wipeAllLocalData() {
         });
     });
     if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
-    try { localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([])); } catch(e) {}
-    try { localStorage.setItem('pestovo_defaults_cleared', 'true'); } catch(e) {}
+    try { localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([])); } catch (e) { console.warn("[silent]", e); }
+    try { localStorage.setItem('pestovo_defaults_cleared', 'true'); } catch (e) { console.warn("[silent]", e); }
 }
 
 function wipeEverything() {
@@ -1147,7 +1152,7 @@ function wipeEverything() {
         safeAfterWipeStep(function() { if (typeof loadAdmRounds === 'function') loadAdmRounds(); });
         safeAfterWipeStep(function() { if (typeof loadAdmTournaments === 'function') loadAdmTournaments(); });
         toast(en ? 'All data deleted' : 'Все данные полностью удалены', 'info');
-        if (typeof vib === 'function') { try { vib([60, 40, 60]); } catch (e) {} }
+        if (typeof vib === 'function') { try { vib([60, 40, 60]); } catch (e) { console.warn("[silent]", e); } }
         setTimeout(function() { location.reload(); }, 1200);
     };
 
@@ -1173,7 +1178,7 @@ function admUniqueRegCount(regPlayers) {
         var rp = regPlayers[k] || {};
         var key = '';
         if (typeof getPlayerFioKey === 'function') {
-            try { key = getPlayerFioKey(rp); } catch (e) {}
+            try { key = getPlayerFioKey(rp); } catch (e) { console.warn("[silent]", e); }
         }
         if (!key) {
             var nm = String(rp.name || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
@@ -1249,7 +1254,7 @@ function tnToggleWaitlist(tnId) {
     tnWaitOpen[tnId] = !tnWaitOpen[tnId];
     var panel = document.getElementById('tn-waitlist-' + tnId);
     if (panel) panel.classList.toggle('hidden', !tnWaitOpen[tnId]);
-    if (typeof vib === 'function') { try { vib(20); } catch (e) {} }
+    if (typeof vib === 'function') { try { vib(20); } catch (e) { console.warn("[silent]", e); } }
 }
 
 function tnWaitNameNorm(s) {
@@ -1527,7 +1532,7 @@ function exportTournamentRosterCSV(tnId) {
         Object.values(tVal.registeredPlayers).forEach(function(p) {
             var key = '';
             if (typeof getPlayerFioKey === 'function') {
-                try { key = getPlayerFioKey(p); } catch (e) {}
+                try { key = getPlayerFioKey(p); } catch (e) { console.warn("[silent]", e); }
             }
             if (!key) key = String(p.name || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
             if (key && seenCsv[key]) return; // дубликат того же игрока — пропускаем
@@ -1598,7 +1603,7 @@ function deleteTn(id) {
             toast(parts, 'info');
             if (typeof loadTournaments === 'function') loadTournaments();
             if (typeof loadAdmRounds === 'function') loadAdmRounds();
-            if (typeof myplayRenderToday === 'function') { try { myplayRenderToday(); } catch (e) {} }
+            if (typeof myplayRenderToday === 'function') { try { myplayRenderToday(); } catch (e) { console.warn("[silent]", e); } }
         });
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
@@ -1765,7 +1770,7 @@ function tnApplyCutBox(tnId) {
         try {
             var eff = tnApplyHcpCut(raw, rp.gender || 'men', cut).effective;
             if (Math.abs(eff - raw) >= 0.049) hit++;
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
     });
     db.ref('tournaments/' + tnId + '/hcpCut').set(cut).then(function() {
         var parts = [];
@@ -1838,7 +1843,7 @@ function tnSyncDivisionsToRoster(tnId) {
             var gender = rp.gender || 'men';
             var eff = rawHcp;
             if (rawHcp != null && tVal.hcpCut && typeof tnApplyHcpCut === 'function') {
-                try { eff = tnApplyHcpCut(rawHcp, gender, tVal.hcpCut).effective; } catch (e) {}
+                try { eff = tnApplyHcpCut(rawHcp, gender, tVal.hcpCut).effective; } catch (e) { console.warn("[silent]", e); }
             }
             var d = (typeof tnFindDivision === 'function')
                 ? tnFindDivision(tVal, eff, gender, { pid: k, name: rp.name || '' })
@@ -2014,7 +2019,7 @@ function tnSaveDivision(tnId, divId) {
         format: fmtEl ? fmtEl.value : ''
     }).then(function() {
         toast(en ? '✅ Group updated' : '✅ Группа обновлена', 'success');
-        try { tnSyncDivisionsToRoster(tnId); } catch (eSync) {}
+        try { tnSyncDivisionsToRoster(tnId); } catch (eSync) { console.warn("[silent]", eSync); }
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
@@ -2066,7 +2071,7 @@ function tnAddDivision(tnId) {
         createdAt: Date.now()
     }).then(function() {
         toast(en ? '✅ Group added' : '✅ Группа добавлена', 'success');
-        try { tnSyncDivisionsToRoster(tnId); } catch (eSync) {}
+        try { tnSyncDivisionsToRoster(tnId); } catch (eSync) { console.warn("[silent]", eSync); }
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
@@ -2082,7 +2087,7 @@ function tnDeleteDivision(tnId, divId) {
     tnDivOpen[tnId] = true;
     db.ref('tournaments/' + tnId + '/divisions/' + divId).remove().then(function() {
         toast(en ? 'Group deleted' : 'Группа удалена', 'info');
-        try { tnSyncDivisionsToRoster(tnId); } catch (eSync) {}
+        try { tnSyncDivisionsToRoster(tnId); } catch (eSync) { console.warn("[silent]", eSync); }
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
     });
@@ -2150,7 +2155,7 @@ function tnAutoDivisions(tnId) {
             var rp = reg[k] || {};
             var fioKey = '';
             if (typeof getPlayerFioKey === 'function') {
-                try { fioKey = getPlayerFioKey(rp); } catch (e) {}
+                try { fioKey = getPlayerFioKey(rp); } catch (e) { console.warn("[silent]", e); }
             }
             if (!fioKey) fioKey = String(rp.name || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
             if (fioKey && seen[fioKey]) return;
@@ -2160,7 +2165,7 @@ function tnAutoDivisions(tnId) {
             // Обрезка гандикапа (блок в панели выше): режем по ОБРЕЗАННОМУ
             // точному HCP — именно с ним играет игрок, и группы строим от него.
             if (h != null && tVal && tVal.hcpCut && typeof tnApplyHcpCut === 'function') {
-                try { h = tnApplyHcpCut(h, rp.gender || 'men', tVal.hcpCut).effective; } catch (e) {}
+                try { h = tnApplyHcpCut(h, rp.gender || 'men', tVal.hcpCut).effective; } catch (e) { console.warn("[silent]", e); }
             }
             var item = { key: k, fioKey: fioKey, name: rp.name || '', hcp: h, sortHcp: (h == null ? 54 : h) };
             if ((rp.gender || 'men') === 'women') women.push(item);
@@ -2300,7 +2305,7 @@ function tnAutoDivisions(tnId) {
             var womenN = plan.filter(function(d) { return d.gender === 'women'; }).length;
             // ТИ групп уходят обратно в список участников турнира: игроки
             // «Мужчины 0–12» получают синие ТИ, «Девушки» — красные и т.д.
-            try { tnSyncDivisionsToRoster(tnId); } catch (eSync) {}
+            try { tnSyncDivisionsToRoster(tnId); } catch (eSync) { console.warn("[silent]", eSync); }
             toast((en ? '✨ Smart groups created: ' : '✨ Умные группы созданы: ') + plan.length +
                 ' (' + (en ? 'men ' : 'муж. ') + menN + (en ? ', women ' : ', жен. ') + womenN + ')', 'success');
         }).catch(function(err) {
@@ -2469,7 +2474,7 @@ function admAlertsRenderPanel(p) {
                 : '🚨 ' + firstWho + ' вызван на лунку ' + (first.hole || '—')) +
                 (entries.length > 1 ? (currentLang === 'en' ? ' (+' + (entries.length - 1) + ' more)' : ' (+' + (entries.length - 1) + ' ещё)') : ''),
                 'error');
-            try { vib([200, 100, 200]); } catch (eVib) {}
+            try { vib([200, 100, 200]); } catch (eVib) { console.warn("[silent]", eVib); }
         }
 }
 
@@ -2510,7 +2515,7 @@ function listenForAlerts() {
                 // открыл панель, а вызов уже висит) — раньше такой вызов
                 // оставался «незамеченным»: ни тоста, ни push.
                 if (typeof showPushNotification === 'function') {
-                    try { showPushNotification(title, body, 'admin.html'); } catch (ePush) {}
+                    try { showPushNotification(title, body, 'admin.html'); } catch (ePush) { console.warn("[silent]", ePush); }
                 }
             }
         });
@@ -2618,7 +2623,7 @@ function bcKey(id, fallback) {
             var v = t(id);
             if (v && v !== id) return v;
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return fallback;
 }
 
@@ -2771,7 +2776,7 @@ function pushAdminDefaultFnUrl() {
     try {
         if (typeof firebaseConfig !== 'undefined' && firebaseConfig.projectId) projectId = firebaseConfig.projectId;
         else if (typeof db !== 'undefined' && db && db.app && db.app.options) projectId = db.app.options.projectId || projectId;
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return 'https://us-central1-' + projectId + '.cloudfunctions.net/vapidSetup';
 }
 
@@ -2866,7 +2871,7 @@ function sendClubBroadcast() {
             var bInp = document.getElementById('bc-body');
             if (tInp) tInp.value = '';
             if (bInp) bInp.value = '';
-            try { bcRefreshAudienceCount(); } catch (eR) {}
+            try { bcRefreshAudienceCount(); } catch (eR) { console.warn("[silent]", eR); }
             toast('📢 ' + (currentLang === 'en' ? 'Announcement sent to ' : 'Анонс отправлен: ') + who);
             if (typeof showPushNotification === 'function') showPushNotification(rec0.title, rec0.body, rec0.link);
         });
@@ -2924,9 +2929,9 @@ function bcSendBroadcast(title, body, link, audience, res) {
         var bodyInp = document.getElementById('bc-body');
         if (titleInp) titleInp.value = '';
         if (bodyInp) bodyInp.value = '';
-        try { bcRefreshAudienceCount(); } catch (eRef) {}
+        try { bcRefreshAudienceCount(); } catch (eRef) { console.warn("[silent]", eRef); }
         toast('📢 ' + bcT('Анонс отправлен: ', 'Announcement sent to ') + who);
-        if (typeof loadBroadcastAudienceOptions === 'function') { try { loadBroadcastAudienceOptions(); } catch (e) {} }
+        if (typeof loadBroadcastAudienceOptions === 'function') { try { loadBroadcastAudienceOptions(); } catch (e) { console.warn("[silent]", e); } }
         if (typeof showPushNotification === 'function') {
             showPushNotification(rec.title, rec.body, rec.link);
         }
@@ -2988,7 +2993,7 @@ var fgPlayersCount = 0;
 function fgCollectPlayers(tVal) {
     var normOf = function(nm) {
         if (typeof normalizeSearchText === 'function') {
-            try { return normalizeSearchText(nm); } catch (e) {}
+            try { return normalizeSearchText(nm); } catch (e) { console.warn("[silent]", e); }
         }
         return String(nm || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
     };
@@ -3021,14 +3026,14 @@ function fgFlightFormatOptions(tVal) {
 
 function fgFormatLabel(f) {
     if (typeof pestovoFormatLabel === 'function') {
-        try { return pestovoFormatLabel(f); } catch (e) {}
+        try { return pestovoFormatLabel(f); } catch (e) { console.warn("[silent]", e); }
     }
     return String(f);
 }
 
 function fgFlightSizes(total, size) {
     if (typeof pestovoBalancedFlightSizes === 'function') {
-        try { return pestovoBalancedFlightSizes(total, size); } catch (e) {}
+        try { return pestovoBalancedFlightSizes(total, size); } catch (e) { console.warn("[silent]", e); }
     }
     // Запасной вариант: обычная нарезка (без балансировки).
     var out = [];
@@ -3225,7 +3230,7 @@ function fgRenderPreview(tVal) {
                 hcpTxt = isNaN(hv) ? String(rp.handicap) : ((typeof fmtExactHcp === 'function') ? fmtExactHcp(hv) : String(hv));
             }
             var teePill = '';
-            try { teePill = (typeof fmtTeePill === 'function') ? fmtTeePill(rp.tee || 'wh') : ''; } catch (e) {}
+            try { teePill = (typeof fmtTeePill === 'function') ? fmtTeePill(rp.tee || 'wh') : ''; } catch (e) { console.warn("[silent]", e); }
             html += '<div style="display:flex;align-items:center;gap:6px;font-size:12.5px;padding:5px 8px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:4px;">';
             html += '<span style="color:var(--white);font-weight:600;flex:1;min-width:90px;">' + escapeHtml(rp.name || 'Player') + '</span> ' + teePill;
             html += '<span style="color:var(--muted);font-size:11.5px;">HCP ' + hcpTxt + '</span>';
@@ -3480,7 +3485,7 @@ function exportAllRoundsCSV() {
                 var p = pe[1] || {};
                 // Удалённые в админке игроки в архив не попадают.
                 if (typeof isPlayerDeleted === 'function') {
-                    try { if (isPlayerDeleted(pe[0], p.name)) return; } catch (e) {}
+                    try { if (isPlayerDeleted(pe[0], p.name)) return; } catch (e) { console.warn("[silent]", e); }
                 }
                 var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, getRoundOrder(r));
                 var row = [
@@ -4391,7 +4396,7 @@ function loadPageVisibilitySettings() {
         bindRealtimeValue('admin-tools-menu', db.ref('settings/tools_menu_enabled'), function(sn) {
             var v = sn.val();
             var enabled = (v === true || v === '1' || v === 1);
-            try { localStorage.setItem('pestovo_tools_menu_enabled', enabled ? '1' : '0'); } catch(e) {}
+            try { localStorage.setItem('pestovo_tools_menu_enabled', enabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
             var cb = document.getElementById('pv-tools-menu');
             if (cb) cb.checked = enabled;
             if (typeof navAuth === 'function' && typeof currentUserData !== 'undefined') {
@@ -4409,7 +4414,7 @@ function loadPageVisibilitySettings() {
                 return;
             }
             var enabled = (v === true || v === '1' || v === 1);
-            try { localStorage.setItem('pestovo_my_preferences_enabled', enabled ? '1' : '0'); } catch(e) {}
+            try { localStorage.setItem('pestovo_my_preferences_enabled', enabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
             var cb = document.getElementById('pv-my-preferences');
             if (cb) cb.checked = enabled;
             if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
@@ -4444,7 +4449,7 @@ function savePageVisibilitySettings() {
     // Сохраняем состояние «Меню инструментов»
     var toolsCb = document.getElementById('pv-tools-menu');
     var toolsEnabled = toolsCb ? toolsCb.checked : false;
-    try { localStorage.setItem('pestovo_tools_menu_enabled', toolsEnabled ? '1' : '0'); } catch(e) {}
+    try { localStorage.setItem('pestovo_tools_menu_enabled', toolsEnabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
     if (typeof navAuth === 'function' && typeof currentUserData !== 'undefined') {
         navAuth(currentUser, currentUserData);
     }
@@ -4454,7 +4459,7 @@ function savePageVisibilitySettings() {
     var prefsCb = document.getElementById('pv-my-preferences');
     // По умолчанию ВКЛ, если чекбокс не найден — считаем включённым
     var prefsEnabled = prefsCb ? prefsCb.checked : true;
-    try { localStorage.setItem('pestovo_my_preferences_enabled', prefsEnabled ? '1' : '0'); } catch(e) {}
+    try { localStorage.setItem('pestovo_my_preferences_enabled', prefsEnabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
     if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
     if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
 
@@ -4583,7 +4588,7 @@ function savePrivacySettings() {
     }
     try {
         localStorage.setItem('pestovo_privacy', JSON.stringify({ enabled: enabled, maskMode: maskMode, players: pestovoPrivacy.players || {} }));
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     if (typeof renderPrivacySensitiveHome === 'function') renderPrivacySensitiveHome();
 
     if (typeof db === 'undefined') {
@@ -4847,7 +4852,7 @@ function deletePlayer(id, name) {
 
         var normOf = function(nm) {
             if (typeof normalizeSearchText === 'function') {
-                try { return normalizeSearchText(nm); } catch (e) {}
+                try { return normalizeSearchText(nm); } catch (e) { console.warn("[silent]", e); }
             }
             return String(nm || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
         };
@@ -4981,7 +4986,7 @@ function deletePlayer(id, name) {
                     localStorage.setItem('pestovo_cached_users', JSON.stringify(cached));
                 }
             }
-        } catch(e) {}
+        } catch (e) { console.warn("[silent]", e); }
 
         // После удаления автоподбор читает кэш через `getKnownPlayersSync()`,
         // поэтому нужно триггерить обновление списка в открытых формах.
@@ -5108,7 +5113,7 @@ function createPlayerInAdmin() {
                 cachedRegisteredUsers[foundDupId].lastName = lastName;
                 cachedRegisteredUsers[foundDupId].name = (firstName + (middleName ? ' ' + middleName : '') + (lastName ? ' ' + lastName : '')).trim();
             }
-            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e){}
+            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch (e) { console.warn("[silent]", e); }
         }
         toast((currentLang === 'en' ? '🔄 Player ' : '🔄 Игрок ') + name + (currentLang === 'en' ? ' updated (HCP ' : ' обновлён (HCP ') + fmtExactHcp(parsedHcp) + ') — ' + (currentLang === 'en' ? 'duplicate avoided' : 'дубликат предотвращён'), 'success');
         if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
@@ -5142,11 +5147,11 @@ function createPlayerInAdmin() {
         if (existing) custom = JSON.parse(existing) || {};
         custom[newId] = playerData;
         localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 
     if (typeof cachedRegisteredUsers !== 'undefined') {
         cachedRegisteredUsers[newId] = playerData;
-        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch (e) { console.warn("[silent]", e); }
     }
 
     toast(currentLang === 'en' ? '🎉 Player ' + name + ' created!' : '🎉 Игрок ' + name + ' создан!', 'success');
@@ -5614,7 +5619,7 @@ function impCancelPreview() {
 function impSaveLocalPlayer(newId, playerData) {
     if (typeof cachedRegisteredUsers !== 'undefined') {
         cachedRegisteredUsers[newId] = playerData;
-        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch (e) { console.warn("[silent]", e); }
     }
     try {
         var custom = {};
@@ -5622,7 +5627,7 @@ function impSaveLocalPlayer(newId, playerData) {
         if (existing) custom = JSON.parse(existing) || {};
         custom[newId] = playerData;
         localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function confirmPlayersImport() {
@@ -5659,9 +5664,9 @@ function confirmPlayersImport() {
                     cachedRegisteredUsers[r.dup.id].gender = r.gender;
                     cachedRegisteredUsers[r.dup.id].hcpUpdatedAt = Date.now();
                     cachedRegisteredUsers[r.dup.id].hcpSource = 'excel';
-                    try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e2) {}
+                    try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch (e2) { console.warn("[silent]", e2); }
                 }
-            } catch(e) {}
+            } catch (e) { console.warn("[silent]", e); }
             if (typeof db !== 'undefined' && db) {
                 db.ref('users/' + r.dup.id).update({
                     handicap: r.hcp,
@@ -6195,7 +6200,7 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
         } else if (playerData) {
             cachedRegisteredUsers[userId] = applyLocalUpdate(Object.assign({}, playerData));
         }
-        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+        try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch (e) { console.warn("[silent]", e); }
     }
     try {
         var custom = {};
@@ -6205,7 +6210,7 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
             custom[userId] = applyLocalUpdate(custom[userId]);
             localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
         }
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 
     if (typeof db === 'undefined') return Promise.resolve();
 
@@ -6239,7 +6244,7 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
                 var cut = isTn ? rgCutForRound(rd, tournaments, protocols) : null;
                 var exact = hcp;
                 if (cut && typeof tnApplyHcpCut === 'function') {
-                    try { exact = tnApplyHcpCut(hcp, g, cut).effective; } catch (e) {}
+                    try { exact = tnApplyHcpCut(hcp, g, cut).effective; } catch (e) { console.warn("[silent]", e); }
                 }
                 var fieldHcp = (typeof getFieldHcp === 'function') ? getFieldHcp(exact, tee, g) : Math.round(exact);
                 var playerPath = 'rounds/' + rid + '/players/' + pid + '/';
@@ -6602,7 +6607,7 @@ function rgChangeDuplicateHcp(userId, inputId) {
     if (typeof db === 'undefined') {
         if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[userId]) {
             cachedRegisteredUsers[userId].handicap = newHcp;
-            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e){}
+            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch (e) { console.warn("[silent]", e); }
         }
         toast('✅ HCP ' + fmtExactHcp(newHcp) + ' ' + (currentLang === 'en' ? 'set for ' : 'установлен для ') + userId, 'success');
         if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
@@ -6795,7 +6800,7 @@ function rgGetSyncScope() {
     var sel = document.getElementById('rg-sync-scope');
     var v = sel ? sel.value : 'all';
     if (['all', 'notfound', 'new', 'stale', 'conflicts'].indexOf(v) === -1) v = 'all';
-    try { localStorage.setItem(RG_SYNC_SCOPE_KEY, v); } catch (e) {}
+    try { localStorage.setItem(RG_SYNC_SCOPE_KEY, v); } catch (e) { console.warn("[silent]", e); }
     return v;
 }
 
@@ -6828,7 +6833,7 @@ function rgLoadLastSyncSummary() {
                 conflicts: Array.isArray(v.conflicts) ? v.conflicts : []
             };
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return { ts: 0, notFound: [], conflicts: [] };
 }
 
@@ -6841,7 +6846,7 @@ function rgSaveLastSyncSummary(stats) {
             return { id: (c.player && c.player.id) || '', name: rgPlayerDisplayName(c.player) };
         });
         localStorage.setItem(RG_LAST_SYNC_KEY, JSON.stringify({ ts: Date.now(), notFound: nf, conflicts: cf }));
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function rgInStoredList(p, storedList) {
@@ -7113,8 +7118,8 @@ function rgSyncAll() {
                 (currentLang === 'en' ? stats.conflicts.filter(function(c){return !c.resolved;}).length + ' to choose, ' : stats.conflicts.filter(function(c){return !c.resolved;}).length + ' на выбор, ') +
                 (currentLang === 'en' ? stats.notFound + ' not found' : stats.notFound + ' не найдено');
             // Запоминаем «не найдено» и «на выбор» — их можно догнать отдельно.
-            try { rgSaveLastSyncSummary(stats); } catch (eSave) {}
-            try { rgRefreshSyncScopeHint(); } catch (eHint) {}
+            try { rgSaveLastSyncSummary(stats); } catch (eSave) { console.warn("[silent]", eSave); }
+            try { rgRefreshSyncScopeHint(); } catch (eHint) { console.warn("[silent]", eHint); }
             toast(msg, 'success');
             if (progressEl) progressEl.insertAdjacentHTML('beforeend', '<p style="font-size:13px;font-weight:700;color:var(--gold);margin-top:8px;">' + msg + '</p>');
             if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
@@ -7819,7 +7824,7 @@ function nmApplyStored() {
         mode = localStorage.getItem(NM_MODE_KEY) || 'off';
         aliases = localStorage.getItem(NM_ALIASES_KEY) || '';
         auto = localStorage.getItem(NM_AUTO_KEY) === '1';
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     NameVariants.setMode(mode);
     NameVariants.setCustomAliases(aliases);
     NameVariants.setAutoApply(auto);
@@ -7854,7 +7859,7 @@ function nmLoadSettings(fromRemote) {
     var ta = document.getElementById('nm-custom-aliases');
     if (ta) {
         var saved = '';
-        try { saved = localStorage.getItem(NM_ALIASES_KEY) || ''; } catch (e) {}
+        try { saved = localStorage.getItem(NM_ALIASES_KEY) || ''; } catch (e) { console.warn("[silent]", e); }
         ta.value = saved;
     }
     nmToggleCustomBlock();
@@ -7865,16 +7870,16 @@ function nmLoadSettings(fromRemote) {
             if (!v || typeof v !== 'object') return;
             if (v.mode && typeof NameVariants !== 'undefined') {
                 NameVariants.setMode(v.mode);
-                try { localStorage.setItem(NM_MODE_KEY, v.mode); } catch (e) {}
+                try { localStorage.setItem(NM_MODE_KEY, v.mode); } catch (e) { console.warn("[silent]", e); }
             }
             if (typeof v.aliases === 'string') {
                 if (typeof NameVariants !== 'undefined') NameVariants.setCustomAliases(v.aliases);
-                try { localStorage.setItem(NM_ALIASES_KEY, v.aliases); } catch (e) {}
+                try { localStorage.setItem(NM_ALIASES_KEY, v.aliases); } catch (e) { console.warn("[silent]", e); }
                 if (ta) ta.value = v.aliases;
             }
             if (v.autoApply != null && typeof NameVariants !== 'undefined') {
                 NameVariants.setAutoApply(v.autoApply === true);
-                try { localStorage.setItem(NM_AUTO_KEY, v.autoApply === true ? '1' : '0'); } catch (e) {}
+                try { localStorage.setItem(NM_AUTO_KEY, v.autoApply === true ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
                 if (autoEl) autoEl.checked = (v.autoApply === true);
             }
             nmLoadSettings(true);
@@ -7908,7 +7913,7 @@ function nmSaveSettings() {
         localStorage.setItem(NM_MODE_KEY, mode);
         localStorage.setItem(NM_ALIASES_KEY, aliases);
         localStorage.setItem(NM_AUTO_KEY, (autoEl && !autoEl.checked) ? '0' : '1');
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     if (typeof db !== 'undefined') {
         db.ref('settings/nameMatching').update({
             mode: mode,
@@ -8005,14 +8010,14 @@ function loadRusgolfProxySettings() {
         if (note) note.textContent = '';
     };
     var saved = '';
-    try { saved = localStorage.getItem('pestovo_rg_proxy') || ''; } catch(e) {}
+    try { saved = localStorage.getItem('pestovo_rg_proxy') || ''; } catch (e) { console.warn("[silent]", e); }
     applyVal(saved);
     if (typeof db !== 'undefined') {
         db.ref('settings/rusgolf/proxy').once('value').then(function(sn) {
             var v = sn.val();
             if (v) {
                 applyVal(String(v));
-                try { localStorage.setItem('pestovo_rg_proxy', String(v)); } catch(e) {}
+                try { localStorage.setItem('pestovo_rg_proxy', String(v)); } catch (e) { console.warn("[silent]", e); }
             }
         }).catch(function(){});
     }
@@ -8025,7 +8030,7 @@ function saveRusgolfProxySettings() {
         toast(currentLang === 'en' ? '⚠ Proxy template must contain {url}' : '⚠ Шаблон прокси должен содержать {url}', 'error');
         return;
     }
-    try { localStorage.setItem('pestovo_rg_proxy', v); } catch(e) {}
+    try { localStorage.setItem('pestovo_rg_proxy', v); } catch (e) { console.warn("[silent]", e); }
     if (typeof db !== 'undefined') {
         db.ref('settings/rusgolf').update({ proxy: v, updatedAt: Date.now() }).catch(function(){});
     }
@@ -8122,7 +8127,7 @@ function assistantRemoveSource(index) {
 }
 
 function saveAssistantSources(sources) {
-    try { localStorage.setItem(ASSISTANT_SOURCES_KEY, JSON.stringify(sources)); } catch (e) {}
+    try { localStorage.setItem(ASSISTANT_SOURCES_KEY, JSON.stringify(sources)); } catch (e) { console.warn("[silent]", e); }
     if (typeof db !== 'undefined') {
         var obj = {};
         sources.forEach(function (s, i) { obj[i] = s; });
@@ -8144,7 +8149,7 @@ function loadAssistantSourcesFromFirebase() {
                 if (v[k] && v[k].url) arr.push(v[k]);
             });
         }
-        try { localStorage.setItem(ASSISTANT_SOURCES_KEY, JSON.stringify(arr)); } catch (e) {}
+        try { localStorage.setItem(ASSISTANT_SOURCES_KEY, JSON.stringify(arr)); } catch (e) { console.warn("[silent]", e); }
         renderAssistantSources();
     });
 }
@@ -8174,7 +8179,7 @@ function assistantRebuildIndex() {
             if (status) status.textContent = (phase === 'fetch' ? 'Загружаю' : 'Читаю') + ': ' + title;
         });
     }).then(function (merged) {
-        try { localStorage.setItem(ASSISTANT_INDEX_KEY, JSON.stringify(merged)); } catch (e) {}
+        try { localStorage.setItem(ASSISTANT_INDEX_KEY, JSON.stringify(merged)); } catch (e) { console.warn("[silent]", e); }
         if (typeof db !== 'undefined') {
             db.ref('settings/assistant_index').set(JSON.stringify(merged)).catch(function (err) {
                 console.warn('Cannot sync assistant_index to Firebase', err);

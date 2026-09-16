@@ -24,7 +24,7 @@ function applyScoreKiosk() {
         });
         var hideSel = document.querySelectorAll('footer, .footer, .page-head, #mobile-drawer-root, .mobile-drawer-container, .nav-toggle');
         for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return true;
 }
 
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSc();
     scPaceTimer = setInterval(function() {
         if (scRound && typeof renderPaceAssistant === 'function' && typeof isBatterySaverEnabled === 'function') {
-            try { renderPaceAssistant('sc-pace-assistant', scRound); }catch(e){}
+            try { renderPaceAssistant('sc-pace-assistant', scRound); }catch (e) { console.warn("[silent]", e); }
         }
     }, (typeof isBatterySaverEnabled === 'function' && isBatterySaverEnabled()) ? 60000 : 30000);
 });
@@ -73,7 +73,7 @@ function loadSc() {
             try {
                 db.ref('rounds/' + scRid + '/players/' + scPid + '/joined').set(true);
                 db.ref('rounds/' + scRid + '/players/' + scPid + '/joinedAt').set(Date.now());
-            } catch (e) {}
+            } catch (e) { console.warn("[silent]", e); }
         }
         applyScoreKiosk();
         if (typeof updateScStablefordToggle === 'function') updateScStablefordToggle();
@@ -94,7 +94,7 @@ function loadSc() {
         }
         if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(scRound);
         if (typeof renderInfo === 'function') renderInfo();
-        if (typeof renderPaceAssistant === 'function') { try{ renderPaceAssistant('sc-pace-assistant', scRound); }catch(e){} }
+        if (typeof renderPaceAssistant === 'function') { try{ renderPaceAssistant('sc-pace-assistant', scRound); }catch (e) { console.warn("[silent]", e); } }
         if (typeof listenForOfficialCallState === 'function') {
             try{
                 listenForOfficialCallState({
@@ -106,7 +106,7 @@ function loadSc() {
                     playerName: function() { return pl.name || 'Player'; },
                     flightMembers: []
                 });
-            }catch(e){}
+            }catch (e) { console.warn("[silent]", e); }
         }
 
         if (!scChanging) {
@@ -141,7 +141,7 @@ function loadSc() {
             if (typeof buildHoles === 'function') buildHoles();
             if (typeof checkVerify === 'function') checkVerify();
         });
-    } catch(e){}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function renderInfo() {
@@ -155,7 +155,7 @@ function renderInfo() {
         el.innerHTML =
             '<div><b>' + startLbl + ':</b> ' + (typeof fmtTime === 'function' ? fmtTime(scRound.startTime) : '') + ' · <b>' + holeLbl + ':</b> ' + scRound.startHole + '</div>' +
             '<div><b>' + (typeof t === 'function' ? t('tee_select') : 'Tee') + ':</b> ' + (typeof fmtTeePill === 'function' ? fmtTeePill(playerTee) : playerTee) + '</div>';
-    } catch(e){}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function updateScStablefordToggle() {
@@ -327,7 +327,7 @@ function saveSc() {
         if (typeof renderHole === 'function') renderHole();
         if (typeof buildHoles === 'function') buildHoles();
         if (typeof renderCard === 'function') renderCard();
-        if (typeof renderPaceAssistant === 'function') { try{ renderPaceAssistant('sc-pace-assistant', scRound); }catch(e){} }
+        if (typeof renderPaceAssistant === 'function') { try{ renderPaceAssistant('sc-pace-assistant', scRound); }catch (e) { console.warn("[silent]", e); } }
         setTimeout(function() { scChanging = false; }, 200);
         scSetSaving(false);
     }).catch(function(err){

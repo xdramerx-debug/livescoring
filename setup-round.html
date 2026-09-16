@@ -102,7 +102,7 @@
         body.round-active .round-event-banner:not(.hidden) { display: block; }
     </style>
 </head>
-<body>
+<body class="score-compact">
 
 <nav class="nav" id="main-nav">
     <div class="container nav-c">
@@ -206,7 +206,7 @@
                 </div>
 
                 <div class="form-row">
-                    <div class="form-group"><label data-i18n="exact_hcp">Точный гандикап</label><input type="text" id="s-exact-hcp" class="form-input" data-i18n-placeholder="placeholder_hcp_calc" placeholder="+2.4 или 12.4" oninput="calcSoloFieldHcp()"></div>
+                    <div class="form-group"><label data-i18n="exact_hcp">Точный гандикап</label><input type="text" inputmode="decimal" id="s-exact-hcp" class="form-input" data-i18n-placeholder="placeholder_hcp_calc" placeholder="+2.4 или 12.4" oninput="calcSoloFieldHcp()"></div>
                     <div class="form-group"><label data-i18n="field_hcp">Полевой гандикап</label><input type="text" id="s-field-hcp" class="form-input" readonly placeholder="—"></div>
                 </div>
 
@@ -341,8 +341,8 @@
                         <div class="score-result" id="my-result" style="font-size:11px; padding:3px 10px; margin-bottom:4px;"></div>
                         <div class="score-disp" id="my-disp" style="font-size:40px; min-height:44px; line-height:1.1;">—</div>
                         <div class="score-btns" style="gap:8px; margin-top:8px; margin-bottom:0; flex-wrap:wrap;">
-                            <button class="score-minus" onclick="adjScore('my', -1)" style="width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px;border-radius:12px;">−</button>
-                            <button class="score-plus" onclick="adjScore('my', 1)" style="width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px;border-radius:12px;">+</button>
+                            <button class="score-minus" onclick="adjScore('my', -1)">−</button>
+                            <button class="score-plus" onclick="adjScore('my', 1)">+</button>
                         </div>
                     </div>
                 </div>
@@ -359,8 +359,8 @@
                         <div class="score-result" id="mark-result" style="font-size:11px; padding:3px 10px; margin-bottom:4px;"></div>
                         <div class="score-disp" id="mark-disp" style="font-size:40px; min-height:44px; line-height:1.1;">—</div>
                         <div class="score-btns" style="gap:8px; margin-top:8px; margin-bottom:0; flex-wrap:wrap; border-color:#9b59b6;">
-                            <button class="score-minus" onclick="adjScore('mark', -1)" style="width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px;border-radius:12px;">−</button>
-                            <button class="score-plus" onclick="adjScore('mark', 1)" style="width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px;border-radius:12px;">+</button>
+                            <button class="score-minus" onclick="adjScore('mark', -1)">−</button>
+                            <button class="score-plus" onclick="adjScore('mark', 1)">+</button>
                         </div>
                     </div>
                 </div>
@@ -472,7 +472,7 @@
             </div>
 
             <!-- HOLE NAVIGATION (2 ROWS OF 9 HOLES - 100% NO-SCROLL GRID MATRIX) -->
-            <div class="hole-nav" id="g-holes" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-bottom:16px;width:100%;box-sizing:border-box;"></div>
+            <div class="hole-nav" id="g-holes" style="margin-bottom:16px;"></div>
             <!-- ПРЕДУПРЕЖДЕНИЕ: ПРОПУЩЕННЫЕ ЛУНКИ (счёт не введён) -->
             <div id="solo-skipped-box"></div>
 
@@ -602,7 +602,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.67.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.68.0</span></p>
         </div>
     </div>
 </footer>

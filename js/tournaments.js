@@ -10,7 +10,7 @@ function tnCanSeeProtocol() {
     try {
         if (typeof pestovoIsAdminViewer === 'function') return !!pestovoIsAdminViewer();
         if (typeof hasAdminPanelAccess === 'function') return !!hasAdminPanelAccess();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return false;
 }
 
@@ -32,7 +32,7 @@ var tnDivsOpen = {};
 function tnGetTab(tnId) { return tnTabSel[tnId] || 'all'; }
 function tnSetTab(tnId, key) {
     tnTabSel[tnId] = key || 'all';
-    try { localStorage.setItem('pestovo_tn_tabs', JSON.stringify(tnTabSel)); } catch(e) {}
+    try { localStorage.setItem('pestovo_tn_tabs', JSON.stringify(tnTabSel)); } catch (e) { console.warn("[silent]", e); }
     if (typeof tnRenderList === 'function') tnRenderList();
 }
 
@@ -198,7 +198,7 @@ function tnGroupIsOpen(tnId, ctx, divId, defaultOpen) {
 }
 function tnGroupSetOpen(tnId, ctx, divId, open) {
     tnGroupOpen[tnGroupKey(tnId, ctx, divId)] = !!open;
-    try { localStorage.setItem('pestovo_tn_groups', JSON.stringify(tnGroupOpen)); } catch(e) {}
+    try { localStorage.setItem('pestovo_tn_groups', JSON.stringify(tnGroupOpen)); } catch (e) { console.warn("[silent]", e); }
 }
 function toggleTnGroupEl(btn) {
     if (!btn) return;
@@ -401,7 +401,7 @@ function toggleRosterPanel(tnId) {
             var willBeHidden = !panel.classList.contains('hidden');
             panel.classList.toggle('hidden');
             tnRosterOpen[tnId] = !panel.classList.contains('hidden');
-        } catch(e){}
+        } catch (e) { console.warn("[silent]", e); }
     }
 }
 
@@ -415,7 +415,7 @@ function toggleTnLb(tnId) {
             ensureTnLbSubscription();
             renderTnLeaderboard(tnId);
         }
-    } catch(e){}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 // Нормализация ФИО для сопоставления (своя кроха, без внешних зависимостей).
@@ -456,7 +456,7 @@ function tnFioKey(p, pid) {
                 middleName: p.middleName || ''
             }) || ('pid:' + pid);
         }
-    } catch(e){}
+    } catch (e) { console.warn("[silent]", e); }
     return tnNormName(p.name || '') || ('pid:' + pid);
 }
 
@@ -466,7 +466,7 @@ function tnDedupeRoster(regPlayers) {
     var out = [];
     Object.entries(regPlayers || {}).forEach(function(pe) {
         var rpid = pe[0], rp = pe[1] || {};
-        if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(null, rp && rp.name)) return; } catch(e){} }
+        if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(null, rp && rp.name)) return; } catch (e) { console.warn("[silent]", e); } }
         var fioKey = tnFioKey(rp, rpid);
         if (seenFio[fioKey]) return;
         seenFio[fioKey] = true;
@@ -502,7 +502,7 @@ function tnEffectiveHcp(tVal, tnId, rawHcp, gender) {
     var cut = tnTournamentCut(tVal, tnId);
     if (!cut) return rawHcp;
     if (typeof tnApplyHcpCut === 'function') {
-        try { return tnApplyHcpCut(rawHcp, gender || 'men', cut).effective; } catch (e) {}
+        try { return tnApplyHcpCut(rawHcp, gender || 'men', cut).effective; } catch (e) { console.warn("[silent]", e); }
     }
     return rawHcp;
 }
@@ -720,7 +720,7 @@ try { tnGenderSel = JSON.parse(localStorage.getItem('pestovo_tn_gender_sel') || 
 function tnGetGenderSel(tnId) { return tnGenderSel[tnId] || 'all'; }
 function tnSetGenderSel(tnId, key) {
     tnGenderSel[tnId] = key || 'all';
-    try { localStorage.setItem('pestovo_tn_gender_sel', JSON.stringify(tnGenderSel)); } catch(e) {}
+    try { localStorage.setItem('pestovo_tn_gender_sel', JSON.stringify(tnGenderSel)); } catch (e) { console.warn("[silent]", e); }
     if (tnLbOpen[tnId] && typeof renderTnLeaderboard === 'function') renderTnLeaderboard(tnId);
 }
 
@@ -876,7 +876,7 @@ function renderTnLeaderboard(tnId) {
         var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(r.players || {}) : (r.players || {});
         Object.keys(players).forEach(function(pid) {
             var p = players[pid] || {};
-            if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(pid, p.name)) return; } catch(e){} }
+            if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(pid, p.name)) return; } catch (e) { console.warn("[silent]", e); } }
             var key = (pid != null && String(pid) !== '') ? String(pid) : tnFioKey(p, pid);
             var stats;
             try {
@@ -1276,10 +1276,10 @@ function rerenderOpenTnLeaderboards() {
         Object.keys(tnLbOpen || {}).forEach(function(tnId) {
             if (tnLbOpen[tnId]) renderTnLeaderboard(tnId);
         });
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof tnScRerender === 'function') tnScRerender();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 // Данные берутся из того же снапшота раундов, что и лидерборд, и передаются
@@ -1501,7 +1501,7 @@ function openTournamentRegModal(tnId) {
                         }
                     }
                 });
-            } catch(e){}
+            } catch (e) { console.warn("[silent]", e); }
         }
     });
 }
@@ -1684,7 +1684,7 @@ function submitTournamentRegistrationInner(tnId) {
                 ? '⏳ You are on the waitlist! The admin will confirm your place at the tournament.'
                 : '⏳ Вы в списке ожидания! Администратор подтвердит ваше место на турнире.', 'success');
             closeRegTnModal();
-            if (typeof vib === 'function') { try { vib(60); } catch(e){} }
+            if (typeof vib === 'function') { try { vib(60); } catch (e) { console.warn("[silent]", e); } }
         }).catch(function(err) {
             toast('❌ ' + (err && err.message ? err.message : err), 'error');
         });

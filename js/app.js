@@ -397,7 +397,7 @@ function getLiveWhoOpen(roundId, pid) {
     var k = roundId + ':' + pid;
     if (Object.prototype.hasOwnProperty.call(liveWhoOpen, k)) return liveWhoOpen[k];
     var saved = null;
-    try { saved = localStorage.getItem(liveWhoStoreKey(roundId, pid)); } catch (e) {}
+    try { saved = localStorage.getItem(liveWhoStoreKey(roundId, pid)); } catch (e) { console.warn("[silent]", e); }
     // По умолчанию строка свёрнута: постоянно виден только «кто на поле»
     liveWhoOpen[k] = (saved === '1');
     return liveWhoOpen[k];
@@ -406,7 +406,7 @@ function getLiveWhoOpen(roundId, pid) {
 function setLiveWhoOpen(roundId, pid, open, persist) {
     liveWhoOpen[roundId + ':' + pid] = !!open;
     if (persist !== false) {
-        try { localStorage.setItem(liveWhoStoreKey(roundId, pid), open ? '1' : '0'); } catch (e) {}
+        try { localStorage.setItem(liveWhoStoreKey(roundId, pid), open ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
     }
 }
 
@@ -428,7 +428,7 @@ function liveRoundStoreKey(id) { return 'pestovo_live_round_open_' + id; }
 function getLiveRoundOpen(id) {
     if (Object.prototype.hasOwnProperty.call(liveRoundOpen, id)) return liveRoundOpen[id];
     var saved = null;
-    try { saved = localStorage.getItem(liveRoundStoreKey(id)); } catch (e) {}
+    try { saved = localStorage.getItem(liveRoundStoreKey(id)); } catch (e) { console.warn("[silent]", e); }
     liveRoundOpen[id] = (saved === '1');
     return liveRoundOpen[id];
 }
@@ -436,7 +436,7 @@ function getLiveRoundOpen(id) {
 function setLiveRoundOpen(id, open, persist) {
     liveRoundOpen[id] = !!open;
     if (persist !== false) {
-        try { localStorage.setItem(liveRoundStoreKey(id), open ? '1' : '0'); } catch (e) {}
+        try { localStorage.setItem(liveRoundStoreKey(id), open ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
     }
 }
 
@@ -528,7 +528,7 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
     // ?as=<игрок> для устройства, действующего от его имени (продолжение
     // по ФИО): без него «Продолжить» могло открыться в режиме просмотра.
     var soloActing = null;
-    try { soloActing = localStorage.getItem('pestovo_acting_as_' + id); } catch (e) {}
+    try { soloActing = localStorage.getItem('pestovo_acting_as_' + id); } catch (e) { console.warn("[silent]", e); }
     var link = 'setup-round.html?round=' + id + ((soloActing && pid === soloActing) ? '&as=' + encodeURIComponent(pid) : '');
     var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
 
@@ -773,7 +773,7 @@ function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
     if (typeof db === 'undefined') return;
     // Вид блока «Активный турнир» (5 вариантов) — выбирает только админ.
-    if (typeof pestovoBindView5 === 'function') pestovoBindView5('homeTournament', function() { try { syncView5BodyClasses(); } catch (e) {} });
+    if (typeof pestovoBindView5 === 'function') pestovoBindView5('homeTournament', function() { try { syncView5BodyClasses(); } catch (e) { console.warn("[silent]", e); } });
 
     // Статусы турниров: по ним блок «Активный турнир» показывается сразу
     // после старта, даже без активного раунда (фикс «активный турнир
@@ -804,7 +804,7 @@ function renderHomeLiveRounds(data) {
             if (due.roundIds.length) {
                 due.roundIds.forEach(function(rid) { if (data[rid]) data[rid].status = 'active'; });
                 if (typeof pestovoActivateRounds === 'function') {
-                    try { pestovoActivateRounds(due, { silent: true }); } catch (e) {}
+                    try { pestovoActivateRounds(due, { silent: true }); } catch (e) { console.warn("[silent]", e); }
                 }
             }
         }
@@ -991,7 +991,7 @@ function recentRowStoreKey(id) { return 'pestovo_recent_open_' + id; }
 function getRecentOpen(id) {
     if (Object.prototype.hasOwnProperty.call(recentRoundOpen, id)) return recentRoundOpen[id];
     var saved = null;
-    try { saved = localStorage.getItem(recentRowStoreKey(id)); } catch (e) {}
+    try { saved = localStorage.getItem(recentRowStoreKey(id)); } catch (e) { console.warn("[silent]", e); }
     recentRoundOpen[id] = (saved === '1');
     return recentRoundOpen[id];
 }
@@ -999,7 +999,7 @@ function getRecentOpen(id) {
 function setRecentOpen(id, open, persist) {
     recentRoundOpen[id] = !!open;
     if (persist !== false) {
-        try { localStorage.setItem(recentRowStoreKey(id), open ? '1' : '0'); } catch (e) {}
+        try { localStorage.setItem(recentRowStoreKey(id), open ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
     }
 }
 

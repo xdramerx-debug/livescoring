@@ -23,7 +23,7 @@ function applyScoreKiosk() {
         });
         var hideSel = document.querySelectorAll('footer, .footer, #mobile-drawer-root, .mobile-drawer-container, .nav-toggle');
         for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return true;
 }
 
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initNav();
     applyScoreKiosk();
     // Вид страницы ввода счёта (5 вариантов) — выбирает админ, действует для всех.
-    if (typeof pestovoBindView5 === 'function') pestovoBindView5('scoring', function() { try { syncView5BodyClasses(); } catch (e) {} });
+    if (typeof pestovoBindView5 === 'function') pestovoBindView5('scoring', function() { try { syncView5BodyClasses(); } catch (e) { console.warn("[silent]", e); } });
     var p = new URLSearchParams(window.location.search);
     curRid = p.get('round');
 
@@ -95,7 +95,7 @@ function onAuthReady(u, d) {
     // если слушатель уже подписан как гость — перепроверяем права с учётом uid.
     if (roundViewListening && u && myUid === null && curRoundData) {
         roundViewListening = false;
-        try { db.ref('rounds/' + curRid).off('value'); } catch (e) {}
+        try { db.ref('rounds/' + curRid).off('value'); } catch (e) { console.warn("[silent]", e); }
     }
     bootRoundViewOnce();
     // Дефолты формы одиночного раунда (обе вкладки живут на одной странице)
@@ -173,7 +173,7 @@ function buildPlayerSlots() {
 
     for (var i = 1; i <= count; i++) {
         html += '<div class="setup-player-card">';
-        html += '<div class="setup-player-head"><span><i class="fas fa-user"></i> ' + t('player') + ' #' + i + '</span></div>';
+        html += '<div class="setup-player-head"><span><i class="fas fa-user"></i> ' + t('player') + ' #' + i + '</span><i class="fas fa-chevron-down" aria-hidden="true"></i></div>';
         
         html += '<div class="form-row form-row-3">';
         html += '<div class="form-group" style="flex:1.4 1 120px;position:relative;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"><input type="hidden" id="pl-uid-' + i + '" value=""></div>';
@@ -183,7 +183,7 @@ function buildPlayerSlots() {
 
         html += '<div class="form-row form-row-3">';
         html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('tee_select') + '</label><select id="pl-tee-' + i + '" class="form-input" onchange="calcPlayerFieldHcp(' + i + ')"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>';
-        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('exact_hcp') + '</label><input type="text" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('exact_hcp') + '</label><input type="text" inputmode="decimal" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
         html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly placeholder="—"></div>';
         html += '</div></div>';
     }
@@ -577,7 +577,7 @@ function startGroup() {
 
     var fullNamesForCheck = inputs.map(function(x) { return x.name; });
     if (typeof pestovoCheckFioConflictsForGroup === 'function') {
-        try { if (typeof toast === 'function') toast('Проверка активных сессий...', 'info'); } catch(e){}
+        try { if (typeof toast === 'function') toast('Проверка активных сессий...', 'info'); } catch (e) { console.warn("[silent]", e); }
         pestovoCheckFioConflictsForGroup(fullNamesForCheck).then(function(conflicts) {
             if (conflicts && conflicts.length) {
                 // Турнирные раунды отдельны от соло/групповых: игрок в турнире
@@ -652,7 +652,7 @@ function getActingUid() {
     if (!curRoundData || !curRoundData.players) return null;
 
     var urlAs = null;
-    try { urlAs = new URLSearchParams(window.location.search).get('as'); } catch (e) {}
+    try { urlAs = new URLSearchParams(window.location.search).get('as'); } catch (e) { console.warn("[silent]", e); }
     if (urlAs && curRoundData.players[urlAs]) {
         return urlAs;
     }
@@ -695,7 +695,7 @@ function scheduleRoundRender() {
         if (!roundRenderQueued) return;
         roundRenderQueued = false;
         if (roundRenderTimer) { clearTimeout(roundRenderTimer); roundRenderTimer = null; }
-        try { renderRoundViewParts(); } catch (e) { try { console.warn('[round render]', e); } catch (_) {} }
+        try { renderRoundViewParts(); } catch (e) { try { console.warn('[round render]', e); } catch (_) { console.warn("[silent]", _); } }
     };
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
     else setTimeout(run, 16);
@@ -722,7 +722,7 @@ function renderRoundViewParts() {
 function initRoundView() {
     // Защита от дублей подписки (например, при смене языка страница перерисовывается)
     if (roundViewHandler) {
-        try { db.ref('rounds/' + curRid).off('value', roundViewHandler); } catch (e) {}
+        try { db.ref('rounds/' + curRid).off('value', roundViewHandler); } catch (e) { console.warn("[silent]", e); }
     }
     roundViewHandler = function(sn) { applyRoundState(sn.val()); };
     db.ref('rounds/' + curRid).on('value', roundViewHandler);
@@ -740,7 +740,7 @@ function applyRoundState(data) {
 
     // Раунд с mode='solo' обслуживает solo.js — делегируем ему
     if (curRoundData.mode === 'solo') {
-        try { db.ref('rounds/' + curRid).off('value', roundViewHandler); } catch (e) {}
+        try { db.ref('rounds/' + curRid).off('value', roundViewHandler); } catch (e) { console.warn("[silent]", e); }
         roundViewHandler = null;
         roundViewListening = false;
         if (typeof bootSoloRoundView === 'function') bootSoloRoundView(curRid);
@@ -757,9 +757,9 @@ function applyRoundState(data) {
     var pageHeadEl = lGet('page-head');
     if (pageHeadEl) pageHeadEl.classList.add('hidden');
     if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(curRoundData);
-    try { document.body.classList.add('round-active'); } catch(e){}
+    try { document.body.classList.add('round-active'); } catch (e) { console.warn("[silent]", e); }
     var navEl = lGet('main-nav');
-    if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch(e){} }
+    if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch (e) { console.warn("[silent]", e); } }
     applyScoreKiosk();
 
     myUid = getActingUid();
@@ -775,7 +775,7 @@ function applyRoundState(data) {
             try {
                 db.ref('rounds/' + curRid + '/players/' + myUid + '/joined').set(true);
                 db.ref('rounds/' + curRid + '/players/' + myUid + '/joinedAt').set(Date.now());
-            } catch(e) {}
+            } catch (e) { console.warn("[silent]", e); }
         }
     }
 
@@ -836,7 +836,7 @@ function applyRoundState(data) {
     // завершения один раз на сессию вкладки, после того как данные прогрузились.
     if (canEditGroup && typeof pestovoUrlWantsFinish === 'function' && pestovoUrlWantsFinish()
         && typeof pestovoConsumeFinishOnce === 'function' && pestovoConsumeFinishOnce(curRid)) {
-        setTimeout(function() { try { finishGroupRound(); } catch (e) {} }, 1200);
+        setTimeout(function() { try { finishGroupRound(); } catch (e) { console.warn("[silent]", e); } }, 1200);
     }
 }
 
@@ -848,7 +848,7 @@ function pestovoConsumeFinishOnce(rid) {
     try {
         if (sessionStorage.getItem(k) === '1') return false;
         sessionStorage.setItem(k, '1');
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return true;
 }
 
@@ -1007,7 +1007,7 @@ function renderPlayHole() {
         try {
             if (localStorage.getItem('pestovo_shot_tracking_enabled') === '1') trackContainer.classList.remove('hidden');
             else trackContainer.classList.add('hidden');
-        } catch(e){}
+        } catch (e) { console.warn("[silent]", e); }
     }
     var trackerEl = lGet('match-play-tracker-container');
     if (trackerEl) {
@@ -1165,7 +1165,7 @@ function releaseSaveLock() {
     saveHoleInFlight = false;
     if (saveHoleWatchdog) { clearTimeout(saveHoleWatchdog); saveHoleWatchdog = null; }
     setSaveBtnBusy(false);
-    try { renderPlayHole(); } catch (e) {}
+    try { renderPlayHole(); } catch (e) { console.warn("[silent]", e); }
     setTimeout(function() { isChanging = false; }, 200);
 }
 
@@ -1187,7 +1187,7 @@ function saveHoleScores() {
     var updates = {};
 
     // Ввод/исправление счёта снимает «Пропустить и не напоминать».
-    try { if (typeof pestovoSkipDropAckHoles === 'function') pestovoSkipDropAckHoles(curRid, myUid, [h]); } catch (e) {}
+    try { if (typeof pestovoSkipDropAckHoles === 'function') pestovoSkipDropAckHoles(curRid, myUid, [h]); } catch (e) { console.warn("[silent]", e); }
 
     var savedAt = Date.now();
     updates['rounds/' + curRid + '/players/' + myUid + '/scores/' + h] = myScore;
@@ -1286,7 +1286,7 @@ function saveHoleScores() {
         }
 
         var saveMarkerName = '';
-        try { saveMarkerName = (myMarkerId && curRoundData.players[myMarkerId] && curRoundData.players[myMarkerId].name) || ''; } catch(_) {}
+        try { saveMarkerName = (myMarkerId && curRoundData.players[myMarkerId] && curRoundData.players[myMarkerId].name) || ''; } catch (_) { console.warn("[silent]", _); }
         if (bothSubmittedAndMatch) {
             toast(currentLang === 'en'
                 ? ('✅ <b>Hole ' + h + ' confirmed:</b> ' + myScore + ' strokes')
@@ -1329,7 +1329,7 @@ function saveHoleScores() {
     }, function(err) {
         // Запись не прошла (нет сети / правила базы) — кнопку обязательно
         // разблокируем, иначе игрок не сможет продолжить раунд.
-        try { console.warn('[live] save hole failed', err); } catch (e) {}
+        try { console.warn('[live] save hole failed', err); } catch (e) { console.warn("[silent]", e); }
         toast(currentLang === 'en'
             ? '⚠️ Could not save the score — check the connection and try again'
             : '⚠️ Не удалось сохранить счёт — проверьте соединение и попробуйте ещё раз', 'error');
@@ -1345,7 +1345,7 @@ function ensureScorecardOpen(panelId) {
     var panel = lGet(panelId);
     if (!panel || !panel.classList.contains('hidden')) return;
     var pref = null;
-    try { pref = localStorage.getItem(scorecardPrefKey(panelId)); } catch (e) {}
+    try { pref = localStorage.getItem(scorecardPrefKey(panelId)); } catch (e) { console.warn("[silent]", e); }
     if (pref === 'closed') return;
     if (typeof toggleActiveScorecard === 'function') toggleActiveScorecard(panelId);
 }
@@ -1356,7 +1356,7 @@ function togglePersistedScorecard(panelId) {
         var panel = lGet(panelId);
         localStorage.setItem(scorecardPrefKey(panelId),
             (panel && panel.classList.contains('hidden')) ? 'closed' : 'open');
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     if (typeof vib === 'function') vib(15);
 }
 
@@ -1410,7 +1410,7 @@ function inviteSignature() {
         var p = r.players[pid] || {};
         parts.push(pid, String(p.name || ''), isPlayerEnteredRound(p, pid, r) ? '1' : '0');
     });
-    try { parts.push('pref:' + String(localStorage.getItem(invitePrefKey()) || '')); } catch (e) {}
+    try { parts.push('pref:' + String(localStorage.getItem(invitePrefKey()) || '')); } catch (e) { console.warn("[silent]", e); }
     return parts.join('|');
 }
 
@@ -1478,7 +1478,7 @@ function renderStartGate() {
 function openScheduledRound() {
     var snap = {};
     snap[curRid] = curRoundData;
-    try { pestovoActivateRounds(roundsDueForStart(snap, Date.now()), { silent: true, notify: false }); } catch (e) {}
+    try { pestovoActivateRounds(roundsDueForStart(snap, Date.now()), { silent: true, notify: false }); } catch (e) { console.warn("[silent]", e); }
     if (curRoundData) curRoundData.status = 'active';
     toast(t('tn_start_gate_started'), 'success');
     if (typeof vib === 'function') vib([80, 40, 80]);
@@ -1653,7 +1653,7 @@ function toggleInviteQRs() {
     var willOpen = panel.classList.contains('hidden');
     panel.classList.toggle('hidden', !willOpen);
     if (icon) icon.className = willOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
-    try { localStorage.setItem(invitePrefKey(), willOpen ? 'open' : 'closed'); } catch (e) {}
+    try { localStorage.setItem(invitePrefKey(), willOpen ? 'open' : 'closed'); } catch (e) { console.warn("[silent]", e); }
     updateInviteToggleLabel();
     if (typeof vib === 'function') vib(15);
 }
@@ -1662,10 +1662,10 @@ function renderInviteQRs() {
     var cardEl = lGet('invite-qrs-card');
     var activeEl = lGet('invite-qrs-grid');
     if (!canEditGroup || !curRoundData || !activeEl) {
-        if (cardEl) { try { cardEl.classList.add('hidden'); } catch (e) {} }
+        if (cardEl) { try { cardEl.classList.add('hidden'); } catch (e) { console.warn("[silent]", e); } }
         return;
     }
-    if (cardEl) { try { cardEl.classList.remove('hidden'); } catch (e) {} }
+    if (cardEl) { try { cardEl.classList.remove('hidden'); } catch (e) { console.warn("[silent]", e); } }
 
     // QR-картинки пересоздаём только при реальном изменении списка игроков или
     // их статуса «в игре»: иначе каждое обновление базы перезапрашивало все
@@ -1678,7 +1678,7 @@ function renderInviteQRs() {
 
     // Фоновая предзагрузка всех QR этой группы — даже если панель ещё
     // свёрнута, коды уже загружаются и будут готовы мгновенно.
-    try { prewarmInviteQrImages(curRid, curRoundData.players); } catch (ePrew) {}
+    try { prewarmInviteQrImages(curRid, curRoundData.players); } catch (ePrew) { console.warn("[silent]", ePrew); }
 
     // QR-коды НЕ исчезают после подключения: показываем всех игроков группы,
     // КРОМЕ того, кто создал раунд (его телефон уже в игре — QR ему не нужен).
@@ -1717,7 +1717,7 @@ function renderInviteQRs() {
     var icon = lGet('invite-qrs-icon');
     if (panel) {
         var pref = null;
-        try { pref = localStorage.getItem(invitePrefKey()); } catch (e) {}
+        try { pref = localStorage.getItem(invitePrefKey()); } catch (e) { console.warn("[silent]", e); }
         var counts = countJoinedPlayers();
         var allJoined = counts.total > 0 && counts.joined >= counts.total;
         var shouldOpen = pref ? (pref === 'open') : !allJoined;
@@ -1926,8 +1926,8 @@ function finishGroupRound() {
     var skipped = groupSkippedHoles();
     if (skipped.length && typeof pestovoShowFinishMissingModal === 'function') {
         pestovoShowFinishMissingModal(skipped, {
-            onEnter: function(h) { try { goPlayHole(h); } catch (e) {} },
-            onContinue: function() { try { goPlayHole(skipped[0]); } catch (e) {} },
+            onEnter: function(h) { try { goPlayHole(h); } catch (e) { console.warn("[silent]", e); } },
+            onContinue: function() { try { goPlayHole(skipped[0]); } catch (e) { console.warn("[silent]", e); } },
             onFinishAnyway: function() { doFinishGroupRound(); }
         });
         return;
@@ -1976,7 +1976,7 @@ function doFinishGroupRound() {
             // Если это турнирный раунд и после него сыграны все раунды турнира —
             // турнир завершается автоматически (открывается экспорт протокола).
             if (fresh.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
-                try { pestovoAutoFinishTournament(fresh.tournamentId); } catch (_) {}
+                try { pestovoAutoFinishTournament(fresh.tournamentId); } catch (_) { console.warn("[silent]", _); }
             }
 
             // ВАЖНО: история пишется один раз на раунд и только когда раунд
@@ -1991,7 +1991,7 @@ function doFinishGroupRound() {
             if (fresh.status !== 'completed') return;
             return pestovoClaimRoundHistory(curRid).then(function(claimed) {
                 if (claimed && typeof saveHistory === 'function') {
-                    try { saveHistory(curRid, fresh); } catch (e) {}
+                    try { saveHistory(curRid, fresh); } catch (e) { console.warn("[silent]", e); }
                 }
             });
         }).catch(function() { groupFinishing = false; });
@@ -2011,7 +2011,7 @@ function doFinishGroupRound() {
         }, function() {
             // Модалка закрыта без подтверждения — снимаем блокировку повторного завершения
             groupFinishing = false;
-        }, { playerId: myUid, onGoToHole: function(hole){ try { goPlayHole(hole); } catch(_) {} } });
+        }, { playerId: myUid, onGoToHole: function(hole){ try { goPlayHole(hole); } catch (_) { console.warn("[silent]", _); } } });
     } else {
         if (!confirm(t('msg_finish_confirm'))) { groupFinishing = false; return; }
 

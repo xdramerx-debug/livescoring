@@ -21,17 +21,17 @@
        способами, а не полагаемся на единственный глобальный алиас.
        --------------------------------------------------------- */
     function getDb() {
-        try { if (global.db && typeof global.db.ref === 'function') return global.db; } catch (e) {}
+        try { if (global.db && typeof global.db.ref === 'function') return global.db; } catch (e) { console.warn("[silent]", e); }
         try {
             // eslint-disable-next-line no-undef
             if (typeof db !== 'undefined' && db && typeof db.ref === 'function') return db;
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
         try {
             if (global.firebase && typeof global.firebase.database === 'function') {
                 var inst = global.firebase.database();
                 if (inst && typeof inst.ref === 'function') return inst;
             }
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
         return null;
     }
 
@@ -54,7 +54,7 @@
     }
 
     function vibrate(ms) {
-        if (typeof global.vib === 'function') { try { global.vib(ms); } catch (e) {} }
+        if (typeof global.vib === 'function') { try { global.vib(ms); } catch (e) { console.warn("[silent]", e); } }
     }
 
     /* ---------------------------------------------------------

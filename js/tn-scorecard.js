@@ -42,7 +42,7 @@ function tnScHcp(v) {
     return (typeof fmtExactHcp === 'function') ? fmtExactHcp(v) : String(v == null ? '—' : v);
 }
 function tnScTee(code) {
-    if (typeof fmtTeePill === 'function') { try { return fmtTeePill(code); } catch (e) {} }
+    if (typeof fmtTeePill === 'function') { try { return fmtTeePill(code); } catch (e) { console.warn("[silent]", e); } }
     var t = (typeof TEES !== 'undefined') ? TEES : {};
     return '<span>' + tnScEsc(t[code] || code || '—') + '</span>';
 }
@@ -50,7 +50,7 @@ function tnScTee(code) {
 // Лунки раунда в порядке игры (для шотгана — от стартовой лунки).
 function tnScOrder(round) {
     if (typeof getRoundOrder === 'function') {
-        try { return getRoundOrder(round); } catch (e) {}
+        try { return getRoundOrder(round); } catch (e) { console.warn("[silent]", e); }
     }
     return (typeof roundHoles === 'function') ? roundHoles(round && round.startHole, round && round.holeRange) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
 }
@@ -68,13 +68,13 @@ function tnScStrokes(fieldHcp, si) {
 }
 function tnScNet(strokes, par, si, fieldHcp) {
     if (typeof calcNettScore === 'function') {
-        try { return calcNettScore(strokes, par, si, fieldHcp); } catch (e) {}
+        try { return calcNettScore(strokes, par, si, fieldHcp); } catch (e) { console.warn("[silent]", e); }
     }
     return strokes - tnScStrokes(fieldHcp, si);
 }
 function tnScStbl(strokes, h, fieldHcp) {
     if (typeof stablefordField === 'function') {
-        try { return stablefordField(strokes, h, fieldHcp); } catch (e) {}
+        try { return stablefordField(strokes, h, fieldHcp); } catch (e) { console.warn("[silent]", e); }
     }
     return 0;
 }
@@ -161,7 +161,7 @@ function tnScOpen(tnId, key) {
         : '<div class="tnsc-empty">' + tnScL('Счётная карточка не найдена.', 'Scorecard not found.') + '</div>';
     modal.classList.remove('hidden');
     if (body) body.scrollTop = 0;
-    try { if (typeof vib === 'function') vib(20); } catch (e) {}
+    try { if (typeof vib === 'function') vib(20); } catch (e) { console.warn("[silent]", e); }
 }
 function tnScClose() {
     var modal = document.getElementById('tnsc-modal');

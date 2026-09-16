@@ -69,17 +69,17 @@ function loadLB() {
             var emptyText = range.active
                 ? (langIsEn ? 'No rounds in the selected period' : 'Нет раундов за выбранный период')
                 : (langIsEn ? 'No rounds found' : 'Нет раундов');
-            try { el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + emptyText + '</p></div>'; } catch(e){}
+            try { el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + emptyText + '</p></div>'; } catch (e) { console.warn("[silent]", e); }
             return;
         }
         var html = '';
         try {
-            entries.forEach(function(e) { try { html += renderRound(e[0], e[1]); } catch(err){} });
-        } catch(e){}
+            entries.forEach(function(e) { try { html += renderRound(e[0], e[1]); } catch (err) { console.warn("[silent]", err); } });
+        } catch (e) { console.warn("[silent]", e); }
         var displayVariant = (typeof getAllRoundsDisplayVariant === 'function') ? getAllRoundsDisplayVariant() : '1';
         displayVariant = (displayVariant === '2' || displayVariant === '3') ? displayVariant : '1';
-        try { el.innerHTML = '<div class="live-who-list rounds-layout-' + displayVariant + '" data-display-variant="' + displayVariant + '">' + html + '</div>'; } catch(e){}
-        try { restoreLbPanels(); } catch(e){}
+        try { el.innerHTML = '<div class="live-who-list rounds-layout-' + displayVariant + '" data-display-variant="' + displayVariant + '">' + html + '</div>'; } catch (e) { console.warn("[silent]", e); }
+        try { restoreLbPanels(); } catch (e) { console.warn("[silent]", e); }
     });
 }
 
@@ -97,14 +97,14 @@ function lbStoreKey(id) { return 'pestovo_lb_open_' + id; }
 function getLbOpen(id) {
     if (Object.prototype.hasOwnProperty.call(lbRoundOpen, id)) return lbRoundOpen[id];
     var saved = null;
-    try { saved = localStorage.getItem(lbStoreKey(id)); } catch (e) {}
+    try { saved = localStorage.getItem(lbStoreKey(id)); } catch (e) { console.warn("[silent]", e); }
     lbRoundOpen[id] = (saved === '1');
     return lbRoundOpen[id];
 }
 
 function setLbOpen(id, open) {
     lbRoundOpen[id] = !!open;
-    try { localStorage.setItem(lbStoreKey(id), open ? '1' : '0'); } catch (e) {}
+    try { localStorage.setItem(lbStoreKey(id), open ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
 }
 
 function toggleLbRound(id) {

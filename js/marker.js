@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadMk();
     mkPaceTimer = setInterval(function() {
         if (mkRound && typeof renderPaceAssistant === 'function' && typeof isBatterySaverEnabled === 'function') {
-            try{ renderPaceAssistant('mk-pace-assistant', mkRound); }catch(e){}
+            try{ renderPaceAssistant('mk-pace-assistant', mkRound); }catch (e) { console.warn("[silent]", e); }
         }
     }, (typeof isBatterySaverEnabled === 'function' && isBatterySaverEnabled()) ? 60000 : 30000);
 });
@@ -47,7 +47,7 @@ function loadMk() {
         var titleEl = mkGet('mk-title'); if (titleEl) titleEl.textContent = prefix + ': ' + (pl.name || (typeof t === 'function' ? t('player') : 'Player'));
         var subEl = mkGet('mk-sub'); if (subEl) subEl.textContent = (typeof t === 'function' ? t('tee_select') : 'Tee') + ': ' + (typeof fmtTeePill === 'function' ? fmtTeePill(playerTee) : playerTee);
         mkPScores = pl.scores || {};
-        if (typeof renderPaceAssistant === 'function') { try{ renderPaceAssistant('mk-pace-assistant', mkRound); }catch(e){} }
+        if (typeof renderPaceAssistant === 'function') { try{ renderPaceAssistant('mk-pace-assistant', mkRound); }catch (e) { console.warn("[silent]", e); } }
         if (typeof listenForOfficialCallState === 'function') {
             try{
                 listenForOfficialCallState({
@@ -59,7 +59,7 @@ function loadMk() {
                     playerName: 'Marker (' + (pl.name || 'Player') + ')',
                     flightMembers: []
                 });
-            }catch(e){}
+            }catch (e) { console.warn("[silent]", e); }
         }
 
         if (!mkChanging) {
@@ -93,7 +93,7 @@ function loadMk() {
             if (typeof renderSum === 'function') renderSum();
             if (typeof checkVerify === 'function') checkVerify();
         });
-    }catch(e){}
+    }catch (e) { console.warn("[silent]", e); }
 }
 
 function buildHoles() {

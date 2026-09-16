@@ -1,5 +1,22 @@
-const CACHE_NAME = 'pestovo-v1.67.0';
+const CACHE_NAME = 'pestovo-v1.68.0';
+const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
+
+// Stale-while-revalidate для immutable-ресурсов: отдаём из кэша мгновенно
+// и обновляем в фоне. Подходит для шрифтов/иконок, у которых URL содержит версию.
+function staleWhileRevalidate(request, cacheName) {
+    return caches.open(cacheName).then(function(cache) {
+        return cache.match(request).then(function(cached) {
+            var network = fetch(request).then(function(response) {
+                if (response && (response.ok || response.type === 'opaque')) {
+                    cache.put(request, response.clone());
+                }
+                return response;
+            }).catch(function() { return null; });
+            return cached || network.then(function(r) { return r || new Response('', { status: 408 }); });
+        });
+    });
+}
 
 const STATIC_ASSETS = [
     './', 'index.html', 'setup-round.html', 'leaderboard.html',
@@ -13,14 +30,12 @@ const STATIC_ASSETS = [
     'js/design-system.js?v=1', 'js/design-admin.js?v=2', 'js/design-preview.js?v=1',
     'js/auth.js', 'js/app.js?v=20', 'js/live.js?v=35', 'js/solo.js?v=28',
     'js/leaderboard.js?v=8', 'js/players.js?v=4', 'js/tournaments.js?v=13', 'js/protocol.js?v=2',
-    'js/stats.js?v=4', 'js/handicap.js', 'js/admin.js?v=45', 'js/scorer.js?v=8',
+    'js/stats.js?v=4', 'js/handicap.js', 'js/scorer.js?v=8',
     'js/marker.js?v=4', 'js/guide.js', 'js/feed.js?v=3', 'js/predictor.js?v=1',
-    'js/order-of-merit.js?v=3', 'js/pwa.js?v=6', 'js/start-admin.js?v=21', 'js/pe-edit.js?v=2', 'js/qr-start.js?v=10', 'qr-start.html',
+    'js/order-of-merit.js?v=3', 'js/pwa.js?v=6',
     'js/tn-scorecard.js?v=3',
     'js/assistant-config.js', 'js/assistant-build.js?v=2', 'js/assistant.js?v=2',
     'docs/assistant-index.json', 'docs/assistant-sources.json',
-    'docs/pravila-pestovo.pdf',
-    'vendor/pdfjs/pdf.min.js', 'vendor/pdfjs/pdf.worker.min.js',
     'img/logo.png', 'img/icon-192.png', 'img/icon-512.png', 'img/icon-180.png'
 ];
 
@@ -40,8 +55,9 @@ self.addEventListener('install', function(event) {
 self.addEventListener('activate', function(event) {
     event.waitUntil(
         caches.keys().then(function(names) {
+            // Чистим всё, кроме основного кэша и CDN-кэша шрифтов/иконок.
             return Promise.all(names.filter(function(name) {
-                return name !== CACHE_NAME;
+                return name !== CACHE_NAME && name !== CDN_CACHE;
             }).map(function(name) { return caches.delete(name); }));
         }).then(function() { return self.clients.claim(); })
     );
@@ -52,6 +68,17 @@ self.addEventListener('fetch', function(event) {
 
     var requestUrl = new URL(event.request.url);
     var isSameOrigin = requestUrl.origin === self.location.origin;
+
+    // Шрифты Google и Font Awesome с cdnjs кэшируем, чтобы офлайн-PWA
+    // не оставался без иконок и фирменного шрифта на поле без сети.
+    var cdnHost = requestUrl.hostname;
+    if (!isSameOrigin &&
+        (cdnHost.indexOf('fonts.gstatic.com') !== -1 ||
+         cdnHost.indexOf('fonts.googleapis.com') !== -1 ||
+         cdnHost.indexOf('cdnjs.cloudflare.com') !== -1)) {
+        event.respondWith(staleWhileRevalidate(event.request, CDN_CACHE));
+        return;
+    }
 
     // API и прокси всегда читаются из сети: кэшированные данные здесь опасны.
     if (!isSameOrigin || requestUrl.hostname.indexOf('firebaseio.com') !== -1 ||

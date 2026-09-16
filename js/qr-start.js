@@ -34,12 +34,12 @@ function qrUrl(data, size) {
     return qrProviders(data, size)[0];
 }
 function qrImgOk(img) {
-    try { img.setAttribute('data-qr-done', '1'); } catch (e) {}
+    try { img.setAttribute('data-qr-done', '1'); } catch (e) { console.warn("[silent]", e); }
     qrUpdateStatus();
 }
 function qrImgFail(img) {
     var n = 0;
-    try { n = parseInt(img.getAttribute('data-qr-try') || '0', 10) || 0; } catch (e) {}
+    try { n = parseInt(img.getAttribute('data-qr-try') || '0', 10) || 0; } catch (e) { console.warn("[silent]", e); }
     var data = '';
     try { data = decodeURIComponent(img.getAttribute('data-qr') || ''); } catch (e) { data = ''; }
     var urls = data ? qrProviders(data, 420) : [];
@@ -47,11 +47,11 @@ function qrImgFail(img) {
         try {
             img.setAttribute('data-qr-try', String(n + 1));
             img.src = urls[n + 1];
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
         return;
     }
     // Все попытки исчерпаны — помечаем и показываем заглушку.
-    try { img.setAttribute('data-qr-done', 'failed'); } catch (e) {}
+    try { img.setAttribute('data-qr-done', 'failed'); } catch (e) { console.warn("[silent]", e); }
     try {
         img.style.display = 'none';
         var box = img.parentNode;
@@ -61,7 +61,7 @@ function qrImgFail(img) {
             d.textContent = '⚠️ QR не загрузился — нажмите «🔄 QR заново»';
             box.insertBefore(d, img);
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     qrUpdateStatus();
 }
 // Кнопка «🔄 QR заново»: перезапускает загрузку всех упавших кодов.
@@ -71,10 +71,10 @@ function qrRetryFailed() {
     for (var i = 0; i < imgs.length; i++) {
         (function(img) {
             var st = null;
-            try { st = img.getAttribute('data-qr-done'); } catch (e) {}
+            try { st = img.getAttribute('data-qr-done'); } catch (e) { console.warn("[silent]", e); }
             if (st !== 'failed') return;
             var data = '';
-            try { data = decodeURIComponent(img.getAttribute('data-qr') || ''); } catch (e) {}
+            try { data = decodeURIComponent(img.getAttribute('data-qr') || ''); } catch (e) { console.warn("[silent]", e); }
             if (!data) return;
             try {
                 var box = img.parentNode;
@@ -86,21 +86,21 @@ function qrRetryFailed() {
                 img.removeAttribute('data-qr-done');
                 img.setAttribute('data-qr-try', '0');
                 img.src = qrProviders(data, 420)[0];
-            } catch (e) {}
+            } catch (e) { console.warn("[silent]", e); }
         })(imgs[i]);
     }
     qrUpdateStatus();
 }
 function qrUpdateStatus() {
     var el = null;
-    try { el = document.getElementById('qr-status'); } catch (e) {}
+    try { el = document.getElementById('qr-status'); } catch (e) { console.warn("[silent]", e); }
     if (!el) return;
     var imgs = [];
-    try { imgs = document.querySelectorAll('img[data-qr]') || []; } catch (e) {}
+    try { imgs = document.querySelectorAll('img[data-qr]') || []; } catch (e) { console.warn("[silent]", e); }
     var done = 0, failed = 0;
     for (var i = 0; i < imgs.length; i++) {
         var st = null;
-        try { st = imgs[i].getAttribute('data-qr-done'); } catch (e) {}
+        try { st = imgs[i].getAttribute('data-qr-done'); } catch (e) { console.warn("[silent]", e); }
         if (st === 'failed') failed++;
         else if (st) done++;
     }
@@ -110,7 +110,7 @@ function qrUpdateStatus() {
     else if (failed) txt = '⚠️ QR: ' + done + '/' + total + ' · не загрузилось: ' + failed;
     else if (done < total) txt = '⏳ QR загружаются: ' + done + '/' + total + '…';
     else txt = '✅ Все QR загружены (' + total + ')';
-    try { el.textContent = txt; } catch (e) {}
+    try { el.textContent = txt; } catch (e) { console.warn("[silent]", e); }
 }
 function qrHcp(v) {
     if (v === null || v === undefined || isNaN(v)) return '—';
@@ -240,7 +240,7 @@ function qrPrintMode(mode) {
 }
 function qrPrintWhenReady(waitedMs) {
     var imgs = [];
-    try { imgs = document.querySelectorAll('img[data-qr]') || []; } catch (e) {}
+    try { imgs = document.querySelectorAll('img[data-qr]') || []; } catch (e) { console.warn("[silent]", e); }
     if (!imgs.length) { window.print(); return; }
     var pending = 0;
     for (var i = 0; i < imgs.length; i++) {
@@ -384,11 +384,11 @@ function qrGetLayout() {
     try {
         var param = new URLSearchParams(window.location.search).get('layout');
         if (param && QR_LAYOUTS.indexOf(param) !== -1) return param;
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     try {
         var saved = window.localStorage.getItem('pestovo_qr_layout');
         if (saved && QR_LAYOUTS.indexOf(saved) !== -1) return saved;
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     if (qrLayoutMemory && QR_LAYOUTS.indexOf(qrLayoutMemory) !== -1) return qrLayoutMemory;
     return 'single';
 }
@@ -396,13 +396,13 @@ function qrGetLayout() {
 function qrSetLayout(mode) {
     if (QR_LAYOUTS.indexOf(mode) === -1) mode = 'single';
     qrLayoutMemory = mode;
-    try { window.localStorage.setItem('pestovo_qr_layout', mode); } catch (e) {}
+    try { window.localStorage.setItem('pestovo_qr_layout', mode); } catch (e) { console.warn("[silent]", e); }
     // Дублируем выбор в URL: пересланная ссылка открывает ту же раскладку.
     try {
         var u = new URL(window.location.href);
         u.searchParams.set('layout', mode);
         window.history.replaceState(null, '', u.toString());
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     var sel = qrGet('qr-layout');
     if (sel) sel.value = mode;
     if (qrLastDoc) qrRender(qrLastDoc, qrLastDivs);

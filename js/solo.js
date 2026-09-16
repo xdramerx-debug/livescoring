@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initNav();
     initSoloForm();
     // Вид страницы ввода счёта (5 вариантов) — выбирает админ, действует для всех.
-    if (typeof pestovoBindView5 === 'function') pestovoBindView5('scoring', function() { try { syncView5BodyClasses(); } catch (e) {} });
+    if (typeof pestovoBindView5 === 'function') pestovoBindView5('scoring', function() { try { syncView5BodyClasses(); } catch (e) { console.warn("[silent]", e); } });
     var urlP = new URLSearchParams(window.location.search);
     var rid = urlP.get('round');
     if (rid) {
@@ -209,7 +209,7 @@ function updateTimingPreview() {
         parseInt(parts[0]) || 0, parseInt(parts[1]) || 0, 0);
     var previewEl = sGet('timing-preview');
     if (previewEl && typeof buildTimingTable === 'function') {
-        try { previewEl.innerHTML = buildTimingTable(startDate.getTime(), startHole, holeRange); }catch(e){}
+        try { previewEl.innerHTML = buildTimingTable(startDate.getTime(), startHole, holeRange); }catch (e) { console.warn("[silent]", e); }
     }
 }
 
@@ -375,7 +375,7 @@ function loadExistingSolo() {
     if (!soloRid) return;
     // Защита от дублей подписки (повторный вызов, смена языка и т.п.)
     if (soloRoundHandler) {
-        try { db.ref('rounds/' + soloRid).off('value', soloRoundHandler); } catch (e) {}
+        try { db.ref('rounds/' + soloRid).off('value', soloRoundHandler); } catch (e) { console.warn("[silent]", e); }
     }
     soloRoundHandler = function(sn) {
         soloRound = sn.val();
@@ -384,7 +384,7 @@ function loadExistingSolo() {
         // Это групповой раунд — передаём его live.js (обе вкладки на setup-round.html)
         if (soloRound.mode === 'group') {
             var gid = soloRid;
-            try { db.ref('rounds/' + gid).off('value', soloRoundHandler); } catch (e) {}
+            try { db.ref('rounds/' + gid).off('value', soloRoundHandler); } catch (e) { console.warn("[silent]", e); }
             soloRoundHandler = null;
             soloRid = null;
             soloRound = null;
@@ -397,9 +397,9 @@ function loadExistingSolo() {
         var pageHeadEl = sGet('page-head');
         if (pageHeadEl) pageHeadEl.classList.add('hidden');
         if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(soloRound);
-        try { document.body.classList.add('round-active'); } catch(e){}
+        try { document.body.classList.add('round-active'); } catch (e) { console.warn("[silent]", e); }
         var navEl = sGet('main-nav');
-        if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch(e){} }
+        if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch (e) { console.warn("[silent]", e); } }
 
         var localKey = localStorage.getItem('pestovo_solo_key_' + soloRid);
         var isOwnerUser = currentUser && (soloRound.createdBy === currentUser.uid || (soloRound.players && soloRound.players[currentUser.uid]));
@@ -410,7 +410,7 @@ function loadExistingSolo() {
         try {
             var asPid = new URLSearchParams(window.location.search).get('as');
             isAsResume = !!(asPid && soloRound.players && soloRound.players[asPid]);
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
 
         var resumeUid = getPlayerId();
         canEditSolo = (isOwnerUser || isOwnerKey || isAsResume) &&
@@ -469,7 +469,7 @@ function loadExistingSolo() {
             // Ссылка «Завершить раунд» из поиска по ФИО (?finish=1).
             if (typeof pestovoUrlWantsFinish === 'function' && pestovoUrlWantsFinish()
                 && typeof pestovoConsumeFinishOnce === 'function' && pestovoConsumeFinishOnce(soloRid)) {
-                setTimeout(function() { try { finishSolo(); } catch (e) {} }, 1200);
+                setTimeout(function() { try { finishSolo(); } catch (e) { console.warn("[silent]", e); } }, 1200);
             }
 
         } else {
@@ -502,7 +502,7 @@ function getPlayerId() {
     try {
         var urlAs = new URLSearchParams(window.location.search).get('as');
         if (urlAs && soloRound.players[urlAs]) return urlAs;
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     if (currentUser && soloRound.players[currentUser.uid]) {
         return currentUser.uid;
     }
@@ -634,7 +634,7 @@ function renderCurrentHole() {
         try {
             var dl = holeDeadline(soloRound.startTime, soloRound.startHole, curHole);
             var gdl = sGet('g-deadline'); if (gdl) gdl.textContent = fmtTime(dl);
-        } catch(e){}
+        } catch (e) { console.warn("[silent]", e); }
     }
     var uid2 = getPlayerId();
     var scores = (uid2 && soloRound && soloRound.players && soloRound.players[uid2] && soloRound.players[uid2].scores) || {};
@@ -657,7 +657,7 @@ function renderCurrentHole() {
             } else {
                 trackContainer.classList.add('hidden');
             }
-        } catch(e){}
+        } catch (e) { console.warn("[silent]", e); }
     }
 }
 
@@ -716,7 +716,7 @@ function saveSolo() {
     var path = 'rounds/' + soloRid + '/players/' + uid + '/scores/' + savedHole;
 
     // Ввод/исправление счёта снимает ранее нажатый «Пропустить».
-    try { if (typeof pestovoSkipDropAckHoles === 'function') pestovoSkipDropAckHoles(soloRid, uid, [savedHole]); } catch (e) {}
+    try { if (typeof pestovoSkipDropAckHoles === 'function') pestovoSkipDropAckHoles(soloRid, uid, [savedHole]); } catch (e) { console.warn("[silent]", e); }
 
     dbSetWithOfflineQueue(path, scoreToSave).then(function(res) {
         if (res && res.offline) return null;
@@ -773,7 +773,7 @@ function saveSolo() {
         if (soloSaveWatchdog) { clearTimeout(soloSaveWatchdog); soloSaveWatchdog = null; }
         soloSaveInFlight = false;
     }).catch(function(errSave) {
-        try { console.warn('[solo] save failed', errSave); } catch (e) {}
+        try { console.warn('[solo] save failed', errSave); } catch (e) { console.warn("[silent]", e); }
         toast(currentLang === 'en' ? '⚠️ Could not save — check connection' : '⚠️ Не удалось сохранить — проверьте соединение', 'error');
         if (soloSaveWatchdog) { clearTimeout(soloSaveWatchdog); soloSaveWatchdog = null; }
         soloSaveInFlight = false;
@@ -991,13 +991,13 @@ function doFinishSolo() {
 
             // Турнирный соло-раунд: возможное автозавершение турнира (все раунды сыграны).
             if (fresh.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
-                try { pestovoAutoFinishTournament(fresh.tournamentId); } catch (_) {}
+                try { pestovoAutoFinishTournament(fresh.tournamentId); } catch (_) { console.warn("[silent]", _); }
             }
 
             if (fresh.status !== 'completed') return;
             return pestovoClaimRoundHistory(soloRid).then(function(claimed) {
                 if (claimed && typeof saveHistory === 'function') {
-                    try { saveHistory(soloRid, fresh); } catch (e) {}
+                    try { saveHistory(soloRid, fresh); } catch (e) { console.warn("[silent]", e); }
                 }
             });
         }).catch(function() { soloFinishing = false; });

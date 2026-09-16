@@ -278,14 +278,20 @@ function loadDesign(ctx) {
    9. Подключения, вкладка админки, версия сайта
    --------------------------------------------------------- */
 (function testWiring() {
+    // Версия сайта читается из sw.js (CACHE_NAME 'pestovo-vX.Y.Z') и должна
+    // совпадать со всеми страницами, где выводится .version-number.
+    var swForVer = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+    var verMatch = swForVer.match(/pestovo-v(\d+\.\d+\.\d+)/);
+    ok(!!verMatch, 'sw.js: не найден CACHE_NAME вида pestovo-vX.Y.Z');
+    var siteVersion = verMatch ? verMatch[1] : '0.0.0';
+
     var pages = fs.readdirSync(ROOT).filter(function(f) { return /\.html$/.test(f); });
     pages.forEach(function(file) {
         var html = fs.readFileSync(path.join(ROOT, file), 'utf8');
         ok(html.indexOf('css/design-presets.css') !== -1, file + ': не подключён css/design-presets.css');
         ok(html.indexOf('js/design-system.js') !== -1, file + ': не подключён js/design-system.js');
         if (html.indexOf('version-number') !== -1) {
-            ok(html.indexOf('1.67.0') !== -1, file + ': версия сайта не обновлена до 1.67.0');
-            ok(html.indexOf('1.64.0') === -1, file + ': осталась старая версия 1.64.0');
+            ok(html.indexOf(siteVersion) !== -1, file + ': версия сайта не совпадает со sw.js (' + siteVersion + ')');
         }
     });
 
@@ -307,7 +313,7 @@ function loadDesign(ctx) {
     ok(utils.indexOf("tab_design: 'Design") !== -1, 'В utils.js нет английского перевода tab_design');
 
     var sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-    ok(sw.indexOf("pestovo-v1.67.0") !== -1, 'sw.js: кэш не обновлён до 1.67.0');
+    ok(sw.indexOf('pestovo-v' + siteVersion) !== -1, 'sw.js: CACHE_NAME не соответствует версии ' + siteVersion);
     ok(sw.indexOf('css/design-presets.css?v=1') !== -1, 'sw.js: не кэшируется design-presets.css');
     ok(sw.indexOf('js/design-system.js?v=1') !== -1, 'sw.js: не кэшируется design-system.js');
     ok(sw.indexOf('design-preview.html') !== -1, 'sw.js: не кэшируется design-preview.html');

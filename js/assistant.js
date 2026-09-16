@@ -264,7 +264,7 @@
       var s = document.createElement('script');
       s.src = conf.pdfLibUrl;
       s.onload = function () {
-        try { global.pdfjsLib.GlobalWorkerOptions.workerSrc = conf.pdfWorkerUrl; } catch (e) {}
+        try { global.pdfjsLib.GlobalWorkerOptions.workerSrc = conf.pdfWorkerUrl; } catch (e) { console.warn("[silent]", e); }
         resolve();
       };
       s.onerror = function () { reject(new Error('Не удалось загрузить pdf.js')); };
@@ -311,7 +311,7 @@
       db.ref('settings/assistant_index').once('value').then(function (sn) {
         var v = sn.val();
         if (v && typeof v === 'string') {
-          try { var parsed = JSON.parse(v); if (parsed.chunks && parsed.chunks.length) { applyIndex(parsed); afterLoad(); return; } } catch (e) {}
+          try { var parsed = JSON.parse(v); if (parsed.chunks && parsed.chunks.length) { applyIndex(parsed); afterLoad(); return; } } catch (e) { console.warn("[silent]", e); }
         }
         loadFromFile();
       }).catch(function () { loadFromFile(); });

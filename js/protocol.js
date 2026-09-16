@@ -45,7 +45,7 @@ function tpFioKey(p, pid) {
             });
             if (k) return k;
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     var s = String(p.name == null ? '' : p.name).toLowerCase().replace(/ё/g, 'е')
         .replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
     return s || ('pid:' + pid);
@@ -126,7 +126,7 @@ function tpBuildData() {
         var players = (typeof dedupeRoundPlayersByFio === 'function') ? dedupeRoundPlayersByFio(r.players || {}) : (r.players || {});
         Object.keys(players).forEach(function(pid) {
             var p = players[pid] || {};
-            if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(pid, p.name)) return; } catch (e) {} }
+            if (typeof isPlayerDeleted === 'function') { try { if (isPlayerDeleted(pid, p.name)) return; } catch (e) { console.warn("[silent]", e); } }
             var stats;
             try {
                 stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
@@ -178,7 +178,7 @@ function tpBuildData() {
         en2.hcpForDiv = hcpSrc;
         en2.effHcp = hcpSrc;
         if (cut && typeof tnApplyHcpCut === 'function' && hcpSrc != null && hcpSrc !== '') {
-            try { en2.effHcp = tnApplyHcpCut(hcpSrc, en2.gender, cut).effective; } catch (e) {}
+            try { en2.effHcp = tnApplyHcpCut(hcpSrc, en2.gender, cut).effective; } catch (e) { console.warn("[silent]", e); }
         }
         en2.div = (typeof tnFindDivision === 'function')
             ? tnFindDivision(tVal, en2.effHcp, en2.gender, { pid: en2.pid, name: en2.name || '' })
@@ -646,6 +646,6 @@ function tpExportPdf() {
     printWin.document.close();
     printWin.focus();
     // Автопоказ диалога печати: «сразу распечатать» или сохранить PDF
-    setTimeout(function() { try { printWin.print(); } catch (e) {} }, 350);
+    setTimeout(function() { try { printWin.print(); } catch (e) { console.warn("[silent]", e); } }, 350);
     toast(tpL('📄 Протокол сформирован!', '📄 Protocol generated!'), 'success');
 }

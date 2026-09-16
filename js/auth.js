@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // АУДИТ БЕЗОПАСНОСТИ: пароль никогда не хранится локально.
     // Миграция: удаляем пароль, если он остался со старой версии приложения.
-    try { ['pestovo_saved_password'].forEach(function(k) { if (localStorage.getItem(k) !== null) localStorage.removeItem(k); }); } catch (e) {}
+    try { ['pestovo_saved_password'].forEach(function(k) { if (localStorage.getItem(k) !== null) localStorage.removeItem(k); }); } catch (e) { console.warn("[silent]", e); }
 
     var savedEmail = localStorage.getItem('pestovo_saved_email');
     var savedRem = localStorage.getItem('pestovo_saved_remember');

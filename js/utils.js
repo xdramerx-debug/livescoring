@@ -106,8 +106,8 @@ function toast(m,toastType,opts){
             try {
                 e.classList.remove('t-show');
                 e.classList.add('t-hide');
-                setTimeout(function(){ try{ e.remove(); }catch(_){} }, instant ? 0 : 320);
-            } catch(_) {}
+                setTimeout(function(){ try{ e.remove(); }catch (_) { console.warn("[silent]", _); } }, instant ? 0 : 320);
+            } catch (_) { console.warn("[silent]", _); }
         };
         e._pestovoDismiss=dismiss;
         e.addEventListener('click', function(ev){
@@ -115,7 +115,7 @@ function toast(m,toastType,opts){
                 ev.stopPropagation(); dismiss(false); return;
             }
             if (typeof opts.onClick === 'function') {
-                try { opts.onClick(); } catch(_) {}
+                try { opts.onClick(); } catch (_) { console.warn("[silent]", _); }
                 dismiss(false);
             } else {
                 dismiss(false);
@@ -123,10 +123,10 @@ function toast(m,toastType,opts){
         });
         root.appendChild(e);
         // Анимация появления на следующем кадре
-        setTimeout(function(){ try{ e.classList.add('t-show'); }catch(_){} },10);
+        setTimeout(function(){ try{ e.classList.add('t-show'); }catch (_) { console.warn("[silent]", _); } },10);
         setTimeout(function(){ dismiss(false); }, duration);
         return e;
-    } catch(err) { try{ console.log('[toast]', m); }catch(_){} return null; }
+    } catch(err) { try{ console.log('[toast]', m); }catch (_) { console.warn("[silent]", _); } return null; }
 }
 // Последовательный показ уведомлений: каждое следующее — после исчезновения
 // предыдущего (интервал = длительность + небольшая пауза). Используется для
@@ -161,7 +161,7 @@ function vib(pattern){
             value = Math.min(650, Math.max(70, Math.round((parseInt(value) || 50) * 1.5)));
         }
     }
-    try { navigator.vibrate(value); } catch(e) {}
+    try { navigator.vibrate(value); } catch (e) { console.warn("[silent]", e); }
 }
 function fmtDate(ts){
     if(!ts)return'—';
@@ -360,7 +360,7 @@ function initDateRangeFilter(cfg) {
     function persist() {
         try {
             localStorage.setItem(storeKey, JSON.stringify({ from: fromEl.value || '', to: toEl.value || '' }));
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
     }
 
     // Какой пресет соответствует текущим границам ('' — произвольный период).
@@ -427,7 +427,7 @@ function initDateRangeFilter(cfg) {
             if (saved.from) fromEl.value = saved.from;
             if (saved.to) toEl.value = saved.to;
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 
     fromEl.addEventListener('change', function() { syncMinMax(); persist(); renderPresets(); fire(); });
     toEl.addEventListener('change', function() { syncMinMax(); persist(); renderPresets(); fire(); });
@@ -1594,7 +1594,7 @@ function t(key) {
         if (I18N['ru'] && I18N['ru'][key] !== undefined) {
             return I18N['ru'][key];
         }
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return key;
 }
 
@@ -1603,7 +1603,7 @@ function toggleLang() {
     if (typeof localStorage !== 'undefined') {
         localStorage.setItem('pestovo_lang', currentLang);
     }
-    try { document.documentElement.setAttribute('lang', currentLang); } catch(e) {}
+    try { document.documentElement.setAttribute('lang', currentLang); } catch (e) { console.warn("[silent]", e); }
     applyTranslations();
     updateLangButtons();
     if (typeof applyPlayerModes === 'function') applyPlayerModes();
@@ -1621,8 +1621,8 @@ function toggleLang() {
         buildMobileDrawer();
         if (wasOpen && drawerRoot) drawerRoot.classList.add('open');
     }
-    if (typeof buildBottomTabbar === 'function') try{ buildBottomTabbar(); }catch(e){}
-    if (typeof initP0MobileEnhancements === 'function') try{ initP0MobileEnhancements(); }catch(e){}
+    if (typeof buildBottomTabbar === 'function') try{ buildBottomTabbar(); }catch (e) { console.warn("[silent]", e); }
+    if (typeof initP0MobileEnhancements === 'function') try{ initP0MobileEnhancements(); }catch (e) { console.warn("[silent]", e); }
     if (typeof toast === 'function') {
         toast(currentLang === 'en' ? '🇬🇧 English language enabled' : '🇷🇺 Выбран русский язык', 'info');
     }
@@ -1681,7 +1681,7 @@ function applyTranslations() {
 
 /* Применяем переводы и тему мгновенно (скрипт внизу <body> — DOM уже распаршен),
    чтобы не было «вспышки» исходного текста/темы при загрузке */
-try { if (document.documentElement) document.documentElement.setAttribute('lang', currentLang); } catch(e) {}
+try { if (document.documentElement) document.documentElement.setAttribute('lang', currentLang); } catch (e) { console.warn("[silent]", e); }
 applyTranslations();
 document.addEventListener('DOMContentLoaded', function() {
     applyTranslations();
@@ -1813,12 +1813,12 @@ function pestovoWipeLocalSessions(reload) {
         keys.forEach(function(k) {
             if (!k) return;
             for (var j = 0; j < prefixes.length; j++) {
-                if (k.indexOf(prefixes[j]) === 0) { try { store.removeItem(k); } catch (e) {} break; }
+                if (k.indexOf(prefixes[j]) === 0) { try { store.removeItem(k); } catch (e) { console.warn("[silent]", e); } break; }
             }
         });
     });
     if (reload && typeof window !== 'undefined' && /setup-round\.html/.test(window.location.pathname + window.location.search)) {
-        try { window.location.reload(); } catch (e) {}
+        try { window.location.reload(); } catch (e) { console.warn("[silent]", e); }
     }
 }
 
@@ -2117,7 +2117,7 @@ function applyPlayerModes() {
 
     // Режим экономии батареи не держит экран постоянно включённым.
     if (isBatterySaverEnabled() && typeof wakeLockSentinel !== 'undefined' && wakeLockSentinel) {
-        try { wakeLockSentinel.release(); } catch(e) {}
+        try { wakeLockSentinel.release(); } catch (e) { console.warn("[silent]", e); }
         wakeLockSentinel = null;
     } else if (!isBatterySaverEnabled()) {
         acquireWakeLockIfAllowed();
@@ -2127,7 +2127,7 @@ function applyPlayerModes() {
 function togglePlayerMode(key) {
     if (PLAYER_MODE_STORAGE_KEYS.indexOf(key) === -1) return;
     var enabled = !isPlayerModeEnabled(key);
-    try { localStorage.setItem(key, enabled ? '1' : '0'); } catch(e) {}
+    try { localStorage.setItem(key, enabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
     applyPlayerModes();
     if (typeof soloRound !== 'undefined' && soloRound && typeof startSoloPaceTicker === 'function') startSoloPaceTicker();
     if (typeof curRoundData !== 'undefined' && curRoundData && typeof startGroupPaceTicker === 'function') startGroupPaceTicker();
@@ -2280,11 +2280,86 @@ function animateScoreElement(elId) {
     el.classList.add('score-pulse');
 }
 
+/* ==========================================================
+   МОБИЛЬНЫЕ ДИАЛОГИ (v1.68.0): копирование/шаринг и uiConfirm
+   ========================================================== */
+
+// Скопировать текст или, если доступен системный «Поделиться», предложить его.
+// На телефоне это штатный лист шаринга, на десктопе — буфер обмена.
+// Возвращает Promise<boolean> — удалось ли что-то сделать.
+function copyOrShare(text, okMsg) {
+    var done = function() { try { if (typeof toast === 'function') toast(okMsg, 'success'); } catch (e) { console.warn("[silent]", e); } };
+    // 1) системный шаринг — лучший UX на мобильном
+    if (typeof navigator !== 'undefined' && navigator.share) {
+        return navigator.share({ text: text }).then(function() { return true; })
+            .catch(function() { return _copyText(text).then(done, function(){}); });
+    }
+    // 2) буфер обмена
+    return _copyText(text).then(function() { done(); return true; }, function() { return false; });
+}
+function _copyText(text) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+    }
+    // старый фолбэк: скрытый textarea + execCommand
+    return new Promise(function(res, rej) {
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            ok ? res() : rej(new Error('execCommand failed'));
+        } catch (e) { rej(e); }
+    });
+}
+
+// Стилизованное подтверждение (bottom-sheet на телефоне / центр на десктопе).
+// Возвращает Promise<boolean>. В окружениях без DOM (jsdom/SSR) падает на
+// нативный confirm, чтобы существующие тесты продолжали работать.
+function uiConfirm(opts) {
+    if (typeof document === 'undefined' || !document.body) {
+        return Promise.resolve(typeof confirm === 'function' ? confirm(opts && opts.text || '') : true);
+    }
+    return new Promise(function(resolve) {
+        var o = opts || {};
+        var root = document.createElement('div');
+        root.className = 'modal uic-root';
+        root.setAttribute('role', 'alertdialog');
+        root.innerHTML =
+            '<div class="modal-bg"></div>' +
+            '<div class="modal-body uic-body">' +
+            (o.title ? '<h3 class="uic-title">' + o.title + '</h3>' : '') +
+            '<p class="uic-text">' + (o.text || '') + '</p>' +
+            '<div class="modal-actions uic-actions">' +
+            '<button type="button" class="btn btn-ol" data-uic="no">' + (o.cancelLabel || 'Отмена') + '</button>' +
+            '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-g') + '" data-uic="yes">' + (o.confirmLabel || 'OK') + '</button>' +
+            '</div></div>';
+        document.body.appendChild(root);
+        function close(v) {
+            try { root.remove(); } catch (e) { console.warn("[silent]", e); }
+            resolve(v);
+        }
+        root.addEventListener('click', function(e) {
+            var t = e.target;
+            if (t.closest && t.closest('[data-uic="yes"]')) return close(true);
+            if (t.closest && t.closest('[data-uic="no"]')) return close(false);
+            if (t.classList.contains('modal-bg')) return close(false);
+        });
+        document.addEventListener('keydown', function esc(e) {
+            if (e.key === 'Escape') { document.removeEventListener('keydown', esc); close(false); }
+        });
+    });
+}
+
 function buildBottomTabbar(){
     if(typeof document==='undefined') return;
     var existing=document.getElementById('bottom-tabbar');
     if(existing) existing.remove();
-    var isEn=false; try{ isEn=currentLang==='en'; }catch(e){}
+    var isEn=false; try{ isEn=currentLang==='en'; }catch (e) { console.warn("[silent]", e); }
     var path=(typeof location!=='undefined' && location.pathname)?location.pathname.split('/').pop()||'index.html':'index.html';
     if(path==='') path='index.html';
     var items=[
@@ -2319,10 +2394,14 @@ function buildBottomTabbar(){
         if(isScorePage) nav.classList.add('btb-autohide');
         // hide when html has score-kiosk class
         if(document.documentElement.classList.contains('score-kiosk')) nav.style.display='none';
-    }catch(e){}
+    }catch (e) { console.warn("[silent]", e); }
 }
 function initP0MobileEnhancements(){
-    try{ buildBottomTabbar(); }catch(e){}
+    var isEn = false;
+    try { isEn = currentLang === 'en'; } catch (e) { isEn = false; }
+
+    try { buildBottomTabbar(); } catch (e) { console.warn('[P0] tabbar', e); }
+
     // hole-nav: ensure active hole scrolled into view (for horizontal snap mode)
     try{
         var hn=document.querySelector('.hole-nav');
@@ -2331,51 +2410,65 @@ function initP0MobileEnhancements(){
             if(active && typeof active.scrollIntoView==='function'){
                 active.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
             }
-            // swipe hint: horizontal scroll-snap already via CSS; add touch momentum
             hn.style.scrollBehavior='smooth';
         }
-    }catch(e){}
-    // long-press on score buttons: hold to repeat
+    }catch(e){ console.warn('[P0] hole-nav', e); }
+
+    // Long-press на кнопках ± : держи, чтобы повторять.
+    // Делегирование на document — работает и для блоков, дорисованных позже
+    // (js/live.js, js/solo.js рисуют кнопки после загрузки данных).
     try{
-        var holdTimer=null, holdInt=null;
-        function startHold(fn){
-            if(holdTimer) clearTimeout(holdTimer);
-            if(holdInt) clearInterval(holdInt);
-            holdTimer=setTimeout(function(){ holdInt=setInterval(fn, 120); }, 450);
+        if(!window._p0HoldBound){
+            window._p0HoldBound=true;
+            var holdTimer=null, holdInt=null, holdBtn=null;
+            function startHold(btn){
+                stopHold();
+                holdBtn=btn;
+                holdTimer=setTimeout(function(){
+                    holdInt=setInterval(function(){
+                        btn.click();
+                        try{ if(navigator.vibrate) navigator.vibrate(18); }catch (e) { console.warn("[silent]", e); }
+                    }, 120);
+                }, 450);
+            }
+            function stopHold(){
+                if(holdTimer) clearTimeout(holdTimer);
+                if(holdInt) clearInterval(holdInt);
+                holdTimer=null; holdInt=null; holdBtn=null;
+            }
+            function targetOf(e){
+                var t=e.target;
+                while(t && t!==document){
+                    if(t.classList && (t.classList.contains('score-minus')||t.classList.contains('score-plus'))) return t;
+                    t=t.parentNode;
+                }
+                return null;
+            }
+            document.addEventListener('touchstart', function(e){ var b=targetOf(e); if(b) startHold(b); }, {passive:true});
+            document.addEventListener('touchend', stopHold, {passive:true});
+            document.addEventListener('touchcancel', stopHold, {passive:true});
+            document.addEventListener('mousedown', function(e){ var b=targetOf(e); if(b) startHold(b); });
+            document.addEventListener('mouseup', stopHold);
+            window.addEventListener('scroll', function(){ if(holdInt) stopHold(); }, {passive:true});
         }
-        function stopHold(){ if(holdTimer) clearTimeout(holdTimer); if(holdInt) clearInterval(holdInt); holdTimer=null; holdInt=null; }
-        document.querySelectorAll('.score-minus').forEach(function(b){
-            var fn=function(){ b.click(); try{ if(navigator.vibrate) navigator.vibrate(18); }catch(e){} };
-            b.addEventListener('touchstart', function(){ startHold(fn); }, {passive:true});
-            b.addEventListener('touchend', stopHold, {passive:true});
-            b.addEventListener('touchcancel', stopHold, {passive:true});
-            b.addEventListener('mousedown', function(){ startHold(fn); });
-            b.addEventListener('mouseup', stopHold);
-            b.addEventListener('mouseleave', stopHold);
-        });
-        document.querySelectorAll('.score-plus').forEach(function(b){
-            var fn=function(){ b.click(); try{ if(navigator.vibrate) navigator.vibrate(18); }catch(e){} };
-            b.addEventListener('touchstart', function(){ startHold(fn); }, {passive:true});
-            b.addEventListener('touchend', stopHold, {passive:true});
-            b.addEventListener('touchcancel', stopHold, {passive:true});
-            b.addEventListener('mousedown', function(){ startHold(fn); });
-            b.addEventListener('mouseup', stopHold);
-            b.addEventListener('mouseleave', stopHold);
-        });
-    }catch(e){}
-    // setup-round wizard: add step indicator + accordion if multiple player cards
+    }catch(e){ console.warn('[P0] long-press', e); }
+
+    // setup-round wizard: step indicator + accordion, если карточек игроков больше одной
     try{
         if(/setup-round\.html/.test(location.pathname)){
             var playerCards=document.querySelectorAll('.setup-player-card');
             if(playerCards.length>1){
                 // step bar
                 if(!document.getElementById('p0-wizard-steps')){
+                    var labels = isEn
+                        ? ['Settings','Players','Start']
+                        : ['Параметры','Игроки','Старт'];
                     var steps=document.createElement('div');
                     steps.id='p0-wizard-steps';
                     steps.className='p0-wizard-steps';
-                    var labels=isEn?['Параметры','Игроки','Старт']:['Settings','Players','Start'];
-                    // we show 3 steps: settings, players, confirm
-                    steps.innerHTML='<div class="p0-step active"><span>1</span>'+(isEn?'Settings':'Параметры')+'</div><div class="p0-step"><span>2</span>'+(isEn?'Players':'Игроки')+'</div><div class="p0-step"><span>3</span>'+(isEn?'Start':'Старт')+'</div>';
+                    steps.innerHTML=labels.map(function(txt,i){
+                        return '<div class="p0-step'+(i===0?' active':'')+'"><span>'+(i+1)+'</span>'+txt+'</div>';
+                    }).join('');
                     var anchor=document.querySelector('.setup-card')||document.querySelector('main .container');
                     if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(steps, anchor);
                 }
@@ -2386,21 +2479,35 @@ function initP0MobileEnhancements(){
                     var head=card.querySelector('.setup-player-head');
                     if(head && !head._p0bound){
                         head.style.cursor='pointer';
+                        head.setAttribute('role','button');
+                        head.setAttribute('tabindex','0');
+                        head.setAttribute('aria-expanded', card.classList.contains('open')?'true':'false');
                         head._p0bound=true;
-                        head.addEventListener('click', function(){
+                        var toggle=function(){
                             var isOpen=card.classList.contains('open');
-                            // close others
-                            playerCards.forEach(function(c){ c.classList.remove('open'); });
-                            if(!isOpen) card.classList.add('open');
+                            playerCards.forEach(function(c){
+                                c.classList.remove('open');
+                                var h=c.querySelector('.setup-player-head');
+                                if(h) h.setAttribute('aria-expanded','false');
+                            });
+                            if(!isOpen){
+                                card.classList.add('open');
+                                head.setAttribute('aria-expanded','true');
+                            }
+                        };
+                        head.addEventListener('click', toggle);
+                        head.addEventListener('keydown', function(e){
+                            if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); }
                         });
                     }
                 });
             }
         }
-    }catch(e){}
-    // sticky scorer actions: wrap existing save/next buttons
+    }catch(e){ console.warn('[P0] setup wizard', e); }
+
+    // sticky scorer actions: закрепляем существующие кнопки «Сохранить»/«Дальше»
     try{
-        var saveBtn=document.querySelector('#sc-save-btn, .btn-save-hole, [data-action=\"save-hole\"]');
+        var saveBtn=document.querySelector('#sc-save-btn, .btn-save-hole, [data-action="save-hole"]');
         // fallback: find any button with text Save / Сохранить inside scorer
         if(!saveBtn){
             var btns=document.querySelectorAll('button');
@@ -2413,13 +2520,18 @@ function initP0MobileEnhancements(){
             bar.innerHTML='';
             var clone=saveBtn.cloneNode(true);
             clone.id='p0-sticky-save';
+            // КРИТИЧНО: cloneNode(true) копирует атрибут onclick="saveSc()".
+            // Без removeAttribute клон вызывал обработчик ДВАЖДЫ за один тап
+            // (скопированный inline-onclick + добавленный ниже listener).
+            clone.removeAttribute('onclick');
             clone.addEventListener('click', function(e){ e.preventDefault(); saveBtn.click(); });
             bar.appendChild(clone);
             // next hole button if exists
-            var nextBtn=document.querySelector('#sc-next-btn, [data-action=\"next-hole\"]');
+            var nextBtn=document.querySelector('#sc-next-btn, [data-action="next-hole"]');
             if(nextBtn){
                 var clone2=nextBtn.cloneNode(true);
                 clone2.id='p0-sticky-next';
+                clone2.removeAttribute('onclick');
                 clone2.addEventListener('click', function(e){ e.preventDefault(); nextBtn.click(); });
                 bar.appendChild(clone2);
             }
@@ -2428,11 +2540,11 @@ function initP0MobileEnhancements(){
             saveBtn.classList.add('p0-original-save');
             if(nextBtn) nextBtn.classList.add('p0-original-save');
         }
-    }catch(e){}
+    }catch(e){ console.warn('[P0] sticky actions', e); }
 }
 function initNav(){
     buildMobileDrawer();
-    try{ buildBottomTabbar(); }catch(e){}
+    try{ buildBottomTabbar(); }catch (e) { console.warn("[silent]", e); }
 
     var tg = document.getElementById('nav-toggle');
     if (tg) {
@@ -3244,7 +3356,7 @@ function getRoundPaceMetrics(roundData, nowValue) {
 function getRoundResumePlayerId(roundId, roundData) {
     if (!roundData || !roundData.players) return null;
     var stored = null;
-    try { stored = localStorage.getItem('pestovo_acting_as_' + roundId); } catch(e) {}
+    try { stored = localStorage.getItem('pestovo_acting_as_' + roundId); } catch (e) { console.warn("[silent]", e); }
     if (stored && roundData.players[stored]) return stored;
     if (typeof currentUser !== 'undefined' && currentUser && roundData.players[currentUser.uid]) return currentUser.uid;
     if (roundData.createdBy && roundData.players[roundData.createdBy]) return roundData.createdBy;
@@ -3257,7 +3369,7 @@ function getRoundResumePlayerId(roundId, roundData) {
 function getSavedResumeHole(roundId, playerId, order, player) {
     if (!roundId || !playerId || !order || !order.length) return null;
     var value = null;
-    try { value = parseInt(localStorage.getItem('pestovo_resume_hole_' + roundId + '_' + playerId)); } catch(e) {}
+    try { value = parseInt(localStorage.getItem('pestovo_resume_hole_' + roundId + '_' + playerId)); } catch (e) { console.warn("[silent]", e); }
     if (order.indexOf(value) === -1) return null;
     if (player && player.verified && player.verified[value] === true) return null;
     return value;
@@ -3268,7 +3380,7 @@ function rememberResumeHole(roundId, playerId, hole) {
     try {
         localStorage.setItem('pestovo_resume_hole_' + roundId + '_' + playerId, String(hole));
         localStorage.setItem('pestovo_last_round_id', String(roundId));
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function getRoundResumeState(roundId, roundData) {
@@ -3390,7 +3502,7 @@ function saveLocalOfficialCall(roundId, playerId, type, call) {
             alertId: call.alertId || '',
             response: call.response || null
         }));
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function getOfficialCallState(alerts, roundId, playerId, type) {
@@ -4096,7 +4208,7 @@ function syncStablefordDisplayDefault(value) {
     pestovoStablefordDisplayDefault = normalized === null ? false : normalized;
     try {
         document.dispatchEvent(new CustomEvent('pestovo-stableford-default-change'));
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function calcNettScore(strokes,par,hcpIdx,fieldHcp){
@@ -4756,7 +4868,7 @@ var pestovoHcpBadgeVariant = (function() {
     try {
         var v = localStorage.getItem('pestovo_hcp_badge_variant');
         if (v === '1' || v === '2' || v === '3') return v;
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return '1';
 })();
 
@@ -4769,7 +4881,7 @@ function getHcpBadgeVariant() {
 function setHcpBadgeVariant(v) {
     if (v !== '1' && v !== '2' && v !== '3') return;
     pestovoHcpBadgeVariant = v;
-    try { localStorage.setItem('pestovo_hcp_badge_variant', v); } catch (e) {}
+    try { localStorage.setItem('pestovo_hcp_badge_variant', v); } catch (e) { console.warn("[silent]", e); }
 }
 
 // Применяет глобальный вариант (из админ-панели или Firebase) и
@@ -4777,7 +4889,7 @@ function setHcpBadgeVariant(v) {
 function applyHcpBadgeVariant(v) {
     if (v !== '1' && v !== '2' && v !== '3') return;
     pestovoHcpBadgeVariant = v;
-    try { localStorage.setItem('pestovo_hcp_badge_variant', v); } catch (e) {}
+    try { localStorage.setItem('pestovo_hcp_badge_variant', v); } catch (e) { console.warn("[silent]", e); }
     refreshHcpBadgeVariantUI();
 }
 
@@ -4785,7 +4897,7 @@ function refreshHcpBadgeVariantUI() {
     // Вкладка «Игроки» (players.html)
     try {
         if (typeof loadPlayers === 'function' && document.getElementById('players-grid')) loadPlayers();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     // Админ-панель: список «Игроки и роли» (только при открытой панели)
     try {
         if (typeof hasAdminPanelAccess === 'function' && hasAdminPanelAccess() &&
@@ -4794,15 +4906,15 @@ function refreshHcpBadgeVariantUI() {
             !document.getElementById('admin-content').classList.contains('hidden')) {
             loadAdmPlayers();
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     // Подсветка выбранного варианта в админ-панели
     try {
         if (typeof markAdmHcpVariantButtons === 'function') markAdmHcpVariantButtons();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     // Страница предпросмотра вариантов (если открыта)
     try {
         if (typeof window !== 'undefined' && typeof window.hcpBadgePreviewRerender === 'function') window.hcpBadgePreviewRerender();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 // Зелёная галочка на углу аватара (вариант 3): оборачивает разметку аватара.
@@ -4998,7 +5110,7 @@ function openPlayerProfileModal(playerId, roundId) {
             }
             // На всякий случай чистим дубли этого игрока прямо в базе
             // (идемпотентно, без блокировки отрисовки).
-            try { pestovoDedupeUserHistory(playerId); } catch (e) {}
+            try { pestovoDedupeUserHistory(playerId); } catch (e) { console.warn("[silent]", e); }
         }).catch(function() {
             if (bodyEl) bodyEl.innerHTML = html;
         });
@@ -5017,7 +5129,7 @@ function pestovoProfileIsTournamentRound(r) {
     if (!r) return false;
     if (r.tournamentId || r.tournamentName || r.protocolId) return true;
     // На случай иных турнирных форматов — общий признак турнирного раунда.
-    if (typeof isTournamentRound === 'function') { try { return !!isTournamentRound(r); } catch (e) {} }
+    if (typeof isTournamentRound === 'function') { try { return !!isTournamentRound(r); } catch (e) { console.warn("[silent]", e); } }
     return false;
 }
 
@@ -5368,7 +5480,7 @@ function renderProfileEditForm(playerId) {
         html += '</div>';
 
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>' + t('exact_hcp') + '</label><input type="text" id="edit-hcp" class="form-input" value="' + hcp + '" placeholder="+2.4 / 12.4"></div>';
+        html += '<div class="form-group"><label>' + t('exact_hcp') + '</label><input type="text" inputmode="decimal" id="edit-hcp" class="form-input" value="' + hcp + '" placeholder="+2.4 / 12.4"></div>';
         html += '<div class="form-group"><label>' + t('gender_label') + '</label><select id="edit-gender" class="form-input">' +
                 '<option value="men" ' + (gender === 'men' ? 'selected' : '') + '>' + t('men') + '</option>' +
                 '<option value="women" ' + (gender === 'women' ? 'selected' : '') + '>' + t('women') + '</option>' +
@@ -5376,7 +5488,7 @@ function renderProfileEditForm(playerId) {
         html += '</div>';
 
         html += '<div class="form-row">';
-        html += '<div class="form-group"><label>' + t('phone_label') + '</label><input type="text" id="edit-phone" class="form-input" value="' + phone + '" placeholder="+7 (999) 000-00-00"></div>';
+        html += '<div class="form-group"><label>' + t('phone_label') + '</label><input type="tel" inputmode="tel" autocomplete="tel" id="edit-phone" class="form-input" value="' + phone + '" placeholder="+7 (999) 000-00-00"></div>';
         html += '<div class="form-group"><label>' + t('default_tee') + '</label><select id="edit-tee" class="form-input">' +
                 '<option value="bk" ' + (defaultTee === 'bk' ? 'selected' : '') + '>⬛ ' + t('tee_bk') + '</option>' +
                 '<option value="bl" ' + (defaultTee === 'bl' ? 'selected' : '') + '>🟦 ' + t('tee_bl') + '</option>' +
@@ -5580,7 +5692,7 @@ function closeFinishModal() {
 function finishModalGoToHole(hole) {
     closeFinishModal();
     if (typeof window._pestovoFinishModalGoToHole === 'function') {
-        try { window._pestovoFinishModalGoToHole(hole); } catch(_) {}
+        try { window._pestovoFinishModalGoToHole(hole); } catch (_) { console.warn("[silent]", _); }
     }
 }
 
@@ -5605,12 +5717,12 @@ function pestovoSkipGetAck(rid, pid) {
 function pestovoSkipAddAck(rid, pid, holes) {
     var map = pestovoSkipGetAck(rid, pid);
     (holes || []).forEach(function(h) { map[h] = Date.now(); });
-    try { localStorage.setItem(pestovoSkipAckKey(rid, pid), JSON.stringify(map)); } catch (e) {}
+    try { localStorage.setItem(pestovoSkipAckKey(rid, pid), JSON.stringify(map)); } catch (e) { console.warn("[silent]", e); }
     return map;
 }
 
 function pestovoSkipClearAck(rid, pid) {
-    try { localStorage.removeItem(pestovoSkipAckKey(rid, pid)); } catch (e) {}
+    try { localStorage.removeItem(pestovoSkipAckKey(rid, pid)); } catch (e) { console.warn("[silent]", e); }
 }
 
 // Исправление/ввод результата на лунке снимает ранее нажатый «Пропустить»
@@ -5626,7 +5738,7 @@ function pestovoSkipDropAckHoles(rid, pid, holes) {
     try {
         if (Object.keys(map).length) localStorage.setItem(pestovoSkipAckKey(rid, pid), JSON.stringify(map));
         else localStorage.removeItem(pestovoSkipAckKey(rid, pid));
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 // Лунки без счёта на отрезке [fromIdx; toIdx) по порядку игры игрока.
@@ -5639,7 +5751,7 @@ function pestovoMissingHolesAhead(order, isMissing, fromHole, toHole, ackMap) {
     for (var i = fromIdx; i < toIdx; i++) {
         var h = order[i];
         if (ackMap && ackMap[h]) continue;
-        try { if (isMissing(h)) out.push(h); } catch (e) {}
+        try { if (isMissing(h)) out.push(h); } catch (e) { console.warn("[silent]", e); }
     }
     return out;
 }
@@ -5737,7 +5849,7 @@ function pestovoFioVerified(rid, pid) {
     catch (e) { return false; }
 }
 function pestovoFioMarkVerified(rid, pid) {
-    try { sessionStorage.setItem('pestovo_fio_verified_' + rid + '_' + pid, '1'); } catch (e) {}
+    try { sessionStorage.setItem('pestovo_fio_verified_' + rid + '_' + pid, '1'); } catch (e) { console.warn("[silent]", e); }
 }
 
 // Проверка владения раундом перед завершением на не-своём устройстве:
@@ -6517,14 +6629,14 @@ function sweepStaleRounds(data) {
             // Все раунды турнира могут оказаться завершёнными после этого
             // авто-закрытия — проверяем и закрываем сам турнир автоматически.
             if (roundData.tournamentId) {
-                try { pestovoAutoFinishTournament(roundData.tournamentId); } catch (e) {}
+                try { pestovoAutoFinishTournament(roundData.tournamentId); } catch (e) { console.warn("[silent]", e); }
             }
             // Историю сохраняем атомарно ровно один раз (транзакция-клейм):
             // даже если sweep запустили одновременно несколько клиентов,
             // записи в users/<uid>/history не задвоятся.
             return pestovoClaimRoundHistory(roundId).then(function(claimed) {
                 if (claimed && typeof saveHistory === 'function') {
-                    try { saveHistory(roundId, roundData); } catch (e) {}
+                    try { saveHistory(roundId, roundData); } catch (e) { console.warn("[silent]", e); }
                 }
             });
         }).catch(function() {
@@ -6607,7 +6719,7 @@ function pestovoFinalizeTournamentRounds(tnId, mode) {
                 })
                 .then(function(claimed) {
                     if (!claimed) return false;
-                    if (typeof saveHistory === 'function') { try { saveHistory(rid, rd); } catch (e) {} }
+                    if (typeof saveHistory === 'function') { try { saveHistory(rid, rd); } catch (e) { console.warn("[silent]", e); } }
                     return true;
                 })
                 .catch(function() { return false; });
@@ -6758,7 +6870,7 @@ function pestovoAutoFinishTournament(tnId) {
                     if (pestovoIsAdminViewer() && typeof toast === 'function') toast(isEn
                         ? '🏁 All rounds completed — the tournament is finished automatically. The results protocol (PDF) is now available.'
                         : '🏁 Все раунды завершены — турнир завершён автоматически. Протокол результатов (PDF) теперь доступен.', 'success');
-                } catch (e) {}
+                } catch (e) { console.warn("[silent]", e); }
                 return done(true);
             }).catch(function() { return done(false); });
         });
@@ -6809,7 +6921,7 @@ var pestovoPageDisplayVariants = (function() {
     Object.keys(PAGE_DISPLAY_VARIANT_CONFIG).forEach(function(page) {
         var cfg = PAGE_DISPLAY_VARIANT_CONFIG[page];
         var value = '';
-        try { value = localStorage.getItem(cfg.storage) || ''; } catch (e) {}
+        try { value = localStorage.getItem(cfg.storage) || ''; } catch (e) { console.warn("[silent]", e); }
         state[page] = PAGE_DISPLAY_VARIANTS.indexOf(String(value)) !== -1 ? String(value) : '1';
     });
     return state;
@@ -6828,7 +6940,7 @@ function applyPageDisplayVariant(page, value) {
     if (!PAGE_DISPLAY_VARIANT_CONFIG[page]) return '1';
     var variant = normalizePageDisplayVariant(page, value);
     pestovoPageDisplayVariants[page] = variant;
-    try { localStorage.setItem(PAGE_DISPLAY_VARIANT_CONFIG[page].storage, variant); } catch (e) {}
+    try { localStorage.setItem(PAGE_DISPLAY_VARIANT_CONFIG[page].storage, variant); } catch (e) { console.warn("[silent]", e); }
     syncPageDisplayBodyClasses();
 
     // Перерисовка выполняется только если соответствующая страница открыта.
@@ -6837,10 +6949,10 @@ function applyPageDisplayVariant(page, value) {
         if (page === 'players' && typeof loadPlayers === 'function' && document.getElementById('players-grid')) loadPlayers();
         if (page === 'stats' && typeof loadStats === 'function' && document.getElementById('general-stats')) loadStats();
         if (page === 'rounds' && typeof loadLB === 'function' && document.getElementById('lb-container')) loadLB();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof markAdmPageDisplayVariantButtons === 'function') markAdmPageDisplayVariantButtons(page);
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return variant;
 }
 
@@ -6857,7 +6969,7 @@ function syncPageDisplayBodyClasses() {
                 document.body.classList.toggle('pd-' + page + '-v' + v, cur === v);
             });
         });
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function normalizePlayersDisplayVariant(value) { return normalizePageDisplayVariant('players', value); }
@@ -6882,7 +6994,7 @@ function getAssistantDisplayVariant() { return getPageDisplayVariant('assistant'
 
 // Применяем выбранные варианты сразу (скрипт подключён в конце <body>),
 // чтобы страница не «мигала» исходным оформлением при загрузке.
-try { syncPageDisplayBodyClasses(); } catch (e) {}
+try { syncPageDisplayBodyClasses(); } catch (e) { console.warn("[silent]", e); }
 document.addEventListener('DOMContentLoaded', function() { syncPageDisplayBodyClasses(); });
 
 // ==========================================
@@ -6898,7 +7010,7 @@ function normalizeSocialCardVariant(value) {
 }
 
 var pestovoSocialCardVariant = (function() {
-    try { return normalizeSocialCardVariant(localStorage.getItem('pestovo_social_card_variant')); } catch (e) {}
+    try { return normalizeSocialCardVariant(localStorage.getItem('pestovo_social_card_variant')); } catch (e) { console.warn("[silent]", e); }
     return '1';
 })();
 
@@ -6909,10 +7021,10 @@ function getSocialCardVariant() {
 function applySocialCardVariant(value) {
     var variant = normalizeSocialCardVariant(value);
     pestovoSocialCardVariant = variant;
-    try { localStorage.setItem('pestovo_social_card_variant', variant); } catch (e) {}
+    try { localStorage.setItem('pestovo_social_card_variant', variant); } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof markAdmSocialCardVariantButtons === 'function') markAdmSocialCardVariantButtons();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return variant;
 }
 
@@ -6929,7 +7041,7 @@ function normalizeGroupCardVariant(value) {
 }
 
 var pestovoGroupCardVariant = (function() {
-    try { return normalizeGroupCardVariant(localStorage.getItem('pestovo_group_card_variant')); } catch (e) {}
+    try { return normalizeGroupCardVariant(localStorage.getItem('pestovo_group_card_variant')); } catch (e) { console.warn("[silent]", e); }
     return '1';
 })();
 
@@ -6940,14 +7052,14 @@ function getGroupCardVariant() {
 function applyGroupCardVariant(value) {
     var variant = normalizeGroupCardVariant(value);
     pestovoGroupCardVariant = variant;
-    try { localStorage.setItem('pestovo_group_card_variant', variant); } catch (e) {}
+    try { localStorage.setItem('pestovo_group_card_variant', variant); } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof markAdmGroupCardVariantButtons === 'function') markAdmGroupCardVariantButtons();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof loadLiveRounds === 'function') loadLiveRounds();
         if (typeof loadRecentResults === 'function') loadRecentResults();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return variant;
 }
 
@@ -6966,7 +7078,7 @@ function normalizeTnCardVariant(value) {
 }
 
 var pestovoTnCardVariant = (function() {
-    try { return normalizeTnCardVariant(localStorage.getItem('pestovo_tn_scorecard_variant')); } catch (e) {}
+    try { return normalizeTnCardVariant(localStorage.getItem('pestovo_tn_scorecard_variant')); } catch (e) { console.warn("[silent]", e); }
     return '1';
 })();
 
@@ -6977,16 +7089,16 @@ function getTnCardVariant() {
 function applyTnCardVariant(value) {
     var variant = normalizeTnCardVariant(value);
     pestovoTnCardVariant = variant;
-    try { localStorage.setItem('pestovo_tn_scorecard_variant', variant); } catch (e) {}
+    try { localStorage.setItem('pestovo_tn_scorecard_variant', variant); } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof markAdmTnCardVariantButtons === 'function') markAdmTnCardVariantButtons();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     // Открытая карточка/лидерборд перерисовываются сразу — админ видит
     // результат без перезагрузки страницы.
     try {
         if (typeof tnScRerender === 'function') tnScRerender();
         if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return variant;
 }
 
@@ -7004,7 +7116,7 @@ function normalizeTnLbVariant(value) {
 }
 
 var pestovoTnLbVariant = (function() {
-    try { return normalizeTnLbVariant(localStorage.getItem('pestovo_tn_lb_variant')); } catch (e) {}
+    try { return normalizeTnLbVariant(localStorage.getItem('pestovo_tn_lb_variant')); } catch (e) { console.warn("[silent]", e); }
     return '1';
 })();
 
@@ -7015,13 +7127,13 @@ function getTnLbVariant() {
 function applyTnLbVariant(value) {
     var variant = normalizeTnLbVariant(value);
     pestovoTnLbVariant = variant;
-    try { localStorage.setItem('pestovo_tn_lb_variant', variant); } catch (e) {}
+    try { localStorage.setItem('pestovo_tn_lb_variant', variant); } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof markAdmTnLbVariantButtons === 'function') markAdmTnLbVariantButtons();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return variant;
 }
 
@@ -7037,15 +7149,15 @@ var pestovoTnGroupsVisible = true;
 try {
     var pestovoTnGroupsStored = localStorage.getItem('pestovo_tn_groups_visible');
     if (pestovoTnGroupsStored !== null) pestovoTnGroupsVisible = pestovoTnGroupsStored === '1';
-} catch (e) {}
+} catch (e) { console.warn("[silent]", e); }
 
 function getTnGroupsVisible() { return !!pestovoTnGroupsVisible; }
 function applyTnGroupsVisible(v) {
     pestovoTnGroupsVisible = (v === true || v === '1' || v === 1);
-    try { localStorage.setItem('pestovo_tn_groups_visible', pestovoTnGroupsVisible ? '1' : '0'); } catch (e) {}
-    try { if (typeof markAdmTnGroupsVisible === 'function') markAdmTnGroupsVisible(); } catch (e) {}
-    try { if (typeof tnRenderList === 'function') tnRenderList(); } catch (e) {}
-    try { if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards(); } catch (e) {}
+    try { localStorage.setItem('pestovo_tn_groups_visible', pestovoTnGroupsVisible ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof markAdmTnGroupsVisible === 'function') markAdmTnGroupsVisible(); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof tnRenderList === 'function') tnRenderList(); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards(); } catch (e) { console.warn("[silent]", e); }
     return pestovoTnGroupsVisible;
 }
 
@@ -7058,13 +7170,13 @@ function normalizeTnRosterVariant(v) {
     return TN_ROSTER_VARIANTS.indexOf(v) !== -1 ? v : '1';
 }
 var pestovoTnRosterVariant = '1';
-try { pestovoTnRosterVariant = normalizeTnRosterVariant(localStorage.getItem('pestovo_tn_roster_variant')); } catch (e) {}
+try { pestovoTnRosterVariant = normalizeTnRosterVariant(localStorage.getItem('pestovo_tn_roster_variant')); } catch (e) { console.warn("[silent]", e); }
 function getTnRosterVariant() { return pestovoTnRosterVariant; }
 function applyTnRosterVariant(v) {
     pestovoTnRosterVariant = normalizeTnRosterVariant(v);
-    try { localStorage.setItem('pestovo_tn_roster_variant', pestovoTnRosterVariant); } catch (e) {}
-    try { if (typeof markAdmTnRosterVariantButtons === 'function') markAdmTnRosterVariantButtons(); } catch (e) {}
-    try { if (typeof tnRenderList === 'function') tnRenderList(); } catch (e) {}
+    try { localStorage.setItem('pestovo_tn_roster_variant', pestovoTnRosterVariant); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof markAdmTnRosterVariantButtons === 'function') markAdmTnRosterVariantButtons(); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof tnRenderList === 'function') tnRenderList(); } catch (e) { console.warn("[silent]", e); }
     return pestovoTnRosterVariant;
 }
 
@@ -7083,13 +7195,13 @@ function normalizeTnGenderSplit(v) {
     return TN_GENDER_SPLIT_VARIANTS.indexOf(v) !== -1 ? v : '1';
 }
 var pestovoTnGenderSplit = '1';
-try { pestovoTnGenderSplit = normalizeTnGenderSplit(localStorage.getItem('pestovo_tn_gender_split')); } catch (e) {}
+try { pestovoTnGenderSplit = normalizeTnGenderSplit(localStorage.getItem('pestovo_tn_gender_split')); } catch (e) { console.warn("[silent]", e); }
 function getTnGenderSplit() { return pestovoTnGenderSplit; }
 function applyTnGenderSplit(v) {
     pestovoTnGenderSplit = normalizeTnGenderSplit(v);
-    try { localStorage.setItem('pestovo_tn_gender_split', pestovoTnGenderSplit); } catch (e) {}
-    try { if (typeof markAdmTnGenderSplitButtons === 'function') markAdmTnGenderSplitButtons(); } catch (e) {}
-    try { if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards(); } catch (e) {}
+    try { localStorage.setItem('pestovo_tn_gender_split', pestovoTnGenderSplit); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof markAdmTnGenderSplitButtons === 'function') markAdmTnGenderSplitButtons(); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof rerenderOpenTnLeaderboards === 'function') rerenderOpenTnLeaderboards(); } catch (e) { console.warn("[silent]", e); }
     return pestovoTnGenderSplit;
 }
 
@@ -7150,7 +7262,7 @@ var pestovoView5State = (function() {
     var st = {};
     Object.keys(PESTOVO_VIEW5_CONFIG).forEach(function(k) {
         var v = '';
-        try { v = localStorage.getItem(PESTOVO_VIEW5_CONFIG[k].storage) || ''; } catch (e) {}
+        try { v = localStorage.getItem(PESTOVO_VIEW5_CONFIG[k].storage) || ''; } catch (e) { console.warn("[silent]", e); }
         st[k] = normalizeView5(v);
     });
     return st;
@@ -7164,9 +7276,9 @@ function applyView5(name, value) {
     if (!PESTOVO_VIEW5_CONFIG[name]) return '1';
     var v = normalizeView5(value);
     pestovoView5State[name] = v;
-    try { localStorage.setItem(PESTOVO_VIEW5_CONFIG[name].storage, v); } catch (e) {}
-    try { syncView5BodyClasses(); } catch (e) {}
-    try { if (typeof markAdmView5Buttons === 'function') markAdmView5Buttons(name); } catch (e) {}
+    try { localStorage.setItem(PESTOVO_VIEW5_CONFIG[name].storage, v); } catch (e) { console.warn("[silent]", e); }
+    try { syncView5BodyClasses(); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof markAdmView5Buttons === 'function') markAdmView5Buttons(name); } catch (e) { console.warn("[silent]", e); }
     return v;
 }
 
@@ -7182,7 +7294,7 @@ function syncView5BodyClasses() {
                 document.body.classList.toggle('st-' + name + '-v' + v, cur === v);
             });
         });
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 // Живая подписка на значение из Firebase: вызывается страницами при старте.
@@ -7190,7 +7302,7 @@ function syncView5BodyClasses() {
 function pestovoBindView5(name, cb) {
     var cfg = PESTOVO_VIEW5_CONFIG[name];
     if (!cfg) return;
-    var fire = function(val) { try { cb(applyView5(name, val)); } catch (e) {} };
+    var fire = function(val) { try { cb(applyView5(name, val)); } catch (e) { console.warn("[silent]", e); } };
     if (typeof db === 'undefined' || !db) { fire(null); return; }
     if (typeof bindRealtimeValue === 'function') {
         bindRealtimeValue('view5-' + name, db.ref(cfg.firebase), function(sn) { fire(sn.val()); });
@@ -7204,6 +7316,8 @@ function getRoundScorecardView() { return getView5('scorecard'); }
 function getScoringView() { return getView5('scoring'); }
 
 if (typeof window !== 'undefined') {
+    window.uiConfirm = uiConfirm;
+    window.copyOrShare = copyOrShare;
     window.getView5 = getView5;
     window.applyView5 = applyView5;
     window.normalizeView5 = normalizeView5;
@@ -7229,13 +7343,13 @@ function pestovoQrImgHtml(data, size, cls) {
         ' onload="pestovoQrImgOk(this)" onerror="pestovoQrImgFail(this)">';
 }
 function pestovoQrImgOk(img) {
-    try { img.setAttribute('data-qr-done', '1'); } catch (e) {}
+    try { img.setAttribute('data-qr-done', '1'); } catch (e) { console.warn("[silent]", e); }
 }
 function pestovoQrImgFail(img) {
     var n = 0;
-    try { n = parseInt(img.getAttribute('data-qr-try') || '0', 10) || 0; } catch (e) {}
+    try { n = parseInt(img.getAttribute('data-qr-try') || '0', 10) || 0; } catch (e) { console.warn("[silent]", e); }
     var data = '';
-    try { data = decodeURIComponent(img.getAttribute('data-qr-src') || ''); } catch (e) {}
+    try { data = decodeURIComponent(img.getAttribute('data-qr-src') || ''); } catch (e) { console.warn("[silent]", e); }
     var urls = [
         'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=2&data=' + encodeURIComponent(data),
         'https://quickchart.io/qr?size=200&margin=1&text=' + encodeURIComponent(data),
@@ -7245,7 +7359,7 @@ function pestovoQrImgFail(img) {
         try {
             img.setAttribute('data-qr-try', String(n + 1));
             img.src = urls[n + 1];
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
     }
 }
 if (typeof window !== 'undefined') {
@@ -7263,7 +7377,7 @@ function pestovoPrewarmQrImages(urls) {
             im.onload = function() {};
             im.onerror = function() {};
             im.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=2&data=' + encodeURIComponent(u);
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
     });
 }
 if (typeof window !== 'undefined') window.pestovoPrewarmQrImages = pestovoPrewarmQrImages;
@@ -7782,7 +7896,7 @@ function downloadPNGImage(pngDataUrl, fileName) {
     var blob = null;
     try {
         blob = dataURLtoBlob(pngDataUrl);
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 
     if (navigator.share && blob) {
         try {
@@ -8645,7 +8759,7 @@ function sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerNa
     var text = buildOfficialCallText(type, holeNum, playerName, flightNames, true);
 
     var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch(e){} }, 6000) : null;
+    var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch (e) { console.warn("[silent]", e); } }, 6000) : null;
 
     var fetchOptions = {
         method: 'POST',
@@ -8693,7 +8807,7 @@ function sendTelegramSilentAlert(token, chat, type, holeNum, playerName, flightN
     var text = buildOfficialCallText(type, holeNum, playerName, flightNames, true);
 
     var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch(e){} }, 6000) : null;
+    var timeoutId = controller ? setTimeout(function() { try { controller.abort(); } catch (e) { console.warn("[silent]", e); } }, 6000) : null;
 
     var fetchOptions = {
         method: 'POST',
@@ -8786,7 +8900,7 @@ function vkSendMessageJsonp(token, peerId, text, silent) {
     var script = null;
 
     var cleanup = function() {
-        try { if (script && script.parentNode) script.parentNode.removeChild(script); } catch(e) {}
+        try { if (script && script.parentNode) script.parentNode.removeChild(script); } catch (e) { console.warn("[silent]", e); }
         try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
         if (timeoutId) clearTimeout(timeoutId);
     };
@@ -8908,7 +9022,7 @@ if (typeof db !== 'undefined') {
         db.ref('settings/stableford_display_default').on('value', function(sn) {
             syncStablefordDisplayDefault(sn.val());
         });
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 // ==========================================
@@ -9020,7 +9134,7 @@ if (typeof db !== 'undefined') {
         db.ref('settings/tools_menu_enabled').on('value', function(sn) {
             var v = sn.val();
             var enabled = (v === true || v === '1' || v === 1);
-            try { localStorage.setItem('pestovo_tools_menu_enabled', enabled ? '1' : '0'); } catch(e) {}
+            try { localStorage.setItem('pestovo_tools_menu_enabled', enabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
             // Перерисовываем навигацию, чтобы кнопка появилась/исчезла сразу
             if (typeof navAuth === 'function' && typeof currentUser !== 'undefined') {
                 navAuth(currentUser, currentUserData || null);
@@ -9033,7 +9147,7 @@ if (typeof db !== 'undefined') {
             // По умолчанию ВКЛ — если ключа нет, не трогаем localStorage
             if (v === null || v === undefined) return;
             var enabled = (v === true || v === '1' || v === 1);
-            try { localStorage.setItem('pestovo_my_preferences_enabled', enabled ? '1' : '0'); } catch(e) {}
+            try { localStorage.setItem('pestovo_my_preferences_enabled', enabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
             if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
             if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
         });
@@ -9099,9 +9213,9 @@ if (typeof db !== 'undefined') {
             var ts = parseInt(sn.val(), 10) || 0;
             if (!ts) return;
             var known = 0;
-            try { known = parseInt(localStorage.getItem('pestovo_sessions_reset_last') || '0', 10) || 0; } catch (e) {}
+            try { known = parseInt(localStorage.getItem('pestovo_sessions_reset_last') || '0', 10) || 0; } catch (e) { console.warn("[silent]", e); }
             if (ts > known) {
-                try { localStorage.setItem('pestovo_sessions_reset_last', String(ts)); } catch (e) {}
+                try { localStorage.setItem('pestovo_sessions_reset_last', String(ts)); } catch (e) { console.warn("[silent]", e); }
                 pestovoWipeLocalSessions();
             }
         });
@@ -9129,7 +9243,7 @@ if (typeof db !== 'undefined') {
                 }
             });
         });
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -9371,7 +9485,7 @@ function resolveOrCreatePlayerUser(p) {
                 custom[id] = cur;
                 localStorage.setItem('pestovo_custom_players', JSON.stringify(custom));
             }
-        } catch(e) {}
+        } catch (e) { console.warn("[silent]", e); }
         if (typeof cachedRegisteredUsers !== 'undefined') {
             if (cachedRegisteredUsers[id]) {
                 var cur = cachedRegisteredUsers[id] || {};
@@ -9388,7 +9502,7 @@ function resolveOrCreatePlayerUser(p) {
             } else {
                 cachedRegisteredUsers[id] = Object.assign({}, cachedRegisteredUsers[id] || {}, data);
             }
-            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch (e) { console.warn("[silent]", e); }
         }
     };
 
@@ -9534,7 +9648,7 @@ function getDeletedPlayerIds() {
             var list = JSON.parse(raw);
             if (Array.isArray(list)) return list;
         }
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return [];
 }
 
@@ -9557,7 +9671,7 @@ function markPlayerDeleted(id, name) {
         add(id);
         add(name ? normalizeSearchText(name) : '');
         localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify(list));
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 // ==========================================
@@ -9642,7 +9756,7 @@ function purgeBlockedFromPlayerCaches() {
                     try {
                         var u = obj[k];
                         if (isBlockedDemoPlayer(k, u && u.name)) delete obj[k];
-                    } catch(_){}
+                    } catch (_) { console.warn("[silent]", _); }
                 });
             }
             return obj;
@@ -9656,14 +9770,14 @@ function purgeBlockedFromPlayerCaches() {
             var cleaned1 = clean(c1);
             localStorage.setItem('pestovo_cached_users', JSON.stringify(cleaned1));
         }
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
     try {
         var c2 = localStorage.getItem('pestovo_custom_players');
         if (c2) {
             var cleaned2 = clean(c2);
             localStorage.setItem('pestovo_custom_players', JSON.stringify(cleaned2));
         }
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 // Полностью стирает локальный кэш игроков (и в памяти, и в localStorage),
@@ -9677,7 +9791,7 @@ function wipeLocalPlayerCaches() {
         // Сброс списка удалённых игроков — после полной очистки база пуста,
         // никакие id не должны считаться «удалёнными» (чтобы не мешали новой работе)
         localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([]));
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 
     if (typeof cachedRegisteredUsers === 'object' && cachedRegisteredUsers) {
         Object.keys(cachedRegisteredUsers).forEach(function(k) {
@@ -9697,7 +9811,7 @@ function syncKnownPlayersCache() {
         try {
             localStorage.removeItem('pestovo_cached_users');
             localStorage.removeItem('pestovo_custom_players');
-        } catch(e) {}
+        } catch (e) { console.warn("[silent]", e); }
         return;
     }
 
@@ -9705,7 +9819,7 @@ function syncKnownPlayersCache() {
     try {
         var dRaw = localStorage.getItem('pestovo_deleted_player_ids');
         if (dRaw) deletedIds = JSON.parse(dRaw) || [];
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 
     var mergeCache = function(obj) {
         Object.keys(obj).forEach(function(k) {
@@ -9724,7 +9838,7 @@ function syncKnownPlayersCache() {
             var p1 = JSON.parse(localCached);
             if (p1 && typeof p1 === 'object') mergeCache(p1);
         }
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 
     try {
         var custom = localStorage.getItem('pestovo_custom_players');
@@ -9732,7 +9846,7 @@ function syncKnownPlayersCache() {
             var p2 = JSON.parse(custom);
             if (p2 && typeof p2 === 'object') mergeCache(p2);
         }
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 
     // Дедуп по ФИО в локальном кэше, чтобы не было сдваивания
     try {
@@ -9741,7 +9855,7 @@ function syncKnownPlayersCache() {
         // Очищаем и перезаписываем только дедуплицированными
         Object.keys(cachedRegisteredUsers).forEach(function(k){ delete cachedRegisteredUsers[k]; });
         deduped.forEach(function(en){ cachedRegisteredUsers[en[0]] = en[1]; });
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 
     purgeBlockedFromPlayerCaches();
 }
@@ -9766,7 +9880,7 @@ if (typeof db !== 'undefined') {
                     localStorage.removeItem('pestovo_cached_users');
                     localStorage.removeItem('pestovo_custom_players');
                     localStorage.setItem('pestovo_defaults_cleared', 'true');
-                } catch(e) {}
+                } catch (e) { console.warn("[silent]", e); }
                 return;
             }
             Object.assign(cachedRegisteredUsers, val);
@@ -9807,7 +9921,7 @@ if (typeof db !== 'undefined') {
             try {
                 var dRaw = localStorage.getItem('pestovo_deleted_player_ids');
                 if (dRaw) deleted = JSON.parse(dRaw) || [];
-            } catch(e) {}
+            } catch (e) { console.warn("[silent]", e); }
             Object.keys(cachedRegisteredUsers).forEach(function(k) {
                 var u = cachedRegisteredUsers[k];
                 if (!u) return;
@@ -9818,7 +9932,7 @@ if (typeof db !== 'undefined') {
                     if (nKey && deleted.indexOf(nKey) !== -1) delete cachedRegisteredUsers[k];
                 }
             });
-            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch(e) {}
+            try { localStorage.setItem('pestovo_cached_users', JSON.stringify(cachedRegisteredUsers)); } catch (e) { console.warn("[silent]", e); }
         });
         db.ref('rounds').on('value', function(sn) {
             var roundsData = sn.val() || {};
@@ -9840,7 +9954,7 @@ if (typeof db !== 'undefined') {
                             try {
                                 var dRaw = localStorage.getItem('pestovo_deleted_player_ids');
                                 if (dRaw) deleted = JSON.parse(dRaw) || [];
-                            } catch(e) {}
+                            } catch (e) { console.warn("[silent]", e); }
                             var isDel = (deleted.indexOf(pid) !== -1) || (normName && deleted.indexOf(normName) !== -1) || isBlockedDemoPlayer(pid, pName);
                             if (isDel) return;
                             var key = pid.startsWith('guest_') ? ('guest_name_' + pName.toLowerCase().replace(/\s+/g, '_')) : pid;
@@ -9874,7 +9988,7 @@ if (typeof db !== 'undefined') {
                 }
             });
         });
-    } catch(e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function getKnownPlayersSync() {
@@ -10075,7 +10189,7 @@ function initPlayerSearchAutofill(opts) {
         items.forEach(function(item, i) {
             if (i === highlightedIdx) {
                 item.classList.add('active-keyboard');
-                try { item.scrollIntoView({ block: 'nearest' }); } catch(e) {}
+                try { item.scrollIntoView({ block: 'nearest' }); } catch (e) { console.warn("[silent]", e); }
             } else {
                 item.classList.remove('active-keyboard');
             }
@@ -10090,7 +10204,7 @@ function initPlayerSearchAutofill(opts) {
         dropdown.style.display = 'none';
         dropdown.classList.add('hidden');
         highlightedIdx = -1;
-        try { inputEl.blur(); } catch(e) {}
+        try { inputEl.blur(); } catch (e) { console.warn("[silent]", e); }
     };
 
     var handleInput = function() {
@@ -10324,7 +10438,7 @@ function initPrivacySettings() {
                 pestovoPrivacy.players = c.players || {};
             }
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 
     if (typeof db === 'undefined') { pestovoPrivacy.loaded = true; return; }
     try {
@@ -10340,7 +10454,7 @@ function initPrivacySettings() {
                     maskMode: pestovoPrivacy.maskMode,
                     players: pestovoPrivacy.players
                 }));
-            } catch (e2) {}
+            } catch (e2) { console.warn("[silent]", e2); }
             // После обновления настроек приватности — перерисуем открытые блоки на главной
             if (typeof renderPrivacySensitiveHome === 'function') renderPrivacySensitiveHome();
         }, function() {});
@@ -10353,11 +10467,11 @@ function initPrivacySettings() {
 function pestovoIsAdminViewer() {
     try {
         if (typeof hasAdminPanelAccess === 'function') return !!hasAdminPanelAccess();
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin') return true;
         if (sessionStorage.getItem('pestovo_is_admin') === 'true') return true;
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return false;
 }
 
@@ -10731,7 +10845,7 @@ function tnApplyHcpCut(exactHcp, gender, cut) {
 function tnTournamentFieldHcp(exactHcp, teeCode, gender, cut) {
     var eff = tnApplyHcpCut(exactHcp, gender, cut).effective;
     if (typeof getFieldHcp === 'function') {
-        try { return getFieldHcp(eff, teeCode || 'wh', gender || 'men'); } catch (e) {}
+        try { return getFieldHcp(eff, teeCode || 'wh', gender || 'men'); } catch (e) { console.warn("[silent]", e); }
     }
     return Math.round(eff || 0);
 }
@@ -10932,7 +11046,7 @@ function pestovoActivateRounds(due, opts) {
         return { rounds: (due.roundIds || []).length, tournaments: (due.tournamentIds || []).length };
     }).catch(function(err) {
         if (!opts.silent && typeof console !== 'undefined') {
-            try { console.warn('[Tournament start] cannot activate rounds', err); } catch (e) {}
+            try { console.warn('[Tournament start] cannot activate rounds', err); } catch (e) { console.warn("[silent]", e); }
         }
         return { rounds: 0, tournaments: 0, error: err };
     });
@@ -11283,7 +11397,7 @@ function pestovoBroadcastViewerCtx() {
     var uid = '';
     try {
         if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) uid = String(currentUser.uid);
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return {
         uid: uid,
         isAdmin: (typeof pestovoIsAdminViewer === 'function') ? pestovoIsAdminViewer() : false
@@ -11348,7 +11462,7 @@ function pestovoBroadcastFeed(data, ctx, limit) {
                         // Молча чиним; в тостах не шумим.
                     }
                 }).catch(function() {});
-            } catch (e) {}
+            } catch (e) { console.warn("[silent]", e); }
             // Глобальная чистка — только для админа.
             try {
                 db.ref('users/' + user.uid).once('value').then(function(sn) {
@@ -11357,11 +11471,11 @@ function pestovoBroadcastFeed(data, ctx, limit) {
                         (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('pestovo_is_admin') === 'true');
                     if (isAdmin) {
                         setTimeout(function() {
-                            try { pestovoDedupeAllPlayerHistoryOnce(); } catch (e) {}
+                            try { pestovoDedupeAllPlayerHistoryOnce(); } catch (e) { console.warn("[silent]", e); }
                         }, 2500);
                     }
                 }).catch(function() {});
-            } catch (e) {}
+            } catch (e) { console.warn("[silent]", e); }
         });
     }
     if (document.readyState === 'loading') {
@@ -11416,8 +11530,8 @@ if (typeof window !== 'undefined') {
 }
 // P0: run mobile enhancements after DOM ready and on every nav rebuild
 if(typeof document!=='undefined'){
-    document.addEventListener('DOMContentLoaded', function(){ try{ initP0MobileEnhancements(); }catch(e){} });
+    document.addEventListener('DOMContentLoaded', function(){ try{ initP0MobileEnhancements(); }catch (e) { console.warn("[silent]", e); } });
     // also try immediately in case DOM already ready and initNav already fired
-    if(document.readyState!=='loading'){ setTimeout(function(){ try{ initP0MobileEnhancements(); }catch(e){} }, 80); }
+    if(document.readyState!=='loading'){ setTimeout(function(){ try{ initP0MobileEnhancements(); }catch (e) { console.warn("[silent]", e); } }, 80); }
 }
 

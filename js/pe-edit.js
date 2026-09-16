@@ -426,7 +426,7 @@
             var ic = chip.querySelector('i');
             if (ic) ic.className = 'fas fa-' + (state.collapsed[i] ? 'chevron-right' : 'chevron-down');
         }
-        if (typeof vib === 'function') { try { vib(10); } catch (e) {} }
+        if (typeof vib === 'function') { try { vib(10); } catch (e) { console.warn("[silent]", e); } }
     }
     function peExpandAll(open) {
         if (!collectForm()) return;
@@ -605,7 +605,7 @@
                 var rawHcp = (p.exactHcp !== undefined && p.exactHcp !== null && p.exactHcp !== '') ? p.exactHcp : p.hcp;
                 var effHcp = rawHcp;
                 if (typeof tnEffectiveHcp === 'function') {
-                    try { effHcp = tnEffectiveHcp(t, state.tnId, rawHcp, p.gender); } catch (e) {}
+                    try { effHcp = tnEffectiveHcp(t, state.tnId, rawHcp, p.gender); } catch (e) { console.warn("[silent]", e); }
                 }
                 p.exactHcp = effHcp;
                 if (typeof getFieldHcp === 'function') {

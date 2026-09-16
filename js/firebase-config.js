@@ -21,7 +21,7 @@ firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 var auth = firebase.auth();
 
-try { firebase.database().goOnline(); } catch (e) {}
+try { firebase.database().goOnline(); } catch (e) { console.warn("[silent]", e); }
 
 var currentUser = null;
 var currentUserData = null;

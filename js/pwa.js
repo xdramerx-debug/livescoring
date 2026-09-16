@@ -70,12 +70,12 @@ function updateOnlineStatus(){
     if(isOnline){
         indicator.className='online-indicator online';
         indicator.innerHTML='<i class="fas fa-wifi"></i> ' + (langIsEn ? 'Online' : 'Онлайн');
-        if(!wasOnline){try{ if(typeof toast==='function')toast(langIsEn ? '🌐 Connection restored' : '🌐 Соединение восстановлено','success'); }catch(e){} try{ syncOfflineScores(); }catch(e){} }
-        setTimeout(function(){try{ if(indicator)indicator.classList.add('hide'); }catch(e){}},3000);
+        if(!wasOnline){try{ if(typeof toast==='function')toast(langIsEn ? '🌐 Connection restored' : '🌐 Соединение восстановлено','success'); }catch (e) { console.warn("[silent]", e); } try{ syncOfflineScores(); }catch (e) { console.warn("[silent]", e); } }
+        setTimeout(function(){try{ if(indicator)indicator.classList.add('hide'); }catch (e) { console.warn("[silent]", e); }},3000);
     }else{
         indicator.className='online-indicator offline';
         indicator.innerHTML='<i class="fas fa-wifi-slash"></i> ' + (langIsEn ? 'Offline' : 'Оффлайн');
-        if(wasOnline) try{ if(typeof toast==='function')toast(langIsEn ? '📡 Connection lost' : '📡 Нет соединения','warn'); }catch(e){}
+        if(wasOnline) try{ if(typeof toast==='function')toast(langIsEn ? '📡 Connection lost' : '📡 Нет соединения','warn'); }catch (e) { console.warn("[silent]", e); }
     }
 }
 
@@ -92,7 +92,7 @@ function readOfflineScores() {
         return Array.isArray(value) ? value : [];
     } catch (error) {
         console.warn('[PWA] Invalid offline queue was reset', error);
-        try { localStorage.removeItem(OFFLINE_KEY); } catch (e) {}
+        try { localStorage.removeItem(OFFLINE_KEY); } catch (e) { console.warn("[silent]", e); }
         return [];
     }
 }
@@ -170,10 +170,10 @@ function updateOfflineQueueBadge() {
     var pending;
     try { pending = readOfflineScores(); } catch(e){ pending=[]; }
     var badgeEl = null;
-    try { badgeEl = document.getElementById('offline-queue-badge'); } catch(e){}
+    try { badgeEl = document.getElementById('offline-queue-badge'); } catch (e) { console.warn("[silent]", e); }
     var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     if (!pending.length) {
-        if (badgeEl) { try{ badgeEl.classList.add('hide'); }catch(e){} }
+        if (badgeEl) { try{ badgeEl.classList.add('hide'); }catch (e) { console.warn("[silent]", e); } }
         return;
     }
     if (!badgeEl) {
@@ -191,7 +191,7 @@ function updateOfflineQueueBadge() {
     try {
         badgeEl.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> ⏳ ' + badgeText;
         badgeEl.classList.remove('hide');
-    } catch(e){}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 window.addEventListener('load', function() { updateOfflineQueueBadge(); });
@@ -215,7 +215,7 @@ function checkPWAInstallPrompt() {
 }
 
 function showInstallBanner(){
-    try { if(localStorage.getItem('pwa_install_dismissed'))return; } catch(e){}
+    try { if(localStorage.getItem('pwa_install_dismissed'))return; } catch (e) { console.warn("[silent]", e); }
     var banner=document.createElement('div');
     banner.id='install-banner';banner.className='install-banner';
     var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
@@ -225,12 +225,12 @@ function showInstallBanner(){
     var installStr = langIsEn ? 'Install' : 'Установить';
     banner.innerHTML='<div class="install-content"><div><strong>' + titleStr + '</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">' + subStr + '</div></div><div style="display:flex;gap:8px;"><button class="btn btn-og btn-sm" onclick="dismissInstall()">' + laterStr + '</button><button class="btn btn-g btn-sm" onclick="installPWA()">' + installStr + '</button></div></div>';
     try { if(document.body) document.body.appendChild(banner); } catch(e){ return; }
-    setTimeout(function(){try{banner.classList.add('show');}catch(e){}},100);
+    setTimeout(function(){try{banner.classList.add('show');}catch (e) { console.warn("[silent]", e); }},100);
 }
 
 function showIOSInstallBanner() {
-    try { if (localStorage.getItem('pwa_install_dismissed')) return; } catch(e){}
-    try { if (document.getElementById('ios-install-banner')) return; } catch(e){}
+    try { if (localStorage.getItem('pwa_install_dismissed')) return; } catch (e) { console.warn("[silent]", e); }
+    try { if (document.getElementById('ios-install-banner')) return; } catch (e) { console.warn("[silent]", e); }
 
     var banner = document.createElement('div');
     banner.id = 'ios-install-banner';
@@ -255,14 +255,14 @@ function showIOSInstallBanner() {
         '</div>';
 
     try { if(document.body) document.body.appendChild(banner); } catch(e){ return; }
-    setTimeout(function() { try{ banner.classList.add('show'); }catch(e){} }, 100);
+    setTimeout(function() { try{ banner.classList.add('show'); }catch (e) { console.warn("[silent]", e); } }, 100);
 }
 
-function installPWA(){if(!deferredPrompt)return;try{deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;try{var b=document.getElementById('install-banner');if(b)b.remove();}catch(e){}});}catch(e){}}
-function dismissInstall(){try{localStorage.setItem('pwa_install_dismissed','1');}catch(e){}try{var b=document.getElementById('install-banner');if(b)b.remove();}catch(e){}}
-function dismissIOSInstall(){try{localStorage.setItem('pwa_install_dismissed','1');}catch(e){}try{var b=document.getElementById('ios-install-banner');if(b)b.remove();}catch(e){}}
+function installPWA(){if(!deferredPrompt)return;try{deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;try{var b=document.getElementById('install-banner');if(b)b.remove();}catch (e) { console.warn("[silent]", e); }});}catch (e) { console.warn("[silent]", e); }}
+function dismissInstall(){try{localStorage.setItem('pwa_install_dismissed','1');}catch (e) { console.warn("[silent]", e); }try{var b=document.getElementById('install-banner');if(b)b.remove();}catch (e) { console.warn("[silent]", e); }}
+function dismissIOSInstall(){try{localStorage.setItem('pwa_install_dismissed','1');}catch (e) { console.warn("[silent]", e); }try{var b=document.getElementById('ios-install-banner');if(b)b.remove();}catch (e) { console.warn("[silent]", e); }}
 window.installPWA=installPWA;window.dismissInstall=dismissInstall;window.dismissIOSInstall=dismissIOSInstall;
-setInterval(function(){try{ if(navigator.onLine && typeof db !== 'undefined') syncOfflineScores(); }catch(e){}},60000);
+setInterval(function(){try{ if(navigator.onLine && typeof db !== 'undefined') syncOfflineScores(); }catch (e) { console.warn("[silent]", e); }},60000);
 
 // ==========================================
 // ПУШ-УВЕДОМЛЕНИЯ ВЫЗОВОВ (СУДЬЯ / МАРШАЛ)
@@ -279,7 +279,7 @@ function requestNotificationPermission(callback) {
             markPwaPushEnabled();
             initBackgroundAlertListener();
             // Фоновая VAPID-подписка (пуши при закрытом приложении).
-            try { if (typeof pestovoPushSubscribe === 'function') pestovoPushSubscribe(); } catch (e) {}
+            try { if (typeof pestovoPushSubscribe === 'function') pestovoPushSubscribe(); } catch (e) { console.warn("[silent]", e); }
             if (typeof callback === 'function') callback(true);
         } else {
             if (typeof toast === 'function') toast(currentLang === 'en' ? 'Notifications declined by browser' : 'Уведомления отклонены браузером', 'warn');
@@ -291,12 +291,12 @@ function requestNotificationPermission(callback) {
 // Отметка «PWA-уведомления включены»: в профиле игрока (для адресных
 // рассалок админа) и локально (для гостей без аккаунта). (#17)
 function markPwaPushEnabled() {
-    try { localStorage.setItem('pestovo_push_enabled', '1'); } catch (e) {}
+    try { localStorage.setItem('pestovo_push_enabled', '1'); } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof db !== 'undefined' && db && typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
             db.ref('users/' + currentUser.uid + '/pushEnabled').set(true).catch(function() {});
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 window.markPwaPushEnabled = markPwaPushEnabled;
 
@@ -305,7 +305,7 @@ if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener('load', function() {
         try {
             if ('Notification' in window && Notification.permission === 'granted') markPwaPushEnabled();
-        } catch (e) {}
+        } catch (e) { console.warn("[silent]", e); }
     });
 }
 
@@ -360,10 +360,10 @@ function pestovoShowNotifNow(title, body, targetUrl, extra) {
         ]).then(function(reg) {
             if (reg && typeof reg.showNotification === 'function') reg.showNotification(title, options);
         }).catch(function() {
-            try { new Notification(title, options); } catch(e) {}
+            try { new Notification(title, options); } catch (e) { console.warn("[silent]", e); }
         });
     } else {
-        try { new Notification(title, options); } catch(e) {}
+        try { new Notification(title, options); } catch (e) { console.warn("[silent]", e); }
     }
 }
 
@@ -577,11 +577,11 @@ function pestovoPushSave(sub) {
             keys.slice(1).forEach(function(k2) { updates['/push_subscriptions/' + k2] = null; });
         } else {
             var localKey = null;
-            try { localKey = localStorage.getItem('pestovo_push_key'); } catch (e) {}
+            try { localKey = localStorage.getItem('pestovo_push_key'); } catch (e) { console.warn("[silent]", e); }
             key = localKey || pestovoPushKeyForEndpoint(endpoint);
             updates['/push_subscriptions/' + key] = rec;
         }
-        try { localStorage.setItem('pestovo_push_key', key); } catch (e) {}
+        try { localStorage.setItem('pestovo_push_key', key); } catch (e) { console.warn("[silent]", e); }
         return db.ref().update(updates).then(function() {
             if (uid) return pestovoPushPatchProfile(key, uid);
             return key;
@@ -605,12 +605,12 @@ function pestovoPushBindAuth() {
         if (!auth) return;
         auth.onAuthStateChanged(function(user) {
             var key = null;
-            try { key = localStorage.getItem('pestovo_push_key'); } catch (e) {}
+            try { key = localStorage.getItem('pestovo_push_key'); } catch (e) { console.warn("[silent]", e); }
             if (!('Notification' in window) || Notification.permission !== 'granted') return;
             if (!key) { pestovoPushSubscribe(); return; }
             if (user) pestovoPushPatchProfile(key, user.uid);
         });
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 window.addEventListener('load', function() {
@@ -625,6 +625,6 @@ window.addEventListener('load', function() {
                 if (ev.data && ev.data.type === 'pestovo-push-resubscribed') pestovoPushSubscribe();
             });
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 });
 window.pestovoPushSubscribe = pestovoPushSubscribe;

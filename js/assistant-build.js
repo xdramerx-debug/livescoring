@@ -164,7 +164,7 @@
       var s = document.createElement('script');
       s.src = cfg.pdfLibUrl || 'vendor/pdfjs/pdf.min.js';
       s.onload = function () {
-        try { global.pdfjsLib.GlobalWorkerOptions.workerSrc = cfg.pdfWorkerUrl || 'vendor/pdfjs/pdf.worker.min.js'; } catch (e) {}
+        try { global.pdfjsLib.GlobalWorkerOptions.workerSrc = cfg.pdfWorkerUrl || 'vendor/pdfjs/pdf.worker.min.js'; } catch (e) { console.warn("[silent]", e); }
         resolve();
       };
       s.onerror = function () { reject(new Error('Не удалось загрузить pdf.js')); };

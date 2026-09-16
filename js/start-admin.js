@@ -344,7 +344,7 @@ function psCalcFieldHcp(p) {
     // (см. подсказку в psRenderCutBox), а не от исходного p.hcp.
     var eff = psEffectiveExact(p);
     if (typeof getFieldHcp === 'function') {
-        try { return getFieldHcp(eff, p.tee || 'wh', p.gender || 'men'); } catch (e) {}
+        try { return getFieldHcp(eff, p.tee || 'wh', p.gender || 'men'); } catch (e) { console.warn("[silent]", e); }
     }
     return Math.round(eff);
 }
@@ -376,7 +376,7 @@ function psEffectiveExactFor(hcp, gender) {
     // Единая логика обрезки живёт в js/utils.js — используем её, чтобы старт
     // считал точно так же, как страница турнира.
     if (typeof tnApplyHcpCut === 'function') {
-        try { return tnApplyHcpCut(raw, gender, cut).effective; } catch (e) {}
+        try { return tnApplyHcpCut(raw, gender, cut).effective; } catch (e) { console.warn("[silent]", e); }
     }
     // Запасной вариант (например, в юнит-тестах без utils.js): та же логика —
     // сначала процент, затем максимум по полу.
@@ -464,7 +464,7 @@ function psPlayerFormatOptionsHtml(p) {
         if (f && list.indexOf(f) === -1) list.push(f);
     }
     (tn && tn.formats ? tn.formats : []).forEach(add);
-    try { psResolvedFormats().forEach(add); } catch (e) {}
+    try { psResolvedFormats().forEach(add); } catch (e) { console.warn("[silent]", e); }
     ['Stroke Play', 'Stroke Play (Gross)', 'Stroke Play (Net)', 'Stableford', 'Match Play 1v1', 'Match Play 2v2'].forEach(add);
     if (p && p.format) add(p.format);
     var escFn = (typeof escapeHtml === 'function') ? escapeHtml : function(x) { return String(x == null ? '' : x); };
@@ -674,7 +674,7 @@ function psRunDivisionSync(tn, silent) {
     });
 
     // Сохраняем применённые ТИ/форматы на турнир (registeredPlayers).
-    try { psPersistRosterTeeFormat(); } catch (ePersist) {}
+    try { psPersistRosterTeeFormat(); } catch (ePersist) { console.warn("[silent]", ePersist); }
 
     if (!silent) {
         psRender();
@@ -728,13 +728,13 @@ function psLoadUsers(cb) {
         psState.usersLoading = false;
         var w = psState.usersWaiters; psState.usersWaiters = [];
         if (cb) cb(psState.users);
-        w.forEach(function(f) { try { f(psState.users); } catch (e) {} });
+        w.forEach(function(f) { try { f(psState.users); } catch (e) { console.warn("[silent]", e); } });
     }).catch(function() {
         psState.users = {};
         psState.usersLoading = false;
         var w = psState.usersWaiters; psState.usersWaiters = [];
         if (cb) cb(psState.users);
-        w.forEach(function(f) { try { f(psState.users); } catch (e) {} });
+        w.forEach(function(f) { try { f(psState.users); } catch (e) { console.warn("[silent]", e); } });
     });
 }
 
@@ -843,7 +843,7 @@ function psRender() {
     // Контейнер «QR-коды и сохранённые протоколы» только что пересоздан
     // с текстом «Загрузка…»: перерисовываем список из кэша (подписка уже
     // есть, вызывать безопасно — psBindSavedList идемпотентен).
-    try { if (typeof psBindSavedList === 'function') psBindSavedList(); } catch (ePsBind) {}
+    try { if (typeof psBindSavedList === 'function') psBindSavedList(); } catch (ePsBind) { console.warn("[silent]", ePsBind); }
 }
 
 function psFillFromMatchedUser(matchedUser, lastId, firstId, midId, hcpId, genderId, teeId) {
@@ -1061,7 +1061,7 @@ function psCutAffectedCount() {
         }
         players.forEach(scan);
         ((psState.groups) || []).forEach(function(g) { (g.members || []).forEach(scan); });
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     return { hit: hit, total: total };
 }
 
@@ -1090,7 +1090,7 @@ function psCutMaxAutocheck() {
     try {
         var cb = psEl('ps-cut-max-enabled');
         if (cb && !cb.checked) cb.checked = true;
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 // Объект обрезки в формате protocols/<pid>/hcpCut (и tournaments/<id>/hcpCut).
@@ -1111,7 +1111,7 @@ function psPersistTournamentCut() {
     if (typeof db === 'undefined' || !db) return;
     var proto = psState && psState.proto;
     if (!proto || !proto.tournamentId) return;
-    try { db.ref('tournaments/' + proto.tournamentId + '/hcpCut').set(psCutObject(proto)).catch(function() {}); } catch (e) {}
+    try { db.ref('tournaments/' + proto.tournamentId + '/hcpCut').set(psCutObject(proto)).catch(function() {}); } catch (e) { console.warn("[silent]", e); }
 }
 
 // Кнопка «Применить»: забирает значения прямо из полей (даже если фокус ещё
@@ -1139,7 +1139,7 @@ function psCutApply() {
                 psState.proto[pair[0]] = isNaN(m) ? '' : m;
             }
         });
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     psRender();
     var aff = psCutAffectedCount();
     var parts = [];
@@ -1347,7 +1347,7 @@ function psOnTournamentChange(id) {
     if (id) {
         var hasAny = (psState.proto.players || []).length > 0 || (psState.groups || []).length > 0;
         if (!hasAny) {
-            try { psLoadRegistered(true); } catch (eAuto) {}
+            try { psLoadRegistered(true); } catch (eAuto) { console.warn("[silent]", eAuto); }
         }
     }
 }
@@ -1398,7 +1398,7 @@ function psRenderProtoCard() {
     html += '<div class="form-group"><label>' + psL('Отчество (если есть)', 'Middle name (optional)') + '</label><input type="text" id="ps-m-mid" class="form-input" oninput="psManualFioAuto()" placeholder="' + psL('Петрович', '') + '"></div>';
     html += '</div>';
     html += '<div class="form-row form-row-3">';
-    html += '<div class="form-group"><label>' + psL('Точный гандикап', 'Exact handicap') + '</label><input type="text" id="ps-m-hcp" class="form-input" placeholder="13.0 или +2.4"></div>';
+    html += '<div class="form-group"><label>' + psL('Точный гандикап', 'Exact handicap') + '</label><input type="text" inputmode="decimal" id="ps-m-hcp" class="form-input" placeholder="13.0 или +2.4"></div>';
     html += '<div class="form-group"><label>' + psL('Пол', 'Gender') + '</label><select id="ps-m-gender" class="form-input">' +
         '<option value="men">' + psL('👨 Мужчина', '👨 Male') + '</option><option value="women">' + psL('👩 Женщина', '👩 Female') + '</option></select></div>';
     html += '<div class="form-group"><label>' + psL('ТИ', 'Tee') + '</label><select id="ps-m-tee" class="form-input">' + psTeeOptionsHtml(psState.proto.tee || 'wh') + '</select></div>';
@@ -1554,7 +1554,7 @@ function psManualFioAuto() {
             }
             toast(psL('👩 Похоже на женское имя — подставлены пол «Женщина» и женские ТИ', '👩 Looks like a feminine name — gender and ladies tees set'), 'info');
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 // То же для формы «Игрок в эту группу»: ФИО одной строкой.
@@ -1575,7 +1575,7 @@ function psGroupFioAuto(gi) {
                 tEl.value = psDefaultTeeFor('women', hv);
             }
         }
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function psRosterRowHtml(p, idx) {
@@ -1716,7 +1716,7 @@ function psToggleRosterGroup(key) {
         var icon = document.getElementById(psRosterGroupDomId(key) + '-icon');
         if (body) body.classList.toggle('hidden', collapsed);
         if (icon) icon.className = collapsed ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function psRosterExpandAll(expand) {
@@ -1724,7 +1724,7 @@ function psRosterExpandAll(expand) {
         var groups = psRosterGroups(psState.proto ? psState.proto.players : []);
         if (!psState.rosterCollapsed) psState.rosterCollapsed = {};
         groups.buckets.forEach(function(b) { psState.rosterCollapsed[b.key] = !expand; });
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     psRender();
 }
 
@@ -1738,7 +1738,7 @@ function psRenderRosterTable(proto) {
     var cutActive = false;
     try {
         cutActive = (psCutAffectedCount().hit > 0);
-    } catch (e) {}
+    } catch (e) { console.warn("[silent]", e); }
     var html = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">';
     html += '<span style="font-size:11.5px;color:var(--muted);"><i class="fas fa-layer-group"></i> ' +
         (grouped.useDivs
@@ -2700,7 +2700,7 @@ function psRenderExcelBox() {
                     var rg = (typeof tnDivisionRangeText === 'function') ? tnDivisionRangeText(dv) : '';
                     divTxt = '<span class="tn-div-chip">' + escapeHtml(dv.name) + (rg ? ' · ' + escapeHtml(rg) : '') + '</span>';
                 }
-            } catch (e) {}
+            } catch (e) { console.warn("[silent]", e); }
             html += '<tr style="border-top:1px solid var(--border);">' +
                 '<td style="padding:6px 8px;">' + (i + 1) + '</td>' +
                 '<td style="padding:6px 8px;"><b>' + escapeHtml(fio) + '</b>' +
@@ -3500,7 +3500,7 @@ function psPlayerHasScores(g, pid) {
 var psGroupsSearchQ = '';
 
 function psGroupsSearchRender() {
-    try { psRender(); } catch (e) {}
+    try { psRender(); } catch (e) { console.warn("[silent]", e); }
 }
 
 function psToggleGroupsExpand(force) {
@@ -3637,7 +3637,7 @@ function psRenderGroupsResult() {
                 ? psL('После обрезки: ' + psHcpFmt(gRaw) + ' → ' + psHcpFmt(gEff), 'After cut: ' + psHcpFmt(gRaw) + ' → ' + psHcpFmt(gEff))
                 : psL('Точный HCP', 'Exact HCP');
             html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px;">' + psL('Точный HCP', 'Exact HCP') + '</label>' +
-                '<input type="text" class="form-input' + (gCut ? ' ps-rrow-cut' : '') + '" style="width:74px;padding:4px 6px;font-size:12px;" title="' + gHcpTitle.replace(/"/g, '&quot;') + '" value="' + gHcpVal.replace(/"/g, '&quot;') + '" onchange="psGHcp(' + gi + ',' + mi + ', this.value)" placeholder="13.0">' +
+                '<input type="text" inputmode="decimal" class="form-input' + (gCut ? ' ps-rrow-cut' : '') + '" style="width:74px;padding:4px 6px;font-size:12px;" title="' + gHcpTitle.replace(/"/g, '&quot;') + '" value="' + gHcpVal.replace(/"/g, '&quot;') + '" onchange="psGHcp(' + gi + ',' + mi + ', this.value)" placeholder="13.0">' +
                 (gCut ? ' <i class="fas fa-scissors" style="color:var(--gold);font-size:11px;"></i>' : '') + '</div>';
             html += '<span class="hcp-chip" style="font-size:10.5px;margin-bottom:4px;">' + psL('Полевой', 'Course') + ' ' + fmtFieldHcp(psCalcFieldHcp(p)) + '</span>';
             html += '</div>';
@@ -3660,7 +3660,7 @@ function psRenderGroupsResult() {
         html += '<div id="ps-ga-form-' + gi + '" class="hidden" style="background:rgba(201,168,76,0.07);border:1px dashed var(--gold);border-radius:8px;padding:10px;margin-bottom:8px;">';
         html += '<div class="form-row" style="gap:6px;margin-bottom:6px;">' +
             '<div class="form-group" style="flex:2 1 140px;margin:0;"><label style="font-size:10px;color:var(--muted);">' + psL('ФИО (одной строкой)', 'Full name (one line)') + '</label><input type="text" id="ps-ga-fio-' + gi + '" class="form-input" oninput="psGroupFioAuto(' + gi + ')" style="padding:6px 8px;font-size:12.5px;" placeholder="' + psL('Тестов Иван Петрович', 'Smith John') + '"></div>' +
-            '<div class="form-group" style="flex:0 1 82px;margin:0;"><label style="font-size:10px;color:var(--muted);">HCP</label><input type="text" id="ps-ga-hcp-' + gi + '" class="form-input" style="padding:6px 8px;font-size:12.5px;" placeholder="13.0"></div>' +
+            '<div class="form-group" style="flex:0 1 82px;margin:0;"><label style="font-size:10px;color:var(--muted);">HCP</label><input type="text" inputmode="decimal" id="ps-ga-hcp-' + gi + '" class="form-input" style="padding:6px 8px;font-size:12.5px;" placeholder="13.0"></div>' +
             '</div>';
         html += '<div class="form-row" style="gap:6px;margin-bottom:8px;">' +
             '<div class="form-group" style="flex:1 1 110px;margin:0;"><label style="font-size:10px;color:var(--muted);">' + psL('Пол', 'Gender') + '</label><select id="ps-ga-gender-' + gi + '" class="form-input" style="padding:6px 8px;font-size:12.5px;"><option value="men">' + psL('Мужчина', 'Male') + '</option><option value="women">' + psL('Женщина', 'Female') + '</option></select></div>' +
@@ -4264,12 +4264,12 @@ function psSaveProtocol() {
                 if (!psSavedCache) psSavedCache = {};
                 psSavedCache[pid] = savedDoc;
             }
-        } catch (eCache) {}
+        } catch (eCache) { console.warn("[silent]", eCache); }
         psRender();
         try {
             var savedCard = psEl('ps-saved-content');
             if (savedCard && savedCard.scrollIntoView) savedCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } catch (eScroll) {}
+        } catch (eScroll) { console.warn("[silent]", eScroll); }
         toast(psL('🎉 Протокол сохранён: ' + groups.length + ' групп, ' + totalPlayers + ' игроков', '🎉 Protocol saved: ' + groups.length + ' groups, ' + totalPlayers + ' players'), 'success');
         if (typeof vib === 'function') vib([60, 40, 60]);
         try { psAutoSyncSavedGroups(groups); } catch (e) { console.warn('[start] autosync', e); }
@@ -4828,7 +4828,7 @@ function psBindSavedList() {
         // Подписка уже есть, а контейнер psRender() пересоздал заново —
         // перерисовываем из кэша, иначе список залипнет на «Загрузка…».
         if (psSavedCache) {
-            try { psRenderSavedListContent(psSavedCache); } catch (e) {}
+            try { psRenderSavedListContent(psSavedCache); } catch (e) { console.warn("[silent]", e); }
         }
         return;
     }
@@ -4843,7 +4843,7 @@ function psBindSavedList() {
                 psSavedCache = sn2.val() || {};
                 psRenderSavedListContent(psSavedCache);
             }).catch(function() {});
-        } catch (e2) {}
+        } catch (e2) { console.warn("[silent]", e2); }
     });
 }
 
@@ -4869,7 +4869,7 @@ function psProtocolPlayerGroups(doc, query) {
 var psSavedSearchQ = '';
 
 function psSavedSearchRender() {
-    try { psRenderSavedListContent(psSavedCache || {}); } catch (e) {}
+    try { psRenderSavedListContent(psSavedCache || {}); } catch (e) { console.warn("[silent]", e); }
 }
 
 function psRenderSavedListContent(data) {
@@ -4921,7 +4921,7 @@ function psRenderSavedListContent(data) {
                         fmtDate(protoStart) + ' ' + fmtTime(protoStart) +
                         ' (or right after the “Start” button in the Tournaments tab). Until then players see a countdown.') + '</p>';
             }
-        } catch (eStart) {}
+        } catch (eStart) { console.warn("[silent]", eStart); }
         html += '</div>';
     }
 
@@ -5011,17 +5011,13 @@ function psSavedToggle(pid) {
 
 function psCopyProtocolLink(pid) {
     var url = baseUrl() + 'qr-start.html?p=' + encodeURIComponent(pid);
-    try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(url).then(function() {
-                toast(psL('✅ Ссылка скопирована', '✅ Link copied'), 'success');
-            }).catch(function() {
-                window.prompt(psL('Скопируйте ссылку:', 'Copy the link:'), url);
-            });
-        } else {
+    // На телефоне открывает системный лист «Поделиться», на десктопе —
+    // копирует в буфер обмена. prompt() больше не используется.
+    if (typeof copyOrShare === 'function') {
+        copyOrShare(url, psL('✅ Ссылка готова к отправке', '✅ Link ready to share')).catch(function() {
             window.prompt(psL('Скопируйте ссылку:', 'Copy the link:'), url);
-        }
-    } catch (e) {
+        });
+    } else {
         window.prompt(psL('Скопируйте ссылку:', 'Copy the link:'), url);
     }
 }

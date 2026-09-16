@@ -64,6 +64,11 @@ function ok(cond, label) {
         ok(calls === 1, 'scorer: saveSc() вызван 1 раз за клик (получено ' + calls + ')');
         // ── 3/4/5) CSS + sw + версия ──
         cssSwVersion();
+        // ── 6) нижний мобильный таббар полностью удалён ──
+        ok(!doc.getElementById('bottom-tabbar'), 'setup-round: нижний таббар не создаётся');
+        ok(typeof win.buildBottomTabbar !== 'function', 'js: buildBottomTabbar удалён');
+        ok(!/\.bottom-tabbar/.test(fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8')),
+            'css: правил .bottom-tabbar не осталось');
         console.log(failures ? '\nПРОВАЛЕНО: ' + failures + ' из ' + checks : '\nOK: ' + checks + ' проверок');
         process.exit(failures ? 1 : 0);
     }, 60);

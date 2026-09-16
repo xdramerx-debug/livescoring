@@ -1621,7 +1621,6 @@ function toggleLang() {
         buildMobileDrawer();
         if (wasOpen && drawerRoot) drawerRoot.classList.add('open');
     }
-    if (typeof buildBottomTabbar === 'function') try{ buildBottomTabbar(); }catch (e) { console.warn("[silent]", e); }
     if (typeof initP0MobileEnhancements === 'function') try{ initP0MobileEnhancements(); }catch (e) { console.warn("[silent]", e); }
     if (typeof toast === 'function') {
         toast(currentLang === 'en' ? '🇬🇧 English language enabled' : '🇷🇺 Выбран русский язык', 'info');
@@ -2355,52 +2354,11 @@ function uiConfirm(opts) {
     });
 }
 
-function buildBottomTabbar(){
-    if(typeof document==='undefined') return;
-    var existing=document.getElementById('bottom-tabbar');
-    if(existing) existing.remove();
-    var isEn=false; try{ isEn=currentLang==='en'; }catch (e) { console.warn("[silent]", e); }
-    var path=(typeof location!=='undefined' && location.pathname)?location.pathname.split('/').pop()||'index.html':'index.html';
-    if(path==='') path='index.html';
-    var items=[
-        {href:'index.html',icon:'fa-house',label:isEn?'Home':'Главная',key:'index.html'},
-        {href:'setup-round.html',icon:'fa-flag',label:isEn?'Round':'Раунд',key:'setup-round.html'},
-        {href:'leaderboard.html',icon:'fa-ranking-star',label:isEn?'Board':'Табло',key:'leaderboard.html'},
-        {href:'guide.html',icon:'fa-map',label:isEn?'Course':'Поле',key:'guide.html'},
-        {href:'#',icon:'fa-bars',label:isEn?'Menu':'Меню',key:'menu',action:true}
-    ];
-    var nav=document.createElement('nav');
-    nav.id='bottom-tabbar';
-    nav.className='bottom-tabbar';
-    nav.setAttribute('role','navigation');
-    nav.setAttribute('aria-label', isEn?'Primary':'Главная навигация');
-    items.forEach(function(it){
-        var a=document.createElement('a');
-        a.className='btb-item'+(path===it.key?' active':'');
-        if(it.action){
-            a.href='#';
-            a.setAttribute('aria-haspopup','dialog');
-            a.addEventListener('click', function(e){ e.preventDefault(); if(typeof openMobileDrawer==='function') openMobileDrawer(); });
-        } else {
-            a.href=it.href;
-        }
-        a.innerHTML='<i class="fas '+it.icon+'"></i><span>'+it.label+'</span>';
-        nav.appendChild(a);
-    });
-    if(document.body) document.body.appendChild(nav);
-    // auto-hide on score pages when input focused or kiosk
-    try{
-        var isScorePage=/scorer\.html|setup-round\.html|marker\.html/.test(path);
-        if(isScorePage) nav.classList.add('btb-autohide');
-        // hide when html has score-kiosk class
-        if(document.documentElement.classList.contains('score-kiosk')) nav.style.display='none';
-    }catch (e) { console.warn("[silent]", e); }
-}
+// Нижний мобильный таббар (buildBottomTabbar) удалён по требованию:
+// навигация на телефоне — через верхнее меню и мобильный drawer.
 function initP0MobileEnhancements(){
     var isEn = false;
     try { isEn = currentLang === 'en'; } catch (e) { isEn = false; }
-
-    try { buildBottomTabbar(); } catch (e) { console.warn('[P0] tabbar', e); }
 
     // hole-nav: ensure active hole scrolled into view (for horizontal snap mode)
     try{
@@ -2453,57 +2411,10 @@ function initP0MobileEnhancements(){
         }
     }catch(e){ console.warn('[P0] long-press', e); }
 
-    // setup-round wizard: step indicator + accordion, если карточек игроков больше одной
-    try{
-        if(/setup-round\.html/.test(location.pathname)){
-            var playerCards=document.querySelectorAll('.setup-player-card');
-            if(playerCards.length>1){
-                // step bar
-                if(!document.getElementById('p0-wizard-steps')){
-                    var labels = isEn
-                        ? ['Settings','Players','Start']
-                        : ['Параметры','Игроки','Старт'];
-                    var steps=document.createElement('div');
-                    steps.id='p0-wizard-steps';
-                    steps.className='p0-wizard-steps';
-                    steps.innerHTML=labels.map(function(txt,i){
-                        return '<div class="p0-step'+(i===0?' active':'')+'"><span>'+(i+1)+'</span>'+txt+'</div>';
-                    }).join('');
-                    var anchor=document.querySelector('.setup-card')||document.querySelector('main .container');
-                    if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(steps, anchor);
-                }
-                // accordion: collapse all but first
-                playerCards.forEach(function(card,idx){
-                    if(idx===0) card.classList.add('open');
-                    else card.classList.remove('open');
-                    var head=card.querySelector('.setup-player-head');
-                    if(head && !head._p0bound){
-                        head.style.cursor='pointer';
-                        head.setAttribute('role','button');
-                        head.setAttribute('tabindex','0');
-                        head.setAttribute('aria-expanded', card.classList.contains('open')?'true':'false');
-                        head._p0bound=true;
-                        var toggle=function(){
-                            var isOpen=card.classList.contains('open');
-                            playerCards.forEach(function(c){
-                                c.classList.remove('open');
-                                var h=c.querySelector('.setup-player-head');
-                                if(h) h.setAttribute('aria-expanded','false');
-                            });
-                            if(!isOpen){
-                                card.classList.add('open');
-                                head.setAttribute('aria-expanded','true');
-                            }
-                        };
-                        head.addEventListener('click', toggle);
-                        head.addEventListener('keydown', function(e){
-                            if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); }
-                        });
-                    }
-                });
-            }
-        }
-    }catch(e){ console.warn('[P0] setup wizard', e); }
+    // setup-round wizard (степпер + аккордеон карточек игроков) переехал в
+    // js/live.js (ensurePlayerWizardSteps / bindPlayerSlotsAccordion): слоты
+    // игроков рисуются лениво, после DOMContentLoaded, поэтому привязка по
+    // таймингу здесь не срабатывала и карточки не раскрывались.
 
     // sticky scorer actions: закрепляем существующие кнопки «Сохранить»/«Дальше»
     try{
@@ -2544,7 +2455,6 @@ function initP0MobileEnhancements(){
 }
 function initNav(){
     buildMobileDrawer();
-    try{ buildBottomTabbar(); }catch (e) { console.warn("[silent]", e); }
 
     var tg = document.getElementById('nav-toggle');
     if (tg) {
@@ -11525,7 +11435,6 @@ if (typeof window !== 'undefined') {
     window.pestovoBroadcastViewerCtx = pestovoBroadcastViewerCtx;
     window.pestovoBroadcastAudienceLabel = pestovoBroadcastAudienceLabel;
     window.pestovoBroadcastFeed = pestovoBroadcastFeed;
-    window.buildBottomTabbar = buildBottomTabbar;
     window.initP0MobileEnhancements = initP0MobileEnhancements;
 }
 // P0: run mobile enhancements after DOM ready and on every nav rebuild

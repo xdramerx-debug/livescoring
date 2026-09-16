@@ -154,6 +154,13 @@ function showGroupSetup() {
     db.ref('users').once('value').then(function(sn) {
         registeredUsers = sn.val() || {};
         buildPlayerSlots();
+    }).catch(function(err) {
+        // Если список пользователей не загрузился (сеть/правила) — всё равно
+        // рисуем слоты игроков: без них форму нельзя заполнить и раунд не
+        // создать. Теряется только автоподстановка зарегистрированных игроков.
+        try { console.warn('[group] users load failed, slots without autofill', err); } catch (e) { console.warn("[silent]", e); }
+        registeredUsers = {};
+        buildPlayerSlots();
     });
 
 }
@@ -163,6 +170,66 @@ function showGroupSetup() {
 // для совместимости — на странице больше нет селекта #grp-tournament.
 function onTournamentSelect() {}
 
+// Аккордеон карточек игроков («Параметры → Игроки → Старт»).
+// Слоты перерисовываются через innerHTML при каждом изменении количества
+// игроков и смене языка, поэтому обработчик вешаем ОДИН раз делегированием
+// на контейнер #player-slots — он переживает любые перерисовки. Раньше
+// обработчики навешивались в initP0MobileEnhancements() на готовые карточки,
+// но на реальной странице карточки создаются позже (ленивая вкладка +
+// асинхронная загрузка пользователей), поэтому клики не работали и карточки
+// не раскрывались — нельзя было ввести имена и начать раунд.
+function bindPlayerSlotsAccordion() {
+    var container = document.getElementById('player-slots');
+    if (!container || container._accordionBound) return;
+    container._accordionBound = true;
+
+    var toggle = function(head) {
+        var card = head.closest ? head.closest('.setup-player-card') : null;
+        if (!card) return;
+        var wasOpen = card.classList.contains('open');
+        var cards = container.querySelectorAll('.setup-player-card');
+        for (var k = 0; k < cards.length; k++) {
+            cards[k].classList.remove('open');
+            var h = cards[k].querySelector('.setup-player-head');
+            if (h) h.setAttribute('aria-expanded', 'false');
+        }
+        if (!wasOpen) {
+            card.classList.add('open');
+            head.setAttribute('aria-expanded', 'true');
+        }
+    };
+
+    container.addEventListener('click', function(e) {
+        var head = e.target && e.target.closest ? e.target.closest('.setup-player-head') : null;
+        // Клики по полям внутри карточки раскрытие не переключают.
+        if (head && container.contains(head)) toggle(head);
+    });
+    container.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var head = e.target && e.target.closest ? e.target.closest('.setup-player-head') : null;
+        if (head && container.contains(head)) { e.preventDefault(); toggle(head); }
+    });
+}
+
+// Степпер «Параметры → Игроки → Старт» над формой группы (мобильный сценарий,
+// см. docs/mobile-audit.md). Раньше создавался в initP0MobileEnhancements() по
+// таймингу DOMContentLoaded — до отрисовки слотов — и потому не появлялся вовсе.
+function ensurePlayerWizardSteps(playerCount) {
+    if (!(playerCount > 1)) return;
+    if (document.getElementById('p0-wizard-steps')) return;
+    var isEn = false;
+    try { isEn = currentLang === 'en'; } catch (e) { isEn = false; }
+    var labels = isEn ? ['Settings', 'Players', 'Start'] : ['Параметры', 'Игроки', 'Старт'];
+    var steps = document.createElement('div');
+    steps.id = 'p0-wizard-steps';
+    steps.className = 'p0-wizard-steps';
+    steps.innerHTML = labels.map(function(txt, i) {
+        return '<div class="p0-step' + (i === 0 ? ' active' : '') + '"><span>' + (i + 1) + '</span>' + txt + '</div>';
+    }).join('');
+    var anchor = document.querySelector('#group-setup .setup-card') || document.querySelector('.setup-card');
+    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(steps, anchor);
+}
+
 function buildPlayerSlots() {
     var cntEl = lGet('grp-count');
     var count = cntEl ? (parseInt(cntEl.value) || 2) : 2;
@@ -171,9 +238,13 @@ function buildPlayerSlots() {
 
     var namePlaceholder = currentLang === 'en' ? 'John Doe' : 'Имя Фамилия';
 
+    bindPlayerSlotsAccordion();
+
     for (var i = 1; i <= count; i++) {
-        html += '<div class="setup-player-card">';
-        html += '<div class="setup-player-head"><span><i class="fas fa-user"></i> ' + t('player') + ' #' + i + '</span><i class="fas fa-chevron-down" aria-hidden="true"></i></div>';
+        // Первая карточка раскрыта по умолчанию (open), остальные свёрнуты —
+        // раскрытие переключается кликом по заголовку (см. bindPlayerSlotsAccordion).
+        html += '<div class="setup-player-card' + (i === 1 ? ' open' : '') + '">';
+        html += '<div class="setup-player-head" role="button" tabindex="0" aria-expanded="' + (i === 1 ? 'true' : 'false') + '"><span><i class="fas fa-user"></i> ' + t('player') + ' #' + i + '</span><i class="fas fa-chevron-down" aria-hidden="true"></i></div>';
         
         html += '<div class="form-row form-row-3">';
         html += '<div class="form-group" style="flex:1.4 1 120px;position:relative;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"><input type="hidden" id="pl-uid-' + i + '" value=""></div>';
@@ -273,6 +344,8 @@ function buildPlayerSlots() {
 
         calcPlayerFieldHcp(1);
     }
+
+    ensurePlayerWizardSteps(count);
 }
 
 function onPlayerGenderOrTeeChange(idx) {

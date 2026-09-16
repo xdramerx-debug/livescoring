@@ -5443,3 +5443,84 @@ table.pe-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:86
    1.63.0 — СЧЁТ В КВАДРАТИКЕ ЛУНКИ, ЗАЩИТА ОТ БЫСТРОГО ВВОДА,
    ТУРНИРНЫЕ РАУНДЫ ОТДЕЛЬНО, БЕЗ БЕЙДЖЕЙ «ГОСТЬ»
    ========================================================== */
+/* ==========================================================
+   1.67.0 — P0 MOBILE: BOTTOM TABBAR + SCORER + SETUP WIZARD
+   Строго мобильные правки: десктоп не трогаем.
+   - Нижний таббар: 5 иконочных вкладок, 56px + safe-area, скрывается
+     в scorer/field/kiosk и при открытой клавиатуре (body.kb-open).
+   - Ввод счёта: hole-nav ≥48px с горизонтальным snap и свайпом,
+     кнопки ± 72px на телефонах с long-press, sticky Save/Next,
+     табы «Я / Маркер» вместо стека.
+   - Настройка раунда: wizard-степпер + аккордеон, чтобы форма не
+     требовала вертикального скролла на 3 экрана.
+   ========================================================== */
+.bottom-tabbar{position:fixed;left:0;right:0;bottom:0;z-index:9998;display:none;align-items:stretch;justify-content:space-around;height:calc(56px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(11,26,14,.97);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);box-shadow:0 -8px 32px rgba(0,0,0,.4);}
+.bottom-tabbar .btb-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);text-decoration:none;font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;padding:6px 2px 4px;transition:var(--t);-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.bottom-tabbar .btb-item i{font-size:18px;line-height:1;}
+.bottom-tabbar .btb-item span{line-height:1;font-size:9.5px;}
+.bottom-tabbar .btb-item.active{color:var(--gold);}
+.bottom-tabbar .btb-item.active i{color:var(--gold);text-shadow:0 0 12px rgba(201,168,76,.35);}
+.bottom-tabbar .btb-item:active{transform:scale(.96);}
+@media(max-width:768px){
+    .bottom-tabbar{display:flex;}
+    body{padding-bottom:calc(56px + env(safe-area-inset-bottom));}
+    /* drawer should sit above tabbar */
+    .mobile-drawer-container{z-index:10000;}
+    .offline-queue-badge{bottom:calc(56px + env(safe-area-inset-bottom) + 12px);}
+}
+@media(min-width:769px){
+    .bottom-tabbar{display:none!important;}
+}
+/* hide tabbar when not needed: kiosk field, keyboard open, or explicit .hide-tabbar */
+html.score-kiosk .bottom-tabbar, body.kb-open .bottom-tabbar, body.hide-tabbar .bottom-tabbar{display:none!important;}
+html.score-kiosk body{padding-bottom:0!important;}
+/* variant that fades instead of hard hide (for scorer when input focused) */
+.bottom-tabbar.btb-autohide{transition:transform .28s ease, opacity .28s ease;}
+body.kb-open .bottom-tabbar.btb-autohide{transform:translateY(100%);opacity:0;pointer-events:none;}
+
+/* --- Scorer: hole-nav larger, snap, sticky actions --- */
+@media(max-width:768px){
+    .hole-nav{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;scroll-padding:0 8px;gap:6px!important;padding-bottom:4px;scrollbar-width:none;}
+    .hole-nav::-webkit-scrollbar{display:none;}
+    .hole-nav .hole-btn{scroll-snap-align:center;min-width:48px;min-height:48px!important;height:48px!important;flex:0 0 auto;font-size:13px!important;}
+    .score-minus,.score-plus{width:72px!important;height:72px!important;min-width:72px!important;min-height:72px!important;font-size:28px!important;border-radius:18px!important;touch-action:manipulation;user-select:none;-webkit-user-select:none;}
+    .score-minus:active,.score-plus:active{transform:scale(.94);}
+}
+.p0-sticky-actions{position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom));z-index:9997;display:none;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(11,26,14,.98);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);box-shadow:0 -6px 24px rgba(0,0,0,.35);}
+.p0-sticky-actions .btn{flex:1;min-height:48px;justify-content:center;font-size:13px;}
+@media(max-width:768px){
+    .p0-sticky-actions{display:flex;}
+    /* hide duplicate original save/next that got cloned into sticky bar */
+    .p0-original-save{display:none!important;}
+    /* ensure page content not hidden behind sticky + tabbar */
+    .scoring-dual-block:last-of-type{margin-bottom:calc(56px + 56px + env(safe-area-inset-bottom) + 12px);}
+}
+body.kb-open .p0-sticky-actions{opacity:0;pointer-events:none;transform:translateY(100%);transition:var(--t);}
+html.score-kiosk .p0-sticky-actions{display:none!important;}
+/* tabs for Я / Маркер instead of stacked blocks on narrow */
+@media(max-width:520px){
+    .scoring-columns{flex-direction:column!important;gap:8px!important;}
+    .scoring-compact .scoring-dual-block{border-top-width:3px;}
+}
+/* --- Setup-round wizard + accordion --- */
+.p0-wizard-steps{display:flex;gap:6px;align-items:center;justify-content:center;margin:10px auto 14px;padding:0 12px;max-width:520px;}
+.p0-wizard-steps .p0-step{flex:1;display:flex;align-items:center;gap:6px;justify-content:center;padding:8px 6px;border-radius:999px;background:var(--card);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;transition:var(--t);}
+.p0-wizard-steps .p0-step span{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--input);border:1px solid var(--border);font-size:11px;flex:0 0 auto;}
+.p0-wizard-steps .p0-step.active{background:rgba(201,168,76,.14);border-color:var(--gold);color:var(--gold);}
+.p0-wizard-steps .p0-step.active span{background:var(--gold);color:var(--bg);border-color:var(--gold);}
+@media(max-width:380px){
+    .p0-wizard-steps .p0-step{font-size:10px;padding:6px 4px;}
+    .p0-wizard-steps .p0-step span{width:20px;height:20px;font-size:10px;}
+}
+.setup-player-card{transition:var(--t);}
+.setup-player-card:not(.open){padding-bottom:6px;}
+.setup-player-card:not(.open) .form-row,
+.setup-player-card:not(.open) .form-group:not(.setup-player-head){display:none;}
+.setup-player-card.open{border-color:rgba(201,168,76,.35);box-shadow:0 2px 12px rgba(201,168,76,.12);}
+.setup-player-card .setup-player-head i.fa-chevron-down{transition:transform .22s ease;}
+.setup-player-card.open .setup-player-head i.fa-chevron-down{transform:rotate(180deg);}
+/* --- Lists/tables: fallback to cards <720px already exists, ensure no 560px min scroll on scorer/setup --- */
+@media(max-width:720px){
+    .scorecard{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .scorecard table{min-width:0;width:100%;}
+}

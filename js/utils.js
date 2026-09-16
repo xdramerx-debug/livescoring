@@ -1621,6 +1621,8 @@ function toggleLang() {
         buildMobileDrawer();
         if (wasOpen && drawerRoot) drawerRoot.classList.add('open');
     }
+    if (typeof buildBottomTabbar === 'function') try{ buildBottomTabbar(); }catch(e){}
+    if (typeof initP0MobileEnhancements === 'function') try{ initP0MobileEnhancements(); }catch(e){}
     if (typeof toast === 'function') {
         toast(currentLang === 'en' ? '🇬🇧 English language enabled' : '🇷🇺 Выбран русский язык', 'info');
     }
@@ -2278,8 +2280,159 @@ function animateScoreElement(elId) {
     el.classList.add('score-pulse');
 }
 
+function buildBottomTabbar(){
+    if(typeof document==='undefined') return;
+    var existing=document.getElementById('bottom-tabbar');
+    if(existing) existing.remove();
+    var isEn=false; try{ isEn=currentLang==='en'; }catch(e){}
+    var path=(typeof location!=='undefined' && location.pathname)?location.pathname.split('/').pop()||'index.html':'index.html';
+    if(path==='') path='index.html';
+    var items=[
+        {href:'index.html',icon:'fa-house',label:isEn?'Home':'Главная',key:'index.html'},
+        {href:'setup-round.html',icon:'fa-flag',label:isEn?'Round':'Раунд',key:'setup-round.html'},
+        {href:'leaderboard.html',icon:'fa-ranking-star',label:isEn?'Board':'Табло',key:'leaderboard.html'},
+        {href:'guide.html',icon:'fa-map',label:isEn?'Course':'Поле',key:'guide.html'},
+        {href:'#',icon:'fa-bars',label:isEn?'Menu':'Меню',key:'menu',action:true}
+    ];
+    var nav=document.createElement('nav');
+    nav.id='bottom-tabbar';
+    nav.className='bottom-tabbar';
+    nav.setAttribute('role','navigation');
+    nav.setAttribute('aria-label', isEn?'Primary':'Главная навигация');
+    items.forEach(function(it){
+        var a=document.createElement('a');
+        a.className='btb-item'+(path===it.key?' active':'');
+        if(it.action){
+            a.href='#';
+            a.setAttribute('aria-haspopup','dialog');
+            a.addEventListener('click', function(e){ e.preventDefault(); if(typeof openMobileDrawer==='function') openMobileDrawer(); });
+        } else {
+            a.href=it.href;
+        }
+        a.innerHTML='<i class="fas '+it.icon+'"></i><span>'+it.label+'</span>';
+        nav.appendChild(a);
+    });
+    if(document.body) document.body.appendChild(nav);
+    // auto-hide on score pages when input focused or kiosk
+    try{
+        var isScorePage=/scorer\.html|setup-round\.html|marker\.html/.test(path);
+        if(isScorePage) nav.classList.add('btb-autohide');
+        // hide when html has score-kiosk class
+        if(document.documentElement.classList.contains('score-kiosk')) nav.style.display='none';
+    }catch(e){}
+}
+function initP0MobileEnhancements(){
+    try{ buildBottomTabbar(); }catch(e){}
+    // hole-nav: ensure active hole scrolled into view (for horizontal snap mode)
+    try{
+        var hn=document.querySelector('.hole-nav');
+        if(hn){
+            var active=hn.querySelector('.hole-btn.active');
+            if(active && typeof active.scrollIntoView==='function'){
+                active.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
+            }
+            // swipe hint: horizontal scroll-snap already via CSS; add touch momentum
+            hn.style.scrollBehavior='smooth';
+        }
+    }catch(e){}
+    // long-press on score buttons: hold to repeat
+    try{
+        var holdTimer=null, holdInt=null;
+        function startHold(fn){
+            if(holdTimer) clearTimeout(holdTimer);
+            if(holdInt) clearInterval(holdInt);
+            holdTimer=setTimeout(function(){ holdInt=setInterval(fn, 120); }, 450);
+        }
+        function stopHold(){ if(holdTimer) clearTimeout(holdTimer); if(holdInt) clearInterval(holdInt); holdTimer=null; holdInt=null; }
+        document.querySelectorAll('.score-minus').forEach(function(b){
+            var fn=function(){ b.click(); try{ if(navigator.vibrate) navigator.vibrate(18); }catch(e){} };
+            b.addEventListener('touchstart', function(){ startHold(fn); }, {passive:true});
+            b.addEventListener('touchend', stopHold, {passive:true});
+            b.addEventListener('touchcancel', stopHold, {passive:true});
+            b.addEventListener('mousedown', function(){ startHold(fn); });
+            b.addEventListener('mouseup', stopHold);
+            b.addEventListener('mouseleave', stopHold);
+        });
+        document.querySelectorAll('.score-plus').forEach(function(b){
+            var fn=function(){ b.click(); try{ if(navigator.vibrate) navigator.vibrate(18); }catch(e){} };
+            b.addEventListener('touchstart', function(){ startHold(fn); }, {passive:true});
+            b.addEventListener('touchend', stopHold, {passive:true});
+            b.addEventListener('touchcancel', stopHold, {passive:true});
+            b.addEventListener('mousedown', function(){ startHold(fn); });
+            b.addEventListener('mouseup', stopHold);
+            b.addEventListener('mouseleave', stopHold);
+        });
+    }catch(e){}
+    // setup-round wizard: add step indicator + accordion if multiple player cards
+    try{
+        if(/setup-round\.html/.test(location.pathname)){
+            var playerCards=document.querySelectorAll('.setup-player-card');
+            if(playerCards.length>1){
+                // step bar
+                if(!document.getElementById('p0-wizard-steps')){
+                    var steps=document.createElement('div');
+                    steps.id='p0-wizard-steps';
+                    steps.className='p0-wizard-steps';
+                    var labels=isEn?['Параметры','Игроки','Старт']:['Settings','Players','Start'];
+                    // we show 3 steps: settings, players, confirm
+                    steps.innerHTML='<div class="p0-step active"><span>1</span>'+(isEn?'Settings':'Параметры')+'</div><div class="p0-step"><span>2</span>'+(isEn?'Players':'Игроки')+'</div><div class="p0-step"><span>3</span>'+(isEn?'Start':'Старт')+'</div>';
+                    var anchor=document.querySelector('.setup-card')||document.querySelector('main .container');
+                    if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(steps, anchor);
+                }
+                // accordion: collapse all but first
+                playerCards.forEach(function(card,idx){
+                    if(idx===0) card.classList.add('open');
+                    else card.classList.remove('open');
+                    var head=card.querySelector('.setup-player-head');
+                    if(head && !head._p0bound){
+                        head.style.cursor='pointer';
+                        head._p0bound=true;
+                        head.addEventListener('click', function(){
+                            var isOpen=card.classList.contains('open');
+                            // close others
+                            playerCards.forEach(function(c){ c.classList.remove('open'); });
+                            if(!isOpen) card.classList.add('open');
+                        });
+                    }
+                });
+            }
+        }
+    }catch(e){}
+    // sticky scorer actions: wrap existing save/next buttons
+    try{
+        var saveBtn=document.querySelector('#sc-save-btn, .btn-save-hole, [data-action=\"save-hole\"]');
+        // fallback: find any button with text Save / Сохранить inside scorer
+        if(!saveBtn){
+            var btns=document.querySelectorAll('button');
+            for(var i=0;i<btns.length;i++){ var tx=(btns[i].textContent||'').toLowerCase(); if(tx.indexOf('сохран')!==-1){ saveBtn=btns[i]; break; } }
+        }
+        if(saveBtn && !document.getElementById('p0-sticky-actions')){
+            var bar=document.createElement('div');
+            bar.id='p0-sticky-actions';
+            bar.className='p0-sticky-actions';
+            bar.innerHTML='';
+            var clone=saveBtn.cloneNode(true);
+            clone.id='p0-sticky-save';
+            clone.addEventListener('click', function(e){ e.preventDefault(); saveBtn.click(); });
+            bar.appendChild(clone);
+            // next hole button if exists
+            var nextBtn=document.querySelector('#sc-next-btn, [data-action=\"next-hole\"]');
+            if(nextBtn){
+                var clone2=nextBtn.cloneNode(true);
+                clone2.id='p0-sticky-next';
+                clone2.addEventListener('click', function(e){ e.preventDefault(); nextBtn.click(); });
+                bar.appendChild(clone2);
+            }
+            if(document.body) document.body.appendChild(bar);
+            // hide original when sticky visible on mobile only via CSS
+            saveBtn.classList.add('p0-original-save');
+            if(nextBtn) nextBtn.classList.add('p0-original-save');
+        }
+    }catch(e){}
+}
 function initNav(){
     buildMobileDrawer();
+    try{ buildBottomTabbar(); }catch(e){}
 
     var tg = document.getElementById('nav-toggle');
     if (tg) {
@@ -11258,5 +11411,13 @@ if (typeof window !== 'undefined') {
     window.pestovoBroadcastViewerCtx = pestovoBroadcastViewerCtx;
     window.pestovoBroadcastAudienceLabel = pestovoBroadcastAudienceLabel;
     window.pestovoBroadcastFeed = pestovoBroadcastFeed;
+    window.buildBottomTabbar = buildBottomTabbar;
+    window.initP0MobileEnhancements = initP0MobileEnhancements;
+}
+// P0: run mobile enhancements after DOM ready and on every nav rebuild
+if(typeof document!=='undefined'){
+    document.addEventListener('DOMContentLoaded', function(){ try{ initP0MobileEnhancements(); }catch(e){} });
+    // also try immediately in case DOM already ready and initNav already fired
+    if(document.readyState!=='loading'){ setTimeout(function(){ try{ initP0MobileEnhancements(); }catch(e){} }, 80); }
 }
 

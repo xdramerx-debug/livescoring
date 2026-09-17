@@ -299,7 +299,7 @@
         var pdfUrl = t.protocol && safeUrl(t.protocol.pdfUrl || t.protocol.url);
         if (!rows.length && !pdfUrl) return '<div class="tn-public-empty"><i class="fas fa-file-pdf"></i><div>' + ru('Итоговый протокол ещё не опубликован.', 'Final protocol has not been published yet.') + '</div></div>';
         var versionNote = t.protocol && t.protocol.published ? '<span class="tn-public-chip">v' + esc(t.protocol.version || 1) + ' · ' + ru('зафиксирован', 'fixed') + '</span>' : '';
-        return '<div class="tn-protocol-actions">' + versionNote + (pdfUrl ? '<a class="btn btn-g btn-sm" target="_blank" rel="noopener" href="' + esc(pdfUrl) + '"><i class="fas fa-file-pdf"></i> ' + ru('Скачать PDF', 'Download PDF') + '</a>' : '') + (rows.length ? '<button type="button" class="btn btn-og btn-sm" data-tn-action="print-protocol" data-tn-id="' + esc(t._key) + '"><i class="fas fa-print"></i> ' + ru('Печать / PDF', 'Print / PDF') + '</button><button type="button" class="btn btn-og btn-sm" data-tn-action="csv-protocol" data-tn-id="' + esc(t._key) + '"><i class="fas fa-file-csv"></i> CSV</button>' : '') + '</div>' + (rows.length ? '<div class="tn-public-table-wrap"><table class="tn-public-table"><thead><tr><th>#</th><th>' + ru('Игрок', 'Player') + '</th><th>HCP</th><th>Gross</th><th>Net</th><th>Stableford</th><th>Total</th><th>' + ru('Статус', 'Status') + '</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + (r.position == null ? '—' : r.position) + '</td><td>' + esc(safeName({ name: r.name }, r.key)) + '</td><td>' + esc(r.handicap == null ? '—' : r.handicap) + '</td><td>' + r.gross + '</td><td>' + r.net + '</td><td>' + r.stableford + '</td><td>' + r.total + '</td><td>' + (r.status === 'ACTIVE' ? '—' : '<span class="tn-result-status">' + esc(r.status) + '</span>') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '') + nominationHtml(t);
+        return '<div class="tn-protocol-actions">' + versionNote + (pdfUrl ? '<a class="btn btn-g btn-sm" target="_blank" rel="noopener" href="' + esc(pdfUrl) + '"><i class="fas fa-file-pdf"></i> ' + ru('Скачать PDF', 'Download PDF') + '</a>' : '') + (rows.length ? '<button type="button" class="btn btn-og btn-sm" data-tn-action="print-protocol" data-tn-id="' + esc(t._key) + '"><i class="fas fa-print"></i> ' + ru('Печать / PDF', 'Print / PDF') + '</button><button type="button" class="btn btn-og btn-sm" data-tn-action="csv-protocol" data-tn-id="' + esc(t._key) + '"><i class="fas fa-file-csv"></i> CSV</button><button type="button" class="btn btn-og btn-sm" data-tn-action="excel-protocol" data-tn-id="' + esc(t._key) + '"><i class="fas fa-file-excel"></i> Excel</button>' : '') + '</div>' + (rows.length ? '<div class="tn-public-table-wrap"><table class="tn-public-table"><thead><tr><th>#</th><th>' + ru('Игрок', 'Player') + '</th><th>HCP</th><th>Gross</th><th>Net</th><th>Stableford</th><th>Total</th><th>' + ru('Статус', 'Status') + '</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + (r.position == null ? '—' : r.position) + '</td><td>' + esc(safeName({ name: r.name }, r.key)) + '</td><td>' + esc(r.handicap == null ? '—' : r.handicap) + '</td><td>' + r.gross + '</td><td>' + r.net + '</td><td>' + r.stableford + '</td><td>' + r.total + '</td><td>' + (r.status === 'ACTIVE' ? '—' : '<span class="tn-result-status">' + esc(r.status) + '</span>') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '') + nominationHtml(t);
     }
     function applicationHtml(t, c) {
         if (!c.registrationOpen) return '<div class="tn-protocol-note"><i class="fas fa-lock"></i> ' + ru('Приём заявок закрыт.', 'Applications are closed.') + '</div>';
@@ -379,6 +379,12 @@
         var rows = finalProtocolRows(t).map(function (row) { var copy = {}; Object.keys(row).forEach(function (key) { copy[key] = row[key]; }); copy.name = safeName({ name: row.name }, row.key); return copy; }), blob = new Blob([core.csv(rows)], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
         a.href = URL.createObjectURL(blob); a.download = (String(t.name || 'tournament').replace(/[^a-zа-я0-9]+/gi, '_') || 'tournament') + '-protocol.csv'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
     }
+    function downloadExcel(id) {
+        var t = state.tournaments[id]; if (!t) return;
+        var rows = finalProtocolRows(t), headers = ['#', 'Player', 'HCP', 'Gross', 'Net', 'Stableford', 'Total', 'Status'], html = '<!doctype html><html><head><meta charset="utf-8"></head><body><table><tr>' + headers.map(function (header) { return '<th>' + esc(header) + '</th>'; }).join('') + '</tr>';
+        html += rows.map(function (row) { return '<tr><td>' + esc(row.position == null ? '' : row.position) + '</td><td>' + esc(safeName({ name: row.name }, row.key)) + '</td><td>' + esc(row.handicap == null ? '' : row.handicap) + '</td><td>' + esc(row.gross) + '</td><td>' + esc(row.net) + '</td><td>' + esc(row.stableford) + '</td><td>' + esc(row.total) + '</td><td>' + esc(row.status) + '</td></tr>'; }).join('') + '</table></body></html>';
+        var blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (String(t.name || 'tournament').replace(/[^a-zа-я0-9]+/gi, '_') || 'tournament') + '-protocol.xls'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    }
     function submitApplication(form) {
         var db = database();
         if (!db) return;
@@ -418,6 +424,7 @@
         else if (action === 'apply') openDetail(id, 'participants');
         else if (action === 'print-protocol') printProtocol(id);
         else if (action === 'csv-protocol') downloadCsv(id);
+        else if (action === 'excel-protocol') downloadExcel(id);
     }
     function init() {
         if (state.initialized) return;

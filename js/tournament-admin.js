@@ -176,7 +176,7 @@
         if (!assertWrite()) return;
         var t = manager.tournaments[id], database = db(); if (!t || !database || !core) return;
         var include = window.confirm(tr('Скопировать подтверждённых участников и заявки вместе с настройками?', 'Copy confirmed participants and applications too?'));
-        var copy = core.cloneConfig(t, include); copy.name = (t.name || tr('Турнир', 'Tournament')) + ' · ' + tr('копия', 'copy'); copy.createdBy = actorLabel(); copy.updatedBy = actorLabel(); copy.createdAt = now();
+        var copy = core.cloneConfig(t, include); copy.name = (t.name || tr('Турнир', 'Tournament')) + ' · ' + tr('копия', 'copy'); if (copy.wizard && copy.wizard.info) copy.wizard.info.nameRu = copy.name; copy.createdBy = actorLabel(); copy.updatedBy = actorLabel(); copy.createdAt = now();
         database.ref('tournaments').push(copy).then(function (ref) { return database.ref('tournaments/' + ref.key + '/audit').push(core.audit('cloned', actor(), [], { tournamentId: ref.key, clonedFrom: id, includeParticipants: include })).then(function () { toast('✅ ' + tr('Клон создан в черновиках', 'Clone created as draft'), 'success'); }); }).catch(function (error) { toast('❌ ' + (error && error.message || error), 'error'); });
     }
     function transition(id, target) {

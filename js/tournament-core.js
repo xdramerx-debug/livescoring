@@ -92,6 +92,7 @@
         var start = firstDefined([t.startedAt, t.startAt, t.date], '');
         var end = firstDefined([t.finishedAt, t.endDate, t.date], '');
         if (explicit === STATUS.REGISTRATION && reg.closeAt && ts > dateEnd(reg.closeAt)) return STATUS.CLOSED;
+        if (explicit === STATUS.REGISTRATION && end && dateEnd(end) < ts) return STATUS.COMPLETED;
         if (explicit === STATUS.CLOSED) return STATUS.CLOSED;
         if (legacy === 'closed') return STATUS.CLOSED;
         if (reg.closeAt && ts > dateEnd(reg.closeAt) && !t.startedAt && legacy !== STATUS.ACTIVE) return STATUS.CLOSED;
@@ -116,6 +117,8 @@
         var ts = at == null ? Date.now() : nowMs(at) || Date.now();
         if (reg.openAt && ts < dateStart(reg.openAt)) return false;
         if (reg.closeAt && ts > dateEnd(reg.closeAt)) return false;
+        var end = firstDefined([t.finishedAt, t.endDate, t.date], '');
+        if (end && dateEnd(end) < ts) return false;
         return true;
     }
     function classify(tournament, at) {
@@ -293,6 +296,8 @@
         delete copy.startedAt;
         delete copy.finishedAt;
         delete copy.lifecycleChangedAt;
+        copy.protocol = { version: 0, state: 'live', fixed: false, published: false };
+        copy.roles = {};
         copy.status = STATUS.DRAFT;
         copy.lifecycleStatus = STATUS.DRAFT;
         copy.createdAt = Date.now();
@@ -482,7 +487,7 @@
         var text = JSON.stringify((tournament || {}).formats || []) + ' ' + JSON.stringify(tournament && tournament.wizard && tournament.wizard.scoring && tournament.wizard.scoring.systems || []);
         var stable = /stableford/i.test(text);
         return buildLeaderboard(tournament, rounds, course).map(function (row) {
-            return { position: row.position, name: row.name, handicap: row.handicap, gross: row.gross, net: row.net, stableford: row.stableford, total: stable ? row.stableford : row.net, thru: row.thru, status: row.status, holes: row.breakdown, metric: row.metric };
+            return { key: row.key, position: row.position, name: row.name, handicap: row.handicap, gross: row.gross, net: row.net, stableford: row.stableford, total: stable ? row.stableford : row.net, thru: row.thru, status: row.status, holes: row.breakdown, metric: row.metric };
         });
     }
     function csv(rows) {

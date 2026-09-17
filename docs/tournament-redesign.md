@@ -92,3 +92,11 @@ settings/course             # one canonical course, referenced by courseRef
 ## [РЕЗЮМЕ ЭТАПА]
 
 Анализ завершён: проект — Firebase static app, а не PostgreSQL/ORM-приложение; исходные турниры, поле, игроки, QR и scoring engine уже есть. Реализация следует поэтапно поверх этих источников истины и сохраняет legacy fallback.
+
+## Фактический статус реализации
+
+- Публичный v2 и realtime-контур находятся в `tournaments.html` + `js/tournament-public.js`: три каталожные вкладки, поиск, detail-view, заявка/waitlist, roster, tee sheet/QR, live leaderboard, protocol PDF/CSV.
+- Админский v2 находится в `admin.html` + `js/tournament-admin.js`: управление lifecycle, редактирование мастера, аудит, роли, клонирование, заявки, ручной/клубный/Excel импорт и фиксация/публикация версии протокола.
+- `js/tournament-core.js` добавляет чистые правила HCP cut, countback/tie-break, статусы DQ/WD/DNS/DNF, версии протокола и formula-safe CSV; критические ветки проверяются в `tools/test-tournament-core.js`.
+- Правила серверной авторизации, RTDB invariants и PostgreSQL/RLS mapping зафиксированы в `docs/tournament-security.md`; клиентский admin guard сознательно не выдаёт мастер-паролю серверное право записи.
+- Работа с текущими Firebase rules должна быть проверена в staging/Emulator Suite перед production deploy; UI не маскирует отсутствие server-side rules.

@@ -425,7 +425,7 @@
     }
     function buildLeaderboard(tournament, rounds, course) {
         var map = {}, t = tournament || {}, rows = [], formatText = JSON.stringify(t.formats || []) + ' ' + JSON.stringify(t.wizard && t.wizard.scoring && t.wizard.scoring.systems || []);
-        var stable = /stableford/i.test(formatText), tieMethods = t.wizard && t.wizard.scoring && t.wizard.scoring.tieBreaks;
+        var stable = /stableford/i.test(formatText), grossMode = !stable && /gross|stroke-gross/i.test(formatText), tieMethods = t.wizard && t.wizard.scoring && t.wizard.scoring.tieBreaks;
         Object.keys(rounds || {}).forEach(function (rid) {
             var round = rounds[rid] || {};
             if (String(round.tournamentId || '') !== String(t._key || t.id || t.tournamentId || '')) return;
@@ -444,7 +444,7 @@
                 row.byRound[rid] = stats;
                 row.breakdown = row.breakdown.concat(stats.breakdown);
                 row._tieBreak = row._tieBreak.concat(stats.breakdown.map(function (hole) {
-                    return { num: hole.hole, par: hole.par, si: hole.si, value: stable ? hole.stableford : (formatText.indexOf('Gross') !== -1 || formatText.indexOf('stroke-gross') !== -1 ? hole.gross : hole.net) };
+                    return { num: hole.hole, par: hole.par, si: hole.si, value: stable ? hole.stableford : (grossMode ? hole.gross : hole.net) };
                 }));
                 if (statusRank(player.status) > statusRank(row.status)) row.status = str(player.status).toUpperCase();
             });
@@ -461,7 +461,7 @@
         rows.sort(function (a, b) {
             var ar = statusRank(a.status), br = statusRank(b.status);
             if (ar !== br) return ar - br;
-            var aMetric = stable ? a.stableford : a.net, bMetric = stable ? b.stableford : b.net;
+            var aMetric = stable ? a.stableford : grossMode ? a.gross : a.net, bMetric = stable ? b.stableford : grossMode ? b.gross : b.net;
             if (aMetric !== bMetric) return stable ? bMetric - aMetric : aMetric - bMetric;
             var tie = tieBreakCompare(a._tieBreak, b._tieBreak, tieMethods);
             if (tie !== 0) return stable ? -tie : tie;
@@ -470,7 +470,7 @@
         });
         var previous = null;
         rows.forEach(function (row, index) {
-            var metric = stable ? row.stableford : row.net;
+            var metric = stable ? row.stableford : grossMode ? row.gross : row.net;
             if (row.status !== 'ACTIVE' && row.status !== 'FINAL') row.position = null;
             else if (previous && previous.metric === metric && tieBreakCompare(previous.tie, row._tieBreak, tieMethods) === 0) row.position = previous.position;
             else row.position = index + 1;
@@ -485,9 +485,9 @@
     function holesPar(holes) { return (holes || []).reduce(function (sum, h) { return sum + num(h.par, 4); }, 0); }
     function protocolRows(tournament, rounds, course) {
         var text = JSON.stringify((tournament || {}).formats || []) + ' ' + JSON.stringify(tournament && tournament.wizard && tournament.wizard.scoring && tournament.wizard.scoring.systems || []);
-        var stable = /stableford/i.test(text);
+        var stable = /stableford/i.test(text), grossMode = !stable && /gross|stroke-gross/i.test(text);
         return buildLeaderboard(tournament, rounds, course).map(function (row) {
-            return { key: row.key, position: row.position, name: row.name, gender: row.gender, handicap: row.handicap, gross: row.gross, net: row.net, stableford: row.stableford, total: stable ? row.stableford : row.net, thru: row.thru, status: row.status, holes: row.breakdown, metric: row.metric };
+            return { key: row.key, position: row.position, name: row.name, gender: row.gender, handicap: row.handicap, gross: row.gross, net: row.net, stableford: row.stableford, total: stable ? row.stableford : grossMode ? row.gross : row.net, thru: row.thru, status: row.status, holes: row.breakdown, metric: row.metric };
         });
     }
     function buildNominations(rows, nominations) {

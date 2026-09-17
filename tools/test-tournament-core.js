@@ -36,6 +36,8 @@ var rounds = { r1: { tournamentId: 't1', players: players } };
 var board = C.buildLeaderboard({ _key: 't1', formats: ['Stroke Play (Net)'] }, rounds, { holes: [{ num: 1, par: 4, si: 1 }, { num: 2, par: 4, si: 2 }] });
 check(board[0].name === 'Иванов Иван' && board[0].holes === 2, 'leaderboard computes net and thru');
 check(board[0].position === 1 && board[1].position === 2, 'leaderboard assigns positions');
+var grossBoard = C.buildLeaderboard({ _key: 't1', formats: ['Stroke Play (Gross)'] }, rounds, { holes: [{ num: 1, par: 4, si: 1 }, { num: 2, par: 4, si: 2 }] });
+check(grossBoard[0].name === 'Иванов Иван' && grossBoard[0].metric === grossBoard[0].gross, 'gross format ranks by gross, not net');
 var rows = C.protocolRows({ _key: 't1', formats: ['Stableford'] }, rounds, { holes: [{ num: 1, par: 4, si: 1 }, { num: 2, par: 4, si: 2 }] });
 check(rows[0].stableford != null && Array.isArray(rows[0].holes), 'protocol row has totals and hole breakdown');
 check(C.applyHcpCut(18.4, 'men', { enabled: true, percent: 80, maxEnabled: true, maxMen: 12 }).effective === 12, 'handicap cut applies percent then maximum');

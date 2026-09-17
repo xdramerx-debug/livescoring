@@ -924,7 +924,10 @@ function applyRoundState(data) {
     } else {
         if (activeView) activeView.classList.add('hidden');
         if (groupView) groupView.classList.remove('hidden');
+        renderGroupViewHeaderNotice();
     }
+
+    updateGroupPauseUI();
 
     // Тяжёлые блоки (карточка группы, QR, темп игры, баннеры) рисуем через
     // планировщик: максимум один раз за кадр, даже если снимков пришло много.
@@ -935,6 +938,94 @@ function applyRoundState(data) {
     if (canEditGroup && typeof pestovoUrlWantsFinish === 'function' && pestovoUrlWantsFinish()
         && typeof pestovoConsumeFinishOnce === 'function' && pestovoConsumeFinishOnce(curRid)) {
         setTimeout(function() { try { finishGroupRound(); } catch (e) { console.warn("[silent]", e); } }, 1200);
+    }
+}
+
+function handleGroupPauseToggle() {
+    if (!curRid || !curRoundData) return;
+    if (curRoundData.paused) {
+        var myName = (myUid && curRoundData.players && curRoundData.players[myUid])
+            ? (curRoundData.players[myUid].name || '') : '';
+        roundResume(curRid, curRoundData, myName, myUid).then(function() {
+            toast(currentLang === 'en' ? '✅ Round resumed. Timings unpaused.' : '✅ Раунд возобновлён. Тайминги запущены.', 'success');
+        }).catch(function(err) {
+            toast('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
+    } else {
+        openRoundPauseModal(curRid, curRoundData, function() {
+            updateGroupPauseUI();
+        });
+    }
+}
+
+function updateGroupPauseUI() {
+    var banner = lGet('group-pause-banner');
+    var btnText = lGet('group-pause-btn-text');
+    var btnIcon = lGet('group-pause-btn-icon');
+    var isPaused = !!(curRoundData && curRoundData.paused);
+
+    if (btnText && btnIcon) {
+        if (isPaused) {
+            btnIcon.className = 'fas fa-play';
+            btnText.textContent = (currentLang === 'en' ? 'Resume' : 'Возобновить');
+        } else {
+            btnIcon.className = 'fas fa-pause';
+            btnText.textContent = (currentLang === 'en' ? 'Pause' : 'Пауза');
+        }
+    }
+
+    if (!banner) return;
+    if (!isPaused) {
+        banner.innerHTML = '';
+        banner.classList.add('hidden');
+        return;
+    }
+    banner.classList.remove('hidden');
+    var totalMs = typeof getRoundTotalPauseMs === 'function' ? getRoundTotalPauseMs(curRoundData) : 0;
+    var durStr = typeof formatPaceMinutes === 'function' ? formatPaceMinutes(totalMs / 60000) : '';
+    var reasonStr = curRoundData.pauseReason ? (' · ' + escapeHtml(curRoundData.pauseReason)) : '';
+    var isEn = currentLang === 'en';
+    banner.innerHTML =
+        '<div class="round-pause-card is-paused-anim">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:200px;">' +
+        '<i class="fas fa-pause-circle" style="color:#f39c12;font-size:24px;"></i>' +
+        '<div><strong style="color:var(--white);font-size:14px;display:block;">' +
+        (isEn ? '⏸ Round is Paused' : '⏸ Раунд на паузе') + '</strong>' +
+        '<span style="font-size:12px;color:rgba(255,255,255,0.85);">' +
+        (isEn ? 'Timings frozen · Duration: ' : 'Тайминги остановлены · Длительность: ') +
+        '<b>' + durStr + '</b>' + reasonStr + '</span></div></div>' +
+        '<button type="button" class="btn btn-g btn-sm" onclick="handleGroupPauseToggle()" style="font-weight:700;">' +
+        '<i class="fas fa-play"></i> ' + (isEn ? 'Resume Play' : 'Возобновить игру') + '</button>' +
+        '</div>';
+}
+
+function renderGroupViewHeaderNotice() {
+    var gv = lGet('group-view');
+    if (!gv) return;
+    var noticeBox = lGet('gv-finished-notice');
+    if (!noticeBox) {
+        noticeBox = document.createElement('div');
+        noticeBox.id = 'gv-finished-notice';
+        gv.insertBefore(noticeBox, gv.firstChild);
+    }
+    var isFin = myUid && typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(curRoundData, myUid);
+    if (isFin) {
+        var myP = (curRoundData && curRoundData.players && curRoundData.players[myUid]) || {};
+        var myScores = myP.scores || {};
+        var played = Object.values(myScores).filter(function(v){ return parseInt(v) >= 1; }).length;
+        var isEn = currentLang === 'en';
+        noticeBox.innerHTML =
+            '<div class="card" style="background:rgba(46,204,113,0.12);border-color:#2ecc71;padding:14px;margin-bottom:12px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
+            '<div><strong style="color:var(--white);font-size:14px;"><i class="fas fa-flag-checkered" style="color:#2ecc71;"></i> ' +
+            (isEn ? 'You finished this round (' + played + ' holes).' : 'Вы завершили этот раунд (' + played + ' лунок).') + '</strong>' +
+            '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
+            (isEn ? 'Your partners are still playing. Scores update in real time.' : 'Ваши партнёры ещё продолжают игру. Результаты обновляются в реальном времени.') + '</div></div>' +
+            '<a href="leaderboard.html" class="btn btn-g btn-sm" style="font-weight:700;"><i class="fas fa-trophy"></i> ' +
+            (isEn ? 'Leaderboard' : 'Табло раундов') + '</a>' +
+            '</div></div>';
+    } else {
+        noticeBox.innerHTML = '';
     }
 }
 
@@ -1088,6 +1179,7 @@ function renderPlayHole() {
         myScore = par;
     }
 
+    var targetFinished = myTargetUid && typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(curRoundData, myTargetUid);
     if (myTargetUid) {
         var targetSaved = parseInt(curRoundData.players[myTargetUid] && curRoundData.players[myTargetUid].markerScores && curRoundData.players[myTargetUid].markerScores[myUid] && curRoundData.players[myTargetUid].markerScores[myUid][playHole]) || 0;
         if (targetSaved > 0) {
@@ -1099,6 +1191,23 @@ function renderPlayHole() {
 
     updScoreDisplay('my', myScore);
     updScoreDisplay('mark', targetScore);
+
+    var markContainer = lGet('marker-input-container');
+    if (markContainer) {
+        var markBtns = markContainer.querySelector('.score-btns');
+        var markDisp = lGet('mark-disp');
+        var markRes = lGet('mark-result');
+        if (targetFinished) {
+            var tp = (curRoundData && curRoundData.players && curRoundData.players[myTargetUid]) || {};
+            var tpScores = tp.scores || {};
+            var tpHoles = Object.values(tpScores).filter(function(v){ return parseInt(v) >= 1; }).length;
+            if (markBtns) markBtns.style.display = 'none';
+            if (markDisp) markDisp.innerHTML = '<span style="font-size:22px;color:var(--gold);"><i class="fas fa-flag-checkered"></i> ✓</span>';
+            if (markRes) markRes.textContent = (currentLang === 'en' ? 'Finished (' + tpHoles + 'h)' : 'Завершил(а) (' + tpHoles + ' л.)');
+        } else {
+            if (markBtns) markBtns.style.display = '';
+        }
+    }
 
     var trackContainer = lGet('gr-shot-tracking-container');
     if (trackContainer) {
@@ -1121,9 +1230,6 @@ function renderPlayHole() {
             var targetName = (playersM[myTargetUid] && playersM[myTargetUid].name) || 'Opponent';
             var is2v2 = curRoundData.format === 'Match Play 2v2';
             if (is2v2 && Object.keys(playersM).length >= 4 && typeof calcMatchPlayStatusSides === 'function') {
-                // 2v2: моя команда — я + напарник (myTargetUid), соперники —
-                // остальные игроки группы. Счёт команды на лунке = лучший
-                // удар пары (best ball).
                 var oppPids = Object.keys(playersM).filter(function(pid) {
                     return pid !== myUid && pid !== myTargetUid;
                 }).slice(0, 2);
@@ -1135,7 +1241,6 @@ function renderPlayHole() {
                 }
             }
             if (!mStatus && typeof calcMatchPlayStatus === 'function') {
-                // 1v1 (или неполная четвёрка) — классический матч лок к лок.
                 mStatus = calcMatchPlayStatus(myScoresObj, targetScoresObj, myName, targetName);
             }
         }
@@ -1144,12 +1249,12 @@ function renderPlayHole() {
 
     checkPlayVerification();
     updateGroupPaceAssistant();
-    // Уведомление о пропущенных лунках показывается только при ручном
-    // переходе через лунку (компактный выбор), но не на каждом рендере.
+    updateGroupPauseUI();
 }
 
 function adjScore(who, delta) {
     if (!canEditGroup) return;
+    if (who === 'mark' && myTargetUid && typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(curRoundData, myTargetUid)) return;
     if (who === 'my') {
         myScore = Math.max(1, Math.min(15, myScore + delta));
         updScoreDisplay('my', myScore);
@@ -1270,7 +1375,8 @@ function releaseSaveLock() {
 function saveHoleScores() {
     if (!canEditGroup) { toast(t('msg_edit_disabled'), 'error'); return; }
     if (saveHoleInFlight) return;
-    if (myScore < 1 || (myTargetUid && targetScore < 1)) { toast(t('msg_score_min'), 'error'); return; }
+    var targetIsFinished = myTargetUid && typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(curRoundData, myTargetUid);
+    if (myScore < 1 || (myTargetUid && !targetIsFinished && targetScore < 1)) { toast(t('msg_score_min'), 'error'); return; }
 
     saveHoleInFlight = true;
     setSaveBtnBusy(true);
@@ -1297,7 +1403,7 @@ function saveHoleScores() {
         updates['rounds/' + curRid + '/players/' + myUid + '/holeTimes/' + h] = savedAt;
     }
 
-    if (myTargetUid) {
+    if (myTargetUid && !targetIsFinished) {
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerScores/' + myUid + '/' + h] = targetScore;
         updates['rounds/' + curRid + '/players/' + myTargetUid + '/markerSubmitted/' + myUid + '/' + h] = true;
         // Время завершения лунки для игрока, за которого маркер ввёл счёт.
@@ -1337,10 +1443,13 @@ function saveHoleScores() {
         }
     }
 
+    var markerIsFinished = myMarkerId && typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(curRoundData, myMarkerId);
     var bothSubmittedAndMatch = (markerSub && markerS > 0 && markerS === myScore);
     var bothSubmittedAndMismatch = (markerSub && markerS > 0 && markerS !== myScore);
 
-    if (bothSubmittedAndMatch) {
+    if (markerIsFinished) {
+        updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
+    } else if (bothSubmittedAndMatch) {
         updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
     } else if (bothSubmittedAndMismatch) {
         updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = false;
@@ -1385,7 +1494,21 @@ function saveHoleScores() {
 
         var saveMarkerName = '';
         try { saveMarkerName = (myMarkerId && curRoundData.players[myMarkerId] && curRoundData.players[myMarkerId].name) || ''; } catch (_) { console.warn("[silent]", _); }
-        if (bothSubmittedAndMatch) {
+        if (markerIsFinished) {
+            toast(currentLang === 'en'
+                ? ('✅ <b>Hole ' + h + ':</b> your score <b>' + myScore + '</b> saved.')
+                : ('✅ <b>Лунка ' + h + ':</b> ваш счёт <b>' + myScore + '</b> зафиксирован.'), 'success');
+            var parM = holePar(h);
+            var dM = myScore - parM;
+            if (myScore === 1 || dM <= -1) {
+                triggerVictoryConfetti();
+            }
+            if (idx >= 0 && idx < order.length - 1) {
+                playHole = order[idx + 1];
+                myScore = 0;
+                targetScore = 0;
+            }
+        } else if (bothSubmittedAndMatch) {
             toast(currentLang === 'en'
                 ? ('✅ <b>Hole ' + h + ' confirmed:</b> ' + myScore + ' strokes')
                 : ('✅ <b>Лунка ' + h + ' подтверждена:</b> ' + myScore + ' уд.'), 'success');
@@ -1623,10 +1746,13 @@ function buildFinishBlockHtml(v) {
     if (hidden > 0) {
         rows += '<li class="fbn-row fbn-more">' + (isEn ? 'and ' + hidden + ' more…' : 'и ещё ' + hidden + '…') + '</li>';
     }
+    var forceBtn = '<button type="button" class="btn btn-og btn-sm btn-block" style="margin-top:10px;justify-content:center;font-weight:700;" onclick="openForceFinishModal(curRid, curRoundData, { playerId: myUid, isGroup: true })"><i class="fas fa-flag-checkered"></i> ' +
+        (isEn ? 'Force finish with current scores' : 'Завершить принудительно с текущим счётом') + '</button>';
     return '<div class="finish-block">' +
         '<div class="fbn-head"><i class="fas fa-ban"></i> ' + t('finish_blocked_title') + '</div>' +
         '<ul class="fbn-list">' + rows + '</ul>' +
         '<div class="fbn-hint"><i class="fas fa-circle-info"></i> ' + t('finish_blocked_hint') + '</div>' +
+        forceBtn +
         '</div>';
 }
 
@@ -2064,6 +2190,15 @@ function doFinishGroupRound() {
             finishUpdate.partialFinish = true;
         }
         db.ref('rounds/' + curRid).update(finishUpdate).then(function() {
+            // Сохраняем историю для финишировавшего игрока сразу
+            try {
+                var pObj = curRoundData && curRoundData.players && curRoundData.players[finisherUid];
+                if (pObj && typeof saveHistoryEntry === 'function') {
+                    var order = getRoundOrder(curRoundData);
+                    var st = calcRoundStats(pObj.scores || {}, pObj.fieldHcp || 0, pObj.exactHcp || 0, order);
+                    saveHistoryEntry(finisherUid, curRid, curRoundData, pObj, st);
+                }
+            } catch (e) { console.warn("[silent]", e); }
             // Перечитываем раунд ПОСЛЕ записи: статус 'completed' появляется,
             // только когда карточки сдали ВСЕ участники группы.
             return db.ref('rounds/' + curRid).once('value');

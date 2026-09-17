@@ -481,8 +481,17 @@
             </div>
         </div>
 
-        <button class="btn btn-og btn-block" onclick="finishGroupRound()">
-            <i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span>
+        <div style="display:flex;gap:10px;margin-bottom:8px;">
+            <button class="btn btn-og" onclick="finishGroupRound()" style="flex:1;">
+                <i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span>
+            </button>
+            <button class="btn btn-ol" type="button" onclick="handleGroupPauseToggle()" id="group-pause-btn" style="white-space:nowrap;padding:12px 14px;" title="Пауза / Возобновление">
+                <i class="fas fa-pause" id="group-pause-btn-icon"></i> <span id="group-pause-btn-text">Пауза</span>
+            </button>
+        </div>
+        <div id="group-pause-banner" class="hidden" style="margin-bottom:12px;"></div>
+        <button class="btn btn-ol btn-sm btn-block" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" onclick="openForceFinishModal(curRid, curRoundData, myUid)">
+            <i class="fas fa-forward"></i> <span data-i18n="force_finish_btn">Завершить раунд принудительно (сохранить счёт)</span>
         </button>
         <label class="stableford-display-control" id="group-stableford-control">
             <input type="checkbox" id="group-stableford-toggle" onchange="toggleGroupStablefordDisplay(this.checked)">
@@ -588,7 +597,18 @@
             </div>
         </div>
 
-        <button class="btn btn-og btn-block" onclick="finishSolo()" style="min-height:48px;"><i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span></button>
+        <div style="display:flex;gap:10px;margin-bottom:8px;">
+            <button class="btn btn-og" onclick="finishSolo()" style="flex:1;min-height:48px;">
+                <i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span>
+            </button>
+            <button class="btn btn-ol" type="button" onclick="handleSoloPauseToggle()" id="solo-pause-btn" style="white-space:nowrap;padding:12px 14px;min-height:48px;" title="Пауза / Возобновление">
+                <i class="fas fa-pause" id="solo-pause-btn-icon"></i> <span id="solo-pause-btn-text">Пауза</span>
+            </button>
+        </div>
+        <div id="solo-pause-banner" class="hidden" style="margin-bottom:12px;"></div>
+        <button class="btn btn-ol btn-sm btn-block" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" onclick="openForceFinishModal(soloRid, soloRound, getPlayerId())">
+            <i class="fas fa-forward"></i> <span data-i18n="force_finish_btn">Завершить раунд принудительно (сохранить счёт)</span>
+        </button>
         <label class="stableford-display-control" id="solo-stableford-control">
             <input type="checkbox" id="solo-stableford-toggle" onchange="toggleSoloStablefordDisplay(this.checked)">
             <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
@@ -633,7 +653,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.69.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.70.0</span></p>
         </div>
     </div>
 </footer>

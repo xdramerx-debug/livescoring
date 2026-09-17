@@ -851,6 +851,18 @@ function admRoundDetailsHtml(id, r) {
         html += '<div style="font-size:12px;color:var(--muted);">' + (currentLang === 'en' ? 'No players' : 'Нет игроков') + '</div>';
         return html;
     }
+    if (r.status === 'active') {
+        var isEn = currentLang === 'en';
+        var isPaused = !!r.paused;
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);">';
+        if (isPaused) {
+            html += '<button type="button" class="btn btn-g btn-sm" onclick="roundResume(\'' + id + '\', null, \'Admin\').then(function(){toast(\'Round resumed\');})"><i class="fas fa-play"></i> ' + (isEn ? 'Resume' : 'Возобновить') + '</button>';
+        } else {
+            html += '<button type="button" class="btn btn-ol btn-sm" onclick="openRoundPauseModal(\'' + id + '\')"><i class="fas fa-pause"></i> ' + (isEn ? 'Pause Round' : 'Пауза') + '</button>';
+        }
+        html += '<button type="button" class="btn btn-ol btn-sm" onclick="roundForceFinishAll(\'' + id + '\', null, \'Admin\')"><i class="fas fa-forward"></i> ' + (isEn ? 'Force Finish All' : 'Завершить принудительно (всех)') + '</button>';
+        html += '</div>';
+    }
     var order = [];
     try { order = (typeof getRoundOrder === 'function') ? getRoundOrder(r) : []; } catch (eOrd) { order = []; }
     html += '<div style="display:flex;flex-direction:column;gap:4px;">';
@@ -863,8 +875,14 @@ function admRoundDetailsHtml(id, r) {
             }
         } catch (eSt) { console.warn("[silent]", eSt); }
         var pTee = (p && p.tee) || r.tee || 'wh';
+        var isFin = typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(r, pe[0]);
         html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:8px;">';
         html += '<span style="color:var(--white);font-weight:600;flex:1;min-width:120px;">' + escapeHtml(p.name || t('player')) + '</span> ';
+        if (isFin) {
+            html += '<span style="color:#2ecc71;font-size:11px;font-weight:700;"><i class="fas fa-check-circle"></i> ' + (currentLang === 'en' ? 'Finished' : 'Финиш') + '</span> ';
+        } else if (r.status === 'active') {
+            html += '<button type="button" class="btn btn-ol btn-sm" style="padding:2px 6px;font-size:10px;" onclick="roundForceFinishPlayer(\'' + id + '\',\'' + pe[0] + '\',null,\'Admin\')" title="' + (currentLang === 'en' ? 'Force finish player' : 'Завершить игрока') + '"><i class="fas fa-flag-checkered"></i></button> ';
+        }
         html += fmtTeePill(pTee);
         html += '<span style="color:var(--muted);">HCP ' + (p.exactHcp != null ? fmtExactHcp(p.exactHcp) : '—') + '</span>';
         html += '<span style="color:var(--muted);">Gross <b style="color:var(--white);">' + (stats.gross || 0) + '</b></span>';
@@ -907,14 +925,16 @@ function renderAdmRounds(data) {
     entries.forEach(function(e) {
         var id = e[0], r = e[1], pc = Object.keys(r.players || {}).length;
         var expanded = !!admRoundsExpanded[id];
-        var badge = r.status === 'active'
-            ? '<span class="tn-status tn-a"><span class="live-dot" style="width:6px;height:6px;"></span> Live</span>'
-            : (r.status === 'scheduled'
-                ? '<span class="tn-status tn-u"><i class="fas fa-hourglass-half"></i> ' +
-                  (currentLang === 'en' ? 'Scheduled' : 'Запланирован') + '</span>'
-                : ((typeof buildRoundCompletedBadgeHTML === 'function')
-                    ? buildRoundCompletedBadgeHTML(r)
-                    : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>'));
+        var badge = (typeof buildRoundStatusBadgeHTML === 'function')
+            ? buildRoundStatusBadgeHTML(r)
+            : (r.status === 'active'
+                ? '<span class="tn-status tn-a"><span class="live-dot" style="width:6px;height:6px;"></span> Live</span>'
+                : (r.status === 'scheduled'
+                    ? '<span class="tn-status tn-u"><i class="fas fa-hourglass-half"></i> ' +
+                      (currentLang === 'en' ? 'Scheduled' : 'Запланирован') + '</span>'
+                    : ((typeof buildRoundCompletedBadgeHTML === 'function')
+                        ? buildRoundCompletedBadgeHTML(r)
+                        : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>')));
 
         html += '<div class="list-item adm-round-row" style="padding:9px 12px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="admToggleRoundRow(\'' + id + '\')">';
         html += '<i id="adm-r-chev-' + id + '" class="fas ' + (expanded ? 'fa-chevron-up' : 'fa-chevron-down') + '" style="color:var(--gold);font-size:11px;"></i>';

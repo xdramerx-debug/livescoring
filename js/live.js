@@ -79,7 +79,15 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('pestovo_acting_as_' + curRid, actingAs);
         // Keep `as` in the URL: Safari/ITP and camera-opened tabs otherwise
         // drop localStorage and fall back to view-only.
-        window.history.replaceState(null, null, window.location.pathname + '?round=' + encodeURIComponent(curRid) + '&as=' + encodeURIComponent(actingAs));
+        // Служебные параметры ссылки сохраняем: раньше они терялись при
+        // перезаписи URL — не открывался диалог завершения (?finish=1) и
+        // терялась метка перехода из поиска по ФИО (?fio=1).
+        var keptQuery = 'round=' + encodeURIComponent(curRid) + '&as=' + encodeURIComponent(actingAs);
+        ['fio', 'finish', 'player'].forEach(function(param) {
+            var value = p.get(param);
+            if (value) keptQuery += '&' + param + '=' + encodeURIComponent(value);
+        });
+        window.history.replaceState(null, null, window.location.pathname + '?' + keptQuery);
     }
 
     // не ждём авторизацию: гость с ключом раунда тоже должен сразу попасть в счёт

@@ -55,3 +55,10 @@
     .tna-role-row .tna-role-name { grid-column:1/-1; }
     .tna-actions { justify-content:flex-start; width:100%; }
 }
+
+/* ── Вкладка «Турниры: вид» — 5 вариантов страницы «Турниры» ── */
+.tn-view-preview-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; }
+.tn-view-preview-card { display:flex; flex-direction:column; gap:6px; padding:13px 14px; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.028); }
+.tn-view-preview-card b { color:var(--white); font-size:13px; }
+.tn-view-preview-card b i { color:var(--gold); }
+.tn-view-preview-card span { color:var(--muted); font-size:11.5px; line-height:1.5; }

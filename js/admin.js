@@ -380,6 +380,9 @@ function switchTab(t, b) {
         loadPageDisplaySettings();
         loadAdmView5Settings();
     }
+    if (t === 'tournamentsview') {
+        loadTnPageViewSettings();
+    }
     if (t === 'rusgolf') {
         loadRusgolfProxySettings();
         nmLoadSettings();
@@ -4369,7 +4372,11 @@ function loadPageDisplaySettings() {
 
 function savePageDisplayVariant(page, value) {
     var cfg = ADMIN_PAGE_DISPLAY_CONFIG[page];
-    if (!cfg || ['1', '2', '3'].indexOf(String(value)) === -1) return;
+    if (!cfg) return;
+    // Набор вариантов у страницы свой: у «Турниров» их пять.
+    var allowed = (typeof pageDisplayVariantKeys === 'function')
+        ? pageDisplayVariantKeys(page) : ['1', '2', '3'];
+    if (allowed.indexOf(String(value)) === -1) return;
     value = String(value);
     if (typeof vib === 'function') vib(30);
     if (typeof applyPageDisplayVariant === 'function') applyPageDisplayVariant(page, value);
@@ -4391,13 +4398,91 @@ function savePageDisplayVariant(page, value) {
 
 function markAdmPageDisplayVariantButtons(page) {
     var cur = (typeof getPageDisplayVariant === 'function') ? getPageDisplayVariant(page) : '1';
-    ['1', '2', '3'].forEach(function(v) {
+    var keys = (typeof pageDisplayVariantKeys === 'function') ? pageDisplayVariantKeys(page) : ['1', '2', '3'];
+    keys.forEach(function(v) {
         var btn = document.getElementById(page + '-display-opt-' + v);
         if (!btn) return;
         var active = v === cur;
         btn.classList.toggle('page-display-variant-active', active);
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
+}
+
+// ==========================================
+// ВКЛАДКА «ТУРНИРЫ: ВИД» — 5 ВАРИАНТОВ СТРАНИЦЫ «ТУРНИРЫ»
+// ==========================================
+// Оформление выбирает только администратор; значение хранится в
+// settings/tournaments_display_variant и применяется для всех игроков.
+var TN_PAGE_VIEW_VARIANTS = ['1', '2', '3', '4', '5'];
+var TN_PAGE_VIEW_DESC = {
+    1: 'tournaments_view_variant_1_desc',
+    2: 'tournaments_view_variant_2_desc',
+    3: 'tournaments_view_variant_3_desc',
+    4: 'tournaments_view_variant_4_desc',
+    5: 'tournaments_view_variant_5_desc'
+};
+
+function markAdmTnPageViewButtons() {
+    var cur = (typeof getPageDisplayVariant === 'function') ? getPageDisplayVariant('tournaments') : '1';
+    TN_PAGE_VIEW_VARIANTS.forEach(function(v) {
+        var btn = document.getElementById('tn-view-opt-' + v);
+        if (!btn) return;
+        var active = v === cur;
+        btn.classList.toggle('page-display-variant-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    // Подпись активного варианта — чтобы админ видел, что именно включено.
+    var hint = document.getElementById('tn-view-current-desc');
+    if (hint) {
+        var key = TN_PAGE_VIEW_DESC[cur] || TN_PAGE_VIEW_DESC['1'];
+        hint.textContent = (typeof t === 'function' ? t(key) : key) || '';
+    }
+    var badge = document.getElementById('tn-view-current-badge');
+    if (badge) {
+        var labelKey = 'tournaments_view_variant_' + cur;
+        badge.textContent = (typeof t === 'function' ? t(labelKey) : labelKey) || cur;
+    }
+}
+
+function loadTnPageViewSettings() {
+    var applyValue = function(value) {
+        if (value !== null && value !== undefined && typeof applyPageDisplayVariant === 'function') {
+            applyPageDisplayVariant('tournaments', value);
+        }
+        markAdmTnPageViewButtons();
+    };
+    if (typeof db === 'undefined') { applyValue(null); return; }
+    var path = 'settings/tournaments_display_variant';
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-tn-page-view', db.ref(path), function(sn) { applyValue(sn.val()); });
+    } else {
+        db.ref(path).once('value').then(function(sn) { applyValue(sn.val()); }).catch(function() { applyValue(null); });
+    }
+}
+
+function saveTnPageViewVariant(value) {
+    if (TN_PAGE_VIEW_VARIANTS.indexOf(String(value)) === -1) return;
+    value = String(value);
+    if (typeof vib === 'function') vib(30);
+    if (typeof applyPageDisplayVariant === 'function') applyPageDisplayVariant('tournaments', value);
+    markAdmTnPageViewButtons();
+
+    if (typeof db === 'undefined') {
+        toast(currentLang === 'en' ? 'Layout saved locally' : 'Вариант отображения сохранён локально', 'info');
+        return;
+    }
+    db.ref('settings/tournaments_display_variant').set(value).then(function() {
+        toast(currentLang === 'en'
+            ? '✅ ' + t('tournaments_view_saved')
+            : '✅ ' + t('tournaments_view_saved'), 'success');
+    }).catch(function(err) {
+        console.warn('Tournaments layout save error:', err);
+        toast(currentLang === 'en' ? 'Could not save the layout' : '⚠️ Не удалось сохранить вариант отображения', 'error');
+    });
+}
+
+function openTournamentsPagePreview() {
+    try { window.open('tournaments.html', '_blank', 'noopener'); } catch (e) { console.warn("[silent]", e); }
 }
 
 function saveStablefordDisplayDefault() {

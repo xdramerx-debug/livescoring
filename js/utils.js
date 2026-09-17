@@ -1051,6 +1051,21 @@ var I18N = {
         tournaments_display_variant_1: '1 · Список',
         tournaments_display_variant_2: '2 · Компактный',
         tournaments_display_variant_3: '3 · Витрина',
+        tab_tournaments_view: 'Турниры: вид 👁',
+        tournaments_view_tab_title: 'Отображение страницы «Турниры» — 5 вариантов',
+        tournaments_view_tab_sub: 'Вариант выбирает только администратор. Он сохраняется в настройках клуба и сразу применяется у всех игроков на странице «Турниры».',
+        tournaments_view_variant_1: '1 · Сетка карточек',
+        tournaments_view_variant_2: '2 · Компактный список',
+        tournaments_view_variant_3: '3 · Витрина',
+        tournaments_view_variant_4: '4 · Таблица',
+        tournaments_view_variant_5: '5 · Календарь',
+        tournaments_view_variant_1_desc: 'Текущий вид: карточки турниров в адаптивной сетке.',
+        tournaments_view_variant_2_desc: 'Плотный список в одну строку: название, статус и дата — максимум турниров на экране.',
+        tournaments_view_variant_3_desc: 'Крупные карточки с большим баннером — по одной-две в ряд, как афиша клуба.',
+        tournaments_view_variant_4_desc: 'Табличный вид: строки с колонками «Турнир · Дата · Формат · Статус».',
+        tournaments_view_variant_5_desc: 'Календарная лента: слева дата старта, справа карточка турнира.',
+        tournaments_view_open_page: 'Открыть страницу «Турниры»',
+        tournaments_view_saved: 'Вариант отображения «Турниры» сохранён для всех пользователей',
         handicap_display_title: 'Отображение страницы «Гандикапы»',
         handicap_display_sub: 'Выберите один из трёх вариантов оформления калькулятора и таблиц гандикапов. Настройка применяется для всех пользователей.',
         handicap_display_variant_1: '1 · Стандарт',
@@ -1615,6 +1630,21 @@ var I18N = {
         tournaments_display_variant_1: '1 · List',
         tournaments_display_variant_2: '2 · Compact',
         tournaments_display_variant_3: '3 · Showcase',
+        tab_tournaments_view: 'Tournaments: layout 👁',
+        tournaments_view_tab_title: '“Tournaments” page layout — 5 variants',
+        tournaments_view_tab_sub: 'Only an administrator picks the layout. It is stored in the club settings and applies to every player on the “Tournaments” page right away.',
+        tournaments_view_variant_1: '1 · Card grid',
+        tournaments_view_variant_2: '2 · Compact list',
+        tournaments_view_variant_3: '3 · Showcase',
+        tournaments_view_variant_4: '4 · Table',
+        tournaments_view_variant_5: '5 · Calendar',
+        tournaments_view_variant_1_desc: 'Current look: tournament cards in a responsive grid.',
+        tournaments_view_variant_2_desc: 'Dense one-line rows with name, status and date — more tournaments per screen.',
+        tournaments_view_variant_3_desc: 'Large cards with a big banner, one or two per row, like a club poster wall.',
+        tournaments_view_variant_4_desc: 'Table view: rows with “Tournament · Date · Format · Status” columns.',
+        tournaments_view_variant_5_desc: 'Calendar timeline: start date on the left, tournament card on the right.',
+        tournaments_view_open_page: 'Open the “Tournaments” page',
+        tournaments_view_saved: '“Tournaments” layout saved for all users',
         handicap_display_title: '“Handicaps” page layout',
         handicap_display_sub: 'Choose one of three handicap calculator and table layouts. The setting applies to all users.',
         handicap_display_variant_1: '1 · Standard',
@@ -2042,7 +2072,9 @@ function pestovoRenderFioResumeListHtml(matches, opts) {
     var html = '<div style=\"display:flex;flex-direction:column;gap:10px;\">';
     matches.forEach(function(item) {
         var r = item.round, rid = item.roundId;
-        var link = 'setup-round.html?round=' + rid + '&as=' + item.playerId;
+        // fio=1 — метка «пришли из поиска по ФИО»: только такой переход
+        // требует подтверждения владельца перед завершением раунда.
+        var link = 'setup-round.html?round=' + rid + '&as=' + item.playerId + '&fio=1';
         var resume = (typeof getRoundResumeState === 'function') ? getRoundResumeState(rid, r) : { currentHole: r.startHole || 1, holesPlayed: 0, holeCount: 18, metrics: { overallDelay: 0 } };
         var modeIcon = r.mode === 'solo' ? '<i class=\"fas fa-user\"></i> ' + (typeof t === 'function' ? t('solo_round') : 'Solo') : '<i class=\"fas fa-users\"></i> ' + (typeof t === 'function' ? t('group_round') : 'Group');
         var startDate = r.startTime ? new Date(r.startTime) : null;
@@ -6341,6 +6373,12 @@ function roundForceFinishPlayer(roundId, a2, a3, a4, a5) {
                 }
             });
         }
+        // Раунд закрыт принудительно (игрок снят с игры/досрочный финиш):
+        // турнир тоже должен завершиться автоматически, если это был
+        // последний незакрытый раунд.
+        if (!pending.length && roundData && roundData.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
+            try { pestovoAutoFinishTournament(roundData.tournamentId); } catch (e) { console.warn("[silent]", e); }
+        }
         return { isComplete: !pending.length, remaining: pending.length };
     });
     });
@@ -6380,6 +6418,12 @@ function roundForceFinishAll(roundId, roundData, reason, finisherName) {
         return db.ref('rounds/' + roundId).once('value');
     }).then(function(sn) {
         var fresh = sn && sn.val();
+        // Раунд закрыт целиком (принудительно, «Завершить раунд» в админке):
+        // проверяем автозавершение турнира — это «другой способ» закрыть раунд.
+        var tnId = (fresh && fresh.tournamentId) || (roundData && roundData.tournamentId);
+        if (tnId && typeof pestovoAutoFinishTournament === 'function') {
+            try { pestovoAutoFinishTournament(tnId); } catch (e) { console.warn("[silent]", e); }
+        }
         if (fresh && typeof pestovoClaimRoundHistory === 'function') {
             return pestovoClaimRoundHistory(roundId).then(function(claimed) {
                 if (claimed && typeof saveHistory === 'function') {
@@ -6765,6 +6809,27 @@ function pestovoGuardHoleJump(opts) {
     });
 }
 
+// Переход из поиска «Продолжить по ФИО» помечается в ссылке (fio=1):
+// это единственный случай, когда раунд открывает не его владелец и перед
+// завершением нужно подтвердить владение (телефон/ФИО).
+function pestovoUrlFromFioSearch() {
+    try { return String(new URLSearchParams(window.location.search).get('fio') || '') === '1'; }
+    catch (e) { return false; }
+}
+
+// Игрок открывает ТУРНИРНУЮ карточку по своей ссылке/QR.
+// Стартовый протокол выдаёт отдельный код на каждого участника, состав
+// фиксирует судейская коллегия, а счёт подтверждает маркер — поэтому
+// требовать «ФИО владельца» здесь нельзя: иначе второй игрок группы не мог
+// сдать свою карточку после того, как первый завершил раунд.
+// Переход из поиска по ФИО (fio=1) остаётся защищённым.
+function pestovoIsTournamentCardHolder(rd, pid) {
+    if (!rd || !pid) return false;
+    if (typeof isTournamentRound !== 'function' || !isTournamentRound(rd)) return false;
+    if (!rd.players || !rd.players[pid]) return false;
+    return !pestovoUrlFromFioSearch();
+}
+
 // Сессия открыта по ссылке «Продолжить по ФИО» (?as=<pid>) с устройства,
 // которое не является владельцем (нет аккаунта игрока и нет access-key).
 function pestovoIsFioResume(rd, rid, pid) {
@@ -6780,6 +6845,9 @@ function pestovoIsFioResume(rd, rid, pid) {
         ? localStorage.getItem('pestovo_solo_key_' + rid)
         : localStorage.getItem('pestovo_group_key_' + rid);
     if (key && rd.accessKey === key) return false;
+    // Турнирная карточка участника (QR из стартового листа) — не «чужое
+    // устройство»: каждый участник группы завершает свою карточку сам.
+    if (pestovoIsTournamentCardHolder(rd, pid)) return false;
     return true;
 }
 
@@ -7600,6 +7668,10 @@ function sweepStaleRounds(data) {
             delete __pestovoStaleRoundSweepIds[roundId];
         });
     });
+    // Страховка автозавершения турниров: раунд мог быть закрыт другим
+    // способом (принудительно, админом, со второго устройства) — тогда вызова
+    // автозавершения в этом клиенте не было вовсе. Проверяем снимок целиком.
+    try { pestovoAutoFinishTournamentsFromSnapshot(data); } catch (e) { console.warn("[silent]", e); }
     return data;
 }
 
@@ -7800,37 +7872,113 @@ function pestovoDeleteTournamentCascade(tnId) {
 // Это открывает карточку турнира для экспорта протокола (PDF).
 // Возвращает Promise<boolean> — стал ли турнир завершённым именно сейчас.
 var __pestovoTnAutoFinishInFlight = {};
+// Турниры, по которым в этой вкладке уже принимали решение (завершён или
+// уже был завершён): повторно читать базу на каждом снимке раундов не нужно.
+var __pestovoTnAutoFinishDone = {};
+
+// Статусы турнира, которые автозавершение НЕ трогает: завершённый/отменённый
+// менять не нужно, а черновик не должен попадать в публичный каталог.
+var TN_AUTO_FINISH_SKIP_STATUSES = ['completed', 'cancelled', 'draft'];
+
+// Чистая функция: турниры, у которых есть хотя бы один раунд и ВСЕ раунды
+// завершены. Проверяется автотестами и используется страховочным проходом
+// по снимку раундов.
+function tournamentsReadyToAutoFinish(roundsData) {
+    var byTn = {};
+    Object.keys(roundsData || {}).forEach(function(rid) {
+        var r = roundsData[rid];
+        if (!r || typeof r !== 'object') return;
+        var tnId = r.tournamentId;
+        if (!tnId) return;
+        if (!byTn[tnId]) byTn[tnId] = { total: 0, completed: 0 };
+        byTn[tnId].total++;
+        if (String(r.status || '') === 'completed') byTn[tnId].completed++;
+    });
+    return Object.keys(byTn).filter(function(tnId) {
+        return byTn[tnId].total > 0 && byTn[tnId].completed === byTn[tnId].total;
+    });
+}
+
+// Страховочный проход: раунд мог быть закрыт другим способом (принудительно,
+// админом, автозакрытием на следующий день, вторым устройством) — тогда вызова
+// автозавершения могло не быть вовсе. Проверяем снимок раундов и доводим
+// сыгранные турниры до статуса «завершён».
+function pestovoAutoFinishTournamentsFromSnapshot(roundsData) {
+    var ready = tournamentsReadyToAutoFinish(roundsData);
+    if (!ready.length || typeof db === 'undefined' || !db) return Promise.resolve([]);
+    return Promise.all(ready.map(function(tnId) {
+        return pestovoAutoFinishTournament(tnId).then(function(changed) { return changed ? tnId : null; })
+            .catch(function() { return null; });
+    })).then(function(res) { return res.filter(function(x) { return !!x; }); });
+}
+
 function pestovoAutoFinishTournament(tnId) {
     if (!tnId || typeof db === 'undefined' || !db) return Promise.resolve(false);
+    if (__pestovoTnAutoFinishDone[tnId]) return Promise.resolve(false);
     if (__pestovoTnAutoFinishInFlight[tnId]) return Promise.resolve(false);
     __pestovoTnAutoFinishInFlight[tnId] = true;
     var done = function(v){ delete __pestovoTnAutoFinishInFlight[tnId]; return v; };
-    return db.ref('rounds').orderByChild('tournamentId').equalTo(tnId).once('value').then(function(sn) {
-        var rounds = (sn && sn.val()) || {};
+    // Раунды турнира: и с tournamentId, и привязанные только через протокол
+    // группы (у части старых записей tournamentId отсутствует).
+    return Promise.all([
+        db.ref('rounds').once('value').catch(function() { return null; }),
+        (typeof pestovoTournamentRoundIdsFull === 'function'
+            ? pestovoTournamentRoundIdsFull(tnId).catch(function() { return []; })
+            : Promise.resolve([])),
+        db.ref('tournaments/' + tnId).once('value').catch(function() { return null; })
+    ]).then(function(res) {
+        var all = (res[0] && res[0].val && res[0].val()) || {};
+        var extraIds = res[1] || [];
+        var tournament = (res[2] && res[2].val && res[2].val()) || null;
+        var rounds = {};
+        Object.keys(all).forEach(function(rid) {
+            var r = all[rid];
+            if (r && typeof r === 'object' && String(r.tournamentId || '') === String(tnId)) rounds[rid] = r;
+        });
+        extraIds.forEach(function(rid) { if (all[rid] && !rounds[rid]) rounds[rid] = all[rid]; });
+
         var ids = Object.keys(rounds);
         if (!ids.length) return done(false);
-        var allDone = ids.every(function(rid) { return rounds[rid] && rounds[rid].status === 'completed'; });
+        var allDone = ids.every(function(rid) { return String(rounds[rid].status || '') === 'completed'; });
         if (!allDone) return done(false);
-        return db.ref('tournaments/' + tnId + '/status').once('value').then(function(stSn) {
-            var st = stSn && stSn.val();
-            if (st !== 'active') return done(false); // ещё не начинали или уже завершён
-            return db.ref('tournaments/' + tnId).update({
-                status: 'completed',
-                finishedAt: Date.now(),
-                finishedAutomatically: true
-            }).then(function() {
-                // Уведомление о завершении и о доступном протоколе — ТОЛЬКО
-                // администратору: игроки не должны видеть служебное сообщение
-                // о протоколе завершения (он нужен судейской коллегии).
-                try {
-                    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-                    if (pestovoIsAdminViewer() && typeof toast === 'function') toast(isEn
-                        ? '🏁 All rounds completed — the tournament is finished automatically. The results protocol (PDF) is now available.'
-                        : '🏁 Все раунды завершены — турнир завершён автоматически. Протокол результатов (PDF) теперь доступен.', 'success');
-                } catch (e) { console.warn("[silent]", e); }
-                return done(true);
-            }).catch(function() { return done(false); });
-        });
+
+        // Завершаем турнир независимо от того, успел ли он получить статус
+        // «active»: раунды могли открыться по времени старта, пока карточка
+        // турнира ещё «предстоящая». Не трогаем только завершённые/отменённые
+        // турниры и черновики.
+        var st = String((tournament && tournament.status) || (tournament && tournament.lifecycleStatus) || '');
+        // Карточки турнира нет (удалён, а раунды остались) — создавать
+        // пустой узел tournaments/<id> нельзя.
+        if (!tournament) {
+            __pestovoTnAutoFinishDone[tnId] = true;
+            return done(false);
+        }
+        if (TN_AUTO_FINISH_SKIP_STATUSES.indexOf(st) !== -1) {
+            __pestovoTnAutoFinishDone[tnId] = true;
+            return done(false);
+        }
+        return db.ref('tournaments/' + tnId).update({
+            status: 'completed',
+            // Публичный каталог v2 читает lifecycleStatus: без него карточка
+            // сыгранного турнира оставалась во вкладке «Предстоящие».
+            lifecycleStatus: 'completed',
+            finishedAt: Date.now(),
+            finishedAutomatically: true,
+            finishedFrom: st || 'unknown',
+            roundsCompleted: ids.length
+        }).then(function() {
+            __pestovoTnAutoFinishDone[tnId] = true;
+            // Уведомление о завершении и о доступном протоколе — ТОЛЬКО
+            // администратору: игроки не должны видеть служебное сообщение
+            // о протоколе завершения (он нужен судейской коллегии).
+            try {
+                var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+                if (pestovoIsAdminViewer() && typeof toast === 'function') toast(isEn
+                    ? '🏁 All rounds completed — the tournament is finished automatically. The results protocol (PDF) is now available.'
+                    : '🏁 Все раунды завершены — турнир завершён автоматически. Протокол результатов (PDF) теперь доступен.', 'success');
+            } catch (e) { console.warn("[silent]", e); }
+            return done(true);
+        }).catch(function() { return done(false); });
     }).catch(function() { return done(false); });
 }
 
@@ -7886,6 +8034,16 @@ function buildRoundStatusBadgeHTML(r) {
 // дублируется в localStorage только как офлайн-резерв, а Firebase остаётся
 // источником истины для новых устройств. Вариант 1 — текущий вид страниц.
 var PAGE_DISPLAY_VARIANTS = ['1', '2', '3'];
+// У некоторых страниц вариантов больше базовых трёх. Страница «Турниры»
+// поддерживает 5 оформлений (выбирает только администратор — вкладка
+// «Турниры: вид» в админ-панели), настройка применяется для всех.
+var PAGE_DISPLAY_VARIANT_SETS = {
+    tournaments: ['1', '2', '3', '4', '5']
+};
+// Какие варианты доступны конкретной странице.
+function pageDisplayVariantKeys(page) {
+    return PAGE_DISPLAY_VARIANT_SETS[page] || PAGE_DISPLAY_VARIANTS;
+}
 var PAGE_DISPLAY_VARIANT_CONFIG = {
     home: { storage: 'pestovo_home_display_variant', firebase: 'settings/home_display_variant' },
     players: { storage: 'pestovo_players_display_variant', firebase: 'settings/players_display_variant' },
@@ -7906,13 +8064,13 @@ var pestovoPageDisplayVariants = (function() {
         var cfg = PAGE_DISPLAY_VARIANT_CONFIG[page];
         var value = '';
         try { value = localStorage.getItem(cfg.storage) || ''; } catch (e) { console.warn("[silent]", e); }
-        state[page] = PAGE_DISPLAY_VARIANTS.indexOf(String(value)) !== -1 ? String(value) : '1';
+        state[page] = pageDisplayVariantKeys(page).indexOf(String(value)) !== -1 ? String(value) : '1';
     });
     return state;
 })();
 
 function normalizePageDisplayVariant(page, value) {
-    return PAGE_DISPLAY_VARIANTS.indexOf(String(value === undefined || value === null ? '' : value)) !== -1
+    return pageDisplayVariantKeys(page).indexOf(String(value === undefined || value === null ? '' : value)) !== -1
         ? String(value) : '1';
 }
 
@@ -7933,6 +8091,14 @@ function applyPageDisplayVariant(page, value) {
         if (page === 'players' && typeof loadPlayers === 'function' && document.getElementById('players-grid')) loadPlayers();
         if (page === 'stats' && typeof loadStats === 'function' && document.getElementById('general-stats')) loadStats();
         if (page === 'rounds' && typeof loadLB === 'function' && document.getElementById('lb-container')) loadLB();
+        // Страница «Турниры»: каталог/карточку турнира перерисовываем, чтобы
+        // новый вариант был виден сразу (без перезагрузки вкладки). Узел
+        // «tn-public-catalog» есть только на tournaments.html — в админке
+        // (там свой список #tn-list) ничего не перерисовываем.
+        if (page === 'tournaments' && document.getElementById('tn-public-catalog')) {
+            if (typeof tnPublicRender === 'function') tnPublicRender();
+            else if (typeof tnRenderList === 'function') tnRenderList();
+        }
     } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof markAdmPageDisplayVariantButtons === 'function') markAdmPageDisplayVariantButtons(page);
@@ -7949,7 +8115,8 @@ function syncPageDisplayBodyClasses() {
     try {
         Object.keys(PAGE_DISPLAY_VARIANT_CONFIG).forEach(function(page) {
             var cur = getPageDisplayVariant(page);
-            ['2', '3'].forEach(function(v) {
+            // Вариант «1» — исходный вид страницы, классов не добавляем.
+            pageDisplayVariantKeys(page).slice(1).forEach(function(v) {
                 document.body.classList.toggle('pd-' + page + '-v' + v, cur === v);
             });
         });
@@ -10227,7 +10394,7 @@ if (typeof db !== 'undefined') {
             var cfg = PAGE_DISPLAY_VARIANT_CONFIG[page];
             db.ref(cfg.firebase).on('value', function(sn) {
                 var value = sn.val();
-                if (PAGE_DISPLAY_VARIANTS.indexOf(String(value)) !== -1 && String(value) !== getPageDisplayVariant(page)) {
+                if (pageDisplayVariantKeys(page).indexOf(String(value)) !== -1 && String(value) !== getPageDisplayVariant(page)) {
                     applyPageDisplayVariant(page, String(value));
                 }
             });

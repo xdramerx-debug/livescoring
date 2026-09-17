@@ -1,0 +1,401 @@
+// ============================================================
+// TOURNAMENT CORE — pure domain helpers for the public/admin redesign
+// ------------------------------------------------------------
+// No DOM, Firebase, browser globals or UI strings. The module accepts the
+// existing RTDB-shaped tournament/round objects and preserves old fields.
+// It is intentionally UMD so the same rules are tested in Node and used in
+// the static pages.
+// ============================================================
+(function (root, factory) {
+    if (typeof module === 'object' && module.exports) module.exports = factory();
+    else root.TournamentCore = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+    'use strict';
+
+    var STATUS = {
+        DRAFT: 'draft',
+        REGISTRATION: 'registration',
+        CLOSED: 'closed',
+        ACTIVE: 'active',
+        COMPLETED: 'completed',
+        CANCELLED: 'cancelled'
+    };
+    var PUBLIC_STATUSES = [STATUS.REGISTRATION, STATUS.CLOSED, STATUS.ACTIVE, STATUS.COMPLETED, STATUS.CANCELLED];
+    var ROLE_IDS = ['judge', 'secretary', 'marshal', 'observer'];
+
+    function clone(value) {
+        if (value === undefined) return undefined;
+        return JSON.parse(JSON.stringify(value == null ? null : value));
+    }
+    function str(value) { return String(value == null ? '' : value).trim(); }
+    function num(value, fallback) {
+        var n = parseFloat(value);
+        return isFinite(n) ? n : (fallback == null ? 0 : fallback);
+    }
+    function own(obj, key) { return Object.prototype.hasOwnProperty.call(obj || {}, key); }
+    function nowMs(value) {
+        if (value instanceof Date) return value.getTime();
+        if (typeof value === 'number' && isFinite(value)) return value < 100000000000 ? value * 1000 : value;
+        var parsed = Date.parse(str(value));
+        return isFinite(parsed) ? parsed : 0;
+    }
+    function dateStart(value) {
+        var s = str(value);
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+        if (m) return new Date(+m[1], +m[2] - 1, +m[3], 0, 0, 0, 0).getTime();
+        return nowMs(value);
+    }
+    function dateEnd(value) {
+        var s = str(value);
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+        if (m) return new Date(+m[1], +m[2] - 1, +m[3], 23, 59, 59, 999).getTime();
+        return nowMs(value);
+    }
+    function firstDefined(values, fallback) {
+        for (var i = 0; i < values.length; i++) {
+            if (values[i] !== undefined && values[i] !== null && str(values[i]) !== '') return values[i];
+        }
+        return fallback;
+    }
+
+    function registrationConfig(tournament) {
+        var t = tournament || {};
+        var wizard = t.wizard || {};
+        var format = wizard.format || {};
+        var from = t.registration || {};
+        return {
+            enabled: from.enabled !== false,
+            openAt: firstDefined([from.openAt, from.open, format.regOpen], ''),
+            closeAt: firstDefined([from.closeAt, from.close, format.regClose], ''),
+            limit: Math.max(0, parseInt(firstDefined([from.limit, from.maxParticipants, wizard.participants && wizard.participants.limit], 0), 10) || 0),
+            waitlist: from.waitlist !== false,
+            approval: firstDefined([from.approval, wizard.participants && wizard.participants.moderation], 'manual')
+        };
+    }
+
+    // Convert old upcoming status into the new public lifecycle without
+    // changing the persisted legacy field. Registration dates win over the
+    // old status, which makes migrated records useful immediately.
+    function lifecycleStatus(tournament, at) {
+        var t = tournament || {};
+        var explicit = str(t.lifecycleStatus || (t.lifecycle && t.lifecycle.status));
+        if (explicit === 'published') explicit = STATUS.REGISTRATION;
+        if (PUBLIC_STATUSES.indexOf(explicit) !== -1 || explicit === STATUS.DRAFT) return explicit;
+        var legacy = str(t.status);
+        if (legacy === STATUS.CANCELLED || legacy === STATUS.COMPLETED || legacy === STATUS.ACTIVE) return legacy;
+        if (legacy === STATUS.DRAFT) return STATUS.DRAFT;
+        var ts = at == null ? Date.now() : nowMs(at) || Date.now();
+        var reg = registrationConfig(t);
+        var start = firstDefined([t.startedAt, t.startAt, t.date], '');
+        if (legacy === 'closed') return STATUS.CLOSED;
+        if (reg.closeAt && ts > dateEnd(reg.closeAt) && !t.startedAt && legacy !== STATUS.ACTIVE) return STATUS.CLOSED;
+        if (start && ts >= dateStart(start) && legacy === 'upcoming') return STATUS.ACTIVE;
+        if (reg.openAt && ts >= dateStart(reg.openAt) && (!reg.closeAt || ts <= dateEnd(reg.closeAt))) return STATUS.REGISTRATION;
+        return legacy === 'upcoming' || !legacy ? STATUS.REGISTRATION : STATUS.DRAFT;
+    }
+
+    function isPast(tournament, at) {
+        var status = lifecycleStatus(tournament, at);
+        if (status === STATUS.COMPLETED || status === STATUS.CANCELLED) return true;
+        var end = firstDefined([(tournament || {}).endDate, (tournament || {}).date], '');
+        return !!end && dateEnd(end) < (at == null ? Date.now() : nowMs(at));
+    }
+    function isRegistrationOpen(tournament, at) {
+        var t = tournament || {};
+        var status = lifecycleStatus(t, at);
+        if (status === STATUS.CANCELLED || status === STATUS.COMPLETED || status === STATUS.ACTIVE || status === STATUS.CLOSED || status === STATUS.DRAFT) return false;
+        var reg = registrationConfig(t);
+        if (!reg.enabled) return false;
+        var ts = at == null ? Date.now() : nowMs(at) || Date.now();
+        if (reg.openAt && ts < dateStart(reg.openAt)) return false;
+        if (reg.closeAt && ts > dateEnd(reg.closeAt)) return false;
+        return true;
+    }
+    function classify(tournament, at) {
+        var status = lifecycleStatus(tournament, at);
+        return {
+            status: status,
+            upcoming: status === STATUS.REGISTRATION || status === STATUS.CLOSED || status === STATUS.DRAFT,
+            registrationOpen: isRegistrationOpen(tournament, at),
+            past: isPast(tournament, at)
+        };
+    }
+
+    function legacyStatus(status) {
+        if (status === STATUS.ACTIVE) return STATUS.ACTIVE;
+        if (status === STATUS.COMPLETED) return STATUS.COMPLETED;
+        if (status === STATUS.CANCELLED) return STATUS.CANCELLED;
+        if (status === STATUS.DRAFT) return STATUS.DRAFT;
+        // Existing admin/start code expects upcoming for both registration
+        // and closed-before-start tournaments.
+        return 'upcoming';
+    }
+    var TRANSITIONS = {};
+    TRANSITIONS[STATUS.DRAFT] = [STATUS.REGISTRATION, STATUS.CANCELLED];
+    TRANSITIONS[STATUS.REGISTRATION] = [STATUS.CLOSED, STATUS.ACTIVE, STATUS.CANCELLED];
+    TRANSITIONS[STATUS.CLOSED] = [STATUS.REGISTRATION, STATUS.ACTIVE, STATUS.CANCELLED];
+    TRANSITIONS[STATUS.ACTIVE] = [STATUS.COMPLETED, STATUS.CANCELLED];
+    TRANSITIONS[STATUS.COMPLETED] = [STATUS.ACTIVE, STATUS.CANCELLED];
+    TRANSITIONS[STATUS.CANCELLED] = [STATUS.DRAFT, STATUS.REGISTRATION];
+    function canTransition(from, to) {
+        from = str(from) || STATUS.DRAFT;
+        to = str(to);
+        return from === to || (TRANSITIONS[from] || []).indexOf(to) !== -1;
+    }
+    function transition(tournament, to, at) {
+        var t = tournament || {};
+        var from = lifecycleStatus(t, at);
+        to = str(to);
+        if (!PUBLIC_STATUSES.concat([STATUS.DRAFT]).includes(to)) return { ok: false, error: 'unknown_status', from: from, to: to };
+        if (!canTransition(from, to)) return { ok: false, error: 'invalid_transition', from: from, to: to };
+        return {
+            ok: true,
+            from: from,
+            to: to,
+            patch: {
+                lifecycleStatus: to,
+                status: legacyStatus(to),
+                lifecycleChangedAt: at == null ? Date.now() : nowMs(at) || Date.now()
+            }
+        };
+    }
+
+    function validateConfig(config) {
+        var c = config || {};
+        var errors = [];
+        var info = c.info || {};
+        var format = c.format || {};
+        var rounds = Array.isArray(format.rounds) ? format.rounds : [];
+        var scoring = c.scoring || {};
+        var participants = c.participants || {};
+        if (!str(info.nameRu || info.name)) errors.push('name_required');
+        if (!rounds.length || !rounds.some(function (r) { return r && str(r.date); })) errors.push('round_date_required');
+        if (!Array.isArray(scoring.systems) || !scoring.systems.length) errors.push('scoring_required');
+        if (format.regOpen && format.regClose && dateStart(format.regOpen) > dateEnd(format.regClose)) errors.push('registration_window_invalid');
+        if (participants.hcpMin !== '' && participants.hcpMax !== '' && participants.hcpMin != null && participants.hcpMax != null && num(participants.hcpMin) > num(participants.hcpMax)) errors.push('handicap_range_invalid');
+        var hcp = scoring.hcp || {};
+        if (hcp.allowancePct !== '' && hcp.allowancePct != null && (num(hcp.allowancePct) < 0 || num(hcp.allowancePct) > 100)) errors.push('allowance_invalid');
+        var dist = c.prizes && c.prizes.distribution;
+        if (Array.isArray(dist) && dist.reduce(function (sum, row) { return sum + Math.max(0, num(row && row.pct)); }, 0) > 100.0001) errors.push('distribution_over_100');
+        var flights = c.flights || {};
+        if (flights.groupSize != null && [2, 3, 4, '2', '3', '4'].indexOf(flights.groupSize) === -1) errors.push('group_size_invalid');
+        return errors;
+    }
+
+    function flatten(value, prefix, out) {
+        out = out || {};
+        prefix = prefix || '';
+        if (value == null || typeof value !== 'object') { out[prefix] = value; return out; }
+        if (Array.isArray(value)) {
+            out[prefix] = value.length;
+            value.forEach(function (v, i) { flatten(v, prefix ? prefix + '.' + i : String(i), out); });
+            return out;
+        }
+        Object.keys(value).forEach(function (key) { flatten(value[key], prefix ? prefix + '.' + key : key, out); });
+        return out;
+    }
+    function diff(before, after) {
+        var a = flatten(before || {}), b = flatten(after || {}), keys = {}, changes = [];
+        Object.keys(a).forEach(function (k) { keys[k] = true; });
+        Object.keys(b).forEach(function (k) { keys[k] = true; });
+        Object.keys(keys).sort().forEach(function (k) {
+            if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) changes.push({ path: k, before: a[k], after: b[k] });
+        });
+        return changes;
+    }
+    function audit(event, actor, changes, extra) {
+        var row = {
+            event: str(event) || 'updated',
+            at: Date.now(),
+            by: str(actor && (actor.uid || actor.email || actor.name)) || str(actor) || 'unknown',
+            changes: Array.isArray(changes) ? clone(changes) : [],
+            source: 'tournament-management-v2'
+        };
+        Object.keys(extra || {}).forEach(function (key) { row[key] = clone(extra[key]); });
+        return row;
+    }
+
+    function cloneConfig(tournament, includeParticipants) {
+        var source = clone(tournament || {});
+        var copy = clone(source || {});
+        delete copy._key;
+        delete copy.audit;
+        delete copy.updatedAt;
+        delete copy.updatedBy;
+        delete copy.startedAt;
+        delete copy.finishedAt;
+        delete copy.lifecycleChangedAt;
+        copy.status = STATUS.DRAFT;
+        copy.lifecycleStatus = STATUS.DRAFT;
+        copy.createdAt = Date.now();
+        copy.clonedFrom = source.id || source._key || null;
+        copy.registration = clone(copy.registration || {});
+        if (copy.registration) {
+            copy.registration.openAt = '';
+            copy.registration.closeAt = '';
+        }
+        if (copy.wizard && copy.wizard.format) {
+            copy.wizard.format = clone(copy.wizard.format);
+            (copy.wizard.format.rounds || []).forEach(function (round) { round.date = ''; });
+            copy.wizard.format.regOpen = '';
+            copy.wizard.format.regClose = '';
+        }
+        if (!includeParticipants) {
+            delete copy.registeredPlayers;
+            delete copy.waitlist;
+            delete copy.applications;
+            delete copy.groups;
+            delete copy.flights;
+        }
+        return copy;
+    }
+
+    function normalizeParticipants(value) {
+        var source = value || {};
+        var list = Array.isArray(source) ? source : Object.keys(source).map(function (key) {
+            var p = clone(source[key] || {});
+            p._key = key;
+            return p;
+        });
+        var seen = {};
+        return list.filter(function (p) {
+            var name = str(p.name || [p.lastName, p.firstName].filter(Boolean).join(' ')).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ');
+            var key = str(p.uid || p.id || name);
+            if (!key || seen[key]) return false;
+            seen[key] = true;
+            p.name = name ? str(p.name || [p.lastName, p.firstName].filter(Boolean).join(' ')) : '—';
+            var h = p.handicap != null && p.handicap !== '' ? num(String(p.handicap).replace(',', '.')) : null;
+            p.handicap = h == null || !isFinite(h) ? null : Math.round(h * 10) / 10;
+            p.gender = p.gender === 'women' || p.gender === 'female' || p.gender === 'w' ? 'women' : 'men';
+            p.status = str(p.status).toUpperCase() || 'PENDING';
+            return true;
+        });
+    }
+
+    function courseHoles(course) {
+        var holes = course && course.holes;
+        if (!holes) {
+            holes = [];
+            for (var i = 1; i <= 18; i++) holes.push({ num: i, par: 4, si: i });
+        }
+        if (!Array.isArray(holes)) holes = Object.keys(holes).map(function (key) { return holes[key]; });
+        return holes.map(function (h, i) {
+            return { num: parseInt(h.num, 10) || i + 1, par: num(h.par, 4), si: num(h.si, i + 1) };
+        }).sort(function (a, b) { return a.num - b.num; });
+    }
+    function allocation(handicap, holes) {
+        var out = {}, n = Math.max(0, Math.round(num(handicap)));
+        holes.forEach(function (h) { out[h.num] = 0; });
+        var ordered = holes.slice().sort(function (a, b) { return a.si - b.si; });
+        for (var i = 0; i < n; i++) out[ordered[i % ordered.length].num]++;
+        return out;
+    }
+    function stableford(gross, par, received) {
+        var toPar = gross - received - par;
+        if (toPar <= -3) return 5;
+        if (toPar === -2) return 4;
+        if (toPar === -1) return 3;
+        if (toPar === 0) return 2;
+        if (toPar === 1) return 1;
+        return 0;
+    }
+    function roundStats(player, course) {
+        var holes = courseHoles(course), scores = player && player.scores || {}, hcp = num(player && (player.fieldHcp != null ? player.fieldHcp : player.handicap), 0), alloc = allocation(hcp, holes);
+        var gross = 0, net = 0, points = 0, played = 0, breakdown = [];
+        holes.forEach(function (hole) {
+            var score = parseInt(scores[hole.num], 10);
+            if (!isFinite(score) || score <= 0) return;
+            var received = alloc[hole.num] || 0;
+            gross += score;
+            net += score - received;
+            points += stableford(score, hole.par, received);
+            played++;
+            breakdown.push({ hole: hole.num, par: hole.par, si: hole.si, gross: score, net: score - received, stableford: stableford(score, hole.par, received) });
+        });
+        return { gross: gross, net: net, stableford: points, holes: played, breakdown: breakdown };
+    }
+    function statusRank(status) {
+        return { DQ: 4, WD: 3, DNS: 2, DNF: 1 }[str(status).toUpperCase()] || 0;
+    }
+    function buildLeaderboard(tournament, rounds, course) {
+        var map = {}, t = tournament || {}, rows = [], formatText = JSON.stringify(t.formats || []) + ' ' + JSON.stringify(t.wizard && t.wizard.scoring && t.wizard.scoring.systems || []);
+        var stable = /stableford/i.test(formatText);
+        Object.keys(rounds || {}).forEach(function (rid) {
+            var round = rounds[rid] || {};
+            if (String(round.tournamentId || '') !== String(t._key || t.id || t.tournamentId || '')) return;
+            Object.keys(round.players || {}).forEach(function (pid) {
+                var player = round.players[pid] || {}, key = String(player.uid || pid || player.name || '');
+                if (!key) return;
+                var row = map[key];
+                if (!row) row = map[key] = { key: key, name: player.name || '—', handicap: player.exactHcp != null ? player.exactHcp : player.handicap, status: str(player.status || (round.playerStatuses && round.playerStatuses[pid])).toUpperCase() || 'ACTIVE', gross: 0, net: 0, stableford: 0, holes: 0, rounds: 0, byRound: {}, breakdown: [] };
+                var stats = roundStats(player, course);
+                row.name = row.name === '—' ? (player.name || '—') : row.name;
+                row.gross += stats.gross;
+                row.net += stats.net;
+                row.stableford += stats.stableford;
+                row.holes += stats.holes;
+                row.rounds++;
+                row.byRound[rid] = stats;
+                row.breakdown = row.breakdown.concat(stats.breakdown);
+                if (statusRank(player.status) > statusRank(row.status)) row.status = str(player.status).toUpperCase();
+            });
+        });
+        rows = Object.keys(map).map(function (key) { return map[key]; });
+        rows.sort(function (a, b) {
+            var ar = statusRank(a.status), br = statusRank(b.status);
+            if (ar !== br) return ar - br;
+            if (stable && a.stableford !== b.stableford) return b.stableford - a.stableford;
+            if (!stable && a.net !== b.net) return a.net - b.net;
+            if (a.gross !== b.gross) return a.gross - b.gross;
+            return str(a.name).localeCompare(str(b.name));
+        });
+        var previous = null;
+        rows.forEach(function (row, index) {
+            var metric = stable ? row.stableford : row.net;
+            if (row.status !== 'ACTIVE' && row.status !== 'FINAL') row.position = null;
+            else if (previous && previous.metric === metric) row.position = previous.position;
+            else row.position = index + 1;
+            if (row.position != null) previous = { metric: metric, position: row.position };
+            row.toPar = row.gross - holesPar(courseHoles(course));
+            row.thru = row.holes;
+        });
+        return rows;
+    }
+    function holesPar(holes) { return (holes || []).reduce(function (sum, h) { return sum + num(h.par, 4); }, 0); }
+    function protocolRows(tournament, rounds, course) {
+        return buildLeaderboard(tournament, rounds, course).map(function (row) {
+            return { position: row.position, name: row.name, handicap: row.handicap, gross: row.gross, net: row.net, stableford: row.stableford, total: row.stableford || row.net, thru: row.thru, status: row.status, holes: row.breakdown };
+        });
+    }
+    function csv(rows) {
+        var cols = ['position', 'name', 'handicap', 'gross', 'net', 'stableford', 'total', 'status'];
+        function cell(v) { var s = String(v == null ? '' : v); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+        return '\ufeff' + cols.join(';') + '\n' + (rows || []).map(function (row) { return cols.map(function (key) { return cell(row[key]); }).join(';'); }).join('\n');
+    }
+
+    return {
+        STATUS: STATUS,
+        ROLE_IDS: ROLE_IDS,
+        clone: clone,
+        nowMs: nowMs,
+        registrationConfig: registrationConfig,
+        lifecycleStatus: lifecycleStatus,
+        isPast: isPast,
+        isRegistrationOpen: isRegistrationOpen,
+        classify: classify,
+        legacyStatus: legacyStatus,
+        canTransition: canTransition,
+        transition: transition,
+        validateConfig: validateConfig,
+        flatten: flatten,
+        diff: diff,
+        audit: audit,
+        cloneConfig: cloneConfig,
+        normalizeParticipants: normalizeParticipants,
+        courseHoles: courseHoles,
+        roundStats: roundStats,
+        buildLeaderboard: buildLeaderboard,
+        protocolRows: protocolRows,
+        csv: csv
+    };
+});

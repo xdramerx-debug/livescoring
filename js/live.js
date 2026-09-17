@@ -1620,6 +1620,11 @@ function groupSummarySignature() {
             JSON.stringify(p.markerScores || {}),
             String(p.fieldHcp == null ? '' : p.fieldHcp));
     });
+    // Отметки о завершении карточек и пауза тоже меняют карточку: без них
+    // строка сдавшего игрока продолжала подсвечивать «его текущую лунку»,
+    // пока кто-нибудь другой не введёт счёт.
+    parts.push('fin:' + Object.keys(r.finishedPlayers || {}).sort().join(','));
+    parts.push('st:' + String(r.status || '') + (r.paused ? ':paused' : ''));
     return parts.join('|');
 }
 
@@ -2039,7 +2044,11 @@ function renderGVPlayers(r) {
                 }
             }
             var stats = calcRoundStats(displayScores, p.fieldHcp || 0, p.exactHcp || 0, order);
-            var thruTxt = stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
+            // Только для зрителей: сдавший карточку (в т.ч. досрочно) больше не
+            // «на лунке» — показываем отметку о завершении его раунда.
+            var thruTxt = (typeof playerHoleStatusText === 'function')
+                ? playerHoleStatusText(r, pid, p, stats, order)
+                : (stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—'));
             var pTee = (p && p.tee) || r.tee || 'wh';
             var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
 

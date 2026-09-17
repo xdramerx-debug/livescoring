@@ -179,9 +179,25 @@ function mkSetSaving(on) {
     if (btn) btn.disabled = !!on;
 }
 
+// Игрок, за которого вводит маркер, уже сдал карточку — подтверждение по
+// закрытой карточке не принимается (см. scorer.js).
+function mkTargetClosed() {
+    if (!mkRound || !mkPid) return false;
+    if (typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(mkRound, mkPid)) return true;
+    if (typeof isRoundOpenForScoring === 'function') return !isRoundOpenForScoring(mkRound, Date.now(), mkPid);
+    return false;
+}
+
 function saveMk() {
     // Защита от «пулемётного» нажатия кнопки (см. scorer.js).
     if (mkSaving) return;
+    if (mkTargetClosed()) {
+        var isEnMk = (typeof currentLang !== 'undefined' && currentLang === 'en');
+        if (typeof toast === 'function') toast(isEnMk
+            ? '🔒 This player has already finished the round — the card is closed.'
+            : '🔒 Игрок уже завершил раунд — карточка закрыта.', 'info');
+        return;
+    }
     mkSaving = true;
     mkSetSaving(true);
     mkChanging = true;

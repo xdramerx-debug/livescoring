@@ -3602,6 +3602,9 @@ body.sun-mode .msc-pill.hcp-band-unknown {
 .lwl-my i { font-size: 9px; }
 .lwl-hole { flex: 0 0 auto; font-size: 11.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .lwl-hole i { font-size: 10px; color: var(--gold); margin-right: 4px; }
+/* Игрок завершил свой раунд (в т.ч. досрочно) — он уже не «на лунке». */
+.lwl-hole-done { color: #2ecc71; }
+.lwl-hole-done i { color: #2ecc71; }
 .lwl-score {
     flex: 0 0 auto;
     min-width: 32px;

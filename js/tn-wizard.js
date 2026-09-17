@@ -176,7 +176,8 @@ function tnwSteps() {
                 { key: 'participants.methods', type: 'multi', labelRu: 'Способы регистрации', labelEn: 'Registration methods', options: tnwToDict(C.registrationMethods) },
                 { key: 'participants.fieldsRequired', type: 'multi', labelRu: 'Обязательные поля заявки', labelEn: 'Required entry fields', options: tnwToDict(C.formFieldCatalog) },
                 { key: 'participants.hcpMin', type: 'number', labelRu: 'Гандикап от', labelEn: 'Handicap from' },
-                { key: 'participants.hcpMax', type: 'number', labelRu: 'Гандикап до', labelEn: 'Handicap to' }
+                { key: 'participants.hcpMax', type: 'number', labelRu: 'Гандикап до', labelEn: 'Handicap to' },
+                { key: 'participants.limit', type: 'number', labelRu: 'Лимит участников (0 = без лимита)', labelEn: 'Participant limit (0 = unlimited)', min: 0, max: 5000 }
             ]},
             { titleRu: 'Модерация и оплата', titleEn: 'Moderation & payment', fields: [
                 { key: 'participants.moderation', type: 'select', labelRu: 'Модерация заявок', labelEn: 'Entry moderation', options: { auto: tnL('Автоматически', 'Automatic'), manual: tnL('Вручную', 'Manual') } },
@@ -310,7 +311,7 @@ function tnwDefaultDraft() {
             modifiedTable: TnEngine.utils.deepClone(TN_CONFIG.defaultModifiedStablefordTable),
             hcp: { system: 'whs', allowancePct: 95, capMax: '', teamWeights: '25,20,15,10', customFormula: '' },
             tieBreaks: ['countback', 'last-hole'], maxScoreMode: 'netdb', pacePenalty: '', dqRules: '' },
-        participants: { methods: ['public-form', 'manual'], fieldsRequired: ['fullName', 'gender', 'handicap'], hcpMin: '', hcpMax: '', moderation: 'auto', entryFee: '', paymentInfo: '', waitlist: true, allowTransfers: true, quotas: [] },
+        participants: { methods: ['public-form', 'manual'], fieldsRequired: ['fullName', 'gender', 'handicap'], hcpMin: '', hcpMax: '', limit: 0, moderation: 'manual', entryFee: '', paymentInfo: '', waitlist: true, allowTransfers: true, quotas: [] },
         flights: { auto: true, by: 'handicap', flightSize: 12, groupSize: '4', rePairing: true, scheduleType: 'shotgun', firstTeeTime: '09:00', intervalMin: 10 },
         officials: { list: [], eScoring: true, selfScoring: false, markerConfirm: true },
         prizes: { fund: '', distribution: [{ place: 1, pct: 40 }, { place: 2, pct: 25 }, { place: 3, pct: 15 }], nominations: ['best-gross', 'best-net'], nominationHoles: [], awards: ['trophy', 'medal', 'diploma'], budget: [], sponsors: [], fees: [], promoCodes: [] },
@@ -1039,6 +1040,17 @@ function tnwBuildTournamentPayload(cfg) {
         fromWizard: true,
         wizardVersion: 2,
         courseRef: 'settings/course', // поле — единственное, живёт в настройках
+        lifecycleStatus: (cfg.publish && cfg.publish.status === 'scheduled') ? 'draft' : 'registration',
+        registration: {
+            enabled: true,
+            openAt: cfg.format.regOpen || '',
+            closeAt: cfg.format.regClose || '',
+            limit: Math.max(0, parseInt(cfg.participants && cfg.participants.limit, 10) || 0),
+            waitlist: cfg.participants ? cfg.participants.waitlist !== false : true,
+            approval: cfg.participants && cfg.participants.moderation || 'manual'
+        },
+        protocol: { version: 0, state: 'live', published: false, fixed: false },
+        roles: {},
         wizard: cfg // полная конфигурация мастера (все 10 шагов)
     };
 }

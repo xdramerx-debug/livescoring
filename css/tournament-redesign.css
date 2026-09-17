@@ -44,6 +44,8 @@
 .tn-public-card-actions .btn { min-height:37px; }
 .tn-public-open { flex:1 1 auto; }
 .tn-public-empty { grid-column:1/-1; padding:46px 20px; border:1px dashed rgba(201,168,76,.32); border-radius:16px; color:var(--muted); text-align:center; }
+.tn-public-loading { padding:50px 20px; border:1px dashed rgba(201,168,76,.32); border-radius:16px; color:var(--muted); text-align:center; }
+.tn-public-loading i { display:block; margin-bottom:9px; color:var(--gold); font-size:24px; }
 .tn-public-empty i { display:block; margin-bottom:9px; color:var(--gold); font-size:27px; }
 .tn-back-link { display:inline-flex; align-items:center; gap:8px; margin-bottom:14px; padding:0; border:0; background:none; color:var(--gold); font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
 .tn-detail-hero { position:relative; overflow:hidden; padding:25px; border:1px solid rgba(201,168,76,.32); border-radius:18px; background:linear-gradient(130deg,rgba(24,54,34,.98),rgba(11,28,17,.98)); }

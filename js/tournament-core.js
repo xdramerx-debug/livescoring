@@ -80,15 +80,22 @@
         var t = tournament || {};
         var explicit = str(t.lifecycleStatus || (t.lifecycle && t.lifecycle.status));
         if (explicit === 'published') explicit = STATUS.REGISTRATION;
-        if (PUBLIC_STATUSES.indexOf(explicit) !== -1 || explicit === STATUS.DRAFT) return explicit;
+        // An explicit terminal/live state is authoritative. Registration and
+        // closed states still respect their configured window below so a stale
+        // client cannot keep the public form open forever.
+        if ([STATUS.CANCELLED, STATUS.COMPLETED, STATUS.ACTIVE, STATUS.DRAFT].indexOf(explicit) !== -1) return explicit;
         var legacy = str(t.status);
         if (legacy === STATUS.CANCELLED || legacy === STATUS.COMPLETED || legacy === STATUS.ACTIVE) return legacy;
         if (legacy === STATUS.DRAFT) return STATUS.DRAFT;
         var ts = at == null ? Date.now() : nowMs(at) || Date.now();
         var reg = registrationConfig(t);
         var start = firstDefined([t.startedAt, t.startAt, t.date], '');
+        var end = firstDefined([t.finishedAt, t.endDate, t.date], '');
+        if (explicit === STATUS.REGISTRATION && reg.closeAt && ts > dateEnd(reg.closeAt)) return STATUS.CLOSED;
+        if (explicit === STATUS.CLOSED) return STATUS.CLOSED;
         if (legacy === 'closed') return STATUS.CLOSED;
         if (reg.closeAt && ts > dateEnd(reg.closeAt) && !t.startedAt && legacy !== STATUS.ACTIVE) return STATUS.CLOSED;
+        if (end && dateEnd(end) < ts && legacy === 'upcoming') return STATUS.COMPLETED;
         if (start && ts >= dateStart(start) && legacy === 'upcoming') return STATUS.ACTIVE;
         if (reg.openAt && ts >= dateStart(reg.openAt) && (!reg.closeAt || ts <= dateEnd(reg.closeAt))) return STATUS.REGISTRATION;
         return legacy === 'upcoming' || !legacy ? STATUS.REGISTRATION : STATUS.DRAFT;
@@ -115,7 +122,11 @@
         var status = lifecycleStatus(tournament, at);
         return {
             status: status,
-            upcoming: status === STATUS.REGISTRATION || status === STATUS.CLOSED || status === STATUS.DRAFT,
+            // Drafts are private admin records and must never leak into the
+            // public catalogue. Registration, closed and live events share
+            // the public upcoming/current bucket; completed/cancelled events
+            // are handled by the past view.
+            upcoming: status === STATUS.REGISTRATION || status === STATUS.CLOSED || status === STATUS.ACTIVE,
             registrationOpen: isRegistrationOpen(tournament, at),
             past: isPast(tournament, at)
         };
@@ -160,6 +171,33 @@
         };
     }
 
+    function applyHcpCut(exactHcp, gender, cut) {
+        var raw = exactHcp === '' || exactHcp == null ? 0 : parseFloat(exactHcp);
+        if (!isFinite(raw)) raw = 0;
+        var out = { raw: raw, afterPercent: raw, capped: raw, effective: raw, cappedByMax: false, cutApplied: false };
+        var cfg = cut || {}, eff = raw;
+        if (cfg.enabled) {
+            var pct = parseFloat(cfg.percent);
+            if (!isFinite(pct) || pct <= 0) pct = 100;
+            pct = Math.min(100, pct);
+            if (pct < 100) { eff = Math.round(raw * pct) / 100; out.cutApplied = true; }
+        }
+        out.afterPercent = Math.round(eff * 10) / 10;
+        var maxEnabled = cfg.maxEnabled === undefined || cfg.maxEnabled === null
+            ? (cfg.maxMen !== '' && cfg.maxMen != null) || (cfg.maxWomen !== '' && cfg.maxWomen != null)
+            : cfg.maxEnabled === true;
+        var maxValue = gender === 'women' ? cfg.maxWomen : cfg.maxMen;
+        maxValue = maxValue === '' || maxValue == null ? null : parseFloat(maxValue);
+        if (maxEnabled && isFinite(maxValue) && eff > maxValue) {
+            eff = maxValue;
+            out.cappedByMax = true;
+            out.cutApplied = true;
+        }
+        out.capped = eff;
+        out.effective = Math.round(eff * 10) / 10;
+        return out;
+    }
+
     function validateConfig(config) {
         var c = config || {};
         var errors = [];
@@ -170,9 +208,13 @@
         var participants = c.participants || {};
         if (!str(info.nameRu || info.name)) errors.push('name_required');
         if (!rounds.length || !rounds.some(function (r) { return r && str(r.date); })) errors.push('round_date_required');
+        if (rounds.some(function (r) { return r && str(r.date) && !dateStart(r.date); })) errors.push('round_date_invalid');
         if (!Array.isArray(scoring.systems) || !scoring.systems.length) errors.push('scoring_required');
+        if (format.regOpen && !dateStart(format.regOpen)) errors.push('registration_open_invalid');
+        if (format.regClose && !dateEnd(format.regClose)) errors.push('registration_close_invalid');
         if (format.regOpen && format.regClose && dateStart(format.regOpen) > dateEnd(format.regClose)) errors.push('registration_window_invalid');
         if (participants.hcpMin !== '' && participants.hcpMax !== '' && participants.hcpMin != null && participants.hcpMax != null && num(participants.hcpMin) > num(participants.hcpMax)) errors.push('handicap_range_invalid');
+        if (participants.limit !== '' && participants.limit != null && (!isFinite(parseInt(participants.limit, 10)) || parseInt(participants.limit, 10) < 0 || parseInt(participants.limit, 10) > 5000)) errors.push('participant_limit_invalid');
         var hcp = scoring.hcp || {};
         if (hcp.allowancePct !== '' && hcp.allowancePct != null && (num(hcp.allowancePct) < 0 || num(hcp.allowancePct) > 100)) errors.push('allowance_invalid');
         var dist = c.prizes && c.prizes.distribution;
@@ -213,6 +255,32 @@
         };
         Object.keys(extra || {}).forEach(function (key) { row[key] = clone(extra[key]); });
         return row;
+    }
+
+    function protocolState(tournament) {
+        var source = tournament && tournament.protocol || tournament || {};
+        return {
+            version: Math.max(0, parseInt(source.version, 10) || 0),
+            state: ['live', 'fixed', 'published'].indexOf(str(source.state)) !== -1 ? str(source.state) : 'live',
+            fixed: source.fixed === true,
+            published: source.published === true,
+            updatedAt: source.updatedAt || null,
+            updatedBy: source.updatedBy || null
+        };
+    }
+    function protocolTransition(tournament, target, actor) {
+        var current = protocolState(tournament), to = str(target);
+        if (['live', 'fixed', 'published'].indexOf(to) === -1) return { ok: false, error: 'unknown_protocol_state', from: current.state, to: to };
+        if (to === 'fixed' && current.state === 'published') return { ok: false, error: 'published_is_immutable', from: current.state, to: to };
+        if (to === 'published' && current.state !== 'fixed' && current.state !== 'published') return { ok: false, error: 'fix_before_publish', from: current.state, to: to };
+        var stamp = Date.now(), patch = { version: current.version + (to === 'fixed' ? 1 : 0), state: to, fixed: to === 'fixed' || to === 'published', published: to === 'published', updatedAt: stamp, updatedBy: str(actor && (actor.uid || actor.email || actor.name)) || str(actor) || 'unknown' };
+        if (to === 'fixed') { patch.fixedAt = stamp; patch.fixedBy = patch.updatedBy; }
+        if (to === 'published') { patch.publishedAt = stamp; patch.publishedBy = patch.updatedBy; }
+        return { ok: true, from: current.state, to: to, patch: patch };
+    }
+    function protocolSnapshot(tournament, rows, actor) {
+        var current = protocolState(tournament), next = current.version + 1, by = str(actor && (actor.uid || actor.email || actor.name)) || str(actor) || 'unknown';
+        return { version: next, state: 'fixed', fixed: true, published: false, fixedAt: Date.now(), fixedBy: by, rows: clone(rows || []), source: 'rounds+settings/course' };
     }
 
     function cloneConfig(tournament, includeParticipants) {
@@ -257,12 +325,16 @@
             p._key = key;
             return p;
         });
-        var seen = {};
+        var seen = {}, seenNames = {};
         return list.filter(function (p) {
             var name = str(p.name || [p.lastName, p.firstName].filter(Boolean).join(' ')).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ');
             var key = str(p.uid || p.id || name);
-            if (!key || seen[key]) return false;
+            // A missing UID is common in public applications. Do not create a
+            // second participant record merely because the same person came
+            // from a different import path.
+            if (!key || seen[key] || (name && seenNames[name])) return false;
             seen[key] = true;
+            if (name) seenNames[name] = true;
             p.name = name ? str(p.name || [p.lastName, p.firstName].filter(Boolean).join(' ')) : '—';
             var h = p.handicap != null && p.handicap !== '' ? num(String(p.handicap).replace(',', '.')) : null;
             p.handicap = h == null || !isFinite(h) ? null : Math.round(h * 10) / 10;
@@ -274,11 +346,14 @@
 
     function courseHoles(course) {
         var holes = course && course.holes;
-        if (!holes) {
+        if (!holes || (Array.isArray(holes) && !holes.length)) {
             holes = [];
             for (var i = 1; i <= 18; i++) holes.push({ num: i, par: 4, si: i });
         }
         if (!Array.isArray(holes)) holes = Object.keys(holes).map(function (key) { return holes[key]; });
+        if (!holes.length) {
+            for (var j = 1; j <= 18; j++) holes.push({ num: j, par: 4, si: j });
+        }
         return holes.map(function (h, i) {
             return { num: parseInt(h.num, 10) || i + 1, par: num(h.par, 4), si: num(h.si, i + 1) };
         }).sort(function (a, b) { return a.num - b.num; });
@@ -317,9 +392,35 @@
     function statusRank(status) {
         return { DQ: 4, WD: 3, DNS: 2, DNF: 1 }[str(status).toUpperCase()] || 0;
     }
+    function sumLast(scores, count) {
+        var list = (scores || []).slice(-count);
+        return list.reduce(function (sum, item) { return sum + num(item.value); }, 0);
+    }
+    function tieBreakCompare(aScores, bScores, methods) {
+        var selected = Array.isArray(methods) && methods.length ? methods : ['countback'];
+        for (var i = 0; i < selected.length; i++) {
+            var method = selected[i], result = 0;
+            if (method === 'countback') {
+                [9, 6, 3, 1].some(function (count) {
+                    var a = sumLast(aScores, count), b = sumLast(bScores, count);
+                    if (a !== b) { result = a - b; return true; }
+                    return false;
+                });
+            } else if (method === 'last-hole') result = sumLast(aScores, 1) - sumLast(bScores, 1);
+            else if (method === 'stroke-index') {
+                var aa = (aScores || []).slice().sort(function (x, y) { return num(x.si) - num(y.si); });
+                var bb = (bScores || []).slice().sort(function (x, y) { return num(x.si) - num(y.si); });
+                for (var j = 0; j < Math.min(aa.length, bb.length); j++) {
+                    if (num(aa[j].value) !== num(bb[j].value)) { result = num(aa[j].value) - num(bb[j].value); break; }
+                }
+            }
+            if (result !== 0) return result;
+        }
+        return 0;
+    }
     function buildLeaderboard(tournament, rounds, course) {
         var map = {}, t = tournament || {}, rows = [], formatText = JSON.stringify(t.formats || []) + ' ' + JSON.stringify(t.wizard && t.wizard.scoring && t.wizard.scoring.systems || []);
-        var stable = /stableford/i.test(formatText);
+        var stable = /stableford/i.test(formatText), tieMethods = t.wizard && t.wizard.scoring && t.wizard.scoring.tieBreaks;
         Object.keys(rounds || {}).forEach(function (rid) {
             var round = rounds[rid] || {};
             if (String(round.tournamentId || '') !== String(t._key || t.id || t.tournamentId || '')) return;
@@ -327,7 +428,7 @@
                 var player = round.players[pid] || {}, key = String(player.uid || pid || player.name || '');
                 if (!key) return;
                 var row = map[key];
-                if (!row) row = map[key] = { key: key, name: player.name || '—', handicap: player.exactHcp != null ? player.exactHcp : player.handicap, status: str(player.status || (round.playerStatuses && round.playerStatuses[pid])).toUpperCase() || 'ACTIVE', gross: 0, net: 0, stableford: 0, holes: 0, rounds: 0, byRound: {}, breakdown: [] };
+                if (!row) row = map[key] = { key: key, name: player.name || '—', handicap: player.exactHcp != null ? player.exactHcp : player.handicap, status: str(player.status || (round.playerStatuses && round.playerStatuses[pid])).toUpperCase() || 'ACTIVE', gross: 0, net: 0, stableford: 0, holes: 0, rounds: 0, byRound: {}, breakdown: [], _tieBreak: [] };
                 var stats = roundStats(player, course);
                 row.name = row.name === '—' ? (player.name || '—') : row.name;
                 row.gross += stats.gross;
@@ -337,15 +438,28 @@
                 row.rounds++;
                 row.byRound[rid] = stats;
                 row.breakdown = row.breakdown.concat(stats.breakdown);
+                row._tieBreak = row._tieBreak.concat(stats.breakdown.map(function (hole) {
+                    return { num: hole.hole, par: hole.par, si: hole.si, value: stable ? hole.stableford : (formatText.indexOf('Gross') !== -1 || formatText.indexOf('stroke-gross') !== -1 ? hole.gross : hole.net) };
+                }));
                 if (statusRank(player.status) > statusRank(row.status)) row.status = str(player.status).toUpperCase();
             });
+        });
+        // Explicit DNS/WD/DNF/DQ rows may be present in registration even if
+        // the player never produced a scorecard. They must be visible in the
+        // final protocol, but ordinary pending registrations stay hidden.
+        Object.keys(t.registeredPlayers || {}).forEach(function (pid) {
+            var participant = t.registeredPlayers[pid] || {}, status = str(participant.status).toUpperCase(), key = String(participant.uid || pid);
+            if (!status || ['DNS', 'WD', 'DNF', 'DQ'].indexOf(status) === -1 || map[key] || map[pid]) return;
+            map[key] = { key: key, name: participant.name || '—', handicap: participant.handicap, status: status, gross: 0, net: 0, stableford: 0, holes: 0, rounds: 0, byRound: {}, breakdown: [], _tieBreak: [] };
         });
         rows = Object.keys(map).map(function (key) { return map[key]; });
         rows.sort(function (a, b) {
             var ar = statusRank(a.status), br = statusRank(b.status);
             if (ar !== br) return ar - br;
-            if (stable && a.stableford !== b.stableford) return b.stableford - a.stableford;
-            if (!stable && a.net !== b.net) return a.net - b.net;
+            var aMetric = stable ? a.stableford : a.net, bMetric = stable ? b.stableford : b.net;
+            if (aMetric !== bMetric) return stable ? bMetric - aMetric : aMetric - bMetric;
+            var tie = tieBreakCompare(a._tieBreak, b._tieBreak, tieMethods);
+            if (tie !== 0) return stable ? -tie : tie;
             if (a.gross !== b.gross) return a.gross - b.gross;
             return str(a.name).localeCompare(str(b.name));
         });
@@ -353,23 +467,34 @@
         rows.forEach(function (row, index) {
             var metric = stable ? row.stableford : row.net;
             if (row.status !== 'ACTIVE' && row.status !== 'FINAL') row.position = null;
-            else if (previous && previous.metric === metric) row.position = previous.position;
+            else if (previous && previous.metric === metric && tieBreakCompare(previous.tie, row._tieBreak, tieMethods) === 0) row.position = previous.position;
             else row.position = index + 1;
-            if (row.position != null) previous = { metric: metric, position: row.position };
+            if (row.position != null) previous = { metric: metric, tie: row._tieBreak, position: row.position };
+            row.metric = metric;
             row.toPar = row.gross - holesPar(courseHoles(course));
             row.thru = row.holes;
+            delete row._tieBreak;
         });
         return rows;
     }
     function holesPar(holes) { return (holes || []).reduce(function (sum, h) { return sum + num(h.par, 4); }, 0); }
     function protocolRows(tournament, rounds, course) {
+        var text = JSON.stringify((tournament || {}).formats || []) + ' ' + JSON.stringify(tournament && tournament.wizard && tournament.wizard.scoring && tournament.wizard.scoring.systems || []);
+        var stable = /stableford/i.test(text);
         return buildLeaderboard(tournament, rounds, course).map(function (row) {
-            return { position: row.position, name: row.name, handicap: row.handicap, gross: row.gross, net: row.net, stableford: row.stableford, total: row.stableford || row.net, thru: row.thru, status: row.status, holes: row.breakdown };
+            return { position: row.position, name: row.name, handicap: row.handicap, gross: row.gross, net: row.net, stableford: row.stableford, total: stable ? row.stableford : row.net, thru: row.thru, status: row.status, holes: row.breakdown, metric: row.metric };
         });
     }
     function csv(rows) {
         var cols = ['position', 'name', 'handicap', 'gross', 'net', 'stableford', 'total', 'status'];
-        function cell(v) { var s = String(v == null ? '' : v); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+        function cell(v) {
+            var s = String(v == null ? '' : v);
+            // Prevent formula execution when a player/imported text starts
+            // with a spreadsheet formula marker. Numeric negatives remain
+            // numeric, while arbitrary text receives a harmless apostrophe.
+            if (/^[=+@]/.test(s) || (/^-/.test(s) && !isFinite(Number(s)))) s = "'" + s;
+            return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }
         return '\ufeff' + cols.join(';') + '\n' + (rows || []).map(function (row) { return cols.map(function (key) { return cell(row[key]); }).join(';'); }).join('\n');
     }
 
@@ -387,13 +512,18 @@
         canTransition: canTransition,
         transition: transition,
         validateConfig: validateConfig,
+        applyHcpCut: applyHcpCut,
         flatten: flatten,
         diff: diff,
         audit: audit,
+        protocolState: protocolState,
+        protocolTransition: protocolTransition,
+        protocolSnapshot: protocolSnapshot,
         cloneConfig: cloneConfig,
         normalizeParticipants: normalizeParticipants,
         courseHoles: courseHoles,
         roundStats: roundStats,
+        tieBreakCompare: tieBreakCompare,
         buildLeaderboard: buildLeaderboard,
         protocolRows: protocolRows,
         csv: csv

@@ -22,13 +22,19 @@
         roundsBound: false,
         protocolsBound: false,
         courseBound: false,
-        initialized: false
+        initialized: false,
+        tournamentsLoaded: false
     };
 
     function el(id) { return document.getElementById(id); }
     function esc(value) {
         if (typeof root.escapeHtml === 'function') return root.escapeHtml(value == null ? '' : String(value));
         return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+    }
+    function safeUrl(value) {
+        var s = String(value == null ? '' : value).trim();
+        if (!s || /^(javascript|data|vbscript):/i.test(s)) return '';
+        return /^(https?:\/\/|\/|\.\/|\.\.\/)/i.test(s) ? s : '';
     }
     function lang() { return root.currentLang === 'en' ? 'en' : 'ru'; }
     function ru(ruText, enText) { return lang() === 'en' ? enText : ruText; }
@@ -149,6 +155,7 @@
             state.bound = true;
             bindRealtime('public-tournaments-v2', db.ref('tournaments'), function (snapshot) {
                 state.tournaments = snapshot && snapshot.val ? (snapshot.val() || {}) : {};
+                state.tournamentsLoaded = true;
                 render();
             });
         }
@@ -206,7 +213,7 @@
     }
     function cardHtml(t) {
         var c = classification(t), badge = statusLabel(t, c), formats = tournamentFormats(t), count = rosterCount(t), max = limit(t), full = max > 0 && count >= max;
-        var banner = t.banner || t.image || '';
+        var banner = safeUrl(t.banner || t.image || '');
         var regAction = '';
         if (c.registrationOpen && !full && !isAlreadyApplied(t)) {
             regAction = '<button type="button" class="btn btn-g tn-public-apply" data-tn-action="apply" data-tn-id="' + esc(t._key) + '"><i class="fas fa-user-plus"></i> ' + ru('Подать заявку', 'Apply') + '</button>';
@@ -277,11 +284,17 @@
         var isStable = /stableford/i.test(JSON.stringify(t.formats || []) + JSON.stringify(t.wizard && t.wizard.scoring || {}));
         return '<div class="tn-protocol-actions"><span class="tn-live-indicator"><i class="fas fa-circle"></i> ' + (classification(t).status === 'active' ? ru('LIVE · обновляется автоматически', 'LIVE · updates automatically') : ru('Последняя опубликованная версия', 'Last published version')) + '</span><span class="tn-public-chip">' + (isStable ? 'Stableford' : ru('Stroke Play · Net', 'Stroke Play · Net')) + '</span></div><div class="tn-public-table-wrap"><table class="tn-public-table"><thead><tr><th>#</th><th>' + ru('Игрок', 'Player') + '</th><th>' + ru('Лунки', 'Thru') + '</th><th>Gross</th><th>Net</th><th>Stableford</th><th>' + ru('Статус', 'Status') + '</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + (r.position == null ? '—' : r.position) + '</td><td class="' + (r.holes ? 'tn-live-name' : '') + '">' + esc(r.name) + '</td><td>' + r.thru + '</td><td>' + (r.gross || '—') + '</td><td>' + (r.net || '—') + '</td><td>' + (r.stableford || '—') + '</td><td>' + playerStatus(r) + '</td></tr>'; }).join('') + '</tbody></table></div>';
     }
+    function finalProtocolRows(t) {
+        if (t.protocol && t.protocol.published && Array.isArray(t.protocol.rows)) return t.protocol.rows;
+        var core = getCore();
+        return core ? core.protocolRows(Object.assign({}, t, { _key: t._key }), state.rounds, state.course) : [];
+    }
     function protocolHtml(t) {
-        var core = getCore(), rows = core ? core.protocolRows(Object.assign({}, t, { _key: t._key }), state.rounds, state.course) : [];
-        var pdfUrl = t.protocol && (t.protocol.pdfUrl || t.protocol.url);
+        var rows = finalProtocolRows(t);
+        var pdfUrl = t.protocol && safeUrl(t.protocol.pdfUrl || t.protocol.url);
         if (!rows.length && !pdfUrl) return '<div class="tn-public-empty"><i class="fas fa-file-pdf"></i><div>' + ru('Итоговый протокол ещё не опубликован.', 'Final protocol has not been published yet.') + '</div></div>';
-        return '<div class="tn-protocol-actions">' + (pdfUrl ? '<a class="btn btn-g btn-sm" target="_blank" rel="noopener" href="' + esc(pdfUrl) + '"><i class="fas fa-file-pdf"></i> ' + ru('Скачать PDF', 'Download PDF') + '</a>' : '') + (rows.length ? '<button type="button" class="btn btn-og btn-sm" data-tn-action="print-protocol" data-tn-id="' + esc(t._key) + '"><i class="fas fa-print"></i> ' + ru('Печать / PDF', 'Print / PDF') + '</button><button type="button" class="btn btn-og btn-sm" data-tn-action="csv-protocol" data-tn-id="' + esc(t._key) + '"><i class="fas fa-file-csv"></i> CSV</button>' : '') + '</div>' + (rows.length ? '<div class="tn-public-table-wrap"><table class="tn-public-table"><thead><tr><th>#</th><th>' + ru('Игрок', 'Player') + '</th><th>HCP</th><th>Gross</th><th>Net</th><th>Stableford</th><th>Total</th><th>' + ru('Статус', 'Status') + '</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + (r.position == null ? '—' : r.position) + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.handicap == null ? '—' : r.handicap) + '</td><td>' + r.gross + '</td><td>' + r.net + '</td><td>' + r.stableford + '</td><td>' + r.total + '</td><td>' + (r.status === 'ACTIVE' ? '—' : '<span class="tn-result-status">' + esc(r.status) + '</span>') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '');
+        var versionNote = t.protocol && t.protocol.published ? '<span class="tn-public-chip">v' + esc(t.protocol.version || 1) + ' · ' + ru('зафиксирован', 'fixed') + '</span>' : '';
+        return '<div class="tn-protocol-actions">' + versionNote + (pdfUrl ? '<a class="btn btn-g btn-sm" target="_blank" rel="noopener" href="' + esc(pdfUrl) + '"><i class="fas fa-file-pdf"></i> ' + ru('Скачать PDF', 'Download PDF') + '</a>' : '') + (rows.length ? '<button type="button" class="btn btn-og btn-sm" data-tn-action="print-protocol" data-tn-id="' + esc(t._key) + '"><i class="fas fa-print"></i> ' + ru('Печать / PDF', 'Print / PDF') + '</button><button type="button" class="btn btn-og btn-sm" data-tn-action="csv-protocol" data-tn-id="' + esc(t._key) + '"><i class="fas fa-file-csv"></i> CSV</button>' : '') + '</div>' + (rows.length ? '<div class="tn-public-table-wrap"><table class="tn-public-table"><thead><tr><th>#</th><th>' + ru('Игрок', 'Player') + '</th><th>HCP</th><th>Gross</th><th>Net</th><th>Stableford</th><th>Total</th><th>' + ru('Статус', 'Status') + '</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + (r.position == null ? '—' : r.position) + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.handicap == null ? '—' : r.handicap) + '</td><td>' + r.gross + '</td><td>' + r.net + '</td><td>' + r.stableford + '</td><td>' + r.total + '</td><td>' + (r.status === 'ACTIVE' ? '—' : '<span class="tn-result-status">' + esc(r.status) + '</span>') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '');
     }
     function applicationHtml(t, c) {
         if (!c.registrationOpen) return '<div class="tn-protocol-note"><i class="fas fa-lock"></i> ' + ru('Приём заявок закрыт.', 'Applications are closed.') + '</div>';
@@ -301,7 +314,17 @@
     function renderDetail() {
         var detail = el('tn-public-detail'), catalog = el('tn-public-catalog'), rootNode = el('tn-detail-content'), t = state.tournaments[state.detailId];
         if (!detail || !catalog || !rootNode) return;
-        if (!t) { state.detailId = null; catalog.classList.remove('hidden'); detail.classList.add('hidden'); renderCatalogError(ru('Турнир не найден.', 'Tournament not found.')); return; }
+        if (!t) {
+            // Keep a direct ?id link alive while the first RTDB snapshot is
+            // loading; only clear it after a non-empty snapshot proves that
+            // the requested tournament no longer exists.
+            if (!state.tournamentsLoaded) {
+                catalog.classList.add('hidden'); detail.classList.remove('hidden');
+                rootNode.innerHTML = '<div class="tn-public-loading"><i class="fas fa-spinner fa-spin"></i> ' + ru('Загрузка турнира…', 'Loading tournament…') + '</div>';
+                return;
+            }
+            state.detailId = null; catalog.classList.remove('hidden'); detail.classList.add('hidden'); renderCatalogError(ru('Турнир не найден.', 'Tournament not found.')); return;
+        }
         t._key = state.detailId;
         var c = classification(t), badge = statusLabel(t, c), formats = tournamentFormats(t);
         catalog.classList.add('hidden'); detail.classList.remove('hidden');
@@ -333,7 +356,7 @@
     function printProtocol(id) {
         var t = state.tournaments[id], core = getCore();
         if (!t || !core) return;
-        var rows = core.protocolRows(Object.assign({}, t, { _key: id }), state.rounds, state.course), win = window.open('', '_blank');
+        var rows = finalProtocolRows(t), win = window.open('', '_blank');
         if (!win) { if (typeof root.toast === 'function') root.toast(ru('Разрешите всплывающие окна для PDF.', 'Allow pop-ups for PDF.'), 'error'); return; }
         var body = '<h1>' + esc(t.name || 'Tournament') + '</h1><p>' + esc(formatDate(t.date)) + ' · ' + esc(courseName(t)) + '</p><table><tr><th>#</th><th>Player</th><th>HCP</th><th>Gross</th><th>Net</th><th>Stableford</th><th>Total</th><th>Status</th></tr>' + rows.map(function (r) { return '<tr><td>' + (r.position || '—') + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.handicap == null ? '—' : r.handicap) + '</td><td>' + r.gross + '</td><td>' + r.net + '</td><td>' + r.stableford + '</td><td>' + r.total + '</td><td>' + esc(r.status) + '</td></tr>'; }).join('') + '</table><h2>Hole breakdown</h2>' + rows.map(function (r) { return '<h3>' + esc(r.name) + '</h3><p>' + (r.holes || []).map(function (h) { return h.hole + ': ' + h.gross; }).join(' · ') + '</p>'; }).join('');
         win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + esc(t.name || 'Protocol') + '</title><style>body{font-family:Arial,sans-serif;color:#111;padding:18px;font-size:11px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #aaa;padding:5px;text-align:left}th{background:#e9eddc}@media print{button{display:none}}@page{size:A4 landscape;margin:10mm}</style></head><body><button onclick="window.print()">Print / Save PDF</button>' + body + '</body></html>');
@@ -343,7 +366,7 @@
     function downloadCsv(id) {
         var t = state.tournaments[id], core = getCore();
         if (!t || !core) return;
-        var rows = core.protocolRows(Object.assign({}, t, { _key: id }), state.rounds, state.course), blob = new Blob([core.csv(rows)], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
+        var rows = finalProtocolRows(t), blob = new Blob([core.csv(rows)], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
         a.href = URL.createObjectURL(blob); a.download = (String(t.name || 'tournament').replace(/[^a-zа-я0-9]+/gi, '_') || 'tournament') + '-protocol.csv'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
     }
     function submitApplication(form) {
@@ -355,7 +378,8 @@
         if (name.length < 3 || name.split(' ').length < 2) { if (typeof root.toast === 'function') root.toast(ru('Укажите имя и фамилию.', 'Enter first and last name.'), 'error'); return; }
         if (hcp !== null && (!isFinite(hcp) || hcp < -10 || hcp > 54)) { if (typeof root.toast === 'function') root.toast(ru('Гандикап должен быть от −10 до 54.', 'Handicap must be between −10 and 54.'), 'error'); return; }
         if (isAlreadyApplied(t)) { if (typeof root.toast === 'function') root.toast(ru('Такая заявка уже есть.', 'An application already exists.'), 'info'); return; }
-        var reg = getCore() ? getCore().registrationConfig(t) : { limit: 0, waitlist: true, approval: 'manual' }, count = rosterCount(t), app = { name: name, handicap: hcp, gender: String(data.get('gender') || 'men'), tee: String(data.get('tee') || 'wh'), email: String(data.get('email') || '').trim(), phone: String(data.get('phone') || '').trim(), uid: root.currentUser && root.currentUser.uid || null, status: 'pending', createdAt: Date.now() };
+        var gender = String(data.get('gender') || 'men') === 'women' ? 'women' : 'men', teeRaw = String(data.get('tee') || 'wh').toLowerCase(), tee = ['bk', 'bl', 'wh', 'ye', 'rd'].indexOf(teeRaw) !== -1 ? teeRaw : 'wh';
+        var reg = getCore() ? getCore().registrationConfig(t) : { limit: 0, waitlist: true, approval: 'manual' }, count = rosterCount(t), app = { name: name, handicap: hcp, gender: gender, tee: tee, email: String(data.get('email') || '').trim().slice(0, 160), phone: String(data.get('phone') || '').trim().slice(0, 32), uid: root.currentUser && root.currentUser.uid || null, status: 'pending', createdAt: Date.now() };
         var shouldAuto = reg.approval === 'auto' && (!reg.limit || count < reg.limit), applicationsRef = db.ref('tournaments/' + id + '/applications').push();
         var appId = applicationsRef.key;
         if (!appId) return;

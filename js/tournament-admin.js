@@ -34,6 +34,15 @@
     function actor() { return root.currentUserData || root.currentUser || { uid: 'admin' }; }
     function actorLabel() { var a = actor(); return a.name || a.email || a.uid || 'admin'; }
     function hasAccess() { return typeof root.hasAdminPanelAccess !== 'function' || root.hasAdminPanelAccess(); }
+    function serverAdmin() {
+        if (typeof root.isFirebaseAdmin === 'function' && root.isFirebaseAdmin()) return true;
+        return !!(root.currentUser && root.currentUserData && root.currentUserData.role === 'admin');
+    }
+    function assertWrite() {
+        if (serverAdmin()) return true;
+        toast(tr('Для записи нужен аккаунт Firebase с ролью администратора. Мастер-пароль не заменяет серверные права.', 'A Firebase account with the administrator role is required for writes. The master password is not a server permission.'), 'error');
+        return false;
+    }
     function entries() { return Object.keys(manager.tournaments || {}).map(function (key) { var t = manager.tournaments[key] || {}; t._key = key; return t; }); }
     function dateText(value) { if (typeof root.fmtDate === 'function') { try { return root.fmtDate(typeof root.tnDateTs === 'function' ? root.tnDateTs(value) : value); } catch (e) {} } return String(value || '—'); }
     function statusOf(t) { return core ? core.lifecycleStatus(t) : (t.lifecycleStatus || t.status || 'draft'); }
@@ -65,7 +74,7 @@
         var database = db();
         if (!database || manager.bound) return;
         manager.bound = true;
-        var callback = function (snapshot) { manager.tournaments = snapshot && snapshot.val ? (snapshot.val() || {}) : {}; if (manager.panel === 'list') renderManager(); };
+        var callback = function (snapshot) { manager.tournaments = snapshot && snapshot.val ? (snapshot.val() || {}) : {}; if (manager.panel === 'list') renderManager(); else if (manager.selectedId) renderSelected(); };
         if (typeof root.bindRealtimeValue === 'function') root.bindRealtimeValue('tournament-admin-v2', database.ref('tournaments'), callback);
         else database.ref('tournaments').on('value', callback);
     }
@@ -140,6 +149,7 @@
     root.tnwRenderWizard = function () { baseRenderWizard(); renderEditorBanner(); };
 
     function saveEdited() {
+        if (!assertWrite()) return;
         var id = root.tnWiz && root.tnWiz.editTournamentId, t = manager.tournaments[id], cfg = root.tnWiz && root.tnWiz.draft, database = db();
         if (!id || !t || !cfg || !database) return;
         var errors = (typeof root.tnwValidate === 'function' ? root.tnwValidate() : []).concat(core ? core.validateConfig(cfg) : []);
@@ -163,12 +173,14 @@
         root.tnWiz.editTournamentId = id; root.tnWiz.editOriginal = clone(t); root.tnWiz.draft = defaultConfig(t); root.tnWiz.draftKey = 'edit_' + id; root.tnWiz.step = 0; root.tnWiz.dirty = false; manager.panel = 'editor'; root.tnwShowSubTab('new-create'); root.tnwRenderWizard();
     }
     function cloneTournament(id) {
+        if (!assertWrite()) return;
         var t = manager.tournaments[id], database = db(); if (!t || !database || !core) return;
         var include = window.confirm(tr('Скопировать подтверждённых участников и заявки вместе с настройками?', 'Copy confirmed participants and applications too?'));
         var copy = core.cloneConfig(t, include); copy.name = (t.name || tr('Турнир', 'Tournament')) + ' · ' + tr('копия', 'copy'); copy.createdBy = actorLabel(); copy.updatedBy = actorLabel(); copy.createdAt = now();
         database.ref('tournaments').push(copy).then(function (ref) { return database.ref('tournaments/' + ref.key + '/audit').push(core.audit('cloned', actor(), [], { tournamentId: ref.key, clonedFrom: id, includeParticipants: include })).then(function () { toast('✅ ' + tr('Клон создан в черновиках', 'Clone created as draft'), 'success'); }); }).catch(function (error) { toast('❌ ' + (error && error.message || error), 'error'); });
     }
     function transition(id, target) {
+        if (!assertWrite()) return;
         var t = manager.tournaments[id], database = db(); if (!t || !database || !core) return;
         var result = core.transition(t, target);
         if (!result.ok) { toast(tr('Недопустимый переход статуса.', 'Invalid status transition.'), 'error'); return; }
@@ -193,28 +205,33 @@
         return '<div class="tna-panel"><h3><i class="fas fa-user-check"></i> ' + tr('Заявки и участники', 'Applications & participants') + '</h3><p class="tna-panel-sub">' + tr('Excel/CSV, клубный список и ручное добавление приводят данные к тому же registeredPlayers. Заявки остаются в applications для аудита.', 'Excel/CSV, club roster and manual entry use the same registeredPlayers path. Applications remain in applications for audit.') + '</p><div class="tna-two-col"><form id="tna-manual-form" class="tna-panel" data-tna-id="' + esc(t._key) + '"><h3>' + tr('Добавить вручную', 'Add manually') + '</h3><div class="form-group"><label>' + tr('ФИО', 'Full name') + '</label><input class="form-input" name="name" required maxlength="120"></div><div class="form-row"><div class="form-group"><label>HCP</label><input class="form-input" name="handicap" type="number" min="-10" max="54" step="0.1"></div><div class="form-group"><label>' + tr('Пол', 'Gender') + '</label><select class="form-input" name="gender"><option value="men">' + tr('Мужчины', 'Men') + '</option><option value="women">' + tr('Девушки', 'Women') + '</option></select></div></div><button class="btn btn-g btn-sm" type="submit"><i class="fas fa-user-plus"></i> ' + tr('Добавить', 'Add') + '</button></form><div class="tna-panel"><h3>' + tr('Импорт и база клуба', 'Import & club roster') + '</h3><div class="tna-import-box"><input id="tna-excel-input" type="file" accept=".xlsx,.xls,.csv" data-tna-id="' + esc(t._key) + '"><small>' + tr('До 500 строк. Колонки: ФИО/Name, HCP/гандикап, Gender/Пол, Tee/ТИ.', 'Up to 500 rows. Columns: Name, HCP, Gender, Tee.') + '</small></div><div class="tna-mini-actions" style="margin-top:9px;">' + actionButton('club', t._key, tr('Добавить игроков клуба', 'Add club players'), 'fa-users') + '</div><div id="tna-import-status" class="tna-panel-sub" style="margin-top:8px;"></div></div></div><h3 style="margin-top:16px;">' + tr('Входящие заявки', 'Incoming applications') + ' · ' + rows.length + '</h3>' + (rows.length ? '<div class="tna-table-wrap"><table class="tna-table"><thead><tr><th>' + tr('Игрок', 'Player') + '</th><th>HCP</th><th>' + tr('Статус', 'Status') + '</th><th>' + tr('Действия', 'Actions') + '</th></tr></thead><tbody>' + rows.map(function (r) { var status = r.status || 'pending'; return '<tr><td><b>' + esc(r.name || '—') + '</b><br><small>' + esc(r.email || r.phone || '') + '</small></td><td>' + esc(r.handicap == null ? '—' : r.handicap) + '</td><td>' + esc(status) + '</td><td>' + (String(status).toLowerCase() === 'approved' ? '<span class="tna-status completed">' + tr('Подтверждён', 'Approved') + '</span>' : actionButton('approve', t._key + '|' + (r._id || ''), tr('Подтвердить', 'Approve'), 'fa-check', 'btn-g') + actionButton('reject', t._key + '|' + (r._id || ''), tr('Отклонить', 'Reject'), 'fa-xmark', 'btn-r')) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="tna-role-empty">' + tr('Новых заявок нет.', 'No incoming applications.') + '</div>') + '</div>';
     }
     function addManual(event) {
-        event.preventDefault(); var form = event.target, id = form.getAttribute('data-tna-id'), database = db(); if (!database) return;
+        event.preventDefault(); if (!assertWrite()) return; var form = event.target, id = form.getAttribute('data-tna-id'), database = db(); if (!database) return;
         var fd = new FormData(form), name = String(fd.get('name') || '').replace(/\s+/g, ' ').trim(), hcp = parseFloat(String(fd.get('handicap') || '').replace(',', '.'));
         if (name.length < 3 || (isFinite(hcp) && (hcp < -10 || hcp > 54))) { toast(tr('Проверьте ФИО и HCP.', 'Check name and handicap.'), 'error'); return; }
         var key = 'manual_' + now() + '_' + Math.random().toString(36).slice(2, 7), p = { name: name, handicap: isFinite(hcp) ? Math.round(hcp * 10) / 10 : null, gender: fd.get('gender') || 'men', tee: 'wh', addedAt: now(), addedBy: actorLabel() };
         database.ref('tournaments/' + id + '/registeredPlayers/' + key).set(p).then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit('participant_added', actor(), [], { tournamentId: id, participant: name })); }).then(function () { toast('✅ ' + tr('Участник добавлен', 'Participant added'), 'success'); manager.selectedId = id; manager.panel = 'applications'; renderSelected(); }).catch(function (error) { toast('❌ ' + (error && error.message || error), 'error'); });
     }
     function approveApplication(id, appId, approve) {
+        if (!assertWrite()) return;
         var t = manager.tournaments[id], database = db(); if (!t || !database) return;
         var apps = t.applications || {}, waits = t.waitlist || {}, app = apps[appId] || waits[appId]; if (!app) { toast(tr('Заявка уже обработана.', 'Application already processed.'), 'info'); return; }
-        var key = app.uid || ('app_' + appId), updates = {};
+        var key = app.uid || ('app_' + appId), waitKey = appId;
+        Object.keys(waits).some(function (candidate) { if (candidate === appId || (app.uid && candidate === app.uid) || (waits[candidate] && app.uid && waits[candidate].uid === app.uid)) { waitKey = candidate; return true; } return false; });
+        var updates = {};
         updates['tournaments/' + id + '/applications/' + appId + '/status'] = approve ? 'approved' : 'rejected';
         updates['tournaments/' + id + '/applications/' + appId + '/reviewedAt'] = now();
         updates['tournaments/' + id + '/applications/' + appId + '/reviewedBy'] = actorLabel();
-        updates['tournaments/' + id + '/waitlist/' + appId] = null;
+        updates['tournaments/' + id + '/waitlist/' + waitKey] = null;
         if (approve) updates['tournaments/' + id + '/registeredPlayers/' + key] = app;
         return database.ref().update(updates).then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit(approve ? 'application_approved' : 'application_rejected', actor(), [], { tournamentId: id, applicationId: appId })); }).then(function () { toast('✅ ' + (approve ? tr('Заявка подтверждена', 'Application approved') : tr('Заявка отклонена', 'Application rejected')), 'success'); renderSelected(); }).catch(function (error) { toast('❌ ' + (error && error.message || error), 'error'); });
     }
     function addClubPlayers(id) {
+        if (!assertWrite()) return;
         var database = db(); if (!database) return;
         database.ref('users').once('value').then(function (snapshot) { var users = snapshot.val() || {}, updates = {}, added = 0; Object.keys(users).forEach(function (uid) { var user = users[uid] || {}; if (user.role && user.role !== 'player') return; if (!user.name) return; updates['tournaments/' + id + '/registeredPlayers/' + uid] = { uid: uid, name: user.name, handicap: user.handicap == null ? null : user.handicap, gender: user.gender || 'men', tee: 'wh', addedAt: now(), addedBy: actorLabel(), source: 'club' }; added++; }); if (!added) throw new Error(tr('В базе клуба нет игроков.', 'No club players found.')); return database.ref().update(updates).then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit('club_roster_imported', actor(), [], { tournamentId: id, count: added })); }).then(function () { toast('✅ ' + tr('Добавлено игроков: ', 'Players added: ') + added, 'success'); renderSelected(); }); }).catch(function (error) { toast('❌ ' + (error && error.message || error), 'error'); });
     }
     function importExcel(input) {
+        if (!assertWrite()) return;
         var database = db(), id = input.getAttribute('data-tna-id'), status = el('tna-import-status'); if (!database || !input.files || !input.files[0]) return;
         if (status) status.textContent = tr('Читаю файл…', 'Reading file…');
         var file = input.files[0];
@@ -234,16 +251,43 @@
         var roles = t.roles || t.tournamentRoles || {}, list = Array.isArray(roles) ? roles : Object.keys(roles).map(function (key) { var r = clone(roles[key] || {}); r._key = key; return r; });
         return '<div class="tna-panel"><h3><i class="fas fa-user-shield"></i> ' + tr('Роли турнира', 'Tournament roles') + '</h3><p class="tna-panel-sub">' + tr('Судья, секретарь, маршал и наблюдатель имеют отдельное назначение и попадают в журнал.', 'Judge, secretary, marshal and observer assignments are recorded in the audit log.') + '</p><form id="tna-role-form" data-tna-id="' + esc(t._key) + '"><div class="tna-role-row"><div class="form-group tna-role-name"><label>' + tr('Имя / UID', 'Name / UID') + '</label><input class="form-input" name="name" required></div><div class="form-group"><label>' + tr('Роль', 'Role') + '</label><select class="form-input" name="role"><option value="judge">' + tr('Судья', 'Judge') + '</option><option value="secretary">' + tr('Секретарь', 'Secretary') + '</option><option value="marshal">' + tr('Маршал', 'Marshal') + '</option><option value="observer">' + tr('Наблюдатель', 'Observer') + '</option></select></div><div class="form-group"><label>' + tr('Зона / заметка', 'Assignment') + '</label><input class="form-input" name="assignment"></div><button class="btn btn-g btn-sm" type="submit"><i class="fas fa-plus"></i></button></div></form>' + (list.length ? '<div class="tna-table-wrap"><table class="tna-table"><thead><tr><th>' + tr('Кто', 'Who') + '</th><th>' + tr('Роль', 'Role') + '</th><th>' + tr('Назначение', 'Assignment') + '</th><th></th></tr></thead><tbody>' + list.map(function (r) { return '<tr><td>' + esc(r.name || r.uid || '—') + '</td><td>' + esc(r.role || '—') + '</td><td>' + esc(r.assignment || '—') + '</td><td><button type="button" class="btn btn-r btn-sm" data-tna-action="remove-role" data-tna-id="' + esc(t._key + '|' + (r._key || r.uid || r.name)) + '"><i class="fas fa-trash"></i></button></td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="tna-role-empty">' + tr('Роли ещё не назначены.', 'No roles assigned yet.') + '</div>') + '</div>';
     }
-    function saveRole(event) { event.preventDefault(); var form = event.target, id = form.getAttribute('data-tna-id'), database = db(); if (!database) return; var fd = new FormData(form), key = 'role_' + now() + '_' + Math.random().toString(36).slice(2, 6), value = { name: String(fd.get('name') || '').trim(), role: fd.get('role') || 'observer', assignment: String(fd.get('assignment') || '').trim(), addedAt: now(), addedBy: actorLabel() }; if (!value.name) return; database.ref('tournaments/' + id + '/roles/' + key).set(value).then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit('role_assigned', actor(), [], { tournamentId: id, role: value.role, assignee: value.name })); }).then(function () { renderSelected(); }); }
-    function removeRole(id, roleKey) { var database = db(); if (!database) return; database.ref('tournaments/' + id + '/roles/' + roleKey).remove().then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit('role_removed', actor(), [], { tournamentId: id, role: roleKey })); }).then(function () { renderSelected(); }); }
+    function saveRole(event) { event.preventDefault(); if (!assertWrite()) return; var form = event.target, id = form.getAttribute('data-tna-id'), database = db(); if (!database) return; var fd = new FormData(form), key = 'role_' + now() + '_' + Math.random().toString(36).slice(2, 6), value = { name: String(fd.get('name') || '').trim(), role: fd.get('role') || 'observer', assignment: String(fd.get('assignment') || '').trim(), addedAt: now(), addedBy: actorLabel() }; if (!value.name) return; database.ref('tournaments/' + id + '/roles/' + key).set(value).then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit('role_assigned', actor(), [], { tournamentId: id, role: value.role, assignee: value.name })); }).then(function () { renderSelected(); }); }
+    function removeRole(id, roleKey) { if (!assertWrite()) return; var database = db(); if (!database) return; database.ref('tournaments/' + id + '/roles/' + roleKey).remove().then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit('role_removed', actor(), [], { tournamentId: id, role: roleKey })); }).then(function () { renderSelected(); }); }
 
     function auditHtml(t) {
         var audit = t.audit || {}, list = Object.keys(audit).map(function (key) { var a = audit[key] || {}; a._key = key; return a; }).sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
         return '<div class="tna-panel"><h3><i class="fas fa-clock-rotate-left"></i> ' + tr('Журнал изменений', 'Audit log') + '</h3>' + (list.length ? '<div class="tna-audit-list">' + list.map(function (a) { var changes = listValue(a.changes); return '<div class="tna-audit-entry"><b>' + esc(a.event || 'updated') + '</b><small>' + esc(a.by || '—') + ' · ' + esc(a.at ? new Date(a.at).toLocaleString() : '—') + '</small>' + (changes.slice(0, 5).map(function (change) { return '<span class="tna-audit-change">' + esc(change.path || '') + ': ' + esc(change.before == null ? '∅' : change.before) + ' → ' + esc(change.after == null ? '∅' : change.after) + '</span>'; }).join('')) + '</div>'; }).join('') + '</div>' : '<div class="tna-role-empty">' + tr('Изменений пока нет.', 'No changes recorded yet.') + '</div>') + '</div>';
     }
+    function protocolPanelHtml(t) {
+        var state = core ? core.protocolState(t) : { version: 0, state: 'live', fixed: false, published: false }, controls = '';
+        if (state.state === 'live') controls = actionButton('protocol-state', t._key + '|fixed', tr('Зафиксировать результаты', 'Fix results'), 'fa-lock', 'btn-g');
+        else if (state.state === 'fixed') controls = actionButton('protocol-state', t._key + '|published', tr('Опубликовать протокол', 'Publish protocol'), 'fa-paper-plane', 'btn-g');
+        else controls = '<span class="tna-status completed"><i class="fas fa-lock"></i> ' + tr('Публичная версия зафиксирована', 'Public version is fixed') + '</span>';
+        return '<div class="tna-panel"><h3><i class="fas fa-file-signature"></i> ' + tr('Финальный протокол', 'Final protocol') + '</h3><p class="tna-panel-sub">' + tr('Снимок результатов по лункам создаётся из существующих rounds + settings/course. Версия неизменяема после публикации; экспорт CSV открывается в Excel.', 'The per-hole result snapshot uses existing rounds + settings/course. Published versions are immutable; CSV opens in Excel.') + '</p><div class="tna-toolbar"><span class="tna-status ' + (state.state === 'published' ? 'completed' : state.state === 'fixed' ? 'closed' : 'active') + '">' + esc(state.state) + '</span><span class="tn-public-chip">v' + state.version + '</span><div class="tna-actions">' + controls + actionButton('protocol', t._key, tr('Открыть протокол', 'Open protocol'), 'fa-file-pdf', 'btn-og') + (t.protocol && t.protocol.rows && t.protocol.rows.length ? actionButton('protocol-export', t._key, 'CSV / Excel', 'fa-file-csv', 'btn-og') : '') + '</div></div></div>';
+    }
+    function finalizeProtocol(id, target) {
+        if (!assertWrite()) return;
+        var t = manager.tournaments[id], database = db(); if (!t || !database || !core) return;
+        if (target === 'fixed') {
+            Promise.all([database.ref('rounds').once('value'), database.ref('settings/course').once('value')]).then(function (result) {
+                var all = result[0].val() || {}, rounds = {}; Object.keys(all).forEach(function (key) { if (all[key] && String(all[key].tournamentId || '') === String(id)) rounds[key] = all[key]; });
+                var course = result[1].val() || {}, rows = core.protocolRows(Object.assign({}, t, { _key: id }), rounds, course), snapshot = core.protocolSnapshot(t, rows, actor());
+                return database.ref('tournaments/' + id + '/protocol').set(snapshot).then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit('protocol_fixed', actor(), [], { tournamentId: id, version: snapshot.version, rows: rows.length })); });
+            }).then(function () { toast('✅ ' + tr('Результаты зафиксированы', 'Results fixed'), 'success'); renderSelected(); }).catch(function (error) { toast('❌ ' + (error && error.message || error), 'error'); });
+        } else {
+            var result = core.protocolTransition(t, target, actor());
+            if (!result.ok) { toast(tr('Сначала зафиксируйте протокол.', 'Fix the protocol before publishing.'), 'error'); return; }
+            var patch = merge(t.protocol || {}, result.patch);
+            database.ref('tournaments/' + id + '/protocol').set(patch).then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit('protocol_published', actor(), [], { tournamentId: id, version: patch.version })); }).then(function () { toast('✅ ' + tr('Протокол опубликован', 'Protocol published'), 'success'); renderSelected(); }).catch(function (error) { toast('❌ ' + (error && error.message || error), 'error'); });
+        }
+    }
+    function exportProtocolCsv(id) {
+        var t = manager.tournaments[id], rows = t && t.protocol && t.protocol.rows; if (!rows || !rows.length) return;
+        var blob = new Blob([core.csv(rows)], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (String(t.name || 'tournament').replace(/[^a-zа-я0-9]+/gi, '_') || 'tournament') + '-protocol-v' + (t.protocol.version || 1) + '.csv'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    }
     function renderSelected() {
         var rootNode = el('tn-manage-root'), t = manager.tournaments[manager.selectedId]; if (!rootNode || !t) return;
-        rootNode.innerHTML = '<div class="tna-shell"><div class="tna-head"><div><div class="tn-public-eyebrow">TOURNAMENT OPERATIONS</div><h2><i class="fas fa-sliders"></i> ' + esc(t.name || tr('Турнир', 'Tournament')) + '</h2><p>' + tr('Операции турнира, заявки, роли и контрольный журнал.', 'Tournament operations, applications, roles and audit.') + '</p></div><button type="button" class="btn btn-og btn-sm" data-tna-action="back"><i class="fas fa-arrow-left"></i> ' + tr('К списку турниров', 'Back to tournaments') + '</button></div><div class="tna-editor"><div class="tna-two-col">' + applicationsHtml(t) + rolesHtml(t) + '</div>' + auditHtml(t) + '</div></div>';
+        rootNode.innerHTML = '<div class="tna-shell"><div class="tna-head"><div><div class="tn-public-eyebrow">TOURNAMENT OPERATIONS</div><h2><i class="fas fa-sliders"></i> ' + esc(t.name || tr('Турнир', 'Tournament')) + '</h2><p>' + tr('Операции турнира, заявки, роли и контрольный журнал.', 'Tournament operations, applications, roles and audit.') + '</p></div><button type="button" class="btn btn-og btn-sm" data-tna-action="back"><i class="fas fa-arrow-left"></i> ' + tr('К списку турниров', 'Back to tournaments') + '</button></div><div class="tna-editor">' + protocolPanelHtml(t) + '<div class="tna-two-col">' + applicationsHtml(t) + rolesHtml(t) + '</div>' + auditHtml(t) + '</div></div>';
     }
     function openPanel(id, panel) { manager.selectedId = id; manager.panel = panel; renderSelected(); }
 
@@ -255,6 +299,8 @@
         else if (action === 'applications') openPanel(id, 'applications');
         else if (action === 'audit') openPanel(id, 'audit');
         else if (action === 'protocol') openProtocol(id);
+        else if (action === 'protocol-state') finalizeProtocol(parts[0], parts[1]);
+        else if (action === 'protocol-export') exportProtocolCsv(id);
         else if (action === 'start') openStart(id);
         else if (action === 'status') { var t = manager.tournaments[id], s = statusOf(t), target = s === 'draft' || s === 'closed' ? 'registration' : s === 'registration' ? (node.textContent.indexOf('Начать') !== -1 || node.textContent.indexOf('Start') !== -1 ? 'active' : 'closed') : s === 'active' ? 'completed' : s === 'completed' ? 'active' : 'cancelled'; transition(id, target); }
         else if (action === 'back') { manager.panel = 'list'; renderManager(); }

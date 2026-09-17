@@ -18,6 +18,7 @@ check(!C.transition({ lifecycleStatus: 'draft' }, 'completed').ok, 'invalid tran
 eq(C.validateConfig({}), ['name_required', 'round_date_required', 'scoring_required'], 'empty config validation');
 var cfg = { info: { nameRu: 'Cup' }, format: { rounds: [{ date: '2099-09-20' }], regOpen: '2099-01-01', regClose: '2099-09-19' }, scoring: { systems: ['stroke-net'], hcp: { allowancePct: 95 } }, participants: { hcpMin: 0, hcpMax: 36 } };
 eq(C.validateConfig(cfg), [], 'valid config');
+check(C.validateConfig({ info: { nameRu: 'Cup' }, format: { rounds: [{ date: 'not-a-date' }] }, scoring: { systems: ['stroke-net'] }, participants: { limit: 5001 } }).indexOf('round_date_invalid') !== -1, 'invalid date and participant limit are rejected');
 var changes = C.diff({ format: { regOpen: '' } }, { format: { regOpen: '2099-01-01' } });
 check(changes.length === 1 && changes[0].path === 'format.regOpen', 'config diff records path');
 var audit = C.audit('updated', { uid: 'admin-1' }, changes, { tournamentId: 't1' });
@@ -37,7 +38,20 @@ check(board[0].name === 'Иванов Иван' && board[0].holes === 2, 'leader
 check(board[0].position === 1 && board[1].position === 2, 'leaderboard assigns positions');
 var rows = C.protocolRows({ _key: 't1', formats: ['Stableford'] }, rounds, { holes: [{ num: 1, par: 4, si: 1 }, { num: 2, par: 4, si: 2 }] });
 check(rows[0].stableford != null && Array.isArray(rows[0].holes), 'protocol row has totals and hole breakdown');
+check(C.applyHcpCut(18.4, 'men', { enabled: true, percent: 80, maxEnabled: true, maxMen: 12 }).effective === 12, 'handicap cut applies percent then maximum');
+var tieRounds = { r1: { tournamentId: 'tie', players: {
+    x: { uid: 'x', name: 'X', fieldHcp: 0, scores: { 1: 4, 2: 4, 3: 3 } },
+    y: { uid: 'y', name: 'Y', fieldHcp: 0, scores: { 1: 3, 2: 4, 3: 4 } }
+} } };
+var tieBoard = C.buildLeaderboard({ _key: 'tie', formats: ['Stroke Play (Net)'], wizard: { scoring: { tieBreaks: ['countback'] } } }, tieRounds, { holes: [{ num: 1, par: 4, si: 1 }, { num: 2, par: 4, si: 2 }, { num: 3, par: 4, si: 3 }] });
+check(tieBoard[0].name === 'X' && tieBoard[0].position === 1 && tieBoard[1].position === 2, 'countback resolves equal totals');
+var statusBoard = C.buildLeaderboard({ _key: 'status', formats: ['Stroke Play (Net)'], registeredPlayers: { dns: { uid: 'dns', name: 'DNS Player', status: 'DNS' } } }, { r1: { tournamentId: 'status', players: {} } }, { holes: [{ num: 1, par: 4, si: 1 }] });
+check(statusBoard.length === 1 && statusBoard[0].status === 'DNS' && statusBoard[0].position === null, 'protocol retains DNS status without score');
 check(C.csv(rows).indexOf('\ufeffposition;name;') === 0 && C.csv(rows).indexOf('Иванов') !== -1, 'CSV has Excel BOM and player');
+var protocolFixed = C.protocolSnapshot({ protocol: { version: 2, state: 'live' } }, rows, { uid: 'admin-1' });
+check(protocolFixed.version === 3 && protocolFixed.state === 'fixed' && protocolFixed.rows.length === rows.length, 'protocol snapshot increments version');
+check(C.protocolTransition({ protocol: protocolFixed }, 'published', { uid: 'admin-1' }).ok, 'fixed protocol can be published');
+check(!C.protocolTransition({ protocol: { state: 'live' } }, 'published', { uid: 'admin-1' }).ok, 'live protocol cannot skip fixation');
 
 console.log('\n' + total + ' checks, failures: ' + failures);
 process.exit(failures ? 1 : 0);

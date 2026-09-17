@@ -226,7 +226,14 @@ function renderHole() {
     var holeEl = scGet('sc-hole'); if (holeEl) holeEl.textContent = scHole;
     var parEl = scGet('sc-par'); if (parEl) parEl.textContent = par;
     var distEl = scGet('sc-dist'); if (distEl) distEl.textContent = (typeof holeDist === 'function' ? holeDist(scHole, playerTee) : '—') || '—';
-    var dlEl = scGet('sc-dl'); if (dlEl) dlEl.textContent = (typeof holeDeadline === 'function' && typeof fmtTime === 'function' ? fmtTime(holeDeadline(scRound.startTime, scRound.startHole, scHole)) : '—');
+    var dlEl = scGet('sc-dl');
+    if (dlEl && typeof fmtTime === 'function') {
+        // Дедлайн с учётом пауз раунда (пауза продлевает план, а не «съедается»)
+        var dlTs = (typeof roundHoleDeadlineTs === 'function')
+            ? roundHoleDeadlineTs(scRound, scHole)
+            : (typeof holeDeadline === 'function' ? holeDeadline(scRound.startTime, scRound.startHole, scHole) : null);
+        dlEl.textContent = dlTs ? fmtTime(dlTs) : '—';
+    }
     if (!scRound || !scRound.players || !scRound.players[scPid]) return;
     var scores = scRound.players[scPid].scores || {};
     var saved = parseInt(scores[scHole]) || 0;
@@ -276,8 +283,26 @@ function scSetSaving(on) {
     if (btn) btn.disabled = !!on;
 }
 
+// Карточка игрока закрыта (он завершил раунд, в т.ч. досрочно) — ввод по нему
+// больше не принимается: иначе «доигрывающая» группа получала правки в уже
+// сданную карточку, и результат переставал совпадать с протоколом.
+function scTargetClosed() {
+    if (!scRound || !scPid) return false;
+    if (typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(scRound, scPid)) return true;
+    if (typeof isRoundOpenForScoring === 'function') return !isRoundOpenForScoring(scRound, Date.now(), scPid);
+    return false;
+}
+
+function scClosedMessage() {
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    if (typeof toast === 'function') toast(isEn
+        ? '🔒 This player has already finished the round — the card is closed.'
+        : '🔒 Игрок уже завершил раунд — карточка закрыта.', 'info');
+}
+
 function saveSc() {
     if (scScore < 1) { if (typeof toast === 'function' && typeof t === 'function') toast(t('msg_score_min'), 'error'); return; }
+    if (scTargetClosed()) { scClosedMessage(); return; }
     // Защита от «пулемётного» нажатия кнопки: пока запись в базу не завершилась,
     // повторные вызовы игнорируем. Раньше каждый тап запускал свой saveSc →
     // несколько параллельных set() и перерисовок, что вешало страницу на телефоне.
@@ -319,7 +344,7 @@ function saveSc() {
             if (typeof triggerVictoryConfetti === 'function') triggerVictoryConfetti();
         }
         var noticeEl = scGet('sc-notice');
-        if (noticeEl && typeof buildTimingNotice === 'function') noticeEl.innerHTML = buildTimingNotice(scRound.startTime, scRound.startHole, savedHole);
+        if (noticeEl && typeof buildTimingNotice === 'function') noticeEl.innerHTML = buildTimingNotice(scRound.startTime, scRound.startHole, savedHole, scRound);
         var order = (typeof getRoundOrder === 'function' ? getRoundOrder(scRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);
         var idx = order.indexOf(savedHole);
         if (idx >= 0 && idx < order.length - 1) { scHole = order[idx + 1]; scScore = 0; }

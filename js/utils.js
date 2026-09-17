@@ -178,9 +178,20 @@ function fmtDate(ts){
     }
 }
 function fmtTime(ts){
-    if(!ts)return'—';
+    if(ts===null||ts===undefined||ts==='')return'—';
+    // Время «как есть» («07:25», «7:25:00») — так хранятся старты турнирных
+    // групп; раньше уходит в Invalid Date и на экране появлялось «NaN:NaN».
+    var hm=/^(\d{1,2}):(\d{2})(:\d{2})?$/.exec(String(ts).trim());
+    if(hm){
+        var hh=parseInt(hm[1],10),mm=parseInt(hm[2],10);
+        if(hh>=0&&hh<24&&mm>=0&&mm<60)return(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+    }
+    // Секунды вместо миллисекунд (старые записи) — приводим к миллисекундам.
+    var value=(typeof normalizeTimestampMs==='function')?normalizeTimestampMs(ts):Number(ts);
+    if(!value||!isFinite(value))return'—';
     try {
-        var d=new Date(ts),h=d.getHours(),m=d.getMinutes();
+        var d=new Date(value),h=d.getHours(),m=d.getMinutes();
+        if(isNaN(h)||isNaN(m))return'—';
         return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
     } catch(e){ return '—'; }
 }
@@ -1855,7 +1866,9 @@ function loadMyActiveRounds(targetId) {
             var teePill = fmtRoundTeePills(r);
             var resume = getRoundResumeState(id, r);
             var pace = resume.metrics;
-            var paceState = paceStatus(pace.overallDelay);
+            var paceState = resume.closed
+                ? { key: 'done', status: 'done', color: '#2ecc71', label: (currentLang === 'en' ? 'Finished' : 'Завершён') }
+                : paceStatus(pace.overallDelay);
             var progressPercent = resume.holeCount ? Math.min(100, Math.round((resume.holesPlayed / resume.holeCount) * 100)) : 0;
             var playersCount = Object.keys(r.players || {}).length;
             var progressLabel = currentLang === 'en' ? 'Progress' : 'Прогресс';
@@ -1868,7 +1881,7 @@ function loadMyActiveRounds(targetId) {
             html += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
                     t('start') + ': ' + fmtTime(r.startTime) + ' · ' + t('hole') + ': №' + (r.startHole || 1) + ' · ' + t('tee_select') + ': ' + teePill + ' · ' + t('player') + ': ' + playersCount + '</div>';
             html += '<div class="resume-round-meta">' +
-                    '<span><b>' + currentHoleLabel + ':</b> №' + resume.currentHole + '</span>' +
+                    '<span><b>' + currentHoleLabel + ':</b> ' + (resume.closed ? escapeHtml(resume.statusText) : '№' + resume.currentHole) + '</span>' +
                     '<span><b>' + progressLabel + ':</b> ' + resume.holesPlayed + '/' + resume.holeCount + '</span>' +
                     '<span style="color:' + paceState.color + '"><b>' + paceLabel + ':</b> ' + formatPaceDelta(pace.overallDelay) + '</span>' +
                     '</div>';
@@ -2031,14 +2044,14 @@ function pestovoRenderFioResumeListHtml(matches, opts) {
         var modeIcon = r.mode === 'solo' ? '<i class=\"fas fa-user\"></i> ' + (typeof t === 'function' ? t('solo_round') : 'Solo') : '<i class=\"fas fa-users\"></i> ' + (typeof t === 'function' ? t('group_round') : 'Group');
         var startDate = r.startTime ? new Date(r.startTime) : null;
         var dateStr = startDate ? (startDate.toLocaleDateString() + ' ' + fmtTime(r.startTime)) : '—';
-        var curHole = resume.currentHole || r.startHole || 1;
+        var curHole = resume.closed ? null : (resume.currentHole || r.startHole || 1);
         var played = resume.holesPlayed || 0;
         var total = resume.holeCount || getRoundHoleCount(r) || 18;
         var playerName = item.player && item.player.name ? item.player.name : (item.inputFio || '');
         html += '<div class=\"list-item\" style=\"padding:12px;flex-wrap:wrap;gap:8px;\">' +
             '<div style=\"flex:1;min-width:180px;\">' +
             '<div style=\"font-weight:800;color:var(--white);\"><i class=\"fas fa-circle-play\" style=\"color:var(--gold);\"></i> ' + escapeHtml(playerName) + ' · ' + modeIcon + '</div>' +
-            '<div style=\"font-size:12px;color:var(--muted);margin-top:4px;\">' + (currentLang === 'en' ? 'Start' : 'Старт') + ': ' + dateStr + ' · ' + (currentLang === 'en' ? 'Hole' : 'Лунка') + ': №' + curHole + ' · ' + played + '/' + total + '</div>' +
+            '<div style=\"font-size:12px;color:var(--muted);margin-top:4px;\">' + (currentLang === 'en' ? 'Start' : 'Старт') + ': ' + dateStr + ' · ' + (currentLang === 'en' ? 'Hole' : 'Лунка') + ': ' + (curHole ? '№' + curHole : escapeHtml(resume.statusText || (currentLang === 'en' ? 'finished' : 'завершён'))) + ' · ' + played + '/' + total + '</div>' +
             (r.tournamentName ? '<div style=\"font-size:11px;color:var(--gold);margin-top:2px;\"><i class=\"fas fa-trophy\"></i> ' + escapeHtml(r.tournamentName) + '</div>' : '') +
             '</div>' +
             '<div style=\"display:flex;flex-direction:column;gap:6px;align-self:center;\">' +
@@ -3144,54 +3157,203 @@ function buildVerificationReportHtml(v) {
 // ==========================================
 // ТАЙМИНГИ И ПАУЗА РАУНДА
 // ==========================================
-// Возвращает общее время паузы раунда в миллисекундах (завершённые паузы +
-// текущая активная пауза, если раунд находится на паузе прямо сейчас).
+// Правила, которые делают тайминги устойчивыми к битым данным:
+//   1) любой timestamp приводится к миллисекундам (normalizeTimestampMs
+//      различает секунды и миллисекунды) и проверяется на разумность;
+//   2) пауза не может увести старт раунда в будущее и не может превышать
+//      время, которое раунд уже идёт;
+//   3) на время паузы темп «заморожен»: фактическое время отсчитывается от
+//      момента постановки на паузу, а не от «сейчас»;
+//   4) сдвигают дедлайны только те паузы, которые закончились раньше дедлайна;
+//   5) ни одна показанная людям дельта не может быть абсурдной: значения вне
+//      ±MAX_PACE_MINUTES считаются недостоверными и не выводятся.
+// Без этих проверок одна битая запись паузы (сбитые часы устройства,
+// секунды вместо миллисекунд, задвоенное возобновление) превращала «Темп
+// игры» в «запас 2193923839 минут» на раунде, который начался три минуты
+// назад.
+var PACE_MIN_VALID_TS = 946684800000;            // 2000-01-01 — раньше не бывает
+var PACE_MAX_FUTURE_MS = 24 * 60 * 60 * 1000;    // старт максимум на сутки вперёд
+var MAX_PACE_MINUTES = 24 * 60;                  // крупнее суток — данные битые
+var MAX_PAUSE_INTERVAL_MS = 12 * 60 * 60 * 1000; // пауза длиннее суток — мусор
+
+// timestamp → миллисекунды с проверкой разумности (0 — если данные битые).
+function paceSafeTs(value, minTs, maxTs) {
+    var ms = 0;
+    try {
+        ms = (typeof normalizeTimestampMs === 'function')
+            ? normalizeTimestampMs(value)
+            : (parseInt(value, 10) || 0);
+    } catch (e) { ms = 0; }
+    if (!ms || !isFinite(ms) || ms <= 0 || ms < PACE_MIN_VALID_TS) return 0;
+    if (minTs && ms < minTs) return 0;
+    if (maxTs && ms > maxTs) return 0;
+    return ms;
+}
+
+// Сколько миллисекунд паузы пришлось на промежуток до момента ts
+// («игровое» время: реальное время минус простой).
+function pauseMsBefore(intervals, ts) {
+    if (!intervals || !intervals.length || !ts) return 0;
+    var sum = 0;
+    for (var i = 0; i < intervals.length; i++) {
+        var iv = intervals[i];
+        if (!iv || !(iv.to > iv.from) || iv.from > ts) continue;
+        sum += Math.min(iv.to, ts) - iv.from;
+    }
+    return sum;
+}
+
+// Обратное преобразование: «игровому» моменту соответствует реальный момент,
+// сдвинутый на все паузы, закончившиеся до него.
+function playingTsToReal(playingTs, intervals) {
+    if (!playingTs) return 0;
+    var t = playingTs;
+    for (var i = 0; i < 4; i++) {
+        var next = playingTs + pauseMsBefore(intervals, t);
+        if (next === t) break;
+        t = next;
+    }
+    return t;
+}
+
+// Интервалы пауз раунда [{from,to}] в миллисекундах: из pauseHistory, а для
+// старых раундов без истории — из открытой паузы (pausedAt). Пересечения
+// склеиваются, заведомо невозможные интервалы отбрасываются: так задвоенное
+// возобновление или «пауза» длиной в тысячелетие не уводят тайминги в минус.
+function getRoundPauseIntervals(r, nowTs) {
+    var out = [];
+    if (!r || typeof r !== 'object') return out;
+    var now = paceSafeTs(nowTs, 0, 0) || Date.now();
+    var raw = [];
+    function push(from, to, open) {
+        if (!from || from > now) return;
+        var end;
+        if (to && to <= now) end = to;
+        else if (open) end = now;      // пауза идёт прямо сейчас
+        else return;                   // закрытая пауза без валидного resumedAt — данных нет
+        if (end - from <= 0 || end - from > MAX_PAUSE_INTERVAL_MS) return;
+        raw.push({ from: from, to: end });
+    }
+    var hist = Array.isArray(r.pauseHistory) ? r.pauseHistory : [];
+    hist.forEach(function(p) {
+        if (!p) return;
+        push(paceSafeTs(p.pausedAt, 0, now), paceSafeTs(p.resumedAt, 0, now), !!r.paused && !p.resumedAt);
+    });
+    if (r.paused && !histHasOpenPause(hist, r, now)) push(paceSafeTs(r.pausedAt, 0, now), 0, true);
+    if (!raw.length) return out;
+    raw.sort(function(a, b) { return a.from - b.from; });
+    out.push({ from: raw[0].from, to: raw[0].to });
+    for (var i = 1; i < raw.length; i++) {
+        var last = out[out.length - 1], cur = raw[i];
+        if (cur.from <= last.to) { if (cur.to > last.to) last.to = cur.to; continue; }
+        out.push(cur);
+    }
+    return out;
+}
+
+// Момент фактического старта раунда (без пауз) в миллисекундах. Строка
+// «09:00», секунды вместо миллисекунд и мусор из старых записей больше не
+// превращаются в «тайминг»: вместо абсурдного числа получаем «нет данных».
+function roundRawStartTs(r) {
+    if (!r || typeof r !== 'object') return 0;
+    var maxTs = Date.now() + PACE_MAX_FUTURE_MS;
+    var st = paceSafeTs(r.teeOffMs, 0, maxTs) ||
+             paceSafeTs(r.startTimeMs, 0, maxTs) ||
+             paceSafeTs(r.scheduledStart, 0, maxTs);
+    if (!st && r.startTime && typeof pestovoStartTsFromParts === 'function' && (r.date || r.createdAt)) {
+        try {
+            var d = r.date || new Date(r.createdAt).toISOString().slice(0, 10);
+            st = paceSafeTs(pestovoStartTsFromParts(d, r.startTime), 0, maxTs);
+        } catch (e) { st = 0; }
+    }
+    if (!st) st = paceSafeTs(r.startTime, 0, maxTs);
+    return st;
+}
+
+// Есть ли в истории незакрытая пауза, совпадающая с текущей (pausedAt):
+// иначе открытую паузу посчитают дважды — иhistory, и полем pausedAt.
+function histHasOpenPause(hist, r, now) {
+    if (!Array.isArray(hist) || !hist.length) return false;
+    var last = hist[hist.length - 1];
+    if (!last || last.resumedAt) return false;
+    var pausedAt = paceSafeTs(r && r.pausedAt, 0, now);
+    var from = paceSafeTs(last.pausedAt, 0, now);
+    return !!from && !!pausedAt && from === pausedAt;
+}
+
+// Общее время паузы раунда в миллисекундах (завершённые паузы + текущая
+// активная). Накопленное при возобновлении поле и история пауз сверяются
+// через максимум: ни задвоенное возобновление, ни раунд без pauseHistory не
+// искажают тайминги. Сумма ограничена временем жизни раунда — пауза не может
+// длиться дольше, чем раунд идёт, поэтому битый pausedAt (секунды вместо
+// миллисекунд, сбойные часы) не уводит дедлайны в тысячелетнее будущее.
 function getRoundTotalPauseMs(r, nowTs) {
     if (!r || typeof r !== 'object') return 0;
-    var total = parseInt(r.totalPausedMs, 10) || parseInt(r.totalPauseMs, 10) || 0;
-    if (r.paused && r.pausedAt) {
-        var now = parseInt(nowTs, 10) || Date.now();
-        var curPause = Math.max(0, now - (parseInt(r.pausedAt, 10) || now));
-        total += curPause;
+    var now = paceSafeTs(nowTs, 0, 0) || Date.now();
+    var stored = Math.max(0, parseInt(r.totalPausedMs, 10) || parseInt(r.totalPauseMs, 10) || 0);
+    var intervals = getRoundPauseIntervals(r, now);
+    var fromHistory = intervals.reduce(function(acc, iv) { return acc + (iv.to - iv.from); }, 0);
+    var total = Math.max(stored, fromHistory);
+    var start = roundRawStartTs(r);
+    if (start) {
+        var budget = Math.max(0, now - start);
+        if (total > budget) total = budget;
+    }
+    return total > 0 ? total : 0;
+}
+
+// Эффективное время старта раунда с учётом всех пауз: на время паузы все
+// плановые дедлайны по лункам отодвигаются ровно на её длительность.
+// Сдвиг ограничен моментом «сейчас» — эффективный старт не может оказаться в
+// будущем, иначе дедлайны уезжают на тысячи лет и вместо темпа показывается
+// абсурдный «запас».
+function roundEffectiveStartTime(r, nowTs) {
+    if (!r || typeof r !== 'object') return 0;
+    var st = roundRawStartTs(r);
+    if (!st) return 0;
+    var now = paceSafeTs(nowTs, 0, 0) || Date.now();
+    var eff = st + getRoundTotalPauseMs(r, now);
+    var limit = now > st ? now : st;
+    return eff > limit ? limit : eff;
+}
+
+// Суммарный норматив (минуты) от стартовой лунки до целевой включительно.
+function holeExpectedMinutes(startHole, targetHole) {
+    var target = parseInt(targetHole, 10);
+    var h = parseInt(startHole, 10) || 1;
+    var total = 0, c = 0;
+    while (c < 18) {
+        total += holeTiming(h);
+        if (h === target) break;
+        h = h >= 18 ? 1 : h + 1;
+        c++;
     }
     return total;
 }
 
-// Эффективное время старта раунда с учётом всех пауз:
-// когда раунд ставится на паузу, эффективный старт сдвигается вперёд,
-// благодаря чему все плановые дедлайны по лункам отодвигаются ровно на время паузы.
-function roundEffectiveStartTime(r, nowTs) {
-    if (!r || typeof r !== 'object') return 0;
-    var st = parseInt(r.teeOffMs, 10) || parseInt(r.startTimeMs, 10) || parseInt(r.scheduledStart, 10) || 0;
-    if (!st && r.startTime && typeof pestovoStartTsFromParts === 'function' && (r.date || r.createdAt)) {
-        try {
-            var d = r.date || new Date(r.createdAt).toISOString().slice(0, 10);
-            st = pestovoStartTsFromParts(d, r.startTime);
-        } catch (e) {}
-    }
-    if (!st) st = parseInt(r.startTime, 10) || 0;
-    if (!st) return 0;
-    return st + getRoundTotalPauseMs(r, nowTs);
-}
-
 function holeDeadline(startTime, startHole, targetHole, pauseMs) {
-    var st = 0;
+    var st = 0, sh = startHole;
     if (startTime && typeof startTime === 'object') {
         st = roundEffectiveStartTime(startTime);
-        startHole = startHole || startTime.startHole;
+        sh = startHole || startTime.startHole;
     } else {
-        st = parseInt(startTime, 10) || 0;
-        if (pauseMs) st += parseInt(pauseMs, 10) || 0;
+        st = paceSafeTs(startTime, 0, 0);
+        if (st) st += Math.max(0, parseInt(pauseMs, 10) || 0);
     }
     if (!st) return null;
-    var tVal = 0, h = parseInt(startHole) || 1, c = 0;
-    while (c < 18) {
-        tVal += holeTiming(h);
-        if (h === targetHole) break;
-        h = h >= 18 ? 1 : h + 1;
-        c++;
-    }
-    return st + tVal * 60000;
+    var dl = st + holeExpectedMinutes(sh, targetHole) * 60000;
+    return isFinite(dl) ? dl : null;
+}
+
+// Плановый дедлайн лунки конкретного раунда (реальное время, паузы учтены).
+// Единая точка для всех страниц: соло, групповой ввод, маркер, админка.
+function roundHoleDeadlineTs(r, hole, nowTs) {
+    if (!r || typeof r !== 'object') return null;
+    var start = roundRawStartTs(r);
+    if (!start) return null;
+    var minutes = holeExpectedMinutes(r.startHole, hole);
+    var dl = playingTsToReal(start + minutes * 60000, getRoundPauseIntervals(r, nowTs));
+    return dl && isFinite(dl) ? dl : null;
 }
 
 function checkTiming(startTime, startHole, holeNum, roundOrPauseMs) {
@@ -3199,25 +3361,25 @@ function checkTiming(startTime, startHole, holeNum, roundOrPauseMs) {
     var pauseReason = '';
     var totalPauseMs = 0;
     var effStartTime = 0;
+    var roundObj = null;
 
-    if (startTime && typeof startTime === 'object') {
-        var r = startTime;
-        effStartTime = roundEffectiveStartTime(r);
-        startHole = startHole || r.startHole;
-        isPaused = !!r.paused;
-        pauseReason = r.pauseReason || '';
-        totalPauseMs = getRoundTotalPauseMs(r);
-    } else if (roundOrPauseMs && typeof roundOrPauseMs === 'object') {
-        effStartTime = roundEffectiveStartTime(roundOrPauseMs);
-        isPaused = !!roundOrPauseMs.paused;
-        pauseReason = roundOrPauseMs.pauseReason || '';
-        totalPauseMs = getRoundTotalPauseMs(roundOrPauseMs);
+    if (startTime && typeof startTime === 'object') roundObj = startTime;
+    else if (roundOrPauseMs && typeof roundOrPauseMs === 'object') roundObj = roundOrPauseMs;
+
+    if (roundObj) {
+        startHole = startHole || roundObj.startHole;
+        isPaused = !!roundObj.paused;
+        pauseReason = roundObj.pauseReason || '';
+        totalPauseMs = getRoundTotalPauseMs(roundObj);
+        effStartTime = roundEffectiveStartTime(roundObj);
     } else {
-        var pMs = typeof roundOrPauseMs === 'number' ? roundOrPauseMs : 0;
-        effStartTime = (parseInt(startTime, 10) || 0) + pMs;
+        var pMs = typeof roundOrPauseMs === 'number' ? Math.max(0, roundOrPauseMs) : 0;
+        effStartTime = (paceSafeTs(startTime, 0, 0) || 0) + pMs;
     }
 
-    var dl = holeDeadline(effStartTime, startHole, holeNum);
+    var dl = roundObj
+        ? roundHoleDeadlineTs(roundObj, holeNum)
+        : holeDeadline(effStartTime, startHole, holeNum);
     if (!dl) return { status: 'ok', diff: 0, deadline: null, isPaused: false };
 
     if (isPaused) {
@@ -3231,7 +3393,15 @@ function checkTiming(startTime, startHole, holeNum, roundOrPauseMs) {
         };
     }
 
-    var now = Date.now(), d = Math.round((now - dl) / 60000);
+    var now = Date.now();
+    // Раунд ещё не начался (отложенный старт) — сравнивать не с чем.
+    if (roundObj) {
+        var rawStart = roundRawStartTs(roundObj);
+        if (rawStart && now < rawStart) return { status: 'pending', diff: 0, deadline: dl, isPaused: false };
+    }
+    var d = Math.round((now - dl) / 60000);
+    if (!isFinite(d)) return { status: 'ok', diff: 0, deadline: dl, isPaused: false };
+    if (Math.abs(d) > MAX_PACE_MINUTES) return { status: 'unknown', diff: 0, deadline: dl, isPaused: false };
     if (d > 5) return { status: 'late', diff: d, deadline: dl, isPaused: false };
     if (d > 0) return { status: 'warning', diff: d, deadline: dl, isPaused: false };
     return { status: 'ok', diff: d, deadline: dl, isPaused: false };
@@ -3240,6 +3410,9 @@ function checkTiming(startTime, startHole, holeNum, roundOrPauseMs) {
 function buildTimingNotice(st, sh, ch, round) {
     var c = checkTiming(st, sh, ch, round);
     if (!c.deadline && !c.isPaused) return '';
+    // Раунд ещё не стартовал или данные о таймингах недостоверны — баннер не
+    // показываем: «в графике» без данных и абсурдные цифры только путают.
+    if (!c.isPaused && (c.status === 'pending' || c.status === 'unknown')) return '';
     var isEn = currentLang === 'en';
     if (c.isPaused) {
         var pReason = c.pauseReason ? (' · ' + escapeHtml(c.pauseReason)) : '';
@@ -3249,32 +3422,39 @@ function buildTimingNotice(st, sh, ch, round) {
             t('hole') + ' ' + ch + ': ' + (isEn ? 'timing frozen · pause ' : 'тайминги остановлены · пауза ') + durStr + '</div></div>';
     }
     var dl = fmtTime(c.deadline), nw = fmtTime(Date.now());
-    if (c.status === 'late') return '<div class="timing-alert timing-late"><i class="fas fa-exclamation-triangle"></i><div><strong>' + (currentLang === 'en' ? 'Pace Lag!' : 'Отставание!') + '</strong><br>' + t('hole') + ' ' + ch + ': deadline ' + dl + ', now ' + nw + ' (' + c.diff + ' min)</div></div>';
-    if (c.status === 'warning') return '<div class="timing-alert timing-warn"><i class="fas fa-clock"></i><div><strong>' + (currentLang === 'en' ? 'Deadline Approaching' : 'Близко к дедлайну') + '</strong><br>' + t('hole') + ' ' + ch + ': ' + dl + '</div></div>';
+    var minWord = isEn ? ' min' : ' мин';
+    if (c.status === 'late') return '<div class="timing-alert timing-late"><i class="fas fa-exclamation-triangle"></i><div><strong>' + (isEn ? 'Pace Lag!' : 'Отставание!') + '</strong><br>' + t('hole') + ' ' + ch + ': ' + (isEn ? 'deadline ' : 'дедлайн ') + dl + (isEn ? ', now ' : ', сейчас ') + nw + ' (+' + c.diff + minWord + ')</div></div>';
+    if (c.status === 'warning') return '<div class="timing-alert timing-warn"><i class="fas fa-clock"></i><div><strong>' + (isEn ? 'Deadline Approaching' : 'Близко к дедлайну') + '</strong><br>' + t('hole') + ' ' + ch + ': ' + dl + '</div></div>';
     var a = Math.abs(c.diff);
-    return '<div class="timing-alert timing-ok"><i class="fas fa-check-circle"></i><div>' + t('hole') + ' ' + ch + ': ' + (currentLang === 'en' ? 'On Pace' : 'в графике') + (a > 0 ? ' (' + (currentLang === 'en' ? 'buffer ' : 'запас ') + a + ' min)' : '') + '</div></div>';
+    return '<div class="timing-alert timing-ok"><i class="fas fa-check-circle"></i><div>' + t('hole') + ' ' + ch + ': ' + (isEn ? 'On Pace' : 'в графике') + (a > 0 ? ' (' + (isEn ? 'buffer ' : 'запас ') + a + minWord + ')' : '') + '</div></div>';
 }
 function buildTimingTable(st, sh, holeRange) {
     if (!st) return '';
+    // План по лункам строим только по достоверной дате старта: «0» и мусорные
+    // timestamp'ы (год вне 1970..2100) иначе превращаются в «369696 часов».
+    var startTs = parseInt(st, 10) || 0;
+    if (!isFinite(startTs) || startTs <= 0) return '';
+    var startYear = new Date(startTs).getFullYear();
+    if (startYear < 1970 || startYear > 2100) return '';
     var startHole = parseInt(sh) || 1;
     var order = roundHoles(startHole, holeRange);
     var count = order.length;
     var lastHole = order[order.length - 1];
 
-    var dlFinish = holeDeadline(st, startHole, lastHole);
-    var totalMin = Math.round((dlFinish - st) / 60000);
+    var dlFinish = holeDeadline(startTs, startHole, lastHole);
+    var totalMin = Math.round((dlFinish - startTs) / 60000);
     var hrs = Math.floor(totalMin / 60);
     var mins = totalMin % 60;
     var durationStr = hrs + (currentLang === 'en' ? 'h ' : 'ч ') + (mins < 10 ? '0' : '') + mins + (currentLang === 'en' ? 'm' : 'мин');
 
-    var startStr = fmtTime(st);
+    var startStr = fmtTime(startTs);
     var finishStr = fmtTime(dlFinish);
 
     var html = '<div class="timing-summary-card">';
     html += '<div class="timing-pills-row">';
     html += '  <div class="timing-pill"><span class="tp-lbl">' + (currentLang === 'en' ? 'Start' : 'Старт') + '</span><span class="tp-val">' + startStr + '</span></div>';
     if (count === 18) {
-        var dl9 = holeDeadline(st, startHole, order[8]);
+        var dl9 = holeDeadline(startTs, startHole, order[8]);
         html += '  <div class="timing-pill"><span class="tp-lbl">' + (currentLang === 'en' ? 'Turn (9h)' : '9 лунок') + '</span><span class="tp-val">' + fmtTime(dl9) + '</span></div>';
     }
     html += '  <div class="timing-pill tp-finish"><span class="tp-lbl">' + (currentLang === 'en' ? (count === 18 ? 'Finish (18h)' : 'Finish') : 'Финиш') + '</span><span class="tp-val">' + finishStr + '</span></div>';
@@ -3285,7 +3465,7 @@ function buildTimingTable(st, sh, holeRange) {
     html += '<div class="timing-grid">';
 
     order.forEach(function(h) {
-        var dl = holeDeadline(st, startHole, h);
+        var dl = holeDeadline(startTs, startHole, h);
         var tMin = holeTiming(h);
         html += '<div class="timing-grid-item">';
         html += '  <span class="tg-hole">' + (currentLang === 'en' ? 'Hole ' : 'Л.') + h + ' <small>(P' + holePar(h) + '·' + tMin + 'm)</small></span>';
@@ -3300,7 +3480,14 @@ function buildTimingTable(st, sh, holeRange) {
 // ==========================================
 // ТЕМП ИГРЫ / ТАЙМИНГИ ПРОХОЖДЕНИЯ ЛУНОК
 // ==========================================
+// Статус темпа игры. Принимает либо дельту в минутах, либо объект раунда.
+// Абсурдные значения (битые таймстампы) в «отставание» не превращаются:
+// вместо них состояние «данных нет».
 function paceStatus(delayMinutes, isPaused) {
+    var pendingState = {
+        key: 'pending', status: 'pending', color: '#9eb5a5',
+        label: t('pace_pending'), text: t('pace_pending')
+    };
     if (typeof delayMinutes === 'object' && delayMinutes !== null) {
         var r = delayMinutes;
         isPaused = !!r.paused;
@@ -3310,10 +3497,9 @@ function paceStatus(delayMinutes, isPaused) {
     if (isPaused || delayMinutes === 'paused') {
         return { key: 'paused', status: 'paused', color: '#f39c12', label: currentLang === 'en' ? 'Paused' : 'На паузе', text: currentLang === 'en' ? '⏸ Paused' : '⏸ На паузе' };
     }
-    if (delayMinutes === null || delayMinutes === undefined || isNaN(delayMinutes)) {
-        return { key: 'pending', status: 'pending', color: '#9eb5a5', label: t('pace_pending'), text: t('pace_pending') };
-    }
+    if (delayMinutes === null || delayMinutes === undefined || isNaN(delayMinutes)) return pendingState;
     var delay = Math.round(parseFloat(delayMinutes) || 0);
+    if (!isFinite(delay) || Math.abs(delay) > MAX_PACE_MINUTES) return pendingState;
     if (delay <= 2) return { key: 'ok', status: 'ok', color: '#2ecc71', label: t('pace_on_time'), text: t('pace_on_time') };
     if (delay <= 5) return { key: 'warning', status: 'warning', color: '#f39c12', label: t('pace_warning'), text: t('pace_warning') };
     if (delay <= 10) return { key: 'late', status: 'late', color: '#e67e22', label: t('pace_late'), text: t('pace_late') };
@@ -3323,6 +3509,7 @@ function paceStatus(delayMinutes, isPaused) {
 function formatPaceMinutes(minutes) {
     if (minutes === null || minutes === undefined || isNaN(minutes)) return '—';
     var value = Math.max(0, Math.round(parseFloat(minutes) || 0));
+    if (!isFinite(value) || value > MAX_PACE_MINUTES) return '—';
     if (value < 1) return currentLang === 'en' ? '<1 min' : '<1 мин';
     if (value >= 60) {
         var hours = Math.floor(value / 60);
@@ -3332,14 +3519,18 @@ function formatPaceMinutes(minutes) {
     return value + (currentLang === 'en' ? ' min' : ' мин');
 }
 
+// Дельта темпа: «+7 мин» (отставание) / «запас 5 мин» / «в графике».
+// Числа вне разумных границ не показываются вовсе — «нет данных» честнее,
+// чем «запас 2193923839 мин».
 function formatPaceDelta(minutes) {
+    var isEn = currentLang === 'en';
     if (minutes === null || minutes === undefined || isNaN(minutes)) return '—';
     var value = Math.round(parseFloat(minutes) || 0);
-    if (value > 0) return '+' + value + (currentLang === 'en' ? ' min' : ' мин');
-    if (value < 0) return (currentLang === 'en' ? 'buffer ' : 'запас ') + Math.abs(value) + (currentLang === 'en' ? ' min' : ' мин');
-    return currentLang === 'en' ? 'on time' : 'в графике';
+    if (!isFinite(value) || Math.abs(value) > MAX_PACE_MINUTES) return isEn ? 'no data' : 'нет данных';
+    if (value > 0) return '+' + value + (isEn ? ' min' : ' мин');
+    if (value < 0) return (isEn ? 'buffer ' : 'запас ') + Math.abs(value) + (isEn ? ' min' : ' мин');
+    return isEn ? 'on time' : 'в графике';
 }
-
 function getPaceParticipants(roundData) {
     if (!roundData || !roundData.players) return [];
     var ids = Array.isArray(roundData.participantsList) && roundData.participantsList.length
@@ -3352,7 +3543,10 @@ function getPaceParticipants(roundData) {
     });
 }
 
-function getPaceHoleTime(player, hole) {
+// Фактическое время прохождения лунки игроком (мс). Проверяется диапазон:
+// времена лунок, лежащие до старта или в «будущем», — битые, они не должны
+// участвовать в расчёте темпа.
+function getPaceHoleTime(player, hole, minTs, maxTs) {
     if (!player) return null;
     var candidates = [
         player.holeTimes && player.holeTimes[hole],
@@ -3360,18 +3554,20 @@ function getPaceHoleTime(player, hole) {
         player.completedHoles && player.completedHoles[hole]
     ];
     for (var i = 0; i < candidates.length; i++) {
-        var value = parseInt(candidates[i]);
+        var value = (minTs || maxTs) ? paceSafeTs(candidates[i], minTs, maxTs) : (parseInt(candidates[i]) || 0);
         if (value > 0) return value;
     }
     return null;
 }
 
-function getGroupPaceHoleTime(roundData, hole, participants) {
-    var rootTime = roundData && roundData.holeTimes && parseInt(roundData.holeTimes[hole]);
+function getGroupPaceHoleTime(roundData, hole, participants, minTs, maxTs) {
+    var rootTime = (minTs || maxTs)
+        ? paceSafeTs(roundData && roundData.holeTimes && roundData.holeTimes[hole], minTs, maxTs)
+        : (parseInt(roundData && roundData.holeTimes && roundData.holeTimes[hole]) || 0);
     if (rootTime > 0) return rootTime;
 
     var times = (participants || []).map(function(item) {
-        return getPaceHoleTime(item.player, hole);
+        return getPaceHoleTime(item.player, hole, minTs, maxTs);
     }).filter(function(value) { return value !== null; });
     // Для старых раундов, где root holeTimes ещё нет, считаем лунку
     // завершённой группой в момент, когда последний игрок отправил счёт.
@@ -3382,35 +3578,53 @@ function getGroupPaceHoleTime(roundData, hole, participants) {
 }
 
 function getRoundPaceMetrics(roundData, nowValue) {
-    var now = nowValue || Date.now();
+    var now = paceSafeTs(nowValue, 0, 0) || Date.now();
     var order = getRoundOrder(roundData || {});
     var participants = getPaceParticipants(roundData);
-    var isGroup = !!(roundData && roundData.mode === 'group' && participants.length > 1);
+    // Кто ещё в игре. Сдавший карточку (обычно или досрочно) из расчёта темпа
+    // группы выпадает: иначе лунки после его «отметки о завершении» никогда не
+    // считаются пройденными и темп намертво зависает на одной лунке.
+    var playing = participants.filter(function(item) {
+        return !(typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(roundData, item.id));
+    });
+    var paceRoster = playing.length ? playing : participants;
+    var isGroup = !!(roundData && roundData.mode === 'group' && paceRoster.length > 1);
     var isPaused = !!(roundData && roundData.paused);
     var totalPauseMs = getRoundTotalPauseMs(roundData, now);
-    var startTime = roundEffectiveStartTime(roundData, now);
+    var pauseIntervals = getRoundPauseIntervals(roundData, now);
+    var rawStart = roundRawStartTs(roundData);
+    // В «игровой» шкале (реальное время минус паузы) старт = сам момент старта,
+    // а нормативы лунков — обычная сумма темпа по лункам.
+    var startTime = rawStart;
     var startHole = parseInt(roundData && roundData.startHole) || 1;
+    // Пока раунд на паузе, отсчёт стоит на моменте её начала.
+    var refNow = now;
+    if (isPaused) {
+        var pausedAtTs = paceSafeTs(roundData.pausedAt, 0, now);
+        if (pausedAtTs) refNow = Math.max(pausedAtTs, rawStart || pausedAtTs);
+    }
+    var refPlaying = Math.max(startTime || refNow, refNow - pauseMsBefore(pauseIntervals, refNow));
     var timeline = [];
     var completedHoles = [];
     var currentHole = order.length ? order[0] : startHole;
-    var previousTime = startTime || now;
+    var previousTime = startTime || refPlaying;
     var hasTimingData = false;
     var lastCompletedIdx = -1;
 
     order.forEach(function(hole, idx) {
         var complete;
         if (isGroup) {
-            complete = participants.length > 0 && participants.every(function(item) {
+            complete = paceRoster.length > 0 && paceRoster.every(function(item) {
                 return parseInt(item.player.scores && item.player.scores[hole]) >= 1;
             });
         } else {
-            var soloPlayer = participants.length ? participants[0].player : null;
+            var soloPlayer = paceRoster.length ? paceRoster[0].player : null;
             complete = !!(soloPlayer && parseInt(soloPlayer.scores && soloPlayer.scores[hole]) >= 1);
         }
 
         var completedAt = isGroup
-            ? getGroupPaceHoleTime(roundData, hole, participants)
-            : getPaceHoleTime(participants.length ? participants[0].player : null, hole);
+            ? getGroupPaceHoleTime(roundData, hole, paceRoster, rawStart, now)
+            : getPaceHoleTime(paceRoster.length ? paceRoster[0].player : null, hole, rawStart, now);
         var durationMin = null;
         var holeDelay = null;
 
@@ -3419,9 +3633,12 @@ function getRoundPaceMetrics(roundData, nowValue) {
             lastCompletedIdx = idx;
             if (completedAt && startTime) {
                 hasTimingData = true;
-                durationMin = Math.max(0, (completedAt - previousTime) / 60000);
+                // Длительность лунки считается в «игровой» шкале: простой на
+                // паузе не записывается в активное время лунки.
+                var playAt = Math.max(previousTime, completedAt - pauseMsBefore(pauseIntervals, completedAt));
+                durationMin = Math.max(0, (playAt - previousTime) / 60000);
                 holeDelay = durationMin - holeTiming(hole);
-                previousTime = Math.max(previousTime, completedAt);
+                previousTime = playAt;
             }
         }
 
@@ -3455,27 +3672,34 @@ function getRoundPaceMetrics(roundData, nowValue) {
     }
     if (currentIdx >= 0 && timeline[currentIdx]) {
         var currentItem = timeline[currentIdx];
-        var currentStart = previousTime;
         currentItem.inProgress = true;
-        // Во время паузы длительность текущей лунки замораживается
-        var activeElapsedMs = isPaused
-            ? Math.max(0, (parseInt(roundData.pausedAt, 10) || now) - currentStart)
-            : Math.max(0, (now - currentStart) - (totalPauseMs ? (totalPauseMs - (roundData.totalPausedMs || 0)) : 0));
-        currentItem.durationMin = startTime ? Math.max(0, activeElapsedMs / 60000) : null;
-        currentItem.delayMin = startTime ? currentItem.durationMin - currentItem.expectedMin : null;
+        // Во время паузы длительность текущей лунки заморожена (refNow = pausedAt).
+        currentItem.durationMin = startTime ? Math.max(0, (refPlaying - previousTime) / 60000) : null;
+        currentItem.delayMin = (startTime && currentItem.durationMin !== null)
+            ? currentItem.durationMin - currentItem.expectedMin
+            : null;
     }
     var firstIncompleteIndex = currentIdx >= 0 ? currentIdx : -1;
-    // Если все завершены — firstIncompleteIndex остаётся -1, actualReference = previousTime
+    // Если все лунки завершены — firstIncompleteIndex = -1, отсчёт идёт по
+    // последней сохранённой лунке, и темп больше не «капает».
 
-    var expectedDeadline = startTime ? holeDeadline(startTime, startHole, currentHole) : null;
-    var actualReference = firstIncompleteIndex >= 0 ? now : (previousTime || now);
-    var overallDelay = (expectedDeadline && actualReference) ? (actualReference - expectedDeadline) / 60000 : null;
-    var rawStart = parseInt(roundData && (roundData.teeOffMs || roundData.startTimeMs || roundData.scheduledStart || roundData.startTime), 10) || 0;
-    var elapsedMin = rawStart ? Math.max(0, Math.round(((isPaused ? (parseInt(roundData.pausedAt, 10) || now) : now) - rawStart - (isPaused ? 0 : totalPauseMs)) / 60000)) : 0;
+    var playDeadline = startTime ? startTime + holeExpectedMinutes(startHole, currentHole) * 60000 : 0;
+    var expectedDeadline = playDeadline ? playingTsToReal(playDeadline, pauseIntervals) : null;
+    var actualReference = firstIncompleteIndex >= 0
+        ? (startTime ? refPlaying : 0)
+        : (previousTime || refPlaying);
+    var overallDelay = (playDeadline && actualReference) ? (actualReference - playDeadline) / 60000 : null;
+    if (overallDelay !== null && (!isFinite(overallDelay) || Math.abs(overallDelay) > MAX_PACE_MINUTES)) overallDelay = null;
+
+    var elapsedMin = rawStart
+        ? Math.max(0, Math.round(((isPaused ? refNow : now) - rawStart - (isPaused ? 0 : totalPauseMs)) / 60000))
+        : 0;
 
     return {
         order: order,
         participants: participants,
+        activeParticipants: playing.length ? playing : participants,
+        allPlayersFinished: !!participants.length && !playing.length,
         isGroup: isGroup,
         isPaused: isPaused,
         pausedAt: roundData ? roundData.pausedAt : null,
@@ -3491,11 +3715,71 @@ function getRoundPaceMetrics(roundData, nowValue) {
         overallDelay: overallDelay,
         elapsedMin: elapsedMin,
         hasTimingData: hasTimingData,
-        startTime: startTime,
+        startTime: startTime ? roundEffectiveStartTime(roundData, now) : 0,
         startHole: startHole
     };
 }
 
+// Лунки, которые стоит подсвечивать как «идёт игра» на карте поля и в
+// списках: текущая лунка КАЖДОГО игрока, который ещё не завершил свой раунд.
+// Возвращает массив номеров лунок (пустой — если на поле никого не осталось).
+function roundActiveHoles(r) {
+    var out = [];
+    if (!r || !r.players) return out;
+    var order = getRoundOrder(r);
+    Object.keys(r.players).forEach(function(pid) {
+        var p = r.players[pid] || {};
+        if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p.name)) return;
+        var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+        var hole = playerCurrentHole(r, pid, p, stats, order);
+        if (hole) out.push(hole);
+    });
+    return out;
+}
+
+// Завершил ли игрок свой раунд: сдал карточку (в т.ч. досрочно/принудительно)
+// или сыграл все лунки диапазона. Такой игрок больше НЕ «находится на лунке».
+function isPlayerRoundClosed(r, playerId, stats, order) {
+    if (typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(r, playerId)) return true;
+    // Раунд закрыт автозавершением (доигрывали «на бумаге» на следующий день) —
+    // на поле уже никого нет.
+    if (r && r.autoCompleted) return true;
+    var total = (order && order.length) ? order.length : getRoundHoleCount(r || {});
+    if (stats && total && stats.holesPlayed >= total) return true;
+    return false;
+}
+
+// Текущая лунка игрока (null — раунд завершён или ещё не начат).
+function playerCurrentHole(r, playerId, player, stats, order) {
+    order = order && order.length ? order : getRoundOrder(r || {});
+    if (isPlayerRoundClosed(r, playerId, stats, order)) return null;
+    var hole = stats && stats.currentHole ? stats.currentHole : null;
+    if (!hole) return null;
+    return order.indexOf(hole) !== -1 ? hole : (order[0] || hole);
+}
+
+// Подпись строки игрока в списках: «Лунка №7 · 5/18» либо отметка о
+// завершении («Завершил (F)», при досрочном завершении — с причиной).
+function playerHoleStatusText(r, playerId, player, stats, order, opts) {
+    opts = opts || {};
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var fin = (r && r.finishedPlayers) ? r.finishedPlayers[String(playerId)] : null;
+    var hole = playerCurrentHole(r, playerId, player, stats, order);
+    if (hole === null) {
+        if (fin && (fin.forced || fin.reason || fin.forcedReason)) {
+            var why = String(fin.forcedReason || fin.reason || '').trim();
+            var early = isEn ? 'Finished early' : 'Завершил досрочно';
+            return why ? early + ' · ' + why : early;
+        }
+        return typeof t === 'function' ? t('finished_f') : (isEn ? 'Finished' : 'Завершён');
+    }
+    var label = (typeof t === 'function' ? t('hole') : (isEn ? 'Hole' : 'Лунка')) + ' №' + hole;
+    if (opts.withProgress) {
+        var total = (order && order.length) ? order.length : getRoundHoleCount(r || {});
+        label += ' · ' + ((stats && stats.holesPlayed) || 0) + '/' + total;
+    }
+    return label;
+}
 function getRoundResumePlayerId(roundId, roundData) {
     if (!roundData || !roundData.players) return null;
     var stored = null;
@@ -3541,11 +3825,16 @@ function getRoundResumeState(roundId, roundData) {
     } else {
         played = metrics.holesCompleted;
     }
+    // Кто сдал карточку (обычно или досрочно) — тот не «продолжает с лунки N»:
+    // иначе карточка активного раунда предлагает доигрывать сыгранное.
+    var closed = !!player && isPlayerRoundClosed(roundData, playerId, { holesPlayed: played }, order);
     return {
         playerId: playerId,
         currentHole: resumeHole,
         holesPlayed: played,
         holeCount: metrics.holeCount,
+        closed: closed,
+        statusText: closed ? playerHoleStatusText(roundData, playerId, player, { holesPlayed: played }, order) : '',
         metrics: metrics
     };
 }
@@ -4539,14 +4828,16 @@ function renderSinglePlayerScorecardHTML(r, pe, order, opts) {
     var sc = p.scores || {};
     var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
     var stats = calcRoundStats(sc, fieldHcp || 0, p.exactHcp || 0, order);
-    var thruText = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '');
+    var thruText = playerHoleStatusText(r, pid, p, stats, order);
 
     var pTee = (p && p.tee) || r.tee || 'wh';
     var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
     var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" title="' + fieldHcpBandTitle(fieldHcp) + '">' + courseHcpLbl + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
 
-    var isFinished = stats.holesPlayed >= holeCount;
-    var curHole = isFinished ? null : stats.currentHole;
+    // Текущая лунка есть только у того, кто ещё в игре: сдавший карточку
+    // (в т.ч. досрочно) не подсвечивается и не получает кнопку «к лунке».
+    var isFinished = isPlayerRoundClosed(r, pid, stats, order);
+    var curHole = playerCurrentHole(r, pid, p, stats, order);
 
     var html = '<div class="no-scroll-view-container">';
     if (compact) {
@@ -4649,7 +4940,7 @@ function renderGroupMatrixHTML(r, playerEntries, order, opts) {
         var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 6px;">' + t('tee_' + pTee) + '</span>';
         var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" style="font-size:9.5px;padding:1px 6px;">' + t('field_hcp_short') + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
         var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
-        var thruTxt = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—');
+        var thruTxt = playerHoleStatusText(r, pid, p, stats, order);
 
         html += '<div class="gm-player-chip">';
         html += '<div class="gm-p-top"><strong class="gm-p-name"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(pName) + '</strong>' + pTeeBadge + pHcpBadge + '</div>';
@@ -4676,7 +4967,7 @@ function renderGroupMatrixHTML(r, playerEntries, order, opts) {
             var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
             var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
             var s = parseInt(sc[i]) || 0;
-            var isCur = (stats.currentHole === i && stats.holesPlayed < holeCount);
+            var isCur = playerCurrentHole(r, pid, p, stats, order) === i;
             if (isCur) isCurHoleAny = true;
 
             var cls = (s > 0 ? holeResClass(s, par) : 'r-empty') + (isCur ? ' sc-cur-tile' : '');
@@ -4902,7 +5193,7 @@ function renderGroupLeaderboardHTML(r, playerEntries, order, opts) {
         var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" style="font-size:9.5px;padding:1px 6px;">' + t('field_hcp_short') + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
         var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
         var rankLabel = rankIdx < 3 ? rankMedals[rankIdx] : ('#' + (rankIdx + 1));
-        var thruTxt = stats.holesPlayed >= holeCount ? t('finished_f') : (stats.currentHole ? (t('hole') + ' №' + stats.currentHole + ' · ' + stats.holesPlayed + '/' + holeCount) : '—');
+        var thruTxt = playerHoleStatusText(r, pid, p, stats, order, { withProgress: true });
 
         html += '<div class="flb-player-card" style="background:rgba(19,34,24,0.85);border:1px solid var(--border);border-radius:var(--rs);padding:12px;margin-bottom:8px;">';
 
@@ -4926,7 +5217,7 @@ function renderGroupLeaderboardHTML(r, playerEntries, order, opts) {
             var s = parseInt(sc[h]) || 0;
             var par = holePar(h);
             var cls = s > 0 ? holeResClass(s, par) : 'r-empty';
-            var isCur = (stats.currentHole === h && stats.holesPlayed < holeCount);
+            var isCur = playerCurrentHole(r, pid, p, stats, order) === h;
             var stbl = s > 0 ? stablefordField(s, h, fieldHcp) : null;
             var tip = '#' + h + ' (P' + par + '): ' + (s > 0 ? (s + (stbl !== null ? ' · ' + stbl + 'p' : '')) : '—');
             var mmCls = '';
@@ -5862,62 +6153,113 @@ function finishModalGoToHole(hole) {
 // ==========================================
 // ПРИНУДИТЕЛЬНОЕ ЗАВЕРШЕНИЕ И ПАУЗА РАУНДА (ПРОФЕССИОНАЛЬНЫЙ ИНСТРУМЕНТ)
 // ==========================================
+// Самый свежий снимок раунда: из базы, а если база недоступна — из переданной
+// карточки. Нужен, чтобы действия администратора и маршала (пауза,
+// принудительное завершение) опирались на фактический состав раунда, а не на
+// устаревшие данные: «завершить одного игрока» вслепую раньше закрывало весь
+// раунд, и остальные теряли возможность доиграть.
+function readRoundSnapshot(roundId, roundData) {
+    if (typeof db === 'undefined' || !db || !roundId) return Promise.resolve(roundData || null);
+    return db.ref('rounds/' + roundId).once('value').then(function(sn) {
+        var fresh = sn && sn.val();
+        return fresh || roundData || null;
+    }).catch(function() { return roundData || null; });
+}
+
+// Актуальное состояние паузы: дочитывается из базы, потому что клиенты часто
+// зовут pause/resume по устаревшей карточке раунда (админка, второе
+// устройство). Без этого возобновление «вслепую» обнуляло накопленное время
+// паузы и тайминги раунда прыгали.
+function readRoundPauseState(roundId, roundData) {
+    function pick(r) {
+        r = r || {};
+        return {
+            paused: !!r.paused,
+            pausedAt: paceSafeTs(r.pausedAt, 0, 0) || 0,
+            total: Math.max(0, parseInt(r.totalPausedMs, 10) || parseInt(r.totalPauseMs, 10) || 0),
+            pauseHistory: Array.isArray(r.pauseHistory) ? r.pauseHistory.slice() : [],
+            pauseReason: String(r.pauseReason || '')
+        };
+    }
+    if (typeof db === 'undefined' || !db || !roundId) return Promise.resolve(pick(roundData));
+    return db.ref('rounds/' + roundId).once('value').then(function(sn) {
+        return pick((sn && sn.val()) || roundData);
+    }).catch(function() { return pick(roundData); });
+}
+
 function roundPause(roundId, roundData, reason, userName, userId) {
     if (typeof db === 'undefined' || !roundId) return Promise.reject(new Error('No db'));
     var now = Date.now();
-    var existingHistory = (roundData && Array.isArray(roundData.pauseHistory)) ? roundData.pauseHistory.slice() : [];
-    existingHistory.push({
-        pausedAt: now,
-        reason: String(reason || '').trim(),
-        pausedBy: userId || '',
-        pausedByName: userName || ''
+    var trimmed = String(reason || '').trim();
+    return readRoundPauseState(roundId, roundData).then(function(st) {
+        var updates = {
+            paused: true,
+            pauseReason: trimmed,
+            pausedBy: userId || '',
+            pausedByName: userName || ''
+        };
+        if (st.paused && st.pausedAt) {
+            // Раунд уже стоит на паузе: точку заморозки не передвигаем, иначе
+            // уже отсчитанные минуты паузы обнулились бы.
+            updates.pauseHistory = st.pauseHistory;
+            return db.ref('rounds/' + roundId).update(updates);
+        }
+        var history = st.pauseHistory.slice();
+        history.push({
+            pausedAt: now,
+            reason: trimmed,
+            pausedBy: userId || '',
+            pausedByName: userName || ''
+        });
+        updates.pausedAt = now;
+        updates.pauseHistory = history;
+        return db.ref('rounds/' + roundId).update(updates);
     });
-    var updates = {
-        paused: true,
-        pausedAt: now,
-        pauseReason: String(reason || '').trim(),
-        pausedBy: userId || '',
-        pausedByName: userName || '',
-        pauseHistory: existingHistory
-    };
-    return db.ref('rounds/' + roundId).update(updates);
 }
 
 function roundResume(roundId, roundData, userName, userId) {
     if (typeof db === 'undefined' || !roundId) return Promise.reject(new Error('No db'));
     var now = Date.now();
-    var pausedAt = parseInt(roundData && roundData.pausedAt, 10) || now;
-    var duration = Math.max(0, now - pausedAt);
-    var oldTotal = parseInt(roundData && (roundData.totalPausedMs || roundData.totalPauseMs), 10) || 0;
-    var newTotal = oldTotal + duration;
-    var existingHistory = (roundData && Array.isArray(roundData.pauseHistory)) ? roundData.pauseHistory.slice() : [];
-    if (existingHistory.length > 0 && !existingHistory[existingHistory.length - 1].resumedAt) {
-        existingHistory[existingHistory.length - 1].resumedAt = now;
-        existingHistory[existingHistory.length - 1].durationMs = duration;
-        existingHistory[existingHistory.length - 1].resumedByName = userName || '';
-    }
-    var updates = {
-        paused: false,
-        pausedAt: null,
-        totalPausedMs: newTotal,
-        totalPauseMs: newTotal,
-        pauseReason: null,
-        pauseHistory: existingHistory
-    };
-    var logEntry = {
-        pausedAt: pausedAt,
-        resumedAt: now,
-        durationMs: duration,
-        reason: (roundData && roundData.pauseReason) || '',
-        pausedByName: (roundData && roundData.pausedByName) || '',
-        resumedByName: userName || ''
-    };
-    return db.ref('rounds/' + roundId).update(updates).then(function() {
-        try {
-            return db.ref('rounds/' + roundId + '/pauseLog').push(logEntry);
-        } catch (e) {
-            return Promise.resolve();
+    return readRoundPauseState(roundId, roundData).then(function(st) {
+        if (!st.paused && !st.pausedAt) {
+            // Не на паузе — ничего не пишем: «возобновление» вслепую раньше
+            // затирало totalPausedMs, и весь учёт пауз терялся.
+            return { resumed: false, durationMs: 0, totalMs: st.total };
         }
+        var pausedAt = st.pausedAt || now;
+        var duration = Math.max(0, Math.min(now - pausedAt, MAX_PAUSE_INTERVAL_MS));
+        var newTotal = st.total + duration;
+        var history = st.pauseHistory.slice();
+        if (history.length > 0 && !history[history.length - 1].resumedAt) {
+            history[history.length - 1].resumedAt = now;
+            history[history.length - 1].durationMs = duration;
+            history[history.length - 1].resumedByName = userName || '';
+        }
+        var updates = {
+            paused: false,
+            pausedAt: null,
+            totalPausedMs: newTotal,
+            totalPauseMs: newTotal,
+            pauseReason: null,
+            pauseHistory: history
+        };
+        var logEntry = {
+            pausedAt: pausedAt,
+            resumedAt: now,
+            durationMs: duration,
+            reason: st.pauseReason || '',
+            pausedByName: (roundData && roundData.pausedByName) || '',
+            resumedByName: userName || ''
+        };
+        return db.ref('rounds/' + roundId).update(updates).then(function() {
+            try {
+                return db.ref('rounds/' + roundId + '/pauseLog').push(logEntry);
+            } catch (e) {
+                return Promise.resolve();
+            }
+        }).then(function() {
+            return { resumed: true, durationMs: duration, totalMs: newTotal };
+        });
     });
 }
 
@@ -5939,6 +6281,10 @@ function roundForceFinishPlayer(roundId, a2, a3, a4, a5) {
 
     var now = Date.now();
     var pid = String(playerId);
+    // Состав раунда и счёта — из свежего снимка: тогда «завершить игрока»
+    // корректно и из админки, и с устройства маркера.
+    return readRoundSnapshot(roundId, roundData).then(function(round) {
+    roundData = round || roundData;
     var p = (roundData && roundData.players && roundData.players[pid]) || {};
     var pName = finisherName || p.name || 'Player';
     var order = getRoundOrder(roundData || {});
@@ -5949,7 +6295,11 @@ function roundForceFinishPlayer(roundId, a2, a3, a4, a5) {
     };
     finishUpdate['finishedPlayers/' + pid] = {
         at: now,
-        name: pName,
+        name: p.name || pName,
+        // Кто именно завершил (для администратора/маршала это не сам игрок)
+        // и как зовут игрока — чтобы списки могли показать корректную подпись.
+        playerName: p.name || pName,
+        byName: finisherName || '',
         forced: true,
         forcedReason: String(reason || '').trim(),
         reason: String(reason || '').trim(),
@@ -5990,11 +6340,14 @@ function roundForceFinishPlayer(roundId, a2, a3, a4, a5) {
         }
         return { isComplete: !pending.length, remaining: pending.length };
     });
+    });
 }
 
 function roundForceFinishAll(roundId, roundData, reason, finisherName) {
     if (typeof db === 'undefined' || !roundId) return Promise.reject(new Error('Invalid params'));
     var now = Date.now();
+    return readRoundSnapshot(roundId, roundData).then(function(round) {
+    roundData = round || roundData;
     var finishUpdate = {
         status: 'completed',
         completedAt: now,
@@ -6031,6 +6384,7 @@ function roundForceFinishAll(roundId, roundData, reason, finisherName) {
                 }
             });
         }
+    });
     });
 }
 
@@ -6582,7 +6936,16 @@ function generatePestovoScorecardHTML(player, roundData, opts) {
     var back = order.filter(function(h){ return h >= 10; });
 
     var pStats = calcRoundStats(sc, fHcp || 0, eHcp || 0, order);
-    var pCurHole = pStats.holesPlayed >= order.length ? null : pStats.currentHole;
+    // ID игрока для проверки «завершил ли раунд»: явный из opts, иначе — по
+    // ссылке на объект в roundData.players (карточка рисуется и для чужих
+    // раундов, где id неизвестен).
+    var pShareId = opts.playerId || null;
+    if (!pShareId && roundData && roundData.players) {
+        Object.keys(roundData.players).forEach(function(pidX) {
+            if (!pShareId && roundData.players[pidX] === p) pShareId = pidX;
+        });
+    }
+    var pCurHole = playerCurrentHole(roundData || {}, pShareId, p, pStats, order);
 
     var totG = 0, totS = 0, totPar = 0;
     order.forEach(function(i) {
@@ -7193,6 +7556,9 @@ function sweepStaleRounds(data) {
         r.status = 'completed';
         r.autoCompleted = true;
         r.autoCompletedAt = nowMs;
+        r.paused = false;
+        r.pausedAt = null;
+        r.pauseReason = null;
         if (!r.completedAt) r.completedAt = nowMs;
 
         // Пишем в базу только один раз за жизнь вкладки на каждый раунд
@@ -7205,7 +7571,13 @@ function sweepStaleRounds(data) {
             status: 'completed',
             autoCompleted: true,
             autoCompletedAt: nowMs,
-            completedAt: roundData.completedAt
+            completedAt: roundData.completedAt,
+            // Автозакрытие закрытой «на следующий день» карточки снимает и
+            // паузу: иначе завершённый раунд вечно висит с бейджем «На паузе»,
+            // а его тайминги считаются замороженными.
+            paused: null,
+            pausedAt: null,
+            pauseReason: null
         };
         db.ref('rounds/' + roundId).update(update).then(function() {
             // Все раунды турнира могут оказаться завершёнными после этого
@@ -12149,6 +12521,17 @@ if (typeof window !== 'undefined') {
     window.roundForceFinishAll = roundForceFinishAll;
     window.isPlayerFinishedRound = isPlayerFinishedRound;
     window.roundPendingPlayers = roundPendingPlayers;
+    window.readRoundSnapshot = readRoundSnapshot;
+    window.isPlayerRoundClosed = isPlayerRoundClosed;
+    window.playerCurrentHole = playerCurrentHole;
+    window.playerHoleStatusText = playerHoleStatusText;
+    window.roundActiveHoles = roundActiveHoles;
+    window.roundRawStartTs = roundRawStartTs;
+    window.roundEffectiveStartTime = roundEffectiveStartTime;
+    window.roundHoleDeadlineTs = roundHoleDeadlineTs;
+    window.holeExpectedMinutes = holeExpectedMinutes;
+    window.getRoundPauseIntervals = getRoundPauseIntervals;
+    window.paceSafeTs = paceSafeTs;
     window.openRoundPauseModal = openRoundPauseModal;
     window.closeRoundPauseModal = closeRoundPauseModal;
     window.openForceFinishModal = openForceFinishModal;

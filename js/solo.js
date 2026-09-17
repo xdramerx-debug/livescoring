@@ -753,7 +753,11 @@ function renderCurrentHole() {
     var gd = sGet('g-dist'); if (gd) gd.textContent = dist > 0 ? dist : '—';
     if (soloRound) {
         try {
-            var dl = holeDeadline(soloRound.startTime, soloRound.startHole, curHole);
+            // Дедлайн — по раунду целиком: иначе пауза не сдвигает план, и после
+            // возобновления игрок видит «отставание» там, где время стояло.
+            var dl = (typeof roundHoleDeadlineTs === 'function')
+                ? roundHoleDeadlineTs(soloRound, curHole)
+                : holeDeadline(soloRound.startTime, soloRound.startHole, curHole);
             var gdl = sGet('g-deadline'); if (gdl) gdl.textContent = fmtTime(dl);
         } catch (e) { console.warn("[silent]", e); }
     }
@@ -905,9 +909,12 @@ function saveSolo() {
 function showTimingNotice(hole) {
     var el = document.getElementById('timing-notice');
     if (el) {
-        el.innerHTML = buildTimingNotice(soloRound.startTime, soloRound.startHole, hole);
-        var check = checkTiming(soloRound.startTime, soloRound.startHole, hole);
-        if (check.status === 'late') toast((currentLang === 'en' ? '⏰ Pace Lag ' : '⏰ Отставание ') + check.diff + ' min!', 'warn');
+        // Раунд передаётся целиком — только так пауза участвует в расчёте.
+        el.innerHTML = buildTimingNotice(soloRound.startTime, soloRound.startHole, hole, soloRound);
+        var check = checkTiming(soloRound.startTime, soloRound.startHole, hole, soloRound);
+        if (check.status === 'late' && check.diff > 0) {
+            toast('⏰ ' + (currentLang === 'en' ? 'Pace lag ' : 'Отставание ') + check.diff + (currentLang === 'en' ? ' min' : ' мин'), 'warn');
+        }
     }
 }
 

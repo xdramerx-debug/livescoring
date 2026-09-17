@@ -440,6 +440,75 @@ function loadAdmGroups() {
 var admGroupsExpanded = {};
 var admGroupsSortMode = 'delay';
 
+// ── ДЕЙСТВИЯ С РАУНДОМ ИЗ АДМИНКИ ──
+// Раньше эти кнопки вызывали roundResume(id, null) и
+// roundForceFinishPlayer(id, pid, null) без данных раунда. Пауза при этом
+// обнулялась (тайминги прыгали), а «завершить одного игрока» закрывало ВЕСЬ
+// раунд, потому что список участников был пустым. Теперь каждое действие
+// сначала читает актуальную карточку раунда.
+function admRoundName() {
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    return isEn ? 'Admin' : 'Администратор';
+}
+
+function admPauseRound(id) {
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    readRoundSnapshot(id, null).then(function(r) {
+        if (!r) { toast(isEn ? 'Round not found' : 'Раунд не найден', 'error'); return; }
+        if (typeof openRoundPauseModal === 'function') openRoundPauseModal(id, r, function() { renderAdmGroups(); renderAdmRounds(admRoundsLastData); });
+    });
+}
+
+function admResumeRound(id) {
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    readRoundSnapshot(id, null).then(function(r) {
+        if (!r) { toast(isEn ? 'Round not found' : 'Раунд не найден', 'error'); return; }
+        return roundResume(id, r, admRoundName(), (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : '');
+    }).then(function(res) {
+        if (res && res.resumed === false) {
+            toast(isEn ? 'The round is not paused' : 'Раунд и так не на паузе', 'info');
+        } else {
+            toast(isEn ? '✅ Round resumed — timings continue from the pause moment' : '✅ Раунд возобновлён — тайминги продолжаются с момента паузы', 'success');
+        }
+        renderAdmGroups();
+        renderAdmRounds(admRoundsLastData);
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+function admForceFinishOnePlayer(id, pid) {
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var reason = isEn ? 'Force finished by administrator' : 'Завершено администратором';
+    if (!confirm(isEn
+        ? 'Finish this player\u2019s round? His scores are kept, other players continue.'
+        : 'Завершить раунд этого игрока? Его счёта сохранятся, остальные продолжат игру.')) return;
+    // (roundId, playerId, roundData, reason, finisherName) — данные раунда
+    // дочитает сама утилита.
+    roundForceFinishPlayer(id, pid, null, reason, admRoundName()).then(function() {
+        toast(isEn ? '✅ Player finished' : '✅ Игрок завершён', 'success');
+        renderAdmGroups();
+        renderAdmRounds(admRoundsLastData);
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+function admForceFinishAllPlayers(id) {
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var reason = isEn ? 'Closed by administrator' : 'Закрыто администратором';
+    if (!confirm(isEn
+        ? 'Force finish the whole round? Every unsubmitted card is closed with the current scores.'
+        : 'Принудительно завершить весь раунд? Все несданные карточки будут закрыты с текущими счетами.')) return;
+    roundForceFinishAll(id, null, reason, admRoundName()).then(function() {
+        toast(isEn ? '✅ Round finished' : '✅ Раунд завершён', 'success');
+        renderAdmGroups();
+        renderAdmRounds(admRoundsLastData);
+    }).catch(function(err) {
+        toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
 function admGroupsSort(v) {
     admGroupsSortMode = v || 'delay';
     renderAdmGroups();
@@ -519,7 +588,9 @@ function renderAdmGroups() {
         html += '<i class="fas ' + (expanded ? 'fa-chevron-up' : 'fa-chevron-down') + '" style="color:var(--gold);font-size:11px;"></i>';
         html += '<span class="live-dot" style="width:7px;height:7px;"></span>';
         html += '<b style="color:var(--white);font-size:13px;">' + groupLabel + '</b>';
-        html += '<span style="font-size:12px;color:var(--muted);">' + participants.length + ' ' + (currentLang === 'en' ? 'pl.' : 'игр.') + ' · №' + currentHole + '</span>';
+        // В игре считаются только те, кто ещё не сдал карточку.
+        var stillPlaying = (metrics.activeParticipants && metrics.activeParticipants.length) || participants.length;
+        html += '<span style="font-size:12px;color:var(--muted);">' + stillPlaying + '/' + participants.length + ' ' + (currentLang === 'en' ? 'pl.' : 'игр.') + ' · №' + currentHole + '</span>';
         html += '<b class="admin-group-delay" style="font-size:13px;">' + formatPaceDelta(metrics.overallDelay) + '</b>';
         html += '<span class="admin-group-status" style="margin-left:auto;">' + state.label + '</span>';
         html += '</div>';
@@ -856,11 +927,11 @@ function admRoundDetailsHtml(id, r) {
         var isPaused = !!r.paused;
         html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);">';
         if (isPaused) {
-            html += '<button type="button" class="btn btn-g btn-sm" onclick="roundResume(\'' + id + '\', null, \'Admin\').then(function(){toast(\'Round resumed\');})"><i class="fas fa-play"></i> ' + (isEn ? 'Resume' : 'Возобновить') + '</button>';
+            html += '<button type="button" class="btn btn-g btn-sm" onclick="admResumeRound(\'' + id + '\')"><i class="fas fa-play"></i> ' + (isEn ? 'Resume' : 'Возобновить') + '</button>';
         } else {
-            html += '<button type="button" class="btn btn-ol btn-sm" onclick="openRoundPauseModal(\'' + id + '\')"><i class="fas fa-pause"></i> ' + (isEn ? 'Pause Round' : 'Пауза') + '</button>';
+            html += '<button type="button" class="btn btn-ol btn-sm" onclick="admPauseRound(\'' + id + '\')"><i class="fas fa-pause"></i> ' + (isEn ? 'Pause Round' : 'Пауза') + '</button>';
         }
-        html += '<button type="button" class="btn btn-ol btn-sm" onclick="roundForceFinishAll(\'' + id + '\', null, \'Admin\')"><i class="fas fa-forward"></i> ' + (isEn ? 'Force Finish All' : 'Завершить принудительно (всех)') + '</button>';
+        html += '<button type="button" class="btn btn-ol btn-sm" onclick="admForceFinishAllPlayers(\'' + id + '\')"><i class="fas fa-forward"></i> ' + (isEn ? 'Force Finish All' : 'Завершить принудительно (всех)') + '</button>';
         html += '</div>';
     }
     var order = [];
@@ -881,7 +952,7 @@ function admRoundDetailsHtml(id, r) {
         if (isFin) {
             html += '<span style="color:#2ecc71;font-size:11px;font-weight:700;"><i class="fas fa-check-circle"></i> ' + (currentLang === 'en' ? 'Finished' : 'Финиш') + '</span> ';
         } else if (r.status === 'active') {
-            html += '<button type="button" class="btn btn-ol btn-sm" style="padding:2px 6px;font-size:10px;" onclick="roundForceFinishPlayer(\'' + id + '\',\'' + pe[0] + '\',null,\'Admin\')" title="' + (currentLang === 'en' ? 'Force finish player' : 'Завершить игрока') + '"><i class="fas fa-flag-checkered"></i></button> ';
+            html += '<button type="button" class="btn btn-ol btn-sm" style="padding:2px 6px;font-size:10px;" onclick="admForceFinishOnePlayer(\'' + id + '\',\'' + pe[0] + '\')" title="' + (currentLang === 'en' ? 'Force finish player' : 'Завершить игрока') + '"><i class="fas fa-flag-checkered"></i></button> ';
         }
         html += fmtTeePill(pTee);
         html += '<span style="color:var(--muted);">HCP ' + (p.exactHcp != null ? fmtExactHcp(p.exactHcp) : '—') + '</span>';

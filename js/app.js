@@ -192,14 +192,21 @@ function renderCourseHolesStrip(activeEntries) {
         Object.entries(players).forEach(function(pe) {
             var p = pe[1];
             if (p && typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], p.name)) return;
-            totalPlayers++;
             var scores = p.scores || {};
             var stats = calcRoundStats(scores, p.fieldHcp || 0, p.exactHcp || 0, order);
-            if (stats.currentHole && holeCount[stats.currentHole] !== undefined) {
-                holeCount[stats.currentHole]++;
+            // Сдавший карточку (обычно или досрочно) на поле уже не играет.
+            // Раньше такой игрок оставался «на лунке N», пока его партнёр не
+            // доиграет: карта поля и счётчик «всего на поле» показывали лишнего.
+            if (typeof isPlayerRoundClosed === 'function' && isPlayerRoundClosed(r, pe[0], stats, order)) return;
+            totalPlayers++;
+            var curHole = typeof playerCurrentHole === 'function'
+                ? playerCurrentHole(r, pe[0], p, stats, order)
+                : stats.currentHole;
+            if (curHole && holeCount[curHole] !== undefined) {
+                holeCount[curHole]++;
                 // Игрок физически находится на этой лунке — учитываем его
                 // в загруженности соответствующей девятки вместе с гандикапом.
-                var side = stats.currentHole <= 9 ? nine.front : nine.back;
+                var side = curHole <= 9 ? nine.front : nine.back;
                 side.players++;
                 var hcpVal = (p.fieldHcp !== undefined && p.fieldHcp !== null && p.fieldHcp !== '')
                     ? (parseFloat(p.fieldHcp) || 0)
@@ -515,9 +522,15 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
         }
     }
     var stats = calcRoundStats(displayScores, p.fieldHcp || 0, p.exactHcp || 0, order);
-    var thruText = stats.holesPlayed >= getRoundHoleCount(r)
-        ? t('finished_f')
-        : t('hole') + ' №' + (stats.currentHole || (parseInt(r.startHole) || 1));
+    // «Лунка №N» только для тех, кто ещё играет. Сдавший карточку (в том числе
+    // досрочно — когда раунд продолжает партнёр) больше ни на какой лунке не
+    // числится: показываем отметку о завершении.
+    var thruText = (typeof playerHoleStatusText === 'function')
+        ? playerHoleStatusText(r, pid, p, stats, order)
+        : (stats.holesPlayed >= getRoundHoleCount(r)
+            ? t('finished_f')
+            : t('hole') + ' №' + (stats.currentHole || (parseInt(r.startHole) || 1)));
+    var isClosed = typeof isPlayerRoundClosed === 'function' && isPlayerRoundClosed(r, pid, stats, order);
 
     // Соло-раунд сворачивается точно так же, как групповой: состояние одно
     // на раунд (ключ pestovo_live_round_open_<id>), поэтому повторная
@@ -555,7 +568,7 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
         '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
         (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
         '</span>' +
-        '<span class="lwl-hole"><i class="fas fa-location-dot"></i> ' + thruText + '</span>' +
+        '<span class="lwl-hole' + (isClosed ? ' lwl-hole-done' : '') + '"><i class="fas ' + (isClosed ? 'fa-flag-checkered' : 'fa-location-dot') + '"></i> ' + thruText + '</span>' +
         '<span class="lwl-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
         '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
         '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
@@ -603,6 +616,21 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
     var countLabel = playerEntries.length + ' ' + (currentLang === 'en'
         ? (playerEntries.length === 1 ? 'player' : 'players')
         : pluralN(playerEntries.length, 'игрок', 'игрока', 'игроков'));
+    // Кто-то уже сдал карточку — честно показываем, сколько людей ещё в игре:
+    // иначе строка «3 игрока» вводит в заблуждение, когда на поле осталось двое.
+    if (typeof isPlayerRoundClosed === 'function') {
+        var stillPlaying = 0;
+        playerEntries.forEach(function(pe) {
+            var pp = pe[1] || {};
+            var st = calcRoundStats(pp.scores || {}, pp.fieldHcp || 0, pp.exactHcp || 0, order);
+            if (!isPlayerRoundClosed(r, pe[0], st, order)) stillPlaying++;
+        });
+        if (stillPlaying < playerEntries.length) {
+            countLabel = (currentLang === 'en'
+                ? stillPlaying + ' of ' + playerEntries.length + ' playing'
+                : stillPlaying + ' из ' + playerEntries.length + ' в игре');
+        }
+    }
     var namesStr = escapeHtml(names.join(', '));
     var open = (forceOpen === true) ? true : getLiveRoundOpen(id);
     var panelId = 'live-round-panel-' + id;

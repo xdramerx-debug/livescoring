@@ -84,12 +84,17 @@ function toast(m,toastType,opts){
         if (typeof document === 'undefined' || !document.body) return null;
         var root = ensureToastRoot();
         if (!root) return null;
-        // Не больше 3 уведомлений на экране — старые убираем, чтобы не мешали вводу счёта
+        // Не больше 3 уведомлений на экране — старые убираем, чтобы не мешали вводу счёта.
+        // ВАЖНО: сам _pestovoDismiss(true) убирает элемент асинхронно (setTimeout),
+        // поэтому здесь удаляем узел синхронно — иначе 4-й тост в пределах 3 секунд
+        // вёл бы цикл в бесконечность и зависал весь браузер (P0, найден
+        // регресс-тестом v1.69.0).
         while (root.children.length >= 3) {
             try {
                 var oldest = root.firstChild;
-                if (oldest && oldest._pestovoDismiss) oldest._pestovoDismiss(true);
-                else root.removeChild(oldest);
+                if (!oldest) break;
+                if (oldest._pestovoDismiss) oldest._pestovoDismiss(true);
+                root.removeChild(oldest);
             } catch(_) { break; }
         }
         var e=document.createElement('div');
@@ -636,7 +641,7 @@ var I18N = {
         share_native: 'Поделиться в приложении',
 
         page_title_live: 'Начать раунд',
-        page_sub_live: 'Одиночный или групповой раунд — переключайте вкладки',
+        page_sub_live: 'Одна форма для одиночного и группового раунда — игроков добавляет кнопка «Добавить игрока»',
         round_setup: 'Настройки раунда',
         group_setup_title: 'Настройка группы',
         solo_round: 'Одиночный раунд', group_round: 'Групповой раунд',
@@ -647,6 +652,18 @@ var I18N = {
         mode_group_title: 'Групповой раунд',
         mode_group_desc: 'От 2 до 4 игроков. Двойной ввод (свой счёт + счёт партнёра).',
         mode_start: 'Начать',
+        unified_hint: 'Начните раунд одному или нескольким игрокам: 1 игрок — одиночный раунд, 2 и более — групповой (двойной ввод, маркеры).',
+        add_player_btn: 'Добавить игрока',
+        remove_player_btn: 'Убрать игрока',
+        max_players_msg: 'В одном раунде не больше 6 игроков',
+        min_players_msg: 'Минимум один игрок. Добавьте ещё — и раунд станет групповым',
+        mode_note_solo: 'Соло-раунд — вы играете один и вводите свой счёт',
+        mode_note_group: 'Групповой раунд — двойной ввод: свой счёт и счёт партнёра-маркера',
+        unified_summary_title: 'Проверьте состав',
+        wiz_step_1: 'Параметры', wiz_step_2: 'Игроки', wiz_step_3: 'Старт',
+        btn_next: 'Далее', btn_back: 'Назад',
+        fio_full_req: 'Введите имя и фамилию',
+        you: 'вы',
         tournament_opt: 'Турнир (опционально)',
         no_tournament: '— Без турнира —',
         start_time: 'Время старта', start_hole: 'Стартовая лунка', holes_count: 'Сколько лунок',
@@ -1160,7 +1177,7 @@ var I18N = {
         share_native: 'Share to Apps',
 
         page_title_live: 'Start Round',
-        page_sub_live: 'Solo or group round — switch tabs',
+        page_sub_live: 'One form for solo and group rounds — add players with the "Add Player" button',
         round_setup: 'Round Settings',
         group_setup_title: 'Group Setup',
         solo_round: 'Solo Round', group_round: 'Group Round',
@@ -1171,6 +1188,18 @@ var I18N = {
         mode_group_title: 'Group Round',
         mode_group_desc: '2 to 4 players. Dual entry (your score + partner score).',
         mode_start: 'Start',
+        unified_hint: 'Start a round for one or several players: 1 player — solo round, 2+ — group round (dual entry, markers).',
+        add_player_btn: 'Add Player',
+        remove_player_btn: 'Remove Player',
+        max_players_msg: 'A round can have at most 6 players',
+        min_players_msg: 'At least one player is required. Add more to make it a group round',
+        mode_note_solo: 'Solo round — you play alone and enter your own score',
+        mode_note_group: 'Group round — dual entry: your score and your partner-marker\'s score',
+        unified_summary_title: 'Review your players',
+        wiz_step_1: 'Settings', wiz_step_2: 'Players', wiz_step_3: 'Start',
+        btn_next: 'Next', btn_back: 'Back',
+        fio_full_req: 'Enter first and last name',
+        you: 'you',
         tournament_opt: 'Tournament (optional)',
         no_tournament: '— No Tournament —',
         start_time: 'Start Time', start_hole: 'Start Hole', holes_count: 'Number of Holes',
@@ -1631,8 +1660,11 @@ function toggleLang() {
     if (typeof loadPlayers === 'function') loadPlayers();
     if (typeof loadStats === 'function') loadStats();
     if (typeof loadPestovoWeather === 'function') loadPestovoWeather('nav-weather-container');
-    if (typeof showGroupSetup === 'function' && document.getElementById('group-setup') && !document.getElementById('group-setup').classList.contains('hidden')) {
-        showGroupSetup();
+    // v1.69.0: единая форма «Создание раунда» (#setup) перерисовывается с
+    // сохранением введённых значений; старый #group-setup — совместимость.
+    if (typeof showGroupSetup === 'function') {
+        var gsetupEl = document.getElementById('group-setup') || document.getElementById('setup');
+        if (gsetupEl && !gsetupEl.classList.contains('hidden')) showGroupSetup();
     }
     if (typeof initRoundView === 'function' && typeof curRid !== 'undefined' && curRid) {
         initRoundView();
@@ -7152,7 +7184,9 @@ function tnSortByHandicap(list) {
 // АДМИНСКИЕ ВИДЫ ОТОБРАЖЕНИЯ (5 вариантов, выбирает только админ)
 //   homeTournament — блок «Активный турнир» на главной;
 //   scorecard      — счётная карточка по лункам во время раунда;
-//   scoring        — страница ввода счёта (одиночный и групповой раунд).
+//   scoring        — страница ввода счёта (одиночный и групповой раунд);
+//   roundSetup     — блок «Создание раунда» (единая форма: 1 игрок или
+//                    группа, кнопка «Добавить игрока», 5 видов).
 // Хранение: settings/<key> в Firebase + кэш в localStorage, применяется
 // для ВСЕХ пользователей (читается при загрузке страницы).
 // ─────────────────────────────────────────────────────────
@@ -7160,7 +7194,8 @@ var PESTOVO_VIEW5_KEYS = ['1', '2', '3', '4', '5'];
 var PESTOVO_VIEW5_CONFIG = {
     homeTournament: { storage: 'pestovo_home_tournament_view', firebase: 'settings/home_tournament_view' },
     scorecard:      { storage: 'pestovo_scorecard_view',       firebase: 'settings/scorecard_view' },
-    scoring:        { storage: 'pestovo_scoring_view',         firebase: 'settings/scoring_view' }
+    scoring:        { storage: 'pestovo_scoring_view',         firebase: 'settings/scoring_view' },
+    roundsetup:     { storage: 'pestovo_round_setup_view',     firebase: 'settings/round_setup_view' }
 };
 
 function normalizeView5(value) {
@@ -7224,6 +7259,7 @@ function pestovoBindView5(name, cb) {
 function getHomeTournamentView() { return getView5('homeTournament'); }
 function getRoundScorecardView() { return getView5('scorecard'); }
 function getScoringView() { return getView5('scoring'); }
+function getRoundSetupView() { return getView5('roundsetup'); }
 
 if (typeof window !== 'undefined') {
     window.uiConfirm = uiConfirm;
@@ -7236,6 +7272,7 @@ if (typeof window !== 'undefined') {
     window.getHomeTournamentView = getHomeTournamentView;
     window.getRoundScorecardView = getRoundScorecardView;
     window.getScoringView = getScoringView;
+    window.getRoundSetupView = getRoundSetupView;
 }
 
 // QR-картинка с цепочкой провайдеров (основной → запасной → повтор):

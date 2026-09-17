@@ -168,6 +168,9 @@ function soloAuthReady(u, d) {
         }
 
         calcSoloFieldHcp();
+        // v1.69.0: единая форма — заполняем первую карточку игрока профилем
+        // (пустые поля), если пользователь авторизовался после отрисовки.
+        try { if (typeof applyUnifiedUserDefaults === 'function') applyUnifiedUserDefaults(); } catch (e) { console.warn('[silent]', e); }
     }
 }
 
@@ -215,30 +218,89 @@ function updateTimingPreview() {
 
 var soloStarting = false;
 
+// Собираем данные одиночного раунда из доступной формы:
+//   • наследственная вёрстка с отдельными полями Имя/Фамилия (s-*);
+//   • v1.69.0: единая форма создания раунда — первая карточка игрока
+//     (pl-name-1 = «Имя Фамилия», общие параметры grp-time/grp-hole/…).
+function collectSoloInput() {
+    var fnInp = document.getElementById('s-firstname');
+    if (fnInp) {
+        var lnInp = document.getElementById('s-lastname');
+        var midInp = document.getElementById('s-middlename');
+        var timeInp = document.getElementById('s-time');
+        var hcpInp = document.getElementById('s-exact-hcp');
+        return {
+            firstName: fnInp.value.trim(),
+            lastName: lnInp ? lnInp.value.trim() : '',
+            middleName: midInp ? midInp.value.trim() : '',
+            timeStr: timeInp ? timeInp.value : '',
+            startHole: (function() { var e = document.getElementById('s-hole'); return e ? (parseInt(e.value) || 1) : 1; })(),
+            tee: (function() { var e = document.getElementById('s-tee'); return e ? e.value : 'bl'; })(),
+            format: (function() { var e = document.getElementById('s-format'); return e ? e.value : 'Stroke Play'; })(),
+            holeRange: (function() { var e = document.getElementById('s-range'); return e ? e.value : '1-18'; })(),
+            gender: (function() { var e = document.getElementById('s-gender'); return e ? e.value : 'men'; })(),
+            exactHcpStr: hcpInp ? hcpInp.value : '',
+            uid: window.sSelectedUid || (currentUser ? currentUser.uid : null),
+            nameInput: fnInp,
+            timeInput: timeInp,
+            hcpInput: hcpInp
+        };
+    }
+
+    if (typeof getSetupPlayers !== 'function') return null;
+    var ps = getSetupPlayers();
+    if (!ps.length) return null;
+    var p = ps[0];
+    var parts = String(p.name || '').split(/\s+/).filter(Boolean);
+    var timeEl = document.getElementById('grp-time');
+    var holeEl = document.getElementById('grp-hole');
+    var fmtEl = document.getElementById('grp-format');
+    var rangeEl = document.getElementById('grp-range');
+    return {
+        firstName: parts[0] || '',
+        lastName: parts.slice(1).join(' ') || '',
+        middleName: p.middleName,
+        timeStr: timeEl ? timeEl.value : '',
+        startHole: holeEl ? (parseInt(holeEl.value) || 1) : 1,
+        tee: p.tee,
+        format: fmtEl ? fmtEl.value : 'Stroke Play',
+        holeRange: rangeEl ? rangeEl.value : '1-18',
+        gender: p.gender,
+        exactHcpStr: p.hcpStr,
+        uid: p.uid,
+        nameInput: document.getElementById('pl-name-' + p.idx),
+        timeInput: timeEl,
+        hcpInput: document.getElementById('pl-hcp-' + p.idx)
+    };
+}
+
 function startSolo() {
     if (soloStarting) return;
 
-    var fnInp = document.getElementById('s-firstname');
-    var lnInp = document.getElementById('s-lastname');
-    var midInp = document.getElementById('s-middlename');
-    var timeInp = document.getElementById('s-time');
-    var hcpInp = document.getElementById('s-exact-hcp');
+    var src = collectSoloInput();
+    if (!src) return;
 
-    var firstName = fnInp.value.trim();
-    var lastName = lnInp.value.trim();
-    var middleName = midInp ? midInp.value.trim() : '';
-    var timeStr = timeInp.value;
-    var startHole = parseInt(document.getElementById('s-hole').value) || 1;
-    var tee = document.getElementById('s-tee').value;
-    var format = document.getElementById('s-format').value;
-    var holeRange = document.getElementById('s-range') ? document.getElementById('s-range').value : '1-18';
-    var gender = document.getElementById('s-gender').value;
-    var exactHcpStr = hcpInp.value;
+    var firstName = src.firstName;
+    var lastName = src.lastName;
+    var middleName = src.middleName;
+    var timeStr = src.timeStr;
+    var startHole = src.startHole;
+    var tee = src.tee;
+    var format = src.format;
+    var holeRange = src.holeRange;
+    var gender = src.gender;
+    var exactHcpStr = src.exactHcpStr;
 
-    if (!firstName) { fnInp.classList.add('is-invalid'); toast(t('msg_name_req'), 'error'); return; }
-    if (!lastName) { lnInp.classList.add('is-invalid'); toast(t('msg_name_req'), 'error'); return; }
-    if (!timeStr) { timeInp.classList.add('is-invalid'); toast(t('msg_start_time_req'), 'error'); return; }
-    if (!exactHcpStr && exactHcpStr !== '0') { hcpInp.classList.add('is-invalid'); toast(t('msg_exact_hcp_req'), 'error'); return; }
+    if (!firstName || !lastName) {
+        if (src.nameInput) src.nameInput.classList.add('is-invalid');
+        toast(t('fio_full_req'), 'error');
+        return;
+    }
+    if (!timeStr) { if (src.timeInput) src.timeInput.classList.add('is-invalid'); toast(t('msg_start_time_req'), 'error'); return; }
+    if (!exactHcpStr && exactHcpStr !== '0') { if (src.hcpInput) src.hcpInput.classList.add('is-invalid'); toast(t('msg_exact_hcp_req'), 'error'); return; }
+    // Выбранный из списка зарегистрированных игрок (единая форма):
+    // передаём его uid дальше, как это делала старая форма через sSelectedUid.
+    try { window.sSelectedUid = src.uid || null; } catch (e) { /* игнорируем */ }
 
     var parsedExact = parseExactHcp(exactHcpStr);
     var fieldHcp = getFieldHcp(parsedExact, tee, gender);

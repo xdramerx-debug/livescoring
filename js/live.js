@@ -138,9 +138,12 @@ function showGroupSetup() {
         buildStartHoleOptions(sel, rangeEl ? rangeEl.value : '1-18');
     }
 
+    // Дефолт «сейчас» ставим только в пустое поле: showGroupSetup
+    // вызывается повторно (смена языка, повторная инициализация), и
+    // введённое игроком время не должно затираяться.
     var now = new Date();
     var timeInput = document.getElementById('grp-time');
-    if (timeInput) {
+    if (timeInput && !timeInput.value) {
         timeInput.value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
     }
 
@@ -216,6 +219,9 @@ function bindPlayerSlotsAccordion() {
 // таймингу DOMContentLoaded — до отрисовки слотов — и потому не появлялся вовсе.
 function ensurePlayerWizardSteps(playerCount) {
     if (!(playerCount > 1)) return;
+    // Мастер «По шагам» (админ-вариант 5) ведёт свой степпер —
+    // статический мобильный не дублируем.
+    try { if (typeof setupVariant === 'function' && setupVariant() === '5') return; } catch (e) { /* игнорируем */ }
     if (document.getElementById('p0-wizard-steps')) return;
     var isEn = false;
     try { isEn = currentLang === 'en'; } catch (e) { isEn = false; }
@@ -226,11 +232,23 @@ function ensurePlayerWizardSteps(playerCount) {
     steps.innerHTML = labels.map(function(txt, i) {
         return '<div class="p0-step' + (i === 0 ? ' active' : '') + '"><span>' + (i + 1) + '</span>' + txt + '</div>';
     }).join('');
-    var anchor = document.querySelector('#group-setup .setup-card') || document.querySelector('.setup-card');
+    // v1.69.0: единая форма — якорь изменился (#unified-setup-card),
+    // старый #group-setup оставлен для совместимости.
+    var anchor = document.querySelector('#unified-setup-card') ||
+                 document.querySelector('#group-setup .setup-card') ||
+                 document.querySelector('.setup-card');
     if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(steps, anchor);
 }
 
 function buildPlayerSlots() {
+    // v1.69.0: единая форма создания раунда — слоты игроков рисует
+    // js/round-setup.js (кнопка «Добавить игрока», сохранение введённого,
+    // 5 админских вариантов отображения). Старая разметка с селектором
+    // количества игроков больше не используется.
+    if (typeof renderSetupPlayers === 'function' && document.getElementById('player-slots')) {
+        renderSetupPlayers(true);
+        return;
+    }
     var cntEl = lGet('grp-count');
     var count = cntEl ? (parseInt(cntEl.value) || 2) : 2;
     var el = lGet('player-slots'); if (!el) return;
@@ -360,6 +378,8 @@ function onPlayerGenderOrTeeChange(idx) {
         }
     }
     calcPlayerFieldHcp(idx);
+    // Единая форма: обновляем цвет ТИ / метку карточки (js/round-setup.js)
+    if (typeof markSetupPlayerMeta === 'function') markSetupPlayerMeta(idx);
 }
 
 function calcPlayerFieldHcp(idx) {
@@ -448,14 +468,19 @@ function startGroup() {
     var startHole = parseInt(document.getElementById('grp-hole').value) || 1;
     var format = document.getElementById('grp-format').value;
     var holeRange = document.getElementById('grp-range') ? document.getElementById('grp-range').value : '1-18';
-    var count = parseInt(document.getElementById('grp-count').value) || 2;
+    // v1.69.0: состав группы = карточки игроков, реально присутствующие в
+    // форме (кнопка «Добавить игрока»). Индексы необязательно подряд —
+    // после удаления игрока в списке могут быть «дырки».
+    var slotIdxs = (typeof setupPlayerIndices === 'function') ? setupPlayerIndices() : [];
+    if (!slotIdxs.length) slotIdxs = [1, 2];
 
     if (!timeStr) { toast(t('msg_start_time_req'), 'error'); return; }
 
     var selectedUids = [];
     var inputs = [];
 
-    for (var i = 1; i <= count; i++) {
+    for (var si = 0; si < slotIdxs.length; si++) {
+        var i = slotIdxs[si];
         var uidEl = document.getElementById('pl-uid-' + i);
         var uid = uidEl ? uidEl.value : '';
         var nameEl = document.getElementById('pl-name-' + i);

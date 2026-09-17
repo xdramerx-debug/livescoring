@@ -1,0 +1,57 @@
+/* Tournament management v2: compact admin surface on top of the existing wizard. */
+.tna-shell { display:grid; gap:14px; }
+.tna-head { display:flex; align-items:end; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.tna-head h2 { margin:0; color:var(--white); font-family:var(--ff); font-size:22px; }
+.tna-head p { max-width:660px; margin:5px 0 0; color:var(--muted); font-size:12px; line-height:1.5; }
+.tna-toolbar { display:flex; align-items:end; gap:9px; flex-wrap:wrap; padding:12px; border:1px solid rgba(201,168,76,.22); border-radius:12px; background:rgba(255,255,255,.025); }
+.tna-toolbar .form-group { margin:0; min-width:170px; flex:1 1 200px; }
+.tna-toolbar .form-group label { margin-bottom:4px; }
+.tna-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:9px; }
+.tna-stat { padding:11px 13px; border:1px solid rgba(255,255,255,.1); border-radius:11px; background:rgba(255,255,255,.03); }
+.tna-stat b { display:block; color:var(--gold); font-size:20px; }
+.tna-stat span { color:var(--muted); font-size:10.5px; }
+.tna-list { display:grid; gap:9px; }
+.tna-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:13px; border:1px solid rgba(255,255,255,.1); border-radius:13px; background:rgba(19,34,24,.76); }
+.tna-row-main { min-width:210px; flex:1 1 280px; }
+.tna-row-title { display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:var(--white); font-size:15px; font-weight:800; }
+.tna-row-meta { display:flex; gap:6px 13px; flex-wrap:wrap; margin-top:5px; color:var(--muted); font-size:11px; }
+.tna-row-meta i { color:var(--gold); }
+.tna-status { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; border-radius:999px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.3px; }
+.tna-status.draft { color:#c6cbd1; background:rgba(148,163,184,.16); }
+.tna-status.registration { color:#1f301f; background:#c9e18e; }
+.tna-status.closed { color:#f0ba67; background:rgba(243,156,18,.13); }
+.tna-status.active { color:#ffaaa0; background:rgba(224,90,74,.15); }
+.tna-status.completed { color:#9ce4b1; background:rgba(46,204,113,.13); }
+.tna-status.cancelled { color:#ff9990; background:rgba(224,90,74,.12); }
+.tna-actions { display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
+.tna-actions .btn { min-height:35px; }
+.tna-editor { display:grid; gap:12px; }
+.tna-editor-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:12px 14px; border:1px solid rgba(201,168,76,.48); border-radius:12px; color:var(--gold); background:rgba(201,168,76,.09); font-size:12px; font-weight:800; }
+.tna-editor-banner small { display:block; margin-top:3px; color:var(--muted); font-weight:400; }
+.tna-panel { padding:15px; border:1px solid rgba(255,255,255,.1); border-radius:14px; background:rgba(255,255,255,.025); }
+.tna-panel h3 { margin:0 0 9px; color:var(--white); font-size:16px; }
+.tna-panel h3 i { color:var(--gold); }
+.tna-panel-sub { margin:-3px 0 11px; color:var(--muted); font-size:11.5px; line-height:1.5; }
+.tna-two-col { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+.tna-table-wrap { overflow:auto; border:1px solid rgba(255,255,255,.1); border-radius:10px; }
+.tna-table { width:100%; min-width:600px; border-collapse:collapse; color:var(--white); font-size:12px; }
+.tna-table th { padding:8px 9px; color:var(--muted); background:rgba(201,168,76,.08); font-size:10px; text-align:left; text-transform:uppercase; }
+.tna-table td { padding:8px 9px; border-top:1px solid rgba(255,255,255,.07); vertical-align:middle; }
+.tna-audit-list { display:grid; gap:7px; max-height:390px; overflow:auto; }
+.tna-audit-entry { padding:9px 10px; border-left:3px solid var(--gold); border-radius:7px; background:rgba(255,255,255,.035); }
+.tna-audit-entry b { color:var(--white); font-size:12px; }
+.tna-audit-entry small { display:block; margin-top:3px; color:var(--muted); font-size:10.5px; }
+.tna-audit-change { display:block; margin-top:4px; color:#d8e0d7; font-size:10.5px; }
+.tna-role-row { display:grid; grid-template-columns:1.1fr 1fr 1.4fr auto; gap:7px; align-items:end; margin-bottom:7px; }
+.tna-role-row .form-group { margin:0; }
+.tna-role-empty { color:var(--muted); font-size:12px; padding:8px 0; }
+.tna-import-box { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px; border:1px dashed rgba(201,168,76,.35); border-radius:10px; }
+.tna-import-box small { color:var(--muted); font-size:10.5px; }
+.tna-mini-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.tna-danger { color:#ff9990; }
+.tna-modal-note { color:var(--muted); font-size:11px; line-height:1.5; }
+@media(max-width:720px) {
+    .tna-role-row { grid-template-columns:1fr 1fr; }
+    .tna-role-row .tna-role-name { grid-column:1/-1; }
+    .tna-actions { justify-content:flex-start; width:100%; }
+}

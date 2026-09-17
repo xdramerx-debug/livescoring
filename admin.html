@@ -13,11 +13,11 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=33">
+    <link rel="stylesheet" href="css/style.css?v=34">
     <link rel="stylesheet" href="css/design-presets.css?v=1">
     <link rel="stylesheet" href="css/tn-wizard.css?v=1">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=1">
-    <link rel="stylesheet" href="css/tournament-admin.css?v=1">
+    <link rel="stylesheet" href="css/tournament-admin.css?v=2">
     <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -94,6 +94,7 @@
             <button class="admin-tab" onclick="switchTab('scores',this)" data-i18n="tab_scores">Счёт ⛳</button>
             <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
             <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры 🏆</button>
+            <button class="admin-tab" onclick="switchTab('tournamentsview',this)" data-i18n="tab_tournaments_view">Турниры: вид 👁</button>
             <button class="admin-tab" onclick="switchTab('protocol',this)">Протокол ✏️</button>
             <button class="admin-tab" onclick="switchTab('broadcasts',this)" data-i18n="tab_broadcasts">Анонсы 📢</button>
             <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
@@ -405,6 +406,56 @@
             <div id="tn-start-anchor"></div>
             <div id="tab-start-content"></div>
             </div><!-- /tn-pane-classic -->
+        </div>
+
+        <!-- ВКЛАДКА «ТУРНИРЫ: ВИД»: 5 вариантов отображения страницы «Турниры».
+             Выбор доступен только администратору, хранится в
+             settings/tournaments_display_variant и применяется для всех. -->
+        <div id="tab-tournamentsview" class="admin-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-trophy"></i> <span data-i18n="tournaments_view_tab_title">Отображение страницы «Турниры» — 5 вариантов</span></h2>
+                <p style="font-size:13px;color:var(--muted);margin:-4px 0 16px;" data-i18n="tournaments_view_tab_sub">Вариант выбирает только администратор. Он сохраняется в настройках клуба и сразу применяется у всех игроков на странице «Турниры».</p>
+
+                <div class="list-item page-display-setting-card" style="margin-bottom:14px;">
+                    <span class="page-display-setting-title"><i class="fas fa-eye" style="color:var(--gold);"></i> <span>Сейчас включён: <b id="tn-view-current-badge" style="color:var(--gold);">1 · Сетка карточек</b></span></span>
+                    <div class="page-display-setting-sub" id="tn-view-current-desc">Текущий вид: карточки турниров в адаптивной сетке.</div>
+                </div>
+
+                <div class="page-display-variant-buttons" style="margin-bottom:12px;">
+                    <button type="button" id="tn-view-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="saveTnPageViewVariant('1')" aria-pressed="true"><i class="fas fa-table-cells"></i> <span data-i18n="tournaments_view_variant_1">1 · Сетка карточек</span></button>
+                    <button type="button" id="tn-view-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="saveTnPageViewVariant('2')" aria-pressed="false"><i class="fas fa-list"></i> <span data-i18n="tournaments_view_variant_2">2 · Компактный список</span></button>
+                    <button type="button" id="tn-view-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="saveTnPageViewVariant('3')" aria-pressed="false"><i class="fas fa-images"></i> <span data-i18n="tournaments_view_variant_3">3 · Витрина</span></button>
+                    <button type="button" id="tn-view-opt-4" class="btn btn-og btn-sm page-display-variant-btn" onclick="saveTnPageViewVariant('4')" aria-pressed="false"><i class="fas fa-table-list"></i> <span data-i18n="tournaments_view_variant_4">4 · Таблица</span></button>
+                    <button type="button" id="tn-view-opt-5" class="btn btn-og btn-sm page-display-variant-btn" onclick="saveTnPageViewVariant('5')" aria-pressed="false"><i class="fas fa-calendar-days"></i> <span data-i18n="tournaments_view_variant_5">5 · Календарь</span></button>
+                </div>
+
+                <div class="tn-view-preview-grid">
+                    <div class="tn-view-preview-card">
+                        <b><i class="fas fa-table-cells"></i> <span data-i18n="tournaments_view_variant_1">1 · Сетка карточек</span></b>
+                        <span data-i18n="tournaments_view_variant_1_desc">Текущий вид: карточки турниров в адаптивной сетке.</span>
+                    </div>
+                    <div class="tn-view-preview-card">
+                        <b><i class="fas fa-list"></i> <span data-i18n="tournaments_view_variant_2">2 · Компактный список</span></b>
+                        <span data-i18n="tournaments_view_variant_2_desc">Плотный список в одну строку: название, статус и дата — максимум турниров на экране.</span>
+                    </div>
+                    <div class="tn-view-preview-card">
+                        <b><i class="fas fa-images"></i> <span data-i18n="tournaments_view_variant_3">3 · Витрина</span></b>
+                        <span data-i18n="tournaments_view_variant_3_desc">Крупные карточки с большим баннером — по одной-две в ряд, как афиша клуба.</span>
+                    </div>
+                    <div class="tn-view-preview-card">
+                        <b><i class="fas fa-table-list"></i> <span data-i18n="tournaments_view_variant_4">4 · Таблица</span></b>
+                        <span data-i18n="tournaments_view_variant_4_desc">Табличный вид: строки с колонками «Турнир · Дата · Формат · Статус».</span>
+                    </div>
+                    <div class="tn-view-preview-card">
+                        <b><i class="fas fa-calendar-days"></i> <span data-i18n="tournaments_view_variant_5">5 · Календарь</span></b>
+                        <span data-i18n="tournaments_view_variant_5_desc">Календарная лента: слева дата старта, справа карточка турнира.</span>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-og" onclick="openTournamentsPagePreview()" style="margin-top:14px;">
+                    <i class="fas fa-arrow-up-right-from-square"></i> <span data-i18n="tournaments_view_open_page">Открыть страницу «Турниры»</span>
+                </button>
+            </div>
         </div>
 
         <div id="tab-protocol" class="admin-section hidden">
@@ -991,11 +1042,9 @@
                     </div>
                     <div class="list-item page-display-setting-card">
                         <span class="page-display-setting-title"><i class="fas fa-trophy" style="color:var(--gold);"></i> <span data-i18n="tournaments_display_title">Отображение страницы «Турниры»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="tournaments_display_sub">Выберите один из трёх вариантов оформления списка турниров. Настройка применяется для всех пользователей.</div>
+                        <div class="page-display-setting-sub">У страницы «Турниры» пять вариантов оформления — они вынесены в отдельную вкладку «Турниры: вид 👁».</div>
                         <div class="page-display-variant-buttons">
-                            <button type="button" id="tournaments-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('tournaments','1')" aria-pressed="true"><i class="fas fa-list"></i> <span data-i18n="tournaments_display_variant_1">1 · Список</span></button>
-                            <button type="button" id="tournaments-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('tournaments','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="tournaments_display_variant_2">2 · Компактный</span></button>
-                            <button type="button" id="tournaments-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('tournaments','3')" aria-pressed="false"><i class="fas fa-layer-group"></i> <span data-i18n="tournaments_display_variant_3">3 · Витрина</span></button>
+                            <button type="button" id="tournaments-display-open-tab" class="btn btn-og btn-sm page-display-variant-btn" onclick="switchTab('tournamentsview', document.querySelector('.admin-tab[onclick*=&quot;tournamentsview&quot;]'))"><i class="fas fa-arrow-right"></i> <span data-i18n="tab_tournaments_view">Турниры: вид 👁</span></button>
                         </div>
                     </div>
                     <div class="list-item page-display-setting-card">
@@ -1176,12 +1225,12 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.73.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.74.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=63"></script>
+<script src="js/utils.js?v=64"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/assistant-config.js"></script>
 <script src="js/assistant-build.js?v=2"></script>
@@ -1190,7 +1239,7 @@
 <script src="js/tn-engine.js?v=1"></script>
 <script src="js/tn-wizard.js?v=1"></script>
 <script src="js/tournament-admin.js?v=1"></script>
-<script src="js/admin.js?v=47"></script>
+<script src="js/admin.js?v=48"></script>
 <script src="js/protocol.js?v=2"></script>
 <script src="js/start-admin.js?v=21"></script>
 <script src="js/pe-edit.js?v=2"></script>

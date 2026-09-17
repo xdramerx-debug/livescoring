@@ -4680,16 +4680,106 @@ body.pd-order-of-merit-v3 .lb-table tbody tr:nth-child(3){background:linear-grad
 body.pd-order-of-merit-v3 .lb-table .badge-eag{font-size:16px !important;padding:6px 14px;}
 
 /* ---------- ТУРНИРЫ (pd-tournaments-*) ---------- */
-/* Вариант 2 · Компактный */
+/* Пять вариантов страницы «Турниры». Выбирает только администратор
+   (админ-панель → вкладка «Турниры: вид»), значение хранится в
+   settings/tournaments_display_variant и применяется для всех игроков.
+   Вариант 1 — исходный вид (классов на <body> нет).
+   Разметка каталога: #tn-list.tn-public-grid > article.tn-public-card
+   (баннер + тело карточки), стили — css/tournament-redesign.css. */
+
+/* Общий для вариантов 2–5: вкладка-фильтр становится «подчёркнутой»,
+   чтобы смена оформления была заметна сразу. */
+body.pd-tournaments-v2 .tn-public-tab,
+body.pd-tournaments-v3 .tn-public-tab,
+body.pd-tournaments-v4 .tn-public-tab,
+body.pd-tournaments-v5 .tn-public-tab{border-radius:9px;}
+
+/* Вариант 2 · Компактный список: плотные строки, максимум на экране */
+body.pd-tournaments-v2 .tn-public-grid{display:flex;flex-direction:column;gap:7px;}
+body.pd-tournaments-v2 .tn-public-card{flex-direction:row;align-items:center;min-height:0;border-radius:10px;box-shadow:none;}
+body.pd-tournaments-v2 .tn-public-card:hover{transform:none;}
+body.pd-tournaments-v2 .tn-public-card-banner{display:none;}
+body.pd-tournaments-v2 .tn-public-card-body{flex-direction:row;align-items:center;gap:12px;padding:10px 13px;}
+body.pd-tournaments-v2 .tn-public-card-top{flex:1 1 auto;min-width:0;align-items:center;gap:9px;}
+body.pd-tournaments-v2 .tn-public-card h3{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+body.pd-tournaments-v2 .tn-public-meta{margin-top:0;flex:0 0 auto;font-size:11px;gap:10px;}
+body.pd-tournaments-v2 .tn-public-format{display:none;}
+body.pd-tournaments-v2 .tn-public-card-desc{display:none;}
+body.pd-tournaments-v2 .tn-public-card-actions{margin-top:0;padding-top:0;flex:0 0 auto;}
+body.pd-tournaments-v2 .tn-public-card-actions .btn{min-height:32px;font-size:12px;}
+body.pd-tournaments-v2 .tn-public-note{display:none;}
+/* Наследие (старый рендерер списка турниров) */
 body.pd-tournaments-v2 .card{padding:14px;margin-bottom:12px;}
 body.pd-tournaments-v2 .tn-card{padding:13px;margin-bottom:8px;border-radius:10px;}
 body.pd-tournaments-v2 .tn-name{font-size:15px;}
 body.pd-tournaments-v2 .tn-meta{font-size:11px;}
-/* Вариант 3 · Витрина: крупные турнирные афиши */
+
+/* Вариант 3 · Витрина: крупные афиши, по одной-две в ряд */
+body.pd-tournaments-v3 .tn-public-grid{grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:22px;}
+body.pd-tournaments-v3 .tn-public-card{min-height:330px;border-radius:20px;border-color:rgba(201,168,76,.45);box-shadow:0 18px 44px rgba(0,0,0,.4);}
+body.pd-tournaments-v3 .tn-public-card-banner{height:168px;}
+body.pd-tournaments-v3 .tn-public-card-body{padding:22px 24px 24px;}
+body.pd-tournaments-v3 .tn-public-card h3{font-size:27px;line-height:1.12;}
+body.pd-tournaments-v3 .tn-public-meta{font-size:14px;margin-top:16px;}
+body.pd-tournaments-v3 .tn-public-chip{font-size:12px;padding:6px 11px;}
+body.pd-tournaments-v3 .tn-public-card-desc{font-size:14px;min-height:56px;}
+body.pd-tournaments-v3 .tn-public-badge{font-size:12px;padding:7px 13px;}
+body.pd-tournaments-v3 .tn-public-card-actions .btn{min-height:44px;font-size:14px;}
+body.pd-tournaments-v3 .tn-detail-hero{padding:32px;}
+body.pd-tournaments-v3 .tn-detail-title-row h1{font-size:38px;}
+/* Наследие */
 body.pd-tournaments-v3 .tn-card{padding:28px;margin-bottom:20px;background:linear-gradient(145deg,rgba(201,168,76,.15),rgba(19,34,24,.93) 55%);border-color:rgba(201,168,76,.48);box-shadow:0 14px 34px rgba(0,0,0,.42);}
 body.pd-tournaments-v3 .tn-name{font-size:24px;}
 body.pd-tournaments-v3 .tn-meta{font-size:14px;}
 body.pd-tournaments-v3 .tn-status{font-size:14px;padding:6px 16px;}
+
+/* Вариант 4 · Таблица: строки с колонками, без баннеров */
+body.pd-tournaments-v4 .tn-public-grid{display:block;border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;}
+body.pd-tournaments-v4 .tn-public-card{flex-direction:row;align-items:stretch;min-height:0;border:0;border-radius:0;border-bottom:1px solid rgba(255,255,255,.08);box-shadow:none;}
+body.pd-tournaments-v4 .tn-public-card:nth-child(even){background:rgba(255,255,255,.025);}
+body.pd-tournaments-v4 .tn-public-card:last-child{border-bottom:0;}
+body.pd-tournaments-v4 .tn-public-card:hover{transform:none;background:rgba(201,168,76,.08);}
+body.pd-tournaments-v4 .tn-public-card-banner{display:none;}
+body.pd-tournaments-v4 .tn-public-card-body{display:grid;grid-template-columns:minmax(200px,2.4fr) minmax(190px,1.5fr) minmax(150px,1.1fr) auto;align-items:center;gap:14px;padding:13px 16px;}
+body.pd-tournaments-v4 .tn-public-card-top{min-width:0;align-items:center;gap:10px;}
+body.pd-tournaments-v4 .tn-public-card h3{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+body.pd-tournaments-v4 .tn-public-meta{margin-top:0;font-size:11.5px;flex-wrap:nowrap;overflow:hidden;}
+body.pd-tournaments-v4 .tn-public-format{margin-top:0;flex-wrap:nowrap;overflow:hidden;}
+body.pd-tournaments-v4 .tn-public-card-desc{display:none;}
+body.pd-tournaments-v4 .tn-public-card-actions{margin-top:0;padding-top:0;justify-content:flex-end;}
+body.pd-tournaments-v4 .tn-public-card-actions .btn{min-height:32px;font-size:12px;}
+body.pd-tournaments-v4 .tn-public-note{display:none;}
+body.pd-tournaments-v4 .tn-public-table th{font-size:11px;letter-spacing:1px;}
+
+/* Вариант 5 · Календарь: лента с датой слева */
+body.pd-tournaments-v5 .tn-public-grid{display:flex;flex-direction:column;gap:0;}
+body.pd-tournaments-v5 .tn-public-card{flex-direction:row;align-items:stretch;min-height:0;margin-bottom:14px;border-radius:14px;}
+body.pd-tournaments-v5 .tn-public-card:before{content:"";position:absolute;left:39px;top:-14px;bottom:-14px;width:2px;background:linear-gradient(180deg,transparent,rgba(201,168,76,.55) 18%,rgba(201,168,76,.55) 82%,transparent);}
+body.pd-tournaments-v5 .tn-public-card:first-child:before{top:26px;}
+body.pd-tournaments-v5 .tn-public-card:last-child:before{bottom:auto;height:52px;}
+body.pd-tournaments-v5 .tn-public-card-banner{width:80px;flex:0 0 80px;height:auto;border-radius:14px 0 0 14px;background:linear-gradient(160deg,rgba(201,168,76,.3),rgba(36,89,55,.5));border-right:1px solid rgba(201,168,76,.3);}
+body.pd-tournaments-v5 .tn-public-card-body{padding:16px 18px;}
+body.pd-tournaments-v5 .tn-public-card h3{font-size:17px;}
+body.pd-tournaments-v5 .tn-public-meta span:first-child{color:var(--gold);font-weight:800;font-size:13px;}
+body.pd-tournaments-v5 .tn-public-card-desc{min-height:0;margin-top:9px;}
+body.pd-tournaments-v5 .tn-public-card-actions{padding-top:12px;}
+
+/* Мобильные: «Таблица» и «Компактный список» складываются в две строки,
+   «Витрина» занимает всю ширину, «Календарь» сохраняет ленту. */
+@media (max-width:760px){
+    body.pd-tournaments-v3 .tn-public-grid{grid-template-columns:1fr;gap:16px;}
+    body.pd-tournaments-v3 .tn-public-card{min-height:0;}
+    body.pd-tournaments-v3 .tn-public-card-banner{height:120px;}
+    body.pd-tournaments-v3 .tn-public-card h3{font-size:21px;}
+    body.pd-tournaments-v2 .tn-public-card-body{flex-wrap:wrap;gap:8px;}
+    body.pd-tournaments-v2 .tn-public-card-top{flex:1 1 100%;}
+    body.pd-tournaments-v4 .tn-public-card-body{grid-template-columns:1fr auto;gap:8px 12px;padding:12px 13px;}
+    body.pd-tournaments-v4 .tn-public-meta{grid-column:1/-1;}
+    body.pd-tournaments-v4 .tn-public-format{display:none;}
+    body.pd-tournaments-v4 .tn-public-card-actions{grid-column:2;grid-row:1;}
+    body.pd-tournaments-v5 .tn-public-card-banner{width:56px;flex:0 0 56px;}
+    body.pd-tournaments-v5 .tn-public-card:before{left:27px;}
+}
 
 /* ---------- ГАНДИКАПЫ (pd-handicap-*) ---------- */
 /* Вариант 2 · Компактный */

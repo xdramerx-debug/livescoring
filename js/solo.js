@@ -1065,6 +1065,9 @@ function soloIsFioResume() {
         (soloRound.players && soloRound.players[currentUser.uid]))) return false;
     var localKey = localStorage.getItem('pestovo_solo_key_' + soloRid);
     if (localKey && soloRound.accessKey === localKey) return false;
+    // Турнирная карточка участника (QR из стартового листа): завершает сам
+    // игрок, подтверждение владельца не требуется.
+    if (typeof pestovoIsTournamentCardHolder === 'function' && pestovoIsTournamentCardHolder(soloRound, uid)) return false;
     return true;
 }
 

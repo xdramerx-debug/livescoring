@@ -1722,6 +1722,9 @@ function toggleLang() {
         if (wasOpen && drawerRoot) drawerRoot.classList.add('open');
     }
     if (typeof initP0MobileEnhancements === 'function') try{ initP0MobileEnhancements(); }catch (e) { console.warn("[silent]", e); }
+    // Перерисовка суб-вкладок «Турниров» (мастер создания / поле / шаблоны),
+    // их подписи рендерятся динамически через tnL().
+    if (typeof tnwOnLangChange === 'function') try { tnwOnLangChange(); } catch (e) { console.warn("[silent]", e); }
     if (typeof toast === 'function') {
         toast(currentLang === 'en' ? '🇬🇧 English language enabled' : '🇷🇺 Выбран русский язык', 'info');
     }

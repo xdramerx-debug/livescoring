@@ -15,6 +15,7 @@
     <title data-i18n="nav_admin">Админ — Пестово</title>
     <link rel="stylesheet" href="css/style.css?v=33">
     <link rel="stylesheet" href="css/design-presets.css?v=1">
+    <link rel="stylesheet" href="css/tn-wizard.css?v=1">
     <script src="js/design-system.js?v=1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -354,6 +355,16 @@
         </div>
 
         <div id="tab-tournaments" class="admin-section hidden">
+            <!-- Суб-вкладки страницы «Турниры»: строятся js/tn-wizard.js.
+                 Порядок: Классика (существующие механизмы, не трогаем) /
+                 Новая версия создания турнира / Настройки поля / Шаблоны турниров.
+                 Прямые ссылки: admin.html#new-create | #course | #templates -->
+            <div class="tnw-subtabs" id="tn-subtabs" role="tablist" aria-label="Tournament sections"></div>
+            <div id="tn-pane-new-create" class="tnw-pane hidden"><div id="tn-wizard-root"></div></div>
+            <div id="tn-pane-course" class="tnw-pane hidden"><div id="tn-course-root"></div></div>
+            <div id="tn-pane-templates" class="tnw-pane hidden"><div id="tn-templates-root"></div></div>
+            <!-- Классический (существующий) способ создания турнира — fallback, остаётся как был -->
+            <div id="tn-pane-classic" class="tnw-pane">
             <div class="card">
                 <h2><i class="fas fa-trophy"></i> <span data-i18n="create_tournament">Создать турнир</span></h2>
                 <div class="form-row">
@@ -390,6 +401,7 @@
             <!-- СТАРТ ТУРНИРА: единая страница — протоколы, группы и QR-коды живут здесь же -->
             <div id="tn-start-anchor"></div>
             <div id="tab-start-content"></div>
+            </div><!-- /tn-pane-classic -->
         </div>
 
         <div id="tab-protocol" class="admin-section hidden">
@@ -1161,7 +1173,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.71.0</span></p></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p></div></div> <p class="site-version">Версия сайта: <span class="version-number">1.72.0</span></p></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -1171,6 +1183,8 @@
 <script src="js/assistant-config.js"></script>
 <script src="js/assistant-build.js?v=2"></script>
 <script src="js/name-variants.js?v=1"></script>
+<script src="js/tn-engine.js?v=1"></script>
+<script src="js/tn-wizard.js?v=1"></script>
 <script src="js/admin.js?v=47"></script>
 <script src="js/protocol.js?v=2"></script>
 <script src="js/start-admin.js?v=21"></script>

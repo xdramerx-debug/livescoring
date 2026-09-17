@@ -1,0 +1,218 @@
+/* ============================================================
+   «Новая версия создания турнира» — стили вкладок wizard / поля /
+   шаблонов. Наследует дизайн-систему админки (CSS-переменные
+   style.css), новых визуальных языков не вводит.
+   ============================================================ */
+
+/* ---- Суб-вкладки внутри «Турниры» ---- */
+.tnw-subtabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    position: sticky;
+    top: var(--nav-h, 60px);
+    z-index: 5;
+    background: var(--bg, #0b1a0e);
+    padding: 8px 0;
+}
+.tnw-subtab {
+    border: 1px solid rgba(201, 168, 76, 0.35);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--white, #fff);
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    touch-action: manipulation;
+}
+.tnw-subtab:hover { border-color: var(--gold, #c9a84c); }
+.tnw-subtab.active {
+    background: linear-gradient(135deg, rgba(201, 168, 76, 0.25), rgba(201, 168, 76, 0.1));
+    border-color: var(--gold, #c9a84c);
+    color: var(--gold, #c9a84c);
+}
+.tnw-pane.hidden { display: none; }
+
+/* ---- Прогресс мастера ---- */
+.tnw-progress { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tnw-step-chip {
+    flex: 1 1 90px;
+    min-width: 84px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    padding: 8px 6px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1.25;
+    color: var(--muted, #9a9a9a);
+    transition: all 0.15s;
+}
+.tnw-step-chip .tnw-step-num {
+    display: block;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--white, #fff);
+}
+.tnw-step-chip.done { border-color: rgba(76, 175, 80, 0.55); color: #9ccc9c; }
+.tnw-step-chip.done .tnw-step-num { color: #7cbd7c; }
+.tnw-step-chip.current {
+    border-color: var(--gold, #c9a84c);
+    background: rgba(201, 168, 76, 0.12);
+    color: var(--white, #fff);
+}
+.tnw-step-chip.current .tnw-step-num { color: var(--gold, #c9a84c); }
+
+/* ---- Тело шага ---- */
+.tnw-card {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+}
+.tnw-card > h3 { margin: 0 0 4px; font-size: 16px; color: var(--white, #fff); }
+.tnw-card .tnw-sub { font-size: 12px; color: var(--muted, #9a9a9a); margin-bottom: 12px; }
+.tnw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.tnw-field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted, #9a9a9a); margin-bottom: 4px; }
+.tnw-field .tnw-hint { font-size: 11px; color: var(--muted, #9a9a9a); margin-top: 3px; opacity: 0.8; }
+.tnw-field input[type="text"], .tnw-field input[type="number"], .tnw-field input[type="date"],
+.tnw-field input[type="datetime-local"], .tnw-field input[type="time"], .tnw-field input[type="url"],
+.tnw-field select, .tnw-field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: var(--white, #fff);
+    border-radius: 10px;
+    padding: 9px 11px;
+    font-size: 13.5px;
+    font-family: inherit;
+}
+.tnw-field textarea { min-height: 84px; resize: vertical; }
+.tnw-field input:focus, .tnw-field select:focus, .tnw-field textarea:focus {
+    outline: none;
+    border-color: var(--gold, #c9a84c);
+    box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.15);
+}
+.tnw-checks { display: flex; gap: 8px; flex-wrap: wrap; }
+.tnw-check {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px; padding: 7px 12px;
+    font-size: 12.5px; cursor: pointer; user-select: none;
+    background: rgba(255, 255, 255, 0.02);
+    transition: all 0.12s; touch-action: manipulation;
+}
+.tnw-check input { width: 15px; height: 15px; accent-color: var(--gold, #c9a84c); }
+.tnw-check:has(input:checked) { border-color: var(--gold, #c9a84c); background: rgba(201, 168, 76, 0.12); }
+
+/* ---- Динамические списки (контакты, раунды, спонсоры…) ---- */
+.tnw-list { display: flex; flex-direction: column; gap: 10px; }
+.tnw-row {
+    display: grid; gap: 8px; align-items: end;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px; padding: 10px;
+}
+.tnw-row .tnw-row-del {
+    border: none; background: rgba(214, 69, 69, 0.14); color: #e88;
+    border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 13px;
+}
+.tnw-row .tnw-row-del:hover { background: rgba(214, 69, 69, 0.3); }
+.tnw-add-btn {
+    align-self: flex-start;
+    border: 1px dashed rgba(201, 168, 76, 0.5); background: transparent;
+    color: var(--gold, #c9a84c); border-radius: 10px; padding: 8px 14px;
+    cursor: pointer; font-size: 12.5px; font-weight: 600; margin-top: 4px;
+}
+.tnw-add-btn:hover { background: rgba(201, 168, 76, 0.1); }
+
+/* ---- Сортировка тай-брейков ---- */
+.tnw-order-item {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px; padding: 8px 10px; margin-bottom: 6px;
+    background: rgba(255, 255, 255, 0.02); cursor: grab; user-select: none;
+}
+.tnw-order-item.dragging { opacity: 0.5; }
+.tnw-order-item .tnw-order-prio {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(201, 168, 76, 0.2); color: var(--gold, #c9a84c);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800;
+}
+.tnw-order-item .tnw-order-btns { margin-left: auto; display: flex; gap: 4px; }
+.tnw-order-item .tnw-order-btns button {
+    border: 1px solid rgba(255,255,255,0.15); background: transparent;
+    color: var(--white, #fff); border-radius: 7px; padding: 4px 8px; cursor: pointer;
+}
+
+/* ---- Таблица лунок поля ---- */
+.tnw-course-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+.tnw-course-table { border-collapse: collapse; min-width: 900px; width: 100%; }
+.tnw-course-table th, .tnw-course-table td { border: 1px solid rgba(255,255,255,0.08); padding: 4px; text-align: center; font-size: 12px; }
+.tnw-course-table th { background: rgba(201, 168, 76, 0.1); color: var(--gold, #c9a84c); font-weight: 700; position: sticky; top: 0; }
+.tnw-course-table input {
+    width: 52px; text-align: center; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.14); color: var(--white, #fff);
+    border-radius: 7px; padding: 6px 2px; font-size: 12.5px;
+}
+.tnw-course-table input.tnw-invalid { border-color: #d64545; background: rgba(214,69,69,0.15); }
+.tnw-course-table td.tnw-total { font-weight: 800; background: rgba(255,255,255,0.03); }
+.tnw-tee-head { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+
+/* ---- Шаблоны турниров ---- */
+.tnw-tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.tnw-tpl-card {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 14px; padding: 14px;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.tnw-tpl-card .tnw-tpl-name { font-weight: 800; font-size: 15px; color: var(--white, #fff); }
+.tnw-tpl-card .tnw-tpl-meta { font-size: 11.5px; color: var(--muted, #9a9a9a); display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.tnw-tpl-card .tnw-tpl-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.tnw-chip {
+    display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px;
+    border: 1px solid rgba(201, 168, 76, 0.4); color: var(--gold, #c9a84c);
+    border-radius: 999px; padding: 3px 9px; text-transform: uppercase;
+}
+
+/* ---- Навигация мастера ---- */
+.tnw-nav-bar { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.tnw-nav-bar .tnw-spacer { flex: 1; }
+.tnw-status-line { font-size: 11.5px; color: var(--muted, #9a9a9a); display: flex; align-items: center; gap: 6px; }
+.tnw-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.tnw-dot.saved { background: #4caf50; }
+.tnw-dot.dirty { background: #e9c83c; }
+.tnw-dot.error { background: #d64545; }
+
+/* ---- Сводка (шаг 10) ---- */
+.tnw-summary-sec { border-left: 3px solid var(--gold, #c9a84c); padding: 4px 0 4px 12px; margin-bottom: 14px; }
+.tnw-summary-sec h4 { margin: 0 0 6px; font-size: 13.5px; color: var(--gold, #c9a84c); }
+.tnw-summary-sec table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.tnw-summary-sec td { padding: 3px 8px 3px 0; vertical-align: top; }
+.tnw-summary-sec td:first-child { color: var(--muted, #9a9a9a); white-space: nowrap; width: 190px; }
+
+/* ---- Цвета лидерборда / лунок ---- */
+.tnw-sc-eagle { color: #ffd700; } .tnw-sc-birdie { color: #4caf50; }
+.tnw-sc-par { color: var(--white, #fff); } .tnw-sc-bogey { color: #e09132; }
+.tnw-sc-double { color: #d64545; }
+
+.tnw-empty {
+    text-align: center; padding: 34px 16px; color: var(--muted, #9a9a9a);
+    border: 1px dashed rgba(255,255,255,0.15); border-radius: 14px; font-size: 13px;
+}
+.tnw-warn { color: #e9c83c; font-size: 12px; margin-top: 6px; }
+.tnw-err { color: #ff8f8f; font-size: 12px; margin-top: 6px; }
+
+@media (max-width: 640px) {
+    .tnw-step-chip { min-width: 64px; font-size: 10px; padding: 6px 4px; }
+    .tnw-grid { grid-template-columns: 1fr; }
+    .tnw-subtabs { position: static; }
+}

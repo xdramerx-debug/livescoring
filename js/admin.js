@@ -317,6 +317,9 @@ function openAdminPanel() {
     renderAssistantSources();
     loadAssistantSourcesFromFirebase();
     updateNotifButton();
+    // Новая версия создания турнира: подключаем черновики/шаблоны/поле,
+    // открываем суб-вкладку по URL-hash (#new-create / #course / #templates).
+    if (typeof tnwOnAdminOpen === 'function') { try { tnwOnAdminOpen(); } catch (e) { console.warn('[silent]', e); } }
 }
 
 function enableAdminNotifications() {

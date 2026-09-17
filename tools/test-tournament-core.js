@@ -26,7 +26,7 @@ check(audit.by === 'admin-1' && audit.event === 'updated' && audit.tournamentId 
 
 var source = { _key: 't1', name: 'Cup', status: 'upcoming', wizard: { format: { rounds: [{ date: '2099-09-20' }], regOpen: '2099-01-01' } }, registeredPlayers: { u1: { name: 'One' } }, waitlist: { u2: { name: 'Two' } } };
 var cloned = C.cloneConfig(source, false);
-check(cloned.status === 'draft' && cloned.lifecycleStatus === 'draft', 'clone starts as draft');
+check(cloned.status === 'draft' && cloned.lifecycleStatus === 'draft' && cloned.protocol.state === 'live', 'clone starts as draft');
 check(!cloned.registeredPlayers && !cloned.waitlist && cloned.wizard.format.rounds[0].date === '', 'clone without participants strips roster/dates');
 var clonedWithRoster = C.cloneConfig(source, true);
 check(!!clonedWithRoster.registeredPlayers && clonedWithRoster.clonedFrom === 't1', 'clone with participants preserves roster and origin');
@@ -52,6 +52,8 @@ var protocolFixed = C.protocolSnapshot({ protocol: { version: 2, state: 'live' }
 check(protocolFixed.version === 3 && protocolFixed.state === 'fixed' && protocolFixed.rows.length === rows.length, 'protocol snapshot increments version');
 check(C.protocolTransition({ protocol: protocolFixed }, 'published', { uid: 'admin-1' }).ok, 'fixed protocol can be published');
 check(!C.protocolTransition({ protocol: { state: 'live' } }, 'published', { uid: 'admin-1' }).ok, 'live protocol cannot skip fixation');
+var nominations = C.buildNominations(rows, ['best-net']);
+check(nominations.length === 1 && nominations[0].winners.length > 0 && nominations[0].winners[0].name === 'Иванов Иван', 'protocol nominations select top net players');
 
 console.log('\n' + total + ' checks, failures: ' + failures);
 process.exit(failures ? 1 : 0);

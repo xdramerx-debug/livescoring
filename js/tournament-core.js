@@ -281,9 +281,9 @@
         if (to === 'published') { patch.publishedAt = stamp; patch.publishedBy = patch.updatedBy; }
         return { ok: true, from: current.state, to: to, patch: patch };
     }
-    function protocolSnapshot(tournament, rows, actor) {
-        var current = protocolState(tournament), next = current.version + 1, by = str(actor && (actor.uid || actor.email || actor.name)) || str(actor) || 'unknown';
-        return { version: next, state: 'fixed', fixed: true, published: false, fixedAt: Date.now(), fixedBy: by, rows: clone(rows || []), source: 'rounds+settings/course' };
+    function protocolSnapshot(tournament, rows, actor, options) {
+        var current = protocolState(tournament), next = current.version + 1, by = str(actor && (actor.uid || actor.email || actor.name)) || str(actor) || 'unknown', opts = options || {};
+        return { version: next, state: 'fixed', fixed: true, published: false, fixedAt: Date.now(), fixedBy: by, rows: clone(rows || []), nominations: clone(opts.nominations || []), source: 'rounds+settings/course' };
     }
 
     function cloneConfig(tournament, includeParticipants) {
@@ -433,7 +433,7 @@
                 var player = round.players[pid] || {}, key = String(player.uid || pid || player.name || '');
                 if (!key) return;
                 var row = map[key];
-                if (!row) row = map[key] = { key: key, name: player.name || '—', handicap: player.exactHcp != null ? player.exactHcp : player.handicap, status: str(player.status || (round.playerStatuses && round.playerStatuses[pid])).toUpperCase() || 'ACTIVE', gross: 0, net: 0, stableford: 0, holes: 0, rounds: 0, byRound: {}, breakdown: [], _tieBreak: [] };
+                if (!row) row = map[key] = { key: key, name: player.name || '—', gender: player.gender === 'women' || player.gender === 'female' || player.gender === 'w' ? 'women' : 'men', handicap: player.exactHcp != null ? player.exactHcp : player.handicap, status: str(player.status || (round.playerStatuses && round.playerStatuses[pid])).toUpperCase() || 'ACTIVE', gross: 0, net: 0, stableford: 0, holes: 0, rounds: 0, byRound: {}, breakdown: [], _tieBreak: [] };
                 var stats = roundStats(player, course);
                 row.name = row.name === '—' ? (player.name || '—') : row.name;
                 row.gross += stats.gross;
@@ -455,7 +455,7 @@
         Object.keys(t.registeredPlayers || {}).forEach(function (pid) {
             var participant = t.registeredPlayers[pid] || {}, status = str(participant.status).toUpperCase(), key = String(participant.uid || pid);
             if (!status || ['DNS', 'WD', 'DNF', 'DQ'].indexOf(status) === -1 || map[key] || map[pid]) return;
-            map[key] = { key: key, name: participant.name || '—', handicap: participant.handicap, status: status, gross: 0, net: 0, stableford: 0, holes: 0, rounds: 0, byRound: {}, breakdown: [], _tieBreak: [] };
+            map[key] = { key: key, name: participant.name || '—', gender: participant.gender === 'women' || participant.gender === 'female' || participant.gender === 'w' ? 'women' : 'men', handicap: participant.handicap, status: status, gross: 0, net: 0, stableford: 0, holes: 0, rounds: 0, byRound: {}, breakdown: [], _tieBreak: [] };
         });
         rows = Object.keys(map).map(function (key) { return map[key]; });
         rows.sort(function (a, b) {
@@ -487,7 +487,26 @@
         var text = JSON.stringify((tournament || {}).formats || []) + ' ' + JSON.stringify(tournament && tournament.wizard && tournament.wizard.scoring && tournament.wizard.scoring.systems || []);
         var stable = /stableford/i.test(text);
         return buildLeaderboard(tournament, rounds, course).map(function (row) {
-            return { key: row.key, position: row.position, name: row.name, handicap: row.handicap, gross: row.gross, net: row.net, stableford: row.stableford, total: stable ? row.stableford : row.net, thru: row.thru, status: row.status, holes: row.breakdown, metric: row.metric };
+            return { key: row.key, position: row.position, name: row.name, gender: row.gender, handicap: row.handicap, gross: row.gross, net: row.net, stableford: row.stableford, total: stable ? row.stableford : row.net, thru: row.thru, status: row.status, holes: row.breakdown, metric: row.metric };
+        });
+    }
+    function buildNominations(rows, nominations) {
+        var ids = nominations === undefined ? ['best-gross', 'best-net'] : (Array.isArray(nominations) ? nominations : []);
+        var eligible = (rows || []).filter(function (row) { return row && (row.status === 'ACTIVE' || row.status === 'FINAL' || !row.status); });
+        return ids.map(function (item) {
+            var id = typeof item === 'string' ? item : item && (item.id || item.kind);
+            id = str(id) || 'best-net';
+            var lower = id.toLowerCase(), gender = null;
+            if (/women|female|ladies|жен/.test(lower)) gender = 'women';
+            else if (/men|male|муж/.test(lower)) gender = 'men';
+            var pool = eligible.filter(function (row) { return !gender || row.gender === gender; });
+            var high = /stableford|points|stbl/.test(lower), gross = /gross|gross/.test(lower);
+            var sorted = pool.slice().sort(function (a, b) {
+                var av = high ? num(a.stableford) : gross ? num(a.gross) : num(a.net), bv = high ? num(b.stableford) : gross ? num(b.gross) : num(b.net);
+                if (av !== bv) return high ? bv - av : av - bv;
+                return str(a.name).localeCompare(str(b.name));
+            });
+            return { id: id, label: typeof item === 'object' && item.label ? str(item.label) : id, winners: sorted.slice(0, 3).map(function (row) { return clone(row); }) };
         });
     }
     function csv(rows) {
@@ -531,6 +550,7 @@
         tieBreakCompare: tieBreakCompare,
         buildLeaderboard: buildLeaderboard,
         protocolRows: protocolRows,
+        buildNominations: buildNominations,
         csv: csv
     };
 });

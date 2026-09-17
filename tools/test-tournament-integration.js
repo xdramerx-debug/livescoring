@@ -31,8 +31,8 @@ var security = read('docs/tournament-security.md');
 ['Стартовый лист + QR', 'Участники и заявка', 'Лидерборд', 'Протокол PDF'].forEach(function (label) {
     check(publicHtml.indexOf(label) !== -1 || publicJs.indexOf(label) !== -1, 'public detail capability: ' + label);
 });
-['api.qrserver.com', 'window.open', 'Blob', 'protocolRows', 'registeredPlayers', 'applications', 'waitlist'].forEach(function (token) {
-    check(publicJs.indexOf(token) !== -1, 'public runtime contract: ' + token);
+['api.qrserver.com', 'window.open', 'Blob', 'protocolRows', 'buildNominations', 'registeredPlayers', 'applications', 'waitlist'].forEach(function (token) {
+    check(publicJs.indexOf(token) !== -1 || coreJs.indexOf(token) !== -1, 'public runtime contract: ' + token);
 });
 ['tn-pane-manage', 'tournament-admin.js', 'tournament-admin.css', 'tournament-core.js'].forEach(function (token) {
     check(adminHtml.indexOf(token) !== -1, 'admin wiring: ' + token);

@@ -723,6 +723,36 @@ var I18N = {
         tn_start_gate_started: '🏁 Турнир стартовал — можно вводить счёт!',
         finish_blocked_title: 'Раунд пока нельзя завершить',
         finish_blocked_hint: 'Уведомление исчезнет само, как только все лунки будут подтверждены.',
+        pause_round: 'Пауза',
+        resume_round: 'Возобновить',
+        round_paused: 'Раунд на паузе',
+        round_resumed: 'Раунд возобновлён',
+        force_finish: 'Завершить принудительно',
+        force_finish_short: 'Досрочно',
+        force_finish_btn: 'Завершить раунд принудительно (сохранить счёт)',
+        pause_round_title: '⏸ Поставить раунд на паузу',
+        pause_round_desc: 'Тайминги и нормативы темпа игры будут остановлены на время паузы. Дедлайны по всем оставшимся лункам автоматически сдвинутся на длительность паузы.',
+        pause_reason_label: 'Причина паузы (необязательно):',
+        pause_reason_weather: '⛈ Гроза / Непогода',
+        pause_reason_lunch: '🍽 Перерыв / Обед',
+        pause_reason_marshal: '🚨 Остановка маршалом / судьёй',
+        pause_reason_delay: '🔍 Задержка на поле / Поиск мяча',
+        pause_reason_tech: '⚙️ Техническая пауза',
+        pause_reason_other: '📝 Другая причина',
+        force_finish_title: '⚡ Принудительное завершение раунда',
+        force_finish_desc: 'Все введённые к этому моменту результаты будут сохранены в карточке и учтены в статистике. Несыгранные лунки останутся незаполненными.',
+        force_scope_self: '👤 Завершить только для меня',
+        force_scope_self_desc: 'Другие игроки группы продолжат играть в этом раунде.',
+        force_scope_all: '👥 Завершить для всей группы',
+        force_scope_all_desc: 'Завершить раунд для всех участников с сохранением текущих очков каждого.',
+        force_reason_label: 'Причина завершения:',
+        force_reason_wd: '🛑 Сход / По решению игрока (WD)',
+        force_reason_darkness: '🌙 Наступление темноты',
+        force_reason_weather: '⛈ Непогода / Дождь',
+        force_reason_injury: '🚑 Травма / Самочувствие',
+        force_reason_time: '⏰ Нехватка времени',
+        force_reason_other: '📝 Другая причина',
+        my_round_completed_notice: 'Вы завершили этот раунд. Ваши партнёры ещё продолжают игру.',
         show_stableford_points: 'Показывать очки Stableford',
         show_stableford_points_hint: 'Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.',
         stableford_default: 'Stableford по умолчанию',
@@ -1257,6 +1287,36 @@ var I18N = {
         tn_start_gate_started: '🏁 The tournament has started — you can enter scores now!',
         finish_blocked_title: 'The round cannot be finished yet',
         finish_blocked_hint: 'This notice disappears on its own as soon as every hole is confirmed.',
+        pause_round: 'Pause',
+        resume_round: 'Resume',
+        round_paused: 'Round Paused',
+        round_resumed: 'Round Resumed',
+        force_finish: 'Force Finish',
+        force_finish_short: 'Early Finish',
+        force_finish_btn: 'Force finish round (keep scores)',
+        pause_round_title: '⏸ Pause Round',
+        pause_round_desc: 'Pace-of-play timings will be stopped during pause. Hole deadlines will automatically be extended by the pause duration.',
+        pause_reason_label: 'Pause reason (optional):',
+        pause_reason_weather: '⛈ Thunderstorm / Weather',
+        pause_reason_lunch: '🍽 Break / Lunch',
+        pause_reason_marshal: '🚨 Marshal / Referee stop',
+        pause_reason_delay: '🔍 Course delay / Lost ball',
+        pause_reason_tech: '⚙️ Technical pause',
+        pause_reason_other: '📝 Other reason',
+        force_finish_title: '⚡ Force Finish Round',
+        force_finish_desc: 'All scores entered so far will be saved to your scorecard and history. Unplayed holes will remain empty.',
+        force_scope_self: '👤 Finish only for myself',
+        force_scope_self_desc: 'Other players in the group will continue playing in this round.',
+        force_scope_all: '👥 Finish for the entire group',
+        force_scope_all_desc: 'Finish the round for all players, keeping current scores of each.',
+        force_reason_label: 'Reason for finish:',
+        force_reason_wd: '🛑 Player withdrawal / Decision (WD)',
+        force_reason_darkness: '🌙 Darkness',
+        force_reason_weather: '⛈ Bad weather / Rain',
+        force_reason_injury: '🚑 Injury / Illness',
+        force_reason_time: '⏰ Out of time',
+        force_reason_other: '📝 Other reason',
+        my_round_completed_notice: 'You have finished this round. Your partners are still playing.',
         show_stableford_points: 'Show Stableford points',
         show_stableford_points_hint: 'Handicap-adjusted points will appear next to the entered score. This setting is saved only for you.',
         stableford_default: 'Default Stableford display',
@@ -2439,7 +2499,9 @@ function initP0MobileEnhancements(){
             document.addEventListener('touchcancel', stopHold, {passive:true});
             document.addEventListener('mousedown', function(e){ var b=targetOf(e); if(b) startHold(b); });
             document.addEventListener('mouseup', stopHold);
-            window.addEventListener('scroll', function(){ if(holdInt) stopHold(); }, {passive:true});
+            if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+                window.addEventListener('scroll', function(){ if(holdInt) stopHold(); }, {passive:true});
+            }
         }
     }catch(e){ console.warn('[P0] long-press', e); }
 
@@ -2919,6 +2981,7 @@ function collectPlayerVerification(r, pid) {
     var playerName = p.name || (currentLang === 'en' ? 'Player' : 'Игрок');
     var markerId = p.markedBy;
     var markerName = '';
+    var markerIsFinished = markerId && (typeof isPlayerFinishedRound === 'function' ? isPlayerFinishedRound(r, markerId) : false);
     try {
         var mk = markerId && r.players ? r.players[markerId] : null;
         markerName = (mk && mk.name) ? mk.name : '';
@@ -2933,17 +2996,22 @@ function collectPlayerVerification(r, pid) {
             var st = getHoleVerifyState(p, h);
             var ps = parseInt(p.scores && p.scores[h]) || 0;
             var ms = markerId ? (parseInt(p.markerScores && p.markerScores[markerId] && p.markerScores[markerId][h]) || 0) : 0;
-            details[h] = { ps: ps, ms: ms, playerName: playerName, markerName: markerName, state: st };
+            details[h] = { ps: ps, ms: ms, playerName: playerName, markerName: markerName, state: st, markerIsFinished: markerIsFinished };
             if (st === 'mismatch') {
                 var label = (ps >= 1 && ms >= 1) ? (playerName + ' (' + ps + '\u2260' + ms + ')') : playerName;
                 mismatch[h] = [label];
             } else if (st !== 'confirmed') {
-                unconfirmed[h] = [playerName];
+                // Если маркер уже завершил свой раунд, введённый счёт игрока не блокирует завершение
+                if (markerIsFinished && ps >= 1) {
+                    // маркер завершил ранее — собственный счёт игрока признаётся окончательным
+                } else {
+                    unconfirmed[h] = [playerName];
+                }
             }
         });
     }
     var canFinish = Object.keys(mismatch).length === 0 && Object.keys(unconfirmed).length === 0;
-    var v = { order: order, mismatch: mismatch, unconfirmed: unconfirmed, missing: missing, details: details, canFinish: canFinish, total: order.length, pid: pid, playerName: playerName, markerName: markerName };
+    var v = { order: order, mismatch: mismatch, unconfirmed: unconfirmed, missing: missing, details: details, canFinish: canFinish, total: order.length, pid: pid, playerName: playerName, markerName: markerName, markerIsFinished: markerIsFinished };
     v.firstIssue = getFirstVerificationIssue(v);
     return v;
 }
@@ -3073,9 +3141,119 @@ function buildVerificationReportHtml(v) {
     return parts.join('');
 }
 
-function holeDeadline(startTime,startHole,targetHole){if(!startTime)return null;var tVal=0,h=parseInt(startHole)||1,c=0;while(c<18){tVal+=holeTiming(h);if(h===targetHole)break;h=h>=18?1:h+1;c++;}return startTime+tVal*60000;}
-function checkTiming(startTime,startHole,holeNum){var dl=holeDeadline(startTime,startHole,holeNum);if(!dl)return{status:'ok',diff:0,deadline:null};var now=Date.now(),d=Math.round((now-dl)/60000);if(d>5)return{status:'late',diff:d,deadline:dl};if(d>0)return{status:'warning',diff:d,deadline:dl};return{status:'ok',diff:d,deadline:dl};}
-function buildTimingNotice(st,sh,ch){var c=checkTiming(st,sh,ch);if(!c.deadline)return'';var dl=fmtTime(c.deadline),nw=fmtTime(Date.now());if(c.status==='late')return'<div class="timing-alert timing-late"><i class="fas fa-exclamation-triangle"></i><div><strong>' + (currentLang === 'en' ? 'Pace Lag!' : 'Отставание!') + '</strong><br>' + t('hole') + ' ' + ch + ': deadline ' + dl + ', now ' + nw + ' (' + c.diff + ' min)</div></div>';if(c.status==='warning')return'<div class="timing-alert timing-warn"><i class="fas fa-clock"></i><div><strong>' + (currentLang === 'en' ? 'Deadline Approaching' : 'Близко к дедлайну') + '</strong><br>' + t('hole') + ' ' + ch + ': ' + dl + '</div></div>';var a=Math.abs(c.diff);return'<div class="timing-alert timing-ok"><i class="fas fa-check-circle"></i><div>' + t('hole') + ' ' + ch + ': ' + (currentLang === 'en' ? 'On Pace' : 'в графике') + (a>0?' (' + (currentLang === 'en' ? 'buffer ' : 'запас ') + a + ' min)':'') + '</div></div>';}
+// ==========================================
+// ТАЙМИНГИ И ПАУЗА РАУНДА
+// ==========================================
+// Возвращает общее время паузы раунда в миллисекундах (завершённые паузы +
+// текущая активная пауза, если раунд находится на паузе прямо сейчас).
+function getRoundTotalPauseMs(r, nowTs) {
+    if (!r || typeof r !== 'object') return 0;
+    var total = parseInt(r.totalPausedMs, 10) || parseInt(r.totalPauseMs, 10) || 0;
+    if (r.paused && r.pausedAt) {
+        var now = parseInt(nowTs, 10) || Date.now();
+        var curPause = Math.max(0, now - (parseInt(r.pausedAt, 10) || now));
+        total += curPause;
+    }
+    return total;
+}
+
+// Эффективное время старта раунда с учётом всех пауз:
+// когда раунд ставится на паузу, эффективный старт сдвигается вперёд,
+// благодаря чему все плановые дедлайны по лункам отодвигаются ровно на время паузы.
+function roundEffectiveStartTime(r, nowTs) {
+    if (!r || typeof r !== 'object') return 0;
+    var st = parseInt(r.teeOffMs, 10) || parseInt(r.startTimeMs, 10) || parseInt(r.scheduledStart, 10) || 0;
+    if (!st && r.startTime && typeof pestovoStartTsFromParts === 'function' && (r.date || r.createdAt)) {
+        try {
+            var d = r.date || new Date(r.createdAt).toISOString().slice(0, 10);
+            st = pestovoStartTsFromParts(d, r.startTime);
+        } catch (e) {}
+    }
+    if (!st) st = parseInt(r.startTime, 10) || 0;
+    if (!st) return 0;
+    return st + getRoundTotalPauseMs(r, nowTs);
+}
+
+function holeDeadline(startTime, startHole, targetHole, pauseMs) {
+    var st = 0;
+    if (startTime && typeof startTime === 'object') {
+        st = roundEffectiveStartTime(startTime);
+        startHole = startHole || startTime.startHole;
+    } else {
+        st = parseInt(startTime, 10) || 0;
+        if (pauseMs) st += parseInt(pauseMs, 10) || 0;
+    }
+    if (!st) return null;
+    var tVal = 0, h = parseInt(startHole) || 1, c = 0;
+    while (c < 18) {
+        tVal += holeTiming(h);
+        if (h === targetHole) break;
+        h = h >= 18 ? 1 : h + 1;
+        c++;
+    }
+    return st + tVal * 60000;
+}
+
+function checkTiming(startTime, startHole, holeNum, roundOrPauseMs) {
+    var isPaused = false;
+    var pauseReason = '';
+    var totalPauseMs = 0;
+    var effStartTime = 0;
+
+    if (startTime && typeof startTime === 'object') {
+        var r = startTime;
+        effStartTime = roundEffectiveStartTime(r);
+        startHole = startHole || r.startHole;
+        isPaused = !!r.paused;
+        pauseReason = r.pauseReason || '';
+        totalPauseMs = getRoundTotalPauseMs(r);
+    } else if (roundOrPauseMs && typeof roundOrPauseMs === 'object') {
+        effStartTime = roundEffectiveStartTime(roundOrPauseMs);
+        isPaused = !!roundOrPauseMs.paused;
+        pauseReason = roundOrPauseMs.pauseReason || '';
+        totalPauseMs = getRoundTotalPauseMs(roundOrPauseMs);
+    } else {
+        var pMs = typeof roundOrPauseMs === 'number' ? roundOrPauseMs : 0;
+        effStartTime = (parseInt(startTime, 10) || 0) + pMs;
+    }
+
+    var dl = holeDeadline(effStartTime, startHole, holeNum);
+    if (!dl) return { status: 'ok', diff: 0, deadline: null, isPaused: false };
+
+    if (isPaused) {
+        return {
+            status: 'paused',
+            diff: 0,
+            deadline: dl,
+            isPaused: true,
+            pauseReason: pauseReason,
+            pauseDurationMs: totalPauseMs
+        };
+    }
+
+    var now = Date.now(), d = Math.round((now - dl) / 60000);
+    if (d > 5) return { status: 'late', diff: d, deadline: dl, isPaused: false };
+    if (d > 0) return { status: 'warning', diff: d, deadline: dl, isPaused: false };
+    return { status: 'ok', diff: d, deadline: dl, isPaused: false };
+}
+
+function buildTimingNotice(st, sh, ch, round) {
+    var c = checkTiming(st, sh, ch, round);
+    if (!c.deadline && !c.isPaused) return '';
+    var isEn = currentLang === 'en';
+    if (c.isPaused) {
+        var pReason = c.pauseReason ? (' · ' + escapeHtml(c.pauseReason)) : '';
+        var durStr = formatPaceMinutes((c.pauseDurationMs || 0) / 60000);
+        return '<div class="timing-alert timing-warn"><i class="fas fa-pause-circle"></i><div><strong>' +
+            (isEn ? 'Round Paused' : 'Раунд на паузе') + '</strong>' + pReason + '<br>' +
+            t('hole') + ' ' + ch + ': ' + (isEn ? 'timing frozen · pause ' : 'тайминги остановлены · пауза ') + durStr + '</div></div>';
+    }
+    var dl = fmtTime(c.deadline), nw = fmtTime(Date.now());
+    if (c.status === 'late') return '<div class="timing-alert timing-late"><i class="fas fa-exclamation-triangle"></i><div><strong>' + (currentLang === 'en' ? 'Pace Lag!' : 'Отставание!') + '</strong><br>' + t('hole') + ' ' + ch + ': deadline ' + dl + ', now ' + nw + ' (' + c.diff + ' min)</div></div>';
+    if (c.status === 'warning') return '<div class="timing-alert timing-warn"><i class="fas fa-clock"></i><div><strong>' + (currentLang === 'en' ? 'Deadline Approaching' : 'Близко к дедлайну') + '</strong><br>' + t('hole') + ' ' + ch + ': ' + dl + '</div></div>';
+    var a = Math.abs(c.diff);
+    return '<div class="timing-alert timing-ok"><i class="fas fa-check-circle"></i><div>' + t('hole') + ' ' + ch + ': ' + (currentLang === 'en' ? 'On Pace' : 'в графике') + (a > 0 ? ' (' + (currentLang === 'en' ? 'buffer ' : 'запас ') + a + ' min)' : '') + '</div></div>';
+}
 function buildTimingTable(st, sh, holeRange) {
     if (!st) return '';
     var startHole = parseInt(sh) || 1;
@@ -3122,15 +3300,24 @@ function buildTimingTable(st, sh, holeRange) {
 // ==========================================
 // ТЕМП ИГРЫ / ТАЙМИНГИ ПРОХОЖДЕНИЯ ЛУНОК
 // ==========================================
-function paceStatus(delayMinutes) {
+function paceStatus(delayMinutes, isPaused) {
+    if (typeof delayMinutes === 'object' && delayMinutes !== null) {
+        var r = delayMinutes;
+        isPaused = !!r.paused;
+        var metrics = getRoundPaceMetrics(r);
+        delayMinutes = metrics.overallDelay;
+    }
+    if (isPaused || delayMinutes === 'paused') {
+        return { key: 'paused', status: 'paused', color: '#f39c12', label: currentLang === 'en' ? 'Paused' : 'На паузе', text: currentLang === 'en' ? '⏸ Paused' : '⏸ На паузе' };
+    }
     if (delayMinutes === null || delayMinutes === undefined || isNaN(delayMinutes)) {
-        return { key: 'pending', color: '#9eb5a5', label: t('pace_pending') };
+        return { key: 'pending', status: 'pending', color: '#9eb5a5', label: t('pace_pending'), text: t('pace_pending') };
     }
     var delay = Math.round(parseFloat(delayMinutes) || 0);
-    if (delay <= 2) return { key: 'ok', color: '#2ecc71', label: t('pace_on_time') };
-    if (delay <= 5) return { key: 'warning', color: '#f39c12', label: t('pace_warning') };
-    if (delay <= 10) return { key: 'late', color: '#e67e22', label: t('pace_late') };
-    return { key: 'severe', color: '#e05a4a', label: t('pace_severe') };
+    if (delay <= 2) return { key: 'ok', status: 'ok', color: '#2ecc71', label: t('pace_on_time'), text: t('pace_on_time') };
+    if (delay <= 5) return { key: 'warning', status: 'warning', color: '#f39c12', label: t('pace_warning'), text: t('pace_warning') };
+    if (delay <= 10) return { key: 'late', status: 'late', color: '#e67e22', label: t('pace_late'), text: t('pace_late') };
+    return { key: 'severe', status: 'severe', color: '#e05a4a', label: t('pace_severe'), text: t('pace_severe') };
 }
 
 function formatPaceMinutes(minutes) {
@@ -3199,7 +3386,9 @@ function getRoundPaceMetrics(roundData, nowValue) {
     var order = getRoundOrder(roundData || {});
     var participants = getPaceParticipants(roundData);
     var isGroup = !!(roundData && roundData.mode === 'group' && participants.length > 1);
-    var startTime = parseInt(roundData && roundData.startTime) || 0;
+    var isPaused = !!(roundData && roundData.paused);
+    var totalPauseMs = getRoundTotalPauseMs(roundData, now);
+    var startTime = roundEffectiveStartTime(roundData, now);
     var startHole = parseInt(roundData && roundData.startHole) || 1;
     var timeline = [];
     var completedHoles = [];
@@ -3240,6 +3429,7 @@ function getRoundPaceMetrics(roundData, nowValue) {
             hole: hole,
             complete: complete,
             inProgress: false,
+            isPaused: isPaused,
             completedAt: completedAt,
             durationMin: durationMin,
             expectedMin: holeTiming(hole),
@@ -3267,7 +3457,11 @@ function getRoundPaceMetrics(roundData, nowValue) {
         var currentItem = timeline[currentIdx];
         var currentStart = previousTime;
         currentItem.inProgress = true;
-        currentItem.durationMin = startTime ? Math.max(0, (now - currentStart) / 60000) : null;
+        // Во время паузы длительность текущей лунки замораживается
+        var activeElapsedMs = isPaused
+            ? Math.max(0, (parseInt(roundData.pausedAt, 10) || now) - currentStart)
+            : Math.max(0, (now - currentStart) - (totalPauseMs ? (totalPauseMs - (roundData.totalPausedMs || 0)) : 0));
+        currentItem.durationMin = startTime ? Math.max(0, activeElapsedMs / 60000) : null;
         currentItem.delayMin = startTime ? currentItem.durationMin - currentItem.expectedMin : null;
     }
     var firstIncompleteIndex = currentIdx >= 0 ? currentIdx : -1;
@@ -3276,11 +3470,17 @@ function getRoundPaceMetrics(roundData, nowValue) {
     var expectedDeadline = startTime ? holeDeadline(startTime, startHole, currentHole) : null;
     var actualReference = firstIncompleteIndex >= 0 ? now : (previousTime || now);
     var overallDelay = (expectedDeadline && actualReference) ? (actualReference - expectedDeadline) / 60000 : null;
+    var rawStart = parseInt(roundData && (roundData.teeOffMs || roundData.startTimeMs || roundData.scheduledStart || roundData.startTime), 10) || 0;
+    var elapsedMin = rawStart ? Math.max(0, Math.round(((isPaused ? (parseInt(roundData.pausedAt, 10) || now) : now) - rawStart - (isPaused ? 0 : totalPauseMs)) / 60000)) : 0;
 
     return {
         order: order,
         participants: participants,
         isGroup: isGroup,
+        isPaused: isPaused,
+        pausedAt: roundData ? roundData.pausedAt : null,
+        pauseReason: roundData ? roundData.pauseReason : null,
+        totalPauseMs: totalPauseMs,
         currentHole: currentHole,
         holesCompleted: completedHoles.length,
         holeCount: order.length,
@@ -3289,6 +3489,7 @@ function getRoundPaceMetrics(roundData, nowValue) {
         expectedDeadline: expectedDeadline,
         actualReference: actualReference,
         overallDelay: overallDelay,
+        elapsedMin: elapsedMin,
         hasTimingData: hasTimingData,
         startTime: startTime,
         startHole: startHole
@@ -3367,21 +3568,30 @@ function renderPaceAssistant(targetId, roundData) {
     var el = document.getElementById(targetId);
     if (!el || !roundData) return;
     var metrics = getRoundPaceMetrics(roundData);
-    var state = paceStatus(metrics.overallDelay);
-    var delayText = formatPaceDelta(metrics.overallDelay);
+    var isPaused = !!(roundData && roundData.paused);
+    var state = paceStatus(metrics.overallDelay, isPaused);
+    var delayText = isPaused
+        ? ('⏸ ' + (currentLang === 'en' ? 'Frozen (paused ' : 'Заморожен (пауза ') + formatPaceMinutes((metrics.totalPauseMs || 0) / 60000) + ')')
+        : formatPaceDelta(metrics.overallDelay);
     var currentDeadline = metrics.expectedDeadline ? fmtTime(metrics.expectedDeadline) : '—';
     var title = t('pace_of_play');
     var note = '';
-    if (!metrics.hasTimingData) note = '<div class="pace-note">' + t('pace_pending') + '</div>';
+    if (isPaused) {
+        var reasonText = roundData.pauseReason ? (' · ' + escapeHtml(roundData.pauseReason)) : '';
+        note = '<div class="pace-note" style="color:#f39c12;"><i class="fas fa-pause-circle"></i> ' +
+            (currentLang === 'en' ? 'Pace & timings frozen during pause' : 'Тайминги заморожены на время паузы') + reasonText + '</div>';
+    } else if (!metrics.hasTimingData) {
+        note = '<div class="pace-note">' + t('pace_pending') + '</div>';
+    }
 
     var html = '<div class="pace-assistant pace-state-' + state.key + '" style="--pace-color:' + state.color + ';">';
-    html += '<div class="pace-assistant-header"><strong><i class="fas fa-stopwatch"></i> ' + title + '</strong><span class="pace-status-label">' + state.label + '</span></div>';
+    html += '<div class="pace-assistant-header"><strong><i class="fas ' + (isPaused ? 'fa-pause-circle' : 'fa-stopwatch') + '"></i> ' + title + '</strong><span class="pace-status-label">' + state.label + '</span></div>';
     html += '<div class="pace-assistant-grid">';
-    html += '<div><span>' + t('pace_current_hole') + '</span><b>№' + metrics.currentHole + '</b></div>';
+    html += '<div><span>' + t('pace_current_hole') + '</span><b>№' + metrics.currentHole + (isPaused ? ' <small style="color:#f39c12;">(' + (currentLang === 'en' ? 'paused' : 'пауза') + ')</small>' : '') + '</b></div>';
     html += '<div><span>' + t('pace_completed') + '</span><b>' + metrics.holesCompleted + '/' + metrics.holeCount + '</b></div>';
     html += '<div><span>' + t('pace_delay') + '</span><b>' + delayText + '</b></div>';
     html += '</div>';
-    html += '<div class="pace-assistant-deadline"><i class="fas fa-clock"></i> ' + t('pace_deadline') + ': <b>' + currentDeadline + '</b></div>';
+    html += '<div class="pace-assistant-deadline"><i class="fas fa-clock"></i> ' + t('pace_deadline') + ': <b>' + currentDeadline + '</b>' + (isPaused ? ' <small style="color:#f39c12;">(' + (currentLang === 'en' ? 'extended' : 'продлён') + ')</small>' : '') + '</div>';
     html += note;
     html += '</div>';
     el.innerHTML = html;
@@ -5595,27 +5805,38 @@ function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback, opt
             }
         }
 
+        var forceBtnHtml = '';
+        if (!verification.canFinish) {
+            forceBtnHtml = '<button type="button" class="btn btn-danger" style="flex:1;min-height:44px;" id="force-finish-modal-btn"><i class="fas fa-flag-checkered"></i> ' +
+                (currentLang === 'en' ? 'Force finish as is' : 'Завершить принудительно') + '</button>';
+        }
+
         html += '<div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">';
-        html += '<button class="btn btn-og" style="flex:1;" onclick="closeFinishModal()">' + continueBtnStr + '</button>';
-        html += '<button class="btn btn-g" style="flex:1;" id="confirm-finish-btn">' + finishBtnStr + '</button>';
+        html += '<button class="btn btn-og" style="flex:1;min-height:44px;" onclick="closeFinishModal()">' + continueBtnStr + '</button>';
+        if (forceBtnHtml) {
+            html += forceBtnHtml;
+        } else {
+            html += '<button class="btn btn-g" style="flex:1;min-height:44px;" id="confirm-finish-btn">' + finishBtnStr + '</button>';
+        }
         html += '</div>';
 
         if (bodyEl) bodyEl.innerHTML = html;
         modalEl.classList.remove('hidden');
 
+        var forceModalBtn = document.getElementById('force-finish-modal-btn');
+        if (forceModalBtn) {
+            forceModalBtn.onclick = function() {
+                closeFinishModal();
+                openForceFinishModal(roundId, r, { playerId: scopedPid, isGroup: r.mode === 'group' });
+            };
+        }
+
         var confirmBtn = document.getElementById('confirm-finish-btn');
         if (confirmBtn) {
-            if (!verification.canFinish) {
-                confirmBtn.disabled = true;
-                confirmBtn.style.opacity = '0.45';
-                confirmBtn.style.cursor = 'not-allowed';
-                confirmBtn.style.pointerEvents = 'none';
-            } else {
-                confirmBtn.onclick = function() {
-                    closeFinishModal();
-                    if (typeof onConfirmCallback === 'function') onConfirmCallback();
-                };
-            }
+            confirmBtn.onclick = function() {
+                closeFinishModal();
+                if (typeof onConfirmCallback === 'function') onConfirmCallback();
+            };
         }
     });
 }
@@ -5636,6 +5857,425 @@ function finishModalGoToHole(hole) {
     if (typeof window._pestovoFinishModalGoToHole === 'function') {
         try { window._pestovoFinishModalGoToHole(hole); } catch (_) { console.warn("[silent]", _); }
     }
+}
+
+// ==========================================
+// ПРИНУДИТЕЛЬНОЕ ЗАВЕРШЕНИЕ И ПАУЗА РАУНДА (ПРОФЕССИОНАЛЬНЫЙ ИНСТРУМЕНТ)
+// ==========================================
+function roundPause(roundId, roundData, reason, userName, userId) {
+    if (typeof db === 'undefined' || !roundId) return Promise.reject(new Error('No db'));
+    var now = Date.now();
+    var existingHistory = (roundData && Array.isArray(roundData.pauseHistory)) ? roundData.pauseHistory.slice() : [];
+    existingHistory.push({
+        pausedAt: now,
+        reason: String(reason || '').trim(),
+        pausedBy: userId || '',
+        pausedByName: userName || ''
+    });
+    var updates = {
+        paused: true,
+        pausedAt: now,
+        pauseReason: String(reason || '').trim(),
+        pausedBy: userId || '',
+        pausedByName: userName || '',
+        pauseHistory: existingHistory
+    };
+    return db.ref('rounds/' + roundId).update(updates);
+}
+
+function roundResume(roundId, roundData, userName, userId) {
+    if (typeof db === 'undefined' || !roundId) return Promise.reject(new Error('No db'));
+    var now = Date.now();
+    var pausedAt = parseInt(roundData && roundData.pausedAt, 10) || now;
+    var duration = Math.max(0, now - pausedAt);
+    var oldTotal = parseInt(roundData && (roundData.totalPausedMs || roundData.totalPauseMs), 10) || 0;
+    var newTotal = oldTotal + duration;
+    var existingHistory = (roundData && Array.isArray(roundData.pauseHistory)) ? roundData.pauseHistory.slice() : [];
+    if (existingHistory.length > 0 && !existingHistory[existingHistory.length - 1].resumedAt) {
+        existingHistory[existingHistory.length - 1].resumedAt = now;
+        existingHistory[existingHistory.length - 1].durationMs = duration;
+        existingHistory[existingHistory.length - 1].resumedByName = userName || '';
+    }
+    var updates = {
+        paused: false,
+        pausedAt: null,
+        totalPausedMs: newTotal,
+        totalPauseMs: newTotal,
+        pauseReason: null,
+        pauseHistory: existingHistory
+    };
+    var logEntry = {
+        pausedAt: pausedAt,
+        resumedAt: now,
+        durationMs: duration,
+        reason: (roundData && roundData.pauseReason) || '',
+        pausedByName: (roundData && roundData.pausedByName) || '',
+        resumedByName: userName || ''
+    };
+    return db.ref('rounds/' + roundId).update(updates).then(function() {
+        try {
+            return db.ref('rounds/' + roundId + '/pauseLog').push(logEntry);
+        } catch (e) {
+            return Promise.resolve();
+        }
+    });
+}
+
+function roundForceFinishPlayer(roundId, a2, a3, a4, a5) {
+    if (typeof db === 'undefined' || !roundId) return Promise.reject(new Error('Invalid params'));
+    var roundData, playerId, reason, finisherName;
+    if (typeof a2 === 'object' && a2 !== null) {
+        roundData = a2;
+        playerId = a3;
+        reason = a4;
+        finisherName = a5;
+    } else {
+        playerId = a2;
+        roundData = (typeof a3 === 'object' && a3 !== null) ? a3 : null;
+        reason = a4;
+        finisherName = a5;
+    }
+    if (!playerId) return Promise.reject(new Error('Invalid playerId'));
+
+    var now = Date.now();
+    var pid = String(playerId);
+    var p = (roundData && roundData.players && roundData.players[pid]) || {};
+    var pName = finisherName || p.name || 'Player';
+    var order = getRoundOrder(roundData || {});
+    var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+
+    var finishUpdate = {
+        autoCompleted: false
+    };
+    finishUpdate['finishedPlayers/' + pid] = {
+        at: now,
+        name: pName,
+        forced: true,
+        forcedReason: String(reason || '').trim(),
+        reason: String(reason || '').trim(),
+        holesPlayed: stats.holesPlayed,
+        gross: stats.gross
+    };
+
+    var finMap = {};
+    Object.keys((roundData && roundData.finishedPlayers) || {}).forEach(function(k) { finMap[k] = true; });
+    finMap[pid] = true;
+    var pending = Object.keys((roundData && roundData.players) || {}).filter(function(id) { return !finMap[id]; });
+
+    if (!pending.length) {
+        finishUpdate.status = 'completed';
+        finishUpdate.completedAt = now;
+        finishUpdate.completedBy = pid;
+        finishUpdate.completedByName = pName;
+        finishUpdate.forcedFinish = true;
+        if (reason) finishUpdate.forcedReason = reason;
+    } else {
+        finishUpdate.partialFinish = true;
+    }
+
+    return db.ref('rounds/' + roundId).update(finishUpdate).then(function() {
+        try {
+            saveHistoryEntry(pid, roundId, roundData, p, stats);
+        } catch (e) { console.warn("[silent]", e); }
+
+        if (!pending.length && typeof pestovoClaimRoundHistory === 'function') {
+            pestovoClaimRoundHistory(roundId).then(function(claimed) {
+                if (claimed && typeof saveHistory === 'function') {
+                    db.ref('rounds/' + roundId).once('value').then(function(sn) {
+                        var fresh = sn && sn.val();
+                        if (fresh) saveHistory(roundId, fresh);
+                    });
+                }
+            });
+        }
+        return { isComplete: !pending.length, remaining: pending.length };
+    });
+}
+
+function roundForceFinishAll(roundId, roundData, reason, finisherName) {
+    if (typeof db === 'undefined' || !roundId) return Promise.reject(new Error('Invalid params'));
+    var now = Date.now();
+    var finishUpdate = {
+        status: 'completed',
+        completedAt: now,
+        forcedFinish: true,
+        forcedReason: String(reason || '').trim(),
+        forcedByName: finisherName || '',
+        autoCompleted: false
+    };
+    var players = (roundData && roundData.players) || {};
+    var order = getRoundOrder(roundData || {});
+    Object.keys(players).forEach(function(pid) {
+        if (!roundData.finishedPlayers || !roundData.finishedPlayers[pid]) {
+            var p = players[pid] || {};
+            var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+            finishUpdate['finishedPlayers/' + pid] = {
+                at: now,
+                name: p.name || 'Player',
+                forced: true,
+                reason: String(reason || '').trim(),
+                holesPlayed: stats.holesPlayed,
+                gross: stats.gross
+            };
+        }
+    });
+
+    return db.ref('rounds/' + roundId).update(finishUpdate).then(function() {
+        return db.ref('rounds/' + roundId).once('value');
+    }).then(function(sn) {
+        var fresh = sn && sn.val();
+        if (fresh && typeof pestovoClaimRoundHistory === 'function') {
+            return pestovoClaimRoundHistory(roundId).then(function(claimed) {
+                if (claimed && typeof saveHistory === 'function') {
+                    try { saveHistory(roundId, fresh); } catch (e) { console.warn("[silent]", e); }
+                }
+            });
+        }
+    });
+}
+
+function openRoundPauseModal(roundId, roundData, onDone) {
+    if (typeof document === 'undefined' || !roundId) return;
+    var modalEl = document.getElementById('round-pause-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'round-pause-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML =
+            '<div class="modal-bg" onclick="closeRoundPauseModal()"></div>' +
+            '<div class="modal-body" style="max-width:480px;">' +
+            '<div class="modal-top-bar">' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeRoundPauseModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" onclick="closeRoundPauseModal()">&times;</button>' +
+            '</div>' +
+            '<div id="round-pause-modal-body"></div>' +
+            '</div>';
+        if (document.body) document.body.appendChild(modalEl);
+    }
+
+    var bodyEl = document.getElementById('round-pause-modal-body');
+    if (!bodyEl) return;
+
+    var isEn = currentLang === 'en';
+    var title = isEn ? '⏸ Pause Round' : '⏸ Поставить раунд на паузу';
+    var desc = isEn
+        ? 'Pace-of-play timings and hole deadlines will be frozen during the pause. Deadlines for all remaining holes will automatically be extended by the pause duration.'
+        : 'Тайминги и нормативы темпа игры будут остановлены на время паузы. Дедлайны по всем оставшимся лункам автоматически сдвинутся на длительность паузы.';
+
+    var html = '<h2 style="color:var(--gold);font-family:var(--ff);margin-bottom:6px;">' + title + '</h2>';
+    html += '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">' + desc + '</p>';
+
+    html += '<div class="form-group" style="margin-bottom:16px;">';
+    html += '<label style="font-size:12px;font-weight:600;color:var(--white);margin-bottom:6px;display:block;">' +
+        (isEn ? 'Pause reason:' : 'Причина паузы:') + '</label>';
+    html += '<select id="rpm-reason-select" class="form-input" style="width:100%;margin-bottom:8px;" onchange="var c=document.getElementById(\'rpm-reason-custom\');if(c)c.classList.toggle(\'hidden\',this.value!==\'other\');">';
+    html += '<option value="weather">' + (isEn ? '⛈ Thunderstorm / Bad weather' : '⛈ Гроза / Непогода') + '</option>';
+    html += '<option value="lunch">' + (isEn ? '🍽 Break / Lunch' : '🍽 Перерыв / Обед') + '</option>';
+    html += '<option value="marshal">' + (isEn ? '🚨 Marshal / Referee stop' : '🚨 Остановка маршалом / судьёй') + '</option>';
+    html += '<option value="delay">' + (isEn ? '🔍 Course delay / Lost ball' : '🔍 Задержка на поле / Поиск мяча') + '</option>';
+    html += '<option value="tech">' + (isEn ? '⚙️ Technical pause' : '⚙️ Техническая пауза') + '</option>';
+    html += '<option value="other">' + (isEn ? '📝 Other reason…' : '📝 Другая причина…') + '</option>';
+    html += '</select>';
+    html += '<input type="text" id="rpm-reason-custom" class="form-input hidden" placeholder="' +
+        (isEn ? 'Type reason...' : 'Укажите причину...') + '" style="width:100%;">';
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">';
+    html += '<button type="button" class="btn btn-og" style="flex:1;" onclick="closeRoundPauseModal()">' +
+        (isEn ? 'Cancel' : 'Отмена') + '</button>';
+    html += '<button type="button" class="btn btn-warning" style="flex:1;font-weight:700;" id="rpm-confirm-btn">' +
+        '<i class="fas fa-pause"></i> ' + (isEn ? 'Pause Round' : 'Поставить на паузу') + '</button>';
+    html += '</div>';
+
+    bodyEl.innerHTML = html;
+    modalEl.classList.remove('hidden');
+
+    var btn = document.getElementById('rpm-confirm-btn');
+    if (btn) {
+        btn.onclick = function() {
+            var sel = document.getElementById('rpm-reason-select');
+            var custom = document.getElementById('rpm-reason-custom');
+            var val = (sel && sel.value) || 'weather';
+            var reason = '';
+            if (val === 'other' && custom && custom.value.trim()) {
+                reason = custom.value.trim();
+            } else if (sel && sel.options && sel.selectedIndex >= 0) {
+                reason = sel.options[sel.selectedIndex].text;
+            }
+            var myName = (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.name) ||
+                         (typeof currentUser !== 'undefined' && currentUser && currentUser.displayName) || 'Игрок';
+            var myId = (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) || '';
+
+            btn.disabled = true;
+            roundPause(roundId, roundData, reason, myName, myId).then(function() {
+                closeRoundPauseModal();
+                toast(isEn ? '⏸ Round paused. Timings frozen.' : '⏸ Раунд на паузе. Тайминги заморожены.', 'warn');
+                if (typeof onDone === 'function') onDone(true);
+            }).catch(function(err) {
+                btn.disabled = false;
+                toast('❌ ' + (err && err.message ? err.message : err), 'error');
+            });
+        };
+    }
+}
+
+function closeRoundPauseModal() {
+    var modalEl = document.getElementById('round-pause-modal');
+    if (modalEl) modalEl.classList.add('hidden');
+}
+
+function openForceFinishModal(roundId, roundData, opts) {
+    if (typeof document === 'undefined' || !roundId) return;
+    opts = opts || {};
+    var isGroup = opts.isGroup || (roundData && roundData.mode === 'group');
+    var targetPid = opts.playerId || (typeof getActingUid === 'function' ? getActingUid() : null);
+    var canFinishAll = opts.canFinishAll || opts.isAdmin;
+
+    var modalEl = document.getElementById('round-force-finish-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'round-force-finish-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML =
+            '<div class="modal-bg" onclick="closeForceFinishModal()"></div>' +
+            '<div class="modal-body" style="max-width:540px;">' +
+            '<div class="modal-top-bar">' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeForceFinishModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" onclick="closeForceFinishModal()">&times;</button>' +
+            '</div>' +
+            '<div id="round-force-finish-modal-body"></div>' +
+            '</div>';
+        if (document.body) document.body.appendChild(modalEl);
+    }
+
+    var bodyEl = document.getElementById('round-force-finish-modal-body');
+    if (!bodyEl) return;
+
+    var isEn = currentLang === 'en';
+    var title = isEn ? '⚡ Force Finish Round' : '⚡ Принудительное завершение раунда';
+    var desc = isEn
+        ? 'All scores entered so far will be saved to the scorecard and recorded in player history. Unplayed holes will remain empty.'
+        : 'Все введённые к этому моменту результаты будут зафиксированы в карточке и пойдут в историю. Несыгранные лунки останутся незаполненными.';
+
+    var order = getRoundOrder(roundData || {});
+    var players = (roundData && roundData.players) || {};
+    var pIds = Object.keys(players);
+    if (!targetPid && pIds.length) targetPid = pIds[0];
+    var myPlayer = players[targetPid] || {};
+    var myStats = calcRoundStats(myPlayer.scores || {}, myPlayer.fieldHcp || 0, myPlayer.exactHcp || 0, order);
+
+    var html = '<h2 style="color:var(--gold);font-family:var(--ff);margin-bottom:6px;">' + title + '</h2>';
+    html += '<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">' + desc + '</p>';
+
+    // Сводка сохраняемого счёта
+    html += '<div class="list-item" style="padding:12px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.25);border-radius:10px;margin-bottom:16px;">';
+    html += '<div style="flex:1;"><strong style="color:var(--white);font-size:14px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' +
+        escapeHtml(playerDisplayName(myPlayer, targetPid)) + '</strong>';
+    html += '<div style="font-size:12px;color:var(--gold);margin-top:2px;">' +
+        (isEn ? 'Played holes: ' : 'Сыграно лунок: ') + '<b>' + myStats.holesPlayed + ' / ' + order.length + '</b>' +
+        ' · Gross: <b>' + (myStats.gross || 0) + '</b> · Stbl: <b>' + myStats.stablefordField + '</b></div></div>';
+    html += '<div style="text-align:right;"><div class="' + scoreClass(myStats.toPar) + '" style="font-size:18px;font-weight:800;">' + fmtScore(myStats.toPar) + '</div></div>';
+    html += '</div>';
+
+    // Выбор области действия для группового раунда
+    if (isGroup && pIds.length > 1) {
+        var otherCount = pIds.length - 1;
+        html += '<div style="margin-bottom:14px;padding:10px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;">';
+        html += '<div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:8px;">' +
+            (isEn ? 'Who is finishing:' : 'Для кого завершить:') + '</div>';
+        html += '<label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;cursor:pointer;">' +
+            '<input type="radio" name="rfm-scope" value="self" checked style="margin-top:3px;">' +
+            '<div><strong style="color:var(--white);font-size:13px;">' + (isEn ? '👤 Only for me (' + escapeHtml(myPlayer.name || 'Player') + ')' : '👤 Только для меня (' + escapeHtml(myPlayer.name || 'Игрок') + ')') + '</strong>' +
+            '<div style="font-size:11.5px;color:var(--muted);">' + (isEn ? 'Other group players (' + otherCount + ') will continue playing.' : 'Другие игроки группы (' + otherCount + ') продолжат играть в этом раунде.') + '</div></div>' +
+            '</label>';
+        if (canFinishAll) {
+            html += '<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">' +
+                '<input type="radio" name="rfm-scope" value="all" style="margin-top:3px;">' +
+                '<div><strong style="color:var(--gold);font-size:13px;">' + (isEn ? '👥 For all group players' : '👥 Для всей группы целиком') + '</strong>' +
+                '<div style="font-size:11.5px;color:var(--muted);">' + (isEn ? 'Finishes the round for everyone, saving current scores.' : 'Завершает раунд для всех участников с сохранением текущих очков каждого.') + '</div></div>' +
+                '</label>';
+        }
+        html += '</div>';
+    }
+
+    // Выбор причины
+    html += '<div class="form-group" style="margin-bottom:16px;">';
+    html += '<label style="font-size:12px;font-weight:600;color:var(--white);margin-bottom:6px;display:block;">' +
+        (isEn ? 'Reason for early finish:' : 'Причина досрочного завершения:') + '</label>';
+    html += '<select id="rfm-reason-select" class="form-input" style="width:100%;margin-bottom:8px;" onchange="var c=document.getElementById(\'rfm-reason-custom\');if(c)c.classList.toggle(\'hidden\',this.value!==\'other\');">';
+    html += '<option value="wd">' + (isEn ? '🛑 Player decision / Withdrawal (WD)' : '🛑 Сход / По решению игрока (WD)') + '</option>';
+    html += '<option value="darkness">' + (isEn ? '🌙 Darkness / Nightfall' : '🌙 Наступление темноты') + '</option>';
+    html += '<option value="weather">' + (isEn ? '⛈ Bad weather / Heavy rain' : '⛈ Погода / Сильный дождь') + '</option>';
+    html += '<option value="injury">' + (isEn ? '🚑 Injury / Medical reason' : '🚑 Травма / Плохое самочувствие') + '</option>';
+    html += '<option value="time">' + (isEn ? '⏰ Out of time' : '⏰ Нехватка времени') + '</option>';
+    html += '<option value="other">' + (isEn ? '📝 Other reason…' : '📝 Другая причина…') + '</option>';
+    html += '</select>';
+    html += '<input type="text" id="rfm-reason-custom" class="form-input hidden" placeholder="' +
+        (isEn ? 'Type reason...' : 'Укажите причину...') + '" style="width:100%;">';
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">';
+    html += '<button type="button" class="btn btn-og" style="flex:1;" onclick="closeForceFinishModal()">' +
+        (isEn ? '← Back to game' : '← Назад к игре') + '</button>';
+    html += '<button type="button" class="btn btn-danger" style="flex:1.3;font-weight:700;" id="rfm-confirm-btn">' +
+        '<i class="fas fa-flag-checkered"></i> ' + (isEn ? 'Force Finish & Save' : 'Завершить принудительно') + '</button>';
+    html += '</div>';
+
+    bodyEl.innerHTML = html;
+    modalEl.classList.remove('hidden');
+
+    var btn = document.getElementById('rfm-confirm-btn');
+    if (btn) {
+        btn.onclick = function() {
+            var sel = document.getElementById('rfm-reason-select');
+            var custom = document.getElementById('rfm-reason-custom');
+            var val = (sel && sel.value) || 'wd';
+            var reason = '';
+            if (val === 'other' && custom && custom.value.trim()) {
+                reason = custom.value.trim();
+            } else if (sel && sel.options && sel.selectedIndex >= 0) {
+                reason = sel.options[sel.selectedIndex].text;
+            }
+
+            var scopeRadio = document.querySelector('input[name="rfm-scope"]:checked');
+            var scope = scopeRadio ? scopeRadio.value : 'self';
+
+            var myName = (myPlayer && myPlayer.name) ||
+                         (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.name) || 'Player';
+
+            btn.disabled = true;
+            if (isGroup && scope === 'all' && canFinishAll) {
+                roundForceFinishAll(roundId, roundData, reason, myName).then(function() {
+                    closeForceFinishModal();
+                    toast(isEn ? '✅ Round force-finished for all players. Scores saved.' : '✅ Раунд принудительно завершён для всех игроков. Очки сохранены.', 'success');
+                    setTimeout(function() { window.location.href = 'leaderboard.html'; }, 800);
+                }).catch(function(err) {
+                    btn.disabled = false;
+                    toast('❌ ' + (err && err.message ? err.message : err), 'error');
+                });
+            } else {
+                roundForceFinishPlayer(roundId, roundData, targetPid, reason, myName).then(function(res) {
+                    closeForceFinishModal();
+                    var msg = isEn
+                        ? '✅ Round finished early. Your score is saved! Partners continue playing.'
+                        : '✅ Раунд завершён досрочно. Ваши очки сохранены! Партнёры продолжают игру.';
+                    toast(msg, 'success');
+                    setTimeout(function() {
+                        if (res && res.isComplete) window.location.href = 'leaderboard.html';
+                        else window.location.href = 'leaderboard.html';
+                    }, 800);
+                }).catch(function(err) {
+                    btn.disabled = false;
+                    toast('❌ ' + (err && err.message ? err.message : err), 'error');
+                });
+            }
+        };
+    }
+}
+
+function closeForceFinishModal() {
+    var modalEl = document.getElementById('round-force-finish-modal');
+    if (modalEl) modalEl.classList.add('hidden');
 }
 
 // ==========================================
@@ -6820,11 +7460,16 @@ function pestovoAutoFinishTournament(tnId) {
 }
 
 // Бейдж статуса завершённого раунда:
+//  — принудительное/досрочное завершение: «Досрочно завершён» + причина;
 //  — авто-завершение: «Завершён автоматически»;
 //  — обычное завершение: имя игрока, который завершил раунд;
 //  — старые записи без данных о завершении: просто «Завершён».
 function buildRoundCompletedBadgeHTML(r) {
     var isEn = (typeof currentLang !== 'undefined') && currentLang === 'en';
+    if (r && r.forcedFinish) {
+        var reasonText = r.forcedReason ? (' · ' + escapeHtml(r.forcedReason)) : '';
+        return '<span class="tn-status tn-f" title="' + (isEn ? 'Force finished' : 'Досрочно завершён') + reasonText + '"><i class="fas fa-flag-checkered"></i> ' + (isEn ? 'Early finish' : 'Досрочно') + reasonText + '</span>';
+    }
     if (r && r.autoCompleted) {
         return '<span class="tn-status tn-auto" title="' + (isEn ? 'The round was closed automatically the next day' : 'Раунд закрыт автоматически на следующий день') + '"><i class="fas fa-clock-rotate-left"></i> ' + (isEn ? 'Auto-completed' : 'Завершён автоматически') + '</span>';
     }
@@ -6834,6 +7479,28 @@ function buildRoundCompletedBadgeHTML(r) {
         return '<span class="tn-status tn-d"><i class="fas fa-user-check"></i> ' + (isEn ? 'Completed by ' : 'Завершил(а) · ') + shown + '</span>';
     }
     return '<span class="tn-status tn-d">' + (isEn ? 'Completed' : 'Завершён') + '</span>';
+}
+
+// Единый генератор бейджа статуса любого раунда:
+//  - на паузе: оранжевый бейдж ⏸ Пауза
+//  - запланирован: песочные часы ⏳
+//  - завершён: бейдж завершения
+//  - активный: 🟢 Live
+function buildRoundStatusBadgeHTML(r) {
+    var isEn = (typeof currentLang !== 'undefined') && currentLang === 'en';
+    if (!r) return '';
+    if (r.paused) {
+        var pReason = r.pauseReason ? (' · ' + escapeHtml(r.pauseReason)) : '';
+        return '<span class="tn-status tn-p" title="' + (isEn ? 'Round paused' : 'Раунд на паузе') + pReason + '"><i class="fas fa-pause"></i> ' + (isEn ? 'Paused' : 'На паузе') + '</span>';
+    }
+    var st = String(r.status || 'active');
+    if (st === 'scheduled') {
+        return '<span class="tn-status tn-u"><i class="fas fa-hourglass-half"></i> ' + (isEn ? 'Scheduled' : 'Запланирован') + '</span>';
+    }
+    if (st === 'completed') {
+        return buildRoundCompletedBadgeHTML(r);
+    }
+    return '<span class="tn-status tn-a"><span class="live-dot" style="width:6px;height:6px;"></span> LIVE</span>';
 }
 
 
@@ -10887,13 +11554,16 @@ function isRoundOpenForScoring(r, nowTs, playerId) {
         if (!startTs) return false;             // без времени старта не открываем
         return (parseInt(nowTs, 10) || Date.now()) >= startTs;
     }
-    if (st === 'completed') {
-        if (!playerId) return false;
+    if (playerId) {
         var pid = String(playerId);
         var players = r.players || {};
         if (!players[pid]) return false;        // наблюдателю ввод не открываем
-        if (r.finishedPlayers && r.finishedPlayers[pid]) return false;
-        return true;
+        if (isPlayerFinishedRound(r, pid)) return false; // сдавшему карточку ввод закрыт
+        return true;                            // ещё не сдавший продолжает играть
+    }
+    if (st === 'completed') {
+        var pending = roundPendingPlayers(r);
+        return pending.length > 0;
     }
     return st === 'active' || st === '';
 }
@@ -11472,6 +12142,19 @@ if (typeof window !== 'undefined') {
     window.pestovoBroadcastViewerCtx = pestovoBroadcastViewerCtx;
     window.pestovoBroadcastAudienceLabel = pestovoBroadcastAudienceLabel;
     window.pestovoBroadcastFeed = pestovoBroadcastFeed;
+    window.roundPause = roundPause;
+    window.roundResume = roundResume;
+    window.getRoundTotalPauseMs = getRoundTotalPauseMs;
+    window.roundForceFinishPlayer = roundForceFinishPlayer;
+    window.roundForceFinishAll = roundForceFinishAll;
+    window.isPlayerFinishedRound = isPlayerFinishedRound;
+    window.roundPendingPlayers = roundPendingPlayers;
+    window.openRoundPauseModal = openRoundPauseModal;
+    window.closeRoundPauseModal = closeRoundPauseModal;
+    window.openForceFinishModal = openForceFinishModal;
+    window.closeForceFinishModal = closeForceFinishModal;
+    window.buildRoundStatusBadgeHTML = buildRoundStatusBadgeHTML;
+    window.buildRoundCompletedBadgeHTML = buildRoundCompletedBadgeHTML;
     window.initP0MobileEnhancements = initP0MobileEnhancements;
 }
 // P0: run mobile enhancements after DOM ready and on every nav rebuild

@@ -855,6 +855,13 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .tn-a{background:rgba(224,90,74,.12);color:var(--red);}
 .tn-u{background:rgba(201,168,76,.12);color:var(--gold);}
 .tn-d{background:rgba(46,204,113,.12);color:#2ecc71;}
+.tn-p{background:rgba(243,156,18,.15);color:#f39c12;border:1px solid rgba(243,156,18,.35);}
+.tn-f{background:rgba(230,126,34,.15);color:#e67e22;border:1px solid rgba(230,126,34,.35);}
+.badge-finished{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;background:rgba(46,204,113,0.15);color:#2ecc71;font-size:11px;font-weight:600;}
+.round-pause-card{background:rgba(243,156,18,0.12);border:1.5px solid #f39c12;border-radius:var(--r);padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;box-shadow:0 4px 16px rgba(243,156,18,0.15);}
+.round-pause-card.is-paused-anim{animation:pulse-pause 2.5s infinite ease-in-out;}
+@keyframes pulse-pause{0%,100%{border-color:#f39c12;}50%{border-color:#f1c40f;}}
+.round-actions-grid{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
 
 .admin-tabs{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap;overflow-x:auto;}
 .admin-tab{padding:10px 18px;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:var(--rs) var(--rs) 0 0;cursor:pointer;font-weight:600;font-size:12px;transition:var(--t);font-family:var(--fb);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
@@ -5329,6 +5336,8 @@ body.st-homeTournament-v5 .htv-top3-item .htv-meta{display:none;}
 .se-mini-badge.st-active{background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.4);}
 .se-mini-badge.st-scheduled{background:rgba(90,173,224,.14);color:var(--blue);border:1px solid rgba(90,173,224,.4);}
 .se-mini-badge.st-completed{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);}
+.se-mini-badge.st-paused{background:rgba(243,156,18,.18);color:#f39c12;border:1px solid rgba(243,156,18,.45);}
+.se-mini-badge.st-forced{background:rgba(230,126,34,.18);color:#e67e22;border:1px solid rgba(230,126,34,.45);}
 
 .htv-podium{margin-bottom:12px;}
 .htv-podium-cap{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;}

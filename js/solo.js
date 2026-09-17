@@ -50,6 +50,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function updateSoloPaceAssistant() {
     if (soloRound) renderPaceAssistant('solo-pace-assistant', soloRound);
+    updateSoloPauseUI();
+}
+
+function handleSoloPauseToggle() {
+    if (!soloRid || !soloRound) return;
+    if (soloRound.paused) {
+        var myName = (soloRound.players && soloRound.players[getPlayerId()])
+            ? (soloRound.players[getPlayerId()].name || '') : '';
+        roundResume(soloRid, soloRound, myName, getPlayerId()).then(function() {
+            toast(currentLang === 'en' ? '✅ Round resumed. Timings unpaused.' : '✅ Раунд возобновлён. Тайминги запущены.', 'success');
+        }).catch(function(err) {
+            toast('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
+    } else {
+        openRoundPauseModal(soloRid, soloRound, function() {
+            updateSoloPauseUI();
+        });
+    }
+}
+
+function updateSoloPauseUI() {
+    var banner = sGet('solo-pause-banner');
+    var btnText = sGet('solo-pause-btn-text');
+    var btnIcon = sGet('solo-pause-btn-icon');
+    var isPaused = !!(soloRound && soloRound.paused);
+
+    if (btnText && btnIcon) {
+        if (isPaused) {
+            btnIcon.className = 'fas fa-play';
+            btnText.textContent = (currentLang === 'en' ? 'Resume' : 'Возобновить');
+        } else {
+            btnIcon.className = 'fas fa-pause';
+            btnText.textContent = (currentLang === 'en' ? 'Pause' : 'Пауза');
+        }
+    }
+
+    if (!banner) return;
+    if (!isPaused) {
+        banner.innerHTML = '';
+        banner.classList.add('hidden');
+        return;
+    }
+    banner.classList.remove('hidden');
+    var totalMs = typeof getRoundTotalPauseMs === 'function' ? getRoundTotalPauseMs(soloRound) : 0;
+    var durStr = typeof formatPaceMinutes === 'function' ? formatPaceMinutes(totalMs / 60000) : '';
+    var reasonStr = soloRound.pauseReason ? (' · ' + escapeHtml(soloRound.pauseReason)) : '';
+    var isEn = currentLang === 'en';
+    banner.innerHTML =
+        '<div class="round-pause-card is-paused-anim">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:200px;">' +
+        '<i class="fas fa-pause-circle" style="color:#f39c12;font-size:24px;"></i>' +
+        '<div><strong style="color:var(--white);font-size:14px;display:block;">' +
+        (isEn ? '⏸ Round is Paused' : '⏸ Раунд на паузе') + '</strong>' +
+        '<span style="font-size:12px;color:rgba(255,255,255,0.85);">' +
+        (isEn ? 'Timings frozen · Duration: ' : 'Тайминги остановлены · Длительность: ') +
+        '<b>' + durStr + '</b>' + reasonStr + '</span></div></div>' +
+        '<button type="button" class="btn btn-g btn-sm" onclick="handleSoloPauseToggle()" style="font-weight:700;">' +
+        '<i class="fas fa-play"></i> ' + (isEn ? 'Resume Play' : 'Возобновить игру') + '</button>' +
+        '</div>';
 }
 
 function startSoloPaceTicker() {

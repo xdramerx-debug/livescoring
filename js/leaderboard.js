@@ -231,7 +231,8 @@ function renderRound(id, r) {
 
     var rows = list.map(function(p) {
         var posCls = p.position <= 3 ? 'lb-' + p.position : '';
-        var holeInfo = p.holesPlayed >= (p.holeCount || 18) ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
+        var isFin = typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(r, p.pid);
+        var holeInfo = (isFin || p.holesPlayed >= (p.holeCount || 18)) ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
         var gross = p.gross || '—';
         var pTeeBadge = '<span class="tee-pill tee-' + p.tee + '" style="font-size:9px;padding:0 6px;margin-left:6px;vertical-align:middle;line-height:16px;">' + t('tee_' + p.tee) + '</span>';
 
@@ -248,11 +249,13 @@ function renderRound(id, r) {
             '</div>';
     }).join('');
 
-    var badge = isLive 
-        ? '<span class="live-badge"><span class="live-dot" style="width:7px;height:7px;"></span> LIVE</span>' 
-        : ((typeof buildRoundCompletedBadgeHTML === 'function')
-            ? buildRoundCompletedBadgeHTML(r)
-            : '<span class="tn-status tn-d">' + (isEn ? 'Completed' : 'Завершён') + '</span>');
+    var badge = (typeof buildRoundStatusBadgeHTML === 'function')
+        ? buildRoundStatusBadgeHTML(r)
+        : (isLive 
+            ? '<span class="live-badge"><span class="live-dot" style="width:7px;height:7px;"></span> LIVE</span>' 
+            : ((typeof buildRoundCompletedBadgeHTML === 'function')
+                ? buildRoundCompletedBadgeHTML(r)
+                : '<span class="tn-status tn-d">' + (isEn ? 'Completed' : 'Завершён') + '</span>'));
 
     var panelId = 'lb-sc-' + id;
     var actions = '<div class="lwl-actions">' +

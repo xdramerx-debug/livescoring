@@ -23,58 +23,136 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
     <style>
-        /* ===== ВКЛАДКИ РЕЖИМА: ОДИНОЧНЫЙ / ГРУППОВОЙ ===== */
-        .mode-toggle-group {
-            display: flex;
-            gap: 10px;
-            max-width: 560px;
-            margin: 0 auto 22px;
+        /* ═══════════════════════════════════════════════════════════
+           ЕДИНЫЙ БЛОК «СОЗДАНИЕ РАУНДА» (v1.69.0)
+           Одна форма для соло и группы. 5 вариантов вида выбирает
+           только админ (body.st-roundsetup-v2 … v5). Логика —
+           js/round-setup.js.
+           ═══════════════════════════════════════════════════════════ */
+        .unified-hint { color: var(--muted); font-size: 13px; margin: 6px 0 18px; line-height: 1.5; }
+        .unified-count-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 22px; height: 22px; padding: 0 7px; margin-left: 8px;
+            border-radius: 999px; background: rgba(201,168,76,0.16);
+            border: 1px solid rgba(201,168,76,0.45); color: var(--gold);
+            font-size: 12px; font-weight: 800; vertical-align: middle;
         }
-        .mode-toggle-btn {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            min-height: 54px;
-            padding: 14px 10px;
-            border-radius: 14px;
-            background: rgba(255,255,255,0.05);
-            border: 2px solid var(--border);
-            color: var(--white);
-            font-family: var(--ff, 'Inter', sans-serif);
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s ease;
-            -webkit-tap-highlight-color: rgba(201,168,76,0.25);
-            touch-action: manipulation;
+        .unified-add-btn { margin-top: 12px; min-height: 48px; }
+        .unified-add-btn.is-max { opacity: 0.6; }
+        .unified-mode-note { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+
+        /* Карточка игрока: аватар, кнопка удаления, метка ТИ/форы */
+        .spc-avatar {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px; border-radius: 50%; flex: 0 0 auto;
+            background: rgba(201,168,76,0.14); border: 1px solid rgba(201,168,76,0.4);
+            color: var(--gold); font-size: 12px; font-weight: 800; letter-spacing: 0.02em;
+            text-transform: uppercase;
         }
-        .mode-toggle-btn i { font-size: 15px; }
-        .mode-toggle-btn.active {
+        .spc-remove {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px; border-radius: 8px; flex: 0 0 auto;
+            background: rgba(224,90,74,0.12); border: 1px solid rgba(224,90,74,0.4);
+            color: var(--red); cursor: pointer; transition: all 0.18s ease;
+        }
+        .spc-remove:hover { background: rgba(224,90,74,0.22); }
+        .spc-remove i { font-size: 12px; }
+        .spc-meta { font-size: 11px; color: var(--muted); font-weight: 600; margin-left: 6px; }
+        .spc .setup-player-head { gap: 8px; }
+        .spc-you { font-style: normal; font-size: 11px; color: var(--gold); font-weight: 700; }
+        .spc-tee-bk { border-left: 3px solid #6b6b6b; }
+        .spc-tee-bl { border-left: 3px solid #337ab7; }
+        .spc-tee-wh { border-left: 3px solid #c9a84c; }
+        .spc-tee-rd { border-left: 3px solid #c0392b; }
+
+        /* ── Вариант 1 (по умолчанию): аккордеон, одна раскрыта ── */
+
+        /* ── Вариант 2: всё открыто, 2 колонки на широком экране ── */
+        body.st-roundsetup-v2 #player-slots.unified-slots-grid {
+            display: grid; grid-template-columns: 1fr; gap: 12px;
+        }
+        @media (min-width: 760px) {
+            body.st-roundsetup-v2 #player-slots.unified-slots-grid { grid-template-columns: 1fr 1fr; }
+            body.st-roundsetup-v2 #player-slots.unified-slots-grid .setup-player-card { margin-bottom: 0; }
+        }
+        body.st-roundsetup-v2 #player-slots .setup-player-card:not(.open) > .form-row { display: flex !important; }
+        body.st-roundsetup-v2 #player-slots .setup-player-card:not(.open) .form-row .form-group { display: block !important; }
+        body.st-roundsetup-v2 #player-slots .setup-player-head .fa-chevron-down { display: none; }
+
+        /* ── Вариант 3: компактный список (игрок = одна строка) ── */
+        .spc-row { display: flex; align-items: flex-end; gap: 10px; padding: 10px 12px; }
+        .spc-row .spc-avatar { width: 32px; height: 32px; margin-bottom: 2px; }
+        .spc-row .spc-remove { margin-bottom: 2px; }
+        .spc-row .spc-row-fields { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 0; }
+        .spc-row .spc-row-fields .form-group { flex: 1 1 110px; min-width: 0; margin: 0; }
+        .spc-row .spc-row-fields .form-group.spx-name { flex: 2 1 180px; }
+        .spc-row .spc-row-fields label { font-size: 10.5px; margin-bottom: 3px; }
+        .spc-row .spc-row-fields .form-input { padding: 8px 10px; font-size: 13px; }
+        @media (max-width: 520px) {
+            .spc-row { flex-wrap: wrap; }
+            .spc-row .spc-row-fields { flex-basis: 100%; }
+            .spc-row .spc-remove { margin-left: auto; }
+        }
+
+        /* ── Вариант 4: витрина — крупные наглядные карточки ── */
+        body.st-roundsetup-v4 #player-slots .setup-player-card { padding: 14px 16px; }
+        body.st-roundsetup-v4 #player-slots .spc-rich .spc-avatar {
+            width: 40px; height: 40px; font-size: 15px;
             background: rgba(201,168,76,0.18);
-            border-color: var(--gold);
-            color: var(--gold);
-            box-shadow: 0 6px 20px rgba(201,168,76,0.18);
         }
-        .mode-toggle-btn:not(.active):hover { border-color: rgba(201,168,76,0.45); }
-        body.sun-mode .mode-toggle-btn {
-            background: #fff;
-            border: 2px solid #000;
-            color: #000;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        body.st-roundsetup-v4 #player-slots .spc-rich .setup-player-head { font-size: 14px; }
+        body.st-roundsetup-v4 #player-slots .setup-player-card:not(.open) > .form-row { display: flex !important; }
+        body.st-roundsetup-v4 #player-slots .setup-player-card:not(.open) .form-row .form-group { display: block !important; }
+        body.st-roundsetup-v4 #player-slots .setup-player-head .fa-chevron-down { display: none; }
+
+        /* ── Вариант 5: мастер «По шагам» ── */
+        .unified-wizard { margin-bottom: 16px; }
+        .unified-steps { display: flex; gap: 6px; }
+        .unified-step {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+            padding: 9px 6px; border-radius: 10px; background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border); color: var(--muted); font-size: 12px;
+            font-weight: 700; cursor: pointer; transition: all 0.18s ease;
+            font-family: inherit;
         }
-        body.sun-mode .mode-toggle-btn.active {
-            background: rgba(201,168,76,0.2);
-            border-color: #1b5e20;
-            color: #1b5e20;
+        .unified-step span {
+            width: 20px; height: 20px; border-radius: 50%; flex: 0 0 auto;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.08); font-size: 11px;
         }
-        @media (max-width: 380px) {
-            .mode-toggle-group { gap: 8px; }
-            .mode-toggle-btn { font-size: 12.5px; padding: 12px 6px; gap: 6px; }
-            .mode-toggle-btn i { font-size: 13px; }
+        .unified-step.active { background: rgba(201,168,76,0.16); border-color: var(--gold); color: var(--gold); }
+        .unified-step.active span { background: var(--gold); color: #0b1a0e; }
+        .unified-step.done { color: var(--text); }
+        .unified-step.done span { background: rgba(46,204,113,0.2); color: #2ecc71; }
+        .unified-wizard-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; }
+        .unified-wizard-nav-btn { flex: 0 1 auto; min-height: 44px; }
+        @media (max-width: 420px) { .unified-step { font-size: 11px; padding: 8px 4px; } }
+
+        /* Сводка на шаге «Старт» (мастер) */
+        .unified-summary {
+            background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+            border-radius: 12px; padding: 12px 14px; margin: 12px 0;
         }
+        .unified-summary .us-title {
+            font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 10px;
+        }
+        .unified-summary .us-row {
+            display: flex; align-items: center; gap: 10px; padding: 8px 0;
+            border-bottom: 1px solid var(--border); font-size: 13.5px;
+        }
+        .unified-summary .us-row:last-child { border-bottom: none; }
+        .unified-summary .us-name { flex: 1; font-weight: 600; }
+        .unified-summary .us-meta { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+
+        /* Светлый режим (sun-mode) для элементов блока */
+        body.sun-mode .unified-step { background: #fff; border-color: #000; }
+        body.sun-mode .unified-step span { background: rgba(0,0,0,0.08); color: #333; }
+        body.sun-mode .unified-step.active { background: rgba(201,168,76,0.2); border-color: #1b5e20; color: #1b5e20; }
+        body.sun-mode .unified-step.active span { background: #1b5e20; color: #fff; }
+        body.sun-mode .unified-count-badge { background: rgba(201,168,76,0.2); border-color: #1b5e20; color: #1b5e20; }
+        body.sun-mode .spc-avatar { background: rgba(201,168,76,0.2); border-color: #1b5e20; color: #1b5e20; }
+        body.sun-mode .unified-summary { background: #fff; }
+
         .round-event-banner {
             padding: calc(var(--nav-h, 70px) + 18px) 0 14px;
             background: linear-gradient(180deg, rgba(201,168,76,0.16), transparent);
@@ -135,7 +213,7 @@
 <div class="page-head" id="page-head">
     <div class="container">
         <h1 class="page-title" id="page-title" data-i18n="page_title_live">Начать раунд</h1>
-        <p class="page-sub" id="page-sub" data-i18n="page_sub_live">Одиночный или групповой раунд — переключайте вкладки</p>
+        <p class="page-sub" id="page-sub" data-i18n="page_sub_live">Одна форма для одиночного и группового раунда — игроков добавляет кнопка «Добавить игрока»</p>
     </div>
 </div>
 
@@ -166,118 +244,71 @@
         <p class="start-gate-hint" id="round-start-hint" data-i18n="tn_start_gate_hint">Ввод счёта откроется автоматически ровно в момент старта — обновлять страницу не нужно.</p>
     </div>
 
-    <!-- ===== НАСТРОЙКА РАУНДА: 2 ВКЛАДКИ НА ОДНОЙ СТРАНИЦЕ ===== -->
+    <!-- ===== ЕДИНАЯ НАСТРОЙКА РАУНДА (v1.69.0) =====
+         Одной формы хватает и для одиночного раунда, и для группового:
+         1 игрок — соло, 2+ — группа (двойной ввод, маркеры).
+         Игроков добавляет кнопка «Добавить игрока». 5 вариантов вида блока
+         выбирает только админ (админ-панель → «Создание раунда (5 видов)»).
+         Логика: js/round-setup.js (карточки pl-*, параметры grp-*). -->
     <div id="setup">
 
-        <!-- ПЕРЕКЛЮЧАТЕЛЬ ВКЛАДОК -->
-        <div class="mode-toggle-group" id="setup-tabs" role="tablist">
-            <button type="button" class="mode-toggle-btn active" id="tab-solo" role="tab" onclick="switchSetupMode('solo')">
-                <i class="fas fa-user"></i> <span data-i18n="mode_solo_title">Одиночный раунд</span>
-            </button>
-            <button type="button" class="mode-toggle-btn" id="tab-group" role="tab" onclick="switchSetupMode('group')">
-                <i class="fas fa-users"></i> <span data-i18n="mode_group_title">Групповой раунд</span>
-            </button>
+        <!-- Мастер «По шагам» — вариант 5 (остальные видны сразу) -->
+        <div id="unified-wizard" class="unified-wizard hidden">
+            <div class="unified-steps" id="unified-steps"></div>
+            <div class="unified-wizard-nav">
+                <button type="button" id="unified-back-btn" class="btn btn-ol btn-sm unified-wizard-nav-btn hidden" onclick="unifiedStepPrev()">
+                    <i class="fas fa-arrow-left"></i> <span data-i18n="btn_back">Назад</span>
+                </button>
+                <button type="button" id="unified-next-btn" class="btn btn-g btn-sm unified-wizard-nav-btn" onclick="unifiedStepNext()">
+                    <span data-i18n="btn_next">Далее</span> <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
         </div>
 
-        <!-- ===== ВКЛАДКА 1: ОДИНОЧНЫЙ РАУНД ===== -->
-        <div id="solo-setup">
-            <div class="card setup-card">
-                <h2><i class="fas fa-cog"></i> <span data-i18n="round_setup">Настройки раунда</span></h2>
+        <div class="card setup-card" id="unified-setup-card">
+            <h2><i class="fas fa-cog"></i> <span data-i18n="round_setup">Настройки раунда</span></h2>
+            <p class="unified-hint" data-i18n="unified_hint">Начните раунд одному или нескольким игрокам: 1 игрок — одиночный раунд, 2 и более — групповой (двойной ввод, маркеры).</p>
 
-                <h3 class="setup-section-title"><i class="fas fa-user"></i> <span data-i18n="player_data">Данные игрока</span></h3>
-                <div class="form-row form-row-3">
-                    <div class="form-group"><label data-i18n="first_name">Имя</label><input type="text" id="s-firstname" class="form-input" data-i18n-placeholder="placeholder_first_name" placeholder="Имя"></div>
-                    <div class="form-group"><label data-i18n="last_name">Фамилия</label><input type="text" id="s-lastname" class="form-input" data-i18n-placeholder="placeholder_last_name" placeholder="Фамилия"></div>
-                    <div class="form-group"><label data-i18n="middle_name">Отчество (необязательно)</label><input type="text" id="s-middlename" class="form-input" data-i18n-placeholder="placeholder_middle_name" placeholder="Отчество"></div>
-                </div>
-
+            <!-- ШАГ 1: ПАРАМЕТРЫ (время, лунки, формат) -->
+            <div class="unified-sec" data-unif-sec="1" id="unif-sec-1">
                 <h3 class="setup-section-title"><i class="fas fa-clock"></i> <span data-i18n="time_and_hole">Время и лунка</span></h3>
-                <div class="form-row">
-                    <div class="form-group"><label data-i18n="start_time">Время старта</label><input type="time" id="s-time" class="form-input"></div>
-                    <div class="form-group"><label data-i18n="holes_count">Сколько лунок</label><select id="s-range" class="form-input"><option value="1-18">1-18</option><option value="1-9">1-9</option><option value="10-18">10-18</option></select></div>
-                    <div class="form-group"><label data-i18n="start_hole">Стартовая лунка</label><select id="s-hole" class="form-input"></select></div>
-                </div>
-
-                <h3 class="setup-section-title"><i class="fas fa-gamepad"></i> <span data-i18n="game_format">Формат игры</span></h3>
                 <div class="form-row form-row-3">
-                    <div class="form-group"><label data-i18n="gender_label">Пол</label><select id="s-gender" class="form-input" onchange="onSoloGenderChange()"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Девушка</option></select></div>
-                    <div class="form-group"><label data-i18n="tee_select">ТИ</label><select id="s-tee" class="form-input" onchange="calcSoloFieldHcp()"><option value="bk" data-i18n="tee_opt_bk">⬛ Чёрный</option><option value="bl" selected data-i18n="tee_opt_bl">🟦 Синий</option><option value="wh" data-i18n="tee_opt_wh">⬜ Белый</option><option value="rd" data-i18n="tee_opt_rd">🟥 Красный</option></select></div>
-                    <div class="form-group"><label data-i18n="format_select">Формат</label><select id="s-format" class="form-input"><option value="Stroke Play">Stroke Play</option><option value="Stroke Play (Gross)">Gross (без HCP)</option><option value="Stroke Play (Net)">Net (с HCP)</option><option value="Stableford">Stableford</option><option value="Match Play 1v1">Match Play (1×1)</option><option value="Match Play 2v2">Match Play (2×2)</option><option value="Scramble">Scramble</option><option value="Texas Scramble">Texas Scramble</option><option value="Greensomes">Greensomes</option></select></div>
+                    <div class="form-group"><label data-i18n="start_time">Время старта</label><input type="time" id="grp-time" class="form-input"></div>
+                    <div class="form-group"><label data-i18n="holes_count">Сколько лунок</label><select id="grp-range" class="form-input"><option value="1-18">1-18</option><option value="1-9">1-9</option><option value="10-18">10-18</option></select></div>
+                    <div class="form-group"><label data-i18n="start_hole">Стартовая лунка</label><select id="grp-hole" class="form-input"></select></div>
                 </div>
-
+                <h3 class="setup-section-title"><i class="fas fa-gamepad"></i> <span data-i18n="game_format">Формат игры</span></h3>
                 <div class="form-row">
-                    <div class="form-group"><label data-i18n="exact_hcp">Точный гандикап</label><input type="text" inputmode="decimal" id="s-exact-hcp" class="form-input" data-i18n-placeholder="placeholder_hcp_calc" placeholder="+2.4 или 12.4" oninput="calcSoloFieldHcp()"></div>
-                    <div class="form-group"><label data-i18n="field_hcp">Полевой гандикап</label><input type="text" id="s-field-hcp" class="form-input" readonly placeholder="—"></div>
+                    <div class="form-group"><label data-i18n="format_select">Формат</label><select id="grp-format" class="form-input">
+                        <option value="Stroke Play">Stroke Play</option>
+                        <option value="Stroke Play (Gross)">Gross (без HCP)</option>
+                        <option value="Stroke Play (Net)">Net (с HCP)</option>
+                        <option value="Stableford">Stableford</option>
+                        <option value="Match Play 1v1">Match Play (1×1)</option>
+                        <option value="Match Play 2v2">Match Play (2×2)</option>
+                        <option value="Scramble">Scramble</option>
+                        <option value="Texas Scramble">Texas Scramble</option>
+                        <option value="Greensomes">Greensomes</option>
+                    </select></div>
                 </div>
-
-                <button class="btn btn-g btn-block" onclick="startSolo()" style="margin-top:12px;"><i class="fas fa-play"></i> <span data-i18n="start_round_btn">Начать раунд</span></button>
             </div>
 
-            <div class="card">
-                <h2><i class="fas fa-info-circle"></i> <span data-i18n="timings_title">Тайминги</span></h2>
-                <div id="timing-preview"></div>
-            </div>
-        </div>
-
-        <!-- ===== ВКЛАДКА 2: ГРУППОВОЙ РАУНД ===== -->
-        <div id="group-setup" class="hidden">
-            <div class="card setup-card">
-                <h2><i class="fas fa-users"></i> <span data-i18n="group_setup_title">Настройка группы</span></h2>
-
-                <!-- Турнир в групповом раунде не выбирается: участие в турнире —
-                     только через регистрацию в разделе «Турниры». -->
-                <div class="form-row">
-                    <div class="form-group" style="flex:1 1 100px;">
-                        <label><i class="fas fa-hashtag"></i> <span data-i18n="player_count">Игроки</span></label>
-                        <select id="grp-count" class="form-input" onchange="buildPlayerSlots()">
-                            <option value="2" selected data-i18n="player_count_2">2 игрока</option>
-                            <option value="3" data-i18n="player_count_3">3 игрока</option>
-                            <option value="4" data-i18n="player_count_4">4 игрока</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label><i class="fas fa-clock"></i> <span data-i18n="start_time">Время старта</span></label>
-                        <input type="time" id="grp-time" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-hashtag"></i> <span data-i18n="holes_count">Сколько лунок</span></label>
-                        <select id="grp-range" class="form-input">
-                            <option value="1-18">1-18</option>
-                            <option value="1-9">1-9</option>
-                            <option value="10-18">10-18</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-flag"></i> <span data-i18n="start_hole">Стартовая лунка</span></label>
-                        <select id="grp-hole" class="form-input"></select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group" style="flex:1 1 100%;">
-                        <label><i class="fas fa-gamepad"></i> <span data-i18n="format_select">Формат</span></label>
-                        <select id="grp-format" class="form-input">
-                            <option value="Stroke Play">Stroke Play</option>
-                            <option value="Stroke Play (Gross)">Gross (без HCP)</option>
-                            <option value="Stroke Play (Net)">Net (с HCP)</option>
-                            <option value="Stableford">Stableford</option>
-                            <option value="Match Play 1v1">Match Play (1×1)</option>
-                            <option value="Match Play 2v2">Match Play (2×2)</option>
-                            <option value="Scramble">Scramble</option>
-                            <option value="Texas Scramble">Texas Scramble</option>
-                            <option value="Greensomes">Greensomes</option>
-                        </select>
-                    </div>
-                </div>
-
+            <!-- ШАГ 2: ИГРОКИ (1 — соло, 2+ — группа) -->
+            <div class="unified-sec" data-unif-sec="2" id="unif-sec-2">
+                <h3 class="setup-section-title"><i class="fas fa-users"></i> <span data-i18n="players_label">Игроки</span> <span class="unified-count-badge" id="unified-count-badge">1</span></h3>
                 <div id="player-slots"></div>
+                <button type="button" class="btn btn-ol btn-block unified-add-btn" id="unified-add-btn" onclick="addSetupPlayer()">
+                    <i class="fas fa-user-plus"></i> <span data-i18n="add_player_btn">Добавить игрока</span>
+                </button>
+                <p class="unified-mode-note" id="unified-mode-note"></p>
+            </div>
 
-                <div id="grp-timing-preview" style="margin-top:10px;"></div>
-
-                <button class="btn btn-g btn-block" onclick="startGroup()" style="margin-top:12px;">
+            <!-- ШАГ 3: ТАЙМИНГИ + СТАРТ -->
+            <div class="unified-sec" data-unif-sec="3" id="unif-sec-3">
+                <h3 class="setup-section-title"><i class="fas fa-info-circle"></i> <span data-i18n="timings_title">Тайминги</span></h3>
+                <div id="grp-timing-preview"></div>
+                <div class="unified-summary hidden" id="unified-summary"></div>
+                <button class="btn btn-g btn-block" id="unified-start-btn" onclick="startUnifiedRound()" style="margin-top:12px;min-height:52px;padding:16px;font-size:16px;">
                     <i class="fas fa-play"></i> <span data-i18n="start_round_btn">Начать раунд</span>
                 </button>
             </div>
@@ -602,7 +633,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.68.1</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.69.0</span></p>
         </div>
     </div>
 </footer>
@@ -611,9 +642,10 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js?v=2"></script>
-<script src="js/utils.js?v=61"></script>
-<script src="js/live.js?v=36"></script>
-<script src="js/solo.js?v=28"></script>
+<script src="js/utils.js?v=62"></script>
+<script src="js/live.js?v=37"></script>
+<script src="js/solo.js?v=29"></script>
+<script src="js/round-setup.js?v=1"></script>
 <script src="js/pwa.js?v=6"></script>
 <script>
 function searchFioResume() {

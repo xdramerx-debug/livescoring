@@ -4049,7 +4049,12 @@ function saveView5Setting(name, v) {
         toast(currentLang === 'en' ? 'Saved locally (no database)' : 'Сохранено локально (нет базы)', 'info');
         return;
     }
-    var path = { homeTournament: 'settings/home_tournament_view', scorecard: 'settings/scorecard_view', scoring: 'settings/scoring_view' }[name];
+    // Путь в Firebase берём из общего конфига view5 (js/utils.js) —
+    // новые блоки (например, roundSetup) подключаются без правок админки.
+    var cfg = (typeof PESTOVO_VIEW5_CONFIG !== 'undefined') ? PESTOVO_VIEW5_CONFIG[name] : null;
+    var path = (cfg && cfg.firebase)
+        ? cfg.firebase
+        : { homeTournament: 'settings/home_tournament_view', scorecard: 'settings/scorecard_view', scoring: 'settings/scoring_view' }[name];
     if (!path) return;
     db.ref(path).set(String(v)).then(function() {
         toast(currentLang === 'en' ? '✅ View saved for all users' : '✅ Вид сохранён для всех пользователей', 'success');
@@ -4060,7 +4065,7 @@ function saveView5Setting(name, v) {
 }
 
 function loadAdmView5Settings() {
-    ['homeTournament', 'scorecard', 'scoring'].forEach(function(name) {
+    ['homeTournament', 'scorecard', 'scoring', 'roundsetup'].forEach(function(name) {
         if (typeof pestovoBindView5 === 'function') pestovoBindView5(name, function() {});
         else if (typeof markAdmView5Buttons === 'function') markAdmView5Buttons(name);
     });

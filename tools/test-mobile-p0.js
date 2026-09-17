@@ -36,9 +36,11 @@ function ok(cond, label) {
     win.currentUser = null; win.currentUserData = null;
     function makeRef(p) { const r = { _p: p || '', update() { return Promise.resolve(); }, set() { return Promise.resolve(); }, remove() { return Promise.resolve(); }, transaction(f) { return Promise.resolve({ value: f(null) }); }, once() { return Promise.resolve({ val: () => null }); }, on() {}, off() {}, orderByChild() { return r; }, equalTo() { return r; }, push() { return Promise.resolve({ key: 'x' }); } }; return r; }
     win.db = { ref: p => makeRef(p) };
-    ['js/utils.js', 'js/live.js', 'js/solo.js'].forEach(r => win.eval(fs.readFileSync(path.join(ROOT, r), 'utf8')));
-    doc.getElementById('grp-count').value = '3';
-    win.eval('buildPlayerSlots();');
+    ['js/utils.js', 'js/live.js', 'js/solo.js', 'js/round-setup.js'].forEach(r => win.eval(fs.readFileSync(path.join(ROOT, r), 'utf8')));
+    // v1.69.0: единая форма — состав задаёт кнопка «Добавить игрока»
+    win.eval('addSetupPlayer();');
+    win.eval('addSetupPlayer();');
+    win.eval('renderSetupPlayers(true);');
     setTimeout(() => {
         win.eval('initP0MobileEnhancements();');
         ok(!!doc.getElementById('p0-wizard-steps'), 'setup-round: создан #p0-wizard-steps');

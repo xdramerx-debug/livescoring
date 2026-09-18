@@ -10,6 +10,14 @@ eq(C.lifecycleStatus(open, '2099-09-01'), 'registration', 'legacy upcoming maps 
 check(C.isRegistrationOpen(open, '2099-09-01'), 'registration window is open');
 eq(C.classify(open, '2099-09-21').status, 'closed', 'expired registration becomes closed');
 check(C.classify({ lifecycleStatus: 'completed', status: 'completed' }).past, 'completed is past');
+// Только что созданный турнир НЕ становится «идёт» сам по себе в день турнира:
+// live-статус появляется только после явного старта (кнопкой или автостартом),
+// который пишет status/lifecycleStatus в запись.
+eq(C.lifecycleStatus({ status: 'upcoming', date: '2099-09-20' }, '2099-09-20T12:00:00'), 'registration', 'created tournament is not auto-live on its date');
+eq(C.lifecycleStatus({ status: 'upcoming', lifecycleStatus: 'registration', date: '2099-09-20' }, '2099-09-20T12:00:00'), 'registration', 'wizard tournament is not auto-live on its date');
+check(C.isRegistrationOpen({ status: 'upcoming', date: '2099-09-20' }, '2099-09-20T12:00:00'), 'registration stays open on tournament day until start');
+eq(C.lifecycleStatus({ status: 'active', date: '2099-09-20' }, '2099-09-20T12:00:00'), 'active', 'explicit start still reads as active');
+eq(C.lifecycleStatus({ status: 'upcoming', lifecycleStatus: 'active', date: '2099-09-20' }, '2099-09-20T12:00:00'), 'active', 'auto-start writes lifecycleStatus=active');
 check(C.canTransition('registration', 'active'), 'registration → active allowed');
 check(!C.canTransition('draft', 'active'), 'draft → active requires registration');
 eq(C.transition({ lifecycleStatus: 'active' }, 'completed').patch.status, 'completed', 'active → completed keeps legacy status');

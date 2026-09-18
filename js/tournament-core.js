@@ -89,7 +89,6 @@
         if (legacy === STATUS.DRAFT) return STATUS.DRAFT;
         var ts = at == null ? Date.now() : nowMs(at) || Date.now();
         var reg = registrationConfig(t);
-        var start = firstDefined([t.startedAt, t.startAt, t.date], '');
         var end = firstDefined([t.finishedAt, t.endDate, t.date], '');
         if (explicit === STATUS.REGISTRATION && reg.closeAt && ts > dateEnd(reg.closeAt)) return STATUS.CLOSED;
         if (explicit === STATUS.REGISTRATION && end && dateEnd(end) < ts) return STATUS.COMPLETED;
@@ -97,7 +96,12 @@
         if (legacy === 'closed') return STATUS.CLOSED;
         if (reg.closeAt && ts > dateEnd(reg.closeAt) && !t.startedAt && legacy !== STATUS.ACTIVE) return STATUS.CLOSED;
         if (end && dateEnd(end) < ts && legacy === 'upcoming') return STATUS.COMPLETED;
-        if (start && ts >= dateStart(start) && legacy === 'upcoming') return STATUS.ACTIVE;
+        // ACTIVE is never derived from the calendar date: a freshly created
+        // tournament whose date is today must stay in registration/upcoming
+        // until it is actually started. Every real start (admin "Start"/"Начать"
+        // buttons, protocol save when the tee time arrives, scheduled-round
+        // auto-start) writes status/lifecycleStatus='active' into the record,
+        // so the live state is read above from explicit/legacy fields.
         if (reg.openAt && ts >= dateStart(reg.openAt) && (!reg.closeAt || ts <= dateEnd(reg.closeAt))) return STATUS.REGISTRATION;
         return legacy === 'upcoming' || !legacy ? STATUS.REGISTRATION : STATUS.DRAFT;
     }

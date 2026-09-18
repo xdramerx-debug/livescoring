@@ -490,7 +490,7 @@
             </button>
         </div>
         <div id="group-pause-banner" class="hidden" style="margin-bottom:12px;"></div>
-        <button class="btn btn-ol btn-sm btn-block" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" onclick="openForceFinishModal(curRid, curRoundData, myUid)">
+        <button id="group-force-finish-btn" class="btn btn-ol btn-sm btn-block hidden" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" onclick="openForceFinishModal(curRid, curRoundData, { playerId: myUid, isGroup: true })">
             <i class="fas fa-forward"></i> <span data-i18n="force_finish_btn">Завершить раунд принудительно (сохранить счёт)</span>
         </button>
         <label class="stableford-display-control" id="group-stableford-control">
@@ -606,7 +606,7 @@
             </button>
         </div>
         <div id="solo-pause-banner" class="hidden" style="margin-bottom:12px;"></div>
-        <button class="btn btn-ol btn-sm btn-block" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" onclick="openForceFinishModal(soloRid, soloRound, getPlayerId())">
+        <button id="solo-force-finish-btn" class="btn btn-ol btn-sm btn-block hidden" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" onclick="openForceFinishModal(soloRid, soloRound, { playerId: getPlayerId(), isGroup: false })">
             <i class="fas fa-forward"></i> <span data-i18n="force_finish_btn">Завершить раунд принудительно (сохранить счёт)</span>
         </button>
         <label class="stableford-display-control" id="solo-stableford-control">
@@ -653,7 +653,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.75.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.76.0</span></p>
         </div>
     </div>
 </footer>

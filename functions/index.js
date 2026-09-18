@@ -40,10 +40,16 @@ async function ensureVapidKeys() {
 // HTTP: GET — вернуть публичный ключ (сгенерировав пару при первом вызове).
 // Вызывается из админки при включении фоновых пушей.
 exports.vapidSetup = functions.https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
     try {
         const keys = await ensureVapidKeys();
         res.set('Cache-Control', 'public, max-age=300');
-        res.set('Access-Control-Allow-Origin', '*');
         res.json({ publicKey: keys.publicKey });
     } catch (err) {
         functions.logger.error('vapidSetup failed', err);
@@ -107,49 +113,57 @@ function audienceOf(b) {
 }
 
 exports.onBroadcastCreated = functions.database.ref('/broadcasts/{id}').onCreate(async function (snap) {
-    const b = snap.val() || {};
-    const keys = await ensureVapidKeys();
-    configureWebPush(keys);
+    try {
+        const b = snap.val() || {};
+        const keys = await ensureVapidKeys();
+        configureWebPush(keys);
 
-    const aud = audienceOf(b);
-    const allSubs = await getAllSubscriptions();
-    let targets;
-    if (aud.type === 'all') {
-        // «Всем игрокам клуба» без includePwa — шлём только вошедшим игрокам
-        // (гостевые подписки без uid пропускаем). С includePwa — всем,
-        // включая гостей, установивших PWA.
-        targets = allSubs.filter(function (s) { return aud.includePwa || !!s.uid; });
-    } else {
-        targets = allSubs.filter(function (s) { return s.uid && aud.uids[String(s.uid)]; });
+        const aud = audienceOf(b);
+        const allSubs = await getAllSubscriptions();
+        let targets;
+        if (aud.type === 'all') {
+            // «Всем игрокам клуба» без includePwa — шлём только вошедшим игрокам
+            // (гостевые подписки без uid пропускаем). С includePwa — всем,
+            // включая гостей, установивших PWA.
+            targets = allSubs.filter(function (s) { return aud.includePwa || !!s.uid; });
+        } else {
+            targets = allSubs.filter(function (s) { return s.uid && aud.uids[String(s.uid)]; });
+        }
+
+        const payload = {
+            title: b.title || '📢 Pestovo',
+            body: b.body || '',
+            tag: 'broadcast-' + snap.key,
+            url: b.link || '/tournaments.html',
+            ts: b.time || Date.now()
+        };
+        functions.logger.info('broadcast push to ' + targets.length + ' subs (aud=' + aud.type + ')');
+        await sendToSubscriptions(targets, payload);
+    } catch (err) {
+        functions.logger.error('onBroadcastCreated failed', err);
     }
-
-    const payload = {
-        title: b.title || '📢 Pestovo',
-        body: b.body || '',
-        tag: 'broadcast-' + snap.key,
-        url: b.link || '/tournaments.html',
-        ts: b.time || Date.now()
-    };
-    functions.logger.info('broadcast push to ' + targets.length + ' subs (aud=' + aud.type + ')');
-    await sendToSubscriptions(targets, payload);
 });
 
 // Вызов судьи/маршала: пушим админам (роль admin в users/<uid>).
 exports.onAlertCreated = functions.database.ref('/alerts/{id}').onCreate(async function (snap) {
-    const a = snap.val() || {};
-    if (a.status && a.status !== 'active') return;
-    const keys = await ensureVapidKeys();
-    configureWebPush(keys);
+    try {
+        const a = snap.val() || {};
+        if (a.status && a.status !== 'active') return;
+        const keys = await ensureVapidKeys();
+        configureWebPush(keys);
 
-    const subs = (await getAllSubscriptions()).filter(function (s) { return !!s.isAdmin; });
-    if (!subs.length) return;
-    const referee = a.type === 'referee';
-    const payload = {
-        title: referee ? '🚨 ВЫЗОВ СУДЬИ!' : '🚨 ВЫЗОВ МАРШАЛА!',
-        body: 'Лунка №' + (a.hole || '?') + ' · ' + (a.playerName || 'Игрок') + (a.time ? ' (' + new Date(a.time).toLocaleTimeString('ru-RU') + ')' : ''),
-        tag: 'alert-' + snap.key,
-        url: '/admin.html',
-        ts: Date.now()
-    };
-    await sendToSubscriptions(subs, payload);
+        const subs = (await getAllSubscriptions()).filter(function (s) { return !!s.isAdmin; });
+        if (!subs.length) return;
+        const referee = a.type === 'referee';
+        const payload = {
+            title: referee ? '🚨 ВЫЗОВ СУДЬИ!' : '🚨 ВЫЗОВ МАРШАЛА!',
+            body: 'Лунка №' + (a.hole || '?') + ' · ' + (a.playerName || 'Игрок') + (a.time ? ' (' + new Date(a.time).toLocaleTimeString('ru-RU') + ')' : ''),
+            tag: 'alert-' + snap.key,
+            url: '/admin.html',
+            ts: Date.now()
+        };
+        await sendToSubscriptions(subs, payload);
+    } catch (err) {
+        functions.logger.error('onAlertCreated failed', err);
+    }
 });

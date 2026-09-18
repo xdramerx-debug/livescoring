@@ -12036,6 +12036,22 @@ function isTournamentRound(r) {
     return !!roundTournamentName(r);
 }
 
+// Идёт ли турнир прямо сейчас. Главная страница и каталог должны
+// согласованно читать и legacy-поле status, и lifecycleStatus v2:
+// админка v2 пишет lifecycleStatus='active', а старый старт — status='active'.
+// Завершённые/отменённые/черновики никогда не считаются live.
+function isLiveTournament(t) {
+    if (!t || typeof t !== 'object') return false;
+    var st = String(t.status || '').toLowerCase();
+    var lc = String(t.lifecycleStatus || (t.lifecycle && t.lifecycle.status) || '').toLowerCase();
+    if (lc === 'published') lc = 'registration';
+    if (st === 'completed' || st === 'cancelled' ||
+        lc === 'completed' || lc === 'cancelled' || lc === 'draft') return false;
+    if (st === 'active' || lc === 'active') return true;
+    if (t.startedAt && !t.finishedAt) return true;
+    return false;
+}
+
 function updateRoundEventBanner(roundData) {
     var banner = (typeof document !== 'undefined') ? document.getElementById('round-event-banner') : null;
     if (!banner) return;
@@ -12210,6 +12226,7 @@ function pestovoActivateRounds(due, opts) {
     });
     (due.tournamentIds || []).forEach(function(tnId) {
         updates['tournaments/' + tnId + '/status'] = 'active';
+        updates['tournaments/' + tnId + '/lifecycleStatus'] = 'active';
         updates['tournaments/' + tnId + '/startedAt'] = now;
     });
     if (!Object.keys(updates).length) return Promise.resolve({ rounds: 0, tournaments: 0 });
@@ -12258,6 +12275,7 @@ function pestovoStartTournamentNow(tnId) {
         var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions({ divisions: divRaw }) : [];
         var updates = {};
         updates['tournaments/' + tnId + '/status'] = 'active';
+        updates['tournaments/' + tnId + '/lifecycleStatus'] = 'active';
         updates['tournaments/' + tnId + '/startedAt'] = now;
         var opened = 0;
         Object.keys(data).forEach(function(rid) {
@@ -12287,7 +12305,7 @@ function pestovoStartTournamentNow(tnId) {
         return db.ref().update(updates).then(function() { return opened; });
     }).catch(function() {
         // Нет доступа к ветке rounds — стартуем хотя бы сам турнир
-        return db.ref('tournaments/' + tnId).update({ status: 'active', startedAt: now }).then(function() { return 0; });
+        return db.ref('tournaments/' + tnId).update({ status: 'active', lifecycleStatus: 'active', startedAt: now }).then(function() { return 0; });
     });
 }
 
@@ -12669,6 +12687,7 @@ if (typeof window !== 'undefined') {
     window.pestovoRenderProfileHistory = pestovoRenderProfileHistory;
     window.roundTournamentName = roundTournamentName;
     window.isTournamentRound = isTournamentRound;
+    window.isLiveTournament = isLiveTournament;
     window.updateRoundEventBanner = updateRoundEventBanner;
     window.isRoundOpenForScoring = isRoundOpenForScoring;
     window.isRoundGatedByStart = isRoundGatedByStart;

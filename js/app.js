@@ -700,7 +700,17 @@ function homeTnTop3Entry(tnId, tnName, tnEntries) {
         if (r.startTime && (!startTs || r.startTime < startTs)) startTs = r.startTime;
     });
     var list = Object.keys(agg).map(function(k) { return agg[k]; });
-    if (!list.length) return '';
+    if (!list.length) {
+        // Турнир уже идёт, но счетов ещё нет: не прячем блок.
+        // Иначе byTn[tid] есть, а homeTnPlaceholderHtml пропускается.
+        var rec = (homeActiveTournaments && homeActiveTournaments[tnId]) || { name: tnName };
+        if (!rec.name) rec = Object.assign({}, rec, { name: tnName });
+        var waiting = homeTnPlaceholderHtml(tnId, rec);
+        if (tnEntries && tnEntries.length) {
+            waiting += '<div class="htv-rounds live-who-list">' + homeTnRowsHtml(tnEntries, true) + '</div>';
+        }
+        return waiting;
+    }
     list.forEach(function(x) {
         x.toPar = x.holes > 0 ? (x.gross - x.par) : null;
         x.netToPar = x.holes > 0 ? (x.net - x.par) : null;
@@ -734,7 +744,7 @@ function homeTnTop3Entry(tnId, tnName, tnEntries) {
     var v = (typeof getHomeTournamentView === 'function') ? getHomeTournamentView() : '1';
     var rowsOpen = true;
 
-    var html = '<div class="htv-block htv-v' + v + '">';
+    var html = '<div class="htv-block htv-v' + v + '" data-tn-id="' + escapeHtml(tnId || '') + '">';
     html += '<div class="htv-head" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">' +
         '<b style="color:var(--gold);font-size:14px;"><i class="fas fa-trophy"></i> ' + escapeHtml(tnName || '') + '</b>' +
         (startTs ? '<span class="htv-fmt-chip"><i class="fas fa-clock"></i> ' + (typeof fmtTime === 'function' ? fmtTime(startTs) : '') + '</span>' : '') +
@@ -774,7 +784,10 @@ function homeActiveTnList() {
     var out = [];
     Object.keys(homeActiveTournaments || {}).forEach(function(id) {
         var tVal = homeActiveTournaments[id] || {};
-        if (tVal.status === 'active') out.push([id, tVal]);
+        var live = (typeof isLiveTournament === 'function')
+            ? isLiveTournament(tVal)
+            : (tVal.status === 'active' || tVal.lifecycleStatus === 'active');
+        if (live) out.push([id, tVal]);
     });
     out.sort(function(a, b) {
         return ((b[1].startedAt || b[1].createdAt || 0) - (a[1].startedAt || a[1].createdAt || 0));
@@ -785,13 +798,14 @@ function homeActiveTnList() {
 // Активный турнир без активных раундов/счётов — компактный блок-заглушка.
 function homeTnPlaceholderHtml(tnId, tVal) {
     var en = currentLang === 'en';
-    var html = '<div class="htv-block" style="padding:12px 14px;background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.35);border-radius:12px;margin-top:10px;">';
+    var href = 'tournaments.html' + (tnId ? '?id=' + encodeURIComponent(tnId) : '');
+    var html = '<div class="htv-block" data-tn-id="' + escapeHtml(tnId || '') + '" style="padding:12px 14px;background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.35);border-radius:12px;margin-top:10px;">';
     html += '<div class="htv-head" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">' +
-        '<b style="color:var(--gold);font-size:14px;"><i class="fas fa-trophy"></i> ' + escapeHtml(tVal.name || '') + '</b>' +
+        '<b style="color:var(--gold);font-size:14px;"><i class="fas fa-trophy"></i> ' + escapeHtml((tVal && tVal.name) || '') + '</b>' +
         '<span class="htv-fmt-chip" style="color:#e74c3c;"><i class="fas fa-satellite-dish"></i> ' + (en ? 'In progress' : 'Турнир идёт') + '</span></div>';
     html += '<div style="font-size:12.5px;color:var(--muted);">' +
         (en ? 'Scores will appear here as soon as the first results come in.' : 'Счета появятся здесь, как только придут первые результаты.') + '</div>';
-    html += '<a href="tournaments.html" class="btn btn-og btn-sm" style="margin-top:8px;display:inline-block;">' +
+    html += '<a href="' + href + '" class="btn btn-og btn-sm" style="margin-top:8px;display:inline-block;">' +
         (en ? 'To the tournament' : 'К турниру') + ' <i class="fas fa-arrow-right"></i></a>';
     html += '</div>';
     return html;
@@ -808,7 +822,9 @@ function loadLiveRounds() {
     // не виден на главной»).
     bindRealtimeValue('home-active-tournaments', db.ref('tournaments'), function(sn) {
         homeActiveTournaments = (sn && sn.val && sn.val()) || {};
-        if (homeLastRoundsData !== null) renderHomeLiveRounds(homeLastRoundsData);
+        // Турниры могут прийти раньше раундов — всё равно рисуем блок,
+        // иначе активный турнир «ждёт» rounds и не появляется на главной.
+        renderHomeLiveRounds(homeLastRoundsData || {});
     });
 
     bindRealtimeValue('home-live-rounds', db.ref('rounds'), function(snap) {

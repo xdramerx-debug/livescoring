@@ -1044,8 +1044,10 @@ function pestovoUrlWantsFinish() {
 function pestovoConsumeFinishOnce(rid) {
     var k = 'pestovo_finish_req_' + rid;
     try {
-        if (sessionStorage.getItem(k) === '1') return false;
-        sessionStorage.setItem(k, '1');
+        if (typeof sessionStorage !== 'undefined' && sessionStorage) {
+            if (sessionStorage.getItem(k) === '1') return false;
+            sessionStorage.setItem(k, '1');
+        }
     } catch (e) { console.warn("[silent]", e); }
     return true;
 }

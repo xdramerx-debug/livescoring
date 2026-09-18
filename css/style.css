@@ -1212,6 +1212,10 @@ html.score-kiosk .hole-display {
 }
 
 @media(max-width:768px){
+    /* Предотвращение принудительного зума экрана в iOS Safari при фокусе в инпут */
+    .form-input, input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], select.form-input {
+        font-size: 16px !important;
+    }
     .nav-toggle{display:flex;}
     .nav-menu{
         position:fixed;

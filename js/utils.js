@@ -1816,7 +1816,7 @@ function applyTranslations() {
 
 /* Применяем переводы и тему мгновенно (скрипт внизу <body> — DOM уже распаршен),
    чтобы не было «вспышки» исходного текста/темы при загрузке */
-try { if (document.documentElement) document.documentElement.setAttribute('lang', currentLang); } catch (e) { console.warn("[silent]", e); }
+try { if (document.documentElement && typeof document.documentElement.setAttribute === 'function') document.documentElement.setAttribute('lang', currentLang); } catch (e) { console.warn("[silent]", e); }
 applyTranslations();
 document.addEventListener('DOMContentLoaded', function() {
     applyTranslations();
@@ -4616,7 +4616,7 @@ function stablefordField(strokes,holeNum,fieldHcp){
         if((19-hcpIdx)<=(absHcp%18))extra--;
     }
     var nett=strokes-extra,diff=nett-par;
-    if(diff<=-3)return 5;if(diff===-2)return 4;if(diff===-1)return 3;if(diff===0)return 2;if(diff===1)return 1;return 0;
+    return Math.max(0, 2 - diff);
 }
 
 function stablefordExact(strokes,holeNum,exactHcp){
@@ -4631,7 +4631,7 @@ function stablefordExact(strokes,holeNum,exactHcp){
         if((19-hcpIdx)<=(absHcp%18))extra--;
     }
     var nett=strokes-extra,diff=nett-par;
-    if(diff<=-3)return 5;if(diff===-2)return 4;if(diff===-1)return 3;if(diff===0)return 2;if(diff===1)return 1;return 0;
+    return Math.max(0, 2 - diff);
 }
 
 // Настройка отображения очков Stableford. Если игрок ещё не выбрал своё
@@ -4683,7 +4683,9 @@ function syncStablefordDisplayDefault(value) {
     // дефолт: по умолчанию очки Stableford не показываются ни у кого.
     pestovoStablefordDisplayDefault = normalized === null ? false : normalized;
     try {
-        document.dispatchEvent(new CustomEvent('pestovo-stableford-default-change'));
+        if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+            document.dispatchEvent(new CustomEvent('pestovo-stableford-default-change'));
+        }
     } catch (e) { console.warn("[silent]", e); }
 }
 
@@ -4708,15 +4710,24 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
     var maxPlayedIdx=-1;
 
     for(var i=0;i<holesOrder.length;i++){
-        var h=holesOrder[i],s=scores[h]?parseInt(scores[h]):0,par=holePar(h);
-        if(s>=1){
-            played.push(h);gross+=s;parPlayed+=par;
-            netTotal+=calcNettScore(s,par,holeHcp(h),fieldHcp||0);
-            var diff=s-par;
-            if(diff<=-2)eagles++;else if(diff===-1)birdies++;else if(diff===0)pars++;else if(diff===1)bogeys++;else doubles++;
-            if(s===1)hio++;
-            stblField+=stablefordField(s,h,fieldHcp||0);
-            stblExact+=stablefordExact(s,h,exactHcp||0);
+        var h=holesOrder[i], rawScore = (scores && scores[h] != null) ? scores[h] : '';
+        var rawStr = String(rawScore).trim();
+        var isPickup = (rawStr === 'X' || rawStr === 'x' || rawStr === '0' || rawStr === '-');
+        var s = (!isPickup && rawStr) ? parseInt(rawStr, 10) : 0;
+        var par=holePar(h);
+        if(s>=1 || isPickup){
+            played.push(h);parPlayed+=par;
+            if (s>=1) {
+                gross+=s;
+                netTotal+=calcNettScore(s,par,holeHcp(h),fieldHcp||0);
+                var diff=s-par;
+                if(diff<=-2)eagles++;else if(diff===-1)birdies++;else if(diff===0)pars++;else if(diff===1)bogeys++;else doubles++;
+                if(s===1)hio++;
+                stblField+=stablefordField(s,h,fieldHcp||0);
+                stblExact+=stablefordExact(s,h,exactHcp||0);
+            } else {
+                doubles++;
+            }
             if(i>maxPlayedIdx) maxPlayedIdx=i;
         }else{
             remaining.push(h);
@@ -4730,7 +4741,8 @@ function calcRoundStats(scores,fieldHcp,exactHcp,holesOrder){
     }
     var toPar=played.length>0?gross-parPlayed:null;
     var netToPar=played.length>0?netTotal-parPlayed:null;
-    var projected=played.length>0?gross+(TOTAL_PAR-parPlayed):null;
+    var courseTotalPar = (typeof TOTAL_PAR !== 'undefined' ? TOTAL_PAR : 72);
+    var projected=played.length>0?gross+(courseTotalPar-parPlayed):null;
     return{played:played,remaining:remaining,holesPlayed:played.length,holesRemaining:remaining.length,currentHole:currentHole,gross:gross,parPlayed:parPlayed,toPar:toPar,net:netTotal,netToPar:netToPar,projected:projected,stablefordField:stblField,stablefordExact:stblExact,birdies:birdies,eagles:eagles,pars:pars,bogeys:bogeys,doubles:doubles,holeInOne:hio};
 }
 
@@ -5750,7 +5762,7 @@ function pestovoProfileRoundCardHtml(playerId, u, r) {
     h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;gap:8px;">';
     h += '<button type="button" class="btn btn-og btn-sm" onclick="event.stopPropagation();toggleProfileRoundCard(\'' + cardId + '\')"><span id="' + btnTxtId + '">' + (en ? 'Expand scorecard' : 'Развернуть карточку') + '</span></button>';
 
-    var isAdminOrOwner = (currentUser && (currentUser.uid === playerId || (currentUserData && currentUserData.role === 'admin') || sessionStorage.getItem('pestovo_is_admin') === 'true'));
+    var isAdminOrOwner = (currentUser && (currentUser.uid === playerId || (currentUserData && currentUserData.role === 'admin') || pestovoIsAdminViewer()));
     if (isAdminOrOwner) {
         h += '<button type="button" class="btn btn-r btn-sm" onclick="event.stopPropagation();deletePlayerHistoryRecord(\'' + playerId + '\', \'' + r._key + '\')" title="' + (en ? 'Delete Round' : 'Удалить из истории') + '"><i class="fas fa-trash"></i></button>';
     }
@@ -11626,7 +11638,7 @@ function pestovoIsAdminViewer() {
     } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.role === 'admin') return true;
-        if (sessionStorage.getItem('pestovo_is_admin') === 'true') return true;
+        if (typeof sessionStorage !== 'undefined' && sessionStorage && sessionStorage.getItem('pestovo_is_admin') === 'true') return true;
     } catch (e) { console.warn("[silent]", e); }
     return false;
 }

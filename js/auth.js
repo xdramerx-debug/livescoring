@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var pw2Inp = document.getElementById('reg-pass2');
 
         var nm = sanitizeNameRaw(nmInp.value);
-        var em = emInp.value.trim();
+        var em = emInp.value.trim().toLowerCase();
         var hc = document.getElementById('reg-hcp').value;
         var gd = document.getElementById('reg-gender').value;
         var pw = pwInp.value;

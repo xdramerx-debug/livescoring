@@ -45,12 +45,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     loadSc();
+    if (scPaceTimer) { clearInterval(scPaceTimer); scPaceTimer = null; }
     scPaceTimer = setInterval(function() {
         if (scRound && typeof renderPaceAssistant === 'function' && typeof isBatterySaverEnabled === 'function') {
             try { renderPaceAssistant('sc-pace-assistant', scRound); }catch (e) { console.warn("[silent]", e); }
         }
     }, (typeof isBatterySaverEnabled === 'function' && isBatterySaverEnabled()) ? 60000 : 30000);
 });
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('pagehide', function() {
+        if (scPaceTimer) { clearInterval(scPaceTimer); scPaceTimer = null; }
+    });
+}
 
 function loadSc() {
     if (typeof db === 'undefined') {

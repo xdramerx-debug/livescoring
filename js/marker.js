@@ -19,12 +19,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     loadMk();
+    if (mkPaceTimer) { clearInterval(mkPaceTimer); mkPaceTimer = null; }
     mkPaceTimer = setInterval(function() {
         if (mkRound && typeof renderPaceAssistant === 'function' && typeof isBatterySaverEnabled === 'function') {
             try{ renderPaceAssistant('mk-pace-assistant', mkRound); }catch (e) { console.warn("[silent]", e); }
         }
     }, (typeof isBatterySaverEnabled === 'function' && isBatterySaverEnabled()) ? 60000 : 30000);
 });
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('pagehide', function() {
+        if (mkPaceTimer) { clearInterval(mkPaceTimer); mkPaceTimer = null; }
+    });
+}
 
 function loadMk() {
     if (typeof db === 'undefined') {

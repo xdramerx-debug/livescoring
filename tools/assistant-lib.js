@@ -40,6 +40,7 @@ function stemTerm(raw) {
   // Убираем дефисы/тире и небуквенные символы
   w = w.replace(/[-—–]/g, '');
   w = w.replace(/[^a-zа-я0-9]/g, '');
+  if (w === 'поле' || w === 'поля' || w === 'полю' || w === 'полем' || w === 'полях' || w === 'полями' || w === 'полей') return 'поле';
   if (w.length <= MIN_STEM) return w;
   for (var i = 0; i < RU_SUFFIXES.length; i++) {
     var suf = RU_SUFFIXES[i];

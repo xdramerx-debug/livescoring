@@ -386,7 +386,7 @@ function qrGetLayout() {
         if (param && QR_LAYOUTS.indexOf(param) !== -1) return param;
     } catch (e) { console.warn("[silent]", e); }
     try {
-        var saved = window.localStorage.getItem('pestovo_qr_layout');
+        var saved = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage.getItem('pestovo_qr_layout') : null;
         if (saved && QR_LAYOUTS.indexOf(saved) !== -1) return saved;
     } catch (e) { console.warn("[silent]", e); }
     if (qrLayoutMemory && QR_LAYOUTS.indexOf(qrLayoutMemory) !== -1) return qrLayoutMemory;
@@ -396,12 +396,14 @@ function qrGetLayout() {
 function qrSetLayout(mode) {
     if (QR_LAYOUTS.indexOf(mode) === -1) mode = 'single';
     qrLayoutMemory = mode;
-    try { window.localStorage.setItem('pestovo_qr_layout', mode); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.setItem('pestovo_qr_layout', mode); } catch (e) { console.warn("[silent]", e); }
     // Дублируем выбор в URL: пересланная ссылка открывает ту же раскладку.
     try {
-        var u = new URL(window.location.href);
-        u.searchParams.set('layout', mode);
-        window.history.replaceState(null, '', u.toString());
+        if (typeof window !== 'undefined' && typeof URL !== 'undefined') {
+            var u = new URL(window.location.href);
+            u.searchParams.set('layout', mode);
+            if (window.history && window.history.replaceState) window.history.replaceState(null, '', u.toString());
+        }
     } catch (e) { console.warn("[silent]", e); }
     var sel = qrGet('qr-layout');
     if (sel) sel.value = mode;

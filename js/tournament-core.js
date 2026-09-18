@@ -476,7 +476,8 @@
             else row.position = index + 1;
             if (row.position != null) previous = { metric: metric, tie: row._tieBreak, position: row.position };
             row.metric = metric;
-            row.toPar = row.gross - holesPar(courseHoles(course));
+            var parPlayed = (row.breakdown || []).reduce(function (sum, h) { return sum + (num(h && h.par, 4) || 4); }, 0);
+            row.toPar = row.holes > 0 ? (row.gross - parPlayed) : null;
             row.thru = row.holes;
             delete row._tieBreak;
         });

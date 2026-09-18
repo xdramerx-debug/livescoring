@@ -8,6 +8,13 @@ var soloDirty = false;
 var soloPaceTimer = null;
 function sGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 
+function setSoloForceFinishBtnVisible(visible) {
+    var btn = sGet('solo-force-finish-btn');
+    if (!btn) return;
+    if (visible) btn.classList.remove('hidden');
+    else btn.classList.add('hidden');
+}
+
 // Новый клубный дефолт применяем только пока игрок не сохранил личный выбор.
 document.addEventListener('pestovo-stableford-default-change', function() {
     if (!soloRound || !canEditSolo) return;
@@ -543,6 +550,11 @@ function loadExistingSolo() {
             var gameEl = sGet('game'); if (gameEl) gameEl.classList.remove('hidden');
             var roEl = sGet('read-only-view'); if (roEl) roEl.classList.add('hidden');
 
+            // Кнопка принудительного завершения скрыта до попытки завершения
+            // с неподтверждёнными результатами (см. finishSolo).
+            if (soloRound.status === 'completed') setSoloForceFinishBtnVisible(false);
+            else if (!soloSkippedHoles().length) setSoloForceFinishBtnVisible(false);
+
             var uid = getPlayerId();
             if (!uid || !soloRound.players) return;
             var player = soloRound.players[uid];
@@ -596,6 +608,7 @@ function loadExistingSolo() {
         } else {
             var gameEl2 = sGet('game'); if (gameEl2) gameEl2.classList.add('hidden');
             var roEl2 = sGet('read-only-view'); if (roEl2) roEl2.classList.remove('hidden');
+            setSoloForceFinishBtnVisible(false);
 
             renderRoundInfo('ro-round-info');
             renderLiveStats('ro-live-stats');
@@ -893,6 +906,9 @@ function saveSolo() {
         // не дожидаясь echo Firebase (актуально на мобильных сетях).
         renderLiveStats('live-stats');
         updateSoloPaceAssistant();
+        // Если после ввода все лунки теперь заполнены — прячем кнопку
+        // принудительного завершения (больше не нужна).
+        try { if (!soloSkippedHoles().length) setSoloForceFinishBtnVisible(false); } catch (_) {}
 
         setTimeout(function() { soloIsChanging = false; }, 200);
         if (soloSaveWatchdog) { clearTimeout(soloSaveWatchdog); soloSaveWatchdog = null; }
@@ -1088,6 +1104,9 @@ function finishSolo() {
     // 2) Пропущенные лунки: компактный выбор — исправить или завершить как есть.
     var skipped = soloSkippedHoles();
     if (skipped.length) {
+        // Кнопка «завершить принудительно» показывается только при попытке
+        // завершения с неподтверждёнными результатами — до этого скрыта.
+        setSoloForceFinishBtnVisible(true);
         pestovoShowFinishMissingModal(skipped, {
             onEnter: function(h) { goHole(h); },
             onContinue: function() { goHole(skipped[0]); },
@@ -1095,6 +1114,7 @@ function finishSolo() {
         });
         return;
     }
+    setSoloForceFinishBtnVisible(false);
     doFinishSolo();
 }
 
@@ -1102,6 +1122,7 @@ function doFinishSolo() {
     if (soloFinishing) return;
     if (!soloRound || soloRound.status === 'completed') return;
     soloFinishing = true;
+    setSoloForceFinishBtnVisible(false);
 
     var finalizeSolo = function() {
         // Фиксируем, кто завершил раунд: в карточках раунда показываем имя завершившего

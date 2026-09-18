@@ -932,6 +932,7 @@ function applyRoundState(data) {
     } else {
         if (activeView) activeView.classList.add('hidden');
         if (groupView) groupView.classList.remove('hidden');
+        setGroupForceFinishBtnVisible(false);
         renderGroupViewHeaderNotice();
     }
 
@@ -1769,15 +1770,23 @@ function buildFinishBlockHtml(v) {
         '</div>';
 }
 
+function setGroupForceFinishBtnVisible(visible) {
+    var btn = lGet('group-force-finish-btn');
+    if (!btn) return;
+    if (visible) btn.classList.remove('hidden');
+    else btn.classList.add('hidden');
+}
+
 function renderFinishBlockNotice(v) {
     var box = lGet('finish-block-notice');
-    if (!box) return;
+    if (!box) { setGroupForceFinishBtnVisible(false); return; }
     if (!v && finishBlockShown && canEditGroup && curRoundData && myUid && typeof collectPlayerVerification === 'function') {
         try { v = collectPlayerVerification(curRoundData, myUid); } catch (e) { v = null; }
     }
     if (!finishBlockShown) {
         if (box.innerHTML) box.innerHTML = '';
         box.classList.add('hidden');
+        setGroupForceFinishBtnVisible(false);
         return;
     }
     if (!v || v.canFinish) {
@@ -1785,6 +1794,7 @@ function renderFinishBlockNotice(v) {
         finishBlockShown = false;
         box.innerHTML = '';
         box.classList.add('hidden');
+        setGroupForceFinishBtnVisible(false);
         toast(currentLang === 'en'
             ? '✅ All holes are confirmed — the round can be finished'
             : '✅ Все лунки подтверждены — раунд можно завершить', 'success');
@@ -1792,6 +1802,7 @@ function renderFinishBlockNotice(v) {
     }
     box.classList.remove('hidden');
     box.innerHTML = buildFinishBlockHtml(v);
+    setGroupForceFinishBtnVisible(true);
 }
 
 // ==========================================

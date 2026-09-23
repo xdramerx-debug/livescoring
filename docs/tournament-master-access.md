@@ -4,14 +4,17 @@
 
 ## Текущий мастер-пароль
 
-По умолчанию (когда секрет не настроен) мастер-пароль администратора — **55555**. Его SHA-256 (UTF-8) зашит в функцию как `DEFAULT_MASTER_PASSWORD_HASH` (`functions/index.js`). Секрет `TOURNAMENT_MASTER_PASSWORD_HASH` в Firebase Secret Manager, если он установлен, **имеет приоритет** и полностью заменяет дефолтное значение.
+По умолчанию (когда секрет не настроен) мастер-пароль администратора — **55555**. Его SHA-256 (UTF-8) зашит в функцию как `DEFAULT_MASTER_PASSWORD_HASH` (`functions/index.js`). Секрет `TOURNAMENT_MASTER_PASSWORD_HASH` в Firebase Secret Manager **не обязателен**: функция деплоится и работает без него. Если секрет установлен, он **имеет приоритет** и полностью заменяет дефолтное значение (55555 при этом перестаёт приниматься).
+
+> Важно: секрет намеренно **не привязан** к функции через `runWith({secrets: [...]})`. Жёсткая привязка требует обязательного секрета: без него функция не деплоится и не стартует, а браузер показывает «Ошибка входа: internal». Функция сама читает секрет из Secret Manager в момент входа; отсутствие секрета — штатный режим с паролем 55555.
 
 ## Смена пароля
 
 1. Выберите **новый длинный случайный** пароль. Короткие пароли (как 55555) поддаются перебору — они допустимы только для отладочной среды.
 2. Вычислите SHA-256 UTF-8 пароля **локально**, не помещайте сам пароль в публичный `/settings` RTDB. Например, в bash: `read -rsp 'Новый пароль: ' p; echo; printf '%s' "$p" | sha256sum | cut -d' ' -f1; unset p` (ввод скрыт; используйте локальную защищённую среду).
 3. Сохраните полученный хэш в Firebase Secret Manager под именем `TOURNAMENT_MASTER_PASSWORD_HASH` (`firebase functions:secrets:set TOURNAMENT_MASTER_PASSWORD_HASH --project livescore-b77e4`) — дефолтный пароль 55555 при этом перестанет приниматься.
-4. Разверните **функцию, правила БД и hosting вместе**: `firebase deploy --only functions:tournamentMasterSignIn,database,hosting --project livescore-b77e4`. Для Cloud Functions и Secret Manager необходим настроенный проект Firebase с соответствующим тарифом/правами.
-5. Старые `/settings/adminAccess/masterPassword{,Hash}` и `/settings/admin/masterPassword{,Hash}` (публичные узлы) удалены; при смене пароля обновите секрет и повторно разверните функцию; уже открытые сессии действуют до 8 часов или до выхода из админки.
+4. Выдайте сервис-аккаунту рантайма функции доступ к секрету: `gcloud secrets add-iam-policy-binding TOURNAMENT_MASTER_PASSWORD_HASH --project livescore-b77e4 --member="serviceAccount:livescore-b77e4@appspot.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"` (для 1st gen рантайм-аккаунт — `PROJECT_ID@appspot.gserviceaccount.com`; уточнить: Cloud Console → Cloud Functions → функция → вкладка «Runtime service account»). Без этого доступа секрет не читается и продолжает действовать пароль 55555 — проверьте вход после настройки.
+5. Разверните **функции, правила БД и hosting вместе** (достаточно при первом запуске): `firebase deploy --only functions,database,hosting --project livescore-b77e4`. Для Cloud Functions и Secret Manager необходим настроенный проект Firebase с соответствующим тарифом/правами. Рантайм функций — Node.js 22 (`engines` в `functions/package.json`): nodejs18 снят с поддержки Cloud Functions, деплой с ним невозможен.
+6. Старые `/settings/adminAccess/masterPassword{,Hash}` и `/settings/admin/masterPassword{,Hash}` (публичные узлы) удалены; новое значение секрета читается в момент следующей попытки входа — повторный деплой функции не требуется. Уже открытые сессии действуют до 8 часов или до выхода из админки.
 
 Вход по мастер-паролю **не** работает клиентским обходом: браузер всегда отправляет пароль в callable, а права выдаёт только сервер (custom token + правила RTDB). После входа редактирование турнира, составов, заявок, статуса, протокола и его раундов работает напрямую по серверным правилам. Глобальные настройки клуба (например, общее поле и аккаунты пользователей) требуют обычных прав администратора Firebase.

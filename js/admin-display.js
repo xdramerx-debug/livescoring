@@ -482,7 +482,62 @@ var ADMIN_PAGE_DISPLAY_CONFIG = {
     handicap: { path: 'settings/handicap_display_variant', label: 'Гандикапы' }
 };
 
+function pageDisplayLabelKey(page, v) {
+    // У «Турниров» варианты 4–5 описаны только в ключах вкладки «Турниры: вид».
+    if (page === 'tournaments' && parseInt(v, 10) > 3) return 'tournaments_view_variant_' + v;
+    return page + '_display_variant_' + v;
+}
+
+function renderPageDisplaySettingsGrid() {
+    var grid = document.querySelector('.page-display-settings-grid');
+    if (!grid) return;
+    var pages = Object.keys(ADMIN_PAGE_DISPLAY_CONFIG);
+    grid.innerHTML = pages.map(function(page) {
+        var keys = (typeof pageDisplayVariantKeys === 'function') ? pageDisplayVariantKeys(page) : ['1', '2', '3'];
+        var titleKey = page + '_display_title';
+        var subKey = page + '_display_sub';
+        var title = (typeof t === 'function') ? t(titleKey) : titleKey;
+        var sub = (typeof t === 'function') ? t(subKey) : subKey;
+        var buttons = keys.map(function(v) {
+            var labelKey = pageDisplayLabelKey(page, v);
+            var label = (typeof t === 'function') ? t(labelKey) : labelKey;
+            return '<button type="button" class="btn btn-og btn-sm page-display-variant-btn" id="' +
+                page + '-display-opt-' + v + '" onclick="savePageDisplayVariant(\'' + page + '\',\'' + v + '\')" data-i18n="' +
+                labelKey + '">' + label + '</button>';
+        }).join('');
+        return '<div class="page-display-setting-card">' +
+            '<span class="page-display-setting-title" data-i18n="' + titleKey + '">' + title + '</span>' +
+            '<div class="page-display-setting-sub" data-i18n="' + subKey + '">' + sub + '</div>' +
+            '<div class="page-display-variant-buttons">' + buttons + '</div></div>';
+    }).join('');
+    pages.forEach(function(page) { markAdmPageDisplayVariantButtons(page); });
+}
+
+function savePageDisplayVariant(page, value) {
+    var cfg = ADMIN_PAGE_DISPLAY_CONFIG[page];
+    if (!cfg) return;
+    value = String(value);
+    var keys = (typeof pageDisplayVariantKeys === 'function') ? pageDisplayVariantKeys(page) : ['1', '2', '3'];
+    if (keys.indexOf(value) === -1) return;
+    if (typeof vib === 'function') vib(30);
+    if (typeof applyPageDisplayVariant === 'function') applyPageDisplayVariant(page, value);
+    else markAdmPageDisplayVariantButtons(page);
+    if (page === 'tournaments' && typeof markAdmTnPageViewButtons === 'function') markAdmTnPageViewButtons();
+
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? 'Layout saved locally' : 'Вариант отображения сохранён локально', 'info');
+        return;
+    }
+    db.ref(cfg.path).set(value).then(function() {
+        toast(currentLang === 'en' ? '✅ Page layout saved for all users' : '✅ Вид страницы сохранён для всех', 'success');
+    }).catch(function(err) {
+        console.warn('Page display variant save error:', err);
+        toast(currentLang === 'en' ? 'Could not save the layout' : '⚠️ Не удалось сохранить вариант отображения', 'error');
+    });
+}
+
 function loadPageDisplaySettings() {
+    renderPageDisplaySettingsGrid();
     Object.keys(ADMIN_PAGE_DISPLAY_CONFIG).forEach(function(page) {
         var cfg = ADMIN_PAGE_DISPLAY_CONFIG[page];
         var applyValue = function(value) {

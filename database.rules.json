@@ -1,0 +1,79 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+
+    "users": {
+      "$uid": {
+        ".read": "auth.uid === $uid || root.child('users').child(auth.uid).child('admin').val() === true",
+        ".write": "auth.uid === $uid || root.child('users').child(auth.uid).child('admin').val() === true",
+        "notifications": {
+          ".read": "auth.uid === $uid",
+          ".write": "auth.uid === $uid"
+        }
+      }
+    },
+
+    "settings": {
+      ".read": true,
+      ".write": "root.child('users').child(auth.uid).child('admin').val() === true",
+      "vapid_public_key": {
+        ".read": true,
+        ".write": "root.child('users').child(auth.uid).child('admin').val() === true"
+      }
+    },
+
+    "vapid": {
+      ".read": "root.child('users').child(auth.uid).child('admin').val() === true",
+      ".write": "root.child('users').child(auth.uid).child('admin').val() === true"
+    },
+
+    "broadcasts": {
+      ".read": true,
+      "$id": {
+        ".write": "root.child('users').child(auth.uid).child('admin').val() === true",
+        ".validate": "newData.hasChildren(['title','body']) && newData.child('title').isString() && newData.child('title').val().length <= 200 && newData.child('body').isString() && newData.child('body').val().length <= 1000"
+      }
+    },
+
+    "alerts": {
+      ".read": "root.child('users').child(auth.uid).child('admin').val() === true",
+      "$id": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChild('type') && (newData.child('type').val() == 'referee' || newData.child('type').val() == 'marshal')"
+      }
+    },
+
+    "rounds": {
+      "$rid": {
+        ".read": "auth != null",
+        ".write": "auth != null && (newData.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('admin').val() === true)",
+        "players": {
+          "$pid": {
+            ".write": "auth.uid === $pid || root.child('users').child(auth.uid).child('admin').val() === true || data.parent().parent().child('createdBy').val() === auth.uid"
+          }
+        }
+      }
+    },
+
+    "tournaments": {
+      ".read": true,
+      "$id": {
+        ".write": "auth != null && (newData.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('admin').val() === true)"
+      }
+    },
+
+    "leaderboard": {
+      ".read": true,
+      ".write": "root.child('users').child(auth.uid).child('admin').val() === true"
+    },
+
+    "push_subscriptions": {
+      ".read": "root.child('users').child(auth.uid).child('admin').val() === true",
+      "$key": {
+        ".write": "auth != null && (newData.child('uid').val() === auth.uid || root.child('users').child(auth.uid).child('admin').val() === true)",
+        ".validate": "newData.hasChild('endpoint') && newData.child('endpoint').isString() && newData.child('endpoint').val().length <= 1000"
+      }
+    }
+  }
+}

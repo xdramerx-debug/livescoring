@@ -175,8 +175,8 @@ function checkVerify() {
     var ps = parseInt(mkPScores[mkHole]) || 0, ms = parseInt(mkScores[mkHole]) || 0;
     var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (langIsEn ? 'Matched: ' + ps : 'Совпадает: ' + ps + ' уд.') + '</div>';
-    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (langIsEn ? 'Player: ' : 'Игрок: ') + ps + ' | ' + (langIsEn ? 'Marker: ' : 'Маркер: ') + ms + '</div>';
-    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">🏌️ ' + (langIsEn ? 'Player entered: ' + ps + '. Awaiting confirmation.' : 'Игрок ввёл: ' + ps + '. Ожидает подтверждения') + '</div>';
+    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (langIsEn ? 'Player: ' : 'Игрок: ') + esc(ps) + ' | ' + (langIsEn ? 'Marker: ' : 'Маркер: ') + esc(ms) + '</div>';
+    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">🏌️ ' + (langIsEn ? 'Player entered: ' + esc(ps) + '. Awaiting confirmation.' : 'Игрок ввёл: ' + esc(ps) + '. Ожидает подтверждения') + '</div>';
     else box.innerHTML = '';
 }
 

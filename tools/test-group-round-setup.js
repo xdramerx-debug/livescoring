@@ -58,7 +58,7 @@ function makeRef(p) {
 }
 win.db = { ref: p => makeRef(p) };
 
-['js/utils.js', 'js/live.js', 'js/solo.js', 'js/round-setup.js'].forEach(f => win.eval(fs.readFileSync(path.join(ROOT, f), 'utf8')));
+['js/course-config.js', 'js/format.js', 'js/utils.js', 'js/live.js', 'js/solo.js', 'js/round-setup.js'].forEach(f => win.eval(fs.readFileSync(path.join(ROOT, f), 'utf8')));
 
 // ── Реальный порядок: P0-инициализация уже отработала при загрузке страницы ──
 try { win.eval('initP0MobileEnhancements();'); } catch (e) { /* уже вызван на DOMContentLoaded */ }

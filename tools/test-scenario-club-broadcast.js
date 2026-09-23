@@ -243,6 +243,8 @@ var admin = baseSandbox({
 });
 admin.confirm = function () { return admin.confirmAnswer; };
 admin.alert = function () {};
+admin._load('js/course-config.js');
+admin._load('js/format.js');
 admin._load('js/utils.js');
 admin._load('js/admin.js');
 admin._captureToasts();
@@ -430,6 +432,8 @@ function makePwa(uid, broadcasts) {
         // Notification не объявляем вовсе: тогда showPushNotification корректно
         // выходит («уведомлений нет»), а текстовый toast остаётся наблюдаемым.
     });
+    sb._load('js/course-config.js');
+    sb._load('js/format.js');
     sb._load('js/utils.js');
     sb._load('js/pwa.js');
     sb._captureToasts();
@@ -499,6 +503,8 @@ function runFeed(uid) {
         currentUser: uid ? { uid: uid } : null,
         currentUserData: uid ? { role: 'player' } : null
     });
+    sb._load('js/course-config.js');
+    sb._load('js/format.js');
     sb._load('js/utils.js');
     sb._load('js/feed.js');
     sb.loadClubAnnouncements();

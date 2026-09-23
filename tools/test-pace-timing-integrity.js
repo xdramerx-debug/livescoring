@@ -119,6 +119,8 @@ sandbox.db = dbStub;
 sandbox.currentUser = null;
 sandbox.currentUserData = null;
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sandbox, { filename: 'js/utils.js' });
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox, { filename: 'js/utils.js' });
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'), sandbox, { filename: 'js/utils.js' });
 
 const M = 60000;

@@ -36,7 +36,7 @@ function ok(cond, label) {
     win.currentUser = null; win.currentUserData = null;
     function makeRef(p) { const r = { _p: p || '', update() { return Promise.resolve(); }, set() { return Promise.resolve(); }, remove() { return Promise.resolve(); }, transaction(f) { return Promise.resolve({ value: f(null) }); }, once() { return Promise.resolve({ val: () => null }); }, on() {}, off() {}, orderByChild() { return r; }, equalTo() { return r; }, push() { return Promise.resolve({ key: 'x' }); } }; return r; }
     win.db = { ref: p => makeRef(p) };
-    ['js/utils.js', 'js/live.js', 'js/solo.js', 'js/round-setup.js'].forEach(r => win.eval(fs.readFileSync(path.join(ROOT, r), 'utf8')));
+    ['js/course-config.js', 'js/format.js', 'js/utils.js', 'js/live.js', 'js/solo.js', 'js/round-setup.js'].forEach(r => win.eval(fs.readFileSync(path.join(ROOT, r), 'utf8')));
     // v1.69.0: единая форма — состав задаёт кнопка «Добавить игрока»
     win.eval('addSetupPlayer();');
     win.eval('addSetupPlayer();');
@@ -57,6 +57,8 @@ function ok(cond, label) {
         const w2 = dom2.window, d2 = w2.document;
         w2.navigator.vibrate = () => {};
         let calls = 0; w2.saveSc = () => { calls++; };
+        w2.eval(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'));
+        w2.eval(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'));
         w2.eval(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'));
         w2.eval('initP0MobileEnhancements();');
         const clone = d2.getElementById('p0-sticky-save');

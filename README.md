@@ -14,6 +14,7 @@ Functions, Push). Работает как PWA — офлайн-кэш через
 | `js/safe-html.js` | Безопасный HTML-билдер (`esc`, `` html`…` ``) — защита от XSS |
 | `js/dom.js` | DOM-хелперы: toast-уведомления, вибрация, `escapeHtml` |
 | `js/i18n.js` | Языковой словарь RU/EN, `t()`, `toggleLang()` |
+| `js/official-alerts.js` | Отправка алертов судья/маршал в Telegram/VK |
 | `js/utils.js` | Общая логика (навигация, раунды, лидерборд, Firebase-обёртки) |
 | `src/` | Канонические ESM-версии модулей (собираются Vite в `dist/`) |
 | `functions/` | Cloud Functions (push-уведомления) |

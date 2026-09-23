@@ -6,3 +6,4 @@ export * from './format.js';
 export * from './safe-html.js';
 export * from './dom.js';
 export * from './i18n.js';
+export * from './official-alerts.js';

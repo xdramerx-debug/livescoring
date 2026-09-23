@@ -1,24 +1,28 @@
 {
-  "name": "pestovo-livescoring",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Pestovo Live Scoring — static web app + Firebase Cloud Functions",
-  "scripts": {
-    "test": "node tools/run-tests.js",
-    "test:ci": "node tools/run-tests.js --ci",
-    "lint:syntax": "node tools/syntax-check.js",
-    "lint": "eslint js tools functions --ext .js",
-    "assets": "node tools/rev-assets.js",
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "devDependencies": {
-    "eslint": "^8.57.0",
-    "prettier": "^3.2.5",
-    "vite": "^5.4.21"
-  }
+    "name": "pestovo-livescoring",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Pestovo Live Scoring — static web app + Firebase Cloud Functions",
+    "scripts": {
+        "test": "node tools/run-tests.js",
+        "test:ci": "node tools/run-tests.js --ci",
+        "lint:syntax": "node tools/syntax-check.js",
+        "lint": "eslint js src tools functions --ext .js",
+        "assets": "node tools/rev-assets.js",
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "check:bundle": "node tools/check-bundle.js",
+        "check:browser": "node tools/browser-check.js"
+    },
+    "engines": {
+        "node": ">=18"
+    },
+    "devDependencies": {
+        "@sparticuz/chromium": "^131.0.0",
+        "eslint": "^8.57.0",
+        "playwright": "^1.49.1",
+        "prettier": "^3.2.5",
+        "vite": "^5.4.21"
+    }
 }

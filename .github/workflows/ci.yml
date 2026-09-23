@@ -16,8 +16,24 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Install dependencies
+        run: npm ci || npm install
+
       - name: Syntax check (cheap lint)
         run: npm run lint:syntax
 
       - name: Run tests
         run: npm test
+
+      - name: Check assets revisions (?v= in HTML, precache in sw.js)
+        run: node tools/rev-assets.js --check
+
+      - name: Check service worker precache
+        run: node tools/test-sw-precache.js
+
+      # Страницы грузят dist/livescoring-modules.js, а бандл коммитится
+      # (Firebase Hosting деплоит репозиторий без шага сборки) — поэтому
+      # устаревший бандл обязан ронять сборку. Проверка до любых сборок:
+      # tools/check-bundle.js сам собирает бандл во временный каталог.
+      - name: Check bundle freshness
+        run: npm run check:bundle

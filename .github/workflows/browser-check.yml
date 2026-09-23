@@ -1,0 +1,40 @@
+name: Browser check
+
+# Живая браузерная проверка страниц: сравнение классических <script> и
+# ESM-бандла (docs/MODULES-MIGRATION.md). Нужна при любой правке порядка
+# загрузки скриптов, состава src/ или страниц.
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  browser-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Install chromium for playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Build ESM bundle
+        run: npm run build
+
+      - name: Syntax check (cheap lint)
+        run: npm run lint:syntax
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Browser check (classic vs bundle)
+        run: npm run check:browser -- --require

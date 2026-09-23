@@ -325,10 +325,93 @@ runtime-глобалы фундаментов и guarded-вызовы):
 вызовы со списком раундов), «ТУРНИРЫ» (крупнейший, ~1700 строк — дробить
 последним), telegram/vk-интеграции, social-cards.
 
+## 13. Итерация 13: страницы переведены на ESM-бандл + браузерная проверка
+
+Закрыты два осознанных остатка прошлых итераций: шаг 1 плана миграции
+(переключение HTML на бандл) и продолжение дробления `utils.js`.
+
+### 13.1 Страницы на `<script type="module">` — с живой браузерной проверкой
+
+- В 20 HTML шесть классических тегов фундамента заменены одним
+  `<script type="module" src="dist/livescoring-modules.js?v=hash8">`
+  (`qr-start.html` фундамент и не грузил — не трогали).
+- **Найдена и устранена реальная поломка отложенного исполнения.** Модульные
+  скрипты выполняются после всех классических, поэтому `applyPlayerModes()` и
+  `initWakeLock()` в `js/utils.js` (load-time вызовы) обращались к
+  `isPlayerModeEnabled()` из `dom.js`, которого ещё не было: `ReferenceError`
+  обрывал выполнение **всего** `utils.js`, и страница теряла половину функций
+  (`applyPageVisibilitySettings` падал на `MANAGED_PAGES.forEach`, и т.д.).
+  Boot-вызовы защищены проверкой зависимости и продублированы на
+  `DOMContentLoaded` (бандл к тому моменту уже выполнен).
+- **Инструмент проверки — `tools/browser-check.js` (`npm run check:browser`).**
+  Грузит каждую страницу в двух вариантах (`classic` — шесть классических
+  тегов, восстановленных из HTML на лету; `bundle` — как отдаётся сейчас) и
+  сравнивает: ошибки страницы, наличие всех глобалов фундамента, 18 проб
+  (`t`, `esc`, `fmtScore`, `holePar`, `fmtTime`, `holeResName`, `toast`,
+  `toggleLang`, словари I18N, …), хеши разметки навигации и тела, число
+  непереведённых `data-i18n` и положительные проверки отрисовки страницы.
+  Firebase SDK подменяется заглушкой, внешние запросы и `sw.js` блокируются —
+  проверка офлайн- и детерминирована. **Итог: 21/21 страниц идентичны.**
+- **Побочная находка проверки:** `js/assistant.js` в двух местах звал
+  несуществующую `addBotMessage` вместо `addBotMsg` — приветствие помощника
+  не появлялось, а в консоли был `unhandledrejection`. Исправлено
+  (с `esc()`, т.к. `addBotMsg` пишет через `innerHTML`).
+- `dist/` **коммитится** (Firebase Hosting деплоит репозиторий без сборки),
+  свежесть бандла проверяет `npm run check:bundle`
+  (`tools/check-bundle.js`: пересборка во временный каталог + сравнение).
+- `tools/rev-assets.js` умеет `dist/` наравне с `js/`/`css/`: `?v=<hash8>` в
+  HTML и строка в precache-манифесте `sw.js` появляются автоматически.
+- `tools/test-esm-parity.js` (в `npm test`) сверяет наборы символов каждой
+  пары `js/<name>.js ↔ src/<name>.js` и мост на `window` — две копии не
+  разойдутся (п.2 ревью, «расходимость»).
+- Версия сайта 1.82.0 → **1.83.0** (все 19 страниц + `CACHE_NAME`).
+
+### 13.2 Дробление `utils.js`: дата/время + фильтр по датам
+
+Из `js/utils.js` (было 11 000 строк) вынесены два блока:
+
+- **`js/format.js`** (+88 строк): `fmtDate`, `fmtTime`, `tnDateTs`,
+  `normalizeTimestampMs`, `isTodayTimestamp` — форматтеры даты/времени из
+  начала `utils.js`. Чистые, без Firebase; `currentLang`/`t()` используются
+  только во время вызова.
+- **`js/date-range.js`** (235 строк): общий фильтр по датам для списков
+  раундов — `DATE_RANGE_PRESETS`, границы периода, пресеты, `readDateRange`,
+  `filterEntriesByDateRange`, `renderRoundsPeriodSummary`, `initDateRangeFilter`,
+  `getDateRangeFilter`, `refreshDateRangeFilters`. Состояние фильтров
+  (`dateRangeFilters`) принадлежит только этому файлу; наружу — API.
+  Потребители: `js/leaderboard.js`, `js/admin-groups.js`, вызов
+  `refreshDateRangeFilters()` из `applyTranslations` (уже был guarded).
+  Единственная правка при выносе: `currentLang` читается через `typeof`
+  (как в `fmtDate`), чтобы модуль не зависел от порядка загрузки.
+- ESM-копии: `src/format.js` (дополнен), `src/date-range.js` (новый) +
+  `src/index.js` → бандл 83.7 → 92.1 kB.
+- `tools/test-date-range.js` — 29 проверок логики фильтра в vm с мини-DOM
+  (границы, пресеты, инклюзивные границы, `invalid`, клик по пресету,
+  сводка, смена языка).
+
+Итого `utils.js`: 11 000 → 10 722 строки.
+
+**Что осталось в `utils.js` и почему не вынесено (осознанно):** блоки
+состояния раунда — верификация, темп/пейс, ти, форматные бейджи, офлайн-очередь
+счёта, «мои активные раунды»/FIO-resume. Они держат общее состояние раунда
+(`curRoundData`, `soloRound`, `scPaceTimer`…) и двусторонне связаны с
+`live.js`/`solo.js`/`scorer.js`/`marker.js`; вынос требует API с
+колбэками-конфигами и живого прогона всех сценарных тестов — отдача
+убывающая. Следующий кандидат, когда дойдёт очередь: `bindRealtimeValue`
+вместе со слоем Firebase-вызовов.
+
+### 13.3 Мелочи
+
+- `.eslintrc.json`: `overrides` с `sourceType: "module"` для `src/**`,
+  иначе ESLint не парсит ESM-копии; `npm run lint` теперь включает `src`.
+  Найдено линтером: в словарях I18N продублирован ключ `score_of_player`
+  (`'Счёт игрока:'` и `'Ваш счёт'`; в коде не используется — выигрывает
+  второй). Не правил: словарь 1300 строк, ключ мёртвый.
+
 ## Файлы (новые / изменённые)
 
 Новые: `js/safe-html.js`, `js/course-config.js`, `js/format.js`, `js/dom.js`,
-`js/i18n.js` (+ ESM-копии в `src/`), `firebase.json`, `database.rules.json`,
+`js/i18n.js`, `js/date-range.js` (+ ESM-копии в `src/`), `firebase.json`, `database.rules.json`,
 `package.json`, `README.md`, `tools/run-tests.js`, `tools/syntax-check.js`,
 `tools/rev-assets.js`, `tools/test-sw-precache.js`,
 `.github/workflows/ci.yml`, `docs/SECURITY-RULES.md`,
@@ -343,3 +426,15 @@ broadcasts), `js/marker.js` (экранирование), `js/feed.js`, `js/stat
 `sw.js` (генерируемый прекэш, CACHE_NAME от хеша), `tools/test-bootstrap.js`
 и тесты (загрузка `dom.js`/`i18n.js`/`admin-broadcasts.js`), 13 тест-файлов
 (явная загрузка модулей).
+
+Итерация 13 добавила: `tools/browser-check.js`, `tools/check-bundle.js`,
+`tools/test-esm-parity.js`, `tools/test-date-range.js`,
+`.github/workflows/browser-check.yml`, `dist/livescoring-modules.js`
+(коммитится как артефакт деплоя), `src/date-range.js`. Изменены: 20 HTML
+(переключение на бандл + версия 1.83.0), `js/utils.js` (вынос даты/времени и
+фильтра по датам, защита boot-вызовов), `js/format.js`, `js/assistant.js`
+(`addBotMessage` → `addBotMsg`), `src/format.js`, `src/index.js`,
+`tools/rev-assets.js` (поддержка `dist/`), `package.json` (скрипты
+`check:browser`/`check:bundle`, devDeps playwright), `.eslintrc.json`
+(sourceType module для `src/`), `.github/workflows/ci.yml` (шаг сборки
+бандла).

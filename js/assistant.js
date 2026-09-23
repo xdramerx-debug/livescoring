@@ -329,7 +329,7 @@
     function afterLoad() {
       renderSuggestions();
       if (state.ready && state.history.length === 0) {
-        addBotMessage(greetingText());
+        addBotMsg(esc(greetingText()));
       }
     }
   }
@@ -588,7 +588,7 @@
     if (clear) clear.addEventListener('click', function () {
       var box = $('as-messages'); if (box) box.innerHTML = '';
       state.history = [];
-      addBotMessage(greetingText());
+      addBotMsg(esc(greetingText()));
     });
   }
 

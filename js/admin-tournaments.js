@@ -30,56 +30,6 @@ function admUniqueRegCount(regPlayers) {
     });
     return n;
 }
-
-function createTournament() {
-    if (typeof db === 'undefined' || !db) {
-        toast(currentLang === 'en' ? '⚠️ No database connection' : '⚠️ Нет соединения с базой', 'error');
-        return;
-    }
-    var name = document.getElementById('tn-name').value.trim();
-    var date = document.getElementById('tn-date').value;
-
-    if (!name || !date) { toast(currentLang === 'en' ? 'Specify name and date' : 'Заполните название и дату', 'error'); return; }
-
-    // ВСЕ форматы турнира — единый список (js/utils.js PESTOVO_FORMAT_PRESETS).
-    var formats = [];
-    var formatCheck = function(id, fmt) {
-        var el = document.getElementById(id);
-        if (el && el.checked) formats.push(fmt);
-    };
-    formatCheck('tn-f-stroke', 'Stroke Play');
-    formatCheck('tn-f-gross', 'Stroke Play (Gross)');
-    formatCheck('tn-f-net', 'Stroke Play (Net)');
-    formatCheck('tn-f-stbl', 'Stableford');
-    formatCheck('tn-f-m1v1', 'Match Play 1v1');
-    formatCheck('tn-f-m2v2', 'Match Play 2v2');
-    formatCheck('tn-f-scram', 'Scramble');
-    formatCheck('tn-f-txscram', 'Texas Scramble');
-    formatCheck('tn-f-greens', 'Greensomes');
-    if (!formats.length) { toast(currentLang === 'en' ? 'Select at least one format' : 'Выберите хотя бы один формат', 'error'); return; }
-
-    var tees = [];
-    if (document.getElementById('tn-t-bk').checked) tees.push('bk');
-    if (document.getElementById('tn-t-bl').checked) tees.push('bl');
-    if (document.getElementById('tn-t-wh').checked) tees.push('wh');
-    if (document.getElementById('tn-t-rd').checked) tees.push('rd');
-    if (!tees.length) { toast(currentLang === 'en' ? 'Select at least one tee' : 'Выберите хотя бы один ТИ', 'error'); return; }
-
-    db.ref('tournaments').push({
-        name: name,
-        date: date,
-        formats: formats,
-        tees: tees,
-        status: 'upcoming',
-        createdAt: Date.now()
-    }).then(function() {
-        toast(currentLang === 'en' ? '🏆 Tournament created!' : '🏆 Турнир создан!');
-        document.getElementById('tn-name').value = '';
-    });
-}
-
-// Какие HCP-панели турниров раскрыты (иначе loadTournaments падал с
-// ReferenceError и созданные турниры не появлялись в списке).
 var tnDivOpen = {};
 // Какие панели «Лист ожидания» турниров раскрыты.
 var tnWaitOpen = {};

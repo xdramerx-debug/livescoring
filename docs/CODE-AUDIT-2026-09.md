@@ -29,7 +29,7 @@
 - WHS-математика и таблицы HCP (utils.js), серверная модель score-write/score-audit, sw.js кэш, leaderboard.js, сортировки protocol.js, firebase.json CSP, manifest.json, самодостаточность qr-start.js, арифметика дедлайнов лунок (полуночи безопасны), admin-agr (внешние данные AGR экранируются), tn-scorecard (18× esc), app.js — имена повсюду через escapeHtml, scorer.js 400-440 (числа/классы), tn-wizard.js (полный проход: tnwEsc, валидация, publish-цепочка, scheduled-самоопубликование при открытии админки), live.js 1600–2295 (сигнатурные кэши уже включают currentLang).
 - **tn-engine LeaderboardService**: знаки сортировки верны для обоих направлений (low/high), тай-брейки (countback/last-hole/stroke-index) согласованы с направлением, разделение мест (1,2,2,4) корректно. В UI пока не используется (жив только Exporters/cfgLabel/deepClone).
 
-## Находки без исправления (решение за владельцем)
+## Находки волны 1 — исправлены во волне 2 (см. конец документа)
 
 - **Приватность**: `users/.read: auth != null` — любой залогиненный читает **email** всех пользователей. Нужна схема `users/$uid/public` без email (миграция).
 - Мастер-пароль по умолчанию `55555` (start-admin).
@@ -53,3 +53,46 @@
 - `check:bundle` — dist соответствует src/ ✔
 - `rev-assets` — CACHE обновляется, precache 51 ✔
 - Node-тесты экранировщиков: tnJsStr (vm roundtrip 8/8, включая `иван'); alert(1)//`), admCsvCell 6/6
+
+---
+
+# Волна 2 — исправление находок (2026-09-23, тот же день)
+
+Все находки волны 1 закрыты.
+
+1. **Приватность `users` → `usersPublic`** (главная находка). `users/$uid`
+   (email, phone, history) теперь читается только владельцем/админом/мастером;
+   публичные поля вынесены в `usersPublic/$uid` (без email/phone/history/role/admin;
+   `.validate` запрещает их запись). `phoneLast4` — для подтверждения владельца
+   раунда (раньше утекал весь телефон). Наполнение: двойная запись при регистрации,
+   зеркало `syncPublicProfilesMirror` в админке, миграция
+   `tools/migrate-public-profiles.js`. Плеерские страницы читают только зеркало
+   (live/players/stats/app/utils-кэш), админка — полный `users`. Порядок деплоя —
+   в docs/SECURITY-RULES.md.
+2. **Мастер-пароль 55555**: локальный fallback в admin.js теперь работает только
+   на localhost/127.0.0.1/*.local; на проде дефолт отклоняется с объяснением.
+3. **Stroke allocation — 4 копии**: tournament-core.js теперь делегирует в
+   tn-engine (когда загружен), локальный фолбэк дополнен поддержкой минусового
+   гандикапа (раньше молча давал 0 ударов). utils/tn-scorecard/tn-engine —
+   идентичная WHS-формула (осознанные зеркала с fallback-цепочками).
+4. **tn-engine ESC**: жёсткий лимит 10 → настраиваемый `opts.maxEsc` (по умолчанию 10).
+5. **LeaderboardService**: игрок без сыгранных лунок больше не занимает 1-е место
+   (в stroke-net value=0 «лучше всех») — сортируется в конец, `position: null`.
+6. **tnwPublishConfig**: турнир + аудит пишутся одной мульти-path записью —
+   отказ второго запроса больше не создаёт риск дубликата турнира.
+7. **tnwCheckScheduled**: отказ авто-публикации больше не глотается —
+   console.warn + тост; ретрай при следующем сохранении сохранён.
+8. **Мёртвый код**: удалено 43 функции из 47 подтверждённых. Сохранены 4
+   (hasPendingScoreActions, queueOfflineScoreAction, psResolvedFormat,
+   toastSequence) — они покрыты тестами (test-score-queue, test-start-admin,
+   browser-check) и являются живым контрактом.
+9. **Ремонт тестовой обвязки** (попутно): test-tn-scorecard не грузил
+   course-config/date-range/dom/format/i18n — падал на базовом коммите; теперь
+   грузит. Обновлены контракты тестов под usersPublic.
+10. **ESLint**: no-inner-declarations 5→0 (внутренние declaration → var-expression);
+    no-redeclare (73) и no-useless-escape (52) осознанно оставлены — косметика
+    classic-скриптов без рантайм-эффекта, автофикс в конфиге недоступен, массовая
+    правка перед мержем нецелесообразна.
+
+Верификация: `npm test` 51/51, `check:bundle` ✔, `check:browser` ✔
+(classic ≡ bundle на всех страницах), `rev-assets` ✔.

@@ -96,24 +96,6 @@ function readOfflineScores() {
         return [];
     }
 }
-
-function saveOfflineScore(roundId,playerId,hole,score){
-    var pending=readOfflineScores();
-    var itemKey=String(roundId)+'|'+String(playerId)+'|'+String(hole);
-    // Для одной лунки нужен только самый свежий несинхронизированный результат.
-    pending=pending.filter(function(item){
-        return String(item.roundId)+'|'+String(item.playerId)+'|'+String(item.hole)!==itemKey;
-    });
-    pending.push({roundId:roundId,playerId:playerId,hole:hole,score:score,timestamp:Date.now(),type:'score'});
-    try { localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending)); } catch (error) {
-        console.error('[PWA] Cannot save offline score', error);
-        if(typeof toast==='function')toast(currentLang === 'en' ? 'Cannot save score offline' : 'Не удалось сохранить счёт офлайн','error');
-    }
-    updateOfflineQueueBadge();
-}
-
-// Каждый тап сохраняется отдельным действием: исправления одной и той же
-// лунки не схлопываются, порядок и requestId сохраняются при перезапуске.
 function hasPendingScoreActions() {
     return readOfflineScores().some(function(item) {
         return item.type==='scoreAction' || item.type==='score' || (item.type==='set' &&

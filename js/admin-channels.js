@@ -121,20 +121,6 @@ function testTelegramChannelAlert() {
 
     sendTelegramDirectAlert(token, chatId, 'Канал', 'referee', 1, 'Администратор Клуба', []);
 }
-
-function testTelegramAlert(targetMode) {
-    if (targetMode === 'group') testTelegramGroupAlert();
-    else if (targetMode === 'channel') testTelegramChannelAlert();
-    else {
-        testTelegramGroupAlert();
-        testTelegramChannelAlert();
-    }
-}
-
-// ==========================================
-// VK API SETTINGS & ALERTS
-// ==========================================
-
 function loadVKSettings() {
     var tokInp  = document.getElementById('vk-access-token');
     var peerInp = document.getElementById('vk-peer-id');

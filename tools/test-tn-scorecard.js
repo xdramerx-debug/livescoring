@@ -207,6 +207,13 @@ sandbox.globalThis = sandbox;
 var ctx = vm.createContext(sandbox);
 function load(file) { vm.runInContext(fs.readFileSync(path.join(ROOT, file), 'utf8'), ctx, { filename: file }); }
 
+// Базовые либы (баг теста: course-config/format/date-range не грузились,
+// хотя utils.js и tournaments.js используют их глобальные функции).
+load('js/course-config.js');
+load('js/date-range.js');
+load('js/dom.js');
+load('js/format.js');
+load('js/i18n.js');
 load('js/utils.js');
 load('js/tournaments.js');
 load('js/tn-scorecard.js');
@@ -334,6 +341,10 @@ setAt('rounds/r0', { status: 'completed', players: {}, createdAt: 1 });
 setAt('users/u1', { name: 'Иван Петров', handicap: 54, gender: 'men', roundsPlayed: 1, bestGross: 90, bestStableford: 30, history: { h0: { roundId: 'r0', holes: 18, gross: 90, stablefordField: 30 } } });
 setAt('tournaments/' + TN + '/registeredPlayers/g2', { name: 'Призрак Игрок', handicap: 18, gender: 'men', tee: 'bl', guest: true, registeredAt: 4 });
 setAt('users/u2', { name: 'Пётр Сидоров', handicap: 8, gender: 'men', roundsPlayed: 1, bestGross: 72, bestStableford: 40, history: { h0: { roundId: 'r0', holes: 18, gross: 72, stablefordField: 40 } } });
+// Публичное зеркало профилей: в проде наполняется зеркалом админки
+// (syncPublicProfilesMirror) или миграцией; обрезка HCP читает его.
+setAt('usersPublic/u1', { name: 'Иван Петров', handicap: 54, gender: 'men', roundsPlayed: 1, bestGross: 90, bestStableford: 30 });
+setAt('usersPublic/u2', { name: 'Пётр Сидоров', handicap: 8, gender: 'men', roundsPlayed: 1, bestGross: 72, bestStableford: 40 });
 
 G.tnCache[TN] = cutTournament;
 G.tnProtocols = { p1: { tournamentId: TN, hcpCut: cutTournament.hcpCut } };
@@ -503,7 +514,8 @@ section('5 · Обрезка гандикапа — только на турни
     // Игрок без tournament-обрезки — обычный путь обновления HCP.
     return G.resolveOrCreatePlayerUser({ uid: 'u2', name: 'Пётр Сидоров', exactHcp: 9, gender: 'men', tee: 'bl' });
 }).then(function() {
-    check('обычное обновление профиля работает (u2 → 9)', getAt('users/u2/handicap'), 9);
+    check('обычное обновление профиля работает (публичное зеркало u2 → 9)', getAt('usersPublic/u2/handicap'), 9);
+    check('приватный профиль resolve не трогает (u2 остаётся 8)', getAt('users/u2/handicap'), 8);
 
 // ══════════════════════════════════════════════════════════
 section('6 · Удаление турнира: каскад раундов, протоколов и истории');

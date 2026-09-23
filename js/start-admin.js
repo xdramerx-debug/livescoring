@@ -1050,7 +1050,7 @@ function psCutAffectedCount() {
     try {
         var players = (psState.proto && psState.proto.players) || [];
         var seen = {};
-        function scan(p) {
+        var scan = function (p) {
             if (!p || p.hcp === null || p.hcp === undefined || p.hcp === '') return;
             var k = p.id || (psKeyOf(p) + '|' + p.hcp);
             if (seen[k]) return;
@@ -1058,7 +1058,7 @@ function psCutAffectedCount() {
             total++;
             var raw = parseFloat(p.hcp);
             if (!isNaN(raw) && Math.abs(psEffectiveExact(p) - raw) >= 0.049) hit++;
-        }
+        };
         players.forEach(scan);
         ((psState.groups) || []).forEach(function(g) { (g.members || []).forEach(scan); });
     } catch (e) { console.warn("[silent]", e); }
@@ -3105,18 +3105,6 @@ function psWaveSchedule(i, proto, holes, total) {
 // Шотган со всех 18: все лунки стартуют одновременно.
 // Интервал — только для второй (третьей…) группы на той же лунке.
 // Переполнение: сначала пар5 (3,9,10,15), затем пар4, в конце пар3 — чтобы длинные лунки не стояли в очереди.
-function psAll18Schedule(i, proto) {
-    proto = proto || psState.proto || {};
-    var base = psStartBaseTs(proto);
-    var intervalMs = psIntervalMs(proto);
-    var idx = Math.max(0, parseInt(i, 10) || 0);
-    var overflow = [3,9,10,15, 1,2,5,6,7,11,12,14,16,18, 4,8,13,17];
-    var hole;
-    if (idx < 18) hole = idx + 1;
-    else hole = overflow[(idx - 18) % overflow.length];
-    var wave = Math.floor(idx / 18);
-    return { startHole: hole, startTime: base + wave * intervalMs };
-}
 function psWaveLetter(idx) {
     // Алфавит волн один на весь сайт (js/utils.js): админка, печать QR-карточек
     // и TV обязаны подписывать «1А/1Б» одинаково.
@@ -5046,25 +5034,6 @@ function psDeleteProtocol(pid) {
 // ----------------------------------------------------------
 // ГЛОБАЛЬНЫЙ ХУК: вызов из switchTab() админки
 // ----------------------------------------------------------
-function psSwitchTo() {
-    if (typeof psOpen === 'function') {
-        try {
-            psOpen();
-            psBindSavedList();
-        } catch (e) { console.error('[start] psOpen error', e); }
-    }
-}
-
-// ----------------------------------------------------------
-// СИНХРОНИЗАЦИЯ С ТУРНИРОМ И СПИСКОМ ИГРОКОВ САЙТА
-// ----------------------------------------------------------
-// Участники стартового листа («Участники стартового листа» + все группы)
-// записываются в tournaments/<id>/registeredPlayers — счётчик
-// «Заявлено участников» на странице турнира обновляется сам.
-// Игроков, которых нет в users, автоматически добавляем в список игроков сайта.
-// ----------------------------------------------------------
-
-// Все участники черновика: общий список + все группы, без дублей (по id и по ФИО).
 function psCollectAllRosterPlayers() {
     var out = [];
     var seenId = {};

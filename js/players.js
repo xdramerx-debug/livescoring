@@ -70,7 +70,7 @@ function buildPlayerDisplayHTML(id, u, index, variant, roundsWord) {
 }
 
 function loadPlayers() {
-    bindRealtimeValue('players-list', db.ref('users'), function(sn) {
+    bindRealtimeValue('players-list', db.ref('usersPublic'), function(sn) {
         var data = sn.val() || {};
         var el = document.getElementById('players-grid');
         if (!el) return;

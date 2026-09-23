@@ -134,6 +134,9 @@ async function main() {
             user_tn_ivanov: { name: 'Иванов Пётр', firstName: 'Пётр', lastName: 'Иванов', middleName: 'Сергеевич', handicap: 12.4, isGuest: false, roundsPlayed: 5 }
         }
     };
+    // resolveOrCreatePlayerUser читает/пишет usersPublic (публичное зеркало) —
+    // в тесте это тот же стор.
+    state.usersPublic = state.users;
     sandbox.db = makeDb(state);
     const resolve = sandbox.resolveOrCreatePlayerUser;
     const g = (name, hcp) => resolve({ uid: null, name: name, exactHcp: hcp, gender: 'men', tee: 'bl' });

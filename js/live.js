@@ -162,7 +162,7 @@ function showGroupSetup() {
 
     updateGroupTimingPreview();
 
-    db.ref('users').once('value').then(function(sn) {
+    db.ref('usersPublic').once('value').then(function(sn) {
         registeredUsers = sn.val() || {};
         buildPlayerSlots();
     }).catch(function(err) {
@@ -179,16 +179,6 @@ function showGroupSetup() {
 // Турнир в групповом раунде больше не выбирается: в турнир попадают только
 // зарегистрированные участники (раздел «Турниры»). Функция оставлена
 // для совместимости — на странице больше нет селекта #grp-tournament.
-function onTournamentSelect() {}
-
-// Аккордеон карточек игроков («Параметры → Игроки → Старт»).
-// Слоты перерисовываются через innerHTML при каждом изменении количества
-// игроков и смене языка, поэтому обработчик вешаем ОДИН раз делегированием
-// на контейнер #player-slots — он переживает любые перерисовки. Раньше
-// обработчики навешивались в initP0MobileEnhancements() на готовые карточки,
-// но на реальной странице карточки создаются позже (ленивая вкладка +
-// асинхронная загрузка пользователей), поэтому клики не работали и карточки
-// не раскрывались — нельзя было ввести имена и начать раунд.
 function bindPlayerSlotsAccordion() {
     var container = document.getElementById('player-slots');
     if (!container || container._accordionBound) return;
@@ -1662,17 +1652,6 @@ function inviteSignature() {
 }
 
 // Сброс подписей — когда нужно гарантированно перерисовать (смена языка и т.п.).
-function invalidateRoundViewCache() {
-    lastSummarySig = null;
-    lastInviteSig = null;
-}
-
-// ==========================================
-// ОТСЧЁТ ДО СТАРТА ТУРНИРА
-// ==========================================
-// Игрок, отсканировавший QR раньше времени, видит таймер и НЕ может вводить
-// счёт: раунд откроется сам ровно в момент старта (или по кнопке «Старт»
-// в админ-меню).
 var startGateTimer = null;
 var startGateLastText = null;
 
@@ -2123,27 +2102,6 @@ function groupSkippedHoles() {
 
 // Предупреждение о пропущенных лунках с кнопками перехода
 // («вбить счёт») и вариантом «продолжить с пропуском».
-function showGroupSkippedHolesWarning() {
-    var box = lGet('group-skipped-box');
-    if (!box || !canEditGroup) return;
-    var skipped = groupSkippedHoles();
-    if (!skipped.length) { box.innerHTML = ''; return; }
-    var shown = skipped.slice(0, 6);
-    var btns = '';
-    shown.forEach(function(h) {
-        btns += '<button type="button" class="shb-hole-btn" onclick="goPlayHole(' + h + ');var b=document.getElementById(\'group-skipped-box\');if(b)b.innerHTML=\'\';">' +
-            t('skipped_holes_goto') + ' ' + h + '</button>';
-    });
-    var more = skipped.length > shown.length ? ' …' : '';
-    box.innerHTML = '<div class="skipped-holes-box">' +
-        '<div class="shb-title"><i class="fas fa-triangle-exclamation"></i> ' + t('skipped_holes_title') + ': ' +
-        skipped.join(', ') + more + '</div>' +
-        '<div class="shb-actions">' + btns +
-        '<button type="button" class="btn btn-ol btn-sm" onclick="var b=document.getElementById(\'group-skipped-box\');if(b)b.innerHTML=\'\';">' +
-        t('skipped_holes_skip') + '</button>' +
-        '</div></div>';
-}
-
 function finishGroupRound() {
     if (!canEditGroup) return;
     // Защита от повторного завершения (двойной клик): иначе история и roundsPlayed задваивались

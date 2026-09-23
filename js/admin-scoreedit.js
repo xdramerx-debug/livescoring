@@ -139,14 +139,6 @@ function seDiscardRound(rid) {
     delete seDraft[rid];
     seRender();
 }
-
-function seClearHole(rid, pid, h) {
-    if (!seDraft[rid]) seDraft[rid] = {};
-    if (!seDraft[rid][pid]) seDraft[rid][pid] = {};
-    seDraft[rid][pid][h] = 0; // 0 = удалить счёт лунки
-    seRender();
-}
-
 function seRender() {
     var root = seGet('se-list');
     if (!root) return;

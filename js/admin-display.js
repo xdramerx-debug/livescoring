@@ -502,33 +502,6 @@ function loadPageDisplaySettings() {
         }
     });
 }
-
-function savePageDisplayVariant(page, value) {
-    var cfg = ADMIN_PAGE_DISPLAY_CONFIG[page];
-    if (!cfg) return;
-    // Набор вариантов у страницы свой: у «Турниров» их пять.
-    var allowed = (typeof pageDisplayVariantKeys === 'function')
-        ? pageDisplayVariantKeys(page) : ['1', '2', '3'];
-    if (allowed.indexOf(String(value)) === -1) return;
-    value = String(value);
-    if (typeof vib === 'function') vib(30);
-    if (typeof applyPageDisplayVariant === 'function') applyPageDisplayVariant(page, value);
-    markAdmPageDisplayVariantButtons(page);
-
-    if (typeof db === 'undefined') {
-        toast(currentLang === 'en' ? 'Layout saved locally' : 'Вариант отображения сохранён локально', 'info');
-        return;
-    }
-    db.ref(cfg.path).set(value).then(function() {
-        toast(currentLang === 'en'
-            ? '✅ ' + cfg.label + ' layout saved for all users'
-            : '✅ Вариант отображения «' + cfg.label + '» сохранён для всех пользователей', 'success');
-    }).catch(function(err) {
-        console.warn('Page display variant save error:', err);
-        toast(currentLang === 'en' ? 'Could not save the layout' : '⚠️ Не удалось сохранить вариант отображения', 'error');
-    });
-}
-
 function markAdmPageDisplayVariantButtons(page) {
     var cur = (typeof getPageDisplayVariant === 'function') ? getPageDisplayVariant(page) : '1';
     var keys = (typeof pageDisplayVariantKeys === 'function') ? pageDisplayVariantKeys(page) : ['1', '2', '3'];

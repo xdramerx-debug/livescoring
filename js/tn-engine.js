@@ -363,17 +363,18 @@
 
     var ScoringService = {
         // Применение максимума на лунке (net double bogey / ESC 7..10 / без лимита).
-        applyMaxScore: function (gross, hole, strokesReceived, mode) {
+        applyMaxScore: function (gross, hole, strokesReceived, mode, maxEsc) {
             var g = num(gross);
             if (mode === 'netdb') return Math.min(g, HandicapService.netDoubleBogey(hole.par, strokesReceived));
-            if (mode === 'esc') return Math.min(g, 10); // современный ESC не нужен при WHS, оставлен верхний предел
+            // Верхний предел ESC настраивается (opts.maxEsc, по умолчанию 10).
+            if (mode === 'esc') return Math.min(g, num(maxEsc, 10) || 10);
             return g;
         },
         // Разбор одной лунки: gross → {net, toPar, points(stableford), modifiedPoints}
         holeResult: function (gross, hole, strokesReceived, opts) {
             var o = opts || {};
             var maxMode = o.maxScoreMode || 'netdb';
-            var counted = ScoringService.applyMaxScore(gross, hole, strokesReceived, maxMode);
+            var counted = ScoringService.applyMaxScore(gross, hole, strokesReceived, maxMode, o.maxEsc);
             var net = counted - num(strokesReceived);
             var toPar = counted - num(hole.par);
             var netToPar = toPar - num(strokesReceived); // результат нетто относительно пара
@@ -744,6 +745,9 @@
             var dir = ScoringService.strategyDirection(system);
             var sign = dir === 'high' ? -1 : 1;
             rows.sort(function (a, b) {
+                // Игрок без единой сыгранной лунки не должен занимать 1-е место
+                // (в stroke-net его value=0 формально «лучше всех»): в конец.
+                if ((a.totalHoles === 0) !== (b.totalHoles === 0)) return a.totalHoles === 0 ? 1 : -1;
                 if (a.value !== b.value) return sign * (a.value - b.value);
                 var tb = TieBreakService.compare(a._flat, b._flat, o.tieMethods);
                 return sign * tb;
@@ -759,6 +763,8 @@
                     r.position = pos;
                 }
             });
+            // Не сыграл ни одной лунки — позиции нет (не «делит место» с равными 0).
+            rows.forEach(function (r) { if (r.totalHoles === 0) r.position = null; });
             return rows;
         },
         // Проекция финального результата: текущий результат + пар по оставшимся лункам.

@@ -507,7 +507,7 @@
             document.querySelectorAll('.pe-gtee').forEach(function(el) { state.groups[+el.dataset.gid].tee = el.value; });
             document.querySelectorAll('.pe-gfmt').forEach(function(el) { state.groups[+el.dataset.gid].format = el.value; });
 
-            function applyRow(el, field) {
+            var applyRow = function (el, field) {
                 var gi = el.dataset.gid, pid = el.dataset.pid;
                 var list = gi === '' ? state.roster : state.groups[+gi].members;
                 var p = list.find(function(x) { return x.id === pid; });
@@ -518,7 +518,7 @@
                 } else {
                     p[field] = el.value;
                 }
-            }
+            };
             document.querySelectorAll('.pe-hcp').forEach(function(el) { applyRow(el, 'hcp'); });
             document.querySelectorAll('.pe-gender').forEach(function(el) { applyRow(el, 'gender'); });
             document.querySelectorAll('.pe-tee').forEach(function(el) { applyRow(el, 'tee'); });

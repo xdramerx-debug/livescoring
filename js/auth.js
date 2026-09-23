@@ -137,11 +137,20 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('pestovo_saved_remember', 'true');
 
         auth.createUserWithEmailAndPassword(em, pw).then(function(c) {
-            return db.ref('users/' + c.user.uid).set({
+            // Профиль + публичная копия (без email) — одним мульти-path апдейтом.
+            var uid = c.user.uid;
+            var updates = {};
+            updates['users/' + uid] = {
                 name: nm, email: em, role: 'player', gender: gd,
                 handicap: parseExactHcp(hc),
                 createdAt: Date.now(), roundsPlayed: 0, bestGross: null, bestStableford: null
-            }).catch(function(dbErr) {
+            };
+            updates['usersPublic/' + uid] = {
+                name: nm, gender: gd,
+                handicap: parseExactHcp(hc),
+                createdAt: Date.now(), roundsPlayed: 0, bestGross: null, bestStableford: null
+            };
+            return db.ref().update(updates).catch(function(dbErr) {
                 // Аккаунт создан, но профиль не записан (сеть/правила): профиль
                 // при последующих входах никто не досоздаёт — логин навсегда
                 // оставался без имени/гандикапа/истории. Откатываем аккаунт.

@@ -44,31 +44,6 @@ document.addEventListener('error', function(e) {
 function isOfflineNow() {
     return typeof navigator !== 'undefined' && navigator.onLine === false;
 }
-function dbSetWithOfflineQueue(path, value) {
-    var writePromise;
-    try { writePromise = db.ref(path).set(value); } catch (e) { writePromise = Promise.reject(e); }
-    if (isOfflineNow()) {
-        if (typeof queueOfflineWrite === 'function') queueOfflineWrite(path, value);
-        writePromise.catch(function() {});
-        return Promise.resolve({ offline: true });
-    }
-    return writePromise;
-}
-function dbUpdateWithOfflineQueue(updates) {
-    var writePromise;
-    try { writePromise = db.ref().update(updates); } catch (e) { writePromise = Promise.reject(e); }
-    if (isOfflineNow()) {
-        if (typeof queueOfflineWrite === 'function') {
-            Object.keys(updates || {}).forEach(function(p) { queueOfflineWrite(p, updates[p]); });
-        }
-        writePromise.catch(function() {});
-        return Promise.resolve({ offline: true });
-    }
-    return writePromise;
-}
-
-// Санитизация имён/текстов перед записью в БД: убираем HTML/JS-инъекции на входе,
-// чтобы все места, где имя рендерится в innerHTML, были безопасны.
 function sanitizeNameRaw(str){
     if(str===null||str===undefined)return'';
     var s=String(str);
@@ -595,44 +570,6 @@ function fmtRoundTeePills(r) {
     });
     return '<span class="round-tee-pills">' + pills.join('') + '</span>';
 }
-
-function fmtRoundTeesText(r) {
-    var codes = getRoundTeeCodes(r);
-    return codes.map(function(c) {
-        var nameKey = 'tee_' + c;
-        var name = t(nameKey);
-        if (!name || name === nameKey) name = TEES[c] || 'White';
-        return name;
-    }).join(', ');
-}
-
-function fmtScoreBadge(s, p) {
-    if (!s || s < 1 || !p) return '—';
-    var diff = s - p;
-    var name = holeResName(s, p);
-    var cls = 'badge-par';
-    if (diff <= -2 || s === 1) cls = 'badge-eag';
-    else if (diff === -1) cls = 'badge-bir';
-    else if (diff === 0) cls = 'badge-par';
-    else if (diff === 1) cls = 'badge-bog';
-    else cls = 'badge-dbl';
-
-    return '<span class="' + cls + '">' + name + ' (' + s + ')</span>';
-}
-
-// ==========================================
-// ПРОГРЕСС-БАР РАУНДА
-// ==========================================
-function renderHoleProgressBar(targetId, holesPlayed) {
-    var el = document.getElementById(targetId);
-    if (!el) return;
-    el.innerHTML = '';
-}
-
-// ==========================================
-// КОНФЕТТИ ПРИ ВВОДЕ СЧЁТА — ЭФФЕКТ ОТКЛЮЧЁН
-// (функция оставлена как no-op для совместимости со старыми вызовами)
-// ==========================================
 function triggerVictoryConfetti() {
     return; // конфетти при вводе счёта больше не показываются
 }
@@ -748,7 +685,7 @@ function initP0MobileEnhancements(){
         if(!window._p0HoldBound){
             window._p0HoldBound=true;
             var holdTimer=null, holdInt=null, holdBtn=null;
-            function startHold(btn){
+            var startHold = function (btn) {
                 stopHold();
                 holdBtn=btn;
                 holdTimer=setTimeout(function(){
@@ -757,20 +694,20 @@ function initP0MobileEnhancements(){
                         try{ if(navigator.vibrate) navigator.vibrate(18); }catch (e) { console.warn("[silent]", e); }
                     }, 120);
                 }, 450);
-            }
-            function stopHold(){
+            };
+            var stopHold = function () {
                 if(holdTimer) clearTimeout(holdTimer);
                 if(holdInt) clearInterval(holdInt);
                 holdTimer=null; holdInt=null; holdBtn=null;
-            }
-            function targetOf(e){
+            };
+            var targetOf = function (e) {
                 var t=e.target;
                 while(t && t!==document){
                     if(t.classList && (t.classList.contains('score-minus')||t.classList.contains('score-plus'))) return t;
                     t=t.parentNode;
                 }
                 return null;
-            }
+            };
             document.addEventListener('touchstart', function(e){ var b=targetOf(e); if(b) startHold(b); }, {passive:true});
             document.addEventListener('touchend', stopHold, {passive:true});
             document.addEventListener('touchcancel', stopHold, {passive:true});
@@ -1304,19 +1241,6 @@ function verificationIssueToastHtml(issue, v) {
 
 // Показывает уведомление о первой проблемной лунке (3 сек, тап — перейти к лунке).
 // onGoToHole(hole) — callback для перехода (например, goPlayHole).
-function showVerificationIssueToast(v, onGoToHole) {
-    var issue = (v && v.firstIssue) || getFirstVerificationIssue(v);
-    if (!issue) return null;
-    var html = verificationIssueToastHtml(issue, v);
-    var type = issue.kind === 'mismatch' ? 'error' : 'warn';
-    return toast(html, type, { onClick: function(){ if (typeof onGoToHole === 'function') onGoToHole(issue.hole); } });
-}
-
-// Собирает информацию о «незавершённых» лунках раунда для проверки перед финишем:
-//  - mismatch: лунки, где есть несовпадение счёта (по фактическим данным игрок/маркер или флагу verified === false)
-//  - unconfirmed: лунки, где счёт ещё не подтверждён всеми / не введён
-// onlyPid (опционально): проверять только одного игрока и его маркера.
-//  Групповой финиш всегда вызывает с onlyPid = текущий игрок.
 function collectRoundVerification(r, onlyPid) {
     var order = getRoundOrder(r);
     var players = Object.entries((r && r.players) || {});
@@ -3694,7 +3618,7 @@ function openPlayerProfileModal(playerId, roundId) {
 
     if (typeof db === 'undefined') return;
 
-    var userPromise = db.ref('users/' + playerId).once('value').then(function(sn) { return sn.val(); }).catch(function() { return null; });
+    var userPromise = db.ref('usersPublic/' + playerId).once('value').then(function(sn) { return sn.val(); }).catch(function() { return null; });
     var roundPromise = roundId ? db.ref('rounds/' + roundId).once('value').then(function(sn) { return sn.val(); }).catch(function() { return null; }) : Promise.resolve(null);
 
     Promise.all([userPromise, roundPromise]).then(function(res) {
@@ -4908,13 +4832,6 @@ function pestovoSkipAddAck(rid, pid, holes) {
     try { localStorage.setItem(pestovoSkipAckKey(rid, pid), JSON.stringify(map)); } catch (e) { console.warn("[silent]", e); }
     return map;
 }
-
-function pestovoSkipClearAck(rid, pid) {
-    try { localStorage.removeItem(pestovoSkipAckKey(rid, pid)); } catch (e) { console.warn("[silent]", e); }
-}
-
-// Исправление/ввод результата на лунке снимает ранее нажатый «Пропустить»
-// именно для этих лунок (блок снова может предупреждать о пропусках).
 function pestovoSkipDropAckHoles(rid, pid, holes) {
     var map = pestovoSkipGetAck(rid, pid);
     var changed = false;
@@ -5109,9 +5026,9 @@ function pestovoVerifyRoundOwner(rd, rid, pid, cb) {
     };
 
     if (typeof db === 'undefined' || !db) { askName(); return; }
-    db.ref('users/' + pid).once('value').then(function(sn) {
+    db.ref('usersPublic/' + pid).once('value').then(function(sn) {
         var u = sn.val() || {};
-        var digits = String(u.phone || '').replace(/\D/g, '');
+        var digits = String(u.phoneLast4 || '');
         if (digits.length >= 4) {
             var last4 = digits.slice(-4);
             document.getElementById('pestovo-skip-modal-body').innerHTML =
@@ -6322,32 +6239,9 @@ function syncPageDisplayBodyClasses() {
         });
     } catch (e) { console.warn("[silent]", e); }
 }
-
-function normalizePlayersDisplayVariant(value) { return normalizePageDisplayVariant('players', value); }
 function getPlayersDisplayVariant() { return getPageDisplayVariant('players'); }
-function applyPlayersDisplayVariant(value) { return applyPageDisplayVariant('players', value); }
-function normalizeStatsDisplayVariant(value) { return normalizePageDisplayVariant('stats', value); }
 function getStatsDisplayVariant() { return getPageDisplayVariant('stats'); }
-function applyStatsDisplayVariant(value) { return applyPageDisplayVariant('stats', value); }
-function normalizeAllRoundsDisplayVariant(value) { return normalizePageDisplayVariant('rounds', value); }
 function getAllRoundsDisplayVariant() { return getPageDisplayVariant('rounds'); }
-function applyAllRoundsDisplayVariant(value) { return applyPageDisplayVariant('rounds', value); }
-function normalizeHomeDisplayVariant(value) { return normalizePageDisplayVariant('home', value); }
-function getHomeDisplayVariant() { return getPageDisplayVariant('home'); }
-function applyHomeDisplayVariant(value) { return applyPageDisplayVariant('home', value); }
-function getTournamentsDisplayVariant() { return getPageDisplayVariant('tournaments'); }
-function getHandicapDisplayVariant() { return getPageDisplayVariant('handicap'); }
-
-// Применяем выбранные варианты сразу (скрипт подключён в конце <body>),
-// чтобы страница не «мигала» исходным оформлением при загрузке.
-try { syncPageDisplayBodyClasses(); } catch (e) { console.warn("[silent]", e); }
-document.addEventListener('DOMContentLoaded', function() { syncPageDisplayBodyClasses(); });
-
-// ==========================================
-// PNG-КАРТОЧКИ ДЛЯ СОЦСЕТЕЙ
-// ==========================================
-// Оформление выбирается администратором для всего клуба. Значение держим и
-// локально, чтобы экспорт продолжал работать в офлайне.
 var SOCIAL_CARD_VARIANTS = ['1', '2', '3'];
 
 function normalizeSocialCardVariant(value) {
@@ -7136,101 +7030,6 @@ function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
     ctx.font = 'bold 22px "Inter", sans-serif';
     ctx.fillText(scoreSum > 0 ? String(scoreSum) : '—', totX + totW / 2, y3 + row3H / 2 + 7);
 }
-
-function drawHoleGridRow(ctx, scores, markerScores, startHole, endHole, startY) {
-    var startX = 60;
-    var cellW = 96;
-    var cellH = 95;
-
-    // Header Row
-    ctx.fillStyle = '#101f13';
-    ctx.fillRect(startX, startY, cellW * 10, 36);
-    ctx.strokeStyle = '#1e3525';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(startX, startY, cellW * 10, 36);
-
-    ctx.fillStyle = '#c9a84c';
-    ctx.font = 'bold 15px "Inter", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(startHole === 1 ? 'FRONT 9' : 'BACK 9', startX + cellW / 2, startY + 24);
-
-    for (var i = startHole; i <= endHole; i++) {
-        var colX = startX + (i - startHole + 1) * cellW;
-        ctx.fillText(String(i), colX + cellW / 2, startY + 24);
-    }
-
-    // Scores Row
-    var rowY = startY + 36;
-    ctx.fillStyle = '#132218';
-    ctx.fillRect(startX, rowY, cellW * 10, cellH);
-    ctx.strokeRect(startX, rowY, cellW * 10, cellH);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px "Inter", sans-serif';
-    ctx.fillText('SCORE', startX + cellW / 2, rowY + 35);
-    ctx.fillStyle = '#9b59b6';
-    ctx.font = '12px "Inter", sans-serif';
-    ctx.fillText('MARKER', startX + cellW / 2, rowY + 68);
-
-    for (var i = startHole; i <= endHole; i++) {
-        var s = parseInt(scores[i]) || 0;
-        var ms = parseInt(markerScores[i]) || 0;
-        var par = holePar(i);
-        var colX = startX + (i - startHole + 1) * cellW;
-
-        if (s > 0) {
-            var diff = s - par;
-            var circleColor = '#132218';
-
-            if (diff <= -2 || s === 1) circleColor = '#f39c12';
-            else if (diff === -1) circleColor = '#2ecc71';
-            else if (diff === 0) circleColor = '#2c3e50';
-            else if (diff === 1) circleColor = '#5aade0';
-            else circleColor = '#e05a4a';
-
-            // Top: Player Score Badge
-            ctx.fillStyle = circleColor;
-            ctx.beginPath();
-            ctx.arc(colX + cellW / 2, rowY + 30, 20, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 20px "Inter", sans-serif';
-            ctx.fillText(String(s), colX + cellW / 2, rowY + 37);
-
-            // Bottom: Marker Score (With Strikethrough if Mismatch)
-            if (ms > 0) {
-                var isMatch = (ms === s);
-                var mText = 'M: ' + ms;
-                ctx.font = '13px "Inter", sans-serif';
-                var textX = colX + cellW / 2;
-                var textY = rowY + 74;
-
-                if (isMatch) {
-                    ctx.fillStyle = '#9b59b6';
-                    ctx.fillText(mText, textX, textY);
-                } else {
-                    ctx.fillStyle = '#e05a4a';
-                    ctx.fillText(mText, textX, textY);
-
-                    // Draw Strikethrough line
-                    var textW = ctx.measureText(mText).width;
-                    ctx.beginPath();
-                    ctx.moveTo(textX - textW / 2 - 2, textY - 4);
-                    ctx.lineTo(textX + textW / 2 + 2, textY - 4);
-                    ctx.strokeStyle = '#e05a4a';
-                    ctx.lineWidth = 1.5;
-                    ctx.stroke();
-                }
-            }
-        } else {
-            ctx.fillStyle = '#3a523e';
-            ctx.font = '18px "Inter", sans-serif';
-            ctx.fillText('—', colX + cellW / 2, rowY + 45);
-        }
-    }
-}
-
 function downloadPNGImage(pngDataUrl, fileName) {
     fileName = fileName || 'Pestovo_Scorecard.png';
     var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -7417,115 +7216,6 @@ function renderScoringDistributionBar(rounds) {
 
     return html;
 }
-
-function sharePNGNative(dataUrl, fileName) {
-    fetch(dataUrl).then(function(res) { return res.blob(); }).then(function(blob) {
-        var file = new File([blob], fileName || 'Pestovo_Card.png', { type: 'image/png' });
-        if (navigator.share) {
-            navigator.share({
-                title: 'Pestovo Golf Scorecard',
-                text: 'My score at Pestovo Golf Club!',
-                files: [file]
-            }).catch(function() {});
-        }
-    });
-}
-
-// ==========================================
-// FEATURE 3: OFFICIAL PDF SCORECARD EXPORT
-// ==========================================
-function downloadOfficialScorecardPDF(roundData) {
-    if (!roundData) {
-        toast(t('no_data') || 'Нет данных раунда', 'error');
-        return;
-    }
-
-    var pName = roundData.playerName || 'Игрок';
-    var mName = roundData.markerName || 'Маркёр';
-    var dateStr = fmtDate(roundData.createdAt || Date.now());
-    var timeStr = fmtTime(roundData.createdAt || Date.now());
-    var teeCode = roundData.tee || 'wh';
-    var format = pestovoRoundFormatsLabel(roundData) || roundData.format || 'Stroke Play';
-    var exactHcp = roundData.exactHandicap != null ? fmtExactHcp(roundData.exactHandicap) : '—';
-    var fieldHcp = roundData.fieldHandicap != null ? fmtFieldHcp(roundData.fieldHandicap) : '—';
-
-    var printWin = window.open('', '_blank');
-    if (!printWin) {
-        toast('Пожалуйста, разрешите всплывающие окна для печати PDF', 'error');
-        return;
-    }
-
-    var html = '<!DOCTYPE html><html><head><title>Pestovo_Scorecard_' + pName.replace(/\s+/g, '_') + '</title>' +
-        '<meta charset="utf-8">' +
-        '<style>' +
-        'body{font-family:Arial,sans-serif;padding:20px;color:#000;background:#fff;font-size:12px;}' +
-        '.header{text-align:center;border-bottom:2px solid #c9a84c;padding-bottom:10px;margin-bottom:15px;}' +
-        '.header h1{margin:0;font-size:18px;color:#132218;letter-spacing:1px;}' +
-        '.header h2{margin:4px 0 0;font-size:12px;color:#c9a84c;font-weight:700;}' +
-        '.meta-table{width:100%;border-collapse:collapse;margin-bottom:15px;}' +
-        '.meta-table td{padding:6px;border:1px solid #ccc;font-size:11px;}' +
-        '.grid-table{width:100%;border-collapse:collapse;margin-bottom:15px;text-align:center;}' +
-        '.grid-table th,.grid-table td{border:1px solid #333;padding:5px 2px;font-size:11px;}' +
-        '.grid-table th{background:#132218;color:#fff;}' +
-        '.out-in-row{background:#f0f0f0;font-weight:700;}' +
-        '.sigs{display:flex;justify-content:space-between;margin-top:30px;padding-top:15px;border-top:1px dashed #666;}' +
-        '.sig-box{width:45%;font-size:11px;}' +
-        '.stamp-box{text-align:center;border:2px solid #c9a84c;border-radius:8px;padding:8px;margin-top:20px;color:#c9a84c;font-weight:700;}' +
-        '</style></head><body>' +
-        '<div class="header">' +
-        '<h1>⛳ ГОЛЬФ-КЛУБ «ПЕСТОВО»</h1>' +
-        '<h2>ОФИЦИАЛЬНАЯ СЧЁТНАЯ КАРТОЧКА / OFFICIAL SCORECARD</h2>' +
-        '</div>' +
-        '<table class="meta-table">' +
-        '<tr><td><b>Игрок:</b> ' + pName + '</td><td><b>Маркёр:</b> ' + mName + '</td><td><b>Дата:</b> ' + dateStr + ' ' + timeStr + '</td></tr>' +
-        '<tr><td><b>Точный HCP:</b> ' + exactHcp + '</td><td><b>Игровой HCP:</b> ' + fieldHcp + '</td><td><b>ТИ:</b> ' + (TEES[teeCode]||teeCode) + ' · <b>Формат:</b> ' + format + '</td></tr>' +
-        '</table>' +
-        '<table class="grid-table">' +
-        '<thead><tr><th>Л.</th>';
-
-    for (var i = 1; i <= 18; i++) html += '<th>' + i + '</th>';
-    html += '<th>OUT</th><th>IN</th><th>ВСЕГО</th></tr></thead><tbody>';
-
-    html += '<tr><td><b>PAR</b></td>';
-    var outPar = 0, inPar = 0;
-    for (var h = 1; h <= 18; h++) {
-        var p = holePar(h);
-        if (h <= 9) outPar += p; else inPar += p;
-        html += '<td>' + p + '</td>';
-    }
-    html += '<td class="out-in-row">' + outPar + '</td><td class="out-in-row">' + inPar + '</td><td class="out-in-row">' + (outPar + inPar) + '</td></tr>';
-
-    html += '<tr><td><b>SCORE</b></td>';
-    var outScore = 0, inScore = 0, totalScore = 0;
-    var scores = roundData.scores || {};
-    for (var h = 1; h <= 18; h++) {
-        var s = scores[h];
-        if (s != null && s > 0) {
-            totalScore += s;
-            if (h <= 9) outScore += s; else inScore += s;
-            html += '<td style="font-weight:700;">' + s + '</td>';
-        } else {
-            html += '<td>—</td>';
-        }
-    }
-    html += '<td class="out-in-row">' + (outScore || '—') + '</td><td class="out-in-row">' + (inScore || '—') + '</td><td class="out-in-row">' + (totalScore || '—') + '</td></tr>';
-
-    html += '</tbody></table>' +
-        '<div class="sigs">' +
-        '<div class="sig-box">Подпись игрока: _______________________</div>' +
-        '<div class="sig-box">Подпись маркёра: _______________________</div>' +
-        '</div>' +
-        '<div class="stamp-box">ГСК ГОЛЬФ-КЛУБА ПЕСТОВО · ПОДТВЕРЖДЕНО</div>' +
-        '<script>window.onload = function() { window.print(); };</script>' +
-        '</body></html>';
-
-    printWin.document.write(html);
-    printWin.document.close();
-}
-
-// ==========================================
-// FEATURE 4: MATCH PLAY VISUAL TRACKER
-// ==========================================
 function calcMatchPlayStatus(p1Scores, p2Scores, p1Name, p2Name) {
     p1Name = p1Name || 'Игрок 1';
     p2Name = p2Name || 'Игрок 2';
@@ -7736,16 +7426,6 @@ function pestovoTeamHoleScore(players, hole) {
 
 // Командные итоги группы за раунд (для скрембла и аналогов):
 // { holes, gross, toPar } по лучшему удару на лунке.
-function pestovoTeamRoundStats(round) {
-    var gross = 0, par = 0, holes = 0;
-    var players = (round && round.players) || {};
-    for (var h = 1; h <= 18; h++) {
-        var s = pestovoTeamHoleScore(players, h);
-        if (s != null) { gross += s; par += holePar(h); holes++; }
-    }
-    return { holes: holes, gross: gross, parPlayed: par, toPar: holes ? gross - par : null };
-}
-
 function toggleActiveScorecard(panelId) {
     var panel = document.getElementById(panelId);
     var icon = document.getElementById(panelId + '-icon');
@@ -8127,22 +7807,6 @@ function dedupeRoundPlayersByFio(playersObj) {
     deduped.forEach(function(e){ out[e[0]] = e[1]; });
     return out;
 }
-
-
-
-function hcpKey1(v) {
-    var n = parseFloat(v);
-    if (isNaN(n)) n = 0;
-    return Math.round(n * 10) / 10;
-}
-
-// ==========================================
-// ЕДИНАЯ ИДЕМПОТЕНТНАЯ РЕГИСТРАЦИЯ ИГРОКА
-// Возвращает Promise<userId>. Гарантирует, что один и тот же человек
-// (одно имя / один uid) получает ОДНУ запись в users во всех режимах:
-// одиночный раунд, групповой раунд, завершение раунда (история).
-// Никогда не создаёт вторую запись, если игрок уже есть (по uid или по имени).
-// ==========================================
 function resolveOrCreatePlayerUser(p) {
     p = p || {};
     if (!p.name) return Promise.resolve(null);
@@ -8259,15 +7923,15 @@ function resolveOrCreatePlayerUser(p) {
         };
         if (middleName) uidData.middleName = middleName;
         if (typeof db === 'undefined') return Promise.resolve(finish(uidKey, uidData));
-        return db.ref('users/' + uidKey).once('value').then(function(sn) {
+        return db.ref('usersPublic/' + uidKey).once('value').then(function(sn) {
             if (!sn.exists()) {
-                return db.ref('users/' + uidKey).set(uidData).catch(function(){}).then(function() { return uidKey; });
+                return db.ref('usersPublic/' + uidKey).set(Object.assign({}, uidData, { role: null })).catch(function(){}).then(function() { return uidKey; });
             }
             var existing = sn.val() || {};
             var patch = buildPatchForExisting(existing);
             // Гандикап обновляем только настоящим значением (см. profileHcp):
             // турнирная обрезка в профиль не пишется. Отчество добавляем, если не было
-            return db.ref('users/' + uidKey).update(patch).catch(function(){}).then(function() { return uidKey; });
+            return db.ref('usersPublic/' + uidKey).update(patch).catch(function(){}).then(function() { return uidKey; });
         }).catch(function() { return uidKey; }).then(function(id){ return finish(id, uidData); });
     }
 
@@ -8292,7 +7956,7 @@ function resolveOrCreatePlayerUser(p) {
 
     // Ищем существующего игрока по ФИО (без учета HCP) — чтобы не плодить дубликаты
     // Одинаковое имя + разный HCP = один и тот же человек (гандикап обновляется)
-    return db.ref('users').once('value').then(function(usn) {
+    return db.ref('usersPublic').once('value').then(function(usn) {
         var users = usn.val() || {};
         var found = null;
         var foundData = null;
@@ -8328,16 +7992,16 @@ function resolveOrCreatePlayerUser(p) {
         });
         if (found) {
             var patch = buildPatchForExisting(foundData);
-            return db.ref('users/' + found).update(patch).catch(function(){}).then(function() { return found; });
+            return db.ref('usersPublic/' + found).update(patch).catch(function(){}).then(function() { return found; });
         }
         // Проверяем детерминированный id
-        return db.ref('users/' + candidateId).once('value').then(function(sn) {
+        return db.ref('usersPublic/' + candidateId).once('value').then(function(sn) {
             if (sn.exists()) {
                 var existing = sn.val() || {};
                 var patch = buildPatchForExisting(existing);
-                return db.ref('users/' + candidateId).update(patch).catch(function(){}).then(function(){ return candidateId; });
+                return db.ref('usersPublic/' + candidateId).update(patch).catch(function(){}).then(function(){ return candidateId; });
             }
-            return db.ref('users/' + candidateId).set(guestData).catch(function(){}).then(function(){ return candidateId; });
+            return db.ref('usersPublic/' + candidateId).set(Object.assign({}, guestData, { role: null })).catch(function(){}).then(function(){ return candidateId; });
         });
     }).catch(function() {
         return candidateId;
@@ -8591,9 +8255,14 @@ syncKnownPlayersCache();
 
 var lastRemoteUserIds = null;
 
+// Публичные поля профилей (usersPublic, без email/phone/history) читают все
+// залогиненные; полные users — только владелец/админ/мастер (см. database.rules.json).
+var _usersReadNode = 'usersPublic';
+try { if (typeof document !== 'undefined' && document.getElementById('admin-content')) _usersReadNode = 'users'; } catch (e) { console.warn("[silent]", e); }
+
 if (typeof db !== 'undefined') {
     try {
-        db.ref('users').on('value', function(sn) {
+        db.ref(_usersReadNode).on('value', function(sn) {
             var val = sn.val();
             // Сброс: если после очистки БД в Firebase нет пользователей (val === null) —
             // полностью вычищаем in-memory кэш и localStorage, чтобы демо/удалённые
@@ -8722,19 +8391,6 @@ function getKnownPlayersSync() {
     syncKnownPlayersCache();
     return cachedRegisteredUsers;
 }
-
-function loadAllRegisteredUsers(callback) {
-    if (typeof callback === 'function') {
-        callback(getKnownPlayersSync());
-    }
-}
-
-
-// ==========================================
-// ФИО: разбор частей и отображение
-// «Фамилия Имя Отчество» — только визуал автоподбора.
-// В поля формы всегда кладём firstName/lastName/middleName по смыслу.
-// ==========================================
 function looksLikePatronymic(s) {
     s = normalizeSearchText(s || '');
     if (!s) return false;
@@ -8852,31 +8508,6 @@ if (typeof window !== 'undefined') {
 var currentAutocompleteMatches = [];
 var currentAutocompleteCallback = null;
 var activeAutocompleteDropdown = null;
-
-function handlePlayerSelect(evt, idx) {
-    if (evt) {
-        if (evt.preventDefault) evt.preventDefault();
-        if (evt.stopPropagation) evt.stopPropagation();
-    }
-    var match = currentAutocompleteMatches[idx];
-    if (match && typeof currentAutocompleteCallback === 'function') {
-        currentAutocompleteCallback(match);
-    }
-    if (activeAutocompleteDropdown) {
-        activeAutocompleteDropdown.style.display = 'none';
-        activeAutocompleteDropdown.classList.add('hidden');
-    }
-}
-
-function attachPlayerNameAutocomplete(inputEl, containerEl, onSelectCallback) {
-    if (!inputEl) return;
-    initPlayerSearchAutofill({
-        searchInputId: inputEl.id,
-        onSelect: onSelectCallback,
-        onClear: null
-    });
-}
-
 function initPlayerSearchAutofill(opts) {
     opts = opts || {};
     var searchInputId = opts.searchInputId;
@@ -9569,16 +9200,6 @@ function tnApplyHcpCut(exactHcp, gender, cut) {
 }
 
 // Полевой гандикап турнира с учётом обрезки (сначала процент, затем максимум по полу).
-function tnTournamentFieldHcp(exactHcp, teeCode, gender, cut) {
-    var eff = tnApplyHcpCut(exactHcp, gender, cut).effective;
-    if (typeof getFieldHcp === 'function') {
-        try { return getFieldHcp(eff, teeCode || 'wh', gender || 'men'); } catch (e) { console.warn("[silent]", e); }
-    }
-    return Math.round(eff || 0);
-}
-
-// Название турнира для баннера и главной. Протокол хранит «Кубок · старт» в protocolName —
-// суффикс старта убираем, чтобы на карточке и главной было имя турнира.
 function roundTournamentName(r) {
     if (!r || typeof r !== 'object') return '';
     var name = String(r.tournamentName || '').trim();

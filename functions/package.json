@@ -2,7 +2,7 @@
   "name": "livescoring-functions",
   "description": "Cloud Functions for Pestovo Live Scoring: background Web Push (announcements + referee/marshal calls)",
   "engines": {
-    "node": "18"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {

@@ -27,12 +27,48 @@ Object.assign(exports, require('./score-audit')(functions, admin, db));
 // settings: этот узел публичен (RTDB не позволяет сузить доступ потомку).
 const crypto = require('crypto');
 const MASTER_UID = 'tournament-master';
-// Мастер-пароль администратора — 55555 (SHA-256, UTF-8). Секрет
-// TOURNAMENT_MASTER_PASSWORD_HASH в Firebase Secret Manager, если настроен,
+// Мастер-пароль администратора — 55555 (SHA-256, UTF-8). Необязательный секрет
+// TOURNAMENT_MASTER_PASSWORD_HASH (Firebase Secret Manager), если он установлен,
 // имеет приоритет над этим значением.
+// ВАЖНО: секрет НЕ привязан жёстко через runWith({secrets}) — такая привязка
+// требует обязательного секрета в Secret Manager и без него функция не
+// деплоится/не стартует (браузер получает сетевую ошибку callable —
+// «Ошибка входа: internal»). Секрет читается в момент входа и при
+// отсутствии тихо заменяется дефолтным паролем.
 const DEFAULT_MASTER_PASSWORD_HASH = 'c507a68f3093e885765257ed3f176c757aaf62bb4cbc2ef94b2e7da3406d9676';
-exports.tournamentMasterSignIn = functions.runWith({ secrets: ['TOURNAMENT_MASTER_PASSWORD_HASH'] }).https.onCall(async function (data, context) {
-    const configured = process.env.TOURNAMENT_MASTER_PASSWORD_HASH || DEFAULT_MASTER_PASSWORD_HASH;
+const MASTER_PASSWORD_HASH_SECRET = 'TOURNAMENT_MASTER_PASSWORD_HASH';
+async function readConfiguredMasterPasswordHash() {
+    // 1) Явно привязанный env-секрет (если функцию деплоят с привязкой).
+    const fromEnv = process.env[MASTER_PASSWORD_HASH_SECRET];
+    if (fromEnv) return String(fromEnv).trim();
+    // 2) Необязательный секрет в Secret Manager. Его отсутствие — норма:
+    //    действует DEFAULT_MASTER_PASSWORD_HASH (55555).
+    try {
+        if (typeof fetch !== 'function') return DEFAULT_MASTER_PASSWORD_HASH;
+        const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT ||
+            (process.env.FIREBASE_CONFIG ? (JSON.parse(process.env.FIREBASE_CONFIG).projectId || '') : '') || '';
+        if (!projectId) return DEFAULT_MASTER_PASSWORD_HASH;
+        const tokenResp = await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token', { headers: { 'Metadata-Flavor': 'Google' } });
+        if (!tokenResp.ok) return DEFAULT_MASTER_PASSWORD_HASH;
+        const accessToken = (await tokenResp.json()).access_token || '';
+        const resp = await fetch('https://secretmanager.googleapis.com/v1/projects/' + encodeURIComponent(projectId) + '/secrets/' + MASTER_PASSWORD_HASH_SECRET + '/versions/latest:access', { headers: { Authorization: 'Bearer ' + accessToken } });
+        // 404 — секрет не создан (штатный режим с паролем 55555). Прочие сбои
+        // тоже не должны ломать вход: работаем с дефолтным паролем.
+        if (!resp.ok) {
+            if (resp.status !== 404 && typeof functions !== 'undefined' && functions.logger) {
+                functions.logger.warn('Master password secret is not readable (status ' + resp.status + '), using default hash');
+            }
+            return DEFAULT_MASTER_PASSWORD_HASH;
+        }
+        const payload = await resp.json();
+        const value = Buffer.from(String((payload && payload.payload && payload.payload.data) || ''), 'base64').toString('utf8').trim();
+        return value || DEFAULT_MASTER_PASSWORD_HASH;
+    } catch (e) {
+        return DEFAULT_MASTER_PASSWORD_HASH;
+    }
+}
+exports.tournamentMasterSignIn = functions.runWith({}).https.onCall(async function (data, context) {
+    const configured = await readConfiguredMasterPasswordHash();
     if (!/^[a-f0-9]{64}$/i.test(configured)) {
         throw new functions.https.HttpsError('failed-precondition', 'Master password is not configured on the server.');
     }

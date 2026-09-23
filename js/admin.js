@@ -320,6 +320,7 @@ function openAdminPanel() {
     // Новая версия создания турнира: подключаем черновики/шаблоны/поле,
     // открываем суб-вкладку по URL-hash (#new-create / #course / #templates).
     if (typeof tnwOnAdminOpen === 'function') { try { tnwOnAdminOpen(); } catch (e) { console.warn('[silent]', e); } }
+    if (typeof tnStudioOnAdminOpen === 'function') { try { tnStudioOnAdminOpen(); } catch (e) { console.warn('[silent]', e); } }
 }
 
 function enableAdminNotifications() {
@@ -394,6 +395,9 @@ function switchTab(t, b) {
     if (t === 'assistant') {
         renderAssistantSources();
         loadAssistantSourcesFromFirebase();
+    }
+    if (t === 'studio') {
+        if (typeof tnStudioOpen === 'function') tnStudioOpen();
     }
     if (t === 'tournaments' || t === 'start') {
         // Вкладка «Турниры 🏆» — единая страница создания турнира: создание,

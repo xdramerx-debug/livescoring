@@ -1162,7 +1162,6 @@ function renderPlayHole() {
     var order = getRoundOrder(curRoundData);
     var isLastHole = (playHole === order[order.length - 1]);
 
-    var myPlayer = curRoundData.players[myUid] || {};
     var mySubmittedLast = !!(myPlayer.submitted && myPlayer.submitted[playHole] === true);
 
     var btnIcon = lGet('save-hole-btn-icon');

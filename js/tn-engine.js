@@ -576,9 +576,12 @@
                     return desc ? -d : d;
                 });
             }
-            var size = Math.max(2, num(o.flightSize, 0));
+            var size = num(o.flightSize, 0);
             var count = Math.max(1, num(o.flightsCount, 0));
+            // flightsCount работает только пока size не зафиксирован: раньше
+            // Math.max(2, …) делал size >= 2 всегда, и ветка была недостижима.
             if (!size && count) size = Math.ceil(arr.length / count) || 1;
+            if (size) size = Math.max(2, size);
             if (!size) size = arr.length || 1;
             var flights = [];
             for (var f = 0; f < arr.length; f += size) flights.push(arr.slice(f, f + size));

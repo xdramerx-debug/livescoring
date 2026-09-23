@@ -113,5 +113,67 @@ const request = { rawRequest: { ip: '192.0.2.1' } };
     clientSandbox.adminLogout();
     assert.strictEqual(signedOut, 1);
     assert.strictEqual(clientSandbox.hasAdminPanelAccess(), false);
+
+    // Fallback по дефолтному 55555 обязан работать с ЛЮБОГО хоста, а не только
+    // с localhost: если функция не задеплоена (functions/internal), админка
+    // открывается локально (UI, без серверных прав — реальные права всё равно
+    // выдаёт серверный custom claim). Регрессия: раньше на проде показывалось
+    // «Дефолтный пароль 55555 работает только локально (localhost)».
+    function makeInternalClientSandbox(password) {
+        const flags = {};
+        let customTokenCalls = 0;
+        const sandbox = {
+            document: {
+                addEventListener: () => {},
+                getElementById: id => id === 'adm-master-pass' ? { value: password } : null
+            },
+            localStorage: { getItem: () => null, removeItem: () => {} },
+            sessionStorage: {
+                getItem: key => flags[key] || null,
+                setItem: (key, val) => { flags[key] = val; },
+                removeItem: key => { delete flags[key]; }
+            },
+            currentUser: null, currentUserData: null, currentLang: 'ru',
+            location: { hostname: 'pestovo-golf.ru' }, // не-local (production) host
+            toast: () => {}, console,
+            firebase: {
+                auth: { Auth: { Persistence: { SESSION: 'SESSION' } } },
+                functions: () => ({ httpsCallable: name => {
+                    assert.strictEqual(name, 'tournamentMasterSignIn');
+                    return data => {
+                        assert.strictEqual(data.password, password);
+                        const err = new Error('internal');
+                        err.code = 'functions/internal';
+                        return Promise.reject(err);
+                    };
+                } })
+            },
+            auth: {
+                setPersistence: () => Promise.resolve(),
+                signInWithCustomToken: () => { customTokenCalls++; return Promise.resolve(); },
+                signOut: () => Promise.resolve()
+            }
+        };
+        sandbox.window = sandbox;
+        return { sandbox, flags, getCustomTokenCalls: () => customTokenCalls };
+    }
+
+    const fallback = makeInternalClientSandbox(defaultPassword);
+    vm.runInNewContext(client, fallback.sandbox);
+    fallback.sandbox.adminLogin({ preventDefault: () => {} });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.strictEqual(fallback.flags['pestovo_is_admin'], 'true', 'internal + 55555: админка открывается и на не-local хосте');
+    assert.strictEqual(fallback.flags['pestovo_admin_access_source'], 'master');
+    assert.strictEqual(fallback.sandbox.isTournamentMaster(), true);
+    assert.strictEqual(fallback.getCustomTokenCalls(), 0, 'fallback не запрашивает Firebase-токен');
+
+    // Любой пароль, отличный от 55555, при internal админку НЕ открывает.
+    const deny = makeInternalClientSandbox('another-long-master-password');
+    vm.runInNewContext(client, deny.sandbox);
+    deny.sandbox.adminLogin({ preventDefault: () => {} });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.strictEqual(deny.flags['pestovo_is_admin'], undefined, 'internal + пароль не 55555: админка не открывается');
+    assert.strictEqual(deny.getCustomTokenCalls(), 0);
+
     console.log('Tournament master authentication tests passed');
 })().catch(err => { console.error(err); process.exitCode = 1; });

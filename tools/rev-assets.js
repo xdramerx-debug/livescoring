@@ -15,6 +15,11 @@
  *  2. Пересобирает блок precache-манифеста в sw.js между маркерами
  *     BEGIN/END PRECACHE: все страницы + все найденные ассеты (с их ?v=)
  *     + manifest.json + img/* + docs/assistant-*.json.
+ *     Исключение (docs/mobile-audit.md, §1.1): файлы, которые грузит ТОЛЬКО
+ *     admin.html (админские бандлы, ~1 МБ), в предкэш не кладём — админы
+ *     всегда онлайн, а игрокам эти байты на установке PWA не нужны.
+ *     ?v= в HTML для них проставляется как обычно; в рантайме их подхватывает
+ *     SWR-обработчик fetch в sw.js (кэширует при первом запросе).
  *  3. Выводит CACHE_NAME из версии сайта (index.html → .version-number)
  *     и хеша манифеста: 'pestovo-v<версия>-<hash8>'. Любое изменение
  *     ассетов меняет имя кэша → старый кэш гарантированно сбрасывается
@@ -94,7 +99,13 @@ for (const page of htmlFiles) {
 
 // ── 4. Precache-манифест ──────────────────────────────────────────────────
 const pages = ['./'].concat(htmlFiles);
-const assets = Array.from(refs.keys()).sort().map(function (f) { return f + '?v=' + versions.get(f); });
+// Файл, нужный только админке, игрокам в предкэше не нужен (см. шапку, п.2).
+const assets = Array.from(refs.keys()).sort()
+    .filter(function (f) {
+        var owners = refs.get(f);
+        return !(owners.size === 1 && owners.has('admin.html'));
+    })
+    .map(function (f) { return f + '?v=' + versions.get(f); });
 
 const extras = [];
 if (exists('manifest.json')) extras.push('manifest.json');

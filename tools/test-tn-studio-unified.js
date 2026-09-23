@@ -112,11 +112,24 @@ tournaments.t3.registeredPlayers = { p1: { name: 'Иванов Иван', handic
 fire('tn-studio-tournaments', tournaments);
 click($sel('[data-act="tab"][data-id="groups"]'));
 check('без классического модуля — студийная форма (#tns-div)', !!$sel('#tns-div') && !$id('tn-div-t3'));
-win.tnNormalizeDivisions = function (t) { return Object.keys(t.divisions || {}); };
-win.tnDivisionsEditorHtml = function (tnId, divs) { return '<div class="stub-classic">classic:' + tnId + ':' + divs.length + '</div>'; };
+check('admin.html подключает js/admin-tournaments.js (движок панели)', html.indexOf('js/admin-tournaments.js') !== -1);
+// НАСТОЯЩИЙ классический модуль + стендин чистого хелпера нормализации из
+// utils.js (сам хелпер по-настоящему покрыт tools/test-admin-tn-groups.js).
+win.t = function (k) { return k; };
+win.tnNormalizeDivisions = function (t) {
+    return Object.keys(t.divisions || {}).map(function (k) {
+        var d = t.divisions[k] || {};
+        return { id: k, name: d.name, gender: d.gender, hcpFrom: d.hcpFrom, hcpTo: d.hcpTo, tee: d.tee, format: d.format, members: d.members };
+    });
+};
+win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-tournaments.js'), 'utf8'));
 click($sel('[data-act="tab"][data-id="groups"]'));
 check('классическая панель вмонтирована в свой контейнер', inStudio('tn-div-t3'));
 check('кэш tnTnVals подставлен Студией', !!(win.tnTnVals && win.tnTnVals.t3 && win.tnTnVals.t3.divisions));
+check('обрезка гандикапа: чекбокс tn-cut-enabled', !!$id('tn-cut-enabled-t3'));
+check('умные группы: селектор числа групп + кнопка',
+    !!$id('tnd-count-t3') && $id('tn-studio-root').textContent.indexOf('Умные группы') !== -1);
+check('ручное добавление: поле tnd-name', !!$id('tnd-name-t3'));
 check('секция «Состав зачётов» ниже панели', $id('tn-studio-root').textContent.indexOf('Состав зачётов') !== -1);
 check('возраст зачёта правится (div-age)', !!$sel('[data-act="div-age"]'));
 check('назначение из состава (assign)', !!$sel('[data-act="assign"][data-id="d1"]'));

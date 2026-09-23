@@ -6,7 +6,9 @@
  *   NODE_PATH=$(pwd)/../nmtest/node_modules node tools/test-admin-ui.js
  *
  * Поднимает настоящую страницу admin.html в jsdom, выполняет настоящие
- * js/name-variants.js и js/admin.js и проверяет:
+ * js/name-variants.js, js/admin.js и выведенные из него фичи-модули
+ * (admin-players.js, admin-players-excel.js, admin-agr.js, admin-name-forms.js
+ * — в порядке подключения admin.html) и проверяет:
  *   — карточка «Формы имён» рисуется со всеми режимами;
  *   — сохранение режима меняет поведение синхронизации;
  *   — кнопка «Проверить имена игроков» находит «Наташа/Наталия Смирнова».
@@ -74,6 +76,10 @@ function makeRef() {
 
 win.eval(fs.readFileSync(path.join(ROOT, 'js/name-variants.js'), 'utf8'));
 win.eval(fs.readFileSync(path.join(ROOT, 'js/admin.js'), 'utf8'));
+win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-players.js'), 'utf8'));
+win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-players-excel.js'), 'utf8'));
+win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-agr.js'), 'utf8'));
+win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-name-forms.js'), 'utf8'));
 
 var fails = 0, total = 0;
 function check(title, cond, extra) {

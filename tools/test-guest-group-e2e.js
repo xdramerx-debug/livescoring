@@ -107,6 +107,14 @@ const STUB = `<script>
 async function runScenario(expectSuccess, label, players) {
     let html = fs.readFileSync(path.join(ROOT, 'setup-round.html'), 'utf8');
     html = html.replace(/<script src="https?:[^"]*"><\/script>/g, '');
+    // jsdom не выполняет <script type="module"> — фундамент (t, toast,
+    // currentLang, …) подставляем семью классическими тегами, как делает
+    // tools/browser-check.js для своего classic-варианта (тот же порядок).
+    var FOUNDATION = ['js/course-config.js', 'js/format.js', 'js/date-range.js',
+        'js/safe-html.js', 'js/dom.js', 'js/i18n.js', 'js/official-alerts.js'];
+    html = html.replace(
+        /<script\s+type="module"\s+src="dist\/livescoring-modules\.js[^"]*"><\/script>/,
+        FOUNDATION.map(function (f) { return '<script src="' + f + '"></script>'; }).join('\n'));
     html = html.replace(/<head([^>]*)>/i, '<head$1>' + STUB);
     const vc = new VirtualConsole();
     const bootErrors = [];

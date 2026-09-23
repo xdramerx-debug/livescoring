@@ -21,6 +21,28 @@ const webpush = require('web-push');
 admin.initializeApp();
 const db = admin.database();
 
+// ── Валидация входных данных (defense-in-depth; основные правила — в database.rules.json) ──
+function str(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
+function validAudience(a) {
+    if (!a || typeof a !== 'object') return { type: 'all', includePwa: false, uids: {} };
+    const type = (a.type === 'roster' || a.type === 'protocol') ? a.type : 'all';
+    const uids = {};
+    if (a.uids && typeof a.uids === 'object') {
+        Object.keys(a.uids).forEach(function (k) {
+            if (k && a.uids[k] !== false && a.uids[k] != null) uids[String(k)] = true;
+        });
+    }
+    return { type: type, includePwa: a.includePwa === true, uids: uids };
+}
+// Наивный rate-limit в памяти (per Cloud Function instance).
+const _rateBuckets = {};
+function rateLimited(key, ms) {
+    const now = Date.now();
+    if (_rateBuckets[key] && now - _rateBuckets[key] < ms) return true;
+    _rateBuckets[key] = now;
+    return false;
+}
+
 // Публичный VAPID-ключ лежит в /settings/vapid_public_key (читают все),
 // приватный — в /vapid/privateKey (доступен только админ-правилам).
 async function ensureVapidKeys() {
@@ -115,10 +137,14 @@ function audienceOf(b) {
 exports.onBroadcastCreated = functions.database.ref('/broadcasts/{id}').onCreate(async function (snap) {
     try {
         const b = snap.val() || {};
+        const title = str(b.title, 200);
+        const body = str(b.body, 1000);
+        if (!title && !body) { functions.logger.warn('onBroadcastCreated: empty broadcast, skip'); return; }
+        if (rateLimited('bc', 800)) { functions.logger.warn('onBroadcastCreated: rate-limited'); return; }
         const keys = await ensureVapidKeys();
         configureWebPush(keys);
 
-        const aud = audienceOf(b);
+        const aud = validAudience(b.audience);
         const allSubs = await getAllSubscriptions();
         let targets;
         if (aud.type === 'all') {
@@ -131,8 +157,8 @@ exports.onBroadcastCreated = functions.database.ref('/broadcasts/{id}').onCreate
         }
 
         const payload = {
-            title: b.title || '📢 Pestovo',
-            body: b.body || '',
+            title: title || '📢 Pestovo',
+            body: body,
             tag: 'broadcast-' + snap.key,
             url: b.link || '/tournaments.html',
             ts: b.time || Date.now()
@@ -149,6 +175,8 @@ exports.onAlertCreated = functions.database.ref('/alerts/{id}').onCreate(async f
     try {
         const a = snap.val() || {};
         if (a.status && a.status !== 'active') return;
+        if (a.type !== 'referee' && a.type !== 'marshal') { functions.logger.warn('onAlertCreated: invalid type, skip'); return; }
+        if (rateLimited('alert:' + (a.roundId || a.hole || 'anon'), 2000)) { functions.logger.warn('onAlertCreated: rate-limited'); return; }
         const keys = await ensureVapidKeys();
         configureWebPush(keys);
 

@@ -105,9 +105,17 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 sandbox.db = dbStub;
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'start-admin.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'live.js'), 'utf8'), sandbox);
+
+// Замораживаем «сейчас», чтобы датозависимые проверки были детерминированными.
+// Фикстуры используют 2026-09-20 как «будущее» относительно этой даты,
+// поэтому системная дата (2026-09-23+) не должна влиять на результат.
+const __FIXED_NOW = new Date('2026-09-01T00:00:00').getTime();
+Date.now = function () { return __FIXED_NOW; };
 function flushRaf() { while (rafQueue.length) rafQueue.shift()(); }
 
 // ══════════════════════════════════════════════════════════

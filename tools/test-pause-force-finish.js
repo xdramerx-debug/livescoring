@@ -141,6 +141,8 @@ sandbox.globalThis = sandbox;
 sandbox.db = dbStub;
 
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'), sandbox);
 
 // ── ТЕСТ 1: Пауза раунда и возобновление ──

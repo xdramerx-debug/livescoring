@@ -96,6 +96,8 @@ function buildSandbox(scriptName, domIds) {
     sandbox.globalThis = sandbox;
     sandbox.db = { ref: p => makeRef(p) };
     vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sandbox);
+    vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox);
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8'), sandbox);
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', scriptName + '.js'), 'utf8'), sandbox);
     return { sandbox, getEl, dbWrites, dbState };

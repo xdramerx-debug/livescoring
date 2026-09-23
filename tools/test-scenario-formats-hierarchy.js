@@ -172,6 +172,8 @@ var sandbox = {
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sandbox, { filename: 'js/utils.js' });
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox, { filename: 'js/utils.js' });
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'), sandbox, { filename: 'js/utils.js' });
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/start-admin.js'), 'utf8'), sandbox, { filename: 'js/start-admin.js' });
 
@@ -437,6 +439,8 @@ function runQrStart(doc) {
     sb2.window.document = sb2.document;
     sb2.globalThis = sb2;
     vm.createContext(sb2);
+    vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sb2, { filename: 'js/utils.js' });
+    vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sb2, { filename: 'js/utils.js' });
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'), sb2, { filename: 'js/utils.js' });
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/qr-start.js'), 'utf8'), sb2, { filename: 'js/qr-start.js' });
 

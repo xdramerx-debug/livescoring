@@ -68,6 +68,8 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'), sandbox);
 
 const utils = fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8');

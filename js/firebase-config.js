@@ -40,3 +40,22 @@ auth.onAuthStateChanged(function(user) {
         if (typeof onAuthReady === 'function') onAuthReady(null, null);
     }
 });
+
+// ── Глобальный перехват ошибок ──
+// Единая точка для будущего репортинга (Sentry / аналитика). Сейчас только
+// логирует; подключить внешний сервис можно внутри reportError.
+function reportError(err, context) {
+    try {
+        var detail = err && (err.stack || err.message || String(err));
+        console.error('[reportError]', context || '', detail);
+    } catch (_) { /* никогда не падаем в обработчике ошибок */ }
+}
+if (typeof window !== 'undefined') {
+    window.reportError = reportError;
+    window.addEventListener('error', function (e) {
+        reportError(e.error || e.message, 'window.error:' + (e.filename || '') + ':' + (e.lineno || ''));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+        reportError(e.reason, 'unhandledrejection');
+    });
+}

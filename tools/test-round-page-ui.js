@@ -58,7 +58,7 @@ win.db = { ref: p => makeRef(p) };
 win.confirm = () => true;
 win.navigator.vibrate = () => {};
 
-['js/utils.js', 'js/live.js'].forEach(function (rel) {
+['js/course-config.js', 'js/format.js', 'js/utils.js', 'js/live.js'].forEach(function (rel) {
     win.eval(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 });
 

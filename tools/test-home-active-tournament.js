@@ -243,6 +243,41 @@ ok(s4._els['active-tournament-section'].classList.contains('hidden') === false,
     'UI: legacy status=active без lifecycleStatus тоже виден');
 ok(s4._els['live-tournament-rounds'].innerHTML.indexOf('Классика') !== -1, 'UI: имя legacy-турнира');
 
+// ── Видимость как в каталоге: publicAccess=false перекрывает active ──
+var hidden = makeSandbox({
+    tournaments: {
+        secret: { name: 'Закрытый кубок', status: 'active', publicAccess: false },
+        open: { name: 'Открытый кубок', status: 'active' }
+    },
+    rounds: {
+        hiddenRound: { status: 'active', tournamentId: 'secret', tournamentName: 'Закрытый кубок', players: {} },
+        visibleRound: { status: 'active', tournamentId: 'open', tournamentName: 'Открытый кубок', players: {} }
+    }
+});
+hidden.loadLiveRounds();
+ok(hidden.homeActiveTnList().length === 1 && hidden.homeActiveTnList()[0][0] === 'open', 'скрытый active отсутствует в списке главной');
+ok(hidden._els['live-tournament-rounds'].innerHTML.indexOf('Закрытый кубок') === -1, 'скрытый раунд не выводится');
+ok(hidden._els['live-tournament-rounds'].innerHTML.indexOf('Открытый кубок') !== -1, 'публичный раунд выводится');
+ok(hidden.homeRoundIsPublic({ protocolId: 'secret' }) === false, 'связь через protocolId скрывается');
+ok(hidden.homeRoundIsPublic({ protocolId: 'other-protocol', tournamentName: 'Закрытый кубок' }) === false, 'legacy протокол связывается по названию');
+ok(hidden.homeRoundIsPublic({ tournamentName: 'Закрытый кубок' }) === false, 'старый раунд с названием скрывается');
+ok(hidden.homeRoundIsPublic({ status: 'active' }) === true, 'обычная игра не скрывается');
+hidden.buildRecentRowHTML = function(id) { return id; };
+hidden.homeLastRecentData = {
+    oldSecret: { status: 'completed', tournamentId: 'secret' },
+    oldOpen: { status: 'completed', tournamentId: 'open' }
+};
+hidden.renderHomeRecentResults(hidden.homeLastRecentData);
+ok(hidden._els['recent-results'].innerHTML.indexOf('oldSecret') === -1 &&
+   hidden._els['recent-results'].innerHTML.indexOf('oldOpen') !== -1, 'история скрытого турнира не выводится');
+hidden.homeActiveTournaments.open.publicAccess = false;
+hidden.renderHomeLiveRounds(hidden.homeLastRoundsData);
+ok(hidden._els['active-tournament-section'].classList.contains('hidden'), 'секция исчезает после скрытия турнира');
+ok(hidden._els['live-tournament-rounds'].innerHTML.indexOf('Открытый кубок') === -1, 'раунд исчезает после скрытия турнира');
+hidden.homeActiveTournaments.open.publicAccess = true;
+hidden.renderHomeLiveRounds(hidden.homeLastRoundsData);
+ok(!hidden._els['active-tournament-section'].classList.contains('hidden'), 'после публикации секция возвращается');
+
 console.log('');
 console.log(failures ? ('ПРОВАЛЕНО: ' + failures + ' из ' + checks) : ('ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ (' + checks + ')'));
 process.exit(failures ? 1 : 0);

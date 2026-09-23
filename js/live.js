@@ -49,7 +49,7 @@ document.addEventListener('pestovo-stableford-default-change', function() {
 // (медленная загрузка/кэш SW), подписываемся на раунд и из DOMContentLoaded.
 var roundViewListening = false;
 function bootRoundViewOnce() {
-    if (roundViewListening || !curRid) return;
+    if (roundViewListening || !curRid || (typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) return;
     roundViewListening = true;
     initRoundView();
 }
@@ -1468,7 +1468,22 @@ function saveHoleScores() {
         updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = 'pending';
     }
 
-    dbUpdateWithOfflineQueue(updates).then(function() {
+    // Все изменения счёта и подтверждения выполняются атомарно на сервере.
+    // Локальные updates выше оставлены только для расчёта отображения; они
+    // никогда не отправляются напрямую в RTDB.
+    var scoreOps = [{kind:'score',playerId:myUid,hole:h,score:myScore}];
+    if (myTargetUid && !targetIsFinished) scoreOps.push({kind:'marker',playerId:myTargetUid,hole:h,score:targetScore});
+    pestovoScoreWrite(curRid, scoreOps, myUid).then(function(res) {
+        if (res && res.offline) {
+            var pendingOrder = getRoundOrder(curRoundData);
+            var pendingIdx = pendingOrder.indexOf(h);
+            if (pendingIdx >= 0 && pendingIdx < pendingOrder.length - 1) {
+                playHole = pendingOrder[pendingIdx + 1]; myScore = 0; targetScore = 0;
+            }
+            rememberResumeHole(curRid, myUid, playHole);
+            renderPlayHole(); buildPlayHolesNav();
+            return;
+        }
         var order = getRoundOrder(curRoundData);
         var idx = order.indexOf(h);
 

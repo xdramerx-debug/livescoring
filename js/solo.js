@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Если live.js уже делегировал этот раунд сюда — не запускаем повторно
         if (window._pestovoSoloBooted !== rid) {
             soloRid = rid;
-            loadExistingSolo();
+            if (!(typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) loadExistingSolo();
         }
         return;
     }
@@ -200,6 +200,7 @@ function initSoloView() {
 }
 
 function soloAuthReady(u, d) {
+    if (u && soloRid && !soloRound && !(typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) loadExistingSolo();
     // navAuth уже вызван в onAuthReady (js/live.js) — здесь только дефолты формы соло
     if (u && d) {
         var fn = document.getElementById('s-firstname');
@@ -851,15 +852,26 @@ function saveSolo() {
     var scoreToSave = curScore; // фиксируем счёт до колбэка: ниже curScore может сбрасываться в 0
 
     var uid = getPlayerId();
-    var path = 'rounds/' + soloRid + '/players/' + uid + '/scores/' + savedHole;
 
     // Ввод/исправление счёта снимает ранее нажатый «Пропустить».
     try { if (typeof pestovoSkipDropAckHoles === 'function') pestovoSkipDropAckHoles(soloRid, uid, [savedHole]); } catch (e) { console.warn("[silent]", e); }
 
-    dbSetWithOfflineQueue(path, scoreToSave).then(function(res) {
-        if (res && res.offline) return null;
+    var soloQueued = false;
+    pestovoScoreWrite(soloRid, [{kind:'score',playerId:uid,hole:savedHole,score:scoreToSave}], uid).then(function(res) {
+        if (res && res.offline) { soloQueued = true; return null; }
         return recordHoleCompletionTime(soloRid, uid, savedHole, Date.now());
     }).then(function() {
+        if (soloQueued) {
+            var pendingOrder = getRoundOrder(soloRound);
+            var pendingIdx = pendingOrder.indexOf(savedHole);
+            if (pendingIdx >= 0 && pendingIdx < pendingOrder.length - 1) { curHole = pendingOrder[pendingIdx + 1]; curScore = 0; }
+            rememberResumeHole(soloRid, uid, curHole);
+            renderCurrentHole(); buildHoles(); renderMiniCard('mini-card');
+            soloIsChanging = false;
+            if (soloSaveWatchdog) { clearTimeout(soloSaveWatchdog); soloSaveWatchdog = null; }
+            soloSaveInFlight = false;
+            return;
+        }
         var par = holePar(savedHole);
         var d = scoreToSave - par;
 

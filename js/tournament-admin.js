@@ -36,11 +36,11 @@
     function hasAccess() { return typeof root.hasAdminPanelAccess !== 'function' || root.hasAdminPanelAccess(); }
     function serverAdmin() {
         if (typeof root.isFirebaseAdmin === 'function' && root.isFirebaseAdmin()) return true;
-        return !!(root.currentUser && root.currentUserData && root.currentUserData.role === 'admin');
+        return !!(root.currentUser && root.currentUserData && (root.currentUserData.role === 'admin' || root.currentUserData.admin === true));
     }
     function assertWrite() {
-        if (serverAdmin()) return true;
-        toast(tr('Для записи нужен аккаунт Firebase с ролью администратора. Мастер-пароль не заменяет серверные права.', 'A Firebase account with the administrator role is required for writes. The master password is not a server permission.'), 'error');
+        if (serverAdmin() || (typeof root.isTournamentMaster === 'function' && root.isTournamentMaster())) return true;
+        toast(tr('Войдите с мастер-паролем или аккаунтом администратора.', 'Sign in with the master password or an administrator account.'), 'error');
         return false;
     }
     function studioRoot() { return typeof document !== 'undefined' ? document.getElementById('tn-studio-root') : null; }

@@ -778,7 +778,22 @@ function homeTnRowsHtml(tnEntries, forceOpen) {
 // «не появлялся», пока не находилось ни одного активного турнирарного
 // раунда.
 var homeActiveTournaments = {};
+var homeTournamentsLoaded = false;
 var homeLastRoundsData = null;
+// Та же настройка видимости, что и в каталоге турниров. Раунд без
+// связанного турнира остаётся обычным раундом и не пропадает с главной.
+function homeRoundIsPublic(r) {
+    if (!r) return true;
+    var id = r.tournamentId || r.protocolId;
+    if (!homeTournamentsLoaded && (id || r.tournamentName)) return false;
+    if (id && homeActiveTournaments[id] && homeActiveTournaments[id].publicAccess === false) return false;
+    // Старые записи могли сохранить только название турнира.
+    if ((!id || !homeActiveTournaments[id]) && r.tournamentName) return !Object.keys(homeActiveTournaments).some(function(key) {
+        var tn = homeActiveTournaments[key];
+        return tn && tn.publicAccess === false && tn.name === r.tournamentName;
+    });
+    return true;
+}
 function homeActiveTnList() {
     var out = [];
     Object.keys(homeActiveTournaments || {}).forEach(function(id) {
@@ -786,7 +801,7 @@ function homeActiveTnList() {
         var live = (typeof isLiveTournament === 'function')
             ? isLiveTournament(tVal)
             : (tVal.status === 'active' || tVal.lifecycleStatus === 'active');
-        if (live) out.push([id, tVal]);
+        if (live && tVal.publicAccess !== false) out.push([id, tVal]);
     });
     out.sort(function(a, b) {
         return ((b[1].startedAt || b[1].createdAt || 0) - (a[1].startedAt || a[1].createdAt || 0));
@@ -821,9 +836,11 @@ function loadLiveRounds() {
     // не виден на главной»).
     bindRealtimeValue('home-active-tournaments', db.ref('tournaments'), function(sn) {
         homeActiveTournaments = (sn && sn.val && sn.val()) || {};
+        homeTournamentsLoaded = true;
         // Турниры могут прийти раньше раундов — всё равно рисуем блок,
         // иначе активный турнир «ждёт» rounds и не появляется на главной.
         renderHomeLiveRounds(homeLastRoundsData || {});
+        if (homeLastRecentData) renderHomeRecentResults(homeLastRecentData);
     });
 
     bindRealtimeValue('home-live-rounds', db.ref('rounds'), function(snap) {
@@ -851,7 +868,7 @@ function renderHomeLiveRounds(data) {
                 }
             }
         }
-        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active'; });
+        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active' && homeRoundIsPublic(e[1]); });
 
         renderCourseHolesStrip(entries);
 
@@ -1130,39 +1147,46 @@ function buildRecentRowHTML(id, r) {
         '</div>';
 }
 
+var homeLastRecentData = null;
 function loadRecentResults() {
     var el = document.getElementById('recent-results');
     if (!el || typeof db === 'undefined') return;
 
     bindRealtimeValue('home-recent-results', db.ref('rounds'), function(snap) {
-        var data = snap.val() || {};
-        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
-        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'completed'; });
-
-        if (entries.length === 0) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-clock"></i><p>' + t('no_completed') + '</p></div>';
-            return;
-        }
-
-        entries.sort(function(a, b) {
-            var timeA = a[1].completedAt || a[1].createdAt || 0;
-            var timeB = b[1].completedAt || b[1].createdAt || 0;
-            return timeB - timeA;
-        });
-
-        entries = entries.slice(0, 5);
-
-        var html = '';
-        entries.forEach(function(e) {
-            var id = e[0], r = e[1];
-            html += buildRecentRowHTML(id, r);
-        });
-
-        el.innerHTML = '<div class="live-who-list">' + html + '</div>';
-
-        // Восстанавливаем уже открытые панели счётных карточек после перерисовки
-        restoreLiveWhoPanels();
+        homeLastRecentData = snap.val() || {};
+        renderHomeRecentResults(homeLastRecentData);
     });
+}
+
+function renderHomeRecentResults(data) {
+    var el = document.getElementById('recent-results');
+    if (!el) return;
+    if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
+    var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'completed' && homeRoundIsPublic(e[1]); });
+
+    if (entries.length === 0) {
+        el.innerHTML = '<div class="empty"><i class="fas fa-clock"></i><p>' + t('no_completed') + '</p></div>';
+        return;
+    }
+
+    entries.sort(function(a, b) {
+        var timeA = a[1].completedAt || a[1].createdAt || 0;
+        var timeB = b[1].completedAt || b[1].createdAt || 0;
+        return timeB - timeA;
+    });
+
+    entries = entries.slice(0, 5);
+
+    var html = '';
+    entries.forEach(function(e) {
+        var id = e[0], r = e[1];
+        html += buildRecentRowHTML(id, r);
+    });
+
+    el.innerHTML = '<div class="live-who-list">' + html + '</div>';
+
+    // Восстанавливаем уже открытые панели счётных карточек после перерисовки
+    restoreLiveWhoPanels();
 }
 
 function loadClubStats() {

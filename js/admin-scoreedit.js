@@ -110,20 +110,23 @@ function seSaveRound(rid) {
     if (typeof db === 'undefined' || !db) return;
     var draft = seDraft[rid];
     if (!draft) { toast(currentLang === 'en' ? 'No changes' : 'Нет изменений', 'info'); return; }
-    var updates = {};
+    var operations = [];
     var changed = 0;
     Object.keys(draft).forEach(function(pid) {
         Object.keys(draft[pid]).forEach(function(h) {
             var v = draft[pid][h];
-            updates['rounds/' + rid + '/players/' + pid + '/scores/' + h] = v;
+            operations.push({kind:'score',playerId:pid,hole:Number(h),score:v || null});
             changed++;
             // Если у игрока есть маркер — синхронизируем его markerScores (карточка «как введено маркером»)
         });
     });
     if (!changed) { toast(currentLang === 'en' ? 'No changes' : 'Нет изменений', 'info'); return; }
-    updates['rounds/' + rid + '/updatedAt'] = Date.now();
-    db.ref().update(updates).then(function() {
-        toast((currentLang === 'en' ? '✅ Saved: ' : '✅ Сохранено лунок: ') + changed, 'success');
+    var batches = [];
+    for (var i=0;i<operations.length;i+=72) batches.push(operations.slice(i,i+72));
+    var queued = false;
+    batches.reduce(function(p, batch) { return p.then(function() { return pestovoScoreWrite(rid, batch).then(function(res) { if (res && res.offline) queued = true; }); }); }, Promise.resolve()).then(function() {
+        if (!queued) toast((currentLang === 'en' ? '✅ Saved: ' : '✅ Сохранено лунок: ') + changed, 'success');
+        else toast(currentLang === 'en' ? 'Waiting for server confirmation' : 'В очереди, ждём подтверждения сервера', 'warn');
         delete seDraft[rid];
         seRender();
     }).catch(function(err) {

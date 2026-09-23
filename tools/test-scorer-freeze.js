@@ -99,6 +99,7 @@ function buildSandbox(scriptName, domIds) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sandbox);
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox);
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8'), sandbox);
+    sandbox.pestovoScoreWrite = (rid, ops) => { dbWrites.push({ roundId: rid, operations: ops, via: 'scoreWrite' }); return Promise.resolve({ok:true}); };
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', scriptName + '.js'), 'utf8'), sandbox);
     return { sandbox, getEl, dbWrites, dbState };
 }
@@ -126,12 +127,12 @@ function runScorer() {
     sandbox.saveSc();
     sandbox.saveSc();
 
-    const scoreWrites = dbWrites.filter(w => w.path === 'rounds/R1/players/me/scores/1');
+    const scoreWrites = dbWrites.filter(w => w.via === 'scoreWrite' && w.operations[0].kind === 'score');
     eq(scoreWrites.length, 1, 'scorer: быстрые нажатия дают ровно одну запись счёта');
     ok(sandbox.scSaving === true, 'scorer: флаг занятости записи установлен');
     ok(getEl('sc-save-btn').disabled === true, 'scorer: кнопка заблокирована на время записи');
     sandbox.saveSc();
-    eq(dbWrites.filter(w => w.path === 'rounds/R1/players/me/scores/1').length, 1, 'scorer: повторный вызов ничего не пишет');
+    eq(dbWrites.filter(w => w.via === 'scoreWrite' && w.operations[0].kind === 'score').length, 1, 'scorer: повторный вызов ничего не пишет');
 
     // После разрешения промисов блокировка снимается, лунка переходит дальше.
     return new Promise(function (done) {
@@ -165,7 +166,7 @@ function runMarker() {
     sandbox.saveMk();
     sandbox.saveMk();
 
-    const scoreWrites = dbWrites.filter(w => w.path === 'markers/R1/me/1');
+    const scoreWrites = dbWrites.filter(w => w.via === 'scoreWrite' && w.operations[0].kind === 'marker');
     eq(scoreWrites.length, 1, 'marker: быстрые нажатия дают ровно одну запись счёта');
     ok(sandbox.mkSaving === true, 'marker: флаг занятости записи установлен');
     ok(getEl('mk-save-btn').disabled === true, 'marker: кнопка заблокирована на время записи');

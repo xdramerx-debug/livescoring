@@ -74,10 +74,7 @@
                 <input type="password" id="adm-master-pass" class="form-input" autocomplete="current-password" placeholder="••••••••">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-                <label for="adm-remember" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;font-size:13px;color:var(--white);">
-                    <input type="checkbox" id="adm-remember" style="width:18px;height:18px;cursor:pointer;">
-                    <span data-i18n="remember_me">Запомнить меня</span>
-                </label>
+                <small style="color:var(--muted);" data-i18n="admin_master_session_hint">Сессия по мастер-паролю действует до закрытия браузера</small>
                 <a href="auth.html?redirect=admin.html" style="font-size:12px;color:var(--gold);text-decoration:none;" data-i18n="nav_login">Войти</a>
             </div>
             <div id="adm-error" class="form-err hidden"></div>
@@ -93,6 +90,7 @@
             <button class="admin-tab active" onclick="switchTab('alerts',this)" data-i18n="tab_alerts">Вызовы 🚨</button>
             <button class="admin-tab" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
             <button class="admin-tab" onclick="switchTab('scores',this)" data-i18n="tab_scores">Счёт ⛳</button>
+            <button class="admin-tab" onclick="switchTab('scoreaudit',this)">Журнал счёта 🕒</button>
             <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
             <button class="admin-tab" onclick="switchTab('studio',this)" data-i18n="tab_studio">Турниры 🏆</button>
             <button class="admin-tab" onclick="switchTab('tournamentsview',this)" data-i18n="tab_tournaments_view">Турниры: вид 👁</button>
@@ -155,6 +153,20 @@
                     </div>
                 </div>
                 <div id="se-list"><p style="color:var(--muted);text-align:center;padding:20px;">Загрузка раундов…</p></div>
+            </div>
+        </div>
+
+        <div id="tab-scoreaudit" class="admin-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-clock-rotate-left"></i> Журнал действий со счётом</h2>
+                <p style="color:var(--muted);font-size:13px;">Сохранённые сервером действия за последние 30 дней. QR-доступ без входа отмечается отдельно: личность оператора не подтверждена. Время показано в часовом поясе устройства.</p>
+                <div class="form-row" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+                    <label class="form-group" style="flex:1;min-width:190px;">ФИО или ID игрока<input id="sa-search" class="form-input" type="search" placeholder="Фамилия Имя" oninput="saFilter()"></label>
+                    <label class="form-group">Дата подтверждения<input id="sa-date" class="form-input" type="date" onchange="saLoad()"></label>
+                    <button type="button" class="btn btn-og btn-sm" onclick="document.getElementById('sa-date').value='';saLoad()">Все 30 дней</button>
+                    <button type="button" class="btn btn-ol btn-sm" onclick="saRefresh()">Обновить</button>
+                </div>
+                <div id="sa-results" aria-live="polite"></div>
             </div>
         </div>
 
@@ -1191,8 +1203,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="js/firebase-config.js?v=ec97b0a9"></script>
-<script type="module" src="dist/livescoring-modules.js?v=21628504"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+<script src="js/firebase-config.js?v=57564a0d"></script>
+<script type="module" src="dist/livescoring-modules.js?v=d41796ba"></script>
     <script src="js/utils.js?v=e8fb4472"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/assistant-config.js?v=f0f8af7c"></script>
@@ -1201,14 +1214,15 @@
 <script src="js/tournament-core.js?v=6fbba5de"></script>
 <script src="js/tn-engine.js?v=0d245f27"></script>
 <script src="js/tn-wizard.js?v=9e401a7d"></script>
-<script src="js/tournament-admin.js?v=507ad46d"></script>
+<script src="js/tournament-admin.js?v=7265cd3b"></script>
 <script src="js/tn-studio-core.js?v=084a748a"></script>
-<script src="js/tn-studio.js?v=c82ba9c7"></script>
-<script src="js/admin.js?v=17fa7d38"></script>
+<script src="js/tn-studio.js?v=94625b0d"></script>
+<script src="js/admin.js?v=b164cb66"></script>
 <script src="js/admin-players.js?v=62b1bd6f"></script>
 <script src="js/admin-tournaments.js?v=e22ca1ba"></script>
 <script src="js/admin-flights.js?v=84486ca0"></script>
-<script src="js/admin-scoreedit.js?v=759fc8b1"></script>
+<script src="js/admin-score-audit.js?v=2fb81262"></script>
+<script src="js/admin-scoreedit.js?v=55d734fb"></script>
 <script src="js/admin-broadcasts.js?v=06387c38"></script>
 <script src="js/admin-channels.js?v=006a9dc3"></script>
 <script src="js/admin-alerts.js?v=7b28ee0c"></script>
@@ -1221,6 +1235,7 @@
 <script src="js/start-admin.js?v=ac56efb4"></script>
 <script src="js/pe-edit.js?v=90a9674d"></script>
 <script src="js/design-admin.js?v=70a7c0c4"></script>
-<script src="js/pwa.js?v=67f248b8"></script>
+<script src="js/score-write.js?v=6f39f00e"></script>
+<script src="js/pwa.js?v=1251735a"></script>
 </body>
 </html>

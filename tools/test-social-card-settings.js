@@ -116,6 +116,7 @@ function load(file) {
 
 load('js/utils.js');
 load('js/admin.js');
+load('js/admin-display.js');
 
 var fails = 0;
 var total = 0;

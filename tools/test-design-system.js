@@ -314,8 +314,8 @@ function loadDesign(ctx) {
 
     var sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
     ok(sw.indexOf('pestovo-v' + siteVersion) !== -1, 'sw.js: CACHE_NAME не соответствует версии ' + siteVersion);
-    ok(sw.indexOf('css/design-presets.css?v=1') !== -1, 'sw.js: не кэшируется design-presets.css');
-    ok(sw.indexOf('js/design-system.js?v=1') !== -1, 'sw.js: не кэшируется design-system.js');
+    ok(sw.indexOf('css/design-presets.css?v=') !== -1, 'sw.js: не кэшируется design-presets.css');
+    ok(sw.indexOf('js/design-system.js?v=') !== -1, 'sw.js: не кэшируется design-system.js');
     ok(sw.indexOf('design-preview.html') !== -1, 'sw.js: не кэшируется design-preview.html');
 
     ok(fs.existsSync(path.join(ROOT, 'design-preview.html')), 'Нет страницы сравнения design-preview.html');

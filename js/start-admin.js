@@ -467,7 +467,7 @@ function psPlayerFormatOptionsHtml(p) {
     try { psResolvedFormats().forEach(add); } catch (e) { console.warn("[silent]", e); }
     ['Stroke Play', 'Stroke Play (Gross)', 'Stroke Play (Net)', 'Stableford', 'Match Play 1v1', 'Match Play 2v2'].forEach(add);
     if (p && p.format) add(p.format);
-    var escFn = (typeof escapeHtml === 'function') ? escapeHtml : function(x) { return String(x == null ? '' : x); };
+    var escFn = (typeof escapeHtml === 'function') ? escapeHtml : function(x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); };
     var html = '<option value=""' + (!p || !p.format ? ' selected' : '') + '>' + (en ? '— (from group/protocol)' : '— (от группы/протокола)') + '</option>';
     list.forEach(function(f) {
         var label = (typeof pestovoFormatLabel === 'function' && f !== 'Stroke Play') ? pestovoFormatLabel(f) : escFn(f);

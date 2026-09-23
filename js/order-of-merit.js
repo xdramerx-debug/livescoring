@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadOrderOfMerit();
 });
 
-function onAuthReady(u, d) { navAuth(u, d); }
 
 function loadOrderOfMerit() {
     if (typeof db === 'undefined') return;

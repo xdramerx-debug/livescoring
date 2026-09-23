@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Pestovo TV Leaderboard</title>
-    <link rel="stylesheet" href="css/style.css?v=34">
-    <link rel="stylesheet" href="css/design-presets.css?v=1">
-    <script src="js/design-system.js?v=1"></script>
+    <link rel="stylesheet" href="css/style.css?v=41f65af3">
+    <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
+    <script src="js/design-system.js?v=702b1ef1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -61,11 +61,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="js/firebase-config.js?v=2"></script>
-<script src="js/course-config.js?v=1"></script>
-    <script src="js/format.js?v=1"></script>
-    <script src="js/safe-html.js?v=1"></script>
-    <script src="js/utils.js?v=65"></script>
+<script src="js/firebase-config.js?v=ec97b0a9"></script>
+<script src="js/course-config.js?v=c8e378ff"></script>
+    <script src="js/format.js?v=c1b8bcd1"></script>
+    <script src="js/safe-html.js?v=5ed8edaf"></script>
+    <script src="js/dom.js?v=90d445ae"></script>
+    <script src="js/i18n.js?v=46baed06"></script>
+    <script src="js/official-alerts.js?v=4bf03ebf"></script>
+    <script src="js/utils.js?v=cc854fcc"></script>
 <script>
 function tvGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 function updateClock() {
@@ -198,6 +201,6 @@ var tvScrollRaf = null;
     tvScrollRaf = requestAnimationFrame(tick);
 })();
 </script>
-<p class="site-version" style="position:fixed;right:12px;bottom:6px;z-index:5;">Версия сайта: <span class="version-number">1.79.0</span></p>
+<p class="site-version" style="position:fixed;right:12px;bottom:6px;z-index:5;">Версия сайта: <span class="version-number">1.82.0</span></p>
 </body>
 </html>

@@ -1,7 +1,9 @@
 # Реализованные улучшения (по CODE-REVIEW.md)
 
-Выполнены 4 задачи из отчёта `docs/CODE-REVIEW.md`. Ниже — что сделано,
-ключевые файлы и важные оговорки.
+Выполнены задачи из отчёта `docs/CODE-REVIEW.md` (итерация 1 — разделы 1–4,
+итерация 2 — раздел 5, итерация 3 — раздел 6, итерация 4 — раздел 7,
+итерация 5 — раздел 8). Ниже — что сделано, ключевые файлы и важные
+оговорки.
 
 ## 1. CSP + центральный безопасный HTML-билдер (закрытие класса XSS)
 
@@ -102,13 +104,242 @@
 постепенно убрать дубликаты (`onAuthReady`, `callOfficial`, …) через общий
 модуль.
 
+## 5. Итерация 2: XSS-хвосты, дедупликация `onAuthReady`, модуль `dom.js`
+
+### 5.1 Безопасность — закрыты оставшиеся сырые пути (п.4.1 ревью)
+
+- **Аудит `fgSettingsHtml`/`fgRenderPreview` (admin.js) завершён.** Имена
+  игроков уже экранировались (`escapeHtml(rp.name)`); найден и закрыт
+  пропущенный путь: нечисловой `rp.handicap` (пользовательское поле из
+  Firebase) попадал в HTML **как есть** → теперь `escapeHtml(String(...))`.
+  Value-атрибуты `fg-time`/`fg-interval` (в обоих шагах модалки) тоже
+  экранируются — defense in depth.
+- **Убраны fallback-и «как есть»** из паттерна
+  `typeof escapeHtml === 'function' ? escapeHtml(x) : x` (quick win №3 ревью):
+  `js/feed.js` (title/body/link), `js/stats.js` (5 мест), `js/utils.js`
+  (бейдж завершения + `buildOfficialCallText`). Экранирование теперь
+  безусловное. Осмысленный остаток один: `buildOfficialCallText` использует
+  `String(v)` только при `withHtml === false` (там это plain-text, не HTML).
+  Самодостаточный fallback в `tnScEsc` (tn-scorecard.js) оставлен — его ветка
+  «как есть» сама экранирует.
+- **Guard ссылок в анонсах** (feed.js): `b.link` проверяется на схему
+  `javascript:`/`data:`/`vbscript:` — подменяется на `tournaments.html`
+  (правила БД разрешают запись только админам, это второй рубеж).
+
+### 5.2 Дедупликация `onAuthReady` (quick win №2 ревью)
+
+В `js/utils.js` (после `navAuth`) добавлен **дефолт**
+`function onAuthReady(u, d) { navAuth(u, d); }`, а из 9 страниц удалены
+идентичные копии: `app.js`, `auth.js`, `feed.js`, `guide.js`, `handicap.js`,
+`leaderboard.js`, `order-of-merit.js`, `players.js`, `stats.js`.
+Страницы со своей логикой продолжают переопределять функцию в своём
+скрипте (он грузится позже и потому выигрывает): `admin.js`, `live.js`,
+`predictor.js`, `tournaments.js`, `tournament-public.js`, `assistant.js`.
+Итог: 14 определений → 1 дефолт + 6 осмысленных override.
+
+Полный вариант «шины событий» (registerOnAuth) не вводился сознательно:
+текущий паттерн «дефолт + override» устраняет дубликаты без переписывания
+вызовов в `firebase-config.js`.
+
+### 5.3 Продолжение дробления `utils.js`: извлечён `js/dom.js`
+
+Из `js/utils.js` вынесены чистые браузерные хелперы (без Firebase и i18n):
+`TOAST_DURATION_MS`, `ensureToastRoot`, `toastIconFor`, `toast`,
+`toastSequence`, `isPlayerModeEnabled`, `vib`, `escapeHtml` → `js/dom.js`.
+Загружается на всех страницах в порядке
+`course-config → format → safe-html → dom → utils`.
+
+- `src/dom.js` — каноническая ESM-версия (bridge на `window`), добавлена в
+  `src/index.js`; бандл `dist/livescoring-modules.js` собирается (5 модулей,
+  ~7.4 kB), глобалы доступны.
+- `tools/test-bootstrap.js` добавляет `dom.js` к префиксу для vm-тестов;
+  явные загрузчики (`test-group-round-setup.js`, `test-guest-group-dedupe.js`,
+  `test-history-dedupe.js`) тоже грузят `dom.js`.
+- Кэш: `sw.js` — добавлен `js/dom.js?v=1`, `utils.js?v=65→66`,
+  `feed.js?v=4`, `stats.js?v=5`, `CACHE_NAME → pestovo-v1.80.0`; версии в
+  HTML синхронизированы (тест `test-design-system.js` проверяет
+  соответствие версий сайта и sw.js — он же поймал рассинхрон при бампе).
+
+### 5.4 Что НЕ делалось (осознанно)
+
+- `i18n.js` и Firebase-обёртки не извлекались (следующий шаг; `t()` крупный,
+  лучше отдельной итерацией с прогоном в браузере).
+- `callOfficial`/`buildHoles` (live/marker/scorer/solo) — это тонкая
+  page-specific обвязка над общим `requestOfficialCall`/состоянием страницы,
+  «дубликаты» отличаются телами; вынос в общий модуль потребует API с
+  колбэками-конфигами — выгода сомнительная. Оставлено как есть.
+- `.off()` слушателей (п.6 ревью): проверено — `live.js`/`solo.js` уже
+  снимают подписку перед переподпиской (`initRoundView`, смена раунда в
+  solo) и рендер уже debounce (`scheduleRoundRender`). Пункт закрыт ранее.
+
+## 6. Итерация 3: извлечён `js/i18n.js`, README с security-заметкой
+
+### 6.1 Продолжение дробления `utils.js`: извлечена i18n
+
+Из `js/utils.js` (было 12 586 строк, стало ~11 300) вынесен блок
+международизации (~1290 строк) → `js/i18n.js`: словарь `I18N` (RU/EN),
+`currentLang`, `t()`, `toggleLang()`, `updateLangButtons()`,
+`applyTranslations()`, `updateFooterYear()`. Блок самодостаточен: ссылок на
+`I18N` вне него не было, `toggleLang()` дергает страницы только через
+guarded `typeof X === 'function'` вызовы.
+
+- Порядок загрузки теперь `course-config → format → safe-html → dom →
+  i18n → utils` (20 HTML + `sw.js`; `js/format.js` зовёт `t()` только в
+  момент вызова, поэтому порядок внутри фундаментов не критичен).
+- `src/i18n.js` — каноническая ESM-версия (bridge на `window`); бандл —
+  6 модулей, ~76.5 kB (словарь переводов большой).
+- Boot-вызов `applyTranslations()` обёрнут в try/catch: в vm-тестах префикс
+  склеен с `utils.js` в один скрипт — hoisted функции страниц вызывались
+  раньше инициализации их данных. Обёртка заодно защищает будущий
+  ESM-бандл (см. `docs/MODULES-MIGRATION.md`, шаг 1).
+- `tools/test-bootstrap.js` добавляет `i18n.js` к префиксу; явные
+  загрузчики (`test-group-round-setup.js`, `test-guest-group-dedupe.js`,
+  `test-history-dedupe.js`) тоже грузят `i18n.js`.
+- Кэш: `sw.js` — добавлен `js/i18n.js?v=1`, `utils.js?v=66→67`,
+  `CACHE_NAME → pestovo-v1.81.0`, версия сайта в HTML синхронизирована.
+
+### 6.2 README + документирование `apiKey` (quick win №6)
+
+Создан `README.md`: структура репозитория, команды разработки, порядок
+загрузки модулей и раздел «Безопасность» — в том числе явная фиксация, что
+**Firebase Web API key в `js/firebase-config.js` не является секретом**
+(ключ идентифицирует проект, доступ защищают Security Rules; ротация ключа
+не является защитой) — п.4.2/8.6 ревью закрыты.
+
+### 6.3 Что НЕ делалось (осознанно)
+
+- Firebase-обёртки (`bindRealtimeValue`, `realtimeValueBindings`) не
+  извлекались — они захвачены сотнями вызовов внутри `utils.js`; выносить
+  вместе со слоем вызовов (отдельная итерация).
+
+> Дополнение (итерация 12): из `utils.js` извлечён блок отправки алертов
+> Telegram/VK → `js/official-alerts.js` (305 строк, 9 функций; load-time
+> кода нет, потребители зовут typeof-guarded). utils.js: 11 297 → 11 000.
+> Сам `bindRealtimeValue` остался в utils.js: это ~20 строк, внешне
+> бесспорных, а перенос ломал бы 15 файлов-потребителей ради косметики.
+- Переключение HTML на ESM-бандл (`dist/livescoring-modules.js`) — по-прежнему
+  требует проверки в браузере (шаг 1 плана миграции).
+
+## 7. Итерация 4: автоматизация версий статики и precache-манифеста SW
+
+Закрыт п.6 ревью («CACHE_NAME захардкожен, версии ассетов проставляются
+вручную — забытая версия = пользователи на старом кэше»).
+
+**Инструмент** — `tools/rev-assets.js` (`npm run assets`):
+1. Сканирует все `*.html`, находит локальные `js/`- и `css/`-ссылки и
+   проставляет `?v=<hash8>` (SHA-1 контента). Изменил файл → новый URL
+   появляется сам; попутно ловит битые `<script src>` (файл не существует →
+   ошибка).
+2. Пересобирает блок precache между маркерами `BEGIN/END PRECACHE` в
+   `sw.js`: все страницы + все найденные ассеты + `manifest.json` +
+   `img/*` + `docs/assistant-*.json`.
+3. Выводит `CACHE_NAME` из версии сайта (index.html) и хеша манифеста:
+   `pestovo-v1.81.0-<hash8>` — любое изменение ассетов ротирует кэш
+   в `activate()`.
+
+**Фиксация в CI/тестах:**
+- `tools/test-sw-precache.js` (новый): `rev-assets --check` обязан проходить
+  (свежесть `?v=` и манифеста), все URL манифеста существуют, формат
+  `CACHE_NAME` корректен. Пробовал «забыть бамп» — тест падает с точным
+  списком устаревшего.
+- `test-design-system.js`: проверка кэширования design-ассетов ослаблена с
+  конкретной `?v=1` до `?v=` (версии теперь хеши).
+
+**Заодно закрыты дыры старого ручного списка** — манифест стал строгим
+надмножеством прежнего: добавились ранее не кэшировавшиеся
+`qr-start.html`, `hcp-badge-preview.html`, `css/tournament-*.css`,
+`js/admin.js`, `js/start-admin.js`, `js/tournament-*.js`, `js/pe-edit.js`,
+`js/qr-start.js` (все они подключаются тегами в HTML, но отсутствовали
+в precache → офлайн-админка/турниры были частично сломаны).
+
+Workflow: правишь js/css → запускаешь `npm run assets` (или просто
+коммитишь — CI подскажет, если забыл: `npm test` включает проверку).
+Ручной бамп `?v=N` и `CACHE_NAME` больше не существует.
+
+## 8. Итерации 5–11: дробление `admin.js` — четырнадцать фичи-модулей
+
+Начато дробление `admin.js` (п.3 ревью: «выделить фичи-модули: tournaments,
+broadcasts, flights-groups (fg*), players, settings, social-cards»).
+**8380 → 426 строк (-95%)** — в admin.js осталось только связное ядро:
+авторизация (мастер-пароль, openAdminPanel, switchTab), safeStorage*-хелперы
+и распределение вызовов по модулям (все — typeof-guarded)., извлечены полностью автономные блоки
+(метод проверки: в блоке нет ни одного идентификатора, объявленного на
+верхнем уровне остального admin.js, и нет load-time кода — только
+runtime-глобалы фундаментов и guarded-вызовы):
+
+| Новый файл | Строк | Содержимое |
+|---|---|---|
+| `js/admin-flights.js` | 491 | «Автоматическая разбивка на флайты»: модалка flight-gen-modal (`fg*`), предпросмотр с расстановкой, создание раундов |
+| `js/admin-scoreedit.js` | 219 | «Редактор счёта всех раундов» (вкладка «Счёт ⛳», `se*`): поиск/фильтры, правка счёта любой лунки, черновик+сохранение |
+| `js/admin-broadcasts.js` | 386 | «Push-анонсы и рассылки клуба»: выбор аудитории, отправка пуша, история анонсов (`bc*`, `pushAdmin*`) |
+| `js/admin-channels.js` | 243 | Telegram/VK интеграции: бот-токены, чаты, тестовые алерты (`loadTelegramSettings`, `testVKAlert`, …) |
+| `js/admin-alerts.js` | 289 | Панель «Вызовы судьи/маршала»: подписка на `/alerts`, дебонс-рендер (~300 мс), бейдж, ответ игроку |
+| `js/admin-players-excel.js` | 543 | Импорт/экспорт игроков через Excel: разбор xlsx, превью с дедупликацией (режимы A/B/C, формы имён), запись в `/players` |
+| `js/admin-assistant.js` | 159 | «Помощник»: управление источниками знаний (список PDF/ссылок, скрытие страницы, перестроение индекса) |
+| `js/admin-agr.js` | 2115 | Интеграция с hcp.rusgolf.ru (база АГР): прокси, поиск, сопоставление/обрезка ФИО (`rgNamesMatch`/`rgGetFioKey`/`rgCutForRound`), синхронизация гандикапов + настройки прокси |
+| `js/admin-name-forms.js` | 234 | «Формы имён» (Наташа = Наталья): режимы сопоставления, псевдонимы, синхронизация `settings/nameVariants` |
+| `js/admin-display.js` | 961 | Настройки отображения и приватности: варианты карточек (stableford/social/group), оформление лидерборда, вид «Турниров», видимость страниц, бейдж HCP, приватность ФИО |
+| `js/admin-tournaments.js` | 1158 | Вкладка «Турниры»: список, заявки, waitlist, дивизионы, умное создание групп (`tnAutoDivisions`), синхронизация с ростером |
+| `js/admin-players.js` | 530 | «Игроки и роли»: список с поиском, роли/админ-флаги, правка профиля, удаление |
+| `js/admin-exports.js` | 80 | Экспорт данных: CSV всех раундов, JSON-бэкап |
+| `js/admin-groups.js` | 635 | «Группы, которые сейчас играют / контроль темпа» + вкладка «Раунды»: список, фильтр периода, пауза/возобновление, force-finish, удаление |
+
+- Внешние вызовы (`openAdminPanel`, `switchTab`, onclick-строки) —
+  runtime-обращения к window-глобалам, порядок загрузки не критичен;
+  в admin.html модули подключены рядом с `admin.js`. Метод отбора блоков:
+  python-скрипт ищет секции, где (а) ни один идентификатор блока не
+  объявлен на верхнем уровне остального admin.js (кроме глобальных
+  состояния фичи, переезжающих вместе с блоком — напр. `knownAlertIds`),
+  (б) нет load-time вызовов.
+- Опыт: границу секции надо перепроверять по факту — в «ВЫЗОВЫ СУДЕЙ…»
+  оказались затесавшиеся турнирные хелперы (`tnAutoDivisions` и др.) и
+  экспорты CSV/JSON; извлекался только связный alerts-поддиапазон.
+- Двусторонние зависимости тоже надо проверять: `rgNamesMatch` (АГР-блок
+  admin.js) зовёт `impNormName` из excel-модуля. В браузере ок (оба скрипта
+  на странице), но `test-admin-name-sync.js` грузил только admin.js → в его
+  загрузчик добавлен `admin-players-excel.js`. Общий хелпер `impNormName`
+  теперь используется 8+ runtime-вызовами из admin.js — направление
+  зависимости admin.js → excel-модуль задокументировано в шапке файла.
+- При извлечении двух блоков одной командой хвост файла терялся
+  (`lines[:start]` без `lines[end:]`) — поймано контролем «АГР-блок на
+  месте?» и восстановлено; извлечение переписано с проверкой.
+- Секции в файле перемешаны: внутри «ФОРМЫ ИМЁН…до конца файла» оказались
+  rg-функции (`loadRusgolfProxySettings`/`saveRusgolfProxySettings`) — резать
+  надо по списку top-level функций, а не по заголовкам секций; якорь
+  однострочного разделителя (`// ---- НАСТРОЙКИ ПРОКСИ ----`) — сама строка,
+  а не шапка `// ===`.
+- Вызовы извлечённых функций в `openAdminPanel` сделаны guarded
+  (`typeof X === 'function'`) — vm-тесты грузят не все модули, а в браузере
+  это не меняет ничего (модули рядом с admin.js).
+- Текстовые проверки в тестах (`adminJs.indexOf('function X')`) при переезде
+  функций надо переводить на новый файл адресно: автозамена по списку имён
+  переехала и проверку `switchTab`, оставшуюся в admin.js (поймано прогоном,
+  возвращено).
+- `tools/test-scenario-club-broadcast.js` прогоняет функции блока анонсов →
+  в его загрузчик добавлен `admin-broadcasts.js` (58/58 проверок проходят).
+- Версии/манифест — автоматически через `npm run assets` (итерация 4):
+  новые файлы получили `?v=<hash>` и попали в precache без ручных правок.
+
+**Следующие кандидаты** (проверены на связность, но не извлечены):
+«Группы сейчас играют / контроль темпа» (~200 строк, есть двусторонние
+вызовы со списком раундов), «ТУРНИРЫ» (крупнейший, ~1700 строк — дробить
+последним), telegram/vk-интеграции, social-cards.
+
 ## Файлы (новые / изменённые)
 
-Новые: `js/safe-html.js`, `js/course-config.js`, `js/format.js`,
-`firebase.json`, `database.rules.json`, `package.json`, `tools/run-tests.js`,
-`tools/syntax-check.js`, `.github/workflows/ci.yml`, `docs/SECURITY-RULES.md`,
+Новые: `js/safe-html.js`, `js/course-config.js`, `js/format.js`, `js/dom.js`,
+`js/i18n.js` (+ ESM-копии в `src/`), `firebase.json`, `database.rules.json`,
+`package.json`, `README.md`, `tools/run-tests.js`, `tools/syntax-check.js`,
+`tools/rev-assets.js`, `tools/test-sw-precache.js`,
+`.github/workflows/ci.yml`, `docs/SECURITY-RULES.md`,
 `docs/IMPROVEMENTS-IMPL.md`.
 
-Изменены: `js/utils.js` (удалены вынесенные блоки), `js/marker.js` (экранирование),
-20 HTML-файлов (теги скриптов), `sw.js` (прекэш новых модулей), 13 тест-файлов
+Изменены: `js/utils.js` (удалены вынесенные блоки, добавлен дефолт
+`onAuthReady`), `js/admin.js` (−1074 строки: извлечены flights/scoreedit/
+broadcasts), `js/marker.js` (экранирование), `js/feed.js`, `js/stats.js`,
+`js/start-admin.js` (экранирование, guard ссылок),
+`js/{app,auth,guide,handicap,leaderboard,order-of-merit,players}.js`
+(удалены дубли `onAuthReady`), 20+ HTML-файлов (теги скриптов + версии),
+`sw.js` (генерируемый прекэш, CACHE_NAME от хеша), `tools/test-bootstrap.js`
+и тесты (загрузка `dom.js`/`i18n.js`/`admin-broadcasts.js`), 13 тест-файлов
 (явная загрузка модулей).

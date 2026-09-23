@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
     renderHoleGuide(1);
 });
 
-function onAuthReady(u, d) { navAuth(u, d); }
 
 function buildGuideNav() {
     var el = document.getElementById('guide-hole-nav');

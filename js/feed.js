@@ -26,14 +26,18 @@ function loadClubAnnouncements() {
             (en ? 'Club announcements' : 'Анонсы клуба') + '</h2>';
         list.forEach(function(b) {
             html += '<div style="padding:10px 0;border-top:1px dashed var(--border);">';
-            html += '<div style="font-weight:700;color:var(--gold);">' + (typeof escapeHtml === 'function' ? escapeHtml(b.title) : b.title) + '</div>';
-            html += '<div style="font-size:13.5px;margin:4px 0 6px;">' + (typeof escapeHtml === 'function' ? escapeHtml(b.body) : b.body) + '</div>';
+            html += '<div style="font-weight:700;color:var(--gold);">' + escapeHtml(b.title) + '</div>';
+            html += '<div style="font-size:13.5px;margin:4px 0 6px;">' + escapeHtml(b.body) + '</div>';
             html += '<div style="font-size:11.5px;color:var(--muted);">';
             if (typeof fmtDate === 'function' && typeof fmtTime === 'function' && b.time) {
                 html += fmtDate(b.time) + ' · ' + fmtTime(b.time) + ' · ';
             }
             if (typeof pestovoBroadcastAudienceLabel === 'function') html += pestovoBroadcastAudienceLabel(b) + ' · ';
-            html += '<a href="' + (typeof escapeHtml === 'function' ? escapeHtml(b.link || 'tournaments.html') : (b.link || 'tournaments.html')) + '">' +
+            // Ссылка приходит из админки; экранируем атрибут и блокируем
+            // опасные схемы (javascript:, data:, vbscript:) — defense in depth.
+            var bcLink = b.link || 'tournaments.html';
+            if (/^\s*(javascript|data|vbscript):/i.test(String(bcLink))) bcLink = 'tournaments.html';
+            html += '<a href="' + escapeHtml(bcLink) + '">' +
                 (en ? 'open' : 'открыть') + '</a></div>';
             html += '</div>';
         });
@@ -47,7 +51,6 @@ function loadClubAnnouncements() {
     }
 }
 
-function onAuthReady(u, d) { navAuth(u, d); }
 
 function loadLiveFeed() {
     if (typeof db === 'undefined') return;

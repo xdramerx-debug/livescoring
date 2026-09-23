@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() { initNav(); });
-function onAuthReady(u, d) { navAuth(u, d); }
 
 function updateHcpTable() {
     onGenderChange();

@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadLB(); 
 });
 
-function onAuthReady(u, d) { navAuth(u, d); }
 
 function lbGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 function loadLB() {

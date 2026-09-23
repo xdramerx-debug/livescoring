@@ -211,6 +211,7 @@ load('js/utils.js');
 load('js/tournaments.js');
 load('js/tn-scorecard.js');
 load('js/admin.js');
+load('js/admin-display.js');
 
 var fails = 0, total = 0;
 function check(title, actual, expected) {

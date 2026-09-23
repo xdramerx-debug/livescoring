@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // погодный виджет инициализируется в initNav() с правильным контейнером
 });
 
-function onAuthReady(u, d) { navAuth(u, d); }
 
 // Чипы с гандикапами игрока — показываются рядом с именем
 // в списках на главной странице: точный и полевой.

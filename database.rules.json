@@ -1,91 +1,156 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
-
+    ".read": false,
+    ".write": false,
     "users": {
+      ".read": "auth != null",
       "$uid": {
-        ".read": "auth.uid === $uid || root.child('users').child(auth.uid).child('admin').val() === true",
-        ".write": "auth.uid === $uid || root.child('users').child(auth.uid).child('admin').val() === true",
+        ".read": "auth.uid === $uid || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        ".write": "auth.uid != 'tournament-master' && ((root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === $uid && newData.child('admin').val() === data.child('admin').val() && (data.exists() ? newData.child('role').val() === data.child('role').val() : newData.child('role').val() === 'player')))",
         "notifications": {
           ".read": "auth.uid === $uid",
-          ".write": "auth.uid === $uid"
+          ".write": "auth.uid === $uid && auth.uid != 'tournament-master'"
         }
       }
     },
-
     "settings": {
       ".read": true,
-      ".write": "root.child('users').child(auth.uid).child('admin').val() === true",
+      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
       "vapid_public_key": {
         ".read": true,
-        ".write": "root.child('users').child(auth.uid).child('admin').val() === true"
+        ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')"
       }
     },
-
     "vapid": {
-      ".read": "root.child('users').child(auth.uid).child('admin').val() === true",
-      ".write": "root.child('users').child(auth.uid).child('admin').val() === true"
+      ".read": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')"
     },
-
     "broadcasts": {
       ".read": true,
       "$id": {
-        ".write": "root.child('users').child(auth.uid).child('admin').val() === true",
+        ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
         ".validate": "newData.hasChildren(['title','body']) && newData.child('title').isString() && newData.child('title').val().length <= 200 && newData.child('body').isString() && newData.child('body').val().length <= 1000"
       }
     },
-
     "alerts": {
-      ".read": "root.child('users').child(auth.uid).child('admin').val() === true",
+      ".read": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
       "$id": {
         ".write": "auth != null",
         ".validate": "newData.hasChild('type') && (newData.child('type').val() == 'referee' || newData.child('type').val() == 'marshal')"
       }
     },
-
     "rounds": {
+      ".read": "auth != null",
       "$rid": {
         ".read": "auth != null",
-        ".write": "auth != null && (newData.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('admin').val() === true)",
+        ".write": "auth != null && ((auth.uid != 'tournament-master' && newData.child('createdBy').val() === auth.uid) || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && (newData.child('tournamentId').exists() || newData.child('protocolId').exists() || data.child('tournamentId').exists() || data.child('protocolId').exists())))",
         "players": {
           "$pid": {
-            ".write": "auth.uid === $pid || root.child('users').child(auth.uid).child('admin').val() === true || data.parent().parent().child('createdBy').val() === auth.uid"
+            ".write": "(auth.uid === $pid && auth.uid != 'tournament-master') || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid != 'tournament-master' && data.parent().parent().child('createdBy').val() === auth.uid) || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && (data.parent().parent().child('tournamentId').exists() || data.parent().parent().child('protocolId').exists()))",
+            "scores": {
+              "$hole": {
+                ".validate": "newData.val() === data.val()"
+              }
+            },
+            "markerScores": {
+              "$marker": {
+                "$hole": {
+                  ".validate": "newData.val() === data.val()"
+                }
+              }
+            }
           }
+        },
+        "_scoreAuditOutbox": {
+          ".validate": "newData.val() === data.val()"
+        },
+        "_scoreAuditIds": {
+          ".validate": "newData.val() === data.val()"
         }
       }
     },
-
     "tournaments": {
       ".read": true,
       "$id": {
-        ".write": "auth != null && (newData.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('admin').val() === true)",
+        ".write": "auth != null && ((auth.uid != 'tournament-master' && newData.child('createdBy').val() === auth.uid) || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now))",
         "applications": {
           "$aid": {
-            ".write": "!data.exists() && newData.child('status').val() == 'pending' && newData.child('name').isString() || (auth != null && (root.child('users').child(auth.uid).child('admin').val() === true || root.child('tournaments').child($id).child('createdBy').val() === auth.uid))",
+            ".write": "!data.exists() && newData.child('status').val() == 'pending' && newData.child('name').isString() || (auth != null && ((root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid != 'tournament-master' && root.child('tournaments').child($id).child('createdBy').val() === auth.uid) || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now)))",
             ".validate": "newData.hasChildren(['name','status','createdAt']) && newData.child('name').isString() && newData.child('name').val().length >= 3 && newData.child('name').val().length <= 120 && newData.child('status').isString() && newData.child('status').val().length <= 20 && newData.child('createdAt').isNumber()"
           }
         },
         "waitlist": {
           "$key": {
-            ".write": "!data.exists() && newData.child('name').isString() || (auth != null && (root.child('users').child(auth.uid).child('admin').val() === true || root.child('tournaments').child($id).child('createdBy').val() === auth.uid))",
+            ".write": "!data.exists() && newData.child('name').isString() || (auth != null && ((root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid != 'tournament-master' && root.child('tournaments').child($id).child('createdBy').val() === auth.uid) || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now)))",
             ".validate": "newData.child('name').isString() && newData.child('name').val().length >= 3 && newData.child('name').val().length <= 120"
+          }
+        },
+        "_scoreAuditOutbox": {
+          ".validate": "newData.val() === data.val()"
+        },
+        "_scoreAuditIds": {
+          ".validate": "newData.val() === data.val()"
+        },
+        "scores": {
+          "$day": {
+            "$pid": {
+              "$hole": {
+                ".validate": "newData.val() === data.val()"
+              }
+            }
           }
         }
       }
     },
-
+    "protocols": {
+      ".read": true,
+      "$id": {
+        ".write": "auth != null && ((root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && (newData.child('tournamentId').exists() || data.child('tournamentId').exists() || newData.child('tnId').exists() || data.child('tnId').exists())) || (auth.uid != 'tournament-master' && newData.child('createdBy').val() === auth.uid))"
+      }
+    },
+    "tnDrafts": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "tnTemplates": {
+      ".read": "auth != null",
+      ".write": "auth != null && ((root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now))"
+    },
+    "markers": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$rid": {
+        "$pid": {
+          "$hole": {
+            ".validate": "newData.val() === data.val()"
+          }
+        }
+      }
+    },
+    "markerAssignments": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "reactions": {
+      ".read": true,
+      ".write": "auth != null"
+    },
     "leaderboard": {
       ".read": true,
-      ".write": "root.child('users').child(auth.uid).child('admin').val() === true"
+      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')"
     },
-
     "push_subscriptions": {
-      ".read": "root.child('users').child(auth.uid).child('admin').val() === true",
+      ".read": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
       "$key": {
-        ".write": "auth != null && (newData.child('uid').val() === auth.uid || root.child('users').child(auth.uid).child('admin').val() === true)",
+        ".write": "auth != null && (newData.child('uid').val() === auth.uid || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin'))",
         ".validate": "newData.hasChild('endpoint') && newData.child('endpoint').isString() && newData.child('endpoint').val().length <= 1000"
       }
+    },
+    "scoreAudit": {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now))",
+      ".write": false
     }
   }
 }

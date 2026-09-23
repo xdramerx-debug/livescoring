@@ -25,14 +25,37 @@ try { firebase.database().goOnline(); } catch (e) { console.warn("[silent]", e);
 
 var currentUser = null;
 var currentUserData = null;
+// QR-карточка без личного аккаунта получает анонимную Firebase-сессию.
+// Это не удостоверяет личность: сервер помечает действия как QR-доступ.
+var pestovoQrAuthPending = false;
+try {
+    var qrPath = location.pathname.split('/').pop();
+    var qrQuery = new URLSearchParams(location.search);
+    pestovoQrAuthPending = ['scorer.html','marker.html','setup-round.html'].indexOf(qrPath) !== -1 &&
+        !!(qrQuery.get('round') && (qrQuery.get('player') || qrQuery.get('as')));
+} catch (e) { pestovoQrAuthPending = false; }
+
 
 auth.onAuthStateChanged(function(user) {
     currentUser = user;
+    if (!user && pestovoQrAuthPending) {
+        auth.signInAnonymously().catch(function(err) {
+            pestovoQrAuthPending = false;
+            console.error('[QR] Anonymous Firebase Auth is required', err);
+            if (typeof toast === 'function') toast('QR-ввод недоступен: включите Anonymous Auth в Firebase.', 'error');
+        });
+        return;
+    }
+    pestovoQrAuthPending = false;
     if (user) {
         db.ref('users/' + user.uid).once('value').then(function(s) {
             currentUserData = s.val();
             if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
             if (typeof onAuthReady === 'function') onAuthReady(user, currentUserData);
+        }).catch(function(err) {
+            currentUserData = null;
+            console.warn('[auth] user profile unavailable', err);
+            if (typeof onAuthReady === 'function') onAuthReady(user, null);
         });
     } else {
         currentUserData = null;

@@ -109,6 +109,7 @@ vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'),
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'start-admin.js'), 'utf8'), sandbox);
+sandbox.pestovoScoreWrite = (rid, ops) => { dbState.updateCalls.push({ via: 'scoreWrite', rid, ops }); return Promise.resolve({ok:true}); };
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'live.js'), 'utf8'), sandbox);
 
 // Замораживаем «сейчас», чтобы датозависимые проверки были детерминированными.

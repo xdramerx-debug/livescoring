@@ -112,6 +112,25 @@ function saveOfflineScore(roundId,playerId,hole,score){
     updateOfflineQueueBadge();
 }
 
+// Каждый тап сохраняется отдельным действием: исправления одной и той же
+// лунки не схлопываются, порядок и requestId сохраняются при перезапуске.
+function hasPendingScoreActions() {
+    return readOfflineScores().some(function(item) {
+        return item.type==='scoreAction' || item.type==='score' || (item.type==='set' &&
+            (/^rounds\/[^/]+\/players\/[^/]+\/(scores|markerScores)\//.test(item.path || '') ||
+             /^markers\/[^/]+\/[^/]+\/\d+$/.test(item.path || '')));
+    });
+}
+
+function queueOfflineScoreAction(action) {
+    var pending=readOfflineScores();
+    pending.push({type:'scoreAction',action:action});
+    try { localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending)); }
+    catch(e) { console.error('[PWA] Cannot queue score action',e); return false; }
+    updateOfflineQueueBadge();
+    return true;
+}
+
 // Универсальная офлайн-запись по произвольному пути БД (verified, markers, holeTimes и т.п.).
 // Для одного пути храним только последнее значение.
 function queueOfflineWrite(path,value){
@@ -129,48 +148,76 @@ function queueOfflineWrite(path,value){
 }
 
 function syncOfflineScores(){
-    if(!navigator.onLine||typeof db==='undefined'||offlineSyncInProgress)return;
+    if(!navigator.onLine||offlineSyncInProgress)return;
     var pending=readOfflineScores();
-    if(pending.length===0){
-        updateOfflineQueueBadge();
-        return;
-    }
+    if(!pending.length){updateOfflineQueueBadge();return;}
     offlineSyncInProgress=true;
-    var successfulKeys=[];
-    var promises=pending.map(function(item){
-        var key=item.type==='set'
-            ? 'set|'+item.path+'|'+item.timestamp
-            : [item.roundId,item.playerId,item.hole,item.timestamp].join('|');
-        var writePromise;
-        if(item.type==='score') writePromise = db.ref('rounds/'+item.roundId+'/players/'+item.playerId+'/scores/'+item.hole).set(item.score);
-        else if(item.type==='set'&&item.path) writePromise = db.ref(item.path).set(item.value);
-        else writePromise = Promise.resolve();
-
-        return writePromise.then(function(){
-            successfulKeys.push(key);
-        }).catch(function(err){
-            console.warn('[PWA] Single item sync failed', key, err);
-        });
-    });
-    Promise.all(promises).then(function(){
-        if(successfulKeys.length > 0){
-            // Не удаляем записи, добавленные во время синхронизации, но удаляем все успешно записанные
-            var remaining=readOfflineScores().filter(function(item){
-                var key=item.type==='set'
-                    ? 'set|'+item.path+'|'+item.timestamp
-                    : [item.roundId,item.playerId,item.hole,item.timestamp].join('|');
-                return successfulKeys.indexOf(key)===-1;
-            });
-            if(remaining.length) localStorage.setItem(OFFLINE_KEY,JSON.stringify(remaining));
-            else localStorage.removeItem(OFFLINE_KEY);
-            if(typeof toast==='function')toast((currentLang === 'en' ? '✅ Synced ' : '✅ Синхронизировано ') + successfulKeys.length + (currentLang === 'en' ? ' records' : ' записей'),'success');
+    // Legacy queue items from an older build are migrated to server operations
+    // once (including a stable id). Never replay a raw score write from cache.
+    pending.forEach(function(item){
+        if(item.type==='score') {
+            item.type='scoreAction';
+            item.action={roundId:item.roundId,actorPlayerId:item.playerId,qrAccess:true,queuedAt:item.timestamp || Date.now(),
+                requestId:'legacy_'+String(item.timestamp)+'_'+Math.random().toString(36).slice(2,14),
+                operations:[{kind:'score',playerId:item.playerId,hole:Number(item.hole),score:item.score}]};
+        } else if(item.type==='set'&&item.path) {
+            var m=/^rounds\/([^/]+)\/players\/([^/]+)\/(scores|markerScores)\/([^/]+)(?:\/(\d+))?$/.exec(item.path);
+            var legacyMarker=/^markers\/([^/]+)\/([^/]+)\/(\d+)$/.exec(item.path);
+            if(legacyMarker){
+                item.type='scoreAction';
+                item.action={roundId:legacyMarker[1],actorPlayerId:null,qrAccess:true,legacyMarker:true,queuedAt:item.timestamp || Date.now(),
+                    requestId:'legacy_marker_'+String(item.timestamp || Date.now())+'_'+Math.random().toString(36).slice(2,14),
+                    operations:[{kind:'marker',playerId:legacyMarker[2],hole:Number(legacyMarker[3]),score:item.value}]};
+            } else if(m){
+                item.type='scoreAction';
+                item.action={roundId:m[1],actorPlayerId:m[3]==='markerScores'?m[4]:m[2],qrAccess:true,queuedAt:item.timestamp || Date.now(),
+                    requestId:'legacy_'+String(item.timestamp || Date.now())+'_'+Math.random().toString(36).slice(2,14),
+                    operations:[{kind:m[3]==='scores'?'score':'marker',playerId:m[2],
+                        markerId:m[3]==='markerScores'?m[4]:undefined,hole:Number(m[3]==='scores'?m[4]:m[5]),score:item.value}]};
+            }
         }
-    }).catch(function(error){
-        console.error('[PWA] Offline sync failed',error);
-        if(typeof toast==='function')toast(currentLang === 'en' ? 'Sync failed; scores remain on device' : 'Синхронизация не удалась; счёт сохранён на устройстве','warn');
+    });
+    try{localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending));}catch(e){console.warn('[PWA] Cannot migrate queue',e);offlineSyncInProgress=false;return;}
+    var done=0;
+    // Sequential replay preserves multiple corrections of the SAME hole.
+    pending.reduce(function(chain,item){
+        return chain.then(function(){
+            var write;
+            if(item.type==='scoreAction') {
+                if(typeof pestovoScoreSend!=='function') throw new Error('Score server unavailable');
+                var expected=item.action.authUid;
+                var actual=(typeof currentUser!=='undefined'&&currentUser&&currentUser.uid)||null;
+                if(!item.action.qrAccess && expected!==undefined && expected!==actual) throw new Error('Sign in with the original account to sync this score');
+                if(item.action.legacyMarker && !item.action.actorPlayerId) {
+                    write=db.ref('rounds/'+item.action.roundId+'/players/'+item.action.operations[0].playerId+'/markedBy').once('value').then(function(sn) {
+                        var markerId=sn.val();
+                        if (!markerId) throw new Error('Marker assignment missing: legacy score remains on device');
+                        item.action.actorPlayerId=markerId;
+                        var migrated=readOfflineScores();
+                        var row=migrated.find(function(r){return r.type==='scoreAction' && r.action.requestId===item.action.requestId;});
+                        if(row){row.action.actorPlayerId=markerId;localStorage.setItem(OFFLINE_KEY,JSON.stringify(migrated));}
+                        return pestovoScoreSend(item.action);
+                    });
+                } else write=pestovoScoreSend(item.action);
+            } else if(item.type==='set'&&item.path) write=db.ref(item.path).set(item.value);
+            else write=Promise.resolve();
+            return write.then(function(){
+                var queue=readOfflineScores();
+                var pos=queue.findIndex(function(row){
+                    return item.type==='scoreAction' ? row.type==='scoreAction'&&row.action.requestId===item.action.requestId
+                        : row.type==='set'&&row.path===item.path&&row.timestamp===item.timestamp;
+                });
+                if(pos>=0){queue.splice(pos,1);localStorage.setItem(OFFLINE_KEY,JSON.stringify(queue));done++;}
+            });
+        });
+    },Promise.resolve()).then(function(){
+        if(done&&typeof toast==='function')toast((currentLang==='en'?'✅ Confirmed by server: ':'✅ Подтверждено сервером: ')+done,'success');
+    }).catch(function(err){
+        console.warn('[PWA] Queue paused; unsent actions remain on device',err);
+        if(typeof toast==='function')toast(currentLang==='en'?'Sync stopped; scores remain on device':'Синхронизация остановлена; счёт остался на устройстве','warn');
     }).then(function(){
-        offlineSyncInProgress=false;
-        updateOfflineQueueBadge();
+        offlineSyncInProgress=false;updateOfflineQueueBadge();
+        if(done && readOfflineScores().length && navigator.onLine) setTimeout(syncOfflineScores, 1000);
     });
 }
 
@@ -271,6 +318,7 @@ function installPWA(){if(!deferredPrompt)return;try{deferredPrompt.prompt();defe
 function dismissInstall(){try{localStorage.setItem('pwa_install_dismissed','1');}catch (e) { console.warn("[silent]", e); }try{var b=document.getElementById('install-banner');if(b)b.remove();}catch (e) { console.warn("[silent]", e); }}
 function dismissIOSInstall(){try{localStorage.setItem('pwa_install_dismissed','1');}catch (e) { console.warn("[silent]", e); }try{var b=document.getElementById('ios-install-banner');if(b)b.remove();}catch (e) { console.warn("[silent]", e); }}
 window.installPWA=installPWA;window.dismissInstall=dismissInstall;window.dismissIOSInstall=dismissIOSInstall;
+window.addEventListener('load', function() { if(navigator.onLine) setTimeout(syncOfflineScores, 2000); });
 setInterval(function(){try{ if(navigator.onLine && typeof db !== 'undefined') syncOfflineScores(); }catch (e) { console.warn("[silent]", e); }},60000);
 
 // ==========================================

@@ -533,7 +533,8 @@ section('6 · Удаление турнира: каскад раундов, пр
 section('7 · Кнопка протокола — только администратору');
 // ══════════════════════════════════════════════════════════
     check('игрок не видит кнопку протокола', G.tnCanSeeProtocol(), false);
-    session.pestovo_is_admin = 'true';
+    G.currentUser = { uid: 'tournament-master' };
+    session.pestovo_admin_access_source = 'master';
     check('администратор видит', G.tnCanSeeProtocol(), true);
 
     // В списках турнира кнопка появляется только для админа.
@@ -545,7 +546,8 @@ section('7 · Кнопка протокола — только админист�
     });
     G.tnCache['tn_done'] = getAt('tournaments/tn_done');
     G.currentUserData = { uid: 'u2', name: 'Пётр Сидоров', role: 'player' };
-    delete session.pestovo_is_admin;
+    G.currentUser = null;
+    delete session.pestovo_admin_access_source;
     G.tnRenderList();
     var asPlayer = String(renderedPanels['tn-list'].innerHTML);
     hasnt('игроку кнопка «Протокол результатов (PDF)» не показывают', asPlayer, 'Протокол результатов (PDF)');
@@ -553,10 +555,12 @@ section('7 · Кнопка протокола — только админист�
     check('кнопка списка — иконка, подпись и число', rosterBtn.replace(/^[^>]*>/, '').replace(/<\/button>$/, ''), '<i class="fas fa-list-ul"></i> Участники (1)');
     has('подсказка кнопки осталась в title', rosterBtn, 'title="Список участников"');
     has('ТИ без дублирующей подписи', /ТИ:\s*Синие/.test(asPlayer) === false, true);
-    session.pestovo_is_admin = 'true';
+    G.currentUser = { uid: 'tournament-master' };
+    session.pestovo_admin_access_source = 'master';
     G.tnRenderList();
     has('администратору кнопку протокола показывают', String(renderedPanels['tn-list'].innerHTML), 'Протокол результатов (PDF)');
-    delete session.pestovo_is_admin;
+    G.currentUser = null;
+    delete session.pestovo_admin_access_source;
     check('после удаления турнира его карточка исчезла из кэша', !!G.tnCache[TN], false);
 }).then(function() {
     console.log('\n' + (fails ? '✗ ' + fails + ' из ' + total + ' проверок не прошли' : 'All tn-scorecard tests passed ✔ (' + total + ' checks)'));

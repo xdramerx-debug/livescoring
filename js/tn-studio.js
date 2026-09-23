@@ -784,9 +784,9 @@
         var text = String(raw == null ? '' : raw).trim();
         var value = text === '' ? null : parseInt(text, 10);
         if (text !== '' && (!isFinite(value) || value < 1 || value > 20)) { toast(tr('Удар от 1 до 20', 'Score must be 1 to 20'), 'error'); return; }
-        var patch = {};
-        patch['scores/' + ui.dayId + '/' + playerKey + '/' + hole] = value;
-        update(patch);
+        pestovoStudioScoreWrite(ui.id, ui.dayId, playerKey, hole, value).then(function(res) {
+            if (res && res.offline) toast(tr('Счёт в очереди — ждём подтверждения сервера', 'Score queued, awaiting server confirmation'), 'warn');
+        }).catch(function(err) { toast('❌ ' + (err && err.message || err), 'error'); });
     }
 
     function reviewApp(appId, approve, silent) {

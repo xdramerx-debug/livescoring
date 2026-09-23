@@ -21,6 +21,41 @@ const webpush = require('web-push');
 admin.initializeApp();
 const db = admin.database();
 
+Object.assign(exports, require('./score-audit')(functions, admin, db));
+
+// Мастер-пароль проверяется только на сервере. НЕ использовать пароль/хэш из
+// settings: этот узел публичен (RTDB не позволяет сузить доступ потомку).
+const crypto = require('crypto');
+const MASTER_UID = 'tournament-master';
+exports.tournamentMasterSignIn = functions.runWith({ secrets: ['TOURNAMENT_MASTER_PASSWORD_HASH'] }).https.onCall(async function (data, context) {
+    const configured = process.env.TOURNAMENT_MASTER_PASSWORD_HASH || '';
+    if (!/^[a-f0-9]{64}$/i.test(configured)) {
+        throw new functions.https.HttpsError('failed-precondition', 'Master password is not configured on the server.');
+    }
+    const password = data && data.password;
+    if (typeof password !== 'string' || !password || password.length > 256) {
+        throw new functions.https.HttpsError('invalid-argument', 'Password required.');
+    }
+    // Постоянный лимит попыток на IP, общий для всех инстансов функции.
+    const ip = (context.rawRequest && context.rawRequest.ip) || 'unknown';
+    const key = crypto.createHash('sha256').update(ip).digest('hex');
+    const attempts = db.ref('masterLoginAttempts/' + key);
+    const now = Date.now();
+    const result = await attempts.transaction(function (old) {
+        const next = old && old.since && now - old.since < 15 * 60 * 1000 ? old : { since: now, count: 0 };
+        if (next.count >= 5) return; // deny, do not mint a token
+        return { since: next.since, count: next.count + 1 };
+    });
+    if (!result.committed) throw new functions.https.HttpsError('resource-exhausted', 'Too many attempts. Try again later.');
+    const actual = crypto.createHash('sha256').update(password, 'utf8').digest();
+    const expected = Buffer.from(configured, 'hex');
+    if (!crypto.timingSafeEqual(actual, expected)) {
+        throw new functions.https.HttpsError('permission-denied', 'Incorrect master password.');
+    }
+    await attempts.remove();
+    return { token: await admin.auth().createCustomToken(MASTER_UID, { tournamentMaster: true, tournamentMasterUntil: Date.now() + 8 * 60 * 60 * 1000 }) };
+});
+
 // ── Валидация входных данных (defense-in-depth; основные правила — в database.rules.json) ──
 function str(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
 function validAudience(a) {

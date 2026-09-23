@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (errEl) errEl.classList.remove('hidden');
         return;
     }
-    loadSc();
+    if (!(typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) loadSc();
     if (scPaceTimer) { clearInterval(scPaceTimer); scPaceTimer = null; }
     scPaceTimer = setInterval(function() {
         if (scRound && typeof renderPaceAssistant === 'function' && typeof isBatterySaverEnabled === 'function') {
@@ -59,7 +59,15 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
     });
 }
 
+function onAuthReady(user, data) {
+    if (typeof navAuth === 'function') navAuth(user, data);
+    if (user && scRid && scPid && !(typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) loadSc();
+}
+
+var scLoadStarted = false;
 function loadSc() {
+    if (scLoadStarted) return;
+    scLoadStarted = true;
     if (typeof db === 'undefined') {
         var errEl = scGet('sc-err');
         if (errEl) errEl.classList.remove('hidden');
@@ -318,13 +326,23 @@ function saveSc() {
     scSetSaving(true);
     scChanging = true;
     var savedHole = scHole;
-    var setPromise = (typeof dbSetWithOfflineQueue === 'function' ? dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole, scScore) : (typeof db !== 'undefined' ? db.ref('rounds/' + scRid + '/players/' + scPid + '/scores/' + savedHole).set(scScore) : Promise.resolve()));
+    var scQueued = false;
+    var setPromise = pestovoScoreWrite(scRid, [{kind:'score',playerId:scPid,hole:savedHole,score:scScore}], scPid);
     setPromise.then(function(res) {
         var wentOffline = res && res.offline;
-        if (wentOffline) return null;
+        if (wentOffline) { scQueued = true; return null; }
         if (typeof recordHoleCompletionTime === 'function') return recordHoleCompletionTime(scRid, scPid, savedHole, Date.now());
         return null;
     }).then(function() {
+        if (scQueued) {
+            var pendingOrder = getRoundOrder(scRound);
+            var pendingIdx = pendingOrder.indexOf(savedHole);
+            if (pendingIdx >= 0 && pendingIdx < pendingOrder.length - 1) { scHole = pendingOrder[pendingIdx + 1]; scScore = 0; }
+            if (typeof rememberResumeHole === 'function') rememberResumeHole(scRid, scPid, scHole);
+            renderHole(); buildHoles(); renderCard();
+            scChanging = false; scSetSaving(false);
+            return;
+        }
         if (scRound && scRound.players && scRound.players[scPid]) {
             scRound.players[scPid].scores = scRound.players[scPid].scores || {};
             scRound.players[scPid].scores[savedHole] = scScore;
@@ -336,11 +354,11 @@ function saveSc() {
         var ms = parseInt(scMarker[savedHole]) || 0;
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ms >= 1 && ms === scScore) {
-            if (typeof dbSetWithOfflineQueue === 'function') dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole, true);
+
             if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + savedHole + ' confirmed:</b> ' + scScore) : ('✅ <b>Лунка ' + savedHole + ' подтверждена:</b> ' + scScore + ' уд.'));
             if (typeof vib === 'function') vib([50, 50]);
         } else if (ms >= 1 && ms !== scScore) {
-            if (typeof dbSetWithOfflineQueue === 'function') dbSetWithOfflineQueue('rounds/' + scRid + '/players/' + scPid + '/verified/' + savedHole, false);
+
             if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + savedHole + '!</b><br>You: <b>' + scScore + '</b>, marker: <b>' + ms + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + savedHole + '!</b><br>Вы: <b>' + scScore + '</b>, маркер: <b>' + ms + '</b>'), 'error');
         } else {
             if (typeof toast === 'function') toast(langIsEn ? ('⏳ <b>Hole ' + savedHole + ':</b> your score <b>' + scScore + '</b> is saved. Waiting for marker.') : ('⏳ <b>Лунка ' + savedHole + ':</b> ваш счёт <b>' + scScore + '</b> сохранён. Ждём маркера.'), 'info');

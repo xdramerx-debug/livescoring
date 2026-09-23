@@ -1,140 +1,39 @@
-var PESTOVO_TEMP_MASTER_PASSWORD = '55555';
-var PESTOVO_TEMP_MASTER_PASSWORD_HASH = 'c507a68f3093e885765257ed3f176c757aaf62bb4cbc2ef94b2e7da3406d9676';
-var PESTOVO_ADMIN_MASTER_HASH_KEY = 'pestovo_admin_master_hash';
-var PESTOVO_ADMIN_ACCESS_REMEMBER_KEY = 'pestovo_admin_access_persist';
-
 function safeStorageGet(storageObj, key) {
     try { return storageObj.getItem(key); } catch (e) { return null; }
 }
-
 function safeStorageSet(storageObj, key, value) {
-    try { storageObj.setItem(key, value); } catch (e) { console.warn("[silent]", e); }
+    try { storageObj.setItem(key, value); } catch (e) { console.warn('[silent]', e); }
 }
-
 function safeStorageRemove(storageObj, key) {
-    try { storageObj.removeItem(key); } catch (e) { console.warn("[silent]", e); }
-}
-
-function normalizeMasterHash(val) {
-    var hash = String(val || '').trim().toLowerCase();
-    return /^[a-f0-9]{64}$/.test(hash) ? hash : '';
-}
-
-function uniqueStringList(values) {
-    var map = {};
-    return (values || []).filter(function(value) {
-        value = String(value || '');
-        if (!value || map[value]) return false;
-        map[value] = true;
-        return true;
-    });
-}
-
-function sha256Hex(text) {
-    if (text === PESTOVO_TEMP_MASTER_PASSWORD) {
-        return Promise.resolve(PESTOVO_TEMP_MASTER_PASSWORD_HASH);
-    }
-    if (!(window.crypto && window.crypto.subtle && window.TextEncoder)) {
-        return Promise.resolve('');
-    }
-    return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(text || ''))).then(function(buffer) {
-        return Array.from(new Uint8Array(buffer)).map(function(byte) {
-            return byte.toString(16).padStart(2, '0');
-        }).join('');
-    }).catch(function() {
-        return '';
-    });
+    try { storageObj.removeItem(key); } catch (e) { console.warn('[silent]', e); }
 }
 
 function isFirebaseAdmin() {
-    return !!(currentUser && currentUserData && currentUserData.role === 'admin');
+    return !!(currentUser && currentUserData && (currentUserData.role === 'admin' || currentUserData.admin === true));
+}
+
+function isTournamentMaster() {
+    // Только для состояния UI. Реальные права проверяются в database.rules.json
+    // по подписанному Firebase custom claim, не по sessionStorage/UID клиента.
+    return !!(currentUser && currentUser.uid === 'tournament-master' &&
+        safeStorageGet(sessionStorage, 'pestovo_admin_access_source') === 'master');
 }
 
 function hasAdminPanelAccess() {
-    return isFirebaseAdmin() || safeStorageGet(sessionStorage, 'pestovo_is_admin') === 'true';
+    return isFirebaseAdmin() || isTournamentMaster();
 }
 
-function setRememberedAdminAccess(enabled) {
-    if (enabled) safeStorageSet(localStorage, PESTOVO_ADMIN_ACCESS_REMEMBER_KEY, 'true');
-    else safeStorageRemove(localStorage, PESTOVO_ADMIN_ACCESS_REMEMBER_KEY);
-}
-
-function grantMasterAdminAccess(rememberAccess) {
+function grantMasterAdminAccess() {
     safeStorageSet(sessionStorage, 'pestovo_is_admin', 'true');
     safeStorageSet(sessionStorage, 'pestovo_admin_access_source', 'master');
-    safeStorageSet(localStorage, 'pestovo_adm_logged_in', 'true');
-    if (rememberAccess) {
-        setRememberedAdminAccess(true);
-        safeStorageSet(localStorage, 'pestovo_adm_remember', 'true');
-    } else {
-        setRememberedAdminAccess(false);
-        safeStorageRemove(localStorage, 'pestovo_adm_remember');
-    }
 }
 
 function clearAdminAccessFlags() {
     safeStorageRemove(sessionStorage, 'pestovo_is_admin');
     safeStorageRemove(sessionStorage, 'pestovo_admin_access_source');
-    safeStorageRemove(localStorage, PESTOVO_ADMIN_ACCESS_REMEMBER_KEY);
+    safeStorageRemove(localStorage, 'pestovo_admin_access_persist');
     safeStorageRemove(localStorage, 'pestovo_adm_logged_in');
     safeStorageRemove(localStorage, 'pestovo_adm_remember');
-}
-
-function collectConfiguredMasterPasswords() {
-    var plainPasswords = [];
-    var hashPasswords = [PESTOVO_TEMP_MASTER_PASSWORD_HASH];
-
-    var legacyPass = safeStorageGet(localStorage, 'pestovo_adm_pass');
-    if (legacyPass) plainPasswords.push(String(legacyPass));
-
-    var localHash = normalizeMasterHash(safeStorageGet(localStorage, PESTOVO_ADMIN_MASTER_HASH_KEY));
-    if (localHash) hashPasswords.push(localHash);
-
-    if (typeof db === 'undefined') {
-        return Promise.resolve({
-            plainPasswords: uniqueStringList(plainPasswords),
-            hashPasswords: uniqueStringList(hashPasswords)
-        });
-    }
-
-    var readers = [
-        db.ref('settings/adminAccess/masterPasswordHash').once('value').then(function(sn) { return normalizeMasterHash(sn.val()); }).catch(function() { return ''; }),
-        db.ref('settings/adminAccess/masterPassword').once('value').then(function(sn) { return String(sn.val() || '').trim(); }).catch(function() { return ''; }),
-        db.ref('settings/admin/masterPasswordHash').once('value').then(function(sn) { return normalizeMasterHash(sn.val()); }).catch(function() { return ''; }),
-        db.ref('settings/admin/masterPassword').once('value').then(function(sn) { return String(sn.val() || '').trim(); }).catch(function() { return ''; })
-    ];
-
-    return Promise.all(readers).then(function(values) {
-        if (values[0]) hashPasswords.push(values[0]);
-        if (values[1]) plainPasswords.push(values[1]);
-        if (values[2]) hashPasswords.push(values[2]);
-        if (values[3]) plainPasswords.push(values[3]);
-        return {
-            plainPasswords: uniqueStringList(plainPasswords),
-            hashPasswords: uniqueStringList(hashPasswords)
-        };
-    }).catch(function() {
-        return {
-            plainPasswords: uniqueStringList(plainPasswords),
-            hashPasswords: uniqueStringList(hashPasswords)
-        };
-    });
-}
-
-function verifyMasterPassword(password) {
-    password = String(password || '');
-    if (!password) return Promise.resolve(false);
-    if (password === PESTOVO_TEMP_MASTER_PASSWORD) return Promise.resolve(true);
-
-    return collectConfiguredMasterPasswords().then(function(config) {
-        if ((config.plainPasswords || []).indexOf(password) !== -1) {
-            return true;
-        }
-        return sha256Hex(password).then(function(hash) {
-            if (!hash) return false;
-            return (config.hashPasswords || []).indexOf(hash) !== -1;
-        });
-    });
 }
 
 function showAdminLoginError(message) {
@@ -159,33 +58,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initAdminAutoLogin() {
-    var rememberAccess = safeStorageGet(localStorage, PESTOVO_ADMIN_ACCESS_REMEMBER_KEY) === 'true';
-    var legacyRemember = safeStorageGet(localStorage, 'pestovo_adm_remember') === 'true';
-    var legacyLogged = safeStorageGet(localStorage, 'pestovo_adm_logged_in') === 'true';
-
-    if (rememberAccess || legacyLogged) {
-        safeStorageSet(sessionStorage, 'pestovo_is_admin', 'true');
-        safeStorageSet(sessionStorage, 'pestovo_admin_access_source', 'master');
-    }
-    if (legacyLogged && legacyRemember) {
-        safeStorageSet(localStorage, PESTOVO_ADMIN_ACCESS_REMEMBER_KEY, 'true');
-    }
-
-    var rememberEl = document.getElementById('adm-remember');
-    if (rememberEl) {
-        rememberEl.checked = rememberAccess || legacyRemember;
-    }
-
-    var legacyPass = safeStorageGet(localStorage, 'pestovo_adm_pass');
-    var storedHash = normalizeMasterHash(safeStorageGet(localStorage, PESTOVO_ADMIN_MASTER_HASH_KEY));
-    if (legacyPass && !storedHash) {
-        sha256Hex(legacyPass).then(function(hash) {
-            if (hash) safeStorageSet(localStorage, PESTOVO_ADMIN_MASTER_HASH_KEY, hash);
-        }).catch(function() {});
-    }
-
-    if (document.getElementById('admin-login') && hasAdminPanelAccess()) {
-        openAdminPanel();
+    // Старые локальные флаги доступа не подтверждают серверные права.
+    // Восстановление сессии делает Firebase Auth через onAuthReady.
+    if (safeStorageGet(localStorage, 'pestovo_adm_logged_in') === 'true') {
+        safeStorageRemove(localStorage, 'pestovo_adm_logged_in');
     }
 }
 
@@ -194,10 +70,21 @@ function initAdminAutoLogin() {
 // ==========================================
 function onAuthReady(user, userData) {
     navAuth(user, userData);
-
-    if (document.getElementById('admin-login') && hasAdminPanelAccess()) {
-        openAdminPanel();
+    if (user && user.uid === 'tournament-master') {
+        // Сессия может пережить срок действия серверного claim. Не открываем
+        // админку до проверки подписанного токена, даже при старых UI-флагах.
+        user.getIdTokenResult().then(function(result) {
+            if (result.claims.tournamentMaster === true && result.claims.tournamentMasterUntil > Date.now()) {
+                grantMasterAdminAccess();
+                if (document.getElementById('admin-login')) openAdminPanel();
+            } else {
+                clearAdminAccessFlags();
+                auth.signOut();
+            }
+        }).catch(function() { clearAdminAccessFlags(); auth.signOut(); });
+        return;
     }
+    if (document.getElementById('admin-login') && hasAdminPanelAccess()) openAdminPanel();
 }
 
 function adminLogin(evt) {
@@ -221,30 +108,41 @@ function adminLogin(evt) {
         return;
     }
 
-    var rememberEl = document.getElementById('adm-remember');
-    var rememberAccess = !!(rememberEl && rememberEl.checked);
-
     setAdminLoginLoading(true);
-    verifyMasterPassword(pass).then(function(ok) {
+    // Не выдаём серверные права по локальной проверке/флагу. Callable
+    // сверяет секрет на сервере и выдаёт Firebase сессию с ограниченным claim.
+    if (typeof firebase === 'undefined' || !firebase.functions || typeof auth === 'undefined') {
         setAdminLoginLoading(false);
-        if (!ok) {
-            showAdminLoginError(currentLang === 'en' ? 'Incorrect master password.' : 'Неверный мастер-пароль.');
-            if (passInp && passInp.select) passInp.select();
-            return;
-        }
-
-        grantMasterAdminAccess(rememberAccess);
+        showAdminLoginError(currentLang === 'en' ? 'Server authentication is unavailable.' : 'Серверная авторизация недоступна.');
+        return;
+    }
+    firebase.functions().httpsCallable('tournamentMasterSignIn')({ password: pass }).then(function(result) {
+        if (!result.data || !result.data.token) throw new Error('Missing authentication token');
+        // Мастер-сессия заканчивается с закрытием вкладки/браузера; даже если
+        // пользователь поставил галочку «запомнить», права не хранятся локально.
+        return auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).then(function() {
+            return auth.signInWithCustomToken(result.data.token);
+        });
+    }).then(function() {
+        setAdminLoginLoading(false);
+        grantMasterAdminAccess();
         if (passInp) passInp.value = '';
         openAdminPanel();
         toast(currentLang === 'en' ? '✅ Logged in with master password' : '✅ Вход по мастер-паролю выполнен');
     }).catch(function(err) {
         setAdminLoginLoading(false);
-        showAdminLoginError((currentLang === 'en' ? 'Login error: ' : 'Ошибка входа: ') + (err && err.message ? err.message : err));
+        var code = err && err.code || '';
+        var messages = currentLang === 'en'
+            ? { 'functions/failed-precondition': 'Master password is not configured on the server.', 'functions/permission-denied': 'Incorrect master password.', 'functions/resource-exhausted': 'Too many attempts. Try again in 15 minutes.' }
+            : { 'functions/failed-precondition': 'Мастер-пароль не настроен на сервере.', 'functions/permission-denied': 'Неверный мастер-пароль.', 'functions/resource-exhausted': 'Слишком много попыток. Повторите через 15 минут.' };
+        showAdminLoginError(messages[code] || (currentLang === 'en' ? 'Login error: ' : 'Ошибка входа: ') + (err && err.message ? err.message : err));
     });
 }
 
 function adminLogout() {
+    var masterSession = isTournamentMaster();
     clearAdminAccessFlags();
+    if (masterSession && typeof auth !== 'undefined') auth.signOut().catch(function(e) { console.warn(e); });
 
     var loginEl = document.getElementById('admin-login');
     var contentEl = document.getElementById('admin-content');
@@ -372,6 +270,7 @@ function switchTab(t, b) {
     if (t === 'scores') {
         seRender();
     }
+    if (t === 'scoreaudit' && typeof saLoad === 'function') saLoad();
     if (t === 'data') {
         if (typeof loadPageVisibilitySettings === 'function') loadPageVisibilitySettings(); // js/admin-display.js
         if (typeof loadStablefordDisplaySettings === 'function') loadStablefordDisplaySettings(); // js/admin-display.js

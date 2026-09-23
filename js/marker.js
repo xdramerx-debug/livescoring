@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var errEl = mkGet('mk-err'); if (errEl) errEl.classList.remove('hidden');
         return;
     }
-    loadMk();
+    if (!(typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) loadMk();
     if (mkPaceTimer) { clearInterval(mkPaceTimer); mkPaceTimer = null; }
     mkPaceTimer = setInterval(function() {
         if (mkRound && typeof renderPaceAssistant === 'function' && typeof isBatterySaverEnabled === 'function') {
@@ -33,7 +33,15 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
     });
 }
 
+function onAuthReady(user, data) {
+    if (typeof navAuth === 'function') navAuth(user, data);
+    if (user && mkRid && mkPid && !(typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) loadMk();
+}
+
+var mkLoadStarted = false;
 function loadMk() {
+    if (mkLoadStarted) return;
+    mkLoadStarted = true;
     if (typeof db === 'undefined') {
         var errEl = mkGet('mk-err'); if (errEl) errEl.classList.remove('hidden');
         return;
@@ -209,17 +217,27 @@ function saveMk() {
     mkSetSaving(true);
     mkChanging = true;
     var savedHole = mkHole;
-    var p = (typeof dbSetWithOfflineQueue === 'function' ? dbSetWithOfflineQueue('markers/' + mkRid + '/' + mkPid + '/' + savedHole, mkScore) : (typeof db !== 'undefined' ? db.ref('markers/' + mkRid + '/' + mkPid + '/' + savedHole).set(mkScore) : Promise.resolve()));
-    p.then(function() {
+    var markerActor = (mkRound.players[mkPid] && mkRound.players[mkPid].markedBy) ||
+        (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) || null;
+    var p = pestovoScoreWrite(mkRid, [{kind:'marker',playerId:mkPid,hole:savedHole,score:mkScore}], markerActor);
+    p.then(function(res) {
+        if (res && res.offline) {
+            var pendingOrder = getRoundOrder(mkRound);
+            var pendingIdx = pendingOrder.indexOf(savedHole);
+            if (pendingIdx >= 0 && pendingIdx < pendingOrder.length - 1) { mkHole = pendingOrder[pendingIdx + 1]; mkScore = 0; }
+            renderHole(); buildHoles(); renderSum();
+            mkChanging = false; mkSetSaving(false);
+            return;
+        }
         mkScores[savedHole] = mkScore;
         var ps = parseInt(mkPScores[savedHole]) || 0;
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ps >= 1 && ps === mkScore) {
-            if (typeof dbSetWithOfflineQueue === 'function') dbSetWithOfflineQueue('rounds/' + mkRid + '/players/' + mkPid + '/verified/' + savedHole, true);
+
             if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + savedHole + ' confirmed:</b> ' + mkScore) : ('✅ <b>Лунка ' + savedHole + ' подтверждена:</b> ' + mkScore + ' уд.'));
             if (typeof vib === 'function') vib([50, 50]);
         } else if (ps >= 1) {
-            if (typeof dbSetWithOfflineQueue === 'function') dbSetWithOfflineQueue('rounds/' + mkRid + '/players/' + mkPid + '/verified/' + savedHole, false);
+
             if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + savedHole + '!</b><br>Player: <b>' + ps + '</b>, marker (you): <b>' + mkScore + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + savedHole + '!</b><br>Игрок: <b>' + ps + '</b>, маркер (вы): <b>' + mkScore + '</b>'), 'error');
         } else {
             if (typeof toast === 'function') toast(langIsEn ? ('👁️ <b>Hole ' + savedHole + ':</b> marker score <b>' + mkScore + '</b> saved. Waiting for player.') : ('👁️ <b>Лунка ' + savedHole + ':</b> счёт маркера <b>' + mkScore + '</b> сохранён. Ждём игрока.'), 'info');

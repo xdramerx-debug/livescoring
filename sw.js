@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.81.0-e83f8dc9';
+const CACHE_NAME = 'pestovo-v1.81.0-17de78ad';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -61,7 +61,7 @@ const STATIC_ASSETS = [
     'js/admin-name-forms.js?v=b6f269e8',
     'js/admin-players-excel.js?v=5566e07a',
     'js/admin-scoreedit.js?v=759fc8b1',
-    'js/admin.js?v=3ce8261d',
+    'js/admin.js?v=cf736208',
     'js/app.js?v=cf2f1c15',
     'js/assistant-build.js?v=6788f04f',
     'js/assistant-config.js?v=f0f8af7c',

@@ -80,6 +80,7 @@ function makeSandbox() {
     vm.createContext(sandbox);
     vm.runInContext(fs.readFileSync(__dirname + '/../js/utils.js', 'utf8'), sandbox);
     vm.runInContext(fs.readFileSync(__dirname + '/../js/admin.js', 'utf8'), sandbox);
+    vm.runInContext(fs.readFileSync(__dirname + '/../js/admin-tournaments.js', 'utf8'), sandbox);
     sandbox.currentLang = 'ru';
     sandbox.db = makeDb();
     sandbox.confirm = () => true;

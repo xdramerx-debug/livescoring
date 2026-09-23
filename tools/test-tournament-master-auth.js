@@ -20,6 +20,7 @@ assert.match(rules.protocols.$id['.write'], /tournamentId/);
 
 let counter = null, tokenCalls = 0;
 const expectedPassword = 'test-password-with-enough-entropy';
+const defaultPassword = '55555'; // мастер-пароль по умолчанию (functions/index.js)
 const config = { TOURNAMENT_MASTER_PASSWORD_HASH: crypto.createHash('sha256').update(expectedPassword).digest('hex') };
 class HttpsError extends Error { constructor(code, message) { super(message); this.code = code; } }
 const sandbox = {
@@ -53,12 +54,17 @@ const request = { rawRequest: { ip: '192.0.2.1' } };
     const result = await signIn({ password: expectedPassword }, request);
     assert.strictEqual(result.token, 'signed-token');
     assert.strictEqual(tokenCalls, 1);
+    // Без секрета действует мастер-пароль по умолчанию (55555):
+    // секретный пароль перестает работать, дефолтный — принимается.
     config.TOURNAMENT_MASTER_PASSWORD_HASH = '';
-    await assert.rejects(signIn({ password: expectedPassword }, request), e => e.code === 'failed-precondition');
+    await assert.rejects(signIn({ password: expectedPassword }, request), e => e.code === 'permission-denied');
+    const defaultResult = await signIn({ password: defaultPassword }, request);
+    assert.strictEqual(defaultResult.token, 'signed-token');
+    assert.strictEqual(tokenCalls, 2);
     config.TOURNAMENT_MASTER_PASSWORD_HASH = crypto.createHash('sha256').update(expectedPassword).digest('hex');
     counter = { since: Date.now(), count: 5 };
     await assert.rejects(signIn({ password: expectedPassword }, request), e => e.code === 'resource-exhausted');
-    assert.strictEqual(tokenCalls, 1);
+    assert.strictEqual(tokenCalls, 2, 'rate limit не чеканит токены');
     const client = fs.readFileSync(path.join(root, 'js/admin.js'), 'utf8');
     assert.match(client, /httpsCallable\('tournamentMasterSignIn'\)/);
     assert.match(client, /signInWithCustomToken/);

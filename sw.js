@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.86.0-b8c16251';
+const CACHE_NAME = 'pestovo-v1.87.0-5fa5caef';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -23,58 +23,44 @@ const STATIC_ASSETS = [
     // Страницы
     './',
     'admin.html',
-    'assistant.html',
     'auth.html',
     'design-preview.html',
-    'feed.html',
-    'guide.html',
     'handicap.html',
     'hcp-badge-preview.html',
     'index.html',
     'leaderboard.html',
     'marker.html',
     'offline.html',
-    'order-of-merit.html',
     'players.html',
-    'predictor.html',
     'qr-start.html',
     'scorer.html',
     'setup-round.html',
     'stats.html',
     'tournaments.html',
-    'tv.html',
 
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
-    'css/assistant.css?v=fb838d7f',
     'css/design-presets.css?v=77ff3916',
-    'css/style.css?v=41f65af3',
+    'css/style.css?v=897b10b1',
     'css/tn-studio.css?v=257f9601',
     'css/tournament-redesign.css?v=6aa85f7a',
-    'dist/livescoring-modules.js?v=d41796ba',
+    'dist/livescoring-modules.js?v=288a6fa1',
     'js/app.js?v=f05e95f5',
-    'js/assistant-build.js?v=6788f04f',
-    'js/assistant-config.js?v=f0f8af7c',
-    'js/assistant.js?v=a0ef1deb',
     'js/auth.js?v=fc85fc6b',
     'js/design-preview.js?v=adbbac01',
-    'js/design-system.js?v=702b1ef1',
-    'js/feed.js?v=7283cfab',
+    'js/design-system.js?v=78b8d092',
     'js/firebase-config.js?v=57564a0d',
-    'js/guide.js?v=fe5763bc',
     'js/handicap.js?v=27728fb5',
     'js/leaderboard.js?v=da62402e',
-    'js/live.js?v=cdf81789',
+    'js/live.js?v=4c3aaae3',
     'js/marker.js?v=83370556',
-    'js/order-of-merit.js?v=733a8cdc',
     'js/players.js?v=70c37568',
-    'js/predictor.js?v=5d54e305',
     'js/protocol.js?v=adbd9834',
     'js/pwa.js?v=1251735a',
     'js/qr-start.js?v=0ac378b8',
     'js/round-setup.js?v=8bda9181',
     'js/score-write.js?v=6f39f00e',
     'js/scorer.js?v=d3ff6c12',
-    'js/solo.js?v=4c216a1e',
+    'js/solo.js?v=b6c8b467',
     'js/stats.js?v=f351c5ac',
     'js/tn-scorecard.js?v=3ea4ebce',
     'js/tn-studio-core.js?v=084a748a',
@@ -82,7 +68,7 @@ const STATIC_ASSETS = [
     'js/tournament-core.js?v=6fbba5de',
     'js/tournament-public.js?v=1932a4cb',
     'js/tournaments.js?v=a814e6a6',
-    'js/utils.js?v=e8fb4472',
+    'js/utils.js?v=aeaff755',
 
     // Прочее
     'manifest.json',
@@ -90,8 +76,6 @@ const STATIC_ASSETS = [
     'img/icon-192.png',
     'img/icon-512.png',
     'img/logo.png',
-    'docs/assistant-index.json',
-    'docs/assistant-sources.json',
 ];
 // END PRECACHE
 

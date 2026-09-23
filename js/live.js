@@ -1220,13 +1220,6 @@ function renderPlayHole() {
         }
     }
 
-    var trackContainer = lGet('gr-shot-tracking-container');
-    if (trackContainer) {
-        try {
-            if (localStorage.getItem('pestovo_shot_tracking_enabled') === '1') trackContainer.classList.remove('hidden');
-            else trackContainer.classList.add('hidden');
-        } catch (e) { console.warn("[silent]", e); }
-    }
     var trackerEl = lGet('match-play-tracker-container');
     if (trackerEl) {
         var mStatus = null;

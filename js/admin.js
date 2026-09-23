@@ -211,8 +211,6 @@ function openAdminPanel() {
     if (typeof loadPageDisplaySettings === 'function') loadPageDisplaySettings(); // js/admin-display.js
     if (typeof loadAdmView5Settings === 'function') loadAdmView5Settings(); // js/admin-display.js
     if (typeof loadPrivacySettings === 'function') loadPrivacySettings(); // js/admin-display.js
-    renderAssistantSources();
-    loadAssistantSourcesFromFirebase();
     updateNotifButton();
     // Турниры: подключаем черновики/шаблоны/поле мастера, роутим URL-hash
     // (#new-create / #course / #templates / #manage) в единую вкладку.
@@ -293,10 +291,6 @@ function switchTab(t, b) {
     }
     if (t === 'players') {
         if (typeof loadPrivacySettings === 'function') loadPrivacySettings(); // js/admin-display.js
-    }
-    if (t === 'assistant') {
-        renderAssistantSources();
-        loadAssistantSourcesFromFirebase();
     }
     if (t === 'studio') {
         if (typeof tnStudioOpen === 'function') tnStudioOpen();

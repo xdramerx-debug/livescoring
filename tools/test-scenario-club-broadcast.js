@@ -4,7 +4,7 @@
  *
  *   node tools/test-scenario-club-broadcast.js
  *
- * Прогоняются НАСТОЯЩИЕ js/utils.js + js/admin.js + js/pwa.js + js/feed.js
+ * Прогоняются НАСТОЯЩИЕ js/utils.js + js/admin.js + js/pwa.js
  * в vm-контекстах с фейковой Firebase (без сети и без браузера):
  *
  *   1) админка: выбор аудитории — списки турниров и протоколов берутся из базы,
@@ -15,8 +15,7 @@
  *      чужой адресный анонс проходит молча;
  *   4) старые записи без audience и гость без аккаунта — как раньше: общий
  *      анонс видят все, адресный — никто лишний;
- *   5) лента (feed.html): пропущенный пуш остаётся читаемым, тоже по адресу;
- *   6) вёрстка и i18n: элементы выбора есть на странице, ключи — в двух словарях.
+ *   5) вёрстка и i18n: элементы выбора есть на странице, ключи — в двух словарях.
  */
 'use strict';
 
@@ -378,38 +377,20 @@ Promise.resolve().then(function () {
     eq(res.initial, [], 'сценарий 4: пустая база при загрузке — не «пропущенный» сигнал, а старт; дальше пуш приходит');
 
     /* ══════════════════════════════════════════════════════
-       5. ЛЕНТА: пропущенный пуш можно прочесть
-       ══════════════════════════════════════════════════════ */
-    return runFeed('uid_anya');
-}).then(function (html) {
-    ok(html.indexOf('Перенос старта на 10:30') !== -1, 'сценарий 5: адресный анонс виден в ленте адресату');
-    ok(html.indexOf('Чужой турнир') === -1, 'сценарий 5: чужой адресный анонс в ленте не показывается');
-    ok(html.indexOf('Общий анонс') !== -1, 'сценарий 5: общий анонс виден всем');
-    ok(html.indexOf('Турнир: Кубок Пестово') !== -1 || html.indexOf('Стартовый протокол') !== -1, 'сценарий 5: лента подписывает аудиторию');
-    return runFeed('uid_stranger');
-}).then(function (html) {
-    ok(html.indexOf('Перенос старта на 10:30') === -1, 'сценарий 5: посторонний в ленте адресного анонса не видит');
-    ok(html.indexOf('Общий анонс') !== -1, 'сценарий 5: посторонний видит общий анонс');
-
-    /* ══════════════════════════════════════════════════════
-       6. ВЁРСТКА И СЛОВАРЬ
+       5. ВЁРСТКА И СЛОВАРЬ
        ══════════════════════════════════════════════════════ */
     var html = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');
     ['bc-audience', 'bc-aud-tn', 'bc-aud-proto', 'bc-aud-count', 'bcAudienceTypeChange', 'bcAudienceSourceChange'].forEach(function (needle) {
         ok(html.indexOf(needle) !== -1, 'admin.html: элемент/обработчик ' + needle + ' на месте');
     });
     var utils = fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8');
-    ['bc_audience_lbl', 'bc_aud_all', 'bc_aud_tournament', 'bc_aud_protocol', 'bc_aud_hint', 'bc_aud_none_sel', 'feed_announcements_title']
+    ['bc_audience_lbl', 'bc_aud_all', 'bc_aud_tournament', 'bc_aud_protocol', 'bc_aud_hint', 'bc_aud_none_sel']
         .forEach(function (key) {
             var n = utils.match(new RegExp(key + ':', 'g')) || [];
             eq(n.length, 2, 'ключ i18n ' + key + ' есть в русском и английском словарях');
         });
     var pwa = fs.readFileSync(path.join(ROOT, 'js/pwa.js'), 'utf8');
     ok(pwa.indexOf('pestovoBroadcastMatches') !== -1, 'js/pwa.js: слушатель фильтрует анонсы по адресу');
-    var feedjs = fs.readFileSync(path.join(ROOT, 'js/feed.js'), 'utf8');
-    ok(feedjs.indexOf('pestovoBroadcastFeed') !== -1, 'js/feed.js: лента берёт анонсы через общий фильтр');
-    var feedhtml = fs.readFileSync(path.join(ROOT, 'feed.html'), 'utf8');
-    ok(feedhtml.indexOf('feed-announcements') !== -1, 'feed.html: контейнер анонсов добавлен');
 
     console.log('');
     if (failures) { console.error('Провалено проверок:', failures, 'из', checks); process.exit(1); }
@@ -479,36 +460,4 @@ function runPwaGuest() {
     });
     w.db._fire('broadcasts');
     return flush(4).then(function () { return { notified: notifiedTitles(w.sb), initial: knownAfter }; });
-}
-
-/* ── лента игрока ────────────────────────────────────────── */
-function runFeed(uid) {
-    var dom = makeDom(['feed-announcements', 'feed-list']);
-    var db = makeFakeDb({
-        broadcasts: {
-            b1: { title: 'Общий анонс', body: 'Для всех', link: 'index.html', time: 100 },
-            b2: {
-                title: 'Перенос старта на 10:30', body: 'Регистрация закрыта', link: 'tournaments.html', time: 200,
-                audience: { type: 'roster', tournamentId: 'tn1', tournamentName: 'Кубок Пестово', count: 3, uids: { uid_anya: true, uid_boris: true, uid_vera: true } }
-            },
-            b3: {
-                title: 'Чужой турнир', body: 'Не для Ани', link: 'tournaments.html', time: 300,
-                audience: { type: 'roster', tournamentId: 'tn9', tournamentName: 'Кубок Удельной', count: 1, uids: { uid_other: true } }
-            }
-        },
-        rounds: {}, reactions: {}
-    });
-    var sb = baseSandbox({
-        document: dom.doc,
-        db: db,
-        currentUser: uid ? { uid: uid } : null,
-        currentUserData: uid ? { role: 'player' } : null
-    });
-    sb._load('js/course-config.js');
-    sb._load('js/format.js');
-    sb._load('js/utils.js');
-    sb._load('js/feed.js');
-    sb.loadClubAnnouncements();
-    db._fire('broadcasts');
-    return flush(4).then(function () { return dom.els['feed-announcements'].innerHTML; });
 }

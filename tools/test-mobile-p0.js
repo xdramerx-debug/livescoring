@@ -92,8 +92,6 @@ function cssSwVersion() {
 
     const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
     const assets = sw.match(/STATIC_ASSETS = \[([\s\S]*?)\];/)[1];
-    ok(!/pravila-pestovo\.pdf/.test(assets), 'sw: PDF книги правил не в предкэше');
-    ok(!/pdfjs\//.test(assets), 'sw: pdf.js не в предкэше');
     ok(!/js\/admin\.js/.test(assets) && !/js\/start-admin\.js/.test(assets), 'sw: админ-бандлы не в предкэше');
 
     const ver = (sw.match(/pestovo-v(\d+\.\d+\.\d+)/) || [])[1];

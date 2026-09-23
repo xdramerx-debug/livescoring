@@ -125,17 +125,11 @@
         { key: 'players', label: 'Игроки', file: 'players.html', icon: 'fa-users' },
         { key: 'tournaments', label: 'Турниры', file: 'tournaments.html', icon: 'fa-trophy' },
         { key: 'stats', label: 'Статистика', file: 'stats.html', icon: 'fa-chart-column' },
-        { key: 'order-of-merit', label: 'Зачёт сезона', file: 'order-of-merit.html', icon: 'fa-medal' },
         { key: 'handicap', label: 'Гандикапы', file: 'handicap.html', icon: 'fa-id-card' },
-        { key: 'guide', label: 'Книга поля', file: 'guide.html', icon: 'fa-map-location-dot' },
-        { key: 'feed', label: 'Лента событий', file: 'feed.html', icon: 'fa-rss' },
-        { key: 'predictor', label: 'Симулятор WHS', file: 'predictor.html', icon: 'fa-calculator' },
-        { key: 'assistant', label: 'Помощник', file: 'assistant.html', icon: 'fa-robot' },
         { key: 'admin', label: 'Админ-панель', file: 'admin.html', icon: 'fa-shield-halved' },
         { key: 'auth', label: 'Вход / регистрация', file: 'auth.html', icon: 'fa-right-to-bracket' },
         { key: 'scorer', label: 'Скоринг (счёт)', file: 'scorer.html', icon: 'fa-pen-to-square' },
         { key: 'marker', label: 'Маркер', file: 'marker.html', icon: 'fa-user-check' },
-        { key: 'tv', label: 'ТВ-табло', file: 'tv.html', icon: 'fa-tv' },
         { key: 'offline', label: 'Офлайн-страница', file: 'offline.html', icon: 'fa-wifi' }
     ];
 
@@ -509,9 +503,6 @@
                 '<div><div class="footer-sub">Разделы</div>' +
                 '<a href="#" class="footer-link" onclick="return false">Все раунды</a>' +
                 '<a href="#" class="footer-link" onclick="return false">Статистика</a></div>' +
-                '<div><div class="footer-sub">Сервисы</div>' +
-                '<a href="#" class="footer-link" onclick="return false">Помощник</a>' +
-                '<a href="#" class="footer-link" onclick="return false">Книга поля</a></div>' +
             '</div>' +
             '<div class="footer-bottom">© 2024 Гольф-клуб Пестово</div>' +
             '<p class="site-version">Версия сайта: <span class="version-number">—</span></p>' +

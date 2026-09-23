@@ -364,9 +364,6 @@ flush(12).then(function () {
     /* ==========================================================
        5. ЭКРАНЫ БЕРУТ ФОРМАТ ИЗ ОБЩЕГО СЛОЯ
        ========================================================== */
-    var tv = fs.readFileSync(path.join(ROOT, 'tv.html'), 'utf8');
-    ok(tv.indexOf('pestovoRoundFormatBadge') !== -1, 'tv.html: формат раунда из общего слоя');
-    ok(tv.indexOf('startOrder') !== -1 && tv.indexOf('groupsTotal') !== -1, 'tv.html: показывает очередь tee-off и размер протокола');
     // Форматная линия админки переехала в js/admin-tournaments.js (CODE-REVIEW п.3)
     ['js/app.js', 'js/leaderboard.js', 'js/scorer.js', 'js/tn-scorecard.js', 'js/admin-groups.js'].forEach(function (f) {
         var src = fs.readFileSync(path.join(ROOT, f), 'utf8');

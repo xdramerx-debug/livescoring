@@ -13,13 +13,13 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=41f65af3">
+    <link rel="stylesheet" href="css/style.css?v=897b10b1">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tn-wizard.css?v=01173cbb">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=6aa85f7a">
     <link rel="stylesheet" href="css/tournament-admin.css?v=326736ae">
     <link rel="stylesheet" href="css/tn-studio.css?v=257f9601">
-    <script src="js/design-system.js?v=702b1ef1"></script>
+    <script src="js/design-system.js?v=78b8d092"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -41,15 +41,10 @@
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
         <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
-        <a href="guide.html" class="nav-link" data-i18n="nav_guide">Книга поля</a>
-        <a href="feed.html" class="nav-link" data-i18n="nav_feed">Лента событий</a>
-        <a href="predictor.html" class="nav-link" data-i18n="nav_predictor">Симулятор WHS</a>
-        <a href="order-of-merit.html" class="nav-link" data-i18n="nav_oom">Зачёт сезона</a>
         <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
 <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
-        <a href="assistant.html" class="nav-link" data-i18n="nav_assistant">Помощник</a>
         <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
@@ -100,7 +95,6 @@
             <button class="admin-tab" onclick="switchTab('rusgolf',this)" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
             <button class="admin-tab" onclick="switchTab('data',this)" data-i18n="tab_data">Данные</button>
             <button class="admin-tab" onclick="switchTab('design',this)" data-i18n="tab_design">Дизайн 🎨</button>
-            <button class="admin-tab" onclick="switchTab('assistant',this)" data-i18n="tab_assistant">Помощник 🤖</button>
         </div>
 
         <div id="tab-rounds" class="admin-section hidden">
@@ -718,32 +712,7 @@
                     <i class="fas fa-save"></i> <span data-i18n="save_stableford_default">Сохранить настройку Stableford</span>
                 </button>
 
-                <!-- Переключатель «Меню инструментов» -->
-                <div class="list-item" onclick="toggleToolsMenuCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:16px;touch-action:manipulation;">
-                    <div>
-                        <span style="font-weight:700;font-size:14px;color:var(--white);">🧰 <span data-i18n="tools_title">Инструменты и функции</span></span>
-                        <div style="font-size:12px;color:var(--muted);margin-top:4px;">
-                            <span data-i18n-ru="Показать/скрыть кнопку «Меню» в шапке (GPS-дальномер, Shot Tracking, ТВ-режим, 1v1)." data-i18n-en="Show/hide the Tools button in the header (GPS rangefinder, Shot Tracking, TV mode, 1v1 duel).">Показать/скрыть кнопку «Меню» в шапке (GPS-дальномер, Shot Tracking, ТВ-режим, 1v1).</span>
-                        </div>
-                    </div>
-                    <input type="checkbox" id="pv-tools-menu" style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
-                </div>
-                <!-- Переключатель «Мои настройки» (боковое меню) -->
-                <div class="list-item" onclick="toggleMyPreferencesCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:16px;touch-action:manipulation;">
-                    <div>
-                        <span style="font-weight:700;font-size:14px;color:var(--white);">⚙️ <span data-i18n="my_preferences_title">Мои настройки</span></span>
-                        <div style="font-size:12px;color:var(--muted);margin-top:4px;">
-                            <span data-i18n-ru="Показать/скрыть вкладку «Мои настройки» в самом конце бокового меню (крупный шрифт, вибрация, цвета статусов, экономия батареи)." data-i18n-en="Show/hide the «My preferences» tab at the very end of the side menu (large UI, vibration, status colors, battery saver).">Показать/скрыть вкладку «Мои настройки» в самом конце бокового меню (крупный шрифт, вибрация, цвета статусов, экономия батареи).</span>
-                        </div>
-                    </div>
-                    <input type="checkbox" id="pv-my-preferences" style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
-                </div>
-                <!-- Стиль зелёной галочки гандикапа (синхронизация + дата обновления) -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.4);border-radius:10px;margin-bottom:16px;">
-                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-circle-check" style="color:#2ecc71;"></i> <span data-i18n="hcp_variant_title">Стиль галочки гандикапа</span></span>
-                    <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="hcp_variant_sub">
-                        Зелёная галочка «гандикап синхронизирован» и дата обновления показаны во вкладке «Игроки», личном профиле и в списке админки. Выбор действует для всех игроков.
-                    </div>
+                
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
                         <button type="button" id="hcp-badge-opt-1" class="btn btn-og btn-sm hcp-variant-btn" onclick="saveHcpBadgeVariant('1')"><i class="fas fa-circle-check"></i> <span data-i18n="hcp_variant_1">1 · Компактная галочка</span></button>
                         <button type="button" id="hcp-badge-opt-2" class="btn btn-og btn-sm hcp-variant-btn" onclick="saveHcpBadgeVariant('2')"><i class="fas fa-capsules"></i> <span data-i18n="hcp_variant_2">2 · Пилюля «обновлён»</span></button>
@@ -942,121 +911,8 @@
                 </div>
                 <!-- Глобальные варианты отображения основных страниц -->
                 <div class="page-display-settings-grid">
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-house" style="color:var(--gold);"></i> <span data-i18n="home_display_title">Отображение страницы «Главная»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="home_display_sub">Выберите один из трёх вариантов оформления главной страницы. Настройка применяется для всех пользователей.</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="home-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('home','1')" aria-pressed="true"><i class="fas fa-star"></i> <span data-i18n="home_display_variant_1">1 · Классика</span></button>
-                            <button type="button" id="home-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('home','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="home_display_variant_2">2 · Компактная</span></button>
-                            <button type="button" id="home-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('home','3')" aria-pressed="false"><i class="fas fa-gem"></i> <span data-i18n="home_display_variant_3">3 · Витрина</span></button>
-                        </div>
-                    </div>
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-users" style="color:var(--gold);"></i> <span data-i18n="players_display_title">Отображение страницы «Игроки»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="players_display_sub">Выберите один из трёх вариантов оформления списка игроков. Настройка применяется для всех пользователей.</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="players-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('players','1')" aria-pressed="true"><i class="fas fa-id-card"></i> <span data-i18n="players_display_variant_1">1 · Карточки</span></button>
-                            <button type="button" id="players-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('players','2')" aria-pressed="false"><i class="fas fa-list"></i> <span data-i18n="players_display_variant_2">2 · Компактный список</span></button>
-                            <button type="button" id="players-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('players','3')" aria-pressed="false"><i class="fas fa-ranking-star"></i> <span data-i18n="players_display_variant_3">3 · Витрина</span></button>
-                        </div>
-                    </div>
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-chart-column" style="color:var(--gold);"></i> <span data-i18n="stats_display_title">Отображение страницы «Статистика»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="stats_display_sub">Выберите один из трёх вариантов оформления статистики клуба. Настройка применяется для всех пользователей.</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="stats-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('stats','1')" aria-pressed="true"><i class="fas fa-table-cells"></i> <span data-i18n="stats_display_variant_1">1 · Карточки</span></button>
-                            <button type="button" id="stats-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('stats','2')" aria-pressed="false"><i class="fas fa-table-list"></i> <span data-i18n="stats_display_variant_2">2 · Сводка</span></button>
-                            <button type="button" id="stats-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('stats','3')" aria-pressed="false"><i class="fas fa-gauge-high"></i> <span data-i18n="stats_display_variant_3">3 · Дашборд</span></button>
-                        </div>
-                    </div>
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-flag" style="color:var(--gold);"></i> <span data-i18n="rounds_display_title">Отображение страницы «Все раунды»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="rounds_display_sub">Выберите один из трёх вариантов списка раундов. Настройка применяется для всех пользователей.</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="rounds-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('rounds','1')" aria-pressed="true"><i class="fas fa-bars"></i> <span data-i18n="rounds_display_variant_1">1 · Текущий список</span></button>
-                            <button type="button" id="rounds-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('rounds','2')" aria-pressed="false"><i class="fas fa-table-list"></i> <span data-i18n="rounds_display_variant_2">2 · Таблица</span></button>
-                            <button type="button" id="rounds-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('rounds','3')" aria-pressed="false"><i class="fas fa-layer-group"></i> <span data-i18n="rounds_display_variant_3">3 · Витрина раундов</span></button>
-                        </div>
-                    </div>
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-book-bookmark" style="color:var(--gold);"></i> <span data-i18n="guide_display_title">Отображение страницы «Книга поля»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="guide_display_sub">Выберите один из трёх вариантов оформления книги поля. Настройка применяется для всех пользователей.</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="guide-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('guide','1')" aria-pressed="true"><i class="fas fa-id-card"></i> <span data-i18n="guide_display_variant_1">1 · Карточка лунки</span></button>
-                            <button type="button" id="guide-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('guide','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="guide_display_variant_2">2 · Компактная</span></button>
-                            <button type="button" id="guide-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('guide','3')" aria-pressed="false"><i class="fas fa-newspaper"></i> <span data-i18n="guide_display_variant_3">3 · Таблоид</span></button>
-                        </div>
-                    </div>
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-rss" style="color:var(--gold);"></i> <span data-i18n="feed_display_title">Отображение страницы «Лента событий»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="feed_display_sub">Выберите один из трёх вариантов оформления ленты событий. Настройка применяется для всех пользователей.</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="feed-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('feed','1')" aria-pressed="true"><i class="fas fa-stream"></i> <span data-i18n="feed_display_variant_1">1 · Лента</span></button>
-                            <button type="button" id="feed-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('feed','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="feed_display_variant_2">2 · Компактная</span></button>
-                            <button type="button" id="feed-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('feed','3')" aria-pressed="false"><i class="fas fa-bullhorn"></i> <span data-i18n="feed_display_variant_3">3 · Афиша</span></button>
-                        </div>
-                    </div>
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-calculator" style="color:var(--gold);"></i> <span data-i18n="predictor_display_title">Отображение страницы «Симулятор WHS»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="predictor_display_sub">Выберите один из трёх вариантов оформления симулятора. Настройка применяется для всех пользователей.</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="predictor-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('predictor','1')" aria-pressed="true"><i class="fas fa-square-check"></i> <span data-i18n="predictor_display_variant_1">1 · Стандарт</span></button>
-                            <button type="button" id="predictor-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('predictor','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="predictor_display_variant_2">2 · Компактный</span></button>
-                            <button type="button" id="predictor-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('predictor','3')" aria-pressed="false"><i class="fas fa-gauge-high"></i> <span data-i18n="predictor_display_variant_3">3 · Дашборд</span></button>
-                        </div>
-                    </div>
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-crown" style="color:var(--gold);"></i> <span data-i18n="order-of-merit_display_title">Отображение страницы «Зачёт сезона»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="order-of-merit_display_sub">Выберите один из трёх вариантов оформления таблицы зачёта сезона. Настройка применяется для всех пользователей.</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="order-of-merit-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('order-of-merit','1')" aria-pressed="true"><i class="fas fa-table"></i> <span data-i18n="order-of-merit_display_variant_1">1 · Таблица</span></button>
-                            <button type="button" id="order-of-merit-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('order-of-merit','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="order-of-merit_display_variant_2">2 · Компактная</span></button>
-                            <button type="button" id="order-of-merit-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('order-of-merit','3')" aria-pressed="false"><i class="fas fa-ranking-star"></i> <span data-i18n="order-of-merit_display_variant_3">3 · Пьедестал</span></button>
-                        </div>
-                    </div>
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-trophy" style="color:var(--gold);"></i> <span data-i18n="tournaments_display_title">Отображение страницы «Турниры»</span></span>
-                        <div class="page-display-setting-sub">У страницы «Турниры» пять вариантов оформления — они вынесены в отдельную вкладку «Турниры: вид 👁».</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="tournaments-display-open-tab" class="btn btn-og btn-sm page-display-variant-btn" onclick="switchTab('tournamentsview', document.querySelector('.admin-tab[onclick*=&quot;tournamentsview&quot;]'))"><i class="fas fa-arrow-right"></i> <span data-i18n="tab_tournaments_view">Турниры: вид 👁</span></button>
-                        </div>
-                    </div>
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-percent" style="color:var(--gold);"></i> <span data-i18n="handicap_display_title">Отображение страницы «Гандикапы»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="handicap_display_sub">Выберите один из трёх вариантов оформления калькулятора и таблиц гандикапов. Настройка применяется для всех пользователей.</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="handicap-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('handicap','1')" aria-pressed="true"><i class="fas fa-square-check"></i> <span data-i18n="handicap_display_variant_1">1 · Стандарт</span></button>
-                            <button type="button" id="handicap-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('handicap','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="handicap_display_variant_2">2 · Компактный</span></button>
-                            <button type="button" id="handicap-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('handicap','3')" aria-pressed="false"><i class="fas fa-table-cells-large"></i> <span data-i18n="handicap_display_variant_3">3 · Витрина</span></button>
-                        </div>
-                    </div>
-                    <div class="list-item page-display-setting-card">
-                        <span class="page-display-setting-title"><i class="fas fa-robot" style="color:var(--gold);"></i> <span data-i18n="assistant_display_title">Отображение страницы «Помощник»</span></span>
-                        <div class="page-display-setting-sub" data-i18n="assistant_display_sub">Выберите один из трёх вариантов оформления чата помощника. Настройка применяется для всех пользователей.</div>
-                        <div class="page-display-variant-buttons">
-                            <button type="button" id="assistant-display-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('assistant','1')" aria-pressed="true"><i class="fas fa-comments"></i> <span data-i18n="assistant_display_variant_1">1 · Классический чат</span></button>
-                            <button type="button" id="assistant-display-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('assistant','2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="assistant_display_variant_2">2 · Компактный</span></button>
-                            <button type="button" id="assistant-display-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="savePageDisplayVariant('assistant','3')" aria-pressed="false"><i class="fas fa-magnifying-glass-plus"></i> <span data-i18n="assistant_display_variant_3">3 · Крупный</span></button>
-                        </div>
-                    </div>
                 </div>
                 <div id="page-visibility-grid" class="form-row" style="gap:10px;margin-bottom:16px;">
-                    <div class="list-item" onclick="togglePVCheckbox('pv-guide', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
-                        <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">📖 <span data-i18n="nav_guide">Книга поля</span></span>
-                        <input type="checkbox" id="pv-guide" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
-                    </div>
-                    <div class="list-item" onclick="togglePVCheckbox('pv-feed', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
-                        <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">📡 <span data-i18n="nav_feed">Лента событий</span></span>
-                        <input type="checkbox" id="pv-feed" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
-                    </div>
-                    <div class="list-item" onclick="togglePVCheckbox('pv-predictor', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
-                        <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">🧮 <span data-i18n="nav_predictor">Симулятор WHS</span></span>
-                        <input type="checkbox" id="pv-predictor" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
-                    </div>
-                    <div class="list-item" onclick="togglePVCheckbox('pv-order-of-merit', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
-                        <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">👑 <span data-i18n="nav_oom">Зачёт сезона</span></span>
-                        <input type="checkbox" id="pv-order-of-merit" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
-                    </div>
                     <div class="list-item" onclick="togglePVCheckbox('pv-players', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
                         <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">👥 <span data-i18n="nav_players">Игроки</span></span>
                         <input type="checkbox" id="pv-players" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
@@ -1072,10 +928,6 @@
                     <div class="list-item" onclick="togglePVCheckbox('pv-handicap', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
                         <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">📐 <span data-i18n="nav_handicaps">Таблица гандикапов</span></span>
                         <input type="checkbox" id="pv-handicap" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
-                    </div>
-                    <div class="list-item" onclick="togglePVCheckbox('pv-assistant', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
-                        <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">🤖 <span data-i18n="nav_assistant">Помощник</span></span>
-                        <input type="checkbox" id="pv-assistant" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
                     </div>
                 </div>
                 <button type="button" class="btn btn-g btn-block" onclick="savePageVisibilitySettings()" style="min-height:48px;font-size:15px;margin-top:10px;">
@@ -1150,66 +1002,19 @@
             </div>
         </div>
 
-        <div id="tab-assistant" class="admin-section hidden">
-            <div class="card" style="margin-bottom:20px;">
-                <h2><i class="fas fa-robot"></i> <span data-i18n="assistant_admin_title">Настройка «Помощника»</span></h2>
-                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="assistant_admin_sub">
-                    Добавляйте PDF-документы по ссылке — помощник сможет отвечать на вопросы по ним. Нажмите «Сохранить и перестроить», чтобы обновить базу знаний для всех игроков.
-                </p>
-
-                <!-- Скрыть страницу помощника -->
-                <div class="list-item" onclick="toggleAssistantPageHidden(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;touch-action:manipulation;">
-                    <div>
-                        <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-eye-slash"></i> <span data-i18n="assistant_hide_page">Скрыть страницу «Помощник» для всех</span></span>
-                        <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="assistant_hide_page_hint">Снимите галочку, чтобы полностью убрать страницу помощника из меню и закрыть к ней доступ.</div>
-                    </div>
-                    <input type="checkbox" id="as-hide-page" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
-                </div>
-
-                <!-- Форма добавления источника -->
-                <h3 style="color:var(--gold);font-size:15px;margin:6px 0 10px;"><i class="fas fa-plus"></i> <span data-i18n="assistant_add_source_title">Добавить документ (PDF по ссылке)</span></h3>
-                <div class="form-row" style="gap:10px;">
-                    <div class="form-group" style="flex:1 1 220px;">
-                        <label data-i18n="assistant_source_name"><i class="fas fa-heading"></i> Название документа</label>
-                        <input type="text" id="as-add-title" class="form-input" placeholder="Например: Регламент турниров">
-                    </div>
-                    <div class="form-group" style="flex:2 1 320px;">
-                        <label data-i18n="assistant_source_url"><i class="fas fa-link"></i> Ссылка на PDF</label>
-                        <input type="url" id="as-add-url" class="form-input" placeholder="https://example.com/rules.pdf или docs/mine.pdf">
-                    </div>
-                    <div class="form-group" style="flex:0 0 auto;">
-                        <label aria-hidden="true">&nbsp;</label>
-                        <button type="button" class="btn btn-g" id="as-add-btn" onclick="assistantAddSource()"><i class="fas fa-plus"></i> <span data-i18n="assistant_add_btn">Добавить</span></button>
-                    </div>
-                </div>
-                <div id="as-add-status"></div>
-
-                <!-- Список источников -->
-                <h3 style="color:var(--gold);font-size:15px;margin:18px 0 10px;"><i class="fas fa-list"></i> <span data-i18n="assistant_sources_title">Источники базы знаний</span></h3>
-                <div id="as-source-list" class="form-row" style="gap:10px;"></div>
-
-                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;">
-                    <button type="button" id="as-rebuild-btn" class="btn btn-g btn-block" onclick="assistantRebuildIndex()" style="min-height:48px;font-size:15px;">
-                        <i class="fas fa-sync"></i> <span data-i18n="assistant_rebuild_btn">Сохранить и перестроить индекс</span>
-                    </button>
-                </div>
-                <div id="as-rebuild-status" style="margin-top:12px;"></div>
-            </div>
-        </div>
+        
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.86.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.87.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="js/firebase-config.js?v=57564a0d"></script>
-<script type="module" src="dist/livescoring-modules.js?v=d41796ba"></script>
-    <script src="js/utils.js?v=e8fb4472"></script>
+<script type="module" src="dist/livescoring-modules.js?v=288a6fa1"></script>
+    <script src="js/utils.js?v=aeaff755"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/assistant-config.js?v=f0f8af7c"></script>
-<script src="js/assistant-build.js?v=6788f04f"></script>
 <script src="js/name-variants.js?v=9fc593e7"></script>
 <script src="js/tournament-core.js?v=6fbba5de"></script>
 <script src="js/tn-engine.js?v=0d245f27"></script>
@@ -1217,7 +1022,7 @@
 <script src="js/tournament-admin.js?v=7265cd3b"></script>
 <script src="js/tn-studio-core.js?v=084a748a"></script>
 <script src="js/tn-studio.js?v=94625b0d"></script>
-<script src="js/admin.js?v=b164cb66"></script>
+<script src="js/admin.js?v=bf4ccf23"></script>
 <script src="js/admin-players.js?v=62b1bd6f"></script>
 <script src="js/admin-tournaments.js?v=e22ca1ba"></script>
 <script src="js/admin-flights.js?v=84486ca0"></script>
@@ -1227,10 +1032,9 @@
 <script src="js/admin-channels.js?v=006a9dc3"></script>
 <script src="js/admin-alerts.js?v=7b28ee0c"></script>
 <script src="js/admin-players-excel.js?v=5566e07a"></script>
-<script src="js/admin-assistant.js?v=2b14d1db"></script>
 <script src="js/admin-agr.js?v=3be6a9bc"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
-<script src="js/admin-display.js?v=0577404f"></script>
+<script src="js/admin-display.js?v=1fc72bf2"></script>
 <script src="js/protocol.js?v=adbd9834"></script>
 <script src="js/start-admin.js?v=ac56efb4"></script>
 <script src="js/pe-edit.js?v=90a9674d"></script>

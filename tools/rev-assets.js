@@ -14,7 +14,7 @@
  *     Изменил файл → следующая сборка сама получит новый URL в HTML и SW.
  *  2. Пересобирает блок precache-манифеста в sw.js между маркерами
  *     BEGIN/END PRECACHE: все страницы + все найденные ассеты (с их ?v=)
- *     + manifest.json + img/* + docs/assistant-*.json.
+ *     + manifest.json + img/*.
  *     Исключение (docs/mobile-audit.md, §1.1): файлы, которые грузит ТОЛЬКО
  *     admin.html (админские бандлы, ~1 МБ), в предкэш не кладём — админы
  *     всегда онлайн, а игрокам эти байты на установке PWA не нужны.
@@ -113,9 +113,6 @@ const imgDir = path.join(ROOT, 'img');
 if (fs.existsSync(imgDir)) {
     fs.readdirSync(imgDir).sort().forEach(function (f) { extras.push('img/' + f); });
 }
-['docs/assistant-index.json', 'docs/assistant-sources.json'].forEach(function (f) {
-    if (exists(f)) extras.push(f);
-});
 
 for (const url of [].concat(pages, assets, extras)) {
     if (!exists(url.split('?')[0])) fail('манифест ссылается на отсутствующий файл: ' + url);

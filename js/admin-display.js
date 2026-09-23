@@ -478,13 +478,8 @@ var ADMIN_PAGE_DISPLAY_CONFIG = {
     players: { path: 'settings/players_display_variant', label: 'Игроки' },
     stats: { path: 'settings/stats_display_variant', label: 'Статистика' },
     rounds: { path: 'settings/all_rounds_display_variant', label: 'Все раунды' },
-    guide: { path: 'settings/guide_display_variant', label: 'Книга поля' },
-    feed: { path: 'settings/feed_display_variant', label: 'Лента событий' },
-    predictor: { path: 'settings/predictor_display_variant', label: 'Симулятор WHS' },
-    'order-of-merit': { path: 'settings/oom_display_variant', label: 'Зачёт сезона' },
     tournaments: { path: 'settings/tournaments_display_variant', label: 'Турниры' },
-    handicap: { path: 'settings/handicap_display_variant', label: 'Гандикапы' },
-    assistant: { path: 'settings/assistant_display_variant', label: 'Помощник' }
+    handicap: { path: 'settings/handicap_display_variant', label: 'Гандикапы' }
 };
 
 function loadPageDisplaySettings() {
@@ -664,33 +659,8 @@ function loadPageVisibilitySettings() {
         });
     };
 
-    // Состояние чекбокса «Меню инструментов» (по умолчанию ВЫКЛЮЧЕНО)
-    var toolsCheckbox = document.getElementById('pv-tools-menu');
-    if (toolsCheckbox) {
-        var toolsEnabled = localStorage.getItem('pestovo_tools_menu_enabled') === '1';
-        toolsCheckbox.checked = toolsEnabled;
-    }
-
-    // Состояние чекбокса «Мои настройки» (по умолчанию ВКЛЮЧЕНО)
-    var prefsCheckbox = document.getElementById('pv-my-preferences');
-    if (prefsCheckbox) {
-        var v = localStorage.getItem('pestovo_my_preferences_enabled');
-        // По умолчанию (null/undefined) — включено
-        prefsCheckbox.checked = (v === null || v === undefined || v === '1');
-    }
-
     if (typeof getHiddenPages === 'function') {
         updateCheckboxes(getHiddenPages());
-    }
-
-    // Отдельный чекбокс «Скрыть помощника» во вкладке «Помощник»
-    var asHide = document.getElementById('as-hide-page');
-    var asMainCb = document.getElementById('pv-assistant');
-    if (asHide) {
-        var hidden = getHiddenPages();
-        var isHidden = (hidden['assistant.html'] === true || hidden['assistant'] === true);
-        asHide.checked = !isHidden;
-        if (asMainCb) asMainCb.checked = !isHidden;
     }
 
     if (typeof db !== 'undefined' && db) {
@@ -713,34 +683,6 @@ function loadPageVisibilitySettings() {
                 updateCheckboxes(hp);
                 if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
             }
-        });
-        // Синхронизация переключателя «Меню инструментов»
-        bindRealtimeValue('admin-tools-menu', db.ref('settings/tools_menu_enabled'), function(sn) {
-            var v = sn.val();
-            var enabled = (v === true || v === '1' || v === 1);
-            try { localStorage.setItem('pestovo_tools_menu_enabled', enabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
-            var cb = document.getElementById('pv-tools-menu');
-            if (cb) cb.checked = enabled;
-            if (typeof navAuth === 'function' && typeof currentUserData !== 'undefined') {
-                navAuth(currentUser, currentUserData);
-            }
-            if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
-        });
-        // Синхронизация переключателя «Мои настройки» (боковое меню)
-        bindRealtimeValue('admin-my-preferences', db.ref('settings/my_preferences_enabled'), function(sn) {
-            var v = sn.val();
-            if (v === null || v === undefined) {
-                // По умолчанию ВКЛ — в localStorage ничего не пишем
-                var cb0 = document.getElementById('pv-my-preferences');
-                if (cb0) cb0.checked = true;
-                return;
-            }
-            var enabled = (v === true || v === '1' || v === 1);
-            try { localStorage.setItem('pestovo_my_preferences_enabled', enabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
-            var cb = document.getElementById('pv-my-preferences');
-            if (cb) cb.checked = enabled;
-            if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
-            if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
         });
     }
 
@@ -768,33 +710,11 @@ function savePageVisibilitySettings() {
     localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hiddenPages));
     if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
 
-    // Сохраняем состояние «Меню инструментов»
-    var toolsCb = document.getElementById('pv-tools-menu');
-    var toolsEnabled = toolsCb ? toolsCb.checked : false;
-    try { localStorage.setItem('pestovo_tools_menu_enabled', toolsEnabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
-    if (typeof navAuth === 'function' && typeof currentUserData !== 'undefined') {
-        navAuth(currentUser, currentUserData);
-    }
-    if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
-
-    // Сохраняем состояние «Мои настройки» (боковое меню)
-    var prefsCb = document.getElementById('pv-my-preferences');
-    // По умолчанию ВКЛ, если чекбокс не найден — считаем включённым
-    var prefsEnabled = prefsCb ? prefsCb.checked : true;
-    try { localStorage.setItem('pestovo_my_preferences_enabled', prefsEnabled ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
-    if (typeof buildMobileDrawer === 'function') buildMobileDrawer();
-    if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
-
     toast(currentLang === 'en' ? '✅ Page visibility settings saved!' : '✅ Настройки видимости сохранены!', 'success');
     if (typeof vib === 'function') vib([50, 30, 50]);
 
     if (typeof db !== 'undefined') {
-        var updates = {
-            'settings/hidden_pages': fbPages,
-            'settings/tools_menu_enabled': toolsEnabled,
-            'settings/my_preferences_enabled': prefsEnabled
-        };
-        db.ref().update(updates).then(function() {
+        db.ref('settings/hidden_pages').set(fbPages).then(function() {
             console.log('Visibility settings synced to Firebase successfully');
         }).catch(function(err) {
             console.warn('Firebase sync warning:', err);
@@ -812,14 +732,6 @@ function togglePVCheckbox(id, event) {
         checkbox.checked = !checkbox.checked;
         if (typeof vib === 'function') vib(30);
     }
-}
-
-function toggleToolsMenuCheckbox(event) {
-    togglePVCheckbox('pv-tools-menu', event);
-}
-
-function toggleMyPreferencesCheckbox(event) {
-    togglePVCheckbox('pv-my-preferences', event);
 }
 
 // ==========================================
@@ -855,15 +767,6 @@ function markAdmHcpVariantButtons() {
         if (!btn) return;
         btn.classList.toggle('hcp-variant-active', v === cur);
     });
-}
-
-function toggleAssistantPageHidden(event) {
-    // Переключаем чекбокс во вкладке «Помощник» и синхронизируем с сеткой «Данные»
-    togglePVCheckbox('as-hide-page', event);
-    var tab = document.getElementById('as-hide-page');
-    var main = document.getElementById('pv-assistant');
-    if (tab && main) main.checked = tab.checked;
-    savePageVisibilitySettings();
 }
 
 // ==========================================

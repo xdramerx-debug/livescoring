@@ -40,7 +40,7 @@
  *
  * Запуск:
  *   node tools/browser-check.js                        # все страницы, оба варианта
- *   node tools/browser-check.js --pages=index.html,tv.html
+ *   node tools/browser-check.js --pages=index.html,leaderboard.html
  *   node tools/browser-check.js --variant=bundle       # только бандл
  *   node tools/browser-check.js --require              # падать, если нет браузера
  */
@@ -90,15 +90,12 @@ const FOUNDATION_GLOBALS = [
 // поэтому для ключевых страниц дополнительно требуем, что страница реально
 // отрисовалась (баг, одинаковый в обоих вариантах, иначе прошёл бы незамеченным).
 const PAGE_EXPECTATIONS = {
-    'index.html': 'document.querySelectorAll(".nav-link").length >= 8 && !!document.querySelector(".hero")',
+    'index.html': 'document.querySelectorAll(".nav-link").length >= 7 && !!document.querySelector(".hero")',
     'hcp-badge-preview.html': 'document.querySelectorAll(".mock-cards .card").length >= 3 && document.querySelectorAll(".mock-profile .card").length >= 1',
     'admin.html': 'typeof openAdminPanel === "function" && typeof switchTab === "function" && document.querySelectorAll(".admin-tab").length >= 3',
-    'assistant.html': 'document.querySelectorAll(".as-msg.as-bot").length >= 1 && !!document.getElementById("as-messages")',
     'setup-round.html': 'document.querySelectorAll("select option").length >= 18 && !!document.getElementById("player-slots")',
     'leaderboard.html': '!!document.getElementById("lb-container") && typeof loadLB === "function"',
     'stats.html': '!!document.getElementById("general-stats") && typeof loadStats === "function"',
-    'guide.html': 'document.querySelectorAll("[data-hole], .hole-row").length >= 1 || document.body.innerText.indexOf("Пар") !== -1',
-    'tv.html': '!!document.getElementById("tv-clock") || document.body.innerText.length > 50',
     'tournaments.html': '!!document.getElementById("tn-public-catalog") && typeof loadTournaments === "function"',
     'scorer.html': 'typeof loadSc === "function" && !!document.getElementById("sc-err")',
     'marker.html': 'typeof loadMk === "function"',

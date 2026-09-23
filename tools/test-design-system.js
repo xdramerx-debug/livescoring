@@ -87,7 +87,7 @@ function loadDesign(ctx) {
         ok(p.swatches && p.swatches.length >= 3, 'Шаблон ' + p.id + ' должен иметь цвета-пробники');
         ok(p.tagline && p.tagline.length > 10, 'Шаблон ' + p.id + ' должен иметь описание');
     });
-    ok(D.PAGES.length >= 15, 'Ожидалось ≥15 страниц с настройкой шаблона, получено ' + D.PAGES.length);
+    ok(D.PAGES.length >= 10, 'Ожидалось ≥10 страниц с настройкой шаблона, получено ' + D.PAGES.length);
     ok(D.BLOCKS.length === 12, 'Ожидалось 12 блоков, получено ' + D.BLOCKS.length);
 
     // Ключи блоков должны совпадать с атрибутами в CSS
@@ -309,8 +309,9 @@ function loadDesign(ctx) {
 
     var utils = fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8');
     ok(utils.indexOf("db.ref('settings/design')") !== -1, 'В utils.js нет listener-а settings/design');
-    ok(utils.indexOf('tab_design:') !== -1, 'В utils.js нет i18n-ключа tab_design');
-    ok(utils.indexOf("tab_design: 'Design") !== -1, 'В utils.js нет английского перевода tab_design');
+    var i18n = fs.readFileSync(path.join(ROOT, 'js', 'i18n.js'), 'utf8');
+    ok(i18n.indexOf('tab_design:') !== -1, 'В i18n нет ключа tab_design');
+    ok(i18n.indexOf("tab_design: 'Design") !== -1, 'В i18n нет английского перевода tab_design');
 
     var sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
     ok(sw.indexOf('pestovo-v' + siteVersion) !== -1, 'sw.js: CACHE_NAME не соответствует версии ' + siteVersion);

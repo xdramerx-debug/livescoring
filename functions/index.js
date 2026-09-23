@@ -27,8 +27,12 @@ Object.assign(exports, require('./score-audit')(functions, admin, db));
 // settings: этот узел публичен (RTDB не позволяет сузить доступ потомку).
 const crypto = require('crypto');
 const MASTER_UID = 'tournament-master';
+// Мастер-пароль администратора — 55555 (SHA-256, UTF-8). Секрет
+// TOURNAMENT_MASTER_PASSWORD_HASH в Firebase Secret Manager, если настроен,
+// имеет приоритет над этим значением.
+const DEFAULT_MASTER_PASSWORD_HASH = 'c507a68f3093e885765257ed3f176c757aaf62bb4cbc2ef94b2e7da3406d9676';
 exports.tournamentMasterSignIn = functions.runWith({ secrets: ['TOURNAMENT_MASTER_PASSWORD_HASH'] }).https.onCall(async function (data, context) {
-    const configured = process.env.TOURNAMENT_MASTER_PASSWORD_HASH || '';
+    const configured = process.env.TOURNAMENT_MASTER_PASSWORD_HASH || DEFAULT_MASTER_PASSWORD_HASH;
     if (!/^[a-f0-9]{64}$/i.test(configured)) {
         throw new functions.https.HttpsError('failed-precondition', 'Master password is not configured on the server.');
     }

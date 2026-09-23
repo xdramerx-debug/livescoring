@@ -87,4 +87,3 @@ libnss3/libnspr4 заглушки собирает `tools/build-stub-libs.sh`
 - `docs/IMPROVEMENTS-IMPL.md` — что уже сделано по аудиту.
 - `docs/MODULES-MIGRATION.md` — статус и план перехода на ES-модули.
 - `docs/SECURITY-RULES.md` — правила БД и порядок их деплоя.
-- `ASSISTANT.md` — офлайн-помощник по документам клуба (RAG по PDF).

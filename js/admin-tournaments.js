@@ -355,6 +355,8 @@ function exportTournamentRosterCSV(tnId) {
 // ВСЕ раунды этого турнира. Раунды убираются и из истории игроков (с
 // пересчётом roundsPlayed / bestGross / bestStableford), чтобы после
 // удаления турнира в «Истории» и статистике не оставалось его следов.
+// Считает, что именно уйдёт, общим помощником pestovoTournamentDeleteSummary
+// — те же цифры показывает и единая вкладка «Турниры» (js/tn-studio.js).
 function deleteTn(id) {
     var en = currentLang === 'en';
     if (typeof db === 'undefined' || !db || typeof pestovoDeleteTournamentCascade !== 'function') {
@@ -364,33 +366,30 @@ function deleteTn(id) {
     // Сначала считаем, что именно уйдёт (раунды турнира + протоколы групп),
     // и только потом просим подтверждение с цифрами: удаление турнира — это
     // удаление и всех его раундов, включая записи в истории игроков.
-    Promise.all([
-        db.ref('tournaments/' + id).once('value').catch(function() { return null; }),
-        pestovoTournamentRoundIdsFull(id).catch(function() { return []; }),
-        db.ref('protocols').once('value').catch(function() { return null; })
-    ]).then(function(res) {
-        var tv = (res[0] && res[0].val()) || {};
-        var tnName = tv.name || (en ? 'this tournament' : 'этот турнир');
-        var roundIds = res[1] || [];
-        var protos = (res[2] && res[2].val()) || {};
-        var protoIds = Object.keys(protos).filter(function(pid) {
-            var p = protos[pid] || {};
-            return p.tournamentId === id || p.tnId === id;
-        });
-        var rc = roundIds.length, pc = protoIds.length;
+    var counted = (typeof pestovoTournamentDeleteSummary === 'function')
+        ? pestovoTournamentDeleteSummary(id).catch(function() { return null; })
+        : Promise.resolve(null);
+    counted.then(function(sum) {
+        var rc = sum ? (sum.rounds || 0) : 0;
+        var pc = sum ? (sum.protocols || 0) : 0;
+        var tnName = (sum && sum.name) || (en ? 'this tournament' : 'этот турнир');
         var msg = en
             ? 'Delete tournament "' + tnName + '" together with ' + rc + ' round(s) and ' + pc +
               ' group protocol(s)? Rounds of this tournament will be removed from the players history and statistics too. This cannot be undone.'
             : 'Удалить турнир «' + tnName + '» вместе со всеми его раундами (' + rc + ') и протоколами групп (' + pc + ')? ' +
               'Раунды этого турнира исчезнут и из истории игроков, и из их статистики. Отменить это будет нельзя.';
         if (!confirm(msg)) return null;
-        return pestovoDeleteTournamentCascade(id).then(function(sum) {
+        return pestovoDeleteTournamentCascade(id).then(function(sum2) {
+            // Отклонённые записи больше не гасятся внутри каскада: иначе админ
+            // видел бы «раунды удалены», хотя база осталась прежней.
+            var errors = (sum2 && sum2.errors) || [];
+            if (errors.length) { toast('❌ ' + errors[0], 'error'); return; }
             var parts = en
-                ? 'Tournament deleted · rounds: ' + (sum.rounds || 0) + ' · protocols: ' + (sum.protocols || 0)
-                : 'Турнир удалён · раундов удалено: ' + (sum.rounds || 0) + ' · протоколов: ' + (sum.protocols || 0);
-            if (sum.players) {
-                parts += en ? ' · history recalculated for ' + sum.players + ' player(s)'
-                            : ' · история ' + sum.players + ' игрока(ов) пересчитана';
+                ? 'Tournament deleted · rounds: ' + (sum2.rounds || 0) + ' · protocols: ' + (sum2.protocols || 0)
+                : 'Турнир удалён · раундов удалено: ' + (sum2.rounds || 0) + ' · протоколов: ' + (sum2.protocols || 0);
+            if (sum2.players) {
+                parts += en ? ' · history recalculated for ' + sum2.players + ' player(s)'
+                            : ' · история ' + sum2.players + ' игрока(ов) пересчитана';
             }
             toast(parts, 'info');
             if (typeof loadTournaments === 'function') loadTournaments();
@@ -435,12 +434,17 @@ function tnFinishTournament(id) {
         // Завершение ≠ удаление: счета, введённые на турнире, сохраняем.
         // Открытые раунды этого турнира доводим до «завершён» и записываем
         // в историю игроков — как после обычного финиша раунда.
-        return pestovoPreserveTournamentRounds(id).then(function(kept) {
+        var keepJob = (typeof pestovoPreserveTournamentRounds === 'function')
+            ? pestovoPreserveTournamentRounds(id)
+            : Promise.resolve(0);
+        return keepJob.then(function(kept) {
             var extra = kept
                 ? (en ? ' · ' + kept + ' round(s) saved to player history' : ' · раундов сохранено в историю игроков: ' + kept)
                 : '';
             toast((en ? '🏁 Tournament completed!' : '🏁 Турнир завершён!') + extra, 'success');
             if (typeof loadTournaments === 'function') loadTournaments();
+            // Список раундов тоже перерисовываем: их статус изменился.
+            if (typeof loadAdmRounds === 'function') loadAdmRounds();
         });
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
@@ -673,16 +677,16 @@ function tnDivisionsEditorHtml(tnId, divisions, tVal) {
                 html += '<div class="tn-div-edit" style="background:rgba(255,255,255,0.04);border:1px solid rgba(201,168,76,0.4);border-radius:10px;padding:10px;margin-bottom:8px;">';
                 html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">';
                 html += '<div class="form-group" style="flex:2 1 150px;margin:0;"><label style="font-size:11px;">' + (en ? 'Group name' : 'Название группы') + '</label>' +
-                    '<input type="text" id="tnde-name-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" value="' + String(d.name || '').replace(/"/g, '&quot;') + '"></div>';
+                    '<input type="text" id="tnde-name-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" value="' + escapeHtml(d.name || '') + '"></div>';
                 html += '<div class="form-group" style="flex:1 1 100px;margin:0;"><label style="font-size:11px;">' + (en ? 'Gender' : 'Пол') + '</label>' +
                     '<select id="tnde-gender-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' +
                     '<option value="men"' + (d.gender === 'men' ? ' selected' : '') + '>' + (en ? 'Men' : 'Мужчины') + '</option>' +
                     '<option value="women"' + (d.gender === 'women' ? ' selected' : '') + '>' + (en ? 'Women' : 'Девушки') + '</option>' +
                     '<option value="all"' + ((d.gender || 'all') === 'all' ? ' selected' : '') + '>' + (en ? 'All' : 'Все') + '</option></select></div>';
                 html += '<div class="form-group" style="flex:0 1 76px;margin:0;"><label style="font-size:11px;">HCP ' + (en ? 'from' : 'от') + '</label>' +
-                    '<input type="text" id="tnde-from-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" value="' + (d.hcpFrom === '' || d.hcpFrom == null ? '' : d.hcpFrom) + '"></div>';
+                    '<input type="text" id="tnde-from-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" value="' + escapeHtml(d.hcpFrom === '' || d.hcpFrom == null ? '' : d.hcpFrom) + '"></div>';
                 html += '<div class="form-group" style="flex:0 1 76px;margin:0;"><label style="font-size:11px;">HCP ' + (en ? 'to' : 'до') + '</label>' +
-                    '<input type="text" id="tnde-to-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" value="' + (d.hcpTo === '' || d.hcpTo == null ? '' : d.hcpTo) + '"></div>';
+                    '<input type="text" id="tnde-to-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;" value="' + escapeHtml(d.hcpTo === '' || d.hcpTo == null ? '' : d.hcpTo) + '"></div>';
                 html += '<div class="form-group" style="flex:1 1 110px;margin:0;"><label style="font-size:11px;">' + t('tee_select') + '</label>' +
                     '<select id="tnde-tee-' + tnId + '-' + d.id + '" class="form-input" style="padding:7px 10px;font-size:12.5px;">' +
                     '<option value=""' + (!d.tee ? ' selected' : '') + '>—</option><option value="bk"' + (d.tee === 'bk' ? ' selected' : '') + '>' + t('tee_bk') + '</option>' +

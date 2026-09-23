@@ -5823,9 +5823,13 @@ function pestovoClaimRoundHistory(roundId) {
 //   mode 'delete'   — кнопка «Удалить»: сначала убираем раунды из истории
 //     игроков (с пересчётом bestGross/bestStableford), затем сносим сами
 //     раунды вместе с маркерами. Удалённый турнир не оставляет следов.
-// Возвращает Promise<{ closed, rounds, players }>.
+// Возвращает Promise<{ closed, rounds, players, alerts, errors }>.
 function pestovoFinalizeTournamentRounds(tnId, mode) {
-    var out = { closed: 0, rounds: 0, players: 0 };
+    // errors[] — отклонённые записи. Раньше они гасились .catch() и сводка
+    // рапортовала «раунды удалены», хотя база оставалась прежней (правила
+    // могли не пустить запись: например, сессия по мастер-паролю без прав
+    // на users/<uid>/history). Теперь ошибки доезжают до админа.
+    var out = { closed: 0, rounds: 0, players: 0, errors: [] };
     if (!tnId || typeof db === 'undefined' || !db) return Promise.resolve(out);
 
     if (mode === 'delete') {
@@ -5845,9 +5849,25 @@ function pestovoFinalizeTournamentRounds(tnId, mode) {
                     updates['markers/' + rid] = null;
                     updates['markerAssignments/' + rid] = null;
                 });
-                return db.ref().update(updates).catch(function() {}).then(function() { return out; });
+                var removedRounds = false;
+                return db.ref().update(updates).then(function() {
+                    removedRounds = true;
+                }).catch(function(err) {
+                    out.errors.push(err && err.message ? err.message : String(err));
+                }).then(function() {
+                    if (!removedRounds) return 0;
+                    // Вызовы маршала/судьи (alerts/<id>) живут по roundId:
+                    // без этой чистки удалённый раунд оставляет в админке
+                    // «вечные» вызовы на несуществующий раунд. Чистка —
+                    // лучшим усилием: отказ правил на alerts не должен
+                    // отменять уже выполненное удаление раундов.
+                    return pestovoRemoveAlertsForRounds(ids).catch(function() { return 0; });
+                }).then(function(removed) { out.alerts = removed || 0; return out; });
             });
-        }).catch(function() { return out; });
+        }).catch(function(err) {
+            out.errors.push(err && err.message ? err.message : String(err));
+            return out;
+        });
     }
 
     return db.ref('rounds').orderByChild('tournamentId').equalTo(tnId).once('value').then(function(sn) {
@@ -5948,6 +5968,26 @@ function pestovoRemoveRoundFromPlayers(rid, players) {
     })).then(function() { return touched; });
 }
 
+// Убирает вызовы (alerts) удалённых раундов. Записи alerts/<id> привязаны к
+// раунду полем roundId, поэтому после удаления раунда они повисают навсегда.
+// Возвращает Promise<number> — сколько вызовов удалено.
+function pestovoRemoveAlertsForRounds(roundIds) {
+    if (typeof db === 'undefined' || !db || !roundIds || !roundIds.length) return Promise.resolve(0);
+    var wanted = {};
+    roundIds.forEach(function(rid) { wanted[String(rid)] = true; });
+    return db.ref('alerts').once('value').catch(function() { return null; }).then(function(sn) {
+        var alerts = (sn && sn.val()) || {};
+        var updates = {};
+        var n = 0;
+        Object.keys(alerts).forEach(function(id) {
+            var a = alerts[id];
+            if (a && wanted[String(a.roundId)]) { updates['alerts/' + id] = null; n++; }
+        });
+        if (!n) return 0;
+        return db.ref().update(updates).then(function() { return n; }).catch(function() { return 0; });
+    });
+}
+
 // Публичная обёртка для кнопки «Завершить» в админке.
 function pestovoPreserveTournamentRounds(tnId) {
     return pestovoFinalizeTournamentRounds(tnId, 'complete').then(function(res) { return res.closed; });
@@ -5960,15 +6000,29 @@ function pestovoDeleteTournamentRounds(tnId) {
 
 // Полный каскад удаления турнира: раунды (и их влияние на историю игроков) →
 // протоколы групп → карточка турнира → маркеры. Возвращает Promise со сводкой
-// { rounds, protocols }, чтобы админ видел, что именно было удалено.
+// { rounds, protocols, players, errors }, чтобы админ видел, что именно было
+// удалено (и что не удалось удалить).
 function pestovoDeleteTournamentCascade(tnId) {
-    var summary = { rounds: 0, protocols: 0 };
+    var summary = { rounds: 0, protocols: 0, players: 0, alerts: 0, errors: [], aborted: false };
     if (!tnId || typeof db === 'undefined' || !db) return Promise.resolve(summary);
     return pestovoDeleteTournamentRounds(tnId).then(function(res) {
+        summary.errors = (res && res.errors) ? res.errors.slice() : [];
+        if (summary.errors.length) {
+            // Раунды удалить не удалось — карточку турнира и протоколы НЕ
+            // трогаем: иначе получились бы «висячие» раунды без турнира
+            // (ровно то, с чего начиналась эта ошибка). Админ видит причину
+            // и может повторить после устранения.
+            summary.aborted = true;
+            summary.rounds = 0;
+            summary.players = 0;
+            return null;
+        }
         summary.rounds = (res && res.rounds) || 0;
         summary.players = (res && res.players) || 0;
+        summary.alerts = (res && res.alerts) || 0;
         return db.ref('protocols').once('value').catch(function() { return null; });
     }).then(function(sn) {
+        if (summary.aborted) return summary;
         var protocols = (sn && sn.val()) || {};
         var updates = {};
         var n = 0;
@@ -5980,8 +6034,35 @@ function pestovoDeleteTournamentCascade(tnId) {
         // Карточка турнира удаляется в ту же мульти-запись: если связь
         // оборвётся на середине, протоколы не останутся «висячими».
         updates['tournaments/' + tnId] = null;
-        return db.ref().update(updates).catch(function() {});
+        return db.ref().update(updates).catch(function(err) {
+            summary.errors.push(err && err.message ? err.message : String(err));
+        });
     }).then(function() { return summary; });
+}
+
+// Сколько чего уйдёт вместе с турниром: его раунды (включая привязанные
+// только через протокол группы) и протоколы групп. Цифры показываем админу
+// в диалоге подтверждения — удаление турнира всегда каскадное: раунды и их
+// следы в истории игроков уходят вместе с карточкой турнира.
+// Возвращает Promise<{ name, rounds, protocols }>.
+function pestovoTournamentDeleteSummary(tnId) {
+    var summary = { name: '', rounds: 0, protocols: 0 };
+    if (!tnId || typeof db === 'undefined' || !db) return Promise.resolve(summary);
+    return Promise.all([
+        db.ref('tournaments/' + tnId).once('value').catch(function() { return null; }),
+        pestovoTournamentRoundIdsFull(tnId).catch(function() { return []; }),
+        db.ref('protocols').once('value').catch(function() { return null; })
+    ]).then(function(res) {
+        var t = (res[0] && res[0].val()) || {};
+        summary.name = String(t.name || '');
+        summary.rounds = (res[1] || []).length;
+        var protocols = (res[2] && res[2].val()) || {};
+        summary.protocols = Object.keys(protocols).filter(function(pid) {
+            var p = protocols[pid];
+            return !!p && (p.tournamentId === tnId || p.tnId === tnId);
+        }).length;
+        return summary;
+    }).catch(function() { return summary; });
 }
 
 // ==========================================
@@ -9878,6 +9959,13 @@ if (typeof window !== 'undefined') {
     window.pestovoActivateRounds = pestovoActivateRounds;
     window.pestovoAutoStartRounds = pestovoAutoStartRounds;
     window.pestovoStartTournamentNow = pestovoStartTournamentNow;
+    // Каскадное удаление турнира (раунды + протоколы + следы в истории игроков).
+    window.pestovoDeleteTournamentCascade = pestovoDeleteTournamentCascade;
+    window.pestovoDeleteTournamentRounds = pestovoDeleteTournamentRounds;
+    window.pestovoTournamentRoundIdsFull = pestovoTournamentRoundIdsFull;
+    window.pestovoTournamentDeleteSummary = pestovoTournamentDeleteSummary;
+    window.pestovoRemoveAlertsForRounds = pestovoRemoveAlertsForRounds;
+    window.pestovoPreserveTournamentRounds = pestovoPreserveTournamentRounds;
     window.pestovoStartTsFromParts = pestovoStartTsFromParts;
     window.ROUND_STATUS_SCHEDULED = ROUND_STATUS_SCHEDULED;
     window.pestovoWaveLetter = pestovoWaveLetter;

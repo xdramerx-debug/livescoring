@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadStats();
 });
 
-function onAuthReady(u, d) { navAuth(u, d); }
 
 function safeSetHTML(id, html) {
     var el = document.getElementById(id);
@@ -66,7 +65,7 @@ function renderTopPlayersDisplay(players, langIsEn, variant) {
     }
     function playerName(p) {
         var n = typeof privacyDisplayName === 'function' ? privacyDisplayName(p, p.pid) : (p.name || '—');
-        return typeof escapeHtml === 'function' ? escapeHtml(n) : n;
+        return escapeHtml(n);
     }
 
     if (variant === '2') {
@@ -348,9 +347,9 @@ function loadStats() {
         var lFastest18 = langIsEn ? '⏱️ Fastest Round (18 holes)' : '⏱️ Самый быстрый раунд (18 лунок)';
 
         var records = [
-            { icon: 'fa-trophy', label: lBestGross18, value: bestGross < Infinity ? bestGross + ' (' + (typeof escapeHtml === 'function' ? escapeHtml(bestGrossPlayer) : bestGrossPlayer) + ')' : '—' },
-            { icon: 'fa-star', label: lBestStbl18, value: bestStableford > 0 ? bestStableford + ' (' + (typeof escapeHtml === 'function' ? escapeHtml(bestStablefordPlayer) : bestStablefordPlayer) + ')' : '—' },
-            { icon: 'fa-stopwatch', label: lFastest18, value: fastestStr + (fastestPlayer !== '—' ? ' (' + (typeof escapeHtml === 'function' ? escapeHtml(fastestPlayer) : fastestPlayer) + ')' : '') },
+            { icon: 'fa-trophy', label: lBestGross18, value: bestGross < Infinity ? bestGross + ' (' + escapeHtml(bestGrossPlayer) + ')' : '—' },
+            { icon: 'fa-star', label: lBestStbl18, value: bestStableford > 0 ? bestStableford + ' (' + escapeHtml(bestStablefordPlayer) + ')' : '—' },
+            { icon: 'fa-stopwatch', label: lFastest18, value: fastestStr + (fastestPlayer !== '—' ? ' (' + escapeHtml(fastestPlayer) + ')' : '') },
             { icon: 'fa-bullseye', label: '🎯 Hole-in-One', value: hio },
             { icon: 'fa-bolt', label: '🦅 Eagles', value: eagles },
             { icon: 'fa-fire', label: '🐦 Birdies', value: birdies },

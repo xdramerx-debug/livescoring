@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadPlayers();
 });
 
-function onAuthReady(u, d) { navAuth(u, d); }
 
 function playerOpenAttrs(id) {
     return ' role="button" tabindex="0" data-player-id="' + escapeHtml(String(id || '')) + '" onclick="showPlayer(this.dataset.playerId)"';

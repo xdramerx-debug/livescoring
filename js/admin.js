@@ -3183,10 +3183,10 @@ function fgSettingsHtml(tnId, tVal, players, d) {
     html += '<div id="fg-sizes-preview" style="font-size:12.5px;color:var(--muted);margin:-6px 0 10px;"></div>';
 
     html += '<div class="form-group"><label>' + (en ? 'First Flight Start Time:' : 'Время старта 1-го флайта:') + '</label>';
-    html += '<input type="time" id="fg-time" class="form-input" value="' + (d.time || '10:00') + '"></div>';
+    html += '<input type="time" id="fg-time" class="form-input" value="' + escapeHtml(d.time || '10:00') + '"></div>';
 
     html += '<div class="form-group"><label>' + (en ? 'Interval between flights (min):' : 'Интервал между флайтами (мин):') + '</label>';
-    html += '<input type="number" id="fg-interval" class="form-input" value="' + (d.interval || '10') + '" min="5" max="30"></div>';
+    html += '<input type="number" id="fg-interval" class="form-input" value="' + escapeHtml(d.interval || '10') + '" min="5" max="30"></div>';
     html += '</div>';
 
     html += '<div style="display:flex;gap:12px;">';
@@ -3299,9 +3299,9 @@ function fgRenderPreview(tVal) {
 
     html += '<div class="card" style="background:var(--input);padding:12px 14px;text-align:left;margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">';
     html += '<div class="form-group" style="flex:1;min-width:120px;margin:0;"><label style="font-size:11px;">' + (en ? 'First flight:' : 'Первый флайт:') + '</label>' +
-        '<input type="time" id="fg-time" class="form-input" value="' + st.settings.time + '"></div>';
+        '<input type="time" id="fg-time" class="form-input" value="' + escapeHtml(st.settings.time) + '"></div>';
     html += '<div class="form-group" style="flex:1;min-width:120px;margin:0;"><label style="font-size:11px;">' + (en ? 'Interval (min):' : 'Интервал (мин):') + '</label>' +
-        '<input type="number" id="fg-interval" class="form-input" value="' + st.settings.interval + '" min="5" max="30"></div>';
+        '<input type="number" id="fg-interval" class="form-input" value="' + escapeHtml(st.settings.interval) + '" min="5" max="30"></div>';
     html += '</div>';
 
     st.flights.forEach(function(fl, fi) {
@@ -3324,7 +3324,9 @@ function fgRenderPreview(tVal) {
             var hcpTxt = '—';
             if (rp.handicap != null && rp.handicap !== '') {
                 var hv = parseFloat(rp.handicap);
-                hcpTxt = isNaN(hv) ? String(rp.handicap) : ((typeof fmtExactHcp === 'function') ? fmtExactHcp(hv) : String(hv));
+                // handicap — пользовательское поле из Firebase: при нечисловом
+                // значении строка попадает на экран как есть, поэтому экранируем.
+                hcpTxt = isNaN(hv) ? escapeHtml(String(rp.handicap)) : ((typeof fmtExactHcp === 'function') ? fmtExactHcp(hv) : String(hv));
             }
             var teePill = '';
             try { teePill = (typeof fmtTeePill === 'function') ? fmtTeePill(rp.tee || 'wh') : ''; } catch (e) { console.warn("[silent]", e); }

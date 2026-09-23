@@ -4,3 +4,4 @@
 export * from './course-config.js';
 export * from './format.js';
 export * from './safe-html.js';
+export * from './dom.js';

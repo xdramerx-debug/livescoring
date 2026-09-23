@@ -1,7 +1,8 @@
 # Реализованные улучшения (по CODE-REVIEW.md)
 
-Выполнены 4 задачи из отчёта `docs/CODE-REVIEW.md`. Ниже — что сделано,
-ключевые файлы и важные оговорки.
+Выполнены задачи из отчёта `docs/CODE-REVIEW.md` (итерация 1 — разделы 1–4
+ниже; итерация 2 — раздел 5). Ниже — что сделано, ключевые файлы и важные
+оговорки.
 
 ## 1. CSP + центральный безопасный HTML-билдер (закрытие класса XSS)
 
@@ -102,13 +103,85 @@
 постепенно убрать дубликаты (`onAuthReady`, `callOfficial`, …) через общий
 модуль.
 
+## 5. Итерация 2: XSS-хвосты, дедупликация `onAuthReady`, модуль `dom.js`
+
+### 5.1 Безопасность — закрыты оставшиеся сырые пути (п.4.1 ревью)
+
+- **Аудит `fgSettingsHtml`/`fgRenderPreview` (admin.js) завершён.** Имена
+  игроков уже экранировались (`escapeHtml(rp.name)`); найден и закрыт
+  пропущенный путь: нечисловой `rp.handicap` (пользовательское поле из
+  Firebase) попадал в HTML **как есть** → теперь `escapeHtml(String(...))`.
+  Value-атрибуты `fg-time`/`fg-interval` (в обоих шагах модалки) тоже
+  экранируются — defense in depth.
+- **Убраны fallback-и «как есть»** из паттерна
+  `typeof escapeHtml === 'function' ? escapeHtml(x) : x` (quick win №3 ревью):
+  `js/feed.js` (title/body/link), `js/stats.js` (5 мест), `js/utils.js`
+  (бейдж завершения + `buildOfficialCallText`). Экранирование теперь
+  безусловное. Осмысленный остаток один: `buildOfficialCallText` использует
+  `String(v)` только при `withHtml === false` (там это plain-text, не HTML).
+  Самодостаточный fallback в `tnScEsc` (tn-scorecard.js) оставлен — его ветка
+  «как есть» сама экранирует.
+- **Guard ссылок в анонсах** (feed.js): `b.link` проверяется на схему
+  `javascript:`/`data:`/`vbscript:` — подменяется на `tournaments.html`
+  (правила БД разрешают запись только админам, это второй рубеж).
+
+### 5.2 Дедупликация `onAuthReady` (quick win №2 ревью)
+
+В `js/utils.js` (после `navAuth`) добавлен **дефолт**
+`function onAuthReady(u, d) { navAuth(u, d); }`, а из 9 страниц удалены
+идентичные копии: `app.js`, `auth.js`, `feed.js`, `guide.js`, `handicap.js`,
+`leaderboard.js`, `order-of-merit.js`, `players.js`, `stats.js`.
+Страницы со своей логикой продолжают переопределять функцию в своём
+скрипте (он грузится позже и потому выигрывает): `admin.js`, `live.js`,
+`predictor.js`, `tournaments.js`, `tournament-public.js`, `assistant.js`.
+Итог: 14 определений → 1 дефолт + 6 осмысленных override.
+
+Полный вариант «шины событий» (registerOnAuth) не вводился сознательно:
+текущий паттерн «дефолт + override» устраняет дубликаты без переписывания
+вызовов в `firebase-config.js`.
+
+### 5.3 Продолжение дробления `utils.js`: извлечён `js/dom.js`
+
+Из `js/utils.js` вынесены чистые браузерные хелперы (без Firebase и i18n):
+`TOAST_DURATION_MS`, `ensureToastRoot`, `toastIconFor`, `toast`,
+`toastSequence`, `isPlayerModeEnabled`, `vib`, `escapeHtml` → `js/dom.js`.
+Загружается на всех страницах в порядке
+`course-config → format → safe-html → dom → utils`.
+
+- `src/dom.js` — каноническая ESM-версия (bridge на `window`), добавлена в
+  `src/index.js`; бандл `dist/livescoring-modules.js` собирается (5 модулей,
+  ~7.4 kB), глобалы доступны.
+- `tools/test-bootstrap.js` добавляет `dom.js` к префиксу для vm-тестов;
+  явные загрузчики (`test-group-round-setup.js`, `test-guest-group-dedupe.js`,
+  `test-history-dedupe.js`) тоже грузят `dom.js`.
+- Кэш: `sw.js` — добавлен `js/dom.js?v=1`, `utils.js?v=65→66`,
+  `feed.js?v=4`, `stats.js?v=5`, `CACHE_NAME → pestovo-v1.80.0`; версии в
+  HTML синхронизированы (тест `test-design-system.js` проверяет
+  соответствие версий сайта и sw.js — он же поймал рассинхрон при бампе).
+
+### 5.4 Что НЕ делалось (осознанно)
+
+- `i18n.js` и Firebase-обёртки не извлекались (следующий шаг; `t()` крупный,
+  лучше отдельной итерацией с прогоном в браузере).
+- `callOfficial`/`buildHoles` (live/marker/scorer/solo) — это тонкая
+  page-specific обвязка над общим `requestOfficialCall`/состоянием страницы,
+  «дубликаты» отличаются телами; вынос в общий модуль потребует API с
+  колбэками-конфигами — выгода сомнительная. Оставлено как есть.
+- `.off()` слушателей (п.6 ревью): проверено — `live.js`/`solo.js` уже
+  снимают подписку перед переподпиской (`initRoundView`, смена раунда в
+  solo) и рендер уже debounce (`scheduleRoundRender`). Пункт закрыт ранее.
+
 ## Файлы (новые / изменённые)
 
-Новые: `js/safe-html.js`, `js/course-config.js`, `js/format.js`,
-`firebase.json`, `database.rules.json`, `package.json`, `tools/run-tests.js`,
-`tools/syntax-check.js`, `.github/workflows/ci.yml`, `docs/SECURITY-RULES.md`,
-`docs/IMPROVEMENTS-IMPL.md`.
+Новые: `js/safe-html.js`, `js/course-config.js`, `js/format.js`, `js/dom.js`
+(+ ESM-копии в `src/`), `firebase.json`, `database.rules.json`, `package.json`,
+`tools/run-tests.js`, `tools/syntax-check.js`, `.github/workflows/ci.yml`,
+`docs/SECURITY-RULES.md`, `docs/IMPROVEMENTS-IMPL.md`.
 
-Изменены: `js/utils.js` (удалены вынесенные блоки), `js/marker.js` (экранирование),
-20 HTML-файлов (теги скриптов), `sw.js` (прекэш новых модулей), 13 тест-файлов
-(явная загрузка модулей).
+Изменены: `js/utils.js` (удалены вынесенные блоки, добавлен дефолт
+`onAuthReady`), `js/marker.js` (экранирование), `js/feed.js`, `js/stats.js`,
+`js/admin.js`, `js/start-admin.js` (экранирование, guard ссылок),
+`js/{app,auth,guide,handicap,leaderboard,order-of-merit,players}.js`
+(удалены дубли `onAuthReady`), 20 HTML-файлов (теги скриптов + версия),
+`sw.js` (прекэш, версии), `tools/test-bootstrap.js` и 3 теста (загрузка
+`dom.js`), 13 тест-файлов (явная загрузка модулей).

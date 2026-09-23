@@ -201,4 +201,3 @@ function forgotPassword() {
     }
 }
 
-function onAuthReady(u, d) { navAuth(u, d); }

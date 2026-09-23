@@ -177,8 +177,10 @@ datetime/number/url/select/multi/bool/list/pointsTable/tieOrder/notifyTemplates`
 ## Проверка
 
 ```bash
-node tools/test-tn-engine.js                                     # движок (76)
-NODE_PATH=$(pwd)/../nmtest/node_modules node tools/test-tn-wizard-ui.js   # UI (64)
+node tools/test-tn-engine.js                                               # движок (76)
+node tools/test-tn-studio.js                                               # ядро Студии (46)
+NODE_PATH=$(pwd)/../nmtest/node_modules node tools/test-tn-wizard-ui.js    # UI мастера (69)
+NODE_PATH=$(pwd)/../nmtest/node_modules node tools/test-tn-studio-unified.js  # UI единой вкладки (31)
 ```
 
 Демо-поле «Пестово» (18 лунок, пар 72): вкладка «Настройки поля» →

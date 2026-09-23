@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 /**
- * UI-тест суб-вкладок страницы «Турниры» в админке:
- *   «Новая версия создания турнира», «Настройки поля», «Шаблоны турниров».
+ * UI-тест мастера создания турниров в единой вкладке «Турниры 🏆»:
+ *   мастер 10 шагов, «Настройки поля», «Шаблоны турниров».
  *
  *   npm i jsdom                              (один раз, только для разработки)
  *   NODE_PATH=$(pwd)/../nmtest/node_modules node tools/test-tn-wizard-ui.js
  *
  * Поднимает настоящий admin.html в jsdom, выполняет js/tn-engine.js и
- * js/tn-wizard.js и проверяет: построение суб-вкладок, hash-роутинг,
+ * js/tn-wizard.js и проверяет: парковку встраиваемых корней (#tn-embed-parking),
  * рендер шагов мастера, ввод → черновик → автосохранение (localStorage +
  * имитированный Firebase), валидацию, сводку, payload публикации, таблицу
- * лунок поля (SI, сумма паров), список шаблонов.
+ * лунок поля (SI, сумма паров), список шаблонов, режим редактирования
+ * существующего турнира и hash-fallback без единой вкладки.
  *
  * Если jsdom не установлен — тест пропускается (не падает).
  */
@@ -93,34 +94,32 @@ function $id(id) { return win.document.getElementById(id); }
 function $sel(s) { return win.document.querySelector(s); }
 function $all(s) { return Array.prototype.slice.call(win.document.querySelectorAll(s)); }
 
-console.log('=== admin.html: контейнеры суб-вкладок «Турниры» ===');
-check('панель wizard подключена в HTML', !!$id('tn-wizard-root'));
-check('панель поля подключена в HTML', !!$id('tn-course-root'));
-check('панель шаблонов подключена в HTML', !!$id('tn-templates-root'));
-check('классическая панель сохранилась (fallback)', !!$id('tn-pane-classic'));
-check('старая форма создания турнира на месте (tn-name)', !!$id('tn-name'));
+console.log('=== admin.html: единая вкладка «Турниры» + парковка модулей ===');
+check('корень единой вкладки на месте', !!$id('tn-studio-root'));
+check('парковка встраиваемых корней на месте', !!$id('tn-embed-parking'));
+check('панель wizard в парковке', !!$id('tn-wizard-root') && $id('tn-embed-parking').contains($id('tn-wizard-root')));
+check('панель поля в парковке', !!$id('tn-course-root') && $id('tn-embed-parking').contains($id('tn-course-root')));
+check('панель шаблонов в парковке', !!$id('tn-templates-root') && $id('tn-embed-parking').contains($id('tn-templates-root')));
+check('панель управления в парковке', !!$id('tn-manage-root') && $id('tn-embed-parking').contains($id('tn-manage-root')));
+check('стартовый лист в парковке', !!$id('tab-start-content') && $id('tn-embed-parking').contains($id('tab-start-content')));
+check('быстрый редактор протокола в парковке', !!$id('pe-card') && !!$id('pe-tn-select') && !!$id('pe-editor'));
+check('старые суб-вкладки удалены', !$id('tn-subtabs') && !$id('tn-pane-classic') && !$id('tn-pane-new-create'));
+check('старая форма создания удалена (tn-name)', !$id('tn-name') && !$id('tn-list'));
 check('в HTML подключён css/tn-wizard.css', html.indexOf('css/tn-wizard.css') !== -1);
 check('в HTML подключены js/tn-engine.js и js/tn-wizard.js',
     html.indexOf('js/tn-engine.js') !== -1 && html.indexOf('js/tn-wizard.js') !== -1);
 
-console.log('\n=== Построение суб-вкладок ===');
+console.log('\n=== Инициализация без суб-вкладок + hash-fallback ===');
 win.tnwInit(); // повторный вызов безопасен (guard)
-var tabs = $all('#tn-subtabs .tnw-subtab');
-check('построено 4 суб-вкладки', tabs.length === 4, 'найдено ' + tabs.length);
-check('порядок: Классика → Новая версия → Поле → Шаблоны',
-    tabs[0] && tabs[0].id === 'tn-subtab-classic' && tabs[1] && tabs[1].id === 'tn-subtab-new-create' &&
-    tabs[2] && tabs[2].id === 'tn-subtab-course' && tabs[3] && tabs[3].id === 'tn-subtab-templates');
-check('по умолчанию видна «Классика»', !$id('tn-pane-classic').classList.contains('hidden'));
-check('wizard скрыт по умолчанию', $id('tn-pane-new-create').classList.contains('hidden'));
-
-console.log('\n=== Лендинг мастера и создание черновика ===');
-win.tnwShowSubTab('new-create');
-check('wizard открыт', !$id('tn-pane-new-create').classList.contains('hidden'));
-check('hash выставлен #new-create', win.location.hash === '#new-create', win.location.hash);
+check('инициализация не строит суб-вкладки', $all('#tn-subtabs .tnw-subtab').length === 0);
+win.location.hash = '#new-create';
+win.tnwApplyHash(); // единой вкладки в этом окружении нет — работает старый путь
+check('fallback: hash #new-create открывает мастер', win.tnWiz.subTab === 'new-create', win.tnWiz.subTab);
 check('лендинг: кнопка «Начать новый турнир»',
     $id('tn-wizard-root').innerHTML.indexOf('tnwStartNewDraft()') !== -1);
 check('лендинг: пустой список черновиков', $id('tn-wizard-root').innerHTML.indexOf('tnw-empty') !== -1);
 
+console.log('\n=== Лендинг мастера и создание черновика ===');
 win.tnwStartNewDraft();
 check('открыт шаг 1 после старта черновика', !!$sel('[data-tnw-path="info.nameRu"]'));
 check('построены 10 чипов прогресса', $all('.tnw-step-chip').length === 10, $all('.tnw-step-chip').length);
@@ -187,19 +186,27 @@ check('тики собраны из teeMap', payload.tees.length >= 1);
 check('fromWizard + полная конфигурация в payload.wizard', payload.fromWizard === true && !!payload.wizard.scoring);
 check('courseRef указывает на единственное поле', payload.courseRef === 'settings/course');
 
-console.log('\n=== Публикация в tournaments ===');
-return win.tnwPublishConfig(win.tnWiz.draft, win.tnWiz.draftKey).then(function (tnId) {
+console.log('\n=== Режим редактирования: черновики не плодятся ===');
+win.tnWiz.editTournamentId = 'test-t1';
+win.tnWiz.dirty = true;
+win.tnwSaveServer(true).then(function (saved) {
+    check('серверный сейв пропущен в режиме редактирования', saved === false);
+    check('мусорный черновик edit_* не записан', !pathGet('tnDrafts/test-admin/edit_test-t1'));
+    win.tnWiz.editTournamentId = null;
+
+    console.log('\n=== Публикация в tournaments ===');
+    return win.tnwPublishConfig(win.tnWiz.draft, win.tnWiz.draftKey);
+}).then(function (tnId) {
     var stored = pathGet('tournaments/' + tnId);
     check('турнир записан в tournaments', !!stored && stored.name === 'Кубок Пестово');
     var audit = pathGet('tournaments/' + tnId + '/audit');
     check('аудит публикации записан', !!audit && Object.keys(audit).length === 1, 'аудит: ' + !!audit);
 
-    console.log('\n=== Настройки поля (вкладка #course) ===');
-    win.tnwShowSubTab('course', true);
-    check('поле открыто', !$id('tn-pane-course').classList.contains('hidden'));
-    win.tnCourseDemoFill && null; // confirm() в jsdom недоступен — заполняем напрямую
+    console.log('\n=== Настройки поля (раздел «Поле клуба») ===');
     win.tnWiz.course = win.tnwCourseDemo();
     win.tnwRenderCourse();
+    check('поле отрендерено в парковочном корне',
+        $id('tn-course-root').innerHTML.indexOf('tnw-course-table') !== -1);
     var holeRows = $all('#tn-course-root .tnw-course-table tbody tr');
     // первая таблица — таблица лунок (18 строк + итог); отбрасываем строки таблицы рейтингов
     holeRows = holeRows.filter(function (tr) { return tr.querySelector('[data-f="si"]') || tr.classList.contains('tnw-totals'); });
@@ -229,7 +236,7 @@ return win.tnwPublishConfig(win.tnWiz.draft, win.tnWiz.draftKey).then(function (
     win.tnCourseSave();
     check('поле сохранено в settings/course', !!pathGet('settings/course') && pathGet('settings/course').holes.length === 18);
 
-    console.log('\n=== Шаблоны турниров (вкладка #templates) ===');
+    console.log('\n=== Шаблоны турниров (раздел «Шаблоны») ===');
     win.tnTplCreateFromConfig('Мой шаблон', win.tnWiz.draft).then(function () {
         var tpls = pathGet('tnTemplates');
         var tplKey = Object.keys(tpls)[0];
@@ -238,21 +245,27 @@ return win.tnwPublishConfig(win.tnWiz.draft, win.tnWiz.draftKey).then(function (
         check('у шаблона есть имя и автор', tpl.name === 'Мой шаблон' && tpl.authorName === 'Тест Админ');
         check('из шаблона вырезаны даты раундов', !tpl.config.format.rounds[0].date);
         win.tnWiz.templates = tpls;
-        win.tnwShowSubTab('templates', true);
+        win.tnwRenderTemplates();
         check('шаблон отрендерен в списке', $id('tn-templates-root').innerHTML.indexOf('Мой шаблон') !== -1);
         check('карточка шаблона: действия создать/переименовать/дублировать/удалить',
             $id('tn-templates-root').innerHTML.indexOf('tnTplUse') !== -1 &&
             $id('tn-templates-root').innerHTML.indexOf('tnTplRename') !== -1 &&
             $id('tn-templates-root').innerHTML.indexOf('tnTplDuplicate') !== -1 &&
             $id('tn-templates-root').innerHTML.indexOf('tnTplDelete') !== -1);
+        win.tnTplUse(tplKey); // единой вкладки нет — старый путь: черновик из шаблона
+        check('создание из шаблона: черновик предзаполнен, название пустое',
+            !!win.tnWiz.draft && win.tnWiz.draft.info.nameRu === '');
 
         console.log('\n=== Смена языка (перерисовка динамических подписей) ===');
+        win.tnWiz.subTab = 'templates';
         win.currentLang = 'en';
         win.tnwOnLangChange();
-        var tabsEn = $all('#tn-subtabs .tnw-subtab');
-        check('суб-вкладки перерисованы на EN', tabsEn[1].textContent.indexOf('New tournament creation') !== -1, tabsEn[1].textContent.trim());
+        check('шаблоны перерисованы на EN',
+            $id('tn-templates-root').innerHTML.indexOf('Tournament templates') !== -1);
         win.currentLang = 'ru';
         win.tnwOnLangChange();
+        check('шаблоны перерисованы обратно на RU',
+            $id('tn-templates-root').innerHTML.indexOf('Шаблоны турниров') !== -1);
 
         console.log('\n' + total + ' проверок, ошибок: ' + fails);
         process.exit(fails ? 1 : 0);

@@ -57,6 +57,11 @@ eq(C.betterBall([low, high]).gross, 4, 'форбол берёт лучший м�
 var divisions = { m: { format: 'stroke', tee: 'bl', members: { p1: true } }, w: { format: 'stableford', tee: 'rd', members: {} } };
 eq(C.legacyFormats({ fourBall: true }, divisions), ['Four-ball'], 'форбол — формат всего турнира');
 eq(C.legacyFormats({ fourBall: false }, divisions).sort(), ['Stableford', 'Stroke Play (Gross)'], 'зачёты отдают свои форматы на сайт');
+eq(C.formatId(null, { format: 'Stroke Play (Gross)' }), 'stroke', 'классический строковый формат гросс читается');
+eq(C.formatId(null, { format: 'Match Play 1v1' }), 'stableford', 'незнакомый классический формат — не гросс');
+eq(C.formatId(null, { format: '' }), 'stableford', 'пустой формат — стейблфорд');
+eq(C.legacyFormats({ formats: ['Match Play 1v1'] }, { d: { format: 'Match Play 1v1' } }), ['Match Play 1v1'], 'классический формат не затирается студийным');
+eq(C.legacyFormats({ formats: ['Stableford'] }, {}), ['Stableford'], 'без зачётов форматы турнира не трогаем');
 eq(C.divisionOf('p1', divisions), 'm', 'игрок лежит в одном зачёте');
 eq(C.unassigned({ p2: { name: 'Свободный' } }, divisions).length, 1, 'без группы — кто не назначен');
 eq(C.hcpLabel('+1', '14'), '+1,0 – 14,0', 'подпись диапазона HCP');

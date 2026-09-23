@@ -297,7 +297,6 @@ function openAdminPanel() {
             }
         });
     }
-    if (typeof loadTournaments === 'function') loadTournaments(); // js/admin-tournaments.js
     loadClubBroadcastsHistory();
     loadBroadcastAudienceOptions();
     listenForAlerts();
@@ -317,8 +316,8 @@ function openAdminPanel() {
     renderAssistantSources();
     loadAssistantSourcesFromFirebase();
     updateNotifButton();
-    // Новая версия создания турнира: подключаем черновики/шаблоны/поле,
-    // открываем суб-вкладку по URL-hash (#new-create / #course / #templates).
+    // Турниры: подключаем черновики/шаблоны/поле мастера, роутим URL-hash
+    // (#new-create / #course / #templates / #manage) в единую вкладку.
     if (typeof tnwOnAdminOpen === 'function') { try { tnwOnAdminOpen(); } catch (e) { console.warn('[silent]', e); } }
     if (typeof tnStudioOnAdminOpen === 'function') { try { tnStudioOnAdminOpen(); } catch (e) { console.warn('[silent]', e); } }
 }
@@ -346,6 +345,13 @@ function updateNotifButton() {
 }
 
 function switchTab(t, b) {
+    // Старые вкладки 'tournaments'/'start'/'protocol' удалены: всё переехало в
+    // единую вкладку «Турниры 🏆» (studio). Имена оставлены для совместимости
+    // (диплинки, старые кнопки) и ведут на неё же.
+    if (t === 'tournaments' || t === 'start' || t === 'protocol') {
+        t = 'studio';
+        b = document.querySelector('.admin-tab[onclick*="studio"]');
+    }
     document.querySelectorAll('.admin-section').forEach(function(s) { s.classList.add('hidden'); });
     document.querySelectorAll('.admin-tab').forEach(function(x) { x.classList.remove('active'); });
     var tabEl = document.getElementById('tab-' + t);
@@ -362,9 +368,6 @@ function switchTab(t, b) {
     }
     if (t === 'broadcasts') {
         try { pushAdminRefreshStatus(); } catch (e) { console.warn("[silent]", e); }
-    }
-    if (t === 'protocol') {
-        try { if (typeof peInit === 'function') peInit(); } catch (e) { console.warn("[silent]", e); }
     }
     if (t === 'scores') {
         seRender();
@@ -398,29 +401,6 @@ function switchTab(t, b) {
     }
     if (t === 'studio') {
         if (typeof tnStudioOpen === 'function') tnStudioOpen();
-    }
-    if (t === 'tournaments' || t === 'start') {
-        // Вкладка «Турниры 🏆» — единая страница создания турнира: создание,
-        // список, HCP-группы, флайты + стартовые протоколы и QR-коды
-        // (js/start-admin.js) живут в одном месте. Старое имя 'start'
-        // оставлено для совместимости и ведёт на ту же вкладку.
-        if (t === 'start') {
-            var tnTab = document.getElementById('tab-tournaments');
-            if (tnTab) tnTab.classList.remove('hidden');
-            document.querySelectorAll('.admin-tab').forEach(function(x) {
-                if (x.getAttribute('onclick') && x.getAttribute('onclick').indexOf("'tournaments'") !== -1) x.classList.add('active');
-            });
-        }
-        try { if (typeof loadTournaments === 'function') loadTournaments(); } catch (eTn) { console.warn("[silent]", eTn); }
-        if (typeof psSwitchTo === 'function') {
-            try { psSwitchTo(); } catch (ePs) { console.error('[start] switch error', ePs); }
-        }
-        if (t === 'start') {
-            setTimeout(function() {
-                var anchor = document.getElementById('tn-start-anchor');
-                if (anchor && anchor.scrollIntoView) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 120);
-        }
     }
     if (t === 'design') {
         // Вкладка «Дизайн 🎨»: шаблоны оформления сайта (js/design-admin.js)

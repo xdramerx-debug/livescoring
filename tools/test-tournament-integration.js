@@ -34,11 +34,27 @@ var security = read('docs/tournament-security.md');
 ['api.qrserver.com', 'window.open', 'Blob', 'application/vnd.ms-excel', 'protocolRows', 'buildNominations', 'registeredPlayers', 'applications', 'waitlist'].forEach(function (token) {
     check(publicJs.indexOf(token) !== -1 || coreJs.indexOf(token) !== -1, 'public runtime contract: ' + token);
 });
-['tn-pane-manage', 'tournament-admin.js', 'tournament-admin.css', 'tournament-core.js'].forEach(function (token) {
+['tn-embed-parking', 'tn-manage-root', 'tn-wizard-root', 'tn-course-root', 'tn-templates-root', 'tab-start-content', 'pe-card', 'tn-studio-root', 'tournament-admin.js', 'tournament-admin.css', 'tournament-core.js', 'tn-studio.js'].forEach(function (token) {
     check(adminHtml.indexOf(token) !== -1, 'admin wiring: ' + token);
+});
+// Старые вкладки создания удалены: единая система — «Турниры 🏆» (studio).
+['id="tn-subtabs"', 'id="tn-pane-', 'id="tab-tournaments"', 'id="tab-protocol"', 'id="tn-list"', 'id="tn-name"', "switchTab('tournaments'", "switchTab('protocol'"].forEach(function (token) {
+    check(adminHtml.indexOf(token) === -1, 'legacy tournament tabs removed: ' + token);
 });
 ['tnwSubTabDefs', 'tnwRenderWizard', 'cloneTournament', 'importExcel', 'protocolSnapshot', 'audit', 'assertWrite'].forEach(function (token) {
     check(adminJs.indexOf(token) !== -1, 'admin capability: ' + token);
+});
+// Единая вкладка «Турниры 🏆»: встраивание мастера, управления, шаблонов,
+// поля, стартового листа и быстрого редактора протокола.
+var studioJs = read('js/tn-studio.js');
+['tnsRouteHash', 'tnsOpenWizardNew', 'tnsOpenWizardEdit', 'tnsOpenStart', 'tnsOpenManage', 'tnsWizardPublished', 'tnsWizardSaved', 'tn-embed-parking', 'tns-host-wizard', 'tns-host-manage', 'tns-host-start', 'tns-host-pe', 'approve-all', 'sourceOf'].forEach(function (token) {
+    check(studioJs.indexOf(token) !== -1, 'unified studio: ' + token);
+});
+['tnAdminOpenPanel', 'tnAdminBind', 'tnAdminDefaultConfig', 'tnAdminCardBar', 'tnsOpenWizardEdit', 'tnsRouteHash'].forEach(function (token) {
+    check(adminJs.indexOf(token) !== -1, 'admin studio bridge: ' + token);
+});
+['tnsWizardPublished', 'tnsOpenWizardNew', 'tnsWizardClosed', 'tnsStudioHostsWizard'].forEach(function (token) {
+    check(wizardJs.indexOf(token) !== -1, 'wizard studio bridge: ' + token);
 });
 check((wizardJs.match(/id: '[-a-z]+'/g) || []).length >= 10, 'legacy wizard still exposes ten steps');
 ['courseRef: \'settings/course\'', 'registeredPlayers', 'rounds', 'settings/course'].forEach(function (token) {

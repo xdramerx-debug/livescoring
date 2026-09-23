@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="css/tn-wizard.css?v=01173cbb">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=6aa85f7a">
     <link rel="stylesheet" href="css/tournament-admin.css?v=326736ae">
-    <link rel="stylesheet" href="css/tn-studio.css?v=45ff7feb">
+    <link rel="stylesheet" href="css/tn-studio.css?v=257f9601">
     <script src="js/design-system.js?v=702b1ef1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -94,10 +94,8 @@
             <button class="admin-tab" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
             <button class="admin-tab" onclick="switchTab('scores',this)" data-i18n="tab_scores">Счёт ⛳</button>
             <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
-            <button class="admin-tab" onclick="switchTab('tournaments',this)" data-i18n="tab_tournaments">Турниры 🏆</button>
-            <button class="admin-tab" onclick="switchTab('studio',this)" data-i18n="tab_studio">Турниры · создание</button>
+            <button class="admin-tab" onclick="switchTab('studio',this)" data-i18n="tab_studio">Турниры 🏆</button>
             <button class="admin-tab" onclick="switchTab('tournamentsview',this)" data-i18n="tab_tournaments_view">Турниры: вид 👁</button>
-            <button class="admin-tab" onclick="switchTab('protocol',this)">Протокол ✏️</button>
             <button class="admin-tab" onclick="switchTab('broadcasts',this)" data-i18n="tab_broadcasts">Анонсы 📢</button>
             <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
             <button class="admin-tab" onclick="switchTab('importexport',this)" data-i18n="tab_importexport">Импорт/Экспорт 📊</button>
@@ -359,56 +357,32 @@
             </div>
         </div>
 
-        <div id="tab-tournaments" class="admin-section hidden">
-            <!-- Суб-вкладки страницы «Турниры»: строятся js/tn-wizard.js.
-                 Порядок: Классика (существующие механизмы, не трогаем) /
-                 Новая версия создания турнира / Настройки поля / Шаблоны турниров.
-                 Прямые ссылки: admin.html#new-create | #course | #templates -->
-            <div class="tnw-subtabs" id="tn-subtabs" role="tablist" aria-label="Tournament sections"></div>
-            <div id="tn-pane-new-create" class="tnw-pane hidden"><div id="tn-wizard-root"></div></div>
-            <div id="tn-pane-manage" class="tnw-pane hidden"><div id="tn-manage-root"></div></div>
-            <div id="tn-pane-course" class="tnw-pane hidden"><div id="tn-course-root"></div></div>
-            <div id="tn-pane-templates" class="tnw-pane hidden"><div id="tn-templates-root"></div></div>
-            <!-- Классический (существующий) способ создания турнира — fallback, остаётся как был -->
-            <div id="tn-pane-classic" class="tnw-pane">
-            <div class="card">
-                <h2><i class="fas fa-trophy"></i> <span data-i18n="create_tournament">Создать турнир</span></h2>
-                <div class="form-row">
-                    <div class="form-group"><label data-i18n="tournament_name_label">Название</label><input type="text" id="tn-name" class="form-input" data-i18n-placeholder="placeholder_tn_name" placeholder="Чемпионат Пестово"></div>
-                    <div class="form-group"><label data-i18n="tournament_date_label">Дата</label><input type="date" id="tn-date" class="form-input"></div>
-                </div>
-                <div class="form-group">
-                    <label data-i18n="available_formats">Доступные форматы</label>
-                    <div style="font-size:11.5px;color:var(--muted);margin-top:4px;">Все форматы, применяемые на турнирах: на удары (гросс/нетто/стейблфорд), матчи (1v1, 2v2) и командные (скрембл, техасский скрембл, гринсомес). Каждый формат считается логично для своего типа результата.</div>
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-stroke" checked> Stroke Play</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-gross"> Gross (без HCP)</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-net"> Net (с HCP)</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-stbl"> Stableford</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-m1v1"> Match Play (1v1)</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-m2v2"> Match Play (2v2)</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-scram"> Scramble</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-txscram"> Texas Scramble</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-f-greens"> Greensomes</label>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label data-i18n="available_tees">Доступные ТИ</label>
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-bk" data-i18n="tee_opt_bk"> ⬛ Чёрный</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-bl" data-i18n="tee_opt_bl"> 🟦 Синий</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-wh" checked data-i18n="tee_opt_wh"> ⬜ Белый</label>
-                        <label class="list-item" style="cursor:pointer;padding:8px 14px;"><input type="checkbox" id="tn-t-rd" data-i18n="tee_opt_rd"> 🟥 Красный</label>
-                    </div>
-                </div>
-                <button class="btn btn-g" onclick="createTournament()"><i class="fas fa-save"></i> <span data-i18n="create_btn">Создать</span></button>
-            </div>
-            <div class="card"><h2><i class="fas fa-list"></i> <span data-i18n="all_tournaments">Турниры</span></h2><div id="tn-list"></div></div>
-            <!-- СТАРТ ТУРНИРА: единая страница — протоколы, группы и QR-коды живут здесь же -->
-            <div id="tn-start-anchor"></div>
+        <!-- ЕДИНАЯ СИСТЕМА ТУРНИРОВ: вкладка «Турниры 🏆» (js/tn-studio.js).
+             Старые способы создания (Классика, Новая версия, Управление, Шаблоны,
+             Настройки поля, стартовый лист, быстрое редактирование протокола)
+             встраиваются внутрь карточки турнира. Ниже — скрытая парковка корневых
+             узлов этих модулей: js/tn-studio.js перемещает их в видимые хосты
+             (#tns-host-*) при открытии разделов и возвращает обратно при ре-рендере.
+             Прямые ссылки: admin.html#new-create | #course | #templates | #manage -->
+        <div id="tn-embed-parking" class="hidden" aria-hidden="true">
+            <div id="tn-wizard-root"></div>
+            <div id="tn-manage-root"></div>
+            <div id="tn-course-root"></div>
+            <div id="tn-templates-root"></div>
             <div id="tab-start-content"></div>
-            </div><!-- /tn-pane-classic -->
-        </div>
+            <div class="card" id="pe-card">
+                <h2><i class="fas fa-edit"></i> Быстрое редактирование протокола</h2>
+                <div class="form-group">
+                    <label>Турнир</label>
+                    <select id="pe-tn-select" class="form-input"><option value="">— выберите турнир —</option></select>
+                </div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
+                    Группы, стартовые лунки и время, ТИ (группы и игроков), маркеры, HCP и пол.
+                    Поиск работает по ФИО. Сохранение обновляет раунды, QR-карточки и протокол одновременно.
+                </div>
+                <div id="pe-editor"></div>
+            </div>
+        </div><!-- /tn-embed-parking -->
 
         <!-- ВКЛАДКА «ТУРНИРЫ: ВИД»: 5 вариантов отображения страницы «Турниры».
              Выбор доступен только администратору, хранится в
@@ -458,21 +432,6 @@
                 <button type="button" class="btn btn-og" onclick="openTournamentsPagePreview()" style="margin-top:14px;">
                     <i class="fas fa-arrow-up-right-from-square"></i> <span data-i18n="tournaments_view_open_page">Открыть страницу «Турниры»</span>
                 </button>
-            </div>
-        </div>
-
-        <div id="tab-protocol" class="admin-section hidden">
-            <div class="card">
-                <h2><i class="fas fa-edit"></i> Быстрое редактирование протокола</h2>
-                <div class="form-group">
-                    <label>Турнир</label>
-                    <select id="pe-tn-select" class="form-input"><option value="">— выберите турнир —</option></select>
-                </div>
-                <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
-                    Группы, стартовые лунки и время, ТИ (группы и игроков), маркеры, HCP и пол.
-                    Поиск работает по ФИО. Сохранение обновляет раунды, QR-карточки и протокол одновременно.
-                </div>
-                <div id="pe-editor"></div>
             </div>
         </div>
 
@@ -1241,11 +1200,11 @@
 <script src="js/name-variants.js?v=9fc593e7"></script>
 <script src="js/tournament-core.js?v=6fbba5de"></script>
 <script src="js/tn-engine.js?v=0d245f27"></script>
-<script src="js/tn-wizard.js?v=3f0447e8"></script>
-<script src="js/tournament-admin.js?v=bba3725c"></script>
-<script src="js/tn-studio-core.js?v=5e770e43"></script>
-<script src="js/tn-studio.js?v=deb18683"></script>
-<script src="js/admin.js?v=68c4a92a"></script>
+<script src="js/tn-wizard.js?v=9e401a7d"></script>
+<script src="js/tournament-admin.js?v=507ad46d"></script>
+<script src="js/tn-studio-core.js?v=084a748a"></script>
+<script src="js/tn-studio.js?v=c82ba9c7"></script>
+<script src="js/admin.js?v=17fa7d38"></script>
 <script src="js/admin-flights.js?v=84486ca0"></script>
 <script src="js/admin-scoreedit.js?v=759fc8b1"></script>
 <script src="js/admin-broadcasts.js?v=06387c38"></script>

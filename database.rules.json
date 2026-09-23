@@ -59,7 +59,19 @@
     "tournaments": {
       ".read": true,
       "$id": {
-        ".write": "auth != null && (newData.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('admin').val() === true)"
+        ".write": "auth != null && (newData.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('admin').val() === true)",
+        "applications": {
+          "$aid": {
+            ".write": "!data.exists() && newData.child('status').val() == 'pending' && newData.child('name').isString() || (auth != null && (root.child('users').child(auth.uid).child('admin').val() === true || root.child('tournaments').child($id).child('createdBy').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['name','status','createdAt']) && newData.child('name').isString() && newData.child('name').val().length >= 3 && newData.child('name').val().length <= 120 && newData.child('status').isString() && newData.child('status').val().length <= 20 && newData.child('createdAt').isNumber()"
+          }
+        },
+        "waitlist": {
+          "$key": {
+            ".write": "!data.exists() && newData.child('name').isString() || (auth != null && (root.child('users').child(auth.uid).child('admin').val() === true || root.child('tournaments').child($id).child('createdBy').val() === auth.uid))",
+            ".validate": "newData.child('name').isString() && newData.child('name').val().length >= 3 && newData.child('name').val().length <= 120"
+          }
+        }
       }
     },
 

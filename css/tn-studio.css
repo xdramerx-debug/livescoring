@@ -1,0 +1,53 @@
+/* Новая вкладка создания турниров. Цвета только из дизайн-системы. */
+.tns { display: grid; gap: 14px; }
+.tns-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tns-head h2 { margin: 0; color: var(--white); font-size: 22px; }
+.tns-head h2 i, .tns-kicker i { color: var(--gold); }
+.tns-sub { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.tns-bar { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
+.tns-bar .form-group { margin: 0; min-width: 140px; }
+.tns-bar .form-group label { margin-bottom: 4px; }
+.tns-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tns-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: 11px; font-weight: 700; }
+.tns-chip.on { color: var(--bg); background: var(--gold); border-color: var(--gold); }
+.tns-chip.off { color: var(--muted); }
+.tns-link { background: none; border: 0; padding: 0; color: var(--gold-l, var(--gold)); font: inherit; font-weight: 800; cursor: pointer; text-align: left; }
+.tns-link:hover { text-decoration: underline; }
+.tns-tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.tns-tab { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 9px; padding: 7px 11px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.tns-tab.active { color: var(--white); border-color: var(--border); background: rgba(255,255,255,.04); }
+.tns-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+.tns-table { width: 100%; border-collapse: collapse; color: var(--text); font-size: 13px; }
+.tns-table th, .tns-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.tns-table th { color: var(--gold); font-size: 11px; letter-spacing: .03em; text-transform: uppercase; background: rgba(201,168,76,.08); white-space: nowrap; }
+.tns-table tr:last-child td { border-bottom: 0; }
+.tns-sort { background: none; border: 0; color: inherit; font: inherit; font-weight: 800; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.tns-meta { color: var(--muted); font-size: 12px; }
+.tns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.tns-field label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+.tns-check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; }
+.tns-rowline { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.tns-rowline b { color: var(--white); }
+.tns-note { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.tns-warn { color: #e7b3a8; font-size: 12.5px; }
+.tns-ok { color: #9ce4b1; font-size: 12.5px; }
+.tns-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.tns-div { border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 999px; padding: 6px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.tns-div.active { background: var(--gold); color: var(--bg); border-color: var(--gold); font-weight: 800; }
+.tns-card { border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: rgba(255,255,255,.03); display: grid; gap: 8px; }
+.tns-card h3 { margin: 0; color: var(--white); font-size: 16px; }
+.tns-score { overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+.tns-score table { border-collapse: collapse; min-width: 920px; color: var(--text); font-size: 12px; }
+.tns-score th, .tns-score td { border: 1px solid var(--border); padding: 4px 5px; text-align: center; white-space: nowrap; }
+.tns-score th { color: var(--gold); background: rgba(201,168,76,.08); }
+.tns-score .name { text-align: left; min-width: 140px; position: sticky; left: 0; background: var(--card); z-index: 1; }
+.tns-score .sum { font-weight: 800; color: var(--white); }
+.tns-hole { width: 42px; height: 30px; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--input); color: var(--text); font: inherit; }
+.tns-pair { width: 64px; }
+.tns-report { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,.03); }
+.tns-report li { margin-left: 16px; }
+@media (max-width: 720px) {
+    .tns-head, .tns-bar, .tns-actions { align-items: stretch; }
+    .tns-bar .btn, .tns-actions .btn { width: 100%; }
+    .tns-rowline { flex-direction: column; gap: 4px; }
+}

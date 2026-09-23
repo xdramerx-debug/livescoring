@@ -62,12 +62,13 @@
         if (value && typeof value === 'object') return Object.keys(value).map(function (key) { return value[key]; });
         return [];
     }
+    function isHiddenFromSite(t) { return !!(t && t.publicAccess === false); }
     function tournamentEntries() {
         return Object.keys(state.tournaments || {}).map(function (key) {
             var t = state.tournaments[key] || {};
             t._key = key;
             return t;
-        });
+        }).filter(function (t) { return !isHiddenFromSite(t); });
     }
     function courseName(t) {
         if (state.course && state.course.name) return state.course.name;
@@ -314,11 +315,18 @@
         if (tab === 'participants') return '<div class="tn-detail-panel"><h2><i class="fas fa-users"></i> ' + ru('Участники', 'Participants') + '</h2>' + participantsHtml(t) + applicationHtml(t, c) + '</div>';
         if (tab === 'leaderboard') return '<div class="tn-detail-panel"><h2><i class="fas fa-ranking-star"></i> ' + ru('Лидерборд', 'Leaderboard') + '</h2>' + leaderboardHtml(t) + '</div>';
         if (tab === 'protocol') return '<div class="tn-detail-panel"><h2><i class="fas fa-file-signature"></i> ' + ru('Итоговый протокол', 'Final protocol') + '</h2>' + protocolHtml(t) + '</div>';
+        if (tab === 'studio' && root.TnStudioPublic) return root.TnStudioPublic.panelHtml(t, { esc: esc, ru: ru });
         return '<div class="tn-detail-panel"><h2><i class="fas fa-circle-info"></i> ' + ru('О турнире', 'About the tournament') + '</h2><div class="tn-detail-grid"><div class="tn-detail-stat"><b>' + rosterCount(t) + '</b><span>' + ru('участников подтверждено', 'confirmed participants') + '</span></div><div class="tn-detail-stat"><b>' + (t.roundsMeta ? listValue(t.roundsMeta).length : 1) + '</b><span>' + ru('раунд(а)', 'round(s)') + '</span></div><div class="tn-detail-stat"><b>' + esc((t.tees || ['wh']).join(', ').toUpperCase()) + '</b><span>' + ru('доступные ти', 'available tees') + '</span></div></div><p class="tn-detail-description">' + esc(t.description || ru('Регламент турнира и детали старта будут опубликованы организатором.', 'The organiser will publish the tournament regulations and start details.')) + '</p>' + applicationHtml(t, c) + '</div>';
     }
     function renderDetail() {
         var detail = el('tn-public-detail'), catalog = el('tn-public-catalog'), rootNode = el('tn-detail-content'), t = state.tournaments[state.detailId];
         if (!detail || !catalog || !rootNode) return;
+        if (t && isHiddenFromSite(t)) {
+            state.detailId = null;
+            render();
+            renderCatalogError(ru('Турнир не найден.', 'Tournament not found.'));
+            return;
+        }
         if (!t) {
             // Keep a direct ?id link alive while the first RTDB snapshot is
             // loading; only clear it after a non-empty snapshot proves that
@@ -333,7 +341,7 @@
         t._key = state.detailId;
         var c = classification(t), badge = statusLabel(t, c), formats = tournamentFormats(t);
         catalog.classList.add('hidden'); detail.classList.remove('hidden');
-        rootNode.innerHTML = '<div class="tn-detail-hero"><div class="tn-detail-kicker"><i class="fas fa-trophy"></i> ' + ru('Турнир клуба', 'Club tournament') + '</div><div class="tn-detail-title-row"><h1 id="tn-detail-title">' + esc(t.name || '—') + '</h1><span class="tn-public-badge ' + badge.cls + '"><i class="fas ' + badge.icon + '"></i> ' + esc(badge.text) + '</span></div><p class="tn-detail-description">' + esc(t.description || '') + '</p><div class="tn-detail-metrics"><div class="tn-detail-metric"><span>' + ru('Дата', 'Date') + '</span><b>' + esc(formatDate(t.date)) + '</b></div><div class="tn-detail-metric"><span>' + ru('Формат', 'Format') + '</span><b>' + esc(formats.map(formatLabel).join(' · ') || '—') + '</b></div><div class="tn-detail-metric"><span>' + ru('Участники', 'Players') + '</span><b>' + rosterCount(t) + (limit(t) ? '/' + limit(t) : '') + '</b></div></div><div class="tn-course-ref"><i class="fas fa-location-dot"></i><span>' + esc(courseName(t)) + '</span>' + (state.course && state.course.address ? '<span>· ' + esc(state.course.address) + '</span>' : '') + '</div></div><div class="tn-detail-tabs" role="tablist"><button type="button" class="tn-detail-tab ' + (state.detailTab === 'overview' ? 'active' : '') + '" data-tn-detail-tab="overview">' + ru('Обзор', 'Overview') + '</button><button type="button" class="tn-detail-tab ' + (state.detailTab === 'start' ? 'active' : '') + '" data-tn-detail-tab="start">' + ru('Стартовый лист + QR', 'Tee sheet + QR') + '</button><button type="button" class="tn-detail-tab ' + (state.detailTab === 'participants' ? 'active' : '') + '" data-tn-detail-tab="participants">' + ru('Участники и заявка', 'Participants & apply') + '</button><button type="button" class="tn-detail-tab ' + (state.detailTab === 'leaderboard' ? 'active' : '') + '" data-tn-detail-tab="leaderboard">' + ru('Лидерборд', 'Leaderboard') + '</button><button type="button" class="tn-detail-tab ' + (state.detailTab === 'protocol' ? 'active' : '') + '" data-tn-detail-tab="protocol">' + ru('Протокол PDF', 'Protocol PDF') + '</button></div>' + detailPanel(t);
+        rootNode.innerHTML = '<div class="tn-detail-hero"><div class="tn-detail-kicker"><i class="fas fa-trophy"></i> ' + ru('Турнир клуба', 'Club tournament') + '</div><div class="tn-detail-title-row"><h1 id="tn-detail-title">' + esc(t.name || '—') + '</h1><span class="tn-public-badge ' + badge.cls + '"><i class="fas ' + badge.icon + '"></i> ' + esc(badge.text) + '</span></div><p class="tn-detail-description">' + esc(t.description || '') + '</p><div class="tn-detail-metrics"><div class="tn-detail-metric"><span>' + ru('Дата', 'Date') + '</span><b>' + esc(formatDate(t.date)) + '</b></div><div class="tn-detail-metric"><span>' + ru('Формат', 'Format') + '</span><b>' + esc(formats.map(formatLabel).join(' · ') || '—') + '</b></div><div class="tn-detail-metric"><span>' + ru('Участники', 'Players') + '</span><b>' + rosterCount(t) + (limit(t) ? '/' + limit(t) : '') + '</b></div></div><div class="tn-course-ref"><i class="fas fa-location-dot"></i><span>' + esc(courseName(t)) + '</span>' + (state.course && state.course.address ? '<span>· ' + esc(state.course.address) + '</span>' : '') + '</div></div><div class="tn-detail-tabs" role="tablist"><button type="button" class="tn-detail-tab ' + (state.detailTab === 'overview' ? 'active' : '') + '" data-tn-detail-tab="overview">' + ru('Обзор', 'Overview') + '</button><button type="button" class="tn-detail-tab ' + (state.detailTab === 'start' ? 'active' : '') + '" data-tn-detail-tab="start">' + ru('Стартовый лист + QR', 'Tee sheet + QR') + '</button><button type="button" class="tn-detail-tab ' + (state.detailTab === 'participants' ? 'active' : '') + '" data-tn-detail-tab="participants">' + ru('Участники и заявка', 'Participants & apply') + '</button><button type="button" class="tn-detail-tab ' + (state.detailTab === 'leaderboard' ? 'active' : '') + '" data-tn-detail-tab="leaderboard">' + ru('Лидерборд', 'Leaderboard') + '</button><button type="button" class="tn-detail-tab ' + (state.detailTab === 'protocol' ? 'active' : '') + '" data-tn-detail-tab="protocol">' + ru('Протокол PDF', 'Protocol PDF') + '</button>' + (t.fromStudio ? '<button type="button" class="tn-detail-tab ' + (state.detailTab === 'studio' ? 'active' : '') + '" data-tn-detail-tab="studio">' + ru('Счёт и карточка', 'Score & card') + '</button>' : '') + '</div>' + detailPanel(t);
     }
     function render() {
         if (state.detailId) renderDetail();
@@ -345,7 +353,7 @@
         }
     }
     function openDetail(id, tab) {
-        if (!state.tournaments[id]) return;
+        if (!state.tournaments[id] || isHiddenFromSite(state.tournaments[id])) return;
         state.detailId = id;
         state.detailTab = tab || 'overview';
         try { history.pushState({ tournamentId: id }, '', window.location.pathname + '?id=' + encodeURIComponent(id)); } catch (e) { /* old browsers */ }
@@ -405,13 +413,13 @@
         if (shouldAuto) updates['tournaments/' + id + '/registeredPlayers/' + (app.uid || ('app_' + appId))] = app;
         else if (reg.waitlist !== false) updates['tournaments/' + id + '/waitlist/' + (app.uid || ('app_' + appId))] = app;
         else { if (typeof root.toast === 'function') root.toast(ru('Лист ожидания отключён.', 'Waitlist is disabled.'), 'error'); return; }
-        updates['tournaments/' + id + '/updatedAt'] = Date.now();
         form.querySelectorAll('button[type="submit"]').forEach(function (button) { button.disabled = true; });
         db.ref().update(updates).then(function () {
             if (typeof root.toast === 'function') root.toast(shouldAuto ? ru('Заявка подтверждена!', 'Application approved!') : ru('Заявка отправлена в лист ожидания.', 'Application sent to the waitlist.'), 'success');
             renderDetail();
         }).catch(function (error) {
-            if (typeof root.toast === 'function') root.toast('❌ ' + (error && error.message || error), 'error');
+            var denied = error && (error.code === 'PERMISSION_DENIED' || /permission/i.test(error.message || ''));
+            if (typeof root.toast === 'function') root.toast(denied ? ru('Не удалось отправить заявку. Войдите в аккаунт и попробуйте снова.', 'Could not send the application. Sign in and try again.') : ('❌ ' + (error && error.message || error)), 'error');
             form.querySelectorAll('button[type="submit"]').forEach(function (button) { button.disabled = false; });
         });
     }

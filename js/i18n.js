@@ -413,7 +413,7 @@ var I18N = {
         username: 'Логин', password: 'Пароль',
         login_btn: 'Войти', register_btn: 'Регистрация', create_account: 'Создать аккаунт',
         continue_guest: 'Продолжить как гость',
-        tab_rounds: 'Раунды', tab_alerts: 'Вызовы 🚨', tab_groups: 'Группы сейчас ⏱️', tab_tournaments: 'Турниры 🏆',
+        tab_rounds: 'Раунды', tab_alerts: 'Вызовы 🚨', tab_groups: 'Группы сейчас ⏱️', tab_tournaments: 'Турниры 🏆', tab_studio: 'Турниры · создание',
         tab_start: 'Старт турнира 🏁',
         tab_players: 'Игроки и роли', tab_data: 'Данные',
         tab_importexport: 'Импорт/Экспорт 📊', tab_rusgolf: 'RUSGOLF 🇷🇺',
@@ -580,7 +580,7 @@ var I18N = {
         msg_round_finished: '🏁 Раунд завершён!',
 
         player: 'Игрок', players_label: 'Игроки', guest: 'ГОСТЬ', start: 'Старт', date: 'Дата', format: 'Формат',
-        round_leader: 'Лидер раунда', no_completed: 'Пока нет завершённых раундов',
+        round_leader: 'Лидер раунда', no_completed: 'По�
 
         unsaved_score_hint: 'Счёт не сохранён — нажмите кнопку «Сохранить»',
         start_hint_title: 'С какой лунки лучше стартовать?',
@@ -992,7 +992,7 @@ var I18N = {
         username: 'Username', password: 'Password',
         login_btn: 'Log In', register_btn: 'Register', create_account: 'Create Account',
         continue_guest: 'Continue as Guest',
-        tab_rounds: 'Rounds', tab_alerts: 'Alerts 🚨', tab_groups: 'Groups now ⏱️', tab_tournaments: 'Tournaments 🏆',
+        tab_rounds: 'Rounds', tab_alerts: 'Alerts 🚨', tab_groups: 'Groups now ⏱️', tab_tournaments: 'Tournaments 🏆', tab_studio: 'Tournaments · create',
         tab_start: 'Tournament Start 🏁',
         tab_players: 'Players & Roles', tab_data: 'Data',
         tab_importexport: 'Import/Export 📊', tab_rusgolf: 'RUSGOLF 🇷🇺',
@@ -1293,3 +1293,4 @@ function updateFooterYear() {
     });
 }
 updateFooterYear();
+ooterYear();

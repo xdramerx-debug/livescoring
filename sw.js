@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.83.0-7ea9ab75';
+const CACHE_NAME = 'pestovo-v1.85.0-3f21ff71';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -52,6 +52,7 @@ const STATIC_ASSETS = [
     'css/tn-wizard.css?v=01173cbb',
     'css/tournament-admin.css?v=326736ae',
     'css/tournament-redesign.css?v=6aa85f7a',
+    'dist/livescoring-modules.js?v=21628504',
     'js/admin-agr.js?v=3be6a9bc',
     'js/admin-alerts.js?v=7b28ee0c',
     'js/admin-assistant.js?v=2b14d1db',
@@ -66,24 +67,19 @@ const STATIC_ASSETS = [
     'js/app.js?v=cf2f1c15',
     'js/assistant-build.js?v=6788f04f',
     'js/assistant-config.js?v=f0f8af7c',
-    'js/assistant.js?v=4305eca6',
+    'js/assistant.js?v=a0ef1deb',
     'js/auth.js?v=fc85fc6b',
-    'js/course-config.js?v=c8e378ff',
     'js/design-admin.js?v=70a7c0c4',
     'js/design-preview.js?v=adbbac01',
     'js/design-system.js?v=702b1ef1',
-    'js/dom.js?v=90d445ae',
     'js/feed.js?v=7283cfab',
     'js/firebase-config.js?v=ec97b0a9',
-    'js/format.js?v=c1b8bcd1',
     'js/guide.js?v=fe5763bc',
     'js/handicap.js?v=27728fb5',
-    'js/i18n.js?v=999114b0',
     'js/leaderboard.js?v=da62402e',
     'js/live.js?v=aff8ed6a',
     'js/marker.js?v=3dfdca66',
     'js/name-variants.js?v=9fc593e7',
-    'js/official-alerts.js?v=4bf03ebf',
     'js/order-of-merit.js?v=733a8cdc',
     'js/pe-edit.js?v=90a9674d',
     'js/players.js?v=70c37568',
@@ -92,7 +88,6 @@ const STATIC_ASSETS = [
     'js/pwa.js?v=67f248b8',
     'js/qr-start.js?v=0ac378b8',
     'js/round-setup.js?v=8bda9181',
-    'js/safe-html.js?v=5ed8edaf',
     'js/scorer.js?v=f348cd86',
     'js/solo.js?v=00cff780',
     'js/start-admin.js?v=ac56efb4',
@@ -107,7 +102,7 @@ const STATIC_ASSETS = [
     'js/tournament-core.js?v=6fbba5de',
     'js/tournament-public.js?v=1932a4cb',
     'js/tournaments.js?v=a814e6a6',
-    'js/utils.js?v=cc854fcc',
+    'js/utils.js?v=e8fb4472',
 
     // Прочее
     'manifest.json',

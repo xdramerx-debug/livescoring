@@ -580,7 +580,7 @@ var I18N = {
         msg_round_finished: '🏁 Раунд завершён!',
 
         player: 'Игрок', players_label: 'Игроки', guest: 'ГОСТЬ', start: 'Старт', date: 'Дата', format: 'Формат',
-        round_leader: 'Лидер раунда', no_completed: 'По�
+        round_leader: 'Лидер раунда', no_completed: 'Пока нет завершённых раундов',
 
         unsaved_score_hint: 'Счёт не сохранён — нажмите кнопку «Сохранить»',
         start_hint_title: 'С какой лунки лучше стартовать?',
@@ -1293,4 +1293,3 @@ function updateFooterYear() {
     });
 }
 updateFooterYear();
-ooterYear();

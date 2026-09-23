@@ -23,9 +23,13 @@
  * и после переключения страниц.
  *
  * Окружение:
- *   — внешние запросы (gstatic/googleapis/cdnjs/firebase…) блокируются,
- *     вместо Firebase SDK подставляется заглушка (initScript) — проверка
- *     детерминирована и работает офлайн;
+ *   — ВСЕ запросы вне локального сервера блокируются, вместо Firebase SDK
+ *     подставляется заглушка (initScript) — проверка детерминирована и работает
+ *     офлайн. Без этого в CI (где сеть есть) страницы грузили настоящий Firebase
+ *     SDK с CDN и вели себя иначе, чем в офлайн-песочнице;
+ *   — текст, который рисуют таймеры (часы, обратный отсчёт, «N минут назад»),
+ *     нормализуется перед хешированием: два прогона снимают состояние в разные
+ *     секунды, и без нормализации хеши разной разметки не сходились бы;
  *   — sw.js блокируется, чтобы Service Worker не кэшировал страницы;
  *   — браузер ищется в порядке: CHROMIUM_PATH → playwright (свой chromium)
  *     → @sparticuz/chromium (бандл в node_modules, скачивание не нужно).
@@ -210,6 +214,25 @@ function snapshotScript() {
             while ((n = walker.nextNode())) { if (!n.nodeValue.trim()) blanks.push(n); }
             blanks.forEach(function (t) { if (t.parentNode) t.parentNode.removeChild(t); });
         }
+        // Часы, обратный отсчёт и «N минут назад» рендерятся таймерами: два
+        // прогона (classic и bundle) снимают состояние в разные секунды, поэтому
+        // такой текст заменяем на метку — иначе хеши разной разметки не сойдутся
+        // на ровном месте (в CI такое и случилось: runner быстрее/медленнее
+        // песочницы, и таймер успевал/не успевал отрисоваться).
+        function normalizeVolatile(root) {
+            var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), n;
+            while ((n = walker.nextNode())) {
+                var v = n.nodeValue;
+                if (!v || v.indexOf(':') === -1 && !/назад|ago|только что|just now/i.test(v)) continue;
+                var out = v
+                    .replace(/\b\d{1,2}:\d{2}(:\d{2})?\b/g, '\u23f1')
+                    .replace(/\b\d{6,}\b/g, '#')
+                    .replace(/\b\d+\s*(мин|минут|минуты|мин\.|час|часа|часов|день|дня|дней|сек|секунды|секунд)\s+назад/gi, '\u23f1')
+                    .replace(/\b\d+\s*(minute|minutes|min|hour|hours|day|days|second|seconds)\s+ago/gi, '\u23f1')
+                    .replace(/только что|just now/gi, '\u23f1');
+                if (out !== v) n.nodeValue = out;
+            }
+        }
 
         var globals = {};
         var missing = [];
@@ -274,11 +297,13 @@ function snapshotScript() {
         if (bodyClone) {
             Array.prototype.slice.call(bodyClone.querySelectorAll('script')).forEach(function (el) { el.parentNode.removeChild(el); });
             dropBlankText(bodyClone);
+            normalizeVolatile(bodyClone);
         }
         var navClone = nav ? nav.cloneNode(true) : null;
         if (navClone) {
             Array.prototype.slice.call(navClone.querySelectorAll('script')).forEach(function (el) { el.parentNode.removeChild(el); });
             dropBlankText(navClone);
+            normalizeVolatile(navClone);
         }
         return {
             lang: document.documentElement.lang,
@@ -293,7 +318,7 @@ function snapshotScript() {
             langToggle: langToggle,
             navHash: navClone ? hash(navClone.innerHTML) : null,
             bodyHash: bodyClone ? hash(bodyClone.innerHTML) : '',
-            bodyTextLen: document.body ? document.body.innerText.length : 0,
+            bodyTextLen: bodyClone ? bodyClone.textContent.length : 0,
             forms: document.querySelectorAll('input,select,textarea,button').length
         };
     };
@@ -378,7 +403,15 @@ async function loadPage(launch, base, page, variant) {
             blocked.push(u);
         }
     });
-    // Service Worker не должен участвовать в проверке
+    // Внешние запросы рвём: проверка должна быть офлайн- и детерминирована
+    // (в CI сеть есть, и без этого страницы грузили бы реальный Firebase SDK).
+    await pageObj.route('**', function (route) {
+        const u = route.request().url();
+        if (u.indexOf('http://127.0.0.1') === 0 || u.indexOf('http://localhost') === 0) return route.continue();
+        return route.abort();
+    });
+    // Service Worker не должен участвовать в проверке. Регистрируется ПОСЛЕ
+    // общего правила: в playwright приоритет у более позднего обработчика.
     await pageObj.route(/sw\.js(\?|$)/, function (route) { route.abort(); });
 
     const target = base + '/' + page + '?__variant=' + variant;

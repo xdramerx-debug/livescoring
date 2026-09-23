@@ -74,6 +74,8 @@ vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'), sandbox
 
 const utils = fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8');
 const adminJs = fs.readFileSync(path.join(ROOT, 'js/admin.js'), 'utf8');
+// Настройки вида турниров переехали в js/admin-display.js (CODE-REVIEW п.3)
+const adminDisplayJs = fs.readFileSync(path.join(ROOT, 'js/admin-display.js'), 'utf8');
 const adminHtml = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');
 const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
 const adminCss = fs.readFileSync(path.join(ROOT, 'css/tournament-admin.css'), 'utf8');
@@ -106,10 +108,10 @@ ok(adminHtml.indexOf('id="tab-tournamentsview"') !== -1, 'секция вкла�
     ok(adminHtml.indexOf('id="tn-view-opt-' + v + '"') !== -1, 'кнопка варианта ' + v + ' в новой вкладке');
     ok(adminHtml.indexOf("saveTnPageViewVariant('" + v + "')") !== -1, 'кнопка варианта ' + v + ' сохраняет настройку');
 });
-ok(adminJs.indexOf('function saveTnPageViewVariant') !== -1, 'admin.js: saveTnPageViewVariant');
-ok(adminJs.indexOf('function loadTnPageViewSettings') !== -1, 'admin.js: loadTnPageViewSettings');
+ok(adminDisplayJs.indexOf('function saveTnPageViewVariant') !== -1, 'admin-display.js: saveTnPageViewVariant');
+ok(adminDisplayJs.indexOf('function loadTnPageViewSettings') !== -1, 'admin-display.js: loadTnPageViewSettings');
 ok(adminJs.indexOf("if (t === 'tournamentsview')") !== -1, 'admin.js: switchTab обрабатывает новую вкладку');
-ok(adminJs.indexOf("settings/tournaments_display_variant") !== -1, 'настройка хранится в settings/tournaments_display_variant');
+ok(adminDisplayJs.indexOf("settings/tournaments_display_variant") !== -1, 'настройка хранится в settings/tournaments_display_variant');
 ok(utils.indexOf("firebase: 'settings/tournaments_display_variant'") !== -1, 'utils.js слушает ту же настройку (применяется для всех)');
 ok(utils.indexOf('tournaments_view_variant_5') !== -1 && utils.indexOf('tournaments_view_variant_5_desc') !== -1, 'i18n: подписи пяти вариантов');
 

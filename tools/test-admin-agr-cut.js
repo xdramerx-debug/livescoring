@@ -18,7 +18,7 @@ function extractFunction(src, name) {
     return null;
 }
 
-const adminSrc = fs.readFileSync(__dirname + '/../js/admin.js', 'utf8');
+const adminSrc = fs.readFileSync(__dirname + '/../js/admin-agr.js', 'utf8'); // функции переехали из admin.js
 const rgCutForRound = extractFunction(adminSrc, 'rgCutForRound');
 const rgAgrNameSiteOrder = extractFunction(adminSrc, 'rgAgrNameSiteOrder');
 const rgPropagate = extractFunction(adminSrc, 'rgPropagateHcpEverywhere');

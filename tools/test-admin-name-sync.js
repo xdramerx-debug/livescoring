@@ -91,6 +91,8 @@ function load(file) {
 load('js/name-variants.js');
 load('js/admin.js');
 load('js/admin-players-excel.js');
+load('js/admin-agr.js');
+load('js/admin-name-forms.js');
 
 var NV = sandbox.NameVariants;
 var fails = 0, total = 0;

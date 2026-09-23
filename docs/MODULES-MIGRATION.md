@@ -3,45 +3,99 @@
 Цель — уйти от глобальных `<script>`-тегов к ES-модулям и Vite, чтобы
 получить tree-shaking, ленивую загрузку и нормальные юнит-тесты без vm-костылей.
 
-## Текущее состояние (фундамент готов и проверен)
+## Что сделано (итерация 13, проверено в реальном браузере)
 
-- `js/course-config.js`, `js/format.js`, `js/safe-html.js`, `js/dom.js`,
-  `js/i18n.js` — классические скрипты, выставляющие глобальные переменные
-  (`var`/`function` → `window`). Порядок загрузки на всех страницах:
-  `course-config → format → safe-html → dom → i18n → utils`.
-- `src/course-config.js`, `src/format.js`, `src/safe-html.js`, `src/dom.js`,
-  `src/i18n.js`, `src/index.js` — **канонические ESM-версии** тех же модулей.
-  При загрузке как модуль они дополнительно выставляют те же символы на
-  `window` (bridge для legacy-кода).
-- `vite.config.js` + скрипты `dev`/`build`/`preview` в `package.json`.
-- `npx vite build` собирает `dist/livescoring-modules.js` (~76.5 kB, 6
-  модулей). Проверено: при загрузке бандла как ESM с заглушкой `window` все
-  глобалы (`HOLES`, `holePar`, `fmtScore`, `esc`, `toast`, `escapeHtml`,
-  `vib`, `t`, `I18N`, `holeResClass`, …) доступны.
+**Страницы переключены на ESM-бандл.** Во всех 20 HTML, которые грузили
+фундамент, шесть классических тегов
 
-## Следующие шаги (требуют проверки в браузере/деплое)
+```html
+<script src="js/course-config.js"></script>
+<script src="js/format.js"></script>
+<script src="js/safe-html.js"></script>
+<script src="js/dom.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/official-alerts.js"></script>
+```
 
-1. Во всех HTML и `sw.js` заменить три тега
-   `<script src="js/course-config.js">`, `…/format.js`, `…/safe-html.js`
-   на один `<script type="module" src="/dist/livescoring-modules.js"></script>`.
-   Module-скрипты откладываются (defer), поэтому глобалы будут доступны к
-   моменту пользовательского взаимодействия (runtime-вызовы в `utils.js` и др.
-   от этого не зависят).
-2. Когда подтверждено в браузере — удалить классические
-   `js/course-config.js` / `js/format.js` / `js/safe-html.js`.
-3. Повторить извлечение для остальных ответственностей (Firebase-обёртки
-   `bindRealtimeValue` и т.п.; `dom` и `i18n` уже вынесены) → добавить в
-   `src/index.js` → пересобрать бандл.
-4. Постепенно перевести потребителей (`utils.js`, `admin.js`, …) на явный
-   `import` из бандла (или оставить использование `window`-глобалов на период
-   перехода).
-5. Включить `npm run build` в пайплайн деплоя (Firebase Hosting должен
-   отдавать `dist/` + собранные ассеты; при необходимости поправить
-   `public`/`rewrites` в `firebase.json`).
+заменены одним модульным:
+
+```html
+<script type="module" src="dist/livescoring-modules.js?v=<hash8>"></script>
+```
+
+`?v=` и precache в `sw.js` поддерживаются `npm run assets`
+(`tools/rev-assets.js` умеет `dist/` наравне с `js/` и `css/`).
+
+**Ключевая семантика, из-за которой нужен был браузер.** Модульные скрипты
+всегда отложены (defer): бандл выполняется **после** всех классических
+скриптов документа, но **до** обработчиков `DOMContentLoaded`. Поэтому
+load-time код классических скриптов не может рассчитывать на глобалы
+фундамента. В `js/utils.js` это ломалось реально: `applyPlayerModes()` и
+`initWakeLock()` звали `isPlayerModeEnabled()` из `dom.js`, падали с
+`ReferenceError` и **обрывали выполнение всего utils.js** (страница
+оставалась без половины функций). Исправлено в `js/utils.js`: boot-вызовы
+защищены проверкой зависимости и повторяются на `DOMContentLoaded` (к этому
+моменту бандл уже выполнен).
+
+**Проверка в браузере — `npm run check:browser`** (`tools/browser-check.js`).
+Для каждой страницы грузит два варианта и сравнивает:
+`classic` (шесть классических тегов, восстанавливаются из HTML на лету) и
+`bundle` (как отдаётся сейчас). Сравниваются ошибки страницы, набор и
+значения всех глобалов фундамента, пробы (`t`, `esc`, `fmtScore`, `holePar`,
+`fmtTime`, `holeResName`, `toast`, `toggleLang`), хеши разметки навигации и
+тела, количество непереведённых `data-i18n`, а также положительные проверки
+«страница реально отрисовалась» (A/B-сравнение ловит только разницу, поэтому
+баг, одинаковый в обоих вариантах, иначе прошёл бы незамеченным). Firebase SDK
+подменяется заглушкой, внешние запросы блокируются — проверка офлайн- и
+детерминирована. Результат на 2026-09-23: 21/21 страниц идентичны.
+Побочная находка: `js/assistant.js` звал несуществующую `addBotMessage`
+вместо `addBotMsg` — приветствие помощника не показывалось (исправлено).
+
+**Классические `js/*.js` остались в репозитории** по двум причинам:
+(а) резервный путь откатывания — Enough чтобы откатить один коммит;
+(б) их грузят vm-тесты (`tools/test-bootstrap.js`). Чтобы две копии не
+разошлись, `tools/test-esm-parity.js` (входит в `npm test`) сверяет наборы
+символов каждой пары `js/<name>.js ↔ src/<name>.js` и мост
+`Object.assign(window, …)`.
+
+**Бандл коммитится в `dist/`.** Firebase Hosting деплоит репозиторий как есть
+(`firebase.json`: `hosting.public = "."`, шага сборки нет), поэтому если
+`dist/` не в git — после деплоя страницы остаются без фундамента. Свежесть
+бандла проверяет `npm run check:bundle` (пересобирает во временный каталог и
+сравнивает с committed-копией); в CI это шаг `Build ESM bundle`.
+
+**Откат** — вернуть шесть классических тегов (они на месте в `js/`) и выполнить
+`npm run assets`: `?v=` и precache-манифест считаются по тем файлам, которые
+реально подключены к страницам, поэтому классические копии после
+переключения из прекэша выпали (офлайн их подтянет fetch-обработчик из сети,
+но предзагружать имеет смысл именно их).
+
+## Следующие шаги
+
+1. Переводить потребителей с `window`-глобалов на явный `import` из бандла —
+   начиная с новых фич (старый код работает и так, мост сохранён).
+2. Извлекать следующие ответственности из `utils.js` в пары
+   `js/<name>.js` + `src/<name>.js` → `src/index.js` → `npm run build` →
+   `npm run assets`. Критерий отбора блока: нет идентификаторов, объявленных
+   в остальном `utils.js`, нет load-time кода, зависимости — только фундамент
+   и вызовы через `typeof`-guard. Сделано: course-config, format (+ дата/
+   время), date-range, safe-html, dom, i18n, official-alerts.
+3. Когда классические копии перестанут грузиться и в тестах — удалить
+   `js/<name>.js`, оставив только `src/` (и поправить `tools/test-bootstrap.js`).
+4. Постепенно убирать inline-обработчики (`onclick=`) → `addEventListener`,
+   затем убрать `'unsafe-inline'` из CSP (`docs/IMPROVEMENTS-IMPL.md`, §1).
 
 ## Важно
 
-- `dist/` добавлен в `.gitignore` (билд-артефакт, не коммитится).
-- Пока HTML не переключён, рабочим источником остаются классические `js/*.js`,
-  а `src/` — будущее. Не удаляйте `js/`-версии, пока не пройдена проверка в
-  браузере (пункт 1–2 выше).
+- Правку `src/*.js` всегда сопровождай `npm run build` + `npm run assets`
+  (и `npm run check:bundle` в CI напомнит).
+- `dist/` **в git** (артефакт деплоя), `.bundle-check/` — временный каталог
+  проверки, в `.gitignore`.
+- Браузер для `check:browser` ищется так: `CHROMIUM_PATH` → свой chromium
+  playwright (`npx playwright install chromium`) → `@sparticuz/chromium`
+  из `node_modules` (качать ничего не нужно). В песочницах без системных
+  libnss3/libnspr4: `tools/build-stub-libs.sh` собирает пустые заглушки с
+  нужными версиями символов (chromium их линкует), далее
+  `CHROMIUM_EXTRA_LIBS=$PWD/tools/.browser-stub node tools/browser-check.js`.
+  Флаги: `--pages=a.html,b.html`, `--variant=classic|bundle|both`,
+  `--require` (падать, если браузера нет — так запускается в CI).

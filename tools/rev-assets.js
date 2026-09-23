@@ -7,8 +7,9 @@
  * проставляются вручную — забытая версия = пользователи на старом кэше».
  *
  * Что делает:
- *  1. Сканирует все корневые *.html на предмет локальных js/css
- *     (атрибуты src=/href=) и проставляет/обновляет ?v=<hash8>,
+ *  1. Сканирует все корневые *.html на предмет локальных ассетов
+ *     (js/, css/ и dist/ — атрибуты src=/href=) и проставляет/обновляет
+ *     ?v=<hash8>,
  *     где hash8 — первые 8 символов SHA-1 содержимого файла.
  *     Изменил файл → следующая сборка сама получит новый URL в HTML и SW.
  *  2. Пересобирает блок precache-манифеста в sw.js между маркерами
@@ -48,7 +49,8 @@ function exists(p) { return fs.existsSync(path.join(ROOT, p)); }
 // ── 1. Сбор локальных js/css-ссылок из HTML ──────────────────────────────
 const htmlFiles = fs.readdirSync(ROOT).filter(function (f) { return f.endsWith('.html'); }).sort();
 
-const REF_RE = /(?:src|href)=("|')((?:js|css)\/[^"'?#]+)(?:\?v=[0-9a-zA-Z]+)?\1/g;
+// Локальные ассеты: js/, css/ и собираемый ESM-бандл dist/ (см. docs/MODULES-MIGRATION.md).
+const REF_RE = /(?:src|href)=("|')((?:js|css|dist)\/[^"'?#]+)(?:\?v=[0-9a-zA-Z]+)?\1/g;
 
 const refs = new Map(); // 'js/utils.js' -> Set<page>
 let brokenRefs = 0;
@@ -75,7 +77,7 @@ const versions = new Map(); // 'js/utils.js' -> 'hash8'
 for (const file of refs.keys()) versions.set(file, sha8(fs.readFileSync(path.join(ROOT, file))));
 
 // ── 3. Переписывание ?v= в HTML ───────────────────────────────────────────
-const ATTR_RE = /((?:src|href)=("|'))((?:js|css)\/[^"'?#]+)(\?v=[0-9a-zA-Z]+)?(\2)/g;
+const ATTR_RE = /((?:src|href)=("|'))((?:js|css|dist)\/[^"'?#]+)(\?v=[0-9a-zA-Z]+)?(\2)/g;
 const changedHtml = [];
 for (const page of htmlFiles) {
     const html = readUtf8(page);

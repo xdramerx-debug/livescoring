@@ -5,6 +5,7 @@
     var ui = {
         view: 'list', id: null, tab: 'rounds', dayId: null, dayTab: 'score',
         divisionId: null, playerKey: null, from: '', to: '', sort: 'desc', q: '',
+        section: 'tournaments', startFor: null, peFor: null,
         editing: false, importReport: null, bound: false, tournaments: {}, users: {}, pending: false
     };
 
@@ -36,7 +37,11 @@
             }
         };
     }
-    function t() { return ui.id && ui.tournaments[ui.id] ? ui.tournaments[ui.id] : null; }
+    function t() {
+        var item = ui.id && ui.tournaments[ui.id] ? ui.tournaments[ui.id] : null;
+        if (item) item._key = ui.id;
+        return item;
+    }
     function roster(item) { return C.listOf((item || t() || {}).registeredPlayers); }
     function live(p) {
         var u = p && p.uid && ui.users[p.uid];
@@ -109,25 +114,98 @@
         if (el.getAttribute && el.getAttribute('data-act') === 'query') return false;
         return el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA';
     }
+    // Встраиваемые модули единой системы: мастер (wizard), управление (manage),
+    // поле (course), шаблоны (templates), стартовый лист (start) и быстрое
+    // редактирование протокола (pe-card). Живут в скрытой парковке
+    // #tn-embed-parking, сюда перемещаются целиком вместе со своим DOM.
+    var TNS_EMBEDS = ['tn-wizard-root', 'tn-manage-root', 'tn-course-root', 'tn-templates-root', 'tab-start-content', 'pe-card'];
+    function tnsParking() { return document.getElementById('tn-embed-parking'); }
+    function parkEmbeds() {
+        var home = tnsParking();
+        if (!home) return;
+        TNS_EMBEDS.forEach(function (id) {
+            var node = document.getElementById(id);
+            if (node && node.parentNode !== home) home.appendChild(node);
+        });
+    }
+    function mountEmbed(id, hostId) {
+        var node = document.getElementById(id), host = document.getElementById(hostId);
+        if (node && host) host.appendChild(node);
+        return !!(node && host);
+    }
+    function wizardSubTab(name) {
+        try { if (root.tnWiz) root.tnWiz.subTab = name; } catch (e) { /* ignore */ }
+    }
+    function mountEmbedsForState() {
+        if (ui.view === 'wizard') {
+            if (mountEmbed('tn-wizard-root', 'tns-host-wizard')) wizardSubTab('new-create');
+        } else if (ui.view === 'list' && ui.section === 'templates') {
+            if (mountEmbed('tn-templates-root', 'tns-host-templates')) {
+                wizardSubTab('templates');
+                if (typeof root.tnwBindTemplates === 'function') { try { root.tnwBindTemplates(); } catch (e) {} }
+                if (typeof root.tnwRenderTemplates === 'function') { try { root.tnwRenderTemplates(); } catch (e) {} }
+            }
+        } else if (ui.view === 'list' && ui.section === 'course') {
+            if (mountEmbed('tn-course-root', 'tns-host-course')) {
+                wizardSubTab('course');
+                if (typeof root.tnwBindCourse === 'function') { try { root.tnwBindCourse(); } catch (e) {} }
+                if (typeof root.tnwRenderCourse === 'function') { try { root.tnwRenderCourse(); } catch (e) {} }
+            }
+        } else if (ui.view === 'card' && ui.tab === 'settings') {
+            if (mountEmbed('tn-wizard-root', 'tns-host-wizard')) wizardSubTab('new-create');
+        } else if (ui.view === 'card' && ui.tab === 'manage') {
+            mountEmbed('tn-manage-root', 'tns-host-manage');
+        } else if (ui.view === 'card' && ui.tab === 'start') {
+            mountEmbed('tab-start-content', 'tns-host-start');
+            mountEmbed('pe-card', 'tns-host-pe');
+        }
+    }
     function render() {
         var rootEl = document.getElementById('tn-studio-root');
         if (!rootEl) return;
         if (busy()) { ui.pending = true; return; }
         ui.pending = false;
+        parkEmbeds();
         if (ui.view === 'create') rootEl.innerHTML = createHtml();
+        else if (ui.view === 'wizard') rootEl.innerHTML = wizardHtml();
         else if (ui.view === 'player') rootEl.innerHTML = playerHtml();
         else if (ui.view === 'day') rootEl.innerHTML = dayHtml();
         else if (ui.view === 'card') rootEl.innerHTML = cardHtml();
         else rootEl.innerHTML = listHtml();
+        mountEmbedsForState();
     }
     function go(view) { ui.view = view; render(); }
 
+    // Источник турнира: где он был создан. Любой открывается в единой системе.
+    function sourceOf(item) {
+        if (item.fromStudio) return tr('Студия', 'Studio');
+        if (item.fromWizard) return tr('Мастер', 'Wizard');
+        return tr('Классика', 'Classic');
+    }
+    function sectionTabsHtml() {
+        function btn(id, label) {
+            return '<button type="button" class="tns-tab' + (ui.section === id ? ' active' : '') + '" data-act="section" data-id="' + id + '">' + esc(label) + '</button>';
+        }
+        return '<div class="tns-tabs" role="tablist">' +
+            btn('tournaments', tr('Турниры', 'Tournaments')) +
+            btn('templates', tr('Шаблоны', 'Templates')) +
+            btn('course', tr('Поле клуба', 'Club course')) + '</div>';
+    }
     function listHtml() {
+        var head = '<div class="tns"><div class="tns-head"><div><h2><i class="fas fa-trophy"></i> ' + esc(tr('Турниры', 'Tournaments')) + '</h2><p class="tns-sub">' +
+            esc(tr('Единая система: создание, стартовый лист, счёт и публикация. Открывается любой турнир — студийный, из мастера или классический.', 'One system: creation, start sheet, scoring and publishing. Any tournament opens here — studio, wizard or classic.')) +
+            '</p></div><div class="tns-actions"><button type="button" class="btn btn-g" data-act="create"><i class="fas fa-plus"></i> ' + esc(tr('Добавить турнир', 'Add tournament')) + '</button>' +
+            '<button type="button" class="btn btn-og" data-act="wizard-new"><i class="fas fa-wand-magic-sparkles"></i> ' + esc(tr('Мастер из 10 шагов', '10-step wizard')) + '</button></div></div>' +
+            sectionTabsHtml();
+        if (ui.section === 'templates') return head + '<div id="tns-host-templates"></div></div>';
+        if (ui.section === 'course') return head + '<p class="tns-note">' +
+            esc(tr('Единственное поле клуба: лунки, рейтинги и спонсоры общие для всех турниров.', 'The single club course: holes, ratings and sponsors shared by all tournaments.')) +
+            '</p><div id="tns-host-course"></div></div>';
         var rows = Object.keys(ui.tournaments).map(function (id) {
             var item = ui.tournaments[id] || {};
             item._key = id;
             return item;
-        }).filter(function (item) { return item.fromStudio; });
+        });
         if (ui.from || ui.to) rows = rows.filter(function (item) { return C.overlaps(item.date, item.endDate || item.date, ui.from, ui.to); });
         rows.sort(function (a, b) {
             var d = String(a.date || '').localeCompare(String(b.date || ''));
@@ -135,18 +213,16 @@
         });
         var body = rows.map(function (item) {
             return '<tr><td><button type="button" class="tns-link" data-act="open" data-id="' + esc(item._key) + '">' + esc(item.name || '—') + '</button></td><td>' +
-                esc(C.formatRange(item.date, item.endDate)) + '</td><td>' + esc(C.CLUB) + '</td></tr>';
+                esc(C.formatRange(item.date, item.endDate)) + '</td><td>' + esc(C.CLUB) + '</td><td><span class="tns-chip">' + esc(sourceOf(item)) + '</span></td></tr>';
         }).join('');
-        return '<div class="tns"><div class="tns-head"><div><h2><i class="fas fa-trophy"></i> ' + esc(tr('Турниры', 'Tournaments')) + '</h2><p class="tns-sub">' +
-            esc(tr('Новое создание. На сайт попадает только то, что открыто в карточке.', 'New creation flow. Only a published card appears on the site.')) +
-            '</p></div><button type="button" class="btn btn-g" data-act="create"><i class="fas fa-plus"></i> ' + esc(tr('Добавить турнир', 'Add tournament')) + '</button></div>' +
+        return head +
             '<div class="tns-bar"><div class="form-group"><label>' + esc(tr('От', 'From')) + '</label><input class="form-input" type="date" data-field="from" value="' + esc(ui.from) + '"></div>' +
             '<div class="form-group"><label>' + esc(tr('До', 'To')) + '</label><input class="form-input" type="date" data-field="to" value="' + esc(ui.to) + '"></div>' +
             '<button type="button" class="btn btn-og" data-act="filter"><i class="fas fa-filter"></i> ' + esc(tr('Фильтр', 'Filter')) + '</button>' +
             '<button type="button" class="btn btn-og" data-act="clear">' + esc(tr('Очистить', 'Clear')) + '</button></div>' +
             '<div class="tns-table-wrap"><table class="tns-table"><thead><tr><th>' + esc(tr('Название', 'Name')) + '</th><th><button type="button" class="tns-sort" data-act="sort">' +
-            esc(tr('Даты проведения', 'Dates')) + (ui.sort === 'desc' ? ' ↓' : ' ↑') + '</button></th><th>' + esc(tr('Клубы', 'Club')) + '</th></tr></thead><tbody>' +
-            (body || '<tr><td colspan="3" class="tns-note">' + esc(tr('Турниров нет.', 'No tournaments.')) + '</td></tr>') + '</tbody></table></div></div>';
+            esc(tr('Даты проведения', 'Dates')) + (ui.sort === 'desc' ? ' ↓' : ' ↑') + '</button></th><th>' + esc(tr('Клубы', 'Club')) + '</th><th>' + esc(tr('Источник', 'Source')) + '</th></tr></thead><tbody>' +
+            (body || '<tr><td colspan="4" class="tns-note">' + esc(tr('Турниров нет.', 'No tournaments.')) + '</td></tr>') + '</tbody></table></div></div>';
     }
     function createHtml() {
         return '<div class="tns"><button type="button" class="btn btn-og btn-sm" data-act="back-list">' + esc(tr('Назад', 'Back')) + '</button><h2>' + esc(tr('Создание турнира', 'Create tournament')) + '</h2>' +
@@ -154,7 +230,14 @@
             '<div class="tns-field"><label>' + esc(tr('Дата начала', 'Start date')) + ' *</label><input class="form-input" type="date" name="start" required></div>' +
             '<div class="tns-field"><label>' + esc(tr('Дата завершения', 'End date')) + ' *</label><input class="form-input" type="date" name="end" required></div>' +
             '<label class="tns-check"><input type="checkbox" name="fourball"> ' + esc(tr('Формат форбол на весь турнир', 'Four-ball for the whole tournament')) + '</label></form>' +
-            '<div><button type="button" class="btn btn-g" data-act="save-create">' + esc(tr('Добавить', 'Add')) + '</button></div></div>';
+            '<div class="tns-actions"><button type="button" class="btn btn-g" data-act="save-create">' + esc(tr('Добавить', 'Add')) + '</button>' +
+            '<button type="button" class="btn btn-og" data-act="wizard-new"><i class="fas fa-wand-magic-sparkles"></i> ' + esc(tr('Мастер из 10 шагов', '10-step wizard')) + '</button></div></div>';
+    }
+    function wizardHtml() {
+        return '<div class="tns"><div class="tns-actions"><button type="button" class="btn btn-og btn-sm" data-act="back-list">' + esc(tr('Назад', 'Back')) + '</button></div>' +
+            '<h2 style="margin:0;color:var(--white);">' + esc(tr('Мастер создания турнира', 'Tournament wizard')) + '</h2>' +
+            '<p class="tns-note">' + esc(tr('10 шагов: паспорт, даты, подсчёт, участники, флайты, судейство, призы, медиа и публикация. Черновик сохраняется автоматически, публикация сразу открывает карточку турнира.', '10 steps: passport, dates, scoring, participants, flights, officials, prizes, media and publishing. Drafts autosave; publishing opens the tournament card.')) + '</p>' +
+            '<div id="tns-host-wizard"></div></div>';
     }
     function headHtml(item) {
         var hidden = item.publicAccess === false;
@@ -166,6 +249,9 @@
             '<div class="tns-tabs"><button type="button" class="tns-tab' + (ui.tab === 'rounds' ? ' active' : '') + '" data-act="tab" data-id="rounds">' + esc(tr('Раунды', 'Rounds')) + '</button>' +
             '<button type="button" class="tns-tab' + (ui.tab === 'groups' ? ' active' : '') + '" data-act="tab" data-id="groups">' + esc(tr('Группы', 'Groups')) + '</button>' +
             '<button type="button" class="tns-tab' + (ui.tab === 'players' ? ' active' : '') + '" data-act="tab" data-id="players">' + esc(tr('Участники', 'Players')) + '</button>' +
+            '<button type="button" class="tns-tab' + (ui.tab === 'start' ? ' active' : '') + '" data-act="tab" data-id="start">' + esc(tr('Стартовый лист', 'Start sheet')) + '</button>' +
+            '<button type="button" class="tns-tab' + (ui.tab === 'settings' ? ' active' : '') + '" data-act="tab" data-id="settings">' + esc(tr('Настройки', 'Settings')) + '</button>' +
+            '<button type="button" class="tns-tab' + (ui.tab === 'manage' ? ' active' : '') + '" data-act="tab" data-id="manage">' + esc(tr('Управление', 'Manage')) + '</button>' +
             '<button type="button" class="tns-tab' + (ui.tab === 'info' ? ' active' : '') + '" data-act="tab" data-id="info">' + esc(tr('Общая информация', 'General')) + '</button></div>';
     }
     function editHtml(item) {
@@ -178,8 +264,26 @@
     function cardHtml() {
         var item = t();
         if (!item) return '<p class="tns-note">' + esc(tr('Турнир не найден.', 'Tournament not found.')) + '</p>';
-        var body = ui.tab === 'groups' ? groupsHtml(item) : ui.tab === 'players' ? playersHtml(item) : ui.tab === 'info' ? infoHtml(item) : roundsHtml(item);
+        var body = ui.tab === 'groups' ? groupsHtml(item) : ui.tab === 'players' ? playersHtml(item) : ui.tab === 'start' ? startHtml() : ui.tab === 'settings' ? settingsHtml() : ui.tab === 'manage' ? manageHtml(item) : ui.tab === 'info' ? infoHtml(item) : roundsHtml(item);
         return '<div class="tns">' + headHtml(item) + body + '</div>';
+    }
+    function startHtml() {
+        return '<p class="tns-note">' + esc(tr('Стартовый лист: состав, разбивка на группы, времена, лунки, маркеры и QR-коды. Ниже — быстрое редактирование уже сохранённого протокола.', 'Start sheet: roster, groups, times, holes, markers and QR codes. Quick editing of the saved protocol is below.')) + '</p>' +
+            '<div id="tns-host-start"></div><div id="tns-host-pe"></div>';
+    }
+    function settingsHtml() {
+        var hasDraft = !!(root.tnWiz && root.tnWiz.draft && root.tnWiz.editTournamentId === ui.id);
+        return '<p class="tns-note">' + esc(tr('Все настройки турнира из мастера 10 шагов: паспорт, форматы и подсчёт, участники, флайты, судейство, призы, медиа. Сохранение пишет в этот турнир и попадает в журнал аудита.', 'Every tournament setting from the 10-step wizard: passport, formats and scoring, participants, flights, officials, prizes, media. Saving writes to this tournament and to the audit log.')) + '</p>' +
+            (hasDraft ? '' : '<div class="tns-actions"><button type="button" class="btn btn-g btn-sm" data-act="wizard-edit"><i class="fas fa-pen"></i> ' + esc(tr('Открыть мастер для этого турнира', 'Open the wizard for this tournament')) + '</button></div>') +
+            '<div id="tns-host-wizard"></div>';
+    }
+    function manageHtml(item) {
+        var bar = '';
+        if (typeof root.tnAdminCardBar === 'function') { try { bar = root.tnAdminCardBar(item, ui.id) || ''; } catch (e) { bar = ''; } }
+        return '<div class="tns-actions">' + bar +
+            '<button type="button" class="btn btn-og btn-sm" data-act="wizard-edit"><i class="fas fa-pen"></i> ' + esc(tr('Изменить в мастере', 'Edit in wizard')) + '</button>' +
+            '<button type="button" class="btn btn-og btn-sm" data-act="goto-start"><i class="fas fa-qrcode"></i> ' + esc(tr('Стартовый лист', 'Start sheet')) + '</button></div>' +
+            '<div id="tns-host-manage" class="tns-manage-host"></div>';
     }
     function roundsHtml(item) {
         var list = days();
@@ -204,6 +308,43 @@
             '<div><button type="button" class="btn btn-r btn-sm" data-act="del-tn">' + esc(tr('Удалить турнир', 'Delete tournament')) + '</button></div>';
     }
     function groupsHtml(item) {
+        // Классический мастер зачётов живёт в admin-tournaments.js: обрезка
+        // гандикапа, умные группы, инлайн-правки. Он рисуется в свой родной
+        // контейнер #tn-div-<id>, кэш tnTnVals Студия подставляет сама из
+        // своей подписки (классической #tn-list больше нет).
+        var classic = '';
+        if (typeof root.tnDivisionsEditorHtml === 'function' && typeof root.tnNormalizeDivisions === 'function') {
+            try {
+                root.tnTnVals = root.tnTnVals || {};
+                root.tnTnVals[ui.id] = item;
+                classic = '<div id="tn-div-' + esc(ui.id) + '">' +
+                    root.tnDivisionsEditorHtml(ui.id, root.tnNormalizeDivisions(item), item) + '</div>';
+            } catch (eClassic) { classic = ''; }
+        }
+        if (!classic) return studioGroupsHtml(item);
+        return classic + assignHtml(item);
+    }
+    function assignHtml(item) {
+        var list = C.listOf(item.divisions);
+        if (!list.length) return '';
+        return '<h3 style="margin:14px 0 0;color:var(--white);font-size:15px;">' + esc(tr('Состав зачётов', 'Division rosters')) + '</h3>' +
+            '<p class="tns-note">' + esc(tr('Кто в каком зачёте играет. Настройки зачётов, обрезка гандикапа и умные группы — в панели выше.', 'Who plays in each division. Division settings, the handicap cut and smart groups are in the panel above.')) + '</p>' +
+            list.map(function (d) { return assignCard(item, d); }).join('');
+    }
+    function assignCard(item, d) {
+        var mine = people().filter(function (p) { return C.divisionOf(p._key, item.divisions) === d._key; });
+        var options = people().filter(function (p) { return C.divisionOf(p._key, item.divisions) !== d._key; }).map(function (p) {
+            return '<option value="' + esc(p._key) + '">' + esc(p.name) + '</option>';
+        }).join('');
+        return '<article class="tns-card"><h3>' + esc(d.name || '—') + '</h3><p class="tns-note">' + esc(caption(item, d)) + '</p>' +
+            '<div class="tns-bar"><select class="form-input" data-div-add="' + esc(d._key) + '"><option value="">' + esc(tr('Игрок из состава', 'Player from the roster')) + '</option>' + options + '</select>' +
+            '<button type="button" class="btn btn-g btn-sm" data-act="assign" data-id="' + esc(d._key) + '">' + esc(tr('В зачёт', 'Assign')) + '</button></div>' +
+            '<div class="tns-bar"><div class="tns-field" style="flex:0 1 130px;"><label>' + esc(tr('Возраст', 'Age')) + '</label><input class="form-input" data-act="div-age" data-id="' + esc(d._key) + '" value="' + esc(d.ageLabel || '') + '" placeholder="19-"></div></div>' +
+            (mine.length ? '<ul class="tns-note">' + mine.map(function (p) {
+                return '<li>' + esc(p.name) + ' <button type="button" class="tns-link" data-act="unassign" data-id="' + esc(d._key) + '" data-player="' + esc(p._key) + '">' + esc(tr('убрать', 'remove')) + '</button></li>';
+            }).join('') + '</ul>' : '<p class="tns-note">' + esc(tr('Пока пусто.', 'Empty for now.')) + '</p>') + '</article>';
+    }
+    function studioGroupsHtml(item) {
         var list = C.listOf(item.divisions);
         var cards = list.map(function (d) { return divisionCard(item, d); }).join('');
         return '<form id="tns-div" class="tns-grid"><div class="tns-field"><label>' + esc(tr('Название зачёта', 'Division name')) + '</label><input class="form-input" name="name" required maxlength="80"></div>' +
@@ -270,8 +411,8 @@
             (rows || '<tr><td colspan="4" class="tns-note">' + esc(tr('Состав пуст.', 'Roster is empty.')) + '</td></tr>') + '</tbody></table></div>' +
             '<p class="tns-note">' + esc(tr('Excel, до 500 строк: ФИО, HCP, Пол, ТИ. Кого нет в клубе, тоже добавляем. Повтор по ФИО пропускается, состав не заменяется. «Карточка» — пустая А5 после стартового листа.', 'Excel, up to 500 rows: name, HCP, gender, tee. People outside the club are added too. A repeated name is skipped; the roster is not replaced. Card prints a blank A5 after the start sheet exists.')) + '</p>';
     }
-    function appsHtml(item) {
-        var apps = item.applications || {}, waits = item.waitlist || {}, rows = [], seen = {};
+    function allApps(item) {
+        var apps = (item && item.applications) || {}, waits = (item && item.waitlist) || {}, rows = [], seen = {};
         function add(id, app, kind) {
             if (!app || seen[id]) return;
             seen[id] = true;
@@ -282,7 +423,17 @@
         }
         Object.keys(apps).forEach(function (id) { add(id, apps[id], 'application'); });
         Object.keys(waits).forEach(function (id) { add(id, waits[id], 'waitlist'); });
-        var pending = rows.filter(function (row) { return String(row.status || 'pending').toLowerCase() !== 'approved' && String(row.status || 'pending').toLowerCase() !== 'rejected'; });
+        return rows;
+    }
+    function pendingApps(item) {
+        return allApps(item).filter(function (row) {
+            var s = String(row.status || 'pending').toLowerCase();
+            return s !== 'approved' && s !== 'rejected';
+        });
+    }
+    function appsHtml(item) {
+        var rows = allApps(item);
+        var pending = pendingApps(item);
         if (!rows.length) return '<p class="tns-note">' + esc(tr('Заявок с сайта пока нет.', 'No website applications yet.')) + '</p>';
         var body = pending.map(function (row) {
             return '<tr><td><b>' + esc(row.name || '—') + '</b><br><span class="tns-meta">' + esc(row.email || row.phone || '') + '</span></td><td>' + esc(C.fmtHcp(row.handicap) || '—') + '</td><td>' +
@@ -290,7 +441,16 @@
                 '<button type="button" class="btn btn-r btn-sm" data-act="reject" data-id="' + esc(row._id) + '">' + esc(tr('Отклонить', 'Reject')) + '</button></td></tr>';
         }).join('');
         return '<h3>' + esc(tr('Заявки с сайта', 'Website applications')) + ' · ' + pending.length + '</h3>' +
+            (pending.length > 1 ? '<div class="tns-actions"><button type="button" class="btn btn-g btn-sm" data-act="approve-all"><i class="fas fa-check-double"></i> ' + esc(tr('Подтвердить все', 'Approve all')) + '</button></div>' : '') +
             (body ? '<div class="tns-table-wrap"><table class="tns-table"><thead><tr><th>' + esc(tr('Игрок', 'Player')) + '</th><th>HI</th><th></th></tr></thead><tbody>' + body + '</tbody></table></div>' : '<p class="tns-note">' + esc(tr('Новых заявок нет.', 'No new applications.')) + '</p>');
+    }
+    function approveAllApps() {
+        var item = t();
+        var pending = item ? pendingApps(item) : [];
+        if (!pending.length) return;
+        if (!confirm(tr('Подтвердить все заявки (' + pending.length + ')? Они попадут в состав турнира.', 'Approve all applications (' + pending.length + ')? They will join the roster.'))) return;
+        pending.forEach(function (row) { reviewApp(row._id, true, true); });
+        toast(tr('Заявки подтверждены: ', 'Applications approved: ') + pending.length, 'success');
     }
     function reportHtml(report) {
         var lines = [];
@@ -629,7 +789,7 @@
         update(patch);
     }
 
-    function reviewApp(appId, approve) {
+    function reviewApp(appId, approve, silent) {
         var item = t();
         if (!item || !appId) return;
         var apps = item.applications || {}, waits = item.waitlist || {};
@@ -659,11 +819,150 @@
                 patch['registeredPlayers/' + (app.uid || ('app_' + appId))] = entry;
             }
         }
-        update(patch).then(function () { toast(approve ? tr('Заявка подтверждена', 'Application approved') : tr('Заявка отклонена', 'Application rejected'), 'success'); });
+        update(patch).then(function () { if (!silent) toast(approve ? tr('Заявка подтверждена', 'Application approved') : tr('Заявка отклонена', 'Application rejected'), 'success'); });
     }
-    function openStartSheet() {
-        var btn = document.querySelector('.admin-tab[onclick*="tournaments"]');
-        if (typeof root.switchTab === 'function') root.switchTab('start', btn || null);
+    function openStartSheet() { openStart(ui.id); }
+
+    // ---- Навигация единой системы ----
+    function showStudioTab() {
+        var pane = document.getElementById('tab-studio');
+        if (pane && !pane.classList.contains('hidden')) return;
+        var btn = document.querySelector('.admin-tab[onclick*="studio"]');
+        if (btn && typeof root.switchTab === 'function') root.switchTab('studio', btn);
+    }
+    function setHash(h) {
+        try { history.replaceState(null, '', location.pathname + location.search + h); } catch (e) { /* ignore */ }
+    }
+    function openListSection(section, fromHash) {
+        ui.view = 'list';
+        ui.section = section === 'templates' ? 'templates' : section === 'course' ? 'course' : 'tournaments';
+        showStudioTab();
+        render();
+        if (!fromHash) setHash(ui.section === 'templates' ? '#templates' : ui.section === 'course' ? '#course' : '#tn-studio');
+    }
+    function openWizardNew(fromHash) {
+        ui.view = 'wizard';
+        ui.editing = false;
+        showStudioTab();
+        render();
+        if (root.tnWiz) {
+            root.tnWiz.editTournamentId = null;
+            root.tnWiz.subTab = 'new-create';
+            if (root.tnWiz.draft && String(root.tnWiz.draftKey || '').indexOf('edit_') === 0) {
+                root.tnWiz.draft = null;
+                root.tnWiz.draftKey = null;
+                root.tnWiz.step = 0;
+            }
+        }
+        if (!fromHash) setHash('#new-create');
+        if (typeof root.tnwRenderWizard === 'function') { try { root.tnwRenderWizard(); } catch (e) { /* ignore */ } }
+    }
+    function openWizardEdit(id) {
+        if (id) ui.id = id;
+        if (!ui.id) return;
+        ui.view = 'card';
+        ui.tab = 'settings';
+        ui.editing = false;
+        showStudioTab();
+        render();
+        if (root.tnWiz && typeof root.tnAdminDefaultConfig === 'function') {
+            if (root.tnWiz.editTournamentId !== ui.id || !root.tnWiz.draft) {
+                var item = ui.tournaments[ui.id] || {};
+                root.tnWiz.editTournamentId = ui.id;
+                try { root.tnWiz.editOriginal = root.tnAdminClone ? root.tnAdminClone(item) : null; } catch (e) { root.tnWiz.editOriginal = null; }
+                try { root.tnWiz.draft = root.tnAdminDefaultConfig(item); } catch (e) { root.tnWiz.draft = null; }
+                root.tnWiz.draftKey = 'edit_' + ui.id;
+                root.tnWiz.step = 0;
+                root.tnWiz.dirty = false;
+            }
+            root.tnWiz.subTab = 'new-create';
+            if (typeof root.tnwRenderWizard === 'function') { try { root.tnwRenderWizard(); } catch (e) { /* ignore */ } }
+        }
+    }
+    function openManage(id) {
+        if (id) ui.id = id;
+        if (!ui.id) return;
+        ui.view = 'card';
+        ui.tab = 'manage';
+        showStudioTab();
+        render();
+        if (typeof root.tnAdminBind === 'function') { try { root.tnAdminBind(); } catch (e) { /* ignore */ } }
+        if (typeof root.tnAdminOpenPanel === 'function') { try { root.tnAdminOpenPanel(ui.id, 'applications'); } catch (e) { /* ignore */ } }
+    }
+    function openStart(id) {
+        if (id) ui.id = id;
+        if (!ui.id) return;
+        ui.view = 'card';
+        ui.tab = 'start';
+        showStudioTab();
+        render();
+        if (typeof root.psSwitchTo === 'function') { try { root.psSwitchTo(); } catch (e) { /* ignore */ } }
+        if (ui.startFor !== ui.id && typeof root.psOnTournamentChange === 'function') {
+            try { root.psOnTournamentChange(ui.id); } catch (e) { /* ignore */ }
+        }
+        ui.startFor = ui.id;
+        if (typeof root.peInit === 'function') { try { root.peInit(); } catch (e) { /* ignore */ } }
+        syncPeSelect(0);
+    }
+    function syncPeSelect(attempt) {
+        var sel = document.getElementById('pe-tn-select');
+        if (!sel || !ui.id) return;
+        if (ui.peFor === ui.id && sel.value === ui.id) return;
+        var has = false;
+        for (var i = 0; i < sel.options.length; i++) { if (sel.options[i].value === ui.id) { has = true; break; } }
+        if (!has) {
+            // список турниров в pe-edit подгружается асинхронно — ждём опции
+            if (attempt < 20) setTimeout(function () { syncPeSelect(attempt + 1); }, 500);
+            return;
+        }
+        ui.peFor = ui.id;
+        sel.value = ui.id;
+        var ev = document.createEvent('HTMLEvents');
+        ev.initEvent('change', true, false);
+        sel.dispatchEvent(ev);
+    }
+    // Мастер опубликовал НОВЫЙ турнир — открываем его карточку.
+    function wizardPublished(tnId) {
+        if (tnId) ui.id = tnId;
+        ui.view = 'card';
+        ui.tab = 'rounds';
+        ui.section = 'tournaments';
+        ui.editing = false;
+        showStudioTab();
+        setHash('#tn-studio');
+        render();
+    }
+    // Мастер сохранил изменения существующего турнира — остаёмся в настройках.
+    function wizardSaved(id, cfg) {
+        if (id) ui.id = id;
+        if (root.tnWiz) {
+            root.tnWiz.editTournamentId = ui.id;
+            try { root.tnWiz.draft = root.tnAdminClone ? root.tnAdminClone(cfg || {}) : (cfg || {}); } catch (e) { root.tnWiz.draft = cfg || {}; }
+            root.tnWiz.draftKey = 'edit_' + ui.id;
+            root.tnWiz.dirty = false;
+            root.tnWiz.subTab = 'new-create';
+        }
+        ui.view = 'card';
+        ui.tab = 'settings';
+        showStudioTab();
+        render();
+        if (typeof root.tnwRenderWizard === 'function') { try { root.tnwRenderWizard(); } catch (e) { /* ignore */ } }
+    }
+    function wizardCancel() {
+        if (root.tnWiz) {
+            root.tnWiz.editTournamentId = null;
+            root.tnWiz.editOriginal = null;
+            root.tnWiz.draft = null;
+            root.tnWiz.draftKey = null;
+        }
+        openManage(ui.id);
+    }
+    function wizardClosed() {
+        if (root.tnWiz) { root.tnWiz.editTournamentId = null; root.tnWiz.editOriginal = null; }
+    }
+    function hostsWizard() {
+        var w = document.getElementById('tn-wizard-root'), s = document.getElementById('tn-studio-root');
+        return !!(w && s && s.contains(w));
     }
     function printBlank(playerKey) {
         var item = t();
@@ -840,13 +1139,24 @@
         var act = node.getAttribute('data-act');
         var id = node.getAttribute('data-id');
         if (act === 'create') go('create');
-        else if (act === 'back-list') { ui.view = 'list'; ui.editing = false; render(); }
+        else if (act === 'back-list') { ui.editing = false; openListSection('tournaments'); }
         else if (act === 'filter') { ui.from = valueOf('from'); ui.to = valueOf('to'); render(); }
         else if (act === 'clear') { ui.from = ''; ui.to = ''; render(); }
         else if (act === 'sort') { ui.sort = ui.sort === 'desc' ? 'asc' : 'desc'; render(); }
         else if (act === 'save-create') saveCreate();
+        else if (act === 'wizard-new') openWizardNew();
+        else if (act === 'wizard-edit') openWizardEdit(ui.id);
+        else if (act === 'goto-start') openStart(ui.id);
+        else if (act === 'goto-manage') openManage(ui.id);
+        else if (act === 'section') openListSection(id);
+        else if (act === 'approve-all') approveAllApps();
         else if (act === 'open') { ui.id = id; ui.view = 'card'; ui.tab = 'rounds'; ui.editing = false; render(); }
-        else if (act === 'tab') { ui.tab = id; render(); }
+        else if (act === 'tab') {
+            if (id === 'start') openStart(ui.id);
+            else if (id === 'settings') openWizardEdit(ui.id);
+            else if (id === 'manage') openManage(ui.id);
+            else { ui.tab = id; render(); }
+        }
         else if (act === 'edit') { ui.editing = !ui.editing; render(); }
         else if (act === 'save-edit') saveEdit();
         else if (act === 'add-day') addDay();
@@ -888,6 +1198,11 @@
             update(patch);
         } else if (act === 'query') { ui.q = el.value; render(); }
         else if (act === 'import' && el.files && el.files[0]) { importFile(el.files[0]); el.value = ''; }
+        else if (act === 'div-age') {
+            var agePatch = {};
+            agePatch['divisions/' + el.getAttribute('data-id') + '/ageLabel'] = String(el.value || '').trim();
+            update(agePatch);
+        }
     }
     function bind() {
         if (ui.bound) return;
@@ -931,24 +1246,36 @@
             if (ui.view === 'players' || ui.view === 'groups' || ui.view === 'day' || ui.view === 'player') render();
         });
     }
+    // Единый hash-роутер турниров. Старые ссылки (#new-create, #course,
+    // #templates, #manage) ведут в соответствующие разделы единой вкладки.
+    var TNS_HASHES = { '#tn-studio': 1, '#new-create': 1, '#course': 1, '#templates': 1, '#manage': 1 };
+    function routeHash(raw) {
+        var h = String(raw != null ? raw : (window.location.hash || '')).toLowerCase();
+        if (!TNS_HASHES[h]) return false;
+        if (h === '#new-create') openWizardNew(true);
+        else if (h === '#course') openListSection('course', true);
+        else if (h === '#templates') openListSection('templates', true);
+        else openListSection('tournaments', true);
+        return true;
+    }
     function open() {
         bind();
-        if ((location.hash || '').toLowerCase() !== '#tn-studio') {
-            try { history.replaceState(null, '', location.pathname + location.search + '#tn-studio'); } catch (e) { /* ignore */ }
-        }
+        var h = (location.hash || '').toLowerCase();
+        if (!TNS_HASHES[h]) setHash('#tn-studio');
         render();
     }
     root.tnStudioOpen = open;
-    root.tnStudioOnAdminOpen = function () {
-        if ((location.hash || '').toLowerCase() !== '#tn-studio') return;
-        var btn = document.querySelector('.admin-tab[onclick*="studio"]');
-        if (btn && typeof root.switchTab === 'function') root.switchTab('studio', btn);
-    };
-    window.addEventListener('hashchange', function () {
-        if ((location.hash || '').toLowerCase() === '#tn-studio' && typeof root.switchTab === 'function') {
-            var btn = document.querySelector('.admin-tab[onclick*="studio"]');
-            var pane = document.getElementById('tab-studio');
-            if (btn && pane && pane.classList.contains('hidden')) root.switchTab('studio', btn);
-        }
-    });
+    root.tnStudioOnAdminOpen = function () { routeHash(); };
+    root.tnsRouteHash = routeHash;
+    root.tnsOpenWizardNew = function () { openWizardNew(); };
+    root.tnsOpenWizardEdit = function (id) { openWizardEdit(id); };
+    root.tnsOpenStart = function (id) { openStart(id); };
+    root.tnsOpenManage = function (id) { openManage(id); };
+    root.tnsOpenListSection = function (section) { openListSection(section); };
+    root.tnsWizardPublished = function (id) { wizardPublished(id); };
+    root.tnsWizardSaved = function (id, cfg) { wizardSaved(id, cfg); };
+    root.tnsWizardCancel = function () { wizardCancel(); };
+    root.tnsWizardClosed = function () { wizardClosed(); };
+    root.tnsStudioHostsWizard = function () { return hostsWizard(); };
+    window.addEventListener('hashchange', function () { routeHash(); });
 })(typeof window !== 'undefined' ? window : this);

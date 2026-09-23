@@ -51,3 +51,9 @@
     .tns-bar .btn, .tns-actions .btn { width: 100%; }
     .tns-rowline { flex-direction: column; gap: 4px; }
 }
+/* Встраиваемые модули единой системы (из скрытой парковки #tn-embed-parking). */
+#tns-host-wizard, #tns-host-manage, #tns-host-course, #tns-host-templates,
+#tns-host-start, #tns-host-pe { display: grid; gap: 14px; min-width: 0; }
+#tns-host-pe { margin-top: 6px; }
+/* В карточке турнира свой список — кнопка «К списку» из модуля управления не нужна. */
+.tns-manage-host [data-tna-action="back"] { display: none; }

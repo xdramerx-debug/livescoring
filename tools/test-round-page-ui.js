@@ -62,7 +62,9 @@ win.navigator.vibrate = () => {};
     win.eval(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 });
 
-const START_TS = new Date('2026-09-20T09:00:00').getTime();
+// Старт «через 2 часа» — относительно текущего времени, а не хардкод:
+// захардкоженная дата 2026-09-20 прошла, и «будущий» раунд стал прошлым.
+const START_TS = Date.now() + 2 * 3600 * 1000;
 function mkRound(status, scheduledStart) {
     return {
         mode: 'group', status: status, scheduledStart: scheduledStart, startTime: scheduledStart,

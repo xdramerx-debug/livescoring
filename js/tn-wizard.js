@@ -340,6 +340,9 @@ function tnwSaveLocal() {
 
 function tnwSaveServer(force) {
     if (!tnWiz.draft || !tnWiz.draftKey) return Promise.resolve(false);
+    // Режим редактирования существующего турнира: правки уходят в турнир
+    // кнопкой «Сохранить», а не в черновики (не плодим tnDrafts/edit_*).
+    if (tnWiz.editTournamentId) return Promise.resolve(false);
     if (!tnWiz.dirty && !force) return Promise.resolve(false);
     var database = tnwDb();
     if (!database) { tnWiz.saveMsg = tnL('нет подключения к базе', 'no database'); return Promise.resolve(false); }
@@ -854,6 +857,8 @@ function tnwCloseDraft() {
     tnwSaveServer(true);
     tnWiz.draft = null;
     tnWiz.draftKey = null;
+    // Единая вкладка: выход из режима редактирования турнира.
+    if (typeof window !== 'undefined' && typeof window.tnsWizardClosed === 'function') window.tnsWizardClosed();
     tnwRenderWizard();
 }
 
@@ -1103,6 +1108,8 @@ function tnwPublish() {
         tnWiz.draftKey = null;
         tnWiz.step = 0;
         if (typeof toast === 'function') toast('🏆 ' + tnL('Турнир опубликован: ', 'Tournament published: ') + name);
+        // Единая вкладка: публикация сразу открывает карточку нового турнира.
+        if (typeof window !== 'undefined' && typeof window.tnsWizardPublished === 'function') { window.tnsWizardPublished(tnId); return; }
         tnwRenderWizard();
         // приносим пользователя в общий список (классическая суб-вкладка)
         tnwShowSubTab('classic');
@@ -1222,6 +1229,13 @@ function tnTplUse(key) {
     }
     cfg.info = cfg.info || {};
     cfg.info.nameRu = '';
+    // Единая вкладка: черновик из шаблона открывается в разделе мастера.
+    if (typeof window !== 'undefined' && typeof window.tnsOpenWizardNew === 'function') {
+        window.tnsOpenWizardNew();
+        tnwStartNewDraft(cfg);
+        if (typeof toast === 'function') toast('📐 ' + tnL('Создан черновик из шаблона: ', 'Draft created from template: ') + t.name);
+        return;
+    }
     tnwShowSubTab('new-create');
     tnwStartNewDraft(cfg);
     if (typeof toast === 'function') toast('📐 ' + tnL('Создан черновик из шаблона: ', 'Draft created from template: ') + t.name);
@@ -1583,7 +1597,9 @@ function tnwShowSubTab(id, skipHash) {
         var btn = document.getElementById('tn-subtab-' + d.id);
         if (btn) btn.classList.toggle('active', d.id === def.id);
     });
-    if (!skipHash) {
+    // Единая вкладка управляет hash сама — мастер его не трогает.
+    var hostedInStudio = (typeof window !== 'undefined' && typeof window.tnsStudioHostsWizard === 'function' && window.tnsStudioHostsWizard());
+    if (!skipHash && !hostedInStudio) {
         try {
             if (def.hash) history.replaceState(null, '', window.location.pathname + window.location.search + def.hash);
             else history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -1597,6 +1613,8 @@ function tnwShowSubTab(id, skipHash) {
 // Открыть вкладку «Турниры» админки и нужную суб-вкладку по hash.
 function tnwApplyHash() {
     var h = (window.location.hash || '').toLowerCase();
+    // Единая вкладка турниров перехватывает все старые hash-маршруты.
+    if (typeof window !== 'undefined' && typeof window.tnsRouteHash === 'function' && window.tnsRouteHash(h)) return;
     var sub = null;
     if (h === '#new-create') sub = 'new-create';
     else if (h === '#course') sub = 'course';

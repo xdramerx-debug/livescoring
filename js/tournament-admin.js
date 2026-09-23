@@ -43,6 +43,19 @@
         toast(tr('Для записи нужен аккаунт Firebase с ролью администратора. Мастер-пароль не заменяет серверные права.', 'A Firebase account with the administrator role is required for writes. The master password is not a server permission.'), 'error');
         return false;
     }
+    function studioRoot() { return typeof document !== 'undefined' ? document.getElementById('tn-studio-root') : null; }
+    function inStudio() {
+        var s = studioRoot(), m = el('tn-manage-root');
+        return !!(s && m && s.contains(m));
+    }
+    function studioHostsWizard() {
+        var s = studioRoot(), w = el('tn-wizard-root');
+        return !!(s && w && s.contains(w));
+    }
+    function studioNav(fn, arg) {
+        if (typeof root[fn] === 'function') { root[fn](arg); return true; }
+        return false;
+    }
     function entries() { return Object.keys(manager.tournaments || {}).map(function (key) { var t = manager.tournaments[key] || {}; t._key = key; return t; }); }
     function dateText(value) { if (typeof root.fmtDate === 'function') { try { return root.fmtDate(typeof root.tnDateTs === 'function' ? root.tnDateTs(value) : value); } catch (e) {} } return String(value || '—'); }
     function statusOf(t) { return core ? core.lifecycleStatus(t) : (t.lifecycleStatus || t.status || 'draft'); }
@@ -91,6 +104,8 @@
     };
     root.tnwApplyHash = function () {
         var hash = String(window.location.hash || '').toLowerCase();
+        // Единая вкладка турниров перехватывает все старые hash-маршруты.
+        if (typeof root.tnsRouteHash === 'function' && root.tnsRouteHash(hash)) return;
         if (hash === '#manage') {
             var btn = document.querySelector('.admin-tab[onclick*="\'tournaments\'"]');
             if (btn && typeof root.switchTab === 'function') root.switchTab('tournaments', btn);
@@ -164,12 +179,15 @@
         var changes = core ? core.diff(t.wizard || {}, cfg) : [];
         database.ref('tournaments/' + id).update(patch).then(function () { return database.ref('tournaments/' + id + '/audit').push(core ? core.audit('updated', actor(), changes, { tournamentId: id }) : { event: 'updated', by: actorLabel(), at: now(), changes: changes }); }).then(function () {
             toast('✅ ' + tr('Изменения сохранены', 'Changes saved'), 'success');
+            if (studioHostsWizard() && typeof root.tnsWizardSaved === 'function') { root.tnsWizardSaved(id, cfg); return; }
             root.tnWiz.editTournamentId = null; root.tnWiz.editOriginal = null; root.tnWiz.draft = null; root.tnWiz.draftKey = null; manager.panel = 'list'; root.tnwShowSubTab('manage');
         }).catch(function (error) { toast('❌ ' + (error && error.message || error), 'error'); });
     }
     root.tnwPublish = function () { if (root.tnWiz && root.tnWiz.editTournamentId) saveEdited(); else basePublish(); };
     function editTournament(id) {
         var t = manager.tournaments[id]; if (!t || !root.tnWiz) return;
+        // Единая вкладка: мастер открывается в карточке турнира (раздел «Настройки»).
+        if (typeof root.tnsOpenWizardEdit === 'function') { manager.panel = 'editor'; root.tnsOpenWizardEdit(id); return; }
         root.tnWiz.editTournamentId = id; root.tnWiz.editOriginal = clone(t); root.tnWiz.draft = defaultConfig(t); root.tnWiz.draftKey = 'edit_' + id; root.tnWiz.step = 0; root.tnWiz.dirty = false; manager.panel = 'editor'; root.tnwShowSubTab('new-create'); root.tnwRenderWizard();
     }
     function cloneTournament(id) {
@@ -185,9 +203,11 @@
         var result = core.transition(t, target);
         if (!result.ok) { toast(tr('Недопустимый переход статуса.', 'Invalid status transition.'), 'error'); return; }
         var patch = result.patch; patch.updatedAt = now(); patch.updatedBy = actorLabel();
-        database.ref('tournaments/' + id).update(patch).then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit('status_changed', actor(), [{ path: 'lifecycleStatus', before: result.from, after: result.to }], { tournamentId: id })); }).then(function () { toast('✅ ' + tr('Статус: ', 'Status: ') + statusLabel(target), 'success'); renderManager(); }).catch(function (error) { toast('❌ ' + (error && error.message || error), 'error'); });
+        database.ref('tournaments/' + id).update(patch).then(function () { return database.ref('tournaments/' + id + '/audit').push(core.audit('status_changed', actor(), [{ path: 'lifecycleStatus', before: result.from, after: result.to }], { tournamentId: id })); }).then(function () { toast('✅ ' + tr('Статус: ', 'Status: ') + statusLabel(target), 'success'); if (inStudio() && manager.selectedId) renderSelected(); else renderManager(); }).catch(function (error) { toast('❌ ' + (error && error.message || error), 'error'); });
     }
     function openStart(id) {
+        // Единая вкладка: стартовый лист — раздел карточки турнира.
+        if (studioNav('tnsOpenStart', id)) return;
         var tab = document.querySelector('.admin-tab[onclick*="\'tournaments\'"]');
         if (typeof root.switchTab === 'function') root.switchTab('tournaments', tab);
         setTimeout(function () { if (typeof root.psOnTournamentChange === 'function') root.psOnTournamentChange(id); var target = el('tab-start-content'); if (target && target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
@@ -317,14 +337,14 @@
         else if (action === 'protocol-excel') exportProtocolExcel(id);
         else if (action === 'start') openStart(id);
         else if (action === 'status') { var t = manager.tournaments[id], s = statusOf(t), target = s === 'draft' || s === 'closed' ? 'registration' : s === 'registration' ? (node.textContent.indexOf('Начать') !== -1 || node.textContent.indexOf('Start') !== -1 ? 'active' : 'closed') : s === 'active' ? 'completed' : s === 'completed' ? 'active' : 'cancelled'; transition(id, target); }
-        else if (action === 'back') { manager.panel = 'list'; renderManager(); }
-        else if (action === 'new') { root.tnwShowSubTab('new-create'); if (typeof root.tnwStartNewDraft === 'function') root.tnwStartNewDraft(); }
-        else if (action === 'templates') root.tnwShowSubTab('templates');
-        else if (action === 'refresh') { bind(); renderManager(); }
+        else if (action === 'back') { if (inStudio()) return; manager.panel = 'list'; renderManager(); }
+        else if (action === 'new') { if (studioNav('tnsOpenWizardNew')) return; root.tnwShowSubTab('new-create'); if (typeof root.tnwStartNewDraft === 'function') root.tnwStartNewDraft(); }
+        else if (action === 'templates') { if (studioNav('tnsOpenListSection', 'templates')) return; root.tnwShowSubTab('templates'); }
+        else if (action === 'refresh') { bind(); if (inStudio() && manager.selectedId) renderSelected(); else renderManager(); }
         else if (action === 'approve' || action === 'reject') approveApplication(parts[0], parts[1], action === 'approve');
         else if (action === 'club') addClubPlayers(id);
         else if (action === 'remove-role') { if (window.confirm(tr('Удалить роль?', 'Remove this role?'))) removeRole(parts[0], parts[1]); }
-        else if (action === 'cancel-edit') { root.tnWiz.editTournamentId = null; root.tnWiz.draft = null; root.tnWiz.draftKey = null; root.tnwShowSubTab('manage'); }
+        else if (action === 'cancel-edit') { if (studioHostsWizard() && typeof root.tnsWizardCancel === 'function') { root.tnsWizardCancel(); return; } root.tnWiz.editTournamentId = null; root.tnWiz.draft = null; root.tnWiz.draftKey = null; root.tnwShowSubTab('manage'); }
         else if (action === 'save-edit') saveEdited();
     }
     function handleSubmit(event) { var form = event.target; if (form.id === 'tna-manual-form') addManual(event); if (form.id === 'tna-role-form') saveRole(event); }
@@ -336,9 +356,26 @@
     // Re-render the management pane after language changes and append the edit banner
     // after the base wizard renders its HTML.
     root.tnwOnLangChange = function () { if (baseLangChange) baseLangChange(); if (manager.panel === 'list' && manager.selectedId == null) renderManager(); if (root.tnWiz && root.tnWiz.editTournamentId) { root.tnwRenderWizard(); } };
+    function cardBarHtml(item, id) {
+        var t = Object.assign({}, item || {});
+        t._key = id || t._key || '';
+        var s = statusOf(t);
+        return '<span class="tna-status ' + statusClass(s) + '">' + esc(statusLabel(s)) + '</span>' +
+            transitionButtons(t) +
+            actionButton('clone', t._key, tr('Клон', 'Clone'), 'fa-copy');
+    }
+
     root.tnAdminRender = renderManager;
     root.tnAdminEditTournament = editTournament;
     root.tnAdminSaveEditedTournament = saveEdited;
+    // API для единой вкладки «Турниры 🏆» (js/tn-studio.js).
+    root.tnAdminBind = bind;
+    root.tnAdminOpenPanel = openPanel;
+    root.tnAdminDefaultConfig = defaultConfig;
+    root.tnAdminClone = clone;
+    root.tnAdminCardBar = cardBarHtml;
+    root.tnAdminStatusOf = statusOf;
+    root.tnAdminStatusLabel = statusLabel;
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () {
         if (String(window.location.hash || '').toLowerCase() === '#manage') root.tnwShowSubTab('manage', true);

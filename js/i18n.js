@@ -992,7 +992,7 @@ var I18N = {
         username: 'Username', password: 'Password',
         login_btn: 'Log In', register_btn: 'Register', create_account: 'Create Account',
         continue_guest: 'Continue as Guest',
-        tab_rounds: 'Rounds', tab_alerts: 'Alerts 🚨', tab_groups: 'Groups now ⏱️', tab_tournaments: 'Tournaments 🏆', tab_studio: 'Tournaments · create',
+        tab_rounds: 'Rounds', tab_alerts: 'Alerts 🚨', tab_groups: 'Groups now ⏱️', tab_tournaments: 'Tournaments 🏆', tab_studio: 'Tournaments 🏆',
         tab_start: 'Tournament Start 🏁',
         tab_players: 'Players & Roles', tab_data: 'Data',
         tab_importexport: 'Import/Export 📊', tab_rusgolf: 'RUSGOLF 🇷🇺',

@@ -208,15 +208,27 @@
     function formatId(tournament, division) {
         if (tournament && tournament.fourBall) return 'fourball';
         var f = division && division.format;
-        return f === 'stroke' ? 'stroke' : 'stableford';
+        if (!f) return 'stableford';
+        // Классические зачёты хранят строковые форматы («Stroke Play (Gross)»).
+        var s = String(f).toLowerCase();
+        if (/(stroke|gross|net\b|нетто|гросс|на счёт|удар)/.test(s)) return 'stroke';
+        return 'stableford';
     }
     function legacyFormats(tournament, divisions) {
         if (tournament && tournament.fourBall) return ['Four-ball'];
         var set = {};
         Object.keys(asMap(divisions)).forEach(function (id) {
-            set[asMap(divisions)[id].format === 'stroke' ? 'Stroke Play (Gross)' : 'Stableford'] = true;
+            var f = asMap(divisions)[id].format;
+            if (!f) return;
+            // Классические строковые форматы («Match Play 1v1») — как есть,
+            // иначе правки в Студии затёрли бы их в «Stableford».
+            if (f === 'stroke') set['Stroke Play (Gross)'] = true;
+            else if (f === 'stableford') set['Stableford'] = true;
+            else set[String(f)] = true;
         });
-        return Object.keys(set);
+        var out = Object.keys(set);
+        // Нет зачётов с форматами — не трогаем то, что уже записано в турнире.
+        return out.length ? out : (tournament && tournament.formats) || [];
     }
     function legacyTees(divisions) {
         var set = {};

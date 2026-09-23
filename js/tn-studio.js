@@ -581,6 +581,10 @@
             throw err;
         });
     }
+    // Запись, результат которой вызывающему не нужен. Ошибка уже показана
+    // тостом внутри update(), а отклонение не должно всплывать в консоль как
+    // «Uncaught (in promise)».
+    function apply(patch) { update(patch).catch(function () { /* уже показано тостом */ }); }
     function syncLegacy(item) {
         return { formats: C.legacyFormats(item, item.divisions), tees: C.legacyTees(item.divisions) };
     }
@@ -646,22 +650,76 @@
             date: data.start,
             endDate: data.end,
             fourBall: four
-        }, syncLegacy(next))).then(function () { ui.editing = false; toast(tr('Сохранено', 'Saved'), 'success'); });
+        }, syncLegacy(next))).then(function () { ui.editing = false; toast(tr('Сохранено', 'Saved'), 'success'); }).catch(function () { /* уже показано тостом */ });
     }
+    // Удаление турнира — ВСЕГДА каскадное: вместе с карточкой уходят все его
+    // раунды (и их следы в истории игроков), протоколы групп и маркеры.
+    // Раньше удалялась только запись tournaments/<id>: раунды оставались в
+    // базе и продолжали жить в «Раундах», лидерборде и профилях игроков,
+    // хотя турнира уже не существовало.
+    function deleteTournament() {
+        var id = ui.id;
+        if (!id) return;
+        var base = db();
+        if (!base) { toast(tr('Нет базы', 'No database'), 'error'); return; }
+        var name = (t() && t().name) || tr('этот турнир', 'this tournament');
+        var counted = (typeof root.pestovoTournamentDeleteSummary === 'function')
+            ? root.pestovoTournamentDeleteSummary(id).catch(function () { return null; })
+            : Promise.resolve(null);
+        counted.then(function (sum) {
+            var rc = sum ? (sum.rounds || 0) : 0;
+            var pc = sum ? (sum.protocols || 0) : 0;
+            var text = tr(
+                'Удалить турнир «' + name + '» вместе со всеми его раундами (' + rc + ') и протоколами групп (' + pc + ')? ' +
+                'Раунды этого турнира исчезнут и из истории игроков, и из их статистики. Отменить это будет нельзя.',
+                'Delete tournament “' + name + '” together with ' + rc + ' round(s) and ' + pc + ' group protocol(s)? ' +
+                'Rounds of this tournament will be removed from the players history and statistics too. This cannot be undone.'
+            );
+            if (!confirm(text)) return null;
+            // Каскад (раунды → протоколы → карточка). Если модуля utils.js
+            // рядом нет — удаляем хотя бы карточку, как раньше.
+            var job = (typeof root.pestovoDeleteTournamentCascade === 'function')
+                ? root.pestovoDeleteTournamentCascade(id)
+                : base.ref('tournaments/' + id).remove().then(function () { return { rounds: 0, protocols: 0, errors: [] }; });
+            return job.then(function (res) {
+                var errors = (res && res.errors) || [];
+                if (errors.length) { toast('❌ ' + errors[0], 'error'); return; }
+                var done = res || {};
+                var parts = tr(
+                    'Турнир удалён · раундов удалено: ' + (done.rounds || 0) + ' · протоколов: ' + (done.protocols || 0),
+                    'Tournament deleted · rounds: ' + (done.rounds || 0) + ' · protocols: ' + (done.protocols || 0)
+                );
+                if (done.players) parts += tr(' · история пересчитана: ' + done.players + ' игр.', ' · history recalculated for ' + done.players + ' player(s)');
+                toast('🗑️ ' + parts, 'success');
+                ui.view = 'list';
+                ui.id = null;
+                ui.startFor = null;
+                ui.peFor = null;
+                ui.dayId = null;
+                ui.editing = false;
+                render();
+            });
+        }).catch(function (err) { toast('❌ ' + (err && err.message ? err.message : err), 'error'); });
+    }
+
     function addDay() {
+        var base = db();
+        if (!base) { toast(tr('Нет базы', 'No database'), 'error'); return; }
         var input = document.getElementById('tns-day');
         var date = input && input.value;
         if (!C.isoOk(date)) { toast(tr('Выберите дату', 'Pick a date'), 'error'); return; }
-        var ref = db().ref('tournaments/' + ui.id + '/days').push();
+        var ref = base.ref('tournaments/' + ui.id + '/days').push();
         var patch = {};
         patch['days/' + ref.key] = { date: date, createdAt: Date.now() };
-        update(patch);
+        apply(patch);
     }
     function addDivision() {
+        var base = db();
+        if (!base) { toast(tr('Нет базы', 'No database'), 'error'); return; }
         var data = readForm('tns-div');
         var item = t();
         if (!data || !item || !String(data.name || '').trim()) { toast(tr('Введите название зачёта', 'Enter a division name'), 'error'); return; }
-        var ref = db().ref('tournaments/' + ui.id + '/divisions').push();
+        var ref = base.ref('tournaments/' + ui.id + '/divisions').push();
         var div = {
             name: String(data.name).trim(),
             gender: data.gender === 'women' ? 'women' : 'men',
@@ -676,7 +734,7 @@
         var patch = {};
         patch['divisions/' + ref.key] = div;
         Object.assign(patch, flattenLegacy(syncLegacy(next)));
-        update(patch);
+        apply(patch);
     }
     function flattenLegacy(legacy) {
         return { formats: legacy.formats, tees: legacy.tees };
@@ -691,20 +749,23 @@
             if ((item.divisions[id].members || {})[playerKey]) patch['divisions/' + id + '/members/' + playerKey] = null;
         });
         patch['divisions/' + divId + '/members/' + playerKey] = true;
-        update(patch);
+        apply(patch);
     }
     function addUser() {
+        var base = db();
+        if (!base) { toast(tr('Нет базы', 'No database'), 'error'); return; }
         var sel = document.getElementById('tns-add-user');
         var id = sel && sel.value;
         var u = id && ui.users[id];
         if (!u || !u.name) return;
         if (roster(t()).some(function (p) { return p.uid === id; })) { toast(tr('Уже в составе', 'Already in the roster'), 'info'); return; }
-        var ref = db().ref('tournaments/' + ui.id + '/registeredPlayers').push();
+        var ref = base.ref('tournaments/' + ui.id + '/registeredPlayers').push();
         var patch = {};
         patch['registeredPlayers/' + ref.key] = { uid: id, name: String(u.name).replace(/\s+/g, ' ').trim(), handicap: u.handicap == null ? null : u.handicap, gender: u.gender === 'women' ? 'women' : 'men', addedAt: Date.now() };
-        update(patch).then(function () { toast(tr('Игрок добавлен', 'Player added'), 'success'); });
+        update(patch).then(function () { toast(tr('Игрок добавлен', 'Player added'), 'success'); }).catch(function () { /* уже показано тостом */ });
     }
     function importFile(file) {
+        if (!db()) { toast(tr('Нет базы', 'No database'), 'error'); return; }
         if (!root.XLSX) { toast(tr('Модуль Excel не загружен', 'Excel module is not loaded'), 'error'); return; }
         var reader = new FileReader();
         reader.onload = function () {
@@ -731,7 +792,7 @@
             ui.importReport = report;
             var done = function () { render(); toast(tr('Импорт разобран', 'Import checked'), report.added ? 'success' : 'info'); };
             if (!report.added) { done(); return; }
-            update(patch).then(done);
+            update(patch).catch(function () { /* уже показано тостом */ }).then(done);
         };
         reader.readAsArrayBuffer(file);
     }
@@ -819,7 +880,7 @@
                 patch['registeredPlayers/' + (app.uid || ('app_' + appId))] = entry;
             }
         }
-        update(patch).then(function () { if (!silent) toast(approve ? tr('Заявка подтверждена', 'Application approved') : tr('Заявка отклонена', 'Application rejected'), 'success'); });
+        update(patch).then(function () { if (!silent) toast(approve ? tr('Заявка подтверждена', 'Application approved') : tr('Заявка отклонена', 'Application rejected'), 'success'); }).catch(function () { /* уже показано тостом */ });
     }
     function openStartSheet() { openStart(ui.id); }
 
@@ -1168,18 +1229,18 @@
         else if (act === 'back-day') { ui.view = 'day'; render(); }
         else if (act === 'add-div') addDivision();
         else if (act === 'assign') assign(id);
-        else if (act === 'unassign') { var patch = {}; patch['divisions/' + id + '/members/' + node.getAttribute('data-player')] = null; update(patch); }
-        else if (act === 'del-div') { if (confirm(tr('Удалить зачёт?', 'Delete this division?'))) { var del = {}; del['divisions/' + id] = null; update(del); } }
-        else if (act === 'del-day') { if (confirm(tr('Удалить день и его счёт?', 'Delete this day and its scores?'))) { var dayPatch = {}; dayPatch['days/' + id] = null; dayPatch['scores/' + id] = null; update(dayPatch); } }
-        else if (act === 'public') update({ publicAccess: t().publicAccess === false });
-        else if (act === 'reg') update({ registration: { enabled: !(t().registration && t().registration.enabled === true), waitlist: true, approval: 'manual' } });
+        else if (act === 'unassign') { var patch = {}; patch['divisions/' + id + '/members/' + node.getAttribute('data-player')] = null; apply(patch); }
+        else if (act === 'del-div') { if (confirm(tr('Удалить зачёт?', 'Delete this division?'))) { var del = {}; del['divisions/' + id] = null; apply(del); } }
+        else if (act === 'del-day') { if (confirm(tr('Удалить день и его счёт?', 'Delete this day and its scores?'))) { var dayPatch = {}; dayPatch['days/' + id] = null; dayPatch['scores/' + id] = null; apply(dayPatch); } }
+        else if (act === 'public') apply({ publicAccess: t().publicAccess === false });
+        else if (act === 'reg') apply({ registration: { enabled: !(t().registration && t().registration.enabled === true), waitlist: true, approval: 'manual' } });
         else if (act === 'approve') reviewApp(id, true);
         else if (act === 'reject') { if (confirm(tr('Отклонить заявку?', 'Reject this application?'))) reviewApp(id, false); }
         else if (act === 'blank') printBlank(node.getAttribute('data-player'));
         else if (act === 'template') downloadTemplate();
-        else if (act === 'del-tn') { if (confirm(tr('Удалить турнир целиком?', 'Delete the whole tournament?'))) db().ref('tournaments/' + ui.id).remove().then(function () { ui.view = 'list'; ui.id = null; toast(tr('Удалено', 'Deleted'), 'success'); }); }
+        else if (act === 'del-tn') deleteTournament();
         else if (act === 'add-user') addUser();
-        else if (act === 'drop') { if (confirm(tr('Убрать игрока из состава?', 'Remove this player?'))) { var drop = {}; drop['registeredPlayers/' + node.getAttribute('data-player')] = null; update(drop); } }
+        else if (act === 'drop') { if (confirm(tr('Убрать игрока из состава?', 'Remove this player?'))) { var drop = {}; drop['registeredPlayers/' + node.getAttribute('data-player')] = null; apply(drop); } }
         else if (act === 'export-roster') exportRoster();
         else if (act === 'export-day') exportDay();
     }
@@ -1195,13 +1256,13 @@
         else if (act === 'pair') {
             var patch = {};
             patch['registeredPlayers/' + el.getAttribute('data-player') + '/pair'] = String(el.value || '').trim();
-            update(patch);
+            apply(patch);
         } else if (act === 'query') { ui.q = el.value; render(); }
         else if (act === 'import' && el.files && el.files[0]) { importFile(el.files[0]); el.value = ''; }
         else if (act === 'div-age') {
             var agePatch = {};
             agePatch['divisions/' + el.getAttribute('data-id') + '/ageLabel'] = String(el.value || '').trim();
-            update(agePatch);
+            apply(agePatch);
         }
     }
     function bind() {
@@ -1272,6 +1333,7 @@
     root.tnsOpenStart = function (id) { openStart(id); };
     root.tnsOpenManage = function (id) { openManage(id); };
     root.tnsOpenListSection = function (section) { openListSection(section); };
+    root.tnsDeleteTournament = function (id) { if (id) ui.id = id; deleteTournament(); };
     root.tnsWizardPublished = function (id) { wizardPublished(id); };
     root.tnsWizardSaved = function (id, cfg) { wizardSaved(id, cfg); };
     root.tnsWizardCancel = function () { wizardCancel(); };

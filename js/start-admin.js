@@ -5016,13 +5016,32 @@ function psDeleteProtocol(pid) {
     if (typeof db === 'undefined' || !db) return;
     db.ref('protocols/' + pid).once('value').then(function(sn) {
         var d = sn.val() || {};
-        var updates = {};
-        updates['protocols/' + pid] = null;
         var groups = d.groups || {};
+        var roundIds = [];
         Object.keys(groups).forEach(function(gk) {
-            if (groups[gk] && groups[gk].roundId) updates['rounds/' + groups[gk].roundId] = null;
+            if (groups[gk] && groups[gk].roundId) roundIds.push(groups[gk].roundId);
         });
-        return db.ref().update(updates);
+        // Раунды сносим полностью: сами раунды, маркеры и следы в истории
+        // игроков (с пересчётом roundsPlayed / bestGross / bestStableford) —
+        // иначе удалённый протокол оставляет «висячие» записи в профилях.
+        return Promise.all(roundIds.map(function(rid) {
+            return db.ref('rounds/' + rid).once('value').then(function(rs) {
+                var rd = (rs && rs.val()) || {};
+                if (typeof pestovoRemoveRoundFromPlayers === 'function') {
+                    return pestovoRemoveRoundFromPlayers(rid, rd.players || {});
+                }
+                return 0;
+            }).catch(function() { return 0; });
+        })).then(function() {
+            var updates = {};
+            updates['protocols/' + pid] = null;
+            roundIds.forEach(function(rid) {
+                updates['rounds/' + rid] = null;
+                updates['markers/' + rid] = null;
+                updates['markerAssignments/' + rid] = null;
+            });
+            return db.ref().update(updates);
+        });
     }).then(function() {
         toast(psL('🗑️ Протокол и его раунды удалены', '🗑️ Protocol and its rounds deleted'), 'success');
         if (psState.savedId === pid) psState.savedId = null;

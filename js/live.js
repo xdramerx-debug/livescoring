@@ -2267,7 +2267,18 @@ function doFinishGroupRound() {
                     try { saveHistory(curRid, fresh); } catch (e) { console.warn("[silent]", e); }
                 }
             });
-        }).catch(function() { groupFinishing = false; });
+        }).catch(function(err) {
+            // Раньше отказ записи (например, RULES: QR-игрок турнирного раунда
+            // не создавал раунд и не может писать finishedPlayers/status)
+            // проглатывался молча: игрок видел тост успеха и уходил, а раунд
+            // оставался активным. Показываем проблему явно.
+            groupFinishing = false;
+            if (typeof toast === 'function') {
+                toast(currentLang === 'en'
+                    ? ('⚠️ Could not finish the round: ' + (err && err.code || err && err.message || err) + '. Scores are saved — contact the referee/committee.')
+                    : ('⚠️ Не удалось завершить раунд: ' + (err && err.code || err && err.message || err) + '. Счёт сохранён — обратитесь к судье/в комитет.'), 'error');
+            }
+        });
     };
 
     // После завершения раунда карточка не предлагается к печати/скачиванию —

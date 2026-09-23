@@ -1153,7 +1153,16 @@ function doFinishSolo() {
                     try { saveHistory(soloRid, fresh); } catch (e) { console.warn("[silent]", e); }
                 }
             });
-        }).catch(function() { soloFinishing = false; });
+        }).catch(function(err) {
+            // Молчаливый отказ скрывал проблему: RULES запрещают прямую запись
+            // статуса раунда тому, кто его не создавал (QR-карточка турнира).
+            soloFinishing = false;
+            if (typeof toast === 'function') {
+                toast(currentLang === 'en'
+                    ? ('⚠️ Could not finish the round: ' + (err && err.code || err && err.message || err) + '. Scores are saved — contact the referee/committee.')
+                    : ('⚠️ Не удалось завершить раунд: ' + (err && err.code || err && err.message || err) + '. Счёт сохранён — обратитесь к судье/в комитет.'), 'error');
+            }
+        });
     };
 
     // После завершения раунда карточка не предлагается к печати/скачиванию —

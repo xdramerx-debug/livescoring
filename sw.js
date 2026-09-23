@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.80.0';
+const CACHE_NAME = 'pestovo-v1.81.0';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -26,7 +26,7 @@ const STATIC_ASSETS = [
     'assistant.html', 'design-preview.html',
     'manifest.json', 'css/style.css?v=34', 'css/assistant.css?v=2',
     'css/design-presets.css?v=1', 'css/tn-wizard.css?v=1',
-    'js/firebase-config.js?v=2', 'js/course-config.js?v=1', 'js/format.js?v=1', 'js/safe-html.js?v=1', 'js/dom.js?v=1', 'js/utils.js?v=66', 'js/name-variants.js?v=1',
+    'js/firebase-config.js?v=2', 'js/course-config.js?v=1', 'js/format.js?v=1', 'js/safe-html.js?v=1', 'js/dom.js?v=1', 'js/i18n.js?v=1', 'js/utils.js?v=67', 'js/name-variants.js?v=1',
     'js/tn-engine.js?v=1', 'js/tn-wizard.js?v=1',
     'js/design-system.js?v=1', 'js/design-admin.js?v=2', 'js/design-preview.js?v=1',
     'js/auth.js', 'js/app.js?v=22', 'js/live.js?v=39', 'js/solo.js?v=31', 'js/round-setup.js?v=1',

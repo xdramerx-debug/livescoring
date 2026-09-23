@@ -20,8 +20,9 @@ const readFileSyncOrig = fs.readFileSync;
 const courseConfig = readFileSyncOrig(path.join(ROOT, 'js/course-config.js'), 'utf8');
 const formatHelpers = readFileSyncOrig(path.join(ROOT, 'js/format.js'), 'utf8');
 const domHelpers = readFileSyncOrig(path.join(ROOT, 'js/dom.js'), 'utf8');
+const i18nHelpers = readFileSyncOrig(path.join(ROOT, 'js/i18n.js'), 'utf8');
 
-const PREFIX = courseConfig + '\n' + formatHelpers + '\n' + domHelpers + '\n';
+const PREFIX = courseConfig + '\n' + formatHelpers + '\n' + domHelpers + '\n' + i18nHelpers + '\n';
 
 function isUtilsJs(p) {
     if (p == null) return false;

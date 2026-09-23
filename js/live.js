@@ -2071,7 +2071,8 @@ function renderGVPlayers(r) {
                 if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
                     displayScores = mkScores;
                     var mkName = privacyDisplayName(allPlayers[p.markedBy], p.markedBy);
-                    markerNote = currentLang === 'en' ? ' (marker: ' + mkName + ')' : ' (маркер: ' + mkName + ')';
+                    // Имя маркера — пользовательская строка: экранируем (вставляется в HTML).
+                    markerNote = currentLang === 'en' ? ' (marker: ' + escapeHtml(mkName) + ')' : ' (маркер: ' + escapeHtml(mkName) + ')';
                 }
             }
             var stats = calcRoundStats(displayScores, p.fieldHcp || 0, p.exactHcp || 0, order);

@@ -141,12 +141,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 name: nm, email: em, role: 'player', gender: gd,
                 handicap: parseExactHcp(hc),
                 createdAt: Date.now(), roundsPlayed: 0, bestGross: null, bestStableford: null
+            }).catch(function(dbErr) {
+                // Аккаунт создан, но профиль не записан (сеть/правила): профиль
+                // при последующих входах никто не досоздаёт — логин навсегда
+                // оставался без имени/гандикапа/истории. Откатываем аккаунт.
+                console.warn('[auth] profile write failed, rolling back account', dbErr);
+                try { var d = c.user.delete(); if (d && d.catch) d.catch(function() {}); } catch (_) {}
+                var msg = currentLang === 'en'
+                    ? 'Account not created: could not save the profile (check connection) and try again'
+                    : 'Аккаунт не создан: не удалось сохранить профиль (проверьте соединение) и попробуйте снова';
+                throw new Error(msg);
             });
         }).then(function() {
             toast(currentLang === 'en' ? '🎉 Account created!' : '🎉 Аккаунт создан!');
             window.location.href = getSafeAuthRedirect();
         }).catch(function(err) {
-            er.textContent = authErr(err.code);
+            er.textContent = (err && err.code) ? authErr(err.code) : ((err && err.message) ? err.message : authErr(err && err.code));
             er.classList.remove('hidden');
             btn.textContent = t('create_account'); btn.disabled = false;
         });

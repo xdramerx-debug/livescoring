@@ -423,6 +423,22 @@ function tnNormName(s) {
     return String(s == null ? '' : s).toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
 }
 
+// Значение для inline-обработчика вида onclick="fn('…')": экранирует одновременно
+// для JS-строки и для HTML-атрибута. escapeHtml здесь НЕ годится: браузер декодирует
+// entity ДО компиляции JS, поэтому &#39; превращается обратно в ' и ломает строку —
+// имя игрока с апострофом становилось XSS в лидерборде турнира.
+function tnJsStr(v) {
+    return String(v == null ? '' : v)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, '\\u0027')
+        .replace(/"/g, '\\u0022')
+        .replace(/</g, '\\x3c')
+        .replace(/>/g, '\\x3e')
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n')
+        .replace(/&/g, '\\u0026')
+}
+
 // Имя записи (состав/ожидание) в виде строки.
 function tnRecName(rec) {
     if (!rec) return '';
@@ -1161,9 +1177,9 @@ function renderTnLeaderboard(tnId) {
             html += '<div class="tn-lb-cards-grid">';
             b.list.forEach(function(en2, i) {
                 var posHtml = tnLbPosHtml(en2, true);
-                var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
+                var fioKey = tnJsStr(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 var thru = en2.holes > 0 ? en2.holes + '/18' : '—';
-                html += '<div class="tn-lb-card" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')">';
+                html += '<div class="tn-lb-card" onclick="tnScOpen(\'' + tnJsStr(tnId) + '\',\'' + fioKey + '\')">';
                 html += '<div class="tn-lb-card-top"><span class="tn-lb-card-pos">' + posHtml + '</span>' +
                     (en2.live ? '<span class="tn-lb-live"><span class="tn-lb-dot"></span>LIVE</span>' : '') +
                     '<span class="tn-lb-card-thru">' + thru + '</span></div>';
@@ -1182,10 +1198,10 @@ function renderTnLeaderboard(tnId) {
             html += '<div class="tn-lb-live-list">';
             b.list.forEach(function(en2, i) {
                 var posHtml = tnLbPosHtml(en2, false);
-                var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
+                var fioKey = tnJsStr(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 var progress = Math.min(100, Math.round((en2.holes/18)*100));
                 var toParCls = scoreClass(en2.toPar);
-                html += '<div class="tn-lb-live-row' + (en2.live ? ' is-live' : '') + '" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')">';
+                html += '<div class="tn-lb-live-row' + (en2.live ? ' is-live' : '') + '" onclick="tnScOpen(\'' + tnJsStr(tnId) + '\',\'' + fioKey + '\')">';
                 html += '<div class="tn-lb-live-pos">' + (en2.position ? '<b>' + en2.position + '</b><span>' + tnLbPosMedal(en2) + '</span>' : '<b class="tn-no-rank">—</b>') + '</div>';
                 html += '<div class="tn-lb-live-main">';
                 html += '<div class="tn-lb-live-name">' + escapeHtml(en2.dispName) + '</div>';
@@ -1205,8 +1221,8 @@ function renderTnLeaderboard(tnId) {
             b.list.forEach(function(en2, i) {
                 var posHtml = tnLbPosHtml(en2, true);
                 var thru = en2.holes > 0 ? en2.holes : '—';
-                var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
-                html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
+                var fioKey = tnJsStr(en2.key || tnFioKey({ name: en2.name }, en2.pid));
+                html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + tnJsStr(tnId) + '\',\'' + fioKey + '\')" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
                 html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
                 html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' + (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + '</td>';
                 html += '<td>' + thru + '</td>';
@@ -1219,10 +1235,10 @@ function renderTnLeaderboard(tnId) {
             b.list.forEach(function(en2, i) {
                 var posHtml = tnLbPosHtml(en2, true);
                 var thru = en2.holes > 0 ? en2.holes : '—';
-                var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
+                var fioKey = tnJsStr(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 var hcpTxt = (en2.rp && en2.rp.handicap!=null && en2.rp.handicap!=='') ? fmtExactHcp(en2.rp.handicap) : (en2.hcpRaw!=null ? fmtExactHcp(en2.hcpRaw) : '—');
                 var groupTxt = en2.div ? (en2.div.name || '') : '—';
-                html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
+                html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + tnJsStr(tnId) + '\',\'' + fioKey + '\')" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
                 html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
                 html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' + (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + '</td>';
                 html += '<td>' + hcpTxt + '</td>';
@@ -1242,8 +1258,8 @@ function renderTnLeaderboard(tnId) {
             b.list.forEach(function(en2, i) {
                 var posHtml = tnLbPosHtml(en2, true);
                 var thru = en2.holes > 0 ? en2.holes : '—';
-                var fioKey = escapeHtml(en2.key || tnFioKey({ name: en2.name }, en2.pid));
-                html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + escapeHtml(tnId) + '\',\'' + fioKey + '\')" title="' +
+                var fioKey = tnJsStr(en2.key || tnFioKey({ name: en2.name }, en2.pid));
+                html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + tnJsStr(tnId) + '\',\'' + fioKey + '\')" title="' +
                     (en ? 'Scorecard' : 'Счётная карточка') + '">';
                 html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
                 html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' +

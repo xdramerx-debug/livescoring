@@ -4,6 +4,16 @@
 // currentLang, escapeHtml), Blob/download и guarded-хелперы. Функции
 // доступны из onclick HTML; грузится в admin.html рядом с admin.js.
 
+// Безопасная ячейка CSV: кавычки/запятые/переводы строк — в кавычки,
+// ведущие = + - @ таб — с префиксом ' (formula injection в Excel: имя
+// игрока «=HYPERLINK(...)» иначе выполнялось бы при открытии экспорта).
+function admCsvCell(v) {
+    var s = String(v == null ? '' : v);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    if (/[",\n\r;]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+}
+
 function exportAllRoundsCSV() {
     if (typeof db === 'undefined') return;
     db.ref('rounds').once('value').then(function(sn) {
@@ -29,29 +39,31 @@ function exportAllRoundsCSV() {
                 }
                 var stats = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, getRoundOrder(r));
                 var row = [
-                    rid,
-                    dateStr,
-                    timeStr,
-                    r.mode || 'group',
-                    (typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke') : (r.format || 'Stroke'),
-                    (p && p.tee) || r.tee || 'wh',
-                    r.status || 'active',
-                    '"' + (p.name || '').replace(/"/g, '""') + '"',
-                    fmtExactHcp(p.exactHcp),
-                    stats.gross || 0,
-                    fmtScore(stats.toPar),
-                    stats.net || 0,
-                    stats.stablefordField || 0
+                    admCsvCell(rid),
+                    admCsvCell(dateStr),
+                    admCsvCell(timeStr),
+                    admCsvCell(r.mode || 'group'),
+                    admCsvCell((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke') : (r.format || 'Stroke')),
+                    admCsvCell((p && p.tee) || r.tee || 'wh'),
+                    admCsvCell(r.status || 'active'),
+                    admCsvCell(p.name || ''),
+                    admCsvCell(fmtExactHcp(p.exactHcp)),
+                    admCsvCell(stats.gross || 0),
+                    admCsvCell(fmtScore(stats.toPar)),
+                    admCsvCell(stats.net || 0),
+                    admCsvCell(stats.stablefordField || 0)
                 ];
                 for (var h = 1; h <= 18; h++) {
-                    row.push(p.scores && p.scores[h] ? p.scores[h] : '');
+                    row.push(admCsvCell(p.scores && p.scores[h] ? p.scores[h] : ''));
                 }
                 rows.push(row);
             });
         });
 
-        var csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + rows.map(function(e) { return e.join(','); }).join('\n');
-        var encodedUri = encodeURI(csvContent);
+        var csvContent = rows.map(function(e) { return e.join(','); }).join('\n');
+        // encodeURIComponent, а не encodeURI: '#'/национальные символы в данных
+        // обрезали или ломали data:-URI.
+        var encodedUri = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csvContent);
         var link = document.createElement('a');
         link.setAttribute('href', encodedUri);
         link.setAttribute('download', 'Pestovo_Golf_Full_Archive_' + Date.now() + '.csv');
@@ -59,14 +71,34 @@ function exportAllRoundsCSV() {
         link.click();
         link.remove();
         toast('📄 Full CSV archive exported!', 'success');
+    }).catch(function(err) {
+        toast('❌ ' + (currentLang === 'en' ? 'Export failed: ' : 'Ошибка экспорта: ') + (err && err.message || err), 'error');
     });
 }
 
 function downloadJSONBackup() {
     if (typeof db === 'undefined') return;
-    db.ref().once('value').then(function(sn) {
-        var fullData = sn.val() || {};
-        var jsonStr = JSON.stringify(fullData, null, 2);
+    // Чтение КОРНЯ (db.ref()) при .read:false в rules всегда падает с
+    // permission_denied: в RTDB чтение не «объединяет» права потомков.
+    // Раньше кнопка бэкапа молча ничего не делала. Читаем только те узлы,
+    // которые правила явно дают админу.
+    var nodes = ['users', 'settings', 'rounds', 'tournaments', 'protocols', 'markers',
+                 'markerAssignments', 'alerts', 'broadcasts', 'leaderboard', 'reactions',
+                 'tnTemplates', 'push_subscriptions', 'scoreAudit'];
+    var result = {};
+    var failed = [];
+    var chain = Promise.resolve();
+    nodes.forEach(function(n) {
+        chain = chain.then(function() {
+            return db.ref(n).once('value').then(function(sn) { result[n] = sn.val(); })
+                .catch(function(err) {
+                    failed.push(n);
+                    result[n] = { _backupError: String(err && err.code || err) };
+                });
+        });
+    });
+    chain.then(function() {
+        var jsonStr = JSON.stringify(result, null, 2);
         var blob = new Blob([jsonStr], { type: 'application/json' });
         var url = URL.createObjectURL(blob);
         var link = document.createElement('a');
@@ -75,6 +107,12 @@ function downloadJSONBackup() {
         document.body.appendChild(link);
         link.click();
         link.remove();
-        toast('💾 Database JSON backup downloaded!', 'success');
+        if (failed.length) {
+            toast('⚠️ ' + (currentLang === 'en' ? 'Backup saved, unavailable nodes: ' : 'Бэкап сохранён, недоступны узлы: ') + failed.join(', '), 'warn');
+        } else {
+            toast('💾 ' + (currentLang === 'en' ? 'Database JSON backup downloaded!' : 'JSON-бэкап базы скачан!'), 'success');
+        }
+    }).catch(function(err) {
+        toast('❌ ' + (currentLang === 'en' ? 'Backup failed: ' : 'Ошибка бэкапа: ') + (err && err.message || err), 'error');
     });
 }

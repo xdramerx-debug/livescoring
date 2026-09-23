@@ -1450,12 +1450,13 @@ function saveHoleScores() {
     var bothSubmittedAndMatch = (markerSub && markerS > 0 && markerS === myScore);
     var bothSubmittedAndMismatch = (markerSub && markerS > 0 && markerS !== myScore);
 
-    if (markerIsFinished) {
-        updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
-    } else if (bothSubmittedAndMatch) {
-        updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
-    } else if (bothSubmittedAndMismatch) {
-        updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = false;
+    // verified вычисляется ТОЧНО как на сервере (functions/score-audit.js):
+    // есть отметка маркера → сверка с его счётом, нет отметки → 'pending'.
+    // Завершённость маркера тут ни при чём: раньше клиент ставил true только
+    // потому, что маркер дошёл до конца раунда, — сервер тут же перезаписывал
+    // флаг на false/'pending', и табло мигало противоречием.
+    if (markerS > 0) {
+        updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = (markerS === myScore);
     } else {
         updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = 'pending';
     }
@@ -1492,8 +1493,8 @@ function saveHoleScores() {
                 myPlayerLocal.submitted[h] = true;
                 myPlayerLocal.holeTimes = myPlayerLocal.holeTimes || {};
                 if (!(parseInt(myPlayerLocal.holeTimes[h]) > 0)) myPlayerLocal.holeTimes[h] = savedAt;
-                if (bothSubmittedAndMatch) myPlayerLocal.verified = Object.assign({}, myPlayerLocal.verified, (function(){ var o={}; o[h]=true; return o; })());
-                else if (bothSubmittedAndMismatch) myPlayerLocal.verified = Object.assign({}, myPlayerLocal.verified, (function(){ var o={}; o[h]=false; return o; })());
+                if (markerS > 0) myPlayerLocal.verified = Object.assign({}, myPlayerLocal.verified, (function(){ var o={}; o[h]=(markerS === myScore); return o; })());
+                else myPlayerLocal.verified = Object.assign({}, myPlayerLocal.verified, (function(){ var o={}; o[h]='pending'; return o; })());
             }
             if (myTargetUid) {
                 var tgtLocal = curRoundData.players[myTargetUid];
@@ -1512,7 +1513,14 @@ function saveHoleScores() {
 
         var saveMarkerName = '';
         try { saveMarkerName = (myMarkerId && curRoundData.players[myMarkerId] && curRoundData.players[myMarkerId].name) || ''; } catch (_) { console.warn("[silent]", _); }
-        if (markerIsFinished) {
+        if (bothSubmittedAndMismatch) {
+            // Несовпадение — самый важный сигнал: показываем его раньше
+            // остальных тостов, даже если маркер уже завершил раунд.
+            toast(currentLang === 'en'
+                ? ('⚠️ <b>Mismatch on hole ' + h + '!</b><br>You: <b>' + myScore + '</b>, marker' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + ': <b>' + markerS + '</b>')
+                : ('⚠️ <b>Несовпадение на лунке ' + h + '!</b><br>Вы: <b>' + myScore + '</b>, маркер' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + ': <b>' + markerS + '</b>'), 'error');
+            vib([200, 100, 200]);
+        } else if (markerIsFinished) {
             toast(currentLang === 'en'
                 ? ('✅ <b>Hole ' + h + ':</b> your score <b>' + myScore + '</b> saved.')
                 : ('✅ <b>Лунка ' + h + ':</b> ваш счёт <b>' + myScore + '</b> зафиксирован.'), 'success');
@@ -1540,11 +1548,6 @@ function saveHoleScores() {
                 myScore = 0;
                 targetScore = 0;
             }
-        } else if (bothSubmittedAndMismatch) {
-            toast(currentLang === 'en'
-                ? ('⚠️ <b>Mismatch on hole ' + h + '!</b><br>You: <b>' + myScore + '</b>, marker' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + ': <b>' + markerS + '</b>')
-                : ('⚠️ <b>Несовпадение на лунке ' + h + '!</b><br>Вы: <b>' + myScore + '</b>, маркер' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + ': <b>' + markerS + '</b>'), 'error');
-            vib([200, 100, 200]);
         } else {
             toast(currentLang === 'en'
                 ? ('⏳ <b>Hole ' + h + ':</b> your score <b>' + myScore + '</b> is saved. Waiting for marker' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + '.')

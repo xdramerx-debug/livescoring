@@ -147,6 +147,25 @@ function queueOfflineWrite(path,value){
     updateOfflineQueueBadge();
 }
 
+// Серверные отказы «навсегда» (не сеть): такое действие никогда не пройдёт,
+// и, оставаясь в очереди, блокировало бы все последующие. Разница с
+// score-write.js transient(): там список ВРЕМЕННЫХ, тут — ПЕРМАНЕНТНЫх кодов.
+function permanentScoreError(err) {
+    var code = String(err && err.code || '').replace(/^functions\//, '');
+    return ['invalid-argument','permission-denied','failed-precondition','not-found','unauthenticated','unimplemented'].indexOf(code) >= 0;
+}
+
+// Удаляет действие из очереди (по requestId либо path+timestamp). true — нашли и удалили.
+function forgetQueuedItem(item) {
+    var queue = readOfflineScores();
+    var pos = queue.findIndex(function(row){
+        return item.type==='scoreAction' ? row.type==='scoreAction'&&row.action.requestId===item.action.requestId
+            : row.type==='set'&&row.path===item.path&&row.timestamp===item.timestamp;
+    });
+    if(pos>=0){queue.splice(pos,1);localStorage.setItem(OFFLINE_KEY,JSON.stringify(queue));return true;}
+    return false;
+}
+
 function syncOfflineScores(){
     if(!navigator.onLine||offlineSyncInProgress)return;
     var pending=readOfflineScores();
@@ -178,7 +197,7 @@ function syncOfflineScores(){
         }
     });
     try{localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending));}catch(e){console.warn('[PWA] Cannot migrate queue',e);offlineSyncInProgress=false;return;}
-    var done=0;
+    var done=0, rejected=0;
     // Sequential replay preserves multiple corrections of the SAME hole.
     pending.reduce(function(chain,item){
         return chain.then(function(){
@@ -202,16 +221,23 @@ function syncOfflineScores(){
             } else if(item.type==='set'&&item.path) write=db.ref(item.path).set(item.value);
             else write=Promise.resolve();
             return write.then(function(){
-                var queue=readOfflineScores();
-                var pos=queue.findIndex(function(row){
-                    return item.type==='scoreAction' ? row.type==='scoreAction'&&row.action.requestId===item.action.requestId
-                        : row.type==='set'&&row.path===item.path&&row.timestamp===item.timestamp;
-                });
-                if(pos>=0){queue.splice(pos,1);localStorage.setItem(OFFLINE_KEY,JSON.stringify(queue));done++;}
+                if(forgetQueuedItem(item))done++;
+            }).catch(function(err){
+                // Постоянный отказ сервера: выбрасываем действие, чтобы оно не
+                // блокировало очередь вечно (раньше один невалидный офлайн-счёт
+                // останавливал синхронизацию навсегда, с тостом каждые 60 с).
+                if(permanentScoreError(err)){
+                    forgetQueuedItem(item);
+                    rejected++;
+                    console.warn('[PWA] Server rejected queued action, dropped', err&&err.code||err);
+                    return;
+                }
+                throw err;
             });
         });
     },Promise.resolve()).then(function(){
         if(done&&typeof toast==='function')toast((currentLang==='en'?'✅ Confirmed by server: ':'✅ Подтверждено сервером: ')+done,'success');
+        if(rejected&&typeof toast==='function')toast((currentLang==='en'?'⚠️ Server rejected and removed: ':'⚠️ Сервер отклонил и удалил: ')+rejected,'warn');
     }).catch(function(err){
         console.warn('[PWA] Queue paused; unsent actions remain on device',err);
         if(typeof toast==='function')toast(currentLang==='en'?'Sync stopped; scores remain on device':'Синхронизация остановлена; счёт остался на устройстве','warn');
@@ -496,6 +522,11 @@ function initBackgroundAlertListener() {
             Object.keys(all).forEach(function(k) { present[k] = true; });
             Object.keys(globalAlertsKnown).forEach(function(k) { if (!present[k]) delete globalAlertsKnown[k]; });
         }
+    }, function(err) {
+        // Не-админам чтение alerts запрещено правилами — это штатно: молча
+        // снимаем слушатель, чтобы не сыпать permission_denied в консоль.
+        console.info('[PWA] alerts listener stopped:', err && err.code || err);
+        bgAlertsListenerAttached = false;
     });
 }
 

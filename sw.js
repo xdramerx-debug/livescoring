@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.87.0-af5edda6';
+const CACHE_NAME = 'pestovo-v1.87.0-0c282d2c';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -49,13 +49,13 @@ const STATIC_ASSETS = [
     'js/design-preview.js?v=adbbac01',
     'js/design-system.js?v=78b8d092',
     'js/firebase-config.js?v=57564a0d',
-    'js/handicap.js?v=27728fb5',
+    'js/handicap.js?v=ad1e9c00',
     'js/leaderboard.js?v=da62402e',
-    'js/live.js?v=d2d79bae',
+    'js/live.js?v=1044bcc1',
     'js/marker.js?v=83370556',
     'js/players.js?v=70c37568',
     'js/protocol.js?v=adbd9834',
-    'js/pwa.js?v=1251735a',
+    'js/pwa.js?v=83430aef',
     'js/qr-start.js?v=0ac378b8',
     'js/round-setup.js?v=8bda9181',
     'js/score-write.js?v=6f39f00e',

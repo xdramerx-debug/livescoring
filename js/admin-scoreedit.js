@@ -99,7 +99,8 @@ function seDraftSet(rid, pid, h, val) {
     if (!seDraft[rid][pid]) seDraft[rid][pid] = {};
     var num = String(val).trim();
     if (num === '') delete seDraft[rid][pid][h];
-    else seDraft[rid][pid][h] = Math.max(0, Math.min(15, parseInt(num, 10) || 0));
+    // Лимит согласован с сервером (scoreWrite принимает 1..20); 0 = удалить счёт.
+    else seDraft[rid][pid][h] = Math.max(0, Math.min(20, parseInt(num, 10) || 0));
     // Подсветка заполненных клеток — без полной перерисовки (не терять фокус)
     var inp = seGet('se-inp-' + rid + '-' + pid + '-' + h);
     if (inp) inp.classList.toggle('has-score', num !== '');

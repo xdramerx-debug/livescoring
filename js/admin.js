@@ -200,7 +200,10 @@ function adminLogin(evt) {
         var isInternal = code === 'functions/internal' || /internal/i.test(msg);
         // Fallback для случая, когда Cloud Function не задеплоена или падает с internal:
         // если пароль совпадает с дефолтным 55555, пускаем в админку локально
-        // (без серверных прав, но с UI). Это позволяет открыть меню даже до деплоя.
+        // (без серверных прав, но с UI) с ЛЮБОГО хоста, не только с localhost.
+        // Это позволяет открыть меню даже до деплоя функций — дефолтный пароль
+        // работает всегда, а серверные правила RTDB по-прежнему требуют
+        // подписанного custom claim для реальных прав.
         if (isInternal) {
             var p = pass;
             var defaultOk = false;
@@ -208,16 +211,6 @@ function adminLogin(evt) {
                 // Простая проверка дефолта без crypto — 55555
                 if (p === '55555') defaultOk = true;
             } catch (e) {}
-            var host = '';
-            try { host = (location && location.hostname) || ''; } catch (e) {}
-            var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '[::1]' || host.endsWith('.local');
-            // На проде дефолтный пароль не открывает ничего: фолбэк — только dev.
-            if (defaultOk && !isLocal) {
-                showAdminLoginError(currentLang === 'en'
-                    ? 'Default password 55555 works only locally (localhost). Set a master password on the server.'
-                    : 'Дефолтный пароль 55555 работает только локально (localhost). Задайте мастер-пароль на сервере.');
-                return;
-            }
             if (defaultOk) {
                 try { currentUser = { uid: 'tournament-master' }; } catch (e) {}
                 grantMasterAdminAccess();
@@ -233,7 +226,7 @@ function adminLogin(evt) {
                     safeStorageSet(sessionStorage, 'pestovo_is_admin', 'true');
                     safeStorageSet(sessionStorage, 'pestovo_admin_access_source', 'master');
                     if (typeof applyPageVisibilitySettings === 'function') applyPageVisibilitySettings();
-                    // Загружаем админские данные (будут работать только локально, без серверных прав)
+                    // Загружаем админские данные (в fallback-режиме — без серверных прав)
                     if (typeof loadAdmRounds === 'function') { try { loadAdmRounds(); } catch (e) {} }
                     if (typeof loadAdmGroups === 'function') { try { loadAdmGroups(); } catch (e) {} }
                     if (typeof loadAdmPlayers === 'function') { try { loadAdmPlayers(); } catch (e) {} }
@@ -243,14 +236,14 @@ function adminLogin(evt) {
                     openAdminPanel();
                 }
                 toast(currentLang === 'en'
-                    ? '⚠️ Server unavailable (internal), opened admin panel locally (dev only). Deploy functions to get full rights.'
-                    : '⚠️ Сервер недоступен (internal), админка открыта локально (только dev). Задеплойте функции для полных прав.', 'info');
+                    ? '⚠️ Server unavailable (internal), opened admin panel locally. Deploy functions to get full rights.'
+                    : '⚠️ Сервер недоступен (internal), админка открыта локально. Задеплойте функции для полных прав.', 'info');
                 return;
             }
         }
         var messages = currentLang === 'en'
-            ? { 'functions/failed-precondition': 'Master password is not configured on the server.', 'functions/permission-denied': 'Incorrect master password.', 'functions/resource-exhausted': 'Too many attempts. Try again in 15 minutes.', 'functions/internal': 'Server error (internal). Try again or deploy functions. On localhost, password 55555 opens a local dev fallback.' }
-            : { 'functions/failed-precondition': 'Мастер-пароль не настроен на сервере.', 'functions/permission-denied': 'Неверный мастер-пароль.', 'functions/resource-exhausted': 'Слишком много попыток. Повторите через 15 минут.', 'functions/internal': 'Ошибка сервера (internal). Попробуйте ещё раз или задеплойте функции. На localhost пароль 55555 откроет локальный dev-fallback.' };
+            ? { 'functions/failed-precondition': 'Master password is not configured on the server.', 'functions/permission-denied': 'Incorrect master password.', 'functions/resource-exhausted': 'Too many attempts. Try again in 15 minutes.', 'functions/internal': 'Server error (internal). Try again or deploy functions. Password 55555 opens a local fallback without server rights.' }
+            : { 'functions/failed-precondition': 'Мастер-пароль не настроен на сервере.', 'functions/permission-denied': 'Неверный мастер-пароль.', 'functions/resource-exhausted': 'Слишком много попыток. Повторите через 15 минут.', 'functions/internal': 'Ошибка сервера (internal). Попробуйте ещё раз или задеплойте функции. Пароль 55555 откроет локальный fallback без серверных прав.' };
         showAdminLoginError(messages[code] || (currentLang === 'en' ? 'Login error: ' : 'Ошибка входа: ') + msg);
     });
 }

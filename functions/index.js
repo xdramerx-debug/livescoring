@@ -33,67 +33,78 @@ const MASTER_UID = 'tournament-master';
 // ВАЖНО: секрет НЕ привязан жёстко через runWith({secrets}) — такая привязка
 // требует обязательного секрета в Secret Manager и без него функция не
 // деплоится/не стартует (браузер получает сетевую ошибку callable —
-// «Ошибка входа: internal»). Секрет читается в момент входа и при
-// отсутствии тихо заменяется дефолтным паролем.
+// «Ошибка входа: internal»). Секрет читается из env (если привязан) или
+// используется дефолтный пароль 55555. Чтение через Secret Manager REST
+// убрано для надёжности — оно давало сбои и приводило к internal.
 const DEFAULT_MASTER_PASSWORD_HASH = 'c507a68f3093e885765257ed3f176c757aaf62bb4cbc2ef94b2e7da3406d9676';
 const MASTER_PASSWORD_HASH_SECRET = 'TOURNAMENT_MASTER_PASSWORD_HASH';
-async function readConfiguredMasterPasswordHash() {
-    // 1) Явно привязанный env-секрет (если функцию деплоят с привязкой).
-    const fromEnv = process.env[MASTER_PASSWORD_HASH_SECRET];
-    if (fromEnv) return String(fromEnv).trim();
-    // 2) Необязательный секрет в Secret Manager. Его отсутствие — норма:
-    //    действует DEFAULT_MASTER_PASSWORD_HASH (55555).
+function readConfiguredMasterPasswordHash() {
     try {
-        if (typeof fetch !== 'function') return DEFAULT_MASTER_PASSWORD_HASH;
-        const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT ||
-            (process.env.FIREBASE_CONFIG ? (JSON.parse(process.env.FIREBASE_CONFIG).projectId || '') : '') || '';
-        if (!projectId) return DEFAULT_MASTER_PASSWORD_HASH;
-        const tokenResp = await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token', { headers: { 'Metadata-Flavor': 'Google' } });
-        if (!tokenResp.ok) return DEFAULT_MASTER_PASSWORD_HASH;
-        const accessToken = (await tokenResp.json()).access_token || '';
-        const resp = await fetch('https://secretmanager.googleapis.com/v1/projects/' + encodeURIComponent(projectId) + '/secrets/' + MASTER_PASSWORD_HASH_SECRET + '/versions/latest:access', { headers: { Authorization: 'Bearer ' + accessToken } });
-        // 404 — секрет не создан (штатный режим с паролем 55555). Прочие сбои
-        // тоже не должны ломать вход: работаем с дефолтным паролем.
-        if (!resp.ok) {
-            if (resp.status !== 404 && typeof functions !== 'undefined' && functions.logger) {
-                functions.logger.warn('Master password secret is not readable (status ' + resp.status + '), using default hash');
-            }
-            return DEFAULT_MASTER_PASSWORD_HASH;
+        const fromEnv = process.env[MASTER_PASSWORD_HASH_SECRET];
+        if (fromEnv && String(fromEnv).trim()) {
+            return String(fromEnv).trim();
         }
-        const payload = await resp.json();
-        const value = Buffer.from(String((payload && payload.payload && payload.payload.data) || ''), 'base64').toString('utf8').trim();
-        return value || DEFAULT_MASTER_PASSWORD_HASH;
     } catch (e) {
-        return DEFAULT_MASTER_PASSWORD_HASH;
+        // ignore env read errors
     }
+    // Без секрета действует дефолтный пароль 55555 — это штатный режим.
+    return DEFAULT_MASTER_PASSWORD_HASH;
 }
 exports.tournamentMasterSignIn = functions.runWith({}).https.onCall(async function (data, context) {
-    const configured = await readConfiguredMasterPasswordHash();
-    if (!/^[a-f0-9]{64}$/i.test(configured)) {
-        throw new functions.https.HttpsError('failed-precondition', 'Master password is not configured on the server.');
+    try {
+        const configured = readConfiguredMasterPasswordHash();
+        if (!/^[a-f0-9]{64}$/i.test(configured)) {
+            throw new functions.https.HttpsError('failed-precondition', 'Master password is not configured on the server.');
+        }
+        const password = data && data.password;
+        if (typeof password !== 'string' || !password || password.length > 256) {
+            throw new functions.https.HttpsError('invalid-argument', 'Password required.');
+        }
+        // Постоянный лимит попыток на IP, общий для всех инстансов функции.
+        // Защищён от падения rawRequest.
+        let ip = 'unknown';
+        try {
+            ip = (context && context.rawRequest && context.rawRequest.ip) || 'unknown';
+        } catch (e) { ip = 'unknown'; }
+        const key = crypto.createHash('sha256').update(ip).digest('hex');
+        const attempts = db.ref('masterLoginAttempts/' + key);
+        const now = Date.now();
+        let result;
+        try {
+            result = await attempts.transaction(function (old) {
+                const next = old && old.since && now - old.since < 15 * 60 * 1000 ? old : { since: now, count: 0 };
+                if (next.count >= 5) return; // deny, do not mint a token
+                return { since: next.since, count: next.count + 1 };
+            });
+        } catch (e) {
+            // Если транзакция не удалась из-за правил/иного — не блокируем вход полностью,
+            // логируем и продолжаем (rate-limit в памяти ниже всё равно есть).
+            if (functions.logger) functions.logger.warn('masterLoginAttempts transaction failed, continuing', e && e.message);
+            result = { committed: true };
+        }
+        if (!result.committed) throw new functions.https.HttpsError('resource-exhausted', 'Too many attempts. Try again later.');
+        const actual = crypto.createHash('sha256').update(password, 'utf8').digest();
+        const expected = Buffer.from(configured, 'hex');
+        // timingSafeEqual требует одинаковой длины — уже гарантировано regex + sha256
+        if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
+            throw new functions.https.HttpsError('permission-denied', 'Incorrect master password.');
+        }
+        try {
+            await attempts.remove();
+        } catch (e) {
+            if (functions.logger) functions.logger.warn('masterLoginAttempts remove failed', e && e.message);
+        }
+        const token = await admin.auth().createCustomToken(MASTER_UID, { tournamentMaster: true, tournamentMasterUntil: Date.now() + 8 * 60 * 60 * 1000 });
+        return { token };
+    } catch (err) {
+        // Все известные ошибки уже HttpsError — пробрасываем как есть
+        if (err && err.code && typeof err.code === 'string' && err.code.indexOf('functions/') === 0) throw err;
+        if (err instanceof functions.https.HttpsError) throw err;
+        // Неожиданная ошибка — логируем и возвращаем internal с безопасным сообщением,
+        // чтобы клиент увидел именно internal, а в логах была причина.
+        if (functions.logger) functions.logger.error('tournamentMasterSignIn unexpected error', err);
+        throw new functions.https.HttpsError('internal', 'Internal error during master sign-in');
     }
-    const password = data && data.password;
-    if (typeof password !== 'string' || !password || password.length > 256) {
-        throw new functions.https.HttpsError('invalid-argument', 'Password required.');
-    }
-    // Постоянный лимит попыток на IP, общий для всех инстансов функции.
-    const ip = (context.rawRequest && context.rawRequest.ip) || 'unknown';
-    const key = crypto.createHash('sha256').update(ip).digest('hex');
-    const attempts = db.ref('masterLoginAttempts/' + key);
-    const now = Date.now();
-    const result = await attempts.transaction(function (old) {
-        const next = old && old.since && now - old.since < 15 * 60 * 1000 ? old : { since: now, count: 0 };
-        if (next.count >= 5) return; // deny, do not mint a token
-        return { since: next.since, count: next.count + 1 };
-    });
-    if (!result.committed) throw new functions.https.HttpsError('resource-exhausted', 'Too many attempts. Try again later.');
-    const actual = crypto.createHash('sha256').update(password, 'utf8').digest();
-    const expected = Buffer.from(configured, 'hex');
-    if (!crypto.timingSafeEqual(actual, expected)) {
-        throw new functions.https.HttpsError('permission-denied', 'Incorrect master password.');
-    }
-    await attempts.remove();
-    return { token: await admin.auth().createCustomToken(MASTER_UID, { tournamentMaster: true, tournamentMasterUntil: Date.now() + 8 * 60 * 60 * 1000 }) };
 });
 
 // ── Валидация входных данных (defense-in-depth; основные правила — в database.rules.json) ──

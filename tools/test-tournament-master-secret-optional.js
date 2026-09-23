@@ -2,6 +2,8 @@
 // деплоиться и работать без него (мастер-пароль по умолчанию 55555). Жёсткая
 // привязка runWith({secrets}) без созданного секрета роняет функцию на старте,
 // и браузер видит «Ошибка входа: internal» вместо формы входа.
+// После фикса от 2026-09-23 секрет читается ТОЛЬКО из env (если привязан),
+// без сложного REST-фетча Secret Manager, который давал internal.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -32,7 +34,7 @@ assert.ok(login.indexOf(defaultHash) !== -1, 'DEFAULT_MASTER_PASSWORD_HASH — �
 
 class HttpsError extends Error { constructor(code, message) { super(message); this.code = code; } }
 
-function makeSandbox(env, fetchImpl) {
+function makeSandbox(env) {
     let counter = null;
     const sandbox = {
         require: name => { assert.strictEqual(name, 'crypto'); return crypto; },
@@ -41,7 +43,7 @@ function makeSandbox(env, fetchImpl) {
         functions: {
             runWith: opts => ({ https: { onCall: callback => callback } }),
             https: { HttpsError },
-            logger: { warn: () => {} }
+            logger: { warn: () => {}, error: () => {} }
         },
         admin: { auth: () => ({ createCustomToken: () => Promise.resolve('signed-token') }) },
         db: { ref: () => ({
@@ -54,53 +56,37 @@ function makeSandbox(env, fetchImpl) {
             remove: async () => { counter = null; }
         }) }
     };
-    if (fetchImpl) sandbox.fetch = fetchImpl;
     vm.runInNewContext(login, sandbox);
     return { signIn: sandbox.exports.tournamentMasterSignIn, request: { rawRequest: { ip: '192.0.2.1' } } };
 }
 
-function secretManagerFetch(secretValue) {
-    return async function (url) {
-        if (String(url).indexOf('metadata.google.internal') !== -1) {
-            return { ok: true, status: 200, json: async () => ({ access_token: 'token-1' }) };
-        }
-        assert.ok(String(url).indexOf('secretmanager.googleapis.com') !== -1, 'секрет читается из Secret Manager');
-        return {
-            ok: true, status: 200,
-            json: async () => ({ payload: { data: Buffer.from(secretValue, 'utf8').toString('base64') } })
-        };
-    };
-}
-
 (async function () {
-    // 2) Без секрета и без сети (браузер/локальный запуск — fetch нет) действует 55555.
-    const offline = makeSandbox({}, null);
+    // 2) Без секрета действует 55555.
+    const offline = makeSandbox({});
     const result = await offline.signIn({ password: defaultPassword }, offline.request);
     assert.strictEqual(result.token, 'signed-token');
     await assert.rejects(offline.signIn({ password: secretPassword }, offline.request), e => e.code === 'permission-denied');
 
-    // 3) Секрет в Secret Manager имеет приоритет: 55555 перестаёт приниматься.
-    const withSecret = makeSandbox({ GCLOUD_PROJECT: 'demo' }, secretManagerFetch(crypto.createHash('sha256').update(secretPassword).digest('hex')));
+    // 3) Секрет из env имеет приоритет: 55555 перестаёт приниматься.
+    const secretHash = crypto.createHash('sha256').update(secretPassword).digest('hex');
+    const withSecret = makeSandbox({ TOURNAMENT_MASTER_PASSWORD_HASH: secretHash });
     const secretResult = await withSecret.signIn({ password: secretPassword }, withSecret.request);
     assert.strictEqual(secretResult.token, 'signed-token');
     await assert.rejects(withSecret.signIn({ password: defaultPassword }, withSecret.request), e => e.code === 'permission-denied');
 
-    // 4) Нечитаемый секрет (например, Secret Manager API выключен) не роняет вход:
-    //    работает дефолтный пароль.
-    const fetchDown = makeSandbox({ GCLOUD_PROJECT: 'demo' }, async function () {
-        return { ok: false, status: 403, json: async () => ({}) };
-    });
-    const fallback = await fetchDown.signIn({ password: defaultPassword }, fetchDown.request);
-    assert.strictEqual(fallback.token, 'signed-token');
-
-    // 5) Мусор в секрете — отказ (fail-closed), а не тихий откат к 55555.
-    const badSecret = makeSandbox({ GCLOUD_PROJECT: 'demo' }, secretManagerFetch('not-a-sha256-hash'));
+    // 4) Мусор в секрете — отказ (fail-closed), а не тихий откат к 55555.
+    const badSecret = makeSandbox({ TOURNAMENT_MASTER_PASSWORD_HASH: 'not-a-sha256-hash' });
     await assert.rejects(badSecret.signIn({ password: defaultPassword }, badSecret.request), e => e.code === 'failed-precondition');
 
-    // 6) Явно привязанный env-секрет работает и обходится без сети.
-    const viaEnv = makeSandbox({ TOURNAMENT_MASTER_PASSWORD_HASH: defaultHash }, null);
+    // 5) Явно привязанный env-секрет работает и обходится без сети.
+    const viaEnv = makeSandbox({ TOURNAMENT_MASTER_PASSWORD_HASH: defaultHash });
     const envResult = await viaEnv.signIn({ password: defaultPassword }, viaEnv.request);
     assert.strictEqual(envResult.token, 'signed-token');
+
+    // 6) Функция не должна содержать fetch к metadata.google.internal / secretmanager
+    // — это источник internal ошибок, теперь читаем только env.
+    assert.ok(!/metadata\.google\.internal/.test(source), 'не должно быть fetch к metadata.google.internal');
+    assert.ok(!/secretmanager\.googleapis\.com/.test(source), 'не должно быть fetch к secretmanager.googleapis.com');
 
     console.log('Tournament master secret optionality tests passed');
 })().catch(err => { console.error(err); process.exitCode = 1; });

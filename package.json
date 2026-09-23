@@ -8,6 +8,7 @@
     "test:ci": "node tools/run-tests.js --ci",
     "lint:syntax": "node tools/syntax-check.js",
     "lint": "eslint js tools functions --ext .js",
+    "assets": "node tools/rev-assets.js",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"

@@ -1,8 +1,8 @@
 # Реализованные улучшения (по CODE-REVIEW.md)
 
 Выполнены задачи из отчёта `docs/CODE-REVIEW.md` (итерация 1 — разделы 1–4,
-итерация 2 — раздел 5, итерация 3 — раздел 6). Ниже — что сделано, ключевые
-файлы и важные оговорки.
+итерация 2 — раздел 5, итерация 3 — раздел 6, итерация 4 — раздел 7).
+Ниже — что сделано, ключевые файлы и важные оговорки.
 
 ## 1. CSP + центральный безопасный HTML-билдер (закрытие класса XSS)
 
@@ -176,6 +176,7 @@
 Новые: `js/safe-html.js`, `js/course-config.js`, `js/format.js`, `js/dom.js`,
 `js/i18n.js` (+ ESM-копии в `src/`), `firebase.json`, `database.rules.json`,
 `package.json`, `README.md`, `tools/run-tests.js`, `tools/syntax-check.js`,
+`tools/rev-assets.js`, `tools/test-sw-precache.js`,
 `.github/workflows/ci.yml`, `docs/SECURITY-RULES.md`,
 `docs/IMPROVEMENTS-IMPL.md`.
 

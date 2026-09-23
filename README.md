@@ -29,6 +29,7 @@ i18n → utils` (фундаменты грузятся раньше `utils.js`).
 npm install          # dev-зависимости (eslint, vite)
 npm test             # все тесты (tools/test-*.js)
 npm run lint:syntax  # node --check по всем js-файлам
+npm run assets       # ?v=<hash> в HTML + precache-манифест sw.js (после правок js/css)
 npm run build        # ESM-бандл dist/livescoring-modules.js (Vite)
 ```
 

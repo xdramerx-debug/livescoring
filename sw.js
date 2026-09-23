@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.81.0-eebf3a81';
+const CACHE_NAME = 'pestovo-v1.81.0-38d55182';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -51,10 +51,12 @@ const STATIC_ASSETS = [
     'css/tn-wizard.css?v=01173cbb',
     'css/tournament-admin.css?v=326736ae',
     'css/tournament-redesign.css?v=6aa85f7a',
+    'js/admin-alerts.js?v=7b28ee0c',
     'js/admin-broadcasts.js?v=06387c38',
+    'js/admin-channels.js?v=006a9dc3',
     'js/admin-flights.js?v=84486ca0',
     'js/admin-scoreedit.js?v=759fc8b1',
-    'js/admin.js?v=0f79a7dd',
+    'js/admin.js?v=9acc4f6b',
     'js/app.js?v=cf2f1c15',
     'js/assistant-build.js?v=6788f04f',
     'js/assistant-config.js?v=f0f8af7c',

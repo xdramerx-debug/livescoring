@@ -230,7 +230,9 @@ exports.onBroadcastCreated = functions.database.ref('/broadcasts/{id}').onCreate
         const keys = await ensureVapidKeys();
         configureWebPush(keys);
 
-        const aud = validAudience(b.audience);
+        // Аудитория анонса: единая нормализация audienceOf (юнит-тест
+        // tools/test-functions-push.js проверяет именно её).
+        const aud = audienceOf(b);
         const allSubs = await getAllSubscriptions();
         let targets;
         if (aud.type === 'all') {

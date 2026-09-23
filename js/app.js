@@ -479,13 +479,6 @@ function toggleLiveWho(roundId, pid) {
 }
 
 // Строка доступна с клавиатуры: Enter и Space работают как клик
-function liveWhoKey(ev, roundId, pid) {
-    if (ev && (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar')) {
-        ev.preventDefault();
-        toggleLiveWho(roundId, pid);
-    }
-}
-
 function isMyLiveRound(id, r) {
     if (!r) return false;
     if (currentUser && r.createdBy === currentUser.uid) return true;
@@ -517,7 +510,8 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
         if (mkScores && Object.values(mkScores).some(function(v) { return parseInt(v) >= 1; })) {
             displayScores = mkScores;
             var mkName = privacyDisplayName(players[p.markedBy], p.markedBy) || '';
-            markerNote = currentLang === 'en' ? ' (marker: ' + mkName + ')' : ' (маркер: ' + mkName + ')';
+            // Имя маркера — пользовательская строка: экранируем (вставляется в HTML).
+            markerNote = currentLang === 'en' ? ' (marker: ' + escapeHtml(mkName) + ')' : ' (маркер: ' + escapeHtml(mkName) + ')';
         }
     }
     var stats = calcRoundStats(displayScores, p.fieldHcp || 0, p.exactHcp || 0, order);
@@ -1193,7 +1187,7 @@ function loadClubStats() {
     var el = document.getElementById('club-stats');
     if (!el) return;
 
-    Promise.all([db.ref('rounds').once('value'), db.ref('users').once('value')]).then(function(snaps) {
+    Promise.all([db.ref('rounds').once('value'), db.ref('usersPublic').once('value')]).then(function(snaps) {
         var rounds = snaps[0].val() || {};
         var users = snaps[1].val() || {};
         // Раунды со статусом 'scheduled' (созданные протоколом заранее, но

@@ -249,6 +249,14 @@ function sendClubBroadcast() {
         toast(currentLang === 'en' ? 'Specify title and message text' : 'Заполните заголовок и текст анонса', 'error');
         return;
     }
+    // Лимиты синхронизированы с .validate в database.rules.json (200/1000):
+    // превышение сервер молча отклонил бы запись.
+    if (title.length > 200 || body.length > 1000) {
+        toast(currentLang === 'en'
+            ? ('⚠️ Too long: title ≤ 200, message ≤ 1000 chars (now ' + title.length + '/' + body.length + ')')
+            : ('⚠️ Слишком длинно: заголовок ≤ 200, текст ≤ 1000 символов (сейчас ' + title.length + '/' + body.length + ')'), 'error');
+        return;
+    }
 
     var audSel = bcEl('bc-audience');
     var type = audSel ? (audSel.value || 'all') : 'all';
@@ -277,6 +285,8 @@ function sendClubBroadcast() {
             try { bcRefreshAudienceCount(); } catch (eR) { console.warn("[silent]", eR); }
             toast('📢 ' + (currentLang === 'en' ? 'Announcement sent to ' : 'Анонс отправлен: ') + who);
             if (typeof showPushNotification === 'function') showPushNotification(rec0.title, rec0.body, rec0.link);
+        }).catch(function(err) {
+            toast('❌ ' + (currentLang === 'en' ? 'Failed to send: ' : 'Не удалось отправить: ') + (err && err.message || err), 'error');
         });
         return;
     }
@@ -338,6 +348,8 @@ function bcSendBroadcast(title, body, link, audience, res) {
         if (typeof showPushNotification === 'function') {
             showPushNotification(rec.title, rec.body, rec.link);
         }
+    }).catch(function(err) {
+        toast('❌ ' + bcT('Не удалось отправить: ', 'Failed to send: ') + (err && err.message || err), 'error');
     });
 }
 

@@ -166,7 +166,7 @@ function loadStats() {
             }
             return sn;
         }),
-        db.ref('users').once('value')
+        db.ref('usersPublic').once('value')
     ]).then(function(snaps) {
         var rounds = snaps[0].val() || {};
         var users = snaps[1].val() || {};

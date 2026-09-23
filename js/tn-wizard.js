@@ -466,7 +466,10 @@ function tnwCheckScheduled() {
         }).then(function () {
             try { localStorage.removeItem(tnwLocalKey(key)); } catch (e) { console.warn('[silent]', e); }
             if (typeof toast === 'function') toast('⏰ ' + tnL('Отложенный турнир опубликован', 'Scheduled tournament published'));
-        }).catch(function () {});
+        }).catch(function (err) {
+            console.warn('[tn-wizard] scheduled publish failed, will retry on next save', err);
+            if (typeof toast === 'function') toast('⚠️ ' + tnL('Не удалось авто-опубликовать отложенный турнир: ', 'Failed to auto-publish scheduled tournament: ') + (err && err.message ? err.message : err), 'error');
+        });
     });
 }
 function tnwWizAllServerDrafts() { return tnWiz.drafts || {}; }
@@ -1064,17 +1067,21 @@ function tnwPublishConfig(cfg, draftKey) {
     var database = tnwDb();
     if (!database) return Promise.reject(new Error('no db'));
     var payload = tnwBuildTournamentPayload(cfg);
-    return database.ref('tournaments').push(payload).then(function (ref) {
-        // аудит публикации
-        var audit = {
-            event: 'published',
-            at: Date.now(),
-            by: tnwAuthorName(),
-            owner: tnwOwnerKey(),
-            draftKey: draftKey || null
-        };
-        return database.ref('tournaments/' + ref.key + '/audit').push(audit).then(function () { return ref.key; });
-    });
+    // Атомарно: турнир + аудит одной мульти-path записью. Раньше аудит писался
+    // вторым запросом — при отказе турнир был уже создан, повтор приводил к дублю.
+    var ref = database.ref('tournaments').push();
+    var auditKey = database.ref('tournaments/' + ref.key + '/audit').push().key;
+    var audit = {
+        event: 'published',
+        at: Date.now(),
+        by: tnwAuthorName(),
+        owner: tnwOwnerKey(),
+        draftKey: draftKey || null
+    };
+    var updates = {};
+    updates['tournaments/' + ref.key] = payload;
+    updates['tournaments/' + ref.key + '/audit/' + auditKey] = audit;
+    return database.ref().update(updates).then(function () { return ref.key; });
 }
 
 function tnwPublish() {

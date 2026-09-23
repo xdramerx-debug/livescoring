@@ -736,24 +736,6 @@ function rgUpdateLocalFromResults(idx, userId) {
 }
 
 // Добавляет игрока как НОВОГО, даже если похожие записи уже есть на сайте
-function rgAddAsNewFromResults(idx) {
-    if (!rgIsAdmin()) {
-        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
-        return;
-    }
-    var r = rgLastResults[idx];
-    if (!r) return;
-    if (r.hcp == null) {
-        toast(currentLang === 'en' ? '⚠ This player has no HI in the RGA base' : '⚠ У этого игрока нет HI в базе АГР', 'error');
-        return;
-    }
-    var created = rgCreateNewPlayerFromAgr(r);
-    toast('🎉 ' + (currentLang === 'en' ? 'Player ' : 'Игрок ') + created.name + (currentLang === 'en' ? ' added as NEW (HCP ' : ' добавлен как новый (HCP ') + fmtExactHcp(r.hcp) + ')', 'success');
-    if (typeof vib === 'function') vib([50, 30, 50]);
-    if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
-    rgRenderResults(rgLastResults);
-}
-
 function rgUpdateHcpOf(userId, r, playerData) {
     var localData = playerData || (typeof cachedRegisteredUsers !== 'undefined' ? cachedRegisteredUsers[userId] : null) || {};
     toast('🔄 ' + (currentLang === 'en' ? 'HCP updated: ' : 'Гандикап обновлён: ') + (r.fio || localData.name || '') + ' → ' + fmtExactHcp(r.hcp), 'success');
@@ -765,20 +747,6 @@ function rgUpdateHcpOf(userId, r, playerData) {
     });
     if (rgLastResults && rgLastResults.length) rgRenderResults(rgLastResults);
 }
-
-function rgUpdateFromResults(idx) {
-    if (!rgIsAdmin()) {
-        toast(currentLang === 'en' ? '⛔ Admins only' : '⛔ Только для администратора', 'error');
-        return;
-    }
-    var r = rgLastResults[idx];
-    if (!r || r.hcp == null) return;
-    var existing = rgFindLocalMatch(r);
-    if (existing) rgUpdateHcpOf(existing.id, r);
-}
-
-// -------- МАССОВАЯ СИНХРОНИЗАЦИЯ ---------
-
 function rgSyncProgressHtml(cur, total, stats) {
     var pct = total ? Math.round((cur / total) * 100) : 0;
     var html = '<div class="rg-progress-wrap">';

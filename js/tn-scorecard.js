@@ -41,13 +41,6 @@ function tnScNum(v) {
 function tnScHcp(v) {
     return (typeof fmtExactHcp === 'function') ? fmtExactHcp(v) : String(v == null ? '—' : v);
 }
-function tnScTee(code) {
-    if (typeof fmtTeePill === 'function') { try { return fmtTeePill(code); } catch (e) { console.warn("[silent]", e); } }
-    var t = (typeof TEES !== 'undefined') ? TEES : {};
-    return '<span>' + tnScEsc(t[code] || code || '—') + '</span>';
-}
-
-// Лунки раунда в порядке игры (для шотгана — от стартовой лунки).
 function tnScOrder(round) {
     if (typeof getRoundOrder === 'function') {
         try { return getRoundOrder(round); } catch (e) { console.warn("[silent]", e); }

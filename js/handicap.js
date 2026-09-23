@@ -39,17 +39,16 @@ function onGenderChange() {
     teeSel.disabled = false;
     var prevVal = teeSel.value;
     teeSel.innerHTML = '<option value="">' + t('tbl_select_tee') + '</option>';
-    
-    if (gender === 'men') {
-        teeSel.innerHTML += '<option value="bk">⬛ ' + t('tee_bk') + ' (CR 76.0 / SR 144)</option>';
-        teeSel.innerHTML += '<option value="bl">🟦 ' + t('tee_bl') + ' (CR 73.8 / SR 137)</option>';
-        teeSel.innerHTML += '<option value="wh">⬜ ' + t('tee_wh') + ' (CR 72.0 / SR 135)</option>';
-        teeSel.innerHTML += '<option value="rd">🟥 ' + t('tee_rd') + ' (CR 69.2 / SR 134)</option>';
-    } else {
-        teeSel.innerHTML += '<option value="bl">🟦 ' + t('tee_bl') + ' (CR 80.8 / SR 153)</option>';
-        teeSel.innerHTML += '<option value="wh">⬜ ' + t('tee_wh') + ' (CR 78.6 / SR 143)</option>';
-        teeSel.innerHTML += '<option value="rd">🟥 ' + t('tee_rd') + ' (CR 75.2 / SR 136)</option>';
-    }
+
+    // CR/SR берём из COURSE_RATINGS (js/course-config.js): раньше значения
+    // дублировались ручными строками и молча устаревали при правке рейтингов.
+    var teeEmoji = { bk: '⬛', bl: '🟦', wh: '⬜', rd: '🟥' };
+    var teeCodes = (gender === 'men') ? ['bk', 'bl', 'wh', 'rd'] : ['bl', 'wh', 'rd'];
+    teeSel.innerHTML += teeCodes.map(function(code) {
+        var r = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][code];
+        var label = t('tee_' + code) + (r ? ' (CR ' + Number(r.cr).toFixed(1) + ' / SR ' + r.sr + ')' : '');
+        return '<option value="' + code + '">' + (teeEmoji[code] || '') + ' ' + label + '</option>';
+    }).join('');
 
     if (prevVal && teeSel.querySelector('option[value="' + prevVal + '"]')) {
         teeSel.value = prevVal;

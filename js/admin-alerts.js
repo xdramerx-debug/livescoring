@@ -33,7 +33,10 @@ function admAlertsScheduleRender() {
 
 function admAlertsRenderPanel(p) {
     var entries = p.entries;
-    var allEntries = p.allEntries;
+    // p.allEntries — уже массив пар [id, alert] (Object.entries из admAlertsPending).
+    // Раньше здесь вызывался Object.entries второй раз: пары оборачивались ещё раз,
+    // e[1] становился парой вместо алерта, и все вызовы считались «судьёй».
+    var allEntries = p.allEntries || [];
     var hasNewAlert = p.hasNewAlert;
     var c = document.getElementById('admin-alerts-list');
     var statsEl = document.getElementById('admin-alerts-stats');
@@ -42,7 +45,6 @@ function admAlertsRenderPanel(p) {
         // === Статистика всех вызовов (требование #5) ===
         if (statsEl) {
             try {
-                var allEntries = Object.entries(p.allEntries);
                 var totalRef = 0, totalMar = 0, activeRef = 0, activeMar = 0, resolved = 0;
                 allEntries.forEach(function(e) {
                     var a = e[1] || {};

@@ -254,16 +254,6 @@ function calcSoloFieldHcp() {
     var field = getFieldHcp(exact, tee, gender);
     if (fieldEl) fieldEl.value = fmtFieldHcp(field);
 }
-
-function onSoloGenderChange() {
-    var gEl = sGet('s-gender');
-    var tEl = sGet('s-tee');
-    if (gEl && tEl) {
-        tEl.value = (gEl.value === 'women') ? 'rd' : 'bl';
-    }
-    calcSoloFieldHcp();
-}
-
 function updateTimingPreview() {
     var timeEl = sGet('s-time');
     var holeEl = sGet('s-hole');
@@ -1031,27 +1021,6 @@ function soloSkippedHoles() {
 
 // Предупреждение о пропущенных лунках: список с кнопками перехода
 // («вбить счёт») и вариантом «продолжить с пропуском».
-function showSkippedHolesWarning(containerId, onContinue) {
-    var box = document.getElementById(containerId);
-    if (!box) { if (typeof onContinue === 'function') onContinue(); return; }
-    var skipped = soloSkippedHoles();
-    if (!skipped.length) { box.innerHTML = ''; if (typeof onContinue === 'function') onContinue(); return; }
-    var shown = skipped.slice(0, 6);
-    var btns = '';
-    shown.forEach(function(h) {
-        btns += '<button type="button" class="shb-hole-btn" onclick="goHole(' + h + ');document.getElementById(' + JSON.stringify(containerId) + ').innerHTML=\'\';">' +
-            t('skipped_holes_goto') + ' ' + h + '</button>';
-    });
-    var more = skipped.length > shown.length ? ' …' : '';
-    box.innerHTML = '<div class="skipped-holes-box">' +
-        '<div class="shb-title"><i class="fas fa-triangle-exclamation"></i> ' + t('skipped_holes_title') + ': ' +
-        skipped.join(', ') + more + '</div>' +
-        '<div class="shb-actions">' + btns +
-        '<button type="button" class="btn btn-ol btn-sm" onclick="document.getElementById(' + JSON.stringify(containerId) + ').innerHTML=\'\';">' +
-        t('skipped_holes_skip') + '</button>' +
-        '</div></div>';
-}
-
 function renderMiniCard(targetId) {
     var el = document.getElementById(targetId);
     if (!el) return;
@@ -1153,7 +1122,16 @@ function doFinishSolo() {
                     try { saveHistory(soloRid, fresh); } catch (e) { console.warn("[silent]", e); }
                 }
             });
-        }).catch(function() { soloFinishing = false; });
+        }).catch(function(err) {
+            // Молчаливый отказ скрывал проблему: RULES запрещают прямую запись
+            // статуса раунда тому, кто его не создавал (QR-карточка турнира).
+            soloFinishing = false;
+            if (typeof toast === 'function') {
+                toast(currentLang === 'en'
+                    ? ('⚠️ Could not finish the round: ' + (err && err.code || err && err.message || err) + '. Scores are saved — contact the referee/committee.')
+                    : ('⚠️ Не удалось завершить раунд: ' + (err && err.code || err && err.message || err) + '. Счёт сохранён — обратитесь к судье/в комитет.'), 'error');
+            }
+        });
     };
 
     // После завершения раунда карточка не предлагается к печати/скачиванию —

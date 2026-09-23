@@ -368,10 +368,21 @@
         }).sort(function (a, b) { return a.num - b.num; });
     }
     function allocation(handicap, holes) {
-        var out = {}, n = Math.max(0, Math.round(num(handicap)));
+        // Каноничный расчёт — tn-engine (если загружен); локальный фолбэк
+        // повторяет ту же WHS-логику, включая минусовый гандикап.
+        var hcp = num(handicap);
+        try {
+            if (typeof TnEngine !== 'undefined' && TnEngine.Handicap && TnEngine.Handicap.strokesAllocation) {
+                return TnEngine.Handicap.strokesAllocation(hcp, holes);
+            }
+        } catch (e) { /* фолбэк ниже */ }
+        var out = {};
         holes.forEach(function (h) { out[h.num] = 0; });
-        var ordered = holes.slice().sort(function (a, b) { return a.si - b.si; });
-        for (var i = 0; i < n; i++) out[ordered[i % ordered.length].num]++;
+        if (!holes.length || !hcp) return out;
+        var abs = Math.abs(Math.round(hcp));
+        var sign = hcp > 0 ? 1 : -1;
+        var ordered = holes.slice().sort(function (a, b) { return sign > 0 ? a.si - b.si : b.si - a.si; });
+        for (var i = 0; i < abs; i++) out[ordered[i % ordered.length].num] += sign;
         return out;
     }
     function stableford(gross, par, received) {

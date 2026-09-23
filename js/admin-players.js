@@ -167,8 +167,50 @@ function loadAdmPlayers() {
         // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
         bindRealtimeValue('admin-users', db.ref('users'), function(sn) {
             renderWithData(sn.val());
+            syncPublicProfilesMirror(sn.val());
         });
     }
+}
+
+// Зеркало публичных профилей (usersPublic): синхронизирует публичные поля при
+// любых правках пользователей в админке (вручную, Excel-импорт, AGR, слияния).
+// Читатели без прав админа видят только этот узел (database.rules.json).
+var _pubMirrorTimer = null;
+var PUB_MIRROR_FIELDS = ['name', 'firstName', 'lastName', 'middleName', 'gender', 'handicap', 'exactHcp', 'defaultTee', 'isGuest', 'deleted', 'deletedAt', 'createdAt', 'roundsPlayed', 'bestGross', 'bestStableford', 'hcpUpdatedAt', 'hcpSource'];
+function pubMirrorFromUser(u) {
+    var out = {};
+    PUB_MIRROR_FIELDS.forEach(function (f) { if (u && u[f] !== undefined) out[f] = u[f]; });
+    var digits = String((u && u.phone) || '').replace(/\D/g, '');
+    if (digits.length >= 4) out.phoneLast4 = digits.slice(-4);
+    return out;
+}
+function syncPublicProfilesMirror(usersVal) {
+    if (typeof db === 'undefined' || !db || !usersVal || typeof usersVal !== 'object') return;
+    clearTimeout(_pubMirrorTimer);
+    _pubMirrorTimer = setTimeout(function () {
+        db.ref('usersPublic').once('value').then(function (sn) {
+            var cur = sn.val() || {};
+            var updates = {};
+            Object.keys(usersVal).forEach(function (uid) {
+                var u = usersVal[uid];
+                if (!u || typeof u !== 'object' || !u.name) return;
+                var pub = pubMirrorFromUser(u);
+                var old = cur[uid];
+                var changed = !old || Object.keys(pub).some(function (f) { return JSON.stringify(old[f]) !== JSON.stringify(pub[f]); });
+                if (changed) updates['usersPublic/' + uid] = pub;
+            });
+            Object.keys(cur).forEach(function (uid) {
+                if (!usersVal[uid] || !usersVal[uid].name) updates['usersPublic/' + uid] = null;
+            });
+            var keys = Object.keys(updates);
+            if (!keys.length) return;
+            for (var i = 0; i < keys.length; i += 200) {
+                var chunk = {};
+                keys.slice(i, i + 200).forEach(function (k) { chunk[k] = updates[k]; });
+                db.ref().update(chunk).catch(function (err) { console.warn('[mirror] usersPublic sync failed', err); });
+            }
+        }).catch(function (err) { console.warn('[mirror] usersPublic read failed', err); });
+    }, 1500);
 }
 
 function changeRole(id, newRole, name) {

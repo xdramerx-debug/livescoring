@@ -32,7 +32,9 @@ module.exports = function createScoreAudit(functions, admin, db) {
         const now = Date.now();
         const rid = data && data.roundId, requestId = data && data.requestId;
         if (!validKey(rid) || !validKey(requestId) || requestId.length < 16) fail('invalid-argument', 'Invalid round or request ID');
-        if (!Number.isSafeInteger(data.queuedAt) || data.queuedAt < 0 || data.queuedAt > now + 5 * 60000) fail('failed-precondition', 'This offline score is more than 30 days old');
+        // Проверяем только реалистичность queuedAt (не в будущем). 30-дневное
+        // окно ретеншена обеспечивает purgeScoreAudit, а не эта проверка.
+        if (!Number.isSafeInteger(data.queuedAt) || data.queuedAt < 0 || data.queuedAt > now + 5 * 60000) fail('failed-precondition', 'Invalid queuedAt timestamp');
         const operations = data.operations;
         if (!Array.isArray(operations) || !operations.length || operations.length > 72) fail('invalid-argument', 'Invalid score batch');
         const own = data.actorPlayerId;

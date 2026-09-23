@@ -247,6 +247,7 @@ admin._load('js/course-config.js');
 admin._load('js/format.js');
 admin._load('js/utils.js');
 admin._load('js/admin.js');
+admin._load('js/admin-broadcasts.js');
 admin._captureToasts();
 var adminEls = domAdmin.els;
 var adminBroadcastsBefore = 0;

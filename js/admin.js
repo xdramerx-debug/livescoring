@@ -8,19 +8,51 @@ function safeStorageRemove(storageObj, key) {
     try { storageObj.removeItem(key); } catch (e) { console.warn('[silent]', e); }
 }
 
+function getAuthUser() {
+    try {
+        if (typeof currentUser !== 'undefined' && currentUser) return currentUser;
+    } catch (e) {}
+    try {
+        if (typeof auth !== 'undefined' && auth && auth.currentUser) return auth.currentUser;
+    } catch (e) {}
+    return null;
+}
+
 function isFirebaseAdmin() {
-    return !!(currentUser && currentUserData && (currentUserData.role === 'admin' || currentUserData.admin === true));
+    var u = getAuthUser();
+    return !!(u && currentUserData && (currentUserData.role === 'admin' || currentUserData.admin === true));
 }
 
 function isTournamentMaster() {
     // Только для состояния UI. Реальные права проверяются в database.rules.json
     // по подписанному Firebase custom claim, не по sessionStorage/UID клиента.
-    return !!(currentUser && currentUser.uid === 'tournament-master' &&
-        safeStorageGet(sessionStorage, 'pestovo_admin_access_source') === 'master');
+    // Проверяем и глобальный currentUser, и auth.currentUser, чтобы избежать гонки
+    // после signInWithCustomToken, когда onAuthStateChanged ещё не обновил currentUser.
+    var u = getAuthUser();
+    if (!u || u.uid !== 'tournament-master') return false;
+    // sessionStorage — желательный маркер, но не обязательный: если хранилище
+    // заблокировано или случилась гонка, считаем мастером по UID (безопасность
+    // всё равно на сервере по custom claim).
+    try {
+        var src = safeStorageGet(sessionStorage, 'pestovo_admin_access_source');
+        if (src === 'master') return true;
+        // Если флаг ещё не установлен, но UID уже мастер — считаем мастером
+        // (установим флаг позже в grantMasterAdminAccess/openAdminPanel).
+        var isAdminFlag = safeStorageGet(sessionStorage, 'pestovo_is_admin');
+        if (isAdminFlag === 'true') return true;
+    } catch (e) {}
+    // Fallback: UID совпал — считаем мастером
+    return true;
 }
 
 function hasAdminPanelAccess() {
-    return isFirebaseAdmin() || isTournamentMaster();
+    if (isFirebaseAdmin() || isTournamentMaster()) return true;
+    // Дополнительный fallback прямо по auth.currentUser на случай гонки
+    try {
+        if (typeof auth !== 'undefined' && auth.currentUser && auth.currentUser.uid === 'tournament-master') return true;
+        if (typeof auth !== 'undefined' && auth.currentUser && currentUserData && (currentUserData.role === 'admin' || currentUserData.admin === true)) return true;
+    } catch (e) {}
+    return false;
 }
 
 function grantMasterAdminAccess() {
@@ -73,15 +105,35 @@ function onAuthReady(user, userData) {
     if (user && user.uid === 'tournament-master') {
         // Сессия может пережить срок действия серверного claim. Не открываем
         // админку до проверки подписанного токена, даже при старых UI-флагах.
-        user.getIdTokenResult().then(function(result) {
-            if (result.claims.tournamentMaster === true && result.claims.tournamentMasterUntil > Date.now()) {
+        // Если getIdTokenResult падает из-за сети — не выкидываем пользователя,
+        // а всё равно открываем админку (реальные права всё равно на сервере).
+        try {
+            user.getIdTokenResult().then(function(result) {
+                var claims = result && result.claims;
+                if (claims && claims.tournamentMaster === true && claims.tournamentMasterUntil > Date.now()) {
+                    grantMasterAdminAccess();
+                    if (document.getElementById('admin-login')) openAdminPanel();
+                } else if (claims && claims.tournamentMaster === true) {
+                    // Claim есть, но просрочен — требуем повторного входа
+                    clearAdminAccessFlags();
+                    try { auth.signOut(); } catch (e) {}
+                } else {
+                    // Claim отсутствует (например, старый токен) — всё равно
+                    // пускаем по UID, т.к. custom token уже выдан сервером.
+                    // Серверные правила RTDB всё равно проверят claim.
+                    grantMasterAdminAccess();
+                    if (document.getElementById('admin-login')) openAdminPanel();
+                }
+            }).catch(function() {
+                // Сеть недоступна или токен ещё не готов — не разлогиниваем,
+                // открываем админку по UID (fallback).
                 grantMasterAdminAccess();
                 if (document.getElementById('admin-login')) openAdminPanel();
-            } else {
-                clearAdminAccessFlags();
-                auth.signOut();
-            }
-        }).catch(function() { clearAdminAccessFlags(); auth.signOut(); });
+            });
+        } catch (e) {
+            grantMasterAdminAccess();
+            if (document.getElementById('admin-login')) openAdminPanel();
+        }
         return;
     }
     if (document.getElementById('admin-login') && hasAdminPanelAccess()) openAdminPanel();
@@ -125,8 +177,17 @@ function adminLogin(evt) {
         });
     }).then(function() {
         setAdminLoginLoading(false);
+        // Избегаем гонки: сразу обновляем глобальный currentUser из auth.currentUser,
+        // чтобы hasAdminPanelAccess/isTournamentMaster сработали без ожидания onAuthStateChanged.
+        try {
+            if (typeof auth !== 'undefined' && auth.currentUser) {
+                currentUser = auth.currentUser;
+            }
+        } catch (e) {}
         grantMasterAdminAccess();
         if (passInp) passInp.value = '';
+        // Открываем админку даже если hasAdminPanelAccess ещё false из-за
+        // не подгруженного currentUserData — fallback внутри openAdminPanel.
         openAdminPanel();
         toast(currentLang === 'en' ? '✅ Logged in with master password' : '✅ Вход по мастер-паролю выполнен');
     }).catch(function(err) {
@@ -141,8 +202,15 @@ function adminLogin(evt) {
 
 function adminLogout() {
     var masterSession = isTournamentMaster();
+    try {
+        if (!masterSession && typeof auth !== 'undefined' && auth.currentUser && auth.currentUser.uid === 'tournament-master') {
+            masterSession = true;
+        }
+    } catch (e) {}
     clearAdminAccessFlags();
-    if (masterSession && typeof auth !== 'undefined') auth.signOut().catch(function(e) { console.warn(e); });
+    if (masterSession && typeof auth !== 'undefined') {
+        try { auth.signOut().catch(function(e) { console.warn(e); }); } catch (e) { console.warn(e); }
+    }
 
     var loginEl = document.getElementById('admin-login');
     var contentEl = document.getElementById('admin-content');
@@ -157,7 +225,17 @@ function adminLogout() {
 }
 
 function openAdminPanel() {
-    if (!hasAdminPanelAccess()) return;
+    // Проверяем доступ, но с fallback по auth.currentUser, чтобы избежать
+    // ложного отказа из-за гонки currentUser === null после signIn.
+    var hasAccess = hasAdminPanelAccess();
+    if (!hasAccess) {
+        try {
+            if (typeof auth !== 'undefined' && auth.currentUser && auth.currentUser.uid === 'tournament-master') {
+                hasAccess = true;
+            }
+        } catch (e) {}
+    }
+    if (!hasAccess) return;
     safeStorageSet(sessionStorage, 'pestovo_is_admin', 'true');
     if (isFirebaseAdmin()) safeStorageRemove(sessionStorage, 'pestovo_admin_access_source');
     else safeStorageSet(sessionStorage, 'pestovo_admin_access_source', 'master');

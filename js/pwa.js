@@ -133,7 +133,7 @@ function queueOfflineWrite(path,value){
 // и, оставаясь в очереди, блокировало бы все последующие. Разница с
 // score-write.js transient(): там список ВРЕМЕННЫХ, тут — ПЕРМАНЕНТНЫх кодов.
 function permanentScoreError(err) {
-    var code = String(err && err.code || '').replace(/^functions\//, '');
+    var code = String(err && err.code || '').replace(/^functions\//, '').toLowerCase().replace(/_/g, '-');
     return ['invalid-argument','permission-denied','failed-precondition','not-found','unauthenticated','unimplemented'].indexOf(code) >= 0;
 }
 
@@ -188,7 +188,7 @@ function syncOfflineScores(){
                 if(typeof pestovoScoreSend!=='function') throw new Error('Score server unavailable');
                 var expected=item.action.authUid;
                 var actual=(typeof currentUser!=='undefined'&&currentUser&&currentUser.uid)||null;
-                if(!item.action.qrAccess && expected!==undefined && expected!==actual) throw new Error('Sign in with the original account to sync this score');
+                if(!item.action.qrAccess && expected && actual && expected!==actual) throw new Error('Sign in with the original account to sync this score');
                 if(item.action.legacyMarker && !item.action.actorPlayerId) {
                     write=db.ref('rounds/'+item.action.roundId+'/players/'+item.action.operations[0].playerId+'/markedBy').once('value').then(function(sn) {
                         var markerId=sn.val();

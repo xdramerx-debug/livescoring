@@ -76,23 +76,23 @@
             ".write": "(auth.uid === $pid && auth.uid != 'tournament-master') || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid != 'tournament-master' && data.parent().parent().child('createdBy').val() === auth.uid) || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && (data.parent().parent().child('tournamentId').exists() || data.parent().parent().child('protocolId').exists()))",
             "scores": {
               "$hole": {
-                ".validate": "newData.val() === data.val()"
+                ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 1 && newData.val() <= 20)"
               }
             },
             "markerScores": {
               "$marker": {
                 "$hole": {
-                  ".validate": "newData.val() === data.val()"
+                  ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 1 && newData.val() <= 20)"
                 }
               }
             }
           }
         },
         "_scoreAuditOutbox": {
-          ".validate": "newData.val() === data.val()"
+          ".validate": "newData.val() === data.val() || auth != null"
         },
         "_scoreAuditIds": {
-          ".validate": "newData.val() === data.val()"
+          ".validate": "!newData.exists() || newData.isNumber() || newData.isString()"
         }
       }
     },
@@ -113,16 +113,16 @@
           }
         },
         "_scoreAuditOutbox": {
-          ".validate": "newData.val() === data.val()"
+          ".validate": "newData.val() === data.val() || auth != null"
         },
         "_scoreAuditIds": {
-          ".validate": "newData.val() === data.val()"
+          ".validate": "!newData.exists() || newData.isNumber() || newData.isString()"
         },
         "scores": {
           "$day": {
             "$pid": {
               "$hole": {
-                ".validate": "newData.val() === data.val()"
+                ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 1 && newData.val() <= 20)"
               }
             }
           }
@@ -147,11 +147,11 @@
     },
     "markers": {
       ".read": "auth != null",
-      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now)",
+      ".write": "auth != null",
       "$rid": {
         "$pid": {
           "$hole": {
-            ".validate": "newData.val() === data.val()"
+            ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 1 && newData.val() <= 20)"
           }
         }
       }

@@ -391,6 +391,7 @@ function switchTab(t, b) {
 
     if (t === 'scorecards') {
         renderClubScorecardPreview();
+        renderScoreEntryPreview();
         pestovoBindView5('scorecard', function() { renderClubScorecardPreview(); });
     }
     if (t === 'groups') {

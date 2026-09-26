@@ -216,10 +216,8 @@ function buildHoles() {
         else if (s >= 1) cls += ' pending';
         // Текущая лунка без введённого счёта мигает серым (как в основном вводе).
         if (h === scHole && !(s >= 1)) cls += ' cur-blink';
-        html += '<button class="hole-btn ' + cls + '" onclick="goSc(' + h + ')">' +
-            '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + (typeof hcpStrokesMarksHTML === 'function' ? hcpStrokesMarksHTML(scFieldHcp, h) : '') + '</span>' +
-            (typeof hbnScoresHtml === 'function' ? hbnScoresHtml(s, ms) : '') +
-            '</button>';
+        html += '<button type="button" class="hole-btn ' + cls + '" onclick="goSc(' + h + ')" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === scHole ? 'true' : 'false') + '">' +
+            entryHoleContentHTML(s, ms, h, scFieldHcp) + '</button>';
     });
     el.innerHTML = html;
 }

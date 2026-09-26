@@ -729,7 +729,7 @@ function initP0MobileEnhancements(){
         var saveBtn=document.querySelector('#sc-save-btn, .btn-save-hole, [data-action="save-hole"]');
         // fallback: find any button with text Save / Сохранить inside scorer
         if(!saveBtn){
-            var btns=document.querySelectorAll('button');
+            var btns=document.querySelectorAll('.score-entry:not([data-entry-preview]) button');
             for(var i=0;i<btns.length;i++){ var tx=(btns[i].textContent||'').toLowerCase(); if(tx.indexOf('сохран')!==-1){ saveBtn=btns[i]; break; } }
         }
         if(saveBtn && !document.getElementById('p0-sticky-actions')){
@@ -2780,13 +2780,27 @@ function stablefordPointsText(points) {
     return points + ' ' + pluralN(points, 'очко', 'очка', 'очков') + ' Stableford';
 }
 
+// Shared score square: handicap is attached to the score, never the hole number.
+function scoreSquareHTML(score, hole, fieldHcp) {
+    var n = parseInt(score, 10) || 0;
+    var strokes = hcpStrokesOnHole(hole, fieldHcp || 0);
+    var marks = hcpStrokesMarksHTML(fieldHcp || 0, hole);
+    return '<span class="entry-score-square"><span class="score-gross">' + (n > 0 ? n : '—') + '</span>' +
+        (marks ? '<span class="entry-handicap" role="img" aria-label="' + (currentLang === 'en' ? 'Handicap strokes: ' : 'Удары форы: ') + strokes + '">' + marks + '</span>' : '') + '</span>';
+}
+
+function entryHoleContentHTML(score, marker, hole, fieldHcp) {
+    return '<span class="entry-hole-number">' + hole + '<small>' + (currentLang === 'en' ? 'Par ' : 'Пар ') + holePar(hole) + '</small></span>' +
+        scoreSquareHTML(score, hole, fieldHcp) +
+        (marker === null ? '' : '<span class="entry-marker">' + (currentLang === 'en' ? 'M ' : 'М ') + (parseInt(marker, 10) > 0 ? parseInt(marker, 10) : '—') + '</span>');
+}
+
 // Разметка крупного счёта: gross остаётся главным, а очки отображаются рядом,
 // например: 4 (3 очка Stableford). Используется в каждом экране ввода счёта.
 function scoreWithStablefordHTML(score, holeNum, fieldHcp, showStableford) {
     var gross = parseInt(score) || 0;
-    if (gross < 1) return '—';
-    var html = '<span class="score-gross">' + gross + '</span>';
-    if (showStableford) {
+    var html = scoreSquareHTML(gross, holeNum, fieldHcp);
+    if (showStableford && gross > 0) {
         var points = stablefordField(gross, holeNum, fieldHcp || 0);
         var label = stablefordPointsText(points);
         html += '<span class="score-stableford-points" aria-label="' + label + '">(' + label + ')</span>';
@@ -2963,29 +2977,28 @@ function renderClubScorecard(player, round, opts) {
     var name = typeof privacyDisplayName === 'function' ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
     var stats = calcRoundStats(scores, hcp, p.exactHcp || 0, order);
     var current = playerCurrentHole(r, pid, p, stats, order);
-    var labels = [en ? 'Hole' : 'Лунка', en ? 'Par' : 'Пар', 'SI', en ? 'Hcp' : 'Фора', en ? 'Score' : 'Счёт', 'Stbl'];
+    var labels = [en ? 'Hole' : 'Лунка', en ? 'Par' : 'Пар', en ? 'Score' : 'Счёт'];
     if (opts.showMarker) labels.push(en ? 'Marker' : 'Маркер');
     var html = '<section class="club-sc" data-sc-view="' + getRoundScorecardView() + '" aria-label="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
     html += '<header class="club-sc-head"><strong>' + escapeHtml(name) + '</strong> ' + fmtTeePill(tee) + '<span>HCP ' + escapeHtml(fmtFieldHcp(hcp)) + '</span></header>';
     if (opts.label) html += '<div class="club-sc-caption">' + escapeHtml(opts.label) + '</div>';
-    var total = 0, points = 0, played = 0;
+    var total = 0, played = 0;
     // Keep the actual playing order, including shotgun starts and nine-hole rounds.
     for (var offset = 0; offset < order.length; offset += 9) {
-        var holes = order.slice(offset, offset + 9), gross = 0, stbl = 0, count = 0;
+        var holes = order.slice(offset, offset + 9), gross = 0, count = 0;
         html += '<div class="club-sc-side"><div class="club-sc-caption">' + (en ? 'Holes ' : 'Лунки ') + holes[0] + '–' + holes[holes.length - 1] + '</div>';
         html += '<div class="club-sc-scroll" tabindex="0" aria-label="' + (en ? 'Hole results' : 'Результаты по лункам') + '"><div class="club-sc-grid" style="--sc-holes:' + holes.length + '">';
         html += '<div class="club-sc-labels">' + labels.map(function(label) { return '<div>' + label + '</div>'; }).join('') + '</div>';
         holes.forEach(function(h) {
             var s = parseInt(scores[h], 10) || 0, par = holePar(h);
-            var pts = s > 0 ? stablefordField(s, h, hcp) : 0;
-            if (s > 0) { gross += s; stbl += pts; count++; }
+            if (s > 0) { gross += s; count++; }
             var verify = getHoleVerifyState(p, h);
             var cls = verify === 'mismatch' ? ' cell-mismatch' : '';
             if (h === current) cls += ' sc-cur-tile';
             var strokes = hcpStrokesOnHole(h, hcp);
             var marks = hcpStrokesMarksHTML(hcp, h);
-            if (marks) marks = '<span role="img" aria-label="' + (en ? 'Handicap strokes: ' : 'Удары форы: ') + strokes + '">' + marks + '</span>';
-            var values = [h, par, holeHcp(h), marks || '—', s > 0 ? s : '—', s > 0 ? pts : '—'];
+            if (marks) marks = '<span class="club-sc-handicap" role="img" aria-label="' + (en ? 'Handicap strokes: ' : 'Удары форы: ') + strokes + '">' + marks + '</span>';
+            var values = [h, par, s > 0 ? s : '—'];
             if (opts.showMarker) {
                 var mk = opts.markerScores ? parseInt(opts.markerScores[h], 10) || 0 : getPlayerMarkerScoreForHole(p, h).score;
                 values.push(mk > 0 ? mk : '—');
@@ -2993,15 +3006,15 @@ function renderClubScorecard(player, round, opts) {
             }
             html += '<div class="club-sc-hole' + cls + '" data-sc-player="' + escapeHtml(pid) + '" data-sc-hole="' + h + '"' + (h === current ? ' data-sc-current="1"' : '') + '>';
             values.forEach(function(value, index) {
-                var cellClass = ['number', 'par', 'si', 'hcp', 'score', 'points', 'marker'][index];
-                html += '<div class="club-sc-cell club-sc-' + cellClass + (index === 4 && s > 0 ? ' ' + holeResClass(s, par) : '') + '"><span class="club-sc-cell-label">' + labels[index] + '</span><span class="club-sc-value">' + value + '</span></div>';
+                var cellClass = ['number', 'par', 'score', 'marker'][index];
+                html += '<div class="club-sc-cell club-sc-' + cellClass + (index === 2 && s > 0 ? ' ' + holeResClass(s, par) : '') + '"><span class="club-sc-cell-label">' + labels[index] + '</span><span class="club-sc-value">' + value + (index === 2 ? marks : '') + '</span></div>';
             });
             html += '</div>';
         });
-        total += gross; points += stbl; played += count;
-        html += '</div></div><div class="club-sc-subtotal">' + (en ? 'Subtotal' : 'Промежуточный итог') + ': <b>' + (count ? gross : '—') + '</b> · Stbl <b>' + (count ? stbl : '—') + '</b></div></div>';
+        total += gross; played += count;
+        html += '</div></div><div class="club-sc-subtotal">' + (en ? 'Subtotal' : 'Промежуточный итог') + ': <b>' + (count ? gross : '—') + '</b></div></div>';
     }
-    html += '<footer class="club-sc-total"><span>Gross <b>' + (played ? total : '—') + '</b></span><span>Stableford <b>' + (played ? points : '—') + '</b></span><span>' + (en ? 'Played ' : 'Сыграно ') + played + '/' + order.length + '</span></footer>';
+    html += '<footer class="club-sc-total"><span>Gross <b>' + (played ? total : '—') + '</b></span><span>' + (en ? 'Played ' : 'Сыграно ') + played + '/' + order.length + '</span></footer>';
     return html + '</section>';
 }
 
@@ -6417,6 +6430,7 @@ function applyView5(name, value) {
     if (name === 'scorecard' && typeof document !== 'undefined' && document.querySelectorAll) {
         document.querySelectorAll('.club-sc:not([data-sc-preview])').forEach(function(el) { el.setAttribute('data-sc-view', v); });
     }
+    if (name === 'scoring') syncScoreEntryLayouts();
     try { localStorage.setItem(PESTOVO_VIEW5_CONFIG[name].storage, v); } catch (e) { console.warn("[silent]", e); }
     try { syncView5BodyClasses(); } catch (e) { console.warn("[silent]", e); }
     try { if (typeof markAdmView5Buttons === 'function') markAdmView5Buttons(name); } catch (e) { console.warn("[silent]", e); }
@@ -7554,6 +7568,7 @@ if (typeof db !== 'undefined') {
 document.addEventListener('DOMContentLoaded', function() {
     syncView5BodyClasses();
     pestovoBindView5('scorecard', function() {});
+    initScoreEntryLayouts();
     applyPageVisibilitySettings();
 });
 
@@ -9833,4 +9848,51 @@ if(typeof document!=='undefined'){
     document.addEventListener('DOMContentLoaded', function(){ try{ initP0MobileEnhancements(); }catch (e) { console.warn("[silent]", e); } });
     // also try immediately in case DOM already ready and initNav already fired
     if(document.readyState!=='loading'){ setTimeout(function(){ try{ initP0MobileEnhancements(); }catch (e) { console.warn("[silent]", e); } }, 80); }
+}
+
+
+// Order is normalized so stale/invalid settings never hide an input block.
+var SCORE_ENTRY_BLOCKS = ['info', 'holes', 'input'];
+function normalizeScoreEntryOrder(value) {
+    var order = Array.isArray(value) ? value.filter(function(key, i) {
+        return SCORE_ENTRY_BLOCKS.indexOf(key) !== -1 && value.indexOf(key) === i;
+    }) : [];
+    return order.concat(SCORE_ENTRY_BLOCKS.filter(function(key) { return order.indexOf(key) === -1; }));
+}
+var scoreEntryOrder = (function() {
+    try { return normalizeScoreEntryOrder(JSON.parse(localStorage.getItem('pestovo_scoring_order'))); }
+    catch (e) { return normalizeScoreEntryOrder(null); }
+})();
+function arrangeScoreEntry(root, view, order) {
+    root.setAttribute('data-entry-view', normalizeView5(view));
+    var blocks = Array.from(root.children).filter(function(el) { return el.hasAttribute('data-entry-block'); });
+    var sorted = normalizeScoreEntryOrder(order).map(function(key) {
+        return blocks.find(function(el) { return el.getAttribute('data-entry-block') === key; });
+    }).filter(Boolean);
+    if (sorted.some(function(el, i) { return blocks[i] !== el; })) {
+        var focused = root.contains(document.activeElement) ? document.activeElement : null;
+        sorted.forEach(function(el) { root.appendChild(el); });
+        if (focused && typeof focused.focus === 'function') focused.focus({ preventScroll: true });
+    }
+}
+function syncScoreEntryLayouts() {
+    if (typeof document === 'undefined' || !document.querySelectorAll) return;
+    document.querySelectorAll('.score-entry:not([data-entry-preview])').forEach(function(root) {
+        arrangeScoreEntry(root, getScoringView(), scoreEntryOrder);
+    });
+}
+function applyScoreEntryOrder(value) {
+    scoreEntryOrder = normalizeScoreEntryOrder(value);
+    try { localStorage.setItem('pestovo_scoring_order', JSON.stringify(scoreEntryOrder)); } catch (e) { /* no storage */ }
+    syncScoreEntryLayouts();
+}
+function initScoreEntryLayouts() {
+    syncScoreEntryLayouts();
+    pestovoBindView5('scoring', function() { syncScoreEntryLayouts(); });
+    if (typeof db !== 'undefined' && db) {
+        var ref = db.ref('settings/scoring_order');
+        var receive = function(sn) { applyScoreEntryOrder(sn.val()); };
+        if (typeof bindRealtimeValue === 'function') bindRealtimeValue('scoring-order', ref, receive);
+        else ref.on('value', receive);
+    }
 }

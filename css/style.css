@@ -5135,50 +5135,50 @@ body.sun-mode .hole-btn.active.cur-blink{
 /* ── СТРАНИЦА ВВОДА СЧЁТА: 5 ВИДОВ (body.st-scoring-vN, выбирает админ) ── */
 /* v1 — классика (без изменений) */
 /* v2 — «Крупный счёт»: большие цифры и кнопки ± */
-body.st-scoring-v2 .score-disp{font-size:64px!important;min-height:68px;}
-body.st-scoring-v2 .score-btns .score-minus,
-body.st-scoring-v2 .score-btns .score-plus{border-radius:16px!important;}
-body.st-scoring-v2 .hole-val{font-size:34px!important;}
-body.st-scoring-v2 .hole-lbl{font-size:11px;letter-spacing:.6px;}
-body.st-scoring-v2 .score-result{font-size:14px!important;}
-body.st-scoring-v2 .hole-btn{font-size:14px;min-height:46px;}
+.score-entry[data-entry-view="2"] .score-disp{font-size:64px!important;min-height:68px;}
+.score-entry[data-entry-view="2"] .score-btns .score-minus,
+.score-entry[data-entry-view="2"] .score-btns .score-plus{border-radius:16px!important;}
+.score-entry[data-entry-view="2"] .hole-val{font-size:34px!important;}
+.score-entry[data-entry-view="2"] .hole-lbl{font-size:11px;letter-spacing:.6px;}
+.score-entry[data-entry-view="2"] .score-result{font-size:14px!important;}
+.score-entry[data-entry-view="2"] .hole-btn{font-size:14px;min-height:46px;}
 
 /* v3 — «Компакт»: всё плотнее, влезает один экран телефона */
-body.st-scoring-v3 .card{padding:12px 10px!important;margin-bottom:10px!important;}
-body.st-scoring-v3 .hole-display{gap:6px;margin-bottom:8px;}
-body.st-scoring-v3 .hole-box{padding:5px 6px;}
-body.st-scoring-v3 .hole-val{font-size:20px!important;}
-body.st-scoring-v3 .hole-nav{gap:3px!important;margin-bottom:8px!important;}
-body.st-scoring-v3 .hole-btn{padding:5px 2px;font-size:11px;min-height:34px;}
-body.st-scoring-v3 .score-disp{font-size:34px!important;min-height:38px;}
-body.st-scoring-v3 .score-result{font-size:10px!important;padding:2px 8px!important;}
-body.st-scoring-v3 .dual-header h3{font-size:12px!important;}
-body.st-scoring-v3 .scoring-columns{margin-bottom:8px!important;gap:6px!important;}
-body.st-scoring-v3 .scoring-dual-block{padding:6px 4px!important;}
+.score-entry[data-entry-view="3"]{padding:12px 10px!important;margin-bottom:10px!important;}
+.score-entry[data-entry-view="3"] .hole-display{gap:6px;margin-bottom:8px;}
+.score-entry[data-entry-view="3"] .hole-box{padding:5px 6px;}
+.score-entry[data-entry-view="3"] .hole-val{font-size:20px!important;}
+.score-entry[data-entry-view="3"] .hole-nav{gap:3px!important;margin-bottom:8px!important;}
+.score-entry[data-entry-view="3"] .hole-btn{padding:5px 2px;font-size:11px;min-height:34px;}
+.score-entry[data-entry-view="3"] .score-disp{font-size:34px!important;min-height:38px;}
+.score-entry[data-entry-view="3"] .score-result{font-size:10px!important;padding:2px 8px!important;}
+.score-entry[data-entry-view="3"] .dual-header h3{font-size:12px!important;}
+.score-entry[data-entry-view="3"] .scoring-columns{margin-bottom:8px!important;gap:6px!important;}
+.score-entry[data-entry-view="3"] .scoring-dual-block{padding:6px 4px!important;}
 
 /* v4 — «Контраст»: тёмные плашки, крупная текущая лунка, золотой акцент */
-body.st-scoring-v4 .scoring-dual-block{background:rgba(0,0,0,.42);border-width:2px;}
-body.st-scoring-v4 .my-score-block{border-top:5px solid var(--gold);}
-body.st-scoring-v4 .marker-score-block{border-top:5px solid #9b59b6;}
-body.st-scoring-v4 .score-disp{font-weight:900;letter-spacing:1px;}
-body.st-scoring-v4 .hole-box{background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.35);border-radius:12px;}
-body.st-scoring-v4 .hole-box .hole-val{color:var(--gold-l);}
-body.st-scoring-v4 .hole-btn.active{box-shadow:0 0 0 3px rgba(201,168,76,.35),0 0 22px rgba(201,168,76,.55);}
+.score-entry[data-entry-view="4"] .scoring-dual-block{background:rgba(0,0,0,.42);border-width:2px;}
+.score-entry[data-entry-view="4"] .my-score-block{border-top:5px solid var(--gold);}
+.score-entry[data-entry-view="4"] .marker-score-block{border-top:5px solid #9b59b6;}
+.score-entry[data-entry-view="4"] .score-disp{font-weight:900;letter-spacing:1px;}
+.score-entry[data-entry-view="4"] .hole-box{background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.35);border-radius:12px;}
+.score-entry[data-entry-view="4"] .hole-box .hole-val{color:var(--gold-l);}
+.score-entry[data-entry-view="4"] .hole-btn.active{box-shadow:0 0 0 3px rgba(201,168,76,.35),0 0 22px rgba(201,168,76,.55);}
 
 /* v5 — «Минимализм»: тонкие рамки, без теней и лишнего веса */
-body.st-scoring-v5 .scoring-dual-block{box-shadow:none;background:transparent;border:1px solid var(--border);}
-body.st-scoring-v5 .hole-btn{border-width:1px;font-weight:600;}
-body.st-scoring-v5 .hole-btn.active{box-shadow:none;background:var(--input);border-color:var(--gold);color:var(--gold);}
-body.st-scoring-v5 .score-disp{font-size:44px;font-weight:300;}
-body.st-scoring-v5 .score-btns .score-minus,
-body.st-scoring-v5 .score-btns .score-plus{background:transparent;border:1px solid var(--border);box-shadow:none;}
-body.st-scoring-v5 .card{box-shadow:none;}
-body.st-scoring-v5 .dual-header .score-hint{display:none;}
+.score-entry[data-entry-view="5"] .scoring-dual-block{box-shadow:none;background:transparent;border:1px solid var(--border);}
+.score-entry[data-entry-view="5"] .hole-btn{border-width:1px;font-weight:600;}
+.score-entry[data-entry-view="5"] .hole-btn.active{box-shadow:none;background:var(--input);border-color:var(--gold);color:var(--gold);}
+.score-entry[data-entry-view="5"] .score-disp{font-size:44px;font-weight:300;}
+.score-entry[data-entry-view="5"] .score-btns .score-minus,
+.score-entry[data-entry-view="5"] .score-btns .score-plus{background:transparent;border:1px solid var(--border);box-shadow:none;}
+.score-entry[data-entry-view="5"]{box-shadow:none;}
+.score-entry[data-entry-view="5"] .dual-header .score-hint{display:none;}
 
 /* Групповой раунд: блоки счёта в одну колонку на узких экранах для v2/v4 */
 @media(max-width:520px){
-    body.st-scoring-v2 .scoring-columns,
-    body.st-scoring-v4 .scoring-columns{flex-direction:column;}
+    .score-entry[data-entry-view="2"] .scoring-columns,
+    .score-entry[data-entry-view="4"] .scoring-columns{flex-direction:column;}
 }
 
 /* ── СЧЁТНАЯ КАРТОЧКА ПО ЛУНКАМ: 5 ВИДОВ (body.st-scorecard-vN) ── */
@@ -5457,9 +5457,9 @@ body{--score-btn:64px;--score-btn-fs:28px;}
 /* Двойной ввод «Я / Маркер» на странице раунда — компактнее, но не мельче 44px */
 body.score-compact{--score-btn:48px;--score-btn-fs:22px;}
 /* Пресет «Крупный счёт» */
-body.st-scoring-v2{--score-btn:64px;--score-btn-fs:30px;}
+.score-entry[data-entry-view="2"]{--score-btn:64px;--score-btn-fs:30px;}
 /* Пресет «Компакт»: было 42px — меньше touch-минимума, стало 48px */
-body.st-scoring-v3{--score-btn:48px;--score-btn-fs:22px;}
+.score-entry[data-entry-view="3"]{--score-btn:48px;--score-btn-fs:22px;}
 /* Режим доступности «Крупный интерфейс» — объявлен последним намеренно */
 body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
 
@@ -5537,13 +5537,18 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
 .club-sc-labels>div { justify-content:flex-start; font-size:10px; color:var(--muted); }
 .club-sc-number { background:var(--gold); color:#142017; font-weight:800; }
 .club-sc-par { background:rgba(201,168,76,.16); }
-.club-sc-si, .club-sc-points { color:var(--muted); }
 .club-sc-score { font-size:17px; font-weight:800; }
 .club-sc-marker { color:var(--blue, #85c9ff); }
 .club-sc-cell-label { display:none; }
 .club-sc-value { display:flex; align-items:center; justify-content:center; gap:2px; min-width:0; }
-.club-sc .hcp-marks { position:static; display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center; gap:2px; max-width:100%; }
-.club-sc .hm-bar { width:2px; height:11px; background:var(--gold); }
+/* Keep handicap slashes inside the score square, away from the digit. */
+.club-sc-score .club-sc-value { position:relative; width:32px; max-width:100%; aspect-ratio:1; flex-shrink:0; padding-top:5px; line-height:1; }
+.club-sc-handicap { position:absolute; top:2px; right:3px; max-width:calc(100% - 5px); pointer-events:none; }
+.club-sc .hcp-marks { position:static; display:flex; flex-direction:row; flex-wrap:wrap; justify-content:flex-end; gap:2px; margin:0; max-width:100%; }
+.club-sc .hm-bar { flex:0 0 1.5px; width:1.5px; height:6px; transform:rotate(25deg); background:var(--gold); box-shadow:none; }
+.club-sc[data-sc-view="3"] .club-sc-score .club-sc-value { width:44px; }
+.club-sc[data-sc-view="5"] .club-sc-score .club-sc-value { width:56px; }
+.club-sc[data-sc-view="5"] .hm-bar { height:8px; }
 .club-sc .hm-minus .hm-bar { background:var(--red, #ff8171); }
 .club-sc-subtotal { text-align:right; font-size:11px; padding:8px 0; color:var(--muted); }
 .club-sc-total { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; border-top:1px solid var(--border); padding-top:10px; font-size:12px; }
@@ -5565,15 +5570,16 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
 .club-sc[data-sc-view="3"] .club-sc-score { font-size:24px; }
 /* 4: One hole per row, no sideways scrolling. */
 .club-sc[data-sc-view="4"] .club-sc-grid { grid-template-columns:1fr; gap:6px; }
-.club-sc[data-sc-view="4"] .club-sc-grid>.club-sc-hole { grid-template-columns:repeat(6,minmax(0,1fr)); grid-auto-rows:auto; border-radius:8px; overflow:hidden; }
-.club-sc[data-sc-view="4"] .club-sc-grid>.club-sc-hole:has(.club-sc-marker) { grid-template-columns:repeat(7,minmax(0,1fr)); }
+.club-sc[data-sc-view="4"] .club-sc-grid>.club-sc-hole { grid-template-columns:repeat(3,minmax(0,1fr)); grid-auto-rows:auto; border-radius:8px; overflow:hidden; }
+.club-sc[data-sc-view="4"] .club-sc-grid>.club-sc-hole:has(.club-sc-marker) { grid-template-columns:repeat(4,minmax(0,1fr)); }
 .club-sc[data-sc-view="4"] .club-sc-cell { flex-direction:column; gap:6px; padding:8px 1px; }
-/* 5: Compact tiles with prominent score; all course facts remain visible. */
+/* 5: Compact tiles with prominent score. */
 .club-sc[data-sc-view="5"] .club-sc-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .club-sc[data-sc-view="5"] .club-sc-grid>.club-sc-hole { grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:auto; gap:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
 .club-sc[data-sc-view="5"] .club-sc-cell { flex-direction:column; gap:3px; padding:5px 2px; }
 .club-sc[data-sc-view="5"] .club-sc-cell.club-sc-number { grid-column:1 / -1; flex-direction:row; gap:6px; }
 .club-sc[data-sc-view="5"] .club-sc-score { grid-column:1 / -1; grid-row:2; font-size:28px; min-height:52px; }
+.club-sc[data-sc-view="5"] .club-sc-par { grid-column:1 / -1; }
 .club-sc[data-sc-view="5"] .club-sc-marker { grid-column:1 / -1; }
 .club-sc-options { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:8px; margin:16px 0; }
 .club-sc-options button { text-align:left; white-space:normal; min-height:56px; }
@@ -5586,3 +5592,39 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
     .club-sc-score { font-size:15px; }
     .club-sc[data-sc-view="2"] .club-sc-cell { padding:4px 3px; }
 }
+
+
+/* Input score squares match the shared on-screen scorecard. */
+.entry-score-square { position:relative; display:inline-flex; align-items:center; justify-content:center; width:1.5em; aspect-ratio:1; padding-top:5px; flex:none; line-height:1; font-weight:800; border:1px solid var(--border); border-radius:4px; background:rgba(201,168,76,.08); }
+.entry-handicap { position:absolute; top:4px; right:5px; max-width:calc(100% - 8px); }
+.entry-score-square .hcp-marks { position:static; display:flex; flex-direction:row; flex-wrap:wrap; gap:3px; margin:0; justify-content:flex-end; }
+.entry-score-square .hm-bar { flex:0 0 2px; width:2px; height:8px; transform:rotate(25deg); background:var(--gold); box-shadow:none; }
+.entry-score-square .hm-minus .hm-bar { background:var(--red, #ff8171); }
+.score-entry { min-width:0; --score-btn:56px; --score-btn-fs:26px; }
+.score-entry > [data-entry-block] { min-width:0; margin-bottom:12px; }
+.score-entry .hole-nav { display:grid!important; grid-template-columns:repeat(6,minmax(0,1fr))!important; gap:4px!important; width:100%; }
+.score-entry .hole-btn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; width:100%; min-width:0; height:auto!important; min-height:70px; padding:4px 1px!important; }
+.score-entry .entry-hole-number { font-size:12px; line-height:1.2; font-weight:800; }
+.score-entry .entry-hole-number small { display:block; font-size:9px; font-weight:400; }
+.score-entry .hole-btn .entry-score-square { width:28px; max-width:100%; font-size:16px; }
+.score-entry .hole-btn .entry-handicap { top:2px; right:3px; }
+.score-entry .hole-btn .hcp-marks { position:static; gap:2px; }
+.score-entry .hole-btn .hm-bar { width:1.5px; flex-basis:1.5px; height:6px; }
+.score-entry .entry-marker { font-size:10px; color:var(--blue, #85c9ff); line-height:1.2; }
+.score-entry .score-disp { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px; }
+.score-entry .scoring-columns { display:flex; flex-direction:column; gap:8px; }
+.score-entry .scoring-dual-block { min-width:0; margin:0; }
+.score-entry .score-btns button { min-width:44px; min-height:44px; }
+.score-entry .hole-btn:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.score-entry[data-entry-view="2"] .hole-nav { grid-template-columns:repeat(3,minmax(0,1fr))!important; }
+.score-entry[data-entry-view="2"] .hole-btn .entry-score-square { width:40px; font-size:24px; }
+.score-entry[data-entry-view="3"] .hole-nav { grid-template-columns:repeat(9,minmax(0,1fr))!important; gap:2px!important; }
+.score-entry[data-entry-view="3"] .hole-btn { min-height:62px; }
+.score-entry[data-entry-view="3"] .hole-btn .entry-score-square { width:24px; font-size:13px; }
+.score-entry[data-entry-view="4"] .entry-score-square { border:2px solid var(--gold); background:var(--bg); color:var(--gold-l); }
+.score-entry[data-entry-view="5"] .entry-score-square { background:transparent; box-shadow:none; font-weight:500; }
+#score-entry-preview .score-entry { padding:8px; margin:0; }
+#score-entry-preview button:disabled { opacity:1; cursor:default; }
+.entry-order-row { display:flex; align-items:center; gap:8px; margin:8px 0; }
+.entry-order-row > span { flex:1; min-width:0; }
+.entry-order-row button { min-width:44px; min-height:44px; }

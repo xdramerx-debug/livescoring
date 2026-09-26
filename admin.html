@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=c510c468">
+    <link rel="stylesheet" href="css/style.css?v=844e2586">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tn-wizard.css?v=01173cbb">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=6aa85f7a">
@@ -115,6 +115,26 @@
                 <h3>Предпросмотр для телефона</h3>
                 <p style="color:var(--muted);font-size:12px;">Демонстрационные данные · ширина до 390 px. Палочки — удары форы; красные — отдаваемые удары. «—» означает, что счёт ещё не введён. Несовпадение с маркером подсвечивается.</p>
                 <div id="club-sc-preview" class="club-sc-phone"></div>
+            </div>
+            <div class="card" id="score-entry-settings">
+                <h2>Ввод результатов</h2>
+                <p>Одиночный и групповой раунд, страницы игрока и маркера. Счёт в квадрате, фора — наклонными черточками справа сверху.</p>
+                <div class="club-sc-options">
+                    <button type="button" id="v5-scoring-1" class="btn btn-og" aria-pressed="false" onclick="previewScoreEntryView('1')">1 · Классика</button>
+                    <button type="button" id="v5-scoring-2" class="btn btn-og" aria-pressed="false" onclick="previewScoreEntryView('2')">2 · Крупный счёт</button>
+                    <button type="button" id="v5-scoring-3" class="btn btn-og" aria-pressed="false" onclick="previewScoreEntryView('3')">3 · Компакт</button>
+                    <button type="button" id="v5-scoring-4" class="btn btn-og" aria-pressed="false" onclick="previewScoreEntryView('4')">4 · Контраст</button>
+                    <button type="button" id="v5-scoring-5" class="btn btn-og" aria-pressed="false" onclick="previewScoreEntryView('5')">5 · Минимализм</button>
+                </div>
+                <h3>Иерархия блоков ввода</h3>
+                <p>Порядок сверху вниз. Перемещайте блоки стрелками — предпросмотр обновится сразу. Кнопка сохранения остаётся вместе с вводом счёта.</p>
+                <div id="score-entry-order"></div>
+                <button type="button" class="btn btn-g" id="score-entry-apply" onclick="saveScoreEntryLayout()">Применить вид и порядок для всех</button>
+                <p id="score-entry-status" role="status" aria-live="polite"></p>
+                <h3>Предпросмотр для телефона</h3>
+                <label>Режим <select id="score-entry-mode" class="form-input" onchange="renderScoreEntryPreview()"><option value="group">Игрок и маркируемый</option><option value="solo">Одиночный раунд</option><option value="marker">Маркер</option></select></label>
+                <p>Демонстрационные данные · ширина до 390 px. Выбор варианта и перестановка блоков ничего не записывают до применения.</p>
+                <div id="score-entry-preview" class="club-sc-phone"></div>
             </div>
         </div>
 
@@ -836,20 +856,6 @@
                         <button type="button" id="v5-homeTournament-5" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','5')" aria-pressed="false"><i class="fas fa-feather"></i> 5 · Мини</button>
                     </div>
                 </div>
-                <!-- Вид страницы ввода счёта — 5 вариантов -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.4);border-radius:10px;margin-bottom:16px;">
-                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-gamepad" style="color:#2ecc71;"></i> <span>Страница ввода счёта (5 видов)</span></span>
-                    <div style="font-size:12px;color:var(--muted);margin-top:4px;">
-                        Оформление всех блоков страницы ввода счёта — одиночный и групповой раунд: панель лунок, цифры счёта, кнопки ±, блок маркера. Выбирает только админ, применяется ко всем игрокам.
-                    </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="v5-scoring-1" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scoring','1')" aria-pressed="true"><i class="fas fa-check"></i> 1 · Классика</button>
-                        <button type="button" id="v5-scoring-2" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scoring','2')" aria-pressed="false"><i class="fas fa-font"></i> 2 · Крупный счёт</button>
-                        <button type="button" id="v5-scoring-3" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scoring','3')" aria-pressed="false"><i class="fas fa-compress"></i> 3 · Компакт</button>
-                        <button type="button" id="v5-scoring-4" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scoring','4')" aria-pressed="false"><i class="fas fa-circle-half-stroke"></i> 4 · Контраст</button>
-                        <button type="button" id="v5-scoring-5" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scoring','5')" aria-pressed="false"><i class="fas fa-feather"></i> 5 · Минимализм</button>
-                    </div>
-                </div>
                 <!-- Блок «Создание раунда» — 5 вариантов -->
                 <div class="list-item" style="padding:14px 16px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.45);border-radius:10px;margin-bottom:16px;">
                     <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-user-plus" style="color:#9b59b6;"></i> <span>Создание раунда: 1 игрок или группа (5 видов)</span></span>
@@ -971,14 +977,14 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.89.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.90.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="js/firebase-config.js?v=57564a0d"></script>
 <script type="module" src="dist/livescoring-modules.js?v=8347afb4"></script>
-    <script src="js/utils.js?v=d8950690"></script>
+    <script src="js/utils.js?v=26560aa7"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/name-variants.js?v=9fc593e7"></script>
 <script src="js/tournament-core.js?v=a19eaf5c"></script>
@@ -987,7 +993,7 @@
 <script src="js/tournament-admin.js?v=7265cd3b"></script>
 <script src="js/tn-studio-core.js?v=084a748a"></script>
 <script src="js/tn-studio.js?v=6070fd0a"></script>
-<script src="js/admin.js?v=d813824b"></script>
+<script src="js/admin.js?v=cf0450c0"></script>
 <script src="js/admin-groups.js?v=ff8859f1"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
 <script src="js/admin-players.js?v=7634440f"></script>
@@ -1001,7 +1007,7 @@
 <script src="js/admin-players-excel.js?v=5566e07a"></script>
 <script src="js/admin-agr.js?v=eab2c54d"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
-<script src="js/admin-display.js?v=a79f78c5"></script>
+<script src="js/admin-display.js?v=b8ce19e6"></script>
 <script src="js/protocol.js?v=adbd9834"></script>
 <script src="js/start-admin.js?v=8741599e"></script>
 <script src="js/pe-edit.js?v=79837dcc"></script>

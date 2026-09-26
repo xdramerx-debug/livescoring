@@ -266,6 +266,7 @@ function loadTnLbDisplaySettings() {
 function markAdmView5Buttons(name) {
     if (typeof getView5 !== 'function') return;
     var cur = name === 'scorecard' && typeof clubScorecardPreviewView !== 'undefined' && clubScorecardPreviewView ? clubScorecardPreviewView : getView5(name);
+    if (name === 'scoring' && typeof scoreEntryDraft !== 'undefined' && scoreEntryDraft) cur = scoreEntryDraft.view;
     ['1', '2', '3', '4', '5'].forEach(function(v) {
         var btn = document.getElementById('v5-' + name + '-' + v);
         if (!btn) return;
@@ -923,7 +924,7 @@ function saveClubScorecardView(value) {
     }
     clubScorecardSaving = true;
     status.textContent = 'Сохраняем для всех пользователей…';
-    document.querySelectorAll('.club-sc-options button, #club-sc-apply').forEach(function(b) { b.disabled = true; });
+    document.querySelectorAll('#tab-scorecards > .card:first-child .club-sc-options button, #club-sc-apply').forEach(function(b) { b.disabled = true; });
     db.ref(PESTOVO_VIEW5_CONFIG.scorecard.firebase).set(v).then(function() {
         applyView5('scorecard', v);
         status.textContent = 'Вариант ' + v + ' сохранён для всех пользователей.';
@@ -932,6 +933,74 @@ function saveClubScorecardView(value) {
         status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
     }).finally(function() {
         clubScorecardSaving = false;
-        document.querySelectorAll('.club-sc-options button, #club-sc-apply').forEach(function(b) { b.disabled = false; });
+        document.querySelectorAll('#tab-scorecards > .card:first-child .club-sc-options button, #club-sc-apply').forEach(function(b) { b.disabled = false; });
+    });
+}
+
+
+var scoreEntryDraft = null;
+var scoreEntrySaving = false;
+function ensureScoreEntryDraft() {
+    if (!scoreEntryDraft) scoreEntryDraft = { view: getScoringView(), order: scoreEntryOrder.slice() };
+    return scoreEntryDraft;
+}
+function previewScoreEntryView(view) {
+    if (scoreEntrySaving) return;
+    ensureScoreEntryDraft().view = normalizeView5(view);
+    renderScoreEntryPreview();
+}
+function moveScoreEntryBlock(index, delta) {
+    if (scoreEntrySaving) return;
+    var order = ensureScoreEntryDraft().order;
+    var next = index + delta;
+    if (next < 0 || next >= order.length) return;
+    var key = order[index]; order[index] = order[next]; order[next] = key;
+    renderScoreEntryPreview();
+    var button = document.querySelector('#score-entry-order [data-move-key="' + key + '"][data-delta="' + delta + '"]');
+    if (button && !button.disabled) button.focus();
+}
+function renderScoreEntryPreview() {
+    var host = document.getElementById('score-entry-preview');
+    if (!host) return;
+    var draft = ensureScoreEntryDraft();
+    var labels = { info: 'Информация о лунке', holes: 'Выбор лунки', input: 'Ввод счёта и сохранение' };
+    document.getElementById('score-entry-order').innerHTML = draft.order.map(function(key, index) {
+        return '<div class="entry-order-row"><span>' + (index + 1) + '. ' + labels[key] + '</span>' + [-1, 1].map(function(delta) {
+            return '<button type="button" class="btn btn-og" data-move-key="' + key + '" data-delta="' + delta + '" aria-label="' + labels[key] + (delta < 0 ? ': выше' : ': ниже') + '" onclick="moveScoreEntryBlock(' + index + ',' + delta + ')"' + (index + delta < 0 || index + delta >= draft.order.length ? ' disabled' : '') + '>' + (delta < 0 ? '↑' : '↓') + '</button>';
+        }).join('') + '</div>';
+    }).join('');
+    var mode = document.getElementById('score-entry-mode').value;
+    var nav = '';
+    for (var h = 1; h <= 18; h++) {
+        nav += '<button type="button" class="hole-btn ' + (h === 7 ? 'active' : h < 7 ? 'verified' : '') + '" aria-label="Лунка ' + h + '" disabled>' + entryHoleContentHTML(h < 8 ? 5 : 0, mode === 'solo' ? null : h < 7 ? 5 : 0, h, 37) + '</button>';
+    }
+    function input(name, hcp, score) {
+        return '<div class="scoring-dual-block"><div class="dual-header"><h3>' + name + ' ' + fmtTeePill(hcp < 0 ? 'bl' : 'wh') + '</h3></div><div class="score-area"><div class="score-disp">' + scoreSquareHTML(score, 7, hcp) + '</div><div class="score-btns"><button type="button" class="score-minus" disabled>−</button><button type="button" class="score-plus" disabled>+</button></div></div></div>';
+    }
+    host.innerHTML = '<div class="score-entry card" data-entry-preview="true"><div class="hole-display" data-entry-block="info"><div class="hole-box"><div class="hole-lbl">Лунка</div><div class="hole-val">7</div></div><div class="hole-box h-par"><div class="hole-lbl">Пар</div><div class="hole-val">' + holePar(7) + '</div></div></div><div class="hole-nav" data-entry-block="holes">' + nav + '</div><div data-entry-block="input"><div class="scoring-columns">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5) + (mode === 'group' ? input('Маркируемый игрок', -18, 4) : '') + '</div><button type="button" class="btn btn-g btn-block" disabled>Сохранить результат</button></div></div>';
+    arrangeScoreEntry(host.firstElementChild, draft.view, draft.order);
+    markAdmView5Buttons('scoring');
+}
+function saveScoreEntryLayout() {
+    if (scoreEntrySaving) return;
+    var status = document.getElementById('score-entry-status');
+    if (typeof db === 'undefined' || !db) { status.textContent = 'Нет соединения с базой. Настройки не изменены.'; return; }
+    var draft = ensureScoreEntryDraft();
+    var view = normalizeView5(draft.view), order = normalizeScoreEntryOrder(draft.order);
+    scoreEntrySaving = true;
+    status.textContent = 'Сохраняем…';
+    document.querySelectorAll('#score-entry-settings button, #score-entry-settings select').forEach(function(el) { el.disabled = true; });
+    // Atomic write: style and hierarchy cannot get out of sync on partial failure.
+    db.ref('settings').update({ scoring_view: view, scoring_order: order }).then(function() {
+        applyView5('scoring', view);
+        applyScoreEntryOrder(order);
+        status.textContent = 'Вид и порядок блоков сохранены для всех пользователей.';
+    }).catch(function(error) {
+        console.warn('Score entry layout save failed', error);
+        status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
+    }).finally(function() {
+        scoreEntrySaving = false;
+        document.querySelectorAll('#score-entry-settings button, #score-entry-settings select').forEach(function(el) { el.disabled = false; });
+        renderScoreEntryPreview();
     });
 }

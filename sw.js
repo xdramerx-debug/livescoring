@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.93.0-6bf2172d';
+const CACHE_NAME = 'pestovo-v1.93.1-2e1607be';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -40,7 +40,7 @@ const STATIC_ASSETS = [
 
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
     'css/design-presets.css?v=77ff3916',
-    'css/style.css?v=86ee1c60',
+    'css/style.css?v=5e59c9a7',
     'css/tn-studio.css?v=257f9601',
     'css/tournament-redesign.css?v=6aa85f7a',
     'dist/livescoring-modules.js?v=ba8e9b1c',
@@ -60,7 +60,7 @@ const STATIC_ASSETS = [
     'js/round-setup.js?v=8bda9181',
     'js/score-write.js?v=7117f8ef',
     'js/scorer.js?v=e937927b',
-    'js/solo.js?v=e836b8a9',
+    'js/solo.js?v=b1fff443',
     'js/stats.js?v=410c615a',
     'js/tn-scorecard.js?v=b34d029e',
     'js/tn-studio-core.js?v=084a748a',
@@ -68,7 +68,7 @@ const STATIC_ASSETS = [
     'js/tournament-core.js?v=a19eaf5c',
     'js/tournament-public.js?v=1932a4cb',
     'js/tournaments.js?v=7b86aaa9',
-    'js/utils.js?v=bc7b070c',
+    'js/utils.js?v=f5bb2e95',
 
     // Прочее
     'manifest.json',

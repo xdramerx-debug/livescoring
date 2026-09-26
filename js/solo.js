@@ -529,7 +529,8 @@ function loadExistingSolo() {
                 var order = (typeof getRoundOrder === 'function' ? getRoundOrder(soloRound) : []);
                 var total = order.length || 18;
                 var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-                soloTitle.textContent = (isEn ? 'Solo' : 'Соло') + ' · ' + (isEn ? 'Hole ' : 'Лунка ') + (typeof gHole !== 'undefined' ? gHole : 1);
+                // The current hole is shown and updated in the score-entry card.
+                soloTitle.textContent = isEn ? 'Solo' : 'Соло';
                 if (soloSub) soloSub.innerHTML = '<span class="scoring-progress"><i class="fas fa-flag"></i> ' + total + ' ' + (isEn ? 'holes' : 'лунок') + '</span>';
             }
         } catch (e) { console.warn("[silent]", e); }

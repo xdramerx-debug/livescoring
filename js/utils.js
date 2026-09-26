@@ -762,7 +762,7 @@ function syncScoreConfirmBar() {
             sticky.hidden = !on;
             sticky.setAttribute('aria-hidden', on ? 'false' : 'true');
         }
-        if (on) any = true;
+        if (sticky && on) any = true;
     });
     bar.hidden = !any;
 }
@@ -770,6 +770,8 @@ function syncScoreConfirmBar() {
 function syncStickyFromOriginal(btn, clone) {
     clone.disabled = !!btn.disabled;
     clone.innerHTML = btn.innerHTML;
+    // Only the source owns IDs used by score updates and translations.
+    clone.querySelectorAll('[id]').forEach(function(el) { el.removeAttribute('id'); });
     clone.className = (btn.className || '').replace(/\bscore-confirm-original\b/g, '').replace(/\s+/g, ' ').trim() + ' score-confirm-sticky-btn';
 }
 
@@ -889,12 +891,8 @@ function initP0MobileEnhancements(){
 
     // sticky scorer actions: закрепляем существующие кнопки «Сохранить»/«Дальше»
     try{
-        var saveBtn=document.querySelector('#sc-save-btn, .btn-save-hole, [data-action="save-hole"]');
-        // fallback: find any button with text Save / Сохранить inside scorer
-        if(!saveBtn){
-            var btns=document.querySelectorAll('.score-entry:not([data-entry-preview]) button');
-            for(var i=0;i<btns.length;i++){ var tx=(btns[i].textContent||'').toLowerCase(); if(tx.indexOf('сохран')!==-1){ saveBtn=btns[i]; break; } }
-        }
+        // Explicit scorer scope: never clone another mode's confirm action.
+        var saveBtn=document.getElementById('sc-save-btn');
         if(saveBtn && !document.getElementById('p0-sticky-actions')){
             var bar=document.createElement('div');
             bar.id='p0-sticky-actions';
@@ -902,11 +900,12 @@ function initP0MobileEnhancements(){
             bar.innerHTML='';
             var clone=saveBtn.cloneNode(true);
             clone.id='p0-sticky-save';
+            syncStickyFromOriginal(saveBtn, clone);
             // КРИТИЧНО: cloneNode(true) копирует атрибут onclick="saveSc()".
             // Без removeAttribute клон вызывал обработчик ДВАЖДЫ за один тап
             // (скопированный inline-onclick + добавленный ниже listener).
             clone.removeAttribute('onclick');
-            clone.addEventListener('click', function(e){ e.preventDefault(); saveBtn.click(); });
+            clone.addEventListener('click', function(e){ e.preventDefault(); if (!saveBtn.disabled) saveBtn.click(); });
             bar.appendChild(clone);
             // next hole button if exists
             var nextBtn=document.querySelector('#sc-next-btn, [data-action="next-hole"]');
@@ -920,6 +919,22 @@ function initP0MobileEnhancements(){
             if(document.body) document.body.appendChild(bar);
             // hide original when sticky visible on mobile only via CSS
             saveBtn.classList.add('p0-original-save');
+            var syncScorerActions = function() {
+                syncStickyFromOriginal(saveBtn, clone);
+                clone.classList.remove('p0-original-save');
+                var view = document.getElementById('sc-body');
+                bar.hidden = !view || view.classList.contains('hidden');
+            };
+            syncScorerActions();
+            if (typeof MutationObserver === 'function') {
+                new MutationObserver(syncScorerActions).observe(saveBtn, {
+                    subtree: true, childList: true, characterData: true, attributes: true
+                });
+                var scorerView = document.getElementById('sc-body');
+                if (scorerView) new MutationObserver(syncScorerActions).observe(scorerView, {
+                    attributes: true, attributeFilter: ['class']
+                });
+            }
             if(nextBtn) nextBtn.classList.add('p0-original-save');
         }
     }catch(e){ console.warn('[P0] sticky actions', e); }

@@ -4,7 +4,7 @@ var registeredUsers = {};
 var availableTournaments = {};
 function lGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 
-// QR турнира (?round=&as= / ?player=): без меню, сверху сразу счёт.
+// QR турнира (?round=&as= / ?player=): компактная шапка и доступное меню.
 function isScoreKioskUrl() {
     try {
         var q = new URLSearchParams(window.location.search);
@@ -15,10 +15,11 @@ function applyScoreKiosk() {
     if (!isScoreKioskUrl()) return false;
     try {
         document.documentElement.classList.add('score-kiosk');
-        document.documentElement.style.setProperty('--nav-h', '0px');
-        document.documentElement.style.setProperty('--round-nav-offset', '0px');
+        var nav = document.getElementById('main-nav');
+        if (nav) nav.classList.remove('hidden');
+        if (typeof applyNavHeight === 'function') applyNavHeight();
         // Шапка теперь всегда видна, но компактная — даже в киоск-режиме (QR)
-        ['main-nav', 'my-active-rounds-container', 'invite-qrs-card'].forEach(function(id) {
+        ['my-active-rounds-container'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.classList.add('hidden');
         });
@@ -27,7 +28,7 @@ function applyScoreKiosk() {
             ph.classList.remove('hidden');
             ph.classList.add('scoring-compact');
         }
-        var hideSel = document.querySelectorAll('footer, .footer, #mobile-drawer-root, .mobile-drawer-container, .nav-toggle');
+        var hideSel = document.querySelectorAll('footer, .footer');
         for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
     } catch (e) { console.warn("[silent]", e); }
     return true;
@@ -994,8 +995,7 @@ function applyRoundState(data) {
     }
     if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(curRoundData);
     try { document.body.classList.add('round-active'); } catch (e) { console.warn("[silent]", e); }
-    var navEl = lGet('main-nav');
-    if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch (e) { console.warn("[silent]", e); } }
+    if (typeof applyNavHeight === 'function') applyNavHeight();
     applyScoreKiosk();
     // Обновляем компактную шапку прогрессом раунда
     if (typeof updateScoringHeader === 'function') updateScoringHeader();
@@ -2081,8 +2081,8 @@ function renderInviteQRs() {
     // свёрнута, коды уже загружаются и будут готовы мгновенно.
     try { prewarmInviteQrImages(curRid, curRoundData.players); } catch (ePrew) { console.warn("[silent]", ePrew); }
 
-    // QR-коды НЕ исчезают после подключения: показываем всех игроков группы,
-    // КРОМЕ того, кто создал раунд (его телефон уже в игре — QR ему не нужен).
+    // QR-коды доступны для всех игроков группы, включая создателя:
+    // любой игрок может повторно подключиться с другого телефона.
     // Ссылка под QR больше не показывается — только сам код (требование клуба).
     var base = baseUrl();
     var html = '';
@@ -2090,8 +2090,6 @@ function renderInviteQRs() {
     Object.entries(curRoundData.players || {}).forEach(function(pe) {
         var pid = pe[0], p = pe[1];
         if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(pid, p && p.name)) return;
-        // QR создателя раунда (текущего игрока) не показываем
-        if (pid === myUid) return;
         var entered = isPlayerEnteredRound(p, pid, curRoundData);
         var url = base + 'setup-round.html?round=' + curRid + '&as=' + pid;
         var nm = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : (p.name || '');
@@ -2111,17 +2109,14 @@ function renderInviteQRs() {
 
     activeEl.innerHTML = html;
 
-    // Панель QR: ручной выбор важнее всего; по умолчанию открыта, пока не все
-    // подключились, а когда все в игре — сворачивается в slim-полосу,
-    // чтобы не мешать вводу счёта.
+    // Панель открыта по умолчанию даже после подключения всех игроков.
+    // Сворачиваем только по явному выбору пользователя, а не по статусу игры.
     var panel = lGet('invite-qrs-panel');
     var icon = lGet('invite-qrs-icon');
     if (panel) {
         var pref = null;
         try { pref = localStorage.getItem(invitePrefKey()); } catch (e) { console.warn("[silent]", e); }
-        var counts = countJoinedPlayers();
-        var allJoined = counts.total > 0 && counts.joined >= counts.total;
-        var shouldOpen = pref ? (pref === 'open') : !allJoined;
+        var shouldOpen = pref !== 'closed';
         panel.classList.toggle('hidden', !shouldOpen);
         if (icon) icon.className = shouldOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
     }

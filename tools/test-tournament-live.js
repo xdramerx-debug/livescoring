@@ -66,7 +66,7 @@ check(sandbox.isTournamentRound({ mode: 'group' }) === false, 'isTournamentRound
 
 check(setupHtml.indexOf('score-kiosk') !== -1, 'setup-round: ранний класс score-kiosk');
 check(scorerHtml.indexOf('score-kiosk') !== -1, 'scorer: ранний класс score-kiosk');
-check(css.indexOf('html.score-kiosk') !== -1, 'css: kiosk прячет шапку/меню');
+check(css.indexOf('html.score-kiosk') !== -1, 'css: отдельный стиль QR-ввода');
 check(live.indexOf('function applyScoreKiosk') !== -1 && scorer.indexOf('function applyScoreKiosk') !== -1, 'live/scorer: applyScoreKiosk');
 check(live.indexOf('if (p.isCreator) return true') !== -1, 'join: isCreator');
 check(live.indexOf('creatorPlayerId') !== -1 && live.indexOf('p.joined === true') !== -1, 'join: creatorPlayerId / joined');

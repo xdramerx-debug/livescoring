@@ -514,11 +514,26 @@ function loadExistingSolo() {
 
         var setupEl = sGet('setup'); if (setupEl) setupEl.classList.add('hidden');
         var pageHeadEl = sGet('page-head');
-        if (pageHeadEl) pageHeadEl.classList.add('hidden');
+        if (pageHeadEl) {
+            pageHeadEl.classList.remove('hidden');
+            pageHeadEl.classList.add('scoring-compact');
+        }
         if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(soloRound);
         try { document.body.classList.add('round-active'); } catch (e) { console.warn("[silent]", e); }
         var navEl = sGet('main-nav');
         if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch (e) { console.warn("[silent]", e); } }
+        // Компактная шапка для одиночного режима тоже
+        try {
+            var soloTitle = document.getElementById('page-title');
+            var soloSub = document.getElementById('page-sub');
+            if (soloTitle && soloRound) {
+                var order = (typeof getRoundOrder === 'function' ? getRoundOrder(soloRound) : []);
+                var total = order.length || 18;
+                var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+                soloTitle.textContent = (isEn ? 'Solo' : 'Соло') + ' · ' + (isEn ? 'Hole ' : 'Лунка ') + (typeof gHole !== 'undefined' ? gHole : 1);
+                if (soloSub) soloSub.innerHTML = '<span class="scoring-progress"><i class="fas fa-flag"></i> ' + total + ' ' + (isEn ? 'holes' : 'лунок') + '</span>';
+            }
+        } catch (e) { console.warn("[silent]", e); }
 
         var localKey = localStorage.getItem('pestovo_solo_key_' + soloRid);
         var isOwnerUser = currentUser && (soloRound.createdBy === currentUser.uid || (soloRound.players && soloRound.players[currentUser.uid]));

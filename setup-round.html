@@ -366,13 +366,14 @@
                     <div class="dual-half__score">
                         <div class="score-result" id="my-result"></div>
                         <div class="score-disp" id="my-disp">—</div>
+                        <div class="dual-half__compare" id="my-compare"></div>
                     </div>
                     <div class="dual-half__controls">
                         <button class="dual-btn dual-btn--minus" onclick="adjScore('my', -1)" aria-label="Минус">−</button>
                         <button class="dual-btn dual-btn--plus" onclick="adjScore('my', 1)" aria-label="Плюс">+</button>
                     </div>
                 </div>
-                <div class="dual-split-divider"><span></span></div>
+                <div class="dual-split-divider" id="dual-divider"><span></span></div>
                 <!-- ПРАВАЯ: МАРКИРУЕМЫЙ -->
                 <div class="dual-half dual-half--mark" id="marker-input-container">
                     <div class="dual-half__head">
@@ -382,6 +383,7 @@
                     <div class="dual-half__score">
                         <div class="score-result" id="mark-result"></div>
                         <div class="score-disp" id="mark-disp">—</div>
+                        <div class="dual-half__compare" id="mark-compare"></div>
                     </div>
                     <div class="dual-half__controls">
                         <button class="dual-btn dual-btn--minus dual-btn--mark" onclick="adjScore('mark', -1)" aria-label="Минус маркируемого">−</button>

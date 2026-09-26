@@ -18,11 +18,17 @@ function applyScoreKiosk() {
         document.documentElement.classList.add('score-kiosk');
         document.documentElement.style.setProperty('--nav-h', '0px');
         document.documentElement.style.setProperty('--round-nav-offset', '0px');
-        ['main-nav', 'page-head', 'my-active-rounds-container', 'invite-qrs-card'].forEach(function(id) {
+        ['main-nav', 'my-active-rounds-container', 'invite-qrs-card'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.classList.add('hidden');
         });
-        var hideSel = document.querySelectorAll('footer, .footer, .page-head, #mobile-drawer-root, .mobile-drawer-container, .nav-toggle');
+        // Шапка остаётся видимой компактной
+        var ph = document.querySelector('.page-head');
+        if (ph) {
+            ph.classList.remove('hidden');
+            ph.classList.add('scoring-compact');
+        }
+        var hideSel = document.querySelectorAll('footer, .footer, #mobile-drawer-root, .mobile-drawer-container, .nav-toggle');
         for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
     } catch (e) { console.warn("[silent]", e); }
     return true;

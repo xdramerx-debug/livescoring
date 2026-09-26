@@ -17,10 +17,16 @@ function applyScoreKiosk() {
         document.documentElement.classList.add('score-kiosk');
         document.documentElement.style.setProperty('--nav-h', '0px');
         document.documentElement.style.setProperty('--round-nav-offset', '0px');
-        ['main-nav', 'page-head', 'my-active-rounds-container', 'invite-qrs-card'].forEach(function(id) {
+        // Шапка теперь всегда видна, но компактная — даже в киоск-режиме (QR)
+        ['main-nav', 'my-active-rounds-container', 'invite-qrs-card'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.classList.add('hidden');
         });
+        var ph = document.getElementById('page-head');
+        if (ph) {
+            ph.classList.remove('hidden');
+            ph.classList.add('scoring-compact');
+        }
         var hideSel = document.querySelectorAll('footer, .footer, #mobile-drawer-root, .mobile-drawer-container, .nav-toggle');
         for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
     } catch (e) { console.warn("[silent]", e); }
@@ -56,6 +62,138 @@ function bootRoundViewOnce() {
 
 function updateGroupPaceAssistant() {
     if (curRoundData) renderPaceAssistant('group-pace-assistant', curRoundData);
+}
+
+function updateScoringHeader() {
+    var headEl = lGet('page-head');
+    var titleEl = lGet('page-title');
+    var subEl = lGet('page-sub');
+    if (!headEl || !titleEl || !curRoundData) return;
+    var order = (typeof getRoundOrder === 'function' ? getRoundOrder(curRoundData) : []);
+    var total = order.length || 18;
+    var curIdx = order.indexOf(playHole);
+    var curNum = curIdx >= 0 ? curIdx + 1 : 1;
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var modeLabel = curRoundData.mode === 'group' ? (isEn ? 'Group' : 'Группа') : (isEn ? 'Solo' : 'Соло');
+    var tnName = (typeof roundTournamentName === 'function' ? roundTournamentName(curRoundData) : curRoundData.tournamentName) || '';
+    if (titleEl) {
+        titleEl.textContent = (tnName ? tnName + ' · ' : '') + modeLabel + ' · ' + (isEn ? 'Hole ' : 'Лунка ') + playHole;
+    }
+    if (subEl) {
+        var prog = '<span class="scoring-progress"><i class="fas fa-flag"></i> ' + curNum + '/' + total + '</span>';
+        var par = (typeof holePar === 'function' ? holePar(playHole) : 4);
+        var dist = '';
+        try {
+            var myP = curRoundData.players && curRoundData.players[myUid];
+            var myTee = myP && myP.tee ? myP.tee : (curRoundData.tee || 'wh');
+            var d = (typeof holeDist === 'function' ? holeDist(playHole, myTee) : 0);
+            if (d) dist = ' · ' + d + 'м';
+        } catch (e) { console.warn("[silent]", e); }
+        subEl.innerHTML = prog + ' · Par ' + par + dist;
+    }
+}
+
+function updateDualCompare() {
+    var myComp = lGet('my-compare');
+    var markComp = lGet('mark-compare');
+    var divider = lGet('dual-divider');
+    if (!curRoundData || !myUid) return;
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var myPlayer = curRoundData.players && curRoundData.players[myUid];
+    if (!myPlayer) return;
+
+    // Левая половина: мой счёт vs счёт моего маркера для меня
+    if (myComp) {
+        var myMarkerId = myPlayer.markedBy;
+        var myS = parseInt(myPlayer.scores && myPlayer.scores[playHole]) || myScore || 0;
+        var markerS = 0;
+        if (myMarkerId) {
+            markerS = parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][playHole]) || 0;
+        }
+        if (myS > 0 && markerS > 0) {
+            if (myS === markerS) {
+                myComp.className = 'dual-half__compare compare-ok';
+                myComp.innerHTML = '✅ ' + (isEn ? 'Match' : 'Совпадает');
+            } else {
+                var delta = myS - markerS;
+                var deltaStr = (delta > 0 ? '+' : '') + delta;
+                myComp.className = 'dual-half__compare compare-bad';
+                myComp.innerHTML = '⚠️ Δ ' + deltaStr + ' · ' + (isEn ? 'You ' : 'Вы ') + myS + ' / M ' + markerS;
+            }
+        } else if (myS > 0) {
+            myComp.className = 'dual-half__compare compare-wait';
+            myComp.innerHTML = '⏳ ' + (isEn ? 'Waiting marker' : 'Ждём маркера');
+        } else {
+            myComp.className = 'dual-half__compare';
+            myComp.innerHTML = '';
+        }
+    }
+
+    // Правая половина: маркируемый — мой ввод vs его собственный счёт
+    if (markComp && myTargetUid) {
+        var tp = curRoundData.players && curRoundData.players[myTargetUid];
+        if (tp) {
+            var tOwn = parseInt(tp.scores && tp.scores[playHole]) || 0;
+            var tMine = targetScore || parseInt(tp.markerScores && tp.markerScores[myUid] && tp.markerScores[myUid][playHole]) || 0;
+            if (tOwn > 0 && tMine > 0) {
+                if (tOwn === tMine) {
+                    markComp.className = 'dual-half__compare compare-ok';
+                    markComp.innerHTML = '✅ ' + (isEn ? 'Match' : 'Совпадает');
+                } else {
+                    var d2 = tMine - tOwn;
+                    var d2Str = (d2 > 0 ? '+' : '') + d2;
+                    markComp.className = 'dual-half__compare compare-bad';
+                    markComp.innerHTML = '⚠️ Δ ' + d2Str + ' · ' + tMine + ' / ' + tOwn;
+                }
+            } else if (tMine > 0) {
+                markComp.className = 'dual-half__compare compare-wait';
+                markComp.innerHTML = '⏳ ' + (isEn ? 'Waiting player' : 'Ждём игрока');
+            } else {
+                markComp.className = 'dual-half__compare';
+                markComp.innerHTML = '';
+            }
+        }
+    }
+
+    // Центральный разделитель: общий статус
+    if (divider) {
+        var myMarkerId2 = myPlayer.markedBy;
+        var myS2 = parseInt(myPlayer.scores && myPlayer.scores[playHole]) || 0;
+        var markerS2 = myMarkerId2 ? (parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId2] && myPlayer.markerScores[myMarkerId2][playHole]) || 0) : 0;
+        var tOwn2 = 0, tMine2 = 0;
+        if (myTargetUid) {
+            var tp2 = curRoundData.players && curRoundData.players[myTargetUid];
+            tOwn2 = tp2 ? (parseInt(tp2.scores && tp2.scores[playHole]) || 0) : 0;
+            tMine2 = tp2 ? (parseInt(tp2.markerScores && tp2.markerScores[myUid] && tp2.markerScores[myUid][playHole]) || 0) : 0;
+        }
+        divider.classList.remove('compare-match', 'compare-mismatch');
+        if ((myS2 && markerS2 && myS2 !== markerS2) || (tOwn2 && tMine2 && tOwn2 !== tMine2)) {
+            divider.classList.add('compare-mismatch');
+        } else if ((myS2 && markerS2 && myS2 === markerS2) || (tOwn2 && tMine2 && tOwn2 === tMine2)) {
+            divider.classList.add('compare-match');
+        }
+    }
+}
+
+function animateHoleTransition(newHole) {
+    try {
+        var btns = document.querySelectorAll('#play-holes-nav .hole-btn');
+        for (var i = 0; i < btns.length; i++) {
+            var b = btns[i];
+            var onclick = b.getAttribute('onclick') || '';
+            if (onclick.indexOf('goPlayHole(' + newHole + ')') !== -1) {
+                b.classList.add('hole-enter-anim');
+                (function(btn){
+                    setTimeout(function(){ btn.classList.remove('hole-enter-anim'); }, 800);
+                })(b);
+                try { b.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'}); } catch (e) { console.warn("[silent]", e); }
+                break;
+            }
+        }
+    } catch (e) { console.warn("[silent]", e); }
+    if (typeof vib === 'function') {
+        try { vib([35, 40, 35]); } catch (e) { console.warn("[silent]", e); }
+    }
 }
 
 function startGroupPaceTicker() {
@@ -848,15 +986,19 @@ function applyRoundState(data) {
     var modeView = document.getElementById('mode-view');
     if (modeView) modeView.classList.add('hidden');
 
-    // Раунд уже начат — блок «Начать раунд / переключайте вкладки» больше не нужен:
-    // показываем только шапку, меню, ввод счёта и остальное содержимое раунда.
+    // Раунд уже начат — шапка остаётся видимой, но компактной (требование: всегда видна, меньше во время ввода)
     var pageHeadEl = lGet('page-head');
-    if (pageHeadEl) pageHeadEl.classList.add('hidden');
+    if (pageHeadEl) {
+        pageHeadEl.classList.remove('hidden');
+        pageHeadEl.classList.add('scoring-compact');
+    }
     if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(curRoundData);
     try { document.body.classList.add('round-active'); } catch (e) { console.warn("[silent]", e); }
     var navEl = lGet('main-nav');
     if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch (e) { console.warn("[silent]", e); } }
     applyScoreKiosk();
+    // Обновляем компактную шапку прогрессом раунда
+    if (typeof updateScoringHeader === 'function') updateScoringHeader();
 
     myUid = getActingUid();
     // Раунд открывается для ввода счёта ровно в момент старта турнира:
@@ -1245,6 +1387,13 @@ function renderPlayHole() {
     checkPlayVerification();
     updateGroupPaceAssistant();
     updateGroupPauseUI();
+    updateScoringHeader();
+    updateDualCompare();
+    // Авто-скролл активной лунки в видимую область (удобно на телефоне)
+    try {
+        var activeBtn = document.querySelector('#play-holes-nav .hole-btn.active');
+        if (activeBtn) activeBtn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function adjScore(who, delta) {
@@ -1259,6 +1408,7 @@ function adjScore(who, delta) {
         updScoreDisplay('mark', targetScore);
         animateScoreElement('mark-disp');
     }
+    if (typeof updateDualCompare === 'function') updateDualCompare();
     vib();
 }
 
@@ -1314,6 +1464,8 @@ function checkPlayVerification() {
         // Ожидание маркера отдельным блоком НЕ показываем — только уведомление 3 сек при сохранении.
         box.innerHTML = '';
     }
+
+    if (typeof updateDualCompare === 'function') updateDualCompare();
 
     // ОБРАТНАЯ СВЕРКА: игрок вводит счёт того, кого маркирует. Если тот уже
     // подтвердил СВОЙ счёт и он отличается — несовпадение видно обоим:
@@ -1462,11 +1614,13 @@ function saveHoleScores() {
         if (res && res.offline) {
             var pendingOrder = getRoundOrder(curRoundData);
             var pendingIdx = pendingOrder.indexOf(h);
+            var prevHole = playHole;
             if (pendingIdx >= 0 && pendingIdx < pendingOrder.length - 1) {
                 playHole = pendingOrder[pendingIdx + 1]; myScore = 0; targetScore = 0;
             }
             rememberResumeHole(curRid, myUid, playHole);
             renderPlayHole(); buildPlayHolesNav();
+            if (prevHole !== playHole && typeof animateHoleTransition === 'function') animateHoleTransition(playHole);
             return;
         }
         var order = getRoundOrder(curRoundData);
@@ -1557,6 +1711,12 @@ function saveHoleScores() {
         renderPlayHole();
         buildPlayHolesNav();
         renderPlaySummary();
+        // Авто-переход: подсветка следующей лунки + вибрация
+        if (typeof animateHoleTransition === 'function' && playHole !== h) {
+            animateHoleTransition(playHole);
+        } else if (typeof vib === 'function') {
+            try { vib([30, 40, 30]); } catch (e) { console.warn("[silent]", e); }
+        }
         // Темп игры/тайминги — пересчёт по обновлённым локальным данным,
         // не дожидаясь echo Firebase (актуально на мобильных сетях).
         updateGroupPaceAssistant();

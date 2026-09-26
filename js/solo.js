@@ -706,10 +706,8 @@ function buildHoles() {
         // сразу видно, где игрок сейчас находится (вместо цветовой подсветки).
         if (h === curHole && !(s >= 1) && canEditSolo) cls += ' cur-blink';
 
-        html += '<button class="hole-btn ' + cls + '" onclick="goHole(' + h + ')" style="min-height:38px;padding:2px;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;">' +
-            '<span class="hbn-line" style="line-height:1;"><span class="hbn-num" style="font-size:9px;opacity:0.75;">#' + h + '</span>' + hcpStrokesMarksHTML(fieldHcp, h) + '</span>' +
-            '<span style="font-size:13px;font-weight:800;line-height:1.2;margin-top:1px;">' + (s >= 1 ? s : '—') + '</span>' +
-            '</button>';
+        html += '<button type="button" class="hole-btn ' + cls + '" onclick="goHole(' + h + ')" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === curHole ? 'true' : 'false') + '">' +
+            entryHoleContentHTML(s, null, h, fieldHcp) + '</button>';
     });
     el.innerHTML = html;
 }

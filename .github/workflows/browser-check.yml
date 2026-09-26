@@ -39,3 +39,6 @@ jobs:
 
       - name: Browser check (classic vs bundle)
         run: npm run check:browser -- --require
+
+      - name: Mobile scorecards and score entry
+        run: npm run check:scorecards

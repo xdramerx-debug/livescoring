@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="marker_title">Маркер — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=c510c468">
+    <link rel="stylesheet" href="css/style.css?v=844e2586">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/design-system.js?v=78b8d092"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,12 +69,13 @@
         <div><strong data-i18n="marker_notice_title">Вы — маркер</strong><p data-i18n="marker_notice_desc">Введите наблюдаемый счёт. Подтверждается только при совпадении.</p></div></div>
         
         <div id="mk-verify"></div>
-        <div class="card">
-            <div class="hole-display">
+        <div class="score-entry card">
+            <div class="hole-display" data-entry-block="info">
                 <div class="hole-box"><div class="hole-lbl" data-i18n="hole_lbl">Лунка</div><div class="hole-val" id="mk-hole">1</div></div>
                 <div class="hole-box h-par"><div class="hole-lbl" data-i18n="par_lbl">Пар</div><div class="hole-val" id="mk-par">4</div></div>
             </div>
-            <div class="hole-nav" id="mk-holes"></div>
+            <div class="hole-nav" data-entry-block="holes" id="mk-holes"></div>
+            <div data-entry-block="input">
             <div class="score-area">
                 <div class="score-result" id="mk-result"></div>
                 <div class="score-disp" id="mk-disp">—</div>
@@ -84,21 +85,22 @@
                 </div>
                 <button class="btn btn-g btn-block" id="mk-save-btn" onclick="saveMk()" style="padding:16px;font-size:15px;"><i class="fas fa-check"></i> <span data-i18n="confirm_btn">Подтвердить</span></button>
             </div>
+            </div>
         </div>
         <div id="mk-pace-assistant" style="margin-top:12px;"></div>
         <div class="card"><h2><i class="fas fa-list-check"></i> <span data-i18n="group_summary">Сводка</span></h2><div id="mk-sum"></div></div>
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.89.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.90.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="js/firebase-config.js?v=57564a0d"></script>
 <script type="module" src="dist/livescoring-modules.js?v=8347afb4"></script>
-    <script src="js/utils.js?v=d8950690"></script>
-<script src="js/marker.js?v=6c043b29"></script>
+    <script src="js/utils.js?v=26560aa7"></script>
+<script src="js/marker.js?v=15151b24"></script>
 <script src="js/score-write.js?v=6f39f00e"></script>
 <script src="js/pwa.js?v=aa731efe"></script>
 </body>

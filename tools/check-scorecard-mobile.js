@@ -40,6 +40,14 @@ const root = path.join(__dirname, '..');
                 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
                 assert.strictEqual(overflow, false, 'No page overflow: ' + width + '/' + variant);
                 assert.strictEqual(await page.locator('#club-sc-preview .hm-bar').first().isVisible(), true);
+                assert.strictEqual(await page.locator('#club-sc-preview .club-sc-si, #club-sc-preview .club-sc-hcp, #club-sc-preview .club-sc-points').count(), 0);
+                const marksFit = await page.evaluate(() => Array.from(document.querySelectorAll('#club-sc-preview .hm-bar')).every(bar => {
+                    const square = bar.closest('.club-sc-score .club-sc-value');
+                    if (!square) return false;
+                    const b = bar.getBoundingClientRect(), s = square.getBoundingClientRect();
+                    return b.left >= s.left && b.right <= s.right && b.top >= s.top && b.bottom <= s.bottom && getComputedStyle(bar).transform !== 'none';
+                }));
+                assert.strictEqual(marksFit, true, 'Slashes fit inside score squares: ' + width + '/' + variant);
                 assert.strictEqual(await page.getAttribute('#v5-scorecard-' + variant, 'aria-pressed'), 'true');
                 const measured = await page.evaluate(() => {
                     const scroll = document.querySelector('.club-sc-scroll');

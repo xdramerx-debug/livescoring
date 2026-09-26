@@ -1101,10 +1101,8 @@ function buildPlayHolesNav() {
         if (h === playHole && vState !== 'confirmed' && !(sub && s > 0)) cls += ' cur-blink';
 
         var mkForHole = (typeof getPlayerMarkerScoreForHole === 'function') ? getPlayerMarkerScoreForHole(myPlayer, h).score : 0;
-        html += '<button class="hole-btn ' + cls + '" onclick="goPlayHole(' + h + ')">' +
-            '<span class="hbn-line"><span class="hbn-num">' + h + '</span>' + hcpStrokesMarksHTML(myFieldHcp, h) + '</span>' +
-            (typeof hbnScoresHtml === 'function' ? hbnScoresHtml(s, mkForHole) : '') +
-            '</button>';
+        html += '<button type="button" class="hole-btn ' + cls + '" onclick="goPlayHole(' + h + ')" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === playHole ? 'true' : 'false') + '">' +
+            entryHoleContentHTML(s, mkForHole, h, myFieldHcp) + '</button>';
     });
     el.innerHTML = html;
 }

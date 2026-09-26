@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <title data-i18n="nav_round">Раунд — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=c510c468">
+    <link rel="stylesheet" href="css/style.css?v=844e2586">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/design-system.js?v=78b8d092"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -341,14 +341,15 @@
     <!-- ===== ГРУППОВОЙ РАУНД: АКТИВНЫЙ ВВОД (ТОЛЬКО УЧАСТНИКИ) ===== -->
     <div id="active-scoring-view" class="hidden">
 
-        <div class="card">
-            <div class="hole-display">
+        <div class="score-entry card">
+            <div class="hole-display" data-entry-block="info">
                 <div class="hole-box"><div class="hole-lbl" data-i18n="hole_lbl">Лунка</div><div class="hole-val" id="play-hole">1</div></div>
                 <div class="hole-box h-par"><div class="hole-lbl" data-i18n="par_lbl">Пар</div><div class="hole-val" id="play-par">4</div></div>
                 <div class="hole-box h-dist"><div class="hole-lbl" data-i18n="dist_lbl">Метры</div><div class="hole-val" id="play-dist" style="font-size:24px;">—</div></div>
             </div>
 
-            <div class="hole-nav" id="play-holes-nav"></div>
+            <div class="hole-nav" data-entry-block="holes" id="play-holes-nav"></div>
+            <div data-entry-block="input">
             <div id="match-play-tracker-container" style="margin-top:12px;"></div>
             <div id="play-verify-status" style="margin-top:12px;"></div>
             <div id="play-verify-status-mark" style="margin-top:6px;"></div>
@@ -398,6 +399,7 @@
             <button class="btn btn-g btn-block" id="save-hole-btn" onclick="saveHoleScores()" style="padding:16px;font-size:16px;margin-top:20px;">
                 <i class="fas fa-check" id="save-hole-btn-icon"></i> <span id="save-hole-btn-text" data-i18n="next_hole_btn">Подтвердить ✓</span>
             </button>
+            </div>
         </div>
 
         <div id="group-pace-assistant" style="margin-top:12px;"></div>
@@ -464,8 +466,8 @@
     <div id="game" class="hidden">
 
         <!-- БЛОК 1: ВВОД СЧЁТА И ЛУНКИ 1-18 (2 СТРОКИ ПО 9 ЛУНОК - 100% БЕЗ СКРОЛЛА) -->
-        <div class="card setup-card" id="play-hole-card" style="padding:16px;margin-bottom:16px;">
-            <div class="hole-display">
+        <div class="score-entry card setup-card" id="play-hole-card" style="padding:16px;margin-bottom:16px;">
+            <div class="hole-display" data-entry-block="info">
                 <div class="hole-box"><div class="hole-lbl" data-i18n="hole_lbl">Лунка</div><div class="hole-val" id="g-hole">1</div></div>
                 <div class="hole-box h-par"><div class="hole-lbl" data-i18n="par_lbl">Пар</div><div class="hole-val" id="g-par">4</div></div>
                 <div class="hole-box h-dist"><div class="hole-lbl" data-i18n="dist_lbl">Метры</div><div class="hole-val" id="g-dist" style="font-size:24px;">—</div></div>
@@ -473,7 +475,8 @@
             </div>
 
             <!-- HOLE NAVIGATION (2 ROWS OF 9 HOLES - 100% NO-SCROLL GRID MATRIX) -->
-            <div class="hole-nav" id="g-holes" style="margin-bottom:16px;"></div>
+            <div class="hole-nav" data-entry-block="holes" id="g-holes" style="margin-bottom:16px;"></div>
+            <div data-entry-block="input">
             <!-- ПРЕДУПРЕЖДЕНИЕ: ПРОПУЩЕННЫЕ ЛУНКИ (счёт не введён) -->
             <div id="solo-skipped-box"></div>
 
@@ -489,6 +492,7 @@
                 <button class="btn btn-g btn-block" id="btn-solo-action" onclick="saveSolo()" style="padding:16px;font-size:16px;min-height:52px;margin-top:14px;">
                     <i class="fas fa-arrow-right"></i> <span id="btn-solo-action-txt" data-i18n="solo_next_hole_btn">Следующая лунка</span>
                 </button>
+            </div>
             </div>
         </div>
 
@@ -580,7 +584,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.89.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.90.0</span></p>
         </div>
     </div>
 </footer>
@@ -591,9 +595,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="js/firebase-config.js?v=57564a0d"></script>
 <script type="module" src="dist/livescoring-modules.js?v=8347afb4"></script>
-    <script src="js/utils.js?v=d8950690"></script>
-<script src="js/live.js?v=74a15ccb"></script>
-<script src="js/solo.js?v=95e87b69"></script>
+    <script src="js/utils.js?v=26560aa7"></script>
+<script src="js/live.js?v=2858ff6d"></script>
+<script src="js/solo.js?v=9e8c33e6"></script>
 <script src="js/round-setup.js?v=8bda9181"></script>
 <script src="js/score-write.js?v=6f39f00e"></script>
 <script src="js/pwa.js?v=aa731efe"></script>

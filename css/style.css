@@ -10,6 +10,8 @@
     --ff:'Playfair Display',serif;--fb:'Inter',sans-serif;
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+/* Component display rules must not reveal inactive UI or duplicate actions. */
+[hidden]{display:none!important;}
 html{
     scroll-behavior:smooth;
     /* При якорной прокрутке учитываем высоту фиксированной шапки,
@@ -5383,14 +5385,15 @@ table.pe-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:86
 .p0-sticky-actions{position:fixed;left:0;right:0;bottom:0;z-index:9997;display:none;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(11,26,14,.98);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);box-shadow:0 -6px 24px rgba(0,0,0,.35);}
 .p0-sticky-actions .btn{flex:1;min-height:48px;justify-content:center;font-size:13px;}
 @media(max-width:768px){
-    .p0-sticky-actions{display:flex;}
+    .p0-sticky-actions:not([hidden]){display:flex;}
     /* hide duplicate original save/next that got cloned into sticky bar */
-    .p0-original-save{display:none!important;}
+    body:not(.kb-open):has(#p0-sticky-actions:not([hidden])) .p0-original-save{display:none!important;}
     /* ensure page content not hidden behind sticky + tabbar */
     .scoring-dual-block:last-of-type{margin-bottom:calc(56px + env(safe-area-inset-bottom) + 12px);}
 }
 body.kb-open .p0-sticky-actions{opacity:0;pointer-events:none;transform:translateY(100%);transition:var(--t);}
 html.score-kiosk .p0-sticky-actions{display:none!important;}
+@media(max-width:768px){html.score-kiosk body .p0-original-save{display:flex!important;}}
 /* tabs for Я / Маркер instead of stacked blocks on narrow */
 @media(max-width:520px){
     .scoring-columns{flex-direction:column!important;gap:8px!important;}

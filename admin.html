@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=844e2586">
+    <link rel="stylesheet" href="css/style.css?v=4bdaea32">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tn-wizard.css?v=01173cbb">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=6aa85f7a">
@@ -99,42 +99,117 @@
         </div>
 
         <div id="tab-scorecards" class="admin-section hidden">
-            <div class="card">
-                <h2>Отображения счётных карточек</h2>
-                <p>Единое оформление для всех игроков: главная, раунд, лидерборды, турниры и история. Без расстояний; ти — рядом с именем. Печать и PNG не меняются.</p>
-                <div class="club-sc-options">
-                    <button type="button" id="v5-scorecard-1" class="btn btn-og" aria-pressed="false" onclick="previewClubScorecardView('1')">1 · Бланк клуба<br><small>Две девятки, как в «Поле клуба».</small></button>
-                    <button type="button" id="v5-scorecard-2" class="btn btn-og" aria-pressed="false" onclick="previewClubScorecardView('2')">2 · Блоки по 3 лунки<br><small>Крупнее, без горизонтальной прокрутки.</small></button>
-                    <button type="button" id="v5-scorecard-3" class="btn btn-og" aria-pressed="false" onclick="previewClubScorecardView('3')">3 · Крупная лента<br><small>Крупные цифры, прокрутка внутри карточки.</small></button>
-                    <button type="button" id="v5-scorecard-4" class="btn btn-og" aria-pressed="false" onclick="previewClubScorecardView('4')">4 · Вертикальный список<br><small>Одна лунка на строку, всё по порядку.</small></button>
-                    <button type="button" id="v5-scorecard-5" class="btn btn-og" aria-pressed="false" onclick="previewClubScorecardView('5')">5 · Плитки<br><small>Акцент на счёте каждой лунки.</small></button>
+            <div class="card sev-admin-card">
+                <header class="sev-head">
+                    <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-table-list"></i></span>
+                    <div class="sev-head-text">
+                        <h2>Отображения счётных карточек</h2>
+                        <p>Единое оформление для всех игроков: главная, раунд, лидерборды, турниры и история. Без расстояний; ти — рядом с именем. Печать и PNG не меняются.</p>
+                    </div>
+                    <span class="sev-head-badge"><i class="fas fa-users" aria-hidden="true"></i> Для всех игроков</span>
+                </header>
+                <div class="sev-sec-title">Вариант карточки</div>
+                <p class="sev-sec-sub">Пять видов одной карточки. Выберите — пример ниже обновится сразу.</p>
+                <div class="club-sc-options sev-variants">
+                    <button type="button" id="v5-scorecard-1" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('1')">
+                        <span class="sev-card-top"><span class="sev-card-num">1</span><span class="sev-card-name">Бланк клуба</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span></span><span class="st-row"><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span></span>
+                        <span class="sev-card-desc">Две девятки, как в «Поле клуба».</span>
+                    </button>
+                    <button type="button" id="v5-scorecard-2" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('2')">
+                        <span class="sev-card-top"><span class="sev-card-num">2</span><span class="sev-card-name">Блоки по 3 лунки</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-frame"></span><span class="st-frame"></span><span class="st-frame"></span></span><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span></span>
+                        <span class="sev-card-desc">Крупнее, без горизонтальной прокрутки.</span>
+                    </button>
+                    <button type="button" id="v5-scorecard-3" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('3')">
+                        <span class="sev-card-top"><span class="sev-card-num">3</span><span class="sev-card-name">Крупная лента</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span><span class="st-row"><span class="st-plate st-white"></span><span class="st-plate"></span><span class="st-plate st-white"></span></span></span>
+                        <span class="sev-card-desc">Крупные цифры, прокрутка внутри карточки.</span>
+                    </button>
+                    <button type="button" id="v5-scorecard-4" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('4')">
+                        <span class="sev-card-top"><span class="sev-card-num">4</span><span class="sev-card-name">Вертикальный список</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-plate st-white" style="flex:0 0 26px;"></span><span class="st-plate"></span><span class="st-sq st-gold" style="max-width:22px;"></span></span><span class="st-row"><span class="st-plate st-white" style="flex:0 0 26px;"></span><span class="st-plate"></span><span class="st-sq" style="max-width:22px;"></span></span></span>
+                        <span class="sev-card-desc">Одна лунка на строку, всё по порядку.</span>
+                    </button>
+                    <button type="button" id="v5-scorecard-5" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('5')">
+                        <span class="sev-card-top"><span class="sev-card-num">5</span><span class="sev-card-name">Плитки</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-frame"></span><span class="st-frame"></span><span class="st-frame"></span></span><span class="st-row"><span class="st-sq st-gold" style="max-width:26px;"></span><span class="st-sq st-gold" style="max-width:26px;"></span><span class="st-sq st-gold" style="max-width:26px;"></span></span></span>
+                        <span class="sev-card-desc">Акцент на счёте каждой лунки.</span>
+                    </button>
                 </div>
-                <button type="button" id="club-sc-apply" class="btn btn-g" onclick="saveClubScorecardView(clubScorecardPreviewView)">Применить для всех</button>
-                <p style="color:var(--muted);font-size:12px;">Выберите вариант, рассмотрите пример ниже и нажмите «Применить для всех».</p>
-                <p id="club-sc-save-status" role="status" aria-live="polite"></p>
-                <h3>Предпросмотр для телефона</h3>
-                <p style="color:var(--muted);font-size:12px;">Демонстрационные данные · ширина до 390 px. Палочки — удары форы; красные — отдаваемые удары. «—» означает, что счёт ещё не введён. Несовпадение с маркером подсвечивается.</p>
-                <div id="club-sc-preview" class="club-sc-phone"></div>
+                <div class="sev-apply">
+                    <button type="button" id="club-sc-apply" class="btn btn-g" onclick="saveClubScorecardView(clubScorecardPreviewView)"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех</button>
+                    <div class="sev-apply-text">
+                        <p class="sev-apply-hint">Выберите вариант, рассмотрите пример ниже и нажмите «Применить для всех».</p>
+                        <p id="club-sc-save-status" role="status" aria-live="polite"></p>
+                    </div>
+                </div>
+                <div class="sev-sec-title">Предпросмотр для телефона</div>
+                <p class="sev-sec-sub">Демонстрационные данные · ширина до 390 px. Палочки — удары форы; красные — отдаваемые удары. «—» означает, что счёт ещё не введён. Несовпадение с маркером подсвечивается.</p>
+                <div class="sev-device">
+                    <div id="club-sc-preview" class="club-sc-phone"></div>
+                </div>
             </div>
-            <div class="card" id="score-entry-settings">
-                <h2>Ввод результатов</h2>
-                <p>Одиночный и групповой раунд, страницы игрока и маркера. Счёт в квадрате, фора — наклонными черточками справа сверху.</p>
-                <div class="club-sc-options">
-                    <button type="button" id="v5-scoring-1" class="btn btn-og" aria-pressed="false" onclick="previewScoreEntryView('1')">1 · Классика</button>
-                    <button type="button" id="v5-scoring-2" class="btn btn-og" aria-pressed="false" onclick="previewScoreEntryView('2')">2 · Крупный счёт</button>
-                    <button type="button" id="v5-scoring-3" class="btn btn-og" aria-pressed="false" onclick="previewScoreEntryView('3')">3 · Компакт</button>
-                    <button type="button" id="v5-scoring-4" class="btn btn-og" aria-pressed="false" onclick="previewScoreEntryView('4')">4 · Контраст</button>
-                    <button type="button" id="v5-scoring-5" class="btn btn-og" aria-pressed="false" onclick="previewScoreEntryView('5')">5 · Минимализм</button>
+            <div class="card sev-admin-card" id="score-entry-settings">
+                <header class="sev-head">
+                    <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-pen-to-square"></i></span>
+                    <div class="sev-head-text">
+                        <h2>Ввод результатов</h2>
+                        <p>Единый экран счёта клуба: одиночный и групповой раунд, страницы игрока и маркера. Счёт — в квадрате, фора — наклонными чёрточками справа сверху.</p>
+                    </div>
+                    <span class="sev-head-badge"><i class="fas fa-layer-group" aria-hidden="true"></i> 5 видов · порядок блоков</span>
+                </header>
+                <div class="sev-sec-title">Вариант оформления</div>
+                <p class="sev-sec-sub">Один из пяти видов экрана ввода. Выбранная карточка подсвечивается, предпросмотр ниже обновляется сразу.</p>
+                <div class="sev-variants" role="group" aria-label="Варианты экрана ввода результатов">
+                    <button type="button" id="v5-scoring-1" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('1')">
+                        <span class="sev-card-top"><span class="sev-card-num">1</span><span class="sev-card-name">Классика</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-plate"></span><span class="st-plate st-white"></span><span class="st-plate"></span><span class="st-plate st-white"></span></span><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span></span></span>
+                        <span class="sev-card-desc">Фирменные плиты лунки, знакомый порядок.</span>
+                    </button>
+                    <button type="button" id="v5-scoring-2" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('2')">
+                        <span class="sev-card-top"><span class="sev-card-num">2</span><span class="sev-card-name">Крупный счёт</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-big"></span><span class="st-dot"></span><span class="st-dot st-purple"></span></span><span class="st-row"><span class="st-line st-gold"></span><span class="st-line"></span></span></span>
+                        <span class="sev-card-desc">Самые большие цифры и кнопки ±.</span>
+                    </button>
+                    <button type="button" id="v5-scoring-3" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('3')">
+                        <span class="sev-card-top"><span class="sev-card-num">3</span><span class="sev-card-name">Компакт</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span><span class="st-row"><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span></span></span>
+                        <span class="sev-card-desc">Всё влезает на один экран телефона.</span>
+                    </button>
+                    <button type="button" id="v5-scoring-4" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('4')">
+                        <span class="sev-card-top"><span class="sev-card-num">4</span><span class="sev-card-name">Контраст</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-frame"></span><span class="st-frame"></span></span><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-gold"></span><span class="st-sq st-gold"></span><span class="st-sq st-gold"></span></span></span>
+                        <span class="sev-card-desc">Тёмные плиты и золотые акценты.</span>
+                    </button>
+                    <button type="button" id="v5-scoring-5" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('5')">
+                        <span class="sev-card-top"><span class="sev-card-num">5</span><span class="sev-card-name">Минимализм</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-line st-gold"></span><span class="st-line"></span></span><span class="st-row"><span class="st-line"></span><span class="st-line st-purple"></span></span></span>
+                        <span class="sev-card-desc">Тонкие линии, ничего лишнего.</span>
+                    </button>
                 </div>
-                <h3>Иерархия блоков ввода</h3>
-                <p>Порядок сверху вниз. Перемещайте блоки стрелками — предпросмотр обновится сразу. Кнопка сохранения остаётся вместе с вводом счёта.</p>
-                <div id="score-entry-order"></div>
-                <button type="button" class="btn btn-g" id="score-entry-apply" onclick="saveScoreEntryLayout()">Применить вид и порядок для всех</button>
-                <p id="score-entry-status" role="status" aria-live="polite"></p>
-                <h3>Предпросмотр для телефона</h3>
-                <label>Режим <select id="score-entry-mode" class="form-input" onchange="renderScoreEntryPreview()"><option value="group">Игрок и маркируемый</option><option value="solo">Одиночный раунд</option><option value="marker">Маркер</option></select></label>
-                <p>Демонстрационные данные · ширина до 390 px. Выбор варианта и перестановка блоков ничего не записывают до применения.</p>
-                <div id="score-entry-preview" class="club-sc-phone"></div>
+                <div class="sev-sec-title">Иерархия блоков</div>
+                <p class="sev-sec-sub">Порядок сверху вниз. Перемещайте блоки стрелками — предпросмотр обновится сразу. Кнопка сохранения остаётся вместе с вводом счёта.</p>
+                <div id="score-entry-order" class="sev-order"></div>
+                <div class="sev-apply">
+                    <button type="button" class="btn btn-g" id="score-entry-apply" onclick="saveScoreEntryLayout()"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить вид и порядок для всех</button>
+                    <div class="sev-apply-text">
+                        <p class="sev-apply-hint">Вид и порядок записываются в общие настройки одной операцией.</p>
+                        <p id="score-entry-status" role="status" aria-live="polite"></p>
+                    </div>
+                </div>
+                <div class="sev-preview-bar">
+                    <div>
+                        <div class="sev-sec-title">Предпросмотр для телефона</div>
+                        <p class="sev-sec-sub" style="margin-bottom:0;">Демонстрационные данные · ширина до 390 px. Выбор варианта и перестановка блоков ничего не записывают до применения.</p>
+                    </div>
+                    <label class="sev-mode">Режим
+                        <select id="score-entry-mode" class="form-input" onchange="renderScoreEntryPreview()"><option value="group">Игрок и маркируемый</option><option value="solo">Одиночный раунд</option><option value="marker">Маркер</option></select>
+                    </label>
+                </div>
+                <div class="sev-device">
+                    <div id="score-entry-preview" class="club-sc-phone"></div>
+                </div>
             </div>
         </div>
 
@@ -977,7 +1052,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.90.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.91.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -1007,7 +1082,7 @@
 <script src="js/admin-players-excel.js?v=5566e07a"></script>
 <script src="js/admin-agr.js?v=eab2c54d"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
-<script src="js/admin-display.js?v=b8ce19e6"></script>
+<script src="js/admin-display.js?v=9e465570"></script>
 <script src="js/protocol.js?v=adbd9834"></script>
 <script src="js/start-admin.js?v=8741599e"></script>
 <script src="js/pe-edit.js?v=79837dcc"></script>

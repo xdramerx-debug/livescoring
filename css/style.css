@@ -5580,6 +5580,62 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
     .club-sc[data-sc-view="2"] .club-sc-cell { padding:4px 3px; }
 }
 
+/* ── ОБЩАЯ КАРТОЧКА ГРУППЫ: одна на весь флайт (2+ игрока) ──
+   Строки — лунки в порядке игры, столбцы — игроки. Первая колонка
+   закреплена, горизонтальный скролл — только внутри карточки. */
+.club-sc-group { padding:12px; }
+.club-sc-group-head strong { display:inline-flex; align-items:center; gap:6px; }
+.gsg-format { font-size:11px; color:var(--muted); font-weight:600; }
+.club-sc-group-scroll { overflow-x:auto; max-width:100%; border-radius:10px; -webkit-overflow-scrolling:touch; }
+.club-sc-group-scroll:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.gsg-table { width:100%; border-collapse:separate; border-spacing:0; font-size:12px; text-align:center; min-width:300px; }
+.gsg-table th, .gsg-table td { border-bottom:1px solid rgba(255,255,255,.06); padding:6px 6px; vertical-align:middle; }
+.gsg-table thead th { background:rgba(201,168,76,.14); border-bottom:1px solid var(--border); vertical-align:top; }
+.gsg-hole { text-align:left; white-space:nowrap; }
+th.gsg-hole, td.gsg-hole { position:sticky; left:0; z-index:1; background:var(--card,#112519); min-width:82px; }
+thead th.gsg-hole { z-index:2; color:var(--gold); font-size:11px; }
+.gsg-hole-num { font-weight:800; color:var(--gold); }
+.gsg-hole-par { color:var(--muted); font-size:11px; }
+.gsg-player { min-width:104px; border-left:1px solid rgba(255,255,255,.06); }
+.gsg-pname { font-weight:700; color:var(--white); font-size:12.5px; overflow-wrap:anywhere; }
+.gsg-pbadges { margin-top:3px; display:flex; gap:4px; justify-content:center; flex-wrap:wrap; }
+.gsg-pbadges .tee-pill { font-size:9px; padding:1px 6px; }
+.gsg-pbadges .hcp-chip { font-size:9.5px; padding:1px 6px; }
+.gsg-row.gsg-cur-row td.gsg-hole { box-shadow:inset 3px 0 0 var(--gold); }
+.gsg-cell { border-left:1px solid rgba(255,255,255,.04); }
+.gsg-cell.gsg-cur { outline:2px dashed rgba(201,168,76,.75); outline-offset:-2px; }
+.gsg-score { display:inline-block; padding:2px 10px; border-radius:6px; font-weight:700; min-width:26px; font-size:14px; }
+.gsg-val { position:relative; display:inline-block; min-width:18px; }
+.gsg-val .club-sc-handicap { top:-6px; right:-10px; }
+.gsg-marker { display:block; margin-top:2px; font-size:10px; color:var(--blue,#85c9ff); font-weight:600; }
+.gsg-marker.mk-mismatch { color:#ff8a8a; }
+.gsg-chunk td { background:rgba(255,255,255,.05); font-weight:700; color:var(--gold); text-align:left; font-size:11.5px; }
+.gsg-subtotal td { background:rgba(255,255,255,.06); font-weight:700; }
+.gsg-sub { color:var(--gold); font-size:13px; }
+.gsg-sub small { font-weight:700; font-size:11px; }
+.gsg-total td { background:rgba(201,168,76,.16); border-top:2px solid var(--gold); border-bottom:none; }
+.gsg-total-lbl { color:var(--gold); font-weight:800; font-size:12.5px; }
+.gsg-total-lbl small { color:var(--white); font-weight:400; }
+.gsg-total-gross { font-size:16px; font-weight:800; color:var(--white); }
+.gsg-total-topar { font-weight:800; font-size:13px; }
+.gsg-total-played { font-size:10.5px; color:var(--muted); }
+.club-sc-group-total { justify-content:flex-start; }
+.gsg-thru { font-size:11.5px; color:var(--muted); }
+.gsg-thru b { color:var(--white); font-weight:600; }
+@media(max-width:420px) {
+    .club-sc-group { padding:8px; }
+    .gsg-player { min-width:92px; }
+    .gsg-table th, .gsg-table td { padding:5px 4px; }
+    th.gsg-hole, td.gsg-hole { min-width:70px; }
+    .gsg-score { padding:2px 8px; font-size:13px; }
+}
+body.sun-mode th.gsg-hole, body.sun-mode td.gsg-hole { background:#fff; }
+body.sun-mode .gsg-table thead th { background:rgba(201,168,76,.28); }
+body.sun-mode .gsg-chunk td, body.sun-mode .gsg-subtotal td { background:#f4f4f4; }
+body.sun-mode .gsg-total td { background:rgba(201,168,76,.3); }
+body.sun-mode .gsg-marker.mk-mismatch { color:#c0392b; }
+body.sun-mode .gsg-thru b { color:#000; }
+
 
 /* Input score squares match the shared on-screen scorecard. */
 .entry-score-square { position:relative; display:inline-flex; align-items:center; justify-content:center; width:1.5em; aspect-ratio:1; padding-top:5px; flex:none; line-height:1; font-weight:800; border:1px solid var(--border); border-radius:4px; background:rgba(201,168,76,.08); }

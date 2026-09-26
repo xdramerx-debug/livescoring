@@ -572,7 +572,7 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
 }
 
 // Один свёрнутый блок на активный раунд. Для группового раунда —
-// единая на всех участников карточка на главной странице с выбранным стилем оформления.
+// ОДНА общая карточка на всех участников (сводная таблица: игроки × лунки).
 function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
     var playerEntries = Object.entries(players || {}).filter(function(pe) {
         return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
@@ -954,12 +954,9 @@ function fillCardScorecardPanel(panelId, roundId, r) {
     if (!panel || !r || typeof generateGroupHoleTableHTML !== 'function') return;
     r.roundId = roundId;
     // На главной странице карточка рендерится в «компактном» режиме:
-    //   - без табов «Первые 9 / Вторые 9 / Все 18» (показываем все 18 сразу),
-    //   - без кликабельности по карточке (открытие профиля игрока недоступно —
-    //     имя и так уже видно в строке списка выше),
-    //   - но С компактной шапкой в каждом блоке (имя игрока, ТИ, HCP, маркер):
-    //     в групповом раунде панель показывает карточки нескольких игроков,
-    //     и без подписи непонятно, чей счёт в плитках ниже.
+    // соло — личная карточка, группа — ОДНА общая карточка на всех игроков
+    // (имена в шапке столбцов, удары — в ячейках), без кликабельности
+    // (открытие профиля недоступно — имена и так видны в строке списка выше).
     var html = generateGroupHoleTableHTML(r, { compact: true });
     cardPanelHTML[panelId] = html;
     panel.innerHTML = html;

@@ -3034,9 +3034,190 @@ function generateGroupHoleTableHTML(r, opts) {
     // со счётом игрока виден и счёт, который ввёл его маркер.
     var legend = opts.showMarker ? buildDualScorecardLegendHTML() : '';
 
-    return legend + playerEntries.map(function(pe) {
-        return renderClubScorecard(pe[1], r, Object.assign({}, opts, { playerId: pe[0], order: order }));
+    // Один игрок — личная карточка. Несколько — ОДНА общая карточка на всех
+    // с именами и ударами играющих (требование клуба, 2026-09-26).
+    if (playerEntries.length === 1) {
+        return legend + renderClubScorecard(playerEntries[0][1], r, Object.assign({}, opts, { playerId: playerEntries[0][0], order: order }));
+    }
+    return legend + renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts);
+}
+
+// ОБЩАЯ КАРТОЧКА ГРУППЫ: одна на весь флайт (2+ игрока).
+// Строки — лунки в порядке игры, столбцы — игроки (имя, ТИ, фора).
+// В ячейках — удары (счёт) каждого игрока, на экранах ввода — и счёт маркера.
+// Незаполненный счёт — тире; фора — наклонными чёрточками внутри счёта
+// (как в личной карточке); расхождение с маркером подсвечивается,
+// текущая лунка каждого игрока — пунктирной рамкой ячейки.
+function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
+    opts = opts || {};
+    r = r || {};
+    playerEntries = playerEntries || [];
+    order = (order && order.length) ? order : getRoundOrder(r);
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var view = '1';
+    try { view = getRoundScorecardView(); } catch (e) { view = '1'; }
+    var n = playerEntries.length;
+    var countTxt = en
+        ? (n + ' ' + (n === 1 ? 'player' : 'players'))
+        : (n + ' ' + pluralN(n, 'игрок', 'игрока', 'игроков'));
+    var title = (en ? 'Group scorecard' : 'Общая карточка') + ' · ' + countTxt;
+    var fmtTxt = '';
+    try {
+        fmtTxt = (typeof pestovoRoundFormatBadge === 'function')
+            ? pestovoRoundFormatBadge(r, 'Stroke Play')
+            : (r.format || 'Stroke Play');
+    } catch (e) { fmtTxt = r.format || ''; }
+    var esc = (typeof escapeHtml === 'function')
+        ? escapeHtml
+        : function(v) { return String(v == null ? '' : v); };
+    var infos = playerEntries.map(function(pe) {
+        var pid = pe[0], p = pe[1] || {};
+        var tee = p.tee || r.tee || 'wh';
+        if (typeof tee !== 'string' || (typeof TEES !== 'undefined' && !Object.prototype.hasOwnProperty.call(TEES, tee))) tee = 'wh';
+        var fhcp = (p.fieldHcp !== undefined && p.fieldHcp !== null && p.fieldHcp !== '')
+            ? p.fieldHcp
+            : ((r.fieldHcp !== undefined && r.fieldHcp !== null) ? r.fieldHcp : 0);
+        var scores = p.scores || {};
+        var stats = { gross: 0, toPar: null, holesPlayed: 0, currentHole: null };
+        try { stats = calcRoundStats(scores, fhcp, p.exactHcp || 0, order); } catch (e) { console.warn("[silent]", e); }
+        var cur = null;
+        try {
+            cur = (typeof playerCurrentHole === 'function')
+                ? playerCurrentHole(r, pid, p, stats, order)
+                : (stats.currentHole || null);
+        } catch (e) { cur = stats.currentHole || null; }
+        var name = p.name || '—';
+        try {
+            name = (typeof privacyDisplayName === 'function')
+                ? privacyDisplayName(p, pid)
+                : playerDisplayName(p, pid);
+        } catch (e) { console.warn("[silent]", e); }
+        var thru = '';
+        try {
+            thru = (typeof playerHoleStatusText === 'function')
+                ? playerHoleStatusText(r, pid, p, stats, order)
+                : '';
+        } catch (e) { console.warn("[silent]", e); }
+        return { pid: pid, p: p, tee: tee, fhcp: fhcp, scores: scores, stats: stats, current: cur, name: name, thru: thru };
+    });
+
+    var html = '<section class="club-sc club-sc-group" data-sc-view="' + esc(view) + '" data-sc-players="' + n + '" aria-label="' + esc(title) + '">';
+    html += '<header class="club-sc-head club-sc-group-head"><strong><i class="fas fa-users"></i> ' + esc(title) + '</strong>';
+    if (fmtTxt) html += '<span class="gsg-format">' + esc(fmtTxt) + '</span>';
+    html += '</header>';
+    if (opts.label) html += '<div class="club-sc-caption">' + esc(opts.label) + '</div>';
+    html += '<div class="club-sc-group-scroll" tabindex="0" aria-label="' + esc(en ? 'Group scores by holes' : 'Счёт группы по лункам') + '">';
+    html += '<table class="gsg-table"><thead><tr>';
+    html += '<th class="gsg-hole" scope="col">' + esc(en ? 'Hole · Par' : 'Лунка · Пар') + '</th>';
+    infos.forEach(function(inf) {
+        var teeName = inf.tee;
+        try {
+            teeName = t('tee_' + inf.tee);
+            if (!teeName || teeName === 'tee_' + inf.tee) teeName = (typeof TEES !== 'undefined' && TEES[inf.tee]) || inf.tee;
+        } catch (e) { console.warn("[silent]", e); }
+        var band = '';
+        try { band = (typeof fieldHcpBandClass === 'function') ? fieldHcpBandClass(inf.fhcp) : ''; } catch (e) { console.warn("[silent]", e); }
+        var hcpShort = 'HCP';
+        try { hcpShort = t('field_hcp_short'); } catch (e) { console.warn("[silent]", e); }
+        var hcpVal = inf.fhcp;
+        try { hcpVal = fmtFieldHcp(inf.fhcp); } catch (e) { console.warn("[silent]", e); }
+        html += '<th class="gsg-player" scope="col" data-sc-player="' + esc(inf.pid) + '">';
+        html += '<div class="gsg-pname">' + esc(inf.name) + '</div>';
+        html += '<div class="gsg-pbadges"><span class="tee-pill tee-' + esc(inf.tee) + '">' + esc(teeName) + '</span>' +
+            '<span class="hcp-chip ' + esc(band) + '">' + esc(hcpShort) + ' ' + esc(hcpVal) + '</span></div>';
+        html += '</th>';
+    });
+    html += '</tr></thead><tbody>';
+
+    // Порядок игры сохраняем как есть (включая шотган и девятки):
+    // строки идут в порядке order, промежуточный итог — после каждых 9 сыгранных.
+    var hasChunks = order.length > 9;
+    for (var offset = 0; offset < order.length; offset += 9) {
+        var holes = order.slice(offset, offset + 9);
+        if (hasChunks) {
+            html += '<tr class="gsg-chunk"><td class="gsg-hole" colspan="' + (n + 1) + '">' +
+                esc((en ? 'Holes ' : 'Лунки ') + holes[0] + '–' + holes[holes.length - 1]) + '</td></tr>';
+        }
+        holes.forEach(function(h) {
+            var par = 4;
+            try { par = holePar(h); } catch (e) { console.warn("[silent]", e); }
+            var anyCur = infos.some(function(inf) { return inf.current === h; });
+            html += '<tr class="gsg-row' + (anyCur ? ' gsg-cur-row' : '') + '" data-sc-hole="' + h + '">';
+            html += '<td class="gsg-hole"><span class="gsg-hole-num">#' + h + '</span> <span class="gsg-hole-par">P' + par + '</span></td>';
+            infos.forEach(function(inf) {
+                var s = parseInt(inf.scores[h], 10) || 0;
+                var scoreCls = 'r-empty';
+                try { scoreCls = s > 0 ? holeResClass(s, par) : 'r-empty'; } catch (e) { console.warn("[silent]", e); }
+                var verify = 'none';
+                try { verify = (typeof getHoleVerifyState === 'function') ? getHoleVerifyState(inf.p, h) : 'none'; } catch (e) { console.warn("[silent]", e); }
+                var isCur = inf.current === h;
+                var tdCls = 'gsg-cell' + (isCur ? ' gsg-cur' : '') + (verify === 'mismatch' ? ' cell-mismatch' : '');
+                var strokes = 0, marks = '';
+                try { strokes = hcpStrokesOnHole(h, inf.fhcp); marks = hcpStrokesMarksHTML(inf.fhcp, h); } catch (e) { console.warn("[silent]", e); }
+                var hcpBadge = '';
+                if (marks) hcpBadge = '<span class="club-sc-handicap" role="img" aria-label="' + esc((en ? 'Handicap strokes: ' : 'Удары форы: ') + strokes) + '">' + marks + '</span>';
+                var mkHtml = '';
+                if (opts.showMarker) {
+                    var mk = { score: 0 };
+                    try { mk = getPlayerMarkerScoreForHole(inf.p, h); } catch (e) { console.warn("[silent]", e); }
+                    if (mk && mk.score >= 1) {
+                        var mm = (s >= 1 && s !== mk.score);
+                        if (mm && tdCls.indexOf('cell-mismatch') < 0) tdCls += ' cell-mismatch';
+                        var mkLbl = 'М';
+                        try { mkLbl = t('marker_score_short'); } catch (e) { console.warn("[silent]", e); }
+                        mkHtml = '<span class="gsg-marker' + (mm ? ' mk-mismatch' : '') + '">' + esc(mkLbl) + ': ' + mk.score + '</span>';
+                    }
+                }
+                html += '<td class="' + tdCls + '" data-sc-player="' + esc(inf.pid) + '" data-sc-hole="' + h + '"' + (isCur ? ' data-sc-current="1"' : '') + '>' +
+                    '<span class="gsg-score ' + scoreCls + '"><span class="gsg-val">' + (s > 0 ? s : '—') + hcpBadge + '</span></span>' + mkHtml + '</td>';
+            });
+            html += '</tr>';
+        });
+        if (hasChunks) {
+            html += '<tr class="gsg-subtotal"><td class="gsg-hole gsg-sub-lbl">' +
+                esc((en ? 'Holes ' : 'Лунки ') + holes[0] + '–' + holes[holes.length - 1]) + '</td>';
+            infos.forEach(function(inf) {
+                var gross = 0, cnt = 0, pPar = 0;
+                holes.forEach(function(h) {
+                    var s = parseInt(inf.scores[h], 10) || 0;
+                    if (s > 0) {
+                        gross += s; cnt++;
+                        try { pPar += holePar(h); } catch (e) { console.warn("[silent]", e); }
+                    }
+                });
+                var cell = '—';
+                if (cnt > 0) {
+                    var d = gross - pPar, dTxt = String(d), dCls = '';
+                    try { dTxt = fmtScore(d); dCls = scoreClass(d); } catch (e) { console.warn("[silent]", e); }
+                    cell = '<b>' + gross + '</b> <small class="' + dCls + '">' + esc(dTxt) + '</small>';
+                }
+                html += '<td class="gsg-cell gsg-sub">' + cell + '</td>';
+            });
+            html += '</tr>';
+        }
+    }
+
+    var totPar = 0;
+    order.forEach(function(h) { try { totPar += holePar(h); } catch (e) { console.warn("[silent]", e); } });
+    var totLbl = 'Итого';
+    try { totLbl = t('total'); } catch (e) { console.warn("[silent]", e); }
+    html += '<tr class="gsg-total"><td class="gsg-hole gsg-total-lbl">' + esc(totLbl) + ' <small>(' + totPar + ')</small></td>';
+    infos.forEach(function(inf) {
+        var st = inf.stats || {};
+        var played = st.holesPlayed || 0;
+        var toParT = '—', toParCls = '';
+        try { toParT = fmtScore(st.toPar); toParCls = scoreClass(st.toPar); } catch (e) { console.warn("[silent]", e); }
+        html += '<td class="gsg-cell gsg-total-cell"><div class="gsg-total-gross">' + (played ? (st.gross || 0) : '—') + '</div>' +
+            '<div class="gsg-total-topar ' + toParCls + '">' + esc(toParT) + '</div>' +
+            '<div class="gsg-total-played">' + played + '/' + order.length + '</div></td>';
+    });
+    html += '</tr></tbody></table></div>';
+    // Кто где сейчас — живой статус флайта одной строкой.
+    var thruBits = infos.map(function(inf) {
+        return '<span class="gsg-thru"><b>' + esc(inf.name) + ':</b> ' + esc(inf.thru || '') + '</span>';
     }).join('');
+    html += '<footer class="club-sc-total club-sc-group-total">' + thruBits + '</footer>';
+    return html + '</section>';
 }
 
 function renderSinglePlayerScorecardHTML(r, pe, order, opts) {

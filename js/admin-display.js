@@ -985,8 +985,9 @@ function renderScoreEntryPreview() {
     for (var h = 1; h <= 18; h++) {
         nav += '<button type="button" class="hole-btn ' + (h === 7 ? 'active' : h < 7 ? 'verified' : '') + '" aria-label="Лунка ' + h + '" disabled>' + entryHoleContentHTML(h < 8 ? 5 : 0, mode === 'solo' ? null : h < 7 ? 5 : 0, h, 37) + '</button>';
     }
-    function input(name, hcp, score) {
-        return '<div class="scoring-dual-block"><div class="dual-header"><h3>' + name + ' ' + fmtTeePill(hcp < 0 ? 'bl' : 'wh') + '</h3></div><div class="score-area"><div class="score-disp">' + scoreSquareHTML(score, 7, hcp) + '</div><div class="score-btns"><button type="button" class="score-minus" disabled>−</button><button type="button" class="score-plus" disabled>+</button></div></div></div>';
+    function input(name, hcp, score, isMark) {
+        var badge = isMark ? '<span class="dual-half__badge dual-half__badge--mark"><i class="fas fa-eye"></i> Маркер</span>' : '<span class="dual-half__badge dual-half__badge--my"><i class="fas fa-user"></i> Я</span>';
+        return '<div class="dual-half ' + (isMark ? 'dual-half--mark' : 'dual-half--my') + '"><div class="dual-half__head">' + badge + '<span class="dual-half__name">' + name + ' ' + fmtTeePill(hcp < 0 ? 'bl' : 'wh') + '</span></div><div class="dual-half__score"><div class="score-disp">' + scoreSquareHTML(score, 7, hcp) + '</div></div><div class="dual-half__controls"><button type="button" class="dual-btn dual-btn--minus' + (isMark ? ' dual-btn--mark' : '') + '" disabled>−</button><button type="button" class="dual-btn dual-btn--plus' + (isMark ? ' dual-btn--mark' : '') + '" disabled>+</button></div></div>';
     }
     var info = '<div class="hole-display" data-entry-block="info">' +
         '<div class="hole-box"><div class="hole-lbl">Лунка</div><div class="hole-val">7</div></div>' +
@@ -994,7 +995,7 @@ function renderScoreEntryPreview() {
         '<div class="hole-box h-dist"><div class="hole-lbl">Метры</div><div class="hole-val" style="font-size:24px;">385</div></div>' +
         '<div class="hole-box"><div class="hole-lbl">Дедлайн</div><div class="hole-val" style="font-size:20px;color:var(--gold-l);">12:40</div></div>' +
         '</div>';
-    host.innerHTML = '<div class="score-entry card" data-entry-preview="true">' + info + '<div class="hole-nav" data-entry-block="holes">' + nav + '</div><div data-entry-block="input"><div class="scoring-columns">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5) + (mode === 'group' ? input('Маркируемый игрок', -18, 4) : '') + '</div><button type="button" class="btn btn-g btn-block" disabled>Сохранить результат</button></div></div>';
+    host.innerHTML = '<div class="score-entry card" data-entry-preview="true">' + info + '<div class="hole-nav" data-entry-block="holes">' + nav + '</div><div data-entry-block="input"><div class="dual-score-split-panel' + (mode === 'solo' ? ' single' : '') + '">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5, false) + (mode !== 'solo' ? '<div class="dual-split-divider"><span></span></div>' : '') + (mode === 'group' ? input('Маркируемый игрок', -18, 4, true) : '') + '</div><button type="button" class="btn btn-g btn-block" disabled>Сохранить результат</button></div></div>';
     arrangeScoreEntry(host.firstElementChild, draft.view, draft.order);
     markAdmView5Buttons('scoring');
 }

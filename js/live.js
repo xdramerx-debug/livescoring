@@ -888,14 +888,18 @@ function applyRoundState(data) {
         updateGroupStablefordToggle();
 
         var markContainer = lGet('marker-input-container');
+        var dualPanel = lGet('dual-score-panel');
         if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
             myTargetUid = curRoundData.markerAssignments[myUid].targetId;
             var targetPlayer = curRoundData.players && curRoundData.players[myTargetUid];
             var markTitle = lGet('mark-player-name');
             if (markTitle) markTitle.textContent = targetPlayer ? targetPlayer.name : (currentLang === 'en' ? 'Partner' : 'Партнёр');
             if (markContainer) markContainer.classList.remove('hidden');
+            if (dualPanel) dualPanel.classList.remove('single');
         } else {
             if (markContainer) markContainer.classList.add('hidden');
+            if (dualPanel) dualPanel.classList.add('single');
+            myTargetUid = null;
         }
 
         if (!isChanging) {
@@ -1192,7 +1196,7 @@ function renderPlayHole() {
 
     var markContainer = lGet('marker-input-container');
     if (markContainer) {
-        var markBtns = markContainer.querySelector('.score-btns');
+        var markBtns = markContainer.querySelector('.score-btns') || markContainer.querySelector('.dual-half__controls');
         var markDisp = lGet('mark-disp');
         var markRes = lGet('mark-result');
         if (targetFinished) {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.92.3-46f9e392';
+const CACHE_NAME = 'pestovo-v1.92.3-a6bf2164';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -68,7 +68,7 @@ const STATIC_ASSETS = [
     'js/tournament-core.js?v=a19eaf5c',
     'js/tournament-public.js?v=1932a4cb',
     'js/tournaments.js?v=7b86aaa9',
-    'js/utils.js?v=e69f65a1',
+    'js/utils.js?v=c3806030',
 
     // Прочее
     'manifest.json',

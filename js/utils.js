@@ -2783,10 +2783,12 @@ function stablefordPointsText(points) {
 // Shared score square: handicap is attached to the score, never the hole number.
 // Фора показана явным бейджем «Ф+1»/«H+1» (понятнее чёрточек), результат —
 // классом sq-* (цвет цифры в сетке лунок). Необязательный markerScore рисует
-// точку маркера в углу квадрата вместо подписи «М —».
-function scoreSquareHTML(score, hole, fieldHcp, markerScore) {
+// точку маркера в углу квадрата вместо подписи «М —». В мелких клетках сетки
+// лунок (30px) бейдж закрыл бы цифру, поэтому там skipHcp=true: фора видна
+// на крупном квадрате ввода и в счётных карточках.
+function scoreSquareHTML(score, hole, fieldHcp, markerScore, skipHcp) {
     var n = parseInt(score, 10) || 0;
-    var badge = hcpBadgeHTML(fieldHcp || 0, hole);
+    var badge = skipHcp ? '' : hcpBadgeHTML(fieldHcp || 0, hole);
     var resCls = (n > 0 && typeof holeResClass === 'function' && typeof holePar === 'function')
         ? holeResClass(n, holePar(hole)) : '';
     var sqCls = resCls ? ' sq-' + resCls.slice(2) : '';
@@ -2818,7 +2820,7 @@ function hcpBadgeHTML(fieldHcp, holeNum) {
 
 function entryHoleContentHTML(score, marker, hole, fieldHcp) {
     return '<span class="entry-hole-number">' + hole + '<small>' + (currentLang === 'en' ? 'Par ' : 'Пар ') + holePar(hole) + '</small></span>' +
-        scoreSquareHTML(score, hole, fieldHcp, marker);
+        scoreSquareHTML(score, hole, fieldHcp, marker, true);
 }
 
 // Разметка крупного счёта: gross остаётся главным, а очки отображаются рядом,

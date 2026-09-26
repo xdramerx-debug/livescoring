@@ -944,27 +944,14 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .page-title{font-family:var(--ff);font-size:32px;font-weight:700;color:var(--white);margin-bottom:6px;}
 .page-sub{color:var(--muted);font-size:15px;}
 
-/* ВО ВРЕМЯ РАУНДА блок «Начать раунд» (page-head) скрывается, и фиксированная
-   шапка (nav) начинала перекрывать верх ввода счёта. Компенсируем её высоту
-   отступом main в обоих режимах (одиночный и групповой). Точное значение
-   высоты nav задаётся из JS (--round-nav-offset), 92px — запасной вариант. */
-body.round-active main{padding-top:var(--round-nav-offset,92px)!important;}
+/* Компактная шапка уже занимает место в потоке: второй отступ под nav не нужен. */
+body.round-active main{padding-top:8px!important;}
 
-/* QR турнира (setup-round?round=&as= / scorer?round=&player=):
-   без шапки, меню и подвала — сверху название турнира и сразу счёт. */
-html.score-kiosk {
-    --nav-h: 0px;
-    --round-nav-offset: 0px;
-}
-html.score-kiosk #main-nav,
-html.score-kiosk .page-head,
+/* QR-ввод: шапка, меню и подключение игроков остаются доступны.
+   Убираем только второстепенные блоки. */
 html.score-kiosk .footer,
 html.score-kiosk footer,
 html.score-kiosk #my-active-rounds-container,
-html.score-kiosk #invite-qrs-card,
-html.score-kiosk #mobile-drawer-root,
-html.score-kiosk .mobile-drawer-container,
-html.score-kiosk .nav-toggle,
 html.score-kiosk #nav-weather-container,
 html.score-kiosk .round-event-kicker,
 html.score-kiosk .round-event-sub {
@@ -6318,9 +6305,29 @@ body.sun-mode .dual-split-divider span{background:#fff!important;border-color:#0
     .score-entry .hole-btn .entry-score-square{width:26px!important;height:22px!important;font-size:13px!important;}
 }
 
-/* ── Компактная шапка во время ввода счёта ── */
-.page-head.scoring-compact{
-    padding:10px 0 8px!important;
+/* ── Компактная шапка во время ввода счёта (в том числе по QR) ── */
+body.round-active #main-nav,
+html.score-kiosk #main-nav{
+    padding:4px 0!important;
+    padding-top:max(4px, env(safe-area-inset-top))!important;
+    transition:none!important;
+}
+body.round-active #main-nav .nav-logo,
+html.score-kiosk #main-nav .nav-logo{
+    width:28px!important;height:28px!important;
+    max-width:28px!important;max-height:28px!important;
+}
+body.round-active #main-nav .nav-brand-text,
+html.score-kiosk #main-nav .nav-brand-text{font-size:13px!important;}
+body.round-active #main-nav .nav-toggle,
+html.score-kiosk #main-nav .nav-toggle{min-width:44px;min-height:44px;}
+body.round-active #nav-weather-container{display:none!important;}
+.page-head.scoring-compact,
+html.score-kiosk .page-head{
+    display:block!important;
+    margin-top:var(--nav-h,60px)!important;
+    margin-bottom:0!important;
+    padding:6px 0!important;
     position:sticky!important;
     top:var(--nav-h,70px)!important;
     z-index:20!important;
@@ -6328,10 +6335,13 @@ body.sun-mode .dual-split-divider span{background:#fff!important;border-color:#0
     backdrop-filter:blur(16px)!important;-webkit-backdrop-filter:blur(16px)!important;
     border-bottom:1px solid rgba(201,168,76,.22)!important;
     box-shadow:0 4px 20px rgba(0,0,0,.25)!important;
-    transition:all .25s ease!important;
+    transition:background .25s ease!important;
 }
-.page-head.scoring-compact .page-title{
-    font-size:15px!important;line-height:1.2!important;
+.page-head.scoring-compact .page-title,
+html.score-kiosk .page-head .page-title{
+    margin-bottom:2px!important;
+    overflow-wrap:anywhere;
+    font-size:14px!important;line-height:1.2!important;
     display:flex!important;align-items:center!important;gap:8px!important;
     font-weight:800!important;
 }
@@ -6341,7 +6351,8 @@ body.sun-mode .dual-split-divider span{background:#fff!important;border-color:#0
     animation:live-dot 1.8s ease-in-out infinite;
 }
 @keyframes live-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(.8);}}
-.page-head.scoring-compact .page-sub{
+.page-head.scoring-compact .page-sub,
+html.score-kiosk .page-head .page-sub{
     font-size:11px!important;margin-top:2px!important;
     display:flex!important;align-items:center!important;gap:6px!important;
     flex-wrap:wrap!important;

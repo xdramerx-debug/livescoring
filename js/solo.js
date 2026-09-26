@@ -520,8 +520,7 @@ function loadExistingSolo() {
         }
         if (typeof updateRoundEventBanner === 'function') updateRoundEventBanner(soloRound);
         try { document.body.classList.add('round-active'); } catch (e) { console.warn("[silent]", e); }
-        var navEl = sGet('main-nav');
-        if (navEl) { try { document.documentElement.style.setProperty('--round-nav-offset', (navEl.offsetHeight + 16) + 'px'); } catch (e) { console.warn("[silent]", e); } }
+        if (typeof applyNavHeight === 'function') applyNavHeight();
         // Компактная шапка для одиночного режима тоже
         try {
             var soloTitle = document.getElementById('page-title');

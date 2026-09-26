@@ -16,9 +16,10 @@ function applyScoreKiosk() {
     if (!isScoreKioskUrl()) return false;
     try {
         document.documentElement.classList.add('score-kiosk');
-        document.documentElement.style.setProperty('--nav-h', '0px');
-        document.documentElement.style.setProperty('--round-nav-offset', '0px');
-        ['main-nav', 'my-active-rounds-container', 'invite-qrs-card'].forEach(function(id) {
+        var nav = document.getElementById('main-nav');
+        if (nav) nav.classList.remove('hidden');
+        if (typeof applyNavHeight === 'function') applyNavHeight();
+        ['my-active-rounds-container'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.classList.add('hidden');
         });
@@ -28,7 +29,7 @@ function applyScoreKiosk() {
             ph.classList.remove('hidden');
             ph.classList.add('scoring-compact');
         }
-        var hideSel = document.querySelectorAll('footer, .footer, #mobile-drawer-root, .mobile-drawer-container, .nav-toggle');
+        var hideSel = document.querySelectorAll('footer, .footer');
         for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
     } catch (e) { console.warn("[silent]", e); }
     return true;

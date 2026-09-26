@@ -940,6 +940,12 @@ function saveClubScorecardView(value) {
 
 var scoreEntryDraft = null;
 var scoreEntrySaving = false;
+// Премиум-карточка настройки: у каждого блока — иконка, название и описание.
+var SCORE_ENTRY_BLOCK_META = {
+    info:  { icon: 'fa-circle-info',   title: 'Информация о лунке',      desc: 'Лунка, пар, метры и дедлайн' },
+    holes: { icon: 'fa-table-cells',   title: 'Выбор лунки',             desc: 'Все лунки раунда для быстрого перехода' },
+    input: { icon: 'fa-pen-to-square', title: 'Ввод счёта и сохранение', desc: 'Квадрат счёта, кнопки ± и сохранение' }
+};
 function ensureScoreEntryDraft() {
     if (!scoreEntryDraft) scoreEntryDraft = { view: getScoringView(), order: scoreEntryOrder.slice() };
     return scoreEntryDraft;
@@ -963,11 +969,16 @@ function renderScoreEntryPreview() {
     var host = document.getElementById('score-entry-preview');
     if (!host) return;
     var draft = ensureScoreEntryDraft();
-    var labels = { info: 'Информация о лунке', holes: 'Выбор лунки', input: 'Ввод счёта и сохранение' };
     document.getElementById('score-entry-order').innerHTML = draft.order.map(function(key, index) {
-        return '<div class="entry-order-row"><span>' + (index + 1) + '. ' + labels[key] + '</span>' + [-1, 1].map(function(delta) {
-            return '<button type="button" class="btn btn-og" data-move-key="' + key + '" data-delta="' + delta + '" aria-label="' + labels[key] + (delta < 0 ? ': выше' : ': ниже') + '" onclick="moveScoreEntryBlock(' + index + ',' + delta + ')"' + (index + delta < 0 || index + delta >= draft.order.length ? ' disabled' : '') + '>' + (delta < 0 ? '↑' : '↓') + '</button>';
-        }).join('') + '</div>';
+        var meta = SCORE_ENTRY_BLOCK_META[key] || { icon: 'fa-grip', title: key, desc: '' };
+        return '<div class="entry-order-row">' +
+            '<span class="sev-order-num">' + (index + 1) + '</span>' +
+            '<span class="sev-order-ic"><i class="fas ' + meta.icon + '" aria-hidden="true"></i></span>' +
+            '<span class="sev-order-info"><strong>' + meta.title + '</strong><small>' + meta.desc + '</small></span>' +
+            '<span class="sev-order-btns">' + [-1, 1].map(function(delta) {
+                return '<button type="button" class="btn" data-move-key="' + key + '" data-delta="' + delta + '" aria-label="' + meta.title + (delta < 0 ? ': выше' : ': ниже') + '" onclick="moveScoreEntryBlock(' + index + ',' + delta + ')"' + (index + delta < 0 || index + delta >= draft.order.length ? ' disabled' : '') + '>' + (delta < 0 ? '↑' : '↓') + '</button>';
+            }).join('') + '</span>' +
+            '</div>';
     }).join('');
     var mode = document.getElementById('score-entry-mode').value;
     var nav = '';
@@ -977,7 +988,13 @@ function renderScoreEntryPreview() {
     function input(name, hcp, score) {
         return '<div class="scoring-dual-block"><div class="dual-header"><h3>' + name + ' ' + fmtTeePill(hcp < 0 ? 'bl' : 'wh') + '</h3></div><div class="score-area"><div class="score-disp">' + scoreSquareHTML(score, 7, hcp) + '</div><div class="score-btns"><button type="button" class="score-minus" disabled>−</button><button type="button" class="score-plus" disabled>+</button></div></div></div>';
     }
-    host.innerHTML = '<div class="score-entry card" data-entry-preview="true"><div class="hole-display" data-entry-block="info"><div class="hole-box"><div class="hole-lbl">Лунка</div><div class="hole-val">7</div></div><div class="hole-box h-par"><div class="hole-lbl">Пар</div><div class="hole-val">' + holePar(7) + '</div></div></div><div class="hole-nav" data-entry-block="holes">' + nav + '</div><div data-entry-block="input"><div class="scoring-columns">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5) + (mode === 'group' ? input('Маркируемый игрок', -18, 4) : '') + '</div><button type="button" class="btn btn-g btn-block" disabled>Сохранить результат</button></div></div>';
+    var info = '<div class="hole-display" data-entry-block="info">' +
+        '<div class="hole-box"><div class="hole-lbl">Лунка</div><div class="hole-val">7</div></div>' +
+        '<div class="hole-box h-par"><div class="hole-lbl">Пар</div><div class="hole-val">' + holePar(7) + '</div></div>' +
+        '<div class="hole-box h-dist"><div class="hole-lbl">Метры</div><div class="hole-val" style="font-size:24px;">385</div></div>' +
+        '<div class="hole-box"><div class="hole-lbl">Дедлайн</div><div class="hole-val" style="font-size:20px;color:var(--gold-l);">12:40</div></div>' +
+        '</div>';
+    host.innerHTML = '<div class="score-entry card" data-entry-preview="true">' + info + '<div class="hole-nav" data-entry-block="holes">' + nav + '</div><div data-entry-block="input"><div class="scoring-columns">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5) + (mode === 'group' ? input('Маркируемый игрок', -18, 4) : '') + '</div><button type="button" class="btn btn-g btn-block" disabled>Сохранить результат</button></div></div>';
     arrangeScoreEntry(host.firstElementChild, draft.view, draft.order);
     markAdmView5Buttons('scoring');
 }

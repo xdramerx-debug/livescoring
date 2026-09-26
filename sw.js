@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.90.0-28a576f1';
+const CACHE_NAME = 'pestovo-v1.91.0-1fbbeb37';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -40,7 +40,7 @@ const STATIC_ASSETS = [
 
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
     'css/design-presets.css?v=77ff3916',
-    'css/style.css?v=844e2586',
+    'css/style.css?v=4bdaea32',
     'css/tn-studio.css?v=257f9601',
     'css/tournament-redesign.css?v=6aa85f7a',
     'dist/livescoring-modules.js?v=8347afb4',

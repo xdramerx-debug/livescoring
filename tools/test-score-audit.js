@@ -67,6 +67,11 @@ const call = (id, operations, uid, acting, qrAccess) => api.scoreWrite({ roundId
     assert.strictEqual(log.qr_other_account_1234567890_0.actorType, 'qr');
     assert.strictEqual(log.qr_other_account_1234567890_0.actorUid, null);
     assert.strictEqual(state.rounds.r1.players.u2.scores[3], 5);
+
+    // Кириллические ID гостей (формат guest_имя_фамилия) валидируются корректно
+    state.rounds.r1.players['guest_иван_иванов'] = { name: 'Иван Иванов', scores: {} };
+    await call('cyrillic_guest_1234567890', [{kind:'score',playerId:'guest_иван_иванов',hole:1,score:4}], null, 'guest_иван_иванов');
+    assert.strictEqual(state.rounds.r1.players['guest_иван_иванов'].scores[1], 4);
     await call('marker_request_1234567890', [{kind:'marker',playerId:'u1',hole:1,score:5}], 'u2', 'u2');
     assert.strictEqual(state.rounds.r1.players.u1.verified[1], true);
     assert.strictEqual(log.marker_request_1234567890_0.markerId, 'u2');

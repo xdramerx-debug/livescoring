@@ -48,6 +48,30 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0));
     window.firebase.functions = () => ({httpsCallable: () => () => Promise.reject({code:'functions/permission-denied'})});
     await assert.rejects(window.pestovoScoreWrite('r1', [{kind:'score',playerId:'p2',hole:4,score:4}], 'p2'));
     assert.strictEqual(queued.length, 0, 'permission errors are not queued as network failures');
+
+    // Прямой RTDB fallback при недоступности Cloud Functions (не задеплоена, internal, unavailable)
+    const dbUpdates = [];
+    window.db = {
+        ref: path => ({
+            once: () => Promise.resolve({ val: () => ({ players: { p2: { name: 'Player 2', scores: {} } } }) }),
+            update: updates => { dbUpdates.push(updates); return Promise.resolve(); }
+        })
+    };
+    window.firebase.functions = () => ({ httpsCallable: () => () => Promise.reject({ code: 'functions/internal', message: 'internal' }) });
+    const directRes = await window.pestovoScoreWrite('r1', [{kind:'score',playerId:'p2',hole:5,score:4}], 'p2');
+    assert.strictEqual(directRes.ok, true, 'direct fallback succeeds');
+    assert.strictEqual(directRes.fallback, true, 'fallback flag is set');
+    assert.strictEqual(queued.length, 0, 'successful fallback must not be queued as offline');
+    assert.strictEqual(dbUpdates.length, 1);
+    assert.strictEqual(dbUpdates[0]['rounds/r1/players/p2/scores/5'], 4);
+    assert.strictEqual(dbUpdates[0]['rounds/r1/players/p2/submitted/5'], true);
+
+    const studioRes = await window.pestovoStudioScoreWrite('tn1', 'd1', 'p2', 5, 4);
+    assert.strictEqual(studioRes.ok, true, 'studio fallback succeeds');
+    assert.strictEqual(studioRes.fallback, true);
+    assert.strictEqual(dbUpdates.length, 2);
+    assert.strictEqual(dbUpdates[1]['tournaments/tn1/scores/d1/p2/5'], 4);
+
     await tick();
-    console.log('Score write: offline, QR, ordered replay and network failures passed');
+    console.log('Score write: offline, QR, ordered replay, network failures and direct fallback passed');
 })().catch(e => { console.error(e); process.exitCode = 1; });

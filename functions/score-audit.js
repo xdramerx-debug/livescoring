@@ -5,7 +5,7 @@
 module.exports = function createScoreAudit(functions, admin, db) {
     const DAY_MS = 86400000;
     const KEEP_MS = 30 * DAY_MS;
-    const validKey = v => typeof v === 'string' && /^[a-zA-Z0-9_-]{1,120}$/.test(v);
+    const validKey = v => typeof v === 'string' && v.length >= 1 && v.length <= 120 && !/[.$#\[\]\/\x00-\x1f\x7f]/.test(v);
     const dateKey = ms => new Date(ms).toISOString().slice(0, 10);
     const HttpsError = functions.https.HttpsError;
     function fail(code, text) { throw new HttpsError(code, text); }
@@ -120,7 +120,7 @@ module.exports = function createScoreAudit(functions, admin, db) {
         }, undefined, false);
         if (!tx.committed) {
             const existing = (await roundRef.child('_scoreAuditIds/' + requestId).once('value')).val();
-            if (!existing) fail('failed-precondition', 'Round changed or score was already submitted');
+            if (!existing) fail('aborted', 'Round update was aborted or score was already submitted');
         }
         const events = (await roundRef.child('_scoreAuditOutbox/' + requestId).once('value')).val();
         if (events) await deliver('rounds/' + rid, requestId, events);

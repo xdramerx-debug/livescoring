@@ -58,5 +58,20 @@ const sleep = () => new Promise(resolve => setTimeout(resolve, 20));
     ctx.syncOfflineScores(); await sleep();
     assert.strictEqual(ctx.hasPendingScoreActions(), true, 'network failure must keep the queue paused');
     assert.ok(storage.pestovo_offline_scores.includes('after_net'), 'network-failed actions remain queued');
+
+    // RTDB PERMISSION_DENIED (с подчёркиванием и в верхнем регистре) распознаётся
+    // как постоянный отказ и удаляется, не подвешивая синхронизацию навсегда
+    storage.pestovo_offline_scores = '[]';
+    ctx.pestovoScoreSend = a => Promise.reject({ code: 'PERMISSION_DENIED', message: 'Permission denied' });
+    ctx.queueOfflineScoreAction({roundId:'r1',requestId:'rtdb_perm_reject',authUid:'u2',operations:[]});
+    ctx.syncOfflineScores(); await sleep();
+    assert.strictEqual(ctx.hasPendingScoreActions(), false, 'RTDB PERMISSION_DENIED must be dropped');
+
+    // Очередь гостя (authUid: null) не блокируется ложной ошибкой "Sign in with the original account"
+    ctx.pestovoScoreSend = a => Promise.resolve({ ok: true });
+    ctx.queueOfflineScoreAction({roundId:'r1',requestId:'guest_queue_item',authUid:null,operations:[]});
+    ctx.syncOfflineScores(); await sleep();
+    assert.strictEqual(ctx.hasPendingScoreActions(), false, 'guest action with authUid null syncs smoothly');
+
     console.log('Score queue: sequential replay and legacy marker migration passed');
 })().catch(err => { console.error(err); process.exitCode = 1; });

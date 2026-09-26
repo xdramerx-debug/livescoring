@@ -2781,18 +2781,44 @@ function stablefordPointsText(points) {
 }
 
 // Shared score square: handicap is attached to the score, never the hole number.
-function scoreSquareHTML(score, hole, fieldHcp) {
+// Фора показана явным бейджем «Ф+1»/«H+1» (понятнее чёрточек), результат —
+// классом sq-* (цвет цифры в сетке лунок). Необязательный markerScore рисует
+// точку маркера в углу квадрата вместо подписи «М —».
+function scoreSquareHTML(score, hole, fieldHcp, markerScore) {
     var n = parseInt(score, 10) || 0;
-    var strokes = hcpStrokesOnHole(hole, fieldHcp || 0);
-    var marks = hcpStrokesMarksHTML(fieldHcp || 0, hole);
-    return '<span class="entry-score-square"><span class="score-gross">' + (n > 0 ? n : '—') + '</span>' +
-        (marks ? '<span class="entry-handicap" role="img" aria-label="' + (currentLang === 'en' ? 'Handicap strokes: ' : 'Удары форы: ') + strokes + '">' + marks + '</span>' : '') + '</span>';
+    var badge = hcpBadgeHTML(fieldHcp || 0, hole);
+    var resCls = (n > 0 && typeof holeResClass === 'function' && typeof holePar === 'function')
+        ? holeResClass(n, holePar(hole)) : '';
+    var sqCls = resCls ? ' sq-' + resCls.slice(2) : '';
+    var dot = '';
+    var mk = parseInt(markerScore, 10) || 0;
+    if (mk > 0) {
+        var bad = n > 0 && n !== mk;
+        var tip = (currentLang === 'en' ? 'Marker: ' : 'Маркер: ') + mk;
+        dot = '<span class="entry-marker-dot ' + (bad ? 'mk-bad' : 'mk-ok') + '" title="' + tip + '" role="img" aria-label="' + tip + '"></span>';
+    }
+    return '<span class="entry-score-square' + sqCls + '"><span class="score-gross">' + (n > 0 ? n : '—') + '</span>' + badge + dot + '</span>';
+}
+
+// Явный бейдж ударов форы для экранов ввода («Ф+1»/«H+1» вместо чёрточек).
+// В счётных карточках остаются чёрточки hcpStrokesMarksHTML (там есть легенда).
+function hcpBadgeHTML(fieldHcp, holeNum) {
+    var n = hcpStrokesOnHole(holeNum, fieldHcp);
+    if (!n) return '';
+    var neg = n < 0, cnt = Math.abs(n);
+    var label = (currentLang === 'en' ? 'H' : 'Ф') + (neg ? '-' : '+') + cnt;
+    var title;
+    if (currentLang === 'en') {
+        title = cnt + (cnt === 1 ? ' handicap stroke' : ' handicap strokes') + (neg ? ' (given)' : '');
+    } else {
+        title = 'Фора: ' + cnt + ' ' + pluralN(cnt, 'удар', 'удара', 'ударов') + (neg ? ' (минусовая)' : '');
+    }
+    return '<span class="entry-handicap"><span class="hcp-badge' + (neg ? ' neg' : '') + '" title="' + title + '" role="img" aria-label="' + title + '">' + label + '</span></span>';
 }
 
 function entryHoleContentHTML(score, marker, hole, fieldHcp) {
     return '<span class="entry-hole-number">' + hole + '<small>' + (currentLang === 'en' ? 'Par ' : 'Пар ') + holePar(hole) + '</small></span>' +
-        scoreSquareHTML(score, hole, fieldHcp) +
-        (marker === null ? '' : '<span class="entry-marker">' + (currentLang === 'en' ? 'M ' : 'М ') + (parseInt(marker, 10) > 0 ? parseInt(marker, 10) : '—') + '</span>');
+        scoreSquareHTML(score, hole, fieldHcp, marker);
 }
 
 // Разметка крупного счёта: gross остаётся главным, а очки отображаются рядом,

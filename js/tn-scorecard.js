@@ -1,21 +1,9 @@
-// ==========================================================
-// СЧЁТНАЯ КАРТОЧКА ИГРОКА ИЗ ЛИДЕРБОРДА ТУРНИРА (tournaments.html)
-// ----------------------------------------------------------
-// На странице «Турниры» игрок открывает live-лидерборд своего турнира.
-// Клик по строке игрока показывает его счётную карточку — посчётно, по
-// лункам, с гроссом/нетто/стейблфордом, маркиром и зачётной группой.
-//
-// Оформление выбирает администратор в админ-панели, вкладка «Данные»
-// (settings/tn_scorecard_variant), три варианта:
-//   1 · Официальный бланк — классическая карточка с лунками, паром,
-//       индексом, нетто и очков стейблфорда (как бумажный бланк клуба);
-//   2 · Плитки лунок — крупные плитки по лункам с цветом результата;
-//   3 · Турнирная сводка — шапка-«табло» с местом, группой и лентой счёта.
-//
-// Данные карточку предоставляет js/tournaments.js: он строит их из того же
-// снапшота раундов, что и лидерборд, поэтому карточка живёт в реальном времени
-// и не делает отдельных запросов.
-// ==========================================================
+// Tournament player card: tournament metadata and totals wrap the shared
+// renderClubScorecard screen renderer. The five styles are managed in the
+// dedicated admin tab via settings/scorecard_view, just like all other screens.
+// Legacy V1/V2/V3 helpers below remain for compatibility; tnScRender no longer
+// uses settings/tn_scorecard_variant or an independent in-modal switcher.
+// Data comes from the same rounds snapshot as the tournament leaderboard.
 'use strict';
 
 var tnScState = {
@@ -174,20 +162,7 @@ if (typeof document !== 'undefined' && document.addEventListener) {
 
 // ── Шапка карточки (общая для всех вариантов) ──
 function tnScHeadHtml(card, variant) {
-    var variants = ['1', '2', '3'];
-    // Вид карточки выбирает ТОЛЬКО администратор (админ-панель → «Данные»):
-    // его выбор применяется ко всем игрокам по умолчанию. Игрокам кнопки
-    // переключения не показываем — раньше вид мог поменять любой желающий.
-    var isAdmin = (typeof pestovoIsAdminViewer === 'function') ? !!pestovoIsAdminViewer() : false;
-    var switcher = isAdmin
-        ? '<div class="tnsc-variants">' +
-            '<span class="tnsc-variants-lbl">' + tnScL('Вид карточки (админ)', 'Card style (admin)') + '</span>' +
-            variants.map(function(v) {
-                return '<button type="button" class="tnsc-var' + (v === variant ? ' on' : '') + '" onclick="tnScSetVariant(\'' + v + '\')" title="' +
-                    tnScEsc(tnScVariantTitle(v)) + '">' + v + '</button>';
-            }).join('') +
-            '</div>'
-        : '';
+    var switcher = ''; // Screen card style is managed in the dedicated admin tab.
     var meta = '';
     if (card.divName) meta += '<span class="tnsc-chip tnsc-chip-div"><i class="fas fa-layer-group"></i> ' + tnScL('Группа:', 'Group:') + ' ' + tnScEsc(card.divName) + '</span>';
     if (card.groupLabel) meta += '<span class="tnsc-chip tnsc-chip-flight"><i class="fas fa-users"></i> ' + tnScEsc(card.groupLabel) + (card.startHole ? ' · ' + tnScL('лунка ', 'hole ') + card.startHole : '') + '</span>';
@@ -409,6 +384,8 @@ function tnScRoundBlock(rd, opts) {
     }
     return {
         order: order,
+        tee: rd.tee || (rd.round && rd.round.tee),
+        round: rd.round,
         scores: scores,
         fieldHcp: rd.fieldHcp,
         startHole: tnScNum((rd.round && rd.round.startHole) || 1) || 1,
@@ -425,11 +402,10 @@ function tnScRoundBlock(rd, opts) {
 
 // ── Сборка модалки ──
 function tnScRender(card) {
-    var variant = tnScVariant();
-    var roundsHtml = '';
-    if (variant === '2') roundsHtml = tnScRenderV2(card.rounds);
-    else if (variant === '3') roundsHtml = tnScRenderV3(card.rounds);
-    else roundsHtml = tnScRenderV1(card.rounds);
+    var variant = getRoundScorecardView();
+    var roundsHtml = card.rounds.map(function(rd) {
+        return renderClubScorecard({ name: card.name, tee: rd.tee, scores: rd.scores, fieldHcp: rd.fieldHcp }, rd.round || {}, { order: rd.order, label: rd.label });
+    }).join('');
 
     var foot = '';
     if (card.cutNote) foot += '<div class="tnsc-note"><i class="fas fa-scissors"></i> ' + tnScEsc(card.cutNote) + '</div>';

@@ -423,49 +423,51 @@ check('u2 отнесён к группе «Мужчины»', G.tnScGetCard(TN, 
 has('ТИ в шапке карточки', G.tnScGetCard(TN, 'u2').teeTxt, 'Синий');
 
 // ══════════════════════════════════════════════════════════
-section('3 · Три варианта оформления');
-// ══════════════════════════════════════════════════════════
-[ '1', '2', '3' ].forEach(function(v) {
-    G.tnScState.variant = v;
+section('3 · Пять единых вариантов экранных карточек');
+['1', '2', '3', '4', '5'].forEach(function(v) {
+    G.applyView5('scorecard', v);
     var html = G.tnScRender(card1);
-    has('вариант ' + v + ' отрендерен', html.indexOf('tnsc-v' + v) !== -1, true);
-    hasnt('вариант ' + v + ': нет undefined', html, 'undefined');
-    hasnt('вариант ' + v + ': нет NaN', html, 'NaN');
-    has('вариант ' + v + ': имя игрока', html, 'Иван Петров');
-    has('вариант ' + v + ': счёт 1-й лунки (5)', html, '5');
+    has('вариант ' + v, html, 'data-sc-view="' + v + '"');
+    hasnt('нет undefined', html, 'undefined');
+    hasnt('нет NaN', html, 'NaN');
+    has('имя игрока', html, 'Иван Петров');
+    has('SI', html, '>SI<');
+    has('фора', html, 'hm-bar');
+    has('счёт', html, 'club-sc-score');
+    has('обрезанный HCP', html, '✂');
+    check('оба раунда', (html.match(/class="club-sc"/g) || []).length, 2);
+    hasnt('нет отдельного переключателя турнира', html, 'tnsc-variants');
 });
-G.tnScState.variant = '1';
-var v1 = G.tnScRender(card1);
-has('v1 — официальный бланк (строка «Пар»)', v1.indexOf('Пар') !== -1, true);
-has('v1 — строка «Индекс»', v1.indexOf('Индекс') !== -1, true);
-has('v1 — строка «Счёт»', v1.indexOf('>Счёт<') !== -1, true);
-has('v1 — нетто', v1.indexOf('Нетто') !== -1, true);
-has('v1 — стейблфорд', v1.indexOf('Стейблфорд') !== -1, true);
-has('v1 — счётчики Аут/Ин/Итого', v1.indexOf('Аут') !== -1 && v1.indexOf('>Ин<') !== -1 && v1.indexOf('Итого') !== -1, true);
-has('v1 — срезанный HCP показан', v1.indexOf('✂') !== -1, true);
-
-G.tnScState.variant = '1';
-var v1b = G.tnScRender(card1);
-check('v1 — оба раунда отрендерены', (v1b.match(/tnsc-paper/g) || []).length, 2);
-has('v1 — у раунда с 10-й лунки указан порядок игры', v1b, 'Лунка · порядок игры');
-
-G.tnScState.variant = '2';
-var v2 = G.tnScRender(card1);
-has('v2 — плитки лунок', v2.indexOf('tnsc-grid') !== -1, true);
-has('v2 — плитка со счётом', v2.indexOf('tnsc-tile-score') !== -1, true);
-has('v2 — цвет бёрди', v2.indexOf('birdie') !== -1, true);
-
-G.tnScState.variant = '3';
-var v3 = G.tnScRender(card1);
-has('v3 — лента счёта', v3.indexOf('tnsc-strip') !== -1, true);
-has('v3 — строки статистики', v3.indexOf('tnsc-line') !== -1, true);
-has('v3 — лучшая лунка', v3.indexOf('tnsc-best') !== -1, true);
-G.tnScState.variant = null;
-
-// Перерисовка открытой карточки при смене варианта админом
-G.applyTnCardVariant('2');
-check('после applyTnCardVariant карточка использует вариант 2', G.tnScVariant(), '2');
-G.applyTnCardVariant('1');
+G.applyView5('scorecard', '1');
+var narrowRound = { status: 'active', startHole: 10, holeRange: '10-18' };
+var sample = { name: '<img onerror=alert(1)>', tee: 'rd', fieldHcp: 37, scores: { 10: 5 } };
+var sampleHtml = G.renderClubScorecard(sample, narrowRound, { showMarker: true, markerScores: { 10: 6 } });
+check('9 лунок, только нужный диапазон', (sampleHtml.match(/data-sc-hole=/g) || []).length, 9);
+has('безопасное имя', sampleHtml, '&lt;img');
+hasnt('нет HTML из имени', sampleHtml, '<img');
+has('только ти игрока', sampleHtml, 'tee-rd');
+hasnt('нет других ти', sampleHtml, 'tee-wh');
+has('несовпадение маркера', sampleHtml, 'cell-mismatch');
+has('маркер', sampleHtml, 'club-sc-marker');
+has('пустые лунки', sampleHtml, '—');
+has('порядок с 10-й', sampleHtml, 'Лунки 10–18');
+var noHcp = G.renderClubScorecard(Object.assign({}, sample, { fieldHcp: 0 }), narrowRound);
+hasnt('без форы нет палочек', noHcp, 'hm-bar');
+var plusHcp = G.renderClubScorecard(Object.assign({}, sample, { fieldHcp: -18 }), narrowRound);
+has('минусовая фора', plusHcp, 'hm-minus');
+has('доступная подпись минусовой форы', plusHcp, 'Удары форы: -1');
+// A player field handicap of zero must not inherit the round handicap.
+var zeroHcp = G.renderClubScorecard(Object.assign({}, sample, { fieldHcp: 0 }), Object.assign({}, narrowRound, { fieldHcp: 36 }));
+hasnt('нулевая фора имеет приоритет', zeroHcp, 'hm-bar');
+var groupHtml = G.generateGroupHoleTableHTML({ players: { a: sample, b: Object.assign({}, sample, { tee: 'bl' }) }, holeRange: '1-9' });
+check('группа: отдельная карточка каждого игрока', (groupHtml.match(/class="club-sc"/g) || []).length, 2);
+has('группа: красные ти', groupHtml, 'tee-rd');
+has('группа: синие ти', groupHtml, 'tee-bl');
+check('соло и история используют единый рендер', G.generatePestovoScorecardHTML(sample, narrowRound), G.renderClubScorecard(sample, narrowRound));
+var originalDistance = G.holeDist;
+G.holeDist = function() { throw new Error('Screen scorecards must not access distances'); };
+G.renderClubScorecard(sample, narrowRound);
+G.holeDist = originalDistance;
 
 // ══════════════════════════════════════════════════════════
 section('4 · Завершение турнира: раунды остаются в истории игрока');

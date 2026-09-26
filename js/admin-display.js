@@ -265,7 +265,7 @@ function loadTnLbDisplaySettings() {
 // ── ВИДЫ ОТОБРАЖЕНИЯ (5 вариантов): сохранение в settings/* для всех ──
 function markAdmView5Buttons(name) {
     if (typeof getView5 !== 'function') return;
-    var cur = getView5(name);
+    var cur = name === 'scorecard' && typeof clubScorecardPreviewView !== 'undefined' && clubScorecardPreviewView ? clubScorecardPreviewView : getView5(name);
     ['1', '2', '3', '4', '5'].forEach(function(v) {
         var btn = document.getElementById('v5-' + name + '-' + v);
         if (!btn) return;
@@ -888,5 +888,50 @@ function togglePlayerPrivacy(id) {
         });
     }).catch(function(err) {
         toast('❌ ' + (err && err.message ? err.message : err), 'error');
+    });
+}
+
+var clubScorecardPreviewView = null;
+function previewClubScorecardView(value) {
+    clubScorecardPreviewView = normalizeView5(value);
+    renderClubScorecardPreview();
+}
+
+function renderClubScorecardPreview() {
+    var el = document.getElementById('club-sc-preview');
+    if (!el) return;
+    var scores = {}, marker = {};
+    for (var h = 1; h <= 12; h++) { scores[h] = holePar(h) + (h % 3) - 1; marker[h] = scores[h]; }
+    marker[7] += 1;
+    var p = { name: 'Александр · пример', tee: 'wh', fieldHcp: 23, scores: scores };
+    el.innerHTML = renderClubScorecard(p, { status: 'active', holeRange: '1-18' }, { showMarker: true, markerScores: marker });
+    var card = el.querySelector('.club-sc');
+    card.setAttribute('data-sc-preview', 'true');
+    card.setAttribute('data-sc-view', clubScorecardPreviewView || getRoundScorecardView());
+    markAdmView5Buttons('scorecard');
+}
+
+// Cloud acknowledgement, not an optimistic local change, confirms a global choice.
+var clubScorecardSaving = false;
+function saveClubScorecardView(value) {
+    if (clubScorecardSaving) return;
+    var status = document.getElementById('club-sc-save-status');
+    var v = normalizeView5(value || getRoundScorecardView());
+    if (typeof db === 'undefined' || !db) {
+        status.textContent = 'Нет соединения с базой. Общий вид не изменён.';
+        return;
+    }
+    clubScorecardSaving = true;
+    status.textContent = 'Сохраняем для всех пользователей…';
+    document.querySelectorAll('.club-sc-options button, #club-sc-apply').forEach(function(b) { b.disabled = true; });
+    db.ref(PESTOVO_VIEW5_CONFIG.scorecard.firebase).set(v).then(function() {
+        applyView5('scorecard', v);
+        status.textContent = 'Вариант ' + v + ' сохранён для всех пользователей.';
+    }).catch(function(err) {
+        console.warn('Scorecard display save failed', err);
+        status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
+    }).finally(function() {
+        clubScorecardSaving = false;
+        document.querySelectorAll('.club-sc-options button, #club-sc-apply').forEach(function(b) { b.disabled = false; });
     });
 }

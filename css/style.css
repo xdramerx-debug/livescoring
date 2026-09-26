@@ -5522,3 +5522,67 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
         padding:20px 20px max(20px, calc(env(safe-area-inset-bottom) + 16px));}
     .uic-actions{flex-direction:column-reverse;}
 }
+
+/* Shared on-screen club scorecard; deliberately isolated from print/PNG renderers. */
+.club-sc { margin:12px 0; padding:12px; border:1px solid var(--border); border-radius:14px; background:var(--card, #112519); color:var(--white, #fff); min-width:0; max-width:100%; box-sizing:border-box; font-variant-numeric:tabular-nums; }
+.club-sc * { box-sizing:border-box; }
+.club-sc-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:12px; padding-bottom:10px; }
+.club-sc-head strong { font-size:15px; overflow-wrap:anywhere; }
+.club-sc-caption { font-size:12px; color:var(--muted); margin:6px 0; }
+.club-sc-scroll { overflow-x:auto; max-width:100%; border-radius:8px; }
+.club-sc-scroll:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.club-sc-grid { display:grid; grid-template-columns:48px repeat(var(--sc-holes),minmax(0,1fr)); gap:2px; }
+.club-sc-labels, .club-sc-hole { display:grid; grid-auto-rows:minmax(32px,auto); gap:2px; min-width:0; }
+.club-sc-labels>div, .club-sc-cell { display:flex; align-items:center; justify-content:center; min-width:0; font-size:12px; padding:3px 1px; background:rgba(255,255,255,.04); }
+.club-sc-labels>div { justify-content:flex-start; font-size:10px; color:var(--muted); }
+.club-sc-number { background:var(--gold); color:#142017; font-weight:800; }
+.club-sc-par { background:rgba(201,168,76,.16); }
+.club-sc-si, .club-sc-points { color:var(--muted); }
+.club-sc-score { font-size:17px; font-weight:800; }
+.club-sc-marker { color:var(--blue, #85c9ff); }
+.club-sc-cell-label { display:none; }
+.club-sc-value { display:flex; align-items:center; justify-content:center; gap:2px; min-width:0; }
+.club-sc .hcp-marks { position:static; display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center; gap:2px; max-width:100%; }
+.club-sc .hm-bar { width:2px; height:11px; background:var(--gold); }
+.club-sc .hm-minus .hm-bar { background:var(--red, #ff8171); }
+.club-sc-subtotal { text-align:right; font-size:11px; padding:8px 0; color:var(--muted); }
+.club-sc-total { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; border-top:1px solid var(--border); padding-top:10px; font-size:12px; }
+.club-sc-total b { color:var(--gold); font-size:17px; }
+/* 2: Three holes at a time, readable labels in each column. */
+.club-sc[data-sc-view="2"] .club-sc-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.club-sc[data-sc-view="2"] .club-sc-labels,
+.club-sc[data-sc-view="4"] .club-sc-labels,
+.club-sc[data-sc-view="5"] .club-sc-labels { display:none; }
+.club-sc[data-sc-view="2"] .club-sc-cell-label,
+.club-sc[data-sc-view="4"] .club-sc-cell-label,
+.club-sc[data-sc-view="5"] .club-sc-cell-label { display:block; color:var(--muted); font-weight:400; font-size:10px; }
+.club-sc[data-sc-view="2"] .club-sc-cell { justify-content:space-between; gap:3px; padding:4px 6px; }
+.club-sc[data-sc-view="2"] .club-sc-hole { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+/* 3: Large club form, horizontal scroll stays inside the card. */
+.club-sc[data-sc-view="3"] .club-sc-grid { grid-template-columns:60px repeat(var(--sc-holes),56px); }
+.club-sc[data-sc-view="3"] .club-sc-labels { position:sticky; left:0; z-index:1; background:var(--card, #112519); }
+.club-sc[data-sc-view="3"] .club-sc-cell, .club-sc[data-sc-view="3"] .club-sc-labels>div { min-height:44px; font-size:14px; }
+.club-sc[data-sc-view="3"] .club-sc-score { font-size:24px; }
+/* 4: One hole per row, no sideways scrolling. */
+.club-sc[data-sc-view="4"] .club-sc-grid { grid-template-columns:1fr; gap:6px; }
+.club-sc[data-sc-view="4"] .club-sc-grid>.club-sc-hole { grid-template-columns:repeat(6,minmax(0,1fr)); grid-auto-rows:auto; border-radius:8px; overflow:hidden; }
+.club-sc[data-sc-view="4"] .club-sc-grid>.club-sc-hole:has(.club-sc-marker) { grid-template-columns:repeat(7,minmax(0,1fr)); }
+.club-sc[data-sc-view="4"] .club-sc-cell { flex-direction:column; gap:6px; padding:8px 1px; }
+/* 5: Compact tiles with prominent score; all course facts remain visible. */
+.club-sc[data-sc-view="5"] .club-sc-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.club-sc[data-sc-view="5"] .club-sc-grid>.club-sc-hole { grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:auto; gap:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.club-sc[data-sc-view="5"] .club-sc-cell { flex-direction:column; gap:3px; padding:5px 2px; }
+.club-sc[data-sc-view="5"] .club-sc-cell.club-sc-number { grid-column:1 / -1; flex-direction:row; gap:6px; }
+.club-sc[data-sc-view="5"] .club-sc-score { grid-column:1 / -1; grid-row:2; font-size:28px; min-height:52px; }
+.club-sc[data-sc-view="5"] .club-sc-marker { grid-column:1 / -1; }
+.club-sc-options { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:8px; margin:16px 0; }
+.club-sc-options button { text-align:left; white-space:normal; min-height:56px; }
+.club-sc-phone { width:390px; max-width:100%; margin:16px auto; border:1px solid var(--gold); border-radius:22px; padding:8px; }
+.club-sc-phone .club-sc { margin:0; padding:8px; }
+@media(max-width:380px) {
+    .club-sc { padding:6px; }
+    .club-sc-grid { grid-template-columns:40px repeat(var(--sc-holes),minmax(0,1fr)); gap:1px; }
+    .club-sc-cell { font-size:11px; }
+    .club-sc-score { font-size:15px; }
+    .club-sc[data-sc-view="2"] .club-sc-cell { padding:4px 3px; }
+}

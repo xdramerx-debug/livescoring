@@ -42,7 +42,7 @@ const root = path.join(__dirname, '..');
                     assert.strictEqual(await page.locator('#score-entry-preview .hole-btn').count(), 18);
                     const geometry = await page.evaluate(() => ({
                         overflow: document.documentElement.scrollWidth > innerWidth,
-                        fits: Array.from(document.querySelectorAll('#score-entry-preview .hm-bar')).every(el => {
+                        fits: Array.from(document.querySelectorAll('#score-entry-preview .hm-bar, #score-entry-preview .hcp-badge')).every(el => {
                             const b = el.getBoundingClientRect(), s = el.closest('.entry-score-square').getBoundingClientRect();
                             return b.left >= s.left && b.right <= s.right && b.top >= s.top && b.bottom <= s.bottom;
                         })

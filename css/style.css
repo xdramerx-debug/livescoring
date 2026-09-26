@@ -5580,6 +5580,62 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
     .club-sc[data-sc-view="2"] .club-sc-cell { padding:4px 3px; }
 }
 
+/* ── ОБЩАЯ КАРТОЧКА ГРУППЫ: одна на весь флайт (2+ игрока) ──
+   Строки — лунки в порядке игры, столбцы — игроки. Первая колонка
+   закреплена, горизонтальный скролл — только внутри карточки. */
+.club-sc-group { padding:12px; }
+.club-sc-group-head strong { display:inline-flex; align-items:center; gap:6px; }
+.gsg-format { font-size:11px; color:var(--muted); font-weight:600; }
+.club-sc-group-scroll { overflow-x:auto; max-width:100%; border-radius:10px; -webkit-overflow-scrolling:touch; }
+.club-sc-group-scroll:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.gsg-table { width:100%; border-collapse:separate; border-spacing:0; font-size:12px; text-align:center; min-width:300px; }
+.gsg-table th, .gsg-table td { border-bottom:1px solid rgba(255,255,255,.06); padding:6px 6px; vertical-align:middle; }
+.gsg-table thead th { background:rgba(201,168,76,.14); border-bottom:1px solid var(--border); vertical-align:top; }
+.gsg-hole { text-align:left; white-space:nowrap; }
+th.gsg-hole, td.gsg-hole { position:sticky; left:0; z-index:1; background:var(--card,#112519); min-width:82px; }
+thead th.gsg-hole { z-index:2; color:var(--gold); font-size:11px; }
+.gsg-hole-num { font-weight:800; color:var(--gold); }
+.gsg-hole-par { color:var(--muted); font-size:11px; }
+.gsg-player { min-width:104px; border-left:1px solid rgba(255,255,255,.06); }
+.gsg-pname { font-weight:700; color:var(--white); font-size:12.5px; overflow-wrap:anywhere; }
+.gsg-pbadges { margin-top:3px; display:flex; gap:4px; justify-content:center; flex-wrap:wrap; }
+.gsg-pbadges .tee-pill { font-size:9px; padding:1px 6px; }
+.gsg-pbadges .hcp-chip { font-size:9.5px; padding:1px 6px; }
+.gsg-row.gsg-cur-row td.gsg-hole { box-shadow:inset 3px 0 0 var(--gold); }
+.gsg-cell { border-left:1px solid rgba(255,255,255,.04); }
+.gsg-cell.gsg-cur { outline:2px dashed rgba(201,168,76,.75); outline-offset:-2px; }
+.gsg-score { display:inline-block; padding:2px 10px; border-radius:6px; font-weight:700; min-width:26px; font-size:14px; }
+.gsg-val { position:relative; display:inline-block; min-width:18px; }
+.gsg-val .club-sc-handicap { top:-6px; right:-10px; }
+.gsg-marker { display:block; margin-top:2px; font-size:10px; color:var(--blue,#85c9ff); font-weight:600; }
+.gsg-marker.mk-mismatch { color:#ff8a8a; }
+.gsg-chunk td { background:rgba(255,255,255,.05); font-weight:700; color:var(--gold); text-align:left; font-size:11.5px; }
+.gsg-subtotal td { background:rgba(255,255,255,.06); font-weight:700; }
+.gsg-sub { color:var(--gold); font-size:13px; }
+.gsg-sub small { font-weight:700; font-size:11px; }
+.gsg-total td { background:rgba(201,168,76,.16); border-top:2px solid var(--gold); border-bottom:none; }
+.gsg-total-lbl { color:var(--gold); font-weight:800; font-size:12.5px; }
+.gsg-total-lbl small { color:var(--white); font-weight:400; }
+.gsg-total-gross { font-size:16px; font-weight:800; color:var(--white); }
+.gsg-total-topar { font-weight:800; font-size:13px; }
+.gsg-total-played { font-size:10.5px; color:var(--muted); }
+.club-sc-group-total { justify-content:flex-start; }
+.gsg-thru { font-size:11.5px; color:var(--muted); }
+.gsg-thru b { color:var(--white); font-weight:600; }
+@media(max-width:420px) {
+    .club-sc-group { padding:8px; }
+    .gsg-player { min-width:92px; }
+    .gsg-table th, .gsg-table td { padding:5px 4px; }
+    th.gsg-hole, td.gsg-hole { min-width:70px; }
+    .gsg-score { padding:2px 8px; font-size:13px; }
+}
+body.sun-mode th.gsg-hole, body.sun-mode td.gsg-hole { background:#fff; }
+body.sun-mode .gsg-table thead th { background:rgba(201,168,76,.28); }
+body.sun-mode .gsg-chunk td, body.sun-mode .gsg-subtotal td { background:#f4f4f4; }
+body.sun-mode .gsg-total td { background:rgba(201,168,76,.3); }
+body.sun-mode .gsg-marker.mk-mismatch { color:#c0392b; }
+body.sun-mode .gsg-thru b { color:#000; }
+
 
 /* Input score squares match the shared on-screen scorecard. */
 .entry-score-square { position:relative; display:inline-flex; align-items:center; justify-content:center; width:1.5em; aspect-ratio:1; padding-top:5px; flex:none; line-height:1; font-weight:800; border:1px solid var(--border); border-radius:4px; background:rgba(201,168,76,.08); }
@@ -6370,3 +6426,91 @@ body.round-active .page-head.scoring-compact.hidden{
 }
 
 #club-sc-save-status:empty,#score-entry-status:empty{display:none;}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Компактный экран ввода группы (v1.92.3): шапка уже содержит лунку/пар/
+   дистанцию, поэтому дублирующий блок скрыт, а карточки подняты выше.
+   ═══════════════════════════════════════════════════════════════════ */
+#active-scoring-view .score-entry > [data-entry-block="info"]{display:none!important;}
+
+/* ── Сворачиваемая сетка лунок: развёрнутая таблица / горизонтальная полоса ── */
+#play-holes-block{margin-bottom:10px;}
+.holes-toggle{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:7px 10px;margin:0 0 6px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.holes-toggle:active{transform:scale(.99);background:rgba(255,255,255,.07);}
+.holes-toggle .fa-th{font-size:11px;opacity:.8;}
+.holes-toggle [data-holes-toggle-label]{letter-spacing:.3px;}
+#play-holes-toggle-chev{font-size:10px;opacity:.8;}
+#play-holes-nav.holes-collapsed{display:flex!important;overflow-x:auto!important;gap:6px!important;padding:2px 2px 8px!important;scrollbar-width:thin;-webkit-overflow-scrolling:touch;}
+#play-holes-nav.holes-collapsed .hole-btn{flex:0 0 64px!important;min-height:62px!important;}
+#play-holes-nav.holes-collapsed .entry-hole-number small{display:none;}
+body.sun-mode .holes-toggle{background:#fff;border-color:#000;color:#000;}
+
+/* ── Явный бейдж форы «Ф+1»/«H+1» вместо чёрточек (экраны ввода) ── */
+.hcp-badge{display:inline-block;font-size:8px;font-weight:800;letter-spacing:-.02em;line-height:1.7;padding:0 3px;border-radius:5px;background:rgba(201,168,76,.94);color:#142017;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.45);}
+.hcp-badge.neg{background:rgba(224,90,74,.94);color:#fff;}
+.score-disp .hcp-badge{font-size:11px;line-height:1.6;padding:1px 6px;border-radius:6px;}
+.score-entry[data-entry-view="2"] .hole-btn .hcp-badge{font-size:9px;}
+.hole-btn.active .hcp-badge{background:#142017;color:var(--gold-l);box-shadow:none;}
+body.sun-mode .hcp-badge{border:1px solid #000;box-shadow:none;}
+
+/* ── Точка маркера в углу квадрата вместо подписи «М —» ── */
+.entry-marker-dot{position:absolute;bottom:2px;right:3px;width:7px;height:7px;border-radius:50%;background:#5aade0;box-shadow:0 0 5px rgba(90,173,224,.9);}
+.entry-marker-dot.mk-bad{background:#e05a4a;box-shadow:0 0 5px rgba(224,90,74,.9);animation:mk-dot-blink 1.1s ease-in-out infinite;}
+@keyframes mk-dot-blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.hole-btn.active .entry-marker-dot{background:#142017;box-shadow:none;}
+.hole-btn.active .entry-marker-dot.mk-bad{background:#7a1f16;box-shadow:0 0 4px rgba(122,31,22,.9);}
+body.sun-mode .entry-marker-dot{border:1px solid #000;box-shadow:none;}
+
+/* ── Цвет цифр в сетке лунок: бёрди — зелёный, боги — красный, пар — серый ── */
+.hole-btn .entry-score-square.sq-eag .score-gross{color:#2ecc71;font-weight:900;}
+.hole-btn .entry-score-square.sq-bir .score-gross{color:#2ecc71;}
+.hole-btn .entry-score-square.sq-par .score-gross{color:#9aa3a8;}
+.hole-btn .entry-score-square.sq-bog .score-gross{color:#e05a4a;}
+.hole-btn .entry-score-square.sq-dbl .score-gross{color:#e05a4a;font-weight:900;}
+.hole-btn.active .entry-score-square .score-gross{color:#142017!important;}
+body.sun-mode .hole-btn .entry-score-square.sq-eag .score-gross,
+body.sun-mode .hole-btn .entry-score-square.sq-bir .score-gross{color:#1e8449!important;}
+body.sun-mode .hole-btn .entry-score-square.sq-par .score-gross{color:#5f6b6d!important;}
+body.sun-mode .hole-btn .entry-score-square.sq-bog .score-gross,
+body.sun-mode .hole-btn .entry-score-square.sq-dbl .score-gross{color:#c0392b!important;}
+
+/* ── Рамка только у активной карточки; ожидание — приглушено ── */
+.dual-score-split-panel{border-color:var(--border)!important;box-shadow:0 12px 30px rgba(0,0,0,.35)!important;}
+.dual-score-split-panel::before{display:none;}
+.dual-half{border:1px solid transparent;border-radius:12px;transition:border-color .2s ease,box-shadow .2s ease,opacity .2s ease;}
+.dual-half--my{border-top:1px solid transparent!important;background:linear-gradient(180deg, rgba(201,168,76,.06), transparent)!important;}
+.dual-half--mark{border-top:1px solid transparent!important;background:linear-gradient(180deg, rgba(155,89,182,.07), transparent)!important;}
+.dual-half.dual-turn{border-color:var(--gold)!important;box-shadow:0 0 0 1px rgba(201,168,76,.45),0 0 20px rgba(201,168,76,.22);}
+.dual-half.dual-wait{opacity:.55;}
+.dual-half.dual-ok .entry-score-square{border-color:rgba(46,204,113,.65);}
+.dual-half__compare{min-height:24px;}
+.dual-half__compare:empty{display:flex!important;visibility:hidden;}
+body.sun-mode .dual-half.dual-turn{border-color:#000!important;box-shadow:0 0 0 1px #000;}
+body.sun-mode .dual-half.dual-wait{opacity:.6;}
+
+/* ── Большие красно-зелёные кнопки: минус — тёмно-красный, плюс — тёмно-зелёный ── */
+.dual-half__controls{gap:8px;}
+.dual-btn{flex:1 1 0;min-width:0;max-width:none;height:76px;font-size:34px;border-radius:16px;}
+.dual-btn--minus{background:linear-gradient(180deg,#5c211b,#3d140f);border-color:rgba(224,90,74,.6);color:#ffb4a8;}
+.dual-btn--minus:active{background:linear-gradient(180deg,#72291f,#4a1712);}
+.dual-btn--mark.dual-btn--minus{background:linear-gradient(180deg,#5c211b,#3d140f);border-color:rgba(224,90,74,.6);color:#ffb4a8;}
+.dual-btn--plus{background:linear-gradient(180deg,#1d4a29,#123420);border-color:rgba(46,204,113,.6);color:#a9eec3;}
+.dual-btn--plus:active{background:linear-gradient(180deg,#256038,#163d24);}
+.dual-btn--mark.dual-btn--plus{background:linear-gradient(180deg,#1d4a29,#123420);border-color:rgba(46,204,113,.6);color:#a9eec3;}
+body.sun-mode .dual-btn--minus{background:#fdecea!important;border-color:#c0392b!important;color:#c0392b!important;}
+body.sun-mode .dual-btn--plus{background:#e8f8f0!important;border-color:#1e8449!important;color:#1e8449!important;}
+@media(max-width:480px){
+    .dual-btn{height:72px;min-width:0;max-width:none;font-size:30px;border-radius:16px;}
+}
+@media(max-width:360px){
+    .dual-btn{height:66px;font-size:28px;}
+}
+
+/* ── Прямое редактирование: тап по цифре открывает цифровую клавиатуру ── */
+#dual-score-panel .score-disp{cursor:pointer;border-radius:12px;}
+#dual-score-panel .score-disp:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.dual-half__score .score-disp .entry-score-square::after{content:'✎';position:absolute;bottom:1px;left:4px;font-size:11px;font-weight:400;line-height:1;color:var(--muted);opacity:.75;}
+.dual-score-input{width:116px;max-width:100%;font-family:inherit;font-size:46px;font-weight:800;text-align:center;color:var(--white);background:var(--input);border:2px solid var(--gold);border-radius:14px;padding:2px 4px;-moz-appearance:textfield;appearance:textfield;}
+.dual-score-input::-webkit-outer-spin-button,.dual-score-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.dual-score-input:focus{outline:none;box-shadow:0 0 0 3px rgba(201,168,76,.35);}
+body.sun-mode .dual-score-input{background:#fff;color:#000;border-color:#000;}

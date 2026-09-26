@@ -75,10 +75,13 @@ function updateScoringHeader() {
     var curIdx = order.indexOf(playHole);
     var curNum = curIdx >= 0 ? curIdx + 1 : 1;
     var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-    var modeLabel = curRoundData.mode === 'group' ? (isEn ? 'Group' : 'Группа') : (isEn ? 'Solo' : 'Соло');
     var tnName = (typeof roundTournamentName === 'function' ? roundTournamentName(curRoundData) : curRoundData.tournamentName) || '';
+    // Компактная шапка — всё про лунку в одном месте: «Пестово • Лунка 18»,
+    // вторая строка «Par 4 · 349 м · 🚩 5/18». Дублирующий блок hole-display
+    // в групповом виде скрыт через CSS, чтобы карточки ввода были выше.
     if (titleEl) {
-        titleEl.textContent = (tnName ? tnName + ' · ' : '') + modeLabel + ' · ' + (isEn ? 'Hole ' : 'Лунка ') + playHole;
+        var clubName = tnName || (isEn ? 'Pestovo' : 'Пестово');
+        titleEl.textContent = clubName + ' • ' + (isEn ? 'Hole ' : 'Лунка ') + playHole;
     }
     if (subEl) {
         var prog = '<span class="scoring-progress"><i class="fas fa-flag"></i> ' + curNum + '/' + total + '</span>';
@@ -88,7 +91,7 @@ function updateScoringHeader() {
             var myP = curRoundData.players && curRoundData.players[myUid];
             var myTee = myP && myP.tee ? myP.tee : (curRoundData.tee || 'wh');
             var d = (typeof holeDist === 'function' ? holeDist(playHole, myTee) : 0);
-            if (d) dist = ' · ' + d + 'м';
+            if (d) dist = ' · ' + d + (isEn ? 'm' : 'м');
         } catch (e) { console.warn("[silent]", e); }
         subEl.innerHTML = prog + ' · Par ' + par + dist;
     }
@@ -103,7 +106,9 @@ function updateDualCompare() {
     var myPlayer = curRoundData.players && curRoundData.players[myUid];
     if (!myPlayer) return;
 
-    // Левая половина: мой счёт vs счёт моего маркера для меня
+    // Левая половина: мой счёт vs счёт моего маркера для меня.
+    // Статус — компактной иконкой (⏳/✅/⚠️), чей ход — подсветкой карточки.
+    var myHalf = document.getElementById('dual-half-my');
     if (myComp) {
         var myMarkerId = myPlayer.markedBy;
         var myS = parseInt(myPlayer.scores && myPlayer.scores[playHole]) || myScore || 0;
@@ -114,23 +119,45 @@ function updateDualCompare() {
         if (myS > 0 && markerS > 0) {
             if (myS === markerS) {
                 myComp.className = 'dual-half__compare compare-ok';
-                myComp.innerHTML = '✅ ' + (isEn ? 'Match' : 'Совпадает');
+                myComp.innerHTML = '✅';
+                myComp.title = isEn ? 'Match' : 'Совпадает';
+                myComp.setAttribute('aria-label', myComp.title);
             } else {
                 var delta = myS - markerS;
                 var deltaStr = (delta > 0 ? '+' : '') + delta;
                 myComp.className = 'dual-half__compare compare-bad';
-                myComp.innerHTML = '⚠️ Δ ' + deltaStr + ' · ' + (isEn ? 'You ' : 'Вы ') + myS + ' / M ' + markerS;
+                myComp.innerHTML = '⚠️ Δ' + deltaStr;
+                myComp.title = isEn ? 'Mismatch: you ' + myS + ', marker ' + markerS : 'Расхождение: вы ' + myS + ', маркер ' + markerS;
+                myComp.setAttribute('aria-label', myComp.title);
             }
         } else if (myS > 0) {
             myComp.className = 'dual-half__compare compare-wait';
-            myComp.innerHTML = '⏳ ' + (isEn ? 'Waiting marker' : 'Ждём маркера');
+            myComp.innerHTML = '⏳';
+            myComp.title = isEn ? 'Waiting for marker' : 'Ждём маркера';
+            myComp.setAttribute('aria-label', myComp.title);
         } else {
             myComp.className = 'dual-half__compare';
             myComp.innerHTML = '';
+            myComp.title = '';
+            myComp.removeAttribute('aria-label');
+        }
+        // Подсветка хода — по СОХРАНЁННОМУ счёту (черновик myScore не в счёт).
+        if (myHalf) {
+            var mySaved = parseInt(myPlayer.scores && myPlayer.scores[playHole]) || 0;
+            var myMkSaved = myMarkerId ? (parseInt(myPlayer.markerScores && myPlayer.markerScores[myMarkerId] && myPlayer.markerScores[myMarkerId][playHole]) || 0) : 0;
+            myHalf.classList.remove('dual-turn', 'dual-wait', 'dual-ok');
+            if (mySaved > 0 && myMkSaved > 0) {
+                myHalf.classList.add(mySaved === myMkSaved ? 'dual-ok' : 'dual-turn');
+            } else if (mySaved > 0) {
+                myHalf.classList.add('dual-wait');
+            } else {
+                myHalf.classList.add('dual-turn');
+            }
         }
     }
 
     // Правая половина: маркируемый — мой ввод vs его собственный счёт
+    var markHalf = lGet('marker-input-container');
     if (markComp && myTargetUid) {
         var tp = curRoundData.players && curRoundData.players[myTargetUid];
         if (tp) {
@@ -139,19 +166,41 @@ function updateDualCompare() {
             if (tOwn > 0 && tMine > 0) {
                 if (tOwn === tMine) {
                     markComp.className = 'dual-half__compare compare-ok';
-                    markComp.innerHTML = '✅ ' + (isEn ? 'Match' : 'Совпадает');
+                    markComp.innerHTML = '✅';
+                    markComp.title = isEn ? 'Match' : 'Совпадает';
+                    markComp.setAttribute('aria-label', markComp.title);
                 } else {
                     var d2 = tMine - tOwn;
                     var d2Str = (d2 > 0 ? '+' : '') + d2;
                     markComp.className = 'dual-half__compare compare-bad';
-                    markComp.innerHTML = '⚠️ Δ ' + d2Str + ' · ' + tMine + ' / ' + tOwn;
+                    markComp.innerHTML = '⚠️ Δ' + d2Str;
+                    markComp.title = isEn ? 'Mismatch: marker ' + tMine + ', player ' + tOwn : 'Расхождение: маркер ' + tMine + ', игрок ' + tOwn;
+                    markComp.setAttribute('aria-label', markComp.title);
                 }
             } else if (tMine > 0) {
                 markComp.className = 'dual-half__compare compare-wait';
-                markComp.innerHTML = '⏳ ' + (isEn ? 'Waiting player' : 'Ждём игрока');
+                markComp.innerHTML = '⏳';
+                markComp.title = isEn ? 'Waiting for player' : 'Ждём игрока';
+                markComp.setAttribute('aria-label', markComp.title);
             } else {
                 markComp.className = 'dual-half__compare';
                 markComp.innerHTML = '';
+                markComp.title = '';
+                markComp.removeAttribute('aria-label');
+            }
+            if (markHalf) {
+                var tFinished = (typeof isPlayerFinishedRound === 'function') && isPlayerFinishedRound(curRoundData, myTargetUid);
+                var tMineSaved = parseInt(tp.markerScores && tp.markerScores[myUid] && tp.markerScores[myUid][playHole]) || 0;
+                markHalf.classList.remove('dual-turn', 'dual-wait', 'dual-ok');
+                if (!tFinished) {
+                    if (tMineSaved > 0 && tOwn > 0) {
+                        markHalf.classList.add(tMineSaved === tOwn ? 'dual-ok' : 'dual-turn');
+                    } else if (tMineSaved > 0) {
+                        markHalf.classList.add('dual-wait');
+                    } else {
+                        markHalf.classList.add('dual-turn');
+                    }
+                }
             }
         }
     }
@@ -1251,6 +1300,14 @@ function buildPlayHolesNav() {
             entryHoleContentHTML(s, mkForHole, h, myFieldHcp) + '</button>';
     });
     el.innerHTML = html;
+    applyPlayHolesCollapsed();
+    // В свёрнутой полосе текущая лунка всегда в видимой области.
+    try {
+        if (el.classList.contains('holes-collapsed')) {
+            var activeBtn = el.querySelector('.hole-btn.active');
+            if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
+        }
+    } catch (e) { console.warn("[silent]", e); }
 }
 
 function doPlayHole(h) {
@@ -1341,7 +1398,7 @@ function renderPlayHole() {
         var markBtns = markContainer.querySelector('.score-btns') || markContainer.querySelector('.dual-half__controls');
         var markDisp = lGet('mark-disp');
         var markRes = lGet('mark-result');
-        if (targetFinished) {
+        if (targetFinished && !dualEditing.mark) {
             var tp = (curRoundData && curRoundData.players && curRoundData.players[myTargetUid]) || {};
             var tpScores = tp.scores || {};
             var tpHoles = Object.values(tpScores).filter(function(v){ return parseInt(v) >= 1; }).length;
@@ -1414,6 +1471,8 @@ function adjScore(who, delta) {
 
 function updScoreDisplay(who, score) {
     if (typeof holePar !== 'function') return;
+    // Пока открыто прямое редактирование — не затирать ввод живым обновлением.
+    if (typeof dualEditing !== 'undefined' && dualEditing[who]) return;
     var par = holePar(playHole);
     var dispEl = lGet(who + '-disp');
     var resEl = lGet(who + '-result');
@@ -1426,9 +1485,100 @@ function updScoreDisplay(who, score) {
 
     if (dispEl) dispEl.innerHTML = scoreWithStablefordHTML(score, playHole, fieldHcp, showStableford);
     if (resEl) {
-        resEl.textContent = holeResName(score, par);
+        // Относительный счёт вместо слова: «E · Пар», «-1 · Бёрди», «+1 · Боги».
+        var sd = score - par;
+        var rel = (typeof fmtScore === 'function') ? fmtScore(sd) : (sd === 0 ? 'E' : (sd > 0 ? '+' + sd : '' + sd));
+        var nm = holeResName(score, par);
+        resEl.textContent = (score >= 1 && par > 0) ? (rel + (nm ? ' · ' + nm : '')) : '—';
         resEl.className = 'score-result ' + holeResClass(score, par);
     }
+}
+
+// Прямое редактирование счёта: тап по крупной цифре открывает цифровую клавиатуру.
+var dualEditing = { my: false, mark: false };
+
+function editDualScore(who) {
+    if (!canEditGroup || dualEditing[who]) return;
+    if (who !== 'my' && who !== 'mark') return;
+    if (who === 'mark' && myTargetUid && typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(curRoundData, myTargetUid)) return;
+    var dispEl = lGet(who + '-disp');
+    if (!dispEl) return;
+    var cur = who === 'my' ? myScore : targetScore;
+    if (!(cur >= 1)) cur = (typeof holePar === 'function' ? holePar(playHole) : 4);
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    dualEditing[who] = true;
+    dispEl.innerHTML = '<input id="dual-edit-' + who + '" class="dual-score-input" type="number" inputmode="numeric" pattern="[0-9]*" min="1" max="15" value="' + cur + '" aria-label="' + (isEn ? 'Score, 1 to 15' : 'Счёт, от 1 до 15') + '">';
+    var inp = lGet('dual-edit-' + who);
+    if (inp) {
+        inp.addEventListener('keydown', function(ev) {
+            if (ev.key === 'Enter') { ev.preventDefault(); commitDualEdit(who); }
+            else if (ev.key === 'Escape') { ev.preventDefault(); cancelDualEdit(who); }
+        });
+        inp.addEventListener('blur', function() { commitDualEdit(who); });
+        inp.addEventListener('click', function(ev) { ev.stopPropagation(); });
+        try { inp.focus(); inp.select(); } catch (e) { console.warn("[silent]", e); }
+    }
+    if (typeof vib === 'function') vib(10);
+}
+
+function commitDualEdit(who) {
+    if (!dualEditing[who]) return;
+    var inp = lGet('dual-edit-' + who);
+    var v = inp ? parseInt(inp.value, 10) : NaN;
+    dualEditing[who] = false;
+    // Вне диапазона 1–15 или пусто — молча возвращаем прежнее значение.
+    if (v >= 1 && v <= 15) {
+        if (who === 'my') myScore = v; else targetScore = v;
+    }
+    updScoreDisplay(who, who === 'my' ? myScore : targetScore);
+    if (typeof updateDualCompare === 'function') updateDualCompare();
+    if (typeof animateScoreElement === 'function') animateScoreElement(who + '-disp');
+    if (typeof vib === 'function') vib();
+}
+
+function cancelDualEdit(who) {
+    if (!dualEditing[who]) return;
+    dualEditing[who] = false;
+    updScoreDisplay(who, who === 'my' ? myScore : targetScore);
+    if (typeof updateDualCompare === 'function') updateDualCompare();
+}
+
+// Сворачивание сетки лунок в горизонтальную полосу (состояние — в localStorage).
+function getPlayHolesCollapsed() {
+    var v = null;
+    try { v = localStorage.getItem('pestovo_play_holes_collapsed'); } catch (e) { console.warn("[silent]", e); }
+    // По умолчанию свёрнуто: карточки ввода сразу у большого пальца.
+    return v === null ? true : v === '1';
+}
+
+function applyPlayHolesCollapsed() {
+    var nav = lGet('play-holes-nav');
+    var btn = lGet('play-holes-toggle');
+    var c = getPlayHolesCollapsed();
+    if (nav) nav.classList.toggle('holes-collapsed', c);
+    if (btn) {
+        var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+        btn.setAttribute('aria-expanded', c ? 'false' : 'true');
+        var lbl = btn.querySelector('[data-holes-toggle-label]');
+        if (lbl) lbl.textContent = isEn ? 'Holes' : 'Лунки';
+        var chev = lGet('play-holes-toggle-chev');
+        if (chev) chev.className = 'fas ' + (c ? 'fa-chevron-down' : 'fa-chevron-up');
+    }
+}
+
+function togglePlayHolesNav() {
+    var next = !getPlayHolesCollapsed();
+    try { localStorage.setItem('pestovo_play_holes_collapsed', next ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
+    applyPlayHolesCollapsed();
+    // В полосе сразу показываем текущую лунку.
+    try {
+        var nav = lGet('play-holes-nav');
+        var activeBtn = nav && nav.querySelector('.hole-btn.active');
+        if (nav && nav.classList.contains('holes-collapsed') && activeBtn) {
+            activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
+        }
+    } catch (e) { console.warn("[silent]", e); }
+    if (typeof vib === 'function') vib(10);
 }
 
 function checkPlayVerification() {

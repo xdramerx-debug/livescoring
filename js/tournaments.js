@@ -1317,7 +1317,7 @@ function tnScBuildCards(tnId, tVal, list) {
             if (rd.startHole) labelBits.push((currentLang === 'en' ? 'hole ' : 'лунка ') + rd.startHole);
             var block = (typeof tnScRoundBlock === 'function')
                 ? tnScRoundBlock({
-                    scores: rd.scores, fieldHcp: rd.fieldHcp, round: r,
+                    scores: rd.scores, fieldHcp: rd.fieldHcp, tee: rd.tee, round: r,
                     label: labelBits.join(' · ')
                 })
                 : null;

@@ -392,53 +392,7 @@ function renderCard() {
     var el = scGet('sc-card');
     if (!el) return;
     if (!scRound || !scRound.players || !scRound.players[scPid]) return;
-    var scores = scRound.players[scPid].scores || {};
-    var holeHeader = (typeof t === 'function' ? t('hole') : 'Hole');
-    var parHeader = (typeof t === 'function' ? t('par') : 'Par');
-    var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-    var scoreHeader = langIsEn ? 'Score' : 'Счёт';
-    var outHeader = (typeof t === 'function' ? t('out') : 'OUT');
-    var inHeader = (typeof t === 'function' ? t('in_side') : 'IN');
-    var totalHeader = (typeof t === 'function' ? t('total') : 'TOTAL');
-
-    var html = '<div class="scorecard"><table><tr><th>' + holeHeader + '</th>';
-    for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
-    html += '<th>' + outHeader + '</th></tr><tr class="row-par"><td>' + parHeader + '</td>';
-    var pO = 0;
-    for (var i = 1; i <= 9; i++) { var pv = (typeof holePar === 'function' ? holePar(i) : 4); pO += pv; html += '<td>' + pv + '</td>'; }
-    html += '<td>' + pO + '</td></tr><tr><td>' + scoreHeader + '</td>';
-    var gO = 0;
-    for (var i = 1; i <= 9; i++) {
-        var s = parseInt(scores[i]) || 0, cls = (typeof holeResClass === 'function' ? holeResClass(s, (typeof holePar === 'function' ? holePar(i) : 4)) : ''), v = '';
-        if (typeof getHoleVerifyState === 'function') {
-            var st = getHoleVerifyState(scRound.players[scPid], i);
-            if (st === 'confirmed') v = ' ✅'; else if (st === 'mismatch') v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
-            if (st === 'mismatch') cls += ' cell-mismatch';
-        }
-        if (s >= 1) gO += s;
-        html += '<td class="' + cls + '">' + (s >= 1 ? s + v : '') + '</td>';
-    }
-    html += '<td class="row-total">' + (gO > 0 ? gO : '') + '</td></tr></table></div>';
-
-    html += '<div class="scorecard"><table><tr><th>' + holeHeader + '</th>';
-    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
-    html += '<th>' + inHeader + '</th><th>' + totalHeader + '</th></tr><tr class="row-par"><td>' + parHeader + '</td>';
-    var pI = 0;
-    for (var i = 10; i <= 18; i++) { var pv = (typeof holePar === 'function' ? holePar(i) : 4); pI += pv; html += '<td>' + pv + '</td>'; }
-    html += '<td>' + pI + '</td><td>' + (pO + pI) + '</td></tr><tr><td>' + scoreHeader + '</td>';
-    var gI = 0;
-    for (var i = 10; i <= 18; i++) {
-        var s = parseInt(scores[i]) || 0, cls = (typeof holeResClass === 'function' ? holeResClass(s, (typeof holePar === 'function' ? holePar(i) : 4)) : ''), v = '';
-        if (typeof getHoleVerifyState === 'function') {
-            var st = getHoleVerifyState(scRound.players[scPid], i);
-            if (st === 'confirmed') v = ' ✅'; else if (st === 'mismatch') v = ' ⚠️'; else if (s >= 1) v = ' ⏳';
-            if (st === 'mismatch') cls += ' cell-mismatch';
-        }
-        if (s >= 1) gI += s;
-        html += '<td class="' + cls + '">' + (s >= 1 ? s + v : '') + '</td>';
-    }
-    html += '<td class="row-total">' + (gI > 0 ? gI : '') + '</td><td class="row-total">' + ((gO + gI) > 0 ? (gO + gI) : '') + '</td></tr></table></div>';
-    el.innerHTML = html;
+    el.innerHTML = renderClubScorecard(scRound.players[scPid], scRound, { playerId: scPid, showMarker: true });
 }
 
 function callOfficial(type) {

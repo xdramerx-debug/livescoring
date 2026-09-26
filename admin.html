@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=897b10b1">
+    <link rel="stylesheet" href="css/style.css?v=c510c468">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tn-wizard.css?v=01173cbb">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=6aa85f7a">
@@ -94,7 +94,28 @@
             <button class="admin-tab" onclick="switchTab('importexport',this)" data-i18n="tab_importexport">Импорт/Экспорт 📊</button>
             <button class="admin-tab" onclick="switchTab('rusgolf',this)" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
             <button class="admin-tab" onclick="switchTab('data',this)" data-i18n="tab_data">Данные</button>
+            <button class="admin-tab" onclick="switchTab('scorecards',this)">Отображения счётных карточек</button>
             <button class="admin-tab" onclick="switchTab('design',this)" data-i18n="tab_design">Дизайн 🎨</button>
+        </div>
+
+        <div id="tab-scorecards" class="admin-section hidden">
+            <div class="card">
+                <h2>Отображения счётных карточек</h2>
+                <p>Единое оформление для всех игроков: главная, раунд, лидерборды, турниры и история. Без расстояний; ти — рядом с именем. Печать и PNG не меняются.</p>
+                <div class="club-sc-options">
+                    <button type="button" id="v5-scorecard-1" class="btn btn-og" aria-pressed="false" onclick="previewClubScorecardView('1')">1 · Бланк клуба<br><small>Две девятки, как в «Поле клуба».</small></button>
+                    <button type="button" id="v5-scorecard-2" class="btn btn-og" aria-pressed="false" onclick="previewClubScorecardView('2')">2 · Блоки по 3 лунки<br><small>Крупнее, без горизонтальной прокрутки.</small></button>
+                    <button type="button" id="v5-scorecard-3" class="btn btn-og" aria-pressed="false" onclick="previewClubScorecardView('3')">3 · Крупная лента<br><small>Крупные цифры, прокрутка внутри карточки.</small></button>
+                    <button type="button" id="v5-scorecard-4" class="btn btn-og" aria-pressed="false" onclick="previewClubScorecardView('4')">4 · Вертикальный список<br><small>Одна лунка на строку, всё по порядку.</small></button>
+                    <button type="button" id="v5-scorecard-5" class="btn btn-og" aria-pressed="false" onclick="previewClubScorecardView('5')">5 · Плитки<br><small>Акцент на счёте каждой лунки.</small></button>
+                </div>
+                <button type="button" id="club-sc-apply" class="btn btn-g" onclick="saveClubScorecardView(clubScorecardPreviewView)">Применить для всех</button>
+                <p style="color:var(--muted);font-size:12px;">Выберите вариант, рассмотрите пример ниже и нажмите «Применить для всех».</p>
+                <p id="club-sc-save-status" role="status" aria-live="polite"></p>
+                <h3>Предпросмотр для телефона</h3>
+                <p style="color:var(--muted);font-size:12px;">Демонстрационные данные · ширина до 390 px. Палочки — удары форы; красные — отдаваемые удары. «—» означает, что счёт ещё не введён. Несовпадение с маркером подсвечивается.</p>
+                <div id="club-sc-preview" class="club-sc-phone"></div>
+            </div>
         </div>
 
         <div id="tab-rounds" class="admin-section hidden">
@@ -739,56 +760,7 @@
                     </div>
                 </div>
                 <!-- Глобальный стиль карточки группового раунда на главной -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.42);border-radius:10px;margin-bottom:16px;">
-                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-users-viewfinder" style="color:var(--gold);"></i> <span data-i18n="group_card_variant_title">Отображение группового раунда на главной</span></span>
-                    <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="group_card_variant_sub">
-                        Выберите стиль единой карточки группового раунда для главной страницы. Настройка применяется для всех пользователей.
-                    </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="group-card-opt-1" class="btn btn-og btn-sm group-card-variant-btn" onclick="saveGroupCardVariant('1')" aria-pressed="true"><i class="fas fa-table-cells"></i> <span data-i18n="group_card_variant_1">1 · Сводная матрица</span></button>
-                        <button type="button" id="group-card-opt-2" class="btn btn-og btn-sm group-card-variant-btn" onclick="saveGroupCardVariant('2')" aria-pressed="false"><i class="fas fa-table-list"></i> <span data-i18n="group_card_variant_2">2 · Сравнительная таблица</span></button>
-                        <button type="button" id="group-card-opt-3" class="btn btn-og btn-sm group-card-variant-btn" onclick="saveGroupCardVariant('3')" aria-pressed="false"><i class="fas fa-ranking-star"></i> <span data-i18n="group_card_variant_3">3 · Лидерборд флайта</span></button>
-                    </div>
-                </div>
-                <!-- Вид счётной карточки игрока в лидерборде турнира -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(90,173,224,0.06);border:1px solid rgba(90,173,224,0.4);border-radius:10px;margin-bottom:16px;">
-                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-clipboard-list" style="color:var(--blue);"></i> <span data-i18n="tn_card_variant_title">Счётная карточка игрока в лидерборде турнира</span></span>
-                    <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="tn_card_variant_sub">
-                        Игрок нажимает на свою строку в лидерборде турнира (страница «Турниры») — открывается его счётная карточка. Выберите один из трёх видов. Настройка применяется для всех пользователей.
-                    </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="tn-card-opt-1" class="btn btn-og btn-sm tn-card-variant-btn" onclick="saveTnCardVariant('1')" aria-pressed="true"><i class="fas fa-file-signature"></i> <span data-i18n="tn_card_variant_1">1 · Официальный бланк</span></button>
-                        <button type="button" id="tn-card-opt-2" class="btn btn-og btn-sm tn-card-variant-btn" onclick="saveTnCardVariant('2')" aria-pressed="false"><i class="fas fa-table-cells-large"></i> <span data-i18n="tn_card_variant_2">2 · Плитки лунок</span></button>
-                        <button type="button" id="tn-card-opt-3" class="btn btn-og btn-sm tn-card-variant-btn" onclick="saveTnCardVariant('3')" aria-pressed="false"><i class="fas fa-ranking-star"></i> <span data-i18n="tn_card_variant_3">3 · Турнирная сводка</span></button>
-                    </div>
-                    <div style="margin-top:10px;padding:10px 12px;border:1px dashed rgba(90,173,224,.5);border-radius:10px;background:rgba(90,173,224,.05);">
-                        <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> <span data-i18n="tn_card_preview">Примеры — так карточка выглядит у игрока:</span></div>
-                        <div class="tnsc-preview-grid">
-                            <div class="tnsc-preview" data-tnsc="1">
-                                <div class="tnsc-preview-cap"><span data-i18n="tn_card_variant_1">1 · Официальный бланк</span></div>
-                                <div class="tnsc-mini">
-                                    <div class="tnsc-mini-row"><span data-i18n="hole">Лунка</span><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>…</i><b>Аут</b></div>
-                                    <div class="tnsc-mini-row"><span data-i18n="par">Пар</span><i>4</i><i>5</i><i>3</i><i>4</i><i>4</i><i>…</i><b>36</b></div>
-                                    <div class="tnsc-mini-row"><span>Счёт</span><i>5</i><i>4</i><i>3</i><i>6</i><i>4</i><i>…</i><b>41</b></div>
-                                    <div class="tnsc-mini-row"><span>Нетто</span><i>4</i><i>3</i><i>3</i><i>4</i><i>4</i><i>…</i><b>37</b></div>
-                                </div>
-                            </div>
-                            <div class="tnsc-preview" data-tnsc="2">
-                                <div class="tnsc-preview-cap"><span data-i18n="tn_card_variant_2">2 · Плитки лунок</span></div>
-                                <div class="tnsc-mini-grid">
-                                    <span class="birdie">1<i>5</i></span><span class="par">2<i>5</i></span><span class="bogey">3<i>4</i></span><span class="birdie">4<i>3</i></span><span class="par">5<i>4</i></span><span class="eagle">6<i>2</i></span>
-                                </div>
-                            </div>
-                            <div class="tnsc-preview" data-tnsc="3">
-                                <div class="tnsc-preview-cap"><span data-i18n="tn_card_variant_3">3 · Турнирная сводка</span></div>
-                                <div class="tnsc-mini-strip">
-                                    <span>1<b>5</b><i>−1</i></span><span>2<b>4</b><i>−1</i></span><span>3<b>6</b><i>E</i></span><span>4<b>3</b><i>−1</i></span><span>5<b>5</b><i>+1</i></span>
-                                </div>
-                                <div class="tnsc-mini-line"><span>±</span><b>+1</b><span>Стейблфорд</span><b>31</b></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <p style="color:var(--muted);">Экранные карточки игроков и групп настраиваются во вкладке «Отображения счётных карточек».</p>
                 <!-- Вид лидерборда турнира — 5 вариантов (требование #7) -->
                 <div class="list-item" style="padding:14px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.45);border-radius:10px;margin-bottom:16px;">
                     <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-ranking-star" style="color:var(--gold);"></i> <span data-i18n="tn_lb_variant_title">Вид лидерборда турнира (страница «Турниры»)</span></span>
@@ -862,20 +834,6 @@
                         <button type="button" id="v5-homeTournament-3" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','3')" aria-pressed="false"><i class="fas fa-align-left"></i> 3 · Строки</button>
                         <button type="button" id="v5-homeTournament-4" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','4')" aria-pressed="false"><i class="fas fa-moon"></i> 4 · Тёмный</button>
                         <button type="button" id="v5-homeTournament-5" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','5')" aria-pressed="false"><i class="fas fa-feather"></i> 5 · Мини</button>
-                    </div>
-                </div>
-                <!-- Вид счётной карточки по лункам — 5 вариантов -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(90,173,224,0.07);border:1px solid rgba(90,173,224,0.4);border-radius:10px;margin-bottom:16px;">
-                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-clipboard-list" style="color:var(--blue);"></i> <span>Счётная карточка «Развернуть счётную карточку» (5 видов)</span></span>
-                    <div style="font-size:12px;color:var(--muted);margin-top:4px;">
-                        Вид счётной карточки по лункам под таймингами во время раунда. Выбирает только админ — применяется ко всем игрокам.
-                    </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="v5-scorecard-1" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scorecard','1')" aria-pressed="true"><i class="fas fa-table"></i> 1 · Стандарт</button>
-                        <button type="button" id="v5-scorecard-2" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scorecard','2')" aria-pressed="false"><i class="fas fa-expand"></i> 2 · Крупные клетки</button>
-                        <button type="button" id="v5-scorecard-3" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scorecard','3')" aria-pressed="false"><i class="fas fa-bars-staggered"></i> 3 · Зебра + итог</button>
-                        <button type="button" id="v5-scorecard-4" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scorecard','4')" aria-pressed="false"><i class="fas fa-compress"></i> 4 · Плотный</button>
-                        <button type="button" id="v5-scorecard-5" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('scorecard','5')" aria-pressed="false"><i class="fas fa-border-all"></i> 5 · Плитки</button>
                     </div>
                 </div>
                 <!-- Вид страницы ввода счёта — 5 вариантов -->
@@ -1013,14 +971,14 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.88.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.89.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="js/firebase-config.js?v=57564a0d"></script>
 <script type="module" src="dist/livescoring-modules.js?v=8347afb4"></script>
-    <script src="js/utils.js?v=fb90c2a2"></script>
+    <script src="js/utils.js?v=d8950690"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/name-variants.js?v=9fc593e7"></script>
 <script src="js/tournament-core.js?v=a19eaf5c"></script>
@@ -1029,7 +987,7 @@
 <script src="js/tournament-admin.js?v=7265cd3b"></script>
 <script src="js/tn-studio-core.js?v=084a748a"></script>
 <script src="js/tn-studio.js?v=6070fd0a"></script>
-<script src="js/admin.js?v=c588168d"></script>
+<script src="js/admin.js?v=d813824b"></script>
 <script src="js/admin-groups.js?v=ff8859f1"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
 <script src="js/admin-players.js?v=7634440f"></script>
@@ -1043,7 +1001,7 @@
 <script src="js/admin-players-excel.js?v=5566e07a"></script>
 <script src="js/admin-agr.js?v=eab2c54d"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
-<script src="js/admin-display.js?v=503542e2"></script>
+<script src="js/admin-display.js?v=a79f78c5"></script>
 <script src="js/protocol.js?v=adbd9834"></script>
 <script src="js/start-admin.js?v=8741599e"></script>
 <script src="js/pe-edit.js?v=79837dcc"></script>

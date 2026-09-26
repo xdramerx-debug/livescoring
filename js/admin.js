@@ -389,6 +389,10 @@ function switchTab(t, b) {
         try { b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); } catch (e) { console.warn("[silent]", e); }
     }
 
+    if (t === 'scorecards') {
+        renderClubScorecardPreview();
+        pestovoBindView5('scorecard', function() { renderClubScorecardPreview(); });
+    }
     if (t === 'groups') {
         if (typeof renderAdmGroups === 'function') renderAdmGroups(); // js/admin-groups.js
     }

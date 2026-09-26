@@ -264,25 +264,15 @@ function renderSum() {
     var el = mkGet('mk-sum');
     if (!el) return;
     var match = 0, mis = 0, pend = 0;
-    var holeHeader = (typeof t === 'function' ? t('hole') : 'Hole');
-    var parHeader = (typeof t === 'function' ? t('par') : 'Par');
-    var playerHeader = (typeof t === 'function' ? t('player') : 'Player');
-    var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-    var markerHeader = langIsEn ? 'Marker' : 'Маркер';
-    var statusHeader = langIsEn ? 'Status' : 'Статус';
-
-    var html = '<div style="overflow-x:auto;"><table class="scorecard"><tr><th>' + holeHeader + '</th><th>' + parHeader + '</th><th>' + playerHeader + '</th><th>' + markerHeader + '</th><th>' + statusHeader + '</th></tr>';
-    for (var i = 1; i <= 18; i++) {
-        var ps = parseInt(mkPScores[i]) || 0, ms = parseInt(mkScores[i]) || 0, icon = '—', bg = '';
-        var misCls = '';
-        if (ps >= 1 && ms >= 1 && ps === ms) { icon = '✅'; bg = 'background:rgba(46,204,113,.05);'; match++; }
-        else if (ps >= 1 && ms >= 1) { icon = '⚠️'; bg = 'background:rgba(224,90,74,.08);'; mis++; misCls = ' class="cell-mismatch"'; }
-        else if (ps >= 1 || ms >= 1) { icon = '⏳'; pend++; }
-        html += '<tr style="' + bg + '"><td style="font-weight:700;">' + i + '</td><td>' + (typeof holePar === 'function' ? holePar(i) : 4) + '</td><td' + misCls + '>' + (ps >= 1 ? ps : '—') + '</td><td' + misCls + '>' + (ms >= 1 ? ms : '—') + '</td><td style="font-size:16px;">' + icon + '</td></tr>';
-    }
-    html += '</table></div>';
-    html += '<div style="display:flex;gap:16px;padding:12px;font-size:13px;font-weight:700;"><span style="color:#2ecc71;">✅ ' + match + '</span><span style="color:var(--red);">⚠️ ' + mis + '</span><span style="color:var(--gold);">⏳ ' + pend + '</span></div>';
-    el.innerHTML = html;
+    if (!mkRound || !mkRound.players || !mkRound.players[mkPid]) return;
+    getRoundOrder(mkRound).forEach(function(h) {
+        var ps = parseInt(mkPScores[h], 10) || 0, ms = parseInt(mkScores[h], 10) || 0;
+        if (ps > 0 && ms > 0) { if (ps === ms) match++; else mis++; }
+        else if (ps > 0 || ms > 0) pend++;
+    });
+    var player = Object.assign({}, mkRound.players[mkPid], { scores: mkPScores });
+    el.innerHTML = renderClubScorecard(player, mkRound, { playerId: mkPid, showMarker: true, markerScores: mkScores }) +
+        '<div style="display:flex;gap:16px;padding:12px;font-size:13px;">✅ ' + match + ' · ⚠️ ' + mis + ' · ⏳ ' + pend + '</div>';
 }
 
 function callOfficial(type) {

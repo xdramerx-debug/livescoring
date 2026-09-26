@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <title data-i18n="nav_round">Раунд — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=a96fabf5">
+    <link rel="stylesheet" href="css/style.css?v=86ee1c60">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/design-system.js?v=78b8d092"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -324,10 +324,10 @@
             <div id="gv-players"></div>
         </div>
 
-        <div class="round-card" style="margin:12px 0;">
-            <button class="btn btn-og btn-sm btn-block" onclick="togglePersistedScorecard('gv-sc-panel')" style="width:100%;">
-                <i class="fas fa-chevron-down" id="gv-sc-panel-icon"></i> 
-                <span id="gv-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
+        <div class="round-card scorecard-fold" style="margin:12px 0;">
+            <button type="button" class="scorecard-fold-btn" onclick="togglePersistedScorecard('gv-sc-panel')" aria-controls="gv-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
+                <i class="fas fa-chevron-down" id="gv-sc-panel-icon" aria-hidden="true"></i>
+                <span id="gv-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
             </button>
             <div id="gv-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
                 <div class="card">
@@ -382,8 +382,8 @@
                 <!-- ПРАВАЯ: МАРКИРУЕМЫЙ -->
                 <div class="dual-half dual-half--mark" id="marker-input-container">
                     <div class="dual-half__head">
-                        <span class="dual-half__badge dual-half__badge--mark"><i class="fas fa-eye"></i> <span data-i18n="score_of_marked">Маркируемый</span></span>
                         <span class="dual-half__name" id="mark-player-name">...</span>
+                        <span class="dual-half__badge dual-half__badge--mark" data-i18n-title="score_of_marked_hint" title="Счёт игрока, которого вы маркируете"><i class="fas fa-eye" aria-hidden="true"></i> <span data-i18n="score_of_marked">Маркер</span></span>
                     </div>
                     <div class="dual-half__score">
                         <div class="score-result" id="mark-result"></div>
@@ -408,10 +408,10 @@
 
         <div id="group-pace-assistant" style="margin-top:12px;"></div>
 
-        <div class="round-card" style="margin:12px 0;">
-            <button class="btn btn-og btn-sm btn-block" onclick="togglePersistedScorecard('group-sc-panel')" style="width:100%;">
-                <i class="fas fa-chevron-down" id="group-sc-panel-icon"></i> 
-                <span id="group-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
+        <div class="round-card scorecard-fold" style="margin:12px 0;">
+            <button type="button" class="scorecard-fold-btn" onclick="togglePersistedScorecard('group-sc-panel')" aria-controls="group-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
+                <i class="fas fa-chevron-down" id="group-sc-panel-icon" aria-hidden="true"></i>
+                <span id="group-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
             </button>
             <div id="group-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
                 <div class="card">
@@ -519,10 +519,10 @@
         <div id="timing-notice" style="margin-bottom:16px;"></div>
 
         <!-- БЛОК 4: СВОРАЧИВАЕМАЯ СЧЁТНАЯ КАРТОЧКА ПО ЛУНКАМ -->
-        <div class="round-card" style="margin:16px 0;">
-            <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('solo-sc-panel')" style="width:100%;min-height:44px;">
-                <i class="fas fa-chevron-down" id="solo-sc-panel-icon"></i> 
-                <span id="solo-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
+        <div class="round-card scorecard-fold" style="margin:16px 0;">
+            <button type="button" class="scorecard-fold-btn" onclick="toggleActiveScorecard('solo-sc-panel')" aria-controls="solo-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
+                <i class="fas fa-chevron-down" id="solo-sc-panel-icon" aria-hidden="true"></i>
+                <span id="solo-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
             </button>
             <div id="solo-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
                 <div class="card" style="padding:12px;max-width:100%;overflow-x:hidden;">
@@ -559,10 +559,10 @@
         </div>
         <div class="timing-info" id="ro-round-info"></div>
 
-        <div class="round-card" style="margin:12px 0;">
-            <button class="btn btn-og btn-sm btn-block" onclick="toggleActiveScorecard('ro-solo-sc-panel')" style="width:100%;">
-                <i class="fas fa-chevron-down" id="ro-solo-sc-panel-icon"></i> 
-                <span id="ro-solo-sc-panel-txt" data-i18n="expand_scorecard">Развернуть счётную карточку</span>
+        <div class="round-card scorecard-fold" style="margin:12px 0;">
+            <button type="button" class="scorecard-fold-btn" onclick="toggleActiveScorecard('ro-solo-sc-panel')" aria-controls="ro-solo-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
+                <i class="fas fa-chevron-down" id="ro-solo-sc-panel-icon" aria-hidden="true"></i>
+                <span id="ro-solo-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
             </button>
             <div id="ro-solo-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
                 <div class="card" style="margin-bottom:10px;"><h2><i class="fas fa-trophy"></i> <span data-i18n="round_score">Счёт раунда</span></h2><div id="ro-live-stats"></div></div>
@@ -588,7 +588,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.92.3</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.93.0</span></p>
         </div>
     </div>
 </footer>
@@ -598,8 +598,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="js/firebase-config.js?v=57564a0d"></script>
-<script type="module" src="dist/livescoring-modules.js?v=8347afb4"></script>
-    <script src="js/utils.js?v=c3806030"></script>
+<script type="module" src="dist/livescoring-modules.js?v=ba8e9b1c"></script>
+    <script src="js/utils.js?v=bc7b070c"></script>
 <script src="js/live.js?v=bbe875bb"></script>
 <script src="js/solo.js?v=e836b8a9"></script>
 <script src="js/round-setup.js?v=8bda9181"></script>

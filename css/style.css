@@ -6478,8 +6478,8 @@ body.sun-mode .hole-btn .entry-score-square.sq-dbl .score-gross{color:#c0392b!im
 .dual-score-split-panel{border-color:var(--border)!important;box-shadow:0 12px 30px rgba(0,0,0,.35)!important;}
 .dual-score-split-panel::before{display:none;}
 .dual-half{border:1px solid transparent;border-radius:12px;transition:border-color .2s ease,box-shadow .2s ease,opacity .2s ease;}
-.dual-half--my{border-top:1px solid transparent!important;background:linear-gradient(180deg, rgba(201,168,76,.06), transparent)!important;}
-.dual-half--mark{border-top:1px solid transparent!important;background:linear-gradient(180deg, rgba(155,89,182,.07), transparent)!important;}
+.dual-half--my{border-top:2px solid var(--gold)!important;background:linear-gradient(180deg, rgba(201,168,76,.22), rgba(201,168,76,.06))!important;}
+.dual-half--mark{border-top:2px solid #9b59b6!important;background:linear-gradient(180deg, rgba(155,89,182,.24), rgba(155,89,182,.07))!important;}
 .dual-half.dual-turn{border-color:var(--gold)!important;box-shadow:0 0 0 1px rgba(201,168,76,.45),0 0 20px rgba(201,168,76,.22);}
 .dual-half.dual-wait{opacity:.55;}
 .dual-half.dual-ok .entry-score-square{border-color:rgba(46,204,113,.65);}
@@ -6488,9 +6488,9 @@ body.sun-mode .hole-btn .entry-score-square.sq-dbl .score-gross{color:#c0392b!im
 body.sun-mode .dual-half.dual-turn{border-color:#000!important;box-shadow:0 0 0 1px #000;}
 body.sun-mode .dual-half.dual-wait{opacity:.6;}
 
-/* ── Большие красно-зелёные кнопки: минус — тёмно-красный, плюс — тёмно-зелёный ── */
-.dual-half__controls{gap:8px;}
-.dual-btn{flex:1 1 0;min-width:0;max-width:none;height:76px;font-size:34px;border-radius:16px;}
+/* ── Кнопки ±: широкие, но ниже, с зазором против случайного тапа ── */
+.dual-half__controls{gap:18px;padding:0 2px;}
+.dual-btn{flex:1 1 0;min-width:0;max-width:none;height:56px;font-size:30px;border-radius:14px;touch-action:manipulation;}
 .dual-btn--minus{background:linear-gradient(180deg,#5c211b,#3d140f);border-color:rgba(224,90,74,.6);color:#ffb4a8;}
 .dual-btn--minus:active{background:linear-gradient(180deg,#72291f,#4a1712);}
 .dual-btn--mark.dual-btn--minus{background:linear-gradient(180deg,#5c211b,#3d140f);border-color:rgba(224,90,74,.6);color:#ffb4a8;}
@@ -6500,10 +6500,12 @@ body.sun-mode .dual-half.dual-wait{opacity:.6;}
 body.sun-mode .dual-btn--minus{background:#fdecea!important;border-color:#c0392b!important;color:#c0392b!important;}
 body.sun-mode .dual-btn--plus{background:#e8f8f0!important;border-color:#1e8449!important;color:#1e8449!important;}
 @media(max-width:480px){
-    .dual-btn{height:72px;min-width:0;max-width:none;font-size:30px;border-radius:16px;}
+    .dual-half__controls{gap:16px;}
+    .dual-btn{height:52px;min-width:0;max-width:none;font-size:28px;border-radius:14px;}
 }
 @media(max-width:360px){
-    .dual-btn{height:66px;font-size:28px;}
+    .dual-half__controls{gap:14px;}
+    .dual-btn{height:48px;font-size:26px;}
 }
 
 /* ── Прямое редактирование: тап по цифре открывает цифровую клавиатуру ── */
@@ -6514,3 +6516,105 @@ body.sun-mode .dual-btn--plus{background:#e8f8f0!important;border-color:#1e8449!
 .dual-score-input::-webkit-outer-spin-button,.dual-score-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 .dual-score-input:focus{outline:none;box-shadow:0 0 0 3px rgba(201,168,76,.35);}
 body.sun-mode .dual-score-input{background:#fff;color:#000;border-color:#000;}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Одна рука на телефоне: ниже ±, без круга VS, закреплённое
+   подтверждение, свайп лунок, читаемая общая карточка.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Круг «VS» съедал место между карточками — тонкая линия и разный фон. */
+.dual-split-divider{width:1px;min-width:1px;background:linear-gradient(180deg,transparent,rgba(201,168,76,.55),transparent);}
+.dual-split-divider span,
+.dual-split-divider span::after{display:none!important;content:none!important;width:0!important;height:0!important;}
+.dual-half__head{flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 6px;}
+.dual-half__badge{font-size:9px;letter-spacing:.4px;padding:2px 7px;}
+.dual-half__name{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.2;}
+
+/* Фора — подпись, не кнопка «Ф+1». */
+.hcp-caption{flex:1 0 100%;display:inline-flex;align-items:center;justify-content:center;gap:4px;margin-top:2px;font-size:11px;font-weight:800;letter-spacing:.1px;line-height:1.25;color:var(--gold-l);text-align:center;}
+.hcp-caption.neg{color:#ff8a7a;}
+.hcp-caption .fa-golf-ball-tee{font-size:10px;opacity:.9;}
+body.sun-mode .hcp-caption{color:#000;}
+body.sun-mode .hcp-caption.neg{color:#c0392b;}
+
+/* Свайп по цифрам лунок не отдаём горизонтальному скроллу полосы. */
+#play-holes-nav,#g-holes,#sc-holes,#mk-holes,#page-head.scoring-compact{touch-action:pan-y;}
+
+/* Подтвердить результат всегда у большого пальца. Оригинал остаётся в DOM
+   (его жмёт live.js), на телефоне виден только клон внизу экрана. */
+.score-confirm-bar{display:none;}
+.score-confirm-bar .btn{width:100%;max-width:100%;box-sizing:border-box;margin:0!important;justify-content:center;white-space:normal;text-align:center;line-height:1.2;min-height:52px;padding:12px 14px;letter-spacing:.3px;font-size:14px;}
+@media(max-width:768px){
+    body.round-active .score-confirm-bar:not([hidden]){
+        display:block;position:fixed;left:0;right:0;bottom:0;z-index:80;
+        box-sizing:border-box;width:auto;max-width:100%;
+        padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+        background:rgba(11,26,14,.96);
+        border-top:1px solid rgba(201,168,76,.35);
+        box-shadow:0 -8px 24px rgba(0,0,0,.4);
+        backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    }
+    body.round-active:not(.kb-open) .score-confirm-original{display:none!important;}
+    body.round-active:has(#score-confirm-bar:not([hidden])) main{
+        padding-bottom:calc(92px + env(safe-area-inset-bottom))!important;
+    }
+}
+body.kb-open .score-confirm-bar{opacity:0;pointer-events:none;transform:translateY(110%);}
+body.sun-mode .score-confirm-bar{background:#fff;border-top:2px solid #000;}
+
+/* Свернуть карточку — стрелка в углу, не большая кнопка действия. */
+.scorecard-fold{position:relative;}
+.scorecard-fold-btn{
+    width:auto!important;max-width:100%;min-height:36px;padding:6px 10px;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    font-family:inherit;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;
+    color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:10px;
+    box-shadow:none;cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.scorecard-fold-btn:active{transform:scale(.97);}
+.scorecard-fold:has(.card-scorecard-panel:not(.hidden)) .scorecard-fold-btn{
+    position:absolute;top:6px;right:6px;z-index:4;width:36px!important;height:36px;min-height:36px;padding:0;
+    background:rgba(11,26,14,.9);border-color:rgba(201,168,76,.35);color:var(--gold-l);
+}
+.scorecard-fold:has(.card-scorecard-panel:not(.hidden)) .scorecard-fold-label{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+.scorecard-fold:has(.card-scorecard-panel:not(.hidden)) .card-scorecard-panel > .card > h2,
+.scorecard-fold:has(.card-scorecard-panel:not(.hidden)) .card-scorecard-panel > .card:first-child > h2{padding-right:42px;}
+body.sun-mode .scorecard-fold-btn,
+body.sun-mode .scorecard-fold:has(.card-scorecard-panel:not(.hidden)) .scorecard-fold-btn{background:#fff;border-color:#000;color:#000;}
+
+/* Общая карточка: полное имя, без «М:» в ячейках, легенда по «i». */
+.gsg-table th.gsg-player{min-width:108px;white-space:normal;overflow:visible;}
+.gsg-pname{font-size:11px;line-height:1.2;font-weight:700;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:break-word;word-break:normal;}
+.gsg-pname-line{display:block;}
+.gsg-marker{display:inline-flex;align-items:center;justify-content:center;gap:3px;margin-top:2px;font-size:11px;font-weight:800;color:#85c9ff;}
+.gsg-mk-dot{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 4px currentColor;display:inline-block;flex:none;}
+.gsg-marker.gsg-marker-ok{color:#7ddfa9;}
+.gsg-marker.mk-mismatch{color:#ff8a7a;}
+.gsg-legend{position:relative;display:inline-flex;margin-left:auto;}
+.gsg-legend-btn{
+    list-style:none;cursor:pointer;width:28px;height:28px;border-radius:50%;
+    border:1px solid rgba(201,168,76,.4);background:rgba(201,168,76,.1);color:var(--gold-l);
+    display:inline-flex;align-items:center;justify-content:center;font-size:13px;
+}
+.gsg-legend-btn::-webkit-details-marker{display:none;}
+.gsg-legend-pop{
+    position:absolute;z-index:6;top:calc(100% + 6px);right:0;left:auto;
+    min-width:200px;max-width:min(260px,78vw);padding:8px 10px;border-radius:10px;
+    background:#122016;border:1px solid var(--border);box-shadow:0 10px 28px rgba(0,0,0,.45);
+    display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--text);text-align:left;
+}
+.gsg-legend-pop .dcl-item{display:flex;align-items:center;gap:6px;}
+.club-sc-group-head{width:100%;}
+.card:has(.gsg-legend),.live-group-unified-card{overflow:visible;}
+.gsg-thru{white-space:normal;overflow-wrap:anywhere;}
+body.sun-mode .gsg-legend-btn{background:#fff;border-color:#000;color:#000;}
+body.sun-mode .gsg-legend-pop{background:#fff;border-color:#000;color:#000;}
+body.sun-mode .gsg-marker{color:#1a5276;}
+body.sun-mode .gsg-marker.gsg-marker-ok{color:#1e8449;}
+body.sun-mode .gsg-marker.mk-mismatch{color:#c0392b;}
+@media(max-width:420px){
+    .gsg-table th.gsg-player{min-width:100px;}
+    .gsg-pname{font-size:10.5px;}
+}

@@ -59,7 +59,7 @@ typeof window < "u" && Object.assign(window, {
   fmtDate: le,
   fmtTime: ie,
   tnDateTs: _e,
-  normalizeTimestampMs: k,
+  normalizeTimestampMs: T,
   isTodayTimestamp: de
 });
 function le(e) {
@@ -79,7 +79,7 @@ function ie(e) {
     var r = parseInt(a[1], 10), n = parseInt(a[2], 10);
     if (r >= 0 && r < 24 && n >= 0 && n < 60) return (r < 10 ? "0" : "") + r + ":" + (n < 10 ? "0" : "") + n;
   }
-  var o = typeof k == "function" ? k(e) : Number(e);
+  var o = typeof T == "function" ? T(e) : Number(e);
   if (!o || !isFinite(o)) return "—";
   try {
     var s = new Date(o), i = s.getHours(), _ = s.getMinutes();
@@ -100,15 +100,15 @@ function _e(e) {
   var o = Date.parse(a);
   return isNaN(o) ? NaN : o;
 }
-function k(e) {
+function T(e) {
   if (e instanceof Date) return e.getTime() || 0;
   var a = Number(e);
   return (!isFinite(a) || a <= 0) && (a = typeof e == "string" ? Date.parse(e) : 0), a > 0 && a < 1e11 && (a *= 1e3), isFinite(a) && a > 0 ? a : 0;
 }
 function de(e, a) {
-  var r = k(e);
+  var r = T(e);
   if (!r) return !1;
-  var n = new Date(k(a || Date.now())), o = new Date(r);
+  var n = new Date(T(a || Date.now())), o = new Date(r);
   return !isNaN(o.getTime()) && !isNaN(n.getTime()) && o.getFullYear() === n.getFullYear() && o.getMonth() === n.getMonth() && o.getDate() === n.getDate();
 }
 var C = ["today", "7d", "30d", "month", "year", "all"];
@@ -564,7 +564,8 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     skipped_holes_skip: "Продолжить с пропуском",
     skipped_holes_finish_q: "На лунке(ах) {holes} нет счёта. Завершить раунд всё равно?",
     score_of_player: "Ваш счёт",
-    score_of_marked: "Счёт маркируемого",
+    score_of_marked: "Маркер",
+    score_of_marked_hint: "Счёт игрока, которого вы маркируете",
     tn_start_pending_title: "Турнир ещё не начался",
     tn_start_countdown_label: "До старта осталось",
     tn_start_at: "Старт:",
@@ -1161,7 +1162,8 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     skipped_holes_skip: "Continue with gaps",
     skipped_holes_finish_q: "No score on hole(s) {holes}. Finish the round anyway?",
     score_of_player: "Your score",
-    score_of_marked: "Marked player’s score",
+    score_of_marked: "Marker",
+    score_of_marked_hint: "Score of the player you are marking",
     tn_start_pending_title: "The tournament has not started yet",
     tn_start_countdown_label: "Starts in",
     tn_start_at: "Start:",
@@ -1698,7 +1700,7 @@ function Se(e, a, r, n, o, s, i) {
     console.error("❌ Telegram Fetch Error (" + r + "):", c), toast("❌ Ошибка сети / Таймаут Telegram: " + b, "error");
   });
 }
-function T(e, a, r, n, o, s) {
+function k(e, a, r, n, o, s) {
   if (e = (e || "").trim(), a = (a || "").trim(), !(!e || !a)) {
     var i = D(r, n, o, s, !0), _ = typeof AbortController < "u" ? new AbortController() : null, u = _ ? setTimeout(function() {
       try {
@@ -1720,11 +1722,11 @@ function T(e, a, r, n, o, s) {
     });
   }
 }
-function Te(e, a, r, n, o) {
+function ke(e, a, r, n, o) {
   var s = (localStorage.getItem("pestovo_tg_group_token") || localStorage.getItem("pestovo_tg_bot_token") || "").trim(), i = (localStorage.getItem("pestovo_tg_group_id") || localStorage.getItem("pestovo_tg_chat_id") || "").trim(), _ = (localStorage.getItem("pestovo_tg_channel_token") || s || "").trim(), u = (localStorage.getItem("pestovo_tg_channel_id") || "").trim();
-  s && i && (o === "group" || !o) && T(s, i, e, a, r, n), _ && u && (o === "channel" || !o) && T(_, u, e, a, r, n), !s && !_ && typeof db < "u" && db.ref("settings/telegram").once("value").then(function(d) {
+  s && i && (o === "group" || !o) && k(s, i, e, a, r, n), _ && u && (o === "channel" || !o) && k(_, u, e, a, r, n), !s && !_ && typeof db < "u" && db.ref("settings/telegram").once("value").then(function(d) {
     var l = d.val() || {}, c = (l.groupToken || l.botToken || "").trim(), h = (l.groupId || l.chatId || "").trim(), b = (l.channelToken || c || "").trim(), y = (l.channelId || "").trim();
-    c && h && (o === "group" || !o) && T(c, h, e, a, r, n), b && y && (o === "channel" || !o) && T(b, y, e, a, r, n);
+    c && h && (o === "group" || !o) && k(c, h, e, a, r, n), b && y && (o === "channel" || !o) && k(b, y, e, a, r, n);
   });
 }
 function H(e, a, r, n) {
@@ -1763,7 +1765,7 @@ function H(e, a, r, n) {
 function F(e, a, r, n) {
   return D(e, a, r, n, !1);
 }
-function ke(e, a, r, n, o, s) {
+function Te(e, a, r, n, o, s) {
   if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
     toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error");
     return;
@@ -1786,7 +1788,7 @@ function Pe(e, a, r, n) {
     console.warn("⚠️ VK: не удалось загрузить настройки из Firebase:", i);
   });
 }
-typeof window < "u" && Object.assign(window, { buildOfficialCallText: D, sendTelegramDirectAlert: Se, sendTelegramSilentAlert: T, sendTelegramOfficialAlert: Te, vkSendMessageJsonp: H, vkBuildAlertText: F, sendVKDirectAlert: ke, sendVKSilentAlert: M, sendVKOfficialAlert: Pe });
+typeof window < "u" && Object.assign(window, { buildOfficialCallText: D, sendTelegramDirectAlert: Se, sendTelegramSilentAlert: k, sendTelegramOfficialAlert: ke, vkSendMessageJsonp: H, vkBuildAlertText: F, sendVKDirectAlert: Te, sendVKSilentAlert: M, sendVKOfficialAlert: Pe });
 export {
   $ as ADDR,
   J as CLUB,
@@ -1825,15 +1827,15 @@ export {
   ue as initDateRangeFilter,
   Y as isPlayerModeEnabled,
   de as isTodayTimestamp,
-  k as normalizeTimestampMs,
+  T as normalizeTimestampMs,
   R as readDateRange,
   me as refreshDateRangeFilters,
   j as renderRoundsPeriodSummary,
   ne as scoreClass,
   Se as sendTelegramDirectAlert,
-  Te as sendTelegramOfficialAlert,
-  T as sendTelegramSilentAlert,
-  ke as sendVKDirectAlert,
+  ke as sendTelegramOfficialAlert,
+  k as sendTelegramSilentAlert,
+  Te as sendVKDirectAlert,
   Pe as sendVKOfficialAlert,
   M as sendVKSilentAlert,
   he as setSafeHtml,

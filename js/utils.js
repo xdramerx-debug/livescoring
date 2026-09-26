@@ -662,6 +662,169 @@ function uiConfirm(opts) {
 
 // Нижний мобильный таббар (buildBottomTabbar) удалён по требованию:
 // навигация на телефоне — через верхнее меню и мобильный drawer.
+
+// Свайп по панели лунок: влево — следующая, вправо — предыдущая.
+// Вертикальный скролл страницы не перехватываем.
+function bindHoleNavSwipe(el, onDir) {
+    if (!el || el.getAttribute('data-hole-swipe') === '1' || typeof onDir !== 'function') return;
+    el.setAttribute('data-hole-swipe', '1');
+    var hint = (typeof currentLang !== 'undefined' && currentLang === 'en')
+        ? 'Swipe left or right to change hole'
+        : 'Свайп влево или вправо меняет лунку';
+    if (!el.getAttribute('title')) el.setAttribute('title', hint);
+    var sx = 0, sy = 0, st = 0, active = false;
+    el.addEventListener('touchstart', function(e) {
+        if (!e.touches || e.touches.length !== 1) { active = false; return; }
+        sx = e.touches[0].clientX;
+        sy = e.touches[0].clientY;
+        st = Date.now();
+        active = true;
+    }, { passive: true });
+    el.addEventListener('touchend', function(e) {
+        if (!active || !e.changedTouches || !e.changedTouches.length) return;
+        active = false;
+        var t = e.changedTouches[0];
+        var dx = t.clientX - sx;
+        var dy = t.clientY - sy;
+        if (Math.abs(dx) < 52 || Math.abs(dx) < Math.abs(dy) * 1.45) return;
+        if (Date.now() - st > 550) return;
+        onDir(dx < 0 ? 1 : -1);
+    }, { passive: true });
+}
+
+function shiftHoleInOrder(order, current, dir, go) {
+    if (!order || !order.length || typeof go !== 'function') return;
+    var idx = order.indexOf(current);
+    if (idx < 0) return;
+    var next = order[idx + dir];
+    if (next == null) {
+        if (typeof vib === 'function') vib(8);
+        return;
+    }
+    go(next);
+}
+
+function initHoleSwipeNav() {
+    function bind(id, shift) {
+        var el = document.getElementById(id);
+        if (el) bindHoleNavSwipe(el, shift);
+    }
+    bind('play-holes-nav', function(dir) {
+        if (typeof goPlayHole !== 'function' || typeof curRoundData === 'undefined' || !curRoundData) return;
+        if (typeof canEditGroup !== 'undefined' && !canEditGroup) return;
+        shiftHoleInOrder(getRoundOrder(curRoundData), playHole, dir, goPlayHole);
+    });
+    bind('g-holes', function(dir) {
+        if (typeof goHole !== 'function' || typeof soloRound === 'undefined' || !soloRound) return;
+        if (typeof canEditSolo !== 'undefined' && !canEditSolo) return;
+        shiftHoleInOrder(getRoundOrder(soloRound), curHole, dir, goHole);
+    });
+    bind('sc-holes', function(dir) {
+        if (typeof goSc !== 'function' || typeof scRound === 'undefined' || !scRound) return;
+        shiftHoleInOrder(getRoundOrder(scRound), scHole, dir, goSc);
+    });
+    bind('mk-holes', function(dir) {
+        if (typeof goMk !== 'function' || typeof mkRound === 'undefined' || !mkRound) return;
+        shiftHoleInOrder(getRoundOrder(mkRound), mkHole, dir, function(h) {
+            goMk(h);
+            // goMk не перерисовывает полосу лунок — без этого подсветка остаётся на старой.
+            if (typeof buildHoles === 'function') buildHoles();
+        });
+    });
+    var head = document.getElementById('page-head');
+    if (head) {
+        bindHoleNavSwipe(head, function(dir) {
+            if (!document.body.classList.contains('round-active')) return;
+            var group = document.getElementById('active-scoring-view');
+            var solo = document.getElementById('game');
+            if (group && !group.classList.contains('hidden')) {
+                if (typeof goPlayHole !== 'function' || typeof curRoundData === 'undefined' || !curRoundData) return;
+                if (typeof canEditGroup !== 'undefined' && !canEditGroup) return;
+                shiftHoleInOrder(getRoundOrder(curRoundData), playHole, dir, goPlayHole);
+            } else if (solo && !solo.classList.contains('hidden')) {
+                if (typeof goHole !== 'function' || typeof soloRound === 'undefined' || !soloRound) return;
+                if (typeof canEditSolo !== 'undefined' && !canEditSolo) return;
+                shiftHoleInOrder(getRoundOrder(soloRound), curHole, dir, goHole);
+            }
+        });
+    }
+}
+
+function syncScoreConfirmBar() {
+    var bar = document.getElementById('score-confirm-bar');
+    if (!bar) return;
+    var any = false;
+    [['save-hole-btn', 'active-scoring-view'], ['btn-solo-action', 'game']].forEach(function(pair) {
+        var sticky = document.getElementById(pair[0] + '-sticky');
+        var view = document.getElementById(pair[1]);
+        var on = !!(view && !view.classList.contains('hidden') && document.body.classList.contains('round-active'));
+        if (sticky) {
+            sticky.hidden = !on;
+            sticky.setAttribute('aria-hidden', on ? 'false' : 'true');
+        }
+        if (on) any = true;
+    });
+    bar.hidden = !any;
+}
+
+function syncStickyFromOriginal(btn, clone) {
+    clone.disabled = !!btn.disabled;
+    clone.innerHTML = btn.innerHTML;
+    clone.className = (btn.className || '').replace(/\bscore-confirm-original\b/g, '').replace(/\s+/g, ' ').trim() + ' score-confirm-sticky-btn';
+}
+
+function pinScoreConfirmButton(id) {
+    var btn = document.getElementById(id);
+    if (!btn || document.getElementById(id + '-sticky') || (btn.closest && btn.closest('[data-entry-preview]'))) return;
+    var bar = document.getElementById('score-confirm-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'score-confirm-bar';
+        bar.className = 'score-confirm-bar';
+        bar.hidden = true;
+        if (document.body) document.body.appendChild(bar);
+    }
+    var clone = btn.cloneNode(true);
+    clone.id = id + '-sticky';
+    // cloneNode копирует onclick. Без снятия атрибута один тап сработал бы дважды.
+    clone.removeAttribute('onclick');
+    clone.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (btn.disabled) return;
+        btn.click();
+    });
+    bar.appendChild(clone);
+    btn.classList.add('score-confirm-original');
+    syncStickyFromOriginal(btn, clone);
+    if (typeof MutationObserver === 'function' && !btn.getAttribute('data-confirm-obs')) {
+        btn.setAttribute('data-confirm-obs', '1');
+        new MutationObserver(function() { syncStickyFromOriginal(btn, clone); }).observe(btn, {
+            subtree: true, childList: true, characterData: true, attributes: true
+        });
+    }
+}
+
+function initScoreConfirmBar() {
+    // «Подтвердить результат» на странице раунда не содержит слова «сохранить»,
+    // поэтому старый #p0-sticky-actions её не подхватывает. Закрепляем обе:
+    // групповую и одиночную. Видна только кнопка открытого экрана.
+    pinScoreConfirmButton('save-hole-btn');
+    pinScoreConfirmButton('btn-solo-action');
+    if (typeof MutationObserver === 'function') {
+        ['active-scoring-view', 'game'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el || el.getAttribute('data-confirm-watch') === '1') return;
+            el.setAttribute('data-confirm-watch', '1');
+            new MutationObserver(syncScoreConfirmBar).observe(el, { attributes: true, attributeFilter: ['class'] });
+        });
+        if (document.body && document.body.getAttribute('data-confirm-watch') !== '1') {
+            document.body.setAttribute('data-confirm-watch', '1');
+            new MutationObserver(syncScoreConfirmBar).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        }
+    }
+    syncScoreConfirmBar();
+}
+
 function initP0MobileEnhancements(){
     var isEn = false;
     try { isEn = currentLang === 'en'; } catch (e) { isEn = false; }
@@ -760,6 +923,9 @@ function initP0MobileEnhancements(){
             if(nextBtn) nextBtn.classList.add('p0-original-save');
         }
     }catch(e){ console.warn('[P0] sticky actions', e); }
+
+    try { initHoleSwipeNav(); } catch (e) { console.warn('[P0] hole swipe', e); }
+    try { initScoreConfirmBar(); } catch (e) { console.warn('[P0] confirm bar', e); }
 }
 function initNav(){
     buildMobileDrawer();
@@ -2781,11 +2947,10 @@ function stablefordPointsText(points) {
 }
 
 // Shared score square: handicap is attached to the score, never the hole number.
-// Фора показана явным бейджем «Ф+1»/«H+1» (понятнее чёрточек), результат —
-// классом sq-* (цвет цифры в сетке лунок). Необязательный markerScore рисует
-// точку маркера в углу квадрата вместо подписи «М —». В мелких клетках сетки
-// лунок (30px) бейдж закрыл бы цифру, поэтому там skipHcp=true: фора видна
-// на крупном квадрате ввода и в счётных карточках.
+// Фора на крупном счёте подписана снаружи квадрата («Фора +1», не «Ф+1» и не штраф),
+// результат — классом sq-* (цвет цифры в сетке лунок). Необязательный markerScore рисует
+// точку маркера в углу квадрата. В мелких клетках сетки (30px) бейдж закрыл бы цифру,
+// поэтому там skipHcp=true. Крупный ввод тоже пропускает бейдж и ставит hcpCaptionHTML.
 function scoreSquareHTML(score, hole, fieldHcp, markerScore, skipHcp) {
     var n = parseInt(score, 10) || 0;
     var badge = skipHcp ? '' : hcpBadgeHTML(fieldHcp || 0, hole);
@@ -2802,20 +2967,36 @@ function scoreSquareHTML(score, hole, fieldHcp, markerScore, skipHcp) {
     return '<span class="entry-score-square' + sqCls + '"><span class="score-gross">' + (n > 0 ? n : '—') + '</span>' + badge + dot + '</span>';
 }
 
-// Явный бейдж ударов форы для экранов ввода («Ф+1»/«H+1» вместо чёрточек).
-// В счётных карточках остаются чёрточки hcpStrokesMarksHTML (там есть легенда).
+// Компактная метка форы внутри квадрата: только «+1», без сокращения «Ф»
+// (его читали как кнопку штрафа). Полная подпись — hcpCaptionHTML рядом
+// с крупной цифрой. В счётных карточках остаются чёрточки hcpStrokesMarksHTML.
 function hcpBadgeHTML(fieldHcp, holeNum) {
     var n = hcpStrokesOnHole(holeNum, fieldHcp);
     if (!n) return '';
     var neg = n < 0, cnt = Math.abs(n);
-    var label = (currentLang === 'en' ? 'H' : 'Ф') + (neg ? '-' : '+') + cnt;
-    var title;
-    if (currentLang === 'en') {
-        title = cnt + (cnt === 1 ? ' handicap stroke' : ' handicap strokes') + (neg ? ' (given)' : '');
-    } else {
-        title = 'Фора: ' + cnt + ' ' + pluralN(cnt, 'удар', 'удара', 'ударов') + (neg ? ' (минусовая)' : '');
-    }
+    var label = (neg ? '−' : '+') + cnt;
+    var title = hcpStrokeTitle(cnt, neg);
     return '<span class="entry-handicap"><span class="hcp-badge' + (neg ? ' neg' : '') + '" title="' + title + '" role="img" aria-label="' + title + '">' + label + '</span></span>';
+}
+
+function hcpStrokeTitle(cnt, neg) {
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    if (en) {
+        return 'Handicap: ' + cnt + (cnt === 1 ? ' stroke' : ' strokes') + (neg ? ' (plus)' : '') + ' on this hole. Not a penalty stroke.';
+    }
+    return 'Фора: ' + cnt + ' ' + pluralN(cnt, 'удар', 'удара', 'ударов') + (neg ? ' (минусовая)' : '') + ' на этой лунке. Это не штрафной удар.';
+}
+
+// Читаемая подпись под крупным счётом: «Фора +1», не кнопка и не «Ф+1».
+function hcpCaptionHTML(fieldHcp, holeNum) {
+    var n = hcpStrokesOnHole(holeNum, fieldHcp);
+    if (!n) return '';
+    var neg = n < 0, cnt = Math.abs(n);
+    var sign = neg ? '−' : '+';
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var word = en ? 'Handicap' : 'Фора';
+    var title = hcpStrokeTitle(cnt, neg).replace(/"/g, '&quot;');
+    return '<span class="hcp-caption' + (neg ? ' neg' : '') + '" title="' + title + '" role="note" aria-label="' + title + '" onclick="event.stopPropagation()"><i class="fas fa-golf-ball-tee" aria-hidden="true"></i> ' + word + ' ' + sign + cnt + '</span>';
 }
 
 function entryHoleContentHTML(score, marker, hole, fieldHcp) {
@@ -2827,7 +3008,8 @@ function entryHoleContentHTML(score, marker, hole, fieldHcp) {
 // например: 4 (3 очка Stableford). Используется в каждом экране ввода счёта.
 function scoreWithStablefordHTML(score, holeNum, fieldHcp, showStableford) {
     var gross = parseInt(score) || 0;
-    var html = scoreSquareHTML(gross, holeNum, fieldHcp);
+    // На крупной цифре бейдж внутри квадрата не нужен: «Фора +1» стоит под ней.
+    var html = scoreSquareHTML(gross, holeNum, fieldHcp, null, true) + hcpCaptionHTML(fieldHcp, holeNum);
     if (showStableford && gross > 0) {
         var points = stablefordField(gross, holeNum, fieldHcp || 0);
         var label = stablefordPointsText(points);
@@ -2981,13 +3163,17 @@ function playerHasAnyMarkerScore(p, order) {
     return false;
 }
 
-// Мини-легенда двойной карточки «игрок + маркер» (страница ввода результатов).
+// Легенда карточки спрятана за иконкой «i»: на поле она не должна занимать строку.
 function buildDualScorecardLegendHTML() {
-    return '<div class="dual-card-legend">' +
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var label = en ? 'How to read the scorecard' : 'Как читать карточку';
+    return '<details class="gsg-legend">' +
+        '<summary class="gsg-legend-btn" aria-label="' + label + '" title="' + label + '"><i class="fas fa-circle-info" aria-hidden="true"></i></summary>' +
+        '<div class="gsg-legend-pop" role="note">' +
         '<span class="dcl-item"><i class="fas fa-user"></i> ' + t('legend_player_score') + '</span>' +
-        '<span class="dcl-item dcl-marker"><i class="fas fa-pen-nib"></i> ' + t('marker_score_short') + ' — ' + t('legend_marker_score') + '</span>' +
+        '<span class="dcl-item dcl-marker"><i class="gsg-mk-dot" aria-hidden="true"></i> ' + t('legend_marker_score') + '</span>' +
         '<span class="dcl-item dcl-mismatch"><i class="fas fa-triangle-exclamation"></i> ' + t('legend_mismatch') + '</span>' +
-        '</div>';
+        '</div></details>';
 }
 
 // Shared screen-only scorecard. Printing and social PNG use their own renderers.
@@ -3060,14 +3246,15 @@ function generateGroupHoleTableHTML(r, opts) {
     // Режим showMarker (страница ввода результатов группового раунда):
     // формат карточки — тот же, что на главной («Сейчас на поле»), но рядом
     // со счётом игрока виден и счёт, который ввёл его маркер.
-    var legend = opts.showMarker ? buildDualScorecardLegendHTML() : '';
+    // У общей карточки легенда сидит в шапке (иконка «i»). У личной — над ней.
+    var soloLegend = (opts.showMarker && playerEntries.length === 1) ? buildDualScorecardLegendHTML() : '';
 
     // Один игрок — личная карточка. Несколько — ОДНА общая карточка на всех
     // с именами и ударами играющих (требование клуба, 2026-09-26).
     if (playerEntries.length === 1) {
-        return legend + renderClubScorecard(playerEntries[0][1], r, Object.assign({}, opts, { playerId: playerEntries[0][0], order: order }));
+        return soloLegend + renderClubScorecard(playerEntries[0][1], r, Object.assign({}, opts, { playerId: playerEntries[0][0], order: order }));
     }
-    return legend + renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts);
+    return renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts);
 }
 
 // ОБЩАЯ КАРТОЧКА ГРУППЫ: одна на весь флайт (2+ игрока).
@@ -3129,13 +3316,23 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
         return { pid: pid, p: p, tee: tee, fhcp: fhcp, scores: scores, stats: stats, current: cur, name: name, thru: thru };
     });
 
+    function nameHTML(name) {
+        var raw = String(name || '—').replace(/\s+/g, ' ').trim() || '—';
+        var parts = raw.split(' ').filter(Boolean);
+        var first = parts.length > 1 ? parts.slice(0, -1).join(' ') : raw;
+        var last = parts.length > 1 ? parts[parts.length - 1] : '';
+        var lines = '<span class="gsg-pname-line">' + esc(first) + '</span>';
+        if (last) lines += '<span class="gsg-pname-line">' + esc(last) + '</span>';
+        return '<div class="gsg-pname">' + lines + '</div>';
+    }
     var html = '<section class="club-sc club-sc-group" data-sc-view="' + esc(view) + '" data-sc-players="' + n + '" aria-label="' + esc(title) + '">';
     html += '<header class="club-sc-head club-sc-group-head"><strong><i class="fas fa-users"></i> ' + esc(title) + '</strong>';
     if (fmtTxt) html += '<span class="gsg-format">' + esc(fmtTxt) + '</span>';
+    if (opts.showMarker) html += buildDualScorecardLegendHTML();
     html += '</header>';
     if (opts.label) html += '<div class="club-sc-caption">' + esc(opts.label) + '</div>';
     html += '<div class="club-sc-group-scroll" tabindex="0" aria-label="' + esc(en ? 'Group scores by holes' : 'Счёт группы по лункам') + '">';
-    html += '<table class="gsg-table"><thead><tr>';
+    html += '<table class="gsg-table" style="min-width:' + (78 + n * 118) + 'px"><thead><tr>';
     html += '<th class="gsg-hole" scope="col">' + esc(en ? 'Hole · Par' : 'Лунка · Пар') + '</th>';
     infos.forEach(function(inf) {
         var teeName = inf.tee;
@@ -3149,8 +3346,8 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
         try { hcpShort = t('field_hcp_short'); } catch (e) { console.warn("[silent]", e); }
         var hcpVal = inf.fhcp;
         try { hcpVal = fmtFieldHcp(inf.fhcp); } catch (e) { console.warn("[silent]", e); }
-        html += '<th class="gsg-player" scope="col" data-sc-player="' + esc(inf.pid) + '">';
-        html += '<div class="gsg-pname">' + esc(inf.name) + '</div>';
+        html += '<th class="gsg-player" scope="col" data-sc-player="' + esc(inf.pid) + '" title="' + esc(inf.name) + '">';
+        html += nameHTML(inf.name);
         html += '<div class="gsg-pbadges"><span class="tee-pill tee-' + esc(inf.tee) + '">' + esc(teeName) + '</span>' +
             '<span class="hcp-chip ' + esc(band) + '">' + esc(hcpShort) + ' ' + esc(hcpVal) + '</span></div>';
         html += '</th>';
@@ -3191,9 +3388,14 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
                     if (mk && mk.score >= 1) {
                         var mm = (s >= 1 && s !== mk.score);
                         if (mm && tdCls.indexOf('cell-mismatch') < 0) tdCls += ' cell-mismatch';
-                        var mkLbl = 'М';
-                        try { mkLbl = t('marker_score_short'); } catch (e) { console.warn("[silent]", e); }
-                        mkHtml = '<span class="gsg-marker' + (mm ? ' mk-mismatch' : '') + '">' + esc(mkLbl) + ': ' + mk.score + '</span>';
+                        var mkTip = (en ? 'Marker ' : 'Маркер ') + mk.score;
+                        // Без префикса «М:». Совпадение — точка у цифры игрока,
+                        // расхождение — цифра маркера другим цветом и точка.
+                        if (s >= 1 && !mm) {
+                            mkHtml = '<span class="gsg-marker gsg-marker-ok" title="' + esc(mkTip) + '" aria-label="' + esc(mkTip) + '"><i class="gsg-mk-dot" aria-hidden="true"></i></span>';
+                        } else {
+                            mkHtml = '<span class="gsg-marker' + (mm ? ' mk-mismatch' : '') + '" title="' + esc(mkTip) + '" aria-label="' + esc(mkTip) + '"><i class="gsg-mk-dot" aria-hidden="true"></i>' + mk.score + '</span>';
+                        }
                     }
                 }
                 html += '<td class="' + tdCls + '" data-sc-player="' + esc(inf.pid) + '" data-sc-hole="' + h + '"' + (isCur ? ' data-sc-current="1"' : '') + '>' +
@@ -7554,14 +7756,22 @@ function toggleActiveScorecard(panelId) {
     if (!panel) return;
 
     var isHidden = panel.classList.contains('hidden');
+    var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
     if (isHidden) {
         panel.classList.remove('hidden');
         if (icon) icon.className = 'fas fa-chevron-up';
-        if (txt) txt.textContent = currentLang === 'en' ? 'Collapse Scorecard' : 'Свернуть счётную карточку';
+        if (txt) txt.textContent = (typeof t === 'function') ? t('collapse_scorecard') : (en ? 'Collapse scorecard' : 'Свернуть карточку');
     } else {
         panel.classList.add('hidden');
         if (icon) icon.className = 'fas fa-chevron-down';
-        if (txt) txt.textContent = currentLang === 'en' ? 'Expand Scorecard' : 'Развернуть счётную карточку';
+        if (txt) txt.textContent = (typeof t === 'function') ? t('expand_scorecard') : (en ? 'Scorecard' : 'Карточка');
+    }
+    var foldBtn = (icon && icon.closest) ? icon.closest('button') : null;
+    if (foldBtn) {
+        foldBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+        foldBtn.title = isHidden
+            ? (en ? 'Collapse scorecard' : 'Свернуть счётную карточку')
+            : (en ? 'Expand scorecard' : 'Развернуть счётную карточку');
     }
 }
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.94.0-53ef1fa5';
+const CACHE_NAME = 'pestovo-v1.94.0-bb145400';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -46,7 +46,7 @@ const STATIC_ASSETS = [
     'css/tn-admin.css?v=99ed80dd',
     'css/tn-studio.css?v=257f9601',
     'css/tournament-redesign.css?v=6aa85f7a',
-    'dist/livescoring-modules.js?v=ba8e9b1c',
+    'dist/livescoring-modules.js?v=e40f89bb',
     'js/admin.js?v=e425039a',
     'js/app.js?v=59c52eae',
     'js/auth.js?v=3a96f309',

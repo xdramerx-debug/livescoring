@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.94.0-bb145400';
+const CACHE_NAME = 'pestovo-v1.94.0-86a8251b';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -69,7 +69,7 @@ const STATIC_ASSETS = [
     'js/start-admin.js?v=f54bc9f8',
     'js/stats.js?v=410c615a',
     'js/tn-admin-core.js?v=9b223513',
-    'js/tn-admin.js?v=4e94d0f5',
+    'js/tn-admin.js?v=6ad85517',
     'js/tn-protocol-public.js?v=ad7af32b',
     'js/tn-scorecard.js?v=b34d029e',
     'js/tn-studio-core.js?v=084a748a',

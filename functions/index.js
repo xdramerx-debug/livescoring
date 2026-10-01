@@ -107,6 +107,77 @@ exports.tournamentMasterSignIn = functions.runWith({}).https.onCall(async functi
     }
 });
 
+// ── Удаление данных клуба (кнопки «Удалить всех игроков и раунды» /
+//    «Удалить все данные» в админке) ─────────────────────────────────────────
+// Правила RTDB не разрешают клиентам удалять ветки целиком: .write есть
+// только на дочерних узлах (users/$uid, rounds/$rid, tournaments/$id, …), а
+// на самих ветках — нет. Поэтому прежний атомарный мульти-path update
+// ({users:null, rounds:null, …}) сервер отклонял целиком, и кнопка
+// «Удалить все данные» не удаляла игроков. Серверная операция идёт через
+// Admin SDK (правилами не ограничена), удаляет ветки атомарно и возвращает
+// результат в админку. Если функция не развёрнута, клиент чистит базу сам —
+// по доступным ему путям (users/<uid>, usersPublic/<uid>, …).
+const WIPE_ROUND_BRANCHES = ['rounds', 'markers', 'markerAssignments', 'alerts', 'protocols'];
+const WIPE_ALL_BRANCHES = ['rounds', 'users', 'usersPublic', 'tournaments', 'markers',
+    'markerAssignments', 'alerts', 'protocols', 'broadcasts', 'reactions'];
+
+exports.wipeAllData = functions.runWith({}).https.onCall(async function (data, context) {
+    const scope = data && data.scope === 'rounds' ? 'rounds' : 'all';
+    const authCtx = context && context.auth;
+    const uid = authCtx && authCtx.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    const token = authCtx.token || {};
+    const isMaster = uid === MASTER_UID && token.tournamentMaster === true && token.tournamentMasterUntil > Date.now();
+    let profile = null;
+    try {
+        const snap = await db.ref('users/' + uid).get();
+        profile = snap.val();
+    } catch (e) { profile = null; }
+    const isAdmin = !!(profile && (profile.admin === true || profile.role === 'admin'));
+    if (!isMaster && !isAdmin) {
+        throw new functions.https.HttpsError('permission-denied', 'Administrator rights required.');
+    }
+    // Свой аккаунт администратора-человека сохраняем: его роль живёт в
+    // users/<uid>, и без записи админ потерял бы доступ к панели.
+    // Мастер-сессия (tournament-master) личного профиля в users не имеет.
+    const keepUid = (!isMaster && isAdmin) ? uid : null;
+    const updates = {};
+    const branches = scope === 'rounds' ? WIPE_ROUND_BRANCHES : WIPE_ALL_BRANCHES;
+    branches.forEach(function (branch) {
+        if (branch === 'users' && keepUid) return; // разберём ниже, по узлам
+        updates[branch] = null;
+    });
+    if (scope === 'all' && keepUid) {
+        const usersSnap = await db.ref('users').get();
+        const users = usersSnap.val() || {};
+        Object.keys(users).forEach(function (key) {
+            if (key !== keepUid) updates['users/' + key] = null;
+        });
+        const pubSnap = await db.ref('usersPublic').get();
+        const pub = pubSnap.val() || {};
+        Object.keys(pub).forEach(function (key) {
+            if (key !== keepUid) updates['usersPublic/' + key] = null;
+        });
+        if (Object.prototype.hasOwnProperty.call(updates, 'usersPublic')) delete updates.usersPublic;
+    }
+    if (scope === 'rounds') {
+        // У оставшихся игроков не должно остаться истории и агрегатов
+        // из удалённых раундов.
+        const usersSnap = await db.ref('users').get();
+        const users = usersSnap.val() || {};
+        Object.keys(users).forEach(function (key) {
+            updates['users/' + key + '/history'] = null;
+            updates['users/' + key + '/roundsPlayed'] = 0;
+            updates['users/' + key + '/bestGross'] = null;
+            updates['users/' + key + '/bestStableford'] = null;
+        });
+    }
+    // Сброс игровых сессий на всех устройствах (клиенты слушают этот ключ).
+    updates['settings/sessions_reset_ts'] = Date.now();
+    await db.ref().update(updates);
+    return { ok: true, scope: scope, keptSelf: !!keepUid, deletedAt: Date.now() };
+});
+
 // ── Валидация входных данных (defense-in-depth; основные правила — в database.rules.json) ──
 function str(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
 function validAudience(a) {

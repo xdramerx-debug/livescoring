@@ -4,6 +4,7 @@
     ".write": false,
     "users": {
       ".read": "auth != null && (auth.uid === 'tournament-master' || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin'))",
+      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && !newData.exists())",
       "$uid": {
         ".read": "auth.uid === $uid || auth.uid === 'tournament-master' || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
         ".write": "auth.uid != 'tournament-master' && ((root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === $uid && newData.child('admin').val() === data.child('admin').val() && (data.exists() ? newData.child('role').val() === data.child('role').val() : newData.child('role').val() === 'player')))",
@@ -15,6 +16,7 @@
     },
     "usersPublic": {
       ".read": "auth != null",
+      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now)",
       "$uid": {
         ".write": "auth.uid === $uid || auth.uid === 'tournament-master' || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
         ".validate": "newData.hasChildren(['name'])",
@@ -49,6 +51,7 @@
     },
     "broadcasts": {
       ".read": true,
+      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && !newData.exists())",
       "$id": {
         ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
         ".validate": "newData.hasChildren(['title','body']) && newData.child('title').isString() && newData.child('title').val().length <= 200 && newData.child('body').isString() && newData.child('body').val().length <= 1000"
@@ -56,7 +59,7 @@
     },
     "alerts": {
       ".read": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth != null && query.orderByChild === 'roundId' && root.child('rounds').child(query.equalTo).child('players').child(auth.uid).exists())",
-      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && !newData.exists())",
       ".indexOn": [
         "roundId",
         "status"
@@ -68,6 +71,7 @@
     },
     "rounds": {
       ".read": "auth != null",
+      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && !newData.exists())",
       "$rid": {
         ".read": "auth != null",
         ".write": "auth != null && ((auth.uid != 'tournament-master' && newData.child('createdBy').val() === auth.uid) || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && (newData.child('tournamentId').exists() || newData.child('protocolId').exists() || data.child('tournamentId').exists() || data.child('protocolId').exists())))",
@@ -98,6 +102,7 @@
     },
     "tournaments": {
       ".read": true,
+      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now)",
       "$id": {
         ".write": "auth != null && ((auth.uid != 'tournament-master' && newData.child('createdBy').val() === auth.uid) || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now))",
         "applications": {
@@ -131,6 +136,7 @@
     },
     "protocols": {
       ".read": true,
+      ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && !newData.exists())",
       "$id": {
         ".write": "auth != null && ((root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now && (newData.child('tournamentId').exists() || data.child('tournamentId').exists() || newData.child('tnId').exists() || data.child('tnId').exists())) || (auth.uid != 'tournament-master' && newData.child('createdBy').val() === auth.uid))"
       }

@@ -271,7 +271,7 @@ function K() {
   var e = document.getElementById("toast-root");
   return e || (e = document.createElement("div"), e.id = "toast-root", e.className = "toast-root", e.setAttribute("aria-live", "polite"), document.body.appendChild(e)), e;
 }
-function U(e) {
+function Y(e) {
   return e === "error" ? '<i class="fas fa-triangle-exclamation"></i>' : e === "warn" ? '<i class="fas fa-bell"></i>' : e === "info" ? '<i class="fas fa-circle-info"></i>' : '<i class="fas fa-circle-check"></i>';
 }
 function I(e, a, r) {
@@ -290,7 +290,7 @@ function I(e, a, r) {
         break;
       }
     var i = document.createElement("div");
-    i.className = "toast t-" + a, i.setAttribute("role", "status"), i.innerHTML = '<span class="toast-ico">' + U(a) + '</span><span class="toast-msg">' + e + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
+    i.className = "toast t-" + a, i.setAttribute("role", "status"), i.innerHTML = '<span class="toast-ico">' + Y(a) + '</span><span class="toast-msg">' + e + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
     var _ = !1, u = function(d) {
       if (!_) {
         _ = !0;
@@ -342,7 +342,7 @@ function be(e, a) {
     });
   }
 }
-function Y(e) {
+function U(e) {
   try {
     return localStorage.getItem(e) === "1";
   } catch {
@@ -352,7 +352,7 @@ function Y(e) {
 function ge(e) {
   if (navigator.vibrate) {
     var a = e ?? 50;
-    Y("pestovo_strong_vibration") && (Array.isArray(a) ? a = a.map(function(r, n) {
+    U("pestovo_strong_vibration") && (Array.isArray(a) ? a = a.map(function(r, n) {
       return n % 2 === 0 ? Math.min(650, Math.max(35, Math.round((parseInt(r) || 0) * 1.45))) : Math.min(260, Math.max(20, Math.round((parseInt(r) || 0) * 0.9)));
     }) : a = Math.min(650, Math.max(70, Math.round((parseInt(a) || 50) * 1.5))));
     try {
@@ -366,7 +366,7 @@ function ye(e) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: K, toastIconFor: U, toast: I, toastSequence: be, isPlayerModeEnabled: Y, vib: ge, escapeHtml: ye });
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: K, toastIconFor: Y, toast: I, toastSequence: be, isPlayerModeEnabled: U, vib: ge, escapeHtml: ye });
 var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", f = {
   ru: {
     brand_name: "Пестово",
@@ -915,7 +915,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     tab_broadcasts: "Анонсы 📢",
     delete_all_rounds: "Удалить все раунды",
     delete_all_data: "Удалить всех игроков и раунды",
-    delete_all_data_sub: "Полностью удаляет всех игроков и все раунды. Данные исчезнут из всех списков, статистики и автоподбора и не появятся снова.",
+    delete_all_data_sub: "Полностью удаляет всех игроков и все раунды. Данные исчезнут из всех списков, статистики и автоподбора и не появятся снова. Аккаунт администратора сохраняется.",
     wipe_everything: "Удалить все данные",
     wipe_everything_sub: "Удаляет абсолютно всё: турниры, игроков, раунды, историю, маркеры, протоколы, трансляции, реакции, демо-имена и все локальные кэши. Настройки дизайна и доступа в админку сохраняются.",
     full_name: "Имя и фамилия",
@@ -1513,7 +1513,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     tab_broadcasts: "Announcements 📢",
     delete_all_rounds: "Delete All Rounds",
     delete_all_data: "Delete All Players & Rounds",
-    delete_all_data_sub: "Permanently removes every player and every round. Data disappears from all lists, stats and autocomplete and will not reappear.",
+    delete_all_data_sub: "Permanently removes every player and every round. Data disappears from all lists, stats and autocomplete and will not reappear. Your admin account is kept.",
     wipe_everything: "Delete all data",
     wipe_everything_sub: "Erases absolutely everything: tournaments, players, rounds, history, markers, protocols, broadcasts, reactions, demo names and all local caches. Design and admin access settings are kept.",
     full_name: "Full Name",
@@ -1825,7 +1825,7 @@ export {
   ae as holeTiming,
   fe as html,
   ue as initDateRangeFilter,
-  Y as isPlayerModeEnabled,
+  U as isPlayerModeEnabled,
   de as isTodayTimestamp,
   T as normalizeTimestampMs,
   R as readDateRange,
@@ -1842,7 +1842,7 @@ export {
   ve as t,
   _e as tnDateTs,
   I as toast,
-  U as toastIconFor,
+  Y as toastIconFor,
   be as toastSequence,
   we as toggleLang,
   x as tsToDateInputValue,

@@ -454,46 +454,262 @@ function deleteRound(id) {
     });
 }
 
-function clearRounds() {
-    if (confirm(currentLang === 'en' ? 'Delete ALL rounds and history? This cannot be undone!' : 'Удалить ВСЕ раунды и всю историю? Это необратимо!') && confirm(currentLang === 'en' ? 'Are you sure?' : 'Точно уверены?')) {
-        db.ref('rounds').remove();
-        db.ref('markers').remove();
-        db.ref('markerAssignments').remove();
-        db.ref('alerts').remove();
-        db.ref('protocols').remove();
-        // Сбрасываем игровые сессии на всех устройствах.
-        db.ref('settings/sessions_reset_ts').set(Date.now());
-        try { if (typeof pestovoWipeLocalSessions === 'function') pestovoWipeLocalSessions(); } catch (e) { console.warn("[silent]", e); }
+// ==========================================
+// УДАЛЕНИЕ ДАННЫХ: РАУНДЫ / ИГРОКИ / ВСЁ
+// ==========================================
+// Причина бага «нажимаю удалить все данные — игроки не удаляются»:
+// database.rules.json разрешает запись только в ДОЧЕРНИЕ узлы
+// (users/$uid, rounds/$rid, tournaments/$id, …) и запрещает запись в сами
+// ветки. Прежний код делал один атомарный мульти-path update
+// ({users:null, rounds:null, …}); сервер проверяет права на КАЖДЫЙ путь и
+// отклоняет весь запрос целиком — поэтому не удалялось вообще ничего.
+// Теперь очистка идёт в несколько слоёв:
+//   1) Cloud Function wipeAllData (Admin SDK) — если развёрнута: удаляет всё
+//      на сервере, правила БД ей не мешают;
+//   2) иначе — из браузера: сначала ветка целиком, а если правила не
+//      разрешают — каждый ребёнок отдельно (users/<uid>, usersPublic/<uid>),
+//      на что прав у администратора/мастера достаточно;
+//   3) всё, что удалить не удалось, честно перечисляется в тосте — никаких
+//      «Все данные удалены» при живых игроках.
+var WIPE_ALL_DB_BRANCHES = [
+    'users', 'usersPublic', 'rounds', 'tournaments', 'markers',
+    'markerAssignments', 'alerts', 'protocols', 'broadcasts', 'reactions'
+];
 
-        db.ref('users').once('value').then(function(sn) {
-            var users = sn.val() || {};
-            Object.keys(users).forEach(function(uid) {
-                db.ref('users/' + uid + '/history').remove();
-                db.ref('users/' + uid).update({
-                    roundsPlayed: 0,
-                    bestGross: null,
-                    bestStableford: null
+// «Удалить все раунды» — раунды и всё, что к ним привязано, без игроков.
+var WIPE_ROUNDS_DB_BRANCHES = ['rounds', 'markers', 'markerAssignments', 'alerts', 'protocols'];
+
+var WIPE_PATH_LABELS = {
+    users: { ru: 'игроки', en: 'players' },
+    usersPublic: { ru: 'публичные профили', en: 'public profiles' },
+    rounds: { ru: 'раунды', en: 'rounds' },
+    tournaments: { ru: 'турниры', en: 'tournaments' },
+    markers: { ru: 'маркеры', en: 'markers' },
+    markerAssignments: { ru: 'назначения маркеров', en: 'marker assignments' },
+    alerts: { ru: 'вызовы', en: 'alerts' },
+    protocols: { ru: 'протоколы', en: 'protocols' },
+    broadcasts: { ru: 'анонсы', en: 'broadcasts' },
+    reactions: { ru: 'реакции', en: 'reactions' }
+};
+
+function wipeIsEn() {
+    return (typeof currentLang !== 'undefined' && currentLang === 'en');
+}
+
+// Есть ли серверная Firebase-сессия. В «локальном» входе по 55555 (когда
+// callable недоступна) auth.currentUser пуст, и любая запись в базу будет
+// отклонена правилами — честно сообщаем об этом до начала очистки.
+function wipeHasServerSession() {
+    try {
+        if (typeof auth !== 'undefined' && auth && !auth.currentUser) return false;
+    } catch (e) { console.warn("[silent]", e); }
+    return true;
+}
+
+function wipeCurrentUid() {
+    try {
+        if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) return currentUser.uid;
+    } catch (e) { console.warn("[silent]", e); }
+    try {
+        if (typeof auth !== 'undefined' && auth && auth.currentUser && auth.currentUser.uid) return auth.currentUser.uid;
+    } catch (e) { console.warn("[silent]", e); }
+    return null;
+}
+
+// Свой аккаунт администратора (не мастер) сохраняем: удалив его, админ
+// потерял бы доступ к панели (роль admin живёт в users/<uid>).
+function wipeKeepSelfUid() {
+    var uid = wipeCurrentUid();
+    if (!uid || uid === 'tournament-master') return null;
+    var isAdmin = false;
+    try {
+        isAdmin = !!(currentUserData && (currentUserData.admin === true || currentUserData.role === 'admin'));
+    } catch (e) { console.warn("[silent]", e); }
+    return isAdmin ? uid : null;
+}
+
+function wipeNoSessionToast() {
+    toast(wipeIsEn()
+        ? '⚠️ No server session: log in again (master password or admin account) — nothing was deleted'
+        : '⚠️ Нет серверной сессии: войдите в админку заново (мастер-пароль или аккаунт администратора) — данные НЕ удалены', 'error');
+}
+
+// ── Удаление из браузера (когда Cloud Function недоступна) ─────────────────
+// Мульти-path update по дочерним путям: права проверяются на каждый путь
+// отдельно, и все они (users/<uid>, usersPublic/<uid>, …) разрешены ролям
+// администратора и мастера.
+function wipeDeleteChunk(path, keys) {
+    var updates = {};
+    keys.forEach(function(k) { updates[path + '/' + k] = null; });
+    return db.ref().update(updates);
+}
+
+function wipeBranchChildren(path, chunkSize, keepKeys) {
+    var chunk = chunkSize || 200;
+    return db.ref(path).once('value').then(function(sn) {
+        var val = sn.val();
+        if (!val || typeof val !== 'object') return 0;
+        var keys = Object.keys(val).filter(function(k) {
+            return !(keepKeys && keepKeys.indexOf(k) !== -1);
+        });
+        var done = 0;
+        var chain = Promise.resolve();
+        for (var i = 0; i < keys.length; i += chunk) {
+            (function(part) {
+                chain = chain.then(function() {
+                    return wipeDeleteChunk(path, part).then(function() { done += part.length; });
                 });
+            })(keys.slice(i, i + chunk));
+        }
+        return chain.then(function() { return done; });
+    });
+}
+
+// Удаляет ветку целиком; если правила запрещают запись в саму ветку —
+// удаляет всех её детей по отдельности (работает и без новых правил БД).
+function wipeDbBranch(path, opts) {
+    opts = opts || {};
+    var keepKeys = opts.keepKeys || null;
+    var branchAttempt = (keepKeys && keepKeys.length)
+        ? Promise.reject(new Error('keep-keys'))
+        : db.ref(path).remove();
+    return branchAttempt.then(function() {
+        return { path: path, ok: true, mode: 'branch', count: null };
+    }).catch(function(branchErr) {
+        return wipeBranchChildren(path, opts.chunkSize, keepKeys).then(function(count) {
+            return { path: path, ok: true, mode: 'children', count: count };
+        }, function(err) {
+            return { path: path, ok: false, mode: 'children', error: err || branchErr };
+        });
+    });
+}
+
+// После удаления раундов у оставшихся игроков не должно остаться истории
+// и агрегатов из этих раундов.
+function wipeRoundsResetPlayersStats() {
+    if (typeof db === 'undefined' || !db) return Promise.resolve();
+    return db.ref('users').once('value').then(function(sn) {
+        var users = sn.val() || {};
+        var updates = {};
+        Object.keys(users).forEach(function(uid) {
+            updates['users/' + uid + '/history'] = null;
+            updates['users/' + uid + '/roundsPlayed'] = 0;
+            updates['users/' + uid + '/bestGross'] = null;
+            updates['users/' + uid + '/bestStableford'] = null;
+        });
+        return Object.keys(updates).length ? db.ref().update(updates) : null;
+    }).catch(function(err) { console.warn('[wipe] stats reset skipped', err); });
+}
+
+function wipeServerCall(scope) {
+    return new Promise(function(resolve, reject) {
+        try {
+            if (typeof firebase === 'undefined' || !firebase.functions) {
+                reject(new Error('Cloud Functions недоступны'));
+                return;
+            }
+            firebase.functions().httpsCallable('wipeAllData')({ scope: scope }).then(function(res) {
+                resolve((res && res.data) || {});
+            }).catch(reject);
+        } catch (e) { reject(e); }
+    });
+}
+
+// 1) серверная функция (Admin SDK) — правил БД не боится;
+// 2) браузерный фолбэк — по доступным путям.
+function wipeDatabase(scope) {
+    var branches = scope === 'rounds' ? WIPE_ROUNDS_DB_BRANCHES : WIPE_ALL_DB_BRANCHES;
+    var keepUid = scope === 'rounds' ? null : wipeKeepSelfUid();
+    return wipeServerCall(scope).then(function(res) {
+        return { ok: true, via: 'server', failures: [], keptSelf: !!res.keptSelf };
+    }).catch(function(serverErr) {
+        try { console.warn('[wipe] server wipe unavailable, browser fallback', serverErr); } catch (e) {}
+        var results = [];
+        var chain = Promise.resolve();
+        branches.forEach(function(path) {
+            chain = chain.then(function() {
+                return wipeDbBranch(path, {
+                    chunkSize: 200,
+                    keepKeys: (path === 'users' && keepUid) ? [keepUid] : null
+                }).then(function(r) { results.push(r); });
             });
         });
+        if (scope === 'rounds') chain = chain.then(wipeRoundsResetPlayersStats);
+        return chain.then(function() {
+            var failures = results.filter(function(r) { return !r.ok; }).map(function(r) {
+                return { path: r.path, error: r.error };
+            });
+            return { ok: !failures.length, via: 'browser', failures: failures, keptSelf: !!keepUid };
+        });
+    });
+}
 
-        toast(currentLang === 'en' ? 'All rounds and history deleted' : 'Все раунды и история удалены', 'info');
+function wipeFailureNames(failures) {
+    var lang = wipeIsEn() ? 'en' : 'ru';
+    return failures.map(function(f) {
+        var label = WIPE_PATH_LABELS[f.path];
+        return label ? (label[lang] || f.path) : f.path;
+    }).join(', ');
+}
+
+function wipeResultToast(res, opts) {
+    opts = opts || {};
+    var en = wipeIsEn();
+    if (res.ok) {
+        var base = opts.scope === 'rounds'
+            ? (en ? 'All rounds and history deleted' : 'Все раунды и история удалены')
+            : (en ? 'All players and rounds deleted everywhere' : 'Все игроки и раунды полностью удалены');
+        if (res.keptSelf) base += en ? ' (your admin account was kept)' : ' (ваш аккаунт администратора сохранён)';
+        toast(base, 'info');
+        return;
     }
+    var names = wipeFailureNames(res.failures || []);
+    toast(en
+        ? '⚠️ Partially deleted. Not deleted: ' + names + '. Administrator rights (or deployed rules/functions) are required.'
+        : '⚠️ Удалено частично. Не удалось удалить: ' + names + '. Нужны права администратора (или развёрнутые правила/функции).', 'error');
+}
+
+// ── Кнопки админки ─────────────────────────────────────────────────────────
+function clearRounds() {
+    var en = wipeIsEn();
+    if (!confirm(en ? 'Delete ALL rounds and history? This cannot be undone!' : 'Удалить ВСЕ раунды и всю историю? Это необратимо!') ||
+        !confirm(en ? 'Are you sure?' : 'Точно уверены?')) return;
+
+    if (typeof db === 'undefined' || !db) {
+        try { if (typeof pestovoWipeLocalSessions === 'function') pestovoWipeLocalSessions(); } catch (e) { console.warn("[silent]", e); }
+        toast(en ? 'No database connection: local sessions cleared' : 'Нет соединения с базой: локальные сессии очищены', 'info');
+        return Promise.resolve();
+    }
+    if (!wipeHasServerSession()) { wipeNoSessionToast(); return Promise.resolve(); }
+
+    return wipeDatabase('rounds').then(function(res) {
+        // Сбрасываем игровые сессии на всех устройствах.
+        safeAfterWipeStep(function() { if (typeof pestovoWipeLocalSessions === 'function') pestovoWipeLocalSessions(); });
+        safeAfterWipeStep(function() { db.ref('settings/sessions_reset_ts').set(Date.now()).catch(function() {}); });
+        safeAfterWipeStep(function() { if (typeof loadAdmRounds === 'function') loadAdmRounds(); });
+        safeAfterWipeStep(function() { if (typeof loadAdmGroups === 'function') loadAdmGroups(); });
+        safeAfterWipeStep(function() { if (typeof loadAdmPlayers === 'function') loadAdmPlayers(); });
+        wipeResultToast(res, { scope: 'rounds' });
+    }).catch(function(err) {
+        toast((en ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err) +
+            (en ? ' — data was NOT deleted' : ' — данные НЕ удалены'), 'error');
+    });
 }
 
 // Полностью удаляет ВСЕХ игроков И все раунды, чтобы после этого нигде
 // (списки, автоподбор, история, статистика, лидерборды) не осталось следов.
 function clearAllData() {
-    var msg1 = currentLang === 'en'
+    var en = wipeIsEn();
+    var msg1 = en
         ? 'Delete ALL players AND ALL rounds? Everything will be permanently removed and cannot be recovered!'
         : 'Удалить ВСЕХ игроков И ВСЕ раунды? Все данные будут удалены безвозвратно и нигде не появятся снова!';
-    var msg2 = currentLang === 'en'
+    var msg2 = en
         ? 'This is irreversible. Are you absolutely sure?'
         : 'Это действие необратимо. Вы абсолютно уверены?';
 
     if (!confirm(msg1) || !confirm(msg2)) return;
 
-    if (typeof db === 'undefined') {
+    if (typeof db === 'undefined' || !db) {
         // Оффлайн-режим: чистим только локальные кэши
         if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches();
         try {
@@ -501,53 +717,30 @@ function clearAllData() {
         } catch (e) { console.warn("[silent]", e); }
         if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
         if (typeof loadAdmRounds === 'function') loadAdmRounds();
-        toast(currentLang === 'en' ? 'All data deleted' : 'Все данные удалены', 'info');
-        return;
+        toast(en ? 'All data deleted (offline caches)' : 'Все данные удалены (локальные кэши)', 'info');
+        return Promise.resolve();
     }
+    if (!wipeHasServerSession()) { wipeNoSessionToast(); return Promise.resolve(); }
 
-    // 1) Удаляем все ветки, где хранятся раунды, игроки и связанные данные
-    var wipeUpdates = {
-        'rounds': null,
-        'markers': null,
-        'markerAssignments': null,
-        'alerts': null,
-        'users': null,
-        'broadcasts': null,
-        'protocols': null
-    };
-
-    // Регистрации игроков на турнирах тоже нужно снять, иначе удалённые
-    // игроки «всплывут» в списках участников турниров.
-    db.ref('tournaments').once('value').then(function(sn) {
-        var tns = sn.val() || {};
-        Object.keys(tns).forEach(function(tid) {
-            if (tns[tid] && tns[tid].registeredPlayers) {
-                wipeUpdates['tournaments/' + tid + '/registeredPlayers'] = null;
-            }
-        });
-    }, function(){}).then(function() {
-        return db.ref().update(wipeUpdates);
-    }).then(function() {
-        // 2) Чистим локальные кэши и «прячем» встроенных демо-игроков.
-        // Каждый шаг — в своём try/catch: раньше падение любого из них
-        // (например, локального кэша) превращало УСПЕШНОЕ удаление данных
-        // в красную «Ошибку», хотя база уже была пуста.
+    return wipeDatabase('all').then(function(res) {
+        // Локальные кэши и «прячем» игроков: каждый шаг в своём try/catch,
+        // чтобы сбой локального кэша не выглядел как неудачное удаление.
         safeAfterWipeStep(function() { if (typeof wipeLocalPlayerCaches === 'function') wipeLocalPlayerCaches(); });
         safeAfterWipeStep(function() { localStorage.setItem('pestovo_deleted_player_ids', JSON.stringify([])); });
         safeAfterWipeStep(function() { if (typeof pestovoWipeLocalSessions === 'function') pestovoWipeLocalSessions(); });
         // Сброс ВСЕХ сессий на устройствах игроков (доступ к раундам,
         // текущие лунки, FIO-сессии) — клиенты слушают этот ключ.
-        wipeUpdates['settings/sessions_reset_ts'] = Date.now();
+        safeAfterWipeStep(function() { db.ref('settings/sessions_reset_ts').set(Date.now()).catch(function() {}); });
         safeAfterWipeStep(function() { if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache(); });
         safeAfterWipeStep(function() { if (typeof loadAdmPlayers === 'function') loadAdmPlayers(); });
         safeAfterWipeStep(function() { if (typeof loadAdmRounds === 'function') loadAdmRounds(); });
-
-        toast(currentLang === 'en' ? 'All players and rounds deleted everywhere' : 'Все игроки и раунды полностью удалены', 'info');
-        if (typeof vib === 'function') { try { vib([60, 40, 60]); } catch (e) { console.warn("[silent]", e); } }
+        safeAfterWipeStep(function() { if (typeof loadAdmTournaments === 'function') loadAdmTournaments(); });
+        wipeResultToast(res, { scope: 'all' });
+        if (res.ok && typeof vib === 'function') { try { vib([60, 40, 60]); } catch (e) { console.warn("[silent]", e); } }
     }).catch(function(err) {
         // Ошибка базы: данные НЕ удалены — сообщаем честно.
-        toast((currentLang === 'en' ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err) +
-            (currentLang === 'en' ? ' — data was NOT deleted' : ' — данные НЕ удалены'), 'error');
+        toast((en ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err) +
+            (en ? ' — data was NOT deleted' : ' — данные НЕ удалены'), 'error');
     });
 }
 
@@ -561,10 +754,6 @@ function safeAfterWipeStep(fn) {
 // протоколы, трансляции, реакции, алерты, а также все локальные кэши и
 // «демо-имена». Настройки (дизайн, доступ в админку, интеграции) сохраняются,
 // чтобы после очистки админка осталась доступной.
-var WIPE_ALL_DB_BRANCHES = [
-    'rounds', 'users', 'tournaments', 'markers', 'markerAssignments',
-    'alerts', 'protocols', 'broadcasts', 'reactions'
-];
 var WIPE_ALL_KEEP_LOCAL_KEYS = [
     'pestovo_is_admin', 'pestovo_admin_access_source', 'pestovo_admin_access_remember',
     'pestovo_adm_logged_in', 'pestovo_adm_remember', 'pestovo_lang', 'pestovo_theme',
@@ -590,7 +779,7 @@ function wipeAllLocalData() {
 }
 
 function wipeEverything() {
-    var en = currentLang === 'en';
+    var en = wipeIsEn();
     var msg1 = en
         ? 'Delete ABSOLUTELY EVERYTHING? Tournaments, players, rounds, history, markers, protocols, broadcasts, demo names and all local caches will be permanently erased!'
         : 'Удалить АБСОЛЮТНО ВСЕ данные? Турниры, игроки, раунды, история, маркеры, протоколы, трансляции, демо-имена и все локальные кэши будут стёрты безвозвратно!';
@@ -607,7 +796,7 @@ function wipeEverything() {
         return;
     }
 
-    var finish = function() {
+    var finish = function(res) {
         safeAfterWipeStep(function() { wipeAllLocalData(); });
         // Сбрасываем локальные сессии на всех устройствах после полной очистки.
         safeAfterWipeStep(function() {
@@ -615,20 +804,20 @@ function wipeEverything() {
                 db.ref('settings/sessions_reset_ts').set(Date.now()).catch(function() {});
             }
         });
+        safeAfterWipeStep(function() { if (typeof pestovoWipeLocalSessions === 'function') pestovoWipeLocalSessions(); });
         safeAfterWipeStep(function() { if (typeof syncKnownPlayersCache === 'function') syncKnownPlayersCache(); });
         safeAfterWipeStep(function() { if (typeof loadAdmPlayers === 'function') loadAdmPlayers(); });
         safeAfterWipeStep(function() { if (typeof loadAdmRounds === 'function') loadAdmRounds(); });
         safeAfterWipeStep(function() { if (typeof loadAdmTournaments === 'function') loadAdmTournaments(); });
-        toast(en ? 'All data deleted' : 'Все данные полностью удалены', 'info');
-        if (typeof vib === 'function') { try { vib([60, 40, 60]); } catch (e) { console.warn("[silent]", e); } }
-        setTimeout(function() { location.reload(); }, 1200);
+        wipeResultToast(res, { scope: 'all' });
+        if (res.ok && typeof vib === 'function') { try { vib([60, 40, 60]); } catch (e) { console.warn("[silent]", e); } }
+        if (res.ok) setTimeout(function() { location.reload(); }, 1200);
     };
 
-    if (typeof db === 'undefined') { finish(); return; }
+    if (typeof db === 'undefined' || !db) { finish({ ok: true, via: 'offline', failures: [], keptSelf: false }); return Promise.resolve(); }
+    if (!wipeHasServerSession()) { wipeNoSessionToast(); return Promise.resolve(); }
 
-    var updates = {};
-    WIPE_ALL_DB_BRANCHES.forEach(function(b) { updates[b] = null; });
-    db.ref().update(updates).then(finish).catch(function(err) {
+    return wipeDatabase('all').then(finish).catch(function(err) {
         toast((en ? 'Error: ' : 'Ошибка: ') + (err && err.message ? err.message : err) +
             (en ? ' — data was NOT deleted' : ' — данные НЕ удалены'), 'error');
     });

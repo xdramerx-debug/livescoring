@@ -68,8 +68,10 @@ function tnaToday() {
 // ============================================================
 // ЗАПУСК
 // ============================================================
-function tnaInit() {
-    // Список турниров новой системы (source === 'tn-admin')
+// Подписка на список турниров новой системы (source === 'tn-admin').
+// Вызывается при старте и после возврата «К списку» — tnaUnbindAll()
+// отключает активную подписку, иначе список перестаёт обновляться.
+function tnaBindList() {
     tnaBind('list', 'tournaments', function (snap) {
         var all = (snap && snap.val) ? (snap.val() || {}) : {};
         var out = {};
@@ -80,6 +82,10 @@ function tnaInit() {
         tnaState.list = out;
         if (tnaState.view === 'list') tnaRender();
     });
+}
+
+function tnaInit() {
+    tnaBindList();
     tnaRender();
 }
 
@@ -106,11 +112,11 @@ function tnaUnbindAll() {
 function tnaRender() {
     var root = document.getElementById('tna-root');
     if (!root) return;
-    if (tnaState.view === 'list') {
-        root.innerHTML = tnaListHtml();
-        return;
-    }
-    root.innerHTML = tnaWorkspaceHtml();
+    // ВАЖНО: tnaAfterRender() вызывается в обоих представлениях —
+    // именно он вешает onclick на «+ Создать турнир» и карточки
+    // турниров (в списке раньше ранний return оставлял кнопки без
+    // обработчиков).
+    root.innerHTML = (tnaState.view === 'list') ? tnaListHtml() : tnaWorkspaceHtml();
     tnaAfterRender();
 }
 
@@ -473,6 +479,7 @@ function tnaOpenList() {
     tnaState.players = [];
     tnaState.results = {};
     tnaState.protocol = null;
+    tnaBindList();
     tnaRender();
 }
 

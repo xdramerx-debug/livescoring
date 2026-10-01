@@ -230,8 +230,6 @@ function adminLogin(evt) {
                     if (typeof loadAdmRounds === 'function') { try { loadAdmRounds(); } catch (e) {} }
                     if (typeof loadAdmGroups === 'function') { try { loadAdmGroups(); } catch (e) {} }
                     if (typeof loadAdmPlayers === 'function') { try { loadAdmPlayers(); } catch (e) {} }
-                    if (typeof tnwOnAdminOpen === 'function') { try { tnwOnAdminOpen(); } catch (e) {} }
-                    if (typeof tnStudioOnAdminOpen === 'function') { try { tnStudioOnAdminOpen(); } catch (e) {} }
                 } catch (e) {
                     openAdminPanel();
                 }
@@ -325,11 +323,13 @@ function openAdminPanel() {
             }
         });
     }
-    loadClubBroadcastsHistory();
-    loadBroadcastAudienceOptions();
-    listenForAlerts();
-    loadTelegramSettings();
-    loadVKSettings();
+    // Модули рассылок/алертов есть не на всех страницах админки (например,
+    // на tn-admin.html их нет) — вызовы защищены typeof.
+    if (typeof loadClubBroadcastsHistory === 'function') loadClubBroadcastsHistory();
+    if (typeof loadBroadcastAudienceOptions === 'function') loadBroadcastAudienceOptions();
+    if (typeof listenForAlerts === 'function') listenForAlerts();
+    if (typeof loadTelegramSettings === 'function') loadTelegramSettings();
+    if (typeof loadVKSettings === 'function') loadVKSettings();
     if (typeof loadPageVisibilitySettings === 'function') loadPageVisibilitySettings(); // js/admin-display.js
     if (typeof loadStablefordDisplaySettings === 'function') loadStablefordDisplaySettings(); // js/admin-display.js
     if (typeof loadSocialCardDisplaySettings === 'function') loadSocialCardDisplaySettings(); // js/admin-display.js
@@ -342,10 +342,9 @@ function openAdminPanel() {
     if (typeof loadAdmView5Settings === 'function') loadAdmView5Settings(); // js/admin-display.js
     if (typeof loadPrivacySettings === 'function') loadPrivacySettings(); // js/admin-display.js
     updateNotifButton();
-    // Турниры: подключаем черновики/шаблоны/поле мастера, роутим URL-hash
-    // (#new-create / #course / #templates / #manage) в единую вкладку.
-    if (typeof tnwOnAdminOpen === 'function') { try { tnwOnAdminOpen(); } catch (e) { console.warn('[silent]', e); } }
-    if (typeof tnStudioOnAdminOpen === 'function') { try { tnStudioOnAdminOpen(); } catch (e) { console.warn('[silent]', e); } }
+    // Турниры переехали на отдельную страницу tn-admin.html (простой флоу:
+    // создать → участники → старт → результаты → протокол). Таб «Турниры 🏆»
+    // ведёт на неё напрямую; старые имена вкладок редиректят туда же.
 }
 
 function enableAdminNotifications() {
@@ -371,12 +370,12 @@ function updateNotifButton() {
 }
 
 function switchTab(t, b) {
-    // Старые вкладки 'tournaments'/'start'/'protocol' удалены: всё переехало в
-    // единую вкладку «Турниры 🏆» (studio). Имена оставлены для совместимости
-    // (диплинки, старые кнопки) и ведут на неё же.
-    if (t === 'tournaments' || t === 'start' || t === 'protocol') {
-        t = 'studio';
-        b = document.querySelector('.admin-tab[onclick*="studio"]');
+    // Турнирная система переехала на отдельную страницу tn-admin.html.
+    // Старые имена вкладок ('tournaments'/'start'/'protocol'/'studio' и
+    // hash-диплинки) оставлены для совместимости и ведут на неё же.
+    if (t === 'tournaments' || t === 'start' || t === 'protocol' || t === 'studio') {
+        try { window.location.href = 'tn-admin.html'; } catch (e) {}
+        return;
     }
     document.querySelectorAll('.admin-section').forEach(function(s) { s.classList.add('hidden'); });
     document.querySelectorAll('.admin-tab').forEach(function(x) { x.classList.remove('active'); });
@@ -426,9 +425,6 @@ function switchTab(t, b) {
     }
     if (t === 'players') {
         if (typeof loadPrivacySettings === 'function') loadPrivacySettings(); // js/admin-display.js
-    }
-    if (t === 'studio') {
-        if (typeof tnStudioOpen === 'function') tnStudioOpen();
     }
     if (t === 'design') {
         // Вкладка «Дизайн 🎨»: шаблоны оформления сайта (js/design-admin.js)

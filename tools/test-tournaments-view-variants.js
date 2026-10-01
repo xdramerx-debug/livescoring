@@ -78,7 +78,7 @@ const adminJs = fs.readFileSync(path.join(ROOT, 'js/admin.js'), 'utf8');
 const adminDisplayJs = fs.readFileSync(path.join(ROOT, 'js/admin-display.js'), 'utf8');
 const adminHtml = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');
 const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
-const adminCss = fs.readFileSync(path.join(ROOT, 'css/tournament-admin.css'), 'utf8');
+const adminCss = fs.readFileSync(path.join(ROOT, 'css/tn-view.css'), 'utf8');
 
 console.log('\n--- Настройка вариантов ---');
 eq(sandbox.pageDisplayVariantKeys('tournaments'), ['1', '2', '3', '4', '5'], 'у страницы «Турниры» пять вариантов');
@@ -113,7 +113,8 @@ ok(adminDisplayJs.indexOf('function loadTnPageViewSettings') !== -1, 'admin-disp
 ok(adminJs.indexOf("if (t === 'tournamentsview')") !== -1, 'admin.js: switchTab обрабатывает новую вкладку');
 ok(adminDisplayJs.indexOf("settings/tournaments_display_variant") !== -1, 'настройка хранится в settings/tournaments_display_variant');
 ok(utils.indexOf("firebase: 'settings/tournaments_display_variant'") !== -1, 'utils.js слушает ту же настройку (применяется для всех)');
-ok(utils.indexOf('tournaments_view_variant_5') !== -1 && utils.indexOf('tournaments_view_variant_5_desc') !== -1, 'i18n: подписи пяти вариантов');
+const i18nJs = fs.readFileSync(path.join(ROOT, 'js/i18n.js'), 'utf8');
+ok(i18nJs.indexOf('tournaments_view_variant_5') !== -1 && i18nJs.indexOf('tournaments_view_variant_5_desc') !== -1, 'i18n: подписи пяти вариантов');
 
 console.log('\n--- CSS пяти вариантов ---');
 ['2', '3', '4', '5'].forEach(v => {

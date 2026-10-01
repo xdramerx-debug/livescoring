@@ -1,0 +1,278 @@
+/* ============================================================
+   tn-admin.css — новая турнирная система (страница tn-admin.html)
+   Простой флоу: создать → участники → старт → результаты → протокол.
+   Стили наследуют дизайн-систему style.css (CSS-переменные, тёмная тема).
+   ============================================================ */
+
+.tna-list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+.tna-list-head h2 { margin: 0; font-size: 20px; }
+
+.tna-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+.tna-card {
+    background: var(--card, #14201a);
+    border: 1px solid var(--line, rgba(255,255,255,.08));
+    border-radius: 14px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: transform .12s ease, border-color .12s ease;
+}
+.tna-card:hover { transform: translateY(-2px); border-color: var(--gold, #d4af37); }
+.tna-card:focus-visible { outline: 2px solid var(--gold, #d4af37); outline-offset: 2px; }
+.tna-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.tna-card-top b { font-size: 15px; }
+.tna-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    font-size: 12px;
+    color: var(--muted, #9db3a5);
+}
+.tna-card-meta span { display: inline-flex; align-items: center; gap: 5px; }
+
+.tna-badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.tna-b-up { background: rgba(120,160,255,.16); color: #9db8ff; }
+.tna-b-ac { background: rgba(255,107,94,.16); color: #ff8d80; }
+.tna-b-do { background: rgba(120,220,150,.14); color: #7fe0a0; }
+
+.tna-empty {
+    text-align: center;
+    padding: 42px 16px;
+    color: var(--muted, #9db3a5);
+}
+.tna-empty i { font-size: 34px; opacity: .5; display: block; margin-bottom: 10px; }
+.tna-empty p { margin: 0; font-size: 14px; max-width: 420px; margin-inline: auto; }
+
+/* ---- Рабочая область ---- */
+.tna-ws-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.tna-ws-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.tna-ws-title b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tna-ws-actions { margin-left: auto; }
+
+.tna-steps {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.tna-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    border: 1px solid var(--line, rgba(255,255,255,.1));
+    background: transparent;
+    color: var(--text, #e8f0ea);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.tna-step:hover { border-color: var(--gold, #d4af37); }
+.tna-step.active { background: var(--gold, #d4af37); color: #101a12; border-color: var(--gold, #d4af37); }
+.tna-step.done { opacity: .75; }
+.tna-step-n {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 19px; height: 19px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.22);
+    font-size: 11px;
+    font-weight: 800;
+}
+.tna-step.active .tna-step-n { background: rgba(0,0,0,.18); }
+
+.tna-panel .card { margin-bottom: 16px; }
+
+/* ---- Формы ---- */
+.tna-form { display: flex; gap: 12px; flex-wrap: wrap; }
+.tna-form .form-group { flex: 1 1 220px; }
+.tna-radio-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 8px 0 12px;
+    font-size: 14px;
+}
+.tna-radio, .tna-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.tna-check { margin: 6px 0 12px; }
+.tna-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tna-num { max-width: 92px; text-align: center; }
+.tna-hint { font-size: 12px; color: var(--muted, #9db3a5); margin: 4px 0 10px; }
+.tna-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line, rgba(255,255,255,.08));
+}
+.tna-count {
+    display: inline-block;
+    min-width: 26px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: rgba(212,175,55,.16);
+    color: var(--gold, #d4af37);
+    font-size: 13px;
+    text-align: center;
+}
+
+/* ---- Дивизионы ---- */
+.tna-div-head, .tna-div-row {
+    display: grid;
+    grid-template-columns: minmax(120px,1.6fr) 84px 84px 110px 36px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 7px;
+    font-size: 12px;
+    color: var(--muted, #9db3a5);
+}
+.tna-div-row .form-input { padding: 7px 9px; font-size: 13px; }
+
+/* ---- Участники ---- */
+.tna-add-row { margin-bottom: 14px; }
+.tna-add-manual {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+.tna-add-manual .form-input { flex: 1 1 160px; }
+.tna-add-tools {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+.tna-db-search { position: relative; flex: 1 1 260px; }
+.tna-db-results {
+    margin-top: 6px;
+    border: 1px solid var(--line, rgba(255,255,255,.1));
+    border-radius: 10px;
+    overflow: hidden;
+}
+.tna-db-results:empty { display: none; }
+.tna-db-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 11px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--line, rgba(255,255,255,.06));
+}
+.tna-db-row:last-child { border-bottom: 0; }
+.tna-db-row small { color: var(--muted, #9db3a5); }
+.tna-import { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tna-import label { cursor: pointer; margin: 0; }
+.tna-import input[type="file"] { display: none; }
+
+/* ---- Таблицы ---- */
+.tna-table-wrap { overflow-x: auto; margin: 6px 0 4px; }
+.tna-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tna-table th, .tna-table td {
+    padding: 7px 9px;
+    border-bottom: 1px solid var(--line, rgba(255,255,255,.07));
+    text-align: left;
+    vertical-align: middle;
+}
+.tna-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--muted, #9db3a5);
+    font-weight: 700;
+    white-space: nowrap;
+}
+.tna-table td.tna-num, .tna-table th.tna-num { text-align: center; }
+.tna-table tbody tr:hover { background: rgba(255,255,255,.03); }
+.tna-table tr.tna-prize { background: rgba(212,175,55,.10); }
+.tna-table tr.tna-prize td { font-weight: 700; }
+.tna-cell { padding: 5px 7px; font-size: 13px; min-width: 74px; }
+.tna-cell.tna-num { max-width: 78px; }
+.tna-holes { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 0; }
+.tna-hole {
+    width: 42px;
+    padding: 5px 4px;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* ---- Результаты/протокол ---- */
+.tna-tabs { display: flex; gap: 8px; margin: 10px 0 14px; }
+.tna-tab {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line, rgba(255,255,255,.1));
+    background: transparent;
+    color: var(--text, #e8f0ea);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.tna-tab.active { background: var(--gold, #d4af37); color: #101a12; border-color: var(--gold, #d4af37); }
+.tna-tab:disabled { opacity: .45; cursor: not-allowed; }
+.tna-panel h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    margin: 18px 0 6px;
+}
+
+/* ---- Старт: хосты чужих модулей ---- */
+#tab-start-content .card { background: var(--card, #14201a); }
+.tna-panel #pe-card { margin-top: 16px; }
+
+@media (max-width: 720px) {
+    .tna-div-head { display: none; }
+    .tna-div-row { grid-template-columns: 1fr 1fr; }
+    .tna-div-row .form-input { max-width: none; }
+    .tna-step { font-size: 12px; padding: 6px 10px; }
+}

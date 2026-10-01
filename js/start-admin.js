@@ -788,7 +788,12 @@ function psLoadTournaments(cb) {
     if (typeof db === 'undefined' || !db) { if (cb) cb([]); return; }
     db.ref('tournaments').once('value').then(function(sn) {
         var data = sn.val() || {};
-        var list = Object.keys(data).map(function(id) {
+        var list = Object.keys(data).filter(function(id) {
+            // Турниры старой системы (мастер/студия) скрыты из интерфейса:
+            // создание ведётся на новой странице tn-admin.html.
+            var t = data[id] || {};
+            return !t.fromWizard && !t.fromStudio && !t.wizardVersion;
+        }).map(function(id) {
             var t = data[id] || {};
             return {
                 id: id,

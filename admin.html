@@ -15,10 +15,9 @@
     <title data-i18n="nav_admin">Админ — Пестово</title>
     <link rel="stylesheet" href="css/style.css?v=5e59c9a7">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <link rel="stylesheet" href="css/tn-wizard.css?v=01173cbb">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=6aa85f7a">
-    <link rel="stylesheet" href="css/tournament-admin.css?v=326736ae">
     <link rel="stylesheet" href="css/tn-studio.css?v=257f9601">
+    <link rel="stylesheet" href="css/tn-view.css?v=6a335dc1">
     <script src="js/design-system.js?v=78b8d092"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,7 +86,7 @@
             <button class="admin-tab" onclick="switchTab('scores',this)" data-i18n="tab_scores">Счёт ⛳</button>
             <button class="admin-tab" onclick="switchTab('scoreaudit',this)">Журнал счёта 🕒</button>
             <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
-            <button class="admin-tab" onclick="switchTab('studio',this)" data-i18n="tab_studio">Турниры 🏆</button>
+            <a class="admin-tab" href="tn-admin.html" data-i18n="tab_studio">Турниры 🏆</a>
             <button class="admin-tab" onclick="switchTab('tournamentsview',this)" data-i18n="tab_tournaments_view">Турниры: вид 👁</button>
             <button class="admin-tab" onclick="switchTab('broadcasts',this)" data-i18n="tab_broadcasts">Анонсы 📢</button>
             <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
@@ -479,37 +478,10 @@
             </div>
         </div>
 
-        <!-- ЕДИНАЯ СИСТЕМА ТУРНИРОВ: вкладка «Турниры 🏆» (js/tn-studio.js).
-             Старые способы создания (Классика, Новая версия, Управление, Шаблоны,
-             Настройки поля, стартовый лист, быстрое редактирование протокола)
-             встраиваются внутрь карточки турнира. Ниже — скрытая парковка корневых
-             узлов этих модулей: js/tn-studio.js перемещает их в видимые хосты
-             (#tns-host-*) при открытии разделов и возвращает обратно при ре-рендере.
-             Прямые ссылки: admin.html#new-create | #course | #templates | #manage -->
-        <div id="tn-embed-parking" class="hidden" aria-hidden="true">
-            <div id="tn-wizard-root"></div>
-            <div id="tn-manage-root"></div>
-            <div id="tn-course-root"></div>
-            <div id="tn-templates-root"></div>
-            <div id="tab-start-content"></div>
-            <div class="card" id="pe-card">
-                <h2><i class="fas fa-edit"></i> Быстрое редактирование протокола</h2>
-                <div class="form-group">
-                    <label>Турнир</label>
-                    <select id="pe-tn-select" class="form-input"><option value="">— выберите турнир —</option></select>
-                </div>
-                <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
-                    Группы, стартовые лунки и время, ТИ (группы и игроков), маркеры, HCP и пол.
-                    Поиск работает по ФИО. Сохранение обновляет раунды, QR-карточки и протокол одновременно.
-                </div>
-                <div id="pe-editor"></div>
-            </div>
-        </div><!-- /tn-embed-parking -->
 
         <!-- ВКЛАДКА «ТУРНИРЫ: ВИД»: 5 вариантов отображения страницы «Турниры».
              Выбор доступен только администратору, хранится в
              settings/tournaments_display_variant и применяется для всех. -->
-        <div id="tab-studio" class="admin-section hidden"><div id="tn-studio-root"></div></div>
         <div id="tab-tournamentsview" class="admin-section hidden">
             <div class="card">
                 <h2><i class="fas fa-trophy"></i> <span data-i18n="tournaments_view_tab_title">Отображение страницы «Турниры» — 5 вариантов</span></h2>
@@ -638,7 +610,7 @@
                 </p>
                 <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:rgba(224,90,74,0.08);border:1px solid rgba(224,90,74,0.35);border-radius:12px;">
                     <p style="color:var(--muted);font-size:12px;margin:0;flex:1;min-width:220px;">
-                        <i class="fas fa-triangle-exclamation" style="color:var(--red);"></i> Полное удаление всех игроков: удалятся их профили, раунды, история и регистрации на турниры. Ваш аккаунт администратора сохраняется.
+                        <i class="fas fa-triangle-exclamation" style="color:var(--red);"></i> Полное удаление всех игроков: список станет пустым (также удалятся их раунды, история и регистрации на турниры).
                     </p>
                     <button type="button" class="btn btn-r imp-big-btn" onclick="clearAllData()">
                         <i class="fas fa-user-minus"></i> <span>Удалить всех игроков</span>
@@ -1052,7 +1024,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.93.2</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.94.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -1062,17 +1034,10 @@
     <script src="js/utils.js?v=f5bb2e95"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/name-variants.js?v=9fc593e7"></script>
-<script src="js/tournament-core.js?v=a19eaf5c"></script>
-<script src="js/tn-engine.js?v=1190b39b"></script>
-<script src="js/tn-wizard.js?v=ceeeef7b"></script>
-<script src="js/tournament-admin.js?v=7265cd3b"></script>
-<script src="js/tn-studio-core.js?v=084a748a"></script>
-<script src="js/tn-studio.js?v=6070fd0a"></script>
-<script src="js/admin.js?v=cf0450c0"></script>
+<script src="js/admin.js?v=e425039a"></script>
 <script src="js/admin-groups.js?v=9a773234"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
 <script src="js/admin-players.js?v=7634440f"></script>
-<script src="js/admin-tournaments.js?v=667385f4"></script>
 <script src="js/admin-flights.js?v=84486ca0"></script>
 <script src="js/admin-score-audit.js?v=2fb81262"></script>
 <script src="js/admin-scoreedit.js?v=1bd29dcd"></script>
@@ -1083,9 +1048,6 @@
 <script src="js/admin-agr.js?v=eab2c54d"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
 <script src="js/admin-display.js?v=2caa60c5"></script>
-<script src="js/protocol.js?v=adbd9834"></script>
-<script src="js/start-admin.js?v=8741599e"></script>
-<script src="js/pe-edit.js?v=79837dcc"></script>
 <script src="js/design-admin.js?v=70a7c0c4"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
 <script src="js/pwa.js?v=a2e4d9ef"></script>

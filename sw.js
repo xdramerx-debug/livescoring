@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.93.2-e85212a5';
+const CACHE_NAME = 'pestovo-v1.94.0-bb145400';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -36,14 +36,18 @@ const STATIC_ASSETS = [
     'scorer.html',
     'setup-round.html',
     'stats.html',
+    'tn-admin.html',
+    'tn-protocol.html',
     'tournaments.html',
 
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
     'css/design-presets.css?v=77ff3916',
     'css/style.css?v=5e59c9a7',
+    'css/tn-admin.css?v=99ed80dd',
     'css/tn-studio.css?v=257f9601',
     'css/tournament-redesign.css?v=6aa85f7a',
     'dist/livescoring-modules.js?v=e40f89bb',
+    'js/admin.js?v=e425039a',
     'js/app.js?v=59c52eae',
     'js/auth.js?v=3a96f309',
     'js/design-preview.js?v=adbbac01',
@@ -53,6 +57,7 @@ const STATIC_ASSETS = [
     'js/leaderboard.js?v=da62402e',
     'js/live.js?v=bbe875bb',
     'js/marker.js?v=15151b24',
+    'js/pe-edit.js?v=79837dcc',
     'js/players.js?v=7014460d',
     'js/protocol.js?v=adbd9834',
     'js/pwa.js?v=a2e4d9ef',
@@ -61,13 +66,17 @@ const STATIC_ASSETS = [
     'js/score-write.js?v=7117f8ef',
     'js/scorer.js?v=e937927b',
     'js/solo.js?v=b1fff443',
+    'js/start-admin.js?v=f54bc9f8',
     'js/stats.js?v=410c615a',
+    'js/tn-admin-core.js?v=9b223513',
+    'js/tn-admin.js?v=4e94d0f5',
+    'js/tn-protocol-public.js?v=ad7af32b',
     'js/tn-scorecard.js?v=b34d029e',
     'js/tn-studio-core.js?v=084a748a',
     'js/tn-studio-public.js?v=db544445',
     'js/tournament-core.js?v=a19eaf5c',
     'js/tournament-public.js?v=1932a4cb',
-    'js/tournaments.js?v=7b86aaa9',
+    'js/tournaments.js?v=8455861c',
     'js/utils.js?v=f5bb2e95',
 
     // Прочее

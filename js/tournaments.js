@@ -255,7 +255,12 @@ function loadTournaments() {
 
 function tnRenderList() {
     var data = tnCache || {};
-    var entries = Object.entries(data);
+    // Турниры старой системы (мастер/студия) скрыты из публичного списка:
+    // новые турниры создаются на странице tn-admin.html.
+    var entries = Object.entries(data).filter(function(e) {
+        var t = e[1] || {};
+        return !t.fromWizard && !t.fromStudio && !t.wizardVersion;
+    });
     var el = tGet('tn-list');
     if (!el) return;
 

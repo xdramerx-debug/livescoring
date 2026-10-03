@@ -1,0 +1,687 @@
+#!/usr/bin/env node
+/**
+ * Проверка вкладки «Турниры 🏆» в админке (admin.html + js/tn-mgr*.js).
+ *
+ *   npm i jsdom      (один раз; без jsdom тест просто пропускается)
+ *   node tools/test-tn-mgr-ui.js
+ *
+ * Поднимает настоящий admin.html в jsdom, подменяет Firebase простой
+ * in-memory базой, выполняет реальные модули системы менеджера турниров
+ * (core → data → io → ui → sheet → round → controller) и проходит полный
+ * сценарий: создание турнира → раунд → группа → участник (поиск RU/EN) →
+ * стартовый лист с QR → ввод удара → результаты → карточка игрока.
+ */
+'use strict';
+
+var fs = require('fs');
+var path = require('path');
+
+var JSDOM;
+try {
+    JSDOM = require('jsdom').JSDOM;
+} catch (e) {
+    console.log('SKIP: jsdom не установлен (npm i jsdom) — UI-тест менеджера турниров пропущен');
+    process.exit(0);
+}
+
+var ROOT = path.join(__dirname, '..');
+var html = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');
+
+var dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://example.test/admin.html' });
+var win = dom.window;
+
+// ----------------------------------------------------------
+// Firebase: простая in-memory база с подписками
+// ----------------------------------------------------------
+function splitPath(p) {
+    return String(p || '').split('/').filter(function (part) { return part !== ''; });
+}
+
+function makeDb() {
+    var data = {};
+    var seq = 0;
+    var listeners = [];
+
+    function get(path) {
+        var node = data;
+        splitPath(path).forEach(function (key) {
+            node = node && typeof node === 'object' ? node[key] : undefined;
+        });
+        return node === undefined ? null : node;
+    }
+    function snapshot(path) {
+        var parts = splitPath(path);
+        return {
+            key: parts[parts.length - 1] || null,
+            val: function () { return get(path); },
+            exists: function () { return get(path) != null; }
+        };
+    }
+    function notify(changed) {
+        listeners.slice().forEach(function (item) {
+            var lp = item.path;
+            var related = !lp || !changed || changed === lp ||
+                changed.indexOf(lp + '/') === 0 || lp.indexOf(changed + '/') === 0;
+            if (related) item.cb(snapshot(lp));
+        });
+    }
+    function setAt(path, value) {
+        var parts = splitPath(path);
+        if (!parts.length) { data = value && typeof value === 'object' ? value : {}; notify(''); return; }
+        var node = data;
+        for (var i = 0; i < parts.length - 1; i++) {
+            if (!node[parts[i]] || typeof node[parts[i]] !== 'object') node[parts[i]] = {};
+            node = node[parts[i]];
+        }
+        var last = parts[parts.length - 1];
+        if (value === null || value === undefined) delete node[last];
+        else node[last] = value;
+        notify(parts.join('/'));
+    }
+    function applyUpdates(base, obj) {
+        Object.keys(obj || {}).forEach(function (key) {
+            setAt(base ? base + '/' + key : key, obj[key]);
+        });
+    }
+    function makeRef(path) {
+        path = path || '';
+        var ref = {
+            key: splitPath(path).slice(-1)[0] || null,
+            once: function () { return Promise.resolve(snapshot(path)); },
+            set: function (value) { setAt(path, value); return Promise.resolve(); },
+            update: function (obj) { applyUpdates(path, obj); return Promise.resolve(); },
+            remove: function () { setAt(path, null); return Promise.resolve(); },
+            push: function (value) {
+                var key = 'k' + (++seq) + 'x' + Math.floor(Math.random() * 1e4).toString(36);
+                var child = makeRef(path ? path + '/' + key : key);
+                if (value !== undefined) child.set(value);
+                return child;
+            },
+            child: function (name) { return makeRef(path ? path + '/' + name : name); },
+            on: function (event, cb) { listeners.push({ path: path, cb: cb }); cb(snapshot(path)); return cb; },
+            off: function (event, cb) {
+                listeners = listeners.filter(function (item) { return !(item.path === path && item.cb === cb); });
+            }
+        };
+        ['orderByChild', 'orderByKey', 'orderByValue', 'limitToLast', 'limitToFirst', 'startAt', 'endAt', 'equalTo'].forEach(function (method) {
+            ref[method] = function () { return ref; };
+        });
+        return ref;
+    }
+    var db = { ref: function (path) { return makeRef(path); } };
+    db.__data = function () { return data; };
+    db.__get = get;
+    return db;
+}
+
+var db = makeDb();
+win.db = db;
+
+// ----------------------------------------------------------
+// Заглушки окружения (то, что обычно даёт js/utils.js и Firebase)
+// ----------------------------------------------------------
+var directory = {
+    d1: { name: 'Смирнов Алексей', handicap: 12.4, gender: 'men', defaultTee: 'wh' },
+    d2: { name: 'Иванова Мария', handicap: 24.2, gender: 'women', defaultTee: 'rd' },
+    d3: { name: 'O\'Brien Patrick', handicap: 8.6, gender: 'men', defaultTee: 'bk' }
+};
+win.currentLang = 'ru';
+win.currentUser = { uid: 'test-admin' };
+win.currentUserData = { role: 'admin' };
+win.toast = function () {};
+win.t = function (key) { return key; };
+win.escapeHtml = function (s) { return String(s == null ? '' : s); };
+win.baseUrl = function () { return 'https://example.test/'; };
+// Контракт js/utils.js: uiConfirm({title, text, confirmLabel, danger}) → Promise<boolean>.
+win.uiConfirm = function (options) {
+    win.__lastConfirm = options || {};
+    return Promise.resolve(true);
+};
+win.copyOrShare = function () {};
+win.getKnownPlayersSync = function () { return directory; };
+win.TEES = { bk: 'Чёрный', bl: 'Синий', wh: 'Белый', rd: 'Красный' };
+win.TOTAL_PAR = 72;
+win.COURSE_RATINGS = {};
+win.CLUB = 'Гольф-клуб Пестово';
+win.holePar = function (hole) { return win.TnMgrCore.defaultCourse().par(hole); };
+win.holeHcp = function (hole) { return win.TnMgrCore.defaultCourse().si(hole); };
+win.holeDist = function (hole, tee) { return win.TnMgrCore.defaultCourse().dist(hole, tee); };
+win.getFieldHcp = function (hi, tee, gender) {
+    return win.TnMgrCore.courseHandicap(hi, null, 72, gender);
+};
+win.switchTab = function () {};
+
+// Печать PDF: окно печати подменяем, чтобы поймать готовый документ.
+var printed = [];
+win.open = function () {
+    var fakeDoc = {
+        html: '',
+        open: function () { this.html = ''; },
+        write: function (chunk) { this.html += chunk; },
+        close: function () {},
+        querySelectorAll: function () { return []; }
+    };
+    var fakeWin = {
+        document: fakeDoc,
+        focus: function () {},
+        print: function () { printed.push(fakeDoc.html); },
+        close: function () {}
+    };
+    return fakeWin;
+};
+
+// Excel: минимальная заглушка SheetJS — ловим книгу и листы.
+var excelBooks = [];
+win.XLSX = {
+    utils: {
+        book_new: function () { return { sheets: [] }; },
+        aoa_to_sheet: function (rows) { return { rows: rows || [] }; },
+        book_append_sheet: function (book, sheet, name) { book.sheets.push({ name: name, rows: sheet.rows }); }
+    },
+    writeFile: function (book, filename) { excelBooks.push({ filename: filename, sheets: book.sheets }); }
+};
+
+// ----------------------------------------------------------
+// Модули — в том же порядке, что в admin.html
+// ----------------------------------------------------------
+var MODULES = [
+    'js/tn-mgr-core.js',
+    'js/tn-mgr-data.js',
+    'js/tn-mgr-io.js',
+    'js/tn-mgr-ui.js',
+    'js/tn-mgr-sheet.js',
+    'js/tn-mgr-round.js',
+    'js/tn-mgr.js'
+];
+MODULES.forEach(function (file) {
+    win.eval(fs.readFileSync(path.join(ROOT, file), 'utf8'));
+});
+
+// ----------------------------------------------------------
+// Инфраструктура теста
+// ----------------------------------------------------------
+var fails = 0;
+var total = 0;
+function check(title, cond, extra) {
+    total++;
+    if (!cond) fails++;
+    console.log((cond ? ' ok  ' : 'FAIL ') + ' | ' + title + (extra !== undefined && extra !== '' ? ' → ' + extra : ''));
+}
+function wait(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms || 30); });
+}
+function flush() { return wait(40); }
+function $(selector) { return win.document.querySelector(selector); }
+function $$(selector) { return Array.prototype.slice.call(win.document.querySelectorAll(selector)); }
+function click(el) {
+    if (!el) throw new Error('click: элемент не найден');
+    el.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+}
+function type(el, value) {
+    if (!el) throw new Error('type: элемент не найден');
+    el.value = value;
+    el.dispatchEvent(new win.Event('input', { bubbles: true }));
+    el.dispatchEvent(new win.Event('change', { bubbles: true }));
+}
+function rootHtml() { return win.document.getElementById('tnm-root').innerHTML; }
+function lastPrint() { return printed[printed.length - 1] || ''; }
+function lastExcel() { return excelBooks[excelBooks.length - 1] || null; }
+function get(path) { return db.__get(path); }
+
+function run() {
+    console.log('=== Вкладка «Турниры 🏆»: сценарий организатора ===\n');
+
+    console.log('--- Разметка admin.html ---');
+    check('подключён css/tn-manager.css', html.indexOf('css/tn-manager.css') !== -1);
+    var order = MODULES.map(function (file) { return html.indexOf(file); });
+    check('все модули подключены в нужном порядке', order.every(function (pos, i) {
+        return pos !== -1 && (i === 0 || pos > order[i - 1]);
+    }), order.join(','));
+    check('кнопка вкладки #tnm-tab-btn есть в админке', !!win.document.getElementById('tnm-tab-btn'));
+    check('секция #tab-tnmanager есть в админке', !!win.document.getElementById('tab-tnmanager'));
+    check('модули загружены как глобальные объекты',
+        [win.TnMgrCore, win.TnMgrData, win.TnMgrIO, win.TnMgrUI, win.TnMgrSheetUI, win.TnMgrRoundUI, win.TnMgr]
+            .every(function (module) { return module && typeof module === 'object'; }));
+
+    return Promise.resolve()
+        .then(function () {
+            console.log('\n--- 1. Список турниров ---');
+            win.switchTab('tnmanager');
+            if (win.TnMgr && win.TnMgr.open) win.TnMgr.open();
+            return flush();
+        })
+        .then(function () {
+            var out = rootHtml();
+            check('вкладка отрисована', out.indexOf('tnm-view') !== -1);
+            check('видна кнопка «Создать турнир»', out.indexOf('Создать турнир') !== -1);
+            check('показано пустое состояние списка', out.indexOf('Пока нет турниров') !== -1);
+            check('кнопка вкладки не скрыта для админа', !win.document.getElementById('tnm-tab-btn').classList.contains('hidden'));
+
+            console.log('\n--- 2. Форма создания турнира ---');
+            click($('[data-tnm-act="new-tournament"]'));
+            return flush().then(function () {
+                check('открылась форма «Новый турнир»', rootHtml().indexOf('Новый турнир') !== -1);
+                check('есть поле названия*', !!$('input[data-field="name"]'));
+                var dateInput = $('input[data-field="startDate"]');
+                var timeInput = $('input[data-field="startTime"]');
+                check('есть поля даты* и времени*', !!dateInput && !!timeInput);
+                check('дата заполнена сегодняшней', !!dateInput.value && dateInput.value.length === 10, dateInput.value);
+                type($('input[data-field="name"]'), 'Кубок клуба 2026');
+                type(dateInput, '2026-05-16');
+                type(timeInput, '09:30');
+                var chip = $('[data-tnm-act="toggle-format"]');
+                check('справочник форматов отрисован чипсами', $$('[data-tnm-act="toggle-format"]').length >= 10,
+                    $$('[data-tnm-act="toggle-format"]').length + ' форматов');
+                var chipFormat = chip.getAttribute('data-format');
+                click(chip);
+                return flush().then(function () {
+                    check('формат отмечен', $('[data-tnm-act="toggle-format"][data-format="' + chipFormat + '"]').classList.contains('active'));
+                    click($('[data-tnm-act="save-tournament"]'));
+                    return wait(60);
+                });
+            });
+        })
+        .then(function () {
+            var tournaments = get('tournaments') || {};
+            var ids = Object.keys(tournaments);
+            check('турнир создан в tournaments/<id>', ids.length === 1, ids.join(','));
+            var tour = tournaments[ids[0]] || {};
+            win.__tid = ids[0];
+            check('название сохранено', tour.name === 'Кубок клуба 2026', tour.name);
+            check('дата сохранена (startDate и date)', tour.startDate === '2026-05-16' && tour.date === '2026-05-16', tour.startDate + '/' + tour.date);
+            check('время старта сохранено', tour.startTime === '09:30', tour.startTime);
+            check('формат сохранён', (tour.formats || []).length === 1, JSON.stringify(tour.formats));
+            check('проставлен createdBy', tour.createdBy === 'test-admin', tour.createdBy);
+            check('статус upcoming после создания', tour.status === 'upcoming', tour.status);
+            check('перешли на карточку турнира', win.location.hash.indexOf('#tnm/' + win.__tid) === 0, win.location.hash);
+            return flush();
+        })
+        .then(function () {
+            console.log('\n--- 3. Карточка: вкладки и раунды ---');
+            var out = rootHtml();
+            ['Раунды', 'Группы', 'Участники', 'Стартовый лист'].forEach(function (tab) {
+                check('есть вкладка «' + tab + '»', out.indexOf(tab) !== -1);
+            });
+            check('кнопка «Изменить» есть', !!$('[data-tnm-act="edit-tournament"]'));
+            click($('[data-tnm-act="add-round"]'));
+            return wait(60);
+        })
+        .then(function () {
+            var rounds = get('tournaments/' + win.__tid + '/rounds') || {};
+            var rids = Object.keys(rounds);
+            check('раунд добавлен в tournaments/<id>/rounds', rids.length === 1, rids.join(','));
+            win.__rid = rids[0];
+            check('дата раунда = дате турнира', rounds[win.__rid].date === '2026-05-16', rounds[win.__rid].date);
+            check('раунд продублирован в days/ (совместимость со студией)',
+                !!get('tournaments/' + win.__tid + '/days/' + win.__rid));
+            var out = rootHtml();
+            check('раунд виден в таблице', out.indexOf('2026-05-16') !== -1 || out.indexOf('16.05.2026') !== -1);
+            check('есть кнопки «Счёт» и «Удалить»',
+                !!$('[data-tnm-act="open-round"]') && !!$('[data-tnm-act="delete-round"]'));
+            // Клик по строке раунда тоже открывает экран счёта (ТЗ §3.1).
+            click($('tr.tnm-row[data-tnm-act="open-round"]'));
+            return wait(100).then(function () {
+                check('клик по строке раунда открывает экран счёта', win.TnMgrUI.state.route.view === 'round',
+                    win.TnMgrUI.state.route.view);
+                win.TnMgrUI.navigate({ view: 'card', tid: win.__tid, tab: 'rounds' });
+                return wait(80);
+            });
+        })
+        .then(function () {
+            console.log('\n--- 4. Группы ---');
+            click($('[data-tnm-act="tab"][data-tab="groups"]'));
+            return flush();
+        })
+        .then(function () {
+            click($('[data-tnm-act="add-group"]'));
+            return flush();
+        })
+        .then(function () {
+            check('открылась форма группы с полями HCP от/до',
+                !!$('input[data-field="hcpFrom"]') && !!$('input[data-field="hcpTo"]'));
+            check('у группы есть поле названия*', !!$('input[data-field="name"]'));
+            type($('input[data-field="name"]'), 'Группа A');
+            type($('input[data-field="hcpFrom"]'), '10');
+            type($('input[data-field="hcpTo"]'), '15');
+            click($('[data-tnm-act="save-group"]'));
+            return wait(60);
+        })
+        .then(function () {
+            var groups = get('tournaments/' + win.__tid + '/groups') || {};
+            var gids = Object.keys(groups);
+            check('группа сохранена в tournaments/<id>/groups', gids.length === 1, gids.join(','));
+            win.__gid = gids[0];
+            check('название группы сохранено', groups[win.__gid].name === 'Группа A', groups[win.__gid].name);
+            check('диапазон гандикапа сохранён', Number(groups[win.__gid].hcpFrom) === 10 && Number(groups[win.__gid].hcpTo) === 15,
+                groups[win.__gid].hcpFrom + '–' + groups[win.__gid].hcpTo);
+            check('группа продублирована в divisions/ (публичная страница)',
+                !!get('tournaments/' + win.__tid + '/divisions/' + win.__gid));
+
+            console.log('\n--- 5. Участники: поиск RU/EN и добавление ---');
+            click($('[data-tnm-act="tab"][data-tab="participants"]'));
+            return flush();
+        })
+        .then(function () {
+            var out = rootHtml();
+            check('заголовок вкладки — «Гольфисты»', out.indexOf('Гольфисты') !== -1);
+            var search = $('#tnm-participant-search');
+            check('есть поле поиска игрока', !!search);
+            check('плейсхолдер поиска по ТЗ',
+                search.placeholder.indexOf('на русском или английском языке') !== -1, search.placeholder);
+            check('счётчики участников отрисованы', out.indexOf('Всего участников') !== -1);
+            type(search, 'Smirnov');       // латиница → русская фамилия
+            return wait(60).then(function () {
+                var suggestions = $$('.tnm-suggestion');
+                check('поиск латиницей находит игрока из справочника (RU↔EN)', suggestions.length >= 1, suggestions.length);
+                var first = suggestions[0];
+                check('подсказка — «Смирнов Алексей»', first.getAttribute('data-name').indexOf('Смирнов') !== -1, first.getAttribute('data-name'));
+                click(first);
+                return wait(80);
+            });
+        })
+        .then(function () {
+            var players = get('tournaments/' + win.__tid + '/players') || {};
+            var pids = Object.keys(players);
+            check('участник добавлен в tournaments/<id>/players', pids.length === 1, pids.join(','));
+            win.__pid = pids[0];
+            var player = players[win.__pid];
+            check('ФИО участника сохранено', (player.fio || '').indexOf('Смирнов') !== -1, player.fio);
+            check('гандикап перенесён из справочника', Number(player.hi) === 12.4, player.hi);
+            check('участник попал в группу по диапазону гандикапа', player.groupId === win.__gid, player.groupId);
+            check('есть счётчик «Всего участников — 1»', rootHtml().indexOf('<b>1</b>, ') !== -1);
+            check('участник продублирован в registeredPlayers (регистрация)',
+                !!get('tournaments/' + win.__tid + '/registeredPlayers/' + win.__pid));
+
+            // Второй участник — вручную (быстрый способ из ТЗ).
+            type($('#tnm-participant-search'), 'Гостев Пётр');
+            return wait(60).then(function () {
+                var manual = $('[data-tnm-act="add-manual"]');
+                check('есть кнопка «добавить вручную»', !!manual);
+                click(manual);
+                return wait(80);
+            });
+        })
+        .then(function () {
+            var players = get('tournaments/' + win.__tid + '/players') || {};
+            check('участник добавлен вручную', Object.keys(players).length === 2, Object.keys(players).length);
+            win.__pid2 = Object.keys(players).filter(function (pid) { return pid !== win.__pid; })[0];
+
+            // Массовый ввод вставкой из Excel/Google Таблиц (ТЗ §3.3, §8).
+            click($('[data-tnm-act="paste-table"]'));
+            return flush().then(function () {
+                check('модальное окно вставки таблицы открыто', !!$('#tnm-paste-area'));
+                $('#tnm-paste-area').value = 'Петров Пётр\t18,2\tмуж\tСиний\t\nСидорова Анна\t9,7\tжен\tКрасный\t';
+                click($('[data-tnm-act="confirm-paste"]'));
+                return wait(120);
+            });
+        })
+        .then(function () {
+            var players = get('tournaments/' + win.__tid + '/players') || {};
+            check('массовый ввод добавил 2 участников', Object.keys(players).length === 4, Object.keys(players).length);
+            var names = Object.keys(players).map(function (pid) { return players[pid].fio || ''; }).join(' | ');
+            check('разобраны ФИО, пол и ТИ из вставленной таблицы',
+                names.indexOf('Петров') !== -1 && names.indexOf('Сидорова') !== -1, names);
+            var anna = Object.keys(players).filter(function (pid) { return (players[pid].fio || '').indexOf('Сидорова') !== -1; })[0];
+            check('женщина определена и получила красные ТИ', !!anna && players[anna].gender === 'women', anna ? players[anna].gender : '');
+            check('счётчик участников обновился', rootHtml().indexOf('<b>4</b>, ') !== -1);
+
+            // Добавление из справочника игроков клуба (ТЗ §3.3, §8).
+            click($('[data-tnm-act="open-directory"]'));
+            return flush().then(function () {
+                var boxes = $$('[data-tnm-dir]');
+                check('справочник игроков открыт', boxes.length >= 2, boxes.length);
+                var ivanova = $('[data-tnm-dir="d2"]');
+                check('в справочнике есть ещё не добавленный игрок', !!ivanova && !ivanova.disabled);
+                ivanova.checked = true;
+                click($('[data-tnm-act="confirm-directory"]'));
+                return wait(140);
+            });
+        })
+        .then(function () {
+            var players = get('tournaments/' + win.__tid + '/players') || {};
+            check('участник добавлен из справочника', Object.keys(players).length === 5, Object.keys(players).length);
+            check('счётчики мужчин и женщин посчитаны',
+                rootHtml().indexOf('мужчин — <b>') !== -1 && rootHtml().indexOf('женщин — <b>') !== -1,
+                (rootHtml().match(/Всего участников — <b>\d+<\/b>, мужчин — <b>\d+<\/b>, женщин — <b>\d+<\/b>/) || [])[0]);
+
+            console.log('\n--- 6. Стартовый лист и QR ---');
+            click($('[data-tnm-act="tab"][data-tab="sheet"]'));
+            return flush();
+        })
+        .then(function () {
+            var out = rootHtml();
+            check('вкладка стартового листа открыта', out.indexOf('Стартовый лист') !== -1);
+            check('есть кнопка генерации листа', !!$('[data-tnm-act="generate-sheet"]'));
+            check('есть параметры листа (размер группы/интервал/время)',
+                !!$('[data-field="groupSize"]') && !!$('[data-field="startInterval"]') && !!$('[data-field="firstTeeTime"]'));
+            click($('[data-tnm-act="generate-sheet"]'));
+            return wait(120);
+        })
+        .then(function () {
+            var sheet = get('tournaments/' + win.__tid + '/sheets/' + win.__rid) || {};
+            var entries = sheet.entries || {};
+            check('лист сохранён в sheets/<rid>', Object.keys(entries).length === 5, Object.keys(entries).length);
+            var first = entries[win.__pid] || {};
+            check('в листе есть позиция, группа, флайт и время старта',
+                first.position != null && !!first.groupId && !!first.flight && !!first.startTime,
+                JSON.stringify({ position: first.position, group: first.groupName, flight: first.flight, start: first.startTime }));
+            check('назначен маркер группы', !!first.markerPlayerId, first.markerPlayerId);
+            check('QR ведёт на страницу ввода счёта',
+                String(first.qr || '').indexOf('setup-round.html?round=' + win.__rid) !== -1, first.qr);
+            check('QR турнира сохранён в листе', !!((sheet.qr || {}).payload));
+            var out = rootHtml();
+            check('таблица листа отрисована', out.indexOf('tnm-sheet-table') !== -1);
+            check('QR-коды показаны картинками', $$('img[data-qr]').length >= 1, $$('img[data-qr]').length);
+
+            // Экспорт PDF стартового листа (ТЗ §3.4, §9) — документ с QR и флайтами.
+            click($('[data-tnm-act="sheet-pdf"]'));
+            var sheetDoc = lastPrint();
+            check('PDF листа содержит турнир, дату, поле и QR маркера',
+                sheetDoc.indexOf('Кубок клуба 2026') !== -1 && sheetDoc.indexOf('QR маркера') !== -1 &&
+                sheetDoc.indexOf('data-qr=') !== -1);
+            check('PDF листа содержит флайты и группы с порядком',
+                sheetDoc.indexOf('Флайт') !== -1 && sheetDoc.indexOf('Группа') !== -1);
+
+            // Экспорт Excel стартового листа.
+            click($('[data-tnm-act="sheet-excel"]'));
+            var sheetBook = lastExcel();
+            check('Excel листа выгружен (.xlsx)', !!sheetBook && /\.xlsx$/.test(sheetBook.filename), sheetBook && sheetBook.filename);
+            check('в книге есть лист «Стартовый лист»', !!sheetBook && sheetBook.sheets[0].name === 'Стартовый лист',
+                sheetBook && sheetBook.sheets[0].name);
+            check('есть кнопка PDF и колонок', !!$('[data-tnm-act="sheet-pdf"]') && !!$('[data-tnm-act="sheet-columns"]'));
+
+            // Экспорт участников в PDF.
+            click($('[data-tnm-act="tab"][data-tab="participants"]'));
+            return flush().then(function () {
+                click($('[data-tnm-act="export-participants"]'));
+                var playersDoc = lastPrint();
+                check('PDF участников содержит заголовок «Гольфисты» и счётчики',
+                    playersDoc.indexOf('Гольфисты') !== -1 && playersDoc.indexOf('Всего') !== -1);
+                click($('[data-tnm-act="tab"][data-tab="sheet"]'));
+                return flush();
+            }).then(function () {
+                // Набор колонок листа редактируется и хранится в данных (ТЗ §3.4).
+                click($('[data-tnm-act="sheet-columns"]'));
+                return flush();
+            }).then(function () {
+                var boxes = $$('[data-tnm-col]');
+                check('модалка колонок открыта', boxes.length >= 8, boxes.length);
+                var extra = boxes.filter(function (box) { return box.getAttribute('data-tnm-col') === 'order'; })[0];
+                extra.checked = false;
+                extra.dispatchEvent(new win.Event('change', { bubbles: true }));
+                return wait(100);
+            }).then(function () {
+                var columns = get('tournaments/' + win.__tid + '/sheets/' + win.__rid + '/columns') || [];
+                var column = columns.filter(function (item) { return item.key === 'order'; })[0];
+                check('настройка колонок сохранена в данные листа', !!column && column.on === false, JSON.stringify(column));
+                click($('[data-tnm-act="close-modal"]'));
+                return flush();
+            }).then(function () {
+                // Правка листа: меняем ТИ игрока — данные должны уехать в участника.
+                var teeSelect = $('[data-tnm-edit="sheet-cell"][data-field="tee"]');
+                check('ТИ в листе редактируется инлайном', !!teeSelect);
+                type(teeSelect, 'bl');
+                return wait(80);
+            }).then(function () {
+                check('правка ТИ листа синхронизирована с участником',
+                    get('tournaments/' + win.__tid + '/players/' + win.__pid + '/tee') === 'bl',
+                    get('tournaments/' + win.__tid + '/players/' + win.__pid + '/tee'));
+                check('правка ТИ сохранена в листе',
+                    get('tournaments/' + win.__tid + '/sheets/' + win.__rid + '/entries/' + win.__pid + '/tee') === 'bl');
+            });
+        })
+        .then(function () {
+            console.log('\n--- 7. Экран раунда: счёт ---');
+            win.TnMgrUI.navigate({ view: 'round', tid: win.__tid, rid: win.__rid, tab: 'score' });
+            return wait(120);
+        })
+        .then(function () {
+            var out = rootHtml();
+            check('открыт экран раунда', out.indexOf('tnm-score-table') !== -1);
+            check('шапка содержит название турнира', out.indexOf('Кубок клуба 2026') !== -1);
+            check('вкладки «Счёт» и «Результаты» есть',
+                !!$('[data-tnm-act="round-tab"][data-tab="score"]') && !!$('[data-tnm-act="round-tab"][data-tab="results"]'));
+            check('есть кнопки Экспорт PDF/Excel и Стартовый лист',
+                !!$('[data-tnm-act="round-export-pdf"]') && !!$('[data-tnm-act="round-export-excel"]') && !!$('[data-tnm-act="round-open-sheet"]'));
+            check('информационная строка: ТИ и формат', out.indexOf('Формат') !== -1 && out.indexOf('ТИ') !== -1);
+            check('18 колонок лунок', $$('.tnm-hole-col').length >= 18);
+            ['Длина', 'Пар', 'Индекс'].forEach(function (label) {
+                check('строка «' + label + '» есть в таблице', out.indexOf(label) !== -1);
+            });
+            check('строчные фильтры групп построены из данных',
+                $$('[data-tnm-act="group-filter"]').length >= 4, $$('[data-tnm-act="group-filter"]').length);
+
+            click($('[data-tnm-act="round-export-pdf"]'));
+            var roundDoc = lastPrint();
+            check('PDF раунда содержит строки Длина/Пар/Индекс и 18 лунок',
+                roundDoc.indexOf('Длина') !== -1 && roundDoc.indexOf('Индекс') !== -1 && roundDoc.indexOf('>18<') !== -1);
+            check('PDF раунда содержит название турнира', roundDoc.indexOf('Кубок клуба 2026') !== -1);
+            click($('[data-tnm-act="round-export-excel"]'));
+            var roundBook = lastExcel();
+            check('Excel раунда выгружен', !!roundBook && /\.xlsx$/.test(roundBook.filename), roundBook && roundBook.filename);
+            check('в книге раунда есть строка «Индекс»', !!roundBook && JSON.stringify(roundBook.sheets[0].rows).indexOf('Индекс') !== -1);
+
+            var input = $('[data-tnm-edit="score-cell"][data-pid="' + win.__pid + '"][data-hole="1"]');
+            check('удары редактируются инлайном', !!input);
+            type(input, '4');
+            return wait(100);
+        })
+        .then(function () {
+            check('удар записан в tournaments/<id>/scores/<rid>/<pid>/<hole>',
+                String(get('tournaments/' + win.__tid + '/scores/' + win.__rid + '/' + win.__pid + '/1')) === '4',
+                get('tournaments/' + win.__tid + '/scores/' + win.__rid + '/' + win.__pid + '/1'));
+            var groupRounds = get('tournaments/' + win.__tid + '/rounds/' + win.__rid + '/groupRounds') || {};
+            var gids = Object.keys(groupRounds).map(function (key) { return groupRounds[key]; });
+            check('созданы записи rounds/<groupRoundId> для страниц счёта', gids.length >= 1, gids.join(','));
+            var gid = gids[0];
+            check('раунд группы помечен турниром и создателем',
+                !!gid && get('rounds/' + gid + '/tournamentId') === win.__tid && !!get('rounds/' + gid + '/createdBy'),
+                gid ? (get('rounds/' + gid + '/tournamentId') + '/' + get('rounds/' + gid + '/createdBy')) : '');
+            check('удар продублирован в rounds/<gid>/players/<pid>/scores',
+                gid && String(get('rounds/' + gid + '/players/' + win.__pid + '/scores/1')) === '4',
+                gid ? get('rounds/' + gid + '/players/' + win.__pid + '/scores/1') : '');
+            check('выставлен accessKey для QR-ввода счёта', !!(gid && get('rounds/' + gid + '/accessKey')));
+
+            console.log('\n--- 8. Результаты ---');
+            click($('[data-tnm-act="round-tab"][data-tab="results"]'));
+            return wait(120);
+        })
+        .then(function () {
+            var out = rootHtml();
+            check('таблица результатов отрисована', out.indexOf('tnm-results-table') !== -1);
+            check('есть колонки Место/Игрок/Счёт/Нетто/Очки', out.indexOf('Очки стэйблфорда') !== -1);
+            check('участник в результатах', out.indexOf('Смирнов') !== -1);
+            check('первое место подсвечено классом', out.indexOf('tnm-podium-1') !== -1);
+            check('сортировка по клику доступна', !!(win.document.querySelector('[data-tnm-act="result-sort"][data-key="points"]')));
+            click(win.document.querySelector('[data-tnm-act="result-sort"][data-key="playerName"]'));
+            return flush().then(function () {
+                check('сортировка по игроку не сломала экран', rootHtml().indexOf('tnm-results-table') !== -1);
+                check('есть кнопки экспорта результатов',
+                    !!$('[data-tnm-act="results-export-pdf"]') && !!$('[data-tnm-act="results-export-excel"]'));
+                click($('[data-tnm-act="results-export-pdf"]'));
+                var resultsDoc = lastPrint();
+                check('PDF результатов содержит призёров и очки стэйблфорда',
+                    resultsDoc.indexOf('podium-1') !== -1 && resultsDoc.indexOf('Очки стэйблфорда') !== -1);
+                click($('[data-tnm-act="results-export-excel"]'));
+                var resultsBook = lastExcel();
+                check('Excel результатов выгружен', !!resultsBook && JSON.stringify(resultsBook.sheets[0].rows).indexOf('Очки') !== -1,
+                    resultsBook && JSON.stringify(resultsBook.sheets[0].rows.slice(0, 2)));
+                var gross = $('[data-tnm-edit="result-gross"][data-pid="' + win.__pid + '"]');
+                check('результат правится вручную', !!gross);
+                type(gross, '77');
+                return wait(100);
+            });
+        })
+        .then(function () {
+            var override = get('tournaments/' + win.__tid + '/results/' + win.__rid + '/' + win.__pid) || {};
+            check('ручная правка счёта сохранена в results/<rid>/<pid>', Number(override.gross) === 77, override.gross);
+            click($('[data-tnm-act="results-save"]'));
+            return wait(120);
+        })
+        .then(function () {
+            var results = get('tournaments/' + win.__tid + '/results/' + win.__rid) || {};
+            check('результаты сохранены для публичной таблицы', Object.keys(results).length >= 2, Object.keys(results).length);
+
+            console.log('\n--- 9. Карточка игрока ---');
+            win.TnMgrUI.navigate({ view: 'player', tid: win.__tid, pid: win.__pid, rid: win.__rid });
+            return wait(140);
+        })
+        .then(function () {
+            var out = rootHtml();
+            check('карточка игрока открыта', out.indexOf('tnm-card-table') !== -1);
+            check('в шапке ФИО, HI и CH', out.indexOf('Смирнов') !== -1 && out.indexOf('HI:') !== -1 && out.indexOf('CH:') !== -1);
+            check('показан пар поля 72', out.indexOf('Пар поля') !== -1 && out.indexOf('<b>72</b>') !== -1);
+            ['Длина', 'Пар', 'Индекс', 'Фора', 'Удары', 'Очки гросс', 'Очки нетто'].forEach(function (label) {
+                check('строка карточки «' + label + '»', out.indexOf(label) !== -1);
+            });
+            check('HI и CH редактируются администратором',
+                !!$('[data-tnm-edit="player-hi"]') && !!$('[data-tnm-edit="player-ch"]'));
+            var foreInput = $('[data-tnm-edit="fore-cell"]');
+            check('фора редактируется', !!foreInput);
+            type(foreInput, '2');
+            var chInput = $('[data-tnm-edit="player-ch"]');
+            type(chInput, '14');
+            return wait(100);
+        })
+        .then(function () {
+            var player = get('tournaments/' + win.__tid + '/players/' + win.__pid) || {};
+            check('правка CH сохранена', Number(player.ch) === 14, player.ch);
+            check('правка форы сохранена по лунке', Object.keys(player.fores || {}).length >= 1, JSON.stringify(player.fores));
+            click($('[data-tnm-act="player-export-pdf"]'));
+            var cardDoc = lastPrint();
+            check('PDF карточки игрока содержит ФИО, пар поля и очки нетто',
+                cardDoc.indexOf('Смирнов') !== -1 && cardDoc.indexOf('Пар поля') !== -1 && cardDoc.indexOf('Очки нетто') !== -1);
+            check('есть кнопка экспорта карточки', !!$('[data-tnm-act="player-export-pdf"]'));
+
+            console.log('\n--- 10. Возврат в список ---');
+            win.TnMgrUI.navigate({ view: 'list' });
+            return wait(100);
+        })
+        .then(function () {
+            var out = rootHtml();
+            check('список турниров с созданным турниром', out.indexOf('Кубок клуба 2026') !== -1);
+            check('статус турнира показан', out.indexOf('tnm-chip') !== -1);
+            check('кнопка удаления турнира есть', !!$('[data-tnm-act="delete-tournament"]'));
+
+            // Удаление идёт через uiConfirm реального контракта (title/text).
+            click($('[data-tnm-act="delete-tournament"]'));
+            return wait(120).then(function () {
+                var confirm = win.__lastConfirm || {};
+                check('подтверждение удаления передаёт text и title', !!confirm.text && !!confirm.title,
+                    JSON.stringify({ title: confirm.title, text: String(confirm.text).slice(0, 40) }));
+                check('турнир удалён из базы', !get('tournaments/' + win.__tid));
+                check('список вернулся к пустому состоянию', rootHtml().indexOf('Пока нет турниров') !== -1);
+            });
+        })
+        .then(function () {
+            console.log('\nИтого: ' + total + ' проверок, ошибок: ' + fails);
+            process.exit(fails ? 1 : 0);
+        })
+        .catch(function (err) {
+            console.error('\nОШИБКА СЦЕНАРИЯ:', err && err.stack ? err.stack : err);
+            console.log('\nИтого: ' + total + ' проверок, ошибок: ' + (fails + 1));
+            process.exit(1);
+        });
+}
+
+run();

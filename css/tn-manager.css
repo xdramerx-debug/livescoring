@@ -1,0 +1,261 @@
+/* ==========================================================
+   TN-MANAGER — вкладка «Турниры 🏆» в админ-панели
+   Список турниров, карточка (раунды/группы/участники),
+   стартовый лист с QR, экран счёта, результаты и карточка игрока.
+   Стили используют переменные дизайн-системы (см. css/style.css),
+   поэтому работают во всех темах, включая режим «яркое солнце».
+   ========================================================== */
+
+#tab-tnmanager { --tnm-radius: var(--rs); }
+
+.tnm-view { display: flex; flex-direction: column; gap: 16px; }
+.tnm-view-head, .tnm-card-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap;
+}
+.tnm-card-head { align-items: center; }
+.tnm-view-head-text h2, .tnm-card-title h2 {
+    font-family: var(--ff); font-size: 20px; color: var(--white);
+    display: flex; align-items: center; gap: 8px; margin: 0;
+}
+.tnm-card-title h2 { font-size: 22px; }
+.tnm-sub { color: var(--muted); font-size: 12.5px; margin: 4px 0 0; }
+.tnm-muted { color: var(--muted); font-size: 12px; }
+.tnm-view-head-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* ---------- кнопки ---------- */
+.tnm-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+    border-radius: var(--tnm-radius); padding: 9px 14px; cursor: pointer;
+    font-family: var(--fb); font-size: 13px; font-weight: 600; line-height: 1.1;
+    transition: var(--t); text-decoration: none; white-space: nowrap;
+}
+.tnm-btn:hover { border-color: var(--gold); color: var(--white); }
+.tnm-btn:disabled { opacity: .5; cursor: not-allowed; }
+.tnm-btn-primary { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+.tnm-btn-primary:hover { background: var(--gold-l); border-color: var(--gold-l); color: var(--bg); }
+.tnm-btn-ghost { background: transparent; }
+.tnm-btn-danger { color: var(--red); border-color: rgba(224,90,74,.4); }
+.tnm-btn-danger:hover { background: rgba(224,90,74,.12); color: var(--red); }
+.tnm-btn-sm { padding: 6px 9px; font-size: 12px; }
+.tnm-icon-btn {
+    background: transparent; border: none; color: var(--muted); cursor: pointer;
+    padding: 4px 6px; border-radius: 6px; transition: var(--t);
+}
+.tnm-icon-btn:hover { color: var(--red); background: rgba(255,255,255,.05); }
+.tnm-icon-btn:disabled { opacity: .35; cursor: default; }
+
+/* ---------- карточки/таблицы ---------- */
+.tnm-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 16px; box-shadow: var(--shd);
+}
+.tnm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tnm-table th, .tnm-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.tnm-table th { color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+.tnm-table tbody tr:hover { background: rgba(255,255,255,.03); }
+.tnm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tnm-table-list td:first-child { width: 60%; }
+.tnm-row { cursor: pointer; }
+.tnm-nowrap { white-space: nowrap; }
+.tnm-tour-name { font-weight: 700; color: var(--white); font-size: 14px; }
+.tnm-tour-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 3px; }
+.tnm-empty { text-align: center; color: var(--muted); padding: 32px 12px; }
+.tnm-empty i { font-size: 26px; color: var(--gold); display: block; margin-bottom: 10px; }
+
+/* ---------- статусы ---------- */
+.tnm-chip {
+    display: inline-block; padding: 2px 9px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; border: 1px solid transparent;
+}
+.tnm-chip-draft { background: rgba(158,181,165,.15); color: var(--muted); border-color: var(--border); }
+.tnm-chip-upcoming { background: rgba(90,173,224,.15); color: var(--blue); border-color: rgba(90,173,224,.4); }
+.tnm-chip-live { background: rgba(224,90,74,.16); color: var(--red); border-color: rgba(224,90,74,.45); }
+.tnm-chip-done { background: rgba(45,107,63,.25); color: #7ee2a8; border-color: rgba(45,107,63,.6); }
+
+/* ---------- формы ---------- */
+.tnm-form { display: flex; flex-direction: column; gap: 14px; }
+.tnm-field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.tnm-field input, .tnm-field select, .tnm-field textarea,
+.tnm-modal input[type="text"], .tnm-modal textarea, .tnm-sheet-toolbar select, .tnm-sheet-options select {
+    background: var(--input); border: 1px solid var(--border); color: var(--text);
+    border-radius: var(--tnm-radius); padding: 9px 10px; font-family: var(--fb); font-size: 13px; width: 100%;
+}
+.tnm-field input:focus, .tnm-field select:focus, .tnm-field textarea:focus { outline: none; border-color: var(--gold); }
+.tnm-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.tnm-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.tnm-form-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.tnm-details { border-top: 1px dashed var(--border); padding-top: 10px; }
+.tnm-details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+.tnm-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.tnm-chip-toggle {
+    background: var(--card-h); border: 1px solid var(--border); color: var(--text);
+    border-radius: 20px; padding: 6px 12px; cursor: pointer; font-size: 12.5px; font-family: var(--fb);
+    transition: var(--t);
+}
+.tnm-chip-toggle:hover { border-color: var(--gold); }
+.tnm-chip-toggle.active { background: var(--gold); color: var(--bg); border-color: var(--gold); font-weight: 700; }
+.tnm-inline-add { display: flex; gap: 8px; margin-top: 8px; }
+.tnm-inline-add input { flex: 1; background: var(--input); border: 1px solid var(--border); color: var(--text); border-radius: var(--tnm-radius); padding: 8px 10px; font-family: var(--fb); }
+.tnm-checkbox { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+.tnm-hidden { display: none !important; }
+
+/* ---------- вкладки карточки ---------- */
+.tnm-tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+.tnm-tab {
+    background: transparent; border: 1px solid transparent; border-bottom: none;
+    color: var(--muted); padding: 9px 14px; cursor: pointer; font-family: var(--fb);
+    font-size: 13px; font-weight: 600; border-radius: var(--tnm-radius) var(--tnm-radius) 0 0;
+}
+.tnm-tab.active { background: var(--card); color: var(--gold); border-color: var(--border); }
+.tnm-tab-body { display: flex; flex-direction: column; gap: 14px; }
+
+/* ---------- поиск и подсказки ---------- */
+.tnm-search-wrap { position: relative; }
+.tnm-search-wrap > i { position: absolute; left: 12px; top: 14px; color: var(--muted); }
+.tnm-search-wrap > input {
+    width: 100%; background: var(--input); border: 1px solid var(--border); color: var(--text);
+    border-radius: var(--tnm-radius); padding: 11px 12px 11px 36px; font-family: var(--fb); font-size: 13.5px;
+}
+.tnm-search-wrap > input:focus { outline: none; border-color: var(--gold); }
+.tnm-suggestions {
+    position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px);
+    background: var(--card-h); border: 1px solid var(--border); border-radius: var(--tnm-radius);
+    box-shadow: var(--shl); overflow: hidden; max-height: 320px; overflow-y: auto;
+}
+.tnm-suggestion {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border);
+    color: var(--text); padding: 10px 12px; cursor: pointer; font-family: var(--fb); font-size: 13px; text-align: left;
+}
+.tnm-suggestion:last-child { border-bottom: none; }
+.tnm-suggestion:hover { background: rgba(201,168,76,.12); }
+.tnm-suggestion i { color: var(--gold); }
+.tnm-suggestion-manual { color: var(--gold); }
+.tnm-counters { font-size: 13px; color: var(--text); }
+.tnm-counters b { color: var(--gold); }
+
+/* ---------- инлайновые поля таблиц ---------- */
+.tnm-table input, .tnm-table select {
+    background: var(--input); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 5px 7px; font-family: var(--fb); font-size: 12.5px; width: 100%; min-width: 56px;
+}
+.tnm-table input:focus, .tnm-table select:focus { outline: none; border-color: var(--gold); }
+.tnm-input-num { max-width: 76px; text-align: center; }
+.tnm-input-sm { max-width: 70px; }
+.tnm-input-date { max-width: 170px; }
+
+/* ---------- стартовый лист ---------- */
+.tnm-sheet-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tnm-sheet-options {
+    flex-basis: 100%; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 14px; margin-top: 4px;
+}
+.tnm-collapsed-block { display: none; }
+.tnm-sheet-start { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.tnm-sheet-table td { padding: 4px 5px; }
+.tnm-sheet-table select { min-width: 90px; }
+.tnm-qr-panel { display: flex; flex-direction: column; gap: 12px; }
+.tnm-qr-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-weight: 600; }
+.tnm-qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.tnm-qr-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.tnm-qr-card img { background: #fff; border-radius: 8px; padding: 4px; }
+.tnm-qr-title { font-size: 11.5px; font-weight: 700; color: var(--white); }
+.tnm-qr-actions { display: flex; gap: 6px; }
+.tnm-qr-tournament { border-color: rgba(201,168,76,.5); }
+.tnm-row-actions { width: 38px; text-align: center; }
+.tnm-row-actions .tnm-icon-btn:hover { color: var(--red); }
+.tnm-col-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.tnm-col-move { display: flex; gap: 2px; }
+
+/* ---------- счёт раунда ---------- */
+.tnm-info-line {
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 14px; font-size: 12.5px;
+}
+.tnm-info-line i { color: var(--gold); }
+.tnm-filters { display: flex; flex-wrap: wrap; gap: 7px; }
+.tnm-filter-btn {
+    background: var(--card); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 20px; padding: 7px 13px; cursor: pointer; font-family: var(--fb); font-size: 12.5px;
+}
+.tnm-filter-btn:hover { border-color: var(--gold); color: var(--white); }
+.tnm-filter-btn.active { background: var(--gold); border-color: var(--gold); color: var(--bg); font-weight: 700; }
+.tnm-count { opacity: .75; font-size: 11px; }
+.tnm-score-scroll { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); }
+.tnm-score-table th, .tnm-score-table td { padding: 4px 3px; text-align: center; }
+.tnm-score-table td.tnm-sticky-col, .tnm-score-table th.tnm-sticky-col { text-align: left; }
+.tnm-hole-col { min-width: 40px; width: 40px; }
+.tnm-param-row { background: rgba(255,255,255,.03); color: var(--muted); font-size: 11.5px; }
+.tnm-score-input { width: 38px !important; min-width: 38px !important; text-align: center; padding: 4px 2px !important; }
+.tnm-player-cell { cursor: pointer; }
+.tnm-player-cell b { color: var(--white); }
+.tnm-player-cell span { display: block; }
+.tnm-total-cell { font-weight: 700; color: var(--gold); }
+.tnm-total-row { background: rgba(201,168,76,.08); font-weight: 700; }
+.tnm-legend { font-size: 11.5px; }
+
+/* ---------- результаты ---------- */
+.tnm-results-table th[data-tnm-act] { cursor: pointer; user-select: none; }
+.tnm-results-table th[data-tnm-act]:hover { color: var(--gold); }
+.tnm-sort-hint { opacity: .45; font-size: 11px; }
+.tnm-sort-hint.active { opacity: 1; color: var(--gold); }
+.tnm-place { font-weight: 800; color: var(--gold); text-align: center; }
+.tnm-podium-1 { background: rgba(201,168,76,.18); }
+.tnm-podium-2 { background: rgba(158,181,165,.14); }
+.tnm-podium-3 { background: rgba(180,120,80,.14); }
+.tnm-podium-1 .tnm-place, .tnm-podium-2 .tnm-place, .tnm-podium-3 .tnm-place { font-size: 15px; }
+.tnm-handicap-edit { display: flex; gap: 16px; flex-wrap: wrap; }
+.tnm-handicap-edit .tnm-field { max-width: 140px; }
+.tnm-card-table th, .tnm-card-table td { text-align: center; }
+.tnm-card-table td.tnm-sticky-col { text-align: left; min-width: 110px; }
+
+/* ---------- модальные окна ---------- */
+.tnm-modal-overlay {
+    position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.75);
+    display: flex; align-items: center; justify-content: center; padding: 14px;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.tnm-modal {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 18px; width: 100%; max-width: 520px; max-height: 88vh; display: flex; flex-direction: column; gap: 12px;
+    box-shadow: var(--shl);
+}
+.tnm-modal-wide { max-width: 720px; }
+.tnm-modal h3 { font-family: var(--ff); color: var(--white); font-size: 18px; }
+.tnm-modal-body { overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.tnm-modal-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.tnm-dir-list { max-height: 46vh; }
+.tnm-dir-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+    border-bottom: 1px solid var(--border); font-size: 13px; cursor: pointer;
+}
+.tnm-dir-row:hover { background: rgba(255,255,255,.04); }
+.tnm-dir-row input { width: auto; }
+.tnm-dir-row-added { opacity: .55; }
+.tnm-issues { font-size: 12px; color: var(--yellow); padding-left: 18px; }
+.tnm-warn { color: var(--yellow); font-size: 12.5px; }
+
+/* ---------- мобильная адаптация ---------- */
+@media (max-width: 768px) {
+    .tnm-card-head, .tnm-view-head { flex-direction: column; align-items: stretch; }
+    .tnm-view-head-actions { justify-content: flex-start; }
+    .tnm-card-title h2 { font-size: 19px; }
+    .tnm-grid-2, .tnm-grid-3 { grid-template-columns: 1fr; }
+    .tnm-table { font-size: 12.5px; }
+    .tnm-score-table th, .tnm-score-table td { padding: 3px 2px; }
+    .tnm-hole-col { min-width: 34px; width: 34px; }
+    .tnm-score-input { width: 32px !important; min-width: 32px !important; }
+    .tnm-tabs { flex-wrap: nowrap; overflow-x: auto; }
+    .tnm-qr-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .tnm-modal { max-height: 92vh; }
+}
+
+/* Печать: интерфейс вкладки не печатается — PDF строится отдельным окном. */
+@media print {
+    .tnm-view, .tnm-modal-overlay { display: none !important; }
+}

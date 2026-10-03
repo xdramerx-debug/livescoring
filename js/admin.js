@@ -302,6 +302,10 @@ function openAdminPanel() {
     if (typeof loadAdmRounds === 'function') loadAdmRounds(); // js/admin-groups.js
     if (typeof loadAdmGroups === 'function') loadAdmGroups(); // js/admin-groups.js
     if (typeof loadAdmPlayers === 'function') loadAdmPlayers(); // js/admin-players.js
+    // Вкладка «Турниры 🏆» (js/tn-mgr*.js): показываем кнопку после входа.
+    if (typeof TnMgr !== 'undefined' && TnMgr && typeof TnMgr.syncTabVisibility === 'function') {
+        try { TnMgr.syncTabVisibility(); } catch (e) { console.warn('[tnm] visibility', e); }
+    }
     if (typeof initPlayerSearchAutofill === 'function' && document.getElementById('adm-new-name') && !window._pestovoAdmNameAutofill) {
         window._pestovoAdmNameAutofill = true;
         initPlayerSearchAutofill({
@@ -391,6 +395,11 @@ function switchTab(t, b) {
         seRender();
     }
     if (t === 'scoreaudit' && typeof saLoad === 'function') saLoad();
+    // Менеджер турниров (js/tn-mgr*.js): монтируем лениво, когда вкладка
+    // открыта впервые, далее просто перерисовываем текущий вид.
+    if (t === 'tnmanager' && typeof TnMgr !== 'undefined') {
+        try { TnMgr.open(); } catch (e) { console.warn('[tnm] open failed', e); }
+    }
     if (t === 'data') {
         if (typeof loadPageVisibilitySettings === 'function') loadPageVisibilitySettings(); // js/admin-display.js
         if (typeof loadStablefordDisplaySettings === 'function') loadStablefordDisplaySettings(); // js/admin-display.js

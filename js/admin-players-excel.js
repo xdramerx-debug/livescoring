@@ -178,70 +178,16 @@ function handlePlayersFileSelect(input) {
             var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
             if (!wb.SheetNames.length) throw new Error(currentLang === 'en' ? 'no sheets' : 'нет листов в файле');
 
-            // ТО ЖЕ ЧТЕНИЕ, ЧТО И «УЧАСТНИКИ СТАРТОВОГО ЛИСТА» (start-admin.js):
-            // сканируем ВСЕ листы и ВСЕ столбцы каждого — имена ищутся по
-            // заголовкам (ИФ/ФИО/Имя+Фамилия, Точный гандикап/HCP, Пол, ТИ),
-            // а не только первый лист с известными заголовками.
+            // Импорт админки использует собственный разбор по заголовкам первой страницы.
+            // Он не зависит от парсера удалённого редактора стартового листа.
             var validRows = [];
             var invalidRows = [];
-            var seenNameKey = {};
             var en = currentLang === 'en';
-            var useGrid = (typeof psParseExcelGrid === 'function' && typeof XLSX !== 'undefined');
-            if (useGrid) {
-                wb.SheetNames.forEach(function(sheetName) {
-                    var ws = wb.Sheets[sheetName];
-                    if (!ws) return;
-                    var grid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-                    var res = psParseExcelGrid(grid);
-                    (res.valid || []).forEach(function(rec) {
-                        var name = ((rec.firstName || '') + ' ' + (rec.lastName || '')).replace(/\s+/g, ' ').trim();
-                        if (!name) return;
-                        // Дубль того же человека в пределах файла — одна строка
-                        // (поздний лист переопределяет ранний, как в стартовом листе).
-                        var key = impNameKey({ firstName: rec.firstName, lastName: rec.lastName });
-                        for (var i = 0; i < validRows.length; i++) {
-                            if (impNameKey({ firstName: validRows[i].firstName, lastName: validRows[i].lastName }) === key) {
-                                validRows.splice(i, 1);
-                                break;
-                            }
-                        }
-                        validRows.push({
-                            idx: 0, // перенумеруем ниже
-                            firstName: rec.firstName || '',
-                            lastName: rec.lastName || '',
-                            name: name,
-                            hcp: (rec.hcp != null && rec.hcp !== '') ? rec.hcp : null,
-                            hcpRaw: (rec.hcp != null && rec.hcp !== '') ? String(rec.hcp) : '',
-                            gender: rec.gender || 'men',
-                            dup: null,
-                            error: null
-                        });
-                    });
-                    (res.invalid || []).forEach(function(rec) {
-                        var name = String(rec.name || ((rec.firstName || '') + ' ' + (rec.lastName || ''))).replace(/\s+/g, ' ').trim();
-                        invalidRows.push({
-                            idx: 0,
-                            firstName: rec.firstName || '',
-                            lastName: rec.lastName || '',
-                            name: name,
-                            hcp: null,
-                            hcpRaw: '',
-                            gender: 'men',
-                            dup: null,
-                            error: String(rec.err || (rec.errors && rec.errors.length ? rec.errors.join(', ') : (en ? 'no name' : 'нет имени')))
-                        });
-                    });
-                });
-            }
-            // Резерв: если парсер стартового листа недоступен — старая логика
-            // по первому листу (заголовки из первой строки).
-            if (!useGrid || (!validRows.length && !invalidRows.length)) {
-                var first = wb.Sheets[wb.SheetNames[0]];
-                var json = first ? XLSX.utils.sheet_to_json(first, { defval: '' }) : [];
-                var mapped = impMapRows(json || []);
-                validRows = validRows.length || invalidRows.length ? validRows : mapped.validRows;
-                invalidRows = invalidRows.length || validRows.length ? invalidRows : mapped.invalidRows;
-            }
+            var first = wb.Sheets[wb.SheetNames[0]];
+            var json = first ? XLSX.utils.sheet_to_json(first, { defval: '' }) : [];
+            var mapped = impMapRows(json || []);
+            validRows = mapped.validRows;
+            invalidRows = mapped.invalidRows;
 
             // Нумерация строк для чекбоксов предпросмотра.
             var nIdx = 0;
@@ -250,7 +196,7 @@ function handlePlayersFileSelect(input) {
 
             if (!validRows.length && !invalidRows.length) {
                 if (statusEl) statusEl.innerHTML = '<div class="imp-note imp-note-err"><i class="fas fa-triangle-exclamation"></i> ' +
-                    (en ? 'No data rows found in the file (all sheets scanned).' : 'Во всех листах файла не найдено строк с данными.') + '</div>';
+                    (en ? 'No data rows found in the first sheet.' : 'На первом листе файла не найдено строк с данными.') + '</div>';
                 return;
             }
             impParsedRows = validRows.concat(invalidRows);

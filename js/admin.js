@@ -323,8 +323,6 @@ function openAdminPanel() {
             }
         });
     }
-    // Модули рассылок/алертов есть не на всех страницах админки (например,
-    // на tn-admin.html их нет) — вызовы защищены typeof.
     if (typeof loadClubBroadcastsHistory === 'function') loadClubBroadcastsHistory();
     if (typeof loadBroadcastAudienceOptions === 'function') loadBroadcastAudienceOptions();
     if (typeof listenForAlerts === 'function') listenForAlerts();
@@ -342,9 +340,6 @@ function openAdminPanel() {
     if (typeof loadAdmView5Settings === 'function') loadAdmView5Settings(); // js/admin-display.js
     if (typeof loadPrivacySettings === 'function') loadPrivacySettings(); // js/admin-display.js
     updateNotifButton();
-    // Турниры переехали на отдельную страницу tn-admin.html (простой флоу:
-    // создать → участники → старт → результаты → протокол). Таб «Турниры 🏆»
-    // ведёт на неё напрямую; старые имена вкладок редиректят туда же.
 }
 
 function enableAdminNotifications() {
@@ -370,13 +365,6 @@ function updateNotifButton() {
 }
 
 function switchTab(t, b) {
-    // Турнирная система переехала на отдельную страницу tn-admin.html.
-    // Старые имена вкладок ('tournaments'/'start'/'protocol'/'studio' и
-    // hash-диплинки) оставлены для совместимости и ведут на неё же.
-    if (t === 'tournaments' || t === 'start' || t === 'protocol' || t === 'studio') {
-        try { window.location.href = 'tn-admin.html'; } catch (e) {}
-        return;
-    }
     document.querySelectorAll('.admin-section').forEach(function(s) { s.classList.add('hidden'); });
     document.querySelectorAll('.admin-tab').forEach(function(x) { x.classList.remove('active'); });
     var tabEl = document.getElementById('tab-' + t);

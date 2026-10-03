@@ -1641,34 +1641,24 @@ function rgBatchParseRows(jsonRows) {
 }
 
 
-// Чтение игроков из файла для проверки гандикапа: сканируем ВСЕ листы
-// (как «Участники стартового листа») и все столбцы — имена ищутся по
-// заголовкам «Имя/Фамилия/ФИО/Отчество…», а не только в первых двух
-// колонках первой страницы. Возвращает [{idx, firstName, lastName, name, sheet}].
+// Чтение игроков из файла для проверки гандикапа: сканируем все листы
+// и ищем ФИО по заголовкам «Имя/Фамилия/ФИО», а не только в первых двух
+// колонках. Используется локальный fallback-разбор Excel. Возвращает [{idx, firstName, lastName, name, sheet}].
 function rgBatchRowsFromWorkbook(wb) {
     var sheetNames = (wb && wb.SheetNames) ? wb.SheetNames.filter(function(n) { return !!wb.Sheets[n]; }) : [];
     var multi = sheetNames.length > 1;
     var rows = [];
     sheetNames.forEach(function(name, si) {
         var label = multi ? String(name || ('Лист ' + (si + 1))) : '';
-        var parsed = null;
+        var valid = [];
+        // Разбираем обычные строки объектов по заголовкам — это независимый
+        // fallback для всех листов книги, без внешнего парсера стартового листа.
         try {
-            if (typeof XLSX !== 'undefined' && typeof psParseExcelGrid === 'function') {
-                var grid = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '' });
-                parsed = psParseExcelGrid(grid);
-            }
-        } catch (e) { parsed = null; }
-        var valid = (parsed && parsed.valid && parsed.valid.length) ? parsed.valid : [];
-        if (!valid.length) {
-            // Заголовков/распознавания не хватило — пробуем простой разбор
-            // (объекты по первой строке) как запасной вариант.
-            try {
-                var json = (typeof XLSX !== 'undefined') ? XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: '' }) : [];
-                valid = rgBatchParseRows(json || []).map(function(r) {
-                    return { firstName: r.firstName, lastName: r.lastName, middleName: '', name: r.name };
-                });
-            } catch (e2) { valid = []; }
-        }
+            var json = (typeof XLSX !== 'undefined') ? XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: '' }) : [];
+            valid = rgBatchParseRows(json || []).map(function(r) {
+                return { firstName: r.firstName, lastName: r.lastName, middleName: '', name: r.name };
+            });
+        } catch (e2) { valid = []; }
         valid.forEach(function(r) {
             var firstName = String((r && r.firstName) || '').trim();
             var lastName = String((r && r.lastName) || '').trim();

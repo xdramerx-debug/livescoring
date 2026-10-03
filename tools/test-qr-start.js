@@ -43,7 +43,7 @@ vm.runInContext(code, sandbox);
 let failures = 0;
 function check(cond, label) { if (!cond) { failures++; console.error('FAIL', label); } else console.log('ok  -', label); }
 
-// --- данные протокола как после psSaveProtocol ---
+// --- пример сохранённого протокола группы ---
 const doc = {
     name: 'Кубок Пестово · старт', tournamentName: 'Кубок Пестово', date: '2026-09-12', format: 'Stroke Play',
     groups: {

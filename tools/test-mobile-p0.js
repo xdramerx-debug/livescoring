@@ -92,7 +92,7 @@ function cssSwVersion() {
 
     const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
     const assets = sw.match(/STATIC_ASSETS = \[([\s\S]*?)\];/)[1];
-    ok(!/js\/admin\.js/.test(assets) && !/js\/start-admin\.js/.test(assets), 'sw: админ-бандлы не в предкэше');
+    ok(!/js\/admin\.js/.test(assets) && !/js\/start-admin\.js/.test(assets) && !/js\/admin-flights\.js/.test(assets), 'sw: админские бандлы не в предкэше');
 
     const ver = (sw.match(/pestovo-v(\d+\.\d+\.\d+)/) || [])[1];
     ok(!!ver, 'sw: найдена версия CACHE_NAME');

@@ -19,7 +19,6 @@ const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const setupHtml = fs.readFileSync(path.join(ROOT, 'setup-round.html'), 'utf8');
 const scorerHtml = fs.readFileSync(path.join(ROOT, 'scorer.html'), 'utf8');
 const qr = fs.readFileSync(path.join(ROOT, 'js', 'qr-start.js'), 'utf8');
-const startAdmin = fs.readFileSync(path.join(ROOT, 'js', 'start-admin.js'), 'utf8');
 const auth = fs.readFileSync(path.join(ROOT, 'js', 'auth.js'), 'utf8');
 const admin = fs.readFileSync(path.join(ROOT, 'js', 'admin.js'), 'utf8');
 const css = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
@@ -45,9 +44,6 @@ check(scorerHtml.indexOf('id="round-event-banner"') !== -1, 'scorer: банне�
 
 check(qr.indexOf('setup-round.html') !== -1 && qr.indexOf('as=') !== -1, 'QR группы → setup-round?as');
 check(qr.indexOf('scorer.html') !== -1 && qr.indexOf('player=') !== -1, 'QR соло → scorer.html?player');
-check(startAdmin.indexOf('tournamentName: proto.tournamentName') !== -1, 'start-admin: tournamentName в roundData');
-check(startAdmin.indexOf("sets['rounds/' + rid + '/tournamentName']") !== -1, 'start-admin: tournamentName при сохранении правок');
-check(startAdmin.indexOf('psAttachPlayerAutofill') !== -1, 'start-admin: автоподбор ФИО');
 check(auth.indexOf("searchInputId: 'reg-name'") !== -1, 'auth: автоподбор #reg-name');
 check(admin.indexOf("searchInputId: 'adm-new-name'") !== -1, 'admin: автоподбор #adm-new-name');
 

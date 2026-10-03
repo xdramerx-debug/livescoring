@@ -1,5 +1,5 @@
-// Публичные «Счёт» и «Результаты» для турниров, созданных во вкладке «Турниры · создание».
-// Правка ударов здесь запрещена: её делает только админ, цифры приходят из той же записи.
+// Публичные таблицы «Счёт» и «Результаты» для существующих турниров.
+// Страница только читает данные: правка ударов доступна в интерфейсе скоринга.
 (function (root) {
     var state = { id: null, dayId: null, tab: 'score', divisionId: null, playerKey: null };
 
@@ -150,7 +150,7 @@
         var caption = d ? captionHtml(t, d, esc, ru) : '<p class="tns-note">' + esc(ru('Игроки без зачёта.', 'Players without a division.')) + '</p>';
         var people = playersFor(t, divId);
         var tee = (d && d.tee) || 'wh';
-        return '<div class="tns-chips">' + chips + '</div>' + caption + holeTable(t, day, people, tee, false, esc, ru);
+        return '<div class="tns-chips">' + chips + '</div>' + caption + holeTable(t, day, people, tee, esc, ru);
     }
     function captionHtml(t, d, esc, ru) {
         var C = core();
@@ -159,7 +159,7 @@
         var tee = course().teeName(d.tee || 'wh');
         return '<p class="tns-note">' + esc(ru('Пол', 'Gender') + ': ' + gender + ', HCP: ' + C.hcpLabel(d.hcpFrom, d.hcpTo) + ', ' + ru('возраст', 'age') + ': ' + (d.ageLabel || '—')) + '<br>' + esc(ru('Ти', 'Tee') + ': ' + tee + ', ' + format) + '</p>';
     }
-    function holeTable(t, day, people, tee, editable, esc, ru) {
+    function holeTable(t, day, people, tee, esc, ru) {
         var courseApi = course();
         var head = '<tr><th class="name"></th>';
         for (var h = 1; h <= 18; h++) {

@@ -1,109 +1,118 @@
-// Contract-level integration checks for the new tournament surface.
-// Firebase Emulator is intentionally not required in this repository; the
-// pure data paths are exercised by tools/test-tn-admin.js and this test
-// verifies that the pages are wired to the same contracts:
-//   tn-admin.html  ↔ js/tn-admin.js ↔ js/tn-admin-core.js
-//   tn-protocol.html ↔ js/tn-protocol-public.js ↔ tournaments/<id>/protocol
-//   admin.html больше не тянет удалённую старую систему (мастер/студия).
+// Контрактные проверки удаления администратора турниров при сохранении публичных страниц.
 'use strict';
-var fs = require('fs');
-var path = require('path');
-var root = path.resolve(__dirname, '..');
-var failures = 0;
-var total = 0;
+
+const fs = require('fs');
+const path = require('path');
+const root = path.resolve(__dirname, '..');
+let failures = 0;
+let total = 0;
 function check(value, label) {
     total++;
     if (!value) { failures++; console.error('FAIL', label); }
     else console.log('ok  -', label);
 }
 function read(file) { return fs.readFileSync(path.join(root, file), 'utf8'); }
+function exists(file) { return fs.existsSync(path.join(root, file)); }
 
-var adminHtml = read('admin.html');
-var adminJs = read('js/admin.js');
-var tnAdminHtml = read('tn-admin.html');
-var tnAdminJs = read('js/tn-admin.js');
-var coreJs = read('js/tn-admin-core.js');
-var publicProtoHtml = read('tn-protocol.html');
-var publicProtoJs = read('js/tn-protocol-public.js');
-var coreTournamentJs = read('js/tournament-core.js');
-var swJs = read('sw.js');
+const adminHtml = read('admin.html');
+const adminJs = read('js/admin.js');
+const publicHtml = read('tournaments.html');
+const publicTournament = read('js/tournament-public.js');
+const publicStudio = read('js/tn-studio-public.js');
+const scorecard = read('js/tn-scorecard.js');
+const studioCore = read('js/tn-studio-core.js');
+const oldPublicList = read('js/tournaments.js');
+const sharedUtils = read('js/utils.js');
+const sharedCss = read('css/style.css');
+const sw = read('sw.js');
+const i18n = read('js/i18n.js') + read('src/i18n.js');
 
-// ── 1. Старая система удалена из админки ──
-['js/tn-wizard.js', 'js/tn-engine.js', 'js/tn-studio.js', 'js/tournament-admin.js',
-    'js/admin-tournaments.js', 'css/tn-wizard.css', 'css/tournament-admin.css',
-    'tn-embed-parking', 'tn-wizard-root', 'tn-studio-root', 'tab-start-content',
-    'pe-card', 'switchTab(\'studio\'', 'tnStudioOpen', 'tnwOnAdminOpen'].forEach(function (token) {
-    check(adminHtml.indexOf(token) === -1, 'admin.html: удалено ' + token);
+// Удалены страница создания, редактор/стартовый лист, опубликованный протокол,
+// генератор флайтов и только их тестовые наборы.
+[
+    'tn-admin.html', 'js/tn-admin.js', 'js/tn-admin-core.js', 'css/tn-admin.css',
+    'js/start-admin.js', 'js/pe-edit.js', 'tn-protocol.html', 'js/tn-protocol-public.js',
+    'js/admin-flights.js', 'docs/tn-admin.md',
+    'tools/test-tn-admin.js', 'tools/test-tn-admin-ui.js', 'tools/test-start-admin.js',
+    'tools/test-pe-edit.js', 'tools/test-scenario-formats-hierarchy.js'
+].forEach(function (file) {
+    check(!exists(file), file + ' удалён');
 });
-check(adminHtml.indexOf('tn-view.css') !== -1, 'admin.html: стили вкладки «Турниры: вид» сохранены');
-check(adminHtml.indexOf('href="tn-admin.html"') !== -1, 'admin.html: таб «Турниры 🏆» ведёт на tn-admin.html');
-check(adminJs.indexOf("window.location.href = 'tn-admin.html'") !== -1, 'admin.js: старые имена вкладок редиректят на tn-admin.html');
-['tn-studio.js', 'tn-wizard.js', 'tn-engine.js', 'tournament-admin.js', 'admin-tournaments.js'].forEach(function (f) {
-    check(!fs.existsSync(path.join(root, 'js', f)), 'файл удалён: js/' + f);
-});
+check(exists('tools/test-group-round-setup.js'), 'тест стандартной формы раунда сохранён');
 
-// ── 2. Новая страница: шаги и хосты ──
-['tna-root', 'admin-login', 'adm-master-pass'].forEach(function (id) {
-    check(tnAdminHtml.indexOf('id="' + id + '"') !== -1, 'tn-admin.html: контейнер #' + id);
-});
-// Хосты старта и быстрого редактора создаёт js/tn-admin.js (шаг 3).
-['tab-start-content', 'pe-tn-select', 'pe-editor'].forEach(function (id) {
-    check(tnAdminJs.indexOf('id="' + id + '"') !== -1 || tnAdminJs.indexOf("'" + id + "'") !== -1,
-        'js/tn-admin.js монтирует хост #' + id);
-});
-['js/tn-admin-core.js', 'js/tn-admin.js', 'js/admin.js', 'js/start-admin.js', 'js/pe-edit.js',
-    'js/tournament-core.js', 'js/utils.js', 'js/firebase-config.js'].forEach(function (src) {
-    check(tnAdminHtml.indexOf(src) !== -1, 'tn-admin.html: подключён ' + src);
-});
-['tnaInit', 'tnaSaveSettings', 'tnaSavePlayers', 'tnaMountStart', 'tnaSaveResults',
-    'tnaBuildProtocol', 'tnaPublishProtocol', 'tnaPrintProtocol', 'tnaExportCsv', 'tnaExportExcel',
-    'tnaPublicLink', 'tnaDeleteTournament', 'tnaRowsFromRounds', 'tnaGroupsFromProtocols'].forEach(function (fn) {
-    check(tnAdminJs.indexOf('function ' + fn) === 0 || tnAdminJs.indexOf('function ' + fn + '(') !== -1,
-        'js/tn-admin.js: ' + fn);
-});
-['defaultConfig', 'normalizeConfig', 'normalizePlayers', 'parseImport', 'buildRow',
-    'withPositions', 'buildNominations', 'assembleProtocol', 'buildProtocol',
-    'csv', 'protocolDocHtml', 'importTemplateCsv'].forEach(function (fn) {
-    check(coreJs.indexOf('function ' + fn + '(') !== -1 || coreJs.indexOf(fn + ':') !== -1,
-        'js/tn-admin-core.js: ' + fn);
-});
-check(coreJs.indexOf("module.exports = api") !== -1, 'ядро экспортируется для Node-тестов');
+// В админке больше нет ссылки на создание, загрузки генератора или legacy-перехода.
+check(!adminHtml.includes('tn-admin.html'), 'admin.html не ссылается на страницу создания турнира');
+check(!adminHtml.includes('js/admin-flights.js'), 'admin.html не загружает генератор флайтов');
+check(!adminHtml.includes('css/tn-studio.css'), 'админка не загружает стили публичной таблицы счёта');
+check(adminHtml.includes('tab_tournaments_view'), 'настройки вида публичных таблиц турниров сохранены');
+check(!adminJs.includes('tn-admin.html'), 'admin.js не содержит legacy-переходов');
+check(!/t === 'tournaments' \|\| t === 'start'/.test(adminJs), 'старые вкладки больше не перенаправляют в удалённую систему');
 
-// ── 3. Публичная страница протокола ──
-['tnp-root', 'js/tn-protocol-public.js', 'js/tn-admin-core.js'].forEach(function (token) {
-    check(publicProtoHtml.indexOf(token) !== -1, 'tn-protocol.html: ' + token);
+// Публичные страницы, регистрация и скоринг продолжают использовать собственные модули.
+[
+    'js/tournament-core.js', 'js/tn-studio-core.js', 'js/tn-studio-public.js',
+    'js/tournaments.js', 'js/tn-scorecard.js', 'js/tournament-public.js', 'js/score-write.js'
+].forEach(function (src) {
+    check(publicHtml.includes(src), 'tournaments.html сохраняет ' + src);
 });
-['tnpInit', 'tnpLiveProtocol', 'tnpPrint', 'tnpExportCsv', 'tnpExportExcel'].forEach(function (fn) {
-    check(publicProtoJs.indexOf('function ' + fn) !== -1, 'js/tn-protocol-public.js: ' + fn);
-});
-check(publicProtoJs.indexOf('protocol.published') !== -1, 'публичная страница читает опубликованный снимок');
-check(publicProtoJs.indexOf('calcRoundStats') !== -1, 'live-протокол считается той же математикой (calcRoundStats)');
+check(publicTournament.includes('registeredPlayers') && publicTournament.includes('waitlist'),
+    'публичный каталог сохраняет регистрации и лист ожидания');
+check(publicTournament.includes('registrationOpen') && publicTournament.includes("'tournaments/'"),
+    'публичная регистрация использует существующую базу турниров');
+check(scorecard.includes('function tnScOpen') && scorecard.includes("modal.id = 'tnsc-modal'"),
+    'публичный scorecard сохранён с динамической модалкой');
+check(scorecard.includes('function tnScRender') && oldPublicList.includes('tnScOpen'),
+    'scorecard продолжает открываться из публичной таблицы турниров');
+check(publicStudio.includes('data-studio-act') && publicStudio.includes('function panelHtml'),
+    'публичные таблицы счёта/результатов сохранены');
+check(!/\bdb\.ref\([^)]*\)\.(?:set|update|remove)\(/.test(publicStudio),
+    'публичная таблица счёта только отображает данные');
+check(oldPublicList.includes('fromWizard') && oldPublicList.includes('fromStudio'),
+    'фильтрация старых записей в независимом каталоге сохранена');
+check(sharedUtils.includes('function pestovoStartHierarchy(') && sharedUtils.includes('function roundsDueForStart('),
+    'общая логика иерархии стартовых флайтов и автостарта раундов сохранена');
+check(sharedUtils.includes('function isRoundOpenForScoring(') && sharedUtils.includes('function roundStartCountdownMs('),
+    'общий scoring gate и отсчёт времени сохранены');
+check(sharedCss.includes('.group-flight-table') && sharedCss.includes('.tn-lb-flight') && sharedCss.includes('.tnsc-chip-flight'),
+    'публичные таблицы, лидерборд и scorecard сохраняют flight-стили');
 
-// ── 4. Контракты данных ──
-['source', 'registeredPlayers', 'results', 'protocol', 'divisions'].forEach(function (token) {
-    check(tnAdminJs.indexOf(token) !== -1, 'js/tn-admin.js пишет узел: ' + token);
+// Core для публичных таблиц оставляет только используемые read-only вычисления.
+[
+    'formatIso', 'normalizeName', 'listOf', 'divisionOf', 'courseHandicap',
+    'playerCard', 'betterBall', 'formatId', 'fmtHcp', 'hcpLabel'
+].forEach(function (name) {
+    check(studioCore.includes('function ' + name + '('), 'публичное ядро сохраняет ' + name);
 });
-check(tnAdminJs.indexOf("'tournaments/'") !== -1 || tnAdminJs.indexOf('tournaments/') !== -1,
-    'запись в tournaments/<id> (совместимо со скорингом)');
-check(coreTournamentJs.indexOf('protocolRows') !== -1 && coreTournamentJs.indexOf('buildNominations') !== -1,
-    'tournament-core.js сохраняет контракты протокола для публичной страницы');
-check(tnAdminJs.indexOf('pestovoAutoFinishTournament') !== -1, 'автозавершение переиспользуется из utils.js');
-check(tnAdminJs.indexOf('psOpen') !== -1 && tnAdminJs.indexOf('peInit') !== -1,
-    'стартовый лист и быстрый редактор переиспользуются (start-admin/pe-edit)');
-check(tnAdminJs.indexOf("tnaL(") !== -1 && tnAdminJs.indexOf('currentLang') !== -1, 'двуязычный интерфейс RU/EN');
-
-// ── 5. Старые турниры скрыты из интерфейса ──
-['js/tournaments.js', 'js/start-admin.js'].forEach(function (f) {
-    var src = read(f);
-    check(src.indexOf('fromWizard') !== -1 && src.indexOf('fromStudio') !== -1,
-        f + ': турниры старой системы скрыты из интерфейса');
+[
+    'matchUsers', 'namesFromSheet', 'rosterRowsFromSheet', 'findStart',
+    'legacyFormats', 'protocolDocHtml', 'importTemplateCsv'
+].forEach(function (name) {
+    check(!studioCore.includes(name), 'из публичного ядра удалён админский helper ' + name);
 });
 
-// ── 6. Service Worker ──
-check(swJs.indexOf('tn-admin.html') !== -1, 'sw.js: новая страница в precache');
-check(swJs.indexOf('tn-protocol.html') !== -1, 'sw.js: публичный протокол в precache');
-['tn-wizard', 'tn-engine', 'tn-studio.js', 'tournament-admin.js', 'admin-tournaments.js'].forEach(function (token) {
-    check(swJs.indexOf(token) === -1, 'sw.js: удалён ' + token);
+// Тесты scoring gate теперь зависят только от utils/live, не от удалённой админки.
+const startGateTest = read('tools/test-tournament-start-gate.js');
+const liveTest = read('tools/test-tournament-live.js');
+check(startGateTest.includes("'js', 'live.js'") && startGateTest.includes("'js', 'utils.js'"),
+    'scoring gate тесты utils/live сохранены');
+check(!/start-admin|psRoundStartStatus|psSaveProtocol/.test(startGateTest),
+    'из scoring gate удалены тесты админского стартового листа');
+check(!/start-admin|psParseExcelGrid/.test(liveTest),
+    'live-тесты не читают удалённый стартовый модуль');
+
+// Удалённые файлы и ключи не остаются в precache/словарях.
+[
+    'tn-admin.html', 'tn-protocol.html', 'css/tn-admin.css', 'js/start-admin.js',
+    'js/pe-edit.js', 'js/tn-admin.js', 'js/tn-admin-core.js',
+    'js/tn-protocol-public.js', 'js/admin-flights.js'
+].forEach(function (asset) {
+    check(!sw.includes(asset), 'Service Worker не кэширует ' + asset);
+});
+[
+    'tab_studio:', 'tab_start:', 'all_tournaments:', 'create_tournament:',
+    'available_formats:', 'available_tees:', 'generate_flights_btn:', 'admin_only_tournaments:'
+].forEach(function (key) {
+    check(!i18n.includes(key), 'удалён мёртвый перевод ' + key);
 });
 
 console.log('\n' + total + ' checks, failures: ' + failures);

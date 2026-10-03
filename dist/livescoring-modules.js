@@ -1,4 +1,4 @@
-const J = "Гольф-клуб Пестово", Ce = 72, $ = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
+const J = "Гольф-клуб Пестово", Re = 72, $ = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
   1: { p: 4, hcp: 5, bk: 373, bl: 339, wh: 328, rd: 317 },
   2: { p: 4, hcp: 13, bk: 272, bl: 257, wh: 257, rd: 250 },
   3: { p: 5, hcp: 9, bk: 486, bl: 475, wh: 464, rd: 423 },
@@ -111,7 +111,7 @@ function de(e, a) {
   var n = new Date(T(a || Date.now())), o = new Date(r);
   return !isNaN(o.getTime()) && !isNaN(n.getTime()) && o.getFullYear() === n.getFullYear() && o.getMonth() === n.getMonth() && o.getDate() === n.getDate();
 }
-var C = ["today", "7d", "30d", "month", "year", "all"];
+var R = ["today", "7d", "30d", "month", "year", "all"];
 function G(e) {
   var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
   if (!a) return null;
@@ -136,7 +136,7 @@ function E(e) {
   var a = /* @__PURE__ */ new Date(), r = new Date(a.getFullYear(), a.getMonth(), a.getDate()), n = null;
   return e === "today" ? n = r : e === "7d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 6) : e === "30d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 29) : e === "month" ? n = new Date(r.getFullYear(), r.getMonth(), 1) : e === "year" && (n = new Date(r.getFullYear(), 0, 1)), n ? { from: x(n.getTime()), to: x(r.getTime()) } : { from: "", to: "" };
 }
-function R(e, a) {
+function C(e, a) {
   var r = e && e.value || "", n = a && a.value || "", o = r ? G(r) : null, s = n ? B(n) : null, i = o !== null && s !== null && o > s;
   return {
     from: o,
@@ -178,10 +178,10 @@ function ue(e) {
     }
   }
   function u() {
-    var p = R(a, r);
+    var p = C(a, r);
     if (!p.fromValue && !p.toValue) return "all";
-    for (var g = 0; g < C.length; g++) {
-      var w = C[g];
+    for (var g = 0; g < R.length; g++) {
+      var w = R[g];
       if (w !== "all") {
         var S = E(w);
         if (S.from === p.fromValue && S.to === p.toValue) return w;
@@ -192,7 +192,7 @@ function ue(e) {
   function d() {
     if (n) {
       var p = u();
-      n.innerHTML = C.map(function(g) {
+      n.innerHTML = R.map(function(g) {
         return '<button type="button" class="date-chip' + (p === g ? " active" : "") + '" data-preset="' + g + '">' + t("date_preset_" + g) + "</button>";
       }).join("");
     }
@@ -201,7 +201,7 @@ function ue(e) {
     r.value ? a.setAttribute("max", r.value) : a.removeAttribute("max"), a.value ? r.setAttribute("min", a.value) : r.removeAttribute("min");
   }
   function c() {
-    var p = R(a, r).invalid;
+    var p = C(a, r).invalid;
     a.classList.toggle("is-invalid", p), r.classList.toggle("is-invalid", p), s && (s.textContent = p ? t("date_filter_invalid") : "", s.classList.toggle("hidden", !p));
   }
   function h() {
@@ -210,7 +210,7 @@ function ue(e) {
   var b = {
     key: e.key,
     getRange: function() {
-      return R(a, r);
+      return C(a, r);
     },
     renderPresets: d,
     lastSummary: null,
@@ -250,7 +250,7 @@ function me() {
     a && (a.renderPresets(), a.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: C, dateInputToStartTs: G, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: V, datePresetRange: E, readDateRange: R, filterEntriesByDateRange: ce, renderRoundsPeriodSummary: j, dateRangeFilters: P, initDateRangeFilter: ue, getDateRangeFilter: pe, refreshDateRangeFilters: me });
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: G, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: V, datePresetRange: E, readDateRange: C, filterEntriesByDateRange: ce, renderRoundsPeriodSummary: j, dateRangeFilters: P, initDateRangeFilter: ue, getDateRangeFilter: pe, refreshDateRangeFilters: me });
 function q(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
@@ -696,7 +696,6 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     role_player: "Игрок",
     export_csv_btn: "Экспортировать все раунды в CSV",
     download_backup_btn: "Скачать бэкап базы (JSON)",
-    generate_flights_btn: "Сформировать флайты",
     register_tournament_btn: "Записаться на турнир",
     registered_badge: "Вы зарегистрированы ✅",
     cancel_registration: "Отменить запись",
@@ -807,9 +806,6 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     tab_rounds: "Раунды",
     tab_alerts: "Вызовы 🚨",
     tab_groups: "Группы сейчас ⏱️",
-    tab_tournaments: "Турниры 🏆",
-    tab_studio: "Турниры · создание",
-    tab_start: "Старт турнира 🏁",
     tab_players: "Игроки и роли",
     tab_data: "Данные",
     tab_importexport: "Импорт/Экспорт 📊",
@@ -818,14 +814,6 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     imp_exp_sub: "Выгружайте список игроков в таблицу Excel и импортируйте игроков обратно: имя, фамилия и точный гандикап.",
     rg_title: "Проверка гандикапа — база АГР России",
     rg_sub: "Поиск точного гандикапа (HI) игрока в официальной базе Ассоциации гольфа России (hcp.rusgolf.ru) с возможностью добавить игрока к себе на сайт.",
-    all_tournaments: "Все турниры",
-    create_tournament: "Создать турнир",
-    tournament_name: "Название",
-    tournament_date: "Дата",
-    available_formats: "Доступные форматы",
-    available_tees: "Доступные ТИ",
-    create_btn: "Создать",
-    admin_only_tournaments: "Турниры создаёт только администратор.",
     admin_panel_link: "Админка",
     referee_marshal_calls: "Вызовы судей и маршалов",
     admin_groups_title: "Группы, которые сейчас играют",
@@ -1294,7 +1282,6 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     role_player: "Player",
     export_csv_btn: "Export All Rounds to CSV",
     download_backup_btn: "Download Database Backup (JSON)",
-    generate_flights_btn: "Generate Tournament Flights",
     register_tournament_btn: "Register for Tournament",
     registered_badge: "Registered ✅",
     cancel_registration: "Cancel Registration",
@@ -1405,9 +1392,6 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     tab_rounds: "Rounds",
     tab_alerts: "Alerts 🚨",
     tab_groups: "Groups now ⏱️",
-    tab_tournaments: "Tournaments 🏆",
-    tab_studio: "Tournaments · create",
-    tab_start: "Tournament Start 🏁",
     tab_players: "Players & Roles",
     tab_data: "Data",
     tab_importexport: "Import/Export 📊",
@@ -1416,14 +1400,6 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     imp_exp_sub: "Export the player list to an Excel table and import players back: first name, last name and exact handicap.",
     rg_title: "Handicap Lookup — RGA Database",
     rg_sub: "Look up a player's exact Handicap Index (HI) in the official Russian Golf Association database (hcp.rusgolf.ru) and add players to your site.",
-    all_tournaments: "All Tournaments",
-    create_tournament: "Create Tournament",
-    tournament_name: "Name",
-    tournament_date: "Date",
-    available_formats: "Available Formats",
-    available_tees: "Available Tees",
-    create_btn: "Create",
-    admin_only_tournaments: "Tournaments are created by administrators only.",
     admin_panel_link: "Admin Panel",
     referee_marshal_calls: "Referee & Marshal Calls",
     admin_groups_title: "Groups currently playing",
@@ -1600,11 +1576,6 @@ function we() {
   }
   if (typeof initP0MobileEnhancements == "function") try {
     initP0MobileEnhancements();
-  } catch (o) {
-    console.warn("[silent]", o);
-  }
-  if (typeof tnwOnLangChange == "function") try {
-    tnwOnLangChange();
   } catch (o) {
     console.warn("[silent]", o);
   }
@@ -1793,14 +1764,14 @@ export {
   $ as ADDR,
   J as CLUB,
   X as COURSE_RATINGS,
-  C as DATE_RANGE_PRESETS,
+  R as DATE_RANGE_PRESETS,
   v as HOLES,
   f as I18N,
   z as TEES,
   Q as TEE_ORDER,
   O as TIMINGS,
   L as TOAST_DURATION_MS,
-  Ce as TOTAL_PAR,
+  Re as TOTAL_PAR,
   A as applyTranslations,
   D as buildOfficialCallText,
   m as currentLang,
@@ -1828,7 +1799,7 @@ export {
   U as isPlayerModeEnabled,
   de as isTodayTimestamp,
   T as normalizeTimestampMs,
-  R as readDateRange,
+  C as readDateRange,
   me as refreshDateRangeFilters,
   j as renderRoundsPeriodSummary,
   ne as scoreClass,

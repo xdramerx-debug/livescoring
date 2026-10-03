@@ -9786,64 +9786,11 @@ function pestovoAutoStartRounds(roundsData, opts) {
     });
 }
 
-// Старт турнира вручную из админ-меню: сам турнир + все его запланированные
-// раунды становятся активными сразу, не дожидаясь времени.
-function pestovoStartTournamentNow(tnId) {
-    if (typeof db === 'undefined' || !db || !tnId) return Promise.resolve(false);
-    var now = Date.now();
-    // При старте подтягиваем гандикапные группы турнира: ТИ группы («ти
-    // стартовой группы» = ТИ дивизиона из «умных групп» или ручной группы)
-    // применяется к игрокам раунда этой группы (#1.60). Если группы нет —
-    // действует ТИ, сохранённый в раунде при создании протокола.
-    return Promise.all([
-        db.ref('rounds').once('value'),
-        db.ref('tournaments/' + tnId + '/divisions').once('value').catch(function() { return null; })
-    ]).then(function(res) {
-        var data = res[0].val() || {};
-        var divRaw = (res[1] && res[1].val) ? res[1].val() : null;
-        var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions({ divisions: divRaw }) : [];
-        var updates = {};
-        updates['tournaments/' + tnId + '/status'] = 'active';
-        updates['tournaments/' + tnId + '/lifecycleStatus'] = 'active';
-        updates['tournaments/' + tnId + '/startedAt'] = now;
-        var opened = 0;
-        Object.keys(data).forEach(function(rid) {
-            var r = data[rid];
-            if (!r || typeof r !== 'object') return;
-            if (String(r.tournamentId || '') !== String(tnId)) return;
-            var isScheduled = String(r.status || '') === ROUND_STATUS_SCHEDULED;
-            if (isScheduled) {
-                updates['rounds/' + rid + '/status'] = 'active';
-                updates['rounds/' + rid + '/activatedAt'] = now;
-                opened++;
-            }
-            // ТИ по гандикапной группе игрока
-            if (divisions.length && r.players) {
-                Object.keys(r.players).forEach(function(pid) {
-                    var p = r.players[pid] || {};
-                    var hcp = (p.exactHcp != null) ? p.exactHcp : (p.exactHcpRaw != null ? p.exactHcpRaw : p.handicap);
-                    var div = (typeof tnFindDivision === 'function')
-                        ? tnFindDivision({ divisions: divRaw }, hcp, p.gender || 'men', { pid: pid, name: p.name || '' })
-                        : null;
-                    if (div && div.tee && div.tee !== p.tee) {
-                        updates['rounds/' + rid + '/players/' + pid + '/tee'] = div.tee;
-                    }
-                });
-            }
-        });
-        return db.ref().update(updates).then(function() { return opened; });
-    }).catch(function() {
-        // Нет доступа к ветке rounds — стартуем хотя бы сам турнир
-        return db.ref('tournaments/' + tnId).update({ status: 'active', lifecycleStatus: 'active', startedAt: now }).then(function() { return 0; });
-    });
-}
-
 // =========================================================
 // ФОРМАТЫ ИГРЫ · ИЕРАРХИЯ СТАРТА · АДРЕСНЫЕ PUSH-АНОНСЫ
 // ---------------------------------------------------------
-// Общий слой для админки старта (js/start-admin.js), печати
-// QR-карточек (js/qr-start.js), страницы счёта (js/scorer.js)
-// и рассылки анонсов (js/admin.js).
+// Общий слой для QR-карточек (js/qr-start.js), страницы счёта
+// (js/scorer.js) и рассылки анонсов (js/admin.js).
 //
 // ФОРМАТЫ. Раунд несёт формат в двух полях: format — основной
 // (обратная совместимость со старыми записями) и formats — вся
@@ -10226,7 +10173,6 @@ if (typeof window !== 'undefined') {
     window.roundsDueForStart = roundsDueForStart;
     window.pestovoActivateRounds = pestovoActivateRounds;
     window.pestovoAutoStartRounds = pestovoAutoStartRounds;
-    window.pestovoStartTournamentNow = pestovoStartTournamentNow;
     // Каскадное удаление турнира (раунды + протоколы + следы в истории игроков).
     window.pestovoDeleteTournamentCascade = pestovoDeleteTournamentCascade;
     window.pestovoDeleteTournamentRounds = pestovoDeleteTournamentRounds;

@@ -1,7 +1,7 @@
-// Автотесты старта турнира и ввода счёта (запуск: node tools/test-tournament-start-gate.js)
-// Проверяются реальные функции из js/utils.js, js/start-admin.js и js/live.js:
-//   1) раунды, созданные протоколом до старта, не активны и не дают вводить счёт;
-//   2) раунд открывается ровно в момент старта (время или кнопка «Старт»);
+// Автотесты гейта скоринга и ввода счёта (запуск: node tools/test-tournament-start-gate.js)
+// Проверяются реальные функции из js/utils.js и js/live.js:
+//   1) scheduled-раунд закрыт до старта, а в момент старта открывается для счёта;
+//   2) раунд открывается по времени, без ручного действия из админ-панели;
 //   3) защита от «пулемётного» нажатия кнопки ввода счёта (одна запись на tap-серию);
 //   4) кнопка называется «Подтвердить»;
 //   5) «Завершить раунд» не перебрасывает на лунку, а держит предупреждение.
@@ -108,7 +108,6 @@ vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8'), sandbox);
-vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'start-admin.js'), 'utf8'), sandbox);
 sandbox.pestovoScoreWrite = (rid, ops) => { dbState.updateCalls.push({ via: 'scoreWrite', rid, ops }); return Promise.resolve({ok:true}); };
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'live.js'), 'utf8'), sandbox);
 
@@ -173,28 +172,7 @@ eq(due.tournamentIds, ['tn1'], 'roundsDueForStart: турнир наступив
 eq(sandbox.roundsDueForStart(roundsMap, startTs - 5000).roundIds, [], 'roundsDueForStart: до старта — пусто');
 
 // ══════════════════════════════════════════════════════════
-// 2. ПРОТОКОЛ: РАУНДЫ НЕ АКТИВНЫ ДО СТАРТА
-// ══════════════════════════════════════════════════════════
-sandbox.psState.tournaments = [{ id: 'tnUp', name: 'Кубок', date: '2026-09-20', status: 'upcoming' }];
-sandbox.psState.proto = { tournamentId: 'tnUp', date: '2026-09-20', startTime: '09:00', interval: 8, scheme: '1', size: 4 };
-eq(sandbox.psRoundStartStatus(sandbox.psState.proto), 'scheduled', 'протокол: турнир не начат → раунды scheduled');
-
-sandbox.psState.tournaments = [{ id: 'tnAct', name: 'Кубок', date: '2026-09-20', status: 'active' }];
-sandbox.psState.proto.tournamentId = 'tnAct';
-eq(sandbox.psRoundStartStatus(sandbox.psState.proto), 'active', 'протокол: турнир активен → раунды active');
-
-sandbox.psState.tournaments = [{ id: 'tnUp2', name: 'Кубок', date: '2020-01-01', status: 'upcoming' }];
-sandbox.psState.proto = { tournamentId: 'tnUp2', date: '2020-01-01', startTime: '09:00', interval: 8, scheme: '1', size: 4 };
-eq(sandbox.psRoundStartStatus(sandbox.psState.proto), 'active', 'протокол: время старта прошло → раунды active');
-
-// В исходнике сохранения протокола статус берётся из psRoundStartStatus, а не жёстко 'active'
-const startAdmin = fs.readFileSync(path.join(ROOT, 'js', 'start-admin.js'), 'utf8');
-ok(startAdmin.indexOf('status: roundStatus,') !== -1, 'start-admin: раунды создаются со статусом roundStatus');
-ok(startAdmin.indexOf('scheduledStart: schedStart') !== -1, 'start-admin: у раунда есть scheduledStart');
-ok(/if \(roundStatus !== 'active'\) return null;/.test(startAdmin), 'start-admin: турнир не стартует сохранением протокола');
-
-// ══════════════════════════════════════════════════════════
-// 3. КНОПКА «ПОДТВЕРДИТЬ»
+// 2. КНОПКА «ПОДТВЕРДИТЬ»
 // ══════════════════════════════════════════════════════════
 eq(sandbox.I18N.ru.next_hole_btn, 'Подтвердить результат', 'i18n ru: кнопка «Подтвердить результат»');
 eq(sandbox.I18N.en.next_hole_btn, 'Confirm result', 'i18n en: кнопка «Confirm result»');
@@ -204,7 +182,7 @@ ok(setupHtml.indexOf('id="round-start-gate"') !== -1, 'setup-round: есть б�
 ok(setupHtml.indexOf('id="finish-block-notice"') !== -1, 'setup-round: есть блок предупреждения о незавершённых лунках');
 
 // ══════════════════════════════════════════════════════════
-// 4. ЗАЩИТА ОТ БЫСТРЫХ НАЖАТИЙ «ПОДТВЕРДИТЬ»
+// 3. ЗАЩИТА ОТ БЫСТРЫХ НАЖАТИЙ «ПОДТВЕРДИТЬ»
 // ══════════════════════════════════════════════════════════
 function mkRound() {
     return {
@@ -252,7 +230,7 @@ setTimeout(function () {
     ok(getEl('save-hole-btn-text').textContent.indexOf('Подтвердить') !== -1, 'кнопка раунда: «Подтвердить ✓»');
 
     // ══════════════════════════════════════════════════════
-    // 5. ОБНОВЛЕНИЯ БАЗЫ НЕ КИДАЮТ ИГРОКА НА ПЕРВУЮ ЛУНКУ
+    // 4. ОБНОВЛЕНИЯ БАЗЫ НЕ КИДАЮТ ИГРОКА НА ПЕРВУЮ ЛУНКУ
     // ══════════════════════════════════════════════════════
     sandbox.playHole = 7;
     sandbox.findCurrentHole();
@@ -265,7 +243,7 @@ setTimeout(function () {
         'findCurrentHole: при смене раунда лунка пересчитывается на валидную');
 
     // ══════════════════════════════════════════════════════
-    // 6. «ЗАВЕРШИТЬ РАУД»: ПРЕДУПРЕЖДЕНИЕ БЕЗ ПЕРЕХОДА НА ЛУНКУ
+    // 5. «ЗАВЕРШИТЬ РАУД»: ПРЕДУПРЕЖДЕНИЕ БЕЗ ПЕРЕХОДА НА ЛУНКУ
     // ══════════════════════════════════════════════════════
     // Маркер не ввёл счёт на лунках 1 и 18 → раунд нельзя завершить.
     const order = sandbox.getRoundOrder(sandbox.curRoundData);
@@ -316,7 +294,7 @@ setTimeout(function () {
     ok(getEl('finish-block-notice').classList.contains('hidden') === true, 'после исправления: блок скрыт');
 
     // ══════════════════════════════════════════════════════
-    // 7. ОТСЧЁТ ДО СТАРТА НА СТРАНИЦЕ ИГРОКА
+    // 6. ОТСЧЁТ ДО СТАРТА НА СТРАНИЦЕ ИГРОКА
     // ══════════════════════════════════════════════════════
     sandbox.curRoundData = Object.assign(mkRound(), { status: 'scheduled', scheduledStart: Date.now() + 65000 });
     sandbox.canEditGroup = false;
@@ -334,7 +312,7 @@ setTimeout(function () {
     ok(sandbox.isRoundOpenForScoring(sandbox.curRoundData, Date.now()) === true, 'отсчёт: раунд открыт для ввода счёта');
 
     // ══════════════════════════════════════════════════════
-    // 8. ТУРНИРНЫЕ РАУНДЫ ОТДЕЛЬНЫ ОТ СОЛО/ГРУППОВЫХ
+    // 7. ТУРНИРНЫЕ РАУНДЫ ОТДЕЛЬНЫ ОТ СОЛО/ГРУППОВЫХ
     // ══════════════════════════════════════════════════════
     const tnRound = { status: 'active', tournamentId: 'tn1', protocolId: 'p1', mode: 'group', players: {} };
     const soloRound = { status: 'active', mode: 'solo', players: {} };

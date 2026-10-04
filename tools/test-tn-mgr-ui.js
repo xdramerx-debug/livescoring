@@ -9,7 +9,8 @@
  * in-memory базой, выполняет реальные модули системы менеджера турниров
  * (core → data → io → ui → sheet → round → controller) и проходит полный
  * сценарий: создание турнира → раунд → группа → участник (поиск RU/EN) →
- * стартовый лист с QR → ввод удара → результаты → карточка игрока.
+ * стартовый лист и отдельный QR-лист → ввод удара → редактор всех карточек →
+ * результаты → карточка игрока.
  */
 'use strict';
 
@@ -328,6 +329,8 @@ function run() {
                 check('есть вкладка «' + tab + '»', out.indexOf(tab) !== -1);
             });
             check('кнопка «Изменить» есть', !!$('[data-tnm-act="edit-tournament"]'));
+            check('доступны кнопки старта и принудительного финиша',
+                !!$('[data-tnm-act="start-tournament"]') && !!$('[data-tnm-act="force-finish-tournament"]'));
             click($('[data-tnm-act="add-round"]'));
             return wait(60);
         })
@@ -365,9 +368,12 @@ function run() {
             check('открылась форма группы с полями HCP от/до',
                 !!$('input[data-field="hcpFrom"]') && !!$('input[data-field="hcpTo"]'));
             check('у группы есть поле названия*', !!$('input[data-field="name"]'));
+            check('формат группы выбирается из справочника', !!$('select[data-field="format"]') && $$('select[data-field="format"] option').length >= 2);
             type($('input[data-field="name"]'), 'Группа A');
             type($('input[data-field="hcpFrom"]'), '10');
             type($('input[data-field="hcpTo"]'), '15');
+            var groupFormat = $('select[data-field="format"]');
+            type(groupFormat, groupFormat.options[1].value);
             click($('[data-tnm-act="save-group"]'));
             return wait(60);
         })
@@ -379,6 +385,7 @@ function run() {
             check('название группы сохранено', groups[win.__gid].name === 'Группа A', groups[win.__gid].name);
             check('диапазон гандикапа сохранён', Number(groups[win.__gid].hcpFrom) === 10 && Number(groups[win.__gid].hcpTo) === 15,
                 groups[win.__gid].hcpFrom + '–' + groups[win.__gid].hcpTo);
+            check('формат закреплён за группой', !!groups[win.__gid].format, groups[win.__gid].format);
             check('группа продублирована в divisions/ (публичная страница)',
                 !!get('tournaments/' + win.__tid + '/divisions/' + win.__gid));
 
@@ -477,8 +484,11 @@ function run() {
             var out = rootHtml();
             check('вкладка стартового листа открыта', out.indexOf('Стартовый лист') !== -1);
             check('есть кнопка генерации листа', !!$('[data-tnm-act="generate-sheet"]'));
-            check('есть параметры листа (размер группы/интервал/время)',
-                !!$('[data-field="groupSize"]') && !!$('[data-field="startInterval"]') && !!$('[data-field="firstTeeTime"]'));
+            check('есть параметры листа (группа/интервал/время/режим/лунка)',
+                !!$('[data-field="groupSize"]') && !!$('[data-field="startInterval"]') && !!$('[data-field="firstTeeTime"]') &&
+                !!$('select[data-field="startMode"]') && !!$('[data-field="startHole"]'));
+            type($('select[data-field="startMode"]'), 'shotgun');
+            type($('[data-field="startHole"]'), '10');
             click($('[data-tnm-act="generate-sheet"]'));
             return wait(120);
         })
@@ -486,26 +496,42 @@ function run() {
             var sheet = get('tournaments/' + win.__tid + '/sheets/' + win.__rid) || {};
             var entries = sheet.entries || {};
             check('лист сохранён в sheets/<rid>', Object.keys(entries).length === 5, Object.keys(entries).length);
+            check('в листе сохранён шотган-режим и выбранная стартовая лунка',
+                sheet.options && sheet.options.startMode === 'shotgun' && Number(sheet.options.startHole) === 10,
+                JSON.stringify(sheet.options || {}));
             var first = entries[win.__pid] || {};
             check('в листе есть позиция, группа, флайт и время старта',
                 first.position != null && !!first.groupId && !!first.flight && !!first.startTime,
                 JSON.stringify({ position: first.position, group: first.groupName, flight: first.flight, start: first.startTime }));
             check('назначен маркер группы', !!first.markerPlayerId, first.markerPlayerId);
-            check('QR ведёт на страницу ввода счёта',
-                String(first.qr || '').indexOf('setup-round.html?round=' + win.__rid) !== -1, first.qr);
+            var markerEntry = Object.keys(entries).map(function (pid) { return entries[pid]; }).filter(function (entry) {
+                return entry.groupRoundId && entry.markerPlayerId && entry.markerPlayerId !== entry.playerId;
+            })[0] || first;
+            check('QR ведёт в раунд группы от имени назначенного маркера',
+                !!markerEntry.groupRoundId && String(markerEntry.qr || '').indexOf('setup-round.html?round=' + markerEntry.groupRoundId + '&as=' + markerEntry.markerPlayerId) !== -1,
+                markerEntry.qr);
+            var markerAssignment = get('rounds/' + markerEntry.groupRoundId + '/markerAssignments/' + markerEntry.markerPlayerId) || {};
+            check('QR-маркер назначен вести счёт отображаемому игроку', markerAssignment.targetId === markerEntry.playerId,
+                markerAssignment.targetId + ' → ' + markerEntry.playerId);
             check('QR турнира сохранён в листе', !!((sheet.qr || {}).payload));
             var out = rootHtml();
             check('таблица листа отрисована', out.indexOf('tnm-sheet-table') !== -1);
             check('QR-коды показаны картинками', $$('img[data-qr]').length >= 1, $$('img[data-qr]').length);
 
-            // Экспорт PDF стартового листа (ТЗ §3.4, §9) — документ с QR и флайтами.
+            // Стартовый лист и QR печатаются в двух отдельных документах.
             click($('[data-tnm-act="sheet-pdf"]'));
             var sheetDoc = lastPrint();
-            check('PDF листа содержит турнир, дату, поле и QR маркера',
-                sheetDoc.indexOf('Кубок клуба 2026') !== -1 && sheetDoc.indexOf('QR маркера') !== -1 &&
-                sheetDoc.indexOf('data-qr=') !== -1);
-            check('PDF листа содержит флайты и группы с порядком',
-                sheetDoc.indexOf('Флайт') !== -1 && sheetDoc.indexOf('Группа') !== -1);
+            check('PDF стартового листа содержит турнир, дату, поле и состав',
+                sheetDoc.indexOf('Кубок клуба 2026') !== -1 && sheetDoc.indexOf('Группа') !== -1 && sheetDoc.indexOf('Лунка старта') !== -1);
+            check('QR-коды не дублируются в PDF стартового листа', sheetDoc.indexOf('data-qr=') === -1 && sheetDoc.indexOf('qrserver.com') === -1);
+            check('PDF листа содержит флайты с нумерацией', sheetDoc.indexOf('Флайт 1') !== -1);
+            click($('[data-tnm-act="sheet-qr-pdf"]'));
+            var qrDoc = lastPrint();
+            check('отдельный QR-лист содержит по коду на игрока', (qrDoc.match(/class="qr-label"/g) || []).length === 5);
+            check('QR-лист подписывает игрока, маркера, лунку и время',
+                qrDoc.indexOf('Счёт ведёт:') !== -1 && qrDoc.indexOf('Лунка старта:') !== -1 && qrDoc.indexOf('Время старта:') !== -1);
+            check('QR-лист размечен под A4 portrait, до 10 кодов на лист',
+                qrDoc.indexOf('@page{size:A4 portrait') !== -1 && qrDoc.indexOf('grid-template-rows:repeat(5,1fr)') !== -1);
 
             // Экспорт Excel стартового листа.
             click($('[data-tnm-act="sheet-excel"]'));
@@ -513,7 +539,8 @@ function run() {
             check('Excel листа выгружен (.xlsx)', !!sheetBook && /\.xlsx$/.test(sheetBook.filename), sheetBook && sheetBook.filename);
             check('в книге есть лист «Стартовый лист»', !!sheetBook && sheetBook.sheets[0].name === 'Стартовый лист',
                 sheetBook && sheetBook.sheets[0].name);
-            check('есть кнопка PDF и колонок', !!$('[data-tnm-act="sheet-pdf"]') && !!$('[data-tnm-act="sheet-columns"]'));
+            check('есть отдельные кнопки PDF стартового листа и QR, плюс колонки',
+                !!$('[data-tnm-act="sheet-pdf"]') && !!$('[data-tnm-act="sheet-qr-pdf"]') && !!$('[data-tnm-act="sheet-columns"]'));
 
             // Экспорт участников в PDF.
             click($('[data-tnm-act="tab"][data-tab="participants"]'));
@@ -607,7 +634,51 @@ function run() {
                 gid ? get('rounds/' + gid + '/players/' + win.__pid + '/scores/1') : '');
             check('выставлен accessKey для QR-ввода счёта', !!(gid && get('rounds/' + gid + '/accessKey')));
 
-            console.log('\n--- 8. Результаты ---');
+            console.log('\n--- 8. Счётные карточки и редактор раскладки ---');
+            win.TnMgrUI.navigate({ view: 'round', tid: win.__tid, rid: win.__rid, tab: 'scorecards' });
+            return wait(120);
+        })
+        .then(function () {
+            var out = rootHtml();
+            check('открыта отдельная страница всех счётных карточек', out.indexOf('Предпросмотр всех карточек') !== -1 && $$('.tn-scorecard').length === 5);
+            check('редактор содержит поля позиции, размера и вида',
+                !!$('[data-tnm-edit="scorecard-layout"][data-field="x"]') && !!$('[data-tnm-edit="scorecard-layout"][data-field="w"]') &&
+                !!$('[data-tnm-edit="scorecard-layout"][data-field="fontSize"]') && !!$('[data-tnm-edit="scorecard-layout"][data-field="theme"]'));
+            check('доступна перестановка блоков и добавление элементов',
+                !!$('[data-tnm-act="scorecard-move-block"][data-dir="up"]') && !!$('[data-tnm-act="scorecard-add-block"]'));
+            click($('[data-tnm-act="scorecards-print"]'));
+            var scorecardsDoc = lastPrint();
+            check('PDF карточек содержит QR, HI/CH и два поля счёта',
+                scorecardsDoc.indexOf('data-qr=') !== -1 && scorecardsDoc.indexOf('Точный гандикап (HI)') !== -1 &&
+                scorecardsDoc.indexOf('Полевой гандикап (CH)') !== -1 && scorecardsDoc.indexOf('Счёт маркера') !== -1);
+            type($('[data-tnm-edit="scorecard-layout"][data-block="player"][data-field="x"]'), '5');
+            type($('[data-tnm-edit="scorecard-layout"][data-block="player"][data-field="w"]'), '70');
+            type($('[data-tnm-edit="scorecard-layout"][data-block="player"][data-field="fontSize"]'), '15');
+            type($('[data-tnm-edit="scorecard-layout"][data-field="theme"]'), 'contrast');
+            return wait(100);
+        })
+        .then(function () {
+            var layout = get('tournaments/' + win.__tid + '/rounds/' + win.__rid + '/scorecardLayout') || {};
+            var playerBlock = (layout.blocks || []).filter(function (block) { return block.id === 'player'; })[0] || {};
+            check('позиция и размер блока сохраняются в раунде', Number(playerBlock.x) === 5 && Number(playerBlock.w) === 70, playerBlock.x + ' / ' + playerBlock.w);
+            check('размер текста и тема карточки сохраняются', Number(playerBlock.fontSize) === 15 && layout.theme === 'contrast', playerBlock.fontSize + ' / ' + layout.theme);
+            click($('[data-tnm-act="scorecard-move-block"][data-id="details"][data-dir="up"]'));
+            return wait(100);
+        })
+        .then(function () {
+            var layout = get('tournaments/' + win.__tid + '/rounds/' + win.__rid + '/scorecardLayout') || {};
+            check('перестановка блоков меняет порядок и сохраняется', layout.blocks && layout.blocks[0].id === 'details', layout.blocks && layout.blocks[0].id);
+            click($('[data-tnm-act="scorecard-add-block"]'));
+            return wait(100);
+        })
+        .then(function () {
+            var layout = get('tournaments/' + win.__tid + '/rounds/' + win.__rid + '/scorecardLayout') || {};
+            check('новый блок добавляется и сохраняется', (layout.blocks || []).length === 7, (layout.blocks || []).length);
+            click($('[data-tnm-act="scorecards-back"]'));
+            return wait(100);
+        })
+        .then(function () {
+            console.log('\n--- 9. Результаты ---');
             click($('[data-tnm-act="round-tab"][data-tab="results"]'));
             return wait(120);
         })

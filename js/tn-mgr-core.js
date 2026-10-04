@@ -332,6 +332,38 @@
         return lang === 'en' ? 'Not set' : 'Не указан';
     }
 
+    // Имена при импорте часто приходят без отдельного столбца «Пол».
+    // Используем только однозначные распространённые имена; неизвестные
+    // оставляем без догадки, чтобы не определять пол по фамилии.
+    var FEMALE_GIVEN_NAMES = (function () {
+        var names = ('алла алина алиса александра анастасия анна арина валентина валерия варвара вера вероника виктория виолетта галина дарья диана ева екатерина елена елизавета инна ирина карина ксения лариса лидия любовь людмила маргарита марина мария милана надежда наталья наталия ника олеся ольга полина раиса светлана софия софья тамара таисия татьяна юлия яна агата ангелина').split(' ');
+        var latin = ('alla alina alice alexandra alexsandra anastasia anna annie arina valentina valeria varvara vera veronica victoria violetta galina darya daria diana eva ekaterina elena elizabeth elizaveta inna irina karina ksenia xenia larisa lidia lyubov lyudmila margaret margarita marina maria mariya milana nadia nadezhda natalia nataliya nika olesya olga polina svetlana sofia sophia tamara taisiya tatiana tanya julia yulia yuliya yana agata angelina').split(' ');
+        var set = {};
+        names.concat(latin).forEach(function (name) { set[name] = true; });
+        return set;
+    })();
+    var MALE_GIVEN_NAMES = (function () {
+        var names = ('александр алексей анатолий андрей антон артем артём артур борис валентин валерий василий виктор владимир владислав вадим вадим виталий вячеслав георгий глеб григорий данила даниил денис дмитрий евгений игорь илья иван кирилл константин лев леонид максим марк матвей михаил никита николай олег павел петр пётр роман руслан сергей семен семён станислав степан тимур юрий ярослав федор фёдор').split(' ');
+        var latin = ('alexander alex alexey anatoly andrey andrei andrew anton artem artyom arthur boris valentin valery vasily victor viktor vladimir vladislav vadim vitaly vyacheslav george georgy gleb gregory danila daniel denis dmitry evgeny eugene igor ilya ivan kirill cyril konstantin lev leonid leonard maxim max mark matvey michael mikhail nikita nicholas nikolay oleg paul pavel peter petr roman ruslan sergey sergei semen stanislav stepan timur yuri yuriy yaroslav fedor').split(' ');
+        var set = {};
+        names.concat(latin).forEach(function (name) { set[name] = true; });
+        return set;
+    })();
+
+    function inferGenderFromName(value) {
+        var raw = trim(value).toLowerCase().replace(/ё/g, 'е');
+        if (!raw) return '';
+        var words = raw.replace(/[^a-zа-я0-9 -]/gi, ' ').split(/\s+/).filter(Boolean);
+        if (!words.length) return '';
+        // Если передано полное ФИО, используем разобранное имя, а не фамилию.
+        var parts = words.length > 1 ? splitFio(raw) : { firstName: words[0] };
+        var candidate = trim(parts.firstName || words[0]).toLowerCase().replace(/ё/g, 'е');
+        candidate = candidate.replace(/[-.].*$/, '');
+        if (FEMALE_GIVEN_NAMES[candidate]) return 'women';
+        if (MALE_GIVEN_NAMES[candidate]) return 'men';
+        return '';
+    }
+
     function dateIso(value) {
         if (!value) return '';
         if (value instanceof Date) {
@@ -586,21 +618,85 @@
         return p.hi;
     }
 
+    /**
+     * Автораспределение участников по диапазонам гандикапа отдельно по полу.
+     * Группы содержат примерно одинаковое число игроков, отсортированы по HCP
+     * от низкого к высокому. Возвращает определения групп для ручной записи.
+     */
+    function distributePlayers(players, groupsPerGender, options) {
+        var opts = options || {};
+        var groupCount = Math.max(1, Math.min(10, intOf(groupsPerGender, 3) || 3));
+        var result = [];
+        var byGender = { men: [], women: [], other: [] };
+        (players || []).forEach(function (player, index) {
+            if (!player) return;
+            var copy = clone(player) || {};
+            if (!copy.id) copy.id = 'player_' + index;
+            var gender = normalizeGender(copy.gender) || inferGenderFromName(copy.firstName || playerFio(copy));
+            if (!gender) gender = 'men';
+            copy.gender = gender;
+            byGender[gender === 'men' || gender === 'women' ? gender : 'other'].push(copy);
+        });
+        ['men', 'women', 'other'].forEach(function (gender) {
+            var people = byGender[gender];
+            if (!people.length) return;
+            people.sort(function (a, b) {
+                var ha = num(effectiveHcp(a));
+                var hb = num(effectiveHcp(b));
+                if (ha == null) ha = 999;
+                if (hb == null) hb = 999;
+                if (ha !== hb) return ha - hb;
+                return playerFio(a).localeCompare(playerFio(b), 'ru');
+            });
+            var count = Math.min(groupCount, people.length);
+            var buckets = [];
+            for (var i = 0; i < count; i++) buckets.push([]);
+            people.forEach(function (player, index) {
+                var bucketIndex = Math.min(count - 1, Math.floor(index * count / people.length));
+                buckets[bucketIndex].push(player);
+            });
+            buckets.forEach(function (members, index) {
+                var hcpValues = members.map(function (player) { return num(effectiveHcp(player)); }).filter(function (value) { return value != null; });
+                var genderLabelRu = gender === 'men' ? 'Мужчины' : gender === 'women' ? 'Женщины' : 'Участники';
+                var genderLabelEn = gender === 'men' ? 'Men' : gender === 'women' ? 'Ladies' : 'Players';
+                var memberMap = {};
+                members.forEach(function (player) { memberMap[player.id] = playerFio(player) || true; });
+                result.push({
+                    id: 'auto_' + gender + '_' + (index + 1),
+                    name: trim(opts.namePrefix) ? trim(opts.namePrefix) + ' ' + (index + 1) : genderLabelRu + ' ' + (index + 1),
+                    gender: gender === 'other' ? 'all' : gender,
+                    hcpFrom: hcpValues.length ? Math.min.apply(Math, hcpValues) : '',
+                    hcpTo: hcpValues.length ? Math.max.apply(Math, hcpValues) : '',
+                    tee: gender === 'women' ? (opts.womenTee || 'rd') : (opts.menTee || 'wh'),
+                    format: trim(opts.format),
+                    members: memberMap,
+                    autoDistribution: true,
+                    distributionGender: gender,
+                    distributionIndex: index + 1,
+                    playerCount: members.length,
+                    genderLabel: genderLabelEn
+                });
+            });
+        });
+        return result;
+    }
+
     function newPlayer(input) {
         var src = input || {};
         var fio = playerFio(src);
         var parts = splitFio(fio);
-        var gender = normalizeGender(src.gender);
+        var firstName = trim(src.firstName) || parts.firstName;
+        var gender = normalizeGender(src.gender) || inferGenderFromName(firstName || fio) || 'men';
         return {
             id: src.id || '',
             fio: fio,
             name: fio,
-            firstName: trim(src.firstName) || parts.firstName,
+            firstName: firstName,
             lastName: trim(src.lastName) || parts.lastName,
             middleName: trim(src.middleName) || parts.middleName,
             hi: src.hi != null ? num(src.hi) : (src.handicap != null ? num(src.handicap) : null),
             ch: src.ch != null ? num(src.ch) : null,
-            gender: gender || 'men',
+            gender: gender,
             tee: trim(src.tee),
             format: trim(src.format),
             groupId: trim(src.groupId),
@@ -615,86 +711,92 @@
     // 7. СТАРТОВЫЙ ЛИСТ
     // ----------------------------------------------------------
     /**
-     * Генерация стартового листа.
-     * options: {
-     *   groupSize (4), startInterval (8 мин), firstTeeTime ('09:00'),
-     *   tee (по умолчанию), format, markMode ('group'|'flight'|'order'),
-     *   groups: [] определения групп (с участниками), players: [] участники
-     * }
-     * Возвращает { entries: [...], groups: [...] } — готовые строки листа.
+     * Генерация стартового листа для последовательного и шотган-старта.
+     * В режиме shotgun группы равномерно назначаются на 18 лунок; повторная
+     * волна получает время +интервал и подписи 1А/1Б, 2А/2Б и т. д.
      */
     function buildSheet(options) {
         var opts = options || {};
         var players = (opts.players || []).map(function (p, index) {
             var copy = clone(p) || {};
             copy._order = index;
+            copy.id = copy.id || ('player_' + index);
             return copy;
         });
         var definitions = opts.groups || [];
-        var groupSize = Math.max(1, intOf(opts.groupSize, 4) || 4);
+        var groupSize = Math.max(1, Math.min(4, intOf(opts.groupSize, 4) || 4));
         var interval = Math.max(1, intOf(opts.startInterval, 8) || 8);
         var firstTime = timeText(opts.firstTeeTime, '09:00');
         var defaultTee = trim(opts.tee) || 'wh';
         var defaultFormat = trim(opts.format) || '';
+        var startMode = opts.startMode === 'shotgun' ? 'shotgun' : 'sequential';
+        var startHole = Math.max(1, Math.min(18, intOf(opts.startHole, 1) || 1));
         var used = {};
         var groups = [];
 
         function takeGroupMembers(definition) {
-            var ids = asMap(definition.members);
-            var memberIds = Object.keys(ids);
-            var list = [];
-            players.forEach(function (player) {
-                if (used[player.id]) return;
-                var member = !!definition.members && (memberIds.indexOf(player.id) !== -1 ||
-                    (definition.members[player.id] && definition.members[player.id] !== false));
-                var autoMember = !memberIds.length && groupMatchesPlayer(definition, player);
-                if (member || autoMember) list.push(player);
+            var ids = asMap(definition && definition.members);
+            var memberIds = Object.keys(ids).filter(function (id) { return ids[id] !== false; });
+            var hasRange = definition && (definition.hcpFrom != null && definition.hcpFrom !== '' ||
+                definition.hcpTo != null && definition.hcpTo !== '' ||
+                (definition.gender && definition.gender !== 'all'));
+            return players.filter(function (player) {
+                if (used[player.id]) return false;
+                if (memberIds.length) return memberIds.indexOf(player.id) !== -1;
+                return !!hasRange && groupMatchesPlayer(definition, player);
             });
-            if (!memberIds.length) {
-                // Группа без явного состава: диапазон может быть пустым — тогда
-                // берём «остальных» только для последней группы (см. ниже).
-                list = list.slice(0, groupSize);
-            }
-            return list;
         }
 
         definitions.forEach(function (definition) {
             var members = takeGroupMembers(definition);
-            members = members.slice(0, groupSize);
             if (!members.length) return;
             members.forEach(function (player) { used[player.id] = true; });
-            groups.push({ id: definition.id, name: definition.name, definition: definition, players: members });
+            for (var offset = 0; offset < members.length; offset += groupSize) {
+                groups.push({
+                    id: definition.id || '', name: definition.name || '', definition: definition,
+                    players: members.slice(offset, offset + groupSize)
+                });
+            }
         });
 
-        // Остальные игроки: сначала те, кому не нашлось группы по диапазону.
+        // Остальные игроки: по гандикапу, с сохранением размера стартовой группы.
         var rest = players.filter(function (player) { return !used[player.id]; });
-        rest.sort(function (a, b) { return comparableHcp(a) - comparableHcp(b); });
-        var sortedAuto = rest.slice();
-        for (var i = 0; i < sortedAuto.length; i += groupSize) {
-            var chunk = sortedAuto.slice(i, i + groupSize);
-            chunk.forEach(function (player) { used[player.id] = true; });
-            groups.push({ id: '', name: '', definition: null, players: chunk });
+        rest.sort(function (a, b) {
+            var genderOrder = { men: 0, women: 1 };
+            var ga = genderOrder[normalizeGender(a.gender)] == null ? 2 : genderOrder[normalizeGender(a.gender)];
+            var gb = genderOrder[normalizeGender(b.gender)] == null ? 2 : genderOrder[normalizeGender(b.gender)];
+            return ga - gb || comparableHcp(a) - comparableHcp(b) || playerFio(a).localeCompare(playerFio(b), 'ru');
+        });
+        for (var i = 0; i < rest.length; i += groupSize) {
+            groups.push({ id: '', name: '', definition: null, players: rest.slice(i, i + groupSize) });
         }
 
-        // Порядок групп: сначала группы справочника (в их порядке), затем авто.
+        var assignedHoles = groups.map(function (_, index) {
+            return startMode === 'shotgun' ? ((startHole - 1 + (index % 18)) % 18) + 1 : startHole;
+        });
+        var waveByGroup = [];
+        var waveCountByHole = {};
+        assignedHoles.forEach(function (hole, index) {
+            var wave = waveCountByHole[hole] || 0;
+            waveByGroup[index] = wave;
+            waveCountByHole[hole] = wave + 1;
+        });
+
         var entries = [];
-        var flightMap = {};
         var flights = [];
         groups.forEach(function (group, groupIndex) {
-            var playerCount = group.players.length;
-            var flightKey = '';
-            if (opts.flights === false) {
-                flightKey = '';
-            } else {
-                // Флайты: по 3 группы в флайт (A, B, C…) — как в клубной практике.
-                var flightIndex = Math.floor(groupIndex / Math.max(1, intOf(opts.groupsPerFlight, 3) || 3));
-                flightKey = flightLetter(flightIndex);
-                if (flights.indexOf(flightKey) === -1) flights.push(flightKey);
-            }
-            var startTime = addMinutesToTime(firstTime, groupIndex * interval);
+            var hole = assignedHoles[groupIndex];
+            var wave = waveByGroup[groupIndex];
+            var flightNumber = ((hole - startHole + 18) % 18) + 1;
+            var flightKey = String(flightNumber);
+            if (startMode === 'shotgun' && waveCountByHole[hole] > 1) flightKey += waveLetter(wave);
+            if (flights.indexOf(flightKey) === -1) flights.push(flightKey);
+            var startOffset = startMode === 'shotgun' ? wave * interval : groupIndex * interval;
+            var startTime = addMinutesToTime(firstTime, startOffset);
             var groupTee = trim(group.definition && group.definition.tee) || trim(group.players[0] && group.players[0].tee) || defaultTee;
             var groupFormat = trim(group.definition && group.definition.format) || defaultFormat;
             var markers = assignMarkers(group.players, opts.markMode);
+            var startGroupId = 'tee_' + (groupIndex + 1);
             group.players.forEach(function (player, position) {
                 var markerId = markers[player.id] || '';
                 entries.push({
@@ -703,26 +805,32 @@
                     firstName: player.firstName || '',
                     lastName: player.lastName || '',
                     middleName: player.middleName || '',
-                    gender: normalizeGender(player.gender) || '',
+                    gender: normalizeGender(player.gender) || inferGenderFromName(player.firstName || playerFio(player)) || '',
                     hi: player.hi != null ? player.hi : (player.handicap != null ? player.handicap : ''),
                     ch: player.ch != null ? player.ch : '',
                     groupId: group.id || '',
                     groupName: group.name || '',
+                    startGroupId: startGroupId,
                     markerPlayerId: markerId,
                     tee: trim(player.tee) || groupTee,
-                    format: trim(player.format) || groupFormat,
+                    // Если у группы выбран формат, он закреплён за всеми её игроками.
+                    format: groupFormat || trim(player.format) || defaultFormat,
                     flight: flightKey,
+                    startHole: hole,
+                    startWave: wave,
                     startTime: startTime,
                     position: position + 1,
                     order: entries.length + 1,
                     qr: ''
                 });
-                flightMap[flightKey] = true;
             });
+            group.startGroupId = startGroupId;
+            group.startHole = hole;
+            group.startWave = wave;
             group.startTime = startTime;
             group.flight = flightKey;
             group.tee = groupTee;
-            group.format = groupFormat;
+            group.format = groupFormat || defaultFormat;
             group.markerPlayerId = markers[(group.players[0] || {}).id] || '';
         });
 
@@ -733,9 +841,16 @@
             options: {
                 groupSize: groupSize, startInterval: interval, firstTeeTime: firstTime,
                 tee: defaultTee, format: defaultFormat, markMode: opts.markMode || 'group',
-                groupsPerFlight: intOf(opts.groupsPerFlight, 3) || 3, flights: opts.flights !== false
+                startMode: startMode, startHole: startHole
             }
         };
+    }
+
+    function waveLetter(index) {
+        var letters = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ';
+        var value = Math.max(0, intOf(index, 0) || 0);
+        if (value < letters.length) return letters.charAt(value);
+        return String(value + 1);
     }
 
     function comparableHcp(player) {
@@ -814,14 +929,14 @@
     /** Пересчитывает позиции внутри групп после ручных правок. */
     function recalcSheet(entries) {
         var sorted = (entries || []).slice().sort(function (a, b) {
-            var groupA = str(a.groupId) + '|' + str(a.flight);
-            var groupB = str(b.groupId) + '|' + str(b.flight);
+            var groupA = str(a.startGroupId || [a.groupId, a.flight, a.startHole, a.startTime].join('|'));
+            var groupB = str(b.startGroupId || [b.groupId, b.flight, b.startHole, b.startTime].join('|'));
             if (groupA !== groupB) return groupA < groupB ? -1 : 1;
             return (a.order || 0) - (b.order || 0);
         });
         var counters = {};
         sorted.forEach(function (entry) {
-            var key = str(entry.groupId) + '|' + str(entry.flight) + '|' + str(entry.startTime);
+            var key = str(entry.startGroupId || [entry.groupId, entry.flight, entry.startHole, entry.startTime].join('|'));
             counters[key] = (counters[key] || 0) + 1;
             entry.position = counters[key];
         });
@@ -1188,8 +1303,6 @@
      */
     function inferColumns(rows, mapping) {
         var map = mapping || {};
-        var taken = {};
-        Object.keys(map).forEach(function (kind) { taken[map[kind]] = kind; });
         var width = 0;
         (rows || []).forEach(function (row) { width = Math.max(width, (row || []).length); });
         var profiles = [];
@@ -1198,16 +1311,15 @@
             names: [], fio: null, lastName: null, firstName: null, middleName: null,
             hi: null, gender: null, tee: null, profiles: profiles
         };
-        var hasNameKind = NAME_KINDS.some(function (kind) { return map[kind] != null; });
         var hiCandidates = [];
         profiles.forEach(function (stats, column) {
-            var kind = taken[column];
             var filled = stats.filled || 1;
             if (map.no === column) return;
-            if (!hasNameKind && (!kind || NAME_KINDS.indexOf(kind) !== -1)) {
-                if (stats.names >= 2 && stats.names / filled >= 0.6 && stats.numeric / filled < 0.5) {
-                    result.names.push(column);
-                }
+            // Имена могут стоять не только под заголовком «ФИО»: встречается
+            // служебная шапка, а сами значения — в соседней/иной колонке.
+            // Поэтому распознаём имя по содержимому даже при наличии заголовка.
+            if (stats.names >= 2 && stats.names / filled >= 0.6 && stats.numeric / filled < 0.5) {
+                result.names.push(column);
             }
             if (map.hi == null && stats.numeric >= 2 && stats.numeric / filled >= 0.6 &&
                 stats.hcp / filled >= 0.6 && !isIndexColumn(rows, column)) {
@@ -1390,6 +1502,7 @@
             gender = normalizeGender(cells[inferred.gender]);
         }
         if (!gender) gender = genderFromRow(cells, used);
+        if (!gender) gender = inferGenderFromName(parts.first || split.firstName || fio);
 
         var tee = teeCode(at.tee) || trim(at.tee);
         if (!tee && inferred && inferred.tee != null && !used[inferred.tee]) tee = teeCode(cells[inferred.tee]);
@@ -1649,7 +1762,7 @@
     // Заголовки таблиц (RU/EN) — используются в Excel/PDF и тестах.
     var HEADERS = {
         participants: { ru: ['№', 'ФИО', 'HI', 'CH', 'Пол', 'ТИ', 'Группа', 'Источник'], en: ['#', 'Name', 'HI', 'CH', 'Gender', 'Tee', 'Group', 'Source'] },
-        sheet: { ru: ['№', 'Время', 'Флайт', 'Группа', 'Поз.', 'ФИО', 'HI', 'CH', 'ТИ', 'Формат', 'Маркер'], en: ['#', 'Time', 'Flight', 'Group', 'Pos.', 'Name', 'HI', 'CH', 'Tee', 'Format', 'Marker'] },
+        sheet: { ru: ['№', 'Время', 'Флайт', 'Лунка', 'Группа', 'Поз.', 'ФИО', 'HI', 'CH', 'ТИ', 'Формат', 'Маркер'], en: ['#', 'Time', 'Flight', 'Start hole', 'Group', 'Pos.', 'Name', 'HI', 'CH', 'Tee', 'Format', 'Marker'] },
         results: { ru: ['Место', 'Игрок', 'Счёт', 'Нетто', 'Очки стэйблфорда', 'Группа'], en: ['Place', 'Player', 'Score', 'Net', 'Stableford points', 'Group'] },
         scores: { ru: ['Игрок', 'Группа', 'ТИ', 'CH', 'Лунки 1–18', 'Итог'], en: ['Player', 'Group', 'Tee', 'CH', 'Holes 1–18', 'Total'] },
         playerCard: { ru: ['Лунка', 'Длина', 'Пар', 'Индекс', 'Фора', 'Удары', 'Очки гросс', 'Очки нетто'], en: ['Hole', 'Length', 'Par', 'Index', 'Fore', 'Strokes', 'Gross points', 'Net points'] }
@@ -1691,8 +1804,8 @@
         (players || []).forEach(function (player, index) {
             rows.push([
                 index + 1, playerFio(player), fmtHcp(player.hi), fmtHcp(player.ch),
-                genderLabel(player.gender, lang), teeName(player.tee, lang),
-                player.groupName || '', sourceLabel(player.source, lang)
+                genderLabel(player.gender || inferGenderFromName(player.firstName || playerFio(player)), lang),
+                teeName(player.tee, lang), player.groupName || '', sourceLabel(player.source, lang)
             ]);
         });
         return rows;
@@ -1704,7 +1817,7 @@
         (entries || []).slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); })
             .forEach(function (entry, index) {
                 rows.push([
-                    index + 1, entry.startTime || '', entry.flight || '', entry.groupName || '', entry.position || '',
+                    index + 1, entry.startTime || '', entry.flight || '', entry.startHole || '', entry.groupName || '', entry.position || '',
                     entry.playerName || '', fmtHcp(entry.hi), fmtHcp(entry.ch), teeName(entry.tee, lang),
                     entry.format || '', entry.markerName || ''
                 ]);
@@ -1784,6 +1897,20 @@
             '&margin=2&data=' + encodeURIComponent(payload);
     }
 
+    function defaultScorecardLayout() {
+        return {
+            theme: 'classic',
+            blocks: [
+                { id: 'player', type: 'player', label: 'Игрок', x: 3, y: 3, w: 74, h: 10, fontSize: 20, zIndex: 3, visible: true },
+                { id: 'details', type: 'details', label: 'Турнир и старт', x: 3, y: 14, w: 74, h: 9, fontSize: 11, zIndex: 2, visible: true },
+                { id: 'handicap', type: 'handicap', label: 'Гандикап', x: 3, y: 24, w: 74, h: 8, fontSize: 12, zIndex: 2, visible: true },
+                { id: 'qr', type: 'qr', label: 'QR маркера', x: 81, y: 3, w: 16, h: 29, fontSize: 8, zIndex: 3, visible: true },
+                { id: 'player-scores', type: 'playerScores', label: 'Счёт игрока', x: 3, y: 36, w: 94, h: 34, fontSize: 9, zIndex: 1, visible: true },
+                { id: 'marker-scores', type: 'markerScores', label: 'Счёт маркера', x: 3, y: 73, w: 94, h: 20, fontSize: 9, zIndex: 1, visible: true }
+            ]
+        };
+    }
+
     // ----------------------------------------------------------
     // 11. ПЕЧАТНЫЕ ДОКУМЕНТЫ (PDF через печать браузера)
     // ----------------------------------------------------------
@@ -1810,9 +1937,37 @@
         '.podium-2{background:#eef0f3;font-weight:700}',
         '.podium-3{background:#f7e8dc;font-weight:700}',
         '.totals{font-weight:700;background:#fafaf5}',
-        '@media print{button{display:none}}',
+        '@media print{button{display:none}body{margin:0;padding:0}}',
         '@page{size:A4 landscape;margin:10mm}',
-        '@page portrait{size:A4 portrait;margin:10mm}'
+        '@page portrait{size:A4 portrait;margin:10mm}',
+        '.qr-sheet-page{width:190mm;height:277mm;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);gap:3mm;page-break-after:always;break-after:page}',
+        '.qr-sheet-page:last-child{page-break-after:auto;break-after:auto}',
+        '.qr-label{min-width:0;min-height:0;border:1px solid #666;padding:3mm;display:flex;align-items:center;gap:4mm;overflow:hidden;page-break-inside:avoid;break-inside:avoid}',
+        '.qr-label img{width:31mm;height:31mm;flex:0 0 31mm;image-rendering:pixelated}',
+        '.qr-label-content{min-width:0;font-size:10pt;line-height:1.35}',
+        '.qr-label-player{font-size:12pt;font-weight:700;margin-bottom:2mm}',
+        '.qr-label-detail{margin-top:1mm}',
+        '.tn-scorecard{position:relative;width:277mm;height:190mm;overflow:hidden;border:1.2mm solid #214d37;background:#fff;color:#111;page-break-after:always;break-after:page}',
+        '.tn-scorecard:last-child{page-break-after:auto;break-after:auto}',
+        '.tn-scorecard.theme-classic{border-color:#214d37}',
+        '.tn-scorecard.theme-minimal{border-color:#777}',
+        '.tn-scorecard.theme-contrast{border-color:#111;border-width:2mm}',
+        '.scorecard-block{position:absolute;overflow:hidden;padding:1mm}',
+        '.scorecard-player-name{font-weight:700;font-size:1em;line-height:1.15}',
+        '.scorecard-details-line{white-space:nowrap;line-height:1.3}',
+        '.scorecard-hcp{display:flex;gap:5mm;align-items:center;font-weight:700}',
+        '.scorecard-qr{text-align:center;font-size:2.5mm;line-height:1.2}',
+        '.scorecard-qr img{display:block;width:23mm;height:23mm;max-width:100%;margin:0 auto 1mm;image-rendering:pixelated}',
+        '.scorecard-table{width:100%;height:100%;margin:0;border-collapse:collapse;table-layout:fixed;font-size:1em}',
+        '.scorecard-table th,.scorecard-table td{padding:.6mm .35mm;text-align:center;overflow:hidden;border:.25mm solid #555}',
+        '.scorecard-table th{background:#e8efe8;font-weight:700}',
+        '.scorecard-table .scorecard-row-label{width:20mm;text-align:left;font-weight:700}',
+        '.scorecard-table .scorecard-summary{background:#f1f2ed;font-weight:700}',
+        '.scorecard-table .scorecard-score-cell{height:7mm;background:#fff}',
+        '.scorecard-block-custom{border:1px dashed #888;white-space:pre-wrap}',
+        '.tn-scorecards-preview .tn-scorecard{max-width:100%;height:auto;aspect-ratio:277/190;margin:0 auto 1rem}',
+        '.tn-scorecards-preview .scorecard-block{font-size:clamp(6px,1.1vw,14px)}',
+        '@media print{.qr-sheet-page{width:190mm;height:277mm}.tn-scorecard{width:277mm;height:190mm}}'
     ].join('');
 
     function printDocument(title, bodyHtml, options) {
@@ -1833,6 +1988,201 @@
                 (qr.caption ? '<div>' + esc(qr.caption) + '</div>' : '') + '</div>';
         }
         return html + '</div>';
+    }
+
+    function normalizedScorecardLayout(layout) {
+        var fallback = defaultScorecardLayout();
+        var saved = layout && typeof layout === 'object' ? layout : {};
+        var blocks = Array.isArray(saved.blocks) && saved.blocks.length ? saved.blocks : fallback.blocks;
+        return {
+            theme: ['classic', 'minimal', 'contrast'].indexOf(saved.theme) !== -1 ? saved.theme : fallback.theme,
+            blocks: blocks.map(function (block, index) {
+                var source = block || {};
+                function clamp(value, min, max, defaultValue) {
+                    var parsed = num(value, defaultValue);
+                    return Math.max(min, Math.min(max, parsed == null ? defaultValue : parsed));
+                }
+                return {
+                    id: trim(source.id) || ('block_' + index),
+                    type: trim(source.type) || 'custom',
+                    label: trim(source.label) || '',
+                    text: trim(source.text) || '',
+                    x: clamp(source.x, 0, 97, 3), y: clamp(source.y, 0, 96, 3),
+                    w: clamp(source.w, 3, 100, 20), h: clamp(source.h, 3, 100, 10),
+                    fontSize: clamp(source.fontSize, 5, 36, 10),
+                    zIndex: clamp(source.zIndex, 0, 20, 1),
+                    visible: source.visible !== false
+                };
+            })
+        };
+    }
+
+    function scorecardBlockStyle(block) {
+        return 'left:' + block.x + '%;top:' + block.y + '%;width:' + block.w + '%;height:' + block.h +
+            '%;font-size:' + block.fontSize + 'pt;z-index:' + block.zIndex + ';' +
+            (block.visible ? '' : 'display:none;');
+    }
+
+    function scorecardTable(label, holes, values, options) {
+        var opts = options || {};
+        var lang = opts.lang === 'en' ? 'en' : 'ru';
+        var summaries = opts.summaries || [];
+        var blankScores = !!opts.blankScores;
+        var html = '<table class="scorecard-table"><thead><tr><th class="scorecard-row-label">' +
+            esc(label) + '</th>';
+        holes.forEach(function (hole) { html += '<th>' + esc(hole.hole) + '</th>'; });
+        summaries.forEach(function (summary) { html += '<th class="scorecard-summary">' + esc(summary) + '</th>'; });
+        html += '</tr></thead><tbody><tr><td class="scorecard-row-label">' +
+            esc(opts.rowLabel || (lang === 'en' ? 'Player score' : 'Счёт игрока')) + '</td>';
+        (values || []).forEach(function (value) {
+            html += '<td class="' + (opts.scoreCells ? 'scorecard-score-cell' : '') + '">' +
+                (blankScores ? '' : esc(value == null ? '' : value)) + '</td>';
+        });
+        summaries.forEach(function (summary, index) {
+            var total = opts.summaryValues && opts.summaryValues[index];
+            html += '<td class="scorecard-summary ' + (opts.scoreCells ? 'scorecard-score-cell' : '') + '">' +
+                (blankScores || total == null ? '' : esc(total)) + '</td>';
+        });
+        html += '</tr></tbody></table>';
+        return html;
+    }
+
+    /** Разметка одной счётной карточки — общая для превью и печатного PDF. */
+    function scorecardMarkup(opts) {
+        var o = opts || {};
+        var lang = o.lang === 'en' ? 'en' : 'ru';
+        var player = o.player || {};
+        var entry = o.entry || {};
+        var card = o.card || playerCard({}, o.course || defaultCourse(), entry.tee || player.tee || 'wh', entry.ch != null ? entry.ch : player.ch);
+        var holes = (card.holes || []).slice(0, 18);
+        var summaries = lang === 'en' ? ['Out', 'In', 'Total'] : ['Аут', 'Ин', 'Итог'];
+        var layout = normalizedScorecardLayout(o.layout);
+        var payload = o.qr || entry.qr || entry.scoreUrl || '';
+        var playerName = o.playerName || entry.playerName || playerFio(player);
+        var markerName = o.markerName || '';
+        var tee = teeName(entry.tee || player.tee || '', lang);
+        var startHole = entry.startHole || o.startHole || 1;
+        var detailParts = [];
+        if (o.tournamentName) detailParts.push(o.tournamentName);
+        if (o.roundDate) detailParts.push((lang === 'en' ? 'Date: ' : 'Дата: ') + dateRu(o.roundDate));
+        if (o.courseName) detailParts.push((lang === 'en' ? 'Course: ' : 'Поле: ') + o.courseName);
+        if (tee) detailParts.push((lang === 'en' ? 'Tee: ' : 'ТИ: ') + tee);
+        detailParts.push((lang === 'en' ? 'Start: hole ' : 'Старт: лунка ') + startHole +
+            (entry.startTime ? ' · ' + (lang === 'en' ? 'time ' : 'время ') + entry.startTime : ''));
+        var blocks = layout.blocks.slice().sort(function (a, b) {
+            return a.zIndex - b.zIndex || layout.blocks.indexOf(a) - layout.blocks.indexOf(b);
+        });
+        var body = '';
+        blocks.forEach(function (block) {
+            if (!block.visible) return;
+            var content = '';
+            if (block.type === 'player') {
+                content = '<div class="scorecard-player-name">' + esc(playerName) + '</div>';
+            } else if (block.type === 'details') {
+                content = '<div class="scorecard-details-line">' + esc(detailParts.join(' · ')) + '</div>';
+            } else if (block.type === 'handicap') {
+                content = '<div class="scorecard-hcp"><span>' + esc(lang === 'en' ? 'Exact handicap (HI)' : 'Точный гандикап (HI)') +
+                    ': ' + esc(fmtHcp(entry.hi != null ? entry.hi : player.hi)) + '</span><span>' +
+                    esc(lang === 'en' ? 'Course handicap (CH)' : 'Полевой гандикап (CH)') + ': ' +
+                    esc(fmtHcp(entry.ch != null ? entry.ch : player.ch)) + '</span></div>';
+            } else if (block.type === 'qr') {
+                content = payload ? '<div class="scorecard-qr"><img src="' + esc(qrImageUrl(payload, 320)) +
+                    '" data-qr="' + esc(payload) + '" alt="QR"><b>' + esc(lang === 'en' ? 'Score for ' : 'Счёт игрока: ') +
+                    esc(playerName) + '</b>' + (markerName ? '<div>' + esc((lang === 'en' ? 'Marker: ' : 'Маркер: ') + markerName) + '</div>' : '') +
+                    '</div>' : '<div class="scorecard-qr">' + esc(lang === 'en' ? 'QR unavailable' : 'QR не назначен') + '</div>';
+            } else if (block.type === 'playerScores') {
+                var lengthValues = holes.map(function (hole) { return hole.length; });
+                var parValues = holes.map(function (hole) { return hole.par; });
+                var indexValues = holes.map(function (hole) { return hole.index; });
+                var foreValues = holes.map(function (hole) { return hole.fore; });
+                var scoreValues = holes.map(function (hole) { return hole.strokes; });
+                function aggregate(values, begin, end) {
+                    var list = values.slice(begin, end);
+                    if (!list.some(function (value) { return value != null && value !== ''; })) return '';
+                    return list.reduce(function (sum, value) { return sum + (num(value, 0) || 0); }, 0);
+                }
+                var metricRows = [
+                    [lang === 'en' ? 'Length' : 'Длина', lengthValues, [aggregate(lengthValues, 0, 9), aggregate(lengthValues, 9, 18), aggregate(lengthValues, 0, 18)]],
+                    [lang === 'en' ? 'Par' : 'Пар', parValues, [aggregate(parValues, 0, 9), aggregate(parValues, 9, 18), aggregate(parValues, 0, 18)]],
+                    [lang === 'en' ? 'Index' : 'Индекс', indexValues, ['', '', '']],
+                    [lang === 'en' ? 'Handicap' : 'Фора', foreValues, ['', '', '']],
+                    [lang === 'en' ? 'Player score' : 'Счёт игрока', scoreValues,
+                        [aggregate(scoreValues, 0, 9), aggregate(scoreValues, 9, 18), aggregate(scoreValues, 0, 18)]]
+                ];
+                content = '<table class="scorecard-table"><thead><tr><th class="scorecard-row-label">' +
+                    esc(lang === 'en' ? 'Hole' : 'Лунка') + '</th>' + holes.map(function (hole) { return '<th>' + esc(hole.hole) + '</th>'; }).join('') +
+                    summaries.map(function (summary) { return '<th class="scorecard-summary">' + esc(summary) + '</th>'; }).join('') +
+                    '</tr></thead><tbody>' + metricRows.map(function (row) {
+                        return '<tr><td class="scorecard-row-label">' + esc(row[0]) + '</td>' +
+                            row[1].map(function (value) { return '<td' + (row[0] === (lang === 'en' ? 'Player score' : 'Счёт игрока') ? ' class="scorecard-score-cell"' : '') + '>' + esc(value == null ? '' : value) + '</td>'; }).join('') +
+                            row[2].map(function (value) { return '<td class="scorecard-summary' + (row[0] === (lang === 'en' ? 'Player score' : 'Счёт игрока') ? ' scorecard-score-cell' : '') + '">' + esc(value == null ? '' : value) + '</td>'; }).join('') +
+                            '</tr>';
+                    }).join('') + '</tbody></table>';
+            } else if (block.type === 'markerScores') {
+                var markerScores = o.markerScores || {};
+                var values = holes.map(function (hole) {
+                    var value = markerScores[hole.hole] != null ? markerScores[hole.hole] : markerScores[String(hole.hole)];
+                    return value == null ? '' : value;
+                });
+                var totalScores = function (from, to) {
+                    var list = values.slice(from, to).filter(function (value) { return value !== ''; });
+                    return list.length ? list.reduce(function (sum, value) { return sum + (num(value, 0) || 0); }, 0) : '';
+                };
+                content = '<table class="scorecard-table"><thead><tr><th class="scorecard-row-label">' +
+                    esc(lang === 'en' ? 'Hole' : 'Лунка') + '</th>' + holes.map(function (hole) { return '<th>' + esc(hole.hole) + '</th>'; }).join('') +
+                    summaries.map(function (summary) { return '<th class="scorecard-summary">' + esc(summary) + '</th>'; }).join('') +
+                    '</tr></thead><tbody><tr><td class="scorecard-row-label">' + esc(lang === 'en' ? 'Marker score' : 'Счёт маркера') + '</td>' +
+                    values.map(function (value) { return '<td class="scorecard-score-cell">' + esc(value) + '</td>'; }).join('') +
+                    [totalScores(0, 9), totalScores(9, 18), totalScores(0, 18)].map(function (value) { return '<td class="scorecard-summary scorecard-score-cell">' + esc(value) + '</td>'; }).join('') +
+                    '</tr></tbody></table>';
+            } else {
+                var customText = block.text || block.label || (lang === 'en' ? 'New item' : 'Новый элемент');
+                content = '<div class="scorecard-block-custom">' + esc(customText) + '</div>';
+            }
+            body += '<div class="scorecard-block scorecard-block-' + esc(block.type) + '" data-scorecard-block="' + esc(block.id) +
+                '" style="' + esc(scorecardBlockStyle(block)) + '">' + content + '</div>';
+        });
+        return '<section class="tn-scorecard theme-' + esc(layout.theme) + '" data-player-id="' + esc(player.id || entry.playerId || '') + '">' + body + '</section>';
+    }
+
+    function qrCardsHtml(opts) {
+        var o = opts || {};
+        var lang = o.lang === 'en' ? 'en' : 'ru';
+        var entries = (o.entries || []).slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+        var pages = '';
+        for (var offset = 0; offset < entries.length; offset += 10) {
+            pages += '<div class="qr-sheet-page">';
+            entries.slice(offset, offset + 10).forEach(function (entry) {
+                var payload = entry.qr || entry.scoreUrl || '';
+                var details = [];
+                if (o.tournamentName) details.push(o.tournamentName);
+                if (o.roundDate) details.push((lang === 'en' ? 'Round: ' : 'Раунд: ') + dateRu(o.roundDate));
+                details.push((lang === 'en' ? 'Start hole: ' : 'Лунка старта: ') + (entry.startHole || 1));
+                details.push((lang === 'en' ? 'Start time: ' : 'Время старта: ') + (entry.startTime || '—'));
+                if (entry.markerName) details.push((lang === 'en' ? 'Scorekeeper: ' : 'Счёт ведёт: ') + entry.markerName);
+                pages += '<article class="qr-label">' + (payload ? '<img src="' + esc(qrImageUrl(payload, 360)) +
+                    '" data-qr="' + esc(payload) + '" alt="QR">' : '') +
+                    '<div class="qr-label-content"><div class="qr-label-player">' + esc(entry.playerName || '') + '</div>' +
+                    details.map(function (line) { return '<div class="qr-label-detail">' + esc(line) + '</div>'; }).join('') +
+                    '</div></article>';
+            });
+            pages += '</div>';
+        }
+        if (!entries.length) pages = '<p class="muted">' + esc(lang === 'en' ? 'No QR codes' : 'Нет QR-кодов') + '</p>';
+        var title = o.title || (lang === 'en' ? 'Player QR codes' : 'QR-коды участников');
+        return printDocument(title, pages, { lang: lang, portrait: true });
+    }
+
+    function scorecardsHtml(opts) {
+        var o = opts || {};
+        var lang = o.lang === 'en' ? 'en' : 'ru';
+        var cards = o.cards || [];
+        var body = cards.map(function (item) {
+            return scorecardMarkup(Object.assign({}, o, item, { layout: o.layout || item.layout }));
+        }).join('');
+        if (!cards.length) body = '<p class="muted">' + esc(lang === 'en' ? 'No scorecards' : 'Нет счётных карточек') + '</p>';
+        var title = o.title || (lang === 'en' ? 'Tournament scorecards' : 'Счётные карточки турнира');
+        return printDocument(title, body, { lang: lang });
     }
 
     function participantsHtml(opts) {
@@ -1878,35 +2228,35 @@
         if (o.tournamentName) meta.push(o.tournamentName);
         if (o.roundDate) meta.push((lang === 'en' ? 'Round: ' : 'Раунд: ') + dateRu(o.roundDate));
         if (o.course) meta.push((lang === 'en' ? 'Course: ' : 'Поле: ') + o.course);
-        var body = docHeader(title, meta, o.tournamentQr ? { payload: o.tournamentQr, caption: lang === 'en' ? 'Tournament' : 'Турнир' } : null);
+        // QR-коды печатаются отдельным листом: стартовый лист остаётся компактным
+        // и предназначен именно для проверки состава/времени/лунки старта.
+        var body = docHeader(title, meta);
 
         var byFlight = {};
         entries.forEach(function (entry) {
             var flight = entry.flight || '';
             byFlight[flight] = byFlight[flight] || {};
-            var groupKey = entry.groupId || entry.groupName || ('g' + (entry.position || 0) + '_' + (entry.startTime || ''));
+            var groupKey = entry.startGroupId || [entry.groupId || entry.groupName || '', entry.startHole || 1, entry.startTime || ''].join('|');
             byFlight[flight][groupKey] = byFlight[flight][groupKey] || [];
             byFlight[flight][groupKey].push(entry);
         });
-        Object.keys(byFlight).sort().forEach(function (flight) {
+        Object.keys(byFlight).sort(function (a, b) {
+            var aa = String(a).match(/^(\d+)(.*)$/), bb = String(b).match(/^(\d+)(.*)$/);
+            if (!aa || !bb) return String(a).localeCompare(String(b), 'ru');
+            return parseInt(aa[1], 10) - parseInt(bb[1], 10) || aa[2].localeCompare(bb[2], 'ru');
+        }).forEach(function (flight) {
             if (flight) body += '<div class="flight-title">' + esc((lang === 'en' ? 'Flight ' : 'Флайт ') + flight) + '</div>';
             Object.keys(byFlight[flight]).forEach(function (groupKey) {
                 var list = byFlight[flight][groupKey];
-                var markerEntry = list.filter(function (entry) { return entry.isMarker; })[0] || list[0];
-                var qrPayload = markerEntry ? (markerEntry.qr || markerEntry.scoreUrl || '') : '';
+                var startHole = list[0].startHole || 1;
                 var groupTitle = (list[0].groupName || (lang === 'en' ? 'Group' : 'Группа')) +
-                    ' · ' + (list[0].startTime || '') + ' · ' + (lang === 'en' ? 'hole 1' : 'лунка 1');
+                    ' · ' + (list[0].startTime || '') + ' · ' + (lang === 'en' ? 'hole ' : 'лунка ') + startHole;
                 body += '<div class="group"><div class="group-head"><div><div class="group-title">' + esc(groupTitle) + '</div>' +
-                    '<div class="muted">' + esc(teeName(list[0].tee, lang) + (list[0].format ? ' · ' + list[0].format : '')) + '</div></div>';
-                if (qrPayload) {
-                    body += '<div class="qr-box"><img class="qr-sm" src="' + esc(qrImageUrl(qrPayload, 240)) +
-                        '" data-qr="' + esc(qrPayload) + '" alt="QR"><div>' +
-                        esc(lang === 'en' ? 'Marker QR' : 'QR маркера') + '</div></div>';
-                }
-                body += '</div><table><thead><tr><th class="num">#</th><th>' +
+                    '<div class="muted">' + esc(teeName(list[0].tee, lang) + (list[0].format ? ' · ' + list[0].format : '')) + '</div></div></div>';
+                body += '<table><thead><tr><th class="num">#</th><th>' +
                     (lang === 'en' ? 'Player' : 'Игрок') + '</th><th class="num">HI</th><th class="num">CH</th><th>' +
-                    (lang === 'en' ? 'Tee' : 'ТИ') + '</th><th>' + (lang === 'en' ? 'Format' : 'Формат') + '</th><th>' +
-                    (lang === 'en' ? 'Marker' : 'Маркер') + '</th></tr></thead><tbody>';
+                    (lang === 'en' ? 'Tee' : 'ТИ') + '</th><th class="num">' + (lang === 'en' ? 'Start hole' : 'Лунка старта') + '</th><th>' +
+                    (lang === 'en' ? 'Format' : 'Формат') + '</th><th>' + (lang === 'en' ? 'Marker' : 'Маркер') + '</th></tr></thead><tbody>';
                 list.sort(function (a, b) { return (a.position || 0) - (b.position || 0); });
                 list.forEach(function (entry) {
                     body += '<tr><td class="num">' + esc(entry.position || '') + '</td>' +
@@ -1914,6 +2264,7 @@
                         '<td class="num">' + esc(fmtHcp(entry.hi)) + '</td>' +
                         '<td class="num">' + esc(fmtHcp(entry.ch)) + '</td>' +
                         '<td>' + esc(teeName(entry.tee, lang)) + '</td>' +
+                        '<td class="num">' + esc(entry.startHole || startHole) + '</td>' +
                         '<td>' + esc(entry.format || '') + '</td>' +
                         '<td>' + esc(entry.markerName || '') + '</td></tr>';
                 });
@@ -2053,6 +2404,7 @@
         // people
         splitFio: splitFio, playerFio: playerFio, playerKeyByFio: playerKeyByFio,
         normalizeGender: normalizeGender, genderLabel: genderLabel, effectiveHcp: effectiveHcp,
+        inferGenderFromName: inferGenderFromName, distributePlayers: distributePlayers,
         // dates
         dateIso: dateIso, dateRu: dateRu, dateLong: dateLong, todayIso: todayIso,
         timeText: timeText, addMinutesToTime: addMinutesToTime, timestampFromDateTime: timestampFromDateTime,
@@ -2078,7 +2430,9 @@
         participantsCounts: participantsCounts,
         // print / qr
         PRINT_CSS: PRINT_CSS, printDocument: printDocument, participantsHtml: participantsHtml,
-        sheetHtml: sheetHtml, resultsHtml: resultsHtml, roundScoreHtml: roundScoreHtml,
+        sheetHtml: sheetHtml, qrCardsHtml: qrCardsHtml, scorecardsHtml: scorecardsHtml, scorecardMarkup: scorecardMarkup,
+        defaultScorecardLayout: defaultScorecardLayout, normalizedScorecardLayout: normalizedScorecardLayout,
+        resultsHtml: resultsHtml, roundScoreHtml: roundScoreHtml,
         playerCardHtml: playerCardHtml, scoreUrl: scoreUrl, qrImageUrl: qrImageUrl
     };
 });

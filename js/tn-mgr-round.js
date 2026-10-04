@@ -39,6 +39,9 @@ var TnMgrRoundUI = (function (root) {
         editingCell: null
     };
     var unsubscribe = [];
+    var scorecardLayoutRid = '';
+    var scorecardLayoutState = null;
+    var scorecardNewBlockType = 'custom';
 
     // ----------------------------------------------------------
     // ДАННЫЕ РАУНДА
@@ -178,6 +181,7 @@ var TnMgrRoundUI = (function (root) {
             return '<div class="tnm-view">' + ui().headHtml('<i class="fas fa-golf-ball-tee"></i> ' + esc(bi('Раунд', 'Round')), '', ui().backBtn()) +
                 ui().emptyHtml(bi('Раунд не найден', 'Round not found')) + '</div>';
         }
+        if (ui().state.route.tab === 'scorecards') return scorecardsPageHtml();
         var meta = [
             t.name || '',
             currentRound.club || t.club || '',
@@ -198,11 +202,215 @@ var TnMgrRoundUI = (function (root) {
             '<div class="tnm-view-head-actions">' +
             ui().btn('round-export-pdf', esc(bi('Экспорт PDF', 'Export PDF')), { icon: 'fas fa-file-pdf' }) + ' ' +
             ui().btn('round-export-excel', esc(bi('Экспорт Excel', 'Export Excel')), { icon: 'fas fa-file-excel', variant: 'ghost' }) + ' ' +
+            ui().btn('round-scorecards', esc(bi('Счётные карточки', 'Scorecards')), { icon: 'fas fa-id-card', variant: 'ghost' }) + ' ' +
             ui().btn('round-open-sheet', esc(bi('Стартовый лист', 'Tee sheet')), { icon: 'fas fa-table-list', variant: 'ghost' }) +
             '</div></div>' +
             '<div class="tnm-tabs">' + tabs + '</div>' +
             (ui().state.route.tab === 'results' ? resultsHtml() : scoreHtml()) +
             '</div>';
+    }
+
+    function activeScorecardLayout() {
+        if (scorecardLayoutRid !== rid() || !scorecardLayoutState) {
+            var current = round() || {};
+            scorecardLayoutRid = rid();
+            scorecardLayoutState = core().normalizedScorecardLayout(current.scorecardLayout || core().defaultScorecardLayout());
+        }
+        return scorecardLayoutState;
+    }
+
+    function scorecardItems() {
+        var sheet = ui().sheetOf(rid()) || {};
+        var sheetEntries = data().asMap(sheet.entries);
+        var players = roundPlayers();
+        var scoresByPlayer = mergedScores();
+        var list = data().sheetOrder ? data().sheetOrder(sheet) : Object.keys(sheetEntries).map(function (pid) { return sheetEntries[pid]; });
+        return players.map(function (player) {
+            var entry = player._entry || sheetEntries[player.id] || {};
+            var groupSize = list.filter(function (item) {
+                return entry.startGroupId ? item.startGroupId === entry.startGroupId :
+                    item.flight === entry.flight && item.startTime === entry.startTime && item.startHole === entry.startHole;
+            }).length || 1;
+            var markerId = entry.markerPlayerId || '';
+            var marker = markerId ? ui().playerOf(markerId) : null;
+            var markerEntry = markerId ? sheetEntries[markerId] : null;
+            var markerName = marker ? core().playerFio(marker) : (markerEntry && markerEntry.playerName) || '';
+            var markerScores = {};
+            Object.keys(roundState.groupRounds).some(function (groupRoundId) {
+                var group = roundState.groupRounds[groupRoundId] || {};
+                var record = data().asMap(group.players)[player.id];
+                if (!record) return false;
+                var byMarker = data().asMap(record.markerScores);
+                var values = data().asMap(byMarker[markerId] || (record.markedBy && byMarker[record.markedBy]));
+                Object.keys(values).forEach(function (hole) { markerScores[hole] = values[hole]; });
+                return true;
+            });
+            var tee = teeOf(player, entry);
+            var exactHcp = entry.hi != null && entry.hi !== '' ? entry.hi : player.hi;
+            var fieldHcp = entry.ch != null && entry.ch !== '' ? core().intOf(entry.ch, 0) : chOf(player);
+            var card = core().playerCard(scoresByPlayer[player.id] || {}, courseApi(), tee, fieldHcp, { fores: player.fores || {} });
+            var payload = entry.qr || core().scoreUrl(ui().baseUrl(), entry.groupRoundId || rid(), markerId || player.id,
+                markerId && markerId !== player.id ? Math.max(2, groupSize) : groupSize);
+            return {
+                player: Object.assign({}, player, { hi: exactHcp, ch: fieldHcp }),
+                entry: entry,
+                card: card,
+                markerScores: markerScores,
+                markerName: markerName,
+                qr: payload
+            };
+        });
+    }
+
+    function scorecardEditorHtml(layout) {
+        var types = [
+            ['player', bi('Имя игрока', 'Player name')],
+            ['details', bi('Турнир и старт', 'Tournament and start')],
+            ['handicap', bi('Гандикапы', 'Handicaps')],
+            ['qr', 'QR'],
+            ['playerScores', bi('Счёт игрока', 'Player score')],
+            ['markerScores', bi('Счёт маркера', 'Marker score')],
+            ['custom', bi('Текстовый элемент', 'Custom text')]
+        ];
+        function typeOptions(selected) {
+            return types.map(function (item) {
+                return '<option value="' + item[0] + '"' + (selected === item[0] ? ' selected' : '') + '>' + esc(item[1]) + '</option>';
+            }).join('');
+        }
+        var rows = layout.blocks.map(function (block, index) {
+            return '<fieldset class="tnm-scorecard-block-editor"><legend>' + esc(block.label || block.type) + '</legend>' +
+                '<div class="tnm-scorecard-editor-top"><label>' + esc(bi('Элемент', 'Block')) +
+                '<select data-tnm-edit="scorecard-layout" data-block="' + esc(block.id) + '" data-field="type">' + typeOptions(block.type) + '</select></label>' +
+                '<label>' + esc(bi('Название', 'Label')) + '<input type="text" data-tnm-edit="scorecard-layout" data-block="' + esc(block.id) +
+                '" data-field="label" value="' + esc(block.label) + '"></label>' +
+                (block.type === 'custom' ? '<label>' + esc(bi('Текст', 'Text')) + '<input type="text" data-tnm-edit="scorecard-layout" data-block="' + esc(block.id) +
+                    '" data-field="text" value="' + esc(block.text) + '"></label>' : '') +
+                '<label class="tnm-checkbox"><input type="checkbox" data-tnm-edit="scorecard-layout" data-block="' + esc(block.id) +
+                '" data-field="visible"' + (block.visible ? ' checked' : '') + '> ' + esc(bi('Показывать', 'Visible')) + '</label>' +
+                '<span class="tnm-scorecard-order">' +
+                '<button type="button" class="tnm-icon-btn" data-tnm-act="scorecard-move-block" data-id="' + esc(block.id) + '" data-dir="up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
+                '<button type="button" class="tnm-icon-btn" data-tnm-act="scorecard-move-block" data-id="' + esc(block.id) + '" data-dir="down"' + (index === layout.blocks.length - 1 ? ' disabled' : '') + '>↓</button>' +
+                '<button type="button" class="tnm-icon-btn" data-tnm-act="scorecard-remove-block" data-id="' + esc(block.id) + '" title="' + esc(bi('Удалить элемент', 'Remove block')) + '">×</button></span></div>' +
+                '<div class="tnm-scorecard-editor-geometry">' +
+                [['x', bi('Слева %', 'Left %'), block.x], ['y', bi('Сверху %', 'Top %'), block.y],
+                    ['w', bi('Ширина %', 'Width %'), block.w], ['h', bi('Высота %', 'Height %'), block.h],
+                    ['fontSize', bi('Размер текста', 'Text size'), block.fontSize]].map(function (field) {
+                    return '<label>' + esc(field[1]) + '<input type="number" min="0" max="100" step="1" data-tnm-edit="scorecard-layout" data-block="' +
+                        esc(block.id) + '" data-field="' + field[0] + '" value="' + esc(field[2]) + '"></label>';
+                }).join('') + '</div></fieldset>';
+        }).join('');
+        return '<div class="tnm-scorecard-editor"><div class="tnm-scorecard-editor-toolbar">' +
+            '<label>' + esc(bi('Вид карточки', 'Card theme')) + '<select data-tnm-edit="scorecard-layout" data-field="theme">' +
+            '<option value="classic"' + (layout.theme === 'classic' ? ' selected' : '') + '>' + esc(bi('Классический', 'Classic')) + '</option>' +
+            '<option value="minimal"' + (layout.theme === 'minimal' ? ' selected' : '') + '>' + esc(bi('Минимальный', 'Minimal')) + '</option>' +
+            '<option value="contrast"' + (layout.theme === 'contrast' ? ' selected' : '') + '>' + esc(bi('Контрастный', 'High contrast')) + '</option>' +
+            '</select></label><label>' + esc(bi('Добавить элемент', 'Add block')) +
+            '<select data-tnm-edit="scorecard-layout" data-field="newType">' + typeOptions(scorecardNewBlockType) + '</select></label>' +
+            ui().btn('scorecard-add-block', esc(bi('Добавить', 'Add')), { variant: 'ghost', icon: 'fas fa-plus' }) +
+            '<span class="tnm-muted">' + esc(bi('Позиция и размер задаются в процентах от листа A4.', 'Position and size are percentages of the A4 sheet.')) + '</span></div>' + rows + '</div>';
+    }
+
+    function scorecardsPageHtml() {
+        var layout = activeScorecardLayout();
+        var currentRound = round() || {};
+        var t = tournament();
+        var common = {
+            tournamentName: t.name || '', roundDate: currentRound.date || '',
+            courseName: currentRound.course || t.course || '', lang: lang(), layout: layout
+        };
+        var cards = scorecardItems();
+        var preview = cards.map(function (item) {
+            return core().scorecardMarkup(Object.assign({}, common, item));
+        }).join('');
+        return '<div class="tnm-view tnm-scorecards-page"><div class="tnm-card-head">' +
+            ui().btn('scorecards-back', esc(bi('← К раунду', '← Back to round')), { variant: 'ghost' }) +
+            '<div class="tnm-card-title"><h2>' + esc(bi('Счётные карточки турнира', 'Tournament scorecards')) + '</h2>' +
+            '<p class="tnm-sub">' + esc((t.name || '') + (currentRound.date ? ' · ' + core().dateRu(currentRound.date) : '') +
+                ' · ' + cards.length + ' ' + bi('карточек', 'cards')) + '</p></div>' +
+            '<div class="tnm-view-head-actions">' + ui().btn('scorecards-print', esc(bi('Печать всех карточек', 'Print all cards')), { variant: 'primary', icon: 'fas fa-print' }) +
+            '</div></div><div class="tnm-scorecard-page-layout"><section class="tnm-card"><h3>' + esc(bi('Раскладка', 'Layout')) + '</h3>' +
+            scorecardEditorHtml(layout) + '</section><section class="tnm-card"><h3>' + esc(bi('Предпросмотр всех карточек', 'Preview all scorecards')) + '</h3>' +
+            (preview ? '<div class="tnm-scorecards-preview">' + preview + '</div>' : ui().emptyHtml(bi('В раунде пока нет игроков', 'No players in this round yet'))) +
+            '</section></div></div>';
+    }
+
+    function persistScorecardLayout() {
+        var layout = core().normalizedScorecardLayout(scorecardLayoutState || core().defaultScorecardLayout());
+        scorecardLayoutState = layout;
+        return data().saveScorecardLayout(ui().state.route.tid, rid(), layout).then(function () {
+            ui().render();
+        }).catch(function (err) {
+            ui().toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
+    }
+
+    function updateScorecardLayout(input) {
+        var layout = activeScorecardLayout();
+        var field = input.getAttribute('data-field');
+        var id = input.getAttribute('data-block');
+        if (field === 'theme') layout.theme = input.value;
+        else if (field === 'newType') scorecardNewBlockType = input.value;
+        else {
+            var block = layout.blocks.filter(function (item) { return item.id === id; })[0];
+            if (!block) return;
+            if (field === 'visible') block.visible = !!input.checked;
+            else if (['x', 'y', 'w', 'h', 'fontSize'].indexOf(field) !== -1) block[field] = core().num(input.value, block[field]);
+            else if (field === 'type') block.type = input.value;
+            else if (field === 'label') block.label = input.value;
+            else if (field === 'text') block.text = input.value;
+        }
+        scorecardLayoutState = core().normalizedScorecardLayout(layout);
+        persistScorecardLayout();
+    }
+
+    function addScorecardBlock() {
+        var layout = activeScorecardLayout();
+        var maxZ = layout.blocks.reduce(function (max, block) { return Math.max(max, block.zIndex || 0); }, 0);
+        var type = scorecardNewBlockType || 'custom';
+        var names = {
+            player: bi('Имя игрока', 'Player name'), details: bi('Турнир и старт', 'Tournament and start'),
+            handicap: bi('Гандикапы', 'Handicaps'), qr: 'QR', playerScores: bi('Счёт игрока', 'Player score'),
+            markerScores: bi('Счёт маркера', 'Marker score'), custom: bi('Новый элемент', 'New item')
+        };
+        layout.blocks.push({ id: 'extra_' + Date.now(), type: type, label: names[type] || names.custom, text: '',
+            x: 5, y: Math.min(92, 4 + layout.blocks.length * 4), w: 30, h: 8, fontSize: 10, zIndex: maxZ + 1, visible: true });
+        scorecardLayoutState = layout;
+        persistScorecardLayout();
+    }
+
+    function moveScorecardBlock(button) {
+        var layout = activeScorecardLayout();
+        var index = layout.blocks.map(function (block) { return block.id; }).indexOf(button.getAttribute('data-id'));
+        var offset = button.getAttribute('data-dir') === 'up' ? -1 : 1;
+        var target = index + offset;
+        if (index < 0 || target < 0 || target >= layout.blocks.length) return;
+        var savedZ = layout.blocks[index].zIndex;
+        layout.blocks[index].zIndex = layout.blocks[target].zIndex;
+        layout.blocks[target].zIndex = savedZ;
+        var moved = layout.blocks.splice(index, 1)[0];
+        layout.blocks.splice(target, 0, moved);
+        scorecardLayoutState = layout;
+        persistScorecardLayout();
+    }
+
+    function removeScorecardBlock(button) {
+        var layout = activeScorecardLayout();
+        layout.blocks = layout.blocks.filter(function (block) { return block.id !== button.getAttribute('data-id'); });
+        if (!layout.blocks.length) layout.blocks = core().defaultScorecardLayout().blocks;
+        scorecardLayoutState = layout;
+        persistScorecardLayout();
+    }
+
+    function exportScorecards() {
+        var currentRound = round() || {};
+        var t = tournament();
+        var common = {
+            title: bi('Счётные карточки турнира', 'Tournament scorecards'),
+            tournamentName: t.name || '', roundDate: currentRound.date || '',
+            courseName: currentRound.course || t.course || '',
+            layout: activeScorecardLayout(), lang: lang(), cards: scorecardItems()
+        };
+        io().printHtml(core().scorecardsHtml(common));
     }
 
     // ----------------------------------------------------------
@@ -657,6 +865,17 @@ var TnMgrRoundUI = (function (root) {
     ui().on('round-open-sheet', function () {
         ui().navigate({ view: 'card', tid: ui().state.route.tid, tab: 'sheet', rid: rid() });
     });
+    ui().on('round-scorecards', function () {
+        ui().navigate({ view: 'round', tid: ui().state.route.tid, rid: rid(), tab: 'scorecards' });
+    });
+    ui().on('scorecards-back', function () {
+        ui().navigate({ view: 'round', tid: ui().state.route.tid, rid: rid(), tab: 'score' });
+    });
+    ui().on('scorecards-print', exportScorecards);
+    ui().on('scorecard-add-block', addScorecardBlock);
+    ui().on('scorecard-move-block', moveScorecardBlock);
+    ui().on('scorecard-remove-block', removeScorecardBlock);
+    ui().on('edit:scorecard-layout', updateScorecardLayout);
     ui().on('round-export-pdf', exportRoundPdf);
     ui().on('round-export-excel', exportRoundExcel);
     ui().on('results-export-pdf', function () { exportResults('pdf'); });

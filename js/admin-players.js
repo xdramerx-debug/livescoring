@@ -176,7 +176,7 @@ function loadAdmPlayers() {
 // любых правках пользователей в админке (вручную, Excel-импорт, AGR, слияния).
 // Читатели без прав админа видят только этот узел (database.rules.json).
 var _pubMirrorTimer = null;
-var PUB_MIRROR_FIELDS = ['name', 'firstName', 'lastName', 'middleName', 'gender', 'handicap', 'exactHcp', 'defaultTee', 'isGuest', 'deleted', 'deletedAt', 'createdAt', 'roundsPlayed', 'bestGross', 'bestStableford', 'hcpUpdatedAt', 'hcpSource'];
+var PUB_MIRROR_FIELDS = ['name', 'firstName', 'lastName', 'middleName', 'gender', 'handicap', 'exactHcp', 'defaultTee', 'avatar', 'avatarUrl', 'photoURL', 'photoUrl', 'isGuest', 'deleted', 'deletedAt', 'createdAt', 'roundsPlayed', 'bestGross', 'bestStableford', 'hcpUpdatedAt', 'hcpSource'];
 function pubMirrorFromUser(u) {
     var out = {};
     PUB_MIRROR_FIELDS.forEach(function (f) { if (u && u[f] !== undefined) out[f] = u[f]; });

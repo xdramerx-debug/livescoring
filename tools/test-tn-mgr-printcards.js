@@ -153,15 +153,23 @@ check('порядок перемещения учитывает скрытые �
     PC.visibleRowOrder({ rowOrder: d.rowOrder, show: { par: false } }).join(',') === 'holes,index,fore,strokes');
 check('размер карточки по умолчанию 147×200 мм', d.size.wMm === 147 && d.size.hMm === 200);
 check('две карточки на листе по умолчанию', d.layout.perSheet === 2);
-check('масштаб 100%', d.layout.scale === 1);
-check('раскладка по умолчанию помещается на лист A4', PC.fitsOnPage(d.layout, d.size).ok,
-    JSON.stringify(PC.fitsOnPage(d.layout, d.size)));
+check('смещение по умолчанию 90×40 мм', d.layout.xMm === 90 && d.layout.yMm === 40);
+check('масштаб печати по умолчанию 140%', d.layout.scale === 1.4);
+check('при масштабе 140% на лист входит одна карточка', PC.cardsPerSheet(d.layout, d.size) === 1);
+check('вписанная раскладка всегда помещается на лист A4', (function () {
+    var p = PC.placement(d.layout, d.size, 0);
+    return p.xMm + p.wMm <= PC.PAGE_W + 0.01 && p.yMm + p.hMm <= PC.PAGE_H + 0.01;
+})(), JSON.stringify(PC.placement(d.layout, d.size, 0)));
+check('классическая раскладка 2×147 мм даёт две карточки на листе',
+    PC.cardsPerSheet({ xMm: 0, yMm: 5, scale: 1, gapMm: 3, perSheet: 2 }, d.size) === 2);
 check('слоты не наезжают друг на друга', PC.slotPos(d.layout, d.size, 1).xMm >= d.size.wMm);
-check('старая раскладка X=140 Y=40 чинится на вписанную', (function () {
+check('раскладка за пределами листа помечается, но не теряется', (function () {
     var legacy = PC.defaultDraft();
     legacy.layout = { xMm: 140, yMm: 40, scale: 1 };
-    return PC.fitsOnPage(legacy.layout, legacy.size).ok === false;
-})(), 'старая раскладка и должна была выходить за лист — её мигрируем');
+    var fit = PC.fitsOnPage(legacy.layout, legacy.size);
+    var p = PC.placement(legacy.layout, legacy.size, 0);
+    return fit.ok === false && p.fit < 1 && p.xMm + p.wMm <= PC.PAGE_W + 0.01;
+})(), 'раскладку вписываем в лист, а не сбрасываем');
 check('18 пар, диапазон 3–6', d.pars.length === 18 && d.pars.every(function (p) { return p >= 3 && p <= 6; }));
 check('18 индексов, без пропусков', d.indexes.length === 18);
 check('строка форы включена по умолчанию и идёт сразу после индекса',
@@ -209,8 +217,18 @@ check('CSS карточки общий для экрана и печати', PC.
 // ----------------------------------------------------------
 var allCards = PC.buildCards(PLAYERS, global.TnMgrData.sheetOrder({ entries: ENTRIES }), {});
 var docHtml = PC.documentFor(allCards);
-check('страниц по две карточки', PC.pageChunks(allCards).length === Math.ceil(allCards.length / 2),
-    PC.pageChunks(allCards).length + ' страниц на ' + allCards.length + ' карточек');
+check('страниц по две карточки в классической раскладке', (function () {
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = { layout: { xMm: 0, yMm: 5, scale: 1, gapMm: 3, perSheet: 2 }, holes: 18 };
+    var pages = PC.pageChunks(allCards);
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = null;
+    return pages.length === Math.ceil(allCards.length / 2);
+})(), allCards.length + ' карточек');
+check('при масштабе 140% каждая карточка на своём листе', (function () {
+    var pages = PC.pageChunks(allCards);
+    return pages.length === allCards.length && pages.every(function (chunk) { return chunk.length === 1; });
+})(), PC.pageChunks(allCards).length + ' страниц на ' + allCards.length + ' карточек');
 check('формат листа A4 landscape', docHtml.indexOf('@page{size:A4 landscape;margin:0}') !== -1);
 check('название турнира печатается', docHtml.indexOf('Кубок Пестово') !== -1);
 check('клуб и поле печатаются', docHtml.indexOf('Гольф-клуб Пестово · Пестово') !== -1);
@@ -231,8 +249,19 @@ check('слова «Маркер» и «Судья» не попадают в п
 check('служебная разметка редактора не печатается',
     docHtml.indexOf('<span class="tnpc-handle"') === -1 && docHtml.indexOf('<span class="tnpc-x"') === -1 &&
     docHtml.indexOf('contenteditable') === -1);
-check('на печати карточка стоит в своём слоте листа', docHtml.indexOf('left:0mm;top:5mm') !== -1 &&
-    docHtml.indexOf('left:150mm;top:5mm') !== -1);
+check('на печати карточка вписана в лист A4 landscape',
+    docHtml.indexOf('left:59.04mm;top:26.24mm') !== -1 &&
+    docHtml.indexOf('transform:scale(0.918)') !== -1, 'раскладка 90×40 при 140%');
+check('классическая раскладка ставит две карточки в ряд', (function () {
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = { layout: { xMm: 0, yMm: 5, scale: 1, gapMm: 3, perSheet: 2 }, holes: 18 };
+    var html = PC.documentFor(allCards);
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = null;
+    return html.indexOf('left:0mm;top:5mm') !== -1 && html.indexOf('left:150mm;top:5mm') !== -1;
+})());
+check('внешняя рамка карточки на печать не идёт',
+    docHtml.indexOf('.tnpc-card{border:0!important}') !== -1);
 
 // Одна карточка на лист — по явному выбору организатора.
 PC.state.draft = null;
@@ -257,6 +286,49 @@ check('9 лунок: OUT и TOTAL после девятой лунки, без I
     doc9.indexOf('>TOT<') === -1);
 
 // ----------------------------------------------------------
+// 5a. Фора — наклонными черточками в правом верхнем углу клетки счёта
+// ----------------------------------------------------------
+check('черточки форы рисуются в клетке счёта',
+    docHtml.indexOf('<span class="tnpc-marks" title="') !== -1 &&
+    docHtml.indexOf('<i class="tnpc-mark"></i>') !== -1);
+check('черточки позиционируются в правом верхнем углу',
+    docHtml.indexOf('.tnpc-marks{position:absolute;top:.2mm;right:.2mm') !== -1);
+check('черточки наклонные', docHtml.indexOf('transform:rotate(25deg)') !== -1);
+function marksInRow(html, label) {
+    var at = html.indexOf('>' + label + '</span>');
+    if (at === -1) return null;
+    var row = html.slice(at, html.indexOf('</tr>', at));
+    return row.split('<td class="tnpc-empty">').slice(1)
+        .map(function (cell) { return (cell.match(/tnpc-mark"/g) || []).length; });
+}
+var indexes = PC.defaultDraft().indexes;
+var expected = indexes.map(function (si) { return si <= 10 ? 1 : 0; });   // игрок a: CH 10
+check('по черточке на каждый удар форы лунки (CH 10)', marksInRow(docHtml, 'Удары 1').join(',') === expected.join(','),
+    marksInRow(docHtml, 'Удары 1').join(','));
+var expectedB = indexes.map(function (si) { return si <= 8 ? 1 : 0; });   // игрок b: CH 8
+check('у второго игрока связки свои черточки (CH 8)', marksInRow(docHtml, 'Удары 2').join(',') === expectedB.join(','),
+    marksInRow(docHtml, 'Удары 2').join(','));
+check('у связки строка «Удары» своя у каждого игрока',
+    docHtml.indexOf('>Удары 1</span>') !== -1 && docHtml.indexOf('>Удары 2</span>') !== -1);
+check('у одиночки строка «Удары» без номера',
+    PC.documentFor([allCards[2]]).indexOf('>Удары</span>') !== -1);
+check('без строки форы черточек тоже нет', (function () {
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = { show: { fore: false }, holes: 18 };
+    var noFore = PC.documentFor([allCards[0]]);
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = null;
+    PC.state.draft = null;
+    return noFore.indexOf('<i class="tnpc-mark">') === -1;
+})());
+check('минусовая фора — красные черточки', (function () {
+    var marks = PC.foreMarksHtml({ names: ['А'], fieldHcps: [-2] }, 12, 0);
+    return marks.indexOf('tnpc-marks minus') !== -1 && marks.indexOf('(минусовая)') !== -1;
+})(), 'лунка с индексом 18 забирает удар у плюсового игрока');
+check('подпись черточек доступна для чтения с экрана',
+    docHtml.indexOf('title="Фора: 1 удар') !== -1);
+
+// ----------------------------------------------------------
 // 6. Разметка вкладки: эталон + свёрнутый список
 // ----------------------------------------------------------
 PC.state.draft = null;
@@ -264,6 +336,17 @@ PC.state.activeCardId = '';
 TOURNAMENT.printScorecards = null;
 var tabHtml = PC.html();
 check('вкладка отдаёт разметку', tabHtml.indexOf('tnpc-wrap') !== -1);
+// Все панели открыты: любая опечатка в панели роняет вкладку целиком.
+['sizes', 'fields', 'content', 'overlays'].forEach(function (panel) { PC.state.panels[panel] = true; });
+var panelsHtml = PC.html();
+check('вкладка жива со всеми открытыми панелями', panelsHtml.length > tabHtml.length);
+check('панель размеров объясняет вписывание в лист', /вписывается в лист/.test(panelsHtml));
+check('подсказка о вписывании помечена своим классом (правка размеров не копит копии)',
+    panelsHtml.indexOf('tnpc-fit-note') !== -1);
+check('подсказка про печать альбомным листом', /Ориентация: Альбомная \(авто\)/.test(panelsHtml));
+check('подсказка про черточки форы', /наклонными черточками/.test(panelsHtml));
+check('внешняя рамка на бумагу не идёт', PC.documentFor([allCards[0]]).indexOf('.tnpc-card{border:0!important}') !== -1);
+['sizes', 'fields', 'content', 'overlays'].forEach(function (panel) { PC.state.panels[panel] = false; });
 check('ровно одна карточка-эталон на экране', (tabHtml.match(/class="tnpc-card"/g) || []).length === 1,
     (tabHtml.match(/class="tnpc-card"/g) || []).length);
 check('эталон редактируется на месте', tabHtml.indexOf('contenteditable="true"') !== -1);

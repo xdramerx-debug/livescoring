@@ -191,21 +191,25 @@ var TnMgrPrintCards = (function (root) {
         };
     }
     /**
-     * Место карточки на листе A4. По умолчанию две карточки в ряд
-     * (147+3+147 = 297 мм) — лист используется целиком.
+     * Место карточки на листе A4 landscape. По умолчанию — крупная карточка
+     * (147x200 мм при масштабе 140%) со смещением 90x40 мм: клуб печатает
+     * карточки крупно, поэтому на лист входит одна. Сколько карточек реально
+     * поместится в ряд, считает cardsPerSheet(), а pageFit() вписывает
+     * раскладку в лист, если она не влезает (см. placement()).
      */
-    function defaultLayout() { return { xMm: 0, yMm: 5, scale: 1, gapMm: 3, perSheet: 2 }; }
+    function defaultLayout() { return { xMm: 90, yMm: 40, scale: 1.4, gapMm: 3, perSheet: 2 }; }
     function clampLayout(layout, size) {
         var src = layout || {};
         var card = clampSize(size);
-        var scale = Math.round(clampNum(src.scale, 0.3, 2, 1) * 100) / 100;
+        var def = defaultLayout();
+        var scale = Math.round(clampNum(src.scale, 0.3, 2, def.scale) * 100) / 100;
         // Зазор между карточками не может съесть место, которого нет на листе.
         var maxGap = Math.max(0, round1(PAGE_W - card.wMm * scale));
         return {
-            xMm: round1(clampNum(src.xMm, -50, PAGE_W, 0)),
-            yMm: round1(clampNum(src.yMm, -50, PAGE_H, 5)),
+            xMm: round1(clampNum(src.xMm, -50, PAGE_W, def.xMm)),
+            yMm: round1(clampNum(src.yMm, -50, PAGE_H, def.yMm)),
             scale: scale,
-            gapMm: round1(clampNum(src.gapMm, 0, maxGap, 3)),
+            gapMm: round1(clampNum(src.gapMm, 0, maxGap, def.gapMm)),
             perSheet: Number(src.perSheet) === 1 ? 1 : 2
         };
     }
@@ -216,26 +220,75 @@ var TnMgrPrintCards = (function (root) {
         var step = card.wMm * L.scale + L.gapMm;
         return { xMm: round1(L.xMm + (index || 0) * step), yMm: L.yMm };
     }
-    /** Помещается ли раскладка на лист A4 landscape. */
-    function fitsOnPage(layout, size) {
+    /**
+     * Сколько карточек реально влезает в ряд на лист A4 landscape. Масштаб
+     * выше 100% сам уменьшает число карточек на листе — иначе вторая карточка
+     * уезжала за край бумаги и при печати терялась.
+     */
+    function cardsPerSheet(layout, size) {
         var L = clampLayout(layout, size);
         var card = clampSize(size);
-        var last = slotPos(L, card, L.perSheet - 1);
+        var step = card.wMm * L.scale + L.gapMm;
+        if (step <= 0) return 1;
+        // Лист не уже самой карточки: одна карточка помещается всегда.
+        var width = Math.max(PAGE_W, round1(L.xMm + card.wMm * L.scale));
+        var room = Math.floor((width - L.xMm + L.gapMm) / step);
+        return Math.max(1, Math.min(L.perSheet, room));
+    }
+    /** Габарит раскладки: правая и нижняя граница последней карточки. */
+    function layoutBox(layout, size) {
+        var L = clampLayout(layout, size);
+        var card = clampSize(size);
+        var per = cardsPerSheet(L, card);
+        var last = slotPos(L, card, per - 1);
         return {
-            ok: last.xMm + card.wMm * L.scale <= PAGE_W + 0.01 && L.yMm + card.hMm * L.scale <= PAGE_H + 0.01,
+            layout: L,
+            card: card,
+            per: per,
             right: round1(last.xMm + card.wMm * L.scale),
             bottom: round1(L.yMm + card.hMm * L.scale)
         };
     }
-    /** Старые раскладки (карточка за пределами листа) чиним на вписанную. */
-    function migrateLayout(layout, size) {
+    /**
+     * Во сколько раз раскладку нужно ужать, чтобы она целиком легла на лист
+     * A4 landscape. 1 — вписывать не нужно. Без этого крупная карточка
+     * (масштаб выше 100%) просто обрезалась бумагой.
+     */
+    function pageFit(layout, size) {
+        var box = layoutBox(layout, size);
+        var fit = Math.min(1, PAGE_W / Math.max(box.right, 0.01), PAGE_H / Math.max(box.bottom, 0.01));
+        return Math.round(fit * 1000) / 1000;
+    }
+    /**
+     * Итоговое место карточки на листе — раскладка, уже вписанная в A4
+     * landscape. Одни и те же числа используют предпросмотр и печать,
+     * поэтому экран не расходится с бумагой.
+     */
+    function placement(layout, size, index) {
         var L = clampLayout(layout, size);
-        if (fitsOnPage(L, size).ok) return L;
-        var fixed = defaultLayout();
-        fixed.perSheet = L.perSheet;
-        fixed.scale = Math.min(L.scale, 1);
-        if (!fitsOnPage(fixed, size).ok) fixed = Object.assign(defaultLayout(), { perSheet: 1, scale: 1 });
-        return clampLayout(fixed, size);
+        var card = clampSize(size);
+        var per = cardsPerSheet(L, card);
+        var slot = Math.min(index || 0, per - 1);
+        var p = slotPos(L, card, slot);
+        var fit = pageFit(L, card);
+        return {
+            xMm: round1(p.xMm * fit),
+            yMm: round1(p.yMm * fit),
+            scale: Math.round(L.scale * fit * 1000) / 1000,
+            wMm: round1(card.wMm * L.scale * fit),
+            hMm: round1(card.hMm * L.scale * fit),
+            per: per,
+            fit: fit
+        };
+    }
+    /** Помещается ли раскладка на лист A4 landscape без вписывания. */
+    function fitsOnPage(layout, size) {
+        var box = layoutBox(layout, size);
+        return {
+            ok: box.right <= PAGE_W + 0.01 && box.bottom <= PAGE_H + 0.01,
+            right: box.right,
+            bottom: box.bottom
+        };
     }
 
     function defaultOverlays() {
@@ -300,7 +353,9 @@ var TnMgrPrintCards = (function (root) {
         var base = defaultDraft();
         if (!stored) return base;
         base.size = clampSize(stored.size);
-        base.layout = migrateLayout(stored.layout, base.size);
+        // Раскладку не «чиним»: pageFit() вписывает её в лист, поэтому
+        // сохранённые смещения и масштаб организатора сохраняются как есть.
+        base.layout = clampLayout(stored.layout, base.size);
         base.style = clampStyle(stored.style);
         if (stored.holes === 9) base.holes = 9;
         if (Array.isArray(stored.pars) && stored.pars.length) base.pars = stored.pars.slice(0, 18);
@@ -703,19 +758,53 @@ var TnMgrPrintCards = (function (root) {
         }).catch(function () { state.scores = {}; });
     }
 
-    function strokesOf(card) {
+    function strokesOf(card, playerIndex) {
         var draft = ensureDraft();
         var n = holeCount();
         var out = [];
         var i;
-        if (!draft.fillScores || !state.scores) {
-            for (i = 0; i < n; i++) out.push('');
-            return out;
-        }
-        var pid = (card.playerIds || [])[0];
-        var map = (pid && state.scores[pid]) || {};
+        var pid = (card && card.playerIds || [])[playerIndex || 0];
+        var map = (draft.fillScores && state.scores && pid && state.scores[pid]) || {};
         for (i = 0; i < n; i++) out.push(map[i + 1] == null ? '' : map[i + 1]);
         return out;
+    }
+
+    /** Сколько игроков на карточке (связка = два игрока, у каждого свои строки). */
+    function playerCount(card) {
+        return Math.max(1, (card && card.names || []).length, (card && card.hcps || []).length,
+            (card && card.fieldHcps || []).length);
+    }
+
+    /** Русская форма числительного: 1 удар / 2 удара / 5 ударов. */
+    function pluralRu(n, one, few, many) {
+        var mod10 = n % 10;
+        var mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return one;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+        return many;
+    }
+
+    /**
+     * Удары форы наклонными черточками в правом верхнем углу клетки счёта:
+     * одна черточка за каждый удар форы на этой лунке (как на бланке клуба).
+     * Минусовая фора — красные черточки. У связки черточки каждого игрока
+     * стоят своим рядом, поэтому видно, кому какой удар принадлежит.
+     */
+    function foreMarksHtml(card, holeIndex, playerIndex) {
+        var d = ensureDraft();
+        if (d.show.fore === false) return '';
+        var index = playerIndex == null ? 0 : playerIndex;
+        var value = parseInt(foreValues(card, index)[holeIndex], 10);
+        if (!isFinite(value) || !value) return '';
+        var cnt = Math.abs(value);
+        var bars = [];
+        for (var i = 0; i < cnt; i++) bars.push('<i class="tnpc-mark"></i>');
+        var name = (card && card.names || [])[index] || '';
+        var title = bi('Фора: ', 'Handicap: ') + cnt + ' ' +
+            pluralRu(cnt, 'удар', 'удара', 'ударов') + (value < 0 ? bi(' (минусовая)', ' (given)') : '') +
+            (name ? ' · ' + name : '');
+        return '<span class="tnpc-marks' + (value < 0 ? ' minus' : '') + '" title="' + esc(title) + '">' +
+            bars.join('') + '</span>';
     }
 
     function sumValues(values) {
@@ -893,10 +982,12 @@ var TnMgrPrintCards = (function (root) {
     function cardStyleAttr(draft, slot, local) {
         var d = draft || ensureDraft();
         var size = clampSize(d.size);
-        var L = clampLayout(d.layout, size);
-        var p = local ? { xMm: 0, yMm: 0 } : slotPos(L, size, slot || 0);
+        // «Только карточка» — без листа, поэтому масштаб берём из раскладки как есть.
+        var p = local
+            ? { xMm: 0, yMm: 0, scale: clampLayout(d.layout, size).scale }
+            : placement(d.layout, size, slot || 0);
         return 'left:' + p.xMm + 'mm;top:' + p.yMm + 'mm;width:' + size.wMm + 'mm;height:' + size.hMm + 'mm;' +
-            'transform:scale(' + L.scale + ');' + styleVars(d.style);
+            'transform:scale(' + p.scale + ');' + styleVars(d.style);
     }
 
     /**
@@ -917,8 +1008,12 @@ var TnMgrPrintCards = (function (root) {
             '.tnpc-meta{font-size:var(--tnpc-meta,3.1mm);margin-top:.8mm;line-height:1.25}' +
             '.tnpc-body{flex:1 1 auto;min-height:0}' +
             '.tnpc-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:var(--tnpc-table,2.9mm)}' +
-            '.tnpc-table td{border:var(--tnpc-line,0.25mm) solid #111;text-align:center;' +
+            '.tnpc-table td{border:var(--tnpc-line,0.25mm) solid #111;text-align:center;position:relative;' +
             'padding:.5mm .2mm;height:var(--tnpc-row-h,6.4mm);overflow:hidden}' +
+            '.tnpc-marks{position:absolute;top:.2mm;right:.2mm;display:inline-flex;align-items:flex-start;' +
+            'gap:.25mm;pointer-events:none}' +
+            '.tnpc-mark{display:block;width:.3mm;height:1.7mm;background:#111;transform:rotate(25deg)}' +
+            '.tnpc-marks.minus .tnpc-mark{background:#a11414}' +
             '.tnpc-table .lab{text-align:left;font-weight:700;width:var(--tnpc-lab-w,15mm);padding:0 .2mm 0 1mm;position:relative}' +
             '.tnpc-row-label{display:inline-block;max-width:calc(100% - 4.8mm);overflow:hidden;white-space:nowrap;' +
             'vertical-align:middle;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}' +
@@ -1024,7 +1119,6 @@ var TnMgrPrintCards = (function (root) {
         var n = holeCount();
         var pars = d.pars;
         var indexes = d.indexes;
-        var strokes = strokesOf(card);
         var outN = Math.min(9, n);
         var inN = Math.max(0, n - outN);
         var showTotals = d.show.totals !== false;
@@ -1055,12 +1149,13 @@ var TnMgrPrintCards = (function (root) {
             for (var holeIndex = from; holeIndex < to; holeIndex++) html += '<td>' + (holeIndex + 1) + '</td>';
             return html;
         }
-        function valueCells(kind, values, from, to, canEdit) {
+        function valueCells(kind, values, from, to, canEdit, playerIndex) {
             var html = '';
             for (var holeIndex = from; holeIndex < to; holeIndex++) {
                 var value = values[holeIndex] == null ? '' : values[holeIndex];
                 if (kind === 'strokes') {
-                    html += '<td class="tnpc-empty">' + esc(value) + '</td>';
+                    html += '<td class="tnpc-empty">' + esc(value) +
+                        foreMarksHtml(card, holeIndex, playerIndex) + '</td>';
                 } else if (editable && canEdit) {
                     html += '<td><span' + ed + ' data-tnpc-grid="' + kind + '" data-h="' + holeIndex + '">' + esc(value) + '</span></td>';
                 } else {
@@ -1069,19 +1164,21 @@ var TnMgrPrintCards = (function (root) {
             }
             return html;
         }
-        function sumFor(kind, from, to) {
+        function sumFor(kind, values, from, to) {
             if (kind === 'par') return parSum(from, to);
-            if (kind === 'strokes') return sumValues(strokes.slice(from, to));
+            if (kind === 'strokes') return sumValues(values.slice(from, to));
             return '';
         }
-        function sumCell(kind, from, to) {
-            return '<td class="sum">' + esc(sumFor(kind, from, to)) + '</td>';
+        function sumCell(kind, values, from, to) {
+            return '<td class="sum">' + esc(sumFor(kind, values, from, to)) + '</td>';
         }
-        function dataRowCells(kind, values, canEdit) {
-            var html = valueCells(kind, values, 0, outN, canEdit);
-            if (showTotals) html += sumCell(kind, 0, outN);
-            html += valueCells(kind, values, outN, n, canEdit);
-            if (showTotals) html += inN ? sumCell(kind, outN, n) + sumCell(kind, 0, n) : sumCell(kind, 0, n);
+        function dataRowCells(kind, values, canEdit, playerIndex) {
+            var html = valueCells(kind, values, 0, outN, canEdit, playerIndex);
+            if (showTotals) html += sumCell(kind, values, 0, outN);
+            html += valueCells(kind, values, outN, n, canEdit, playerIndex);
+            if (showTotals) html += inN
+                ? sumCell(kind, values, outN, n) + sumCell(kind, values, 0, n)
+                : sumCell(kind, values, 0, n);
             return html;
         }
         function tableLine(key, label, content, withControls, hint) {
@@ -1089,6 +1186,22 @@ var TnMgrPrintCards = (function (root) {
         }
         function tableBlock(key, lines) {
             return '<tbody class="tnpc-table-row" data-tnpc-table-row="' + key + '">' + lines + '</tbody>';
+        }
+        /** Строка «Удары»: у связки свой ряд на каждого игрока. */
+        function strokesBlock() {
+            var count = playerCount(card);
+            var lines = '';
+            for (var playerIndex = 0; playerIndex < count; playerIndex++) {
+                var label = count > 1
+                    ? bi('Удары', 'Strokes') + ' ' + (playerIndex + 1)
+                    : bi('Удары', 'Strokes');
+                var playerName = (card && card.names || [])[playerIndex] || '';
+                var hint = playerName ? bi('Удары игрока: ', 'Strokes for: ') + playerName : label;
+                lines += tableLine('strokes', esc(label),
+                    dataRowCells('strokes', strokesOf(card, playerIndex), false, playerIndex),
+                    playerIndex === 0, hint);
+            }
+            return tableBlock('strokes', lines);
         }
         function foreBlock() {
             var count = Math.max(1, (card && card.hcps || []).length, (card && card.names || []).length,
@@ -1118,7 +1231,7 @@ var TnMgrPrintCards = (function (root) {
             par: tableBlock('par', tableLine('par', esc(bi('Пар', 'Par')), dataRowCells('par', pars, true), true)),
             index: tableBlock('index', tableLine('index', esc(bi('Индекс', 'Index')), dataRowCells('idx', indexes, true), true)),
             fore: foreBlock(),
-            strokes: tableBlock('strokes', tableLine('strokes', esc(bi('Удары', 'Strokes')), dataRowCells('strokes', strokes, false), true))
+            strokes: strokesBlock()
         };
         var rows = normalizeRowOrder(d.rowOrder).map(function (key) {
             if (key === 'par' && d.show.par === false) return '';
@@ -1214,9 +1327,10 @@ var TnMgrPrintCards = (function (root) {
                 'mm;height:' + round1(size.hMm * L.scale) + 'mm;">' +
                 cardShellHtml(card, false, 0, true) + '</div></div>';
         }
-        var ghost = L.perSheet === 2
-            ? '<div class="tnpc-ghost" style="left:' + slotPos(L, size, 1).xMm + 'mm;top:' + L.yMm + 'mm;' +
-              'width:' + round1(size.wMm * L.scale) + 'mm;height:' + round1(size.hMm * L.scale) + 'mm;"></div>'
+        var second = placement(d.layout, size, 1);
+        var ghost = second.per > 1
+            ? '<div class="tnpc-ghost" style="left:' + second.xMm + 'mm;top:' + second.yMm + 'mm;' +
+              'width:' + second.wMm + 'mm;height:' + second.hMm + 'mm;"></div>'
             : '';
         return '<div class="tnpc-stage" data-tnpc-stage>' +
             '<div class="tnpc-page" data-tnpc-page>' + ghost + cardShellHtml(card, false, 0, false) + '</div>' +
@@ -1358,7 +1472,6 @@ var TnMgrPrintCards = (function (root) {
         var d = ensureDraft();
         var size = clampSize(d.size);
         var L = clampLayout(d.layout, size);
-        var fit = fitsOnPage(L, size);
         var styleInputs = STYLE_KEYS.map(function (key) {
             var f = STYLE_FIELDS[key];
             return numField('tnpc-style', key, bi(f.ru, f.en), d.style[key], f.min, f.max, f.step);
@@ -1369,8 +1482,7 @@ var TnMgrPrintCards = (function (root) {
             ui().btn('tnpc-fit-page', esc(bi('Вписать в лист', 'Fit on page')), { icon: 'fas fa-expand', variant: 'ghost', small: true }) +
             ui().btn('tnpc-style-reset', esc(bi('Размеры по умолчанию', 'Default sizes')), { icon: 'fas fa-rotate-left', variant: 'ghost', small: true }) +
             '</div>' +
-            (fit.ok ? '' : '<p class="tnpc-alert">⚠ ' + esc(bi('Карточка выходит за лист A4 (', 'Card overflows the A4 sheet (')) +
-                fit.right + '×' + fit.bottom + ' ' + esc(bi('мм при 297×210). Нажмите «Вписать в лист».', 'mm vs 297×210). Click “Fit on page”.')) + '</p>') +
+            fitNoteHtml() +
             '<div class="tnpc-nums">' +
             numField('tnpc-size', 'wMm', bi('Ширина карточки, мм', 'Card width, mm'), size.wMm, 60, PAGE_W, 1) +
             numField('tnpc-size', 'hMm', bi('Высота карточки, мм', 'Card height, mm'), size.hMm, 60, PAGE_H, 1) +
@@ -1468,6 +1580,7 @@ var TnMgrPrintCards = (function (root) {
     function overlaysPanelHtml() {
         if (!state.panels.overlays) return '';
         var d = ensureDraft();
+        var size = clampSize(d.size);
         var rows = (d.overlays || []).map(function (ov) {
             var o = clampOverlay(ov, d.size);
             var payload = '';
@@ -1497,10 +1610,10 @@ var TnMgrPrintCards = (function (root) {
                 ui().btn('tnpc-overlay-del', esc(bi('Удалить', 'Delete')), { icon: 'fas fa-trash', variant: 'ghost', small: true, data: { id: o.id } }) +
                 '</div>' +
                 '<div class="tnpc-nums">' +
-                numField('tnpc-overlay', 'xMm', 'X, ' + bi('мм', 'mm'), o.xMm, 0, PAGE_W, 0.5, ' data-id="' + esc(o.id) + '"') +
-                numField('tnpc-overlay', 'yMm', 'Y, ' + bi('мм', 'mm'), o.yMm, 0, PAGE_H, 0.5, ' data-id="' + esc(o.id) + '"') +
-                numField('tnpc-overlay', 'wMm', bi('Ширина, мм', 'Width, mm'), o.wMm, 5, PAGE_W, 0.5, ' data-id="' + esc(o.id) + '"') +
-                numField('tnpc-overlay', 'hMm', bi('Высота, мм', 'Height, mm'), o.hMm, 5, PAGE_H, 0.5, ' data-id="' + esc(o.id) + '"') +
+                numField('tnpc-overlay', 'xMm', 'X, ' + bi('мм', 'mm'), o.xMm, 0, size.wMm, 0.5, ' data-id="' + esc(o.id) + '"') +
+                numField('tnpc-overlay', 'yMm', 'Y, ' + bi('мм', 'mm'), o.yMm, 0, size.hMm, 0.5, ' data-id="' + esc(o.id) + '"') +
+                numField('tnpc-overlay', 'wMm', bi('Ширина, мм', 'Width, mm'), o.wMm, 5, size.wMm, 0.5, ' data-id="' + esc(o.id) + '"') +
+                numField('tnpc-overlay', 'hMm', bi('Высота, мм', 'Height, mm'), o.hMm, 5, size.hMm, 0.5, ' data-id="' + esc(o.id) + '"') +
                 '</div>' + payload + '</div>';
         }).join('');
         return '<div class="tnm-card tnpc-panel" data-panel="overlays">' +
@@ -1571,7 +1684,16 @@ var TnMgrPrintCards = (function (root) {
             '<span><i class="fas fa-file-arrow-down"></i> ' + esc(bi('картинку можно перетащить файлом на лист', 'drop an image file onto the sheet')) + '</span>' +
             '<span><i class="fas fa-up-down"></i> ' + esc(bi('строки таблицы переставляются кнопками ↑/↓ или перетаскиванием подписи', 'reorder table rows with ↑/↓ or drag a row label')) + '</span>' +
             '<span><i class="fas fa-ruler"></i> ' + esc(bi('размеры — в панели «Размеры и место на листе»', 'sizes live in the “Sizes” panel')) + '</span>' +
+            '<span><i class="fas fa-minus" style="transform:rotate(25deg)"></i> ' +
+            esc(bi('фора — наклонными черточками в правом верхнем углу клетки счёта: одна черточка за каждый удар на лунке',
+                'handicap strokes — slashes in the top-right corner of the score box, one per stroke on the hole')) + '</span>' +
             '</div>' +
+            '<p class="tnm-muted">' + esc(bi('Карточка 147×200 мм. Внешняя рамка при печати снимается автоматически. ' +
+                'Выбирайте дизайн, регулируйте смещения и масштаб — значения применяются ко всем карточкам и сохраняются. ' +
+                'При печати: Ориентация: Альбомная (авто), Масштаб 100%, Поля: Нет, без колонтитулов.',
+                'Card 147×200 mm. The outer frame is removed automatically when printing. Pick a design, adjust the ' +
+                'offsets and scale — the values apply to every card and are saved. When printing: Orientation: ' +
+                'Landscape (auto), Scale 100%, Margins: None, no headers or footers.')) + '</p>' +
             (d.footer.print ? '' : '<p class="tnm-muted">' + esc(bi('Подписи «Игрок / Маркер / Судья» видны только на экране — ' +
                 'в печать и PDF не попадают (включается в «Состав информации»).',
                 'The “Player / Marker / Judge” labels are screen-only — they never reach print or PDF.')) + '</p>') +
@@ -1648,16 +1770,21 @@ var TnMgrPrintCards = (function (root) {
     // ПЕЧАТЬ / PDF
     // ----------------------------------------------------------
     function printCss() {
+        // Лист всегда A4 landscape: ориентация выставляется автоматически,
+        // поля и колонтитулы не печатаются. Внешняя рамка карточки на бумагу
+        // не идёт — её снимаем здесь, чтобы предпросмотр и печать совпадали.
         return '<style>@page{size:A4 landscape;margin:0}html,body{margin:0;padding:0;background:#fff}' +
             '.page{width:' + PAGE_W + 'mm;height:' + PAGE_H + 'mm;position:relative;page-break-after:always;overflow:hidden}' +
             cardCssText() +
+            '.tnpc-card{border:0!important}' +
             '.tnpc-handle,.tnpc-x,.tnpc-tag,.tnpc-row-tools,.tnpc-warn,.tnpc-ph,.tnpc-noprint,.tnpc-ghost{display:none!important}' +
             '</style>';
     }
 
     /** Раскладка карточек по листам: 1 или 2 на лист A4 landscape. */
     function pageChunks(cards) {
-        var per = clampLayout(ensureDraft().layout, ensureDraft().size).perSheet;
+        var draft = ensureDraft();
+        var per = cardsPerSheet(draft.layout, draft.size);
         var pages = [];
         for (var i = 0; i < (cards || []).length; i += per) pages.push(cards.slice(i, i + per));
         return pages;
@@ -1889,7 +2016,7 @@ var TnMgrPrintCards = (function (root) {
             var field = el.getAttribute('data-tnpc-field');
             var grid = el.getAttribute('data-tnpc-grid');
             var ovText = el.getAttribute('data-tnpc-overlay-text');
-            if (field) applyInline(el, field, false);
+            if (field) applyInline(el, field);
             else if (grid) applyGrid(el, grid, false);
             else if (ovText) applyOverlayText(ovText, el.textContent);
         });
@@ -1899,7 +2026,7 @@ var TnMgrPrintCards = (function (root) {
             var field = el.getAttribute('data-tnpc-field');
             var grid = el.getAttribute('data-tnpc-grid');
             var ovText = el.getAttribute('data-tnpc-overlay-text');
-            if (field) applyInline(el, field, true);
+            if (field) applyInline(el, field);
             if (grid) applyGrid(el, grid, true);
             if (ovText) applyOverlayText(ovText, el.textContent);
         }, true);
@@ -1974,7 +2101,7 @@ var TnMgrPrintCards = (function (root) {
         moveTableRow(id, order[targetIndex]);
     }
 
-    function applyInline(el, field, rerender) {
+    function applyInline(el, field) {
         var text = (el.textContent || '').trim();
         var draft = ensureDraft();
         var cid = el.getAttribute('data-cid');
@@ -2010,7 +2137,6 @@ var TnMgrPrintCards = (function (root) {
         syncRowSummary(card);
         var masterName = doc() && doc().querySelector('[data-tnpc-master-name]');
         if (masterName && state.activeCardId === cid) masterName.textContent = nameText(card);
-        if (rerender && field === 'names') syncRowSummary(card);
     }
 
     function applyGrid(el, kind, rerender) {
@@ -2279,14 +2405,19 @@ var TnMgrPrintCards = (function (root) {
     ui().on('tnpc-fit-page', function () {
         var d = ensureDraft();
         var size = clampSize(d.size);
-        var per = clampLayout(d.layout, size).perSheet;
-        var total = size.wMm * per + (per === 2 ? clampLayout(d.layout, size).gapMm : 0);
+        var L = clampLayout(d.layout, size);
+        // Максимальный масштаб, при котором выбранное число карточек целиком
+        // влезает на лист A4 landscape, и карточка встаёт по центру листа.
+        var maxByWidth = (PAGE_W - (L.perSheet === 2 ? L.gapMm : 0)) / (size.wMm * L.perSheet);
+        var maxByHeight = PAGE_H / size.hMm;
+        var scale = Math.round(Math.min(maxByWidth, maxByHeight, 2) * 100) / 100;
+        var total = round1(size.wMm * scale * L.perSheet + (L.perSheet === 2 ? L.gapMm : 0));
         d.layout = clampLayout({
             xMm: Math.max(0, round1((PAGE_W - total) / 2)),
-            yMm: Math.max(0, round1((PAGE_H - size.hMm) / 2)),
-            scale: 1,
-            gapMm: clampLayout(d.layout, size).gapMm,
-            perSheet: per
+            yMm: Math.max(0, round1((PAGE_H - size.hMm * scale) / 2)),
+            scale: scale,
+            gapMm: L.gapMm,
+            perSheet: L.perSheet
         }, size);
         persistSoon();
         ui().render();
@@ -2401,11 +2532,11 @@ var TnMgrPrintCards = (function (root) {
     ui().on('live:tnpc-layout', function (input) {
         var field = input.getAttribute('data-field');
         var d = ensureDraft();
-        if (field === 'scalePct') d.layout.scale = clampNum(Number(input.value) / 100, 0.3, 2, 1);
-        else if (field === 'perSheet') d.layout.perSheet = Number(input.value) === 1 ? 1 : 2;
-        else if (field === 'gapMm') d.layout.gapMm = clampNum(input.value, 0, 60, 3);
-        else if (field === 'xMm') d.layout.xMm = clampNum(input.value, -50, PAGE_W, 0);
-        else if (field === 'yMm') d.layout.yMm = clampNum(input.value, -50, PAGE_H, 5);
+        var def = defaultLayout();
+        if (field === 'scalePct') d.layout.scale = clampNum(Number(input.value) / 100, 0.3, 2, def.scale);
+        else if (field === 'gapMm') d.layout.gapMm = clampNum(input.value, 0, 60, def.gapMm);
+        else if (field === 'xMm') d.layout.xMm = clampNum(input.value, -50, PAGE_W, def.xMm);
+        else if (field === 'yMm') d.layout.yMm = clampNum(input.value, -50, PAGE_H, def.yMm);
         d.layout = clampLayout(d.layout, d.size);
         persistSoon();
         rerenderCard();
@@ -2536,25 +2667,38 @@ var TnMgrPrintCards = (function (root) {
         ui().render();
     }
 
+    /** Подсказка панели «Размеры»: вписываем ли карточку в лист A4 landscape. */
+    function fitNoteHtml() {
+        var draft = ensureDraft();
+        var size = clampSize(draft.size);
+        var L = clampLayout(draft.layout, size);
+        var fit = fitsOnPage(L, size);
+        var p = placement(L, size, 0);
+        if (fit.ok) {
+            return '<p class="tnm-muted tnpc-fit-note">' + esc(bi('Лист A4 альбомный: ', 'A4 sheet, landscape: ') +
+                p.per + ' ' + bi('карточка(и) на листе, масштаб печати ', 'card(s) per sheet, print scale ') +
+                Math.round(L.scale * 100) + '%.') + '</p>';
+        }
+        return '<p class="tnpc-alert tnpc-fit-note">⚠ ' + esc(bi('Раскладка ', 'Layout ') + L.xMm + '×' + L.yMm + ' ' +
+            bi('мм при масштабе ', 'mm at ') + Math.round(L.scale * 100) + '% ' +
+            bi('не влезает в лист A4 (297×210 мм) — при печати карточка вписывается в лист: ',
+                'overflows the A4 sheet (297×210 mm) — printing fits the card onto the sheet: ') +
+            p.wMm + '×' + p.hMm + ' ' + bi('мм вместо ', 'mm instead of ') +
+            round1(size.wMm * L.scale) + '×' + round1(size.hMm * L.scale) + ' ' +
+            bi('мм. «Вписать в лист» подберёт максимальный размер.', 'mm. “Fit on page” picks the largest size.')) + '</p>';
+    }
+
     function refreshFitWarning() {
         var d = doc();
         if (!d || !state.panels.sizes) return;
         var panel = d.querySelector('[data-panel="sizes"]');
         if (!panel) return;
-        var draft = ensureDraft();
-        var fit = fitsOnPage(clampLayout(draft.layout, draft.size), clampSize(draft.size));
-        var existing = panel.querySelector('.tnpc-alert');
-        if (fit.ok) {
-            if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-            return;
-        }
-        if (existing) return;
-        var p = d.createElement('p');
-        p.className = 'tnpc-alert';
-        p.textContent = '⚠ ' + bi('Карточка выходит за лист A4 (', 'Card overflows the A4 sheet (') +
-            fit.right + '×' + fit.bottom + ' ' + bi('мм при 297×210). Нажмите «Вписать в лист».', 'mm vs 297×210). Click “Fit on page”.');
+        // Заменяем именно подсказку о вписывании: у неё свой класс, поэтому
+        // повторная правка размеров не накапливает копии абзаца.
+        var existing = panel.querySelector('.tnpc-fit-note');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
         var head = panel.querySelector('.tnpc-panel-head');
-        if (head && head.parentNode) head.parentNode.insertBefore(p, head.nextSibling);
+        if (head && head.parentNode) head.parentNode.insertAdjacentHTML('afterend', fitNoteHtml());
     }
 
     function refreshIndexWarn() {
@@ -2612,7 +2756,12 @@ var TnMgrPrintCards = (function (root) {
         cardCssText: cardCssText,
         cardStyleAttr: cardStyleAttr,
         slotPos: slotPos,
+        cardsPerSheet: cardsPerSheet,
+        pageFit: pageFit,
+        placement: placement,
         fitsOnPage: fitsOnPage,
+        foreMarksHtml: foreMarksHtml,
+        playerCount: playerCount,
         pageChunks: pageChunks,
         documentFor: documentFor,
         cardFaceHtml: cardFaceHtml,

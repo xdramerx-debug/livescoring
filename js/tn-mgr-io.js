@@ -55,6 +55,38 @@ var TnMgrIO = (function (root) {
     // PDF (печать)
     // ----------------------------------------------------------
     /**
+     * Печать из скрытого iframe — запасной путь, когда браузер блокирует
+     * всплывающие окна. Раньше в этом случае печаталась сама страница админки,
+     * а она в @media print скрывает весь свой контент: пользователь получал
+     * пустой лист вместо карточки.
+     */
+    function printInFrame(html, opts) {
+        var d = doc();
+        if (!d || !d.body) return false;
+        var frame = d.getElementById('tnm-print-frame');
+        if (!frame) {
+            frame = d.createElement('iframe');
+            frame.id = 'tnm-print-frame';
+            frame.setAttribute('aria-hidden', 'true');
+            frame.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;visibility:hidden';
+            d.body.appendChild(frame);
+        }
+        var fdoc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+        if (!fdoc) return false;
+        fdoc.open();
+        fdoc.write(html);
+        fdoc.close();
+        var start = function () {
+            waitForImages(fdoc, function () {
+                try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { /* печать вручную */ }
+            }, opts.timeout || 3500);
+        };
+        if (opts.delay) setTimeout(start, opts.delay);
+        else start();
+        return true;
+    }
+
+    /**
      * Открывает документ в новом окне и запускает печать.
      * html — готовый документ из TnMgrCore.*Html().
      */
@@ -64,10 +96,7 @@ var TnMgrIO = (function (root) {
         try {
             win = root.open('', '_blank');
         } catch (e) { win = null; }
-        if (!win) {
-            notify(en() ? '❌ Allow pop-ups to export PDF' : '❌ Разрешите всплывающие окна для экспорта PDF', 'error');
-            return false;
-        }
+        if (!win) return printInFrame(html, opts);
         win.document.open();
         win.document.write(html);
         win.document.close();

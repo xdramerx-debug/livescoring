@@ -306,6 +306,25 @@ check(scorecardsDoc.indexOf('Счёт игрока') !== -1 && scorecardsDoc.ind
     'на карточке есть отдельные поля для счёта игрока и маркера');
 check(scorecardsDoc.indexOf('data-qr=') !== -1 && scorecardsDoc.indexOf('Маркер: Петров Пётр') !== -1,
     'счётная карточка содержит QR маркера и его имя');
+check(scorecardsDoc.indexOf('<i class="scorecard-mark"></i>') !== -1 &&
+    scorecardsDoc.indexOf('.scorecard-marks{position:absolute;top:.3mm;right:.4mm') !== -1,
+    'фора наклонными черточками в правом верхнем углу клетки счёта');
+var cardHcp12 = C.scorecardsHtml({
+    lang: 'ru', layout: C.defaultScorecardLayout(),
+    cards: [{ player: { id: 'm1', fio: 'Тест Тест', hi: 12, ch: 12, tee: 'wh' },
+        entry: { playerId: 'm1', playerName: 'Тест Тест', hi: 12, ch: 12, tee: 'wh', startHole: 1 },
+        card: C.playerCard({}, course, 'wh', 12) }]
+});
+var marksPerHole = (function () {
+    var at = cardHcp12.indexOf('>Счёт игрока</td>');
+    var rowHtml = cardHcp12.slice(at, cardHcp12.indexOf('</tr>', at));
+    return rowHtml.split('<td class="scorecard-score-cell">').slice(1)
+        .map(function (cell) { return (cell.match(/scorecard-mark"/g) || []).length; });
+})();
+var siList = [];
+for (var h = 1; h <= 18; h++) siList.push(course.si(h));
+check(marksPerHole.join(',') === siList.map(function (si) { return si <= 12 ? 1 : 0; }).join(','),
+    'черточка на каждый удар форы лунки (CH 12): ' + marksPerHole.join(','));
 var roundDoc = C.roundScoreHtml({ players: players.slice(0, 2), cards: { p1: card }, course: course, roundDate: '2026-10-05', lang: 'ru' });
 check(roundDoc.indexOf('Длина') !== -1 && roundDoc.indexOf('Индекс') !== -1, 'в PDF раунда есть строки длина/пар/индекс');
 

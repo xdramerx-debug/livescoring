@@ -206,7 +206,7 @@ async function openTab(launch, base, viewport) {
         m.tableRows.indexOf('strokes') === m.tableRows.indexOf('fore') + 1, m.tableRows.join(','));
     check('ТИ показан цветом, не кодом', !/^(wh|bl|rd|bk)$/i.test(m.teeLabel), m.teeLabel);
     check('подписи снизу видны на экране', m.footOnScreen === 3, m.footOnScreen);
-    check('раскладка помещается на лист A4 (без предупреждения)', m.alert.indexOf('за лист A4') === -1, m.alert);
+    check('на экране нет предупреждений о раскладке', m.alert === '', m.alert);
 
     // 3. Остальные карточки свёрнуты и неактивны.
     check('все карточки перечислены свёрнутыми строками', m.rows === 5 && m.activeRows === 1,
@@ -244,6 +244,38 @@ async function openTab(launch, base, viewport) {
     // 6. Размеры меняются мгновенно и применяются ко всем карточкам.
     await page.click('[data-tnm-act="tnpc-panel-sizes"]');
     await page.waitForSelector('[data-panel="sizes"]');
+    // Раскладка по умолчанию (90x40 мм, 140%) крупнее листа A4 landscape:
+    // панель честно об этом пишет, а печать вписывает карточку в лист.
+    const sizes = await page.evaluate(function () {
+        const panel = document.querySelector('[data-panel="sizes"]');
+        const card = document.querySelector('.tnpc-card');
+        const page = document.querySelector('[data-tnpc-page]');
+        const note = (panel.querySelector('.tnpc-alert') || panel.querySelector('.tnm-muted') || {}).textContent || '';
+        const cs = card ? getComputedStyle(card) : {};
+        function field(name) {
+            const input = panel.querySelector('[data-tnm-live-edit="tnpc-layout"][data-field="' + name + '"]');
+            return input ? input.value : null;
+        }
+        return {
+            note: note.trim(),
+            x: parseFloat(card && card.style.left),
+            y: parseFloat(card && card.style.top),
+            scale: cs && cs.transform ? cs.transform : '',
+            cardW: card ? card.getBoundingClientRect().width : 0,
+            pageW: page ? page.getBoundingClientRect().width : 0,
+            pageH: page ? page.getBoundingClientRect().height : 0,
+            perSheet: panel.querySelector('[data-tnm-edit="tnpc-persheet"]').value,
+            scalePct: field('scalePct'), xMm: field('xMm'), yMm: field('yMm')
+        };
+    });
+    check('панель размеров объясняет вписывание в лист', /вписывается в лист/.test(sizes.note), sizes.note);
+    check('в подсказке указан фактический размер карточки', /\d+(\.\d+)?×\d+(\.\d+)? мм/.test(sizes.note), sizes.note);
+    check('масштаб по умолчанию 140%', sizes.scalePct === '140', sizes.scalePct);
+    check('смещение по умолчанию 90x40 мм', sizes.xMm === '90' && sizes.yMm === '40',
+        sizes.xMm + 'x' + sizes.yMm);
+    check('вписанная карточка не выходит за лист A4 landscape',
+        sizes.cardW <= sizes.pageW + 1 && sizes.x >= 0 && sizes.y >= 0,
+        'card ' + Math.round(sizes.cardW) + 'px в листе ' + Math.round(sizes.pageW) + 'x' + Math.round(sizes.pageH) + 'px');
     const before = await page.evaluate(measure);
     await page.evaluate(function () {
         const input = document.querySelector('[data-tnm-live-edit="tnpc-style"][data-field="nameMm"]');
@@ -361,6 +393,19 @@ async function openTab(launch, base, viewport) {
         printed.indexOf('<span class="tnpc-handle"') === -1 && printed.indexOf('<span class="tnpc-x"') === -1 &&
         printed.indexOf('contenteditable') === -1);
     check('печать — лист A4 landscape', printed.indexOf('@page{size:A4 landscape;margin:0}') !== -1);
+    check('внешняя рамка карточки на печать не идёт', printed.indexOf('.tnpc-card{border:0!important}') !== -1);
+    check('фора в печати — наклонными черточками в углу клетки счёта',
+        printed.indexOf('<i class="tnpc-mark"></i>') !== -1 &&
+        printed.indexOf('.tnpc-marks{position:absolute;top:.2mm;right:.2mm') !== -1);
+    const marksWide = await page.evaluate(function () {
+        const cell = document.querySelector('.tnpc-empty .tnpc-marks');
+        if (!cell) return null;
+        const box = cell.getBoundingClientRect();
+        const parent = cell.parentNode.getBoundingClientRect();
+        return { inTopRight: box.right >= parent.right - 3 && box.top <= parent.top + 3 };
+    });
+    check('черточки стоят в правом верхнем углу клетки счёта',
+        !!marksWide && marksWide.inTopRight, JSON.stringify(marksWide));
     check('QR-код попал в печать', printed.indexOf('data-qr') !== -1);
 
     // 8. Узкий экран (телефон организатора в поле).

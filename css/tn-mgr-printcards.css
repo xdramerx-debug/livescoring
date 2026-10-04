@@ -210,12 +210,20 @@
 }
 
 /* ---------- печать самой страницы админки ---------- */
+/* Печать вкладки «Счетные карточки» прямо из админки (Ctrl+P, когда
+   всплывающие окна заблокированы): лист всегда A4 АЛЬБОМНЫЙ — ориентация
+   выставляется автоматически, поля и колонтитулы не печатаются. */
 @media print {
+    @page { size: A4 landscape; margin: 0; }
     .tnpc-toolbar, .tnpc-panel, .tnpc-status, .tnpc-hints, .tnpc-list,
     .tnpc-sel, .tnpc-warn, .tnpc-handle, .tnpc-x, .tnpc-tag, .tnpc-ph,
     .tnpc-noprint, .tnpc-ghost, .tnpc-master-note { display: none !important; }
+    /* На бумагу идёт только лист с карточкой: обвязка админки скрыта. */
+    body > *:not(:has(.tnpc-wrap)) { display: none !important; }
     .tnpc-stage { background: #fff; border: none; padding: 0; overflow: visible; height: auto !important; }
     .tnpc-page { box-shadow: none; background: #fff; transform: none !important; }
+    /* Внешняя рамка карточки снимается автоматически — как в окне печати. */
+    .tnpc-card { border: 0 !important; }
     .tnpc-overlay { outline: none !important; }
     .tnpc-card [contenteditable="true"] { outline: none !important; }
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.99.1-f144d061';
+const CACHE_NAME = 'pestovo-v1.99.2-f144d061';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 

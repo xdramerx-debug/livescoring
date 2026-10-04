@@ -1963,7 +1963,10 @@
         '.scorecard-table th{background:#e8efe8;font-weight:700}',
         '.scorecard-table .scorecard-row-label{width:20mm;text-align:left;font-weight:700}',
         '.scorecard-table .scorecard-summary{background:#f1f2ed;font-weight:700}',
-        '.scorecard-table .scorecard-score-cell{height:7mm;background:#fff}',
+        '.scorecard-table .scorecard-score-cell{height:7mm;background:#fff;position:relative}',
+        '.scorecard-marks{position:absolute;top:.3mm;right:.4mm;display:inline-flex;gap:.3mm}',
+        '.scorecard-mark{display:block;width:.35mm;height:2mm;background:#111;transform:rotate(25deg)}',
+        '.scorecard-marks.minus .scorecard-mark{background:#a11414}',
         '.scorecard-block-custom{border:1px dashed #888;white-space:pre-wrap}',
         '.tn-scorecards-preview .tn-scorecard{max-width:100%;height:auto;aspect-ratio:277/190;margin:0 auto 1rem}',
         '.tn-scorecards-preview .scorecard-block{font-size:clamp(6px,1.1vw,14px)}',
@@ -2023,28 +2026,31 @@
             (block.visible ? '' : 'display:none;');
     }
 
-    function scorecardTable(label, holes, values, options) {
-        var opts = options || {};
-        var lang = opts.lang === 'en' ? 'en' : 'ru';
-        var summaries = opts.summaries || [];
-        var blankScores = !!opts.blankScores;
-        var html = '<table class="scorecard-table"><thead><tr><th class="scorecard-row-label">' +
-            esc(label) + '</th>';
-        holes.forEach(function (hole) { html += '<th>' + esc(hole.hole) + '</th>'; });
-        summaries.forEach(function (summary) { html += '<th class="scorecard-summary">' + esc(summary) + '</th>'; });
-        html += '</tr></thead><tbody><tr><td class="scorecard-row-label">' +
-            esc(opts.rowLabel || (lang === 'en' ? 'Player score' : 'Счёт игрока')) + '</td>';
-        (values || []).forEach(function (value) {
-            html += '<td class="' + (opts.scoreCells ? 'scorecard-score-cell' : '') + '">' +
-                (blankScores ? '' : esc(value == null ? '' : value)) + '</td>';
-        });
-        summaries.forEach(function (summary, index) {
-            var total = opts.summaryValues && opts.summaryValues[index];
-            html += '<td class="scorecard-summary ' + (opts.scoreCells ? 'scorecard-score-cell' : '') + '">' +
-                (blankScores || total == null ? '' : esc(total)) + '</td>';
-        });
-        html += '</tr></tbody></table>';
-        return html;
+    /**
+     * Удары форы наклонными черточками в правом верхнем углу клетки счёта:
+     * одна черточка за каждый удар форы на лунке (как на бланке клуба).
+     * Минусовая фора — красные черточки.
+     */
+    function foreMarksHtml(value, lang) {
+        var strokes = num(value, 0) || 0;
+        if (!strokes) return '';
+        var count = Math.abs(strokes);
+        var bars = '';
+        for (var i = 0; i < count; i++) bars += '<i class="scorecard-mark"></i>';
+        var title = (lang === 'en' ? 'Handicap: ' : 'Фора: ') + count + ' ' +
+            (lang === 'en' ? (count === 1 ? 'stroke' : 'strokes') : pluralStrokes(count)) +
+            (strokes < 0 ? (lang === 'en' ? ' (given)' : ' (минусовая)') : '');
+        return '<span class="scorecard-marks' + (strokes < 0 ? ' minus' : '') + '" title="' + esc(title) + '">' +
+            bars + '</span>';
+    }
+
+    /** Русская форма: 1 удар / 2 удара / 5 ударов. */
+    function pluralStrokes(n) {
+        var mod10 = n % 10;
+        var mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return 'удар';
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'удара';
+        return 'ударов';
     }
 
     /** Разметка одной счётной карточки — общая для превью и печатного PDF. */
@@ -2096,26 +2102,34 @@
                 var indexValues = holes.map(function (hole) { return hole.index; });
                 var foreValues = holes.map(function (hole) { return hole.fore; });
                 var scoreValues = holes.map(function (hole) { return hole.strokes; });
-                function aggregate(values, begin, end) {
+                var aggregate = function (values, begin, end) {
                     var list = values.slice(begin, end);
                     if (!list.some(function (value) { return value != null && value !== ''; })) return '';
                     return list.reduce(function (sum, value) { return sum + (num(value, 0) || 0); }, 0);
-                }
+                };
+                var scoreLabel = lang === 'en' ? 'Player score' : 'Счёт игрока';
                 var metricRows = [
-                    [lang === 'en' ? 'Length' : 'Длина', lengthValues, [aggregate(lengthValues, 0, 9), aggregate(lengthValues, 9, 18), aggregate(lengthValues, 0, 18)]],
-                    [lang === 'en' ? 'Par' : 'Пар', parValues, [aggregate(parValues, 0, 9), aggregate(parValues, 9, 18), aggregate(parValues, 0, 18)]],
-                    [lang === 'en' ? 'Index' : 'Индекс', indexValues, ['', '', '']],
-                    [lang === 'en' ? 'Handicap' : 'Фора', foreValues, ['', '', '']],
-                    [lang === 'en' ? 'Player score' : 'Счёт игрока', scoreValues,
-                        [aggregate(scoreValues, 0, 9), aggregate(scoreValues, 9, 18), aggregate(scoreValues, 0, 18)]]
+                    [lang === 'en' ? 'Length' : 'Длина', lengthValues, [aggregate(lengthValues, 0, 9), aggregate(lengthValues, 9, 18), aggregate(lengthValues, 0, 18)], null],
+                    [lang === 'en' ? 'Par' : 'Пар', parValues, [aggregate(parValues, 0, 9), aggregate(parValues, 9, 18), aggregate(parValues, 0, 18)], null],
+                    [lang === 'en' ? 'Index' : 'Индекс', indexValues, ['', '', ''], null],
+                    [lang === 'en' ? 'Handicap' : 'Фора', foreValues, ['', '', ''], null],
+                    // В клетках счёта — черточки форы: удар форы виден, цифру не закрывает.
+                    [scoreLabel, scoreValues,
+                        [aggregate(scoreValues, 0, 9), aggregate(scoreValues, 9, 18), aggregate(scoreValues, 0, 18)],
+                        foreValues]
                 ];
                 content = '<table class="scorecard-table"><thead><tr><th class="scorecard-row-label">' +
                     esc(lang === 'en' ? 'Hole' : 'Лунка') + '</th>' + holes.map(function (hole) { return '<th>' + esc(hole.hole) + '</th>'; }).join('') +
                     summaries.map(function (summary) { return '<th class="scorecard-summary">' + esc(summary) + '</th>'; }).join('') +
                     '</tr></thead><tbody>' + metricRows.map(function (row) {
+                        var isScore = row[0] === scoreLabel;
                         return '<tr><td class="scorecard-row-label">' + esc(row[0]) + '</td>' +
-                            row[1].map(function (value) { return '<td' + (row[0] === (lang === 'en' ? 'Player score' : 'Счёт игрока') ? ' class="scorecard-score-cell"' : '') + '>' + esc(value == null ? '' : value) + '</td>'; }).join('') +
-                            row[2].map(function (value) { return '<td class="scorecard-summary' + (row[0] === (lang === 'en' ? 'Player score' : 'Счёт игрока') ? ' scorecard-score-cell' : '') + '">' + esc(value == null ? '' : value) + '</td>'; }).join('') +
+                            row[1].map(function (value, i) {
+                                return '<td' + (isScore ? ' class="scorecard-score-cell"' : '') + '>' +
+                                    esc(value == null ? '' : value) +
+                                    (isScore ? foreMarksHtml(row[3][i], lang) : '') + '</td>';
+                            }).join('') +
+                            row[2].map(function (value) { return '<td class="scorecard-summary' + (isScore ? ' scorecard-score-cell' : '') + '">' + esc(value == null ? '' : value) + '</td>'; }).join('') +
                             '</tr>';
                     }).join('') + '</tbody></table>';
             } else if (block.type === 'markerScores') {

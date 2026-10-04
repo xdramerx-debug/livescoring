@@ -147,33 +147,87 @@ var TnMgrIO = (function (root) {
         });
     }
 
+    /** Это файл таблицы Excel (xlsx/xls/ods)? */
+    function isExcelFile(fileOrName) {
+        var name = String((fileOrName && fileOrName.name) || fileOrName || '').toLowerCase();
+        return /\.(xlsx|xls|ods)$/.test(name);
+    }
+
+    /** Загружена ли библиотека Excel (SheetJS). */
+    function excelAvailable() {
+        return typeof root.XLSX !== 'undefined' && !!root.XLSX;
+    }
+
+    function excelLibraryError() {
+        return new Error(en()
+            ? 'Excel library not loaded (check internet)'
+            : 'Библиотека Excel не загрузилась (проверьте интернет)');
+    }
+
     /**
-     * Читает xlsx/xls/csv/tsv и возвращает массив строк (aoa) для
-     * TnMgrCore.parseParticipants(). Ошибка — отклонённый промис.
+     * Все листы книги: [{ name, rows }]. Пустые листы отбрасываем, но порядок
+     * листов сохраняем — импорт участников смотрит каждый лист, а не только
+     * первый (организаторы часто кладут состав на отдельную вкладку).
      */
-    function readTableFile(file) {
-        var name = String(file && file.name || '').toLowerCase();
-        var isExcel = /\.(xlsx|xls|ods)$/.test(name);
-        if (isExcel) {
-            if (typeof root.XLSX === 'undefined' || !root.XLSX) {
-                return Promise.reject(new Error(en()
-                    ? 'Excel library not loaded (check internet)'
-                    : 'Библиотека Excel не загрузилась (проверьте интернет)'));
+    function workbookSheets(book) {
+        var names = (book && book.SheetNames) || [];
+        var sheets = [];
+        names.forEach(function (name, index) {
+            var sheet = book.Sheets ? book.Sheets[name] : null;
+            if (!sheet) return;
+            var rows = [];
+            try {
+                rows = root.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
+            } catch (e) {
+                rows = [];
             }
+            rows = (rows || []).filter(function (row) {
+                return (row || []).some(function (cell) { return root.TnMgrCore.trim(cell) !== ''; });
+            });
+            if (!rows.length) return;
+            sheets.push({ name: String(name || ('Лист ' + (index + 1))), rows: rows });
+        });
+        return sheets;
+    }
+
+    /**
+     * Читает xlsx/xls/ods/csv/tsv и возвращает ВСЕ листы книги
+     * ([{ name, rows }]) для TnMgrCore.parseWorkbook(). Ошибка — отклонённый промис.
+     */
+    function readWorkbookFile(file) {
+        if (isExcelFile(file)) {
+            if (!excelAvailable()) return Promise.reject(excelLibraryError());
             return readFile(file, 'array').then(function (buffer) {
                 var book = root.XLSX.read(new Uint8Array(buffer), { type: 'array' });
-                var first = book.SheetNames[0];
-                return first ? root.XLSX.utils.sheet_to_json(book.Sheets[first], { header: 1, defval: '', blankrows: false }) : [];
+                var sheets = workbookSheets(book);
+                if (!sheets.length) {
+                    throw new Error(en() ? 'No data rows found in the file' : 'В файле не найдено строк с данными');
+                }
+                return sheets;
             });
         }
         return readFile(file, 'text').then(function (text) {
-            return core().parseDelimited(text);
+            var rows = core().parseDelimited(text);
+            return rows.length ? [{ name: String(file && file.name || ''), rows: rows }] : [];
+        });
+    }
+
+    /**
+     * Первый непустой лист файла как обычная таблица (aoa) — для вызовов,
+     * которым нужна плоская таблица. Для импорта участников используйте
+     * readWorkbookFile: он читает все листы.
+     */
+    function readTableFile(file) {
+        return readWorkbookFile(file).then(function (sheets) {
+            return sheets.length ? sheets[0].rows : [];
         });
     }
 
     return {
         qrUrl: qrUrl, waitForImages: waitForImages, printHtml: printHtml,
         download: download, exportExcel: exportExcel,
-        readTableFile: readTableFile, readFile: readFile, timestampSuffix: timestampSuffix
+        isExcelFile: isExcelFile, excelAvailable: excelAvailable,
+        readWorkbookFile: readWorkbookFile, readTableFile: readTableFile,
+        readFile: readFile, timestampSuffix: timestampSuffix
     };
 })(typeof window !== 'undefined' ? window : this);

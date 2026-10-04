@@ -945,94 +945,574 @@
     // ----------------------------------------------------------
     // 9. ИМПОРТ УЧАСТНИКОВ (EXCEL / ТАБЛИЦА / CSV)
     // ----------------------------------------------------------
+    // Файлы от организаторов приходят в любом виде, поэтому разбор идёт по
+    // всем строкам, столбцам и ячейкам:
+    //   • строку заголовков ищем среди первых строк — над ней бывают
+    //     название турнира, дата, поле и прочие шапки;
+    //   • колонки ФИО / фамилии / имени / гандикапа / пола / группы
+    //     определяем по заголовкам (RU и EN: «ФИО», «Фамилия», «ИГ», «HI»);
+    //   • чего в заголовках нет — доопределяем по содержимому столбцов:
+    //     и гандикап, и имена находятся в любой колонке;
+    //   • в каждой строке значения ищем по всем ячейкам, служебные строки
+    //     (повтор шапки, «Итого», «№») пропускаем.
     var IMPORT_ALIASES = {
-        fio: ['фио', 'ф.и.о', 'имя', 'name', 'player', 'игрок', 'гольфист', 'участник', 'фамилия и имя', 'last name, first name'],
-        lastName: ['фамилия', 'last', 'lastname', 'surname', 'family'],
-        firstName: ['имя', 'first', 'firstname', 'given'],
-        middleName: ['отчество', 'middle', 'patronymic', 'middlename'],
-        hi: ['hi', 'гандикап', 'hcp', 'handicap', 'точный гандикап', 'индекс', 'index'],
-        ch: ['ch', 'игровой гандикап', 'course handicap', 'полевой гандикап'],
-        gender: ['пол', 'gender', 'sex'],
-        tee: ['ти', 'tee', 'цвет', 'tees', 'ти (tee)'],
-        group: ['группа', 'group', 'зачёт', 'дивизион', 'division'],
+        fio: ['фио', 'ф.и.о', 'фио игрока', 'фио участника', 'фамилия и имя', 'имя и фамилия', 'имя фамилия',
+            'игрок', 'участник', 'гольфист', 'player', 'name', 'full name', 'last name, first name'],
+        lastName: ['фамилия', 'last', 'lastname', 'surname', 'family', 'family name', 'last name'],
+        firstName: ['имя', 'first', 'firstname', 'given', 'given name', 'first name'],
+        middleName: ['отчество', 'middle', 'middlename', 'patronymic', 'middle name'],
+        hi: ['hi', 'h.i', 'иг', 'иг.', 'гандикап', 'handicap', 'handicap index', 'точный гандикап',
+            'точный индекс', 'индекс', 'index'],
+        ch: ['ch', 'игровой', 'игровой гандикап', 'игровой индекс', 'course handicap', 'полевой гандикап'],
+        gender: ['пол', 'gender', 'sex', 'муж/жен', 'м/ж'],
+        tee: ['ти', 'tee', 'tees', 'цвет', 'цвет ти'],
+        group: ['группа', 'group', 'зачёт', 'зачет', 'дивизион', 'division', 'флайт', 'flight'],
         format: ['формат', 'format'],
-        club: ['клуб', 'club', 'команда', 'team']
+        club: ['клуб', 'club', 'команда', 'team'],
+        no: ['№', '№ п/п', 'номер', 'п/п', 'п.п', 'n', 'no', 'nr', 'num', 'number']
     };
 
+    // Нормализованные алиасы считаем один раз: разбор файла вызывает
+    // сопоставление заголовков для каждой ячейки и каждой колонки.
+    var IMPORT_ALIAS_INDEX = (function () {
+        var index = {};
+        Object.keys(IMPORT_ALIASES).forEach(function (kind) {
+            index[kind] = IMPORT_ALIASES[kind].map(normHeaderText).filter(Boolean);
+        });
+        return index;
+    })();
+
+    var NAME_KINDS = ['fio', 'lastName', 'firstName', 'middleName'];
+    // Порядок разбора заголовка: сначала «узкие» колонки, составные («ФИО») — последними.
+    var IMPORT_EXACT_ORDER = ['lastName', 'firstName', 'middleName', 'ch', 'hi', 'no', 'gender', 'tee', 'group', 'format', 'club', 'fio'];
+    var IMPORT_SUBSTRING_ORDER = ['lastName', 'firstName', 'middleName', 'ch', 'hi', 'gender', 'tee', 'group', 'format', 'club', 'fio'];
+    // Служебные слова: строка с таким «именем» — не участник (шапка, «Итого»).
+    var IMPORT_JUNK_WORDS = ['итого', 'итог', 'всего', 'total', 'sum', 'продолжение', 'примечание', 'примечания',
+        'подпись', 'судья', 'главный судья', 'секретарь', 'председатель', 'дата', 'время', 'место',
+        'фио', 'фамилия', 'имя', 'отчество', 'игрок', 'игроки', 'участник', 'участники', 'гольфист', 'гандикап',
+        'пол', 'группа', 'клуб', 'команда', 'ти', 'tee', 'номер', 'п/п', 'п.п', 'n', 'no', 'name', 'player',
+        'players', 'handicap', 'surname', 'firstname', 'lastname', 'first name', 'last name', 'club', 'team',
+        'group', 'gender', 'division', 'флайт', 'зачёт', 'формат', 'format'];
+    var IMPORT_JUNK_SET = (function () {
+        var set = {};
+        IMPORT_JUNK_WORDS.forEach(function (word) { set[normText(word)] = true; });
+        return set;
+    })();
+    // Колонок в файле может быть больше, чем колонок с данными: шапку ищем
+    // только в начале листа, чтобы не спутать её со строкой данных.
+    var IMPORT_HEADER_SCAN = 20;
+
+    function normHeaderText(value) {
+        return normText(value).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * Совпадение заголовка с алиасом. Короткие алиасы («ти», «ch», «иг»)
+     * сравниваем только целиком, иначе «Полина» станет колонкой «Пол».
+     */
+    function aliasHit(kind, text, mode) {
+        var list = IMPORT_ALIAS_INDEX[kind] || [];
+        for (var i = 0; i < list.length; i++) {
+            var alias = list[i];
+            if (text === alias) return true;
+            if (mode === 'substring' && alias.length >= 4 && text.indexOf(alias) !== -1) return true;
+        }
+        return false;
+    }
+
+    /** Тип колонки по заголовку: fio | lastName | firstName | hi | ch | … | ''. */
     function headerKind(header) {
-        var h = normText(header).replace(/[.()]/g, ' ').replace(/\s+/g, ' ').trim();
-        if (!h) return '';
-        var kinds = Object.keys(IMPORT_ALIASES);
-        for (var i = 0; i < kinds.length; i++) {
-            var kind = kinds[i];
-            if (IMPORT_ALIASES[kind].some(function (alias) { return h === normText(alias) || h.indexOf(normText(alias)) !== -1; })) return kind;
+        var raw = trim(header).toLowerCase();
+        if (!raw) return '';
+        if (/^№/.test(raw) || /^(n|no|nr|num|number)\.?$/.test(raw)) return 'no';
+        var text = normHeaderText(raw);
+        if (!text) return '';
+        var i, kind, tokens;
+        for (i = 0; i < IMPORT_EXACT_ORDER.length; i++) {
+            if (aliasHit(IMPORT_EXACT_ORDER[i], text, 'exact')) return IMPORT_EXACT_ORDER[i];
+        }
+        tokens = text.split(' ');
+        for (i = 0; i < IMPORT_EXACT_ORDER.length; i++) {
+            kind = IMPORT_EXACT_ORDER[i];
+            for (var t = 0; t < tokens.length; t++) {
+                if (aliasHit(kind, tokens[t], 'exact')) return kind;
+            }
+        }
+        for (i = 0; i < IMPORT_SUBSTRING_ORDER.length; i++) {
+            if (aliasHit(IMPORT_SUBSTRING_ORDER[i], text, 'substring')) return IMPORT_SUBSTRING_ORDER[i];
         }
         return '';
     }
 
     /**
-     * Разбор массива строк (Excel/CSV/таблица) в участников.
-     * Первая непустая строка — заголовки; если заголовков нет,
-     * определяем колонки по содержимому (ФИО + гандикап).
+     * Число-гандикап из ячейки: «12,4», «+2.5», «HI 12.4», «ИГ: 8», «10 (HI)».
+     * Плюсовой гандикап в базе хранится отрицательным (как в АГР).
      */
-    function parseParticipants(aoa) {
-        var rows = (aoa || []).filter(function (row) {
-            return (row || []).some(function (cell) { return trim(cell) !== ''; });
-        });
-        var result = { players: [], issues: [], header: [] };
-        if (!rows.length) return result;
-
-        var header = rows[0].map(function (cell) { return trim(cell); });
-        var mapping = {};
-        var headerKinds = header.map(headerKind);
-        var hasHeader = headerKinds.filter(Boolean).length >= 2 ||
-            headerKinds.indexOf('fio') !== -1 || headerKinds.indexOf('lastName') !== -1;
-        var dataRows = hasHeader ? rows.slice(1) : rows;
-        if (hasHeader) {
-            result.header = header;
-            headerKinds.forEach(function (kind, index) { if (kind && mapping[kind] == null) mapping[kind] = index; });
-        } else {
-            // Без заголовков: 1-я колонка — ФИО, 2-я — гандикап (если число).
-            mapping.fio = 0;
-            if (rows[0] && rows[0].length > 1 && num(rows[0][1]) != null) mapping.hi = 1;
-            if (rows[0] && rows[0].length > 2 && normalizeGender(rows[0][2])) mapping.gender = 2;
+    function hcpNumber(value) {
+        var text = trim(value).replace(/\u00a0/g, ' ').replace(/[–—−]/g, '-');
+        if (!text) return null;
+        var plain = text.replace(/\s+/g, '');
+        if (/^[+-]?\d+(?:[.,]\d+)?$/.test(plain)) {
+            var direct = num(plain.replace('+', ''));
+            if (direct == null) return null;
+            return plain.charAt(0) === '+' ? -Math.abs(direct) : direct;
         }
+        var match = text.replace(/,/g, '.').match(/[+-]?\d{1,3}(?:\.\d+)?/);
+        if (!match) return null;
+        var parsed = parseFloat(match[0]);
+        if (!isFinite(parsed)) return null;
+        return match[0].charAt(0) === '+' ? -Math.abs(parsed) : parsed;
+    }
 
-        var seen = {};
-        dataRows.forEach(function (row, index) {
-            var get = function (kind) {
-                var at = mapping[kind];
-                return at == null ? '' : trim(row[at]);
-            };
-            var fio = get('fio');
-            var last = get('lastName'), first = get('firstName'), middle = get('middleName');
-            if (!fio) fio = trim([last, first, middle].filter(Boolean).join(' '));
-            if (!fio) {
-                result.issues.push({ row: index + (hasHeader ? 2 : 1), code: 'empty-name', message: 'Пустое ФИО — строка пропущена' });
+    /** Код ТИ по названию/цвету: «Белый» → wh, «Red» → rd. */
+    function teeCode(value) {
+        var text = normText(value);
+        if (!text) return '';
+        var map = {
+            bk: 'bk', black: 'bk', 'черный': 'bk', 'черн': 'bk', 'черная': 'bk',
+            bl: 'bl', blue: 'bl', 'синий': 'bl', 'син': 'bl',
+            wh: 'wh', white: 'wh', 'белый': 'wh', 'бел': 'wh', 'белая': 'wh',
+            rd: 'rd', red: 'rd', 'красный': 'rd', 'красн': 'rd',
+            gd: 'gd', gold: 'gd', 'золотой': 'gd', 'золот': 'gd',
+            yl: 'yl', yellow: 'yl', 'желтый': 'yl', 'желт': 'yl'
+        };
+        return map[text] || '';
+    }
+
+    /** Похоже ли значение на ФИО (а не на число, дату или служебное слово). */
+    function looksLikeName(value) {
+        var text = trim(value);
+        if (!text) return false;
+        if (hcpNumber(text) != null && num(text) != null) return false;
+        if (!/[a-zа-яё]/i.test(text)) return false;
+        if (/[./-]/.test(text) && dateIso(text)) return false;   // даты — не имена
+        var kind = headerKind(text);
+        if (kind && NAME_KINDS.indexOf(kind) !== -1) return false;
+        var words = normText(text).split(' ').filter(Boolean);
+        if (!words.length || words.length > 4) return false;
+        var letters = 0;
+        words.forEach(function (word) { letters += word.replace(/[^a-zа-я]/g, '').length; });
+        if (letters < 2) return false;
+        if (IMPORT_JUNK_SET[normText(text)]) return false;
+        return true;
+    }
+
+    /** Служебная строка: «Итого», повтор шапки, строка из одних цифр. */
+    function isJunkName(value) {
+        var text = normText(value);
+        if (!text) return true;
+        if (IMPORT_JUNK_SET[text]) return true;
+        if (!/[a-zа-я]/.test(text)) return true;
+        if (/^\d+([.,]\d+)?$/.test(text)) return true;
+        var kind = headerKind(value);
+        if (kind && NAME_KINDS.indexOf(kind) !== -1) return true;
+        return false;
+    }
+
+    /**
+     * Служебная строка целиком: «Итого», повтор шапки, одни номера/даты.
+     * Такие строки пропускаем молча — это не потерянные участники.
+     */
+    function isServiceRow(cells, mapping) {
+        var kinds = {};
+        Object.keys(mapping || {}).forEach(function (kind) { kinds[mapping[kind]] = kind; });
+        var filled = 0, service = 0;
+        (cells || []).forEach(function (cell, column) {
+            var text = trim(cell);
+            if (!text) return;
+            filled++;
+            if (/[./-]/.test(text) && dateIso(text)) { service++; return; }   // «16.05.2026»
+            // Число в колонке данных (гандикап, CH) — это данные, а не служебная
+            // строка: строку с пустым именем и гандикапом нужно показать в issues.
+            if (num(text) != null) {
+                if (kinds[column] !== undefined && kinds[column] !== 'no') return;
+                service++;
                 return;
             }
-            var hiRaw = get('hi');
-            var player = newPlayer({
-                fio: fio,
-                lastName: last, firstName: first, middleName: middle,
-                hi: num(hiRaw),
-                ch: num(get('ch')),
-                gender: get('gender'),
-                tee: get('tee'),
-                groupId: '',
-                format: get('format'),
-                club: get('club'),
-                source: 'excel'
-            });
-            player.groupName = get('group');
-            if (hiRaw && num(hiRaw) == null) {
-                result.issues.push({ row: index + (hasHeader ? 2 : 1), code: 'bad-hcp', message: 'Гандикап не распознан: ' + hiRaw });
+            if (isJunkName(text) || normalizeGender(text) || teeCode(text)) { service++; return; }
+        });
+        return filled > 0 && service === filled;
+    }
+
+    /** Намёк на фамилию (RU и латиница) — по нему выбираем колонку фамилии. */
+    function surnameHint(value) {
+        var word = trim(value);
+        if (!word) return false;
+        if (/(ов|ева|ова|ев|ин|ына|ина|ын|ский|цкий|ская|цкая|енко|ук|юк|ко)$/i.test(word)) return true;
+        var latin = translitRu(word).replace(/[^a-z]/g, '');
+        return /(ov|ova|ev|eva|in|ina|yn|yna|sky|skaya|tsky|tskaya|enko|uk|yuk|ko)$/.test(latin);
+    }
+
+    function columnProfile(rows, column) {
+        var stats = { filled: 0, numeric: 0, hcp: 0, names: 0, words: 0, surnames: 0, gender: 0, tee: 0, decimals: 0 };
+        (rows || []).forEach(function (row) {
+            var cell = trim((row || [])[column]);
+            if (!cell) return;
+            stats.filled++;
+            var direct = num(cell);
+            var hcp = hcpNumber(cell);
+            if (direct != null || hcp != null) stats.numeric++;
+            if (hcp != null && hcp >= -10 && hcp <= 54) {
+                stats.hcp++;
+                if (/[.,]\d/.test(cell) || /^\s*\+/.test(cell)) stats.decimals++;
             }
-            if (num(get('ch')) == null && player.ch != null && num(player.ch) == null) player.ch = null;
-            if (!normalizeGender(get('gender'))) player.gender = '';
+            if (looksLikeName(cell)) {
+                stats.names++;
+                var words = normText(cell).split(' ').filter(Boolean);
+                stats.words += words.length;
+                if (words.length === 1 && surnameHint(words[0])) stats.surnames++;
+            }
+            if (normalizeGender(cell)) stats.gender++;
+            if (teeCode(cell)) stats.tee++;
+        });
+        return stats;
+    }
+
+    /** Колонка «№ 1, 2, 3…» — это нумерация, а не гандикап. */
+    function isIndexColumn(rows, column) {
+        var filled = 0, sequenced = 0;
+        (rows || []).forEach(function (row) {
+            var cell = trim((row || [])[column]);
+            if (!cell) return;
+            filled++;
+            var value = num(cell);
+            if (value == null) return;
+            if (value % 1 === 0 && Math.abs(value - filled) < 1e-9) sequenced++;
+        });
+        return filled >= 4 && sequenced / filled >= 0.8;
+    }
+
+    /**
+     * Определение колонок по содержимому. Нужно там, где заголовков нет или
+     * они не покрывают поле: имена и гандикап находятся в любом столбце.
+     */
+    function inferColumns(rows, mapping) {
+        var map = mapping || {};
+        var taken = {};
+        Object.keys(map).forEach(function (kind) { taken[map[kind]] = kind; });
+        var width = 0;
+        (rows || []).forEach(function (row) { width = Math.max(width, (row || []).length); });
+        var profiles = [];
+        for (var column = 0; column < width; column++) profiles.push(columnProfile(rows, column));
+        var result = {
+            names: [], fio: null, lastName: null, firstName: null, middleName: null,
+            hi: null, gender: null, tee: null, profiles: profiles
+        };
+        var hasNameKind = NAME_KINDS.some(function (kind) { return map[kind] != null; });
+        var hiCandidates = [];
+        profiles.forEach(function (stats, column) {
+            var kind = taken[column];
+            var filled = stats.filled || 1;
+            if (map.no === column) return;
+            if (!hasNameKind && (!kind || NAME_KINDS.indexOf(kind) !== -1)) {
+                if (stats.names >= 2 && stats.names / filled >= 0.6 && stats.numeric / filled < 0.5) {
+                    result.names.push(column);
+                }
+            }
+            if (map.hi == null && stats.numeric >= 2 && stats.numeric / filled >= 0.6 &&
+                stats.hcp / filled >= 0.6 && !isIndexColumn(rows, column)) {
+                hiCandidates.push(column);
+            }
+            if (map.gender == null && result.gender == null && stats.gender >= 2 && stats.gender / filled >= 0.6) {
+                result.gender = column;
+            }
+            if (map.tee == null && result.tee == null && stats.tee >= 2 && stats.tee / filled >= 0.6) {
+                result.tee = column;
+            }
+        });
+        if (hiCandidates.length) {
+            // Гандикап — колонка с дробными значениями (или «+»), если такая есть.
+            var best = hiCandidates.slice().sort(function (a, b) {
+                if (profiles[b].decimals !== profiles[a].decimals) return profiles[b].decimals - profiles[a].decimals;
+                return a - b;
+            })[0];
+            result.hi = best;
+        }
+        var nameCols = result.names.slice();
+        if (nameCols.length) {
+            var wordiness = function (column) {
+                var stats = profiles[column];
+                return stats && stats.names ? stats.words / stats.names : 0;
+            };
+            var surnameRatio = function (column) {
+                var stats = profiles[column];
+                return stats && stats.names ? stats.surnames / stats.names : 0;
+            };
+            var primary = nameCols.slice().sort(function (a, b) {
+                if (Math.abs(wordiness(a) - wordiness(b)) > 0.2) return wordiness(b) - wordiness(a);
+                var ratioA = profiles[a].names / (profiles[a].filled || 1);
+                var ratioB = profiles[b].names / (profiles[b].filled || 1);
+                if (Math.abs(ratioA - ratioB) > 0.05) return ratioB - ratioA;
+                return a - b;
+            })[0];
+            if (wordiness(primary) >= 1.8 || nameCols.length === 1) {
+                // Колонка с полным ФИО; остальные «имена» — скорее клуб/команда.
+                result.fio = primary;
+                result.names = [primary];
+            } else {
+                var ordered = nameCols.slice(0, 3);
+                var bySurname = ordered.slice().sort(function (a, b) { return surnameRatio(b) - surnameRatio(a); });
+                if (bySurname.length > 1 && surnameRatio(bySurname[0]) - surnameRatio(bySurname[1]) > 0.15) {
+                    result.lastName = bySurname[0];
+                    ordered = ordered.filter(function (column) { return column !== bySurname[0]; });
+                } else {
+                    result.lastName = ordered[0];
+                    ordered = ordered.slice(1);
+                }
+                result.firstName = ordered.length ? ordered[0] : null;
+                result.middleName = ordered.length > 1 ? ordered[1] : null;
+            }
+        }
+        return result;
+    }
+
+    /** Итоговое ФИО: из колонки «ФИО» или собранное из фамилии, имени, отчества. */
+    function importFio(parts) {
+        var p = parts || {};
+        var fio = trim(p.fio);
+        var composed = trim([p.last, p.first, p.middle].filter(Boolean).join(' '));
+        if (!fio) return composed;
+        if (!composed) return fio;
+        var fioWords = normText(fio);
+        var composedWords = normText(composed);
+        if (fioWords.indexOf(composedWords) !== -1) return fio;
+        if (composedWords.indexOf(fioWords) !== -1) return composed;
+        return composedWords.split(' ').length >= fioWords.split(' ').length ? composed : fio;
+    }
+
+    /** Имя строки по колонкам, определённым по содержимому (когда шапки нет). */
+    function nameFromInferred(cells, inferred, used) {
+        if (!inferred) return null;
+        var roles = [];
+        if (inferred.fio != null) roles.push({ column: inferred.fio, role: 'fio' });
+        if (inferred.lastName != null) roles.push({ column: inferred.lastName, role: 'last' });
+        if (inferred.firstName != null) roles.push({ column: inferred.firstName, role: 'first' });
+        if (inferred.middleName != null) roles.push({ column: inferred.middleName, role: 'middle' });
+        var parts = { fio: '', last: '', first: '', middle: '' };
+        var found = false;
+        roles.forEach(function (item) {
+            if (used[item.column]) return;
+            var value = trim(cells[item.column]);
+            if (!looksLikeName(value)) return;
+            parts[item.role] = parts[item.role] || value;
+            used[item.column] = true;
+            found = true;
+        });
+        return found ? parts : null;
+    }
+
+    /** Гандикап из любой ячейки строки (когда колонка не найдена по шапке). */
+    function hcpFromRow(cells, used) {
+        var candidates = [];
+        (cells || []).forEach(function (cell, column) {
+            if (used[column]) return;
+            var text = trim(cell);
+            var value = hcpNumber(text);
+            if (value == null || value < -10 || value > 54) return;
+            candidates.push({ column: column, value: value, clean: !/[a-zа-яё]/i.test(text) });
+        });
+        if (!candidates.length) return null;
+        var clean = candidates.filter(function (item) { return item.clean; });
+        if (clean.length === 1) return clean[0].value;
+        if (clean.length > 1) {
+            // Несколько чисел в строке: гандикап — дробное или с «+».
+            var signed = clean.filter(function (item) {
+                var text = trim(cells[item.column]);
+                return /[.,]\d/.test(text) || /^\s*\+/.test(text);
+            });
+            return signed.length === 1 ? signed[0].value : null;
+        }
+        // Число подписано словами: «HI 12.4», «ИГ: 8».
+        return candidates.length === 1 ? candidates[0].value : null;
+    }
+
+    function genderFromRow(cells, used) {
+        for (var i = 0; i < (cells || []).length; i++) {
+            if (used[i]) continue;
+            var gender = normalizeGender(cells[i]);
+            if (gender) return gender;
+        }
+        return '';
+    }
+
+    function teeFromRow(cells, used) {
+        for (var i = 0; i < (cells || []).length; i++) {
+            if (used[i]) continue;
+            var code = teeCode(cells[i]);
+            if (code) return code;
+        }
+        return '';
+    }
+
+    /**
+     * Участник из строки таблицы: значения берём из колонок шапки, затем из
+     * колонок, определённых по содержимому, затем — перебором всех ячеек.
+     * Возвращает { skip, code, message, player }.
+     */
+    function playerFromRow(cells, mapping, inferred) {
+        var map = mapping || {};
+        var used = {};
+        var at = {};
+        Object.keys(map).forEach(function (kind) {
+            var column = map[kind];
+            if (column == null) return;
+            used[column] = true;
+            at[kind] = trim(cells[column]);
+        });
+
+        var parts = { fio: at.fio || '', last: at.lastName || '', first: at.firstName || '', middle: at.middleName || '' };
+        var fio = importFio(parts);
+        if (!fio) {
+            var guessed = nameFromInferred(cells, inferred, used);
+            if (guessed) {
+                parts = guessed;
+                fio = importFio(guessed);
+            }
+        }
+        if (!fio) {
+            if (isServiceRow(cells, map)) return { skip: true, code: 'service-row', message: '' };
+            return { skip: true, code: 'empty-name', message: 'Пустое ФИО — строка пропущена' };
+        }
+        if (isJunkName(fio)) {
+            return { skip: true, code: 'service-row', message: '' };
+        }
+        var split = splitFio(fio);
+
+        var hi = hcpNumber(at.hi);
+        if (hi == null && inferred && inferred.hi != null && !used[inferred.hi]) {
+            hi = hcpNumber(cells[inferred.hi]);
+            if (hi != null) used[inferred.hi] = true;
+        }
+        if (hi == null) hi = hcpFromRow(cells, used);
+
+        var gender = normalizeGender(at.gender);
+        if (!gender && inferred && inferred.gender != null && !used[inferred.gender]) {
+            gender = normalizeGender(cells[inferred.gender]);
+        }
+        if (!gender) gender = genderFromRow(cells, used);
+
+        var tee = teeCode(at.tee) || trim(at.tee);
+        if (!tee && inferred && inferred.tee != null && !used[inferred.tee]) tee = teeCode(cells[inferred.tee]);
+        if (!tee) tee = teeFromRow(cells, used);
+
+        var player = newPlayer({
+            fio: fio,
+            lastName: parts.last || split.lastName,
+            firstName: parts.first || split.firstName,
+            middleName: parts.middle || split.middleName,
+            hi: hi,
+            ch: hcpNumber(at.ch),
+            gender: gender,
+            tee: tee,
+            groupId: '',
+            format: at.format,
+            club: at.club,
+            source: 'excel'
+        });
+        player.groupName = at.group || '';
+        var badHcp = at.hi && hi == null ? at.hi : '';
+        return { skip: false, player: player, badHcp: badHcp };
+    }
+
+    /** Оценка строки как шапки таблицы: сколько колонок узнали. */
+    function headerRowInfo(row) {
+        var cells = row || [];
+        var kinds = cells.map(headerKind);
+        var mapping = {};
+        kinds.forEach(function (kind, column) {
+            if (kind && mapping[kind] == null) mapping[kind] = column;
+        });
+        var known = Object.keys(mapping);
+        var numeric = cells.filter(function (cell) {
+            var text = trim(cell);
+            return text !== '' && num(text) != null;
+        }).length;
+        var filled = cells.filter(function (cell) { return trim(cell) !== ''; }).length;
+        var hasName = NAME_KINDS.some(function (kind) { return mapping[kind] != null; });
+        return { kinds: kinds, mapping: mapping, known: known, numeric: numeric, filled: filled, hasName: hasName };
+    }
+
+    /** Шапка подтверждается данными под ней: в колонке имени стоят имена. */
+    function headerDataBonus(rows, index, info) {
+        var columns = NAME_KINDS.map(function (kind) { return info.mapping[kind]; })
+            .filter(function (column) { return column != null; });
+        if (!columns.length) return 0;
+        var checked = 0, good = 0;
+        for (var i = index + 1; i < rows.length && checked < 12; i++) {
+            var row = rows[i] || [];
+            if (!row.some(function (cell) { return trim(cell) !== ''; })) continue;
+            if (isServiceRow(row, info.mapping)) continue;   // «Итого» и повторы шапки не в счёт
+            checked++;
+            if (columns.some(function (column) { return looksLikeName(row[column]); })) good++;
+        }
+        if (!checked) return 0;
+        return good / checked >= 0.5 ? 4 : -6;
+    }
+
+    /** Поиск строки заголовков: она может быть не первой (выше — шапка отчёта). */
+    function detectHeader(rows) {
+        var best = { index: -1, mapping: {}, known: [], score: -Infinity };
+        var limit = Math.min(rows.length, IMPORT_HEADER_SCAN);
+        for (var i = 0; i < limit; i++) {
+            var info = headerRowInfo(rows[i]);
+            if (!info.known.length || info.numeric > 0) continue;
+            if (!info.hasName && info.known.length < 2) continue;
+            if (!info.hasName && !info.mapping.hi && !info.mapping.ch && !info.mapping.gender && !info.mapping.group) continue;
+            var score = info.known.length * 3 + (info.hasName ? 3 : 0) + headerDataBonus(rows, i, info);
+            if (score > best.score) best = { index: i, mapping: info.mapping, known: info.known, score: score };
+        }
+        return {
+            index: best.index,
+            mapping: best.mapping,
+            known: best.known,
+            header: best.index >= 0 ? (rows[best.index] || []).map(function (cell) { return trim(cell); }) : [],
+            dataRows: best.index >= 0 ? rows.slice(best.index + 1) : rows
+        };
+    }
+
+    /**
+     * Разбор массива строк (Excel/CSV/таблица) в участников.
+     * Первая распознанная строка заголовков — шапка; данные под ней. Если
+     * заголовков нет, колонки определяются по содержимому (ФИО + гандикап).
+     * options: { sheet: 'имя листа' } — попадает в результат для предпросмотра.
+     */
+    function parseParticipants(aoa, options) {
+        var opts = options || {};
+        var source = asArray(aoa).map(function (row) {
+            return Array.isArray(row) ? row : [row];
+        }).map(function (row, index) {
+            return { row: row, line: index + 1 };
+        });
+        var rows = source.filter(function (item) {
+            return item.row.some(function (cell) { return trim(cell) !== ''; });
+        });
+        var result = { players: [], issues: [], header: [], headerRow: 0, columns: {}, sheet: opts.sheet || '', skipped: 0 };
+        if (!rows.length) return result;
+
+        var header = detectHeader(rows.map(function (item) { return item.row; }));
+        result.header = header.header;
+        result.headerRow = header.index >= 0 ? rows[header.index].line : 0;
+        var dataItems = header.index >= 0 ? rows.slice(header.index + 1) : rows;
+        var inferred = inferColumns(dataItems.map(function (item) { return item.row; }), header.mapping);
+        result.columns = columnsSummary(header.mapping, inferred);
+
+        var seen = {};
+        dataItems.forEach(function (item) {
+            var parsed = playerFromRow(item.row.map(function (cell) { return trim(cell); }), header.mapping, inferred);
+            if (parsed.skip) {
+                if (parsed.code !== 'service-row') {
+                    result.issues.push({ row: item.line, code: parsed.code, message: parsed.message });
+                }
+                result.skipped++;
+                return;
+            }
+            if (parsed.badHcp) {
+                result.issues.push({ row: item.line, code: 'bad-hcp', message: 'Гандикап не распознан: ' + parsed.badHcp });
+            }
+            var player = parsed.player;
             var key = playerKeyByFio(player);
             if (seen[key]) {
-                result.issues.push({ row: index + (hasHeader ? 2 : 1), code: 'duplicate', message: 'Дубль ФИО: ' + player.fio });
+                result.issues.push({ row: item.line, code: 'duplicate', message: 'Дубль ФИО: ' + playerFio(player) });
                 return;
             }
             seen[key] = true;
@@ -1041,16 +1521,114 @@
         return result;
     }
 
-    /** Разбор вставленного текста (табуляция/точка с запятой/запятая). */
+    /** Сводка распознанных колонок — для предпросмотра импорта. */
+    function columnsSummary(mapping, inferred) {
+        var summary = {};
+        Object.keys(mapping || {}).forEach(function (kind) { summary[kind] = mapping[kind]; });
+        if (!summary.fio && inferred) {
+            if (inferred.fio != null && summary.fio == null) summary.fio = inferred.fio;
+            if (inferred.lastName != null && summary.lastName == null) summary.lastName = inferred.lastName;
+            if (inferred.firstName != null && summary.firstName == null) summary.firstName = inferred.firstName;
+        }
+        if (inferred) {
+            if (summary.hi == null && inferred.hi != null) summary.hi = inferred.hi;
+            if (summary.gender == null && inferred.gender != null) summary.gender = inferred.gender;
+            if (summary.tee == null && inferred.tee != null) summary.tee = inferred.tee;
+        }
+        ['fio', 'lastName', 'firstName', 'hi', 'gender', 'tee', 'group'].forEach(function (kind) {
+            if (summary[kind] == null || summary[kind] === '') delete summary[kind];
+        });
+        return summary;
+    }
+
+    /**
+     * Разбор всей книги Excel: каждый лист разбирается отдельно, участники
+     * объединяются и дедуплицируются. sheets = [{ name, rows }].
+     */
+    function parseWorkbook(sheets) {
+        var out = { players: [], issues: [], sheets: [], header: [], columns: {} };
+        var seen = {};
+        asArray(sheets).forEach(function (sheet) {
+            var name = trim(sheet && sheet.name);
+            var rows = asArray(sheet && sheet.rows);
+            if (!rows.length) return;
+            var parsed = parseParticipants(rows, { sheet: name });
+            (parsed.issues || []).forEach(function (issue) {
+                out.issues.push({ sheet: name, row: issue.row, code: issue.code, message: issue.message });
+            });
+            var added = 0;
+            (parsed.players || []).forEach(function (player) {
+                var key = playerKeyByFio(player);
+                if (!key) return;
+                if (seen[key]) {
+                    out.issues.push({ sheet: name, row: 0, code: 'duplicate', message: 'Дубль ФИО: ' + playerFio(player) });
+                    return;
+                }
+                seen[key] = true;
+                player.sheetName = name;
+                out.players.push(player);
+                added++;
+            });
+            if (!out.header.length && parsed.header.length) out.header = parsed.header;
+            if (!Object.keys(out.columns).length) out.columns = parsed.columns || {};
+            out.sheets.push({ name: name, rows: rows.length, players: added, parsed: (parsed.players || []).length });
+        });
+        return out;
+    }
+
+    /** Строка таблицы в CSV/TSV с учётом кавычек — для вставленного текста. */
+    function splitDelimitedLine(line, separator) {
+        var cells = [];
+        var current = '';
+        var quoted = false;
+        for (var i = 0; i < line.length; i++) {
+            var ch = line.charAt(i);
+            if (quoted) {
+                if (ch === '"') {
+                    if (line.charAt(i + 1) === '"') { current += '"'; i++; }
+                    else quoted = false;
+                } else current += ch;
+            } else if (ch === '"' && !trim(current)) {
+                current = '';
+                quoted = true;
+            } else if (ch === separator) {
+                cells.push(current);
+                current = '';
+            } else current += ch;
+        }
+        cells.push(current);
+        return cells.map(function (cell) { return trim(cell); });
+    }
+
+    /** Разбор вставленного текста (табуляция/точка с запятой/запятая/|). */
     function parseDelimited(text) {
         var lines = str(text).split(/\r?\n/).filter(function (line) { return trim(line) !== ''; });
+        var sample = lines.slice(0, 5).join('\n');
+        var separator = '\t';
+        if (sample.indexOf('\t') === -1) {
+            var semis = (sample.match(/;/g) || []).length;
+            // «12,4» — это число с десятичной запятой, а не разделитель.
+            var commas = (sample.replace(/(\d),(\d)/g, '$1$2').match(/,/g) || []).length;
+            var pipes = (sample.match(/\|/g) || []).length;
+            separator = semis > commas ? ';' : ',';
+            if (pipes > Math.max(semis, commas)) separator = '|';
+        }
         return lines.map(function (line) {
-            var sep = line.indexOf('\t') !== -1 ? '\t' : (line.indexOf(';') !== -1 ? ';' : ',');
-            return line.split(sep).map(function (cell) { return cell.replace(/^"|"$/g, '').trim(); });
+            var cells = splitDelimitedLine(line, separator);
+            if (separator !== ',') return cells;
+            // Склеиваем обратно «12» + «4» → «12,4» в конце строки.
+            var merged = [];
+            for (var i = 0; i < cells.length; i++) {
+                var next = cells[i + 1];
+                if (/^[+-]?\d+$/.test(cells[i]) && next != null && /^\d{1,2}$/.test(next)) {
+                    merged.push(cells[i] + ',' + next);
+                    i++;
+                } else merged.push(cells[i]);
+            }
+            return merged;
         });
     }
 
-    // ----------------------------------------------------------
     // 10. ЭКСПОРТ: СТРОКИ EXCEL/CSV И ПЕЧАТНЫЕ ДОКУМЕНТЫ
     // ----------------------------------------------------------
     function csvFromRows(rows, separator) {
@@ -1493,7 +2071,8 @@
         buildResults: buildResults, assignPlaces: assignPlaces, placeLabel: placeLabel,
         isPodium: isPodium, applyResultOverrides: applyResultOverrides, sortRows: sortRows,
         // import / export
-        parseParticipants: parseParticipants, parseDelimited: parseDelimited, csvFromRows: csvFromRows,
+        parseParticipants: parseParticipants, parseWorkbook: parseWorkbook, headerKind: headerKind,
+        hcpNumber: hcpNumber, parseDelimited: parseDelimited, csvFromRows: csvFromRows,
         HEADERS: HEADERS, headerRow: headerRow, teeName: teeName, sourceLabel: sourceLabel,
         participantsRows: participantsRows, sheetRows: sheetRows, resultsRows: resultsRows, scoreRows: scoreRows,
         participantsCounts: participantsCounts,

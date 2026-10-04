@@ -320,7 +320,10 @@ async function openTab(launch, base, viewport) {
         name: 'logo-one.svg', mimeType: 'image/svg+xml',
         buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="#d22"/></svg>')
     });
-    await page.waitForTimeout(250);
+    await page.waitForFunction(function () {
+        const saved = window.db.__get('tournaments/t1/printScorecards');
+        return !!(saved && saved.logoSrc);
+    }, null, { timeout: 5000 });
     const firstLogo = await page.evaluate(function () {
         const saved = window.db.__get('tournaments/t1/printScorecards');
         return saved && saved.logoSrc || '';
@@ -331,7 +334,11 @@ async function openTab(launch, base, viewport) {
         name: 'logo-two.svg', mimeType: 'image/svg+xml',
         buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="#26c"/></svg>')
     });
-    await page.waitForTimeout(800);
+    await page.waitForFunction(function (previous) {
+        const saved = window.db.__get('tournaments/t1/printScorecards');
+        const img = document.querySelector('.tnpc-overlay[data-overlay-id="logo"] img');
+        return !!(saved && saved.logoSrc && saved.logoSrc !== previous && img && img.getAttribute('src') === saved.logoSrc);
+    }, firstLogo, { timeout: 5000 });
     const replacedLogo = await page.evaluate(function () {
         const saved = window.db.__get('tournaments/t1/printScorecards');
         const img = document.querySelector('.tnpc-overlay[data-overlay-id="logo"] img');

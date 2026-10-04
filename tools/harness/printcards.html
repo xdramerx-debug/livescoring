@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка вкладки «Счетные карточки» (служебная страница)</title>
+    <!--
+      Служебная страница для tools/check-printcards-preview.js.
+      Повторяет контейнер админки (main.container → #tab-tnmanager → #tnm-root),
+      поднимает реальные модули менеджера турниров на in-memory заглушке Firebase
+      и открывает вкладку турнира «Счетные карточки» — чтобы в настоящем браузере
+      проверить, что карточки ВИДНЫ, редактируются и печатаются без подписей.
+      Не является частью сайта: лежит в tools/, в precache и ревизии не попадает.
+    -->
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/tn-manager.css">
+    <link rel="stylesheet" href="/css/tn-mgr-printcards.css">
+</head>
+<body>
+<main class="container" style="padding-top:20px;padding-left:20px;padding-right:20px;padding-bottom:60px;">
+    <div id="admin-content">
+        <div id="tab-tnmanager" class="admin-section">
+            <div id="tnm-root" class="tnm-root"></div>
+        </div>
+    </div>
+</main>
+
+<script src="/tools/harness/printcards-stub.js"></script>
+<script src="/js/tn-mgr-core.js"></script>
+<script src="/js/tn-mgr-data.js"></script>
+<script src="/js/tn-mgr-io.js"></script>
+<script src="/js/tn-mgr-ui.js"></script>
+<script src="/js/tn-mgr-sheet.js"></script>
+<script src="/js/tn-mgr-printcards.js"></script>
+<script src="/js/tn-mgr-round.js"></script>
+<script src="/js/tn-mgr.js"></script>
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        window.__harnessReady = true;
+    });
+</script>
+</body>
+</html>

@@ -14,7 +14,8 @@
         "preview": "vite preview",
         "check:bundle": "node tools/check-bundle.js",
         "check:browser": "node tools/browser-check.js",
-        "check:scorecards": "node tools/check-scorecard-mobile.js && node tools/check-score-entry-mobile.js && node tools/check-scoring-header-mobile.js"
+        "check:scorecards": "node tools/check-scorecard-mobile.js && node tools/check-score-entry-mobile.js && node tools/check-scoring-header-mobile.js && node tools/check-printcards-preview.js",
+        "check:printcards": "node tools/check-printcards-preview.js"
     },
     "engines": {
         "node": ">=18"

@@ -669,10 +669,19 @@ var TnMgrData = (function (root) {
         });
         var markers = {};
         Object.keys(buckets).forEach(function (key, groupIndex) {
-            var groupEntries = buckets[key].sort(function (a, b) { return (a.position || 0) - (b.position || 0); });
+            var groupEntries = buckets[key].sort(function (a, b) {
+                return (a.position || 0) - (b.position || 0) || (a.order || 0) - (b.order || 0) ||
+                    String(a.playerId).localeCompare(String(b.playerId), 'ru');
+            });
+            var inGroup = {};
+            groupEntries.forEach(function (item) { inGroup[item.playerId] = true; });
             groupEntries.forEach(function (entry, index) {
                 var fallback = groupEntries.length > 1 ? groupEntries[(index + 1) % groupEntries.length].playerId : entry.playerId;
-                var markerId = entry.markerPlayerId || fallback;
+                // Маркер обязан быть из этой же стартовой группы: в раунд
+                // rounds/<groupRoundId> попадают только её игроки, поэтому
+                // «чужой» маркер получал бы страницу просмотра без ввода счёта.
+                var explicit = entry.markerPlayerId || '';
+                var markerId = explicit && inGroup[explicit] ? explicit : fallback;
                 entry.markerPlayerId = markerId;
                 entry.qr = core().scoreUrl(base, entry.groupRoundId || rid, markerId, markerId !== entry.playerId ? Math.max(2, groupEntries.length) : groupEntries.length);
                 entry.scoreUrl = entry.qr;
@@ -763,6 +772,10 @@ var TnMgrData = (function (root) {
     function materializeRound(tid, rid, sheet, tournament) {
         var round = asMap(asMap(tournament && tournament.rounds)[rid]);
         var entries = sheetOrder(sheet);
+        // Назначения маркеров считаем тем же кодом, что и QR стартового листа:
+        // иначе rounds/<gid>/markerAssignments мог разойтись с напечатанным QR
+        // (игрок сканирует карточку и не видит счёт партнёра).
+        var markerIndex = markerQrIndex(asMap(sheet && sheet.entries), rid);
         var groups = [];
         var seen = {};
         entries.forEach(function (entry) {
@@ -809,8 +822,13 @@ var TnMgrData = (function (root) {
             var ring = group.entries.map(function (entry) { return entry.playerId; });
             group.entries.forEach(function (entry, position) {
                 var targetPid = entry.playerId;
-                var markerId = entry.markerPlayerId || (ring.length > 1 ? ring[(position + 1) % ring.length] : '');
+                var indexedEntry = markerIndex.entries[entry.playerId] || {};
+                var markerId = indexedEntry.markerPlayerId || entry.markerPlayerId ||
+                    (ring.length > 1 ? ring[(position + 1) % ring.length] : '');
                 if (!markerId || markerId === targetPid) return;
+                // Маркера вне этой группы в rounds/<groupRoundId> нет — он не
+                // смог бы ввести счёт (страница открывается только участникам).
+                if (!players[markerId]) return;
                 if (players[targetPid]) players[targetPid].markedBy = markerId;
                 markerAssignments[markerId] = clean({
                     targetId: targetPid,
@@ -854,10 +872,16 @@ var TnMgrData = (function (root) {
                 updatedAt: now()
             });
             // Сливаем метаданные, сохраняя уже введённый счёт; createdAt
-            // ставим только при первом создании раунда группы.
-            chains.push(read('rounds/' + groupRoundId + '/createdAt').then(function (createdAt) {
+            // ставим только при первом создании раунда группы, а статус
+            // живого раунда не сбрасываем: раньше каждая правка стартового
+            // листа возвращала rounds/<gid> в 'scheduled', и ввод счёта по QR
+            // переставал проходить на сервере («раунд не активен»).
+            chains.push(read('rounds/' + groupRoundId).then(function (existingRound) {
+                var prev = asMap(existingRound);
                 var meta = Object.assign({}, roundMeta);
-                if (!createdAt) meta.createdAt = now();
+                if (!prev.createdAt) meta.createdAt = now();
+                if (prev.status && prev.status !== 'scheduled') meta.status = prev.status;
+                else if (prev.activatedAt) meta.status = 'active';
                 return patch('rounds/' + groupRoundId, meta);
             }).catch(function () { /* права/офлайн */ }));
             Object.keys(players).forEach(function (pid) {

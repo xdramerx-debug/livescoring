@@ -98,7 +98,8 @@ var TnMgrPrintCards = (function (root) {
         scores: null,            // { pid: { hole: strokes } } — live-счёт (опция)
         scoresAt: 0,
         remoteUpdatedAt: -1,
-        cardsSig: ''
+        cardsSig: '',
+        healTried: {}            // rid → привязка QR к раунду группы уже проверена
     };
 
     function tid() { return ui().state.route.tid || ''; }
@@ -683,6 +684,54 @@ var TnMgrPrintCards = (function (root) {
         return rid;
     }
 
+    /**
+     * Привязка QR к раундам групп. Ссылка QR ведёт в rounds/<groupRoundId> —
+     * её создаёт «Стартовый лист» (materializeRound). У турниров, чей лист
+     * сохранён до появления этой привязки, groupRoundId пуст, и QR открывал
+     * несуществующий раунд («нельзя ничего ввести»). Пересобираем привязку
+     * один раз за сессию; статус живого раунда materializeRound сохраняет.
+     */
+    function healSheetLinks(rid, entries) {
+        if (!rid || !entries || !entries.length || state.healTried[rid]) return;
+        var tournament = ui().tournament() || {};
+        if (String(tournament.status || '') === 'finished' || String(tournament.lifecycleStatus || '') === 'finished') {
+            state.healTried[rid] = 'ok';
+            return;
+        }
+        var roundIds = [];
+        var missing = false;
+        entries.forEach(function (entry) {
+            if (!entry.groupRoundId) missing = true;
+            else if (roundIds.indexOf(entry.groupRoundId) === -1) roundIds.push(entry.groupRoundId);
+        });
+        if (!missing && !roundIds.length) missing = true;
+        state.healTried[rid] = 'running';
+        var ok = (!missing && typeof data().read === 'function')
+            ? Promise.all(roundIds.map(function (gid) {
+                return data().read('rounds/' + gid).then(function (round) { return !!round; }).catch(function () { return true; });
+            })).then(function (list) { return list.every(Boolean); })
+            : Promise.resolve(!missing);
+        ok.then(function (linksOk) {
+            if (linksOk) { state.healTried[rid] = 'ok'; return null; }
+            // Лист сохранён до появления привязки к раунду ввода счёта (или
+            // раунды удалены) — пересобираем. Статус живого раунда
+            // materializeRound сохраняет, счёт не трогает.
+            return data().materializeRound(tid(), rid, ui().sheetOf(rid) || {}, tournament).then(function () {
+                state.healTried[rid] = 'ok';
+                ui().toastMsg(bi('Ссылки QR обновлены: карточки ведут на ввод счёта',
+                    'QR links refreshed: cards open the score entry'), 'success');
+            });
+        }).catch(function () { state.healTried[rid] = 'ok'; });
+    }
+
+    /** Есть ли в стартовом листе привязка к раунду ввода счёта. */
+    function sheetLinksReady(rid) {
+        var entries = [];
+        try { entries = data().sheetOrder(ui().sheetOf(rid) || {}); } catch (e) { entries = []; }
+        if (!entries.length) return false;
+        return entries.some(function (entry) { return !!entry.groupRoundId; });
+    }
+
     /** Пересобрать карточки из текущих данных турнира (дизайн не трогает). */
     function refreshCards() {
         var draft = ensureDraft();
@@ -690,6 +739,7 @@ var TnMgrPrintCards = (function (root) {
         var rid = currentRid();
         var sheet = ui().sheetOf(rid) || {};
         var entries = data().sheetOrder(sheet);
+        healSheetLinks(rid, entries);
         var auto = buildCards(players, entries, { activeOnly: false });
         auto = applyCardEdits(auto, draft.cards);
         auto = mergeManual(auto, draft.cards);
@@ -1093,7 +1143,8 @@ var TnMgrPrintCards = (function (root) {
         return bi('Текст', 'Text');
     }
 
-    function qrPayloadFor(card, ov) {
+    /** Игрок карточки, которому принадлежит QR-оверлей (по счёту QR-блоков). */
+    function qrCardPlayer(card, ov) {
         var ids = (card && card.playerIds) || [];
         var idx = 0;
         var n = 0;
@@ -1101,17 +1152,92 @@ var TnMgrPrintCards = (function (root) {
             if (item.type === 'qr' && item.id === ov.id) idx = n;
             if (item.type === 'qr') n++;
         });
-        var pid = ids[idx] || ids[0];
+        return ids[idx] || ids[0] || '';
+    }
+
+    /** Игроки стартовой группы (по startGroupId, иначе флайт+лунка+время). */
+    function startGroupEntries(entry, entries) {
+        if (!entry) return [];
+        return (entries || []).filter(function (item) {
+            return entry.startGroupId ? item.startGroupId === entry.startGroupId :
+                (item.flight === entry.flight && item.startTime === entry.startTime && item.startHole === entry.startHole);
+        }).sort(function (a, b) {
+            return (a.position || 0) - (b.position || 0) || (a.order || 0) - (b.order || 0);
+        });
+    }
+
+    /**
+     * Кто ведёт счёт игрока: назначенный маркер из стартового листа, иначе —
+     * следующий по кольцу стартовой группы (та же логика, что в
+     * markerQrIndex/materializeRound, поэтому ссылки совпадают с листом).
+     */
+    function markerIdFor(entry, entries) {
+        if (!entry) return '';
+        var group = startGroupEntries(entry, entries);
+        var inGroup = {};
+        group.forEach(function (item) { inGroup[item.playerId] = true; });
+        // Чужой маркер (не из этой стартовой группы) не участвует в раунде
+        // rounds/<groupRoundId> и не сможет ввести счёт — берём кольцо.
+        var explicit = entry.markerPlayerId || '';
+        if (explicit && inGroup[explicit]) return explicit;
+        if (group.length > 1) {
+            var index = group.map(function (item) { return item.playerId; }).indexOf(entry.playerId);
+            if (index === -1) index = 0;
+            return group[(index + 1) % group.length].playerId;
+        }
+        return entry.playerId;
+    }
+
+    /**
+     * Ссылка QR для карточки игрока. QR принадлежит МАРКЕРУ игрока: тот, кто
+     * ведёт счёт, сканирует карточку и попадает на ввод счёта от своего имени —
+     * свой счёт + счёт игрока, за которым он следит (та же логика, что в
+     * «Стартовом листе»: entry.qr). Без созданного раунда группы ссылка вела бы
+     * в несуществующий раунд («нельзя ничего ввести»), поэтому печатаем только
+     * ручную ссылку, заданную двойным кликом по QR.
+     */
+    function qrPayloadFor(card, ov) {
+        var pid = qrCardPlayer(card, ov);
         if (!pid) return ov.payload || '';
         var rid = currentRid() || tid();
-        var entry = {};
-        try {
-            var sheet = ui().sheetOf(rid) || {};
-            data().sheetOrder(sheet).forEach(function (e) { if (e.playerId === pid) entry = e; });
-        } catch (e) { /* silent */ }
+        var entries = [];
+        try { entries = data().sheetOrder(ui().sheetOf(rid) || {}); } catch (e) { entries = []; }
+        var entry = entries.filter(function (item) { return item.playerId === pid; })[0];
+        if (!entry || !entry.groupRoundId) return ov.payload || '';
+        // Ссылку уже посчитал стартовый лист (markerQrIndex) — печатаем её же,
+        // чтобы QR карточки и QR листа совпадали. Ссылку «не на этот раунд»
+        // (старые данные до привязки) не берём: QR вёл бы в никуда.
+        var stored = entry.scoreUrl || entry.qr || '';
+        var roundParam = 'round=' + encodeURIComponent(entry.groupRoundId);
+        if (stored && stored.indexOf(roundParam) !== -1) return stored;
+        var markerId = markerIdFor(entry, entries) || pid;
+        var groupSize = startGroupEntries(entry, entries).length || 1;
         var base = ui().baseUrl ? ui().baseUrl() : (root.location ? (root.location.origin + '/') : '');
-        var roundId = entry.groupRoundId || rid;
-        return core().scoreUrl(base, roundId, pid, ids.length);
+        return core().scoreUrl(base, entry.groupRoundId, markerId,
+            markerId !== pid ? Math.max(2, groupSize) : groupSize);
+    }
+
+    /**
+     * Подпись к карточке: чей QR напечатан и за кого ведут счёт. Пусто, когда
+     * стартовый лист ещё не создан (или у игрока нет строки в листе).
+     */
+    function qrOwnerText(card) {
+        var ids = (card && card.playerIds) || [];
+        if (!ids.length) return '';
+        var rid = currentRid() || tid();
+        var entries = [];
+        try { entries = data().sheetOrder(ui().sheetOf(rid) || {}); } catch (e) { entries = []; }
+        var entry = entries.filter(function (item) { return item.playerId === ids[0]; })[0];
+        if (!entry || !entry.groupRoundId) return '';
+        var markerId = markerIdFor(entry, entries) || entry.playerId;
+        if (markerId === entry.playerId) {
+            return bi('QR открывает ввод счёта игрока', 'QR opens the player score entry');
+        }
+        var marker = ui().playerOf(markerId) || {};
+        var markerName = core().playerFio(marker) || markerId;
+        var targetName = entry.playerName || (ids.length ? core().playerFio(ui().playerOf(ids[0]) || {}) : '');
+        return bi('QR маркера: ' + markerName + ' ведёт счёт за ' + targetName,
+            'Marker QR: ' + markerName + ' keeps the score for ' + targetName);
     }
 
     function tableHtml(card, printMode) {
@@ -1656,9 +1782,16 @@ var TnMgrPrintCards = (function (root) {
             chips.map(function (c) { return '<span class="tnpc-chip">' + esc(c) + '</span>'; }).join('') +
             '<span class="tnpc-chip muted">' + esc(bi('Дизайн сохранён', 'Design saved') + ': ' + saved) + '</span>' +
             '</div>' +
-            (sheet ? '' : '<p class="tnpc-alert">⚠ ' + esc(bi('Нет стартового листа: время старта, лунка и QR берутся из участников. ' +
-                'Создайте лист на вкладке «Стартовый лист», чтобы карточки стали полностью актуальными.',
-                'No tee sheet yet: start time, hole and QR come from the roster. Create the sheet to make the cards fully up to date.')) + '</p>');
+            (!sheet
+                ? '<p class="tnpc-alert">⚠ ' + esc(bi('Нет стартового листа: время старта и лунка берутся из участников, ' +
+                    'а QR-коды не печатаются — им некуда вести. Создайте лист на вкладке «Стартовый лист».',
+                    'No tee sheet yet: start time and hole come from the roster, and QR codes are not printed — ' +
+                    'there is no round to open. Create the sheet first.')) + '</p>'
+                : (sheetLinksReady(rid)
+                    ? ''
+                    : '<p class="tnpc-alert">⚠ ' + esc(bi('QR-коды ещё не привязаны к раунду ввода счёта — ' +
+                        'откройте вкладку «Стартовый лист» и сохраните лист.',
+                        'QR codes are not linked to a score-entry round yet — open the “Tee sheet” tab and save it.')) + '</p>'));
     }
 
     function masterHtml(card, cards) {
@@ -1687,6 +1820,7 @@ var TnMgrPrintCards = (function (root) {
             '<span><i class="fas fa-minus" style="transform:rotate(25deg)"></i> ' +
             esc(bi('фора — наклонными черточками в правом верхнем углу клетки счёта: одна черточка за каждый удар на лунке',
                 'handicap strokes — slashes in the top-right corner of the score box, one per stroke on the hole')) + '</span>' +
+            (qrOwnerText(card) ? '<span><i class="fas fa-qrcode"></i> ' + esc(qrOwnerText(card)) + '</span>' : '') +
             '</div>' +
             '<p class="tnm-muted">' + esc(bi('Карточка 147×200 мм. Внешняя рамка при печати снимается автоматически. ' +
                 'Выбирайте дизайн, регулируйте смещения и масштаб — значения применяются ко всем карточкам и сохраняются. ' +

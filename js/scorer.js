@@ -315,6 +315,16 @@ function scTargetClosed() {
 
 function scClosedMessage() {
     var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    // Раунд, созданный протоколом заранее, до старта закрыт — это не «игрок
+    // уже завершил», а «ввод откроется со стартом» (QR со карточки сканируют
+    // до старта чаще всего).
+    if (typeof isRoundGatedByStart === 'function' && isRoundGatedByStart(scRound, Date.now())) {
+        var at = (typeof fmtTime === 'function' && scRound && scRound.startTime) ? fmtTime(scRound.startTime) : '';
+        if (typeof toast === 'function') toast(isEn
+            ? '⏳ The round starts at ' + at + ' — score entry opens at the start time.'
+            : '⏳ Раунд стартует в ' + at + ' — ввод счёта откроется со стартом.', 'info');
+        return;
+    }
     if (typeof toast === 'function') toast(isEn
         ? '🔒 This player has already finished the round — the card is closed.'
         : '🔒 Игрок уже завершил раунд — карточка закрыта.', 'info');

@@ -40,11 +40,14 @@ var PLAYERS = [
     { id: 'c', fio: 'Сидоров Сидор', hi: 18, ch: 17, gender: 'men', active: true },
     { id: 'd', fio: 'Выбыл', hi: 10, active: false }
 ];
+// Стартовый лист: группа 1 (a, b) играет вместе, c — в своей группе.
+// groupRoundId — раунд ввода счёта (rounds/<gid>), markerPlayerId — кто ведёт
+// счёт игрока (здесь кольцо: a → b, b → a).
 var ENTRIES = {
-    a: { playerId: 'a', startHole: 1, flight: '1', startTime: '09:00', tee: 'wh', format: 'stroke' },
-    b: { playerId: 'b', startHole: 1, flight: '1', startTime: '09:00', tee: 'wh', format: 'stroke' },
-    c: { playerId: 'c', startHole: 10, flight: '2', startTime: '09:10', tee: 'bl', format: 'stroke' },
-    d: { playerId: 'd', startHole: 10, flight: '2', startTime: '09:10', tee: 'bl', format: 'stroke' }
+    a: { playerId: 'a', playerName: 'Иванов Иван', startHole: 1, flight: '1', startTime: '09:00', tee: 'wh', format: 'stroke', groupRoundId: 'gA', markerPlayerId: 'b', position: 1 },
+    b: { playerId: 'b', playerName: 'Петров Пётр', startHole: 1, flight: '1', startTime: '09:00', tee: 'wh', format: 'stroke', groupRoundId: 'gA', markerPlayerId: 'a', position: 2 },
+    c: { playerId: 'c', playerName: 'Сидоров Сидор', startHole: 10, flight: '2', startTime: '09:10', tee: 'bl', format: 'stroke', groupRoundId: 'gB', markerPlayerId: 'c', position: 1 },
+    d: { playerId: 'd', playerName: 'Выбыл', startHole: 10, flight: '2', startTime: '09:10', tee: 'bl', format: 'stroke', groupRoundId: 'gB', markerPlayerId: 'c', position: 2 }
 };
 var writes = [];
 
@@ -385,8 +388,50 @@ PC.state.draft = null;
 PC.state.activeCardId = '';
 TOURNAMENT.printScorecards = { qrEnabled: true, overlays: [{ id: 'qr-1', type: 'qr', xMm: 100, yMm: 4, wMm: 26, hMm: 26, enabled: true }] };
 var qrHtml = PC.html();
+// QR на карточке принадлежит МАРКЕРУ игрока: сканирует тот, кто ведёт счёт.
+// В разметке & экранируется как &amp;, поэтому вынимаем только хвост data=.
+function qrPayloads(html) {
+    var out = [];
+    (html.match(/create-qr-code\/[^"']*?(?:&amp;|&)data=[^"'&]+/g) || []).forEach(function (chunk) {
+        out.push(decodeURIComponent(chunk.replace(/^.*(?:&amp;|&)data=/, '')));
+    });
+    (html.match(/data-qr="([^"]+)"/g) || []).forEach(function (attr) {
+        out.push(decodeURIComponent(attr.replace(/^data-qr="/, '').replace(/"$/, '')));
+    });
+    return out;
+}
+var qrLinks = qrPayloads(qrHtml);
 check('QR-код рисуется по ссылке ввода счёта', qrHtml.indexOf('data-qr') !== -1 && qrHtml.indexOf('create-qr-code') !== -1 &&
-    qrHtml.indexOf('setup-round.html') !== -1);
+    qrLinks.some(function (url) { return url.indexOf('setup-round.html') !== -1; }));
+check('QR ведёт в раунд группы, а не в раунд турнира',
+    qrLinks.length > 0 && qrLinks.every(function (url) { return url.indexOf('round=gA') !== -1; }), qrLinks.join(' , '));
+check('QR на карточке принадлежит маркеру игрока, а не самому игроку',
+    qrLinks.some(function (url) { return /[?&]as=b\b/.test(url); }) &&
+    !qrLinks.some(function (url) { return /[?&]as=a\b/.test(url); }), qrLinks.join(' , '));
+check('чужой маркер (вне стартовой группы) заменяется кольцом группы', (function () {
+    var sheet = { entries: {} };
+    Object.keys(ENTRIES).forEach(function (pid) { sheet.entries[pid] = Object.assign({}, ENTRIES[pid]); });
+    sheet.entries.a.markerPlayerId = 'c';   // c играет в другой группе
+    var savedSheet = global.TnMgrUI.sheetOf;
+    global.TnMgrUI.sheetOf = function () { return sheet; };
+    var links = qrPayloads(PC.html());
+    global.TnMgrUI.sheetOf = savedSheet;
+    return links.some(function (url) { return /[?&]as=b\b/.test(url); }) &&
+        !links.some(function (url) { return /[?&]as=c\b/.test(url); });
+})());
+check('без привязки к раунду группы QR не печатается (не ведёт в никуда)', (function () {
+    var sheet = { entries: {} };
+    Object.keys(ENTRIES).forEach(function (pid) {
+        sheet.entries[pid] = Object.assign({}, ENTRIES[pid]);
+        delete sheet.entries[pid].groupRoundId;
+    });
+    var savedSheet = global.TnMgrUI.sheetOf;
+    var savedCards = PC.state.draft.cards;
+    global.TnMgrUI.sheetOf = function () { return sheet; };
+    var printed = PC.documentFor(PC.state.draft.cards);
+    global.TnMgrUI.sheetOf = savedSheet;
+    return printed.indexOf('create-qr-code') === -1 && printed.indexOf('data-qr') === -1;
+})());
 check('отключенный оверлей не печатается', (function () {
     PC.state.draft.overlays.push({ id: 'logo', type: 'logo', xMm: 4, yMm: 4, wMm: 20, hMm: 10, enabled: false, src: 'data:image/png;base64,AA' });
     var printed = PC.documentFor([allCards[0]]);

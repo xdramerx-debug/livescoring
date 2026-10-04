@@ -346,6 +346,56 @@ async function openTab(launch, base, viewport) {
         const img = document.querySelector('.tnpc-overlay[data-type="qr"] img[data-qr]');
         return !!img && /setup-round\.html|scorer\.html/.test(decodeURIComponent(img.getAttribute('src')));
     }));
+    // Стартовый лист в заглушке сохранён без привязки к раундам групп —
+    // вкладка обязана пересобрать её сама, иначе QR ведёт в никуда.
+    await page.waitForFunction(function () {
+        const sheet = window.db.__get('tournaments/t1/sheets/r1') || {};
+        const entries = sheet.entries || {};
+        return Object.keys(entries).length > 0 && Object.keys(entries).every(function (pid) {
+            return !!entries[pid].groupRoundId && !!entries[pid].markerPlayerId;
+        });
+    }, null, { timeout: 8000 });
+    const healed = await page.evaluate(function () {
+        const sheet = window.db.__get('tournaments/t1/sheets/r1') || {};
+        const entries = sheet.entries || {};
+        const pids = Object.keys(entries);
+        const rounds = {};
+        pids.forEach(function (pid) { rounds[entries[pid].groupRoundId] = window.db.__get('rounds/' + entries[pid].groupRoundId); });
+        const gid = pids.length ? entries[pids[0]].groupRoundId : '';
+        return {
+            linked: pids.every(function (pid) { return !!entries[pid].qr; }),
+            modeGroup: Object.keys(rounds).every(function (id) { return !!rounds[id] && rounds[id].mode === 'group'; }),
+            assignment: !!(gid && rounds[gid] && rounds[gid].markerAssignments && Object.keys(rounds[gid].markerAssignments).length),
+            gid: gid
+        };
+    });
+    check('карточки получают привязку к раунду ввода счёта из стартового листа',
+        healed.linked && healed.modeGroup && healed.assignment, JSON.stringify(healed));
+    // QR на карточке — маркера игрока: ссылка совпадает с QR стартового листа,
+    // ведёт в rounds/<groupRoundId> и назначение маркера указывает на владельца карточки.
+    const qrMarker = await page.evaluate(function () {
+        const img = document.querySelector('.tnpc-overlay[data-type="qr"] img[data-qr]');
+        if (!img) return { ok: false, why: 'нет QR' };
+        const src = img.getAttribute('src') || '';
+        const raw = src.split(/[?&]data=/)[1] || '';
+        const payload = decodeURIComponent(raw.replace(/&amp;.*$/, ''));
+        const sheet = window.db.__get('tournaments/t1/sheets/r1') || {};
+        const entries = sheet.entries || {};
+        const subject = Object.keys(entries).filter(function (pid) { return entries[pid].qr === payload; })[0];
+        if (!subject) return { ok: false, why: 'ссылка не совпадает с QR листа: ' + payload };
+        const entry = entries[subject];
+        const round = window.db.__get('rounds/' + entry.groupRoundId) || {};
+        const as = decodeURIComponent((payload.match(/[?&]as=([^&#]+)/) || [])[1] || '');
+        const assignment = (round.markerAssignments || {})[as];
+        return {
+            ok: entry.markerPlayerId === as && !!assignment && assignment.targetId === subject &&
+                payload.indexOf('setup-round.html') !== -1 && payload.indexOf('round=' + entry.groupRoundId) !== -1,
+            subject: subject, marker: entry.markerPlayerId, as: as,
+            target: assignment && assignment.targetId, payload: payload
+        };
+    });
+    check('QR карточки принадлежит маркеру игрока и ведёт на его ввод счёта',
+        qrMarker.ok, JSON.stringify(qrMarker));
 
     // Замена логотипа через панель должна обновить и превью, и общий источник.
     await page.locator('#tnpc-logo-file').setInputFiles({

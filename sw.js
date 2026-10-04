@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.99.2-f144d061';
+const CACHE_NAME = 'pestovo-v1.99.3-d305f6ed';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -59,7 +59,7 @@ const STATIC_ASSETS = [
     'js/qr-start.js?v=0ac378b8',
     'js/round-setup.js?v=8bda9181',
     'js/score-write.js?v=7117f8ef',
-    'js/scorer.js?v=e937927b',
+    'js/scorer.js?v=8aa8b9ce',
     'js/solo.js?v=b1fff443',
     'js/stats.js?v=410c615a',
     'js/tn-scorecard.js?v=b34d029e',

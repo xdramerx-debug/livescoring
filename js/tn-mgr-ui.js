@@ -94,6 +94,7 @@ var TnMgrUI = (function (root) {
         editingTournament: false,
         pendingPlayers: [],  // участники из Excel, ждут сохранения формы турнира
         groupForm: null,     // { id, name, hcpFrom, hcpTo, gender, tee, format, members }
+        groupDistributionCount: 3,
         participantQuery: '',
         suggestions: [],
         scoreData: null,     // заполняется экраном счёта (tn-mgr-round.js)
@@ -123,7 +124,7 @@ var TnMgrUI = (function (root) {
         if (parts[2] === 'edit') return { view: 'form', tid: tid, tab: '', rid: '', pid: '', sub: '' };
         if (parts[2] === 'round') {
             return {
-                view: 'round', tid: tid, rid: parts[3] || '', tab: (parts[4] === 'results' ? 'results' : 'score'),
+                view: 'round', tid: tid, rid: parts[3] || '', tab: (parts[4] === 'results' ? 'results' : (parts[4] === 'scorecards' ? 'scorecards' : 'score')),
                 pid: parts[5] === 'player' ? (parts[6] || '') : '', sub: parts[4] || 'score'
             };
         }
@@ -137,7 +138,7 @@ var TnMgrUI = (function (root) {
         var hash = '#tnm';
         if (next.view === 'form') hash += next.tid ? ('/' + next.tid + '/edit') : '/new';
         else if (next.view === 'card') hash += '/' + next.tid + '/' + next.tab;
-        else if (next.view === 'round') hash += '/' + next.tid + '/round/' + next.rid + '/' + (next.tab === 'results' ? 'results' : 'score') + (next.pid ? '/player/' + next.pid : '');
+        else if (next.view === 'round') hash += '/' + next.tid + '/round/' + next.rid + '/' + (next.tab === 'results' ? 'results' : (next.tab === 'scorecards' ? 'scorecards' : 'score')) + (next.pid ? '/player/' + next.pid : '');
         else if (next.view === 'player') hash += '/' + next.tid + '/player/' + next.pid + (next.rid ? '/' + next.rid : '');
         if (String(root.location.hash || '') === hash) {
             state.route = parseHash();
@@ -260,6 +261,15 @@ var TnMgrUI = (function (root) {
             if (!found) catalogList.push({ id: core().formatId(name), ru: name, en: name, custom: true });
         });
         return { catalog: catalogList, selected: selected };
+    }
+    function groupFormatOptions(selected) {
+        var formats = formatsOfTournament();
+        var html = '<option value="">' + esc(bi('Формат турнира', 'Tournament default')) + '</option>';
+        formats.catalog.forEach(function (item) {
+            var label = core().formatLabel(item, lang());
+            html += '<option value="' + esc(label) + '"' + (label === selected ? ' selected' : '') + '>' + esc(label) + '</option>';
+        });
+        return html;
     }
     function tees() {
         var list = root.TEES || { bk: 'Чёрный', bl: 'Синий', wh: 'Белый', rd: 'Красный' };
@@ -718,10 +728,46 @@ var TnMgrUI = (function (root) {
             '<div class="tnm-card-title"><h2>' + esc(t.name || bi('Без названия', 'Untitled')) + '</h2>' +
             '<p class="tnm-sub">' + esc(meta) + ' · ' + statusChip(t) +
             ((t.formats || []).length ? ' · ' + esc((t.formats || []).join(' · ')) : '') + '</p></div>' +
-            '<div class="tnm-view-head-actions">' + btn('edit-tournament', esc(bi('Изменить', 'Edit')), { icon: 'fas fa-pen', variant: 'ghost' }) + '</div>' +
+            '<div class="tnm-view-head-actions">' + tournamentActionsHtml(t) +
+            btn('edit-tournament', esc(bi('Изменить', 'Edit')), { icon: 'fas fa-pen', variant: 'ghost' }) + '</div>' +
             '</div>' +
             '<div class="tnm-tabs">' + tabs + '</div>' +
             body + '</div>';
+    }
+
+    function tournamentActionsHtml(t) {
+        var status = String(t.lifecycleStatus || t.status || 'draft').toLowerCase();
+        var active = status === 'active';
+        var completed = status === 'completed';
+        return btn('start-tournament', esc(bi('Старт', 'Start')), {
+            icon: 'fas fa-play', variant: 'primary', disabled: active || completed
+        }) + ' ' + btn('force-finish-tournament', esc(bi('Принудительный финиш', 'Force finish')), {
+            icon: 'fas fa-flag-checkered', variant: 'danger', disabled: completed
+        }) + ' ';
+    }
+
+    function startTournamentAction() {
+        var item = tournament() || {};
+        if (String(item.lifecycleStatus || item.status || '') === 'active') return;
+        data().startTournament(state.route.tid).then(function () {
+            toastMsg(bi('🏁 Турнир начат', '🏁 Tournament started'));
+        }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
+    }
+
+    function forceFinishTournamentAction() {
+        var item = tournament() || {};
+        if (String(item.lifecycleStatus || item.status || '') === 'completed') return;
+        confirmAction({
+            title: bi('Принудительный финиш турнира', 'Force-finish tournament'),
+            message: bi('Завершить все открытые раунды турнира и перевести турнир в статус «Завершён»? Действие зафиксирует результаты текущих лунок участников.',
+                'Close every open tournament round and mark the tournament completed? Results for players’ current holes will be retained.'),
+            confirmText: bi('Завершить турнир', 'Finish tournament'),
+            onConfirm: function () {
+                data().forceFinishTournament(state.route.tid).then(function (closed) {
+                    toastMsg(bi('🏁 Турнир завершён. Закрыто раундов: ', '🏁 Tournament finished. Rounds closed: ') + closed);
+                }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
+            }
+        });
     }
 
     // ----------------------------------------------------------
@@ -806,6 +852,12 @@ var TnMgrUI = (function (root) {
                 esc(bi('Группа задаёт название, диапазон гандикапа и (необязательно) ТИ и формат.',
                     'A group defines the name, handicap range and optionally the tee and format.')),
                 btn('add-group', esc(bi('Добавить группу', 'Add group')), { variant: 'primary', icon: 'fas fa-plus' })) +
+            '<div class="tnm-card tnm-auto-distribute"><div><b>' + esc(bi('Распределить по HCP', 'Distribute by handicap')) + '</b>' +
+            '<p class="tnm-muted">' + esc(bi('Участники будут разбиты по гандикапу отдельно среди мужчин и женщин; существующие группы заменятся.',
+                'Players are grouped by handicap separately for men and women; current groups will be replaced.')) + '</p></div>' +
+            '<label>' + esc(bi('Групп каждого пола', 'Groups per gender')) + '<input type="number" min="1" max="10" data-tnm-live="group-distribution-count" value="' +
+            esc(state.groupDistributionCount || 3) + '"></label>' +
+            btn('distribute-groups', esc(bi('Распределить', 'Distribute')), { variant: 'primary', icon: 'fas fa-wand-magic-sparkles' }) + '</div>' +
             (groups.length
                 ? '<table class="tnm-table"><thead><tr><th>' + esc(bi('Название', 'Name')) + '</th><th>HCP</th><th></th><th></th></tr></thead><tbody>' + rows + '</tbody></table>'
                 : emptyHtml(bi('Групп пока нет.', 'No groups yet.'))) +
@@ -829,7 +881,7 @@ var TnMgrUI = (function (root) {
             '<details class="tnm-details"><summary>' + esc(bi('Дополнительно', 'More')) + '</summary><div class="tnm-grid-2">' +
             fieldHtml('gender', bi('Пол', 'Gender'), '<select data-tnm-live="group-field" data-field="gender">' + genderOptionsHtml(form.gender || 'all', false) + '</select>') +
             fieldHtml('tee', bi('ТИ', 'Tee'), '<select data-tnm-live="group-field" data-field="tee">' + teeOptionsHtml(form.tee, true) + '</select>') +
-            fieldHtml('format', bi('Формат', 'Format'), '<input type="text" data-tnm-live="group-field" data-field="format" value="' + esc(form.format) + '">') +
+            fieldHtml('format', bi('Формат', 'Format'), '<select data-tnm-live="group-field" data-field="format">' + groupFormatOptions(form.format) + '</select>') +
             '</div></details>' +
             '<div class="tnm-form-actions">' +
             btn('save-group', esc(isNew ? bi('Добавить', 'Add') : bi('Сохранить', 'Save')), { variant: 'primary', icon: 'fas fa-check' }) +
@@ -880,6 +932,24 @@ var TnMgrUI = (function (root) {
             }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
         };
         confirmAction({ title: bi('Удаление группы', 'Delete group'), message: confirmText, onConfirm: run });
+    }
+
+    function distributeGroups() {
+        var count = Math.max(1, Math.min(10, core().intOf(state.groupDistributionCount, 3) || 3));
+        var playerCount = playersOf().length;
+        if (!playerCount) { toastMsg(bi('Сначала добавьте участников', 'Add participants first'), 'warn'); return; }
+        confirmAction({
+            title: bi('Распределить участников по HCP?', 'Distribute players by handicap?'),
+            message: bi('Будут созданы до ' + count + ' групп отдельно для мужчин и женщин. Существующие группы и назначения участников заменятся.',
+                'Up to ' + count + ' groups will be created separately for men and women. Existing groups and assignments will be replaced.'),
+            confirmText: bi('Распределить', 'Distribute'),
+            onConfirm: function () {
+                data().distributeTournamentPlayers(state.route.tid, count, tournament()).then(function (groups) {
+                    var total = groups.reduce(function (sum, group) { return sum + (group.playerCount || 0); }, 0);
+                    toastMsg(bi('Создано групп: ', 'Groups created: ') + groups.length + ' · ' + bi('участников распределено: ', 'players assigned: ') + total);
+                }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
+            }
+        });
     }
 
     // ----------------------------------------------------------
@@ -1242,6 +1312,10 @@ var TnMgrUI = (function (root) {
                 filterDirectory(input.value);
                 return;
             }
+            if (kind === 'group-distribution-count') {
+                state.groupDistributionCount = Math.max(1, Math.min(10, core().intOf(input.value, 3) || 3));
+                return;
+            }
         });
 
         host.addEventListener('input', function (event) {
@@ -1289,6 +1363,8 @@ var TnMgrUI = (function (root) {
         navigate({ view: 'form', tid: state.route.tid });
     });
     on('save-tournament', saveTournament);
+    on('start-tournament', startTournamentAction);
+    on('force-finish-tournament', forceFinishTournamentAction);
     on('toggle-format', function (button) { toggleFormat(button.getAttribute('data-format')); });
     on('add-format', addFormatFromInput);
     on('back', function () {
@@ -1337,6 +1413,7 @@ var TnMgrUI = (function (root) {
     on('save-group', saveGroup);
     on('back-groups', function () { state.groupForm = null; render(); });
     on('delete-group', function (button) { deleteGroup(button.getAttribute('data-gid')); });
+    on('distribute-groups', distributeGroups);
 
     on('import-participants-excel', function () {
         var input = el('tnm-form-excel-input');

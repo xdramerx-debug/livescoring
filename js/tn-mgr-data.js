@@ -250,7 +250,39 @@ var TnMgrData = (function (root) {
     }
 
     function setTournamentStatus(tid, status) {
-        return patch('tournaments/' + tid, { status: status, updatedAt: now() });
+        var patchValue = { status: status, lifecycleStatus: status, updatedAt: now() };
+        if (status === 'active') patchValue.startedAt = now();
+        if (status === 'completed') patchValue.finishedAt = now();
+        return patch('tournaments/' + tid, patchValue);
+    }
+
+    function startTournament(tid) {
+        return setTournamentStatus(tid, 'active');
+    }
+
+    function forceFinishTournament(tid) {
+        if (!tid) return Promise.reject(new Error('Не выбран турнир'));
+        var finishRounds;
+        if (typeof root.pestovoPreserveTournamentRounds === 'function') {
+            finishRounds = root.pestovoPreserveTournamentRounds(tid);
+        } else {
+            finishRounds = read('rounds').then(function (all) {
+                var updates = {};
+                var count = 0;
+                Object.keys(asMap(all)).forEach(function (rid) {
+                    var round = asMap(all)[rid] || {};
+                    if (String(round.tournamentId || '') !== String(tid)) return;
+                    updates['rounds/' + rid + '/status'] = 'completed';
+                    updates['rounds/' + rid + '/completedAt'] = now();
+                    updates['rounds/' + rid + '/closedByTournamentFinish'] = true;
+                    count++;
+                });
+                return (Object.keys(updates).length ? multi(updates) : Promise.resolve()).then(function () { return count; });
+            });
+        }
+        return Promise.resolve(finishRounds).then(function (closed) {
+            return setTournamentStatus(tid, 'completed').then(function () { return closed || 0; });
+        });
     }
 
     /** Удаление турнира вместе с его раундами групп верхнего уровня. */
@@ -290,6 +322,15 @@ var TnMgrData = (function (root) {
         updates['tournaments/' + tid + '/rounds/' + rid] = patchValue;
         if (patchValue.date) updates['tournaments/' + tid + '/days/' + rid + '/date'] = patchValue.date;
         return multi(updates);
+    }
+
+    function saveScorecardLayout(tid, rid, layout) {
+        if (!tid || !rid) return Promise.reject(new Error('Не выбран раунд'));
+        var safe = core().normalizedScorecardLayout(layout || core().defaultScorecardLayout());
+        return patch('tournaments/' + tid + '/rounds/' + rid, {
+            scorecardLayout: safe,
+            updatedAt: now()
+        });
     }
 
     /** Удаление раунда: строки групп, счёт, результаты и стартовый лист. */
@@ -368,6 +409,50 @@ var TnMgrData = (function (root) {
             updates['tournaments/' + tid + '/registeredPlayers/' + player.id + '/groupId'] = null;
         });
         return multi(updates);
+    }
+
+    /** Создаёт равномерные HCP-группы раздельно для мужчин и женщин. */
+    function distributeTournamentPlayers(tid, groupsPerGender, tournament) {
+        var players = listOf(asMap(tournament && tournament.players));
+        if (!players.length) return Promise.reject(new Error('В турнире пока нет участников'));
+        var generated = core().distributePlayers(players, groupsPerGender, {
+            format: ((tournament && tournament.formats) || [])[0] || '',
+            menTee: 'wh', womenTee: 'rd'
+        });
+        var groupsById = {};
+        var groupByPlayer = {};
+        generated.forEach(function (group) {
+            groupsById[group.id] = group;
+            Object.keys(asMap(group.members)).forEach(function (pid) { groupByPlayer[pid] = group; });
+        });
+        var updates = {};
+        listOf(asMap(tournament && tournament.groups)).forEach(function (group) {
+            if (groupsById[group.id]) return;
+            updates['tournaments/' + tid + '/groups/' + group.id] = null;
+            updates['tournaments/' + tid + '/divisions/' + group.id] = null;
+        });
+        generated.forEach(function (group) {
+            var record = Object.assign({}, group, { createdAt: now(), autoDistribution: true });
+            updates['tournaments/' + tid + '/groups/' + group.id] = clean(record);
+            updates['tournaments/' + tid + '/divisions/' + group.id] = clean(record);
+        });
+        players.forEach(function (player) {
+            var group = groupByPlayer[player.id];
+            var groupId = group ? group.id : null;
+            updates['tournaments/' + tid + '/players/' + player.id + '/groupId'] = groupId;
+            updates['tournaments/' + tid + '/registeredPlayers/' + player.id + '/groupId'] = groupId;
+        });
+        listOf(asMap(tournament && tournament.sheets)).forEach(function (sheet) {
+            var entries = asMap(sheet.entries);
+            Object.keys(entries).forEach(function (pid) {
+                var group = groupByPlayer[pid];
+                if (!group) return;
+                updates['tournaments/' + tid + '/sheets/' + sheet.id + '/entries/' + pid + '/groupId'] = group.id;
+                updates['tournaments/' + tid + '/sheets/' + sheet.id + '/entries/' + pid + '/groupName'] = group.name;
+            });
+            updates['tournaments/' + tid + '/sheets/' + sheet.id + '/updatedAt'] = now();
+        });
+        return multi(updates).then(function () { return generated; });
     }
 
     function playerNameOf(tournament, pid) {
@@ -547,6 +632,7 @@ var TnMgrData = (function (root) {
         { key: 'groupName', ru: 'Группа', en: 'Group', on: true, width: 12 },
         { key: 'markerName', ru: 'Маркер', en: 'Marker', on: true, width: 18 },
         { key: 'flight', ru: 'Флайт', en: 'Flight', on: true, width: 8 },
+        { key: 'startHole', ru: 'Лунка', en: 'Hole', on: true, width: 6 },
         { key: 'startTime', ru: 'Время', en: 'Time', on: true, width: 9 },
         { key: 'order', ru: '№', en: 'No.', on: true, width: 6 }
     ];
@@ -565,6 +651,44 @@ var TnMgrData = (function (root) {
         return listOf(asMap(sheet && sheet.entries)).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
     }
 
+    /** Перестраивает персональные QR и назначения маркеров для всего листа. */
+    function markerQrIndex(sourceEntries, rid) {
+        var entries = {};
+        Object.keys(asMap(sourceEntries)).forEach(function (pid) {
+            entries[pid] = Object.assign({}, asMap(sourceEntries)[pid], { playerId: asMap(sourceEntries)[pid].playerId || pid });
+        });
+        var base = root.baseUrl ? root.baseUrl() : '';
+        var buckets = {};
+        Object.keys(entries).forEach(function (pid) {
+            var entry = entries[pid];
+            var key = entry.startGroupId || ((entry.flight || entry.groupId || entry.groupName || entry.startTime) ?
+                [entry.flight || '', entry.groupId || entry.groupName || '', entry.startHole || 1, entry.startTime || ''].join('|') : 'single:' + pid);
+            buckets[key] = buckets[key] || [];
+            buckets[key].push(entry);
+        });
+        var markers = {};
+        Object.keys(buckets).forEach(function (key, groupIndex) {
+            var groupEntries = buckets[key].sort(function (a, b) { return (a.position || 0) - (b.position || 0); });
+            groupEntries.forEach(function (entry, index) {
+                var fallback = groupEntries.length > 1 ? groupEntries[(index + 1) % groupEntries.length].playerId : entry.playerId;
+                var markerId = entry.markerPlayerId || fallback;
+                entry.markerPlayerId = markerId;
+                entry.qr = core().scoreUrl(base, entry.groupRoundId || rid, markerId, markerId !== entry.playerId ? Math.max(2, groupEntries.length) : groupEntries.length);
+                entry.scoreUrl = entry.qr;
+                if (!markers[markerId]) {
+                    markers[markerId] = {
+                        playerId: markerId, groupId: entry.groupId || '', groupName: entry.groupName || '',
+                        flight: entry.flight || '', startGroupId: entry.startGroupId || '', groupRoundId: entry.groupRoundId || '',
+                        startHole: entry.startHole || 1, startTime: entry.startTime || '',
+                        position: groupIndex + 1, qr: entry.qr, generatedAt: now(), targets: {}
+                    };
+                }
+                markers[markerId].targets[entry.playerId] = true;
+            });
+        });
+        return { entries: entries, markers: markers };
+    }
+
     /**
      * Генерация стартового листа раунда: создаёт (или обновляет)
      * sheets/<rid> и раунды групп rounds/<groupRoundId> для ввода счёта.
@@ -573,6 +697,7 @@ var TnMgrData = (function (root) {
         var o = options || {};
         var round = asMap(asMap(tournament && tournament.rounds)[rid]);
         if (!round.id) return Promise.reject(new Error('Раунд не найден'));
+        var base = root.baseUrl ? root.baseUrl() : '';
         var players = listOf(asMap(tournament && tournament.players));
         var groups = listOf(asMap(tournament && tournament.groups));
         // Игроки получают группу из справочника групп (по диапазону гандикапа).
@@ -590,39 +715,16 @@ var TnMgrData = (function (root) {
             format: o.format || ((tournament && tournament.formats) || [])[0] || '',
             markMode: o.markMode || 'group',
             groupsPerFlight: o.groupsPerFlight || 3,
-            flights: o.flights !== false
+            flights: o.flights !== false,
+            startMode: o.startMode || 'sequential',
+            startHole: o.startHole || 1
         });
-        var base = root.baseUrl ? root.baseUrl() : '';
-        var entries = {};
-        var markers = {};
-        built.entries.forEach(function (entry) {
-            var copy = Object.assign({}, entry);
-            copy.qr = core().scoreUrl(base, rid, entry.playerId, 4);
-            entries[entry.playerId] = copy;
-        });
-        // Маркеры и QR: по одному коду на группу/маркера.
-        built.groups.forEach(function (group, index) {
-            var markerEntry = group.players.filter(function (player) {
-                return entries[player.id] && entries[player.id].playerId === entries[player.id].markerPlayerId;
-            })[0] || group.players[0];
-            var payload = core().scoreUrl(base, rid, markerEntry ? markerEntry.id : '', Math.max(2, group.players.length));
-            (group.players || []).forEach(function (player) {
-                if (entries[player.id]) entries[player.id].scoreUrl = payload;
-            });
-            if (markerEntry) {
-                var target = group.players.filter(function (player) { return player.id !== markerEntry.id; });
-                markers[markerEntry.id] = clean({
-                    playerId: markerEntry.id,
-                    groupId: group.id || '',
-                    groupName: group.name || '',
-                    flight: group.flight || '',
-                    position: index + 1,
-                    qr: payload,
-                    generatedAt: now(),
-                    targets: target.reduce(function (acc, player) { acc[player.id] = true; return acc; }, {})
-                });
-            }
-        });
+        var rawEntries = {};
+        built.entries.forEach(function (entry) { rawEntries[entry.playerId] = Object.assign({}, entry); });
+        // Каждый QR ведёт в режим маркера, назначенного для счёта именно этого игрока.
+        var indexed = markerQrIndex(rawEntries, rid);
+        var entries = indexed.entries;
+        var markers = indexed.markers;
         var sheet = {
             roundId: rid,
             tournamentId: tid,
@@ -663,7 +765,7 @@ var TnMgrData = (function (root) {
         var groups = [];
         var seen = {};
         entries.forEach(function (entry) {
-            var key = [entry.flight || '', entry.groupId || entry.groupName || '', entry.startTime || ''].join('|');
+            var key = entry.startGroupId || [entry.flight || '', entry.groupId || entry.groupName || '', entry.startHole || 1, entry.startTime || ''].join('|');
             if (!seen[key]) {
                 seen[key] = { key: key, entries: [] };
                 groups.push(seen[key]);
@@ -676,15 +778,15 @@ var TnMgrData = (function (root) {
         var updates = {};
         var chains = [];
         groups.forEach(function (group, index) {
-            var groupRoundId = existing[index] || pushKey('rounds');
+            var groupRoundId = (group.entries[0] && group.entries[0].groupRoundId) || existing[index] || pushKey('rounds');
             groupRounds[index] = groupRoundId;
+            group.entries.forEach(function (entry) { entry.groupRoundId = groupRoundId; });
             var players = {};
             var markerAssignments = {};
             var participants = [];
             var ids = group.entries.map(function (entry) { return entry.playerId; });
             group.entries.forEach(function (entry) {
                 var player = asMap(tournamentPlayers[entry.playerId]);
-                var markerId = entry.markerPlayerId || '';
                 var entryRecord = clean({
                     id: entry.playerId,
                     name: entry.playerName,
@@ -699,16 +801,22 @@ var TnMgrData = (function (root) {
                 });
                 players[entry.playerId] = entryRecord;
                 participants.push(entry.playerId);
-                if (markerId) {
-                    markerAssignments[markerId] = clean({ targetId: markerId, targetName: entry.playerName, groupId: entry.groupId || '', tournamentRound: rid });
-                }
             });
-            // Маркировка кольцом внутри группы (каждый маркирует следующего).
+            // QR открывает ввод от имени маркера, а его назначение указывает
+            // на игрока, чей счёт он ведёт. Для старых/вручную добавленных
+            // строк без назначения сохраняем безопасное кольцо по составу.
             var ring = group.entries.map(function (entry) { return entry.playerId; });
-            ring.forEach(function (pid, position) {
-                var targetPid = ring[(position + 1) % ring.length];
-                if (!targetPid || targetPid === pid) return;
-                players[pid].markedBy = targetPid;
+            group.entries.forEach(function (entry, position) {
+                var targetPid = entry.playerId;
+                var markerId = entry.markerPlayerId || (ring.length > 1 ? ring[(position + 1) % ring.length] : '');
+                if (!markerId || markerId === targetPid) return;
+                if (players[targetPid]) players[targetPid].markedBy = markerId;
+                markerAssignments[markerId] = clean({
+                    targetId: targetPid,
+                    targetName: entry.playerName || (players[targetPid] && players[targetPid].name) || '',
+                    groupId: entry.groupId || '',
+                    tournamentRound: rid
+                });
             });
             var flight = group.entries[0].flight || '';
             var startTimeText = group.entries[0].startTime || '09:00';
@@ -728,7 +836,7 @@ var TnMgrData = (function (root) {
                 groupsTotal: groups.length,
                 groupName: group.entries[0].groupName || '',
                 flight: flight,
-                startHole: 1,
+                startHole: core().intOf(group.entries[0].startHole, 1) || 1,
                 holeRange: '1-18',
                 startTime: startTs,
                 startTimeText: startTimeText,
@@ -764,6 +872,17 @@ var TnMgrData = (function (root) {
                 return null;
             }).catch(function () { /* silent */ }));
         });
+        // После назначения groupRoundId обновляем payload: QR должен вести
+        // на реальный раунд ввода счёта группы, а не на запись турнира.
+        var qrIndex = markerQrIndex(asMap(sheet && sheet.entries), rid);
+        Object.keys(qrIndex.entries).forEach(function (pid) {
+            var qrEntry = qrIndex.entries[pid];
+            updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + pid + '/groupRoundId'] = qrEntry.groupRoundId || null;
+            updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + pid + '/markerPlayerId'] = qrEntry.markerPlayerId || null;
+            updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + pid + '/qr'] = qrEntry.qr || null;
+            updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + pid + '/scoreUrl'] = qrEntry.scoreUrl || null;
+        });
+        updates['tournaments/' + tid + '/sheets/' + rid + '/markers'] = Object.keys(qrIndex.markers).length ? qrIndex.markers : null;
         // Раунды групп, которых больше нет в листе, удаляем.
         Object.keys(existing).forEach(function (index) {
             if (groupRounds[index]) return;
@@ -786,27 +905,21 @@ var TnMgrData = (function (root) {
             updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + pid + '/' + key] = fields[key];
         });
         updates['tournaments/' + tid + '/sheets/' + rid + '/updatedAt'] = now();
-        // Правка маркера: пересобираем карту маркеров в листе.
-        if (fields && fields.markerPlayerId !== undefined) {
-            var markers = asMap(sheet.markers);
-            var nextMarkers = {};
-            Object.keys(markers).forEach(function (key) {
-                if (key === pid) return;
-                var marker = asMap(markers[key]);
-                var targets = Object.assign({}, asMap(marker.targets));
-                delete targets[pid];
-                nextMarkers[key] = Object.assign({}, marker, { targets: Object.keys(targets).length ? targets : null });
+        // Правки маркера/состава перестраивают все QR: на каждой карточке
+        // ссылка должна открывать ввод от имени назначенного маркера.
+        var markerRelated = ['markerPlayerId', 'playerName', 'startTime', 'startHole', 'groupId', 'groupName', 'flight', 'position'];
+        var refreshMarkers = fields && markerRelated.some(function (key) { return fields[key] !== undefined; });
+        if (refreshMarkers) {
+            var prospective = Object.assign({}, asMap(sheet.entries), {});
+            prospective[pid] = next;
+            var indexed = markerQrIndex(prospective, rid);
+            updates['tournaments/' + tid + '/sheets/' + rid + '/markers'] = Object.keys(indexed.markers).length ? indexed.markers : null;
+            Object.keys(indexed.entries).forEach(function (entryId) {
+                var indexedEntry = indexed.entries[entryId];
+                updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + entryId + '/markerPlayerId'] = indexedEntry.markerPlayerId || null;
+                updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + entryId + '/qr'] = indexedEntry.qr || null;
+                updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + entryId + '/scoreUrl'] = indexedEntry.scoreUrl || null;
             });
-            var markerId = fields.markerPlayerId;
-            if (markerId) {
-                var markerTargets = Object.assign({}, asMap(asMap(markers[markerId]).targets));
-                markerTargets[pid] = true;
-                nextMarkers[markerId] = Object.assign({}, asMap(markers[markerId]), clean({
-                    playerId: markerId, groupId: next.groupId || '', groupName: next.groupName || '',
-                    flight: next.flight || '', qr: next.scoreUrl || '', generatedAt: now()
-                }), { targets: markerTargets });
-            }
-            updates['tournaments/' + tid + '/sheets/' + rid + '/markers'] = Object.keys(nextMarkers).length ? nextMarkers : null;
         }
         // Синхронизация с участником турнира.
         var playerPatch = {};
@@ -864,8 +977,17 @@ var TnMgrData = (function (root) {
         var order = sheetOrder(sheet).length + 1;
         entry.order = entry.order || order;
         entry.position = entry.position || 1;
-        return patch('tournaments/' + tid + '/sheets/' + rid + '/entries/' + pid, clean(entry))
-            .then(function () { return read('tournaments/' + tid + '/sheets/' + rid); })
+        entry.startGroupId = entry.startGroupId || 'manual_' + pid;
+        var prospective = Object.assign({}, asMap(sheet.entries));
+        prospective[pid] = entry;
+        var indexed = markerQrIndex(prospective, rid);
+        var updates = {};
+        Object.keys(indexed.entries).forEach(function (entryId) {
+            updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + entryId] = clean(indexed.entries[entryId]);
+        });
+        updates['tournaments/' + tid + '/sheets/' + rid + '/markers'] = indexed.markers;
+        updates['tournaments/' + tid + '/sheets/' + rid + '/updatedAt'] = now();
+        return multi(updates).then(function () { return read('tournaments/' + tid + '/sheets/' + rid); })
             .then(function (fresh) {
                 if (fresh) return materializeRound(tid, rid, fresh, tournament).then(function () { return fresh; });
                 return null;
@@ -873,16 +995,22 @@ var TnMgrData = (function (root) {
     }
 
     function removeSheetEntry(tid, rid, pid, tournament) {
+        var sheet = asMap(asMap(tournament && tournament.sheets)[rid]);
+        var prospective = Object.assign({}, asMap(sheet.entries));
+        delete prospective[pid];
+        var indexed = markerQrIndex(prospective, rid);
         var updates = {};
         updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + pid] = null;
-        updates['tournaments/' + tid + '/sheets/' + rid + '/markers/' + pid] = null;
-        updates['tournaments/' + tid + '/sheets/' + rid + '/updatedAt'] = now();
-        return multi(updates).then(function () {
-            return read('tournaments/' + tid + '/sheets/' + rid);
-        }).then(function (fresh) {
-            if (fresh) return materializeRound(tid, rid, fresh, tournament).then(function () { return fresh; });
-            return null;
+        Object.keys(indexed.entries).forEach(function (entryId) {
+            updates['tournaments/' + tid + '/sheets/' + rid + '/entries/' + entryId] = clean(indexed.entries[entryId]);
         });
+        updates['tournaments/' + tid + '/sheets/' + rid + '/markers'] = Object.keys(indexed.markers).length ? indexed.markers : null;
+        updates['tournaments/' + tid + '/sheets/' + rid + '/updatedAt'] = now();
+        return multi(updates).then(function () { return read('tournaments/' + tid + '/sheets/' + rid); })
+            .then(function (fresh) {
+                if (fresh) return materializeRound(tid, rid, fresh, tournament).then(function () { return fresh; });
+                return null;
+            });
     }
 
     function saveSheetColumns(tid, rid, columns) {
@@ -1009,12 +1137,14 @@ var TnMgrData = (function (root) {
         // турниры
         createTournament: createTournament, updateTournament: updateTournament,
         deleteTournament: deleteTournament, setTournamentStatus: setTournamentStatus,
+        startTournament: startTournament, forceFinishTournament: forceFinishTournament,
         watchTournaments: watchTournaments, watchTournament: watchTournament, watchGroupRounds: watchGroupRounds,
         // раунды
-        addRound: addRound, updateRound: updateRound, deleteRound: deleteRound,
+        addRound: addRound, updateRound: updateRound, saveScorecardLayout: saveScorecardLayout, deleteRound: deleteRound,
         // группы
         addGroup: addGroup, updateGroup: updateGroup, deleteGroup: deleteGroup,
         setGroupMembers: setGroupMembers, groupForPlayer: groupForPlayer,
+        distributeTournamentPlayers: distributeTournamentPlayers,
         // участники
         addPlayer: addPlayer, addPlayers: addPlayers, updatePlayer: updatePlayer, removePlayer: removePlayer,
         // стартовый лист

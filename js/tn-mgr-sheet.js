@@ -29,7 +29,7 @@ var TnMgrSheetUI = (function (root) {
         showTournamentQr: true,
         addOpen: false,
         options: {
-            groupSize: 4, startInterval: 8, firstTeeTime: '', tee: '', format: '',
+            groupSize: 4, startInterval: 8, firstTeeTime: '', tee: '', format: '', startMode: 'sequential', startHole: 1,
             markMode: 'group', groupsPerFlight: 3, flights: true
         }
     };
@@ -134,8 +134,15 @@ var TnMgrSheetUI = (function (root) {
                 '<input type="number" min="1" max="4" data-tnm-live-edit="sheet-option" data-field="groupSize" value="' + esc(o.groupSize) + '">') +
             ui().fieldHtml('startInterval', bi('Интервал, минут', 'Interval, minutes'),
                 '<input type="number" min="1" data-tnm-live-edit="sheet-option" data-field="startInterval" value="' + esc(o.startInterval) + '">') +
-            ui().fieldHtml('firstTeeTime', bi('Время первого флая', 'First tee time'),
+            ui().fieldHtml('firstTeeTime', bi('Время старта', 'First start time'),
                 '<input type="time" data-tnm-live-edit="sheet-option" data-field="firstTeeTime" value="' + esc(o.firstTeeTime) + '">') +
+            ui().fieldHtml('startMode', bi('Способ старта', 'Start mode'),
+                '<select data-tnm-live-edit="sheet-option" data-field="startMode">' +
+                '<option value="sequential"' + (o.startMode !== 'shotgun' ? ' selected' : '') + '>' + esc(bi('Последовательный', 'Sequential')) + '</option>' +
+                '<option value="shotgun"' + (o.startMode === 'shotgun' ? ' selected' : '') + '>' + esc(bi('Шотган', 'Shotgun')) + '</option>' +
+                '</select>') +
+            ui().fieldHtml('startHole', bi('Стартовая лунка', 'Starting hole'),
+                '<input type="number" min="1" max="18" data-tnm-live-edit="sheet-option" data-field="startHole" value="' + esc(o.startHole || 1) + '">') +
             ui().fieldHtml('tee', bi('ТИ по умолчанию', 'Default tee'),
                 '<select data-tnm-live-edit="sheet-option" data-field="tee">' + ui().teeOptionsHtml(o.tee, true) + '</select>') +
             ui().fieldHtml('format', bi('Формат по умолчанию', 'Default format'),
@@ -155,7 +162,8 @@ var TnMgrSheetUI = (function (root) {
 
     function toolbarHtml() {
         return '<div class="tnm-sheet-toolbar">' +
-            ui().btn('sheet-pdf', esc(bi('PDF с QR', 'PDF with QR')), { variant: 'primary', icon: 'fas fa-file-pdf' }) + ' ' +
+            ui().btn('sheet-pdf', esc(bi('Стартовый лист PDF', 'Tee sheet PDF')), { variant: 'primary', icon: 'fas fa-file-pdf' }) + ' ' +
+            ui().btn('sheet-qr-pdf', esc(bi('Печать QR-кодов', 'Print QR codes')), { icon: 'fas fa-qrcode', variant: 'ghost' }) + ' ' +
             ui().btn('sheet-excel', esc(bi('Excel', 'Excel')), { icon: 'fas fa-file-excel', variant: 'ghost' }) + ' ' +
             ui().btn('sheet-columns', esc(bi('Колонки', 'Columns')), { icon: 'fas fa-table-columns', variant: 'ghost' }) + ' ' +
             ui().btn('sheet-add-player', esc(bi('Добавить игрока', 'Add player')), { icon: 'fas fa-user-plus', variant: 'ghost' }) + ' ' +
@@ -214,6 +222,8 @@ var TnMgrSheetUI = (function (root) {
                 return '<td>' + markerSelectHtml(entry, sheetData) + '</td>';
             case 'flight':
                 return '<td><input type="text" class="tnm-input-sm" ' + attrs + focus + ' value="' + esc(entry.flight || '') + '"></td>';
+            case 'startHole':
+                return '<td><input type="number" min="1" max="18" class="tnm-input-num" ' + attrs + focus + ' value="' + esc(entry.startHole || 1) + '"></td>';
             case 'startTime':
                 return '<td><input type="time" ' + attrs + focus + ' value="' + esc(entry.startTime || '') + '"></td>';
             case 'playerName':
@@ -224,29 +234,27 @@ var TnMgrSheetUI = (function (root) {
     }
 
     function qrPanelHtml(sheetData) {
-        var markers = data().asMap(sheetData.markers);
-        var list = Object.keys(markers).map(function (pid) {
-            var marker = data().asMap(markers[pid]);
-            var payload = marker.qr || core().scoreUrl(ui().baseUrl(), ensureRoundId(), pid, 4);
+        var tournament = ui().tournament() || {};
+        var round = currentRound() || {};
+        var list = entries(sheetData).map(function (entry) {
+            var payload = entry.qr || core().scoreUrl(ui().baseUrl(), entry.groupRoundId || ensureRoundId(), entry.markerPlayerId || entry.playerId, 4);
+            var details = bi('Лунка ', 'Hole ') + (entry.startHole || 1) + ' · ' +
+                bi('старт ', 'start ') + (entry.startTime || '—');
             return '<div class="tnm-qr-card">' +
                 '<img src="' + esc(io().qrUrl(payload, 240)) + '" data-qr="' + esc(payload) + '" alt="QR" width="120" height="120">' +
-                '<div class="tnm-qr-title">' + esc(markerTargetsLabel(marker)) + '</div>' +
-                '<div class="tnm-muted">' + esc(playerName(pid)) + '</div>' +
+                '<div class="tnm-qr-title">' + esc(entry.playerName || '') + '</div>' +
+                '<div class="tnm-muted">' + esc(details) + '</div>' +
+                '<div class="tnm-muted">' + esc(bi('Счёт ведёт: ', 'Scorekeeper: ') + (markerName(sheetData, entry) || '—')) + '</div>' +
                 '<div class="tnm-qr-actions">' +
                 '<button type="button" class="tnm-btn tnm-btn-ghost tnm-btn-sm" data-tnm-act="sheet-copy-link" data-url="' + esc(payload) + '">' + esc(bi('Ссылка', 'Link')) + '</button>' +
                 '<a class="tnm-btn tnm-btn-ghost tnm-btn-sm" href="' + esc(payload) + '" target="_blank" rel="noopener">' + esc(bi('Открыть', 'Open')) + '</a>' +
                 '</div></div>';
         }).join('');
-        var tournamentQr = asQr(sheetData);
         var header = '<div class="tnm-qr-head">' +
-            '<span><i class="fas fa-qrcode"></i> ' + esc(bi('QR-коды маркеров', 'Marker QR codes')) + '</span>' +
-            '<label class="tnm-checkbox"><input type="checkbox" data-tnm-edit="sheet-tournament-qr"' + (state.showTournamentQr ? ' checked' : '') + '> ' +
-            esc(bi('QR турнира в шапке PDF', 'Tournament QR in PDF header')) + '</label></div>';
-        var tQr = tournamentQr ? '<div class="tnm-qr-card tnm-qr-tournament">' +
-            '<img src="' + esc(io().qrUrl(tournamentQr, 240)) + '" data-qr="' + esc(tournamentQr) + '" alt="QR" width="120" height="120">' +
-            '<div class="tnm-qr-title">' + esc(bi('Турнир', 'Tournament')) + '</div>' +
-            '<div class="tnm-muted">' + esc((ui().tournament() || {}).name || '') + '</div></div>' : '';
-        return '<div class="tnm-qr-panel">' + header + '<div class="tnm-qr-grid">' + (list || ui().emptyHtml(bi('QR-кодов пока нет', 'No QR codes yet'))) + tQr + '</div></div>';
+            '<span><i class="fas fa-qrcode"></i> ' + esc(bi('QR-коды участников', 'Player QR codes')) + '</span>' +
+            '<span class="tnm-muted">' + esc((tournament.name || '') + (round.date ? ' · ' + core().dateRu(round.date) : '')) + '</span></div>';
+        return '<div class="tnm-qr-panel">' + header + '<div class="tnm-qr-grid">' +
+            (list || ui().emptyHtml(bi('QR-кодов пока нет', 'No QR codes yet'))) + '</div></div>';
     }
 
     function asQr(sheetData) {
@@ -290,7 +298,7 @@ var TnMgrSheetUI = (function (root) {
         var pid = input.getAttribute('data-pid');
         var field = input.getAttribute('data-field');
         var value = input.value;
-        var numeric = ['position', 'order', 'hi', 'ch'].indexOf(field) !== -1;
+        var numeric = ['position', 'order', 'hi', 'ch', 'startHole'].indexOf(field) !== -1;
         var patch = {};
         patch[field] = numeric ? (value === '' ? null : core().num(value, 0)) : value;
         if (field === 'playerName') patch.playerName = core().trim(value);
@@ -307,30 +315,49 @@ var TnMgrSheetUI = (function (root) {
         });
     }
 
+    function enrichedEntries(sheetData) {
+        var list = entries(sheetData);
+        var markerIds = {};
+        list.forEach(function (entry) { if (entry.markerPlayerId) markerIds[entry.markerPlayerId] = true; });
+        return list.map(function (entry) {
+            var groupSize = list.filter(function (item) {
+                return entry.startGroupId ? item.startGroupId === entry.startGroupId :
+                    item.flight === entry.flight && item.startTime === entry.startTime && item.startHole === entry.startHole;
+            }).length || 1;
+            var markerId = entry.markerPlayerId || entry.playerId;
+            return Object.assign({}, entry, {
+                markerName: markerName(sheetData, entry),
+                isMarker: !!markerIds[entry.playerId],
+                qr: entry.qr || core().scoreUrl(ui().baseUrl(), entry.groupRoundId || ensureRoundId(), markerId, markerId !== entry.playerId ? Math.max(2, groupSize) : groupSize)
+            });
+        });
+    }
+
     function exportPdf() {
         var sheetData = sheet();
         if (!sheetData) return;
         var tournament = ui().tournament() || {};
         var round = currentRound() || {};
-        var markerIds = {};
-        entries(sheetData).forEach(function (entry) { if (entry.markerPlayerId) markerIds[entry.markerPlayerId] = true; });
-        var enriched = entries(sheetData).map(function (entry) {
-            return Object.assign({}, entry, {
-                markerName: markerName(sheetData, entry),
-                isMarker: !!markerIds[entry.playerId],
-                qr: entry.qr || core().scoreUrl(ui().baseUrl(), ensureRoundId(), entry.playerId, 4)
-            });
-        });
-        var htmlDoc = core().sheetHtml({
+        io().printHtml(core().sheetHtml({
             title: bi('Стартовый лист', 'Tee sheet'),
             tournamentName: tournament.name || '',
             roundDate: round.date || '',
             course: round.course || tournament.course || '',
-            entries: enriched,
-            lang: lang(),
-            tournamentQr: state.showTournamentQr ? asQr(sheetData) : ''
-        });
-        io().printHtml(htmlDoc);
+            entries: enrichedEntries(sheetData),
+            lang: lang()
+        }));
+    }
+
+    function exportQrPdf() {
+        var sheetData = sheet();
+        if (!sheetData) return;
+        var tournament = ui().tournament() || {};
+        var round = currentRound() || {};
+        io().printHtml(core().qrCardsHtml({
+            title: bi('QR-коды участников', 'Player QR codes'),
+            tournamentName: tournament.name || '', roundDate: round.date || '',
+            entries: enrichedEntries(sheetData), lang: lang()
+        }));
     }
 
     function exportExcel() {
@@ -476,7 +503,7 @@ var TnMgrSheetUI = (function (root) {
             var optionInput = event.target.closest('[data-tnm-live-edit="sheet-option"]');
             if (optionInput) {
                 var field = optionInput.getAttribute('data-field');
-                state.options[field] = ['groupSize', 'startInterval', 'groupsPerFlight'].indexOf(field) !== -1
+                state.options[field] = ['groupSize', 'startInterval', 'groupsPerFlight', 'startHole'].indexOf(field) !== -1
                     ? core().intOf(optionInput.value, state.options[field]) : optionInput.value;
                 return;
             }
@@ -493,7 +520,7 @@ var TnMgrSheetUI = (function (root) {
             var optionInput = event.target.closest('[data-tnm-live-edit="sheet-option"]');
             if (!optionInput) return;
             var field = optionInput.getAttribute('data-field');
-            if (['groupSize', 'startInterval', 'groupsPerFlight'].indexOf(field) !== -1) {
+            if (['groupSize', 'startInterval', 'groupsPerFlight', 'startHole'].indexOf(field) !== -1) {
                 state.options[field] = core().intOf(optionInput.value, state.options[field]);
             } else {
                 state.options[field] = optionInput.value;
@@ -509,6 +536,7 @@ var TnMgrSheetUI = (function (root) {
     ui().on('sheet-options-toggle', function () { state.optionsOpen = !state.optionsOpen; ui().render(); });
     ui().on('sheet-qr-toggle', function () { state.qrOpen = !state.qrOpen; ui().render(); });
     ui().on('sheet-pdf', exportPdf);
+    ui().on('sheet-qr-pdf', exportQrPdf);
     ui().on('sheet-excel', exportExcel);
     ui().on('sheet-columns', function () {
         ui().state.sheetBusy = false;

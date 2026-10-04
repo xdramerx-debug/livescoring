@@ -109,7 +109,25 @@ eq(C.groupRangeText(group), '0 – 12,5', 'диапазон группы тек�
 check(C.groupMatchesPlayer(group, { hi: 10, ch: 12 }), 'игрок попадает в диапазон по CH');
 check(!C.groupMatchesPlayer(group, { hi: 20, ch: 22 }), 'игрок вне диапазона');
 eq(C.groupRangeText(C.newGroup({ name: 'Все' })), '—', 'группа без границ');
+var distributed = C.distributePlayers([
+    { id: 'm1', fio: 'Мужчина Один', gender: 'men', hi: 2 },
+    { id: 'm2', fio: 'Мужчина Два', gender: 'men', hi: 8 },
+    { id: 'm3', fio: 'Мужчина Три', gender: 'men', hi: 18 },
+    { id: 'm4', fio: 'Мужчина Четыре', gender: 'men', hi: 25 },
+    { id: 'w1', fio: 'Женщина Один', gender: 'women', hi: 12 },
+    { id: 'w2', fio: 'Женщина Два', gender: 'women', hi: 30 }
+], 2);
+eq(distributed.length, 4, 'автораспределение создаёт выбранное число групп отдельно по полу');
+check(distributed.filter(function (g) { return g.gender === 'men'; }).length === 2 &&
+    distributed.filter(function (g) { return g.gender === 'women'; }).length === 2,
+    'автогруппы мужчин и женщин не смешиваются');
+check(distributed.every(function (g) { return g.playerCount > 0 && Object.keys(g.members).length === g.playerCount; }),
+    'участники распределены по HCP-группам без потерь');
 
+var inferredWoman = C.newPlayer({ fio: 'Смирнова Елена', hi: 18, gender: '', source: 'excel' });
+eq(inferredWoman.gender, 'women', 'пол по женскому имени используется как fallback');
+var inferredMan = C.newPlayer({ fio: 'Иванов Александр', hi: 10, gender: '', source: 'excel' });
+eq(inferredMan.gender, 'men', 'пол по мужскому имени используется как fallback');
 var player = C.newPlayer({ fio: 'Петров Пётр', hi: '15,4', gender: 'муж', source: 'excel' });
 eq(player.fio, 'Петров Пётр', 'ФИО игрока');
 eq(player.hi, 15.4, 'HI из строки с запятой');
@@ -141,9 +159,21 @@ eq(sheet.entries[0].position, 1, 'позиция внутри группы');
 check(!!sheet.entries[0].markerPlayerId, 'маркер назначен автоматически');
 eq(sheet.entries[0].markerPlayerId, sheet.entries[1].playerId, 'маркер — следующий игрок группы');
 eq(sheet.entries[1].markerPlayerId, sheet.entries[0].playerId, 'последний игрок маркирует первого');
-eq(sheet.entries[0].flight, 'A', 'первый флайт — A');
+eq(sheet.entries[0].flight, '1', 'последовательный старт обозначается «Флайт 1»');
+eq(sheet.entries[0].startHole, 1, 'в стартовой группе хранится выбранная лунка');
 eq(sheet.entries[0].format, 'Стэйблфорд', 'формат турнира попадает в лист');
 eq(sheet.validate || C.validateSheet(sheet.entries).length, 0, 'лист без дублей и пустых игроков');
+var shotgunPlayers = [];
+for (var si = 1; si <= 38; si++) shotgunPlayers.push({ id: 'sg' + si, fio: 'Гольфист ' + si, gender: 'men', hi: si });
+var shotgun = C.buildSheet({ players: shotgunPlayers, groupSize: 2, startMode: 'shotgun', startHole: 1, firstTeeTime: '08:00', startInterval: 12 });
+var waveOne = shotgun.entries.filter(function (entry) { return entry.flight === '1А'; });
+var waveTwo = shotgun.entries.filter(function (entry) { return entry.flight === '1Б'; });
+check(waveOne.length === 2 && waveTwo.length === 2, 'шотган размечает повтор первой лунки флайтами 1А и 1Б');
+eq(waveOne[0].startHole, 1, 'шотган хранит физическую лунку старта');
+eq(waveTwo[0].startTime, '08:12', 'вторая волна стартует с интервалом');
+var shotgunFromTen = C.buildSheet({ players: shotgunPlayers.slice(0, 2), groupSize: 2, startMode: 'shotgun', startHole: 10 });
+eq(shotgunFromTen.entries[0].flight, '1', 'номер флайта начинается с 1 при выбранной стартовой лунке');
+eq(shotgunFromTen.entries[0].startHole, 10, 'выбранная стартовая лунка сохраняется отдельно от номера флайта');
 
 var patched = C.applyEntryPatch({ entries: C.clone(sheet.entries) }, 'p1', { tee: 'bl', groupId: 'gB', playerName: 'Петров Пётр' });
 eq(patched.entry.tee, 'bl', 'правка ТИ применяется');
@@ -202,6 +232,16 @@ eq(dup.issues.length, 1, 'дубли ФИО отмечаются');
 var noHeader = C.parseParticipants([['Петров Пётр', '15'], ['Сидоров Семён', '20']]);
 eq(noHeader.players.length, 2, 'таблица без заголовков разбирается по содержимому');
 eq(noHeader.players[0].hi, 15, 'гандикап из второй колонки');
+var irregular = C.parseParticipants([
+    ['Отчёт турнира', '', '', '', '', '', ''],
+    ['№', 'Комментарий', 'Код', 'Фамилия', 'Имя', 'Пол', 'Точный гандикап'],
+    ['1', 'группа A', '77', 'Смирнова', 'Елена', '', '12,4'],
+    ['2', 'группа B', '88', 'Иванов', 'Александр', 'муж', '9,2']
+]);
+eq(irregular.players.length, 2, 'Excel-импорт читает данные из нестандартных колонок');
+eq(irregular.players[0].hi, 12.4, 'HCP из нестандартной колонки находится по заголовку');
+eq(irregular.players[0].gender, 'women', 'пол отсутствующего значения в Excel выводится по имени');
+eq(irregular.players[1].gender, 'men', 'пол из нестандартного Excel-столбца сохраняется');
 eq(C.parseDelimited('ФИО\tГандикап\nИванов Иван\t12').length, 2, 'вставленный текст разбирается по табуляции');
 
 // ----------------------------------------------------------
@@ -224,8 +264,23 @@ var sheetDoc = C.sheetHtml({ tournamentName: 'Кубок клуба', roundDate:
 check(sheetDoc.indexOf('<!doctype html>') === 0, 'PDF стартового листа — цельный документ');
 check(sheetDoc.indexOf('Кубок клуба') !== -1, 'в PDF есть название турнира');
 check(sheetDoc.indexOf('Стартовый лист') !== -1, 'в PDF есть заголовок');
-check(sheetDoc.indexOf('setup-round.html?round=r1') !== -1, 'в PDF есть QR-ссылка на ввод счёта');
-check(sheetDoc.indexOf('Флайт A') !== -1, 'в PDF есть флайты');
+check(sheetDoc.indexOf('data-qr=') === -1 && sheetDoc.indexOf('qrserver.com') === -1, 'стартовый лист печатается отдельно от QR');
+check(sheetDoc.indexOf('Флайт 1') !== -1, 'в PDF есть флайт с новой нумерацией');
+check(sheetDoc.indexOf('Лунка старта') !== -1, 'в PDF стартового листа указана лунка');
+var qrEntries = [];
+for (var qrIndex = 1; qrIndex <= 11; qrIndex++) {
+    qrEntries.push({ playerName: 'Игрок QR ' + qrIndex, markerName: 'Маркер QR ' + qrIndex,
+        startHole: (qrIndex % 18) + 1, startTime: '09:0' + (qrIndex % 10), order: qrIndex,
+        qr: C.scoreUrl('https://club.example/', 'group_' + qrIndex, 'marker_' + qrIndex, 4) });
+}
+var qrDoc = C.qrCardsHtml({ tournamentName: 'Кубок клуба', roundDate: '2026-10-05', entries: qrEntries, lang: 'ru' });
+eq((qrDoc.match(/class="qr-sheet-page"/g) || []).length, 2, 'QR-лист разбит на страницы максимум по 10 кодов');
+eq((qrDoc.match(/class="qr-label"/g) || []).length, 11, 'отдельный QR-документ содержит код для каждого игрока');
+var qrPageStart = qrDoc.indexOf('<div class="qr-sheet-page">');
+var qrPageNext = qrDoc.indexOf('<div class="qr-sheet-page">', qrPageStart + 1);
+eq((qrDoc.slice(qrPageStart, qrPageNext).match(/class="qr-label"/g) || []).length, 10, 'на одном листе A4 размещается ровно до 10 QR-кодов');
+check(qrDoc.indexOf('Игрок QR 1') !== -1 && qrDoc.indexOf('Маркер QR 1') !== -1 && qrDoc.indexOf('Лунка старта') !== -1 && qrDoc.indexOf('Время старта') !== -1,
+    'QR-карточка подписана именем игрока, маркера, лункой и временем');
 var participantsDoc = C.participantsHtml({ players: parsed.players, title: 'Гольфисты', meta: ['Кубок клуба'], lang: 'ru' });
 check(participantsDoc.indexOf('Всего: 2') !== -1, 'в PDF участников есть счётчики');
 var resultsDoc = C.resultsHtml({ rows: placed, tournamentName: 'Кубок', lang: 'ru' });
@@ -233,6 +288,24 @@ check(resultsDoc.indexOf('podium-1') !== -1, 'в PDF результатов пр
 var cardDoc = C.playerCardHtml({ player: players[0], card: card, lang: 'ru' });
 check(cardDoc.indexOf('Очки нетто') !== -1, 'в PDF карточки есть колонка очков нетто');
 check(cardDoc.indexOf('Пар поля') !== -1, 'в PDF карточки указан пар поля');
+var scorecardsDoc = C.scorecardsHtml({
+    tournamentName: 'Кубок клуба', roundDate: '2026-10-05', courseName: 'Пестово', lang: 'ru',
+    layout: C.defaultScorecardLayout(),
+    cards: [{
+        player: { id: 'card-p1', fio: 'Иванов Иван', hi: 11.4, ch: 12, tee: 'wh' },
+        entry: { playerId: 'card-p1', playerName: 'Иванов Иван', hi: 11.4, ch: 12, tee: 'wh', startHole: 1, startTime: '09:00' },
+        card: C.playerCard({ 1: 4 }, course, 'wh', 12), markerScores: { 1: 5 }, markerName: 'Петров Пётр',
+        qr: C.scoreUrl('https://club.example/', 'group-card', 'marker-p1', 4)
+    }]
+});
+check(scorecardsDoc.indexOf('Точный гандикап (HI)') !== -1 && scorecardsDoc.indexOf('Полевой гандикап (CH)') !== -1,
+    'счётная карточка показывает точный и полевой гандикап');
+check(scorecardsDoc.indexOf('Длина') !== -1 && scorecardsDoc.indexOf('Индекс') !== -1 && scorecardsDoc.indexOf('Фора') !== -1,
+    'счётная карточка содержит длину, индекс и фору по лункам');
+check(scorecardsDoc.indexOf('Счёт игрока') !== -1 && scorecardsDoc.indexOf('Счёт маркера') !== -1,
+    'на карточке есть отдельные поля для счёта игрока и маркера');
+check(scorecardsDoc.indexOf('data-qr=') !== -1 && scorecardsDoc.indexOf('Маркер: Петров Пётр') !== -1,
+    'счётная карточка содержит QR маркера и его имя');
 var roundDoc = C.roundScoreHtml({ players: players.slice(0, 2), cards: { p1: card }, course: course, roundDate: '2026-10-05', lang: 'ru' });
 check(roundDoc.indexOf('Длина') !== -1 && roundDoc.indexOf('Индекс') !== -1, 'в PDF раунда есть строки длина/пар/индекс');
 

@@ -1197,15 +1197,28 @@ function toggleMobileDrawer() {
 }
 
 function fmtUserAvatar(u, sizePx) {
-    sizePx = sizePx || 40;
-    if (u && u.avatar) {
-        if (u.avatar.startsWith('data:') || u.avatar.startsWith('http') || u.avatar.startsWith('img/')) {
-            return '<img src="' + u.avatar + '" alt="Avatar" class="user-avatar-img" style="width:' + sizePx + 'px;height:' + sizePx + 'px;">';
-        }
-        return '<div class="lb-avatar" style="width:' + sizePx + 'px;height:' + sizePx + 'px;font-size:' + Math.round(sizePx * 0.5) + 'px;">' + u.avatar + '</div>';
+    var user = u || {};
+    var size = Math.max(20, Math.min(160, parseInt(sizePx, 10) || 40));
+    var raw = user.avatar || user.avatarUrl || user.photoURL || user.photoUrl || user.photo || '';
+    if (raw && typeof raw === 'object') raw = raw.url || raw.src || raw.downloadURL || '';
+    raw = typeof raw === 'string' ? raw.trim() : '';
+    var escapeAvatarHtml = function (value) {
+        return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    };
+    var label = String(user.name || user.firstName || '?').trim();
+    var initial = label ? Array.from(label)[0].toUpperCase() : '?';
+    var fallback = '<div class="lb-avatar" style="width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.45) + 'px;">' +
+        escapeAvatarHtml(initial) + '</div>';
+    if (raw && (/^(data:image\/|https?:\/\/|blob:|\/|\.\/|\.\.\/|img\/)/i.test(raw))) {
+        return '<span class="user-avatar-wrap" style="width:' + size + 'px;height:' + size + 'px;display:inline-flex;flex:0 0 ' + size + 'px;position:relative;">' +
+            '<img src="' + escapeAvatarHtml(raw) + '" alt="" loading="lazy" decoding="async" class="user-avatar-img" ' +
+            'style="width:' + size + 'px;height:' + size + 'px;object-fit:cover;border-radius:50%;" ' +
+            'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+            '<span style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;">' + fallback + '</span></span>';
     }
-    var initial = (u && u.name) ? u.name.charAt(0).toUpperCase() : '?';
-    return '<div class="lb-avatar" style="width:' + sizePx + 'px;height:' + sizePx + 'px;font-size:' + Math.round(sizePx * 0.45) + 'px;">' + initial + '</div>';
+    if (raw) return '<div class="lb-avatar" style="width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.5) + 'px;">' + escapeAvatarHtml(raw) + '</div>';
+    return fallback;
 }
 
 function handleAvatarFileUpload(fileInputEl, callback) {
@@ -4545,7 +4558,20 @@ function saveUserProfileData(playerId) {
         avatar: avatar
     };
 
-    db.ref('users/' + playerId).update(updates).then(function() {
+    var publicProfile = {
+        name: fullName,
+        firstName: firstName,
+        middleName: middleName || null,
+        lastName: lastName,
+        gender: gender,
+        handicap: exactHcp,
+        defaultTee: defaultTee,
+        avatar: avatar || null
+    };
+    var profileUpdates = {};
+    Object.keys(updates).forEach(function (key) { profileUpdates['users/' + playerId + '/' + key] = updates[key]; });
+    Object.keys(publicProfile).forEach(function (key) { profileUpdates['usersPublic/' + playerId + '/' + key] = publicProfile[key]; });
+    db.ref().update(profileUpdates).then(function() {
         if (currentUserData) {
             Object.assign(currentUserData, updates);
         }

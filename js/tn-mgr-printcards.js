@@ -47,7 +47,7 @@ var TnMgrPrintCards = (function (root) {
         tableMm: { min: 1.5, max: 12, def: 2.9, step: 0.1, ru: 'Цифры таблицы', en: 'Table digits' },
         rowHMm: { min: 3, max: 18, def: 6.4, step: 0.1, ru: 'Высота строки таблицы', en: 'Table row height' },
         labWMm: { min: 5, max: 45, def: 15, step: 0.5, ru: 'Колонка подписей (№/Пар…)', en: 'Label column' },
-        sumWMm: { min: 3, max: 30, def: 9, step: 0.5, ru: 'Колонки OUT/IN/TOT', en: 'Totals columns' },
+        sumWMm: { min: 3, max: 30, def: 11.5, step: 0.5, ru: 'Колонки OUT/IN/TOTAL', en: 'OUT/IN/TOTAL columns' },
         footMm: { min: 1.5, max: 12, def: 2.8, step: 0.1, ru: 'Подписи снизу (экран)', en: 'Footer labels' },
         headGapMm: { min: 0, max: 25, def: 2, step: 0.5, ru: 'Отступ после шапки', en: 'Gap after header' },
         footGapMm: { min: 0, max: 40, def: 4, step: 0.5, ru: 'Отступ до подписей', en: 'Gap before footer' },
@@ -66,10 +66,13 @@ var TnMgrPrintCards = (function (root) {
         group: { def: true, ru: 'Флайт / группа', en: 'Flight' },
         par: { def: true, ru: 'Строка «Пар»', en: 'Par row' },
         index: { def: true, ru: 'Строка «Индекс»', en: 'Index row' },
+        fore: { def: true, ru: 'Строка «Фора»', en: 'Handicap strokes row' },
         strokes: { def: true, ru: 'Строка «Удары»', en: 'Strokes row' },
-        totals: { def: true, ru: 'Колонки OUT/IN/TOT', en: 'OUT/IN/TOT columns' }
+        totals: { def: true, ru: 'Колонки OUT/IN/TOTAL', en: 'OUT/IN/TOTAL columns' }
     };
     var SHOW_KEYS = Object.keys(SHOW_FIELDS);
+    var TABLE_ROW_KEYS = ['holes', 'par', 'index', 'fore', 'strokes'];
+    var DEFAULT_ROW_ORDER = TABLE_ROW_KEYS.slice();
 
     /** Поля карточки, которые можно править вручную прямо на эталоне. */
     var CARD_TEXT_FIELDS = ['names', 'hcps', 'tee', 'startHole', 'startTime', 'flight'];
@@ -87,6 +90,7 @@ var TnMgrPrintCards = (function (root) {
         progress: '',
         panels: { sizes: false, fields: false, content: false, overlays: false },
         activeCardId: '',
+        tableDragId: '',
         query: '',
         preview: 'sheet',        // 'sheet' — лист A4, 'card' — только карточка
         previewPinned: false,    // пользователь выбрал вид вручную
@@ -153,6 +157,30 @@ var TnMgrPrintCards = (function (root) {
         var out = {};
         SHOW_KEYS.forEach(function (key) { out[key] = src[key] === undefined ? SHOW_FIELDS[key].def : !!src[key]; });
         return out;
+    }
+    function normalizeRowOrder(order) {
+        var normalized = [];
+        (Array.isArray(order) ? order : []).forEach(function (key) {
+            if (TABLE_ROW_KEYS.indexOf(key) !== -1 && normalized.indexOf(key) === -1) normalized.push(key);
+        });
+        TABLE_ROW_KEYS.forEach(function (key) { if (normalized.indexOf(key) === -1) normalized.push(key); });
+        return normalized;
+    }
+    function visibleRowOrder(draft) {
+        var d = draft || ensureDraft();
+        var show = d.show || {};
+        return normalizeRowOrder(d.rowOrder).filter(function (key) {
+            return key === 'holes' || show[key] !== false;
+        });
+    }
+    function reorderRowOrder(order, sourceId, targetId) {
+        var result = normalizeRowOrder(order);
+        var sourceIndex = result.indexOf(sourceId);
+        var targetIndex = result.indexOf(targetId);
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return result;
+        var item = result.splice(sourceIndex, 1)[0];
+        result.splice(targetIndex, 0, item);
+        return result;
     }
     function defaultSize() { return { wMm: CARD_W, hMm: CARD_H }; }
     function clampSize(size) {
@@ -243,6 +271,7 @@ var TnMgrPrintCards = (function (root) {
             holes: 18,
             pars: defaultPars(),
             indexes: defaultIndexes(),
+            rowOrder: DEFAULT_ROW_ORDER.slice(),
             text: { tournamentName: '', subtitle: '', date: '' },
             show: defaultShow(),
             footer: { player: 'Игрок', marker: 'Маркер', judge: 'Судья', print: false },
@@ -276,6 +305,7 @@ var TnMgrPrintCards = (function (root) {
         if (stored.holes === 9) base.holes = 9;
         if (Array.isArray(stored.pars) && stored.pars.length) base.pars = stored.pars.slice(0, 18);
         if (Array.isArray(stored.indexes) && stored.indexes.length) base.indexes = stored.indexes.slice(0, 18);
+        base.rowOrder = normalizeRowOrder(stored.rowOrder);
         if (stored.text) base.text = Object.assign(base.text, stored.text);
         base.show = clampShow(stored.show);
         if (stored.footer) {
@@ -344,6 +374,7 @@ var TnMgrPrintCards = (function (root) {
             holes: draft.holes,
             pars: draft.pars,
             indexes: draft.indexes,
+            rowOrder: normalizeRowOrder(draft.rowOrder),
             text: draft.text,
             show: draft.show,
             footer: draft.footer,
@@ -464,6 +495,9 @@ var TnMgrPrintCards = (function (root) {
             var names = [];
             var hcps = [];
             var tees = [];
+            var fieldHcps = [];
+            var genders = [];
+            var fores = [];
             var holes = [];
             var times = [];
             var flights = [];
@@ -474,6 +508,12 @@ var TnMgrPrintCards = (function (root) {
                 var hcp = p.hi != null ? p.hi : (p.handicap != null ? p.handicap : (e.hi != null ? e.hi : ''));
                 hcps.push(hcp === '' || hcp == null ? '—' : hcp);
                 tees.push(e.tee || p.tee || '');
+                var fieldHcp = e.ch != null && e.ch !== '' ? e.ch
+                    : (e.fieldHcp != null && e.fieldHcp !== '' ? e.fieldHcp
+                        : (p.ch != null && p.ch !== '' ? p.ch : (p.fieldHcp != null && p.fieldHcp !== '' ? p.fieldHcp : null)));
+                fieldHcps.push(fieldHcp);
+                genders.push(e.gender || p.gender || '');
+                fores.push(p.fores && typeof p.fores === 'object' ? p.fores : {});
                 if (e.startHole) holes.push(Number(e.startHole));
                 if (e.startTime) times.push(e.startTime);
                 if (e.flight || e.groupName) flights.push(e.flight || e.groupName);
@@ -484,6 +524,10 @@ var TnMgrPrintCards = (function (root) {
                 playerIds: unique,
                 names: names,
                 hcps: hcps,
+                tees: tees,
+                fieldHcps: fieldHcps,
+                genders: genders,
+                fores: fores,
                 tee: tees.filter(Boolean)[0] || tees[0] || '',
                 startHole: holes.length ? Math.min.apply(null, holes) : 1,
                 startTime: times.sort()[0] || '',
@@ -571,7 +615,8 @@ var TnMgrPrintCards = (function (root) {
 
     function cardsSignature(cards) {
         return (cards || []).map(function (c) {
-            return [c.id, (c.names || []).join('+'), (c.hcps || []).join('/'), c.tee, c.startHole, c.startTime,
+            return [c.id, (c.names || []).join('+'), (c.hcps || []).join('/'), (c.fieldHcps || []).join('/'),
+                (c.tees || []).join('/'), (c.genders || []).join('/'), c.tee, c.startHole, c.startTime,
                 c.flight, c.manual ? 1 : 0, c.order].join('|');
         }).join(';');
     }
@@ -698,6 +743,117 @@ var TnMgrPrintCards = (function (root) {
     function nameText(card) { return ((card && card.names) || []).join(' + '); }
     function hcpText(card) { return ((card && card.hcps) || []).join(' / '); }
 
+    function displayLang() {
+        return ui().lang ? ui().lang() : (root.currentLang === 'en' ? 'en' : 'ru');
+    }
+
+    function teeDisplayName(value) {
+        var raw = String(value == null ? '' : value).trim();
+        if (!raw) return '—';
+        var key = raw.toLowerCase().replace(/[ё]/g, 'е').replace(/\s+/g, ' ');
+        var colors = {
+            bk: { ru: 'Чёрные', en: 'Black' }, black: { ru: 'Чёрные', en: 'Black' },
+            'черный': { ru: 'Чёрные', en: 'Black' }, 'черная': { ru: 'Чёрные', en: 'Black' },
+            'черные': { ru: 'Чёрные', en: 'Black' }, 'черн': { ru: 'Чёрные', en: 'Black' },
+            bl: { ru: 'Синие', en: 'Blue' }, blue: { ru: 'Синие', en: 'Blue' },
+            'синий': { ru: 'Синие', en: 'Blue' }, 'синяя': { ru: 'Синие', en: 'Blue' },
+            'синие': { ru: 'Синие', en: 'Blue' }, 'син': { ru: 'Синие', en: 'Blue' },
+            wh: { ru: 'Белые', en: 'White' }, white: { ru: 'Белые', en: 'White' },
+            'белый': { ru: 'Белые', en: 'White' }, 'белая': { ru: 'Белые', en: 'White' },
+            'белые': { ru: 'Белые', en: 'White' }, 'бел': { ru: 'Белые', en: 'White' },
+            rd: { ru: 'Красные', en: 'Red' }, red: { ru: 'Красные', en: 'Red' },
+            'красный': { ru: 'Красные', en: 'Red' }, 'красная': { ru: 'Красные', en: 'Red' },
+            'красные': { ru: 'Красные', en: 'Red' }, 'красн': { ru: 'Красные', en: 'Red' },
+            gd: { ru: 'Золотые', en: 'Gold' }, gold: { ru: 'Золотые', en: 'Gold' },
+            'золотой': { ru: 'Золотые', en: 'Gold' }, 'золотая': { ru: 'Золотые', en: 'Gold' },
+            'золотые': { ru: 'Золотые', en: 'Gold' }, 'золот': { ru: 'Золотые', en: 'Gold' },
+            yl: { ru: 'Жёлтые', en: 'Yellow' }, ye: { ru: 'Жёлтые', en: 'Yellow' },
+            yel: { ru: 'Жёлтые', en: 'Yellow' }, yellow: { ru: 'Жёлтые', en: 'Yellow' },
+            'желтый': { ru: 'Жёлтые', en: 'Yellow' }, 'желтая': { ru: 'Жёлтые', en: 'Yellow' },
+            'желтые': { ru: 'Жёлтые', en: 'Yellow' }, 'желт': { ru: 'Жёлтые', en: 'Yellow' },
+            gr: { ru: 'Зелёные', en: 'Green' }, green: { ru: 'Зелёные', en: 'Green' },
+            'зеленый': { ru: 'Зелёные', en: 'Green' }, 'зеленая': { ru: 'Зелёные', en: 'Green' },
+            'зеленые': { ru: 'Зелёные', en: 'Green' }, 'зелен': { ru: 'Зелёные', en: 'Green' }
+        };
+        var color = colors[key];
+        if (color) return color[displayLang()] || color.ru;
+        var configured = root.TEES && root.TEES[key];
+        return configured || raw;
+    }
+
+    function teeCode(value) {
+        var key = String(value == null ? '' : value).trim().toLowerCase().replace(/[ё]/g, 'е');
+        var codes = {
+            bk: 'bk', black: 'bk', 'черный': 'bk', 'черная': 'bk', 'черные': 'bk', 'черн': 'bk',
+            bl: 'bl', blue: 'bl', 'синий': 'bl', 'синяя': 'bl', 'синие': 'bl', 'син': 'bl',
+            wh: 'wh', white: 'wh', 'белый': 'wh', 'белая': 'wh', 'белые': 'wh', 'бел': 'wh',
+            rd: 'rd', red: 'rd', 'красный': 'rd', 'красная': 'rd', 'красные': 'rd', 'красн': 'rd',
+            gd: 'gd', gold: 'gd', 'золотой': 'gd', 'золотая': 'gd', 'золотые': 'gd', 'золот': 'gd',
+            yl: 'yl', ye: 'yl', yel: 'yl', yellow: 'yl',
+            'желтый': 'yl', 'желтая': 'yl', 'желтые': 'yl', 'желт': 'yl',
+            gr: 'gr', green: 'gr', 'зеленый': 'gr', 'зеленая': 'gr', 'зеленые': 'gr', 'зелен': 'gr'
+        };
+        return codes[key] || key;
+    }
+
+    function fieldHcpFor(card, playerIndex) {
+        var index = playerIndex || 0;
+        var editedHcp = !!(card && card.edits && card.edits.hcps);
+        var editedTee = !!(card && card.edits && card.edits.tee);
+        var stored = (card && card.fieldHcps || [])[index];
+        if (!editedHcp && !editedTee && stored !== null && stored !== undefined && stored !== '') {
+            var parsedStored = parseFloat(String(stored).replace(',', '.'));
+            return isFinite(parsedStored) ? Math.round(parsedStored) : null;
+        }
+        var rawHcp = (card && card.hcps || [])[index];
+        if (rawHcp === null || rawHcp === undefined || rawHcp === '' || rawHcp === '—') return null;
+        var tee = teeCode((editedTee ? card.tee : (card && card.tees || [])[index]) || (card && card.tee) || 'wh');
+        var gender = (card && card.genders || [])[index] || 'men';
+        if (typeof root.getFieldHcp === 'function') {
+            try {
+                var calculated = root.getFieldHcp(rawHcp, tee, gender);
+                if (calculated !== null && calculated !== undefined && isFinite(Number(calculated))) return Math.round(Number(calculated));
+            } catch (e) { /* use the core fallback below */ }
+        }
+        var ratings = root.COURSE_RATINGS || {};
+        var rating = (ratings[gender] || {})[tee] || null;
+        if (core().courseHandicap) return core().courseHandicap(rawHcp, rating, root.TOTAL_PAR || 72);
+        var hcp = parseFloat(String(rawHcp).replace(',', '.'));
+        return isFinite(hcp) ? Math.round(hcp) : null;
+    }
+
+    function handicapStrokesOnHole(fieldHcp, index) {
+        if (core().foreOnHole) return core().foreOnHole(index, fieldHcp);
+        var hcp = parseInt(fieldHcp, 10) || 0;
+        var si = parseInt(index, 10) || 0;
+        if (hcp > 0) return Math.floor(hcp / 18) + (si <= hcp % 18 ? 1 : 0);
+        if (hcp < 0) {
+            var abs = Math.abs(hcp);
+            return -(Math.floor(abs / 18) + ((19 - si) <= abs % 18 ? 1 : 0));
+        }
+        return 0;
+    }
+
+    function foreValues(card, playerIndex) {
+        var d = ensureDraft();
+        var n = holeCount();
+        var index = playerIndex || 0;
+        var fieldHcp = fieldHcpFor(card, index);
+        var explicit = (card && card.fores || [])[index] || {};
+        var out = [];
+        for (var i = 0; i < n; i++) {
+            var hole = i + 1;
+            var override = explicit[hole] != null ? explicit[hole] : explicit[String(hole)];
+            if (override !== null && override !== undefined && override !== '') out.push(override);
+            else if (fieldHcp === null || fieldHcp === undefined) out.push('');
+            else {
+                var si = parseInt(d.indexes[i], 10) || hole;
+                out.push(handicapStrokesOnHole(fieldHcp, si));
+            }
+        }
+        return out;
+    }
+
     function titleText() {
         var d = ensureDraft();
         var t = ui().tournament() || {};
@@ -763,8 +919,16 @@ var TnMgrPrintCards = (function (root) {
             '.tnpc-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:var(--tnpc-table,2.9mm)}' +
             '.tnpc-table td{border:var(--tnpc-line,0.25mm) solid #111;text-align:center;' +
             'padding:.5mm .2mm;height:var(--tnpc-row-h,6.4mm);overflow:hidden}' +
-            '.tnpc-table .lab{text-align:left;font-weight:700;width:var(--tnpc-lab-w,15mm);padding-left:1mm}' +
-            '.tnpc-table .sum{font-weight:800;background:#efefef;width:var(--tnpc-sum-w,9mm)}' +
+            '.tnpc-table .lab{text-align:left;font-weight:700;width:var(--tnpc-lab-w,15mm);padding:0 .2mm 0 1mm;position:relative}' +
+            '.tnpc-row-label{display:inline-block;max-width:calc(100% - 4.8mm);overflow:hidden;white-space:nowrap;' +
+            'vertical-align:middle;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}' +
+            '.tnpc-row-label:active{cursor:grabbing}' +
+            '.tnpc-row-tools{position:absolute;right:.1mm;top:50%;transform:translateY(-50%);display:inline-flex;gap:0;z-index:1}' +
+            '.tnpc-row-move{width:2.2mm;min-width:2.2mm;height:4mm;padding:0;border:0;background:transparent;' +
+            'color:#555;font:700 2.4mm Arial,sans-serif;line-height:1;cursor:pointer}' +
+            '.tnpc-row-move:hover{color:#111;background:#e8dfc9}' +
+            '.tnpc-table-row.drop-target td{border-top:.6mm solid #c9a227}' +
+            '.tnpc-table .sum{font-weight:800;background:#efefef;width:var(--tnpc-sum-w,11.5mm)}' +
             '.tnpc-empty{background:#fff}' +
             '.tnpc-foot{display:flex;gap:4mm;margin-top:var(--tnpc-foot-gap,4mm);flex:0 0 auto}' +
             '.tnpc-sign{flex:1;border-top:var(--tnpc-line,0.25mm) solid #111;padding-top:1.2mm;' +
@@ -859,51 +1023,111 @@ var TnMgrPrintCards = (function (root) {
         var d = ensureDraft();
         var n = holeCount();
         var pars = d.pars;
-        var idx = d.indexes;
+        var indexes = d.indexes;
         var strokes = strokesOf(card);
-        var holes = [];
-        for (var i = 0; i < n; i++) holes.push(i + 1);
         var outN = Math.min(9, n);
-        var inN = n > 9 ? n - 9 : 0;
+        var inN = Math.max(0, n - outN);
         var showTotals = d.show.totals !== false;
-        var ed = printMode ? '' : ' contenteditable="true"';
+        var editable = !printMode;
+        var ed = editable ? ' contenteditable="true"' : '';
 
-        function cells(kind, arr, editable) {
+        function tableLabel(key, label, withControls, hint) {
+            var controls = '';
+            var draggable = '';
+            if (editable) {
+                var dragTitle = bi('Перетащить строку', 'Drag to move row');
+                draggable = ' draggable="true" tabindex="0" data-tnpc-row-handle="' + key +
+                    '" aria-label="' + esc(dragTitle + ': ' + (hint || label)) + '" title="' + esc(hint || dragTitle) + '"';
+                if (withControls !== false) {
+                    controls = '<span class="tnpc-row-tools">' +
+                        '<button type="button" class="tnpc-row-move" data-tnm-act="tnpc-table-row-up" data-id="' + key +
+                        '" aria-label="' + esc(bi('Переместить строку вверх', 'Move row up')) + '" title="' +
+                        esc(bi('Вверх', 'Move up')) + '">↑</button>' +
+                        '<button type="button" class="tnpc-row-move" data-tnm-act="tnpc-table-row-down" data-id="' + key +
+                        '" aria-label="' + esc(bi('Переместить строку вниз', 'Move row down')) + '" title="' +
+                        esc(bi('Вниз', 'Move down')) + '">↓</button></span>';
+                }
+            }
+            return '<td class="lab"><span class="tnpc-row-label"' + draggable + '>' + label + '</span>' + controls + '</td>';
+        }
+        function holeCells(from, to) {
             var html = '';
-            holes.forEach(function (h, k) {
-                var v = arr[k] == null ? '' : arr[k];
-                if (kind === 'strokes') html += '<td class="tnpc-empty">' + esc(v) + '</td>';
-                else if (!printMode && editable) {
-                    html += '<td><span' + ed + ' data-tnpc-grid="' + kind + '" data-h="' + k + '">' + esc(v) + '</span></td>';
-                } else html += '<td>' + esc(v) + '</td>';
-            });
+            for (var holeIndex = from; holeIndex < to; holeIndex++) html += '<td>' + (holeIndex + 1) + '</td>';
             return html;
         }
-        function sums(kind) {
-            if (!showTotals) return '';
-            if (!inN) return '<td class="sum">' + sumFor(kind, 0, n) + '</td>';
-            return '<td class="sum">' + sumFor(kind, 0, outN) + '</td>' +
-                '<td class="sum">' + sumFor(kind, outN, n) + '</td>' +
-                '<td class="sum">' + sumFor(kind, 0, n) + '</td>';
+        function valueCells(kind, values, from, to, canEdit) {
+            var html = '';
+            for (var holeIndex = from; holeIndex < to; holeIndex++) {
+                var value = values[holeIndex] == null ? '' : values[holeIndex];
+                if (kind === 'strokes') {
+                    html += '<td class="tnpc-empty">' + esc(value) + '</td>';
+                } else if (editable && canEdit) {
+                    html += '<td><span' + ed + ' data-tnpc-grid="' + kind + '" data-h="' + holeIndex + '">' + esc(value) + '</span></td>';
+                } else {
+                    html += '<td>' + esc(value) + '</td>';
+                }
+            }
+            return html;
         }
         function sumFor(kind, from, to) {
             if (kind === 'par') return parSum(from, to);
-            if (kind === 'st') return sumValues(strokes.slice(from, to));
+            if (kind === 'strokes') return sumValues(strokes.slice(from, to));
             return '';
         }
-        var labels = showTotals ? (inN ? ['OUT', 'IN', 'TOT'] : ['TOT']) : [];
-        var rows = '<tr><td class="lab">№</td>' + cells('no', holes, false) +
-            labels.map(function (s) { return '<td class="sum">' + s + '</td>'; }).join('') + '</tr>';
-        if (d.show.par !== false) {
-            rows += '<tr><td class="lab">' + esc(bi('Пар', 'Par')) + '</td>' + cells('par', pars, true) + sums('par') + '</tr>';
+        function sumCell(kind, from, to) {
+            return '<td class="sum">' + esc(sumFor(kind, from, to)) + '</td>';
         }
-        if (d.show.index !== false) {
-            rows += '<tr><td class="lab">' + esc(bi('Индекс', 'Index')) + '</td>' + cells('idx', idx, true) + sums('idx') + '</tr>';
+        function dataRowCells(kind, values, canEdit) {
+            var html = valueCells(kind, values, 0, outN, canEdit);
+            if (showTotals) html += sumCell(kind, 0, outN);
+            html += valueCells(kind, values, outN, n, canEdit);
+            if (showTotals) html += inN ? sumCell(kind, outN, n) + sumCell(kind, 0, n) : sumCell(kind, 0, n);
+            return html;
         }
-        if (d.show.strokes !== false) {
-            rows += '<tr><td class="lab">' + esc(bi('Удары', 'Strokes')) + '</td>' + cells('strokes', strokes, false) + sums('st') + '</tr>';
+        function tableLine(key, label, content, withControls, hint) {
+            return '<tr>' + tableLabel(key, label, withControls, hint) + content + '</tr>';
         }
-        return '<div class="tnpc-body"><table class="tnpc-table"><tbody>' + rows + '</tbody></table></div>';
+        function tableBlock(key, lines) {
+            return '<tbody class="tnpc-table-row" data-tnpc-table-row="' + key + '">' + lines + '</tbody>';
+        }
+        function foreBlock() {
+            var count = Math.max(1, (card && card.hcps || []).length, (card && card.names || []).length,
+                (card && card.fieldHcps || []).length);
+            var lines = '';
+            for (var playerIndex = 0; playerIndex < count; playerIndex++) {
+                var label = count > 1
+                    ? bi('Фора', 'Hcp') + ' ' + (playerIndex + 1)
+                    : bi('Фора', 'Handicap');
+                var playerName = (card && card.names || [])[playerIndex] || '';
+                var hint = playerName ? bi('Фора игрока: ', 'Handicap for: ') + playerName : label;
+                lines += tableLine('fore', esc(label), dataRowCells('fore', foreValues(card, playerIndex), false),
+                    playerIndex === 0, hint);
+            }
+            return tableBlock('fore', lines);
+        }
+
+        var holeNumbers = holeCells(0, outN);
+        if (showTotals) holeNumbers += '<td class="sum">OUT</td>';
+        holeNumbers += holeCells(outN, n);
+        if (showTotals) holeNumbers += inN
+            ? '<td class="sum">IN</td><td class="sum">TOTAL</td>'
+            : '<td class="sum">TOTAL</td>';
+
+        var rowHtml = {
+            holes: tableBlock('holes', tableLine('holes', '№', holeNumbers, true)),
+            par: tableBlock('par', tableLine('par', esc(bi('Пар', 'Par')), dataRowCells('par', pars, true), true)),
+            index: tableBlock('index', tableLine('index', esc(bi('Индекс', 'Index')), dataRowCells('idx', indexes, true), true)),
+            fore: foreBlock(),
+            strokes: tableBlock('strokes', tableLine('strokes', esc(bi('Удары', 'Strokes')), dataRowCells('strokes', strokes, false), true))
+        };
+        var rows = normalizeRowOrder(d.rowOrder).map(function (key) {
+            if (key === 'par' && d.show.par === false) return '';
+            if (key === 'index' && d.show.index === false) return '';
+            if (key === 'fore' && d.show.fore === false) return '';
+            if (key === 'strokes' && d.show.strokes === false) return '';
+            return rowHtml[key] || '';
+        }).join('');
+        return '<div class="tnpc-body"><table class="tnpc-table">' + rows + '</table></div>';
     }
 
     function footerHtml(printMode) {
@@ -930,7 +1154,7 @@ var TnMgrPrintCards = (function (root) {
             bits.push('HCP <span' + ed + ' data-tnpc-field="hcps"' + cid + '>' + esc(hcpText(card)) + '</span>');
         }
         if (sh.tee !== false) {
-            bits.push(esc(bi('ТИ', 'Tee')) + ' <span' + ed + ' data-tnpc-field="tee"' + cid + '>' + esc(card.tee || '—') + '</span>');
+            bits.push(esc(bi('ТИ', 'Tee')) + ' <span' + ed + ' data-tnpc-field="tee"' + cid + '>' + esc(teeDisplayName(card.tee)) + '</span>');
         }
         if (sh.hole !== false) {
             bits.push(esc(bi('Лунка', 'Hole')) + ' <span' + ed + ' data-tnpc-field="startHole"' + cid + '>' + esc(card.startHole || 1) + '</span>');
@@ -1076,7 +1300,7 @@ var TnMgrPrintCards = (function (root) {
     function rowMetaText(card) {
         var bits = [];
         bits.push('HCP ' + hcpText(card));
-        if (card.tee) bits.push(bi('ТИ', 'Tee') + ' ' + card.tee);
+        if (card.tee) bits.push(bi('ТИ', 'Tee') + ' ' + teeDisplayName(card.tee));
         bits.push(bi('Лунка', 'Hole') + ' ' + (card.startHole || 1));
         if (card.startTime) bits.push(card.startTime);
         if (card.flight) bits.push(bi('Флайт', 'Flight') + ' ' + card.flight);
@@ -1112,7 +1336,7 @@ var TnMgrPrintCards = (function (root) {
                 { icon: 'fas fa-qrcode', variant: state.panels.overlays ? 'primary' : 'ghost' }) +
             ui().btn('tnpc-panel-content', esc(bi('Состав информации', 'Card content')),
                 { icon: 'fas fa-list-check', variant: state.panels.content ? 'primary' : 'ghost' }) +
-            ui().btn('tnpc-panel-fields', esc(bi('Лунки, пар, индекс', 'Holes, par, index')),
+            ui().btn('tnpc-panel-fields', esc(bi('Лунки, пар, индекс, фора', 'Holes, par, index, handicap')),
                 { icon: 'fas fa-table', variant: state.panels.fields ? 'primary' : 'ghost' }) +
             ui().btn('tnpc-preview-mode', esc(d && state.preview === 'card' ? bi('Вид: карточка', 'View: card') : bi('Вид: лист A4', 'View: A4 sheet')),
                 { icon: 'fas fa-file-lines', variant: 'ghost' }) +
@@ -1179,7 +1403,7 @@ var TnMgrPrintCards = (function (root) {
         }
         return '<div class="tnm-card tnpc-panel" data-panel="fields">' +
             '<div class="tnpc-panel-head"><b><i class="fas fa-table"></i> ' +
-            esc(bi('Лунки, пар и индекс — общие для всех карточек', 'Holes, par and index — shared by all cards')) + '</b>' +
+            esc(bi('Лунки, пар, индекс и фора — общие для всех карточек', 'Holes, par, index and handicap — shared by all cards')) + '</b>' +
             '<label class="tnpc-check"><input type="checkbox" data-tnm-edit="tnpc-holes9"' + (d.holes === 9 ? ' checked' : '') + '> ' +
             esc(bi('Только 9 лунок', '9 holes only')) + '</label>' +
             '</div>' +
@@ -1345,6 +1569,7 @@ var TnMgrPrintCards = (function (root) {
             '<span><i class="fas fa-i-cursor"></i> ' + esc(bi('текст на карточке редактируется кликом', 'click any text to edit')) + '</span>' +
             '<span><i class="fas fa-hand-pointer"></i> ' + esc(bi('лого и QR перетаскиваются, уголок — размер', 'drag logo/QR, corner resizes')) + '</span>' +
             '<span><i class="fas fa-file-arrow-down"></i> ' + esc(bi('картинку можно перетащить файлом на лист', 'drop an image file onto the sheet')) + '</span>' +
+            '<span><i class="fas fa-up-down"></i> ' + esc(bi('строки таблицы переставляются кнопками ↑/↓ или перетаскиванием подписи', 'reorder table rows with ↑/↓ or drag a row label')) + '</span>' +
             '<span><i class="fas fa-ruler"></i> ' + esc(bi('размеры — в панели «Размеры и место на листе»', 'sizes live in the “Sizes” panel')) + '</span>' +
             '</div>' +
             (d.footer.print ? '' : '<p class="tnm-muted">' + esc(bi('Подписи «Игрок / Маркер / Судья» видны только на экране — ' +
@@ -1426,7 +1651,7 @@ var TnMgrPrintCards = (function (root) {
         return '<style>@page{size:A4 landscape;margin:0}html,body{margin:0;padding:0;background:#fff}' +
             '.page{width:' + PAGE_W + 'mm;height:' + PAGE_H + 'mm;position:relative;page-break-after:always;overflow:hidden}' +
             cardCssText() +
-            '.tnpc-handle,.tnpc-x,.tnpc-tag,.tnpc-warn,.tnpc-ph,.tnpc-noprint,.tnpc-ghost{display:none!important}' +
+            '.tnpc-handle,.tnpc-x,.tnpc-tag,.tnpc-row-tools,.tnpc-warn,.tnpc-ph,.tnpc-noprint,.tnpc-ghost{display:none!important}' +
             '</style>';
     }
 
@@ -1595,6 +1820,50 @@ var TnMgrPrintCards = (function (root) {
             readImageFile(files[0], point);
         });
 
+        // Строки счётной таблицы можно менять местами прямо на карточке.
+        host.addEventListener('dragstart', function (ev) {
+            var handle = ev.target.closest('[data-tnpc-row-handle]');
+            var row = handle && handle.closest('[data-tnpc-table-row]');
+            if (!row || !ev.dataTransfer) return;
+            state.tableDragId = handle.getAttribute('data-tnpc-row-handle');
+            ev.dataTransfer.effectAllowed = 'move';
+            ev.dataTransfer.setData('text/plain', 'tnpc-table-row:' + state.tableDragId);
+        });
+        host.addEventListener('dragover', function (ev) {
+            var row = ev.target.closest('[data-tnpc-table-row]');
+            if (!row || !state.tableDragId) return;
+            ev.preventDefault();
+            row.classList.add('drop-target');
+        });
+        host.addEventListener('dragleave', function (ev) {
+            var row = ev.target.closest('[data-tnpc-table-row]');
+            if (row && (!ev.relatedTarget || !row.contains(ev.relatedTarget))) row.classList.remove('drop-target');
+        });
+        host.addEventListener('drop', function (ev) {
+            var row = ev.target.closest('[data-tnpc-table-row]');
+            if (!row || !state.tableDragId) return;
+            ev.preventDefault();
+            host.querySelectorAll('[data-tnpc-table-row].drop-target').forEach(function (item) {
+                item.classList.remove('drop-target');
+            });
+            var sourceId = state.tableDragId;
+            var targetId = row.getAttribute('data-tnpc-table-row');
+            state.tableDragId = '';
+            moveTableRow(sourceId, targetId);
+        });
+        host.addEventListener('dragend', function () {
+            state.tableDragId = '';
+            host.querySelectorAll('[data-tnpc-table-row].drop-target').forEach(function (row) {
+                row.classList.remove('drop-target');
+            });
+        });
+        host.addEventListener('keydown', function (ev) {
+            var handle = ev.target.closest('[data-tnpc-row-handle]');
+            if (!handle || (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown')) return;
+            ev.preventDefault();
+            shiftTableRow(handle.getAttribute('data-tnpc-row-handle'), ev.key === 'ArrowUp' ? -1 : 1);
+        });
+
         // Порядок карточек перетаскиванием свёрнутых строк.
         host.addEventListener('dragstart', function (ev) {
             var row = ev.target.closest('[data-tnpc-order]');
@@ -1687,6 +1956,24 @@ var TnMgrPrintCards = (function (root) {
         ui().render();
     }
 
+    function moveTableRow(sourceId, targetId) {
+        var draft = ensureDraft();
+        var before = normalizeRowOrder(draft.rowOrder);
+        var after = reorderRowOrder(before, sourceId, targetId);
+        if (before.join('|') === after.join('|')) return;
+        draft.rowOrder = after;
+        persistSoon();
+        rerenderCard();
+    }
+
+    function shiftTableRow(id, delta) {
+        var order = visibleRowOrder(ensureDraft());
+        var index = order.indexOf(id);
+        var targetIndex = index + delta;
+        if (index < 0 || targetIndex < 0 || targetIndex >= order.length) return;
+        moveTableRow(id, order[targetIndex]);
+    }
+
     function applyInline(el, field, rerender) {
         var text = (el.textContent || '').trim();
         var draft = ensureDraft();
@@ -1749,18 +2036,38 @@ var TnMgrPrintCards = (function (root) {
             : '[data-tnm-live-edit="tnpc-idx"][data-h="' + h + '"]';
         var input = d.querySelector(sel);
         if (input && d.activeElement !== input) input.value = v;
-        // Суммы OUT/IN/TOT в строке «Пар» пересчитываем на месте.
+        // Пересчитываем итоги строки «Пар» независимо от её положения в таблице.
         if (kind === 'par') {
             var n = holeCount();
             var outN = Math.min(9, n);
-            var sums = [parSum(0, outN), n > 9 ? parSum(outN, n) : null, parSum(0, n)];
-            var cells = d.querySelectorAll('.tnpc-card .tnpc-table tr:nth-child(' + parRowIndex() + ') td.sum');
+            var sums = n > 9
+                ? [parSum(0, outN), parSum(outN, n), parSum(0, n)]
+                : [parSum(0, n), parSum(0, n)];
+            var row = d.querySelector('.tnpc-card .tnpc-table-row[data-tnpc-table-row="par"]');
+            var cells = row ? row.querySelectorAll('td.sum') : [];
             cells.forEach(function (cell, i) { if (sums[i] != null) cell.textContent = sums[i]; });
         }
     }
 
-    /** Строка «Пар» в таблице карточки (первой всегда идёт строка «№»). */
-    function parRowIndex() { return 2; }
+    /** Единый источник логотипа, чтобы все его блоки сразу подхватывали замену. */
+    function setLogoSource(draft, source) {
+        var d = draft || ensureDraft();
+        var src = String(source || '');
+        d.logoSrc = src;
+        var found = false;
+        d.overlays = (d.overlays || []).map(function (o) {
+            if (o.type !== 'logo') return o;
+            found = true;
+            // Не дублируем base64 в каждом оверлее: logoSrc — canonical source.
+            return clampOverlay(Object.assign({}, o, { src: '', enabled: true }), d.size);
+        });
+        if (!found) {
+            d.overlays.push(clampOverlay({
+                id: 'logo', type: 'logo', xMm: 4, yMm: 4, wMm: 28, hMm: 16, enabled: true, src: ''
+            }, d.size));
+        }
+        return d;
+    }
 
     function readImageFile(file, point) {
         if (!file) return;
@@ -1782,11 +2089,17 @@ var TnMgrPrintCards = (function (root) {
             var target = targetId ? overlayById(targetId) : null;
             if (target) {
                 // Файл загружен в существующий блок (кнопка «Загрузить файл…»).
-                target.src = src;
-                target.enabled = true;
-                d.overlays = d.overlays.map(function (o) {
-                    return o.id === target.id ? clampOverlay(target, d.size) : o;
-                });
+                // Для логотипа обновляем и общий источник: он имеет приоритет
+                // при рендере, иначе после замены снова показывался старый файл.
+                if (target.type === 'logo') {
+                    setLogoSource(d, src);
+                } else {
+                    target.src = src;
+                    target.enabled = true;
+                    d.overlays = d.overlays.map(function (o) {
+                        return o.id === target.id ? clampOverlay(target, d.size) : o;
+                    });
+                }
                 persistSoon();
                 ui().render();
                 ui().toastMsg(bi('Файл подставлен в блок — перетащите его на место', 'File set — drag the block into place'));
@@ -1821,14 +2134,7 @@ var TnMgrPrintCards = (function (root) {
         }
         var reader = new root.FileReader();
         reader.onload = function () {
-            var d = ensureDraft();
-            d.logoSrc = String(reader.result || '');
-            d.overlays = d.overlays.map(function (o) {
-                return o.type === 'logo' ? clampOverlay(Object.assign({}, o, { enabled: true }), d.size) : o;
-            });
-            if (!d.overlays.some(function (o) { return o.type === 'logo'; })) {
-                d.overlays.push(clampOverlay({ id: 'logo', type: 'logo', xMm: 4, yMm: 4, wMm: 28, hMm: 16, enabled: true }, d.size));
-            }
+            setLogoSource(ensureDraft(), String(reader.result || ''));
             persistSoon();
             ui().render();
             ui().toastMsg(bi('Лого добавлено — перетащите его на карточке', 'Logo added — drag it into place'));
@@ -1959,6 +2265,8 @@ var TnMgrPrintCards = (function (root) {
     });
     ui().on('tnpc-move-up', function (btn) { shiftCard(btn.getAttribute('data-id'), -1); });
     ui().on('tnpc-move-down', function (btn) { shiftCard(btn.getAttribute('data-id'), 1); });
+    ui().on('tnpc-table-row-up', function (btn) { shiftTableRow(btn.getAttribute('data-id'), -1); });
+    ui().on('tnpc-table-row-down', function (btn) { shiftTableRow(btn.getAttribute('data-id'), 1); });
     ui().on('tnpc-preview-mode', function () {
         state.preview = state.preview === 'card' ? 'sheet' : 'card';
         state.previewPinned = true;
@@ -2288,6 +2596,13 @@ var TnMgrPrintCards = (function (root) {
         clampStyle: clampStyle,
         clampSize: clampSize,
         clampLayout: clampLayout,
+        normalizeRowOrder: normalizeRowOrder,
+        visibleRowOrder: visibleRowOrder,
+        reorderRowOrder: reorderRowOrder,
+        setLogoSource: setLogoSource,
+        foreValues: foreValues,
+        teeDisplayName: teeDisplayName,
+        teeCode: teeCode,
         defaultDraft: defaultDraft,
         defaultStyle: defaultStyle,
         defaultSize: defaultSize,

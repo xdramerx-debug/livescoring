@@ -119,6 +119,12 @@ function measure() {
         titleText: titleEl ? titleEl.textContent.trim() : '',
         nameFontMm: nameEl ? parseFloat(getComputedStyle(nameEl).fontSize) : 0,
         metaText: card ? (card.querySelector('.tnpc-meta') || {}).textContent || '' : '',
+        teeLabel: card ? (card.querySelector('[data-tnpc-field="tee"]') || {}).textContent || '' : '',
+        tableRows: card ? Array.prototype.map.call(card.querySelectorAll('[data-tnpc-table-row]'), function (row) {
+            return row.getAttribute('data-tnpc-table-row');
+        }) : [],
+        holeOrder: card ? Array.prototype.slice.call(card.querySelector('[data-tnpc-table-row="holes"]')
+            .querySelectorAll('td')).slice(1).map(function (cell) { return cell.textContent.trim(); }) : [],
         holeCells: card ? card.querySelectorAll('.tnpc-table tr:first-child td').length : 0,
         footOnScreen: document.querySelectorAll('.tnpc-foot .tnpc-sign').length,
         overlays: document.querySelectorAll('.tnpc-overlay').length,
@@ -192,6 +198,13 @@ async function openTab(launch, base, viewport) {
     check('имена игроков из участников', /Иванов Иван/.test(m.nameText), m.nameText);
     check('в шапке дата и клуб', /01\.06\.2026/.test(m.metaText) || /Пестово/.test(m.metaText), m.metaText.trim());
     check('таблица на 18 лунок + подписи + итоги', m.holeCells >= 20, m.holeCells);
+    check('колонки идут 1–9, OUT, 10–18, IN, TOTAL',
+        m.holeOrder.join(',') === '1,2,3,4,5,6,7,8,9,OUT,10,11,12,13,14,15,16,17,18,IN,TOTAL',
+        m.holeOrder.join(','));
+    check('Фора расположена после Индекса и перед Ударами',
+        m.tableRows.indexOf('fore') === m.tableRows.indexOf('index') + 1 &&
+        m.tableRows.indexOf('strokes') === m.tableRows.indexOf('fore') + 1, m.tableRows.join(','));
+    check('ТИ показан цветом, не кодом', !/^(wh|bl|rd|bk)$/i.test(m.teeLabel), m.teeLabel);
     check('подписи снизу видны на экране', m.footOnScreen === 3, m.footOnScreen);
     check('раскладка помещается на лист A4 (без предупреждения)', m.alert.indexOf('за лист A4') === -1, m.alert);
 
@@ -211,7 +224,24 @@ async function openTab(launch, base, viewport) {
     check('эталон переключился на выбранную карточку', m.nameText === secondName, m.nameText + ' ≠ ' + secondName);
     check('после переключения карточка по-прежнему видна целиком', m.ratio >= 0.98, Math.round(m.ratio * 100) + '%');
 
-    // 5. Размеры меняются мгновенно и применяются ко всем карточкам.
+    // 5. Строки таблицы можно менять прямо в предпросмотре.
+    await page.click('.tnpc-table-row[data-tnpc-table-row="fore"] [data-tnm-act="tnpc-table-row-down"]');
+    await page.waitForTimeout(150);
+    let movedRows = await page.evaluate(function () {
+        return Array.prototype.map.call(document.querySelectorAll('.tnpc-card [data-tnpc-table-row]'), function (row) {
+            return row.getAttribute('data-tnpc-table-row');
+        });
+    });
+    check('кнопка ↓ меняет порядок строк на карточке', movedRows.join(',') === 'holes,par,index,strokes,fore', movedRows.join(','));
+    await page.waitForTimeout(700);
+    const savedRows = await page.evaluate(function () {
+        const saved = window.db.__get('tournaments/t1/printScorecards');
+        return saved && saved.rowOrder || [];
+    });
+    check('новый порядок строк сохранён в турнире', savedRows.join(',') === 'holes,par,index,strokes,fore', savedRows.join(','));
+    await page.click('.tnpc-table-row[data-tnpc-table-row="fore"] [data-tnm-act="tnpc-table-row-up"]');
+
+    // 6. Размеры меняются мгновенно и применяются ко всем карточкам.
     await page.click('[data-tnm-act="tnpc-panel-sizes"]');
     await page.waitForSelector('[data-panel="sizes"]');
     const before = await page.evaluate(measure);
@@ -285,7 +315,40 @@ async function openTab(launch, base, viewport) {
         return !!img && /setup-round\.html|scorer\.html/.test(decodeURIComponent(img.getAttribute('src')));
     }));
 
-    // 7. Печать: подписи «Игрок / Маркер / Судья» не попадают на бумагу.
+    // Замена логотипа через панель должна обновить и превью, и общий источник.
+    await page.locator('#tnpc-logo-file').setInputFiles({
+        name: 'logo-one.svg', mimeType: 'image/svg+xml',
+        buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="#d22"/></svg>')
+    });
+    await page.waitForFunction(function () {
+        const saved = window.db.__get('tournaments/t1/printScorecards');
+        return !!(saved && saved.logoSrc);
+    }, null, { timeout: 5000 });
+    const firstLogo = await page.evaluate(function () {
+        const saved = window.db.__get('tournaments/t1/printScorecards');
+        return saved && saved.logoSrc || '';
+    });
+    check('загруженный логотип появился в общем источнике', firstLogo.indexOf('data:image/svg+xml;base64,') === 0);
+    await page.click('[data-tnm-act="tnpc-overlay-src"][data-id="logo"]');
+    await page.locator('#tnpc-image-file').setInputFiles({
+        name: 'logo-two.svg', mimeType: 'image/svg+xml',
+        buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="#26c"/></svg>')
+    });
+    await page.waitForFunction(function (previous) {
+        const saved = window.db.__get('tournaments/t1/printScorecards');
+        const img = document.querySelector('.tnpc-overlay[data-overlay-id="logo"] img');
+        return !!(saved && saved.logoSrc && saved.logoSrc !== previous && img && img.getAttribute('src') === saved.logoSrc);
+    }, firstLogo, { timeout: 5000 });
+    const replacedLogo = await page.evaluate(function () {
+        const saved = window.db.__get('tournaments/t1/printScorecards');
+        const img = document.querySelector('.tnpc-overlay[data-overlay-id="logo"] img');
+        return { source: saved && saved.logoSrc || '', rendered: img && img.getAttribute('src') || '' };
+    });
+    check('повторная загрузка логотипа заменяет прежний в превью и базе',
+        !!replacedLogo.source && replacedLogo.source !== firstLogo && replacedLogo.rendered === replacedLogo.source,
+        replacedLogo.source.slice(0, 48));
+
+    // 8. Печать: подписи «Игрок / Маркер / Судья» не попадают на бумагу.
     await page.click('[data-tnm-act="tnpc-print-all"]');
     await page.waitForTimeout(900);
     const printed = await page.evaluate(function () { return window.printed[window.printed.length - 1] || ''; });

@@ -35,9 +35,9 @@ var TOURNAMENT = {
     printScorecards: null
 };
 var PLAYERS = [
-    { id: 'a', fio: 'Иванов Иван', hi: 12, teamId: 't-1', active: true },
-    { id: 'b', fio: 'Петров Пётр', hi: 8, teamId: 't-1', active: true },
-    { id: 'c', fio: 'Сидоров Сидор', hi: 18, active: true },
+    { id: 'a', fio: 'Иванов Иван', hi: 12, ch: 10, gender: 'men', teamId: 't-1', active: true },
+    { id: 'b', fio: 'Петров Пётр', hi: 8, ch: 8, gender: 'men', teamId: 't-1', active: true },
+    { id: 'c', fio: 'Сидоров Сидор', hi: 18, ch: 17, gender: 'men', active: true },
     { id: 'd', fio: 'Выбыл', hi: 10, active: false }
 ];
 var ENTRIES = {
@@ -144,6 +144,13 @@ check('сигнатура карточек меняется при смене д
 // 3. Раскладка: карточка обязана помещаться на лист A4
 // ----------------------------------------------------------
 var d = PC.defaultDraft();
+var normalizedOrder = PC.normalizeRowOrder(['strokes', 'fore', 'fore', 'unknown']);
+check('порядок строк безопасно дополняется и очищается от дублей',
+    normalizedOrder.join(',') === 'strokes,fore,holes,par,index');
+check('строку можно переставить в сохранённом порядке',
+    PC.reorderRowOrder(d.rowOrder, 'strokes', 'holes').join(',') === 'strokes,holes,par,index,fore');
+check('порядок перемещения учитывает скрытые строки',
+    PC.visibleRowOrder({ rowOrder: d.rowOrder, show: { par: false } }).join(',') === 'holes,index,fore,strokes');
 check('размер карточки по умолчанию 147×200 мм', d.size.wMm === 147 && d.size.hMm === 200);
 check('две карточки на листе по умолчанию', d.layout.perSheet === 2);
 check('масштаб 100%', d.layout.scale === 1);
@@ -157,6 +164,15 @@ check('старая раскладка X=140 Y=40 чинится на вписа
 })(), 'старая раскладка и должна была выходить за лист — её мигрируем');
 check('18 пар, диапазон 3–6', d.pars.length === 18 && d.pars.every(function (p) { return p >= 3 && p <= 6; }));
 check('18 индексов, без пропусков', d.indexes.length === 18);
+check('строка форы включена по умолчанию и идёт сразу после индекса',
+    d.show.fore === true && d.rowOrder.indexOf('fore') === d.rowOrder.indexOf('index') + 1);
+check('строка с номерами лунок включена в настраиваемый порядок', d.rowOrder[0] === 'holes');
+check('фора рассчитывается по CH и индексу лунки', PC.foreValues(cards[0])[4] === 1);
+check('коды и написания ТИ переводятся в названия цветов',
+    PC.teeDisplayName('  bl  ') === 'Синие' && PC.teeDisplayName('wh') === 'Белые' &&
+    PC.teeDisplayName('rd') === 'Красные' && PC.teeDisplayName('bk') === 'Чёрные' &&
+    PC.teeDisplayName('ye') === 'Жёлтые' && PC.teeDisplayName('Синие') === 'Синие');
+check('название цвета можно обратно сопоставить коду ТИ', PC.teeCode('Синие') === 'bl' && PC.teeCode('ye') === 'yl');
 check('подписи снизу по умолчанию НЕ печатаются', d.footer.print === false);
 check('подписи на экране остались', d.footer.player === 'Игрок' && d.footer.marker === 'Маркер' && d.footer.judge === 'Судья');
 
@@ -201,8 +217,13 @@ check('клуб и поле печатаются', docHtml.indexOf('Гольф-�
 check('дата турнира печатается', docHtml.indexOf('01.06.2026') !== -1);
 check('имена игроков печатаются', docHtml.indexOf('Иванов Иван + Петров Пётр') !== -1 && docHtml.indexOf('Сидоров Сидор') !== -1);
 check('время старта и лунка печатаются', docHtml.indexOf('09:00') !== -1 && docHtml.indexOf('Лунка') !== -1);
-check('строки Пар/Индекс/Удары печатаются', docHtml.indexOf('>Пар<') !== -1 && docHtml.indexOf('>Индекс<') !== -1 &&
-    docHtml.indexOf('>Удары<') !== -1);
+check('строки Пар/Индекс/Фора/Удары печатаются', docHtml.indexOf('>Пар</span>') !== -1 && docHtml.indexOf('>Индекс</span>') !== -1 &&
+    docHtml.indexOf('>Фора 1</span>') !== -1 && docHtml.indexOf('>Удары</span>') !== -1);
+check('колонки идут 1–9, OUT, 10–18, IN, TOTAL',
+    docHtml.indexOf('<td>9</td><td class="sum">OUT</td><td>10</td>') !== -1 &&
+    docHtml.indexOf('<td>18</td><td class="sum">IN</td><td class="sum">TOTAL</td>') !== -1);
+check('ТИ отображается названием цвета, а не кодом', docHtml.indexOf('>Белые</span>') !== -1 &&
+    docHtml.indexOf('>wh</span>') === -1 && docHtml.indexOf('>bl</span>') === -1);
 check('подписи «Игрок/Маркер/Судья» НЕ печатаются',
     docHtml.indexOf('<div class="tnpc-sign"') === -1 && docHtml.indexOf('<div class="tnpc-foot') === -1);
 check('слова «Маркер» и «Судья» не попадают в печать',
@@ -231,8 +252,9 @@ check('галочка «печатать подписи» возвращает �
 PC.state.draft = null;
 TOURNAMENT.printScorecards = { holes: 9 };
 var doc9 = PC.documentFor([allCards[0]]);
-check('9 лунок: только TOT, без OUT/IN', doc9.indexOf('>IN<') === -1 && doc9.indexOf('>OUT<') === -1 &&
-    doc9.indexOf('>TOT<') !== -1);
+check('9 лунок: OUT и TOTAL после девятой лунки, без IN',
+    doc9.indexOf('>IN<') === -1 && doc9.indexOf('>OUT<') !== -1 && doc9.indexOf('>TOTAL<') !== -1 &&
+    doc9.indexOf('>TOT<') === -1);
 
 // ----------------------------------------------------------
 // 6. Разметка вкладки: эталон + свёрнутый список
@@ -245,6 +267,10 @@ check('вкладка отдаёт разметку', tabHtml.indexOf('tnpc-wrap
 check('ровно одна карточка-эталон на экране', (tabHtml.match(/class="tnpc-card"/g) || []).length === 1,
     (tabHtml.match(/class="tnpc-card"/g) || []).length);
 check('эталон редактируется на месте', tabHtml.indexOf('contenteditable="true"') !== -1);
+check('строки таблицы можно перемещать перетаскиванием и стрелками',
+    tabHtml.indexOf('data-tnpc-row-handle="holes"') !== -1 &&
+    tabHtml.indexOf('data-tnm-act="tnpc-table-row-up"') !== -1 &&
+    tabHtml.indexOf('data-tnm-act="tnpc-table-row-down"') !== -1);
 check('все карточки перечислены свёрнутыми строками',
     (tabHtml.match(/class="tnpc-row( active)?"/g) || []).length === allCards.length,
     (tabHtml.match(/class="tnpc-row( active)?"/g) || []).length);
@@ -287,6 +313,19 @@ check('включённый лого печатается', (function () {
     PC.state.draft.overlays = [{ id: 'logo', type: 'logo', xMm: 4, yMm: 4, wMm: 20, hMm: 10, enabled: true, src: 'data:image/png;base64,BB' }];
     return PC.documentFor([allCards[0]]).indexOf('data:image/png;base64,BB') !== -1;
 })());
+var logoDraft = PC.defaultDraft();
+logoDraft.logoSrc = 'data:image/png;base64,OLD';
+logoDraft.overlays = [{ id: 'logo', type: 'logo', xMm: 4, yMm: 4, wMm: 20, hMm: 10, enabled: true, src: 'data:image/png;base64,OLD' }];
+PC.setLogoSource(logoDraft, 'data:image/png;base64,NEW');
+check('замена лого обновляет единый источник и сбрасывает старый источник блока',
+    logoDraft.logoSrc === 'data:image/png;base64,NEW' && logoDraft.overlays[0].src === '');
+logoDraft._tid = 't1';
+PC.state.draft = logoDraft;
+var refreshedLogo = PC.cardFaceHtml(allCards[0], false);
+check('предпросмотр после замены лого использует новый файл',
+    refreshedLogo.indexOf('data:image/png;base64,NEW') !== -1 && refreshedLogo.indexOf('data:image/png;base64,OLD') === -1);
+PC.state.draft = PC.defaultDraft();
+PC.state.draft._tid = 't1';
 check('текстовый оверлей печатается', (function () {
     PC.state.draft.overlays = [{ id: 'txt', type: 'text', xMm: 4, yMm: 150, wMm: 60, hMm: 10, enabled: true, text: 'Дресс-код: строгий', fontMm: 3 }];
     return PC.documentFor([allCards[0]]).indexOf('Дресс-код: строгий') !== -1;

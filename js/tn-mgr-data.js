@@ -13,6 +13,7 @@
 //     registeredPlayers/<pid>    — зеркало состава для публичной страницы
 //     sheets/<rid>               — стартовый лист (StartingSheet + Entries +
 //                                  MarkerAssignment + QRCode)
+//     printScorecards            — печатные счётные карточки турнира
 //     results/<rid>/<pid>        — результаты (Result)
 //     scores/<rid>/<pid>/<hole>  — зеркало счёта для студии/табло
 //

@@ -1,0 +1,74 @@
+/* Печатные счётные карточки турнира (вкладка TnMgr) */
+.tnpc-wrap { display: flex; flex-direction: column; gap: 12px; }
+.tnpc-toolbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 10px 12px; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r); box-shadow: var(--shd);
+}
+.tnpc-toolbar label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.tnpc-toolbar input[type="number"] {
+    width: 72px; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px; font-size: 12px;
+}
+.tnpc-save { margin-left: auto; font-size: 12px; color: var(--gold); font-weight: 600; }
+.tnpc-save.busy { color: var(--muted); }
+.tnpc-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+}
+@media (max-width: 1100px) { .tnpc-grid { grid-template-columns: 1fr; } }
+.tnpc-sheet {
+    background: #1a241c; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px; position: relative;
+}
+.tnpc-sheet-a4 {
+    width: 100%; aspect-ratio: 297 / 210; background: #f4efe4; position: relative; overflow: hidden;
+}
+.tnpc-card {
+    position: absolute; width: 147mm; height: 200mm; background: #fff; color: #111;
+    border: 0.4mm solid #111; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif;
+    transform-origin: top left; overflow: hidden;
+}
+.tnpc-card-inner { position: relative; width: 100%; height: 100%; padding: 5mm; box-sizing: border-box; }
+.tnpc-head { text-align: center; border-bottom: 0.3mm solid #111; padding-bottom: 2mm; margin-bottom: 2mm; }
+.tnpc-head .tnpc-title { font-weight: 800; font-size: 4.2mm; letter-spacing: .02em; }
+.tnpc-head .tnpc-meta { font-size: 3.1mm; margin-top: 1mm; }
+.tnpc-head .tnpc-name { font-weight: 800; font-size: 4.4mm; margin-top: 1.5mm; }
+.tnpc-warn { color: #9a6b00; font-size: 2.8mm; font-weight: 700; }
+.tnpc-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 2.8mm; }
+.tnpc-table th, .tnpc-table td {
+    border: 0.25mm solid #111; text-align: center; padding: 1.1mm 0.2mm; height: 6.2mm;
+}
+.tnpc-table .lab { text-align: left; font-weight: 700; width: 16mm; padding-left: 1mm; }
+.tnpc-table .sum { font-weight: 800; background: #efefef; width: 10mm; }
+.tnpc-empty { height: 7mm; }
+.tnpc-foot { display: flex; gap: 4mm; margin-top: 4mm; }
+.tnpc-sign { flex: 1; border-top: 0.3mm solid #111; padding-top: 1.5mm; font-size: 2.8mm; text-align: center; }
+.tnpc-overlay {
+    position: absolute; box-sizing: border-box; cursor: move; touch-action: none;
+}
+.tnpc-overlay img, .tnpc-overlay canvas { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.tnpc-ph {
+    width: 100%; height: 100%; border: 0.3mm dashed #888; display: flex; align-items: center; justify-content: center;
+    font-size: 2.6mm; color: #555; background: rgba(0,0,0,.03); text-align: center; padding: 1mm; cursor: pointer;
+}
+.tnpc-overlay:hover, .tnpc-overlay.selected { outline: 0.35mm solid #c9a227; }
+.tnpc-handle {
+    position: absolute; right: -1.2mm; bottom: -1.2mm; width: 3.2mm; height: 3.2mm;
+    background: #c9a227; border: 0.2mm solid #111; cursor: nwse-resize; z-index: 3;
+}
+.tnpc-x {
+    position: absolute; top: -2mm; right: -2mm; width: 4mm; height: 4mm; border-radius: 50%;
+    background: #111; color: #fff; font-size: 2.4mm; line-height: 4mm; text-align: center; cursor: pointer; z-index: 3;
+}
+.tnpc-card-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.tnpc-card-actions .tnm-btn { padding: 5px 8px; font-size: 11px; }
+.tnpc-sel { position: absolute; left: 8px; top: 8px; z-index: 4; }
+.tnpc-progress { font-size: 12px; color: var(--gold); }
+.tnpc-fields { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
+.tnpc-fields input { width: 100%; padding: 4px; font-size: 11px; }
+@media print {
+    .tnpc-toolbar, .tnpc-card-actions, .tnpc-sel, .tnpc-warn, .tnpc-handle, .tnpc-x, .tnpc-overlay:hover { display: none !important; outline: none !important; }
+    .tnpc-card { border: none; }
+    .tnpc-overlay { outline: none !important; }
+}

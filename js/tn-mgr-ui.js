@@ -68,6 +68,20 @@ var TnMgrUI = (function (root) {
     function el(id) { try { return doc().getElementById(id); } catch (e) { return null; } }
     function rootEl() { return el('tnm-root'); }
 
+    /** Номер колонки (0, 1, 2…) в букву Excel (A, B, C…) — для предпросмотра. */
+    function columnLetter(index) {
+        var n = core().intOf(index, 0);
+        if (n == null || n < 0) return '?';
+        var letter = '';
+        n = n + 1;
+        while (n > 0) {
+            var rest = (n - 1) % 26;
+            letter = String.fromCharCode(65 + rest) + letter;
+            n = Math.floor((n - 1) / 26);
+        }
+        return letter;
+    }
+
     // ----------------------------------------------------------
     // СОСТОЯНИЕ И МАРШРУТИЗАЦИЯ
     // ----------------------------------------------------------
@@ -78,6 +92,7 @@ var TnMgrUI = (function (root) {
         loading: true,
         form: null,          // черновик формы создания/правки
         editingTournament: false,
+        pendingPlayers: [],  // участники из Excel, ждут сохранения формы турнира
         groupForm: null,     // { id, name, hcpFrom, hcpTo, gender, tee, format, members }
         participantQuery: '',
         suggestions: [],
@@ -409,7 +424,10 @@ var TnMgrUI = (function (root) {
         state.editingTournament = false;
         data().loadDraft().then(function (draft) {
             if (draft && !state.editingTournament && state.form && !state.form.name) {
+                var pending = Array.isArray(draft.pendingPlayers) ? draft.pendingPlayers : [];
                 state.form = Object.assign(emptyForm(), draft);
+                delete state.form.pendingPlayers;
+                if (pending.length && !(state.pendingPlayers || []).length) state.pendingPlayers = pending;
                 render();
             }
         });
@@ -474,7 +492,78 @@ var TnMgrUI = (function (root) {
             '<div class="tnm-form-actions">' +
             btn('save-tournament', esc(state.editingTournament ? bi('Сохранить', 'Save') : bi('Добавить', 'Add')), { variant: 'primary', icon: 'fas fa-check' }) +
             backBtn() +
-            '</div></div></div>';
+            '</div></div>' +
+            formParticipantsHtml() + '</div>';
+    }
+
+    /**
+     * Участники прямо в форме турнира: список из Excel-файла. Разбор ищет
+     * имя, фамилию и гандикап по всем столбцам и ячейкам (TnMgrCore.parseWorkbook),
+     * а сами участники добавляются в турнир при сохранении формы.
+     */
+    function formParticipantsHtml() {
+        var list = state.pendingPlayers || [];
+        var rows = list.map(function (player, index) {
+            return '<tr><td>' + (index + 1) + '</td><td>' + esc(core().playerFio(player)) + '</td>' +
+                '<td>' + esc(core().fmtHcp(player.hi)) + '</td>' +
+                '<td>' + esc(core().genderLabel(player.gender, lang())) + '</td>' +
+                '<td class="tnm-nowrap"><button type="button" class="tnm-icon-btn" data-tnm-act="remove-pending-player" data-index="' + index +
+                '" title="' + esc(bi('Убрать', 'Remove')) + '"><i class="fas fa-xmark"></i></button></td></tr>';
+        }).join('');
+        var hint = state.editingTournament
+            ? bi('Участники из Excel добавятся в турнир при сохранении формы.', 'Participants from Excel are added to the tournament when you save the form.')
+            : bi('Участники из Excel добавятся в турнир сразу после его создания.', 'Participants from Excel are added to the tournament right after it is created.');
+        return '<div class="tnm-card tnm-form">' +
+            headHtml('<i class="fas fa-users"></i> ' + esc(bi('Участники турнира (Excel)', 'Tournament participants (Excel)')),
+                esc(bi('Загрузите список из Excel: имя, фамилия и гандикап (если он есть) находятся по всем листам, столбцам и ячейкам.',
+                    'Upload an Excel list: first name, last name and handicap (if present) are found across all sheets, columns and cells.')),
+                btn('import-participants-excel', esc(bi('Импорт Excel', 'Import Excel')), { icon: 'fas fa-file-excel', variant: 'ghost' }) +
+                (list.length ? ' ' + btn('clear-pending-players', esc(bi('Очистить', 'Clear')), { variant: 'ghost', small: true }) : '')) +
+            '<input type="file" id="tnm-form-excel-input" accept=".xlsx,.xls,.ods,.csv,.tsv,.txt" class="tnm-hidden">' +
+            (list.length
+                ? '<p class="tnm-counters">' + esc(bi('Участников из файла: ', 'Participants from the file: ')) + '<b>' + list.length + '</b></p>' +
+                '<div class="tnm-table-scroll"><table class="tnm-table"><thead><tr><th>#</th><th>' + esc(bi('ФИО', 'Name')) +
+                '</th><th>HI</th><th>' + esc(bi('Пол', 'Gender')) + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+                '<p class="tnm-sub"><i class="fas fa-circle-info"></i> ' + esc(hint) + '</p>'
+                : emptyHtml(hint)) +
+            '</div>';
+    }
+
+    /** Разбор файла для формы создания: участники кладутся в очередь. */
+    function importFormExcelFile(file) {
+        if (!file) return;
+        io().readWorkbookFile(file).then(function (sheets) {
+            var parsed = core().parseWorkbook(sheets);
+            if (!parsed.players.length) {
+                toastMsg(bi('В файле не найдено участников. Нужны колонки с именем и фамилией (ФИО, «Фамилия» + «Имя» или одна колонка с именем) — данные ищутся по всем листам, столбцам и ячейкам.',
+                    'No participants found in the file. Columns with first and last name are required (Full name, Last name + First name, or a single name column) — all sheets, columns and cells are searched.'), 'error');
+                return;
+            }
+            var added = mergePendingPlayers(parsed.players);
+            toastMsg(bi('В файле найдено участников: ', 'Participants found in the file: ') + parsed.players.length +
+                (added < parsed.players.length ? ' · ' + bi('новых: ', 'new: ') + added : ''));
+            scheduleDraft();
+            render();
+        }).catch(function (err) {
+            toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
+    }
+
+    /** Добавляет участников в очередь формы без дублей. Возвращает число новых. */
+    function mergePendingPlayers(list) {
+        var pending = state.pendingPlayers || [];
+        var seen = {};
+        pending.forEach(function (player) { seen[core().playerKeyByFio(player)] = true; });
+        var added = 0;
+        (list || []).forEach(function (player) {
+            var key = core().playerKeyByFio(player);
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            pending.push(player);
+            added++;
+        });
+        state.pendingPlayers = pending;
+        return added;
     }
 
     function fieldHtml(key, label, input) {
@@ -489,14 +578,19 @@ var TnMgrUI = (function (root) {
         if (!(form.formats || []).length) { toastMsg(bi('Выберите хотя бы один формат', 'Select at least one format'), 'error'); return; }
         state.busy = true;
         if (state.editingTournament) {
-            data().updateTournament(state.route.tid, {
+            var tid = state.route.tid;
+            data().updateTournament(tid, {
                 name: form.name, startDate: form.startDate, startTime: form.startTime,
                 formats: form.formats, club: form.club, course: form.course, note: form.note
             }).then(function () {
                 state.busy = false;
                 state.form = null;
-                toastMsg(bi('✅ Турнир сохранён', '✅ Tournament saved'));
-                navigate({ view: 'card', tid: state.route.tid, tab: 'rounds' });
+                return addPendingPlayers(tid).then(function (created) {
+                    toastMsg(created
+                        ? bi('✅ Турнир сохранён · участников добавлено: ', '✅ Tournament saved · participants added: ') + created
+                        : bi('✅ Турнир сохранён', '✅ Tournament saved'));
+                    navigate({ view: 'card', tid: tid, tab: created ? 'participants' : 'rounds' });
+                });
             }).catch(function (err) {
                 state.busy = false;
                 toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
@@ -511,11 +605,43 @@ var TnMgrUI = (function (root) {
             state.form = null;
             // Черновик при создании — это уже реальный турнир (status: draft).
             data().updateTournament(tid, { status: 'upcoming' }).catch(function () { /* silent */ });
-            toastMsg(bi('✅ Турнир создан', '✅ Tournament created'));
-            navigate({ view: 'card', tid: tid, tab: 'rounds' });
+            return addPendingPlayers(tid, null).then(function (created) {
+                toastMsg(created
+                    ? bi('✅ Турнир создан · участников добавлено: ', '✅ Tournament created · participants added: ') + created
+                    : bi('✅ Турнир создан', '✅ Tournament created'));
+                navigate({ view: 'card', tid: tid, tab: created ? 'participants' : 'rounds' });
+            });
         }).catch(function (err) {
             state.busy = false;
             toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
+    }
+
+    /**
+     * Добавляет в турнир участников, разобранных из Excel в форме создания
+     * (или правки). Очередь очищается — повторное сохранение не задвоит состав.
+     */
+    function addPendingPlayers(tid, target) {
+        var pending = (state.pendingPlayers || []).slice();
+        state.pendingPlayers = [];
+        if (!pending.length) return Promise.resolve(0);
+        var record = target !== undefined ? target : tournament();
+        // Повторный импорт того же файла не должен задваивать состав.
+        var existing = {};
+        playersOf(record).forEach(function (player) { existing[core().playerKeyByFio(player)] = true; });
+        var fresh = pending.filter(function (player) {
+            var key = core().playerKeyByFio(player);
+            if (!key || existing[key]) return false;
+            existing[key] = true;
+            return true;
+        });
+        if (!fresh.length) return Promise.resolve(0);
+        return data().addPlayers(tid, fresh, record || null).then(function (created) {
+            return (created || []).length;
+        }).catch(function (err) {
+            toastMsg('❌ ' + bi('Не удалось добавить участников: ', 'Failed to add participants: ') +
+                (err && err.message ? err.message : err), 'error');
+            return 0;
         });
     }
 
@@ -535,7 +661,12 @@ var TnMgrUI = (function (root) {
         if (draftTimer) clearTimeout(draftTimer);
         draftTimer = setTimeout(function () {
             draftTimer = null;
-            if (state.form) data().saveDraft(Object.assign({}, state.form, { updatedAt: Date.now() }));
+            if (state.form) {
+                data().saveDraft(Object.assign({}, state.form, {
+                    updatedAt: Date.now(),
+                    pendingPlayers: state.pendingPlayers || []
+                }));
+            }
         }, 700);
     }
 
@@ -794,8 +925,8 @@ var TnMgrUI = (function (root) {
 
         return '<div class="tnm-tab-body">' +
             headHtml('<i class="fas fa-users"></i> ' + esc(bi('Гольфисты', 'Golfers')),
-                esc(bi('Поиск по фамилии на русском или английском языке, импорт из Excel и добавление из справочника.',
-                    'Search by surname in Russian or English, import from Excel or add from the club directory.')),
+                esc(bi('Поиск по фамилии на русском или английском языке, импорт из Excel (имя, фамилия и гандикап ищутся по всем листам, столбцам и ячейкам) и добавление из справочника.',
+                    'Search by surname in Russian or English, import from Excel (first name, last name and handicap are searched across all sheets, columns and cells) or add from the club directory.')),
                 btn('export-participants', esc(bi('Экспорт', 'Export')), { icon: 'fas fa-file-pdf' }) + ' ' +
                 btn('import-excel', esc(bi('Импорт Excel', 'Import Excel')), { icon: 'fas fa-file-excel', variant: 'ghost' }) + ' ' +
                 btn('paste-table', esc(bi('Вставить таблицу', 'Paste table')), { icon: 'fas fa-table', variant: 'ghost' }) + ' ' +
@@ -816,7 +947,7 @@ var TnMgrUI = (function (root) {
                 '</tr></thead><tbody>' + rows + '</tbody></table></div>'
                 : emptyHtml(bi('Участников пока нет. Добавьте их поиском, импортом или из справочника.',
                     'No participants yet. Add them via search, import or the directory.'))) +
-            '<input type="file" id="tnm-excel-input" accept=".xlsx,.xls,.csv,.tsv,.txt" class="tnm-hidden">' +
+            '<input type="file" id="tnm-excel-input" accept=".xlsx,.xls,.ods,.csv,.tsv,.txt" class="tnm-hidden">' +
             '</div>';
     }
 
@@ -869,19 +1000,41 @@ var TnMgrUI = (function (root) {
     /** Добавляет участников, подставляя группу по диапазону гандикапа. */
     function addParticipants(list, silent) {
         var t = tournament() || {};
-        var prepared = (list || []).filter(function (item) { return item && core().trim(item.fio || item.name); }).map(function (item) {
+        var existing = {};
+        playersOf(t).forEach(function (player) {
+            existing[core().playerKeyByFio(player)] = true;
+            if (player.uid) existing['uid:' + player.uid] = true;
+        });
+        var skipped = 0;
+        var prepared = (list || []).filter(function (item) { return item && core().trim(item.fio || item.name); }).filter(function (item) {
+            var key = core().playerKeyByFio(item);
+            if (existing[key] || (item.uid && existing['uid:' + item.uid])) { skipped++; return false; }
+            existing[key] = true;
+            return true;
+        }).map(function (item) {
             if (!item.fio && item.name) item.fio = item.name;
-            var group = data().groupForPlayer(t, item);
+            // Группа из файла («Группа A») важнее диапазона гандикапа — но
+            // только если такая группа уже есть в турнире.
+            var group = item.groupName ? groupsOf(t).filter(function (g) {
+                return core().normText(g.name) === core().normText(item.groupName);
+            })[0] : null;
+            if (!group) group = data().groupForPlayer(t, item);
             if (group) item.groupId = group.id;
             if (!item.hi && item.hi !== 0 && item.handicap != null) item.hi = item.handicap;
             var tee = item.tee || (core().normalizeGender(item.gender) === 'women' ? 'rd' : 'wh');
             return Object.assign({}, item, { tee: tee, ch: item.ch != null ? item.ch : computeCh(item, tee) });
         });
-        if (!prepared.length) return;
+        if (!prepared.length) {
+            if (skipped && !silent) toastMsg(bi('Эти участники уже есть в турнире', 'These participants are already in the tournament'), 'warn');
+            return;
+        }
         data().addPlayers(state.route.tid, prepared, t).then(function (created) {
             state.participantQuery = '';
             state.suggestions = [];
-            if (!silent) toastMsg(bi('Добавлено участников: ', 'Participants added: ') + created.length);
+            if (!silent) {
+                toastMsg(bi('Добавлено участников: ', 'Participants added: ') + created.length +
+                    (skipped ? ' · ' + bi('уже были в турнире: ', 'already in the tournament: ') + skipped : ''));
+            }
             render();
         }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
     }
@@ -927,22 +1080,26 @@ var TnMgrUI = (function (root) {
 
     function importExcelFile(file) {
         if (!file) return;
-        io().readTableFile(file).then(function (aoa) {
-            var parsed = core().parseParticipants(aoa);
+        io().readWorkbookFile(file).then(function (sheets) {
+            var parsed = core().parseWorkbook(sheets);
             if (!parsed.players.length) {
-                toastMsg(bi('В файле не найдено участников', 'No participants found in the file'), 'error');
+                toastMsg(bi('В файле не найдено участников. Нужны колонки с именем и фамилией (ФИО, «Фамилия» + «Имя» или одна колонка с именем) — данные ищутся по всем листам, столбцам и ячейкам.',
+                    'No participants found in the file. Columns with first and last name are required (Full name, Last name + First name, or a single name column) — all sheets, columns and cells are searched.'), 'error');
                 return;
             }
-            openModal('import-preview', { parsed: parsed });
+            openModal('import-preview', { parsed: parsed, sheets: sheets });
         }).catch(function (err) {
             toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
         });
     }
 
     function downloadImportTemplate() {
+        // Гандикап во второй строке пустой — так видно, что он необязателен;
+        // подойдут и колонки «Фамилия» + «Имя» вместо «ФИО».
         var rows = [
             [bi('ФИО', 'Name'), bi('Гандикап', 'Handicap'), bi('Пол', 'Gender'), bi('ТИ', 'Tee'), bi('Группа', 'Group')],
-            ['Иванов Иван Иванович', '12,4', bi('муж', 'M'), bi('Белый', 'White'), 'A']
+            ['Иванов Иван Иванович', '12,4', bi('муж', 'M'), bi('Белый', 'White'), 'A'],
+            ['Петрова Мария', '', bi('жен', 'F'), bi('Красный', 'Red'), 'B']
         ];
         io().exportExcel('Shablon_uchastnikov_Pestovo', [{ name: bi('Участники', 'Participants'), rows: rows }]);
     }
@@ -952,17 +1109,27 @@ var TnMgrUI = (function (root) {
     // ----------------------------------------------------------
     modal('import-preview', function (payload) {
         var parsed = payload.parsed || { players: [], issues: [] };
+        var sheets = parsed.sheets || [];
         var rows = parsed.players.map(function (player, index) {
             return '<tr><td>' + (index + 1) + '</td><td>' + esc(core().playerFio(player)) + '</td><td>' + esc(core().fmtHcp(player.hi)) + '</td>' +
                 '<td>' + esc(core().genderLabel(player.gender, lang())) + '</td><td>' + esc(player.groupName || '') + '</td></tr>';
         }).join('');
         var issues = (parsed.issues || []).map(function (issue) {
-            return '<li>' + esc(bi('Строка ', 'Row ') + issue.row + ': ' + issue.message) + '</li>';
+            return '<li>' + esc((issue.sheet ? issue.sheet + ', ' : '') + bi('строка ', 'row ') + issue.row + ': ' + issue.message) + '</li>';
         }).join('');
+        var sheetInfo = sheets.map(function (sheet) {
+            return esc(sheet.name || bi('Лист', 'Sheet')) + ' — ' + sheet.players;
+        }).join(' · ');
+        var columns = parsed.columns || {};
+        var columnNames = { fio: bi('ФИО', 'Name'), lastName: bi('Фамилия', 'Last name'), firstName: bi('Имя', 'First name'), hi: 'HI', ch: 'CH', gender: bi('Пол', 'Gender'), tee: bi('ТИ', 'Tee'), group: bi('Группа', 'Group') };
+        var columnsInfo = Object.keys(columnNames).filter(function (kind) { return columns[kind] != null; })
+            .map(function (kind) { return columnNames[kind] + ' — ' + columnLetter(columns[kind]); }).join(' · ');
         return '<div class="tnm-modal-overlay" data-tnm-act="close-modal">' +
             '<div class="tnm-modal" data-tnm-stop="1">' +
             '<h3>' + esc(bi('Импорт участников', 'Import participants')) + '</h3>' +
-            '<p class="tnm-sub">' + esc(bi('Найдено: ', 'Found: ') + parsed.players.length) + '</p>' +
+            '<p class="tnm-sub">' + esc(bi('Найдено участников: ', 'Participants found: ') + parsed.players.length) +
+            (sheets.length > 1 ? ' · ' + esc(bi('листов: ', 'sheets: ') + sheets.length + ' (' + sheetInfo + ')') : '') +
+            (columnsInfo ? ' · ' + esc(bi('колонки: ', 'columns: ') + columnsInfo) : '') + '</p>' +
             '<div class="tnm-modal-body"><table class="tnm-table"><thead><tr><th>#</th><th>' + esc(bi('ФИО', 'Name')) + '</th><th>HI</th><th>' + esc(bi('Пол', 'Gender')) + '</th><th>' + esc(bi('Группа', 'Group')) + '</th></tr></thead><tbody>' + rows + '</tbody></table>' +
             (issues ? '<p class="tnm-warn">' + esc(bi('Пропущенные строки:', 'Skipped rows:')) + '</p><ul class="tnm-issues">' + issues + '</ul>' : '') +
             '</div>' +
@@ -1084,10 +1251,17 @@ var TnMgrUI = (function (root) {
             if (handler) handler(input, event);
         });
 
-        var fileInput = el('tnm-excel-input');
-        if (fileInput) fileInput.addEventListener('change', function () {
-            if (fileInput.files && fileInput.files[0]) importExcelFile(fileInput.files[0]);
-            fileInput.value = '';
+        // Файлы Excel читаем делегированно: input пересоздаётся при каждом
+        // рендере, поэтому обработчик должен жить на корне вкладки.
+        host.addEventListener('change', function (event) {
+            var input = event.target;
+            if (!input || (input.id !== 'tnm-excel-input' && input.id !== 'tnm-form-excel-input')) return;
+            var file = input.files && input.files[0];
+            if (file) {
+                if (input.id === 'tnm-form-excel-input') importFormExcelFile(file);
+                else importExcelFile(file);
+            }
+            input.value = '';
         });
     }
 
@@ -1107,6 +1281,7 @@ var TnMgrUI = (function (root) {
     on('new-tournament', function () {
         state.form = emptyForm();
         state.editingTournament = false;
+        state.pendingPlayers = [];
         navigate({ view: 'form', tid: '', create: true });
     });
     on('edit-tournament', function () {
@@ -1120,6 +1295,7 @@ var TnMgrUI = (function (root) {
         if (state.route.view === 'form') {
             state.form = null;
             state.editingTournament = false;
+            state.pendingPlayers = [];
             navigate({ view: state.route.tid ? 'card' : 'list', tid: state.route.tid || '', tab: 'rounds' });
             return;
         }
@@ -1162,6 +1338,26 @@ var TnMgrUI = (function (root) {
     on('back-groups', function () { state.groupForm = null; render(); });
     on('delete-group', function (button) { deleteGroup(button.getAttribute('data-gid')); });
 
+    on('import-participants-excel', function () {
+        var input = el('tnm-form-excel-input');
+        if (input) input.click();
+    });
+    on('remove-pending-player', function (button) {
+        var index = core().intOf(button.getAttribute('data-index'), -1);
+        var list = state.pendingPlayers || [];
+        if (index < 0 || index >= list.length) return;
+        list.splice(index, 1);
+        state.pendingPlayers = list;
+        render();
+    });
+    on('clear-pending-players', function () {
+        if (!(state.pendingPlayers || []).length) return;
+        confirmAction({
+            title: bi('Очистить список', 'Clear the list'),
+            message: bi('Убрать всех участников, загруженных из Excel?', 'Remove all participants loaded from Excel?'),
+            onConfirm: function () { state.pendingPlayers = []; render(); }
+        });
+    });
     on('add-suggestion', function (button) { addSuggestion(button); });
     on('add-manual', function (button) { addManual(button.getAttribute('data-name')); });
     on('remove-participant', function (button) { removeParticipant(button.getAttribute('data-pid')); });

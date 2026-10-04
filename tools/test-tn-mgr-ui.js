@@ -170,13 +170,26 @@ win.open = function () {
     return fakeWin;
 };
 
-// Excel: минимальная заглушка SheetJS — ловим книгу и листы.
+// Excel: заглушка SheetJS — ловим выгрузку и подкладываем книгу для импорта.
 var excelBooks = [];
+win.__excelBook = { SheetNames: [], Sheets: {} };
 win.XLSX = {
+    read: function () { return win.__excelBook; },
     utils: {
         book_new: function () { return { sheets: [] }; },
         aoa_to_sheet: function (rows) { return { rows: rows || [] }; },
-        book_append_sheet: function (book, sheet, name) { book.sheets.push({ name: name, rows: sheet.rows }); }
+        book_append_sheet: function (book, sheet, name) { book.sheets.push({ name: name, rows: sheet.rows }); },
+        sheet_to_json: function (sheet, options) {
+            var rows = (sheet && sheet.rows) || [];
+            if (options && options.header === 1) return rows;
+            if (!rows.length) return [];
+            var head = (rows[0] || []).map(function (cell) { return String(cell); });
+            return rows.slice(1).map(function (row) {
+                var item = {};
+                head.forEach(function (key, index) { item[key] = row[index] == null ? '' : row[index]; });
+                return item;
+            });
+        }
     },
     writeFile: function (book, filename) { excelBooks.push({ filename: filename, sheets: book.sheets }); }
 };
@@ -207,6 +220,9 @@ function check(title, cond, extra) {
     if (!cond) fails++;
     console.log((cond ? ' ok  ' : 'FAIL ') + ' | ' + title + (extra !== undefined && extra !== '' ? ' → ' + extra : ''));
 }
+function eq(actual, expected, label) {
+    check(label, JSON.stringify(actual) === JSON.stringify(expected), JSON.stringify(actual));
+}
 function wait(ms) {
     return new Promise(function (resolve) { setTimeout(resolve, ms || 30); });
 }
@@ -216,6 +232,15 @@ function $$(selector) { return Array.prototype.slice.call(win.document.querySele
 function click(el) {
     if (!el) throw new Error('click: элемент не найден');
     el.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+}
+function selectFile(inputId, fileName) {
+    var input = win.document.getElementById(inputId);
+    if (!input) throw new Error('selectFile: input #' + inputId + ' не найден');
+    var file = new win.File(['excel-bytes'], fileName || 'players.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    input.dispatchEvent(new win.Event('change', { bubbles: true }));
 }
 function type(el, value) {
     if (!el) throw new Error('type: элемент не найден');
@@ -672,6 +697,143 @@ function run() {
                 check('турнир удалён из базы', !get('tournaments/' + win.__tid));
                 check('список вернулся к пустому состоянию', rootHtml().indexOf('Пока нет турниров') !== -1);
             });
+        })
+        .then(function () {
+            console.log('\n--- 11. Импорт участников из Excel ---');
+
+            // Книга как у организатора: шапка отчёта над таблицей, раздельные
+            // колонки «Фамилия» и «Имя», пустой гандикап, строка «Итого»,
+            // второй лист с составом и плюсовой гандикап.
+            win.__excelBook = {
+                SheetNames: ['Состав', 'Запас'],
+                Sheets: {
+                    'Состав': { rows: [
+                        ['Гольф-клуб «Пестово» — предварительный состав'],
+                        ['Фамилия', 'Имя', 'Гандикап'],
+                        ['Иванов', 'Иван', '12,4'],
+                        ['Петрова', 'Мария', ''],
+                        ['Итого', '', '']
+                    ] },
+                    'Запас': { rows: [
+                        ['ФИО', 'ИГ'],
+                        ['Сидоров Пётр', '+2,5']
+                    ] }
+                }
+            };
+
+            click($('[data-tnm-act="new-tournament"]'));
+            return flush().then(function () {
+                check('в форме турнира есть блок «Участники турнира (Excel)»',
+                    rootHtml().indexOf('Участники турнира (Excel)') !== -1);
+                check('есть кнопка импорта участников в форме', !!$('[data-tnm-act="import-participants-excel"]'));
+                check('есть поле выбора файла для участников', !!$('#tnm-form-excel-input'));
+                type($('input[data-field="name"]'), 'Кубок с Excel-составом');
+                type($('input[data-field="startDate"]'), '2026-06-20');
+                type($('input[data-field="startTime"]'), '10:00');
+                click($('[data-tnm-act="toggle-format"]'));
+                return flush();
+            });
+        })
+        .then(function () {
+            selectFile('tnm-form-excel-input', 'sostav.xlsx');
+            return wait(140);
+        })
+        .then(function () {
+            var pending = win.TnMgrUI.state.pendingPlayers || [];
+            check('файл разобран: 3 участника со всех листов', pending.length === 3,
+                pending.map(function (p) { return p.fio; }).join(' | '));
+            eq(pending.map(function (p) { return p.fio; }),
+                ['Иванов Иван', 'Петрова Мария', 'Сидоров Пётр'], 'имя и фамилия собраны из колонок');
+            eq(pending.map(function (p) { return p.hi; }), [12.4, null, -2.5], 'гандикапы (включая плюсовой)');
+            check('участники из файла показаны в форме', rootHtml().indexOf('Иванов Иван') !== -1);
+            check('строка «Итого» не попала в список', rootHtml().indexOf('Итого') === -1);
+            click($('[data-tnm-act="save-tournament"]'));
+            return wait(200);
+        })
+        .then(function () {
+            var tournaments = get('tournaments') || {};
+            var ids = Object.keys(tournaments).filter(function (id) {
+                return tournaments[id].name === 'Кубок с Excel-составом';
+            });
+            check('турнир с Excel-составом создан', ids.length === 1, ids.join(','));
+            win.__tid2 = ids[0];
+            var players = get('tournaments/' + win.__tid2 + '/players') || {};
+            var list = Object.keys(players).map(function (pid) { return players[pid]; });
+            eq(list.map(function (p) { return p.fio; }).sort(),
+                ['Иванов Иван', 'Петрова Мария', 'Сидоров Пётр'], 'участники из Excel добавлены в турнир');
+            var ivanov = list.filter(function (p) { return p.fio === 'Иванов Иван'; })[0] || {};
+            var sidorov = list.filter(function (p) { return p.fio === 'Сидоров Пётр'; })[0] || {};
+            eq(ivanov.hi, 12.4, 'гандикап участника из Excel сохранён');
+            eq(ivanov.lastName, 'Иванов', 'фамилия участника сохранена');
+            eq(sidorov.hi, -2.5, 'плюсовой гандикап сохранён (как в АГР)');
+            check('участник зеркалится в registeredPlayers',
+                !!get('tournaments/' + win.__tid2 + '/registeredPlayers/' + Object.keys(players)[0]));
+            check('после сохранения открылась вкладка «Участники»',
+                win.TnMgrUI.state.route.view === 'card' && win.TnMgrUI.state.route.tab === 'participants',
+                win.TnMgrUI.state.route.view + '/' + win.TnMgrUI.state.route.tab);
+            return wait(80);
+        })
+        .then(function () {
+            // Импорт из вкладки «Участники»: файл в другом написании колонок,
+            // данные на втором листе и с гандикапом в среднем столбце.
+            win.__excelBook = {
+                SheetNames: ['Легенда', 'Список'],
+                Sheets: {
+                    'Легенда': { rows: [['Как заполнять: Ф.И.О. и ИГ']] },
+                    'Список': { rows: [
+                        ['№', 'Ф.И.О.', 'ИГ', 'Пол', 'ТИ'],
+                        ['1', 'Кузнецов Кирилл', 'HI 8.2', 'муж', 'Белый'],
+                        ['2', 'Козлова Ольга', '14', 'жен', 'Красный']
+                    ] }
+                }
+            };
+            click($('[data-tnm-act="import-excel"]'));
+            return flush();
+        })
+        .then(function () {
+            selectFile('tnm-excel-input', 'spisok.xlsx');
+            return wait(160);
+        })
+        .then(function () {
+            var out = rootHtml();
+            check('открылся предпросмотр импорта', out.indexOf('Импорт участников') !== -1);
+            check('в предпросмотре найдено 2 участника', out.indexOf('Найдено участников: 2') !== -1);
+            check('в предпросмотре видны имена и второй лист', out.indexOf('Кузнецов Кирилл') !== -1 && out.indexOf('Козлова Ольга') !== -1);
+            check('в предпросмотре показаны распознанные колонки (ФИО/ИГ/Пол)',
+                out.indexOf('колонки:') !== -1 && out.indexOf('ФИО — B') !== -1 &&
+                out.indexOf('HI — C') !== -1 && out.indexOf('Пол — D') !== -1);
+            click($('[data-tnm-act="confirm-import"]'));
+            return wait(200);
+        })
+        .then(function () {
+            var players = get('tournaments/' + win.__tid2 + '/players') || {};
+            var list = Object.keys(players).map(function (pid) { return players[pid]; });
+            eq(list.length, 5, 'импорт со вкладки «Участники» добавил ещё 2 участников');
+            var kirill = list.filter(function (p) { return p.fio === 'Кузнецов Кирилл'; })[0] || {};
+            eq(kirill.hi, 8.2, 'гандикап «HI 8.2» распознан');
+            eq(kirill.tee, 'wh', 'название ТИ из файла переведено в код');
+            eq(list.filter(function (p) { return p.fio === 'Козлова Ольга'; })[0].gender, 'women', 'пол из файла');
+            check('импорт не задвоил уже добавленных', list.filter(function (p) { return p.fio === 'Иванов Иван'; }).length === 1);
+            return wait(40);
+        })
+        .then(function () {
+            // Повторный импорт того же файла не задваивает состав.
+            click($('[data-tnm-act="import-excel"]'));
+            return flush();
+        })
+        .then(function () {
+            selectFile('tnm-excel-input', 'spisok.xlsx');
+            return wait(160);
+        })
+        .then(function () {
+            check('повторный импорт открыл предпросмотр', rootHtml().indexOf('Импорт участников') !== -1);
+            click($('[data-tnm-act="confirm-import"]'));
+            return wait(200);
+        })
+        .then(function () {
+            var players = get('tournaments/' + win.__tid2 + '/players') || {};
+            eq(Object.keys(players).length, 5, 'повторный импорт не создал дублей');
+            return wait(40);
         })
         .then(function () {
             console.log('\nИтого: ' + total + ' проверок, ошибок: ' + fails);

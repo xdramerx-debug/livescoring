@@ -7,7 +7,7 @@
 // наличием доступа администратора.
 //
 // Подключение в admin.html: utils → tn-mgr-core → tn-mgr-data →
-// tn-mgr-io → tn-mgr-ui → tn-mgr-sheet → tn-mgr-round → tn-mgr.
+// tn-mgr-io → tn-mgr-ui → tn-mgr-sheet → tn-mgr-printcards → tn-mgr-round → tn-mgr.
 // Вызов из js/admin.js: switchTab('tnmanager') → TnMgr.open().
 // ============================================================
 var TnMgr = (function (root) {

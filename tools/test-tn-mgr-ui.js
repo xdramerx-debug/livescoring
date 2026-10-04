@@ -204,6 +204,7 @@ var MODULES = [
     'js/tn-mgr-io.js',
     'js/tn-mgr-ui.js',
     'js/tn-mgr-sheet.js',
+    'js/tn-mgr-printcards.js',
     'js/tn-mgr-round.js',
     'js/tn-mgr.js'
 ];

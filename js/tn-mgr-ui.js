@@ -3,8 +3,8 @@
 // ------------------------------------------------------------
 // Вкладка «Турниры 🏆» в admin.html: список турниров, форма
 // создания/правки, карточка турнира с вкладками Раунды, Группы,
-// Участники и Стартовый лист (последний — js/tn-mgr-sheet.js,
-// экран счёта и результаты — js/tn-mgr-round.js).
+// Участники, Стартовый лист (js/tn-mgr-sheet.js) и Счетные карточки
+// (js/tn-mgr-printcards.js); экран счёта и результаты — js/tn-mgr-round.js).
 //
 // Всё, что видно, редактируется и тянется из данных:
 //   • форматы — справочник из данных (tournaments/<id>/formatsDict);
@@ -129,7 +129,7 @@ var TnMgrUI = (function (root) {
             };
         }
         if (parts[2] === 'player') return { view: 'player', tid: tid, pid: parts[3] || '', rid: parts[4] || '', tab: 'score', sub: '' };
-        var tabs = ['rounds', 'groups', 'participants', 'sheet'];
+        var tabs = ['rounds', 'groups', 'participants', 'sheet', 'printcards'];
         return { view: 'card', tid: tid, tab: tabs.indexOf(parts[2]) !== -1 ? parts[2] : 'rounds', rid: '', pid: '', sub: '' };
     }
 
@@ -326,6 +326,7 @@ var TnMgrUI = (function (root) {
             }
         }
         if (state.route.view === 'card' && state.route.tab === 'sheet' && root.TnMgrSheetUI) root.TnMgrSheetUI.mount();
+        if (state.route.view === 'card' && state.route.tab === 'printcards' && root.TnMgrPrintCards) root.TnMgrPrintCards.mount();
         if (state.route.view === 'round' && root.TnMgrRoundUI) root.TnMgrRoundUI.mount();
         if (state.route.view === 'player' && root.TnMgrRoundUI) root.TnMgrRoundUI.mountPlayer();
     }
@@ -710,7 +711,8 @@ var TnMgrUI = (function (root) {
             { key: 'rounds', ru: 'Раунды', en: 'Rounds', icon: 'fas fa-flag' },
             { key: 'groups', ru: 'Группы', en: 'Groups', icon: 'fas fa-layer-group' },
             { key: 'participants', ru: 'Участники', en: 'Participants', icon: 'fas fa-users' },
-            { key: 'sheet', ru: 'Стартовый лист', en: 'Tee sheet', icon: 'fas fa-table-list' }
+            { key: 'sheet', ru: 'Стартовый лист', en: 'Tee sheet', icon: 'fas fa-table-list' },
+            { key: 'printcards', ru: '🎴 Счетные карточки', en: 'Score cards', icon: 'fas fa-id-card' }
         ].map(function (tab) {
             return '<button type="button" class="tnm-tab' + (state.route.tab === tab.key ? ' active' : '') +
                 '" data-tnm-act="tab" data-tab="' + tab.key + '"><i class="' + tab.icon + '"></i> ' + esc(bi(tab.ru, tab.en)) + '</button>';
@@ -720,6 +722,7 @@ var TnMgrUI = (function (root) {
         if (state.route.tab === 'rounds') body = roundsTabHtml(t);
         else if (state.route.tab === 'groups') body = groupsTabHtml(t);
         else if (state.route.tab === 'participants') body = participantsTabHtml(t);
+        else if (state.route.tab === 'printcards') body = root.TnMgrPrintCards ? root.TnMgrPrintCards.html() : notReadyHtml();
         else body = root.TnMgrSheetUI ? root.TnMgrSheetUI.html() : notReadyHtml();
 
         return '<div class="tnm-view">' +

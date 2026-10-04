@@ -257,8 +257,54 @@ var TnMgrData = (function (root) {
         return patch('tournaments/' + tid, patchValue);
     }
 
+    // Стартовал ли турнир (по записи турнира, а не по времени в расписании).
+    // Нужно, чтобы отличить «турнир уже начат организатором» от «турнир
+    // запланирован на будущее»: в первом случае раунды групп сразу открыты
+    // для ввода счёта, во втором — ждут своего времени (status 'scheduled').
+    function tournamentStarted(tournament) {
+        var t = asMap(tournament);
+        var status = String(t.lifecycleStatus || t.status || '').toLowerCase();
+        return status === 'active' || !!t.startedAt;
+    }
+
+    /**
+     * Открывает запланированные раунды турнира (status 'scheduled' → 'active').
+     * Возвращает количество открытых раундов.
+     *
+     * Без этого шага принудительный старт («Старт» раньше времени) переводил
+     * в active только запись турнира, а раунды групп оставались «запертыми»
+     * до планового scheduledStart: игрок, отсканировавший QR со счётной
+     * карточки, видел «Турнир ещё не начался» и не мог вводить счёт.
+     */
+    function openScheduledRounds(tid) {
+        if (!tid) return Promise.resolve(0);
+        return read('rounds').then(function (all) {
+            var updates = {};
+            var stamp = now();
+            var opened = [];
+            Object.keys(asMap(all)).forEach(function (rid) {
+                var round = asMap(all)[rid] || {};
+                if (String(round.tournamentId || '') !== String(tid)) return;
+                if (String(round.status || '') !== 'scheduled') return;
+                updates['rounds/' + rid + '/status'] = 'active';
+                updates['rounds/' + rid + '/activatedAt'] = stamp;
+                opened.push(rid);
+            });
+            if (!opened.length) return 0;
+            return multi(updates).then(function () { return opened.length; }).catch(function () {
+                // Раунд — не главное: турнир уже стартовал, а статус раунда
+                // пересчитается у других клиентов по времени (utils.js).
+                return 0;
+            });
+        }).catch(function () { return 0; });
+    }
+
     function startTournament(tid) {
-        return setTournamentStatus(tid, 'active');
+        // Сначала открываем раунды, потом переводим турнир в active: если
+        // запись упала на середине, игроки всё равно уже могут вводить счёт.
+        return openScheduledRounds(tid).then(function () {
+            return setTournamentStatus(tid, 'active');
+        });
     }
 
     function forceFinishTournament(tid) {
@@ -864,7 +910,12 @@ var TnMgrData = (function (root) {
                 teeLabel: core().teeName(group.entries[0].tee, 'ru'),
                 format: formats[0] || '',
                 formats: formats,
-                status: 'scheduled',
+                // Раунды стартового листа по умолчанию «запланированы» и
+                // открываются ровно в момент старта. Но если турнир УЖЕ
+                // начат (принудительный «Старт» или плановое время прошло),
+                // новый раунд сразу игровой — иначе добавленный в лист игрок
+                // снова видел бы «Турнир ещё не начался».
+                status: tournamentStarted(tournament) ? 'active' : 'scheduled',
                 accessKey: 'tn_' + tid + '_' + rid + '_' + index + '_' + Math.random().toString(36).slice(2, 8),
                 createdBy: creator,
                 participantsList: participants,

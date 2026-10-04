@@ -108,8 +108,16 @@ vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8'), sandbox);
-sandbox.pestovoScoreWrite = (rid, ops) => { dbState.updateCalls.push({ via: 'scoreWrite', rid, ops }); return Promise.resolve({ok:true}); };
+sandbox.pestovoScoreWrite = (rid, ops) => { dbState.updateCalls.push({ via: 'scoreWrite', rid, ops }); return Promise.resolve({ ok: true }); };
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'live.js'), 'utf8'), sandbox);
+// Одиночные карточки игрока (scorer.html) и маркера (marker.html): до старта
+// турнира обе должны объяснять «ввод откроется со стартом», а не «игрок уже
+// завершил раунд». Скрипты вешают только обработчики DOMContentLoaded, сами
+// не запускаются — в песочнице это безопасно.
+const toasts = [];
+sandbox.toast = (msg) => { toasts.push(String(msg)); };
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'scorer.js'), 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'marker.js'), 'utf8'), sandbox);
 
 // Замораживаем «сейчас», чтобы датозависимые проверки были детерминированными.
 // Фикстуры используют 2026-09-20 как «будущее» относительно этой даты,
@@ -326,6 +334,32 @@ setTimeout(function () {
     ok(sandbox.isTournamentRound(soloRound) === false, 'турнирные раунды: соло — не турнирный');
     ok(sandbox.isTournamentRound(plainGroup) === false, 'турнирные раунды: обычный групповой — не турнирный');
     eq(sandbox.pestovoTournamentRounds([]), [], 'турнирные раунды: пустой список → []');
+
+    // ══════════════════════════════════════════════════════
+    // 8. ОДИНОЧНЫЕ КАРТОЧКИ ДО СТАРТА: ЧЕСТНОЕ СООБЩЕНИЕ
+    // ══════════════════════════════════════════════════════
+    const pending = { status: 'scheduled', scheduledStart: Date.now() + 3600000, startTime: Date.now() + 3600000, mode: 'group', players: { p1: {} } };
+    ['scorer', 'marker'].forEach(function (page) {
+        const closed = page === 'scorer' ? sandbox.scTargetClosed : sandbox.mkTargetClosed;
+        const message = page === 'scorer' ? sandbox.scClosedMessage : sandbox.mkClosedMessage;
+        ok(typeof closed === 'function' && typeof message === 'function',
+            page + '.html: есть проверка и пояснение закрытого ввода');
+        sandbox.scRound = pending; sandbox.scPid = 'p1';
+        sandbox.mkRound = pending; sandbox.mkPid = 'p1';
+        ok(closed() === true, page + '.html: до старта ввод закрыт');
+        toasts.length = 0;
+        message();
+        ok(/старт|start/i.test(toasts[0] || '') && !/уже завершил|already finished/i.test(toasts[0] || ''),
+            page + '.html: до старта пишет «откроется со стартом» → ' + toasts[0]);
+
+        // Сданная карточка — по-прежнему «игрок уже завершил раунд».
+        const finished = { status: 'active', mode: 'group', finishedPlayers: { p1: true }, players: { p1: {} } };
+        sandbox.scRound = finished; sandbox.mkRound = finished;
+        toasts.length = 0;
+        message();
+        ok(/уже завершил|already finished/i.test(toasts[0] || ''),
+            page + '.html: сданная карточка → «игрок уже завершил раунд» → ' + toasts[0]);
+    });
 
     console.log(failures ? '\n' + failures + ' проверок провалено ✘' : '\nВсе проверки старта турнира пройдены ✔');
     process.exit(failures ? 1 : 0);

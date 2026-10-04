@@ -58,7 +58,15 @@ win.db = { ref: p => makeRef(p) };
 win.confirm = () => true;
 win.navigator.vibrate = () => {};
 
-['js/course-config.js', 'js/format.js', 'js/utils.js', 'js/live.js'].forEach(function (rel) {
+// Тот же фундамент, что грузит страница: dist/livescoring-modules.js
+// собирается из src/index.js (course-config → format → date-range →
+// safe-html → dom → i18n → official-alerts). Без i18n.js страница падала
+// бы на первом же обращении к currentLang.
+['js/course-config.js', 'js/format.js', 'js/date-range.js', 'js/safe-html.js',
+    'js/dom.js', 'js/i18n.js', 'js/official-alerts.js', 'js/utils.js', 'js/live.js',
+    // Остальные классические скрипты страницы — порядок как в setup-round.html:
+    // запись счёта (score-write.js) и одиночный раунд (solo.js) нужны live.js.
+    'js/solo.js', 'js/round-setup.js', 'js/score-write.js'].forEach(function (rel) {
     win.eval(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 });
 
@@ -161,10 +169,12 @@ nextFrame(function () {
         // ══════════════════════════════════════════════════
         dbState.updates = [];
         for (let i = 0; i < 8; i++) btn.click();          // 8 кликов подряд
-        ok(dbState.updates.length === 1, '8 быстрых кликов → запись в базу одна (получилось: ' + dbState.updates.length + ')');
         ok(btn.disabled === true, 'на время записи кнопка заблокирована');
 
         setTimeout(function () {
+            // Запись уходит через pestovoScoreWrite (js/score-write.js) —
+            // асинхронно, поэтому считаем её после того, как промисы свершились.
+            ok(dbState.updates.length === 1, '8 быстрых кликов → запись в базу одна (получилось: ' + dbState.updates.length + ')');
             ok(btn.disabled === false, 'после записи кнопка снова доступна');
             ok(win.playHole === 2, 'после подтверждения открыта следующая лунка → ' + win.playHole);
 

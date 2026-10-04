@@ -84,11 +84,12 @@ function cssSwVersion() {
         'css: страховочный минимум 44px для кнопок ±');
     ok(css.indexOf('body{--score-btn:64px;--score-btn-fs:28px;}') !== -1,
         'css: единая переменная --score-btn объявлена');
-    ok(/body\.st-scoring-v3\{--score-btn:48px;--score-btn-fs:22px;\}/.test(css),
+    // Пресет «Компакт»: класс body.score-compact (ранее body.st-scoring-v3) —
+    // размер кнопок ± задаётся только переменной, без width в правилах.
+    ok(/body\.score-compact\{--score-btn:48px;--score-btn-fs:22px;\}/.test(css),
         'css: пресет «Компакт» задаёт --score-btn:48px (было 42px)');
-    ok(css.indexOf('.score-minus,body.st-scoring-v3 .score-plus{width:42px') === -1 &&
-       css.indexOf('body.st-scoring-v3 .score-minus,body.st-scoring-v3 .score-plus{width:42px') === -1,
-        'css: у кнопок ± пресета «Компакт» нет жёстких 42px');
+    var fixed42 = (css.match(/[^{}]*score-(?:minus|plus)[^{}]*\{[^}]*width:\s*42px[^}]*\}/g) || []);
+    ok(fixed42.length === 0, 'css: у кнопок ± нет жёстких 42px' + (fixed42.length ? ' → ' + fixed42[0] : ''));
 
     const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
     const assets = sw.match(/STATIC_ASSETS = \[([\s\S]*?)\];/)[1];

@@ -11,8 +11,8 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 
-let JSDOM, VirtualConsole, requestInterceptor;
-try { ({ JSDOM, VirtualConsole, requestInterceptor } = require('jsdom')); }
+let JSDOM, VirtualConsole, ResourceLoader, requestInterceptor;
+try { ({ JSDOM, VirtualConsole, ResourceLoader, requestInterceptor } = require('jsdom')); }
 catch (e) { console.log('SKIP: jsdom не установлен (npm i jsdom) — E2E-тест пропущен'); process.exit(0); }
 
 const ROOT = path.join(__dirname, '..');
@@ -104,6 +104,41 @@ const STUB = `<script>
 })();
 </script>`;
 
+// Глушим всё, кроме файлов нашего сервера: страница не должна ходить в сеть.
+// requestInterceptor появился только в jsdom 30 — для более старых версий
+// (Node 18) тот же эффект даёт свой ResourceLoader.
+function localOnlyResources(base) {
+    if (typeof requestInterceptor === 'function') {
+        return {
+            interceptors: [requestInterceptor(req => {
+                if (String(req.url).startsWith(base)) return;
+                return new Response('', { status: 200, headers: { 'Content-Type': 'text/plain' } });
+            })]
+        };
+    }
+    class OnlyLocal extends ResourceLoader {
+        fetch(url, options) {
+            if (String(url).startsWith(base)) return super.fetch(url, options);
+            return Promise.resolve(Buffer.from(''));
+        }
+    }
+    // jsdom ≤ 29 принимает только сам экземпляр загрузчика.
+    return new OnlyLocal();
+}
+
+// Страница готова, когда загрузились live.js (startGroup) И отрисованы
+// карточки всех игроков сценария (buildPlayerSlots из round-setup.js).
+async function waitForPage(win, doc, playersCount) {
+    const deadline = Date.now() + 15000;
+    for (;;) {
+        const ready = typeof win.startGroup === 'function' &&
+            Array.from({ length: playersCount }, (_, i) => doc.getElementById('pl-hcp-' + (i + 1)))
+                .every(Boolean);
+        if (ready || Date.now() > deadline) return;
+        await new Promise(r => setTimeout(r, 50));
+    }
+}
+
 async function runScenario(expectSuccess, label, players) {
     let html = fs.readFileSync(path.join(ROOT, 'setup-round.html'), 'utf8');
     html = html.replace(/<script src="https?:[^"]*"><\/script>/g, '');
@@ -125,18 +160,20 @@ async function runScenario(expectSuccess, label, players) {
     });
     const dom = new JSDOM(html, {
         runScripts: 'dangerously',
-        resources: { interceptors: [requestInterceptor(req => {
-            if (String(req.url).startsWith(BASE)) return;
-            return new Response('', { status: 200, headers: { 'Content-Type': 'text/plain' } });
-        })] },
+        resources: localOnlyResources(BASE),
         url: BASE + '/setup-round.html?mode=group',
         pretendToBeVisual: true,
         virtualConsole: vc
     });
     const win = dom.window;
     const doc = win.document;
-    await new Promise(r => setTimeout(r, 1500)); // скрипты + buildPlayerSlots
+    // Ждём готовности, а не фиксированное время: jsdom подгружает скрипты
+    // страницы по HTTP, и на медленной машине 1.5 с не хватало — тест падал
+    // то на «startGroup is not a function», то на пустых полях игрока.
+    await waitForPage(win, doc, players.length);
     check(typeof win.startGroup === 'function', label + ': live.js загружен (startGroup доступна)');
+    check(players.every((pl, i) => !!doc.getElementById('pl-hcp-' + (i + 1))),
+        label + ': карточки игроков отрисованы');
 
     const toasts = [];
     win.toast = (msg, kind) => { toasts.push({ msg: String(msg), kind }); return { close(){} }; };

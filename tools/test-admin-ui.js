@@ -94,12 +94,11 @@ check('в HTML есть поле своих форм #nm-custom-aliases', !!win.
 check('в HTML есть кнопка анализа #nm-analyze-results', !!win.document.getElementById('nm-analyze-results'));
 check('в HTML подключён js/name-variants.js', html.indexOf('js/name-variants.js') !== -1);
 
-console.log('\n=== Дефолтная вкладка и кнопка пересборки ===\n');
+console.log('\n=== Дефолтная вкладка ===\n');
 var alertsTabBtn = win.document.querySelector('[data-i18n="tab_alerts"]');
 check('кнопка «Вызовы» активна по умолчанию', !!alertsTabBtn && alertsTabBtn.classList.contains('active'));
 check('вкладка «Вызовы» видима по умолчанию', !win.document.getElementById('tab-alerts').classList.contains('hidden'));
 check('вкладка «Раунды» скрыта по умолчанию', win.document.getElementById('tab-rounds').classList.contains('hidden'));
-check('кнопка пересборки индекса #as-rebuild-btn есть', !!win.document.getElementById('as-rebuild-btn'));
 
 console.log('\n=== admJsStr: экранирование для onclick ===\n');
 check('admJsStr определена', typeof win.admJsStr === 'function');

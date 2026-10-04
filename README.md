@@ -52,7 +52,7 @@ i18n, алерты) отдаётся одним **ESM-бандлом** `dist/liv
 ## Разработка
 
 ```bash
-npm install          # dev-зависимости (eslint, vite, playwright)
+npm install          # dev-зависимости (eslint, vite, playwright, jsdom)
 npm test             # все тесты (tools/test-*.js), чистый Node 18+
 npm run lint:syntax  # node --check по всем js-файлам
 npm run assets       # ?v=<hash> в HTML + precache-манифест sw.js (после правок js/css)
@@ -61,9 +61,11 @@ npm run check:bundle # бандл в dist/ соответствует src/ (в C
 npm run check:browser# живая браузерная проверка всех страниц (classic vs bundle)
 ```
 
-Тесты — чистый Node (18+), без внешних фреймворков; `tools/run-tests.js`
-находит и запускает `tools/test-*.js`, `tools/test-bootstrap.js` прозрачно
-добавляет модули-фундаменты к загрузкам `js/utils.js` в vm-песочницах.
+Тесты — чистый Node (18+); `tools/run-tests.js` находит и запускает
+`tools/test-*.js`, `tools/test-bootstrap.js` прозрачно добавляет
+модули-фундаменты к загрузкам `js/utils.js` в vm-песочницах. Часть тестов
+поднимает настоящие страницы в **jsdom** (`jsdom` — dev-зависимость): без
+него они не падают, а пропускаются с пометкой SKIP.
 
 **После любой правки `src/` или `js/`-копий фундамента:** `npm run build` →
 `npm run assets` → коммит (CI проверит свежесть бандла и версии ассетов).

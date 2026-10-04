@@ -201,16 +201,29 @@ function mkTargetClosed() {
     return false;
 }
 
+// Пояснение, почему ввод закрыт. Раунд, созданный стартовым листом заранее,
+// до старта закрыт — это не «игрок уже сдал карточку», а «ввод откроется со
+// стартом» (QR со счётной карточки сканируют чаще всего именно до старта).
+// Та же логика и тот же текст, что в scClosedMessage() (js/scorer.js).
+function mkClosedMessage() {
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    if (typeof toast !== 'function') return;
+    if (typeof isRoundGatedByStart === 'function' && isRoundGatedByStart(mkRound, Date.now())) {
+        var at = (typeof fmtTime === 'function' && mkRound && mkRound.startTime) ? fmtTime(mkRound.startTime) : '';
+        toast(isEn
+            ? '⏳ The round starts at ' + at + ' — score entry opens at the start time.'
+            : '⏳ Раунд стартует в ' + at + ' — ввод счёта откроется со стартом.', 'info');
+        return;
+    }
+    toast(isEn
+        ? '🔒 This player has already finished the round — the card is closed.'
+        : '🔒 Игрок уже завершил раунд — карточка закрыта.', 'info');
+}
+
 function saveMk() {
     // Защита от «пулемётного» нажатия кнопки (см. scorer.js).
     if (mkSaving) return;
-    if (mkTargetClosed()) {
-        var isEnMk = (typeof currentLang !== 'undefined' && currentLang === 'en');
-        if (typeof toast === 'function') toast(isEnMk
-            ? '🔒 This player has already finished the round — the card is closed.'
-            : '🔒 Игрок уже завершил раунд — карточка закрыта.', 'info');
-        return;
-    }
+    if (mkTargetClosed()) { mkClosedMessage(); return; }
     mkSaving = true;
     mkSetSaving(true);
     mkChanging = true;

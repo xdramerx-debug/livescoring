@@ -437,6 +437,16 @@ function confirmPlayersImport() {
         if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
     };
 
+    // Состав турниров читаем ОДИН раз на весь импорт: гандикапы обновлённых
+    // игроков синхронизируются с участниками турниров (players/<pid>.hi, лист).
+    var tournamentsSnapshot = Promise.resolve(null);
+    if (typeof db !== 'undefined' && db && typeof pestovoSyncHcpToTournaments === 'function') {
+        tournamentsSnapshot = db.ref('tournaments').once('value')
+            .then(function(sn) { return sn.val() || {}; })
+            .catch(function() { return null; });
+    }
+
+    tournamentsSnapshot.then(function(tnSnapshot) {
     selected.forEach(function(r) {
         if (r.dup) {
             // Синхронизируем локальный кэш, иначе список игроков покажет старый HCP до перезагрузки
@@ -455,6 +465,11 @@ function confirmPlayersImport() {
                     gender: r.gender,
                     hcpUpdatedAt: Date.now(),
                     hcpSource: 'excel'
+                }).then(function() {
+                    if (typeof pestovoSyncHcpToTournaments !== 'function') return undefined;
+                    return pestovoSyncHcpToTournaments(r.dup.id, r.hcp, {
+                        gender: r.gender, tournaments: tnSnapshot || undefined
+                    }).catch(function(e) { console.warn('[hcp-sync]', e); });
                 }).then(function() { updated++; finish(); }).catch(function() { failed++; finish(); });
             } else {
                 updated++;
@@ -486,4 +501,5 @@ function confirmPlayersImport() {
             }
         }
     });
+    }).catch(function(e) { console.warn('[hcp-sync]', e); });
 }

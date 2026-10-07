@@ -84,6 +84,8 @@
     }
     function statusLabel(t, c) {
         var status = c.status;
+        // Пауза турнира (организатор остановил игру) — видна и на публичной странице.
+        if (t && t.paused && status !== 'completed') return { text: ru('На паузе', 'Paused'), cls: 'paused', icon: 'fa-pause' };
         if (c.registrationOpen) return { text: ru('Регистрация открыта', 'Registration open'), cls: 'registration', icon: 'fa-door-open' };
         if (status === 'active') return { text: ru('Идёт сейчас', 'Live now'), cls: 'live', icon: 'fa-circle' };
         if (status === 'completed') return { text: ru('Завершён', 'Completed'), cls: 'completed', icon: 'fa-check' };

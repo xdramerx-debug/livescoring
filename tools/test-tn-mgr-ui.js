@@ -254,6 +254,22 @@ function rootHtml() { return win.document.getElementById('tnm-root').innerHTML; 
 function lastPrint() { return printed[printed.length - 1] || ''; }
 function lastExcel() { return excelBooks[excelBooks.length - 1] || null; }
 function get(path) { return db.__get(path); }
+/** Состав турнира списком (как его передают в слой данных). */
+function participants(tid) {
+    var players = get('tournaments/' + tid + '/players') || {};
+    return Object.keys(players).map(function (pid) {
+        return Object.assign({ id: pid }, players[pid]);
+    });
+}
+function playerByFio(tid, fio) {
+    return participants(tid).filter(function (p) { return p.fio === fio; })[0] || null;
+}
+function tournamentRounds(tid) {
+    var rounds = get('rounds') || {};
+    return Object.keys(rounds).filter(function (rid) {
+        return String(rounds[rid].tournamentId || '') === String(tid);
+    });
+}
 
 function run() {
     console.log('=== Вкладка «Турниры 🏆»: сценарий организатора ===\n');
@@ -905,6 +921,238 @@ function run() {
         .then(function () {
             var players = get('tournaments/' + win.__tid2 + '/players') || {};
             eq(Object.keys(players).length, 5, 'повторный импорт не создал дублей');
+            return wait(40);
+        })
+        // ----------------------------------------------------------
+        // 12. Справочник сайта: участники турнира регистрируются гостями
+        // ----------------------------------------------------------
+        .then(function () {
+            click($('[data-tnm-act="directory-sync"]'));
+            return flush();
+        })
+        .then(function () {
+            check('открылось окно «Справочник игроков и гандикапы»',
+                rootHtml().indexOf('Справочник игроков и гандикапы') !== -1);
+            check('в окне регистрация гостей и обе синхронизации гандикапов',
+                !!$('[data-tnm-act="directory-register"]') &&
+                !!$('[data-tnm-act="handicaps-to-site"]') &&
+                !!$('[data-tnm-act="handicaps-from-site"]'));
+            click($('[data-tnm-act="directory-register"]'));
+            return wait(220);
+        })
+        .then(function () {
+            var list = participants(win.__tid2);
+            var users = get('users') || {};
+            var pub = get('usersPublic') || {};
+            eq(list.filter(function (p) { return !!p.uid; }).length, list.length,
+                'каждому участнику проставлен uid справочника сайта');
+            var kirill = playerByFio(win.__tid2, 'Кузнецов Кирилл');
+            win.__guestUid = kirill.uid;
+            win.__guestPid = kirill.id;
+            check('гость создан в users/ и в публичном зеркале usersPublic/',
+                !!users[kirill.uid] && !!pub[kirill.uid], String(kirill.uid));
+            check('запись помечена как гость',
+                users[kirill.uid].isGuest === true && pub[kirill.uid].isGuest === true);
+            check('ФИО и гандикап перенесены в профиль гостя',
+                users[kirill.uid].name === 'Кузнецов Кирилл' && Number(pub[kirill.uid].handicap) === 8.2,
+                users[kirill.uid].name + ' / ' + pub[kirill.uid].handicap);
+            check('профиль гостя помечен источником «турнир»', users[kirill.uid].tnSource === 'tournament');
+            check('uid продублирован в registeredPlayers (публичная страница)',
+                !!get('tournaments/' + win.__tid2 + '/registeredPlayers/' + kirill.id + '/uid'));
+            check('в таблице участников видна отметка связи со справочником',
+                rootHtml().indexOf('tnm-dir-linked') !== -1);
+            var guestsOfTn = Object.keys(users).filter(function (uid) {
+                return users[uid].tnTournamentId === win.__tid2;
+            });
+            eq(guestsOfTn.length, list.length, 'гостей ровно по числу участников турнира');
+            eq(guestsOfTn.filter(function (uid) { return users[uid].name === 'Кузнецов Кирилл'; }).length, 1,
+                'у каждого участника своя запись (без слипания однофамильцев)');
+            return win.TnMgrData.syncPlayersToDirectory(win.__tid2, participants(win.__tid2), {}).then(function (res) {
+                eq(res.added, 0, 'повторная синхронизация не создаёт новых гостей');
+                eq(Object.keys(get('users') || {}).filter(function (uid) {
+                    return (get('users') || {})[uid].tnTournamentId === win.__tid2;
+                }).length, list.length, 'дублей в справочнике сайта нет');
+            });
+        })
+        .then(function () {
+            // Гандикап справили в админке (users/) — переносим его в турнир.
+            db.ref('users/' + win.__guestUid).update({ handicap: 5.5, hcpSource: 'manual' });
+            db.ref('usersPublic/' + win.__guestUid).update({ handicap: 5.5 });
+            click($('[data-tnm-act="directory-sync"]'));
+            return flush();
+        })
+        .then(function () {
+            click($('[data-tnm-act="handicaps-from-site"]'));
+            return wait(220);
+        })
+        .then(function () {
+            var kirill = playerByFio(win.__tid2, 'Кузнецов Кирилл');
+            eq(Number(kirill.hi), 5.5, 'HI участника обновлён из справочника сайта');
+            eq(Number(kirill.ch), Number(win.getFieldHcp(5.5, kirill.tee || 'wh', kirill.gender || 'men')),
+                'CH пересчитан по новому HI');
+            eq(Number(get('tournaments/' + win.__tid2 + '/registeredPlayers/' + win.__guestPid + '/handicap')), 5.5,
+                'регистрация участника получила новый гандикап');
+            return wait(40);
+        })
+        .then(function () {
+            // Обратное направление: гандикап турнира → справочник сайта.
+            return win.TnMgrData.updatePlayer(win.__tid2, win.__guestPid, { hi: 7.7 },
+                get('tournaments/' + win.__tid2)).then(function () {
+                click($('[data-tnm-act="directory-sync"]'));
+                return flush();
+            });
+        })
+        .then(function () {
+            click($('[data-tnm-act="handicaps-to-site"]'));
+            return wait(220);
+        })
+        .then(function () {
+            eq(Number(get('users/' + win.__guestUid + '/handicap')), 7.7,
+                'гандикап турнира отправлен в профиль сайта (users)');
+            eq(Number(get('usersPublic/' + win.__guestUid + '/handicap')), 7.7,
+                'публичное зеркало профиля обновлено');
+            check('гандикап помечен источником «турнир»',
+                get('users/' + win.__guestUid + '/hcpSource') === 'tournament');
+            return wait(40);
+        })
+        // ----------------------------------------------------------
+        // 13. Пауза турнира
+        // ----------------------------------------------------------
+        .then(function () {
+            click($('[data-tnm-act="start-tournament"]'));
+            return wait(140);
+        })
+        .then(function () {
+            eq(String(get('tournaments/' + win.__tid2 + '/status')), 'active', 'турнир стартовал');
+            // Раунды групп этого турнира + посторонний раунд: пауза турнира
+            // должна остановить только свои живые раунды.
+            db.ref('rounds/grA').set({ tournamentId: win.__tid2, status: 'active', players: { p1: { name: 'Иванов Иван' } } });
+            db.ref('rounds/grB').set({ tournamentId: win.__tid2, status: 'completed', players: {} });
+            db.ref('rounds/grC').set({ tournamentId: win.__tid2, status: 'active', paused: true, pausedAt: Date.now() - 60000, players: {} });
+            db.ref('rounds/grD').set({ tournamentId: 'some-other-tournament', status: 'active', players: {} });
+            var pauseBtn = $('[data-tnm-act="pause-tournament"]');
+            check('кнопка «Пауза» есть и доступна на идущем турнире', !!pauseBtn && !pauseBtn.disabled);
+            click(pauseBtn);
+            return flush();
+        })
+        .then(function () {
+            check('открылось окно паузы со списком причин',
+                !!$('#tnm-pause-reason') && $$('#tnm-pause-reason option').length >= 5);
+            check('есть поле своей формулировки паузы', !!$('#tnm-pause-note'));
+            type($('#tnm-pause-note'), 'гроза, остановка поля');
+            click($('[data-tnm-act="confirm-pause-tournament"]'));
+            return wait(200);
+        })
+        .then(function () {
+            var t = get('tournaments/' + win.__tid2) || {};
+            check('турнир помечен паузой с причиной',
+                t.paused === true && t.pauseReason === 'гроза, остановка поля', String(t.pauseReason));
+            check('записана история паузы (кто и когда)',
+                Array.isArray(t.pauseHistory) && t.pauseHistory.length === 1 && !!t.pauseHistory[0].pausedAt);
+            check('в карточке турнира виден баннер паузы', rootHtml().indexOf('tnm-pause-banner') !== -1);
+            check('чип статуса — «На паузе»', rootHtml().indexOf('tnm-chip-paused') !== -1);
+            check('появилась кнопка «Возобновить»', !!$('[data-tnm-act="resume-tournament"]'));
+            check('кнопка «Старт» на паузе недоступна',
+                $('[data-tnm-act="start-tournament"]').disabled === true);
+            var rounds = get('rounds') || {};
+            check('живой раунд турнира поставлен на паузу с флагом турнира',
+                rounds.grA.paused === true && rounds.grA.pausedByTournament === win.__tid2 &&
+                rounds.grA.pauseReason === 'гроза, остановка поля' && !!rounds.grA.pausedAt);
+            check('завершённый раунд турнира не тронут', !rounds.grB.paused);
+            check('раунд на ручной паузе не помечен паузой турнира',
+                rounds.grC.paused === true && !rounds.grC.pausedByTournament);
+            check('чужой раунд не тронут', !rounds.grD.paused);
+            return win.TnMgrData.pauseTournament(win.__tid2, 'ещё раз');
+        })
+        .then(function (res) {
+            check('повторная пауза турнира не дублирует запись', res.already === true && res.paused === 0);
+            eq((get('tournaments/' + win.__tid2 + '/pauseHistory') || []).length, 1, 'история паузы не задвоилась');
+            click($('[data-tnm-act="resume-tournament"]'));
+            return wait(200);
+        })
+        .then(function () {
+            var t = get('tournaments/' + win.__tid2) || {};
+            check('пауза турнира снята', t.paused === false && !t.pausedAt, JSON.stringify(t.paused));
+            check('история паузы закрыта возобновлением',
+                !!t.pauseHistory[0].resumedAt && Number(t.totalPausedMs) >= 0);
+            check('после возобновления снова видна кнопка «Пауза»',
+                !!$('[data-tnm-act="pause-tournament"]') && !$('[data-tnm-act="resume-tournament"]'));
+            var rounds = get('rounds') || {};
+            check('раунд турнира снят с паузы и накопил её длительность',
+                rounds.grA.paused === false && !rounds.grA.pausedByTournament &&
+                Number(rounds.grA.totalPausedMs) >= 0 && !!rounds.grA.pauseHistory[0].resumedAt);
+            check('раунд на ручной паузе остался на паузе', rounds.grC.paused === true);
+            check('завершённый и чужой раунды не тронуты возобновлением',
+                !rounds.grB.paused && !rounds.grD.paused && !rounds.grD.totalPausedMs);
+            return wait(40);
+        })
+        // ── 14. Конструктор печати: карточку можно двигать по листу мышью ──
+        .then(function () {
+            console.log('\n--- 14. Печатные карточки: перетаскивание карточки по листу ---');
+            var PC = win.TnMgrPrintCards;
+            PC.state.previewPinned = true;
+            PC.state.preview = 'sheet';
+            PC.state.draft = null;
+            win.TnMgrUI.navigate({ view: 'card', tab: 'printcards', tid: win.__tid2 });
+            return wait(200);
+        })
+        .then(function () {
+            check('открыт конструктор печатных карточек', !!$('[data-tnpc-stage]') && !!$('.tnpc-card'));
+            click($('[data-tnm-act="tnpc-panel-sizes"]'));   // панель «Размеры и место на листе»
+            return wait(140);
+        })
+        .then(function () {
+            var PC = win.TnMgrPrintCards;
+            var handle = $('.tnpc-move');
+            check('у карточки на листе есть ручка перетаскивания ✥', !!handle);
+            check('в панели «Размеры» видно место карточки',
+                !!$('[data-tnm-live-edit="tnpc-layout"][data-field="xMm"]'));
+            // jsdom не измеряет размеры — подставляем линейку листа A4 (594 px на 297 мм).
+            $('[data-tnpc-page]').getBoundingClientRect = function () {
+                return { left: 0, top: 0, right: 594, bottom: 420, width: 594, height: 420, x: 0, y: 0 };
+            };
+            var before = Object.assign({}, PC.state.draft.layout);
+            function pointer(type, x, y) {
+                var ev = new win.MouseEvent(type, {
+                    bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0
+                });
+                try { Object.defineProperty(ev, 'pointerId', { value: 7 }); } catch (e) { /* silent */ }
+                handle.dispatchEvent(ev);
+            }
+            // Клик без движения не должен сдвинуть карточку (порог «клик или drag»).
+            pointer('pointerdown', 100, 100);
+            pointer('pointerup', 100, 100);
+            eq(PC.state.draft.layout.xMm, before.xMm, 'клик по карточке не сдвинул её по листу');
+
+            pointer('pointerdown', 100, 100);
+            check('перетаскивание карточки началось',
+                !!PC.state.cardDrag && $('.tnpc-card').classList.contains('dragging'));
+            pointer('pointermove', 200, 150);
+            var after = PC.state.draft.layout;
+            check('карточка поехала за мышью по листу',
+                Math.abs(after.xMm - before.xMm) > 1 && Math.abs(after.yMm - before.yMm) > 1,
+                before.xMm + '/' + before.yMm + ' → ' + after.xMm + '/' + after.yMm);
+            var placed = PC.placement(after, PC.state.draft.size, 0);
+            check('карточка на экране переставлена без полной перерисовки',
+                ($('.tnpc-card').getAttribute('style') || '').indexOf('left:' + placed.xMm + 'mm') !== -1,
+                $('.tnpc-card').getAttribute('style'));
+            eq(Number($('[data-tnm-live-edit="tnpc-layout"][data-field="xMm"]').value), Number(after.xMm),
+                'число X в панели «Размеры» следует за перетаскиванием');
+            eq(Number($('[data-tnm-live-edit="tnpc-layout"][data-field="yMm"]').value), Number(after.yMm),
+                'число Y в панели «Размеры» следует за перетаскиванием');
+            pointer('pointerup', 200, 150);
+            check('после отпускания мыши карточка больше не «тащится»',
+                !PC.state.cardDrag && !$('.tnpc-card').classList.contains('dragging'));
+            return wait(600);
+        })
+        .then(function () {
+            var PC = win.TnMgrPrintCards;
+            var saved = get('tournaments/' + win.__tid2 + '/printScorecards') || {};
+            check('новое место карточки сохранено в дизайн турнира',
+                !!saved.layout && Number(saved.layout.xMm) === Number(PC.state.draft.layout.xMm),
+                JSON.stringify(saved.layout));
+            check('ручка перетаскивания не попадает в печатный документ',
+                PC.documentFor([(PC.state.draft.cards || [])[0]]).indexOf('tnpc-move') === -1);
             return wait(40);
         })
         .then(function () {

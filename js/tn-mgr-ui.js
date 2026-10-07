@@ -378,6 +378,11 @@ var TnMgrUI = (function (root) {
             active: { ru: 'Идёт', en: 'Live', cls: 'tnm-chip-live' },
             completed: { ru: 'Завершён', en: 'Completed', cls: 'tnm-chip-done' }
         };
+        // Пауза важнее статуса: турнир может быть «Идёт», но стоять на паузе.
+        if (item && item.paused && status !== 'completed') {
+            return '<span class="tnm-chip tnm-chip-paused"><i class="fas fa-pause"></i> ' +
+                esc(bi('На паузе', 'Paused')) + '</span>';
+        }
         var info = map[status] || map.draft;
         return '<span class="tnm-chip ' + info.cls + '">' + esc(bi(info.ru, info.en)) + '</span>';
     }
@@ -735,6 +740,7 @@ var TnMgrUI = (function (root) {
             btn('edit-tournament', esc(bi('Изменить', 'Edit')), { icon: 'fas fa-pen', variant: 'ghost' }) + '</div>' +
             '</div>' +
             '<div class="tnm-tabs">' + tabs + '</div>' +
+            (t.paused && String(t.lifecycleStatus || t.status || '') !== 'completed' ? pauseBannerHtml(t) : '') +
             body + '</div>';
     }
 
@@ -742,11 +748,42 @@ var TnMgrUI = (function (root) {
         var status = String(t.lifecycleStatus || t.status || 'draft').toLowerCase();
         var active = status === 'active';
         var completed = status === 'completed';
+        var paused = !!t.paused && !completed;
         return btn('start-tournament', esc(bi('Старт', 'Start')), {
-            icon: 'fas fa-play', variant: 'primary', disabled: active || completed
-        }) + ' ' + btn('force-finish-tournament', esc(bi('Принудительный финиш', 'Force finish')), {
+            icon: 'fas fa-play', variant: 'primary', disabled: active || completed || paused
+        }) + ' ' + (paused
+            ? btn('resume-tournament', esc(bi('Возобновить', 'Resume')), { icon: 'fas fa-play', variant: 'primary' })
+            : btn('pause-tournament', esc(bi('Пауза', 'Pause')), {
+                icon: 'fas fa-pause', variant: 'ghost', disabled: completed || !active
+            })) + ' ' + btn('force-finish-tournament', esc(bi('Принудительный финиш', 'Force finish')), {
             icon: 'fas fa-flag-checkered', variant: 'danger', disabled: completed
         }) + ' ';
+    }
+
+    /** Причины паузы — те же, что у паузы отдельного раунда (js/i18n.js). */
+    var PAUSE_REASONS = [
+        { ru: '⛈ Гроза / непогода', en: '⛈ Thunderstorm / weather' },
+        { ru: '🍽 Перерыв / обед', en: '🍽 Break / lunch' },
+        { ru: '🚨 Остановка маршалом / судьёй', en: '🚨 Marshal / referee stop' },
+        { ru: '🔍 Задержка на поле', en: '🔍 Course delay' },
+        { ru: '⚙️ Техническая пауза', en: '⚙️ Technical pause' },
+        { ru: '📝 Другая причина', en: '📝 Other reason' }
+    ];
+
+    function pauseBannerHtml(t) {
+        var since = '';
+        try {
+            since = t.pausedAt ? new Date(Number(t.pausedAt)).toLocaleString(lang() === 'en' ? 'en-GB' : 'ru-RU') : '';
+        } catch (e) { since = ''; }
+        return '<div class="tnm-pause-banner">' +
+            '<i class="fas fa-pause-circle"></i> ' +
+            '<b>' + esc(bi('Турнир на паузе', 'Tournament is paused')) + '</b>' +
+            (since ? '<span class="tnm-muted"> · ' + esc(bi('с ', 'since ') + since) + '</span>' : '') +
+            (t.pauseReason ? '<span class="tnm-muted"> · ' + esc(t.pauseReason) + '</span>' : '') +
+            '<span class="tnm-muted"> — ' + esc(bi('тайминги раундов заморожены, на страницах ввода счёта виден баннер паузы',
+                'round timings are frozen, score entry pages show the pause banner')) + '</span>' +
+            btn('resume-tournament', esc(bi('Возобновить', 'Resume')), { icon: 'fas fa-play', variant: 'primary', small: true }) +
+            '</div>';
     }
 
     function startTournamentAction() {
@@ -755,6 +792,58 @@ var TnMgrUI = (function (root) {
         data().startTournament(state.route.tid).then(function () {
             toastMsg(bi('🏁 Турнир начат', '🏁 Tournament started'));
         }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
+    }
+
+    /**
+     * Пауза турнира: та же механика, что у паузы раунда (поля paused/pausedAt/
+     * pauseHistory), но сразу для всех раундов турнира. Тайминги темпа игры
+     * замораживаются, страницы ввода счёта показывают баннер паузы.
+     */
+    function pauseTournamentAction() {
+        var item = tournament() || {};
+        if (item.paused) return;
+        openModal('pause-tournament');
+    }
+
+    function confirmPauseTournamentAction() {
+        var item = tournament() || {};
+        var select = el('tnm-pause-reason');
+        var note = el('tnm-pause-note');
+        var reason = core().trim(note && note.value) || core().trim(select && select.value) || '';
+        closeModal();
+        data().pauseTournament(state.route.tid, reason, currentUserName()).then(function (res) {
+            if (res && res.already) {
+                toastMsg(bi('Турнир уже на паузе', 'The tournament is already paused'), 'warn');
+                return;
+            }
+            toastMsg(bi('⏸ Турнир на паузе. Раундов остановлено: ', '⏸ Tournament paused. Rounds stopped: ') +
+                ((res && res.paused) || 0) +
+                ((res && res.skipped) ? ' · ' + bi('уже на ручной паузе: ', 'already paused manually: ') + res.skipped : ''));
+            render();
+        }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
+    }
+
+    function resumeTournamentAction() {
+        var item = tournament() || {};
+        if (!item.paused) return;
+        data().resumeTournament(state.route.tid, currentUserName()).then(function (res) {
+            toastMsg(bi('▶️ Турнир возобновлён. Раундов открыто: ', '▶️ Tournament resumed. Rounds reopened: ') +
+                ((res && res.resumed) || 0));
+            render();
+        }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
+    }
+
+    /** Имя текущего пользователя — для подписи «кто поставил на паузу». */
+    function currentUserName() {
+        try {
+            var user = root.currentUser || (root.auth && root.auth.currentUser) || null;
+            if (user && (user.displayName || user.name)) return String(user.displayName || user.name);
+            var uid = user && user.uid ? user.uid : '';
+            var profile = uid && typeof root.getKnownPlayersSync === 'function' ? (root.getKnownPlayersSync() || {})[uid] : null;
+            if (profile && profile.name) return String(profile.name);
+            if (root.currentUserData && root.currentUserData.name) return String(root.currentUserData.name);
+        } catch (e) { /* silent */ }
+        return '';
     }
 
     function forceFinishTournamentAction() {
@@ -964,7 +1053,12 @@ var TnMgrUI = (function (root) {
         var groups = groupsOf(t);
         var rows = players.map(function (player) {
             return '<tr>' +
-                '<td><div class="tnm-player-name" data-tnm-act="open-player-in-round" data-pid="' + esc(player.id) + '">' + esc(core().playerFio(player)) + '</div>' +
+                '<td><div class="tnm-player-name" data-tnm-act="open-player-in-round" data-pid="' + esc(player.id) + '">' + esc(core().playerFio(player)) +
+                (core().trim(player.uid)
+                    ? ' <i class="fas fa-address-book tnm-dir-linked" title="' +
+                      esc(bi('Есть в справочнике сайта — гандикап синхронизируется с админ-панелью',
+                          'In the site directory — the handicap syncs with the admin panel')) + '"></i>'
+                    : '') + '</div>' +
                 '<span class="tnm-muted">' + esc(core().sourceLabel(player.source, lang())) + (player.club ? ' · ' + esc(player.club) : '') + '</span></td>' +
                 '<td><input type="number" step="0.1" class="tnm-input-num" data-tnm-edit="player-hi" data-pid="' + esc(player.id) + '" value="' + esc(player.hi == null ? '' : player.hi) + '"></td>' +
                 '<td><input type="number" class="tnm-input-num" data-tnm-edit="player-ch" data-pid="' + esc(player.id) + '" value="' + esc(player.ch == null ? '' : player.ch) + '"></td>' +
@@ -1003,7 +1097,8 @@ var TnMgrUI = (function (root) {
                 btn('export-participants', esc(bi('Экспорт', 'Export')), { icon: 'fas fa-file-pdf' }) + ' ' +
                 btn('import-excel', esc(bi('Импорт Excel', 'Import Excel')), { icon: 'fas fa-file-excel', variant: 'ghost' }) + ' ' +
                 btn('paste-table', esc(bi('Вставить таблицу', 'Paste table')), { icon: 'fas fa-table', variant: 'ghost' }) + ' ' +
-                btn('open-directory', esc(bi('Из справочника игроков', 'From player directory')), { icon: 'fas fa-address-book', variant: 'ghost' })) +
+                btn('open-directory', esc(bi('Из справочника игроков', 'From player directory')), { icon: 'fas fa-address-book', variant: 'ghost' }) + ' ' +
+                btn('directory-sync', esc(bi('Гости и гандикапы', 'Guests & handicaps')), { icon: 'fas fa-user-plus', variant: 'ghost' })) +
             '<div class="tnm-search-wrap">' +
             '<i class="fas fa-search"></i>' +
             '<input type="text" id="tnm-participant-search" data-tnm-live="participant-search" data-tnm-focus="participant-search" autocomplete="off" ' +
@@ -1109,7 +1204,75 @@ var TnMgrUI = (function (root) {
                     (skipped ? ' · ' + bi('уже были в турнире: ', 'already in the tournament: ') + skipped : ''));
             }
             render();
+            // Сразу регистрируем новичков в справочнике сайта (гостями), чтобы
+            // в следующий раз их можно было выбрать из списка, а гандикап —
+            // синхронизировать в админ-панели. Ищем исходную строку по ФИО:
+            // addPlayers мог пропустить часть списка, индексы тогда разъезжаются.
+            var byFio = {};
+            prepared.forEach(function (item) {
+                byFio[core().normText(item.fio || item.name || '')] = item;
+            });
+            var added = created.map(function (item) {
+                var source = byFio[core().normText(item.fio || '')] || {};
+                return Object.assign({}, source, { id: item.id, fio: item.fio, hi: item.hi });
+            });
+            registerParticipantsInDirectory(added, 'fill', silent);
         }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
+    }
+
+    /**
+     * Регистрация участников в справочнике сайта (users / usersPublic).
+     * mode: 'fill' — гандикап пишем только если у записи своего нет,
+     *       'push' — гандикап турнира перезаписывает профиль.
+     */
+    function registerParticipantsInDirectory(players, mode, silent) {
+        var list = (players || []).filter(function (player) { return player && (player.fio || player.name); });
+        if (!list.length) {
+            if (!silent) toastMsg(bi('Нет участников для регистрации', 'No participants to register'), 'warn');
+            return Promise.resolve(null);
+        }
+        if (state.busy) return Promise.resolve(null);
+        state.busy = true;
+        var action = mode === 'push' ? data().pushHandicapsToDirectory(state.route.tid, list)
+            : data().syncPlayersToDirectory(state.route.tid, list, { handicaps: mode || 'fill' });
+        return action.then(function (res) {
+            state.busy = false;
+            if (res && res.error) {
+                toastMsg('❌ ' + res.error, 'error');
+                return res;
+            }
+            if (!silent) {
+                toastMsg(mode === 'push'
+                    ? bi('🔄 Гандикапы отправлены на сайт. Обновлено записей: ', '🔄 Handicaps pushed to the site. Records updated: ') + ((res && res.updated) || 0)
+                    : bi('👤 В справочнике сайта: новых гостей — ', '👤 Site directory: new guests — ') + ((res && res.added) || 0) +
+                      ', обновлено — ' + ((res && res.updated) || 0));
+            }
+            render();
+            return res;
+        }).catch(function (err) {
+            state.busy = false;
+            toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
+            return null;
+        });
+    }
+
+    /** Гандикапы из справочника сайта (админка/АГР) — в состав турнира. */
+    function pullDirectoryHandicaps() {
+        var list = playersOf();
+        if (!list.length) { toastMsg(bi('В турнире нет участников', 'The tournament has no participants'), 'warn'); return; }
+        if (state.busy) return;
+        state.busy = true;
+        data().pullHandicapsFromDirectory(state.route.tid, list, tournament()).then(function (res) {
+            state.busy = false;
+            if (res && res.error) { toastMsg('❌ ' + res.error, 'error'); return; }
+            toastMsg(bi('🔄 Гандикапы сайта перенесены в турнир. Обновлено участников: ',
+                '🔄 Site handicaps pulled into the tournament. Participants updated: ') + ((res && res.updated) || 0) +
+                ((res && res.missing) ? ' · ' + bi('нет в справочнике: ', 'missing from the directory: ') + res.missing : ''));
+            render();
+        }).catch(function (err) {
+            state.busy = false;
+            toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
     }
 
     function computeCh(player, tee) {
@@ -1261,6 +1424,62 @@ var TnMgrUI = (function (root) {
             '</div></div></div>';
     });
 
+    modal('pause-tournament', function () {
+        var t = tournament() || {};
+        var options = PAUSE_REASONS.map(function (item) {
+            return '<option value="' + esc(bi(item.ru, item.en)) + '">' + esc(bi(item.ru, item.en)) + '</option>';
+        }).join('');
+        return '<div class="tnm-modal-overlay" data-tnm-act="close-modal">' +
+            '<div class="tnm-modal" data-tnm-stop="1">' +
+            '<h3>⏸ ' + esc(bi('Поставить турнир на паузу', 'Pause the tournament')) + '</h3>' +
+            '<p class="tnm-sub">' + esc(t.name || '') + ' · ' +
+            esc(bi('Пауза останавливает тайминги всех раундов турнира и показывает баннер паузы ' +
+                'на страницах ввода счёта. Введённые удары сохраняются, «Возобновить» продолжит ' +
+                'отсчёт с момента паузы.',
+                'Pause freezes the timings of every tournament round and shows a pause banner on the ' +
+                'score entry pages. Entered strokes are kept, “Resume” continues from the pause moment.')) + '</p>' +
+            '<div class="tnm-modal-body">' +
+            '<label class="tnm-field">' + esc(bi('Причина паузы', 'Pause reason')) +
+            '<select id="tnm-pause-reason">' + options + '</select></label>' +
+            '<label class="tnm-field">' + esc(bi('Своя формулировка (необязательно)', 'Custom wording (optional)')) +
+            '<input type="text" id="tnm-pause-note" placeholder="' +
+            esc(bi('Например: гроза, остановка на 40 минут', 'e.g. thunderstorm, 40 minute stop')) + '"></label>' +
+            '</div>' +
+            '<div class="tnm-modal-actions">' +
+            btn('confirm-pause-tournament', esc(bi('Поставить на паузу', 'Pause tournament')), { variant: 'primary', icon: 'fas fa-pause' }) +
+            btn('close-modal', esc(bi('Отмена', 'Cancel')), { variant: 'ghost' }) +
+            '</div></div></div>';
+    });
+
+    modal('directory-sync', function () {
+        var players = playersOf();
+        var withUid = players.filter(function (player) { return core().trim(player.uid); }).length;
+        var withHcp = players.filter(function (player) { return player.hi != null && player.hi !== ''; }).length;
+        return '<div class="tnm-modal-overlay" data-tnm-act="close-modal">' +
+            '<div class="tnm-modal" data-tnm-stop="1">' +
+            '<h3>' + esc(bi('Справочник игроков и гандикапы', 'Player directory and handicaps')) + '</h3>' +
+            '<p class="tnm-sub">' + esc(bi('Участников: ', 'Participants: ') + players.length + ' · ' +
+                bi('в справочнике сайта: ', 'in the site directory: ') + withUid + ' · ' +
+                bi('с гандикапом: ', 'with a handicap: ') + withHcp) + '</p>' +
+            '<div class="tnm-modal-body">' +
+            '<p class="tnm-muted">' + esc(bi('Участники, которых нет в справочнике клуба, регистрируются как ГОСТИ: ' +
+                'их можно выбрать из списка в следующем турнире или в live-скоринге, а гандикап правится ' +
+                'в админ-панели («Игроки и роли», синхронизация с АГР).',
+                'Participants missing from the club directory are registered as GUESTS: they can be picked from the ' +
+                'list in the next tournament or in live scoring, and their handicap is edited in the admin panel ' +
+                '(“Players and roles”, RusGolf sync).')) + '</p>' +
+            '</div>' +
+            '<div class="tnm-modal-actions">' +
+            btn('directory-register', esc(bi('Зарегистрировать гостей на сайте', 'Register guests on the site')),
+                { variant: 'primary', icon: 'fas fa-user-plus' }) +
+            btn('handicaps-to-site', esc(bi('Гандикапы турнира → сайт', 'Tournament handicaps → site')),
+                { icon: 'fas fa-arrow-up-from-bracket', variant: 'ghost' }) +
+            btn('handicaps-from-site', esc(bi('Гандикапы сайта → турнир', 'Site handicaps → tournament')),
+                { icon: 'fas fa-arrow-down-to-bracket', variant: 'ghost' }) +
+            btn('close-modal', esc(bi('Закрыть', 'Close')), { variant: 'ghost' }) +
+            '</div></div></div>';
+    });
+
     // ----------------------------------------------------------
     // ОБРАБОТЧИКИ СОБЫТИЙ (делегирование)
     // ----------------------------------------------------------
@@ -1367,6 +1586,9 @@ var TnMgrUI = (function (root) {
     });
     on('save-tournament', saveTournament);
     on('start-tournament', startTournamentAction);
+    on('pause-tournament', pauseTournamentAction);
+    on('confirm-pause-tournament', confirmPauseTournamentAction);
+    on('resume-tournament', resumeTournamentAction);
     on('force-finish-tournament', forceFinishTournamentAction);
     on('toggle-format', function (button) { toggleFormat(button.getAttribute('data-format')); });
     on('add-format', addFormatFromInput);
@@ -1445,6 +1667,19 @@ var TnMgrUI = (function (root) {
     on('import-excel', function () { var input = el('tnm-excel-input'); if (input) input.click(); });
     on('paste-table', function () { openModal('paste-table'); });
     on('open-directory', function () { openModal('directory'); });
+    on('directory-sync', function () { openModal('directory-sync'); });
+    on('directory-register', function () {
+        closeModal();
+        registerParticipantsInDirectory(playersOf(), 'fill');
+    });
+    on('handicaps-to-site', function () {
+        closeModal();
+        registerParticipantsInDirectory(playersOf(), 'push');
+    });
+    on('handicaps-from-site', function () {
+        closeModal();
+        pullDirectoryHandicaps();
+    });
     on('download-template', downloadImportTemplate);
     on('close-modal', closeModal);
     on('confirm-import', function () {

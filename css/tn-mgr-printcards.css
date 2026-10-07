@@ -128,6 +128,17 @@
 }
 .tnpc-foot.ghost { opacity: .5; }
 .tnpc-foot.ghost .tnpc-sign { border-top-style: dashed; }
+/* Ручка перетаскивания карточки по листу (только экран, в печать не идёт). */
+.tnpc-move {
+    position: absolute; left: 0; top: 0; width: 4.6mm; height: 4.6mm;
+    display: flex; align-items: center; justify-content: center;
+    font: 700 3mm Arial, Helvetica, sans-serif; line-height: 1;
+    color: #8a6d10; background: rgba(201,168,76,.22);
+    border-right: 0.25mm solid rgba(201,168,76,.8); border-bottom: 0.25mm solid rgba(201,168,76,.8);
+    cursor: move; touch-action: none; user-select: none; -webkit-user-select: none; z-index: 5;
+}
+.tnpc-move:hover { background: rgba(201,168,76,.45); color: #3d2f00; }
+.tnpc-card.dragging { outline: 0.4mm dashed #c9a227; cursor: move; }
 .tnpc-overlay { cursor: move; touch-action: none; }
 .tnpc-overlay.off { opacity: .45; }
 .tnpc-overlay.selected, .tnpc-overlay:hover { outline: 0.35mm solid #c9a227; }
@@ -217,7 +228,7 @@
     @page { size: A4 landscape; margin: 0; }
     .tnpc-toolbar, .tnpc-panel, .tnpc-status, .tnpc-hints, .tnpc-list,
     .tnpc-sel, .tnpc-warn, .tnpc-handle, .tnpc-x, .tnpc-tag, .tnpc-ph,
-    .tnpc-noprint, .tnpc-ghost, .tnpc-master-note { display: none !important; }
+    .tnpc-noprint, .tnpc-ghost, .tnpc-master-note, .tnpc-move { display: none !important; }
     /* На бумагу идёт только лист с карточкой: обвязка админки скрыта. */
     body > *:not(:has(.tnpc-wrap)) { display: none !important; }
     .tnpc-stage { background: #fff; border: none; padding: 0; overflow: visible; height: auto !important; }

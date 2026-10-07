@@ -278,6 +278,11 @@ function tnRenderList() {
             var tnId = e[0], tVal = e[1];
             var statusCls = tVal.status === 'active' ? 'tn-a' : tVal.status === 'completed' ? 'tn-d' : 'tn-u';
             var statusText = tVal.status === 'active' ? (en ? '🔴 Active' : '🔴 Активный') : tVal.status === 'completed' ? (en ? '✅ Completed' : '✅ Завершён') : (en ? '📅 Upcoming' : '📅 Предстоящий');
+            // Пауза турнира (организатор остановил игру) важнее статуса «Идёт».
+            if (tVal.paused && tVal.status !== 'completed') {
+                statusCls = 'tn-u';
+                statusText = en ? '⏸ Paused' : '⏸ На паузе';
+            }
             var formatsStr = (tVal.formats || []).join(' · ') || '—';
             var teesStr = (tVal.tees || []).map(function(k) { return t('tee_' + k); }).join(' · ');
             var divisions = (typeof tnNormalizeDivisions === 'function') ? tnNormalizeDivisions(tVal) : [];

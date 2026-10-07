@@ -73,6 +73,23 @@
 .tnm-chip-upcoming { background: rgba(90,173,224,.15); color: var(--blue); border-color: rgba(90,173,224,.4); }
 .tnm-chip-live { background: rgba(224,90,74,.16); color: var(--red); border-color: rgba(224,90,74,.45); }
 .tnm-chip-done { background: rgba(45,107,63,.25); color: #7ee2a8; border-color: rgba(45,107,63,.6); }
+.tnm-chip-paused { background: rgba(243,156,18,.16); color: #f39c12; border-color: rgba(243,156,18,.45); }
+.tnm-chip-paused i { margin-right: 4px; }
+
+/* ---------- пауза турнира ---------- */
+.tnm-pause-banner {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    margin: 10px 0 0; padding: 10px 12px;
+    background: rgba(243,156,18,.12); border: 1px solid rgba(243,156,18,.45);
+    border-radius: var(--tnm-radius); color: var(--text); font-size: 12.5px;
+}
+.tnm-pause-banner > i:first-child { color: #f39c12; font-size: 16px; }
+.tnm-pause-banner b { color: #f39c12; }
+.tnm-pause-banner .tnm-muted { color: var(--muted); }
+.tnm-pause-banner .tnm-btn { margin-left: auto; }
+
+/* ---------- участник связан со справочником сайта ---------- */
+.tnm-dir-linked { color: var(--blue); font-size: 11px; margin-left: 5px; opacity: .85; }
 
 /* ---------- формы ---------- */
 .tnm-form { display: flex; flex-direction: column; gap: 14px; }

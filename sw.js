@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.99.4-e151c598';
+const CACHE_NAME = 'pestovo-v1.100.0-eabd75b5';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -42,7 +42,7 @@ const STATIC_ASSETS = [
     'css/design-presets.css?v=77ff3916',
     'css/style.css?v=c73543e8',
     'css/tn-studio.css?v=2e8b755f',
-    'css/tournament-redesign.css?v=6aa85f7a',
+    'css/tournament-redesign.css?v=addf1f43',
     'dist/livescoring-modules.js?v=2b57ed5a',
     'js/app.js?v=59c52eae',
     'js/auth.js?v=3a96f309',
@@ -66,9 +66,9 @@ const STATIC_ASSETS = [
     'js/tn-studio-core.js?v=59388560',
     'js/tn-studio-public.js?v=86e38d13',
     'js/tournament-core.js?v=a19eaf5c',
-    'js/tournament-public.js?v=1932a4cb',
-    'js/tournaments.js?v=65bbbfcd',
-    'js/utils.js?v=d32de593',
+    'js/tournament-public.js?v=587eb6cf',
+    'js/tournaments.js?v=694f55a0',
+    'js/utils.js?v=6711f11d',
 
     // Прочее
     'manifest.json',

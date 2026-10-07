@@ -35,6 +35,7 @@
 .tn-public-badge.closed { color:#f0ba67; background:rgba(243,156,18,.12); border:1px solid rgba(243,156,18,.3); }
 .tn-public-badge.live { color:#fff; background:rgba(224,90,74,.16); border:1px solid rgba(224,90,74,.5); }
 .tn-public-badge.completed { color:#92e0ac; background:rgba(46,204,113,.13); border:1px solid rgba(46,204,113,.35); }
+.tn-public-badge.paused { color:#ffd08a; background:rgba(243,156,18,.14); border:1px solid rgba(243,156,18,.45); }
 .tn-public-badge.cancelled { color:#ff9990; background:rgba(224,90,74,.1); border:1px solid rgba(224,90,74,.35); }
 .tn-public-meta { display:flex; flex-wrap:wrap; gap:7px 14px; margin-top:13px; color:var(--muted); font-size:12px; }
 .tn-public-meta span { display:inline-flex; align-items:center; gap:6px; }

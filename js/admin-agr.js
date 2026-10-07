@@ -597,7 +597,16 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
             }
         });
 
-        return db.ref().update(fbUpdates);
+        return db.ref().update(fbUpdates).then(function() {
+            // Состав турнира менеджер хранит отдельно (players/<pid>.hi, лист):
+            // правка гандикапа в админке должна попадать и туда.
+            if (typeof pestovoSyncHcpToTournaments !== 'function') return undefined;
+            return pestovoSyncHcpToTournaments(userId, hcp, {
+                tournaments: tournaments,
+                name: hasOfficialName ? officialName : '',
+                gender: gender
+            }).catch(function(e) { console.warn('[hcp-sync]', e); });
+        });
     }).catch(function(err) {
         console.warn('rgPropagateHcpEverywhere:', err);
         return db.ref('users/' + userId).update(updates);
@@ -897,6 +906,12 @@ function rgChangeDuplicateHcp(userId, inputId) {
             updates['rounds/' + rid + '/players/' + userId + '/fieldHcp'] = fieldHcp;
         });
         if (Object.keys(updates).length) return db.ref().update(updates);
+    }).then(function(){
+        // Гандикап участника турнира (players/<pid>.hi, registeredPlayers, лист).
+        if (typeof pestovoSyncHcpToTournaments === 'function') {
+            return pestovoSyncHcpToTournaments(userId, newHcp).catch(function(e) { console.warn('[hcp-sync]', e); });
+        }
+        return undefined;
     }).then(function(){
         toast('✅ HCP ' + fmtExactHcp(newHcp) + ' ' + (currentLang === 'en' ? 'updated for ' : 'обновлён у ') + userId, 'success');
         if (typeof loadAdmPlayers === 'function') loadAdmPlayers();

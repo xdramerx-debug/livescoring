@@ -38,6 +38,16 @@ function buildOfficialCallText(type, holeNum, callerName, flightNames, withHtml)
 // ИГРОК с поля — он не должен видеть «Тайм-аут соединения» / «Ошибка сети»
 // в тосте (он уже нажал «Вызвать судью» и видит «🚨 Судья вызван»).
 function sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerName, flightNames) {
+    if (typeof pestovoGlobalNotificationsSettingReady === 'function' && !pestovoGlobalNotificationsSettingReady()) {
+        pestovoCheckGlobalNotificationsEnabled().then(function (enabled) {
+            if (enabled) sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerName, flightNames);
+        });
+        return;
+    }
+    if (typeof pestovoAreGlobalNotificationsEnabled === 'function' && !pestovoAreGlobalNotificationsEnabled()) {
+        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Club notifications are globally disabled.' : 'Уведомления клуба глобально отключены.', 'warn');
+        return;
+    }
     token = (token || '').trim();
     chat = (chat || '').trim();
 
@@ -90,6 +100,13 @@ function sendTelegramDirectAlert(token, chat, labelName, type, holeNum, playerNa
 // Используется, когда вызов инициирует ИГРОК — он не должен получать
 // «Тайм-аут соединения» или «Ошибка сети», только «🚨 Судья вызван».
 function sendTelegramSilentAlert(token, chat, type, holeNum, playerName, flightNames) {
+    if (typeof pestovoGlobalNotificationsSettingReady === 'function' && !pestovoGlobalNotificationsSettingReady()) {
+        pestovoCheckGlobalNotificationsEnabled().then(function (enabled) {
+            if (enabled) sendTelegramSilentAlert(token, chat, type, holeNum, playerName, flightNames);
+        });
+        return;
+    }
+    if (typeof pestovoAreGlobalNotificationsEnabled === 'function' && !pestovoAreGlobalNotificationsEnabled()) return;
     token = (token || '').trim();
     chat = (chat || '').trim();
     if (!token || !chat) return; // нет настроек — тихо выходим
@@ -259,6 +276,16 @@ function vkBuildAlertText(type, holeNum, playerName, flightNames) {
  * Прямая отправка с тостами (для теста из админки).
  */
 function sendVKDirectAlert(token, peerId, type, holeNum, playerName, flightNames) {
+    if (typeof pestovoGlobalNotificationsSettingReady === 'function' && !pestovoGlobalNotificationsSettingReady()) {
+        pestovoCheckGlobalNotificationsEnabled().then(function (enabled) {
+            if (enabled) sendVKDirectAlert(token, peerId, type, holeNum, playerName, flightNames);
+        });
+        return;
+    }
+    if (typeof pestovoAreGlobalNotificationsEnabled === 'function' && !pestovoAreGlobalNotificationsEnabled()) {
+        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Club notifications are globally disabled.' : 'Уведомления клуба глобально отключены.', 'warn');
+        return;
+    }
     token = (token || '').trim();
     peerId = (peerId || '').trim();
     if (!token || !peerId) {
@@ -273,6 +300,13 @@ function sendVKDirectAlert(token, peerId, type, holeNum, playerName, flightNames
  * «Молчаливый» вариант для ИГРОКА: без тостов об ошибках.
  */
 function sendVKSilentAlert(token, peerId, type, holeNum, playerName, flightNames) {
+    if (typeof pestovoGlobalNotificationsSettingReady === 'function' && !pestovoGlobalNotificationsSettingReady()) {
+        pestovoCheckGlobalNotificationsEnabled().then(function (enabled) {
+            if (enabled) sendVKSilentAlert(token, peerId, type, holeNum, playerName, flightNames);
+        });
+        return;
+    }
+    if (typeof pestovoAreGlobalNotificationsEnabled === 'function' && !pestovoAreGlobalNotificationsEnabled()) return;
     token = (token || '').trim();
     peerId = (peerId || '').trim();
     if (!token || !peerId) return;

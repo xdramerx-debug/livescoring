@@ -361,6 +361,8 @@ body.sun-mode td {
 .nav-link:hover,.nav-link.active{color:var(--gold);background:rgba(201,168,76,.1);}
 .nav-auth{margin-left:10px;}
 .nav-user{display:flex;align-items:center;gap:8px;}
+.nav-profile-trigger{display:inline-flex;align-items:center;gap:8px;padding:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;}
+.nav-profile-trigger:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px;}
 .nav-uname{color:var(--gold);font-size:13px;font-weight:500;}
 .nav-toggle{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:8px;}
 /* Кнопка открытия бокового меню (.nav-toggle) нужна ТОЛЬКО на мобильной
@@ -1056,23 +1058,11 @@ html.score-kiosk .hole-display {
 .dual-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
 .dual-header h3{margin:0;font-size:16px;color:var(--white);display:flex;align-items:center;gap:8px;}
 
-/* PWA & iOS INSTALL BANNER */
+/* PWA connectivity status */
 .online-indicator{position:fixed;top:calc(var(--nav-h, 70px) + 4px);left:20px;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:600;z-index:999;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s;background:var(--card);}
 .online-indicator.online{background:rgba(19,34,24,0.95);color:#2ecc71;border:1px solid rgba(46,204,113,0.3);}
 .online-indicator.offline{background:rgba(19,34,24,0.97);color:var(--red);border:2px solid var(--red);animation:blink 2s infinite;}
 .online-indicator.hide{opacity:0;transform:translateX(-120%);pointer-events:none;}
-.install-banner{position:fixed;bottom:-140px;left:20px;right:20px;max-width:500px;margin:0 auto;background:var(--card);border:1px solid var(--gold);border-radius:12px;padding:16px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:9998;transition:bottom 0.4s;}
-.install-banner.show{bottom:20px;}
-.install-content{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;}
-
-.ios-install-banner{position:fixed;bottom:-300px;left:16px;right:16px;max-width:480px;margin:0 auto;background:var(--card);border:2px solid var(--gold);border-radius:16px;padding:18px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.6);z-index:9999;transition:bottom 0.4s cubic-bezier(0.175,0.885,0.32,1.275);}
-.ios-install-banner.show{bottom:20px;}
-.ios-install-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;position:relative;}
-.ios-install-logo{width:40px!important;height:40px!important;max-width:40px!important;max-height:40px!important;object-fit:contain!important;}
-.ios-install-close{position:absolute;top:-4px;right:0;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
-.ios-install-steps{display:flex;flex-direction:column;gap:8px;background:var(--input);padding:12px;border-radius:var(--rs);border:1px solid var(--border);}
-.ios-step{font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;}
-.ios-num{width:20px;height:20px;border-radius:50%;background:var(--gold);color:var(--bg);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 
 /* =========================================
    STANDALONE MOBILE DRAWER COMPONENT
@@ -1425,9 +1415,6 @@ html.score-kiosk .hole-display {
     .footer {
         padding-bottom: max(24px, env(safe-area-inset-bottom));
     }
-    .install-banner, .ios-install-banner {
-        display: none !important;
-    }
 }
 
 /* ALLOW LONG-PRESS IMAGE SAVING ON IPHONE PWA / WEBKIT */
@@ -1670,9 +1657,7 @@ body.sun-mode .lb-table td:first-child {
 /* Открыта экранная клавиатура (body.kb-open ставит js/utils.js):
    прячем плавающие элементы, чтобы они не перекрывали поля ввода */
 body.kb-open .offline-queue-badge,
-body.kb-open .online-indicator,
-body.kb-open .install-banner,
-body.kb-open .ios-install-banner {
+body.kb-open .online-indicator {
     opacity: 0;
     pointer-events: none;
 }
@@ -5168,6 +5153,40 @@ body.sun-mode .hole-btn.active.cur-blink{
 @media(max-width:520px){
     .score-entry[data-entry-view="2"] .scoring-columns,
     .score-entry[data-entry-view="4"] .scoring-columns{flex-direction:column;}
+}
+
+.setup-hcp-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.setup-hcp-refresh {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; flex: 0 0 24px; padding: 0;
+    color: var(--gold); background: rgba(201,168,76,.1);
+    border: 1px solid rgba(201,168,76,.42); border-radius: 7px;
+    cursor: pointer; font-size: 11px; transition: background .16s ease, color .16s ease, transform .16s ease;
+}
+.setup-hcp-refresh:hover:not(:disabled) { background: var(--gold); color: #13251a; transform: translateY(-1px); }
+.setup-hcp-refresh:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.setup-hcp-refresh:disabled { opacity: .65; cursor: wait; }
+.setup-hcp-refresh.is-loading i { animation: setup-hcp-spin .9s linear infinite; }
+@keyframes setup-hcp-spin { to { transform: rotate(360deg); } }
+
+/* Collapsible filters: keep player and round lists focused on content by default. */
+.page-filters-card { padding: 12px 15px; }
+.page-filters-details > summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-height: 28px; cursor: pointer; list-style: none; color: var(--white);
+    font-size: 13px; font-weight: 800; user-select: none;
+}
+.page-filters-details > summary::-webkit-details-marker { display: none; }
+.page-filters-details > summary > span { display: inline-flex; align-items: center; gap: 9px; }
+.page-filters-details > summary > span > .fas { color: var(--gold); }
+.page-filters-chevron { color: var(--gold); transition: transform .18s ease; }
+.page-filters-details[open] .page-filters-chevron { transform: rotate(180deg); }
+.page-filters-details > summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 4px; }
+.page-filters-content { padding-top: 13px; }
+.page-filters-content .form-row { margin-bottom: 0; }
+@media (max-width: 560px) {
+    .page-filters-card { padding: 11px 13px; }
+    .page-filters-content .form-row { gap: 8px; }
 }
 
 /* ── СЧЁТНАЯ КАРТОЧКА ПО ЛУНКАМ: 5 ВИДОВ (body.st-scorecard-vN) ── */

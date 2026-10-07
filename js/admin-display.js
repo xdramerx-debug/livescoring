@@ -479,7 +479,6 @@ var ADMIN_PAGE_DISPLAY_CONFIG = {
     players: { path: 'settings/players_display_variant', label: 'Игроки' },
     stats: { path: 'settings/stats_display_variant', label: 'Статистика' },
     rounds: { path: 'settings/all_rounds_display_variant', label: 'Все раунды' },
-    tournaments: { path: 'settings/tournaments_display_variant', label: 'Турниры' },
     handicap: { path: 'settings/handicap_display_variant', label: 'Гандикапы' }
 };
 

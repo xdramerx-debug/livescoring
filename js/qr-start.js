@@ -31,6 +31,10 @@ function qrProviders(data, size) {
     ];
 }
 function qrUrl(data, size) {
+    if (window.PestovoQr && typeof window.PestovoQr.dataUrl === 'function') {
+        var local = window.PestovoQr.dataUrl(data, size || 420);
+        if (local) return local;
+    }
     return qrProviders(data, size)[0];
 }
 function qrImgOk(img) {
@@ -40,6 +44,7 @@ function qrImgOk(img) {
 function qrImgFail(img) {
     var n = 0;
     try { n = parseInt(img.getAttribute('data-qr-try') || '0', 10) || 0; } catch (e) { console.warn("[silent]", e); }
+    try { if (img.src && img.src.indexOf('data:image/') === 0) n = -1; } catch (e) { /* use external fallback below */ }
     var data = '';
     try { data = decodeURIComponent(img.getAttribute('data-qr') || ''); } catch (e) { data = ''; }
     var urls = data ? qrProviders(data, 420) : [];

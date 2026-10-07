@@ -99,7 +99,7 @@ function setupPlayerCardHtml(idx, opts) {
         '</div>' +
         '<div class="form-row form-row-3">' +
             '<div class="form-group" style="flex:1 1 80px;"><label>' + t('tee_select') + '</label><select id="pl-tee-' + idx + '" class="form-input" onchange="calcPlayerFieldHcp(' + idx + ')"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>' +
-            '<div class="form-group" style="flex:1 1 90px;"><label>' + t('exact_hcp') + '</label><input type="text" inputmode="decimal" id="pl-hcp-' + idx + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + idx + ')"></div>' +
+            '<div class="form-group" style="flex:1 1 90px;"><label class="setup-hcp-label"><span>' + t('exact_hcp') + '</span><button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh hidden" onclick="refreshSetupPlayerHandicap(' + idx + ')" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i></button></label><input type="text" inputmode="decimal" id="pl-hcp-' + idx + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + idx + ')"></div>' +
             '<div class="form-group" style="flex:1 1 90px;"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + idx + '" class="form-input" readonly placeholder="—"></div>' +
         '</div>';
 
@@ -120,7 +120,7 @@ function setupPlayerRowHtml(idx, opts) {
         '<div class="form-group"><label>' + t('middle_name') + '</label><input type="text" id="pl-mid-' + idx + '" class="form-input" placeholder="' + (isEn ? 'Jr.' : 'Отчество') + '"></div>' +
         '<div class="form-group"><label>' + t('gender_label') + '</label><select id="pl-gender-' + idx + '" class="form-input" onchange="onPlayerGenderOrTeeChange(' + idx + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>' +
         '<div class="form-group"><label>' + t('tee_select') + '</label><select id="pl-tee-' + idx + '" class="form-input" onchange="calcPlayerFieldHcp(' + idx + ')"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>' +
-        '<div class="form-group"><label>' + t('exact_hcp') + '</label><input type="text" inputmode="decimal" id="pl-hcp-' + idx + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + idx + ')"></div>' +
+            '<div class="form-group"><label class="setup-hcp-label"><span>' + t('exact_hcp') + '</span><button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh hidden" onclick="refreshSetupPlayerHandicap(' + idx + ')" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i></button></label><input type="text" inputmode="decimal" id="pl-hcp-' + idx + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + idx + ')"></div>' +
         '<div class="form-group"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + idx + '" class="form-input" readonly placeholder="—"></div>';
 
     return '<div class="setup-player-card spc spc-row open" data-pidx="' + idx + '">' +
@@ -342,6 +342,125 @@ function markSetupPlayerMeta(idx) {
 
     ['bk', 'bl', 'wh', 'rd'].forEach(function(x) { card.classList.remove('spc-tee-' + x); });
     card.classList.add('spc-tee-' + tee);
+    syncSetupHcpRefreshButton(idx);
+}
+
+var setupHcpRefreshRunning = {};
+function syncSetupHcpRefreshButton(idx) {
+    var button = document.getElementById('pl-hcp-refresh-' + idx);
+    if (!button) return;
+    var uidEl = document.getElementById('pl-uid-' + idx);
+    var isSelf = !!(typeof currentUser !== 'undefined' && currentUser && uidEl && uidEl.value && String(uidEl.value) === String(currentUser.uid));
+    button.classList.toggle('hidden', !isSelf);
+    button.disabled = !!setupHcpRefreshRunning[idx];
+    button.setAttribute('aria-hidden', isSelf ? 'false' : 'true');
+    button.classList.toggle('is-loading', !!setupHcpRefreshRunning[idx]);
+}
+
+function setupNormalizeHcpName(value) {
+    return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function setupRusgolfNameMatches(query, remote) {
+    var localTokens = setupNormalizeHcpName(query).split(' ').filter(Boolean);
+    var remoteTokens = setupNormalizeHcpName(remote && (remote.fio || [remote.lastName, remote.firstName, remote.middleName].filter(Boolean).join(' '))).split(' ').filter(Boolean);
+    if (localTokens.length < 2 || remoteTokens.length < 2) return false;
+    return localTokens.every(function (token) { return remoteTokens.indexOf(token) !== -1; });
+}
+
+function refreshSetupPlayerHandicap(idx) {
+    idx = parseInt(idx, 10);
+    var uidEl = document.getElementById('pl-uid-' + idx);
+    var nameEl = document.getElementById('pl-name-' + idx);
+    var genderEl = document.getElementById('pl-gender-' + idx);
+    var hcpEl = document.getElementById('pl-hcp-' + idx);
+    var teeEl = document.getElementById('pl-tee-' + idx);
+    var button = document.getElementById('pl-hcp-refresh-' + idx);
+    var uid = typeof currentUser !== 'undefined' && currentUser ? String(currentUser.uid || '') : '';
+    if (!uid || !uidEl || String(uidEl.value || '') !== uid) {
+        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Select yourself from the player suggestions first.' : 'Сначала выберите себя в подсказках списка игроков.', 'warn');
+        return;
+    }
+    if (setupHcpRefreshRunning[idx]) return;
+    if (!window.PestovoRusgolf || typeof window.PestovoRusgolf.fetchViaProxy !== 'function') {
+        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Rusgolf sync is unavailable on this page.' : 'Синхронизация с RUSGOLF на этой странице недоступна.', 'error');
+        return;
+    }
+
+    var profileName = (typeof currentUserData !== 'undefined' && currentUserData)
+        ? [currentUserData.lastName, currentUserData.firstName, currentUserData.middleName].filter(Boolean).join(' ')
+        : '';
+    var query = (nameEl && nameEl.value || profileName || '').trim();
+    if (query.split(/\s+/).filter(Boolean).length < 2) {
+        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Enter your first and last name.' : 'Укажите имя и фамилию.', 'warn');
+        return;
+    }
+
+    setupHcpRefreshRunning[idx] = true;
+    syncSetupHcpRefreshButton(idx);
+    if (button) button.setAttribute('title', currentLang === 'en' ? 'Searching RUSGOLF…' : 'Поиск в RUSGOLF…');
+    window.PestovoRusgolf.fetchViaProxy(query).then(function (result) {
+        var rows = result && Array.isArray(result.rows) ? result.rows : [];
+        var existingNumber = typeof currentUserData !== 'undefined' && currentUserData
+            ? String(currentUserData.rusgolfNumber || '').replace(/\s+/g, '').toUpperCase() : '';
+        var byNumber = existingNumber ? rows.filter(function (row) {
+            return row && String(row.number || '').replace(/\s+/g, '').toUpperCase() === existingNumber && row.hcp != null;
+        }) : [];
+        var expectedGender = genderEl && genderEl.value ? genderEl.value : '';
+        var candidates = byNumber.length ? byNumber : rows.filter(function (row) {
+            if (!row || row.hcp == null || !setupRusgolfNameMatches(query, row)) return false;
+            return !expectedGender || !row.gender || row.gender === expectedGender;
+        });
+        if (candidates.length !== 1) {
+            var message = candidates.length > 1
+                ? (currentLang === 'en' ? 'Several matching RUSGOLF profiles were found. Ask the club administrator to verify your record.' : 'Найдено несколько совпадений RUSGOLF. Попросите администратора проверить вашу запись.')
+                : (currentLang === 'en' ? 'No exact RUSGOLF match was found. Check your name and try again.' : 'Точное совпадение в RUSGOLF не найдено. Проверьте ФИО и попробуйте ещё раз.');
+            if (typeof toast === 'function') toast(message, 'warn');
+            return null;
+        }
+
+        var official = candidates[0], hcp = Number(official.hcp);
+        if (!isFinite(hcp)) throw new Error(currentLang === 'en' ? 'The RUSGOLF handicap is invalid.' : 'В RUSGOLF указан некорректный гандикап.');
+        if (hcpEl) hcpEl.value = fmtExactHcp(hcp);
+        if (typeof calcPlayerFieldHcp === 'function') calcPlayerFieldHcp(idx);
+        if (typeof markSetupPlayerMeta === 'function') markSetupPlayerMeta(idx);
+
+        if (typeof currentUserData !== 'undefined' && currentUserData && String(currentUserData.uid || uid) === uid) {
+            currentUserData.handicap = hcp;
+            currentUserData.hcpSource = 'rusgolf';
+            currentUserData.hcpUpdatedAt = Date.now();
+            if (official.number) currentUserData.rusgolfNumber = official.number;
+            if (official.hcpDate) currentUserData.rusgolfHcpDate = official.hcpDate;
+        }
+
+        if (typeof db === 'undefined' || !db) return { hcp: hcp, saved: false };
+        var stamp = Date.now();
+        var fields = { handicap: hcp, hcpSource: 'rusgolf', hcpUpdatedAt: stamp };
+        if (official.number) fields.rusgolfNumber = official.number;
+        if (official.hcpDate) fields.rusgolfHcpDate = official.hcpDate;
+        return db.ref('users/' + uid).update(fields).then(function () {
+            // Публичный профиль — best effort: старые записи без usersPublic
+            // не должны блокировать обновление HCP в аккаунте/текущей форме.
+            return db.ref('usersPublic/' + uid).once('value').then(function (snapshot) {
+                if (!snapshot || !snapshot.exists || !snapshot.exists()) return null;
+                var publicFields = { handicap: hcp, hcpSource: 'rusgolf', hcpUpdatedAt: stamp };
+                if (official.number) publicFields.rusgolfNumber = official.number;
+                if (official.hcpDate) publicFields.rusgolfHcpDate = official.hcpDate;
+                return db.ref('usersPublic/' + uid).update(publicFields).catch(function (error) { console.warn('[setup hcp public sync]', error); });
+            }).catch(function (error) { console.warn('[setup hcp public sync]', error); });
+        }).then(function () { return { hcp: hcp, saved: true }; });
+    }).then(function (result) {
+        if (result && typeof toast === 'function') {
+            toast((currentLang === 'en' ? '✅ RUSGOLF handicap updated: ' : '✅ Гандикап из RUSGOLF обновлён: ') + fmtExactHcp(result.hcp), 'success');
+        }
+    }).catch(function (error) {
+        console.warn('[setup hcp rusgolf]', error);
+        if (typeof toast === 'function') toast((currentLang === 'en' ? 'Could not sync RUSGOLF: ' : 'Не удалось синхронизировать RUSGOLF: ') + (error && error.message || error), 'error');
+    }).then(function () {
+        setupHcpRefreshRunning[idx] = false;
+        syncSetupHcpRefreshButton(idx);
+        if (button) button.setAttribute('title', t('refresh_hcp_from_rusgolf'));
+    });
 }
 
 // Одиночный делегированный обработчик: ввод имени/ТИ обновляет аватар и цвет.
@@ -393,6 +512,7 @@ function applyUnifiedUserDefaults() {
     var hEl = g('pl-hcp-' + first);
     if (hEl && !hEl.value && currentUserData.handicap != null) hEl.value = fmtExactHcp(currentUserData.handicap);
     if (typeof calcPlayerFieldHcp === 'function') calcPlayerFieldHcp(first);
+    if (typeof markSetupPlayerMeta === 'function') markSetupPlayerMeta(first);
 }
 
 // ──────────────── СЧЁТЧИК / РЕЖИМ / КНОПКИ ────────────────

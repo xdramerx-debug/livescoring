@@ -1108,68 +1108,68 @@ function doFinishSolo() {
     setSoloForceFinishBtnVisible(false);
 
     var finalizeSolo = function() {
-        // Фиксируем, кто завершил раунд: в карточках раунда показываем имя завершившего
+        // Фиксируем, кто завершил раунд: в карточках раунда показываем имя завершившего.
         var finisherUid = getPlayerId();
         var finisherName = (finisherUid && soloRound && soloRound.players && soloRound.players[finisherUid])
             ? (soloRound.players[finisherUid].name || '') : '';
         var finishUpdate = { status: 'completed', completedAt: Date.now(), autoCompleted: false };
         if (finisherUid) finishUpdate.completedBy = finisherUid;
         if (finisherName) finishUpdate.completedByName = finisherName;
-        db.ref('rounds/' + soloRid).update(finishUpdate).then(function() {
-            // Перечитываем раунд после записи и пишем историю ровно один раз
-            // (транзакция-клейм): двойной клик/второе устройство/маркер не
-            // должны оставлять в профиле дубль раунда.
+
+        // Дожидаемся записи статуса и повторного чтения из Firebase до перехода
+        // на табло: иначе ?round= мог загрузиться раньше, чем появится результат.
+        return db.ref('rounds/' + soloRid).update(finishUpdate).then(function() {
             return db.ref('rounds/' + soloRid).once('value');
         }).then(function(sn) {
             var fresh = sn && sn.val();
-            if (!fresh) return;
+            if (!fresh || fresh.status !== 'completed') throw new Error('Round completion was not saved');
 
-            // Турнирный соло-раунд: возможное автозавершение турнира (все раунды сыграны).
+            // Турнирный соло-раунд: не задерживаем переход из-за фонового
+            // обновления статуса турнира — сам результат уже надёжно сохранён.
             if (fresh.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
-                try { pestovoAutoFinishTournament(fresh.tournamentId); } catch (_) { console.warn("[silent]", _); }
+                try {
+                    var autoFinish = pestovoAutoFinishTournament(fresh.tournamentId);
+                    if (autoFinish && typeof autoFinish.catch === 'function') autoFinish.catch(function(err) { console.warn('[silent]', err); });
+                } catch (e) { console.warn('[silent]', e); }
             }
 
-            if (fresh.status !== 'completed') return;
+            // История — best effort: не блокируем показ карточки после того,
+            // как завершённый раунд уже подтверждён чтением из базы.
+            if (typeof pestovoClaimRoundHistory !== 'function') return fresh;
             return pestovoClaimRoundHistory(soloRid).then(function(claimed) {
                 if (claimed && typeof saveHistory === 'function') {
-                    try { saveHistory(soloRid, fresh); } catch (e) { console.warn("[silent]", e); }
+                    try { saveHistory(soloRid, fresh); } catch (e) { console.warn('[silent]', e); }
                 }
+                return fresh;
+            }).catch(function(err) {
+                console.warn('[silent]', err);
+                return fresh;
             });
+        });
+    };
+
+    var finishAndShowRound = function() {
+        finalizeSolo().then(function() {
+            toast(t('msg_round_finished'));
+            window.location.href = 'leaderboard.html?round=' + encodeURIComponent(soloRid) + '&scorecard=1';
         }).catch(function(err) {
-            // Молчаливый отказ скрывал проблему: RULES запрещают прямую запись
-            // статуса раунда тому, кто его не создавал (QR-карточка турнира).
             soloFinishing = false;
             if (typeof toast === 'function') {
                 toast(currentLang === 'en'
-                    ? ('⚠️ Could not finish the round: ' + (err && err.code || err && err.message || err) + '. Scores are saved — contact the referee/committee.')
-                    : ('⚠️ Не удалось завершить раунд: ' + (err && err.code || err && err.message || err) + '. Счёт сохранён — обратитесь к судье/в комитет.'), 'error');
+                    ? ('⚠️ Could not finish the round: ' + (err && (err.code || err.message) || err) + '. Scores are saved — contact the referee/committee.')
+                    : ('⚠️ Не удалось завершить раунд: ' + (err && (err.code || err.message) || err) + '. Счёт сохранён — обратитесь к судье/в комитет.'), 'error');
             }
         });
     };
 
-    // После завершения раунда карточка не предлагается к печати/скачиванию —
-    // переходим сразу к списку раундов.
     if (typeof openFinishConfirmModal === 'function') {
-        openFinishConfirmModal(soloRid, function() {
-            soloFinishing = true;
-            finalizeSolo();
-
-            toast(t('msg_round_finished'));
-            setTimeout(function() {
-                window.location.href = 'leaderboard.html';
-            }, 800);
-        }, function() {
-            // Модалка закрыта без подтверждения — снимаем блокировку повторного завершения
+        openFinishConfirmModal(soloRid, finishAndShowRound, function() {
+            // Модалка закрыта без подтверждения — снимаем блокировку повторного завершения.
             soloFinishing = false;
         });
     } else {
         if (!confirm(t('msg_finish_confirm'))) { soloFinishing = false; return; }
-        finalizeSolo();
-
-        toast(t('msg_round_finished'));
-        setTimeout(function() {
-            window.location.href = 'leaderboard.html';
-        }, 800);
+        finishAndShowRound();
     }
 }
 

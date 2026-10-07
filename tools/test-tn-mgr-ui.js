@@ -305,22 +305,45 @@ function run() {
             return flush().then(function () {
                 check('открылась форма «Новый турнир»', rootHtml().indexOf('Новый турнир') !== -1);
                 check('есть поле названия*', !!$('input[data-field="name"]'));
-                var dateInput = $('input[data-field="startDate"]');
-                var timeInput = $('input[data-field="startTime"]');
-                check('есть поля даты* и времени*', !!dateInput && !!timeInput);
-                check('дата заполнена сегодняшней', !!dateInput.value && dateInput.value.length === 10, dateInput.value);
-                type($('input[data-field="name"]'), 'Кубок клуба 2026');
-                type(dateInput, '2026-05-16');
-                type(timeInput, '09:30');
-                var chip = $('[data-tnm-act="toggle-format"]');
-                check('справочник форматов отрисован чипсами', $$('[data-tnm-act="toggle-format"]').length >= 10,
-                    $$('[data-tnm-act="toggle-format"]').length + ' форматов');
-                var chipFormat = chip.getAttribute('data-format');
-                click(chip);
+                check('форма создания поддерживает поиск по базе клуба', !!$('[data-tnm-live-edit="form-directory-search"]'));
+                var directorySearch = $('[data-tnm-live-edit="form-directory-search"]');
+                type(directorySearch, 'Smirnov');
                 return flush().then(function () {
-                    check('формат отмечен', $('[data-tnm-act="toggle-format"][data-format="' + chipFormat + '"]').classList.contains('active'));
-                    click($('[data-tnm-act="save-tournament"]'));
-                    return wait(60);
+                    var firstDirectoryPlayer = $('[data-tnm-edit="form-directory-player-select"][data-uid="d1"]');
+                    check('поиск в форме находит игрока по фамилии RU/EN', !!firstDirectoryPlayer);
+                    if (firstDirectoryPlayer) { firstDirectoryPlayer.checked = true; firstDirectoryPlayer.dispatchEvent(new win.Event('change', { bubbles: true })); }
+                    type($('[data-tnm-live-edit="form-directory-search"]'), 'Ivanova');
+                    return flush();
+                }).then(function () {
+                    var secondDirectoryPlayer = $('[data-tnm-edit="form-directory-player-select"][data-uid="d2"]');
+                    check('поиск в форме находит игрока по имени/фамилии на латинице', !!secondDirectoryPlayer);
+                    if (secondDirectoryPlayer) { secondDirectoryPlayer.checked = true; secondDirectoryPlayer.dispatchEvent(new win.Event('change', { bubbles: true })); }
+                    check('можно выбрать несколько участников до добавления', $('#tnm-form-directory-selected-count').textContent === '2', $('#tnm-form-directory-selected-count').textContent);
+                    click($('[data-tnm-act="form-add-selected-directory"]'));
+                    return flush();
+                }).then(function () {
+                    check('несколько выбранных участников добавляются в очередь турнира', rootHtml().indexOf('Смирнов Алексей') !== -1 && rootHtml().indexOf('Иванова Мария') !== -1);
+                    check('для выбранных игроков переносится HI из базы клуба', rootHtml().indexOf('12,4') !== -1 && rootHtml().indexOf('24,2') !== -1, rootHtml().match(/HI [^<]*/g));
+                    click($('[data-tnm-act="clear-pending-players"]'));
+                    return flush();
+                }).then(function () {
+                    var dateInput = $('input[data-field="startDate"]');
+                    var timeInput = $('input[data-field="startTime"]');
+                    check('есть поля даты* и времени*', !!dateInput && !!timeInput);
+                    check('дата заполнена сегодняшней', !!dateInput.value && dateInput.value.length === 10, dateInput.value);
+                    type($('input[data-field="name"]'), 'Кубок клуба 2026');
+                    type(dateInput, '2026-05-16');
+                    type(timeInput, '09:30');
+                    var chip = $('[data-tnm-act="toggle-format"]');
+                    check('справочник форматов отрисован чипсами', $$('[data-tnm-act="toggle-format"]').length >= 10,
+                        $$('[data-tnm-act="toggle-format"]').length + ' форматов');
+                    var chipFormat = chip.getAttribute('data-format');
+                    click(chip);
+                    return flush().then(function () {
+                        check('формат отмечен', $('[data-tnm-act="toggle-format"][data-format="' + chipFormat + '"]').classList.contains('active'));
+                        click($('[data-tnm-act="save-tournament"]'));
+                        return wait(60);
+                    });
                 });
             });
         })
@@ -415,8 +438,8 @@ function run() {
             check('заголовок вкладки — «Гольфисты»', out.indexOf('Гольфисты') !== -1);
             var search = $('#tnm-participant-search');
             check('есть поле поиска игрока', !!search);
-            check('плейсхолдер поиска по ТЗ',
-                search.placeholder.indexOf('на русском или английском языке') !== -1, search.placeholder);
+            check('поиск участника по имени или фамилии',
+                search.placeholder.indexOf('по имени или фамилии') !== -1, search.placeholder);
             check('счётчики участников отрисованы', out.indexOf('Всего участников') !== -1);
             type(search, 'Smirnov');       // латиница → русская фамилия
             return wait(60).then(function () {
@@ -931,8 +954,8 @@ function run() {
             return flush();
         })
         .then(function () {
-            check('открылось окно «Справочник игроков и гандикапы»',
-                rootHtml().indexOf('Справочник игроков и гандикапы') !== -1);
+            check('открылось окно «База данных клуба — участники и гандикапы»',
+                rootHtml().indexOf('База данных клуба') !== -1 && rootHtml().indexOf('гандикап') !== -1);
             check('в окне регистрация гостей и обе синхронизации гандикапов',
                 !!$('[data-tnm-act="directory-register"]') &&
                 !!$('[data-tnm-act="handicaps-to-site"]') &&

@@ -1,4 +1,11 @@
 document.addEventListener('DOMContentLoaded', function() { 
+    var routeParams = new URLSearchParams(window.location.search || '');
+    lbFocusRoundId = routeParams.get('round') || '';
+    if (lbFocusRoundId) {
+        setLbOpen(lbFocusRoundId, true);
+        if (routeParams.get('scorecard') === '1') lbPanelOpen['lb-sc-' + lbFocusRoundId] = true;
+        lbFocusScrollPending = true;
+    }
     initNav(); 
     // Фильтр по датам: «Дата с / Дата по» + быстрые пресеты периода.
     initDateRangeFilter({
@@ -41,18 +48,28 @@ function loadLB() {
         var dateFilter = (typeof getDateRangeFilter === 'function') ? getDateRangeFilter('leaderboard') : null;
         var range = dateFilter ? dateFilter.getRange() : { active: false, from: null, to: null, invalid: false };
 
-        var entries = filterEntriesByDateRange(allEntries, range);
-
-        if (status !== 'all') {
-            entries = entries.filter(function(e) { return e[1].status === status; });
-        }
-
-        if (query) {
-            entries = entries.filter(function(e) {
-                var r = e[1];
-                var players = Object.entries(r.players || {});
-                return players.some(function(pe) { return (playerDisplayName(pe[1], pe[0]) || '').toLowerCase().includes(query); });
-            });
+        var entries;
+        if (lbFocusRoundId) {
+            // Завершив раунд, игрок должен увидеть именно его сохранённую карточку,
+            // а не общий список. Фокусный ID имеет приоритет над старыми фильтрами
+            // по датам, статусу и имени, оставшимися в браузере.
+            var focusEntry = null;
+            for (var fi = 0; fi < allEntries.length; fi++) {
+                if (String(allEntries[fi][0]) === String(lbFocusRoundId)) { focusEntry = allEntries[fi]; break; }
+            }
+            entries = focusEntry ? [focusEntry] : [];
+        } else {
+            entries = filterEntriesByDateRange(allEntries, range);
+            if (status !== 'all') {
+                entries = entries.filter(function(e) { return e[1].status === status; });
+            }
+            if (query) {
+                entries = entries.filter(function(e) {
+                    var r = e[1];
+                    var players = Object.entries(r.players || {});
+                    return players.some(function(pe) { return (playerDisplayName(pe[1], pe[0]) || '').toLowerCase().includes(query); });
+                });
+            }
         }
 
         entries.sort(function(a, b) { 
@@ -79,6 +96,15 @@ function loadLB() {
         displayVariant = (displayVariant === '2' || displayVariant === '3') ? displayVariant : '1';
         try { el.innerHTML = '<div class="live-who-list rounds-layout-' + displayVariant + '" data-display-variant="' + displayVariant + '">' + html + '</div>'; } catch (e) { console.warn("[silent]", e); }
         try { restoreLbPanels(); } catch (e) { console.warn("[silent]", e); }
+        if (lbFocusScrollPending && lbFocusRoundId) {
+            var focusNode = document.querySelector('.lb-row[data-round-id="' + lbFocusRoundId + '"]');
+            if (focusNode) {
+                lbFocusScrollPending = false;
+                setTimeout(function () {
+                    if (focusNode && typeof focusNode.scrollIntoView === 'function') focusNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 80);
+            }
+        }
     });
 }
 
@@ -90,6 +116,8 @@ function loadLB() {
 var lbRoundOpen = {};
 var lbRoundsById = {};
 var lbPanelOpen = {};
+var lbFocusRoundId = '';
+var lbFocusScrollPending = false;
 
 function lbStoreKey(id) { return 'pestovo_lb_open_' + id; }
 

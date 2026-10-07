@@ -28,6 +28,7 @@ var TnMgrSheetUI = (function (root) {
         qrOpen: true,
         showTournamentQr: true,
         addOpen: false,
+        addSearchQuery: '',
         options: {
             groupSize: 4, startInterval: 8, firstTeeTime: '', tee: '', format: '', startMode: 'sequential', startHole: 1,
             markMode: 'group', groupsPerFlight: 3, flights: true
@@ -423,14 +424,16 @@ var TnMgrSheetUI = (function (root) {
         entries(sheetData).forEach(function (entry) { existing[entry.playerId] = true; });
         var candidates = ui().playersOf().filter(function (player) { return !existing[player.id]; });
         var rows = candidates.map(function (player) {
-            return '<label class="tnm-dir-row"><input type="checkbox" data-tnm-sheet-add="' + esc(player.id) + '">' +
+            return '<label class="tnm-dir-row" data-tnm-sheet-candidate="' + esc(player.id) + '"><input type="checkbox" data-tnm-sheet-add="' + esc(player.id) + '">' +
                 '<span>' + esc(core().playerFio(player)) + '</span>' +
                 '<span class="tnm-muted">' + esc(core().fmtHcp(core().effectiveHcp(player))) + '</span></label>';
         }).join('');
         return '<div class="tnm-modal-overlay" data-tnm-act="close-modal">' +
             '<div class="tnm-modal" data-tnm-stop="1">' +
             '<h3>' + esc(bi('Добавить игрока в лист', 'Add player to the sheet')) + '</h3>' +
-            '<div class="tnm-modal-body tnm-dir-list">' + (rows || ui().emptyHtml(bi('Все участники уже в листе', 'All participants are already in the sheet'))) + '</div>' +
+            '<div class="tnm-modal-body"><label class="tnm-field">' + esc(bi('Поиск по имени или фамилии', 'Search by first or last name')) +
+            '<input type="search" autocomplete="off" data-tnm-live-edit="sheet-add-search" data-tnm-focus="sheet-add-search" value="' + esc(state.addSearchQuery) + '" placeholder="' + esc(bi('Русский или английский', 'Russian or English')) + '"></label>' +
+            '<div class="tnm-dir-list" id="tnm-sheet-add-list">' + (rows || ui().emptyHtml(bi('Все участники уже в листе', 'All participants are already in the sheet'))) + '</div></div>' +
             '<div class="tnm-modal-actions">' +
             ui().btn('sheet-add-confirm', esc(bi('Добавить', 'Add')), { variant: 'primary' }) +
             ui().btn('close-modal', esc(bi('Отмена', 'Cancel')), { variant: 'ghost' }) +
@@ -517,6 +520,15 @@ var TnMgrSheetUI = (function (root) {
             }
         });
         host.addEventListener('input', function (event) {
+            var searchInput = event.target.closest('[data-tnm-live-edit="sheet-add-search"]');
+            if (searchInput) {
+                state.addSearchQuery = searchInput.value || '';
+                host.querySelectorAll('[data-tnm-sheet-candidate]').forEach(function (row) {
+                    var player = ui().playerOf(row.getAttribute('data-tnm-sheet-candidate')) || {};
+                    row.hidden = !core().playerMatches(player, state.addSearchQuery);
+                });
+                return;
+            }
             var optionInput = event.target.closest('[data-tnm-live-edit="sheet-option"]');
             if (!optionInput) return;
             var field = optionInput.getAttribute('data-field');
@@ -543,7 +555,7 @@ var TnMgrSheetUI = (function (root) {
         ui().closeModal();
         ui().openModal('sheet-columns', {});
     });
-    ui().on('sheet-add-player', function () { ui().openModal('sheet-add-player', {}); });
+    ui().on('sheet-add-player', function () { state.addSearchQuery = ''; ui().openModal('sheet-add-player', {}); });
     ui().on('sheet-add-confirm', addSelectedPlayers);
     ui().on('column-move', function (button) {
         moveColumn(button.getAttribute('data-key'), button.getAttribute('data-dir'));

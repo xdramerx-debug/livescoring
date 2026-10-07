@@ -136,6 +136,12 @@
     border-radius: var(--tnm-radius); padding: 11px 12px 11px 36px; font-family: var(--fb); font-size: 13.5px;
 }
 .tnm-search-wrap > input:focus { outline: none; border-color: var(--gold); }
+.tnm-participant-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.tnm-participant-filter { position: relative; display: block; flex: 1 1 260px; min-width: 220px; }
+.tnm-participant-filter > i { position: absolute; left: 12px; top: 12px; color: var(--muted); pointer-events: none; }
+.tnm-participant-filter > input { width: 100%; min-height: 38px; padding: 8px 12px 8px 34px; background: var(--input); border: 1px solid var(--border); border-radius: var(--tnm-radius); color: var(--text); font: 13px var(--fb); }
+.tnm-participant-filter > input:focus { outline: none; border-color: var(--gold); }
+.tnm-rusgolf-status { flex: 1 1 100%; min-width: 0; }
 .tnm-suggestions {
     position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px);
     background: var(--card-h); border: 1px solid var(--border); border-radius: var(--tnm-radius);
@@ -261,6 +267,21 @@
 .tnm-dir-row:hover { background: rgba(255,255,255,.04); }
 .tnm-dir-row input { width: auto; }
 .tnm-dir-row-added { opacity: .55; }
+.tnm-form-directory { margin: 14px 0; padding: 13px; border: 1px solid var(--border); border-radius: var(--tnm-radius); background: rgba(255,255,255,.025); }
+.tnm-form-directory-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; }
+.tnm-form-directory-head > b { color: var(--white); font-size: 13px; }
+.tnm-form-directory-head > b i { color: var(--gold); margin-right: 5px; }
+.tnm-form-directory-search { position: relative; display: block; margin-bottom: 8px; }
+.tnm-form-directory-search > i { position: absolute; left: 12px; top: 12px; color: var(--muted); pointer-events: none; }
+.tnm-form-directory-search > input { width: 100%; min-height: 42px; padding: 9px 12px 9px 36px; border: 1px solid var(--border); border-radius: var(--tnm-radius); background: var(--input); color: var(--text); font: 13px var(--fb); }
+.tnm-form-directory-search > input:focus { outline: none; border-color: var(--gold); }
+.tnm-form-directory-list { max-height: 300px; overflow: auto; border: 1px solid var(--border); border-radius: 9px; }
+.tnm-form-dir-row { min-height: 44px; }
+.tnm-form-dir-row > span { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tnm-form-dir-row.is-added { opacity: .55; cursor: default; }
+.tnm-form-directory-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
+.tnm-form-directory-actions > span { margin-right: auto; }
+.tnm-form-directory-actions .tnm-btn { min-height: 40px; }
 .tnm-issues { font-size: 12px; color: var(--yellow); padding-left: 18px; }
 .tnm-warn { color: var(--yellow); font-size: 12.5px; }
 
@@ -271,6 +292,9 @@
     .tnm-card-title h2 { font-size: 19px; }
     .tnm-grid-2, .tnm-grid-3 { grid-template-columns: 1fr; }
     .tnm-table { font-size: 12.5px; }
+    .tnm-participant-tools { align-items: stretch; }
+    .tnm-participant-filter { flex: 1 1 100%; min-width: 0; }
+    .tnm-participant-tools > .tnm-btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
     .tnm-score-table th, .tnm-score-table td { padding: 3px 2px; }
     .tnm-hole-col { min-width: 34px; width: 34px; }
     .tnm-score-input { width: 32px !important; min-width: 32px !important; }

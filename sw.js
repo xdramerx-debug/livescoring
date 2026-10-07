@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.100.0-eabd75b5';
+const CACHE_NAME = 'pestovo-v1.101.0-2c798f74';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -40,35 +40,39 @@ const STATIC_ASSETS = [
 
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
     'css/design-presets.css?v=77ff3916',
-    'css/style.css?v=c73543e8',
+    'css/style.css?v=4f9da926',
     'css/tn-studio.css?v=2e8b755f',
-    'css/tournament-redesign.css?v=addf1f43',
-    'dist/livescoring-modules.js?v=2b57ed5a',
+    'css/tournament-redesign.css?v=5f6ffacc',
+    'dist/livescoring-modules.js?v=bdb3fe24',
     'js/app.js?v=59c52eae',
     'js/auth.js?v=3a96f309',
     'js/design-preview.js?v=adbbac01',
     'js/design-system.js?v=78b8d092',
     'js/firebase-config.js?v=57564a0d',
     'js/handicap.js?v=ad1e9c00',
-    'js/leaderboard.js?v=da62402e',
-    'js/live.js?v=bbe875bb',
+    'js/leaderboard.js?v=a6c53243',
+    'js/live.js?v=16871135',
     'js/marker.js?v=5408d53e',
     'js/players.js?v=7014460d',
-    'js/protocol.js?v=adbd9834',
-    'js/pwa.js?v=a2e4d9ef',
-    'js/qr-start.js?v=0ac378b8',
-    'js/round-setup.js?v=8bda9181',
+    'js/protocol.js?v=6bc9d5ed',
+    'js/pwa.js?v=3397d21c',
+    'js/qr-code.js?v=2a26e819',
+    'js/qr-start.js?v=32ccb088',
+    'js/round-setup.js?v=f2e2cadd',
+    'js/rusgolf-client.js?v=d6ec7c29',
     'js/score-write.js?v=7117f8ef',
     'js/scorer.js?v=8aa8b9ce',
-    'js/solo.js?v=b1fff443',
+    'js/solo.js?v=8ce5271f',
     'js/stats.js?v=410c615a',
     'js/tn-scorecard.js?v=b34d029e',
     'js/tn-studio-core.js?v=59388560',
     'js/tn-studio-public.js?v=86e38d13',
     'js/tournament-core.js?v=a19eaf5c',
-    'js/tournament-public.js?v=587eb6cf',
-    'js/tournaments.js?v=694f55a0',
-    'js/utils.js?v=6711f11d',
+    'js/tournament-public.js?v=88934412',
+    'js/tournaments.js?v=9fba5ea8',
+    'js/utils.js?v=dfd58402',
+    'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
+    'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 
     // Прочее
     'manifest.json',
@@ -176,7 +180,7 @@ self.addEventListener('push', function(event) {
     try { data = event.data ? event.data.json() : {}; } catch (e) {
         try { data = { body: event.data ? event.data.text() : '' }; } catch (e2) { data = {}; }
     }
-    var title = data.title || 'Pestovo Live Scoring';
+    var title = data.title || 'Гольф-клуб Пестово';
     var options = {
         body: data.body || '',
         icon: 'img/icon-192.png',

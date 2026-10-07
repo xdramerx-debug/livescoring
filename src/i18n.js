@@ -10,7 +10,7 @@ export var currentLang = (typeof localStorage !== 'undefined' && localStorage.ge
 
 export var I18N = {
     ru: {
-        brand_name: 'Пестово',
+        brand_name: 'Гольф-клуб Пестово',
         nav_home: 'Главная', nav_round: 'Раунд', nav_leaderboard: 'Все раунды',
         bn_home: 'Главная', bn_round: 'Раунд', bn_rounds: 'Табло', bn_menu: 'Меню',
         nav_players: 'Игроки', nav_tournaments: 'Турниры', nav_stats: 'Статистика',
@@ -128,7 +128,8 @@ export var I18N = {
         placeholder_tn_name: 'Чемпионат Пестово',
         placeholder_hcp_calc: '+2.4 или 12.4',
         men: 'Мужчина', women: 'Девушка',
-        exact_hcp: 'Точный гандикап', field_hcp: 'Полевой гандикап',
+        exact_hcp: 'Точный гандикап',
+        refresh_hcp_from_rusgolf: 'Обновить гандикап из RUSGOLF', field_hcp: 'Полевой гандикап',
         field_auto: 'Полевой (авто)',
         start_round_btn: 'Начать раунд', back_btn: 'Назад',
         timings_title: 'Тайминги',
@@ -342,6 +343,7 @@ export var I18N = {
         phone_label: 'Телефон',
         default_tee: 'Предпочитаемый ТИ по умолчанию',
         msg_profile_saved: '✅ Профиль обновлён!',
+        filters_search_toggle: 'Поиск и фильтры',
         search_label: 'Поиск игрока',
         search_placeholder: 'Поиск по имени...',
         page_title_handicaps: 'Полевые гандикапы',
@@ -528,7 +530,7 @@ export var I18N = {
         tee_label: 'ТИ'
     },
     en: {
-        brand_name: 'Pestovo',
+        brand_name: 'Гольф-клуб Пестово',
         nav_home: 'Home', nav_round: 'Round', nav_leaderboard: 'All Rounds',
         bn_home: 'Home', bn_round: 'Round', bn_rounds: 'Board', bn_menu: 'Menu',
         nav_players: 'Players', nav_tournaments: 'Tournaments', nav_stats: 'Statistics',
@@ -646,7 +648,8 @@ export var I18N = {
         placeholder_tn_name: 'Pestovo Championship',
         placeholder_hcp_calc: '+2.4 or 12.4',
         men: 'Male', women: 'Female',
-        exact_hcp: 'Exact Handicap', field_hcp: 'Course Handicap',
+        exact_hcp: 'Exact Handicap',
+        refresh_hcp_from_rusgolf: 'Refresh handicap from RUSGOLF', field_hcp: 'Course Handicap',
         field_auto: 'Course HCP (auto)',
         start_round_btn: 'Start Round', back_btn: 'Back',
         timings_title: 'Hole Timings',
@@ -858,6 +861,7 @@ export var I18N = {
         phone_label: 'Phone Number',
         default_tee: 'Default Preferred Tee',
         msg_profile_saved: '✅ Profile updated!',
+        filters_search_toggle: 'Search & filters',
         search_label: 'Search Player',
         search_placeholder: 'Search by name...',
         page_title_handicaps: 'Course Handicaps',
@@ -1125,7 +1129,11 @@ export function applyTranslations() {
     document.querySelectorAll('[data-i18n]').forEach(function(el) {
         var key = el.getAttribute('data-i18n');
         if (key && I18N[currentLang] && I18N[currentLang][key] !== undefined) {
-            el.innerHTML = I18N[currentLang][key];
+            if (el.tagName === 'TITLE' && key !== 'brand_name') {
+                el.textContent = I18N[currentLang][key] + ' — ' + t('brand_name');
+            } else {
+                el.innerHTML = I18N[currentLang][key];
+            }
         }
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {

@@ -1,17 +1,8 @@
-function isIOS() {
-    return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-}
-
-function isStandalone() {
-    return (window.navigator && window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-}
-
 if('serviceWorker' in navigator){
     window.addEventListener('load',function(){
         navigator.serviceWorker.register('sw.js').then(function(reg){
             console.log('[PWA] SW registered');
             initBackgroundAlertListener();
-            checkPWAInstallPrompt();
             // Периодически проверяем наличие новой версии (для долго открытых вкладок)
             setInterval(function(){ reg.update().catch(function(){}); }, 30*60*1000);
         }).catch(function(err){console.error('[PWA] SW failed',err);});
@@ -28,10 +19,6 @@ if('serviceWorker' in navigator){
         if (pwaRefreshing) return;
         if (!pwaHadController) { pwaHadController = true; return; } // первая установка SW — не новая версия
         showUpdateBanner();
-    });
-} else {
-    window.addEventListener('load', function() {
-        checkPWAInstallPrompt();
     });
 }
 
@@ -260,73 +247,8 @@ function updateOfflineQueueBadge() {
 
 window.addEventListener('load', function() { updateOfflineQueueBadge(); });
 
-var deferredPrompt;
-window.addEventListener('beforeinstallprompt',function(e){
-    e.preventDefault();
-    deferredPrompt=e;
-    if (!isIOS()) {
-        setTimeout(function(){if(deferredPrompt)showInstallBanner();},3000);
-    }
-});
-
-function checkPWAInstallPrompt() {
-    if (localStorage.getItem('pwa_install_dismissed')) return;
-    if (isStandalone()) return;
-
-    if (isIOS()) {
-        setTimeout(showIOSInstallBanner, 2000);
-    }
-}
-
-function showInstallBanner(){
-    try { if(localStorage.getItem('pwa_install_dismissed'))return; } catch (e) { console.warn("[silent]", e); }
-    var banner=document.createElement('div');
-    banner.id='install-banner';banner.className='install-banner';
-    var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-    var titleStr = langIsEn ? '📱 Install Web App' : '📱 Установить приложение';
-    var subStr = langIsEn ? 'Works offline' : 'Работает оффлайн';
-    var laterStr = langIsEn ? 'Later' : 'Позже';
-    var installStr = langIsEn ? 'Install' : 'Установить';
-    banner.innerHTML='<div class="install-content"><div><strong>' + titleStr + '</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">' + subStr + '</div></div><div style="display:flex;gap:8px;"><button class="btn btn-og btn-sm" onclick="dismissInstall()">' + laterStr + '</button><button class="btn btn-g btn-sm" onclick="installPWA()">' + installStr + '</button></div></div>';
-    try { if(document.body) document.body.appendChild(banner); } catch(e){ return; }
-    setTimeout(function(){try{banner.classList.add('show');}catch (e) { console.warn("[silent]", e); }},100);
-}
-
-function showIOSInstallBanner() {
-    try { if (localStorage.getItem('pwa_install_dismissed')) return; } catch (e) { console.warn("[silent]", e); }
-    try { if (document.getElementById('ios-install-banner')) return; } catch (e) { console.warn("[silent]", e); }
-
-    var banner = document.createElement('div');
-    banner.id = 'ios-install-banner';
-    banner.className = 'ios-install-banner';
-
-    var headerStr = currentLang === 'en' ? '📱 Add to Home Screen (iPhone)' : '📱 Установить на экран «Домой» (iPhone)';
-    var subStr = currentLang === 'en' ? 'Required for Push notifications on iOS' : 'Необходимо для работы Push-уведомлений на iOS';
-    var step1Str = currentLang === 'en' ? 'Tap <strong>"Share"</strong> button <i class="fas fa-arrow-up-from-bracket" style="color:var(--gold);"></i> in Safari' : 'Нажмите кнопку <strong>«Поделиться»</strong> <i class="fas fa-arrow-up-from-bracket" style="color:var(--gold);"></i> в Safari';
-    var step2Str = currentLang === 'en' ? 'Select <strong>"Add to Home Screen"</strong> <i class="far fa-plus-square" style="color:var(--gold);"></i>' : 'Выберите <strong>«На экран "Домой"»</strong> <i class="far fa-plus-square" style="color:var(--gold);"></i>';
-    var step3Str = currentLang === 'en' ? 'Tap <strong>"Add"</strong> and launch icon from Home Screen' : 'Нажмите <strong>«Добавить»</strong> и запустите иконку с экрана';
-
-    banner.innerHTML =
-        '<div class="ios-install-header">' +
-        '<img src="img/logo.png" alt="Pestovo" class="ios-install-logo">' +
-        '<div><strong>' + headerStr + '</strong><div style="font-size:12px;color:var(--muted);margin-top:2px;">' + subStr + '</div></div>' +
-        '<button class="ios-install-close" onclick="dismissIOSInstall()">&times;</button>' +
-        '</div>' +
-        '<div class="ios-install-steps">' +
-        '<div class="ios-step"><span class="ios-num">1</span> ' + step1Str + '</div>' +
-        '<div class="ios-step"><span class="ios-num">2</span> ' + step2Str + '</div>' +
-        '<div class="ios-step"><span class="ios-num">3</span> ' + step3Str + '</div>' +
-        '</div>';
-
-    try { if(document.body) document.body.appendChild(banner); } catch(e){ return; }
-    setTimeout(function() { try{ banner.classList.add('show'); }catch (e) { console.warn("[silent]", e); } }, 100);
-}
-
-function installPWA(){if(!deferredPrompt)return;try{deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;try{var b=document.getElementById('install-banner');if(b)b.remove();}catch (e) { console.warn("[silent]", e); }});}catch (e) { console.warn("[silent]", e); }}
-function dismissInstall(){try{localStorage.setItem('pwa_install_dismissed','1');}catch (e) { console.warn("[silent]", e); }try{var b=document.getElementById('install-banner');if(b)b.remove();}catch (e) { console.warn("[silent]", e); }}
-function dismissIOSInstall(){try{localStorage.setItem('pwa_install_dismissed','1');}catch (e) { console.warn("[silent]", e); }try{var b=document.getElementById('ios-install-banner');if(b)b.remove();}catch (e) { console.warn("[silent]", e); }}
-window.installPWA=installPWA;window.dismissInstall=dismissInstall;window.dismissIOSInstall=dismissIOSInstall;
 window.addEventListener('load', function() { if(navigator.onLine) setTimeout(syncOfflineScores, 2000); });
+
 setInterval(function(){try{ if(navigator.onLine && typeof db !== 'undefined') syncOfflineScores(); }catch (e) { console.warn("[silent]", e); }},60000);
 
 // ==========================================
@@ -334,7 +256,7 @@ setInterval(function(){try{ if(navigator.onLine && typeof db !== 'undefined') sy
 // ==========================================
 function requestNotificationPermission(callback) {
     if (!('Notification' in window)) {
-        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Notifications supported when added to Home Screen' : 'Уведомления поддерживаются при добавлении приложения на экран «Домой»', 'warn');
+        if (typeof toast === 'function') toast(currentLang === 'en' ? 'This browser does not support notifications.' : 'Этот браузер не поддерживает уведомления.', 'warn');
         if (typeof callback === 'function') callback(false);
         return;
     }
@@ -395,6 +317,44 @@ var pestovoNotifQueue = [];
 var pestovoNotifLastShown = 0;
 var pestovoNotifLastKey = '';
 var pestovoNotifTimer = null;
+var pestovoGlobalNotificationsEnabled = true;
+var pestovoGlobalNotificationsBound = false;
+var pestovoGlobalNotificationsLoaded = false;
+function pestovoAreGlobalNotificationsEnabled() { return pestovoGlobalNotificationsEnabled !== false; }
+function pestovoGlobalNotificationsSettingReady() { return pestovoGlobalNotificationsLoaded; }
+function pestovoCheckGlobalNotificationsEnabled() {
+    if (pestovoGlobalNotificationsLoaded) return Promise.resolve(pestovoAreGlobalNotificationsEnabled());
+    if (typeof db === 'undefined' || !db) {
+        pestovoGlobalNotificationsLoaded = true;
+        return Promise.resolve(true);
+    }
+    return db.ref('settings/notifications_enabled').once('value').then(function(snapshot) {
+        pestovoGlobalNotificationsEnabled = !snapshot || snapshot.val() !== false;
+        pestovoGlobalNotificationsLoaded = true;
+        return pestovoAreGlobalNotificationsEnabled();
+    }).catch(function(error) {
+        console.info('[PWA] notification setting check failed; using enabled default:', error && error.code || error);
+        pestovoGlobalNotificationsLoaded = true;
+        return true;
+    });
+}
+function pestovoBindGlobalNotificationsSetting() {
+    if (typeof db === 'undefined' || !db || pestovoGlobalNotificationsBound) return;
+    pestovoGlobalNotificationsBound = true;
+    db.ref('settings/notifications_enabled').on('value', function(snapshot) {
+        pestovoGlobalNotificationsEnabled = !snapshot || snapshot.val() !== false;
+        pestovoGlobalNotificationsLoaded = true;
+        if (!pestovoGlobalNotificationsEnabled) {
+            pestovoNotifQueue.length = 0;
+            if (pestovoNotifTimer) clearTimeout(pestovoNotifTimer);
+            pestovoNotifTimer = null;
+        }
+    }, function(error) {
+        console.info('[PWA] notification master setting unavailable:', error && error.code || error);
+        pestovoGlobalNotificationsLoaded = true;
+        pestovoGlobalNotificationsBound = false;
+    });
+}
 var PESTOVO_NOTIF_INTERVAL_MS = 4000;
 var PESTOVO_NOTIF_DEDUP_MS = 15000;
 
@@ -403,6 +363,7 @@ function pestovoNotifKey(title, body) {
 }
 
 function pestovoShowNotifNow(title, body, targetUrl, extra) {
+    if (!pestovoAreGlobalNotificationsEnabled()) return;
     pestovoNotifLastShown = Date.now();
     pestovoNotifLastKey = pestovoNotifKey(title, body);
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -412,7 +373,7 @@ function pestovoShowNotifNow(title, body, targetUrl, extra) {
         icon: 'img/logo.png',
         badge: 'img/logo.png',
         vibrate: [200, 100, 200],
-        tag: (extra && extra.tag) || pestovoNotifKey(title, body).replace(/[^\wа-яА-ЯёЁ \-]/g, '').slice(0, 60) || 'pestovo-push',
+        tag: (extra && extra.tag) || pestovoNotifKey(title, body).replace(/[^\wа-яА-ЯёЁ -]/g, '').slice(0, 60) || 'pestovo-push',
         data: { url: targetUrl || 'admin.html' }
     };
 
@@ -423,11 +384,14 @@ function pestovoShowNotifNow(title, body, targetUrl, extra) {
             navigator.serviceWorker.ready,
             new Promise(function(res) { setTimeout(res, 3000); })
         ]).then(function(reg) {
+            if (!pestovoAreGlobalNotificationsEnabled()) return;
             if (reg && typeof reg.showNotification === 'function') reg.showNotification(title, options);
         }).catch(function() {
+            if (!pestovoAreGlobalNotificationsEnabled()) return;
             try { new Notification(title, options); } catch (e) { console.warn("[silent]", e); }
         });
     } else {
+        if (!pestovoAreGlobalNotificationsEnabled()) return;
         try { new Notification(title, options); } catch (e) { console.warn("[silent]", e); }
     }
 }
@@ -440,6 +404,13 @@ function pestovoNotifFlushTick() {
 }
 
 function showPushNotification(title, body, targetUrl, extra) {
+    if (!pestovoGlobalNotificationsLoaded) {
+        pestovoCheckGlobalNotificationsEnabled().then(function (enabled) {
+            if (enabled) showPushNotification(title, body, targetUrl, extra);
+        });
+        return;
+    }
+    if (!pestovoAreGlobalNotificationsEnabled()) return;
     var key = pestovoNotifKey(title, body);
     // Дедупликация: то же самое только что показывали — пропускаем.
     if (key === pestovoNotifLastKey && Date.now() - pestovoNotifLastShown < PESTOVO_NOTIF_DEDUP_MS) return;
@@ -536,19 +507,25 @@ function initBackgroundBroadcastListener() {
                 if (typeof pestovoBroadcastMatches === 'function' &&
                     !pestovoBroadcastMatches(b, pestovoBroadcastViewerCtx())) return;
                 if (!isFirstRun) {
-                    var title = b.title || (currentLang === 'en' ? '📢 Pestovo Announcement' : '📢 Анонс Пестово');
-                    var body = b.body || '';
-                    var targetUrl = b.link || 'tournaments.html';
+                    var notifyBroadcast = function (globalEnabled) {
+                        if (globalEnabled === false) return;
+                        var title = b.title || (currentLang === 'en' ? '📢 Pestovo Announcement' : '📢 Анонс Пестово');
+                        var body = b.body || '';
+                        var targetUrl = b.link || 'tournaments.html';
 
-                    // Пуш — через троттлер showPushNotification: даже если
-                    // админ шлёт анонсы подряд, страница не «захлёбывается».
-                    if (typeof showPushNotification === 'function') {
-                        showPushNotification(title, body, targetUrl, { tag: 'broadcast-' + id });
-                    }
-                    if (typeof toast === 'function') {
-                        toast('📢 <b>' + title + '</b><br>' + body, 'info');
-                    }
-                    if (typeof vib === 'function') vib([150, 50, 150]);
+                        // Пуш — через троттлер showPushNotification: даже если
+                        // админ шлёт анонсы подряд, страница не «захлёбывается».
+                        if (typeof showPushNotification === 'function') {
+                            showPushNotification(title, body, targetUrl, { tag: 'broadcast-' + id });
+                        }
+                        if (typeof toast === 'function') {
+                            toast('📢 <b>' + title + '</b><br>' + body, 'info');
+                        }
+                        if (typeof vib === 'function') vib([150, 50, 150]);
+                    };
+                    pestovoCheckGlobalNotificationsEnabled().then(notifyBroadcast).catch(function (error) {
+                        console.warn('[global notifications]', error);
+                    });
                 }
             }
         });
@@ -563,6 +540,7 @@ function initBackgroundBroadcastListener() {
 }
 
 window.addEventListener('load', function() {
+    pestovoBindGlobalNotificationsSetting();
     initBackgroundBroadcastListener();
 });
 

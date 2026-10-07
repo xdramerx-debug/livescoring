@@ -1215,7 +1215,7 @@ function renderGroupViewHeaderNotice() {
             (isEn ? 'You finished this round (' + played + ' holes).' : 'Вы завершили этот раунд (' + played + ' лунок).') + '</strong>' +
             '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' +
             (isEn ? 'Your partners are still playing. Scores update in real time.' : 'Ваши партнёры ещё продолжают игру. Результаты обновляются в реальном времени.') + '</div></div>' +
-            '<a href="leaderboard.html" class="btn btn-g btn-sm" style="font-weight:700;"><i class="fas fa-trophy"></i> ' +
+            '<a href="leaderboard.html?round=' + encodeURIComponent(curRid) + '&amp;scorecard=1" class="btn btn-g btn-sm" style="font-weight:700;"><i class="fas fa-trophy"></i> ' +
             (isEn ? 'Leaderboard' : 'Табло раундов') + '</a>' +
             '</div></div>';
     } else {
@@ -2316,19 +2316,25 @@ function listenForCallResponses() {
     db.ref('users/' + myUid + '/notifications').orderByChild('type').equalTo('call_response').on('child_added', function(sn) {
         var n = sn.val();
         if (!n || n.read) return;
+        var markRead = function () {
+            db.ref('users/' + myUid + '/notifications/' + sn.key + '/read').set(true).catch(function(){});
+        };
+        var showResponse = function (globalEnabled) {
+            if (globalEnabled === false) { markRead(); return; }
+            var who = n.responderRole === 'marshal'
+                ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
+                : (currentLang === 'en' ? 'Referee' : 'Судья');
+            var txt = currentLang === 'en'
+                ? '🚗 ' + who + ' is on the way to you!'
+                : '🚗 ' + who + ' едет к вам!';
 
-        var who = n.responderRole === 'marshal'
-            ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
-            : (currentLang === 'en' ? 'Referee' : 'Судья');
-        var txt = currentLang === 'en'
-            ? '🚗 ' + who + ' is on the way to you!'
-            : '🚗 ' + who + ' едет к вам!';
-
-        toast(txt, 'success');
-        if (typeof vib === 'function') vib([80, 40, 80, 40, 80]);
-
-        // Помечаем прочитанным, чтобы не показывать тост повторно
-        db.ref('users/' + myUid + '/notifications/' + sn.key + '/read').set(true).catch(function(){});
+            toast(txt, 'success');
+            if (typeof vib === 'function') vib([80, 40, 80, 40, 80]);
+            markRead();
+        };
+        var setting = typeof pestovoCheckGlobalNotificationsEnabled === 'function'
+            ? pestovoCheckGlobalNotificationsEnabled() : Promise.resolve(true);
+        setting.then(showResponse).catch(function (error) { console.warn('[global notifications]', error); showResponse(true); });
     });
 }
 
@@ -2471,7 +2477,7 @@ function doFinishGroupRound() {
     groupFinishing = true;
 
     var finalizeGroup = function() {
-        // Фиксируем, кто завершил раунд: в карточках раунда показываем имя завершившего
+        // Фиксируем, кто завершил раунд: в карточках раунда показываем имя завершившего.
         var finisherUid = myUid;
         var finisherName = (finisherUid && curRoundData && curRoundData.players && curRoundData.players[finisherUid])
             ? (curRoundData.players[finisherUid].name || '') : '';
@@ -2481,8 +2487,8 @@ function doFinishGroupRound() {
             finishUpdate.completedBy = finisherUid;
         }
         if (finisherName) finishUpdate.completedByName = finisherName;
-        // Раунд закрывается только когда ВСЕ участники сдали карточки:
-        // иначе те, кто ещё не ввёл счёт, видели «режим просмотра».
+
+        // Раунд закрывается только когда ВСЕ участники сдали карточки.
         var finMap = {};
         Object.keys(curRoundData.finishedPlayers || {}).forEach(function(k) { finMap[k] = true; });
         if (finisherUid) finMap[finisherUid] = true;
@@ -2491,12 +2497,11 @@ function doFinishGroupRound() {
             finishUpdate.status = 'completed';
             finishUpdate.completedAt = Date.now();
         } else {
-            // Частичное завершение: группа продолжает играть, кто не сдал —
-            // вводит счёт; в раунде видно, кто уже финишировал.
             finishUpdate.partialFinish = true;
         }
-        db.ref('rounds/' + curRid).update(finishUpdate).then(function() {
-            // Сохраняем историю для финишировавшего игрока сразу
+
+        // Не уходим на общее табло, пока запись не подтвердилась повторным чтением.
+        return db.ref('rounds/' + curRid).update(finishUpdate).then(function() {
             try {
                 var pObj = curRoundData && curRoundData.players && curRoundData.players[finisherUid];
                 if (pObj && typeof saveHistoryEntry === 'function') {
@@ -2504,72 +2509,57 @@ function doFinishGroupRound() {
                     var st = calcRoundStats(pObj.scores || {}, pObj.fieldHcp || 0, pObj.exactHcp || 0, order);
                     saveHistoryEntry(finisherUid, curRid, curRoundData, pObj, st);
                 }
-            } catch (e) { console.warn("[silent]", e); }
-            // Перечитываем раунд ПОСЛЕ записи: статус 'completed' появляется,
-            // только когда карточки сдали ВСЕ участники группы.
+            } catch (e) { console.warn('[silent]', e); }
             return db.ref('rounds/' + curRid).once('value');
         }).then(function(sn) {
             var fresh = sn && sn.val();
-            if (!fresh) return;
-
-            // Если это турнирный раунд и после него сыграны все раунды турнира —
-            // турнир завершается автоматически (открывается экспорт протокола).
-            if (fresh.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
-                try { pestovoAutoFinishTournament(fresh.tournamentId); } catch (_) { console.warn("[silent]", _); }
+            if (!fresh || (finisherUid && fresh.status !== 'completed' && !(fresh.finishedPlayers && fresh.finishedPlayers[finisherUid]))) {
+                throw new Error('Round completion was not saved');
             }
 
-            // ВАЖНО: история пишется один раз на раунд и только когда раунд
-            // действительно завершён. Раньше saveHistory вызывался на КАЖДОМ
-            // частичном завершении (каждый сдавший карточку клиент писал
-            // историю всем участникам) — из-за этого в профилях появлялись
-            // одинаковые дубли раундов. Транзакция-клейм гарантирует запись
-            // ровно один раз, даже если финишируют несколько клиентов сразу.
-            // При частичном завершении (часть группы ещё играет) в историю
-            // не пишем: её запишет последний сдавший, либо авто-завершение
-            // просроченного раунда на следующий день.
-            if (fresh.status !== 'completed') return;
+            if (fresh.tournamentId && typeof pestovoAutoFinishTournament === 'function') {
+                try {
+                    var autoFinish = pestovoAutoFinishTournament(fresh.tournamentId);
+                    if (autoFinish && typeof autoFinish.catch === 'function') autoFinish.catch(function(err) { console.warn('[silent]', err); });
+                } catch (e) { console.warn('[silent]', e); }
+            }
+
+            // Дедупликацию истории выполняем при полном завершении, но ошибка
+            // истории не должна скрывать уже сохранённую счётную карточку.
+            if (fresh.status !== 'completed' || typeof pestovoClaimRoundHistory !== 'function') return fresh;
             return pestovoClaimRoundHistory(curRid).then(function(claimed) {
                 if (claimed && typeof saveHistory === 'function') {
-                    try { saveHistory(curRid, fresh); } catch (e) { console.warn("[silent]", e); }
+                    try { saveHistory(curRid, fresh); } catch (e) { console.warn('[silent]', e); }
                 }
+                return fresh;
+            }).catch(function(err) {
+                console.warn('[silent]', err);
+                return fresh;
             });
+        });
+    };
+
+    var finishAndShowRound = function() {
+        finalizeGroup().then(function() {
+            toast(t('msg_round_finished'));
+            window.location.href = 'leaderboard.html?round=' + encodeURIComponent(curRid) + '&scorecard=1';
         }).catch(function(err) {
-            // Раньше отказ записи (например, RULES: QR-игрок турнирного раунда
-            // не создавал раунд и не может писать finishedPlayers/status)
-            // проглатывался молча: игрок видел тост успеха и уходил, а раунд
-            // оставался активным. Показываем проблему явно.
             groupFinishing = false;
             if (typeof toast === 'function') {
                 toast(currentLang === 'en'
-                    ? ('⚠️ Could not finish the round: ' + (err && err.code || err && err.message || err) + '. Scores are saved — contact the referee/committee.')
-                    : ('⚠️ Не удалось завершить раунд: ' + (err && err.code || err && err.message || err) + '. Счёт сохранён — обратитесь к судье/в комитет.'), 'error');
+                    ? ('⚠️ Could not finish the round: ' + (err && (err.code || err.message) || err) + '. Scores are saved — contact the referee/committee.')
+                    : ('⚠️ Не удалось завершить раунд: ' + (err && (err.code || err.message) || err) + '. Счёт сохранён — обратитесь к судье/в комитет.'), 'error');
             }
         });
     };
 
-    // После завершения раунда карточка не предлагается к печати/скачиванию —
-    // переходим сразу к списку раундов.
     if (typeof openFinishConfirmModal === 'function') {
-        openFinishConfirmModal(curRid, function() {
-            groupFinishing = true;
-            finalizeGroup();
-
-            toast(t('msg_round_finished'));
-            setTimeout(function() {
-                window.location.href = 'leaderboard.html';
-            }, 800);
-        }, function() {
-            // Модалка закрыта без подтверждения — снимаем блокировку повторного завершения
+        openFinishConfirmModal(curRid, finishAndShowRound, function() {
+            // Модалка закрыта без подтверждения — снимаем блокировку повторного завершения.
             groupFinishing = false;
-        }, { playerId: myUid, onGoToHole: function(hole){ try { goPlayHole(hole); } catch (_) { console.warn("[silent]", _); } } });
+        }, { playerId: myUid, onGoToHole: function(hole){ try { goPlayHole(hole); } catch (e) { console.warn('[silent]', e); } } });
     } else {
         if (!confirm(t('msg_finish_confirm'))) { groupFinishing = false; return; }
-
-        finalizeGroup();
-
-        toast(t('msg_round_finished'));
-        setTimeout(function() {
-            window.location.href = 'leaderboard.html';
-        }, 800);
+        finishAndShowRound();
     }
 }

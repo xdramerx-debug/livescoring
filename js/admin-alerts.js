@@ -21,6 +21,56 @@ var knownAlertIds = {};
 // ============================================================
 var admAlertsRenderTimer = null;
 var admAlertsPending = null;
+var admGlobalNotificationsEnabled = true;
+var admGlobalNotificationsBound = false;
+function renderGlobalNotificationsSetting() {
+    var button = document.getElementById('global-notifications-toggle');
+    var status = document.getElementById('global-notifications-status');
+    var isEn = typeof currentLang !== 'undefined' && currentLang === 'en';
+    if (button) {
+        button.disabled = false;
+        button.setAttribute('aria-pressed', admGlobalNotificationsEnabled ? 'true' : 'false');
+        button.className = 'btn ' + (admGlobalNotificationsEnabled ? 'btn-g' : 'btn-danger') + ' btn-sm';
+        button.innerHTML = '<i class="fas ' + (admGlobalNotificationsEnabled ? 'fa-bell' : 'fa-bell-slash') + '"></i> ' +
+            (admGlobalNotificationsEnabled ? (isEn ? 'Notifications on' : 'Уведомления включены') : (isEn ? 'Notifications off' : 'Уведомления выключены'));
+    }
+    if (status) status.textContent = admGlobalNotificationsEnabled
+        ? (isEn ? 'Push alerts, club announcements and referee/marshal notifications are enabled.' : 'Push, клубные анонсы и уведомления о вызовах включены.')
+        : (isEn ? 'Push alerts and club notifications are paused for everyone.' : 'Push и клубные уведомления временно отключены для всех.');
+}
+function loadGlobalNotificationsSetting() {
+    if (typeof db === 'undefined' || !db || admGlobalNotificationsBound) return;
+    admGlobalNotificationsBound = true;
+    var apply = function (snapshot) {
+        var value = snapshot && typeof snapshot.val === 'function' ? snapshot.val() : null;
+        admGlobalNotificationsEnabled = value !== false;
+        renderGlobalNotificationsSetting();
+    };
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-notifications-global', db.ref('settings/notifications_enabled'), apply);
+    } else {
+        db.ref('settings/notifications_enabled').on('value', apply, function () { renderGlobalNotificationsSetting(); });
+    }
+}
+function toggleGlobalNotifications() {
+    if (typeof db === 'undefined' || !db) {
+        toast(currentLang === 'en' ? 'No database connection' : 'Нет соединения с базой', 'error');
+        return;
+    }
+    var next = !admGlobalNotificationsEnabled;
+    var button = document.getElementById('global-notifications-toggle');
+    if (button) button.disabled = true;
+    db.ref('settings/notifications_enabled').set(next).then(function () {
+        admGlobalNotificationsEnabled = next;
+        renderGlobalNotificationsSetting();
+        toast(next
+            ? (currentLang === 'en' ? 'Club notifications enabled' : 'Уведомления клуба включены')
+            : (currentLang === 'en' ? 'Club notifications disabled for everyone' : 'Уведомления клуба отключены для всех'), 'success');
+    }).catch(function (error) {
+        renderGlobalNotificationsSetting();
+        toast('❌ ' + (error && error.message ? error.message : error), 'error');
+    });
+}
 function admAlertsScheduleRender() {
     if (admAlertsRenderTimer) return;
     admAlertsRenderTimer = setTimeout(function() {
@@ -159,21 +209,28 @@ function admAlertsRenderPanel(p) {
         }
 
         if (hasNewAlert) {
-            var first = entries[0] && entries[0][1] ? entries[0][1] : {};
-            var firstWho = first.type === 'marshal'
-                ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
-                : (currentLang === 'en' ? 'Referee' : 'Судья');
-            toast((currentLang === 'en'
-                ? '🚨 ' + firstWho + ' called to hole ' + (first.hole || '—')
-                : '🚨 ' + firstWho + ' вызван на лунку ' + (first.hole || '—')) +
-                (entries.length > 1 ? (currentLang === 'en' ? ' (+' + (entries.length - 1) + ' more)' : ' (+' + (entries.length - 1) + ' ещё)') : ''),
-                'error');
-            try { vib([200, 100, 200]); } catch (eVib) { console.warn("[silent]", eVib); }
+            var notifyNewAlert = function (globalEnabled) {
+                if (globalEnabled === false || admGlobalNotificationsEnabled === false) return;
+                var first = entries[0] && entries[0][1] ? entries[0][1] : {};
+                var firstWho = first.type === 'marshal'
+                    ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
+                    : (currentLang === 'en' ? 'Referee' : 'Судья');
+                toast((currentLang === 'en'
+                    ? '🚨 ' + firstWho + ' called to hole ' + (first.hole || '—')
+                    : '🚨 ' + firstWho + ' вызван на лунку ' + (first.hole || '—')) +
+                    (entries.length > 1 ? (currentLang === 'en' ? ' (+' + (entries.length - 1) + ' more)' : ' (+' + (entries.length - 1) + ' ещё)') : ''),
+                    'error');
+                try { vib([200, 100, 200]); } catch (eVib) { console.warn("[silent]", eVib); }
+            };
+            var notificationSetting = typeof pestovoCheckGlobalNotificationsEnabled === 'function'
+                ? pestovoCheckGlobalNotificationsEnabled() : Promise.resolve(admGlobalNotificationsEnabled !== false);
+            notificationSetting.then(notifyNewAlert).catch(function (error) { console.warn('[global notifications]', error); });
         }
 }
 
 function listenForAlerts() {
     if (typeof db === 'undefined' || !db) return;
+    loadGlobalNotificationsSetting();
     // Одна подписка: bindRealtimeValue не плодит дубли при повторных заходах на вкладку.
     // ВАЖНО: слушаем ветку alerts ЦЕЛИКОМ и фильтруем «активные» на клиенте.
     // Запрос orderByChild('status').equalTo('active') в базе без индекса
@@ -283,16 +340,24 @@ function respondToAlert(alertId, alertType, playerId) {
         read: false
     };
 
-    var updates = {};
-    updates['alerts/' + alertId + '/response'] = responseData;
-    updates['users/' + playerId + '/notifications/' + alertId] = notification;
+    var settingPromise = typeof pestovoCheckGlobalNotificationsEnabled === 'function'
+        ? pestovoCheckGlobalNotificationsEnabled()
+        : Promise.resolve(admGlobalNotificationsEnabled !== false);
+    settingPromise.then(function (globalEnabled) {
+        var notificationsEnabled = globalEnabled !== false && admGlobalNotificationsEnabled !== false;
+        var updates = {};
+        updates['alerts/' + alertId + '/response'] = responseData;
+        if (notificationsEnabled) updates['users/' + playerId + '/notifications/' + alertId] = notification;
 
-    db.ref().update(updates).then(function() {
-        var who = responderRole === 'marshal'
-            ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
-            : (currentLang === 'en' ? 'Referee' : 'Судья');
-        toast((currentLang === 'en' ? '✅ ' + who + ' is on the way! Player notified.' : '✅ ' + who + ' едет! Игрок уведомлён.'), 'success');
-        if (typeof vib === 'function') vib([50, 30, 50]);
+        return db.ref().update(updates).then(function() {
+            var who = responderRole === 'marshal'
+                ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
+                : (currentLang === 'en' ? 'Referee' : 'Судья');
+            toast(notificationsEnabled
+                ? (currentLang === 'en' ? '✅ ' + who + ' is on the way! Player notified.' : '✅ ' + who + ' едет! Игрок уведомлён.')
+                : (currentLang === 'en' ? '✅ ' + who + ' is on the way. Player notifications are globally disabled.' : '✅ ' + who + ' едет. Уведомления игрокам глобально отключены.'), 'success');
+            if (typeof vib === 'function') vib([50, 30, 50]);
+        });
     }).catch(function(err) {
         toast((currentLang === 'en' ? '❌ Response failed: ' : '❌ Ошибка отправки ответа: ') + (err && err.message ? err.message : err), 'error');
     });

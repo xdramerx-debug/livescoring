@@ -361,7 +361,7 @@ function tpRenderModal() {
     html += '<div class="tp-modes">';
     html += '<b>' + tpL('Содержание протокола:', 'Protocol content:') + '</b>';
     html += '<label class="tp-radio"><input type="radio" name="tp-mode" value="awards" checked onchange="tpModeChange()"> ' +
-        tpL('🏆 Только призёры (призовые места) — один лист A4', '🏆 Winners only (awarded places) — single A4 sheet') + '</label>';
+        tpL('🏆 Лидеры зачётов и групп — призовые места 1–3', '🏆 Category and group leaders — podium places 1–3') + '</label>';
     html += '<label class="tp-radio"><input type="radio" name="tp-mode" value="full" onchange="tpModeChange()"> ' +
         tpL('📄 Полный протокол — призёры + итоговые таблицы всех участников', '📄 Full protocol — winners + standings of all players') + '</label>';
     html += '<label class="tp-radio hidden" id="tp-opt-holes"><input type="checkbox" id="tp-with-holes" checked> ' +
@@ -391,7 +391,7 @@ function tpDateTs(tVal) {
 // По умолчанию — «основные награды»: Best Gross и Top-3 Stableford (с HCP)
 function tpDefaultChecked(ty, eligibleCount) {
     if (!eligibleCount) return false;
-    return ty.id === 'gross_m' || ty.id === 'gross_w' || ty.id === 'stbl_m' || ty.id === 'stbl_w';
+    return ty.id === 'gross_m' || ty.id === 'gross_w' || ty.id === 'net_m' || ty.id === 'net_w' || ty.id === 'stbl_m' || ty.id === 'stbl_w';
 }
 
 function tpCheckAll(on) {
@@ -505,39 +505,46 @@ function tpBuildDocHtml() {
 
     var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' +
         E('Pestovo_Protocol_' + String(tVal.name || 'Tournament').replace(/\s+/g, '_')) + '</title><style>' +
-        'body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;margin:0;padding:18px 22px;font-size:11.5px;}' +
-        '.toolbar{position:sticky;top:0;display:flex;gap:10px;align-items:center;background:#f4f1e6;border:1px solid #d8d2ba;border-radius:10px;padding:9px 12px;margin-bottom:14px;}' +
-        '.toolbar button{border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;background:#1a472a;color:#fff;}' +
-        '.toolbar button.sec{background:#fff;color:#333;border:1px solid #bbb;}' +
-        '.toolbar .hint{font-size:11.5px;color:#666;}' +
-        '.sheet{max-width:960px;margin:0 auto;}' +
-        '.head{text-align:center;border-bottom:3px double #1a472a;padding-bottom:8px;margin-bottom:10px;}' +
-        '.club{font-size:14px;font-weight:800;letter-spacing:2px;color:#1a472a;text-transform:uppercase;}' +
-        'h1{font-size:16px;margin:6px 0 2px;letter-spacing:1px;}' +
-        '.tnm{font-size:13px;font-weight:700;}' +
-        '.meta{font-size:10.5px;color:#444;margin-top:3px;}' +
-        '.fin{display:inline-block;margin-top:5px;font-size:11px;font-weight:700;color:#0d6b2f;border:1px solid #b9dcc2;border-radius:999px;padding:2px 10px;background:#eefaf1;}' +
-        'h2.sec{font-size:12.5px;color:#1a472a;border-bottom:1px solid #999;padding-bottom:3px;margin:14px 0 7px;text-transform:uppercase;letter-spacing:.6px;}' +
-        '.noms{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;}' +
+        '*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
+        'body{font-family:Inter,Arial,Helvetica,sans-serif;color:#18251d;background:#e9ede7;margin:0;padding:18px 22px;font-size:11.5px;}' +
+        '.toolbar{position:sticky;top:0;display:flex;gap:10px;align-items:center;background:#f8f6ef;border:1px solid #d8d2ba;border-radius:12px;padding:9px 12px;margin:0 auto 14px;max-width:960px;box-shadow:0 5px 18px rgba(17,43,27,.08);}' +
+        '.toolbar button{border:0;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:800;cursor:pointer;background:#17422b;color:#fff;}' +
+        '.toolbar button.sec{background:#fff;color:#374339;border:1px solid #c9d0c6;}' +
+        '.toolbar .hint{font-size:11.5px;color:#657268;}' +
+        '.sheet{max-width:960px;margin:0 auto;padding:0 0 12px;}' +
+        '.head{position:relative;overflow:hidden;text-align:left;padding:25px 30px 23px;border:1px solid #b99c57;border-radius:18px;background:linear-gradient(125deg,#0e3020 0%,#17452d 58%,#1c5135 100%);color:#fff;box-shadow:0 16px 34px rgba(13,45,27,.2);}' +
+        '.head:after{content:"";position:absolute;right:-45px;top:-120px;width:300px;height:300px;border:1px solid rgba(220,190,116,.32);border-radius:50%;box-shadow:0 0 0 22px rgba(220,190,116,.05),0 0 0 48px rgba(220,190,116,.035);}' +
+        '.club{position:relative;z-index:1;font-size:10px;font-weight:900;letter-spacing:2.4px;color:#e4cc8b;text-transform:uppercase;}' +
+        'h1{position:relative;z-index:1;font-family:Georgia,serif;font-size:23px;margin:11px 0 4px;letter-spacing:.8px;color:#fff;}' +
+        '.tnm{position:relative;z-index:1;font-family:Georgia,serif;font-size:20px;font-weight:700;color:#f4e8c4;}' +
+        '.meta{position:relative;z-index:1;font-size:10px;line-height:1.8;color:#dce7dd;margin-top:11px;}' +
+        '.fin{position:relative;z-index:1;display:inline-block;margin-top:10px;font-size:10px;font-weight:800;color:#17412a;border-radius:999px;padding:5px 11px;background:#e0c77f;}' +
+        '.summary-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 15px;}' +
+        '.summary-stat{padding:9px 11px;border:1px solid #d9dfd6;border-radius:10px;background:#fff;box-shadow:0 3px 10px rgba(30,50,35,.04);}' +
+        '.summary-stat b{display:block;color:#17422b;font-family:Georgia,serif;font-size:19px;line-height:1.1;}' +
+        '.summary-stat span{display:block;margin-top:4px;color:#738075;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;}' +
+        'h2.sec{font-family:Georgia,serif;font-size:16px;color:#17422b;border-bottom:1px solid #c4b279;padding:0 0 6px;margin:17px 0 9px;letter-spacing:.25px;}' +
+        '.noms{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;}' +
         '.noms.single{grid-template-columns:1fr;}' +
-        '.nom{border:1px solid #c9c9c9;border-radius:8px;padding:6px 9px;break-inside:avoid;page-break-inside:avoid;}' +
-        '.nom .nt{font-weight:800;font-size:11px;color:#1a472a;margin-bottom:3px;}' +
-        '.nom .ns{font-size:9.5px;color:#777;font-weight:600;text-transform:uppercase;letter-spacing:.4px;}' +
+        '.nom{border:1px solid #ded7c0;border-top:3px solid #b99c57;border-radius:10px;padding:9px 11px;background:linear-gradient(150deg,#fff,#fbfaf5);break-inside:avoid;page-break-inside:avoid;box-shadow:0 5px 14px rgba(30,50,35,.055);}' +
+        '.nom .nt{font-family:Georgia,serif;font-weight:800;font-size:12px;color:#17422b;margin:4px 0 5px;}' +
+        '.nom .ns{font-size:8px;color:#8a8065;font-weight:900;text-transform:uppercase;letter-spacing:1px;}' +
         '.nom table{width:100%;border-collapse:collapse;margin-top:2px;}' +
-        '.nom td{padding:2.5px 4px;border-top:1px solid #eee;font-size:11px;vertical-align:middle;}' +
-        '.nom td.pl{width:34px;font-size:12.5px;}' +
-        '.nom td.val{width:120px;text-align:right;font-weight:700;white-space:nowrap;}' +
-        '.nom td.hcp{width:52px;text-align:right;color:#555;white-space:nowrap;}' +
-        'table.std{width:100%;border-collapse:collapse;margin-bottom:8px;}' +
-        'table.std th,table.std td{border:1px solid #bbb;padding:3px 5px;font-size:10.5px;text-align:center;}' +
-        'table.std th{background:#1a472a;color:#fff;font-size:9.5px;text-transform:uppercase;}' +
+        '.nom td{padding:4px 5px;border-top:1px solid #ece9df;font-size:10.5px;vertical-align:middle;}' +
+        '.nom td.pl{width:34px;font-size:13px;}' +
+        '.nom td.val{width:120px;text-align:right;font-weight:800;color:#17422b;white-space:nowrap;}' +
+        '.nom td.hcp{width:52px;text-align:right;color:#758077;white-space:nowrap;}' +
+        'table.std{width:100%;border-collapse:collapse;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;background:#fff;}' +
+        'table.std th,table.std td{border:1px solid #d7ddd5;padding:5px 6px;font-size:9px;text-align:center;}' +
+        'table.std th{background:#17422b;color:#fff;font-size:8px;text-transform:uppercase;letter-spacing:.4px;}' +
         'table.std td.nm{text-align:left;font-weight:700;}' +
-        'table.std tr.hdr td{background:#f2f0e4;font-weight:800;text-align:left;font-size:11px;}' +
-        '.holes-cell{font-size:9px;color:#333;letter-spacing:.4px;white-space:normal;}' +
-        '.sig{display:flex;justify-content:space-between;margin-top:20px;padding-top:10px;border-top:1px dashed #888;font-size:11px;}' +
-        '.gen{margin-top:12px;font-size:9px;color:#888;text-align:center;}' +
-        '@media print{.toolbar{display:none !important;}body{padding:0;font-size:10.5px;}.sheet{max-width:none;}}' +
-        '@page{size:A4 portrait;margin:10mm;}' +
+        'table.std tr.hdr td{background:#f0ead5;color:#17422b;font-weight:900;text-align:left;font-size:10px;}' +
+        '.holes-cell{font-size:8px;color:#333;letter-spacing:.4px;white-space:normal;}' +
+        '.sig{display:flex;justify-content:space-between;gap:24px;margin-top:20px;padding-top:11px;border-top:1px solid #bdc7bb;font-size:10px;color:#465449;}' +
+        '.gen{margin-top:11px;font-size:8px;color:#8b948b;text-align:center;}' +
+        '@media(max-width:620px){.summary-stats{grid-template-columns:repeat(2,1fr);}.toolbar{flex-wrap:wrap}.toolbar .hint{flex-basis:100%}}' +
+        '@media print{body{padding:0;background:#fff;font-size:10px;}.toolbar{display:none !important;}.sheet{max-width:none;padding:0}.head{box-shadow:none;border-radius:12px;}.summary-stat,.nom{box-shadow:none;}.summary-stats{grid-template-columns:repeat(4,1fr)}.noms{gap:7px 9px;}}' +
+        '@page{size:A4 portrait;margin:9mm;}' +
         '</style></head><body>';
 
     html += '<div class="toolbar">' +
@@ -549,10 +556,17 @@ function tpBuildDocHtml() {
         '</div>';
 
     html += '<div class="sheet">';
-    html += '<div class="head"><div class="club">⛳ ' + (en ? 'Golf & Country Club Pestovo' : 'Гольф-клуб Пестово') + '</div>' +
+    html += '<div class="head"><div class="club">⛳ ' + (en ? 'GOLF & COUNTRY CLUB PESTOVO' : 'ГОЛЬФ-КЛУБ ПЕСТОВО') + '</div>' +
         '<h1>' + (en ? 'TOURNAMENT FINISH PROTOCOL' : 'ПРОТОКОЛ ЗАВЕРШЕНИЯ ТУРНИРА') + '</h1>' +
         '<div class="tnm">' + E(tVal.name || '—') + '</div>' +
         '<div class="meta">' + meta + '</div>' + finLine + '</div>';
+    var divisionCount = Math.max(0, ((d.scopes || []).filter(function (scope) { return scope.key !== 'abs'; })).length);
+    html += '<div class="summary-stats">' +
+        '<div class="summary-stat"><b>' + E((d.allPlayers || []).length) + '</b><span>' + (en ? 'Players' : 'Участников') + '</span></div>' +
+        '<div class="summary-stat"><b>' + E(d.roundsCompleted || 0) + ' / ' + E(d.roundsTotal || 0) + '</b><span>' + (en ? 'Rounds played' : 'Раундов сыграно') + '</span></div>' +
+        '<div class="summary-stat"><b>' + E(divisionCount) + '</b><span>' + (en ? 'Classifications' : 'Зачётов и групп') + '</span></div>' +
+        '<div class="summary-stat"><b>' + E(noms.length) + '</b><span>' + (en ? 'Award categories' : 'Номинаций') + '</span></div>' +
+        '</div>';
 
     if (!noms.length && !modeFull) {
         html += '<div style="text-align:center;padding:40px;color:#888;">' +
@@ -560,7 +574,7 @@ function tpBuildDocHtml() {
     }
 
     if (noms.length) {
-        html += '<h2 class="sec">🏆 ' + (en ? 'Nominated results' : 'Результаты по номинациям') + '</h2>';
+        html += '<h2 class="sec">🏆 ' + (en ? 'Category & group leaders' : 'Лидеры зачётов и групп') + '</h2>';
         html += '<div class="noms' + (noms.length === 1 ? ' single' : '') + '">';
         noms.forEach(function(nm) {
             var scopeNote = nm.scope.key === 'abs' ? (en ? 'Overall' : 'Абсолютный зачёт') : nm.scope.name;

@@ -42,6 +42,11 @@ ok(src.indexOf('err.statusCode === 404 || err.statusCode === 410') !== -1,
     'мёртвые подписки 404/410 удаляются');
 ok(src.indexOf('function audienceOf') !== -1, 'audienceOf вынесен отдельно');
 ok(src.indexOf("url: '/admin.html'") !== -1, 'вызов судьи/маршала ведёт в админку');
+var notificationsGate = src.match(/async function globalNotificationsEnabled\(\) \{[\s\S]*?\n\}/);
+ok(!!notificationsGate && notificationsGate[0].indexOf("settings/notifications_enabled") !== -1 && notificationsGate[0].indexOf('snap.val() !== false') !== -1,
+    'глобальный выключатель уведомлений: отсутствующая настройка означает «включено»');
+ok(bcBlock.indexOf('await globalNotificationsEnabled()') !== -1 && alBlock.indexOf('await globalNotificationsEnabled()') !== -1,
+    'глобальный выключатель проверяется для анонсов и вызовов');
 
 var m = src.match(/function audienceOf\(b\) \{[\s\S]*?\n\}/);
 ok(!!m, 'audienceOf извлечена для юнит-теста');

@@ -4,7 +4,7 @@
 // escapeHtml). Do not re-add them here.
 
 function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
-function qrUrl(data){return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data);}
+function qrUrl(data){if(window.PestovoQr&&typeof window.PestovoQr.dataUrl==='function'){var local=window.PestovoQr.dataUrl(data,200);if(local)return local;}return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data); }
 // NOTE: escapeHtml() now lives in js/dom.js (loaded before utils.js).
 
 // Одна Firebase-подписка на логический виджет. Повторный рендер (например, при
@@ -371,61 +371,82 @@ function getWindCardinal(deg) {
 }
 
 function getWeatherCodeInfo(code) {
-    if (code === 0) return { icon: '☀️', text: t('weather_clear') };
-    if (code >= 1 && code <= 3) return { icon: '🌤️', text: t('weather_cloudy') };
-    if (code === 45 || code === 48) return { icon: '🌫️', text: t('weather_fog') };
-    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return { icon: '🌧️', text: t('weather_rain') };
-    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return { icon: '❄️', text: t('weather_snow') };
-    if (code >= 95) return { icon: '⛈️', text: t('weather_thunder') };
-    return { icon: '🌤️', text: 'Pestovo' };
+    var isEn = typeof currentLang !== 'undefined' && currentLang === 'en';
+    var text = isEn
+        ? { clear: 'Clear', cloudy: 'Partly cloudy', fog: 'Fog', rain: 'Rain', snow: 'Snow', thunder: 'Thunderstorm' }
+        : { clear: 'Ясно', cloudy: 'Малооблачно', fog: 'Туман', rain: 'Дождь', snow: 'Снег', thunder: 'Гроза' };
+    if (code === 0) return { icon: '☀️', text: text.clear };
+    if (code >= 1 && code <= 3) return { icon: '🌤️', text: text.cloudy };
+    if (code === 45 || code === 48) return { icon: '🌫️', text: text.fog };
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return { icon: '🌧️', text: text.rain };
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return { icon: '❄️', text: text.snow };
+    if (code >= 95) return { icon: '⛈️', text: text.thunder };
+    return { icon: '🌤️', text: text.cloudy };
 }
 
+var PESTOVO_WEATHER_CACHE_KEY = 'pestovo_weather_cache_v1';
+function pestovoWeatherHtml(current) {
+    var temp = Math.round(Number(current.temperature_2m));
+    var tempStr = (temp > 0 ? '+' : '') + temp + '°C';
+    var windSpeed = Math.round(Number(current.wind_speed_10m) || 0);
+    var windDeg = Math.round(Number(current.wind_direction_10m) || 0);
+    var weather = getWeatherCodeInfo(Number(current.weather_code));
+    return '<div class="weather-widget">' +
+        '<div class="weather-item"><span class="weather-icon">' + weather.icon + '</span><b>' + tempStr + '</b> <span class="weather-desc" style="color:var(--muted);font-size:10px;">(' + weather.text + ')</span></div>' +
+        '<div class="weather-divider"></div>' +
+        '<div class="weather-item"><i class="fas fa-location-arrow wind-arrow" style="transform:rotate(' + (windDeg - 45) + 'deg);"></i> <b>' + windSpeed + ' m/s ' + getWindCardinal(windDeg) + '</b></div>' +
+        '</div>';
+}
+function readPestovoWeatherCache() {
+    try {
+        var cached = JSON.parse(localStorage.getItem(PESTOVO_WEATHER_CACHE_KEY) || 'null');
+        return cached && cached.current ? cached : null;
+    } catch (e) { return null; }
+}
 function loadPestovoWeather(targetId) {
     targetId = targetId || 'nav-weather-container';
     var el = document.getElementById(targetId);
     if (!el) return;
 
-    var url = 'https://api.open-meteo.com/v1/forecast?latitude=56.09&longitude=37.62&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code&wind_speed_unit=ms';
-
-    if (typeof fetch !== 'undefined') {
-        fetch(url).then(function(res) {
-            return res.json();
-        }).then(function(data) {
-            if (!data || !data.current) throw new Error('No data');
-            var curr = data.current;
-            var temp = Math.round(curr.temperature_2m);
-            var tempStr = (temp > 0 ? '+' : '') + temp + '°C';
-            var windSpeed = Math.round(curr.wind_speed_10m || 0);
-            var windDeg = Math.round(curr.wind_direction_10m || 0);
-            var windDir = getWindCardinal(windDeg);
-            var weather = getWeatherCodeInfo(curr.weather_code);
-
-            var html = '<div class="weather-widget">' +
-                '<div class="weather-item"><span class="weather-icon">' + weather.icon + '</span><b>' + tempStr + '</b> <span class="weather-desc" style="color:var(--muted);font-size:10px;">(' + weather.text + ')</span></div>' +
-                '<div class="weather-divider"></div>' +
-                '<div class="weather-item"><i class="fas fa-location-arrow wind-arrow" style="transform:rotate(' + (windDeg - 45) + 'deg);"></i> <b>' + windSpeed + ' m/s ' + windDir + '</b></div>' +
-                '</div>';
-
-            el.innerHTML = html;
-            el.classList.remove('hidden');
-        }).catch(function() {
-            var html = '<div class="weather-widget">' +
-                '<div class="weather-item"><span class="weather-icon">⛳</span> <b>Pestovo</b></div>' +
-                '<div class="weather-divider"></div>' +
-                '<div class="weather-item"><i class="fas fa-wind" style="color:var(--gold);"></i> <b>3 m/s SW</b></div>' +
-                '</div>';
-            el.innerHTML = html;
-            el.classList.remove('hidden');
-        });
+    var cached = readPestovoWeatherCache();
+    if (cached) {
+        el.innerHTML = pestovoWeatherHtml(cached.current);
+        el.setAttribute('data-weather-state', 'cached');
     } else {
-        var html = '<div class="weather-widget">' +
-            '<div class="weather-item"><span class="weather-icon">⛳</span> <b>Pestovo</b></div>' +
-            '<div class="weather-divider"></div>' +
-            '<div class="weather-item"><i class="fas fa-wind" style="color:var(--gold);"></i> <b>3 m/s SW</b></div>' +
-            '</div>';
-        el.innerHTML = html;
-        el.classList.remove('hidden');
+        var loadingText = typeof currentLang !== 'undefined' && currentLang === 'en' ? 'Loading weather…' : 'Загружаем погоду…';
+        el.innerHTML = '<div class="weather-widget" role="status" aria-live="polite"><span class="weather-icon">⛳</span><span class="weather-desc">' + loadingText + '</span></div>';
+        el.setAttribute('data-weather-state', 'loading');
     }
+    el.classList.remove('hidden');
+
+    if (typeof fetch === 'undefined') return;
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=56.09&longitude=37.62&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code&wind_speed_unit=ms';
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timeout = controller ? setTimeout(function () { controller.abort(); }, 6500) : null;
+    fetch(url, controller ? { signal: controller.signal } : undefined).then(function (res) {
+        if (!res.ok) throw new Error('Weather HTTP ' + res.status);
+        return res.json();
+    }).then(function (data) {
+        if (!data || !data.current || data.current.temperature_2m == null) throw new Error('No weather data');
+        var record = { current: data.current, updatedAt: Date.now() };
+        try { localStorage.setItem(PESTOVO_WEATHER_CACHE_KEY, JSON.stringify(record)); } catch (e) { /* cache is optional */ }
+        el.innerHTML = pestovoWeatherHtml(data.current);
+        el.setAttribute('data-weather-state', 'fresh');
+        el.classList.remove('hidden');
+    }).catch(function () {
+        if (cached) {
+            // Keep the last known observation visible if the weather API is slow/offline.
+            el.innerHTML = pestovoWeatherHtml(cached.current);
+            el.setAttribute('data-weather-state', 'stale');
+        } else {
+            var unavailable = typeof currentLang !== 'undefined' && currentLang === 'en' ? 'Weather temporarily unavailable' : 'Погода временно недоступна';
+            el.innerHTML = '<div class="weather-widget" role="status"><span class="weather-icon">⛳</span><span class="weather-desc">' + unavailable + '</span></div>';
+            el.setAttribute('data-weather-state', 'unavailable');
+        }
+        el.classList.remove('hidden');
+    }).finally(function () {
+        if (timeout) clearTimeout(timeout);
+    });
 }
 
 // ==========================================
@@ -438,7 +459,8 @@ function initThemeMode() {
     }
 }
 
-function toggleSunMode() {
+function toggleSunMode(event) {
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
     if (!document.body) return;
     var isSun = document.body.classList.toggle('sun-mode');
     localStorage.setItem('pestovo_theme', isSun ? 'sun' : 'dark');
@@ -1048,8 +1070,6 @@ function buildMobileDrawer() {
             '<div style="display:flex;align-items:center;gap:10px;">' + avatarMarkup + '<strong style="color:var(--gold);font-size:14px;">' + (currentUserData.name || '') + '</strong></div>' +
             '<button class="btn btn-og btn-sm" onclick="event.stopPropagation();doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
-    } else {
-        authBtnMarkup = '<a href="auth.html" class="btn btn-g btn-block" onclick="closeMobileDrawer()"><i class="fas fa-sign-in-alt"></i> ' + t('nav_login') + '</a>';
     }
 
     var menuBodyMarkup = '<div class="mobile-drawer-group">' +
@@ -1253,18 +1273,19 @@ function navAuth(u, d) {
     if (!e) return;
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
 
-    var sunBtn = '<button class="sun-mode-btn" onclick="toggleSunMode()">' + (isSun ? '<i class="fas fa-sun"></i> ' + (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : '<i class="far fa-sun"></i> ' + (currentLang === 'en' ? 'Sun' : 'Солнце')) + '</button>';
-    var langBtn = '<button class="lang-btn" onclick="toggleLang()">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
+    var sunBtn = '<button type="button" class="sun-mode-btn" onclick="event.stopPropagation();toggleSunMode(event)">' + (isSun ? '<i class="fas fa-sun"></i> ' + (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : '<i class="far fa-sun"></i> ' + (currentLang === 'en' ? 'Sun' : 'Солнце')) + '</button>';
+    var langBtn = '<button type="button" class="lang-btn" onclick="event.stopPropagation();toggleLang(event)">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
 
     if (u && d) {
         var avatarMarkup = fmtUserAvatar(d, 30);
-        e.innerHTML = '<div class="nav-user" style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + u.uid + '\')">' +
-            sunBtn + langBtn + avatarMarkup +
-            '<span class="nav-uname">' + (d.name || '') + '</span>' +
-            '<button class="btn btn-og btn-sm" onclick="event.stopPropagation();doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
+        var profileLabel = currentLang === 'en' ? 'Open profile' : 'Открыть профиль';
+        e.innerHTML = '<div class="nav-user">' + sunBtn + langBtn +
+            '<button type="button" class="nav-profile-trigger" aria-label="' + profileLabel + '" onclick="openPlayerProfileModal(\'' + u.uid + '\')">' + avatarMarkup +
+            '<span class="nav-uname">' + escapeHtml(d.name || '') + '</span></button>' +
+            '<button type="button" class="btn btn-og btn-sm" aria-label="' + (currentLang === 'en' ? 'Sign out' : 'Выйти из профиля') + '" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
     } else {
-        e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + '<a href="auth.html" class="btn btn-g btn-sm" style="padding:5px 10px;font-size:11px;" data-i18n="nav_login">' + t('nav_login') + '</a></div>';
+        e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + '</div>';
     }
 }
 
@@ -7069,6 +7090,10 @@ if (typeof window !== 'undefined') {
 // перегружается с другого провайдера, «пустых» QR у игроков не остаётся.
 function pestovoQrImgHtml(data, size, cls) {
     size = size || 200;
+    var local = window.PestovoQr && typeof window.PestovoQr.dataUrl === 'function' ? window.PestovoQr.dataUrl(data, size) : '';
+    if (local) return '<img src="' + local + '" data-qr-src="' + encodeURIComponent(data) + '" data-qr-try="-1"' +
+        (cls ? ' class="' + cls + '"' : '') + ' alt="QR" loading="eager" decoding="async"' +
+        ' onload="pestovoQrImgOk(this)" onerror="pestovoQrImgFail(this)">';
     var urls = [
         'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size + '&margin=2&data=' + encodeURIComponent(data),
         'https://quickchart.io/qr?size=' + size + '&margin=1&text=' + encodeURIComponent(data),

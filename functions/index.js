@@ -258,6 +258,18 @@ async function removeSubscription(key) {
     try { await db.ref('push_subscriptions/' + key).remove(); } catch (_) {}
 }
 
+// Master switch maintained by the admin UI. Missing setting preserves the
+// existing behaviour (enabled); only an explicit false suppresses delivery.
+async function globalNotificationsEnabled() {
+    try {
+        const snap = await db.ref('settings/notifications_enabled').get();
+        return !snap || snap.val() !== false;
+    } catch (err) {
+        functions.logger.warn('notification master setting unavailable; allowing delivery', err && err.message);
+        return true;
+    }
+}
+
 function sendToSubscriptions(subs, payload) {
     const body = JSON.stringify(payload);
     return Promise.all(subs.map(function (sub) {
@@ -293,6 +305,10 @@ function audienceOf(b) {
 
 exports.onBroadcastCreated = functions.database.ref('/broadcasts/{id}').onCreate(async function (snap) {
     try {
+        if (!(await globalNotificationsEnabled())) {
+            functions.logger.info('onBroadcastCreated: global notifications disabled, skip');
+            return;
+        }
         const b = snap.val() || {};
         const title = str(b.title, 200);
         const body = str(b.body, 1000);
@@ -332,6 +348,10 @@ exports.onBroadcastCreated = functions.database.ref('/broadcasts/{id}').onCreate
 // Вызов судьи/маршала: пушим админам (роль admin в users/<uid>).
 exports.onAlertCreated = functions.database.ref('/alerts/{id}').onCreate(async function (snap) {
     try {
+        if (!(await globalNotificationsEnabled())) {
+            functions.logger.info('onAlertCreated: global notifications disabled, skip');
+            return;
+        }
         const a = snap.val() || {};
         if (a.status && a.status !== 'active') return;
         if (a.type !== 'referee' && a.type !== 'marshal') { functions.logger.warn('onAlertCreated: invalid type, skip'); return; }

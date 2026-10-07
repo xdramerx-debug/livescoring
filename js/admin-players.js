@@ -122,6 +122,15 @@ function renderAdmPlayersList(remoteData) {
             (u.homeClub ? ' · ' + escapeHtml(u.homeClub) : '') + '</div>';
         html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">';
 
+        // Редактируем только реальные профили из users/, чтобы случайный
+        // исторический игрок/ghost из кэша не создавал неполную запись в БД.
+        var hasRemoteProfile = !!(admPlayersLastData && Object.prototype.hasOwnProperty.call(admPlayersLastData, id));
+        if (hasRemoteProfile) {
+            html += '<button type="button" class="btn btn-og btn-sm adm-player-edit-btn" onclick="openAdmPlayerEditor(\'' + admJsStr(id) + '\')" title="' +
+                (en ? 'Edit player profile' : 'Редактировать данные игрока') + '"><i class="fas fa-user-pen"></i> ' +
+                (en ? 'Edit data' : 'Изменить данные') + '</button>';
+        }
+
         if (typeof currentUser === 'undefined' || !currentUser || id !== currentUser.uid) {
             html += '<select class="form-input" style="padding:5px 8px;font-size:11.5px;width:auto;" onchange="changeRole(\'' + id + '\', this.value, \'' + nameJs + '\')">';
             html += '<option value="player" ' + (curRole === 'player' ? 'selected' : '') + '>' + t('role_player') + '</option>';
@@ -150,6 +159,172 @@ function renderAdmPlayersList(remoteData) {
     });
 
     el.innerHTML = html;
+}
+
+var admPlayerEditEscapeHandler = null;
+function closeAdmPlayerEditor() {
+    var modal = document.getElementById('adm-player-edit-modal');
+    if (modal && modal.parentNode) modal.parentNode.removeChild(modal);
+    if (admPlayerEditEscapeHandler) {
+        document.removeEventListener('keydown', admPlayerEditEscapeHandler);
+        admPlayerEditEscapeHandler = null;
+    }
+}
+
+function openAdmPlayerEditor(id) {
+    id = String(id || '');
+    var remote = admPlayersLastData && admPlayersLastData[id];
+    if (!id || !remote || typeof remote !== 'object') {
+        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Player profile is not available for editing.' : 'Профиль игрока недоступен для редактирования.', 'error');
+        return;
+    }
+    closeAdmPlayerEditor();
+    var en = currentLang === 'en';
+    var hcp = remote.exactHcp != null ? remote.exactHcp : remote.handicap;
+    var hcpText = hcp == null || hcp === '' ? '' : (typeof fmtExactHcp === 'function'
+        ? fmtExactHcp(typeof parseExactHcp === 'function' ? parseExactHcp(hcp) : hcp) : String(hcp));
+    var gender = String(remote.gender || '').toLowerCase();
+    gender = gender === 'women' || gender === 'female' || gender === 'f' ? 'women'
+        : (gender === 'men' || gender === 'male' || gender === 'm' ? 'men' : '');
+    var tee = String(remote.defaultTee || remote.tee || '');
+    var label = function(ru, english) { return en ? english : ru; };
+    var modal = document.createElement('div');
+    modal.id = 'adm-player-edit-modal';
+    modal.className = 'modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'adm-player-edit-title');
+    modal.innerHTML = '<div class="modal-bg" data-adm-player-edit-close="1"></div>' +
+        '<div class="modal-body" role="document" style="max-width:620px;">' +
+        '<div class="modal-top-bar"><div><b id="adm-player-edit-title"><i class="fas fa-user-pen"></i> ' +
+        escapeHtml(label('Данные игрока', 'Player profile')) + '</b><div style="font-size:11px;color:var(--muted);margin-top:3px;">' +
+        escapeHtml(remote.name || id) + '</div></div><button type="button" class="modal-close-btn" data-adm-player-edit-close="1" aria-label="' +
+        escapeHtml(label('Закрыть', 'Close')) + '">×</button></div>' +
+        '<form id="adm-player-edit-form" data-player-id="' + escapeHtml(id) + '" style="display:flex;flex:1 1 auto;min-height:0;flex-direction:column;overflow:hidden;">' +
+        '<div class="modal-scroll-content"><p style="margin:0 0 14px;color:var(--muted);font-size:12px;">' +
+        escapeHtml(label('Изменения сохраняются в профиле игрока и его публичной карточке. Email управляется учётной записью и здесь не меняется.',
+            'Changes are saved to the player profile and public profile. Email belongs to the sign-in account and cannot be changed here.')) + '</p>' +
+        '<div class="form-group"><label for="adm-edit-player-name">' + escapeHtml(label('ФИО для отображения *', 'Display name *')) +
+        '</label><input required maxlength="120" id="adm-edit-player-name" class="form-input" autocomplete="name" value="' + escapeHtml(remote.name || '') + '"></div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;">' +
+        '<div class="form-group"><label for="adm-edit-player-first">' + escapeHtml(label('Имя', 'First name')) +
+        '</label><input maxlength="60" id="adm-edit-player-first" class="form-input" value="' + escapeHtml(remote.firstName || '') + '"></div>' +
+        '<div class="form-group"><label for="adm-edit-player-last">' + escapeHtml(label('Фамилия', 'Last name')) +
+        '</label><input maxlength="60" id="adm-edit-player-last" class="form-input" value="' + escapeHtml(remote.lastName || '') + '"></div>' +
+        '<div class="form-group"><label for="adm-edit-player-middle">' + escapeHtml(label('Отчество', 'Middle name')) +
+        '</label><input maxlength="60" id="adm-edit-player-middle" class="form-input" value="' + escapeHtml(remote.middleName || '') + '"></div>' +
+        '</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;">' +
+        '<div class="form-group"><label for="adm-edit-player-hcp">' + escapeHtml(label('Точный гандикап', 'Exact handicap')) +
+        '</label><input inputmode="decimal" maxlength="8" id="adm-edit-player-hcp" class="form-input" placeholder="12.4 / +2.4" value="' + escapeHtml(hcpText) + '"></div>' +
+        '<div class="form-group"><label for="adm-edit-player-gender">' + escapeHtml(label('Пол', 'Gender')) +
+        '</label><select id="adm-edit-player-gender" class="form-input"><option value="">' + escapeHtml(label('Не указан', 'Not specified')) + '</option>' +
+        '<option value="men"' + (gender === 'men' ? ' selected' : '') + '>' + escapeHtml(label('Мужской', 'Male')) + '</option>' +
+        '<option value="women"' + (gender === 'women' ? ' selected' : '') + '>' + escapeHtml(label('Женский', 'Female')) + '</option></select></div>' +
+        '<div class="form-group"><label for="adm-edit-player-tee">' + escapeHtml(label('ТИ по умолчанию', 'Default tee')) +
+        '</label><select id="adm-edit-player-tee" class="form-input"><option value="">' + escapeHtml(label('Авто', 'Automatic')) + '</option>' +
+        ['bk', 'bl', 'wh', 'rd'].map(function(code) {
+            var teeName = typeof TEES !== 'undefined' && TEES[code] ? TEES[code] : code.toUpperCase();
+            return '<option value="' + code + '"' + (tee === code ? ' selected' : '') + '>' + escapeHtml(String(teeName)) + '</option>';
+        }).join('') + '</select></div></div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">' +
+        '<div class="form-group"><label for="adm-edit-player-phone">' + escapeHtml(label('Телефон', 'Phone')) +
+        '</label><input type="tel" maxlength="40" id="adm-edit-player-phone" class="form-input" autocomplete="tel" value="' + escapeHtml(remote.phone || '') + '"></div>' +
+        '<div class="form-group"><label for="adm-edit-player-club">' + escapeHtml(label('Домашний клуб', 'Home club')) +
+        '</label><input maxlength="100" id="adm-edit-player-club" class="form-input" value="' + escapeHtml(remote.homeClub || '') + '"></div></div>' +
+        '<p id="adm-player-edit-status" role="status" aria-live="polite" style="min-height:18px;margin:6px 0 0;color:var(--red);"></p></div>' +
+        '<div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;flex:0 0 auto;padding:10px 14px;border-top:1px solid var(--border);">' +
+        '<button type="button" class="btn btn-og" data-adm-player-edit-close="1">' + escapeHtml(label('Отмена', 'Cancel')) + '</button>' +
+        '<button type="submit" class="btn btn-g" id="adm-player-edit-save"><i class="fas fa-floppy-disk"></i> ' + escapeHtml(label('Сохранить', 'Save')) + '</button></div>' +
+        '</form></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(event) {
+        if (event.target && event.target.closest('[data-adm-player-edit-close]')) closeAdmPlayerEditor();
+    });
+    modal.querySelector('#adm-player-edit-form').addEventListener('submit', saveAdmPlayerEditor);
+    admPlayerEditEscapeHandler = function(event) {
+        if (event.key === 'Escape') closeAdmPlayerEditor();
+    };
+    document.addEventListener('keydown', admPlayerEditEscapeHandler);
+    var firstInput = modal.querySelector('#adm-edit-player-name');
+    if (firstInput) firstInput.focus();
+}
+
+function parseAdmPlayerHcp(value) {
+    var raw = String(value == null ? '' : value).trim().replace(',', '.');
+    if (!raw) return { value: null, valid: true };
+    if (!/^[+-]?(?:\d+(?:\.\d{1})?|\.\d{1})$/.test(raw)) return { value: null, valid: false };
+    var plus = raw.charAt(0) === '+';
+    var number = parseFloat(raw);
+    if (!isFinite(number) || Math.abs(number) > 54) return { value: null, valid: false };
+    number = plus ? -Math.abs(number) : number;
+    return { value: Math.round(number * 10) / 10, valid: true };
+}
+
+function saveAdmPlayerEditor(event) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    var modal = document.getElementById('adm-player-edit-modal');
+    var form = modal && modal.querySelector('#adm-player-edit-form');
+    if (!form) return;
+    var id = String(form.getAttribute('data-player-id') || '');
+    var current = id && admPlayersLastData ? admPlayersLastData[id] : null;
+    var status = modal.querySelector('#adm-player-edit-status');
+    var saveButton = modal.querySelector('#adm-player-edit-save');
+    if (!id || !current || typeof current !== 'object') {
+        if (status) status.textContent = currentLang === 'en' ? 'Player profile is no longer available.' : 'Профиль игрока больше недоступен.';
+        return;
+    }
+    var name = String(modal.querySelector('#adm-edit-player-name').value || '').replace(/\s+/g, ' ').trim();
+    var hcp = parseAdmPlayerHcp(modal.querySelector('#adm-edit-player-hcp').value);
+    if (!name) {
+        if (status) status.textContent = currentLang === 'en' ? 'Enter the player name.' : 'Укажите ФИО игрока.';
+        modal.querySelector('#adm-edit-player-name').focus();
+        return;
+    }
+    if (!hcp.valid) {
+        if (status) status.textContent = currentLang === 'en' ? 'Enter a valid exact handicap (for example 12.4 or +2.4).' : 'Укажите корректный точный гандикап (например, 12.4 или +2.4).';
+        modal.querySelector('#adm-edit-player-hcp').focus();
+        return;
+    }
+    if (typeof db === 'undefined' || !db || typeof db.ref !== 'function') {
+        if (status) status.textContent = currentLang === 'en' ? 'No database connection.' : 'Нет соединения с базой данных.';
+        return;
+    }
+    var gender = modal.querySelector('#adm-edit-player-gender').value;
+    var tee = modal.querySelector('#adm-edit-player-tee').value;
+    var patch = {
+        name: name,
+        firstName: String(modal.querySelector('#adm-edit-player-first').value || '').replace(/\s+/g, ' ').trim() || null,
+        lastName: String(modal.querySelector('#adm-edit-player-last').value || '').replace(/\s+/g, ' ').trim() || null,
+        middleName: String(modal.querySelector('#adm-edit-player-middle').value || '').replace(/\s+/g, ' ').trim() || null,
+        handicap: hcp.value,
+        exactHcp: hcp.value,
+        gender: gender || null,
+        defaultTee: tee || null,
+        tee: tee || null,
+        phone: String(modal.querySelector('#adm-edit-player-phone').value || '').trim() || null,
+        homeClub: String(modal.querySelector('#adm-edit-player-club').value || '').replace(/\s+/g, ' ').trim() || null,
+        profileUpdatedAt: Date.now()
+    };
+    if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) patch.profileUpdatedBy = currentUser.uid;
+    var next = Object.assign({}, current, patch);
+    var updates = {};
+    Object.keys(patch).forEach(function(key) { updates['users/' + id + '/' + key] = patch[key]; });
+    updates['usersPublic/' + id] = typeof pubMirrorFromUser === 'function' ? pubMirrorFromUser(next) : next;
+    if (saveButton) saveButton.disabled = true;
+    if (status) status.textContent = currentLang === 'en' ? 'Saving…' : 'Сохранение…';
+    var write;
+    try { write = db.ref().update(updates); }
+    catch (error) { write = Promise.reject(error); }
+    Promise.resolve(write).then(function() {
+        admPlayersLastData = Object.assign({}, admPlayersLastData || {});
+        admPlayersLastData[id] = next;
+        renderAdmPlayersList(admPlayersLastData);
+        closeAdmPlayerEditor();
+        if (typeof toast === 'function') toast(currentLang === 'en' ? '✅ Player profile updated.' : '✅ Данные игрока обновлены.', 'success');
+    }).catch(function(error) {
+        if (saveButton) saveButton.disabled = false;
+        if (status) status.textContent = (currentLang === 'en' ? 'Could not save player data: ' : 'Не удалось сохранить данные игрока: ') + (error && error.message ? error.message : error || 'error');
+    });
 }
 
 function loadAdmPlayers() {

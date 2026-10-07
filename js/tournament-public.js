@@ -135,6 +135,10 @@
         });
     }
     function qrUrl(data) {
+        if (root.PestovoQr && typeof root.PestovoQr.dataUrl === 'function') {
+            var local = root.PestovoQr.dataUrl(data, 180);
+            if (local) return local;
+        }
         return 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=3&data=' + encodeURIComponent(data);
     }
     function pageUrl(page, query) {
@@ -167,6 +171,7 @@
             bindRealtime('public-tournament-rounds-v2', db.ref('rounds'), function (snapshot) {
                 state.rounds = snapshot && snapshot.val ? (snapshot.val() || {}) : {};
                 if (state.detailId && state.detailTab === 'leaderboard') renderDetail();
+                else if (!state.detailId) renderCatalog();
             });
         }
         if (!state.protocolsBound) {
@@ -181,38 +186,28 @@
             bindRealtime('public-tournament-course-v2', db.ref('settings/course'), function (snapshot) {
                 state.course = snapshot && snapshot.val ? snapshot.val() : null;
                 if (state.detailId) renderDetail();
+                else renderCatalog();
             });
         }
     }
 
-    function matchesFilter(t) {
-        var c = classification(t);
-        if (state.filter === 'registration') return c.registrationOpen;
-        if (state.filter === 'past') return c.past;
-        return c.upcoming && !c.past && c.status !== 'cancelled';
-    }
-    function filteredEntries() {
+    function matchesQuery(t) {
         var q = String(state.query || '').toLowerCase().replace(/ё/g, 'е').trim();
-        return tournamentEntries().filter(function (t) {
-            if (!matchesFilter(t)) return false;
-            return !q || String(t.name || '').toLowerCase().replace(/ё/g, 'е').indexOf(q) !== -1;
-        }).sort(function (a, b) {
-            return (dateTs(a.date) || a.createdAt || 0) - (dateTs(b.date) || b.createdAt || 0);
-        });
+        if (!q) return true;
+        return String(t.name || '').toLowerCase().replace(/ё/g, 'е').indexOf(q) !== -1;
     }
-    function setCount(id, n) { var node = el(id); if (node) node.textContent = String(n); }
-    function renderCounts() {
-        var items = tournamentEntries();
-        var upcoming = 0, registration = 0, past = 0;
-        items.forEach(function (t) {
+    function catalogBuckets() {
+        var buckets = { active: [], upcoming: [], past: [] };
+        tournamentEntries().filter(matchesQuery).forEach(function (t) {
             var c = classification(t);
-            if (c.registrationOpen) registration++;
-            if (c.upcoming && !c.past && c.status !== 'cancelled') upcoming++;
-            if (c.past) past++;
+            if (c.status === 'active') buckets.active.push(t);
+            else if (c.past || c.status === 'cancelled') buckets.past.push(t);
+            else if (c.upcoming && c.status !== 'draft') buckets.upcoming.push(t);
         });
-        setCount('tn-count-upcoming', upcoming);
-        setCount('tn-count-registration', registration);
-        setCount('tn-count-past', past);
+        buckets.active.sort(function (a, b) { return (dateTs(b.startedAt || b.date) || b.createdAt || 0) - (dateTs(a.startedAt || a.date) || a.createdAt || 0); });
+        buckets.upcoming.sort(function (a, b) { return (dateTs(a.date) || a.createdAt || 0) - (dateTs(b.date) || b.createdAt || 0); });
+        buckets.past.sort(function (a, b) { return (dateTs(b.finishedAt || b.endDate || b.date) || b.createdAt || 0) - (dateTs(a.finishedAt || a.endDate || a.date) || a.createdAt || 0); });
+        return buckets;
     }
     function cardHtml(t) {
         var c = classification(t), badge = statusLabel(t, c), formats = tournamentFormats(t), count = rosterCount(t), max = limit(t), full = max > 0 && count >= max;
@@ -235,12 +230,22 @@
             '<div class="tn-public-card-actions">' + regAction + '<button type="button" class="btn btn-og btn-sm tn-public-open" data-tn-action="detail" data-tn-id="' + esc(t._key) + '"><i class="fas fa-arrow-right"></i> ' + ru('Подробнее', 'View details') + '</button></div></div></article>';
     }
     function renderCatalog() {
-        var rootNode = el('tn-list'), status = el('tn-public-status');
-        if (!rootNode) return;
-        renderCounts();
-        var items = filteredEntries();
-        if (status) status.textContent = items.length ? ru('Показано турниров: ', 'Tournaments shown: ') + items.length : ru('По выбранному фильтру турниров не найдено.', 'No tournaments match this filter.');
-        rootNode.innerHTML = items.length ? items.map(cardHtml).join('') : '<div class="tn-public-empty"><i class="fas fa-calendar-xmark"></i><div>' + ru('Здесь пока нет турниров.', 'No tournaments here yet.') + '</div><small>' + ru('Попробуйте изменить вкладку или поисковый запрос.', 'Try another tab or search query.') + '</small></div>';
+        var upcomingNode = el('tn-list'), activeNode = el('tn-active-list'), pastNode = el('tn-past-list'), status = el('tn-public-status');
+        if (!upcomingNode || !activeNode || !pastNode) return;
+        var buckets = catalogBuckets();
+        if (status) {
+            if (!state.tournamentsLoaded) status.textContent = ru('Загружаем турниры…', 'Loading tournaments…');
+            else status.textContent = ru('В игре: ', 'Live: ') + buckets.active.length + ' · ' + ru('предстоящие: ', 'upcoming: ') + buckets.upcoming.length + ' · ' + ru('в архиве: ', 'archived: ') + buckets.past.length;
+        }
+        activeNode.innerHTML = buckets.active.length
+            ? buckets.active.map(activeTournamentHtml).join('')
+            : '<div class="tn-active-empty"><i class="fas fa-flag-checkered"></i><div>' + ru('Сейчас нет активного турнира', 'No tournament is live right now') + '</div><small>' + ru('Когда начнётся следующий старт, его лидерборд появится здесь автоматически.', 'The live leaderboard will appear here when the next tournament starts.') + '</small></div>';
+        upcomingNode.innerHTML = buckets.upcoming.length
+            ? buckets.upcoming.map(cardHtml).join('')
+            : '<div class="tn-public-empty"><i class="fas fa-calendar-xmark"></i><div>' + ru('Предстоящих стартов пока нет.', 'There are no upcoming tournaments yet.') + '</div></div>';
+        pastNode.innerHTML = buckets.past.length
+            ? buckets.past.map(pastTournamentHtml).join('')
+            : '<div class="tn-public-empty"><i class="fas fa-box-archive"></i><div>' + ru('В архиве пока нет турниров.', 'The archive is empty.') + '</div></div>';
     }
     function renderCatalogError(message) {
         var status = el('tn-public-status');
@@ -287,6 +292,35 @@
         var formatText = JSON.stringify(t.formats || []) + JSON.stringify(t.wizard && t.wizard.scoring || {}), isStable = /stableford/i.test(formatText), isGross = !isStable && /gross|stroke-gross/i.test(formatText);
         return '<div class="tn-protocol-actions"><span class="tn-live-indicator"><i class="fas fa-circle"></i> ' + (classification(t).status === 'active' ? ru('LIVE · обновляется автоматически', 'LIVE · updates automatically') : ru('Последняя опубликованная версия', 'Last published version')) + '</span><span class="tn-public-chip">' + (isStable ? 'Stableford' : isGross ? ru('Stroke Play · Gross', 'Stroke Play · Gross') : ru('Stroke Play · Net', 'Stroke Play · Net')) + '</span></div>' + '<div class="tn-public-table-wrap"><table class="tn-public-table"><thead><tr><th>#</th><th>' + ru('Игрок', 'Player') + '</th><th>' + ru('Лунки', 'Thru') + '</th><th>Gross</th><th>Net</th><th>Stableford</th><th>' + ru('Статус', 'Status') + '</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + (r.position == null ? '—' : r.position) + '</td><td class="' + (r.holes ? 'tn-live-name' : '') + '">' + esc(safeName({ name: r.name }, r.key)) + '</td><td>' + r.thru + '</td><td>' + (r.gross || '—') + '</td><td>' + (r.net || '—') + '</td><td>' + (r.stableford || '—') + '</td><td>' + playerStatus(r) + '</td></tr>'; }).join('') + '</tbody></table></div>';
     }
+    function activeTournamentHtml(t) {
+        var c = classification(t), badge = statusLabel(t, c), formats = tournamentFormats(t);
+        var metrics = '<span><i class="fas fa-calendar-day"></i> ' + esc(formatDate(t.date)) + '</span>' +
+            '<span><i class="fas fa-location-dot"></i> ' + esc(courseName(t)) + '</span>' +
+            '<span><i class="fas fa-users"></i> ' + rosterCount(t) + ' ' + ru('участников', 'players') + '</span>';
+        return '<article class="tn-active-card" data-tn-active="' + esc(t._key) + '">' +
+            '<header class="tn-active-header"><div class="tn-active-title-wrap"><div class="tn-detail-kicker"><i class="fas fa-satellite-dish"></i> ' + ru('ТУРНИР В ИГРЕ', 'TOURNAMENT LIVE') + '</div>' +
+            '<div class="tn-detail-title-row"><h2>' + esc(t.name || ru('Турнир клуба', 'Club tournament')) + '</h2><span class="tn-public-badge ' + badge.cls + '"><i class="fas ' + badge.icon + '"></i> ' + esc(badge.text) + '</span></div>' +
+            (t.description ? '<p class="tn-active-description">' + esc(t.description) + '</p>' : '') +
+            '<div class="tn-public-meta tn-active-meta">' + metrics + '</div>' +
+            '<div class="tn-public-format">' + (formats.length ? formats.slice(0, 4).map(function (format) { return '<span class="tn-public-chip">' + esc(formatLabel(format)) + '</span>'; }).join('') : '') + '</div></div>' +
+            '<button type="button" class="btn btn-og btn-sm" data-tn-action="detail" data-tn-id="' + esc(t._key) + '" data-tn-tab="leaderboard"><i class="fas fa-arrow-up-right-from-square"></i> ' + ru('Открыть турнир', 'Open tournament') + '</button></header>' +
+            '<div class="tn-active-leaderboard"><div class="tn-active-board-heading"><h3><i class="fas fa-ranking-star"></i> ' + ru('Лидерборд', 'Leaderboard') + '</h3><span class="tn-live-indicator"><i class="fas fa-circle"></i> LIVE</span></div>' + leaderboardHtml(t) + '</div>' +
+            '</article>';
+    }
+    function pastTournamentHtml(t) {
+        var c = classification(t), badge = statusLabel(t, c), formats = tournamentFormats(t);
+        return '<details class="tn-past-item" data-tn-past="' + esc(t._key) + '"><summary>' +
+            '<span class="tn-past-date"><i class="fas fa-calendar-check"></i> ' + esc(formatDate(t.finishedAt || t.endDate || t.date)) + '</span>' +
+            '<span class="tn-past-title"><b>' + esc(t.name || ru('Турнир клуба', 'Club tournament')) + '</b><small>' + esc(courseName(t)) + ' · ' + rosterCount(t) + ' ' + ru('участников', 'players') + '</small></span>' +
+            '<span class="tn-public-badge ' + badge.cls + '"><i class="fas ' + badge.icon + '"></i> ' + esc(badge.text) + '</span>' +
+            '<i class="fas fa-chevron-down tn-past-chevron" aria-hidden="true"></i></summary>' +
+            '<div class="tn-past-body"><div class="tn-public-format">' + formats.map(function (format) { return '<span class="tn-public-chip">' + esc(formatLabel(format)) + '</span>'; }).join('') + '</div>' +
+            '<div class="tn-active-board-heading"><h3><i class="fas fa-ranking-star"></i> ' + ru('Итоговый лидерборд', 'Final leaderboard') + '</h3></div>' +
+            leaderboardHtml(t) +
+            '<div class="tn-past-actions"><button type="button" class="btn btn-og btn-sm" data-tn-action="detail" data-tn-id="' + esc(t._key) + '" data-tn-tab="leaderboard"><i class="fas fa-arrow-up-right-from-square"></i> ' + ru('Все результаты', 'Full results') + '</button>' +
+            '<button type="button" class="btn btn-og btn-sm" data-tn-action="detail" data-tn-id="' + esc(t._key) + '" data-tn-tab="protocol"><i class="fas fa-file-pdf"></i> ' + ru('Протокол', 'Protocol') + '</button></div></div></details>';
+    }
+
     function finalProtocolRows(t) {
         if (t.protocol && t.protocol.published && Array.isArray(t.protocol.rows)) return t.protocol.rows;
         var core = getCore();
@@ -368,18 +402,135 @@
         render();
         window.scrollTo(0, 0);
     }
+    function printGroupEntries(t, rows) {
+        var rawGroups = t.divisions || t.groups || {}, groups = [];
+        if (Array.isArray(rawGroups)) groups = rawGroups.map(function (group, index) { var copy = Object.assign({}, group || {}); copy._id = copy.id || String(index); return copy; });
+        else Object.keys(rawGroups).forEach(function (id) { var copy = Object.assign({}, rawGroups[id] || {}); copy._id = copy.id || id; groups.push(copy); });
+        if (!groups.length) return [];
+
+        var players = t.players || {}, registrations = t.registeredPlayers || {};
+        function sameName(a, b) {
+            return String(a || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim() ===
+                String(b || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
+        }
+        function recordFor(row) {
+            var key = String(row.key || row.uid || ''), record = players[key] || registrations[key];
+            if (record) return record;
+            var source = Object.keys(players).map(function (id) { return players[id]; }).concat(Object.keys(registrations).map(function (id) { return registrations[id]; }));
+            for (var i = 0; i < source.length; i++) {
+                var candidate = source[i] || {};
+                if (sameName(candidate.name || candidate.fio, row.name)) return candidate;
+            }
+            return {};
+        }
+        function memberHas(group, row, person) {
+            var members = group.members || group.players || {}, key = String(row.key || row.uid || '');
+            if (Array.isArray(members)) {
+                return members.some(function (member) {
+                    if (member && typeof member === 'object') return String(member.id || member.uid || member.key || '') === key || sameName(member.name || member.fio, row.name);
+                    return String(member) === key || sameName(member, row.name);
+                });
+            }
+            if (!members || typeof members !== 'object') return false;
+            if (Object.prototype.hasOwnProperty.call(members, key)) return true;
+            if (person && person.uid && Object.prototype.hasOwnProperty.call(members, String(person.uid))) return true;
+            return Object.keys(members).some(function (memberId) {
+                var value = members[memberId];
+                return (String(memberId) === key) || sameName(value && typeof value === 'object' ? (value.name || value.fio) : value, row.name);
+            });
+        }
+        var eligible = rows.filter(function (row) { return !/^(DNS|WD|DNF|DQ)$/i.test(String(row.status || '')); });
+        var result = [];
+        groups.forEach(function (group) {
+            var members = eligible.filter(function (row) {
+                var person = recordFor(row), groupId = String(person.groupId || person.divisionId || row.groupId || row.divisionId || '');
+                if (groupId && groupId === String(group._id)) return true;
+                if (memberHas(group, row, person)) return true;
+                var gender = String(group.gender || 'all').toLowerCase();
+                var rowGender = String(person.gender || row.gender || '').toLowerCase();
+                if (gender && gender !== 'all' && rowGender && gender !== rowGender && !(gender.indexOf('жен') === 0 && rowGender === 'women') && !(gender.indexOf('муж') === 0 && rowGender === 'men')) return false;
+                var handicap = Number(person.handicap != null ? person.handicap : row.handicap);
+                if (!isFinite(handicap)) return false;
+                var min = Number(group.hcpFrom != null ? group.hcpFrom : group.minHcp), max = Number(group.hcpTo != null ? group.hcpTo : group.maxHcp);
+                if (isFinite(min) && handicap < min) return false;
+                if (isFinite(max) && handicap > max) return false;
+                return isFinite(min) || isFinite(max);
+            });
+            if (members.length) result.push({ id: group._id, name: group.name || group.title || ru('Группа', 'Group') + ' ' + (result.length + 1), rows: members });
+        });
+        return result;
+    }
+    function protocolLeaderCard(label, rows, kind) {
+        var eligible = rows.filter(function (row) {
+            return !/^(DNS|WD|DNF|DQ)$/i.test(String(row.status || '')) && row[kind] != null && isFinite(Number(row[kind]));
+        }).slice();
+        eligible.sort(function (a, b) {
+            var av = Number(a[kind]), bv = Number(b[kind]);
+            if (av !== bv) return kind === 'stableford' ? bv - av : av - bv;
+            return String(a.name || '').localeCompare(String(b.name || ''), lang() === 'en' ? 'en' : 'ru');
+        });
+        var rowsHtml = eligible.slice(0, 3).map(function (row, index) {
+            var value = kind === 'stableford'
+                ? esc(row.stableford) + ' ' + ru('очк.', 'pts')
+                : esc(kind === 'gross' ? 'Gross ' + row.gross : 'Net ' + row.net);
+            return '<li><span class="leader-medal">' + ['🥇', '🥈', '🥉'][index] + '</span><b>' + esc(safeName({ name: row.name }, row.key)) + '</b><span class="leader-value">' + value + '</span></li>';
+        }).join('');
+        if (!rowsHtml) rowsHtml = '<li class="leader-empty">' + ru('Нет результатов', 'No results') + '</li>';
+        return '<article class="leader-card"><div class="leader-kicker">' + esc(label) + '</div><ol>' + rowsHtml + '</ol></article>';
+    }
+    function protocolLeadersHtml(t, rows) {
+        var groups = printGroupEntries(t, rows), overall = '<div class="leader-grid">' +
+            protocolLeaderCard(ru('Абсолют · Best Gross', 'Overall · Best Gross'), rows, 'gross') +
+            protocolLeaderCard(ru('Абсолют · Best Net', 'Overall · Best Net'), rows, 'net') +
+            protocolLeaderCard(ru('Абсолют · Stableford', 'Overall · Stableford'), rows, 'stableford') + '</div>';
+        var groupHtml = groups.map(function (group) {
+            return '<div class="group-leader"><h3><i class="fas fa-people-group"></i> ' + esc(group.name) + '</h3>' +
+                '<div class="leader-grid">' + protocolLeaderCard(ru('Лидеры зачёта · Net', 'Net classification leaders'), group.rows, 'net') +
+                protocolLeaderCard(ru('Лидеры зачёта · Gross', 'Gross classification leaders'), group.rows, 'gross') + '</div></div>';
+        }).join('');
+        return '<section class="protocol-section"><h2>🏆 ' + ru('Лидеры зачётов и групп', 'Category & group leaders') + '</h2>' + overall + groupHtml + '</section>';
+    }
     function nominationPrintHtml(t) {
         var nominations = t.protocol && Array.isArray(t.protocol.nominations) ? t.protocol.nominations : [];
         if (!nominations.length) return '';
-        return '<h2>Awards / Номинации</h2><ul>' + nominations.map(function (nomination) { return '<li><b>' + esc(nomination.label || nomination.id || 'Award') + '</b>: ' + (nomination.winners || []).map(function (winner) { return esc(safeName({ name: winner.name }, winner.key)); }).join(', ') + '</li>'; }).join('') + '</ul>';
+        return '<section class="protocol-section"><h2>🏅 ' + ru('Номинации турнира', 'Tournament awards') + '</h2><div class="award-grid">' +
+            nominations.map(function (nomination) {
+                var winners = nomination.winners || [];
+                return '<article class="award-card"><b>' + esc(nomination.label || nomination.id || 'Award') + '</b>' +
+                    (winners.length ? '<ol>' + winners.slice(0, 3).map(function (winner) {
+                        return '<li>' + esc(safeName({ name: winner.name }, winner.key)) + '</li>';
+                    }).join('') + '</ol>' : '<small>' + ru('Результат не определён', 'No eligible result') + '</small>') + '</article>';
+            }).join('') + '</div></section>';
     }
     function printProtocol(id) {
         var t = state.tournaments[id], core = getCore();
         if (!t || !core) return;
         var rows = finalProtocolRows(t), win = window.open('', '_blank');
         if (!win) { if (typeof root.toast === 'function') root.toast(ru('Разрешите всплывающие окна для PDF.', 'Allow pop-ups for PDF.'), 'error'); return; }
-        var body = '<h1>' + esc(t.name || 'Tournament') + '</h1><p>' + esc(formatDate(t.date)) + ' · ' + esc(courseName(t)) + '</p><table><tr><th>#</th><th>Player</th><th>HCP</th><th>Gross</th><th>Net</th><th>Stableford</th><th>Total</th><th>Status</th></tr>' + rows.map(function (r) { return '<tr><td>' + (r.position || '—') + '</td><td>' + esc(safeName({ name: r.name }, r.key)) + '</td><td>' + esc(r.handicap == null ? '—' : r.handicap) + '</td><td>' + r.gross + '</td><td>' + r.net + '</td><td>' + r.stableford + '</td><td>' + r.total + '</td><td>' + esc(r.status) + '</td></tr>'; }).join('') + '</table>' + nominationPrintHtml(t) + '<h2>Hole breakdown</h2>' + rows.map(function (r) { return '<h3>' + esc(safeName({ name: r.name }, r.key)) + '</h3><p>' + (r.holes || []).map(function (h) { return h.hole + ': ' + h.gross; }).join(' · ') + '</p>'; }).join('');
-        win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + esc(t.name || 'Protocol') + '</title><style>body{font-family:Arial,sans-serif;color:#111;padding:18px;font-size:11px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #aaa;padding:5px;text-align:left}th{background:#e9eddc}@media print{button{display:none}}@page{size:A4 landscape;margin:10mm}</style></head><body><button onclick="window.print()">Print / Save PDF</button>' + body + '</body></html>');
+        var tnRounds = Object.keys(state.rounds || {}).map(function (rid) { return state.rounds[rid]; }).filter(function (round) { return round && String(round.tournamentId) === String(id); });
+        var finishedRounds = tnRounds.filter(function (round) { return round.status === 'completed'; }).length;
+        var body = '<main class="sheet">' +
+            '<header class="hero"><div class="hero-mark">⛳ ' + (lang() === 'en' ? 'GOLF & COUNTRY CLUB PESTOVO' : 'ГОЛЬФ-КЛУБ ПЕСТОВО') + '</div>' +
+            '<div class="hero-title">' + ru('Итоговый протокол турнира', 'Tournament finish protocol') + '</div>' +
+            '<h1>' + esc(t.name || ru('Турнир клуба', 'Club tournament')) + '</h1>' +
+            '<div class="hero-meta"><span><i class="fas fa-calendar-day"></i> ' + esc(formatDate(t.date)) + '</span><span><i class="fas fa-location-dot"></i> ' + esc(courseName(t)) + '</span>' +
+            '<span><i class="fas fa-users"></i> ' + rows.length + ' ' + ru('участников', 'players') + '</span></div></header>' +
+            '<section class="summary-grid"><div><b>' + rows.length + '</b><span>' + ru('участников', 'Players') + '</span></div><div><b>' + finishedRounds + ' / ' + tnRounds.length + '</b><span>' + ru('завершённых раундов', 'Rounds completed') + '</span></div><div><b>' + printGroupEntries(t, rows).length + '</b><span>' + ru('групп и зачётов', 'Groups & divisions') + '</span></div></section>' +
+            protocolLeadersHtml(t, rows) + nominationPrintHtml(t) +
+            '<section class="protocol-section"><h2>📋 ' + ru('Итоговая таблица', 'Final standings') + '</h2>' +
+            '<div class="table-wrap"><table class="standings"><thead><tr><th>#</th><th>' + ru('Игрок', 'Player') + '</th><th>HCP</th><th>Gross</th><th>Net</th><th>Stableford</th><th>' + ru('Результат', 'Total') + '</th><th>' + ru('Статус', 'Status') + '</th></tr></thead><tbody>' +
+            rows.map(function (r) {
+                return '<tr><td class="place">' + esc(r.position == null ? '—' : r.position) + '</td><td class="player-name">' + esc(safeName({ name: r.name }, r.key)) + '</td><td>' + esc(r.handicap == null ? '—' : r.handicap) + '</td><td>' + esc(r.gross == null ? '—' : r.gross) + '</td><td>' + esc(r.net == null ? '—' : r.net) + '</td><td>' + esc(r.stableford == null ? '—' : r.stableford) + '</td><td>' + esc(r.total == null ? '—' : r.total) + '</td><td>' + esc(r.status || '—') + '</td></tr>';
+            }).join('') + '</tbody></table></div></section>' +
+            '<section class="protocol-section"><h2>⛳ ' + ru('Счёт по лункам', 'Hole-by-hole scores') + '</h2>' +
+            rows.map(function (r) {
+                return '<article class="hole-breakdown"><h3>' + esc(safeName({ name: r.name }, r.key)) + '</h3><div>' +
+                    (r.holes || []).map(function (hole) { return '<span><small>' + esc(hole.hole) + '</small><b>' + esc(hole.gross == null ? '—' : hole.gross) + '</b></span>'; }).join('') +
+                    '</div></article>';
+            }).join('') + '</section>' +
+            '<footer class="protocol-footer"><span>' + ru('Сформировано', 'Generated') + ': ' + esc(new Date().toLocaleString(lang() === 'en' ? 'en-GB' : 'ru-RU')) + '</span><span>Гольф-клуб Пестово</span></footer></main>';
+        var css = '*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;padding:16px 22px;background:#e9ede8;color:#1c2d22;font:11px Inter,Arial,sans-serif}.toolbar{max-width:1100px;margin:0 auto 14px;padding:10px 13px;display:flex;align-items:center;gap:10px;border:1px solid #d5ddcf;border-radius:11px;background:#fff}.toolbar button{padding:9px 15px;border:0;border-radius:8px;background:#17432b;color:#fff;font-weight:800;cursor:pointer}.toolbar button.secondary{background:#fff;border:1px solid #cbd5ca;color:#314437}.toolbar span{font-size:10px;color:#69766c}.sheet{max-width:1100px;margin:auto}.hero{position:relative;overflow:hidden;padding:25px 30px;border:1px solid #b59b5c;border-radius:16px;background:linear-gradient(125deg,#0e3020,#17462d 60%,#24553a);color:#fff;box-shadow:0 14px 30px rgba(19,47,29,.16)}.hero:after{content:"";position:absolute;right:-65px;top:-130px;width:290px;height:290px;border:1px solid rgba(224,199,127,.3);border-radius:50%;box-shadow:0 0 0 22px rgba(224,199,127,.05),0 0 0 48px rgba(224,199,127,.03)}.hero-mark,.hero-title,.hero h1,.hero-meta{position:relative;z-index:1}.hero-mark{color:#e6d29a;font-size:9px;font-weight:900;letter-spacing:2px}.hero-title{margin-top:10px;color:#d8e2d9;font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}.hero h1{margin:5px 0 12px;font:700 24px Georgia,serif;color:#fff}.hero-meta{display:flex;flex-wrap:wrap;gap:8px 18px;color:#e1e9e2;font-size:10px}.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 16px}.summary-grid>div{padding:10px 12px;border:1px solid #d7ddd4;border-radius:10px;background:#fff}.summary-grid b{display:block;color:#17432b;font:700 20px Georgia,serif}.summary-grid span{display:block;margin-top:4px;color:#798379;font-size:8px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}.protocol-section{margin:16px 0}.protocol-section>h2{margin:0 0 9px;padding-bottom:6px;border-bottom:1px solid #c8b578;color:#17432b;font:700 16px Georgia,serif}.leader-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.leader-card,.award-card{break-inside:avoid;border:1px solid #ddd7c4;border-top:3px solid #b59b5c;border-radius:10px;padding:9px 11px;background:#fff}.leader-kicker{color:#807656;font-size:8px;font-weight:900;letter-spacing:.7px;text-transform:uppercase}.leader-card ol,.award-card ol{list-style:none;margin:5px 0 0;padding:0}.leader-card li{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:5px;padding:5px 0;border-top:1px solid #eeece5}.leader-medal{font-size:15px}.leader-value{color:#17432b;font-size:9px;font-weight:800;white-space:nowrap}.leader-empty,.award-card small{color:#8a9188;font-size:10px}.group-leader{margin-top:11px;break-inside:avoid}.group-leader h3{margin:0 0 7px;color:#365340;font-size:11px}.group-leader .leader-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.award-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.award-card>b{color:#17432b;font:700 12px Georgia,serif}.award-card li{padding:4px 0;border-top:1px solid #eeece5}.table-wrap{overflow:hidden;border:1px solid #d6ddd5;border-radius:9px;background:#fff}table.standings{width:100%;border-collapse:collapse}table.standings th,table.standings td{padding:6px 7px;border:1px solid #e0e4dd;text-align:center;font-size:9px}table.standings th{background:#17432b;color:#fff;font-size:8px;text-transform:uppercase;letter-spacing:.4px}table.standings .player-name{text-align:left;font-weight:700}table.standings .place{color:#17432b;font-weight:900}.hole-breakdown{padding:8px 10px;border:1px solid #dde2da;border-radius:9px;margin:7px 0;background:#fff;break-inside:avoid}.hole-breakdown h3{margin:0 0 6px;color:#17432b;font-size:10px}.hole-breakdown>div{display:flex;flex-wrap:wrap;gap:4px}.hole-breakdown span{display:flex;min-width:28px;flex-direction:column;align-items:center;padding:3px 4px;border:1px solid #eceee9;border-radius:5px}.hole-breakdown small{color:#828b81;font-size:7px}.hole-breakdown b{font-size:9px}.protocol-footer{display:flex;justify-content:space-between;gap:16px;margin-top:17px;padding-top:8px;border-top:1px solid #cbd4c8;color:#68766b;font-size:8px}@media(max-width:680px){.toolbar{flex-wrap:wrap}.toolbar span{flex-basis:100%}.leader-grid{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(3,1fr)}}@media print{body{padding:0;background:#fff}.toolbar{display:none!important}.hero{box-shadow:none;border-radius:10px}.sheet{max-width:none}.table-wrap{overflow:visible}.protocol-section,.group-leader{break-inside:auto}.hole-breakdown{break-inside:avoid}}@page{size:A4 landscape;margin:9mm}';
+        win.document.write('<!doctype html><html lang="' + lang() + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(t.name || 'Tournament') + ' · ' + ru('Протокол', 'Protocol') + '</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"><style>' + css + '</style></head><body><div class="toolbar"><button onclick="window.print()"><i class="fas fa-print"></i> ' + ru('Печать / Сохранить PDF', 'Print / Save PDF') + '</button><button class="secondary" onclick="window.close()">' + ru('Закрыть', 'Close') + '</button><span>' + ru('В диалоге печати выберите «Сохранить как PDF».', 'Choose “Save as PDF” in the print dialog.') + '</span></div>' + body + '</body></html>');
         win.document.close();
         setTimeout(function () { try { win.print(); } catch (e) { /* user can print manually */ } }, 300);
     }
@@ -430,7 +581,7 @@
         if (!node) return;
         var action = node.getAttribute('data-tn-action'), id = node.getAttribute('data-tn-id');
         if (node.hasAttribute('data-tn-detail-tab')) { state.detailTab = node.getAttribute('data-tn-detail-tab'); renderDetail(); return; }
-        if (action === 'detail') openDetail(id, 'overview');
+        if (action === 'detail') openDetail(id, node.getAttribute('data-tn-tab') || 'overview');
         else if (action === 'apply') openDetail(id, 'participants');
         else if (action === 'print-protocol') printProtocol(id);
         else if (action === 'csv-protocol') downloadCsv(id);
@@ -441,7 +592,6 @@
         state.initialized = true;
         var search = el('tn-public-search');
         if (search) search.addEventListener('input', function () { state.query = search.value || ''; renderCatalog(); });
-        document.querySelectorAll('[data-tn-public-filter]').forEach(function (button) { button.addEventListener('click', function () { state.filter = button.getAttribute('data-tn-public-filter') || 'upcoming'; document.querySelectorAll('[data-tn-public-filter]').forEach(function (b) { var on = b === button; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); }); renderCatalog(); }); });
         document.addEventListener('click', handleClick);
         document.addEventListener('submit', function (event) { var form = event.target.closest ? event.target.closest('#tn-public-application-form') : null; if (form) { event.preventDefault(); submitApplication(form); } });
         var back = el('tn-detail-back'); if (back) back.addEventListener('click', closeDetail);

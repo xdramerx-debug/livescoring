@@ -33,6 +33,9 @@ function ok(cond, label) {
     const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'https://t.test/setup-round.html', pretendToBeVisual: true });
     const win = dom.window, doc = win.document;
     win.navigator.vibrate = () => {};
+    win.t = key => key;
+    win.currentLang = 'ru';
+    win.isPlayerModeEnabled = () => false;
     win.currentUser = null; win.currentUserData = null;
     function makeRef(p) { const r = { _p: p || '', update() { return Promise.resolve(); }, set() { return Promise.resolve(); }, remove() { return Promise.resolve(); }, transaction(f) { return Promise.resolve({ value: f(null) }); }, once() { return Promise.resolve({ val: () => null }); }, on() {}, off() {}, orderByChild() { return r; }, equalTo() { return r; }, push() { return Promise.resolve({ key: 'x' }); } }; return r; }
     win.db = { ref: p => makeRef(p) };
@@ -56,6 +59,9 @@ function ok(cond, label) {
         const dom2 = new JSDOM(h2, { runScripts: 'dangerously', url: 'https://t.test/scorer.html?round=R&as=me', pretendToBeVisual: true });
         const w2 = dom2.window, d2 = w2.document;
         w2.navigator.vibrate = () => {};
+        w2.t = key => key;
+        w2.currentLang = 'ru';
+        w2.isPlayerModeEnabled = () => false;
         let calls = 0; w2.saveSc = () => { calls++; };
         w2.eval(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'));
         w2.eval(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'));

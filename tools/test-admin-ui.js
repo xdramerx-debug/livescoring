@@ -56,6 +56,7 @@ win.clearInterval = function() {};
 win.bindRealtimeValue = function() {};
 win.safeStorageGet = function() { return null; };
 win.safeStorageSet = function() {};
+var firebaseUpdates = [];
 // пустая «база» вместо Firebase
 win.db = { ref: function() { return makeRef(); } };
 function makeRef() {
@@ -63,7 +64,7 @@ function makeRef() {
         once: function() { return Promise.resolve({ val: function() { return {}; } }); },
         on: function() {},
         off: function() {},
-        update: function() { return Promise.resolve(); },
+        update: function(values) { if (values) firebaseUpdates.push(values); return Promise.resolve(); },
         set: function() { return Promise.resolve(); },
         remove: function() { return Promise.resolve(); },
         push: function() { return { key: 'test' }; }
@@ -139,6 +140,26 @@ win.nmSaveSettings();
 check('свой словарь сохранён', win.NameVariants.getCustomAliases()['леля'],
     win.NameVariants.getCustomAliases()['леля']);
 
+console.log('\n=== Поиск и редактирование профиля игрока ===\n');
+win.admPlayersLastData = players;
+win.renderAdmPlayersList(players);
+win.admPlayersSearch('Морозова');
+check('список игроков ищет по имени/фамилии', win.document.getElementById('adm-players').textContent.indexOf('Морозова Ольга') !== -1);
+win.admPlayersSearch('');
+win.admTogglePlayerRow('u3');
+check('у реального профиля есть действие редактирования', !!win.document.querySelector('#adm-p-u3 .adm-player-edit-btn'));
+win.openAdmPlayerEditor('u3');
+var editModal = win.document.getElementById('adm-player-edit-modal');
+check('открывается форма редактирования данных игрока', !!editModal && !!editModal.querySelector('#adm-edit-player-hcp'));
+if (editModal) {
+    editModal.querySelector('#adm-edit-player-name').value = 'Морозова Ольга';
+    editModal.querySelector('#adm-edit-player-hcp').value = '+2.4';
+    editModal.querySelector('#adm-edit-player-gender').value = 'women';
+    editModal.querySelector('#adm-edit-player-tee').value = 'rd';
+    editModal.querySelector('#adm-edit-player-phone').value = '+31 20 123 4567';
+    editModal.querySelector('#adm-player-edit-form').dispatchEvent(new win.Event('submit', { bubbles: true, cancelable: true }));
+}
+
 console.log('\n=== кнопка «Проверить имена игроков» ===\n');
 // анализ обязан работать при любом режиме и не менять выбранный режим
 var modeBefore = win.NameVariants.getMode();
@@ -154,6 +175,13 @@ setTimeout(function() {
         (out.match(/записанный по-разному \((\d+)\)/) || [])[0]);
     check('режим после анализа не изменился', win.NameVariants.getMode() === modeBefore,
         modeBefore + ' → ' + win.NameVariants.getMode());
+
+    var playerUpdate = firebaseUpdates[firebaseUpdates.length - 1] || {};
+    check('гандикап с плюсом сохраняется в Firebase как отрицательное значение', playerUpdate['users/u3/handicap'] === -2.4 && playerUpdate['users/u3/exactHcp'] === -2.4,
+        playerUpdate['users/u3/handicap']);
+    check('изменения зеркалируются в публичный профиль', !!playerUpdate['usersPublic/u3'] && playerUpdate['usersPublic/u3'].handicap === -2.4 && playerUpdate['usersPublic/u3'].defaultTee === 'rd');
+    check('телефон синхронизируется только как последние четыре цифры в публичном профиле', playerUpdate['users/u3/phone'] === '+31 20 123 4567' && playerUpdate['usersPublic/u3'].phoneLast4 === '4567');
+    check('модальное окно закрывается после успешного сохранения', !win.document.getElementById('adm-player-edit-modal'));
 
     console.log('\nИтого: ' + total + ' проверок, ошибок: ' + fails);
     process.exit(fails ? 1 : 0);

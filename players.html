@@ -12,8 +12,8 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
-    <title data-i18n="nav_players">Игроки — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=c73543e8">
+    <title data-i18n="nav_players">Игроки — Гольф-клуб Пестово</title>
+    <link rel="stylesheet" href="css/style.css?v=4f9da926">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/design-system.js?v=78b8d092"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,33 +48,38 @@
 <div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-users"></i> <span data-i18n="nav_players">Игроки</span></h1></div></div>
 
 <main class="container" style="padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:60px;">
-    <div class="card">
-        <div class="form-row">
-            <div class="form-group" style="flex:2;min-width:200px;"><label data-i18n="search_label">Поиск игрока</label>
-                <input type="text" id="players-search" class="form-input" data-i18n-placeholder="search_placeholder" placeholder="Поиск по имени..." oninput="loadPlayers()">
+    <div class="card page-filters-card">
+        <details class="page-filters-details">
+            <summary><span><i class="fas fa-magnifying-glass"></i> <span data-i18n="filters_search_toggle">Поиск и фильтры</span></span><i class="fas fa-chevron-down page-filters-chevron" aria-hidden="true"></i></summary>
+            <div class="page-filters-content">
+                <div class="form-row">
+                    <div class="form-group" style="flex:2;min-width:200px;"><label data-i18n="search_label">Поиск игрока</label>
+                        <input type="text" id="players-search" class="form-input" data-i18n-placeholder="search_placeholder" placeholder="Поиск по имени..." oninput="loadPlayers()">
+                    </div>
+                    <div class="form-group"><label data-i18n="player_type">Тип игрока</label>
+                        <select id="filter-type" class="form-input" onchange="loadPlayers()">
+                            <option value="all" data-i18n="all_players">Все игроки</option>
+                            <option value="registered" data-i18n="type_registered">Только зарегистрированные</option>
+                            <option value="guests" data-i18n="type_guests">Только гости</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label data-i18n="gender_label">Пол</label>
+                        <select id="filter-gender" class="form-input" onchange="loadPlayers()">
+                            <option value="all" data-i18n="all_genders">Все</option>
+                            <option value="men" data-i18n="men_plural">Мужчины</option>
+                            <option value="women" data-i18n="women_plural">Девушки</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label data-i18n="sort_by">Сортировка</label>
+                        <select id="sort-by" class="form-input" onchange="loadPlayers()">
+                            <option value="rounds" data-i18n="sort_rounds">По раундам</option>
+                            <option value="hcp-asc">HCP ↑</option>
+                            <option value="hcp-desc">HCP ↓</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-            <div class="form-group"><label data-i18n="player_type">Тип игрока</label>
-                <select id="filter-type" class="form-input" onchange="loadPlayers()">
-                    <option value="all" data-i18n="all_players">Все игроки</option>
-                    <option value="registered" data-i18n="type_registered">Только зарегистрированные</option>
-                    <option value="guests" data-i18n="type_guests">Только гости</option>
-                </select>
-            </div>
-            <div class="form-group"><label data-i18n="gender_label">Пол</label>
-                <select id="filter-gender" class="form-input" onchange="loadPlayers()">
-                    <option value="all" data-i18n="all_genders">Все</option>
-                    <option value="men" data-i18n="men_plural">Мужчины</option>
-                    <option value="women" data-i18n="women_plural">Девушки</option>
-                </select>
-            </div>
-            <div class="form-group"><label data-i18n="sort_by">Сортировка</label>
-                <select id="sort-by" class="form-input" onchange="loadPlayers()">
-                    <option value="rounds" data-i18n="sort_rounds">По раундам</option>
-                    <option value="hcp-asc">HCP ↑</option>
-                    <option value="hcp-desc">HCP ↓</option>
-                </select>
-            </div>
-        </div>
+        </details>
     </div>
 
     <div id="players-grid" class="players-grid players-layout-1">
@@ -93,16 +98,19 @@
     </div>
 </div>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.100.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.101.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="js/firebase-config.js?v=57564a0d"></script>
-<script type="module" src="dist/livescoring-modules.js?v=2b57ed5a"></script>
-    <script src="js/utils.js?v=6711f11d"></script>
+<script type="module" src="dist/livescoring-modules.js?v=bdb3fe24"></script>
+    <script src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
+<script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
+<script src="js/qr-code.js?v=2a26e819"></script>
+<script src="js/utils.js?v=dfd58402"></script>
 <script src="js/players.js?v=7014460d"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
-<script src="js/pwa.js?v=a2e4d9ef"></script>
+<script src="js/pwa.js?v=3397d21c"></script>
 </body>
 </html>

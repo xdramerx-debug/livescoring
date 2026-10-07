@@ -1,4 +1,4 @@
-const J = "Гольф-клуб Пестово", Re = 72, $ = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
+const $ = "Гольф-клуб Пестово", Re = 72, z = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
   1: { p: 4, hcp: 5, bk: 373, bl: 339, wh: 328, rd: 317 },
   2: { p: 4, hcp: 13, bk: 272, bl: 257, wh: 257, rd: 250 },
   3: { p: 5, hcp: 9, bk: 486, bl: 475, wh: 464, rd: 423 },
@@ -17,52 +17,52 @@ const J = "Гольф-клуб Пестово", Re = 72, $ = "МО, г. Мыти
   16: { p: 4, hcp: 14, bk: 423, bl: 391, wh: 368, rd: 312 },
   17: { p: 3, hcp: 10, bk: 199, bl: 188, wh: 174, rd: 151 },
   18: { p: 4, hcp: 6, bk: 375, bl: 349, wh: 335, rd: 302 }
-}, O = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, z = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, Q = ["bk", "bl", "wh", "rd"], X = {
+}, O = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, Q = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, X = ["bk", "bl", "wh", "rd"], Z = {
   men: { bk: { cr: 76, sr: 144 }, bl: { cr: 73.8, sr: 137 }, wh: { cr: 72, sr: 135 }, rd: { cr: 69.2, sr: 134 } },
   women: { bl: { cr: 80.8, sr: 153 }, wh: { cr: 78.6, sr: 143 }, rd: { cr: 75.2, sr: 136 } }
 };
-function Z(e) {
+function ee(e) {
   return v[e] ? v[e].p : 4;
 }
-function ee(e, a) {
+function te(e, a) {
   return a = a || "wh", v[e] && v[e][a] || 0;
 }
-function te(e) {
+function ae(e) {
   return v[e] ? v[e].hcp : e;
 }
-function ae(e) {
+function re(e) {
   return O[e] || 15;
 }
-typeof window < "u" && Object.assign(window, { CLUB: J, TOTAL_PAR: 72, ADDR: $, HOLES: v, TIMINGS: O, TEES: z, TEE_ORDER: Q, COURSE_RATINGS: X, holePar: Z, holeDist: ee, holeHcp: te, holeTiming: ae });
-function re(e) {
+typeof window < "u" && Object.assign(window, { CLUB: $, TOTAL_PAR: 72, ADDR: z, HOLES: v, TIMINGS: O, TEES: Q, TEE_ORDER: X, COURSE_RATINGS: Z, holePar: ee, holeDist: te, holeHcp: ae, holeTiming: re });
+function ne(e) {
   return e == null || isNaN(e) ? "—" : e === 0 ? "E" : e > 0 ? "+" + e : "" + e;
 }
-function ne(e) {
+function oe(e) {
   return e == null ? "" : e < 0 ? "s-un" : e > 0 ? "s-ov" : "s-ev";
 }
-function oe(e, a) {
+function se(e, a) {
   if (!e || e < 1 || !a) return "";
   var r = e - a;
   return r <= -2 ? "r-eag" : r === -1 ? "r-bir" : r === 0 ? "r-par" : r === 1 ? "r-bog" : "r-dbl";
 }
-function se(e, a) {
+function le(e, a) {
   if (!e || !a) return "";
   if (e === 1) return t("res_hio");
   var r = e - a;
   return r <= -3 ? t("res_albatross") : r === -2 ? t("res_eagle") : r === -1 ? t("res_birdie") : r === 0 ? t("res_par") : r === 1 ? t("res_bogey") : r === 2 ? t("res_double") : "+" + r;
 }
 typeof window < "u" && Object.assign(window, {
-  fmtScore: re,
-  scoreClass: ne,
-  holeResClass: oe,
-  holeResName: se,
-  fmtDate: le,
-  fmtTime: ie,
-  tnDateTs: _e,
+  fmtScore: ne,
+  scoreClass: oe,
+  holeResClass: se,
+  holeResName: le,
+  fmtDate: ie,
+  fmtTime: _e,
+  tnDateTs: de,
   normalizeTimestampMs: T,
-  isTodayTimestamp: de
+  isTodayTimestamp: ce
 });
-function le(e) {
+function ie(e) {
   if (!e) return "—";
   var a = typeof currentLang < "u" && currentLang ? currentLang : "ru";
   try {
@@ -72,7 +72,7 @@ function le(e) {
     return (r.getDate() < 10 ? "0" : "") + r.getDate() + "." + (r.getMonth() + 1 < 10 ? "0" : "") + (r.getMonth() + 1) + "." + r.getFullYear();
   }
 }
-function ie(e) {
+function _e(e) {
   if (e == null || e === "") return "—";
   var a = /^(\d{1,2}):(\d{2})(:\d{2})?$/.exec(String(e).trim());
   if (a) {
@@ -88,7 +88,7 @@ function ie(e) {
     return "—";
   }
 }
-function _e(e) {
+function de(e) {
   if (typeof e == "number" && isFinite(e)) return e;
   var a = String(e ?? "").trim();
   if (!a) return NaN;
@@ -105,7 +105,7 @@ function T(e) {
   var a = Number(e);
   return (!isFinite(a) || a <= 0) && (a = typeof e == "string" ? Date.parse(e) : 0), a > 0 && a < 1e11 && (a *= 1e3), isFinite(a) && a > 0 ? a : 0;
 }
-function de(e, a) {
+function ce(e, a) {
   var r = T(e);
   if (!r) return !1;
   var n = new Date(T(a || Date.now())), o = new Date(r);
@@ -147,7 +147,7 @@ function C(e, a) {
     active: !i && (o !== null || s !== null)
   };
 }
-function ce(e, a) {
+function ue(e, a) {
   return !a || !a.active ? e.slice() : e.filter(function(r) {
     var n = V(r && r[1]);
     return !(!n || a.from !== null && n < a.from || a.to !== null && n > a.to);
@@ -165,7 +165,7 @@ function j(e, a, r, n) {
   }
 }
 var P = /* @__PURE__ */ Object.create(null);
-function ue(e) {
+function pe(e) {
   if (!e) return null;
   var a = document.getElementById(e.fromId), r = document.getElementById(e.toId);
   if (!a || !r) return null;
@@ -241,37 +241,37 @@ function ue(e) {
     a.value = "", r.value = "", l(), _(), d(), h();
   }), l(), d(), c(), P[b.key] = b, b;
 }
-function pe(e) {
+function me(e) {
   return P[e] || null;
 }
-function me() {
+function fe() {
   Object.keys(P).forEach(function(e) {
     var a = P[e];
     a && (a.renderPresets(), a.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: G, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: V, datePresetRange: E, readDateRange: C, filterEntriesByDateRange: ce, renderRoundsPeriodSummary: j, dateRangeFilters: P, initDateRangeFilter: ue, getDateRangeFilter: pe, refreshDateRangeFilters: me });
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: G, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: V, datePresetRange: E, readDateRange: C, filterEntriesByDateRange: ue, renderRoundsPeriodSummary: j, dateRangeFilters: P, initDateRangeFilter: pe, getDateRangeFilter: me, refreshDateRangeFilters: fe });
 function q(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-function fe() {
+function he() {
   for (var e = arguments[0], a = Array.prototype.slice.call(arguments, 1), r = "", n = 0; n < e.length; n++)
     r += e[n], n < a.length && (r += q(a[n]));
   return r;
 }
-function he(e, a) {
+function be(e, a) {
   e && (e.innerHTML = a == null ? "" : String(a));
 }
-typeof window < "u" && Object.assign(window, { esc: q, html: fe, setSafeHtml: he });
+typeof window < "u" && Object.assign(window, { esc: q, html: he, setSafeHtml: be });
 var L = 3e3;
 function K() {
   if (typeof document > "u" || !document.body) return null;
   var e = document.getElementById("toast-root");
   return e || (e = document.createElement("div"), e.id = "toast-root", e.className = "toast-root", e.setAttribute("aria-live", "polite"), document.body.appendChild(e)), e;
 }
-function Y(e) {
+function U(e) {
   return e === "error" ? '<i class="fas fa-triangle-exclamation"></i>' : e === "warn" ? '<i class="fas fa-bell"></i>' : e === "info" ? '<i class="fas fa-circle-info"></i>' : '<i class="fas fa-circle-check"></i>';
 }
 function I(e, a, r) {
@@ -290,7 +290,7 @@ function I(e, a, r) {
         break;
       }
     var i = document.createElement("div");
-    i.className = "toast t-" + a, i.setAttribute("role", "status"), i.innerHTML = '<span class="toast-ico">' + Y(a) + '</span><span class="toast-msg">' + e + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
+    i.className = "toast t-" + a, i.setAttribute("role", "status"), i.innerHTML = '<span class="toast-ico">' + U(a) + '</span><span class="toast-msg">' + e + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
     var _ = !1, u = function(d) {
       if (!_) {
         _ = !0;
@@ -330,7 +330,7 @@ function I(e, a, r) {
     return null;
   }
 }
-function be(e, a) {
+function ge(e, a) {
   a = a || {};
   var r = (e || []).slice();
   if (r.length) {
@@ -342,17 +342,17 @@ function be(e, a) {
     });
   }
 }
-function U(e) {
+function Y(e) {
   try {
     return localStorage.getItem(e) === "1";
   } catch {
     return !1;
   }
 }
-function ge(e) {
+function ye(e) {
   if (navigator.vibrate) {
     var a = e ?? 50;
-    U("pestovo_strong_vibration") && (Array.isArray(a) ? a = a.map(function(r, n) {
+    Y("pestovo_strong_vibration") && (Array.isArray(a) ? a = a.map(function(r, n) {
       return n % 2 === 0 ? Math.min(650, Math.max(35, Math.round((parseInt(r) || 0) * 1.45))) : Math.min(260, Math.max(20, Math.round((parseInt(r) || 0) * 0.9)));
     }) : a = Math.min(650, Math.max(70, Math.round((parseInt(a) || 50) * 1.5))));
     try {
@@ -361,15 +361,15 @@ function ge(e) {
     }
   }
 }
-function ye(e) {
+function ve(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: K, toastIconFor: Y, toast: I, toastSequence: be, isPlayerModeEnabled: U, vib: ge, escapeHtml: ye });
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: K, toastIconFor: U, toast: I, toastSequence: ge, isPlayerModeEnabled: Y, vib: ye, escapeHtml: ve });
 var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", f = {
   ru: {
-    brand_name: "Пестово",
+    brand_name: "Гольф-клуб Пестово",
     nav_home: "Главная",
     nav_round: "Раунд",
     nav_leaderboard: "Все раунды",
@@ -527,6 +527,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     men: "Мужчина",
     women: "Девушка",
     exact_hcp: "Точный гандикап",
+    refresh_hcp_from_rusgolf: "Обновить гандикап из RUSGOLF",
     field_hcp: "Полевой гандикап",
     field_auto: "Полевой (авто)",
     start_round_btn: "Начать раунд",
@@ -763,6 +764,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     phone_label: "Телефон",
     default_tee: "Предпочитаемый ТИ по умолчанию",
     msg_profile_saved: "✅ Профиль обновлён!",
+    filters_search_toggle: "Поиск и фильтры",
     search_label: "Поиск игрока",
     search_placeholder: "Поиск по имени...",
     page_title_handicaps: "Полевые гандикапы",
@@ -958,7 +960,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     tee_label: "ТИ"
   },
   en: {
-    brand_name: "Pestovo",
+    brand_name: "Гольф-клуб Пестово",
     nav_home: "Home",
     nav_round: "Round",
     nav_leaderboard: "All Rounds",
@@ -1116,6 +1118,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     men: "Male",
     women: "Female",
     exact_hcp: "Exact Handicap",
+    refresh_hcp_from_rusgolf: "Refresh handicap from RUSGOLF",
     field_hcp: "Course Handicap",
     field_auto: "Course HCP (auto)",
     start_round_btn: "Start Round",
@@ -1350,6 +1353,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     phone_label: "Phone Number",
     default_tee: "Default Preferred Tee",
     msg_profile_saved: "✅ Profile updated!",
+    filters_search_toggle: "Search & filters",
     search_label: "Search Player",
     search_placeholder: "Search by name...",
     page_title_handicaps: "Course Handicaps",
@@ -1549,7 +1553,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
   var e = (/* @__PURE__ */ new Date()).getFullYear();
   f.ru && (f.ru.footer_club = "© " + e + " Гольф-клуб Пестово"), f.en && (f.en.footer_club = "© " + e + " Pestovo Golf Club");
 })();
-function ve(e) {
+function W(e) {
   var a = typeof m < "u" && m ? m : "ru";
   try {
     if (f[a] && f[a][e] !== void 0)
@@ -1568,7 +1572,7 @@ function we() {
   } catch (o) {
     console.warn("[silent]", o);
   }
-  if (A(), W(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
+  if (A(), J(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
     var e = document.getElementById("admin-content");
     e && !e.classList.contains("hidden") && loadAdmRounds();
   }
@@ -1587,7 +1591,7 @@ function we() {
   }
   typeof initRoundView == "function" && typeof curRid < "u" && curRid && initRoundView(), typeof initSoloView == "function" && initSoloView(), typeof updateHcpTable == "function" && updateHcpTable(), typeof loadClubStats == "function" && loadClubStats(), typeof loadMyActiveRounds == "function" && loadMyActiveRounds("my-active-rounds-container");
 }
-function W() {
+function J() {
   typeof document > "u" || document.querySelectorAll(".lang-btn").forEach(function(e) {
     e.innerHTML = m === "en" ? "🇬🇧 EN" : "🇷🇺 RU";
   });
@@ -1595,7 +1599,7 @@ function W() {
 function A() {
   typeof document > "u" || (document.querySelectorAll("[data-i18n]").forEach(function(e) {
     var a = e.getAttribute("data-i18n");
-    a && f[m] && f[m][a] !== void 0 && (e.innerHTML = f[m][a]);
+    a && f[m] && f[m][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = f[m][a] + " — " + W("brand_name") : e.innerHTML = f[m][a]);
   }), document.querySelectorAll("[data-i18n-placeholder]").forEach(function(e) {
     var a = e.getAttribute("data-i18n-placeholder");
     a && f[m] && f[m][a] !== void 0 && e.setAttribute("placeholder", f[m][a]);
@@ -1626,7 +1630,7 @@ function N() {
   }
 }
 N();
-typeof window < "u" && Object.assign(window, { currentLang: m, I18N: f, t: ve, toggleLang: we, updateLangButtons: W, applyTranslations: A, updateFooterYear: N });
+typeof window < "u" && Object.assign(window, { currentLang: m, I18N: f, t: W, toggleLang: we, updateLangButtons: J, applyTranslations: A, updateFooterYear: N });
 function D(e, a, r, n, o) {
   var s = !!o, i = s ? escapeHtml : function(b) {
     return String(b);
@@ -1763,14 +1767,14 @@ function Pe(e, a, r, n) {
 }
 typeof window < "u" && Object.assign(window, { buildOfficialCallText: D, sendTelegramDirectAlert: Se, sendTelegramSilentAlert: k, sendTelegramOfficialAlert: ke, vkSendMessageJsonp: H, vkBuildAlertText: F, sendVKDirectAlert: Te, sendVKSilentAlert: M, sendVKOfficialAlert: Pe });
 export {
-  $ as ADDR,
-  J as CLUB,
-  X as COURSE_RATINGS,
+  z as ADDR,
+  $ as CLUB,
+  Z as COURSE_RATINGS,
   R as DATE_RANGE_PRESETS,
   v as HOLES,
   f as I18N,
-  z as TEES,
-  Q as TEE_ORDER,
+  Q as TEES,
+  X as TEE_ORDER,
   O as TIMINGS,
   L as TOAST_DURATION_MS,
   Re as TOTAL_PAR,
@@ -1783,45 +1787,45 @@ export {
   P as dateRangeFilters,
   K as ensureToastRoot,
   q as esc,
-  ye as escapeHtml,
-  ce as filterEntriesByDateRange,
-  le as fmtDate,
-  re as fmtScore,
-  ie as fmtTime,
-  pe as getDateRangeFilter,
+  ve as escapeHtml,
+  ue as filterEntriesByDateRange,
+  ie as fmtDate,
+  ne as fmtScore,
+  _e as fmtTime,
+  me as getDateRangeFilter,
   V as getRoundFilterTs,
-  ee as holeDist,
-  te as holeHcp,
-  Z as holePar,
-  oe as holeResClass,
-  se as holeResName,
-  ae as holeTiming,
-  fe as html,
-  ue as initDateRangeFilter,
-  U as isPlayerModeEnabled,
-  de as isTodayTimestamp,
+  te as holeDist,
+  ae as holeHcp,
+  ee as holePar,
+  se as holeResClass,
+  le as holeResName,
+  re as holeTiming,
+  he as html,
+  pe as initDateRangeFilter,
+  Y as isPlayerModeEnabled,
+  ce as isTodayTimestamp,
   T as normalizeTimestampMs,
   C as readDateRange,
-  me as refreshDateRangeFilters,
+  fe as refreshDateRangeFilters,
   j as renderRoundsPeriodSummary,
-  ne as scoreClass,
+  oe as scoreClass,
   Se as sendTelegramDirectAlert,
   ke as sendTelegramOfficialAlert,
   k as sendTelegramSilentAlert,
   Te as sendVKDirectAlert,
   Pe as sendVKOfficialAlert,
   M as sendVKSilentAlert,
-  he as setSafeHtml,
-  ve as t,
-  _e as tnDateTs,
+  be as setSafeHtml,
+  W as t,
+  de as tnDateTs,
   I as toast,
-  Y as toastIconFor,
-  be as toastSequence,
+  U as toastIconFor,
+  ge as toastSequence,
   we as toggleLang,
   x as tsToDateInputValue,
   N as updateFooterYear,
-  W as updateLangButtons,
-  ge as vib,
+  J as updateLangButtons,
+  ye as vib,
   F as vkBuildAlertText,
   H as vkSendMessageJsonp
 };

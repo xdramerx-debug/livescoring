@@ -23,6 +23,9 @@ function rgGetCustomProxy() {
 }
 
 function rgBuildProxyList() {
+    if (typeof PestovoRusgolf !== 'undefined' && PestovoRusgolf && PestovoRusgolf.buildProxyList) {
+        return PestovoRusgolf.buildProxyList();
+    }
     var proxies = [];
     var custom = rgGetCustomProxy();
     if (custom && custom.indexOf('{url}') !== -1) {
@@ -190,6 +193,9 @@ function rgParseMarkdownTable(text) {
 }
 
 function rgParseResults(text) {
+    if (typeof PestovoRusgolf !== 'undefined' && PestovoRusgolf && PestovoRusgolf.parseResults) {
+        return PestovoRusgolf.parseResults(text);
+    }
     if (!text) return { valid: false, rows: [] };
     if (text.indexOf('<table') !== -1 || text.indexOf('<html') !== -1) {
         var htmlRes = rgParseHtmlTable(text);
@@ -201,6 +207,9 @@ function rgParseResults(text) {
 }
 
 function rgFetchViaProxy(query, attempt) {
+    if (typeof PestovoRusgolf !== 'undefined' && PestovoRusgolf && PestovoRusgolf.fetchViaProxy) {
+        return PestovoRusgolf.fetchViaProxy(query, attempt);
+    }
     attempt = attempt || 0;
     var target = RG_SEARCH_BASE + encodeURIComponent(query);
     var proxies = rgBuildProxyList();

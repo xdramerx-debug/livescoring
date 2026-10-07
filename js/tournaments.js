@@ -1493,9 +1493,6 @@ function openTournamentRegModal(tnId) {
             html += '<div class="form-group" style="margin:0;grid-column:1/-1;"><label>' + (en ? 'Phone (optional)' : 'Телефон (необязательно)') + '</label>' +
                 '<input type="tel" id="reg-guest-phone" class="form-input" placeholder="+7 …"></div>';
             html += '</div>';
-            html += '<p style="font-size:12px;color:var(--muted);margin:12px 0 16px;">' +
-                (en ? 'Already have an account?' : 'Уже есть аккаунт?') + ' <a href="auth.html?redirect=tournaments.html" style="color:var(--gold);font-weight:700;">' +
-                (en ? 'Log in' : 'Войти') + '</a></p>';
         }
 
         html += '<div style="display:flex;gap:12px;">';

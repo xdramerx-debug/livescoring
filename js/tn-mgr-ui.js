@@ -92,10 +92,16 @@ var TnMgrUI = (function (root) {
         loading: true,
         form: null,          // черновик формы создания/правки
         editingTournament: false,
-        pendingPlayers: [],  // участники из Excel, ждут сохранения формы турнира
+        pendingPlayers: [],  // участники из Excel/базы клуба, ждут сохранения формы турнира
+        formDirectoryQuery: '',
+        formDirectorySelection: {},
+        formDirectoryCache: null,
         groupForm: null,     // { id, name, hcpFrom, hcpTo, gender, tee, format, members }
         groupDistributionCount: 3,
         participantQuery: '',
+        participantTableQuery: '',
+        selectedParticipantIds: {},
+        rusgolfSync: { running: false, status: '' },
         suggestions: [],
         scoreData: null,     // заполняется экраном счёта (tn-mgr-round.js)
         resultsData: null,
@@ -512,32 +518,106 @@ var TnMgrUI = (function (root) {
             formParticipantsHtml() + '</div>';
     }
 
-    /**
-     * Участники прямо в форме турнира: список из Excel-файла. Разбор ищет
-     * имя, фамилию и гандикап по всем столбцам и ячейкам (TnMgrCore.parseWorkbook),
-     * а сами участники добавляются в турнир при сохранении формы.
-     */
+    /** Нормализованный снимок базы участников для поиска в форме турнира. */
+    function formDirectoryPlayers() {
+        if (Array.isArray(state.formDirectoryCache)) return state.formDirectoryCache;
+        var source = typeof root.getKnownPlayersSync === 'function' ? root.getKnownPlayersSync() : {};
+        state.formDirectoryCache = Object.keys(source || {}).map(function (uid) {
+            var item = source[uid] || {};
+            var name = core().trim(item.name || item.fio || [item.lastName, item.firstName, item.middleName].filter(Boolean).join(' '));
+            if (!name) return null;
+            var rawHcp = item.handicap != null ? item.handicap : item.hi;
+            var hcp = rawHcp == null || rawHcp === '' ? null
+                : (typeof root.parseExactHcp === 'function' ? root.parseExactHcp(rawHcp) : (String(rawHcp).charAt(0) === '+' ? -Math.abs(parseFloat(String(rawHcp).slice(1))) : parseFloat(rawHcp)));
+            return {
+                uid: String(item.uid || uid), id: String(item.uid || uid), fio: name, name: name,
+                firstName: item.firstName || '', lastName: item.lastName || '', middleName: item.middleName || '',
+                hi: isFinite(Number(hcp)) ? Number(hcp) : null, gender: item.gender || '',
+                tee: item.defaultTee || item.tee || '', source: 'directory', club: item.club || ''
+            };
+        }).filter(Boolean);
+        return state.formDirectoryCache;
+    }
+
+    function isFormDirectoryPlayerAdded(player) {
+        var uid = String(player && player.uid || '');
+        var key = core().playerKeyByFio(player);
+        var pending = state.pendingPlayers || [];
+        if (pending.some(function (item) {
+            var existingUid = String(item && item.uid || '');
+            if (uid && existingUid) return uid === existingUid;
+            return key && key === core().playerKeyByFio(item);
+        })) return true;
+        if (state.editingTournament) {
+            return playersOf(tournament()).some(function (item) { return uid && String(item.uid || '') === uid; });
+        }
+        return false;
+    }
+
+    function visibleFormDirectoryPlayers() {
+        return core().searchPlayers(formDirectoryPlayers(), state.formDirectoryQuery || '', 20);
+    }
+
+    function formDirectorySelectedCount() {
+        return Object.keys(state.formDirectorySelection || {}).filter(function (uid) {
+            return !!state.formDirectorySelection[uid] && !isFormDirectoryPlayerAdded({ uid: uid });
+        }).length;
+    }
+
+    function updateFormDirectorySelectionUi() {
+        var count = formDirectorySelectedCount();
+        var badge = el('tnm-form-directory-selected-count');
+        var addButton = el('tnm-add-selected-directory');
+        if (badge) badge.textContent = String(count);
+        if (addButton) addButton.disabled = !count;
+    }
+
     function formParticipantsHtml() {
         var list = state.pendingPlayers || [];
         var rows = list.map(function (player, index) {
-            return '<tr><td>' + (index + 1) + '</td><td>' + esc(core().playerFio(player)) + '</td>' +
+            return '<tr><td>' + (index + 1) + '</td><td>' + esc(core().playerFio(player)) +
+                (player.source === 'directory' ? ' <i class="fas fa-address-book tnm-dir-linked" title="' + esc(bi('База данных клуба', 'Club database')) + '"></i>' : '') + '</td>' +
                 '<td>' + esc(core().fmtHcp(player.hi)) + '</td>' +
                 '<td>' + esc(core().genderLabel(player.gender, lang())) + '</td>' +
                 '<td class="tnm-nowrap"><button type="button" class="tnm-icon-btn" data-tnm-act="remove-pending-player" data-index="' + index +
                 '" title="' + esc(bi('Убрать', 'Remove')) + '"><i class="fas fa-xmark"></i></button></td></tr>';
         }).join('');
         var hint = state.editingTournament
-            ? bi('Участники из Excel добавятся в турнир при сохранении формы.', 'Participants from Excel are added to the tournament when you save the form.')
-            : bi('Участники из Excel добавятся в турнир сразу после его создания.', 'Participants from Excel are added to the tournament right after it is created.');
+            ? bi('Выбранные участники добавятся в турнир при сохранении формы.', 'Selected participants are added to the tournament when you save the form.')
+            : bi('Выбранные участники добавятся в турнир сразу после его создания.', 'Selected participants are added to the tournament right after it is created.');
+        var directory = visibleFormDirectoryPlayers();
+        var selectable = directory.filter(function (player) { return !isFormDirectoryPlayerAdded(player); });
+        var dirRows = directory.map(function (player) {
+            var added = isFormDirectoryPlayerAdded(player);
+            var selected = !!(state.formDirectorySelection || {})[player.uid];
+            return '<label class="tnm-dir-row tnm-form-dir-row' + (added ? ' is-added' : '') + '">' +
+                '<input type="checkbox" data-tnm-edit="form-directory-player-select" data-uid="' + esc(player.uid) + '"' +
+                (selected && !added ? ' checked' : '') + (added ? ' disabled' : '') + '>' +
+                '<span><b>' + esc(core().playerFio(player)) + '</b>' +
+                (player.hi != null ? ' <span class="tnm-muted">HI ' + esc(core().fmtHcp(player.hi)) + '</span>' : '') +
+                (player.gender ? ' <span class="tnm-muted">' + esc(core().genderLabel(player.gender, lang())) + '</span>' : '') +
+                (added ? ' <span class="tnm-chip tnm-chip-done">' + esc(bi('уже добавлен', 'already added')) + '</span>' : '') +
+                '</span></label>';
+        }).join('');
+        var selectedCount = formDirectorySelectedCount();
+        var directorySearch = '<div class="tnm-form-directory">' +
+            '<div class="tnm-form-directory-head"><b><i class="fas fa-address-book"></i> ' + esc(bi('Выбрать из базы данных клуба', 'Select from the club database')) + '</b>' +
+            '<span class="tnm-muted">' + esc(bi('Можно выбрать сразу несколько игроков', 'You can select multiple players at once')) + '</span></div>' +
+            '<label class="tnm-form-directory-search"><i class="fas fa-search"></i><input type="search" data-tnm-live-edit="form-directory-search" data-tnm-focus="form-directory-search" autocomplete="off" value="' + esc(state.formDirectoryQuery || '') + '" placeholder="' + esc(bi('Поиск по имени или фамилии', 'Search by first or last name')) + '"></label>' +
+            '<div class="tnm-dir-list tnm-form-directory-list">' + (dirRows || emptyHtml(bi('Совпадений нет — измените запрос или сначала добавьте игроков в базу клуба.', 'No matches — change the query or add players to the club database first.'))) + '</div>' +
+            '<div class="tnm-form-directory-actions"><span class="tnm-muted">' + esc(bi('Выбрано: ', 'Selected: ')) + '<b id="tnm-form-directory-selected-count">' + selectedCount + '</b></span>' +
+            btn('form-select-visible-directory', esc(bi('Выбрать видимых', 'Select visible')), { variant: 'ghost', small: true, disabled: !selectable.length }) +
+            '<button type="button" id="tnm-add-selected-directory" class="tnm-btn tnm-btn-primary" data-tnm-act="form-add-selected-directory"' + (selectedCount ? '' : ' disabled') + '><i class="fas fa-user-plus"></i> ' + esc(bi('Добавить выбранных', 'Add selected')) + '</button></div>' +
+            '</div>';
         return '<div class="tnm-card tnm-form">' +
             headHtml('<i class="fas fa-users"></i> ' + esc(bi('Участники турнира (Excel)', 'Tournament participants (Excel)')),
-                esc(bi('Загрузите список из Excel: имя, фамилия и гандикап (если он есть) находятся по всем листам, столбцам и ячейкам.',
-                    'Upload an Excel list: first name, last name and handicap (if present) are found across all sheets, columns and cells.')),
+                esc(bi('Загрузите список из Excel или найдите участников в базе клуба по имени/фамилии. Можно выбрать нескольких сразу.',
+                    'Upload an Excel list or search the club database by first/last name. Multiple players can be selected at once.')),
                 btn('import-participants-excel', esc(bi('Импорт Excel', 'Import Excel')), { icon: 'fas fa-file-excel', variant: 'ghost' }) +
                 (list.length ? ' ' + btn('clear-pending-players', esc(bi('Очистить', 'Clear')), { variant: 'ghost', small: true }) : '')) +
-            '<input type="file" id="tnm-form-excel-input" accept=".xlsx,.xls,.ods,.csv,.tsv,.txt" class="tnm-hidden">' +
+            '<input type="file" id="tnm-form-excel-input" accept=".xlsx,.xls,.ods,.csv,.tsv,.txt" class="tnm-hidden">' + directorySearch +
             (list.length
-                ? '<p class="tnm-counters">' + esc(bi('Участников из файла: ', 'Participants from the file: ')) + '<b>' + list.length + '</b></p>' +
+                ? '<p class="tnm-counters">' + esc(bi('Участников к добавлению: ', 'Participants to add: ')) + '<b>' + list.length + '</b></p>' +
                 '<div class="tnm-table-scroll"><table class="tnm-table"><thead><tr><th>#</th><th>' + esc(bi('ФИО', 'Name')) +
                 '</th><th>HI</th><th>' + esc(bi('Пол', 'Gender')) + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
                 '<p class="tnm-sub"><i class="fas fa-circle-info"></i> ' + esc(hint) + '</p>'
@@ -565,21 +645,50 @@ var TnMgrUI = (function (root) {
         });
     }
 
-    /** Добавляет участников в очередь формы без дублей. Возвращает число новых. */
+    /** Добавляет участников в очередь формы: uid различает однофамильцев. */
     function mergePendingPlayers(list) {
         var pending = state.pendingPlayers || [];
-        var seen = {};
-        pending.forEach(function (player) { seen[core().playerKeyByFio(player)] = true; });
         var added = 0;
         (list || []).forEach(function (player) {
-            var key = core().playerKeyByFio(player);
-            if (!key || seen[key]) return;
-            seen[key] = true;
+            var uid = String(player && player.uid || ''), nameKey = core().playerKeyByFio(player);
+            if (!nameKey) return;
+            var duplicate = pending.some(function (existing) {
+                var existingUid = String(existing && existing.uid || '');
+                if (uid && existingUid) return uid === existingUid;
+                // Импорт без UID не должен продублировать уже выбранный профиль;
+                // два конкретных UID с одинаковым ФИО остаются разными участниками.
+                return nameKey === core().playerKeyByFio(existing);
+            });
+            if (duplicate) return;
             pending.push(player);
             added++;
         });
         state.pendingPlayers = pending;
         return added;
+    }
+
+    function addSelectedFormDirectoryPlayers() {
+        var selected = state.formDirectorySelection || {}, byUid = {};
+        formDirectoryPlayers().forEach(function (player) { byUid[player.uid] = player; });
+        var chosen = Object.keys(selected).filter(function (uid) { return selected[uid] && byUid[uid] && !isFormDirectoryPlayerAdded(byUid[uid]); })
+            .map(function (uid) { return byUid[uid]; });
+        if (!chosen.length) { toastMsg(bi('Выберите участников из базы данных клуба', 'Select players from the club database'), 'warn'); return; }
+        var added = mergePendingPlayers(chosen);
+        state.formDirectorySelection = {};
+        scheduleDraft();
+        render();
+        toastMsg(added
+            ? bi('Добавлено из базы данных клуба: ', 'Added from club database: ') + added
+            : bi('Выбранные участники уже добавлены', 'Selected players are already in the list'), added ? 'success' : 'info');
+    }
+
+    function toggleVisibleFormDirectoryPlayers() {
+        var visible = visibleFormDirectoryPlayers().filter(function (player) { return !isFormDirectoryPlayerAdded(player); });
+        if (!visible.length) return;
+        var allSelected = visible.every(function (player) { return !!(state.formDirectorySelection || {})[player.uid]; });
+        if (!state.formDirectorySelection) state.formDirectorySelection = {};
+        visible.forEach(function (player) { state.formDirectorySelection[player.uid] = !allSelected; });
+        render();
     }
 
     function fieldHtml(key, label, input) {
@@ -1051,13 +1160,16 @@ var TnMgrUI = (function (root) {
         var players = playersOf(t);
         var counts = core().participantsCounts(players);
         var groups = groupsOf(t);
-        var rows = players.map(function (player) {
+        var tableQuery = core().trim(state.participantTableQuery);
+        var visiblePlayers = core().searchPlayers(players, tableQuery);
+        var rows = visiblePlayers.map(function (player) {
             return '<tr>' +
+                '<td><input type="checkbox" aria-label="' + esc(bi('Выбрать ', 'Select ') + core().playerFio(player)) + '" data-tnm-edit="participant-select" data-pid="' + esc(player.id) + '"' + (state.selectedParticipantIds[player.id] ? ' checked' : '') + '></td>' +
                 '<td><div class="tnm-player-name" data-tnm-act="open-player-in-round" data-pid="' + esc(player.id) + '">' + esc(core().playerFio(player)) +
                 (core().trim(player.uid)
                     ? ' <i class="fas fa-address-book tnm-dir-linked" title="' +
-                      esc(bi('Есть в справочнике сайта — гандикап синхронизируется с админ-панелью',
-                          'In the site directory — the handicap syncs with the admin panel')) + '"></i>'
+                      esc(bi('Есть в базе данных клуба — гандикап синхронизируется с админ-панелью',
+                          'In the club database — the handicap syncs with the admin panel')) + '"></i>'
                     : '') + '</div>' +
                 '<span class="tnm-muted">' + esc(core().sourceLabel(player.source, lang())) + (player.club ? ' · ' + esc(player.club) : '') + '</span></td>' +
                 '<td><input type="number" step="0.1" class="tnm-input-num" data-tnm-edit="player-hi" data-pid="' + esc(player.id) + '" value="' + esc(player.hi == null ? '' : player.hi) + '"></td>' +
@@ -1069,6 +1181,7 @@ var TnMgrUI = (function (root) {
                     return '<option value="' + esc(g.id) + '"' + (g.id === player.groupId ? ' selected' : '') + '>' + esc(g.name) + '</option>';
                 }).join('') + '</select></td>' +
                 '<td class="tnm-nowrap">' +
+                btn('edit-participant', '<i class="fas fa-user-pen"></i>', { small: true, data: { pid: player.id } }) + ' ' +
                 btn('open-player-card', '<i class="fas fa-id-card"></i>', { small: true, data: { pid: player.id } }) + ' ' +
                 btn('remove-participant', '<i class="fas fa-trash"></i>', { small: true, variant: 'danger', data: { pid: player.id } }) +
                 '</td></tr>';
@@ -1090,31 +1203,39 @@ var TnMgrUI = (function (root) {
                 '<span><i class="fas fa-user-plus"></i> ' + esc(bi('Добавить вручную:', 'Add manually:')) + ' <b>' + esc(query) + '</b></span></button>';
         }
 
+        var selectedCount = Object.keys(state.selectedParticipantIds || {}).filter(function (pid) { return state.selectedParticipantIds[pid] && !!playerOf(pid); }).length;
+        var syncStatus = state.rusgolfSync && state.rusgolfSync.status
+            ? '<span class="tnm-muted tnm-rusgolf-status" role="status" aria-live="polite">' + esc(state.rusgolfSync.status) + '</span>' : '';
         return '<div class="tnm-tab-body">' +
             headHtml('<i class="fas fa-users"></i> ' + esc(bi('Гольфисты', 'Golfers')),
-                esc(bi('Поиск по фамилии на русском или английском языке, импорт из Excel (имя, фамилия и гандикап ищутся по всем листам, столбцам и ячейкам) и добавление из справочника.',
-                    'Search by surname in Russian or English, import from Excel (first name, last name and handicap are searched across all sheets, columns and cells) or add from the club directory.')),
+                esc(bi('Поиск по фамилии на русском или английском языке, импорт из Excel и добавление из базы данных клуба.',
+                    'Search by surname in Russian or English, import from Excel or add from the club database.')),
                 btn('export-participants', esc(bi('Экспорт', 'Export')), { icon: 'fas fa-file-pdf' }) + ' ' +
                 btn('import-excel', esc(bi('Импорт Excel', 'Import Excel')), { icon: 'fas fa-file-excel', variant: 'ghost' }) + ' ' +
                 btn('paste-table', esc(bi('Вставить таблицу', 'Paste table')), { icon: 'fas fa-table', variant: 'ghost' }) + ' ' +
-                btn('open-directory', esc(bi('Из справочника игроков', 'From player directory')), { icon: 'fas fa-address-book', variant: 'ghost' }) + ' ' +
+                btn('open-directory', esc(bi('Из базы данных клуба', 'From club database')), { icon: 'fas fa-address-book', variant: 'ghost' }) + ' ' +
                 btn('directory-sync', esc(bi('Гости и гандикапы', 'Guests & handicaps')), { icon: 'fas fa-user-plus', variant: 'ghost' })) +
             '<div class="tnm-search-wrap">' +
             '<i class="fas fa-search"></i>' +
             '<input type="text" id="tnm-participant-search" data-tnm-live="participant-search" data-tnm-focus="participant-search" autocomplete="off" ' +
-            'value="' + esc(state.participantQuery) + '" placeholder="' + esc(bi('Введите фамилию гольфиста или гостя на русском или английском языке',
-                'Enter the golfer’s surname in Russian or English')) + '">' +
+            'value="' + esc(state.participantQuery) + '" placeholder="' + esc(bi('Добавить по имени или фамилии', 'Add by first or last name')) + '">' +
             ((suggestions || manualAdd) ? '<div class="tnm-suggestions">' + suggestions + manualAdd + '</div>' : '') +
             '</div>' +
             '<p class="tnm-counters">' + esc(bi('Всего участников — ', 'Total participants — ')) + '<b>' + counts.total + '</b>, ' +
             esc(bi('мужчин — ', 'men — ')) + '<b>' + counts.men + '</b>, ' + esc(bi('женщин — ', 'women — ')) + '<b>' + counts.women + '</b></p>' +
+            '<div class="tnm-participant-tools">' +
+            '<label class="tnm-participant-filter"><i class="fas fa-filter"></i><input type="search" data-tnm-live="participant-table-search" data-tnm-focus="participant-table-search" autocomplete="off" value="' + esc(state.participantTableQuery) + '" placeholder="' + esc(bi('Найти участника по имени или фамилии', 'Filter by first or last name')) + '"></label>' +
+            btn('select-visible-participants', esc(bi('Выбрать в списке', 'Select visible')), { variant: 'ghost', small: true }) +
+            btn('rusgolf-sync-selected', esc(bi('Rusgolf · выбранных', 'Rusgolf · selected')), { icon: 'fas fa-rotate', variant: 'ghost', small: true, disabled: !selectedCount || state.rusgolfSync.running }) +
+            btn('rusgolf-sync-all', esc(bi('Rusgolf · всех', 'Rusgolf · all')), { icon: 'fas fa-users-rotate', variant: 'ghost', small: true, disabled: !players.length || state.rusgolfSync.running }) +
+            syncStatus + '</div>' +
             (players.length
                 ? '<div class="tnm-table-scroll"><table class="tnm-table"><thead><tr>' +
-                '<th>' + esc(bi('ФИО', 'Name')) + '</th><th>HI</th><th>CH</th><th>' + esc(bi('Пол', 'Gender')) + '</th>' +
+                '<th></th><th>' + esc(bi('ФИО', 'Name')) + '</th><th>HI</th><th>CH</th><th>' + esc(bi('Пол', 'Gender')) + '</th>' +
                 '<th>' + esc(bi('ТИ', 'Tee')) + '</th><th>' + esc(bi('Группа', 'Group')) + '</th><th></th>' +
-                '</tr></thead><tbody>' + rows + '</tbody></table></div>'
-                : emptyHtml(bi('Участников пока нет. Добавьте их поиском, импортом или из справочника.',
-                    'No participants yet. Add them via search, import or the directory.'))) +
+                '</tr></thead><tbody>' + (rows || '<tr><td colspan="8" class="tnm-muted">' + esc(bi('Совпадений нет', 'No matches')) + '</td></tr>') + '</tbody></table></div>'
+                : emptyHtml(bi('Участников пока нет. Добавьте их поиском, импортом или из базы данных клуба.',
+                    'No participants yet. Add them via search, import or the club database.'))) +
             '<input type="file" id="tnm-excel-input" accept=".xlsx,.xls,.ods,.csv,.tsv,.txt" class="tnm-hidden">' +
             '</div>';
     }
@@ -1204,7 +1325,7 @@ var TnMgrUI = (function (root) {
                     (skipped ? ' · ' + bi('уже были в турнире: ', 'already in the tournament: ') + skipped : ''));
             }
             render();
-            // Сразу регистрируем новичков в справочнике сайта (гостями), чтобы
+            // Сразу регистрируем новичков в базе данных клуба (гостями), чтобы
             // в следующий раз их можно было выбрать из списка, а гандикап —
             // синхронизировать в админ-панели. Ищем исходную строку по ФИО:
             // addPlayers мог пропустить часть списка, индексы тогда разъезжаются.
@@ -1244,7 +1365,7 @@ var TnMgrUI = (function (root) {
             if (!silent) {
                 toastMsg(mode === 'push'
                     ? bi('🔄 Гандикапы отправлены на сайт. Обновлено записей: ', '🔄 Handicaps pushed to the site. Records updated: ') + ((res && res.updated) || 0)
-                    : bi('👤 В справочнике сайта: новых гостей — ', '👤 Site directory: new guests — ') + ((res && res.added) || 0) +
+                    : bi('👤 В базе данных клуба: новых гостей — ', '👤 Club database: new guests — ') + ((res && res.added) || 0) +
                       ', обновлено — ' + ((res && res.updated) || 0));
             }
             render();
@@ -1253,6 +1374,135 @@ var TnMgrUI = (function (root) {
             state.busy = false;
             toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
             return null;
+        });
+    }
+
+    function tournamentRusgolfMatch(player, remote) {
+        var fio = core().playerFio(player);
+        var parts = core().splitFio(fio);
+        var first = player.firstName || parts.firstName || '';
+        var last = player.lastName || parts.lastName || '';
+        if (typeof root.rgNamesMatch === 'function') {
+            try { return root.rgNamesMatch(first, last, remote.firstName, remote.lastName, fio, remote.fio); }
+            catch (e) { console.warn('[rusgolf name match]', e); }
+        }
+        return core().playerMatches({ fio: remote.fio, firstName: remote.firstName, lastName: remote.lastName }, fio) ? 'strong' : null;
+    }
+
+    function tournamentRusgolfQueries(player) {
+        var fio = core().trim(core().playerFio(player));
+        var parts = core().splitFio(fio);
+        var last = core().trim(player.lastName || parts.lastName);
+        var queries = [];
+        if (fio) queries.push(fio);
+        if (last && core().normText(last) !== core().normText(fio)) queries.push(last);
+        return queries;
+    }
+
+    function findTournamentRusgolfMatch(player) {
+        if (!root.PestovoRusgolf || typeof root.PestovoRusgolf.fetchViaProxy !== 'function') {
+            return Promise.reject(new Error(bi('Общий клиент поиска Rusgolf не загружен', 'Shared Rusgolf search client is not loaded')));
+        }
+        var queries = tournamentRusgolfQueries(player);
+        if (!queries.length) return Promise.resolve({ match: null, ambiguous: false });
+        var ambiguous = false;
+        return queries.reduce(function (chain, query) {
+            return chain.then(function (found) {
+                if (found && (found.match || found.ambiguous)) return found;
+                return root.PestovoRusgolf.fetchViaProxy(query).then(function (result) {
+                    var rows = (result && result.rows) || [];
+                    var strong = rows.filter(function (remote) {
+                        return remote && remote.hcp != null && tournamentRusgolfMatch(player, remote) === 'strong';
+                    });
+                    if (strong.length === 1) return { match: strong[0], ambiguous: false };
+                    if (strong.length > 1) { ambiguous = true; return { match: null, ambiguous: true }; }
+                    return { match: null, ambiguous: false };
+                });
+            });
+        }, Promise.resolve({ match: null, ambiguous: false })).then(function (result) {
+            return result || { match: null, ambiguous: ambiguous };
+        });
+    }
+
+    function syncTournamentHandicapsWithRusgolf(allPlayers) {
+        var candidates = playersOf();
+        var selected = allPlayers ? candidates : candidates.filter(function (player) { return !!state.selectedParticipantIds[player.id]; });
+        if (!selected.length) {
+            toastMsg(allPlayers ? bi('В турнире нет участников', 'The tournament has no participants') : bi('Сначала выберите участников', 'Select participants first'), 'warn');
+            return;
+        }
+        if (state.rusgolfSync.running) return;
+        if (allPlayers) {
+            confirmAction({
+                title: bi('Синхронизация всех участников с Rusgolf', 'Sync all participants with Rusgolf'),
+                message: bi('Будет выполнен поиск по ФИО. Обновятся только однозначные точные совпадения с актуальным гандикапом; неоднозначные записи останутся без изменений.',
+                    'Names will be searched. Only unambiguous exact matches with a current handicap will be updated; ambiguous records will be left unchanged.'),
+                confirmText: bi('Синхронизировать всех', 'Sync everyone'),
+                danger: false,
+                onConfirm: function () { runTournamentRusgolfSync(selected); }
+            });
+            return;
+        }
+        runTournamentRusgolfSync(selected);
+    }
+
+    function runTournamentRusgolfSync(players) {
+        var stats = { updated: 0, unchanged: 0, missing: 0, ambiguous: 0, errors: 0 };
+        var list = (players || []).slice();
+        var tid = state.route.tid;
+        var tournamentData = tournament();
+        if (!root.PestovoRusgolf || typeof root.PestovoRusgolf.fetchViaProxy !== 'function') {
+            toastMsg(bi('Общий клиент Rusgolf не загружен. Перезагрузите админ-панель.', 'Rusgolf client is not loaded. Reload the admin panel.'), 'error');
+            return;
+        }
+        state.rusgolfSync.running = true;
+        state.rusgolfSync.status = bi('Подключаемся к Rusgolf…', 'Connecting to Rusgolf…');
+        render();
+        var wait = function (ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); };
+        list.reduce(function (chain, player, index) {
+            return chain.then(function () {
+                state.rusgolfSync.status = bi('Rusgolf · участник ', 'Rusgolf · player ') + (index + 1) + '/' + list.length + ' · ' + core().playerFio(player);
+                render();
+                return findTournamentRusgolfMatch(player).then(function (found) {
+                    if (found.ambiguous) { stats.ambiguous++; return; }
+                    if (!found.match) { stats.missing++; return; }
+                    var official = found.match;
+                    var value = Number(official.hcp);
+                    if (!isFinite(value)) { stats.missing++; return; }
+                    if (player.hi != null && Math.abs(Number(player.hi) - value) < 0.05) { stats.unchanged++; return; }
+                    var persistOfficial = Promise.resolve();
+                    if (player.uid && typeof root.rgPropagateHcpEverywhere === 'function') {
+                        var directory = typeof root.getKnownPlayersSync === 'function' ? (root.getKnownPlayersSync() || {}) : {};
+                        var profile = directory[player.uid] || { name: core().playerFio(player), handicap: player.hi, gender: player.gender };
+                        persistOfficial = Promise.resolve(root.rgPropagateHcpEverywhere(player.uid, official, profile)).catch(function (error) {
+                            console.warn('[tournament rusgolf profile sync]', error);
+                        });
+                    }
+                    return persistOfficial.then(function () {
+                        return data().updatePlayer(tid, player.id, {
+                            hi: value,
+                            ch: computeCh({ hi: value, gender: player.gender || official.gender }, player.tee || 'wh')
+                        }, tournamentData);
+                    }).then(function () { stats.updated++; }).catch(function (error) {
+                        stats.errors++;
+                        console.warn('[tournament rusgolf update]', player.id, error);
+                    });
+                }).catch(function (error) {
+                    stats.errors++;
+                    console.warn('[tournament rusgolf search]', player.id, error);
+                }).then(function () { return wait(250); });
+            });
+        }, Promise.resolve()).then(function () {
+            state.rusgolfSync.running = false;
+            state.rusgolfSync.status = '';
+            state.selectedParticipantIds = {};
+            render();
+            toastMsg(bi('Rusgolf: обновлено ', 'Rusgolf: updated ') + stats.updated +
+                bi(', без изменений ', ', unchanged ') + stats.unchanged +
+                bi(', не найдено ', ', not found ') + stats.missing +
+                bi(', неоднозначных ', ', ambiguous ') + stats.ambiguous +
+                bi(', ошибок ', ', errors ') + stats.errors,
+                stats.errors ? 'warn' : 'success');
         });
     }
 
@@ -1267,7 +1517,7 @@ var TnMgrUI = (function (root) {
             if (res && res.error) { toastMsg('❌ ' + res.error, 'error'); return; }
             toastMsg(bi('🔄 Гандикапы сайта перенесены в турнир. Обновлено участников: ',
                 '🔄 Site handicaps pulled into the tournament. Participants updated: ') + ((res && res.updated) || 0) +
-                ((res && res.missing) ? ' · ' + bi('нет в справочнике: ', 'missing from the directory: ') + res.missing : ''));
+                ((res && res.missing) ? ' · ' + bi('нет в базе данных клуба: ', 'missing from the club database: ') + res.missing : ''));
             render();
         }).catch(function (err) {
             state.busy = false;
@@ -1415,9 +1665,9 @@ var TnMgrUI = (function (root) {
         }).join('');
         return '<div class="tnm-modal-overlay" data-tnm-act="close-modal">' +
             '<div class="tnm-modal tnm-modal-wide" data-tnm-stop="1">' +
-            '<h3>' + esc(bi('Справочник игроков клуба', 'Club player directory')) + '</h3>' +
+            '<h3>' + esc(bi('База данных клуба', 'Club database')) + '</h3>' +
             '<input type="text" id="tnm-dir-search" placeholder="' + esc(bi('Поиск по фамилии (рус/англ)', 'Search by surname (RU/EN)')) + '">' +
-            '<div class="tnm-modal-body tnm-dir-list" id="tnm-dir-list">' + (rows || emptyHtml(bi('Справочник пуст', 'Directory is empty'))) + '</div>' +
+            '<div class="tnm-modal-body tnm-dir-list" id="tnm-dir-list">' + (rows || emptyHtml(bi('База данных клуба пуста', 'Club database is empty'))) + '</div>' +
             '<div class="tnm-modal-actions">' +
             btn('confirm-directory', esc(bi('Добавить выбранных', 'Add selected')), { variant: 'primary' }) +
             btn('close-modal', esc(bi('Отмена', 'Cancel')), { variant: 'ghost' }) +
@@ -1451,22 +1701,44 @@ var TnMgrUI = (function (root) {
             '</div></div></div>';
     });
 
+    modal('edit-participant', function (payload) {
+        var player = playerOf(payload && payload.pid) || {};
+        var groups = groupsOf();
+        var groupOptions = '<option value="">' + esc(bi('— без группы —', '— no group —')) + '</option>' + groups.map(function (group) {
+            return '<option value="' + esc(group.id) + '"' + (group.id === player.groupId ? ' selected' : '') + '>' + esc(group.name) + '</option>';
+        }).join('');
+        return '<div class="tnm-modal-overlay" data-tnm-act="close-modal"><div class="tnm-modal" data-tnm-stop="1">' +
+            '<h3><i class="fas fa-user-pen"></i> ' + esc(bi('Редактировать участника', 'Edit participant')) + '</h3>' +
+            '<p class="tnm-sub">' + esc(bi('Изменения синхронизируются с составом турнира, группами и стартовым листом.', 'Changes are synced to the tournament roster, groups and tee sheet.')) + '</p>' +
+            '<div class="tnm-modal-body">' +
+            '<label class="tnm-field">' + esc(bi('ФИО', 'Full name')) + '<input id="tnm-edit-player-fio" type="text" maxlength="160" value="' + esc(core().playerFio(player)) + '"></label>' +
+            '<div class="tnm-form-grid"><label class="tnm-field">HI<input id="tnm-edit-player-hi" type="number" step="0.1" value="' + esc(player.hi == null ? '' : player.hi) + '"></label>' +
+            '<label class="tnm-field">CH<input id="tnm-edit-player-ch" type="number" step="1" value="' + esc(player.ch == null ? '' : player.ch) + '"></label>' +
+            '<label class="tnm-field">' + esc(bi('Пол', 'Gender')) + '<select id="tnm-edit-player-gender">' + genderOptionsHtml(player.gender, true) + '</select></label>' +
+            '<label class="tnm-field">' + esc(bi('ТИ', 'Tee')) + '<select id="tnm-edit-player-tee">' + teeOptionsHtml(player.tee, true) + '</select></label>' +
+            '<label class="tnm-field">' + esc(bi('Группа', 'Group')) + '<select id="tnm-edit-player-group">' + groupOptions + '</select></label></div>' +
+            '</div><div class="tnm-modal-actions">' +
+            btn('save-participant-edit', esc(bi('Сохранить', 'Save')), { variant: 'primary', data: { pid: payload && payload.pid || '' } }) +
+            btn('close-modal', esc(bi('Отмена', 'Cancel')), { variant: 'ghost' }) +
+            '</div></div></div>';
+    });
+
     modal('directory-sync', function () {
         var players = playersOf();
         var withUid = players.filter(function (player) { return core().trim(player.uid); }).length;
         var withHcp = players.filter(function (player) { return player.hi != null && player.hi !== ''; }).length;
         return '<div class="tnm-modal-overlay" data-tnm-act="close-modal">' +
             '<div class="tnm-modal" data-tnm-stop="1">' +
-            '<h3>' + esc(bi('Справочник игроков и гандикапы', 'Player directory and handicaps')) + '</h3>' +
+            '<h3>' + esc(bi('База данных клуба и гандикапы', 'Club database and handicaps')) + '</h3>' +
             '<p class="tnm-sub">' + esc(bi('Участников: ', 'Participants: ') + players.length + ' · ' +
-                bi('в справочнике сайта: ', 'in the site directory: ') + withUid + ' · ' +
+                bi('в базе данных клуба: ', 'in the club database: ') + withUid + ' · ' +
                 bi('с гандикапом: ', 'with a handicap: ') + withHcp) + '</p>' +
             '<div class="tnm-modal-body">' +
-            '<p class="tnm-muted">' + esc(bi('Участники, которых нет в справочнике клуба, регистрируются как ГОСТИ: ' +
-                'их можно выбрать из списка в следующем турнире или в live-скоринге, а гандикап правится ' +
+            '<p class="tnm-muted">' + esc(bi('Участники, которых ещё нет в базе данных клуба, регистрируются как ГОСТИ: ' +
+                'после этого их можно выбрать в любом турнире или в live-скоринге, а гандикап правится ' +
                 'в админ-панели («Игроки и роли», синхронизация с АГР).',
-                'Participants missing from the club directory are registered as GUESTS: they can be picked from the ' +
-                'list in the next tournament or in live scoring, and their handicap is edited in the admin panel ' +
+                'Participants missing from the club database are registered as GUESTS: they can then be picked in ' +
+                'any tournament or in live scoring, and their handicap is edited in the admin panel ' +
                 '(“Players and roles”, RusGolf sync).')) + '</p>' +
             '</div>' +
             '<div class="tnm-modal-actions">' +
@@ -1519,6 +1791,11 @@ var TnMgrUI = (function (root) {
             if (!input) return;
             var kind = input.getAttribute('data-tnm-live');
             if (kind === 'participant-search') { updateSuggestions(input.value); return; }
+            if (kind === 'participant-table-search') {
+                state.participantTableQuery = input.value || '';
+                scheduleRender();
+                return;
+            }
             if (kind === 'form-field' || kind === 'group-field') {
                 var field = input.getAttribute('data-field');
                 if (kind === 'form-field') {
@@ -1578,9 +1855,28 @@ var TnMgrUI = (function (root) {
         state.form = emptyForm();
         state.editingTournament = false;
         state.pendingPlayers = [];
+        state.formDirectoryQuery = '';
+        state.formDirectorySelection = {};
+        state.formDirectoryCache = null;
         navigate({ view: 'form', tid: '', create: true });
     });
+    on('live:form-directory-search', function (input) {
+        state.formDirectoryQuery = input.value || '';
+        scheduleRender();
+    });
+    on('edit:form-directory-player-select', function (input) {
+        var uid = input.getAttribute('data-uid');
+        if (!uid) return;
+        if (!state.formDirectorySelection) state.formDirectorySelection = {};
+        state.formDirectorySelection[uid] = !!input.checked;
+        updateFormDirectorySelectionUi();
+    });
+    on('form-select-visible-directory', toggleVisibleFormDirectoryPlayers);
+    on('form-add-selected-directory', addSelectedFormDirectoryPlayers);
     on('edit-tournament', function () {
+        state.formDirectoryQuery = '';
+        state.formDirectorySelection = {};
+        state.formDirectoryCache = null;
         prepareEditForm();
         navigate({ view: 'form', tid: state.route.tid });
     });
@@ -1597,6 +1893,9 @@ var TnMgrUI = (function (root) {
             state.form = null;
             state.editingTournament = false;
             state.pendingPlayers = [];
+            state.formDirectoryQuery = '';
+            state.formDirectorySelection = {};
+            state.formDirectoryCache = null;
             navigate({ view: state.route.tid ? 'card' : 'list', tid: state.route.tid || '', tab: 'rounds' });
             return;
         }
@@ -1656,7 +1955,7 @@ var TnMgrUI = (function (root) {
         if (!(state.pendingPlayers || []).length) return;
         confirmAction({
             title: bi('Очистить список', 'Clear the list'),
-            message: bi('Убрать всех участников, загруженных из Excel?', 'Remove all participants loaded from Excel?'),
+            message: bi('Убрать всех участников из очереди добавления?', 'Remove all participants from the add queue?'),
             onConfirm: function () { state.pendingPlayers = []; render(); }
         });
     });
@@ -1726,6 +2025,15 @@ var TnMgrUI = (function (root) {
         var rid = state.route.rid || (rounds[0] ? rounds[0].id : '');
         if (rid) navigate({ view: 'player', tid: state.route.tid, pid: pid, rid: rid });
     });
+    on('edit-participant', function (button) { openModal('edit-participant', { pid: button.getAttribute('data-pid') }); });
+    on('select-visible-participants', function () {
+        var visible = core().searchPlayers(playersOf(), state.participantTableQuery, 0);
+        var allSelected = visible.length > 0 && visible.every(function (player) { return !!state.selectedParticipantIds[player.id]; });
+        visible.forEach(function (player) { state.selectedParticipantIds[player.id] = !allSelected; });
+        render();
+    });
+    on('rusgolf-sync-selected', function () { syncTournamentHandicapsWithRusgolf(false); });
+    on('rusgolf-sync-all', function () { syncTournamentHandicapsWithRusgolf(true); });
 
     // Правки игроков из таблицы участников.
     function playerPatch(pid, fields) {
@@ -1733,6 +2041,40 @@ var TnMgrUI = (function (root) {
             toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
         });
     }
+    on('edit:participant-select', function (input) {
+        var pid = input.getAttribute('data-pid');
+        if (input.checked) state.selectedParticipantIds[pid] = true;
+        else delete state.selectedParticipantIds[pid];
+        scheduleRender();
+    });
+    on('save-participant-edit', function (button) {
+        var pid = button.getAttribute('data-pid');
+        var fioInput = el('tnm-edit-player-fio');
+        var hiInput = el('tnm-edit-player-hi');
+        var chInput = el('tnm-edit-player-ch');
+        var genderInput = el('tnm-edit-player-gender');
+        var teeInput = el('tnm-edit-player-tee');
+        var groupInput = el('tnm-edit-player-group');
+        var fio = core().trim(fioInput && fioInput.value);
+        if (!fio) { toastMsg(bi('Введите ФИО участника', 'Enter the participant’s name'), 'warn'); return; }
+        var parts = core().splitFio(fio);
+        var fields = {
+            fio: fio,
+            firstName: parts.firstName || '',
+            lastName: parts.lastName || '',
+            middleName: parts.middleName || '',
+            hi: hiInput && hiInput.value !== '' ? core().num(hiInput.value) : null,
+            ch: chInput && chInput.value !== '' ? core().num(chInput.value) : null,
+            gender: genderInput ? genderInput.value : 'men',
+            tee: teeInput ? teeInput.value : '',
+            groupId: groupInput ? groupInput.value : ''
+        };
+        data().updatePlayer(state.route.tid, pid, fields, tournament()).then(function () {
+            delete state.selectedParticipantIds[pid];
+            closeModal();
+            toastMsg(bi('Данные участника обновлены', 'Participant details updated'));
+        }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
+    });
     on('edit:player-hi', function (input) {
         var value = input.value === '' ? null : core().num(input.value);
         var pid = input.getAttribute('data-pid');

@@ -1788,7 +1788,7 @@
 
     function sourceLabel(source, lang) {
         var map = {
-            directory: { ru: 'Справочник', en: 'Directory' },
+            directory: { ru: 'База данных клуба', en: 'Club database' },
             manual: { ru: 'Вручную', en: 'Manual' },
             excel: { ru: 'Excel', en: 'Excel' },
             registration: { ru: 'Заявка', en: 'Entry' }
@@ -1893,6 +1893,10 @@
 
     function qrImageUrl(payload, size) {
         var px = intOf(size, 320) || 320;
+        if (typeof PestovoQr !== 'undefined' && PestovoQr && typeof PestovoQr.dataUrl === 'function') {
+            var local = PestovoQr.dataUrl(payload, px);
+            if (local) return local;
+        }
         return 'https://api.qrserver.com/v1/create-qr-code/?size=' + px + 'x' + px +
             '&margin=2&data=' + encodeURIComponent(payload);
     }

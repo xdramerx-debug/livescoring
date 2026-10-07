@@ -737,6 +737,9 @@ var TnMgrData = (function (root) {
             updates['tournaments/' + tid + '/players/' + pid + '/name'] = record.fio;
             mirrored.name = record.fio;
         }
+        if (record.firstName !== undefined) mirrored.firstName = record.firstName;
+        if (record.lastName !== undefined) mirrored.lastName = record.lastName;
+        if (record.middleName !== undefined) mirrored.middleName = record.middleName;
         if (record.hi !== undefined) { mirrored.handicap = record.hi; mirrored.hi = record.hi; }
         if (record.ch !== undefined) mirrored.ch = record.ch;
         if (record.gender !== undefined) mirrored.gender = record.gender;
@@ -745,16 +748,34 @@ var TnMgrData = (function (root) {
         Object.keys(mirrored).forEach(function (key) {
             updates['tournaments/' + tid + '/registeredPlayers/' + pid + '/' + key] = mirrored[key];
         });
-        // Перенос участника в другую группу: состав групп и divisions.
-        if (fields && fields.groupId) {
-            listOf(asMap(tournament && tournament.groups)).forEach(function (group) {
-                if (group.id === fields.groupId) return;
-                updates['tournaments/' + tid + '/groups/' + group.id + '/members/' + pid] = null;
-                updates['tournaments/' + tid + '/divisions/' + group.id + '/members/' + pid] = null;
+        // Состав groups/divisions должен оставаться согласованным и при
+        // очистке группы, и при переименовании игрока без смены группы.
+        var hasGroupPatch = !!(fields && Object.prototype.hasOwnProperty.call(fields, 'groupId'));
+        var hasNamePatch = record.fio !== undefined;
+        if (hasGroupPatch || hasNamePatch) {
+            var currentPlayer = asMap(asMap(tournament && tournament.players)[pid]);
+            var nextGroupId = hasGroupPatch ? core().trim(fields.groupId) : core().trim(currentPlayer.groupId);
+            var nextName = hasNamePatch ? record.fio : playerNameOf(tournament, pid);
+            var groupsMap = asMap(tournament && tournament.groups);
+            var divisionsMap = asMap(tournament && tournament.divisions);
+            var groupIds = {};
+            Object.keys(groupsMap).forEach(function (id) { groupIds[id] = groupsMap[id] || {}; });
+            Object.keys(divisionsMap).forEach(function (id) { if (!groupIds[id]) groupIds[id] = divisionsMap[id] || {}; });
+            Object.keys(groupIds).forEach(function (id) {
+                if (hasGroupPatch && id !== nextGroupId) {
+                    updates['tournaments/' + tid + '/groups/' + id + '/members/' + pid] = null;
+                    updates['tournaments/' + tid + '/divisions/' + id + '/members/' + pid] = null;
+                } else if (id === nextGroupId && nextGroupId) {
+                    updates['tournaments/' + tid + '/groups/' + id + '/members/' + pid] = nextName;
+                    updates['tournaments/' + tid + '/divisions/' + id + '/members/' + pid] = nextName;
+                }
             });
-            var name = record.fio || playerNameOf(tournament, pid);
-            updates['tournaments/' + tid + '/groups/' + fields.groupId + '/members/' + pid] = name;
-            updates['tournaments/' + tid + '/divisions/' + fields.groupId + '/members/' + pid] = name;
+            // Если назначена новая группа, которой пока нет в снимке,
+            // создаём членство и в совместимом узле divisions.
+            if (hasGroupPatch && nextGroupId && !groupIds[nextGroupId]) {
+                updates['tournaments/' + tid + '/groups/' + nextGroupId + '/members/' + pid] = nextName;
+                updates['tournaments/' + tid + '/divisions/' + nextGroupId + '/members/' + pid] = nextName;
+            }
         }
         // Правки в карточке игрока должны сразу отражаться в стартовом листе.
         listOf(asMap(tournament && tournament.sheets)).forEach(function (sheet) {
@@ -1427,7 +1448,7 @@ var TnMgrData = (function (root) {
         }
         // Синхронизация с участником турнира.
         var playerPatch = {};
-        if (fields && fields.playerName) { playerPatch.fio = fields.playerName; playerPatch.name = fields.playerName; }
+        if (fields && fields.playerName !== undefined) { playerPatch.fio = core().trim(fields.playerName); playerPatch.name = core().trim(fields.playerName); }
         if (fields && fields.tee !== undefined) playerPatch.tee = fields.tee;
         if (fields && fields.format !== undefined) playerPatch.format = fields.format;
         if (fields && fields.hi !== undefined) playerPatch.hi = fields.hi;
@@ -1436,20 +1457,34 @@ var TnMgrData = (function (root) {
         Object.keys(playerPatch).forEach(function (key) {
             updates['tournaments/' + tid + '/players/' + pid + '/' + key] = playerPatch[key];
         });
-        if (playerPatch.fio) updates['tournaments/' + tid + '/registeredPlayers/' + pid + '/name'] = playerPatch.fio;
+        if (playerPatch.fio !== undefined) updates['tournaments/' + tid + '/registeredPlayers/' + pid + '/name'] = playerPatch.fio;
         if (playerPatch.hi !== undefined) updates['tournaments/' + tid + '/registeredPlayers/' + pid + '/handicap'] = playerPatch.hi;
         if (playerPatch.tee !== undefined) updates['tournaments/' + tid + '/registeredPlayers/' + pid + '/tee'] = playerPatch.tee;
         if (playerPatch.groupId !== undefined) updates['tournaments/' + tid + '/registeredPlayers/' + pid + '/groupId'] = playerPatch.groupId;
-        // Смена группы в листе: обновляем состав групп.
-        if (fields && fields.groupId !== undefined && entry.groupId !== fields.groupId) {
-            listOf(asMap(tournament && tournament.groups)).forEach(function (group) {
-                if (group.id === fields.groupId) return;
-                updates['tournaments/' + tid + '/groups/' + group.id + '/members/' + pid] = null;
-                updates['tournaments/' + tid + '/divisions/' + group.id + '/members/' + pid] = null;
+        // Смена/очистка группы удаляет старое членство; переименование
+        // синхронизирует подпись участника в groups и divisions.
+        var sheetGroupChanged = !!(fields && fields.groupId !== undefined && entry.groupId !== fields.groupId);
+        var sheetNameChanged = !!(fields && fields.playerName !== undefined && fields.playerName !== entry.playerName);
+        if (sheetGroupChanged || sheetNameChanged) {
+            var nextGroupId = sheetGroupChanged ? core().trim(fields.groupId) : core().trim(entry.groupId);
+            var nextPlayerName = fields && fields.playerName !== undefined ? core().trim(fields.playerName) : core().trim(entry.playerName);
+            var sheetGroups = asMap(tournament && tournament.groups);
+            var sheetDivisions = asMap(tournament && tournament.divisions);
+            var sheetGroupIds = {};
+            Object.keys(sheetGroups).forEach(function (id) { sheetGroupIds[id] = sheetGroups[id] || {}; });
+            Object.keys(sheetDivisions).forEach(function (id) { if (!sheetGroupIds[id]) sheetGroupIds[id] = sheetDivisions[id] || {}; });
+            Object.keys(sheetGroupIds).forEach(function (id) {
+                if (sheetGroupChanged && id !== nextGroupId) {
+                    updates['tournaments/' + tid + '/groups/' + id + '/members/' + pid] = null;
+                    updates['tournaments/' + tid + '/divisions/' + id + '/members/' + pid] = null;
+                } else if (id === nextGroupId && nextGroupId) {
+                    updates['tournaments/' + tid + '/groups/' + id + '/members/' + pid] = nextPlayerName;
+                    updates['tournaments/' + tid + '/divisions/' + id + '/members/' + pid] = nextPlayerName;
+                }
             });
-            if (fields.groupId) {
-                updates['tournaments/' + tid + '/groups/' + fields.groupId + '/members/' + pid] = next.playerName || entry.playerName;
-                updates['tournaments/' + tid + '/divisions/' + fields.groupId + '/members/' + pid] = next.playerName || entry.playerName;
+            if (sheetGroupChanged && nextGroupId && !sheetGroupIds[nextGroupId]) {
+                updates['tournaments/' + tid + '/groups/' + nextGroupId + '/members/' + pid] = nextPlayerName;
+                updates['tournaments/' + tid + '/divisions/' + nextGroupId + '/members/' + pid] = nextPlayerName;
             }
         }
         return multi(updates).then(function () {

@@ -315,15 +315,27 @@ check('у связки строка «Удары» своя у каждого и
     docHtml.indexOf('>Удары 1</span>') !== -1 && docHtml.indexOf('>Удары 2</span>') !== -1);
 check('у одиночки строка «Удары» без номера',
     PC.documentFor([allCards[2]]).indexOf('>Удары</span>') !== -1);
-check('без строки форы черточек тоже нет', (function () {
+// Требование клуба: если фора у игрока есть, наклонные черточки видны в клетках
+// «Удары» ВСЕГДА — даже когда строка «Фора» снята в «Составе информации».
+check('строка «Фора» скрыта — сама строка не печатается', (function () {
     PC.state.draft = null;
     TOURNAMENT.printScorecards = { show: { fore: false }, holes: 18 };
     var noFore = PC.documentFor([allCards[0]]);
     PC.state.draft = null;
     TOURNAMENT.printScorecards = null;
     PC.state.draft = null;
-    return noFore.indexOf('<i class="tnpc-mark">') === -1;
+    return noFore.indexOf('>Фора</span>') === -1;
 })());
+check('строка «Фора» скрыта — черточки в клетках счёта остаются', (function () {
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = { show: { fore: false }, holes: 18 };
+    var noFore = PC.documentFor([allCards[0]]);
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = null;
+    PC.state.draft = null;
+    return noFore.indexOf('<i class="tnpc-mark">') !== -1 &&
+        marksInRow(noFore, 'Удары 1').join(',') === expected.join(',');
+})(), 'черточек столько же, сколько ударов форы на лунке');
 check('минусовая фора — красные черточки', (function () {
     var marks = PC.foreMarksHtml({ names: ['А'], fieldHcps: [-2] }, 12, 0);
     return marks.indexOf('tnpc-marks minus') !== -1 && marks.indexOf('(минусовая)') !== -1;
@@ -468,6 +480,54 @@ PC.refreshCards();
 check('дизайн сохраняется в tournaments/<tid>/printScorecards', writes.every(function (w) {
     return w.path === 'tournaments/t1/printScorecards';
 }), writes.map(function (w) { return w.path; }).join(','));
+
+// ----------------------------------------------------------
+// 10. Перетаскивание в редакторе: карточка по листу и свой текст
+// ----------------------------------------------------------
+PC.state.draft = null;
+PC.state.activeCardId = '';
+PC.state.preview = 'sheet';
+TOURNAMENT.printScorecards = { overlays: [
+    { id: 'txt-1', type: 'text', xMm: 12, yMm: 150, wMm: 60, hMm: 10, enabled: true, text: 'Спонсор этапа', fontMm: 3 },
+    { id: 'qr-1', type: 'qr', xMm: 110, yMm: 4, wMm: 26, hMm: 26, enabled: true }
+] };
+var dragHtml = PC.html();
+check('на карточке есть ручка перетаскивания по листу',
+    dragHtml.indexOf('data-tnpc-card-move="1"') !== -1 && dragHtml.indexOf('class="tnpc-move"') !== -1);
+check('ручка перетаскивания карточки не попадает в печать',
+    PC.documentFor([allCards[0]]).indexOf('tnpc-move') === -1);
+check('подсказка объясняет, как двигать карточку по листу', /ручку ✥/.test(dragHtml));
+check('подсказка объясняет, что свой текст тоже перетаскивается',
+    /добавленный текст перетаскиваются|лого, QR и добавленный текст/i.test(dragHtml));
+check('текстовый оверлей живёт в перетаскиваемом контейнере',
+    dragHtml.indexOf('data-overlay-id="txt-1"') !== -1 &&
+    /data-overlay-id="txt-1"[\s\S]{0,400}data-tnpc-overlay-text="txt-1"/.test(dragHtml));
+check('у оверлея есть уголок изменения размера', dragHtml.indexOf('data-tnpc-resize="txt-1"') !== -1);
+
+PC.state.previewPinned = true;
+PC.state.preview = 'card';
+var cardOnlyHtml = PC.html();
+check('в режиме «только карточка» ручки перетаскивания по листу нет',
+    cardOnlyHtml.indexOf('data-tnpc-card-move') === -1 && cardOnlyHtml.indexOf('card-only') !== -1);
+PC.state.preview = 'sheet';
+PC.state.previewPinned = false;
+
+// Место карточки на листе по-прежнему правится числами —drag не ломает панель.
+PC.state.draft.layout.xMm = 42;
+PC.state.draft.layout.yMm = 17;
+var movedHtml = PC.html();
+var movedTo = PC.placement(PC.state.draft.layout, PC.state.draft.size, 0);
+check('место карточки на листе берётся из раскладки (X/Y в мм)',
+    movedHtml.indexOf('left:' + movedTo.xMm + 'mm;top:' + movedTo.yMm + 'mm;') !== -1,
+    movedTo.xMm + '/' + movedTo.yMm);
+PC.state.panels.sizes = true;
+var sizesHtml = PC.html();
+check('панель размеров показывает то же место карточки',
+    /data-field="xMm"[^>]*value="42"|value="42"[^>]*data-field="xMm"/.test(sizesHtml.replace(/></g, '> <')) ||
+    sizesHtml.indexOf('value="42"') !== -1);
+PC.state.panels.sizes = false;
+PC.state.draft = null;
+TOURNAMENT.printScorecards = null;
 
 console.log('\n' + (fails ? '✗ ' + fails + ' / ' + total : 'All tn-mgr-printcards tests passed ✔ (' + total + ' checks)'));
 process.exit(fails ? 1 : 0);

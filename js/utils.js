@@ -4834,6 +4834,133 @@ function roundResume(roundId, roundData, userName, userId) {
     });
 }
 
+// ==========================================
+// СИНХРОНИЗАЦИЯ ГАНДИКАПА АДМИНКИ С УЧАСТНИКАМИ ТУРНИРОВ
+// ------------------------------------------
+// Гандикап игрока правится в админ-панели (вручную, импортом Excel или
+// синхронизацией с АГР), а состав турнира менеджер турниров хранит
+// отдельно, в трёх местах:
+//   tournaments/<tid>/players/<pid>              — hi, ch
+//   tournaments/<tid>/registeredPlayers/<pid>    — handicap, hi, ch
+//   tournaments/<tid>/sheets/<rid>/entries/<pid> — hi, ch
+// Участник турнира связан с профилем игрока полем uid (его проставляет
+// TnMgrData.syncPlayersToDirectory при регистрации гостя). Функция находит
+// все такие записи и обновляет в них гандикап, поэтому правка в админке
+// сразу видна в турнире: стартовый лист, счётные карточки и результаты не
+// показывают устаревший HI.
+//
+// CH (игровой гандикап) пересчитывается только если он НЕ был выставлен
+// организатором вручную: сравниваем сохранённый CH со значением, которое
+// даёт текущий HI, — совпало (или CH пустой) значит считаем автоматически.
+// Завершённые турниры не трогаем (протокол зафиксирован), если явно не
+// попросили (opts.includeCompleted).
+// ==========================================
+function pestovoTournamentFieldHcp(hi, tee, gender) {
+    if (hi === null || hi === undefined || hi === '' || !isFinite(Number(hi))) return null;
+    if (typeof getFieldHcp === 'function') {
+        try { return getFieldHcp(Number(hi), tee || 'wh', gender || 'men'); } catch (e) { console.warn("[silent]", e); }
+    }
+    return Math.round(Number(hi));
+}
+
+function pestovoSyncHcpToTournaments(userId, hcp, opts) {
+    var uid = String(userId || '').trim();
+    var value = (hcp === null || hcp === undefined || hcp === '') ? null : Number(hcp);
+    var result = { updated: 0, players: 0, tournaments: 0 };
+    if (!uid || value === null || !isFinite(value)) return Promise.resolve(result);
+    var options = opts || {};
+    if (typeof db === 'undefined' || !db) return Promise.resolve(result);
+
+    var readTournaments = options.tournaments && typeof options.tournaments === 'object'
+        ? Promise.resolve(options.tournaments)
+        : db.ref('tournaments').once('value').then(function(sn) { return sn.val() || {}; }).catch(function() { return {}; });
+
+    return readTournaments.then(function(tournaments) {
+        var updates = {};
+        var seenTournaments = {};
+        var seenPlayers = {};
+
+        function matches(pid, record) {
+            if (pid === uid) return true;
+            var recUid = String((record && record.uid) || '').trim();
+            return !!recUid && recUid === uid;
+        }
+
+        function collect(path, pid, record, fields) {
+            record = record || {};
+            var tee = record.tee || options.tee || 'wh';
+            var gender = record.gender || options.gender || 'men';
+            var oldHi = (record.hi != null && record.hi !== '') ? Number(record.hi)
+                : ((record.handicap != null && record.handicap !== '') ? Number(record.handicap) : null);
+            var oldCh = (record.ch != null && record.ch !== '') ? Number(record.ch) : null;
+            var newCh = pestovoTournamentFieldHcp(value, tee, gender);
+            var oldChAuto = pestovoTournamentFieldHcp(oldHi, tee, gender);
+            // CH пересчитываем, только если он автоматический (не ручная правка).
+            var chIsAuto = oldCh === null || oldChAuto === null || oldCh === oldChAuto;
+            fields.forEach(function(field) {
+                if (field === 'hi') updates[path + '/hi'] = value;
+                else if (field === 'handicap') updates[path + '/handicap'] = value;
+                else if (field === 'ch' && chIsAuto && newCh !== null) updates[path + '/ch'] = newCh;
+            });
+            if (options.name) updates[path + '/name'] = options.name;
+            seenPlayers[pid] = true;
+            seenTournaments[path.split('/')[1]] = true;
+        }
+
+        Object.keys(tournaments || {}).forEach(function(tid) {
+            var tn = tournaments[tid] || {};
+            var status = String(tn.lifecycleStatus || tn.status || '').toLowerCase();
+            if (status === 'completed' && !options.includeCompleted) return;
+
+            Object.keys(tn.players || {}).forEach(function(pid) {
+                var record = (tn.players || {})[pid];
+                if (!record || !matches(pid, record)) return;
+                collect('tournaments/' + tid + '/players/' + pid, pid, record, ['hi', 'ch']);
+            });
+            Object.keys(tn.registeredPlayers || {}).forEach(function(pid) {
+                var record = (tn.registeredPlayers || {})[pid];
+                if (!record || !matches(pid, record)) return;
+                collect('tournaments/' + tid + '/registeredPlayers/' + pid, pid, record, ['handicap', 'hi', 'ch']);
+            });
+            Object.keys(tn.sheets || {}).forEach(function(rid) {
+                var entries = ((tn.sheets || {})[rid] || {}).entries || {};
+                Object.keys(entries).forEach(function(pid) {
+                    var record = entries[pid];
+                    if (!record) return;
+                    if (!matches(pid, record) && !matches(String(record.playerId || ''), record)) return;
+                    collect('tournaments/' + tid + '/sheets/' + rid + '/entries/' + pid, pid, record, ['hi', 'ch']);
+                });
+            });
+        });
+
+        result.tournaments = Object.keys(seenTournaments).length;
+        result.players = Object.keys(seenPlayers).length;
+        var keys = Object.keys(updates);
+        result.updated = result.players;
+        if (!keys.length) return result;
+        // Большой турнир = много путей: пишем порциями, как зеркало профилей.
+        var chain = Promise.resolve();
+        for (var i = 0; i < keys.length; i += 200) {
+            (function(chunkKeys) {
+                var chunk = {};
+                chunkKeys.forEach(function(k) { chunk[k] = updates[k]; });
+                chain = chain.then(function() {
+                    return db.ref().update(chunk).catch(function(err) { console.warn('[hcp-sync]', err); });
+                });
+            })(keys.slice(i, i + 200));
+        }
+        return chain.then(function() { return result; });
+    }).catch(function(err) {
+        console.warn('[hcp-sync]', err);
+        return result;
+    });
+}
+
+if (typeof window !== 'undefined') {
+    window.pestovoSyncHcpToTournaments = pestovoSyncHcpToTournaments;
+    window.pestovoTournamentFieldHcp = pestovoTournamentFieldHcp;
+}
+
 function roundForceFinishPlayer(roundId, a2, a3, a4, a5) {
     if (typeof db === 'undefined' || !roundId) return Promise.reject(new Error('Invalid params'));
     var roundData, playerId, reason, finisherName;

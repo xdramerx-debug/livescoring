@@ -332,6 +332,155 @@ var TnMgrData = (function (root) {
         });
     }
 
+    // ----------------------------------------------------------
+    // ПАУЗА ТУРНИРА
+    // ----------------------------------------------------------
+    // Пауза турнира = пауза всех его раундов: используется ТА ЖЕ механика,
+    // что и для отдельного раунда (js/utils.js → roundPause/roundResume,
+    // поля paused / pausedAt / pauseHistory / totalPausedMs), поэтому
+    // страницы ввода счёта, темп игры и табло показывают паузу без изменений.
+    // Отличие — флаг rounds/<rid>/pausedByTournament: по нему «Возобновить»
+    // снимает только паузу турнира и не трогает раунды, которые организатор
+    // остановил вручную раньше.
+
+    /** Турнир сейчас на паузе? */
+    function tournamentPaused(tournament) {
+        return !!asMap(tournament).paused;
+    }
+
+    /** Раунды групп турнира из верхнего уровня rounds/. */
+    function tournamentGroupRounds(tid) {
+        if (!tid) return Promise.resolve([]);
+        return read('rounds').then(function (all) {
+            return Object.keys(asMap(all)).map(function (rid) {
+                var round = asMap(all)[rid] || {};
+                round._rid = rid;
+                return round;
+            }).filter(function (round) {
+                return String(round.tournamentId || '') === String(tid);
+            });
+        }).catch(function () { return []; });
+    }
+
+    function pauseDurationMs(pausedAt, stamp) {
+        var from = parseInt(pausedAt, 10) || 0;
+        if (!from) return 0;
+        // Пауза длиннее суток — мусорные данные (как MAX_PAUSE_INTERVAL_MS в utils.js).
+        return Math.max(0, Math.min((stamp || now()) - from, 12 * 60 * 60 * 1000));
+    }
+
+    function closePauseHistory(history, stamp, userName) {
+        var list = Array.isArray(history) ? history.slice() : [];
+        if (list.length && !list[list.length - 1].resumedAt) {
+            var last = Object.assign({}, list[list.length - 1]);
+            last.resumedAt = stamp;
+            last.durationMs = pauseDurationMs(last.pausedAt, stamp);
+            last.resumedByName = userName || '';
+            list[list.length - 1] = last;
+        }
+        return list;
+    }
+
+    /**
+     * Ставит турнир на паузу: запись турнира + все его незавершённые раунды.
+     * Раунды, уже стоящие на ручной паузе, не трогаем (и не помечаем флагом),
+     * поэтому «Возобновить» вернёт их в то состояние, которое выставил
+     * организатор. Возвращает { paused, skipped, already }.
+     */
+    function pauseTournament(tid, reason, userName) {
+        if (!tid) return Promise.reject(new Error('Не выбран турнир'));
+        var stamp = now();
+        var text = core().trim(reason);
+        var actor = core().trim(userName);
+        return Promise.all([read('tournaments/' + tid), tournamentGroupRounds(tid)]).then(function (res) {
+            var tournament = asMap(res[0]);
+            var rounds = res[1] || [];
+            if (tournamentPaused(tournament)) {
+                return { paused: 0, skipped: rounds.length, already: true };
+            }
+            var updates = {};
+            var history = Array.isArray(tournament.pauseHistory) ? tournament.pauseHistory.slice() : [];
+            history.push({
+                pausedAt: stamp, reason: text, pausedBy: currentUid(),
+                pausedByName: actor, byTournament: true
+            });
+            updates['tournaments/' + tid + '/paused'] = true;
+            updates['tournaments/' + tid + '/pausedAt'] = stamp;
+            updates['tournaments/' + tid + '/pauseReason'] = text || null;
+            updates['tournaments/' + tid + '/pausedBy'] = currentUid();
+            updates['tournaments/' + tid + '/pausedByName'] = actor;
+            updates['tournaments/' + tid + '/pauseHistory'] = history;
+            updates['tournaments/' + tid + '/updatedAt'] = stamp;
+
+            var paused = 0;
+            var skipped = 0;
+            rounds.forEach(function (round) {
+                var rid = round._rid;
+                if (String(round.status || '') === 'completed') return;
+                if (round.paused) { skipped++; return; }
+                var roundHistory = Array.isArray(round.pauseHistory) ? round.pauseHistory.slice() : [];
+                roundHistory.push({
+                    pausedAt: stamp, reason: text, pausedBy: currentUid(),
+                    pausedByName: actor, tournamentId: tid, byTournament: true
+                });
+                updates['rounds/' + rid + '/paused'] = true;
+                updates['rounds/' + rid + '/pausedAt'] = stamp;
+                updates['rounds/' + rid + '/pauseReason'] = text || null;
+                updates['rounds/' + rid + '/pausedBy'] = currentUid();
+                updates['rounds/' + rid + '/pausedByName'] = actor;
+                updates['rounds/' + rid + '/pausedByTournament'] = tid;
+                updates['rounds/' + rid + '/pauseHistory'] = roundHistory;
+                paused++;
+            });
+            return multi(updates).then(function () {
+                return { paused: paused, skipped: skipped, already: false };
+            });
+        });
+    }
+
+    /**
+     * Снимает турнир с паузы: запись турнира + раунды, остановленные турниром.
+     * Накопленное время паузы (totalPausedMs) сохраняется — тайминги темпа
+     * игры продолжают считаться с учётом остановки.
+     */
+    function resumeTournament(tid, userName) {
+        if (!tid) return Promise.reject(new Error('Не выбран турнир'));
+        var stamp = now();
+        var actor = core().trim(userName);
+        return Promise.all([read('tournaments/' + tid), tournamentGroupRounds(tid)]).then(function (res) {
+            var tournament = asMap(res[0]);
+            var rounds = res[1] || [];
+            var updates = {};
+            var resumed = 0;
+            rounds.forEach(function (round) {
+                if (String(round.pausedByTournament || '') !== String(tid)) return;
+                var rid = round._rid;
+                var total = (parseInt(round.totalPausedMs, 10) || parseInt(round.totalPauseMs, 10) || 0) +
+                    pauseDurationMs(round.pausedAt, stamp);
+                updates['rounds/' + rid + '/paused'] = false;
+                updates['rounds/' + rid + '/pausedAt'] = null;
+                updates['rounds/' + rid + '/pauseReason'] = null;
+                updates['rounds/' + rid + '/pausedByTournament'] = null;
+                updates['rounds/' + rid + '/totalPausedMs'] = total;
+                updates['rounds/' + rid + '/totalPauseMs'] = total;
+                updates['rounds/' + rid + '/resumedAt'] = stamp;
+                updates['rounds/' + rid + '/pauseHistory'] = closePauseHistory(round.pauseHistory, stamp, actor);
+                resumed++;
+            });
+            var totalTn = (parseInt(tournament.totalPausedMs, 10) || 0) + pauseDurationMs(tournament.pausedAt, stamp);
+            updates['tournaments/' + tid + '/paused'] = false;
+            updates['tournaments/' + tid + '/pausedAt'] = null;
+            updates['tournaments/' + tid + '/pauseReason'] = null;
+            updates['tournaments/' + tid + '/resumedAt'] = stamp;
+            updates['tournaments/' + tid + '/totalPausedMs'] = totalTn;
+            updates['tournaments/' + tid + '/pauseHistory'] = closePauseHistory(tournament.pauseHistory, stamp, actor);
+            updates['tournaments/' + tid + '/updatedAt'] = stamp;
+            return multi(updates).then(function () {
+                return { resumed: resumed, wasPaused: tournamentPaused(tournament) };
+            });
+        });
+    }
+
     /** Удаление турнира вместе с его раундами групп верхнего уровня. */
     function deleteTournament(tid) {
         return read('rounds').then(function (all) {
@@ -664,6 +813,285 @@ var TnMgrData = (function (root) {
                 });
             });
         }, Promise.resolve()).then(function () { return created; });
+    }
+
+    // ----------------------------------------------------------
+    // СПРАВОЧНИК ИГРОКОВ САЙТА: участники турнира как гости
+    // ----------------------------------------------------------
+    // Участник турнира, которого добавили поиском, вручную или импортом
+    // Excel, часто отсутствует в справочнике клуба (users / usersPublic):
+    // такого игрока нельзя выбрать из списка в следующем турнире или в
+    // live-скоринге, а его гандикап не синхронизируется с админ-панелью.
+    // Поэтому состав турнира регистрируется ГОСТЯМИ:
+    //   users/<uid>       — полная запись (админка «Игроки и роли», зеркало);
+    //   usersPublic/<uid> — публичное зеркало (списки игроков, поиск, live).
+    // Найденный/созданный uid сохраняется в players/<pid>/uid, поэтому
+    // повторная синхронизация обновляет ту же запись и не плодит дубликаты,
+    // а правка гандикапа в админке (pestovoSyncHcpToTournaments) находит
+    // участника именно по этому полю.
+
+    /** Нормализованное имя (ё→е, регистр, пробелы) — как в поиске клуба. */
+    function normName(value) {
+        if (typeof root.normalizeSearchText === 'function') {
+            try { return root.normalizeSearchText(value); } catch (e) { /* silent */ }
+        }
+        return String(value == null ? '' : value).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+    }
+
+    /** ФИО участника по частям — в том виде, в котором их ждёт справочник. */
+    function directoryParts(player) {
+        var record = core().newPlayer(player || {});
+        var fio = core().trim(record.fio);
+        var gender = record.gender === 'women' ? 'women' : 'men';
+        return {
+            name: fio,
+            firstName: core().trim(record.firstName),
+            middleName: core().trim(record.middleName),
+            lastName: core().trim(record.lastName),
+            gender: gender,
+            tee: core().trim(record.tee) || (gender === 'women' ? 'rd' : 'wh'),
+            hi: record.hi == null || record.hi === '' ? null : Number(record.hi)
+        };
+    }
+
+    function directoryKey(parts) {
+        var combined = [parts.lastName, parts.firstName, parts.middleName].filter(Boolean).join(' ');
+        return normName(combined || parts.name);
+    }
+
+    /** Детерминированный гостевой id (тот же, что делает live-скоринг). */
+    var guestSeq = 0;
+    function guestUidFor(parts) {
+        if (typeof root.buildGuestUserId === 'function') {
+            try {
+                var id = root.buildGuestUserId(parts.name, parts.hi);
+                if (id) return String(id);
+            } catch (e) { /* silent */ }
+        }
+        // Запасной вариант (utils.js не загружен, например в тестах): ключ
+        // Firebase допускает любые символы кроме . # $ [ ] / — имя сохраняем
+        // как есть (кириллица тоже) и добавляем уникальный хвост, иначе два
+        // участника, добавленные в одну миллисекунду, получили бы один id.
+        var safe = normName(parts.name).replace(/\s+/g, '_').replace(/[.#$[\]/]/g, '').slice(0, 60);
+        guestSeq++;
+        return 'guest_' + (safe || 'player') + '_' + now().toString(36) + guestSeq.toString(36) +
+            Math.random().toString(36).slice(2, 6);
+    }
+
+    /**
+     * Ищет запись справочника для участника: сначала по явному uid, затем по
+     * ФИО (только «сильное» совпадение — однофамильцы остаются разными людьми).
+     */
+    function findDirectoryUid(users, pub, parts, explicitUid) {
+        var wanted = core().trim(explicitUid);
+        if (wanted && (asMap(users)[wanted] || asMap(pub)[wanted])) return wanted;
+        var key = directoryKey(parts);
+        if (!key) return '';
+        var samePerson = typeof root.isSamePersonByFio === 'function' ? root.isSamePersonByFio : null;
+        var partsOf = typeof root.getNamePartsNormalized === 'function'
+            ? root.getNamePartsNormalized
+            : function (v) { return normName(v).split(' ').filter(Boolean); };
+        var candidates = {};
+        Object.keys(asMap(users)).forEach(function (uid) { candidates[uid] = asMap(users)[uid]; });
+        Object.keys(asMap(pub)).forEach(function (uid) { if (!candidates[uid]) candidates[uid] = asMap(pub)[uid]; });
+        var found = '';
+        Object.keys(candidates).forEach(function (uid) {
+            if (found) return;
+            var u = asMap(candidates[uid]);
+            if (!u || u.deleted) return;
+            if (typeof root.isPlayerDeleted === 'function' && root.isPlayerDeleted(uid, u.name)) return;
+            var name = core().trim(u.name) || [u.lastName, u.firstName, u.middleName].filter(Boolean).join(' ');
+            if (!name) return;
+            var otherKey = normName(name);
+            if (otherKey === key) { found = uid; return; }
+            if (!samePerson) return;
+            var otherParts = partsOf(name);
+            // Порядок «Фамилия Имя Отчество» и «Имя Отчество Фамилия» — один человек.
+            if (samePerson(partsOf([parts.lastName, parts.firstName, parts.middleName].filter(Boolean).join(' ')),
+                otherParts, key, otherKey) === 'strong') found = uid;
+            else if (samePerson(partsOf(parts.name), otherParts, normName(parts.name), otherKey) === 'strong') found = uid;
+        });
+        return found;
+    }
+
+    var DIRECTORY_PUBLIC_FIELDS = ['name', 'firstName', 'lastName', 'middleName', 'gender', 'handicap',
+        'defaultTee', 'isGuest', 'createdAt', 'roundsPlayed', 'hcpUpdatedAt', 'hcpSource'];
+
+    function publicMirrorOf(record) {
+        var out = {};
+        DIRECTORY_PUBLIC_FIELDS.forEach(function (field) {
+            if (asMap(record)[field] !== undefined) out[field] = asMap(record)[field];
+        });
+        return out;
+    }
+
+    /**
+     * Запись справочника для участника турнира. Существующие данные не
+     * затираются: дополняются только пустые поля, гандикап — по режиму
+     * (fill — если своего нет, push — всегда из турнира, none — не трогать).
+     */
+    function directoryRecordFor(parts, uid, existing, tid, mode) {
+        var prev = asMap(existing);
+        var record = {
+            name: core().trim(prev.name) || parts.name,
+            firstName: core().trim(prev.firstName) || parts.firstName,
+            middleName: core().trim(prev.middleName) || parts.middleName,
+            lastName: core().trim(prev.lastName) || parts.lastName,
+            gender: prev.gender || parts.gender,
+            defaultTee: core().trim(prev.defaultTee) || parts.tee,
+            isGuest: prev.isGuest === undefined ? String(uid).indexOf('guest_') === 0 : !!prev.isGuest,
+            createdAt: prev.createdAt || now(),
+            roundsPlayed: parseInt(prev.roundsPlayed, 10) || 0,
+            tnSource: 'tournament',
+            tnTournamentId: String(tid || ''),
+            tnSyncedAt: now()
+        };
+        var prevHcp = (prev.handicap != null && prev.handicap !== '') ? Number(prev.handicap) : null;
+        var ownHcp = parts.hi;
+        var write = mode === 'push' ? ownHcp != null : (ownHcp != null && prevHcp == null);
+        if (write) {
+            record.handicap = ownHcp;
+            record.hcpUpdatedAt = now();
+            // АГР — первоисточник: его отметку не перебиваем.
+            record.hcpSource = prev.hcpSource === 'rusgolf' ? 'rusgolf' : 'tournament';
+        } else if (prevHcp != null) {
+            record.handicap = prevHcp;
+            if (prev.hcpUpdatedAt) record.hcpUpdatedAt = prev.hcpUpdatedAt;
+            if (prev.hcpSource) record.hcpSource = prev.hcpSource;
+        }
+        return record;
+    }
+
+    /** Пишем порциями: на крупном турнире путей много (users + usersPublic). */
+    function writeInChunks(updates, size) {
+        var keys = Object.keys(updates || {});
+        if (!keys.length) return Promise.resolve();
+        var db = database();
+        if (!db) return Promise.reject(new Error('Нет соединения с базой'));
+        var limit = size || 200;
+        var chain = Promise.resolve();
+        for (var i = 0; i < keys.length; i += limit) {
+            (function (chunkKeys) {
+                var chunk = {};
+                chunkKeys.forEach(function (key) { chunk[key] = updates[key]; });
+                chain = chain.then(function () { return db.ref().update(chunk); });
+            })(keys.slice(i, i + limit));
+        }
+        return chain;
+    }
+
+    /** Игровой гандикап (CH) для HI + ТИ + пола — как в карточке участника. */
+    function directoryFieldHcp(hi, tee, gender) {
+        if (hi == null || hi === '' || !isFinite(Number(hi))) return null;
+        if (typeof root.getFieldHcp === 'function') {
+            try { return root.getFieldHcp(Number(hi), tee || 'wh', gender || 'men'); } catch (e) { /* silent */ }
+        }
+        return core().courseHandicap ? core().courseHandicap(Number(hi), null, root.TOTAL_PAR || 72) : Math.round(Number(hi));
+    }
+
+    /**
+     * Регистрирует участников турнира в справочнике сайта (гостями, если их
+     * там ещё нет) и сохраняет uid в записи участника.
+     * options.handicaps: 'fill' (по умолчанию) | 'push' | 'none'.
+     */
+    function syncPlayersToDirectory(tid, players, options) {
+        var opts = options || {};
+        var mode = opts.handicaps === 'push' || opts.handicaps === 'none' ? opts.handicaps : 'fill';
+        var list = (players || []).filter(function (player) {
+            return player && (core().trim(player.fio) || core().trim(player.name));
+        });
+        var result = { added: 0, updated: 0, ids: {}, error: '' };
+        if (!database() || !list.length) return Promise.resolve(result);
+        return Promise.all([read('users'), read('usersPublic')]).then(function (res) {
+            var users = asMap(res[0]);
+            var pub = asMap(res[1]);
+            var updates = {};
+            list.forEach(function (player) {
+                var parts = directoryParts(player);
+                if (!parts.name) return;
+                var uid = findDirectoryUid(users, pub, parts, player.uid || player.directoryUid);
+                var existing = uid ? (users[uid] || pub[uid]) : null;
+                if (uid) result.updated++;
+                else { uid = guestUidFor(parts); result.added++; }
+                var record = directoryRecordFor(parts, uid, existing, tid, mode);
+                var prevUser = asMap(users[uid]);
+                updates['users/' + uid] = Object.assign({}, prevUser, record, {
+                    role: prevUser.role || 'player'
+                });
+                updates['usersPublic/' + uid] = Object.assign({}, publicMirrorOf(asMap(pub[uid])), publicMirrorOf(record));
+                if (player.id) {
+                    updates['tournaments/' + tid + '/players/' + player.id + '/uid'] = uid;
+                    updates['tournaments/' + tid + '/players/' + player.id + '/directorySyncedAt'] = now();
+                    updates['tournaments/' + tid + '/registeredPlayers/' + player.id + '/uid'] = uid;
+                }
+                result.ids[player.id || parts.name] = uid;
+                // Следующий однофамилец из этого же списка не должен создать дубль.
+                users[uid] = updates['users/' + uid];
+                pub[uid] = updates['usersPublic/' + uid];
+            });
+            return writeInChunks(updates).then(function () { return result; });
+        }).catch(function (err) {
+            result.error = (err && err.message) ? err.message : String(err);
+            return result;
+        });
+    }
+
+    /** Гандикапы турнира → справочник сайта (HI участника перезаписывает профиль). */
+    function pushHandicapsToDirectory(tid, players) {
+        return syncPlayersToDirectory(tid, players, { handicaps: 'push' });
+    }
+
+    /**
+     * Гандикапы справочника → участники турнира: HI из профиля (админка/АГР)
+     * и пересчитанный CH. Ручной CH организатора не затирается (см. utils.js
+     * pestovoSyncHcpToTournaments — та же логика).
+     */
+    function pullHandicapsFromDirectory(tid, players, tournament) {
+        var list = (players || []).filter(function (player) { return player && player.id; });
+        var result = { updated: 0, missing: 0, error: '' };
+        if (!database() || !list.length) return Promise.resolve(result);
+        return Promise.all([read('users'), read('usersPublic'), read('tournaments/' + tid + '/sheets')]).then(function (res) {
+            var users = asMap(res[0]);
+            var pub = asMap(res[1]);
+            var sheets = asMap(res[2]);
+            var updates = {};
+            list.forEach(function (player) {
+                var parts = directoryParts(player);
+                var uid = findDirectoryUid(users, pub, parts, player.uid || player.directoryUid);
+                if (!uid) { result.missing++; return; }
+                var source = asMap(users[uid]).handicap != null ? asMap(users[uid]) : asMap(pub[uid]);
+                var hcp = (source.handicap != null && source.handicap !== '') ? Number(source.handicap) : null;
+                if (hcp == null || !isFinite(hcp)) { result.missing++; return; }
+                var tee = parts.tee || core().trim(source.defaultTee) || 'wh';
+                var pid = player.id;
+                var oldHi = (player.hi != null && player.hi !== '') ? Number(player.hi) : null;
+                var oldCh = (player.ch != null && player.ch !== '') ? Number(player.ch) : null;
+                var chIsAuto = oldCh == null || directoryFieldHcp(oldHi, tee, parts.gender) === oldCh;
+                var newCh = directoryFieldHcp(hcp, tee, parts.gender);
+                if (oldHi === hcp && (!chIsAuto || oldCh === newCh)) return;
+                var base = 'tournaments/' + tid + '/players/' + pid;
+                updates[base + '/hi'] = hcp;
+                updates[base + '/uid'] = uid;
+                if (chIsAuto && newCh != null) updates[base + '/ch'] = newCh;
+                var mirror = 'tournaments/' + tid + '/registeredPlayers/' + pid;
+                updates[mirror + '/handicap'] = hcp;
+                updates[mirror + '/hi'] = hcp;
+                updates[mirror + '/uid'] = uid;
+                if (chIsAuto && newCh != null) updates[mirror + '/ch'] = newCh;
+                Object.keys(sheets).forEach(function (rid) {
+                    var entry = asMap(asMap(sheets[rid]).entries)[pid];
+                    if (!entry) return;
+                    var entryPath = 'tournaments/' + tid + '/sheets/' + rid + '/entries/' + pid;
+                    updates[entryPath + '/hi'] = hcp;
+                    if (chIsAuto && newCh != null) updates[entryPath + '/ch'] = newCh;
+                });
+                result.updated++;
+            });
+            return writeInChunks(updates).then(function () { return result; });
+        }).catch(function (err) {
+            result.error = (err && err.message) ? err.message : String(err);
+            return result;
+        });
     }
 
     // ----------------------------------------------------------
@@ -1214,6 +1642,8 @@ var TnMgrData = (function (root) {
         createTournament: createTournament, updateTournament: updateTournament,
         deleteTournament: deleteTournament, setTournamentStatus: setTournamentStatus,
         startTournament: startTournament, forceFinishTournament: forceFinishTournament,
+        pauseTournament: pauseTournament, resumeTournament: resumeTournament,
+        tournamentPaused: tournamentPaused, tournamentGroupRounds: tournamentGroupRounds,
         watchTournaments: watchTournaments, watchTournament: watchTournament, watchGroupRounds: watchGroupRounds,
         // раунды
         addRound: addRound, updateRound: updateRound, saveScorecardLayout: saveScorecardLayout, deleteRound: deleteRound,
@@ -1223,6 +1653,11 @@ var TnMgrData = (function (root) {
         distributeTournamentPlayers: distributeTournamentPlayers,
         // участники
         addPlayer: addPlayer, addPlayers: addPlayers, updatePlayer: updatePlayer, removePlayer: removePlayer,
+        // справочник игроков сайта (гости из турнира) и синхронизация гандикапов
+        syncPlayersToDirectory: syncPlayersToDirectory, pushHandicapsToDirectory: pushHandicapsToDirectory,
+        pullHandicapsFromDirectory: pullHandicapsFromDirectory, directoryParts: directoryParts,
+        findDirectoryUid: findDirectoryUid, directoryRecordFor: directoryRecordFor,
+        directoryFieldHcp: directoryFieldHcp, guestUidFor: guestUidFor, writeInChunks: writeInChunks,
         // стартовый лист
         DEFAULT_COLUMNS: DEFAULT_COLUMNS, sheetColumns: sheetColumns, sheetOrder: sheetOrder,
         generateSheet: generateSheet, updateSheetEntry: updateSheetEntry, addSheetEntry: addSheetEntry,

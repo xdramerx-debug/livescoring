@@ -513,6 +513,13 @@ function createPlayerInAdmin() {
                 upd.name = (firstName + (middleName ? ' ' + middleName : '') + (lastName ? ' ' + lastName : '')).trim();
             }
             db.ref('users/' + foundDupId).update(upd);
+            // Гандикап уехал и в состав турниров, где этот игрок уже заявлен
+            // (участник связан с профилем полем uid).
+            if (typeof pestovoSyncHcpToTournaments === 'function') {
+                pestovoSyncHcpToTournaments(foundDupId, parsedHcp, {
+                    name: upd.name || '', gender: gender
+                }).catch(function (e) { console.warn('[hcp-sync]', e); });
+            }
         }
         if (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[foundDupId]) {
             cachedRegisteredUsers[foundDupId].handicap = parsedHcp;

@@ -47,6 +47,8 @@ function eq(actual, expected, label) {
 }
 
 // ── Фейковая БД: снимок + перехват update ──
+// Записей теперь может быть несколько (AGR-раскатка + синхронизация гандикапа
+// с составом турниров), поэтому update'ы накапливаем в один объект.
 let dbState = {};
 let lastUpdates = null;
 function makeDb() {
@@ -55,7 +57,7 @@ function makeDb() {
             const p = path || '';
             return {
                 once: function() { return Promise.resolve({ val: function() { return p ? dbState[p] : dbState; } }); },
-                update: function(obj) { lastUpdates = obj; return Promise.resolve(); },
+                update: function(obj) { lastUpdates = Object.assign({}, lastUpdates || {}, obj); return Promise.resolve(); },
                 set: function() { return Promise.resolve(); }
             };
         }
@@ -72,17 +74,28 @@ function run(hcp, done) {
 // ── Сценарий 1: обрезка на турнире (макс. 28), HCP сменился на 12.0 ──
 dbState = {
     'rounds': { r1: { tournamentId: 't1', players: { u1: { exactHcp: 28, exactHcpRaw: 36, fieldHcp: 33, tee: 'wh', gender: 'men', name: 'Прудовский М. В.' } } } },
-    'tournaments': { t1: { hcpCut: { enabled: false, percent: 100, maxEnabled: true, maxMen: 28, maxWomen: null }, registeredPlayers: { u1: { handicap: 36, gender: 'men' } } } },
+    'tournaments': { t1: { hcpCut: { enabled: false, percent: 100, maxEnabled: true, maxMen: 28, maxWomen: null }, registeredPlayers: { u1: { handicap: 36, gender: 'men' } }, players: {
+            p1: { uid: 'u1', fio: 'Прудовский М. В.', hi: 36, ch: 0, tee: 'wh', gender: 'men' },
+            p2: { uid: 'u1', fio: 'Прудовский М. В.', hi: 36, ch: 5, tee: 'wh', gender: 'men' }
+        } } },
     'protocols': {},
     'users/u1/history': {}
 };
 sandbox.db = makeDb();
+// У p1 игровой гандикап автоматический (совпадает с расчётом от старого HI) —
+// синхронизация обязана его пересчитать. У p2 CH выставлен организатором
+// вручную (5) — его перезаписывать нельзя, обновляется только HI.
+dbState.tournaments.t1.players.p1.ch = sandbox.getFieldHcp(36, 'wh', 'men');
 run(12.0, function() {
     eq(lastUpdates['rounds/r1/players/u1/exactHcp'], 12, 'AGR: exactHcp = 12 (без обрезки, ниже макс.)');
     eq(lastUpdates['rounds/r1/players/u1/exactHcpRaw'], 12, 'AGR: exactHcpRaw обновлён на 12 (не остался 36)');
     eq(lastUpdates['rounds/r1/players/u1/fieldHcp'], sandbox.getFieldHcp(12, 'wh', 'men'), 'AGR: fieldHcp от 12');
     eq(lastUpdates['tournaments/t1/registeredPlayers/u1/handicap'], 12, 'AGR: заявка турнира обновлена на 12');
     eq(lastUpdates['users/u1/handicap'], 12, 'AGR: users.handicap = 12');
+    eq(lastUpdates['tournaments/t1/players/p1/hi'], 12, 'AGR: гандикап уехал и в состав турнира (players/<pid>.hi)');
+    eq(lastUpdates['tournaments/t1/players/p1/ch'], sandbox.getFieldHcp(12, 'wh', 'men'), 'AGR: CH участника пересчитан');
+    eq(lastUpdates['tournaments/t1/players/p2/hi'], 12, 'AGR: HI обновлён и у записи с ручным CH');
+    eq(lastUpdates['tournaments/t1/players/p2/ch'], undefined, 'AGR: ручной CH участника не перезаписан');
 
     // ── Сценарий 2: HCP 36 с обрезкой макс. 28 → exactHcp = 28 ──
     dbState['rounds'].r1.players.u1 = { exactHcp: 12, exactHcpRaw: 12, fieldHcp: 13, tee: 'wh', gender: 'men' };

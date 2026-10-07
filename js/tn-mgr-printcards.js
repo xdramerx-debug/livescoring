@@ -27,6 +27,7 @@ var TnMgrPrintCards = (function (root) {
     var CARD_H = 200;
     var PAGE_W = 297;      // мм — A4 landscape
     var PAGE_H = 210;
+    var DRAG_THRESHOLD_PX = 4;  // порог «клик или перетаскивание» для текста
 
     function doc() { return root.document; }
     function ui() { return root.TnMgrUI; }
@@ -87,6 +88,7 @@ var TnMgrPrintCards = (function (root) {
         dirty: false,
         selected: {},
         drag: null,
+        cardDrag: null,
         progress: '',
         panels: { sizes: false, fields: false, content: false, overlays: false },
         activeCardId: '',
@@ -406,7 +408,7 @@ var TnMgrPrintCards = (function (root) {
         var remote = Number((stored || {}).updatedAt || 0);
         if (remote === state.remoteUpdatedAt) return;
         state.remoteUpdatedAt = remote;
-        if (state.dirty || state.drag) return;
+        if (state.dirty || state.drag || state.cardDrag) return;
         state.draft = null;
         ensureDraft();
     }
@@ -839,10 +841,14 @@ var TnMgrPrintCards = (function (root) {
      * одна черточка за каждый удар форы на этой лунке (как на бланке клуба).
      * Минусовая фора — красные черточки. У связки черточки каждого игрока
      * стоят своим рядом, поэтому видно, кому какой удар принадлежит.
+     *
+     * Черточки рисуются ВСЕГДА, если у игрока есть фора, — даже когда строка
+     * «Фора» снята в панели «Состав информации» (d.show.fore === false):
+     * на бланке клуба удар форы виден в клетке счёта независимо от того,
+     * вынесена ли фора отдельной строкой. Раньше вместе со строкой пропадал и
+     * сам удар форы, и карточка печаталась без черточек.
      */
     function foreMarksHtml(card, holeIndex, playerIndex) {
-        var d = ensureDraft();
-        if (d.show.fore === false) return '';
         var index = playerIndex == null ? 0 : playerIndex;
         var value = parseInt(foreValues(card, index)[holeIndex], 10);
         if (!isFinite(value) || !value) return '';
@@ -1434,8 +1440,14 @@ var TnMgrPrintCards = (function (root) {
 
     function cardShellHtml(card, printMode, slot, local) {
         var d = ensureDraft();
+        // Ручка перетаскивания карточки по листу — только на экране и только
+        // в режиме «лист A4» (в режиме «только карточку» двигать не по чему).
+        var handle = (!printMode && !local)
+            ? '<span class="tnpc-move" data-tnpc-card-move="1" title="' +
+              esc(bi('Перетащить карточку по листу', 'Drag the card across the sheet')) + '">✥</span>'
+            : '';
         return '<article class="tnpc-card" data-cid="' + esc(card.id) + '" data-slot="' + (slot || 0) + '" style="' +
-            cardStyleAttr(d, slot || 0, local) + '">' + cardFaceHtml(card, printMode) + '</article>';
+            cardStyleAttr(d, slot || 0, local) + '">' + handle + cardFaceHtml(card, printMode) + '</article>';
     }
 
     // ----------------------------------------------------------
@@ -1752,9 +1764,11 @@ var TnMgrPrintCards = (function (root) {
             ui().btn('tnpc-image-add', esc(bi('+ Картинка', 'Add image')), { icon: 'fas fa-photo-film', variant: 'ghost', small: true }) +
             ui().btn('tnpc-reset-ov', esc(bi('Сбросить позиции', 'Reset overlays')), { icon: 'fas fa-up-down-left-right', variant: 'ghost', small: true }) +
             '</div></div>' +
-            '<p class="tnm-muted">' + esc(bi('Перетаскивайте блоки мышью прямо на карточке, тяните за золотой уголок — изменить размер. ' +
+            '<p class="tnm-muted">' + esc(bi('Перетаскивайте блоки мышью прямо на карточке — лого, QR, картинку и свой текст; ' +
+                'тяните за золотой уголок, чтобы изменить размер. Саму карточку двигает по листу ручка ✥ в её левом верхнем углу. ' +
                 'Двойной клик по QR — своя ссылка. Картинку можно просто перетащить файлом на предпросмотр.',
-                'Drag blocks on the card, pull the gold corner to resize. Double-click a QR for a custom link. ' +
+                'Drag blocks on the card with the mouse — logo, QR, image and your own text; pull the gold corner to resize. ' +
+                'The card itself is moved across the sheet by the ✥ handle in its top-left corner. Double-click a QR for a custom link. ' +
                 'You can also drop an image file onto the preview.')) + '</p>' +
             '<label class="tnpc-check"><input type="checkbox" data-tnm-edit="tnpc-qr-global"' + (d.qrEnabled ? ' checked' : '') + '> ' +
             esc(bi('QR-коды маркеров включены (ссылка на ввод счёта игрока)', 'Marker QR codes on (link to the player score entry)')) + '</label>' +
@@ -1813,7 +1827,10 @@ var TnMgrPrintCards = (function (root) {
             stageHtml(card) +
             '<div class="tnpc-hints">' +
             '<span><i class="fas fa-i-cursor"></i> ' + esc(bi('текст на карточке редактируется кликом', 'click any text to edit')) + '</span>' +
-            '<span><i class="fas fa-hand-pointer"></i> ' + esc(bi('лого и QR перетаскиваются, уголок — размер', 'drag logo/QR, corner resizes')) + '</span>' +
+            '<span><i class="fas fa-hand-pointer"></i> ' + esc(bi('лого, QR и добавленный текст перетаскиваются мышью, золотой уголок — размер',
+                'logo, QR and added text are draggable, the gold corner resizes')) + '</span>' +
+            '<span><i class="fas fa-arrows-up-down-left-right"></i> ' + esc(bi('карточка двигается по листу — тяните за ручку ✥ в её левом верхнем углу',
+                'drag the card across the sheet by the ✥ handle in its top-left corner')) + '</span>' +
             '<span><i class="fas fa-file-arrow-down"></i> ' + esc(bi('картинку можно перетащить файлом на лист', 'drop an image file onto the sheet')) + '</span>' +
             '<span><i class="fas fa-up-down"></i> ' + esc(bi('строки таблицы переставляются кнопками ↑/↓ или перетаскиванием подписи', 'reorder table rows with ↑/↓ or drag a row label')) + '</span>' +
             '<span><i class="fas fa-ruler"></i> ' + esc(bi('размеры — в панели «Размеры и место на листе»', 'sizes live in the “Sizes” panel')) + '</span>' +
@@ -1986,13 +2003,121 @@ var TnMgrPrintCards = (function (root) {
         });
     }
 
+    /**
+     * ПЕРЕТАСКИВАНИЕ КАРТОЧКИ ПО ЛИСТУ.
+     * Место карточки (layout.xMm/yMm) раньше правилось только числами в панели
+     * «Размеры и место на листе». Теперь её можно двигать мышью прямо в
+     * предпросмотре — так же, как лого и QR. Движок: указатель на «ручке» ✥
+     * в углу карточки или на любом её не редактируемом месте (рамка, клетки
+     * счёта, пустые поля). В режиме «только карточка» листа нет — там ручка
+     * не показывается и перетаскивание не запускается.
+     */
+    function cardDragAllowed(ev) {
+        if (state.preview === 'card') return false;
+        if (ev.target.closest('[data-overlay-id]')) return false;
+        if (ev.target.closest('[data-tnm-act]')) return false;
+        if (ev.target.closest('[contenteditable="true"]')) return false;
+        if (ev.target.closest('input, select, textarea, a, button')) return false;
+        // Подписи строк таблицы переставляются своим HTML5-перетаскиванием.
+        if (ev.target.closest('[data-tnpc-row-handle]')) return false;
+        return true;
+    }
+
+    function startCardDrag(ev, host) {
+        var cardEl = ev.target.closest('.tnpc-card');
+        if (!cardEl) return;
+        if (!cardDragAllowed(ev)) return;
+        var pageEl = cardEl.closest('[data-tnpc-page]');
+        if (!pageEl || pageEl.classList.contains('card-only')) return;
+        var d = ensureDraft();
+        var size = clampSize(d.size);
+        var layout = clampLayout(d.layout, size);
+        var mmPerPx = pageMmPerPx(pageEl, layout, size);
+        if (!isFinite(mmPerPx) || mmPerPx <= 0) return;
+        state.cardDrag = {
+            startX: ev.clientX, startY: ev.clientY,
+            ox: layout.xMm, oy: layout.yMm,
+            mmPerPx: mmPerPx, el: cardEl, host: host, moved: false
+        };
+        cardEl.classList.add('dragging');
+        try { cardEl.setPointerCapture(ev.pointerId); } catch (e) { /* silent */ }
+        ev.preventDefault();
+    }
+
+    function moveCardDrag(ev) {
+        var dr = state.cardDrag;
+        if (!dr) return;
+        var d = ensureDraft();
+        var size = clampSize(d.size);
+        var dx = (ev.clientX - dr.startX) * dr.mmPerPx;
+        var dy = (ev.clientY - dr.startY) * dr.mmPerPx;
+        if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) dr.moved = true;
+        d.layout = clampLayout({
+            xMm: dr.ox + dx, yMm: dr.oy + dy,
+            scale: d.layout.scale, gapMm: d.layout.gapMm, perSheet: d.layout.perSheet
+        }, size);
+        patchCardDom(d);
+        syncLayoutInputs(d.layout);
+        ev.preventDefault();
+    }
+
+    function endCardDrag() {
+        var dr = state.cardDrag;
+        state.cardDrag = null;
+        if (!dr) return;
+        if (dr.el) dr.el.classList.remove('dragging');
+        if (!dr.moved) return;
+        persistSoon();
+        refreshFitWarning();
+    }
+
+    /** Переставить карточку (и «призрак» второй) без полной перерисовки. */
+    function patchCardDom(d) {
+        var dd = doc();
+        if (!dd) return;
+        var stage = dd.querySelector('[data-tnpc-stage]');
+        if (!stage) return;
+        var size = clampSize(d.size);
+        var local = stage.classList.contains('card-mode');
+        stage.querySelectorAll('.tnpc-card').forEach(function (el) {
+            var slot = Number(el.getAttribute('data-slot')) || 0;
+            el.setAttribute('style', cardStyleAttr(d, slot, local));
+        });
+        var ghost = stage.querySelector('.tnpc-ghost');
+        if (ghost) {
+            var second = placement(d.layout, size, 1);
+            ghost.style.left = second.xMm + 'mm';
+            ghost.style.top = second.yMm + 'mm';
+            ghost.style.width = second.wMm + 'mm';
+            ghost.style.height = second.hMm + 'mm';
+        }
+    }
+
+    /** Числа X/Y в панели «Размеры» следуют за перетаскиванием. */
+    function syncLayoutInputs(layout) {
+        var dd = doc();
+        if (!dd) return;
+        ['xMm', 'yMm'].forEach(function (field) {
+            var input = dd.querySelector('[data-tnm-live-edit="tnpc-layout"][data-field="' + field + '"]');
+            if (input && dd.activeElement !== input) input.value = layout[field];
+        });
+    }
+
+    /** Экранная точка → миллиметры листа A4 (с учётом масштаба предпросмотра). */
+    function pageMmPerPx(pageEl, layout, size) {
+        var rect = pageEl ? pageEl.getBoundingClientRect() : null;
+        if (!rect || !rect.width) return 0;
+        var fit = pageFit(layout, size) || 1;
+        return PAGE_W / (rect.width * fit);
+    }
+
     function bindDrag(host) {
         host.addEventListener('pointerdown', function (ev) {
+            if (ev.button !== undefined && ev.button !== 0) return;
             var handle = ev.target.closest('[data-tnpc-resize]');
             var ovEl = ev.target.closest('[data-overlay-id]');
-            if (!ovEl) return;
+            if (!ovEl) { startCardDrag(ev, host); return; }
             if (ev.target.closest('[data-tnm-act]')) return;
-            if (ev.target.closest('[contenteditable="true"]')) return;
             var id = ovEl.getAttribute('data-overlay-id');
             var ov = overlayById(id);
             if (!ov) return;
@@ -2003,22 +2128,42 @@ var TnMgrPrintCards = (function (root) {
             var scale = clampLayout(ensureDraft().layout, size).scale;
             var mmX = rect.width / (size.wMm * scale) || 1;
             var mmY = rect.height / (size.hMm * scale) || 1;
+            // Текст оверлея правится кликом, поэтому начинаем перетаскивание
+            // только после движения (порог в pointermove). Без этого текстовый
+            // блок вообще нельзя было сдвинуть: contenteditable съедал нажатие.
+            var editable = ev.target.closest('[contenteditable="true"]');
             state.drag = {
                 id: id, resize: !!handle,
                 startX: ev.clientX, startY: ev.clientY,
                 ox: ov.xMm, oy: ov.yMm, ow: ov.wMm, oh: ov.hMm,
-                mmX: mmX, mmY: mmY
+                mmX: mmX, mmY: mmY,
+                pending: !!editable && !handle,
+                el: ovEl, pointerId: ev.pointerId
             };
+            if (state.drag.pending) return;
             host.querySelectorAll('[data-overlay-id]').forEach(function (el) { el.classList.remove('selected'); });
             ovEl.classList.add('selected');
             try { ovEl.setPointerCapture(ev.pointerId); } catch (e) { /* silent */ }
             ev.preventDefault();
         });
         host.addEventListener('pointermove', function (ev) {
+            if (state.cardDrag) { moveCardDrag(ev, host); return; }
             if (!state.drag) return;
             var dr = state.drag;
-            var dx = (ev.clientX - dr.startX) / dr.mmX;
-            var dy = (ev.clientY - dr.startY) / dr.mmY;
+            var pxX = ev.clientX - dr.startX;
+            var pxY = ev.clientY - dr.startY;
+            if (dr.pending) {
+                // Ещё не движение, а клик — оставляем правку текста.
+                if (Math.abs(pxX) < DRAG_THRESHOLD_PX && Math.abs(pxY) < DRAG_THRESHOLD_PX) return;
+                dr.pending = false;
+                try { dr.el.setPointerCapture(ev.pointerId); } catch (e) { /* silent */ }
+                dr.el.classList.add('selected');
+                var active = doc() && doc().activeElement;
+                if (active && active !== doc().body && typeof active.blur === 'function') active.blur();
+                ev.preventDefault();
+            }
+            var dx = pxX / dr.mmX;
+            var dy = pxY / dr.mmY;
             var ov = overlayById(dr.id);
             if (!ov) return;
             if (dr.resize) { ov.wMm = dr.ow + dx; ov.hMm = dr.oh + dy; }
@@ -2029,9 +2174,16 @@ var TnMgrPrintCards = (function (root) {
             syncOverlayInputs(next);
         });
         host.addEventListener('pointerup', function () {
+            if (state.cardDrag) { endCardDrag(host); return; }
             if (!state.drag) return;
+            var wasPending = state.drag.pending;
             state.drag = null;
+            if (wasPending) return;   // это был клик по тексту — сохранять нечего
             persistSoon();
+        });
+        host.addEventListener('pointercancel', function () {
+            if (state.cardDrag) { endCardDrag(host); return; }
+            state.drag = null;
         });
         host.addEventListener('dblclick', function (ev) {
             var ovEl = ev.target.closest('[data-overlay-id]');

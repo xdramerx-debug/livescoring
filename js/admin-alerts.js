@@ -23,20 +23,42 @@ var admAlertsRenderTimer = null;
 var admAlertsPending = null;
 var admGlobalNotificationsEnabled = true;
 var admGlobalNotificationsBound = false;
+// true, когда настройка реально прочитана из базы (а не значение по умолчанию).
+var admGlobalNotificationsKnown = false;
+var admGlobalNotificationsTimeout = null;
+// Общий переключатель: кнопка показывает ДЕЙСТВИЕ («Отключить для всех» /
+// «Включить для всех»), а не состояние, и доступна всегда — даже если чтение
+// настройки задерживается (иначе кнопка вечно висела в «Загрузка…»).
 function renderGlobalNotificationsSetting() {
     var button = document.getElementById('global-notifications-toggle');
     var status = document.getElementById('global-notifications-status');
+    var bar = document.getElementById('admin-global-notify');
     var isEn = typeof currentLang !== 'undefined' && currentLang === 'en';
+    var on = admGlobalNotificationsEnabled !== false;
+    if (bar) bar.classList.toggle('is-off', admGlobalNotificationsKnown && !on);
     if (button) {
         button.disabled = false;
-        button.setAttribute('aria-pressed', admGlobalNotificationsEnabled ? 'true' : 'false');
-        button.className = 'btn ' + (admGlobalNotificationsEnabled ? 'btn-g' : 'btn-danger') + ' btn-sm';
-        button.innerHTML = '<i class="fas ' + (admGlobalNotificationsEnabled ? 'fa-bell' : 'fa-bell-slash') + '"></i> ' +
-            (admGlobalNotificationsEnabled ? (isEn ? 'Notifications on' : 'Уведомления включены') : (isEn ? 'Notifications off' : 'Уведомления выключены'));
+        button.setAttribute('aria-pressed', on ? 'true' : 'false');
+        button.className = 'btn btn-sm ' + (on ? 'btn-danger' : 'btn-g');
+        button.innerHTML = '<i class="fas ' + (on ? 'fa-bell-slash' : 'fa-bell') + '"></i> ' +
+            (on ? (isEn ? 'Turn off for everyone' : 'Отключить для всех')
+                : (isEn ? 'Turn on for everyone' : 'Включить для всех'));
     }
-    if (status) status.textContent = admGlobalNotificationsEnabled
-        ? (isEn ? 'Push alerts, club announcements and referee/marshal notifications are enabled.' : 'Push, клубные анонсы и уведомления о вызовах включены.')
-        : (isEn ? 'Push alerts and club notifications are paused for everyone.' : 'Push и клубные уведомления временно отключены для всех.');
+    if (status) {
+        if (!admGlobalNotificationsKnown) {
+            status.textContent = isEn
+                ? 'Setting not loaded yet. Notifications are assumed to be on.'
+                : 'Настройка ещё не загружена. Считаем, что уведомления включены.';
+        } else if (on) {
+            status.textContent = isEn
+                ? 'ON: push alerts, club announcements and referee/marshal calls are sent to players.'
+                : 'ВКЛЮЧЕНО: push, клубные анонсы и вызовы судей/маршалов отправляются игрокам.';
+        } else {
+            status.textContent = isEn
+                ? 'OFF for everyone: no push alerts, announcements or referee/marshal calls are sent.'
+                : 'ВЫКЛЮЧЕНО для всех: push, анонсы и вызовы судей/маршалов игрокам не отправляются.';
+        }
+    }
 }
 function loadGlobalNotificationsSetting() {
     if (typeof db === 'undefined' || !db || admGlobalNotificationsBound) return;
@@ -44,8 +66,15 @@ function loadGlobalNotificationsSetting() {
     var apply = function (snapshot) {
         var value = snapshot && typeof snapshot.val === 'function' ? snapshot.val() : null;
         admGlobalNotificationsEnabled = value !== false;
+        admGlobalNotificationsKnown = true;
+        if (admGlobalNotificationsTimeout) { clearTimeout(admGlobalNotificationsTimeout); admGlobalNotificationsTimeout = null; }
         renderGlobalNotificationsSetting();
     };
+    // Если снимок не пришёл за 8 с (нет сети/правил) — не блокируем кнопку.
+    admGlobalNotificationsTimeout = setTimeout(function () {
+        admGlobalNotificationsTimeout = null;
+        if (!admGlobalNotificationsKnown) renderGlobalNotificationsSetting();
+    }, 8000);
     if (typeof bindRealtimeValue === 'function') {
         bindRealtimeValue('admin-notifications-global', db.ref('settings/notifications_enabled'), apply);
     } else {
@@ -58,14 +87,21 @@ function toggleGlobalNotifications() {
         return;
     }
     var next = !admGlobalNotificationsEnabled;
+    if (!next && typeof confirm === 'function') {
+        var question = currentLang === 'en'
+            ? 'Turn OFF push and club notifications for ALL players?'
+            : 'Отключить push и клубные уведомления для ВСЕХ игроков? Вызовы судей и анонсы не будут отправляться, пока вы не включите их снова.';
+        if (!confirm(question)) return;
+    }
     var button = document.getElementById('global-notifications-toggle');
     if (button) button.disabled = true;
     db.ref('settings/notifications_enabled').set(next).then(function () {
         admGlobalNotificationsEnabled = next;
+        admGlobalNotificationsKnown = true;
         renderGlobalNotificationsSetting();
         toast(next
-            ? (currentLang === 'en' ? 'Club notifications enabled' : 'Уведомления клуба включены')
-            : (currentLang === 'en' ? 'Club notifications disabled for everyone' : 'Уведомления клуба отключены для всех'), 'success');
+            ? (currentLang === 'en' ? 'Club notifications turned on for everyone' : 'Уведомления клуба включены для всех')
+            : (currentLang === 'en' ? 'Club notifications turned off for everyone' : 'Уведомления клуба выключены для всех'), 'success');
     }).catch(function (error) {
         renderGlobalNotificationsSetting();
         toast('❌ ' + (error && error.message ? error.message : error), 'error');

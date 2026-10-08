@@ -450,6 +450,48 @@ function loadPestovoWeather(targetId) {
 }
 
 // ==========================================
+// ЖУРНАЛ ОБНОВЛЕНИЙ ГАНДИКАПА (узел hcpLog → вкладка «Журнал гандикапов» в админке)
+// Каждая запись: когда обновили, какой игрок (ФИО), старое/новое значение, источник
+// и КТО обновил (actorUid — всегда текущий пользователь; правила БД не дают
+// подставить чужой uid). Ошибка записи журнала не блокирует обновление HCP.
+// ==========================================
+function pestovoHcpLogText(value, max) {
+    return String(value == null ? '' : value).replace(/\s+/g, ' ').trim().slice(0, max || 160);
+}
+function pestovoLogHcpChange(entry) {
+    try {
+        if (typeof db === 'undefined' || !db || !entry) return Promise.resolve(false);
+        var user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : null;
+        var actorUid = user && user.uid ? String(user.uid) : '';
+        if (!actorUid) return Promise.resolve(false);
+        var profile = (typeof currentUserData !== 'undefined' && currentUserData) ? currentUserData : {};
+        var isMaster = actorUid === 'tournament-master';
+        var isAdmin = isMaster || profile.admin === true || profile.role === 'admin';
+        var rec = {
+            at: Date.now(),
+            actorUid: actorUid,
+            actorName: isMaster ? 'Мастер-пароль' : pestovoHcpLogText(profile.name || user.email || actorUid, 120),
+            actorRole: isMaster ? 'master' : (isAdmin ? 'admin' : 'player'),
+            playerName: pestovoHcpLogText(entry.playerName, 160) || '—',
+            newHcp: Number(entry.newHcp),
+            source: pestovoHcpLogText(entry.source, 40) || 'unknown'
+        };
+        if (!isFinite(rec.newHcp)) return Promise.resolve(false);
+        if (entry.playerUid) rec.playerUid = pestovoHcpLogText(entry.playerUid, 128);
+        var oldHcp = Number(entry.oldHcp);
+        if (entry.oldHcp != null && entry.oldHcp !== '' && isFinite(oldHcp)) rec.oldHcp = oldHcp;
+        if (entry.note) rec.note = pestovoHcpLogText(entry.note, 240);
+        return Promise.resolve(db.ref('hcpLog').push(rec)).then(function () { return true; }).catch(function (error) {
+            console.warn('[hcp log]', error && error.message || error);
+            return false;
+        });
+    } catch (e) {
+        console.warn('[hcp log]', e);
+        return Promise.resolve(false);
+    }
+}
+
+// ==========================================
 // ДНЕВНОЙ РЕЖИМ «ЯРКОЕ СОЛНЦЕ» (SUN MODE)
 // ==========================================
 function initThemeMode() {

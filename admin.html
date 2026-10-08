@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Гольф-клуб Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=4f9da926">
+    <link rel="stylesheet" href="css/style.css?v=c03ee7ea">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=5f6ffacc">
     <link rel="stylesheet" href="css/tn-view.css?v=6a335dc1">
@@ -80,11 +80,24 @@
         <!-- TOP PRIORITY EMERGENCY ALERTS BANNER -->
         <div id="admin-top-alerts-banner" class="hidden"></div>
 
+        <!-- ГЛОБАЛЬНЫЙ ПЕРЕКЛЮЧАТЕЛЬ УВЕДОМЛЕНИЙ: виден на всех вкладках админки -->
+        <section id="admin-global-notify" class="card admin-global-notify" aria-labelledby="global-notifications-title">
+            <div class="admin-global-notify-main">
+                <span class="admin-global-notify-icon" aria-hidden="true"><i class="fas fa-bell"></i></span>
+                <div class="admin-global-notify-text">
+                    <b id="global-notifications-title">Уведомления для всех игроков</b>
+                    <div id="global-notifications-status" role="status" aria-live="polite">Проверка настройки…</div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-g btn-sm" id="global-notifications-toggle" onclick="toggleGlobalNotifications()" aria-pressed="true" disabled>Загрузка…</button>
+        </section>
+
         <div class="admin-tabs">
             <button class="admin-tab active" onclick="switchTab('alerts',this)" data-i18n="tab_alerts">Вызовы 🚨</button>
             <button class="admin-tab" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
             <button class="admin-tab" onclick="switchTab('scores',this)" data-i18n="tab_scores">Счёт ⛳</button>
             <button class="admin-tab" onclick="switchTab('scoreaudit',this)">Журнал счёта 🕒</button>
+            <button class="admin-tab" onclick="switchTab('hcplog',this)">Журнал гандикапов 📈</button>
             <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
             <button class="admin-tab" id="tnm-tab-btn" onclick="switchTab('tnmanager',this)" data-i18n="tab_tn_manager">Турниры 🏆</button>
             <button class="admin-tab" onclick="switchTab('tournamentsview',this)" data-i18n="tab_tournaments_view">Турниры: вид 👁</button>
@@ -279,6 +292,18 @@
             </div>
         </div>
 
+        <div id="tab-hcplog" class="admin-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-chart-line"></i> Журнал гандикапов</h2>
+                <p style="color:var(--muted);font-size:13px;">Кто и когда обновил гандикап игрока: из RUSGOLF при создании раунда (ФИО, которое ввёл создатель), вручную в админке, синхронизация АГР и импорт Excel. Видно старое и новое значение.</p>
+                <div class="form-row" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+                    <label class="form-group" style="flex:1;min-width:190px;">Игрок или кто обновил<input id="hcp-log-search" class="form-input" type="search" placeholder="Фамилия Имя" oninput="hcpLogFilter()"></label>
+                    <button type="button" class="btn btn-ol btn-sm" onclick="hcpLogLoad()"><i class="fas fa-rotate"></i> Обновить</button>
+                </div>
+                <div id="hcp-log-results" aria-live="polite"></div>
+            </div>
+        </div>
+
         <div id="tab-groups" class="admin-section hidden">
             <div class="card">
                 <h2><i class="fas fa-stopwatch"></i> <span data-i18n="admin_groups_title">Группы, которые сейчас играют</span></h2>
@@ -301,13 +326,6 @@
 
         <div id="tab-alerts" class="admin-section">
             <div class="card">
-                <div class="list-item" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:14px;border-color:rgba(201,168,76,.35);">
-                    <div style="min-width:220px;flex:1;">
-                        <b><i class="fas fa-bell-slash" style="color:var(--gold);"></i> Глобальные уведомления клуба</b>
-                        <div id="global-notifications-status" role="status" aria-live="polite" style="font-size:12px;color:var(--muted);margin-top:4px;">Проверка настройки…</div>
-                    </div>
-                    <button type="button" class="btn btn-g btn-sm" id="global-notifications-toggle" onclick="toggleGlobalNotifications()" aria-pressed="true" disabled>Загрузка…</button>
-                </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
                     <h2 style="margin:0;"><i class="fas fa-bell"></i> <span data-i18n="referee_marshal_calls">Вызовы судей и маршалов</span></h2>
                     <button class="btn btn-og btn-sm" id="btn-enable-notif" onclick="enableAdminNotifications()">
@@ -1035,7 +1053,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.101.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.102.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -1045,8 +1063,8 @@
     <script src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
 <script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script src="js/qr-code.js?v=2a26e819"></script>
-<script src="js/rusgolf-client.js?v=d6ec7c29"></script>
-<script src="js/utils.js?v=dfd58402"></script>
+<script src="js/rusgolf-client.js?v=29d4a093"></script>
+<script src="js/utils.js?v=a1f02e96"></script>
 <script src="js/tn-mgr-core.js?v=43c069ca"></script>
 <script src="js/tn-mgr-data.js?v=362b3368"></script>
 <script src="js/tn-mgr-io.js?v=a9001ebb"></script>
@@ -1057,17 +1075,18 @@
 <script src="js/tn-mgr.js?v=59cc04f5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/name-variants.js?v=9fc593e7"></script>
-<script src="js/admin.js?v=2b91b872"></script>
+<script src="js/admin.js?v=029dfa1d"></script>
 <script src="js/admin-groups.js?v=9a773234"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
-<script src="js/admin-players.js?v=55e0670f"></script>
+<script src="js/admin-players.js?v=ab46e3b7"></script>
+<script src="js/admin-hcp-log.js?v=1262d7c2"></script>
 <script src="js/admin-score-audit.js?v=2fb81262"></script>
 <script src="js/admin-scoreedit.js?v=1bd29dcd"></script>
 <script src="js/admin-broadcasts.js?v=32da81b8"></script>
 <script src="js/admin-channels.js?v=0d6fb513"></script>
-<script src="js/admin-alerts.js?v=d67bf6bd"></script>
-<script src="js/admin-players-excel.js?v=6f5abbe7"></script>
-<script src="js/admin-agr.js?v=a51e5e81"></script>
+<script src="js/admin-alerts.js?v=0525a055"></script>
+<script src="js/admin-players-excel.js?v=97584414"></script>
+<script src="js/admin-agr.js?v=2699372b"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
 <script src="js/admin-display.js?v=9e187394"></script>
 <script src="js/design-admin.js?v=70a7c0c4"></script>

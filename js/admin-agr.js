@@ -474,6 +474,9 @@ function rgCutForRound(rd, tournaments, protocols) {
 function rgPropagateHcpEverywhere(userId, r, playerData) {
     if (r == null || r.hcp == null) return Promise.resolve();
     var hcp = r.hcp;
+    // Значение ДО обновления — для журнала гандикапов (кэш ниже перезаписывается).
+    var rgPrevHcp = playerData && playerData.handicap != null ? playerData.handicap
+        : (typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[userId] ? cachedRegisteredUsers[userId].handicap : null);
     var gender = (playerData && playerData.gender) || r.gender || 'men';
     var remoteFirst = String(r.firstName || '').trim();
     var remoteMiddle = String(r.middleName || '').trim();
@@ -607,6 +610,15 @@ function rgPropagateHcpEverywhere(userId, r, playerData) {
         });
 
         return db.ref().update(fbUpdates).then(function() {
+            if (typeof pestovoLogHcpChange === 'function') {
+                pestovoLogHcpChange({
+                    playerUid: userId,
+                    playerName: officialName || r.fio || (playerData && playerData.name) || userId,
+                    oldHcp: rgPrevHcp,
+                    newHcp: hcp,
+                    source: 'agr-admin'
+                });
+            }
             // Состав турнира менеджер хранит отдельно (players/<pid>.hi, лист):
             // правка гандикапа в админке должна попадать и туда.
             if (typeof pestovoSyncHcpToTournaments !== 'function') return undefined;
@@ -900,6 +912,9 @@ function rgChangeDuplicateHcp(userId, inputId) {
         if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
         return;
     }
+    var dupCached = typeof cachedRegisteredUsers !== 'undefined' && cachedRegisteredUsers[userId] ? cachedRegisteredUsers[userId] : {};
+    var dupPrevHcp = dupCached.handicap != null ? dupCached.handicap : null;
+    var dupName = dupCached.name || userId;
     db.ref('users/' + userId).update({ handicap: newHcp, hcpUpdatedAt: Date.now(), hcpSource: 'manual' }).then(function(){
         return db.ref('rounds').once('value');
     }).then(function(sn){
@@ -922,6 +937,9 @@ function rgChangeDuplicateHcp(userId, inputId) {
         }
         return undefined;
     }).then(function(){
+        if (typeof pestovoLogHcpChange === 'function') {
+            pestovoLogHcpChange({ playerUid: userId, playerName: dupName, oldHcp: dupPrevHcp, newHcp: newHcp, source: 'manual-admin' });
+        }
         toast('✅ HCP ' + fmtExactHcp(newHcp) + ' ' + (currentLang === 'en' ? 'updated for ' : 'обновлён у ') + userId, 'success');
         if (typeof loadAdmPlayers === 'function') loadAdmPlayers();
         impCollectPlayers(function(all){

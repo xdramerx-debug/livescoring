@@ -939,6 +939,15 @@ function saveClubScorecardView(value) {
 
 var scoreEntryDraft = null;
 var scoreEntrySaving = false;
+// Пять стилей экрана ввода счёта: подписи для предпросмотра (сам вид задаёт
+// CSS по data-entry-view, значения те же, что в settings/scoring_view).
+var SCORE_ENTRY_STYLES = {
+    '1': { name: 'Классика клуба',  desc: 'золото и зелёное сукно, плиты лунок, мягкие тени' },
+    '2': { name: 'Крупный счёт',    desc: 'самые большие цифры и кнопки ±, широкие плиты' },
+    '3': { name: 'Компакт-сетка',   desc: 'все 18 лунок и ввод — на одном экране телефона' },
+    '4': { name: 'Контраст-фокус',  desc: 'тёмные плиты, золотая рамка активной лунки' },
+    '5': { name: 'Минимализм-лайн', desc: 'тонкие линии, прозрачные панели, ноль декора' }
+};
 // Премиум-карточка настройки: у каждого блока — иконка, название и описание.
 var SCORE_ENTRY_BLOCK_META = {
     info:  { icon: 'fa-circle-info',   title: 'Информация о лунке',      desc: 'Лунка, пар, метры и дедлайн' },
@@ -996,6 +1005,11 @@ function renderScoreEntryPreview() {
         '</div>';
     host.innerHTML = '<div class="score-entry card" data-entry-preview="true">' + info + '<div class="hole-nav" data-entry-block="holes">' + nav + '</div><div data-entry-block="input"><div class="dual-score-split-panel' + (mode === 'solo' ? ' single' : '') + '">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5, false) + (mode !== 'solo' ? '<div class="dual-split-divider"><span></span></div>' : '') + (mode === 'group' ? input('Маркируемый игрок', -18, 4, true) : '') + '</div><button type="button" class="btn btn-g btn-block" disabled>Сохранить результат</button></div></div>';
     arrangeScoreEntry(host.firstElementChild, draft.view, draft.order);
+    var style = SCORE_ENTRY_STYLES[normalizeView5(draft.view)] || SCORE_ENTRY_STYLES['1'];
+    var caption = document.createElement('p');
+    caption.className = 'sev-preview-note';
+    caption.textContent = 'Стиль ' + normalizeView5(draft.view) + ' · ' + style.name + ' — ' + style.desc;
+    host.appendChild(caption);
     markAdmView5Buttons('scoring');
 }
 function saveScoreEntryLayout() {

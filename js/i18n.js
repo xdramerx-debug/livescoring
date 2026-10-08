@@ -11,12 +11,12 @@ var currentLang = (typeof localStorage !== 'undefined' && localStorage.getItem('
 
 var I18N = {
     ru: {
-        brand_name: 'Гольф-клуб Пестово',
+        brand_name: 'Пестово',
         nav_home: 'Главная', nav_round: 'Раунд', nav_leaderboard: 'Все раунды',
         bn_home: 'Главная', bn_round: 'Раунд', bn_rounds: 'Табло', bn_menu: 'Меню',
         nav_players: 'Игроки', nav_tournaments: 'Турниры', nav_stats: 'Статистика',
         nav_handicaps: 'Гандикапы', nav_admin: 'Админ', nav_login: 'Войти',
-        footer_club: '© 2024 Гольф-клуб Пестово',
+        footer_club: '© 2024 Пестово',
         tab_design: 'Дизайн 🎨',
         design_admin_title: 'Шаблоны оформления сайта',
         design_admin_sub: 'Текущий дизайн + 5 альтернативных шаблонов. Шаблон можно назначить всему сайту, отдельной странице или отдельному блоку — так собирается собственный дизайн из готовых частей.',
@@ -370,7 +370,7 @@ var I18N = {
         // Режимы интерфейса игрока
 
         // Solo & Guest
-        solo_sub: 'Гольф-клуб Пестово',
+        solo_sub: 'Пестово',
         current_score: 'Текущий счёт',
         view_mode_notice: 'Режим просмотра.',
 
@@ -531,12 +531,12 @@ var I18N = {
         tee_label: 'ТИ'
     },
     en: {
-        brand_name: 'Гольф-клуб Пестово',
+        brand_name: 'Пестово',
         nav_home: 'Home', nav_round: 'Round', nav_leaderboard: 'All Rounds',
         bn_home: 'Home', bn_round: 'Round', bn_rounds: 'Board', bn_menu: 'Menu',
         nav_players: 'Players', nav_tournaments: 'Tournaments', nav_stats: 'Statistics',
         nav_handicaps: 'Handicaps', nav_admin: 'Admin', nav_login: 'Login',
-        footer_club: '© 2024 Pestovo Golf Club',
+        footer_club: '© 2024 Pestovo',
         tab_design: 'Design 🎨',
         design_admin_title: 'Site design templates',
         design_admin_sub: 'The current design + 5 alternative templates. A template can be applied to the whole site, to a single page or to a single block — this is how a custom design is assembled from ready-made parts.',
@@ -566,7 +566,7 @@ var I18N = {
         all_rounds: 'All Rounds',
         no_active_players: 'No active players on course',
         course_card_sub: '18 Holes · Par 72 · All Tees (meters)',
-        address_str: '📍 Pestovo Golf Club, Mytishchi, Moscow Region',
+        address_str: '📍 Pestovo, Mytishchi, Moscow Region',
         nav_header: 'Navigation',
         more_header: 'More',
 
@@ -888,7 +888,7 @@ var I18N = {
         // Player interface modes
 
         // Solo & Guest
-        solo_sub: 'Pestovo Golf Club',
+        solo_sub: 'Pestovo',
         current_score: 'Current Score',
         view_mode_notice: 'View mode.',
 
@@ -1051,7 +1051,7 @@ var I18N = {
 };
 
 // Год копирайта всегда актуален
-(function(){ var y = new Date().getFullYear(); if (I18N.ru) I18N.ru.footer_club = '© ' + y + ' Гольф-клуб Пестово'; if (I18N.en) I18N.en.footer_club = '© ' + y + ' Pestovo Golf Club'; })();
+(function(){ var y = new Date().getFullYear(); if (I18N.ru) I18N.ru.footer_club = '© ' + y + ' Пестово'; if (I18N.en) I18N.en.footer_club = '© ' + y + ' Pestovo'; })();
 
 function t(key) {
     var lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'ru';

@@ -1,6 +1,6 @@
 # Pestovo Live Scoring
 
-Живое табло и учёт счёта для гольф-клуба «Пестово»: статический сайт (HTML +
+Живое табло и учёт счёта для клуба «Пестово»: статический сайт (HTML +
 JS) и Firebase (Realtime Database, Auth, Cloud Functions, Push). Работает как
 PWA — офлайн-кэш через Service Worker.
 
@@ -102,3 +102,6 @@ libnss3/libnspr4 заглушки собирает `tools/build-stub-libs.sh`
 - `docs/IMPROVEMENTS-IMPL.md` — что уже сделано по аудиту.
 - `docs/MODULES-MIGRATION.md` — статус и план перехода на ES-модули.
 - `docs/SECURITY-RULES.md` — правила БД и порядок их деплоя.
+- `docs/release-1.103.0.md` — что вошло в текущую версию сайта (название,
+  RUSGOLF в раунде, уведомления, шапка, 5 стилей ввода счёта) и как это
+  проверять.

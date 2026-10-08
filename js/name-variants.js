@@ -402,6 +402,44 @@
     function setAutoApply(v) { state.autoApply = !!v; }
     function getAutoApply() { return state.autoApply; }
 
+    // --------------------------------------------------
+    // 6.1 ЗАГРУЗКА СОХРАНЁННОЙ НАСТРОЙКИ (для любой страницы)
+    // --------------------------------------------------
+    // Админка задаёт режим в settings/nameMatching (плюс дубликат в
+    // localStorage). Раньше режим знал только admin.html — поэтому поиск
+    // АГР в форме создания раунда не учитывал формы имён. loadStored()
+    // читает те же ключи, что и админка (js/admin-name-forms.js), и при
+    // доступной базе подтягивает общую настройку.
+    var STORAGE_MODE_KEY = 'pestovo_name_match_mode';
+    var STORAGE_ALIASES_KEY = 'pestovo_name_aliases';
+    var STORAGE_AUTO_KEY = 'pestovo_name_autoapply';
+    var storedLoaded = false;
+
+    function loadStored(root) {
+        var scope = root || (typeof window !== 'undefined' ? window : null);
+        try {
+            if (scope && scope.localStorage) {
+                setMode(scope.localStorage.getItem(STORAGE_MODE_KEY) || 'off');
+                setCustomAliases(scope.localStorage.getItem(STORAGE_ALIASES_KEY) || '');
+                setAutoApply(scope.localStorage.getItem(STORAGE_AUTO_KEY) === '1');
+            }
+        } catch (e) { /* хранилище недоступно */ }
+        if (storedLoaded) return getMode();
+        storedLoaded = true;
+        var db = scope && scope.db;
+        if (!db || typeof db.ref !== 'function') return getMode();
+        try {
+            db.ref('settings/nameMatching').once('value').then(function (snapshot) {
+                var value = snapshot && snapshot.val ? snapshot.val() : null;
+                if (!value || typeof value !== 'object') return;
+                if (value.mode) setMode(value.mode);
+                if (typeof value.aliases === 'string') setCustomAliases(value.aliases);
+                if (value.autoApply != null) setAutoApply(value.autoApply === true);
+            }).catch(function () { /* настройки недоступны — работаем по localStorage */ });
+        } catch (e) { /* ignore */ }
+        return getMode();
+    }
+
     /** Свои формы имён: { 'наташа': 'наталья', ... } или текст «Наташа = Наталья». */
     function setCustomAliases(src) {
         var map = {};
@@ -737,6 +775,7 @@
         setAutoApply: setAutoApply,
         getAutoApply: getAutoApply,
         setCustomAliases: setCustomAliases,
-        getCustomAliases: getCustomAliases
+        getCustomAliases: getCustomAliases,
+        loadStored: loadStored
     };
 });

@@ -515,7 +515,8 @@ function toggleSunMode(event) {
 function updateSunModeButtons() {
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
     document.querySelectorAll('.sun-mode-btn').forEach(function(btn) {
-        btn.innerHTML = isSun ? '<i class="fas fa-sun"></i> ' + (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : '<i class="far fa-sun"></i> ' + (currentLang === 'en' ? 'Sun' : 'Солнце');
+        var text = isSun ? (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : (currentLang === 'en' ? 'Sun' : 'Солнце');
+        btn.innerHTML = (isSun ? '<i class="fas fa-sun"></i>' : '<i class="far fa-sun"></i>') + ' <span class="sun-text">' + text + '</span>';
     });
 }
 
@@ -1109,7 +1110,7 @@ function buildMobileDrawer() {
     if (isUserLoggedIn) {
         var avatarMarkup = fmtUserAvatar(currentUserData, 32);
         authBtnMarkup = '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--input);padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;" onclick="closeMobileDrawer();openPlayerProfileModal(\'' + currentUser.uid + '\')">' +
-            '<div style="display:flex;align-items:center;gap:10px;">' + avatarMarkup + '<strong style="color:var(--gold);font-size:14px;">' + (currentUserData.name || '') + '</strong></div>' +
+            '<div style="display:flex;align-items:center;gap:10px;">' + avatarMarkup + '<strong style="color:var(--gold);font-size:14px;">' + escapeHtml(navShortUserName(currentUserData)) + '</strong></div>' +
             '<button class="btn btn-og btn-sm" onclick="event.stopPropagation();doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
     }
@@ -1310,21 +1311,45 @@ function handleAvatarFileUpload(fileInputEl, callback) {
     };
     reader.readAsDataURL(file);
 }
+// Короткая подпись пользователя в шапке: только имя и первая буква фамилии
+// («Иван П.»). Полное ФИО остаётся в title/aria-label и открывается по клику —
+// раньше длинное имя занимало всю строку, и на телефоне шапка переставала
+// помещаться.
+function navShortUserName(d) {
+    d = d || {};
+    var raw = String(d.name || '').trim();
+    var parts = raw.split(/\s+/).filter(Boolean);
+    var first = String(d.firstName || '').trim() || parts[0] || '';
+    var last = String(d.lastName || '').trim() || (parts.length > 1 ? parts[parts.length - 1] : '');
+    if (!last) {
+        // Отчество в «Имя Отчество Фамилия» — берём последнее слово.
+        var extra = parts.slice(1).filter(Boolean);
+        if (extra.length > 1) last = extra[extra.length - 1];
+    }
+    if (first && last) return first + ' ' + last.charAt(0).toUpperCase() + '.';
+    return first || raw;
+}
+
 function navAuth(u, d) {
     var e = document.getElementById('nav-auth');
     if (!e) return;
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
 
-    var sunBtn = '<button type="button" class="sun-mode-btn" onclick="event.stopPropagation();toggleSunMode(event)">' + (isSun ? '<i class="fas fa-sun"></i> ' + (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : '<i class="far fa-sun"></i> ' + (currentLang === 'en' ? 'Sun' : 'Солнце')) + '</button>';
+    var sunText = isSun ? (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : (currentLang === 'en' ? 'Sun' : 'Солнце');
+    var sunBtn = '<button type="button" class="sun-mode-btn" onclick="event.stopPropagation();toggleSunMode(event)">' +
+        (isSun ? '<i class="fas fa-sun"></i>' : '<i class="far fa-sun"></i>') +
+        ' <span class="sun-text">' + sunText + '</span></button>';
     var langBtn = '<button type="button" class="lang-btn" onclick="event.stopPropagation();toggleLang(event)">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
 
     if (u && d) {
         var avatarMarkup = fmtUserAvatar(d, 30);
         var profileLabel = currentLang === 'en' ? 'Open profile' : 'Открыть профиль';
+        var fullName = String(d.name || '').trim();
+        var shortName = navShortUserName(d);
         e.innerHTML = '<div class="nav-user">' + sunBtn + langBtn +
-            '<button type="button" class="nav-profile-trigger" aria-label="' + profileLabel + '" onclick="openPlayerProfileModal(\'' + u.uid + '\')">' + avatarMarkup +
-            '<span class="nav-uname">' + escapeHtml(d.name || '') + '</span></button>' +
-            '<button type="button" class="btn btn-og btn-sm" aria-label="' + (currentLang === 'en' ? 'Sign out' : 'Выйти из профиля') + '" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
+            '<button type="button" class="nav-profile-trigger" title="' + escapeHtml(fullName) + '" aria-label="' + escapeHtml(fullName ? profileLabel + ': ' + fullName : profileLabel) + '" onclick="openPlayerProfileModal(\'' + u.uid + '\')">' + avatarMarkup +
+            '<span class="nav-uname">' + escapeHtml(shortName) + '</span></button>' +
+            '<button type="button" class="btn btn-og btn-sm nav-logout" aria-label="' + (currentLang === 'en' ? 'Sign out' : 'Выйти из профиля') + '" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
     } else {
         e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + '</div>';

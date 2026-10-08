@@ -94,11 +94,11 @@ function makeWindow(extraHtml) {
     win.currentUserData = { uid: 'user-1', firstName: 'Иван', lastName: 'Иванов', gender: 'men', handicap: 15 };
     win.calcPlayerFieldHcp = () => {};
     win.t = key => key;
-    win.PestovoRusgolf = {
-        fetchViaProxy: (query, attempt, opts) => {
-            win.__opts = opts;
-            return Promise.resolve({ rows: [{ fio: 'Иванов Иван Иванович', number: 'RG-001', hcp: 8.3, gender: 'men', hcpDate: '2026-10-01' }] });
-        }
+    // Настоящий клиент RUSGOLF (поиск по ФИО) + подменённый транспорт.
+    win.eval(fs.readFileSync(path.join(ROOT, 'js/rusgolf-client.js'), 'utf8'));
+    win.PestovoRusgolf.fetchViaProxy = (query, attempt, opts) => {
+        win.__opts = opts;
+        return Promise.resolve({ rows: [{ fio: 'Иванов Иван Иванович', number: 'RG-001', hcp: 8.3, gender: 'men', hcpDate: '2026-10-01' }] });
     };
     win.eval(extractHcpLogBlock());
     win.eval(fs.readFileSync(path.join(ROOT, 'js/round-setup.js'), 'utf8'));
@@ -114,10 +114,19 @@ function makeWindow(extraHtml) {
     check(logged && logged.value.actorUid === 'user-1' && logged.value.source === 'rusgolf-self', 'log records the player who updated it');
     check(win.__opts && win.__opts.timeoutMs === 8000, 'RUSGOLF lookup uses a short per-proxy timeout');
 
-    // Строка другого игрока: кнопка скрыта и поиска нет (как и раньше).
+    // Строка другого игрока: кнопка видна (поиск по ФИО, как в админке),
+    // но чужой профиль не перезаписывается — только форма раунда и журнал.
+    win.__pushed = [];
     win.document.getElementById('pl-uid-1').value = 'another-user';
+    win.document.getElementById('pl-hcp-1').value = '15.0';
     win.eval('markSetupPlayerMeta(1)');
-    check(win.document.getElementById('pl-hcp-refresh-1').classList.contains('hidden'), 'refresh button is hidden for another player');
+    check(!win.document.getElementById('pl-hcp-refresh-1').classList.contains('hidden'), 'refresh button stays visible for another player');
+    win.eval('refreshSetupPlayerHandicap(1)');
+    await wait(30);
+    const otherLog = (win.__pushed || []).find(item => item.path === 'hcpLog');
+    check(!!otherLog && otherLog.value.source === 'rusgolf-form' && !otherLog.value.playerUid,
+        'another player lookup is logged as a round-setup form fill, without a profile uid');
+    check(win.document.getElementById('pl-hcp-1').value === '8.3', 'another player handicap is filled into the round form');
 
     // Своё ФИО, введённое вручную (без подсказки) — строка снова считается своей.
     win.document.getElementById('pl-uid-1').value = '';

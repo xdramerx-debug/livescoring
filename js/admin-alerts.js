@@ -255,7 +255,7 @@ function admAlertsRenderPanel(p) {
                     ? '🚨 ' + firstWho + ' called to hole ' + (first.hole || '—')
                     : '🚨 ' + firstWho + ' вызван на лунку ' + (first.hole || '—')) +
                     (entries.length > 1 ? (currentLang === 'en' ? ' (+' + (entries.length - 1) + ' more)' : ' (+' + (entries.length - 1) + ' ещё)') : ''),
-                    'error');
+                    'error', { clubNotification: true });
                 try { vib([200, 100, 200]); } catch (eVib) { console.warn("[silent]", eVib); }
             };
             var notificationSetting = typeof pestovoCheckGlobalNotificationsEnabled === 'function'

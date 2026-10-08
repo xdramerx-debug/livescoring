@@ -34,7 +34,7 @@
 
             case 'hero':
                 return '<div class="hero"><div class="hero-content">' +
-                    '<div class="hero-sub">Гольф-клуб Пестово</div>' +
+                    '<div class="hero-sub">Пестово</div>' +
                     '<h1 class="hero-title">Лайв-скоринг сезона 2026</h1>' +
                     '<p class="hero-desc">18 лунок · Пар 72 · Гандикап WHS</p>' +
                     '<div class="hero-btns"><a href="#" class="btn btn-g" onclick="return false">Начать раунд</a>' +
@@ -110,7 +110,7 @@
                         '<div><div class="footer-sub">Сервисы</div>' +
                         '<a href="#" class="footer-link" onclick="return false">Помощник</a></div>' +
                     '</div>' +
-                    '<div class="footer-bottom">© 2024 Гольф-клуб Пестово</div>' +
+                    '<div class="footer-bottom">© 2024 Пестово</div>' +
                     '<p class="site-version">Версия сайта: <span class="version-number">—</span></p>' +
                 '</div></footer>';
 

@@ -1212,17 +1212,27 @@ function listenForCallResponsesSolo() {
         var n = sn.val();
         if (!n || n.read) return;
 
-        var who = n.responderRole === 'marshal'
-            ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
-            : (currentLang === 'en' ? 'Referee' : 'Судья');
-        var txt = currentLang === 'en'
-            ? '🚗 ' + who + ' is on the way to you!'
-            : '🚗 ' + who + ' едет к вам!';
+        var markRead = function () {
+            // Помечаем прочитанным, чтобы не показывать тост повторно
+            db.ref('users/' + uid + '/notifications/' + sn.key + '/read').set(true).catch(function(){});
+        };
+        var showResponse = function (globalEnabled) {
+            // Глобальный выключатель уведомлений в админке (settings/notifications_enabled):
+            // после отключения ответы на вызовы больше не всплывают сверху.
+            if (globalEnabled === false) { markRead(); return; }
+            var who = n.responderRole === 'marshal'
+                ? (currentLang === 'en' ? 'Marshal' : 'Маршал')
+                : (currentLang === 'en' ? 'Referee' : 'Судья');
+            var txt = currentLang === 'en'
+                ? '🚗 ' + who + ' is on the way to you!'
+                : '🚗 ' + who + ' едет к вам!';
 
-        toast(txt, 'success');
-        if (typeof vib === 'function') vib([80, 40, 80, 40, 80]);
-
-        // Помечаем прочитанным, чтобы не показывать тост повторно
-        db.ref('users/' + uid + '/notifications/' + sn.key + '/read').set(true).catch(function(){});
+            toast(txt, 'success', { clubNotification: true });
+            if (typeof vib === 'function') vib([80, 40, 80, 40, 80]);
+            markRead();
+        };
+        var setting = typeof pestovoCheckGlobalNotificationsEnabled === 'function'
+            ? pestovoCheckGlobalNotificationsEnabled() : Promise.resolve(true);
+        setting.then(showResponse).catch(function (error) { console.warn('[global notifications]', error); showResponse(true); });
     });
 }

@@ -321,6 +321,30 @@ var pestovoGlobalNotificationsEnabled = true;
 var pestovoGlobalNotificationsBound = false;
 var pestovoGlobalNotificationsLoaded = false;
 function pestovoAreGlobalNotificationsEnabled() { return pestovoGlobalNotificationsEnabled !== false; }
+// Снимает с экрана уже показанные уведомления клуба (анонсы и ответы на вызовы).
+// Нужно, когда администратор выключил уведомления: «висит» лишнее сверху.
+function pestovoDismissClubNotificationToasts() {
+    if (typeof document === 'undefined' || !document.querySelectorAll) return;
+    document.querySelectorAll('.toast.t-club').forEach(function (el) {
+        try {
+            if (typeof el._pestovoDismiss === 'function') el._pestovoDismiss(true);
+            else if (el.parentNode) el.parentNode.removeChild(el);
+        } catch (e) { console.warn('[silent]', e); }
+    });
+    // Best effort: закрываем и «системные» уведомления, которые уже показал
+    // сервис-воркер (в трее/шторке), чтобы после выключения не оставалось
+    // ничего «сверху».
+    try {
+        if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.ready) {
+            navigator.serviceWorker.ready.then(function (reg) {
+                if (!reg || typeof reg.getNotifications !== 'function') return;
+                return reg.getNotifications().then(function (list) {
+                    (list || []).forEach(function (n) { try { n.close(); } catch (e) { /* noop */ } });
+                });
+            }).catch(function () { /* SW может быть недоступен */ });
+        }
+    } catch (e) { console.warn('[silent]', e); }
+}
 function pestovoGlobalNotificationsSettingReady() { return pestovoGlobalNotificationsLoaded; }
 function pestovoCheckGlobalNotificationsEnabled() {
     if (pestovoGlobalNotificationsLoaded) return Promise.resolve(pestovoAreGlobalNotificationsEnabled());
@@ -348,6 +372,8 @@ function pestovoBindGlobalNotificationsSetting() {
             pestovoNotifQueue.length = 0;
             if (pestovoNotifTimer) clearTimeout(pestovoNotifTimer);
             pestovoNotifTimer = null;
+            // Убираем с экрана уведомления клуба, показанные до отключения.
+            pestovoDismissClubNotificationToasts();
         }
     }, function(error) {
         console.info('[PWA] notification master setting unavailable:', error && error.code || error);
@@ -519,7 +545,9 @@ function initBackgroundBroadcastListener() {
                             showPushNotification(title, body, targetUrl, { tag: 'broadcast-' + id });
                         }
                         if (typeof toast === 'function') {
-                            toast('📢 <b>' + title + '</b><br>' + body, 'info');
+                            // t-club: такие уведомления снимаются с экрана сразу,
+                            // как только уведомления выключили (см. ниже).
+                            toast('📢 <b>' + title + '</b><br>' + body, 'info', { clubNotification: true, duration: 6000 });
                         }
                         if (typeof vib === 'function') vib([150, 50, 150]);
                     };

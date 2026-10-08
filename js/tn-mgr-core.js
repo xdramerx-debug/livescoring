@@ -548,7 +548,7 @@
             date: startDate, // совместимость с публичной страницей
             startTime: timeText(src.startTime, '09:00'),
             formats: uniq((src.formats || []).map(function (f) { return trim(f); }).filter(Boolean)),
-            club: trim(src.club) || 'Гольф-клуб Пестово',
+            club: trim(src.club) || 'Пестово',
             course: trim(src.course) || 'Пестово (18 лунок, пар 72)',
             note: trim(src.note),
             status: src.status || 'draft',

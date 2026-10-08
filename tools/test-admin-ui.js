@@ -101,6 +101,22 @@ check('кнопка «Вызовы» активна по умолчанию', !!
 check('вкладка «Вызовы» видима по умолчанию', !win.document.getElementById('tab-alerts').classList.contains('hidden'));
 check('вкладка «Раунды» скрыта по умолчанию', win.document.getElementById('tab-rounds').classList.contains('hidden'));
 
+console.log('\n=== Вкладка «Ввод счёта ⛳» ===\n');
+var entryTabBtn = Array.prototype.find.call(win.document.querySelectorAll('.admin-tab'), function(b) {
+    return (b.getAttribute('onclick') || '').indexOf("switchTab('scoreentry'") !== -1;
+});
+check('есть кнопка вкладки «Ввод счёта»', !!entryTabBtn);
+check('есть секция #tab-scoreentry', !!win.document.getElementById('tab-scoreentry'));
+win.switchTab('scoreentry', entryTabBtn);
+check('вкладка «Ввод счёта» открывается', !win.document.getElementById('tab-scoreentry').classList.contains('hidden'));
+check('вкладка «Отображения счётных карточек» закрывается', win.document.getElementById('tab-scorecards').classList.contains('hidden'));
+check('блок настроек ввода счёта лежит в новой вкладке',
+    !!win.document.getElementById('tab-scoreentry').querySelector('#score-entry-settings'));
+check('в карточках больше нет блока ввода счёта',
+    !win.document.getElementById('tab-scorecards').querySelector('#score-entry-settings'));
+check('в новой вкладке 5 стилей', win.document.querySelectorAll('#tab-scoreentry [id^="v5-scoring-"]').length === 5,
+    String(win.document.querySelectorAll('#tab-scoreentry [id^="v5-scoring-"]').length));
+
 console.log('\n=== admJsStr: экранирование для onclick ===\n');
 check('admJsStr определена', typeof win.admJsStr === 'function');
 check('апостроф в имени экранируется', win.admJsStr("O'Brien") === "O\\'Brien", win.admJsStr("O'Brien"));

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
-    <meta name="description" content="Официальная система лайв-скоринга Гольф-клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
+    <meta name="description" content="Официальная система лайв-скоринга клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,14 +12,14 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
-    <title data-i18n="nav_admin">Админ — Гольф-клуб Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=c03ee7ea">
+    <title data-i18n="nav_admin">Админ — Пестово</title>
+    <link rel="stylesheet" href="css/style.css?v=46adb249">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=5f6ffacc">
     <link rel="stylesheet" href="css/tn-view.css?v=6a335dc1">
     <link rel="stylesheet" href="css/tn-manager.css?v=9642cf94">
     <link rel="stylesheet" href="css/tn-mgr-printcards.css?v=b158f443">
-    <script src="js/design-system.js?v=78b8d092"></script>
+    <script src="js/design-system.js?v=5a11adfa"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -107,6 +107,7 @@
             <button class="admin-tab" onclick="switchTab('rusgolf',this)" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
             <button class="admin-tab" onclick="switchTab('data',this)" data-i18n="tab_data">Данные</button>
             <button class="admin-tab" onclick="switchTab('scorecards',this)">Отображения счётных карточек</button>
+            <button class="admin-tab" onclick="switchTab('scoreentry',this)">Ввод счёта ⛳</button>
             <button class="admin-tab" onclick="switchTab('design',this)" data-i18n="tab_design">Дизайн 🎨</button>
         </div>
 
@@ -162,12 +163,15 @@
                     <div id="club-sc-preview" class="club-sc-phone"></div>
                 </div>
             </div>
+        </div>
+
+        <div id="tab-scoreentry" class="admin-section hidden">
             <div class="card sev-admin-card" id="score-entry-settings">
                 <header class="sev-head">
                     <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-pen-to-square"></i></span>
                     <div class="sev-head-text">
-                        <h2>Ввод результатов</h2>
-                        <p>Единый экран счёта клуба: одиночный и групповой раунд, страницы игрока и маркера. Счёт — в квадрате, фора — наклонными чёрточками справа сверху.</p>
+                        <h2>Ввод счёта — 5 стилей</h2>
+                        <p>Единый экран счёта клуба: одиночный и групповой раунд, страницы игрока и маркера. Счёт — в квадрате, фора — наклонными чёрточками справа сверху. Выберите стиль и порядок блоков — настройка применится у всех игроков.</p>
                     </div>
                     <span class="sev-head-badge"><i class="fas fa-layer-group" aria-hidden="true"></i> 5 видов · порядок блоков</span>
                 </header>
@@ -175,29 +179,29 @@
                 <p class="sev-sec-sub">Один из пяти видов экрана ввода. Выбранная карточка подсвечивается, предпросмотр ниже обновляется сразу.</p>
                 <div class="sev-variants" role="group" aria-label="Варианты экрана ввода результатов">
                     <button type="button" id="v5-scoring-1" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('1')">
-                        <span class="sev-card-top"><span class="sev-card-num">1</span><span class="sev-card-name">Классика</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-card-top"><span class="sev-card-num">1</span><span class="sev-card-name">Классика клуба</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-plate"></span><span class="st-plate st-white"></span><span class="st-plate"></span><span class="st-plate st-white"></span></span><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span></span></span>
-                        <span class="sev-card-desc">Фирменные плиты лунки, знакомый порядок.</span>
+                        <span class="sev-card-desc">Золото и зелёный, плиты лунок, мягкие тени — привычный вид клуба.</span>
                     </button>
                     <button type="button" id="v5-scoring-2" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('2')">
                         <span class="sev-card-top"><span class="sev-card-num">2</span><span class="sev-card-name">Крупный счёт</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-big"></span><span class="st-dot"></span><span class="st-dot st-purple"></span></span><span class="st-row"><span class="st-line st-gold"></span><span class="st-line"></span></span></span>
-                        <span class="sev-card-desc">Самые большие цифры и кнопки ±.</span>
+                        <span class="sev-card-desc">Максимальные цифры и кнопки ± для игры на солнце и в перчатках.</span>
                     </button>
                     <button type="button" id="v5-scoring-3" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('3')">
-                        <span class="sev-card-top"><span class="sev-card-num">3</span><span class="sev-card-name">Компакт</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-card-top"><span class="sev-card-num">3</span><span class="sev-card-name">Компакт-сетка</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span><span class="st-row"><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span></span></span>
-                        <span class="sev-card-desc">Всё влезает на один экран телефона.</span>
+                        <span class="sev-card-desc">Все 18 лунок и ввод — на одном экране, минимум прокрутки.</span>
                     </button>
                     <button type="button" id="v5-scoring-4" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('4')">
-                        <span class="sev-card-top"><span class="sev-card-num">4</span><span class="sev-card-name">Контраст</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-card-top"><span class="sev-card-num">4</span><span class="sev-card-name">Контраст-фокус</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-frame"></span><span class="st-frame"></span></span><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-gold"></span><span class="st-sq st-gold"></span><span class="st-sq st-gold"></span></span></span>
-                        <span class="sev-card-desc">Тёмные плиты и золотые акценты.</span>
+                        <span class="sev-card-desc">Тёмные плиты, золотая рамка активной лунки, максимум читаемости.</span>
                     </button>
                     <button type="button" id="v5-scoring-5" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('5')">
-                        <span class="sev-card-top"><span class="sev-card-num">5</span><span class="sev-card-name">Минимализм</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
+                        <span class="sev-card-top"><span class="sev-card-num">5</span><span class="sev-card-name">Минимализм-лайн</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-line st-gold"></span><span class="st-line"></span></span><span class="st-row"><span class="st-line"></span><span class="st-line st-purple"></span></span></span>
-                        <span class="sev-card-desc">Тонкие линии, ничего лишнего.</span>
+                        <span class="sev-card-desc">Тонкие линии, прозрачные панели, ноль декора — только счёт.</span>
                     </button>
                 </div>
                 <div class="sev-sec-title">Иерархия блоков</div>
@@ -1053,19 +1057,19 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Гольф-клуб Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.102.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.103.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="js/firebase-config.js?v=57564a0d"></script>
-<script type="module" src="dist/livescoring-modules.js?v=bdb3fe24"></script>
+<script type="module" src="dist/livescoring-modules.js?v=7df7eb8b"></script>
     <script src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
 <script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script src="js/qr-code.js?v=2a26e819"></script>
-<script src="js/rusgolf-client.js?v=29d4a093"></script>
-<script src="js/utils.js?v=a1f02e96"></script>
-<script src="js/tn-mgr-core.js?v=43c069ca"></script>
+<script src="js/rusgolf-client.js?v=f37608e7"></script>
+<script src="js/utils.js?v=87a3191d"></script>
+<script src="js/tn-mgr-core.js?v=a51b1ea2"></script>
 <script src="js/tn-mgr-data.js?v=362b3368"></script>
 <script src="js/tn-mgr-io.js?v=a9001ebb"></script>
 <script src="js/tn-mgr-ui.js?v=acf78cf2"></script>
@@ -1074,8 +1078,8 @@
 <script src="js/tn-mgr-round.js?v=c95acdf4"></script>
 <script src="js/tn-mgr.js?v=59cc04f5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/name-variants.js?v=9fc593e7"></script>
-<script src="js/admin.js?v=029dfa1d"></script>
+<script src="js/name-variants.js?v=2b58f796"></script>
+<script src="js/admin.js?v=1086ab6c"></script>
 <script src="js/admin-groups.js?v=9a773234"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
 <script src="js/admin-players.js?v=ab46e3b7"></script>
@@ -1084,13 +1088,13 @@
 <script src="js/admin-scoreedit.js?v=1bd29dcd"></script>
 <script src="js/admin-broadcasts.js?v=32da81b8"></script>
 <script src="js/admin-channels.js?v=0d6fb513"></script>
-<script src="js/admin-alerts.js?v=0525a055"></script>
+<script src="js/admin-alerts.js?v=38fb77e4"></script>
 <script src="js/admin-players-excel.js?v=97584414"></script>
 <script src="js/admin-agr.js?v=2699372b"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
-<script src="js/admin-display.js?v=9e187394"></script>
+<script src="js/admin-display.js?v=40003a11"></script>
 <script src="js/design-admin.js?v=70a7c0c4"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
-<script src="js/pwa.js?v=3397d21c"></script>
+<script src="js/pwa.js?v=56b54da4"></script>
 </body>
 </html>

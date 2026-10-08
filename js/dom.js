@@ -55,7 +55,7 @@ function toast(m,toastType,opts){
             } catch(_) { break; }
         }
         var e=document.createElement('div');
-        e.className='toast t-'+toastType;
+        e.className='toast t-'+toastType+(opts.clubNotification ? ' t-club' : '');
         e.setAttribute('role','status');
         var barMs = duration;
         e.innerHTML='<span class="toast-ico">'+toastIconFor(toastType)+'</span>'+

@@ -42,3 +42,6 @@ jobs:
 
       - name: Mobile scorecards and score entry
         run: npm run check:scorecards
+
+      - name: Mobile navigation header
+        run: npm run check:nav

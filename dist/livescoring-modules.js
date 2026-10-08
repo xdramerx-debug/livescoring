@@ -1,4 +1,4 @@
-const $ = "Гольф-клуб Пестово", Re = 72, z = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
+const $ = "Пестово", Re = 72, z = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
   1: { p: 4, hcp: 5, bk: 373, bl: 339, wh: 328, rd: 317 },
   2: { p: 4, hcp: 13, bk: 272, bl: 257, wh: 257, rd: 250 },
   3: { p: 5, hcp: 9, bk: 486, bl: 475, wh: 464, rd: 423 },
@@ -290,7 +290,7 @@ function I(e, a, r) {
         break;
       }
     var i = document.createElement("div");
-    i.className = "toast t-" + a, i.setAttribute("role", "status"), i.innerHTML = '<span class="toast-ico">' + U(a) + '</span><span class="toast-msg">' + e + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
+    i.className = "toast t-" + a + (r.clubNotification ? " t-club" : ""), i.setAttribute("role", "status"), i.innerHTML = '<span class="toast-ico">' + U(a) + '</span><span class="toast-msg">' + e + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
     var _ = !1, u = function(d) {
       if (!_) {
         _ = !0;
@@ -369,7 +369,7 @@ function ve(e) {
 typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: K, toastIconFor: U, toast: I, toastSequence: ge, isPlayerModeEnabled: Y, vib: ye, escapeHtml: ve });
 var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", f = {
   ru: {
-    brand_name: "Гольф-клуб Пестово",
+    brand_name: "Пестово",
     nav_home: "Главная",
     nav_round: "Раунд",
     nav_leaderboard: "Все раунды",
@@ -383,7 +383,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     nav_handicaps: "Гандикапы",
     nav_admin: "Админ",
     nav_login: "Войти",
-    footer_club: "© 2024 Гольф-клуб Пестово",
+    footer_club: "© 2024 Пестово",
     tab_design: "Дизайн 🎨",
     design_admin_title: "Шаблоны оформления сайта",
     design_admin_sub: "Текущий дизайн + 5 альтернативных шаблонов. Шаблон можно назначить всему сайту, отдельной странице или отдельному блоку — так собирается собственный дизайн из готовых частей.",
@@ -791,7 +791,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     round_history: "История раундов",
     // Режимы интерфейса игрока
     // Solo & Guest
-    solo_sub: "Гольф-клуб Пестово",
+    solo_sub: "Пестово",
     current_score: "Текущий счёт",
     view_mode_notice: "Режим просмотра.",
     // Admin & Auth
@@ -960,7 +960,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     tee_label: "ТИ"
   },
   en: {
-    brand_name: "Гольф-клуб Пестово",
+    brand_name: "Пестово",
     nav_home: "Home",
     nav_round: "Round",
     nav_leaderboard: "All Rounds",
@@ -974,7 +974,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     nav_handicaps: "Handicaps",
     nav_admin: "Admin",
     nav_login: "Login",
-    footer_club: "© 2024 Pestovo Golf Club",
+    footer_club: "© 2024 Pestovo",
     tab_design: "Design 🎨",
     design_admin_title: "Site design templates",
     design_admin_sub: "The current design + 5 alternative templates. A template can be applied to the whole site, to a single page or to a single block — this is how a custom design is assembled from ready-made parts.",
@@ -1003,7 +1003,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     all_rounds: "All Rounds",
     no_active_players: "No active players on course",
     course_card_sub: "18 Holes · Par 72 · All Tees (meters)",
-    address_str: "📍 Pestovo Golf Club, Mytishchi, Moscow Region",
+    address_str: "📍 Pestovo, Mytishchi, Moscow Region",
     nav_header: "Navigation",
     more_header: "More",
     tee_bk: "Black",
@@ -1380,7 +1380,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     round_history: "Round History",
     // Player interface modes
     // Solo & Guest
-    solo_sub: "Pestovo Golf Club",
+    solo_sub: "Pestovo",
     current_score: "Current Score",
     view_mode_notice: "View mode.",
     // Admin & Auth
@@ -1551,7 +1551,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
 };
 (function() {
   var e = (/* @__PURE__ */ new Date()).getFullYear();
-  f.ru && (f.ru.footer_club = "© " + e + " Гольф-клуб Пестово"), f.en && (f.en.footer_club = "© " + e + " Pestovo Golf Club");
+  f.ru && (f.ru.footer_club = "© " + e + " Пестово"), f.en && (f.en.footer_club = "© " + e + " Pestovo");
 })();
 function W(e) {
   var a = typeof m < "u" && m ? m : "ru";

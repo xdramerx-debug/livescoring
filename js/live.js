@@ -2328,7 +2328,7 @@ function listenForCallResponses() {
                 ? '🚗 ' + who + ' is on the way to you!'
                 : '🚗 ' + who + ' едет к вам!';
 
-            toast(txt, 'success');
+            toast(txt, 'success', { clubNotification: true });
             if (typeof vib === 'function') vib([80, 40, 80, 40, 80]);
             markRead();
         };

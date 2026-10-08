@@ -347,6 +347,8 @@ function markSetupPlayerMeta(idx) {
 }
 
 var setupHcpRefreshRunning = {};
+// Найденные в RUSGOLF строки по карточкам формы — для окна выбора игрока.
+var setupHcpCandidates = {};
 // Общий дедлайн поиска в RUSGOLF: кнопка не может «висеть» дольше этого срока.
 var SETUP_HCP_LOOKUP_DEADLINE_MS = 20000;
 function setupHcpNameTokens(idx) {
@@ -382,12 +384,17 @@ function setupParseHcpInput(value) {
     var num = cleaned.charAt(0) === '+' ? -Math.abs(parseFloat(cleaned.substring(1))) : parseFloat(cleaned);
     return isFinite(num) ? num : null;
 }
-// Кнопка «RUSGOLF» видна только у своей карточки, когда введены имя и фамилия.
+// Кнопка «RUSGOLF»: видна сразу после ввода имени и фамилии (2+ слова) —
+// у любой карточки формы. Поиск идёт по ФИО, как в админ-панели
+// («RUSGOLF» → «Найти»), карточка № не требуется.
 function syncSetupHcpRefreshButton(idx) {
     var button = document.getElementById('pl-hcp-refresh-' + idx);
     if (!button) return;
     var running = !!setupHcpRefreshRunning[idx];
-    var visible = running || (setupIsOwnRow(idx) && setupHcpNameTokensCount(setupHcpNameValue(idx)) >= 2);
+    // Строка с ФИО самого игрока по-прежнему привязывается к его аккаунту
+    // (uid заполняется сразу) — от этого зависит запись гандикапа в профиль.
+    try { setupIsOwnRow(idx); } catch (e) { console.warn('[silent]', e); }
+    var visible = running || setupHcpNameTokensCount(setupHcpNameValue(idx)) >= 2;
     button.classList.toggle('hidden', !visible);
     button.disabled = running;
     button.setAttribute('aria-hidden', visible ? 'false' : 'true');
@@ -401,43 +408,171 @@ function setupNormalizeHcpName(value) {
     return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
 }
 
+// Сравнение ФИО — общие правила (js/rusgolf-client.js), те же, что в админке:
+// порядок «Имя Фамилия» / «Фамилия Имя Отчество» не важен, формы имён
+// (Наташа = Наталья) учитываются, если администратор включил их в админке.
+// Fallback ниже работает, даже если js/rusgolf-client.js не загрузился.
 function setupRusgolfNameMatches(query, remote) {
+    if (window.PestovoRusgolf && typeof window.PestovoRusgolf.namesMatch === 'function') {
+        return window.PestovoRusgolf.namesMatch(query, remote);
+    }
     var localTokens = setupNormalizeHcpName(query).split(' ').filter(Boolean);
     var remoteTokens = setupNormalizeHcpName(remote && (remote.fio || [remote.lastName, remote.firstName, remote.middleName].filter(Boolean).join(' '))).split(' ').filter(Boolean);
     if (localTokens.length < 2 || remoteTokens.length < 2) return false;
-    return localTokens.every(function (token) { return remoteTokens.indexOf(token) !== -1; });
+    return localTokens.every(function (token) { return remoteTokens.indexOf(token) !== -1; }) ||
+        remoteTokens.slice(0, 2).every(function (token) { return localTokens.indexOf(token) !== -1; });
+}
+
+function setupRusgolfRowLabel(row) {
+    var name = row.fio || [row.lastName, row.firstName].filter(Boolean).join(' ');
+    var parts = [name];
+    if (row.number) parts.push(row.number);
+    if (row.hcp != null) parts.push('HI ' + fmtExactHcp(row.hcp));
+    return parts.join(' · ');
+}
+
+function setupHcpNameForLog(idx, row) {
+    return (row && row.fio) || setupHcpNameValue(idx);
+}
+
+// Заполняет поле гандикапа найденным значением. Свою карточку дополнительно
+// сохраняем в профиль (users/<uid>), чужую — только в форму раунда.
+function applySetupRusgolfRow(idx, row) {
+    var hcpEl = document.getElementById('pl-hcp-' + idx);
+    var hcp = row ? Number(row.hcp) : NaN;
+    if (!isFinite(hcp)) throw new Error(currentLang === 'en' ? 'The RUSGOLF handicap is invalid.' : 'В RUSGOLF указан некорректный гандикап.');
+    var prevHcp = hcpEl ? setupParseHcpInput(hcpEl.value) : null;
+    var changed = prevHcp == null || Math.abs(prevHcp - hcp) > 0.0001;
+
+    if (hcpEl) hcpEl.value = fmtExactHcp(hcp);
+    if (typeof calcPlayerFieldHcp === 'function') calcPlayerFieldHcp(idx);
+    if (typeof markSetupPlayerMeta === 'function') markSetupPlayerMeta(idx);
+
+    var own = setupIsOwnRow(idx);
+    var user = typeof currentUser !== 'undefined' && currentUser ? currentUser : null;
+    var myUid = user ? String(user.uid || '') : '';
+    var logIt = function () {
+        if (!changed || typeof pestovoLogHcpChange !== 'function') return Promise.resolve(false);
+        return pestovoLogHcpChange({
+            playerUid: own ? myUid : '',
+            playerName: setupHcpNameForLog(idx, row),
+            oldHcp: prevHcp,
+            newHcp: hcp,
+            source: own ? 'rusgolf-self' : 'rusgolf-form'
+        });
+    };
+
+    if (!own || typeof db === 'undefined' || !db || !myUid) {
+        return logIt().then(function () { return { hcp: hcp, saved: false }; });
+    }
+
+    if (typeof currentUserData !== 'undefined' && currentUserData) {
+        currentUserData.handicap = hcp;
+        currentUserData.hcpSource = 'rusgolf';
+        currentUserData.hcpUpdatedAt = Date.now();
+        if (row.number) currentUserData.rusgolfNumber = row.number;
+        if (row.hcpDate) currentUserData.rusgolfHcpDate = row.hcpDate;
+    }
+    var stamp = Date.now();
+    var fields = { handicap: hcp, hcpSource: 'rusgolf', hcpUpdatedAt: stamp };
+    if (row.number) fields.rusgolfNumber = row.number;
+    if (row.hcpDate) fields.rusgolfHcpDate = row.hcpDate;
+    return db.ref('users/' + myUid).update(fields).then(function () {
+        // Публичный профиль — best effort: старые записи без usersPublic не блокируют обновление.
+        return db.ref('usersPublic/' + myUid).once('value').then(function (snapshot) {
+            if (!snapshot || !snapshot.exists || !snapshot.exists()) return null;
+            return db.ref('usersPublic/' + myUid).update(fields).catch(function (error) { console.warn('[setup hcp public sync]', error); });
+        }).catch(function (error) { console.warn('[setup hcp public sync]', error); });
+    }).then(logIt).then(function () { return { hcp: hcp, saved: true }; });
+}
+
+// ── Выбор игрока, если в RUSGOLF несколько совпадений (как список в админке) ──
+function setupHcpPickerHtml(idx, rows) {
+    var isEn = currentLang === 'en';
+    var items = rows.map(function (row, i) {
+        var details = [];
+        if (row.number) details.push(row.number);
+        details.push(row.gender === 'women' ? (isEn ? 'Female' : 'Жен.') : (isEn ? 'Male' : 'Муж.'));
+        if (row.hcpDate) details.push((isEn ? 'updated ' : 'обновлён ') + row.hcpDate);
+        return '<button type="button" class="setup-hcp-choice" title="' + escapeHtml(setupRusgolfRowLabel(row)) + '" onclick="pickSetupHcpCandidate(' + idx + ',' + i + ')">' +
+            '<span class="setup-hcp-choice__name">' + escapeHtml(row.fio || '') + '</span>' +
+            '<span class="setup-hcp-choice__meta">' + escapeHtml(details.join(' · ')) + '</span>' +
+            '<span class="setup-hcp-choice__hcp">' + escapeHtml(row.hcp != null ? fmtExactHcp(row.hcp) : '—') + '</span>' +
+            '</button>';
+    }).join('');
+    return '<div class="setup-hcp-picker" id="setup-hcp-picker" role="dialog" aria-modal="true" onclick="if(event.target===this){closeSetupHcpPicker()}" aria-label="' + (isEn ? 'Choose the player from RUSGOLF' : 'Выберите игрока из RUSGOLF') + '">' +
+        '<div class="setup-hcp-picker__card">' +
+        '<h3>' + (isEn ? 'Several players found' : 'Найдено несколько игроков') + '</h3>' +
+        '<p>' + (isEn ? 'Choose the right one — the handicap will be filled in automatically.' : 'Выберите нужного — гандикап подставится автоматически.') + '</p>' +
+        '<div class="setup-hcp-picker__list">' + items + '</div>' +
+        '<button type="button" class="btn btn-ol btn-block" onclick="closeSetupHcpPicker()">' + (isEn ? 'Cancel' : 'Отмена') + '</button>' +
+        '</div></div>';
+}
+
+var setupHcpPickerEscBound = false;
+function openSetupHcpPicker(idx, rows) {
+    if (!rows || !rows.length) return;
+    setupHcpCandidates[idx] = rows;
+    closeSetupHcpPicker();
+    var host = document.createElement('div');
+    host.innerHTML = setupHcpPickerHtml(idx, rows);
+    document.body.appendChild(host.firstChild);
+    if (!setupHcpPickerEscBound) {
+        setupHcpPickerEscBound = true;
+        document.addEventListener('keydown', function (event) {
+            if (event && event.key === 'Escape') closeSetupHcpPicker();
+        });
+    }
+    var first = document.querySelector('#setup-hcp-picker .setup-hcp-choice');
+    if (first && typeof first.focus === 'function') first.focus();
+}
+
+function closeSetupHcpPicker() {
+    var el = document.getElementById('setup-hcp-picker');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+}
+
+function pickSetupHcpCandidate(idx, index) {
+    idx = parseInt(idx, 10);
+    index = parseInt(index, 10);
+    var rows = setupHcpCandidates[idx] || [];
+    var row = rows[index];
+    closeSetupHcpPicker();
+    if (!row) return;
+    if (typeof vib === 'function') vib(15);
+    applySetupRusgolfRow(idx, row).then(function (result) {
+        if (typeof toast === 'function') {
+            toast((currentLang === 'en' ? '✅ RUSGOLF handicap filled in: ' : '✅ Гандикап из RUSGOLF подставлен: ') + fmtExactHcp(result.hcp), 'success');
+        }
+    }).catch(function (error) {
+        console.warn('[setup hcp rusgolf]', error);
+        if (typeof toast === 'function') toast((currentLang === 'en' ? 'Could not save the RUSGOLF handicap: ' : 'Не удалось сохранить гандикап RUSGOLF: ') + (error && error.message || error), 'error');
+    });
 }
 
 function refreshSetupPlayerHandicap(idx) {
     idx = parseInt(idx, 10);
     if (setupHcpRefreshRunning[idx]) return;
-    var uidEl = document.getElementById('pl-uid-' + idx);
     var nameEl = document.getElementById('pl-name-' + idx);
     var genderEl = document.getElementById('pl-gender-' + idx);
-    var hcpEl = document.getElementById('pl-hcp-' + idx);
     var button = document.getElementById('pl-hcp-refresh-' + idx);
-    var user = typeof currentUser !== 'undefined' && currentUser ? currentUser : null;
-    var myUid = user ? String(user.uid || '') : '';
-    // Обновление доступно только для своей карточки (как и раньше): поиск по чужому
-    // ФИО не делаем, профиль другого игрока не переписываем.
-    if (!setupIsOwnRow(idx)) {
-        if (typeof toast === 'function') toast(currentLang === 'en' ? 'Select yourself from the player suggestions first.' : 'Сначала выберите себя в подсказках списка игроков.', 'warn');
-        return;
-    }
+
+    // Поиск по имени и фамилии — как в админ-панели (вкладка RUSGOLF).
     var query = String(nameEl && nameEl.value || '').trim();
     if (query.split(/\s+/).filter(Boolean).length < 2) {
         if (typeof toast === 'function') toast(currentLang === 'en' ? 'Enter first and last name.' : 'Укажите имя и фамилию.', 'warn');
         return;
     }
-    if (!window.PestovoRusgolf || typeof window.PestovoRusgolf.fetchViaProxy !== 'function') {
+    var rusgolf = window.PestovoRusgolf;
+    if (!rusgolf || typeof rusgolf.searchByName !== 'function') {
         if (typeof toast === 'function') toast(currentLang === 'en' ? 'Rusgolf sync is unavailable on this page.' : 'Синхронизация с RUSGOLF на этой странице недоступна.', 'error');
         return;
     }
 
-    var prevHcp = hcpEl ? setupParseHcpInput(hcpEl.value) : null;
     var expectedGender = genderEl && genderEl.value ? genderEl.value : '';
-    // Номер RUSGOLF берём только из собственного профиля — иначе чужая строка получит чужой HCP.
-    var existingNumber = typeof currentUserData !== 'undefined' && currentUserData
+    // Номер RUSGOLF известен только для своей карточки — служит подсказкой
+    // при выборе между несколькими совпадениями.
+    var ownNumber = setupIsOwnRow(idx) && typeof currentUserData !== 'undefined' && currentUserData
         ? String(currentUserData.rusgolfNumber || '').replace(/\s+/g, '').toUpperCase() : '';
 
     setupHcpRefreshRunning[idx] = true;
@@ -452,65 +587,22 @@ function refreshSetupPlayerHandicap(idx) {
                 : 'RUSGOLF не ответил вовремя. Попробуйте ещё раз или введите гандикап вручную.'));
         }, SETUP_HCP_LOOKUP_DEADLINE_MS);
     });
-    var lookup = window.PestovoRusgolf.fetchViaProxy(query, 0, { timeoutMs: 8000 });
+    var lookup = rusgolf.searchByName(query, { timeoutMs: 8000, gender: expectedGender, number: ownNumber });
 
     Promise.race([lookup, deadline]).then(function (result) {
-        var rows = result && Array.isArray(result.rows) ? result.rows : [];
-        var byNumber = existingNumber ? rows.filter(function (row) {
-            return row && String(row.number || '').replace(/\s+/g, '').toUpperCase() === existingNumber && row.hcp != null;
-        }) : [];
-        var candidates = byNumber.length ? byNumber : rows.filter(function (row) {
-            if (!row || row.hcp == null || !setupRusgolfNameMatches(query, row)) return false;
-            return !expectedGender || !row.gender || row.gender === expectedGender;
-        });
-        if (candidates.length !== 1) {
-            var message = candidates.length > 1
-                ? (currentLang === 'en' ? 'Several matching RUSGOLF profiles were found. Ask the club administrator to verify the record.' : 'Найдено несколько совпадений RUSGOLF. Попросите администратора проверить запись.')
-                : (currentLang === 'en' ? 'No exact RUSGOLF match was found. Check the name and try again.' : 'Точное совпадение в RUSGOLF не найдено. Проверьте ФИО и попробуйте ещё раз.');
-            if (typeof toast === 'function') toast(message, 'warn');
+        if (!result || result.status === 'none' || !result.matches.length) {
+            if (typeof toast === 'function') {
+                toast(currentLang === 'en'
+                    ? 'No RUSGOLF match was found. Check the name and try again.'
+                    : 'Совпадение в RUSGOLF не найдено. Проверьте ФИО и попробуйте ещё раз.', 'warn');
+            }
             return null;
         }
-
-        var official = candidates[0], hcp = Number(official.hcp);
-        if (!isFinite(hcp)) throw new Error(currentLang === 'en' ? 'The RUSGOLF handicap is invalid.' : 'В RUSGOLF указан некорректный гандикап.');
-        if (hcpEl) hcpEl.value = fmtExactHcp(hcp);
-        if (typeof calcPlayerFieldHcp === 'function') calcPlayerFieldHcp(idx);
-        if (typeof markSetupPlayerMeta === 'function') markSetupPlayerMeta(idx);
-
-        var playerName = official.fio || query;
-        var logEntry = {
-            playerUid: myUid,
-            playerName: playerName,
-            oldHcp: prevHcp,
-            newHcp: hcp,
-            source: 'rusgolf-self'
-        };
-        var logIt = function () {
-            return typeof pestovoLogHcpChange === 'function' ? pestovoLogHcpChange(logEntry) : Promise.resolve(false);
-        };
-
-        if (typeof db === 'undefined' || !db) {
-            return logIt().then(function () { return { hcp: hcp, saved: false }; });
+        if (result.status === 'ambiguous') {
+            openSetupHcpPicker(idx, result.matches);
+            return null;
         }
-
-        if (typeof currentUserData !== 'undefined' && currentUserData) {
-            currentUserData.handicap = hcp;
-            currentUserData.hcpSource = 'rusgolf';
-            currentUserData.hcpUpdatedAt = Date.now();
-            if (official.number) currentUserData.rusgolfNumber = official.number;
-            if (official.hcpDate) currentUserData.rusgolfHcpDate = official.hcpDate;
-        }
-        var stamp = Date.now();
-        var fields = { handicap: hcp, hcpSource: 'rusgolf', hcpUpdatedAt: stamp };
-        if (official.number) fields.rusgolfNumber = official.number;
-        if (official.hcpDate) fields.rusgolfHcpDate = official.hcpDate;
-        return db.ref('users/' + myUid).update(fields).then(function () {
-            // Публичный профиль — best effort: старые записи без usersPublic не блокируют обновление.
-            return db.ref('usersPublic/' + myUid).once('value').then(function (snapshot) {
-                if (!snapshot || !snapshot.exists || !snapshot.exists()) return null;
-                return db.ref('usersPublic/' + myUid).update(fields).catch(function (error) { console.warn('[setup hcp public sync]', error); });
-            }).catch(function (error) { console.warn('[setup hcp public sync]', error); });
-        }).then(logIt).then(function () { return { hcp: hcp, saved: true }; });
+        return applySetupRusgolfRow(idx, result.unique);
     }).then(function (result) {
         if (result && typeof toast === 'function') {
             var value = fmtExactHcp(result.hcp);
@@ -530,6 +622,16 @@ function refreshSetupPlayerHandicap(idx) {
         if (button) button.setAttribute('title', t('refresh_hcp_from_rusgolf'));
     });
 }
+
+// Режим сопоставления форм имён задаётся в админке (settings/nameMatching);
+// подтягиваем его, чтобы поиск в форме раунда совпадал с поиском в админке.
+(function setupInitNameVariants() {
+    try {
+        if (typeof NameVariants !== 'undefined' && NameVariants && typeof NameVariants.loadStored === 'function') {
+            NameVariants.loadStored(window);
+        }
+    } catch (e) { console.warn('[silent]', e); }
+})();
 
 // Одиночный делегированный обработчик: ввод имени/ТИ обновляет аватар и цвет.
 function bindSetupSlotsMeta() {

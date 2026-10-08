@@ -21,7 +21,12 @@ const root = path.join(__dirname, '..');
             await page.addScriptTag({ path: path.join(root, 'js', file + '.js') });
         }
         const admin = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
-        const fragment = admin.slice(admin.indexOf('<div id="tab-scorecards"'), admin.indexOf('<div id="tab-rounds"'));
+        // Секция «Отображения счётных карточек» идёт первой из трёх подряд
+        // (scorecards → scoreentry → rounds): режем ровно до следующей вкладки,
+        // иначе в фрагмент попадал бы и блок «Ввод счёта».
+        const scStart = admin.indexOf('<div id="tab-scorecards"');
+        const scEnd = admin.indexOf('<div id="tab-', scStart + 10);
+        const fragment = admin.slice(scStart, scEnd);
         await page.evaluate(html => {
             document.body.innerHTML = html.replace('admin-section hidden', 'admin-section');
             document.body.style.padding = '8px';

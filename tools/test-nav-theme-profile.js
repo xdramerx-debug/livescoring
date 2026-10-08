@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
 const ROOT = path.join(__dirname, '..');
-const dom = new JSDOM('<!doctype html><html lang="ru"><head><title>Гольф-клуб Пестово</title></head><body><div id="nav-auth"></div></body></html>', {
+const dom = new JSDOM('<!doctype html><html lang="ru"><head><title>Пестово</title></head><body><div id="nav-auth"></div></body></html>', {
     runScripts: 'dangerously', url: 'https://test.local/index.html', pretendToBeVisual: true
 });
 const win = dom.window;
@@ -14,7 +14,7 @@ const win = dom.window;
 });
 win.currentLang = 'ru';
 win.currentUser = { uid: 'user-1' };
-win.currentUserData = { name: 'Игрок Тест', firstName: 'Игрок' };
+win.currentUserData = { name: 'Игрок Тест', firstName: 'Игорь', lastName: 'Тестовский' };
 let profileOpens = 0;
 win.openPlayerProfileModal = () => { profileOpens++; };
 win.doLogout = () => {};
@@ -39,10 +39,16 @@ check(profileOpens === 0, 'switching language does not open the profile');
 profile.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
 check(profileOpens === 1, 'profile still opens from the explicit avatar/name button');
 
+// Компактная подпись пользователя: короткое имя в шапке, полное — в подсказке.
+const uname = win.document.querySelector('.nav-uname');
+check(!!uname && uname.textContent === 'Игорь Т.', 'в шапке короткое имя «Имя Ф.» (получено: ' + (uname && uname.textContent) + ')');
+check(!!profile && profile.getAttribute('title') === 'Игрок Тест', 'полное имя остаётся в подсказке кнопки профиля');
+check(!!win.document.querySelector('.nav-logout'), 'кнопка выхода из профиля на месте');
+
 // The official site name remains present in the title after an English toggle.
 const titleBefore = win.document.title;
 try { win.toggleLang(); } catch (error) { /* page-only services are absent in this isolated test */ }
-check(win.document.title.indexOf('Гольф-клуб Пестово') !== -1 || titleBefore.indexOf('Гольф-клуб Пестово') !== -1,
+check(/Пестово/.test(win.document.title) || /Пестово/.test(titleBefore),
     'site brand remains in the browser tab title after a language change');
 console.log(failures ? 'Failed ' + failures + ' checks' : 'All navigation/profile checks passed');
 process.exit(failures ? 1 : 0);

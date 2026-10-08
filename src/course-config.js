@@ -3,7 +3,7 @@
 // this file (bundled via Vite) replaces the classic script. As a migration
 // aid it also exposes the same symbols on `window`, so the legacy classic
 // scripts (utils.js, admin.js, …) keep working until they are migrated.
-export const CLUB = 'Гольф-клуб Пестово';
+export const CLUB = 'Пестово';
 export const TOTAL_PAR = 72;
 export const ADDR = 'МО, г. Мытищи, Никольская ул., 1, Румянцево';
 

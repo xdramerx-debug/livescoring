@@ -85,6 +85,157 @@
         return parseMarkdownTable(value);
     }
 
+    // ── Сопоставление ФИО ────────────────────────────────────────────────
+    // Одни и те же правила используют админка (js/admin-agr.js) и форма
+    // создания раунда: сравнение по частям ФИО в любом порядке («Иван Иванов»
+    // = «Иванов Иван Иванович»), а при включённых «Формах имён»
+    // (js/name-variants.js, настройка settings/nameMatching) — ещё и формы
+    // имени: Наташа = Наталья = Наталия.
+    function normalizeName(value) {
+        return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function nameTokens(value) {
+        var normalized = normalizeName(value);
+        return normalized ? normalized.split(' ').filter(Boolean) : [];
+    }
+
+    function rowNameParts(row) {
+        row = row || {};
+        var parts = [];
+        if (row.fio) parts = nameTokens(row.fio);
+        if (!parts.length) parts = nameTokens([row.lastName, row.firstName, row.middleName].filter(Boolean).join(' '));
+        return parts;
+    }
+
+    /**
+     * Насколько ФИО из базы АГР подходит к введённому запросу:
+     *   'strong' — совпали имя и фамилия (порядок слов не важен);
+     *   'loose'  — совпала фамилия, а имя отличается формой/написанием
+     *              (Наташа ≠ Наталья при выключенном автоприменении) — такого
+     *              игрока нужно подтвердить вручную, как в админке;
+     *   null     — не подходит.
+     */
+    function matchKind(query, row) {
+        var local = nameTokens(query);
+        var remote = rowNameParts(row);
+        if (local.length < 2 || remote.length < 2) return null;
+
+        var nm = (typeof root.NameVariants !== 'undefined' && root.NameVariants) ? root.NameVariants : null;
+        var variant = null;
+        if (nm && typeof nm.match === 'function' && nm.isOn && nm.isOn()) {
+            variant = nm.match(local[0], local[local.length - 1], remote[0], remote[1],
+                local.join(' '), remote.join(' '));
+        }
+
+        var everyLocalInRemote = local.every(function (token) { return remote.indexOf(token) !== -1; });
+        var remoteMainInLocal = remote.slice(0, 2).every(function (token) { return local.indexOf(token) !== -1; });
+        if (everyLocalInRemote || remoteMainInLocal || variant === 'strong') return 'strong';
+        return variant === 'loose' ? 'loose' : null;
+    }
+
+    /** Сильное совпадение: в ФИО из базы есть и имя, и фамилия запроса. */
+    function namesMatch(query, row) {
+        return matchKind(query, row) === 'strong';
+    }
+
+    /** Варианты запроса: как ввели, обратный порядок и одна длинная часть (фамилия). */
+    function queryVariants(query) {
+        // В запрос идёт исходное написание (регистр сохраняем), нормализация — только для длины.
+        var raw = String(query || '').trim().split(/\s+/).filter(Boolean);
+        var out = [];
+        var push = function (value) {
+            var v = String(value || '').trim();
+            if (v && out.indexOf(v) === -1) out.push(v);
+        };
+        push(String(query || '').trim());
+        if (raw.length >= 2) {
+            push(raw.slice().reverse().join(' '));
+            var longest = raw.slice().sort(function (a, b) { return b.length - a.length; })[0];
+            if (longest && longest.length >= 3) push(longest);
+        }
+        return out;
+    }
+
+    function dedupeRows(rows) {
+        var seen = {}, out = [];
+        (rows || []).forEach(function (row) {
+            if (!row) return;
+            var key = String(row.number || '') || (normalizeName(row.fio) + '|' + row.hcp);
+            if (seen[key]) return;
+            seen[key] = true;
+            out.push(row);
+        });
+        return out;
+    }
+
+    // opts: { timeoutMs, gender, number }
+    // → { rows, matches, unique, status: 'ok'|'none'|'ambiguous', queries }
+    function searchByName(query, opts) {
+        opts = opts || {};
+        var variants = queryVariants(query);
+        if (!variants.length) return Promise.resolve({ rows: [], matches: [], unique: null, status: 'none', queries: [] });
+        var found = [];
+        var attempted = [];
+        var index = 0;
+        // Транспорт берём из публичного API: страницы и тесты могут подменить
+        // PestovoRusgolf.fetchViaProxy, поиск по ФИО продолжит работать.
+        var transport = (root.PestovoRusgolf && root.PestovoRusgolf.fetchViaProxy) || fetchViaProxy;
+        function attempt() {
+            if (index >= variants.length) return Promise.resolve();
+            var variant = variants[index++];
+            attempted.push(variant);
+            return transport(variant, 0, { timeoutMs: opts.timeoutMs }).then(function (result) {
+                var rows = (result && result.rows) || [];
+                var matches = rows.filter(function (row) { return row && row.hcp != null && matchKind(query, row); });
+                if (matches.length) {
+                    found = found.concat(matches);
+                    return;
+                }
+                // Совпадений нет — пробуем следующий вариант написания.
+                return attempt();
+            }).catch(function () {
+                // Прокси/сеть не ответили по первому варианту — пробуем дальше,
+                // ошибку отдаём только если не ответил ни один.
+                if (index >= variants.length) throw new Error(root.currentLang === 'en'
+                    ? 'RUSGOLF is unavailable. Try again later.'
+                    : 'RUSGOLF недоступен. Попробуйте позже.');
+                return attempt();
+            });
+        }
+        return attempt().then(function () {
+            var matches = dedupeRows(found);
+            if (opts.gender) {
+                var byGender = matches.filter(function (row) { return !row.gender || row.gender === opts.gender; });
+                if (byGender.length) matches = byGender;
+            }
+            if (opts.number) {
+                var normalizedNumber = String(opts.number).replace(/\s+/g, '').toUpperCase();
+                var byNumber = matches.filter(function (row) {
+                    return String(row.number || '').replace(/\s+/g, '').toUpperCase() === normalizedNumber;
+                });
+                if (byNumber.length) matches = byNumber;
+            }
+            // Точные совпадения — первыми: человек выбирает из понятного списка,
+            // как в админке (вкладка «RUSGOLF» → «Найти»).
+            var exact = matches.filter(function (row) { return matchKind(query, row) === 'strong'; });
+            matches.sort(function (a, b) {
+                var ka = matchKind(query, a) === 'strong' ? 0 : 1;
+                var kb = matchKind(query, b) === 'strong' ? 0 : 1;
+                return ka - kb;
+            });
+            var unique = exact.length === 1 ? exact[0] : null;
+            return {
+                rows: dedupeRows(found),
+                matches: matches,
+                exact: exact,
+                unique: unique,
+                status: !matches.length ? 'none' : (unique ? 'ok' : 'ambiguous'),
+                queries: attempted
+            };
+        });
+    }
+
     function buildProxyList() {
         var proxies = [];
         var custom = '';
@@ -148,6 +299,11 @@
         parseHcpValue: parseHcpValue,
         makeResult: makeResult,
         parseResults: parseResults,
+        normalizeName: normalizeName,
+        nameTokens: nameTokens,
+        namesMatch: namesMatch,
+        queryVariants: queryVariants,
+        searchByName: searchByName,
         buildProxyList: buildProxyList,
         fetchViaProxy: fetchViaProxy
     };

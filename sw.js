@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.102.0-dea26fe5';
+const CACHE_NAME = 'pestovo-v1.103.0-f7cd8f6d';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -40,37 +40,38 @@ const STATIC_ASSETS = [
 
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
     'css/design-presets.css?v=77ff3916',
-    'css/style.css?v=c03ee7ea',
+    'css/style.css?v=46adb249',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=5f6ffacc',
-    'dist/livescoring-modules.js?v=bdb3fe24',
+    'dist/livescoring-modules.js?v=7df7eb8b',
     'js/app.js?v=59c52eae',
     'js/auth.js?v=3a96f309',
-    'js/design-preview.js?v=adbbac01',
-    'js/design-system.js?v=78b8d092',
+    'js/design-preview.js?v=67eba3c5',
+    'js/design-system.js?v=5a11adfa',
     'js/firebase-config.js?v=57564a0d',
     'js/handicap.js?v=ad1e9c00',
     'js/leaderboard.js?v=a6c53243',
-    'js/live.js?v=16871135',
+    'js/live.js?v=8f6626df',
     'js/marker.js?v=5408d53e',
+    'js/name-variants.js?v=2b58f796',
     'js/players.js?v=7014460d',
     'js/protocol.js?v=6bc9d5ed',
-    'js/pwa.js?v=3397d21c',
+    'js/pwa.js?v=56b54da4',
     'js/qr-code.js?v=2a26e819',
     'js/qr-start.js?v=32ccb088',
-    'js/round-setup.js?v=970dedc8',
-    'js/rusgolf-client.js?v=29d4a093',
+    'js/round-setup.js?v=7712b7f5',
+    'js/rusgolf-client.js?v=f37608e7',
     'js/score-write.js?v=7117f8ef',
     'js/scorer.js?v=8aa8b9ce',
-    'js/solo.js?v=8ce5271f',
+    'js/solo.js?v=648d1ac1',
     'js/stats.js?v=410c615a',
     'js/tn-scorecard.js?v=b34d029e',
     'js/tn-studio-core.js?v=59388560',
     'js/tn-studio-public.js?v=86e38d13',
     'js/tournament-core.js?v=a19eaf5c',
-    'js/tournament-public.js?v=88934412',
+    'js/tournament-public.js?v=f371575f',
     'js/tournaments.js?v=9fba5ea8',
-    'js/utils.js?v=a1f02e96',
+    'js/utils.js?v=87a3191d',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
     'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 
@@ -180,7 +181,7 @@ self.addEventListener('push', function(event) {
     try { data = event.data ? event.data.json() : {}; } catch (e) {
         try { data = { body: event.data ? event.data.text() : '' }; } catch (e2) { data = {}; }
     }
-    var title = data.title || 'Гольф-клуб Пестово';
+    var title = data.title || 'Пестово';
     var options = {
         body: data.body || '',
         icon: 'img/icon-192.png',

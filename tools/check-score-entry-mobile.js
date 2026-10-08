@@ -29,7 +29,11 @@ const root = path.join(__dirname, '..');
             window.failSave = false;
             window.db = { ref: path => ({ update: value => { calls.push({ path, value }); return failSave ? Promise.reject(new Error('Denied')) : Promise.resolve(); } }) };
             renderScoreEntryPreview();
-        }, admin.slice(admin.indexOf('<div id="tab-scorecards"'), admin.indexOf('<div id="tab-rounds"')));
+        }, (() => {
+            // Ровно секция «Ввод счёта» — до следующей вкладки.
+            const start = admin.indexOf('<div id="tab-scoreentry"');
+            return admin.slice(start, admin.indexOf('<div id="tab-', start + 10));
+        })());
         await page.evaluate(() => initP0MobileEnhancements());
         assert.strictEqual(await page.locator('#p0-sticky-actions').count(), 0, 'Preview never creates global sticky controls');
         for (const width of [320, 390, 430]) {

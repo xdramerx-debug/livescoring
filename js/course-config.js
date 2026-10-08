@@ -1,6 +1,6 @@
 // Course configuration (moved from utils.js)
 // Loaded BEFORE js/utils.js on every page so utils.js can reference these globals.
-var CLUB = 'Гольф-клуб Пестово';
+var CLUB = 'Пестово';
 var TOTAL_PAR = 72;
 var ADDR = 'МО, г. Мытищи, Никольская ул., 1, Румянцево';
 

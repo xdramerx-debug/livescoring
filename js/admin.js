@@ -382,8 +382,19 @@ function switchTab(t, b) {
 
     if (t === 'scorecards') {
         renderClubScorecardPreview();
-        renderScoreEntryPreview();
         pestovoBindView5('scorecard', function() { renderClubScorecardPreview(); });
+    }
+    // Вкладка «Ввод счёта ⛳»: 5 стилей экрана ввода + порядок блоков.
+    // Функции живут в js/admin-display.js — вызовы через typeof-guard,
+    // чтобы вкладка не падала, если модуль не подключён (как остальные
+    // необязательные блоки в этом же switchTab).
+    if (t === 'scoreentry') {
+        if (typeof renderScoreEntryPreview === 'function') renderScoreEntryPreview();
+        if (typeof pestovoBindView5 === 'function') {
+            pestovoBindView5('scoring', function() {
+                if (typeof renderScoreEntryPreview === 'function') renderScoreEntryPreview();
+            });
+        }
     }
     if (t === 'groups') {
         if (typeof renderAdmGroups === 'function') renderAdmGroups(); // js/admin-groups.js

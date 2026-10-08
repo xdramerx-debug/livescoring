@@ -181,6 +181,14 @@
         ".validate": "newData.hasChild('endpoint') && newData.child('endpoint').isString() && newData.child('endpoint').val().length <= 1000"
       }
     },
+    "hcpLog": {
+      ".indexOn": ["at"],
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now))",
+      "$id": {
+        ".write": "auth != null && !data.exists() && newData.child('actorUid').val() === auth.uid",
+        ".validate": "newData.hasChildren(['at','actorUid','playerName','newHcp','source']) && newData.child('at').isNumber() && newData.child('actorUid').isString() && newData.child('actorUid').val().length <= 128 && newData.child('playerName').isString() && newData.child('playerName').val().length <= 160 && newData.child('newHcp').isNumber() && newData.child('newHcp').val() >= -10 && newData.child('newHcp').val() <= 60 && newData.child('source').isString() && newData.child('source').val().length <= 40 && (!newData.child('oldHcp').exists() || newData.child('oldHcp').isNumber()) && (!newData.child('playerUid').exists() || newData.child('playerUid').isString()) && (!newData.child('actorName').exists() || newData.child('actorName').isString()) && (!newData.child('actorRole').exists() || newData.child('actorRole').isString()) && (!newData.child('note').exists() || newData.child('note').isString())"
+      }
+    },
     "scoreAudit": {
       ".read": "auth != null && (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now))",
       ".write": false

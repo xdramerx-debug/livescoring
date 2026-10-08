@@ -687,7 +687,12 @@ function createPlayerInAdmin() {
                 upd.lastName = lastName;
                 upd.name = (firstName + (middleName ? ' ' + middleName : '') + (lastName ? ' ' + lastName : '')).trim();
             }
-            db.ref('users/' + foundDupId).update(upd);
+            var dupPrevHcp = foundDupData && foundDupData.handicap != null ? foundDupData.handicap : null;
+            db.ref('users/' + foundDupId).update(upd).then(function () {
+                if (typeof pestovoLogHcpChange === 'function') {
+                    pestovoLogHcpChange({ playerUid: foundDupId, playerName: upd.name || name, oldHcp: dupPrevHcp, newHcp: parsedHcp, source: 'manual-admin' });
+                }
+            });
             // Гандикап уехал и в состав турниров, где этот игрок уже заявлен
             // (участник связан с профилем полем uid).
             if (typeof pestovoSyncHcpToTournaments === 'function') {

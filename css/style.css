@@ -6610,3 +6610,75 @@ body.sun-mode .gsg-marker.mk-mismatch{color:#c0392b;}
     .gsg-table th.gsg-player{min-width:100px;}
     .gsg-pname{font-size:10.5px;}
 }
+
+/* ============================================================
+   ШАПКА: погода не накладывается на название и меню
+   Раньше бренд, виджет погоды и пункты меню делили одну строку без
+   сжатия: на телефоне погода перекрывала название, на ПК — «Главную».
+   Теперь: пункты меню не переносятся на две строки и не сжимаются;
+   бренд и погода сжимаются ступенями — на средних ширинах (до 1100px)
+   название прячется (остаётся логотип), на узких (до 900px) у погоды
+   остаётся только температура. Бургер-меню (768px) не меняется.
+   ============================================================ */
+.nav-c{gap:12px;min-width:0;}
+.nav-c > div:first-child{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 auto;overflow:hidden;}
+.nav-brand{min-width:0;flex:0 1 auto;}
+.nav-brand-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#nav-weather-container{min-width:0;flex:0 1 auto;}
+#nav-weather-container .weather-widget{max-width:100%;overflow:hidden;}
+.nav-menu{flex-shrink:0;}
+.nav-link{white-space:nowrap;}
+@media (min-width:769px){
+    .nav-link{padding:7px 10px;}
+}
+@media (min-width:769px) and (max-width:1100px){
+    .nav-brand-text{display:none;}
+}
+@media (min-width:769px){
+    #nav-weather-container .weather-desc{display:none;}
+    #nav-weather-container .weather-divider{display:none;}
+}
+@media (min-width:1101px){
+    .nav-brand,
+    #nav-weather-container{flex-shrink:0;}
+}
+@media (min-width:769px) and (max-width:900px){
+    #nav-weather-container .weather-widget > .weather-item:last-child{display:none;}
+}
+@media (max-width:768px){
+    .nav-c{gap:8px;}
+    #nav-weather-container .weather-widget > .weather-item:last-child{display:none;}
+    #nav-weather-container .weather-widget{padding:2px 8px;}
+}
+
+/* ============================================================
+   АДМИНКА: глобальный переключатель уведомлений для всех
+   Вынесен над вкладками — виден на любом разделе. Когда уведомления
+   выключены, панель окрашивается в красный (состояние видно сразу).
+   ============================================================ */
+.admin-global-notify{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px;margin-bottom:16px;border:1px solid rgba(201,168,76,.45);background:linear-gradient(135deg,rgba(201,168,76,.10),rgba(255,255,255,.02));}
+.admin-global-notify-main{display:flex;align-items:center;gap:12px;flex:1 1 260px;min-width:0;}
+.admin-global-notify-icon{width:38px;height:38px;flex:0 0 38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(201,168,76,.16);color:var(--gold);}
+.admin-global-notify-text b{display:block;color:var(--white);font-size:15px;}
+.admin-global-notify-text div{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.4;}
+.admin-global-notify.is-off{border-color:rgba(224,90,74,.6);background:linear-gradient(135deg,rgba(224,90,74,.12),rgba(255,255,255,.02));}
+.admin-global-notify.is-off .admin-global-notify-icon{background:rgba(224,90,74,.18);color:var(--red);}
+#global-notifications-toggle{min-height:40px;}
+@media(max-width:480px){#global-notifications-toggle{width:100%;justify-content:center;}}
+
+/* ============================================================
+   СОЗДАНИЕ РАУНДА: кнопка «RUSGOLF» в заголовке карточки игрока
+   Кнопка вынесена из строки полей, чтобы оставаться видимой у свёрнутых
+   карточек (на телефоне карточки в режиме аккордеона свёрнуты).
+   ============================================================ */
+.setup-player-head .setup-hcp-refresh-head{
+    width:auto; height:30px; flex:0 0 auto; padding:0 9px; gap:5px; margin-left:auto;
+    font-size:11px; font-weight:700; letter-spacing:.2px; border-radius:8px;
+}
+.setup-player-head .setup-hcp-refresh-head.hidden{display:none;}
+.setup-player-head .fa-chevron-down{margin-left:6px;}
+.setup-hcp-refresh-text{line-height:1;}
+.setup-hcp-refresh-head[aria-busy="true"]{opacity:.75;}
+@media (pointer: coarse){
+    .setup-player-head .setup-hcp-refresh-head{min-height:36px;}
+}

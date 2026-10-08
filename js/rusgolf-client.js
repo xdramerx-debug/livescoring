@@ -98,8 +98,11 @@
         return proxies;
     }
 
-    function fetchViaProxy(query, attempt) {
+    // opts.timeoutMs — таймаут одного прокси (по умолчанию 25 с, как раньше).
+    function fetchViaProxy(query, attempt, opts) {
         attempt = attempt || 0;
+        opts = opts || {};
+        var perProxyMs = opts.timeoutMs > 0 ? opts.timeoutMs : 25000;
         var target = SEARCH_BASE + encodeURIComponent(String(query || '').trim());
         var proxies = buildProxyList();
         var fetchFn = root.fetch;
@@ -115,7 +118,7 @@
                 }
                 var proxy = proxies[index++];
                 var controller = typeof root.AbortController === 'function' ? new root.AbortController() : null;
-                var timer = setTimeout(function () { if (controller) controller.abort(); }, 25000);
+                var timer = setTimeout(function () { if (controller) controller.abort(); }, perProxyMs);
                 fetchFn(proxy.build(target), { signal: controller ? controller.signal : undefined })
                     .then(function (response) {
                         if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -130,7 +133,7 @@
                     .catch(function (error) {
                         clearTimeout(timer);
                         if (error && error.message === 'HTTP 429' && attempt < 2) {
-                            setTimeout(function () { fetchViaProxy(query, attempt + 1).then(resolve).catch(reject); }, 8000);
+                            setTimeout(function () { fetchViaProxy(query, attempt + 1, opts).then(resolve).catch(reject); }, 8000);
                             return;
                         }
                         tryNext();

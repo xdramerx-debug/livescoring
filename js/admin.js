@@ -395,6 +395,7 @@ function switchTab(t, b) {
         seRender();
     }
     if (t === 'scoreaudit' && typeof saLoad === 'function') saLoad();
+    if (t === 'hcplog' && typeof hcpLogLoad === 'function') hcpLogLoad();
     // Менеджер турниров (js/tn-mgr*.js): монтируем лениво, когда вкладка
     // открыта впервые, далее просто перерисовываем текущий вид.
     if (t === 'tnmanager' && typeof TnMgr !== 'undefined') {

@@ -466,6 +466,9 @@ function confirmPlayersImport() {
                     hcpUpdatedAt: Date.now(),
                     hcpSource: 'excel'
                 }).then(function() {
+                    if (typeof pestovoLogHcpChange === 'function') {
+                        pestovoLogHcpChange({ playerUid: r.dup.id, playerName: r.dup.name || r.name, oldHcp: r.dup.handicap, newHcp: r.hcp, source: 'excel-import' });
+                    }
                     if (typeof pestovoSyncHcpToTournaments !== 'function') return undefined;
                     return pestovoSyncHcpToTournaments(r.dup.id, r.hcp, {
                         gender: r.gender, tournaments: tnSnapshot || undefined

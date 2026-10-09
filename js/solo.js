@@ -431,7 +431,9 @@ function startSolo() {
                     middleName: middleName,
                     exactHcp: parsedExact,
                     gender: gender,
-                    tee: tee
+                    tee: tee,
+                    // гостя записываем в справочник только по завершении раунда
+                    deferWrite: !chosenUid
                 }).then(function(resolvedId) {
                     createRound(resolvedId);
                 }).catch(function() {

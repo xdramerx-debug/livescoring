@@ -6870,3 +6870,43 @@ body.sun-mode .gsg-marker.mk-mismatch{color:#c0392b;}
 
 /* Пять стилей в предпросмотре админки: те же правила, что в бою. */
 #score-entry-preview .sev-preview-note{display:block;margin-top:6px;color:var(--muted);font-size:11px;text-align:center;}
+
+/* ── Ввод счёта: «что показывать» (settings/scoring_show) ─────────────────
+   Атрибут data-entry-hide на .score-entry (его ставит arrangeScoreEntry)
+   перечисляет скрытые элементы: info, holes, hole, par, dist, deadline, hcp. */
+.score-entry[data-entry-hide~="info"] [data-entry-block="info"],
+.score-entry[data-entry-hide~="holes"] [data-entry-block="holes"],
+.score-entry[data-entry-hide~="hole"] .h-hole,
+.score-entry[data-entry-hide~="par"] .h-par,
+.score-entry[data-entry-hide~="dist"] .h-dist,
+.score-entry[data-entry-hide~="deadline"] .h-dl,
+.score-entry[data-entry-hide~="hcp"] .entry-handicap,
+.score-entry[data-entry-hide~="hcp"] .hcp-badge,
+.score-entry[data-entry-hide~="hcp"] .hcp-caption,
+.score-entry[data-entry-hide~="hcp"] .hm-bar {
+    display: none !important;
+}
+
+/* ── Админка «Ввод счёта»: список вариантов, редактор, «что показывать» ── */
+.se-list { display: grid; gap: 10px; margin: 6px 0 14px; }
+.se-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,.03); }
+.se-item.is-editing { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(201,168,76,.35); }
+.se-item-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 200px; }
+.se-item-main strong { overflow-wrap: anywhere; }
+.se-item-main small { color: var(--muted); font-size: 12px; }
+.se-item-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.se-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.se-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 8px;
+    border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.se-badge--on { color: var(--gold-l); border-color: rgba(201,168,76,.5); }
+.se-editor-title { margin: 18px 0 6px; font-size: 16px; }
+.se-editor-grid { display: grid; gap: 6px; margin-bottom: 4px; }
+.se-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
+.se-show-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin: 6px 0 14px; }
+.se-show-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 12px; cursor: pointer; }
+.se-show-item.is-on { border-color: rgba(201,168,76,.5); }
+.se-show-item input { margin-top: 3px; accent-color: var(--gold); }
+.se-show-item span { display: flex; flex-direction: column; gap: 2px; }
+.se-show-item small { color: var(--muted); font-size: 12px; }

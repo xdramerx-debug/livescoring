@@ -5949,8 +5949,12 @@ function saveHistory(roundId,rd){
     Object.entries(players).forEach(function(pe){
         var pid=pe[0],p=pe[1],sc=p.scores||{},fH=p.fieldHcp||0,eH=p.exactHcp||0;
         var stats=calcRoundStats(sc,fH,eH,getRoundOrder(rd));
-        if(stats.gross<=0)return;
         var isGuestPlayer=String(pid).indexOf('guest_')===0;
+        // Гость, введённый при создании раунда, добавляется в справочник игроков
+        // (и появляется в быстром автоподборе) по завершении раунда — даже если
+        // карточка без результатов. История пишется только при наличии счёта.
+        var hasScore=stats.gross>0;
+        if(!hasScore && !(isGuestPlayer && typeof resolveOrCreatePlayerUser==='function'))return;
         // В профиль игрока всегда идёт НАСТОЯЩИЙ гандикап: турнирная обрезка
         // (hcpCut) относится только к этому турниру и не должна менять HCP
         // игрока глобально. exactHcpRaw — значение до обрезки.
@@ -5973,9 +5977,9 @@ function saveHistory(roundId,rd){
                 gender:p.gender||'men',
                 isGuest:true
             }).then(function(userId){
-                if(userId)saveHistoryEntry(userId,roundId,rd,p,stats);
+                if(userId&&hasScore)saveHistoryEntry(userId,roundId,rd,p,stats);
             }).catch(function(){});
-        }else{saveHistoryEntry(pid,roundId,rd,p,stats);}
+        }else if(hasScore){saveHistoryEntry(pid,roundId,rd,p,stats);}
     });
 }
 
@@ -7149,6 +7153,9 @@ if (typeof window !== 'undefined') {
     window.getHomeTournamentView = getHomeTournamentView;
     window.getRoundScorecardView = getRoundScorecardView;
     window.getScoringView = getScoringView;
+    window.applyScoreEntryOrder = applyScoreEntryOrder;
+    window.applyScoreEntryShow = applyScoreEntryShow;
+    window.normalizeScoreEntryShow = normalizeScoreEntryShow;
     window.getRoundSetupView = getRoundSetupView;
 }
 
@@ -8532,6 +8539,11 @@ function resolveOrCreatePlayerUser(p) {
     var candidateId = buildGuestUserId(cleanName, profileHcp);
     if (!candidateId || candidateId === 'guest__') return Promise.resolve(null);
 
+    // deferWrite (создание раунда): игрок НЕ записывается в справочник и не
+    // попадает в автоподбор — это делается при завершении раунда (saveHistory).
+    // Здесь только поиск уже существующей записи по ФИО, без записи в базу.
+    var deferWrite = p.deferWrite === true;
+
     var guestData = {
         name: cleanName,
         firstName: firstName,
@@ -8546,7 +8558,7 @@ function resolveOrCreatePlayerUser(p) {
     };
     if (middleName) guestData.middleName = middleName;
 
-    if (typeof db === 'undefined') return Promise.resolve(finish(candidateId, guestData));
+    if (typeof db === 'undefined') return Promise.resolve(deferWrite ? candidateId : finish(candidateId, guestData));
 
     // Ищем существующего игрока по ФИО (без учета HCP) — чтобы не плодить дубликаты
     // Одинаковое имя + разный HCP = один и тот же человек (гандикап обновляется)
@@ -8585,11 +8597,13 @@ function resolveOrCreatePlayerUser(p) {
             if (better) { found = key; foundData = u; }
         });
         if (found) {
+            if (deferWrite) return found;
             var patch = buildPatchForExisting(foundData);
             return db.ref('usersPublic/' + found).update(patch).catch(function(){}).then(function() { return found; });
         }
         // Проверяем детерминированный id
         return db.ref('usersPublic/' + candidateId).once('value').then(function(sn) {
+            if (deferWrite) return candidateId;
             if (sn.exists()) {
                 var existing = sn.val() || {};
                 var patch = buildPatchForExisting(existing);
@@ -8600,6 +8614,7 @@ function resolveOrCreatePlayerUser(p) {
     }).catch(function() {
         return candidateId;
     }).then(function(id){
+        if (deferWrite) return id;
         return finish(id, guestData);
     });
 }
@@ -10491,8 +10506,30 @@ var scoreEntryOrder = (function() {
     try { return normalizeScoreEntryOrder(JSON.parse(localStorage.getItem('pestovo_scoring_order'))); }
     catch (e) { return normalizeScoreEntryOrder(null); }
 })();
-function arrangeScoreEntry(root, view, order) {
+// «Что показывать» на экране ввода счёта (settings/scoring_show): true — видно.
+// Скрытие делает CSS по атрибуту data-entry-hide на корне .score-entry.
+var SCORE_ENTRY_SHOW_KEYS = ['info', 'holes', 'hole', 'par', 'dist', 'deadline', 'hcp'];
+function normalizeScoreEntryShow(value) {
+    var src = (value && typeof value === 'object') ? value : {};
+    var out = {};
+    SCORE_ENTRY_SHOW_KEYS.forEach(function(key) {
+        out[key] = !(src[key] === false || src[key] === 0 || src[key] === '0' || src[key] === 'false');
+    });
+    return out;
+}
+var scoreEntryShow = (function() {
+    try { return normalizeScoreEntryShow(JSON.parse(localStorage.getItem('pestovo_scoring_show'))); }
+    catch (e) { return normalizeScoreEntryShow(null); }
+})();
+function scoreEntryHiddenAttr(show) {
+    var s = normalizeScoreEntryShow(show);
+    return SCORE_ENTRY_SHOW_KEYS.filter(function(key) { return !s[key]; }).join(' ');
+}
+function arrangeScoreEntry(root, view, order, show) {
     root.setAttribute('data-entry-view', normalizeView5(view));
+    var hidden = scoreEntryHiddenAttr(show || scoreEntryShow);
+    if (hidden) root.setAttribute('data-entry-hide', hidden);
+    else root.removeAttribute('data-entry-hide');
     var blocks = Array.from(root.children).filter(function(el) { return el.hasAttribute('data-entry-block'); });
     var sorted = normalizeScoreEntryOrder(order).map(function(key) {
         return blocks.find(function(el) { return el.getAttribute('data-entry-block') === key; });
@@ -10506,12 +10543,17 @@ function arrangeScoreEntry(root, view, order) {
 function syncScoreEntryLayouts() {
     if (typeof document === 'undefined' || !document.querySelectorAll) return;
     document.querySelectorAll('.score-entry:not([data-entry-preview])').forEach(function(root) {
-        arrangeScoreEntry(root, getScoringView(), scoreEntryOrder);
+        arrangeScoreEntry(root, getScoringView(), scoreEntryOrder, scoreEntryShow);
     });
 }
 function applyScoreEntryOrder(value) {
     scoreEntryOrder = normalizeScoreEntryOrder(value);
     try { localStorage.setItem('pestovo_scoring_order', JSON.stringify(scoreEntryOrder)); } catch (e) { /* no storage */ }
+    syncScoreEntryLayouts();
+}
+function applyScoreEntryShow(value) {
+    scoreEntryShow = normalizeScoreEntryShow(value);
+    try { localStorage.setItem('pestovo_scoring_show', JSON.stringify(scoreEntryShow)); } catch (e) { /* no storage */ }
     syncScoreEntryLayouts();
 }
 function initScoreEntryLayouts() {
@@ -10522,5 +10564,9 @@ function initScoreEntryLayouts() {
         var receive = function(sn) { applyScoreEntryOrder(sn.val()); };
         if (typeof bindRealtimeValue === 'function') bindRealtimeValue('scoring-order', ref, receive);
         else ref.on('value', receive);
+        var showRef = db.ref('settings/scoring_show');
+        var receiveShow = function(sn) { applyScoreEntryShow(sn.val()); };
+        if (typeof bindRealtimeValue === 'function') bindRealtimeValue('scoring-show', showRef, receiveShow);
+        else showRef.on('value', receiveShow);
     }
 }

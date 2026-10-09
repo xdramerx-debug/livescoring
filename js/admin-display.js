@@ -937,8 +937,17 @@ function saveClubScorecardView(value) {
 }
 
 
-var scoreEntryDraft = null;
+// ── ВВОД СЧЁТА: сохранённые варианты экрана ─────────────────────────────
+// Вариант = имя + стиль (1–5) + порядок блоков + «что показывать» (фора, пар,
+// дистанция, дедлайн, номер лунки, блоки). Список хранится в
+// settings/scoring_variants/<id>, активный — в settings/scoring_active.
+// Применение копирует вариант в settings/scoring_view|scoring_order|scoring_show
+// (их читают экраны игроков), поэтому игроки видят его без перезагрузки.
+var scoreEntryDraft = null;      // редактируемый вариант: { id|null, name, view, order, show }
 var scoreEntrySaving = false;
+var scoreEntryVariants = null;   // null — ещё не загружено; иначе массив вариантов по pos
+var scoreEntryActiveId = '';
+var scoreEntryBound = false;
 // Пять стилей экрана ввода счёта: подписи для предпросмотра (сам вид задаёт
 // CSS по data-entry-view, значения те же, что в settings/scoring_view).
 var SCORE_ENTRY_STYLES = {
@@ -954,13 +963,141 @@ var SCORE_ENTRY_BLOCK_META = {
     holes: { icon: 'fa-table-cells',   title: 'Выбор лунки',             desc: 'Все лунки раунда для быстрого перехода' },
     input: { icon: 'fa-pen-to-square', title: 'Ввод счёта и сохранение', desc: 'Квадрат счёта, кнопки ± и сохранение' }
 };
+// Что показывать: ключ совпадает с SCORE_ENTRY_SHOW_KEYS (js/utils.js).
+var SCORE_ENTRY_SHOW_META = [
+    { key: 'info',     title: 'Блок «Информация о лунке»', desc: 'Все четыре плитки разом' },
+    { key: 'hole',     title: 'Номер лунки',               desc: 'Плитка «Лунка»' },
+    { key: 'par',      title: 'Пар',                       desc: 'Плитка «Пар»' },
+    { key: 'dist',     title: 'Дистанция (метры)',         desc: 'Плитка «Метры»' },
+    { key: 'deadline', title: 'Дедлайн',                   desc: 'Плитка «Дедлайн» по темпу игры' },
+    { key: 'holes',    title: 'Блок «Выбор лунки»',        desc: 'Навигация по лункам раунда' },
+    { key: 'hcp',      title: 'Фора',                      desc: 'Подписи «Фора +1» и метки ударов форы' }
+];
+var SCORE_ENTRY_DEFAULT_ORDER = ['info', 'holes', 'input'];
+
+function scoreEntryArr(value) {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object') return Object.keys(value).sort().map(function(k) { return value[k]; });
+    return [];
+}
+function normalizeScoreEntryVariant(id, raw, pos) {
+    raw = raw || {};
+    var name = String(raw.name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    return {
+        id: String(id),
+        name: name || 'Вариант',
+        view: normalizeView5(raw.view),
+        order: normalizeScoreEntryOrder(scoreEntryArr(raw.order)),
+        show: normalizeScoreEntryShow(raw.show),
+        pos: typeof raw.pos === 'number' ? raw.pos : pos
+    };
+}
+function scoreEntryDefaultVariants() {
+    var list = [];
+    for (var n = 1; n <= 5; n++) {
+        list.push(normalizeScoreEntryVariant('v' + n, { name: SCORE_ENTRY_STYLES[String(n)].name, view: String(n), order: SCORE_ENTRY_DEFAULT_ORDER, show: null, pos: n }, n));
+    }
+    return list;
+}
+// Локальное обновление списка сразу после записи (realtime-подписка догонит её же данными).
+function upsertLocalScoreEntryVariant(variant) {
+    if (!scoreEntryVariants) scoreEntryVariants = [];
+    scoreEntryVariants = scoreEntryVariants.filter(function(v) { return v.id !== variant.id; }).concat([variant]);
+}
+function removeLocalScoreEntryVariant(id) {
+    scoreEntryVariants = (scoreEntryVariants || []).filter(function(v) { return v.id !== id; });
+}
+function scoreEntrySortedVariants() {
+    return (scoreEntryVariants || []).slice().sort(function(a, b) { return a.pos - b.pos; });
+}
+function findScoreEntryVariant(id) {
+    var list = scoreEntryVariants || [];
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+}
+function applyScoreEntryVariantsFromDb(raw, activeRaw) {
+    var list = [];
+    if (raw && typeof raw === 'object') {
+        Object.keys(raw).forEach(function(id, i) {
+            if (!raw[id] || typeof raw[id] !== 'object') return;
+            list.push(normalizeScoreEntryVariant(id, raw[id], i + 1));
+        });
+    }
+    scoreEntryVariants = list.length ? list : scoreEntryDefaultVariants();
+    var active = typeof activeRaw === 'string' ? findScoreEntryVariant(activeRaw) : null;
+    if (!active) {
+        var cur = getScoringView();
+        active = scoreEntryVariants.filter(function(v) { return v.view === cur; })[0] || scoreEntryVariants[0];
+    }
+    scoreEntryActiveId = active.id;
+}
+// Один раз подписываемся на список и активный вариант; до загрузки — локальные значения.
+function bindScoreEntryAdmin() {
+    if (scoreEntryBound) return;
+    scoreEntryBound = true;
+    if (typeof db === 'undefined' || !db) {
+        applyScoreEntryVariantsFromDb(null, null);
+        renderScoreEntryAdmin();
+        return;
+    }
+    var state = { list: undefined, active: undefined };
+    var refresh = function() {
+        if (state.list === undefined || state.active === undefined) return;
+        applyScoreEntryVariantsFromDb(state.list, state.active);
+        renderScoreEntryAdmin();
+    };
+    var listRef = db.ref('settings/scoring_variants');
+    var activeRef = db.ref('settings/scoring_active');
+    var onList = function(sn) { state.list = sn.val(); refresh(); };
+    var onActive = function(sn) { state.active = sn.val(); refresh(); };
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-scoring-variants', listRef, onList);
+        bindRealtimeValue('admin-scoring-active', activeRef, onActive);
+    } else {
+        listRef.on('value', onList);
+        activeRef.on('value', onActive);
+    }
+}
 function ensureScoreEntryDraft() {
-    if (!scoreEntryDraft) scoreEntryDraft = { view: getScoringView(), order: scoreEntryOrder.slice() };
+    if (!scoreEntryDraft) {
+        if (!scoreEntryVariants) applyScoreEntryVariantsFromDb(null, null);
+        var active = findScoreEntryVariant(scoreEntryActiveId) || scoreEntrySortedVariants()[0];
+        scoreEntryDraft = draftFromVariant(active);
+    }
     return scoreEntryDraft;
+}
+function draftFromVariant(v) {
+    return { id: v.id, name: v.name, view: v.view, order: v.order.slice(), show: normalizeScoreEntryShow(v.show), pos: v.pos };
+}
+function startScoreEntryEdit(id) {
+    if (scoreEntrySaving) return;
+    var v = findScoreEntryVariant(id);
+    if (!v) return;
+    scoreEntryDraft = draftFromVariant(v);
+    renderScoreEntryAdmin();
+}
+function addScoreEntryVariant() {
+    if (scoreEntrySaving) return;
+    var cur = findScoreEntryVariant(scoreEntryActiveId) || scoreEntryDefaultVariants()[0];
+    var n = (scoreEntryVariants ? scoreEntryVariants.length : 0) + 1;
+    scoreEntryDraft = { id: null, name: 'Вариант ' + n, view: cur.view, order: cur.order.slice(), show: normalizeScoreEntryShow(cur.show), pos: 0 };
+    renderScoreEntryAdmin();
+    var nameEl = document.getElementById('score-entry-name');
+    if (nameEl) { try { nameEl.focus(); nameEl.select(); } catch (e) { console.warn('[silent]', e); } }
 }
 function previewScoreEntryView(view) {
     if (scoreEntrySaving) return;
     ensureScoreEntryDraft().view = normalizeView5(view);
+    renderScoreEntryAdmin();
+}
+function setScoreEntryName(value) {
+    if (scoreEntrySaving) return;
+    ensureScoreEntryDraft().name = String(value || '').replace(/\s+/g, ' ').slice(0, 40);
+    renderScoreEntryList();
+}
+function setScoreEntryShow(key, checked) {
+    if (scoreEntrySaving) return;
+    ensureScoreEntryDraft().show[key] = !!checked;
     renderScoreEntryPreview();
 }
 function moveScoreEntryBlock(index, delta) {
@@ -969,69 +1106,214 @@ function moveScoreEntryBlock(index, delta) {
     var next = index + delta;
     if (next < 0 || next >= order.length) return;
     var key = order[index]; order[index] = order[next]; order[next] = key;
+    renderScoreEntryOrder();
     renderScoreEntryPreview();
-    var button = document.querySelector('#score-entry-order [data-move-key="' + key + '"][data-delta="' + delta + '"]');
+    var button = document.querySelector('#score-entry-order [data-move-key=\"' + key + '\"][data-delta=\"' + delta + '\"]');
     if (button && !button.disabled) button.focus();
+}
+function renderScoreEntryAdmin() {
+    renderScoreEntryList();
+    renderScoreEntryEditor();
+    renderScoreEntryOrder();
+    renderScoreEntryPreview();
+}
+function renderScoreEntryList() {
+    var host = document.getElementById('score-entry-list');
+    if (!host) return;
+    var draft = scoreEntryDraft;
+    var list = scoreEntrySortedVariants();
+    host.innerHTML = list.map(function(v) {
+        var style = SCORE_ENTRY_STYLES[v.view] || SCORE_ENTRY_STYLES['1'];
+        var isActive = v.id === scoreEntryActiveId;
+        var isEditing = !!(draft && draft.id === v.id);
+        var badges = (isActive ? '<span class=\"se-badge se-badge--on\"><i class=\"fas fa-circle-check\"></i> Активен у всех</span>' : '') +
+            (isEditing ? '<span class=\"se-badge\"><i class=\"fas fa-pen\"></i> Редактируется</span>' : '');
+        return '<div class=\"se-item' + (isEditing ? ' is-editing' : '') + '\" data-variant-id=\"' + escapeHtml(v.id) + '\">' +
+            '<div class=\"se-item-main\"><strong>' + escapeHtml(v.name) + '</strong>' +
+            '<small>Стиль ' + escapeHtml(v.view) + ' · ' + escapeHtml(style.name) + '</small>' +
+            (badges ? '<div class=\"se-badges\">' + badges + '</div>' : '') + '</div>' +
+            '<div class=\"se-item-btns\">' +
+            '<button type=\"button\" class=\"btn btn-ol btn-sm\" onclick=\"startScoreEntryEdit(\'' + escapeHtml(v.id) + '\')\"><i class=\"fas fa-pen\"></i> Изменить</button>' +
+            '<button type=\"button\" class=\"btn btn-g btn-sm\" onclick=\"activateScoreEntryVariant(\'' + escapeHtml(v.id) + '\')\"' + (isActive ? ' disabled' : '') + '><i class=\"fas fa-cloud-arrow-up\"></i> Применить для всех</button>' +
+            '<button type=\"button\" class=\"btn btn-danger btn-sm\" onclick=\"deleteScoreEntryVariant(\'' + escapeHtml(v.id) + '\')\"' + (list.length < 2 ? ' disabled' : '') + '><i class=\"fas fa-trash\"></i> Удалить</button>' +
+            '</div></div>';
+    }).join('') || '<p class=\"sev-sec-sub\">Вариантов пока нет — добавьте первый.</p>';
+    var title = document.getElementById('score-entry-editor-title');
+    if (title && draft) title.textContent = draft.id ? 'Редактор: ' + draft.name : 'Новый вариант';
+}
+function renderScoreEntryEditor() {
+    var draft = ensureScoreEntryDraft();
+    var nameEl = document.getElementById('score-entry-name');
+    if (nameEl && document.activeElement !== nameEl) nameEl.value = draft.name;
+    var showHost = document.getElementById('score-entry-show');
+    if (showHost) {
+        showHost.innerHTML = SCORE_ENTRY_SHOW_META.map(function(m) {
+            var on = draft.show[m.key] !== false;
+            return '<label class=\"se-show-item' + (on ? ' is-on' : '') + '\"><input type=\"checkbox\" data-show-key=\"' + m.key + '\"' + (on ? ' checked' : '') +
+                ' onchange=\"setScoreEntryShow(\'' + m.key + '\', this.checked)\"><span><strong>' + m.title + '</strong><small>' + m.desc + '</small></span></label>';
+        }).join('');
+    }
+    var saveNote = document.getElementById('score-entry-editor-note');
+    if (saveNote) saveNote.textContent = draft.id ? 'Сохранение обновит этот вариант.' : 'Вариант появится в списке после сохранения.';
+    markAdmView5Buttons('scoring');
+}
+function renderScoreEntryOrder() {
+    var host = document.getElementById('score-entry-order');
+    if (!host) return;
+    var draft = ensureScoreEntryDraft();
+    host.innerHTML = draft.order.map(function(key, index) {
+        var meta = SCORE_ENTRY_BLOCK_META[key] || { icon: 'fa-grip', title: key, desc: '' };
+        return '<div class=\"entry-order-row\">' +
+            '<span class=\"sev-order-num\">' + (index + 1) + '</span>' +
+            '<span class=\"sev-order-ic\"><i class=\"fas ' + meta.icon + '\" aria-hidden=\"true\"></i></span>' +
+            '<span class=\"sev-order-info\"><strong>' + meta.title + '</strong><small>' + meta.desc + '</small></span>' +
+            '<span class=\"sev-order-btns\">' + [-1, 1].map(function(delta) {
+                return '<button type=\"button\" class=\"btn\" data-move-key=\"' + key + '\" data-delta=\"' + delta + '\" aria-label=\"' + meta.title + (delta < 0 ? ': выше' : ': ниже') + '\" onclick=\"moveScoreEntryBlock(' + index + ',' + delta + ')\"' + (index + delta < 0 || index + delta >= draft.order.length ? ' disabled' : '') + '>' + (delta < 0 ? '↑' : '↓') + '</button>';
+            }).join('') + '</span>' +
+            '</div>';
+    }).join('');
 }
 function renderScoreEntryPreview() {
     var host = document.getElementById('score-entry-preview');
     if (!host) return;
     var draft = ensureScoreEntryDraft();
-    document.getElementById('score-entry-order').innerHTML = draft.order.map(function(key, index) {
-        var meta = SCORE_ENTRY_BLOCK_META[key] || { icon: 'fa-grip', title: key, desc: '' };
-        return '<div class="entry-order-row">' +
-            '<span class="sev-order-num">' + (index + 1) + '</span>' +
-            '<span class="sev-order-ic"><i class="fas ' + meta.icon + '" aria-hidden="true"></i></span>' +
-            '<span class="sev-order-info"><strong>' + meta.title + '</strong><small>' + meta.desc + '</small></span>' +
-            '<span class="sev-order-btns">' + [-1, 1].map(function(delta) {
-                return '<button type="button" class="btn" data-move-key="' + key + '" data-delta="' + delta + '" aria-label="' + meta.title + (delta < 0 ? ': выше' : ': ниже') + '" onclick="moveScoreEntryBlock(' + index + ',' + delta + ')"' + (index + delta < 0 || index + delta >= draft.order.length ? ' disabled' : '') + '>' + (delta < 0 ? '↑' : '↓') + '</button>';
-            }).join('') + '</span>' +
-            '</div>';
-    }).join('');
-    var mode = document.getElementById('score-entry-mode').value;
+    var modeEl = document.getElementById('score-entry-mode');
+    var mode = modeEl ? modeEl.value : 'group';
     var nav = '';
     for (var h = 1; h <= 18; h++) {
-        nav += '<button type="button" class="hole-btn ' + (h === 7 ? 'active' : h < 7 ? 'verified' : '') + '" aria-label="Лунка ' + h + '" disabled>' + entryHoleContentHTML(h < 8 ? 5 : 0, mode === 'solo' ? null : h < 7 ? 5 : 0, h, 37) + '</button>';
+        nav += '<button type=\"button\" class=\"hole-btn ' + (h === 7 ? 'active' : h < 7 ? 'verified' : '') + '\" aria-label=\"Лунка ' + h + '\" disabled>' + entryHoleContentHTML(h < 8 ? 5 : 0, mode === 'solo' ? null : h < 7 ? 5 : 0, h, 37) + '</button>';
     }
     function input(name, hcp, score, isMark) {
-        var badge = isMark ? '<span class="dual-half__badge dual-half__badge--mark"><i class="fas fa-eye"></i> Маркер</span>' : '<span class="dual-half__badge dual-half__badge--my"><i class="fas fa-user"></i> Я</span>';
-        return '<div class="dual-half ' + (isMark ? 'dual-half--mark' : 'dual-half--my') + '"><div class="dual-half__head">' + badge + '<span class="dual-half__name">' + name + ' ' + fmtTeePill(hcp < 0 ? 'bl' : 'wh') + '</span></div><div class="dual-half__score"><div class="score-disp">' + scoreSquareHTML(score, 7, hcp) + (typeof hcpCaptionHTML === 'function' ? hcpCaptionHTML(hcp, 7) : '') + '</div></div><div class="dual-half__controls"><button type="button" class="dual-btn dual-btn--minus' + (isMark ? ' dual-btn--mark' : '') + '" disabled>−</button><button type="button" class="dual-btn dual-btn--plus' + (isMark ? ' dual-btn--mark' : '') + '" disabled>+</button></div></div>';
+        var badge = isMark ? '<span class=\"dual-half__badge dual-half__badge--mark\"><i class=\"fas fa-eye\"></i> Маркер</span>' : '<span class=\"dual-half__badge dual-half__badge--my\"><i class=\"fas fa-user\"></i> Я</span>';
+        return '<div class=\"dual-half ' + (isMark ? 'dual-half--mark' : 'dual-half--my') + '\"><div class=\"dual-half__head\">' + badge + '<span class=\"dual-half__name\">' + name + ' ' + fmtTeePill(hcp < 0 ? 'bl' : 'wh') + '</span></div><div class=\"dual-half__score\"><div class=\"score-disp\">' + scoreSquareHTML(score, 7, hcp) + (typeof hcpCaptionHTML === 'function' ? hcpCaptionHTML(hcp, 7) : '') + '</div></div><div class=\"dual-half__controls\"><button type=\"button\" class=\"dual-btn dual-btn--minus' + (isMark ? ' dual-btn--mark' : '') + '\" disabled>−</button><button type=\"button\" class=\"dual-btn dual-btn--plus' + (isMark ? ' dual-btn--mark' : '') + '\" disabled>+</button></div></div>';
     }
-    var info = '<div class="hole-display" data-entry-block="info">' +
-        '<div class="hole-box"><div class="hole-lbl">Лунка</div><div class="hole-val">7</div></div>' +
-        '<div class="hole-box h-par"><div class="hole-lbl">Пар</div><div class="hole-val">' + holePar(7) + '</div></div>' +
-        '<div class="hole-box h-dist"><div class="hole-lbl">Метры</div><div class="hole-val" style="font-size:24px;">385</div></div>' +
-        '<div class="hole-box"><div class="hole-lbl">Дедлайн</div><div class="hole-val" style="font-size:20px;color:var(--gold-l);">12:40</div></div>' +
+    var info = '<div class=\"hole-display\" data-entry-block=\"info\">' +
+        '<div class=\"hole-box h-hole\"><div class=\"hole-lbl\">Лунка</div><div class=\"hole-val\">7</div></div>' +
+        '<div class=\"hole-box h-par\"><div class=\"hole-lbl\">Пар</div><div class=\"hole-val\">' + holePar(7) + '</div></div>' +
+        '<div class=\"hole-box h-dist\"><div class=\"hole-lbl\">Метры</div><div class=\"hole-val\" style=\"font-size:24px;\">385</div></div>' +
+        '<div class=\"hole-box h-dl\"><div class=\"hole-lbl\">Дедлайн</div><div class=\"hole-val\" style=\"font-size:20px;color:var(--gold-l);\">12:40</div></div>' +
         '</div>';
-    host.innerHTML = '<div class="score-entry card" data-entry-preview="true">' + info + '<div class="hole-nav" data-entry-block="holes">' + nav + '</div><div data-entry-block="input"><div class="dual-score-split-panel' + (mode === 'solo' ? ' single' : '') + '">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5, false) + (mode !== 'solo' ? '<div class="dual-split-divider"><span></span></div>' : '') + (mode === 'group' ? input('Маркируемый игрок', -18, 4, true) : '') + '</div><button type="button" class="btn btn-g btn-block" disabled>Сохранить результат</button></div></div>';
-    arrangeScoreEntry(host.firstElementChild, draft.view, draft.order);
-    var style = SCORE_ENTRY_STYLES[normalizeView5(draft.view)] || SCORE_ENTRY_STYLES['1'];
+    host.innerHTML = '<div class=\"score-entry card\" data-entry-preview=\"true\">' + info + '<div class=\"hole-nav\" data-entry-block=\"holes\">' + nav + '</div><div data-entry-block=\"input\"><div class=\"dual-score-split-panel' + (mode === 'solo' ? ' single' : '') + '\">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5, false) + (mode !== 'solo' ? '<div class=\"dual-split-divider\"><span></span></div>' : '') + (mode === 'group' ? input('Маркируемый игрок', -18, 4, true) : '') + '</div><button type=\"button\" class=\"btn btn-g btn-block\" disabled>Сохранить результат</button></div></div>';
+    arrangeScoreEntry(host.firstElementChild, draft.view, draft.order, draft.show);
+    var view = normalizeView5(draft.view);
+    var style = SCORE_ENTRY_STYLES[view] || SCORE_ENTRY_STYLES['1'];
     var caption = document.createElement('p');
     caption.className = 'sev-preview-note';
-    caption.textContent = 'Стиль ' + normalizeView5(draft.view) + ' · ' + style.name + ' — ' + style.desc;
+    caption.textContent = 'Стиль ' + view + ' · ' + style.name + ' — ' + style.desc;
     host.appendChild(caption);
     markAdmView5Buttons('scoring');
 }
-function saveScoreEntryLayout() {
+// Запись варианта (и, при applyNow, его применение для всех) одной атомарной операцией.
+function scoreEntryBusy(flag) {
+    scoreEntrySaving = flag;
+    document.querySelectorAll('#score-entry-settings button, #score-entry-settings select, #score-entry-settings input').forEach(function(el) { el.disabled = flag; });
+}
+function scoreEntryVariantPayload(v) {
+    return { name: v.name, view: v.view, order: v.order, show: normalizeScoreEntryShow(v.show), pos: v.pos };
+}
+function saveScoreEntryVariant(applyNow) {
     if (scoreEntrySaving) return;
     var status = document.getElementById('score-entry-status');
-    if (typeof db === 'undefined' || !db) { status.textContent = 'Нет соединения с базой. Настройки не изменены.'; return; }
+    if (typeof db === 'undefined' || !db) { if (status) status.textContent = 'Нет соединения с базой. Настройки не изменены.'; return; }
     var draft = ensureScoreEntryDraft();
-    var view = normalizeView5(draft.view), order = normalizeScoreEntryOrder(draft.order);
-    scoreEntrySaving = true;
-    status.textContent = 'Сохраняем…';
-    document.querySelectorAll('#score-entry-settings button, #score-entry-settings select').forEach(function(el) { el.disabled = true; });
-    // Atomic write: style and hierarchy cannot get out of sync on partial failure.
-    db.ref('settings').update({ scoring_view: view, scoring_order: order }).then(function() {
-        applyView5('scoring', view);
-        applyScoreEntryOrder(order);
-        status.textContent = 'Вид и порядок блоков сохранены для всех пользователей.';
+    var id = draft.id || ('v' + Date.now().toString(36));
+    var existing = findScoreEntryVariant(id);
+    var pos = existing ? existing.pos : ((scoreEntryVariants || []).reduce(function(m, v) { return Math.max(m, v.pos); }, 0) + 1);
+    var variant = normalizeScoreEntryVariant(id, { name: draft.name, view: draft.view, order: draft.order, show: draft.show }, pos);
+    var updates = {};
+    updates['scoring_variants/' + id] = scoreEntryVariantPayload(variant);
+    if (applyNow) {
+        updates.scoring_view = variant.view;
+        updates.scoring_order = variant.order;
+        updates.scoring_show = normalizeScoreEntryShow(variant.show);
+        updates.scoring_active = id;
+    }
+    scoreEntryBusy(true);
+    if (status) status.textContent = 'Сохраняем…';
+    db.ref('settings').update(updates).then(function() {
+        scoreEntryDraft.id = id;
+        upsertLocalScoreEntryVariant(variant);
+        if (applyNow) {
+            scoreEntryActiveId = id;
+            applyView5('scoring', variant.view);
+            applyScoreEntryOrder(variant.order);
+            applyScoreEntryShow(variant.show);
+        }
+        if (status) status.textContent = applyNow
+            ? 'Вариант «' + variant.name + '» применён для всех пользователей.'
+            : 'Вариант «' + variant.name + '» сохранён. Он не активен, пока вы не нажмёте «Применить для всех».';
     }).catch(function(error) {
-        console.warn('Score entry layout save failed', error);
-        status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
+        console.warn('Score entry variant save failed', error);
+        if (status) status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
     }).finally(function() {
-        scoreEntrySaving = false;
-        document.querySelectorAll('#score-entry-settings button, #score-entry-settings select').forEach(function(el) { el.disabled = false; });
-        renderScoreEntryPreview();
+        scoreEntryBusy(false);
+        renderScoreEntryAdmin();
+    });
+}
+function saveScoreEntryLayout() { saveScoreEntryVariant(true); }
+function activateScoreEntryVariant(id) {
+    if (scoreEntrySaving) return;
+    var v = findScoreEntryVariant(id);
+    var status = document.getElementById('score-entry-status');
+    if (!v || typeof db === 'undefined' || !db) { if (status) status.textContent = 'Нет соединения с базой. Настройки не изменены.'; return; }
+    scoreEntryBusy(true);
+    if (status) status.textContent = 'Применяем…';
+    db.ref('settings').update({ scoring_view: v.view, scoring_order: v.order, scoring_show: normalizeScoreEntryShow(v.show), scoring_active: v.id }).then(function() {
+        scoreEntryActiveId = v.id;
+        applyView5('scoring', v.view);
+        applyScoreEntryOrder(v.order);
+        applyScoreEntryShow(v.show);
+        if (status) status.textContent = 'Вариант «' + v.name + '» применён для всех пользователей.';
+    }).catch(function(error) {
+        console.warn('Score entry activate failed', error);
+        if (status) status.textContent = 'Не удалось применить. Проверьте соединение и права администратора.';
+    }).finally(function() {
+        scoreEntryBusy(false);
+        renderScoreEntryAdmin();
+    });
+}
+function deleteScoreEntryVariant(id) {
+    if (scoreEntrySaving) return;
+    var v = findScoreEntryVariant(id);
+    var status = document.getElementById('score-entry-status');
+    if (!v) return;
+    if ((scoreEntryVariants || []).length < 2) { if (status) status.textContent = 'Нельзя удалить последний вариант.'; return; }
+    if (typeof db === 'undefined' || !db) { if (status) status.textContent = 'Нет соединения с базой. Настройки не изменены.'; return; }
+    var askText = 'Удалить вариант «' + escapeHtml(v.name) + '»? Его больше нельзя будет применить.';
+    var go = typeof uiConfirm === 'function'
+        ? uiConfirm({ title: 'Удалить вариант?', text: askText, confirmLabel: 'Удалить', danger: true })
+        : Promise.resolve(window.confirm('Удалить вариант «' + v.name + '»?'));
+    go.then(function(ok) {
+        if (!ok || scoreEntrySaving) return;
+        var updates = {};
+        updates['scoring_variants/' + id] = null;
+        var becomesActive = null;
+        if (id === scoreEntryActiveId) {
+            becomesActive = scoreEntrySortedVariants().filter(function(x) { return x.id !== id; })[0];
+            updates.scoring_view = becomesActive.view;
+            updates.scoring_order = becomesActive.order;
+            updates.scoring_show = normalizeScoreEntryShow(becomesActive.show);
+            updates.scoring_active = becomesActive.id;
+        }
+        scoreEntryBusy(true);
+        if (status) status.textContent = 'Удаляем…';
+        db.ref('settings').update(updates).then(function() {
+            removeLocalScoreEntryVariant(id);
+            if (becomesActive) scoreEntryActiveId = becomesActive.id;
+            if (scoreEntryDraft && scoreEntryDraft.id === id) scoreEntryDraft = null;
+            if (becomesActive) {
+                scoreEntryActiveId = becomesActive.id;
+                applyView5('scoring', becomesActive.view);
+                applyScoreEntryOrder(becomesActive.order);
+                applyScoreEntryShow(becomesActive.show);
+            }
+            if (status) status.textContent = 'Вариант «' + v.name + '» удалён.';
+        }).catch(function(error) {
+            console.warn('Score entry variant delete failed', error);
+            if (status) status.textContent = 'Не удалось удалить. Проверьте соединение и права администратора.';
+        }).finally(function() {
+            scoreEntryBusy(false);
+            renderScoreEntryAdmin();
+        });
     });
 }

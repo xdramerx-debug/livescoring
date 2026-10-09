@@ -18,7 +18,7 @@
       ".read": "auth != null",
       ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now)",
       "$uid": {
-        ".write": "auth.uid === $uid || auth.uid === 'tournament-master' || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        ".write": "auth.uid === $uid || auth.uid === 'tournament-master' || (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth != null && $uid.beginsWith('guest_') && newData.child('isGuest').val() === true && (!data.exists() || data.child('isGuest').val() === true))",
         ".validate": "newData.hasChildren(['name'])",
         "email": {
           ".validate": false

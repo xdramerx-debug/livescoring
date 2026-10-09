@@ -11,6 +11,23 @@
         "notifications": {
           ".read": "auth.uid === $uid",
           ".write": "auth.uid === $uid && auth.uid != 'tournament-master'"
+        },
+        "history": {
+          "$hid": {
+            ".write": "auth != null && auth.uid != 'tournament-master' && newData.exists() && newData.child('roundId').isString() && root.child('rounds').child(newData.child('roundId').val()).child('players').child($uid).exists() && (root.child('rounds').child(newData.child('roundId').val()).child('players').child(auth.uid).exists() || root.child('rounds').child(newData.child('roundId').val()).child('createdBy').val() === auth.uid)"
+          }
+        },
+        "roundsPlayed": {
+          ".write": "auth != null && auth.uid != 'tournament-master' && $uid.beginsWith('guest_')",
+          ".validate": "newData.isNumber()"
+        },
+        "bestGross": {
+          ".write": "auth != null && auth.uid != 'tournament-master' && $uid.beginsWith('guest_')",
+          ".validate": "newData.isNumber()"
+        },
+        "bestStableford": {
+          ".write": "auth != null && auth.uid != 'tournament-master' && $uid.beginsWith('guest_')",
+          ".validate": "newData.isNumber()"
         }
       }
     },

@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=46adb249">
+    <link rel="stylesheet" href="css/style.css?v=bfaf5c43">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=5f6ffacc">
     <link rel="stylesheet" href="css/tn-view.css?v=6a335dc1">
@@ -170,13 +170,26 @@
                 <header class="sev-head">
                     <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-pen-to-square"></i></span>
                     <div class="sev-head-text">
-                        <h2>Ввод счёта — 5 стилей</h2>
-                        <p>Единый экран счёта клуба: одиночный и групповой раунд, страницы игрока и маркера. Счёт — в квадрате, фора — наклонными чёрточками справа сверху. Выберите стиль и порядок блоков — настройка применится у всех игроков.</p>
+                        <h2>Ввод счёта — варианты экрана</h2>
+                        <p>Создавайте, меняйте и удаляйте варианты экрана ввода счёта. В каждом варианте задаются стиль, порядок блоков и то, что показывать: номер лунки, пар, дистанцию, дедлайн, фору и блок выбора лунки. «Применить для всех» делает вариант активным у всех игроков.</p>
                     </div>
-                    <span class="sev-head-badge"><i class="fas fa-layer-group" aria-hidden="true"></i> 5 видов · порядок блоков</span>
+                    <span class="sev-head-badge"><i class="fas fa-layer-group" aria-hidden="true"></i> варианты · показ · порядок</span>
                 </header>
+                <div class="sev-sec-title">Сохранённые варианты</div>
+                <p class="sev-sec-sub">Активный вариант виден всем игрокам. Редактирование не меняет экран игроков, пока вариант не применён.</p>
+                <div id="score-entry-list" class="se-list" aria-live="polite"></div>
+                <div class="sev-apply">
+                    <button type="button" class="btn btn-og" id="score-entry-add" onclick="addScoreEntryVariant()"><i class="fas fa-plus" aria-hidden="true"></i> Добавить вариант</button>
+                </div>
+                <h3 class="se-editor-title" id="score-entry-editor-title">Редактор варианта</h3>
+                <div class="se-editor-grid">
+                    <label class="se-field">Название варианта
+                        <input type="text" id="score-entry-name" class="form-input" maxlength="40" autocomplete="off" oninput="setScoreEntryName(this.value)">
+                    </label>
+                    <p class="sev-sec-sub" id="score-entry-editor-note" style="margin:0;"></p>
+                </div>
                 <div class="sev-sec-title">Вариант оформления</div>
-                <p class="sev-sec-sub">Один из пяти видов экрана ввода. Выбранная карточка подсвечивается, предпросмотр ниже обновляется сразу.</p>
+                <p class="sev-sec-sub">Один из пяти стилей экрана. Выбранная карточка подсвечивается, предпросмотр ниже обновляется сразу.</p>
                 <div class="sev-variants" role="group" aria-label="Варианты экрана ввода результатов">
                     <button type="button" id="v5-scoring-1" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('1')">
                         <span class="sev-card-top"><span class="sev-card-num">1</span><span class="sev-card-name">Классика клуба</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
@@ -204,20 +217,24 @@
                         <span class="sev-card-desc">Тонкие линии, прозрачные панели, ноль декора — только счёт.</span>
                     </button>
                 </div>
+                <div class="sev-sec-title">Что показывать</div>
+                <p class="sev-sec-sub">Снимите отметку, чтобы скрыть элемент на экране ввода. Фора — это подписи «Фора +1» и метки ударов.</p>
+                <div id="score-entry-show" class="se-show-grid"></div>
                 <div class="sev-sec-title">Иерархия блоков</div>
                 <p class="sev-sec-sub">Порядок сверху вниз. Перемещайте блоки стрелками — предпросмотр обновится сразу. Кнопка сохранения остаётся вместе с вводом счёта.</p>
                 <div id="score-entry-order" class="sev-order"></div>
                 <div class="sev-apply">
-                    <button type="button" class="btn btn-g" id="score-entry-apply" onclick="saveScoreEntryLayout()"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить вид и порядок для всех</button>
+                    <button type="button" class="btn btn-ol" id="score-entry-save" onclick="saveScoreEntryVariant(false)"><i class="fas fa-floppy-disk" aria-hidden="true"></i> Сохранить вариант</button>
+                    <button type="button" class="btn btn-g" id="score-entry-apply" onclick="saveScoreEntryVariant(true)"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Сохранить и применить для всех</button>
                     <div class="sev-apply-text">
-                        <p class="sev-apply-hint">Вид и порядок записываются в общие настройки одной операцией.</p>
+                        <p class="sev-apply-hint">Вариант и его настройки записываются в общие настройки одной операцией.</p>
                         <p id="score-entry-status" role="status" aria-live="polite"></p>
                     </div>
                 </div>
                 <div class="sev-preview-bar">
                     <div>
                         <div class="sev-sec-title">Предпросмотр для телефона</div>
-                        <p class="sev-sec-sub" style="margin-bottom:0;">Демонстрационные данные · ширина до 390 px. Выбор варианта и перестановка блоков ничего не записывают до применения.</p>
+                        <p class="sev-sec-sub" style="margin-bottom:0;">Демонстрационные данные · ширина до 390 px. Изменения здесь видны сразу, но для игроков сохраняются только после кнопки сохранения.</p>
                     </div>
                     <label class="sev-mode">Режим
                         <select id="score-entry-mode" class="form-input" onchange="renderScoreEntryPreview()"><option value="group">Игрок и маркируемый</option><option value="solo">Одиночный раунд</option><option value="marker">Маркер</option></select>
@@ -1057,7 +1074,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.103.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.104.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -1068,7 +1085,7 @@
 <script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script src="js/qr-code.js?v=2a26e819"></script>
 <script src="js/rusgolf-client.js?v=f37608e7"></script>
-<script src="js/utils.js?v=87a3191d"></script>
+<script src="js/utils.js?v=bb346532"></script>
 <script src="js/tn-mgr-core.js?v=a51b1ea2"></script>
 <script src="js/tn-mgr-data.js?v=362b3368"></script>
 <script src="js/tn-mgr-io.js?v=a9001ebb"></script>
@@ -1079,7 +1096,7 @@
 <script src="js/tn-mgr.js?v=59cc04f5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/name-variants.js?v=2b58f796"></script>
-<script src="js/admin.js?v=1086ab6c"></script>
+<script src="js/admin.js?v=453f4379"></script>
 <script src="js/admin-groups.js?v=9a773234"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
 <script src="js/admin-players.js?v=ab46e3b7"></script>
@@ -1092,7 +1109,7 @@
 <script src="js/admin-players-excel.js?v=97584414"></script>
 <script src="js/admin-agr.js?v=2699372b"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
-<script src="js/admin-display.js?v=40003a11"></script>
+<script src="js/admin-display.js?v=b737e1e9"></script>
 <script src="js/design-admin.js?v=70a7c0c4"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
 <script src="js/pwa.js?v=56b54da4"></script>

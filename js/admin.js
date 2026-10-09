@@ -389,10 +389,11 @@ function switchTab(t, b) {
     // чтобы вкладка не падала, если модуль не подключён (как остальные
     // необязательные блоки в этом же switchTab).
     if (t === 'scoreentry') {
-        if (typeof renderScoreEntryPreview === 'function') renderScoreEntryPreview();
+        if (typeof bindScoreEntryAdmin === 'function') bindScoreEntryAdmin();
+        if (typeof renderScoreEntryAdmin === 'function') renderScoreEntryAdmin();
         if (typeof pestovoBindView5 === 'function') {
             pestovoBindView5('scoring', function() {
-                if (typeof renderScoreEntryPreview === 'function') renderScoreEntryPreview();
+                if (typeof renderScoreEntryAdmin === 'function') renderScoreEntryAdmin();
             });
         }
     }

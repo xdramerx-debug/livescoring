@@ -721,6 +721,8 @@ function startGroup() {
             if (inp.uid) return Promise.resolve(inp.uid);
             if (resolver) {
                 try {
+                    // deferWrite: гость попадёт в справочник (и автоподбор) только
+                    // после завершения раунда — см. saveHistory (js/utils.js).
                     return resolver({
                         uid: null,
                         name: inp.name,
@@ -729,7 +731,8 @@ function startGroup() {
                         middleName: inp.middleName,
                         exactHcp: inp.parsedHcp,
                         gender: inp.gender,
-                        tee: inp.tee
+                        tee: inp.tee,
+                        deferWrite: true
                     }).catch(function() { return null; });
                 } catch (e) {
                     return Promise.resolve(null);

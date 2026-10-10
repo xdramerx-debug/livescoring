@@ -710,6 +710,39 @@
     // ----------------------------------------------------------
     // 7. СТАРТОВЫЙ ЛИСТ
     // ----------------------------------------------------------
+    /** Минимум игроков в стартовой группе (флайте), если лист это позволяет. */
+    var MIN_START_GROUP = 3;
+
+    /**
+     * Сбалансированная разбивка n игроков на стартовые группы: групп
+     * ceil(n / groupSize), но так, чтобы в каждой было не меньше minSize.
+     * Размеры отличаются не больше чем на 1: 9 → 3+3+3, 10 → 4+3+3,
+     * 6 → 3+3, 7 → 4+3. Если n нельзя разложить в пределах
+     * [minSize, groupSize] (1, 2, 5 при группах по 4), минимум важнее:
+     * 5 → одна группа из 5.
+     */
+    function startGroupSizes(n, groupSize, minSize) {
+        var total = Math.max(0, intOf(n, 0) || 0);
+        if (!total) return [];
+        var size = Math.max(1, intOf(groupSize, 4) || 4);
+        var min = Math.max(1, Math.min(size, intOf(minSize, MIN_START_GROUP) || MIN_START_GROUP));
+        var k = Math.ceil(total / size);
+        while (k > 1 && Math.floor(total / k) < min) k--;
+        var base = Math.floor(total / k);
+        var extra = total % k;
+        var out = [];
+        for (var i = 0; i < k; i++) out.push(base + (i < extra ? 1 : 0));
+        return out;
+    }
+
+    /** Раскладывается ли n игроков в группы размером [minSize, groupSize]. */
+    function startGroupSizesOk(n, groupSize, minSize) {
+        var sizes = startGroupSizes(n, groupSize, minSize);
+        var size = Math.max(1, intOf(groupSize, 4) || 4);
+        var min = Math.max(1, Math.min(size, intOf(minSize, MIN_START_GROUP) || MIN_START_GROUP));
+        return sizes.every(function (value) { return value >= min && value <= size; });
+    }
+
     /**
      * Генерация стартового листа для последовательного и шотган-старта.
      * В режиме shotgun группы равномерно назначаются на 18 лунок; повторная
@@ -747,16 +780,18 @@
             });
         }
 
+        // Сегменты — игроки одной зачётной группы (или «остальные»). Каждый
+        // сегмент режется на стартовые группы сбалансированно: не меньше
+        // MIN_START_GROUP (3) игроков, если только сам лист не меньше. Раньше
+        // хвост резался «как получится» (9 игроков → 4+4+1, 10 → 4+4+2), и во
+        // флайте оказывалось 1–2 человека.
+        var minSize = Math.min(MIN_START_GROUP, groupSize);
+        var segments = [];
         definitions.forEach(function (definition) {
             var members = takeGroupMembers(definition);
             if (!members.length) return;
-            members.forEach(function (player) { used[player.id] = true; });
-            for (var offset = 0; offset < members.length; offset += groupSize) {
-                groups.push({
-                    id: definition.id || '', name: definition.name || '', definition: definition,
-                    players: members.slice(offset, offset + groupSize)
-                });
-            }
+            members.forEach(function (player) { used[player.id] = true; player._def = definition; });
+            segments.push({ definition: definition, players: members });
         });
 
         // Остальные игроки: по гандикапу, с сохранением размера стартовой группы.
@@ -767,9 +802,47 @@
             var gb = genderOrder[normalizeGender(b.gender)] == null ? 2 : genderOrder[normalizeGender(b.gender)];
             return ga - gb || comparableHcp(a) - comparableHcp(b) || playerFio(a).localeCompare(playerFio(b), 'ru');
         });
-        for (var i = 0; i < rest.length; i += groupSize) {
-            groups.push({ id: '', name: '', definition: null, players: rest.slice(i, i + groupSize) });
+        if (rest.length) {
+            rest.forEach(function (player) { player._def = null; });
+            segments.push({ definition: null, players: rest });
         }
+
+        // Маленькую зачётную группу (1–2 игрока, или 5 при группах по 4)
+        // нельзя разбить без «двоек» — сливаем её с соседней: игроки
+        // сохраняют свою зачётную группу (groupId в строке листа), но
+        // стартуют вместе с соседями.
+        var merged = true;
+        while (merged && segments.length > 1) {
+            merged = false;
+            for (var si = 0; si < segments.length; si++) {
+                if (startGroupSizesOk(segments[si].players.length, groupSize, minSize)) continue;
+                var target = si + 1 < segments.length ? si + 1 : si - 1;
+                var first = Math.min(si, target);
+                var second = Math.max(si, target);
+                var big = segments[first].players.length >= segments[second].players.length ? segments[first] : segments[second];
+                segments.splice(first, 2, {
+                    definition: big.definition,
+                    players: segments[first].players.concat(segments[second].players)
+                });
+                merged = true;
+                break;
+            }
+        }
+
+        segments.forEach(function (segment) {
+            var offset = 0;
+            startGroupSizes(segment.players.length, groupSize, minSize).forEach(function (size) {
+                var chunk = segment.players.slice(offset, offset + size);
+                offset += size;
+                var definition = segment.definition;
+                groups.push({
+                    id: definition ? (definition.id || '') : '',
+                    name: definition ? (definition.name || '') : '',
+                    definition: definition,
+                    players: chunk
+                });
+            });
+        });
 
         var assignedHoles = groups.map(function (_, index) {
             return startMode === 'shotgun' ? ((startHole - 1 + (index % 18)) % 18) + 1 : startHole;
@@ -799,6 +872,10 @@
             var startGroupId = 'tee_' + (groupIndex + 1);
             group.players.forEach(function (player, position) {
                 var markerId = markers[player.id] || '';
+                // Зачётная группа — своя у игрока (после слияния маленьких
+                // групп в одной стартовой группе бывают игроки разных зачётов).
+                var ownDef = player._def !== undefined ? player._def : group.definition;
+                var ownFormat = trim(ownDef && ownDef.format) || groupFormat;
                 entries.push({
                     playerId: player.id,
                     playerName: playerFio(player),
@@ -808,13 +885,13 @@
                     gender: normalizeGender(player.gender) || inferGenderFromName(player.firstName || playerFio(player)) || '',
                     hi: player.hi != null ? player.hi : (player.handicap != null ? player.handicap : ''),
                     ch: player.ch != null ? player.ch : '',
-                    groupId: group.id || '',
-                    groupName: group.name || '',
+                    groupId: ownDef ? (ownDef.id || '') : '',
+                    groupName: ownDef ? (ownDef.name || '') : '',
                     startGroupId: startGroupId,
                     markerPlayerId: markerId,
                     tee: trim(player.tee) || groupTee,
                     // Если у группы выбран формат, он закреплён за всеми её игроками.
-                    format: groupFormat || trim(player.format) || defaultFormat,
+                    format: ownFormat || trim(player.format) || defaultFormat,
                     flight: flightKey,
                     startHole: hole,
                     startWave: wave,
@@ -2464,6 +2541,7 @@
         groupRangeText: groupRangeText, groupMatchesPlayer: groupMatchesPlayer,
         // sheet
         buildSheet: buildSheet, assignMarkers: assignMarkers, validateSheet: validateSheet,
+        startGroupSizes: startGroupSizes, startGroupSizesOk: startGroupSizesOk, MIN_START_GROUP: MIN_START_GROUP,
         applyEntryPatch: applyEntryPatch, recalcSheet: recalcSheet, flightLetter: flightLetter,
         // results
         buildResults: buildResults, assignPlaces: assignPlaces, placeLabel: placeLabel,

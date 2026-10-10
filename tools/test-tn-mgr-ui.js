@@ -554,6 +554,8 @@ function run() {
             check('QR-маркер назначен вести счёт отображаемому игроку', markerAssignment.targetId === markerEntry.playerId,
                 markerAssignment.targetId + ' → ' + markerEntry.playerId);
             check('QR турнира сохранён в листе', !!((sheet.qr || {}).payload));
+            // По умолчанию лист показан флайтами — таблица строк в режиме «Списком».
+            if ($('[data-tnm-act="sheet-view-flat"]')) click($('[data-tnm-act="sheet-view-flat"]'));
             var out = rootHtml();
             check('таблица листа отрисована', out.indexOf('tnm-sheet-table') !== -1);
             check('QR-коды показаны картинками', $$('img[data-qr]').length >= 1, $$('img[data-qr]').length);
@@ -621,6 +623,48 @@ function run() {
                 check('правка ТИ сохранена в листе',
                     get('tournaments/' + win.__tid + '/sheets/' + win.__rid + '/entries/' + win.__pid + '/tee') === 'bl');
             });
+        })
+        .then(function () {
+            console.log('\n--- 6б. Публикация стартового листа на сайте ---');
+            var bar = $('[data-tnm-publish]');
+            check('панель публикации есть над листом', !!bar && bar.getAttribute('data-tnm-publish') === 'off',
+                bar && bar.getAttribute('data-tnm-publish'));
+            check('кнопка «Опубликовать на сайте» есть', !!$('[data-tnm-act="sheet-publish"]'));
+            click($('[data-tnm-act="sheet-publish"]'));
+            return wait(200);
+        })
+        .then(function () {
+            var pid = 'tnm_' + win.__tid + '_' + win.__rid;
+            var proto = get('protocols/' + pid) || {};
+            check('протокол опубликован в protocols/<pid>', proto.source === 'tn-manager' && proto.tournamentId === win.__tid,
+                JSON.stringify({ source: proto.source, tid: proto.tournamentId }));
+            var groups = Object.keys(proto.groups || {});
+            var players = groups.reduce(function (n, key) { return n + ((proto.groups[key].players || []).length); }, 0);
+            check('в протоколе все игроки листа', players === 5, players);
+            check('у игроков протокола точный и полевой HCP', groups.every(function (key) {
+                // У гостя без гандикапа обоих полей нет; у остальных — оба.
+                return (proto.groups[key].players || []).every(function (p) { return ('exactHcp' in p) === ('fieldHcp' in p); }) &&
+                    (proto.groups[key].players || []).some(function (p) { return typeof p.exactHcp === 'number' && typeof p.fieldHcp === 'number'; });
+            }));
+            check('отметка публикации в турнире', (get('tournaments/' + win.__tid + '/sheetPublish/' + win.__rid) || {}).protocolId === pid);
+            var bar = $('[data-tnm-publish]');
+            check('панель показывает «Опубликован»', !!bar && bar.getAttribute('data-tnm-publish') === 'on',
+                bar && bar.getAttribute('data-tnm-publish'));
+            check('ссылка на страницу «Турниры» с вкладкой старта',
+                rootHtml().indexOf('tournaments.html?id=' + win.__tid + '&amp;tab=start') !== -1 ||
+                rootHtml().indexOf('tournaments.html?id=' + win.__tid + '&tab=start') !== -1);
+            click($('[data-tnm-act="sheet-unpublish"]'));
+            return wait(200);
+        })
+        .then(function () {
+            var pid = 'tnm_' + win.__tid + '_' + win.__rid;
+            check('«Снять с публикации» удаляет протокол', get('protocols/' + pid) == null);
+            var bar = $('[data-tnm-publish]');
+            check('панель снова «Не опубликован»', !!bar && bar.getAttribute('data-tnm-publish') === 'off',
+                bar && bar.getAttribute('data-tnm-publish'));
+            // Публикуем снова — дальше правки листа должны обновлять протокол.
+            click($('[data-tnm-act="sheet-publish"]'));
+            return wait(200);
         })
         .then(function () {
             console.log('\n--- 7. Экран раунда: счёт ---');
@@ -1175,7 +1219,9 @@ function run() {
                 !!saved.layout && Number(saved.layout.xMm) === Number(PC.state.draft.layout.xMm),
                 JSON.stringify(saved.layout));
             check('ручка перетаскивания не попадает в печатный документ',
-                PC.documentFor([(PC.state.draft.cards || [])[0]]).indexOf('tnpc-move') === -1);
+                // Имя класса есть в CSS печати (правило «скрыть»), а самой ручки быть не должно.
+                PC.documentFor([(PC.state.draft.cards || [])[0]]).indexOf('class="tnpc-move"') === -1 &&
+                PC.documentFor([(PC.state.draft.cards || [])[0]]).indexOf('data-tnpc-box-drag') === -1);
             return wait(40);
         })
         .then(function () {

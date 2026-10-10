@@ -268,15 +268,46 @@
         return Array.isArray(groups) ? groups : Object.keys(groups).map(function (key) { var g = groups[key] || {}; g._key = key; return g; });
     }
     function groupPlayers(group) { return listValue(group.players || group.members || []); }
-    function startListHtml(t) {
-        var proto = latestProtocol(t), groups = protocolGroups(proto);
-        if (!groups.length) return '<div class="tn-public-empty"><i class="fas fa-clock"></i><div>' + ru('Стартовый лист ещё не опубликован.', 'Tee sheet has not been published yet.') + '</div><small>' + ru('Организатор может добавить его в админ-панели.', 'The organiser can publish it from the admin panel.') + '</small></div>';
+    /**
+     * Опубликованные стартовые листы турнира. Менеджер турниров админки
+     * публикует по протоколу на раунд (source: 'tn-manager') — показываем
+     * все, по дате раунда. Старые протоколы мастера — только последний.
+     */
+    function publishedProtocols(t) {
+        var own = [];
+        Object.keys(state.protocols || {}).forEach(function (key) {
+            var p = state.protocols[key] || {};
+            if (String(p.tournamentId || '') !== String(t._key) || p.source !== 'tn-manager') return;
+            own.push(cloneWithKey(p, key));
+        });
+        if (!own.length) {
+            var latest = latestProtocol(t);
+            return latest ? [latest] : [];
+        }
+        return own.sort(function (a, b) {
+            return String(a.date || '').localeCompare(String(b.date || '')) || (a.createdAt || 0) - (b.createdAt || 0);
+        });
+    }
+    function groupSortValue(g) { return parseInt(g.groupNo || g.startOrder || String(g._key || '').replace(/\D+/g, ''), 10) || 0; }
+    function protocolListHtml(proto, withTitle) {
+        var groups = protocolGroups(proto);
+        if (!groups.length) return '';
         var protoUrl = pageUrl('qr-start.html', 'p=' + encodeURIComponent(proto._key));
-        return '<div class="tn-protocol-actions"><span class="tn-public-chip"><i class="fas fa-qrcode"></i> ' + ru('QR ведёт на счётную карточку', 'QR opens the scorecard') + '</span><a class="btn btn-og btn-sm" target="_blank" rel="noopener" href="' + esc(protoUrl) + '"><i class="fas fa-print"></i> ' + ru('Открыть лист для печати', 'Open printable sheet') + '</a></div><div class="tn-start-list">' + groups.sort(function (a, b) { return (a.startTime || 0) - (b.startTime || 0); }).map(function (g, i) {
-            var players = groupPlayers(g), names = players.map(function (p) { return esc(safeName(p, p.id || p.uid)); }).join('<br>');
-            var time = g.startTime ? formatTime(g.startTime) : '—', hole = g.startHole || g.hole || '1';
-            return '<div class="tn-start-row"><strong class="tn-start-time">' + esc(time) + '</strong><span class="tn-start-hole"><i class="fas fa-location-dot"></i> ' + ru('л.', 'hole ') + esc(hole) + '</span><span class="tn-start-names"><b>' + ru('Группа ', 'Group ') + (i + 1) + '</b><br>' + names + '</span><img class="tn-start-qr" loading="lazy" src="' + esc(qrUrl(protoUrl + '&g=' + encodeURIComponent(g._key || i))) + '" alt="QR"></div>';
+        var title = withTitle ? '<h3 class="tn-start-round-title"><i class="fas fa-flag"></i> ' + esc(proto.name || ru('Раунд', 'Round')) + (proto.date ? ' · ' + esc(formatDate(proto.date)) : '') + '</h3>' : '';
+        return title + '<div class="tn-protocol-actions"><span class="tn-public-chip"><i class="fas fa-qrcode"></i> ' + ru('QR ведёт на счётную карточку', 'QR opens the scorecard') + '</span><a class="btn btn-og btn-sm" target="_blank" rel="noopener" href="' + esc(protoUrl) + '"><i class="fas fa-print"></i> ' + ru('Открыть лист для печати', 'Open printable sheet') + '</a></div><div class="tn-start-list">' + groups.sort(function (a, b) { return (a.startTime || 0) - (b.startTime || 0) || (parseInt(a.startHole, 10) || 1) - (parseInt(b.startHole, 10) || 1) || groupSortValue(a) - groupSortValue(b); }).map(function (g, i) {
+            var players = groupPlayers(g), names = players.map(function (p) {
+                var hcp = p.exactHcp != null && p.exactHcp !== '' ? ' <small class="tn-start-hcp">HCP ' + esc(p.exactHcp) + (p.fieldHcp != null && p.fieldHcp !== '' ? ' · ' + ru('полевой ', 'course ') + esc(p.fieldHcp) : '') + '</small>' : '';
+                return esc(safeName(p, p.id || p.uid)) + hcp;
+            }).join('<br>');
+            var time = g.startTimeText || (g.startTime ? formatTime(g.startTime) : '—'), hole = g.startHole || g.hole || '1';
+            var label = g.flight ? ru('Флайт ', 'Flight ') + g.flight : ru('Группа ', 'Group ') + (i + 1);
+            return '<div class="tn-start-row"><strong class="tn-start-time">' + esc(time) + '</strong><span class="tn-start-hole"><i class="fas fa-location-dot"></i> ' + ru('л.', 'hole ') + esc(hole) + '</span><span class="tn-start-names"><b>' + esc(label) + '</b><br>' + names + '</span><img class="tn-start-qr" loading="lazy" src="' + esc(qrUrl(protoUrl + '&g=' + encodeURIComponent(g._key || i))) + '" alt="QR"></div>';
         }).join('') + '</div>';
+    }
+    function startListHtml(t) {
+        var list = publishedProtocols(t).filter(function (proto) { return protocolGroups(proto).length; });
+        if (!list.length) return '<div class="tn-public-empty"><i class="fas fa-clock"></i><div>' + ru('Стартовый лист ещё не опубликован.', 'Tee sheet has not been published yet.') + '</div><small>' + ru('Организатор может добавить его в админ-панели.', 'The organiser can publish it from the admin panel.') + '</small></div>';
+        return list.map(function (proto) { return protocolListHtml(proto, list.length > 1); }).join('');
     }
     function participantsHtml(t) {
         var people = roster(t), waits = listValue(t.waitlist), max = limit(t);
@@ -596,7 +627,12 @@
         document.addEventListener('submit', function (event) { var form = event.target.closest ? event.target.closest('#tn-public-application-form') : null; if (form) { event.preventDefault(); submitApplication(form); } });
         var back = el('tn-detail-back'); if (back) back.addEventListener('click', closeDetail);
         window.addEventListener('popstate', function () { state.detailId = new URLSearchParams(window.location.search).get('id'); state.detailTab = 'overview'; render(); });
-        state.detailId = new URLSearchParams(window.location.search).get('id');
+        var params = new URLSearchParams(window.location.search);
+        state.detailId = params.get('id');
+        // ?id=<tid>&tab=start — прямая ссылка на вкладку (кнопка «Открыть на
+        // сайте» у опубликованного стартового листа в админ-панели).
+        var tabParam = params.get('tab');
+        if (state.detailId && ['overview', 'start', 'participants', 'leaderboard', 'protocol', 'studio'].indexOf(tabParam) !== -1) state.detailTab = tabParam;
         loadTournamentsV2();
         render();
     }

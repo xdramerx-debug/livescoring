@@ -483,11 +483,18 @@ var TnMgrData = (function (root) {
 
     /** Удаление турнира вместе с его раундами групп верхнего уровня. */
     function deleteTournament(tid) {
-        return read('rounds').then(function (all) {
+        return Promise.all([read('rounds'), read('protocols')]).then(function (res) {
+            var all = res[0];
+            var protocols = asMap(res[1]);
             var updates = {};
             updates['tournaments/' + tid] = null;
             Object.keys(asMap(all)).forEach(function (rid) {
                 if (String(asMap(all)[rid].tournamentId || '') === String(tid)) updates['rounds/' + rid] = null;
+            });
+            // Опубликованные стартовые листы турнира уходят с сайта вместе с ним.
+            Object.keys(protocols).forEach(function (pid) {
+                var doc = asMap(protocols[pid]);
+                if (doc.source === 'tn-manager' && String(doc.tournamentId || '') === String(tid)) updates['protocols/' + pid] = null;
             });
             return multi(updates);
         }).catch(function () {
@@ -538,6 +545,8 @@ var TnMgrData = (function (root) {
             updates['tournaments/' + tid + '/scores/' + rid] = null;
             updates['tournaments/' + tid + '/results/' + rid] = null;
             updates['tournaments/' + tid + '/sheets/' + rid] = null;
+            updates['tournaments/' + tid + '/sheetPublish/' + rid] = null;
+            updates['protocols/' + sheetProtocolId(tid, rid)] = null;
             Object.keys(asMap(round && round.groupRounds)).forEach(function (key) {
                 updates['rounds/' + asMap(round.groupRounds)[key]] = null;
             });
@@ -1565,7 +1574,169 @@ var TnMgrData = (function (root) {
         });
         updates['tournaments/' + tid + '/rounds/' + rid + '/groupRounds'] = null;
         updates['tournaments/' + tid + '/rounds/' + rid + '/groupRoundId'] = null;
+        // Удалённый лист не должен оставаться опубликованным на сайте.
+        updates['tournaments/' + tid + '/sheetPublish/' + rid] = null;
+        updates['protocols/' + sheetProtocolId(tid, rid)] = null;
         return multi(updates);
+    }
+
+    // ----------------------------------------------------------
+    // ПУБЛИКАЦИЯ СТАРТОВОГО ЛИСТА НА САЙТЕ (tournaments.html)
+    // ----------------------------------------------------------
+    // Публичная вкладка «Стартовый лист + QR» и печатная страница
+    // qr-start.html читают протоколы старта из protocols/<pid> (их формат
+    // общий для всего сайта). Стартовый лист админки живёт в
+    // tournaments/<tid>/sheets/<rid>, поэтому сам по себе на сайте не
+    // виден — кнопка «Опубликовать на сайте» собирает из него протокол.
+    // Ключ протокола детерминированный: повторная публикация обновляет
+    // ту же запись, а «Снять с публикации» удаляет её.
+
+    function sheetProtocolId(tid, rid) {
+        return 'tnm_' + String(tid || '').replace(/[.#$[\]/]/g, '_') + '_' + String(rid || '').replace(/[.#$[\]/]/g, '_');
+    }
+
+    /** Протокол старта (формат protocols/<pid>) из стартового листа раунда. */
+    function buildSheetProtocol(tid, rid, sheet, tournament) {
+        var t = asMap(tournament);
+        var round = asMap(asMap(t.rounds)[rid]);
+        var tPlayers = asMap(t.players);
+        var entries = sheetOrder(sheet);
+        var options = asMap(sheet && sheet.options);
+        var date = core().dateIso(round.date || t.startDate || t.date || '') || '';
+        var buckets = [];
+        var byKey = {};
+        entries.forEach(function (entry) {
+            var key = entry.startGroupId || [entry.flight || '', entry.startHole || 1, entry.startTime || ''].join('|');
+            if (!byKey[key]) {
+                byKey[key] = { key: key, entries: [] };
+                buckets.push(byKey[key]);
+            }
+            byKey[key].entries.push(entry);
+        });
+        var shotgun = options.startMode === 'shotgun';
+        var holeWaves = {};
+        var groups = {};
+        buckets.forEach(function (bucket, index) {
+            var list = bucket.entries.slice().sort(function (a, b) {
+                return (a.position || 0) - (b.position || 0) || (a.order || 0) - (b.order || 0);
+            });
+            var first = list[0] || {};
+            var inGroup = {};
+            list.forEach(function (entry) { inGroup[entry.playerId] = true; });
+            var players = list.map(function (entry) {
+                var player = asMap(tPlayers[entry.playerId]);
+                var hi = entry.hi !== '' && entry.hi != null ? entry.hi : (player.hi != null ? player.hi : null);
+                var ch = entry.ch !== '' && entry.ch != null ? entry.ch : (player.ch != null && player.ch !== '' ? player.ch : null);
+                var tee = entry.tee || player.tee || 'wh';
+                var gender = core().normalizeGender(entry.gender || player.gender) || 'men';
+                if (ch == null && hi != null) ch = directoryFieldHcp(hi, tee, gender);
+                return clean({
+                    id: entry.playerId,
+                    name: entry.playerName || core().playerFio(player) || '',
+                    firstName: entry.firstName || player.firstName || '',
+                    middleName: entry.middleName || player.middleName || '',
+                    lastName: entry.lastName || player.lastName || '',
+                    tee: tee,
+                    gender: gender,
+                    exactHcp: hi != null && hi !== '' && isFinite(Number(hi)) ? Number(hi) : null,
+                    fieldHcp: ch != null && ch !== '' && isFinite(Number(ch)) ? Number(ch) : null,
+                    groupId: entry.groupId || '',
+                    groupName: entry.groupName || ''
+                });
+            });
+            var markers = [];
+            list.forEach(function (entry) {
+                var markerId = entry.markerPlayerId || '';
+                if (!markerId || markerId === entry.playerId || !inGroup[markerId]) return;
+                markers.push({ markerId: markerId, targetId: entry.playerId });
+            });
+            var hole = core().intOf(first.startHole, 1) || 1;
+            var wave = first.startWave != null && first.startWave !== '' ? core().intOf(first.startWave, 0) : (holeWaves[hole] || 0);
+            holeWaves[hole] = (holeWaves[hole] || 0) + 1;
+            var formats = core().uniq(list.map(function (entry) { return entry.format; }).filter(Boolean));
+            groups['g' + (index + 1)] = clean({
+                groupNo: index + 1,
+                roundId: first.groupRoundId || '',
+                startHole: hole,
+                startWave: wave,
+                startTime: core().timestampFromDateTime(date, first.startTime || options.firstTeeTime || '09:00') || null,
+                startTimeText: first.startTime || '',
+                startOrder: index + 1,
+                flight: first.flight || '',
+                groupName: first.groupName || '',
+                tee: first.tee || '',
+                format: formats.length === 1 ? formats[0] : '',
+                players: players,
+                markers: markers
+            });
+        });
+        // Буква волны (1А/1Б) нужна только при шотгане, где на лунке 2+ группы.
+        if (shotgun) {
+            Object.keys(groups).forEach(function (key) {
+                var g = groups[key];
+                var letterMatch = String(g.flight || '').match(/^\d+(.*)$/);
+                g.startWaveLetter = letterMatch ? letterMatch[1] : '';
+            });
+        }
+        var formatsAll = core().uniq([].concat(t.formats || [], entries.map(function (entry) { return entry.format; })).filter(Boolean));
+        return clean({
+            source: 'tn-manager',
+            tournamentId: tid,
+            tournamentName: t.name || '',
+            tournamentRoundId: rid,
+            name: round.name || ('Раунд ' + (core().dateRu ? core().dateRu(round.date || date) : date)),
+            date: date,
+            formats: formatsAll,
+            format: formatsAll[0] || '',
+            scheme: shotgun ? 'all18' : (core().intOf(options.startHole, 1) === 10 ? 'single10' : 'single1'),
+            groups: groups,
+            playersTotal: entries.length,
+            createdBy: currentUid()
+        });
+    }
+
+    /**
+     * Публикует стартовый лист раунда на сайте: protocols/<pid> +
+     * отметка tournaments/<tid>/sheetPublish/<rid>. Лист читается из базы
+     * заново — так в протокол попадают свежие groupRoundId (ссылки QR).
+     */
+    function publishSheet(tid, rid, tournament) {
+        var pid = sheetProtocolId(tid, rid);
+        return read('tournaments/' + tid + '/sheets/' + rid).then(function (fresh) {
+            var sheet = fresh || asMap(asMap(tournament && tournament.sheets)[rid]);
+            if (!sheet || !sheetOrder(sheet).length) throw new Error('Стартовый лист пуст — нечего публиковать');
+            return read('protocols/' + pid).then(function (existing) {
+                var doc = buildSheetProtocol(tid, rid, sheet, tournament);
+                var prev = asMap(existing);
+                doc.createdAt = prev.createdAt || now();
+                doc.updatedAt = now();
+                doc.publishedAt = now();
+                var updates = {};
+                updates['protocols/' + pid] = doc;
+                updates['tournaments/' + tid + '/sheetPublish/' + rid] = clean({
+                    protocolId: pid,
+                    publishedAt: doc.publishedAt,
+                    publishedBy: currentUid(),
+                    groups: Object.keys(doc.groups || {}).length,
+                    players: doc.playersTotal || 0
+                });
+                return multi(updates).then(function () { return { protocolId: pid, protocol: doc }; });
+            });
+        });
+    }
+
+    /** Снимает стартовый лист раунда с сайта. */
+    function unpublishSheet(tid, rid) {
+        var updates = {};
+        updates['protocols/' + sheetProtocolId(tid, rid)] = null;
+        updates['tournaments/' + tid + '/sheetPublish/' + rid] = null;
+        return multi(updates);
+    }
+
+    /** Отметка публикации листа раунда (или null). */
+    function sheetPublication(tournament, rid) {
+        var info = asMap(asMap(tournament && tournament.sheetPublish)[rid]);
+        return info.protocolId ? info : null;
     }
 
     // ----------------------------------------------------------
@@ -1698,6 +1869,9 @@ var TnMgrData = (function (root) {
         generateSheet: generateSheet, updateSheetEntry: updateSheetEntry, addSheetEntry: addSheetEntry,
         removeSheetEntry: removeSheetEntry, saveSheetColumns: saveSheetColumns, deleteSheet: deleteSheet,
         materializeRound: materializeRound,
+        // публикация стартового листа на сайте
+        sheetProtocolId: sheetProtocolId, buildSheetProtocol: buildSheetProtocol,
+        publishSheet: publishSheet, unpublishSheet: unpublishSheet, sheetPublication: sheetPublication,
         // счёт и результаты
         readRoundScores: readRoundScores, writeScore: writeScore,
         writePlayerHandicap: writePlayerHandicap, writePlayerFores: writePlayerFores,

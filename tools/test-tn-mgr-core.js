@@ -151,14 +151,19 @@ var groups = [
 ];
 var sheet = C.buildSheet({ players: players, groups: groups, firstTeeTime: '09:00', startInterval: 10, groupSize: 4, groupsPerFlight: 2, format: 'Стэйблфорд', tee: 'wh' });
 eq(sheet.entries.length, 7, 'все игроки попадают в лист');
-eq(sheet.groups.length, 3, 'две заданные группы + авто-группа остальных');
+// Группа A (2 игрока) + остальные 5: раньше выходило 2+4+1, теперь во флайте
+// минимум 3 игрока — 4+3, а зачётная группа игрока сохраняется.
+eq(sheet.groups.length, 2, 'стартовые группы 4+3 (во флайте минимум 3 игрока)');
+eq(sheet.groups.map(function (g) { return g.players.length; }), [4, 3], 'составы стартовых групп 4+3');
+eq(sheet.entries.filter(function (e) { return e.groupId === 'gA'; }).map(function (e) { return e.playerId; }), ['p1', 'p2'], 'игроки группы A остаются в своей зачётной группе');
 eq(sheet.entries[0].startTime, '09:00', 'время первой группы — время старта');
 var secondGroupEntry = sheet.entries.filter(function (e) { return e.startTime === '09:10'; });
 check(secondGroupEntry.length >= 1, 'следующая группа стартует через интервал');
 eq(sheet.entries[0].position, 1, 'позиция внутри группы');
 check(!!sheet.entries[0].markerPlayerId, 'маркер назначен автоматически');
 eq(sheet.entries[0].markerPlayerId, sheet.entries[1].playerId, 'маркер — следующий игрок группы');
-eq(sheet.entries[1].markerPlayerId, sheet.entries[0].playerId, 'последний игрок маркирует первого');
+var firstStart = sheet.entries.filter(function (e) { return e.startGroupId === sheet.entries[0].startGroupId; });
+eq(firstStart[firstStart.length - 1].markerPlayerId, firstStart[0].playerId, 'последний игрок маркирует первого');
 eq(sheet.entries[0].flight, '1', 'последовательный старт обозначается «Флайт 1»');
 eq(sheet.entries[0].startHole, 1, 'в стартовой группе хранится выбранная лунка');
 eq(sheet.entries[0].format, 'Стэйблфорд', 'формат турнира попадает в лист');

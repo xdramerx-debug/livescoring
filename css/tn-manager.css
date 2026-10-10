@@ -171,6 +171,16 @@
 
 /* ---------- стартовый лист ---------- */
 .tnm-sheet-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* публикация стартового листа на странице «Турниры» */
+.tnm-publish-bar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border: 1px dashed var(--border); border-radius: var(--r);
+    background: var(--card); color: var(--text); font-size: 13px;
+}
+.tnm-publish-bar.on { border-style: solid; border-color: rgba(76,175,80,.55); background: rgba(76,175,80,.08); }
+.tnm-publish-bar.on .tnm-publish-state > i { color: #4caf50; }
+.tnm-publish-state { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tnm-publish-actions { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .tnm-sheet-options {
     flex-basis: 100%; background: var(--card); border: 1px solid var(--border);
     border-radius: var(--r); padding: 14px; margin-top: 4px;

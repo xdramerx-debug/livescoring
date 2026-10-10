@@ -201,6 +201,54 @@
 .tnpc-block-h-lab { left: -1.4mm; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
 .tnpc-block-h-se  { right: -1.4mm; bottom: -1.4mm; cursor: nwse-resize; }
 
+/* ---------- блоки целиком: таблица и шапка ----------
+   ✥ — перенести блок, ↔ — ширина, ↕ — масштаб содержимого, ↘ — оба.
+   Синие ручки, чтобы не путать с золотыми ручками строк таблицы. */
+.tnpc-card .tnpc-box:hover { outline: 0.25mm dashed rgba(64, 132, 214, .7); outline-offset: 0.3mm; }
+.tnpc-card .tnpc-box.box-dragging { outline: 0.35mm solid #4084d6; outline-offset: 0.3mm; }
+.tnpc-box-move {
+    position: absolute; right: 0; top: -2.9mm; height: 2.8mm; padding: 0 1.2mm;
+    display: inline-flex; align-items: center; gap: .6mm; white-space: nowrap;
+    font: 700 1.9mm Arial, Helvetica, sans-serif; line-height: 1; color: #fff;
+    background: rgba(64, 132, 214, .85); border-radius: .8mm .8mm 0 0;
+    cursor: move; touch-action: none; user-select: none; -webkit-user-select: none; z-index: 6; opacity: .75;
+}
+.tnpc-box-move:hover { opacity: 1; }
+.tnpc-box-h {
+    position: absolute; width: 2.8mm; height: 2.8mm; box-sizing: border-box;
+    background: rgba(64, 132, 214, .85); border: 0.2mm solid #0d2a4d; border-radius: 50%;
+    z-index: 6; touch-action: none; opacity: .7;
+}
+.tnpc-box-h:hover { opacity: 1; background: #4084d6; }
+.tnpc-box-h-e  { right: -1.6mm; top: 30%; transform: translateY(-50%); cursor: ew-resize; }
+.tnpc-box-h-s  { left: 30%; bottom: -1.6mm; transform: translateX(-50%); cursor: ns-resize; }
+.tnpc-box-h-se { right: -1.6mm; bottom: -1.6mm; cursor: nwse-resize; border-radius: 0; }
+.tnpc-stage.card-mode .tnpc-box-move { top: 0; border-radius: 0 0 0 .8mm; }
+.tnpc-boxes { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.tnpc-box-cfg {
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px;
+    background: rgba(255, 255, 255, .02);
+}
+
+/* ---------- свои блоки (оверлей «блок») ---------- */
+.tnpc-ov-row.flash { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201, 168, 76, .25); }
+.tnpc-ovb { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.tnpc-ovb textarea {
+    width: 100%; min-height: 48px; resize: vertical; box-sizing: border-box;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px; font: inherit; font-size: 13px;
+}
+.tnpc-ph-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.tnpc-ph-chip {
+    font-size: 11px; color: var(--gold); background: transparent; cursor: pointer;
+    border: 1px solid rgba(201, 168, 76, .45); border-radius: 999px; padding: 2px 8px;
+    font-family: var(--fb, inherit);
+}
+.tnpc-ph-chip span { color: var(--muted); }
+.tnpc-ph-chip:hover { background: rgba(201, 168, 76, .12); }
+.tnpc-ovb-sample { font-size: 11.5px; margin: 0; white-space: pre-wrap; }
+.tnpc-overlay[data-type="block"] { cursor: move; }
+
 /* ---------- панель «Цвет и шрифт» ---------- */
 .tnpc-block-cfg-list { display: flex; flex-direction: column; gap: 8px; }
 .tnpc-block-cfg {
@@ -286,7 +334,7 @@
     .tnpc-toolbar, .tnpc-panel, .tnpc-status, .tnpc-hints, .tnpc-list,
     .tnpc-sel, .tnpc-warn, .tnpc-handle, .tnpc-x, .tnpc-tag, .tnpc-ph,
     .tnpc-noprint, .tnpc-ghost, .tnpc-master-note, .tnpc-move,
-    .tnpc-resize, .tnpc-block-h { display: none !important; }
+    .tnpc-resize, .tnpc-block-h, .tnpc-box-move, .tnpc-box-h { display: none !important; }
     /* На бумагу идёт только лист с карточкой: обвязка админки скрыта. */
     body > *:not(:has(.tnpc-wrap)) { display: none !important; }
     .tnpc-stage { background: #fff; border: none; padding: 0; overflow: visible; height: auto !important; }

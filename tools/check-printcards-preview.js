@@ -123,9 +123,14 @@ function measure() {
         tableRows: card ? Array.prototype.map.call(card.querySelectorAll('[data-tnpc-table-row]'), function (row) {
             return row.getAttribute('data-tnpc-table-row');
         }) : [],
+        blockKeys: card ? Array.prototype.map.call(card.querySelectorAll('[data-tnpc-block]'), function (block) {
+            return block.getAttribute('data-tnpc-block');
+        }) : [],
+        blockHandles: card ? card.querySelectorAll('[data-tnpc-block-resize]').length : 0,
+        lengthText: card ? (card.querySelector('[data-tnpc-table-row="length"]') || {}).textContent || '' : '',
         holeOrder: card ? Array.prototype.slice.call(card.querySelector('[data-tnpc-table-row="holes"]')
             .querySelectorAll('td')).slice(1).map(function (cell) { return cell.textContent.trim(); }) : [],
-        holeCells: card ? card.querySelectorAll('.tnpc-table tr:first-child td').length : 0,
+        holeCells: card ? card.querySelectorAll('.tnpc-block[data-tnpc-block="holes"] tr:first-child td').length : 0,
         footOnScreen: document.querySelectorAll('.tnpc-foot .tnpc-sign').length,
         overlays: document.querySelectorAll('.tnpc-overlay').length,
         alert: (document.querySelector('.tnpc-alert') || {}).textContent || ''
@@ -204,6 +209,11 @@ async function openTab(launch, base, viewport) {
     check('Фора расположена после Индекса и перед Ударами',
         m.tableRows.indexOf('fore') === m.tableRows.indexOf('index') + 1 &&
         m.tableRows.indexOf('strokes') === m.tableRows.indexOf('fore') + 1, m.tableRows.join(','));
+    check('строка «Длина» идёт после «Пар» и до «Индекса», с длинами справочника',
+        m.blockKeys.join(',') === 'holes,par,length,index,fore,strokes' && /328/.test(m.lengthText),
+        m.blockKeys.join(',') + ' | ' + m.lengthText.slice(0, 40));
+    check('у каждого блока таблицы три ручки растягивания',
+        m.blockHandles === m.blockKeys.length * 3, m.blockHandles + ' ручек на ' + m.blockKeys.length + ' блоков');
     check('ТИ показан цветом, не кодом', !/^(wh|bl|rd|bk)$/i.test(m.teeLabel), m.teeLabel);
     check('подписи снизу видны на экране', m.footOnScreen === 3, m.footOnScreen);
     check('на экране нет предупреждений о раскладке', m.alert === '', m.alert);
@@ -232,20 +242,20 @@ async function openTab(launch, base, viewport) {
             return row.getAttribute('data-tnpc-table-row');
         });
     });
-    check('кнопка ↓ меняет порядок строк на карточке', movedRows.join(',') === 'holes,par,index,strokes,fore', movedRows.join(','));
+    check('кнопка ↓ меняет порядок строк на карточке', movedRows.join(',') === 'holes,par,length,index,strokes,fore', movedRows.join(','));
     await page.waitForTimeout(700);
     const savedRows = await page.evaluate(function () {
         const saved = window.db.__get('tournaments/t1/printScorecards');
         return saved && saved.rowOrder || [];
     });
-    check('новый порядок строк сохранён в турнире', savedRows.join(',') === 'holes,par,index,strokes,fore', savedRows.join(','));
+    check('новый порядок строк сохранён в турнире', savedRows.join(',') === 'holes,par,length,index,strokes,fore', savedRows.join(','));
     await page.click('.tnpc-table-row[data-tnpc-table-row="fore"] [data-tnm-act="tnpc-table-row-up"]');
 
     // 6. Размеры меняются мгновенно и применяются ко всем карточкам.
     await page.click('[data-tnm-act="tnpc-panel-sizes"]');
     await page.waitForSelector('[data-panel="sizes"]');
-    // Раскладка по умолчанию (90x40 мм, 140%) крупнее листа A4 landscape:
-    // панель честно об этом пишет, а печать вписывает карточку в лист.
+    // Раскладка по умолчанию (105.86×39.68 мм, масштаб 120%) крупнее листа
+    // A4 landscape: панель честно об этом пишет, а печать вписывает карточку в лист.
     const sizes = await page.evaluate(function () {
         const panel = document.querySelector('[data-panel="sizes"]');
         const card = document.querySelector('.tnpc-card');
@@ -270,8 +280,8 @@ async function openTab(launch, base, viewport) {
     });
     check('панель размеров объясняет вписывание в лист', /вписывается в лист/.test(sizes.note), sizes.note);
     check('в подсказке указан фактический размер карточки', /\d+(\.\d+)?×\d+(\.\d+)? мм/.test(sizes.note), sizes.note);
-    check('масштаб по умолчанию 140%', sizes.scalePct === '140', sizes.scalePct);
-    check('смещение по умолчанию 90x40 мм', sizes.xMm === '90' && sizes.yMm === '40',
+    check('масштаб по умолчанию 120%', sizes.scalePct === '120', sizes.scalePct);
+    check('смещение по умолчанию 105.86x39.68 мм', sizes.xMm === '105.86' && sizes.yMm === '39.68',
         sizes.xMm + 'x' + sizes.yMm);
     check('вписанная карточка не выходит за лист A4 landscape',
         sizes.cardW <= sizes.pageW + 1 && sizes.x >= 0 && sizes.y >= 0,
@@ -300,6 +310,61 @@ async function openTab(launch, base, viewport) {
         input.value = '4.6';
         input.dispatchEvent(new Event('input', { bubbles: true }));
     });
+
+    // 6a. Панель «Цвет и шрифт»: общие цвета и настройки каждого блока.
+    await page.click('[data-tnm-act="tnpc-panel-design"]');
+    await page.waitForSelector('[data-panel="design"]');
+    const designBefore = await page.evaluate(function () {
+        const card = document.querySelector('.tnpc-card');
+        const ink = card.getAttribute('style').match(/--tnpc-ink:(#[0-9a-fA-F]+)/);
+        return {
+            blockCfgs: document.querySelectorAll('[data-block-cfg]').length,
+            ink: ink ? ink[1] : ''
+        };
+    });
+    check('панель «Цвет и шрифт» отдаёт настройки всех блоков',
+        designBefore.blockCfgs === 6, designBefore.blockCfgs + ' блоков');
+    await page.evaluate(function () {
+        const input = document.querySelector('[data-tnm-live-edit="tnpc-design-color"][data-field="ink"]');
+        input.value = '#001f7a';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.waitForTimeout(150);
+    const designAfter = await page.evaluate(function () {
+        const card = document.querySelector('.tnpc-card');
+        const ink = card.getAttribute('style').match(/--tnpc-ink:(#[0-9a-fA-F]+)/);
+        return { ink: ink ? ink[1] : '' };
+    });
+    check('смена цвета текста применяется к карточке сразу',
+        designAfter.ink === '#001f7a', designAfter.ink);
+    // Растягивание блока «Пар» за нижнюю ручку (↕ высота строк).
+    const parHandle = await page.evaluate(function () {
+        const el = document.querySelector('.tnpc-block[data-tnpc-block="par"] .tnpc-block-h-h');
+        const b = el.getBoundingClientRect();
+        return { cx: b.x + b.width / 2, cy: b.y + b.height / 2 };
+    });
+    const parBefore = await page.evaluate(function () {
+        return document.querySelector('.tnpc-block[data-tnpc-block="par"] td').getBoundingClientRect().height;
+    });
+    await page.mouse.move(parHandle.cx, parHandle.cy);
+    await page.mouse.down();
+    await page.mouse.move(parHandle.cx, parHandle.cy + 40, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(700);
+    const parAfter = await page.evaluate(function () {
+        const stored = window.db.__get('tournaments/t1/printScorecards');
+        const td = document.querySelector('.tnpc-block[data-tnpc-block="par"] td');
+        return {
+            saved: stored && stored.rows && stored.rows.par && stored.rows.par.heightMm || null,
+            rowH: td ? td.getBoundingClientRect().height : 0
+        };
+    });
+    check('ручка ↕ растягивает блок «Пар» (высота строк растёт и сохраняется)',
+        parAfter.saved !== null && parAfter.rowH > parBefore + 10,
+        'сохранено ' + parAfter.saved + ' мм, ' + Math.round(parBefore) + 'px → ' + Math.round(parAfter.rowH) + 'px');
+    // вернём цвета карточки по умолчанию
+    await page.click('[data-tnm-act="tnpc-design-reset"]');
+    await page.waitForTimeout(300);
 
     // 6. QR: добавление, включение и перетаскивание мышью.
     await page.click('[data-tnm-act="tnpc-panel-overlays"]');
@@ -446,7 +511,7 @@ async function openTab(launch, base, viewport) {
     check('внешняя рамка карточки на печать не идёт', printed.indexOf('.tnpc-card{border:0!important}') !== -1);
     check('фора в печати — наклонными черточками в углу клетки счёта',
         printed.indexOf('<i class="tnpc-mark"></i>') !== -1 &&
-        printed.indexOf('.tnpc-marks{position:absolute;top:.2mm;right:.2mm') !== -1);
+        printed.indexOf('.tnpc-marks{position:absolute;top:.15mm;right:.15mm') !== -1);
     const marksWide = await page.evaluate(function () {
         const cell = document.querySelector('.tnpc-empty .tnpc-marks');
         if (!cell) return null;

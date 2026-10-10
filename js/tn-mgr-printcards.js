@@ -7,6 +7,14 @@
 // таблицы, состав информации, лого / QR / текстовые оверлеи
 // (перетаскиваются и растягиваются мышью), подписи снизу.
 //
+// Каждый блок таблицы (№ лунки, Пар, Длина, Индекс, Фора, Удары) —
+// самостоятельная «строка-блок»: у неё свои кегль, высота и ширина
+// колонки подписи (наследуются от общих размеров, пока не заданы свои),
+// свой цвет, фон и шрифт. Блоки растягиваются мышью прямо на карточке
+// (↕ высота, ↔ колонка подписи, ↘ весь блок сразу) и правятся числами
+// в панели «Цвет и шрифт». Там же — общие цвета карточки (текст, фон,
+// линии, фон итогов) и шрифт всей карточки.
+//
 // Содержимое карточек берётся ЖИВЬЁМ из турнира: участники,
 // стартовый лист (время, лунка, ТИ, флайт), парные связки и — по
 // желанию — текущий счёт раунда. Ручные правки полей помечаются
@@ -67,13 +75,43 @@ var TnMgrPrintCards = (function (root) {
         group: { def: true, ru: 'Флайт / группа', en: 'Flight' },
         par: { def: true, ru: 'Строка «Пар»', en: 'Par row' },
         index: { def: true, ru: 'Строка «Индекс»', en: 'Index row' },
+        length: { def: true, ru: 'Строка «Длина» (метры)', en: 'Distance row (metres)' },
         fore: { def: true, ru: 'Строка «Фора»', en: 'Handicap strokes row' },
         strokes: { def: true, ru: 'Строка «Удары»', en: 'Strokes row' },
         totals: { def: true, ru: 'Колонки OUT/IN/TOTAL', en: 'OUT/IN/TOTAL columns' }
     };
     var SHOW_KEYS = Object.keys(SHOW_FIELDS);
-    var TABLE_ROW_KEYS = ['holes', 'par', 'index', 'fore', 'strokes'];
+    var TABLE_ROW_KEYS = ['holes', 'par', 'length', 'index', 'fore', 'strokes'];
     var DEFAULT_ROW_ORDER = TABLE_ROW_KEYS.slice();
+
+    /** Названия блоков таблицы для панели «Цвет и шрифт» и подписей ручек. */
+    var ROW_LABELS = {
+        holes: { ru: '№ лунки', en: 'Hole number' },
+        par: { ru: 'Пар', en: 'Par' },
+        length: { ru: 'Длина лунок', en: 'Hole length' },
+        index: { ru: 'Индекс', en: 'Index' },
+        fore: { ru: 'Фора', en: 'Handicap' },
+        strokes: { ru: 'Удары', en: 'Strokes' }
+    };
+
+    /** Границы собственных размеров блока (мм); пусто — берём из общих. */
+    var ROW_FIELD_LIMITS = {
+        fontMm: { min: 1.2, max: 12 },
+        heightMm: { min: 3, max: 18 },
+        labWMm: { min: 5, max: 45 }
+    };
+
+    /** Шрифты, которые можно выбрать для карточки и отдельных блоков. */
+    var CARD_FONTS = [
+        { value: 'Georgia, serif', ru: 'Georgia', en: 'Georgia' },
+        { value: '"Times New Roman", Times, serif', ru: 'Times New Roman', en: 'Times New Roman' },
+        { value: 'Verdana, Geneva, sans-serif', ru: 'Verdana', en: 'Verdana' },
+        { value: 'Tahoma, Geneva, sans-serif', ru: 'Tahoma', en: 'Tahoma' },
+        { value: '"Trebuchet MS", Tahoma, sans-serif', ru: 'Trebuchet MS', en: 'Trebuchet MS' },
+        { value: '"Courier New", Courier, monospace', ru: 'Courier New', en: 'Courier New' },
+        { value: 'Impact, Charcoal, sans-serif', ru: 'Impact', en: 'Impact' },
+        { value: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif', ru: 'Системный', en: 'System' }
+    ];
 
     /** Поля карточки, которые можно править вручную прямо на эталоне. */
     var CARD_TEXT_FIELDS = ['names', 'hcps', 'tee', 'startHole', 'startTime', 'flight'];
@@ -90,9 +128,10 @@ var TnMgrPrintCards = (function (root) {
         drag: null,
         cardDrag: null,
         progress: '',
-        panels: { sizes: false, fields: false, content: false, overlays: false },
+        panels: { sizes: false, fields: false, content: false, overlays: false, design: false },
         activeCardId: '',
         tableDragId: '',
+        blockDrag: null,       // растягивание блока таблицы (высота/подпись/весь блок)
         query: '',
         preview: 'sheet',        // 'sheet' — лист A4, 'card' — только карточка
         previewPinned: false,    // пользователь выбрал вид вручную
@@ -136,6 +175,105 @@ var TnMgrPrintCards = (function (root) {
         for (var h = 1; h <= 18; h++) out.push(course.si(h));
         return out;
     }
+    /** Длины лунок в метрах: сперва настоящий справочник (course-config),
+     *  в его отсутствие — встроенный fallback ядра (белые ТИ). */
+    function defaultLengths(tee) {
+        var code = tee || 'wh';
+        var out = [];
+        for (var h = 1; h <= 18; h++) {
+            var dist = 0;
+            if (root.HOLES && root.HOLES[h]) dist = Number(root.HOLES[h][code] || root.HOLES[h].wh || 0);
+            else if (typeof root.holeDist === 'function') dist = Number(root.holeDist(h, code));
+            else {
+                var course = core().defaultCourse();
+                if (course.dist) dist = Number(course.dist(h, code));
+            }
+            out.push(isFinite(dist) && dist > 0 ? Math.round(dist) : 0);
+        }
+        return out;
+    }
+    function validColor(v) {
+        return typeof v === 'string' && /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(v);
+    }
+    /** Шрифт допускаем только из списка — в сохранённых данных может быть что угодно. */
+    function safeFont(v) {
+        return CARD_FONTS.some(function (f) { return f.value === v; }) ? v : '';
+    }
+    function defaultDesign() {
+        return { font: '', ink: '#111111', paper: '#ffffff', line: '#111111', sumBg: '#efefef' };
+    }
+    function clampDesign(design) {
+        var src = design || {};
+        var def = defaultDesign();
+        return {
+            font: safeFont(src.font),
+            ink: validColor(src.ink) ? src.ink : def.ink,
+            paper: validColor(src.paper) ? src.paper : def.paper,
+            line: validColor(src.line) ? src.line : def.line,
+            sumBg: validColor(src.sumBg) ? src.sumBg : def.sumBg
+        };
+    }
+    /**
+     * Собственные размеры/цвет одного блока таблицы. Храним ТОЛЬКО явно
+     * заданные поля: чего нет — наследуется от общих размеров (STYLE_FIELDS),
+     * поэтому старые дизайны без block-настроек выглядят как раньше.
+     */
+    function clampRowCfg(key, cfg, style) {
+        var c = cfg || {};
+        var s = clampStyle(style);
+        var out = {};
+        var lim = ROW_FIELD_LIMITS.fontMm;
+        if (c.fontMm != null) out.fontMm = round1(clampNum(c.fontMm, lim.min, lim.max, s.tableMm));
+        lim = ROW_FIELD_LIMITS.heightMm;
+        if (c.heightMm != null) out.heightMm = round1(clampNum(c.heightMm, lim.min, lim.max, s.rowHMm));
+        lim = ROW_FIELD_LIMITS.labWMm;
+        if (c.labWMm != null) out.labWMm = round1(clampNum(c.labWMm, lim.min, lim.max, s.labWMm));
+        if (validColor(c.color)) out.color = c.color;
+        if (validColor(c.bg)) out.bg = c.bg;
+        if (safeFont(c.font)) out.font = c.font;
+        if (c.bold) out.bold = true;
+        return out;
+    }
+    function clampRows(rows, style) {
+        var src = rows || {};
+        var out = {};
+        TABLE_ROW_KEYS.forEach(function (key) {
+            var cfg = clampRowCfg(key, src[key], style);
+            if (Object.keys(cfg).length) out[key] = cfg;
+        });
+        return out;
+    }
+    /** Эффективный стиль блока: свои значения поверх общих размеров. */
+    function rowCfg(key) {
+        var d = ensureDraft();
+        var s = clampStyle(d.style);
+        var c = (clampRows(d.rows, d.style) || {})[key] || {};
+        return {
+            fontMm: c.fontMm != null ? c.fontMm : s.tableMm,
+            heightMm: c.heightMm != null ? c.heightMm : s.rowHMm,
+            labWMm: c.labWMm != null ? c.labWMm : s.labWMm,
+            color: c.color || '',
+            bg: c.bg || '',
+            font: c.font || '',
+            bold: !!c.bold
+        };
+    }
+    /** CSS-переменные блока: свои кегль/высота/подпись + цвет/фон/шрифт. */
+    function blockStyleAttr(key) {
+        var r = rowCfg(key);
+        var out = '--tnpc-table:' + round1(r.fontMm) + 'mm;' +
+            '--tnpc-row-h:' + round1(r.heightMm) + 'mm;' +
+            '--tnpc-lab-w:' + round1(r.labWMm) + 'mm;';
+        if (r.color) out += 'color:' + r.color + ';';
+        if (r.bg) out += '--tnpc-b-bg:' + r.bg + ';';
+        if (r.font) out += 'font-family:' + r.font + ';';
+        if (r.bold) out += 'font-weight:800;';
+        return out;
+    }
+    function rowLabel(key) {
+        var l = ROW_LABELS[key] || { ru: key, en: key };
+        return bi(l.ru, l.en);
+    }
     function defaultStyle() {
         var out = {};
         STYLE_KEYS.forEach(function (key) { out[key] = STYLE_FIELDS[key].def; });
@@ -162,12 +300,23 @@ var TnMgrPrintCards = (function (root) {
         return out;
     }
     function normalizeRowOrder(order) {
-        var normalized = [];
+        var present = [];
         (Array.isArray(order) ? order : []).forEach(function (key) {
-            if (TABLE_ROW_KEYS.indexOf(key) !== -1 && normalized.indexOf(key) === -1) normalized.push(key);
+            if (TABLE_ROW_KEYS.indexOf(key) !== -1 && present.indexOf(key) === -1) present.push(key);
         });
-        TABLE_ROW_KEYS.forEach(function (key) { if (normalized.indexOf(key) === -1) normalized.push(key); });
-        return normalized;
+        // Отсутствующие строки вставляем на их каноническое место, а не в
+        // конец: у турниров, сохранённых до появления строки «Длина», она
+        // встаёт между «Пар» и «Индекс», а не после «Удары».
+        TABLE_ROW_KEYS.forEach(function (key) {
+            if (present.indexOf(key) !== -1) return;
+            var defIdx = TABLE_ROW_KEYS.indexOf(key);
+            var at = present.length;
+            for (var i = 0; i < present.length; i++) {
+                if (TABLE_ROW_KEYS.indexOf(present[i]) > defIdx) { at = i; break; }
+            }
+            present.splice(at, 0, key);
+        });
+        return present;
     }
     function visibleRowOrder(draft) {
         var d = draft || ensureDraft();
@@ -353,7 +502,10 @@ var TnMgrPrintCards = (function (root) {
             holes: 18,
             pars: defaultPars(),
             indexes: defaultIndexes(),
+            lengths: defaultLengths(),
             rowOrder: DEFAULT_ROW_ORDER.slice(),
+            rows: {},
+            design: defaultDesign(),
             text: { tournamentName: '', subtitle: '', date: '' },
             show: defaultShow(),
             footer: { player: 'Игрок', marker: 'Маркер', judge: 'Судья', print: false },
@@ -389,7 +541,16 @@ var TnMgrPrintCards = (function (root) {
         if (stored.holes === 9) base.holes = 9;
         if (Array.isArray(stored.pars) && stored.pars.length) base.pars = stored.pars.slice(0, 18);
         if (Array.isArray(stored.indexes) && stored.indexes.length) base.indexes = stored.indexes.slice(0, 18);
+        if (Array.isArray(stored.lengths) && stored.lengths.length) {
+            var defs = defaultLengths();
+            base.lengths = defs.map(function (def, i) {
+                var v = parseInt(stored.lengths[i], 10);
+                return isFinite(v) && v >= 0 && v <= 999 ? v : def;
+            });
+        }
         base.rowOrder = normalizeRowOrder(stored.rowOrder);
+        base.rows = clampRows(stored.rows, base.style);
+        base.design = clampDesign(stored.design);
         if (stored.text) base.text = Object.assign(base.text, stored.text);
         base.show = clampShow(stored.show);
         if (stored.footer) {
@@ -458,7 +619,10 @@ var TnMgrPrintCards = (function (root) {
             holes: draft.holes,
             pars: draft.pars,
             indexes: draft.indexes,
+            lengths: draft.lengths,
             rowOrder: normalizeRowOrder(draft.rowOrder),
+            rows: clampRows(draft.rows, draft.style),
+            design: clampDesign(draft.design),
             text: draft.text,
             show: draft.show,
             footer: draft.footer,
@@ -1045,8 +1209,9 @@ var TnMgrPrintCards = (function (root) {
     }
 
     /** CSS-переменные размеров: один источник для экрана и печати. */
-    function styleVars(style) {
+    function styleVars(style, design) {
         var s = clampStyle(style);
+        var de = clampDesign(design);
         return '--tnpc-pad:' + s.padMm + 'mm;' +
             '--tnpc-title:' + s.titleMm + 'mm;' +
             '--tnpc-name:' + s.nameMm + 'mm;' +
@@ -1058,7 +1223,12 @@ var TnMgrPrintCards = (function (root) {
             '--tnpc-foot:' + s.footMm + 'mm;' +
             '--tnpc-head-gap:' + s.headGapMm + 'mm;' +
             '--tnpc-foot-gap:' + s.footGapMm + 'mm;' +
-            '--tnpc-line:' + s.lineMm + 'mm;';
+            '--tnpc-line:' + s.lineMm + 'mm;' +
+            '--tnpc-ink:' + de.ink + ';' +
+            '--tnpc-paper:' + de.paper + ';' +
+            '--tnpc-linec:' + de.line + ';' +
+            '--tnpc-sumbg:' + de.sumBg + ';' +
+            '--tnpc-font:' + (de.font || 'Arial,Helvetica,sans-serif') + ';';
     }
 
     function cardStyleAttr(draft, slot, local) {
@@ -1069,7 +1239,7 @@ var TnMgrPrintCards = (function (root) {
             ? { xMm: 0, yMm: 0, scale: clampLayout(d.layout, size).scale }
             : placement(d.layout, size, slot || 0);
         return 'left:' + p.xMm + 'mm;top:' + p.yMm + 'mm;width:' + size.wMm + 'mm;height:' + size.hMm + 'mm;' +
-            'transform:scale(' + p.scale + ');' + styleVars(d.style);
+            'transform:scale(' + p.scale + ');' + styleVars(d.style, d.design);
     }
 
     /**
@@ -1077,23 +1247,31 @@ var TnMgrPrintCards = (function (root) {
      * печати, поэтому экран всегда показывает то, что ляжет на бумагу.
      */
     function cardCssText() {
-        return '.tnpc-card{position:absolute;background:#fff;color:#111;box-sizing:border-box;' +
-            'font-family:Arial,Helvetica,sans-serif;overflow:hidden;transform-origin:top left;' +
-            'border:calc(var(--tnpc-line,0.25mm) * 1.6) solid #111}' +
+        return '.tnpc-card{position:absolute;background:var(--tnpc-paper,#fff);color:var(--tnpc-ink,#111);box-sizing:border-box;' +
+            'font-family:var(--tnpc-font,Arial,Helvetica,sans-serif);overflow:hidden;transform-origin:top left;' +
+            'border:calc(var(--tnpc-line,0.25mm) * 1.6) solid var(--tnpc-linec,#111)}' +
             '.tnpc-card-inner{position:relative;width:100%;height:100%;padding:var(--tnpc-pad,5mm);' +
             'box-sizing:border-box;display:flex;flex-direction:column}' +
-            '.tnpc-head{text-align:center;border-bottom:var(--tnpc-line,0.25mm) solid #111;' +
+            '.tnpc-head{text-align:center;border-bottom:var(--tnpc-line,0.25mm) solid var(--tnpc-linec,#111);' +
             'padding-bottom:var(--tnpc-head-gap,2mm);margin-bottom:var(--tnpc-head-gap,2mm);flex:0 0 auto}' +
             '.tnpc-title{font-weight:800;font-size:var(--tnpc-title,4.2mm);line-height:1.15;letter-spacing:.01em}' +
-            '.tnpc-subtitle{font-size:var(--tnpc-meta,3.1mm);margin-top:.6mm;color:#333}' +
+            '.tnpc-subtitle{font-size:var(--tnpc-meta,3.1mm);margin-top:.6mm;color:var(--tnpc-ink,#111);opacity:.72}' +
             '.tnpc-name{font-weight:800;font-size:var(--tnpc-name,4.6mm);margin-top:1.4mm;line-height:1.15}' +
             '.tnpc-meta{font-size:var(--tnpc-meta,3.1mm);margin-top:.8mm;line-height:1.25}' +
             '.tnpc-body{flex:1 1 auto;min-height:0}' +
+            /* Каждый блок таблицы — отдельная таблица в своей обёртке: у блока
+               свои CSS-переменные (--tnpc-table/--tnpc-row-h/--tnpc-lab-w) и
+               свой цвет/фон/шрифт, поэтому блоки можно растягивать и красить
+               по отдельности. Соседние блоки соприкасаются без двойной линии:
+               следующий подтянут на толщину линии вверх. */
+            '.tnpc-block{position:relative}' +
+            '.tnpc-block+.tnpc-block{margin-top:calc(var(--tnpc-line,0.25mm) * -1)}' +
+            '.tnpc-block.b .tnpc-table td{font-weight:800}' +
             '.tnpc-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:var(--tnpc-table,2.9mm)}' +
-            '.tnpc-table td{border:var(--tnpc-line,0.25mm) solid #111;text-align:center;position:relative;' +
+            '.tnpc-table td{border:var(--tnpc-line,0.25mm) solid var(--tnpc-linec,#111);text-align:center;position:relative;' +
             'padding:.5mm .2mm;height:var(--tnpc-row-h,6.4mm);overflow:hidden}' +
             '.tnpc-marks{position:absolute;top:.15mm;right:.15mm;display:inline-flex;align-items:flex-start;' +
-            'gap:.25mm;pointer-events:none;color:#111}' +
+            'gap:.25mm;pointer-events:none;color:inherit}' +
             /* Наклонная палочка рисуется через linear-gradient без transform —
                некоторые движки печати игнорируют transform, и тонкие (0.3мм)
                полоски просто не попадали на бумагу. Градиент рисуется
@@ -1112,10 +1290,10 @@ var TnMgrPrintCards = (function (root) {
             'color:#555;font:700 2.4mm Arial,sans-serif;line-height:1;cursor:pointer}' +
             '.tnpc-row-move:hover{color:#111;background:#e8dfc9}' +
             '.tnpc-table-row.drop-target td{border-top:.6mm solid #c9a227}' +
-            '.tnpc-table .sum{font-weight:800;background:#efefef;width:var(--tnpc-sum-w,11.5mm)}' +
-            '.tnpc-empty{background:#fff}' +
+            '.tnpc-table .sum{font-weight:800;background:var(--tnpc-b-bg,var(--tnpc-sumbg,#efefef));width:var(--tnpc-sum-w,11.5mm)}' +
+            '.tnpc-empty{background:var(--tnpc-b-bg,#fff)}' +
             '.tnpc-foot{display:flex;gap:4mm;margin-top:var(--tnpc-foot-gap,4mm);flex:0 0 auto}' +
-            '.tnpc-sign{flex:1;border-top:var(--tnpc-line,0.25mm) solid #111;padding-top:1.2mm;' +
+            '.tnpc-sign{flex:1;border-top:var(--tnpc-line,0.25mm) solid var(--tnpc-linec,#111);padding-top:1.2mm;' +
             'font-size:var(--tnpc-foot,2.8mm);text-align:center;min-height:calc(var(--tnpc-foot,2.8mm) * 2)}' +
             '.tnpc-overlay{position:absolute;box-sizing:border-box}' +
             '.tnpc-overlay img{width:100%;height:100%;object-fit:contain;display:block}' +
@@ -1284,6 +1462,7 @@ var TnMgrPrintCards = (function (root) {
         var n = holeCount();
         var pars = d.pars;
         var indexes = d.indexes;
+        var lengths = d.lengths || defaultLengths();
         var outN = Math.min(9, n);
         var inN = Math.max(0, n - outN);
         var showTotals = d.show.totals !== false;
@@ -1318,6 +1497,8 @@ var TnMgrPrintCards = (function (root) {
             var html = '';
             for (var holeIndex = from; holeIndex < to; holeIndex++) {
                 var value = values[holeIndex] == null ? '' : values[holeIndex];
+                // Длина 0 = «нет данных»: клетка пустая, в итоги не идёт.
+                if (kind === 'len' && !(Number(value) > 0)) value = '';
                 if (kind === 'strokes') {
                     html += '<td class="tnpc-empty">' + esc(value) +
                         foreMarksHtml(card, holeIndex, playerIndex) + '</td>';
@@ -1331,6 +1512,7 @@ var TnMgrPrintCards = (function (root) {
         }
         function sumFor(kind, values, from, to) {
             if (kind === 'par') return parSum(from, to);
+            if (kind === 'len') return lenSum(values, from, to);
             if (kind === 'strokes') return sumValues(values.slice(from, to));
             return '';
         }
@@ -1394,18 +1576,49 @@ var TnMgrPrintCards = (function (root) {
         var rowHtml = {
             holes: tableBlock('holes', tableLine('holes', '№', holeNumbers, true)),
             par: tableBlock('par', tableLine('par', esc(bi('Пар', 'Par')), dataRowCells('par', pars, true), true)),
+            length: tableBlock('length', tableLine('length', esc(bi('Длина, м', 'Dist, m')), dataRowCells('len', lengths, true), true)),
             index: tableBlock('index', tableLine('index', esc(bi('Индекс', 'Index')), dataRowCells('idx', indexes, true), true)),
             fore: foreBlock(),
             strokes: strokesBlock()
         };
-        var rows = normalizeRowOrder(d.rowOrder).map(function (key) {
-            if (key === 'par' && d.show.par === false) return '';
-            if (key === 'index' && d.show.index === false) return '';
-            if (key === 'fore' && d.show.fore === false) return '';
-            if (key === 'strokes' && d.show.strokes === false) return '';
-            return rowHtml[key] || '';
+        // Каждая строка — самостоятельный блок со своими размерами, цветом и
+        // шрифтом (blockStyleAttr); ручки растягивания — только на экране.
+        var blocks = visibleRowOrder(d).map(function (key) {
+            return blockHtml(key, rowHtml[key] || '', printMode);
         }).join('');
-        return '<div class="tnpc-body"><table class="tnpc-table">' + rows + '</table></div>';
+        return '<div class="tnpc-body">' + blocks + '</div>';
+    }
+
+    /**
+     * Обёртка блока таблицы: свои CSS-переменные размеров (кегль/высота/
+     * колонка подписи), цвет, фон и шрифт. Блок тянется мышью за три ручки:
+     * ↕ — высота строки, ↔ — ширина колонки подписи, ↘ — весь блок разом
+     * (кегль + высота + подпись пропорционально). Ручки — только на экране.
+     */
+    function blockHtml(key, tbodyHtml, printMode) {
+        var r = rowCfg(key);
+        var handles = printMode ? '' : (
+            '<span class="tnpc-block-h tnpc-block-h-h" data-tnpc-block-resize="' + key + '" data-mode="h" title="' +
+            esc(bi('Высота строки «', 'Row height for “') + rowLabel(key) + bi('»', '”')) + '"></span>' +
+            '<span class="tnpc-block-h tnpc-block-h-lab" data-tnpc-block-resize="' + key + '" data-mode="lab" title="' +
+            esc(bi('Ширина колонки подписи «', 'Label column width for “') + rowLabel(key) + bi('»', '”')) + '"></span>' +
+            '<span class="tnpc-block-h tnpc-block-h-se" data-tnpc-block-resize="' + key + '" data-mode="scale" title="' +
+            esc(bi('Растянуть весь блок «', 'Stretch the whole “') + rowLabel(key) + bi('» (кегль, высота, подпись)', '” block (font, height, label)')) + '"></span>'
+        );
+        return '<div class="tnpc-block' + (r.bold ? ' b' : '') + '" data-tnpc-block="' + key +
+            '" style="' + blockStyleAttr(key) + '">' +
+            '<table class="tnpc-table">' + tbodyHtml + '</table>' + handles + '</div>';
+    }
+
+    /** Итог длин лунок (м): пустые и нулевые клетки не считаются. */
+    function lenSum(values, from, to) {
+        var sum = 0;
+        var seen = false;
+        for (var i = from; i < to; i++) {
+            var v = parseInt(values[i], 10);
+            if (isFinite(v) && v > 0) { sum += v; seen = true; }
+        }
+        return seen ? sum : '';
     }
 
     function footerHtml(printMode) {
@@ -1636,11 +1849,13 @@ var TnMgrPrintCards = (function (root) {
             '<div class="tnpc-toolbar-row">' +
             ui().btn('tnpc-panel-sizes', esc(bi('Размеры и место на листе', 'Sizes & placement')),
                 { icon: 'fas fa-ruler-combined', variant: state.panels.sizes ? 'primary' : 'ghost' }) +
+            ui().btn('tnpc-panel-design', esc(bi('Цвет и шрифт', 'Colors & fonts')),
+                { icon: 'fas fa-palette', variant: state.panels.design ? 'primary' : 'ghost' }) +
             ui().btn('tnpc-panel-overlays', esc(bi('Лого и QR', 'Logo & QR')),
                 { icon: 'fas fa-qrcode', variant: state.panels.overlays ? 'primary' : 'ghost' }) +
             ui().btn('tnpc-panel-content', esc(bi('Состав информации', 'Card content')),
                 { icon: 'fas fa-list-check', variant: state.panels.content ? 'primary' : 'ghost' }) +
-            ui().btn('tnpc-panel-fields', esc(bi('Лунки, пар, индекс, фора', 'Holes, par, index, handicap')),
+            ui().btn('tnpc-panel-fields', esc(bi('Лунки, пар, длина, индекс', 'Holes, par, length, index')),
                 { icon: 'fas fa-table', variant: state.panels.fields ? 'primary' : 'ghost' }) +
             ui().btn('tnpc-preview-mode', esc(d && state.preview === 'card' ? bi('Вид: карточка', 'View: card') : bi('Вид: лист A4', 'View: A4 sheet')),
                 { icon: 'fas fa-file-lines', variant: 'ghost' }) +
@@ -1697,21 +1912,119 @@ var TnMgrPrintCards = (function (root) {
         var d = ensureDraft();
         var pars = '';
         var idx = '';
+        var lens = '';
         for (var i = 0; i < 18; i++) {
             pars += '<input type="number" min="3" max="6" data-tnm-live-edit="tnpc-par" data-h="' + i +
                 '" value="' + esc(d.pars[i] || 4) + '" title="Пар ' + (i + 1) + '">';
             idx += '<input type="number" min="1" max="18" data-tnm-live-edit="tnpc-idx" data-h="' + i +
                 '" value="' + esc(d.indexes[i] || (i + 1)) + '" title="SI ' + (i + 1) + '">';
+            lens += '<input type="number" min="0" max="999" data-tnm-live-edit="tnpc-len" data-h="' + i +
+                '" value="' + esc(d.lengths[i] > 0 ? d.lengths[i] : '') + '" title="' + esc(bi('Длина', 'Length')) + ' ' + (i + 1) + ', м">';
         }
+        var teeBtns = ['wh', 'bl', 'bk', 'rd'].map(function (code) {
+            return ui().btn('tnpc-len-tee', esc(teeDisplayName(code)), { variant: 'ghost', small: true, data: { tee: code } });
+        }).join('');
         return '<div class="tnm-card tnpc-panel" data-panel="fields">' +
             '<div class="tnpc-panel-head"><b><i class="fas fa-table"></i> ' +
-            esc(bi('Лунки, пар, индекс и фора — общие для всех карточек', 'Holes, par, index and handicap — shared by all cards')) + '</b>' +
+            esc(bi('Лунки, пар, длина, индекс и фора — общие для всех карточек', 'Holes, par, length, index and handicap — shared by all cards')) + '</b>' +
             '<label class="tnpc-check"><input type="checkbox" data-tnm-edit="tnpc-holes9"' + (d.holes === 9 ? ' checked' : '') + '> ' +
             esc(bi('Только 9 лунок', '9 holes only')) + '</label>' +
             '</div>' +
             '<p class="tnm-muted">' + esc(bi('Пар 3–6', 'Par 3–6')) + '</p><div class="tnpc-fields">' + pars + '</div>' +
             '<p class="tnm-muted">' + esc(bi('Индекс 1–18', 'Index 1–18')) + '</p><div class="tnpc-fields">' + idx + '</div>' +
+            '<p class="tnm-muted">' + esc(bi('Длина лунок в метрах (0 — пустая клетка)', 'Hole length in metres (0 — empty cell)')) + '</p>' +
+            '<div class="tnpc-tee-fill">' +
+            '<span class="tnm-muted">' + esc(bi('Заполнить по ТИ:', 'Fill by tee:')) + '</span>' + teeBtns +
+            '</div>' +
+            '<div class="tnpc-fields">' + lens + '</div>' +
             indexWarnHtml() +
+            '</div>';
+    }
+
+    // ----------------------------------------------------------
+    // ПАНЕЛЬ «ЦВЕТ И ШРИФТ»: общие цвета карточки + стиль каждого блока
+    // ----------------------------------------------------------
+    function colorInput(kind, field, label, value, extra) {
+        return '<label class="tnpc-num"><span>' + esc(label) + '</span>' +
+            '<input type="color" value="' + esc(value) + '" data-tnm-live-edit="' + esc(kind) +
+            '" data-field="' + esc(field) + '"' + (extra || '') + '></label>';
+    }
+
+    function fontSelect(kind, field, value, extra) {
+        var options = '<option value="">' + esc(bi('Arial (по умолчанию)', 'Arial (default)')) + '</option>';
+        if (kind === 'tnpc-row-font') {
+            options = '<option value="">' + esc(bi('— как у карточки —', '— same as card —')) + '</option>';
+        }
+        options += CARD_FONTS.map(function (f) {
+            return '<option value="' + esc(f.value) + '"' + (value === f.value ? ' selected' : '') + '>' +
+                esc(bi(f.ru, f.en)) + '</option>';
+        }).join('');
+        return '<label class="tnpc-num"><span>' + esc(bi('Шрифт', 'Font')) + '</span>' +
+            '<select data-tnm-live-edit="' + esc(kind) + '" data-field="' + esc(field) + '"' + (extra || '') + '>' +
+            options + '</select></label>';
+    }
+
+    /** Настройки одного блока таблицы: размеры, цвет, фон, шрифт, полужирный. */
+    function clearColorBtn(key, field) {
+        var title = field === 'bg'
+            ? bi('Сбросить фон блока (как у карточки)', 'Reset block fill (same as card)')
+            : bi('Сбросить цвет блока (как у карточки)', 'Reset block colour (same as card)');
+        return '<button type="button" class="tnm-btn tnm-btn-ghost tnm-btn-sm tnpc-color-clear" data-tnm-act="tnpc-row-color-clear"' +
+            ' data-id="' + esc(key) + '" data-field="' + esc(field) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '">✕</button>';
+    }
+
+    function rowCfgHtml(key) {
+        var r = rowCfg(key);
+        var design = clampDesign(ensureDraft().design);
+        var blockAttr = ' data-block="' + esc(key) + '"';
+        return '<div class="tnpc-block-cfg" data-block-cfg="' + esc(key) + '">' +
+            '<div class="tnpc-block-cfg-head">' +
+            '<b>' + esc(rowLabel(key)) + '</b>' +
+            '<span class="tnpc-block-cfg-actions">' +
+            ui().btn('tnpc-row-reset', esc(bi('Как у всех', 'Same as shared')), { icon: 'fas fa-rotate-left', variant: 'ghost', small: true, data: { id: key } }) +
+            '</span></div>' +
+            '<div class="tnpc-nums">' +
+            numField('tnpc-row', 'fontMm', bi('Кегль, мм', 'Font, mm'), r.fontMm,
+                ROW_FIELD_LIMITS.fontMm.min, ROW_FIELD_LIMITS.fontMm.max, 0.1, blockAttr) +
+            numField('tnpc-row', 'heightMm', bi('Высота, мм', 'Height, mm'), r.heightMm,
+                ROW_FIELD_LIMITS.heightMm.min, ROW_FIELD_LIMITS.heightMm.max, 0.1, blockAttr) +
+            numField('tnpc-row', 'labWMm', bi('Колонка подписи, мм', 'Label column, mm'), r.labWMm,
+                ROW_FIELD_LIMITS.labWMm.min, ROW_FIELD_LIMITS.labWMm.max, 0.5, blockAttr) +
+            '<label class="tnpc-num"><span>' + esc(bi('Цвет текста', 'Text colour')) + '</span>' +
+            '<span class="tnpc-color-row">' +
+            '<input type="color" value="' + esc(r.color || design.ink) + '" data-tnm-live-edit="tnpc-row-color" data-field="color"' + blockAttr + '>' +
+            clearColorBtn(key, 'color') + '</span></label>' +
+            '<label class="tnpc-num"><span>' + esc(bi('Фон блока', 'Block fill')) + '</span>' +
+            '<span class="tnpc-color-row">' +
+            '<input type="color" value="' + esc(r.bg || design.paper) + '" data-tnm-live-edit="tnpc-row-color" data-field="bg"' + blockAttr + '>' +
+            clearColorBtn(key, 'bg') + '</span></label>' +
+            fontSelect('tnpc-row-font', 'font', r.font, blockAttr) +
+            '<label class="tnpc-check tnpc-check-block"><input type="checkbox" data-tnm-edit="tnpc-row-bold" data-block="' + esc(key) + '"' +
+            (r.bold ? ' checked' : '') + '> ' + esc(bi('Полужирный', 'Bold')) + '</label>' +
+            '</div></div>';
+    }
+
+    function designPanelHtml() {
+        if (!state.panels.design) return '';
+        var d = ensureDraft();
+        var design = clampDesign(d.design);
+        return '<div class="tnm-card tnpc-panel" data-panel="design">' +
+            '<div class="tnpc-panel-head"><b><i class="fas fa-palette"></i> ' +
+            esc(bi('Цвет и шрифт — применяются ко всем карточкам сразу', 'Colors & fonts — applied to every card at once')) + '</b>' +
+            ui().btn('tnpc-design-reset', esc(bi('Цвета по умолчанию', 'Default colours')), { icon: 'fas fa-rotate-left', variant: 'ghost', small: true }) +
+            '</div>' +
+            '<div class="tnpc-nums">' +
+            fontSelect('tnpc-design', 'font', design.font) +
+            colorInput('tnpc-design-color', 'ink', bi('Цвет текста', 'Text colour'), design.ink) +
+            colorInput('tnpc-design-color', 'paper', bi('Фон карточки', 'Card background'), design.paper) +
+            colorInput('tnpc-design-color', 'line', bi('Цвет линий', 'Line colour'), design.line) +
+            colorInput('tnpc-design-color', 'sumBg', bi('Фон OUT/IN/TOTAL', 'OUT/IN/TOTAL fill'), design.sumBg) +
+            '</div>' +
+            '<p class="tnm-muted">' + esc(bi('Каждый блок таблицы (№, Пар, Длина, Индекс, Фора, Удары) можно растянуть ' +
+                'мышью прямо на карточке и покрасить отдельно; пустое поле блока наследует общие значения.',
+                'Every table block (№, Par, Length, Index, Handicap, Strokes) can be stretched right on the card ' +
+                'and coloured separately; empty block fields inherit the shared values.')) + '</p>' +
+            '<div class="tnpc-block-cfg-list">' + visibleRowOrder(d).map(rowCfgHtml).join('') + '</div>' +
             '</div>';
     }
 
@@ -1885,16 +2198,18 @@ var TnMgrPrintCards = (function (root) {
                 'drag the card across the sheet by the ✥ handle in its top-left corner')) + '</span>' +
             '<span><i class="fas fa-file-arrow-down"></i> ' + esc(bi('картинку можно перетащить файлом на лист', 'drop an image file onto the sheet')) + '</span>' +
             '<span><i class="fas fa-up-down"></i> ' + esc(bi('строки таблицы переставляются кнопками ↑/↓ или перетаскиванием подписи', 'reorder table rows with ↑/↓ or drag a row label')) + '</span>' +
+            '<span><i class="fas fa-up-down-left-right"></i> ' + esc(bi('блоки № / Пар / Длина / Индекс / Фора / Удары растягиваются мышью: ↕ высота строки, ↔ колонка подписи, ↘ весь блок сразу (кегль + высота + подпись)', 'the № / Par / Length / Index / Handicap / Strokes blocks stretch with the mouse: ↕ row height, ↔ label column, ↘ the whole block (font + height + label)')) + '</span>' +
+            '<span><i class="fas fa-palette"></i> ' + esc(bi('цвет, фон и шрифт любого блока и всей карточки — панель «Цвет и шрифт»; двойной клик по блоку открывает его настройки', 'colours, fills and fonts for any block and the whole card live in the “Colors & fonts” panel; double-click a block to open its settings')) + '</span>' +
             '<span><i class="fas fa-ruler"></i> ' + esc(bi('размеры — в панели «Размеры и место на листе»', 'sizes live in the “Sizes” panel')) + '</span>' +
             '<span><i class="fas fa-minus" style="transform:rotate(25deg)"></i> ' +
             esc(bi('фора — наклонными черточками в правом верхнем углу клетки счёта: одна черточка за каждый удар на лунке',
                 'handicap strokes — slashes in the top-right corner of the score box, one per stroke on the hole')) + '</span>' +
             (qrOwnerText(card) ? '<span><i class="fas fa-qrcode"></i> ' + esc(qrOwnerText(card)) + '</span>' : '') +
             '</div>' +
-            '<p class="tnm-muted">' + esc(bi('Карточка 147×200 мм. Внешняя рамка при печати снимается автоматически. ' +
+            '<p class="tnm-muted">' + esc(bi('Карточка 200×147 мм. Внешняя рамка при печати снимается автоматически. ' +
                 'Выбирайте дизайн, регулируйте смещения и масштаб — значения применяются ко всем карточкам и сохраняются. ' +
                 'При печати: Ориентация: Альбомная (авто), Масштаб 100%, Поля: Нет, без колонтитулов.',
-                'Card 147×200 mm. The outer frame is removed automatically when printing. Pick a design, adjust the ' +
+                'Card 200×147 mm. The outer frame is removed automatically when printing. Pick a design, adjust the ' +
                 'offsets and scale — the values apply to every card and are saved. When printing: Orientation: ' +
                 'Landscape (auto), Scale 100%, Margins: None, no headers or footers.')) + '</p>' +
             (d.footer.print ? '' : '<p class="tnm-muted">' + esc(bi('Подписи «Игрок / Маркер / Судья» видны только на экране — ' +
@@ -1960,6 +2275,7 @@ var TnMgrPrintCards = (function (root) {
         return '<div class="tnpc-wrap tnm-tab-body">' +
             toolbarHtml() +
             sizesPanelHtml() +
+            designPanelHtml() +
             overlaysPanelHtml() +
             contentPanelHtml() +
             fieldsPanelHtml() +
@@ -1980,7 +2296,7 @@ var TnMgrPrintCards = (function (root) {
             '.page{width:' + PAGE_W + 'mm;height:' + PAGE_H + 'mm;position:relative;page-break-after:always;overflow:hidden}' +
             cardCssText() +
             '.tnpc-card{border:0!important}' +
-            '.tnpc-handle,.tnpc-x,.tnpc-tag,.tnpc-row-tools,.tnpc-warn,.tnpc-ph,.tnpc-noprint,.tnpc-ghost,.tnpc-move,.tnpc-resize{display:none!important}' +
+            '.tnpc-handle,.tnpc-x,.tnpc-tag,.tnpc-row-tools,.tnpc-warn,.tnpc-ph,.tnpc-noprint,.tnpc-ghost,.tnpc-move,.tnpc-resize,.tnpc-block-h{display:none!important}' +
             '</style>';
     }
 
@@ -2159,8 +2475,8 @@ var TnMgrPrintCards = (function (root) {
         if (edge.indexOf('s') !== -1) nh = dr.oh + dy;
         if (edge.indexOf('n') !== -1) { nh = dr.oh - dy; ny = dr.oy + dy; }
         // Минимальная карточка не должна схлопнуться в ноль.
-        if (nw < 30) { var fix = 30 - nw; nw = 30; if (edge.indexOf('w') !== -1) nx -= fix; }
-        if (nh < 30) { var fix = 30 - nh; nh = 30; if (edge.indexOf('n') !== -1) ny -= fix; }
+        if (nw < 30) { var fixW = 30 - nw; nw = 30; if (edge.indexOf('w') !== -1) nx -= fixW; }
+        if (nh < 30) { var fixH = 30 - nh; nh = 30; if (edge.indexOf('n') !== -1) ny -= fixH; }
         dr.dw = nw - dr.ow;
         dr.dh = nh - dr.oh;
         dr.dx = nx - dr.ox;
@@ -2230,9 +2546,129 @@ var TnMgrPrintCards = (function (root) {
         return PAGE_W / (rect.width * fit);
     }
 
+    // ----------------------------------------------------------
+    // РАСТЯГИВАНИЕ БЛОКОВ ТАБЛИЦЫ (№ / Пар / Длина / Индекс / Фора / Удары)
+    // ----------------------------------------------------------
+    /** Фактический масштаб карточки на экране (из её style, без геометрии). */
+    function cardScaleOf(cardEl) {
+        var m = /scale\(([\d.]+)\)/.exec(cardEl.getAttribute('style') || '');
+        var scale = m ? parseFloat(m[1]) : 1;
+        return isFinite(scale) && scale > 0 ? scale : 1;
+    }
+
+    function startBlockDrag(ev, host, handleEl) {
+        var key = handleEl.getAttribute('data-tnpc-block-resize');
+        var mode = handleEl.getAttribute('data-mode') || 'scale';
+        var blockEl = handleEl.closest('.tnpc-block');
+        var cardEl = handleEl.closest('.tnpc-card');
+        if (!blockEl || !cardEl) return;
+        var d = ensureDraft();
+        var size = clampSize(d.size);
+        var scale = cardScaleOf(cardEl);
+        var rect = cardEl.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        var mmPerPxX = size.wMm * scale / rect.width;
+        var mmPerPxY = size.hMm * scale / rect.height;
+        if (!isFinite(mmPerPxX) || mmPerPxX <= 0 || !isFinite(mmPerPxY) || mmPerPxY <= 0) return;
+        var r = rowCfg(key);
+        state.blockDrag = {
+            key: key, mode: mode, el: blockEl,
+            startX: ev.clientX, startY: ev.clientY,
+            fontMm: r.fontMm, heightMm: r.heightMm, labWMm: r.labWMm,
+            mmX: mmPerPxX, mmY: mmPerPxY, moved: false
+        };
+        blockEl.classList.add('resizing');
+        try { handleEl.setPointerCapture(ev.pointerId); } catch (e) { /* silent */ }
+        ev.preventDefault();
+    }
+
+    function moveBlockDrag(ev) {
+        var dr = state.blockDrag;
+        if (!dr) return;
+        var dxPx = ev.clientX - dr.startX;
+        var dyPx = ev.clientY - dr.startY;
+        if (Math.abs(dxPx) > 2 || Math.abs(dyPx) > 2) dr.moved = true;
+        var d = ensureDraft();
+        var cfg = Object.assign({}, (d.rows || {})[dr.key] || {});
+        var dxMm = dxPx * dr.mmX;
+        var dyMm = dyPx * dr.mmY;
+        if (dr.mode === 'h') {
+            // ↕ — только высота строк блока.
+            cfg.heightMm = dr.heightMm + dyMm;
+        } else if (dr.mode === 'lab') {
+            // ↔ — только ширина колонки подписи (тянем вправо — шире).
+            cfg.labWMm = dr.labWMm + dxMm;
+        } else {
+            // ↘ — весь блок пропорционально: и кегль, и высота, и подпись.
+            var factor = 1 + Math.max(
+                dyMm / Math.max(dr.heightMm, 3),
+                dxMm / Math.max(dr.labWMm, 5)
+            );
+            if (!isFinite(factor) || factor <= 0) factor = 1;
+            cfg.fontMm = dr.fontMm * factor;
+            cfg.heightMm = dr.heightMm * factor;
+            cfg.labWMm = dr.labWMm * factor;
+        }
+        d.rows = d.rows || {};
+        d.rows[dr.key] = clampRowCfg(dr.key, cfg, d.style);
+        patchBlockDom(dr.key);
+        syncBlockInputs(dr.key);
+        ev.preventDefault();
+    }
+
+    function endBlockDrag() {
+        var dr = state.blockDrag;
+        state.blockDrag = null;
+        if (!dr) return;
+        if (dr.el) dr.el.classList.remove('resizing');
+        if (!dr.moved) return;
+        persistSoon();
+    }
+
+    /** Применить стиль блока к предпросмотру без полной перерисовки. */
+    function patchBlockDom(key) {
+        var dd = doc();
+        if (!dd) return;
+        var style = blockStyleAttr(key);
+        var bold = rowCfg(key).bold;
+        dd.querySelectorAll('[data-tnpc-block="' + key + '"]').forEach(function (el) {
+            el.setAttribute('style', style);
+            el.classList.toggle('b', bold);
+        });
+    }
+
+    /** Поля блока в панели «Цвет и шрифт» следуют за растягиванием мышью. */
+    function syncBlockInputs(key) {
+        var d = doc();
+        if (!d) return;
+        var r = rowCfg(key);
+        ['fontMm', 'heightMm', 'labWMm'].forEach(function (field) {
+            var input = d.querySelector('[data-tnm-live-edit="tnpc-row"][data-block="' + key + '"][data-field="' + field + '"]');
+            if (input && d.activeElement !== input) input.value = r[field];
+        });
+    }
+
+    /** Открыть панель «Цвет и шрифт» и подсветить настройки блока. */
+    function focusBlockConfig(key) {
+        state.panels.design = true;
+        ui().render();
+        var dd = doc();
+        if (!dd) return;
+        var cfg = dd.querySelector('[data-block-cfg="' + key + '"]');
+        if (cfg && typeof cfg.scrollIntoView === 'function') {
+            try { cfg.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* silent */ }
+        }
+        if (cfg) {
+            cfg.classList.add('flash');
+            setTimeout(function () { cfg.classList.remove('flash'); }, 1600);
+        }
+    }
+
     function bindDrag(host) {
         host.addEventListener('pointerdown', function (ev) {
             if (ev.button !== undefined && ev.button !== 0) return;
+            var blockHandle = ev.target.closest('[data-tnpc-block-resize]');
+            if (blockHandle) { startBlockDrag(ev, host, blockHandle); return; }
             var handle = ev.target.closest('[data-tnpc-resize]');
             var ovEl = ev.target.closest('[data-overlay-id]');
             if (!ovEl) { startCardDrag(ev, host); return; }
@@ -2266,6 +2702,7 @@ var TnMgrPrintCards = (function (root) {
             ev.preventDefault();
         });
         host.addEventListener('pointermove', function (ev) {
+            if (state.blockDrag) { moveBlockDrag(ev); return; }
             if (state.cardDrag) { moveCardDrag(ev, host); return; }
             if (!state.drag) return;
             var dr = state.drag;
@@ -2293,6 +2730,7 @@ var TnMgrPrintCards = (function (root) {
             syncOverlayInputs(next);
         });
         host.addEventListener('pointerup', function () {
+            if (state.blockDrag) { endBlockDrag(); return; }
             if (state.cardDrag) { endCardDrag(host); return; }
             if (!state.drag) return;
             var wasPending = state.drag.pending;
@@ -2301,10 +2739,21 @@ var TnMgrPrintCards = (function (root) {
             persistSoon();
         });
         host.addEventListener('pointercancel', function () {
+            if (state.blockDrag) { endBlockDrag(); return; }
             if (state.cardDrag) { endCardDrag(host); return; }
             state.drag = null;
         });
         host.addEventListener('dblclick', function (ev) {
+            // Двойной клик по блоку таблицы — его настройки (цвет/шрифт/размер).
+            if (!ev.target.closest('[contenteditable="true"]') &&
+                !ev.target.closest('[data-tnpc-block-resize]') &&
+                !ev.target.closest('[data-tnm-act]')) {
+                var blockEl = ev.target.closest('.tnpc-block');
+                if (blockEl) {
+                    focusBlockConfig(blockEl.getAttribute('data-tnpc-block') || '');
+                    return;
+                }
+            }
             var ovEl = ev.target.closest('[data-overlay-id]');
             if (!ovEl || ovEl.getAttribute('data-type') !== 'qr') return;
             var id = ovEl.getAttribute('data-overlay-id');
@@ -2554,6 +3003,13 @@ var TnMgrPrintCards = (function (root) {
         } else if (kind === 'idx') {
             if (!isFinite(v) || v < 1 || v > 18) { el.textContent = String(draft.indexes[h] || (h + 1)); return; }
             draft.indexes[h] = v;
+        } else if (kind === 'len') {
+            var raw = (el.textContent || '').trim();
+            if (!raw || !isFinite(v) || v < 0 || v > 999) {
+                el.textContent = draft.lengths && draft.lengths[h] > 0 ? String(draft.lengths[h]) : '';
+                return;
+            }
+            draft.lengths[h] = v;
         } else return;
         persistSoon();
         syncPanelInputs(kind, h, v);
@@ -2564,17 +3020,24 @@ var TnMgrPrintCards = (function (root) {
         var d = doc();
         if (!d) return;
         var sel = kind === 'par' ? '[data-tnm-live-edit="tnpc-par"][data-h="' + h + '"]'
-            : '[data-tnm-live-edit="tnpc-idx"][data-h="' + h + '"]';
+            : kind === 'idx' ? '[data-tnm-live-edit="tnpc-idx"][data-h="' + h + '"]'
+                : '[data-tnm-live-edit="tnpc-len"][data-h="' + h + '"]';
         var input = d.querySelector(sel);
         if (input && d.activeElement !== input) input.value = v;
-        // Пересчитываем итоги строки «Пар» независимо от её положения в таблице.
-        if (kind === 'par') {
+        // Пересчитываем итоги строк «Пар» и «Длина» независимо от их положения
+        // в таблице (блоки теперь отдельные таблицы).
+        if (kind === 'par' || kind === 'len') {
             var n = holeCount();
             var outN = Math.min(9, n);
+            var draft = ensureDraft();
+            var values = kind === 'par' ? draft.pars : (draft.lengths || defaultLengths());
             var sums = n > 9
-                ? [parSum(0, outN), parSum(outN, n), parSum(0, n)]
-                : [parSum(0, n), parSum(0, n)];
-            var row = d.querySelector('.tnpc-card .tnpc-table-row[data-tnpc-table-row="par"]');
+                ? [kind === 'par' ? parSum(0, outN) : lenSum(values, 0, outN),
+                    kind === 'par' ? parSum(outN, n) : lenSum(values, outN, n),
+                    kind === 'par' ? parSum(0, n) : lenSum(values, 0, n)]
+                : [kind === 'par' ? parSum(0, n) : lenSum(values, 0, n),
+                    kind === 'par' ? parSum(0, n) : lenSum(values, 0, n)];
+            var row = d.querySelector('.tnpc-card .tnpc-table-row[data-tnpc-table-row="' + kind + '"]');
             var cells = row ? row.querySelectorAll('td.sum') : [];
             cells.forEach(function (cell, i) { if (sums[i] != null) cell.textContent = sums[i]; });
         }
@@ -2807,6 +3270,112 @@ var TnMgrPrintCards = (function (root) {
     ui().on('tnpc-panel-fields', function () { state.panels.fields = !state.panels.fields; ui().render(); });
     ui().on('tnpc-panel-content', function () { state.panels.content = !state.panels.content; ui().render(); });
     ui().on('tnpc-panel-overlays', function () { state.panels.overlays = !state.panels.overlays; ui().render(); });
+    ui().on('tnpc-panel-design', function () { state.panels.design = !state.panels.design; ui().render(); });
+    ui().on('tnpc-design-reset', function () {
+        ensureDraft().design = defaultDesign();
+        persistSoon();
+        ui().render();
+    });
+    ui().on('tnpc-row-reset', function (btn) {
+        var key = btn.getAttribute('data-id');
+        var d = ensureDraft();
+        if (d.rows) delete d.rows[key];
+        persistSoon();
+        patchBlockDom(key);
+        ui().render();
+    });
+    ui().on('tnpc-row-color-clear', function (btn) {
+        var key = btn.getAttribute('data-id');
+        var field = btn.getAttribute('data-field');
+        var d = ensureDraft();
+        var cfg = Object.assign({}, (d.rows || {})[key]);
+        delete cfg[field];
+        d.rows = d.rows || {};
+        d.rows[key] = clampRowCfg(key, cfg, d.style);
+        persistSoon();
+        patchBlockDom(key);
+        ui().render();
+    });
+    ui().on('live:tnpc-design', function (input) {
+        var field = input.getAttribute('data-field');
+        var d = ensureDraft();
+        var next = Object.assign({}, d.design);
+        if (field === 'font') next.font = input.value;
+        d.design = clampDesign(next);
+        persistSoon();
+        patchCardDom(d);
+    });
+    ui().on('live:tnpc-design-color', function (input) {
+        var field = input.getAttribute('data-field');
+        var d = ensureDraft();
+        var next = Object.assign({}, d.design);
+        next[field] = input.value;
+        d.design = clampDesign(next);
+        persistSoon();
+        patchCardDom(d);
+    });
+    ui().on('live:tnpc-row', function (input) {
+        var key = input.getAttribute('data-block');
+        var field = input.getAttribute('data-field');
+        if (!key || !ROW_FIELD_LIMITS[field]) return;
+        var d = ensureDraft();
+        var cfg = Object.assign({}, (d.rows || {})[key]);
+        cfg[field] = input.value;
+        d.rows = d.rows || {};
+        d.rows[key] = clampRowCfg(key, cfg, d.style);
+        persistSoon();
+        patchBlockDom(key);
+    });
+    ui().on('live:tnpc-row-font', function (input) {
+        var key = input.getAttribute('data-block');
+        var d = ensureDraft();
+        var cfg = Object.assign({}, (d.rows || {})[key]);
+        cfg.font = input.value;
+        d.rows = d.rows || {};
+        d.rows[key] = clampRowCfg(key, cfg, d.style);
+        persistSoon();
+        patchBlockDom(key);
+    });
+    ui().on('live:tnpc-row-color', function (input) {
+        var key = input.getAttribute('data-block');
+        var field = input.getAttribute('data-field');
+        if (!key || (field !== 'color' && field !== 'bg')) return;
+        var d = ensureDraft();
+        var cfg = Object.assign({}, (d.rows || {})[key]);
+        cfg[field] = input.value;
+        d.rows = d.rows || {};
+        d.rows[key] = clampRowCfg(key, cfg, d.style);
+        persistSoon();
+        patchBlockDom(key);
+    });
+    ui().on('edit:tnpc-row-bold', function (input) {
+        var key = input.getAttribute('data-block');
+        var d = ensureDraft();
+        var cfg = Object.assign({}, (d.rows || {})[key]);
+        cfg.bold = !!input.checked;
+        d.rows = d.rows || {};
+        d.rows[key] = clampRowCfg(key, cfg, d.style);
+        persistSoon();
+        patchBlockDom(key);
+    });
+    ui().on('live:tnpc-len', function (input) {
+        var h = parseInt(input.getAttribute('data-h'), 10);
+        var v = parseInt(input.value, 10);
+        if (!isFinite(h) || h < 0 || h > 17) return;
+        if (input.value === '') { ensureDraft().lengths[h] = 0; }
+        else if (!isFinite(v) || v < 0 || v > 999) return;
+        else ensureDraft().lengths[h] = v;
+        persistSoon();
+        rerenderCard();
+    });
+    ui().on('tnpc-len-tee', function (btn) {
+        var tee = btn.getAttribute('data-tee') || 'wh';
+        ensureDraft().lengths = defaultLengths(tee);
+        persistSoon();
+        ui().render();
+        ui().toastMsg(bi('Длины лунок заполнены по выбранному ТИ', 'Hole lengths filled from the selected tee'));
+    });
+
     ui().on('tnpc-fit-page', function () {
         var d = ensureDraft();
         var size = clampSize(d.size);
@@ -3157,7 +3726,6 @@ var TnMgrPrintCards = (function (root) {
         defaultSize: defaultSize,
         defaultLayout: defaultLayout,
         defaultOverlays: defaultOverlays,
-        styleVars: styleVars,
         cardCssText: cardCssText,
         cardStyleAttr: cardStyleAttr,
         slotPos: slotPos,
@@ -3176,6 +3744,21 @@ var TnMgrPrintCards = (function (root) {
         fitStage: fitStage,
         STYLE_FIELDS: STYLE_FIELDS,
         SHOW_FIELDS: SHOW_FIELDS,
+        TABLE_ROW_KEYS: TABLE_ROW_KEYS,
+        ROW_LABELS: ROW_LABELS,
+        ROW_FIELD_LIMITS: ROW_FIELD_LIMITS,
+        CARD_FONTS: CARD_FONTS,
+        defaultLengths: defaultLengths,
+        defaultDesign: defaultDesign,
+        clampDesign: clampDesign,
+        clampRows: clampRows,
+        clampRowCfg: clampRowCfg,
+        rowCfg: rowCfg,
+        blockStyleAttr: blockStyleAttr,
+        styleVars: styleVars,
+        validColor: validColor,
+        safeFont: safeFont,
+        lenSum: lenSum,
         CARD_W: CARD_W,
         CARD_H: CARD_H,
         PAGE_W: PAGE_W,

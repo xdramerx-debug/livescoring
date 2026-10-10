@@ -149,11 +149,13 @@ check('сигнатура карточек меняется при смене д
 var d = PC.defaultDraft();
 var normalizedOrder = PC.normalizeRowOrder(['strokes', 'fore', 'fore', 'unknown']);
 check('порядок строк безопасно дополняется и очищается от дублей',
-    normalizedOrder.join(',') === 'strokes,fore,holes,par,index');
+    normalizedOrder.join(',') === 'holes,par,length,index,strokes,fore', normalizedOrder.join(','));
 check('строку можно переставить в сохранённом порядке',
-    PC.reorderRowOrder(d.rowOrder, 'strokes', 'holes').join(',') === 'strokes,holes,par,index,fore');
+    PC.reorderRowOrder(d.rowOrder, 'strokes', 'holes').join(',') === 'strokes,holes,par,length,index,fore');
 check('порядок перемещения учитывает скрытые строки',
-    PC.visibleRowOrder({ rowOrder: d.rowOrder, show: { par: false } }).join(',') === 'holes,index,fore,strokes');
+    PC.visibleRowOrder({ rowOrder: d.rowOrder, show: { par: false } }).join(',') === 'holes,length,index,fore,strokes');
+check('строка «Длина» появляется у старых турниров на своём месте (после «Пар»)',
+    PC.normalizeRowOrder(['holes', 'par', 'index', 'fore', 'strokes']).join(',') === 'holes,par,length,index,fore,strokes');
 check('размер карточки по умолчанию 200×147 мм', d.size.wMm === 200 && d.size.hMm === 147);
 check('две карточки на листе по умолчанию', d.layout.perSheet === 2);
 check('смещение по умолчанию 105.86×39.68 мм', d.layout.xMm === 105.86 && d.layout.yMm === 39.68);
@@ -181,8 +183,17 @@ check('раскладка за пределами листа помечаетс�
 })(), 'раскладку вписываем в лист, а не сбрасываем');
 check('18 пар, диапазон 3–6', d.pars.length === 18 && d.pars.every(function (p) { return p >= 3 && p <= 6; }));
 check('18 индексов, без пропусков', d.indexes.length === 18);
+check('18 длин лунок по умолчанию (белые ТИ справочника)', (function () {
+    var lens = PC.defaultLengths();
+    return lens.length === 18 && lens[0] === 328 && lens[3] === 161 && d.lengths.join() === lens.join();
+})(), PC.defaultLengths().slice(0, 4).join(','));
+check('длины пересчитываются по выбранному ТИ', PC.defaultLengths('bk')[0] === 361 && PC.defaultLengths('rd')[0] === 295);
+check('итог длин считает только заполненные клетки',
+    PC.lenSum([0, 300, 400, ''], 0, 4) === 700 && PC.lenSum([0, 0], 0, 2) === '');
 check('строка форы включена по умолчанию и идёт сразу после индекса',
     d.show.fore === true && d.rowOrder.indexOf('fore') === d.rowOrder.indexOf('index') + 1);
+check('строка «Длина» включена по умолчанию и стоит после «Пар»',
+    d.show.length === true && d.rowOrder.indexOf('length') === d.rowOrder.indexOf('par') + 1);
 check('строка с номерами лунок включена в настраиваемый порядок', d.rowOrder[0] === 'holes');
 check('фора рассчитывается по CH и индексу лунки', PC.foreValues(cards[0])[4] === 1);
 check('коды и написания ТИ переводятся в названия цветов',
@@ -213,13 +224,69 @@ check('оверлей считается от текущего размера к
 // ----------------------------------------------------------
 var vars = PC.styleVars(PC.defaultStyle());
 check('переменные размеров в миллиметрах', /--tnpc-title:4\.2mm/.test(vars) && /--tnpc-row-h:6\.4mm/.test(vars), vars);
-check('все кегли описаны переменными в мм',
-    vars.split('--tnpc-').length - 1 === Object.keys(PC.STYLE_FIELDS).length &&
-    vars.split(';').filter(Boolean).every(function (part) { return part.indexOf('mm') === part.length - 2; }), vars);
+check('все размеры описаны переменными в мм',
+    vars.split(';').filter(Boolean).filter(function (part) {
+        return part.slice(part.indexOf(':') + 1).slice(-2) === 'mm';
+    }).length === Object.keys(PC.STYLE_FIELDS).length, vars);
+check('цвета и шрифт карточки описаны переменными',
+    /--tnpc-ink:#111111/.test(vars) && /--tnpc-paper:#ffffff/.test(vars) &&
+    /--tnpc-linec:#111111/.test(vars) && /--tnpc-sumbg:#efefef/.test(vars) &&
+    /--tnpc-font:Arial,Helvetica,sans-serif/.test(vars), vars);
 var css = PC.cardCssText();
 check('CSS карточки использует переменные', css.indexOf('font-size:var(--tnpc-title') !== -1 &&
     css.indexOf('height:var(--tnpc-row-h') !== -1);
+check('CSS карточки красится переменными дизайна',
+    css.indexOf('background:var(--tnpc-paper,#fff)') !== -1 &&
+    css.indexOf('color:var(--tnpc-ink,#111)') !== -1 &&
+    css.indexOf('font-family:var(--tnpc-font,Arial,Helvetica,sans-serif)') !== -1 &&
+    css.indexOf('solid var(--tnpc-linec,#111)') !== -1 &&
+    css.indexOf('background:var(--tnpc-b-bg,var(--tnpc-sumbg,#efefef))') !== -1);
+check('блоки таблицы — отдельные обёртки со своими переменными',
+    css.indexOf('.tnpc-block{position:relative}') !== -1 &&
+    css.indexOf('.tnpc-block+.tnpc-block{margin-top:calc(var(--tnpc-line,0.25mm) * -1)}') !== -1);
 check('CSS карточки общий для экрана и печати', PC.documentFor([cards[0]]).indexOf(css) !== -1);
+
+// ----------------------------------------------------------
+// 4a. Дизайн и блоки: цвета, шрифты, свои размеры каждой строки
+// ----------------------------------------------------------
+var designClamped = PC.clampDesign({ font: 'Impact, Charcoal, sans-serif', ink: 'красный', paper: '#fff', line: '#0a0a0a', sumBg: 12345 });
+check('дизайн по умолчанию чинит некорректные цвета',
+    designClamped.ink === '#111111' && designClamped.paper === '#fff' && designClamped.sumBg === '#efefef' &&
+    designClamped.line === '#0a0a0a' && designClamped.font === 'Impact, Charcoal, sans-serif');
+check('чужой шрифт отбрасывается', PC.clampDesign({ font: 'Comic Sans, cursive' }).font === '' &&
+    PC.safeFont('Tahoma, Geneva, sans-serif') === 'Tahoma, Geneva, sans-serif');
+check('цвет допускается только hex', PC.validColor('#abc') && PC.validColor('#a1b2c3') &&
+    !PC.validColor('red') && !PC.validColor('#12345'));
+
+var rowsClamped = PC.clampRows({
+    par: { fontMm: 8, heightMm: 99, color: '#b00', bg: '#ffd', font: 'Georgia, serif', bold: true, junk: 1 },
+    holes: { labWMm: 20 },
+    fore: { color: 'nope' }
+}, PC.defaultStyle());
+check('свои размеры блока клампятся и чистятся от мусора',
+    rowsClamped.par.fontMm === 8 && rowsClamped.par.heightMm === 18 &&
+    rowsClamped.par.color === '#b00' && rowsClamped.par.bg === '#ffd' &&
+    rowsClamped.par.font === 'Georgia, serif' && rowsClamped.par.bold === true &&
+    rowsClamped.par.junk === undefined);
+check('блок без настроек наследует общие размеры',
+    rowsClamped.fore === undefined && rowsClamped.holes.labWMm === 20 &&
+    PC.rowCfg('strokes').fontMm === 2.9 && PC.rowCfg('index').heightMm === 6.4 &&
+    PC.rowCfg('length').labWMm === 15);
+check('стиль блока отдаётся CSS-переменными и цветом', (function () {
+    PC.state.draft = PC.defaultDraft();
+    PC.state.draft._tid = 't1';
+    PC.state.draft.rows = PC.clampRows({
+        par: { fontMm: 8, heightMm: 18, color: '#b00', bg: '#ffd', font: 'Georgia, serif', bold: true }
+    }, PC.state.draft.style);
+    var attr = PC.blockStyleAttr('par');
+    var plain = PC.blockStyleAttr('strokes');
+    var ok = /--tnpc-table:8mm/.test(attr) && /--tnpc-row-h:18mm/.test(attr) &&
+        attr.indexOf('color:#b00') !== -1 && attr.indexOf('--tnpc-b-bg:#ffd') !== -1 &&
+        attr.indexOf('font-family:Georgia, serif') !== -1 && attr.indexOf('font-weight:800') !== -1 &&
+        plain === '--tnpc-table:2.9mm;--tnpc-row-h:6.4mm;--tnpc-lab-w:15mm;';
+    PC.state.draft = null;
+    return ok;
+})(), 'свои переменные и цвет у блока, минимум — у остальных');
 
 // ----------------------------------------------------------
 // 5. Печать: страницы, содержимое, подписи снизу
@@ -248,6 +315,22 @@ check('имена игроков печатаются', docHtml.indexOf('Ива�
 check('время старта и лунка печатаются', docHtml.indexOf('09:00') !== -1 && docHtml.indexOf('Лунка') !== -1);
 check('строки Пар/Индекс/Фора/Удары печатаются', docHtml.indexOf('>Пар</span>') !== -1 && docHtml.indexOf('>Индекс</span>') !== -1 &&
     docHtml.indexOf('>Фора 1</span>') !== -1 && docHtml.indexOf('>Удары</span>') !== -1);
+check('строка «Длина» печатается с длинами лунок и итогами',
+    docHtml.indexOf('>Длина, м</span>') !== -1 && docHtml.indexOf('>328</td>') !== -1 &&
+    /<td class="sum">(\d+)<\/td>/.test(docHtml));
+check('строку «Длина» можно выключить в «Составе информации»', (function () {
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = { show: { length: false }, holes: 18 };
+    var noLen = PC.documentFor([allCards[0]]);
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = null;
+    PC.state.draft = null;
+    return noLen.indexOf('>Длина, м</span>') === -1 && noLen.indexOf('data-tnpc-block="length"') === -1;
+})());
+check('блоки таблицы — отдельные обёртки с ручками только на экране',
+    docHtml.indexOf('data-tnpc-block="holes"') !== -1 &&
+    docHtml.indexOf('data-tnpc-block-resize') === -1 &&
+    docHtml.indexOf('class="tnpc-block-h') === -1);
 check('колонки идут 1–9, OUT, 10–18, IN, TOTAL',
     docHtml.indexOf('<td>9</td><td class="sum">OUT</td><td>10</td>') !== -1 &&
     docHtml.indexOf('<td>18</td><td class="sum">IN</td><td class="sum">TOTAL</td>') !== -1);
@@ -362,19 +445,30 @@ TOURNAMENT.printScorecards = null;
 var tabHtml = PC.html();
 check('вкладка отдаёт разметку', tabHtml.indexOf('tnpc-wrap') !== -1);
 // Все панели открыты: любая опечатка в панели роняет вкладку целиком.
-['sizes', 'fields', 'content', 'overlays'].forEach(function (panel) { PC.state.panels[panel] = true; });
+['sizes', 'fields', 'content', 'overlays', 'design'].forEach(function (panel) { PC.state.panels[panel] = true; });
 var panelsHtml = PC.html();
 check('вкладка жива со всеми открытыми панелями', panelsHtml.length > tabHtml.length);
 check('панель размеров объясняет вписывание в лист', /вписывается в лист/.test(panelsHtml));
+check('панель «Цвет и шрифт» настраивает карточку и каждый блок',
+    panelsHtml.indexOf('data-panel="design"') !== -1 &&
+    panelsHtml.indexOf('data-tnm-live-edit="tnpc-design-color"') !== -1 &&
+    panelsHtml.indexOf('data-block-cfg="par"') !== -1 &&
+    panelsHtml.indexOf('data-tnm-live-edit="tnpc-row"') !== -1);
 check('подсказка о вписывании помечена своим классом (правка размеров не копит копии)',
     panelsHtml.indexOf('tnpc-fit-note') !== -1);
 check('подсказка про печать альбомным листом', /Ориентация: Альбомная \(авто\)/.test(panelsHtml));
 check('подсказка про черточки форы', /наклонными черточками/.test(panelsHtml));
 check('внешняя рамка на бумагу не идёт', PC.documentFor([allCards[0]]).indexOf('.tnpc-card{border:0!important}') !== -1);
-['sizes', 'fields', 'content', 'overlays'].forEach(function (panel) { PC.state.panels[panel] = false; });
+['sizes', 'fields', 'content', 'overlays', 'design'].forEach(function (panel) { PC.state.panels[panel] = false; });
 check('ровно одна карточка-эталон на экране', (tabHtml.match(/class="tnpc-card"/g) || []).length === 1,
     (tabHtml.match(/class="tnpc-card"/g) || []).length);
 check('эталон редактируется на месте', tabHtml.indexOf('contenteditable="true"') !== -1);
+check('у каждого блока таблицы — три ручки растягивания (↕ ↔ ↘)',
+    tabHtml.indexOf('data-tnpc-block="holes"') !== -1 &&
+    tabHtml.indexOf('data-tnpc-block="length"') !== -1 &&
+    (tabHtml.match(/data-tnpc-block-resize="holes"/g) || []).length === 3);
+check('длины лунок редактируются прямо в клетках карточки',
+    tabHtml.indexOf('data-tnpc-grid="len"') !== -1);
 check('строки таблицы можно перемещать перетаскиванием и стрелками',
     tabHtml.indexOf('data-tnpc-row-handle="holes"') !== -1 &&
     tabHtml.indexOf('data-tnm-act="tnpc-table-row-up"') !== -1 &&
@@ -395,6 +489,7 @@ check('предпросмотр листа A4 на месте', tabHtml.indexOf(
 check('панель размеров доступна', tabHtml.indexOf('tnpc-panel-sizes') !== -1);
 check('панель лого и QR доступна', tabHtml.indexOf('tnpc-panel-overlays') !== -1);
 check('панель состава информации доступна', tabHtml.indexOf('tnpc-panel-content') !== -1);
+check('панель цвета и шрифта доступна', tabHtml.indexOf('tnpc-panel-design') !== -1);
 check('строка актуальности данных показана', tabHtml.indexOf('Участников: 4') !== -1 && tabHtml.indexOf('Карточек: 3') !== -1);
 check('предупреждение о недостающем стартовом листе отсутствует, если лист есть',
     tabHtml.indexOf('Нет стартового листа') === -1);
@@ -448,7 +543,6 @@ check('без привязки к раунду группы QR не печата
         delete sheet.entries[pid].groupRoundId;
     });
     var savedSheet = global.TnMgrUI.sheetOf;
-    var savedCards = PC.state.draft.cards;
     global.TnMgrUI.sheetOf = function () { return sheet; };
     var printed = PC.documentFor(PC.state.draft.cards);
     global.TnMgrUI.sheetOf = savedSheet;
@@ -490,6 +584,26 @@ PC.refreshCards();
 check('дизайн сохраняется в tournaments/<tid>/printScorecards', writes.every(function (w) {
     return w.path === 'tournaments/t1/printScorecards';
 }), writes.map(function (w) { return w.path; }).join(','));
+check('сохранённые длины, стили блоков и цвета переживают загрузку', (function () {
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = {
+        holes: 18,
+        lengths: [100, 0, 300],
+        rows: { par: { fontMm: 7, color: '#0a0' } },
+        design: { ink: '#222222', paper: '#fffff0', line: '#333333', sumBg: '#dddddd', font: 'Georgia, serif' }
+    };
+    PC.html();
+    var loaded = PC.state.draft;
+    var ok = loaded.lengths[0] === 100 && loaded.lengths[1] === 0 && loaded.lengths[2] === 300 &&
+        loaded.lengths[17] === 335 &&
+        loaded.rows.par.fontMm === 7 && loaded.rows.par.color === '#0a0' &&
+        loaded.design.ink === '#222222' && loaded.design.paper === '#fffff0' &&
+        loaded.design.font === 'Georgia, serif';
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = null;
+    PC.state.draft = null;
+    return ok;
+})(), 'короткий массив длин дополняется справочником');
 
 // ----------------------------------------------------------
 // 10. Перетаскивание в редакторе: карточка по листу и свой текст

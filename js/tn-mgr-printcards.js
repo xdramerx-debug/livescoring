@@ -68,7 +68,8 @@ var TnMgrPrintCards = (function (root) {
     var SHOW_FIELDS = {
         subtitle: { def: true, ru: 'Клуб и поле', en: 'Club and course' },
         date: { def: true, ru: 'Дата турнира', en: 'Tournament date' },
-        hcp: { def: true, ru: 'HCP', en: 'Handicap' },
+        hcp: { def: true, ru: 'Точный HCP', en: 'Handicap index' },
+        fieldHcp: { def: true, ru: 'Полевой HCP', en: 'Course handicap' },
         tee: { def: true, ru: 'ТИ (ти-бокс)', en: 'Tee' },
         hole: { def: true, ru: 'Стартовая лунка', en: 'Start hole' },
         time: { def: true, ru: 'Время старта', en: 'Start time' },
@@ -114,7 +115,52 @@ var TnMgrPrintCards = (function (root) {
     ];
 
     /** Поля карточки, которые можно править вручную прямо на эталоне. */
-    var CARD_TEXT_FIELDS = ['names', 'hcps', 'tee', 'startHole', 'startTime', 'flight'];
+    var CARD_TEXT_FIELDS = ['names', 'hcps', 'fieldHcps', 'tee', 'startHole', 'startTime', 'flight'];
+
+    /**
+     * Крупные блоки карточки, которые двигаются и масштабируются ЦЕЛИКОМ:
+     *   table — вся таблица (№ лунки, Пар, Длина, Индекс, Фора, Удары);
+     *   head  — шапка (турнир, клуб, дата, имя, HCP, ТИ, старт).
+     * free=false — блок стоит в обычном потоке карточки (как раньше);
+     * free=true  — блок свободно стоит в точке xMm/yMm шириной wMm.
+     * k — масштаб содержимого (кегли, высоты строк, колонки подписей).
+     */
+    var BOX_KEYS = ['table', 'head'];
+    var BOX_LABELS = {
+        table: { ru: 'Таблица (№, Пар, Длина, Индекс, Фора, Удары)', en: 'Table (No., Par, Length, Index, Hcp, Strokes)', short: { ru: 'Таблица', en: 'Table' } },
+        head: { ru: 'Шапка (турнир, имя, HCP, старт)', en: 'Header (tournament, name, HCP, start)', short: { ru: 'Шапка', en: 'Header' } }
+    };
+    var BOX_K_LIMITS = { min: 0.4, max: 3 };
+
+    /**
+     * Свои блоки карточки (оверлей type:'block'): шаблон текста с
+     * подстановками {marker}, {player}, {hcp}… — значения берутся для
+     * каждой карточки из участников и стартового листа.
+     */
+    var BLOCK_PLACEHOLDERS = [
+        { key: 'player', ru: 'ФИО игрока', en: 'Player full name' },
+        { key: 'lastName', ru: 'Фамилия игрока', en: 'Player last name' },
+        { key: 'firstName', ru: 'Имя игрока', en: 'Player first name' },
+        { key: 'marker', ru: 'ФИО маркера', en: 'Marker full name' },
+        { key: 'markerLast', ru: 'Фамилия маркера', en: 'Marker last name' },
+        { key: 'markerFirst', ru: 'Имя маркера', en: 'Marker first name' },
+        { key: 'hcp', ru: 'Точный HCP', en: 'Handicap index' },
+        { key: 'fieldHcp', ru: 'Полевой HCP', en: 'Course handicap' },
+        { key: 'tee', ru: 'ТИ', en: 'Tee' },
+        { key: 'hole', ru: 'Стартовая лунка', en: 'Start hole' },
+        { key: 'time', ru: 'Время старта', en: 'Start time' },
+        { key: 'flight', ru: 'Флайт', en: 'Flight' },
+        { key: 'group', ru: 'Зачётная группа', en: 'Division' },
+        { key: 'tournament', ru: 'Турнир', en: 'Tournament' },
+        { key: 'date', ru: 'Дата', en: 'Date' },
+        { key: 'club', ru: 'Клуб и поле', en: 'Club and course' }
+    ];
+    var BLOCK_PRESETS = {
+        custom: { ru: 'Свой блок', en: 'Custom block', title: { ru: 'Свой блок', en: 'Custom block' }, text: { ru: 'Текст и данные: {player}', en: 'Text and data: {player}' }, wMm: 70, hMm: 9 },
+        marker: { ru: 'Маркер', en: 'Marker', title: { ru: 'Маркер', en: 'Marker' }, text: { ru: 'Маркер: {marker}', en: 'Marker: {marker}' }, wMm: 80, hMm: 8, border: 'bottom' },
+        markerSign: { ru: 'Подпись маркера', en: 'Marker signature', title: { ru: 'Подпись маркера', en: 'Marker signature' }, text: { ru: 'Маркер: {markerLast} {markerFirst}\nПодпись: ________________', en: 'Marker: {markerLast} {markerFirst}\nSignature: ________________' }, wMm: 85, hMm: 13, border: 'box' },
+        hcp: { ru: 'Гандикапы', en: 'Handicaps', title: { ru: 'Гандикапы', en: 'Handicaps' }, text: { ru: 'Точный HCP: {hcp} · Полевой HCP: {fieldHcp}', en: 'Handicap index: {hcp} · Course handicap: {fieldHcp}' }, wMm: 90, hMm: 8 }
+    };
 
     // ----------------------------------------------------------
     // СОСТОЯНИЕ
@@ -199,6 +245,83 @@ var TnMgrPrintCards = (function (root) {
     function safeFont(v) {
         return CARD_FONTS.some(function (f) { return f.value === v; }) ? v : '';
     }
+    function defaultBox(key, size) {
+        var card = clampSize(size);
+        var pad = STYLE_FIELDS.padMm.def;
+        return {
+            free: false,
+            xMm: pad,
+            yMm: key === 'head' ? pad : 34,
+            wMm: round1(card.wMm - pad * 2),
+            k: 1
+        };
+    }
+    function clampBox(key, box, size) {
+        var card = clampSize(size);
+        var src = box || {};
+        var def = defaultBox(key, card);
+        var w = round1(clampNum(src.wMm, 15, card.wMm, def.wMm));
+        return {
+            free: !!src.free,
+            xMm: round1(clampNum(src.xMm, 0, card.wMm - 5, def.xMm)),
+            yMm: round1(clampNum(src.yMm, 0, card.hMm - 3, def.yMm)),
+            wMm: w,
+            k: Math.round(clampNum(src.k, BOX_K_LIMITS.min, BOX_K_LIMITS.max, 1) * 100) / 100
+        };
+    }
+    function clampBoxes(boxes, size) {
+        var src = boxes || {};
+        var out = {};
+        BOX_KEYS.forEach(function (key) { out[key] = clampBox(key, src[key], size); });
+        return out;
+    }
+    /** Текущий блок карточки (всегда валиден). */
+    function boxOf(key) {
+        var d = ensureDraft();
+        d.boxes = d.boxes || {};
+        return clampBox(key, d.boxes[key], d.size);
+    }
+    function boxK(key) { return boxOf(key).k || 1; }
+    function boxLabel(key, short) {
+        var l = BOX_LABELS[key] || { ru: key, en: key, short: { ru: key, en: key } };
+        return short ? bi(l.short.ru, l.short.en) : bi(l.ru, l.en);
+    }
+    /**
+     * Inline-стиль блока: место и ширина (если свободный) + масштаб
+     * содержимого. Таблица масштабирует колонки итогов здесь, а кегли и
+     * высоты блоков — в blockStyleAttr(); шапка — свои кегли.
+     */
+    function boxStyleAttr(key) {
+        var d = ensureDraft();
+        var b = boxOf(key);
+        var s = clampStyle(d.style);
+        var out = '';
+        if (b.free) out += 'left:' + b.xMm + 'mm;top:' + b.yMm + 'mm;width:' + b.wMm + 'mm;';
+        if (b.k !== 1) {
+            if (key === 'table') out += '--tnpc-sum-w:' + round1(s.sumWMm * b.k) + 'mm;';
+            if (key === 'head') {
+                out += '--tnpc-title:' + round1(s.titleMm * b.k) + 'mm;' +
+                    '--tnpc-name:' + round1(s.nameMm * b.k) + 'mm;' +
+                    '--tnpc-meta:' + round1(s.metaMm * b.k) + 'mm;';
+            }
+        }
+        return out;
+    }
+    function boxClass(key) { return boxOf(key).free ? ' free' : ''; }
+    /** Ручки блока целиком (только экран): ✥ перенос, ↔ ширина, ↕ масштаб, ↘ оба. */
+    function boxHandlesHtml(key, printMode) {
+        if (printMode) return '';
+        var label = boxLabel(key, true);
+        return '<span class="tnpc-box-move" data-tnpc-box-drag="' + key + '" data-mode="move" title="' +
+            esc(bi('Перетащить блок «', 'Drag the “') + label + bi('» целиком', '” block')) + '">✥ ' + esc(label) + '</span>' +
+            '<span class="tnpc-box-h tnpc-box-h-e" data-tnpc-box-drag="' + key + '" data-mode="e" title="' +
+            esc(bi('Ширина блока «', 'Width of “') + label + bi('»', '”')) + '"></span>' +
+            '<span class="tnpc-box-h tnpc-box-h-s" data-tnpc-box-drag="' + key + '" data-mode="s" title="' +
+            esc(bi('Размер содержимого блока «', 'Content size of “') + label + bi('» (кегль и высота)', '” (font and height)')) + '"></span>' +
+            '<span class="tnpc-box-h tnpc-box-h-se" data-tnpc-box-drag="' + key + '" data-mode="se" title="' +
+            esc(bi('Растянуть блок «', 'Resize the “') + label + bi('» целиком', '” block')) + '"></span>';
+    }
+
     function defaultDesign() {
         return { font: '', ink: '#111111', paper: '#ffffff', line: '#111111', sumBg: '#efefef' };
     }
@@ -261,9 +384,11 @@ var TnMgrPrintCards = (function (root) {
     /** CSS-переменные блока: свои кегль/высота/подпись + цвет/фон/шрифт. */
     function blockStyleAttr(key) {
         var r = rowCfg(key);
-        var out = '--tnpc-table:' + round1(r.fontMm) + 'mm;' +
-            '--tnpc-row-h:' + round1(r.heightMm) + 'mm;' +
-            '--tnpc-lab-w:' + round1(r.labWMm) + 'mm;';
+        // Масштаб таблицы целиком (блок «Таблица») умножает размеры строки.
+        var k = boxK('table');
+        var out = '--tnpc-table:' + round1(r.fontMm * k) + 'mm;' +
+            '--tnpc-row-h:' + round1(r.heightMm * k) + 'mm;' +
+            '--tnpc-lab-w:' + round1(r.labWMm * k) + 'mm;';
         if (r.color) out += 'color:' + r.color + ';';
         if (r.bg) out += '--tnpc-b-bg:' + r.bg + ';';
         if (r.font) out += 'font-family:' + r.font + ';';
@@ -486,12 +611,24 @@ var TnMgrPrintCards = (function (root) {
         return Object.assign({}, o, {
             xMm: round1(x), yMm: round1(y), wMm: round1(w), hMm: round1(h),
             fontMm: round1(clampNum(o.fontMm, 1.5, 20, 3)),
-            type: ['logo', 'qr', 'text', 'image'].indexOf(o.type) !== -1 ? o.type : 'logo',
+            type: ['logo', 'qr', 'text', 'image', 'block'].indexOf(o.type) !== -1 ? o.type : 'logo',
             enabled: !!o.enabled,
             payload: o.payload == null ? '' : String(o.payload),
             text: o.text == null ? '' : String(o.text),
             src: o.src == null ? '' : String(o.src)
-        });
+        }, o.type === 'block' ? clampBlockProps(o) : {});
+    }
+    var HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
+    /** Оформление своего блока: заголовок (для списка), выравнивание, рамка, цвета. */
+    function clampBlockProps(o) {
+        return {
+            title: String(o.title == null ? '' : o.title).slice(0, 60),
+            bold: !!o.bold,
+            align: ['left', 'center', 'right'].indexOf(o.align) !== -1 ? o.align : 'left',
+            border: ['none', 'box', 'bottom'].indexOf(o.border) !== -1 ? o.border : 'none',
+            color: HEX_COLOR_RE.test(String(o.color || '')) ? String(o.color) : '',
+            bg: HEX_COLOR_RE.test(String(o.bg || '')) ? String(o.bg) : ''
+        };
     }
 
     function defaultDraft() {
@@ -506,6 +643,7 @@ var TnMgrPrintCards = (function (root) {
             rowOrder: DEFAULT_ROW_ORDER.slice(),
             rows: {},
             design: defaultDesign(),
+            boxes: clampBoxes(null, defaultSize()),
             text: { tournamentName: '', subtitle: '', date: '' },
             show: defaultShow(),
             footer: { player: 'Игрок', marker: 'Маркер', judge: 'Судья', print: false },
@@ -551,6 +689,7 @@ var TnMgrPrintCards = (function (root) {
         base.rowOrder = normalizeRowOrder(stored.rowOrder);
         base.rows = clampRows(stored.rows, base.style);
         base.design = clampDesign(stored.design);
+        base.boxes = clampBoxes(stored.boxes, base.size);
         if (stored.text) base.text = Object.assign(base.text, stored.text);
         base.show = clampShow(stored.show);
         if (stored.footer) {
@@ -623,6 +762,7 @@ var TnMgrPrintCards = (function (root) {
             rowOrder: normalizeRowOrder(draft.rowOrder),
             rows: clampRows(draft.rows, draft.style),
             design: clampDesign(draft.design),
+            boxes: clampBoxes(draft.boxes, draft.size),
             text: draft.text,
             show: draft.show,
             footer: draft.footer,
@@ -1077,6 +1217,17 @@ var TnMgrPrintCards = (function (root) {
 
     function nameText(card) { return ((card && card.names) || []).join(' + '); }
     function hcpText(card) { return ((card && card.hcps) || []).join(' / '); }
+    /** Полевой (игровой) гандикап каждого игрока карточки: «14» или «14 / 9». */
+    function fieldHcpText(card) {
+        var count = Math.max(1, ((card && card.hcps) || []).length, ((card && card.names) || []).length);
+        var out = [];
+        for (var i = 0; i < count; i++) {
+            var v = fieldHcpFor(card, i);
+            if (v === null || v === undefined || !isFinite(Number(v))) out.push('—');
+            else out.push(Number(v) < 0 ? '+' + Math.abs(Number(v)) : String(v));
+        }
+        return out.join(' / ');
+    }
 
     function displayLang() {
         return ui().lang ? ui().lang() : (root.currentLang === 'en' ? 'en' : 'ru');
@@ -1136,6 +1287,11 @@ var TnMgrPrintCards = (function (root) {
         var editedHcp = !!(card && card.edits && card.edits.hcps);
         var editedTee = !!(card && card.edits && card.edits.tee);
         var stored = (card && card.fieldHcps || [])[index];
+        var editedField = !!(card && card.edits && card.edits.fieldHcps);
+        if (editedField && stored !== null && stored !== undefined && stored !== '' && stored !== '—') {
+            var parsedEdited = parseFloat(String(stored).replace(',', '.').replace(/^\+/, '-'));
+            if (isFinite(parsedEdited)) return Math.round(parsedEdited);
+        }
         if (!editedHcp && !editedTee && stored !== null && stored !== undefined && stored !== '') {
             var parsedStored = parseFloat(String(stored).replace(',', '.'));
             return isFinite(parsedStored) ? Math.round(parsedStored) : null;
@@ -1259,6 +1415,11 @@ var TnMgrPrintCards = (function (root) {
             '.tnpc-name{font-weight:800;font-size:var(--tnpc-name,4.6mm);margin-top:1.4mm;line-height:1.15}' +
             '.tnpc-meta{font-size:var(--tnpc-meta,3.1mm);margin-top:.8mm;line-height:1.25}' +
             '.tnpc-body{flex:1 1 auto;min-height:0}' +
+            /* Шапка и таблица — «блоки целиком»: их можно освободить из
+               потока карточки и поставить в любую точку (left/top/width в мм). */
+            '.tnpc-box{position:relative}' +
+            '.tnpc-box.free{position:absolute;flex:none;margin:0;z-index:1}' +
+            '.tnpc-card-inner.tb-free .tnpc-foot{margin-top:auto}' +
             /* Каждый блок таблицы — отдельная таблица в своей обёртке: у блока
                свои CSS-переменные (--tnpc-table/--tnpc-row-h/--tnpc-lab-w) и
                свой цвет/фон/шрифт, поэтому блоки можно растягивать и красить
@@ -1298,7 +1459,13 @@ var TnMgrPrintCards = (function (root) {
             '.tnpc-overlay{position:absolute;box-sizing:border-box}' +
             '.tnpc-overlay img{width:100%;height:100%;object-fit:contain;display:block}' +
             '.tnpc-ov-text{width:100%;height:100%;overflow:hidden;white-space:pre-wrap;text-align:left;' +
-            'font-size:var(--tnpc-ov-font,3mm);line-height:1.2}';
+            'font-size:var(--tnpc-ov-font,3mm);line-height:1.2}' +
+            '.tnpc-ov-block{width:100%;height:100%;overflow:hidden;box-sizing:border-box;padding:.4mm 1mm;' +
+            'display:flex;flex-direction:column;justify-content:center;font-size:var(--tnpc-ov-font,3mm);line-height:1.25}' +
+            '.tnpc-ov-block-t{white-space:pre-wrap;word-break:break-word}' +
+            '.tnpc-ov-block.b{font-weight:800}' +
+            '.tnpc-ov-block.bd-box{border:var(--tnpc-line,0.25mm) solid var(--tnpc-linec,#111)}' +
+            '.tnpc-ov-block.bd-bottom{border-bottom:var(--tnpc-line,0.25mm) solid var(--tnpc-linec,#111)}';
     }
 
     /** Предпросмотр использует тот же CSS, что и печать (инжектим один раз). */
@@ -1338,6 +1505,13 @@ var TnMgrPrintCards = (function (root) {
             var payload = o.payload || qrPayloadFor(card, o);
             if (payload) inner = '<img data-qr alt="qr" src="' + esc(core().qrImageUrl(payload, 320)) + '">';
             else if (!printMode) inner = '<div class="tnpc-ph">' + esc(bi('Нет ссылки для QR', 'No QR payload')) + '</div>';
+        } else if (o.type === 'block') {
+            var resolved = blockText(o.text, card);
+            if (!printMode && !resolved.trim()) resolved = o.title || bi('Свой блок', 'Custom block');
+            var bstyle = 'text-align:' + o.align + ';' + (o.color ? 'color:' + o.color + ';' : '') +
+                (o.bg ? 'background:' + o.bg + ';' : '');
+            inner = '<div class="tnpc-ov-block bd-' + o.border + (o.bold ? ' b' : '') + '" style="' + bstyle + '">' +
+                '<div class="tnpc-ov-block-t">' + esc(resolved) + '</div></div>';
         } else {
             var txt = o.text || '';
             if (!printMode && !txt) txt = bi('Текст на карточке', 'Card text');
@@ -1357,7 +1531,82 @@ var TnMgrPrintCards = (function (root) {
         if (o.type === 'qr') return 'QR';
         if (o.type === 'logo') return bi('Лого', 'Logo');
         if (o.type === 'image') return bi('Картинка', 'Image');
+        if (o.type === 'block') return o.title || bi('Свой блок', 'Custom block');
         return bi('Текст', 'Text');
+    }
+
+    /** Строки стартового листа текущего раунда (для маркера, группы…). */
+    function currentSheetEntries() {
+        var rid = currentRid() || tid();
+        try { return data().sheetOrder(ui().sheetOf(rid) || {}) || []; } catch (e) { return []; }
+    }
+    function playerNameById(id) {
+        if (!id) return '';
+        var p = null;
+        try { p = ui().playerOf(id); } catch (e) { p = null; }
+        return p ? core().playerFio(p) : '';
+    }
+    function fioParts(name) {
+        var parts = core().splitFio ? core().splitFio(name || '') : null;
+        if (parts) return parts;
+        var words = String(name || '').trim().split(/\s+/);
+        return { lastName: words[0] || '', firstName: words.slice(1).join(' ') };
+    }
+    function joinUnique(list) {
+        var seen = {};
+        return list.filter(function (v) {
+            if (!v || seen[v]) return false;
+            seen[v] = true;
+            return true;
+        }).join(' / ');
+    }
+    /**
+     * Значения подстановок своего блока для карточки. Маркер — тот, кто
+     * ведёт счёт игрока по стартовому листу (как у QR); у парной карточки
+     * значения игроков перечисляются через « / ».
+     */
+    function blockValues(card) {
+        var c = card || {};
+        var ids = c.playerIds || [];
+        var names = (c.names && c.names.length) ? c.names : ids.map(playerNameById);
+        var entries = currentSheetEntries();
+        var markers = [];
+        var groups = [];
+        ids.forEach(function (pid) {
+            var entry = entries.filter(function (item) { return item.playerId === pid; })[0];
+            if (!entry) return;
+            if (entry.groupName) groups.push(entry.groupName);
+            var mid = markerIdFor(entry, entries);
+            if (mid && mid !== pid) markers.push(playerNameById(mid) || entry.markerName || '');
+        });
+        var markerParts = markers.map(fioParts);
+        var playerParts = names.map(fioParts);
+        return {
+            player: names.join(' / '),
+            lastName: joinUnique(playerParts.map(function (x) { return x.lastName; })),
+            firstName: joinUnique(playerParts.map(function (x) { return x.firstName; })),
+            marker: joinUnique(markers),
+            markerLast: joinUnique(markerParts.map(function (x) { return x.lastName; })),
+            markerFirst: joinUnique(markerParts.map(function (x) { return x.firstName; })),
+            hcp: hcpText(c),
+            fieldHcp: fieldHcpText(c),
+            tee: c.tee ? teeDisplayName(c.tee) : '',
+            hole: String(c.startHole || 1),
+            time: c.startTime || '',
+            flight: c.flight || '',
+            group: joinUnique(groups) || c.groupName || '',
+            tournament: titleText(),
+            date: dateText(),
+            club: subtitleText()
+        };
+    }
+    /** Подставить значения в шаблон блока: «Маркер: {marker}» → «Маркер: Иванов Иван». */
+    function blockText(template, card) {
+        var values = null;
+        return String(template || '').replace(/\{([a-zA-Z]+)\}/g, function (all, key) {
+            if (!values) values = blockValues(card);
+            return Object.prototype.hasOwnProperty.call(values, key) ? String(values[key] == null ? '' : values[key]) : all;
+        });
     }
 
     /** Игрок карточки, которому принадлежит QR-оверлей (по счёту QR-блоков). */
@@ -1586,7 +1835,8 @@ var TnMgrPrintCards = (function (root) {
         var blocks = visibleRowOrder(d).map(function (key) {
             return blockHtml(key, rowHtml[key] || '', printMode);
         }).join('');
-        return '<div class="tnpc-body">' + blocks + '</div>';
+        return '<div class="tnpc-body tnpc-box' + boxClass('table') + '" data-tnpc-box="table" style="' + boxStyleAttr('table') + '">' +
+            boxHandlesHtml('table', printMode) + blocks + '</div>';
     }
 
     /**
@@ -1641,8 +1891,13 @@ var TnMgrPrintCards = (function (root) {
         var ed = printMode ? '' : ' contenteditable="true"';
         var cid = ' data-cid="' + esc(card.id) + '"';
         var bits = [];
+        // Точный (HI) и полевой (игровой, с учётом ТИ и пола) гандикапы —
+        // оба, как в стартовом протоколе.
         if (sh.hcp !== false) {
-            bits.push('HCP <span' + ed + ' data-tnpc-field="hcps"' + cid + '>' + esc(hcpText(card)) + '</span>');
+            bits.push(esc(bi('Точный HCP', 'HI')) + ' <span' + ed + ' data-tnpc-field="hcps"' + cid + '>' + esc(hcpText(card)) + '</span>');
+        }
+        if (sh.fieldHcp !== false) {
+            bits.push(esc(bi('Полевой HCP', 'CH')) + ' <span' + ed + ' data-tnpc-field="fieldHcps"' + cid + '>' + esc(fieldHcpText(card)) + '</span>');
         }
         if (sh.tee !== false) {
             bits.push(esc(bi('ТИ', 'Tee')) + ' <span' + ed + ' data-tnpc-field="tee"' + cid + '>' + esc(teeDisplayName(card.tee)) + '</span>');
@@ -1667,8 +1922,9 @@ var TnMgrPrintCards = (function (root) {
         var warn = (!printMode && card.missingPair)
             ? '<div class="tnpc-warn">⚠ ' + esc(bi('нет пары', 'no partner')) + '</div>' : '';
         var ov = (d.overlays || []).map(function (o) { return overlayHtml(o, card, printMode); }).join('');
-        return '<div class="tnpc-card-inner">' +
-            '<div class="tnpc-head">' +
+        return '<div class="tnpc-card-inner' + (boxOf('table').free ? ' tb-free' : '') + '">' +
+            '<div class="tnpc-head tnpc-box' + boxClass('head') + '" data-tnpc-box="head" style="' + boxStyleAttr('head') + '">' +
+            boxHandlesHtml('head', printMode) +
             '<div class="tnpc-title"' + ed + ' data-tnpc-field="tournamentName">' + esc(titleText()) + '</div>' +
             (sh.subtitle !== false && subtitleText()
                 ? '<div class="tnpc-subtitle"' + ed + ' data-tnpc-field="subtitle">' + esc(subtitleText()) + '</div>' : '') +
@@ -1816,7 +2072,8 @@ var TnMgrPrintCards = (function (root) {
 
     function rowMetaText(card) {
         var bits = [];
-        bits.push('HCP ' + hcpText(card));
+        bits.push(bi('Точный HCP ', 'HI ') + hcpText(card));
+        bits.push(bi('Полевой HCP ', 'CH ') + fieldHcpText(card));
         if (card.tee) bits.push(bi('ТИ', 'Tee') + ' ' + teeDisplayName(card.tee));
         bits.push(bi('Лунка', 'Hole') + ' ' + (card.startHole || 1));
         if (card.startTime) bits.push(card.startTime);
@@ -1904,7 +2161,39 @@ var TnMgrPrintCards = (function (root) {
             '<p class="tnm-muted">' + esc(bi('Кегли, отступы и линии — всё в миллиметрах, как на печати.',
                 'Font sizes, gaps and lines — in millimetres, exactly as printed.')) + '</p>' +
             '<div class="tnpc-nums">' + styleInputs + '</div>' +
+            boxesSectionHtml() +
             '</div>';
+    }
+
+    /** «Блоки целиком»: место, ширина и масштаб таблицы и шапки. */
+    function boxesSectionHtml() {
+        var d = ensureDraft();
+        var size = clampSize(d.size);
+        var rows = BOX_KEYS.map(function (key) {
+            var b = boxOf(key);
+            var extra = ' data-box="' + key + '"';
+            return '<div class="tnpc-box-cfg" data-box-cfg="' + key + '">' +
+                '<div class="tnpc-block-cfg-head"><b>' + esc(boxLabel(key)) + '</b>' +
+                '<div class="tnpc-block-cfg-actions">' +
+                '<label class="tnpc-check"><input type="checkbox" data-tnm-edit="tnpc-box-free"' + extra + (b.free ? ' checked' : '') + '> ' +
+                esc(bi('свободное место', 'free position')) + '</label>' +
+                ui().btn('tnpc-box-reset', esc(bi('Сбросить', 'Reset')), { icon: 'fas fa-rotate-left', variant: 'ghost', small: true, data: { box: key } }) +
+                '</div></div>' +
+                '<div class="tnpc-nums">' +
+                numField('tnpc-box', 'kPct', bi('Размер содержимого, %', 'Content size, %'), Math.round(b.k * 100), BOX_K_LIMITS.min * 100, BOX_K_LIMITS.max * 100, 1, extra) +
+                numField('tnpc-box', 'xMm', 'X, ' + bi('мм', 'mm'), b.xMm, 0, size.wMm, 0.5, extra) +
+                numField('tnpc-box', 'yMm', 'Y, ' + bi('мм', 'mm'), b.yMm, 0, size.hMm, 0.5, extra) +
+                numField('tnpc-box', 'wMm', bi('Ширина, мм', 'Width, mm'), b.wMm, 15, size.wMm, 0.5, extra) +
+                '</div></div>';
+        }).join('');
+        return '<div class="tnpc-boxes">' +
+            '<p class="tnm-muted"><b>' + esc(bi('Блоки целиком', 'Whole blocks')) + '.</b> ' +
+            esc(bi('Таблицу (№ лунки, Пар, Длина, Индекс, Фора, Удары) и шапку можно двигать и растягивать прямо на карточке: ' +
+                '✥ — перенести блок, ↔ (правая ручка) — ширина, ↕ (нижняя) — размер всего содержимого, ↘ — оба сразу. ' +
+                'X/Y/ширина действуют в режиме «свободное место».',
+                'The table (hole no., Par, Length, Index, Hcp, Strokes) and the header can be moved and resized on the card: ' +
+                '✥ — move, ↔ (right handle) — width, ↕ (bottom) — whole content size, ↘ — both. X/Y/width apply in “free position” mode.')) + '</p>' +
+            rows + '</div>';
     }
 
     function fieldsPanelHtml() {
@@ -2091,6 +2380,8 @@ var TnMgrPrintCards = (function (root) {
                 payload = '<label class="tnpc-num wide"><span>' + esc(bi('Ссылка QR (пусто — QR маркера игрока)', 'QR link (empty — player marker QR)')) + '</span>' +
                     '<input type="text" value="' + esc(o.payload) + '" data-tnm-live-edit="tnpc-overlay" data-id="' + esc(o.id) +
                     '" data-field="payload"></label>';
+            } else if (o.type === 'block') {
+                payload = blockConfigHtml(o);
             } else if (o.type === 'text') {
                 payload = '<label class="tnpc-num wide"><span>' + esc(bi('Текст', 'Text')) + '</span>' +
                     '<input type="text" value="' + esc(o.text) + '" data-tnm-live-edit="tnpc-overlay" data-id="' + esc(o.id) +
@@ -2121,12 +2412,16 @@ var TnMgrPrintCards = (function (root) {
         }).join('');
         return '<div class="tnm-card tnpc-panel" data-panel="overlays">' +
             '<div class="tnpc-panel-head"><b><i class="fas fa-qrcode"></i> ' +
-            esc(bi('Лого, QR и текст на карточке', 'Logo, QR and text on the card')) + '</b>' +
+            esc(bi('Лого, QR, текст и свои блоки на карточке', 'Logo, QR, text and custom blocks on the card')) + '</b>' +
             '<div class="tnpc-panel-actions">' +
             ui().btn('tnpc-qr-add', esc(bi('+ QR', 'Add QR')), { icon: 'fas fa-qrcode', variant: 'ghost', small: true }) +
             ui().btn('tnpc-logo-add', esc(bi('+ Лого', 'Add logo')), { icon: 'fas fa-image', variant: 'ghost', small: true }) +
             ui().btn('tnpc-text-add', esc(bi('+ Текст', 'Add text')), { icon: 'fas fa-font', variant: 'ghost', small: true }) +
             ui().btn('tnpc-image-add', esc(bi('+ Картинка', 'Add image')), { icon: 'fas fa-photo-film', variant: 'ghost', small: true }) +
+            Object.keys(BLOCK_PRESETS).map(function (key) {
+                var pr = BLOCK_PRESETS[key];
+                return ui().btn('tnpc-block-add', esc('+ ' + bi(pr.ru, pr.en)), { icon: 'fas fa-square-plus', variant: 'ghost', small: true, data: { preset: key } });
+            }).join('') +
             ui().btn('tnpc-reset-ov', esc(bi('Сбросить позиции', 'Reset overlays')), { icon: 'fas fa-up-down-left-right', variant: 'ghost', small: true }) +
             '</div></div>' +
             '<p class="tnm-muted">' + esc(bi('Перетаскивайте блоки мышью прямо на карточке — лого, QR, картинку и свой текст; ' +
@@ -2137,8 +2432,102 @@ var TnMgrPrintCards = (function (root) {
                 'You can also drop an image file onto the preview.')) + '</p>' +
             '<label class="tnpc-check"><input type="checkbox" data-tnm-edit="tnpc-qr-global"' + (d.qrEnabled ? ' checked' : '') + '> ' +
             esc(bi('QR-коды маркеров включены (ссылка на ввод счёта игрока)', 'Marker QR codes on (link to the player score entry)')) + '</label>' +
+            '<p class="tnm-muted">' + esc(bi('Свой блок — любой текст с данными карточки: например «Маркер: {marker}». ' +
+                'Значения подставляются для каждого игрока из участников и стартового листа. Двойной клик по блоку на карточке открывает его настройки.',
+                'A custom block is any text with card data, e.g. “Marker: {marker}”. Values are filled in for each player from the players and the tee sheet. ' +
+                'Double-click a block on the card to open its settings.')) + '</p>' +
             (rows || '<p class="tnm-muted">' + esc(bi('Оверлеев нет — добавьте лого или QR.', 'No overlays — add a logo or QR.')) + '</p>') +
             '</div>';
+    }
+
+    /** Настройки своего блока: название, шаблон с подстановками, оформление. */
+    function blockConfigHtml(o) {
+        var idAttr = ' data-id="' + esc(o.id) + '"';
+        var chips = BLOCK_PLACEHOLDERS.map(function (ph) {
+            return '<button type="button" class="tnpc-ph-chip" data-tnm-act="tnpc-ovb-insert"' + idAttr + ' data-key="' + esc(ph.key) +
+                '" title="' + esc(bi(ph.ru, ph.en)) + '">{' + esc(ph.key) + '} <span>' + esc(bi(ph.ru, ph.en)) + '</span></button>';
+        }).join('');
+        var sample = blockText(o.text, pickActive(null));
+        function opt(value, current, label) {
+            return '<option value="' + value + '"' + (value === current ? ' selected' : '') + '>' + esc(label) + '</option>';
+        }
+        function colorField(field, label) {
+            return '<label class="tnpc-num"><span>' + esc(label) + '</span><span class="tnpc-color-row">' +
+                '<input type="color" value="' + esc(o[field] || (field === 'bg' ? '#ffffff' : '#111111')) + '" data-tnm-live-edit="tnpc-ovb-color"' + idAttr +
+                ' data-field="' + field + '">' +
+                '<button type="button" class="tnm-btn tnm-btn-ghost tnm-btn-sm tnpc-color-clear" data-tnm-act="tnpc-ovb-color-clear"' + idAttr + ' data-field="' + field +
+                '" title="' + esc(bi('Как у карточки', 'Card default')) + '">×</button></span></label>';
+        }
+        return '<div class="tnpc-ovb">' +
+            '<label class="tnpc-num wide"><span>' + esc(bi('Название блока (для списка)', 'Block name (for the list)')) + '</span>' +
+            '<input type="text" value="' + esc(o.title) + '" data-tnm-live-edit="tnpc-overlay"' + idAttr + ' data-field="title" maxlength="60"></label>' +
+            '<label class="tnpc-num wide"><span>' + esc(bi('Текст блока — можно несколько строк и подстановки', 'Block text — multiple lines and placeholders')) + '</span>' +
+            '<textarea rows="2" data-tnm-live-edit="tnpc-overlay"' + idAttr + ' data-field="text">' + esc(o.text) + '</textarea></label>' +
+            '<div class="tnpc-ph-chips">' + chips + '</div>' +
+            '<p class="tnm-muted tnpc-ovb-sample" data-ovb-sample="' + esc(o.id) + '">' + esc(bi('На текущей карточке: ', 'On the current card: ')) +
+            esc(sample || '—') + '</p>' +
+            '<div class="tnpc-nums">' +
+            numField('tnpc-overlay', 'fontMm', bi('Кегль, мм', 'Font, mm'), o.fontMm, 1.5, 20, 0.1, idAttr) +
+            '<label class="tnpc-num"><span>' + esc(bi('Выравнивание', 'Alignment')) + '</span><select data-tnm-edit="tnpc-ovb"' + idAttr + ' data-field="align">' +
+            opt('left', o.align, bi('слева', 'left')) + opt('center', o.align, bi('по центру', 'center')) + opt('right', o.align, bi('справа', 'right')) +
+            '</select></label>' +
+            '<label class="tnpc-num"><span>' + esc(bi('Рамка', 'Border')) + '</span><select data-tnm-edit="tnpc-ovb"' + idAttr + ' data-field="border">' +
+            opt('none', o.border, bi('нет', 'none')) + opt('box', o.border, bi('вокруг', 'box')) + opt('bottom', o.border, bi('линия снизу (для подписи)', 'bottom line (signature)')) +
+            '</select></label>' +
+            colorField('color', bi('Цвет текста', 'Text colour')) +
+            colorField('bg', bi('Фон', 'Background')) +
+            '<label class="tnpc-check tnpc-check-block"><input type="checkbox" data-tnm-edit="tnpc-ovb"' + idAttr + ' data-field="bold"' +
+            (o.bold ? ' checked' : '') + '> ' + esc(bi('жирный', 'bold')) + '</label>' +
+            '</div></div>';
+    }
+
+    function addBlockOverlay(presetKey) {
+        var pr = BLOCK_PRESETS[presetKey] || BLOCK_PRESETS.custom;
+        var d = ensureDraft();
+        var size = clampSize(d.size);
+        var count = d.overlays.filter(function (o) { return o.type === 'block'; }).length;
+        var pad = clampStyle(d.style).padMm;
+        var block = clampOverlay({
+            id: 'block-' + Date.now(),
+            type: 'block',
+            title: bi(pr.title.ru, pr.title.en),
+            text: bi(pr.text.ru, pr.text.en),
+            xMm: pad + count * 4,
+            yMm: size.hMm - pad - pr.hMm - 16 - count * 4,
+            wMm: pr.wMm,
+            hMm: pr.hMm,
+            fontMm: 3,
+            border: pr.border || 'none',
+            align: 'left',
+            enabled: true
+        }, size);
+        d.overlays.push(block);
+        state.panels.overlays = true;
+        persistSoon();
+        ui().render();
+        return block;
+    }
+
+    function updateBlockOverlay(id, patch) {
+        var d = ensureDraft();
+        var next = null;
+        d.overlays = d.overlays.map(function (o) {
+            if (o.id !== id) return o;
+            next = clampOverlay(Object.assign({}, o, patch), d.size);
+            return next;
+        });
+        if (!next) return null;
+        persistSoon();
+        rerenderCard();
+        return next;
+    }
+
+    function refreshBlockSample(id) {
+        var dd = doc();
+        var ov = overlayById(id);
+        if (!dd || !ov) return;
+        var el = dd.querySelector('[data-ovb-sample="' + id + '"]');
+        if (el) el.textContent = bi('На текущей карточке: ', 'On the current card: ') + (blockText(ov.text, pickActive(null)) || '—');
     }
 
     function statusHtml(cards) {
@@ -2296,7 +2685,7 @@ var TnMgrPrintCards = (function (root) {
             '.page{width:' + PAGE_W + 'mm;height:' + PAGE_H + 'mm;position:relative;page-break-after:always;overflow:hidden}' +
             cardCssText() +
             '.tnpc-card{border:0!important}' +
-            '.tnpc-handle,.tnpc-x,.tnpc-tag,.tnpc-row-tools,.tnpc-warn,.tnpc-ph,.tnpc-noprint,.tnpc-ghost,.tnpc-move,.tnpc-resize,.tnpc-block-h{display:none!important}' +
+            '.tnpc-handle,.tnpc-x,.tnpc-tag,.tnpc-row-tools,.tnpc-warn,.tnpc-ph,.tnpc-noprint,.tnpc-ghost,.tnpc-move,.tnpc-resize,.tnpc-block-h,.tnpc-box-move,.tnpc-box-h{display:none!important}' +
             '</style>';
     }
 
@@ -2664,9 +3053,168 @@ var TnMgrPrintCards = (function (root) {
         }
     }
 
+    // ----------------------------------------------------------
+    // БЛОКИ ЦЕЛИКОМ (таблица / шапка): перенос, ширина, масштаб
+    // ----------------------------------------------------------
+    /** Геометрия блока в мм карточки по предпросмотру (для перехода в «свободный»). */
+    function measureBox(key, boxEl) {
+        var dd = doc();
+        var el = boxEl || (dd && dd.querySelector('.tnpc-card [data-tnpc-box="' + key + '"]'));
+        if (!el || typeof el.getBoundingClientRect !== 'function') return null;
+        var cardEl = el.closest('.tnpc-card');
+        var innerEl = cardEl && cardEl.querySelector('.tnpc-card-inner');
+        if (!cardEl || !innerEl) return null;
+        var size = clampSize(ensureDraft().size);
+        var cardRect = cardEl.getBoundingClientRect();
+        var innerRect = innerEl.getBoundingClientRect();
+        var r = el.getBoundingClientRect();
+        if (!cardRect.width || !r.width) return null;
+        var mmPerPx = size.wMm / cardRect.width;
+        return {
+            xMm: round1((r.left - innerRect.left) * mmPerPx),
+            yMm: round1((r.top - innerRect.top) * mmPerPx),
+            wMm: round1(r.width * mmPerPx),
+            hMm: round1(r.height * mmPerPx),
+            mmPerPx: mmPerPx
+        };
+    }
+
+    /** Применить место/масштаб блока к предпросмотру без перерисовки. */
+    function patchBoxDom(key) {
+        var dd = doc();
+        if (!dd) return;
+        var b = boxOf(key);
+        dd.querySelectorAll('[data-tnpc-box="' + key + '"]').forEach(function (el) {
+            el.setAttribute('style', boxStyleAttr(key));
+            el.classList.toggle('free', b.free);
+            if (key === 'table') {
+                var inner = el.closest('.tnpc-card-inner');
+                if (inner) inner.classList.toggle('tb-free', b.free);
+            }
+        });
+        if (key === 'table') {
+            dd.querySelectorAll('[data-tnpc-block]').forEach(function (el) {
+                el.setAttribute('style', blockStyleAttr(el.getAttribute('data-tnpc-block')));
+            });
+        }
+    }
+
+    function syncBoxInputs(key) {
+        var dd = doc();
+        if (!dd) return;
+        var b = boxOf(key);
+        var values = { xMm: b.xMm, yMm: b.yMm, wMm: b.wMm, kPct: Math.round(b.k * 100) };
+        Object.keys(values).forEach(function (field) {
+            var input = dd.querySelector('[data-tnm-live-edit="tnpc-box"][data-box="' + key + '"][data-field="' + field + '"]');
+            if (input && dd.activeElement !== input) input.value = values[field];
+        });
+        var free = dd.querySelector('[data-tnm-edit="tnpc-box-free"][data-box="' + key + '"]');
+        if (free) free.checked = b.free;
+    }
+
+    function setBox(key, next) {
+        var d = ensureDraft();
+        d.boxes = d.boxes || {};
+        d.boxes[key] = clampBox(key, next, d.size);
+        return d.boxes[key];
+    }
+
+    /** Освободить блок из потока, сохранив его текущее место на карточке. */
+    function freeBox(key, boxEl) {
+        var b = boxOf(key);
+        if (b.free) return b;
+        var m = measureBox(key, boxEl);
+        return setBox(key, Object.assign({}, b, { free: true }, m ? { xMm: m.xMm, yMm: m.yMm, wMm: m.wMm } : {}));
+    }
+
+    function startBoxDrag(ev, handleEl) {
+        var key = handleEl.getAttribute('data-tnpc-box-drag');
+        if (BOX_KEYS.indexOf(key) === -1) return;
+        var mode = handleEl.getAttribute('data-mode') || 'move';
+        var boxEl = handleEl.closest('[data-tnpc-box]');
+        if (!boxEl) return;
+        var m = measureBox(key, boxEl);
+        if (!m || !isFinite(m.mmPerPx) || m.mmPerPx <= 0) return;
+        var b = boxOf(key);
+        state.boxDrag = {
+            key: key, mode: mode, el: boxEl,
+            startX: ev.clientX, startY: ev.clientY,
+            mmPerPx: m.mmPerPx, geom: m, b0: b, moved: false
+        };
+        boxEl.classList.add('box-dragging');
+        try { handleEl.setPointerCapture(ev.pointerId); } catch (e) { /* silent */ }
+        ev.preventDefault();
+        ev.stopPropagation();
+    }
+
+    function moveBoxDrag(ev) {
+        var dr = state.boxDrag;
+        if (!dr) return;
+        var dxPx = ev.clientX - dr.startX;
+        var dyPx = ev.clientY - dr.startY;
+        if (!dr.moved && Math.abs(dxPx) < 2 && Math.abs(dyPx) < 2) return;
+        dr.moved = true;
+        var dx = dxPx * dr.mmPerPx;
+        var dy = dyPx * dr.mmPerPx;
+        var g = dr.geom;
+        var b0 = dr.b0;
+        // Первое движение не-«↕» ручкой освобождает блок из потока карточки
+        // ровно в том месте, где он стоял.
+        var base = b0.free ? b0 : Object.assign({}, b0, { xMm: g.xMm, yMm: g.yMm, wMm: g.wMm });
+        var next = Object.assign({}, base);
+        if (dr.mode !== 's') next.free = true;
+        if (dr.mode === 'move') {
+            next.xMm = base.xMm + dx;
+            next.yMm = base.yMm + dy;
+        }
+        if (dr.mode === 'e' || dr.mode === 'se') next.wMm = base.wMm + dx;
+        if (dr.mode === 's' || dr.mode === 'se') {
+            var h0 = Math.max(g.hMm, 3);
+            next.k = b0.k * Math.max(0.1, (h0 + dy) / h0);
+        }
+        setBox(dr.key, next);
+        patchBoxDom(dr.key);
+        syncBoxInputs(dr.key);
+        if (dr.key === 'table') syncAllBlockInputs();
+        ev.preventDefault();
+    }
+
+    function syncAllBlockInputs() {
+        visibleRowOrder(ensureDraft()).forEach(function (key) { syncBlockInputs(key); });
+    }
+
+    function endBoxDrag() {
+        var dr = state.boxDrag;
+        state.boxDrag = null;
+        if (!dr) return;
+        if (dr.el) dr.el.classList.remove('box-dragging');
+        if (!dr.moved) return;
+        persistSoon();
+        refreshFitWarning();
+    }
+
+    /** Открыть панель «Лого, QR и блоки» и подсветить настройки оверлея. */
+    function focusOverlayConfig(id) {
+        state.panels.overlays = true;
+        ui().render();
+        var dd = doc();
+        if (!dd) return;
+        var row = dd.querySelector('.tnpc-ov-row[data-ov="' + id + '"]');
+        if (!row) return;
+        if (typeof row.scrollIntoView === 'function') {
+            try { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* silent */ }
+        }
+        row.classList.add('flash');
+        setTimeout(function () { row.classList.remove('flash'); }, 1600);
+        var ta = row.querySelector('textarea');
+        if (ta && typeof ta.focus === 'function') { try { ta.focus(); } catch (e) { /* silent */ } }
+    }
+
     function bindDrag(host) {
         host.addEventListener('pointerdown', function (ev) {
             if (ev.button !== undefined && ev.button !== 0) return;
+            var boxHandle = ev.target.closest('[data-tnpc-box-drag]');
+            if (boxHandle) { startBoxDrag(ev, boxHandle); return; }
             var blockHandle = ev.target.closest('[data-tnpc-block-resize]');
             if (blockHandle) { startBlockDrag(ev, host, blockHandle); return; }
             var handle = ev.target.closest('[data-tnpc-resize]');
@@ -2702,6 +3250,7 @@ var TnMgrPrintCards = (function (root) {
             ev.preventDefault();
         });
         host.addEventListener('pointermove', function (ev) {
+            if (state.boxDrag) { moveBoxDrag(ev); return; }
             if (state.blockDrag) { moveBlockDrag(ev); return; }
             if (state.cardDrag) { moveCardDrag(ev, host); return; }
             if (!state.drag) return;
@@ -2730,6 +3279,7 @@ var TnMgrPrintCards = (function (root) {
             syncOverlayInputs(next);
         });
         host.addEventListener('pointerup', function () {
+            if (state.boxDrag) { endBoxDrag(); return; }
             if (state.blockDrag) { endBlockDrag(); return; }
             if (state.cardDrag) { endCardDrag(host); return; }
             if (!state.drag) return;
@@ -2739,12 +3289,16 @@ var TnMgrPrintCards = (function (root) {
             persistSoon();
         });
         host.addEventListener('pointercancel', function () {
+            if (state.boxDrag) { endBoxDrag(); return; }
             if (state.blockDrag) { endBlockDrag(); return; }
             if (state.cardDrag) { endCardDrag(host); return; }
             state.drag = null;
         });
         host.addEventListener('dblclick', function (ev) {
             // Двойной клик по блоку таблицы — его настройки (цвет/шрифт/размер).
+            if (ev.target.closest('[data-tnpc-box-drag]')) return;
+            var blockOv = ev.target.closest('[data-overlay-id][data-type="block"]');
+            if (blockOv) { focusOverlayConfig(blockOv.getAttribute('data-overlay-id')); return; }
             if (!ev.target.closest('[contenteditable="true"]') &&
                 !ev.target.closest('[data-tnpc-block-resize]') &&
                 !ev.target.closest('[data-tnm-act]')) {
@@ -2979,6 +3533,22 @@ var TnMgrPrintCards = (function (root) {
         if (!card) return;
         if (field === 'names') card.names = text.split(/\s*[+/]\s*/).filter(Boolean);
         else if (field === 'hcps') card.hcps = text.split(/\s*\//).map(function (v) { return v.trim(); }).filter(function (v) { return v !== ''; });
+        else if (field === 'fieldHcps') {
+            card.fieldHcps = text.split(/\s*\//).map(function (v) {
+                var n = parseFloat(String(v).trim().replace(',', '.').replace(/^\+/, '-'));
+                return isFinite(n) ? Math.round(n) : null;
+            });
+            if (!card.fieldHcps.some(function (v) { return v !== null; })) {
+                // Очистили поле — снова считаем из точного HCP и ТИ.
+                card.edits = card.edits || {};
+                delete card.edits.fieldHcps;
+                if (!Object.keys(card.edits).length) card.edits = null;
+                state.cardsSig = cardsSignature(draft.cards);
+                persistSoon();
+                syncRowSummary(card);
+                return;
+            }
+        }
         else if (field === 'tee') card.tee = text;
         else if (field === 'startHole') card.startHole = parseInt(text, 10) || card.startHole;
         else if (field === 'startTime') card.startTime = text;
@@ -3416,6 +3986,88 @@ var TnMgrPrintCards = (function (root) {
     ui().on('tnpc-image-add', function () { pickFile('#tnpc-image-file'); });
     ui().on('tnpc-qr-add', function () { addOverlay('qr'); });
     ui().on('tnpc-text-add', function () { addOverlay('text'); });
+    ui().on('tnpc-block-add', function (btn) { addBlockOverlay(btn.getAttribute('data-preset') || 'custom'); });
+    ui().on('tnpc-ovb-insert', function (btn) {
+        var id = btn.getAttribute('data-id');
+        var key = btn.getAttribute('data-key');
+        var ov = overlayById(id);
+        if (!ov || !key) return;
+        var token = '{' + key + '}';
+        var dd = doc();
+        var ta = dd && dd.querySelector('textarea[data-tnm-live-edit="tnpc-overlay"][data-id="' + id + '"]');
+        var text = ov.text || '';
+        var pos = ta && typeof ta.selectionStart === 'number' && dd.activeElement === ta ? ta.selectionStart : text.length;
+        var end = ta && typeof ta.selectionEnd === 'number' && dd.activeElement === ta ? ta.selectionEnd : pos;
+        // Кнопка уводит фокус из поля — берём последнюю запомненную позицию курсора.
+        if (ta && dd.activeElement !== ta && ta.getAttribute('data-caret')) {
+            pos = end = Math.min(text.length, parseInt(ta.getAttribute('data-caret'), 10) || text.length);
+        }
+        var next = text.slice(0, pos) + token + text.slice(end);
+        updateBlockOverlay(id, { text: next });
+        if (ta) {
+            ta.value = next;
+            ta.setAttribute('data-caret', String(pos + token.length));
+            try { ta.focus(); ta.setSelectionRange(pos + token.length, pos + token.length); } catch (e) { /* silent */ }
+        }
+        refreshBlockSample(id);
+    });
+    ui().on('edit:tnpc-ovb', function (input) {
+        var field = input.getAttribute('data-field');
+        var patch = {};
+        if (field === 'bold') patch.bold = !!input.checked;
+        else if (field === 'align' || field === 'border') patch[field] = input.value;
+        else return;
+        updateBlockOverlay(input.getAttribute('data-id'), patch);
+    });
+    ui().on('live:tnpc-ovb-color', function (input) {
+        var patch = {};
+        var field = input.getAttribute('data-field');
+        if (field !== 'color' && field !== 'bg') return;
+        patch[field] = input.value;
+        updateBlockOverlay(input.getAttribute('data-id'), patch);
+    });
+    ui().on('tnpc-ovb-color-clear', function (btn) {
+        var patch = {};
+        var field = btn.getAttribute('data-field');
+        if (field !== 'color' && field !== 'bg') return;
+        patch[field] = '';
+        updateBlockOverlay(btn.getAttribute('data-id'), patch);
+        ui().render();
+    });
+    ui().on('live:tnpc-box', function (input) {
+        var key = input.getAttribute('data-box');
+        var field = input.getAttribute('data-field');
+        if (BOX_KEYS.indexOf(key) === -1) return;
+        var v = Number(input.value);
+        if (!isFinite(v) || input.value === '') return;
+        if (field === 'kPct') setBox(key, Object.assign({}, boxOf(key), { k: v / 100 }));
+        else if (field === 'xMm' || field === 'yMm' || field === 'wMm') {
+            var patch = {};
+            patch[field] = v;
+            setBox(key, Object.assign({}, freeBox(key), patch));
+        } else return;
+        persistSoon();
+        patchBoxDom(key);
+        syncBoxInputs(key);
+        if (key === 'table') syncAllBlockInputs();
+    });
+    ui().on('edit:tnpc-box-free', function (input) {
+        var key = input.getAttribute('data-box');
+        if (BOX_KEYS.indexOf(key) === -1) return;
+        if (input.checked) freeBox(key);
+        else setBox(key, Object.assign({}, boxOf(key), { free: false }));
+        persistSoon();
+        patchBoxDom(key);
+        syncBoxInputs(key);
+    });
+    ui().on('tnpc-box-reset', function (btn) {
+        var key = btn.getAttribute('data-box');
+        if (BOX_KEYS.indexOf(key) === -1) return;
+        var d = ensureDraft();
+        setBox(key, defaultBox(key, d.size));
+        persistSoon();
+        ui().render();
+    });
     ui().on('tnpc-reset-ov', function () {
         var d = ensureDraft();
         d.overlays = defaultOverlays().map(function (o) { return clampOverlay(o, d.size); });
@@ -3522,6 +4174,7 @@ var TnMgrPrintCards = (function (root) {
         d.size[field] = clampNum(input.value, 60, field === 'wMm' ? PAGE_W : PAGE_H, field === 'wMm' ? CARD_W : CARD_H);
         d.size = clampSize(d.size);
         d.overlays = d.overlays.map(function (o) { return clampOverlay(o, d.size); });
+        d.boxes = clampBoxes(d.boxes, d.size);
         persistSoon();
         rerenderCard();
         refreshFitWarning();
@@ -3541,14 +4194,16 @@ var TnMgrPrintCards = (function (root) {
         var field = input.getAttribute('data-field');
         var ov = overlayById(id);
         if (!ov) return;
-        if (field === 'payload' || field === 'text') ov[field] = input.value;
+        if (field === 'payload' || field === 'text' || field === 'title') ov[field] = input.value;
         else ov[field] = clampNum(input.value, 0, PAGE_W, ov[field]);
+        if (field === 'text' && typeof input.selectionStart === 'number') input.setAttribute('data-caret', String(input.selectionStart));
         var d = ensureDraft();
         var next = clampOverlay(ov, d.size);
         d.overlays = d.overlays.map(function (o) { return o.id === id ? next : o; });
         persistSoon();
         patchOverlayDom(next);
-        if (field === 'payload' || field === 'text') rerenderCard();
+        if (field === 'payload' || field === 'text' || field === 'title') rerenderCard();
+        if (next.type === 'block' && field === 'text') refreshBlockSample(id);
     });
     ui().on('live:tnpc-footer', function (input) {
         var field = input.getAttribute('data-field');
@@ -3765,6 +4420,19 @@ var TnMgrPrintCards = (function (root) {
         PAGE_H: PAGE_H,
         isActivePlayer: isActivePlayer,
         mergeManual: mergeManual,
+        // блоки целиком (таблица/шапка) и свои блоки
+        BOX_KEYS: BOX_KEYS,
+        BLOCK_PLACEHOLDERS: BLOCK_PLACEHOLDERS,
+        BLOCK_PRESETS: BLOCK_PRESETS,
+        defaultBox: defaultBox,
+        clampBox: clampBox,
+        clampBoxes: clampBoxes,
+        boxStyleAttr: boxStyleAttr,
+        blockText: blockText,
+        blockValues: blockValues,
+        addBlockOverlay: addBlockOverlay,
+        fieldHcpText: fieldHcpText,
+        fieldHcpFor: fieldHcpFor,
         state: state
     };
 })(typeof window !== 'undefined' ? window : this);

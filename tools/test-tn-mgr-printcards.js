@@ -653,5 +653,132 @@ PC.state.panels.sizes = false;
 PC.state.draft = null;
 TOURNAMENT.printScorecards = null;
 
+// ----------------------------------------------------------
+// 9. Точный + полевой гандикап на карточке
+// ----------------------------------------------------------
+TOURNAMENT.printScorecards = null;
+PC.state.draft = null;
+PC.state.cardsSig = '';
+PC.html();
+(function () {
+    var c = PC.buildCards(PLAYERS, global.TnMgrData.sheetOrder({ entries: ENTRIES }), {});
+    var single = c.filter(function (x) { return (x.playerIds || []).indexOf('c') !== -1; })[0];
+    var face = PC.cardFaceHtml(single, true);
+    check('на карточке точный HCP', face.indexOf('Точный HCP') !== -1 && face.indexOf('>18<') !== -1);
+    check('на карточке полевой HCP', face.indexOf('Полевой HCP') !== -1 && face.indexOf('data-tnpc-field="fieldHcps"') !== -1 && face.indexOf('>17<') !== -1);
+    check('SHOW_FIELDS содержит переключатель полевого HCP', !!PC.SHOW_FIELDS.fieldHcp && PC.SHOW_FIELDS.fieldHcp.def === true);
+    var edited = Object.assign({}, single, { fieldHcps: [20], edits: { fieldHcps: true } });
+    check('ручная правка полевого HCP имеет приоритет', PC.fieldHcpFor(edited, 0) === 20 && PC.fieldHcpText(edited) === '20');
+    check('плюсовой полевой HCP показывается со знаком +', PC.fieldHcpText(Object.assign({}, single, { fieldHcps: [-2], edits: { fieldHcps: true } })) === '+2');
+    PC.state.draft.show.fieldHcp = false;
+    check('полевой HCP можно скрыть', PC.cardFaceHtml(single, true).indexOf('Полевой HCP') === -1);
+    PC.state.draft.show.fieldHcp = true;
+})();
+
+// ----------------------------------------------------------
+// 10. Блоки целиком: таблица и шапка двигаются и масштабируются
+// ----------------------------------------------------------
+(function () {
+    var size = PC.defaultSize();
+    var def = PC.defaultBox('table', size);
+    check('по умолчанию таблица в потоке карточки (не свободная), масштаб 100%', def.free === false && def.k === 1);
+    var cl = PC.clampBox('table', { free: 1, xMm: -50, yMm: 9999, wMm: 2, k: 99 }, size);
+    check('границы блока: X≥0, Y в карточке, ширина ≥15 мм, масштаб ≤300%',
+        cl.free === true && cl.xMm === 0 && cl.yMm <= size.hMm - 3 && cl.wMm === 15 && cl.k === 3, JSON.stringify(cl));
+    check('масштаб блока не меньше 40%', PC.clampBox('head', { k: 0.01 }, size).k === 0.4);
+    var boxes = PC.clampBoxes(null, size);
+    check('у черновика два блока целиком', PC.BOX_KEYS.join(',') === 'table,head' && !!boxes.table && !!boxes.head);
+
+    var c = PC.state.draft.cards[0];
+    var baseFace = PC.cardFaceHtml(c, true);
+    check('при настройках по умолчанию таблица и шапка без inline-места',
+        /class="tnpc-body tnpc-box" data-tnpc-box="table" style=""/.test(baseFace) &&
+        /class="tnpc-head tnpc-box" data-tnpc-box="head" style=""/.test(baseFace));
+    var baseFont = PC.blockStyleAttr('par');
+    PC.state.draft.boxes = { table: { free: true, xMm: 12, yMm: 40, wMm: 150, k: 1.5 }, head: { free: false, k: 1.2 } };
+    var face = PC.cardFaceHtml(c, true);
+    check('свободная таблица стоит в своей точке и ширине',
+        /data-tnpc-box="table" style="left:12mm;top:40mm;width:150mm;/.test(face) && face.indexOf('tnpc-body tnpc-box free') !== -1);
+    check('при свободной таблице подписи прижаты к низу карточки', face.indexOf('tnpc-card-inner tb-free') !== -1 &&
+        PC.cardCssText().indexOf('.tnpc-card-inner.tb-free .tnpc-foot{margin-top:auto}') !== -1);
+    var parFont = parseFloat((/--tnpc-table:([\d.]+)mm/.exec(PC.blockStyleAttr('par')) || [])[1]);
+    var parBase = parseFloat((/--tnpc-table:([\d.]+)mm/.exec(baseFont) || [])[1]);
+    check('масштаб таблицы увеличивает кегль всех строк', Math.abs(parFont - parBase * 1.5) < 0.02, parBase + ' → ' + parFont);
+    check('масштаб шапки увеличивает кегли шапки', /--tnpc-name:[\d.]+mm/.test(PC.boxStyleAttr('head')) && face.indexOf('tnpc-head tnpc-box free') === -1);
+    check('ручки блоков не попадают в печать', face.indexOf('data-tnpc-box-drag') === -1);
+    var screenFace = PC.cardFaceHtml(c, false);
+    check('на экране у таблицы и шапки есть ручки ✥/↔/↕/↘',
+        (screenFace.match(/data-tnpc-box-drag="table"/g) || []).length === 4 && (screenFace.match(/data-tnpc-box-drag="head"/g) || []).length === 4);
+    check('CSS печати скрывает ручки блоков', PC.documentFor([c]).indexOf('.tnpc-box-move,.tnpc-box-h{display:none!important}') !== -1);
+    PC.state.panels.sizes = true;
+    var panel = PC.html();
+    check('в панели «Размеры» есть настройки блоков целиком',
+        panel.indexOf('data-tnm-live-edit="tnpc-box"') !== -1 && panel.indexOf('data-tnm-edit="tnpc-box-free"') !== -1 &&
+        panel.indexOf('data-tnm-act="tnpc-box-reset"') !== -1);
+    PC.state.panels.sizes = false;
+    var persisted = writes.length;
+    return persisted;
+})();
+
+// ----------------------------------------------------------
+// 11. Свои блоки: шаблон с подстановками (маркер, гандикапы…)
+// ----------------------------------------------------------
+(function () {
+    var prevPlayerOf = global.TnMgrUI.playerOf;
+    global.TnMgrUI.playerOf = function (id) { return PLAYERS.filter(function (p) { return p.id === id; })[0] || null; };
+    var c = PC.state.draft.cards.filter(function (x) { return (x.playerIds || []).length === 1 && x.playerIds[0] === 'a'; })[0] ||
+        { id: 'solo-a', playerIds: ['a'], names: ['Иванов Иван'], hcps: [12], fieldHcps: [10], tee: 'wh', startHole: 1, startTime: '09:00', flight: '1' };
+    check('маркер игрока — из стартового листа', PC.blockText('Маркер: {marker}', c) === 'Маркер: Петров Пётр', PC.blockText('Маркер: {marker}', c));
+    check('фамилия и имя маркера по отдельности', PC.blockText('{markerLast} / {markerFirst}', c) === 'Петров / Пётр', PC.blockText('{markerLast} / {markerFirst}', c));
+    check('данные игрока и старта', PC.blockText('{lastName} {firstName}: л.{hole} {time} флайт {flight}', c) === 'Иванов Иван: л.1 09:00 флайт 1',
+        PC.blockText('{lastName} {firstName}: л.{hole} {time} флайт {flight}', c));
+    check('гандикапы в блоке', PC.blockText('{hcp}|{fieldHcp}', c) === '12|10', PC.blockText('{hcp}|{fieldHcp}', c));
+    check('турнир в блоке', PC.blockText('{tournament}', c) === 'Кубок Пестово');
+    check('неизвестная подстановка остаётся как есть', PC.blockText('{нет} {unknown}', c) === '{нет} {unknown}');
+    var solo = { id: 'solo-c', playerIds: ['c'], names: ['Сидоров Сидор'], hcps: [18] };
+    check('без маркера (сам себе) подстановка пустая', PC.blockText('Маркер: {marker}', solo) === 'Маркер: ');
+    check('все подстановки описаны для панели', PC.BLOCK_PLACEHOLDERS.length >= 16 &&
+        PC.BLOCK_PLACEHOLDERS.every(function (ph) { return Object.prototype.hasOwnProperty.call(PC.blockValues(c), ph.key); }));
+
+    var ov = PC.clampOverlay({ id: 'b1', type: 'block', text: 'Маркер: {marker}', title: 'Маркер', align: 'center', border: 'bottom',
+        color: '#123456', bg: 'red', bold: 1, xMm: 5, yMm: 100, wMm: 80, hMm: 8, enabled: true });
+    check('тип «блок» сохраняется', ov.type === 'block');
+    check('оформление блока нормализовано', ov.align === 'center' && ov.border === 'bottom' && ov.color === '#123456' && ov.bg === '' && ov.bold === true,
+        JSON.stringify(ov));
+    check('у прочих оверлеев нет полей блока', !('align' in PC.clampOverlay({ id: 'q', type: 'qr' })));
+    PC.state.draft.overlays = [ov];
+    var face = PC.cardFaceHtml(c, true);
+    check('блок печатается со значениями карточки', face.indexOf('Маркер: Петров Пётр') !== -1 && face.indexOf('tnpc-ov-block bd-bottom b') !== -1);
+    check('стиль блока применяется', face.indexOf('text-align:center;color:#123456;') !== -1);
+    PC.state.draft.overlays = [];
+    var added = PC.addBlockOverlay('marker');
+    check('пресет «Маркер» добавляет блок', added.type === 'block' && added.text === 'Маркер: {marker}' && PC.state.draft.overlays.length === 1);
+    var added2 = PC.addBlockOverlay('markerSign');
+    check('пресет «Подпись маркера» — с рамкой', added2.border === 'box' && /\{markerLast\}/.test(added2.text));
+    PC.state.panels.overlays = true;
+    var panel = PC.html();
+    check('в панели блока есть шаблон и подстановки', panel.indexOf('<textarea') !== -1 && panel.indexOf('data-tnm-act="tnpc-ovb-insert"') !== -1 &&
+        panel.indexOf('data-key="marker"') !== -1);
+    check('в панели есть кнопки добавления пресетов', panel.indexOf('data-tnm-act="tnpc-block-add"') !== -1);
+    PC.state.panels.overlays = false;
+    PC.state.draft.overlays = [];
+    global.TnMgrUI.playerOf = prevPlayerOf;
+})();
+
+// Сохранение: блоки целиком и свои блоки переживают перезагрузку черновика.
+(function () {
+    var stored = { boxes: { table: { free: true, xMm: 7, yMm: 50, wMm: 120, k: 0.8 } },
+        overlays: [{ id: 'b2', type: 'block', text: '{player}', xMm: 5, yMm: 5, wMm: 40, hMm: 8, enabled: true }] };
+    TOURNAMENT.printScorecards = stored;
+    PC.state.draft = null;
+    PC.html();
+    var d2 = PC.state.draft;
+    check('блок «Таблица» загружается из сохранённого дизайна', d2.boxes.table.free === true && d2.boxes.table.xMm === 7 && d2.boxes.table.k === 0.8,
+        JSON.stringify(d2.boxes.table));
+    check('свой блок загружается из сохранённого дизайна', (d2.overlays || []).some(function (o) { return o.id === 'b2' && o.type === 'block'; }));
+    PC.state.draft = null;
+    TOURNAMENT.printScorecards = null;
+})();
+
 console.log('\n' + (fails ? '✗ ' + fails + ' / ' + total : 'All tn-mgr-printcards tests passed ✔ (' + total + ' checks)'));
 process.exit(fails ? 1 : 0);

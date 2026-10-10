@@ -170,15 +170,19 @@ function tnScHeadHtml(card, variant) {
     if (card.teeTxt) meta += '<span class="tnsc-chip">' + tnScL('ТИ:', 'Tees:') + ' ' + card.teeTxt + '</span>';
     if (card.markerName) meta += '<span class="tnsc-chip"><i class="fas fa-user-check"></i> ' + tnScL('маркирует: ', 'marks: ') + tnScEsc(card.markerName) + '</span>';
 
+    // Точный (HI) и полевой (игровой) гандикап показываются всегда вместе;
+    // при срезке HI (✂) — рядом с точным.
+    var fieldPart = (card.fieldHcp !== null && card.fieldHcp !== undefined && card.fieldHcp !== '')
+        ? ' · ' + tnScL('Полевой', 'Course') + ' <b>' + (typeof fmtFieldHcp === 'function' ? fmtFieldHcp(card.fieldHcp) : card.fieldHcp) + '</b>'
+        : '';
     var hcpLine = '';
     if (card.hcpRaw !== null && card.hcpRaw !== undefined && card.effHcp !== null && card.effHcp !== undefined &&
         Math.abs(parseFloat(card.effHcp) - parseFloat(card.hcpRaw)) >= 0.05) {
         hcpLine = '<span class="tnsc-hcp">' + tnScL('Точный', 'Exact') + ' <b>' + tnScHcp(card.hcpRaw) + '</b>' +
-            ' <span class="tnsc-cut">✂ ' + tnScHcp(card.effHcp) + '</span></span>';
+            ' <span class="tnsc-cut">✂ ' + tnScHcp(card.effHcp) + '</span>' + fieldPart + '</span>';
     } else {
         hcpLine = '<span class="tnsc-hcp">' + tnScL('Точный', 'Exact') + ' <b>' + tnScHcp(card.effHcp != null ? card.effHcp : card.hcpRaw) + '</b>' +
-            (card.fieldHcp !== null && card.fieldHcp !== undefined ? ' · ' + tnScL('Игровой', 'Course') + ' <b>' + (typeof fmtFieldHcp === 'function' ? fmtFieldHcp(card.fieldHcp) : card.fieldHcp) + '</b>' : '') +
-            '</span>';
+            fieldPart + '</span>';
     }
 
     return '<div class="tnsc-head">' +

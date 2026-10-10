@@ -249,5 +249,105 @@ check('в печати нет ручек блоков',
 check('в печати есть строка «Длина» и значения лунок',
     printed.indexOf('>Длина, м</span>') !== -1 && printed.indexOf('>555</td>') !== -1);
 
+// ----------------------------------------------------------
+// 6. Блоки целиком: таблицу и шапку можно двигать и масштабировать мышью
+// ----------------------------------------------------------
+PC.state.panels.sizes = true;
+PC.state.panels.overlays = true;
+UI.render();
+if (!host.querySelector('.tnpc-card')) { host.innerHTML = PC.html(); }
+function stubRect(el, r) {
+    el.getBoundingClientRect = function () {
+        return { left: r.left, top: r.top, width: r.width, height: r.height, right: r.left + r.width, bottom: r.top + r.height, x: r.left, y: r.top };
+    };
+}
+function stubCard() {
+    var card = host.querySelector('.tnpc-card');
+    stubRect(card, { left: 0, top: 0, width: 800, height: 588 });            // 200 мм на 800 px → 0.25 мм/px
+    stubRect(card.querySelector('.tnpc-card-inner'), { left: 0, top: 0, width: 800, height: 588 });
+    stubRect(card.querySelector('[data-tnpc-box="table"]'), { left: 20, top: 120, width: 760, height: 300 });
+    stubRect(card.querySelector('[data-tnpc-box="head"]'), { left: 20, top: 20, width: 760, height: 90 });
+    return card;
+}
+var boxCard = stubCard();
+check('у таблицы и шапки есть ручки блока целиком',
+    host.querySelectorAll('[data-tnpc-box-drag="table"]').length === 4 && host.querySelectorAll('[data-tnpc-box-drag="head"]').length === 4);
+var moveHandle = boxCard.querySelector('[data-tnpc-box-drag="table"][data-mode="move"]');
+fire(moveHandle, 'pointerdown', 100, 100);
+fire(host, 'pointermove', 140, 180);   // +40px/+80px → +10/+20 мм
+fire(host, 'pointerup', 140, 180);
+var tb = PC.state.draft.boxes && PC.state.draft.boxes.table;
+check('✥ переносит таблицу целиком: блок свободный, место в мм',
+    !!tb && tb.free === true && tb.xMm === 15 && tb.yMm === 50 && tb.wMm === 190, JSON.stringify(tb));
+var tableEl = boxCard.querySelector('[data-tnpc-box="table"]');
+check('предпросмотр обновился без перерисовки (left/top/width)',
+    tableEl.classList.contains('free') && /left:15mm;top:50mm;width:190mm;/.test(tableEl.getAttribute('style')),
+    tableEl.getAttribute('style'));
+check('подписи прижаты к низу при свободной таблице', boxCard.querySelector('.tnpc-card-inner').classList.contains('tb-free'));
+check('поля X/Y панели «Размеры» следуют за перетаскиванием',
+    (host.querySelector('[data-tnm-live-edit="tnpc-box"][data-box="table"][data-field="xMm"]') || {}).value === '15' &&
+    (host.querySelector('[data-tnm-live-edit="tnpc-box"][data-box="table"][data-field="yMm"]') || {}).value === '50');
+
+var sHandle = boxCard.querySelector('[data-tnpc-box-drag="table"][data-mode="s"]');
+fire(sHandle, 'pointerdown', 100, 100);
+fire(host, 'pointermove', 100, 250);   // +150px = +37.5 мм к 75 мм высоты → ×1.5
+fire(host, 'pointerup', 100, 250);
+tb = PC.state.draft.boxes.table;
+check('↕ масштабирует всё содержимое таблицы', tb.k === 1.5, JSON.stringify(tb));
+check('кегль строк таблицы вырос вместе с масштабом',
+    /--tnpc-table:4\.35mm/.test(boxCard.querySelector('[data-tnpc-block="holes"]').getAttribute('style')),
+    boxCard.querySelector('[data-tnpc-block="holes"]').getAttribute('style'));
+
+var eHandle = boxCard.querySelector('[data-tnpc-box-drag="head"][data-mode="e"]');
+fire(eHandle, 'pointerdown', 100, 100);
+fire(host, 'pointermove', 60, 100);    // −40px = −10 мм ширины
+fire(host, 'pointerup', 60, 100);
+var hb = PC.state.draft.boxes.head;
+check('↔ меняет ширину шапки и освобождает её', hb.free === true && hb.wMm === 180 && hb.xMm === 5, JSON.stringify(hb));
+
+var kInput = host.querySelector('[data-tnm-live-edit="tnpc-box"][data-box="head"][data-field="kPct"]');
+kInput.value = '130';
+kInput.dispatchEvent(new win.Event('input', { bubbles: true }));
+check('масштаб шапки числом в панели', PC.state.draft.boxes.head.k === 1.3 &&
+    /--tnpc-name:/.test(boxCard.querySelector('[data-tnpc-box="head"]').getAttribute('style')));
+var freeBox = host.querySelector('[data-tnm-edit="tnpc-box-free"][data-box="head"]');
+freeBox.checked = false;
+freeBox.dispatchEvent(new win.Event('change', { bubbles: true }));
+check('снятие «свободное место» возвращает шапку в поток', PC.state.draft.boxes.head.free === false &&
+    !boxCard.querySelector('[data-tnpc-box="head"]').classList.contains('free'));
+var printedBoxes = PC.documentFor((PC.state.draft.cards || []).slice(0, 1));
+check('в печати таблица на своём месте и без ручек',
+    /data-tnpc-box="table" style="left:15mm;top:50mm;width:190mm;/.test(printedBoxes) && printedBoxes.indexOf('data-tnpc-box-drag') === -1);
+
+// ----------------------------------------------------------
+// 7. Свой блок «Маркер»: добавление, шаблон, подстановка, оформление
+// ----------------------------------------------------------
+var addMarker = host.querySelector('[data-tnm-act="tnpc-block-add"][data-preset="marker"]');
+check('кнопка «+ Маркер» есть в панели', !!addMarker);
+addMarker.click();
+var blockOv = (PC.state.draft.overlays || []).filter(function (o) { return o.type === 'block'; })[0];
+check('блок «Маркер» добавлен', !!blockOv && blockOv.text === 'Маркер: {marker}', JSON.stringify(blockOv));
+var blockEl = host.querySelector('.tnpc-overlay[data-type="block"]');
+check('блок виден на карточке', !!blockEl && !!blockEl.querySelector('.tnpc-ov-block'));
+var ta = host.querySelector('textarea[data-tnm-live-edit="tnpc-overlay"][data-id="' + blockOv.id + '"]');
+check('шаблон блока редактируется в панели', !!ta);
+ta.value = 'Игрок: {player}';
+ta.dispatchEvent(new win.Event('input', { bubbles: true }));
+check('правка шаблона подставляет данные карточки',
+    (host.querySelector('.tnpc-overlay[data-type="block"] .tnpc-ov-block-t') || {}).textContent === 'Игрок: Иванов Иван',
+    (host.querySelector('.tnpc-overlay[data-type="block"] .tnpc-ov-block-t') || {}).textContent);
+var chip = host.querySelector('[data-tnm-act="tnpc-ovb-insert"][data-id="' + blockOv.id + '"][data-key="fieldHcp"]');
+chip.click();
+check('чип подстановки дописывает {fieldHcp} в шаблон', /\{fieldHcp\}$/.test((PC.state.draft.overlays.filter(function (o) { return o.id === blockOv.id; })[0] || {}).text || ''));
+var alignSel = host.querySelector('[data-tnm-edit="tnpc-ovb"][data-id="' + blockOv.id + '"][data-field="align"]');
+alignSel.value = 'right';
+alignSel.dispatchEvent(new win.Event('change', { bubbles: true }));
+check('выравнивание блока применяется', /text-align:right/.test(host.querySelector('.tnpc-overlay[data-type="block"] .tnpc-ov-block').getAttribute('style')));
+var ovEl = host.querySelector('.tnpc-overlay[data-type="block"]');
+fire(ovEl, 'dblclick', 5, 5);
+check('двойной клик по блоку открывает его настройки', !!host.querySelector('.tnpc-ov-row[data-ov="' + blockOv.id + '"]'));
+var printedBlock = PC.documentFor((PC.state.draft.cards || []).slice(0, 1));
+check('свой блок печатается без служебных ярлыков', printedBlock.indexOf('Игрок: Иванов Иван') !== -1 && printedBlock.indexOf('class="tnpc-tag"') === -1);
+
 console.log('\n' + (fails ? '✗ ' + fails + ' / ' + total : 'All tn-mgr-printcards-ui tests passed ✔ (' + total + ' checks)'));
 process.exit(fails ? 1 : 0);

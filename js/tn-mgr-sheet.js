@@ -180,7 +180,7 @@ var TnMgrSheetUI = (function (root) {
                 ui().btn('generate-sheet', esc(bi('Создать стартовый лист', 'Generate tee sheet')), { variant: 'primary', icon: 'fas fa-wand-magic-sparkles' }) +
                 '</div>';
         } else {
-            body = toolbarHtml() + sheetBodyHtml(sheetData) + (state.qrOpen ? qrPanelHtml(sheetData) : '');
+            body = publishBarHtml() + toolbarHtml() + sheetBodyHtml(sheetData) + (state.qrOpen ? qrPanelHtml(sheetData) : '');
         }
 
         return '<div class="tnm-tab-body">' +
@@ -226,6 +226,74 @@ var TnMgrSheetUI = (function (root) {
             '<label class="tnm-checkbox"><input type="checkbox" data-tnm-edit="sheet-flights"' + (o.flights ? ' checked' : '') + '> ' +
             esc(bi('Разбивать на флайты', 'Split into flights')) + '</label>' +
             '</div>';
+    }
+
+    /**
+     * Панель публикации: стартовый лист админки сам по себе на сайте не
+     * виден — его нужно опубликовать (TnMgrData.publishSheet собирает
+     * протокол старта для вкладки «Стартовый лист + QR» на tournaments.html).
+     * После публикации правки листа обновляют её автоматически.
+     */
+    function publishBarHtml() {
+        var rid = ensureRoundId();
+        var info = data().sheetPublication ? data().sheetPublication(ui().tournament(), rid) : null;
+        var siteUrl = ui().baseUrl() + 'tournaments.html?id=' + encodeURIComponent(ui().state.route.tid || '') + '&tab=start';
+        var printUrl = info ? ui().baseUrl() + 'qr-start.html?p=' + encodeURIComponent(info.protocolId) : '';
+        if (!info) {
+            return '<div class="tnm-publish-bar" data-tnm-publish="off">' +
+                '<span class="tnm-publish-state"><i class="fas fa-eye-slash"></i> ' +
+                esc(bi('Не опубликован на сайте — на странице «Турниры» стартового листа и QR пока нет.',
+                    'Not published — the Tournaments page does not show this tee sheet and QR yet.')) + '</span>' +
+                ui().btn('sheet-publish', esc(bi('Опубликовать на сайте', 'Publish on the site')), { variant: 'primary', icon: 'fas fa-globe' }) +
+                '</div>';
+        }
+        var when = info.publishedAt ? new Date(info.publishedAt).toLocaleString(lang() === 'en' ? 'en-GB' : 'ru-RU') : '';
+        return '<div class="tnm-publish-bar on" data-tnm-publish="on">' +
+            '<span class="tnm-publish-state"><i class="fas fa-globe"></i> <b>' + esc(bi('Опубликован на сайте', 'Published on the site')) + '</b>' +
+            (when ? ' · ' + esc(when) : '') +
+            (info.groups ? ' · ' + esc(bi('групп: ', 'groups: ') + info.groups) : '') +
+            (info.players ? ' · ' + esc(bi('игроков: ', 'players: ') + info.players) : '') +
+            ' · <span class="tnm-muted">' + esc(bi('правки листа обновляют публикацию автоматически', 'sheet edits update it automatically')) + '</span></span>' +
+            '<span class="tnm-publish-actions">' +
+            ui().btn('sheet-publish', esc(bi('Обновить публикацию', 'Update publication')), { variant: 'ghost', small: true, icon: 'fas fa-rotate' }) +
+            '<a class="tnm-btn tnm-btn-ghost tnm-btn-sm" href="' + esc(siteUrl) + '" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square"></i> ' +
+            esc(bi('Открыть на сайте', 'Open on the site')) + '</a>' +
+            (printUrl ? '<a class="tnm-btn tnm-btn-ghost tnm-btn-sm" href="' + esc(printUrl) + '" target="_blank" rel="noopener"><i class="fas fa-print"></i> ' +
+                esc(bi('Лист + QR для печати', 'Printable sheet + QR')) + '</a>' : '') +
+            ui().btn('sheet-unpublish', esc(bi('Снять с публикации', 'Unpublish')), { variant: 'ghost', small: true, icon: 'fas fa-eye-slash' }) +
+            '</span></div>';
+    }
+
+    function isPublished(rid) {
+        return !!(data().sheetPublication && data().sheetPublication(ui().tournament(), rid || ensureRoundId()));
+    }
+
+    function publish(silent) {
+        var rid = ensureRoundId();
+        if (!rid) return Promise.resolve(null);
+        return data().publishSheet(ui().state.route.tid, rid, ui().tournament()).then(function (res) {
+            if (!silent) ui().toastMsg(bi('✅ Стартовый лист и QR опубликованы на странице «Турниры»', '✅ Tee sheet and QR published on the Tournaments page'));
+            return res;
+        }).catch(function (err) {
+            ui().toastMsg('❌ ' + bi('Не удалось опубликовать: ', 'Could not publish: ') + (err && err.message ? err.message : err), 'error');
+            return null;
+        });
+    }
+
+    /** Уже опубликованный лист держим на сайте в актуальном виде. */
+    function republishIfPublished(rid) {
+        if (!isPublished(rid)) return Promise.resolve(null);
+        return publish(true);
+    }
+
+    function unpublish() {
+        var rid = ensureRoundId();
+        if (!rid) return;
+        data().unpublishSheet(ui().state.route.tid, rid).then(function () {
+            ui().toastMsg(bi('Стартовый лист снят с сайта', 'Tee sheet removed from the site'));
+        }).catch(function (err) {
+            ui().toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
+        });
     }
 
     function toolbarHtml() {
@@ -419,7 +487,11 @@ var TnMgrSheetUI = (function (root) {
         data().generateSheet(ui().state.route.tid, rid, Object.assign({}, state.options), ui().tournament()).then(function () {
             ui().state.sheetBusy = false;
             state.optionsOpen = false;
-            ui().toastMsg(bi('✅ Стартовый лист создан', '✅ Tee sheet generated'));
+            ui().toastMsg(isPublished(rid)
+                ? bi('✅ Стартовый лист пересобран, публикация на сайте обновлена', '✅ Tee sheet regenerated, site publication updated')
+                : bi('✅ Стартовый лист создан. Чтобы показать его на странице «Турниры», нажмите «Опубликовать на сайте»',
+                    '✅ Tee sheet generated. Click “Publish on the site” to show it on the Tournaments page'));
+            return republishIfPublished(rid);
         }).catch(function (err) {
             ui().state.sheetBusy = false;
             ui().toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
@@ -442,6 +514,7 @@ var TnMgrSheetUI = (function (root) {
             // Правки листа синхронизируются с участниками и группами —
             // перерисовку отдаём подписке на турнир, но подсветим успех.
             ui().toastMsg(bi('Сохранено', 'Saved'), 'success');
+            return republishIfPublished();
         }).catch(function (err) {
             ui().toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
         });
@@ -601,6 +674,7 @@ var TnMgrSheetUI = (function (root) {
         chain.then(function () {
             ui().closeModal();
             ui().toastMsg(bi('Игроки добавлены в лист', 'Players added to the sheet'));
+            return republishIfPublished();
         }).catch(function (err) {
             ui().toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
         });
@@ -609,6 +683,7 @@ var TnMgrSheetUI = (function (root) {
     function removeEntry(pid) {
         data().removeSheetEntry(ui().state.route.tid, ensureRoundId(), pid, ui().tournament()).then(function () {
             ui().toastMsg(bi('Игрок убран из листа', 'Player removed from the sheet'));
+            return republishIfPublished();
         }).catch(function (err) {
             ui().toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
         });
@@ -686,6 +761,15 @@ var TnMgrSheetUI = (function (root) {
         else state.expandedFlights[key] = true;
         ui().render();
     });
+    ui().on('sheet-publish', function () { publish(false); });
+    ui().on('sheet-unpublish', function () {
+        ui().confirmAction({
+            title: bi('Снять с публикации', 'Unpublish'),
+            message: bi('Убрать стартовый лист и QR этого раунда со страницы «Турниры»? Сам лист в админ-панели останется.',
+                'Remove this round tee sheet and QR from the Tournaments page? The sheet stays in the admin panel.'),
+            onConfirm: unpublish
+        });
+    });
     ui().on('sheet-pdf', exportPdf);
     ui().on('sheet-qr-pdf', exportQrPdf);
     ui().on('sheet-excel', exportExcel);
@@ -724,6 +808,6 @@ var TnMgrSheetUI = (function (root) {
 
     return {
         html: html, mount: mount, entries: entries, sheet: sheet, currentRound: currentRound,
-        state: state, generate: generate
+        state: state, generate: generate, publish: publish, unpublish: unpublish, isPublished: isPublished
     };
 })(typeof window !== 'undefined' ? window : this);

@@ -1384,10 +1384,13 @@ function markAdmTnRoundCardButtons() {
         var btn = document.getElementById('tn-card-opt-' + v);
         if (!btn) return;
         var isPreview = v === preview;
-        btn.classList.toggle('sev-card-active', isPreview);
+        // Активный вариант подсвечивается классом btn-g — как в остальных
+        // вкладках отображения (см. markV5 в этом файле).
+        btn.classList.toggle('btn-g', isPreview);
         btn.setAttribute('aria-pressed', isPreview ? 'true' : 'false');
+        // Галочка показывает вариант, который уже сохранён для всех.
         var check = btn.querySelector('.sev-card-check');
-        if (check) check.style.opacity = (v === saved) ? '1' : '0';
+        if (check) check.setAttribute('data-saved', v === saved ? 'true' : 'false');
     });
 }
 

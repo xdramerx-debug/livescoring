@@ -6930,3 +6930,5 @@ body.tn-hide-stableford #group-stableford-control,
 body.tn-hide-stableford #solo-stableford-control { display: none !important; }
 body.tn-hide-finish #group-finish-row,
 body.tn-hide-finish #solo-finish-row { display: none !important; }
+/* Галочка на варианте, который уже сохранён для всех (вкладка «Карточки в турнире»). */
+.sev-card .sev-card-check[data-saved="true"] { opacity: 1; transform: scale(1); }

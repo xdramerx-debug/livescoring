@@ -29,6 +29,18 @@ var TnMgrSheetUI = (function (root) {
         showTournamentQr: true,
         addOpen: false,
         addSearchQuery: '',
+        /**
+         * Режим показа листа в админ-панели:
+         *   'flights' — строки сгруппированы по флайтам и стартовой лунке
+         *               (флайты идут по порядку лунок, внутри лунки — по букве
+         *               волны А/Б/…). Свёрнутый флайт показывает номер,
+         *               стартовую лунку, время и состав (имена).
+         *   'flat'    — обычная плоская таблица, как раньше.
+         * Состояние expandedFlights хранит id развёрнутых флайтов, чтобы
+         * при перерисовке листа оставаться в удобном для админа виде.
+         */
+        view: 'flights',
+        expandedFlights: {},
         options: {
             groupSize: 4, startInterval: 8, firstTeeTime: '', tee: '', format: '', startMode: 'sequential', startHole: 1,
             markMode: 'group', groupsPerFlight: 3, flights: true
@@ -65,6 +77,61 @@ var TnMgrSheetUI = (function (root) {
         if (!entry.markerPlayerId) return '';
         var found = entries(sheetData).filter(function (item) { return item.playerId === entry.markerPlayerId; })[0];
         return found ? found.playerName : '';
+    }
+
+    /**
+     * Разбирает строку флайта на номер и букву волны: '1А' → { num: 1, letter: 'А' }.
+     * Пустая строка → { num: 999, letter: '' } — такие флайты всегда в конце.
+     */
+    function flightKey(value) {
+        var s = String(value || '').trim();
+        var m = s.match(/^(\d+)(.*)$/);
+        if (!m) return { num: 999, letter: s, raw: s };
+        return { num: parseInt(m[1], 10) || 999, letter: m[2] || '', raw: s };
+    }
+
+    /**
+     * Группировка участников по флайтам. Внутри флайта сохраняем порядок
+     * startHole (стартовые лунки идут по возрастанию), а сами флайты
+     * сортируем по номеру и букве волны — так 1А, 1Б идут раньше 2А и т.д.
+     */
+    function flightGroups(sheetData) {
+        var list = entries(sheetData).slice();
+        var buckets = {};
+        list.forEach(function (entry) {
+            var key = entry.flight || '';
+            buckets[key] = buckets[key] || { key: key, flights: [], entries: [] };
+            buckets[key].entries.push(entry);
+        });
+        var groups = Object.keys(buckets).map(function (key) { return buckets[key]; });
+        groups.forEach(function (group) {
+            group.entries.sort(function (a, b) {
+                return (a.startHole || 1) - (b.startHole || 1) ||
+                    String(a.startTime || '').localeCompare(String(b.startTime || ''), 'ru') ||
+                    (a.position || 0) - (b.position || 0);
+            });
+            var holes = {};
+            group.entries.forEach(function (entry) {
+                var h = entry.startHole || 1;
+                holes[h] = (holes[h] || 0) + 1;
+            });
+            group.startHoles = Object.keys(holes).map(function (h) { return { hole: parseInt(h, 10) || 1, count: holes[h] }; })
+                .sort(function (a, b) { return a.hole - b.hole; });
+            group.totalPlayers = group.entries.length;
+            var parsed = flightKey(group.key);
+            group.num = parsed.num;
+            group.letter = parsed.letter;
+            // Время флайта — самое раннее среди его групп.
+            group.startTime = group.entries.reduce(function (acc, entry) {
+                if (!entry.startTime) return acc;
+                if (!acc) return entry.startTime;
+                return entry.startTime < acc ? entry.startTime : acc;
+            }, '');
+        });
+        groups.sort(function (a, b) {
+            return a.num - b.num || String(a.letter || '').localeCompare(String(b.letter || ''), 'ru');
+        });
+        return groups;
     }
 
     function formatOptions(selected) {
@@ -113,7 +180,7 @@ var TnMgrSheetUI = (function (root) {
                 ui().btn('generate-sheet', esc(bi('Создать стартовый лист', 'Generate tee sheet')), { variant: 'primary', icon: 'fas fa-wand-magic-sparkles' }) +
                 '</div>';
         } else {
-            body = toolbarHtml() + tableHtml(sheetData) + (state.qrOpen ? qrPanelHtml(sheetData) : '');
+            body = toolbarHtml() + sheetBodyHtml(sheetData) + (state.qrOpen ? qrPanelHtml(sheetData) : '');
         }
 
         return '<div class="tnm-tab-body">' +
@@ -171,6 +238,10 @@ var TnMgrSheetUI = (function (root) {
             ui().btn('sheet-options-toggle', esc(bi('Параметры листа', 'Sheet options')), { icon: 'fas fa-sliders', variant: 'ghost' }) + ' ' +
             ui().btn('sheet-qr-toggle', esc(bi(state.qrOpen ? 'Скрыть QR' : 'Показать QR', state.qrOpen ? 'Hide QR' : 'Show QR')), { icon: 'fas fa-qrcode', variant: 'ghost' }) + ' ' +
             ui().btn('sheet-regenerate', esc(bi('Пересобрать', 'Regenerate')), { icon: 'fas fa-rotate', variant: 'ghost' }) +
+            ' <span class="tnm-sheet-view">' +
+            ui().btn('sheet-view-flights', esc(bi('Флайтами', 'Flights')), { variant: state.view === 'flights' ? 'primary' : 'ghost', small: true, icon: 'fas fa-layer-group' }) +
+            ui().btn('sheet-view-flat', esc(bi('Списком', 'Flat')), { variant: state.view === 'flat' ? 'primary' : 'ghost', small: true, icon: 'fas fa-list' }) +
+            '</span>' +
             (state.optionsOpen ? optionsHtml() : '') +
             '</div>';
     }
@@ -191,6 +262,66 @@ var TnMgrSheetUI = (function (root) {
         return '<div class="tnm-table-scroll"><table class="tnm-table tnm-sheet-table"><thead><tr>' + head + '</tr></thead><tbody>' +
             (rows || '<tr><td colspan="' + (columns.length + 1) + '">' + esc(bi('Лист пуст', 'Sheet is empty')) + '</td></tr>') +
             '</tbody></table></div>';
+    }
+
+    /**
+     * Тело вкладки «Стартовый лист»: выбирает между плоской таблицей и
+     * группировкой по флайтам. По умолчанию — флайты, потому что порядок
+     * старта удобнее видеть свёрнутыми группами с номером, лункой и составом.
+     */
+    function sheetBodyHtml(sheetData) {
+        if (state.view === 'flights') return flightsHtml(sheetData);
+        return tableHtml(sheetData);
+    }
+
+    /**
+     * Группировка по флайтам. Свёрнутый флайт — компактная карточка с
+     * номером, стартовой лункой, временем и составом (имена игроков);
+     * развёрнутый показывает таблицу всех колонок как в плоском виде.
+     * Состояние expandedFlights запоминает выбор админа между перерисовками.
+     */
+    function flightsHtml(sheetData) {
+        var groups = flightGroups(sheetData);
+        if (!groups.length) return '<div class="tnm-muted">' + esc(bi('Лист пуст', 'Sheet is empty')) + '</div>';
+        return '<div class="tnm-flights">' + groups.map(function (group) {
+            return flightCardHtml(group, sheetData);
+        }).join('') + '</div>';
+    }
+
+    function flightCardHtml(group, sheetData) {
+        var key = group.key || '';
+        var expanded = !!state.expandedFlights[key];
+        var title = (key ? bi('Флайт ', 'Flight ') + key : bi('Без флайта', 'Unflown'));
+        var holeLabel = bi('лунка ', 'hole ');
+        var holesList = group.startHoles.map(function (h) { return h.hole; }).join(', ');
+        var summary = [
+            holeLabel + (group.startHoles.length > 1 ? holesList : String(group.startHoles[0] ? group.startHoles[0].hole : 1)),
+            group.startTime || bi('время ноль', 'time TBD'),
+            bi('игроков: ', 'players: ') + group.totalPlayers
+        ].join(' · ');
+        var composition = group.entries.map(function (e) { return esc(e.playerName || ''); }).join(', ');
+        var head = '<div class="tnm-flight-head" data-tnm-act="sheet-flight-toggle" data-key="' + key + '">' +
+            '<span class="tnm-flight-caret' + (expanded ? ' open' : '') + '" aria-hidden="true">' +
+            '<i class="fas fa-chevron-' + (expanded ? 'down' : 'right') + '"></i></span>' +
+            '<span class="tnm-flight-title">' + esc(title) + '</span>' +
+            '<span class="tnm-flight-summary">' + esc(summary) + '</span>' +
+            '<span class="tnm-flight-compose">' + composition + '</span>' +
+            '</div>';
+        if (!expanded) return '<div class="tnm-flight tnm-flight-collapsed">' + head + '</div>';
+        var columns = data().sheetColumns(sheetData).filter(function (column) { return column.on !== false; });
+        var headRow = columns.map(function (column) {
+            return '<th>' + esc(bi(column.ru, column.en)) + '</th>';
+        }).join('') + '<th></th>';
+        var rows = group.entries.map(function (entry) {
+            var cells = columns.map(function (column) { return cellHtml(column, entry, sheetData); }).join('');
+            var remove = '<td class="tnm-row-actions">' +
+                '<button type="button" class="tnm-icon-btn" title="' + esc(bi('Убрать из листа', 'Remove from sheet')) +
+                '" data-tnm-act="sheet-remove" data-pid="' + esc(entry.playerId) + '"><i class="fas fa-trash"></i></button></td>';
+            return '<tr>' + cells + remove + '</tr>';
+        }).join('');
+        return '<div class="tnm-flight tnm-flight-expanded">' + head +
+            '<div class="tnm-table-scroll"><table class="tnm-table tnm-sheet-table"><thead><tr>' + headRow +
+            '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
     }
 
     function markerSelectHtml(entry, sheetData) {
@@ -547,6 +678,14 @@ var TnMgrSheetUI = (function (root) {
     ui().on('sheet-regenerate', generate);
     ui().on('sheet-options-toggle', function () { state.optionsOpen = !state.optionsOpen; ui().render(); });
     ui().on('sheet-qr-toggle', function () { state.qrOpen = !state.qrOpen; ui().render(); });
+    ui().on('sheet-view-flights', function () { state.view = 'flights'; ui().render(); });
+    ui().on('sheet-view-flat', function () { state.view = 'flat'; ui().render(); });
+    ui().on('sheet-flight-toggle', function (target) {
+        var key = target.getAttribute('data-key') || '';
+        if (state.expandedFlights[key]) delete state.expandedFlights[key];
+        else state.expandedFlights[key] = true;
+        ui().render();
+    });
     ui().on('sheet-pdf', exportPdf);
     ui().on('sheet-qr-pdf', exportQrPdf);
     ui().on('sheet-excel', exportExcel);

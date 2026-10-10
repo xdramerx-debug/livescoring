@@ -195,6 +195,37 @@
 .tnm-col-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
 .tnm-col-move { display: flex; gap: 2px; }
 
+/* ---------- стартовый лист: режим «Флайтами» ---------- */
+/* Флайты выводятся карточками-«аккордеонами»: в свёрнутом виде виден номер,
+   стартовая лунка, время и состав имён; в развёрнутом — таблица как в плоском
+   режиме. Переключатель «Флайтами / Списком» живёт в панели инструментов
+   рядом с PDF/QR-кнопками. */
+.tnm-sheet-view { display: inline-flex; gap: 4px; margin-left: 8px; }
+.tnm-flights { display: flex; flex-direction: column; gap: 10px; }
+.tnm-flight {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--r);
+    overflow: hidden;
+}
+.tnm-flight-head {
+    display: grid; grid-template-columns: 22px auto 1fr;
+    grid-template-rows: auto auto; column-gap: 14px; row-gap: 2px;
+    padding: 12px 14px; cursor: pointer; user-select: none;
+    align-items: center;
+}
+.tnm-flight-head:hover { background: rgba(255,255,255,.04); }
+.tnm-flight-caret { grid-column: 1; grid-row: 1 / span 2; color: var(--muted); font-size: 11px; display: flex; align-items: center; justify-content: center; }
+.tnm-flight-caret.open { color: var(--gold); }
+.tnm-flight-title { grid-column: 2; grid-row: 1; font-weight: 700; font-size: 14px; color: var(--white); }
+.tnm-flight-summary { grid-column: 3; grid-row: 1; color: var(--muted); font-size: 12px; }
+.tnm-flight-compose { grid-column: 2 / span 2; grid-row: 2; color: var(--muted); font-size: 12px; line-height: 1.4; white-space: normal; }
+.tnm-flight-expanded > .tnm-table-scroll { border-top: 1px solid var(--border); padding: 4px 6px 8px; }
+@media (max-width: 720px) {
+    .tnm-flight-head { grid-template-columns: 22px 1fr; }
+    .tnm-flight-summary, .tnm-flight-compose { grid-column: 2; }
+    .tnm-flight-summary { grid-row: 2; }
+    .tnm-flight-compose { grid-row: 3; }
+}
+
 /* ---------- автоматическое распределение групп ---------- */
 .tnm-auto-distribute { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .tnm-auto-distribute > div { flex: 1; min-width: 220px; }

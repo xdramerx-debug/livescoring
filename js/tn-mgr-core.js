@@ -1814,14 +1814,25 @@
     /** Строки Excel: стартовый лист. */
     function sheetRows(entries, lang) {
         var rows = [headerRow('sheet', lang)];
-        (entries || []).slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); })
-            .forEach(function (entry, index) {
-                rows.push([
-                    index + 1, entry.startTime || '', entry.flight || '', entry.startHole || '', entry.groupName || '', entry.position || '',
-                    entry.playerName || '', fmtHcp(entry.hi), fmtHcp(entry.ch), teeName(entry.tee, lang),
-                    entry.format || '', entry.markerName || ''
-                ]);
-            });
+        // Excel — тоже «от 1-й лунки»: сортируем по флайту/лунке/времени.
+        (entries || []).slice().sort(function (a, b) {
+            var fa = String(a.flight || '').match(/^(\d+)(.*)$/);
+            var fb = String(b.flight || '').match(/^(\d+)(.*)$/);
+            var faNum = fa ? parseInt(fa[1], 10) : 999;
+            var fbNum = fb ? parseInt(fb[1], 10) : 999;
+            var faLet = fa ? fa[2] : '';
+            var fbLet = fb ? fb[2] : '';
+            return faNum - fbNum || faLet.localeCompare(fbLet, 'ru') ||
+                (a.startHole || 1) - (b.startHole || 1) ||
+                String(a.startTime || '').localeCompare(String(b.startTime || ''), 'ru') ||
+                (a.position || 0) - (b.position || 0);
+        }).forEach(function (entry, index) {
+            rows.push([
+                index + 1, entry.startTime || '', entry.flight || '', entry.startHole || '', entry.groupName || '', entry.position || '',
+                entry.playerName || '', fmtHcp(entry.hi), fmtHcp(entry.ch), teeName(entry.tee, lang),
+                entry.format || '', entry.markerName || ''
+            ]);
+        });
         return rows;
     }
 
@@ -2240,7 +2251,20 @@
     function sheetHtml(opts) {
         var o = opts || {};
         var lang = o.lang === 'en' ? 'en' : 'ru';
-        var entries = (o.entries || []).slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+        // Сортируем записи по лунке/флайту/времени: PDF должен сразу идти
+        // «от 1-й лунки», даже если админ поменял поле order вручную.
+        var entries = (o.entries || []).slice().sort(function (a, b) {
+            var fa = String(a.flight || '').match(/^(\d+)(.*)$/);
+            var fb = String(b.flight || '').match(/^(\d+)(.*)$/);
+            var faNum = fa ? parseInt(fa[1], 10) : 999;
+            var fbNum = fb ? parseInt(fb[1], 10) : 999;
+            var faLet = fa ? fa[2] : '';
+            var fbLet = fb ? fb[2] : '';
+            return faNum - fbNum || faLet.localeCompare(fbLet, 'ru') ||
+                (a.startHole || 1) - (b.startHole || 1) ||
+                String(a.startTime || '').localeCompare(String(b.startTime || ''), 'ru') ||
+                (a.position || 0) - (b.position || 0);
+        });
         var title = o.title || (lang === 'en' ? 'Tee sheet' : 'Стартовый лист');
         var meta = [];
         if (o.tournamentName) meta.push(o.tournamentName);
@@ -2258,6 +2282,10 @@
             byFlight[flight][groupKey] = byFlight[flight][groupKey] || [];
             byFlight[flight][groupKey].push(entry);
         });
+        // Флайты сортируются по стартовой лунке: так 1А и 1Б идут раньше 2А,
+        // и в печатном листе получается естественный порядок «от 1 лунки».
+        // Номер флайта совпадает со стартовой лункой (см. buildSheet), поэтому
+        // сортировки по flight и по startHole здесь эквивалентны.
         Object.keys(byFlight).sort(function (a, b) {
             var aa = String(a).match(/^(\d+)(.*)$/), bb = String(b).match(/^(\d+)(.*)$/);
             if (!aa || !bb) return String(a).localeCompare(String(b), 'ru');

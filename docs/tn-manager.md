@@ -427,7 +427,7 @@ node tools/test-tn-mgr-core.js       # 247 проверок: форматы, п�
 node tools/test-tn-mgr-startlist.js  # 39 проверок: «10:00: фамилия имя, …»,
                                      # лист из готовых флайтов, удаление
                                      # участников пачкой, «Удалить всех» в листе
-node tools/test-tn-round-cards.js    # 37 проверок вкладки «Карточки в турнире»:
+node tools/test-tn-round-cards.js    # 37 проверок вкладки «Отображение карточек
                                      # вид карточки, блоки экрана ввода, realtime
 node tools/test-tn-mgr-import.js     # 64 проверки разбора Excel: заголовки RU/EN,
                                      # раздельные колонки имени, шапки отчётов,

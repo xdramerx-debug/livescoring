@@ -183,6 +183,44 @@
 /* В режиме «только карточка» ручки не нужны: размер уже подогнан под окно. */
 .tnpc-stage.card-mode .tnpc-resize { display: none; }
 .tnpc-stage.card-mode .tnpc-move { display: none; }
+
+/* ---------- растягивание блоков таблицы (№ / Пар / Длина / Индекс / Фора / Удары) ----------
+   У каждого блока три ручки: ↕ высота строки, ↔ колонка подписи и ↘ весь блок
+   сразу (кегль + высота + подпись пропорционально). Ручки живут только на
+   экране — в печать и PDF они не попадают (см. @media print ниже). */
+.tnpc-block { outline-offset: -0.25mm; }
+.tnpc-card .tnpc-block:hover { outline: 0.25mm dashed rgba(201, 168, 76, .65); }
+.tnpc-card .tnpc-block.resizing { outline: 0.35mm solid #c9a227; }
+.tnpc-block-h {
+    position: absolute; width: 2.8mm; height: 2.8mm; box-sizing: border-box;
+    background: rgba(201, 168, 76, .78); border: 0.2mm solid #111;
+    z-index: 4; touch-action: none; opacity: .8;
+}
+.tnpc-block-h:hover { opacity: 1; background: var(--gold, #c9a227); }
+.tnpc-block-h-h   { left: 50%; bottom: -1.4mm; transform: translateX(-50%); cursor: ns-resize; }
+.tnpc-block-h-lab { left: -1.4mm; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+.tnpc-block-h-se  { right: -1.4mm; bottom: -1.4mm; cursor: nwse-resize; }
+
+/* ---------- панель «Цвет и шрифт» ---------- */
+.tnpc-block-cfg-list { display: flex; flex-direction: column; gap: 8px; }
+.tnpc-block-cfg {
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px;
+    background: rgba(255, 255, 255, .02);
+}
+.tnpc-block-cfg.flash { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201, 168, 76, .25); }
+.tnpc-block-cfg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.tnpc-block-cfg-head b { color: var(--white); font-size: 13px; }
+.tnpc-block-cfg-actions { display: flex; gap: 6px; }
+.tnpc-num input[type="color"] {
+    width: 100%; height: 30px; padding: 2px; cursor: pointer; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px;
+}
+.tnpc-color-row { display: flex; align-items: center; gap: 4px; }
+.tnpc-color-row input[type="color"] { flex: 1 1 auto; }
+.tnpc-color-clear { flex: 0 0 auto; padding: 4px 8px !important; }
+.tnpc-check-block { align-self: end; padding-bottom: 7px; }
+.tnpc-tee-fill { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: -2px 0 6px; }
+.tnpc-tee-fill .tnm-muted { font-size: 11.5px; }
 .tnpc-list { display: flex; flex-direction: column; gap: 10px; }
 .tnpc-rows { display: flex; flex-direction: column; gap: 6px; }
 .tnpc-row {
@@ -248,7 +286,7 @@
     .tnpc-toolbar, .tnpc-panel, .tnpc-status, .tnpc-hints, .tnpc-list,
     .tnpc-sel, .tnpc-warn, .tnpc-handle, .tnpc-x, .tnpc-tag, .tnpc-ph,
     .tnpc-noprint, .tnpc-ghost, .tnpc-master-note, .tnpc-move,
-    .tnpc-resize { display: none !important; }
+    .tnpc-resize, .tnpc-block-h { display: none !important; }
     /* На бумагу идёт только лист с карточкой: обвязка админки скрыта. */
     body > *:not(:has(.tnpc-wrap)) { display: none !important; }
     .tnpc-stage { background: #fff; border: none; padding: 0; overflow: visible; height: auto !important; }

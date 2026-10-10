@@ -338,6 +338,9 @@ async function openTab(launch, base, viewport) {
     check('смена цвета текста применяется к карточке сразу',
         designAfter.ink === '#001f7a', designAfter.ink);
     // Растягивание блока «Пар» за нижнюю ручку (↕ высота строк).
+    // На странице админки предпросмотр расположен ниже панелей; браузерная
+    // мышь работает только в viewport, поэтому перед drag прокручиваем к handle.
+    await page.locator('.tnpc-block[data-tnpc-block="par"] .tnpc-block-h-h').scrollIntoViewIfNeeded();
     const parHandle = await page.evaluate(function () {
         const el = document.querySelector('.tnpc-block[data-tnpc-block="par"] .tnpc-block-h-h');
         const b = el.getBoundingClientRect();

@@ -97,7 +97,14 @@ function loadLB() {
         try { el.innerHTML = '<div class="live-who-list rounds-layout-' + displayVariant + '" data-display-variant="' + displayVariant + '">' + html + '</div>'; } catch (e) { console.warn("[silent]", e); }
         try { restoreLbPanels(); } catch (e) { console.warn("[silent]", e); }
         if (lbFocusScrollPending && lbFocusRoundId) {
-            var focusNode = document.querySelector('.lb-row[data-round-id="' + lbFocusRoundId + '"]');
+            var focusRows = el.querySelectorAll('.lb-row[data-round-id]');
+            var focusNode = null;
+            for (var focusIndex = 0; focusIndex < focusRows.length; focusIndex++) {
+                if (focusRows[focusIndex].getAttribute('data-round-id') === String(lbFocusRoundId)) {
+                    focusNode = focusRows[focusIndex];
+                    break;
+                }
+            }
             if (focusNode) {
                 lbFocusScrollPending = false;
                 setTimeout(function () {
@@ -135,7 +142,11 @@ function setLbOpen(id, open) {
 }
 
 function toggleLbRound(id) {
-    var row = document.querySelector('.lb-row[data-round-id="' + id + '"]');
+    var rows = document.querySelectorAll('.lb-row[data-round-id]');
+    var row = null;
+    for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute('data-round-id') === String(id)) { row = rows[i]; break; }
+    }
     var open = row ? !row.classList.contains('is-open') : !getLbOpen(id);
     setLbOpen(id, open);
     if (row) {
@@ -261,9 +272,10 @@ function renderRound(id, r) {
         var isFin = typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(r, p.pid);
         var holeInfo = (isFin || p.holesPlayed >= (p.holeCount || 18)) ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
         var gross = p.gross || '—';
-        var pTeeBadge = '<span class="tee-pill tee-' + p.tee + '" style="font-size:9px;padding:0 6px;margin-left:6px;vertical-align:middle;line-height:16px;">' + t('tee_' + p.tee) + '</span>';
+        var teeCode = pestovoNormalizeTeeCode(p.tee);
+        var pTeeBadge = '<span class="tee-pill tee-' + teeCode + '" style="font-size:9px;padding:0 6px;margin-left:6px;vertical-align:middle;line-height:16px;">' + escapeHtml(pestovoTeeLabel(teeCode)) + '</span>';
 
-        return '<div class="rlb-row" onclick="openPlayerProfileModal(\'' + p.pid + '\',\'' + id + '\')">' +
+        return '<div class="rlb-row" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(p.pid) + '\',\'' + pestovoInlineJsArg(id) + '\')">' +
             '<span class="rlb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</span>' +
             '<div class="rlb-player">' + fmtUserAvatar(p, 28) +
             '<div class="rlb-pcol"><div style="display:flex;align-items:center;min-width:0;"><span class="rlb-name">' + escapeHtml(privacyDisplayName(p, p.pid)) + '</span>' + pTeeBadge + '</div>' +
@@ -286,10 +298,10 @@ function renderRound(id, r) {
 
     var panelId = 'lb-sc-' + id;
     var actions = '<div class="lwl-actions">' +
-        '<button class="btn btn-og btn-sm" onclick="toggleLbScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
+        '<button class="btn btn-og btn-sm" onclick="toggleLbScorecard(\'' + pestovoInlineJsArg(panelId) + '\',\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-chevron-down" id="' + escapeHtml(panelId) + '-icon"></i> <span id="' + escapeHtml(panelId) + '-txt">' + t('expand_scorecard') + '</span></button>' +
         (r.status === 'completed'
-            ? '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i> ' + (isEn ? 'Scorecard' : 'Счётная карточка') + '</button>' +
-              '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>'
+            ? '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-download"></i> ' + (isEn ? 'Scorecard' : 'Счётная карточка') + '</button>' +
+              '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>'
             : '') +
         '</div>';
 
@@ -315,12 +327,12 @@ function renderRound(id, r) {
         '</div>' +
         '<div class="rlb lb-rlb">' + head + rows + '</div>' +
         actions +
-        '<div id="' + panelId + '" class="card-scorecard-panel hidden"></div>' +
+        '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel hidden"></div>' +
         '</div>';
 
-    return '<div class="lwl-row lb-row' + (open ? ' is-open' : '') + (isLive ? ' lb-row-live' : '') + '" data-round-id="' + id + '">' +
+    return '<div class="lwl-row lb-row' + (open ? ' is-open' : '') + (isLive ? ' lb-row-live' : '') + '" data-round-id="' + escapeHtml(id) + '">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" ' +
-        'onclick="toggleLbRound(\'' + id + '\')" onkeydown="lbRowKey(event,\'' + id + '\')">' +
+        'onclick="toggleLbRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="lbRowKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
         '<span class="lwl-name"><i class="fas ' + (isLive ? 'fa-flag' : 'fa-flag-checkered') + '"></i><span class="lwl-name-txt">' + fmtDate(ts) + '</span></span>' +
         '<span class="lwl-hole lb-names"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-score">' + badge + '</span>' +

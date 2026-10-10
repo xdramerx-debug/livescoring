@@ -5,7 +5,15 @@
 module.exports = function createScoreAudit(functions, admin, db) {
     const DAY_MS = 86400000;
     const KEEP_MS = 30 * DAY_MS;
-    const validKey = v => typeof v === 'string' && v.length >= 1 && v.length <= 120 && !/[.$#\[\]\/\x00-\x1f\x7f]/.test(v);
+    const validKey = v => {
+        if (typeof v !== 'string' || v.length < 1 || v.length > 120) return false;
+        if (v.includes('.') || v.includes('$') || v.includes('#') || v.includes('[') || v.includes(']') || v.includes('/')) return false;
+        for (let i = 0; i < v.length; i++) {
+            const code = v.charCodeAt(i);
+            if (code <= 0x1f || code === 0x7f) return false;
+        }
+        return true;
+    };
     const dateKey = ms => new Date(ms).toISOString().slice(0, 10);
     const HttpsError = functions.https.HttpsError;
     function fail(code, text) { throw new HttpsError(code, text); }

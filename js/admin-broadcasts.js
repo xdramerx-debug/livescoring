@@ -378,7 +378,7 @@ function loadClubBroadcastsHistory() {
             html += '<div style="font-size:11px;color:var(--muted);">' + fmtDate(b.time) + ' · ' + fmtTime(b.time) + ' · Link: ' + escapeHtml(b.link || 'tournaments.html') +
                 (audTxt ? ' · <span style="color:var(--gold);">' + escapeHtml(audTxt) + '</span>' : '') + '</div>';
             html += '</div>';
-            html += '<button class="btn btn-r btn-sm" onclick="deleteBroadcast(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
+            html += '<button class="btn btn-r btn-sm" onclick="deleteBroadcast(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-trash"></i></button>';
             html += '</div>';
         });
 

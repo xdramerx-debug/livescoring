@@ -464,7 +464,7 @@ function buildPlayerSlots() {
     }
     el.innerHTML = html;
 
-    for (var i = 1; i <= count; i++) {
+    for (i = 1; i <= count; i++) {
         (function(idx) {
             var nameInp = document.getElementById('pl-name-' + idx);
             if (typeof initPlayerSearchAutofill === 'function') {
@@ -2387,10 +2387,10 @@ function renderGVPlayers(r) {
             var thruTxt = (typeof playerHoleStatusText === 'function')
                 ? playerHoleStatusText(r, pid, p, stats, order)
                 : (stats.holesPlayed >= getRoundHoleCount(r) ? t('finished_f') : (stats.currentHole ? t('hole') + ' №' + stats.currentHole : '—'));
-            var pTee = (p && p.tee) || r.tee || 'wh';
-            var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + pTee) + '</span>';
+            var pTee = pestovoNormalizeTeeCode((p && p.tee) || r.tee || 'wh');
+            var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + escapeHtml(pestovoTeeLabel(pTee)) + '</span>';
 
-            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pid + '\',\'' + curRid + '\')">' +
+            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(pid) + '\',\'' + pestovoInlineJsArg(curRid) + '\')">' +
                 '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + pTeeBadge + '</strong>' +
                 '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + markerNote + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div>' +

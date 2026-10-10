@@ -34,7 +34,7 @@ assert.ok(login.indexOf(defaultHash) !== -1, 'DEFAULT_MASTER_PASSWORD_HASH — �
 
 class HttpsError extends Error { constructor(code, message) { super(message); this.code = code; } }
 
-function makeSandbox(env) {
+function makeSandbox(env, transactionFailure) {
     let counter = null;
     const sandbox = {
         require: name => { assert.strictEqual(name, 'crypto'); return crypto; },
@@ -48,6 +48,7 @@ function makeSandbox(env) {
         admin: { auth: () => ({ createCustomToken: () => Promise.resolve('signed-token') }) },
         db: { ref: () => ({
             transaction: async function (fn) {
+                if (transactionFailure) throw transactionFailure;
                 const value = fn(counter);
                 if (!value) return { committed: false };
                 counter = value;
@@ -83,7 +84,15 @@ function makeSandbox(env) {
     const envResult = await viaEnv.signIn({ password: defaultPassword }, viaEnv.request);
     assert.strictEqual(envResult.token, 'signed-token');
 
-    // 6) Функция не должна содержать fetch к metadata.google.internal / secretmanager
+    // 6) Отказ RTDB-транзакции rate-limit не должен обходить ограничение и
+    // выдавать мастер-токен: вход fail-closed при недоступном счётчике.
+    const unavailable = makeSandbox({}, new Error('database unavailable'));
+    await assert.rejects(
+        unavailable.signIn({ password: defaultPassword }, unavailable.request),
+        e => e.code === 'unavailable'
+    );
+
+    // 7) Функция не должна содержать fetch к metadata.google.internal / secretmanager
     // — это источник internal ошибок, теперь читаем только env.
     assert.ok(!/metadata\.google\.internal/.test(source), 'не должно быть fetch к metadata.google.internal');
     assert.ok(!/secretmanager\.googleapis\.com/.test(source), 'не должно быть fetch к secretmanager.googleapis.com');

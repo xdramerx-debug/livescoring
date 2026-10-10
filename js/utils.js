@@ -46,8 +46,10 @@ function isOfflineNow() {
 }
 function sanitizeNameRaw(str){
     if(str===null||str===undefined)return'';
-    var s=String(str);
-    s=s.replace(/[<>&"'`{}\\\/\[\]();:]/g,'');   // потенциально опасная для HTML разметка
+    var unsafe = { '<': true, '>': true, '&': true, '"': true, "'": true, '`': true,
+        '{': true, '}': true, '\\': true, '/': true, '[': true, ']': true,
+        '(': true, ')': true, ';': true, ':': true };
+    var s=String(str).split('').filter(function(ch) { return !unsafe[ch]; }).join('');
     s=s.replace(/\s+/g,' ').trim();
     if(s.length>60)s=s.substring(0,60).trim();
     return s;
@@ -288,31 +290,31 @@ function pestovoCheckFioConflictsForGroup(fioList) {
 function pestovoRenderFioResumeListHtml(matches, opts) {
     opts = opts || {};
     if (!matches || !matches.length) {
-        return '<div class=\"empty\" style=\"padding:12px;\"><p>' + (currentLang === 'en' ? 'No active rounds found for this name.' : 'Активных раундов для этого имени не найдено.') + '</p></div>';
+        return '<div class="empty" style="padding:12px;"><p>' + (currentLang === 'en' ? 'No active rounds found for this name.' : 'Активных раундов для этого имени не найдено.') + '</p></div>';
     }
-    var html = '<div style=\"display:flex;flex-direction:column;gap:10px;\">';
+    var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
     matches.forEach(function(item) {
         var r = item.round, rid = item.roundId;
         // fio=1 — метка «пришли из поиска по ФИО»: только такой переход
         // требует подтверждения владельца перед завершением раунда.
-        var link = 'setup-round.html?round=' + rid + '&as=' + item.playerId + '&fio=1';
+        var link = 'setup-round.html?round=' + encodeURIComponent(rid) + '&as=' + encodeURIComponent(item.playerId) + '&fio=1';
         var resume = (typeof getRoundResumeState === 'function') ? getRoundResumeState(rid, r) : { currentHole: r.startHole || 1, holesPlayed: 0, holeCount: 18, metrics: { overallDelay: 0 } };
-        var modeIcon = r.mode === 'solo' ? '<i class=\"fas fa-user\"></i> ' + (typeof t === 'function' ? t('solo_round') : 'Solo') : '<i class=\"fas fa-users\"></i> ' + (typeof t === 'function' ? t('group_round') : 'Group');
+        var modeIcon = r.mode === 'solo' ? '<i class="fas fa-user"></i> ' + (typeof t === 'function' ? t('solo_round') : 'Solo') : '<i class="fas fa-users"></i> ' + (typeof t === 'function' ? t('group_round') : 'Group');
         var startDate = r.startTime ? new Date(r.startTime) : null;
         var dateStr = startDate ? (startDate.toLocaleDateString() + ' ' + fmtTime(r.startTime)) : '—';
         var curHole = resume.closed ? null : (resume.currentHole || r.startHole || 1);
         var played = resume.holesPlayed || 0;
         var total = resume.holeCount || getRoundHoleCount(r) || 18;
         var playerName = item.player && item.player.name ? item.player.name : (item.inputFio || '');
-        html += '<div class=\"list-item\" style=\"padding:12px;flex-wrap:wrap;gap:8px;\">' +
-            '<div style=\"flex:1;min-width:180px;\">' +
-            '<div style=\"font-weight:800;color:var(--white);\"><i class=\"fas fa-circle-play\" style=\"color:var(--gold);\"></i> ' + escapeHtml(playerName) + ' · ' + modeIcon + '</div>' +
-            '<div style=\"font-size:12px;color:var(--muted);margin-top:4px;\">' + (currentLang === 'en' ? 'Start' : 'Старт') + ': ' + dateStr + ' · ' + (currentLang === 'en' ? 'Hole' : 'Лунка') + ': ' + (curHole ? '№' + curHole : escapeHtml(resume.statusText || (currentLang === 'en' ? 'finished' : 'завершён'))) + ' · ' + played + '/' + total + '</div>' +
-            (r.tournamentName ? '<div style=\"font-size:11px;color:var(--gold);margin-top:2px;\"><i class=\"fas fa-trophy\"></i> ' + escapeHtml(r.tournamentName) + '</div>' : '') +
+        html += '<div class="list-item" style="padding:12px;flex-wrap:wrap;gap:8px;">' +
+            '<div style="flex:1;min-width:180px;">' +
+            '<div style="font-weight:800;color:var(--white);"><i class="fas fa-circle-play" style="color:var(--gold);"></i> ' + escapeHtml(playerName) + ' · ' + modeIcon + '</div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' + (currentLang === 'en' ? 'Start' : 'Старт') + ': ' + dateStr + ' · ' + (currentLang === 'en' ? 'Hole' : 'Лунка') + ': ' + (curHole ? '№' + curHole : escapeHtml(resume.statusText || (currentLang === 'en' ? 'finished' : 'завершён'))) + ' · ' + played + '/' + total + '</div>' +
+            (r.tournamentName ? '<div style="font-size:11px;color:var(--gold);margin-top:2px;"><i class="fas fa-trophy"></i> ' + escapeHtml(r.tournamentName) + '</div>' : '') +
             '</div>' +
-            '<div style=\"display:flex;flex-direction:column;gap:6px;align-self:center;\">' +
-            '<a href=\"' + link + '\" class=\"btn btn-g btn-sm\"><i class=\"fas fa-play\"></i> ' + (currentLang === 'en' ? 'Continue' : 'Продолжить') + '</a>' +
-            '<a href=\"' + link + '&finish=1\" class=\"btn btn-ol btn-sm\"><i class=\"fas fa-flag-checkered\"></i> ' + (currentLang === 'en' ? 'Finish round' : 'Завершить раунд') + '</a>' +
+            '<div style="display:flex;flex-direction:column;gap:6px;align-self:center;">' +
+            '<a href="' + link + '" class="btn btn-g btn-sm"><i class="fas fa-play"></i> ' + (currentLang === 'en' ? 'Continue' : 'Продолжить') + '</a>' +
+            '<a href="' + link + '&finish=1" class="btn btn-ol btn-sm"><i class="fas fa-flag-checkered"></i> ' + (currentLang === 'en' ? 'Finish round' : 'Завершить раунд') + '</a>' +
             '</div></div>';
     });
     html += '</div>';
@@ -574,11 +576,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // ==========================================
 function getRoundTeeCodes(r) {
     if (!r) return ['wh'];
-    if (typeof r === 'string') return [r];
+    if (typeof r === 'string') return [pestovoNormalizeTeeCode(r)];
     if (Array.isArray(r)) {
         var arr = [];
         r.forEach(function(code) {
-            if (code && arr.indexOf(code) === -1) arr.push(code);
+            if (code == null || String(code).trim() === '') return;
+            var normalized = pestovoNormalizeTeeCode(code);
+            if (arr.indexOf(normalized) === -1) arr.push(normalized);
         });
         return arr.length ? arr : ['wh'];
     }
@@ -591,15 +595,13 @@ function getRoundTeeCodes(r) {
     if (playerEntries.length > 0) {
         playerEntries.forEach(function(pe) {
             var p = pe[1];
-            var code = (p && p.tee) || r.tee || 'wh';
-            if (code && teesFound.indexOf(code) === -1) {
-                teesFound.push(code);
-            }
+            var code = pestovoNormalizeTeeCode((p && p.tee) || r.tee || 'wh');
+            if (teesFound.indexOf(code) === -1) teesFound.push(code);
         });
     }
 
     if (!teesFound.length) {
-        teesFound.push(r.tee || 'wh');
+        teesFound.push(pestovoNormalizeTeeCode(r.tee || 'wh'));
     }
 
     teesFound.sort(function(a, b) {
@@ -614,25 +616,45 @@ function getRoundTeeCodes(r) {
     return teesFound;
 }
 
+function pestovoNormalizeTeeCode(value) {
+    var code = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    return Object.prototype.hasOwnProperty.call(TEES, code) ? code : 'wh';
+}
+
+function pestovoTeeLabel(value) {
+    var code = pestovoNormalizeTeeCode(value);
+    var key = 'tee_' + code;
+    var label = typeof t === 'function' ? t(key) : '';
+    return (!label || label === key) ? (TEES[code] || 'Белый') : label;
+}
+
+// Аргумент для inline-обработчика onclick="fn('…')". HTML-экранирования
+// недостаточно: браузер декодирует entities до компиляции JS.
+function pestovoInlineJsArg(value) {
+    return String(value == null ? '' : value)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, '\\u0027')
+        .replace(/"/g, '\\u0022')
+        .replace(/</g, '\\x3c')
+        .replace(/>/g, '\\x3e')
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029')
+        .replace(/&/g, '\\u0026');
+}
+
 function fmtTeePill(teeCode) {
-    if (!teeCode) teeCode = 'wh';
     if (typeof teeCode === 'object' && teeCode !== null) {
         return fmtRoundTeePills(teeCode);
     }
-    var nameKey = 'tee_' + teeCode;
-    var name = t(nameKey);
-    if (!name || name === nameKey) name = TEES[teeCode] || 'White';
-    return '<span class="tee-pill tee-' + teeCode + '">' + name + '</span>';
+    var code = pestovoNormalizeTeeCode(teeCode);
+    return '<span class="tee-pill tee-' + code + '">' + escapeHtml(pestovoTeeLabel(code)) + '</span>';
 }
 
 function fmtRoundTeePills(r) {
     var codes = getRoundTeeCodes(r);
-    var pills = codes.map(function(c) {
-        var nameKey = 'tee_' + c;
-        var name = t(nameKey);
-        if (!name || name === nameKey) name = TEES[c] || 'White';
-        return '<span class="tee-pill tee-' + c + '">' + name + '</span>';
-    });
+    var pills = codes.map(function(code) { return fmtTeePill(code); });
     return '<span class="round-tee-pills">' + pills.join('') + '</span>';
 }
 function triggerVictoryConfetti() {
@@ -1109,7 +1131,7 @@ function buildMobileDrawer() {
 
     if (isUserLoggedIn) {
         var avatarMarkup = fmtUserAvatar(currentUserData, 32);
-        authBtnMarkup = '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--input);padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;" onclick="closeMobileDrawer();openPlayerProfileModal(\'' + currentUser.uid + '\')">' +
+        authBtnMarkup = '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--input);padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;" onclick="closeMobileDrawer();openPlayerProfileModal(\'' + pestovoInlineJsArg(currentUser.uid) + '\')">' +
             '<div style="display:flex;align-items:center;gap:10px;">' + avatarMarkup + '<strong style="color:var(--gold);font-size:14px;">' + escapeHtml(navShortUserName(currentUserData)) + '</strong></div>' +
             '<button class="btn btn-og btn-sm" onclick="event.stopPropagation();doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
@@ -1347,7 +1369,7 @@ function navAuth(u, d) {
         var fullName = String(d.name || '').trim();
         var shortName = navShortUserName(d);
         e.innerHTML = '<div class="nav-user">' + sunBtn + langBtn +
-            '<button type="button" class="nav-profile-trigger" title="' + escapeHtml(fullName) + '" aria-label="' + escapeHtml(fullName ? profileLabel + ': ' + fullName : profileLabel) + '" onclick="openPlayerProfileModal(\'' + u.uid + '\')">' + avatarMarkup +
+            '<button type="button" class="nav-profile-trigger" title="' + escapeHtml(fullName) + '" aria-label="' + escapeHtml(fullName ? profileLabel + ': ' + fullName : profileLabel) + '" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(u.uid) + '\')">' + avatarMarkup +
             '<span class="nav-uname">' + escapeHtml(shortName) + '</span></button>' +
             '<button type="button" class="btn btn-og btn-sm nav-logout" aria-label="' + (currentLang === 'en' ? 'Sign out' : 'Выйти из профиля') + '" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
@@ -2871,9 +2893,9 @@ function getFieldHcp(exactHcp, teeCode, gender) {
             }
         }
     } else if (gender === 'women' && PESTOVO_WOMEN_HCP_TABLE[teeCode]) {
-        var list = PESTOVO_WOMEN_HCP_TABLE[teeCode];
-        for (var i = 0; i < list.length; i++) {
-            var r = list[i];
+        list = PESTOVO_WOMEN_HCP_TABLE[teeCode];
+        for (i = 0; i < list.length; i++) {
+            r = list[i];
             if (parsed >= r.min - 0.001 && parsed <= r.max + 0.001) {
                 return r.hcp;
             }
@@ -3235,7 +3257,11 @@ function buildToParRowHTML(order, sc, startRun, gridClass, wrapClass) {
 
 // Переход к текущей лунке игрока: плитка подсвечивается и прокручивается в центр экрана.
 function scrollToPlayerCurrentHole(pid) {
-    var tile = document.querySelector('.sc-cur-tile[data-sc-player="' + pid + '"]');
+    var tiles = document.querySelectorAll('.sc-cur-tile[data-sc-player]');
+    var tile = null;
+    for (var i = 0; i < tiles.length; i++) {
+        if (tiles[i].getAttribute('data-sc-player') === String(pid)) { tile = tiles[i]; break; }
+    }
     if (!tile) {
         if (typeof toast === 'function') toast(t('no_current_hole'), 'info');
         return;
@@ -3582,8 +3608,8 @@ function renderGroupMatrixHTML(r, playerEntries, order, opts) {
         var sc = p.scores || {};
         var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
         var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
-        var pTee = (p && p.tee) || r.tee || 'wh';
-        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 6px;">' + t('tee_' + pTee) + '</span>';
+        var pTee = pestovoNormalizeTeeCode((p && p.tee) || r.tee || 'wh');
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 6px;">' + escapeHtml(pestovoTeeLabel(pTee)) + '</span>';
         var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" style="font-size:9.5px;padding:1px 6px;">' + t('field_hcp_short') + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
         var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
         var thruTxt = playerHoleStatusText(r, pid, p, stats, order);
@@ -3697,8 +3723,8 @@ function renderGroupTableHTML(r, playerEntries, order, opts) {
     html += '<th style="padding:8px 6px;text-align:left;white-space:nowrap;min-width:85px;color:var(--gold);">' + (currentLang === 'en' ? 'Hole · Par' : 'Лунка · Пар') + '</th>';
     playerEntries.forEach(function(pe) {
         var pid = pe[0], p = pe[1];
-        var pTee = (p && p.tee) || r.tee || 'wh';
-        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9px;padding:0 5px;">' + t('tee_' + pTee) + '</span>';
+        var pTee = pestovoNormalizeTeeCode((p && p.tee) || r.tee || 'wh');
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9px;padding:0 5px;">' + escapeHtml(pestovoTeeLabel(pTee)) + '</span>';
         var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
         var sc = p.scores || {};
         var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
@@ -3834,8 +3860,8 @@ function renderGroupLeaderboardHTML(r, playerEntries, order, opts) {
         var sc = p.scores || {};
         var fieldHcp = p.fieldHcp !== undefined ? p.fieldHcp : (r.fieldHcp || 0);
         var stats = calcRoundStats(sc, fieldHcp, p.exactHcp || 0, order);
-        var pTee = (p && p.tee) || r.tee || 'wh';
-        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 6px;">' + t('tee_' + pTee) + '</span>';
+        var pTee = pestovoNormalizeTeeCode((p && p.tee) || r.tee || 'wh');
+        var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 6px;">' + escapeHtml(pestovoTeeLabel(pTee)) + '</span>';
         var pHcpBadge = '<span class="hcp-chip ' + fieldHcpBandClass(fieldHcp) + '" style="font-size:9.5px;padding:1px 6px;">' + t('field_hcp_short') + ' ' + fmtFieldHcp(fieldHcp) + '</span>';
         var pName = (typeof privacyDisplayName === 'function') ? privacyDisplayName(p, pid) : playerDisplayName(p, pid);
         var rankLabel = rankIdx < 3 ? rankMedals[rankIdx] : ('#' + (rankIdx + 1));
@@ -4157,7 +4183,7 @@ function openPlayerProfileModal(playerId, roundId) {
         if (hcpSync.banner) html += hcpSync.banner;
 
         if (isMe) {
-            html += '<button class="btn btn-og btn-sm" style="margin-top:10px;" onclick="renderProfileEditForm(\'' + playerId + '\')"><i class="fas fa-user-pen"></i> ' + t('edit_profile') + '</button>';
+            html += '<button class="btn btn-og btn-sm" style="margin-top:10px;" onclick="renderProfileEditForm(\'' + pestovoInlineJsArg(playerId) + '\')"><i class="fas fa-user-pen"></i> ' + t('edit_profile') + '</button>';
         }
 
         html += '</div></div>';
@@ -4300,10 +4326,10 @@ function pestovoProfileHistoryToolbarHtml(playerId) {
 
     var h = '';
     h += '<div class="tn-tabs" role="tablist" style="margin:2px 0 10px;">';
-    h += '<button type="button" class="tn-tab' + (st.tab === 'club' ? ' active' : '') + '" onclick="pestovoProfileHistorySetTab(\'' + playerId + '\',\'club\')">' +
+    h += '<button type="button" class="tn-tab' + (st.tab === 'club' ? ' active' : '') + '" onclick="pestovoProfileHistorySetTab(\'' + pestovoInlineJsArg(playerId) + '\',\'club\')">' +
          '<i class="fas fa-golf-ball-tee"></i> ' + (en ? 'Club rounds' : 'Клубные раунды') +
          ' <span class="tn-tab-count">' + clubCount + '</span></button>';
-    h += '<button type="button" class="tn-tab' + (st.tab === 'tn' ? ' active' : '') + '" onclick="pestovoProfileHistorySetTab(\'' + playerId + '\',\'tn\')">' +
+    h += '<button type="button" class="tn-tab' + (st.tab === 'tn' ? ' active' : '') + '" onclick="pestovoProfileHistorySetTab(\'' + pestovoInlineJsArg(playerId) + '\',\'tn\')">' +
          '<i class="fas fa-trophy"></i> ' + (en ? 'Tournament rounds' : 'Турнирные раунды') +
          ' <span class="tn-tab-count">' + tnCount + '</span></button>';
     h += '</div>';
@@ -4311,9 +4337,9 @@ function pestovoProfileHistoryToolbarHtml(playerId) {
     h += '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">';
     h += '<div class="form-group" style="flex:1;min-width:180px;margin:0;">';
     h += '<label style="font-size:11px;margin-bottom:4px;">' + (en ? 'Sort / filter rounds' : 'Сортировка и фильтр раундов') + '</label>';
-    h += '<select class="form-input" style="padding:8px 10px;font-size:12.5px;" onchange="pestovoProfileHistorySetSort(\'' + playerId + '\',this.value)">' + optionsHtml + '</select>';
+    h += '<select class="form-input" style="padding:8px 10px;font-size:12.5px;" onchange="pestovoProfileHistorySetSort(\'' + pestovoInlineJsArg(playerId) + '\',this.value)">' + optionsHtml + '</select>';
     h += '</div>';
-    h += '<button type="button" class="tn-tab' + (st.onlyFull ? ' active' : '') + '" style="padding:8px 12px;" onclick="pestovoProfileHistoryToggleFull(\'' + playerId + '\')">' +
+    h += '<button type="button" class="tn-tab' + (st.onlyFull ? ' active' : '') + '" style="padding:8px 12px;" onclick="pestovoProfileHistoryToggleFull(\'' + pestovoInlineJsArg(playerId) + '\')">' +
          '<i class="fas fa-list-ol"></i> ' + (en ? '18 holes only' : 'Только 18 лунок') + '</button>';
     h += '</div>';
     return h;
@@ -4363,7 +4389,7 @@ function pestovoProfileRoundCardHtml(playerId, u, r) {
 
     var isAdminOrOwner = (currentUser && (currentUser.uid === playerId || (currentUserData && currentUserData.role === 'admin') || pestovoIsAdminViewer()));
     if (isAdminOrOwner) {
-        h += '<button type="button" class="btn btn-r btn-sm" onclick="event.stopPropagation();deletePlayerHistoryRecord(\'' + playerId + '\', \'' + r._key + '\')" title="' + (en ? 'Delete Round' : 'Удалить из истории') + '"><i class="fas fa-trash"></i></button>';
+        h += '<button type="button" class="btn btn-r btn-sm" onclick="event.stopPropagation();deletePlayerHistoryRecord(\'' + pestovoInlineJsArg(playerId) + '\', \'' + pestovoInlineJsArg(r._key) + '\')" title="' + (en ? 'Delete Round' : 'Удалить из истории') + '"><i class="fas fa-trash"></i></button>';
     }
     h += '</div>';
 
@@ -4392,9 +4418,9 @@ function pestovoProfileRoundCardHtml(playerId, u, r) {
 
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">';
     if (r.roundId) {
-        h += '<button type="button" class="btn btn-og btn-sm" onclick="event.stopPropagation();openPrintScorecardModal(\'' + r.roundId + '\')"><i class="fas fa-print"></i> ' + (en ? 'Print (A4)' : 'Печать (A4)') + '</button>';
+        h += '<button type="button" class="btn btn-og btn-sm" onclick="event.stopPropagation();openPrintScorecardModal(\'' + pestovoInlineJsArg(r.roundId) + '\')"><i class="fas fa-print"></i> ' + (en ? 'Print (A4)' : 'Печать (A4)') + '</button>';
         if (r.status === 'completed') {
-            h += '<button type="button" class="btn btn-g btn-sm" onclick="event.stopPropagation();exportRoundPNG(\'' + r.roundId + '\')"><i class="fas fa-image"></i> PNG</button>';
+            h += '<button type="button" class="btn btn-g btn-sm" onclick="event.stopPropagation();exportRoundPNG(\'' + pestovoInlineJsArg(r.roundId) + '\')"><i class="fas fa-image"></i> PNG</button>';
         }
     }
     h += '</div>';
@@ -4589,8 +4615,8 @@ function renderProfileEditForm(playerId) {
         html += '<input type="hidden" id="edit-avatar-val" value="' + currentAvatar + '">';
 
         html += '<div style="display:flex;gap:12px;margin-top:20px;">';
-        html += '<button type="button" class="btn btn-og" style="flex:1;" onclick="openPlayerProfileModal(\'' + playerId + '\')">' + t('cancel_btn') + '</button>';
-        html += '<button type="button" class="btn btn-g" style="flex:1;" onclick="saveUserProfileData(\'' + playerId + '\')"><i class="fas fa-save"></i> ' + t('save_profile') + '</button>';
+        html += '<button type="button" class="btn btn-og" style="flex:1;" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(playerId) + '\')">' + t('cancel_btn') + '</button>';
+        html += '<button type="button" class="btn btn-g" style="flex:1;" onclick="saveUserProfileData(\'' + pestovoInlineJsArg(playerId) + '\')"><i class="fas fa-save"></i> ' + t('save_profile') + '</button>';
         html += '</div>';
 
         bodyEl.innerHTML = html;
@@ -5745,7 +5771,7 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
     var sc = p.scores || {};
     var fHcp = p.fieldHcp || 0;
     var eHcp = p.exactHcp || 0;
-    var teeCode = (p && p.tee) || (roundData && roundData.tee) || 'wh';
+    var teeCode = pestovoNormalizeTeeCode((p && p.tee) || (roundData && roundData.tee) || 'wh');
     // Форматная линия целиком («Stableford + Gross»), а не только основной формат.
     var fmt = pestovoRoundFormatsLabel(roundData) || (roundData && roundData.format) || 'Stroke Play';
     var tName = (roundData && roundData.tournamentName) || '—';
@@ -5757,15 +5783,15 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
         var s = parseInt(sc[i]) || 0;
         if (s > 0) { outG += s; outS += stablefordField(s, i, fHcp); }
     }
-    for (var i = 10; i <= 18; i++) {
-        var s = parseInt(sc[i]) || 0;
+    for (i = 10; i <= 18; i++) {
+        s = parseInt(sc[i]) || 0;
         if (s > 0) { inG += s; inS += stablefordField(s, i, fHcp); }
     }
     var totG = outG + inG, totS = outS + inS;
 
     var pOut = 0, pIn = 0;
-    for (var i = 1; i <= 9; i++) pOut += holePar(i);
-    for (var i = 10; i <= 18; i++) pIn += holePar(i);
+    for (i = 1; i <= 9; i++) pOut += holePar(i);
+    for (i = 10; i <= 18; i++) pIn += holePar(i);
 
     var html = '<div class="paper-scorecard-wrap">';
 
@@ -5796,9 +5822,9 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
     html += '<div class="psc-table-wrap">';
     html += '<table class="psc-grid-table">';
     html += '<thead><tr><th style="width:75px;">ТИ \\ Лунка</th>';
-    for (var i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
+    for (i = 1; i <= 9; i++) html += '<th>' + i + '</th>';
     html += '<th class="psc-tot-col">Аут</th>';
-    for (var i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
+    for (i = 10; i <= 18; i++) html += '<th>' + i + '</th>';
     html += '<th class="psc-tot-col">Ин</th><th class="psc-tot-col">Итого</th></tr></thead>';
 
     html += '<tbody>';
@@ -5807,38 +5833,38 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
     var teeName = TEES[teeCode] || 'Белый';
     var teeClass = 'psc-tee-' + teeCode;
     var dO = 0, dI = 0;
-    for (var i = 1; i <= 9; i++) dO += (HOLES[i][teeCode] || HOLES[i].wh);
-    for (var i = 10; i <= 18; i++) dI += (HOLES[i][teeCode] || HOLES[i].wh);
+    for (i = 1; i <= 9; i++) dO += (HOLES[i][teeCode] || HOLES[i].wh);
+    for (i = 10; i <= 18; i++) dI += (HOLES[i][teeCode] || HOLES[i].wh);
 
     html += '<tr><td class="psc-lbl-tee ' + teeClass + '">' + teeName + '</td>';
-    for (var i = 1; i <= 9; i++) html += '<td>' + (HOLES[i][teeCode] || HOLES[i].wh) + '</td>';
+    for (i = 1; i <= 9; i++) html += '<td>' + (HOLES[i][teeCode] || HOLES[i].wh) + '</td>';
     html += '<td class="psc-tot-col">' + dO + '</td>';
-    for (var i = 10; i <= 18; i++) html += '<td>' + (HOLES[i][teeCode] || HOLES[i].wh) + '</td>';
+    for (i = 10; i <= 18; i++) html += '<td>' + (HOLES[i][teeCode] || HOLES[i].wh) + '</td>';
     html += '<td class="psc-tot-col">' + dI + '</td><td class="psc-tot-col">' + (dO + dI) + '</td></tr>';
 
     // Пар
     html += '<tr class="psc-row-par"><td class="psc-lbl-bold">Пар</td>';
-    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].p + '</td>';
+    for (i = 1; i <= 9; i++) html += '<td>' + HOLES[i].p + '</td>';
     html += '<td class="psc-tot-col">' + pOut + '</td>';
-    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].p + '</td>';
+    for (i = 10; i <= 18; i++) html += '<td>' + HOLES[i].p + '</td>';
     html += '<td class="psc-tot-col">' + pIn + '</td><td class="psc-tot-col">' + (pOut + pIn) + '</td></tr>';
 
     // Индекс
     html += '<tr class="psc-row-idx"><td class="psc-lbl-bold">Индекс</td>';
-    for (var i = 1; i <= 9; i++) html += '<td>' + HOLES[i].hcp + '</td>';
+    for (i = 1; i <= 9; i++) html += '<td>' + HOLES[i].hcp + '</td>';
     html += '<td class="psc-tot-col">—</td>';
-    for (var i = 10; i <= 18; i++) html += '<td>' + HOLES[i].hcp + '</td>';
+    for (i = 10; i <= 18; i++) html += '<td>' + HOLES[i].hcp + '</td>';
     html += '<td class="psc-tot-col">—</td><td class="psc-tot-col">—</td></tr>';
 
     // Счёт Игрока
     html += '<tr class="psc-row-score"><td class="psc-lbl-bold">Счёт</td>';
-    for (var i = 1; i <= 9; i++) {
-        var s = parseInt(sc[i]) || 0;
+    for (i = 1; i <= 9; i++) {
+        s = parseInt(sc[i]) || 0;
         html += '<td class="psc-score-cell">' + (s > 0 ? '<b>' + s + '</b>' : '') + '</td>';
     }
     html += '<td class="psc-tot-col"><b>' + (outG > 0 ? outG : '') + '</b></td>';
-    for (var i = 10; i <= 18; i++) {
-        var s = parseInt(sc[i]) || 0;
+    for (i = 10; i <= 18; i++) {
+        s = parseInt(sc[i]) || 0;
         html += '<td class="psc-score-cell">' + (s > 0 ? '<b>' + s + '</b>' : '') + '</td>';
     }
     html += '<td class="psc-tot-col"><b>' + (inG > 0 ? inG : '') + '</b></td>';
@@ -5846,15 +5872,15 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
 
     // Stableford
     html += '<tr><td class="psc-lbl-bold">Stableford</td>';
-    for (var i = 1; i <= 9; i++) {
-        var s = parseInt(sc[i]) || 0;
+    for (i = 1; i <= 9; i++) {
+        s = parseInt(sc[i]) || 0;
         var pts = s > 0 ? stablefordField(s, i, fHcp) : '';
         html += '<td>' + pts + '</td>';
     }
     html += '<td class="psc-tot-col"><b>' + (outS > 0 ? outS : '') + '</b></td>';
-    for (var i = 10; i <= 18; i++) {
-        var s = parseInt(sc[i]) || 0;
-        var pts = s > 0 ? stablefordField(s, i, fHcp) : '';
+    for (i = 10; i <= 18; i++) {
+        s = parseInt(sc[i]) || 0;
+        pts = s > 0 ? stablefordField(s, i, fHcp) : '';
         html += '<td>' + pts + '</td>';
     }
     html += '<td class="psc-tot-col"><b>' + (inS > 0 ? inS : '') + '</b></td>';
@@ -7678,8 +7704,8 @@ function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
 
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
-    for (var i = startHole; i <= endHole; i++) {
-        var colX = startX + labelW + (i - startHole) * holeW;
+    for (i = startHole; i <= endHole; i++) {
+        colX = startX + labelW + (i - startHole) * holeW;
         ctx.fillText(String(holePar(i)), colX + holeW / 2, y2 + 24);
     }
     ctx.fillStyle = '#2ecc71';
@@ -7699,10 +7725,10 @@ function drawScorecardGridRow(ctx, scores, startHole, endHole, startY) {
 
     ctx.textAlign = 'center';
     var scoreSum = 0;
-    for (var i = startHole; i <= endHole; i++) {
+    for (i = startHole; i <= endHole; i++) {
         var s = parseInt(scores[i]) || 0;
         var par = holePar(i);
-        var colX = startX + labelW + (i - startHole) * holeW;
+        colX = startX + labelW + (i - startHole) * holeW;
 
         if (s > 0) {
             scoreSum += s;
@@ -7824,7 +7850,7 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
     if (playersList && playersList.length > 1 && roundId) {
         html += '<div style="margin-bottom:16px;background:var(--input);padding:12px;border-radius:var(--rs);border:1px solid var(--border);">';
         html += '<label style="font-size:12px;color:var(--gold);display:block;margin-bottom:6px;font-weight:700;"><i class="fas fa-users"></i> ' + (currentLang === 'en' ? 'Select Group Player Card:' : 'Выберите карточку игрока группы:') + '</label>';
-        html += '<select class="form-input" style="max-width:320px;margin:0 auto;text-align:center;font-weight:700;" onchange="exportRoundPNG(\'' + roundId + '\', this.value)">';
+        html += '<select class="form-input" style="max-width:320px;margin:0 auto;text-align:center;font-weight:700;" onchange="exportRoundPNG(\'' + pestovoInlineJsArg(roundId) + '\', this.value)">';
         playersList.forEach(function(pe) {
             var pid = pe[0], p = pe[1];
             var sel = pid === activePid ? 'selected' : '';
@@ -7968,7 +7994,7 @@ function calcMatchPlayStatus(p1Scores, p2Scores, p1Name, p2Name) {
     } else if (lead === 0) {
         statusText = '⚖️ ALL SQUARE (Ничья)';
     } else {
-        var leaderName = lead > 0 ? p1Name : p2Name;
+        leaderName = lead > 0 ? p1Name : p2Name;
         statusText = '⚡ ' + leaderName.toUpperCase() + ' ' + absLead + ' UP (' + remaining + ' л. осталось)';
     }
 
@@ -8384,7 +8410,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Нормализация ключа для Firebase (нельзя . $ # [ ] /)
-function firebaseSafeKeyStr(s) { return String(s).replace(/[.$#\[\]\/]/g, '_'); }
+function firebaseSafeKeyStr(s) {
+    return String(s).split('').map(function(ch) {
+        return ch === '.' || ch === '$' || ch === '#' || ch === '[' || ch === ']' || ch === '/' ? '_' : ch;
+    }).join('');
+}
 
 // Детерминированный id гостя: одно и то же имя + HCP всегда даёт один и тот же id,
 // чтобы игрок не дублировался в users при повторных раундах (соло, группа, турниры).
@@ -8605,7 +8635,7 @@ function resolveOrCreatePlayerUser(p) {
         } catch (e) { console.warn("[silent]", e); }
         if (typeof cachedRegisteredUsers !== 'undefined') {
             if (cachedRegisteredUsers[id]) {
-                var cur = cachedRegisteredUsers[id] || {};
+                cur = cachedRegisteredUsers[id] || {};
                 if (data.handicap != null) cur.handicap = data.handicap;
                 if (data.middleName && !cur.middleName) {
                     cur.middleName = data.middleName;

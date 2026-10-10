@@ -30,7 +30,7 @@ function ok(cond, label) {
 }
 
 let html = fs.readFileSync(path.join(ROOT, 'setup-round.html'), 'utf8')
-    .replace(/<script src="https?:[^\"]*"><\/script>/g, '');
+    .replace(/<script src="https?:[^"]*"><\/script>/g, '');
 const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'https://t.test/setup-round.html', pretendToBeVisual: true });
 const win = dom.window, doc = win.document;
 win.navigator.vibrate = () => {};

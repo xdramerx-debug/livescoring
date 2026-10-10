@@ -235,7 +235,7 @@
             '<div class="dsp-picker dsp-compact">' +
                 d.PRESETS.map(function(p) {
                     return '<button type="button" class="dsp-chip' + (builder.base === p.id ? ' active' : '') + '"' +
-                        ' onclick="dspBuilderSetBase(\'' + p.id + '\')">' +
+                        ' onclick="dspBuilderSetBase(\'' + pestovoInlineJsArg(p.id) + '\')">' +
                         (p.id === '0' ? 'Текущий' : p.id + ' · ' + esc(p.short)) + '</button>';
                 }).join('') +
             '</div></div>';
@@ -247,7 +247,7 @@
                 '<div class="dsp-picker dsp-compact">' +
                     d.PRESETS.map(function(p) {
                         return '<button type="button" class="dsp-chip' + (cur === p.id ? ' active' : '') + '"' +
-                            ' onclick="dspBuilderSetBlock(\'' + b.key + '\',\'' + p.id + '\')">' +
+                            ' onclick="dspBuilderSetBlock(\'' + pestovoInlineJsArg(b.key) + '\',\'' + pestovoInlineJsArg(p.id) + '\')">' +
                             (p.id === '0' ? 'Текущий' : p.id + ' · ' + esc(p.short)) + '</button>';
                     }).join('') +
                 '</div></div>';

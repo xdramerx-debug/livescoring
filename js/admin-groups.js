@@ -173,7 +173,7 @@ function renderAdmGroups() {
         var expanded = !!admGroupsExpanded[rid];
 
         // Компактная строка: название, лунка, отставание, статус.
-        html += '<div class="list-item adm-group-row pace-state-' + state.key + '" style="--pace-color:' + state.color + ';padding:9px 12px;gap:8px;cursor:pointer;border-left:3px solid ' + state.color + ';" onclick="admToggleGroupRow(\'' + rid + '\')">';
+        html += '<div class="list-item adm-group-row pace-state-' + state.key + '" style="--pace-color:' + state.color + ';padding:9px 12px;gap:8px;cursor:pointer;border-left:3px solid ' + state.color + ';" onclick="admToggleGroupRow(\'' + pestovoInlineJsArg(rid) + '\')">';
         html += '<i class="fas ' + (expanded ? 'fa-chevron-up' : 'fa-chevron-down') + '" style="color:var(--gold);font-size:11px;"></i>';
         html += '<span class="live-dot" style="width:7px;height:7px;"></span>';
         html += '<b style="color:var(--white);font-size:13px;">' + groupLabel + '</b>';
@@ -304,11 +304,11 @@ function admRoundDetailsHtml(id, r) {
         var isPaused = !!r.paused;
         html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);">';
         if (isPaused) {
-            html += '<button type="button" class="btn btn-g btn-sm" onclick="admResumeRound(\'' + id + '\')"><i class="fas fa-play"></i> ' + (isEn ? 'Resume' : 'Возобновить') + '</button>';
+            html += '<button type="button" class="btn btn-g btn-sm" onclick="admResumeRound(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-play"></i> ' + (isEn ? 'Resume' : 'Возобновить') + '</button>';
         } else {
-            html += '<button type="button" class="btn btn-ol btn-sm" onclick="admPauseRound(\'' + id + '\')"><i class="fas fa-pause"></i> ' + (isEn ? 'Pause Round' : 'Пауза') + '</button>';
+            html += '<button type="button" class="btn btn-ol btn-sm" onclick="admPauseRound(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-pause"></i> ' + (isEn ? 'Pause Round' : 'Пауза') + '</button>';
         }
-        html += '<button type="button" class="btn btn-ol btn-sm" onclick="admForceFinishAllPlayers(\'' + id + '\')"><i class="fas fa-forward"></i> ' + (isEn ? 'Force Finish All' : 'Завершить принудительно (всех)') + '</button>';
+        html += '<button type="button" class="btn btn-ol btn-sm" onclick="admForceFinishAllPlayers(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-forward"></i> ' + (isEn ? 'Force Finish All' : 'Завершить принудительно (всех)') + '</button>';
         html += '</div>';
     }
     var order = [];
@@ -329,7 +329,7 @@ function admRoundDetailsHtml(id, r) {
         if (isFin) {
             html += '<span style="color:#2ecc71;font-size:11px;font-weight:700;"><i class="fas fa-check-circle"></i> ' + (currentLang === 'en' ? 'Finished' : 'Финиш') + '</span> ';
         } else if (r.status === 'active') {
-            html += '<button type="button" class="btn btn-ol btn-sm" style="padding:2px 6px;font-size:10px;" onclick="admForceFinishOnePlayer(\'' + id + '\',\'' + pe[0] + '\')" title="' + (currentLang === 'en' ? 'Force finish player' : 'Завершить игрока') + '"><i class="fas fa-flag-checkered"></i></button> ';
+            html += '<button type="button" class="btn btn-ol btn-sm" style="padding:2px 6px;font-size:10px;" onclick="admForceFinishOnePlayer(\'' + pestovoInlineJsArg(id) + '\',\'' + pestovoInlineJsArg(pe[0]) + '\')" title="' + (currentLang === 'en' ? 'Force finish player' : 'Завершить игрока') + '"><i class="fas fa-flag-checkered"></i></button> ';
         }
         html += fmtTeePill(pTee);
         html += '<span style="color:var(--muted);">HCP ' + (p.exactHcp != null ? fmtExactHcp(p.exactHcp) : '—') + '</span>';
@@ -384,19 +384,19 @@ function renderAdmRounds(data) {
                         ? buildRoundCompletedBadgeHTML(r)
                         : '<span class="tn-status tn-d">' + (currentLang === 'en' ? 'Completed' : 'Завершён') + '</span>')));
 
-        html += '<div class="list-item adm-round-row" style="padding:9px 12px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="admToggleRoundRow(\'' + id + '\')">';
-        html += '<i id="adm-r-chev-' + id + '" class="fas ' + (expanded ? 'fa-chevron-up' : 'fa-chevron-down') + '" style="color:var(--gold);font-size:11px;"></i>';
+        html += '<div class="list-item adm-round-row" style="padding:9px 12px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="admToggleRoundRow(\'' + pestovoInlineJsArg(id) + '\')">';
+        html += '<i id="adm-r-chev-' + escapeHtml(id) + '" class="fas ' + (expanded ? 'fa-chevron-up' : 'fa-chevron-down') + '" style="color:var(--gold);font-size:11px;"></i>';
         html += '<div style="flex:1;min-width:180px;font-size:12.5px;"><strong style="color:var(--white);">' +
                 // Дату показываем ту же, по которой работает фильтр периода (старт раунда).
                 fmtDate(getRoundFilterTs(r)) + '</strong> <span style="color:var(--muted);">' + fmtTime(r.startTime) + ' · ' + pc + playersStr + ' · ' +
                 escapeHtml((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke') : (r.format || 'Stroke')) + (r.mode === 'solo' ? soloStr : '') + '</span> ' + badge + '</div>';
         html += '<div style="display:flex;gap:6px;" onclick="event.stopPropagation()">';
         if (r.status === 'completed') {
-            html += '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + id + '\')"><i class="fas fa-download"></i></button>';
+            html += '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-download"></i></button>';
         }
-        html += '<button class="btn btn-r btn-sm" onclick="deleteRound(\'' + id + '\')"><i class="fas fa-trash"></i></button>';
+        html += '<button class="btn btn-r btn-sm" onclick="deleteRound(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-trash"></i></button>';
         html += '</div></div>';
-        html += '<div id="adm-r-' + id + '" class="' + (expanded ? '' : 'hidden') + '" style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:10px 12px;margin:-6px 0 6px;">' +
+        html += '<div id="adm-r-' + escapeHtml(id) + '" class="' + (expanded ? '' : 'hidden') + '" style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:10px 12px;margin:-6px 0 6px;">' +
             admRoundDetailsHtml(id, r) + '</div>';
     });
 

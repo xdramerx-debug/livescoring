@@ -49,6 +49,19 @@ function makeWindow(file, opts) {
     win.toast = function(text, type) { win.__toasts = (win.__toasts || []).concat([{ text: text, type: type }]); };
     win.vib = function() {};
     win.currentLang = 'ru';
+    win.pestovoInlineJsArg = function(value) {
+        return String(value == null ? '' : value)
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, '\\u0027')
+            .replace(/"/g, '\\u0022')
+            .replace(/</g, '\\x3c')
+            .replace(/>/g, '\\x3e')
+            .replace(/\r/g, '\\r')
+            .replace(/\n/g, '\\n')
+            .replace(/\u2028/g, '\\u2028')
+            .replace(/\u2029/g, '\\u2029')
+            .replace(/&/g, '\\u0026');
+    };
 
     // Мок Firebase: запоминает, что и куда сохраняем
     win.__writes = [];

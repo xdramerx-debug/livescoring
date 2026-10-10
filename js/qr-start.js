@@ -138,7 +138,8 @@ function qrDate(ts) {
 }
 function qrTeeName(code) {
     var map = { bk: 'Чёрный', bl: 'Синий', wh: 'Белый', rd: 'Красный' };
-    return map[code] || code || '—';
+    var normalized = typeof code === 'string' ? code.trim().toLowerCase() : '';
+    return Object.prototype.hasOwnProperty.call(map, normalized) ? map[normalized] : '—';
 }
 function qrFio(p) {
     var parts = [];
@@ -635,8 +636,8 @@ function qrInit() {
     var params = new URLSearchParams(window.location.search);
     var pid = params.get('p');
     if (!pid) {
-        var loading = qrGet('qr-loading'); if (loading) loading.classList.add('hidden');
-        var err = qrGet('qr-error'); if (err) err.classList.remove('hidden');
+        loading = qrGet('qr-loading'); if (loading) loading.classList.add('hidden');
+        err = qrGet('qr-error'); if (err) err.classList.remove('hidden');
         return;
     }
     db.ref('protocols/' + pid).once('value').then(function(sn) {

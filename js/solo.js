@@ -575,7 +575,7 @@ function loadExistingSolo() {
             updateSoloStablefordToggle();
 
             var scores = player.scores || {};
-            var order = getRoundOrder(soloRound);
+            order = getRoundOrder(soloRound);
 
             if (!soloIsChanging) {
                 var savedResumeHole = getSavedResumeHole(soloRid, uid, order, player);
@@ -705,7 +705,7 @@ function renderRoundInfo(targetId) {
 
     var pTee = (p && p.tee) || soloRound.tee || 'wh';
     el.innerHTML =
-        '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + uid + '\',\'' + soloRid + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, uid)) + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
+        '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(uid) + '\',\'' + pestovoInlineJsArg(soloRid) + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, uid)) + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
         '<div><b>' + startLbl + ':</b> ' + fmtTime(soloRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + soloRound.startHole + ' · <b>' + t('tee_select') + ':</b> ' + fmtTeePill(pTee) + ' · <b>' + t('format_select') + ':</b> ' + soloRound.format + '</div>';
 }
 

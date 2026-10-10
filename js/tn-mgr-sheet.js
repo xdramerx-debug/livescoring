@@ -436,8 +436,8 @@ var TnMgrSheetUI = (function (root) {
     function qrPanelHtml(sheetData) {
         var tournament = ui().tournament() || {};
         var round = currentRound() || {};
-        var list = entries(sheetData).map(function (entry) {
-            var payload = entry.qr || core().scoreUrl(ui().baseUrl(), entry.groupRoundId || ensureRoundId(), entry.markerPlayerId || entry.playerId, 4);
+        var list = enrichedEntries(sheetData).map(function (entry) {
+            var payload = entry.qr;
             var details = bi('Лунка ', 'Hole ') + (entry.startHole || 1) + ' · ' +
                 bi('старт ', 'start ') + (entry.startTime || '—');
             return '<div class="tnm-qr-card">' +
@@ -529,11 +529,10 @@ var TnMgrSheetUI = (function (root) {
                 return entry.startGroupId ? item.startGroupId === entry.startGroupId :
                     item.flight === entry.flight && item.startTime === entry.startTime && item.startHole === entry.startHole;
             }).length || 1;
-            var markerId = entry.markerPlayerId || entry.playerId;
             return Object.assign({}, entry, {
                 markerName: markerName(sheetData, entry),
                 isMarker: !!markerIds[entry.playerId],
-                qr: entry.qr || core().scoreUrl(ui().baseUrl(), entry.groupRoundId || ensureRoundId(), markerId, markerId !== entry.playerId ? Math.max(2, groupSize) : groupSize)
+                qr: core().scoreUrl(ui().baseUrl(), entry.groupRoundId || ensureRoundId(), entry.playerId, groupSize)
             });
         });
     }

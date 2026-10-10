@@ -505,7 +505,7 @@ PC.state.draft = null;
 PC.state.activeCardId = '';
 TOURNAMENT.printScorecards = { qrEnabled: true, overlays: [{ id: 'qr-1', type: 'qr', xMm: 100, yMm: 4, wMm: 26, hMm: 26, enabled: true }] };
 var qrHtml = PC.html();
-// QR на карточке принадлежит МАРКЕРУ игрока: сканирует тот, кто ведёт счёт.
+// QR на карточке принадлежит самому игроку: после сканирования он выбран как «Я».
 // В разметке & экранируется как &amp;, поэтому вынимаем только хвост data=.
 function qrPayloads(html) {
     var out = [];
@@ -522,20 +522,40 @@ check('QR-код рисуется по ссылке ввода счёта', qrHt
     qrLinks.some(function (url) { return url.indexOf('setup-round.html') !== -1; }));
 check('QR ведёт в раунд группы, а не в раунд турнира',
     qrLinks.length > 0 && qrLinks.every(function (url) { return url.indexOf('round=gA') !== -1; }), qrLinks.join(' , '));
-check('QR на карточке принадлежит маркеру игрока, а не самому игроку',
-    qrLinks.some(function (url) { return /[?&]as=b\b/.test(url); }) &&
-    !qrLinks.some(function (url) { return /[?&]as=a\b/.test(url); }), qrLinks.join(' , '));
-check('чужой маркер (вне стартовой группы) заменяется кольцом группы', (function () {
+check('QR на карточке принадлежит самому игроку, а не его маркеру',
+    qrLinks.some(function (url) { return /[?&]as=a\b/.test(url); }) &&
+    !qrLinks.some(function (url) { return /[?&]as=b\b/.test(url); }), qrLinks.join(' , '));
+check('подпись QR показывает ФИО игрока в поле Я', qrHtml.indexOf('Персональный QR — «Я»: Иванов Иван') !== -1);
+check('старый QR маркера и смена маркера не подменяют игрока карточки', (function () {
     var sheet = { entries: {} };
     Object.keys(ENTRIES).forEach(function (pid) { sheet.entries[pid] = Object.assign({}, ENTRIES[pid]); });
     sheet.entries.a.markerPlayerId = 'c';   // c играет в другой группе
+    sheet.entries.a.qr = 'https://example.test/setup-round.html?round=gA&as=b';
+    sheet.entries.a.scoreUrl = sheet.entries.a.qr;
     var savedSheet = global.TnMgrUI.sheetOf;
     global.TnMgrUI.sheetOf = function () { return sheet; };
     var links = qrPayloads(PC.html());
     global.TnMgrUI.sheetOf = savedSheet;
-    return links.some(function (url) { return /[?&]as=b\b/.test(url); }) &&
-        !links.some(function (url) { return /[?&]as=c\b/.test(url); });
+    return links.length > 0 && links.every(function (url) { return /[?&]as=a\b/.test(url); });
 })());
+['a', 'b', 'c'].forEach(function (pid) {
+    var card = Object.assign({}, allCards[0], { playerIds: [pid], names: [ENTRIES[pid].playerName] });
+    var links = qrPayloads(PC.documentFor([card]));
+    check('печатная карточка ' + ENTRIES[pid].playerName + ' открывает именно этого игрока',
+        links.length > 0 && links.every(function (link) {
+            var url = new URL(link);
+            return url.searchParams.get('as') === pid && url.searchParams.get('round') === ENTRIES[pid].groupRoundId;
+        }));
+});
+(function () {
+    var overlays = PC.state.draft.overlays;
+    PC.state.draft.overlays = overlays.concat([{ id: 'qr-2', type: 'qr', xMm: 70, yMm: 4, wMm: 26, hMm: 26, enabled: true }]);
+    var pair = Object.assign({}, allCards[0], { playerIds: ['a', 'b'], names: ['Иванов Иван', 'Петров Пётр'] });
+    var links = qrPayloads(PC.documentFor([pair]));
+    check('два QR на парной карточке соответствуют двум игрокам по порядку',
+        links.length >= 2 && new URL(links[0]).searchParams.get('as') === 'a' && new URL(links[1]).searchParams.get('as') === 'b');
+    PC.state.draft.overlays = overlays;
+})();
 check('без привязки к раунду группы QR не печатается (не ведёт в никуда)', (function () {
     var sheet = { entries: {} };
     Object.keys(ENTRIES).forEach(function (pid) {

@@ -200,6 +200,16 @@ Promise.resolve()
         const sheet = dbGet('tournaments/tnA/sheets/r1');
         ok(!!sheet && Data.sheetOrder(sheet).length === 7, 'стартовый лист создан (7 игроков)');
         eq(flightSizes(Data.sheetOrder(sheet)), [3, 4], 'лист из 7 игроков: флайты 4+3');
+        eq(Array.from(new Set(Data.sheetOrder(sheet).map(e => e.flight))), ['1', '2'], 'сохранены два отдельных флайта');
+        Data.sheetOrder(sheet).forEach(function (entry) {
+            const url = new URL(entry.qr, 'https://club.example/');
+            eq(url.searchParams.get('as'), entry.playerId, 'персональный QR выбирает игрока карточки как Я');
+            eq(url.searchParams.get('round'), entry.groupRoundId, 'QR использует реальный раунд группы');
+            eq(dbGet('rounds/' + entry.groupRoundId + '/players/' + entry.playerId).name, entry.playerName, 'ФИО карточки совпадает с ФИО в раунде');
+            eq(dbGet('rounds/' + entry.groupRoundId + '/markerAssignments/' + entry.markerPlayerId).targetId, entry.playerId, 'назначение маркера не изменилось');
+            const markerUrl = new URL(sheet.markers[entry.markerPlayerId].qr, 'https://club.example/');
+            eq(markerUrl.searchParams.get('as'), entry.markerPlayerId, 'отдельная ссылка маркера соответствует маркеру');
+        });
         ok(dbGet('protocols/' + Data.sheetProtocolId('tnA', 'r1')) == null, 'до публикации протокола на сайте нет');
         const fresh = dbGet('tournaments/tnA');
         return Data.publishSheet('tnA', 'r1', fresh);

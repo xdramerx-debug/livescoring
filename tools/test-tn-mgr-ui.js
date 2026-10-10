@@ -547,11 +547,11 @@ function run() {
             var markerEntry = Object.keys(entries).map(function (pid) { return entries[pid]; }).filter(function (entry) {
                 return entry.groupRoundId && entry.markerPlayerId && entry.markerPlayerId !== entry.playerId;
             })[0] || first;
-            check('QR ведёт в раунд группы от имени назначенного маркера',
-                !!markerEntry.groupRoundId && String(markerEntry.qr || '').indexOf('setup-round.html?round=' + markerEntry.groupRoundId + '&as=' + markerEntry.markerPlayerId) !== -1,
+            check('QR ведёт в раунд группы от имени игрока карточки',
+                !!markerEntry.groupRoundId && String(markerEntry.qr || '').indexOf('setup-round.html?round=' + markerEntry.groupRoundId + '&as=' + markerEntry.playerId) !== -1,
                 markerEntry.qr);
             var markerAssignment = get('rounds/' + markerEntry.groupRoundId + '/markerAssignments/' + markerEntry.markerPlayerId) || {};
-            check('QR-маркер назначен вести счёт отображаемому игроку', markerAssignment.targetId === markerEntry.playerId,
+            check('назначение маркера игроку сохраняется независимо от персонального QR', markerAssignment.targetId === markerEntry.playerId,
                 markerAssignment.targetId + ' → ' + markerEntry.playerId);
             check('QR турнира сохранён в листе', !!((sheet.qr || {}).payload));
             // По умолчанию лист показан флайтами — таблица строк в режиме «Списком».

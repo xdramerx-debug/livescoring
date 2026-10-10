@@ -249,8 +249,7 @@ var TnMgrRoundUI = (function (root) {
             var exactHcp = entry.hi != null && entry.hi !== '' ? entry.hi : player.hi;
             var fieldHcp = entry.ch != null && entry.ch !== '' ? core().intOf(entry.ch, 0) : chOf(player);
             var card = core().playerCard(scoresByPlayer[player.id] || {}, courseApi(), tee, fieldHcp, { fores: player.fores || {} });
-            var payload = entry.qr || core().scoreUrl(ui().baseUrl(), entry.groupRoundId || rid(), markerId || player.id,
-                markerId && markerId !== player.id ? Math.max(2, groupSize) : groupSize);
+            var payload = core().scoreUrl(ui().baseUrl(), entry.groupRoundId || rid(), player.id, groupSize);
             return {
                 player: Object.assign({}, player, { hi: exactHcp, ch: fieldHcp }),
                 entry: entry,

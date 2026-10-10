@@ -436,9 +436,9 @@ async function openTab(launch, base, viewport) {
     });
     check('карточки получают привязку к раунду ввода счёта из стартового листа',
         healed.linked && healed.modeGroup && healed.assignment, JSON.stringify(healed));
-    // QR на карточке — маркера игрока: ссылка совпадает с QR стартового листа,
-    // ведёт в rounds/<groupRoundId> и назначение маркера указывает на владельца карточки.
-    const qrMarker = await page.evaluate(function () {
+    // Персональный QR совпадает с QR листа и открывает игрока карточки как «Я».
+    // Назначение его маркера сохраняется отдельно.
+    const qrPlayer = await page.evaluate(function () {
         const img = document.querySelector('.tnpc-overlay[data-type="qr"] img[data-qr]');
         if (!img) return { ok: false, why: 'нет QR' };
         const src = img.getAttribute('src') || '';
@@ -451,16 +451,17 @@ async function openTab(launch, base, viewport) {
         const entry = entries[subject];
         const round = window.db.__get('rounds/' + entry.groupRoundId) || {};
         const as = decodeURIComponent((payload.match(/[?&]as=([^&#]+)/) || [])[1] || '');
-        const assignment = (round.markerAssignments || {})[as];
+        const assignment = (round.markerAssignments || {})[entry.markerPlayerId];
         return {
-            ok: entry.markerPlayerId === as && !!assignment && assignment.targetId === subject &&
+            ok: subject === as && !!round.players[as] && round.players[as].name === entry.playerName &&
+                !!assignment && assignment.targetId === subject &&
                 payload.indexOf('setup-round.html') !== -1 && payload.indexOf('round=' + entry.groupRoundId) !== -1,
             subject: subject, marker: entry.markerPlayerId, as: as,
             target: assignment && assignment.targetId, payload: payload
         };
     });
-    check('QR карточки принадлежит маркеру игрока и ведёт на его ввод счёта',
-        qrMarker.ok, JSON.stringify(qrMarker));
+    check('QR карточки выбирает игрока с тем же ФИО как Я, не меняя назначение маркера',
+        qrPlayer.ok, JSON.stringify(qrPlayer));
 
     // Замена логотипа через панель должна обновить и превью, и общий источник.
     await page.locator('#tnpc-logo-file').setInputFiles({

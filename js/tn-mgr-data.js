@@ -1187,14 +1187,14 @@ var TnMgrData = (function (root) {
                 var explicit = entry.markerPlayerId || '';
                 var markerId = explicit && inGroup[explicit] ? explicit : fallback;
                 entry.markerPlayerId = markerId;
-                entry.qr = core().scoreUrl(base, entry.groupRoundId || rid, markerId, markerId !== entry.playerId ? Math.max(2, groupEntries.length) : groupEntries.length);
+                entry.qr = core().scoreUrl(base, entry.groupRoundId || rid, entry.playerId, groupEntries.length);
                 entry.scoreUrl = entry.qr;
                 if (!markers[markerId]) {
                     markers[markerId] = {
                         playerId: markerId, groupId: entry.groupId || '', groupName: entry.groupName || '',
                         flight: entry.flight || '', startGroupId: entry.startGroupId || '', groupRoundId: entry.groupRoundId || '',
                         startHole: entry.startHole || 1, startTime: entry.startTime || '',
-                        position: groupIndex + 1, qr: entry.qr, generatedAt: now(), targets: {}
+                        position: groupIndex + 1, qr: core().scoreUrl(base, entry.groupRoundId || rid, markerId, groupEntries.length), generatedAt: now(), targets: {}
                     };
                 }
                 markers[markerId].targets[entry.playerId] = true;
@@ -1235,7 +1235,7 @@ var TnMgrData = (function (root) {
         });
         var rawEntries = {};
         built.entries.forEach(function (entry) { rawEntries[entry.playerId] = Object.assign({}, entry); });
-        // Каждый QR ведёт в режим маркера, назначенного для счёта именно этого игрока.
+        // Персональный QR открывает ввод от имени игрока; назначения маркеров независимы.
         var indexed = markerQrIndex(rawEntries, rid);
         var entries = indexed.entries;
         var markers = indexed.markers;
@@ -1320,8 +1320,8 @@ var TnMgrData = (function (root) {
                 players[entry.playerId] = entryRecord;
                 participants.push(entry.playerId);
             });
-            // QR открывает ввод от имени маркера, а его назначение указывает
-            // на игрока, чей счёт он ведёт. Для старых/вручную добавленных
+            // Персональный QR открывает собственный счёт игрока. Его назначение
+            // маркера отдельно указывает на партнёра, чей счёт он ведёт. Для старых/вручную добавленных
             // строк без назначения сохраняем безопасное кольцо по составу.
             var ring = group.entries.map(function (entry) { return entry.playerId; });
             group.entries.forEach(function (entry, position) {
@@ -1440,7 +1440,7 @@ var TnMgrData = (function (root) {
         });
         updates['tournaments/' + tid + '/sheets/' + rid + '/updatedAt'] = now();
         // Правки маркера/состава перестраивают все QR: на каждой карточке
-        // ссылка должна открывать ввод от имени назначенного маркера.
+        // персональная ссылка остаётся привязана к игроку, а не к его маркеру.
         var markerRelated = ['markerPlayerId', 'playerName', 'startTime', 'startHole', 'groupId', 'groupName', 'flight', 'position'];
         var refreshMarkers = fields && markerRelated.some(function (key) { return fields[key] !== undefined; });
         if (refreshMarkers) {

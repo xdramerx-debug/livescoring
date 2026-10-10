@@ -1672,7 +1672,7 @@ var TnMgrPrintCards = (function (root) {
     /**
      * Кто ведёт счёт игрока: назначенный маркер из стартового листа, иначе —
      * следующий по кольцу стартовой группы (та же логика, что в
-     * markerQrIndex/materializeRound, поэтому ссылки совпадают с листом).
+     * markerQrIndex/materializeRound; используется в текстовом блоке маркера).
      */
     function markerIdFor(entry, entries) {
         if (!entry) return '';
@@ -1692,12 +1692,10 @@ var TnMgrPrintCards = (function (root) {
     }
 
     /**
-     * Ссылка QR для карточки игрока. QR принадлежит МАРКЕРУ игрока: тот, кто
-     * ведёт счёт, сканирует карточку и попадает на ввод счёта от своего имени —
-     * свой счёт + счёт игрока, за которым он следит (та же логика, что в
-     * «Стартовом листе»: entry.qr). Без созданного раунда группы ссылка вела бы
-     * в несуществующий раунд («нельзя ничего ввести»), поэтому печатаем только
-     * ручную ссылку, заданную двойным кликом по QR.
+     * Персональный QR открывает ввод от имени игрока на карточке («Я»),
+     * а не его маркера. Старые сохранённые ссылки могли вести к маркеру,
+     * поэтому всегда строим ссылку по актуальным playerId и groupRoundId.
+     * Без раунда группы допускается только явно заданная ручная ссылка.
      */
     function qrPayloadFor(card, ov) {
         var pid = qrCardPlayer(card, ov);
@@ -1707,40 +1705,24 @@ var TnMgrPrintCards = (function (root) {
         try { entries = data().sheetOrder(ui().sheetOf(rid) || {}); } catch (e) { entries = []; }
         var entry = entries.filter(function (item) { return item.playerId === pid; })[0];
         if (!entry || !entry.groupRoundId) return ov.payload || '';
-        // Ссылку уже посчитал стартовый лист (markerQrIndex) — печатаем её же,
-        // чтобы QR карточки и QR листа совпадали. Ссылку «не на этот раунд»
-        // (старые данные до привязки) не берём: QR вёл бы в никуда.
-        var stored = entry.scoreUrl || entry.qr || '';
-        var roundParam = 'round=' + encodeURIComponent(entry.groupRoundId);
-        if (stored && stored.indexOf(roundParam) !== -1) return stored;
-        var markerId = markerIdFor(entry, entries) || pid;
         var groupSize = startGroupEntries(entry, entries).length || 1;
         var base = ui().baseUrl ? ui().baseUrl() : (root.location ? (root.location.origin + '/') : '');
-        return core().scoreUrl(base, entry.groupRoundId, markerId,
-            markerId !== pid ? Math.max(2, groupSize) : groupSize);
+        return core().scoreUrl(base, entry.groupRoundId, pid, groupSize);
     }
 
-    /**
-     * Подпись к карточке: чей QR напечатан и за кого ведут счёт. Пусто, когда
-     * стартовый лист ещё не создан (или у игрока нет строки в листе).
-     */
+    /** Подпись явно объясняет, кто будет выбран как «Я» после сканирования. */
     function qrOwnerText(card) {
         var ids = (card && card.playerIds) || [];
         if (!ids.length) return '';
         var rid = currentRid() || tid();
         var entries = [];
         try { entries = data().sheetOrder(ui().sheetOf(rid) || {}); } catch (e) { entries = []; }
-        var entry = entries.filter(function (item) { return item.playerId === ids[0]; })[0];
-        if (!entry || !entry.groupRoundId) return '';
-        var markerId = markerIdFor(entry, entries) || entry.playerId;
-        if (markerId === entry.playerId) {
-            return bi('QR открывает ввод счёта игрока', 'QR opens the player score entry');
-        }
-        var marker = ui().playerOf(markerId) || {};
-        var markerName = core().playerFio(marker) || markerId;
-        var targetName = entry.playerName || (ids.length ? core().playerFio(ui().playerOf(ids[0]) || {}) : '');
-        return bi('QR маркера: ' + markerName + ' ведёт счёт за ' + targetName,
-            'Marker QR: ' + markerName + ' keeps the score for ' + targetName);
+        var names = ids.map(function (pid) {
+            var entry = entries.filter(function (item) { return item.playerId === pid; })[0];
+            return entry && entry.groupRoundId ? entry.playerName || core().playerFio(ui().playerOf(pid) || {}) || pid : '';
+        }).filter(Boolean);
+        if (!names.length) return '';
+        return bi('Персональный QR — «Я»: ', 'Personal QR — “Me”: ') + names.join(', ');
     }
 
     function tableHtml(card, printMode) {

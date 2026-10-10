@@ -860,7 +860,9 @@
         groups.forEach(function (group, groupIndex) {
             var hole = assignedHoles[groupIndex];
             var wave = waveByGroup[groupIndex];
-            var flightNumber = ((hole - startHole + 18) % 18) + 1;
+            // Последовательный старт: один флайт на каждую стартовую группу,
+            // даже когда все группы начинают с одной и той же лунки.
+            var flightNumber = startMode === 'shotgun' ? ((hole - startHole + 18) % 18) + 1 : groupIndex + 1;
             var flightKey = String(flightNumber);
             if (startMode === 'shotgun' && waveCountByHole[hole] > 1) flightKey += waveLetter(wave);
             if (flights.indexOf(flightKey) === -1) flights.push(flightKey);
@@ -2361,8 +2363,8 @@
         });
         // Флайты сортируются по стартовой лунке: так 1А и 1Б идут раньше 2А,
         // и в печатном листе получается естественный порядок «от 1 лунки».
-        // Номер флайта совпадает со стартовой лункой (см. buildSheet), поэтому
-        // сортировки по flight и по startHole здесь эквивалентны.
+        // При последовательном старте номер флайта — порядковый номер группы;
+        // стартовая лунка хранится отдельно.
         Object.keys(byFlight).sort(function (a, b) {
             var aa = String(a).match(/^(\d+)(.*)$/), bb = String(b).match(/^(\d+)(.*)$/);
             if (!aa || !bb) return String(a).localeCompare(String(b), 'ru');

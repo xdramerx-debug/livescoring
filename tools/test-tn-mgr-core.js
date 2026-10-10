@@ -165,6 +165,20 @@ eq(sheet.entries[0].markerPlayerId, sheet.entries[1].playerId, 'маркер —
 var firstStart = sheet.entries.filter(function (e) { return e.startGroupId === sheet.entries[0].startGroupId; });
 eq(firstStart[firstStart.length - 1].markerPlayerId, firstStart[0].playerId, 'последний игрок маркирует первого');
 eq(sheet.entries[0].flight, '1', 'последовательный старт обозначается «Флайт 1»');
+eq(sheet.flights, ['1', '2'], 'последовательные группы — отдельные флайты, а не общий Флайт 1');
+eq(secondGroupEntry.map(function (e) { return e.flight; }), ['2', '2', '2'], 'вторая группа целиком во Флайте 2');
+[6, 7, 8, 9, 10, 11, 12, 18, 40, 80].forEach(function (count) {
+    [1, 10, 18].forEach(function (hole) {
+        var players = Array.from({ length: count }, function (_, i) { return { id: 'seq' + i, fio: 'Игрок ' + i }; });
+        var built = C.buildSheet({ players: players, groupSize: 4, startMode: 'sequential', startHole: hole });
+        var counts = {};
+        built.entries.forEach(function (e) { counts[e.flight] = (counts[e.flight] || 0) + 1; });
+        check(count + ' игроков с лунки ' + hole + ': каждый флайт — 3–4 игрока',
+            Object.keys(counts).length === built.groups.length && Object.values(counts).every(function (n) { return n >= 3 && n <= 4; }));
+        eq(built.flights, built.groups.map(function (_, i) { return String(i + 1); }), 'номера флайтов последовательны');
+        check('стартовая лунка не зависит от номера флайта', built.entries.every(function (e) { return e.startHole === hole; }));
+    });
+});
 eq(sheet.entries[0].startHole, 1, 'в стартовой группе хранится выбранная лунка');
 eq(sheet.entries[0].format, 'Стэйблфорд', 'формат турнира попадает в лист');
 eq(sheet.validate || C.validateSheet(sheet.entries).length, 0, 'лист без дублей и пустых игроков');
@@ -270,7 +284,7 @@ check(sheetDoc.indexOf('<!doctype html>') === 0, 'PDF стартового ли�
 check(sheetDoc.indexOf('Кубок клуба') !== -1, 'в PDF есть название турнира');
 check(sheetDoc.indexOf('Стартовый лист') !== -1, 'в PDF есть заголовок');
 check(sheetDoc.indexOf('data-qr=') === -1 && sheetDoc.indexOf('qrserver.com') === -1, 'стартовый лист печатается отдельно от QR');
-check(sheetDoc.indexOf('Флайт 1') !== -1, 'в PDF есть флайт с новой нумерацией');
+check(sheetDoc.indexOf('Флайт 1') !== -1 && sheetDoc.indexOf('Флайт 2') !== -1, 'в PDF каждая стартовая группа имеет свой флайт');
 check(sheetDoc.indexOf('Лунка старта') !== -1, 'в PDF стартового листа указана лунка');
 var qrEntries = [];
 for (var qrIndex = 1; qrIndex <= 11; qrIndex++) {

@@ -384,7 +384,7 @@ function switchTab(t, b) {
         renderClubScorecardPreview();
         pestovoBindView5('scorecard', function() { renderClubScorecardPreview(); });
     }
-    // Вкладка «Карточки в турнире 🎴»: вид карточки и блоки экрана ввода
+    // Вкладка «Отображение карточек в турнире»: вид карточки и блоки экрана ввода
     // при вводе счёта по QR из стартового листа турнира.
     if (t === 'tncards') {
         if (typeof bindTnRoundCardAdmin === 'function') bindTnRoundCardAdmin();

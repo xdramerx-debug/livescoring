@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.111.0-a09daa45';
+const CACHE_NAME = 'pestovo-v1.112.0-89987b0b';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -51,7 +51,7 @@ const STATIC_ASSETS = [
     'js/firebase-config.js?v=57564a0d',
     'js/handicap.js?v=ad1e9c00',
     'js/leaderboard.js?v=a6c53243',
-    'js/live.js?v=09920411',
+    'js/live.js?v=6a8eecf9',
     'js/marker.js?v=5408d53e',
     'js/name-variants.js?v=2b58f796',
     'js/players.js?v=7014460d',
@@ -69,7 +69,7 @@ const STATIC_ASSETS = [
     'js/tn-studio-core.js?v=59388560',
     'js/tn-studio-public.js?v=86e38d13',
     'js/tournament-core.js?v=e9119580',
-    'js/tournament-public.js?v=be6bc850',
+    'js/tournament-public.js?v=2b51f14d',
     'js/tournaments.js?v=9fba5ea8',
     'js/utils.js?v=6565ddc4',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',

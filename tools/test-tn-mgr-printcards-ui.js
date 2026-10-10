@@ -162,8 +162,11 @@ check('режимы ручек: высота, подпись, весь блок'
     return ['holes:h', 'holes:lab', 'holes:scale', 'strokes:h', 'strokes:lab', 'strokes:scale']
         .every(function (k) { return modes[k]; });
 })());
-check('блок «Длина» редактируется прямо в клетках',
-    host.querySelectorAll('[data-tnpc-grid="len"]').length >= 18,
+check('блок «Длина» у ТИ «Белые» берёт длины справочника ТИ (лунка 1 = 328 м)',
+    host.querySelector('[data-tnpc-block="length"] td:not(.lab)').textContent === '328',
+    host.querySelector('[data-tnpc-block="length"] td:not(.lab)').textContent);
+check('длины по ТИ из справочника только для чтения (не редактируются в клетках)',
+    host.querySelectorAll('[data-tnpc-grid="len"]').length === 0,
     host.querySelectorAll('[data-tnpc-grid="len"]').length);
 check('панель «Цвет и шрифт» отдаёт настройки всех блоков',
     host.querySelectorAll('[data-block-cfg]').length === 6);
@@ -233,12 +236,26 @@ fire(lenCell, 'dblclick', 10, 10);
 check('двойной клик по блоку «Длина» открывает его настройки',
     host.querySelectorAll('[data-block-cfg="length"]').length === 1);
 
+// Карточка без ТИ из справочника показывает запасной ряд панели — он редактируется.
+win.db.__set('tournaments/t1/sheets/r1/entries/a/tee', '');
+UI.state.tournament = win.db.__get('tournaments/t1');
+host.innerHTML = PC.html();
+PC.mount();
 var lenSpan = host.querySelector('[data-tnpc-grid="len"][data-h="0"]');
 lenSpan.textContent = '555';
 fire(lenSpan, 'input', 0, 0);
 fire(lenSpan, 'blur', 0, 0);
 check('инлайн-правка длины попадает в черновик', PC.state.draft.lengths[0] === 555,
     String(PC.state.draft.lengths[0]));
+
+// Смена ТИ в стартовом листе меняет длины на карточке (ТИ «Красные» → 317 м).
+win.db.__set('tournaments/t1/sheets/r1/entries/a/tee', 'rd');
+UI.state.tournament = win.db.__get('tournaments/t1');
+host.innerHTML = PC.html();
+PC.mount();
+check('смена ТИ в стартовом листе меняет длину лунок на карточке (Красные: 317 м)',
+    host.querySelector('[data-tnpc-block="length"] td:not(.lab)').textContent === '317',
+    host.querySelector('[data-tnpc-block="length"] td:not(.lab)').textContent);
 
 // ----------------------------------------------------------
 // 5. Печать: без ручек, с длинами
@@ -247,7 +264,7 @@ var printed = PC.documentFor((PC.state.draft.cards || []).slice(0, 1));
 check('в печати нет ручек блоков',
     printed.indexOf('data-tnpc-block-resize') === -1 && printed.indexOf('class="tnpc-block-h') === -1);
 check('в печати есть строка «Длина» и значения лунок',
-    printed.indexOf('>Длина, м</span>') !== -1 && printed.indexOf('>555</td>') !== -1);
+    printed.indexOf('>Длина, м</span>') !== -1 && printed.indexOf('>317</td>') !== -1);
 
 // ----------------------------------------------------------
 // 6. Блоки целиком: таблицу и шапку можно двигать и масштабировать мышью

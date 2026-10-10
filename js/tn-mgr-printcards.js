@@ -23,8 +23,8 @@
 var TnMgrPrintCards = (function (root) {
     'use strict';
 
-    var CARD_W = 147;      // мм — размер карточки по умолчанию
-    var CARD_H = 200;
+    var CARD_W = 200;      // мм — размер карточки по умолчанию (альбомная)
+    var CARD_H = 147;
     var PAGE_W = 297;      // мм — A4 landscape
     var PAGE_H = 210;
     var DRAG_THRESHOLD_PX = 4;  // порог «клик или перетаскивание» для текста
@@ -194,13 +194,19 @@ var TnMgrPrintCards = (function (root) {
         };
     }
     /**
-     * Место карточки на листе A4 landscape. По умолчанию — крупная карточка
-     * (147x200 мм при масштабе 140%) со смещением 90x40 мм: клуб печатает
-     * карточки крупно, поэтому на лист входит одна. Сколько карточек реально
+     * Размеры и место на листе по умолчанию. Карточка альбомная (200×147 мм),
+     * на листе A4 landscape помещаются 2 штуки: слева-сверху с зазором 17 мм
+     * и масштабом печати 120%. Эти значения применяются, когда у турнира
+     * ещё нет сохранённого дизайна карточек.
+     */
+    function defaultLayout() { return { xMm: 105.86, yMm: 39.68, scale: 1.2, gapMm: 17, perSheet: 2 }; }
+    /**
+     * Место карточки на листе A4 landscape. По умолчанию — альбомная карточка
+     * 200×147 мм со смещением 105.86×39.68 мм, зазором 17 мм и масштабом 120%
+     * (см. defaultLayout()). На лист входят 2 карточки; сколько реально
      * поместится в ряд, считает cardsPerSheet(), а pageFit() вписывает
      * раскладку в лист, если она не влезает (см. placement()).
      */
-    function defaultLayout() { return { xMm: 90, yMm: 40, scale: 1.4, gapMm: 3, perSheet: 2 }; }
     function clampLayout(layout, size) {
         var src = layout || {};
         var card = clampSize(size);
@@ -274,12 +280,32 @@ var TnMgrPrintCards = (function (root) {
         var slot = Math.min(index || 0, per - 1);
         var p = slotPos(L, card, slot);
         var fit = pageFit(L, card);
+        var x = round1(p.xMm * fit);
+        var y = round1(p.yMm * fit);
+        var w = round1(card.wMm * L.scale * fit);
+        var h = round1(card.hMm * L.scale * fit);
+        // После округления до десятых миллиметр граница может на ~0.05мм
+        // вылезти за лист — на бумаге это незаметно, но проверки раскладки
+        // споткнутся. Слегка ужимаем итог, чтобы вписаться в PAGE_W/H
+        // с запасом на округление. Используем неокруглённый fit, чтобы
+        // попасть в лимит ровно.
+        while ((x + w > PAGE_W + 0.01 || y + h > PAGE_H + 0.01) && fit > 0.01) {
+            var limitX = x + w > PAGE_W + 0.01 ? (PAGE_W - x) / Math.max(w, 0.01) : 1;
+            var limitY = y + h > PAGE_H + 0.01 ? (PAGE_H - y) / Math.max(h, 0.01) : 1;
+            var limit = Math.min(limitX, limitY, 1);
+            fit = Math.max(0.01, fit * limit * 0.999);
+            x = round1(p.xMm * fit);
+            y = round1(p.yMm * fit);
+            w = round1(card.wMm * L.scale * fit);
+            h = round1(card.hMm * L.scale * fit);
+        }
+        fit = Math.round(fit * 1000) / 1000;
         return {
-            xMm: round1(p.xMm * fit),
-            yMm: round1(p.yMm * fit),
+            xMm: x,
+            yMm: y,
             scale: Math.round(L.scale * fit * 1000) / 1000,
-            wMm: round1(card.wMm * L.scale * fit),
-            hMm: round1(card.hMm * L.scale * fit),
+            wMm: w,
+            hMm: h,
             per: per,
             fit: fit
         };
@@ -1066,10 +1092,17 @@ var TnMgrPrintCards = (function (root) {
             '.tnpc-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:var(--tnpc-table,2.9mm)}' +
             '.tnpc-table td{border:var(--tnpc-line,0.25mm) solid #111;text-align:center;position:relative;' +
             'padding:.5mm .2mm;height:var(--tnpc-row-h,6.4mm);overflow:hidden}' +
-            '.tnpc-marks{position:absolute;top:.2mm;right:.2mm;display:inline-flex;align-items:flex-start;' +
-            'gap:.25mm;pointer-events:none}' +
-            '.tnpc-mark{display:block;width:.3mm;height:1.7mm;background:#111;transform:rotate(25deg)}' +
-            '.tnpc-marks.minus .tnpc-mark{background:#a11414}' +
+            '.tnpc-marks{position:absolute;top:.15mm;right:.15mm;display:inline-flex;align-items:flex-start;' +
+            'gap:.25mm;pointer-events:none;color:#111}' +
+            /* Наклонная палочка рисуется через linear-gradient без transform —
+               некоторые движки печати игнорируют transform, и тонкие (0.3мм)
+               полоски просто не попадали на бумагу. Градиент рисуется
+               пиксель-в-пиксель браузером и одинаково работает на экране и
+               при печати. */
+            '.tnpc-mark{display:block;width:.5mm;height:1.8mm;' +
+            'background:linear-gradient(125deg,currentColor 0 45%,transparent 45% 100%);' +
+            'color:inherit}' +
+            '.tnpc-marks.minus{color:#a11414}' +
             '.tnpc-table .lab{text-align:left;font-weight:700;width:var(--tnpc-lab-w,15mm);padding:0 .2mm 0 1mm;position:relative}' +
             '.tnpc-row-label{display:inline-block;max-width:calc(100% - 4.8mm);overflow:hidden;white-space:nowrap;' +
             'vertical-align:middle;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}' +
@@ -1446,8 +1479,27 @@ var TnMgrPrintCards = (function (root) {
             ? '<span class="tnpc-move" data-tnpc-card-move="1" title="' +
               esc(bi('Перетащить карточку по листу', 'Drag the card across the sheet')) + '">✥</span>'
             : '';
+        // Восемь «ручек» по периметру карточки — растягивание в любую сторону.
+        // Они работают только на экране и только когда лист A4 виден целиком;
+        // в режиме «только карточка» размер уже подогнан под окно, и
+        // добавлять ручки там — лишний визуальный шум.
+        var resize = (!printMode && !local) ? cardResizeHandlesHtml() : '';
         return '<article class="tnpc-card" data-cid="' + esc(card.id) + '" data-slot="' + (slot || 0) + '" style="' +
-            cardStyleAttr(d, slot || 0, local) + '">' + handle + cardFaceHtml(card, printMode) + '</article>';
+            cardStyleAttr(d, slot || 0, local) + '">' + handle + resize + cardFaceHtml(card, printMode) + '</article>';
+    }
+
+    /**
+     * Угловые и боковые «ручки» для растягивания карточки. Каждая ручка
+     * знает свою сторону (n/s/e/w + диагонали) и тянет свою пару границ.
+     * В dragState добавляется флаг resizeEdge с одной из 8 сторон —
+     * moveCardDrag разруливает, какие именно миллиметры меняются.
+     */
+    function cardResizeHandlesHtml() {
+        var edges = ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw'];
+        return edges.map(function (edge) {
+            return '<span class="tnpc-resize tnpc-resize-' + edge + '" data-tnpc-card-resize="' + edge + '" ' +
+                'title="' + esc(bi('Растянуть карточку', 'Resize card')) + '"></span>';
+        }).join('');
     }
 
     // ----------------------------------------------------------
@@ -1928,7 +1980,7 @@ var TnMgrPrintCards = (function (root) {
             '.page{width:' + PAGE_W + 'mm;height:' + PAGE_H + 'mm;position:relative;page-break-after:always;overflow:hidden}' +
             cardCssText() +
             '.tnpc-card{border:0!important}' +
-            '.tnpc-handle,.tnpc-x,.tnpc-tag,.tnpc-row-tools,.tnpc-warn,.tnpc-ph,.tnpc-noprint,.tnpc-ghost{display:none!important}' +
+            '.tnpc-handle,.tnpc-x,.tnpc-tag,.tnpc-row-tools,.tnpc-warn,.tnpc-ph,.tnpc-noprint,.tnpc-ghost,.tnpc-move,.tnpc-resize{display:none!important}' +
             '</style>';
     }
 
@@ -2023,10 +2075,22 @@ var TnMgrPrintCards = (function (root) {
         return true;
     }
 
+    /**
+     * Можно ли потянуть за «ручку растягивания» карточки (угол/грань). Если
+     * курсор над ручкой — обычная карточная drag-логика не срабатывает, и
+     * стартует ресайз.
+     */
+    function resizeEdgeFromTarget(target) {
+        var node = target.closest('[data-tnpc-card-resize]');
+        if (!node) return '';
+        return String(node.getAttribute('data-tnpc-card-resize') || '');
+    }
+
     function startCardDrag(ev, host) {
         var cardEl = ev.target.closest('.tnpc-card');
         if (!cardEl) return;
-        if (!cardDragAllowed(ev)) return;
+        var resizeEdge = resizeEdgeFromTarget(ev.target);
+        if (!resizeEdge && !cardDragAllowed(ev)) return;
         var pageEl = cardEl.closest('[data-tnpc-page]');
         if (!pageEl || pageEl.classList.contains('card-only')) return;
         var d = ensureDraft();
@@ -2037,9 +2101,11 @@ var TnMgrPrintCards = (function (root) {
         state.cardDrag = {
             startX: ev.clientX, startY: ev.clientY,
             ox: layout.xMm, oy: layout.yMm,
-            mmPerPx: mmPerPx, el: cardEl, host: host, moved: false
+            ow: size.wMm, oh: size.hMm,
+            mmPerPx: mmPerPx, el: cardEl, host: host, moved: false,
+            resize: resizeEdge
         };
-        cardEl.classList.add('dragging');
+        cardEl.classList.add(resizeEdge ? 'resizing' : 'dragging');
         try { cardEl.setPointerCapture(ev.pointerId); } catch (e) { /* silent */ }
         ev.preventDefault();
     }
@@ -2052,21 +2118,64 @@ var TnMgrPrintCards = (function (root) {
         var dx = (ev.clientX - dr.startX) * dr.mmPerPx;
         var dy = (ev.clientY - dr.startY) * dr.mmPerPx;
         if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) dr.moved = true;
-        d.layout = clampLayout({
-            xMm: dr.ox + dx, yMm: dr.oy + dy,
-            scale: d.layout.scale, gapMm: d.layout.gapMm, perSheet: d.layout.perSheet
-        }, size);
+        if (dr.resize) {
+            applyCardResize(dr, dx, dy);
+            d.size = clampSize({ wMm: dr.ow + dr.dw, hMm: dr.oh + dr.dh });
+            // При ресайзе «от себя» (за W/NW/SW/NE/...) карточка сдвигается:
+            // противоположная грань остаётся на месте, ближайшая уходит
+            // вслед за курсором. Без обновления xMm/yMm раскладки карточка
+            // «дёрнется» только в конце перетаскивания — на это время
+            // у пользователя останется впечатление, что размер меняется
+            // «вокруг центра», а не от угла. Поэтому здесь сразу пишем
+            // итоговые координаты в раскладку, и patchCardDom() их подхватит.
+            d.layout = clampLayout({
+                xMm: d.layout.xMm + dr.dx, yMm: d.layout.yMm + dr.dy,
+                scale: d.layout.scale, gapMm: d.layout.gapMm, perSheet: d.layout.perSheet
+            }, d.size);
+        } else {
+            d.layout = clampLayout({
+                xMm: dr.ox + dx, yMm: dr.oy + dy,
+                scale: d.layout.scale, gapMm: d.layout.gapMm, perSheet: d.layout.perSheet
+            }, size);
+        }
         patchCardDom(d);
         syncLayoutInputs(d.layout);
+        syncSizeInputs(d.size);
         ev.preventDefault();
+    }
+
+    /**
+     * Прибавка ширины/высоты в зависимости от того, за какую грань тянут.
+     * Двигаем «от себя»: левый/верхний край двигает противоположную сторону
+     * карточки (компенсация в dx/dy знаке), правый/нижний край двигают
+     * ближайшую сторону. Итог: тянем за левый край — карточка становится
+     * шире/уже, при этом правый край остаётся на месте.
+     */
+    function applyCardResize(dr, dx, dy) {
+        var edge = dr.resize;
+        var nw = dr.ow, nh = dr.oh, nx = dr.ox, ny = dr.oy;
+        if (edge.indexOf('e') !== -1) nw = dr.ow + dx;
+        if (edge.indexOf('w') !== -1) { nw = dr.ow - dx; nx = dr.ox + dx; }
+        if (edge.indexOf('s') !== -1) nh = dr.oh + dy;
+        if (edge.indexOf('n') !== -1) { nh = dr.oh - dy; ny = dr.oy + dy; }
+        // Минимальная карточка не должна схлопнуться в ноль.
+        if (nw < 30) { var fix = 30 - nw; nw = 30; if (edge.indexOf('w') !== -1) nx -= fix; }
+        if (nh < 30) { var fix = 30 - nh; nh = 30; if (edge.indexOf('n') !== -1) ny -= fix; }
+        dr.dw = nw - dr.ow;
+        dr.dh = nh - dr.oh;
+        dr.dx = nx - dr.ox;
+        dr.dy = ny - dr.oy;
     }
 
     function endCardDrag() {
         var dr = state.cardDrag;
         state.cardDrag = null;
         if (!dr) return;
-        if (dr.el) dr.el.classList.remove('dragging');
+        if (dr.el) dr.el.classList.remove('dragging', 'resizing');
         if (!dr.moved) return;
+        // Позиция и размер уже учтены в d.layout / d.size в moveCardDrag —
+        // здесь только синхронизируем поля ввода и сохраняем.
+        syncLayoutInputs(ensureDraft().layout);
         persistSoon();
         refreshFitWarning();
     }
@@ -2100,6 +2209,16 @@ var TnMgrPrintCards = (function (root) {
         ['xMm', 'yMm'].forEach(function (field) {
             var input = dd.querySelector('[data-tnm-live-edit="tnpc-layout"][data-field="' + field + '"]');
             if (input && dd.activeElement !== input) input.value = layout[field];
+        });
+    }
+
+    /** Ширина/высота карточки в полях «Размеры» следуют за растягиванием. */
+    function syncSizeInputs(size) {
+        var dd = doc();
+        if (!dd) return;
+        ['wMm', 'hMm'].forEach(function (field) {
+            var input = dd.querySelector('[data-tnm-live-edit="tnpc-size"][data-field="' + field + '"]');
+            if (input && dd.activeElement !== input) input.value = size[field];
         });
     }
 

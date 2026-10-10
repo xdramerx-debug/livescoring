@@ -163,7 +163,26 @@
     font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ---------- свёрнутый список остальных карточек ---------- */
+/* Ручки растягивания карточки. Восемь штук по периметру — четыре угловые
+   (диагональные курсоры) и четыре боковые (вертикальные/горизонтальные).
+   Работают только в режиме «лист A4», как и обычная ручка ✥ перетаскивания. */
+.tnpc-resize {
+    position: absolute; width: 4mm; height: 4mm; background: rgba(201,168,76,.65);
+    border: 0.2mm solid #111; box-sizing: border-box; z-index: 4;
+}
+.tnpc-resize-n  { left: 50%; top: -1.5mm; transform: translateX(-50%); cursor: ns-resize; }
+.tnpc-resize-s  { left: 50%; bottom: -1.5mm; transform: translateX(-50%); cursor: ns-resize; }
+.tnpc-resize-e  { top: 50%; right: -1.5mm; transform: translateY(-50%); cursor: ew-resize; }
+.tnpc-resize-w  { top: 50%; left: -1.5mm; transform: translateY(-50%); cursor: ew-resize; }
+.tnpc-resize-ne { right: -1.5mm; top: -1.5mm; cursor: nesw-resize; }
+.tnpc-resize-sw { left: -1.5mm; bottom: -1.5mm; cursor: nesw-resize; }
+.tnpc-resize-nw { left: -1.5mm; top: -1.5mm; cursor: nwse-resize; }
+.tnpc-resize-se { right: -1.5mm; bottom: -1.5mm; cursor: nwse-resize; }
+.tnpc-resize:hover { background: var(--gold, #c9a227); }
+.tnpc-card.resizing { outline: 0.4mm dashed #c9a227; }
+/* В режиме «только карточка» ручки не нужны: размер уже подогнан под окно. */
+.tnpc-stage.card-mode .tnpc-resize { display: none; }
+.tnpc-stage.card-mode .tnpc-move { display: none; }
 .tnpc-list { display: flex; flex-direction: column; gap: 10px; }
 .tnpc-rows { display: flex; flex-direction: column; gap: 6px; }
 .tnpc-row {
@@ -228,7 +247,8 @@
     @page { size: A4 landscape; margin: 0; }
     .tnpc-toolbar, .tnpc-panel, .tnpc-status, .tnpc-hints, .tnpc-list,
     .tnpc-sel, .tnpc-warn, .tnpc-handle, .tnpc-x, .tnpc-tag, .tnpc-ph,
-    .tnpc-noprint, .tnpc-ghost, .tnpc-master-note, .tnpc-move { display: none !important; }
+    .tnpc-noprint, .tnpc-ghost, .tnpc-master-note, .tnpc-move,
+    .tnpc-resize { display: none !important; }
     /* На бумагу идёт только лист с карточкой: обвязка админки скрыта. */
     body > *:not(:has(.tnpc-wrap)) { display: none !important; }
     .tnpc-stage { background: #fff; border: none; padding: 0; overflow: visible; height: auto !important; }

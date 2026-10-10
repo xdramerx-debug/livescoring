@@ -154,17 +154,23 @@ check('строку можно переставить в сохранённом 
     PC.reorderRowOrder(d.rowOrder, 'strokes', 'holes').join(',') === 'strokes,holes,par,index,fore');
 check('порядок перемещения учитывает скрытые строки',
     PC.visibleRowOrder({ rowOrder: d.rowOrder, show: { par: false } }).join(',') === 'holes,index,fore,strokes');
-check('размер карточки по умолчанию 147×200 мм', d.size.wMm === 147 && d.size.hMm === 200);
+check('размер карточки по умолчанию 200×147 мм', d.size.wMm === 200 && d.size.hMm === 147);
 check('две карточки на листе по умолчанию', d.layout.perSheet === 2);
-check('смещение по умолчанию 90×40 мм', d.layout.xMm === 90 && d.layout.yMm === 40);
-check('масштаб печати по умолчанию 140%', d.layout.scale === 1.4);
-check('при масштабе 140% на лист входит одна карточка', PC.cardsPerSheet(d.layout, d.size) === 1);
+check('смещение по умолчанию 105.86×39.68 мм', d.layout.xMm === 105.86 && d.layout.yMm === 39.68);
+check('масштаб печати по умолчанию 120%', d.layout.scale === 1.2);
+check('зазор между карточками по умолчанию 17 мм', d.layout.gapMm === 17);
+check('при масштабе 120% и карточке 200×147 на лист входит одна карточка', PC.cardsPerSheet(d.layout, d.size) === 1);
 check('вписанная раскладка всегда помещается на лист A4', (function () {
     var p = PC.placement(d.layout, d.size, 0);
     return p.xMm + p.wMm <= PC.PAGE_W + 0.01 && p.yMm + p.hMm <= PC.PAGE_H + 0.01;
 })(), JSON.stringify(PC.placement(d.layout, d.size, 0)));
 check('классическая раскладка 2×147 мм даёт две карточки на листе',
-    PC.cardsPerSheet({ xMm: 0, yMm: 5, scale: 1, gapMm: 3, perSheet: 2 }, d.size) === 2);
+    PC.cardsPerSheet({ xMm: 0, yMm: 5, scale: 1, gapMm: 3, perSheet: 2 }, { wMm: 147, hMm: 200 }) === 2);
+// Альбомная карточка 200×147 мм умещается парой на листе только при масштабе
+// меньше 100%. Здесь проверяем, что масштабирование «внутрь» корректно
+// работает — иначе пользователь не сможет напечатать две карточки в ряд.
+check('альбомная карточка 200×147 умещается парой при масштабе 70%',
+    PC.cardsPerSheet({ xMm: 0, yMm: 5, scale: 0.7, gapMm: 3, perSheet: 2 }, { wMm: 200, hMm: 147 }) === 2);
 check('слоты не наезжают друг на друга', PC.slotPos(d.layout, d.size, 1).xMm >= d.size.wMm);
 check('раскладка за пределами листа помечается, но не теряется', (function () {
     var legacy = PC.defaultDraft();
@@ -222,7 +228,9 @@ var allCards = PC.buildCards(PLAYERS, global.TnMgrData.sheetOrder({ entries: ENT
 var docHtml = PC.documentFor(allCards);
 check('страниц по две карточки в классической раскладке', (function () {
     PC.state.draft = null;
-    TOURNAMENT.printScorecards = { layout: { xMm: 0, yMm: 5, scale: 1, gapMm: 3, perSheet: 2 }, holes: 18 };
+    // Чтобы пара карточек 200×147 влезла на A4 landscape, ставим масштаб
+    // 0.7 (по 140мм ширины каждая + 3мм зазор = 283мм ≤ 297мм).
+    TOURNAMENT.printScorecards = { layout: { xMm: 0, yMm: 5, scale: 0.7, gapMm: 3, perSheet: 2 }, holes: 18 };
     var pages = PC.pageChunks(allCards);
     PC.state.draft = null;
     TOURNAMENT.printScorecards = null;
@@ -253,15 +261,15 @@ check('служебная разметка редактора не печата�
     docHtml.indexOf('<span class="tnpc-handle"') === -1 && docHtml.indexOf('<span class="tnpc-x"') === -1 &&
     docHtml.indexOf('contenteditable') === -1);
 check('на печати карточка вписана в лист A4 landscape',
-    docHtml.indexOf('left:59.04mm;top:26.24mm') !== -1 &&
-    docHtml.indexOf('transform:scale(0.918)') !== -1, 'раскладка 90×40 при 140%');
+    docHtml.indexOf('left:90.8mm;top:34.04mm') !== -1 &&
+    docHtml.indexOf('transform:scale(1.03)') !== -1, 'раскладка 105.86×39.68 при 120%');
 check('классическая раскладка ставит две карточки в ряд', (function () {
     PC.state.draft = null;
-    TOURNAMENT.printScorecards = { layout: { xMm: 0, yMm: 5, scale: 1, gapMm: 3, perSheet: 2 }, holes: 18 };
+    TOURNAMENT.printScorecards = { layout: { xMm: 0, yMm: 5, scale: 0.7, gapMm: 3, perSheet: 2 }, holes: 18 };
     var html = PC.documentFor(allCards);
     PC.state.draft = null;
     TOURNAMENT.printScorecards = null;
-    return html.indexOf('left:0mm;top:5mm') !== -1 && html.indexOf('left:150mm;top:5mm') !== -1;
+    return html.indexOf('left:0mm;top:5mm') !== -1 && html.indexOf('left:143mm;top:5mm') !== -1;
 })());
 check('внешняя рамка карточки на печать не идёт',
     docHtml.indexOf('.tnpc-card{border:0!important}') !== -1);
@@ -295,8 +303,10 @@ check('черточки форы рисуются в клетке счёта',
     docHtml.indexOf('<span class="tnpc-marks" title="') !== -1 &&
     docHtml.indexOf('<i class="tnpc-mark"></i>') !== -1);
 check('черточки позиционируются в правом верхнем углу',
-    docHtml.indexOf('.tnpc-marks{position:absolute;top:.2mm;right:.2mm') !== -1);
-check('черточки наклонные', docHtml.indexOf('transform:rotate(25deg)') !== -1);
+    docHtml.indexOf('.tnpc-marks{position:absolute;top:.15mm;right:.15mm') !== -1);
+// Наклон рисуется linear-gradient — он одинаково выводится и на экране, и
+// в печати (transform:rotate() ряд браузеров на бумагу теряет).
+check('черточки наклонные', /tnpc-mark[^}]*linear-gradient\(125deg/.test(docHtml));
 function marksInRow(html, label) {
     var at = html.indexOf('>' + label + '</span>');
     if (at === -1) return null;
@@ -495,7 +505,7 @@ var dragHtml = PC.html();
 check('на карточке есть ручка перетаскивания по листу',
     dragHtml.indexOf('data-tnpc-card-move="1"') !== -1 && dragHtml.indexOf('class="tnpc-move"') !== -1);
 check('ручка перетаскивания карточки не попадает в печать',
-    PC.documentFor([allCards[0]]).indexOf('tnpc-move') === -1);
+    PC.documentFor([allCards[0]]).indexOf('class="tnpc-move"') === -1);
 check('подсказка объясняет, как двигать карточку по листу', /ручку ✥/.test(dragHtml));
 check('подсказка объясняет, что свой текст тоже перетаскивается',
     /добавленный текст перетаскиваются|лого, QR и добавленный текст/i.test(dragHtml));

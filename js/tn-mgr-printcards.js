@@ -238,6 +238,43 @@ var TnMgrPrintCards = (function (root) {
         }
         return out;
     }
+
+    /** Длины лунок по справочнику ТИ (HOLES) или null, если для ТИ данных нет. */
+    function teeLengths(code) {
+        if (!code || !root.HOLES) return null;
+        var out = [];
+        var any = false;
+        for (var h = 1; h <= 18; h++) {
+            var dist = Number(root.HOLES[h] && root.HOLES[h][code]) || 0;
+            if (dist > 0) any = true;
+            out.push(dist > 0 ? Math.round(dist) : 0);
+        }
+        return any ? out : null;
+    }
+
+    /**
+     * Код ТИ игрока карточки — тот же, что в стартовом листе (tees[i]),
+     * либо ручная правка ТИ на карточке (edits.tee). Так длина всегда
+     * соответствует выбранному ТИ, а не общему набору для всех карточек.
+     */
+    function cardTeeCode(card, playerIndex) {
+        var index = playerIndex || 0;
+        var editedTee = !!(card && card.edits && card.edits.tee);
+        var raw = (editedTee ? card.tee : ((card && card.tees || [])[index])) || (card && card.tee) || '';
+        return raw ? teeCode(raw) : '';
+    }
+
+    /**
+     * Длины для строки игрока карточки: справочник его ТИ; если ТИ не из
+     * справочника (или не выбран) — запасной ряд из панели «Лунки, пары…».
+     * Возвращает { values, fallback }: fallback=true — ряд редактируемый.
+     */
+    function cardLengths(card, playerIndex) {
+        var code = cardTeeCode(card, playerIndex);
+        var byTee = teeLengths(code);
+        if (byTee) return { values: byTee, fallback: false, tee: code };
+        return { values: ensureDraft().lengths || defaultLengths(), fallback: true, tee: code };
+    }
     function validColor(v) {
         return typeof v === 'string' && /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(v);
     }
@@ -1711,7 +1748,6 @@ var TnMgrPrintCards = (function (root) {
         var n = holeCount();
         var pars = d.pars;
         var indexes = d.indexes;
-        var lengths = d.lengths || defaultLengths();
         var outN = Math.min(9, n);
         var inN = Math.max(0, n - outN);
         var showTotals = d.show.totals !== false;
@@ -1799,6 +1835,33 @@ var TnMgrPrintCards = (function (root) {
             }
             return tableBlock('strokes', lines);
         }
+        /**
+         * Строки «Длина»: по одной на каждый ТИ карточки (у связки с разными
+         * ТИ — каждому игроку свой ряд). Ряд из справочника ТИ только для
+         * чтения; запасной ряд панели редактируется, как раньше.
+         */
+        function lengthLines() {
+            var count = playerCount(card);
+            var seen = {};
+            var rows = [];
+            for (var playerIndex = 0; playerIndex < count; playerIndex++) {
+                var src = cardLengths(card, playerIndex);
+                var key = (src.fallback ? 'draft' : src.tee);
+                if (seen[key]) continue;
+                seen[key] = true;
+                rows.push(src);
+            }
+            var multi = rows.length > 1;
+            var lines = '';
+            rows.forEach(function (src, i) {
+                var label = bi('Длина, м', 'Dist, m');
+                if (multi && src.tee) label += ' · ' + teeDisplayName(src.tee);
+                var attr = src.fallback ? ' data-tnpc-len-src="draft"' : '';
+                var line = tableLine('length', esc(label), dataRowCells('len', src.values, src.fallback), i === 0);
+                lines += line.replace('<tr>', '<tr' + attr + '>');
+            });
+            return lines;
+        }
         function foreBlock() {
             var count = Math.max(1, (card && card.hcps || []).length, (card && card.names || []).length,
                 (card && card.fieldHcps || []).length);
@@ -1825,7 +1888,7 @@ var TnMgrPrintCards = (function (root) {
         var rowHtml = {
             holes: tableBlock('holes', tableLine('holes', '№', holeNumbers, true)),
             par: tableBlock('par', tableLine('par', esc(bi('Пар', 'Par')), dataRowCells('par', pars, true), true)),
-            length: tableBlock('length', tableLine('length', esc(bi('Длина, м', 'Dist, m')), dataRowCells('len', lengths, true), true)),
+            length: tableBlock('length', lengthLines()),
             index: tableBlock('index', tableLine('index', esc(bi('Индекс', 'Index')), dataRowCells('idx', indexes, true), true)),
             fore: foreBlock(),
             strokes: strokesBlock()
@@ -2221,9 +2284,9 @@ var TnMgrPrintCards = (function (root) {
             '</div>' +
             '<p class="tnm-muted">' + esc(bi('Пар 3–6', 'Par 3–6')) + '</p><div class="tnpc-fields">' + pars + '</div>' +
             '<p class="tnm-muted">' + esc(bi('Индекс 1–18', 'Index 1–18')) + '</p><div class="tnpc-fields">' + idx + '</div>' +
-            '<p class="tnm-muted">' + esc(bi('Длина лунок в метрах (0 — пустая клетка)', 'Hole length in metres (0 — empty cell)')) + '</p>' +
+            '<p class="tnm-muted">' + esc(bi('Длина лунок в метрах (0 — пустая клетка). Карточки с ТИ из стартового листа показывают длину своего ТИ; этот ряд — запасной для карточек без ТИ из справочника.', 'Hole length in metres (0 — empty cell). Cards with a tee from the tee sheet show the length of their tee; this row is the fallback for cards without a known tee.')) + '</p>' +
             '<div class="tnpc-tee-fill">' +
-            '<span class="tnm-muted">' + esc(bi('Заполнить по ТИ:', 'Fill by tee:')) + '</span>' + teeBtns +
+            '<span class="tnm-muted">' + esc(bi('Заполнить запасной ряд по ТИ:', 'Fill fallback row by tee:')) + '</span>' + teeBtns +
             '</div>' +
             '<div class="tnpc-fields">' + lens + '</div>' +
             indexWarnHtml() +
@@ -3607,7 +3670,9 @@ var TnMgrPrintCards = (function (root) {
                     kind === 'par' ? parSum(0, n) : lenSum(values, 0, n)]
                 : [kind === 'par' ? parSum(0, n) : lenSum(values, 0, n),
                     kind === 'par' ? parSum(0, n) : lenSum(values, 0, n)];
-            var row = d.querySelector('.tnpc-card .tnpc-table-row[data-tnpc-table-row="' + kind + '"]');
+            var blockKey = kind === 'len' ? 'length' : kind;
+            var rowSel = kind === 'len' ? ' tr[data-tnpc-len-src="draft"]' : '';
+            var row = d.querySelector('.tnpc-card .tnpc-table-row[data-tnpc-table-row="' + blockKey + '"]' + rowSel);
             var cells = row ? row.querySelectorAll('td.sum') : [];
             cells.forEach(function (cell, i) { if (sums[i] != null) cell.textContent = sums[i]; });
         }

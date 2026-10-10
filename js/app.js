@@ -35,8 +35,10 @@ function buildExactHcpChip(p) {
 }
 
 function buildPlayerTeeBadge(p, roundData) {
-    var teeCode = (p && p.tee) || (roundData && roundData.tee) || 'wh';
-    return '<span class="tee-pill tee-' + teeCode + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + t('tee_' + teeCode) + '</span>';
+    var rawTee = (p && p.tee) || (roundData && roundData.tee) || 'wh';
+    var teeCode = typeof pestovoNormalizeTeeCode === 'function' ? pestovoNormalizeTeeCode(rawTee) : 'wh';
+    var teeName = typeof pestovoTeeLabel === 'function' ? pestovoTeeLabel(teeCode) : 'Белый';
+    return '<span class="tee-pill tee-' + teeCode + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + escapeHtml(teeName) + '</span>';
 }
 
 function buildPlayerBadges(p, roundData) {
@@ -87,7 +89,7 @@ function buildCourseCard() {
     // Par row
     html += '<div class="msc-tile msc-lbl-par">' + parStr + '</div>';
     var pO = 0;
-    for (var h = 1; h <= 9; h++) {
+    for (h = 1; h <= 9; h++) {
         var p = holePar(h);
         pO += p;
         html += '<div class="msc-tile msc-val-par">' + p + '</div>';
@@ -96,7 +98,7 @@ function buildCourseCard() {
 
     // Index row
     html += '<div class="msc-tile msc-lbl-idx">' + indexStr + '</div>';
-    for (var h = 1; h <= 9; h++) {
+    for (h = 1; h <= 9; h++) {
         html += '<div class="msc-tile msc-val-idx">' + holeHcp(h) + '</div>';
     }
     html += '<div class="msc-tile msc-tot-idx">—</div>';
@@ -109,7 +111,7 @@ function buildCourseCard() {
 
     // Header row
     html += '<div class="msc-tile msc-hdr-lbl"><span class="msc-total-long">' + hdrLblLong + '</span><span class="msc-total-short">' + hdrLblShort + '</span></div>';
-    for (var h = 10; h <= 18; h++) html += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
+    for (h = 10; h <= 18; h++) html += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
     html += '<div class="msc-tile msc-hdr-tot">' + inStr + '</div>';
     html += '<div class="msc-tile msc-hdr-tot" style="background:var(--gold);color:var(--bg);"><span class="msc-total-long">' + totalStr + '</span><span class="msc-total-short">Σ</span></div>';
 
@@ -118,7 +120,7 @@ function buildCourseCard() {
         html += '<div class="msc-tile msc-lbl-' + tKey + '">' + t('tee_' + tKey) + '</div>';
         var sumI = 0, sumO = 0;
         for (var h = 1; h <= 9; h++) sumO += holeDist(h, tKey);
-        for (var h = 10; h <= 18; h++) {
+        for (h = 10; h <= 18; h++) {
             var d = holeDist(h, tKey);
             sumI += d;
             html += '<div class="msc-tile msc-val-' + tKey + '">' + d + '</div>';
@@ -130,8 +132,8 @@ function buildCourseCard() {
     // Par row
     html += '<div class="msc-tile msc-lbl-par">' + parStr + '</div>';
     var pI = 0;
-    for (var h = 10; h <= 18; h++) {
-        var p = holePar(h);
+    for (h = 10; h <= 18; h++) {
+        p = holePar(h);
         pI += p;
         html += '<div class="msc-tile msc-val-par">' + p + '</div>';
     }
@@ -140,7 +142,7 @@ function buildCourseCard() {
 
     // Index row
     html += '<div class="msc-tile msc-lbl-idx">' + indexStr + '</div>';
-    for (var h = 10; h <= 18; h++) {
+    for (h = 10; h <= 18; h++) {
         html += '<div class="msc-tile msc-val-idx">' + holeHcp(h) + '</div>';
     }
     html += '<div class="msc-tile msc-tot-idx">—</div>';
@@ -456,7 +458,11 @@ function applyLiveRoundOpenUI(row, open) {
 }
 
 function toggleLiveRound(id) {
-    var row = document.querySelector('.live-round-row[data-round-id="' + id + '"]');
+    var rows = document.querySelectorAll('.live-round-row[data-round-id]');
+    var row = null;
+    for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute('data-round-id') === String(id)) { row = rows[i]; break; }
+    }
     var open = row ? !row.classList.contains('is-open') : !getLiveRoundOpen(id);
     setLiveRoundOpen(id, open);
     applyLiveRoundOpenUI(row, open);
@@ -471,7 +477,12 @@ function liveRoundKey(ev, id) {
 }
 
 function toggleLiveWho(roundId, pid) {
-    var row = document.querySelector('.lwl-row[data-round-id="' + roundId + '"][data-pid="' + pid + '"]');
+    var rows = document.querySelectorAll('.lwl-row[data-round-id][data-pid]');
+    var row = null;
+    for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute('data-round-id') === String(roundId) &&
+            rows[i].getAttribute('data-pid') === String(pid)) { row = rows[i]; break; }
+    }
     var open = row ? !row.classList.contains('is-open') : !getLiveWhoOpen(roundId, pid);
     setLiveWhoOpen(roundId, pid, open);
     applyLiveWhoOpenUI(row, open);
@@ -535,12 +546,12 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
     // по ФИО): без него «Продолжить» могло открыться в режиме просмотра.
     var soloActing = null;
     try { soloActing = localStorage.getItem('pestovo_acting_as_' + id); } catch (e) { console.warn("[silent]", e); }
-    var link = 'setup-round.html?round=' + id + ((soloActing && pid === soloActing) ? '&as=' + encodeURIComponent(pid) : '');
+    var link = 'setup-round.html?round=' + encodeURIComponent(id) + ((soloActing && pid === soloActing) ? '&as=' + encodeURIComponent(pid) : '');
     var soloWord = currentLang === 'en' ? ' · Solo' : ' · Одиночный';
 
     // Детали: бейджи, gross, формат, кнопка «Продолжить» и счётная карточка.
     var details =
-        '<div class="lwl-details" id="' + panelId + '">' +
+        '<div class="lwl-details" id="' + escapeHtml(panelId) + '">' +
         '<div class="lwl-meta">' +
         '<span class="lwl-badges">' + buildPlayerBadges(p, r) + '</span>' +
         '<span class="lwl-extra">Gross: ' + (stats.gross || 0) + ' · ' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + (r.mode === 'solo' ? soloWord : '') + markerNote + '</span>' +
@@ -555,9 +566,9 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
     // Класс live-round-row и data-round-id — те же, что у группового блока,
     // поэтому сворачивание/разворачивание работает общей функцией toggleLiveRound.
     var rowHtml = '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
-        'data-round-id="' + id + '" data-pid="' + pid + '" data-round-row="1">' +
-        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + panelId + '" ' +
-        'onclick="toggleLiveRound(\'' + id + '\')" onkeydown="liveRoundKey(event,\'' + id + '\')">' +
+        'data-round-id="' + escapeHtml(id) + '" data-pid="' + escapeHtml(pid) + '" data-round-row="1">' +
+        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + escapeHtml(panelId) + '" ' +
+        'onclick="toggleLiveRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="liveRoundKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
         '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
         (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
         '</span>' +
@@ -627,7 +638,7 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
     var namesStr = escapeHtml(names.join(', '));
     var open = (forceOpen === true) ? true : getLiveRoundOpen(id);
     var panelId = 'live-round-panel-' + id;
-    var link = 'setup-round.html?round=' + id;
+    var link = 'setup-round.html?round=' + encodeURIComponent(id);
 
     var scoreHtml = bestToPar !== null
         ? '<span class="lwl-score ' + scoreClass(bestToPar) + '">' + fmtScore(bestToPar) + '</span>'
@@ -637,9 +648,9 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
     var groupScorecardHtml = generateGroupHoleTableHTML(r, { compact: true });
 
     return '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
-        'data-round-id="' + id + '" data-round-row="1">' +
-        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + panelId + '" ' +
-        'onclick="toggleLiveRound(\'' + id + '\')" onkeydown="liveRoundKey(event,\'' + id + '\')">' +
+        'data-round-id="' + escapeHtml(id) + '" data-round-row="1">' +
+        '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + escapeHtml(panelId) + '" ' +
+        'onclick="toggleLiveRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="liveRoundKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
         '<span class="lwl-name">' + modeIcon + '<span class="lwl-name-txt">' + modeLabel + ' · ' + namesStr + '</span>' +
         (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
         '</span>' +
@@ -648,7 +659,7 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
         '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
         '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
         '</div>' +
-        '<div class="lwl-details" id="' + panelId + '">' +
+        '<div class="lwl-details" id="' + escapeHtml(panelId) + '">' +
         '<div class="lwl-actions" style="margin-bottom:10px;">' +
         (isMyRound ? '<a href="' + link + '" class="btn btn-g btn-sm"><i class="fas fa-gamepad"></i> ' + (currentLang === 'en' ? 'Continue round' : 'Продолжить раунд') + '</a>' : '') +
         '</div>' +
@@ -1064,7 +1075,11 @@ function applyRecentOpenUI(row, open) {
 }
 
 function toggleRecentRound(id) {
-    var row = document.querySelector('.recent-row[data-round-id="' + id + '"]');
+    var rows = document.querySelectorAll('.recent-row[data-round-id]');
+    var row = null;
+    for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute('data-round-id') === String(id)) { row = rows[i]; break; }
+    }
     var open = row ? !row.classList.contains('is-open') : !getRecentOpen(id);
     setRecentOpen(id, open);
     applyRecentOpenUI(row, open);
@@ -1119,15 +1134,15 @@ function buildRecentRowHTML(id, r) {
         '<div class="lwl-details">' +
         '<div class="lwl-recent-players">' + pHtml + '</div>' +
         '<div class="lwl-actions">' +
-        '<button class="btn btn-og btn-sm" onclick="toggleCardScorecard(\'' + panelId + '\',\'' + id + '\')"><i class="fas fa-chevron-down" id="' + panelId + '-icon"></i> <span id="' + panelId + '-txt">' + t('expand_scorecard') + '</span></button>' +
-        (r.status === 'completed' ? '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + id + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' : '') +
+        '<button class="btn btn-og btn-sm" onclick="toggleCardScorecard(\'' + pestovoInlineJsArg(panelId) + '\',\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-chevron-down" id="' + escapeHtml(panelId) + '-icon"></i> <span id="' + escapeHtml(panelId) + '-txt">' + t('expand_scorecard') + '</span></button>' +
+        (r.status === 'completed' ? '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' : '') +
         '</div>' +
-        '<div id="' + panelId + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
+        '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
         '</div>';
 
-    return '<div class="lwl-row recent-row' + (open ? ' is-open' : '') + '" data-round-id="' + id + '">' +
+    return '<div class="lwl-row recent-row' + (open ? ' is-open' : '') + '" data-round-id="' + escapeHtml(id) + '">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" ' +
-        'onclick="toggleRecentRound(\'' + id + '\')" onkeydown="recentKey(event,\'' + id + '\')">' +
+        'onclick="toggleRecentRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="recentKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
         '<span class="lwl-name"><i class="fas fa-flag-checkered"></i><span class="lwl-name-txt">' + dateStr + '</span></span>' +
         '<span class="lwl-hole"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-score">' + completedBadge + '</span>' +

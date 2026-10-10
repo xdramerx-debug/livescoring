@@ -1108,7 +1108,7 @@ function moveScoreEntryBlock(index, delta) {
     var key = order[index]; order[index] = order[next]; order[next] = key;
     renderScoreEntryOrder();
     renderScoreEntryPreview();
-    var button = document.querySelector('#score-entry-order [data-move-key=\"' + key + '\"][data-delta=\"' + delta + '\"]');
+    var button = document.querySelector('#score-entry-order [data-move-key="' + key + '"][data-delta="' + delta + '"]');
     if (button && !button.disabled) button.focus();
 }
 function renderScoreEntryAdmin() {
@@ -1126,18 +1126,18 @@ function renderScoreEntryList() {
         var style = SCORE_ENTRY_STYLES[v.view] || SCORE_ENTRY_STYLES['1'];
         var isActive = v.id === scoreEntryActiveId;
         var isEditing = !!(draft && draft.id === v.id);
-        var badges = (isActive ? '<span class=\"se-badge se-badge--on\"><i class=\"fas fa-circle-check\"></i> Активен у всех</span>' : '') +
-            (isEditing ? '<span class=\"se-badge\"><i class=\"fas fa-pen\"></i> Редактируется</span>' : '');
-        return '<div class=\"se-item' + (isEditing ? ' is-editing' : '') + '\" data-variant-id=\"' + escapeHtml(v.id) + '\">' +
-            '<div class=\"se-item-main\"><strong>' + escapeHtml(v.name) + '</strong>' +
+        var badges = (isActive ? '<span class="se-badge se-badge--on"><i class="fas fa-circle-check"></i> Активен у всех</span>' : '') +
+            (isEditing ? '<span class="se-badge"><i class="fas fa-pen"></i> Редактируется</span>' : '');
+        return '<div class="se-item' + (isEditing ? ' is-editing' : '') + '" data-variant-id="' + escapeHtml(v.id) + '">' +
+            '<div class="se-item-main"><strong>' + escapeHtml(v.name) + '</strong>' +
             '<small>Стиль ' + escapeHtml(v.view) + ' · ' + escapeHtml(style.name) + '</small>' +
-            (badges ? '<div class=\"se-badges\">' + badges + '</div>' : '') + '</div>' +
-            '<div class=\"se-item-btns\">' +
-            '<button type=\"button\" class=\"btn btn-ol btn-sm\" onclick=\"startScoreEntryEdit(\'' + escapeHtml(v.id) + '\')\"><i class=\"fas fa-pen\"></i> Изменить</button>' +
-            '<button type=\"button\" class=\"btn btn-g btn-sm\" onclick=\"activateScoreEntryVariant(\'' + escapeHtml(v.id) + '\')\"' + (isActive ? ' disabled' : '') + '><i class=\"fas fa-cloud-arrow-up\"></i> Применить для всех</button>' +
-            '<button type=\"button\" class=\"btn btn-danger btn-sm\" onclick=\"deleteScoreEntryVariant(\'' + escapeHtml(v.id) + '\')\"' + (list.length < 2 ? ' disabled' : '') + '><i class=\"fas fa-trash\"></i> Удалить</button>' +
+            (badges ? '<div class="se-badges">' + badges + '</div>' : '') + '</div>' +
+            '<div class="se-item-btns">' +
+            '<button type="button" class="btn btn-ol btn-sm" onclick="startScoreEntryEdit(\'' + pestovoInlineJsArg(v.id) + '\')"><i class="fas fa-pen"></i> Изменить</button>' +
+            '<button type="button" class="btn btn-g btn-sm" onclick="activateScoreEntryVariant(\'' + pestovoInlineJsArg(v.id) + '\')"' + (isActive ? ' disabled' : '') + '><i class="fas fa-cloud-arrow-up"></i> Применить для всех</button>' +
+            '<button type="button" class="btn btn-danger btn-sm" onclick="deleteScoreEntryVariant(\'' + pestovoInlineJsArg(v.id) + '\')"' + (list.length < 2 ? ' disabled' : '') + '><i class="fas fa-trash"></i> Удалить</button>' +
             '</div></div>';
-    }).join('') || '<p class=\"sev-sec-sub\">Вариантов пока нет — добавьте первый.</p>';
+    }).join('') || '<p class="sev-sec-sub">Вариантов пока нет — добавьте первый.</p>';
     var title = document.getElementById('score-entry-editor-title');
     if (title && draft) title.textContent = draft.id ? 'Редактор: ' + draft.name : 'Новый вариант';
 }
@@ -1149,8 +1149,8 @@ function renderScoreEntryEditor() {
     if (showHost) {
         showHost.innerHTML = SCORE_ENTRY_SHOW_META.map(function(m) {
             var on = draft.show[m.key] !== false;
-            return '<label class=\"se-show-item' + (on ? ' is-on' : '') + '\"><input type=\"checkbox\" data-show-key=\"' + m.key + '\"' + (on ? ' checked' : '') +
-                ' onchange=\"setScoreEntryShow(\'' + m.key + '\', this.checked)\"><span><strong>' + m.title + '</strong><small>' + m.desc + '</small></span></label>';
+            return '<label class="se-show-item' + (on ? ' is-on' : '') + '"><input type="checkbox" data-show-key="' + escapeHtml(m.key) + '"' + (on ? ' checked' : '') +
+                ' onchange="setScoreEntryShow(\'' + pestovoInlineJsArg(m.key) + '\', this.checked)"><span><strong>' + escapeHtml(m.title) + '</strong><small>' + escapeHtml(m.desc) + '</small></span></label>';
         }).join('');
     }
     var saveNote = document.getElementById('score-entry-editor-note');
@@ -1163,12 +1163,12 @@ function renderScoreEntryOrder() {
     var draft = ensureScoreEntryDraft();
     host.innerHTML = draft.order.map(function(key, index) {
         var meta = SCORE_ENTRY_BLOCK_META[key] || { icon: 'fa-grip', title: key, desc: '' };
-        return '<div class=\"entry-order-row\">' +
-            '<span class=\"sev-order-num\">' + (index + 1) + '</span>' +
-            '<span class=\"sev-order-ic\"><i class=\"fas ' + meta.icon + '\" aria-hidden=\"true\"></i></span>' +
-            '<span class=\"sev-order-info\"><strong>' + meta.title + '</strong><small>' + meta.desc + '</small></span>' +
-            '<span class=\"sev-order-btns\">' + [-1, 1].map(function(delta) {
-                return '<button type=\"button\" class=\"btn\" data-move-key=\"' + key + '\" data-delta=\"' + delta + '\" aria-label=\"' + meta.title + (delta < 0 ? ': выше' : ': ниже') + '\" onclick=\"moveScoreEntryBlock(' + index + ',' + delta + ')\"' + (index + delta < 0 || index + delta >= draft.order.length ? ' disabled' : '') + '>' + (delta < 0 ? '↑' : '↓') + '</button>';
+        return '<div class="entry-order-row">' +
+            '<span class="sev-order-num">' + (index + 1) + '</span>' +
+            '<span class="sev-order-ic"><i class="fas ' + meta.icon + '" aria-hidden="true"></i></span>' +
+            '<span class="sev-order-info"><strong>' + meta.title + '</strong><small>' + meta.desc + '</small></span>' +
+            '<span class="sev-order-btns">' + [-1, 1].map(function(delta) {
+                return '<button type="button" class="btn" data-move-key="' + key + '" data-delta="' + delta + '" aria-label="' + meta.title + (delta < 0 ? ': выше' : ': ниже') + '" onclick="moveScoreEntryBlock(' + index + ',' + delta + ')"' + (index + delta < 0 || index + delta >= draft.order.length ? ' disabled' : '') + '>' + (delta < 0 ? '↑' : '↓') + '</button>';
             }).join('') + '</span>' +
             '</div>';
     }).join('');
@@ -1181,19 +1181,19 @@ function renderScoreEntryPreview() {
     var mode = modeEl ? modeEl.value : 'group';
     var nav = '';
     for (var h = 1; h <= 18; h++) {
-        nav += '<button type=\"button\" class=\"hole-btn ' + (h === 7 ? 'active' : h < 7 ? 'verified' : '') + '\" aria-label=\"Лунка ' + h + '\" disabled>' + entryHoleContentHTML(h < 8 ? 5 : 0, mode === 'solo' ? null : h < 7 ? 5 : 0, h, 37) + '</button>';
+        nav += '<button type="button" class="hole-btn ' + (h === 7 ? 'active' : h < 7 ? 'verified' : '') + '" aria-label="Лунка ' + h + '" disabled>' + entryHoleContentHTML(h < 8 ? 5 : 0, mode === 'solo' ? null : h < 7 ? 5 : 0, h, 37) + '</button>';
     }
     function input(name, hcp, score, isMark) {
-        var badge = isMark ? '<span class=\"dual-half__badge dual-half__badge--mark\"><i class=\"fas fa-eye\"></i> Маркер</span>' : '<span class=\"dual-half__badge dual-half__badge--my\"><i class=\"fas fa-user\"></i> Я</span>';
-        return '<div class=\"dual-half ' + (isMark ? 'dual-half--mark' : 'dual-half--my') + '\"><div class=\"dual-half__head\">' + badge + '<span class=\"dual-half__name\">' + name + ' ' + fmtTeePill(hcp < 0 ? 'bl' : 'wh') + '</span></div><div class=\"dual-half__score\"><div class=\"score-disp\">' + scoreSquareHTML(score, 7, hcp) + (typeof hcpCaptionHTML === 'function' ? hcpCaptionHTML(hcp, 7) : '') + '</div></div><div class=\"dual-half__controls\"><button type=\"button\" class=\"dual-btn dual-btn--minus' + (isMark ? ' dual-btn--mark' : '') + '\" disabled>−</button><button type=\"button\" class=\"dual-btn dual-btn--plus' + (isMark ? ' dual-btn--mark' : '') + '\" disabled>+</button></div></div>';
+        var badge = isMark ? '<span class="dual-half__badge dual-half__badge--mark"><i class="fas fa-eye"></i> Маркер</span>' : '<span class="dual-half__badge dual-half__badge--my"><i class="fas fa-user"></i> Я</span>';
+        return '<div class="dual-half ' + (isMark ? 'dual-half--mark' : 'dual-half--my') + '"><div class="dual-half__head">' + badge + '<span class="dual-half__name">' + name + ' ' + fmtTeePill(hcp < 0 ? 'bl' : 'wh') + '</span></div><div class="dual-half__score"><div class="score-disp">' + scoreSquareHTML(score, 7, hcp) + (typeof hcpCaptionHTML === 'function' ? hcpCaptionHTML(hcp, 7) : '') + '</div></div><div class="dual-half__controls"><button type="button" class="dual-btn dual-btn--minus' + (isMark ? ' dual-btn--mark' : '') + '" disabled>−</button><button type="button" class="dual-btn dual-btn--plus' + (isMark ? ' dual-btn--mark' : '') + '" disabled>+</button></div></div>';
     }
-    var info = '<div class=\"hole-display\" data-entry-block=\"info\">' +
-        '<div class=\"hole-box h-hole\"><div class=\"hole-lbl\">Лунка</div><div class=\"hole-val\">7</div></div>' +
-        '<div class=\"hole-box h-par\"><div class=\"hole-lbl\">Пар</div><div class=\"hole-val\">' + holePar(7) + '</div></div>' +
-        '<div class=\"hole-box h-dist\"><div class=\"hole-lbl\">Метры</div><div class=\"hole-val\" style=\"font-size:24px;\">385</div></div>' +
-        '<div class=\"hole-box h-dl\"><div class=\"hole-lbl\">Дедлайн</div><div class=\"hole-val\" style=\"font-size:20px;color:var(--gold-l);\">12:40</div></div>' +
+    var info = '<div class="hole-display" data-entry-block="info">' +
+        '<div class="hole-box h-hole"><div class="hole-lbl">Лунка</div><div class="hole-val">7</div></div>' +
+        '<div class="hole-box h-par"><div class="hole-lbl">Пар</div><div class="hole-val">' + holePar(7) + '</div></div>' +
+        '<div class="hole-box h-dist"><div class="hole-lbl">Метры</div><div class="hole-val" style="font-size:24px;">385</div></div>' +
+        '<div class="hole-box h-dl"><div class="hole-lbl">Дедлайн</div><div class="hole-val" style="font-size:20px;color:var(--gold-l);">12:40</div></div>' +
         '</div>';
-    host.innerHTML = '<div class=\"score-entry card\" data-entry-preview=\"true\">' + info + '<div class=\"hole-nav\" data-entry-block=\"holes\">' + nav + '</div><div data-entry-block=\"input\"><div class=\"dual-score-split-panel' + (mode === 'solo' ? ' single' : '') + '\">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5, false) + (mode !== 'solo' ? '<div class=\"dual-split-divider\"><span></span></div>' : '') + (mode === 'group' ? input('Маркируемый игрок', -18, 4, true) : '') + '</div><button type=\"button\" class=\"btn btn-g btn-block\" disabled>Сохранить результат</button></div></div>';
+    host.innerHTML = '<div class="score-entry card" data-entry-preview="true">' + info + '<div class="hole-nav" data-entry-block="holes">' + nav + '</div><div data-entry-block="input"><div class="dual-score-split-panel' + (mode === 'solo' ? ' single' : '') + '">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5, false) + (mode !== 'solo' ? '<div class="dual-split-divider"><span></span></div>' : '') + (mode === 'group' ? input('Маркируемый игрок', -18, 4, true) : '') + '</div><button type="button" class="btn btn-g btn-block" disabled>Сохранить результат</button></div></div>';
     arrangeScoreEntry(host.firstElementChild, draft.view, draft.order, draft.show);
     var view = normalizeView5(draft.view);
     var style = SCORE_ENTRY_STYLES[view] || SCORE_ENTRY_STYLES['1'];
@@ -1364,8 +1364,8 @@ function renderTnRoundCardAdmin() {
         var blocks = tnRoundCardBlocksDraftValue();
         blocksEl.innerHTML = TN_ROUND_CARD_BLOCK_KEYS.map(function(key) {
             var label = (TN_ROUND_CARD_BLOCKS[key] || {}).ru || key;
-            return '<label class="se-show-item' + (blocks[key] === false ? '' : ' is-on') + '"><input type="checkbox" data-tn-block="' + key + '"' +
-                (blocks[key] === false ? '' : ' checked') + ' onchange="setTnRoundCardBlock(\'' + key + '\', this.checked)">' +
+            return '<label class="se-show-item' + (blocks[key] === false ? '' : ' is-on') + '"><input type="checkbox" data-tn-block="' + escapeHtml(key) + '"' +
+                (blocks[key] === false ? '' : ' checked') + ' onchange="setTnRoundCardBlock(\'' + pestovoInlineJsArg(key) + '\', this.checked)">' +
                 '<span>' + escapeHtml(label) + '</span></label>';
         }).join('');
     }

@@ -18,9 +18,17 @@ const sandbox = { console, Date, Math, JSON, parseInt, parseFloat, isFinite, isN
         addEventListener: () => {}, documentElement: { style: {}, setAttribute(){} },
         body: { style: {}, classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } } } },
     localStorage: { getItem: () => null, setItem(){}, removeItem(){} },
-    navigator: { language: 'ru' } };
+    navigator: { language: 'ru' }, currentLang: 'ru',
+    t: key => ({ player: 'Игрок', date: 'Дата' })[key] || key };
 sandbox.window = sandbox;
+sandbox.escapeHtml = function(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+};
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/course-config.js', 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/format.js', 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(__dirname + '/../js/utils.js', 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(__dirname + '/../js/tournaments.js', 'utf8'), sandbox);
 
@@ -39,6 +47,26 @@ function check(cond, label) {
     if (!cond) { failures++; console.error('FAIL', label); }
     else console.log('ok  -', label);
 }
+
+// ── Регрессии XSS для недоверенных кодов ти и ключей турнира ──
+const teePayload = 'wh" onmouseover="alert(1)<script>';
+eq(Array.from(sandbox.getRoundTeeCodes({ players: { attacker: { tee: teePayload } } })), ['wh'], 'tee: неизвестный код нормализуется в wh');
+eq(Array.from(sandbox.tnSafeTeeCodes(['bk', 'bk', teePayload, 'rd'])), ['bk', 'wh', 'rd'], 'tee: опции allowlist дедуплицированы');
+eq(Array.from(sandbox.tnSafeTeeCodes([])), ['wh'], 'tee: пустой allowlist получает wh');
+const maliciousPill = sandbox.fmtTeePill(teePayload);
+check(maliciousPill.indexOf('tee-wh') !== -1 && maliciousPill.indexOf('onmouseover') === -1 && maliciousPill.indexOf('<script>') === -1, 'tee: код не попадает в CSS-класс/HTML');
+const originalT = sandbox.t;
+sandbox.t = function() { return '<img src=x onerror=alert(1)>'; };
+const escapedTeePill = sandbox.fmtTeePill('wh');
+sandbox.t = originalT;
+check(escapedTeePill.indexOf('<img') === -1 && escapedTeePill.indexOf('&lt;img') !== -1, 'tee: HTML-метка экранируется');
+const hostileTnId = "tn');alert(1);//";
+const safeTnArg = sandbox.tnJsStr(hostileTnId);
+check(safeTnArg.indexOf("'") === -1 && safeTnArg.indexOf('\\u0027') !== -1 && safeTnArg.indexOf('<') === -1, 'tournament: inline JS-аргумент экранирован');
+const hostileInlineArg = "id\\\"');alert(1);//<tag>&\u2028\u2029";
+const encodedInlineArg = sandbox.pestovoInlineJsArg(hostileInlineArg);
+check(encodedInlineArg.indexOf("'") === -1 && encodedInlineArg.indexOf('"') === -1 &&
+    vm.runInContext("'" + encodedInlineArg + "'", sandbox) === hostileInlineArg, 'inline JS-аргумент безопасен и восстанавливается без потерь');
 
 // ── Объекты тестового турнира ──
 function mkTn(cut, withCut) {

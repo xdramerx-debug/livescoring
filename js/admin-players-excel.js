@@ -221,7 +221,7 @@ function impParseHcpStrict(raw) {
     if (s === '' || s === '—' || s === '-') return { err: 'empty' };
     var plus = false;
     if (s.charAt(0) === '+') { plus = true; s = s.substring(1); }
-    if (!/^\-?\d+([.,]\d+)?$/.test(s)) return { err: 'bad' };
+    if (!/^-?\d+([.,]\d+)?$/.test(s)) return { err: 'bad' };
     s = s.replace(',', '.');
     var v = parseFloat(s);
     if (plus) v = -Math.abs(v);

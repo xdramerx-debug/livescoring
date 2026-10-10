@@ -368,14 +368,14 @@ function loadStats() {
         var sumOut = 0, countOut = 0;
         var sumIn = 0, countIn = 0;
 
-        for (var h = 1; h <= 9; h++) {
+        for (h = 1; h <= 9; h++) {
             pOut += (typeof holePar === 'function' ? holePar(h) : 4);
             var hs = holeScores[h];
             if (hs && hs.count > 0) { sumOut += hs.sum; countOut += hs.count; }
         }
-        for (var h = 10; h <= 18; h++) {
+        for (h = 10; h <= 18; h++) {
             pIn += (typeof holePar === 'function' ? holePar(h) : 4);
-            var hs = holeScores[h];
+            hs = holeScores[h];
             if (hs && hs.count > 0) { sumIn += hs.sum; countIn += hs.count; }
         }
 
@@ -385,22 +385,22 @@ function loadStats() {
         var hHtml = '<div class="pestovo-modern-scorecard" style="margin-bottom:12px;padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
         hHtml += '<div class="msc-tile-grid msc-grid-9">';
         hHtml += '<div class="msc-tile msc-hdr-lbl">' + (langIsEn ? 'Hole' : 'Лунка') + '</div>';
-        for (var h = 1; h <= 9; h++) hHtml += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
+        for (h = 1; h <= 9; h++) hHtml += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
         hHtml += '<div class="msc-tile msc-hdr-tot">OUT</div>';
         hHtml += '<div class="msc-tile msc-lbl-par">' + parHeader + '</div>';
-        for (var h = 1; h <= 9; h++) hHtml += '<div class="msc-tile msc-val-par">' + (typeof holePar === 'function' ? holePar(h) : 4) + '</div>';
+        for (h = 1; h <= 9; h++) hHtml += '<div class="msc-tile msc-val-par">' + (typeof holePar === 'function' ? holePar(h) : 4) + '</div>';
         hHtml += '<div class="msc-tile msc-tot-par">' + pOut + '</div>';
         hHtml += '<div class="msc-tile msc-lbl-wh">' + avgHeader + '</div>';
-        for (var h = 1; h <= 9; h++) {
-            var hs = holeScores[h];
+        for (h = 1; h <= 9; h++) {
+            hs = holeScores[h];
             var avg = (hs && hs.count > 0) ? (hs.sum / hs.count).toFixed(1) : '—';
             hHtml += '<div class="msc-tile msc-val-wh">' + avg + '</div>';
         }
         var avgOutStr = (countOut > 0) ? (sumOut / (countOut / 9)).toFixed(1) : '—';
         hHtml += '<div class="msc-tile msc-tot-wh">' + avgOutStr + '</div>';
         hHtml += '<div class="msc-tile msc-lbl-idx">±Par</div>';
-        for (var h = 1; h <= 9; h++) {
-            var hs = holeScores[h];
+        for (h = 1; h <= 9; h++) {
+            hs = holeScores[h];
             if (!hs || hs.count === 0) {
                 hHtml += '<div class="msc-tile msc-val-idx">—</div>';
             } else {
@@ -418,17 +418,17 @@ function loadStats() {
         hHtml += '<div class="pestovo-modern-scorecard" style="padding:12px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">';
         hHtml += '<div class="msc-tile-grid msc-grid-10">';
         hHtml += '<div class="msc-tile msc-hdr-lbl">' + (langIsEn ? 'Hole' : 'Лунка') + '</div>';
-        for (var h = 10; h <= 18; h++) hHtml += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
+        for (h = 10; h <= 18; h++) hHtml += '<div class="msc-tile msc-hdr-num">' + h + '</div>';
         hHtml += '<div class="msc-tile msc-hdr-tot">IN</div>';
         hHtml += '<div class="msc-tile msc-hdr-tot" style="background:var(--gold);color:var(--bg);">' + (langIsEn ? 'TOT' : 'ВСЕГО') + '</div>';
         hHtml += '<div class="msc-tile msc-lbl-par">' + parHeader + '</div>';
-        for (var h = 10; h <= 18; h++) hHtml += '<div class="msc-tile msc-val-par">' + (typeof holePar === 'function' ? holePar(h) : 4) + '</div>';
+        for (h = 10; h <= 18; h++) hHtml += '<div class="msc-tile msc-val-par">' + (typeof holePar === 'function' ? holePar(h) : 4) + '</div>';
         hHtml += '<div class="msc-tile msc-tot-par">' + pIn + '</div>';
         hHtml += '<div class="msc-tile msc-tot-par" style="font-weight:900;">' + (pOut + pIn) + '</div>';
         hHtml += '<div class="msc-tile msc-lbl-wh">' + avgHeader + '</div>';
-        for (var h = 10; h <= 18; h++) {
-            var hs = holeScores[h];
-            var avg = (hs && hs.count > 0) ? (hs.sum / hs.count).toFixed(1) : '—';
+        for (h = 10; h <= 18; h++) {
+            hs = holeScores[h];
+            avg = (hs && hs.count > 0) ? (hs.sum / hs.count).toFixed(1) : '—';
             hHtml += '<div class="msc-tile msc-val-wh">' + avg + '</div>';
         }
         var avgInStr = (countIn > 0) ? (sumIn / (countIn / 9)).toFixed(1) : '—';
@@ -436,14 +436,14 @@ function loadStats() {
         var totAvgStr = (countOut > 0 && countIn > 0) ? ((sumOut / (countOut / 9)) + (sumIn / (countIn / 9))).toFixed(1) : '—';
         hHtml += '<div class="msc-tile msc-tot-wh" style="font-weight:900;">' + totAvgStr + '</div>';
         hHtml += '<div class="msc-tile msc-lbl-idx">±Par</div>';
-        for (var h = 10; h <= 18; h++) {
-            var hs = holeScores[h];
+        for (h = 10; h <= 18; h++) {
+            hs = holeScores[h];
             if (!hs || hs.count === 0) {
                 hHtml += '<div class="msc-tile msc-val-idx">—</div>';
             } else {
-                var diff = (hs.sum / hs.count) - (typeof holePar === 'function' ? holePar(h) : 4);
-                var diffStr = (diff > 0 ? '+' : '') + diff.toFixed(1);
-                var colorStyle = diff > 0.3 ? 'color:#e74c3c;font-weight:800;' : diff < -0.1 ? 'color:#2ecc71;font-weight:800;' : 'color:var(--white);';
+                diff = (hs.sum / hs.count) - (typeof holePar === 'function' ? holePar(h) : 4);
+                diffStr = (diff > 0 ? '+' : '') + diff.toFixed(1);
+                colorStyle = diff > 0.3 ? 'color:#e74c3c;font-weight:800;' : diff < -0.1 ? 'color:#2ecc71;font-weight:800;' : 'color:var(--white);';
                 hHtml += '<div class="msc-tile msc-val-idx" style="' + colorStyle + '">' + diffStr + '</div>';
             }
         }

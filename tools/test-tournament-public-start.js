@@ -47,7 +47,7 @@ var DATA = {
     }
 };
 
-function render(url, data) {
+function render(url, data, core) {
     var html = fs.readFileSync(path.join(ROOT, 'tournaments.html'), 'utf8')
         .replace(/<script\b[^>]*src=[^>]*><\/script>/gi, '');
     var dom = new JSDOM(html, { runScripts: 'outside-only', url: url });
@@ -67,6 +67,7 @@ function render(url, data) {
         }
     };
     win.currentLang = 'ru';
+    if (core) win.TournamentCore = core;
     win.eval(fs.readFileSync(path.join(ROOT, 'js/tournament-public.js'), 'utf8'));
     // init() ждёт DOMContentLoaded — отдаём управление циклу событий.
     return new Promise(function (resolve) { setTimeout(function () { resolve(win); }, 30); });
@@ -100,6 +101,36 @@ var mw = await render('https://example.test/tournaments.html?id=tnA&tab=start', 
 var titles = mw.document.querySelectorAll('.tn-start-round-title');
 check('многодневный турнир: заголовок у каждого раунда по порядку', titles.length === 2 &&
     titles[0].textContent.indexOf('Раунд 1') !== -1 && titles[1].textContent.indexOf('Раунд 2') !== -1, titles.length);
+
+// Значения лидерборда считаются недоверенными: атрибуты, JSON с лунками и
+// содержимое карточки не должны превращаться в HTML, а кнопка работает через делегирование.
+var hostileRow = {
+    key: 'key" data-owned="yes&<',
+    name: `O'Neil <img src=x onerror=alert(1)> &`,
+    status: '<img src=x onerror=alert(1)>',
+    thru: '<svg onload=alert(1)>',
+    gross: 50,
+    net: 45,
+    stableford: 36,
+    position: 1,
+    holes: [{ hole: '<img src=x onerror=alert(1)>', gross: '<svg onload=alert(1)>' }]
+};
+var hostileBoard = await render('https://example.test/tournaments.html?id=tnA&tab=leaderboard', DATA, {
+    classify: function(t) { return { status: t.status || 'upcoming', registrationOpen: t.status === 'upcoming' }; },
+    isRegistrationOpen: function(t) { return t.status === 'upcoming'; },
+    registrationConfig: function() { return { limit: 0 }; },
+    buildLeaderboard: function() { return [hostileRow]; }
+});
+var playerCardButton = hostileBoard.document.querySelector('[data-tn-player-card]');
+check('лидерборд: динамические данные экранированы в атрибутах', !!playerCardButton &&
+    playerCardButton.dataset.key === hostileRow.key && playerCardButton.dataset.name === hostileRow.name &&
+    JSON.parse(playerCardButton.dataset.holes)[0].hole === hostileRow.holes[0].hole &&
+    !playerCardButton.hasAttribute('onclick') && !hostileBoard.document.querySelector('#tn-detail-content img, #tn-detail-content svg'));
+if (playerCardButton) playerCardButton.click();
+var cardBody = hostileBoard.document.getElementById('tn-player-card-body');
+check('лидерборд: карточка показывает недоверенные поля только как текст', !!cardBody &&
+    hostileBoard.document.getElementById('tn-player-card-overlay').style.display === 'flex' &&
+    !cardBody.querySelector('img,svg') && cardBody.textContent.indexOf('<img src=x') !== -1);
 
 console.log('\n' + (fails ? '✗ ' + fails + ' / ' + total : 'All tournament-public start tests passed ✔ (' + total + ' checks)'));
 process.exit(fails ? 1 : 0);

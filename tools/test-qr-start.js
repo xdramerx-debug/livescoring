@@ -215,5 +215,19 @@ check(htmlO.indexOf('Группа 1') !== -1 && htmlO.indexOf('Группа 2') 
 check(htmlO.indexOf('10А') === -1, 'scheme 10: без буквенных волн');
 check(htmlO.indexOf('Лунка 10') !== -1, 'scheme 10: в шапке флайта указана лунка 10');
 
+// Недоверенный код ти не должен выводиться как текст/HTML.
+check(sandbox.qrTeeName('bk') === 'Чёрный', 'tee labels: известный код получает штатную подпись');
+check(sandbox.qrTeeName('<img src=x onerror=alert(1)>') === '—', 'tee labels: неизвестный код даёт безопасную заглушку');
+const xssTeeDoc = {
+    groups: {
+        x: { groupNo: 1, startHole: 1, startTime: 1000, players: [
+            { id: 'xss', lastName: 'Проверка', firstName: 'Тест', middleName: '', gender: 'men', tee: '<img src=x onerror=alert(1)>', exactHcp: 10, fieldHcp: 10 }
+        ], markers: [] }
+    }
+};
+sandbox.qrRender(xssTeeDoc);
+const xssHtml = els['qr-content'].innerHTML || '';
+check(xssHtml.indexOf('<img src=x') === -1 && xssHtml.indexOf('ТИ: <b>—</b>') !== -1, 'tee labels: QR-разметка использует безопасную заглушку');
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nqr-start render tests passed ✔');
 process.exit(failures ? 1 : 0);

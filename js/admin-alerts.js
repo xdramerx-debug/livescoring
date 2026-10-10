@@ -234,9 +234,9 @@ function admAlertsRenderPanel(p) {
                 html += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-wrap:wrap;">';
                 if (!alreadyResponded) {
                     var acceptCallText = currentLang === 'en' ? 'Accept Call' : 'Вызов принят';
-                    html += '<button class="btn btn-g btn-sm" style="background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;border:none;" onclick="respondToAlert(\'' + id + '\', \'' + a.type + '\', \'' + (a.playerId || '') + '\')"><i class="fas fa-car"></i> ' + acceptCallText + '</button>';
+                    html += '<button class="btn btn-g btn-sm" style="background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;border:none;" onclick="respondToAlert(\'' + pestovoInlineJsArg(id) + '\', \'' + pestovoInlineJsArg(a.type) + '\', \'' + pestovoInlineJsArg(a.playerId || '') + '\')"><i class="fas fa-car"></i> ' + acceptCallText + '</button>';
                 }
-                html += '<button class="btn btn-r btn-sm" onclick="closeAlert(\'' + id + '\')">' + (currentLang === 'en' ? 'Dismiss Alert' : 'Закрыть вызов') + '</button>';
+                html += '<button class="btn btn-r btn-sm" onclick="closeAlert(\'' + pestovoInlineJsArg(id) + '\')">' + (currentLang === 'en' ? 'Dismiss Alert' : 'Закрыть вызов') + '</button>';
                 html += '</div>';
                 html += '</div>';
             });

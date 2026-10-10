@@ -146,8 +146,8 @@ function loadPlayers() {
                 return ha - hb;
             }
             if (sortBy === 'hcp-desc') {
-                var ha = a[1].handicap != null ? parseExactHcp(a[1].handicap) : -999;
-                var hb = b[1].handicap != null ? parseExactHcp(b[1].handicap) : -999;
+                ha = a[1].handicap != null ? parseExactHcp(a[1].handicap) : -999;
+                hb = b[1].handicap != null ? parseExactHcp(b[1].handicap) : -999;
                 return hb - ha;
             }
             return (b[1].roundsPlayed || 0) - (a[1].roundsPlayed || 0);

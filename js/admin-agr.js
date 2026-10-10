@@ -865,7 +865,7 @@ function rgRenderDuplicateGroups(groups) {
         g.players.forEach(function(pl, pi) {
             var u = pl.data || {};
             var curHcp = u.handicap != null ? fmtExactHcp(u.handicap) : '—';
-            var safeId = String(pl.id).replace(/'/g, "\\'");
+            var safeId = pestovoInlineJsArg(pl.id);
             var inputId = 'rg-dup-hcp-' + gi + '-' + pi;
             html += '<div class="list-item" style="padding:10px;gap:10px;flex-wrap:wrap;">';
             html += '<div style="flex:1;min-width:160px;"><strong style="color:var(--gold);">' + escapeHtml(rgPlayerDisplayName(pl)) + '</strong>';

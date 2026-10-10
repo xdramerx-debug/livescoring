@@ -79,7 +79,7 @@ function setupPlayerCardHtml(idx, opts) {
     var cls = 'setup-player-card spc' + (rich ? ' spc-rich' : '') + (open ? ' open' : '');
     var head =
         '<div class="setup-player-head" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
-            '<span class="spc-avatar" id="spc-avatar-' + idx + '">' + spcAvatarText(opts.name || '', idx) + '</span>' +
+            '<span class="spc-avatar" id="spc-avatar-' + idx + '">' + escapeHtml(spcAvatarText(opts.name || '', idx)) + '</span>' +
             '<span class="spc-title"><i class="fas fa-user"></i> ' + t('player') + ' #' + idx + (you ? ' <em class="spc-you">(' + t('you') + ')</em>' : '') + '</span>' +
             '<span class="spc-meta" id="spc-meta-' + idx + '"></span>' +
             (!opts.first
@@ -125,7 +125,7 @@ function setupPlayerRowHtml(idx, opts) {
         '<div class="form-group"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + idx + '" class="form-input" readonly placeholder="—"></div>';
 
     return '<div class="setup-player-card spc spc-row open" data-pidx="' + idx + '">' +
-        '<span class="spc-avatar" id="spc-avatar-' + idx + '">' + spcAvatarText(opts.name || '', idx) + '</span>' +
+        '<span class="spc-avatar" id="spc-avatar-' + idx + '">' + escapeHtml(spcAvatarText(opts.name || '', idx)) + '</span>' +
         '<div class="form-row spc-row-fields">' + fields + '</div>' +
         (!opts.first
             ? '<button type="button" class="spc-remove" title="' + t('remove_player_btn') + '" aria-label="' + t('remove_player_btn') + '" onclick="removeSetupPlayer(' + idx + ')"><i class="fas fa-user-minus"></i></button>'
@@ -781,11 +781,13 @@ function renderUnifiedSummary() {
     ps.forEach(function(p, i) {
         var ini = spcAvatarText(p.name, i + 1);
         var fEl = document.getElementById('pl-field-' + p.idx);
+        var teeCode = typeof pestovoNormalizeTeeCode === 'function' ? pestovoNormalizeTeeCode(p.tee) : 'wh';
+        var teeName = typeof pestovoTeeLabel === 'function' ? pestovoTeeLabel(teeCode) : 'Белый';
         rows += '<div class="us-row">' +
-            '<span class="spc-avatar">' + ini + '</span>' +
+            '<span class="spc-avatar">' + escapeHtml(ini) + '</span>' +
             '<span class="us-name">' + (p.name ? escapeHtml(p.name) : (t('player') + ' #' + p.idx)) + '</span>' +
-            '<span class="tee-pill tee-' + p.tee + '" style="font-size:9.5px;padding:1px 7px;">' + (typeof t === 'function' ? t('tee_' + p.tee) : p.tee) + '</span>' +
-            '<span style="color:var(--muted);font-size:12px;">' + (fEl && fEl.value ? fEl.value : '—') + '</span>' +
+            '<span class="tee-pill tee-' + teeCode + '" style="font-size:9.5px;padding:1px 7px;">' + escapeHtml(teeName) + '</span>' +
+            '<span style="color:var(--muted);font-size:12px;">' + (fEl && fEl.value ? escapeHtml(fEl.value) : '—') + '</span>' +
             '</div>';
     });
 

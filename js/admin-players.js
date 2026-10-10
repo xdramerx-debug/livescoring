@@ -37,6 +37,8 @@ function admJsStr(v) {
         .replace(/"/g, '&quot;')
         .replace(/\r/g, '\\r')
         .replace(/\n/g, '\\n')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029')
         .replace(/</g, '\\x3c');
 }
 
@@ -105,7 +107,7 @@ function renderAdmPlayersList(remoteData) {
         var selfMark = (typeof currentUser !== 'undefined' && currentUser && id === currentUser.uid)
             ? ' <span style="color:var(--gold);font-size:11px;">(' + (en ? 'You' : 'Это вы') + ')</span>' : '';
 
-        html += '<div class="adm-player-row" onclick="admTogglePlayerRow(\'' + id + '\')">' +
+        html += '<div class="adm-player-row" onclick="admTogglePlayerRow(\'' + admJsStr(id) + '\')">' +
             '<span class="adm-player-ava">' + escapeHtml(initials) + '</span>' +
             '<span class="adm-player-main"><span class="adm-player-name">' + escapeHtml(name) + selfMark + '</span>' +
             '<span class="adm-player-meta">HCP ' + escapeHtml(String(hcpTxt)) +
@@ -114,7 +116,7 @@ function renderAdmPlayersList(remoteData) {
             '<span class="adm-role-dot ' + dotCls + '"></span></div>';
 
         var nameJs = admJsStr(u.name);
-        html += '<div id="adm-p-' + id + '" class="adm-player-actions' + (admPlayersExpanded[id] ? '' : ' hidden') + '">';
+        html += '<div id="adm-p-' + escapeHtml(id) + '" class="adm-player-actions' + (admPlayersExpanded[id] ? '' : ' hidden') + '">';
         html += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">' +
             escapeHtml(u.email || (en ? 'No email' : 'Без email')) +
             (u.phone ? ' · 📞 ' + escapeHtml(u.phone) : '') +
@@ -132,7 +134,7 @@ function renderAdmPlayersList(remoteData) {
         }
 
         if (typeof currentUser === 'undefined' || !currentUser || id !== currentUser.uid) {
-            html += '<select class="form-input" style="padding:5px 8px;font-size:11.5px;width:auto;" onchange="changeRole(\'' + id + '\', this.value, \'' + nameJs + '\')">';
+            html += '<select class="form-input" style="padding:5px 8px;font-size:11.5px;width:auto;" onchange="changeRole(\'' + admJsStr(id) + '\', this.value, \'' + nameJs + '\')">';
             html += '<option value="player" ' + (curRole === 'player' ? 'selected' : '') + '>' + t('role_player') + '</option>';
             html += '<option value="referee" ' + (curRole === 'referee' ? 'selected' : '') + '>' + t('role_referee') + '</option>';
             html += '<option value="marshal" ' + (curRole === 'marshal' ? 'selected' : '') + '>' + t('role_marshal') + '</option>';
@@ -141,17 +143,17 @@ function renderAdmPlayersList(remoteData) {
 
             var privInd = (typeof pestovoPrivacy !== 'undefined' && pestovoPrivacy.players) ? pestovoPrivacy.players[id] : undefined;
             var privHidden = (privInd === true) || (privInd !== false && (typeof pestovoPrivacy === 'undefined' ? false : pestovoPrivacy.enabled === true));
-            html += '<button class="btn ' + (privHidden ? 'btn-r' : 'btn-og') + ' btn-sm" onclick="togglePlayerPrivacy(\'' + id + '\')" title="' +
+            html += '<button class="btn ' + (privHidden ? 'btn-r' : 'btn-og') + ' btn-sm" onclick="togglePlayerPrivacy(\'' + admJsStr(id) + '\')" title="' +
                 (en ? 'Hide/show full name from others' : 'Скрыть/показывать ФИО от других') + '">' +
                 '<i class="fas fa-' + (privHidden ? 'eye' : 'eye-slash') + '"></i> ' + t(privHidden ? 'privacy_show_btn' : 'privacy_hide_btn') + '</button>';
 
-            html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + nameJs + '\')" title="' +
+            html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + admJsStr(id) + '\',\'' + nameJs + '\')" title="' +
                 (en ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
 
-            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + id + '\',\'' + nameJs + '\')" title="Delete">' +
+            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + admJsStr(id) + '\',\'' + nameJs + '\')" title="Delete">' +
                 '<i class="fas fa-trash"></i></button>';
         } else {
-            html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + id + '\',\'' + nameJs + '\')" title="' +
+            html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + admJsStr(id) + '\',\'' + nameJs + '\')" title="' +
                 (en ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
         }
 

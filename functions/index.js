@@ -77,10 +77,10 @@ exports.tournamentMasterSignIn = functions.runWith({}).https.onCall(async functi
                 return { since: next.since, count: next.count + 1 };
             });
         } catch (e) {
-            // Если транзакция не удалась из-за правил/иного — не блокируем вход полностью,
-            // логируем и продолжаем (rate-limit в памяти ниже всё равно есть).
-            if (functions.logger) functions.logger.warn('masterLoginAttempts transaction failed, continuing', e && e.message);
-            result = { committed: true };
+            // Rate-limit хранится в RTDB и общий для всех экземпляров функции.
+            // При недоступной базе нельзя разрешать вход без лимита: fail closed.
+            if (functions.logger) functions.logger.warn('masterLoginAttempts transaction failed', e && e.message);
+            throw new functions.https.HttpsError('unavailable', 'Login service is temporarily unavailable. Try again later.');
         }
         if (!result.committed) throw new functions.https.HttpsError('resource-exhausted', 'Too many attempts. Try again later.');
         const actual = crypto.createHash('sha256').update(password, 'utf8').digest();
@@ -180,17 +180,6 @@ exports.wipeAllData = functions.runWith({}).https.onCall(async function (data, c
 
 // ── Валидация входных данных (defense-in-depth; основные правила — в database.rules.json) ──
 function str(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
-function validAudience(a) {
-    if (!a || typeof a !== 'object') return { type: 'all', includePwa: false, uids: {} };
-    const type = (a.type === 'roster' || a.type === 'protocol') ? a.type : 'all';
-    const uids = {};
-    if (a.uids && typeof a.uids === 'object') {
-        Object.keys(a.uids).forEach(function (k) {
-            if (k && a.uids[k] !== false && a.uids[k] != null) uids[String(k)] = true;
-        });
-    }
-    return { type: type, includePwa: a.includePwa === true, uids: uids };
-}
 // Наивный rate-limit в памяти (per Cloud Function instance).
 const _rateBuckets = {};
 function rateLimited(key, ms) {

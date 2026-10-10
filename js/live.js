@@ -1680,6 +1680,10 @@ function releaseSaveLock() {
 }
 
 function saveHoleScores() {
+    if (curRoundData && curRoundData.paused) {
+        toast(t('round_paused') || (currentLang === 'en' ? 'Round paused' : 'Раунд на паузе'), 'error');
+        return;
+    }
     if (!canEditGroup) { toast(t('msg_edit_disabled'), 'error'); return; }
     if (saveHoleInFlight) return;
     var targetIsFinished = myTargetUid && typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(curRoundData, myTargetUid);

@@ -94,6 +94,13 @@
         <button type="button" class="tn-back-link" id="tn-detail-back"><i class="fas fa-arrow-left"></i> Все турниры</button>
         <div id="tn-detail-content"></div>
     </section>
+    <div id="tn-player-card-overlay" style="display:none;position:fixed;inset:0;background:rgba(11,26,14,.55);z-index:200;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this){this.style.display='none';}">
+        <div style="background:#fff;border-radius:14px;padding:22px 24px;max-width:360px;width:100%;box-shadow:0 18px 40px rgba(11,26,14,.25);position:relative;" onclick="event.stopPropagation();">
+            <button type="button" onclick="document.getElementById('tn-player-card-overlay').style.display='none';" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:18px;color:#69766c;cursor:pointer;" aria-label="Close">×</button>
+            <h3 id="tn-player-card-name" style="margin:0 0 8px;font-family:Georgia,serif;font-size:20px;color:#17432b;"></h3>
+            <div id="tn-player-card-body" style="font-size:14px;color:#314437;line-height:1.45;"></div>
+        </div>
+    </div>
 </main>
 
 <footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.111.0</span></p></div></div></footer>

@@ -170,8 +170,8 @@
             state.roundsBound = true;
             bindRealtime('public-tournament-rounds-v2', db.ref('rounds'), function (snapshot) {
                 state.rounds = snapshot && snapshot.val ? (snapshot.val() || {}) : {};
-                if (state.detailId && state.detailTab === 'leaderboard') renderDetail();
-                else if (!state.detailId) renderCatalog();
+                if (state.detailId) renderDetail();
+                else renderCatalog();
             });
         }
         if (!state.protocolsBound) {
@@ -226,7 +226,6 @@
             '<span class="tn-public-badge ' + badge.cls + '"><i class="fas ' + badge.icon + '"></i> ' + esc(badge.text) + '</span></div>' +
             '<div class="tn-public-meta"><span><i class="fas fa-calendar-day"></i> ' + esc(formatDate(t.date)) + '</span><span><i class="fas fa-flag"></i> ' + esc(courseName(t)) + '</span><span><i class="fas fa-users"></i> ' + count + (max ? '/' + max : '') + '</span></div>' +
             '<div class="tn-public-format">' + (formats.length ? formats.slice(0, 3).map(function (f) { return '<span class="tn-public-chip">' + esc(formatLabel(f)) + '</span>'; }).join('') : '<span class="tn-public-chip">' + ru('Формат уточняется', 'Format to be confirmed') + '</span>') + '</div>' +
-            '<p class="tn-public-card-desc">' + esc(t.description || ru('Откройте карточку, чтобы увидеть участников, стартовый лист и результаты.', 'Open the card for participants, tee sheet and results.')) + '</p>' +
             '<div class="tn-public-card-actions">' + regAction + '<button type="button" class="btn btn-og btn-sm tn-public-open" data-tn-action="detail" data-tn-id="' + esc(t._key) + '"><i class="fas fa-arrow-right"></i> ' + ru('Подробнее', 'View details') + '</button></div></div></article>';
     }
     function renderCatalog() {
@@ -313,6 +312,33 @@
         var people = roster(t), waits = listValue(t.waitlist), max = limit(t);
         return '<div class="tn-detail-grid"><div class="tn-detail-stat"><b>' + people.length + (max ? '/' + max : '') + '</b><span>' + ru('подтверждённых участников', 'confirmed participants') + '</span></div><div class="tn-detail-stat"><b>' + waits.length + '</b><span>' + ru('в листе ожидания', 'on the waitlist') + '</span></div></div>' + (people.length ? '<h3>' + ru('Список участников', 'Participants') + '</h3><div class="tn-public-table-wrap"><table class="tn-public-table"><thead><tr><th>#</th><th>' + ru('Игрок', 'Player') + '</th><th>HCP</th><th>' + ru('Ти', 'Tee') + '</th></tr></thead><tbody>' + people.map(function (p, i) { return '<tr><td>' + (i + 1) + '</td><td>' + esc(safeName(p, p._key)) + '</td><td>' + esc(p.handicap == null ? '—' : p.handicap) + '</td><td>' + esc(p.tee || '—') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="tn-protocol-note">' + ru('Подтверждённых участников пока нет.', 'No confirmed participants yet.') + '</div>');
     }
+    function showPlayerCardFromLeaderboard(btn) {
+        if (!btn) return;
+        var row = {
+            key: btn.dataset.key || '',
+            name: btn.dataset.name || '',
+            status: btn.dataset.status || '',
+            thru: btn.dataset.thru || '',
+            gross: btn.dataset.gross === '' || btn.dataset.gross === 'null' ? null : parseFloat(btn.dataset.gross),
+            net: btn.dataset.net === '' || btn.dataset.net === 'null' ? null : parseFloat(btn.dataset.net),
+            position: btn.dataset.position === '' || btn.dataset.position === 'null' ? null : parseInt(btn.dataset.position, 10),
+            holes: btn.dataset.holes ? JSON.parse(btn.dataset.holes) : []
+        };
+        if (!row.name && !row.key) return;
+        var overlay = document.getElementById('tn-player-card-overlay');
+        var body = document.getElementById('tn-player-card-body');
+        var title = document.getElementById('tn-player-card-name');
+        if (!overlay || !body || !title) return;
+        title.textContent = row.name || '—';
+        var html = '<div><b>' + ru('Статус', 'Status') + ':</b> ' + (row.status || '—') + '</div>' +
+            '<div style="margin-top:4px;"><b>' + ru('Всего ударов', 'Total strokes') + ':</b> ' + (row.gross != null ? row.gross : '—') + '</div>' +
+            '<div><b>Net:</b> ' + (row.net != null ? row.net : '—') + '</div>' +
+            '<div><b>' + ru('Прошёл', 'Thru') + ':</b> ' + (row.thru || '—') + '</div>' +
+            (row.holes && row.holes.length ? '<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#f4f6f2;"><b>' + ru('Детали по лункам', 'Hole breakdown') + ':</b> ' + row.holes.map(function(h) { return (h.hole || '—') + ':' + (h.gross != null ? h.gross : '—'); }).join(' · ') + '</div>' : '') +
+            (row.position != null ? '<div style="margin-top:8px;font-weight:800;color:#b59b5c;">#' + row.position + '</div>' : '');
+        body.innerHTML = html;
+        overlay.style.display = 'flex';
+    }
     function playerStatus(row) {
         var status = String(row.status || '').toUpperCase();
         return status && status !== 'ACTIVE' ? '<span class="tn-result-status">' + esc(status) + '</span>' : (row.holes ? '<span class="tn-live-indicator"><i class="fas fa-circle"></i> LIVE</span>' : '—');
@@ -321,7 +347,10 @@
         var core = getCore(), rows = core ? core.buildLeaderboard(Object.assign({}, t, { _key: t._key }), state.rounds, state.course) : [];
         if (!rows.length) return '<div class="tn-public-empty"><i class="fas fa-ranking-star"></i><div>' + ru('Результатов пока нет.', 'No scores yet.') + '</div><small>' + ru('Лидерборд обновится автоматически после первого счёта.', 'The leaderboard updates automatically after the first score.') + '</small></div>';
         var formatText = JSON.stringify(t.formats || []) + JSON.stringify(t.wizard && t.wizard.scoring || {}), isStable = /stableford/i.test(formatText), isGross = !isStable && /gross|stroke-gross/i.test(formatText);
-        return '<div class="tn-protocol-actions"><span class="tn-live-indicator"><i class="fas fa-circle"></i> ' + (classification(t).status === 'active' ? ru('LIVE · обновляется автоматически', 'LIVE · updates automatically') : ru('Последняя опубликованная версия', 'Last published version')) + '</span><span class="tn-public-chip">' + (isStable ? 'Stableford' : isGross ? ru('Stroke Play · Gross', 'Stroke Play · Gross') : ru('Stroke Play · Net', 'Stroke Play · Net')) + '</span></div>' + '<div class="tn-public-table-wrap"><table class="tn-public-table"><thead><tr><th>#</th><th>' + ru('Игрок', 'Player') + '</th><th>' + ru('Лунки', 'Thru') + '</th><th>Gross</th><th>Net</th><th>Stableford</th><th>' + ru('Статус', 'Status') + '</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + (r.position == null ? '—' : r.position) + '</td><td class="' + (r.holes ? 'tn-live-name' : '') + '">' + esc(safeName({ name: r.name }, r.key)) + '</td><td>' + r.thru + '</td><td>' + (r.gross || '—') + '</td><td>' + (r.net || '—') + '</td><td>' + (r.stableford || '—') + '</td><td>' + playerStatus(r) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+        return '<div class="tn-protocol-actions"><span class="tn-live-indicator"><i class="fas fa-circle"></i> ' + (classification(t).status === 'active' ? ru('LIVE · обновляется автоматически', 'LIVE · updates automatically') : ru('Последняя опубликованная версия', 'Last published version')) + '</span><span class="tn-public-chip">' + (isStable ? 'Stableford' : isGross ? ru('Stroke Play · Gross', 'Stroke Play · Gross') : ru('Stroke Play · Net', 'Stroke Play · Net')) + '</span></div>' + '<div class="tn-public-table-wrap"><table class="tn-public-table"><thead><tr><th>#</th><th>' + ru('Игрок', 'Player') + '</th><th>' + ru('Лунки', 'Thru') + '</th><th>Gross</th><th>Net</th><th>Stableford</th><th>' + ru('Статус', 'Status') + '</th></tr></thead><tbody>' + rows.map(function (r) {
+            var holesJson = JSON.stringify(r.holes || []).replace(/'/g, "\\'");
+            return '<tr><td>' + (r.position == null ? '—' : r.position) + '</td><td class="' + (r.holes ? 'tn-live-name' : '') + '"><button type="button" onclick="showPlayerCardFromLeaderboard(this)" data-key="' + (r.key ? String(r.key).replace(/"/g, '&quot;') : '') + '" data-name="' + (r.name ? String(r.name).replace(/"/g, '&quot;') : '') + '" data-status="' + (r.status ? String(r.status).replace(/"/g, '&quot;') : '') + '" data-thru="' + (r.thru != null ? String(r.thru) : '') + '" data-gross="' + (r.gross != null ? String(r.gross) : 'null') + '" data-net="' + (r.net != null ? String(r.net) : 'null') + '" data-position="' + (r.position != null ? String(r.position) : 'null') + '" data-holes=\'' + holesJson + '\' style="background:none;border:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer;text-decoration:underline;">' + esc(safeName({ name: r.name }, r.key)) + '</button></td><td>' + r.thru + '</td><td>' + (r.gross || '—') + '</td><td>' + (r.net || '—') + '</td><td>' + (r.stableford || '—') + '</td><td>' + playerStatus(r) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
     }
     function activeTournamentHtml(t) {
         var c = classification(t), badge = statusLabel(t, c), formats = tournamentFormats(t);
@@ -334,7 +363,7 @@
             (t.description ? '<p class="tn-active-description">' + esc(t.description) + '</p>' : '') +
             '<div class="tn-public-meta tn-active-meta">' + metrics + '</div>' +
             '<div class="tn-public-format">' + (formats.length ? formats.slice(0, 4).map(function (format) { return '<span class="tn-public-chip">' + esc(formatLabel(format)) + '</span>'; }).join('') : '') + '</div></div>' +
-            '<button type="button" class="btn btn-og btn-sm" data-tn-action="detail" data-tn-id="' + esc(t._key) + '" data-tn-tab="leaderboard"><i class="fas fa-arrow-up-right-from-square"></i> ' + ru('Открыть турнир', 'Open tournament') + '</button></header>' +
+            '<button type="button" class="btn btn-og btn-sm tn-public-open" data-tn-action="detail" data-tn-id="' + esc(t._key) + '" data-tn-tab="leaderboard"><i class="fas fa-arrow-up-right-from-square"></i> ' + ru('Общий лидерборд', 'Full leaderboard') + '</button></header>' +
             '<div class="tn-active-leaderboard"><div class="tn-active-board-heading"><h3><i class="fas fa-ranking-star"></i> ' + ru('Лидерборд', 'Leaderboard') + '</h3><span class="tn-live-indicator"><i class="fas fa-circle"></i> LIVE</span></div>' + leaderboardHtml(t) + '</div>' +
             '</article>';
     }

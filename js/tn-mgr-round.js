@@ -781,6 +781,12 @@ var TnMgrRoundUI = (function (root) {
     // ПРАВКИ
     // ----------------------------------------------------------
     function writeScoreCell(input) {
+        var currentRound = ui().roundOf(rid()) || {};
+        if (currentRound.paused) {
+            ui().toastMsg(bi('Турнир на паузе — введите счёт после возобновления', 'Tournament paused — enter score after resume'), 'error');
+            input.value = '';
+            return;
+        }
         var pid = input.getAttribute('data-pid');
         var hole = core().intOf(input.getAttribute('data-hole'), 0);
         var raw = core().trim(input.value);

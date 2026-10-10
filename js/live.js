@@ -1024,6 +1024,13 @@ function applyRoundState(data) {
         toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден', 'error');
         return;
     }
+    // Карточки в турнире: вид карточки и состав блоков экрана ввода
+    // (админ-панель → «Карточки в турнире 🎴»). Для клубного раунда
+    // функция просто возвращает обычный вид.
+    try {
+        window.pestovoCurrentRound = function() { return curRoundData; };
+        if (typeof pestovoApplyTnRoundCardLayout === 'function') pestovoApplyTnRoundCardLayout(curRoundData);
+    } catch (e) { console.warn("[silent]", e); }
 
     // Раунд с mode='solo' обслуживает solo.js — делегируем ему
     if (curRoundData.mode === 'solo') {

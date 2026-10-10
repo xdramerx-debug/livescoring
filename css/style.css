@@ -6910,3 +6910,23 @@ body.sun-mode .gsg-marker.mk-mismatch{color:#c0392b;}
 .se-show-item input { margin-top: 3px; accent-color: var(--gold); }
 .se-show-item span { display: flex; flex-direction: column; gap: 2px; }
 .se-show-item small { color: var(--muted); font-size: 12px; }
+
+/* ===== КАРТОЧКИ В ТУРНИРЕ: СОСТАВ БЛОКОВ ЭКРАНА ВВОДА =====
+   Настройка админа «Карточки в турнире 🎴» (settings/tn_round_card_blocks).
+   Классы tn-hide-* на <body> ставит pestovoApplyTnRoundCardLayout() из js/utils.js;
+   они действуют только на экранах ввода счёта (setup-round.html, scorer.html). */
+body.tn-hide-info .hole-display:not([data-sc-preview]) { display: none !important; }
+body.tn-hide-holes [data-entry-block="holes"],
+body.tn-hide-holes #play-holes-block,
+body.tn-hide-holes #g-holes { display: none !important; }
+body.tn-hide-input [data-entry-block="input"] { display: none !important; }
+body.tn-hide-pace #group-pace-assistant,
+body.tn-hide-pace #solo-pace-assistant { display: none !important; }
+body.tn-hide-summary .round-card.scorecard-fold { display: none !important; }
+body.tn-hide-qr #invite-qrs-card { display: none !important; }
+body.tn-hide-officials #group-officials,
+body.tn-hide-officials #solo-officials { display: none !important; }
+body.tn-hide-stableford #group-stableford-control,
+body.tn-hide-stableford #solo-stableford-control { display: none !important; }
+body.tn-hide-finish #group-finish-row,
+body.tn-hide-finish #solo-finish-row { display: none !important; }

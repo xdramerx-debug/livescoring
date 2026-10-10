@@ -81,6 +81,7 @@ var TnMgrData = (function (root) {
         return db.ref().update(payload);
     }
     function asMap(value) { return value && typeof value === 'object' ? value : {}; }
+    function asArray(value) { return Array.isArray(value) ? value : []; }
     function listOf(value) {
         return Object.keys(asMap(value)).map(function (key) {
             var item = asMap(value)[key] || {};
@@ -828,8 +829,43 @@ var TnMgrData = (function (root) {
         return multi(updates);
     }
 
-    /** Массовое добавление (Excel / справочник / ручной ввод). */
-    function addPlayers(tid, list, tournament) {
+    /**
+     * Массовое удаление участников («Удалить всех» в списке участников).
+     * Один multi()-запрос на весь состав: те же узлы, что и при удалении
+     * одного игрока (состав, группы, стартовые листы, счёт, результаты).
+     */
+    function removePlayers(tid, pids, tournament) {
+        // pids: массив идентификаторов ИЛИ карта { pid: true }.
+        // Array.isArray проверяем первым: Object.keys(['a']) вернул бы ['0'].
+        var ids = Array.isArray(pids)
+            ? pids.filter(function (pid) { return !!pid; })
+            : Object.keys(asMap(pids)).filter(function (pid) { return asMap(pids)[pid] !== false; });
+        var updates = {};
+        ids.forEach(function (pid) {
+            if (!pid) return;
+            updates['tournaments/' + tid + '/players/' + pid] = null;
+            updates['tournaments/' + tid + '/registeredPlayers/' + pid] = null;
+            listOf(asMap(tournament && tournament.groups)).forEach(function (group) {
+                updates['tournaments/' + tid + '/groups/' + group.id + '/members/' + pid] = null;
+                updates['tournaments/' + tid + '/divisions/' + group.id + '/members/' + pid] = null;
+            });
+            listOf(asMap(tournament && tournament.sheets)).forEach(function (sheet) {
+                updates['tournaments/' + tid + '/sheets/' + sheet.roundId + '/entries/' + pid] = null;
+                updates['tournaments/' + tid + '/sheets/' + sheet.roundId + '/markers/' + pid] = null;
+            });
+            listOf(asMap(tournament && tournament.rounds)).forEach(function (round) {
+                updates['tournaments/' + tid + '/scores/' + round.id + '/' + pid] = null;
+                updates['tournaments/' + tid + '/results/' + round.id + '/' + pid] = null;
+                Object.keys(asMap(round.groupRounds)).forEach(function (index) {
+                    updates['rounds/' + round.groupRounds[index] + '/players/' + pid] = null;
+                });
+            });
+        });
+        if (!Object.keys(updates).length) return Promise.resolve(0);
+        return multi(updates).then(function () { return (Array.isArray(ids) ? ids : []).length; });
+    }
+
+    /** Массовое добавление (Excel / справочник / ручной ввод). */    function addPlayers(tid, list, tournament) {
         var created = [];
         return (list || []).reduce(function (chain, input) {
             return chain.then(function () {
@@ -1270,6 +1306,91 @@ var TnMgrData = (function (root) {
     }
 
     /**
+     * Стартовый лист ИЗ ВСТАВЛЕННОЙ ТАБЛИЦЫ: организатор задал время старта
+     * и состав каждого флайта сам («10:00: Неделько, Свиридов, …»), поэтому
+     * лист не пересобирается по гандикапам — берётся как есть.
+     * flights: [{ startTime, startHole, players: [{ fio | playerId }] }].
+     * Возвращает { sheet, missing: [fio] } — missing: кого не нашли в составе.
+     */
+    function generateSheetFromFlights(tid, rid, flights, tournament, options) {
+        var round = asMap(asMap(tournament && tournament.rounds)[rid]);
+        if (!round.id) return Promise.reject(new Error('Раунд не найден'));
+        var base = root.baseUrl ? root.baseUrl() : '';
+        var players = listOf(asMap(tournament && tournament.players));
+        var prepared = [];
+        var missing = [];
+        asArray(flights).forEach(function (flight) {
+            var members = [];
+            asArray(flight && flight.players).forEach(function (item) {
+                var found = item && item.playerId
+                    ? asMap(tournament && tournament.players)[item.playerId]
+                    : core().matchPlayerByName(players, core().playerFio(item) || item && item.fio);
+                if (!found) {
+                    missing.push(core().playerFio(item) || String(item && item.fio || ''));
+                    return;
+                }
+                var group = groupForPlayer(tournament, found);
+                members.push(Object.assign({}, found, {
+                    groupName: group ? group.name : '',
+                    groupId: found.groupId || (group ? group.id : '')
+                }));
+            });
+            if (!members.length) return;
+            prepared.push({
+                startTime: flight.startTime || '',
+                startHole: flight.startHole || options && options.startHole || round.startHole || 1,
+                tee: flight.tee || '',
+                format: flight.format || '',
+                players: members
+            });
+        });
+        if (!prepared.length) return Promise.reject(new Error('В стартовом листе нет участников'));
+        var built = core().buildSheetFromFlights({
+            flights: prepared,
+            tee: (options && options.tee) || round.tee || 'wh',
+            format: (options && options.format) || ((tournament && tournament.formats) || [])[0] || '',
+            firstTeeTime: (options && options.firstTeeTime) || round.startTime ||
+                (tournament && tournament.startTime) || '09:00',
+            startInterval: (options && options.startInterval) || 8,
+            markMode: (options && options.markMode) || 'group',
+            startHole: (options && options.startHole) || round.startHole || 1
+        });
+        var rawEntries = {};
+        built.entries.forEach(function (entry) { rawEntries[entry.playerId] = Object.assign({}, entry); });
+        var indexed = markerQrIndex(rawEntries, rid);
+        return read('tournaments/' + tid + '/sheets/' + rid).then(function (existing) {
+            var prev = asMap(existing);
+            var sheet = {
+                roundId: rid,
+                tournamentId: tid,
+                createdAt: prev.createdAt || now(),
+                updatedAt: now(),
+                options: clean(Object.assign({}, built.options, {
+                    tee: built.options.tee,
+                    format: built.options.format
+                })),
+                entries: indexed.entries,
+                markers: indexed.markers,
+                columns: prev.columns && prev.columns.length ? prev.columns : core().clone(DEFAULT_COLUMNS),
+                qr: clean(prev.qr || {
+                    payload: base ? base + 'tournaments.html?id=' + encodeURIComponent(tid) : 'tournament:' + tid,
+                    generatedAt: now()
+                })
+            };
+            return write('tournaments/' + tid + '/sheets/' + rid, sheet)
+                .then(function () { return materializeRound(tid, rid, sheet, tournament); })
+                .then(function (info) {
+                    return patch('tournaments/' + tid + '/rounds/' + rid, clean({
+                        sheetAt: now(),
+                        groupRounds: info.groupRounds,
+                        groupRoundId: info.groupRounds['0'] || ''
+                    }));
+                })
+                .then(function () { return { sheet: sheet, missing: missing }; });
+        });
+    }
+
+    /**
      * Создаёт раунды групп в rounds/ — контракт страниц ввода счёта
      * (setup-round.html / scorer.html / live.js).
      */
@@ -1563,6 +1684,28 @@ var TnMgrData = (function (root) {
 
     function saveSheetColumns(tid, rid, columns) {
         return patch('tournaments/' + tid + '/sheets/' + rid, { columns: columns || [], updatedAt: now() });
+    }
+
+    /**
+     * Очистка стартового листа («Удалить всех» в листе): убираем все строки
+     * и раунды групп, но оставляем сам лист (колонки, настройки, QR турнира),
+     * чтобы организатор мог сразу пересобрать его заново. Публикация на сайте
+     * снимается — пустой лист не должен висеть на странице турнира.
+     */
+    function clearSheetEntries(tid, rid, tournament) {
+        var round = asMap(asMap(tournament && tournament.rounds)[rid]);
+        var updates = {};
+        updates['tournaments/' + tid + '/sheets/' + rid + '/entries'] = null;
+        updates['tournaments/' + tid + '/sheets/' + rid + '/markers'] = null;
+        updates['tournaments/' + tid + '/sheets/' + rid + '/updatedAt'] = now();
+        Object.keys(asMap(round.groupRounds)).forEach(function (index) {
+            updates['rounds/' + round.groupRounds[index]] = null;
+        });
+        updates['tournaments/' + tid + '/rounds/' + rid + '/groupRounds'] = null;
+        updates['tournaments/' + tid + '/rounds/' + rid + '/groupRoundId'] = null;
+        updates['tournaments/' + tid + '/sheetPublish/' + rid] = null;
+        updates['protocols/' + sheetProtocolId(tid, rid)] = null;
+        return multi(updates);
     }
 
     function deleteSheet(tid, rid, tournament) {
@@ -1859,6 +2002,7 @@ var TnMgrData = (function (root) {
         distributeTournamentPlayers: distributeTournamentPlayers,
         // участники
         addPlayer: addPlayer, addPlayers: addPlayers, updatePlayer: updatePlayer, removePlayer: removePlayer,
+        removePlayers: removePlayers,
         // справочник игроков сайта (гости из турнира) и синхронизация гандикапов
         syncPlayersToDirectory: syncPlayersToDirectory, pushHandicapsToDirectory: pushHandicapsToDirectory,
         pullHandicapsFromDirectory: pullHandicapsFromDirectory, directoryParts: directoryParts,
@@ -1868,6 +2012,7 @@ var TnMgrData = (function (root) {
         DEFAULT_COLUMNS: DEFAULT_COLUMNS, sheetColumns: sheetColumns, sheetOrder: sheetOrder,
         generateSheet: generateSheet, updateSheetEntry: updateSheetEntry, addSheetEntry: addSheetEntry,
         removeSheetEntry: removeSheetEntry, saveSheetColumns: saveSheetColumns, deleteSheet: deleteSheet,
+        clearSheetEntries: clearSheetEntries, generateSheetFromFlights: generateSheetFromFlights,
         materializeRound: materializeRound,
         // публикация стартового листа на сайте
         sheetProtocolId: sheetProtocolId, buildSheetProtocol: buildSheetProtocol,

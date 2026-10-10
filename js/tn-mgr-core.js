@@ -306,6 +306,25 @@
         };
     }
 
+    /**
+     * «неделько александр» → «Неделько Александр». Регистр правится только
+     * когда имя набрано целиком строчными/прописными — «Иванов И.И.» и
+     * «Van Der Berg» остаются как есть.
+     */
+    function titleCaseName(value) {
+        var raw = trim(value).replace(/\s+/g, ' ');
+        if (!raw) return '';
+        var letters = raw.replace(/[^A-Za-zА-Яа-яЁё]/g, '');
+        if (!letters) return raw;
+        var isLower = letters === letters.toLowerCase();
+        var isUpper = letters === letters.toUpperCase();
+        if (!isLower && !isUpper) return raw;
+        return raw.split(' ').map(function (word) {
+            if (!word) return word;
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        }).join(' ');
+    }
+
     function playerFio(player) {
         var p = player || {};
         if (trim(p.fio)) return trim(p.fio);
@@ -921,6 +940,229 @@
                 groupSize: groupSize, startInterval: interval, firstTeeTime: firstTime,
                 tee: defaultTee, format: defaultFormat, markMode: opts.markMode || 'group',
                 startMode: startMode, startHole: startHole
+            }
+        };
+    }
+
+    /**
+     * РАЗБОР СТАРТОВОГО ЛИСТА ИЗ ТЕКСТА («вставить таблицу»)
+     * ------------------------------------------------------
+     * Организатор вставляет строки вида:
+     *   10:00: Неделько Александр, Свиридов Виктор, Гималетдинов Рустем
+     *   10:10  Иванов Иван; Петров Пётр
+     *   10:20 (л.10) Смирнова Анна | Кузнецова Мария
+     * Строка без времени получает время по интервалу от предыдущей.
+     * Разделители имён: запятая, точка с запятой, таб, вертикальная черта.
+     * Результат — готовый состав флайтов: { startTime, startHole, players[] }.
+     */
+    function parseStartList(text) {
+        var lines = str(text).split(/\r?\n/);
+        var flights = [];
+        var byTime = {};
+        var players = [];
+        var seen = {};
+        var issues = [];
+
+        lines.forEach(function (rawLine, index) {
+            var line = trim(rawLine);
+            if (!line) return;
+            var lineNo = index + 1;
+            // Время старта в начале строки: «10:00», «10:00:», «10.00 -», «10 00».
+            var timeMatch = line.match(/^(\d{1,2})[:.\s](\d{2})\s*(?:[:\-–—]\s*)?(.*)$/);
+            var rest = line;
+            var startTime = '';
+            if (timeMatch) {
+                startTime = pad2(parseInt(timeMatch[1], 10)) + ':' + timeMatch[2];
+                rest = trim(timeMatch[3]);
+            } else {
+                // Строка без времени старта — это не флайт (комментарий, заголовок,
+                // «итого»). Молча делать из неё флайт нельзя: админ увидит лишний
+                // старт, которого в листе не было.
+                issues.push({ row: lineNo, message: 'не найдено время старта (ожидается «10:00: фамилия имя, …»)' });
+                return;
+            }
+            // Стартовая лунка: «(л.10)», «лунка 10», «hole 10», «#10».
+            var startHole = null;
+            var holeMatch = rest.match(/^(?:\(\s*)?(?:л\.?\s*|лунка\s+|hole\s+|#)(\d{1,2})(?:\s*\))?\s*[:\-–—]?\s*(.*)$/i);
+            if (holeMatch) {
+                var holeNo = parseInt(holeMatch[1], 10);
+                if (holeNo >= 1 && holeNo <= 18) {
+                    startHole = holeNo;
+                    rest = trim(holeMatch[2]);
+                }
+            }
+            if (!rest) {
+                issues.push({ row: lineNo, message: 'в строке нет ни одного имени' });
+                return;
+            }
+            var names = rest.split(/[,;\t|]+/).map(function (name) {
+                return trim(name).replace(/\s+/g, ' ');
+            }).filter(function (name) { return name !== ''; });
+            if (!names.length) {
+                issues.push({ row: lineNo, message: 'в строке нет ни одного имени' });
+                return;
+            }
+            var flightKey = startTime + '|' + (startHole || 0);
+            var flight = startTime ? byTime[flightKey] : null;
+            if (!flight) {
+                flight = { startTime: startTime, startHole: startHole, players: [] };
+                flights.push(flight);
+                if (startTime) byTime[flightKey] = flight;
+            }
+            names.forEach(function (name) {
+                var key = normText(name).replace(/\s+/g, '_');
+                if (!key) return;
+                if (seen[key]) {
+                    issues.push({ row: lineNo, message: 'игрок повторяется: ' + name });
+                    return;
+                }
+                seen[key] = true;
+                var fio = titleCaseName(name);
+                var parts = splitFio(fio);
+                var player = {
+                    fio: fio,
+                    lastName: parts.lastName, firstName: parts.firstName, middleName: parts.middleName,
+                    gender: inferGenderFromName(parts.firstName || fio) || '',
+                    source: 'manual'
+                };
+                flight.players.push(player);
+                players.push(player);
+            });
+        });
+
+        return {
+            flights: flights.filter(function (flight) { return flight.players.length; }),
+            players: players,
+            issues: issues
+        };
+    }
+
+    /** Есть ли в тексте хотя бы одна строка со временем старта (формат флайтов). */
+    function looksLikeStartList(text) {
+        var lines = str(text).split(/\r?\n/);
+        var withTime = 0;
+        var total = 0;
+        lines.forEach(function (line) {
+            var value = trim(line);
+            if (!value) return;
+            total++;
+            if (/^\d{1,2}[:.\s]\d{2}\s*[:\-–—]?/.test(value)) withTime++;
+        });
+        return total > 0 && withTime > 0 && withTime === total;
+    }
+
+    /**
+     * Поиск участника турнира по имени из вставленного текста: точное
+     * совпадение нормализованного ФИО, затем совпадение набора слов
+     * («Неделько Александр» = «Александр Неделько»), затем транслит.
+     */
+    function matchPlayerByName(players, name) {
+        var target = normText(name);
+        if (!target) return null;
+        var list = asArray(players);
+        var i;
+        for (i = 0; i < list.length; i++) {
+            if (normText(playerFio(list[i])) === target) return list[i];
+        }
+        var words = target.split(' ').filter(Boolean).sort().join(' ');
+        for (i = 0; i < list.length; i++) {
+            var other = normText(playerFio(list[i])).split(' ').filter(Boolean).sort().join(' ');
+            if (other && other === words) return list[i];
+        }
+        for (i = 0; i < list.length; i++) {
+            if (translitEquals(playerFio(list[i]), name)) return list[i];
+        }
+        return null;
+    }
+
+    /**
+     * Стартовый лист ИЗ ГОТОВЫХ ФЛАЙТОВ (время и состав задал организатор).
+     * Формат результата — тот же, что у buildSheet(), поэтому дальше лист
+     * обрабатывается тем же кодом (QR, маркеры, раунды групп).
+     */
+    function buildSheetFromFlights(options) {
+        var opts = options || {};
+        var defaultTee = trim(opts.tee) || 'wh';
+        var defaultFormat = trim(opts.format) || '';
+        var defaultHole = Math.max(1, Math.min(18, intOf(opts.startHole, 1) || 1));
+        var interval = Math.max(1, intOf(opts.startInterval, 8) || 8);
+        var firstTime = timeText(opts.firstTeeTime, '09:00');
+        var markMode = opts.markMode || 'group';
+        var startMode = opts.startMode === 'shotgun' ? 'shotgun' : 'sequential';
+        var entries = [];
+        var groups = [];
+        var flights = [];
+        var autoMinutes = null;
+
+        asArray(opts.flights).forEach(function (flight, flightIndex) {
+            var members = asArray(flight && flight.players).filter(function (player) {
+                return player && trim(playerFio(player));
+            });
+            if (!members.length) return;
+            var startTime = timeText(flight.startTime, '');
+            if (!startTime) {
+                autoMinutes = (autoMinutes === null ? 0 : autoMinutes + interval);
+                startTime = addMinutesToTime(firstTime, autoMinutes);
+            } else {
+                var parts = startTime.split(':');
+                autoMinutes = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) -
+                    (parseInt(timeText(firstTime, '09:00').split(':')[0], 10) * 60 +
+                     parseInt(timeText(firstTime, '09:00').split(':')[1], 10));
+            }
+            var hole = Math.max(1, Math.min(18, intOf(flight.startHole, 0) || defaultHole));
+            if (startMode === 'shotgun') hole = ((defaultHole - 1 + (flightIndex % 18)) % 18) + 1;
+            var flightKey = trim(flight.flight) || String(flightIndex + 1);
+            if (flights.indexOf(flightKey) === -1) flights.push(flightKey);
+            var startGroupId = 'tee_' + (flightIndex + 1);
+            var groupTee = trim(flight.tee) || trim(members[0] && members[0].tee) || defaultTee;
+            var groupFormat = trim(flight.format) || defaultFormat;
+            var markers = assignMarkers(members, markMode);
+            members.forEach(function (player, position) {
+                entries.push({
+                    playerId: player.id || ('player_' + entries.length),
+                    playerName: playerFio(player),
+                    firstName: player.firstName || '',
+                    lastName: player.lastName || '',
+                    middleName: player.middleName || '',
+                    gender: normalizeGender(player.gender) || inferGenderFromName(player.firstName || playerFio(player)) || '',
+                    hi: player.hi != null ? player.hi : (player.handicap != null ? player.handicap : ''),
+                    ch: player.ch != null ? player.ch : '',
+                    groupId: player.groupId || '',
+                    groupName: player.groupName || '',
+                    startGroupId: startGroupId,
+                    markerPlayerId: markers[player.id] || '',
+                    tee: trim(player.tee) || groupTee,
+                    format: trim(player.format) || groupFormat,
+                    flight: flightKey,
+                    startHole: hole,
+                    startWave: 0,
+                    startTime: startTime,
+                    position: position + 1,
+                    order: entries.length + 1,
+                    qr: ''
+                });
+            });
+            groups.push({
+                id: '', name: '', definition: null, players: members,
+                startGroupId: startGroupId, startHole: hole, startWave: 0,
+                startTime: startTime, flight: flightKey, tee: groupTee,
+                format: groupFormat || defaultFormat,
+                markerPlayerId: markers[(members[0] || {}).id] || ''
+            });
+        });
+
+        return {
+            entries: entries,
+            groups: groups,
+            flights: flights,
+            options: {
+                groupSize: Math.max(1, Math.min(4, groups.reduce(function (max, group) {
+                    return Math.max(max, group.players.length);
+                }, 1))),
+                startInterval: interval, firstTeeTime: firstTime,
+                tee: defaultTee, format: defaultFormat, markMode: markMode,
+                startMode: startMode, startHole: defaultHole,
+                source: 'start-list'
             }
         };
     }
@@ -2542,7 +2784,10 @@
         newTournament: newTournament, newRound: newRound, newGroup: newGroup, newPlayer: newPlayer,
         groupRangeText: groupRangeText, groupMatchesPlayer: groupMatchesPlayer,
         // sheet
-        buildSheet: buildSheet, assignMarkers: assignMarkers, validateSheet: validateSheet,
+        buildSheet: buildSheet, buildSheetFromFlights: buildSheetFromFlights,
+        parseStartList: parseStartList, looksLikeStartList: looksLikeStartList,
+        matchPlayerByName: matchPlayerByName,
+        assignMarkers: assignMarkers, validateSheet: validateSheet,
         startGroupSizes: startGroupSizes, startGroupSizesOk: startGroupSizesOk, MIN_START_GROUP: MIN_START_GROUP,
         applyEntryPatch: applyEntryPatch, recalcSheet: recalcSheet, flightLetter: flightLetter,
         // results

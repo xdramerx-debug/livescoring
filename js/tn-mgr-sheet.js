@@ -303,6 +303,7 @@ var TnMgrSheetUI = (function (root) {
             ui().btn('sheet-excel', esc(bi('Excel', 'Excel')), { icon: 'fas fa-file-excel', variant: 'ghost' }) + ' ' +
             ui().btn('sheet-columns', esc(bi('Колонки', 'Columns')), { icon: 'fas fa-table-columns', variant: 'ghost' }) + ' ' +
             ui().btn('sheet-add-player', esc(bi('Добавить игрока', 'Add player')), { icon: 'fas fa-user-plus', variant: 'ghost' }) + ' ' +
+            ui().btn('sheet-clear', esc(bi('Удалить всех', 'Delete all')), { icon: 'fas fa-users-slash', variant: 'danger', disabled: !entries().length }) + ' ' +
             ui().btn('sheet-options-toggle', esc(bi('Параметры листа', 'Sheet options')), { icon: 'fas fa-sliders', variant: 'ghost' }) + ' ' +
             ui().btn('sheet-qr-toggle', esc(bi(state.qrOpen ? 'Скрыть QR' : 'Показать QR', state.qrOpen ? 'Hide QR' : 'Show QR')), { icon: 'fas fa-qrcode', variant: 'ghost' }) + ' ' +
             ui().btn('sheet-regenerate', esc(bi('Пересобрать', 'Regenerate')), { icon: 'fas fa-rotate', variant: 'ghost' }) +
@@ -799,6 +800,28 @@ var TnMgrSheetUI = (function (root) {
             title: bi('Удаление из листа', 'Remove from the sheet'),
             message: question,
             onConfirm: function () { removeEntry(pid); }
+        });
+    });
+    // «Удалить всех» — очищает лист раунда целиком (игроки остаются
+    // в составе турнира), снимает публикацию и убирает раунды групп.
+    ui().on('sheet-clear', function () {
+        var rid = ensureRoundId();
+        var count = entries().length;
+        if (!rid || !count) return;
+        ui().confirmAction({
+            title: bi('Очистить стартовый лист', 'Clear the tee sheet'),
+            message: bi('Удалить из листа всех игроков', 'Remove all players from the sheet') + ' (' + count + ')? ' +
+                bi('Раунды групп и публикация на сайте будут убраны, состав турнира не изменится.',
+                    'Group rounds and the publication will be removed; the tournament roster stays.'),
+            onConfirm: function () {
+                return data().clearSheetEntries(ui().state.route.tid, rid, ui().tournament()).then(function () {
+                    state.expandedFlights = {};
+                    ui().toastMsg(bi('Стартовый лист очищен', 'Tee sheet cleared'));
+                    ui().render();
+                }).catch(function (err) {
+                    ui().toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
+                });
+            }
         });
     });
 

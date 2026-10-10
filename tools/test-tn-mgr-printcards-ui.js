@@ -264,7 +264,7 @@ var printed = PC.documentFor((PC.state.draft.cards || []).slice(0, 1));
 check('в печати нет ручек блоков',
     printed.indexOf('data-tnpc-block-resize') === -1 && printed.indexOf('class="tnpc-block-h') === -1);
 check('в печати есть строка «Длина» и значения лунок',
-    printed.indexOf('>Длина, м</span>') !== -1 && printed.indexOf('>317</td>') !== -1);
+    printed.indexOf('>Длина</span>') !== -1 && printed.indexOf('>317</td>') !== -1);
 
 // ----------------------------------------------------------
 // 6. Блоки целиком: таблицу и шапку можно двигать и масштабировать мышью

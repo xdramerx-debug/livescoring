@@ -1836,7 +1836,9 @@ var TnMgrPrintCards = (function (root) {
             var multi = rows.length > 1;
             var lines = '';
             rows.forEach(function (src, i) {
-                var label = bi('Длина, м', 'Dist, m');
+                // Подпись строки — ровно «Длина»: колонка подписей узкая,
+                // и «Длина, м» обрезалось до «Длина,».
+                var label = bi('Длина', 'Length');
                 if (multi && src.tee) label += ' · ' + teeDisplayName(src.tee);
                 var attr = src.fallback ? ' data-tnpc-len-src="draft"' : '';
                 var line = tableLine('length', esc(label), dataRowCells('len', src.values, src.fallback), i === 0);

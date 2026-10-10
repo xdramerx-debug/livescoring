@@ -384,6 +384,12 @@ function switchTab(t, b) {
         renderClubScorecardPreview();
         pestovoBindView5('scorecard', function() { renderClubScorecardPreview(); });
     }
+    // Вкладка «Карточки в турнире 🎴»: вид карточки и блоки экрана ввода
+    // при вводе счёта по QR из стартового листа турнира.
+    if (t === 'tncards') {
+        if (typeof bindTnRoundCardAdmin === 'function') bindTnRoundCardAdmin();
+        if (typeof renderTnRoundCardAdmin === 'function') renderTnRoundCardAdmin();
+    }
     // Вкладка «Ввод счёта ⛳»: 5 стилей экрана ввода + порядок блоков.
     // Функции живут в js/admin-display.js — вызовы через typeof-guard,
     // чтобы вкладка не падала, если модуль не подключён (как остальные

@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=bfaf5c43">
+    <link rel="stylesheet" href="css/style.css?v=4c1b0a1e">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=463c82c9">
     <link rel="stylesheet" href="css/tn-view.css?v=6a335dc1">
@@ -107,6 +107,7 @@
             <button class="admin-tab" onclick="switchTab('rusgolf',this)" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
             <button class="admin-tab" onclick="switchTab('data',this)" data-i18n="tab_data">Данные</button>
             <button class="admin-tab" onclick="switchTab('scorecards',this)">Отображения счётных карточек</button>
+            <button class="admin-tab" onclick="switchTab('tncards',this)">Карточки в турнире 🎴</button>
             <button class="admin-tab" onclick="switchTab('scoreentry',this)">Ввод счёта ⛳</button>
             <button class="admin-tab" onclick="switchTab('design',this)" data-i18n="tab_design">Дизайн 🎨</button>
         </div>
@@ -161,6 +162,49 @@
                 <p class="sev-sec-sub">Демонстрационные данные · ширина до 390 px. Палочки — удары форы; красные — отдаваемые удары. «—» означает, что счёт ещё не введён. Несовпадение с маркером подсвечивается.</p>
                 <div class="sev-device">
                     <div id="club-sc-preview" class="club-sc-phone"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-tncards" class="admin-section hidden">
+            <div class="card sev-admin-card">
+                <header class="sev-head">
+                    <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-id-card"></i></span>
+                    <div class="sev-head-text">
+                        <h2>Отображение карточек в турнире</h2>
+                        <p>Что видит игрок и маркер, когда открывает счёт по QR из стартового листа турнира: вид счётной карточки и состав блоков экрана. Настройка общая — применяется ко всем турнирам и всем игрокам.</p>
+                    </div>
+                    <span class="sev-head-badge"><i class="fas fa-qrcode" aria-hidden="true"></i> ввод счёта по QR</span>
+                </header>
+
+                <div class="sev-sec-title">Вид счётной карточки</div>
+                <p class="sev-sec-sub">Пять вариантов той же карточки. Вариант 1 — «как в обычном раунде»: сводка группы и общая карточка флайта.</p>
+                <div class="club-sc-options sev-variants" id="tn-card-variants"></div>
+                <div class="sev-apply">
+                    <button type="button" id="tn-card-apply" class="btn btn-g" onclick="saveTnRoundCardView(tnRoundCardPreviewView)"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех</button>
+                    <button type="button" class="btn btn-ol" id="tn-card-reset" onclick="saveTnRoundCardView('')"><i class="fas fa-rotate-left" aria-hidden="true"></i> Как в обычном раунде</button>
+                    <div class="sev-apply-text">
+                        <p class="sev-apply-hint">Выбор записывается в общие настройки и сразу виден на открытых экранах ввода.</p>
+                        <p id="tn-card-save-status" role="status" aria-live="polite"></p>
+                    </div>
+                </div>
+
+                <div class="sev-sec-title">Блоки экрана ввода</div>
+                <p class="sev-sec-sub">Снимите отметку, чтобы скрыть блок на экране ввода счёта в турнире. Скрытые блоки не мешают вводу: счёт сохраняется как обычно.</p>
+                <div id="tn-card-blocks" class="se-show-grid"></div>
+                <div class="sev-apply">
+                    <button type="button" id="tn-card-blocks-apply" class="btn btn-g" onclick="saveTnRoundCardBlocks()"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить блоки для всех</button>
+                    <button type="button" class="btn btn-ol" onclick="resetTnRoundCardBlocks()"><i class="fas fa-rotate-left" aria-hidden="true"></i> Показать все блоки</button>
+                    <div class="sev-apply-text">
+                        <p class="sev-apply-hint">Лунки, ввод счёта, темп игры, сводка группы, QR, судья, Stableford, завершение раунда.</p>
+                        <p id="tn-card-blocks-status" role="status" aria-live="polite"></p>
+                    </div>
+                </div>
+
+                <div class="sev-sec-title">Предпросмотр для телефона</div>
+                <p class="sev-sec-sub">Демонстрационные данные · ширина до 390 px. Так карточка флайта выглядит во время ввода счёта по QR.</p>
+                <div class="sev-device">
+                    <div id="tn-card-preview" class="club-sc-phone"></div>
                 </div>
             </div>
         </div>
@@ -1074,7 +1118,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.110.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.111.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -1085,18 +1129,18 @@
 <script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script src="js/qr-code.js?v=2a26e819"></script>
 <script src="js/rusgolf-client.js?v=f37608e7"></script>
-<script src="js/utils.js?v=bb346532"></script>
-<script src="js/tn-mgr-core.js?v=15bb5760"></script>
-<script src="js/tn-mgr-data.js?v=27049629"></script>
+<script src="js/utils.js?v=84b03ecd"></script>
+<script src="js/tn-mgr-core.js?v=dc621917"></script>
+<script src="js/tn-mgr-data.js?v=9df4ae94"></script>
 <script src="js/tn-mgr-io.js?v=a9001ebb"></script>
-<script src="js/tn-mgr-ui.js?v=acf78cf2"></script>
-<script src="js/tn-mgr-sheet.js?v=d3c9518b"></script>
-<script src="js/tn-mgr-printcards.js?v=dc47c02e"></script>
+<script src="js/tn-mgr-ui.js?v=aabefd67"></script>
+<script src="js/tn-mgr-sheet.js?v=184c2ba1"></script>
+<script src="js/tn-mgr-printcards.js?v=0cfeab6c"></script>
 <script src="js/tn-mgr-round.js?v=ea791f21"></script>
 <script src="js/tn-mgr.js?v=59cc04f5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/name-variants.js?v=2b58f796"></script>
-<script src="js/admin.js?v=453f4379"></script>
+<script src="js/admin.js?v=3739237c"></script>
 <script src="js/admin-groups.js?v=9a773234"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
 <script src="js/admin-players.js?v=ab46e3b7"></script>
@@ -1109,7 +1153,7 @@
 <script src="js/admin-players-excel.js?v=97584414"></script>
 <script src="js/admin-agr.js?v=2699372b"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
-<script src="js/admin-display.js?v=b737e1e9"></script>
+<script src="js/admin-display.js?v=ec9e168a"></script>
 <script src="js/design-admin.js?v=70a7c0c4"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
 <script src="js/pwa.js?v=56b54da4"></script>

@@ -1317,3 +1317,224 @@ function deleteScoreEntryVariant(id) {
         });
     });
 }
+
+// ==========================================
+// КАРТОЧКИ В ТУРНИРЕ (вкладка «Карточки в турнире 🎴»)
+// ==========================================
+// Что видит игрок/маркер, открыв счёт по QR из стартового листа турнира:
+//   • вид счётной карточки — settings/tn_round_card_view ('1'–'5', '' = как
+//     в обычном клубном раунде);
+//   • состав блоков экрана ввода — settings/tn_round_card_blocks
+//     (лунки, ввод счёта, темп игры, сводка группы, QR, судья, Stableford,
+//     завершение раунда).
+// Обе настройки общие: применяются ко всем турнирам и всем игрокам.
+var TN_CARD_VARIANT_NAMES = {
+    '1': { name: 'Как в обычном раунде', desc: 'сводка группы и общая карточка флайта — привычный вид клуба' },
+    '2': { name: 'Блоки по 3 лунки',     desc: 'крупнее, без горизонтальной прокрутки' },
+    '3': { name: 'Крупная лента',        desc: 'крупные цифры, прокрутка внутри карточки' },
+    '4': { name: 'Вертикальный список',  desc: 'одна лунка на строку, всё по порядку' },
+    '5': { name: 'Плитки',               desc: 'акцент на счёте каждой лунки' }
+};
+var tnRoundCardPreviewView = null;
+var tnRoundCardBlocksDraft = null;
+var tnRoundCardSaving = false;
+var tnRoundCardBound = false;
+
+function tnRoundCardBlocksDraftValue() {
+    if (!tnRoundCardBlocksDraft) {
+        tnRoundCardBlocksDraft = (typeof getTnRoundCardBlocks === 'function')
+            ? getTnRoundCardBlocks() : normalizeTnRoundCardBlocks({});
+    }
+    return tnRoundCardBlocksDraft;
+}
+
+function renderTnRoundCardAdmin() {
+    var variantsEl = document.getElementById('tn-card-variants');
+    var blocksEl = document.getElementById('tn-card-blocks');
+    if (variantsEl) {
+        variantsEl.innerHTML = TN_ROUND_CARD_VARIANTS.map(function(v) {
+            var meta = TN_CARD_VARIANT_NAMES[v] || { name: 'Вариант ' + v, desc: '' };
+            return '<button type="button" id="tn-card-opt-' + v + '" class="btn btn-og sev-card" aria-pressed="false" onclick="previewTnRoundCardView(\'' + v + '\')">' +
+                '<span class="sev-card-top"><span class="sev-card-num">' + v + '</span><span class="sev-card-name">' + escapeHtml(meta.name) + '</span>' +
+                '<span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>' +
+                '<span class="sev-card-desc">' + escapeHtml(meta.desc) + '</span></button>';
+        }).join('');
+    }
+    if (blocksEl) {
+        var blocks = tnRoundCardBlocksDraftValue();
+        blocksEl.innerHTML = TN_ROUND_CARD_BLOCK_KEYS.map(function(key) {
+            var label = (TN_ROUND_CARD_BLOCKS[key] || {}).ru || key;
+            return '<label class="se-show-item' + (blocks[key] === false ? '' : ' is-on') + '"><input type="checkbox" data-tn-block="' + key + '"' +
+                (blocks[key] === false ? '' : ' checked') + ' onchange="setTnRoundCardBlock(\'' + key + '\', this.checked)">' +
+                '<span>' + escapeHtml(label) + '</span></label>';
+        }).join('');
+    }
+    if (tnRoundCardPreviewView === null) {
+        tnRoundCardPreviewView = (typeof getTnRoundCardView === 'function' && getTnRoundCardView())
+            ? getTnRoundCardView() : '1';
+    }
+    markAdmTnRoundCardButtons();
+    renderTnRoundCardPreview();
+}
+
+function markAdmTnRoundCardButtons() {
+    var saved = (typeof getTnRoundCardView === 'function') ? getTnRoundCardView() : '';
+    var preview = tnRoundCardPreviewView || saved || '1';
+    TN_ROUND_CARD_VARIANTS.forEach(function(v) {
+        var btn = document.getElementById('tn-card-opt-' + v);
+        if (!btn) return;
+        var isPreview = v === preview;
+        // Активный вариант подсвечивается классом btn-g — как в остальных
+        // вкладках отображения (см. markV5 в этом файле).
+        btn.classList.toggle('btn-g', isPreview);
+        btn.setAttribute('aria-pressed', isPreview ? 'true' : 'false');
+        // Галочка показывает вариант, который уже сохранён для всех.
+        var check = btn.querySelector('.sev-card-check');
+        if (check) check.setAttribute('data-saved', v === saved ? 'true' : 'false');
+    });
+}
+
+function previewTnRoundCardView(value) {
+    tnRoundCardPreviewView = normalizeTnRoundCardView(value) || '1';
+    markAdmTnRoundCardButtons();
+    renderTnRoundCardPreview();
+    if (typeof vib === 'function') vib(15);
+}
+
+// Предпросмотр: общая карточка флайта (сводка группы) — тот же рендерер,
+// что и на экране ввода счёта, поэтому админ видит реальный вид.
+function renderTnRoundCardPreview() {
+    var el = document.getElementById('tn-card-preview');
+    if (!el) return;
+    var view = tnRoundCardPreviewView || (typeof getTnRoundCardView === 'function' && getTnRoundCardView()) || '1';
+    var names = ['Неделько Александр', 'Свиридов Виктор', 'Гималетдинов Рустем'];
+    var players = {};
+    names.forEach(function(name, i) {
+        var scores = {};
+        for (var h = 1; h <= 9; h++) scores[h] = holePar(h) + ((h + i) % 3) - 1;
+        players['demo' + i] = { name: name, tee: i === 2 ? 'rd' : 'wh', fieldHcp: 12 + i * 4, scores: scores };
+    });
+    var round = { tournamentId: 'demo', tournamentName: 'Клубный турнир', status: 'active', holeRange: '1-18', tee: 'wh', players: players };
+    var html = '';
+    try {
+        html = generateGroupHoleTableHTML(round, { showMarker: false });
+    } catch (e) {
+        console.warn('Tournament card preview failed', e);
+        html = '<p style="color:var(--muted);font-size:12px;">Предпросмотр недоступен</p>';
+    }
+    el.innerHTML = html;
+    var card = el.querySelector('.club-sc');
+    if (card) {
+        card.setAttribute('data-sc-preview', 'true');
+        card.setAttribute('data-sc-view', view);
+    }
+}
+
+// Отметки переключателей блоков: вызывается из applyTnRoundCardBlocks()
+// (js/utils.js) — в том числе когда настройка пришла из базы по realtime.
+function markAdmTnRoundCardBlocks() {
+    var blocks = (typeof getTnRoundCardBlocks === 'function') ? getTnRoundCardBlocks() : null;
+    if (!blocks) return;
+    tnRoundCardBlocksDraft = blocks;
+    var boxes = document.querySelectorAll('#tn-card-blocks input[data-tn-block]');
+    boxes.forEach(function(box) {
+        var on = blocks[box.getAttribute('data-tn-block')] !== false;
+        box.checked = on;
+        var wrap = box.closest ? box.closest('.se-show-item') : null;
+        if (wrap) wrap.classList.toggle('is-on', on);
+    });
+}
+
+function setTnRoundCardBlock(key, on) {
+    var blocks = tnRoundCardBlocksDraftValue();
+    blocks[key] = !!on;
+    var label = document.querySelector('#tn-card-blocks input[data-tn-block="' + key + '"]');
+    if (label && label.closest) {
+        var wrap = label.closest('.se-show-item');
+        if (wrap) wrap.classList.toggle('is-on', !!on);
+    }
+}
+
+function resetTnRoundCardBlocks() {
+    tnRoundCardBlocksDraft = normalizeTnRoundCardBlocks({});
+    renderTnRoundCardAdmin();
+}
+
+function tnRoundCardBusy(busy) {
+    tnRoundCardSaving = !!busy;
+    ['tn-card-apply', 'tn-card-reset', 'tn-card-blocks-apply'].forEach(function(id) {
+        var btn = document.getElementById(id);
+        if (btn) btn.disabled = !!busy;
+    });
+}
+
+function saveTnRoundCardView(value) {
+    if (tnRoundCardSaving) return;
+    var status = document.getElementById('tn-card-save-status');
+    var v = normalizeTnRoundCardView(value === undefined || value === null ? tnRoundCardPreviewView : value);
+    if (typeof db === 'undefined' || !db) {
+        if (status) status.textContent = 'Нет соединения с базой. Общий вид не изменён.';
+        return;
+    }
+    tnRoundCardBusy(true);
+    if (status) status.textContent = 'Сохраняем для всех игроков…';
+    db.ref('settings/tn_round_card_view').set(v).then(function() {
+        applyTnRoundCardView(v);
+        if (status) {
+            status.textContent = v
+                ? 'Вариант ' + v + ' сохранён для всех турниров.'
+                : 'Турнирные карточки снова выглядят как в обычном раунде.';
+        }
+        markAdmTnRoundCardButtons();
+    }).catch(function(err) {
+        console.warn('Tournament card view save failed', err);
+        if (status) status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
+    }).finally(function() { tnRoundCardBusy(false); });
+}
+
+function saveTnRoundCardBlocks() {
+    if (tnRoundCardSaving) return;
+    var status = document.getElementById('tn-card-blocks-status');
+    var blocks = normalizeTnRoundCardBlocks(tnRoundCardBlocksDraftValue());
+    if (typeof db === 'undefined' || !db) {
+        if (status) status.textContent = 'Нет соединения с базой. Блоки не изменены.';
+        return;
+    }
+    tnRoundCardBusy(true);
+    if (status) status.textContent = 'Сохраняем состав блоков…';
+    db.ref('settings/tn_round_card_blocks').set(blocks).then(function() {
+        applyTnRoundCardBlocks(blocks);
+        var hidden = TN_ROUND_CARD_BLOCK_KEYS.filter(function(k) { return blocks[k] === false; });
+        if (status) {
+            status.textContent = hidden.length
+                ? 'Скрытые блоки: ' + hidden.length + '. Настройка применена ко всем игрокам.'
+                : 'Все блоки видны. Настройка применена ко всем игрокам.';
+        }
+    }).catch(function(err) {
+        console.warn('Tournament card blocks save failed', err);
+        if (status) status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
+    }).finally(function() { tnRoundCardBusy(false); });
+}
+
+function bindTnRoundCardAdmin() {
+    if (tnRoundCardBound) return;
+    tnRoundCardBound = true;
+    if (typeof db === 'undefined' || !db) return;
+    if (typeof bindRealtimeValue === 'function') {
+        bindRealtimeValue('admin-tn-round-card-view', db.ref('settings/tn_round_card_view'), function(sn) {
+            applyTnRoundCardView(sn.val());
+            tnRoundCardPreviewView = getTnRoundCardView() || '1';
+            markAdmTnRoundCardButtons();
+            renderTnRoundCardPreview();
+        });
+        bindRealtimeValue('admin-tn-round-card-blocks', db.ref('settings/tn_round_card_blocks'), function(sn) {
+            var blocks = normalizeTnRoundCardBlocks(sn.val() || {});
+            applyTnRoundCardBlocks(blocks);
+            tnRoundCardBlocksDraft = blocks;
+            var boxes = document.querySelectorAll('#tn-card-blocks input[data-tn-block]');
+            boxes.forEach(function(box) {
+                box.checked = blocks[box.getAttribute('data-tn-block')] !== false;
+            });
+        });
+    }
+}

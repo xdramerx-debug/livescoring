@@ -476,6 +476,10 @@
         rows.sort(function (a, b) {
             var ar = statusRank(a.status), br = statusRank(b.status);
             if (ar !== br) return ar - br;
+            // Ещё не сыгравшие — в конце: нулевой гросс/нетто не должен
+            // поднимать игрока без единой лунки на первое место.
+            var aPlayed = a.holes > 0 ? 0 : 1, bPlayed = b.holes > 0 ? 0 : 1;
+            if (aPlayed !== bPlayed) return aPlayed - bPlayed;
             var aMetric = stable ? a.stableford : grossMode ? a.gross : a.net, bMetric = stable ? b.stableford : grossMode ? b.gross : b.net;
             if (aMetric !== bMetric) return stable ? bMetric - aMetric : aMetric - bMetric;
             var tie = tieBreakCompare(a._tieBreak, b._tieBreak, tieMethods);
@@ -484,11 +488,13 @@
             return str(a.name).localeCompare(str(b.name));
         });
         var previous = null;
-        rows.forEach(function (row, index) {
+        var place = 0;
+        rows.forEach(function (row) {
             var metric = stable ? row.stableford : grossMode ? row.gross : row.net;
-            if (row.status !== 'ACTIVE' && row.status !== 'FINAL') row.position = null;
+            // Без сыгранных лунок места нет — прочерк, а не «1».
+            if (row.holes <= 0 || (row.status !== 'ACTIVE' && row.status !== 'FINAL')) row.position = null;
             else if (previous && previous.metric === metric && tieBreakCompare(previous.tie, row._tieBreak, tieMethods) === 0) row.position = previous.position;
-            else row.position = index + 1;
+            else { place++; row.position = place; }
             if (row.position != null) previous = { metric: metric, tie: row._tieBreak, position: row.position };
             row.metric = metric;
             var parPlayed = (row.breakdown || []).reduce(function (sum, h) { return sum + (num(h && h.par, 4) || 4); }, 0);

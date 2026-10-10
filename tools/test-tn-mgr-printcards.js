@@ -316,7 +316,7 @@ check('время старта и лунка печатаются', docHtml.inde
 check('строки Пар/Индекс/Фора/Удары печатаются', docHtml.indexOf('>Пар</span>') !== -1 && docHtml.indexOf('>Индекс</span>') !== -1 &&
     docHtml.indexOf('>Фора 1</span>') !== -1 && docHtml.indexOf('>Удары</span>') !== -1);
 check('строка «Длина» печатается с длинами лунок и итогами',
-    docHtml.indexOf('>Длина, м</span>') !== -1 && docHtml.indexOf('>328</td>') !== -1 &&
+    docHtml.indexOf('>Длина</span>') !== -1 && docHtml.indexOf('>328</td>') !== -1 &&
     /<td class="sum">(\d+)<\/td>/.test(docHtml));
 check('строку «Длина» можно выключить в «Составе информации»', (function () {
     PC.state.draft = null;
@@ -325,7 +325,7 @@ check('строку «Длина» можно выключить в «Соста
     PC.state.draft = null;
     TOURNAMENT.printScorecards = null;
     PC.state.draft = null;
-    return noLen.indexOf('>Длина, м</span>') === -1 && noLen.indexOf('data-tnpc-block="length"') === -1;
+    return noLen.indexOf('>Длина</span>') === -1 && noLen.indexOf('data-tnpc-block="length"') === -1;
 })());
 check('блоки таблицы — отдельные обёртки с ручками только на экране',
     docHtml.indexOf('data-tnpc-block="holes"') !== -1 &&

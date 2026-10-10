@@ -1226,6 +1226,8 @@ var TnMgrUI = (function (root) {
             '<div class="tnm-participant-tools">' +
             '<label class="tnm-participant-filter"><i class="fas fa-filter"></i><input type="search" data-tnm-live="participant-table-search" data-tnm-focus="participant-table-search" autocomplete="off" value="' + esc(state.participantTableQuery) + '" placeholder="' + esc(bi('Найти участника по имени или фамилии', 'Filter by first or last name')) + '"></label>' +
             btn('select-visible-participants', esc(bi('Выбрать в списке', 'Select visible')), { variant: 'ghost', small: true }) +
+            btn('remove-selected-participants', esc(bi('Удалить выбранных', 'Delete selected') + (selectedCount ? ' (' + selectedCount + ')' : '')), { icon: 'fas fa-user-minus', variant: 'danger', small: true, disabled: !selectedCount }) +
+            btn('remove-all-participants', esc(bi('Удалить всех', 'Delete all') + (players.length ? ' (' + players.length + ')' : '')), { icon: 'fas fa-users-slash', variant: 'danger', small: true, disabled: !players.length }) +
             btn('rusgolf-sync-selected', esc(bi('Rusgolf · выбранных', 'Rusgolf · selected')), { icon: 'fas fa-rotate', variant: 'ghost', small: true, disabled: !selectedCount || state.rusgolfSync.running }) +
             btn('rusgolf-sync-all', esc(bi('Rusgolf · всех', 'Rusgolf · all')), { icon: 'fas fa-users-rotate', variant: 'ghost', small: true, disabled: !players.length || state.rusgolfSync.running }) +
             syncStatus + '</div>' +
@@ -1315,9 +1317,9 @@ var TnMgrUI = (function (root) {
         });
         if (!prepared.length) {
             if (skipped && !silent) toastMsg(bi('Эти участники уже есть в турнире', 'These participants are already in the tournament'), 'warn');
-            return;
+            return Promise.resolve([]);
         }
-        data().addPlayers(state.route.tid, prepared, t).then(function (created) {
+        return data().addPlayers(state.route.tid, prepared, t).then(function (created) {
             state.participantQuery = '';
             state.suggestions = [];
             if (!silent) {
@@ -1549,6 +1551,32 @@ var TnMgrUI = (function (root) {
         confirmAction({ title: bi('Удаление участника', 'Remove participant'), message: question, onConfirm: run });
     }
 
+    /**
+     * «Удалить всех» / «Удалить выбранных» в списке участников.
+     * Удаляются состав турнира, отметки в группах, строки стартовых листов
+     * и счёт — одним запросом (TnMgrData.removePlayers).
+     */
+    function removeParticipants(ids) {
+        var list = (ids || []).filter(function (pid) { return !!playerOf(pid); });
+        if (!list.length) { toastMsg(bi('Нечего удалять', 'Nothing to delete'), 'warn'); return; }
+        var names = list.slice(0, 3).map(function (pid) { return core().playerFio(playerOf(pid)); });
+        var rest = list.length - names.length;
+        confirmAction({
+            title: bi('Удаление участников', 'Delete participants'),
+            message: bi('Удалить участников: ', 'Delete participants: ') + names.join(', ') +
+                (rest > 0 ? ' ' + bi('и ещё ', 'and ') + rest : '') + '? ' +
+                bi('Будут убраны из групп, стартовых листов и счёта.',
+                    'They will be removed from groups, tee sheets and scores.'),
+            onConfirm: function () {
+                return data().removePlayers(state.route.tid, list, tournament()).then(function () {
+                    state.selectedParticipantIds = {};
+                    toastMsg(bi('Удалено участников: ', 'Participants deleted: ') + list.length);
+                    render();
+                }).catch(function (err) { toastMsg('❌ ' + (err && err.message ? err.message : err), 'error'); });
+            }
+        });
+    }
+
     function exportParticipantsPdf() {
         var t = tournament() || {};
         var players = playersOf(t).map(function (player) {
@@ -1627,12 +1655,18 @@ var TnMgrUI = (function (root) {
     });
 
     modal('paste-table', function () {
+        var example = '10:00: Неделько Александр, Свиридов Виктор, Гималетдинов Рустем, Шиловский Марк\n' +
+            '10:10: Иванов Иван, Петров Пётр, Сидоров Алексей\n' +
+            '10:20 (л.10): Смирнова Анна, Кузнецова Мария, Павлова Ольга';
         return '<div class="tnm-modal-overlay" data-tnm-act="close-modal">' +
             '<div class="tnm-modal" data-tnm-stop="1">' +
             '<h3>' + esc(bi('Вставить таблицу', 'Paste table')) + '</h3>' +
-            '<p class="tnm-sub">' + esc(bi('Скопируйте строки из Excel или Google Таблиц: ФИО, гандикап, пол, ТИ, группа.',
-                'Copy rows from Excel or Google Sheets: name, handicap, gender, tee, group.')) + '</p>' +
-            '<textarea id="tnm-paste-area" rows="8" placeholder="Иванов Иван\t12,4\tмуж\tБелый\tA"></textarea>' +
+            '<p class="tnm-sub">' + esc(bi('Два формата. Обычный: ФИО, гандикап, пол, ТИ, группа (строки из Excel или Google Таблиц).',
+                'Two formats. Plain: name, handicap, gender, tee, group (rows from Excel or Google Sheets).')) + '</p>' +
+            '<p class="tnm-sub">' + esc(bi('Стартовый лист: время старта и состав флайта — такие игроки сразу попадают в лист с этим временем.',
+                'Tee sheet: start time and flight — such players go straight into the tee sheet with that time.')) +
+            '<br><code>10:00: Неделько Александр, Свиридов Виктор, …</code></p>' +
+            '<textarea id="tnm-paste-area" rows="8" placeholder="' + esc(example) + '"></textarea>' +
             '<div class="tnm-modal-actions">' +
             btn('confirm-paste', esc(bi('Добавить', 'Add')), { variant: 'primary' }) +
             btn('close-modal', esc(bi('Отмена', 'Cancel')), { variant: 'ghost' }) +
@@ -1962,6 +1996,14 @@ var TnMgrUI = (function (root) {
     on('add-suggestion', function (button) { addSuggestion(button); });
     on('add-manual', function (button) { addManual(button.getAttribute('data-name')); });
     on('remove-participant', function (button) { removeParticipant(button.getAttribute('data-pid')); });
+    on('remove-selected-participants', function () {
+        removeParticipants(Object.keys(state.selectedParticipantIds || {}).filter(function (pid) {
+            return state.selectedParticipantIds[pid];
+        }));
+    });
+    on('remove-all-participants', function () {
+        removeParticipants(playersOf().map(function (player) { return player.id; }));
+    });
     on('export-participants', exportParticipantsPdf);
     on('import-excel', function () { var input = el('tnm-excel-input'); if (input) input.click(); });
     on('paste-table', function () { openModal('paste-table'); });
@@ -1986,9 +2028,52 @@ var TnMgrUI = (function (root) {
         if (parsed) addParticipants(parsed.players, false);
         closeModal();
     });
+    /**
+     * Вставка стартового листа: «10:00: Неделько Александр, Свиридов Виктор…».
+     * Участники добавляются в турнир, а затем лист раунда пересобирается
+     * ровно в том составе и с теми временами старта, что вставил организатор.
+     */
+    function pasteStartList(text) {
+        var parsed = core().parseStartList(text);
+        if (!parsed.players.length) {
+            toastMsg(bi('Не найдено строк с именами', 'No rows with names found'), 'error');
+            return;
+        }
+        var tid = state.route.tid;
+        var rid = state.route.rid || (roundsOf()[0] ? roundsOf()[0].id : '');
+        var ensureRound = rid ? Promise.resolve(rid)
+            : data().addRound(tid, { date: (tournament() || {}).startDate || (tournament() || {}).date || core().todayIso() })
+                .then(function (created) { return core().trim(created && created.id ? created.id : created); });
+        state.busy = true;
+        render();
+        addParticipants(parsed.players, true).then(function () {
+            return ensureRound;
+        }).then(function (roundId) {
+            if (!roundId) throw new Error(bi('Не удалось создать раунд', 'Could not create the round'));
+            return data().read('tournaments/' + tid).then(function (fresh) {
+                return data().generateSheetFromFlights(tid, roundId, parsed.flights, fresh || {});
+            });
+        }).then(function (result) {
+            state.busy = false;
+            closeModal();
+            var entries = Object.keys((result && result.sheet && result.sheet.entries) || {}).length;
+            var missing = (result && result.missing) || [];
+            toastMsg(bi('Стартовый лист: флайтов ', 'Tee sheet: flights ') + parsed.flights.length +
+                ' · ' + bi('игроков ', 'players ') + entries +
+                (missing.length ? ' · ' + bi('не найдено: ', 'not found: ') + missing.slice(0, 3).join(', ') : ''));
+            navigate({ view: 'card', tid: tid, tab: 'sheet' });
+        }).catch(function (err) {
+            state.busy = false;
+            toastMsg('❌ ' + (err && err.message ? err.message : err), 'error');
+            render();
+        });
+    }
+
     on('confirm-paste', function () {
         var area = el('tnm-paste-area');
-        var parsed = core().parseParticipants(core().parseDelimited(area ? area.value : ''));
+        var text = area ? area.value : '';
+        if (core().looksLikeStartList(text)) { pasteStartList(text); return; }
+        var parsed = core().parseParticipants(core().parseDelimited(text));
         if (!parsed.players.length) { toastMsg(bi('Не найдено строк с ФИО', 'No rows with names found'), 'error'); return; }
         addParticipants(parsed.players, false);
         closeModal();

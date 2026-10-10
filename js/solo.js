@@ -501,6 +501,11 @@ function loadExistingSolo() {
     soloRoundHandler = function(sn) {
         soloRound = sn.val();
         if (!soloRound) { toast(currentLang === 'en' ? 'Round not found' : 'Раунд не найден', 'error'); return; }
+        // Карточки в турнире: вид карточки и состав блоков (см. utils.js).
+        try {
+            window.pestovoCurrentRound = function() { return soloRound; };
+            if (typeof pestovoApplyTnRoundCardLayout === 'function') pestovoApplyTnRoundCardLayout(soloRound);
+        } catch (e) { console.warn("[silent]", e); }
 
         // Это групповой раунд — передаём его live.js (обе вкладки на setup-round.html)
         if (soloRound.mode === 'group') {

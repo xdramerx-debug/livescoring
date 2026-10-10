@@ -3309,7 +3309,7 @@ function renderClubScorecard(player, round, opts) {
     var current = playerCurrentHole(r, pid, p, stats, order);
     var labels = [en ? 'Hole' : 'Лунка', en ? 'Par' : 'Пар', en ? 'Score' : 'Счёт'];
     if (opts.showMarker) labels.push(en ? 'Marker' : 'Маркер');
-    var html = '<section class="club-sc" data-sc-view="' + getRoundScorecardView() + '" aria-label="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
+    var html = '<section class="club-sc" data-sc-view="' + pestovoRoundCardView(r) + '" aria-label="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
     html += '<header class="club-sc-head"><strong>' + escapeHtml(name) + '</strong> ' + fmtTeePill(tee) + '<span>HCP ' + escapeHtml(fmtFieldHcp(hcp)) + '</span></header>';
     if (opts.label) html += '<div class="club-sc-caption">' + escapeHtml(opts.label) + '</div>';
     var total = 0, played = 0;
@@ -3386,7 +3386,7 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
     order = (order && order.length) ? order : getRoundOrder(r);
     var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
     var view = '1';
-    try { view = getRoundScorecardView(); } catch (e) { view = '1'; }
+    try { view = pestovoRoundCardView(r); } catch (e) { view = '1'; }
     var n = playerEntries.length;
     var countTxt = en
         ? (n + ' ' + (n === 1 ? 'player' : 'players'))
@@ -7024,6 +7024,110 @@ function applyTnGenderSplit(v) {
     return pestovoTnGenderSplit;
 }
 
+// ==========================================
+// КАРТОЧКИ В ТУРНИРЕ: вид + состав блоков
+// ==========================================
+// Экран ввода счёта, который игрок/маркер открывает по QR из стартового
+// листа турнира (setup-round.html / scorer.html). Админ выбирает в новой
+// вкладке «Карточки в турнире 🎴»:
+//   • один из 5 видов счётной карточки (settings/tn_round_card_view);
+//   • какие блоки экрана показывать (settings/tn_round_card_blocks).
+// Настройка общая для всех игроков; до её появления турнирные раунды
+// оформляются ровно как обычные клубные (вид settings/scorecard_view,
+// все блоки видны) — поведение не меняется.
+var TN_ROUND_CARD_VARIANTS = ['1', '2', '3', '4', '5'];
+var TN_ROUND_CARD_BLOCK_KEYS = ['info', 'holes', 'input', 'pace', 'summary', 'qr', 'officials', 'stableford', 'finish'];
+// Подписи блоков для админ-панели и селекторы, которыми блок скрывается
+// на экране ввода (одинаковы для группового и одиночного раунда).
+var TN_ROUND_CARD_BLOCKS = {
+    info:       { ru: 'Информация о лунке (номер, пар, метры)', en: 'Hole info (number, par, metres)', sel: ['.hole-display'] },
+    holes:      { ru: 'Сетка лунок (выбор лунки)', en: 'Hole grid (hole picker)', sel: ['[data-entry-block="holes"]'] },
+    input:      { ru: 'Ввод счёта (кнопки и «Подтвердить»)', en: 'Score entry (buttons and save)', sel: ['[data-entry-block="input"]'] },
+    pace:       { ru: 'Темп игры и дедлайны', en: 'Pace of play and deadlines', sel: ['#group-pace-assistant', '#solo-pace-assistant'] },
+    summary:    { ru: 'Сводка группы / счётная карточка по лункам', en: 'Group summary / hole scorecard', sel: ['.round-card.scorecard-fold'] },
+    qr:         { ru: 'QR для подключения игроков группы', en: 'QR codes to connect the group', sel: ['#invite-qrs-card'] },
+    officials:  { ru: 'Вызов судьи и маршала', en: 'Referee and marshal calls', sel: ['#group-officials', '#solo-officials'] },
+    stableford: { ru: 'Переключатель очков Stableford', en: 'Stableford points toggle', sel: ['#group-stableford-control', '#solo-stableford-control'] },
+    finish:     { ru: 'Завершение раунда и пауза', en: 'Finish round and pause', sel: ['#group-finish-row', '#solo-finish-row'] }
+};
+
+function normalizeTnRoundCardView(value) {
+    value = String(value === undefined || value === null ? '' : value);
+    return TN_ROUND_CARD_VARIANTS.indexOf(value) !== -1 ? value : '';
+}
+
+function normalizeTnRoundCardBlocks(value) {
+    var src = (value && typeof value === 'object') ? value : {};
+    var out = {};
+    TN_ROUND_CARD_BLOCK_KEYS.forEach(function(key) {
+        // Неизвестное/пустое значение = блок виден (поведение по умолчанию).
+        out[key] = src[key] === false || src[key] === '0' || src[key] === 0 ? false : true;
+    });
+    return out;
+}
+
+var pestovoTnRoundCardView = (function() {
+    try { return normalizeTnRoundCardView(localStorage.getItem('pestovo_tn_round_card_view')); } catch (e) { return ''; }
+})();
+var pestovoTnRoundCardBlocks = (function() {
+    try { return normalizeTnRoundCardBlocks(JSON.parse(localStorage.getItem('pestovo_tn_round_card_blocks') || '{}')); }
+    catch (e) { return normalizeTnRoundCardBlocks({}); }
+})();
+
+/** Вид карточки в турнирном раунде; '' — как в обычном клубном раунде. */
+function getTnRoundCardView() { return pestovoTnRoundCardView; }
+function getTnRoundCardBlocks() { return pestovoTnRoundCardBlocks; }
+
+function applyTnRoundCardView(value) {
+    pestovoTnRoundCardView = normalizeTnRoundCardView(value);
+    try { localStorage.setItem('pestovo_tn_round_card_view', pestovoTnRoundCardView); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof markAdmTnRoundCardButtons === 'function') markAdmTnRoundCardButtons(); } catch (e) { console.warn("[silent]", e); }
+    try { pestovoApplyTnRoundCardLayout(window.pestovoCurrentRound ? window.pestovoCurrentRound() : null); } catch (e) { console.warn("[silent]", e); }
+    return pestovoTnRoundCardView;
+}
+
+function applyTnRoundCardBlocks(value) {
+    pestovoTnRoundCardBlocks = normalizeTnRoundCardBlocks(value);
+    try { localStorage.setItem('pestovo_tn_round_card_blocks', JSON.stringify(pestovoTnRoundCardBlocks)); } catch (e) { console.warn("[silent]", e); }
+    try { if (typeof markAdmTnRoundCardBlocks === 'function') markAdmTnRoundCardBlocks(); } catch (e) { console.warn("[silent]", e); }
+    try { pestovoApplyTnRoundCardLayout(window.pestovoCurrentRound ? window.pestovoCurrentRound() : null); } catch (e) { console.warn("[silent]", e); }
+    return pestovoTnRoundCardBlocks;
+}
+
+/**
+ * Применяет настройку к открытому экрану ввода. Для турнирного раунда
+ * ставит классы «tn-hide-<блок>» (CSS скрывает блок) и data-атрибут вида
+ * карточки; для клубного раунда всё возвращается к обычному виду.
+ */
+function pestovoApplyTnRoundCardLayout(round) {
+    if (typeof document === 'undefined' || !document.body) return;
+    var isTn = false;
+    try { isTn = !!round && typeof isTournamentRound === 'function' && isTournamentRound(round); } catch (e) { isTn = false; }
+    TN_ROUND_CARD_BLOCK_KEYS.forEach(function(key) {
+        var hide = isTn && pestovoTnRoundCardBlocks[key] === false;
+        document.body.classList.toggle('tn-hide-' + key, hide);
+    });
+    var view = isTn && pestovoTnRoundCardView ? pestovoTnRoundCardView : '';
+    if (view) document.body.setAttribute('data-tn-card-view', view);
+    else document.body.removeAttribute('data-tn-card-view');
+    // Открытые карточки перерисовываются в новом виде сразу.
+    if (isTn && typeof document.querySelectorAll === 'function') {
+        document.querySelectorAll('.club-sc:not([data-sc-preview])').forEach(function(el) {
+            el.setAttribute('data-sc-view', view || getRoundScorecardView());
+        });
+    }
+}
+
+/** Вид счётной карточки для конкретного раунда (турнирный — свой). */
+function pestovoRoundCardView(round) {
+    try {
+        if (round && pestovoTnRoundCardView && typeof isTournamentRound === 'function' && isTournamentRound(round)) {
+            return pestovoTnRoundCardView;
+        }
+    } catch (e) { console.warn("[silent]", e); }
+    return getRoundScorecardView();
+}
+
 // Нормализация пола участника (один на весь сайт): 'men' | 'women'.
 // Старые записи могли содержать 'f'/'female'/'жен' и т.п.
 function pestovoNormGender(g) {
@@ -7152,6 +7256,17 @@ if (typeof window !== 'undefined') {
     window.syncView5BodyClasses = syncView5BodyClasses;
     window.getHomeTournamentView = getHomeTournamentView;
     window.getRoundScorecardView = getRoundScorecardView;
+    window.getTnRoundCardView = getTnRoundCardView;
+    window.getTnRoundCardBlocks = getTnRoundCardBlocks;
+    window.applyTnRoundCardView = applyTnRoundCardView;
+    window.applyTnRoundCardBlocks = applyTnRoundCardBlocks;
+    window.normalizeTnRoundCardView = normalizeTnRoundCardView;
+    window.normalizeTnRoundCardBlocks = normalizeTnRoundCardBlocks;
+    window.pestovoApplyTnRoundCardLayout = pestovoApplyTnRoundCardLayout;
+    window.pestovoRoundCardView = pestovoRoundCardView;
+    window.TN_ROUND_CARD_VARIANTS = TN_ROUND_CARD_VARIANTS;
+    window.TN_ROUND_CARD_BLOCKS = TN_ROUND_CARD_BLOCKS;
+    window.TN_ROUND_CARD_BLOCK_KEYS = TN_ROUND_CARD_BLOCK_KEYS;
     window.getScoringView = getScoringView;
     window.applyScoreEntryOrder = applyScoreEntryOrder;
     window.applyScoreEntryShow = applyScoreEntryShow;
@@ -8205,6 +8320,16 @@ if (typeof db !== 'undefined') {
             if (TN_ROSTER_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnRosterVariant) {
                 applyTnRosterVariant(String(v));
             }
+        });
+        // Карточки в турнире: вид счётной карточки и состав блоков экрана
+        // ввода (админ-панель → «Карточки в турнире 🎴»).
+        db.ref('settings/tn_round_card_view').on('value', function(sn) {
+            var v = normalizeTnRoundCardView(sn.val());
+            if (v !== pestovoTnRoundCardView) applyTnRoundCardView(v);
+        });
+        db.ref('settings/tn_round_card_blocks').on('value', function(sn) {
+            var next = normalizeTnRoundCardBlocks(sn.val() || {});
+            if (JSON.stringify(next) !== JSON.stringify(pestovoTnRoundCardBlocks)) applyTnRoundCardBlocks(next);
         });
         // Разделение лидерборда турнира по полу — 3 вида (выбирает админ).
         db.ref('settings/tn_gender_split').on('value', function(sn) {

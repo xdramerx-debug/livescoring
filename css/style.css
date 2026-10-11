@@ -4545,107 +4545,7 @@ body.pd-home-v3 .stats-grid{grid-template-columns:repeat(auto-fit,minmax(200px,1
 body.pd-home-v3 .stats-grid .stat{padding:30px 18px;background:linear-gradient(145deg,rgba(201,168,76,.14),rgba(19,34,24,.94) 55%);border-color:rgba(201,168,76,.42);}
 body.pd-home-v3 .stats-grid .stat-n{font-size:40px;color:var(--gold);}
 
-/* ---------- ТУРНИРЫ (pd-tournaments-*) ---------- */
-/* Пять вариантов страницы «Турниры». Выбирает только администратор
-   (админ-панель → вкладка «Турниры: вид»), значение хранится в
-   settings/tournaments_display_variant и применяется для всех игроков.
-   Вариант 1 — исходный вид (классов на <body> нет).
-   Разметка каталога: #tn-list.tn-public-grid > article.tn-public-card
-   (баннер + тело карточки), стили — css/tournament-redesign.css. */
-
-/* Общий для вариантов 2–5: вкладка-фильтр становится «подчёркнутой»,
-   чтобы смена оформления была заметна сразу. */
-body.pd-tournaments-v2 .tn-public-tab,
-body.pd-tournaments-v3 .tn-public-tab,
-body.pd-tournaments-v4 .tn-public-tab,
-body.pd-tournaments-v5 .tn-public-tab{border-radius:9px;}
-
-/* Вариант 2 · Компактный список: плотные строки, максимум на экране */
-body.pd-tournaments-v2 .tn-public-grid{display:flex;flex-direction:column;gap:7px;}
-body.pd-tournaments-v2 .tn-public-card{flex-direction:row;align-items:center;min-height:0;border-radius:10px;box-shadow:none;}
-body.pd-tournaments-v2 .tn-public-card:hover{transform:none;}
-body.pd-tournaments-v2 .tn-public-card-banner{display:none;}
-body.pd-tournaments-v2 .tn-public-card-body{flex-direction:row;align-items:center;gap:12px;padding:10px 13px;}
-body.pd-tournaments-v2 .tn-public-card-top{flex:1 1 auto;min-width:0;align-items:center;gap:9px;}
-body.pd-tournaments-v2 .tn-public-card h3{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-body.pd-tournaments-v2 .tn-public-meta{margin-top:0;flex:0 0 auto;font-size:11px;gap:10px;}
-body.pd-tournaments-v2 .tn-public-format{display:none;}
-body.pd-tournaments-v2 .tn-public-card-desc{display:none;}
-body.pd-tournaments-v2 .tn-public-card-actions{margin-top:0;padding-top:0;flex:0 0 auto;}
-body.pd-tournaments-v2 .tn-public-card-actions .btn{min-height:32px;font-size:12px;}
-body.pd-tournaments-v2 .tn-public-note{display:none;}
-/* Наследие (старый рендерер списка турниров) */
-body.pd-tournaments-v2 .card{padding:14px;margin-bottom:12px;}
-body.pd-tournaments-v2 .tn-card{padding:13px;margin-bottom:8px;border-radius:10px;}
-body.pd-tournaments-v2 .tn-name{font-size:15px;}
-body.pd-tournaments-v2 .tn-meta{font-size:11px;}
-
-/* Вариант 3 · Витрина: крупные афиши, по одной-две в ряд */
-body.pd-tournaments-v3 .tn-public-grid{grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:22px;}
-body.pd-tournaments-v3 .tn-public-card{min-height:330px;border-radius:20px;border-color:rgba(201,168,76,.45);box-shadow:0 18px 44px rgba(0,0,0,.4);}
-body.pd-tournaments-v3 .tn-public-card-banner{height:168px;}
-body.pd-tournaments-v3 .tn-public-card-body{padding:22px 24px 24px;}
-body.pd-tournaments-v3 .tn-public-card h3{font-size:27px;line-height:1.12;}
-body.pd-tournaments-v3 .tn-public-meta{font-size:14px;margin-top:16px;}
-body.pd-tournaments-v3 .tn-public-chip{font-size:12px;padding:6px 11px;}
-body.pd-tournaments-v3 .tn-public-card-desc{font-size:14px;min-height:56px;}
-body.pd-tournaments-v3 .tn-public-badge{font-size:12px;padding:7px 13px;}
-body.pd-tournaments-v3 .tn-public-card-actions .btn{min-height:44px;font-size:14px;}
-body.pd-tournaments-v3 .tn-detail-hero{padding:32px;}
-body.pd-tournaments-v3 .tn-detail-title-row h1{font-size:38px;}
-/* Наследие */
-body.pd-tournaments-v3 .tn-card{padding:28px;margin-bottom:20px;background:linear-gradient(145deg,rgba(201,168,76,.15),rgba(19,34,24,.93) 55%);border-color:rgba(201,168,76,.48);box-shadow:0 14px 34px rgba(0,0,0,.42);}
-body.pd-tournaments-v3 .tn-name{font-size:24px;}
-body.pd-tournaments-v3 .tn-meta{font-size:14px;}
-body.pd-tournaments-v3 .tn-status{font-size:14px;padding:6px 16px;}
-
-/* Вариант 4 · Таблица: строки с колонками, без баннеров */
-body.pd-tournaments-v4 .tn-public-grid{display:block;border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;}
-body.pd-tournaments-v4 .tn-public-card{flex-direction:row;align-items:stretch;min-height:0;border:0;border-radius:0;border-bottom:1px solid rgba(255,255,255,.08);box-shadow:none;}
-body.pd-tournaments-v4 .tn-public-card:nth-child(even){background:rgba(255,255,255,.025);}
-body.pd-tournaments-v4 .tn-public-card:last-child{border-bottom:0;}
-body.pd-tournaments-v4 .tn-public-card:hover{transform:none;background:rgba(201,168,76,.08);}
-body.pd-tournaments-v4 .tn-public-card-banner{display:none;}
-body.pd-tournaments-v4 .tn-public-card-body{display:grid;grid-template-columns:minmax(200px,2.4fr) minmax(190px,1.5fr) minmax(150px,1.1fr) auto;align-items:center;gap:14px;padding:13px 16px;}
-body.pd-tournaments-v4 .tn-public-card-top{min-width:0;align-items:center;gap:10px;}
-body.pd-tournaments-v4 .tn-public-card h3{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-body.pd-tournaments-v4 .tn-public-meta{margin-top:0;font-size:11.5px;flex-wrap:nowrap;overflow:hidden;}
-body.pd-tournaments-v4 .tn-public-format{margin-top:0;flex-wrap:nowrap;overflow:hidden;}
-body.pd-tournaments-v4 .tn-public-card-desc{display:none;}
-body.pd-tournaments-v4 .tn-public-card-actions{margin-top:0;padding-top:0;justify-content:flex-end;}
-body.pd-tournaments-v4 .tn-public-card-actions .btn{min-height:32px;font-size:12px;}
-body.pd-tournaments-v4 .tn-public-note{display:none;}
-body.pd-tournaments-v4 .tn-public-table th{font-size:11px;letter-spacing:1px;}
-
-/* Вариант 5 · Календарь: лента с датой слева */
-body.pd-tournaments-v5 .tn-public-grid{display:flex;flex-direction:column;gap:0;}
-body.pd-tournaments-v5 .tn-public-card{flex-direction:row;align-items:stretch;min-height:0;margin-bottom:14px;border-radius:14px;}
-body.pd-tournaments-v5 .tn-public-card:before{content:"";position:absolute;left:39px;top:-14px;bottom:-14px;width:2px;background:linear-gradient(180deg,transparent,rgba(201,168,76,.55) 18%,rgba(201,168,76,.55) 82%,transparent);}
-body.pd-tournaments-v5 .tn-public-card:first-child:before{top:26px;}
-body.pd-tournaments-v5 .tn-public-card:last-child:before{bottom:auto;height:52px;}
-body.pd-tournaments-v5 .tn-public-card-banner{width:80px;flex:0 0 80px;height:auto;border-radius:14px 0 0 14px;background:linear-gradient(160deg,rgba(201,168,76,.3),rgba(36,89,55,.5));border-right:1px solid rgba(201,168,76,.3);}
-body.pd-tournaments-v5 .tn-public-card-body{padding:16px 18px;}
-body.pd-tournaments-v5 .tn-public-card h3{font-size:17px;}
-body.pd-tournaments-v5 .tn-public-meta span:first-child{color:var(--gold);font-weight:800;font-size:13px;}
-body.pd-tournaments-v5 .tn-public-card-desc{min-height:0;margin-top:9px;}
-body.pd-tournaments-v5 .tn-public-card-actions{padding-top:12px;}
-
-/* Мобильные: «Таблица» и «Компактный список» складываются в две строки,
-   «Витрина» занимает всю ширину, «Календарь» сохраняет ленту. */
-@media (max-width:760px){
-    body.pd-tournaments-v3 .tn-public-grid{grid-template-columns:1fr;gap:16px;}
-    body.pd-tournaments-v3 .tn-public-card{min-height:0;}
-    body.pd-tournaments-v3 .tn-public-card-banner{height:120px;}
-    body.pd-tournaments-v3 .tn-public-card h3{font-size:21px;}
-    body.pd-tournaments-v2 .tn-public-card-body{flex-wrap:wrap;gap:8px;}
-    body.pd-tournaments-v2 .tn-public-card-top{flex:1 1 100%;}
-    body.pd-tournaments-v4 .tn-public-card-body{grid-template-columns:1fr auto;gap:8px 12px;padding:12px 13px;}
-    body.pd-tournaments-v4 .tn-public-meta{grid-column:1/-1;}
-    body.pd-tournaments-v4 .tn-public-format{display:none;}
-    body.pd-tournaments-v4 .tn-public-card-actions{grid-column:2;grid-row:1;}
-    body.pd-tournaments-v5 .tn-public-card-banner{width:56px;flex:0 0 56px;}
-    body.pd-tournaments-v5 .tn-public-card:before{left:27px;}
-}
+/* Новая компоновка и гибкая настройка страницы турниров описаны ниже. */
 
 /* ---------- ГАНДИКАПЫ (pd-handicap-*) ---------- */
 /* Вариант 2 · Компактный */
@@ -5120,55 +5020,6 @@ body.sun-mode .hole-btn.active.cur-blink{
 .skipped-holes-box .shb-hole-btn{min-width:40px;min-height:36px;padding:6px 10px;border-radius:9px;border:1px solid rgba(243,156,18,.5);background:rgba(243,156,18,.12);color:#ffc46b;font-weight:800;font-size:13px;cursor:pointer;}
 .skipped-holes-box .shb-hole-btn:hover{background:rgba(243,156,18,.22);}
 
-/* ── СТРАНИЦА ВВОДА СЧЁТА: 5 ВИДОВ (body.st-scoring-vN, выбирает админ) ── */
-/* v1 — классика (без изменений) */
-/* v2 — «Крупный счёт»: большие цифры и кнопки ± */
-.score-entry[data-entry-view="2"] .score-disp{font-size:64px!important;min-height:68px;}
-.score-entry[data-entry-view="2"] .score-btns .score-minus,
-.score-entry[data-entry-view="2"] .score-btns .score-plus{border-radius:16px!important;}
-.score-entry[data-entry-view="2"] .hole-val{font-size:34px!important;}
-.score-entry[data-entry-view="2"] .hole-lbl{font-size:11px;letter-spacing:.6px;}
-.score-entry[data-entry-view="2"] .score-result{font-size:14px!important;}
-.score-entry[data-entry-view="2"] .hole-btn{font-size:14px;min-height:46px;}
-
-/* v3 — «Компакт»: всё плотнее, влезает один экран телефона */
-.score-entry[data-entry-view="3"]{padding:12px 10px!important;margin-bottom:10px!important;}
-.score-entry[data-entry-view="3"] .hole-display{gap:6px;margin-bottom:8px;}
-.score-entry[data-entry-view="3"] .hole-box{padding:5px 6px;}
-.score-entry[data-entry-view="3"] .hole-val{font-size:20px!important;}
-.score-entry[data-entry-view="3"] .hole-nav{gap:3px!important;margin-bottom:8px!important;}
-.score-entry[data-entry-view="3"] .hole-btn{padding:5px 2px;font-size:11px;min-height:34px;}
-.score-entry[data-entry-view="3"] .score-disp{font-size:34px!important;min-height:38px;}
-.score-entry[data-entry-view="3"] .score-result{font-size:10px!important;padding:2px 8px!important;}
-.score-entry[data-entry-view="3"] .dual-header h3{font-size:12px!important;}
-.score-entry[data-entry-view="3"] .scoring-columns{margin-bottom:8px!important;gap:6px!important;}
-.score-entry[data-entry-view="3"] .scoring-dual-block{padding:6px 4px!important;}
-
-/* v4 — «Контраст»: тёмные плашки, крупная текущая лунка, золотой акцент */
-.score-entry[data-entry-view="4"] .scoring-dual-block{background:rgba(0,0,0,.42);border-width:2px;}
-.score-entry[data-entry-view="4"] .my-score-block{border-top:5px solid var(--gold);}
-.score-entry[data-entry-view="4"] .marker-score-block{border-top:5px solid #9b59b6;}
-.score-entry[data-entry-view="4"] .score-disp{font-weight:900;letter-spacing:1px;}
-.score-entry[data-entry-view="4"] .hole-box{background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.35);border-radius:12px;}
-.score-entry[data-entry-view="4"] .hole-box .hole-val{color:var(--gold-l);}
-.score-entry[data-entry-view="4"] .hole-btn.active{box-shadow:0 0 0 3px rgba(201,168,76,.35),0 0 22px rgba(201,168,76,.55);}
-
-/* v5 — «Минимализм»: тонкие рамки, без теней и лишнего веса */
-.score-entry[data-entry-view="5"] .scoring-dual-block{box-shadow:none;background:transparent;border:1px solid var(--border);}
-.score-entry[data-entry-view="5"] .hole-btn{border-width:1px;font-weight:600;}
-.score-entry[data-entry-view="5"] .hole-btn.active{box-shadow:none;background:var(--input);border-color:var(--gold);color:var(--gold);}
-.score-entry[data-entry-view="5"] .score-disp{font-size:44px;font-weight:300;}
-.score-entry[data-entry-view="5"] .score-btns .score-minus,
-.score-entry[data-entry-view="5"] .score-btns .score-plus{background:transparent;border:1px solid var(--border);box-shadow:none;}
-.score-entry[data-entry-view="5"]{box-shadow:none;}
-.score-entry[data-entry-view="5"] .dual-header .score-hint{display:none;}
-
-/* Групповой раунд: блоки счёта в одну колонку на узких экранах для v2/v4 */
-@media(max-width:520px){
-    .score-entry[data-entry-view="2"] .scoring-columns,
-    .score-entry[data-entry-view="4"] .scoring-columns{flex-direction:column;}
-}
-
 .setup-hcp-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .setup-hcp-refresh {
     display: inline-flex; align-items: center; justify-content: center;
@@ -5432,28 +5283,10 @@ html.score-kiosk .p0-sticky-actions{display:none!important;}
 }
 
 
-/* ==========================================================
-   РАЗМЕР КНОПОК ± (ВВОД СЧЁТА) — ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ
-   ----------------------------------------------------------
-   Раньше размер задавался в пяти местах через width:…!important
-   (базовое правило, @480px, @640px, @768px и пресеты body.st-scoring-vN),
-   из-за чего одна и та же кнопка была 72px на scorer.html, 48px на
-   setup-round.html и 42px при пресете «Компакт» — меньше минимальных
-   44px, которые проект сам объявляет в @media (pointer: coarse).
-
-   Теперь все варианты меняют ТОЛЬКО две переменные на <body>, а правило
-   .score-minus/.score-plus читает их. Порядок ниже значим: при равной
-   специфичности (0,1,1) побеждает последнее правило, поэтому режим
-   доступности body.large-ui объявлен последним и всегда выигрывает.
-   ========================================================== */
+/* Единый размер touch-кнопок ввода счёта; доступность «Крупный интерфейс» остаётся приоритетной. */
 body{--score-btn:64px;--score-btn-fs:28px;}
 @media(max-width:768px){ body{--score-btn:72px;--score-btn-fs:28px;} }
-/* Двойной ввод «Я / Маркер» на странице раунда — компактнее, но не мельче 44px */
 body.score-compact{--score-btn:48px;--score-btn-fs:22px;}
-/* Пресет «Крупный счёт» */
-.score-entry[data-entry-view="2"]{--score-btn:64px;--score-btn-fs:30px;}
-/* Пресет «Компакт»: было 42px — меньше touch-минимума, стало 48px */
-.score-entry[data-entry-view="3"]{--score-btn:48px;--score-btn-fs:22px;}
 /* Режим доступности «Крупный интерфейс» — объявлен последним намеренно */
 body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
 
@@ -5665,29 +5498,8 @@ body.sun-mode .gsg-thru b { color:#000; }
 .score-entry .scoring-dual-block { min-width:0; margin:0; }
 .score-entry .score-btns button { min-width:44px; min-height:44px; }
 .score-entry .hole-btn:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
-.score-entry[data-entry-view="2"] .hole-nav { grid-template-columns:repeat(3,minmax(0,1fr))!important; }
-.score-entry[data-entry-view="2"] .hole-btn .entry-score-square { width:40px; font-size:24px; }
-.score-entry[data-entry-view="3"] .hole-nav { grid-template-columns:repeat(9,minmax(0,1fr))!important; gap:2px!important; }
-.score-entry[data-entry-view="3"] .hole-btn { min-height:62px; }
-.score-entry[data-entry-view="3"] .hole-btn .entry-score-square { width:24px; font-size:13px; }
-.score-entry[data-entry-view="4"] .entry-score-square { border:2px solid var(--gold); background:var(--bg); color:var(--gold-l); }
-.score-entry[data-entry-view="5"] .entry-score-square { background:transparent; box-shadow:none; font-weight:500; }
-#score-entry-preview .score-entry { padding:8px; margin:0; }
-#score-entry-preview button:disabled { opacity:1; cursor:default; }
-.entry-order-row { display:flex; align-items:center; gap:8px; margin:8px 0; }
-.entry-order-row > span { flex:1; min-width:0; }
-.entry-order-row button { min-width:44px; min-height:44px; }
 
-/* ==========================================================
-   ПРЕМИУМ-СТИЛЬ ЭКРАНА ВВОДА РЕЗУЛЬТАТОВ (v1.91)
-   ----------------------------------------------------------
-   Единая «карточка клуба» в одном стиле со счётными карточками:
-   глубокий зелёный градиент, золотая рамка-волоска, стеклянные
-   плиты. Базовый вид применяются ко всем пяти вариантам
-   (data-entry-view), варианты меняют только акценты.
-   Все декоративные слои — через ::before/::after и фон, чтобы
-   инлайн-стили страниц раунда не ломали оформление.
-   ========================================================== */
+/* Базовая карточка ввода счёта. */
 .score-entry{
     position:relative;
     padding:16px!important;
@@ -5827,66 +5639,6 @@ body.sun-mode .gsg-thru b { color:#000; }
     box-shadow:0 12px 30px rgba(201,168,76,.32), inset 0 1px 0 rgba(255,255,255,.4);
 }
 .score-entry .btn-g:hover{box-shadow:0 16px 36px rgba(201,168,76,.45), inset 0 1px 0 rgba(255,255,255,.4);}
-
-/* ── Вариант 2 «Крупный счёт»: самые большие цифры ── */
-.score-entry[data-entry-view="2"] .hole-val{font-size:clamp(26px,7.2vw,40px)!important;}
-.score-entry[data-entry-view="2"] .score-disp .entry-score-square{
-    width:clamp(84px,24vw,110px);font-size:clamp(46px,13vw,64px);border-radius:12px;
-}
-.score-entry[data-entry-view="2"] .hole-btn{border-radius:14px;}
-.score-entry[data-entry-view="2"] .scoring-dual-block{padding:14px!important;}
-
-/* ── Вариант 3 «Компакт»: плотнее, но в той же стилистике ── */
-.score-entry[data-entry-view="3"]{padding:12px 10px!important;border-radius:16px!important;}
-.score-entry[data-entry-view="3"] .hole-box{padding:8px 4px 7px!important;}
-.score-entry[data-entry-view="3"] .entry-score-square{border-radius:5px;}
-.score-entry[data-entry-view="3"] .score-disp .entry-score-square{width:52px;font-size:28px;}
-
-/* ── Вариант 4 «Контраст»: тёмные плиты и золотое свечение ── */
-.score-entry[data-entry-view="4"]{
-    background:
-        radial-gradient(130% 55% at 50% 0%, rgba(201,168,76,.16), rgba(0,0,0,0) 60%),
-        linear-gradient(168deg,#0c1710 0%,#0a130d 58%,#080f0a 100%)!important;
-    border-color:rgba(201,168,76,.45)!important;
-}
-.score-entry[data-entry-view="4"] .hole-display{
-    background:linear-gradient(180deg, rgba(201,168,76,.15), rgba(201,168,76,.04));
-    border-color:rgba(201,168,76,.4);
-}
-.score-entry[data-entry-view="4"] .entry-score-square{
-    background:linear-gradient(180deg, rgba(201,168,76,.2), rgba(201,168,76,.06));
-    border:2px solid var(--gold);
-    box-shadow:0 0 18px rgba(201,168,76,.22), inset 0 1px 0 rgba(255,255,255,.12);
-}
-.score-entry[data-entry-view="4"] .score-disp .entry-score-square{box-shadow:0 0 26px rgba(201,168,76,.3), inset 0 1px 0 rgba(255,255,255,.12);}
-.score-entry[data-entry-view="4"] .scoring-dual-block{
-    background:linear-gradient(180deg, rgba(10,18,12,.92), rgba(6,12,8,.95))!important;
-    border-color:rgba(201,168,76,.35)!important;
-}
-.score-entry[data-entry-view="4"] .hole-btn.active{
-    box-shadow:0 0 0 2px rgba(201,168,76,.35), 0 10px 26px rgba(201,168,76,.5), inset 0 1px 0 rgba(255,255,255,.4);
-}
-
-/* ── Вариант 5 «Минимализм»: тонкие линии, без теней ── */
-.score-entry[data-entry-view="5"]{
-    background:linear-gradient(170deg,#122116 0%,#0e1a11 60%,#0c170f 100%)!important;
-    border-color:rgba(201,168,76,.22)!important;
-    box-shadow:0 18px 44px rgba(0,0,0,.42)!important;
-}
-.score-entry[data-entry-view="5"]::before{left:38px;right:38px;opacity:.7;}
-.score-entry[data-entry-view="5"] .hole-display{background:transparent;border-color:rgba(201,168,76,.2);box-shadow:none;}
-.score-entry[data-entry-view="5"] .entry-score-square{
-    background:transparent;border:1px solid rgba(201,168,76,.4);box-shadow:none;border-radius:6px;
-}
-.score-entry[data-entry-view="5"] .score-disp .entry-score-square{width:64px;font-size:36px;}
-.score-entry[data-entry-view="5"] .score-disp .score-gross{font-family:var(--fb);font-weight:300;}
-.score-entry[data-entry-view="5"] .score-minus,.score-entry[data-entry-view="5"] .score-plus{
-    background:transparent;border:1px solid rgba(201,168,76,.3);box-shadow:none;color:var(--gold-l);
-}
-.score-entry[data-entry-view="5"] .scoring-dual-block{
-    background:transparent!important;box-shadow:none!important;border:1px solid rgba(201,168,76,.2)!important;
-}
-.score-entry[data-entry-view="5"] .hole-btn{background:transparent;border-color:rgba(201,168,76,.16);box-shadow:none;}
 
 /* ── SUN MODE: премиум-карточка остаётся контрастной ── */
 body.sun-mode .score-entry{background:#fff!important;border:2px solid #000!important;box-shadow:0 6px 18px rgba(0,0,0,.12)!important;}
@@ -6075,8 +5827,6 @@ body.sun-mode .score-entry .score-result{color:#000!important;}
     box-shadow:inset 0 0 0 1px rgba(255,255,255,.045), inset 0 6px 24px rgba(0,0,0,.5);
     overflow:hidden;
 }
-#score-entry-preview .score-entry{padding:12px;margin:0;}
-#score-entry-preview .score-entry::before{left:18px;right:18px;}
 @media(max-width:400px){
     .sev-device{padding:9px;border-radius:32px;}
     .sev-device .club-sc-phone{padding:28px 8px 10px;border-radius:22px;}
@@ -6455,7 +6205,6 @@ body.sun-mode .holes-toggle{background:#fff;border-color:#000;color:#000;}
 .hcp-badge{display:inline-block;font-size:8px;font-weight:800;letter-spacing:-.02em;line-height:1.7;padding:0 3px;border-radius:5px;background:rgba(201,168,76,.94);color:#142017;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.45);}
 .hcp-badge.neg{background:rgba(224,90,74,.94);color:#fff;}
 .score-disp .hcp-badge{font-size:11px;line-height:1.6;padding:1px 6px;border-radius:6px;}
-.score-entry[data-entry-view="2"] .hole-btn .hcp-badge{font-size:9px;}
 .hole-btn.active .hcp-badge{background:#142017;color:var(--gold-l);box-shadow:none;}
 body.sun-mode .hcp-badge{border:1px solid #000;box-shadow:none;}
 
@@ -6739,196 +6488,187 @@ body.sun-mode .gsg-marker.mk-mismatch{color:#c0392b;}
     .setup-player-head .fa-chevron-down{margin-left:0;}
 }
 
-/* ============================================================
-   ЭКРАН ВВОДА СЧЁТА · 5 СТИЛЕЙ (админка → вкладка «Ввод счёта ⛳»)
-   Каждый стиль меняет и информационные плиты, и сетку лунок,
-     и квадрат счёта, и панели «Я / Маркируемый», и кнопку сохранения.
-   Значение стиля пишется в settings/scoring_view и применяется у всех
-   (js/utils.js → getScoringView/arrangeScoreEntry, атрибут
-   data-entry-view на .score-entry).
-   ============================================================ */
-.score-entry{
-    --entry-accent:var(--gold);
-    --entry-accent-soft:rgba(201,168,76,.14);
-    --entry-radius:14px;
-    --entry-num-font:var(--ff);
-}
-.score-entry .dual-half,
-.score-entry .scoring-dual-block{
-    border-radius:var(--entry-radius)!important;
+/* Настройки элементов экранов применяются по data-display-hidden. */
+[data-display-hidden="true"] { display:none !important; }
+#dual-score-panel[data-display-marker-hidden="true"] { grid-template-columns:minmax(0,1fr)!important; }
+#dual-score-panel[data-display-marker-hidden="true"] #dual-divider,
+#dual-score-panel[data-display-my-hidden="true"] #dual-divider { display:none!important; }
+
+/* Tournament QR overrides use the same element attributes as regular scoring. */
+/* Round-setup touch controls: keep visible rows and icon buttons finger-sized. */
+@media (pointer: coarse) {
+    .setup-player-head { min-height: 44px; }
+    .spc-remove,
+    .setup-hcp-refresh { min-width: 44px; min-height: 44px; }
+    .setup-player-head .setup-hcp-refresh-head { min-width: 44px; min-height: 44px; }
+    .unified-step { min-height: 44px; }
+    .unified-wizard-nav-btn { min-width: 44px; min-height: 44px; }
 }
 
-/* ── Стиль 1 · «Классика клуба»: золото, зелёное сукно, мягкие тени ── */
-.score-entry[data-entry-view="1"]{
-    background:linear-gradient(168deg,#14261a 0%,#0e1c13 55%,#0b160f 100%);
-    border-color:rgba(201,168,76,.32);
-}
-.score-entry[data-entry-view="1"] .hole-box{border-left-color:rgba(201,168,76,.35);}
-.score-entry[data-entry-view="1"] .hole-lbl::before{background:var(--gold);}
-.score-entry[data-entry-view="1"] .dual-half{
-    background:linear-gradient(180deg, rgba(26,46,31,.72), rgba(15,29,18,.92));
-    border:1px solid rgba(201,168,76,.26);
-}
-.score-entry[data-entry-view="1"] .hole-btn{
-    background:linear-gradient(180deg,#1d3322,#111f14);border-color:rgba(201,168,76,.3);
-    border-radius:10px;
-}
-.score-entry[data-entry-view="1"] .hole-btn.active{
-    background:linear-gradient(160deg,#e6cd77,#c9a84c);border-color:#e6cd77;
+/* Stack admin setting cards on narrow screens so their flex rows cannot push variant buttons off-canvas. */
+@media (max-width: 768px) {
+    .display-variant-setting { display: block; }
 }
 
-/* ── Стиль 2 · «Крупный счёт»: максимум размера, широкие кнопки ── */
-.score-entry[data-entry-view="2"]{
-    --entry-radius:18px;
-    --entry-num-font:'Playfair Display',Georgia,serif;
-}
-.score-entry[data-entry-view="2"] .hole-display{gap:8px;}
-.score-entry[data-entry-view="2"] .hole-box{padding:10px 6px;}
-.score-entry[data-entry-view="2"] .hole-lbl{font-size:11px;letter-spacing:.8px;}
-.score-entry[data-entry-view="2"] .entry-score-square,
-.score-entry[data-entry-view="2"] .score-disp .entry-score-square{font-weight:800;}
-.score-entry[data-entry-view="2"] .score-disp .score-gross{font-family:var(--entry-num-font);font-weight:700;}
-.score-entry[data-entry-view="2"] .dual-half__controls .dual-btn,
-.score-entry[data-entry-view="2"] .score-minus,
-.score-entry[data-entry-view="2"] .score-plus{
-    min-height:60px;font-size:26px;border-radius:16px!important;
-}
-.score-entry[data-entry-view="2"] .dual-half__score .score-disp{padding:6px 0 2px;}
-.score-entry[data-entry-view="2"] .btn-g{font-size:15px;letter-spacing:1.6px;padding:18px;}
-
-/* ── Стиль 3 · «Компакт-сетка»: всё на одном экране ── */
-.score-entry[data-entry-view="3"]{
-    --entry-radius:10px;
-    padding:10px 8px!important;
-    margin-bottom:8px!important;
-}
-.score-entry[data-entry-view="3"] .hole-display{gap:4px!important;margin:4px 0 6px!important;}
-.score-entry[data-entry-view="3"] .hole-box{padding:5px 3px!important;}
-.score-entry[data-entry-view="3"] .hole-lbl{font-size:8px!important;}
-.score-entry[data-entry-view="3"] .hole-val{font-size:17px!important;}
-.score-entry[data-entry-view="3"] .hole-btn{padding:3px 1px;border-radius:6px;}
-.score-entry[data-entry-view="3"] .dual-half{padding:6px 4px!important;gap:4px!important;}
-.score-entry[data-entry-view="3"] .dual-half__badge{font-size:9px;padding:2px 6px!important;}
-.score-entry[data-entry-view="3"] .dual-half__name{font-size:10.5px;}
-.score-entry[data-entry-view="3"] .dual-half__controls .dual-btn{min-height:40px;font-size:19px;}
-.score-entry[data-entry-view="3"] .score-disp{gap:6px;}
-.score-entry[data-entry-view="3"] .btn-g{padding:12px;letter-spacing:1px;font-size:12.5px;}
-
-/* ── Стиль 4 · «Контраст-фокус»: тёмные плиты, золотая рамка активной лунки ── */
-.score-entry[data-entry-view="4"]{
-    --entry-radius:16px;
-}
-.score-entry[data-entry-view="4"] .hole-btn{
-    background:#0a120c;border:2px solid rgba(201,168,76,.22);border-radius:12px;
-}
-.score-entry[data-entry-view="4"] .hole-btn.active{
-    border-color:var(--gold);background:#0c1710;
-    box-shadow:0 0 0 2px rgba(201,168,76,.35),0 8px 22px rgba(201,168,76,.45);
-}
-.score-entry[data-entry-view="4"] .dual-half{
-    background:linear-gradient(180deg, rgba(10,18,12,.92), rgba(6,12,8,.95));
-    border:1px solid rgba(201,168,76,.35);
-}
-.score-entry[data-entry-view="4"] .dual-half__badge--my{background:rgba(201,168,76,.22);color:var(--gold-l);}
-.score-entry[data-entry-view="4"] .dual-half__badge--mark{background:rgba(155,89,182,.24);color:#d7b6e8;}
-.score-entry[data-entry-view="4"] .dual-half__score .score-gross{
-    color:var(--gold-l);text-shadow:0 0 22px rgba(201,168,76,.45);
-}
-.score-entry[data-entry-view="4"] .hole-display{
-    background:linear-gradient(180deg, rgba(201,168,76,.14), rgba(201,168,76,.03));
-    border:1px solid rgba(201,168,76,.42);
+/* Admin display presets are compact on desktop, but remain finger-sized on touch screens. */
+@media (pointer: coarse) {
+    .page-display-variant-btn,
+    .hcp-variant-btn,
+    .social-card-variant-btn,
+    .tn-lb-variant-btn,
+    .tn-gs-variant-btn,
+    .tn-roster-variant-btn,
+    .v5-variant-btn,
+    #tn-groups-visible-btn { min-height:44px; }
 }
 
-/* ── Стиль 5 · «Минимализм-лайн»: тонкие линии, ноль декора ── */
-.score-entry[data-entry-view="5"]{
-    --entry-radius:8px;
-}
-.score-entry[data-entry-view="5"] .hole-box{border-left:1px dashed rgba(201,168,76,.28);}
-.score-entry[data-entry-view="5"] .hole-lbl{color:var(--muted);}
-.score-entry[data-entry-view="5"] .hole-lbl::before{display:none;}
-.score-entry[data-entry-view="5"] .hole-val{font-weight:600;text-shadow:none;}
-.score-entry[data-entry-view="5"] .hole-btn{background:transparent;border:1px solid rgba(201,168,76,.18);font-weight:600;}
-.score-entry[data-entry-view="5"] .hole-btn.active{background:transparent;border-color:var(--gold);color:var(--gold);box-shadow:none;}
-.score-entry[data-entry-view="5"] .hole-btn.done{background:transparent;border-color:rgba(46,204,113,.35);}
-.score-entry[data-entry-view="5"] .entry-score-square,
-.score-entry[data-entry-view="5"] .hole-btn .entry-score-square{background:transparent;box-shadow:none;}
-.score-entry[data-entry-view="5"] .dual-half{
-    background:transparent;border:1px solid rgba(201,168,76,.22);
-}
-.score-entry[data-entry-view="5"] .dual-half__score .score-gross{font-weight:400;}
-.score-entry[data-entry-view="5"] .dual-half__controls .dual-btn,
-.score-entry[data-entry-view="5"] .score-minus,
-.score-entry[data-entry-view="5"] .score-plus{
-    background:transparent;border:1px solid rgba(201,168,76,.28);box-shadow:none;
-}
-.score-entry[data-entry-view="5"] .dual-half__badge{background:transparent;border:1px solid rgba(201,168,76,.3);}
-.score-entry[data-entry-view="5"] .btn-g{
-    background:transparent;border:1px solid var(--gold);color:var(--gold);
-    box-shadow:none;letter-spacing:1.6px;
-}
-.score-entry[data-entry-view="5"] .btn-g:hover{background:rgba(201,168,76,.1);}
 
-/* Пять стилей в предпросмотре админки: те же правила, что в бою. */
-#score-entry-preview .sev-preview-note{display:block;margin-top:6px;color:var(--muted);font-size:11px;text-align:center;}
-
-/* ── Ввод счёта: «что показывать» (settings/scoring_show) ─────────────────
-   Атрибут data-entry-hide на .score-entry (его ставит arrangeScoreEntry)
-   перечисляет скрытые элементы: info, holes, hole, par, dist, deadline, hcp. */
-.score-entry[data-entry-hide~="info"] [data-entry-block="info"],
-.score-entry[data-entry-hide~="holes"] [data-entry-block="holes"],
-.score-entry[data-entry-hide~="hole"] .h-hole,
-.score-entry[data-entry-hide~="par"] .h-par,
-.score-entry[data-entry-hide~="dist"] .h-dist,
-.score-entry[data-entry-hide~="deadline"] .h-dl,
-.score-entry[data-entry-hide~="hcp"] .entry-handicap,
-.score-entry[data-entry-hide~="hcp"] .hcp-badge,
-.score-entry[data-entry-hide~="hcp"] .hcp-caption,
-.score-entry[data-entry-hide~="hcp"] .hm-bar {
-    display: none !important;
+/* ── Global display-settings editor (tournaments + score entry) ───────── */
+.display-config-note {
+    display:flex; align-items:flex-start; gap:9px; margin:12px 0 16px; padding:12px 14px;
+    border:1px solid rgba(201,168,76,.25); border-radius:12px; color:var(--muted);
+    background:rgba(201,168,76,.05); font-size:12px; line-height:1.55;
+}
+.display-config-note > i { flex:0 0 auto; margin-top:2px; color:var(--gold); }
+.display-layout-field { max-width:420px; }
+.screen-display-grid {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));
+    gap:8px; margin:8px 0 16px;
+}
+.screen-display-option {
+    display:flex; align-items:center; gap:11px; min-width:0; min-height:54px;
+    padding:10px 12px; border:1px solid var(--border); border-radius:12px;
+    background:rgba(255,255,255,.025); cursor:pointer; touch-action:manipulation;
+    transition:border-color .15s ease,background .15s ease;
+}
+.screen-display-option.is-on { border-color:rgba(201,168,76,.48); background:rgba(201,168,76,.055); }
+.screen-display-option input {
+    flex:0 0 22px; width:22px; height:22px; min-width:22px; margin:0;
+    accent-color:var(--gold); cursor:pointer;
+}
+.screen-display-option input:disabled { cursor:not-allowed; opacity:.95; }
+.screen-display-option > span { min-width:0; color:var(--white); font-size:12px; font-weight:700; line-height:1.4; }
+.screen-display-option small { display:block; margin-top:2px; color:var(--muted); font-size:10px; font-weight:500; }
+.screen-display-order { display:grid; gap:7px; max-width:620px; margin:8px 0 16px; }
+.screen-display-order-row {
+    display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0;
+    padding:7px 8px 7px 12px; border:1px solid var(--border); border-radius:11px;
+    background:rgba(255,255,255,.025);
+}
+.screen-display-order-row > span { min-width:0; color:var(--white); font-size:13px; font-weight:700; overflow-wrap:anywhere; }
+.screen-display-order-row > span b {
+    display:inline-flex; align-items:center; justify-content:center; width:25px; height:25px;
+    margin-right:7px; border-radius:50%; background:rgba(201,168,76,.15); color:var(--gold); font-size:11px;
+}
+.screen-display-order-row > div { display:flex; flex:0 0 auto; gap:5px; }
+.screen-display-order-row button { min-width:44px; min-height:44px; padding:7px 10px; }
+.screen-display-order-row button:disabled { opacity:.42; }
+.screen-display-preview {
+    min-height:94px; padding:14px; border:1px solid rgba(201,168,76,.26); border-radius:15px;
+    background:linear-gradient(145deg,rgba(23,41,28,.94),rgba(11,26,14,.97));
+}
+.screen-display-preview-head { display:flex; align-items:center; gap:8px; color:var(--gold-l); font-size:13px; font-weight:800; }
+.screen-display-preview-head > span { margin-left:auto; padding:3px 8px; border:1px solid rgba(201,168,76,.3); border-radius:999px; color:var(--muted); font-size:10px; text-transform:capitalize; }
+.screen-display-preview-order { display:flex; flex-wrap:wrap; gap:6px; margin-top:11px; }
+.screen-display-preview-order span { display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:4px 8px; border:1px solid rgba(255,255,255,.1); border-radius:8px; color:var(--white); font-size:10px; }
+.screen-display-preview-order b { color:var(--gold); }
+.screen-display-preview p { margin:10px 0 0; color:var(--muted); font-size:11px; }
+.screen-display-preview p strong { color:var(--gold-l); }
+@media(max-width:560px) {
+    .screen-display-grid { grid-template-columns:minmax(0,1fr); }
+    .screen-display-option { min-height:50px; }
+    .screen-display-order-row { padding-left:9px; }
+    .screen-display-order-row > span { font-size:12px; }
+    .screen-display-order-row button { min-width:44px; min-height:44px; }
+    .display-layout-field { max-width:none; }
 }
 
-/* ── Админка «Ввод счёта»: список вариантов, редактор, «что показывать» ── */
-.se-list { display: grid; gap: 10px; margin: 6px 0 14px; }
-.se-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-    padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,.03); }
-.se-item.is-editing { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(201,168,76,.35); }
-.se-item-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 200px; }
-.se-item-main strong { overflow-wrap: anywhere; }
-.se-item-main small { color: var(--muted); font-size: 12px; }
-.se-item-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-.se-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-.se-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 8px;
-    border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
-.se-badge--on { color: var(--gold-l); border-color: rgba(201,168,76,.5); }
-.se-editor-title { margin: 18px 0 6px; font-size: 16px; }
-.se-editor-grid { display: grid; gap: 6px; margin-bottom: 4px; }
-.se-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
-.se-show-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin: 6px 0 14px; }
-.se-show-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border);
-    border-radius: 12px; cursor: pointer; }
-.se-show-item.is-on { border-color: rgba(201,168,76,.5); }
-.se-show-item input { margin-top: 3px; accent-color: var(--gold); }
-.se-show-item span { display: flex; flex-direction: column; gap: 2px; }
-.se-show-item small { color: var(--muted); font-size: 12px; }
+/* ── Redesigned score-entry screen: high-contrast panels, short hierarchy, touch-first controls ── */
+.score-entry {
+    display:flex!important; flex-direction:column!important; gap:12px!important;
+    min-width:0; padding:clamp(10px,3vw,18px)!important;
+    border:1px solid rgba(201,168,76,.32)!important; border-radius:20px!important;
+    background:radial-gradient(115% 55% at 50% 0%,rgba(201,168,76,.13),transparent 65%),linear-gradient(155deg,#14251a,#0c180f 72%)!important;
+    box-shadow:0 18px 44px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.055)!important;
+}
+.score-entry > [data-entry-block] { min-width:0; margin:0!important; }
+.score-entry .hole-display {
+    display:grid!important; grid-template-columns:repeat(4,minmax(0,1fr))!important; gap:0!important;
+    margin:0!important; overflow:hidden; border:1px solid rgba(201,168,76,.28); border-radius:14px;
+    background:rgba(255,255,255,.025);
+}
+.score-entry .hole-box { min-width:0!important; padding:10px 5px 9px!important; text-align:center; }
+.score-entry .hole-box.h-hole { background:rgba(201,168,76,.08); }
+.score-entry .hole-lbl { font-size:9px!important; letter-spacing:.7px!important; line-height:1.2; }
+.score-entry .hole-val { font-size:clamp(20px,6vw,32px)!important; line-height:1.15; }
+.score-entry .hole-nav { display:grid!important; grid-template-columns:repeat(9,minmax(0,1fr))!important; gap:5px!important; width:100%; }
+.score-entry .hole-btn {
+    display:flex; align-items:center; justify-content:center; min-width:0!important; min-height:50px!important;
+    padding:5px 2px!important; border-radius:10px!important; touch-action:manipulation;
+}
+.score-entry .dual-score-split-panel {
+    display:grid!important; grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr)!important;
+    align-items:stretch; gap:10px!important; width:100%; min-width:0; margin:12px 0 0!important;
+}
+.score-entry .dual-half {
+    display:flex; flex-direction:column; align-items:stretch; justify-content:space-between;
+    min-width:0!important; padding:12px 10px!important; border:1px solid rgba(201,168,76,.27)!important;
+    border-radius:16px!important; background:rgba(255,255,255,.035)!important;
+}
+.score-entry .dual-half--mark { border-color:rgba(155,89,182,.38)!important; }
+.score-entry .dual-half__head { display:flex; align-items:center; justify-content:center; min-height:48px; gap:6px; }
+.score-entry .dual-half__name {
+    display:block; min-width:0; color:var(--white); font-size:clamp(11px,3vw,14px)!important;
+    font-weight:800; line-height:1.35; text-align:center; overflow-wrap:anywhere;
+}
+.score-entry .dual-half__score { min-width:0; }
+.score-entry .dual-half__score .score-disp { min-height:60px; font-size:clamp(32px,8vw,48px)!important; }
+.score-entry .dual-half__controls { display:grid!important; grid-template-columns:repeat(2,minmax(48px,1fr)); gap:7px; margin-top:8px; }
+.score-entry .dual-half__controls .dual-btn {
+    width:100%; min-width:48px!important; min-height:max(48px,var(--score-btn,48px))!important;
+    border-radius:12px!important; font-size:24px!important; touch-action:manipulation;
+}
+.score-entry .dual-split-divider { align-self:stretch; }
+.score-entry .score-area .score-disp { min-height:72px; font-size:clamp(36px,10vw,58px)!important; }
+.score-entry .score-area .score-btns { display:grid; grid-template-columns:repeat(2,minmax(60px,1fr)); gap:10px; max-width:240px; margin:10px auto; }
+.score-entry .score-area .score-btns button {
+    width:100%; min-width:60px!important; min-height:max(52px,var(--score-btn,52px))!important;
+    border-radius:14px!important; touch-action:manipulation;
+}
+.score-entry .btn-block { min-height:52px!important; }
+.score-entry .hole-btn:focus-visible,
+.score-entry .dual-btn:focus-visible,
+.score-entry .score-area button:focus-visible { outline:3px solid var(--gold-l); outline-offset:2px; }
+#dual-score-panel[data-display-marker-hidden="true"],
+#dual-score-panel[data-display-my-hidden="true"] { grid-template-columns:minmax(0,1fr)!important; }
+#dual-score-panel[data-display-marker-hidden="true"] #dual-divider,
+#dual-score-panel[data-display-my-hidden="true"] #dual-divider { display:none!important; }
+@media(max-width:560px) {
+    .score-entry { padding:11px!important; border-radius:16px!important; }
+    .score-entry .hole-nav { grid-template-columns:repeat(6,minmax(0,1fr))!important; gap:5px!important; }
+    .score-entry .hole-btn { min-height:58px!important; }
+    .score-entry .dual-score-split-panel { grid-template-columns:minmax(0,1fr)!important; gap:9px!important; }
+    .score-entry .dual-split-divider { display:none!important; }
+    .score-entry .dual-half { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; padding:10px!important; }
+    .score-entry .dual-half__head { grid-column:1/-1; min-height:42px; }
+    .score-entry .dual-half__score { min-width:0; }
+    .score-entry .dual-half__score .score-disp { min-height:50px; }
+    .score-entry .dual-half__controls { grid-template-columns:repeat(2,48px); align-self:center; margin:0; }
+    .score-entry .dual-half__controls .dual-btn { width:48px; min-width:48px!important; }
+    .score-entry .score-area .score-disp { min-height:60px; }
+}
+@media (pointer:coarse) {
+    .score-entry .hole-btn,
+    .score-entry .dual-half__controls .dual-btn,
+    .score-entry .score-area .score-btns button { min-height:48px!important; }
+}
+body.sun-mode .score-entry { color:#111!important; background:#fff!important; border:2px solid #111!important; box-shadow:0 6px 18px rgba(0,0,0,.12)!important; }
+body.sun-mode .score-entry .dual-half { background:#fff!important; border:2px solid #111!important; }
+body.sun-mode .score-entry .dual-half__name,
+body.sun-mode .score-entry .hole-val { color:#111!important; text-shadow:none!important; }
 
-/* ===== КАРТОЧКИ В ТУРНИРЕ: СОСТАВ БЛОКОВ ЭКРАНА ВВОДА =====
-   Настройка админа «Отображение карточек в турнире» (settings/tn_round_card_blocks).
-   Классы tn-hide-* на <body> ставит pestovoApplyTnRoundCardLayout() из js/utils.js;
-   они действуют только на экранах ввода счёта (setup-round.html, scorer.html). */
-body.tn-hide-info .hole-display:not([data-sc-preview]) { display: none !important; }
-body.tn-hide-holes [data-entry-block="holes"],
-body.tn-hide-holes #play-holes-block,
-body.tn-hide-holes #g-holes { display: none !important; }
-body.tn-hide-input [data-entry-block="input"] { display: none !important; }
-body.tn-hide-pace #group-pace-assistant,
-body.tn-hide-pace #solo-pace-assistant { display: none !important; }
-body.tn-hide-summary .round-card.scorecard-fold { display: none !important; }
-body.tn-hide-qr #invite-qrs-card { display: none !important; }
-body.tn-hide-officials #group-officials,
-body.tn-hide-officials #solo-officials { display: none !important; }
-body.tn-hide-stableford #group-stableford-control,
-body.tn-hide-stableford #solo-stableford-control { display: none !important; }
-body.tn-hide-finish #group-finish-row,
-body.tn-hide-finish #solo-finish-row { display: none !important; }
-/* Галочка на варианте, который уже сохранён для всех (вкладка «Отображение карточек в турнире»). */
-.sev-card .sev-card-check[data-saved="true"] { opacity: 1; transform: scale(1); }
+/* Compact legacy page-setting buttons have a fixed 38px height; make them finger-sized on touch. */
+@media (pointer:coarse) {
+    .page-display-variant-btn { min-height:44px!important; height:auto!important; }
+}
+.display-layout-field .form-input { min-height:48px; touch-action:manipulation; }

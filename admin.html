@@ -13,10 +13,9 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=668b8216">
+    <link rel="stylesheet" href="css/style.css?v=5f3b4ad3">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <link rel="stylesheet" href="css/tournament-redesign.css?v=463c82c9">
-    <link rel="stylesheet" href="css/tn-view.css?v=6a335dc1">
+    <link rel="stylesheet" href="css/tournament-redesign.css?v=3f88226b">
     <link rel="stylesheet" href="css/tn-manager.css?v=6d129f32">
     <link rel="stylesheet" href="css/tn-mgr-printcards.css?v=e9c466ab">
     <script src="js/design-system.js?v=5a11adfa"></script>
@@ -107,7 +106,7 @@
             <button class="admin-tab" onclick="switchTab('rusgolf',this)" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
             <button class="admin-tab" onclick="switchTab('data',this)" data-i18n="tab_data">Данные</button>
             <button class="admin-tab" onclick="switchTab('scorecards',this)">Отображения счётных карточек</button>
-            <button class="admin-tab" onclick="switchTab('tncards',this)">Отображение карточек в турнире</button>
+            <button class="admin-tab" onclick="switchTab('tncards',this)">Турнирный ввод счёта</button>
             <button class="admin-tab" onclick="switchTab('scoreentry',this)">Ввод счёта ⛳</button>
             <button class="admin-tab" onclick="switchTab('design',this)" data-i18n="tab_design">Дизайн 🎨</button>
         </div>
@@ -167,45 +166,32 @@
         </div>
 
         <div id="tab-tncards" class="admin-section hidden">
-            <div class="card sev-admin-card">
+            <div class="card sev-admin-card" id="tn-score-display-settings">
                 <header class="sev-head">
-                    <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-id-card"></i></span>
+                    <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-qrcode"></i></span>
                     <div class="sev-head-text">
-                        <h2>Отображение карточек в турнире</h2>
-                        <p>Что видит игрок и маркер, когда открывает счёт по QR из стартового листа турнира: вид счётной карточки и состав блоков экрана. Настройка общая — применяется ко всем турнирам и всем игрокам.</p>
+                        <h2>Турнирный ввод счёта</h2>
+                        <p>Гибко настройте элементы экрана, который открывается по QR-коду стартового листа. Эти параметры действуют для всех турниров и игроков; если турнирных переопределений нет, используются общие настройки ввода счёта.</p>
                     </div>
-                    <span class="sev-head-badge"><i class="fas fa-qrcode" aria-hidden="true"></i> ввод счёта по QR</span>
+                    <span class="sev-head-badge"><i class="fas fa-globe" aria-hidden="true"></i> для всех</span>
                 </header>
-
-                <div class="sev-sec-title">Вид счётной карточки</div>
-                <p class="sev-sec-sub">Пять вариантов той же карточки. Вариант 1 — «как в обычном раунде»: сводка группы и общая карточка флайта.</p>
-                <div class="club-sc-options sev-variants" id="tn-card-variants"></div>
+                <div class="display-config-note"><i class="fas fa-circle-info" aria-hidden="true"></i> Ввод счёта и панель «Мой счёт» остаются включёнными. Для возврата к общим параметрам нажмите «Использовать настройки обычного раунда».</div>
+                <div class="sev-sec-title">Элементы турнирного экрана</div>
+                <p class="sev-sec-sub">Отмеченные элементы будут показаны на экранах ввода по турнирному QR.</p>
+                <div id="tn-score-display-elements" class="screen-display-grid"></div>
+                <div class="sev-sec-title">Порядок основных блоков</div>
+                <p class="sev-sec-sub">Меняйте последовательность информации, навигации по лункам и панели ввода.</p>
+                <div id="tn-score-display-order" class="screen-display-order"></div>
                 <div class="sev-apply">
-                    <button type="button" id="tn-card-apply" class="btn btn-g" onclick="saveTnRoundCardView(tnRoundCardPreviewView)"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех</button>
-                    <button type="button" class="btn btn-ol" id="tn-card-reset" onclick="saveTnRoundCardView('')"><i class="fas fa-rotate-left" aria-hidden="true"></i> Как в обычном раунде</button>
+                    <button type="button" class="btn btn-g" data-display-save="tournamentScoring" onclick="savePestovoDisplaySettings('tournamentScoring')"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех турниров</button>
+                    <button type="button" class="btn btn-ol" data-display-reset="tournamentScoring" onclick="resetPestovoDisplaySettings('tournamentScoring')"><i class="fas fa-rotate-left" aria-hidden="true"></i> Использовать настройки обычного раунда</button>
                     <div class="sev-apply-text">
-                        <p class="sev-apply-hint">Выбор записывается в общие настройки и сразу виден на открытых экранах ввода.</p>
-                        <p id="tn-card-save-status" role="status" aria-live="polite"></p>
+                        <p class="sev-apply-hint">Турнирные настройки сохраняются отдельно и применяются сразу на всех устройствах.</p>
+                        <p id="tn-score-display-status" role="status" aria-live="polite"></p>
                     </div>
                 </div>
-
-                <div class="sev-sec-title">Блоки экрана ввода</div>
-                <p class="sev-sec-sub">Снимите отметку, чтобы скрыть блок на экране ввода счёта в турнире. Скрытые блоки не мешают вводу: счёт сохраняется как обычно.</p>
-                <div id="tn-card-blocks" class="se-show-grid"></div>
-                <div class="sev-apply">
-                    <button type="button" id="tn-card-blocks-apply" class="btn btn-g" onclick="saveTnRoundCardBlocks()"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить блоки для всех</button>
-                    <button type="button" class="btn btn-ol" onclick="resetTnRoundCardBlocks()"><i class="fas fa-rotate-left" aria-hidden="true"></i> Показать все блоки</button>
-                    <div class="sev-apply-text">
-                        <p class="sev-apply-hint">Лунки, ввод счёта, темп игры, сводка группы, QR, судья, Stableford, завершение раунда.</p>
-                        <p id="tn-card-blocks-status" role="status" aria-live="polite"></p>
-                    </div>
-                </div>
-
-                <div class="sev-sec-title">Предпросмотр для телефона</div>
-                <p class="sev-sec-sub">Демонстрационные данные · ширина до 390 px. Так карточка флайта выглядит во время ввода счёта по QR.</p>
-                <div class="sev-device">
-                    <div id="tn-card-preview" class="club-sc-phone"></div>
-                </div>
+                <div class="sev-sec-title">Краткий предпросмотр</div>
+                <div id="tn-score-display-preview" class="screen-display-preview" aria-live="polite"></div>
             </div>
         </div>
 
@@ -214,79 +200,27 @@
                 <header class="sev-head">
                     <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-pen-to-square"></i></span>
                     <div class="sev-head-text">
-                        <h2>Ввод счёта — варианты экрана</h2>
-                        <p>Создавайте, меняйте и удаляйте варианты экрана ввода счёта. В каждом варианте задаются стиль, порядок блоков и то, что показывать: номер лунки, пар, дистанцию, дедлайн, фору и блок выбора лунки. «Применить для всех» делает вариант активным у всех игроков.</p>
+                        <h2>Экран ввода счёта — гибкие настройки</h2>
+                        <p>Один общий дизайн без сохранённых старых вариантов. Настройте видимость каждого элемента и порядок основных блоков; конфигурация применяется ко всем игрокам, обычным и групповым раундам.</p>
                     </div>
-                    <span class="sev-head-badge"><i class="fas fa-layer-group" aria-hidden="true"></i> варианты · показ · порядок</span>
+                    <span class="sev-head-badge"><i class="fas fa-globe" aria-hidden="true"></i> для всех</span>
                 </header>
-                <div class="sev-sec-title">Сохранённые варианты</div>
-                <p class="sev-sec-sub">Активный вариант виден всем игрокам. Редактирование не меняет экран игроков, пока вариант не применён.</p>
-                <div id="score-entry-list" class="se-list" aria-live="polite"></div>
+                <div class="display-config-note"><i class="fas fa-circle-info" aria-hidden="true"></i> Блок ввода и сохранения счёта, а также панель «Мой счёт» обязательны и не могут быть скрыты. Вкладка «Турнирный ввод счёта» задаёт отдельные переопределения для QR-раундов.</div>
+                <div class="sev-sec-title">Элементы экрана ввода</div>
+                <div id="score-entry-display-elements" class="screen-display-grid"></div>
+                <div class="sev-sec-title">Порядок основных блоков</div>
+                <p class="sev-sec-sub">Порядок сверху вниз. Кнопки перемещения доступны для нажатия на телефоне.</p>
+                <div id="score-entry-display-order" class="screen-display-order"></div>
                 <div class="sev-apply">
-                    <button type="button" class="btn btn-og" id="score-entry-add" onclick="addScoreEntryVariant()"><i class="fas fa-plus" aria-hidden="true"></i> Добавить вариант</button>
-                </div>
-                <h3 class="se-editor-title" id="score-entry-editor-title">Редактор варианта</h3>
-                <div class="se-editor-grid">
-                    <label class="se-field">Название варианта
-                        <input type="text" id="score-entry-name" class="form-input" maxlength="40" autocomplete="off" oninput="setScoreEntryName(this.value)">
-                    </label>
-                    <p class="sev-sec-sub" id="score-entry-editor-note" style="margin:0;"></p>
-                </div>
-                <div class="sev-sec-title">Вариант оформления</div>
-                <p class="sev-sec-sub">Один из пяти стилей экрана. Выбранная карточка подсвечивается, предпросмотр ниже обновляется сразу.</p>
-                <div class="sev-variants" role="group" aria-label="Варианты экрана ввода результатов">
-                    <button type="button" id="v5-scoring-1" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('1')">
-                        <span class="sev-card-top"><span class="sev-card-num">1</span><span class="sev-card-name">Классика клуба</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
-                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-plate"></span><span class="st-plate st-white"></span><span class="st-plate"></span><span class="st-plate st-white"></span></span><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span></span></span>
-                        <span class="sev-card-desc">Золото и зелёный, плиты лунок, мягкие тени — привычный вид клуба.</span>
-                    </button>
-                    <button type="button" id="v5-scoring-2" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('2')">
-                        <span class="sev-card-top"><span class="sev-card-num">2</span><span class="sev-card-name">Крупный счёт</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
-                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-big"></span><span class="st-dot"></span><span class="st-dot st-purple"></span></span><span class="st-row"><span class="st-line st-gold"></span><span class="st-line"></span></span></span>
-                        <span class="sev-card-desc">Максимальные цифры и кнопки ± для игры на солнце и в перчатках.</span>
-                    </button>
-                    <button type="button" id="v5-scoring-3" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('3')">
-                        <span class="sev-card-top"><span class="sev-card-num">3</span><span class="sev-card-name">Компакт-сетка</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
-                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span><span class="st-row"><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span></span></span>
-                        <span class="sev-card-desc">Все 18 лунок и ввод — на одном экране, минимум прокрутки.</span>
-                    </button>
-                    <button type="button" id="v5-scoring-4" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('4')">
-                        <span class="sev-card-top"><span class="sev-card-num">4</span><span class="sev-card-name">Контраст-фокус</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
-                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-frame"></span><span class="st-frame"></span></span><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-gold"></span><span class="st-sq st-gold"></span><span class="st-sq st-gold"></span></span></span>
-                        <span class="sev-card-desc">Тёмные плиты, золотая рамка активной лунки, максимум читаемости.</span>
-                    </button>
-                    <button type="button" id="v5-scoring-5" class="btn btn-og sev-card" aria-pressed="false" onclick="previewScoreEntryView('5')">
-                        <span class="sev-card-top"><span class="sev-card-num">5</span><span class="sev-card-name">Минимализм-лайн</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
-                        <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-line st-gold"></span><span class="st-line"></span></span><span class="st-row"><span class="st-line"></span><span class="st-line st-purple"></span></span></span>
-                        <span class="sev-card-desc">Тонкие линии, прозрачные панели, ноль декора — только счёт.</span>
-                    </button>
-                </div>
-                <div class="sev-sec-title">Что показывать</div>
-                <p class="sev-sec-sub">Снимите отметку, чтобы скрыть элемент на экране ввода. Фора — это подписи «Фора +1» и метки ударов.</p>
-                <div id="score-entry-show" class="se-show-grid"></div>
-                <div class="sev-sec-title">Иерархия блоков</div>
-                <p class="sev-sec-sub">Порядок сверху вниз. Перемещайте блоки стрелками — предпросмотр обновится сразу. Кнопка сохранения остаётся вместе с вводом счёта.</p>
-                <div id="score-entry-order" class="sev-order"></div>
-                <div class="sev-apply">
-                    <button type="button" class="btn btn-ol" id="score-entry-save" onclick="saveScoreEntryVariant(false)"><i class="fas fa-floppy-disk" aria-hidden="true"></i> Сохранить вариант</button>
-                    <button type="button" class="btn btn-g" id="score-entry-apply" onclick="saveScoreEntryVariant(true)"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Сохранить и применить для всех</button>
+                    <button type="button" class="btn btn-g" data-display-save="scoring" onclick="savePestovoDisplaySettings('scoring')"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех игроков</button>
+                    <button type="button" class="btn btn-ol" data-display-reset="scoring" onclick="resetPestovoDisplaySettings('scoring')"><i class="fas fa-rotate-left" aria-hidden="true"></i> Сбросить к настройкам по умолчанию</button>
                     <div class="sev-apply-text">
-                        <p class="sev-apply-hint">Вариант и его настройки записываются в общие настройки одной операцией.</p>
-                        <p id="score-entry-status" role="status" aria-live="polite"></p>
+                        <p class="sev-apply-hint">Изменения сохраняются глобально. Уже открытые экраны обновятся автоматически.</p>
+                        <p id="score-entry-display-status" role="status" aria-live="polite"></p>
                     </div>
                 </div>
-                <div class="sev-preview-bar">
-                    <div>
-                        <div class="sev-sec-title">Предпросмотр для телефона</div>
-                        <p class="sev-sec-sub" style="margin-bottom:0;">Демонстрационные данные · ширина до 390 px. Изменения здесь видны сразу, но для игроков сохраняются только после кнопки сохранения.</p>
-                    </div>
-                    <label class="sev-mode">Режим
-                        <select id="score-entry-mode" class="form-input" onchange="renderScoreEntryPreview()"><option value="group">Игрок и маркируемый</option><option value="solo">Одиночный раунд</option><option value="marker">Маркер</option></select>
-                    </label>
-                </div>
-                <div class="sev-device">
-                    <div id="score-entry-preview" class="club-sc-phone"></div>
-                </div>
+                <div class="sev-sec-title">Краткий предпросмотр</div>
+                <div id="score-entry-display-preview" class="screen-display-preview" aria-live="polite"></div>
             </div>
         </div>
 
@@ -569,53 +503,35 @@
         </div>
 
 
-        <!-- ВКЛАДКА «ТУРНИРЫ: ВИД»: 5 вариантов отображения страницы «Турниры».
-             Выбор доступен только администратору, хранится в
-             settings/tournaments_display_variant и применяется для всех. -->
+        <!-- Глобальная настройка страницы турниров: новый набор компоновок и элементов. -->
         <div id="tab-tournamentsview" class="admin-section hidden">
-            <div class="card">
-                <h2><i class="fas fa-trophy"></i> <span data-i18n="tournaments_view_tab_title">Отображение страницы «Турниры» — 5 вариантов</span></h2>
-                <p style="font-size:13px;color:var(--muted);margin:-4px 0 16px;" data-i18n="tournaments_view_tab_sub">Вариант выбирает только администратор. Он сохраняется в настройках клуба и сразу применяется у всех игроков на странице «Турниры».</p>
-
-                <div class="list-item page-display-setting-card" style="margin-bottom:14px;">
-                    <span class="page-display-setting-title"><i class="fas fa-eye" style="color:var(--gold);"></i> <span>Сейчас включён: <b id="tn-view-current-badge" style="color:var(--gold);">1 · Сетка карточек</b></span></span>
-                    <div class="page-display-setting-sub" id="tn-view-current-desc">Текущий вид: карточки турниров в адаптивной сетке.</div>
+            <div class="card" id="tournaments-display-settings">
+                <h2><i class="fas fa-trophy"></i> Турниры — гибкая настройка страницы</h2>
+                <p class="display-config-note"><i class="fas fa-globe" aria-hidden="true"></i> Компоновка, порядок и видимость элементов сохраняются для всех пользователей. Старые числовые варианты удалены; по умолчанию используются адаптивные карточки.</p>
+                <div class="form-group display-layout-field">
+                    <label for="tournaments-display-layout">Компоновка страницы</label>
+                    <select id="tournaments-display-layout" class="form-input" onchange="setPestovoDisplayDraftLayout(this.value)">
+                        <option value="cards">Карточки клуба — по умолчанию</option>
+                        <option value="timeline">Лента стартов</option>
+                        <option value="compact">Компактный обзор</option>
+                    </select>
                 </div>
-
-                <div class="page-display-variant-buttons" style="margin-bottom:12px;">
-                    <button type="button" id="tn-view-opt-1" class="btn btn-og btn-sm page-display-variant-btn" onclick="saveTnPageViewVariant('1')" aria-pressed="true"><i class="fas fa-table-cells"></i> <span data-i18n="tournaments_view_variant_1">1 · Сетка карточек</span></button>
-                    <button type="button" id="tn-view-opt-2" class="btn btn-og btn-sm page-display-variant-btn" onclick="saveTnPageViewVariant('2')" aria-pressed="false"><i class="fas fa-list"></i> <span data-i18n="tournaments_view_variant_2">2 · Компактный список</span></button>
-                    <button type="button" id="tn-view-opt-3" class="btn btn-og btn-sm page-display-variant-btn" onclick="saveTnPageViewVariant('3')" aria-pressed="false"><i class="fas fa-images"></i> <span data-i18n="tournaments_view_variant_3">3 · Витрина</span></button>
-                    <button type="button" id="tn-view-opt-4" class="btn btn-og btn-sm page-display-variant-btn" onclick="saveTnPageViewVariant('4')" aria-pressed="false"><i class="fas fa-table-list"></i> <span data-i18n="tournaments_view_variant_4">4 · Таблица</span></button>
-                    <button type="button" id="tn-view-opt-5" class="btn btn-og btn-sm page-display-variant-btn" onclick="saveTnPageViewVariant('5')" aria-pressed="false"><i class="fas fa-calendar-days"></i> <span data-i18n="tournaments_view_variant_5">5 · Календарь</span></button>
-                </div>
-
-                <div class="tn-view-preview-grid">
-                    <div class="tn-view-preview-card">
-                        <b><i class="fas fa-table-cells"></i> <span data-i18n="tournaments_view_variant_1">1 · Сетка карточек</span></b>
-                        <span data-i18n="tournaments_view_variant_1_desc">Текущий вид: карточки турниров в адаптивной сетке.</span>
-                    </div>
-                    <div class="tn-view-preview-card">
-                        <b><i class="fas fa-list"></i> <span data-i18n="tournaments_view_variant_2">2 · Компактный список</span></b>
-                        <span data-i18n="tournaments_view_variant_2_desc">Плотный список в одну строку: название, статус и дата — максимум турниров на экране.</span>
-                    </div>
-                    <div class="tn-view-preview-card">
-                        <b><i class="fas fa-images"></i> <span data-i18n="tournaments_view_variant_3">3 · Витрина</span></b>
-                        <span data-i18n="tournaments_view_variant_3_desc">Крупные карточки с большим баннером — по одной-две в ряд, как афиша клуба.</span>
-                    </div>
-                    <div class="tn-view-preview-card">
-                        <b><i class="fas fa-table-list"></i> <span data-i18n="tournaments_view_variant_4">4 · Таблица</span></b>
-                        <span data-i18n="tournaments_view_variant_4_desc">Табличный вид: строки с колонками «Турнир · Дата · Формат · Статус».</span>
-                    </div>
-                    <div class="tn-view-preview-card">
-                        <b><i class="fas fa-calendar-days"></i> <span data-i18n="tournaments_view_variant_5">5 · Календарь</span></b>
-                        <span data-i18n="tournaments_view_variant_5_desc">Календарная лента: слева дата старта, справа карточка турнира.</span>
+                <div class="sev-sec-title">Видимые элементы</div>
+                <div id="tournaments-display-elements" class="screen-display-grid"></div>
+                <div class="sev-sec-title">Порядок разделов каталога</div>
+                <p class="sev-sec-sub">Меняйте расположение активного турнира, предстоящих стартов и архива.</p>
+                <div id="tournaments-display-order" class="screen-display-order"></div>
+                <div class="sev-apply">
+                    <button type="button" class="btn btn-g" data-display-save="tournaments" onclick="savePestovoDisplaySettings('tournaments')"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить страницу для всех</button>
+                    <button type="button" class="btn btn-ol" data-display-reset="tournaments" onclick="resetPestovoDisplaySettings('tournaments')"><i class="fas fa-rotate-left" aria-hidden="true"></i> Сбросить к умолчанию</button>
+                    <div class="sev-apply-text">
+                        <p class="sev-apply-hint">Сохранённые настройки применяются к каталогу и подробной странице турнира.</p>
+                        <p id="tournaments-display-status" role="status" aria-live="polite"></p>
                     </div>
                 </div>
-
-                <button type="button" class="btn btn-og" onclick="openTournamentsPagePreview()" style="margin-top:14px;">
-                    <i class="fas fa-arrow-up-right-from-square"></i> <span data-i18n="tournaments_view_open_page">Открыть страницу «Турниры»</span>
-                </button>
+                <button type="button" class="btn btn-ol" onclick="openTournamentsPagePreview()" style="margin-top:14px;min-height:44px;"><i class="fas fa-arrow-up-right-from-square"></i> Открыть страницу турниров</button>
+                <div class="sev-sec-title">Краткий предпросмотр</div>
+                <div id="tournaments-display-preview" class="screen-display-preview" aria-live="polite"></div>
             </div>
         </div>
 
@@ -897,7 +813,7 @@
                 <!-- Глобальный стиль галочки гандикапа. Обёртка обязательна:
                      без неё следующий </div> закрывает карточку видимости слишком рано,
                      и блок «Управление данными» выпадает из вкладки «Данные». -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.4);border-radius:10px;margin-bottom:16px;">
+                <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.4);border-radius:10px;margin-bottom:16px;">
                     <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-circle-check" style="color:#2ecc71;"></i> <span data-i18n="hcp_variant_title">Стиль галочки гандикапа</span></span>
                     <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="hcp_variant_sub">
                         Зелёная галочка «гандикап синхронизирован» и дата обновления показаны во вкладке «Игроки», личном профиле и в списке админки. Выбор действует для всех игроков.
@@ -909,7 +825,7 @@
                     </div>
                 </div>
                 <!-- Глобальный стиль PNG-карточек для социальных сетей -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.42);border-radius:10px;margin-bottom:16px;">
+                <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.42);border-radius:10px;margin-bottom:16px;">
                     <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-image" style="color:var(--gold);"></i> <span data-i18n="social_card_variant_title">Оформление PNG-карточки для соцсетей</span></span>
                     <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="social_card_variant_sub">
                         Выберите один из трёх вариантов. Выбранное оформление применится ко всем новым PNG-карточкам при экспорте.
@@ -920,10 +836,10 @@
                         <button type="button" id="social-card-opt-3" class="btn btn-og btn-sm social-card-variant-btn" onclick="saveSocialCardVariant('3')" aria-pressed="false"><i class="fas fa-flag"></i> <span data-i18n="social_card_variant_3">3 · Турнирная</span></button>
                     </div>
                 </div>
-                <!-- Глобальный стиль карточки группового раунда на главной -->
+                <!-- Групповые и персональные экранные карточки используют общий набор видов. -->
                 <p style="color:var(--muted);">Экранные карточки игроков и групп настраиваются во вкладке «Отображения счётных карточек».</p>
                 <!-- Вид лидерборда турнира — 5 вариантов (требование #7) -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.45);border-radius:10px;margin-bottom:16px;">
+                <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.45);border-radius:10px;margin-bottom:16px;">
                     <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-ranking-star" style="color:var(--gold);"></i> <span data-i18n="tn_lb_variant_title">Вид лидерборда турнира (страница «Турниры»)</span></span>
                     <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="tn_lb_variant_sub">
                         Выберите один из 5 вариантов отображения live-лидерборда турнира. Настройка выбирается только админом и применяется для всех участников на странице «Турниры».
@@ -947,7 +863,7 @@
                     </div>
                 </div>
                 <!-- Разделение лидерборда турнира по полу — 3 вида (выбирает админ) -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(90,173,224,0.07);border:1px solid rgba(90,173,224,0.4);border-radius:10px;margin-bottom:16px;">
+                <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(90,173,224,0.07);border:1px solid rgba(90,173,224,0.4);border-radius:10px;margin-bottom:16px;">
                     <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-venus-mars" style="color:var(--blue);"></i> <span>Разделение лидерборда турнира по полу (страница «Турниры», 3 вида)</span></span>
                     <div style="font-size:12px;color:var(--muted);margin-top:4px;">
                         Мужчины и девушки могут вести зачёт отдельно. Выберите один из 3 видов отображения — настройка выбирается только админом и применяется для всех.
@@ -967,7 +883,7 @@
                     </div>
                 </div>
                 <!-- Группы на странице турниров: вкл/выкл для всех + 4 вида списка участников -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.4);border-radius:10px;margin-bottom:16px;">
+                <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.4);border-radius:10px;margin-bottom:16px;">
                     <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-layer-group" style="color:#2ecc71;"></i> <span>Группы и список участников на странице «Турниры»</span></span>
                     <div style="font-size:12px;color:var(--muted);margin-top:4px;">
                         Активный турнир всегда открывается на live-лидерборде. Группы (дивизионы) по умолчанию видны всем — здесь их можно скрыть. Ниже — 4 варианта оформления списка участников и групп. Настройки применяются для всех.
@@ -984,7 +900,7 @@
                     </div>
                 </div>
                 <!-- Вид блока «Активный турнир» на главной — 5 вариантов -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.45);border-radius:10px;margin-bottom:16px;">
+                <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.45);border-radius:10px;margin-bottom:16px;">
                     <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-trophy" style="color:var(--gold);"></i> <span>Блок «Активный турнир» на главной (5 видов)</span></span>
                     <div style="font-size:12px;color:var(--muted);margin-top:4px;">
                         Выберите один из 5 видов блока активного турнира на главной странице — с топ-3 в разных форматах. Выбирает только админ, применяется для всех пользователей. Виды удобно смотреть и с телефона, и с компьютера.
@@ -998,7 +914,7 @@
                     </div>
                 </div>
                 <!-- Блок «Создание раунда» — 5 вариантов -->
-                <div class="list-item" style="padding:14px 16px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.45);border-radius:10px;margin-bottom:16px;">
+                <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.45);border-radius:10px;margin-bottom:16px;">
                     <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-user-plus" style="color:#9b59b6;"></i> <span>Создание раунда: 1 игрок или группа (5 видов)</span></span>
                     <div style="font-size:12px;color:var(--muted);margin-top:4px;">
                         Единый блок вместо вкладок «Одиночный»/«Групповой»: кнопка «Добавить игрока» добавляет участников (1–6 человек). 1 игрок — одиночный раунд, 2 и более — групповой с маркерами. Выбирает только админ, применяется для всех пользователей.
@@ -1124,12 +1040,12 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="js/firebase-config.js?v=57564a0d"></script>
-<script type="module" src="dist/livescoring-modules.js?v=7df7eb8b"></script>
+<script type="module" src="dist/livescoring-modules.js?v=fbbaf030"></script>
     <script src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
 <script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script src="js/qr-code.js?v=2a26e819"></script>
 <script src="js/rusgolf-client.js?v=f37608e7"></script>
-<script src="js/utils.js?v=0997572f"></script>
+<script src="js/utils.js?v=70676f06"></script>
 <script src="js/tn-mgr-core.js?v=dc621917"></script>
 <script src="js/tn-mgr-data.js?v=9df4ae94"></script>
 <script src="js/tn-mgr-io.js?v=a9001ebb"></script>
@@ -1140,7 +1056,7 @@
 <script src="js/tn-mgr.js?v=59cc04f5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/name-variants.js?v=2b58f796"></script>
-<script src="js/admin.js?v=a24ab90b"></script>
+<script src="js/admin.js?v=8008ad32"></script>
 <script src="js/admin-groups.js?v=33268873"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
 <script src="js/admin-players.js?v=4a1d7d19"></script>
@@ -1153,7 +1069,7 @@
 <script src="js/admin-players-excel.js?v=b46ee68a"></script>
 <script src="js/admin-agr.js?v=342bd9b3"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
-<script src="js/admin-display.js?v=2f077cfd"></script>
+<script src="js/admin-display.js?v=692ee6f4"></script>
 <script src="js/design-admin.js?v=70a7c0c4"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
 <script src="js/pwa.js?v=56b54da4"></script>

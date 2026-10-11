@@ -1015,6 +1015,22 @@ function initRoundView() {
     db.ref('rounds/' + curRid).on('value', roundViewHandler);
 }
 
+// Подписи счёта всегда показывают полные имя и фамилию в привычном порядке.
+function scoreEntryFullName(player, fallback) {
+    var source = player || fallback || {};
+    if (typeof resolvePlayerNameParts === 'function') {
+        var parts = resolvePlayerNameParts(source);
+        var firstLast = [parts.firstName, parts.lastName].filter(Boolean).join(' ').trim();
+        if (firstLast) return firstLast;
+    }
+    return String(source.name || (fallback && fallback.name) || (currentLang === 'en' ? 'Player' : 'Игрок')).trim();
+}
+function scoreEntryPlayerLabel(kind, player, fallback) {
+    var name = scoreEntryFullName(player, fallback);
+    if (kind === 'marker') return (currentLang === 'en' ? "Player's score: " : 'Счёт игрока: ') + name;
+    return (currentLang === 'en' ? 'My score: ' : 'Мой счёт: ') + name;
+}
+
 // Применение снимка раунда: только состояние и видимость блоков. Тяжёлый
 // рендер уходит в scheduleRoundRender() (не чаще одного раза за кадр).
 // Эту же функцию вызывает таймер старта — когда отсчёт дошёл до нуля.
@@ -1029,7 +1045,7 @@ function applyRoundState(data) {
     // функция просто возвращает обычный вид.
     try {
         window.pestovoCurrentRound = function() { return curRoundData; };
-        if (typeof pestovoApplyTnRoundCardLayout === 'function') pestovoApplyTnRoundCardLayout(curRoundData);
+        if (typeof pestovoApplyScreenDisplaySettings === 'function') pestovoApplyScreenDisplaySettings(curRoundData);
     } catch (e) { console.warn("[silent]", e); }
 
     // Раунд с mode='solo' обслуживает solo.js — делегируем ему
@@ -1085,7 +1101,8 @@ function applyRoundState(data) {
 
         var myPlayer = curRoundData.players && curRoundData.players[myUid];
         var myTitle = lGet('my-player-name-title');
-        if (myTitle) myTitle.textContent = myPlayer ? myPlayer.name : (typeof t === 'function' ? t('my_score') : 'My score');
+        var myFallbackPlayer = typeof currentUserData !== 'undefined' ? currentUserData : null;
+        if (myTitle) myTitle.textContent = scoreEntryPlayerLabel('my', myPlayer, myFallbackPlayer);
         updateGroupStablefordToggle();
 
         var markContainer = lGet('marker-input-container');
@@ -1094,7 +1111,7 @@ function applyRoundState(data) {
             myTargetUid = curRoundData.markerAssignments[myUid].targetId;
             var targetPlayer = curRoundData.players && curRoundData.players[myTargetUid];
             var markTitle = lGet('mark-player-name');
-            if (markTitle) markTitle.textContent = targetPlayer ? targetPlayer.name : (currentLang === 'en' ? 'Partner' : 'Партнёр');
+            if (markTitle) markTitle.textContent = scoreEntryPlayerLabel('marker', targetPlayer, null);
             if (markContainer) markContainer.classList.remove('hidden');
             if (dualPanel) dualPanel.classList.remove('single');
         } else {

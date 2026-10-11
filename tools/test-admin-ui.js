@@ -114,8 +114,9 @@ check('блок настроек ввода счёта лежит в новой 
     !!win.document.getElementById('tab-scoreentry').querySelector('#score-entry-settings'));
 check('в карточках больше нет блока ввода счёта',
     !win.document.getElementById('tab-scorecards').querySelector('#score-entry-settings'));
-check('в новой вкладке 5 стилей', win.document.querySelectorAll('#tab-scoreentry [id^="v5-scoring-"]').length === 5,
-    String(win.document.querySelectorAll('#tab-scoreentry [id^="v5-scoring-"]').length));
+check('в новой вкладке есть гибкий редактор элементов', !!win.document.querySelector('#score-entry-display-elements.screen-display-grid'));
+check('в новой вкладке есть настройка порядка блоков', !!win.document.querySelector('#score-entry-display-order.screen-display-order'));
+check('вкладка больше не содержит числовые пресеты', win.document.querySelectorAll('#tab-scoreentry [id^="v5-scoring-"]').length === 0);
 
 console.log('\n=== admJsStr: экранирование для onclick ===\n');
 check('admJsStr определена', typeof win.admJsStr === 'function');

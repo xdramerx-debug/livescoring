@@ -335,7 +335,6 @@ function openAdminPanel() {
     if (typeof loadPageVisibilitySettings === 'function') loadPageVisibilitySettings(); // js/admin-display.js
     if (typeof loadStablefordDisplaySettings === 'function') loadStablefordDisplaySettings(); // js/admin-display.js
     if (typeof loadSocialCardDisplaySettings === 'function') loadSocialCardDisplaySettings(); // js/admin-display.js
-    if (typeof loadGroupCardDisplaySettings === 'function') loadGroupCardDisplaySettings(); // js/admin-display.js
     if (typeof loadTnCardDisplaySettings === 'function') loadTnCardDisplaySettings(); // js/admin-display.js
     if (typeof loadTnLbDisplaySettings === 'function') loadTnLbDisplaySettings(); // js/admin-display.js
     if (typeof loadTnGroupsSettings === 'function') loadTnGroupsSettings(); // js/admin-display.js
@@ -384,24 +383,12 @@ function switchTab(t, b) {
         renderClubScorecardPreview();
         pestovoBindView5('scorecard', function() { renderClubScorecardPreview(); });
     }
-    // Вкладка «Отображение карточек в турнире»: вид карточки и блоки экрана ввода
-    // при вводе счёта по QR из стартового листа турнира.
-    if (t === 'tncards') {
-        if (typeof bindTnRoundCardAdmin === 'function') bindTnRoundCardAdmin();
-        if (typeof renderTnRoundCardAdmin === 'function') renderTnRoundCardAdmin();
+    // Отдельные глобальные редакторы страницы турниров и ввода счёта.
+    if (t === 'tncards' && typeof renderPestovoDisplayAdmin === 'function') {
+        renderPestovoDisplayAdmin('tournamentScoring', true);
     }
-    // Вкладка «Ввод счёта ⛳»: 5 стилей экрана ввода + порядок блоков.
-    // Функции живут в js/admin-display.js — вызовы через typeof-guard,
-    // чтобы вкладка не падала, если модуль не подключён (как остальные
-    // необязательные блоки в этом же switchTab).
-    if (t === 'scoreentry') {
-        if (typeof bindScoreEntryAdmin === 'function') bindScoreEntryAdmin();
-        if (typeof renderScoreEntryAdmin === 'function') renderScoreEntryAdmin();
-        if (typeof pestovoBindView5 === 'function') {
-            pestovoBindView5('scoring', function() {
-                if (typeof renderScoreEntryAdmin === 'function') renderScoreEntryAdmin();
-            });
-        }
+    if (t === 'scoreentry' && typeof renderPestovoDisplayAdmin === 'function') {
+        renderPestovoDisplayAdmin('scoring', true);
     }
     if (t === 'groups') {
         if (typeof renderAdmGroups === 'function') renderAdmGroups(); // js/admin-groups.js
@@ -423,7 +410,6 @@ function switchTab(t, b) {
         if (typeof loadPageVisibilitySettings === 'function') loadPageVisibilitySettings(); // js/admin-display.js
         if (typeof loadStablefordDisplaySettings === 'function') loadStablefordDisplaySettings(); // js/admin-display.js
         if (typeof loadSocialCardDisplaySettings === 'function') loadSocialCardDisplaySettings(); // js/admin-display.js
-        if (typeof loadGroupCardDisplaySettings === 'function') loadGroupCardDisplaySettings(); // js/admin-display.js
         if (typeof loadTnCardDisplaySettings === 'function') loadTnCardDisplaySettings(); // js/admin-display.js
         if (typeof loadTnLbDisplaySettings === 'function') loadTnLbDisplaySettings(); // js/admin-display.js
         if (typeof loadTnGroupsSettings === 'function') loadTnGroupsSettings(); // js/admin-display.js
@@ -431,8 +417,8 @@ function switchTab(t, b) {
         if (typeof loadPageDisplaySettings === 'function') loadPageDisplaySettings(); // js/admin-display.js
         if (typeof loadAdmView5Settings === 'function') loadAdmView5Settings(); // js/admin-display.js
     }
-    if (t === 'tournamentsview') {
-        if (typeof loadTnPageViewSettings === 'function') loadTnPageViewSettings(); // js/admin-display.js
+    if (t === 'tournamentsview' && typeof renderPestovoDisplayAdmin === 'function') {
+        renderPestovoDisplayAdmin('tournaments', true);
     }
     if (t === 'rusgolf') {
         if (typeof loadRusgolfProxySettings === 'function') loadRusgolfProxySettings(); // js/admin-agr.js

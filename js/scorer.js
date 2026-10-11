@@ -82,6 +82,7 @@ function loadSc() {
     }
     db.ref('rounds/' + scRid).on('value', function(sn) {
         scRound = sn.val();
+        if (typeof pestovoApplyScreenDisplaySettings === 'function') pestovoApplyScreenDisplaySettings(scRound);
         if (!scRound || !scRound.players || !scRound.players[scPid]) {
             var e1 = scGet('sc-err'); if (e1) e1.classList.remove('hidden');
             var b1 = scGet('sc-body'); if (b1) b1.classList.add('hidden');

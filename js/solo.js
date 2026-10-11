@@ -504,7 +504,7 @@ function loadExistingSolo() {
         // Карточки в турнире: вид карточки и состав блоков (см. utils.js).
         try {
             window.pestovoCurrentRound = function() { return soloRound; };
-            if (typeof pestovoApplyTnRoundCardLayout === 'function') pestovoApplyTnRoundCardLayout(soloRound);
+            if (typeof pestovoApplyScreenDisplaySettings === 'function') pestovoApplyScreenDisplaySettings(soloRound);
         } catch (e) { console.warn("[silent]", e); }
 
         // Это групповой раунд — передаём его live.js (обе вкладки на setup-round.html)

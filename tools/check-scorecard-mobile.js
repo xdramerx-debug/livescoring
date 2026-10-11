@@ -40,6 +40,12 @@ const root = path.join(__dirname, '..');
             await page.setViewportSize({ width, height: 844 });
             for (const variant of ['1', '2', '3', '4', '5']) {
                 await page.click('#v5-scorecard-' + variant);
+                const optionTarget = await page.locator('#v5-scorecard-' + variant).evaluate(element => {
+                    const rect = element.getBoundingClientRect();
+                    return { height: rect.height, left: rect.left, right: rect.right };
+                });
+                assert(optionTarget.height >= 44 && optionTarget.left >= 0 && optionTarget.right <= width + 1,
+                    'Scorecard variant is visible and touch-sized: ' + width + '/' + variant + ' ' + JSON.stringify(optionTarget));
                 assert.strictEqual(await page.getAttribute('#club-sc-preview .club-sc', 'data-sc-view'), variant);
                 assert.strictEqual(await page.locator('#club-sc-preview [data-sc-hole]').count(), 18);
                 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);

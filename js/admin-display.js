@@ -109,72 +109,6 @@ function markAdmSocialCardVariantButtons() {
 }
 
 // ==========================================
-// GROUP ROUND CARD DISPLAY MANAGEMENT
-// ==========================================
-// Вариант сохраняется глобально в settings/group_round_card_variant.
-// Выбор стиля единой карточки группового раунда для главной страницы.
-function loadGroupCardDisplaySettings() {
-    var applyValue = function(value) {
-        if (value !== null && value !== undefined && typeof applyGroupCardVariant === 'function') {
-            applyGroupCardVariant(value);
-        }
-        markAdmGroupCardVariantButtons();
-    };
-
-    if (typeof db === 'undefined') {
-        applyValue(null);
-        return;
-    }
-
-    if (typeof bindRealtimeValue === 'function') {
-        bindRealtimeValue('admin-group-card-variant', db.ref('settings/group_round_card_variant'), function(sn) {
-            applyValue(sn.val());
-        });
-    } else {
-        db.ref('settings/group_round_card_variant').once('value').then(function(sn) {
-            applyValue(sn.val());
-        }).catch(function() { applyValue(null); });
-    }
-}
-
-function saveGroupCardVariant(v) {
-    if (v !== '1' && v !== '2' && v !== '3') return;
-    if (typeof vib === 'function') vib(30);
-
-    if (typeof applyGroupCardVariant === 'function') applyGroupCardVariant(v);
-    else markAdmGroupCardVariantButtons();
-
-    if (typeof db === 'undefined') {
-        toast(currentLang === 'en' ? 'Group card style saved locally' : 'Стиль групповой карточки сохранён локально', 'info');
-        return;
-    }
-
-    db.ref('settings/group_round_card_variant').set(v).then(function() {
-        toast(currentLang === 'en'
-            ? '✅ Group round card style saved for all users'
-            : '✅ Стиль карточки группового раунда сохранён для всех пользователей', 'success');
-    }).catch(function(err) {
-        console.warn('Group card variant save error:', err);
-        toast(currentLang === 'en'
-            ? 'Could not save the group card style to the cloud'
-            : '⚠️ Не удалось сохранить стиль групповой карточки в облако', 'error');
-    });
-}
-
-function markAdmGroupCardVariantButtons() {
-    var cur = (typeof getGroupCardVariant === 'function') ? getGroupCardVariant() : '1';
-    ['1', '2', '3'].forEach(function(v) {
-        var btn = document.getElementById('group-card-opt-' + v);
-        if (!btn) return;
-        var active = (v === cur);
-        btn.classList.toggle('btn-g', active);
-        btn.classList.toggle('btn-og', !active);
-        btn.classList.toggle('group-card-variant-active', active);
-        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
-}
-
-// ==========================================
 // СЧЁТНАЯ КАРТОЧКА ИГРОКА В ЛИДЕРБОРДЕ ТУРНИРА
 // ==========================================
 // Админ выбирает оформление один раз для всего клуба:
@@ -266,7 +200,6 @@ function loadTnLbDisplaySettings() {
 function markAdmView5Buttons(name) {
     if (typeof getView5 !== 'function') return;
     var cur = name === 'scorecard' && typeof clubScorecardPreviewView !== 'undefined' && clubScorecardPreviewView ? clubScorecardPreviewView : getView5(name);
-    if (name === 'scoring' && typeof scoreEntryDraft !== 'undefined' && scoreEntryDraft) cur = scoreEntryDraft.view;
     ['1', '2', '3', '4', '5'].forEach(function(v) {
         var btn = document.getElementById('v5-' + name + '-' + v);
         if (!btn) return;
@@ -290,7 +223,7 @@ function saveView5Setting(name, v) {
     var cfg = (typeof PESTOVO_VIEW5_CONFIG !== 'undefined') ? PESTOVO_VIEW5_CONFIG[name] : null;
     var path = (cfg && cfg.firebase)
         ? cfg.firebase
-        : { homeTournament: 'settings/home_tournament_view', scorecard: 'settings/scorecard_view', scoring: 'settings/scoring_view' }[name];
+        : { homeTournament: 'settings/home_tournament_view', scorecard: 'settings/scorecard_view' }[name];
     if (!path) return;
     db.ref(path).set(String(v)).then(function() {
         toast(currentLang === 'en' ? '✅ View saved for all users' : '✅ Вид сохранён для всех пользователей', 'success');
@@ -301,7 +234,7 @@ function saveView5Setting(name, v) {
 }
 
 function loadAdmView5Settings() {
-    ['homeTournament', 'scorecard', 'scoring', 'roundsetup'].forEach(function(name) {
+    ['homeTournament', 'scorecard', 'roundsetup'].forEach(function(name) {
         if (typeof pestovoBindView5 === 'function') pestovoBindView5(name, function() {});
         else if (typeof markAdmView5Buttons === 'function') markAdmView5Buttons(name);
     });
@@ -483,8 +416,6 @@ var ADMIN_PAGE_DISPLAY_CONFIG = {
 };
 
 function pageDisplayLabelKey(page, v) {
-    // У «Турниров» варианты 4–5 описаны только в ключах вкладки «Турниры: вид».
-    if (page === 'tournaments' && parseInt(v, 10) > 3) return 'tournaments_view_variant_' + v;
     return page + '_display_variant_' + v;
 }
 
@@ -522,7 +453,6 @@ function savePageDisplayVariant(page, value) {
     if (typeof vib === 'function') vib(30);
     if (typeof applyPageDisplayVariant === 'function') applyPageDisplayVariant(page, value);
     else markAdmPageDisplayVariantButtons(page);
-    if (page === 'tournaments' && typeof markAdmTnPageViewButtons === 'function') markAdmTnPageViewButtons();
 
     if (typeof db === 'undefined' || !db) {
         toast(currentLang === 'en' ? 'Layout saved locally' : 'Вариант отображения сохранён локально', 'info');
@@ -567,83 +497,6 @@ function markAdmPageDisplayVariantButtons(page) {
         btn.classList.toggle('page-display-variant-active', active);
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
-}
-
-// ==========================================
-// ВКЛАДКА «ТУРНИРЫ: ВИД» — 5 ВАРИАНТОВ СТРАНИЦЫ «ТУРНИРЫ»
-// ==========================================
-// Оформление выбирает только администратор; значение хранится в
-// settings/tournaments_display_variant и применяется для всех игроков.
-var TN_PAGE_VIEW_VARIANTS = ['1', '2', '3', '4', '5'];
-var TN_PAGE_VIEW_DESC = {
-    1: 'tournaments_view_variant_1_desc',
-    2: 'tournaments_view_variant_2_desc',
-    3: 'tournaments_view_variant_3_desc',
-    4: 'tournaments_view_variant_4_desc',
-    5: 'tournaments_view_variant_5_desc'
-};
-
-function markAdmTnPageViewButtons() {
-    var cur = (typeof getPageDisplayVariant === 'function') ? getPageDisplayVariant('tournaments') : '1';
-    TN_PAGE_VIEW_VARIANTS.forEach(function(v) {
-        var btn = document.getElementById('tn-view-opt-' + v);
-        if (!btn) return;
-        var active = v === cur;
-        btn.classList.toggle('page-display-variant-active', active);
-        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
-    // Подпись активного варианта — чтобы админ видел, что именно включено.
-    var hint = document.getElementById('tn-view-current-desc');
-    if (hint) {
-        var key = TN_PAGE_VIEW_DESC[cur] || TN_PAGE_VIEW_DESC['1'];
-        hint.textContent = (typeof t === 'function' ? t(key) : key) || '';
-    }
-    var badge = document.getElementById('tn-view-current-badge');
-    if (badge) {
-        var labelKey = 'tournaments_view_variant_' + cur;
-        badge.textContent = (typeof t === 'function' ? t(labelKey) : labelKey) || cur;
-    }
-}
-
-function loadTnPageViewSettings() {
-    var applyValue = function(value) {
-        if (value !== null && value !== undefined && typeof applyPageDisplayVariant === 'function') {
-            applyPageDisplayVariant('tournaments', value);
-        }
-        markAdmTnPageViewButtons();
-    };
-    if (typeof db === 'undefined') { applyValue(null); return; }
-    var path = 'settings/tournaments_display_variant';
-    if (typeof bindRealtimeValue === 'function') {
-        bindRealtimeValue('admin-tn-page-view', db.ref(path), function(sn) { applyValue(sn.val()); });
-    } else {
-        db.ref(path).once('value').then(function(sn) { applyValue(sn.val()); }).catch(function() { applyValue(null); });
-    }
-}
-
-function saveTnPageViewVariant(value) {
-    if (TN_PAGE_VIEW_VARIANTS.indexOf(String(value)) === -1) return;
-    value = String(value);
-    if (typeof vib === 'function') vib(30);
-    if (typeof applyPageDisplayVariant === 'function') applyPageDisplayVariant('tournaments', value);
-    markAdmTnPageViewButtons();
-
-    if (typeof db === 'undefined') {
-        toast(currentLang === 'en' ? 'Layout saved locally' : 'Вариант отображения сохранён локально', 'info');
-        return;
-    }
-    db.ref('settings/tournaments_display_variant').set(value).then(function() {
-        toast(currentLang === 'en'
-            ? '✅ ' + t('tournaments_view_saved')
-            : '✅ ' + t('tournaments_view_saved'), 'success');
-    }).catch(function(err) {
-        console.warn('Tournaments layout save error:', err);
-        toast(currentLang === 'en' ? 'Could not save the layout' : '⚠️ Не удалось сохранить вариант отображения', 'error');
-    });
-}
-
-function openTournamentsPagePreview() {
-    try { window.open('tournaments.html', '_blank', 'noopener'); } catch (e) { console.warn("[silent]", e); }
 }
 
 function saveStablefordDisplayDefault() {
@@ -937,604 +790,202 @@ function saveClubScorecardView(value) {
 }
 
 
-// ── ВВОД СЧЁТА: сохранённые варианты экрана ─────────────────────────────
-// Вариант = имя + стиль (1–5) + порядок блоков + «что показывать» (фора, пар,
-// дистанция, дедлайн, номер лунки, блоки). Список хранится в
-// settings/scoring_variants/<id>, активный — в settings/scoring_active.
-// Применение копирует вариант в settings/scoring_view|scoring_order|scoring_show
-// (их читают экраны игроков), поэтому игроки видят его без перезагрузки.
-var scoreEntryDraft = null;      // редактируемый вариант: { id|null, name, view, order, show }
-var scoreEntrySaving = false;
-var scoreEntryVariants = null;   // null — ещё не загружено; иначе массив вариантов по pos
-var scoreEntryActiveId = '';
-var scoreEntryBound = false;
-// Пять стилей экрана ввода счёта: подписи для предпросмотра (сам вид задаёт
-// CSS по data-entry-view, значения те же, что в settings/scoring_view).
-var SCORE_ENTRY_STYLES = {
-    '1': { name: 'Классика клуба',  desc: 'золото и зелёное сукно, плиты лунок, мягкие тени' },
-    '2': { name: 'Крупный счёт',    desc: 'самые большие цифры и кнопки ±, широкие плиты' },
-    '3': { name: 'Компакт-сетка',   desc: 'все 18 лунок и ввод — на одном экране телефона' },
-    '4': { name: 'Контраст-фокус',  desc: 'тёмные плиты, золотая рамка активной лунки' },
-    '5': { name: 'Минимализм-лайн', desc: 'тонкие линии, прозрачные панели, ноль декора' }
+// ── Гибкая глобальная настройка экранов турниров и ввода счёта ────────────
+var pestovoDisplayEditorDrafts = {};
+var pestovoDisplayEditorDirty = {};
+var pestovoDisplayEditorSaving = {};
+var PESTOVO_DISPLAY_ORDER_LABELS = {
+    tournaments: {
+        active: { ru: 'Активный турнир', en: 'Active tournament' },
+        upcoming: { ru: 'Предстоящие старты', en: 'Upcoming tournaments' },
+        archive: { ru: 'Архив', en: 'Archive' }
+    },
+    scoring: {
+        info: { ru: 'Информация о лунке', en: 'Hole information' },
+        holes: { ru: 'Навигация по лункам', en: 'Hole navigation' },
+        input: { ru: 'Ввод счёта', en: 'Score input' }
+    },
+    tournamentScoring: {
+        info: { ru: 'Информация о лунке', en: 'Hole information' },
+        holes: { ru: 'Навигация по лункам', en: 'Hole navigation' },
+        input: { ru: 'Ввод счёта', en: 'Score input' }
+    }
 };
-// Премиум-карточка настройки: у каждого блока — иконка, название и описание.
-var SCORE_ENTRY_BLOCK_META = {
-    info:  { icon: 'fa-circle-info',   title: 'Информация о лунке',      desc: 'Лунка, пар, метры и дедлайн' },
-    holes: { icon: 'fa-table-cells',   title: 'Выбор лунки',             desc: 'Все лунки раунда для быстрого перехода' },
-    input: { icon: 'fa-pen-to-square', title: 'Ввод счёта и сохранение', desc: 'Квадрат счёта, кнопки ± и сохранение' }
-};
-// Что показывать: ключ совпадает с SCORE_ENTRY_SHOW_KEYS (js/utils.js).
-var SCORE_ENTRY_SHOW_META = [
-    { key: 'info',     title: 'Блок «Информация о лунке»', desc: 'Все четыре плитки разом' },
-    { key: 'hole',     title: 'Номер лунки',               desc: 'Плитка «Лунка»' },
-    { key: 'par',      title: 'Пар',                       desc: 'Плитка «Пар»' },
-    { key: 'dist',     title: 'Дистанция (метры)',         desc: 'Плитка «Метры»' },
-    { key: 'deadline', title: 'Дедлайн',                   desc: 'Плитка «Дедлайн» по темпу игры' },
-    { key: 'holes',    title: 'Блок «Выбор лунки»',        desc: 'Навигация по лункам раунда' },
-    { key: 'hcp',      title: 'Фора',                      desc: 'Подписи «Фора +1» и метки ударов форы' }
-];
-var SCORE_ENTRY_DEFAULT_ORDER = ['info', 'holes', 'input'];
-
-function scoreEntryArr(value) {
-    if (Array.isArray(value)) return value;
-    if (value && typeof value === 'object') return Object.keys(value).sort().map(function(k) { return value[k]; });
-    return [];
+function pestovoDisplayEditorSource(scope) {
+    if (scope !== 'tournamentScoring') return getPestovoDisplaySettings(scope);
+    var base = getPestovoDisplaySettings('scoring');
+    var override = getPestovoDisplaySettings('tournamentScoring');
+    Object.keys(override.visible).forEach(function(key) { base.visible[key] = override.visible[key]; });
+    if (override.order) base.order = override.order.slice();
+    return base;
 }
-function normalizeScoreEntryVariant(id, raw, pos) {
-    raw = raw || {};
-    var name = String(raw.name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
-    return {
-        id: String(id),
-        name: name || 'Вариант',
-        view: normalizeView5(raw.view),
-        order: normalizeScoreEntryOrder(scoreEntryArr(raw.order)),
-        show: normalizeScoreEntryShow(raw.show),
-        pos: typeof raw.pos === 'number' ? raw.pos : pos
-    };
-}
-function scoreEntryDefaultVariants() {
-    var list = [];
-    for (var n = 1; n <= 5; n++) {
-        list.push(normalizeScoreEntryVariant('v' + n, { name: SCORE_ENTRY_STYLES[String(n)].name, view: String(n), order: SCORE_ENTRY_DEFAULT_ORDER, show: null, pos: n }, n));
+function pestovoDisplayEditorDraft(scope, reset) {
+    if (reset || !pestovoDisplayEditorDrafts[scope]) {
+        pestovoDisplayEditorDrafts[scope] = pestovoDisplayEditorSource(scope);
+        pestovoDisplayEditorDirty[scope] = false;
     }
-    return list;
+    return pestovoDisplayEditorDrafts[scope];
 }
-// Локальное обновление списка сразу после записи (realtime-подписка догонит её же данными).
-function upsertLocalScoreEntryVariant(variant) {
-    if (!scoreEntryVariants) scoreEntryVariants = [];
-    scoreEntryVariants = scoreEntryVariants.filter(function(v) { return v.id !== variant.id; }).concat([variant]);
+function pestovoDisplayScopeStatusId(scope) {
+    return scope === 'tournaments' ? 'tournaments-display-status' :
+        scope === 'tournamentScoring' ? 'tn-score-display-status' : 'score-entry-display-status';
 }
-function removeLocalScoreEntryVariant(id) {
-    scoreEntryVariants = (scoreEntryVariants || []).filter(function(v) { return v.id !== id; });
+function pestovoDisplayLabel(meta) {
+    if (!meta) return '';
+    return currentLang === 'en' ? (meta.en || meta.ru || '') : (meta.ru || meta.en || '');
 }
-function scoreEntrySortedVariants() {
-    return (scoreEntryVariants || []).slice().sort(function(a, b) { return a.pos - b.pos; });
-}
-function findScoreEntryVariant(id) {
-    var list = scoreEntryVariants || [];
-    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
-    return null;
-}
-function applyScoreEntryVariantsFromDb(raw, activeRaw) {
-    var list = [];
-    if (raw && typeof raw === 'object') {
-        Object.keys(raw).forEach(function(id, i) {
-            if (!raw[id] || typeof raw[id] !== 'object') return;
-            list.push(normalizeScoreEntryVariant(id, raw[id], i + 1));
-        });
+function renderPestovoDisplayAdmin(scope, force) {
+    scope = scope || 'scoring';
+    if (!PESTOVO_DISPLAY_CONFIGS || !PESTOVO_DISPLAY_CONFIGS[scope]) return;
+    if (force || !pestovoDisplayEditorDirty[scope]) pestovoDisplayEditorDraft(scope, true);
+    var draft = pestovoDisplayEditorDraft(scope);
+    var isTournamentPage = scope === 'tournaments';
+    var meta = isTournamentPage ? PESTOVO_TOURNAMENT_DISPLAY_META : PESTOVO_SCORE_DISPLAY_META;
+    var keys = isTournamentPage ? PESTOVO_TOURNAMENT_DISPLAY_KEYS : PESTOVO_SCORE_DISPLAY_KEYS;
+    var host = document.getElementById(isTournamentPage ? 'tournaments-display-elements' :
+        scope === 'tournamentScoring' ? 'tn-score-display-elements' : 'score-entry-display-elements');
+    if (host) {
+        host.innerHTML = keys.map(function(key) {
+            var item = meta[key] || { ru: key, en: key };
+            var checked = draft.visible[key] !== false;
+            var required = !isTournamentPage && (key === 'input' || key === 'myScore');
+            return '<label class="screen-display-option' + (checked ? ' is-on' : '') + (required ? ' is-required' : '') + '">' +
+                '<input type="checkbox" data-screen-display-toggle="' + escapeHtml(scope) + '" data-display-key="' + escapeHtml(key) + '"' +
+                (checked ? ' checked' : '') + (required ? ' disabled aria-disabled="true"' : '') +
+                ' onchange="setPestovoDisplayDraftVisible(\'' + pestovoInlineJsArg(scope) + '\',\'' + pestovoInlineJsArg(key) + '\',this.checked)">' +
+                '<span>' + escapeHtml(pestovoDisplayLabel(item)) + (required ? '<small>' + (currentLang === 'en' ? 'Required to save scores' : 'Нужен для сохранения счёта') + '</small>' : '') + '</span></label>';
+        }).join('');
     }
-    scoreEntryVariants = list.length ? list : scoreEntryDefaultVariants();
-    var active = typeof activeRaw === 'string' ? findScoreEntryVariant(activeRaw) : null;
-    if (!active) {
-        var cur = getScoringView();
-        active = scoreEntryVariants.filter(function(v) { return v.view === cur; })[0] || scoreEntryVariants[0];
+    var orderHost = document.getElementById(isTournamentPage ? 'tournaments-display-order' :
+        scope === 'tournamentScoring' ? 'tn-score-display-order' : 'score-entry-display-order');
+    if (orderHost) {
+        var orderLabels = PESTOVO_DISPLAY_ORDER_LABELS[scope] || {};
+        orderHost.innerHTML = draft.order.map(function(key, index) {
+            var label = pestovoDisplayLabel(orderLabels[key]);
+            return '<div class="screen-display-order-row"><span><b>' + (index + 1) + '</b> ' + escapeHtml(label || key) + '</span>' +
+                '<div><button type="button" class="btn btn-ol btn-sm" data-display-order-move="up" aria-label="' + (currentLang === 'en' ? 'Move up' : 'Переместить выше') + '"' +
+                (index === 0 ? ' disabled' : '') + ' onclick="movePestovoDisplayDraftOrder(\'' + pestovoInlineJsArg(scope) + '\',' + index + ',-1)"><i class="fas fa-arrow-up"></i></button>' +
+                '<button type="button" class="btn btn-ol btn-sm" data-display-order-move="down" aria-label="' + (currentLang === 'en' ? 'Move down' : 'Переместить ниже') + '"' +
+                (index === draft.order.length - 1 ? ' disabled' : '') + ' onclick="movePestovoDisplayDraftOrder(\'' + pestovoInlineJsArg(scope) + '\',' + index + ',1)"><i class="fas fa-arrow-down"></i></button></div></div>';
+        }).join('');
     }
-    scoreEntryActiveId = active.id;
-}
-// Один раз подписываемся на список и активный вариант; до загрузки — локальные значения.
-function bindScoreEntryAdmin() {
-    if (scoreEntryBound) return;
-    scoreEntryBound = true;
-    if (typeof db === 'undefined' || !db) {
-        applyScoreEntryVariantsFromDb(null, null);
-        renderScoreEntryAdmin();
-        return;
+    if (isTournamentPage) {
+        var layout = document.getElementById('tournaments-display-layout');
+        if (layout) layout.value = draft.layout;
     }
-    var state = { list: undefined, active: undefined };
-    var refresh = function() {
-        if (state.list === undefined || state.active === undefined) return;
-        applyScoreEntryVariantsFromDb(state.list, state.active);
-        renderScoreEntryAdmin();
-    };
-    var listRef = db.ref('settings/scoring_variants');
-    var activeRef = db.ref('settings/scoring_active');
-    var onList = function(sn) { state.list = sn.val(); refresh(); };
-    var onActive = function(sn) { state.active = sn.val(); refresh(); };
-    if (typeof bindRealtimeValue === 'function') {
-        bindRealtimeValue('admin-scoring-variants', listRef, onList);
-        bindRealtimeValue('admin-scoring-active', activeRef, onActive);
-    } else {
-        listRef.on('value', onList);
-        activeRef.on('value', onActive);
-    }
+    var saveButton = document.querySelector('[data-display-save="' + scope + '"]');
+    if (saveButton) saveButton.disabled = !!pestovoDisplayEditorSaving[scope];
+    var resetButton = document.querySelector('[data-display-reset="' + scope + '"]');
+    if (resetButton) resetButton.disabled = !!pestovoDisplayEditorSaving[scope];
+    renderPestovoDisplayPreview(scope, draft);
 }
-function ensureScoreEntryDraft() {
-    if (!scoreEntryDraft) {
-        if (!scoreEntryVariants) applyScoreEntryVariantsFromDb(null, null);
-        var active = findScoreEntryVariant(scoreEntryActiveId) || scoreEntrySortedVariants()[0];
-        scoreEntryDraft = draftFromVariant(active);
-    }
-    return scoreEntryDraft;
+function renderPestovoDisplayPreview(scope, draft) {
+    var id = scope === 'tournaments' ? 'tournaments-display-preview' :
+        scope === 'tournamentScoring' ? 'tn-score-display-preview' : 'score-entry-display-preview';
+    var host = document.getElementById(id);
+    if (!host) return;
+    var isTournament = scope === 'tournaments';
+    var meta = isTournament ? PESTOVO_TOURNAMENT_DISPLAY_META : PESTOVO_SCORE_DISPLAY_META;
+    var orderLabels = PESTOVO_DISPLAY_ORDER_LABELS[scope] || {};
+    var shown = Object.keys(draft.visible).filter(function(key) { return draft.visible[key] !== false; });
+    var labels = shown.map(function(key) { return pestovoDisplayLabel(meta[key]); }).filter(Boolean);
+    var order = draft.order.map(function(key) { return pestovoDisplayLabel(orderLabels[key]) || key; });
+    host.innerHTML = '<div class="screen-display-preview-head"><i class="fas ' + (isTournament ? 'fa-trophy' : 'fa-golf-ball-tee') + '"></i> ' +
+        (isTournament ? (currentLang === 'en' ? 'Tournament page' : 'Страница турниров') : (currentLang === 'en' ? 'Score entry' : 'Экран ввода счёта')) +
+        (isTournament ? '<span>' + escapeHtml(draft.layout) + '</span>' : '') + '</div>' +
+        '<div class="screen-display-preview-order">' + order.map(function(label, index) { return '<span><b>' + (index + 1) + '</b>' + escapeHtml(label) + '</span>'; }).join('') + '</div>' +
+        '<p>' + (currentLang === 'en' ? 'Visible elements' : 'Показываются') + ': <strong>' + labels.length + '</strong></p>';
 }
-function draftFromVariant(v) {
-    return { id: v.id, name: v.name, view: v.view, order: v.order.slice(), show: normalizeScoreEntryShow(v.show), pos: v.pos };
+function setPestovoDisplayDraftVisible(scope, key, checked) {
+    if (pestovoDisplayEditorSaving[scope]) return;
+    if (scope === 'tournaments' && PESTOVO_TOURNAMENT_DISPLAY_KEYS.indexOf(key) === -1) return;
+    if (scope !== 'tournaments' && PESTOVO_SCORE_DISPLAY_KEYS.indexOf(key) === -1) return;
+    if (scope !== 'tournaments' && (key === 'input' || key === 'myScore')) return;
+    var draft = pestovoDisplayEditorDraft(scope);
+    draft.visible[key] = !!checked;
+    pestovoDisplayEditorDirty[scope] = true;
+    renderPestovoDisplayAdmin(scope);
 }
-function startScoreEntryEdit(id) {
-    if (scoreEntrySaving) return;
-    var v = findScoreEntryVariant(id);
-    if (!v) return;
-    scoreEntryDraft = draftFromVariant(v);
-    renderScoreEntryAdmin();
+function setPestovoDisplayDraftLayout(value) {
+    if (pestovoDisplayEditorSaving.tournaments) return;
+    if (PESTOVO_TOURNAMENT_DISPLAY_LAYOUTS.indexOf(String(value)) === -1) return;
+    pestovoDisplayEditorDraft('tournaments').layout = String(value);
+    pestovoDisplayEditorDirty.tournaments = true;
+    renderPestovoDisplayAdmin('tournaments');
 }
-function addScoreEntryVariant() {
-    if (scoreEntrySaving) return;
-    var cur = findScoreEntryVariant(scoreEntryActiveId) || scoreEntryDefaultVariants()[0];
-    var n = (scoreEntryVariants ? scoreEntryVariants.length : 0) + 1;
-    scoreEntryDraft = { id: null, name: 'Вариант ' + n, view: cur.view, order: cur.order.slice(), show: normalizeScoreEntryShow(cur.show), pos: 0 };
-    renderScoreEntryAdmin();
-    var nameEl = document.getElementById('score-entry-name');
-    if (nameEl) { try { nameEl.focus(); nameEl.select(); } catch (e) { console.warn('[silent]', e); } }
-}
-function previewScoreEntryView(view) {
-    if (scoreEntrySaving) return;
-    ensureScoreEntryDraft().view = normalizeView5(view);
-    renderScoreEntryAdmin();
-}
-function setScoreEntryName(value) {
-    if (scoreEntrySaving) return;
-    ensureScoreEntryDraft().name = String(value || '').replace(/\s+/g, ' ').slice(0, 40);
-    renderScoreEntryList();
-}
-function setScoreEntryShow(key, checked) {
-    if (scoreEntrySaving) return;
-    ensureScoreEntryDraft().show[key] = !!checked;
-    renderScoreEntryPreview();
-}
-function moveScoreEntryBlock(index, delta) {
-    if (scoreEntrySaving) return;
-    var order = ensureScoreEntryDraft().order;
+function movePestovoDisplayDraftOrder(scope, index, delta) {
+    if (pestovoDisplayEditorSaving[scope]) return;
+    var draft = pestovoDisplayEditorDraft(scope);
     var next = index + delta;
-    if (next < 0 || next >= order.length) return;
-    var key = order[index]; order[index] = order[next]; order[next] = key;
-    renderScoreEntryOrder();
-    renderScoreEntryPreview();
-    var button = document.querySelector('#score-entry-order [data-move-key="' + key + '"][data-delta="' + delta + '"]');
-    if (button && !button.disabled) button.focus();
+    if (next < 0 || next >= draft.order.length) return;
+    var key = draft.order[index];
+    draft.order[index] = draft.order[next];
+    draft.order[next] = key;
+    pestovoDisplayEditorDirty[scope] = true;
+    renderPestovoDisplayAdmin(scope);
+    var button = document.querySelector('[data-display-save="' + scope + '"]');
+    if (button && button.focus) button.focus({ preventScroll: true });
 }
-function renderScoreEntryAdmin() {
-    renderScoreEntryList();
-    renderScoreEntryEditor();
-    renderScoreEntryOrder();
-    renderScoreEntryPreview();
-}
-function renderScoreEntryList() {
-    var host = document.getElementById('score-entry-list');
-    if (!host) return;
-    var draft = scoreEntryDraft;
-    var list = scoreEntrySortedVariants();
-    host.innerHTML = list.map(function(v) {
-        var style = SCORE_ENTRY_STYLES[v.view] || SCORE_ENTRY_STYLES['1'];
-        var isActive = v.id === scoreEntryActiveId;
-        var isEditing = !!(draft && draft.id === v.id);
-        var badges = (isActive ? '<span class="se-badge se-badge--on"><i class="fas fa-circle-check"></i> Активен у всех</span>' : '') +
-            (isEditing ? '<span class="se-badge"><i class="fas fa-pen"></i> Редактируется</span>' : '');
-        return '<div class="se-item' + (isEditing ? ' is-editing' : '') + '" data-variant-id="' + escapeHtml(v.id) + '">' +
-            '<div class="se-item-main"><strong>' + escapeHtml(v.name) + '</strong>' +
-            '<small>Стиль ' + escapeHtml(v.view) + ' · ' + escapeHtml(style.name) + '</small>' +
-            (badges ? '<div class="se-badges">' + badges + '</div>' : '') + '</div>' +
-            '<div class="se-item-btns">' +
-            '<button type="button" class="btn btn-ol btn-sm" onclick="startScoreEntryEdit(\'' + pestovoInlineJsArg(v.id) + '\')"><i class="fas fa-pen"></i> Изменить</button>' +
-            '<button type="button" class="btn btn-g btn-sm" onclick="activateScoreEntryVariant(\'' + pestovoInlineJsArg(v.id) + '\')"' + (isActive ? ' disabled' : '') + '><i class="fas fa-cloud-arrow-up"></i> Применить для всех</button>' +
-            '<button type="button" class="btn btn-danger btn-sm" onclick="deleteScoreEntryVariant(\'' + pestovoInlineJsArg(v.id) + '\')"' + (list.length < 2 ? ' disabled' : '') + '><i class="fas fa-trash"></i> Удалить</button>' +
-            '</div></div>';
-    }).join('') || '<p class="sev-sec-sub">Вариантов пока нет — добавьте первый.</p>';
-    var title = document.getElementById('score-entry-editor-title');
-    if (title && draft) title.textContent = draft.id ? 'Редактор: ' + draft.name : 'Новый вариант';
-}
-function renderScoreEntryEditor() {
-    var draft = ensureScoreEntryDraft();
-    var nameEl = document.getElementById('score-entry-name');
-    if (nameEl && document.activeElement !== nameEl) nameEl.value = draft.name;
-    var showHost = document.getElementById('score-entry-show');
-    if (showHost) {
-        showHost.innerHTML = SCORE_ENTRY_SHOW_META.map(function(m) {
-            var on = draft.show[m.key] !== false;
-            return '<label class="se-show-item' + (on ? ' is-on' : '') + '"><input type="checkbox" data-show-key="' + escapeHtml(m.key) + '"' + (on ? ' checked' : '') +
-                ' onchange="setScoreEntryShow(\'' + pestovoInlineJsArg(m.key) + '\', this.checked)"><span><strong>' + escapeHtml(m.title) + '</strong><small>' + escapeHtml(m.desc) + '</small></span></label>';
-        }).join('');
-    }
-    var saveNote = document.getElementById('score-entry-editor-note');
-    if (saveNote) saveNote.textContent = draft.id ? 'Сохранение обновит этот вариант.' : 'Вариант появится в списке после сохранения.';
-    markAdmView5Buttons('scoring');
-}
-function renderScoreEntryOrder() {
-    var host = document.getElementById('score-entry-order');
-    if (!host) return;
-    var draft = ensureScoreEntryDraft();
-    host.innerHTML = draft.order.map(function(key, index) {
-        var meta = SCORE_ENTRY_BLOCK_META[key] || { icon: 'fa-grip', title: key, desc: '' };
-        return '<div class="entry-order-row">' +
-            '<span class="sev-order-num">' + (index + 1) + '</span>' +
-            '<span class="sev-order-ic"><i class="fas ' + meta.icon + '" aria-hidden="true"></i></span>' +
-            '<span class="sev-order-info"><strong>' + meta.title + '</strong><small>' + meta.desc + '</small></span>' +
-            '<span class="sev-order-btns">' + [-1, 1].map(function(delta) {
-                return '<button type="button" class="btn" data-move-key="' + key + '" data-delta="' + delta + '" aria-label="' + meta.title + (delta < 0 ? ': выше' : ': ниже') + '" onclick="moveScoreEntryBlock(' + index + ',' + delta + ')"' + (index + delta < 0 || index + delta >= draft.order.length ? ' disabled' : '') + '>' + (delta < 0 ? '↑' : '↓') + '</button>';
-            }).join('') + '</span>' +
-            '</div>';
-    }).join('');
-}
-function renderScoreEntryPreview() {
-    var host = document.getElementById('score-entry-preview');
-    if (!host) return;
-    var draft = ensureScoreEntryDraft();
-    var modeEl = document.getElementById('score-entry-mode');
-    var mode = modeEl ? modeEl.value : 'group';
-    var nav = '';
-    for (var h = 1; h <= 18; h++) {
-        nav += '<button type="button" class="hole-btn ' + (h === 7 ? 'active' : h < 7 ? 'verified' : '') + '" aria-label="Лунка ' + h + '" disabled>' + entryHoleContentHTML(h < 8 ? 5 : 0, mode === 'solo' ? null : h < 7 ? 5 : 0, h, 37) + '</button>';
-    }
-    function input(name, hcp, score, isMark) {
-        var badge = isMark ? '<span class="dual-half__badge dual-half__badge--mark"><i class="fas fa-eye"></i> Маркер</span>' : '<span class="dual-half__badge dual-half__badge--my"><i class="fas fa-user"></i> Я</span>';
-        return '<div class="dual-half ' + (isMark ? 'dual-half--mark' : 'dual-half--my') + '"><div class="dual-half__head">' + badge + '<span class="dual-half__name">' + name + ' ' + fmtTeePill(hcp < 0 ? 'bl' : 'wh') + '</span></div><div class="dual-half__score"><div class="score-disp">' + scoreSquareHTML(score, 7, hcp) + (typeof hcpCaptionHTML === 'function' ? hcpCaptionHTML(hcp, 7) : '') + '</div></div><div class="dual-half__controls"><button type="button" class="dual-btn dual-btn--minus' + (isMark ? ' dual-btn--mark' : '') + '" disabled>−</button><button type="button" class="dual-btn dual-btn--plus' + (isMark ? ' dual-btn--mark' : '') + '" disabled>+</button></div></div>';
-    }
-    var info = '<div class="hole-display" data-entry-block="info">' +
-        '<div class="hole-box h-hole"><div class="hole-lbl">Лунка</div><div class="hole-val">7</div></div>' +
-        '<div class="hole-box h-par"><div class="hole-lbl">Пар</div><div class="hole-val">' + holePar(7) + '</div></div>' +
-        '<div class="hole-box h-dist"><div class="hole-lbl">Метры</div><div class="hole-val" style="font-size:24px;">385</div></div>' +
-        '<div class="hole-box h-dl"><div class="hole-lbl">Дедлайн</div><div class="hole-val" style="font-size:20px;color:var(--gold-l);">12:40</div></div>' +
-        '</div>';
-    host.innerHTML = '<div class="score-entry card" data-entry-preview="true">' + info + '<div class="hole-nav" data-entry-block="holes">' + nav + '</div><div data-entry-block="input"><div class="dual-score-split-panel' + (mode === 'solo' ? ' single' : '') + '">' + input(mode === 'marker' ? 'Маркируемый игрок' : 'Мой счёт', 37, 5, false) + (mode !== 'solo' ? '<div class="dual-split-divider"><span></span></div>' : '') + (mode === 'group' ? input('Маркируемый игрок', -18, 4, true) : '') + '</div><button type="button" class="btn btn-g btn-block" disabled>Сохранить результат</button></div></div>';
-    arrangeScoreEntry(host.firstElementChild, draft.view, draft.order, draft.show);
-    var view = normalizeView5(draft.view);
-    var style = SCORE_ENTRY_STYLES[view] || SCORE_ENTRY_STYLES['1'];
-    var caption = document.createElement('p');
-    caption.className = 'sev-preview-note';
-    caption.textContent = 'Стиль ' + view + ' · ' + style.name + ' — ' + style.desc;
-    host.appendChild(caption);
-    markAdmView5Buttons('scoring');
-}
-// Запись варианта (и, при applyNow, его применение для всех) одной атомарной операцией.
-function scoreEntryBusy(flag) {
-    scoreEntrySaving = flag;
-    document.querySelectorAll('#score-entry-settings button, #score-entry-settings select, #score-entry-settings input').forEach(function(el) { el.disabled = flag; });
-}
-function scoreEntryVariantPayload(v) {
-    return { name: v.name, view: v.view, order: v.order, show: normalizeScoreEntryShow(v.show), pos: v.pos };
-}
-function saveScoreEntryVariant(applyNow) {
-    if (scoreEntrySaving) return;
-    var status = document.getElementById('score-entry-status');
-    if (typeof db === 'undefined' || !db) { if (status) status.textContent = 'Нет соединения с базой. Настройки не изменены.'; return; }
-    var draft = ensureScoreEntryDraft();
-    var id = draft.id || ('v' + Date.now().toString(36));
-    var existing = findScoreEntryVariant(id);
-    var pos = existing ? existing.pos : ((scoreEntryVariants || []).reduce(function(m, v) { return Math.max(m, v.pos); }, 0) + 1);
-    var variant = normalizeScoreEntryVariant(id, { name: draft.name, view: draft.view, order: draft.order, show: draft.show }, pos);
-    var updates = {};
-    updates['scoring_variants/' + id] = scoreEntryVariantPayload(variant);
-    if (applyNow) {
-        updates.scoring_view = variant.view;
-        updates.scoring_order = variant.order;
-        updates.scoring_show = normalizeScoreEntryShow(variant.show);
-        updates.scoring_active = id;
-    }
-    scoreEntryBusy(true);
-    if (status) status.textContent = 'Сохраняем…';
-    db.ref('settings').update(updates).then(function() {
-        scoreEntryDraft.id = id;
-        upsertLocalScoreEntryVariant(variant);
-        if (applyNow) {
-            scoreEntryActiveId = id;
-            applyView5('scoring', variant.view);
-            applyScoreEntryOrder(variant.order);
-            applyScoreEntryShow(variant.show);
-        }
-        if (status) status.textContent = applyNow
-            ? 'Вариант «' + variant.name + '» применён для всех пользователей.'
-            : 'Вариант «' + variant.name + '» сохранён. Он не активен, пока вы не нажмёте «Применить для всех».';
-    }).catch(function(error) {
-        console.warn('Score entry variant save failed', error);
-        if (status) status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
-    }).finally(function() {
-        scoreEntryBusy(false);
-        renderScoreEntryAdmin();
-    });
-}
-function saveScoreEntryLayout() { saveScoreEntryVariant(true); }
-function activateScoreEntryVariant(id) {
-    if (scoreEntrySaving) return;
-    var v = findScoreEntryVariant(id);
-    var status = document.getElementById('score-entry-status');
-    if (!v || typeof db === 'undefined' || !db) { if (status) status.textContent = 'Нет соединения с базой. Настройки не изменены.'; return; }
-    scoreEntryBusy(true);
-    if (status) status.textContent = 'Применяем…';
-    db.ref('settings').update({ scoring_view: v.view, scoring_order: v.order, scoring_show: normalizeScoreEntryShow(v.show), scoring_active: v.id }).then(function() {
-        scoreEntryActiveId = v.id;
-        applyView5('scoring', v.view);
-        applyScoreEntryOrder(v.order);
-        applyScoreEntryShow(v.show);
-        if (status) status.textContent = 'Вариант «' + v.name + '» применён для всех пользователей.';
-    }).catch(function(error) {
-        console.warn('Score entry activate failed', error);
-        if (status) status.textContent = 'Не удалось применить. Проверьте соединение и права администратора.';
-    }).finally(function() {
-        scoreEntryBusy(false);
-        renderScoreEntryAdmin();
-    });
-}
-function deleteScoreEntryVariant(id) {
-    if (scoreEntrySaving) return;
-    var v = findScoreEntryVariant(id);
-    var status = document.getElementById('score-entry-status');
-    if (!v) return;
-    if ((scoreEntryVariants || []).length < 2) { if (status) status.textContent = 'Нельзя удалить последний вариант.'; return; }
-    if (typeof db === 'undefined' || !db) { if (status) status.textContent = 'Нет соединения с базой. Настройки не изменены.'; return; }
-    var askText = 'Удалить вариант «' + escapeHtml(v.name) + '»? Его больше нельзя будет применить.';
-    var go = typeof uiConfirm === 'function'
-        ? uiConfirm({ title: 'Удалить вариант?', text: askText, confirmLabel: 'Удалить', danger: true })
-        : Promise.resolve(window.confirm('Удалить вариант «' + v.name + '»?'));
-    go.then(function(ok) {
-        if (!ok || scoreEntrySaving) return;
-        var updates = {};
-        updates['scoring_variants/' + id] = null;
-        var becomesActive = null;
-        if (id === scoreEntryActiveId) {
-            becomesActive = scoreEntrySortedVariants().filter(function(x) { return x.id !== id; })[0];
-            updates.scoring_view = becomesActive.view;
-            updates.scoring_order = becomesActive.order;
-            updates.scoring_show = normalizeScoreEntryShow(becomesActive.show);
-            updates.scoring_active = becomesActive.id;
-        }
-        scoreEntryBusy(true);
-        if (status) status.textContent = 'Удаляем…';
-        db.ref('settings').update(updates).then(function() {
-            removeLocalScoreEntryVariant(id);
-            if (becomesActive) scoreEntryActiveId = becomesActive.id;
-            if (scoreEntryDraft && scoreEntryDraft.id === id) scoreEntryDraft = null;
-            if (becomesActive) {
-                scoreEntryActiveId = becomesActive.id;
-                applyView5('scoring', becomesActive.view);
-                applyScoreEntryOrder(becomesActive.order);
-                applyScoreEntryShow(becomesActive.show);
-            }
-            if (status) status.textContent = 'Вариант «' + v.name + '» удалён.';
-        }).catch(function(error) {
-            console.warn('Score entry variant delete failed', error);
-            if (status) status.textContent = 'Не удалось удалить. Проверьте соединение и права администратора.';
-        }).finally(function() {
-            scoreEntryBusy(false);
-            renderScoreEntryAdmin();
+function pestovoDisplayConfigPayload(scope, draft) {
+    if (scope === 'tournamentScoring') {
+        var visible = {};
+        PESTOVO_SCORE_DISPLAY_KEYS.forEach(function(key) {
+            if (key !== 'input') visible[key] = draft.visible[key] !== false;
         });
-    });
-}
-
-// ==========================================
-// КАРТОЧКИ В ТУРНИРЕ (вкладка «Отображение карточек в турнире»)
-// ==========================================
-// Что видит игрок/маркер, открыв счёт по QR из стартового листа турнира:
-//   • вид счётной карточки — settings/tn_round_card_view ('1'–'5', '' = как
-//     в обычном клубном раунде);
-//   • состав блоков экрана ввода — settings/tn_round_card_blocks
-//     (лунки, ввод счёта, темп игры, сводка группы, QR, судья, Stableford,
-//     завершение раунда).
-// Обе настройки общие: применяются ко всем турнирам и всем игрокам.
-var TN_CARD_VARIANT_NAMES = {
-    '1': { name: 'Как в обычном раунде', desc: 'сводка группы и общая карточка флайта — привычный вид клуба' },
-    '2': { name: 'Блоки по 3 лунки',     desc: 'крупнее, без горизонтальной прокрутки' },
-    '3': { name: 'Крупная лента',        desc: 'крупные цифры, прокрутка внутри карточки' },
-    '4': { name: 'Вертикальный список',  desc: 'одна лунка на строку, всё по порядку' },
-    '5': { name: 'Плитки',               desc: 'акцент на счёте каждой лунки' }
-};
-var tnRoundCardPreviewView = null;
-var tnRoundCardBlocksDraft = null;
-var tnRoundCardSaving = false;
-var tnRoundCardBound = false;
-
-function tnRoundCardBlocksDraftValue() {
-    if (!tnRoundCardBlocksDraft) {
-        tnRoundCardBlocksDraft = (typeof getTnRoundCardBlocks === 'function')
-            ? getTnRoundCardBlocks() : normalizeTnRoundCardBlocks({});
+        return { order: draft.order.slice(), visible: visible };
     }
-    return tnRoundCardBlocksDraft;
+    return normalizePestovoDisplaySettings(scope, draft);
 }
-
-function renderTnRoundCardAdmin() {
-    var variantsEl = document.getElementById('tn-card-variants');
-    var blocksEl = document.getElementById('tn-card-blocks');
-    if (variantsEl) {
-        variantsEl.innerHTML = TN_ROUND_CARD_VARIANTS.map(function(v) {
-            var meta = TN_CARD_VARIANT_NAMES[v] || { name: 'Вариант ' + v, desc: '' };
-            return '<button type="button" id="tn-card-opt-' + v + '" class="btn btn-og sev-card" aria-pressed="false" onclick="previewTnRoundCardView(\'' + v + '\')">' +
-                '<span class="sev-card-top"><span class="sev-card-num">' + v + '</span><span class="sev-card-name">' + escapeHtml(meta.name) + '</span>' +
-                '<span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>' +
-                '<span class="sev-card-desc">' + escapeHtml(meta.desc) + '</span></button>';
-        }).join('');
-    }
-    if (blocksEl) {
-        var blocks = tnRoundCardBlocksDraftValue();
-        blocksEl.innerHTML = TN_ROUND_CARD_BLOCK_KEYS.map(function(key) {
-            var label = (TN_ROUND_CARD_BLOCKS[key] || {}).ru || key;
-            return '<label class="se-show-item' + (blocks[key] === false ? '' : ' is-on') + '"><input type="checkbox" data-tn-block="' + escapeHtml(key) + '"' +
-                (blocks[key] === false ? '' : ' checked') + ' onchange="setTnRoundCardBlock(\'' + pestovoInlineJsArg(key) + '\', this.checked)">' +
-                '<span>' + escapeHtml(label) + '</span></label>';
-        }).join('');
-    }
-    if (tnRoundCardPreviewView === null) {
-        tnRoundCardPreviewView = (typeof getTnRoundCardView === 'function' && getTnRoundCardView())
-            ? getTnRoundCardView() : '1';
-    }
-    markAdmTnRoundCardButtons();
-    renderTnRoundCardPreview();
-}
-
-function markAdmTnRoundCardButtons() {
-    var saved = (typeof getTnRoundCardView === 'function') ? getTnRoundCardView() : '';
-    var preview = tnRoundCardPreviewView || saved || '1';
-    TN_ROUND_CARD_VARIANTS.forEach(function(v) {
-        var btn = document.getElementById('tn-card-opt-' + v);
-        if (!btn) return;
-        var isPreview = v === preview;
-        // Активный вариант подсвечивается классом btn-g — как в остальных
-        // вкладках отображения (см. markV5 в этом файле).
-        btn.classList.toggle('btn-g', isPreview);
-        btn.setAttribute('aria-pressed', isPreview ? 'true' : 'false');
-        // Галочка показывает вариант, который уже сохранён для всех.
-        var check = btn.querySelector('.sev-card-check');
-        if (check) check.setAttribute('data-saved', v === saved ? 'true' : 'false');
-    });
-}
-
-function previewTnRoundCardView(value) {
-    tnRoundCardPreviewView = normalizeTnRoundCardView(value) || '1';
-    markAdmTnRoundCardButtons();
-    renderTnRoundCardPreview();
-    if (typeof vib === 'function') vib(15);
-}
-
-// Предпросмотр: общая карточка флайта (сводка группы) — тот же рендерер,
-// что и на экране ввода счёта, поэтому админ видит реальный вид.
-function renderTnRoundCardPreview() {
-    var el = document.getElementById('tn-card-preview');
-    if (!el) return;
-    var view = tnRoundCardPreviewView || (typeof getTnRoundCardView === 'function' && getTnRoundCardView()) || '1';
-    var names = ['Неделько Александр', 'Свиридов Виктор', 'Гималетдинов Рустем'];
-    var players = {};
-    names.forEach(function(name, i) {
-        var scores = {};
-        for (var h = 1; h <= 9; h++) scores[h] = holePar(h) + ((h + i) % 3) - 1;
-        players['demo' + i] = { name: name, tee: i === 2 ? 'rd' : 'wh', fieldHcp: 12 + i * 4, scores: scores };
-    });
-    var round = { tournamentId: 'demo', tournamentName: 'Клубный турнир', status: 'active', holeRange: '1-18', tee: 'wh', players: players };
-    var html = '';
-    try {
-        html = generateGroupHoleTableHTML(round, { showMarker: false });
-    } catch (e) {
-        console.warn('Tournament card preview failed', e);
-        html = '<p style="color:var(--muted);font-size:12px;">Предпросмотр недоступен</p>';
-    }
-    el.innerHTML = html;
-    var card = el.querySelector('.club-sc');
-    if (card) {
-        card.setAttribute('data-sc-preview', 'true');
-        card.setAttribute('data-sc-view', view);
-    }
-}
-
-// Отметки переключателей блоков: вызывается из applyTnRoundCardBlocks()
-// (js/utils.js) — в том числе когда настройка пришла из базы по realtime.
-function markAdmTnRoundCardBlocks() {
-    var blocks = (typeof getTnRoundCardBlocks === 'function') ? getTnRoundCardBlocks() : null;
-    if (!blocks) return;
-    tnRoundCardBlocksDraft = blocks;
-    var boxes = document.querySelectorAll('#tn-card-blocks input[data-tn-block]');
-    boxes.forEach(function(box) {
-        var on = blocks[box.getAttribute('data-tn-block')] !== false;
-        box.checked = on;
-        var wrap = box.closest ? box.closest('.se-show-item') : null;
-        if (wrap) wrap.classList.toggle('is-on', on);
-    });
-}
-
-function setTnRoundCardBlock(key, on) {
-    var blocks = tnRoundCardBlocksDraftValue();
-    blocks[key] = !!on;
-    var label = document.querySelector('#tn-card-blocks input[data-tn-block="' + key + '"]');
-    if (label && label.closest) {
-        var wrap = label.closest('.se-show-item');
-        if (wrap) wrap.classList.toggle('is-on', !!on);
-    }
-}
-
-function resetTnRoundCardBlocks() {
-    tnRoundCardBlocksDraft = normalizeTnRoundCardBlocks({});
-    renderTnRoundCardAdmin();
-}
-
-function tnRoundCardBusy(busy) {
-    tnRoundCardSaving = !!busy;
-    ['tn-card-apply', 'tn-card-reset', 'tn-card-blocks-apply'].forEach(function(id) {
-        var btn = document.getElementById(id);
-        if (btn) btn.disabled = !!busy;
-    });
-}
-
-function saveTnRoundCardView(value) {
-    if (tnRoundCardSaving) return;
-    var status = document.getElementById('tn-card-save-status');
-    var v = normalizeTnRoundCardView(value === undefined || value === null ? tnRoundCardPreviewView : value);
+function savePestovoDisplaySettings(scope) {
+    if (!PESTOVO_DISPLAY_CONFIGS[scope] || pestovoDisplayEditorSaving[scope]) return;
+    var draft = pestovoDisplayEditorDraft(scope);
+    var payload = pestovoDisplayConfigPayload(scope, draft);
+    var status = document.getElementById(pestovoDisplayScopeStatusId(scope));
+    var resetToGlobal = scope === 'tournamentScoring' && draft._resetToGlobal === true;
+    if (resetToGlobal) payload = { order: null, visible: {} };
+    if (typeof vib === 'function') vib(25);
     if (typeof db === 'undefined' || !db) {
-        if (status) status.textContent = 'Нет соединения с базой. Общий вид не изменён.';
+        setPestovoDisplaySettings(scope, payload);
+        pestovoDisplayEditorDirty[scope] = false;
+        if (status) status.textContent = currentLang === 'en'
+            ? 'Saved on this device only: the database is not connected.'
+            : 'Сохранено только на этом устройстве: нет соединения с базой.';
         return;
     }
-    tnRoundCardBusy(true);
-    if (status) status.textContent = 'Сохраняем для всех игроков…';
-    db.ref('settings/tn_round_card_view').set(v).then(function() {
-        applyTnRoundCardView(v);
-        if (status) {
-            status.textContent = v
-                ? 'Вариант ' + v + ' сохранён для всех турниров.'
-                : 'Турнирные карточки снова выглядят как в обычном раунде.';
-        }
-        markAdmTnRoundCardButtons();
-    }).catch(function(err) {
-        console.warn('Tournament card view save failed', err);
-        if (status) status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
-    }).finally(function() { tnRoundCardBusy(false); });
+    pestovoDisplayEditorSaving[scope] = true;
+    renderPestovoDisplayAdmin(scope);
+    if (status) status.textContent = currentLang === 'en' ? 'Saving shared settings…' : 'Сохраняем общие настройки…';
+    db.ref(PESTOVO_DISPLAY_CONFIGS[scope].firebase).set(payload).then(function() {
+        setPestovoDisplaySettings(scope, payload);
+        pestovoDisplayEditorDrafts[scope] = null;
+        pestovoDisplayEditorDirty[scope] = false;
+        if (status) status.textContent = resetToGlobal
+            ? (currentLang === 'en' ? 'Tournament QR screens now inherit the shared score-entry settings.' : 'Для турнирных QR-экранов снова действуют общие настройки ввода счёта.')
+            : (currentLang === 'en' ? '✅ Applied for all players.' : '✅ Настройки применены для всех игроков.');
+        renderPestovoDisplayAdmin(scope, true);
+    }).catch(function(error) {
+        console.warn('Display settings save failed (' + scope + ')', error);
+        if (status) status.textContent = currentLang === 'en'
+            ? 'Could not save. Check the connection and administrator permissions.'
+            : 'Не удалось сохранить. Проверьте соединение и права администратора.';
+    }).finally(function() {
+        pestovoDisplayEditorSaving[scope] = false;
+        renderPestovoDisplayAdmin(scope);
+    });
 }
-
-function saveTnRoundCardBlocks() {
-    if (tnRoundCardSaving) return;
-    var status = document.getElementById('tn-card-blocks-status');
-    var blocks = normalizeTnRoundCardBlocks(tnRoundCardBlocksDraftValue());
-    if (typeof db === 'undefined' || !db) {
-        if (status) status.textContent = 'Нет соединения с базой. Блоки не изменены.';
+function resetPestovoDisplaySettings(scope) {
+    if (pestovoDisplayEditorSaving[scope]) return;
+    if (scope === 'tournamentScoring') {
+        pestovoDisplayEditorDrafts[scope] = { order: getPestovoDisplaySettings('scoring').order.slice(), visible: getPestovoDisplaySettings('scoring').visible, _resetToGlobal: true };
+        pestovoDisplayEditorDirty[scope] = true;
+        savePestovoDisplaySettings(scope);
         return;
     }
-    tnRoundCardBusy(true);
-    if (status) status.textContent = 'Сохраняем состав блоков…';
-    db.ref('settings/tn_round_card_blocks').set(blocks).then(function() {
-        applyTnRoundCardBlocks(blocks);
-        var hidden = TN_ROUND_CARD_BLOCK_KEYS.filter(function(k) { return blocks[k] === false; });
-        if (status) {
-            status.textContent = hidden.length
-                ? 'Скрытые блоки: ' + hidden.length + '. Настройка применена ко всем игрокам.'
-                : 'Все блоки видны. Настройка применена ко всем игрокам.';
-        }
-    }).catch(function(err) {
-        console.warn('Tournament card blocks save failed', err);
-        if (status) status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
-    }).finally(function() { tnRoundCardBusy(false); });
+    var defaults = normalizePestovoDisplaySettings(scope, null);
+    pestovoDisplayEditorDrafts[scope] = defaults;
+    pestovoDisplayEditorDirty[scope] = true;
+    savePestovoDisplaySettings(scope);
 }
-
-function bindTnRoundCardAdmin() {
-    if (tnRoundCardBound) return;
-    tnRoundCardBound = true;
-    if (typeof db === 'undefined' || !db) return;
-    if (typeof bindRealtimeValue === 'function') {
-        bindRealtimeValue('admin-tn-round-card-view', db.ref('settings/tn_round_card_view'), function(sn) {
-            applyTnRoundCardView(sn.val());
-            tnRoundCardPreviewView = getTnRoundCardView() || '1';
-            markAdmTnRoundCardButtons();
-            renderTnRoundCardPreview();
-        });
-        bindRealtimeValue('admin-tn-round-card-blocks', db.ref('settings/tn_round_card_blocks'), function(sn) {
-            var blocks = normalizeTnRoundCardBlocks(sn.val() || {});
-            applyTnRoundCardBlocks(blocks);
-            tnRoundCardBlocksDraft = blocks;
-            var boxes = document.querySelectorAll('#tn-card-blocks input[data-tn-block]');
-            boxes.forEach(function(box) {
-                box.checked = blocks[box.getAttribute('data-tn-block')] !== false;
-            });
-        });
-    }
+function openTournamentsPagePreview() {
+    try { window.open('tournaments.html', '_blank', 'noopener'); } catch (e) { console.warn('[display] preview open failed', e); }
 }

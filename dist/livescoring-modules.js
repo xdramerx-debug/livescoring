@@ -136,7 +136,7 @@ function E(e) {
   var a = /* @__PURE__ */ new Date(), r = new Date(a.getFullYear(), a.getMonth(), a.getDate()), n = null;
   return e === "today" ? n = r : e === "7d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 6) : e === "30d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 29) : e === "month" ? n = new Date(r.getFullYear(), r.getMonth(), 1) : e === "year" && (n = new Date(r.getFullYear(), 0, 1)), n ? { from: x(n.getTime()), to: x(r.getTime()) } : { from: "", to: "" };
 }
-function C(e, a) {
+function A(e, a) {
   var r = e && e.value || "", n = a && a.value || "", o = r ? G(r) : null, s = n ? B(n) : null, i = o !== null && s !== null && o > s;
   return {
     from: o,
@@ -178,7 +178,7 @@ function pe(e) {
     }
   }
   function u() {
-    var p = C(a, r);
+    var p = A(a, r);
     if (!p.fromValue && !p.toValue) return "all";
     for (var g = 0; g < R.length; g++) {
       var w = R[g];
@@ -201,7 +201,7 @@ function pe(e) {
     r.value ? a.setAttribute("max", r.value) : a.removeAttribute("max"), a.value ? r.setAttribute("min", a.value) : r.removeAttribute("min");
   }
   function c() {
-    var p = C(a, r).invalid;
+    var p = A(a, r).invalid;
     a.classList.toggle("is-invalid", p), r.classList.toggle("is-invalid", p), s && (s.textContent = p ? t("date_filter_invalid") : "", s.classList.toggle("hidden", !p));
   }
   function h() {
@@ -210,7 +210,7 @@ function pe(e) {
   var b = {
     key: e.key,
     getRange: function() {
-      return C(a, r);
+      return A(a, r);
     },
     renderPresets: d,
     lastSummary: null,
@@ -250,7 +250,7 @@ function fe() {
     a && (a.renderPresets(), a.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: G, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: V, datePresetRange: E, readDateRange: C, filterEntriesByDateRange: ue, renderRoundsPeriodSummary: j, dateRangeFilters: P, initDateRangeFilter: pe, getDateRangeFilter: me, refreshDateRangeFilters: fe });
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: G, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: V, datePresetRange: E, readDateRange: A, filterEntriesByDateRange: ue, renderRoundsPeriodSummary: j, dateRangeFilters: P, initDateRangeFilter: pe, getDateRangeFilter: me, refreshDateRangeFilters: fe });
 function q(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
@@ -265,7 +265,7 @@ function be(e, a) {
   e && (e.innerHTML = a == null ? "" : String(a));
 }
 typeof window < "u" && Object.assign(window, { esc: q, html: he, setSafeHtml: be });
-var L = 3e3;
+var N = 3e3;
 function K() {
   if (typeof document > "u" || !document.body) return null;
   var e = document.getElementById("toast-root");
@@ -276,7 +276,7 @@ function U(e) {
 }
 function I(e, a, r) {
   a = a || "success", r = r || {};
-  var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : L;
+  var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : N;
   try {
     if (typeof document > "u" || !document.body) return null;
     var o = K();
@@ -334,7 +334,7 @@ function ge(e, a) {
   a = a || {};
   var r = (e || []).slice();
   if (r.length) {
-    var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, o = L + n;
+    var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, o = N + n;
     r.forEach(function(s, i) {
       setTimeout(function() {
         typeof s == "string" ? I(s, a.type || "warn", a.toastOpts || {}) : I(s.msg || s.html || "", s.type || a.type || "warn", s.opts || a.toastOpts || {});
@@ -366,7 +366,7 @@ function ve(e) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: K, toastIconFor: U, toast: I, toastSequence: ge, isPlayerModeEnabled: Y, vib: ye, escapeHtml: ve });
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: N, ensureToastRoot: K, toastIconFor: U, toast: I, toastSequence: ge, isPlayerModeEnabled: Y, vib: ye, escapeHtml: ve });
 var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", f = {
   ru: {
     brand_name: "Пестово",
@@ -876,27 +876,10 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     home_display_variant_1: "1 · Классика",
     home_display_variant_2: "2 · Компактная",
     home_display_variant_3: "3 · Витрина",
-    tournaments_display_title: "Отображение страницы «Турниры»",
-    tournaments_display_sub: "Выберите один из трёх вариантов оформления списка турниров. Настройка применяется для всех пользователей.",
-    tournaments_display_variant_1: "1 · Список",
-    tournaments_display_variant_2: "2 · Компактный",
-    tournaments_display_variant_3: "3 · Витрина",
+    tournaments_display_title: "Настройка страницы «Турниры»",
+    tournaments_display_sub: "Настройте вид и порядок элементов для всех участников клуба.",
     tab_tn_manager: "Турниры 🏆",
     tab_tournaments_view: "Турниры: вид 👁",
-    tournaments_view_tab_title: "Отображение страницы «Турниры» — 5 вариантов",
-    tournaments_view_tab_sub: "Вариант выбирает только администратор. Он сохраняется в настройках клуба и сразу применяется у всех игроков на странице «Турниры».",
-    tournaments_view_variant_1: "1 · Сетка карточек",
-    tournaments_view_variant_2: "2 · Компактный список",
-    tournaments_view_variant_3: "3 · Витрина",
-    tournaments_view_variant_4: "4 · Таблица",
-    tournaments_view_variant_5: "5 · Календарь",
-    tournaments_view_variant_1_desc: "Текущий вид: карточки турниров в адаптивной сетке.",
-    tournaments_view_variant_2_desc: "Плотный список в одну строку: название, статус и дата — максимум турниров на экране.",
-    tournaments_view_variant_3_desc: "Крупные карточки с большим баннером — по одной-две в ряд, как афиша клуба.",
-    tournaments_view_variant_4_desc: "Табличный вид: строки с колонками «Турнир · Дата · Формат · Статус».",
-    tournaments_view_variant_5_desc: "Календарная лента: слева дата старта, справа карточка турнира.",
-    tournaments_view_open_page: "Открыть страницу «Турниры»",
-    tournaments_view_saved: "Вариант отображения «Турниры» сохранён для всех пользователей",
     handicap_display_title: "Отображение страницы «Гандикапы»",
     handicap_display_sub: "Выберите один из трёх вариантов оформления калькулятора и таблиц гандикапов. Настройка применяется для всех пользователей.",
     handicap_display_variant_1: "1 · Стандарт",
@@ -1465,27 +1448,10 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     home_display_variant_1: "1 · Classic",
     home_display_variant_2: "2 · Compact",
     home_display_variant_3: "3 · Showcase",
-    tournaments_display_title: "“Tournaments” page layout",
-    tournaments_display_sub: "Choose one of three tournament-list layouts. The setting applies to all users.",
-    tournaments_display_variant_1: "1 · List",
-    tournaments_display_variant_2: "2 · Compact",
-    tournaments_display_variant_3: "3 · Showcase",
+    tournaments_display_title: "Tournament page settings",
+    tournaments_display_sub: "Configure layout, section order, and visible elements for all club members.",
     tab_tn_manager: "Tournaments 🏆",
     tab_tournaments_view: "Tournaments: layout 👁",
-    tournaments_view_tab_title: "“Tournaments” page layout — 5 variants",
-    tournaments_view_tab_sub: "Only an administrator picks the layout. It is stored in the club settings and applies to every player on the “Tournaments” page right away.",
-    tournaments_view_variant_1: "1 · Card grid",
-    tournaments_view_variant_2: "2 · Compact list",
-    tournaments_view_variant_3: "3 · Showcase",
-    tournaments_view_variant_4: "4 · Table",
-    tournaments_view_variant_5: "5 · Calendar",
-    tournaments_view_variant_1_desc: "Current look: tournament cards in a responsive grid.",
-    tournaments_view_variant_2_desc: "Dense one-line rows with name, status and date — more tournaments per screen.",
-    tournaments_view_variant_3_desc: "Large cards with a big banner, one or two per row, like a club poster wall.",
-    tournaments_view_variant_4_desc: "Table view: rows with “Tournament · Date · Format · Status” columns.",
-    tournaments_view_variant_5_desc: "Calendar timeline: start date on the left, tournament card on the right.",
-    tournaments_view_open_page: "Open the “Tournaments” page",
-    tournaments_view_saved: "“Tournaments” layout saved for all users",
     handicap_display_title: "“Handicaps” page layout",
     handicap_display_sub: "Choose one of three handicap calculator and table layouts. The setting applies to all users.",
     handicap_display_variant_1: "1 · Standard",
@@ -1572,7 +1538,7 @@ function we() {
   } catch (o) {
     console.warn("[silent]", o);
   }
-  if (A(), J(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
+  if (C(), J(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
     var e = document.getElementById("admin-content");
     e && !e.classList.contains("hidden") && loadAdmRounds();
   }
@@ -1596,7 +1562,7 @@ function J() {
     e.innerHTML = m === "en" ? "🇬🇧 EN" : "🇷🇺 RU";
   });
 }
-function A() {
+function C() {
   typeof document > "u" || (document.querySelectorAll("[data-i18n]").forEach(function(e) {
     var a = e.getAttribute("data-i18n");
     a && f[m] && f[m][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = f[m][a] + " — " + W("brand_name") : e.innerHTML = f[m][a]);
@@ -1614,14 +1580,14 @@ try {
   console.warn("[silent]", e);
 }
 try {
-  A();
+  C();
 } catch (e) {
   console.warn("[silent]", e);
 }
 document.addEventListener("DOMContentLoaded", function() {
-  A(), N();
+  C(), L();
 });
-function N() {
+function L() {
   if (!(typeof document > "u")) {
     var e = (/* @__PURE__ */ new Date()).getFullYear();
     document.querySelectorAll(".footer-bottom p").forEach(function(a) {
@@ -1629,8 +1595,8 @@ function N() {
     });
   }
 }
-N();
-typeof window < "u" && Object.assign(window, { currentLang: m, I18N: f, t: W, toggleLang: we, updateLangButtons: J, applyTranslations: A, updateFooterYear: N });
+L();
+typeof window < "u" && Object.assign(window, { currentLang: m, I18N: f, t: W, toggleLang: we, updateLangButtons: J, applyTranslations: C, updateFooterYear: L });
 function D(e, a, r, n, o) {
   var s = !!o, i = s ? escapeHtml : function(b) {
     return String(b);
@@ -1776,9 +1742,9 @@ export {
   Q as TEES,
   X as TEE_ORDER,
   O as TIMINGS,
-  L as TOAST_DURATION_MS,
+  N as TOAST_DURATION_MS,
   Re as TOTAL_PAR,
-  A as applyTranslations,
+  C as applyTranslations,
   D as buildOfficialCallText,
   m as currentLang,
   B as dateInputToEndTs,
@@ -1805,7 +1771,7 @@ export {
   Y as isPlayerModeEnabled,
   ce as isTodayTimestamp,
   T as normalizeTimestampMs,
-  C as readDateRange,
+  A as readDateRange,
   fe as refreshDateRangeFilters,
   j as renderRoundsPeriodSummary,
   oe as scoreClass,
@@ -1823,7 +1789,7 @@ export {
   ge as toastSequence,
   we as toggleLang,
   x as tsToDateInputValue,
-  N as updateFooterYear,
+  L as updateFooterYear,
   J as updateLangButtons,
   ye as vib,
   F as vkBuildAlertText,

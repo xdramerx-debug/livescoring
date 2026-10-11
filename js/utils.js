@@ -3335,7 +3335,7 @@ function renderClubScorecard(player, round, opts) {
     var current = playerCurrentHole(r, pid, p, stats, order);
     var labels = [en ? 'Hole' : 'Лунка', en ? 'Par' : 'Пар', en ? 'Score' : 'Счёт'];
     if (opts.showMarker) labels.push(en ? 'Marker' : 'Маркер');
-    var html = '<section class="club-sc" data-sc-view="' + pestovoRoundCardView(r) + '" aria-label="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
+    var html = '<section class="club-sc" data-sc-view="' + getRoundScorecardView() + '" aria-label="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
     html += '<header class="club-sc-head"><strong>' + escapeHtml(name) + '</strong> ' + fmtTeePill(tee) + '<span>HCP ' + escapeHtml(fmtFieldHcp(hcp)) + '</span></header>';
     if (opts.label) html += '<div class="club-sc-caption">' + escapeHtml(opts.label) + '</div>';
     var total = 0, played = 0;
@@ -3412,7 +3412,7 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
     order = (order && order.length) ? order : getRoundOrder(r);
     var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
     var view = '1';
-    try { view = pestovoRoundCardView(r); } catch (e) { view = '1'; }
+    try { view = getRoundScorecardView(); } catch (e) { view = '1'; }
     var n = playerEntries.length;
     var countTxt = en
         ? (n + ' ' + (n === 1 ? 'player' : 'players'))
@@ -6761,22 +6761,16 @@ function buildRoundStatusBadgeHTML(r) {
 // дублируется в localStorage только как офлайн-резерв, а Firebase остаётся
 // источником истины для новых устройств. Вариант 1 — текущий вид страниц.
 var PAGE_DISPLAY_VARIANTS = ['1', '2', '3'];
-// У некоторых страниц вариантов больше базовых трёх. Страница «Турниры»
-// поддерживает 5 оформлений (выбирает только администратор — вкладка
-// «Турниры: вид» в админ-панели), настройка применяется для всех.
-var PAGE_DISPLAY_VARIANT_SETS = {
-    tournaments: ['1', '2', '3', '4', '5']
-};
-// Какие варианты доступны конкретной странице.
+// Числовые виды страницы «Турниры» больше не используются: для неё
+// ниже действует редактор раскладки и видимости отдельных элементов.
 function pageDisplayVariantKeys(page) {
-    return PAGE_DISPLAY_VARIANT_SETS[page] || PAGE_DISPLAY_VARIANTS;
+    return PAGE_DISPLAY_VARIANT_CONFIG[page] ? PAGE_DISPLAY_VARIANTS : [];
 }
 var PAGE_DISPLAY_VARIANT_CONFIG = {
     home: { storage: 'pestovo_home_display_variant', firebase: 'settings/home_display_variant' },
     players: { storage: 'pestovo_players_display_variant', firebase: 'settings/players_display_variant' },
     stats: { storage: 'pestovo_stats_display_variant', firebase: 'settings/stats_display_variant' },
     rounds: { storage: 'pestovo_all_rounds_display_variant', firebase: 'settings/all_rounds_display_variant' },
-    tournaments: { storage: 'pestovo_tournaments_display_variant', firebase: 'settings/tournaments_display_variant' },
     handicap: { storage: 'pestovo_handicap_display_variant', firebase: 'settings/handicap_display_variant' }
 };
 
@@ -6813,14 +6807,6 @@ function applyPageDisplayVariant(page, value) {
         if (page === 'players' && typeof loadPlayers === 'function' && document.getElementById('players-grid')) loadPlayers();
         if (page === 'stats' && typeof loadStats === 'function' && document.getElementById('general-stats')) loadStats();
         if (page === 'rounds' && typeof loadLB === 'function' && document.getElementById('lb-container')) loadLB();
-        // Страница «Турниры»: каталог/карточку турнира перерисовываем, чтобы
-        // новый вариант был виден сразу (без перезагрузки вкладки). Узел
-        // «tn-public-catalog» есть только на tournaments.html — в админке
-        // (там свой список #tn-list) ничего не перерисовываем.
-        if (page === 'tournaments' && document.getElementById('tn-public-catalog')) {
-            if (typeof tnPublicRender === 'function') tnPublicRender();
-            else if (typeof tnRenderList === 'function') tnRenderList();
-        }
     } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof markAdmPageDisplayVariantButtons === 'function') markAdmPageDisplayVariantButtons(page);
@@ -6869,41 +6855,6 @@ function applySocialCardVariant(value) {
     try { localStorage.setItem('pestovo_social_card_variant', variant); } catch (e) { console.warn("[silent]", e); }
     try {
         if (typeof markAdmSocialCardVariantButtons === 'function') markAdmSocialCardVariantButtons();
-    } catch (e) { console.warn("[silent]", e); }
-    return variant;
-}
-
-// ==========================================
-// ОТОБРАЖЕНИЕ КАРТОЧКИ ГРУППОВОГО РАУНДА
-// ==========================================
-// Стиль единой карточки группового раунда на главной странице.
-// Варианты: '1' - Сводная матрица, '2' - Сравнительная таблица, '3' - Лидерборд флайта
-var GROUP_CARD_VARIANTS = ['1', '2', '3'];
-
-function normalizeGroupCardVariant(value) {
-    value = String(value === undefined || value === null ? '' : value);
-    return GROUP_CARD_VARIANTS.indexOf(value) !== -1 ? value : '1';
-}
-
-var pestovoGroupCardVariant = (function() {
-    try { return normalizeGroupCardVariant(localStorage.getItem('pestovo_group_card_variant')); } catch (e) { console.warn("[silent]", e); }
-    return '1';
-})();
-
-function getGroupCardVariant() {
-    return pestovoGroupCardVariant;
-}
-
-function applyGroupCardVariant(value) {
-    var variant = normalizeGroupCardVariant(value);
-    pestovoGroupCardVariant = variant;
-    try { localStorage.setItem('pestovo_group_card_variant', variant); } catch (e) { console.warn("[silent]", e); }
-    try {
-        if (typeof markAdmGroupCardVariantButtons === 'function') markAdmGroupCardVariantButtons();
-    } catch (e) { console.warn("[silent]", e); }
-    try {
-        if (typeof loadLiveRounds === 'function') loadLiveRounds();
-        if (typeof loadRecentResults === 'function') loadRecentResults();
     } catch (e) { console.warn("[silent]", e); }
     return variant;
 }
@@ -7050,109 +7001,8 @@ function applyTnGenderSplit(v) {
     return pestovoTnGenderSplit;
 }
 
-// ==========================================
-// КАРТОЧКИ В ТУРНИРЕ: вид + состав блоков
-// ==========================================
-// Экран ввода счёта, который игрок/маркер открывает по QR из стартового
-// листа турнира (setup-round.html / scorer.html). Админ выбирает в новой
-// вкладке «Отображение карточек в турнире»:
-//   • один из 5 видов счётной карточки (settings/tn_round_card_view);
-//   • какие блоки экрана показывать (settings/tn_round_card_blocks).
-// Настройка общая для всех игроков; до её появления турнирные раунды
-// оформляются ровно как обычные клубные (вид settings/scorecard_view,
-// все блоки видны) — поведение не меняется.
-var TN_ROUND_CARD_VARIANTS = ['1', '2', '3', '4', '5'];
-var TN_ROUND_CARD_BLOCK_KEYS = ['info', 'holes', 'input', 'pace', 'summary', 'qr', 'officials', 'stableford', 'finish'];
-// Подписи блоков для админ-панели и селекторы, которыми блок скрывается
-// на экране ввода (одинаковы для группового и одиночного раунда).
-var TN_ROUND_CARD_BLOCKS = {
-    info:       { ru: 'Информация о лунке (номер, пар, метры)', en: 'Hole info (number, par, metres)', sel: ['.hole-display'] },
-    holes:      { ru: 'Сетка лунок (выбор лунки)', en: 'Hole grid (hole picker)', sel: ['[data-entry-block="holes"]'] },
-    input:      { ru: 'Ввод счёта (кнопки и «Подтвердить»)', en: 'Score entry (buttons and save)', sel: ['[data-entry-block="input"]'] },
-    pace:       { ru: 'Темп игры и дедлайны', en: 'Pace of play and deadlines', sel: ['#group-pace-assistant', '#solo-pace-assistant'] },
-    summary:    { ru: 'Сводка группы / счётная карточка по лункам', en: 'Group summary / hole scorecard', sel: ['.round-card.scorecard-fold'] },
-    qr:         { ru: 'QR для подключения игроков группы', en: 'QR codes to connect the group', sel: ['#invite-qrs-card'] },
-    officials:  { ru: 'Вызов судьи и маршала', en: 'Referee and marshal calls', sel: ['#group-officials', '#solo-officials'] },
-    stableford: { ru: 'Переключатель очков Stableford', en: 'Stableford points toggle', sel: ['#group-stableford-control', '#solo-stableford-control'] },
-    finish:     { ru: 'Завершение раунда и пауза', en: 'Finish round and pause', sel: ['#group-finish-row', '#solo-finish-row'] }
-};
-
-function normalizeTnRoundCardView(value) {
-    value = String(value === undefined || value === null ? '' : value);
-    return TN_ROUND_CARD_VARIANTS.indexOf(value) !== -1 ? value : '';
-}
-
-function normalizeTnRoundCardBlocks(value) {
-    var src = (value && typeof value === 'object') ? value : {};
-    var out = {};
-    TN_ROUND_CARD_BLOCK_KEYS.forEach(function(key) {
-        // Неизвестное/пустое значение = блок виден (поведение по умолчанию).
-        out[key] = src[key] === false || src[key] === '0' || src[key] === 0 ? false : true;
-    });
-    return out;
-}
-
-var pestovoTnRoundCardView = (function() {
-    try { return normalizeTnRoundCardView(localStorage.getItem('pestovo_tn_round_card_view')); } catch (e) { return ''; }
-})();
-var pestovoTnRoundCardBlocks = (function() {
-    try { return normalizeTnRoundCardBlocks(JSON.parse(localStorage.getItem('pestovo_tn_round_card_blocks') || '{}')); }
-    catch (e) { return normalizeTnRoundCardBlocks({}); }
-})();
-
-/** Вид карточки в турнирном раунде; '' — как в обычном клубном раунде. */
-function getTnRoundCardView() { return pestovoTnRoundCardView; }
-function getTnRoundCardBlocks() { return pestovoTnRoundCardBlocks; }
-
-function applyTnRoundCardView(value) {
-    pestovoTnRoundCardView = normalizeTnRoundCardView(value);
-    try { localStorage.setItem('pestovo_tn_round_card_view', pestovoTnRoundCardView); } catch (e) { console.warn("[silent]", e); }
-    try { if (typeof markAdmTnRoundCardButtons === 'function') markAdmTnRoundCardButtons(); } catch (e) { console.warn("[silent]", e); }
-    try { pestovoApplyTnRoundCardLayout(window.pestovoCurrentRound ? window.pestovoCurrentRound() : null); } catch (e) { console.warn("[silent]", e); }
-    return pestovoTnRoundCardView;
-}
-
-function applyTnRoundCardBlocks(value) {
-    pestovoTnRoundCardBlocks = normalizeTnRoundCardBlocks(value);
-    try { localStorage.setItem('pestovo_tn_round_card_blocks', JSON.stringify(pestovoTnRoundCardBlocks)); } catch (e) { console.warn("[silent]", e); }
-    try { if (typeof markAdmTnRoundCardBlocks === 'function') markAdmTnRoundCardBlocks(); } catch (e) { console.warn("[silent]", e); }
-    try { pestovoApplyTnRoundCardLayout(window.pestovoCurrentRound ? window.pestovoCurrentRound() : null); } catch (e) { console.warn("[silent]", e); }
-    return pestovoTnRoundCardBlocks;
-}
-
-/**
- * Применяет настройку к открытому экрану ввода. Для турнирного раунда
- * ставит классы «tn-hide-<блок>» (CSS скрывает блок) и data-атрибут вида
- * карточки; для клубного раунда всё возвращается к обычному виду.
- */
-function pestovoApplyTnRoundCardLayout(round) {
-    if (typeof document === 'undefined' || !document.body) return;
-    var isTn = false;
-    try { isTn = !!round && typeof isTournamentRound === 'function' && isTournamentRound(round); } catch (e) { isTn = false; }
-    TN_ROUND_CARD_BLOCK_KEYS.forEach(function(key) {
-        var hide = isTn && pestovoTnRoundCardBlocks[key] === false;
-        document.body.classList.toggle('tn-hide-' + key, hide);
-    });
-    var view = isTn && pestovoTnRoundCardView ? pestovoTnRoundCardView : '';
-    if (view) document.body.setAttribute('data-tn-card-view', view);
-    else document.body.removeAttribute('data-tn-card-view');
-    // Открытые карточки перерисовываются в новом виде сразу.
-    if (isTn && typeof document.querySelectorAll === 'function') {
-        document.querySelectorAll('.club-sc:not([data-sc-preview])').forEach(function(el) {
-            el.setAttribute('data-sc-view', view || getRoundScorecardView());
-        });
-    }
-}
-
-/** Вид счётной карточки для конкретного раунда (турнирный — свой). */
-function pestovoRoundCardView(round) {
-    try {
-        if (round && pestovoTnRoundCardView && typeof isTournamentRound === 'function' && isTournamentRound(round)) {
-            return pestovoTnRoundCardView;
-        }
-    } catch (e) { console.warn("[silent]", e); }
-    return getRoundScorecardView();
-}
+// Виды счётной карточки остаются едиными для турниров и клубных раундов.
+// Вид карточки на турнирах совпадает с общим клубным видом.
 
 // Нормализация пола участника (один на весь сайт): 'men' | 'women'.
 // Старые записи могли содержать 'f'/'female'/'жен' и т.п.
@@ -7191,7 +7041,6 @@ function tnSortByHandicap(list) {
 // АДМИНСКИЕ ВИДЫ ОТОБРАЖЕНИЯ (5 вариантов, выбирает только админ)
 //   homeTournament — блок «Активный турнир» на главной;
 //   scorecard      — счётная карточка по лункам во время раунда;
-//   scoring        — страница ввода счёта (одиночный и групповой раунд);
 //   roundSetup     — блок «Создание раунда» (единая форма: 1 игрок или
 //                    группа, кнопка «Добавить игрока», 5 видов).
 // Хранение: settings/<key> в Firebase + кэш в localStorage, применяется
@@ -7201,7 +7050,6 @@ var PESTOVO_VIEW5_KEYS = ['1', '2', '3', '4', '5'];
 var PESTOVO_VIEW5_CONFIG = {
     homeTournament: { storage: 'pestovo_home_tournament_view', firebase: 'settings/home_tournament_view' },
     scorecard:      { storage: 'pestovo_scorecard_view',       firebase: 'settings/scorecard_view' },
-    scoring:        { storage: 'pestovo_scoring_view',         firebase: 'settings/scoring_view' },
     roundsetup:     { storage: 'pestovo_round_setup_view',     firebase: 'settings/round_setup_view' }
 };
 
@@ -7231,15 +7079,13 @@ function applyView5(name, value) {
     if (name === 'scorecard' && typeof document !== 'undefined' && document.querySelectorAll) {
         document.querySelectorAll('.club-sc:not([data-sc-preview])').forEach(function(el) { el.setAttribute('data-sc-view', v); });
     }
-    if (name === 'scoring') syncScoreEntryLayouts();
     try { localStorage.setItem(PESTOVO_VIEW5_CONFIG[name].storage, v); } catch (e) { console.warn("[silent]", e); }
     try { syncView5BodyClasses(); } catch (e) { console.warn("[silent]", e); }
     try { if (typeof markAdmView5Buttons === 'function') markAdmView5Buttons(name); } catch (e) { console.warn("[silent]", e); }
     return v;
 }
 
-// CSS-классы на <body>: st-scoring-v2 … st-scorecard-v5 — варианты
-// оформления применяются мгновенно, без перезагрузки страницы.
+// CSS-классы оставшихся общих видов карточек: st-scorecard-v2 … v5.
 function syncView5BodyClasses() {
     if (typeof document === 'undefined' || !document.body) return;
     try {
@@ -7269,7 +7115,6 @@ function pestovoBindView5(name, cb) {
 
 function getHomeTournamentView() { return getView5('homeTournament'); }
 function getRoundScorecardView() { return getView5('scorecard'); }
-function getScoringView() { return getView5('scoring'); }
 function getRoundSetupView() { return getView5('roundsetup'); }
 
 if (typeof window !== 'undefined') {
@@ -7282,21 +7127,6 @@ if (typeof window !== 'undefined') {
     window.syncView5BodyClasses = syncView5BodyClasses;
     window.getHomeTournamentView = getHomeTournamentView;
     window.getRoundScorecardView = getRoundScorecardView;
-    window.getTnRoundCardView = getTnRoundCardView;
-    window.getTnRoundCardBlocks = getTnRoundCardBlocks;
-    window.applyTnRoundCardView = applyTnRoundCardView;
-    window.applyTnRoundCardBlocks = applyTnRoundCardBlocks;
-    window.normalizeTnRoundCardView = normalizeTnRoundCardView;
-    window.normalizeTnRoundCardBlocks = normalizeTnRoundCardBlocks;
-    window.pestovoApplyTnRoundCardLayout = pestovoApplyTnRoundCardLayout;
-    window.pestovoRoundCardView = pestovoRoundCardView;
-    window.TN_ROUND_CARD_VARIANTS = TN_ROUND_CARD_VARIANTS;
-    window.TN_ROUND_CARD_BLOCKS = TN_ROUND_CARD_BLOCKS;
-    window.TN_ROUND_CARD_BLOCK_KEYS = TN_ROUND_CARD_BLOCK_KEYS;
-    window.getScoringView = getScoringView;
-    window.applyScoreEntryOrder = applyScoreEntryOrder;
-    window.applyScoreEntryShow = applyScoreEntryShow;
-    window.normalizeScoreEntryShow = normalizeScoreEntryShow;
     window.getRoundSetupView = getRoundSetupView;
 }
 
@@ -8311,13 +8141,6 @@ if (typeof db !== 'undefined') {
                 applySocialCardVariant(String(v));
             }
         });
-        // Глобальный выбор стиля карточки группового раунда на главной.
-        db.ref('settings/group_round_card_variant').on('value', function(sn) {
-            var v = sn.val();
-            if (GROUP_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoGroupCardVariant) {
-                applyGroupCardVariant(String(v));
-            }
-        });
         // Глобальный выбор оформления счётной карточки игрока в лидерборде турнира.
         db.ref('settings/tn_scorecard_variant').on('value', function(sn) {
             var v = sn.val();
@@ -8346,16 +8169,6 @@ if (typeof db !== 'undefined') {
             if (TN_ROSTER_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnRosterVariant) {
                 applyTnRosterVariant(String(v));
             }
-        });
-        // Карточки в турнире: вид счётной карточки и состав блоков экрана
-        // ввода (админ-панель → «Отображение карточек в турнире»).
-        db.ref('settings/tn_round_card_view').on('value', function(sn) {
-            var v = normalizeTnRoundCardView(sn.val());
-            if (v !== pestovoTnRoundCardView) applyTnRoundCardView(v);
-        });
-        db.ref('settings/tn_round_card_blocks').on('value', function(sn) {
-            var next = normalizeTnRoundCardBlocks(sn.val() || {});
-            if (JSON.stringify(next) !== JSON.stringify(pestovoTnRoundCardBlocks)) applyTnRoundCardBlocks(next);
         });
         // Разделение лидерборда турнира по полу — 3 вида (выбирает админ).
         db.ref('settings/tn_gender_split').on('value', function(sn) {
@@ -8405,7 +8218,6 @@ if (typeof db !== 'undefined') {
 document.addEventListener('DOMContentLoaded', function() {
     syncView5BodyClasses();
     pestovoBindView5('scorecard', function() {});
-    initScoreEntryLayouts();
     applyPageVisibilitySettings();
 });
 
@@ -10649,79 +10461,273 @@ if(typeof document!=='undefined'){
 }
 
 
-// Order is normalized so stale/invalid settings never hide an input block.
-var SCORE_ENTRY_BLOCKS = ['info', 'holes', 'input'];
-function normalizeScoreEntryOrder(value) {
-    var order = Array.isArray(value) ? value.filter(function(key, i) {
-        return SCORE_ENTRY_BLOCKS.indexOf(key) !== -1 && value.indexOf(key) === i;
-    }) : [];
-    return order.concat(SCORE_ENTRY_BLOCKS.filter(function(key) { return order.indexOf(key) === -1; }));
-}
-var scoreEntryOrder = (function() {
-    try { return normalizeScoreEntryOrder(JSON.parse(localStorage.getItem('pestovo_scoring_order'))); }
-    catch (e) { return normalizeScoreEntryOrder(null); }
-})();
-// «Что показывать» на экране ввода счёта (settings/scoring_show): true — видно.
-// Скрытие делает CSS по атрибуту data-entry-hide на корне .score-entry.
-var SCORE_ENTRY_SHOW_KEYS = ['info', 'holes', 'hole', 'par', 'dist', 'deadline', 'hcp'];
-function normalizeScoreEntryShow(value) {
-    var src = (value && typeof value === 'object') ? value : {};
-    var out = {};
-    SCORE_ENTRY_SHOW_KEYS.forEach(function(key) {
-        out[key] = !(src[key] === false || src[key] === 0 || src[key] === '0' || src[key] === 'false');
-    });
-    return out;
-}
-var scoreEntryShow = (function() {
-    try { return normalizeScoreEntryShow(JSON.parse(localStorage.getItem('pestovo_scoring_show'))); }
-    catch (e) { return normalizeScoreEntryShow(null); }
-})();
-function scoreEntryHiddenAttr(show) {
-    var s = normalizeScoreEntryShow(show);
-    return SCORE_ENTRY_SHOW_KEYS.filter(function(key) { return !s[key]; }).join(' ');
-}
-function arrangeScoreEntry(root, view, order, show) {
-    root.setAttribute('data-entry-view', normalizeView5(view));
-    var hidden = scoreEntryHiddenAttr(show || scoreEntryShow);
-    if (hidden) root.setAttribute('data-entry-hide', hidden);
-    else root.removeAttribute('data-entry-hide');
-    var blocks = Array.from(root.children).filter(function(el) { return el.hasAttribute('data-entry-block'); });
-    var sorted = normalizeScoreEntryOrder(order).map(function(key) {
-        return blocks.find(function(el) { return el.getAttribute('data-entry-block') === key; });
-    }).filter(Boolean);
-    if (sorted.some(function(el, i) { return blocks[i] !== el; })) {
-        var focused = root.contains(document.activeElement) ? document.activeElement : null;
-        sorted.forEach(function(el) { root.appendChild(el); });
-        if (focused && typeof focused.focus === 'function') focused.focus({ preventScroll: true });
+// ─────────────────────────────────────────────────────────────────────────────
+// ГЛОБАЛЬНЫЕ ГИБКИЕ НАСТРОЙКИ ЭКРАНОВ
+// Старые числовые виды scoring/tournaments и настройки карточек турнира
+// заменены конфигурацией элементов, их видимости и порядка. Значения хранятся
+// в Firebase и кэшируются локально только для офлайн-запуска.
+// ─────────────────────────────────────────────────────────────────────────────
+var PESTOVO_TOURNAMENT_DISPLAY_LAYOUTS = ['cards', 'timeline', 'compact'];
+var PESTOVO_TOURNAMENT_DISPLAY_ORDER = ['active', 'upcoming', 'archive'];
+var PESTOVO_TOURNAMENT_DISPLAY_KEYS = [
+    'toolbar', 'search', 'activeSection', 'upcomingSection', 'archiveSection',
+    'cardBanner', 'cardMeta', 'cardFormats', 'cardDescription',
+    'detailHero', 'detailDescription', 'detailMetrics', 'detailTabs'
+];
+var PESTOVO_SCORE_DISPLAY_KEYS = [
+    'holeInfo', 'holeNumber', 'par', 'distance', 'deadline', 'holes', 'input',
+    'myScore', 'markerScore', 'scoreComparison', 'verification', 'pace',
+    'scorecard', 'officials', 'qr', 'finish', 'stableford', 'timing', 'notice'
+];
+var PESTOVO_SCORE_DISPLAY_ORDER = ['info', 'holes', 'input'];
+var PESTOVO_DISPLAY_CONFIGS = {
+    tournaments: {
+        firebase: 'settings/tournaments_display',
+        storage: 'pestovo_display_tournaments',
+        scope: 'tournaments'
+    },
+    scoring: {
+        firebase: 'settings/scoring_display',
+        storage: 'pestovo_display_scoring',
+        scope: 'scoring'
+    },
+    tournamentScoring: {
+        firebase: 'settings/tournament_scoring_display',
+        storage: 'pestovo_display_tournament_scoring',
+        scope: 'tournamentScoring'
     }
+};
+var PESTOVO_TOURNAMENT_DISPLAY_META = {
+    toolbar: { ru: 'Заголовок каталога и статус загрузки', en: 'Catalog title and loading status' },
+    search: { ru: 'Поиск по названию турнира', en: 'Tournament search' },
+    activeSection: { ru: 'Активный турнир и live-результаты', en: 'Active tournament and live results' },
+    upcomingSection: { ru: 'Предстоящие старты', en: 'Upcoming tournaments' },
+    archiveSection: { ru: 'Архив прошедших турниров', en: 'Past tournament archive' },
+    cardBanner: { ru: 'Баннер карточки турнира', en: 'Tournament card banner' },
+    cardMeta: { ru: 'Дата, поле и число участников', en: 'Date, course and player count' },
+    cardFormats: { ru: 'Формат турнира', en: 'Tournament format' },
+    cardDescription: { ru: 'Описание в карточке турнира', en: 'Tournament card description' },
+    detailHero: { ru: 'Шапка подробной страницы турнира', en: 'Tournament detail header' },
+    detailDescription: { ru: 'Описание турнира', en: 'Tournament description' },
+    detailMetrics: { ru: 'Дата, формат и число участников', en: 'Date, format and player count' },
+    detailTabs: { ru: 'Вкладки подробной страницы', en: 'Tournament detail tabs' }
+};
+var PESTOVO_SCORE_DISPLAY_META = {
+    holeInfo: { ru: 'Информация о лунке целиком', en: 'Hole information panel' },
+    holeNumber: { ru: 'Номер текущей лунки', en: 'Current hole number' },
+    par: { ru: 'Пар лунки', en: 'Hole par' },
+    distance: { ru: 'Дистанция до лунки', en: 'Hole distance' },
+    deadline: { ru: 'Дедлайн лунки', en: 'Hole deadline' },
+    holes: { ru: 'Навигация по лункам', en: 'Hole navigation' },
+    input: { ru: 'Ввод и сохранение счёта (обязательный блок)', en: 'Score input and save (required)' },
+    myScore: { ru: 'Панель «Мой счёт»', en: 'My score panel' },
+    markerScore: { ru: 'Панель счёта маркируемого игрока', en: 'Marked player score panel' },
+    scoreComparison: { ru: 'Сверка счёта игрока и маркера', en: 'Player and marker comparison' },
+    verification: { ru: 'Статус подтверждения счёта', en: 'Score verification status' },
+    pace: { ru: 'Темп игры и подсказки по времени', en: 'Pace of play and timing hints' },
+    scorecard: { ru: 'Счётная карточка / сводка группы', en: 'Scorecard / group summary' },
+    officials: { ru: 'Вызов судьи и маршала', en: 'Referee and marshal calls' },
+    qr: { ru: 'QR-коды подключения группы', en: 'Group connection QR codes' },
+    finish: { ru: 'Пауза и завершение раунда', en: 'Pause and finish controls' },
+    stableford: { ru: 'Переключатель очков Stableford', en: 'Stableford points toggle' },
+    timing: { ru: 'Сводка времени и тайминга раунда', en: 'Round timing summary' },
+    notice: { ru: 'Системные уведомления и предупреждения', en: 'System notices and warnings' }
+};
+
+function pestovoDisplayBool(value, fallback) {
+    if (value === false || value === 0 || value === '0' || value === 'false') return false;
+    if (value === true || value === 1 || value === '1' || value === 'true') return true;
+    return fallback !== false;
 }
-function syncScoreEntryLayouts() {
+function pestovoDisplayOrder(value, allowed, fallback) {
+    var source = Array.isArray(value) ? value : [];
+    var out = source.filter(function(key, index) {
+        return allowed.indexOf(key) !== -1 && source.indexOf(key) === index;
+    });
+    return out.concat(fallback.filter(function(key) { return out.indexOf(key) === -1; }));
+}
+function normalizePestovoDisplaySettings(name, value) {
+    var source = value && typeof value === 'object' ? value : {};
+    var visibleSource = source.visible && typeof source.visible === 'object' ? source.visible : {};
+    var visible = {};
+    var out;
+    if (name === 'tournaments') {
+        PESTOVO_TOURNAMENT_DISPLAY_KEYS.forEach(function(key) {
+            visible[key] = pestovoDisplayBool(visibleSource[key], true);
+        });
+        out = {
+            layout: PESTOVO_TOURNAMENT_DISPLAY_LAYOUTS.indexOf(String(source.layout || '')) !== -1 ? String(source.layout) : 'cards',
+            order: pestovoDisplayOrder(source.order, PESTOVO_TOURNAMENT_DISPLAY_ORDER, PESTOVO_TOURNAMENT_DISPLAY_ORDER),
+            visible: visible
+        };
+        return out;
+    }
+    if (name === 'scoring') {
+        PESTOVO_SCORE_DISPLAY_KEYS.forEach(function(key) {
+            visible[key] = key === 'input' || key === 'myScore' ? true : pestovoDisplayBool(visibleSource[key], true);
+        });
+        return {
+            order: pestovoDisplayOrder(source.order, PESTOVO_SCORE_DISPLAY_ORDER, PESTOVO_SCORE_DISPLAY_ORDER),
+            visible: visible
+        };
+    }
+    if (name === 'tournamentScoring') {
+        PESTOVO_SCORE_DISPLAY_KEYS.forEach(function(key) {
+            if (Object.prototype.hasOwnProperty.call(visibleSource, key)) {
+                visible[key] = key === 'input' || key === 'myScore' ? true : pestovoDisplayBool(visibleSource[key], true);
+            }
+        });
+        var order = Array.isArray(source.order)
+            ? pestovoDisplayOrder(source.order, PESTOVO_SCORE_DISPLAY_ORDER, PESTOVO_SCORE_DISPLAY_ORDER)
+            : null;
+        return { order: order, visible: visible };
+    }
+    return {};
+}
+function pestovoCloneDisplaySettings(value) {
+    return JSON.parse(JSON.stringify(value));
+}
+var pestovoDisplaySettings = (function() {
+    var state = {};
+    Object.keys(PESTOVO_DISPLAY_CONFIGS).forEach(function(name) {
+        var raw = null;
+        try { raw = JSON.parse(localStorage.getItem(PESTOVO_DISPLAY_CONFIGS[name].storage) || 'null'); } catch (e) { console.warn('[display] local cache read failed', e); }
+        state[name] = normalizePestovoDisplaySettings(name, raw);
+    });
+    return state;
+})();
+function getPestovoDisplaySettings(name) {
+    return PESTOVO_DISPLAY_CONFIGS[name] ? pestovoCloneDisplaySettings(pestovoDisplaySettings[name]) : null;
+}
+function setPestovoDisplaySettings(name, value) {
+    if (!PESTOVO_DISPLAY_CONFIGS[name]) return null;
+    pestovoDisplaySettings[name] = normalizePestovoDisplaySettings(name, value);
+    try { localStorage.setItem(PESTOVO_DISPLAY_CONFIGS[name].storage, JSON.stringify(pestovoDisplaySettings[name])); } catch (e) { console.warn('[display] local cache write failed', e); }
+    pestovoApplyScreenDisplaySettings();
+    try { if (typeof renderPestovoDisplayAdmin === 'function') renderPestovoDisplayAdmin(name); } catch (e) { console.warn('[display] admin refresh failed', e); }
+    return getPestovoDisplaySettings(name);
+}
+function pestovoApplyDisplayVisibility(scope, visible) {
     if (typeof document === 'undefined' || !document.querySelectorAll) return;
-    document.querySelectorAll('.score-entry:not([data-entry-preview])').forEach(function(root) {
-        arrangeScoreEntry(root, getScoringView(), scoreEntryOrder, scoreEntryShow);
+    var selector = '[data-screen-display="' + scope + '"][data-display-key]';
+    document.querySelectorAll(selector).forEach(function(element) {
+        var key = element.getAttribute('data-display-key');
+        var show = key === 'input' || key === 'myScore' ? true : visible[key] !== false;
+        if (show) element.removeAttribute('data-display-hidden');
+        else element.setAttribute('data-display-hidden', 'true');
     });
 }
-function applyScoreEntryOrder(value) {
-    scoreEntryOrder = normalizeScoreEntryOrder(value);
-    try { localStorage.setItem('pestovo_scoring_order', JSON.stringify(scoreEntryOrder)); } catch (e) { /* no storage */ }
-    syncScoreEntryLayouts();
-}
-function applyScoreEntryShow(value) {
-    scoreEntryShow = normalizeScoreEntryShow(value);
-    try { localStorage.setItem('pestovo_scoring_show', JSON.stringify(scoreEntryShow)); } catch (e) { /* no storage */ }
-    syncScoreEntryLayouts();
-}
-function initScoreEntryLayouts() {
-    syncScoreEntryLayouts();
-    pestovoBindView5('scoring', function() { syncScoreEntryLayouts(); });
-    if (typeof db !== 'undefined' && db) {
-        var ref = db.ref('settings/scoring_order');
-        var receive = function(sn) { applyScoreEntryOrder(sn.val()); };
-        if (typeof bindRealtimeValue === 'function') bindRealtimeValue('scoring-order', ref, receive);
-        else ref.on('value', receive);
-        var showRef = db.ref('settings/scoring_show');
-        var receiveShow = function(sn) { applyScoreEntryShow(sn.val()); };
-        if (typeof bindRealtimeValue === 'function') bindRealtimeValue('scoring-show', showRef, receiveShow);
-        else showRef.on('value', receiveShow);
+function pestovoApplyDisplayOrder(parent, attribute, order) {
+    if (!parent || !parent.children) return;
+    var children = Array.prototype.slice.call(parent.children);
+    var ordered = children.filter(function(element) { return element.hasAttribute(attribute); });
+    var sorted = order.map(function(key) {
+        return ordered.find(function(element) { return element.getAttribute(attribute) === key; });
+    }).filter(Boolean);
+    if (sorted.some(function(element, index) { return ordered[index] !== element; })) {
+        var focused = parent.contains(document.activeElement) ? document.activeElement : null;
+        sorted.forEach(function(element) { parent.appendChild(element); });
+        if (focused && typeof focused.focus === 'function') {
+            try { focused.focus({ preventScroll: true }); } catch (e) { focused.focus(); }
+        }
     }
+}
+function pestovoCurrentDisplayRound(explicitRound) {
+    if (explicitRound && typeof explicitRound === 'object') return explicitRound;
+    try { if (typeof window !== 'undefined' && typeof window.pestovoCurrentRound === 'function') return window.pestovoCurrentRound(); } catch (e) { console.warn('[display] current round lookup failed', e); }
+    try { if (typeof curRoundData !== 'undefined' && curRoundData) return curRoundData; } catch (e) { console.warn('[display] current group round lookup failed', e); }
+    try { if (typeof soloRound !== 'undefined' && soloRound) return soloRound; } catch (e) { console.warn('[display] solo round lookup failed', e); }
+    try { if (typeof scRound !== 'undefined' && scRound) return scRound; } catch (e) { console.warn('[display] scorer round lookup failed', e); }
+    return null;
+}
+function pestovoEffectiveScoringDisplay(round) {
+    var base = getPestovoDisplaySettings('scoring');
+    var isTournament = false;
+    try {
+        var current = pestovoCurrentDisplayRound(round);
+        isTournament = !!current && typeof isTournamentRound === 'function' && isTournamentRound(current);
+    } catch (e) { console.warn('[display] tournament context lookup failed', e); }
+    if (!isTournament) return base;
+    var tournament = getPestovoDisplaySettings('tournamentScoring');
+    Object.keys(tournament.visible).forEach(function(key) { base.visible[key] = tournament.visible[key]; });
+    if (tournament.order) base.order = tournament.order.slice();
+    return base;
+}
+function pestovoApplyScoringDisplay(round) {
+    if (typeof document === 'undefined' || !document.querySelectorAll) return;
+    var config = pestovoEffectiveScoringDisplay(round);
+    document.querySelectorAll('.score-entry:not([data-entry-preview])').forEach(function(root) {
+        var blocks = Array.prototype.slice.call(root.children).filter(function(element) { return element.hasAttribute('data-entry-block'); });
+        var sorted = config.order.map(function(key) {
+            return blocks.find(function(element) { return element.getAttribute('data-entry-block') === key; });
+        }).filter(Boolean);
+        if (sorted.some(function(element, index) { return blocks[index] !== element; })) {
+            var focused = root.contains(document.activeElement) ? document.activeElement : null;
+            sorted.forEach(function(element) { root.appendChild(element); });
+            if (focused && typeof focused.focus === 'function') {
+                try { focused.focus({ preventScroll: true }); } catch (e) { focused.focus(); }
+            }
+        }
+    });
+    pestovoApplyDisplayVisibility('scoring', config.visible);
+    var dualPanel = document.getElementById('dual-score-panel');
+    if (dualPanel) {
+        if (config.visible.markerScore === false) dualPanel.setAttribute('data-display-marker-hidden', 'true');
+        else dualPanel.removeAttribute('data-display-marker-hidden');
+        if (config.visible.myScore === false) dualPanel.setAttribute('data-display-my-hidden', 'true');
+        else dualPanel.removeAttribute('data-display-my-hidden');
+    }
+}
+function pestovoApplyTournamentDisplay() {
+    if (typeof document === 'undefined') return;
+    var main = document.querySelector('.tn-public-main');
+    if (!main) return;
+    var config = getPestovoDisplaySettings('tournaments');
+    main.setAttribute('data-tournaments-layout', config.layout);
+    var catalog = document.getElementById('tn-public-catalog');
+    pestovoApplyDisplayOrder(catalog, 'data-display-section', config.order);
+    pestovoApplyDisplayVisibility('tournaments', config.visible);
+}
+function pestovoApplyScreenDisplaySettings(round) {
+    pestovoApplyTournamentDisplay();
+    pestovoApplyScoringDisplay(round);
+}
+function initPestovoDisplaySettings() {
+    pestovoApplyScreenDisplaySettings();
+    if (typeof db === 'undefined' || !db) return;
+    Object.keys(PESTOVO_DISPLAY_CONFIGS).forEach(function(name) {
+        var cfg = PESTOVO_DISPLAY_CONFIGS[name];
+        var ref = db.ref(cfg.firebase);
+        var receive = function(snapshot) {
+            var value = snapshot && typeof snapshot.val === 'function' ? snapshot.val() : null;
+            setPestovoDisplaySettings(name, value);
+            // Tournament changes should refresh a preview/editor that is open.
+            try { if (typeof renderPestovoDisplayAdmin === 'function') renderPestovoDisplayAdmin(name); } catch (e) { console.warn('[display] admin refresh failed', e); }
+        };
+        if (typeof bindRealtimeValue === 'function') bindRealtimeValue('display-settings-' + name, ref, receive);
+        else ref.on('value', receive);
+    });
+}
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', function() {
+        initPestovoDisplaySettings();
+    });
+}
+if (typeof window !== 'undefined') {
+    window.PESTOVO_DISPLAY_CONFIGS = PESTOVO_DISPLAY_CONFIGS;
+    window.PESTOVO_TOURNAMENT_DISPLAY_LAYOUTS = PESTOVO_TOURNAMENT_DISPLAY_LAYOUTS;
+    window.PESTOVO_TOURNAMENT_DISPLAY_ORDER = PESTOVO_TOURNAMENT_DISPLAY_ORDER;
+    window.PESTOVO_TOURNAMENT_DISPLAY_KEYS = PESTOVO_TOURNAMENT_DISPLAY_KEYS;
+    window.PESTOVO_SCORE_DISPLAY_KEYS = PESTOVO_SCORE_DISPLAY_KEYS;
+    window.PESTOVO_TOURNAMENT_DISPLAY_META = PESTOVO_TOURNAMENT_DISPLAY_META;
+    window.PESTOVO_SCORE_DISPLAY_META = PESTOVO_SCORE_DISPLAY_META;
+    window.getPestovoDisplaySettings = getPestovoDisplaySettings;
+    window.setPestovoDisplaySettings = setPestovoDisplaySettings;
+    window.normalizePestovoDisplaySettings = normalizePestovoDisplaySettings;
+    window.pestovoApplyScreenDisplaySettings = pestovoApplyScreenDisplaySettings;
+    window.pestovoApplyTournamentDisplay = pestovoApplyTournamentDisplay;
+    window.pestovoApplyScoringDisplay = pestovoApplyScoringDisplay;
+    window.pestovoEffectiveScoringDisplay = pestovoEffectiveScoringDisplay;
+    window.initPestovoDisplaySettings = initPestovoDisplaySettings;
 }

@@ -16,6 +16,10 @@
         "check:browser": "node tools/browser-check.js",
         "check:scorecards": "node tools/check-scorecard-mobile.js && node tools/check-score-entry-mobile.js && node tools/check-scoring-header-mobile.js && node tools/check-printcards-preview.js",
         "check:nav": "node tools/check-nav-mobile.js",
+        "check:round-setup-mobile": "node tools/check-round-setup-mobile.js",
+        "check:tournaments-mobile": "node tools/check-tournaments-display-mobile.js",
+        "check:admin-display-mobile": "node tools/check-display-settings-mobile.js",
+        "check:display-mobile": "node tools/check-round-setup-mobile.js && node tools/check-tournaments-display-mobile.js && node tools/check-display-settings-mobile.js",
         "check:printcards": "node tools/check-printcards-preview.js"
     },
     "engines": {

@@ -1,128 +1,99 @@
-// Автотесты: 5 вариантов отображения страницы «Турниры» (выбирает админ).
-// Запуск: node tools/test-tournaments-view-variants.js
+#!/usr/bin/env node
+/** Regression tests for global tournament-page layout, order and visibility settings. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const vm = require('vm');
-
+const assert = require('assert');
+const { JSDOM } = require('jsdom');
 const ROOT = path.join(__dirname, '..');
-let failures = 0, total = 0;
-function ok(cond, label) {
-    total++;
-    if (!cond) { failures++; console.error('FAIL', label); }
-    else console.log('ok  -', label);
-}
-function eq(actual, expected, label) {
-    total++;
-    const a = JSON.stringify(actual), e = JSON.stringify(expected);
-    if (a !== e) { failures++; console.error('FAIL', label, '\n  actual:  ', a, '\n  expected:', e); }
-    else console.log('ok  -', label);
-}
+const read = file => fs.readFileSync(path.join(ROOT, file), 'utf8');
+const passed = [];
+function check(condition, message) { assert.ok(condition, message); passed.push(message); }
 
-// <body> с настоящим поведением classList.toggle/contains
-const bodyClasses = new Set();
-const body = {
-    style: {},
-    classList: {
-        add: c => bodyClasses.add(c),
-        remove: c => bodyClasses.delete(c),
-        contains: c => bodyClasses.has(c),
-        toggle(c, on) { if (on === undefined) on = !bodyClasses.has(c); if (on) bodyClasses.add(c); else bodyClasses.delete(c); return on; }
-    },
-    appendChild() {}
-};
-function fakeEl(id) {
-    return {
-        _id: id, innerHTML: '', textContent: '', value: '', checked: false, className: '', style: {},
-        classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
-        querySelector() { return null; }, querySelectorAll() { return []; }, appendChild() {},
-        addEventListener() {}, remove() {}, setAttribute() {}, getAttribute() { return null; }
-    };
-}
-const els = {};
-const store = {};
-const sandbox = {
-    console, Date, Math, JSON, parseInt, parseFloat, isNaN, isFinite, String, Number, Array, Object, Promise,
-    setTimeout, clearTimeout, RegExp, Error, encodeURIComponent, decodeURIComponent,
-    document: {
-        getElementById: id => { if (!els[id]) els[id] = fakeEl(id); return els[id]; },
-        createElement: () => fakeEl('created'),
-        querySelector: () => null, querySelectorAll: () => [],
-        addEventListener() {}, removeEventListener() {},
-        documentElement: { style: { setProperty() {} }, classList: { add() {}, remove() {}, toggle() {} } },
-        body,
-        readyState: 'complete'
-    },
-    localStorage: {
-        getItem: k => (k in store ? store[k] : null),
-        setItem: (k, v) => { store[k] = String(v); },
-        removeItem: k => { delete store[k]; }
-    },
-    sessionStorage: { getItem: () => null, setItem() {} },
-    navigator: { language: 'ru', onLine: true, vibrate() {} },
-    location: { search: '', pathname: '/tournaments.html', href: '' },
-    URLSearchParams: function (q) { this.get = () => null; },
-    alert() {}, confirm: () => true, firebase: undefined, currentLang: 'ru', toast: () => {}
-};
-sandbox.window = sandbox;
-sandbox.globalThis = sandbox;
-
-vm.createContext(sandbox);
-vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'), sandbox);
-vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'), sandbox);
-vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'), sandbox);
-
-const utils = fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8');
-const adminJs = fs.readFileSync(path.join(ROOT, 'js/admin.js'), 'utf8');
-// Настройки вида турниров переехали в js/admin-display.js (CODE-REVIEW п.3)
-const adminDisplayJs = fs.readFileSync(path.join(ROOT, 'js/admin-display.js'), 'utf8');
-const adminHtml = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');
-const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
-const adminCss = fs.readFileSync(path.join(ROOT, 'css/tn-view.css'), 'utf8');
-
-console.log('\n--- Настройка вариантов ---');
-eq(sandbox.pageDisplayVariantKeys('tournaments'), ['1', '2', '3', '4', '5'], 'у страницы «Турниры» пять вариантов');
-eq(sandbox.pageDisplayVariantKeys('feed'), ['1', '2', '3'], 'у остальных страниц остаётся три варианта');
-eq(sandbox.normalizePageDisplayVariant('tournaments', '5'), '5', 'вариант 5 принимается для турниров');
-eq(sandbox.normalizePageDisplayVariant('tournaments', '9'), '1', 'неизвестный вариант → 1');
-eq(sandbox.normalizePageDisplayVariant('feed', '4'), '1', 'вариант 4 недоступен другим страницам');
-
-console.log('\n--- Применение варианта (классы на <body>) ---');
-['2', '3', '4', '5'].forEach(v => {
-    const applied = sandbox.applyPageDisplayVariant('tournaments', v);
-    eq(applied, v, 'applyPageDisplayVariant(tournaments,' + v + ')');
-    ok(bodyClasses.has('pd-tournaments-v' + v), 'класс pd-tournaments-v' + v + ' добавлен на <body>');
-    ['2', '3', '4', '5'].filter(x => x !== v).forEach(other => {
-        ok(!bodyClasses.has('pd-tournaments-v' + other), 'класс pd-tournaments-v' + other + ' снят');
+(async function main() {
+    const html = read('admin.html');
+    const adminDocument = new JSDOM(html).window.document;
+    const section = adminDocument.getElementById('tab-tournamentsview');
+    assert(section, 'admin.html contains the tournament display tab');
+    const catalogMarkup = '<main class="tn-public-main"><section id="tn-public-catalog">' +
+        '<div data-screen-display="tournaments" data-display-key="toolbar"></div>' +
+        '<label data-screen-display="tournaments" data-display-key="search"></label>' +
+        '<section data-screen-display="tournaments" data-display-key="activeSection" data-display-section="active"></section>' +
+        '<section data-screen-display="tournaments" data-display-key="upcomingSection" data-display-section="upcoming"></section>' +
+        '<section data-screen-display="tournaments" data-display-key="archiveSection" data-display-section="archive"></section>' +
+        '<div data-screen-display="tournaments" data-display-key="cardMeta"></div>' +
+        '</section></main>';
+    const dom = new JSDOM('<!doctype html><html><body>' + section.outerHTML + catalogMarkup + '</body></html>', {
+        runScripts: 'outside-only', url: 'https://example.test/admin.html'
     });
-    eq(store.pestovo_tournaments_display_variant, v, 'вариант сохранён в localStorage');
-    eq(sandbox.getPageDisplayVariant('tournaments'), v, 'getPageDisplayVariant возвращает ' + v);
-});
-sandbox.applyPageDisplayVariant('tournaments', '1');
-ok(!bodyClasses.has('pd-tournaments-v2') && !bodyClasses.has('pd-tournaments-v5'), 'вариант 1 снимает все классы');
+    const win = dom.window, doc = win.document;
+    const writes = [], listeners = {};
+    win.currentLang = 'ru'; win.toast = function() {}; win.vib = function() {};
+    win.db = { ref: pathName => ({
+        set(value) { writes.push({ path: pathName, value: JSON.parse(JSON.stringify(value)) }); return Promise.resolve(); },
+        on(event, callback) { listeners[pathName] = callback; },
+        once() { return Promise.resolve({ val: () => null }); }
+    }) };
+    ['course-config', 'format', 'dom', 'i18n', 'utils', 'admin-display'].forEach(file => win.eval(read('js/' + file + '.js')));
 
-console.log('\n--- Админ-панель: отдельная вкладка ---');
-ok(adminHtml.indexOf("switchTab('tournamentsview',this)") !== -1, 'вкладка «Турниры: вид» в панели вкладок');
-ok(adminHtml.indexOf('id="tab-tournamentsview"') !== -1, 'секция вкладки существует');
-['1', '2', '3', '4', '5'].forEach(v => {
-    ok(adminHtml.indexOf('id="tn-view-opt-' + v + '"') !== -1, 'кнопка варианта ' + v + ' в новой вкладке');
-    ok(adminHtml.indexOf("saveTnPageViewVariant('" + v + "')") !== -1, 'кнопка варианта ' + v + ' сохраняет настройку');
-});
-ok(adminDisplayJs.indexOf('function saveTnPageViewVariant') !== -1, 'admin-display.js: saveTnPageViewVariant');
-ok(adminDisplayJs.indexOf('function loadTnPageViewSettings') !== -1, 'admin-display.js: loadTnPageViewSettings');
-ok(adminJs.indexOf("if (t === 'tournamentsview')") !== -1, 'admin.js: switchTab обрабатывает новую вкладку');
-ok(adminDisplayJs.indexOf("settings/tournaments_display_variant") !== -1, 'настройка хранится в settings/tournaments_display_variant');
-ok(utils.indexOf("firebase: 'settings/tournaments_display_variant'") !== -1, 'utils.js слушает ту же настройку (применяется для всех)');
-const i18nJs = fs.readFileSync(path.join(ROOT, 'js/i18n.js'), 'utf8');
-ok(i18nJs.indexOf('tournaments_view_variant_5') !== -1 && i18nJs.indexOf('tournaments_view_variant_5_desc') !== -1, 'i18n: подписи пяти вариантов');
+    const defaults = win.getPestovoDisplaySettings('tournaments');
+    check(defaults.layout === 'cards' && defaults.order.join(',') === 'active,upcoming,archive',
+        'responsive cards are the default layout and section order');
+    check(win.pageDisplayVariantKeys('tournaments').length === 0,
+        'legacy numeric tournament page variants are no longer available');
+    win.renderPestovoDisplayAdmin('tournaments', true);
+    check(doc.querySelectorAll('#tournaments-display-elements input[data-screen-display-toggle="tournaments"]').length === win.PESTOVO_TOURNAMENT_DISPLAY_KEYS.length,
+        'tournament editor renders every configurable display element');
+    check(doc.querySelectorAll('#tournaments-display-order [data-display-order-move]').length === 6,
+        'tournament editor renders move-up/down controls for all sections');
+    check(doc.getElementById('tournaments-display-layout').value === 'cards',
+        'admin layout selector shows the default');
 
-console.log('\n--- CSS пяти вариантов ---');
-['2', '3', '4', '5'].forEach(v => {
-    ok(css.indexOf('body.pd-tournaments-v' + v + ' .tn-public-card') !== -1, 'CSS: вариант ' + v + ' стилизует карточки каталога');
-});
-ok(css.indexOf('body.pd-tournaments-v4 .tn-public-card-body{display:grid') !== -1, 'CSS: вариант 4 — табличная сетка');
-ok(css.indexOf('body.pd-tournaments-v5 .tn-public-card:before') !== -1, 'CSS: вариант 5 — лента календаря');
-ok(adminCss.indexOf('.tn-view-preview-grid') !== -1, 'CSS админки: сетка описаний вариантов');
+    win.setPestovoDisplaySettings('tournaments', {
+        layout: 'timeline', order: ['archive', 'active', 'upcoming'],
+        visible: { search: false, upcomingSection: false, cardMeta: false, detailTabs: false }
+    });
+    check(doc.querySelector('.tn-public-main').getAttribute('data-tournaments-layout') === 'timeline',
+        'selected tournament composition is applied to the public main');
+    const reorderedSections = Array.from(doc.querySelector('#tn-public-catalog').children)
+        .filter(node => node.hasAttribute('data-display-section'));
+    check(reorderedSections[0].getAttribute('data-display-section') === 'archive',
+        'catalog sections are reordered globally');
+    check(doc.querySelector('.tn-public-main [data-display-key="search"]').getAttribute('data-display-hidden') === 'true' &&
+        doc.querySelector('.tn-public-main [data-display-key="upcomingSection"]').getAttribute('data-display-hidden') === 'true' &&
+        doc.querySelector('.tn-public-main [data-display-key="cardMeta"]').getAttribute('data-display-hidden') === 'true',
+        'visibility settings hide the requested public elements');
+    check(doc.getElementById('tournaments-display-layout').value === 'timeline',
+        'public settings update the admin preview controls');
 
-console.log('\n' + total + ' проверок, ошибок: ' + failures);
-process.exit(failures ? 1 : 0);
+    win.renderPestovoDisplayAdmin('tournaments', true);
+    win.setPestovoDisplayDraftLayout('compact');
+    win.setPestovoDisplayDraftVisible('tournaments', 'cardFormats', false);
+    win.movePestovoDisplayDraftOrder('tournaments', 2, -1);
+    win.savePestovoDisplaySettings('tournaments');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const saved = writes.find(item => item.path === 'settings/tournaments_display');
+    check(!!saved && saved.value.layout === 'compact' && saved.value.visible.cardFormats === false,
+        'global tournament layout and visibility save atomically');
+    check(saved.value.order.join(',') === 'archive,upcoming,active', 'section order is persisted');
+    check(!writes.some(item => /tournaments_display_variant/.test(item.path)),
+        'removed numbered tournament setting is never written');
+
+    const page = new JSDOM(read('tournaments.html')).window.document;
+    ['toolbar', 'search', 'activeSection', 'upcomingSection', 'archiveSection'].forEach(key => {
+        check(page.querySelector('[data-screen-display="tournaments"][data-display-key="' + key + '"]'),
+            'tournaments.html exposes the ' + key + ' setting');
+    });
+    const publicJs = read('js/tournament-public.js');
+    ['cardBanner', 'cardMeta', 'cardFormats', 'cardDescription', 'detailHero', 'detailDescription', 'detailMetrics', 'detailTabs'].forEach(key => {
+        check(publicJs.indexOf('data-display-key="' + key + '"') !== -1,
+            'dynamic tournament content exposes the ' + key + ' setting');
+    });
+    const css = read('css/tournament-redesign.css');
+    check(css.includes('data-tournaments-layout="timeline"') && css.includes('data-tournaments-layout="compact"'),
+        'new tournament compositions are implemented in the responsive stylesheet');
+    check(!/pd-tournaments-v[2-5]|tournaments_view_variant_/.test(css + read('css/style.css') + read('js/admin-display.js')),
+        'old tournament page variants are removed from runtime code and CSS');
+    console.log('PASS: tournament display settings — ' + passed.length + ' checks');
+    dom.window.close();
+})().catch(error => { console.error(error); process.exit(1); });

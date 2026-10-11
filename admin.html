@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="css/tournament-redesign.css?v=3f88226b">
     <link rel="stylesheet" href="css/tn-manager.css?v=6d129f32">
     <link rel="stylesheet" href="css/tn-mgr-printcards.css?v=e9c466ab">
+    <link rel="stylesheet" href="css/entry-scorecard.css?v=a34f8c94">
     <script src="js/design-system.js?v=5a11adfa"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -106,6 +107,7 @@
             <button class="admin-tab" onclick="switchTab('rusgolf',this)" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
             <button class="admin-tab" onclick="switchTab('data',this)" data-i18n="tab_data">Данные</button>
             <button class="admin-tab" onclick="switchTab('scorecards',this)">Отображения счётных карточек</button>
+            <button class="admin-tab" onclick="switchTab('entrycards',this)">Карточки на вводе 🃏</button>
             <button class="admin-tab" onclick="switchTab('tncards',this)">Турнирный ввод счёта</button>
             <button class="admin-tab" onclick="switchTab('scoreentry',this)">Ввод счёта ⛳</button>
             <button class="admin-tab" onclick="switchTab('design',this)" data-i18n="tab_design">Дизайн 🎨</button>
@@ -162,6 +164,21 @@
                 <div class="sev-device">
                     <div id="club-sc-preview" class="club-sc-phone"></div>
                 </div>
+            </div>
+        </div>
+
+        <div id="tab-entrycards" class="admin-section hidden">
+            <div class="card sev-admin-card" id="entry-sc-settings">
+                <header class="sev-head">
+                    <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-id-card"></i></span>
+                    <div class="sev-head-text">
+                        <h2>Карточки на вводе счёта</h2>
+                        <p>Счётные карточки на странице ввода результата (setup-round.html). Один игрок — «Счётная карточка по лункам», два и больше — «Общая карточка». Для каждой выберите вид, размер и элементы; для турнирного ввода можно задать свой вид.</p>
+                    </div>
+                    <span class="sev-head-badge"><i class="fas fa-globe" aria-hidden="true"></i> для всех</span>
+                </header>
+                <div class="display-config-note"><i class="fas fa-circle-info" aria-hidden="true"></i> Эта вкладка меняет только экраны ввода счёта. Карточки на главной, в лидербордах и истории настраиваются во вкладке «Отображения счётных карточек».</div>
+                <div id="esc-admin-root"></div>
             </div>
         </div>
 
@@ -1046,6 +1063,7 @@
 <script src="js/qr-code.js?v=2a26e819"></script>
 <script src="js/rusgolf-client.js?v=f37608e7"></script>
 <script src="js/utils.js?v=70676f06"></script>
+<script src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script src="js/tn-mgr-core.js?v=dc621917"></script>
 <script src="js/tn-mgr-data.js?v=9df4ae94"></script>
 <script src="js/tn-mgr-io.js?v=a9001ebb"></script>
@@ -1056,7 +1074,7 @@
 <script src="js/tn-mgr.js?v=59cc04f5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/name-variants.js?v=2b58f796"></script>
-<script src="js/admin.js?v=8008ad32"></script>
+<script src="js/admin.js?v=29072162"></script>
 <script src="js/admin-groups.js?v=33268873"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
 <script src="js/admin-players.js?v=4a1d7d19"></script>
@@ -1070,6 +1088,7 @@
 <script src="js/admin-agr.js?v=342bd9b3"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
 <script src="js/admin-display.js?v=692ee6f4"></script>
+<script src="js/admin-entry-scorecard.js?v=74578afa"></script>
 <script src="js/design-admin.js?v=70a7c0c4"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
 <script src="js/pwa.js?v=56b54da4"></script>

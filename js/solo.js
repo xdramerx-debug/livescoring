@@ -1049,6 +1049,14 @@ function renderMiniCard(targetId) {
     var p = soloRound.players[uid];
     if (!p) return;
 
+    // Счётная карточка по лункам для экрана ввода (5 видов, js/entry-scorecard.js).
+    if (typeof pestovoEntryCardsInto === 'function' && typeof entryScHoleHTML === 'function') {
+        pestovoEntryCardsInto(el, function() {
+            var r = soloRound;
+            return entryScHoleHTML(r.players[uid], r, { playerId: uid, order: getRoundOrder(r) }, entryScResolve('hole', r));
+        });
+        return;
+    }
     if (typeof generatePestovoScorecardHTML === 'function') {
         el.innerHTML = generatePestovoScorecardHTML(p, soloRound, { compact: true });
     }

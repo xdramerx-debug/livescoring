@@ -383,6 +383,10 @@ function switchTab(t, b) {
         renderClubScorecardPreview();
         pestovoBindView5('scorecard', function() { renderClubScorecardPreview(); });
     }
+    // Карточки на экранах ввода счёта (js/admin-entry-scorecard.js).
+    if (t === 'entrycards' && typeof renderEntryScorecardAdmin === 'function') {
+        renderEntryScorecardAdmin();
+    }
     // Отдельные глобальные редакторы страницы турниров и ввода счёта.
     if (t === 'tncards' && typeof renderPestovoDisplayAdmin === 'function') {
         renderPestovoDisplayAdmin('tournamentScoring', true);

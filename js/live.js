@@ -1947,8 +1947,15 @@ function renderPlaySummary() {
     // («Сейчас на поле», одна на всех), плюс слой маркера: рядом со счётом
     // игрока виден и счёт, который ввёл его маркер.
     curRoundData.roundId = curRid;
-    el.innerHTML = '<div class="live-group-unified-card">' +
-        generateGroupHoleTableHTML(curRoundData, { showMarker: true }) + '</div>';
+    // Карточка группы в варианте, выбранном в админке (js/entry-scorecard.js).
+    var buildSummary = function() {
+        var card = typeof pestovoEntryRoundCardHTML === 'function'
+            ? pestovoEntryRoundCardHTML(curRoundData, { showMarker: true })
+            : generateGroupHoleTableHTML(curRoundData, { showMarker: true });
+        return '<div class="live-group-unified-card">' + card + '</div>';
+    };
+    if (typeof pestovoEntryCardsInto === 'function') pestovoEntryCardsInto(el, buildSummary);
+    else el.innerHTML = buildSummary();
     ensureScorecardOpen('group-sc-panel');
 }
 
@@ -2422,7 +2429,13 @@ function renderGVPlayers(r) {
 
     if (scCardEl) {
         r.roundId = curRid;
-        scCardEl.innerHTML = generateGroupHoleTableHTML(r, { compact: true, showMarker: true });
+        var buildGroupCard = function() {
+            return typeof pestovoEntryRoundCardHTML === 'function'
+                ? pestovoEntryRoundCardHTML(r, { compact: true, showMarker: true })
+                : generateGroupHoleTableHTML(r, { compact: true, showMarker: true });
+        };
+        if (typeof pestovoEntryCardsInto === 'function') pestovoEntryCardsInto(scCardEl, buildGroupCard);
+        else scCardEl.innerHTML = buildGroupCard();
         ensureScorecardOpen('gv-sc-panel');
     }
 }

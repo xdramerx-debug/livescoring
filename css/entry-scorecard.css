@@ -1,0 +1,368 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   СЧЁТНЫЕ КАРТОЧКИ НА ЭКРАНАХ ВВОДА СЧЁТА (setup-round.html)
+   js/entry-scorecard.js. Два вида карточки, по 5 вариантов у каждого:
+     general (.esc-general) — «Общая карточка» группы: .esc-v1 … .esc-v5
+     hole    (.esc-hole)    — «Счётная карточка по лункам»: .esc-v1 … .esc-v5
+   Размер: .esc-sz-s / .esc-sz-m / .esc-sz-l (масштаб через --esc-k).
+   Цвета — из переменных темы, поэтому светлый режим (sun-mode) работает сам.
+   Ширина экрана 320–430 px: страница без горизонтальной прокрутки, широкие
+   таблицы — только внутри своего .esc-scroll.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.esc {
+    --esc-k: 1;
+    position: relative;
+    margin: 12px 0;
+    padding: 12px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--card);
+    color: var(--text);
+    font-size: calc(13px * var(--esc-k));
+}
+.esc *, .esc *::before, .esc *::after { box-sizing: border-box; }
+.esc-sz-s { --esc-k: .9; }
+.esc-sz-m { --esc-k: 1; }
+.esc-sz-l { --esc-k: 1.18; }
+
+.esc-head {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.esc-name { font-size: calc(15px * var(--esc-k)); font-weight: 800; color: var(--white); overflow-wrap: anywhere; }
+.esc-format { font-size: calc(11px * var(--esc-k)); color: var(--muted); font-weight: 600; }
+.esc-head .gsg-legend, .esc-ghead .gsg-legend { margin-left: auto; }
+.esc-cap {
+    margin: 10px 0 6px; font-size: calc(11.5px * var(--esc-k)); font-weight: 700; color: var(--muted);
+}
+.esc-scroll { overflow-x: auto; max-width: 100%; border-radius: 10px; -webkit-overflow-scrolling: touch; }
+.esc-scroll:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* ── Общие элементы ячеек ───────────────────────────────────────────── */
+.esc-val {
+    position: relative; display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.9em; padding: .12em .3em; border-radius: 7px;
+    font-size: calc(15px * var(--esc-k)); font-weight: 800; line-height: 1.1; color: var(--white);
+}
+.esc-hm { position: absolute; top: -3px; right: -3px; pointer-events: none; }
+.esc-hm .hm-bar { width: 6px; height: 2px; }
+.esc-mk {
+    display: inline-flex; align-items: center; justify-content: center; gap: 2px;
+    font-size: calc(11px * var(--esc-k)); font-weight: 800; color: #85c9ff;
+}
+.esc-mk-lbl { font-style: normal; font-size: .75em; opacity: .85; }
+.esc-mk.is-mm { color: #ff8a7a; }
+.esc-mm { box-shadow: inset 0 0 0 2px rgba(224, 90, 74, .75); }
+.esc-cur { outline: 2px dashed var(--gold); outline-offset: -3px; }
+.esc-dl { font-size: calc(12px * var(--esc-k)); font-weight: 800; }
+
+.esc-sub {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    margin: 4px 0 8px; padding: 7px 10px; border-radius: 9px;
+    background: rgba(201, 168, 76, .09); color: var(--muted); font-size: calc(12px * var(--esc-k));
+}
+.esc-sub b { color: var(--gold); font-size: calc(15px * var(--esc-k)); }
+.esc-sub small { font-weight: 700; font-size: .9em; }
+
+.esc-foot {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    font-size: calc(12px * var(--esc-k));
+}
+.esc-foot b { color: var(--gold); font-size: calc(17px * var(--esc-k)); }
+.esc-topar { font-weight: 800; }
+
+/* ═══ СЧЁТНАЯ КАРТОЧКА ПО ЛУНКАМ (.esc-hole) ═══════════════════════════ */
+
+/* v1 · Бланк клуба: таблица, как в бумажной карточке */
+.esc-v1 .esc-blank + .esc-blank { margin-top: 12px; }
+.esc-v1 .esc-cap { margin-top: 0; }
+.esc-v1 .esc-tbl {
+    width: 100%; min-width: 400px; border-collapse: collapse; table-layout: fixed;
+    text-align: center; font-size: calc(12px * var(--esc-k));
+}
+.esc-v1 .esc-tbl th, .esc-v1 .esc-tbl td {
+    height: 34px; padding: 5px 2px; border: 1px solid var(--border); vertical-align: middle;
+}
+.esc-v1 .esc-tbl th[scope="row"] {
+    position: sticky; left: 0; z-index: 1; width: 62px; padding-left: 6px; text-align: left;
+    background: var(--card); color: var(--muted); font-size: calc(11px * var(--esc-k)); font-weight: 700; white-space: nowrap;
+}
+.esc-v1 .esc-tr-h td.esc-hn { background: var(--gold); color: #142017; font-weight: 800; }
+.esc-v1 .esc-tr-p td { color: var(--muted); }
+.esc-v1 .esc-tr-s td.esc-tc { height: 46px; }
+.esc-v1 .esc-tr-s .esc-val { font-size: calc(18px * var(--esc-k)); }
+.esc-v1 .esc-tr-m td { color: #85c9ff; font-weight: 700; }
+.esc-v1 .esc-tsum { width: 46px; background: rgba(201, 168, 76, .12); color: var(--gold); font-weight: 800; }
+.esc-v1 .esc-tr-h .esc-tsum { background: var(--gold-l); color: #142017; }
+.esc-v1 td.esc-cur { outline: 2px dashed var(--gold); outline-offset: -3px; }
+
+/* v2 · Тройки: блоки по три лунки */
+.esc-v2 .esc-trio {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;
+    margin-bottom: 8px; padding: 6px; border: 1px solid var(--border); border-radius: 12px;
+    background: rgba(255, 255, 255, .02);
+}
+.esc-v2 .esc-trio-c {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    min-width: 0; padding: 9px 4px; border-radius: 10px; background: rgba(255, 255, 255, .04);
+}
+.esc-v2 .esc-trio-no { font-size: calc(14px * var(--esc-k)); font-weight: 900; color: var(--gold); }
+.esc-v2 .esc-trio-par { font-size: calc(10.5px * var(--esc-k)); color: var(--muted); }
+.esc-v2 .esc-trio-c .esc-val { font-size: calc(24px * var(--esc-k)); min-width: 2.1em; }
+@media (min-width: 560px) {
+    .esc-v2 .esc-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .esc-v2 .esc-trio { margin-bottom: 0; }
+    .esc-v2 .esc-body > .esc-sub { grid-column: 1 / -1; margin: 0; }
+}
+
+/* v3 · Лента: крупные колонки, прокрутка вправо */
+.esc-v3 .esc-rb { display: flex; flex-direction: column; gap: 4px; min-width: max-content; }
+.esc-v3 .esc-rb-row { display: flex; align-items: stretch; gap: 4px; }
+.esc-v3 .esc-rb-lbl {
+    position: sticky; left: 0; z-index: 2; flex: 0 0 58px; display: flex; align-items: center; padding-right: 6px;
+    background: var(--card); color: var(--muted); font-size: calc(10.5px * var(--esc-k)); font-weight: 800;
+    text-transform: uppercase; letter-spacing: .3px;
+}
+.esc-v3 .esc-rb-cell {
+    flex: 0 0 52px; min-height: 38px; display: flex; align-items: center; justify-content: center;
+    border-radius: 9px; background: rgba(255, 255, 255, .04); font-size: calc(13px * var(--esc-k)); font-weight: 700;
+}
+.esc-v3 .esc-rb-n { background: rgba(201, 168, 76, .18); color: var(--gold); font-weight: 900; }
+.esc-v3 .esc-rb-par .esc-rb-cell { color: var(--muted); font-size: calc(12px * var(--esc-k)); }
+.esc-v3 .esc-rb-sc .esc-rb-cell { min-height: 66px; }
+.esc-v3 .esc-rb-sc .esc-val { min-width: 100%; font-size: calc(26px * var(--esc-k)); }
+.esc-v3 .esc-rb-marker .esc-rb-cell { color: #85c9ff; font-weight: 800; }
+.esc-v3 .esc-rb-sum { flex-basis: 46px; background: rgba(201, 168, 76, .14); color: var(--gold); font-weight: 900; }
+.esc-v3 .esc-rb-cell.esc-cur { outline: 2px dashed var(--gold); outline-offset: -3px; }
+.esc-v3 .esc-rb-cell.esc-mm { box-shadow: inset 0 0 0 2px rgba(224, 90, 74, .75); }
+
+/* v4 · Список: одна лунка на строку, без прокрутки */
+.esc-v4 .esc-list { display: flex; flex-direction: column; gap: 6px; }
+.esc-v4 .esc-li {
+    display: grid; grid-template-columns: 38px minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 12px; background: rgba(255, 255, 255, .035); border: 1px solid rgba(255, 255, 255, .04);
+    position: relative; min-width: 0;
+}
+.esc-v4 .esc-li-no {
+    width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    background: rgba(201, 168, 76, .16); color: var(--gold); font-size: calc(15px * var(--esc-k)); font-weight: 900;
+}
+.esc-v4 .esc-li-par { color: var(--muted); font-size: calc(12px * var(--esc-k)); white-space: nowrap; }
+.esc-v4 .esc-li-sc { justify-self: end; }
+.esc-v4 .esc-li-sc .esc-val { font-size: calc(24px * var(--esc-k)); min-width: 2.1em; }
+.esc-v4 .esc-li-d { min-width: 2.2em; text-align: center; font-size: calc(14px * var(--esc-k)); }
+.esc-v4 .esc-li-mk { color: #85c9ff; font-size: calc(12px * var(--esc-k)); white-space: nowrap; }
+.esc-v4 .esc-li.esc-cur { outline: 2px dashed var(--gold); outline-offset: -2px; }
+.esc-v4 .esc-li.esc-mm { box-shadow: inset 0 0 0 2px rgba(224, 90, 74, .75); }
+.esc-v4 .esc-sub-row { margin: 2px 0 2px; }
+
+/* v5 · Плитки: счёт в центре плитки */
+.esc-v5 .esc-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 340px) { .esc-v5 .esc-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.esc-v5 .esc-tile {
+    position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 106px;
+    padding: 8px 6px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255, 255, 255, .04);
+}
+.esc-v5 .esc-tile-top { display: flex; justify-content: space-between; align-items: center; gap: 4px; font-size: calc(11px * var(--esc-k)); color: var(--muted); }
+.esc-v5 .esc-tile-top b { color: var(--gold); font-size: calc(14px * var(--esc-k)); }
+.esc-v5 .esc-tile-sc { display: flex; justify-content: center; align-items: center; flex: 1 1 auto; }
+.esc-v5 .esc-tile-sc .esc-val { font-size: calc(34px * var(--esc-k)); min-width: 1.6em; padding: .02em .2em; }
+.esc-v5 .esc-tile-bot { display: flex; justify-content: space-between; align-items: center; gap: 4px; font-size: calc(11px * var(--esc-k)); }
+.esc-v5 .esc-tile.esc-cur { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(201, 168, 76, .35); outline: none; }
+.esc-v5 .esc-tile.esc-mm { box-shadow: inset 0 0 0 2px rgba(224, 90, 74, .75); }
+.esc-v5 .esc-sub-tile { grid-column: 1 / -1; margin: 0; }
+
+/* ═══ ОБЩАЯ КАРТОЧКА ГРУППЫ (.esc-general) ═════════════════════════════ */
+
+.esc-gtbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: calc(12px * var(--esc-k)); text-align: center; }
+.esc-gtbl th, .esc-gtbl td { padding: 6px 5px; border-bottom: 1px solid rgba(255, 255, 255, .06); vertical-align: middle; }
+.esc-gtbl thead th { background: rgba(201, 168, 76, .14); border-bottom: 1px solid var(--border); vertical-align: top; color: var(--gold); }
+.esc-gh {
+    position: sticky; left: 0; z-index: 1; min-width: 84px; padding-left: 8px !important; text-align: left;
+    background: var(--card); color: var(--gold); font-weight: 800; white-space: nowrap;
+}
+.esc-gtbl thead th.esc-gh { z-index: 2; background: rgba(201, 168, 76, .14); }
+.esc-gp { min-width: 104px; border-left: 1px solid rgba(255, 255, 255, .06); }
+.esc-pn { display: block; font-size: calc(12px * var(--esc-k)); font-weight: 700; line-height: 1.2; color: var(--white); overflow-wrap: anywhere; }
+.esc-pn-t { display: block; }
+.esc-pb { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 4px; }
+.esc-pb .tee-pill { font-size: 9px; padding: 1px 6px; }
+.esc-pb .hcp-chip { font-size: 9.5px; padding: 1px 6px; }
+.esc-gc { position: relative; min-width: 60px; height: 46px; border-left: 1px solid rgba(255, 255, 255, .04); }
+.esc-gc .esc-val { font-size: calc(15px * var(--esc-k)); }
+.esc-gc .esc-mk { display: flex; margin-top: 2px; font-size: calc(10.5px * var(--esc-k)); }
+.esc-gc.esc-cur { outline: 2px dashed rgba(201, 168, 76, .75); outline-offset: -2px; }
+.esc-gr-cur .esc-gh { box-shadow: inset 3px 0 0 var(--gold); }
+.esc-gsub th, .esc-gsub td { background: rgba(255, 255, 255, .06); font-weight: 700; }
+.esc-gsub small { font-size: 11px; font-weight: 700; }
+.esc-gtot th, .esc-gtot td { background: rgba(201, 168, 76, .16); border-top: 2px solid var(--gold); border-bottom: none; }
+.esc-gtot-g { font-size: calc(16px * var(--esc-k)); font-weight: 800; color: var(--white); }
+.esc-gtot-tp { font-size: calc(13px * var(--esc-k)); font-weight: 800; }
+.esc-gtot-p { font-size: 10.5px; color: var(--muted); }
+.esc-gfoot {
+    display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    font-size: calc(11.5px * var(--esc-k)); color: var(--muted);
+}
+.esc-gfoot .esc-thru { overflow-wrap: anywhere; }
+.esc-gfoot .esc-thru b { color: var(--white); font-weight: 600; }
+
+/* g1 · Таблица клуба — уже использована в .esc-body; ширину задаёт JS (min-width) */
+
+/* g2 · Блоки по 9 */
+.esc-v2 .esc-gblock + .esc-gblock { margin-top: 12px; }
+.esc-general.esc-v2 .esc-gtbl { table-layout: fixed; min-width: calc(74px + var(--esc-n, 2) * 104px); }
+.esc-general.esc-v2 .esc-gh { width: 74px; min-width: 74px; }
+.esc-general.esc-v2 .esc-gp { min-width: 104px; }
+.esc-general.esc-v2 .esc-gblock-tot .esc-gtbl td { padding-top: 8px; }
+
+/* g3 · Строки игроков */
+.esc-general.esc-v3 .esc-prow { min-width: max-content; }
+.esc-general.esc-v3 .esc-prow th.esc-pl {
+    position: sticky; left: 0; z-index: 1; min-width: 124px; padding-left: 8px; text-align: left;
+    background: var(--card); white-space: normal;
+}
+.esc-general.esc-v3 .esc-prow thead th.esc-pl { z-index: 2; background: rgba(201, 168, 76, .14); }
+.esc-general.esc-v3 .esc-gn { min-width: 36px; width: 36px; padding: 6px 2px; font-size: 11px; }
+.esc-general.esc-v3 .esc-gn.esc-cur { outline: 2px dashed var(--gold); outline-offset: -3px; }
+.esc-general.esc-v3 .esc-gn-c { min-width: 38px; height: 44px; padding: 4px 2px; }
+.esc-general.esc-v3 .esc-gn-c .esc-val { font-size: calc(14px * var(--esc-k)); }
+.esc-general.esc-v3 .esc-gn-c .esc-mk { font-size: 10px; }
+.esc-general.esc-v3 .esc-gn-par { color: var(--muted); font-size: 11px; }
+.esc-general.esc-v3 .esc-gpar th, .esc-general.esc-v3 .esc-gpar td { font-size: 11px; color: var(--muted); }
+.esc-general.esc-v3 .esc-gsubh, .esc-general.esc-v3 .esc-gsubc { background: rgba(201, 168, 76, .12); color: var(--gold); font-weight: 800; }
+.esc-general.esc-v3 .esc-gtot-c { min-width: 78px; background: rgba(201, 168, 76, .14); }
+
+/* g4 · Карточки игроков */
+.esc-general.esc-v4 .esc-pcards { display: grid; gap: 12px; }
+.esc-general.esc-v4 .esc-pcard {
+    min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255, 255, 255, .02);
+}
+.esc-general.esc-v4 .esc-pc-h {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.esc-general.esc-v4 .esc-pc-n { flex: 1 1 auto; min-width: 0; font-size: calc(14px * var(--esc-k)); color: var(--white); overflow-wrap: anywhere; }
+.esc-general.esc-v4 .esc-pc-t { margin-left: auto; font-size: calc(12px * var(--esc-k)); font-weight: 700; color: var(--muted); }
+.esc-general.esc-v4 .esc-pc-t b { font-size: calc(15px * var(--esc-k)); }
+.esc-general.esc-v4 .esc-pgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 640px) { .esc-general.esc-v4 .esc-pgrid { grid-template-columns: repeat(9, minmax(0, 1fr)); } }
+.esc-general.esc-v4 .esc-pg {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0;
+    padding: 6px 4px; border-radius: 10px; background: rgba(255, 255, 255, .04);
+}
+.esc-general.esc-v4 .esc-pg-no { font-size: calc(11px * var(--esc-k)); font-weight: 800; color: var(--gold); }
+.esc-general.esc-v4 .esc-pg-par { font-size: calc(10px * var(--esc-k)); color: var(--muted); }
+.esc-general.esc-v4 .esc-pg-sc .esc-val { font-size: calc(20px * var(--esc-k)); }
+.esc-general.esc-v4 .esc-pg-sub { grid-column: 1 / -1; margin: 0; }
+.esc-general.esc-v4 .esc-pc-f { margin-top: 8px; font-size: calc(11.5px * var(--esc-k)); color: var(--muted); }
+.esc-general.esc-v4 .esc-pg.esc-cur { outline: 2px dashed var(--gold); outline-offset: -2px; }
+
+/* g5 · Плитки лунок */
+.esc-general.esc-v5 .esc-gtiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 520px) { .esc-general.esc-v5 .esc-gtiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.esc-general.esc-v5 .esc-gt { min-width: 0; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255, 255, 255, .03); }
+.esc-general.esc-v5 .esc-gt.esc-cur { border-color: var(--gold); }
+.esc-general.esc-v5 .esc-gt-h {
+    display: flex; justify-content: space-between; align-items: center; gap: 4px; margin-bottom: 6px; padding: 0 2px 6px;
+    border-bottom: 1px dashed var(--border); font-size: calc(11px * var(--esc-k)); color: var(--muted);
+}
+.esc-general.esc-v5 .esc-gt-h b { font-size: calc(14px * var(--esc-k)); color: var(--gold); }
+.esc-general.esc-v5 .esc-gt-l { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.esc-general.esc-v5 .esc-gt-r {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px;
+    padding: 3px 4px; border-radius: 8px; background: rgba(255, 255, 255, .03);
+}
+.esc-general.esc-v5 .esc-gt-r.esc-cur { outline: 1px dashed var(--gold); outline-offset: -1px; }
+.esc-general.esc-v5 .esc-gt-r.esc-mm { box-shadow: inset 0 0 0 2px rgba(224, 90, 74, .75); }
+.esc-general.esc-v5 .esc-gt-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(11px * var(--esc-k)); color: var(--white); }
+.esc-general.esc-v5 .esc-gt-r .esc-val { font-size: calc(14px * var(--esc-k)); min-width: 1.8em; }
+.esc-general.esc-v5 .esc-gt-r .esc-mk { font-size: calc(10px * var(--esc-k)); }
+.esc-general.esc-v5 .esc-gt-sub {
+    grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px;
+    padding: 8px 10px; border-radius: 10px; background: rgba(201, 168, 76, .10); font-size: calc(11.5px * var(--esc-k)); color: var(--muted);
+}
+.esc-general.esc-v5 .esc-gt-sub em { font-style: normal; }
+.esc-general.esc-v5 .esc-gt-sub b { color: var(--gold); }
+.esc-general.esc-v5 .esc-gt-f { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: calc(12px * var(--esc-k)); }
+.esc-general.esc-v5 .esc-gt-f b { color: var(--white); }
+.esc-general.esc-v5 .esc-gt-f i { font-style: normal; font-weight: 800; }
+
+/* ═══ АДМИНКА: вкладка «Карточки на вводе» ═════════════════════════════ */
+
+.esc-admin-kind { margin-top: 6px; padding-top: 14px; border-top: 1px dashed rgba(201, 168, 76, .25); }
+.esc-admin-kind:first-of-type { border-top: none; padding-top: 0; }
+.esc-admin-variants { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 6px 0 12px; }
+.esc-var-btn {
+    position: relative; display: flex; flex-direction: column; gap: 8px; min-height: 56px; padding: 11px; text-align: left;
+    border-radius: 14px; border: 1px solid rgba(201, 168, 76, .24); cursor: pointer; font-family: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .012)); color: var(--text);
+    transition: border-color .15s ease, background .15s ease;
+}
+.esc-var-btn:hover { border-color: rgba(201, 168, 76, .6); }
+.esc-var-btn.is-on { border-color: var(--gold-l); background: linear-gradient(180deg, rgba(201, 168, 76, .17), rgba(201, 168, 76, .05)); box-shadow: 0 0 0 1px rgba(201, 168, 76, .3); }
+.esc-var-top { display: flex; align-items: center; gap: 8px; padding-right: 22px; }
+.esc-var-num {
+    width: 22px; height: 22px; border-radius: 7px; flex: none; display: flex; align-items: center; justify-content: center;
+    font-size: 11.5px; font-weight: 800; color: var(--gold-l); background: rgba(201, 168, 76, .14); border: 1px solid rgba(201, 168, 76, .4);
+}
+.esc-var-btn.is-on .esc-var-num { color: #101d13; background: linear-gradient(150deg, #e6cd77, #c9a84c); border-color: transparent; }
+.esc-var-name { font-size: 13px; font-weight: 800; color: var(--white); }
+.esc-var-desc { font-size: 11.5px; line-height: 1.45; color: var(--muted); font-weight: 500; }
+.esc-var-check {
+    position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #101d13; background: linear-gradient(150deg, #e6cd77, #b89228); opacity: 0; transform: scale(.4); transition: transform .15s ease, opacity .15s ease;
+}
+.esc-var-btn.is-on .esc-var-check { opacity: 1; transform: scale(1); }
+
+.esc-thumb {
+    display: flex; flex-direction: column; gap: 3px; width: 100%; height: 58px; padding: 6px; overflow: hidden;
+    border-radius: 9px; background: linear-gradient(180deg, rgba(8, 19, 11, .92), rgba(13, 26, 16, .7)); border: 1px solid rgba(201, 168, 76, .2);
+}
+.esc-th-r { display: flex; gap: 3px; flex: 1 1 0; min-height: 0; }
+.esc-th-c { flex: 1 1 0; min-width: 0; border-radius: 3px; background: rgba(255, 255, 255, .1); border: 1px solid rgba(201, 168, 76, .22); }
+.esc-th-c.g { background: linear-gradient(150deg, #e6cd77, #b89228); border-color: transparent; }
+.esc-th-c.l { flex: 0 0 16%; background: rgba(201, 168, 76, .2); }
+.esc-th-c.b { background: rgba(133, 201, 255, .35); border-color: rgba(133, 201, 255, .5); }
+.esc-th-c.h { background: rgba(201, 168, 76, .32); }
+.esc-th-c.n { flex: 0 0 14%; }
+.esc-th-c.w { flex: 2 1 0; }
+.esc-th-c.r { background: rgba(224, 90, 74, .5); }
+
+.esc-seg { display: inline-flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
+.esc-seg button {
+    min-width: 92px; min-height: 44px; padding: 8px 12px; border-radius: 11px; font-family: inherit; font-size: 12.5px; font-weight: 700;
+    border: 1px solid var(--border); background: rgba(255, 255, 255, .03); color: var(--text); cursor: pointer;
+}
+.esc-seg button.is-on { border-color: var(--gold-l); background: rgba(201, 168, 76, .16); color: var(--gold-l); }
+.esc-tn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 8px; }
+.esc-tn-row > span { min-width: 100%; font-size: 12px; color: var(--muted); font-weight: 700; }
+.esc-tn-row button {
+    min-width: 56px; min-height: 44px; padding: 6px 10px; border-radius: 10px; font-family: inherit; font-size: 12.5px; font-weight: 700;
+    border: 1px solid var(--border); background: rgba(255, 255, 255, .03); color: var(--text); cursor: pointer;
+}
+.esc-tn-row button.is-on { border-color: var(--gold-l); background: rgba(201, 168, 76, .16); color: var(--gold-l); }
+.esc-preview-phone {
+    width: 390px; max-width: 100%; margin: 10px auto 4px; padding: 8px; border: 1px solid var(--gold); border-radius: 22px;
+}
+.esc-preview-phone .esc { margin: 0; }
+.esc-preview-phone .esc-scroll[tabindex] { outline-offset: 2px; }
+.esc-admin-note { margin: 4px 0 10px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.esc-admin-checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 6px 0 12px; }
+.esc-chk {
+    display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 10px; border-radius: 10px;
+    border: 1px solid var(--border); background: rgba(255, 255, 255, .02); font-size: 13px; cursor: pointer;
+}
+.esc-chk input { width: 18px; height: 18px; flex: none; accent-color: var(--gold); }
+
+/* ── Узкие экраны: ничего не выходит за ширину телефона ───────────── */
+@media (max-width: 380px) {
+    .esc { padding: 8px; }
+    .esc-v2 .esc-trio { gap: 4px; padding: 4px; }
+    .esc-v2 .esc-trio-c .esc-val { font-size: calc(20px * var(--esc-k)); }
+    .esc-v4 .esc-li { grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: 6px; }
+    .esc-v4 .esc-li-no { width: 30px; height: 30px; }
+    .esc-general.esc-v4 .esc-pgrid { gap: 4px; }
+}

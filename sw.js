@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.113.0-e753fbb6';
+const CACHE_NAME = 'pestovo-v1.114.0-da244c85';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -40,6 +40,7 @@ const STATIC_ASSETS = [
 
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
     'css/design-presets.css?v=77ff3916',
+    'css/entry-scorecard.css?v=a34f8c94',
     'css/style.css?v=5f3b4ad3',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=3f88226b',
@@ -48,10 +49,11 @@ const STATIC_ASSETS = [
     'js/auth.js?v=3a96f309',
     'js/design-preview.js?v=eb236661',
     'js/design-system.js?v=5a11adfa',
+    'js/entry-scorecard.js?v=9b8c4167',
     'js/firebase-config.js?v=57564a0d',
     'js/handicap.js?v=ad1e9c00',
     'js/leaderboard.js?v=9cf88be2',
-    'js/live.js?v=5c036b79',
+    'js/live.js?v=3bc463db',
     'js/marker.js?v=5408d53e',
     'js/name-variants.js?v=2b58f796',
     'js/players.js?v=4a812e43',
@@ -63,7 +65,7 @@ const STATIC_ASSETS = [
     'js/rusgolf-client.js?v=f37608e7',
     'js/score-write.js?v=7117f8ef',
     'js/scorer.js?v=647ba4dd',
-    'js/solo.js?v=878d85f8',
+    'js/solo.js?v=71d4daee',
     'js/stats.js?v=aaab451a',
     'js/tn-scorecard.js?v=7c9a112d',
     'js/tn-studio-core.js?v=59388560',

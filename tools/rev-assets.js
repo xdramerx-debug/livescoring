@@ -145,7 +145,7 @@ const lines = [];
 lines.push(BEGIN);
 lines.push('const STATIC_ASSETS = [');
 lines.push('    // Страницы');
-pages.forEach(function (u, i) { lines.push('    \'' + u + '\','); });
+pages.forEach(function (u) { lines.push('    \'' + u + '\','); });
 lines.push('');
 lines.push('    // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)');
 assets.forEach(function (u) { lines.push('    \'' + u + '\','); });

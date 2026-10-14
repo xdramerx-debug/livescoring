@@ -75,6 +75,13 @@ function makeRef() {
     return ref;
 }
 
+// js/utils.js в этой песочнице не загружается, а скрипт страницы при
+// вычислении регистрирует хук готовности авторизации через
+// pestovoOnAuthReady() (аудит 2026-10, п.13). Минимальный реестр повторяет
+// поведение utils.js: navAuth здесь не нужен, тесты проверяют не навигацию.
+win.__authHooks = [];
+win.pestovoOnAuthReady = function (fn) { if (typeof fn === 'function') win.__authHooks.push(fn); };
+win.onAuthReady = function (u, d) { win.__authHooks.forEach(function (f) { f(u, d); }); };
 win.eval(fs.readFileSync(path.join(ROOT, 'js/name-variants.js'), 'utf8'));
 win.eval(fs.readFileSync(path.join(ROOT, 'js/admin.js'), 'utf8'));
 win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-players.js'), 'utf8'));

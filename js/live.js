@@ -1,38 +1,9 @@
+// isScoreKioskUrl()/applyScoreKiosk() вынесены в js/score-kiosk.js —
+// общая реализация для scorer.html и setup-round.html (аудит 2026-10, п.13).
 var curRid = null;
 var curRoundData = null;
 var registeredUsers = {};
-var availableTournaments = {};
 function lGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
-
-// QR турнира (?round=&as= / ?player=): компактная шапка и доступное меню.
-function isScoreKioskUrl() {
-    try {
-        var q = new URLSearchParams(window.location.search);
-        return !!(q.get('round') && (q.get('as') || q.get('player')));
-    } catch (e) { return false; }
-}
-function applyScoreKiosk() {
-    if (!isScoreKioskUrl()) return false;
-    try {
-        document.documentElement.classList.add('score-kiosk');
-        var nav = document.getElementById('main-nav');
-        if (nav) nav.classList.remove('hidden');
-        if (typeof applyNavHeight === 'function') applyNavHeight();
-        // Шапка теперь всегда видна, но компактная — даже в киоск-режиме (QR)
-        ['my-active-rounds-container'].forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.classList.add('hidden');
-        });
-        var ph = document.getElementById('page-head');
-        if (ph) {
-            ph.classList.remove('hidden');
-            ph.classList.add('scoring-compact');
-        }
-        var hideSel = document.querySelectorAll('footer, .footer');
-        for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
-    } catch (e) { console.warn("[silent]", e); }
-    return true;
-}
 
 // Переменные активной игры
 var playHole = 1;
@@ -285,8 +256,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // погодный виджет инициализируется в initNav() с правильным контейнером
 });
 
-function onAuthReady(u, d) {
-    navAuth(u, d);
+// Хук готовности авторизации: navAuth вызывается базовой onAuthReady (js/utils.js),
+// здесь только логика страницы (аудит 2026-10, п.13).
+pestovoOnAuthReady(function (u, d) {
     // Доступ участника мог определиться только после входа в аккаунт:
     // если слушатель уже подписан как гость — перепроверяем права с учётом uid.
     if (roundViewListening && u && myUid === null && curRoundData) {
@@ -296,7 +268,8 @@ function onAuthReady(u, d) {
     bootRoundViewOnce();
     // Дефолты формы одиночного раунда (обе вкладки живут на одной странице)
     if (typeof soloAuthReady === 'function') soloAuthReady(u, d);
-}
+});
+
 
 // ==========================================
 // ВКЛАДКИ РЕЖИМА: ОДИНОЧНЫЙ / ГРУППОВОЙ

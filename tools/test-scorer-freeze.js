@@ -21,14 +21,8 @@ function eq(actual, expected, label) {
     else console.log('ok  -', label);
 }
 
-function makeDeferred() {
-    let resolve, reject;
-    const promise = new Promise(function (res, rej) { resolve = res; reject = rej; });
-    return { promise, resolve, reject };
-}
-
 // ── Сборка песочницы для конкретной страницы (scorer | marker) ──
-function buildSandbox(scriptName, domIds) {
+function buildSandbox(scriptName, _domIds) {
     const els = {};
     function fakeEl(id) {
         return {
@@ -47,7 +41,6 @@ function buildSandbox(scriptName, domIds) {
         };
     }
     function getEl(id) { if (!els[id]) els[id] = fakeEl(id); return els[id]; }
-    const store = {};
     const dbWrites = [];
     const dbState = { sets: dbWrites, round: null };
     function makeRef(p) {

@@ -63,7 +63,9 @@ win.navigator.vibrate = () => {};
 // safe-html → dom → i18n → official-alerts). Без i18n.js страница падала
 // бы на первом же обращении к currentLang.
 ['js/course-config.js', 'js/format.js', 'js/date-range.js', 'js/safe-html.js',
-    'js/dom.js', 'js/i18n.js', 'js/official-alerts.js', 'js/utils.js', 'js/live.js',
+    'js/dom.js', 'js/i18n.js', 'js/official-alerts.js', 'js/utils.js',
+    // Киоск-режим вынесен из live.js/scorer.js в общий модуль (аудит 2026-10, п.13).
+    'js/score-kiosk.js', 'js/live.js',
     // Остальные классические скрипты страницы — порядок как в setup-round.html:
     // запись счёта (score-write.js) и одиночный раунд (solo.js) нужны live.js.
     'js/solo.js', 'js/round-setup.js', 'js/score-write.js'].forEach(function (rel) {

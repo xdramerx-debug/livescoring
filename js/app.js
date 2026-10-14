@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // погодный виджет инициализируется в initNav() с правильным контейнером
 });
 
-
 // Чипы с гандикапами игрока — показываются рядом с именем
 // в списках на главной странице: точный и полевой.
 // Отображение: ТИ, точный гандикап, полевой гандикап
@@ -391,41 +390,9 @@ function buildStartHintHTML(nine, isEn) {
 
 // Блок перерисовывается в реальном времени, поэтому состояние раскрытия
 // строк храним отдельно от DOM и дублируем в localStorage.
-// liveWho* — состояние строки ОТДЕЛЬНОГО игрока (наследие режима «строка на
-// игрока»). С версии 1.61 и соло-, и групповые раунды сворачиваются общим
-// состоянием liveRoundOpen; эти функции оставлены для совместимости.
-var liveWhoOpen = {};
 // Последние данные раундов из подписки: перерисовка списка и открытие счётной
 // карточки не должны делать повторных запросов к БД.
 var cachedRoundsById = {};
-
-function liveWhoStoreKey(roundId, pid) { return 'pestovo_live_who_open_' + roundId + '_' + pid; }
-
-function getLiveWhoOpen(roundId, pid) {
-    var k = roundId + ':' + pid;
-    if (Object.prototype.hasOwnProperty.call(liveWhoOpen, k)) return liveWhoOpen[k];
-    var saved = null;
-    try { saved = localStorage.getItem(liveWhoStoreKey(roundId, pid)); } catch (e) { console.warn("[silent]", e); }
-    // По умолчанию строка свёрнута: постоянно виден только «кто на поле»
-    liveWhoOpen[k] = (saved === '1');
-    return liveWhoOpen[k];
-}
-
-function setLiveWhoOpen(roundId, pid, open, persist) {
-    liveWhoOpen[roundId + ':' + pid] = !!open;
-    if (persist !== false) {
-        try { localStorage.setItem(liveWhoStoreKey(roundId, pid), open ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
-    }
-}
-
-function applyLiveWhoOpenUI(row, open) {
-    if (!row) return;
-    row.classList.toggle('is-open', !!open);
-    var chev = row.querySelector('.lwl-chev');
-    if (chev) chev.className = 'fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down');
-    var tg = row.querySelector('.lwl-toggle');
-    if (tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
-}
 
 // Состояние свёрнутой строки РАУНДА (групповой раунд = один блок на группу).
 // Игроки группы больше не рисуются отдельными строками: на главной один
@@ -474,19 +441,6 @@ function liveRoundKey(ev, id) {
         ev.preventDefault();
         toggleLiveRound(id);
     }
-}
-
-function toggleLiveWho(roundId, pid) {
-    var rows = document.querySelectorAll('.lwl-row[data-round-id][data-pid]');
-    var row = null;
-    for (var i = 0; i < rows.length; i++) {
-        if (rows[i].getAttribute('data-round-id') === String(roundId) &&
-            rows[i].getAttribute('data-pid') === String(pid)) { row = rows[i]; break; }
-    }
-    var open = row ? !row.classList.contains('is-open') : !getLiveWhoOpen(roundId, pid);
-    setLiveWhoOpen(roundId, pid, open);
-    applyLiveWhoOpenUI(row, open);
-    if (typeof vib === 'function') vib(15);
 }
 
 // Строка доступна с клавиатуры: Enter и Space работают как клик

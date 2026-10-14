@@ -1,3 +1,5 @@
+// isScoreKioskUrl()/applyScoreKiosk() вынесены в js/score-kiosk.js —
+// общая реализация для scorer.html и setup-round.html (аудит 2026-10, п.13).
 var scRid = null, scPid = null, scRound = null;
 var scHole = 1, scScore = 0, scMarker = {};
 var scChanging = false;
@@ -6,34 +8,6 @@ var scPaceTimer = null;
 
 function scGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 
-function isScoreKioskUrl() {
-    try {
-        var q = new URLSearchParams(window.location.search);
-        return !!(q.get('round') && (q.get('as') || q.get('player')));
-    } catch (e) { return false; }
-}
-function applyScoreKiosk() {
-    if (!isScoreKioskUrl()) return false;
-    try {
-        document.documentElement.classList.add('score-kiosk');
-        var nav = document.getElementById('main-nav');
-        if (nav) nav.classList.remove('hidden');
-        if (typeof applyNavHeight === 'function') applyNavHeight();
-        ['my-active-rounds-container'].forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.classList.add('hidden');
-        });
-        // Шапка остаётся видимой компактной
-        var ph = document.querySelector('.page-head');
-        if (ph) {
-            ph.classList.remove('hidden');
-            ph.classList.add('scoring-compact');
-        }
-        var hideSel = document.querySelectorAll('footer, .footer');
-        for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
-    } catch (e) { console.warn("[silent]", e); }
-    return true;
-}
 
 document.addEventListener('pestovo-stableford-default-change', function() {
     if (!scRound) return;
@@ -66,10 +40,11 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
     });
 }
 
-function onAuthReady(user, data) {
-    if (typeof navAuth === 'function') navAuth(user, data);
+// Хук готовности авторизации: navAuth вызывается базовой onAuthReady (js/utils.js),
+// здесь только загрузка данных раунда игрока (аудит 2026-10, п.13).
+pestovoOnAuthReady(function (user, data) {
     if (user && scRid && scPid && !(typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) loadSc();
-}
+});
 
 var scLoadStarted = false;
 function loadSc() {

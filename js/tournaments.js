@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() { initNav(); loadTournaments(); });
-function onAuthReady(u, d) { navAuth(u, d); loadTournaments(); }
+// onAuthReady здесь больше не объявляется: на tournaments.html это объявление
+// было мёртвым — его перекрывал root.onAuthReady из tournament-public.js,
+// который подключён позже. Загрузку списка делает init() на DOMContentLoaded
+// и хук V2 (аудит 2026-10, п.13).
 
 function tGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 

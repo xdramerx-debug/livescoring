@@ -33,10 +33,11 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
     });
 }
 
-function onAuthReady(user, data) {
-    if (typeof navAuth === 'function') navAuth(user, data);
+// Хук готовности авторизации: navAuth вызывается базовой onAuthReady (js/utils.js),
+// здесь только загрузка данных раунда маркера (аудит 2026-10, п.13).
+pestovoOnAuthReady(function (user, data) {
     if (user && mkRid && mkPid && !(typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) loadMk();
-}
+});
 
 var mkLoadStarted = false;
 function loadMk() {

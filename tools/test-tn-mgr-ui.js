@@ -264,12 +264,6 @@ function participants(tid) {
 function playerByFio(tid, fio) {
     return participants(tid).filter(function (p) { return p.fio === fio; })[0] || null;
 }
-function tournamentRounds(tid) {
-    var rounds = get('rounds') || {};
-    return Object.keys(rounds).filter(function (rid) {
-        return String(rounds[rid].tournamentId || '') === String(tid);
-    });
-}
 
 function run() {
     console.log('=== Вкладка «Турниры 🏆»: сценарий организатора ===\n');

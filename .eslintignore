@@ -1,2 +1,4 @@
 # Third-party QR encoder retained with its upstream license/header.
 js/vendor/**
+# Артефакт деплоя: минифицированное зеркало сайта (см. tools/build-public.js).
+public/**

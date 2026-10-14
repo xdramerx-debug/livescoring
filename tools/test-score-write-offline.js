@@ -52,7 +52,7 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0));
     // Прямой RTDB fallback при недоступности Cloud Functions (не задеплоена, internal, unavailable)
     const dbUpdates = [];
     window.db = {
-        ref: path => ({
+        ref: _path => ({
             once: () => Promise.resolve({ val: () => ({ players: { p2: { name: 'Player 2', scores: {} } } }) }),
             update: updates => { dbUpdates.push(updates); return Promise.resolve(); }
         })

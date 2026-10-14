@@ -1,16 +1,16 @@
 // Tournament player card: tournament metadata and totals wrap the shared
 // renderClubScorecard screen renderer. The five styles are managed in the
 // dedicated admin tab via settings/scorecard_view, just like all other screens.
-// Legacy V1/V2/V3 helpers below remain for compatibility; tnScRender no longer
-// uses settings/tn_scorecard_variant or an independent in-modal switcher.
+// Вариант оформления берётся только из settings/scorecard_view (вкладка
+// «Отображение карточек» в админке): прежние legacy-рендеры V1/V2/V3 и
+// локальный переключатель внутри модалки удалены как мёртвый код (аудит 2026-10).
 // Data comes from the same rounds snapshot as the tournament leaderboard.
 'use strict';
 
 var tnScState = {
     tnId: null,
     key: null,
-    cards: {},       // tnId → { fioKey: cardData }
-    variant: null    // локальное переопределение варианта (кнопки в модалке)
+    cards: {}        // tnId → { fioKey: cardData }
 };
 
 function tnScL(ru, en) {
@@ -59,16 +59,6 @@ function tnScStbl(strokes, h, fieldHcp) {
     }
     return 0;
 }
-// Цвет лунки по результату относительно пара.
-function tnScResultClass(strokes, par) {
-    var d = strokes - par;
-    if (strokes <= 0) return 'na';
-    if (d <= -2) return 'eagle';
-    if (d === -1) return 'birdie';
-    if (d === 0) return 'par';
-    if (d === 1) return 'bogey';
-    return 'bogey2';
-}
 function tnScFmtPlus(v) {
     if (v === null || v === undefined || isNaN(v)) return '—';
     return v > 0 ? '+' + v : (v === 0 ? 'E' : String(v));
@@ -81,22 +71,6 @@ function tnScSetCards(tnId, map) {
 function tnScGetCard(tnId, key) {
     var map = tnScState.cards[tnId] || {};
     return map[key] || null;
-}
-
-// Вид по умолчанию берётся из настройки администратора; выбор стрелками в
-// самой модалке действует, только пока админ не сменил настройку (globalSeen).
-function tnScVariant() {
-    var g = (typeof getTnCardVariant === 'function') ? getTnCardVariant() : '1';
-    if (tnScState.variant) {
-        if (tnScState.globalSeen && tnScState.globalSeen !== g) tnScState.variant = null;
-        else return tnScState.variant;
-    }
-    tnScState.globalSeen = g;
-    return g;
-}
-function tnScSetVariant(v) {
-    tnScState.variant = (['1', '2', '3'].indexOf(String(v)) !== -1) ? String(v) : '1';
-    tnScRerender();
 }
 
 // Открытая карточка должна перерисовываться, когда админ сменил вариант
@@ -136,7 +110,6 @@ function tnScOpen(tnId, key) {
     }
     tnScState.tnId = tnId;
     tnScState.key = key;
-    tnScState.variant = null; // всегда открываем вариант, выбранный админом
     var body = document.getElementById('tnsc-body');
     if (body) body.innerHTML = card ? tnScRender(card)
         : '<div class="tnsc-empty">' + tnScL('Счётная карточка не найдена.', 'Scorecard not found.') + '</div>';
@@ -194,12 +167,6 @@ function tnScHeadHtml(card, variant) {
         '<div class="tnsc-head-right">' + hcpLine + switcher + '</div>' +
         '</div>';
 }
-function tnScVariantTitle(v) {
-    if (v === '2') return tnScL('2 · Плитки лунок', '2 · Hole tiles');
-    if (v === '3') return tnScL('3 · Турнирная сводка', '3 · Tournament board');
-    return tnScL('1 · Официальный бланк', '1 · Official card');
-}
-
 // ── Итоговая строка (общая) ──
 function tnScTotalsHtml(card) {
     var t = card.totals || {};
@@ -213,151 +180,6 @@ function tnScTotalsHtml(card) {
         tile(tnScL('Стейблфорд', 'Stableford'), (t.stbl || 0), 'tnsc-tile-stbl') +
         tile(tnScL('Бёрди · Иглы', 'Birdies · Eagles'), (t.birdies || 0) + ' · ' + (t.eagles || 0), '') +
         '</div>';
-}
-
-// ── ВАРИАНТ 1 · Официальный бланк ──
-function tnScRenderV1(rounds) {
-    return rounds.map(function(rd) {
-        var order = rd.order;
-        var front = order.slice(0, 9);
-        var back = order.slice(9);
-        var hasBack = back.length > 0;
-        // Строка таблицы: метка + ячейки первых девяти + «Аут» + ячейки
-        // вторых девяти + «Ин» + «Итого». Ячейки приходят уже подписанными.
-        function row(label, cells, outV, inV, totV, cls) {
-            var html = '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="tnsc-lbl">' + label + '</td>';
-            for (var i = 0; i < front.length; i++) {
-                html += '<td' + (i === 8 && hasBack ? ' class="tnsc-sep"' : '') + '>' + (cells[i] === '' || cells[i] == null ? '' : cells[i]) + '</td>';
-            }
-            html += '<td class="tnsc-tot">' + (hasBack ? outV : '') + '</td>';
-            if (hasBack) {
-                for (var j = 9; j < order.length; j++) {
-                    html += '<td' + (j === 9 ? ' class="tnsc-sep"' : '') + '>' + (cells[j] === '' || cells[j] == null ? '' : cells[j]) + '</td>';
-                }
-                html += '<td class="tnsc-tot">' + inV + '</td>';
-            }
-            html += '<td class="tnsc-tot tnsc-tot-main">' + totV + '</td></tr>';
-            return html;
-        }
-        function sums(list, fn) {
-            var o = 0, i = 0;
-            list.forEach(function(h) {
-                var v = fn(h) || 0;
-                if (front.indexOf(h) !== -1) o += v; else i += v;
-            });
-            return { out: o, inn: i, tot: o + i };
-        }
-        var parS = sums(order, function(h) { return tnScPar(h); });
-        var scoreS = sums(order, function(h) { return tnScNum(rd.scores[h]) || 0; });
-        var netS = sums(order, function(h) {
-            var s = tnScNum(rd.scores[h]);
-            return s > 0 ? tnScNet(s, tnScPar(h), tnScSi(h), rd.fieldHcp) : 0;
-        });
-        var stblS = sums(order, function(h) {
-            var s = tnScNum(rd.scores[h]);
-            return s > 0 ? tnScStbl(s, h, rd.fieldHcp) : 0;
-        });
-
-        var head = '<tr><td class="tnsc-lbl">' +
-            (rd.startHole > 1 && hasBack ? tnScL('Лунка · порядок игры', 'Hole · play order') : tnScL('Лунка', 'Hole')) + '</td>';
-        front.forEach(function(h, idx) { head += '<th' + (idx === 8 && hasBack ? ' class="tnsc-sep"' : '') + '>' + h + '</th>'; });
-        if (hasBack) {
-            head += '<th class="tnsc-tot">' + tnScL('Аут', 'Out') + '</th>';
-            back.forEach(function(h, idx) { head += '<th' + (idx === 0 ? ' class="tnsc-sep"' : '') + '>' + h + '</th>'; });
-            head += '<th class="tnsc-tot">' + tnScL('Ин', 'In') + '</th>';
-        }
-        head += '<th class="tnsc-tot tnsc-tot-main">' + tnScL('Итого', 'Total') + '</th></tr>';
-
-        var html = '<div class="tnsc-paper">';
-        if (rd.label) html += '<div class="tnsc-round-label">' + tnScEsc(rd.label) + '</div>';
-        html += '<div class="tnsc-table-wrap"><table class="tnsc-table">' +
-            '<thead>' + head + '</thead><tbody>' +
-            row(tnScL('Пар', 'Par'), order.map(function(h) { return tnScPar(h); }), parS.out, parS.inn, parS.tot, 'tnsc-row-par') +
-            row(tnScL('Индекс', 'HCP index'), order.map(function(h) { return tnScSi(h); }), '—', '—', '—', 'tnsc-row-si') +
-            row(tnScL('HCP (удары)', 'HCP shots'), order.map(function(h) {
-                var st = tnScStrokes(rd.fieldHcp, tnScSi(h));
-                return st > 0 ? '−' + st : (st < 0 ? '+' + Math.abs(st) : '·');
-            }), '', '', '', 'tnsc-row-strokes') +
-            row(tnScL('Счёт', 'Score'), order.map(function(h) { var s = tnScNum(rd.scores[h]); return s > 0 ? s : ''; }), scoreS.out, scoreS.inn, scoreS.tot, 'tnsc-row-score') +
-            row(tnScL('Нетто', 'Net'), order.map(function(h) {
-                var s = tnScNum(rd.scores[h]);
-                return s > 0 ? tnScNet(s, tnScPar(h), tnScSi(h), rd.fieldHcp) : '';
-            }), netS.out, netS.inn, netS.tot, 'tnsc-row-net') +
-            row(tnScL('Стейблфорд', 'Stableford'), order.map(function(h) {
-                var s = tnScNum(rd.scores[h]);
-                return s > 0 ? tnScStbl(s, h, rd.fieldHcp) : '';
-            }), stblS.out, stblS.inn, stblS.tot, 'tnsc-row-stbl') +
-            '</tbody></table></div></div>';
-        return html;
-    }).join('');
-}
-
-// ── ВАРИАНТ 2 · Плитки лунок ──
-function tnScRenderV2(rounds) {
-    return rounds.map(function(rd) {
-        var tiles = rd.order.map(function(h) {
-            var s = tnScNum(rd.scores[h]);
-            var par = tnScPar(h);
-            var cls = s > 0 ? tnScResultClass(s, par) : 'na';
-            var net = s > 0 ? tnScNet(s, par, tnScSi(h), rd.fieldHcp) : null;
-            var stbl = s > 0 ? tnScStbl(s, h, rd.fieldHcp) : null;
-            return '<div class="tnsc-tile-h ' + cls + '">' +
-                '<div class="tnsc-tile-top"><span class="tnsc-tile-no">' + h + '</span>' +
-                '<span class="tnsc-tile-par">PAR ' + par + '</span></div>' +
-                '<div class="tnsc-tile-score">' + (s > 0 ? s : '·') + '</div>' +
-                '<div class="tnsc-tile-foot">' +
-                (net !== null ? '<span>' + tnScL('нетто', 'net') + ' ' + net + '</span>' : '<span>—</span>') +
-                (stbl !== null ? '<span class="tnsc-tile-stbl">' + stbl + ' ✦</span>' : '') +
-                '</div></div>';
-        }).join('');
-        var outTxt = '<div class="tnsc-tile-sum"><span>' + tnScL('Гросс', 'Gross') + '</span><b>' + rd.totals.gross + '</b></div>' +
-            '<div class="tnsc-tile-sum"><span>±</span><b class="' + (typeof scoreClass === 'function' ? scoreClass(rd.totals.toPar) : '') + '">' + tnScFmtPlus(rd.totals.toPar) + '</b></div>' +
-            '<div class="tnsc-tile-sum"><span>' + tnScL('Нетто', 'Net') + '</span><b>' + rd.totals.net + '</b></div>' +
-            '<div class="tnsc-tile-sum"><span>' + tnScL('Стейблфорд', 'Stableford') + '</span><b>' + rd.totals.stbl + '</b></div>';
-        return '<div class="tnsc-tiles-wrap">' +
-            (rd.label ? '<div class="tnsc-round-label">' + tnScEsc(rd.label) + '</div>' : '') +
-            '<div class="tnsc-grid">' + tiles + '</div>' +
-            '<div class="tnsc-tiles-row">' + outTxt + '</div>' +
-            '</div>';
-    }).join('');
-}
-
-// ── ВАРИАНТ 3 · Турнирная сводка (лента счёта) ──
-function tnScRenderV3(rounds) {
-    return rounds.map(function(rd) {
-        var run = 0;
-        var strip = rd.order.map(function(h) {
-            var s = tnScNum(rd.scores[h]);
-            var par = tnScPar(h);
-            var cls = s > 0 ? tnScResultClass(s, par) : 'na';
-            if (s > 0) run += s - par;
-            return '<div class="tnsc-strip-cell ' + cls + '">' +
-                '<span class="tnsc-strip-no">' + h + '</span>' +
-                '<span class="tnsc-strip-score">' + (s > 0 ? s : '·') + '</span>' +
-                '<span class="tnsc-strip-run">' + (s > 0 ? tnScFmtPlus(run) : '') + '</span>' +
-                '</div>';
-        }).join('');
-        var rows = '';
-        function line(label, val, cls) {
-            rows += '<div class="tnsc-line' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span><b>' + val + '</b></div>';
-        }
-        line(tnScL('Сыграно лунок', 'Holes played'), rd.totals.holes + ' / 18');
-        line(tnScL('Гросс', 'Gross'), rd.totals.gross + (rd.totals.par ? ' (' + tnScL('из', 'of') + ' ' + rd.totals.par + ')' : ''));
-        line(tnScL('Относительно пара', 'To par'), tnScFmtPlus(rd.totals.toPar), 'tnsc-line-em');
-        line(tnScL('Нетто', 'Net'), rd.totals.net + ' (' + tnScFmtPlus(rd.totals.netToPar) + ')');
-        line(tnScL('Стейблфорд', 'Stableford'), rd.totals.stbl);
-        line(tnScL('Бёрди', 'Birdies'), rd.totals.birdies);
-        line(tnScL('Иглы · Орлы', 'Eagles'), rd.totals.eagles);
-        if (rd.holeHcpNotes) line('HCP ' + tnScL('лунки', 'hole'), rd.holeHcpNotes);
-        var best = rd.best || null;
-        return '<div class="tnsc-board">' +
-            (rd.label ? '<div class="tnsc-round-label">' + tnScEsc(rd.label) + '</div>' : '') +
-            '<div class="tnsc-strip">' + strip + '</div>' +
-            '<div class="tnsc-board-cols"><div class="tnsc-lines">' + rows + '</div>' +
-            (best ? '<div class="tnsc-best"><span>' + tnScL('Лучшая лунка', 'Best hole') + '</span><b>' + best.hole + ' · ' + best.text + '</b>' +
-                '<div class="tnsc-best-note">' + tnScEsc(best.note) + '</div></div>' : '') +
-            '</div></div>';
-    }).join('');
 }
 
 // Собирает «игровые» данные раунда для одного игрока.
@@ -432,6 +254,5 @@ if (typeof window !== 'undefined') {
     window.tnScGetCard = tnScGetCard;
     window.tnScRender = tnScRender;
     window.tnScRerender = tnScRerender;
-    window.tnScSetVariant = tnScSetVariant;
     window.tnScRoundBlock = tnScRoundBlock;
 }

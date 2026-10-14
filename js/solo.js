@@ -1220,10 +1220,19 @@ function listenForCallResponsesSolo() {
     var uid = getPlayerId();
     if (!uid) return;
     if (window._pestovoCallResponsesListening && window._pestovoCallResponsesUid === uid) return;
+    // Смена игрока (выход → вход под другим аккаунтом): прежняя подписка на
+    // users/<старый uid>/notifications оставалась жить до конца страницы и
+    // продолжала показывать тосты за предыдущего игрока. Снимаем её явно
+    // (аудит 2026-10, п.10 — утечка RTDB-слушателей).
+    if (window._pestovoCallResponsesRef && window._pestovoCallResponsesUid && window._pestovoCallResponsesUid !== uid) {
+        try { window._pestovoCallResponsesRef.off('child_added'); } catch (e) { console.warn("[silent]", e); }
+    }
     window._pestovoCallResponsesListening = true;
     window._pestovoCallResponsesUid = uid;
 
-    db.ref('users/' + uid + '/notifications').orderByChild('type').equalTo('call_response').on('child_added', function(sn) {
+    var callResponsesRef = db.ref('users/' + uid + '/notifications').orderByChild('type').equalTo('call_response');
+    window._pestovoCallResponsesRef = callResponsesRef;
+    callResponsesRef.on('child_added', function(sn) {
         var n = sn.val();
         if (!n || n.read) return;
 

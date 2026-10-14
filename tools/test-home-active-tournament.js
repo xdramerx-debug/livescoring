@@ -13,11 +13,6 @@ function ok(cond, label) {
     if (!cond) { failures++; console.error('FAIL', label); }
     else console.log('ok  -', label);
 }
-function eq(a, b, label) {
-    var as = JSON.stringify(a), es = JSON.stringify(b);
-    ok(as === es, label + (as === es ? '' : ' :: actual ' + as + ' expected ' + es));
-}
-
 var syntax = spawnSync(process.execPath, ['--check', path.join(ROOT, 'js', 'utils.js')], { encoding: 'utf8' });
 ok(syntax.status === 0, 'js/utils.js: синтаксис');
 syntax = spawnSync(process.execPath, ['--check', path.join(ROOT, 'js', 'app.js')], { encoding: 'utf8' });

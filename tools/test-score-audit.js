@@ -1,6 +1,5 @@
 'use strict';
 const assert = require('assert');
-const path = require('path');
 const create = require('../functions/score-audit');
 const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
 const state = {

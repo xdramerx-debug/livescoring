@@ -63,7 +63,12 @@ check(sandbox.isTournamentRound({ mode: 'group' }) === false, 'isTournamentRound
 check(setupHtml.indexOf('score-kiosk') !== -1, 'setup-round: ранний класс score-kiosk');
 check(scorerHtml.indexOf('score-kiosk') !== -1, 'scorer: ранний класс score-kiosk');
 check(css.indexOf('html.score-kiosk') !== -1, 'css: отдельный стиль QR-ввода');
-check(live.indexOf('function applyScoreKiosk') !== -1 && scorer.indexOf('function applyScoreKiosk') !== -1, 'live/scorer: applyScoreKiosk');
+// Киоск-режим вынесен в общий модуль: объявление одно, страницы его грузят.
+const kiosk = fs.readFileSync(path.join(ROOT, 'js', 'score-kiosk.js'), 'utf8');
+check(kiosk.indexOf('function applyScoreKiosk') !== -1 && kiosk.indexOf('function isScoreKioskUrl') !== -1, 'score-kiosk: обе функции в общем модуле');
+check(live.indexOf('function applyScoreKiosk') === -1 && scorer.indexOf('function applyScoreKiosk') === -1, 'live/scorer: локальных копий applyScoreKiosk не осталось');
+check(setupHtml.indexOf('js/score-kiosk.js') !== -1 && setupHtml.indexOf('js/score-kiosk.js') < setupHtml.indexOf('js/live.js'), 'setup-round: score-kiosk.js подключён до live.js');
+check(scorerHtml.indexOf('js/score-kiosk.js') !== -1 && scorerHtml.indexOf('js/score-kiosk.js') < scorerHtml.indexOf('js/scorer.js'), 'scorer: score-kiosk.js подключён до scorer.js');
 check(live.indexOf('if (p.isCreator) return true') !== -1, 'join: isCreator');
 check(live.indexOf('creatorPlayerId') !== -1 && live.indexOf('p.joined === true') !== -1, 'join: creatorPlayerId / joined');
 check(live.indexOf('participantsList[0]') === -1 || live.indexOf('НЕ считаются') !== -1, 'join: participantsList[0] не даёт «В игре»');

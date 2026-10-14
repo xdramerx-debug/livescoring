@@ -320,6 +320,15 @@
                 </div>
                 <div id="sa-results" aria-live="polite"></div>
             </div>
+            <div class="card">
+                <h2><i class="fas fa-triangle-exclamation"></i> Ошибки клиентов</h2>
+                <p style="color:var(--muted);font-size:13px;">Сбои, которые приложение само отправило с устройств игроков (<code>reportError()</code> → узел <code>errorReports</code>). Не более 20 сообщений за сессию и 3 повтора одной ошибки с устройства — список группируется по тексту. Требует правил БД с узлом <code>errorReports</code>.</p>
+                <div class="form-row" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-ol btn-sm" onclick="erLoad()">Обновить</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="erClear()">Очистить</button>
+                </div>
+                <div id="er-results" aria-live="polite"></div>
+            </div>
         </div>
 
         <div id="tab-hcplog" class="admin-section hidden">
@@ -876,11 +885,11 @@
                         Выберите один из 5 вариантов отображения live-лидерборда турнира. Настройка выбирается только админом и применяется для всех участников на странице «Турниры».
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="tn-lb-opt-1" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('1')" aria-pressed="true"><i class="fas fa-table-list"></i> <span>1 · Классика (таблица)</span></button>
-                        <button type="button" id="tn-lb-opt-2" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('2')" aria-pressed="false"><i class="fas fa-compress"></i> <span>2 · Компактный</span></button>
-                        <button type="button" id="tn-lb-opt-3" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('3')" aria-pressed="false"><i class="fas fa-id-card"></i> <span>3 · Карточки</span></button>
-                        <button type="button" id="tn-lb-opt-4" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('4')" aria-pressed="false"><i class="fas fa-table-cells-large"></i> <span>4 · Детальный</span></button>
-                        <button type="button" id="tn-lb-opt-5" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('5')" aria-pressed="false"><i class="fas fa-bolt"></i> <span>5 · Live-лента</span></button>
+                        <button type="button" id="tn-lb-opt-1" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('1')" aria-pressed="true"><i class="fas fa-table-list"></i> <span data-i18n="tn_lb_variant_1">1 · Классика (таблица)</span></button>
+                        <button type="button" id="tn-lb-opt-2" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('2')" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="tn_lb_variant_2">2 · Компактный</span></button>
+                        <button type="button" id="tn-lb-opt-3" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('3')" aria-pressed="false"><i class="fas fa-id-card"></i> <span data-i18n="tn_lb_variant_3">3 · Карточки</span></button>
+                        <button type="button" id="tn-lb-opt-4" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('4')" aria-pressed="false"><i class="fas fa-table-cells-large"></i> <span data-i18n="tn_lb_variant_4">4 · Детальный</span></button>
+                        <button type="button" id="tn-lb-opt-5" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('5')" aria-pressed="false"><i class="fas fa-bolt"></i> <span data-i18n="tn_lb_variant_5">5 · Live-лента</span></button>
                     </div>
                     <div style="margin-top:10px;padding:10px 12px;border:1px dashed rgba(201,168,76,.5);border-radius:10px;background:rgba(201,168,76,.05);">
                         <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> Предпросмотр:</div>
@@ -1070,13 +1079,13 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<script src="js/firebase-config.js?v=57564a0d"></script>
-<script type="module" src="dist/livescoring-modules.js?v=c78a87bf"></script>
+<script src="js/firebase-config.js?v=501cf206"></script>
+<script type="module" src="dist/livescoring-modules.js?v=f1fefc29"></script>
     <script src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
 <script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script src="js/qr-code.js?v=2a26e819"></script>
 <script src="js/rusgolf-client.js?v=f37608e7"></script>
-<script src="js/utils.js?v=fa3015ac"></script>
+<script src="js/utils.js?v=bbd529fa"></script>
 <script src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script src="js/tn-mgr-core.js?v=dc621917"></script>
 <script src="js/tn-mgr-data.js?v=9df4ae94"></script>
@@ -1088,12 +1097,12 @@
 <script src="js/tn-mgr.js?v=59cc04f5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/name-variants.js?v=2b58f796"></script>
-<script src="js/admin.js?v=29072162"></script>
+<script src="js/admin.js?v=dd6fdb04"></script>
 <script src="js/admin-groups.js?v=33268873"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
 <script src="js/admin-players.js?v=4a1d7d19"></script>
 <script src="js/admin-hcp-log.js?v=1262d7c2"></script>
-<script src="js/admin-score-audit.js?v=2fb81262"></script>
+<script src="js/admin-score-audit.js?v=a625dc43"></script>
 <script src="js/admin-scoreedit.js?v=fb3e1c97"></script>
 <script src="js/admin-broadcasts.js?v=56823762"></script>
 <script src="js/admin-channels.js?v=0d6fb513"></script>
@@ -1105,6 +1114,6 @@
 <script src="js/admin-entry-scorecard.js?v=74578afa"></script>
 <script src="js/design-admin.js?v=70a7c0c4"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
-<script src="js/pwa.js?v=56b54da4"></script>
+<script src="js/pwa.js?v=27133515"></script>
 </body>
 </html>

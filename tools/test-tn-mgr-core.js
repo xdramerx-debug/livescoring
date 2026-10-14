@@ -71,7 +71,7 @@ eq(C.fmtHcp(12), '12', 'целое значение без запятой');
 var course = {
     par: function (h) { return h === 3 ? 5 : 4; },
     si: function (h) { return h; },
-    dist: function (h, tee) { return 100 + h; }
+    dist: function (h, _tee) { return 100 + h; }
 };
 var card = C.playerCard({ 1: 4, 2: 6 }, course, 'wh', 1);
 eq(card.holes.length, 18, 'карточка всегда 18 лунок');

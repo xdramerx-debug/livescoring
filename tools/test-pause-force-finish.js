@@ -70,7 +70,7 @@ const dbStub = {
     ref(p) {
         return {
             _p: p || '',
-            once(ev) {
+            once(_ev) {
                 const val = getPath(dbState, p || '');
                 return Promise.resolve({ val() { return JSON.parse(JSON.stringify(val === undefined ? null : val)); } });
             },

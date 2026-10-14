@@ -679,14 +679,19 @@
         loadTournamentsV2();
         render();
     }
+    // navAuth вызывает базовая onAuthReady (js/utils.js) — хук отвечает только
+    // за перерисовку публичной страницы после определения прав пользователя.
     function onAuthReadyV2(user, data) {
-        if (typeof root.navAuth === 'function') root.navAuth(user, data);
         render();
     }
 
     // Override only the public page entry point; admin uses its own loader.
     root.loadTournaments = loadTournamentsV2;
-    root.onAuthReady = onAuthReadyV2;
+    // Регистрация вместо перезаписи глобала: раньше root.onAuthReady затирал
+    // объявление из tournaments.js только потому, что этот скрипт подключён
+    // позже (аудит 2026-10, п.13). Реестр от порядка загрузки не зависит.
+    if (typeof root.pestovoOnAuthReady === 'function') root.pestovoOnAuthReady(onAuthReadyV2);
+    else if (typeof root.reportError === 'function') root.reportError(new Error('pestovoOnAuthReady unavailable'), 'tournament-public:init');
     root.tnPublicOpenDetail = openDetail;
     root.tnPublicRender = render;
     root.tnPublicPrintProtocol = printProtocol;

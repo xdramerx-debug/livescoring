@@ -99,7 +99,7 @@ function extractPage() {
                 await page.locator('#pl-hcp-3').fill('7.1');
                 await page.waitForTimeout(20);
 
-                const state = await page.evaluate(v => {
+                const state = await page.evaluate(() => {
                     const slots = document.getElementById('player-slots');
                     const rect = el => {
                         if (!el) return null;

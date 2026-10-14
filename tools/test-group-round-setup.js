@@ -46,7 +46,7 @@ function makeRef(p) {
         set(v) { if (r._p === 'rounds/' + (r._key || '')) pushedRounds.push(v); return Promise.resolve(); },
         remove() { return Promise.resolve(); },
         transaction(f) { return Promise.resolve({ value: f(null) }); },
-        once(evt) {
+        once(_evt) {
             if (r._p === 'users') return Promise.resolve({ val: () => ({ 'other-uid': { name: 'Иван Фамилия', firstName: 'Иван', lastName: 'Фамилия', gender: 'men', handicap: 5, defaultTee: 'bl' } }), exists: () => true });
             return Promise.resolve({ val: () => ({}), exists: () => false });
         },

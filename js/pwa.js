@@ -100,22 +100,6 @@ function queueOfflineScoreAction(action) {
     return true;
 }
 
-// Универсальная офлайн-запись по произвольному пути БД (verified, markers, holeTimes и т.п.).
-// Для одного пути храним только последнее значение.
-function queueOfflineWrite(path,value){
-    if(!path)return;
-    var pending=readOfflineScores();
-    pending=pending.filter(function(item){
-        return !(item.type==='set'&&item.path===path);
-    });
-    pending.push({type:'set',path:path,value:value,timestamp:Date.now()});
-    try { localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending)); } catch (error) {
-        console.error('[PWA] Cannot queue offline write', error);
-        if(typeof toast==='function')toast(currentLang === 'en' ? 'Cannot save data offline' : 'Не удалось сохранить данные офлайн','error');
-    }
-    updateOfflineQueueBadge();
-}
-
 // Серверные отказы «навсегда» (не сеть): такое действие никогда не пройдёт,
 // и, оставаясь в очереди, блокировало бы все последующие. Разница с
 // score-write.js transient(): там список ВРЕМЕННЫХ, тут — ПЕРМАНЕНТНЫх кодов.

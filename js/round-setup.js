@@ -351,10 +351,6 @@ var setupHcpRefreshRunning = {};
 var setupHcpCandidates = {};
 // Общий дедлайн поиска в RUSGOLF: кнопка не может «висеть» дольше этого срока.
 var SETUP_HCP_LOOKUP_DEADLINE_MS = 20000;
-function setupHcpNameTokens(idx) {
-    var nameEl = document.getElementById('pl-name-' + idx);
-    return String(nameEl && nameEl.value || '').trim().split(/\s+/).filter(Boolean);
-}
 function setupHcpNameValue(idx) {
     var nameEl = document.getElementById('pl-name-' + idx);
     return String(nameEl && nameEl.value || '').trim();

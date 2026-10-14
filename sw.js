@@ -1,6 +1,23 @@
-const CACHE_NAME = 'pestovo-v1.115.0-afa2488d';
+const CACHE_NAME = 'pestovo-v1.115.0-d205b230';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
+// Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
+// приходят без CORS-заголовков и кладутся как opaque — в Cache Storage они
+// учитываются с существенным overhead (реально занятое место браузер не
+// сообщает), а activate() этот кэш намеренно сохраняет между версиями. Без
+// ограничения он рос бы всю жизнь PWA. Держим LRU-окно (аудит 2026-10, п.19).
+const CDN_CACHE_LIMIT = 60;
+
+// Cache Storage отдаёт ключи в порядке добавления, поэтому slice(0, -limit) —
+// это ровно старейшие записи.
+function trimCache(cache, limit) {
+    return cache.keys().then(function(keys) {
+        if (keys.length <= limit) return null;
+        return keys.slice(0, keys.length - limit).reduce(function(chain, key) {
+            return chain.then(function() { return cache.delete(key); });
+        }, Promise.resolve());
+    });
+}
 
 // Stale-while-revalidate для immutable-ресурсов: отдаём из кэша мгновенно
 // и обновляем в фоне. Подходит для шрифтов/иконок, у которых URL содержит версию.
@@ -9,7 +26,9 @@ function staleWhileRevalidate(request, cacheName) {
         return cache.match(request).then(function(cached) {
             var network = fetch(request).then(function(response) {
                 if (response && (response.ok || response.type === 'opaque')) {
-                    cache.put(request, response.clone());
+                    cache.put(request, response.clone()).then(function() {
+                        return cacheName === CDN_CACHE ? trimCache(cache, CDN_CACHE_LIMIT) : null;
+                    }).catch(function() { /* кэш не критичен для ответа */ });
                 }
                 return response;
             }).catch(function() { return null; });
@@ -44,36 +63,37 @@ const STATIC_ASSETS = [
     'css/style.css?v=07ac5eab',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=3f88226b',
-    'dist/livescoring-modules.js?v=c78a87bf',
-    'js/app.js?v=8f4b2d14',
+    'dist/livescoring-modules.js?v=f1fefc29',
+    'js/app.js?v=9abc11d1',
     'js/auth.js?v=3a96f309',
     'js/design-preview.js?v=eb236661',
     'js/design-system.js?v=5a11adfa',
     'js/entry-scorecard.js?v=9b8c4167',
-    'js/firebase-config.js?v=57564a0d',
+    'js/firebase-config.js?v=501cf206',
     'js/handicap.js?v=ad1e9c00',
     'js/leaderboard.js?v=9cf88be2',
-    'js/live.js?v=3bc463db',
-    'js/marker.js?v=5408d53e',
+    'js/live.js?v=03cecc69',
+    'js/marker.js?v=2b7ba5c1',
     'js/name-variants.js?v=2b58f796',
     'js/players.js?v=4a812e43',
     'js/protocol.js?v=6bc9d5ed',
-    'js/pwa.js?v=56b54da4',
+    'js/pwa.js?v=27133515',
     'js/qr-code.js?v=2a26e819',
     'js/qr-start.js?v=8deb89a4',
-    'js/round-setup.js?v=694cb5e4',
+    'js/round-setup.js?v=e02af223',
     'js/rusgolf-client.js?v=f37608e7',
+    'js/score-kiosk.js?v=fda399fb',
     'js/score-write.js?v=7117f8ef',
-    'js/scorer.js?v=647ba4dd',
-    'js/solo.js?v=71d4daee',
+    'js/scorer.js?v=12643cad',
+    'js/solo.js?v=6438f909',
     'js/stats.js?v=aaab451a',
-    'js/tn-scorecard.js?v=7c9a112d',
+    'js/tn-scorecard.js?v=2252600e',
     'js/tn-studio-core.js?v=59388560',
     'js/tn-studio-public.js?v=86e38d13',
     'js/tournament-core.js?v=e9119580',
-    'js/tournament-public.js?v=894c9ead',
-    'js/tournaments.js?v=f1b4efe0',
-    'js/utils.js?v=fa3015ac',
+    'js/tournament-public.js?v=c4569e74',
+    'js/tournaments.js?v=faa2fd91',
+    'js/utils.js?v=bbd529fa',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
     'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 
@@ -106,6 +126,13 @@ self.addEventListener('activate', function(event) {
             return Promise.all(names.filter(function(name) {
                 return name !== CACHE_NAME && name !== CDN_CACHE;
             }).map(function(name) { return caches.delete(name); }));
+        }).then(function() {
+            // Подрезаем унаследованный CDN-кэш: до этой версии он рос без предела.
+            // Сам кэш не создаём — иначе у новой установки появился бы пустой.
+            return caches.has(CDN_CACHE).then(function(has) {
+                if (!has) return null;
+                return caches.open(CDN_CACHE).then(function(cache) { return trimCache(cache, CDN_CACHE_LIMIT); });
+            });
         }).then(function() { return self.clients.claim(); })
     );
 });

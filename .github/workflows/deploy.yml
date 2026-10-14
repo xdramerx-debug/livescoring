@@ -1,0 +1,78 @@
+name: Deploy
+
+# Ручной деплой на Firebase Hosting. До этого деплой был полностью ручным
+# (`firebase deploy` с машины разработчика), при том что CI уже проверяет
+# свежесть бандла и версий ассетов — то есть существовал класс инцидента
+# «смержили, а на проде старое» (docs/IMPROVEMENTS-2026-10.md, п.20).
+#
+# Только workflow_dispatch намеренно: для деплоя нужен секрет
+# FIREBASE_SERVICE_ACCOUNT (JSON сервисного аккаунта проекта livescore-b77e4),
+# и автоматический запуск на каждый push ломал бы сборку, пока секрет не
+# добавлен в Settings → Secrets and variables → Actions.
+#
+# Правила БД здесь НЕ деплоятся: их изменение требует осознанного решения и
+# порядка, описанного в docs/SECURITY-RULES.md. Для них отдельный ручной шаг.
+#
+#   firebase deploy --only database --project livescore-b77e4
+#
+# Deploy functions — тоже отдельно (нужен секрет и проверка рантайма):
+#   firebase deploy --only functions --project livescore-b77e4
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Что деплоить'
+        required: true
+        default: 'hosting'
+        type: choice
+        options:
+          - hosting
+          - functions
+          - hosting,functions
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify before deploy
+        run: |
+          npm run lint:syntax
+          npm run lint -- --max-warnings=0
+          npm run check:globals
+          npm test
+          npm run check:bundle
+
+      - name: Build deploy artifact (public/)
+        run: npm run build:public
+
+      - name: Check Firebase credentials are configured
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::error::Секрет FIREBASE_SERVICE_ACCOUNT не задан."
+            echo "Добавьте JSON сервисного аккаунта проекта livescore-b77e4"
+            echo "в Settings → Secrets and variables → Actions как FIREBASE_SERVICE_ACCOUNT."
+            exit 1
+          fi
+
+      - name: Install firebase-tools
+        run: npm install --no-save firebase-tools@13
+
+      - name: Deploy
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: npx firebase deploy --only "${{ inputs.target }}" --project livescore-b77e4 --non-interactive

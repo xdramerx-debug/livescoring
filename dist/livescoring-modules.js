@@ -265,7 +265,7 @@ function be(e, a) {
   e && (e.innerHTML = a == null ? "" : String(a));
 }
 typeof window < "u" && Object.assign(window, { esc: q, html: he, setSafeHtml: be });
-var N = 3e3;
+var L = 3e3;
 function K() {
   if (typeof document > "u" || !document.body) return null;
   var e = document.getElementById("toast-root");
@@ -276,7 +276,7 @@ function U(e) {
 }
 function I(e, a, r) {
   a = a || "success", r = r || {};
-  var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : N;
+  var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : L;
   try {
     if (typeof document > "u" || !document.body) return null;
     var o = K();
@@ -334,7 +334,7 @@ function ge(e, a) {
   a = a || {};
   var r = (e || []).slice();
   if (r.length) {
-    var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, o = N + n;
+    var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, o = L + n;
     r.forEach(function(s, i) {
       setTimeout(function() {
         typeof s == "string" ? I(s, a.type || "warn", a.toastOpts || {}) : I(s.msg || s.html || "", s.type || a.type || "warn", s.opts || a.toastOpts || {});
@@ -366,7 +366,7 @@ function ve(e) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: N, ensureToastRoot: K, toastIconFor: U, toast: I, toastSequence: ge, isPlayerModeEnabled: Y, vib: ye, escapeHtml: ve });
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: K, toastIconFor: U, toast: I, toastSequence: ge, isPlayerModeEnabled: Y, vib: ye, escapeHtml: ve });
 var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", f = {
   ru: {
     brand_name: "Пестово",
@@ -847,6 +847,13 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     social_card_variant_1: "1 · Классика",
     social_card_variant_2: "2 · Акцент на результате",
     social_card_variant_3: "3 · Турнирная",
+    tn_lb_variant_title: "Вид лидерборда турнира (страница «Турниры»)",
+    tn_lb_variant_sub: "Выберите один из 5 вариантов отображения live-лидерборда турнира. Настройка выбирается только админом и применяется для всех участников на странице «Турниры».",
+    tn_lb_variant_1: "1 · Классика (таблица)",
+    tn_lb_variant_2: "2 · Компактный",
+    tn_lb_variant_3: "3 · Карточки",
+    tn_lb_variant_4: "4 · Детальный",
+    tn_lb_variant_5: "5 · Live-лента",
     group_card_variant_title: "Отображение группового раунда на главной",
     group_card_variant_sub: "Выберите стиль единой карточки группового раунда для главной страницы. Настройка применяется для всех пользователей.",
     group_card_variant_1: "1 · Сводная матрица",
@@ -1421,6 +1428,13 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     social_card_variant_1: "1 · Classic",
     social_card_variant_2: "2 · Result focus",
     social_card_variant_3: "3 · Tournament",
+    tn_lb_variant_title: "Tournament leaderboard layout (Tournaments page)",
+    tn_lb_variant_sub: "Choose one of 5 live leaderboard layouts. Only an admin can change it; the choice applies to every visitor of the Tournaments page.",
+    tn_lb_variant_1: "1 · Classic (table)",
+    tn_lb_variant_2: "2 · Compact",
+    tn_lb_variant_3: "3 · Cards",
+    tn_lb_variant_4: "4 · Detailed",
+    tn_lb_variant_5: "5 · Live feed",
     group_card_variant_title: "Group round card layout on home page",
     group_card_variant_sub: "Choose the layout for the unified group round card on the home page. Applies to all users.",
     group_card_variant_1: "1 · Summary Matrix",
@@ -1589,9 +1603,9 @@ try {
   console.warn("[silent]", e);
 }
 document.addEventListener("DOMContentLoaded", function() {
-  C(), L();
+  C(), N();
 });
-function L() {
+function N() {
   if (!(typeof document > "u")) {
     var e = (/* @__PURE__ */ new Date()).getFullYear();
     document.querySelectorAll(".footer-bottom p").forEach(function(a) {
@@ -1599,8 +1613,8 @@ function L() {
     });
   }
 }
-L();
-typeof window < "u" && Object.assign(window, { currentLang: m, I18N: f, t: W, toggleLang: we, updateLangButtons: J, applyTranslations: C, updateFooterYear: L });
+N();
+typeof window < "u" && Object.assign(window, { currentLang: m, I18N: f, t: W, toggleLang: we, updateLangButtons: J, applyTranslations: C, updateFooterYear: N });
 function D(e, a, r, n, o) {
   var s = !!o, i = s ? escapeHtml : function(b) {
     return String(b);
@@ -1746,7 +1760,7 @@ export {
   Q as TEES,
   X as TEE_ORDER,
   O as TIMINGS,
-  N as TOAST_DURATION_MS,
+  L as TOAST_DURATION_MS,
   Re as TOTAL_PAR,
   C as applyTranslations,
   D as buildOfficialCallText,
@@ -1793,7 +1807,7 @@ export {
   ge as toastSequence,
   we as toggleLang,
   x as tsToDateInputValue,
-  L as updateFooterYear,
+  N as updateFooterYear,
   J as updateLangButtons,
   ye as vib,
   F as vkBuildAlertText,

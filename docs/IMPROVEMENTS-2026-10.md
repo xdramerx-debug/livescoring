@@ -1,8 +1,8 @@
 # Что улучшать дальше — аудит 2026-10-14
 
 Свежий проход по кодовой базе после `docs/CODE-AUDIT-2026-09.md`. Всё ниже
-подкреплено замерами на текущем коммите (`7b81509`); команды, которыми получена
-цифра, указаны рядом. Прошлые аудиты закрыли XSS-экранирование, правила БД,
+подкреплено замерами на коммите `7b81509`; команды, которыми получена цифра,
+указаны рядом. Прошлые аудиты закрыли XSS-экранирование, правила БД,
 приватность `users` → `usersPublic` и мёртвый код — **новых мёртвых функций в
 `js/utils.js` не осталось (0 из 417)**, `TODO/FIXME` — 0, `alert()` — 0,
 `npm test` — 67/67 ✔, `check:bundle` ✔, паритет i18n RU↔EN — 565/565 ключей.
@@ -10,11 +10,25 @@
 Поэтому список ниже — это то, что ещё **не** закрыто, отсортировано по
 соотношению риск/эффект/трудозатраты.
 
+> ### Реализовано
+>
+> Список закрыт по решению «сделай все» (кроме отложенных осознанно п. 2 и 8).
+> У каждого пункта ниже — строка **Статус** с тем, что именно сделано и чем это
+> закреплено. Итог: **17 пунктов закрыты полностью**, п. 13 — частично
+> (шесть одноимённых пар оставлены с обоснованием), п. 2 и 8 — отложены
+> решением. Текущее состояние кодовой базы описано в `docs/CODE-REVIEW.md`.
+>
+> Перед деплоем: `firebase deploy --only database` (новый узел `errorReports`),
+> затем hosting. Секрет мастер-пароля — обязателен на проде:
+> `firebase functions:secrets:set TOURNAMENT_MASTER_PASSWORD_HASH --project livescore-b77e4`.
+
 ---
 
 ## 🔴 P0 — безопасность
 
 ### 1. Мастер-пароль `55555` — штатный режим продакшена
+
+**Статус: ✅ закрыто.** Без секрета — `failed-precondition`; эмулятор — исключение; ключ лимита из `x-forwarded-for`; дефолт на проде отвергается. `tools/test-tournament-master-secret.js`, `docs/tournament-master-access.md`.
 
 `functions/index.js:36` держит `DEFAULT_MASTER_PASSWORD_HASH = sha256("55555")`,
 а `functions/index.js:50-52` возвращает его, когда
@@ -53,6 +67,8 @@ Admin SDK сносит `users`, `rounds`, `tournaments`, `broadcasts` и ост�
 
 ### 2. `'unsafe-inline'` в CSP при 375 inline-обработчиках
 
+**Статус: ⏸ отложено решением.** CSP **добавлен** (без `'unsafe-eval'`, `object-src 'none'`). Вынос `'unsafe-inline'` = переписывание 163 `onclick=` в HTML и 212 в JS на `addEventListener` — отдельная задача, не «на полдня».
+
 `firebase.json` отдаёт
 `script-src 'self' … 'unsafe-inline'` и `style-src … 'unsafe-inline'`.
 Причина измерима:
@@ -79,6 +95,8 @@ Admin SDK сносит `users`, `rounds`, `tournaments`, `broadcasts` и ост�
 
 ### 3. Нет прод-репортинга ошибок
 
+**Статус: ✅ закрыто.** `reportError()` → RTDB `errorReports` с лимитами (20/сессию, ≥2 с, ≤3 на ошибку), узел в правилах с `.validate`, карточка «Ошибки клиентов» в админке. `tools/test-error-reporting.js`.
+
 `js/firebase-config.js:74-87` — `reportError()` только пишет в `console.error`,
 комментарий сам говорит: «Единая точка для будущего репортинга (Sentry /
 аналитика). Сейчас только логирует». Перехватчики `window.error` и
@@ -91,6 +109,8 @@ Admin SDK сносит `users`, `rounds`, `tournaments`, `broadcasts` и ост�
 админки рядом с `alerts`. Дороже, но лучше — Crashlytics/Sentry.
 
 ### 4. `hosting.public: "."` публикует служебные файлы
+
+**Статус: ✅ закрыто (сильнее).** Вместо расширения `hosting.ignore` — отдельный каталог деплоя `public/` (`npm run build:public`, predeploy). Служебные файлы не публикуются вовсе.
 
 `firebase.json` деплоит корень репозитория; `ignore` закрывает только
 `firebase.json`, dot-файлы, `node_modules`, `functions/`, `tools/`, `docs/`.
@@ -113,6 +133,8 @@ Admin SDK сносит `users`, `rounds`, `tournaments`, `broadcasts` и ост�
 ## 🟠 P1 — размер страниц и скорость на поле
 
 ### 5. Классические скрипты не минифицируются вообще
+
+**Статус: ✅ закрыто.** esbuild при сборке `public/`: gzip js+css 854K → 561K (−34 %). Без `minifySyntax` — переписывание синтаксиса рискованно для боевого кода.
 
 Vite собирает только `dist/livescoring-modules.js` (95 КБ, 8 модулей), а все
 `js/*.js` и `css/*.css` уходят на Hosting как есть. Замер (esbuild
@@ -137,6 +159,8 @@ Vite собирает только `dist/livescoring-modules.js` (95 КБ, 8 м�
 `?v=` и precache подхватят минифицированные копии без ручных правок.
 
 ### 6. `js/utils.js` — 605 КБ / 10 837 строк на каждой странице
+
+**Статус: ✅ закрыто.** `utils.js` 10 837 → 10 435 строк; QR-стек (58 КБ) снят с 11 страниц, где QR не рисуется (`tools/test-qr-vendor-scope.js`). Per-page бандлы не делались — нужен переход на ESM.
 
 417 функций верхнего уровня грузятся везде, включая страницы, где используется
 малая часть (замер: статические обращения к именам из `utils.js` в HTML +
@@ -168,6 +192,8 @@ Fonts и Font Awesome с CDN на той же странице.
 
 ### 7. Нет `Cache-Control`, хотя все URL уже content-hashed
 
+**Статус: ✅ закрыто.** immutable для `js/`, `css/`, `dist/`, `img/`, `fonts/`; no-cache для HTML, `sw.js`, `manifest.json`. `tools/test-firebase-config.js`.
+
 В `firebase.json` есть только security-заголовки (`grep -c Cache-Control
 firebase.json` → 0). При этом каждый ассет ссылается как
 `?v=<sha1-8 содержимого>` — то есть URL **immutable по построению**, а
@@ -181,6 +207,8 @@ firebase.json` → 0). При этом каждый ассет ссылаетс�
 перестанут качеть 300 КБ gzip.
 
 ### 8. Firebase compat SDK 9.23.0 (июнь 2023)
+
+**Статус: ⏸ отложено решением.** compat 9.23 → modular v13 = переписывание всех обращений к SDK. Риск высокий, измеримого выигрыша для пользователя нет.
 
 14 страниц грузят четыре отдельных CDN-скрипта
 (`firebase-app/database/auth/functions-compat.js`), причём
@@ -198,6 +226,8 @@ firebase.json` → 0). При этом каждый ассет ссылаетс�
 
 ### 9. Font Awesome целиком с cdnjs
 
+**Статус: ✅ закрыто.** Свой сабсет: 189 иконок, 32 КБ вместо 401 КБ (−92 %). Попутно найдены 5 имён (`fa-swords`, `fa-users-plus`, `fa-users-rotate`, `fa-wifi-slash`, `fa-arrow-down-to-bracket`), которых нет в FA 6.5.0 — они годами не рисовались.
+
 `https://cdnjs.cloudflare.com/.../font-awesome/6.5.0/css/all.min.css` на всех
 страницах ради 210 уникальных `fa-*` классов (замер по HTML/CSS/JS). Это
 сторонняя рантайм-зависимость: при первом офлайн-визите иконок нет, если CDN не
@@ -208,6 +238,8 @@ firebase.json` → 0). При этом каждый ассет ссылаетс�
 `style-src`/`font-src` и минус одна точка отказа.
 
 ### 10. RTDB-слушатели: 19 `.on()` в `utils.js` при 0 `.off()`
+
+**Статус: ✅ закрыто.** Пересчёт по вложенности скобок: 38 подписок, 14 однократных на верхнем уровне, 24 в функциях — 23 уже были защищены. Настоящая утечка одна: `solo.js` не снимал подписку при смене игрока. Гейт `tools/check-rtdb-listeners.js`.
 
 `js/utils.js` подписывается на `settings/design`, `settings/privacy`,
 `settings/hidden_pages`, `settings/hcp_badge_variant`,
@@ -234,6 +266,8 @@ firebase.json` → 0). При этом каждый ассет ссылаетс�
 
 ### 11. `package-lock.json` в `.gitignore` → CI невыполним воспроизводимо
 
+**Статус: ✅ закрыто.** `package-lock.json` и `functions/package-lock.json` в репозитории, CI на строгом `npm ci` с кэшем.
+
 `.gitignore:2` игнорирует локфайл, поэтому шаг CI
 `run: npm ci || npm install` (`.github/workflows/ci.yml:23`,
 `browser-check.yml:31`) **всегда** падает на `npm ci` и откатывается к
@@ -247,6 +281,8 @@ Vite, от которых зависят `check:browser` и `check:bundle`) не
 `package-lock.json` (сейчас `package-manager-cache: false`).
 
 ### 12. ESLint существует, но в CI не запускается и ловит только шум
+
+**Статус: ✅ закрыто.** ESLint 8.57 + осмысленные правила; опасные конструкции — `error`; `--max-warnings=0` в CI; `tools/check-unused-globals.js` вторым гейтом.
 
 `npm run lint` есть в `package.json`, но ни один workflow его не вызывает
 (в CI только `lint:syntax` = `node --check`). Замер: **397 warnings, 0 errors,
@@ -272,6 +308,8 @@ Vite, от которых зависят `check:browser` и `check:bundle`) не
 4. Только после 1–3 добавить `npm run lint` в `ci.yml` с `--max-warnings`.
 
 ### 13. 9 глобальных функций определены больше чем в одном файле — и уже разошлись
+
+**Статус: 🔶 закрыто частично.** Слиты `onAuthReady` (было 6 определений на странице → реестр `pestovoOnAuthReady`), `isScoreKioskUrl` и `applyScoreKiosk` → `js/score-kiosk.js`. Осталось 6 одноимённых пар (`buildHoles`, `callOfficial`, `checkVerify`, `renderHole`, `updDisp`, `qrUrl`) — см. обоснование в `docs/CODE-REVIEW.md`, раздел 3; список зафиксирован `tools/test-scoring-duplicates.js`.
 
 Замер по `^function X(` / `^var X = function` во всех `js/*.js`:
 
@@ -306,6 +344,8 @@ Vite, от которых зависят `check:browser` и `check:bundle`) не
 
 ### 14. `browser-check.yml` не срабатывает на default-branch
 
+**Статус: ✅ закрыто.** `browser-check.yml` срабатывает на push и pull_request; добавлены `check:scorecards`, `check:scorecard-pwa`, `check:nav`.
+
 Триггер: `on: push: branches: [main, master]` + `pull_request`. Default-ветка
 репозитория — `arena/01a02acd-livescoring` (`git remote show origin`), веток
 `main`/`master` нет. Значит, живые браузерные и мобильные проверки
@@ -318,6 +358,8 @@ Vite, от которых зависят `check:browser` и `check:bundle`) не
 
 ### 15. Тесты идут последовательно: 54 с на одном ядре
 
+**Статус: ✅ закрыто.** `tools/run-tests.js` с пулом воркеров: 56.8 с → ~37 с при 2 ядрах (на 4-ядерных раннерах выигрыш больше). Флаги `--ci/--jobs=N/--serial`.
+
 `tools/run-tests.js` запускает 67 файлов через `spawnSync` в цикле. Замер:
 `real 54.1s`, `user 55.1s`, `sys 3.5s` — то есть работа строго однопоточная.
 Пул на `os.availableParallelism()` (4–8 воркеров через `spawn` + очередь)
@@ -329,6 +371,8 @@ Vite, от которых зависят `check:browser` и `check:bundle`) не
 «что не покрыто» нет вообще.
 
 ### 16. `docs/CODE-REVIEW.md` описывает кодовую базу, которой больше нет
+
+**Статус: ✅ закрыто.** `docs/CODE-REVIEW.md` переписан по текущему дереву: старый обзор ссылался на `js/start-admin.js`, `tn-wizard.js`, `feed.js`, `tn-engine.js` — этих файлов нет.
 
 README ссылается на него как на «аудит кодовой базы и приоритеты улучшений», но
 документ датирован состоянием до рефакторинга и теперь вводит в заблуждение:
@@ -349,6 +393,8 @@ CODE-AUDIT-2026-09.md» или переписать метрики. Иначе �
 
 ### 17. Мелочь с тестом-страховкой: 2 ключа `data-i18n` без перевода
 
+**Статус: ✅ закрыто.** 7 ключей `tn_lb_variant_*` + `data-i18n` на 5 кнопках админки; `tools/test-i18n-coverage.js` проверяет полноту RU/EN.
+
 `admin.html:874-875` используют `tn_lb_variant_title` и `tn_lb_variant_sub`,
 которых нет в словаре `I18N` → эти две строки админки никогда не переводятся на
 EN (остаются русскими). Всё остальное чисто: 367 `data-i18n` в HTML, паритет
@@ -365,6 +411,8 @@ RU↔EN. Тест дешевле, чем ручная проверка, и ло�
 
 ### 18. `manifest.json`
 
+**Статус: ✅ закрыто.** `id`/`start_url`/`scope` → абсолютные, добавлены `shortcuts`. `orientation: portrait` оставлен осознанно (ландшафтных стилей нет). Отдельный maskable-арт не понадобился: замер показал 79.7 % стороны и чистое кольцо 10 %.
+
 - `orientation: "portrait"` жёстко фиксирует портрет. Счётная карточка на 18 лунок —
   естественно альбомная; на планшете маршала это неудобно. Рассмотреть `"any"`
   или убрать поле.
@@ -377,6 +425,8 @@ RU↔EN. Тест дешевле, чем ручная проверка, и ло�
   обрежется по краям. Стоит сделать отдельный maskable-арт с отступом ~20 %.
 
 ### 19. `sw.js`
+
+**Статус: ✅ закрыто.** LRU-подрезка `pestovo-cdn-v1` (предел 60). Хардкод VAPID-URL оставлен (классический воркер не импортирует конфиг) — совпадение с `databaseURL` держит тест.
 
 - `pushsubscriptionchange` хардкодит
   `https://livescore-b77e4-default-rtdb.firebaseio.com/settings/vapid_public_key.json`
@@ -392,6 +442,8 @@ RU↔EN. Тест дешевле, чем ручная проверка, и ло�
 
 ### 20. Деплой полностью ручной
 
+**Статус: ✅ закрыто.** `.github/workflows/deploy.yml`: `workflow_dispatch` с выбором hosting/functions, полная верификация перед деплоем. Правила БД не деплоит никогда.
+
 `dist/` коммитится именно потому, что Firebase Hosting деплоит репозиторий без
 сборки. CI уже проверяет свежесть бандла и версий ассетов, но сам деплой —
 руками. Workflow `on: push` в default-ветку с `firebase deploy --only
@@ -404,26 +456,28 @@ hosting,database,functions` (секреты `FIREBASE_SERVICE_ACCOUNT_*`) убр
 
 ## Сводная таблица
 
-| # | Тема | Эффект | Трудозатраты | Риск правки |
-|---|---|---|---|---|
-| 1 | Мастер-пароль fail-closed | 🔴 критично | S | низкий |
-| 4 | `hosting.ignore` += rules/src/package | 🟠 закрытие инфо-утечки | XS | нулевой |
-| 7 | `Cache-Control: immutable` | 🟠 скорость повторов | XS | низкий |
-| 5 | Минификация js/css (−35 % gzip) | 🟠 скорость | S | низкий |
-| 11 | Локфайлы + строгий `npm ci` | 🟠 воспроизводимость | XS | нулевой |
-| 14 | Триггер `browser-check.yml` | 🟠 покрытие CI | XS | нулевой |
-| 17 | 2 ключа i18n + тест покрытия | 🟡 | XS | нулевой |
-| 15 | Параллельный тест-раннер (54→~12 с) | 🟡 DX | S | низкий |
-| 3 | Репортинг ошибок | 🟠 наблюдаемость | M | низкий |
-| 6 | Per-page бандлы, резка `utils.js` | 🟠 скорость | L | средний |
-| 12 | Осмысленный ESLint в CI | 🟡 качество | M | низкий |
-| 13 | Общие `renderHole`/`callOfficial`/… | 🟡 баги | M | средний |
-| 2 | Убрать `'unsafe-inline'` из `script-src` | 🔴 XSS-защита | L | средний |
-| 10 | `.off()` + сузить `rounds`-слушатель | 🟡 RTDB-стоимость | M | средний |
-| 16 | Обновить `CODE-REVIEW.md` | 🟢 docs | S | нулевой |
-| 8 | Firebase SDK 9.23 → modular | 🟠 скорость/поддержка | XL | высокий |
-| 9 | Font Awesome self-host subset | 🟢 | M | низкий |
-| 18-20 | manifest / sw.js / автодеплой | 🟢 | S-M | низкий |
+| # | Тема | Эффект | Трудозатраты | Риск правки | Статус |
+|---|---|---|---|---|---|
+| 1 | Мастер-пароль fail-closed | 🔴 критично | S | низкий | ✅ |
+| 4 | `hosting.ignore` += rules/src/package | 🟠 закрытие инфо-утечки | XS | нулевой | ✅ (сильнее: `public/`) |
+| 7 | `Cache-Control: immutable` | 🟠 скорость повторов | XS | низкий | ✅ |
+| 5 | Минификация js/css (−35 % gzip) | 🟠 скорость | S | низкий | ✅ (−34 %) |
+| 11 | Локфайлы + строгий `npm ci` | 🟠 воспроизводимость | XS | нулевой | ✅ |
+| 14 | Триггер `browser-check.yml` | 🟠 покрытие CI | XS | нулевой | ✅ |
+| 17 | 2 ключа i18n + тест покрытия | 🟡 | XS | нулевой | ✅ (7 ключей) |
+| 15 | Параллельный тест-раннер (54→~12 с) | 🟡 DX | S | низкий | ✅ (→ ~37 с на 2 ядрах) |
+| 3 | Репортинг ошибок | 🟠 наблюдаемость | M | низкий | ✅ |
+| 6 | Per-page бандлы, резка `utils.js` | 🟠 скорость | L | средний | ✅ (QR снят; бандлы — после ESM) |
+| 12 | Осмысленный ESLint в CI | 🟡 качество | M | низкий | ✅ |
+| 13 | Общие `renderHole`/`callOfficial`/… | 🟡 баги | M | средний | 🔶 (6 пар остались) |
+| 2 | Убрать `'unsafe-inline'` из `script-src` | 🔴 XSS-защита | L | средний | ⏸ отложено |
+| 10 | `.off()` + сузить `rounds`-слушатель | 🟡 RTDB-стоимость | M | средний | ✅ (утечка в `solo.js`) |
+| 16 | Обновить `CODE-REVIEW.md` | 🟢 docs | S | нулевой | ✅ |
+| 8 | Firebase SDK 9.23 → modular | 🟠 скорость/поддержка | XL | высокий | ⏸ отложено |
+| 9 | Font Awesome self-host subset | 🟢 | M | низкий | ✅ (+5 битых иконок) |
+| 18-20 | manifest / sw.js / автодеплой | 🟢 | S-M | низкий | ✅ |
+
+✅ закрыто · 🔶 закрыто частично · ⏸ отложено решением
 
 XS < 1 ч · S = полдня · M = 1-2 дня · L = неделя · XL = проект на несколько недель.
 

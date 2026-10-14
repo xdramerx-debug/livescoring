@@ -19,6 +19,8 @@ i18n, алерты) отдаётся одним **ESM-бандлом** `dist/liv
 | `dist/livescoring-modules.js` | **Собранный ESM-бандл фундамента** (грузится на страницах; коммитится) |
 | `public/` | **Каталог деплоя**: минифицированное зеркало сайта (`npm run build:public`, не коммитится) |
 | `src/` | Исходники ESM-модулей бандла (Vite) + мост глобалов на `window` |
+| `fonts/` | Подмножество Font Awesome: только используемые иконки (`npm run build:fonts`) |
+| `css/fontawesome-subset.css` | Стиль сабсета и `@font-face` на `fonts/*.woff2` (генерируется) |
 | `js/course-config.js` | Конфигурация курса (классическая копия модуля из `src/`) |
 | `js/format.js` | Форматирование счёта и дат (классическая копия) |
 | `js/date-range.js` | Фильтр по датам для списков раундов (классическая копия) |
@@ -62,10 +64,13 @@ npm test             # все тесты (tools/test-*.js), чистый Node 18
 npm run lint         # ESLint: 0 ошибок и 0 предупреждений — гейт в CI
 npm run lint:syntax  # node --check по всем js-файлам
 npm run check:globals# мёртвые глобалы: объявлено в js/, но не используется нигде в репозитории
-npm run assets       # ?v=<hash> в HTML + precache-манифест sw.js (после правок js/css)
-npm run build        # ESM-бандл dist/livescoring-modules.js (Vite) — коммитить результат
-npm run build:public # каталог деплоя public/ (минификация js/css) — НЕ коммитится
-npm run check:bundle # бандл в dist/ соответствует src/ (в CI)
+npm run check:listeners # RTDB-подписка без защиты от повторного вызова (.off/guard/реестр)
+npm run build:fonts   # подмножество Font Awesome по классам fa-* в разметке (коммитить результат)
+npm run check:fonts   # сабсет иконок не разошёлся с разметкой (в CI)
+npm run assets        # ?v=<hash> в HTML + precache-манифест sw.js (после правок js/css)
+npm run build         # ESM-бандл dist/livescoring-modules.js (Vite) — коммитить результат
+npm run build:public  # каталог деплоя public/ (минификация js/css) — НЕ коммитится
+npm run check:bundle  # бандл в dist/ соответствует src/ (в CI)
 npm run check:browser# живая браузерная проверка всех страниц (classic vs bundle)
 ```
 
@@ -110,7 +115,7 @@ firebase deploy --only hosting --project livescore-b77e4
 несобранный каталог не получится.
 
 Сборка копирует в `public/` только то, что нужно на проде (`*.html`, `sw.js`,
-`manifest.json`, `css/`, `js/`, `dist/`, `img/`) и минифицирует `js/**` и
+`manifest.json`, `css/`, `js/`, `dist/`, `img/`, `fonts/`) и минифицирует `js/**` и
 `css/**` через esbuild. Служебное (`src/`, `tools/`, `docs/`, `functions/`,
 `database.rules.json`, `package*.json`, `*.md`) на прод не попадает вовсе —
 раньше оно вычиталось списком `hosting.ignore`, и `database.rules.json`
@@ -135,6 +140,20 @@ esbuild делает его на 4 % больше), а Service Worker важне
 | `scorer.html` / `marker.html` | 293 КБ | 191 КБ | −35 % |
 | `offline.html` | 283 КБ | 184 КБ | −35 % |
 
+### Иконки
+
+Font Awesome **свой**: `tools/build-fontawesome.js` сканирует `*.html`, `js/**`,
+`css/**`, `src/**` на классы `fa-*`, по метаданным пакета
+`@fortawesome/fontawesome-free@6.5.0` (того же релиза, что раньше тянулся с
+cdnjs) определяет кодовые точки и режет шрифт до используемых глифов —
+189 иконок, 32 КБ вместо 401 КБ полного комплекта. Имена файлов несут хеш
+содержимого, поэтому immutable-кэш безопасен; шрифты попадают в precache и
+работают офлайн. Запускать после правок разметки:
+
+```bash
+npm run build:fonts && npm run assets   # пересобрать сабсет и обновить ?v=
+```
+
 Инварианты сборки проверяет `tools/test-build-public.js` (входит в `npm test`):
 каждый ассет из HTML и каждый URL precache-манифеста существует в `public/`,
 каждый минифицированный `.js` проходит `node --check`, **набор глобалов
@@ -145,7 +164,7 @@ esbuild делает его на 4 % больше), а Service Worker важне
 проверяет `tools/test-firebase-config.js`.
 
 Кэширование: все URL статики несут `?v=<sha1-8 содержимого>`, поэтому
-`js/`, `css/`, `dist/`, `img/` отдаются с `Cache-Control: public,
+`js/`, `css/`, `dist/`, `img/` и `fonts/` отдаются с `Cache-Control: public,
 max-age=31536000, immutable`, а HTML, `sw.js` и `manifest.json` — с `no-cache`
 (в них живут `?v=` и precache-манифест; долгий кэш оставил бы пользователя без
 новых версий и без нового Service Worker).

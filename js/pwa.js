@@ -61,7 +61,7 @@ function updateOnlineStatus(){
         setTimeout(function(){try{ if(indicator)indicator.classList.add('hide'); }catch (e) { console.warn("[silent]", e); }},3000);
     }else{
         indicator.className='online-indicator offline';
-        indicator.innerHTML='<i class="fas fa-wifi-slash"></i> ' + (langIsEn ? 'Offline' : 'Оффлайн');
+        indicator.innerHTML='<i class="fas fa-plug-circle-xmark"></i> ' + (langIsEn ? 'Offline' : 'Оффлайн');
         if(wasOnline) try{ if(typeof toast==='function')toast(langIsEn ? '📡 Connection lost' : '📡 Нет соединения','warn'); }catch (e) { console.warn("[silent]", e); }
     }
 }

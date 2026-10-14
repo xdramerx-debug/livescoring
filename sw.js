@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.115.0-d205b230';
+const CACHE_NAME = 'pestovo-v1.115.0-2980b007';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -60,6 +60,7 @@ const STATIC_ASSETS = [
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
     'css/design-presets.css?v=77ff3916',
     'css/entry-scorecard.css?v=a34f8c94',
+    'css/fontawesome-subset.css?v=c8871e34',
     'css/style.css?v=07ac5eab',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=3f88226b',
@@ -77,7 +78,7 @@ const STATIC_ASSETS = [
     'js/name-variants.js?v=2b58f796',
     'js/players.js?v=4a812e43',
     'js/protocol.js?v=6bc9d5ed',
-    'js/pwa.js?v=27133515',
+    'js/pwa.js?v=6c61fe3e',
     'js/qr-code.js?v=2a26e819',
     'js/qr-start.js?v=8deb89a4',
     'js/round-setup.js?v=e02af223',
@@ -86,14 +87,14 @@ const STATIC_ASSETS = [
     'js/score-write.js?v=7117f8ef',
     'js/scorer.js?v=12643cad',
     'js/solo.js?v=6438f909',
-    'js/stats.js?v=aaab451a',
+    'js/stats.js?v=3f31aabb',
     'js/tn-scorecard.js?v=2252600e',
     'js/tn-studio-core.js?v=59388560',
     'js/tn-studio-public.js?v=86e38d13',
     'js/tournament-core.js?v=e9119580',
     'js/tournament-public.js?v=c4569e74',
-    'js/tournaments.js?v=faa2fd91',
-    'js/utils.js?v=bbd529fa',
+    'js/tournaments.js?v=e678fd93',
+    'js/utils.js?v=b32b87d1',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
     'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 
@@ -103,6 +104,9 @@ const STATIC_ASSETS = [
     'img/icon-192.png',
     'img/icon-512.png',
     'img/logo.png',
+    'fonts/fa-brands-400-subset-d97c8617.woff2',
+    'fonts/fa-regular-400-subset-7e155715.woff2',
+    'fonts/fa-solid-900-subset-8dd96bb3.woff2',
 ];
 // END PRECACHE
 
@@ -143,8 +147,9 @@ self.addEventListener('fetch', function(event) {
     var requestUrl = new URL(event.request.url);
     var isSameOrigin = requestUrl.origin === self.location.origin;
 
-    // Шрифты Google и Font Awesome с cdnjs кэшируем, чтобы офлайн-PWA
-    // не оставался без иконок и фирменного шрифта на поле без сети.
+    // Шрифты Google и xlsx с cdnjs кэшируем, чтобы офлайн-PWA не оставался без
+    // фирменного шрифта. Иконки Font Awesome теперь свои (css/fontawesome-subset.css
+    // + fonts/*.woff2) и попадают в precache — CDN для них больше не нужен.
     var cdnHost = requestUrl.hostname;
     if (!isSameOrigin &&
         (cdnHost.indexOf('fonts.gstatic.com') !== -1 ||

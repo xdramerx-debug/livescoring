@@ -358,7 +358,7 @@ function rgRenderResults(rows) {
             html += '<span style="font-weight:700;font-size:13px;color:var(--white);">' + (currentLang === 'en' ? 'Select all' : 'Выбрать все') + '</span>';
             html += '</label>';
             html += '<button type="button" class="btn btn-g imp-big-btn" onclick="rgBulkAddSelected()" ' + (hasValid ? '' : 'disabled') + ' style="min-height:42px;">';
-            html += '<i class="fas fa-users-plus"></i> <span>' + (currentLang === 'en' ? 'Add selected' : 'Добавить выбранных') + ' (<span id="rg-bulk-count">0</span>)</span>';
+            html += '<i class="fas fa-user-plus"></i> <span>' + (currentLang === 'en' ? 'Add selected' : 'Добавить выбранных') + ' (<span id="rg-bulk-count">0</span>)</span>';
             html += '</button>';
             html += '</div>';
         }
@@ -1874,7 +1874,7 @@ function rgBatchRender(processed, total) {
             '<span style="font-weight:700;font-size:13px;color:var(--white);">' + (currentLang === 'en' ? 'Select all found' : 'Выбрать всех найденных') + '</span></label>';
         html += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
         html += '<button type="button" class="btn btn-g imp-big-btn" onclick="rgBatchAddSelected()" ' + (selectable ? '' : 'disabled') + ' style="min-height:42px;">' +
-            '<i class="fas fa-users-plus"></i> <span>' + (currentLang === 'en' ? 'Add selected' : 'Добавить выбранных') + ' (<span id="rg-batch-bulk-count">0</span>)</span></button>';
+            '<i class="fas fa-user-plus"></i> <span>' + (currentLang === 'en' ? 'Add selected' : 'Добавить выбранных') + ' (<span id="rg-batch-bulk-count">0</span>)</span></button>';
         html += '<button type="button" class="btn btn-r imp-big-btn ' + (rgBatchState.running ? '' : 'hidden') + '" onclick="rgBatchStop()" style="min-height:42px;">' +
             '<i class="fas fa-stop"></i> <span>' + (currentLang === 'en' ? 'Stop' : 'Остановить') + '</span></button>';
         html += '</div></div>';

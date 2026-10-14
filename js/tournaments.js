@@ -827,7 +827,7 @@ function tnGenderBoardHtml(tnId, en, title, icon, list) {
 function tnMatchBoardHtml(matchRounds, en) {
     if (typeof pestovoRoundMatches !== 'function') return '';
     var html = '<div style="margin-top:12px;padding:12px;border:1px solid rgba(201,168,76,.45);border-radius:10px;background:rgba(201,168,76,.06);">';
-    html += '<div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:4px;"><i class="fas fa-swords"></i> ' +
+    html += '<div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:4px;"><i class="fas fa-users"></i> ' +
         (en ? 'Match Play — match results' : 'Match Play — результаты матчей') + '</div>';
     html += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">' +
         (en ? 'A hole is won by the side with fewer strokes (team — best ball of the pair).' : 'Лунку выигрывает сторона с меньшим числом ударов (команда — лучший удар пары).') + '</div>';

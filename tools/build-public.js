@@ -12,7 +12,7 @@
  *
  * Что делает:
  *   1. Собирает в public/ всё, что должно быть на проде: *.html, sw.js,
- *      manifest.json, css/**, js/** (включая vendor), dist/**, img/**.
+ *      manifest.json, css/**, js/** (включая vendor), dist/**, img/**, fonts/**.
  *      Служебное (src/, tools/, docs/, functions/, database.rules.json,
  *      package*.json, vite.config.js, *.md) не копируется вовсе — раньше это
  *      вычиталось списком hosting.ignore и всё равно уезжало на прод.
@@ -69,7 +69,9 @@ for (const f of fs.readdirSync(ROOT)) {
     if (/\.html$/.test(f)) sources.push(f);
 }
 sources.push('sw.js', 'manifest.json');
-for (const dir of ['css', 'js', 'dist', 'img']) {
+// fonts/ — самодостаточный сабсет Font Awesome (tools/build-fontawesome.js);
+// шрифты нужны на проде, иначе интерфейс останется без иконок.
+for (const dir of ['css', 'js', 'dist', 'img', 'fonts']) {
     if (fs.existsSync(path.join(ROOT, dir))) collect(path.join(ROOT, dir), sources);
 }
 

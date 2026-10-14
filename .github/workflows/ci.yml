@@ -37,6 +37,9 @@ jobs:
       - name: RTDB listeners check
         run: npm run check:listeners
 
+      - name: Font Awesome subset freshness
+        run: npm run check:fonts
+
       - name: Run tests
         run: npm test
 

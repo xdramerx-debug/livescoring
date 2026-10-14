@@ -7574,7 +7574,7 @@ function renderMatchPlayTrackerHTML(matchStatus) {
     if (!matchStatus) return '';
     var html = '<div class="card setup-card" style="border-color:var(--gold);background:rgba(201,168,76,0.06);margin-bottom:12px;">' +
         '<div style="font-size:12px;color:var(--gold);font-weight:700;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">' +
-        '<span><i class="fas fa-swords"></i> Match Play Status</span>' +
+        '<span><i class="fas fa-users"></i> Match Play Status</span>' +
         '<span style="font-size:10px;color:var(--muted);">' + matchStatus.holesCompleted + '/18 holes</span>' +
         '</div>' +
         '<div style="font-size:14px;font-weight:800;color:var(--white);text-align:center;padding:8px 0;background:rgba(0,0,0,0.3);border-radius:8px;margin-bottom:8px;">' +

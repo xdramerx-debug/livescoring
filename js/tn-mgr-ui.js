@@ -1229,7 +1229,7 @@ var TnMgrUI = (function (root) {
             btn('remove-selected-participants', esc(bi('Удалить выбранных', 'Delete selected') + (selectedCount ? ' (' + selectedCount + ')' : '')), { icon: 'fas fa-user-minus', variant: 'danger', small: true, disabled: !selectedCount }) +
             btn('remove-all-participants', esc(bi('Удалить всех', 'Delete all') + (players.length ? ' (' + players.length + ')' : '')), { icon: 'fas fa-users-slash', variant: 'danger', small: true, disabled: !players.length }) +
             btn('rusgolf-sync-selected', esc(bi('Rusgolf · выбранных', 'Rusgolf · selected')), { icon: 'fas fa-rotate', variant: 'ghost', small: true, disabled: !selectedCount || state.rusgolfSync.running }) +
-            btn('rusgolf-sync-all', esc(bi('Rusgolf · всех', 'Rusgolf · all')), { icon: 'fas fa-users-rotate', variant: 'ghost', small: true, disabled: !players.length || state.rusgolfSync.running }) +
+            btn('rusgolf-sync-all', esc(bi('Rusgolf · всех', 'Rusgolf · all')), { icon: 'fas fa-arrows-rotate', variant: 'ghost', small: true, disabled: !players.length || state.rusgolfSync.running }) +
             syncStatus + '</div>' +
             (players.length
                 ? '<div class="tnm-table-scroll"><table class="tnm-table"><thead><tr>' +
@@ -1781,7 +1781,7 @@ var TnMgrUI = (function (root) {
             btn('handicaps-to-site', esc(bi('Гандикапы турнира → сайт', 'Tournament handicaps → site')),
                 { icon: 'fas fa-arrow-up-from-bracket', variant: 'ghost' }) +
             btn('handicaps-from-site', esc(bi('Гандикапы сайта → турнир', 'Site handicaps → tournament')),
-                { icon: 'fas fa-arrow-down-to-bracket', variant: 'ghost' }) +
+                { icon: 'fas fa-download', variant: 'ghost' }) +
             btn('close-modal', esc(bi('Закрыть', 'Close')), { variant: 'ghost' }) +
             '</div></div></div>';
     });

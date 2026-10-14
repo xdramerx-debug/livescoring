@@ -154,7 +154,7 @@ function renderHoleDifficultyVariant(holeScores, variant, langIsEn) {
 
 function loadStats() {
     if (typeof db === 'undefined') {
-        safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-wifi-slash"></i><p>' + (typeof t === 'function' ? t('offline_title') : 'Нет соединения') + '</p></div>');
+        safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-plug-circle-xmark"></i><p>' + (typeof t === 'function' ? t('offline_title') : 'Нет соединения') + '</p></div>');
         return Promise.resolve();
     }
     return Promise.all([

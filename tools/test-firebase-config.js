@@ -92,8 +92,19 @@ function headerFor(file, name) {
 const IMMUTABLE = 'public, max-age=31536000, immutable';
 // Репрезентативные пути: по одному на каждый класс + реальные файлы сборки.
 const HASHED = ['js/utils.js', 'js/vendor/qrcode-generator-1.4.4.js', 'css/style.css',
-    'css/tn-manager.css', 'dist/livescoring-modules.js', 'img/logo.png', 'img/icon-512.png'];
+    'css/tn-manager.css', 'css/fontawesome-subset.css',
+    'dist/livescoring-modules.js', 'img/logo.png', 'img/icon-512.png'];
 const REVALIDATED = ['index.html', 'admin.html', 'offline.html', 'tournaments.html', 'sw.js', 'manifest.json'];
+
+// Сабсет Font Awesome: имя файла несёт хеш содержимого (tools/build-fontawesome.js),
+// поэтому список берём с диска, а не константой — иначе тест ломался бы при
+// каждой пересборке подмножества.
+const fontDir = path.join(ROOT, 'fonts');
+const fontFiles = fs.existsSync(fontDir)
+    ? fs.readdirSync(fontDir).filter(function (f) { return f.endsWith('.woff2'); }).sort()
+    : [];
+fontFiles.forEach(function (f) { HASHED.push('fonts/' + f); });
+ok(fontFiles.length > 0, 'сабсет Font Awesome собран (fonts/*.woff2)', 'выполните npm run build:fonts');
 
 HASHED.forEach(function (f) {
     ok(headerFor(f, 'Cache-Control') === IMMUTABLE,

@@ -969,7 +969,7 @@ function fillCardScorecardPanel(panelId, roundId, r) {
     // (имена в шапке столбцов, удары — в ячейках), без кликабельности
     // (открытие профиля недоступно — имена и так видны в строке списка выше).
     var html = generateGroupHoleTableHTML(r, { compact: true });
-    cardPanelHTML[panelId] = html;
+    cardPanelRounds[panelId] = r;
     panel.innerHTML = html;
 }
 
@@ -989,15 +989,16 @@ function restoreLiveWhoPanels() {
         if (txt) txt.textContent = t('collapse_scorecard');
         if (cachedRoundsById[roundId]) {
             fillCardScorecardPanel(panelId, roundId, cachedRoundsById[roundId]);
-        } else if (cardPanelHTML[panelId]) {
-            panel.innerHTML = cardPanelHTML[panelId];
+        } else if (cardPanelRounds[panelId]) {
+            fillCardScorecardPanel(panelId, roundId, cardPanelRounds[panelId]);
         }
     }
 }
 
 // Состояние панелей счётных карточек внутри карточек раундов
 var cardPanelOpen = {};
-var cardPanelHTML = {};
+// Cache round data, not HTML: reopening must use the latest admin view.
+var cardPanelRounds = {};
 
 function toggleCardScorecard(panelId, roundId) {
     var panel = document.getElementById(panelId);
@@ -1016,8 +1017,8 @@ function toggleCardScorecard(panelId, roundId) {
             fillCardScorecardPanel(panelId, roundId, cachedRoundsById[roundId]);
             return;
         }
-        if (cardPanelHTML[panelId]) {
-            panel.innerHTML = cardPanelHTML[panelId];
+        if (cardPanelRounds[panelId]) {
+            fillCardScorecardPanel(panelId, roundId, cardPanelRounds[panelId]);
             return;
         }
 
@@ -1124,6 +1125,7 @@ function buildRecentRowHTML(id, r) {
     });
 
     var panelId = 'recent-sc-' + id;
+    cardPanelRounds[panelId] = r;
     var open = getRecentOpen(id);
     var namesStr = playerNames.length ? playerNames.join(', ') : '—';
 
@@ -1140,7 +1142,7 @@ function buildRecentRowHTML(id, r) {
         '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
         '</div>';
 
-    return '<div class="lwl-row recent-row' + (open ? ' is-open' : '') + '" data-round-id="' + escapeHtml(id) + '">' +
+    return '<div class="lwl-row recent-row' + (open ? ' is-open' : '') + '" data-round-id="' + escapeHtml(id) + '" data-panel-id="' + escapeHtml(panelId) + '">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" ' +
         'onclick="toggleRecentRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="recentKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
         '<span class="lwl-name"><i class="fas fa-flag-checkered"></i><span class="lwl-name-txt">' + dateStr + '</span></span>' +

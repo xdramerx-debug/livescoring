@@ -1353,6 +1353,17 @@ function navShortUserName(d) {
 }
 
 function navAuth(u, d) {
+    var footerProfile = document.getElementById('footer-profile');
+    if (footerProfile) {
+        var signedIn = !!(u && u.uid && !u.isAnonymous);
+        var label = footerProfile.querySelector('[data-i18n]');
+        var key = signedIn ? 'footer_profile' : 'footer_profile_login';
+        if (label) { label.setAttribute('data-i18n', key); label.textContent = t(key); }
+        footerProfile.onclick = signedIn ? function(event) {
+            event.preventDefault();
+            openPlayerProfileModal(u.uid);
+        } : null;
+    }
     var e = document.getElementById('nav-auth');
     if (!e) return;
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
@@ -3318,6 +3329,22 @@ function buildDualScorecardLegendHTML() {
         '</div></details>';
 }
 
+// History records have a completion date even when older data has no status.
+function isCompletedScorecard(round) {
+    return !!(round && (round.status === 'completed' || (!round.status && round.completedAt)));
+}
+
+function scorecardPlayerSummaryHTML(name, tee, hcp, stats, holeCount, number) {
+    var en = currentLang === 'en';
+    var title = (number ? number + '. ' : '') + name;
+    return '<div class="sc-player-summary"><div class="sc-player-identity"><strong>' + escapeHtml(title) + '</strong> ' + fmtTeePill(tee) + '<small>HCP ' + escapeHtml(fmtFieldHcp(hcp)) + '</small></div>' +
+        (stats ? '<dl class="sc-result-metrics"><div><dt>Gross</dt><dd>' + (stats.holesPlayed ? stats.gross : '—') + '</dd></div><div><dt>' + (en ? 'To par' : 'К пару') + '</dt><dd class="' + scoreClass(stats.toPar) + '">' + escapeHtml(fmtScore(stats.toPar)) + '</dd></div><div><dt>' + (en ? 'Played' : 'Сыграно') + '</dt><dd>' + stats.holesPlayed + '/' + holeCount + '</dd></div></dl>' : '') + '</div>';
+}
+
+function scorecardDetailsStartHTML() {
+    return '<details class="sc-hole-details"><summary>' + (currentLang === 'en' ? 'Hole-by-hole results' : 'Результаты по лункам') + '</summary><div class="sc-hole-content">';
+}
+
 // Shared screen-only scorecard. Printing and social PNG use their own renderers.
 function renderClubScorecard(player, round, opts) {
     opts = opts || {};
@@ -3335,9 +3362,11 @@ function renderClubScorecard(player, round, opts) {
     var current = playerCurrentHole(r, pid, p, stats, order);
     var labels = [en ? 'Hole' : 'Лунка', en ? 'Par' : 'Пар', en ? 'Score' : 'Счёт'];
     if (opts.showMarker) labels.push(en ? 'Marker' : 'Маркер');
-    var html = '<section class="club-sc" data-sc-view="' + getRoundScorecardView() + '" aria-label="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
-    html += '<header class="club-sc-head"><strong>' + escapeHtml(name) + '</strong> ' + fmtTeePill(tee) + '<span>HCP ' + escapeHtml(fmtFieldHcp(hcp)) + '</span></header>';
+    var completed = isCompletedScorecard(r);
+    var html = '<section class="club-sc" data-sc-completed="' + completed + '" data-sc-view="' + getRoundScorecardView(r) + '" aria-label="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
+    if (!completed) html += '<header class="club-sc-head"><strong>' + escapeHtml(name) + '</strong> ' + fmtTeePill(tee) + '<span>HCP ' + escapeHtml(fmtFieldHcp(hcp)) + '</span></header>';
     if (opts.label) html += '<div class="club-sc-caption">' + escapeHtml(opts.label) + '</div>';
+    if (completed) html += '<div class="sc-round-summary">' + scorecardPlayerSummaryHTML(name, tee, hcp, stats, order.length) + '</div>' + scorecardDetailsStartHTML();
     var total = 0, played = 0;
     // Keep the actual playing order, including shotgun starts and nine-hole rounds.
     for (var offset = 0; offset < order.length; offset += 9) {
@@ -3371,6 +3400,7 @@ function renderClubScorecard(player, round, opts) {
         html += '</div></div><div class="club-sc-subtotal">' + (en ? 'Subtotal' : 'Промежуточный итог') + ': <b>' + (count ? gross : '—') + '</b></div></div>';
     }
     html += '<footer class="club-sc-total"><span>Gross <b>' + (played ? total : '—') + '</b></span><span>' + (en ? 'Played ' : 'Сыграно ') + played + '/' + order.length + '</span></footer>';
+    if (completed) html += '</div></details>';
     return html + '</section>';
 }
 
@@ -3412,7 +3442,7 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
     order = (order && order.length) ? order : getRoundOrder(r);
     var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
     var view = '1';
-    try { view = getRoundScorecardView(); } catch (e) { view = '1'; }
+    try { view = getRoundScorecardView(r); } catch (e) { view = '1'; }
     var n = playerEntries.length;
     var countTxt = en
         ? (n + ' ' + (n === 1 ? 'player' : 'players'))
@@ -3427,7 +3457,7 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
     var esc = (typeof escapeHtml === 'function')
         ? escapeHtml
         : function(v) { return String(v == null ? '' : v); };
-    var infos = playerEntries.map(function(pe) {
+    var infos = playerEntries.map(function(pe, index) {
         var pid = pe[0], p = pe[1] || {};
         var tee = p.tee || r.tee || 'wh';
         if (typeof tee !== 'string' || (typeof TEES !== 'undefined' && !Object.prototype.hasOwnProperty.call(TEES, tee))) tee = 'wh';
@@ -3455,7 +3485,9 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
                 ? playerHoleStatusText(r, pid, p, stats, order)
                 : '';
         } catch (e) { console.warn("[silent]", e); }
-        return { pid: pid, p: p, tee: tee, fhcp: fhcp, scores: scores, stats: stats, current: cur, name: name, thru: thru };
+        var parts = String(name).trim().split(/\s+/);
+        var shortName = (index + 1) + '. ' + parts[0] + (parts.length > 1 ? ' ' + parts[parts.length - 1].charAt(0) + '.' : '');
+        return { pid: pid, p: p, tee: tee, fhcp: fhcp, scores: scores, stats: stats, current: cur, name: name, shortName: shortName, thru: thru };
     });
 
     function nameHTML(name) {
@@ -3467,37 +3499,26 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
         if (last) lines += '<span class="gsg-pname-line">' + esc(last) + '</span>';
         return '<div class="gsg-pname">' + lines + '</div>';
     }
-    var html = '<section class="club-sc club-sc-group" data-sc-view="' + esc(view) + '" data-sc-players="' + n + '" aria-label="' + esc(title) + '">';
+    var completed = isCompletedScorecard(r);
+    var html = '<section class="club-sc club-sc-group" data-sc-completed="' + completed + '" data-sc-view="' + esc(view) + '" data-sc-players="' + n + '" aria-label="' + esc(title) + '">';
     html += '<header class="club-sc-head club-sc-group-head"><strong><i class="fas fa-users"></i> ' + esc(title) + '</strong>';
     if (fmtTxt) html += '<span class="gsg-format">' + esc(fmtTxt) + '</span>';
     if (opts.showMarker) html += buildDualScorecardLegendHTML();
     html += '</header>';
     if (opts.label) html += '<div class="club-sc-caption">' + esc(opts.label) + '</div>';
+    html += '<div class="sc-round-summary">' + infos.map(function(inf, i) { return scorecardPlayerSummaryHTML(inf.name, inf.tee, inf.fhcp, completed ? inf.stats : null, order.length, i + 1); }).join('') + '</div>';
+    if (completed) html += scorecardDetailsStartHTML();
     html += '<div class="club-sc-group-scroll" tabindex="0" aria-label="' + esc(en ? 'Group scores by holes' : 'Счёт группы по лункам') + '">';
     html += '<table class="gsg-table" style="min-width:' + (78 + n * 118) + 'px"><thead><tr>';
     html += '<th class="gsg-hole" scope="col">' + esc(en ? 'Hole · Par' : 'Лунка · Пар') + '</th>';
     infos.forEach(function(inf) {
-        var teeName = inf.tee;
-        try {
-            teeName = t('tee_' + inf.tee);
-            if (!teeName || teeName === 'tee_' + inf.tee) teeName = (typeof TEES !== 'undefined' && TEES[inf.tee]) || inf.tee;
-        } catch (e) { console.warn("[silent]", e); }
-        var band = '';
-        try { band = (typeof fieldHcpBandClass === 'function') ? fieldHcpBandClass(inf.fhcp) : ''; } catch (e) { console.warn("[silent]", e); }
-        var hcpShort = 'HCP';
-        try { hcpShort = t('field_hcp_short'); } catch (e) { console.warn("[silent]", e); }
-        var hcpVal = inf.fhcp;
-        try { hcpVal = fmtFieldHcp(inf.fhcp); } catch (e) { console.warn("[silent]", e); }
-        html += '<th class="gsg-player" scope="col" data-sc-player="' + esc(inf.pid) + '" title="' + esc(inf.name) + '">';
-        html += nameHTML(inf.name);
-        html += '<div class="gsg-pbadges"><span class="tee-pill tee-' + esc(inf.tee) + '">' + esc(teeName) + '</span>' +
-            '<span class="hcp-chip ' + esc(band) + '">' + esc(hcpShort) + ' ' + esc(hcpVal) + '</span></div>';
-        html += '</th>';
+        html += '<th class="gsg-player" scope="col" data-sc-player="' + esc(inf.pid) + '" title="' + esc(inf.name) + '">' + nameHTML(inf.shortName) + '</th>';
     });
     html += '</tr></thead><tbody>';
 
     // Порядок игры сохраняем как есть (включая шотган и девятки):
     // строки идут в порядке order, промежуточный итог — после каждых 9 сыгранных.
+    var gridCells = {};
     var hasChunks = order.length > 9;
     for (var offset = 0; offset < order.length; offset += 9) {
         var holes = order.slice(offset, offset + 9);
@@ -3540,8 +3561,11 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
                         }
                     }
                 }
-                html += '<td class="' + tdCls + '" data-sc-player="' + esc(inf.pid) + '" data-sc-hole="' + h + '"' + (isCur ? ' data-sc-current="1"' : '') + '>' +
-                    '<span class="gsg-score ' + scoreCls + '"><span class="gsg-val">' + (s > 0 ? s : '—') + hcpBadge + '</span></span>' + mkHtml + '</td>';
+                var scoreHtml = '<span class="gsg-score ' + scoreCls + '"><span class="gsg-val">' + (s > 0 ? s : '—') + hcpBadge + '</span></span>' + mkHtml;
+                var cellAttrs = ' data-sc-player="' + esc(inf.pid) + '" data-sc-hole="' + h + '"' + (isCur ? ' data-sc-current="1"' : '');
+                html += '<td class="' + tdCls + '"' + cellAttrs + '>' + scoreHtml + '</td>';
+                if (!gridCells[h]) gridCells[h] = [];
+                gridCells[h].push('<div class="club-sc-cell gsg-grid-score ' + tdCls + '"' + cellAttrs + '><span class="club-sc-cell-label" title="' + esc(inf.name) + '">' + esc(inf.shortName) + '</span><span>' + scoreHtml + '</span></div>');
             });
             html += '</tr>';
         });
@@ -3584,9 +3608,38 @@ function renderUnifiedGroupScorecardHTML(r, playerEntries, order, opts) {
             '<div class="gsg-total-played">' + played + '/' + order.length + '</div></td>';
     });
     html += '</tr></tbody></table></div>';
+    // All layouts are present so a live admin change also updates already-open
+    // and collapsed completed rounds without losing their expansion state.
+    html += '<div class="gsg-layouts">';
+    for (var side = 0; side < order.length; side += 9) {
+        var sideHoles = order.slice(side, side + 9);
+        html += '<div class="club-sc-side"><div class="club-sc-caption">' + esc((en ? 'Holes ' : 'Лунки ') + sideHoles[0] + '–' + sideHoles[sideHoles.length - 1]) + '</div>';
+        html += '<div class="club-sc-scroll" tabindex="0" aria-label="' + esc(en ? 'Group scores by holes' : 'Счёт группы по лункам') + '"><div class="club-sc-grid" style="--sc-holes:' + sideHoles.length + '">';
+        html += '<div class="club-sc-labels"><div>' + (en ? 'Hole' : 'Лунка') + '</div><div>' + (en ? 'Par' : 'Пар') + '</div>';
+        infos.forEach(function(inf) {
+            html += '<div class="gsg-grid-name" title="' + esc(inf.name) + '">' + nameHTML(inf.shortName) + '</div>';
+        });
+        html += '</div>';
+        sideHoles.forEach(function(h) {
+            html += '<div class="club-sc-hole"><div class="club-sc-cell club-sc-number"><span class="club-sc-cell-label">' + (en ? 'Hole' : 'Лунка') + '</span>' + h + '</div><div class="club-sc-cell club-sc-par"><span class="club-sc-cell-label">' + (en ? 'Par' : 'Пар') + '</span>' + holePar(h) + '</div>' + gridCells[h].join('') + '</div>';
+        });
+        html += '</div></div><div class="club-sc-subtotal">';
+        infos.forEach(function(inf) {
+            var gross = 0, played = 0;
+            sideHoles.forEach(function(h) { var score = parseInt(inf.scores[h], 10) || 0; if (score > 0) { gross += score; played++; } });
+            html += '<span>' + esc(inf.shortName) + ': <b>' + (played ? gross : '—') + '</b></span> ';
+        });
+        html += '</div></div>';
+    }
+    html += '<div class="club-sc-total">';
+    infos.forEach(function(inf) {
+        html += '<span>' + esc(inf.shortName) + ' · Gross <b>' + (inf.stats.holesPlayed ? inf.stats.gross : '—') + '</b> <span class="' + scoreClass(inf.stats.toPar) + '">' + esc(fmtScore(inf.stats.toPar)) + '</span> · ' + inf.stats.holesPlayed + '/' + order.length + '</span>';
+    });
+    html += '</div></div>';
+    if (completed) return html + '</div></details></section>';
     // Кто где сейчас — живой статус флайта одной строкой.
     var thruBits = infos.map(function(inf) {
-        return '<span class="gsg-thru"><b>' + esc(inf.name) + ':</b> ' + esc(inf.thru || '') + '</span>';
+        return '<span class="gsg-thru"><b>' + esc(inf.shortName) + ':</b> ' + esc(inf.thru || '') + '</span>';
     }).join('');
     html += '<footer class="club-sc-total club-sc-group-total">' + thruBits + '</footer>';
     return html + '</section>';
@@ -7040,7 +7093,7 @@ function tnSortByHandicap(list) {
 // ─────────────────────────────────────────────────────────
 // АДМИНСКИЕ ВИДЫ ОТОБРАЖЕНИЯ (5 вариантов, выбирает только админ)
 //   homeTournament — блок «Активный турнир» на главной;
-//   scorecard      — счётная карточка по лункам во время раунда;
+//   scorecard      — счётные карточки активных и завершённых раундов;
 //   roundSetup     — блок «Создание раунда» (единая форма: 1 игрок или
 //                    группа, кнопка «Добавить игрока», 5 видов).
 // Хранение: settings/<key> в Firebase + кэш в localStorage, применяется
@@ -7077,7 +7130,9 @@ function applyView5(name, value) {
     var v = normalizeView5(value);
     pestovoView5State[name] = v;
     if (name === 'scorecard' && typeof document !== 'undefined' && document.querySelectorAll) {
-        document.querySelectorAll('.club-sc:not([data-sc-preview])').forEach(function(el) { el.setAttribute('data-sc-view', v); });
+        document.querySelectorAll('.club-sc:not([data-sc-preview])').forEach(function(el) {
+            el.setAttribute('data-sc-view', getRoundScorecardView({ status: el.getAttribute('data-sc-completed') === 'true' ? 'completed' : 'active' }));
+        });
     }
     try { localStorage.setItem(PESTOVO_VIEW5_CONFIG[name].storage, v); } catch (e) { console.warn("[silent]", e); }
     try { syncView5BodyClasses(); } catch (e) { console.warn("[silent]", e); }
@@ -7102,6 +7157,7 @@ function syncView5BodyClasses() {
 // Живая подписка на значение из Firebase: вызывается страницами при старте.
 // cb вызывается и когда настройки нет (значение по умолчанию «1»).
 function pestovoBindView5(name, cb) {
+    if (name === 'scorecard') { bindScorecardDisplaySettings(cb); return; }
     var cfg = PESTOVO_VIEW5_CONFIG[name];
     if (!cfg) return;
     var fire = function(val) { try { cb(applyView5(name, val)); } catch (e) { console.warn("[silent]", e); } };
@@ -7113,8 +7169,56 @@ function pestovoBindView5(name, cb) {
     }
 }
 
+// Backward-compatible migration: until the atomic document exists, read the
+// original settings/scorecard_view. Do not discard cached settings when offline.
+var SCORECARD_DISPLAY_PATH = 'settings/scorecard_display';
+var SCORECARD_DISPLAY_STORAGE = 'pestovo_scorecard_display';
+function normalizeScorecardDisplay(value) {
+    value = value && typeof value === 'object' ? value : {};
+    return { view: normalizeView5(value.view), completedView: PESTOVO_VIEW5_KEYS.indexOf(String(value.completedView)) >= 0 ? String(value.completedView) : 'inherit' };
+}
+var scorecardDisplayState = (function() {
+    try { var cached = JSON.parse(localStorage.getItem(SCORECARD_DISPLAY_STORAGE)); return cached && typeof cached === 'object' ? cached : null; } catch (e) { return null; }
+})();
+var scorecardLegacyView = getView5('scorecard');
+if (scorecardDisplayState) pestovoView5State.scorecard = normalizeScorecardDisplay(scorecardDisplayState).view;
+function getScorecardDisplaySettings() {
+    return scorecardDisplayState ? normalizeScorecardDisplay(scorecardDisplayState) : { view: getView5('scorecard'), completedView: 'inherit' };
+}
+function applyScorecardDisplaySettings(value) {
+    scorecardDisplayState = value && typeof value === 'object' ? Object.assign(normalizeScorecardDisplay(value), { previous: value.previous ? normalizeScorecardDisplay(value.previous) : null }) : null;
+    try {
+        if (scorecardDisplayState) localStorage.setItem(SCORECARD_DISPLAY_STORAGE, JSON.stringify(scorecardDisplayState));
+        else localStorage.removeItem(SCORECARD_DISPLAY_STORAGE);
+    } catch (e) { console.warn('[scorecard cache]', e); }
+    applyView5('scorecard', scorecardDisplayState ? scorecardDisplayState.view : scorecardLegacyView);
+    if (typeof renderClubScorecardSavedState === 'function') renderClubScorecardSavedState();
+}
+function bindScorecardDisplaySettings(cb) {
+    cb = cb || function() {};
+    if (typeof db === 'undefined' || !db) { cb(getRoundScorecardView()); return; }
+    bindRealtimeValue('view5-scorecard', db.ref(PESTOVO_VIEW5_CONFIG.scorecard.firebase), function(sn) {
+        scorecardLegacyView = normalizeView5(sn.val());
+        if (!scorecardDisplayState) { applyView5('scorecard', scorecardLegacyView); cb(getRoundScorecardView()); }
+    });
+    bindRealtimeValue('scorecard-display', db.ref(SCORECARD_DISPLAY_PATH), function(sn) {
+        applyScorecardDisplaySettings(sn.val());
+        cb(getRoundScorecardView());
+    });
+}
+// Same-device tabs also update while offline; Firebase handles other devices and
+// reconnects. Attribute-only updates preserve details/open and scroll position.
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('storage', function(event) {
+    if (event.key === SCORECARD_DISPLAY_STORAGE) {
+        try { applyScorecardDisplaySettings(JSON.parse(event.newValue)); } catch (e) { console.warn('[scorecard cache]', e); }
+    }
+});
+
 function getHomeTournamentView() { return getView5('homeTournament'); }
-function getRoundScorecardView() { return getView5('scorecard'); }
+function getRoundScorecardView(round) {
+    var settings = getScorecardDisplaySettings();
+    return isCompletedScorecard(round) && settings.completedView !== 'inherit' ? settings.completedView : getView5('scorecard');
+}
 function getRoundSetupView() { return getView5('roundsetup'); }
 
 if (typeof window !== 'undefined') {

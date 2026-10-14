@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=5f3b4ad3">
+    <link rel="stylesheet" href="css/style.css?v=07ac5eab">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=3f88226b">
     <link rel="stylesheet" href="css/tn-manager.css?v=6d129f32">
@@ -119,11 +119,12 @@
                     <span class="sev-head-icon" aria-hidden="true"><i class="fas fa-table-list"></i></span>
                     <div class="sev-head-text">
                         <h2>Отображения счётных карточек</h2>
-                        <p>Единое оформление для всех игроков: главная, раунд, лидерборды, турниры и история. Без расстояний; ти — рядом с именем. Печать и PNG не меняются.</p>
+                        <p>Единое оформление для всех игроков: главная, активные и завершённые раунды, лидерборды, турниры и история. Без расстояний; ти — рядом с именем. Печать и PNG не меняются.</p>
                     </div>
                     <span class="sev-head-badge"><i class="fas fa-users" aria-hidden="true"></i> Для всех игроков</span>
                 </header>
-                <div class="sev-sec-title">Вариант карточки</div>
+                <p id="club-sc-saved" class="sc-saved-state" role="status" aria-live="polite"></p>
+                <div class="sev-sec-title">Общий вид карточки</div>
                 <p class="sev-sec-sub">Пять видов одной карточки. Выберите — пример ниже обновится сразу.</p>
                 <div class="club-sc-options sev-variants">
                     <button type="button" id="v5-scorecard-1" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('1')">
@@ -152,18 +153,31 @@
                         <span class="sev-card-desc">Акцент на счёте каждой лунки.</span>
                     </button>
                 </div>
+                <label class="sc-completed-setting" for="club-sc-completed-view">Вид завершённых раундов
+                    <select id="club-sc-completed-view" class="form-input" onchange="previewCompletedScorecardView(this.value)">
+                        <option value="inherit">Как общий вид</option>
+                        <option value="1">1 · Бланк клуба</option><option value="2">2 · Блоки по 3 лунки</option>
+                        <option value="3">3 · Крупная лента</option><option value="4">4 · Вертикальный список</option><option value="5">5 · Плитки</option>
+                    </select>
+                    <small>Отдельное оформление не меняет карточки активных раундов. Итоги завершённых раундов всегда видны сверху, лунки раскрываются по нажатию.</small>
+                </label>
                 <div class="sev-apply">
                     <button type="button" id="club-sc-apply" class="btn btn-g" onclick="saveClubScorecardView(clubScorecardPreviewView)"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех</button>
+                    <button type="button" id="club-sc-undo" class="btn btn-og" onclick="restoreClubScorecardView()" disabled>Вернуть предыдущий</button>
                     <div class="sev-apply-text">
-                        <p class="sev-apply-hint">Выберите вариант, рассмотрите пример ниже и нажмите «Применить для всех».</p>
+                        <p class="sev-apply-hint">Оба вида сохраняются вместе. «Вернуть предыдущий» восстановит предыдущую пару настроек для всех игроков.</p>
                         <p id="club-sc-save-status" role="status" aria-live="polite"></p>
                     </div>
                 </div>
                 <div class="sev-sec-title">Предпросмотр для телефона</div>
                 <p class="sev-sec-sub">Демонстрационные данные · ширина до 390 px. Палочки — удары форы; красные — отдаваемые удары. «—» означает, что счёт ещё не введён. Несовпадение с маркером подсвечивается.</p>
-                <div class="sev-device">
-                    <div id="club-sc-preview" class="club-sc-phone"></div>
-                </div>
+                <fieldset class="sc-preview-controls"><legend>Демонстрационный раунд</legend>
+                    <label>Игроки<select id="club-sc-preview-players" class="form-input" onchange="renderClubScorecardPreview()"><option value="1">1 игрок</option><option value="2">2 игрока</option><option value="4">4 игрока</option></select></label>
+                    <label>Лунки<select id="club-sc-preview-holes" class="form-input" onchange="renderClubScorecardPreview()"><option value="18">18 лунок</option><option value="9">9 лунок</option></select></label>
+                    <label>Состояние<select id="club-sc-preview-status" class="form-input" onchange="renderClubScorecardPreview()"><option value="active">Активный</option><option value="completed">Завершённый</option></select></label>
+                </fieldset>
+                <p id="club-sc-preview-caption" class="sev-sec-sub" aria-live="polite"></p>
+                <div class="sev-device"><div id="club-sc-preview" class="club-sc-phone"></div></div>
             </div>
         </div>
 
@@ -1051,18 +1065,18 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.114.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.115.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="js/firebase-config.js?v=57564a0d"></script>
-<script type="module" src="dist/livescoring-modules.js?v=fbbaf030"></script>
+<script type="module" src="dist/livescoring-modules.js?v=c78a87bf"></script>
     <script src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
 <script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script src="js/qr-code.js?v=2a26e819"></script>
 <script src="js/rusgolf-client.js?v=f37608e7"></script>
-<script src="js/utils.js?v=70676f06"></script>
+<script src="js/utils.js?v=fa3015ac"></script>
 <script src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script src="js/tn-mgr-core.js?v=dc621917"></script>
 <script src="js/tn-mgr-data.js?v=9df4ae94"></script>
@@ -1087,7 +1101,7 @@
 <script src="js/admin-players-excel.js?v=b46ee68a"></script>
 <script src="js/admin-agr.js?v=342bd9b3"></script>
 <script src="js/admin-name-forms.js?v=b6f269e8"></script>
-<script src="js/admin-display.js?v=692ee6f4"></script>
+<script src="js/admin-display.js?v=423fb284"></script>
 <script src="js/admin-entry-scorecard.js?v=74578afa"></script>
 <script src="js/design-admin.js?v=70a7c0c4"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>

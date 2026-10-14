@@ -211,6 +211,7 @@ function markAdmView5Buttons(name) {
 }
 
 function saveView5Setting(name, v) {
+    if (name === 'scorecard') return saveClubScorecardView(v);
     if (typeof applyView5 !== 'function') return;
     if (typeof vib === 'function') vib(30);
     applyView5(name, v);
@@ -745,47 +746,114 @@ function togglePlayerPrivacy(id) {
 }
 
 var clubScorecardPreviewView = null;
+var clubScorecardCompletedDraft = null;
+var clubScorecardSaving = false;
+var clubScorecardViewNames = { '1': 'Бланк клуба', '2': 'Блоки по 3 лунки', '3': 'Крупная лента', '4': 'Вертикальный список', '5': 'Плитки' };
 function previewClubScorecardView(value) {
     clubScorecardPreviewView = normalizeView5(value);
     renderClubScorecardPreview();
 }
-
+function previewCompletedScorecardView(value) {
+    clubScorecardCompletedDraft = normalizeScorecardDisplay({ completedView: value }).completedView;
+    renderClubScorecardPreview();
+}
+function renderClubScorecardSavedState() {
+    var saved = getScorecardDisplaySettings();
+    var label = document.getElementById('club-sc-saved');
+    if (label) label.textContent = 'Сохранено: общий — ' + saved.view + ' · ' + clubScorecardViewNames[saved.view] + '; завершённые — ' + (saved.completedView === 'inherit' ? 'как общий' : saved.completedView + ' · ' + clubScorecardViewNames[saved.completedView]) + '.';
+    var undo = document.getElementById('club-sc-undo');
+    if (undo) {
+        var previous = scorecardDisplayState && scorecardDisplayState.previous;
+        undo.disabled = clubScorecardSaving || !previous;
+        undo.title = previous ? 'Восстановить: общий ' + previous.view + ', завершённые ' + (previous.completedView === 'inherit' ? 'как общий' : previous.completedView) : 'Предыдущего сохранения пока нет';
+    }
+    var select = document.getElementById('club-sc-completed-view');
+    if (select && clubScorecardCompletedDraft === null) select.value = saved.completedView;
+    markAdmView5Buttons('scorecard');
+}
 function renderClubScorecardPreview() {
     var el = document.getElementById('club-sc-preview');
     if (!el) return;
-    var scores = {}, marker = {};
-    for (var h = 1; h <= 12; h++) { scores[h] = holePar(h) + (h % 3) - 1; marker[h] = scores[h]; }
-    marker[7] += 1;
-    var p = { name: 'Александр · пример', tee: 'wh', fieldHcp: 23, scores: scores };
-    el.innerHTML = renderClubScorecard(p, { status: 'active', holeRange: '1-18' }, { showMarker: true, markerScores: marker });
+    function selected(id, fallback) { var input = document.getElementById(id); return input ? input.value : fallback; }
+    var count = parseInt(selected('club-sc-preview-players', '1'), 10);
+    if ([1, 2, 4].indexOf(count) < 0) count = 1;
+    var holes = selected('club-sc-preview-holes', '18') === '9' ? 9 : 18;
+    var completed = selected('club-sc-preview-status', 'active') === 'completed';
+    var round = { status: completed ? 'completed' : 'active', holeRange: '1-' + holes, players: {} };
+    var names = ['Александр Иванов', 'Мария Петрова', 'Александр Ильин', 'Елена Смирнова'];
+    for (var i = 0; i < count; i++) {
+        var scores = {}, marker = {};
+        for (var h = 1; h <= (completed ? holes : Math.min(holes - 2, 12)); h++) {
+            scores[h] = holePar(h) + ((h + i) % 3) - 1;
+            marker[h] = scores[h];
+        }
+        if (!completed && marker[7]) marker[7] += 1;
+        round.players['preview' + i] = { name: names[i], tee: i % 2 ? 'rd' : 'wh', fieldHcp: [23, 12, 0, -2][i], scores: scores, markedBy: 'marker', markerScores: { marker: marker } };
+    }
+    var saved = getScorecardDisplaySettings();
+    var general = clubScorecardPreviewView || saved.view;
+    var finished = clubScorecardCompletedDraft === null ? saved.completedView : clubScorecardCompletedDraft;
+    var view = completed && finished !== 'inherit' ? finished : general;
+    el.innerHTML = count === 1
+        ? renderClubScorecard(round.players.preview0, round, { playerId: 'preview0', showMarker: !completed })
+        : renderUnifiedGroupScorecardHTML(round, Object.entries(round.players), getRoundOrder(round), { showMarker: !completed });
     var card = el.querySelector('.club-sc');
     card.setAttribute('data-sc-preview', 'true');
-    card.setAttribute('data-sc-view', clubScorecardPreviewView || getRoundScorecardView());
-    markAdmView5Buttons('scorecard');
+    card.setAttribute('data-sc-view', view);
+    var caption = document.getElementById('club-sc-preview-caption');
+    if (caption) caption.textContent = (completed ? 'Завершённый' : 'Активный') + ' · ' + count + ' игр. · ' + holes + ' лунок · вид ' + view + ' — ' + clubScorecardViewNames[view] + '. Это предпросмотр, изменения ещё не опубликованы.';
+    renderClubScorecardSavedState();
 }
 
-// Cloud acknowledgement, not an optimistic local change, confirms a global choice.
-var clubScorecardSaving = false;
+// A single transaction preserves the actual preceding server values, including
+// when another administrator saves concurrently. Local events are suppressed:
+// only the acknowledged snapshot is presented as successfully saved.
 function saveClubScorecardView(value) {
-    if (clubScorecardSaving) return;
+    return persistClubScorecardDisplay(false, {
+        view: normalizeView5(value || clubScorecardPreviewView || getRoundScorecardView()),
+        completedView: clubScorecardCompletedDraft === null ? getScorecardDisplaySettings().completedView : clubScorecardCompletedDraft
+    });
+}
+function restoreClubScorecardView() { return persistClubScorecardDisplay(true); }
+function persistClubScorecardDisplay(restore, draft) {
+    if (clubScorecardSaving) return Promise.resolve(false);
     var status = document.getElementById('club-sc-save-status');
-    var v = normalizeView5(value || getRoundScorecardView());
-    if (typeof db === 'undefined' || !db) {
-        status.textContent = 'Нет соединения с базой. Общий вид не изменён.';
-        return;
+    function message(text) { if (status) status.textContent = text; }
+    if (typeof db === 'undefined' || !db || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+        message('Нет соединения с базой. Общий вид не изменён.');
+        return Promise.resolve(false);
     }
     clubScorecardSaving = true;
-    status.textContent = 'Сохраняем для всех пользователей…';
-    document.querySelectorAll('#tab-scorecards > .card:first-child .club-sc-options button, #club-sc-apply').forEach(function(b) { b.disabled = true; });
-    db.ref(PESTOVO_VIEW5_CONFIG.scorecard.firebase).set(v).then(function() {
-        applyView5('scorecard', v);
-        status.textContent = 'Вариант ' + v + ' сохранён для всех пользователей.';
+    message('Сохраняем для всех пользователей…');
+    var selector = '#tab-scorecards .club-sc-options button, #club-sc-apply, #club-sc-undo, #club-sc-completed-view';
+    document.querySelectorAll(selector).forEach(function(b) { b.disabled = true; });
+    // Read the legacy value on first migration, rather than trusting a stale
+    // local cache as the rollback snapshot. Once migrated, transaction data wins.
+    return db.ref(PESTOVO_VIEW5_CONFIG.scorecard.firebase).once('value').then(function(sn) {
+        var legacy = { view: normalizeView5(sn.val()), completedView: 'inherit' };
+        return db.ref(SCORECARD_DISPLAY_PATH).transaction(function(current) {
+            var before = current ? normalizeScorecardDisplay(current) : legacy;
+            if (restore && !(current && current.previous)) return;
+            var next = restore ? normalizeScorecardDisplay(current.previous) : normalizeScorecardDisplay(draft);
+            if (next.view === before.view && next.completedView === before.completedView) return;
+            return { view: next.view, completedView: next.completedView, previous: before };
+        }, undefined, false);
+    }).then(function(result) {
+        if (!result.committed) { message(restore ? 'Нет предыдущего отличающегося оформления для возврата.' : 'Эти настройки уже сохранены.'); return false; }
+        applyScorecardDisplaySettings(result.snapshot.val());
+        clubScorecardPreviewView = null;
+        clubScorecardCompletedDraft = null;
+        renderClubScorecardPreview();
+        message(restore ? 'Предыдущее оформление восстановлено для всех игроков.' : 'Оба вида сохранены для всех игроков.');
+        return true;
     }).catch(function(err) {
         console.warn('Scorecard display save failed', err);
-        status.textContent = 'Не удалось сохранить. Проверьте соединение и права администратора.';
+        message('Не удалось сохранить. Проверьте соединение и права администратора.');
+        return false;
     }).finally(function() {
         clubScorecardSaving = false;
-        document.querySelectorAll('#tab-scorecards > .card:first-child .club-sc-options button, #club-sc-apply').forEach(function(b) { b.disabled = false; });
+        document.querySelectorAll(selector).forEach(function(b) { b.disabled = false; });
+        renderClubScorecardSavedState();
     });
 }
 

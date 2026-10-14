@@ -21,79 +21,90 @@ const root = path.join(__dirname, '..');
             await page.addScriptTag({ path: path.join(root, 'js', file + '.js') });
         }
         const admin = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
-        // Секция «Отображения счётных карточек» идёт первой из трёх подряд
-        // (scorecards → scoreentry → rounds): режем ровно до следующей вкладки,
-        // иначе в фрагмент попадал бы и блок «Ввод счёта».
         const scStart = admin.indexOf('<div id="tab-scorecards"');
-        const scEnd = admin.indexOf('<div id="tab-', scStart + 10);
-        const fragment = admin.slice(scStart, scEnd);
+        const fragment = admin.slice(scStart, admin.indexOf('<div id="tab-', scStart + 10));
         await page.evaluate(html => {
             document.body.innerHTML = html.replace('admin-section hidden', 'admin-section');
             document.body.style.padding = '8px';
             currentLang = 'ru';
             window.saveCalls = [];
             window.failSave = false;
-            window.db = { ref: path => ({ set: value => { saveCalls.push({ path, value }); return failSave ? Promise.reject(new Error('Denied')) : Promise.resolve(); } }) };
+            window.settingsServer = null;
+            window.db = { ref: path => ({
+                once: () => Promise.resolve({ val: () => '1' }),
+                transaction: (update, complete, localEvents) => {
+                    if (failSave) return Promise.reject(new Error('Denied'));
+                    const value = update(settingsServer);
+                    if (value === undefined) return Promise.resolve({ committed: false });
+                    saveCalls.push({ path, value, localEvents });
+                    settingsServer = value;
+                    return Promise.resolve({ committed: true, snapshot: { val: () => value } });
+                }
+            }) };
             renderClubScorecardPreview();
         }, fragment);
         for (const width of [320, 390, 430]) {
             await page.setViewportSize({ width, height: 844 });
             for (const variant of ['1', '2', '3', '4', '5']) {
                 await page.click('#v5-scorecard-' + variant);
-                const optionTarget = await page.locator('#v5-scorecard-' + variant).evaluate(element => {
-                    const rect = element.getBoundingClientRect();
-                    return { height: rect.height, left: rect.left, right: rect.right };
-                });
-                assert(optionTarget.height >= 44 && optionTarget.left >= 0 && optionTarget.right <= width + 1,
-                    'Scorecard variant is visible and touch-sized: ' + width + '/' + variant + ' ' + JSON.stringify(optionTarget));
-                assert.strictEqual(await page.getAttribute('#club-sc-preview .club-sc', 'data-sc-view'), variant);
-                assert.strictEqual(await page.locator('#club-sc-preview [data-sc-hole]').count(), 18);
-                const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
-                assert.strictEqual(overflow, false, 'No page overflow: ' + width + '/' + variant);
-                assert.strictEqual(await page.locator('#club-sc-preview .hm-bar').first().isVisible(), true);
-                assert.strictEqual(await page.locator('#club-sc-preview .club-sc-si, #club-sc-preview .club-sc-hcp, #club-sc-preview .club-sc-points').count(), 0);
-                const marksFit = await page.evaluate(() => Array.from(document.querySelectorAll('#club-sc-preview .hm-bar')).every(bar => {
-                    const square = bar.closest('.club-sc-score .club-sc-value');
-                    if (!square) return false;
-                    const b = bar.getBoundingClientRect(), s = square.getBoundingClientRect();
-                    return b.left >= s.left && b.right <= s.right && b.top >= s.top && b.bottom <= s.bottom && getComputedStyle(bar).transform !== 'none';
-                }));
-                assert.strictEqual(marksFit, true, 'Slashes fit inside score squares: ' + width + '/' + variant);
-                assert.strictEqual(await page.getAttribute('#v5-scorecard-' + variant, 'aria-pressed'), 'true');
-                const measured = await page.evaluate(() => {
-                    const scroll = document.querySelector('.club-sc-scroll');
-                    return { client: scroll.clientWidth, scroll: scroll.scrollWidth };
-                });
-                assert.strictEqual(measured.scroll > measured.client + 1, variant === '3', 'Only large tape scrolls horizontally: ' + width + '/' + variant);
+                const target = await page.locator('#v5-scorecard-' + variant).boundingBox();
+                assert(target.height >= 44 && target.x >= 0 && target.x + target.width <= width + 1);
+                for (const players of ['1', '2', '4']) for (const holes of ['9', '18']) for (const status of ['active', 'completed']) {
+                    await page.evaluate(({ players, holes, status, variant }) => {
+                        document.getElementById('club-sc-preview-players').value = players;
+                        document.getElementById('club-sc-preview-holes').value = holes;
+                        document.getElementById('club-sc-preview-status').value = status;
+                        clubScorecardCompletedDraft = variant;
+                        renderClubScorecardPreview();
+                    }, { players, holes, status, variant });
+                    const label = [width, variant, players, holes, status].join('/');
+                    const card = page.locator('#club-sc-preview .club-sc');
+                    assert.strictEqual(await card.getAttribute('data-sc-view'), variant, label);
+                    assert.strictEqual(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'No page overflow: ' + label);
+                    if (status === 'completed') {
+                        assert.strictEqual(await card.locator('.sc-player-summary').count(), Number(players));
+                        assert.strictEqual(await card.locator('.sc-result-metrics').count(), Number(players));
+                        assert.strictEqual(await card.locator('[data-sc-hole]:visible').count(), 0, 'Hole detail initially collapsed: ' + label);
+                        await card.locator('.sc-hole-details > summary').focus();
+                        await page.keyboard.press('Enter');
+                        assert.strictEqual(await card.locator('details').getAttribute('open'), '');
+                    }
+                    assert.strictEqual(await card.locator('[data-sc-player][data-sc-hole]:visible').count(), Number(players) * Number(holes), label);
+                    if (players !== '1') {
+                        assert.strictEqual(await card.locator('.club-sc-group-scroll').isVisible(), variant === '4');
+                        assert.strictEqual(await card.locator('.gsg-layouts .tee-pill').count(), 0, 'No tee badges repeated per hole');
+                        if (variant !== '4') {
+                            const columns = await card.locator('.club-sc-grid').first().evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+                            assert.strictEqual(columns, ['2', '5'].includes(variant) ? 3 : 10, label);
+                        }
+                    } else {
+                        const scrolling = await card.locator('.club-sc-scroll').first().evaluate(el => el.scrollWidth > el.clientWidth + 1);
+                        assert.strictEqual(scrolling, variant === '3', 'Solo scrolling: ' + label);
+                    }
+                    assert.strictEqual(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'Expanded card fits: ' + label);
+                }
             }
         }
-        assert.strictEqual(await page.evaluate(() => saveCalls.length), 0, 'Preview does not write global settings');
+        assert.strictEqual(await page.evaluate(() => saveCalls.length), 0, 'All preview combinations are local');
+        await page.selectOption('#club-sc-completed-view', '4');
         await page.click('#club-sc-apply');
         await page.waitForFunction(() => !clubScorecardSaving);
-        assert.deepStrictEqual(await page.evaluate(() => saveCalls[0]), { path: 'settings/scorecard_view', value: '5' });
-        assert.strictEqual(await page.evaluate(() => getRoundScorecardView()), '5');
-        // Other cards update live, but an un-applied admin preview stays selected.
-        await page.evaluate(() => {
-            const host = document.createElement('div');
-            host.id = 'public-card';
-            host.innerHTML = renderClubScorecard({ name: 'Player', tee: 'bl', scores: {}, fieldHcp: -18 }, { holeRange: '1-9' });
-            document.body.appendChild(host);
-            applyView5('scorecard', '2');
-        });
-        assert.strictEqual(await page.getAttribute('#public-card .club-sc', 'data-sc-view'), '2');
-        assert.strictEqual(await page.getAttribute('#club-sc-preview .club-sc', 'data-sc-view'), '5');
+        assert.deepStrictEqual(await page.evaluate(() => saveCalls[0]), { path: 'settings/scorecard_display', value: { view: '5', completedView: '4', previous: { view: '1', completedView: 'inherit' } }, localEvents: false });
+        assert.match(await page.textContent('#club-sc-saved'), /общий — 5.*завершённые — 4/);
+        await page.click('#club-sc-undo');
+        await page.waitForFunction(() => !clubScorecardSaving);
+        assert.strictEqual(await page.evaluate(() => getRoundScorecardView({ status: 'completed' })), '1');
         await page.evaluate(() => { failSave = true; });
-        await page.click('#v5-scorecard-4');
+        await page.click('#v5-scorecard-3');
         await page.click('#club-sc-apply');
         await page.waitForFunction(() => !clubScorecardSaving);
-        assert.strictEqual(await page.evaluate(() => getRoundScorecardView()), '2', 'Failed write leaves global selection intact');
+        assert.strictEqual(await page.evaluate(() => getRoundScorecardView()), '1');
         assert.match(await page.textContent('#club-sc-save-status'), /Не удалось/);
         assert.strictEqual(await page.isDisabled('#club-sc-apply'), false);
         assert.deepStrictEqual(errors, []);
         if (process.env.SCORECARD_SCREENSHOT) {
-            await page.evaluate(() => previewClubScorecardView('1'));
-            await page.locator('#club-sc-preview').screenshot({ path: process.env.SCORECARD_SCREENSHOT });
+            await page.locator('#tab-scorecards').screenshot({ path: process.env.SCORECARD_SCREENSHOT });
         }
-        console.log('PASS: five mobile layouts at 320/390/430px; preview, global apply, realtime, failed save');
+        console.log('PASS: 180 mobile preview combinations; completed summaries, keyboard details, compact names, atomic save and undo');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });

@@ -5419,6 +5419,25 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
     .club-sc[data-sc-view="2"] .club-sc-cell { padding:4px 3px; }
 }
 
+/* Group cards share the five admin-selected layouts, including completed rounds.
+   The original table is the vertical list; keep scroll inside each scorecard. */
+.club-sc-group:not([data-sc-view="4"]) .club-sc-group-scroll { display:none; }
+.club-sc-group[data-sc-view="4"] .gsg-layouts { display:none; }
+.club-sc-group .club-sc-labels, .club-sc-group .club-sc-hole { grid-template-rows:32px 32px; grid-auto-rows:minmax(52px,auto); }
+.club-sc-group .gsg-grid-name { flex-direction:column; gap:2px; text-align:center; overflow-wrap:anywhere; }
+.club-sc-group .gsg-grid-name .gsg-pname { font-size:10px; }
+.club-sc-group[data-sc-view="1"] .club-sc-grid { grid-template-columns:80px repeat(var(--sc-holes),minmax(38px,1fr)); }
+.club-sc-group[data-sc-view="3"] .club-sc-grid { grid-template-columns:100px repeat(var(--sc-holes),72px); }
+.club-sc-group[data-sc-view="3"] .gsg-grid-score .gsg-score { font-size:24px; }
+.club-sc-group .gsg-grid-score { flex-direction:column; gap:8px; min-width:0; }
+.club-sc-group .gsg-grid-score .club-sc-cell-label { overflow-wrap:anywhere; text-align:center; }
+.club-sc-group[data-sc-view="2"] .gsg-grid-score,
+.club-sc-group[data-sc-view="5"] .gsg-grid-score { padding:8px 3px; }
+.club-sc-group[data-sc-view="5"] .club-sc-grid > .club-sc-hole { grid-template-columns:1fr; grid-template-rows:32px 32px; }
+.club-sc-group[data-sc-view="5"] .gsg-grid-score .gsg-score { font-size:24px; }
+.club-sc-group[data-sc-view="5"] .gsg-grid-score { border-top:1px solid var(--border); }
+.club-sc-group .club-sc-subtotal { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px 12px; }
+
 /* ── ОБЩАЯ КАРТОЧКА ГРУППЫ: одна на весь флайт (2+ игрока) ──
    Строки — лунки в порядке игры, столбцы — игроки. Первая колонка
    закреплена, горизонтальный скролл — только внутри карточки. */
@@ -6672,3 +6691,28 @@ body.sun-mode .score-entry .hole-val { color:#111!important; text-shadow:none!im
     .page-display-variant-btn { min-height:44px!important; height:auto!important; }
 }
 .display-layout-field .form-input { min-height:48px; touch-action:manipulation; }
+
+/* Completed rounds: results first, hole detail opt-in (no JS needed to expand). */
+.sc-round-summary { display:grid; gap:8px; margin:6px 0 12px; min-width:0; }
+.sc-player-summary { padding:10px; border:1px solid var(--border); border-radius:10px; min-width:0; }
+.sc-player-identity { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:13px; overflow-wrap:anywhere; }
+.sc-player-identity strong { min-width:0; }
+.sc-player-identity small { color:var(--muted); }
+.sc-result-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:10px 0 0; }
+.sc-result-metrics dt { font-size:11px; color:var(--muted); }
+.sc-result-metrics dd { font-size:22px; font-weight:800; margin:3px 0 0; }
+.sc-result-metrics > div:first-child dd { color:var(--gold); }
+.sc-hole-details { min-width:0; }
+.sc-hole-details > summary { cursor:pointer; min-height:44px; padding:12px 8px; font-size:13px; color:var(--gold); border-top:1px solid var(--border); }
+.sc-hole-details > summary:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.sc-hole-content { padding-top:6px; min-width:0; }
+.club-sc[data-sc-completed="true"] .sc-hole-content .club-sc-total { display:none; }
+.sc-saved-state { padding:12px; border:1px solid var(--border); border-radius:10px; font-size:13px; color:var(--gold); }
+.sc-completed-setting { display:grid; gap:8px; margin:16px 0; font-size:14px; }
+.sc-completed-setting small { color:var(--muted); line-height:1.5; }
+.sc-completed-setting select { max-width:100%; min-width:0; }
+.sc-preview-controls { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:12px; border:1px solid var(--border); border-radius:10px; }
+.sc-preview-controls legend { font-size:13px; padding:0 6px; }
+.sc-preview-controls label { display:grid; gap:6px; font-size:12px; min-width:0; }
+.sc-preview-controls select { min-width:0; width:100%; min-height:44px; padding:8px; }
+@media(max-width:420px) { .sc-preview-controls { grid-template-columns:1fr; } }

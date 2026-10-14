@@ -21,7 +21,8 @@
         "check:admin-display-mobile": "node tools/check-display-settings-mobile.js",
         "check:display-mobile": "node tools/check-round-setup-mobile.js && node tools/check-tournaments-display-mobile.js && node tools/check-display-settings-mobile.js",
         "check:printcards": "node tools/check-printcards-preview.js",
-        "check:entry-scorecards": "node tools/check-entry-scorecards.js"
+        "check:entry-scorecards": "node tools/check-entry-scorecards.js",
+        "check:scorecard-pwa": "node tools/check-scorecard-realtime-pwa.js"
     },
     "engines": {
         "node": ">=18"

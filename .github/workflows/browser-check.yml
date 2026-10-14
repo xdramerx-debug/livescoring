@@ -43,5 +43,8 @@ jobs:
       - name: Mobile scorecards and score entry
         run: npm run check:scorecards
 
+      - name: Scorecard realtime and offline PWA regression
+        run: npm run check:scorecard-pwa
+
       - name: Mobile navigation header
         run: npm run check:nav

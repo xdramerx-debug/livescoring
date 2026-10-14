@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.114.0-da244c85';
+const CACHE_NAME = 'pestovo-v1.115.0-afa2488d';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 
@@ -41,11 +41,11 @@ const STATIC_ASSETS = [
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
     'css/design-presets.css?v=77ff3916',
     'css/entry-scorecard.css?v=a34f8c94',
-    'css/style.css?v=5f3b4ad3',
+    'css/style.css?v=07ac5eab',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=3f88226b',
-    'dist/livescoring-modules.js?v=fbbaf030',
-    'js/app.js?v=a2fce93f',
+    'dist/livescoring-modules.js?v=c78a87bf',
+    'js/app.js?v=8f4b2d14',
     'js/auth.js?v=3a96f309',
     'js/design-preview.js?v=eb236661',
     'js/design-system.js?v=5a11adfa',
@@ -73,7 +73,7 @@ const STATIC_ASSETS = [
     'js/tournament-core.js?v=e9119580',
     'js/tournament-public.js?v=894c9ead',
     'js/tournaments.js?v=f1b4efe0',
-    'js/utils.js?v=70676f06',
+    'js/utils.js?v=fa3015ac',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
     'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 

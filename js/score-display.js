@@ -77,7 +77,49 @@ function pestovoCheckVerify(ctx) {
     }
 }
 
+const PESTOVO_DEFAULT_HOLE_ORDER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+
+/**
+ * Лента лунок на карточке: кнопка на лунку с её состоянием.
+ *
+ * Копии в marker.js, scorer.js и solo.js разошлись не переименованиями, а
+ * тем, ЧЕЙ счёт считается «введённым». У маркера это его собственный счёт
+ * (он подтверждающий), у игрока — его собственный (ждёт подтверждения
+ * маркера), а в одиночном раунде маркера нет вообще: вместо
+ * verified/mismatch/pending там одна метка done. Поэтому состояния считает
+ * страница (ctx.stateClass), а разметка кнопки общая.
+ *
+ * @param {Object} ctx
+ * @param {Element} ctx.el          контейнер ленты (mk-holes / sc-holes / g-holes)
+ * @param {Object} ctx.round        объект раунда — по нему считается порядок лунок
+ * @param {number} ctx.currentHole  открытая лунка
+ * @param {number} ctx.fieldHcp     гандикап поля игрока — уходит в квадрат счёта
+ * @param {string} ctx.go           имя обработчика перехода ('goMk'/'goSc'/'goHole')
+ * @param {Function} ctx.playerScore  (hole) => счёт игрока
+ * @param {Function} [ctx.markerScore] (hole) => счёт маркера; нет — значит нет и маркера
+ * @param {Function} ctx.stateClass   (hole, playerScore, markerScore) => ' классы через пробел'
+ */
+function pestovoBuildHoles(ctx) {
+    var el = ctx.el;
+    if (!el) return;
+    var order = (typeof getRoundOrder === 'function' ? getRoundOrder(ctx.round) : PESTOVO_DEFAULT_HOLE_ORDER);
+    var html = '';
+    order.forEach(function (h) {
+        var s = parseInt(ctx.playerScore(h), 10) || 0;
+        var ms = parseInt(ctx.markerScore ? ctx.markerScore(h) : 0, 10) || 0;
+        var state = ctx.stateClass(h, s, ms) || '';
+        var active = h === ctx.currentHole;
+        html += '<button type="button" class="hole-btn' + (active ? ' active' : '') + state +
+            '" onclick="' + ctx.go + '(' + h + ')" aria-label="' +
+            (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' +
+            (active ? 'true' : 'false') + '">' +
+            entryHoleContentHTML(s, ms, h, ctx.fieldHcp) + '</button>';
+    });
+    el.innerHTML = html;
+}
+
 if (typeof window !== 'undefined') {
     window.pestovoUpdScoreDisplay = pestovoUpdScoreDisplay;
     window.pestovoCheckVerify = pestovoCheckVerify;
+    window.pestovoBuildHoles = pestovoBuildHoles;
 }

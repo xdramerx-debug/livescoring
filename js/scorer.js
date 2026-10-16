@@ -181,28 +181,32 @@ function toggleScStablefordDisplay(enabled) {
     }
 }
 
+// Разметка кнопок — общая (pestovoBuildHoles в js/score-display.js), состояния
+// считает страница: у игрока «ввёл / не ввёл» — это его собственный счёт,
+// дальше он ждёт подтверждения маркера.
 function buildHoles() {
-    var el = scGet('sc-holes');
-    if (!el) return;
     if (!scRound || !scRound.players || !scRound.players[scPid]) return;
-    var order = (typeof getRoundOrder === 'function' ? getRoundOrder(scRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);
     var scPlayer = scRound.players[scPid] || {};
     var scores = scPlayer.scores || {};
-    var scFieldHcp = scPlayer.fieldHcp !== undefined ? scPlayer.fieldHcp : ((scRound && scRound.fieldHcp) || 0);
-    var html = '';
-    order.forEach(function(h) {
-        var s = parseInt(scores[h]) || 0, ms = parseInt(scMarker[h]) || 0;
-        var cls = h === scHole ? 'active' : '';
-        // confirmed — зелёная, mismatch — мигает красным, счёт введён без подтверждения — мигает серым
-        if (s >= 1 && ms >= 1 && s === ms) cls += ' verified';
-        else if (s >= 1 && ms >= 1) cls += ' mismatch';
-        else if (s >= 1) cls += ' pending';
-        // Текущая лунка без введённого счёта мигает серым (как в основном вводе).
-        if (h === scHole && !(s >= 1)) cls += ' cur-blink';
-        html += '<button type="button" class="hole-btn ' + cls + '" onclick="goSc(' + h + ')" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === scHole ? 'true' : 'false') + '">' +
-            entryHoleContentHTML(s, ms, h, scFieldHcp) + '</button>';
+    pestovoBuildHoles({
+        el: scGet('sc-holes'),
+        round: scRound,
+        currentHole: scHole,
+        fieldHcp: scPlayer.fieldHcp !== undefined ? scPlayer.fieldHcp : ((scRound && scRound.fieldHcp) || 0),
+        go: 'goSc',
+        playerScore: function(h) { return scores[h]; },
+        markerScore: function(h) { return scMarker[h]; },
+        stateClass: function(h, s, ms) {
+            // confirmed — зелёная, mismatch — мигает красным, счёт введён без подтверждения — мигает серым
+            var cls = '';
+            if (s >= 1 && ms >= 1 && s === ms) cls += ' verified';
+            else if (s >= 1 && ms >= 1) cls += ' mismatch';
+            else if (s >= 1) cls += ' pending';
+            // Текущая лунка без введённого счёта мигает серым (как в основном вводе).
+            if (h === scHole && !(s >= 1)) cls += ' cur-blink';
+            return cls;
+        }
     });
-    el.innerHTML = html;
 }
 
 function goSc(h) {

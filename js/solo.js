@@ -709,29 +709,30 @@ function renderRoundInfo(targetId) {
         '<div><b>' + startLbl + ':</b> ' + fmtTime(soloRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + soloRound.startHole + ' · <b>' + t('tee_select') + ':</b> ' + fmtTeePill(pTee) + ' · <b>' + t('format_select') + ':</b> ' + soloRound.format + '</div>';
 }
 
+// Разметка кнопок — общая (pestovoBuildHoles в js/score-display.js). Маркера в
+// одиночном раунде нет, поэтому вместо verified/mismatch/pending одна метка
+// done; markerScore не передаём вовсе.
 function buildHoles() {
-    var el = document.getElementById('g-holes');
-    if (!el) return;
     var uid = getPlayerId();
     if (!uid || !soloRound || !soloRound.players) return;
     var p = soloRound.players[uid];
     var scores = (p && p.scores) || {};
-    var fieldHcp = (p && (p.fieldHcp !== undefined ? p.fieldHcp : soloRound.fieldHcp)) || 0;
-
-    var html = '';
-    var order = getRoundOrder(soloRound);
-    order.forEach(function(h) {
-        var cls = h === curHole ? 'active' : '';
-        var s = parseInt(scores[h]) || 0;
-        if (s >= 1 && h !== curHole) cls += ' done';
-        // Текущая лунка, на которой счёт ещё НЕ записан, мигает серым —
-        // сразу видно, где игрок сейчас находится (вместо цветовой подсветки).
-        if (h === curHole && !(s >= 1) && canEditSolo) cls += ' cur-blink';
-
-        html += '<button type="button" class="hole-btn ' + cls + '" onclick="goHole(' + h + ')" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === curHole ? 'true' : 'false') + '">' +
-            entryHoleContentHTML(s, null, h, fieldHcp) + '</button>';
+    pestovoBuildHoles({
+        el: document.getElementById('g-holes'),
+        round: soloRound,
+        currentHole: curHole,
+        fieldHcp: (p && (p.fieldHcp !== undefined ? p.fieldHcp : soloRound.fieldHcp)) || 0,
+        go: 'goHole',
+        playerScore: function(h) { return scores[h]; },
+        stateClass: function(h, s) {
+            var cls = '';
+            if (s >= 1 && h !== curHole) cls += ' done';
+            // Текущая лунка, на которой счёт ещё НЕ записан, мигает серым —
+            // сразу видно, где игрок сейчас находится (вместо цветовой подсветки).
+            if (h === curHole && !(s >= 1) && canEditSolo) cls += ' cur-blink';
+            return cls;
+        }
     });
-    el.innerHTML = html;
 }
 
 function doGoHole(h) {

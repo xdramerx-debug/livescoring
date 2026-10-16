@@ -112,27 +112,31 @@ function loadMk() {
     }catch (e) { console.warn("[silent]", e); }
 }
 
+// Разметка кнопок — общая (pestovoBuildHoles в js/score-display.js), состояния
+// считает страница: у маркера «ввёл / не ввёл» — это его собственный счёт,
+// потому что именно он подтверждает счёт игрока.
 function buildHoles() {
-    var el = mkGet('mk-holes');
-    if (!el) return;
     if (!mkRound) return;
-    var order = (typeof getRoundOrder === 'function' ? getRoundOrder(mkRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);
     var mkPlayer = (mkRound && mkRound.players && mkRound.players[mkPid]) || {};
-    var mkFieldHcp = mkPlayer.fieldHcp !== undefined ? mkPlayer.fieldHcp : ((mkRound && mkRound.fieldHcp) || 0);
-    var html = '';
-    order.forEach(function(h) {
-        var ps = parseInt(mkPScores[h]) || 0, ms = parseInt(mkScores[h]) || 0;
-        var cls = h === mkHole ? 'active' : '';
-        // confirmed — зелёная, mismatch — мигает красным, введён один счёт — мигает серым
-        if (ps >= 1 && ms >= 1 && ps === ms) cls += ' verified';
-        else if (ps >= 1 && ms >= 1) cls += ' mismatch';
-        else if (ms >= 1 || ps >= 1) cls += ' pending';
-        // Текущая лунка, где маркер ещё не ввёл счёт, мигает серым.
-        if (h === mkHole && !(ms >= 1)) cls += ' cur-blink';
-        html += '<button type="button" class="hole-btn ' + cls + '" onclick="goMk(' + h + ')" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === mkHole ? 'true' : 'false') + '">' +
-            entryHoleContentHTML(ps, ms, h, mkFieldHcp) + '</button>';
+    pestovoBuildHoles({
+        el: mkGet('mk-holes'),
+        round: mkRound,
+        currentHole: mkHole,
+        fieldHcp: mkPlayer.fieldHcp !== undefined ? mkPlayer.fieldHcp : ((mkRound && mkRound.fieldHcp) || 0),
+        go: 'goMk',
+        playerScore: function(h) { return mkPScores[h]; },
+        markerScore: function(h) { return mkScores[h]; },
+        stateClass: function(h, ps, ms) {
+            // confirmed — зелёная, mismatch — мигает красным, введён один счёт — мигает серым
+            var cls = '';
+            if (ps >= 1 && ms >= 1 && ps === ms) cls += ' verified';
+            else if (ps >= 1 && ms >= 1) cls += ' mismatch';
+            else if (ms >= 1 || ps >= 1) cls += ' pending';
+            // Текущая лунка, где маркер ещё не ввёл счёт, мигает серым.
+            if (h === mkHole && !(ms >= 1)) cls += ' cur-blink';
+            return cls;
+        }
     });
-    el.innerHTML = html;
 }
 
 function goMk(h) {

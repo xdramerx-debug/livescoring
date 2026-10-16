@@ -155,7 +155,19 @@ async function openTab(launch, base, viewport) {
         return route.abort();
     });
     await page.goto(base + HARNESS);
-    await page.waitForSelector('.tnpc-card', { timeout: 15000 });
+    try {
+        await page.waitForSelector('.tnpc-card', { timeout: 30000 });
+    } catch (e) {
+        // Таймаут сам по себе не говорит ничего: важно, почему карточка не
+        // появилась — страница не отдалась, модуль упал на require или
+        // разметка не отрисовалась. Печатаем ошибки страницы и её состояние.
+        const html = await page.content().catch(function () { return ''; });
+        console.error('check-printcards: .tnpc-card не появился на ' + base + HARNESS);
+        console.error('  ошибки страницы: ' + (errors.length ? errors.join(' | ') : 'нет'));
+        console.error('  разметка: ' + String(html).replace(/\s+/g, ' ').slice(0, 600));
+        await browser.close().catch(function () {});
+        throw e;
+    }
     await page.waitForTimeout(300);
     return { browser: browser, page: page, errors: errors };
 }

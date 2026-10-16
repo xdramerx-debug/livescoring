@@ -2288,13 +2288,17 @@ function renderInviteQRs() {
 // ==========================================
 // ВЫЗОВ СУДЬИ / МАРШАЛА
 // ==========================================
+// Общая часть — pestovoCallOfficial() в js/official-call.js. Групповой раунд
+// отличается тем, что имя и состав флайта читаются в момент вызова (данные
+// раунда к этому моменту могут обновиться), поэтому они передаются функциями —
+// requestOfficialCall умеет и значения, и функции.
 function callOfficial(type) {
     if (!canEditGroup) return;
-    requestOfficialCall({
+    return pestovoCallOfficial({
+        type: type,
         roundId: curRid,
         playerId: myUid,
         prefix: 'group',
-        type: type,
         hole: function() { return playHole; },
         playerName: function() {
             return (curRoundData && curRoundData.players && curRoundData.players[myUid])
@@ -2304,15 +2308,7 @@ function callOfficial(type) {
             return typeof getFlightPlayerNames === 'function'
                 ? getFlightPlayerNames(curRoundData, myUid) : [];
         },
-        canEdit: function() { return canEditGroup; },
-        onSent: function(call) {
-            var pName = call.playerName || 'Player';
-            var members = call.flightMembers || [];
-            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, pName, members);
-            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, pName, members);
-            toast('🚨 ' + getOfficialRoleName(type) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
-            vib([100, 50, 100]);
-        }
+        canEdit: function() { return canEditGroup; }
     });
 }
 

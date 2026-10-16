@@ -311,18 +311,18 @@ Vite, от которых зависят `check:browser` и `check:bundle`) не
 
 ### 13. 9 глобальных функций определены больше чем в одном файле — и уже разошлись
 
-**Статус: 🔶 закрыто частично.** Слиты `onAuthReady` (было 6 определений на странице → реестр `pestovoOnAuthReady`), `isScoreKioskUrl` и `applyScoreKiosk` → `js/score-kiosk.js`, `updDisp` → `pestovoUpdScoreDisplay()` в `js/score-display.js` (копии совпадали побайтово: 823 байта, 24 отличия только в префиксе `mk`/`sc`). Осталось 4 одноимённые пары (`buildHoles`, `callOfficial`, `checkVerify`, `renderHole`) — см. обоснование в `docs/CODE-REVIEW.md`, раздел 3; список зафиксирован `tools/test-scoring-duplicates.js`, который теперь проверяет и то, что адаптеры делегируют общей реализации. `qrUrl` слит позже: общая `pestovoQrImageUrl()` в `js/qr-url.js` закрыла сразу четыре копии построителя URL картинки QR (`utils.js`, `qr-start.js`, `tn-mgr-core.js`, `tn-mgr-io.js`) — они различались только размером и полем, то есть настройками места вызова.
+**Статус: 🔶 закрыто частично.** Слиты `onAuthReady` (было 6 определений на странице → реестр `pestovoOnAuthReady`), `isScoreKioskUrl` и `applyScoreKiosk` → `js/score-kiosk.js`, `updDisp` → `pestovoUpdScoreDisplay()` в `js/score-display.js` (копии совпадали побайтово: 823 байта, 24 отличия только в префиксе `mk`/`sc`). Осталось 2 одноимённые пары (`buildHoles` и `renderHole`) — см. обоснование в `docs/CODE-REVIEW.md`, раздел 3; список зафиксирован `tools/test-scoring-duplicates.js`, который теперь проверяет и то, что адаптеры делегируют общей реализации. `qrUrl` слит позже: общая `pestovoQrImageUrl()` в `js/qr-url.js` закрыла сразу четыре копии построителя URL картинки QR (`utils.js`, `qr-start.js`, `tn-mgr-core.js`, `tn-mgr-io.js`) — они различались только размером и полем, то есть настройками места вызова.
 
 Замер по `^function X(` / `^var X = function` во всех `js/*.js`:
 
 | Функция | Файлы | Расхождение (длина тела, символов) |
 |---|---|---|
 | `onAuthReady` | admin, live, marker, scorer, tournaments, utils | намеренный hook (utils = дефолт) |
-| `callOfficial` | live, marker, scorer | 1059 vs 1098 |
+| `callOfficial` | live, marker, scorer | ✅ общая `pestovoCallOfficial()` в `js/official-call.js` |
 | `buildHoles` | marker, scorer, solo | 1393 vs 1332 |
 | `renderHole` | marker, scorer | **1244 vs 378** |
-| `updDisp` | marker, scorer | 823 vs 823 (совпадает) |
-| `checkVerify` | marker, scorer | 873 vs 853 |
+| `updDisp` | marker, scorer | ✅ общая `pestovoUpdScoreDisplay()` в `js/score-display.js` (823 vs 823 — совпадали побайтово) |
+| `checkVerify` | marker, scorer | ✅ общая `pestovoCheckVerify()` в `js/score-display.js` |
 | `isScoreKioskUrl` | live, scorer | — |
 | `applyScoreKiosk` | live, scorer | — |
 | `qrUrl` | qr-start, utils | ✅ общая `pestovoQrImageUrl()` в `js/qr-url.js` (копий было четыре: ещё `qrImageUrl` в `tn-mgr-core.js` и `qrUrl` в `tn-mgr-io.js`) |
@@ -477,7 +477,7 @@ hosting,database,functions` (секреты `FIREBASE_SERVICE_ACCOUNT_*`) убр
 | 3 | Репортинг ошибок | 🟠 наблюдаемость | M | низкий | ✅ |
 | 6 | Per-page бандлы, резка `utils.js` | 🟠 скорость | L | средний | ✅ (QR снят; бандлы — после ESM) |
 | 12 | Осмысленный ESLint в CI | 🟡 качество | M | низкий | ✅ |
-| 13 | Общие `renderHole`/`callOfficial`/… | 🟡 баги | M | средний | 🔶 (4 пары остались) |
+| 13 | Общие `renderHole`/`buildHoles` | 🟡 баги | M | средний | 🔶 (2 пары остались) |
 | 2 | Убрать `'unsafe-inline'` из `script-src` | 🔴 XSS-защита | L | средний | ⏸ отложено |
 | 10 | `.off()` + сузить `rounds`-слушатель | 🟡 RTDB-стоимость | M | средний | ✅ (утечка в `solo.js`) |
 | 16 | Обновить `CODE-REVIEW.md` | 🟢 docs | S | нулевой | ✅ |

@@ -175,15 +175,22 @@ function updDisp() {
     });
 }
 
+// Состояния сверки общие с scorer.js (pestovoCheckVerify в js/score-display.js);
+// здесь — подписи маркера и третье состояние «игрок ввёл, ждём подтверждения».
 function checkVerify() {
-    var box = mkGet('mk-verify');
-    if (!box) return;
-    var ps = parseInt(mkPScores[mkHole]) || 0, ms = parseInt(mkScores[mkHole]) || 0;
     var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-    if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (langIsEn ? 'Matched: ' + ps : 'Совпадает: ' + ps + ' уд.') + '</div>';
-    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (langIsEn ? 'Player: ' : 'Игрок: ') + esc(ps) + ' | ' + (langIsEn ? 'Marker: ' : 'Маркер: ') + esc(ms) + '</div>';
-    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">🏌️ ' + (langIsEn ? 'Player entered: ' + esc(ps) + '. Awaiting confirmation.' : 'Игрок ввёл: ' + esc(ps) + '. Ожидает подтверждения') + '</div>';
-    else box.innerHTML = '';
+    pestovoCheckVerify({
+        box: mkGet('mk-verify'),
+        playerScore: mkPScores[mkHole],
+        markerScore: mkScores[mkHole],
+        matched: function (n) { return langIsEn ? 'Matched: ' + n : 'Совпадает: ' + n + ' уд.'; },
+        playerLabel: function (n) { return (langIsEn ? 'Player: ' : 'Игрок: ') + esc(n); },
+        markerLabel: function (n) { return (langIsEn ? 'Marker: ' : 'Маркер: ') + esc(n); },
+        waiting: function (n) {
+            return langIsEn ? 'Player entered: ' + esc(n) + '. Awaiting confirmation.'
+                : 'Игрок ввёл: ' + esc(n) + '. Ожидает подтверждения';
+        }
+    });
 }
 
 function mkSetSaving(on) {
@@ -286,24 +293,19 @@ function renderSum() {
         '<div style="display:flex;gap:16px;padding:12px;font-size:13px;">✅ ' + match + ' · ⚠️ ' + mis + ' · ⏳ ' + pend + '</div>';
 }
 
+// Общая часть — pestovoCallOfficial() в js/official-call.js: рассылка, тост и
+// вибрация были одинаковыми во всех трёх копиях. Здесь только данные маркера:
+// в оповещение он уходит с подписью «Marker (Имя)».
 function callOfficial(type) {
     if (!mkRound || !mkPid) return;
-    if (typeof requestOfficialCall !== 'function') return;
     var pName = (mkRound.players[mkPid] && mkRound.players[mkPid].name) || 'Player';
-    requestOfficialCall({
+    return pestovoCallOfficial({
+        type: type,
         roundId: mkRid,
         playerId: mkPid,
         prefix: 'mk',
-        type: type,
         hole: function() { return mkHole; },
         playerName: 'Marker (' + pName + ')',
-        flightMembers: [],
-        canEdit: true,
-        onSent: function(call) {
-            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, call.playerName, []);
-            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, call.playerName, []);
-            if (typeof toast === 'function' && typeof getOfficialRoleName === 'function') toast('🚨 ' + getOfficialRoleName(type) + ((typeof currentLang !== 'undefined' && currentLang === 'en') ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
-            if (typeof vib === 'function') vib([100, 50, 100]);
-        }
+        canEdit: true
     });
 }

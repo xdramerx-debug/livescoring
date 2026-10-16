@@ -41,6 +41,43 @@ function pestovoUpdScoreDisplay(ctx) {
     }
 }
 
+/**
+ * Блок сверки: счёт игрока против счёта маркера (mk-verify / sc-verify).
+ *
+ * Копии в marker.js и scorer.js разошлись не переименованиями, а смыслом:
+ * маркер показывает третье состояние — «игрок ввёл, ждём подтверждения»,
+ * скорер — нет (там это уведомление на 3 секунды при сохранении, отдельный
+ * блок в комментарии кода назван лишним). Поэтому состояния сверки общие,
+ * а тексты и видимость «ожидания» задаёт страница.
+ *
+ * @param {Object} ctx
+ * @param {Element} ctx.box            контейнер (mkGet('mk-verify') / scGet('sc-verify'))
+ * @param {*} ctx.playerScore          счёт игрока на лунке
+ * @param {*} ctx.markerScore          счёт маркера на лунке
+ * @param {Function} ctx.matched       подпись при совпадении: (n) => текст
+ * @param {Function} ctx.playerLabel   подпись счёта игрока при расхождении
+ * @param {Function} ctx.markerLabel   подпись счёта маркера при расхождении
+ * @param {Function} [ctx.waiting]     подпись ожидания: если не передана —
+ *                                     третье состояние не показывается
+ */
+function pestovoCheckVerify(ctx) {
+    var box = ctx.box;
+    if (!box) return;
+    var ps = parseInt(ctx.playerScore, 10) || 0;
+    var ms = parseInt(ctx.markerScore, 10) || 0;
+    if (ps >= 1 && ms >= 1 && ps === ms) {
+        box.innerHTML = '<div class="verify-ok">✅ ' + ctx.matched(ps) + '</div>';
+    } else if (ps >= 1 && ms >= 1) {
+        box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + ctx.playerLabel(ps) +
+            ' | ' + ctx.markerLabel(ms) + '</div>';
+    } else if (ps >= 1 && ctx.waiting) {
+        box.innerHTML = '<div class="verify-wait">🏌️ ' + ctx.waiting(ps) + '</div>';
+    } else {
+        box.innerHTML = '';
+    }
+}
+
 if (typeof window !== 'undefined') {
     window.pestovoUpdScoreDisplay = pestovoUpdScoreDisplay;
+    window.pestovoCheckVerify = pestovoCheckVerify;
 }

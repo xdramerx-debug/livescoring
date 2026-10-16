@@ -93,13 +93,13 @@
 ## 3. Дублирование — СРЕДНИЙ приоритет
 
 Одноимённых функций верхнего уровня, определённых более чем в одном файле,
-осталось **шесть**, две из них — уже только адаптеры над общей реализацией:
+осталось **шесть**, четыре из них — уже только адаптеры над общей реализацией:
 
 | Имя | Файлы | Почему не слиты механически |
 |---|---|---|
 | `buildHoles` | marker, scorer, solo | solo строит лунки для одиночного раунда, scorer добавляет проверки `players[pid]`, marker читает `mkPScores` |
-| `callOfficial` | live, marker, scorer | отличаются моментом вычисления `pName` и тем, нужен ли `confirm`; все три сходятся на `requestOfficialCall` |
-| `checkVerify` | marker, scorer | разные источники данных и тексты подтверждения |
+| `callOfficial` | live, marker, scorer | ✅ слиты: общая `pestovoCallOfficial()` в `js/official-call.js` (общий `onSent`); страницы передают `roundId`/`playerId`/`prefix` и имя для оповещения |
+| `checkVerify` | marker, scorer | ✅ слиты: общая `pestovoCheckVerify()` в `js/score-display.js`; страницы передают свои подписи, маркер дополнительно — состояние «игрок ввёл, ждём подтверждения» |
 | `renderHole` | marker (378 Б) / scorer (1 244 Б) | **не копии** — разные объёмы и разметка |
 | `updDisp` | marker, scorer | ✅ слиты: общая `pestovoUpdScoreDisplay()` в `js/score-display.js`, в страницах — адаптеры глобалов |
 | `qrUrl` | qr-start `(data, size)` / utils `(data)` | ✅ слиты: общая `pestovoQrImageUrl()` в `js/qr-url.js`; была **разная сигнатура** — подключи `utils.js` на `qr-start.html`, и второй аргумент молча терялся |
@@ -107,7 +107,8 @@
 Закрыто в октябре: `onAuthReady` (было 6 определений на странице, работало
 только благодаря порядку `<script>`), `isScoreKioskUrl`, `applyScoreKiosk`,
 `updDisp` (копии совпадали побайтово — 823 байта, 24 отличия только в префиксе
-`mk`/`sc`; реализация в `js/score-display.js`) и `qrUrl` (реализация в
+`mk`/`sc`; реализация в `js/score-display.js`), `checkVerify` (там же),
+`callOfficial` (три копии → `js/official-call.js`) и `qrUrl` (реализация в
 `js/qr-url.js`).
 
 С `qrUrl` картина была хуже, чем видно по таблице: построителей URL картинки

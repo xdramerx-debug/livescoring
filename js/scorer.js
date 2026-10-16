@@ -259,17 +259,23 @@ function updDisp() {
     });
 }
 
+// Состояния сверки общие с marker.js (pestovoCheckVerify в js/score-display.js);
+// здесь — подписи игрока. Ожидание маркера отдельным блоком НЕ показываем —
+// только уведомление 3 сек при сохранении, поэтому waiting не передаём.
 function checkVerify() {
     var box = scGet('sc-verify');
     if (!box) return;
     if (!scRound || !scRound.players || !scRound.players[scPid]) return;
     var scores = scRound.players[scPid].scores || {};
-    var ps = parseInt(scores[scHole]) || 0, ms = parseInt(scMarker[scHole]) || 0;
     var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-    if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (langIsEn ? 'Confirmed by marker: ' + ps : 'Подтверждено маркером: ' + ps + ' уд.') + '</div>';
-    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (langIsEn ? 'You: ' : 'Вы: ') + ps + ' | ' + (langIsEn ? 'Marker: ' : 'Маркер: ') + ms + '</div>';
-    // Ожидание маркера отдельным блоком НЕ показываем — только уведомление 3 сек при сохранении.
-    else box.innerHTML = '';
+    pestovoCheckVerify({
+        box: box,
+        playerScore: scores[scHole],
+        markerScore: scMarker[scHole],
+        matched: function (n) { return langIsEn ? 'Confirmed by marker: ' + n : 'Подтверждено маркером: ' + n + ' уд.'; },
+        playerLabel: function (n) { return (langIsEn ? 'You: ' : 'Вы: ') + n; },
+        markerLabel: function (n) { return (langIsEn ? 'Marker: ' : 'Маркер: ') + n; }
+    });
 }
 
 function scSetSaving(on) {
@@ -385,24 +391,18 @@ function renderCard() {
     el.innerHTML = renderClubScorecard(scRound.players[scPid], scRound, { playerId: scPid, showMarker: true });
 }
 
+// Общая часть — pestovoCallOfficial() в js/official-call.js. Здесь только
+// данные игрока: в оповещение он уходит под своим именем.
 function callOfficial(type) {
     if (!scRound || !scPid) return;
     var pName = (scRound.players[scPid] && scRound.players[scPid].name) || 'Player';
-    if (typeof requestOfficialCall !== 'function') return;
-    requestOfficialCall({
+    return pestovoCallOfficial({
+        type: type,
         roundId: scRid,
         playerId: scPid,
         prefix: 'sc',
-        type: type,
         hole: function() { return scHole; },
         playerName: pName,
-        flightMembers: [],
-        canEdit: true,
-        onSent: function(call) {
-            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, pName, []);
-            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, pName, []);
-            if (typeof toast === 'function' && typeof getOfficialRoleName === 'function') toast('🚨 ' + getOfficialRoleName(type) + ((typeof currentLang !== 'undefined' && currentLang === 'en') ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
-            if (typeof vib === 'function') vib([100, 50, 100]);
-        }
+        canEdit: true
     });
 }

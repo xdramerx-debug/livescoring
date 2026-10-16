@@ -120,8 +120,63 @@ function pestovoBuildHoles(ctx) {
     el.innerHTML = html;
 }
 
+/**
+ * Перерисовать шапку лунки: номер, пар, дальность и дедлайн, а заодно
+ * выставить текущий счёт (сохранённый или par).
+ *
+ * Раньше функция жила копиями в marker.js (378 байт) и scorer.js (1244 байта):
+ * у скорера дополнительно есть дальность до лунки (нужна чашка игрока) и
+ * дедлайн с учётом пауз. Разница — не переименования, а состав шапки, поэтому
+ * ids.dist/ids.dl необязательны: чего на странице нет, то не рисуем.
+ *
+ * @param {Object} ctx
+ * @param {number} ctx.hole        номер лунки (mkHole / scHole)
+ * @param {Object} ctx.round       объект раунда (mkRound / scRound)
+ * @param {string} ctx.pid         id игрока внутри раунда (mkPid / scPid)
+ * @param {Function} ctx.get       доступ к узлу по id (mkGet / scGet)
+ * @param {Object} ctx.ids         { hole, par, dist?, dl? } — id узлов шапки
+ * @param {string} [ctx.tee]       чашка игрока для дальности ('wh' по умолчанию)
+ * @param {Function} ctx.setScore  (value) — записать счёт в глобал страницы
+ * @param {Function} ctx.update    () — обновить блок счёта (updDisp страницы)
+ * @param {boolean} [ctx.strict]   без игрока в раунде шапку не продолжать
+ *                                 (поведение scorer.js; marker.js показывал par)
+ */
+function pestovoRenderHole(ctx) {
+    var par = (typeof holePar === 'function' ? holePar(ctx.hole) : 4);
+    var holeEl = ctx.get(ctx.ids.hole);
+    if (holeEl) holeEl.textContent = ctx.hole;
+    var parEl = ctx.get(ctx.ids.par);
+    if (parEl) parEl.textContent = par;
+
+    if (ctx.ids.dist) {
+        var distEl = ctx.get(ctx.ids.dist);
+        if (distEl) {
+            distEl.textContent = (typeof holeDist === 'function' ? holeDist(ctx.hole, ctx.tee) : '—') || '—';
+        }
+    }
+    // Дедлайн с учётом пауз раунда: пауза продлевает план, а не «съедается».
+    if (ctx.ids.dl) {
+        var dlEl = ctx.get(ctx.ids.dl);
+        if (dlEl && typeof fmtTime === 'function' && ctx.round) {
+            var dlTs = (typeof roundHoleDeadlineTs === 'function')
+                ? roundHoleDeadlineTs(ctx.round, ctx.hole)
+                : (typeof holeDeadline === 'function'
+                    ? holeDeadline(ctx.round.startTime, ctx.round.startHole, ctx.hole) : null);
+            dlEl.textContent = dlTs ? fmtTime(dlTs) : '—';
+        }
+    }
+
+    var player = ctx.round && ctx.round.players ? ctx.round.players[ctx.pid] : null;
+    if (!player && ctx.strict) return;
+    var scores = player ? (player.scores || {}) : {};
+    var saved = parseInt(scores[ctx.hole]) || 0;
+    ctx.setScore(saved >= 1 ? saved : par);
+    if (typeof ctx.update === 'function') ctx.update();
+}
+
 if (typeof window !== 'undefined') {
     window.pestovoUpdScoreDisplay = pestovoUpdScoreDisplay;
     window.pestovoCheckVerify = pestovoCheckVerify;
     window.pestovoBuildHoles = pestovoBuildHoles;
+    window.pestovoRenderHole = pestovoRenderHole;
 }

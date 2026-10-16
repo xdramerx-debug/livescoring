@@ -221,6 +221,67 @@ const eq = function (actual, expected, label) {
     assert.strictEqual(disp.innerHTML, 'score:3/5/hcp7/stb', 'нет fieldHcp у игрока — берём из раунда');
 }
 
+// ── 6b. Шапка лунки: общая renderHole для маркера и скорера ───────────────
+// Копии различались составом шапки (378 байт у маркера против 1244 у скорера),
+// поэтому ids.dist/ids.dl необязательны, а поведение «без игрока в раунде»
+// настраивается флагом strict: маркер показывал par, скорер не рисовал ничего.
+{
+    const { sandbox, dom } = makeSandbox();
+    sandbox.holePar = function () { return 3; };
+    sandbox.holeDist = function (h, tee) { return h * 100 + (tee === 'wh' ? 1 : 0); };
+    sandbox.fmtTime = function (ts) { return 't' + ts; };
+    sandbox.roundHoleDeadlineTs = function (round, h) { return (round.startTime || 0) + h; };
+
+    const doc = dom.window.document;
+    doc.body.innerHTML =
+        '<span id="mk-hole"></span><span id="mk-par"></span>' +
+        '<span id="sc-hole"></span><span id="sc-par"></span><span id="sc-dist"></span><span id="sc-dl"></span>';
+    const get = function (id) { return doc.getElementById(id); };
+
+    // Маркер: ни дальности, ни дедлайна; раунда нет — счёт берётся из par.
+    let score = null, updates = 0;
+    sandbox.pestovoRenderHole({
+        hole: 5, round: null, pid: 'p1', get: get,
+        ids: { hole: 'mk-hole', par: 'mk-par' },
+        setScore: function (v) { score = v; },
+        update: function () { updates++; }
+    });
+    assert.strictEqual(doc.getElementById('mk-hole').textContent, '5', 'маркер: номер лунки в шапке');
+    assert.strictEqual(doc.getElementById('mk-par').textContent, '3', 'маркер: пар из holePar');
+    assert.strictEqual(score, 3, 'маркер: без сохранённого счёта показываем par');
+    assert.strictEqual(updates, 1, 'маркер: блок счёта обновлён один раз');
+
+    // Скорер: игрока в раунде нет → strict не даёт выставить счёт.
+    score = null; updates = 0;
+    sandbox.pestovoRenderHole({
+        hole: 5, round: { players: {} }, pid: 'p1', get: get,
+        ids: { hole: 'sc-hole', par: 'sc-par', dist: 'sc-dist', dl: 'sc-dl' },
+        tee: 'wh', strict: true,
+        setScore: function (v) { score = v; },
+        update: function () { updates++; }
+    });
+    assert.strictEqual(score, null, 'скорер (strict): без игрока в раунде счёт не выставляем');
+    assert.strictEqual(updates, 0, 'скорер (strict): и блок счёта не перерисовываем');
+
+    // Скорер: игрок есть — заполняются дальность, дедлайн и сохранённый счёт.
+    score = null; updates = 0;
+    sandbox.pestovoRenderHole({
+        hole: 2,
+        round: { startTime: 1000, players: { p1: { scores: { 2: 7 } } } },
+        pid: 'p1', get: get,
+        ids: { hole: 'sc-hole', par: 'sc-par', dist: 'sc-dist', dl: 'sc-dl' },
+        tee: 'wh', strict: true,
+        setScore: function (v) { score = v; },
+        update: function () { updates++; }
+    });
+    assert.strictEqual(score, 7, 'скорер: сохранённый счёт важнее par');
+    assert.strictEqual(doc.getElementById('sc-dist').textContent, '201',
+        'скорер: дальность считается по чашке игрока');
+    assert.strictEqual(doc.getElementById('sc-dl').textContent, 't1002',
+        'скорер: дедлайн лунки — из roundHoleDeadlineTs');
+    assert.strictEqual(updates, 1, 'скорер: блок счёта обновлён');
+}
+
 // ── 7. Модуль подключён на всех трёх страницах до фичевого скрипта ────────
 {
     const pages = { 'marker.html': 'marker.js', 'scorer.html': 'scorer.js', 'setup-round.html': 'solo.js' };
@@ -233,4 +294,5 @@ const eq = function (actual, expected, label) {
     }
 }
 
-console.log('Score display tests passed (лента лунок: 3 страницы, сверка: 4 состояния, вывод счёта)');
+console.log('Score display tests passed (лента лунок: 3 страницы, сверка: 4 состояния, ' +
+    'вывод счёта, шапка лунки: маркер и скорер)');

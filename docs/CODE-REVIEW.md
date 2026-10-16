@@ -100,7 +100,7 @@
 | `buildHoles` | marker, scorer, solo | ✅ слиты: общая разметка ленты в `pestovoBuildHoles()` (`js/score-display.js`); страницы считают состояния — у маркера «ввёл» значит его счёт, у игрока свой, в соло маркера нет и вместо `verified`/`mismatch`/`pending` одна метка `done` |
 | `callOfficial` | live, marker, scorer | ✅ слиты: общая `pestovoCallOfficial()` в `js/official-call.js` (общий `onSent`); страницы передают `roundId`/`playerId`/`prefix` и имя для оповещения |
 | `checkVerify` | marker, scorer | ✅ слиты: общая `pestovoCheckVerify()` в `js/score-display.js`; страницы передают свои подписи, маркер дополнительно — состояние «игрок ввёл, ждём подтверждения» |
-| `renderHole` | marker (378 Б) / scorer (1 244 Б) | **не копии** — разные объёмы и разметка |
+| `renderHole` | marker, scorer | ✅ слиты: общая `pestovoRenderHole(ctx)` в `js/score-display.js`; необязательные `ids.dist`/`ids.dl` закрывают разный состав шапки (у маркера только номер и пар), флаг `strict` — расхождение «игрока нет в раунде» |
 | `updDisp` | marker, scorer | ✅ слиты: общая `pestovoUpdScoreDisplay()` в `js/score-display.js`, в страницах — адаптеры глобалов |
 | `qrUrl` | qr-start `(data, size)` / utils `(data)` | ✅ слиты: общая `pestovoQrImageUrl()` в `js/qr-url.js`; была **разная сигнатура** — подключи `utils.js` на `qr-start.html`, и второй аргумент молча терялся |
 
@@ -109,8 +109,11 @@
 `updDisp` (копии совпадали побайтово — 823 байта, 24 отличия только в префиксе
 `mk`/`sc`; реализация в `js/score-display.js`), `checkVerify` и `buildHoles`
 (там же), `callOfficial` (три копии → `js/official-call.js`) и `qrUrl`
-(реализация в `js/qr-url.js`). Не слит только `renderHole`: 378 Б против
-1 244 Б — не копия, а одноимённые функции разного назначения.
+(реализация в `js/qr-url.js`) и `renderHole` — там же, в
+`js/score-display.js`. Разница 378 Б против 1 244 Б оказалась не «разными
+функциями», а разным составом шапки: у скорера есть дальность до лунки и
+дедлайн с паузами, у маркера нет; общая функция принимает соответствующие id
+как необязательные.
 
 Общее у закрытых пар: реализация лежит в модуле, а страница передаёт ей свои
 данные и — где расхождение смысловое, а не буквенное — колбэк (`stateClass` у

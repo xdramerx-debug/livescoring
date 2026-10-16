@@ -219,26 +219,22 @@ function goSc(h) {
     setTimeout(function() { scChanging = false; }, 100);
 }
 
+// Реализация — js/score-display.js (общая с marker.js); здесь подстановка
+// глобалов страницы игрока: в шапке ещё дальность до лунки (по чашке игрока)
+// и дедлайн, а без игрока в раунде счёт не выставляется (strict).
 function renderHole() {
-    var par = (typeof holePar === 'function' ? holePar(scHole) : 4);
     var pl = scRound && scRound.players && scRound.players[scPid];
-    var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
-    var holeEl = scGet('sc-hole'); if (holeEl) holeEl.textContent = scHole;
-    var parEl = scGet('sc-par'); if (parEl) parEl.textContent = par;
-    var distEl = scGet('sc-dist'); if (distEl) distEl.textContent = (typeof holeDist === 'function' ? holeDist(scHole, playerTee) : '—') || '—';
-    var dlEl = scGet('sc-dl');
-    if (dlEl && typeof fmtTime === 'function') {
-        // Дедлайн с учётом пауз раунда (пауза продлевает план, а не «съедается»)
-        var dlTs = (typeof roundHoleDeadlineTs === 'function')
-            ? roundHoleDeadlineTs(scRound, scHole)
-            : (typeof holeDeadline === 'function' ? holeDeadline(scRound.startTime, scRound.startHole, scHole) : null);
-        dlEl.textContent = dlTs ? fmtTime(dlTs) : '—';
-    }
-    if (!scRound || !scRound.players || !scRound.players[scPid]) return;
-    var scores = scRound.players[scPid].scores || {};
-    var saved = parseInt(scores[scHole]) || 0;
-    scScore = saved >= 1 ? saved : par;
-    if (typeof updDisp === 'function') updDisp();
+    pestovoRenderHole({
+        hole: scHole,
+        round: scRound,
+        pid: scPid,
+        get: scGet,
+        ids: { hole: 'sc-hole', par: 'sc-par', dist: 'sc-dist', dl: 'sc-dl' },
+        tee: (pl && pl.tee) || (scRound && scRound.tee) || 'wh',
+        strict: true,
+        setScore: function (v) { scScore = v; },
+        update: updDisp
+    });
 }
 
 function adjSc(d) {

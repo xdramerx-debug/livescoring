@@ -367,7 +367,7 @@ Vite, от которых зависят `check:browser` и `check:bundle`) не
 
 ### 13. 9 глобальных функций определены больше чем в одном файле — и уже разошлись
 
-**Статус: 🔶 закрыто частично.** Слиты `onAuthReady` (было 6 определений на странице → реестр `pestovoOnAuthReady`), `isScoreKioskUrl` и `applyScoreKiosk` → `js/score-kiosk.js`, `updDisp` → `pestovoUpdScoreDisplay()` в `js/score-display.js` (копии совпадали побайтово: 823 байта, 24 отличия только в префиксе `mk`/`sc`). Осталась 1 одноимённая пара (`renderHole`) — см. обоснование в `docs/CODE-REVIEW.md`, раздел 3; список зафиксирован `tools/test-scoring-duplicates.js`, который теперь проверяет и то, что адаптеры делегируют общей реализации. `qrUrl` слит позже: общая `pestovoQrImageUrl()` в `js/qr-url.js` закрыла сразу четыре копии построителя URL картинки QR (`utils.js`, `qr-start.js`, `tn-mgr-core.js`, `tn-mgr-io.js`) — они различались только размером и полем, то есть настройками места вызова.
+**Статус: ✅ закрыто.** Слиты `onAuthReady` (было 6 определений на странице → реестр `pestovoOnAuthReady`), `isScoreKioskUrl` и `applyScoreKiosk` → `js/score-kiosk.js`, `updDisp` → `pestovoUpdScoreDisplay()` в `js/score-display.js` (копии совпадали побайтово: 823 байта, 24 отличия только в префиксе `mk`/`sc`). Последняя пара — `renderHole` (378 Б у маркера против 1 244 Б у скорера) — тоже сведена к адаптерам: общая `pestovoRenderHole(ctx)` лежит в `js/score-display.js` рядом с `pestovoBuildHoles()`. Список зафиксирован `tools/test-scoring-duplicates.js`, который проверяет и то, что адаптеры именно делегируют общей реализации, а не держат вторую копию; поведение адаптеров покрыто разделом 6b `tools/test-score-display.js`. `qrUrl` слит позже: общая `pestovoQrImageUrl()` в `js/qr-url.js` закрыла сразу четыре копии построителя URL картинки QR (`utils.js`, `qr-start.js`, `tn-mgr-core.js`, `tn-mgr-io.js`) — они различались только размером и полем, то есть настройками места вызова.
 
 Замер по `^function X(` / `^var X = function` во всех `js/*.js`:
 
@@ -376,7 +376,7 @@ Vite, от которых зависят `check:browser` и `check:bundle`) не
 | `onAuthReady` | admin, live, marker, scorer, tournaments, utils | намеренный hook (utils = дефолт) |
 | `callOfficial` | live, marker, scorer | ✅ общая `pestovoCallOfficial()` в `js/official-call.js` |
 | `buildHoles` | marker, scorer, solo | ✅ общая разметка `pestovoBuildHoles()` в `js/score-display.js`, состояния считает страница |
-| `renderHole` | marker, scorer | **1244 vs 378** |
+| `renderHole` | marker, scorer | ✅ общая `pestovoRenderHole(ctx)` в `js/score-display.js`; у маркера нет `dist`/`dl`, у скорера есть чашка и флаг `strict` |
 | `updDisp` | marker, scorer | ✅ общая `pestovoUpdScoreDisplay()` в `js/score-display.js` (823 vs 823 — совпадали побайтово) |
 | `checkVerify` | marker, scorer | ✅ общая `pestovoCheckVerify()` в `js/score-display.js` |
 | `isScoreKioskUrl` | live, scorer | — |
@@ -387,21 +387,25 @@ Vite, от которых зависят `check:browser` и `check:bundle`) не
 файла с одноимённой функцией, кроме пары `utils.js` + фичевый файл для
 `onAuthReady`, где порядок `utils → фича` и есть задумка). Но
 `CODE-AUDIT-2026-09.md` фиксировал эту пару как «6 копипастных функций уже
-разошлись деталями» — с тех пор не изменилось, а `renderHole` отличается
-втрое. Это отложенный баг: правка ввода счёта в `scorer.js` не доезжает до
-`marker.js`.
+разошлись деталями». Классический отложенный баг: правка ввода счёта в
+`scorer.js` не доезжала до `marker.js`, потому что шапка лунки жила в двух
+файлах.
 
 **Фикс (сделано):** `onAuthReady` → реестр, `isScoreKioskUrl`/`applyScoreKiosk`
 → `js/score-kiosk.js`, `updDisp` → `js/score-display.js`, `qrUrl` →
-`js/qr-url.js`. Паттерн, который сработал: общая реализация + тонкий адаптер в
+`js/qr-url.js`, `renderHole` → `pestovoRenderHole()` в `js/score-display.js`.
+Паттерн, который сработал: общая реализация + тонкий адаптер в
 странице, который только подставляет её глобалы; `test-scoring-duplicates.js`
 следит, чтобы адаптер именно делегировал, а не держал вторую копию.
 
-**Фикс (осталось):** только `renderHole` — 378 Б против 1 244 Б, это не копия,
-а одноимённые функции разного назначения, объединять их значит переделывать
-экран маркера. Страховка — уже существующие
-`tools/test-score-entry-variants.js`, `tools/test-scorer-freeze.js`,
-`tools/test-scoring-duplicates.js`.
+Почему `renderHole` раньше казался «не копией, а разными функциями»: разница
+1 244 против 378 байт — это не другое поведение, а разный состав шапки. У
+скорера в шапке есть дальность до лунки (нужна чашка игрока) и дедлайн с
+учётом пауз, у маркера — только номер и пар. Общая функция принимает
+`ids.dist` / `ids.dl` как необязательные: нет элемента — нет и расчёта. Единственное
+реальное расхождение в поведении — «игрока нет в раунде»: маркер показывал par,
+скорер не показывал ничего. Оно закрыто флагом `ctx.strict` и зафиксировано
+тестом, иначе тихая правка одного экрана сломала бы другой.
 
 Побочный итог: до объединения `callOfficial` и `buildHoles` не покрывались
 тестами вообще — проверить их можно было только глазами. Теперь есть
@@ -534,7 +538,7 @@ hosting,database,functions` (секреты `FIREBASE_SERVICE_ACCOUNT_*`) убр
 | 3 | Репортинг ошибок | 🟠 наблюдаемость | M | низкий | ✅ |
 | 6 | Per-page бандлы, резка `utils.js` | 🟠 скорость | L | средний | ✅ (QR снят; бандлы — после ESM) |
 | 12 | Осмысленный ESLint в CI | 🟡 качество | M | низкий | ✅ |
-| 13 | Общий `renderHole` | 🟡 баги | M | средний | 🔶 (1 пара осталась) |
+| 13 | Общий `renderHole` | 🟡 баги | M | средний | ✅ |
 | 2 | Убрать `'unsafe-inline'` из `script-src` | 🔴 XSS-защита | L | средний | ✅ (396 обработчиков + 4 `<script>`) |
 | 10 | `.off()` + сузить `rounds`-слушатель | 🟡 RTDB-стоимость | M | средний | ✅ (утечка в `solo.js`) |
 | 16 | Обновить `CODE-REVIEW.md` | 🟢 docs | S | нулевой | ✅ |

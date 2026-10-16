@@ -148,13 +148,19 @@ function goMk(h) {
     setTimeout(function() { mkChanging = false; }, 100);
 }
 
+// Реализация — js/score-display.js (общая со scorer.js); здесь только
+// подстановка глобалов страницы маркера: у маркера в шапке только номер
+// лунки и пар, ни дальности, ни дедлайна нет.
 function renderHole() {
-    var par = (typeof holePar === 'function' ? holePar(mkHole) : 4);
-    var holeEl = mkGet('mk-hole'); if (holeEl) holeEl.textContent = mkHole;
-    var parEl = mkGet('mk-par'); if (parEl) parEl.textContent = par;
-    var saved = parseInt(mkScores[mkHole]) || 0;
-    mkScore = saved >= 1 ? saved : par;
-    if (typeof updDisp === 'function') updDisp();
+    pestovoRenderHole({
+        hole: mkHole,
+        round: mkRound,
+        pid: mkPid,
+        get: mkGet,
+        ids: { hole: 'mk-hole', par: 'mk-par' },
+        setScore: function (v) { mkScore = v; },
+        update: updDisp
+    });
 }
 
 function adjMk(d) {

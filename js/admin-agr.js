@@ -329,7 +329,7 @@ function rgDoSearch(evt) {
         rgLastResults = res.rows;
         if (!res.rows.length) {
             rgShowStatus('<i class="fas fa-circle-question"></i> ' +
-                (currentLang === 'en' ? 'Nothing found for «' : 'По запросу «') + q + (currentLang === 'en' ? '». Try surname only.' : '» ничего не найдено. Попробуйте только фамилию.'), 'imp-note-warn');
+                (currentLang === 'en' ? 'Nothing found for «' : 'По запросу «') + escapeHtml(q) + (currentLang === 'en' ? '». Try surname only.' : '» ничего не найдено. Попробуйте только фамилию.'), 'imp-note-warn');
             return;
         }
         rgShowStatus('<i class="fas fa-check"></i> ' +
@@ -338,7 +338,7 @@ function rgDoSearch(evt) {
         rgRenderResults(res.rows);
     }).catch(function(err) {
         if (btn) btn.disabled = false;
-        rgShowStatus('<i class="fas fa-triangle-exclamation"></i> ' + err.message, 'imp-note-err');
+        rgShowStatus('<i class="fas fa-triangle-exclamation"></i> ' + escapeHtml(err.message), 'imp-note-err');
     });
 }
 
@@ -1762,7 +1762,7 @@ function rgBatchHandleFile(input) {
         } catch (err) {
             console.warn('RGA batch parse error:', err);
             if (statusEl) statusEl.innerHTML = '<div class="imp-note imp-note-err"><i class="fas fa-triangle-exclamation"></i> ' +
-                (currentLang === 'en' ? 'Failed to read file: ' : 'Не удалось прочитать файл: ') + (err.message || err) + '</div>';
+                (currentLang === 'en' ? 'Failed to read file: ' : 'Не удалось прочитать файл: ') + escapeHtml(err.message || err) + '</div>';
         }
         input.value = '';
     };

@@ -249,4 +249,62 @@ function makeToastSandbox() {
         'через pestovoInlineJsArg');
 }
 
-console.log('UI escaping tests passed (toast: экранирование по умолчанию + html-флаг, uiConfirm: 4 подстановки, pwa.js: рассылка, экспорт PNG: имя в inline-onclick)');
+// ── 7. Регрессия: err.message в разметку ──────────────────────────────────
+// Текст ошибки выглядит «своим», но приходит извне: это сообщение облачной
+// функции, ошибка парсера Excel (имя листа и ячейки — из загруженного файла)
+// или ответ внешнего сервиса. Правило простое: если err.message попадает в
+// innerHTML, он обязан быть обёрнут в escapeHtml (или локальный esc/E).
+{
+    // Граница оператора: первый «;» вне строк и комментариев. Иначе в проверку
+    // попадает соседний box.textContent = '…' + err.message — а он безопасен.
+    const statementAt = function (src, from) {
+        let i = from, depth = 0;
+        while (i < src.length) {
+            const c = src[i];
+            if (c === '/' && src[i + 1] === '/') { while (i < src.length && src[i] !== '\n') i++; continue; }
+            if (c === '/' && src[i + 1] === '*') { i += 2; while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++; i += 2; continue; }
+            if (c === '\'' || c === '"' || c === '`') {
+                const q = c; i++;
+                while (i < src.length && src[i] !== q) { if (src[i] === '\\') i++; i++; }
+                i++; continue;
+            }
+            if (c === '(' || c === '[' || c === '{') depth++;
+            else if (c === ')' || c === ']' || c === '}') depth--;
+            else if (c === ';' && depth <= 0) return src.slice(from, i);
+            i++;
+        }
+        return src.slice(from, Math.min(src.length, from + 600));
+    };
+
+    const HELPERS = /(?:escapeHtml|esc|E|safeSetHTML|pestovoInlineJsArg|admJsStr|tnJsStr)\($/;
+    const offenders = [];
+    for (const f of fs.readdirSync(path.join(ROOT, 'js')).filter(x => x.endsWith('.js'))) {
+        const src = fs.readFileSync(path.join(ROOT, 'js', f), 'utf8');
+        for (const m of src.matchAll(/\.innerHTML\s*(?:\+=|=)/g)) {
+            const stmt = statementAt(src, m.index);
+            for (const em of stmt.matchAll(/\berr\.message\b/g)) {
+                const before = stmt.slice(Math.max(0, em.index - 40), em.index);
+                // err.message может стоять внутри String(...) / .test(...) —
+                // там он в разметку не идёт, это не подстановка.
+                if (/\.test\([^()]*$/.test(before) || /\bString\([^()]*$/.test(before)) continue;
+                if (!HELPERS.test(before) && !/\b(?:escapeHtml|esc|E)\([^()]*$/.test(before)) {
+                    offenders.push(f + ':' + (src.slice(0, m.index).split('\n').length));
+                }
+            }
+        }
+    }
+    assert.deepStrictEqual(offenders, [],
+        'err.message в innerHTML обязан экранироваться (escapeHtml): ' + offenders.join(', '));
+
+    // И не вырожденно: эти места закрыты и должны находиться проверкой.
+    const covered = [
+        ['js/admin-broadcasts.js', /escapeHtml\(err && err\.message/],
+        ['js/admin-agr.js', /escapeHtml\(err\.message \|\| err\)/],
+        ['js/admin-players-excel.js', /escapeHtml\(err\.message \|\| err\)/]
+    ];
+    for (const [rel, re] of covered) {
+        assert.match(fs.readFileSync(path.join(ROOT, rel), 'utf8'), re, rel + ': ожидалось экранирование err.message');
+    }
+}
+
+console.log('UI escaping tests passed (toast: экранирование по умолчанию + html-флаг, uiConfirm: 4 подстановки, pwa.js: рассылка, экспорт PNG: имя в inline-onclick, err.message: 5 мест)');

@@ -205,7 +205,7 @@ function handlePlayersFileSelect(input) {
         } catch (err) {
             console.warn('Import parse error:', err);
             if (statusEl) statusEl.innerHTML = '<div class="imp-note imp-note-err"><i class="fas fa-triangle-exclamation"></i> ' +
-                (currentLang === 'en' ? 'Failed to read file: ' : 'Не удалось прочитать файл: ') + (err.message || err) + '</div>';
+                (currentLang === 'en' ? 'Failed to read file: ' : 'Не удалось прочитать файл: ') + escapeHtml(err.message || err) + '</div>';
         }
         input.value = '';
     };

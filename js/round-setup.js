@@ -787,11 +787,13 @@ function renderUnifiedSummary() {
             '</div>';
     });
 
+    // Значения формы (time/select) приходят из собственных полей страницы,
+    // но сводка собирается конкатенацией — экранируем одинаково со всем остальным.
     var meta = (timeEl && timeEl.value)
-        ? '<i class="fas fa-clock"></i> ' + timeEl.value +
-          ' · <i class="fas fa-flag"></i> ' + t('start_hole') + ': ' + (holeEl ? holeEl.value : '—') +
-          ' · ' + (rangeEl ? rangeEl.value : '1-18') +
-          ' · ' + (fmtEl ? fmtEl.value : '')
+        ? '<i class="fas fa-clock"></i> ' + escapeHtml(timeEl.value) +
+          ' · <i class="fas fa-flag"></i> ' + t('start_hole') + ': ' + (holeEl ? escapeHtml(holeEl.value) : '—') +
+          ' · ' + (rangeEl ? escapeHtml(rangeEl.value) : '1-18') +
+          ' · ' + (fmtEl ? escapeHtml(fmtEl.value) : '')
         : '';
 
     el.innerHTML = '<div class="us-title"><i class="fas fa-circle-check"></i> ' + t('unified_summary_title') +

@@ -227,7 +227,7 @@ function pushAdminInit() {
         toast('✅ VAPID готов: фоновые пуши включены', 'success');
         setTimeout(pushAdminRefreshStatus, 1500);
     }).catch(function(err) {
-        if (box) box.innerHTML = '⚠️ Не удалось вызвать функцию: ' + (err && err.message ? err.message : err) +
+        if (box) box.innerHTML = '⚠️ Не удалось вызвать функцию: ' + escapeHtml(err && err.message ? err.message : err) +
             '<br>Проверьте деплой: <code>cd functions && npm i && firebase deploy --only functions</code>';
     });
 }

@@ -374,6 +374,10 @@ function updateNotifButton() {
 }
 
 function switchTab(t, b) {
+    // При делегировании кнопка приходит как this (data-act="switchTab").
+    // Прямые вызовы switchTab('rusgolf') передают только имя — тогда this не
+    // элемент, и подсветку активной вкладки просто не трогаем.
+    if (!b && this && this.classList) b = this;
     document.querySelectorAll('.admin-section').forEach(function(s) { s.classList.add('hidden'); });
     document.querySelectorAll('.admin-tab').forEach(function(x) { x.classList.remove('active'); });
     var tabEl = document.getElementById('tab-' + t);

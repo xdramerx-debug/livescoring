@@ -325,7 +325,7 @@ function pestovoShowFioConflictModal(conflicts, onContinueAnyway) {
         '</p>' +
         pestovoRenderFioResumeListHtml(conflicts) +
         '<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">' +
-        '<button class="btn btn-ol btn-sm" onclick="document.getElementById(\'' + overlayId + '\').remove()"><i class="fas fa-xmark"></i> ' + (currentLang === 'en' ? 'Cancel' : 'Отмена') + '</button>' +
+        '<button class="btn btn-ol btn-sm" data-act="pestovoRemoveElement" data-arg="' + escapeHtml(overlayId) + '"><i class="fas fa-xmark"></i> ' + (currentLang === 'en' ? 'Cancel' : 'Отмена') + '</button>' +
         (onContinueAnyway ? '<button class="btn btn-r btn-sm" id="fio-conflict-continue"><i class="fas fa-forward"></i> ' + (currentLang === 'en' ? 'Start anyway (admin)' : 'Начать всё равно') + '</button>' : '') +
         '</div></div></div>';
     var div = document.createElement('div');
@@ -852,6 +852,16 @@ function syncStickyFromOriginal(btn, clone) {
     clone.className = (btn.className || '').replace(/\bscore-confirm-original\b/g, '').replace(/\s+/g, ' ').trim() + ' score-confirm-sticky-btn';
 }
 
+// Клон кнопки не должен ловить клик сам: cloneNode(true) копирует и
+// inline-onclick, и data-act делегирования, а обработчик клона всё равно
+// сам нажимает оригинал. Без снятия атрибутов один тап срабатывал дважды.
+function pestovoStripClickHandlers(el) {
+    if (!el || !el.removeAttribute) return;
+    el.removeAttribute('onclick');
+    el.removeAttribute('data-act');
+    el.removeAttribute('data-kd-act');
+}
+
 function pinScoreConfirmButton(id) {
     var btn = document.getElementById(id);
     if (!btn || document.getElementById(id + '-sticky') || (btn.closest && btn.closest('[data-entry-preview]'))) return;
@@ -865,8 +875,7 @@ function pinScoreConfirmButton(id) {
     }
     var clone = btn.cloneNode(true);
     clone.id = id + '-sticky';
-    // cloneNode копирует onclick. Без снятия атрибута один тап сработал бы дважды.
-    clone.removeAttribute('onclick');
+    pestovoStripClickHandlers(clone);
     clone.addEventListener('click', function(e) {
         e.preventDefault();
         if (btn.disabled) return;
@@ -978,10 +987,9 @@ function initP0MobileEnhancements(){
             var clone=saveBtn.cloneNode(true);
             clone.id='p0-sticky-save';
             syncStickyFromOriginal(saveBtn, clone);
-            // КРИТИЧНО: cloneNode(true) копирует атрибут onclick="saveSc()".
-            // Без removeAttribute клон вызывал обработчик ДВАЖДЫ за один тап
-            // (скопированный inline-onclick + добавленный ниже listener).
-            clone.removeAttribute('onclick');
+            // КРИТИЧНО: без снятия обработчиков клон вызывает saveSc ДВАЖДЫ
+            // за один тап (скопированный data-act + добавленный ниже listener).
+            pestovoStripClickHandlers(clone);
             clone.addEventListener('click', function(e){ e.preventDefault(); if (!saveBtn.disabled) saveBtn.click(); });
             bar.appendChild(clone);
             // next hole button if exists
@@ -989,7 +997,7 @@ function initP0MobileEnhancements(){
             if(nextBtn){
                 var clone2=nextBtn.cloneNode(true);
                 clone2.id='p0-sticky-next';
-                clone2.removeAttribute('onclick');
+                pestovoStripClickHandlers(clone2);
                 clone2.addEventListener('click', function(e){ e.preventDefault(); nextBtn.click(); });
                 bar.appendChild(clone2);
             }
@@ -1121,9 +1129,9 @@ function buildMobileDrawer() {
 
     if (isUserLoggedIn) {
         var avatarMarkup = fmtUserAvatar(currentUserData, 32);
-        authBtnMarkup = '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--input);padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;" onclick="closeMobileDrawer();openPlayerProfileModal(\'' + pestovoInlineJsArg(currentUser.uid) + '\')">' +
+        authBtnMarkup = '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--input);padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;" data-act="closeMobileDrawer";openPlayerProfileModal(\'' + pestovoInlineJsArg(currentUser.uid) + '\')">' +
             '<div style="display:flex;align-items:center;gap:10px;">' + avatarMarkup + '<strong style="color:var(--gold);font-size:14px;">' + escapeHtml(navShortUserName(currentUserData)) + '</strong></div>' +
-            '<button class="btn btn-og btn-sm" onclick="event.stopPropagation();doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
+            '<button class="btn btn-og btn-sm" data-act="doLogout" data-stop="1"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
     }
 
@@ -1147,7 +1155,7 @@ function buildMobileDrawer() {
         '<div class="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="' + (isEn ? 'Navigation menu' : 'Меню навигации') + '">' +
             '<div class="mobile-drawer-header">' +
                 '<div style="display:flex;align-items:center;gap:10px;">' +
-                    '<img src="img/logo.png" alt="Logo" class="nav-logo" onerror="this.style.display=\'none\'">' +
+                    '<img src="img/logo.png" alt="Logo" class="nav-logo" data-img-fail="hide">' +
                     '<span class="nav-brand-text" data-i18n="brand_name">' + t('brand_name') + '</span>' +
                 '</div>' +
                 '<button class="mobile-drawer-close" data-act="closeMobileDrawer" aria-label="' + (isEn ? 'Close menu' : 'Закрыть меню') + '">&times;</button>' +
@@ -1289,7 +1297,7 @@ function fmtUserAvatar(u, sizePx) {
         return '<span class="user-avatar-wrap" style="width:' + size + 'px;height:' + size + 'px;display:inline-flex;flex:0 0 ' + size + 'px;position:relative;">' +
             '<img src="' + escapeAvatarHtml(raw) + '" alt="" loading="lazy" decoding="async" class="user-avatar-img" ' +
             'style="width:' + size + 'px;height:' + size + 'px;object-fit:cover;border-radius:50%;" ' +
-            'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+            'data-img-fail="hide-next">' +
             '<span style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;">' + fallback + '</span></span>';
     }
     if (raw) return '<div class="lb-avatar" style="width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.5) + 'px;">' + escapeAvatarHtml(raw) + '</div>';
@@ -1370,7 +1378,7 @@ function navAuth(u, d) {
         var fullName = String(d.name || '').trim();
         var shortName = navShortUserName(d);
         e.innerHTML = '<div class="nav-user">' + sunBtn + langBtn +
-            '<button type="button" class="nav-profile-trigger" title="' + escapeHtml(fullName) + '" aria-label="' + escapeHtml(fullName ? profileLabel + ': ' + fullName : profileLabel) + '" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(u.uid) + '\')">' + avatarMarkup +
+            '<button type="button" class="nav-profile-trigger" title="' + escapeHtml(fullName) + '" aria-label="' + escapeHtml(fullName ? profileLabel + ': ' + fullName : profileLabel) + '" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(u.uid) + '">' + avatarMarkup +
             '<span class="nav-uname">' + escapeHtml(shortName) + '</span></button>' +
             '<button type="button" class="btn btn-og btn-sm nav-logout" aria-label="' + (currentLang === 'en' ? 'Sign out' : 'Выйти из профиля') + '" data-act="doLogout"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
@@ -3172,7 +3180,7 @@ function hcpCaptionHTML(fieldHcp, holeNum) {
     var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
     var word = en ? 'Handicap' : 'Фора';
     var title = hcpStrokeTitle(cnt, neg).replace(/"/g, '&quot;');
-    return '<span class="hcp-caption' + (neg ? ' neg' : '') + '" title="' + title + '" role="note" aria-label="' + title + '" onclick="event.stopPropagation()"><i class="fas fa-golf-ball-tee" aria-hidden="true"></i> ' + word + ' ' + sign + cnt + '</span>';
+    return '<span class="hcp-caption' + (neg ? ' neg' : '') + '" title="' + title + '" role="note" aria-label="' + title + '" data-act="noop" data-stop="1"><i class="fas fa-golf-ball-tee" aria-hidden="true"></i> ' + word + ' ' + sign + cnt + '</span>';
 }
 
 function entryHoleContentHTML(score, marker, hole, fieldHcp) {
@@ -3871,7 +3879,7 @@ function openPlayerProfileModal(playerId, roundId) {
         if (hcpSync.banner) html += hcpSync.banner;
 
         if (isMe) {
-            html += '<button class="btn btn-og btn-sm" style="margin-top:10px;" onclick="renderProfileEditForm(\'' + pestovoInlineJsArg(playerId) + '\')"><i class="fas fa-user-pen"></i> ' + t('edit_profile') + '</button>';
+            html += '<button class="btn btn-og btn-sm" style="margin-top:10px;" data-act="renderProfileEditForm" data-arg="' + escapeHtml(playerId) + '"><i class="fas fa-user-pen"></i> ' + t('edit_profile') + '</button>';
         }
 
         html += '</div></div>';
@@ -4014,10 +4022,10 @@ function pestovoProfileHistoryToolbarHtml(playerId) {
 
     var h = '';
     h += '<div class="tn-tabs" role="tablist" style="margin:2px 0 10px;">';
-    h += '<button type="button" class="tn-tab' + (st.tab === 'club' ? ' active' : '') + '" onclick="pestovoProfileHistorySetTab(\'' + pestovoInlineJsArg(playerId) + '\',\'club\')">' +
+    h += '<button type="button" class="tn-tab' + (st.tab === 'club' ? ' active' : '') + '" data-act="pestovoProfileHistorySetTab" data-arg="' + escapeHtml(playerId) + '" data-arg2="club">' +
          '<i class="fas fa-golf-ball-tee"></i> ' + (en ? 'Club rounds' : 'Клубные раунды') +
          ' <span class="tn-tab-count">' + clubCount + '</span></button>';
-    h += '<button type="button" class="tn-tab' + (st.tab === 'tn' ? ' active' : '') + '" onclick="pestovoProfileHistorySetTab(\'' + pestovoInlineJsArg(playerId) + '\',\'tn\')">' +
+    h += '<button type="button" class="tn-tab' + (st.tab === 'tn' ? ' active' : '') + '" data-act="pestovoProfileHistorySetTab" data-arg="' + escapeHtml(playerId) + '" data-arg2="tn">' +
          '<i class="fas fa-trophy"></i> ' + (en ? 'Tournament rounds' : 'Турнирные раунды') +
          ' <span class="tn-tab-count">' + tnCount + '</span></button>';
     h += '</div>';
@@ -4025,9 +4033,9 @@ function pestovoProfileHistoryToolbarHtml(playerId) {
     h += '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">';
     h += '<div class="form-group" style="flex:1;min-width:180px;margin:0;">';
     h += '<label style="font-size:11px;margin-bottom:4px;">' + (en ? 'Sort / filter rounds' : 'Сортировка и фильтр раундов') + '</label>';
-    h += '<select class="form-input" style="padding:8px 10px;font-size:12.5px;" onchange="pestovoProfileHistorySetSort(\'' + pestovoInlineJsArg(playerId) + '\',this.value)">' + optionsHtml + '</select>';
+    h += '<select class="form-input" style="padding:8px 10px;font-size:12.5px;" data-act="pestovoProfileHistorySetSort" data-arg="' + escapeHtml(playerId) + '">' + optionsHtml + '</select>';
     h += '</div>';
-    h += '<button type="button" class="tn-tab' + (st.onlyFull ? ' active' : '') + '" style="padding:8px 12px;" onclick="pestovoProfileHistoryToggleFull(\'' + pestovoInlineJsArg(playerId) + '\')">' +
+    h += '<button type="button" class="tn-tab' + (st.onlyFull ? ' active' : '') + '" style="padding:8px 12px;" data-act="pestovoProfileHistoryToggleFull" data-arg="' + escapeHtml(playerId) + '">' +
          '<i class="fas fa-list-ol"></i> ' + (en ? '18 holes only' : 'Только 18 лунок') + '</button>';
     h += '</div>';
     return h;
@@ -4046,7 +4054,7 @@ function pestovoProfileRoundCardHtml(playerId, u, r) {
 
     var h = '<div class="card" style="padding:12px 14px;margin-bottom:10px;border:1px solid var(--border);background:var(--card-bg);">';
     // Вся шапка — сворачивает/разворачивает карточку (по умолчанию свёрнута).
-    h += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;cursor:pointer;" onclick="toggleProfileRoundCard(\'' + cardId + '\')">';
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;cursor:pointer;" data-act="toggleProfileRoundCard" data-arg="' + escapeHtml(cardId) + '">';
     // Турнирный раунд подписываем НАЗВАНИЕМ ТУРНИРА и датой —
     // без повтора бренда и лишней служебной строки.
     var isTnRound = pestovoProfileIsTournamentRound(r);
@@ -4073,11 +4081,11 @@ function pestovoProfileRoundCardHtml(playerId, u, r) {
     h += '</div></div>';
 
     h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;gap:8px;">';
-    h += '<button type="button" class="btn btn-og btn-sm" onclick="event.stopPropagation();toggleProfileRoundCard(\'' + cardId + '\')"><span id="' + btnTxtId + '">' + (en ? 'Expand scorecard' : 'Развернуть карточку') + '</span></button>';
+    h += '<button type="button" class="btn btn-og btn-sm" data-act="toggleProfileRoundCard" data-stop="1" data-arg="' + escapeHtml(cardId) + '"><span id="' + btnTxtId + '">' + (en ? 'Expand scorecard' : 'Развернуть карточку') + '</span></button>';
 
     var isAdminOrOwner = (currentUser && (currentUser.uid === playerId || (currentUserData && currentUserData.role === 'admin') || pestovoIsAdminViewer()));
     if (isAdminOrOwner) {
-        h += '<button type="button" class="btn btn-r btn-sm" onclick="event.stopPropagation();deletePlayerHistoryRecord(\'' + pestovoInlineJsArg(playerId) + '\', \'' + pestovoInlineJsArg(r._key) + '\')" title="' + (en ? 'Delete Round' : 'Удалить из истории') + '"><i class="fas fa-trash"></i></button>';
+        h += '<button type="button" class="btn btn-r btn-sm" data-act="deletePlayerHistoryRecord" data-stop="1" data-arg="' + escapeHtml(playerId) + '" data-arg2="' + escapeHtml(r._key) + '" title="' + (en ? 'Delete Round' : 'Удалить из истории') + '"><i class="fas fa-trash"></i></button>';
     }
     h += '</div>';
 
@@ -4106,9 +4114,9 @@ function pestovoProfileRoundCardHtml(playerId, u, r) {
 
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">';
     if (r.roundId) {
-        h += '<button type="button" class="btn btn-og btn-sm" onclick="event.stopPropagation();openPrintScorecardModal(\'' + pestovoInlineJsArg(r.roundId) + '\')"><i class="fas fa-print"></i> ' + (en ? 'Print (A4)' : 'Печать (A4)') + '</button>';
+        h += '<button type="button" class="btn btn-og btn-sm" data-act="openPrintScorecardModal" data-stop="1" data-arg="' + escapeHtml(r.roundId) + '"><i class="fas fa-print"></i> ' + (en ? 'Print (A4)' : 'Печать (A4)') + '</button>';
         if (r.status === 'completed') {
-            h += '<button type="button" class="btn btn-g btn-sm" onclick="event.stopPropagation();exportRoundPNG(\'' + pestovoInlineJsArg(r.roundId) + '\')"><i class="fas fa-image"></i> PNG</button>';
+            h += '<button type="button" class="btn btn-g btn-sm" data-act="exportRoundPNG" data-stop="1" data-arg="' + escapeHtml(r.roundId) + '"><i class="fas fa-image"></i> PNG</button>';
         }
     }
     h += '</div>';
@@ -4260,8 +4268,8 @@ function renderProfileEditForm(playerId) {
         html += '<div class="form-group"><label><i class="fas fa-image"></i> ' + t('avatar_label') + '</label>';
         html += '<div style="display:flex;align-items:center;gap:16px;margin:10px 0;flex-wrap:wrap;">';
         html += '<div id="edit-avatar-preview">' + fmtUserAvatar(u, 64) + '</div>';
-        html += '<input type="file" id="edit-avatar-file" accept="image/*" style="display:none;" onchange="onAvatarFileSelected(this)">';
-        html += '<button type="button" class="btn btn-og btn-sm" onclick="document.getElementById(\'edit-avatar-file\').click()"><i class="fas fa-upload"></i> ' + t('upload_photo') + '</button>';
+        html += '<input type="file" id="edit-avatar-file" accept="image/*" style="display:none;" data-act="onAvatarFileSelected" data-self="1">';
+        html += '<button type="button" class="btn btn-og btn-sm" data-act="pestovoClickElement" data-arg="edit-avatar-file"><i class="fas fa-upload"></i> ' + t('upload_photo') + '</button>';
         html += '</div>';
 
         // Presets
@@ -4269,7 +4277,7 @@ function renderProfileEditForm(playerId) {
         html += '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">';
         var presets = ['⛳', '🏆', '🦅', '👑', '⭐', '👤'];
         presets.forEach(function(icon) {
-            html += '<button type="button" class="preset-avatar-btn" onclick="selectPresetAvatar(\'' + icon + '\')">' + icon + '</button>';
+            html += '<button type="button" class="preset-avatar-btn" data-act="selectPresetAvatar" data-arg="' + escapeHtml(icon) + '">' + icon + '</button>';
         });
         html += '</div></div>';
 
@@ -4303,8 +4311,8 @@ function renderProfileEditForm(playerId) {
         html += '<input type="hidden" id="edit-avatar-val" value="' + currentAvatar + '">';
 
         html += '<div style="display:flex;gap:12px;margin-top:20px;">';
-        html += '<button type="button" class="btn btn-og" style="flex:1;" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(playerId) + '\')">' + t('cancel_btn') + '</button>';
-        html += '<button type="button" class="btn btn-g" style="flex:1;" onclick="saveUserProfileData(\'' + pestovoInlineJsArg(playerId) + '\')"><i class="fas fa-save"></i> ' + t('save_profile') + '</button>';
+        html += '<button type="button" class="btn btn-og" style="flex:1;" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(playerId) + '">' + t('cancel_btn') + '</button>';
+        html += '<button type="button" class="btn btn-g" style="flex:1;" data-act="saveUserProfileData" data-arg="' + escapeHtml(playerId) + '"><i class="fas fa-save"></i> ' + t('save_profile') + '</button>';
         html += '</div>';
 
         bodyEl.innerHTML = html;
@@ -4457,7 +4465,7 @@ function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback, opt
                 var fHtml = verificationIssueToastHtml(fIssue, verification);
                 html += '<div style="margin:16px 0;" id="finish-verification-report">';
                 html += '<div class="timing-alert ' + (fIssue.kind === 'mismatch' ? 'timing-late' : 'timing-warn') + '"><i class="fas ' + (fIssue.kind === 'mismatch' ? 'fa-triangle-exclamation' : 'fa-clock') + '"></i><div>' + fHtml + '</div></div>';
-                html += '<button type="button" class="btn btn-og btn-block" style="margin-top:10px;" onclick="finishModalGoToHole(' + fIssue.hole + ')"><i class="fas fa-arrow-right"></i> ' + (currentLang === 'en' ? 'Go to hole ' + fIssue.hole : 'Перейти к лунке ' + fIssue.hole) + '</button>';
+                html += '<button type="button" class="btn btn-og btn-block" style="margin-top:10px;" data-act="finishModalGoToHole" data-arg="' + fIssue.hole + '"><i class="fas fa-arrow-right"></i> ' + (currentLang === 'en' ? 'Go to hole ' + fIssue.hole : 'Перейти к лунке ' + fIssue.hole) + '</button>';
                 html += '</div>';
             } else {
                 html += '<div style="margin:16px 0;" id="finish-verification-report">' + buildVerificationReportHtml(verification) + '</div>';
@@ -4934,7 +4942,7 @@ function openRoundPauseModal(roundId, roundData, onDone) {
     html += '<div class="form-group" style="margin-bottom:16px;">';
     html += '<label style="font-size:12px;font-weight:600;color:var(--white);margin-bottom:6px;display:block;">' +
         (isEn ? 'Pause reason:' : 'Причина паузы:') + '</label>';
-    html += '<select id="rpm-reason-select" class="form-input" style="width:100%;margin-bottom:8px;" onchange="var c=document.getElementById(\'rpm-reason-custom\');if(c)c.classList.toggle(\'hidden\',this.value!==\'other\');">';
+    html += '<select id="rpm-reason-select" class="form-input" style="width:100%;margin-bottom:8px;" data-act="pestovoToggleClass" data-arg="rpm-reason-custom" data-arg2="hidden" data-arg3="other">';
     html += '<option value="weather">' + (isEn ? '⛈ Thunderstorm / Bad weather' : '⛈ Гроза / Непогода') + '</option>';
     html += '<option value="lunch">' + (isEn ? '🍽 Break / Lunch' : '🍽 Перерыв / Обед') + '</option>';
     html += '<option value="marshal">' + (isEn ? '🚨 Marshal / Referee stop' : '🚨 Остановка маршалом / судьёй') + '</option>';
@@ -5068,7 +5076,7 @@ function openForceFinishModal(roundId, roundData, opts) {
     html += '<div class="form-group" style="margin-bottom:16px;">';
     html += '<label style="font-size:12px;font-weight:600;color:var(--white);margin-bottom:6px;display:block;">' +
         (isEn ? 'Reason for early finish:' : 'Причина досрочного завершения:') + '</label>';
-    html += '<select id="rfm-reason-select" class="form-input" style="width:100%;margin-bottom:8px;" onchange="var c=document.getElementById(\'rfm-reason-custom\');if(c)c.classList.toggle(\'hidden\',this.value!==\'other\');">';
+    html += '<select id="rfm-reason-select" class="form-input" style="width:100%;margin-bottom:8px;" data-act="pestovoToggleClass" data-arg="rfm-reason-custom" data-arg2="hidden" data-arg3="other">';
     html += '<option value="wd">' + (isEn ? '🛑 Player decision / Withdrawal (WD)' : '🛑 Сход / По решению игрока (WD)') + '</option>';
     html += '<option value="darkness">' + (isEn ? '🌙 Darkness / Nightfall' : '🌙 Наступление темноты') + '</option>';
     html += '<option value="weather">' + (isEn ? '⛈ Bad weather / Heavy rain' : '⛈ Погода / Сильный дождь') + '</option>';
@@ -5486,7 +5494,7 @@ function generateExactPestovoPaperScorecardHTML(player, roundData) {
     // Top Header with Logo
     html += '<div class="psc-top-header">';
     html += '  <div class="psc-logo-brand">';
-    html += '    <img src="img/logo.png" alt="Pestovo" class="psc-logo" onerror="this.style.display=\'none\'">';
+    html += '    <img src="img/logo.png" alt="Pestovo" class="psc-logo" data-img-fail="hide">';
     html += '    <div><div class="psc-club-title">ГОЛЬФ-КЛУБ «ПЕСТОВО»</div><div class="psc-club-sub">Официальная счётная карточка</div></div>';
     html += '  </div>';
     html += '</div>';
@@ -7421,7 +7429,7 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
     if (playersList && playersList.length > 1 && roundId) {
         html += '<div style="margin-bottom:16px;background:var(--input);padding:12px;border-radius:var(--rs);border:1px solid var(--border);">';
         html += '<label style="font-size:12px;color:var(--gold);display:block;margin-bottom:6px;font-weight:700;"><i class="fas fa-users"></i> ' + (currentLang === 'en' ? 'Select Group Player Card:' : 'Выберите карточку игрока группы:') + '</label>';
-        html += '<select class="form-input" style="max-width:320px;margin:0 auto;text-align:center;font-weight:700;" onchange="exportRoundPNG(\'' + pestovoInlineJsArg(roundId) + '\', this.value)">';
+        html += '<select class="form-input" style="max-width:320px;margin:0 auto;text-align:center;font-weight:700;" data-act="exportRoundPNG" data-arg="' + escapeHtml(roundId) + '">';
         playersList.forEach(function(pe) {
             var pid = pe[0], p = pe[1];
             var sel = pid === activePid ? 'selected' : '';
@@ -7434,10 +7442,10 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
     html += '<p style="font-size:11px;color:var(--muted);margin-bottom:14px;"><i class="fas fa-mobile-screen-button"></i> ' + (currentLang === 'en' ? 'On iPhone / iPad: Tap button to Share or long-press image to Save to Photos' : 'На iPhone: нажмите кнопку для отправки или зажмите картинку пальцем для сохранения в Фото') + '</p>';
 
     html += '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">';
-    html += '<button type="button" class="btn btn-g" style="flex:1;min-width:180px;" onclick="downloadPNGImage(\'' + pestovoInlineJsArg(pngDataUrl) + '\', \'' + pestovoInlineJsArg(fileName) + '\')"><i class="fas fa-download"></i> ' + t('download_png') + '</button>';
+    html += '<button type="button" class="btn btn-g" style="flex:1;min-width:180px;" data-act="downloadPNGImage" data-arg="' + escapeHtml(pngDataUrl) + '" data-arg2="' + escapeHtml(fileName) + '"><i class="fas fa-download"></i> ' + t('download_png') + '</button>';
 
     if (navigator.share) {
-        html += '<button type="button" class="btn btn-og" style="flex:1;min-width:180px;" onclick="downloadPNGImage(\'' + pestovoInlineJsArg(pngDataUrl) + '\', \'' + pestovoInlineJsArg(fileName) + '\')"><i class="fas fa-share-nodes"></i> ' + t('share_native') + '</button>';
+        html += '<button type="button" class="btn btn-og" style="flex:1;min-width:180px;" data-act="downloadPNGImage" data-arg="' + escapeHtml(pngDataUrl) + '" data-arg2="' + escapeHtml(fileName) + '"><i class="fas fa-share-nodes"></i> ' + t('share_native') + '</button>';
     }
     html += '</div>';
 

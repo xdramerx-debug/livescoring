@@ -23,11 +23,11 @@
         switch (key) {
             case 'nav':
                 return '<nav class="nav"><div class="container nav-c">' +
-                    '<a href="#" class="nav-brand" onclick="return false"><span class="nav-brand-text">Пестово</span></a>' +
+                    '<a href="#" class="nav-brand" data-act="noop" data-prevent="1"><span class="nav-brand-text">Пестово</span></a>' +
                     '<div class="nav-menu">' +
-                        '<a href="#" class="nav-link active" onclick="return false">Главная</a>' +
-                        '<a href="#" class="nav-link" onclick="return false">Раунды</a>' +
-                        '<a href="#" class="nav-link" onclick="return false">Статистика</a>' +
+                        '<a href="#" class="nav-link active" data-act="noop" data-prevent="1">Главная</a>' +
+                        '<a href="#" class="nav-link" data-act="noop" data-prevent="1">Раунды</a>' +
+                        '<a href="#" class="nav-link" data-act="noop" data-prevent="1">Статистика</a>' +
                     '</div><div class="nav-auth"><span class="nav-uname">Иван Петров</span></div>' +
                 '</div></nav>' +
                 '<div style="height:70px"></div>';
@@ -37,8 +37,8 @@
                     '<div class="hero-sub">Пестово</div>' +
                     '<h1 class="hero-title">Лайв-скоринг сезона 2026</h1>' +
                     '<p class="hero-desc">18 лунок · Пар 72 · Гандикап WHS</p>' +
-                    '<div class="hero-btns"><a href="#" class="btn btn-g" onclick="return false">Начать раунд</a>' +
-                    '<a href="#" class="btn btn-og" onclick="return false">Все раунды</a></div>' +
+                    '<div class="hero-btns"><a href="#" class="btn btn-g" data-act="noop" data-prevent="1">Начать раунд</a>' +
+                    '<a href="#" class="btn btn-og" data-act="noop" data-prevent="1">Все раунды</a></div>' +
                 '</div></div>';
 
             case 'page-head':
@@ -105,10 +105,10 @@
                         '<div><div class="footer-title">Пестово</div>' +
                         '<p class="footer-desc">Официальная система лайв-скоринга гольф-клуба.</p></div>' +
                         '<div><div class="footer-sub">Разделы</div>' +
-                        '<a href="#" class="footer-link" onclick="return false">Все раунды</a>' +
-                        '<a href="#" class="footer-link" onclick="return false">Статистика</a></div>' +
+                        '<a href="#" class="footer-link" data-act="noop" data-prevent="1">Все раунды</a>' +
+                        '<a href="#" class="footer-link" data-act="noop" data-prevent="1">Статистика</a></div>' +
                         '<div><div class="footer-sub">Сервисы</div>' +
-                        '<a href="#" class="footer-link" onclick="return false">Помощник</a></div>' +
+                        '<a href="#" class="footer-link" data-act="noop" data-prevent="1">Помощник</a></div>' +
                     '</div>' +
                     '<div class="footer-bottom">© 2024 Пестово</div>' +
                     '<p class="site-version">Версия сайта: <span class="version-number">—</span></p>' +
@@ -235,7 +235,7 @@
             '<div class="dsp-picker dsp-compact">' +
                 d.PRESETS.map(function(p) {
                     return '<button type="button" class="dsp-chip' + (builder.base === p.id ? ' active' : '') + '"' +
-                        ' onclick="dspBuilderSetBase(\'' + pestovoInlineJsArg(p.id) + '\')">' +
+                        ' data-act="dspBuilderSetBase" data-arg="' + escapeHtml(p.id) + '">' +
                         (p.id === '0' ? 'Текущий' : p.id + ' · ' + esc(p.short)) + '</button>';
                 }).join('') +
             '</div></div>';
@@ -247,16 +247,16 @@
                 '<div class="dsp-picker dsp-compact">' +
                     d.PRESETS.map(function(p) {
                         return '<button type="button" class="dsp-chip' + (cur === p.id ? ' active' : '') + '"' +
-                            ' onclick="dspBuilderSetBlock(\'' + pestovoInlineJsArg(b.key) + '\',\'' + pestovoInlineJsArg(p.id) + '\')">' +
+                            ' data-act="dspBuilderSetBlock" data-arg="' + escapeHtml(b.key) + '" data-arg2="' + escapeHtml(p.id) + '">' +
                             (p.id === '0' ? 'Текущий' : p.id + ' · ' + esc(p.short)) + '</button>';
                     }).join('') +
                 '</div></div>';
         });
 
         html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">' +
-            '<button type="button" class="btn btn-og btn-sm" onclick="dspBuilderFill()">' +
+            '<button type="button" class="btn btn-og btn-sm" data-act="dspBuilderFill">' +
             '<i class="fas fa-wand-magic-sparkles"></i> Собрать всё из базового шаблона</button>' +
-            '<button type="button" class="btn btn-ol btn-sm" onclick="dspBuilderReset()">' +
+            '<button type="button" class="btn btn-ol btn-sm" data-act="dspBuilderReset">' +
             '<i class="fas fa-rotate-left"></i> Сбросить</button>' +
         '</div>';
         ctrl.innerHTML = html;

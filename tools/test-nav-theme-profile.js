@@ -9,7 +9,7 @@ const dom = new JSDOM('<!doctype html><html lang="ru"><head><title>Пестов�
     runScripts: 'dangerously', url: 'https://test.local/index.html', pretendToBeVisual: true
 });
 const win = dom.window;
-['js/course-config.js', 'js/format.js', 'js/dom.js', 'js/i18n.js', 'js/utils.js'].forEach(file => {
+['js/ui-events.js', 'js/course-config.js', 'js/format.js', 'js/dom.js', 'js/i18n.js', 'js/utils.js'].forEach(file => {
     win.eval(fs.readFileSync(path.join(ROOT, file), 'utf8'));
 });
 win.currentLang = 'ru';

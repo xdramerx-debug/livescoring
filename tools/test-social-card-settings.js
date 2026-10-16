@@ -114,6 +114,7 @@ function load(file) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, file), 'utf8'), ctx, { filename: file });
 }
 
+load('js/ui-events.js');
 load('js/utils.js');
 load('js/admin.js');
 load('js/admin-display.js');

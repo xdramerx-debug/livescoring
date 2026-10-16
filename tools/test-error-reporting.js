@@ -219,8 +219,9 @@ function flush() { return new Promise((r) => setImmediate(() => setImmediate(r))
     assert.match(adminAudit, /limitToLast\(200\)/, 'объём выборки ограничен');
     assert.match(adminAudit, /permission/i, 'отказ правил объяснён пользователю');
     assert.match(adminHtml, /id="er-results"/, 'в admin.html есть контейнер er-results');
-    assert.match(adminHtml, /onclick="erLoad\(\)"/, 'кнопка обновления вызывает erLoad()');
-    assert.match(adminHtml, /onclick="erClear\(\)"/, 'кнопка очистки вызывает erClear()');
+    // Кнопки админки переведены на data-атрибуты (делегирование, п.2 плана).
+    assert.match(adminHtml, /data-act="erLoad"/, 'кнопка обновления вызывает erLoad()');
+    assert.match(adminHtml, /data-act="erClear"/, 'кнопка очистки вызывает erClear()');
     assert.match(adminJs, /t === 'scoreaudit' && typeof erLoad === 'function'/, 'erLoad вызывается при открытии вкладки диагностики');
 
     // Экранирование: текст ошибки приходит с чужого устройства и может содержать

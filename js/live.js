@@ -196,13 +196,24 @@ function updateDualCompare() {
     }
 }
 
+// Действие кнопки меняется по ходу раунда. Раньше здесь присваивался .onclick,
+// но у кнопки есть и data-act из разметки — получалось два вызова за тап.
+// Поэтому меняем сам data-act: его ловит делегат js/ui-events.js.
+function pestovoSetButtonAction(btn, action) {
+    if (!btn) return;
+    btn.setAttribute('data-act', action);
+    btn.onclick = null;
+}
+
 function animateHoleTransition(newHole) {
     try {
         var btns = document.querySelectorAll('#play-holes-nav .hole-btn');
         for (var i = 0; i < btns.length; i++) {
             var b = btns[i];
-            var onclick = b.getAttribute('onclick') || '';
-            if (onclick.indexOf('goPlayHole(' + newHole + ')') !== -1) {
+            // Кнопка лунки описывается data-атрибутами (делегирование в
+            // js/ui-events.js), поэтому ищем по ним, а не по onclick.
+            if (b.getAttribute('data-act') === 'goPlayHole' &&
+                b.getAttribute('data-arg') === String(newHole)) {
                 b.classList.add('hole-enter-anim');
                 (function(btn){
                     setTimeout(function(){ btn.classList.remove('hole-enter-anim'); }, 800);
@@ -426,12 +437,12 @@ function buildPlayerSlots() {
         html += '<div class="form-row form-row-3">';
         html += '<div class="form-group" style="flex:1.4 1 120px;position:relative;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label><input type="text" id="pl-name-' + i + '" class="form-input" placeholder="' + namePlaceholder + '"><input type="hidden" id="pl-uid-' + i + '" value=""></div>';
         html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('middle_name') + '</label><input type="text" id="pl-mid-' + i + '" class="form-input" placeholder="' + (currentLang === 'en' ? 'Jr.' : 'Отчество') + '"></div>';
-        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" onchange="onPlayerGenderOrTeeChange(' + i + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + i + '" class="form-input" data-act="onPlayerGenderOrTeeChange" data-arg="' + i + '"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>';
         html += '</div>';
 
         html += '<div class="form-row form-row-3">';
-        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('tee_select') + '</label><select id="pl-tee-' + i + '" class="form-input" onchange="calcPlayerFieldHcp(' + i + ')"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>';
-        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('exact_hcp') + '</label><input type="text" inputmode="decimal" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + i + ')"></div>';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('tee_select') + '</label><select id="pl-tee-' + i + '" class="form-input" data-act="calcPlayerFieldHcp" data-arg="' + i + '"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>';
+        html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('exact_hcp') + '</label><input type="text" inputmode="decimal" id="pl-hcp-' + i + '" class="form-input" placeholder="+2.4 / 12.4" data-act="calcPlayerFieldHcp" data-arg="' + i + '"></div>';
         html += '<div class="form-group" style="flex:1 1 90px;"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + i + '" class="form-input" readonly placeholder="—"></div>';
         html += '</div></div>';
     }
@@ -1188,7 +1199,7 @@ function updateGroupPauseUI() {
         '<span style="font-size:12px;color:rgba(255,255,255,0.85);">' +
         (isEn ? 'Timings frozen · Duration: ' : 'Тайминги остановлены · Длительность: ') +
         '<b>' + durStr + '</b>' + reasonStr + '</span></div></div>' +
-        '<button type="button" class="btn btn-g btn-sm" onclick="handleGroupPauseToggle()" style="font-weight:700;">' +
+        '<button type="button" class="btn btn-g btn-sm" data-act="handleGroupPauseToggle" style="font-weight:700;">' +
         '<i class="fas fa-play"></i> ' + (isEn ? 'Resume Play' : 'Возобновить игру') + '</button>' +
         '</div>';
 }
@@ -1296,7 +1307,7 @@ function buildPlayHolesNav() {
         if (h === playHole && vState !== 'confirmed' && !(sub && s > 0)) cls += ' cur-blink';
 
         var mkForHole = (typeof getPlayerMarkerScoreForHole === 'function') ? getPlayerMarkerScoreForHole(myPlayer, h).score : 0;
-        html += '<button type="button" class="hole-btn ' + cls + '" onclick="goPlayHole(' + h + ')" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === playHole ? 'true' : 'false') + '">' +
+        html += '<button type="button" class="hole-btn ' + cls + '" data-act="goPlayHole" data-arg="' + h + '" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === playHole ? 'true' : 'false') + '">' +
             entryHoleContentHTML(s, mkForHole, h, myFieldHcp) + '</button>';
     });
     el.innerHTML = html;
@@ -1322,6 +1333,7 @@ function doPlayHole(h) {
 }
 
 function goPlayHole(h) {
+    h = parseInt(h, 10);
     if (!canEditGroup) return;
     var myPlayer = curRoundData && curRoundData.players && curRoundData.players[myUid];
     var scores = (myPlayer && myPlayer.scores) || {};
@@ -1364,12 +1376,12 @@ function renderPlayHole() {
             // Результат последней лунки введён — кнопка становится «Завершить раунд»
             btnIcon.className = 'fas fa-flag-checkered';
             btnText.textContent = t('finish_round');
-            btn.onclick = function() { finishGroupRound(); };
+            pestovoSetButtonAction(btn, 'finishGroupRound');
         } else {
             // Кнопка ПОДТВЕРЖДАЕТ результат лунки (переход дальше — автоматически).
             btnIcon.className = 'fas fa-check';
             btnText.textContent = t('next_hole_btn');
-            btn.onclick = function() { saveHoleScores(); };
+            pestovoSetButtonAction(btn, 'saveHoleScores');
         }
     }
 
@@ -1454,6 +1466,7 @@ function renderPlayHole() {
 }
 
 function adjScore(who, delta) {
+    delta = parseInt(delta, 10);
     if (!canEditGroup) return;
     if (who === 'mark' && myTargetUid && typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(curRoundData, myTargetUid)) return;
     if (who === 'my') {
@@ -2074,7 +2087,7 @@ function buildFinishBlockHtml(v) {
     if (hidden > 0) {
         rows += '<li class="fbn-row fbn-more">' + (isEn ? 'and ' + hidden + ' more…' : 'и ещё ' + hidden + '…') + '</li>';
     }
-    var forceBtn = '<button type="button" class="btn btn-og btn-sm btn-block" style="margin-top:10px;justify-content:center;font-weight:700;" onclick="openForceFinishModal(curRid, curRoundData, { playerId: myUid, isGroup: true })"><i class="fas fa-flag-checkered"></i> ' +
+    var forceBtn = '<button type="button" class="btn btn-og btn-sm btn-block" style="margin-top:10px;justify-content:center;font-weight:700;" data-act="pestovoGroupForceFinish"><i class="fas fa-flag-checkered"></i> ' +
         (isEn ? 'Force finish with current scores' : 'Завершить принудительно с текущим счётом') + '</button>';
     return '<div class="finish-block">' +
         '<div class="fbn-head"><i class="fas fa-ban"></i> ' + t('finish_blocked_title') + '</div>' +
@@ -2288,6 +2301,12 @@ function renderInviteQRs() {
 // ==========================================
 // ВЫЗОВ СУДЬИ / МАРШАЛА
 // ==========================================
+// Кнопка «завершить принудительно» передавала в обработчик объект раунда
+// прямо в onclick=. Теперь вызов собран здесь, а разметка ссылается на имя.
+pestovoOnAction('pestovoGroupForceFinish', function () {
+    openForceFinishModal(curRid, curRoundData, { playerId: myUid, isGroup: true });
+});
+
 // Общая часть — pestovoCallOfficial() в js/official-call.js. Групповой раунд
 // отличается тем, что имя и состав флайта читаются в момент вызова (данные
 // раунда к этому моменту могут обновиться), поэтому они передаются функциями —
@@ -2383,7 +2402,7 @@ function renderGVPlayers(r) {
             var pTee = pestovoNormalizeTeeCode((p && p.tee) || r.tee || 'wh');
             var pTeeBadge = '<span class="tee-pill tee-' + pTee + '" style="font-size:9.5px;padding:1px 7px;margin-left:6px;vertical-align:middle;">' + escapeHtml(pestovoTeeLabel(pTee)) + '</span>';
 
-            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(pid) + '\',\'' + pestovoInlineJsArg(curRid) + '\')">' +
+            html += '<div class="list-item" style="padding:14px;flex-wrap:wrap;gap:8px;cursor:pointer;" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(pid) + '" data-arg2="' + escapeHtml(curRid) + '">' +
                 '<div><strong style="color:var(--white);font-size:16px;"><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(privacyDisplayName(p, pid)) + pTeeBadge + '</strong>' +
                 '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px;">📍 ' + thruTxt + markerNote + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Gross: ' + (stats.gross || 0) + ' · Stableford: ' + stats.stablefordField + '</div>' +

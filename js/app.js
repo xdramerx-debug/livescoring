@@ -352,7 +352,7 @@ function buildStartHintHTML(nine, isEn) {
         : 'Подсказка учитывает всех, кто сейчас в поле: загруженность каждой девятки и средний гандикап играющих (чем выше гандикап, тем медленнее темп). Стартовую лунку можно выбрать при создании раунда.';
 
     var html = '<div class="chs-hint">' +
-        '<button type="button" class="chs-hint-toggle" id="chs-hint-toggle" onclick="toggleStartHint()" aria-expanded="' + ariaExp + '">' +
+        '<button type="button" class="chs-hint-toggle" id="chs-hint-toggle" data-act="toggleStartHint" aria-expanded="' + ariaExp + '">' +
         '<span class="chs-hint-title"><i class="fas fa-lightbulb"></i> ' + t('start_hint_title') + '</span>' +
         '<i class="' + iconCls + '" id="chs-hint-icon"></i>' +
         '</button>' +
@@ -522,7 +522,7 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
     var rowHtml = '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
         'data-round-id="' + escapeHtml(id) + '" data-pid="' + escapeHtml(pid) + '" data-round-row="1">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + escapeHtml(panelId) + '" ' +
-        'onclick="toggleLiveRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="liveRoundKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
+        'data-act="toggleLiveRound" data-arg="' + escapeHtml(id) + '" data-kd-act="liveRoundKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
         '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
         (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
         '</span>' +
@@ -604,7 +604,7 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
     return '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
         'data-round-id="' + escapeHtml(id) + '" data-round-row="1">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + escapeHtml(panelId) + '" ' +
-        'onclick="toggleLiveRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="liveRoundKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
+        'data-act="toggleLiveRound" data-arg="' + escapeHtml(id) + '" data-kd-act="liveRoundKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
         '<span class="lwl-name">' + modeIcon + '<span class="lwl-name-txt">' + modeLabel + ' · ' + namesStr + '</span>' +
         (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
         '</span>' +
@@ -1090,15 +1090,15 @@ function buildRecentRowHTML(id, r) {
         '<div class="lwl-details">' +
         '<div class="lwl-recent-players">' + pHtml + '</div>' +
         '<div class="lwl-actions">' +
-        '<button class="btn btn-og btn-sm" onclick="toggleCardScorecard(\'' + pestovoInlineJsArg(panelId) + '\',\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-chevron-down" id="' + escapeHtml(panelId) + '-icon"></i> <span id="' + escapeHtml(panelId) + '-txt">' + t('expand_scorecard') + '</span></button>' +
-        (r.status === 'completed' ? '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' : '') +
+        '<button class="btn btn-og btn-sm" data-act="toggleCardScorecard" data-arg="' + escapeHtml(panelId) + '" data-arg2="' + escapeHtml(id) + '"><i class="fas fa-chevron-down" id="' + escapeHtml(panelId) + '-icon"></i> <span id="' + escapeHtml(panelId) + '-txt">' + t('expand_scorecard') + '</span></button>' +
+        (r.status === 'completed' ? '<button class="btn btn-g btn-sm" data-act="exportRoundPNG" data-arg="' + escapeHtml(id) + '"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' : '') +
         '</div>' +
         '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
         '</div>';
 
     return '<div class="lwl-row recent-row' + (open ? ' is-open' : '') + '" data-round-id="' + escapeHtml(id) + '" data-panel-id="' + escapeHtml(panelId) + '">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" ' +
-        'onclick="toggleRecentRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="recentKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
+        'data-act="toggleRecentRound" data-arg="' + escapeHtml(id) + '" data-kd-act="recentKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
         '<span class="lwl-name"><i class="fas fa-flag-checkered"></i><span class="lwl-name-txt">' + dateStr + '</span></span>' +
         '<span class="lwl-hole"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-score">' + completedBadge + '</span>' +

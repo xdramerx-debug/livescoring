@@ -8,8 +8,9 @@
 // inline-обработчиков в каждом файле может только уменьшаться. Вернуть
 // onclick= в уже переведённый файл — значит сломать тест.
 //
-// Цель — нули во всех строках. Как только файл обнуляется, строку из CAPS
-// удаляют: тогда она начинает проверяться правилом «нет ни одного» выше.
+// Цель достигнута: inline-обработчиков в проекте ноль, таблица лимитов
+// удалена, и теперь каждый файл проверяется правилом «ни одного». Вернуть
+// onclick= — значит сломать тест и снова открыть 'unsafe-inline' в CSP.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -95,6 +96,102 @@ function makeSandbox() {
         'неизвестный data-act обязан предупредить в консоль — иначе опечатку не найти');
 }
 
+// ── 1b. Клавиатура, формы и мелкие действия ───────────────────────────────
+{
+    const { sandbox, dom } = makeSandbox();
+    const calls = [];
+    sandbox.pestovoOnAction('kd', function () { calls.push(['kd', ...arguments]); });
+    sandbox.pestovoOnAction('then2', function () { calls.push(['then2']); });
+    sandbox.pestovoOnAction('onSubmit', function () { calls.push(['submit', ...arguments]); });
+    sandbox.pestovoOnAction('boolFn', function (v) { calls.push(['bool', v, typeof v]); });
+
+    dom.window.document.body.innerHTML =
+        '<button id="k1" data-kd-act="kd" data-kd-arg="a" data-kd-key="Enter,Space" data-prevent="1"></button>' +
+        '<button id="k2" data-kd-act="kd" data-kd-ev="1"></button>' +
+        '<button id="t1" data-act="pestovoClearValue" data-arg="f1" data-then="then2"></button>' +
+        '<input id="f1" value="было">' +
+        '<input id="c1" type="checkbox" checked data-act="kd" data-checked="1">' +
+        '<input id="v1" value="текст" data-act="kd" data-val="1">' +
+        '<button id="b1" data-act="pestovoRunBool" data-arg="boolFn" data-arg2="false"></button>' +
+        '<form id="form1" data-sub-act="onSubmit" data-sub-ev="1" data-prevent="1"><input></form>';
+
+    const fire = function (el, type, init) {
+        const ev = new dom.window.Event(type, Object.assign({ bubbles: true, cancelable: true }, init || {}));
+        if (init && 'key' in init) ev.key = init.key;
+        dom.window.document.getElementById(el).dispatchEvent(ev);
+        return ev;
+    };
+    const fireClick = function (id) {
+        return dom.window.document.getElementById(id)
+            .dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }));
+    };
+
+    assert.deepStrictEqual(calls.pop(), undefined, 'старт: вызовов нет');
+    fire('k1', 'keydown', { key: 'a' });
+    assert.deepStrictEqual(calls.pop(), undefined, ' data-kd-key="Enter,Space" не реагирует на другую клавишу');
+
+    const kdEv = fire('k1', 'keydown', { key: 'Enter' });
+    assert.ok(calls.some(function (c) { return c[0] === 'kd' && c[1] === 'a'; }),
+        'Enter вызывает действие с data-kd-arg');
+    assert.strictEqual(kdEv.defaultPrevented, true, 'data-prevent="1" гасит клавишу по умолчанию');
+    calls.length = 0;
+
+    fire('k1', 'keydown', { key: ' ' });
+    assert.deepStrictEqual(calls.pop(), ['kd', 'a'], 'Space (пробел) тоже срабатывает');
+
+    fire('k2', 'keydown', { key: 'x' });
+    const withEv = calls.pop();
+    assert.strictEqual(withEv.length, 2, 'data-kd-ev="1": действие получает и событие, и аргументы');
+    assert.ok(withEv[1] && withEv[1].type === 'keydown', 'data-kd-ev передаёт само событие первым аргументом');
+
+    // data-then: второе действие следом (было onclick="…;fn()").
+    fireClick('t1');
+    assert.deepStrictEqual(calls.pop(), ['then2'], 'data-then вызывает второе действие');
+    assert.strictEqual(dom.window.document.getElementById('f1').value, '',
+        'pestovoClearValue очищает поле (было onclick="getElementById(...).value=\'\'")');
+
+    fire('c1', 'change');
+    assert.deepStrictEqual(calls.pop(), ['kd', true],
+        'data-checked="1" передаёт checked (было onchange="fn(this.checked)")');
+
+    fireClick('v1');
+    assert.deepStrictEqual(calls.pop(), ['kd', 'текст'],
+        'data-val="1" передаёт значение поля по клику');
+
+    fireClick('b1');
+    assert.deepStrictEqual(calls.pop(), ['bool', false, 'boolean'],
+        'pestovoRunBool превращает строку "false" в булево false');
+
+    const subEv = fire('form1', 'submit');
+    const sub = calls.pop();
+    assert.ok(sub && sub[0] === 'submit', 'форму ловит data-sub-act (было onsubmit="fn(event)")');
+    assert.ok(sub[1] && sub[1].type === 'submit', 'data-sub-ev="1" передаёт событие отправки');
+    assert.strictEqual(subEv.defaultPrevented, true, 'data-prevent="1" отменяет отправку формы');
+}
+
+// ── 1c. Готовые действия вместо JS-выражений в onclick ───────────────────
+{
+    const { dom } = makeSandbox();
+    dom.window.document.body.innerHTML =
+        '<b id="h1"></b><b id="h2"></b><i id="nx"></i>' +
+        '<img id="i1" data-img-fail="hide-next"><i id="sib"></i>' +
+        '<button id="go" data-act="pestovoHideSelf" data-ev="1"><span id="inner"></span></button>' +
+        '<div id="d1"></div><div id="d2" class="hidden"></div>';
+    const doc = dom.window.document;
+
+    doc.getElementById('i1').dispatchEvent(new dom.window.Event('error'));
+    assert.strictEqual(doc.getElementById('sib').style.display, 'flex',
+        'data-img-fail="hide-next" показывает запасной элемент');
+
+    // Клик по вложенному узлу — фон не закрывается.
+    doc.getElementById('inner').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }));
+    assert.notStrictEqual(doc.getElementById('go').style.display, 'none',
+        'pestovoHideSelf не реагирует на клик по содержимому');
+    doc.getElementById('go').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }));
+    assert.strictEqual(doc.getElementById('go').style.display, 'none',
+        'pestovoHideSelf прячет фон по клику по нему (было if(event.target===this))');
+}
+
 // ── 2. Запасные картинки: data-img-fail вместо onerror ────────────────────
 {
     const { dom } = makeSandbox();
@@ -126,84 +223,59 @@ function makeSandbox() {
         const scripts = [...html.matchAll(/<script[^>]+src="(js\/[^"?]+)\.js/g)].map(m => m[1]);
         const idx = scripts.indexOf('js/ui-events');
         assert.ok(idx !== -1, page + ': не подключён js/ui-events.js');
-        assert.strictEqual(idx, 0,
-            page + ': js/ui-events.js обязан быть первым скриптом страницы — слушатель ' +
-            'должен быть готов к клику раньше, чем страница построит разметку');
+        // Слушатель должен быть готов к клику раньше, чем страница построит
+        // разметку. Исключение одно — kiosk-mode-detect.js: он ставит класс на
+        // <html> по адресу страницы и ни на что не подписывается.
+        const before = scripts.slice(0, idx).filter(function (s) {
+            return s !== 'js/kiosk-mode-detect';
+        });
+        assert.deepStrictEqual(before, [],
+            page + ': js/ui-events.js обязан идти до остальных скриптов, нашлось перед ним: ' +
+            before.join(', '));
     }
 }
 
-// ── 4. Лимиты: число inline-обработчиков может только уменьшаться ─────────
-const CAPS = {
-    'admin.html': 130,
-    'auth.html': 1,
-    'handicap.html': 5,
-    'hcp-badge-preview.html': 3,
-    'js/admin-agr.js': 16,
-    'js/admin-alerts.js': 3,
-    'js/admin-broadcasts.js': 1,
-    'js/admin-display.js': 4,
-    'js/admin-entry-scorecard.js': 11,
-    'js/admin-groups.js': 9,
-    'js/admin-name-forms.js': 1,
-    'js/admin-players-excel.js': 4,
-    'js/admin-players.js': 7,
-    'js/admin-score-audit.js': 1,
-    'js/admin-scoreedit.js': 4,
-    'js/app.js': 9,
-    'js/design-admin.js': 6,
-    'js/design-preview.js': 13,
-    'js/handicap.js': 1,
-    'js/leaderboard.js': 6,
-    'js/live.js': 7,
-    'js/players.js': 1,
-    'js/protocol.js': 11,
-    'js/pwa.js': 1,
-    'js/qr-start.js': 2,
-    'js/round-setup.js': 14,
-    'js/solo.js': 2,
-    'js/tn-scorecard.js': 3,
-    'js/tournament-public.js': 2,
-    'js/tournaments.js': 24,
-    'js/utils.js': 29,
-    'leaderboard.html': 2,
-    'marker.html': 5,
-    'offline.html': 1,
-    'players.html': 7,
-    'qr-start.html': 5,
-    'scorer.html': 6,
-    'setup-round.html': 35,
-    'tournaments.html': 3,
-};
-
-let total = 0;
-const grew = [];
-for (const [file, cap] of Object.entries(CAPS)) {
-    const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    const n = countInline(src);
-    total += n;
-    if (n > cap) grew.push(file + ': было ' + cap + ', стало ' + n);
-    if (n < cap) {
-        // Файл переведён — лимит пора снимать: строка перестаёт быть исключением.
-        console.log('  ↓ ' + file + ': ' + cap + ' → ' + n + ' (лимит можно снять)');
-    }
-    assert.ok(n <= cap, 'inline-обработчиков стало больше: ' + grew.join('; '));
-}
-
-// Файлы без строки в CAPS обязаны быть полностью чистыми.
-const dusty = [];
+// ── 4. Ни одного inline-обработчика ни в одном файле ──────────────────────
+const dirty = [];
 for (const dir of ['', 'js']) {
     for (const f of fs.readdirSync(path.join(ROOT, dir))) {
         if (!f.endsWith('.js') && !f.endsWith('.html')) continue;
         if (dir === 'js' && f.startsWith('vendor')) continue;
         const rel = dir ? dir + '/' + f : f;
-        if (Object.prototype.hasOwnProperty.call(CAPS, rel)) continue;
         const n = countInline(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-        if (n > 0) dusty.push(rel + ': ' + n);
+        if (n > 0) dirty.push(rel + ': ' + n);
     }
 }
-assert.deepStrictEqual(dusty, [],
-    'файл без лимита в CAPS обязан быть без inline-обработчиков (или получить строку в CAPS): ' +
-    dusty.join(', '));
+assert.deepStrictEqual(dirty, [],
+    'inline-обработчики вернулись — они несовместимы с CSP без unsafe-inline: ' + dirty.join(', '));
 
-console.log('Inline handlers: ' + total + ' (было 396 в начале перевода на делегирование), файлов с лимитом: ' +
-    Object.keys(CAPS).length);
+// ── 5. Ни одного встроенного <script> в HTML ──────────────────────────────
+// Тег без src — тоже 'unsafe-inline'. Такой код выносится в js/*.
+const inlineBlocks = [];
+for (const f of fs.readdirSync(ROOT)) {
+    if (!f.endsWith('.html')) continue;
+    const html = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const n = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>/g)].length;
+    if (n > 0) inlineBlocks.push(f + ': ' + n);
+}
+assert.deepStrictEqual(inlineBlocks, [],
+    'встроенные <script> без src требуют unsafe-inline — вынести в js/*: ' + inlineBlocks.join(', '));
+
+// ── 6. CSP: script-src без 'unsafe-inline' ────────────────────────────────
+// style-src пока со 'unsafe-inline': inline style= остаются по всему проекту.
+{
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'firebase.json'), 'utf8'));
+    const csp = (cfg.hosting.headers || [])
+        .flatMap(h => h.headers || [])
+        .map(h => (h.key === 'Content-Security-Policy' || h.header === 'Content-Security-Policy') ? h.value : null)
+        .filter(Boolean)
+        .join('\n');
+    assert.ok(csp, 'в firebase.json не найден заголовок Content-Security-Policy');
+    const scriptSrc = (/script-src([^;]*)/.exec(csp) || [])[1] || '';
+    assert.ok(scriptSrc.indexOf("'unsafe-inline'") === -1,
+        "script-src всё ещё разрешает 'unsafe-inline' — весь перевод на делегирование теряет смысл");
+    assert.ok(scriptSrc.indexOf("'self'") !== -1, "script-src должен разрешать 'self'");
+}
+
+console.log('Inline handlers: 0 (было 396 в начале перевода на делегирование); ' +
+    'встроенных <script> нет; script-src без unsafe-inline');

@@ -115,6 +115,7 @@ win.vib = function() {};
 try { win.localStorage.clear(); } catch (e) {}
 
 // Выполняем НАСТОЯЩИЙ код страницы
+win.eval(fs.readFileSync(path.join(ROOT, 'js', 'ui-events.js'), 'utf8'));
 win.eval(fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8'));
 win.eval(fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8'));
 win.currentLang = 'ru';
@@ -141,8 +142,14 @@ ok(!groupRow.classList.contains('is-open'), 'групповой раунд по 
 var soloToggle = soloRow.querySelector('.lwl-toggle');
 ok(!!soloToggle, 'соло-строка: есть зона тапа .lwl-toggle');
 ok(soloToggle.getAttribute('aria-expanded') === 'false', 'соло-строка: aria-expanded="false"');
-ok(/onclick="toggleLiveRound\('SOLO1'\)"/.test(soloToggle.outerHTML), 'соло-строка: тап вызывает toggleLiveRound');
-ok(/onkeydown="liveRoundKey\(event,'SOLO1'\)"/.test(soloToggle.outerHTML), 'соло-строка: доступна с клавиатуры (liveRoundKey)');
+// Обработчики ушли из onclick= в data-атрибуты: клик ловит делегат в
+// js/ui-events.js, клавиши — тот же делегат по data-kd-act.
+ok(soloToggle.getAttribute('data-act') === 'toggleLiveRound' &&
+    soloToggle.getAttribute('data-arg') === 'SOLO1',
+    'соло-строка: тап вызывает toggleLiveRound');
+ok(soloToggle.getAttribute('data-kd-act') === 'liveRoundKey' &&
+    soloToggle.getAttribute('data-kd-arg') === 'SOLO1',
+    'соло-строка: доступна с клавиатуры (liveRoundKey)');
 
 var chev = soloToggle.querySelector('.lwl-chev');
 ok(!!chev && chev.className.indexOf('fa-chevron-down') !== -1, 'соло-строка: шеврон вниз (свёрнута)');

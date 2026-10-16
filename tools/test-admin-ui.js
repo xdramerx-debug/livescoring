@@ -82,6 +82,8 @@ function makeRef() {
 win.__authHooks = [];
 win.pestovoOnAuthReady = function (fn) { if (typeof fn === 'function') win.__authHooks.push(fn); };
 win.onAuthReady = function (u, d) { win.__authHooks.forEach(function (f) { f(u, d); }); };
+// Реестр действий и делегирование — js/ui-events.js; на странице он первый.
+win.eval(fs.readFileSync(path.join(ROOT, 'js/ui-events.js'), 'utf8'));
 win.eval(fs.readFileSync(path.join(ROOT, 'js/name-variants.js'), 'utf8'));
 win.eval(fs.readFileSync(path.join(ROOT, 'js/admin.js'), 'utf8'));
 win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-players.js'), 'utf8'));
@@ -109,8 +111,9 @@ check('вкладка «Вызовы» видима по умолчанию', !w
 check('вкладка «Раунды» скрыта по умолчанию', win.document.getElementById('tab-rounds').classList.contains('hidden'));
 
 console.log('\n=== Вкладка «Ввод счёта ⛳» ===\n');
+// Вкладки переведены с onclick= на data-атрибуты (делегирование, п.2 плана).
 var entryTabBtn = Array.prototype.find.call(win.document.querySelectorAll('.admin-tab'), function(b) {
-    return (b.getAttribute('onclick') || '').indexOf("switchTab('scoreentry'") !== -1;
+    return b.getAttribute('data-act') === 'switchTab' && b.getAttribute('data-arg') === 'scoreentry';
 });
 check('есть кнопка вкладки «Ввод счёта»', !!entryTabBtn);
 check('есть секция #tab-scoreentry', !!win.document.getElementById('tab-scoreentry'));

@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=3f88226b">
     <link rel="stylesheet" href="css/tn-studio.css?v=2e8b755f">
-    <script src="js/ui-events.js?v=859df86e"></script>
+    <script src="js/ui-events.js?v=5ba225a1"></script>
     <script src="js/design-system.js?v=394cc00f"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -93,16 +93,16 @@
         <button type="button" class="tn-back-link" id="tn-detail-back"><i class="fas fa-arrow-left"></i> Все турниры</button>
         <div id="tn-detail-content"></div>
     </section>
-    <div id="tn-player-card-overlay" style="display:none;position:fixed;inset:0;background:rgba(11,26,14,.55);z-index:200;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this){this.style.display='none';}">
-        <div style="background:#fff;border-radius:14px;padding:22px 24px;max-width:360px;width:100%;box-shadow:0 18px 40px rgba(11,26,14,.25);position:relative;" onclick="event.stopPropagation();">
-            <button type="button" onclick="document.getElementById('tn-player-card-overlay').style.display='none';" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:18px;color:#69766c;cursor:pointer;" aria-label="Close">×</button>
+    <div id="tn-player-card-overlay" style="display:none;position:fixed;inset:0;background:rgba(11,26,14,.55);z-index:200;align-items:center;justify-content:center;padding:16px;" data-act="pestovoHideSelf" data-ev="1">
+        <div style="background:#fff;border-radius:14px;padding:22px 24px;max-width:360px;width:100%;box-shadow:0 18px 40px rgba(11,26,14,.25);position:relative;" data-act="noop" data-stop="1">
+            <button type="button" data-act="pestovoHideElement" data-arg="tn-player-card-overlay" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:18px;color:#69766c;cursor:pointer;" aria-label="Close">×</button>
             <h3 id="tn-player-card-name" style="margin:0 0 8px;font-family:Georgia,serif;font-size:20px;color:#17432b;"></h3>
             <div id="tn-player-card-body" style="font-size:14px;color:#314437;line-height:1.45;"></div>
         </div>
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.115.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.116.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -114,15 +114,15 @@
 <script src="js/qr-code.js?v=2a26e819"></script>
 <script src="js/rusgolf-client.js?v=f37608e7"></script>
 <script src="js/qr-url.js?v=fb4a1649"></script>
-<script src="js/utils.js?v=dd82d08a"></script>
+<script src="js/utils.js?v=9de9c355"></script>
 <script src="js/tournament-core.js?v=e9119580"></script>
 <script src="js/tn-studio-core.js?v=59388560"></script>
 <script src="js/tn-studio-public.js?v=86e38d13"></script>
-<script src="js/tournaments.js?v=e678fd93"></script>
-<script src="js/tn-scorecard.js?v=2252600e"></script>
-<script src="js/protocol.js?v=6bc9d5ed"></script>
-<script src="js/tournament-public.js?v=c4569e74"></script>
+<script src="js/tournaments.js?v=0b5653af"></script>
+<script src="js/tn-scorecard.js?v=484451e6"></script>
+<script src="js/protocol.js?v=404b09d0"></script>
+<script src="js/tournament-public.js?v=c10d8d83"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
-<script src="js/pwa.js?v=d8e438f8"></script>
+<script src="js/pwa.js?v=82acd039"></script>
 </body>
 </html>

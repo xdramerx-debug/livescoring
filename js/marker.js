@@ -158,6 +158,7 @@ function renderHole() {
 }
 
 function adjMk(d) {
+    d = parseInt(d, 10);
     mkScore = Math.max(1, Math.min(15, mkScore + d));
     if (typeof vib === 'function') vib();
     if (typeof updDisp === 'function') updDisp();

@@ -242,6 +242,7 @@ function renderHole() {
 }
 
 function adjSc(d) {
+    d = parseInt(d, 10);
     scScore = Math.max(1, Math.min(15, scScore + d));
     if (typeof vib === 'function') vib();
     if (typeof updDisp === 'function') updDisp();

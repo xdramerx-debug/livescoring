@@ -6,7 +6,7 @@
     <title>Стартовый протокол · QR-карточки — Пестово</title>
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <script src="js/ui-events.js?v=859df86e"></script>
+    <script src="js/ui-events.js?v=5ba225a1"></script>
     <script src="js/design-system.js?v=394cc00f"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;700;800&display=swap">
     <style>
@@ -169,18 +169,18 @@
 <body>
     <div class="toolbar no-print" id="qr-toolbar">
         <div class="t-title"><img src="img/logo.png" alt=""> Пестово · Стартовый протокол</div>
-        <button class="btn btn-ol" onclick="location.href='admin.html'">← Админка</button>
+        <button class="btn btn-ol" data-act="pestovoGo" data-arg="admin.html">← Админка</button>
         <label style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#e8d9a8;">
             <span>📐 QR-карточки:</span>
-            <select id="qr-layout" onchange="qrSetLayout(this.value)" style="background:#fff;color:#0b1a0e;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
+            <select id="qr-layout" data-act="qrSetLayout" style="background:#fff;color:#0b1a0e;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
                 <option value="single">1 игрок — 1 карточка</option>
                 <option value="pair">2 игрока — 1 карточка (по вертикали)</option>
                 <option value="quad">4 игрока — 1 карточка (2×2)</option>
             </select>
         </label>
-        <button class="btn btn-g" onclick="qrPrintMode('cards')"><i>🖨</i> Печать QR-карточек</button>
-        <button class="btn btn-og" onclick="qrPrintMode('sheet')"><i>📋</i> Печать стартового листа</button>
-        <button class="btn btn-ol" id="qr-retry-btn" onclick="qrRetryFailed()"><i>🔄</i> QR заново</button>
+        <button class="btn btn-g" data-act="qrPrintMode" data-arg="cards"><i>🖨</i> Печать QR-карточек</button>
+        <button class="btn btn-og" data-act="qrPrintMode" data-arg="sheet"><i>📋</i> Печать стартового листа</button>
+        <button class="btn btn-ol" id="qr-retry-btn" data-act="qrRetryFailed"><i>🔄</i> QR заново</button>
         <span id="qr-status" style="font-size:12px;color:#ffe9a8;margin-left:auto;"></span>
     </div>
     <div id="qr-body">
@@ -197,6 +197,6 @@
 <script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script src="js/qr-code.js?v=2a26e819"></script>
 <script src="js/qr-url.js?v=fb4a1649"></script>
-<script src="js/qr-start.js?v=d3e4c741"></script>
+<script src="js/qr-start.js?v=2b4fe58a"></script>
 </body>
 </html>

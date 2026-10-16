@@ -281,10 +281,10 @@ function tpOpenModalShell(inner) {
         modal.id = 'tp-modal';
         modal.className = 'modal hidden';
         modal.innerHTML =
-            '<div class="modal-bg" onclick="tpCloseModal()"></div>' +
+            '<div class="modal-bg" data-act="tpCloseModal"></div>' +
             '<div class="modal-body" style="max-width:820px;">' +
             '<div class="modal-top-bar">' +
-            '<button type="button" class="modal-close-btn" onclick="tpCloseModal()">×</button>' +
+            '<button type="button" class="modal-close-btn" data-act="tpCloseModal">×</button>' +
             '</div>' +
             '<div id="tp-modal-body" style="flex:1;min-height:0;overflow-y:auto;padding:16px 18px;"></div>' +
             '</div>';
@@ -329,9 +329,9 @@ function tpRenderModal() {
 
     // Кнопки массового выбора
     html += '<div class="tp-tools">' +
-        '<button type="button" class="btn btn-og btn-sm" onclick="tpCheckAll(true)"><i class="fas fa-check-double"></i> ' + tpL('Выбрать все', 'Select all') + '</button>' +
-        '<button type="button" class="btn btn-og btn-sm" onclick="tpCheckAll(false)"><i class="fas fa-eraser"></i> ' + tpL('Сбросить', 'Clear') + '</button>' +
-        '<button type="button" class="btn btn-og btn-sm" onclick="tpCheckMain()"><i class="fas fa-star"></i> ' + tpL('Основные награды', 'Main awards') + '</button>' +
+        '<button type="button" class="btn btn-og btn-sm" data-act="pestovoRunBool" data-arg="tpCheckAll" data-arg2="true"><i class="fas fa-check-double"></i> ' + tpL('Выбрать все', 'Select all') + '</button>' +
+        '<button type="button" class="btn btn-og btn-sm" data-act="pestovoRunBool" data-arg="tpCheckAll" data-arg2="false"><i class="fas fa-eraser"></i> ' + tpL('Сбросить', 'Clear') + '</button>' +
+        '<button type="button" class="btn btn-og btn-sm" data-act="tpCheckMain"><i class="fas fa-star"></i> ' + tpL('Основные награды', 'Main awards') + '</button>' +
         '</div>';
 
     d.scopes.forEach(function(sc, si) {
@@ -360,9 +360,9 @@ function tpRenderModal() {
     // Формат вывода
     html += '<div class="tp-modes">';
     html += '<b>' + tpL('Содержание протокола:', 'Protocol content:') + '</b>';
-    html += '<label class="tp-radio"><input type="radio" name="tp-mode" value="awards" checked onchange="tpModeChange()"> ' +
+    html += '<label class="tp-radio"><input type="radio" name="tp-mode" value="awards" checked data-act="tpModeChange"> ' +
         tpL('🏆 Лидеры зачётов и групп — призовые места 1–3', '🏆 Category and group leaders — podium places 1–3') + '</label>';
-    html += '<label class="tp-radio"><input type="radio" name="tp-mode" value="full" onchange="tpModeChange()"> ' +
+    html += '<label class="tp-radio"><input type="radio" name="tp-mode" value="full" data-act="tpModeChange"> ' +
         tpL('📄 Полный протокол — призёры + итоговые таблицы всех участников', '📄 Full protocol — winners + standings of all players') + '</label>';
     html += '<label class="tp-radio hidden" id="tp-opt-holes"><input type="checkbox" id="tp-with-holes" checked> ' +
         tpL('Показать счёт по лункам в таблицах', 'Show per-hole scores in the tables') + '</label>';
@@ -371,9 +371,9 @@ function tpRenderModal() {
     html += '<div class="tp-foot">' +
         '<span id="tp-count-note" style="font-size:12px;color:var(--muted);align-self:center;"></span>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">' +
-        '<button type="button" class="btn btn-g" onclick="tpExportPdf()"><i class="fas fa-file-pdf"></i> ' +
+        '<button type="button" class="btn btn-g" data-act="tpExportPdf"><i class="fas fa-file-pdf"></i> ' +
         tpL('Печать / Сохранить PDF', 'Print / Save as PDF') + '</button>' +
-        '<button type="button" class="btn btn-og" onclick="tpCloseModal()">' + tpL('Закрыть', 'Close') + '</button>' +
+        '<button type="button" class="btn btn-og" data-act="tpCloseModal">' + tpL('Закрыть', 'Close') + '</button>' +
         '</div></div>';
 
     html += '</div>';
@@ -548,8 +548,8 @@ function tpBuildDocHtml() {
         '</style></head><body>';
 
     html += '<div class="toolbar">' +
-        '<button onclick="window.print()">🖨 ' + (en ? 'Print / Save as PDF' : 'Печать / Сохранить PDF') + '</button>' +
-        '<button class="sec" onclick="window.close()">✕ ' + (en ? 'Close' : 'Закрыть') + '</button>' +
+        '<button data-act="pestovoPrint">🖨 ' + (en ? 'Print / Save as PDF' : 'Печать / Сохранить PDF') + '</button>' +
+        '<button class="sec" data-act="pestovoCloseWindow">✕ ' + (en ? 'Close' : 'Закрыть') + '</button>' +
         '<span class="hint">' + (en
             ? 'In the print dialog choose “Save as PDF” to export the protocol as a PDF file.'
             : 'В диалоге печати выберите «Сохранить как PDF», чтобы сохранить протокол PDF-файлом.') + '</span>' +

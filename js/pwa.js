@@ -31,7 +31,7 @@ function showUpdateBanner() {
     b.setAttribute('role', 'status');
     var txt = currentLang === 'en' ? '<b>New version available.</b> Reload the page to update.' : '<b>Доступна новая версия.</b> Перезагрузите страницу, чтобы обновиться.';
     var btnTxt = currentLang === 'en' ? 'Reload' : 'Обновить';
-    b.innerHTML = '<div class="ub-text">' + txt + '</div><button class="btn btn-g btn-sm" onclick="applyPWAUpdate()"><i class="fas fa-rotate-right"></i> ' + btnTxt + '</button>';
+    b.innerHTML = '<div class="ub-text">' + txt + '</div><button class="btn btn-g btn-sm" data-act="applyPWAUpdate"><i class="fas fa-rotate-right"></i> ' + btnTxt + '</button>';
     if (document.body) document.body.appendChild(b);
     setTimeout(function(){ b.classList.add('show'); }, 50);
 }

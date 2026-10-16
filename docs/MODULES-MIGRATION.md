@@ -87,8 +87,10 @@ load-time код классических скриптов не может ра�
    время), date-range, safe-html, dom, i18n, official-alerts.
 3. Когда классические копии перестанут грузиться и в тестах — удалить
    `js/<name>.js`, оставив только `src/` (и поправить `tools/test-bootstrap.js`).
-4. Постепенно убирать inline-обработчики (`onclick=`) → `addEventListener`,
-   затем убрать `'unsafe-inline'` из CSP (`docs/IMPROVEMENTS-IMPL.md`, §1).
+4. ~~Постепенно убирать inline-обработчики (`onclick=`) → `addEventListener`,
+   затем убрать `'unsafe-inline'` из CSP~~ — сделано: делегирование в
+   `js/ui-events.js`, `'unsafe-inline'` убран из `script-src`
+   (`docs/IMPROVEMENTS-2026-10.md`, п.2).
 
 ## Важно
 

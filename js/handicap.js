@@ -84,7 +84,7 @@ function showTable() {
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;"><span style="background:rgba(201,168,76,.15);color:var(--gold);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">CR: ' + cr.cr + '</span>';
     html += '<span style="background:rgba(201,168,76,.15);color:var(--gold);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">SR: ' + cr.sr + '</span></div></div>';
 
-    html += '<div style="margin-bottom:14px;"><input type="text" id="hcp-tbl-search" class="form-input" style="padding:8px 12px;font-size:13px;" placeholder="' + (currentLang === 'en' ? '🔍 Search handicap (e.g. 12.4 or +2.0)...' : '🔍 Найти диапазон по HCP (напр. 12.4 или +2.0)...') + '" oninput="filterHcpTableRows()"></div>';
+    html += '<div style="margin-bottom:14px;"><input type="text" id="hcp-tbl-search" class="form-input" style="padding:8px 12px;font-size:13px;" placeholder="' + (currentLang === 'en' ? '🔍 Search handicap (e.g. 12.4 or +2.0)...' : '🔍 Найти диапазон по HCP (напр. 12.4 или +2.0)...') + '" data-act="filterHcpTableRows"></div>';
 
     html += '<div class="hcp-tbl-container">';
     html += '<table class="hcp-tbl"><colgroup><col style="width:38%;"><col style="width:38%;"><col style="width:24%;"></colgroup>';

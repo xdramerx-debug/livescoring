@@ -20,8 +20,8 @@
 **CSP** — `firebase.json` (Hosting headers), применяется централизованно при
 деплое (не нужно править 20 HTML):
 - `script-src` ограничен `self` + `gstatic` (Firebase SDK) + `cdnjs`
-  (FontAwesome/xlsx) + `'unsafe-inline'` (приложение использует inline-обработчики,
-  их нельзя убрать без рефакторинга — см. оговорку ниже).
+  (FontAwesome/xlsx). С октября 2026 `'unsafe-inline'` убран: inline-обработчики
+  переведены на делегирование `js/ui-events.js` (см. оговорку ниже).
 - `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`,
   `form-action 'self'` — блокируют внедрение плагинов, hijack `<base>`,
   clickjacking.
@@ -29,12 +29,13 @@
   украденных данных на сторонний домен).
 - Доп. заголовки: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`.
 
-> ⚠️ **Оговорка по CSP.** Из-за inline `onclick`/`onchange` и inline-стилей в
-> коде `script-src`/`style-src` вынужденно содержат `'unsafe-inline'`, поэтому
-> CSP — это оборона в глубину, а **не** полная защита от XSS. Настоящий заслон —
-> безопасный билдер + экранирование. Следующий шаг: перенести inline-обработчики
-> на `addEventListener` и перейти на nonce/hash (тогда можно убрать
-> `'unsafe-inline'`).
+> ⚠️ **Оговорка по CSP.** `script-src` больше не содержит `'unsafe-inline'`:
+> все inline-обработчики переведены на делегирование (`js/ui-events.js`,
+> `data-act`/`data-arg`), а встроенные `<script>` вынесены в `js/*`. Остаётся
+> `'unsafe-inline'` в `style-src` — 410 inline-стилей и динамические темы
+> `design-system.js`; их перенос в CSS-переменные/nonce — следующий шаг. CSP
+> по-прежнему оборона в глубину: настоящий заслон — безопасный билдер +
+> экранирование.
 
 **Конкретный fix** — `js/marker.js:178-179`: вывод счёта игрока/маркера теперь
 через `esc(ps)` / `esc(ms)`.

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <script>(function(){try{var q=new URLSearchParams(location.search);if(q.get('round')&&(q.get('as')||q.get('player'))){document.documentElement.classList.add('score-kiosk');}}catch(e){}})();</script>
+    <script src="js/kiosk-mode-detect.js?v=b6405ebe"></script>
     <meta name="theme-color" content="#0b1a0e">
     <meta name="description" content="Официальная система лайв-скоринга клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="css/style.css?v=07ac5eab">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/entry-scorecard.css?v=a34f8c94">
-    <script src="js/ui-events.js?v=859df86e"></script>
+    <script src="js/ui-events.js?v=5ba225a1"></script>
     <script src="js/design-system.js?v=394cc00f"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -251,10 +251,10 @@
         <div id="unified-wizard" class="unified-wizard hidden">
             <div class="unified-steps" id="unified-steps"></div>
             <div class="unified-wizard-nav">
-                <button type="button" id="unified-back-btn" class="btn btn-ol btn-sm unified-wizard-nav-btn hidden" onclick="unifiedStepPrev()">
+                <button type="button" id="unified-back-btn" class="btn btn-ol btn-sm unified-wizard-nav-btn hidden" data-act="unifiedStepPrev">
                     <i class="fas fa-arrow-left"></i> <span data-i18n="btn_back">Назад</span>
                 </button>
-                <button type="button" id="unified-next-btn" class="btn btn-g btn-sm unified-wizard-nav-btn" onclick="unifiedStepNext()">
+                <button type="button" id="unified-next-btn" class="btn btn-g btn-sm unified-wizard-nav-btn" data-act="unifiedStepNext">
                     <span data-i18n="btn_next">Далее</span> <i class="fas fa-arrow-right"></i>
                 </button>
             </div>
@@ -292,7 +292,7 @@
             <div class="unified-sec" data-unif-sec="2" id="unif-sec-2">
                 <h3 class="setup-section-title"><i class="fas fa-users"></i> <span data-i18n="players_label">Игроки</span> <span class="unified-count-badge" id="unified-count-badge">1</span></h3>
                 <div id="player-slots"></div>
-                <button type="button" class="btn btn-ol btn-block unified-add-btn" id="unified-add-btn" onclick="addSetupPlayer()">
+                <button type="button" class="btn btn-ol btn-block unified-add-btn" id="unified-add-btn" data-act="addSetupPlayer">
                     <i class="fas fa-user-plus"></i> <span data-i18n="add_player_btn">Добавить игрока</span>
                 </button>
                 <p class="unified-mode-note" id="unified-mode-note"></p>
@@ -303,7 +303,7 @@
                 <h3 class="setup-section-title"><i class="fas fa-info-circle"></i> <span data-i18n="timings_title">Тайминги</span></h3>
                 <div id="grp-timing-preview"></div>
                 <div class="unified-summary hidden" id="unified-summary"></div>
-                <button class="btn btn-g btn-block" id="unified-start-btn" onclick="startUnifiedRound()" style="margin-top:12px;min-height:52px;padding:16px;font-size:16px;">
+                <button class="btn btn-g btn-block" id="unified-start-btn" data-act="startUnifiedRound" style="margin-top:12px;min-height:52px;padding:16px;font-size:16px;">
                     <i class="fas fa-play"></i> <span data-i18n="start_round_btn">Начать раунд</span>
                 </button>
             </div>
@@ -325,7 +325,7 @@
         </div>
 
         <div class="round-card scorecard-fold" style="margin:12px 0;">
-            <button type="button" class="scorecard-fold-btn" onclick="togglePersistedScorecard('gv-sc-panel')" aria-controls="gv-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
+            <button type="button" class="scorecard-fold-btn" data-act="togglePersistedScorecard" data-arg="gv-sc-panel" aria-controls="gv-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
                 <i class="fas fa-chevron-down" id="gv-sc-panel-icon" aria-hidden="true"></i>
                 <span id="gv-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
             </button>
@@ -349,7 +349,7 @@
             </div>
 
             <div data-entry-block="holes" data-screen-display="scoring" data-display-key="holes" id="play-holes-block">
-                <button type="button" class="holes-toggle" id="play-holes-toggle" onclick="togglePlayHolesNav()" aria-expanded="false" aria-controls="play-holes-nav">
+                <button type="button" class="holes-toggle" id="play-holes-toggle" data-act="togglePlayHolesNav" aria-expanded="false" aria-controls="play-holes-nav">
                     <i class="fas fa-th"></i><span data-holes-toggle-label>Лунки</span><i class="fas fa-chevron-down" id="play-holes-toggle-chev"></i>
                 </button>
                 <div class="hole-nav" id="play-holes-nav"></div>
@@ -369,12 +369,12 @@
                     </div>
                     <div class="dual-half__score">
                         <div class="score-result" id="my-result"></div>
-                        <div class="score-disp" id="my-disp" role="button" tabindex="0" onclick="editDualScore('my')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();editDualScore('my');}">—</div>
+                        <div class="score-disp" id="my-disp" role="button" tabindex="0" data-act="editDualScore" data-arg="my" data-kd-act="editDualScore" data-kd-arg="my" data-kd-key="Enter,Space" data-prevent="1">—</div>
                         <div class="dual-half__compare" data-screen-display="scoring" data-display-key="scoreComparison" id="my-compare"></div>
                     </div>
                     <div class="dual-half__controls">
-                        <button class="dual-btn dual-btn--minus" onclick="adjScore('my', -1)" aria-label="Минус">−</button>
-                        <button class="dual-btn dual-btn--plus" onclick="adjScore('my', 1)" aria-label="Плюс">+</button>
+                        <button class="dual-btn dual-btn--minus" data-act="adjScore" data-arg="my" data-arg2="-1" aria-label="Минус">−</button>
+                        <button class="dual-btn dual-btn--plus" data-act="adjScore" data-arg="my" data-arg2="1" aria-label="Плюс">+</button>
                     </div>
                 </div>
                 <div class="dual-split-divider" id="dual-divider" data-display-divider="markerScore"><span></span></div>
@@ -385,12 +385,12 @@
                     </div>
                     <div class="dual-half__score">
                         <div class="score-result" id="mark-result"></div>
-                        <div class="score-disp" id="mark-disp" role="button" tabindex="0" onclick="editDualScore('mark')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();editDualScore('mark');}">—</div>
+                        <div class="score-disp" id="mark-disp" role="button" tabindex="0" data-act="editDualScore" data-arg="mark" data-kd-act="editDualScore" data-kd-arg="mark" data-kd-key="Enter,Space" data-prevent="1">—</div>
                         <div class="dual-half__compare" data-screen-display="scoring" data-display-key="scoreComparison" id="mark-compare"></div>
                     </div>
                     <div class="dual-half__controls">
-                        <button class="dual-btn dual-btn--minus dual-btn--mark" onclick="adjScore('mark', -1)" aria-label="Минус маркируемого">−</button>
-                        <button class="dual-btn dual-btn--plus dual-btn--mark" onclick="adjScore('mark', 1)" aria-label="Плюс маркируемого">+</button>
+                        <button class="dual-btn dual-btn--minus dual-btn--mark" data-act="adjScore" data-arg="mark" data-arg2="-1" aria-label="Минус маркируемого">−</button>
+                        <button class="dual-btn dual-btn--plus dual-btn--mark" data-act="adjScore" data-arg="mark" data-arg2="1" aria-label="Плюс маркируемого">+</button>
                     </div>
                 </div>
             </div>
@@ -398,7 +398,7 @@
             <!-- Предупреждение «раунд нельзя завершить»: горит, пока лунки не подтверждены -->
             <div id="finish-block-notice" data-screen-display="scoring" data-display-key="notice" class="hidden" style="margin-top:12px;"></div>
 
-            <button class="btn btn-g btn-block" id="save-hole-btn" onclick="saveHoleScores()" style="padding:16px;font-size:16px;margin-top:20px;">
+            <button class="btn btn-g btn-block" id="save-hole-btn" data-act="saveHoleScores" style="padding:16px;font-size:16px;margin-top:20px;">
                 <i class="fas fa-check" id="save-hole-btn-icon"></i> <span id="save-hole-btn-text" data-i18n="next_hole_btn">Подтвердить ✓</span>
             </button>
             </div>
@@ -407,7 +407,7 @@
         <div id="group-pace-assistant" data-screen-display="scoring" data-display-key="pace" style="margin-top:12px;"></div>
 
         <div class="round-card scorecard-fold" data-screen-display="scoring" data-display-key="scorecard" style="margin:12px 0;">
-            <button type="button" class="scorecard-fold-btn" onclick="togglePersistedScorecard('group-sc-panel')" aria-controls="group-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
+            <button type="button" class="scorecard-fold-btn" data-act="togglePersistedScorecard" data-arg="group-sc-panel" aria-controls="group-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
                 <i class="fas fa-chevron-down" id="group-sc-panel-icon" aria-hidden="true"></i>
                 <span id="group-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
             </button>
@@ -421,10 +421,10 @@
 
         <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
         <div id="group-officials" data-screen-display="scoring" data-display-key="officials" style="display:flex;gap:10px;margin-bottom:6px;">
-            <button id="group-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
+            <button id="group-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" data-act="callOfficial" data-arg="referee">
                 <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
             </button>
-            <button id="group-marshal-call-btn" class="btn btn-warning official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
+            <button id="group-marshal-call-btn" class="btn btn-warning official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" data-act="callOfficial" data-arg="marshal">
                 <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
             </button>
         </div>
@@ -434,7 +434,7 @@
         <!-- QR КОДЫ ДЛЯ ПОДКЛЮЧЕНИЯ ДРУГИХ ИГРОКОВ -->
         <div class="card" id="invite-qrs-card" data-screen-display="scoring" data-display-key="qr">
             <div id="invite-join-status"></div>
-            <button type="button" class="btn btn-og btn-sm btn-block" style="width:100%;justify-content:center;" onclick="toggleInviteQRs()">
+            <button type="button" class="btn btn-og btn-sm btn-block" style="width:100%;justify-content:center;" data-act="toggleInviteQRs">
                 <i class="fas fa-chevron-down" id="invite-qrs-icon"></i> 
                 <span id="invite-qrs-txt" data-i18n="connect_players_title">Подключение игроков группы</span>
             </button>
@@ -447,19 +447,19 @@
         </div>
 
         <div id="group-finish-row" data-screen-display="scoring" data-display-key="finish" style="display:flex;gap:10px;margin-bottom:8px;">
-            <button class="btn btn-og" onclick="finishGroupRound()" style="flex:1;">
+            <button class="btn btn-og" data-act="finishGroupRound" style="flex:1;">
                 <i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span>
             </button>
-            <button class="btn btn-ol" type="button" onclick="handleGroupPauseToggle()" id="group-pause-btn" style="white-space:nowrap;padding:12px 14px;" title="Пауза / Возобновление">
+            <button class="btn btn-ol" type="button" data-act="handleGroupPauseToggle" id="group-pause-btn" style="white-space:nowrap;padding:12px 14px;" title="Пауза / Возобновление">
                 <i class="fas fa-pause" id="group-pause-btn-icon"></i> <span id="group-pause-btn-text">Пауза</span>
             </button>
         </div>
         <div id="group-pause-banner" data-screen-display="scoring" data-display-key="finish" class="hidden" style="margin-bottom:12px;"></div>
-        <button id="group-force-finish-btn" data-screen-display="scoring" data-display-key="finish" class="btn btn-ol btn-sm btn-block hidden" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" onclick="openForceFinishModal(curRid, curRoundData, { playerId: myUid, isGroup: true })">
+        <button id="group-force-finish-btn" data-screen-display="scoring" data-display-key="finish" class="btn btn-ol btn-sm btn-block hidden" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" data-act="pestovoGroupForceFinish">
             <i class="fas fa-forward"></i> <span data-i18n="force_finish_btn">Завершить раунд принудительно (сохранить счёт)</span>
         </button>
         <label class="stableford-display-control" id="group-stableford-control" data-screen-display="scoring" data-display-key="stableford">
-            <input type="checkbox" id="group-stableford-toggle" onchange="toggleGroupStablefordDisplay(this.checked)">
+            <input type="checkbox" id="group-stableford-toggle" data-act="toggleGroupStablefordDisplay" data-checked="1">
             <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
         </label>
     </div>
@@ -486,12 +486,12 @@
                 <div class="score-result" id="g-result"></div>
                 <div class="score-disp" id="g-disp">—</div>
                 <div class="score-btns">
-                    <button class="score-minus" onclick="adjSolo(-1)">−</button>
-                    <button class="score-plus" onclick="adjSolo(1)">+</button>
+                    <button class="score-minus" data-act="adjSolo" data-arg="-1">−</button>
+                    <button class="score-plus" data-act="adjSolo" data-arg="1">+</button>
                 </div>
 
                 <!-- MAIN ACTION BUTTON (ПОДТВЕРДИТЬ РЕЗУЛЬТАТ / ЗАВЕРШИТЬ РАУНД) -->
-                <button class="btn btn-g btn-block" id="btn-solo-action" onclick="saveSolo()" style="padding:16px;font-size:16px;min-height:52px;margin-top:14px;">
+                <button class="btn btn-g btn-block" id="btn-solo-action" data-act="saveSolo" style="padding:16px;font-size:16px;min-height:52px;margin-top:14px;">
                     <i class="fas fa-arrow-right"></i> <span id="btn-solo-action-txt" data-i18n="solo_next_hole_btn">Следующая лунка</span>
                 </button>
             </div>
@@ -502,10 +502,10 @@
 
         <!-- БЛОК 2: КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
         <div id="solo-officials" data-screen-display="scoring" data-display-key="officials" style="display:flex;gap:10px;margin:16px 0 6px;">
-            <button id="solo-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;font-size:13px;padding:12px 8px;min-height:48px;" onclick="callOfficialSolo('referee')">
+            <button id="solo-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;font-size:13px;padding:12px 8px;min-height:48px;" data-act="callOfficialSolo" data-arg="referee">
                 <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
             </button>
-            <button id="solo-marshal-call-btn" class="btn btn-warning official-call-btn" style="flex:1;font-size:13px;padding:12px 8px;min-height:48px;" onclick="callOfficialSolo('marshal')">
+            <button id="solo-marshal-call-btn" class="btn btn-warning official-call-btn" style="flex:1;font-size:13px;padding:12px 8px;min-height:48px;" data-act="callOfficialSolo" data-arg="marshal">
                 <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
             </button>
         </div>
@@ -518,7 +518,7 @@
 
         <!-- БЛОК 4: СВОРАЧИВАЕМАЯ СЧЁТНАЯ КАРТОЧКА ПО ЛУНКАМ -->
         <div class="round-card scorecard-fold" data-screen-display="scoring" data-display-key="scorecard" style="margin:16px 0;">
-            <button type="button" class="scorecard-fold-btn" onclick="toggleActiveScorecard('solo-sc-panel')" aria-controls="solo-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
+            <button type="button" class="scorecard-fold-btn" data-act="toggleActiveScorecard" data-arg="solo-sc-panel" aria-controls="solo-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
                 <i class="fas fa-chevron-down" id="solo-sc-panel-icon" aria-hidden="true"></i>
                 <span id="solo-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
             </button>
@@ -531,19 +531,19 @@
         </div>
 
         <div id="solo-finish-row" data-screen-display="scoring" data-display-key="finish" style="display:flex;gap:10px;margin-bottom:8px;">
-            <button class="btn btn-og" onclick="finishSolo()" style="flex:1;min-height:48px;">
+            <button class="btn btn-og" data-act="finishSolo" style="flex:1;min-height:48px;">
                 <i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span>
             </button>
-            <button class="btn btn-ol" type="button" onclick="handleSoloPauseToggle()" id="solo-pause-btn" style="white-space:nowrap;padding:12px 14px;min-height:48px;" title="Пауза / Возобновление">
+            <button class="btn btn-ol" type="button" data-act="handleSoloPauseToggle" id="solo-pause-btn" style="white-space:nowrap;padding:12px 14px;min-height:48px;" title="Пауза / Возобновление">
                 <i class="fas fa-pause" id="solo-pause-btn-icon"></i> <span id="solo-pause-btn-text">Пауза</span>
             </button>
         </div>
         <div id="solo-pause-banner" data-screen-display="scoring" data-display-key="finish" class="hidden" style="margin-bottom:12px;"></div>
-        <button id="solo-force-finish-btn" data-screen-display="scoring" data-display-key="finish" class="btn btn-ol btn-sm btn-block hidden" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" onclick="openForceFinishModal(soloRid, soloRound, { playerId: getPlayerId(), isGroup: false })">
+        <button id="solo-force-finish-btn" data-screen-display="scoring" data-display-key="finish" class="btn btn-ol btn-sm btn-block hidden" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" data-act="pestovoSoloForceFinish">
             <i class="fas fa-forward"></i> <span data-i18n="force_finish_btn">Завершить раунд принудительно (сохранить счёт)</span>
         </button>
         <label class="stableford-display-control" id="solo-stableford-control" data-screen-display="scoring" data-display-key="stableford">
-            <input type="checkbox" id="solo-stableford-toggle" onchange="toggleSoloStablefordDisplay(this.checked)">
+            <input type="checkbox" id="solo-stableford-toggle" data-act="toggleSoloStablefordDisplay" data-checked="1">
             <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
         </label>
     </div>
@@ -558,7 +558,7 @@
         <div class="timing-info" id="ro-round-info"></div>
 
         <div class="round-card scorecard-fold" style="margin:12px 0;">
-            <button type="button" class="scorecard-fold-btn" onclick="toggleActiveScorecard('ro-solo-sc-panel')" aria-controls="ro-solo-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
+            <button type="button" class="scorecard-fold-btn" data-act="toggleActiveScorecard" data-arg="ro-solo-sc-panel" aria-controls="ro-solo-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
                 <i class="fas fa-chevron-down" id="ro-solo-sc-panel-icon" aria-hidden="true"></i>
                 <span id="ro-solo-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
             </button>
@@ -575,7 +575,7 @@
         <p style="font-size:13px;color:var(--muted);margin-bottom:10px;" data-i18n="fio_resume_desc">Если телефон разрядился — введите имя и фамилию, чтобы найти незавершённый раунд и продолжить (дата/время старта, текущая лунка).</p>
         <div class="form-row" style="align-items:flex-end;">
             <div class="form-group" style="flex:1 1 200px;"><label data-i18n="fio_label">Имя Фамилия</label><input type="text" id="fio-resume-input" class="form-input" placeholder="Иван Петров"></div>
-            <div class="form-group" style="flex:0 0 auto;"><label>&nbsp;</label><button class="btn btn-g" onclick="searchFioResume()" style="min-height:40px;"><i class="fas fa-search"></i> <span data-i18n="search_btn">Найти</span></button></div>
+            <div class="form-group" style="flex:0 0 auto;"><label>&nbsp;</label><button class="btn btn-g" data-act="searchFioResume" style="min-height:40px;"><i class="fas fa-search"></i> <span data-i18n="search_btn">Найти</span></button></div>
         </div>
         <div id="fio-resume-results" style="margin-top:12px;"></div>
     </div>
@@ -586,7 +586,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.115.0</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.116.0</span></p>
         </div>
     </div>
 </footer>
@@ -603,46 +603,16 @@
 <script src="js/rusgolf-client.js?v=f37608e7"></script>
 <script src="js/name-variants.js?v=2b58f796"></script>
 <script src="js/qr-url.js?v=fb4a1649"></script>
-<script src="js/utils.js?v=dd82d08a"></script>
+<script src="js/utils.js?v=9de9c355"></script>
 <script src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script src="js/score-kiosk.js?v=fda399fb"></script>
 <script src="js/official-call.js?v=baef2c9c"></script>
-<script src="js/live.js?v=e0696eec"></script>
+<script src="js/live.js?v=ad765377"></script>
 <script src="js/score-display.js?v=9082faa7"></script>
-<script src="js/solo.js?v=712a7099"></script>
-<script src="js/round-setup.js?v=e5db3e02"></script>
+<script src="js/solo.js?v=71b3c94a"></script>
+<script src="js/round-setup.js?v=162710b2"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
-<script src="js/pwa.js?v=d8e438f8"></script>
-<script>
-function searchFioResume() {
-    var inp = document.getElementById('fio-resume-input');
-    var resEl = document.getElementById('fio-resume-results');
-    if (!inp || !resEl) return;
-    var fio = inp.value.trim();
-    if (!fio) {
-        if (typeof toast === 'function') toast('Введите имя и фамилию', 'warn');
-        return;
-    }
-    resEl.innerHTML = '<p style="color:var(--muted);font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Поиск...</p>';
-    if (typeof pestovoFindActiveRoundsByFio === 'function') {
-        pestovoFindActiveRoundsByFio(fio).then(function(matches) {
-            resEl.innerHTML = pestovoRenderFioResumeListHtml(matches);
-            if (!matches.length && typeof toast === 'function') {
-                toast('Активных раундов для \"' + fio + '\" не найдено', 'info');
-            }
-        });
-    } else {
-        resEl.innerHTML = '<p style="color:var(--muted);">Функция поиска недоступна</p>';
-    }
-}
-document.addEventListener('DOMContentLoaded', function() {
-    var inp = document.getElementById('fio-resume-input');
-    if (inp) {
-        inp.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); searchFioResume(); }
-        });
-    }
-});
-</script>
+<script src="js/pwa.js?v=82acd039"></script>
+<script src="js/setup-round-fio.js?v=662ab87b"></script>
 </body>
 </html>

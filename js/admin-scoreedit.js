@@ -170,7 +170,7 @@ function seRender() {
         html += '<div class="se-round-head">';
         html += '<span class="se-round-name">' + escapeHtml(seRoundTitle(r)) + '</span>';
         html += seStatusBadge(String(r.status || ''));
-        html += '<button class="btn btn-og btn-sm" onclick="seToggleRound(\'' + pestovoInlineJsArg(rid) + '\')"><i class="fas fa-chevron-' + (isOpen ? 'up' : 'down') + '"></i> ' +
+        html += '<button class="btn btn-og btn-sm" data-act="seToggleRound" data-arg="' + escapeHtml(rid) + '"><i class="fas fa-chevron-' + (isOpen ? 'up' : 'down') + '"></i> ' +
             (isOpen ? (currentLang === 'en' ? 'Close' : 'Свернуть') : (currentLang === 'en' ? 'Open' : 'Открыть')) + '</button>';
         html += '</div>';
         html += '<div class="se-round-meta">' + dateTxt + ' ' + timeTxt +
@@ -196,15 +196,15 @@ function seRender() {
                     html += '<input type="number" min="0" max="15" class="form-input se-hole-inp' + (cur > 0 ? ' has-score' : '') + (isCur ? ' is-cur' : '') + '" ' +
                         'id="se-inp-' + escapeHtml(rid) + '-' + escapeHtml(pid) + '-' + h + '" value="' + (cur > 0 ? cur : '') + '" placeholder="' + h + '"' +
                         ' title="' + h + ' (пар ' + seHolePar(h) + ')"' +
-                        ' oninput="seDraftSet(\'' + pestovoInlineJsArg(rid) + '\',\'' + pestovoInlineJsArg(pid) + '\',' + h + ',this.value)">';
+                        ' data-act="seDraftSet" data-arg="' + escapeHtml(rid) + '" data-arg2="' + escapeHtml(pid) + '" data-arg3="' + h + '">';
                 });
                 html += '</span>';
                 html += '</div>';
             });
             html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">';
-            html += '<button class="btn btn-g btn-sm" onclick="seSaveRound(\'' + pestovoInlineJsArg(rid) + '\')"><i class="fas fa-save"></i> ' + (currentLang === 'en' ? 'Save scores' : 'Сохранить счёт') + '</button>';
+            html += '<button class="btn btn-g btn-sm" data-act="seSaveRound" data-arg="' + escapeHtml(rid) + '"><i class="fas fa-save"></i> ' + (currentLang === 'en' ? 'Save scores' : 'Сохранить счёт') + '</button>';
             if (draftCnt) {
-                html += '<button class="btn btn-ol btn-sm" onclick="seDiscardRound(\'' + pestovoInlineJsArg(rid) + '\')"><i class="fas fa-rotate-left"></i> ' + (currentLang === 'en' ? 'Discard' : 'Отменить правки') + '</button>';
+                html += '<button class="btn btn-ol btn-sm" data-act="seDiscardRound" data-arg="' + escapeHtml(rid) + '"><i class="fas fa-rotate-left"></i> ' + (currentLang === 'en' ? 'Discard' : 'Отменить правки') + '</button>';
             }
             html += '</div>';
         }

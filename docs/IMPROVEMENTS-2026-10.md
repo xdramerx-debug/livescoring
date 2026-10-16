@@ -67,56 +67,56 @@ Admin SDK сносит `users`, `rounds`, `tournaments`, `broadcasts` и ост�
 
 ### 2. `'unsafe-inline'` в CSP при 375 inline-обработчиках
 
-**Статус: 🔶 в работе.** CSP **добавлен** (без `'unsafe-eval'`, `object-src 'none'`). Механизм перехода сделан и первая партия переведена; `'unsafe-inline'` из `firebase.json` пока не убран — до тех пор, пока счётчик не обнулится.
+**Статус: ✅ закрыто.** В `firebase.json` из `script-src` убран `'unsafe-inline'`
+(сохранён для `style-src` — inline-стили пока остаются, см. ниже). Все 396
+inline-обработчиков и все 4 встроенных `<script>`-блока переведены на
+делегирование и внешние файлы.
 
-Что сделано: `js/ui-events.js` — делегирование вместо inline-обработчиков. Вместо
+**Как.** `js/ui-events.js` — делегирование вместо inline-обработчиков: вместо
 `onclick="fn('id')"` разметка получает `data-act="fn" data-arg="id"`, а один
-слушатель на `document` находит ближайший `[data-act]` и вызывает функцию; есть
-`data-self` (передать сам элемент), `data-val` (значение поля для `change`),
-`data-stop`, `data-prevent` и `data-img-fail`/`data-img-ok` для запасных картинок
-(ошибки загрузки не всплывают — слушаются в фазе перехвата). Модуль подключён
-первым скриптом на всех 16 страницах.
+слушатель на `document` находит ближайший `[data-act]` и вызывает функцию.
+Модуль подключён первым скриптом на всех 16 страницах (кроме
+`js/kiosk-mode-detect.js` — он только ставит класс на `<html>` по адресу).
 
-Переведено 54 места: 8 ссылок-превью в `design-system.js`, 45 в `utils.js`
-(хром модальных окон, навигация, запасные картинки) и лента лунок в
-`score-display.js`. Осталось 395 (203 в HTML, 192 в JS) — считает
-`tools/test-inline-handlers.js`: в нём записан лимит на каждый файл, и число
-inline-обработчиков может только убывать. Вернуть `onclick=` в уже переведённый
-файл нельзя — тест сломается. Когда файл обнуляется, строка из лимитов
-снимается, и он начинает проверяться правилом «ни одного».
+Атрибуты: `data-act`, `data-arg`/`arg2`/`arg3`, `data-self` (передать сам
+элемент), `data-val` и `data-checked` (значение/отметка поля — для `change` и
+`input` значение добавляется само), `data-ev` (передать событие), `data-stop`,
+`data-prevent`, `data-then` (второе действие следом) и `data-img-fail`/
+`data-img-ok` для запасных картинок (ошибки загрузки не всплывают — слушаются
+в фазе перехвата). Клавиатура — отдельный вид: `data-kd-act`, `data-kd-arg`,
+`data-kd-key="Enter,Space"`, `data-kd-ev`; формы — `data-sub-act`.
+Готовые действия: `noop`, `pestovoPrint`, `pestovoCloseWindow`,
+`pestovoClickElement`, `pestovoRemoveElement`, `pestovoBackdrop`,
+`pestovoHideSelf`, `pestovoHideElement`, `pestovoToggleHidden`,
+`pestovoToggleClass`, `pestovoClearValue`, `pestovoRunBool` (булево из строки).
 
-Дальше по файлам: `app.js`, `pwa.js`, `live.js`, `solo.js`, `round-setup.js`,
-`leaderboard.js`, `tournaments.js`, `players.js`, `handicap.js` — то есть те,
-что грузятся на страницах без админки; затем `admin.html` (130) и
-`setup-round.html` (35), где обработчиков больше всего.
+**Что вынесено в отдельные файлы** (были встроенными `<script>` в HTML):
+`js/kiosk-mode-detect.js` (из `scorer.html` и `setup-round.html`),
+`js/setup-round-fio.js`, `js/hcp-badge-preview.js`.
 
-`firebase.json` отдаёт
-`script-src 'self' … 'unsafe-inline'` и `style-src … 'unsafe-inline'`.
-Причина измерима:
+**Ловушки, которые всплыли при переводе** — их стоит помнить:
 
-| Что | Сколько | Где |
-|---|---|---|
-| inline-обработчики в HTML | 203 | `admin.html` 130, `setup-round.html` 35, `players.html` 7, … |
-| inline-обработчики в разметке из JS | 192 | `js/utils.js` 29, `js/tournaments.js` 24, `js/admin-agr.js` 16, … |
-| inline `style="…"` в HTML | 410 | все страницы |
-| inline `<script>`-блоков | 0 | ✔ уже чисто |
+* атрибут — всегда строка: `adjMk(-1)`, `goPlayHole(h)`, `adjScore(who, delta)`,
+  `movePestovoDisplayDraftOrder(…)` получили `parseInt`, `toggleTnAllGroups(…)`
+  и `pestovoRunBool` приводят `'true'/'false'` к булеву;
+* `change` добавляет значение **последним** аргументом, поэтому `changeRole(id,
+  role, name)` вызывается через `pestovoChangeRole`, а не напрямую;
+* смена действия кнопки на ходу (`save-hole-btn`, `btn-solo-action`) теперь
+  меняет `data-act`, а не `.onclick` — иначе вызов происходил дважды;
+* `cloneNode(true)` копирует и `data-act`, поэтому клоны «липких» кнопок
+  чистятся через `pestovoStripClickHandlers()` (в `js/utils.js`);
+* `animateHoleTransition()` искала кнопку лунки по `onclick` — теперь по
+  `data-act`/`data-arg`.
 
-Замер — `tools/test-inline-handlers.js` (по файлам, без комментариев).
+**Контроль.** `tools/test-inline-handlers.js` требует нуля inline-обработчиков
+и нуля встроенных `<script>` во всех `.html` и `js/*.js`, проверяет, что
+`js/ui-events.js` подключён первым, и что в CSP `script-src` нет
+`'unsafe-inline'`. Вернуть `onclick=` — значит сломать тест.
 
-Работа из прошлого аудита (`tnJsStr`, экранирование имён) закрывает инъекцию
-в *содержимое* обработчика; свежий разбор добавил `pestovoInlineJsArg()` для
-имени файла в `openPNGExportModal()` (ФИО игрока рвало строку в inline-`onclick`).
-Но CSP с `'unsafe-inline'` не останавливает
-инъекцию в любое другое место, где строится HTML. Убрать `script-src
-'unsafe-inline'` реально: обработчиков немного типов (кнопки вкладок,
-удаление, переключатели), они переносится на **делегирование** —
-`document.addEventListener('click', …)` + `data-action`/`data-id`.
-`js/safe-html.js` уже есть, останется добавить хелпер `on(el, sel, action, fn)`.
-
-`style-src` сложнее (410 inline-стилей + динамические темы `design-system.js`),
-но и там путь понятен: темы пишут CSS-переменные в один `<style id="theme">`
-(один nonce/хэш вместо `'unsafe-inline'`), а inline-стили переезжают в
-утилитарные классы.
+`style-src 'unsafe-inline'` остаётся: 410 inline `style="…"` в HTML плюс
+динамические темы `design-system.js`. Путь понятен: темы пишут CSS-переменные
+в один `<style id="theme">` (один nonce/хэш вместо `'unsafe-inline'`), а
+inline-стили переезжают в утилитарные классы.
 
 ### 3. Нет прод-репортинга ошибок
 
@@ -502,7 +502,7 @@ hosting,database,functions` (секреты `FIREBASE_SERVICE_ACCOUNT_*`) убр
 | 6 | Per-page бандлы, резка `utils.js` | 🟠 скорость | L | средний | ✅ (QR снят; бандлы — после ESM) |
 | 12 | Осмысленный ESLint в CI | 🟡 качество | M | низкий | ✅ |
 | 13 | Общий `renderHole` | 🟡 баги | M | средний | 🔶 (1 пара осталась) |
-| 2 | Убрать `'unsafe-inline'` из `script-src` | 🔴 XSS-защита | L | средний | ⏸ отложено |
+| 2 | Убрать `'unsafe-inline'` из `script-src` | 🔴 XSS-защита | L | средний | ✅ (396 обработчиков + 4 `<script>`) |
 | 10 | `.off()` + сузить `rounds`-слушатель | 🟡 RTDB-стоимость | M | средний | ✅ (утечка в `solo.js`) |
 | 16 | Обновить `CODE-REVIEW.md` | 🟢 docs | S | нулевой | ✅ |
 | 8 | Firebase SDK 9.23 → modular | 🟠 скорость/поддержка | XL | высокий | ⏸ отложено |

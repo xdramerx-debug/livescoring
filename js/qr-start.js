@@ -458,7 +458,7 @@ function qrPlayerColHtml(g, geIdx, groupEntries, scheme, p) {
         // иначе в печать уходят пустые места. onerror — цепочка провайдеров.
         // Ссылку под QR-кодом не печатаем (требование клуба): код крупнее
         // и считывается с телефона быстрее. Адрес остаётся в data-qr.
-        '<img loading="eager" decoding="async" src="' + qrUrl(scoreUrl) + '" data-qr="' + encodeURIComponent(scoreUrl) + '" data-qr-try="0" onload="qrImgOk(this)" onerror="qrImgFail(this)" alt="QR"></div>';
+        '<img loading="eager" decoding="async" src="' + qrUrl(scoreUrl) + '" data-qr="' + encodeURIComponent(scoreUrl) + '" data-qr-try="0" data-img-ok="qrImgOk" data-img-fail="qrImgFail" alt="QR"></div>';
     html += '</div>';
     html += '</div>';
     return html;

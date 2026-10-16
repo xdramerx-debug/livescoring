@@ -142,15 +142,15 @@ function entryScAdmDraw() {
     html += '<div class="sev-sec-title">Какую карточку настраиваем</div>';
     html += '<div class="esc-seg" role="group" aria-label="Вид карточки">';
     ENTRY_SC_KINDS.forEach(function(k) {
-        html += '<button type="button" class="' + (k === kind ? 'is-on' : '') + '" aria-pressed="' + (k === kind) + '" onclick="entryScAdmSetKind(\'' + k + '\')">' + ENTRY_SC_ADM_KIND_META[k].name + '</button>';
+        html += '<button type="button" class="' + (k === kind ? 'is-on' : '') + '" aria-pressed="' + (k === kind) + '" data-act="entryScAdmSetKind" data-arg="' + escapeHtml(k) + '">' + ENTRY_SC_ADM_KIND_META[k].name + '</button>';
     });
     html += '</div>';
     html += '<p class="esc-admin-note">' + meta.hint + '</p>';
 
     html += '<div class="sev-sec-title">Где применяется</div>';
     html += '<div class="esc-seg" role="group" aria-label="Контекст">';
-    html += '<button type="button" class="' + (!inTn ? 'is-on' : '') + '" aria-pressed="' + (!inTn) + '" onclick="entryScAdmSetCtx(\'round\')">Обычный раунд</button>';
-    html += '<button type="button" class="' + (inTn ? 'is-on' : '') + '" aria-pressed="' + inTn + '" onclick="entryScAdmSetCtx(\'tournament\')">Турнирный ввод</button>';
+    html += '<button type="button" class="' + (!inTn ? 'is-on' : '') + '" aria-pressed="' + (!inTn) + '" data-act="entryScAdmSetCtx" data-arg="round">Обычный раунд</button>';
+    html += '<button type="button" class="' + (inTn ? 'is-on' : '') + '" aria-pressed="' + inTn + '" data-act="entryScAdmSetCtx" data-arg="tournament">Турнирный ввод</button>';
     html += '</div>';
 
     if (!inTn) {
@@ -159,7 +159,7 @@ function entryScAdmDraw() {
         html += '<div class="esc-admin-variants">';
         ['1', '2', '3', '4', '5'].forEach(function(v, i) {
             var on = base.variant === v;
-            html += '<button type="button" class="esc-var-btn' + (on ? ' is-on' : '') + '" aria-pressed="' + on + '" data-esc-focus="variant-' + v + '" onclick="entryScAdmSetVariant(\'' + v + '\')">' +
+            html += '<button type="button" class="esc-var-btn' + (on ? ' is-on' : '') + '" aria-pressed="' + on + '" data-esc-focus="variant-' + v + '" data-act="entryScAdmSetVariant" data-arg="' + escapeHtml(v) + '">' +
                 '<span class="esc-var-top"><span class="esc-var-num">' + (i + 1) + '</span><span class="esc-var-name">' + variantMeta[i].name + '</span></span>' +
                 entryScAdmThumbHTML(kind, v) +
                 '<span class="esc-var-desc">' + variantMeta[i].desc + '</span>' +
@@ -172,7 +172,7 @@ function entryScAdmDraw() {
         html += '<div class="esc-seg" role="group" aria-label="Размер">';
         ENTRY_SC_SIZES.forEach(function(s) {
             var on = base.size === s;
-            html += '<button type="button" class="' + (on ? 'is-on' : '') + '" aria-pressed="' + on + '" data-esc-focus="size-' + s + '" onclick="entryScAdmSetSize(\'' + s + '\')">' + ENTRY_SC_SIZE_META[s].ru + '</button>';
+            html += '<button type="button" class="' + (on ? 'is-on' : '') + '" aria-pressed="' + on + '" data-esc-focus="size-' + s + '" data-act="entryScAdmSetSize" data-arg="' + escapeHtml(s) + '">' + ENTRY_SC_SIZE_META[s].ru + '</button>';
         });
         html += '</div>';
 
@@ -182,7 +182,7 @@ function entryScAdmDraw() {
         ENTRY_SC_SHOW_KEYS[kind].forEach(function(key) {
             var on = !!base.show[key];
             html += '<label class="esc-chk"><input type="checkbox" data-esc-focus="show-' + key + '"' + (on ? ' checked' : '') +
-                ' onchange="entryScAdmToggle(\'' + key + '\', this.checked)"><span>' + ENTRY_SC_SHOW_META[key].ru + '</span></label>';
+                ' data-act="entryScAdmToggle" data-arg="' + escapeHtml(key) + '" data-checked="1"><span>' + ENTRY_SC_SHOW_META[key].ru + '</span></label>';
         });
         html += '</div>';
     } else {
@@ -190,12 +190,12 @@ function entryScAdmDraw() {
         html += '<div class="sev-sec-title">Вид на турнирном вводе</div>';
         html += '<p class="sev-sec-sub">Вид для турнирного раунда (QR стартового листа). «Как в обычном раунде» — берётся вид из вкладки «Обычный раунд».</p>';
         html += '<div class="esc-tn-row" role="group" aria-label="Турнирный вид">';
-        html += '<button type="button" class="' + (!ov ? 'is-on' : '') + '" aria-pressed="' + (!ov) + '" data-esc-focus="tn-inherit" onclick="entryScAdmSetVariant(null)">Как в обычном раунде (' + base.variant + ')</button>';
+        html += '<button type="button" class="' + (!ov ? 'is-on' : '') + '" aria-pressed="' + (!ov) + '" data-esc-focus="tn-inherit" data-act="pestovoEntryScAdmResetVariant">Как в обычном раунде (' + base.variant + ')</button>';
         html += '</div>';
         html += '<div class="esc-admin-variants">';
         ['1', '2', '3', '4', '5'].forEach(function(v, i) {
             var on = ov === v;
-            html += '<button type="button" class="esc-var-btn' + (on ? ' is-on' : '') + '" aria-pressed="' + on + '" data-esc-focus="tn-variant-' + v + '" onclick="entryScAdmSetVariant(\'' + v + '\')">' +
+            html += '<button type="button" class="esc-var-btn' + (on ? ' is-on' : '') + '" aria-pressed="' + on + '" data-esc-focus="tn-variant-' + v + '" data-act="entryScAdmSetVariant" data-arg="' + escapeHtml(v) + '">' +
                 '<span class="esc-var-top"><span class="esc-var-num">' + (i + 1) + '</span><span class="esc-var-name">' + variantMeta[i].name + '</span></span>' +
                 entryScAdmThumbHTML(kind, v) +
                 '<span class="esc-var-desc">' + variantMeta[i].desc + '</span>' +
@@ -207,9 +207,9 @@ function entryScAdmDraw() {
     }
 
     html += '<div class="sev-apply">' +
-        '<button type="button" class="btn btn-g" onclick="entryScAdmSave()"' + (entryScAdmSaving ? ' disabled' : '') + '><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех</button>' +
-        '<button type="button" class="btn btn-ol" onclick="entryScAdmCancel()"' + (dirty ? '' : ' disabled') + '><i class="fas fa-rotate-left" aria-hidden="true"></i> Отменить правки</button>' +
-        '<button type="button" class="btn btn-ol" onclick="entryScAdmResetDefaults()"><i class="fas fa-undo" aria-hidden="true"></i> Сбросить к настройкам по умолчанию</button>' +
+        '<button type="button" class="btn btn-g" data-act="entryScAdmSave"' + (entryScAdmSaving ? ' disabled' : '') + '><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех</button>' +
+        '<button type="button" class="btn btn-ol" data-act="entryScAdmCancel"' + (dirty ? '' : ' disabled') + '><i class="fas fa-rotate-left" aria-hidden="true"></i> Отменить правки</button>' +
+        '<button type="button" class="btn btn-ol" data-act="entryScAdmResetDefaults"><i class="fas fa-undo" aria-hidden="true"></i> Сбросить к настройкам по умолчанию</button>' +
         '<div class="sev-apply-text"><p class="sev-apply-hint">' +
         (dirty ? 'Есть несохранённые изменения. ' : 'Изменения сохраняются для всех игроков и применяются сразу на открытых экранах.') +
         '</p><p id="esc-admin-status" role="status" aria-live="polite">' + entryScEsc(entryScAdmStatus) + '</p></div></div>';
@@ -246,6 +246,12 @@ function entryScAdmSetCtx(ctx) {
     entryScAdmStatus = '';
     entryScAdmDraw();
 }
+
+// «Как в обычном раунде» — вариант сбрасывается в null; в data-атрибуте
+// null передать нельзя, поэтому отдельное действие.
+pestovoOnAction('pestovoEntryScAdmResetVariant', function () {
+    entryScAdmSetVariant(null);
+});
 
 function entryScAdmSetVariant(value) {
     if (!entryScAdmDraft) return;

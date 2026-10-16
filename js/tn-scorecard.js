@@ -98,11 +98,11 @@ function tnScOpen(tnId, key) {
         modal.id = 'tnsc-modal';
         modal.className = 'modal hidden';
         modal.innerHTML =
-            '<div class="modal-bg" onclick="tnScClose()"></div>' +
+            '<div class="modal-bg" data-act="tnScClose"></div>' +
             '<div class="modal-body tnsc-modal-body">' +
             '<div class="modal-top-bar">' +
-            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="tnScClose()"><i class="fas fa-arrow-left"></i> ' + tnScL('Назад', 'Back') + '</button>' +
-            '<button type="button" class="modal-close-btn" onclick="tnScClose()">×</button>' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" data-act="tnScClose"><i class="fas fa-arrow-left"></i> ' + tnScL('Назад', 'Back') + '</button>' +
+            '<button type="button" class="modal-close-btn" data-act="tnScClose">×</button>' +
             '</div>' +
             '<div id="tnsc-body" class="tnsc-scroll"></div>' +
             '</div>';

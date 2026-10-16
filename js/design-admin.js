@@ -60,12 +60,14 @@
     /* ---------------------------------------------------------
        Кнопка выбора шаблона
        --------------------------------------------------------- */
-    function presetChip(preset, active, onclick, compact) {
+    // Вместо готового onclick= чипы теперь получают строку data-атрибутов —
+    // встроенных обработчиков на странице не осталось (CSP без unsafe-inline).
+    function presetChip(preset, active, attrs, compact) {
         var label = compact
             ? (preset.id === '0' ? L('Текущий', 'Current') : preset.id + ' · ' + esc(preset.short))
             : esc(preset.name);
         return '<button type="button" class="' + (compact ? 'dsp-chip' : 'dsp-opt') + (active ? ' active' : '') + '"' +
-            ' onclick="' + onclick + '" aria-pressed="' + (active ? 'true' : 'false') + '"' +
+            ' ' + attrs + ' aria-pressed="' + (active ? 'true' : 'false') + '"' +
             ' title="' + esc(preset.tagline) + '">' +
             (compact ? '' : swatchHTML(preset)) +
             '<span>' +
@@ -104,10 +106,10 @@
         el.innerHTML =
             '<div class="dsp-mode-toggle">' +
                 '<button type="button" class="dsp-mode-btn' + (s.mode === 'single' ? ' active' : '') + '"' +
-                ' onclick="dspAdminSetMode(\'single\')"><i class="fas fa-layer-group"></i> ' +
+                ' data-act="dspAdminSetMode" data-arg="single"><i class="fas fa-layer-group"></i> ' +
                 L('Единый шаблон для всего сайта', 'One template for the whole site') + '</button>' +
                 '<button type="button" class="dsp-mode-btn' + (s.mode === 'mix' ? ' active' : '') + '"' +
-                ' onclick="dspAdminSetMode(\'mix\')"><i class="fas fa-puzzle-piece"></i> ' +
+                ' data-act="dspAdminSetMode" data-arg="mix"><i class="fas fa-puzzle-piece"></i> ' +
                 L('Сборка из шаблонов (микс)', 'Mix templates per page and block') + '</button>' +
             '</div>' +
             '<p class="dsp-note" style="margin-top:10px;">' +
@@ -125,11 +127,11 @@
         var d = D();
         var html = '<div class="dsp-picker">';
         d.PRESETS.forEach(function(p) {
-            html += presetChip(p, s.global === p.id, "dspAdminSetGlobal('" + p.id + "')", false);
+            html += presetChip(p, s.global === p.id, 'data-act="dspAdminSetGlobal" data-arg="' + esc(p.id) + '"', false);
         });
         html += '</div>';
         html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">' +
-            '<button type="button" class="btn btn-og btn-sm" onclick="dspAdminApplyEverywhere()">' +
+            '<button type="button" class="btn btn-og btn-sm" data-act="dspAdminApplyEverywhere">' +
                 '<i class="fas fa-wand-magic-sparkles"></i> ' + L('Применить выбранный шаблон ко всем страницам и блокам', 'Apply the chosen template to every page and block') + '</button>' +
             '<a class="btn btn-ol btn-sm" href="design-preview.html" target="_blank" rel="noopener">' +
                 '<i class="fas fa-table-columns"></i> ' + L('Сравнить все шаблоны', 'Compare all templates') + '</a>' +
@@ -151,13 +153,13 @@
                 '<div class="dsp-row-s">' + L('Сейчас: ', 'Now: ') + '<b>' + esc(d.presetName(cur)) + '</b></div></div>' +
                 '<div class="dsp-picker dsp-compact">' +
                     d.PRESETS.map(function(pr) {
-                        return presetChip(pr, cur === pr.id, "dspAdminSetPage('" + p.key + "','" + pr.id + "')", true);
+                        return presetChip(pr, cur === pr.id, 'data-act="dspAdminSetPage" data-arg="' + esc(p.key) + '" data-arg2="' + esc(pr.id) + '"', true);
                     }).join('') +
                 '</div>' +
             '</div>';
         });
         html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">' +
-            '<button type="button" class="btn btn-ol btn-sm" onclick="dspAdminResetPages()">' +
+            '<button type="button" class="btn btn-ol btn-sm" data-act="dspAdminResetPages">' +
                 '<i class="fas fa-rotate-left"></i> ' + L('Сбросить страницы', 'Reset pages') + '</button>' +
         '</div>';
         el.innerHTML = html;
@@ -177,13 +179,13 @@
                 '<b>' + esc(d.presetName(cur)) + '</b></div></div>' +
                 '<div class="dsp-picker dsp-compact">' +
                     d.PRESETS.map(function(pr) {
-                        return presetChip(pr, cur === pr.id, "dspAdminSetBlock('" + b.key + "','" + pr.id + "')", true);
+                        return presetChip(pr, cur === pr.id, 'data-act="dspAdminSetBlock" data-arg="' + esc(b.key) + '" data-arg2="' + esc(pr.id) + '"', true);
                     }).join('') +
                 '</div>' +
             '</div>';
         });
         html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">' +
-            '<button type="button" class="btn btn-ol btn-sm" onclick="dspAdminResetBlocks()">' +
+            '<button type="button" class="btn btn-ol btn-sm" data-act="dspAdminResetBlocks">' +
                 '<i class="fas fa-rotate-left"></i> ' + L('Сбросить блоки', 'Reset blocks') + '</button>' +
         '</div>';
         el.innerHTML = html;

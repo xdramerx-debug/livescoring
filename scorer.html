@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <script>(function(){try{var q=new URLSearchParams(location.search);if(q.get('round')&&(q.get('as')||q.get('player'))){document.documentElement.classList.add('score-kiosk');}}catch(e){}})();</script>
+    <script src="js/kiosk-mode-detect.js?v=b6405ebe"></script>
     <meta name="theme-color" content="#0b1a0e">
     <meta name="description" content="Официальная система лайв-скоринга клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
@@ -16,7 +16,7 @@
     <title data-i18n="scorer_title">Ввод счёта — Пестово</title>
     <link rel="stylesheet" href="css/style.css?v=07ac5eab">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <script src="js/ui-events.js?v=859df86e"></script>
+    <script src="js/ui-events.js?v=5ba225a1"></script>
     <script src="js/design-system.js?v=394cc00f"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -65,20 +65,20 @@
                 <div class="score-result" id="sc-result"></div>
                 <div class="score-disp" id="sc-disp">—</div>
                 <div class="score-btns">
-                    <button class="score-minus" onclick="adjSc(-1)">−</button>
-                    <button class="score-plus" onclick="adjSc(1)">+</button>
+                    <button class="score-minus" data-act="adjSc" data-arg="-1">−</button>
+                    <button class="score-plus" data-act="adjSc" data-arg="1">+</button>
                 </div>
-                <button class="btn btn-g btn-block" id="sc-save-btn" onclick="saveSc()" style="padding:16px;font-size:15px;"><i class="fas fa-save"></i> <span data-i18n="save_hole">Сохранить</span></button>
+                <button class="btn btn-g btn-block" id="sc-save-btn" data-act="saveSc" style="padding:16px;font-size:15px;"><i class="fas fa-save"></i> <span data-i18n="save_hole">Сохранить</span></button>
             </div>
             </div>
         </div>
         <div id="sc-verify" data-screen-display="scoring" data-display-key="verification"></div>
         <!-- КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
         <div id="sc-officials" data-screen-display="scoring" data-display-key="officials" style="display:flex;gap:10px;margin-bottom:6px;">
-            <button id="sc-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('referee')">
+            <button id="sc-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" data-act="callOfficial" data-arg="referee">
                 <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
             </button>
-            <button id="sc-marshal-call-btn" class="btn btn-warning official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" onclick="callOfficial('marshal')">
+            <button id="sc-marshal-call-btn" class="btn btn-warning official-call-btn" style="flex:1;font-size:12px;padding:12px 8px;" data-act="callOfficial" data-arg="marshal">
                 <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
             </button>
         </div>
@@ -90,13 +90,13 @@
         <div id="sc-pace-assistant" data-screen-display="scoring" data-display-key="pace" style="margin-top:12px;"></div>
         <div class="card" data-screen-display="scoring" data-display-key="scorecard"><h2><i class="fas fa-table"></i> <span data-i18n="my_score">Мой счёт</span></h2><div id="sc-card"></div></div>
         <label class="stableford-display-control" id="sc-stableford-control" data-screen-display="scoring" data-display-key="stableford">
-            <input type="checkbox" id="sc-stableford-toggle" onchange="toggleScStablefordDisplay(this.checked)">
+            <input type="checkbox" id="sc-stableford-toggle" data-act="toggleScStablefordDisplay" data-checked="1">
             <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
         </label>
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.115.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.116.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -104,12 +104,12 @@
 <script src="js/firebase-config.js?v=501cf206"></script>
 <script type="module" src="dist/livescoring-modules.js?v=8f43c231"></script>
 <script src="js/qr-url.js?v=fb4a1649"></script>
-<script src="js/utils.js?v=dd82d08a"></script>
+<script src="js/utils.js?v=9de9c355"></script>
 <script src="js/score-display.js?v=9082faa7"></script>
 <script src="js/score-kiosk.js?v=fda399fb"></script>
 <script src="js/official-call.js?v=baef2c9c"></script>
-<script src="js/scorer.js?v=7162f9e2"></script>
+<script src="js/scorer.js?v=c935dd5e"></script>
 <script src="js/score-write.js?v=7117f8ef"></script>
-<script src="js/pwa.js?v=d8e438f8"></script>
+<script src="js/pwa.js?v=82acd039"></script>
 </body>
 </html>

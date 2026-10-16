@@ -66,10 +66,12 @@ async function testPwaDismiss() {
     win.Notification = function () { win.__nativeNotifs = (win.__nativeNotifs || 0) + 1; };
     win.Notification.permission = 'granted';
     Object.defineProperty(win, 'Notification', { value: win.Notification, configurable: true });
+    win.eval(fs.readFileSync(path.join(ROOT, 'js/ui-events.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/dom.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'));
+    win.eval(fs.readFileSync(path.join(ROOT, 'js/ui-events.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/pwa.js'), 'utf8'));
 
     // Уведомления включены: анонс кладёт тост с меткой .t-club.
@@ -107,6 +109,7 @@ async function testSoloCallResponse() {
     win.eval(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/dom.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'));
+    win.eval(fs.readFileSync(path.join(ROOT, 'js/ui-events.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/pwa.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/solo.js'), 'utf8'));
     // Перехватываем toast после загрузки скриптов: dom.js создаёт настоящий toast.

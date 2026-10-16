@@ -113,7 +113,7 @@ function updateSoloPauseUI() {
         '<span style="font-size:12px;color:rgba(255,255,255,0.85);">' +
         (isEn ? 'Timings frozen · Duration: ' : 'Тайминги остановлены · Длительность: ') +
         '<b>' + durStr + '</b>' + reasonStr + '</span></div></div>' +
-        '<button type="button" class="btn btn-g btn-sm" onclick="handleSoloPauseToggle()" style="font-weight:700;">' +
+        '<button type="button" class="btn btn-g btn-sm" data-act="handleSoloPauseToggle" style="font-weight:700;">' +
         '<i class="fas fa-play"></i> ' + (isEn ? 'Resume Play' : 'Возобновить игру') + '</button>' +
         '</div>';
 }
@@ -705,7 +705,7 @@ function renderRoundInfo(targetId) {
 
     var pTee = (p && p.tee) || soloRound.tee || 'wh';
     el.innerHTML =
-        '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(uid) + '\',\'' + pestovoInlineJsArg(soloRid) + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, uid)) + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
+        '<div style="cursor:pointer;" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(uid) + '" data-arg2="' + escapeHtml(soloRid) + '"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, uid)) + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
         '<div><b>' + startLbl + ':</b> ' + fmtTime(soloRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + soloRound.startHole + ' · <b>' + t('tee_select') + ':</b> ' + fmtTeePill(pTee) + ' · <b>' + t('format_select') + ':</b> ' + soloRound.format + '</div>';
 }
 
@@ -800,7 +800,14 @@ function renderCurrentHole() {
     updateSoloPaceAssistant();
 }
 
+// Кнопка «завершить принудительно» передавала объект раунда прямо в onclick=.
+// Теперь вызов собран здесь, а разметка ссылается на имя действия.
+pestovoOnAction('pestovoSoloForceFinish', function () {
+    openForceFinishModal(soloRid, soloRound, { playerId: getPlayerId(), isGroup: false });
+});
+
 function adjSolo(delta) {
+    delta = parseInt(delta, 10);
     if (!canEditSolo) return;
     curScore = Math.max(1, Math.min(15, curScore + delta));
     vib();
@@ -1006,19 +1013,19 @@ function updateSoloActionButton() {
     var icon = btn.querySelector('i');
 
     if (playedCount >= holeCount && !hasUnsaved) {
-        btn.onclick = function() { finishSolo(); };
+        pestovoSetButtonAction(btn, 'finishSolo');
         btn.className = 'btn btn-g btn-block btn-lg';
         if (txt) txt.innerHTML = currentLang === 'en' ? '🏆 Finish Round' : '🏆 Завершить раунд';
         if (icon) icon.className = 'fas fa-flag-checkered';
     } else if (hasUnsaved) {
         // Изменения ещё не записаны — кнопка всегда сохраняет результат,
         // даже на последней лунке (иначе ввод потерялся бы при завершении).
-        btn.onclick = function() { saveSolo(); };
+        pestovoSetButtonAction(btn, 'saveSolo');
         btn.className = 'btn btn-g btn-block btn-lg has-unsaved';
         if (txt) txt.innerHTML = t('solo_save_result_btn');
         if (icon) icon.className = 'fas fa-check';
     } else {
-        btn.onclick = function() { saveSolo(); };
+        pestovoSetButtonAction(btn, 'saveSolo');
         btn.className = 'btn btn-g btn-block';
         if (txt) txt.innerHTML = t('solo_next_keep_btn');
         if (icon) icon.className = 'fas fa-arrow-right';

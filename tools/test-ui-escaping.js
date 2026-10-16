@@ -230,23 +230,35 @@ function makeToastSandbox() {
     assert.strictEqual(bodyEl.querySelectorAll('[onerror]').length, 0,
         'onerror из имени игрока попал в разметку');
 
-    // Обработчик цел: два строковых аргумента, без «дырки» в кавычках.
-    const btns = bodyEl.querySelectorAll('button[onclick^="downloadPNGImage("]');
+    // Кнопка скачивания: имя файла уходит в data-атрибут (делегирование,
+    // docs/IMPROVEMENTS-2026-10.md п.2) и обязано быть экранировано так же,
+    // как раньше — в строковом аргументе onclick.
+    const btns = bodyEl.querySelectorAll('button[data-act="downloadPNGImage"]');
     assert.ok(btns.length >= 1, 'кнопка скачивания отрисована');
     for (const btn of btns) {
-        const attr = btn.getAttribute('onclick');
-        assert.strictEqual((attr.match(/'/g) || []).length, 4,
-            'в обработчике ровно 4 кавычки — два строковых аргумента: ' + attr);
-        assert.ok(attr.indexOf('onerror=') === -1 || attr.indexOf('\\x3c') !== -1,
-            'имя игрока в обработчике должно быть экранировано: ' + attr);
+        assert.strictEqual(btn.getAttribute('data-arg'), PNG, 'data-arg кнопки = data-URL карточки');
+        // getAttribute возвращает уже раскодированное значение, поэтому
+        // экранирование проверяем по сырой разметке кнопки.
+        const raw = /data-arg2="(.*?)"><i class=/.exec(btn.outerHTML);
+        assert.ok(raw, 'в разметке кнопки есть data-arg2 — имя файла: ' + btn.outerHTML);
+        const rawName = raw[1];
+        // < внутри значения атрибута допустим и сериализацией не экранируется,
+        // а вот кавычка обязана стать &quot; — иначе атрибут можно закрыть.
+        assert.strictEqual(rawName.indexOf('"'), -1,
+            'неэкранированной кавычки в имени файла быть не должно: ' + rawName);
+        assert.ok(rawName.indexOf('&quot;') !== -1,
+            'кавычки из имени файла экранированы (&quot;): ' + rawName);
+        assert.strictEqual(btn.querySelectorAll('img').length, 0,
+            'внутри кнопки не появилось картинок из имени файла');
+        assert.ok(btn.getAttribute('data-arg2').indexOf("О'Коннор") !== -1,
+            'имя игрока доходит до обработчика целиком, апостроф не рвёт атрибут');
     }
 
     // Исходник: обе подстановки обязаны быть экранированы.
     assert.match(body, /src="'\s*\+\s*escapeHtml\(pngDataUrl\)/,
         'js/utils.js: src картинки должен экранироваться через escapeHtml');
-    assert.strictEqual((body.match(/pestovoInlineJsArg\(fileName\)/g) || []).length, 2,
-        'js/utils.js: оба обработчика downloadPNGImage экранируют имя файла ' +
-        'через pestovoInlineJsArg');
+    assert.strictEqual((body.match(/escapeHtml\(fileName\)/g) || []).length, 2,
+        'js/utils.js: обе кнопки downloadPNGImage экранируют имя файла через escapeHtml');
 }
 
 // ── 7. Регрессия: err.message в разметку ──────────────────────────────────

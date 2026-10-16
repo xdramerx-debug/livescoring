@@ -118,7 +118,7 @@
                     (vers ? ' · v' + vers : '') +
                     ' · uid: ' + Object.keys(g.uids).length +
                     '</small>' +
-                    (g.stack ? '<br><button type="button" class="btn btn-ol btn-sm" style="margin-top:6px;" onclick="document.getElementById(\'' + ids + '\').classList.toggle(\'hidden\')">' + (en() ? 'Stack' : 'Стек') + '</button>' +
+                    (g.stack ? '<br><button type="button" class="btn btn-ol btn-sm" style="margin-top:6px;" data-act="pestovoToggleHidden" data-arg="' + escapeHtml(ids) + '">' + (en() ? 'Stack' : 'Стек') + '</button>' +
                         '<pre id="' + ids + '" class="hidden" style="white-space:pre-wrap;font-size:11px;margin-top:6px;max-height:220px;overflow:auto;">' + esc(g.stack) + '</pre>' : '') +
                     '</div>';
             }).join('');

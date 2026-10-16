@@ -296,7 +296,8 @@ function loadDesign(ctx) {
     });
 
     var admin = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');
-    ok(admin.indexOf("switchTab('design'") !== -1, 'В админке нет вкладки «Дизайн 🎨»');
+    // Вкладки админки зовутся через data-атрибуты (делегирование, п.2 плана).
+    ok(/data-act="switchTab"[^>]*data-arg="design"/.test(admin), 'В админке нет вкладки «Дизайн 🎨»');
     ok(admin.indexOf('id="tab-design"') !== -1, 'В админке нет секции tab-design');
     ['dsp-mode-wrap', 'dsp-global-wrap', 'dsp-pages-wrap', 'dsp-blocks-wrap', 'dsp-preview-wrap', 'dsp-status']
         .forEach(function(id) {

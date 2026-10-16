@@ -39,7 +39,7 @@ function ok(cond, label) {
     win.currentUser = null; win.currentUserData = null;
     function makeRef(p) { const r = { _p: p || '', update() { return Promise.resolve(); }, set() { return Promise.resolve(); }, remove() { return Promise.resolve(); }, transaction(f) { return Promise.resolve({ value: f(null) }); }, once() { return Promise.resolve({ val: () => null }); }, on() {}, off() {}, orderByChild() { return r; }, equalTo() { return r; }, push() { return Promise.resolve({ key: 'x' }); } }; return r; }
     win.db = { ref: p => makeRef(p) };
-    ['js/course-config.js', 'js/format.js', 'js/utils.js', 'js/live.js', 'js/solo.js', 'js/round-setup.js'].forEach(r => win.eval(fs.readFileSync(path.join(ROOT, r), 'utf8')));
+    ['js/ui-events.js', 'js/course-config.js', 'js/format.js', 'js/utils.js', 'js/live.js', 'js/solo.js', 'js/round-setup.js'].forEach(r => win.eval(fs.readFileSync(path.join(ROOT, r), 'utf8')));
     // v1.69.0: единая форма — состав задаёт кнопка «Добавить игрока»
     win.eval('addSetupPlayer();');
     win.eval('addSetupPlayer();');
@@ -63,13 +63,16 @@ function ok(cond, label) {
         w2.currentLang = 'ru';
         w2.isPlayerModeEnabled = () => false;
         let calls = 0; w2.saveSc = () => { calls++; };
+        // Клик по кнопке ловит делегат из js/ui-events.js — без него data-act
+        // на странице никого не вызовет.
+        w2.eval(fs.readFileSync(path.join(ROOT, 'js/ui-events.js'), 'utf8'));
         w2.eval(fs.readFileSync(path.join(ROOT, 'js/course-config.js'), 'utf8'));
         w2.eval(fs.readFileSync(path.join(ROOT, 'js/format.js'), 'utf8'));
         w2.eval(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'));
         w2.eval('initP0MobileEnhancements();');
         const clone = d2.getElementById('p0-sticky-save');
         ok(!!clone, 'scorer: создана sticky-кнопка #p0-sticky-save');
-        ok(clone && !clone.hasAttribute('onclick'), 'scorer: у клона нет inline onclick (двойного вызова)');
+        ok(clone && !clone.hasAttribute('data-act'), 'scorer: у клона нет обработчика (двойного вызова)');
         if (clone) clone.dispatchEvent(new w2.MouseEvent('click', { bubbles: true }));
         ok(calls === 1, 'scorer: saveSc() вызван 1 раз за клик (получено ' + calls + ')');
         // ── 3/4/5) CSS + sw + версия ──

@@ -73,3 +73,37 @@ jobs:
 
       - name: Mobile navigation header
         run: npm run check:nav
+
+      # Три проверки из `npm run check:display-mobile` раньше не запускались в
+      # CI вообще: в репозитории не было ни одного workflow с ними. Из-за этого
+      # поломки того же класса, что сломали check:scorecards (список скриптов
+      # без js/ui-events.js), здесь никто не видел. Шаги отдельные — по имени
+      # сразу понятно, какой сценарий упал.
+      - name: Round setup mobile
+        run: node tools/check-round-setup-mobile.js
+
+      - name: Tournaments display mobile
+        run: node tools/check-tournaments-display-mobile.js
+
+      - name: Admin display settings mobile
+        run: node tools/check-display-settings-mobile.js
+
+      # ВРЕМЕННО: логи джобы из песочницы недоступны, поэтому при любой ошибке
+      # перезапускаем три новых проверки и публикуем их вывод комментарием в PR.
+      - name: Diagnostics (temporary)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          : > /tmp/diag.txt
+          for name in check-round-setup-mobile check-tournaments-display-mobile check-display-settings-mobile; do
+              node tools/$name.js > /tmp/$name.log 2>&1
+              code=$?
+              echo "== $name exit=$code" >> /tmp/diag.txt
+              tail -c 1500 /tmp/$name.log >> /tmp/diag.txt
+              echo >> /tmp/diag.txt
+          done
+          pr=$(gh pr view --json number --jq .number 2>/dev/null || true)
+          if [ -n "$pr" ]; then gh pr comment "$pr" --body-file /tmp/diag.txt; fi
+          exit 0

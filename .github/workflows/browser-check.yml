@@ -50,8 +50,65 @@ jobs:
       - name: Browser check (classic vs bundle)
         run: npm run check:browser -- --require
 
-      - name: Mobile scorecards and score entry
-        run: npm run check:scorecards
+      # Отдельные шаги вместо `npm run check:scorecards` (цепочка из пяти
+      # скриптов через &&): в таком виде по прогону видно, какой именно скрипт
+      # упал, а не только «что-то в браузерных проверках». continue-on-error —
+      # чтобы за один прогон собрать результат всех пяти, а не только первого;
+      # шаг-сводка ниже превращает любую ошибку в падение джобы.
+      - name: Scorecard mobile (layout)
+        id: sc1
+        continue-on-error: true
+        run: node tools/check-scorecard-mobile.js
+
+      - name: Score entry mobile (touch targets)
+        id: sc2
+        continue-on-error: true
+        run: node tools/check-score-entry-mobile.js
+
+      - name: Scoring header mobile (QR)
+        id: sc3
+        continue-on-error: true
+        run: node tools/check-scoring-header-mobile.js
+
+      - name: Printcards preview
+        id: sc4
+        continue-on-error: true
+        run: node tools/check-printcards-preview.js
+
+      - name: Entry scorecards
+        id: sc5
+        continue-on-error: true
+        run: node tools/check-entry-scorecards.js
+
+      - name: Scorecards summary
+        if: always()
+        env:
+          R1: ${{ steps.sc1.outcome }}
+          R2: ${{ steps.sc2.outcome }}
+          R3: ${{ steps.sc3.outcome }}
+          R4: ${{ steps.sc4.outcome }}
+          R5: ${{ steps.sc5.outcome }}
+        run: |
+          set -u
+          failed=""
+          check() {
+              if [ "$2" != "success" ] && [ "$2" != "skipped" ]; then
+                  echo "FAIL $1 ($2)"
+                  failed="$failed $1"
+              else
+                  echo "ok   $1 ($2)"
+              fi
+          }
+          check check-scorecard-mobile "$R1"
+          check check-score-entry-mobile "$R2"
+          check check-scoring-header-mobile "$R3"
+          check check-printcards-preview "$R4"
+          check check-entry-scorecards "$R5"
+          if [ -n "$failed" ]; then
+              echo "Упали браузерные проверки:$failed"
+              exit 1
+          fi
+          echo "Все пять браузерных проверок пройдены"
 
       - name: Scorecard realtime and offline PWA regression
         run: npm run check:scorecard-pwa

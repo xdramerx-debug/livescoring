@@ -521,6 +521,59 @@ hosting,database,functions` (секреты `FIREBASE_SERVICE_ACCOUNT_*`) убр
 деплоить отдельным осознанным шагом — см. предупреждение в
 `docs/SECURITY-RULES.md`.
 
+### 21. Зависимости Cloud Functions на firebase-admin 11 (июнь 2024)
+
+**Статус: ✅ закрыто.** `functions/package.json`: `firebase-admin`
+11.11.1 → 14.5.0, `firebase-functions` 4.9.0 → 7.4.0, `web-push` 3.6.7
+(уже последний). `npm audit` в `functions/`: **15 уязвимостей (1 critical,
+11 high, 3 moderate) → 0**.
+
+Клиентские бандлы обновлялись в п.8, а серверная часть осталась на
+двухлетней давности пакетах — и это не косметика:
+
+- critical — `protobufjs` prototype pollution (≤7.6.2), приехал транзитивно;
+- high — `@grpc/grpc-js` (падение сервера от некорректного запроса),
+  `node-forge` (проверка RSA-подписи пропускает лишние вложенные
+  `DigestAlgorithm`), `@fastify/busboy` (DoS), 7 уязвимостей в цепочке
+  `gtoken`/`google-auth-library`/`google-p12-pem`.
+
+Все они в транзитивных зависимостях, поэтому «просто поднять версию» не
+работало: до firebase-admin 13.10.0 остаётся 8 moderate (всё тот же
+`uuid < 11.1.1` через `gaxios`/`@google-cloud/storage`), а полностью
+закрывается только 14.x.
+
+**Почему это не «одна строка в package.json».** В firebase-admin 14 убраны
+пространства имён: `admin.database()` и `admin.auth()` больше не существуют,
+вместо них именованные импорты. Правка в `functions/index.js` — три строки:
+
+```js
+const { getDatabase } = require('firebase-admin/database');
+const { getAuth } = require('firebase-admin/auth');
+...
+const db = getDatabase();                       // было admin.database()
+const token = await getAuth().createCustomToken(...);  // было admin.auth()...
+```
+
+Второй подводный камень — `firebase-functions`: с 6.x корневой экспорт
+(`require('firebase-functions')`) это **v2 API** с другой формой триггеров, а
+v1 живёт в подпути `firebase-functions/v1`. Ошибка тут не падает на установке,
+а молча меняет семантику вызовов.
+
+**Проверка.** Cloud Functions не покрыты CI (он ставит только корневой
+`package-lock.json`), поэтому добавлен `tools/test-functions-deps.js`: он
+сверяет мажор Admin SDK из `functions/package-lock.json` со стилем вызовов в
+`functions/index.js`, требует импорт строго из `firebase-functions/v1`,
+проверяет, что манифест и локфайл не разошлись (иначе `npm ci` падает), что
+`engines.node` не старше требований пакетов (иначе упадёт деплой), и — если
+`functions/node_modules` установлен — загружает `functions/index.js` целиком с
+поддельным service account: это ловит несовместимость require и регистрацию
+триггеров, то есть ровно то, что ловит прод.
+
+**Что осталось за кадром:** сам деплой требует свежего `firebase-tools`
+(SDK 7 функций деплоится CLI, который знает Node 22), а поведение пушей и
+мастер-входа проверяется только на реальном проекте — эмулятор в этом
+репозитории не поднимается.
+
 ---
 
 ## Сводная таблица
@@ -545,6 +598,7 @@ hosting,database,functions` (секреты `FIREBASE_SERVICE_ACCOUNT_*`) убр
 | 8 | Firebase SDK 9.23 → modular | 🟠 скорость/поддержка | XL | высокий | 🔶 (compat → 13.0.0, functions лениво) |
 | 9 | Font Awesome self-host subset | 🟢 | M | низкий | ✅ (+5 битых иконок) |
 | 18-20 | manifest / sw.js / автодеплой | 🟢 | S-M | низкий | ✅ |
+| 21 | Зависимости `functions/` (admin 11 → 14) | 🔴 1 critical + 11 high в проде | S | средний | ✅ (15 уязвимостей → 0) |
 
 ✅ закрыто · 🔶 закрыто частично · ⏸ отложено решением
 
@@ -557,7 +611,7 @@ XS < 1 ч · S = полдня · M = 1-2 дня · L = неделя · XL = пр
 - `database.rules.json`: приватность `users` / зеркало `usersPublic` без
   email/phone, `.validate` на типы и длины, `.indexOn` на `alerts`.
 - Мёртвый код: 0 unreferenced-функций из 417 в `utils.js`, 0 `TODO/FIXME`.
-- Тестовая обвязка: 67 сценарных тестов проходят, `check:bundle` и
+- Тестовая обвязка: 82 сценарных тестов проходят, `check:bundle` и
   `rev-assets --check` гарантируют свежесть артефактов в CI.
 - i18n: полный паритет RU/EN (565/565), `lang` на `<html>` переключается.
 - Service Worker: precache генерируется, `activate()` чистит старые кэши,

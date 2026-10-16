@@ -66,6 +66,10 @@ function makeSandbox(env, opts) {
             https: { HttpsError },
             logger: { warn: (m) => warnings.push(String(m)), error: (m) => errors.push(String(m)) }
         },
+        // Admin SDK 14 — модульный (getAuth из firebase-admin/auth); форма
+        // импорта проверяется в tools/test-functions-deps.js, здесь важна
+        // логика мастер-пароля, поэтому работают оба варианта.
+        getAuth: () => ({ createCustomToken: () => Promise.resolve('signed-token') }),
         admin: { auth: () => ({ createCustomToken: () => Promise.resolve('signed-token') }) },
         db: { ref: (p) => ({
             path: p,

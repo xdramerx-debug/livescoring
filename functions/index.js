@@ -16,10 +16,14 @@
 // ============================================================
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+// Admin SDK 14 — модульный: пространств имён больше нет, база и авторизация
+// берутся именованными импортами. `admin` остался для initializeApp().
+const { getDatabase } = require('firebase-admin/database');
+const { getAuth } = require('firebase-admin/auth');
 const webpush = require('web-push');
 
 admin.initializeApp();
-const db = admin.database();
+const db = getDatabase();
 
 Object.assign(exports, require('./score-audit')(functions, admin, db));
 
@@ -132,7 +136,7 @@ exports.tournamentMasterSignIn = functions.runWith({}).https.onCall(async functi
         } catch (e) {
             if (functions.logger) functions.logger.warn('masterLoginAttempts remove failed', e && e.message);
         }
-        const token = await admin.auth().createCustomToken(MASTER_UID, { tournamentMaster: true, tournamentMasterUntil: Date.now() + 8 * 60 * 60 * 1000 });
+        const token = await getAuth().createCustomToken(MASTER_UID, { tournamentMaster: true, tournamentMasterUntil: Date.now() + 8 * 60 * 60 * 1000 });
         return { token };
     } catch (err) {
         // Все известные ошибки уже HttpsError — пробрасываем как есть

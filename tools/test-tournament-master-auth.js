@@ -23,18 +23,26 @@ const expectedPassword = 'test-password-with-enough-entropy';
 const defaultPassword = '55555'; // дефолт только для эмулятора (functions/index.js, fail closed на проде)
 const config = { TOURNAMENT_MASTER_PASSWORD_HASH: crypto.createHash('sha256').update(expectedPassword).digest('hex') };
 class HttpsError extends Error { constructor(code, message) { super(message); this.code = code; } }
-const sandbox = {
-    require: name => { assert.strictEqual(name, 'crypto'); return crypto; },
-    process: { env: config }, Buffer, Date,
-    exports: {},
-    functions: { runWith: () => ({ https: { onCall: callback => callback } }), https: { HttpsError } },
-    admin: { auth: () => ({ createCustomToken: (uid, claims) => {
+// Admin SDK 14 — модульный: functions/index.js вызывает getAuth() из
+// firebase-admin/auth, а не admin.auth(). Тест про мастер-пароль, а не про
+// форму импорта (её стережёт tools/test-functions-deps.js), поэтому в
+// песочнице доступны оба варианта.
+function getAuth() {
+    return { createCustomToken: (uid, claims) => {
         tokenCalls++;
         assert.strictEqual(uid, 'tournament-master');
         assert.strictEqual(claims.tournamentMaster, true);
         assert.ok(claims.tournamentMasterUntil > Date.now());
         return Promise.resolve('signed-token');
-    } }) },
+    } };
+}
+const sandbox = {
+    require: name => { assert.strictEqual(name, 'crypto'); return crypto; },
+    process: { env: config }, Buffer, Date,
+    exports: {},
+    functions: { runWith: () => ({ https: { onCall: callback => callback } }), https: { HttpsError } },
+    admin: { auth: getAuth },
+    getAuth: getAuth,
     db: { ref: () => ({
         transaction: async function (fn) {
             const value = fn(counter);

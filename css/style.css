@@ -536,6 +536,17 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
     align-items: center;
     justify-content: space-between;
 }
+/* Шапка карточки игрока — всегда одна строка, а кнопки («убрать игрока»,
+   запрос гандикапа RUSGOLF) всегда на одном месте. Раньше рост текста метки
+   («Синий» → «Синий · 10 поля» после подтяжки гандикапа) увеличивал её базовую
+   ширину, и кнопки уезжали: на 320 px шапка переносилась и палец отпускался
+   уже над заголовком (карточка просто раскрывалась, игрок оставался), на
+   широком экране кнопка смещалась вправо на 60 px. Теперь единственный
+   «растущий» элемент — заголовок с именем: он забирает всё свободное место,
+   поэтому остаток строки прижат к правому краю и не двигается. Текст, который
+   не влезает, обрезается многоточием. */
+.setup-player-head .spc-title{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.setup-player-head .spc-meta{flex:0 3 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .form-err{background:rgba(224,90,74,.1);border:1px solid var(--red);color:var(--red);padding:10px 14px;border-radius:var(--rs);font-size:13px;margin-bottom:14px;}
 
 .s-un{color:#e05a4a;}
@@ -6501,10 +6512,19 @@ body.sun-mode .gsg-marker.mk-mismatch{color:#c0392b;}
 /* Кнопка RUSGOLF в шапке карточки: на телефоне заголовок переносится,
    кнопка остаётся видимой и не сжимается. */
 @media(max-width:560px){
-    .setup-player-head{flex-wrap:wrap; gap:6px;}
-    .setup-player-head .spc-title{flex:1 1 auto; min-width:0;}
+    /* Переноса нет ни при какой длине текста: иначе кнопки уезжают на другую
+       строку и тап попадает в заголовок карточки (см. комментарий выше). */
+    .setup-player-head{flex-wrap:nowrap; gap:6px;}
+    /* Метка (чаша, гандикап) уступает место имени игрока. */
+    .setup-player-head .spc-meta{max-width:45%;}
     .setup-player-head .setup-hcp-refresh-head{min-height:34px; padding:0 10px;}
     .setup-player-head .fa-chevron-down{margin-left:0;}
+}
+/* На узком экране подпись RUSGOLF съедает половину шапки — оставляем иконку.
+   Кнопка остаётся 44×44, то есть цель для пальца не уменьшается. */
+@media(max-width:400px){
+    .setup-player-head .setup-hcp-refresh-head{padding:0 8px;}
+    .setup-player-head .setup-hcp-refresh-text{display:none;}
 }
 
 /* Настройки элементов экранов применяются по data-display-hidden. */

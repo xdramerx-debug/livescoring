@@ -283,7 +283,10 @@ const round = {
                         cardCount: panel.querySelectorAll('.tn-lb-card').length,
                         liveRows: panel.querySelectorAll('.tn-lb-live-row').length,
                         rows: panel.querySelectorAll('tbody tr').length,
-                        scorecardOpens: (panel.querySelector('[onclick*="tnScOpen"]') || {}).getAttribute?.('onclick') || '',
+                        // Обработчики ушли из onclick= в data-атрибуты
+                        // (делегирование): действие ищем по data-act, иначе
+                        // проверка просто не находит то, что есть.
+                        scorecardOpens: (panel.querySelector('[data-act="tnScOpen"]') || {}).getAttribute?.('data-act') || '',
                         hasHorizontalScroll: scrolls.some(el => el.scrollWidth > el.clientWidth + 1),
                         scrollWrapperCount: scrolls.length
                     };

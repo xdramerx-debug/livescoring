@@ -7407,6 +7407,10 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
     }
 
     var bodyEl = document.getElementById('png-modal-body');
+    // Имя игрока уходит в inline-onclick и в имя файла: апостроф в ФИО
+    // ('О'Коннор) рвал строковый литерал в обработчике. Для HTML-атрибута
+    // значение сначала готовим как JS-аргумент (pestovoInlineJsArg), а уже
+    // экранирование разметки делает escapeHtml.
     var fileName = 'Pestovo_' + (playerName || 'Card').replace(/\s+/g, '_') + '.png';
 
     var html = '<h2 style="color:var(--gold);margin-bottom:12px;"><i class="fas fa-image"></i> ' + t('share_card') + '</h2>';
@@ -7424,14 +7428,14 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
         html += '</select></div>';
     }
 
-    html += '<img src="' + pngDataUrl + '" alt="Pestovo Card" style="width:100%;max-width:440px;border-radius:12px;border:2px solid var(--gold);box-shadow:0 8px 32px rgba(0,0,0,0.5);margin-bottom:12px;">';
+    html += '<img src="' + escapeHtml(pngDataUrl) + '" alt="Pestovo Card" style="width:100%;max-width:440px;border-radius:12px;border:2px solid var(--gold);box-shadow:0 8px 32px rgba(0,0,0,0.5);margin-bottom:12px;">';
     html += '<p style="font-size:11px;color:var(--muted);margin-bottom:14px;"><i class="fas fa-mobile-screen-button"></i> ' + (currentLang === 'en' ? 'On iPhone / iPad: Tap button to Share or long-press image to Save to Photos' : 'На iPhone: нажмите кнопку для отправки или зажмите картинку пальцем для сохранения в Фото') + '</p>';
 
     html += '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">';
-    html += '<button type="button" class="btn btn-g" style="flex:1;min-width:180px;" onclick="downloadPNGImage(\'' + pngDataUrl + '\', \'' + fileName + '\')"><i class="fas fa-download"></i> ' + t('download_png') + '</button>';
+    html += '<button type="button" class="btn btn-g" style="flex:1;min-width:180px;" onclick="downloadPNGImage(\'' + pestovoInlineJsArg(pngDataUrl) + '\', \'' + pestovoInlineJsArg(fileName) + '\')"><i class="fas fa-download"></i> ' + t('download_png') + '</button>';
 
     if (navigator.share) {
-        html += '<button type="button" class="btn btn-og" style="flex:1;min-width:180px;" onclick="downloadPNGImage(\'' + pngDataUrl + '\', \'' + fileName + '\')"><i class="fas fa-share-nodes"></i> ' + t('share_native') + '</button>';
+        html += '<button type="button" class="btn btn-og" style="flex:1;min-width:180px;" onclick="downloadPNGImage(\'' + pestovoInlineJsArg(pngDataUrl) + '\', \'' + pestovoInlineJsArg(fileName) + '\')"><i class="fas fa-share-nodes"></i> ' + t('share_native') + '</button>';
     }
     html += '</div>';
 

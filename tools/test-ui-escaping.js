@@ -9,6 +9,8 @@
 //   toast(text)      — js/pwa.js показывал заголовок и текст рассылки как HTML;
 //   uiConfirm(text)  — js/tn-mgr-ui.js передавал имена участников («Удалить
 //                      участников: …»), название турнира и название группы.
+//   inline-onclick   — openPNGExportModal() строит имя файла из ФИО игрока и
+//                      подставляет его в onclick="downloadPNGImage('…', '…')".
 // Имя вида <img src=x onerror=…> исполнялось бы в сессии администратора —
 // ровно того, кто может удалять данные.
 'use strict';
@@ -172,4 +174,79 @@ function makeToastSandbox() {
         'js/pwa.js: заголовок и текст рассылки должны экранироваться перед вставкой в HTML-тост');
 }
 
-console.log('UI escaping tests passed (toast: экранирование по умолчанию + html-флаг, uiConfirm: 4 подстановки, pwa.js: рассылка)');
+// ── 6. openPNGExportModal(): имя игрока внутри inline-onclick ──────────────
+// Третий сток того же класса. Имя файла для скачивания строится из ФИО игрока
+// и уходит в onclick="downloadPNGImage('<data-url>', '<имя файла>')".
+// Апостроф в фамилии (О'Коннор) рвал JS-строковый литерал; вместе с ним рвался
+// и сам атрибут, так что имя <img src=x onerror=…> исполнялось бы в сессии того,
+// кто открыл экспорт карточки.
+{
+    const utilsSrc = fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8');
+
+    // utils.js тянет за собой firebase, поэтому песочнице отдаём только нужные
+    // функции: self-contained тело плюс хелпер экранирования JS-аргумента.
+    const cut = function (name) {
+        const i = utilsSrc.indexOf('function ' + name + '(');
+        assert.ok(i !== -1, 'в js/utils.js не найдена function ' + name);
+        let depth = 0, end = -1;
+        for (let j = utilsSrc.indexOf('{', i); j < utilsSrc.length; j++) {
+            const c = utilsSrc[j];
+            if (c === '{') depth++;
+            else if (c === '}') { depth--; if (depth === 0) { end = j + 1; break; } }
+        }
+        assert.ok(end > i, 'не удалось выделить тело ' + name);
+        return utilsSrc.slice(i, end);
+    };
+    const body = cut('openPNGExportModal');
+
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', { runScripts: 'outside-only' });
+    const sandbox = {
+        document: dom.window.document,
+        navigator: { share: function () {} }, // вторая кнопка — «поделиться»
+        currentLang: 'ru',
+        t: function (k) { return k; },
+        escapeHtml: null,
+        pestovoInlineJsArg: null
+    };
+    sandbox.globalThis = sandbox;
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/safe-html.js'), 'utf8') + '\n' +
+        fs.readFileSync(path.join(ROOT, 'js/dom.js'), 'utf8'), sandbox, { filename: 'dom.js' });
+    vm.runInContext(cut('pestovoInlineJsArg') + '\nvar openPNGExportModal = ' + body,
+        sandbox, { filename: 'openPNGExportModal' });
+
+    const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+    const NAME = "О'Коннор " + XSS; // апостроф рвёт строку, <img> — разметку
+    vm.runInContext('openPNGExportModal(' + JSON.stringify(PNG) + ', ' +
+        JSON.stringify(NAME) + ', "rid", "pid", null)', sandbox);
+
+    const bodyEl = dom.window.document.getElementById('png-modal-body');
+    assert.ok(bodyEl, 'модальное окно экспорта отрисовано');
+
+    // <img> из имени игрока не должен стать узлом — только сама карточка.
+    const imgs = bodyEl.querySelectorAll('img');
+    assert.strictEqual(imgs.length, 1, 'в теле окна ровно одна картинка — карточка раунда');
+    assert.strictEqual(imgs[0].getAttribute('src'), PNG, 'src карточки = data-URL');
+    assert.strictEqual(bodyEl.querySelectorAll('[onerror]').length, 0,
+        'onerror из имени игрока попал в разметку');
+
+    // Обработчик цел: два строковых аргумента, без «дырки» в кавычках.
+    const btns = bodyEl.querySelectorAll('button[onclick^="downloadPNGImage("]');
+    assert.ok(btns.length >= 1, 'кнопка скачивания отрисована');
+    for (const btn of btns) {
+        const attr = btn.getAttribute('onclick');
+        assert.strictEqual((attr.match(/'/g) || []).length, 4,
+            'в обработчике ровно 4 кавычки — два строковых аргумента: ' + attr);
+        assert.ok(attr.indexOf('onerror=') === -1 || attr.indexOf('\\x3c') !== -1,
+            'имя игрока в обработчике должно быть экранировано: ' + attr);
+    }
+
+    // Исходник: обе подстановки обязаны быть экранированы.
+    assert.match(body, /src="'\s*\+\s*escapeHtml\(pngDataUrl\)/,
+        'js/utils.js: src картинки должен экранироваться через escapeHtml');
+    assert.strictEqual((body.match(/pestovoInlineJsArg\(fileName\)/g) || []).length, 2,
+        'js/utils.js: оба обработчика downloadPNGImage экранируют имя файла ' +
+        'через pestovoInlineJsArg');
+}
+
+console.log('UI escaping tests passed (toast: экранирование по умолчанию + html-флаг, uiConfirm: 4 подстановки, pwa.js: рассылка, экспорт PNG: имя в inline-onclick)');

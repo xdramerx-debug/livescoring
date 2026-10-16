@@ -244,20 +244,19 @@ function adjSc(d) {
     if (typeof animateScoreElement === 'function') animateScoreElement('sc-disp');
 }
 
+// Реализация — js/score-display.js (общая с marker.js); здесь только
+// подстановка глобалов страницы игрока.
 function updDisp() {
-    var par = (typeof holePar === 'function' ? holePar(scHole) : 4);
-    var player = scRound && scRound.players ? scRound.players[scPid] : null;
-    var fieldHcp = player && player.fieldHcp !== undefined
-        ? player.fieldHcp : ((scRound && scRound.fieldHcp) || 0);
-    var disp = scGet('sc-disp');
-    if (disp && typeof scoreWithStablefordHTML === 'function' && typeof isPlayerStablefordDisplayEnabled === 'function') {
-        disp.innerHTML = scoreWithStablefordHTML(scScore, scHole, fieldHcp, isPlayerStablefordDisplayEnabled(player));
-    }
-    var r = scGet('sc-result');
-    if (r) {
-        if (typeof holeResName === 'function') r.textContent = holeResName(scScore, par);
-        if (typeof holeResClass === 'function') r.className = 'score-result ' + holeResClass(scScore, par);
-    }
+    if (typeof pestovoUpdScoreDisplay !== 'function') return;
+    pestovoUpdScoreDisplay({
+        hole: scHole,
+        round: scRound,
+        pid: scPid,
+        score: scScore,
+        get: scGet,
+        dispId: 'sc-disp',
+        resultId: 'sc-result'
+    });
 }
 
 function checkVerify() {

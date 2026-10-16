@@ -105,7 +105,14 @@
 | `qrUrl` | qr-start `(data, size)` / utils `(data)` | **разная сигнатура**; безопасно только потому, что `qr-start.html` не грузит `utils.js` |
 
 Закрыто в октябре: `onAuthReady` (было 6 определений на странице, работало
-только благодаря порядку `<script>`), `isScoreKioskUrl`, `applyScoreKiosk`.
+только благодаря порядку `<script>`), `isScoreKioskUrl`, `applyScoreKiosk`,
+`updDisp` (копии совпадали побайтово — 823 байта, 24 отличия только в префиксе
+`mk`/`sc`; реализация в `js/score-display.js`).
+
+Отдельно стоит `updScoreDisplay` из `live.js`: имя похожее, но функция другая
+— другая сигнатура `(who, score)`, guard `dualEditing` и относительный счёт
+вида «-1 · Бёрди». Общая функция названа `pestovoUpdScoreDisplay`, чтобы не
+столкнуться с ней: коллизию поймал `tools/test-scoring-duplicates.js`.
 
 Контроль: `tools/test-scoring-duplicates.js` держит этот список явным —
 новое совпадение имён или совместная загрузка двух файлов из группы на одной

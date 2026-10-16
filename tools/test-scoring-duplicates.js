@@ -89,7 +89,14 @@ const KNOWN_CROSS_PAGE_DUPES = {
     // задачу, а не сделано «по ходу» аудита.
     updDisp: {
         files: ['marker.js', 'scorer.js'],
-        why: 'одинаковый размер (823 байта), расхождение только в префиксах страницы: mkRound/mkGet/mkHole против scRound/scGet/scHole. Объединяется параметризацией префикса — кандидат №1 на вынос.'
+        // Реализация вынесена в js/score-display.js (updScoreDisplay): раньше
+        // копии совпадали побайтово (823 байта) и расходились только префиксом
+        // (mkRound/mkGet/mkHole против scRound/scGet/scHole). Имя updDisp
+        // осталось в обеих страницах как тонкий адаптер глобалов — расходиться
+        // внутри него нечему, а 9 вызовов не пришлось трогать.
+        // Делегирование проверяется ниже: вернуть копию логики не даст тест.
+        delegatesTo: 'pestovoUpdScoreDisplay',
+        why: 'общая реализация в js/score-display.js (pestovoUpdScoreDisplay); в marker.js и scorer.js остались адаптеры, подставляющие mk*/sc*-глобалы своей страницы.'
     },
     renderHole: {
         files: ['marker.js', 'scorer.js'],
@@ -134,6 +141,31 @@ for (const d of dupes) {
         d.name + ': состав файлов изменился — обновите KNOWN_CROSS_PAGE_DUPES (было ' +
         known.files.join(', ') + ', стало ' + d.files.join(', ') + ')');
     assert.ok(known.why && known.why.length > 40, d.name + ': обоснование обязательно');
+
+    // Если для пары указана общая реализация, обе копии обязаны делегировать ей.
+    // Иначе запись в списке превращается в индульгенцию: расхождение копий
+    // снова станет возможным, но тест этого не заметит.
+    if (known.delegatesTo) {
+        for (const f of known.files) {
+            const src = readRaw(path.join(jsDir, f));
+            const i = src.indexOf('function ' + d.name + '(');
+            assert.ok(i !== -1, f + ': не найдена function ' + d.name);
+            let depth = 0, end = -1;
+            for (let j = src.indexOf('{', i); j < src.length; j++) {
+                if (src[j] === '{') depth++;
+                else if (src[j] === '}') { depth--; if (depth === 0) { end = j + 1; break; } }
+            }
+            assert.ok(end > i, f + ': не удалось выделить тело ' + d.name);
+            const body = src.slice(i, end);
+            assert.ok(body.indexOf(known.delegatesTo + '(') !== -1,
+                f + ': ' + d.name + ' должна вызывать общую ' + known.delegatesTo +
+                '() из js/score-display.js, а не держать свою копию логики');
+            // Адаптер — это подстановка аргументов, а не пересчёт: держать в нём
+            // разметку или вычисления нельзя, иначе дубль вернулся бы под другим именем.
+            assert.ok(!/innerHTML|\.textContent\s*=/.test(body),
+                f + ': ' + d.name + ' не должен сам трогать DOM — вся логика в ' + known.delegatesTo + '()');
+        }
+    }
 }
 // Ни одна страница не должна грузить два файла из одной группы дублей.
 for (const d of dupes) {

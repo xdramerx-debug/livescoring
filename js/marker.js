@@ -160,20 +160,19 @@ function adjMk(d) {
     if (typeof animateScoreElement === 'function') animateScoreElement('mk-disp');
 }
 
+// Реализация — js/score-display.js (общая со scorer.js); здесь только
+// подстановка глобалов страницы маркера.
 function updDisp() {
-    var par = (typeof holePar === 'function' ? holePar(mkHole) : 4);
-    var player = mkRound && mkRound.players ? mkRound.players[mkPid] : null;
-    var fieldHcp = player && player.fieldHcp !== undefined
-        ? player.fieldHcp : ((mkRound && mkRound.fieldHcp) || 0);
-    var disp = mkGet('mk-disp');
-    if (disp && typeof scoreWithStablefordHTML === 'function' && typeof isPlayerStablefordDisplayEnabled === 'function') {
-        disp.innerHTML = scoreWithStablefordHTML(mkScore, mkHole, fieldHcp, isPlayerStablefordDisplayEnabled(player));
-    }
-    var r = mkGet('mk-result');
-    if (r) {
-        if (typeof holeResName === 'function') r.textContent = holeResName(mkScore, par);
-        if (typeof holeResClass === 'function') r.className = 'score-result ' + holeResClass(mkScore, par);
-    }
+    if (typeof pestovoUpdScoreDisplay !== 'function') return;
+    pestovoUpdScoreDisplay({
+        hole: mkHole,
+        round: mkRound,
+        pid: mkPid,
+        score: mkScore,
+        get: mkGet,
+        dispId: 'mk-disp',
+        resultId: 'mk-result'
+    });
 }
 
 function checkVerify() {

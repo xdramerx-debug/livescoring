@@ -309,7 +309,7 @@ Vite, от которых зависят `check:browser` и `check:bundle`) не
 
 ### 13. 9 глобальных функций определены больше чем в одном файле — и уже разошлись
 
-**Статус: 🔶 закрыто частично.** Слиты `onAuthReady` (было 6 определений на странице → реестр `pestovoOnAuthReady`), `isScoreKioskUrl` и `applyScoreKiosk` → `js/score-kiosk.js`. Осталось 6 одноимённых пар (`buildHoles`, `callOfficial`, `checkVerify`, `renderHole`, `updDisp`, `qrUrl`) — см. обоснование в `docs/CODE-REVIEW.md`, раздел 3; список зафиксирован `tools/test-scoring-duplicates.js`.
+**Статус: 🔶 закрыто частично.** Слиты `onAuthReady` (было 6 определений на странице → реестр `pestovoOnAuthReady`), `isScoreKioskUrl` и `applyScoreKiosk` → `js/score-kiosk.js`, `updDisp` → `pestovoUpdScoreDisplay()` в `js/score-display.js` (копии совпадали побайтово: 823 байта, 24 отличия только в префиксе `mk`/`sc`). Осталось 5 одноимённых пар (`buildHoles`, `callOfficial`, `checkVerify`, `renderHole`, `qrUrl`) — см. обоснование в `docs/CODE-REVIEW.md`, раздел 3; список зафиксирован `tools/test-scoring-duplicates.js`, который теперь проверяет и то, что адаптеры делегируют общей реализации.
 
 Замер по `^function X(` / `^var X = function` во всех `js/*.js`:
 
@@ -469,7 +469,7 @@ hosting,database,functions` (секреты `FIREBASE_SERVICE_ACCOUNT_*`) убр
 | 3 | Репортинг ошибок | 🟠 наблюдаемость | M | низкий | ✅ |
 | 6 | Per-page бандлы, резка `utils.js` | 🟠 скорость | L | средний | ✅ (QR снят; бандлы — после ESM) |
 | 12 | Осмысленный ESLint в CI | 🟡 качество | M | низкий | ✅ |
-| 13 | Общие `renderHole`/`callOfficial`/… | 🟡 баги | M | средний | 🔶 (6 пар остались) |
+| 13 | Общие `renderHole`/`callOfficial`/… | 🟡 баги | M | средний | 🔶 (5 пар остались) |
 | 2 | Убрать `'unsafe-inline'` из `script-src` | 🔴 XSS-защита | L | средний | ⏸ отложено |
 | 10 | `.off()` + сузить `rounds`-слушатель | 🟡 RTDB-стоимость | M | средний | ✅ (утечка в `solo.js`) |
 | 16 | Обновить `CODE-REVIEW.md` | 🟢 docs | S | нулевой | ✅ |

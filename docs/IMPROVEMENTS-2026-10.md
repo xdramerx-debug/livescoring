@@ -67,7 +67,28 @@ Admin SDK сносит `users`, `rounds`, `tournaments`, `broadcasts` и ост�
 
 ### 2. `'unsafe-inline'` в CSP при 375 inline-обработчиках
 
-**Статус: ⏸ отложено решением.** CSP **добавлен** (без `'unsafe-eval'`, `object-src 'none'`). Вынос `'unsafe-inline'` = переписывание 163 `onclick=` в HTML и 212 в JS на `addEventListener` — отдельная задача, не «на полдня».
+**Статус: 🔶 в работе.** CSP **добавлен** (без `'unsafe-eval'`, `object-src 'none'`). Механизм перехода сделан и первая партия переведена; `'unsafe-inline'` из `firebase.json` пока не убран — до тех пор, пока счётчик не обнулится.
+
+Что сделано: `js/ui-events.js` — делегирование вместо inline-обработчиков. Вместо
+`onclick="fn('id')"` разметка получает `data-act="fn" data-arg="id"`, а один
+слушатель на `document` находит ближайший `[data-act]` и вызывает функцию; есть
+`data-self` (передать сам элемент), `data-val` (значение поля для `change`),
+`data-stop`, `data-prevent` и `data-img-fail`/`data-img-ok` для запасных картинок
+(ошибки загрузки не всплывают — слушаются в фазе перехвата). Модуль подключён
+первым скриптом на всех 16 страницах.
+
+Переведено 54 места: 8 ссылок-превью в `design-system.js`, 45 в `utils.js`
+(хром модальных окон, навигация, запасные картинки) и лента лунок в
+`score-display.js`. Осталось 395 (203 в HTML, 192 в JS) — считает
+`tools/test-inline-handlers.js`: в нём записан лимит на каждый файл, и число
+inline-обработчиков может только убывать. Вернуть `onclick=` в уже переведённый
+файл нельзя — тест сломается. Когда файл обнуляется, строка из лимитов
+снимается, и он начинает проверяться правилом «ни одного».
+
+Дальше по файлам: `app.js`, `pwa.js`, `live.js`, `solo.js`, `round-setup.js`,
+`leaderboard.js`, `tournaments.js`, `players.js`, `handicap.js` — то есть те,
+что грузятся на страницах без админки; затем `admin.html` (130) и
+`setup-round.html` (35), где обработчиков больше всего.
 
 `firebase.json` отдаёт
 `script-src 'self' … 'unsafe-inline'` и `style-src … 'unsafe-inline'`.
@@ -75,10 +96,12 @@ Admin SDK сносит `users`, `rounds`, `tournaments`, `broadcasts` и ост�
 
 | Что | Сколько | Где |
 |---|---|---|
-| `onclick=` в HTML | 163 | `admin.html` 107, `setup-round.html` 31, … |
-| `onclick=` в HTML, собранном в JS | 212 | `js/*.js` |
+| inline-обработчики в HTML | 203 | `admin.html` 130, `setup-round.html` 35, `players.html` 7, … |
+| inline-обработчики в разметке из JS | 192 | `js/utils.js` 29, `js/tournaments.js` 24, `js/admin-agr.js` 16, … |
 | inline `style="…"` в HTML | 410 | все страницы |
 | inline `<script>`-блоков | 0 | ✔ уже чисто |
+
+Замер — `tools/test-inline-handlers.js` (по файлам, без комментариев).
 
 Работа из прошлого аудита (`tnJsStr`, экранирование имён) закрывает инъекцию
 в *содержимое* обработчика; свежий разбор добавил `pestovoInlineJsArg()` для

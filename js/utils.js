@@ -1129,36 +1129,36 @@ function buildMobileDrawer() {
 
     var menuBodyMarkup = '<div class="mobile-drawer-group">' +
         '<div class="mobile-drawer-group-title">⛳ ' + (isEn ? 'Game & Rounds' : 'Игра и Раунды') + '</div>' +
-        '<a href="index.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-home"></i> <span data-i18n="nav_home">' + t('nav_home') + '</span></a>' +
-        '<a href="setup-round.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-gamepad"></i> <span data-i18n="nav_round">' + t('nav_round') + '</span></a>' +
-        '<a href="leaderboard.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">' + t('nav_leaderboard') + '</span></a>' +
+        '<a href="index.html" class="mobile-drawer-link" data-act="closeMobileDrawer"><i class="fas fa-home"></i> <span data-i18n="nav_home">' + t('nav_home') + '</span></a>' +
+        '<a href="setup-round.html" class="mobile-drawer-link" data-act="closeMobileDrawer"><i class="fas fa-gamepad"></i> <span data-i18n="nav_round">' + t('nav_round') + '</span></a>' +
+        '<a href="leaderboard.html" class="mobile-drawer-link" data-act="closeMobileDrawer"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">' + t('nav_leaderboard') + '</span></a>' +
         '</div>' +
 
         '<div class="mobile-drawer-group">' +
         '<div class="mobile-drawer-group-title">👥 ' + (isEn ? 'Community & Stats' : 'Сообщество и Инфо') + '</div>' +
-        '<a href="players.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-users"></i> <span data-i18n="nav_players">' + t('nav_players') + '</span></a>' +
-        '<a href="tournaments.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-list"></i> <span data-i18n="nav_tournaments">' + t('nav_tournaments') + '</span></a>' +
-        '<a href="stats.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_stats">' + t('nav_stats') + '</span></a>' +
-        '<a href="handicap.html" class="mobile-drawer-link" onclick="closeMobileDrawer()"><i class="fas fa-calculator"></i> <span data-i18n="nav_handicaps">' + t('nav_handicaps') + '</span></a>' +
+        '<a href="players.html" class="mobile-drawer-link" data-act="closeMobileDrawer"><i class="fas fa-users"></i> <span data-i18n="nav_players">' + t('nav_players') + '</span></a>' +
+        '<a href="tournaments.html" class="mobile-drawer-link" data-act="closeMobileDrawer"><i class="fas fa-list"></i> <span data-i18n="nav_tournaments">' + t('nav_tournaments') + '</span></a>' +
+        '<a href="stats.html" class="mobile-drawer-link" data-act="closeMobileDrawer"><i class="fas fa-chart-bar"></i> <span data-i18n="nav_stats">' + t('nav_stats') + '</span></a>' +
+        '<a href="handicap.html" class="mobile-drawer-link" data-act="closeMobileDrawer"><i class="fas fa-calculator"></i> <span data-i18n="nav_handicaps">' + t('nav_handicaps') + '</span></a>' +
         '</div>';
 
     var html =
-        '<div class="mobile-drawer-backdrop" onclick="closeMobileDrawer()" aria-hidden="true"></div>' +
+        '<div class="mobile-drawer-backdrop" data-act="closeMobileDrawer" aria-hidden="true"></div>' +
         '<div class="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="' + (isEn ? 'Navigation menu' : 'Меню навигации') + '">' +
             '<div class="mobile-drawer-header">' +
                 '<div style="display:flex;align-items:center;gap:10px;">' +
                     '<img src="img/logo.png" alt="Logo" class="nav-logo" onerror="this.style.display=\'none\'">' +
                     '<span class="nav-brand-text" data-i18n="brand_name">' + t('brand_name') + '</span>' +
                 '</div>' +
-                '<button class="mobile-drawer-close" onclick="closeMobileDrawer()" aria-label="' + (isEn ? 'Close menu' : 'Закрыть меню') + '">&times;</button>' +
+                '<button class="mobile-drawer-close" data-act="closeMobileDrawer" aria-label="' + (isEn ? 'Close menu' : 'Закрыть меню') + '">&times;</button>' +
             '</div>' +
 
             '<div class="mobile-drawer-body">' + menuBodyMarkup + '</div>' +
 
             '<div class="mobile-drawer-footer">' +
             '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
-                '<button class="sun-mode-btn" style="flex:1;justify-content:center;" onclick="toggleSunMode()"><i class="' + sunPrefix + ' fa-sun"></i> ' + sunTxt + '</button>' +
-                    '<button class="lang-btn" style="flex:1;justify-content:center;" onclick="toggleLang()">' + (isEn ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>' +
+                '<button class="sun-mode-btn" style="flex:1;justify-content:center;" data-act="toggleSunMode"><i class="' + sunPrefix + ' fa-sun"></i> ' + sunTxt + '</button>' +
+                    '<button class="lang-btn" style="flex:1;justify-content:center;" data-act="toggleLang">' + (isEn ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>' +
                 '</div>' +
                 '<div id="mobile-drawer-auth">' + authBtnMarkup + '</div>' +
             '</div>' +
@@ -1359,10 +1359,10 @@ function navAuth(u, d) {
     var isSun = document.body && document.body.classList && document.body.classList.contains('sun-mode');
 
     var sunText = isSun ? (currentLang === 'en' ? 'Sun ✅' : 'Солнце ✅') : (currentLang === 'en' ? 'Sun' : 'Солнце');
-    var sunBtn = '<button type="button" class="sun-mode-btn" onclick="event.stopPropagation();toggleSunMode(event)">' +
+    var sunBtn = '<button type="button" class="sun-mode-btn" data-act="toggleSunMode" data-stop="1">' +
         (isSun ? '<i class="fas fa-sun"></i>' : '<i class="far fa-sun"></i>') +
         ' <span class="sun-text">' + sunText + '</span></button>';
-    var langBtn = '<button type="button" class="lang-btn" onclick="event.stopPropagation();toggleLang(event)">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
+    var langBtn = '<button type="button" class="lang-btn" data-act="toggleLang" data-stop="1">' + (currentLang === 'en' ? '🇬🇧 EN' : '🇷🇺 RU') + '</button>';
 
     if (u && d) {
         var avatarMarkup = fmtUserAvatar(d, 30);
@@ -1372,7 +1372,7 @@ function navAuth(u, d) {
         e.innerHTML = '<div class="nav-user">' + sunBtn + langBtn +
             '<button type="button" class="nav-profile-trigger" title="' + escapeHtml(fullName) + '" aria-label="' + escapeHtml(fullName ? profileLabel + ': ' + fullName : profileLabel) + '" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(u.uid) + '\')">' + avatarMarkup +
             '<span class="nav-uname">' + escapeHtml(shortName) + '</span></button>' +
-            '<button type="button" class="btn btn-og btn-sm nav-logout" aria-label="' + (currentLang === 'en' ? 'Sign out' : 'Выйти из профиля') + '" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button>' +
+            '<button type="button" class="btn btn-og btn-sm nav-logout" aria-label="' + (currentLang === 'en' ? 'Sign out' : 'Выйти из профиля') + '" data-act="doLogout"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
     } else {
         e.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' + sunBtn + langBtn + '</div>';
@@ -3797,11 +3797,11 @@ function openPlayerProfileModal(playerId, roundId) {
         modalEl.id = 'pmodal';
         modalEl.className = 'modal hidden';
         modalEl.innerHTML =
-            '<div class="modal-bg" onclick="closePModal()"></div>' +
+            '<div class="modal-bg" data-act="closePModal"></div>' +
             '<div class="modal-body">' +
             '<div class="modal-top-bar">' +
-            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closePModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
-            '<button type="button" class="modal-close-btn" onclick="closePModal()">&times;</button>' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" data-act="closePModal"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" data-act="closePModal">&times;</button>' +
             '</div>' +
             '<div id="pmodal-body"><div class="loading"><div class="spinner"></div></div></div>' +
             '</div>';
@@ -4407,11 +4407,11 @@ function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback, opt
             modalEl.id = 'finish-modal';
             modalEl.className = 'modal hidden';
             modalEl.innerHTML =
-                '<div class="modal-bg" onclick="closeFinishModal()"></div>' +
+                '<div class="modal-bg" data-act="closeFinishModal"></div>' +
                 '<div class="modal-body" style="max-width:560px;">' +
                 '<div class="modal-top-bar">' +
-                '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeFinishModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
-                '<button type="button" class="modal-close-btn" onclick="closeFinishModal()">&times;</button>' +
+                '<button type="button" class="btn btn-og btn-sm modal-back-btn" data-act="closeFinishModal"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+                '<button type="button" class="modal-close-btn" data-act="closeFinishModal">&times;</button>' +
                 '</div>' +
                 '<div id="finish-modal-body"></div>' +
                 '</div>';
@@ -4476,7 +4476,7 @@ function openFinishConfirmModal(roundId, onConfirmCallback, onCloseCallback, opt
         }
 
         html += '<div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">';
-        html += '<button class="btn btn-og" style="flex:1;min-height:44px;" onclick="closeFinishModal()">' + continueBtnStr + '</button>';
+        html += '<button class="btn btn-og" style="flex:1;min-height:44px;" data-act="closeFinishModal">' + continueBtnStr + '</button>';
         if (forceBtnHtml) {
             html += forceBtnHtml;
         } else {
@@ -4908,11 +4908,11 @@ function openRoundPauseModal(roundId, roundData, onDone) {
         modalEl.id = 'round-pause-modal';
         modalEl.className = 'modal hidden';
         modalEl.innerHTML =
-            '<div class="modal-bg" onclick="closeRoundPauseModal()"></div>' +
+            '<div class="modal-bg" data-act="closeRoundPauseModal"></div>' +
             '<div class="modal-body" style="max-width:480px;">' +
             '<div class="modal-top-bar">' +
-            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeRoundPauseModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
-            '<button type="button" class="modal-close-btn" onclick="closeRoundPauseModal()">&times;</button>' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" data-act="closeRoundPauseModal"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" data-act="closeRoundPauseModal">&times;</button>' +
             '</div>' +
             '<div id="round-pause-modal-body"></div>' +
             '</div>';
@@ -4947,7 +4947,7 @@ function openRoundPauseModal(roundId, roundData, onDone) {
     html += '</div>';
 
     html += '<div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">';
-    html += '<button type="button" class="btn btn-og" style="flex:1;" onclick="closeRoundPauseModal()">' +
+    html += '<button type="button" class="btn btn-og" style="flex:1;" data-act="closeRoundPauseModal">' +
         (isEn ? 'Cancel' : 'Отмена') + '</button>';
     html += '<button type="button" class="btn btn-warning" style="flex:1;font-weight:700;" id="rpm-confirm-btn">' +
         '<i class="fas fa-pause"></i> ' + (isEn ? 'Pause Round' : 'Поставить на паузу') + '</button>';
@@ -5003,11 +5003,11 @@ function openForceFinishModal(roundId, roundData, opts) {
         modalEl.id = 'round-force-finish-modal';
         modalEl.className = 'modal hidden';
         modalEl.innerHTML =
-            '<div class="modal-bg" onclick="closeForceFinishModal()"></div>' +
+            '<div class="modal-bg" data-act="closeForceFinishModal"></div>' +
             '<div class="modal-body" style="max-width:540px;">' +
             '<div class="modal-top-bar">' +
-            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeForceFinishModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
-            '<button type="button" class="modal-close-btn" onclick="closeForceFinishModal()">&times;</button>' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" data-act="closeForceFinishModal"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" data-act="closeForceFinishModal">&times;</button>' +
             '</div>' +
             '<div id="round-force-finish-modal-body"></div>' +
             '</div>';
@@ -5081,7 +5081,7 @@ function openForceFinishModal(roundId, roundData, opts) {
     html += '</div>';
 
     html += '<div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">';
-    html += '<button type="button" class="btn btn-og" style="flex:1;" onclick="closeForceFinishModal()">' +
+    html += '<button type="button" class="btn btn-og" style="flex:1;" data-act="closeForceFinishModal">' +
         (isEn ? '← Back to game' : '← Назад к игре') + '</button>';
     html += '<button type="button" class="btn btn-danger" style="flex:1.3;font-weight:700;" id="rfm-confirm-btn">' +
         '<i class="fas fa-flag-checkered"></i> ' + (isEn ? 'Force Finish & Save' : 'Завершить принудительно') + '</button>';
@@ -5214,9 +5214,9 @@ function pestovoShowSkipChoiceModal(hole, allMissing, cb) {
         modal.id = 'pestovo-skip-modal';
         modal.className = 'modal hidden';
         modal.innerHTML =
-            '<div class="modal-bg" onclick="pestovoCloseSkipModal()"></div>' +
+            '<div class="modal-bg" data-act="pestovoCloseSkipModal"></div>' +
             '<div class="modal-body" style="max-width:440px;">' +
-            '<button type="button" class="modal-close-btn" onclick="pestovoCloseSkipModal()">&times;</button>' +
+            '<button type="button" class="modal-close-btn" data-act="pestovoCloseSkipModal">&times;</button>' +
             '<div id="pestovo-skip-modal-body"></div>' +
             '</div>';
         document.body.appendChild(modal);
@@ -5330,9 +5330,9 @@ function pestovoVerifyRoundOwner(rd, rid, pid, cb) {
         modal.id = 'pestovo-skip-modal';
         modal.className = 'modal hidden';
         modal.innerHTML =
-            '<div class="modal-bg" onclick="pestovoCloseVerifyModal()"></div>' +
+            '<div class="modal-bg" data-act="pestovoCloseVerifyModal"></div>' +
             '<div class="modal-body" style="max-width:440px;">' +
-            '<button type="button" class="modal-close-btn" onclick="pestovoCloseVerifyModal()">&times;</button>' +
+            '<button type="button" class="modal-close-btn" data-act="pestovoCloseVerifyModal">&times;</button>' +
             '<div id="pestovo-skip-modal-body"></div></div>';
         document.body.appendChild(modal);
     }
@@ -5404,9 +5404,9 @@ function pestovoShowFinishMissingModal(missing, opts) {
         modal.id = 'pestovo-skip-modal';
         modal.className = 'modal hidden';
         modal.innerHTML =
-            '<div class="modal-bg" onclick="pestovoCloseSkipModal()"></div>' +
+            '<div class="modal-bg" data-act="pestovoCloseSkipModal"></div>' +
             '<div class="modal-body" style="max-width:480px;">' +
-            '<button type="button" class="modal-close-btn" onclick="pestovoCloseSkipModal()">&times;</button>' +
+            '<button type="button" class="modal-close-btn" data-act="pestovoCloseSkipModal">&times;</button>' +
             '<div id="pestovo-skip-modal-body"></div>' +
             '</div>';
         document.body.appendChild(modal);
@@ -5608,11 +5608,11 @@ function openPrintScorecardModal(roundId, playerId) {
             modalEl.id = 'print-modal';
             modalEl.className = 'modal hidden';
             modalEl.innerHTML =
-                '<div class="modal-bg" onclick="closePrintModal()"></div>' +
+                '<div class="modal-bg" data-act="closePrintModal"></div>' +
                 '<div class="modal-body" style="max-width:880px;">' +
                 '<div class="modal-top-bar">' +
-                '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closePrintModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
-                '<button type="button" class="modal-close-btn" onclick="closePrintModal()">&times;</button>' +
+                '<button type="button" class="btn btn-og btn-sm modal-back-btn" data-act="closePrintModal"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+                '<button type="button" class="modal-close-btn" data-act="closePrintModal">&times;</button>' +
                 '</div>' +
                 '<div id="print-modal-body"></div>' +
                 '</div>';
@@ -5626,8 +5626,8 @@ function openPrintScorecardModal(roundId, playerId) {
     var html = '<div class="print-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">';
     html += '<h2 style="color:var(--gold);margin:0;"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print Official Scorecard' : 'Печать официальной счётной карточки') + '</h2>';
     html += '<div style="display:flex;gap:8px;">';
-    html += '<button type="button" class="btn btn-g" onclick="window.print()"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print' : 'Распечатать') + '</button>';
-    html += '<button type="button" class="btn btn-og" onclick="closePrintModal()">' + (currentLang === 'en' ? 'Close' : 'Закрыть') + '</button>';
+    html += '<button type="button" class="btn btn-g" data-act="pestovoPrint"><i class="fas fa-print"></i> ' + (currentLang === 'en' ? 'Print' : 'Распечатать') + '</button>';
+    html += '<button type="button" class="btn btn-og" data-act="closePrintModal">' + (currentLang === 'en' ? 'Close' : 'Закрыть') + '</button>';
     html += '</div></div>';
 
     if (playersList.length > 1) {
@@ -6875,7 +6875,7 @@ function pestovoQrImgHtml(data, size, cls) {
     var local = window.PestovoQr && typeof window.PestovoQr.dataUrl === 'function' ? window.PestovoQr.dataUrl(data, size) : '';
     if (local) return '<img src="' + local + '" data-qr-src="' + encodeURIComponent(data) + '" data-qr-try="-1"' +
         (cls ? ' class="' + cls + '"' : '') + ' alt="QR" loading="eager" decoding="async"' +
-        ' onload="pestovoQrImgOk(this)" onerror="pestovoQrImgFail(this)">';
+        ' data-img-ok="pestovoQrImgOk" data-img-fail="pestovoQrImgFail">';
     var urls = [
         'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size + '&margin=2&data=' + encodeURIComponent(data),
         'https://quickchart.io/qr?size=' + size + '&margin=1&text=' + encodeURIComponent(data),
@@ -6883,7 +6883,7 @@ function pestovoQrImgHtml(data, size, cls) {
     ];
     return '<img src="' + urls[0] + '" data-qr-src="' + encodeURIComponent(data) + '" data-qr-try="0"' +
         (cls ? ' class="' + cls + '"' : '') + ' alt="QR" loading="eager" decoding="async"' +
-        ' onload="pestovoQrImgOk(this)" onerror="pestovoQrImgFail(this)">';
+        ' data-img-ok="pestovoQrImgOk" data-img-fail="pestovoQrImgFail">';
 }
 function pestovoQrImgOk(img) {
     try { img.setAttribute('data-qr-done', '1'); } catch (e) { console.warn("[silent]", e); }
@@ -7397,11 +7397,11 @@ function openPNGExportModal(pngDataUrl, playerName, roundId, activePid, playersL
         modalEl.id = 'png-modal';
         modalEl.className = 'modal hidden';
         modalEl.innerHTML =
-            '<div class="modal-bg" onclick="closePNGModal()"></div>' +
+            '<div class="modal-bg" data-act="closePNGModal"></div>' +
             '<div class="modal-body" style="max-width:560px;text-align:center;">' +
             '<div class="modal-top-bar">' +
-            '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closePNGModal()"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
-            '<button type="button" class="modal-close-btn" onclick="closePNGModal()">&times;</button>' +
+            '<button type="button" class="btn btn-og btn-sm modal-back-btn" data-act="closePNGModal"><i class="fas fa-arrow-left"></i> <span>' + t('back_btn') + '</span></button>' +
+            '<button type="button" class="modal-close-btn" data-act="closePNGModal">&times;</button>' +
             '</div>' +
             '<div id="png-modal-body"></div>' +
             '</div>';

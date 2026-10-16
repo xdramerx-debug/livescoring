@@ -109,8 +109,10 @@ function pestovoBuildHoles(ctx) {
         var ms = parseInt(ctx.markerScore ? ctx.markerScore(h) : 0, 10) || 0;
         var state = ctx.stateClass(h, s, ms) || '';
         var active = h === ctx.currentHole;
+        // Не onclick=, а делегирование: данные в data-атрибутах, один слушатель
+        // на document в js/ui-events.js. Так CSP обходится без 'unsafe-inline'.
         html += '<button type="button" class="hole-btn' + (active ? ' active' : '') + state +
-            '" onclick="' + ctx.go + '(' + h + ')" aria-label="' +
+            '" data-act="' + ctx.go + '" data-arg="' + h + '" aria-label="' +
             (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' +
             (active ? 'true' : 'false') + '">' +
             entryHoleContentHTML(s, ms, h, ctx.fieldHcp) + '</button>';

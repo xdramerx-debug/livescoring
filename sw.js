@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.115.0-4093373b';
+const CACHE_NAME = 'pestovo-v1.115.0-479afbff';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -68,7 +68,7 @@ const STATIC_ASSETS = [
     'js/app.js?v=9abc11d1',
     'js/auth.js?v=3a96f309',
     'js/design-preview.js?v=eb236661',
-    'js/design-system.js?v=5a11adfa',
+    'js/design-system.js?v=394cc00f',
     'js/entry-scorecard.js?v=9b8c4167',
     'js/firebase-config.js?v=501cf206',
     'js/handicap.js?v=ad1e9c00',
@@ -85,7 +85,7 @@ const STATIC_ASSETS = [
     'js/qr-url.js?v=fb4a1649',
     'js/round-setup.js?v=e5db3e02',
     'js/rusgolf-client.js?v=f37608e7',
-    'js/score-display.js?v=c7a6c0c2',
+    'js/score-display.js?v=9082faa7',
     'js/score-kiosk.js?v=fda399fb',
     'js/score-write.js?v=7117f8ef',
     'js/scorer.js?v=7162f9e2',
@@ -97,7 +97,8 @@ const STATIC_ASSETS = [
     'js/tournament-core.js?v=e9119580',
     'js/tournament-public.js?v=c4569e74',
     'js/tournaments.js?v=e678fd93',
-    'js/utils.js?v=155b4ede',
+    'js/ui-events.js?v=859df86e',
+    'js/utils.js?v=dd82d08a',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
     'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 

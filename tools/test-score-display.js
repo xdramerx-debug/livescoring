@@ -74,8 +74,10 @@ const eq = function (actual, expected, label) {
     eq([...btns].map(b => b.getAttribute('class')),
         ['hole-btn verified', 'hole-btn active pending cur-blink', 'hole-btn'],
         'классы состояний: подтверждена / текущая без счёта маркера / пустая');
-    eq([...btns].map(b => b.getAttribute('onclick')), ['goMk(1)', 'goMk(2)', 'goMk(3)'],
+    eq([...btns].map(b => b.getAttribute('data-act')), ['goMk', 'goMk', 'goMk'],
         'обработчик перехода подставлен из ctx.go');
+    eq([...btns].map(b => b.getAttribute('data-arg')), ['1', '2', '3'],
+        'номер лунки уходит в data-arg (делегирование, а не onclick)');
     eq([...btns].map(b => b.getAttribute('aria-pressed')), ['false', 'true', 'false'],
         'aria-pressed только на текущей лунке');
     eq([...btns].map(b => b.getAttribute('aria-label')), ['Лунка 1', 'Лунка 2', 'Лунка 3'], 'aria-label');
@@ -120,8 +122,8 @@ const eq = function (actual, expected, label) {
         el: el, round: {}, currentHole: 10, fieldHcp: 0, go: 'goMk',
         playerScore: function () { return 0; }, stateClass: function () { return ''; }
     });
-    eq([...el.querySelectorAll('button')].map(b => b.getAttribute('onclick')),
-        ['goMk(10)', 'goMk(11)', 'goMk(12)'], 'порядок лунок берётся из getRoundOrder');
+    eq([...el.querySelectorAll('button')].map(b => b.getAttribute('data-arg')),
+        ['10', '11', '12'], 'порядок лунок берётся из getRoundOrder');
 
     const plain = makeSandbox({});
     const el2 = plain.dom.window.document.createElement('div');

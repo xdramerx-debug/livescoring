@@ -109,6 +109,8 @@ const request = { rawRequest: { ip: '192.0.2.1' } };
         }
     };
     clientSandbox.window = clientSandbox;
+    // Cloud Functions подгружаются по требованию — в стенде они «уже загружены».
+    clientSandbox.pestovoFunctions = () => Promise.resolve(clientSandbox.firebase.functions());
 // js/utils.js в этой песочнице не загружается, а скрипт страницы при
 // вычислении регистрирует хук готовности авторизации через
 // pestovoOnAuthReady() (аудит 2026-10, п.13). Минимальный реестр повторяет
@@ -174,6 +176,8 @@ sandbox.__authHooks = [];
 sandbox.pestovoOnAuthReady = function (fn) { if (typeof fn === 'function') sandbox.__authHooks.push(fn); };
 sandbox.onAuthReady = function (u, d) { sandbox.__authHooks.forEach(function (f) { f(u, d); }); };
         sandbox.window = sandbox;
+        // Cloud Functions подгружаются по требованию — в стенде они «уже загружены».
+        sandbox.pestovoFunctions = () => Promise.resolve(sandbox.firebase.functions());
         return { sandbox, flags, getCustomTokenCalls: () => customTokenCalls };
     }
 

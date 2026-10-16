@@ -13,9 +13,13 @@
         root.crypto.getRandomValues(arr);
         return Array.from(arr).map(function(n) { return n.toString(16).padStart(2, '0'); }).join('');
     }
+    // Бандл Cloud Functions грузится по требованию (js/firebase-config.js):
+    // если он недоступен, счёт уходит прямым путём в базу — см. send().
     function client() {
-        if (!root.firebase || !root.firebase.functions) throw new Error('Score server is unavailable');
-        return root.firebase.functions();
+        if (typeof root.pestovoFunctions !== 'function') {
+            return Promise.reject(new Error('Score server is unavailable'));
+        }
+        return root.pestovoFunctions();
     }
     function canDirectSend() {
         return !!(root.db || (root.firebase && typeof root.firebase.database === 'function'));
@@ -108,13 +112,11 @@
     }
     function send(action) {
         function tryCallable() {
-            try {
-                return client().httpsCallable(action.studio ? 'studioScoreWrite' : 'scoreWrite')(action).then(function(result) {
-                    return result.data;
-                });
-            } catch (err) {
-                return Promise.reject(err);
-            }
+            return client().then(function(functions) {
+                return functions.httpsCallable(action.studio ? 'studioScoreWrite' : 'scoreWrite')(action);
+            }).then(function(result) {
+                return result.data;
+            });
         }
         return tryCallable().catch(function(err) {
             var code = String(err && err.code || '').replace(/^functions\//, '').toLowerCase().replace(/_/g, '-');

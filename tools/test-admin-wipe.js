@@ -168,6 +168,10 @@ function runWipe(opts) {
         clearInterval: function() {}
     };
     if (opts.firebase) sandbox.firebase = opts.firebase;
+    // Клиент серверных функций подгружается лениво — в стенде он уже «загружен».
+    if (opts.firebase && opts.firebase.functions) {
+        sandbox.pestovoFunctions = function() { return Promise.resolve(opts.firebase.functions()); };
+    }
     sandbox.window = sandbox;
     vm.createContext(sandbox);
     vm.runInContext(ADMIN_GROUPS, sandbox, { filename: 'js/admin-groups.js' });

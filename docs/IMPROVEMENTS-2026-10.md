@@ -233,21 +233,54 @@ firebase.json` → 0). При этом каждый ассет ссылаетс�
 
 ### 8. Firebase compat SDK 9.23.0 (июнь 2023)
 
-**Статус: ⏸ отложено решением.** compat 9.23 → modular v13 = переписывание всех обращений к SDK. Риск высокий, измеримого выигрыша для пользователя нет.
+**Статус: 🔶 закрыто частично.** Версия compat-бандлов поднята 9.23.0 → **13.0.0**
+(последняя мажорная; compat-слой по-прежнему поставляется), а
+`firebase-functions-compat.js` перестал грузиться тегом на 12 страницах —
+теперь он подгружается по требованию. Сама миграция compat → modular отложена
+решением: объём и риск ниже по тексту, план расписан.
 
-14 страниц грузят четыре отдельных CDN-скрипта
-(`firebase-app/database/auth/functions-compat.js`), причём
-`firebase-functions-compat.js` — на `index.html`, `leaderboard.html`,
-`stats.html`, `players.html`, `handicap.html` и других, где callable-функции не
-вызываются. Актуальная мажорная версия `firebase` — 13.0.0
-(`npm view firebase version`), compat-слой deprecated.
+**Что сделано.** Все 13 страниц грузят `firebase-app/database/auth-compat.js`
+одной версии; номер живёт константой `PESTOVO_FIREBASE_SDK_VERSION` в
+`js/firebase-config.js` — две разные версии в одном приложении дали бы два
+экземпляра SDK с разными очередями записи. `tools/test-firebase-sdk.js`
+сверяет с этой константой каждую ссылку на CDN в HTML и `js/*.js`, проверяет
+порядок тегов (app → database/auth), отсутствие статического
+`functions-compat` и запрещает прямые `firebase.functions()` вне конфигурации.
 
-Модульный SDK + `import()` по требованию убрал бы и лишний
-`functions-compat`, и глобальную связку `firebase.initializeApp()` →
-`var db = firebase.database()` (`js/firebase-config.js:11-24`), из-за которой
-порядок тегов критичен. Это большая работа — делать после п.5/п.6, но версию
-9.23.0 стоит поднять хотя бы в рамках compat (9.x → 10.x/11.x compat), пока
-миграция не началась.
+Ленивая загрузка: `pestovoFunctions()` в `js/firebase-config.js` подгружает
+бандл при первом вызове и кеширует промис. Вызывающих три — запись счёта
+(`js/score-write.js`), вход мастера турнира (`js/admin.js`) и полная очистка
+данных (`js/admin-groups.js`). Если CDN недоступен, запись счёта уходит
+прямым путём в RTDB — тем же фолбэком, что и раньше, так что поведение не
+ухудшилось.
+
+**Почему миграция на modular отложена, а не сделана.** Объём измерен:
+307 обращений `db.ref(` в 30 файлах (97 в `utils.js`, 34 в `admin-display.js`,
+17 в `admin-groups.js`, 15 в `admin-players.js`, 13 в `live.js`, 12 в `pwa.js`),
+операции — `once` 104, `update` 56, `set` 40, `on` 26, `push` 12,
+`orderByChild` 12, `remove` 10, `transaction` 8, `off` 6; плюс 6 точек
+`firebase.auth()` и 3 точки `firebase.functions()`. Механическая замена
+(`db.ref(p).once('value')` → `get(ref(db, p))`) опасна: modular `get()` всегда
+идёт на сервер, а compat `.once()` читает локальный кеш — на поле при плохой
+связи это разница между «счёт сохранился» и «счёт потерян». Верный эквивалент —
+`onValue(r, cb, { onlyOnce: true })`. Проверить такую замену в CI нечем:
+браузерные проверки (`npm run check:*`) требуют Chrome, а в этой среде его нет.
+
+**План миграции** (когда будет решено её делать; шаг = зелёные тесты + прогон
+вживую на одном раунде):
+
+1. Поднять Node/инструменты и перевести `functions/` на актуальные
+   `firebase-admin`/`firebase-functions` — отдельная работа, серверная.
+2. Завести тонкий слой доступа `js/firebase-rt.js`: `pestovoOnce(path)`,
+   `pestovoSet(path, v)`, `pestovoOn(path, cb)` и т. д. — все они внутри уже
+   зовут modular-API, а вызывающий код пока не меняется.
+3. Перевести на слой сначалаAdmin-ветку (`admin-*.js`, 120 вызовов) — там
+   ошибка не роняет игру.
+4. Затем игровую ветку (`score-write.js`, `live.js`, `marker.js`, `scorer.js`,
+   `solo.js`, `pwa.js`) — с ручным прогоном: запись счёта онлайн, офлайн-очередь,
+   возврат в сеть.
+5. Снять compat-теги, оставить только modular-бандл; удалить слой-совместимость,
+   если он больше не нужен.
 
 ### 9. Font Awesome целиком с cdnjs
 
@@ -505,7 +538,7 @@ hosting,database,functions` (секреты `FIREBASE_SERVICE_ACCOUNT_*`) убр
 | 2 | Убрать `'unsafe-inline'` из `script-src` | 🔴 XSS-защита | L | средний | ✅ (396 обработчиков + 4 `<script>`) |
 | 10 | `.off()` + сузить `rounds`-слушатель | 🟡 RTDB-стоимость | M | средний | ✅ (утечка в `solo.js`) |
 | 16 | Обновить `CODE-REVIEW.md` | 🟢 docs | S | нулевой | ✅ |
-| 8 | Firebase SDK 9.23 → modular | 🟠 скорость/поддержка | XL | высокий | ⏸ отложено |
+| 8 | Firebase SDK 9.23 → modular | 🟠 скорость/поддержка | XL | высокий | 🔶 (compat → 13.0.0, functions лениво) |
 | 9 | Font Awesome self-host subset | 🟢 | M | низкий | ✅ (+5 битых иконок) |
 | 18-20 | manifest / sw.js / автодеплой | 🟢 | S-M | низкий | ✅ |
 

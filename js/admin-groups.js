@@ -604,11 +604,13 @@ function wipeRoundsResetPlayersStats() {
 function wipeServerCall(scope) {
     return new Promise(function(resolve, reject) {
         try {
-            if (typeof firebase === 'undefined' || !firebase.functions) {
+            if (typeof pestovoFunctions !== 'function') {
                 reject(new Error('Cloud Functions недоступны'));
                 return;
             }
-            firebase.functions().httpsCallable('wipeAllData')({ scope: scope }).then(function(res) {
+            pestovoFunctions().then(function(functions) {
+                return functions.httpsCallable('wipeAllData')({ scope: scope });
+            }).then(function(res) {
                 resolve((res && res.data) || {});
             }).catch(reject);
         } catch (e) { reject(e); }

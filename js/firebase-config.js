@@ -1,3 +1,9 @@
+// Версия Firebase Web SDK. Одна на все страницы: тег со старой версией рядом
+// с новой дал бы два экземпляра SDK в одном приложении. Меняется здесь и
+// больше нигде — tools/test-firebase-sdk.js сравнивает с этой константой все
+// ссылки на CDN в HTML и в js/*.js.
+var PESTOVO_FIREBASE_SDK_VERSION = '13.0.0';
+
 const firebaseConfig = {
     apiKey: "AIzaSyDPlUXzNvvhb-Lxd_1lw0sX1hNXnzvlGPM",
     authDomain: "livescore-b77e4.firebaseapp.com",
@@ -20,6 +26,43 @@ firebase.initializeApp(firebaseConfig);
 // сохраняет связь при последующих переприсваиваниях (currentUser).
 var db = firebase.database();
 var auth = firebase.auth();
+
+// ── Cloud Functions — по требованию ──────────────────────────────────────
+// Раньше firebase-functions-compat.js грузился тегом <script> на 12 страницах,
+// хотя callable-вызов нужен в трёх сценариях: запись счёта (score-write.js,
+// с фолбэком прямо в RTDB), вход мастера турнира (admin.js) и полная очистка
+// данных (admin-groups.js). Остальные страницы платили за бандл, который не
+// вызывали. Теперь он подгружается при первом вызове; если CDN недоступен,
+// запись счёта уходит прямым путём в базу — тот же фолбэк, что и раньше.
+var pestovoFnPromise = null;
+function pestovoFunctions() {
+    if (typeof firebase !== 'undefined' && firebase.functions) {
+        return Promise.resolve(firebase.functions());
+    }
+    if (!pestovoFnPromise) {
+        pestovoFnPromise = new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = 'https://www.gstatic.com/firebasejs/' + PESTOVO_FIREBASE_SDK_VERSION +
+                '/firebase-functions-compat.js';
+            s.async = true;
+            s.onload = function () {
+                if (typeof firebase !== 'undefined' && firebase.functions) {
+                    resolve(firebase.functions());
+                } else {
+                    pestovoFnPromise = null;
+                    reject(new Error('functions SDK загрузился, но firebase.functions недоступен'));
+                }
+            };
+            s.onerror = function () {
+                // Позволяем повторить попытку следующим вызовом.
+                pestovoFnPromise = null;
+                reject(new Error('functions SDK не загрузился'));
+            };
+            document.head.appendChild(s);
+        });
+    }
+    return pestovoFnPromise;
+}
 
 try { firebase.database().goOnline(); } catch (e) { console.warn("[silent]", e); }
 

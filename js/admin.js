@@ -168,12 +168,15 @@ function adminLogin(evt) {
     setAdminLoginLoading(true);
     // Не выдаём серверные права по локальной проверке/флагу. Callable
     // сверяет секрет на сервере и выдаёт Firebase сессию с ограниченным claim.
-    if (typeof firebase === 'undefined' || !firebase.functions || typeof auth === 'undefined') {
+    if (typeof pestovoFunctions !== 'function' || typeof auth === 'undefined') {
         setAdminLoginLoading(false);
         showAdminLoginError(currentLang === 'en' ? 'Server authentication is unavailable.' : 'Серверная авторизация недоступна.');
         return;
     }
-    firebase.functions().httpsCallable('tournamentMasterSignIn')({ password: pass }).then(function(result) {
+    // Бандл Cloud Functions подгружается по требованию.
+    pestovoFunctions().then(function(functions) {
+        return functions.httpsCallable('tournamentMasterSignIn')({ password: pass });
+    }).then(function(result) {
         if (!result.data || !result.data.token) throw new Error('Missing authentication token');
         // Мастер-сессия заканчивается с закрытием вкладки/браузера; даже если
         // пользователь поставил галочку «запомнить», права не хранятся локально.

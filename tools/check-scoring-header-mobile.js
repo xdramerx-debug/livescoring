@@ -30,7 +30,10 @@ const root = path.join(__dirname, '..');
             // js/ui-events.js обязателен: inline-обработчиков в разметке больше нет,
             // клики по [data-act] ловит его слушатель на document. Без него кнопка
             // предпросмотра ничего не меняет, а фичевый скрипт падает на pestovoOnAction.
-            for (const script of ['ui-events', 'course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', scorer ? 'scorer' : 'live']) {
+            // score-kiosk.js — applyScoreKiosk()/isScoreKioskUrl() уехали из
+            // live.js и scorer.js в отдельный файл (дедупликация); score-display.js
+            // — общая шапка лунки и лента лунок, которые страницы больше не держат.
+            for (const script of ['ui-events', 'course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'score-display', 'score-kiosk', scorer ? 'scorer' : 'live']) {
                 await page.addScriptTag({ path: path.join(root, 'js', script + '.js') });
             }
             await page.evaluate(() => {

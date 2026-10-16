@@ -1817,13 +1817,13 @@ function saveHoleScores() {
             // Несовпадение — самый важный сигнал: показываем его раньше
             // остальных тостов, даже если маркер уже завершил раунд.
             toast(currentLang === 'en'
-                ? ('⚠️ <b>Mismatch on hole ' + h + '!</b><br>You: <b>' + myScore + '</b>, marker' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + ': <b>' + markerS + '</b>')
-                : ('⚠️ <b>Несовпадение на лунке ' + h + '!</b><br>Вы: <b>' + myScore + '</b>, маркер' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + ': <b>' + markerS + '</b>'), 'error');
+                ? ('⚠️ <b>Mismatch on hole ' + escapeHtml(h) + '!</b><br>You: <b>' + escapeHtml(myScore) + '</b>, marker' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + ': <b>' + markerS + '</b>')
+                : ('⚠️ <b>Несовпадение на лунке ' + escapeHtml(h) + '!</b><br>Вы: <b>' + escapeHtml(myScore) + '</b>, маркер' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + ': <b>' + escapeHtml(markerS) + '</b>'), 'error', { html: true });
             vib([200, 100, 200]);
         } else if (markerIsFinished) {
             toast(currentLang === 'en'
-                ? ('✅ <b>Hole ' + h + ':</b> your score <b>' + myScore + '</b> saved.')
-                : ('✅ <b>Лунка ' + h + ':</b> ваш счёт <b>' + myScore + '</b> зафиксирован.'), 'success');
+                ? ('✅ <b>Hole ' + escapeHtml(h) + ':</b> your score <b>' + escapeHtml(myScore) + '</b> saved.')
+                : ('✅ <b>Лунка ' + escapeHtml(h) + ':</b> ваш счёт <b>' + escapeHtml(myScore) + '</b> зафиксирован.'), 'success', { html: true });
             var parM = holePar(h);
             var dM = myScore - parM;
             if (myScore === 1 || dM <= -1) {
@@ -1836,8 +1836,8 @@ function saveHoleScores() {
             }
         } else if (bothSubmittedAndMatch) {
             toast(currentLang === 'en'
-                ? ('✅ <b>Hole ' + h + ' confirmed:</b> ' + myScore + ' strokes')
-                : ('✅ <b>Лунка ' + h + ' подтверждена:</b> ' + myScore + ' уд.'), 'success');
+                ? ('✅ <b>Hole ' + escapeHtml(h) + ' confirmed:</b> ' + escapeHtml(myScore) + ' strokes')
+                : ('✅ <b>Лунка ' + escapeHtml(h) + ' подтверждена:</b> ' + escapeHtml(myScore) + ' уд.'), 'success', { html: true });
             var par = holePar(h);
             var d = myScore - par;
             if (myScore === 1 || d <= -1) {
@@ -1850,8 +1850,8 @@ function saveHoleScores() {
             }
         } else {
             toast(currentLang === 'en'
-                ? ('⏳ <b>Hole ' + h + ':</b> your score <b>' + myScore + '</b> is saved. Waiting for marker' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + '.')
-                : ('⏳ <b>Лунка ' + h + ':</b> ваш счёт <b>' + myScore + '</b> сохранён. Ждём маркера' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + '.'), 'info');
+                ? ('⏳ <b>Hole ' + escapeHtml(h) + ':</b> your score <b>' + escapeHtml(myScore) + '</b> is saved. Waiting for marker' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + '.')
+                : ('⏳ <b>Лунка ' + escapeHtml(h) + ':</b> ваш счёт <b>' + escapeHtml(myScore) + '</b> сохранён. Ждём маркера' + (saveMarkerName ? ' (' + escapeHtml(saveMarkerName) + ')' : '') + '.'), 'info', { html: true });
             vib();
             if (idx >= 0 && idx < order.length - 1) {
                 playHole = order[idx + 1];
@@ -2059,8 +2059,8 @@ function buildFinishBlockHtml(v) {
             cls = 'fbn-warn';
             text = (parseInt(d.ps) >= 1)
                 ? (isEn
-                    ? ('Hole ' + h + ': your <b>' + d.ps + '</b> is not confirmed by ' + markerName)
-                    : ('Лунка ' + h + ': ваш счёт <b>' + d.ps + '</b> не подтверждён — ждём ' + markerName))
+                    ? ('Hole ' + escapeHtml(h) + ': your <b>' + escapeHtml(d.ps) + '</b> is not confirmed by ' + markerName)
+                    : ('Лунка ' + escapeHtml(h) + ': ваш счёт <b>' + escapeHtml(d.ps) + '</b> не подтверждён — ждём ' + markerName))
                 : (isEn ? ('Hole ' + h + ': no score entered') : ('Лунка ' + h + ': счёт не введён'));
         } else {
             return;

@@ -704,14 +704,19 @@ function uiConfirm(opts) {
         var root = document.createElement('div');
         root.className = 'modal uic-root';
         root.setAttribute('role', 'alertdialog');
+        // Диалог подтверждения — общий сток: вызывающие передают в text имена
+        // игроков, названия турниров и групп из Firebase (например, «Удалить
+        // участников: <b>…»). Экранируем все подставляемые строки: разметка в
+        // подтверждении не предусмотрена, а имя вида <img src=x onerror=…>
+        // иначе исполнится в сессии того, кто подтверждает удаление.
         root.innerHTML =
             '<div class="modal-bg"></div>' +
             '<div class="modal-body uic-body">' +
-            (o.title ? '<h3 class="uic-title">' + o.title + '</h3>' : '') +
-            '<p class="uic-text">' + (o.text || '') + '</p>' +
+            (o.title ? '<h3 class="uic-title">' + escapeHtml(o.title) + '</h3>' : '') +
+            '<p class="uic-text">' + escapeHtml(o.text || '') + '</p>' +
             '<div class="modal-actions uic-actions">' +
-            '<button type="button" class="btn btn-ol" data-uic="no">' + (o.cancelLabel || 'Отмена') + '</button>' +
-            '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-g') + '" data-uic="yes">' + (o.confirmLabel || 'OK') + '</button>' +
+            '<button type="button" class="btn btn-ol" data-uic="no">' + escapeHtml(o.cancelLabel || 'Отмена') + '</button>' +
+            '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-g') + '" data-uic="yes">' + escapeHtml(o.confirmLabel || 'OK') + '</button>' +
             '</div></div>';
         document.body.appendChild(root);
         function close(v) {

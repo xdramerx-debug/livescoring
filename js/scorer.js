@@ -346,13 +346,13 @@ function saveSc() {
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ms >= 1 && ms === scScore) {
 
-            if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + savedHole + ' confirmed:</b> ' + scScore) : ('✅ <b>Лунка ' + savedHole + ' подтверждена:</b> ' + scScore + ' уд.'));
+            if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + escapeHtml(savedHole) + ' confirmed:</b> ' + escapeHtml(scScore)) : ('✅ <b>Лунка ' + escapeHtml(savedHole) + ' подтверждена:</b> ' + escapeHtml(scScore) + ' уд.'), 'success', { html: true });
             if (typeof vib === 'function') vib([50, 50]);
         } else if (ms >= 1 && ms !== scScore) {
 
-            if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + savedHole + '!</b><br>You: <b>' + scScore + '</b>, marker: <b>' + ms + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + savedHole + '!</b><br>Вы: <b>' + scScore + '</b>, маркер: <b>' + ms + '</b>'), 'error');
+            if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + escapeHtml(savedHole) + '!</b><br>You: <b>' + escapeHtml(scScore) + '</b>, marker: <b>' + escapeHtml(ms) + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + escapeHtml(savedHole) + '!</b><br>Вы: <b>' + escapeHtml(scScore) + '</b>, маркер: <b>' + escapeHtml(ms) + '</b>'), 'error', { html: true });
         } else {
-            if (typeof toast === 'function') toast(langIsEn ? ('⏳ <b>Hole ' + savedHole + ':</b> your score <b>' + scScore + '</b> is saved. Waiting for marker.') : ('⏳ <b>Лунка ' + savedHole + ':</b> ваш счёт <b>' + scScore + '</b> сохранён. Ждём маркера.'), 'info');
+            if (typeof toast === 'function') toast(langIsEn ? ('⏳ <b>Hole ' + escapeHtml(savedHole) + ':</b> your score <b>' + escapeHtml(scScore) + '</b> is saved. Waiting for marker.') : ('⏳ <b>Лунка ' + escapeHtml(savedHole) + ':</b> ваш счёт <b>' + escapeHtml(scScore) + '</b> сохранён. Ждём маркера.'), 'info', { html: true });
             if (typeof vib === 'function') vib();
         }
         var par = (typeof holePar === 'function' ? holePar(savedHole) : 4);

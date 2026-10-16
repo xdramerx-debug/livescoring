@@ -531,7 +531,7 @@ function initBackgroundBroadcastListener() {
                         if (typeof toast === 'function') {
                             // t-club: такие уведомления снимаются с экрана сразу,
                             // как только уведомления выключили (см. ниже).
-                            toast('📢 <b>' + title + '</b><br>' + body, 'info', { clubNotification: true, duration: 6000 });
+                            toast('📢 <b>' + escapeHtml(title) + '</b><br>' + escapeHtml(body), 'info', { clubNotification: true, duration: 6000, html: true });
                         }
                         if (typeof vib === 'function') vib([150, 50, 150]);
                     };

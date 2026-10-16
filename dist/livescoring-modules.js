@@ -1,4 +1,4 @@
-const $ = "Пестово", Re = 72, z = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
+const z = "Пестово", Re = 72, Q = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
   1: { p: 4, hcp: 5, bk: 373, bl: 339, wh: 328, rd: 317 },
   2: { p: 4, hcp: 13, bk: 272, bl: 257, wh: 257, rd: 250 },
   3: { p: 5, hcp: 9, bk: 486, bl: 475, wh: 464, rd: 423 },
@@ -17,52 +17,52 @@ const $ = "Пестово", Re = 72, z = "МО, г. Мытищи, Никольс
   16: { p: 4, hcp: 14, bk: 423, bl: 391, wh: 368, rd: 312 },
   17: { p: 3, hcp: 10, bk: 199, bl: 188, wh: 174, rd: 151 },
   18: { p: 4, hcp: 6, bk: 375, bl: 349, wh: 335, rd: 302 }
-}, O = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, Q = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, X = ["bk", "bl", "wh", "rd"], Z = {
+}, O = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, X = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, Z = ["bk", "bl", "wh", "rd"], ee = {
   men: { bk: { cr: 76, sr: 144 }, bl: { cr: 73.8, sr: 137 }, wh: { cr: 72, sr: 135 }, rd: { cr: 69.2, sr: 134 } },
   women: { bl: { cr: 80.8, sr: 153 }, wh: { cr: 78.6, sr: 143 }, rd: { cr: 75.2, sr: 136 } }
 };
-function ee(e) {
+function te(e) {
   return v[e] ? v[e].p : 4;
 }
-function te(e, a) {
+function ae(e, a) {
   return a = a || "wh", v[e] && v[e][a] || 0;
 }
-function ae(e) {
+function re(e) {
   return v[e] ? v[e].hcp : e;
 }
-function re(e) {
+function ne(e) {
   return O[e] || 15;
 }
-typeof window < "u" && Object.assign(window, { CLUB: $, TOTAL_PAR: 72, ADDR: z, HOLES: v, TIMINGS: O, TEES: Q, TEE_ORDER: X, COURSE_RATINGS: Z, holePar: ee, holeDist: te, holeHcp: ae, holeTiming: re });
-function ne(e) {
+typeof window < "u" && Object.assign(window, { CLUB: z, TOTAL_PAR: 72, ADDR: Q, HOLES: v, TIMINGS: O, TEES: X, TEE_ORDER: Z, COURSE_RATINGS: ee, holePar: te, holeDist: ae, holeHcp: re, holeTiming: ne });
+function oe(e) {
   return e == null || isNaN(e) ? "—" : e === 0 ? "E" : e > 0 ? "+" + e : "" + e;
 }
-function oe(e) {
+function se(e) {
   return e == null ? "" : e < 0 ? "s-un" : e > 0 ? "s-ov" : "s-ev";
 }
-function se(e, a) {
+function le(e, a) {
   if (!e || e < 1 || !a) return "";
   var r = e - a;
   return r <= -2 ? "r-eag" : r === -1 ? "r-bir" : r === 0 ? "r-par" : r === 1 ? "r-bog" : "r-dbl";
 }
-function le(e, a) {
+function ie(e, a) {
   if (!e || !a) return "";
   if (e === 1) return t("res_hio");
   var r = e - a;
   return r <= -3 ? t("res_albatross") : r === -2 ? t("res_eagle") : r === -1 ? t("res_birdie") : r === 0 ? t("res_par") : r === 1 ? t("res_bogey") : r === 2 ? t("res_double") : "+" + r;
 }
 typeof window < "u" && Object.assign(window, {
-  fmtScore: ne,
-  scoreClass: oe,
-  holeResClass: se,
-  holeResName: le,
-  fmtDate: ie,
-  fmtTime: _e,
-  tnDateTs: de,
+  fmtScore: oe,
+  scoreClass: se,
+  holeResClass: le,
+  holeResName: ie,
+  fmtDate: _e,
+  fmtTime: de,
+  tnDateTs: ce,
   normalizeTimestampMs: T,
-  isTodayTimestamp: ce
+  isTodayTimestamp: ue
 });
-function ie(e) {
+function _e(e) {
   if (!e) return "—";
   var a = typeof currentLang < "u" && currentLang ? currentLang : "ru";
   try {
@@ -72,7 +72,7 @@ function ie(e) {
     return (r.getDate() < 10 ? "0" : "") + r.getDate() + "." + (r.getMonth() + 1 < 10 ? "0" : "") + (r.getMonth() + 1) + "." + r.getFullYear();
   }
 }
-function _e(e) {
+function de(e) {
   if (e == null || e === "") return "—";
   var a = /^(\d{1,2}):(\d{2})(:\d{2})?$/.exec(String(e).trim());
   if (a) {
@@ -82,13 +82,13 @@ function _e(e) {
   var o = typeof T == "function" ? T(e) : Number(e);
   if (!o || !isFinite(o)) return "—";
   try {
-    var s = new Date(o), i = s.getHours(), _ = s.getMinutes();
+    var l = new Date(o), i = l.getHours(), _ = l.getMinutes();
     return isNaN(i) || isNaN(_) ? "—" : (i < 10 ? "0" : "") + i + ":" + (_ < 10 ? "0" : "") + _;
   } catch {
     return "—";
   }
 }
-function de(e) {
+function ce(e) {
   if (typeof e == "number" && isFinite(e)) return e;
   var a = String(e ?? "").trim();
   if (!a) return NaN;
@@ -105,7 +105,7 @@ function T(e) {
   var a = Number(e);
   return (!isFinite(a) || a <= 0) && (a = typeof e == "string" ? Date.parse(e) : 0), a > 0 && a < 1e11 && (a *= 1e3), isFinite(a) && a > 0 ? a : 0;
 }
-function ce(e, a) {
+function ue(e, a) {
   var r = T(e);
   if (!r) return !1;
   var n = new Date(T(a || Date.now())), o = new Date(r);
@@ -137,17 +137,17 @@ function E(e) {
   return e === "today" ? n = r : e === "7d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 6) : e === "30d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 29) : e === "month" ? n = new Date(r.getFullYear(), r.getMonth(), 1) : e === "year" && (n = new Date(r.getFullYear(), 0, 1)), n ? { from: x(n.getTime()), to: x(r.getTime()) } : { from: "", to: "" };
 }
 function A(e, a) {
-  var r = e && e.value || "", n = a && a.value || "", o = r ? G(r) : null, s = n ? B(n) : null, i = o !== null && s !== null && o > s;
+  var r = e && e.value || "", n = a && a.value || "", o = r ? G(r) : null, l = n ? B(n) : null, i = o !== null && l !== null && o > l;
   return {
     from: o,
-    to: s,
+    to: l,
     fromValue: r,
     toValue: n,
     invalid: i,
-    active: !i && (o !== null || s !== null)
+    active: !i && (o !== null || l !== null)
   };
 }
-function ue(e, a) {
+function pe(e, a) {
   return !a || !a.active ? e.slice() : e.filter(function(r) {
     var n = V(r && r[1]);
     return !(!n || a.from !== null && n < a.from || a.to !== null && n > a.to);
@@ -155,21 +155,21 @@ function ue(e, a) {
 }
 function j(e, a, r, n) {
   if (e) {
-    var o = typeof currentLang < "u" && currentLang === "en", s = '<i class="fas fa-calendar-check"></i> ';
+    var o = typeof currentLang < "u" && currentLang === "en", l = '<i class="fas fa-calendar-check"></i> ';
     if (a && a.active) {
       var i = a.from !== null ? fmtDate(a.from) : o ? "the beginning" : "с начала", _ = a.to !== null ? fmtDate(a.to) : o ? "today" : "сегодня";
-      s += '<span class="rs-period">' + escapeHtml(i + " — " + _) + '</span><span class="rs-sep">·</span>' + t("rounds_found_label") + ": <b>" + r + "</b>", typeof n == "number" && n !== r && (s += ' <span class="rs-dim">' + (o ? "of" : "из") + " " + n + "</span>");
+      l += '<span class="rs-period">' + escapeHtml(i + " — " + _) + '</span><span class="rs-sep">·</span>' + t("rounds_found_label") + ": <b>" + r + "</b>", typeof n == "number" && n !== r && (l += ' <span class="rs-dim">' + (o ? "of" : "из") + " " + n + "</span>");
     } else
-      s += t("rounds_total_label") + ": <b>" + r + "</b>";
-    e.innerHTML = s;
+      l += t("rounds_total_label") + ": <b>" + r + "</b>";
+    e.innerHTML = l;
   }
 }
 var P = /* @__PURE__ */ Object.create(null);
-function pe(e) {
+function me(e) {
   if (!e) return null;
   var a = document.getElementById(e.fromId), r = document.getElementById(e.toId);
   if (!a || !r) return null;
-  var n = e.presetsId ? document.getElementById(e.presetsId) : null, o = e.resetId ? document.getElementById(e.resetId) : null, s = e.hintId ? document.getElementById(e.hintId) : null, i = "pestovo_date_filter_" + e.key;
+  var n = e.presetsId ? document.getElementById(e.presetsId) : null, o = e.resetId ? document.getElementById(e.resetId) : null, l = e.hintId ? document.getElementById(e.hintId) : null, i = "pestovo_date_filter_" + e.key;
   function _() {
     try {
       localStorage.setItem(i, JSON.stringify({ from: a.value || "", to: r.value || "" }));
@@ -189,7 +189,7 @@ function pe(e) {
     }
     return "";
   }
-  function d() {
+  function c() {
     if (n) {
       var p = u();
       n.innerHTML = R.map(function(g) {
@@ -197,22 +197,22 @@ function pe(e) {
       }).join("");
     }
   }
-  function l() {
+  function s() {
     r.value ? a.setAttribute("max", r.value) : a.removeAttribute("max"), a.value ? r.setAttribute("min", a.value) : r.removeAttribute("min");
   }
-  function c() {
+  function d() {
     var p = A(a, r).invalid;
-    a.classList.toggle("is-invalid", p), r.classList.toggle("is-invalid", p), s && (s.textContent = p ? t("date_filter_invalid") : "", s.classList.toggle("hidden", !p));
+    a.classList.toggle("is-invalid", p), r.classList.toggle("is-invalid", p), l && (l.textContent = p ? t("date_filter_invalid") : "", l.classList.toggle("hidden", !p));
   }
   function h() {
-    c(), typeof e.onChange == "function" && e.onChange(b.getRange());
+    d(), typeof e.onChange == "function" && e.onChange(b.getRange());
   }
   var b = {
     key: e.key,
     getRange: function() {
       return A(a, r);
     },
-    renderPresets: d,
+    renderPresets: c,
     lastSummary: null,
     renderSummary: function(p, g) {
       b.lastSummary = { count: p, total: g }, j(e.summaryId ? document.getElementById(e.summaryId) : null, b.getRange(), p, g);
@@ -228,43 +228,43 @@ function pe(e) {
     console.warn("[silent]", p);
   }
   return a.addEventListener("change", function() {
-    l(), _(), d(), h();
+    s(), _(), c(), h();
   }), r.addEventListener("change", function() {
-    l(), _(), d(), h();
+    s(), _(), c(), h();
   }), n && n.addEventListener("click", function(p) {
     var g = p.target && p.target.closest ? p.target.closest(".date-chip") : null, w = g && g.getAttribute("data-preset");
     if (w) {
       var S = E(w);
-      a.value = S.from, r.value = S.to, l(), _(), d(), h();
+      a.value = S.from, r.value = S.to, s(), _(), c(), h();
     }
   }), o && o.addEventListener("click", function() {
-    a.value = "", r.value = "", l(), _(), d(), h();
-  }), l(), d(), c(), P[b.key] = b, b;
+    a.value = "", r.value = "", s(), _(), c(), h();
+  }), s(), c(), d(), P[b.key] = b, b;
 }
-function me(e) {
+function fe(e) {
   return P[e] || null;
 }
-function fe() {
+function he() {
   Object.keys(P).forEach(function(e) {
     var a = P[e];
     a && (a.renderPresets(), a.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: G, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: V, datePresetRange: E, readDateRange: A, filterEntriesByDateRange: ue, renderRoundsPeriodSummary: j, dateRangeFilters: P, initDateRangeFilter: pe, getDateRangeFilter: me, refreshDateRangeFilters: fe });
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: G, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: V, datePresetRange: E, readDateRange: A, filterEntriesByDateRange: pe, renderRoundsPeriodSummary: j, dateRangeFilters: P, initDateRangeFilter: me, getDateRangeFilter: fe, refreshDateRangeFilters: he });
 function q(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-function he() {
+function be() {
   for (var e = arguments[0], a = Array.prototype.slice.call(arguments, 1), r = "", n = 0; n < e.length; n++)
     r += e[n], n < a.length && (r += q(a[n]));
   return r;
 }
-function be(e, a) {
+function ge(e, a) {
   e && (e.innerHTML = a == null ? "" : String(a));
 }
-typeof window < "u" && Object.assign(window, { esc: q, html: he, setSafeHtml: be });
+typeof window < "u" && Object.assign(window, { esc: q, html: be, setSafeHtml: ge });
 var L = 3e3;
 function K() {
   if (typeof document > "u" || !document.body) return null;
@@ -283,31 +283,33 @@ function I(e, a, r) {
     if (!o) return null;
     for (; o.children.length >= 3; )
       try {
-        var s = o.firstChild;
-        if (!s) break;
-        s._pestovoDismiss && s._pestovoDismiss(!0), o.removeChild(s);
+        var l = o.firstChild;
+        if (!l) break;
+        l._pestovoDismiss && l._pestovoDismiss(!0), o.removeChild(l);
       } catch {
         break;
       }
     var i = document.createElement("div");
-    i.className = "toast t-" + a + (r.clubNotification ? " t-club" : ""), i.setAttribute("role", "status"), i.innerHTML = '<span class="toast-ico">' + U(a) + '</span><span class="toast-msg">' + e + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
-    var _ = !1, u = function(d) {
-      if (!_) {
-        _ = !0;
+    i.className = "toast t-" + a + (r.clubNotification ? " t-club" : ""), i.setAttribute("role", "status");
+    var _ = r.html ? e == null ? "" : String(e) : W(e);
+    i.innerHTML = '<span class="toast-ico">' + U(a) + '</span><span class="toast-msg">' + _ + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
+    var u = !1, c = function(s) {
+      if (!u) {
+        u = !0;
         try {
           i.classList.remove("t-show"), i.classList.add("t-hide"), setTimeout(function() {
             try {
               i.remove();
             } catch {
             }
-          }, d ? 0 : 320);
+          }, s ? 0 : 320);
         } catch {
         }
       }
     };
-    return i._pestovoDismiss = u, i.addEventListener("click", function(d) {
-      if (d && d.target && d.target.classList && d.target.classList.contains("toast-x")) {
-        d.stopPropagation(), u(!1);
+    return i._pestovoDismiss = c, i.addEventListener("click", function(s) {
+      if (s && s.target && s.target.classList && s.target.classList.contains("toast-x")) {
+        s.stopPropagation(), c(!1);
         return;
       }
       if (typeof r.onClick == "function") {
@@ -315,29 +317,29 @@ function I(e, a, r) {
           r.onClick();
         } catch {
         }
-        u(!1);
+        c(!1);
       } else
-        u(!1);
+        c(!1);
     }), o.appendChild(i), setTimeout(function() {
       try {
         i.classList.add("t-show");
       } catch {
       }
     }, 10), setTimeout(function() {
-      u(!1);
+      c(!1);
     }, n), i;
   } catch {
     return null;
   }
 }
-function ge(e, a) {
+function ye(e, a) {
   a = a || {};
   var r = (e || []).slice();
   if (r.length) {
     var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, o = L + n;
-    r.forEach(function(s, i) {
+    r.forEach(function(l, i) {
       setTimeout(function() {
-        typeof s == "string" ? I(s, a.type || "warn", a.toastOpts || {}) : I(s.msg || s.html || "", s.type || a.type || "warn", s.opts || a.toastOpts || {});
+        typeof l == "string" ? I(l, a.type || "warn", a.toastOpts || {}) : I(l.msg || l.html || "", l.type || a.type || "warn", l.opts || a.toastOpts || {});
       }, i * o);
     });
   }
@@ -349,7 +351,7 @@ function Y(e) {
     return !1;
   }
 }
-function ye(e) {
+function ve(e) {
   if (navigator.vibrate) {
     var a = e ?? 50;
     Y("pestovo_strong_vibration") && (Array.isArray(a) ? a = a.map(function(r, n) {
@@ -361,12 +363,12 @@ function ye(e) {
     }
   }
 }
-function ve(e) {
+function W(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: K, toastIconFor: U, toast: I, toastSequence: ge, isPlayerModeEnabled: Y, vib: ye, escapeHtml: ve });
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: K, toastIconFor: U, toast: I, toastSequence: ye, isPlayerModeEnabled: Y, vib: ve, escapeHtml: W });
 var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", f = {
   ru: {
     brand_name: "Пестово",
@@ -1537,7 +1539,7 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
   var e = (/* @__PURE__ */ new Date()).getFullYear();
   f.ru && (f.ru.footer_club = "© " + e + " Пестово"), f.en && (f.en.footer_club = "© " + e + " Pestovo");
 })();
-function W(e) {
+function J(e) {
   var a = typeof m < "u" && m ? m : "ru";
   try {
     if (f[a] && f[a][e] !== void 0)
@@ -1556,7 +1558,7 @@ function we() {
   } catch (o) {
     console.warn("[silent]", o);
   }
-  if (C(), J(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
+  if (C(), $(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
     var e = document.getElementById("admin-content");
     e && !e.classList.contains("hidden") && loadAdmRounds();
   }
@@ -1575,7 +1577,7 @@ function we() {
   }
   typeof initRoundView == "function" && typeof curRid < "u" && curRid && initRoundView(), typeof initSoloView == "function" && initSoloView(), typeof updateHcpTable == "function" && updateHcpTable(), typeof loadClubStats == "function" && loadClubStats(), typeof loadMyActiveRounds == "function" && loadMyActiveRounds("my-active-rounds-container");
 }
-function J() {
+function $() {
   typeof document > "u" || document.querySelectorAll(".lang-btn").forEach(function(e) {
     e.innerHTML = m === "en" ? "🇬🇧 EN" : "🇷🇺 RU";
   });
@@ -1583,7 +1585,7 @@ function J() {
 function C() {
   typeof document > "u" || (document.querySelectorAll("[data-i18n]").forEach(function(e) {
     var a = e.getAttribute("data-i18n");
-    a && f[m] && f[m][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = f[m][a] + " — " + W("brand_name") : e.innerHTML = f[m][a]);
+    a && f[m] && f[m][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = f[m][a] + " — " + J("brand_name") : e.innerHTML = f[m][a]);
   }), document.querySelectorAll("[data-i18n-placeholder]").forEach(function(e) {
     var a = e.getAttribute("data-i18n-placeholder");
     a && f[m] && f[m][a] !== void 0 && e.setAttribute("placeholder", f[m][a]);
@@ -1614,30 +1616,30 @@ function N() {
   }
 }
 N();
-typeof window < "u" && Object.assign(window, { currentLang: m, I18N: f, t: W, toggleLang: we, updateLangButtons: J, applyTranslations: C, updateFooterYear: N });
+typeof window < "u" && Object.assign(window, { currentLang: m, I18N: f, t: J, toggleLang: we, updateLangButtons: $, applyTranslations: C, updateFooterYear: N });
 function D(e, a, r, n, o) {
-  var s = !!o, i = s ? escapeHtml : function(b) {
+  var l = !!o, i = l ? escapeHtml : function(b) {
     return String(b);
-  }, _ = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), u = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", d = s ? "<b>" : "", l = s ? "</b>" : "", c = [];
-  c.push(s ? "<b>" + u + "</b>" : u), c.push(d + "Кто вызвал:" + l + " " + i(r || "Игрок")), c.push(d + "Лунка:" + l + " №" + a), c.push(d + "Время:" + l + " " + _);
+  }, _ = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), u = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", c = l ? "<b>" : "", s = l ? "</b>" : "", d = [];
+  d.push(l ? "<b>" + u + "</b>" : u), d.push(c + "Кто вызвал:" + s + " " + i(r || "Игрок")), d.push(c + "Лунка:" + s + " №" + a), d.push(c + "Время:" + s + " " + _);
   var h = (n || []).map(function(b) {
     return String(b || "").trim();
   }).filter(Boolean);
-  return h.length && c.push(d + "Состав флайта:" + l + " " + i(h.join(", "))), c.join(`
+  return h.length && d.push(c + "Состав флайта:" + s + " " + i(h.join(", "))), d.join(`
 `);
 }
-function Se(e, a, r, n, o, s, i) {
+function Se(e, a, r, n, o, l, i) {
   if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
     toast("⚠️ Укажите Bot Token и Chat ID / Username для " + (r || "Telegram"), "error");
     return;
   }
-  var _ = D(n, o, s, i, !0), u = typeof AbortController < "u" ? new AbortController() : null, d = u ? setTimeout(function() {
+  var _ = D(n, o, l, i, !0), u = typeof AbortController < "u" ? new AbortController() : null, c = u ? setTimeout(function() {
     try {
       u.abort();
-    } catch (c) {
-      console.warn("[silent]", c);
+    } catch (d) {
+      console.warn("[silent]", d);
     }
-  }, 6e3) : null, l = {
+  }, 6e3) : null, s = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1646,48 +1648,48 @@ function Se(e, a, r, n, o, s, i) {
       parse_mode: "HTML"
     })
   };
-  u && (l.signal = u.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", l).then(function(c) {
-    return d && clearTimeout(d), c.json();
-  }).then(function(c) {
-    if (c && c.ok)
-      console.log("✅ Telegram alert delivered to " + r + ":", c.result), toast("✅ Telegram сообщение доставлено в " + (r || "чат") + "!", "success");
+  u && (s.signal = u.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", s).then(function(d) {
+    return c && clearTimeout(c), d.json();
+  }).then(function(d) {
+    if (d && d.ok)
+      console.log("✅ Telegram alert delivered to " + r + ":", d.result), toast("✅ Telegram сообщение доставлено в " + (r || "чат") + "!", "success");
     else {
-      var h = c && c.description ? c.description : "Ошибка Telegram API";
+      var h = d && d.description ? d.description : "Ошибка Telegram API";
       console.error("❌ Telegram Bot API Error (" + r + "):", h), toast("❌ Ошибка Telegram (" + (r || "чат") + "): " + h, "error");
     }
-  }).catch(function(c) {
-    d && clearTimeout(d);
-    var h = c && c.name === "AbortError", b = h ? "Таймаут соединения (6 сек)" : c ? c.message : "Ошибка сети";
-    console.error("❌ Telegram Fetch Error (" + r + "):", c), toast("❌ Ошибка сети / Таймаут Telegram: " + b, "error");
+  }).catch(function(d) {
+    c && clearTimeout(c);
+    var h = d && d.name === "AbortError", b = h ? "Таймаут соединения (6 сек)" : d ? d.message : "Ошибка сети";
+    console.error("❌ Telegram Fetch Error (" + r + "):", d), toast("❌ Ошибка сети / Таймаут Telegram: " + b, "error");
   });
 }
-function k(e, a, r, n, o, s) {
+function k(e, a, r, n, o, l) {
   if (e = (e || "").trim(), a = (a || "").trim(), !(!e || !a)) {
-    var i = D(r, n, o, s, !0), _ = typeof AbortController < "u" ? new AbortController() : null, u = _ ? setTimeout(function() {
+    var i = D(r, n, o, l, !0), _ = typeof AbortController < "u" ? new AbortController() : null, u = _ ? setTimeout(function() {
       try {
         _.abort();
-      } catch (l) {
-        console.warn("[silent]", l);
+      } catch (s) {
+        console.warn("[silent]", s);
       }
-    }, 6e3) : null, d = {
+    }, 6e3) : null, c = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: a, text: i, parse_mode: "HTML" })
     };
-    _ && (d.signal = _.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", d).then(function(l) {
-      return u && clearTimeout(u), l.json();
-    }).then(function(l) {
-      (!l || !l.ok) && console.warn("⚠️ Telegram silent send failed:", l && l.description);
-    }).catch(function(l) {
-      u && clearTimeout(u), console.warn("⚠️ Telegram silent send error (suppressed):", l && l.message);
+    _ && (c.signal = _.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", c).then(function(s) {
+      return u && clearTimeout(u), s.json();
+    }).then(function(s) {
+      (!s || !s.ok) && console.warn("⚠️ Telegram silent send failed:", s && s.description);
+    }).catch(function(s) {
+      u && clearTimeout(u), console.warn("⚠️ Telegram silent send error (suppressed):", s && s.message);
     });
   }
 }
 function ke(e, a, r, n, o) {
-  var s = (localStorage.getItem("pestovo_tg_group_token") || localStorage.getItem("pestovo_tg_bot_token") || "").trim(), i = (localStorage.getItem("pestovo_tg_group_id") || localStorage.getItem("pestovo_tg_chat_id") || "").trim(), _ = (localStorage.getItem("pestovo_tg_channel_token") || s || "").trim(), u = (localStorage.getItem("pestovo_tg_channel_id") || "").trim();
-  s && i && (o === "group" || !o) && k(s, i, e, a, r, n), _ && u && (o === "channel" || !o) && k(_, u, e, a, r, n), !s && !_ && typeof db < "u" && db.ref("settings/telegram").once("value").then(function(d) {
-    var l = d.val() || {}, c = (l.groupToken || l.botToken || "").trim(), h = (l.groupId || l.chatId || "").trim(), b = (l.channelToken || c || "").trim(), y = (l.channelId || "").trim();
-    c && h && (o === "group" || !o) && k(c, h, e, a, r, n), b && y && (o === "channel" || !o) && k(b, y, e, a, r, n);
+  var l = (localStorage.getItem("pestovo_tg_group_token") || localStorage.getItem("pestovo_tg_bot_token") || "").trim(), i = (localStorage.getItem("pestovo_tg_group_id") || localStorage.getItem("pestovo_tg_chat_id") || "").trim(), _ = (localStorage.getItem("pestovo_tg_channel_token") || l || "").trim(), u = (localStorage.getItem("pestovo_tg_channel_id") || "").trim();
+  l && i && (o === "group" || !o) && k(l, i, e, a, r, n), _ && u && (o === "channel" || !o) && k(_, u, e, a, r, n), !l && !_ && typeof db < "u" && db.ref("settings/telegram").once("value").then(function(c) {
+    var s = c.val() || {}, d = (s.groupToken || s.botToken || "").trim(), h = (s.groupId || s.chatId || "").trim(), b = (s.channelToken || d || "").trim(), y = (s.channelId || "").trim();
+    d && h && (o === "group" || !o) && k(d, h, e, a, r, n), b && y && (o === "channel" || !o) && k(b, y, e, a, r, n);
   });
 }
 function H(e, a, r, n) {
@@ -1695,11 +1697,11 @@ function H(e, a, r, n) {
     n || toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error");
     return;
   }
-  var o = "_vkCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6), s = Math.floor(Math.random() * 2e9), i = null, _ = null, u = function() {
+  var o = "_vkCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6), l = Math.floor(Math.random() * 2e9), i = null, _ = null, u = function() {
     try {
       _ && _.parentNode && _.parentNode.removeChild(_);
-    } catch (l) {
-      console.warn("[silent]", l);
+    } catch (s) {
+      console.warn("[silent]", s);
     }
     try {
       delete window[o];
@@ -1708,16 +1710,16 @@ function H(e, a, r, n) {
     }
     i && clearTimeout(i);
   };
-  window[o] = function(l) {
-    if (u(), l && l.response !== void 0 && l.response)
-      n || (console.log("✅ VK message sent, id:", l.response), toast("✅ Сообщение ВКонтакте доставлено!", "success"));
+  window[o] = function(s) {
+    if (u(), s && s.response !== void 0 && s.response)
+      n || (console.log("✅ VK message sent, id:", s.response), toast("✅ Сообщение ВКонтакте доставлено!", "success"));
     else {
-      var c = l && l.error && l.error.error_code, h = l && l.error && l.error.error_msg ? l.error.error_msg : "Ошибка VK API";
-      console.error("❌ VK API Error " + c + ":", h, l), n ? console.warn("⚠️ VK silent send failed (code " + c + "):", h) : toast("❌ VK API: " + h, "error");
+      var d = s && s.error && s.error.error_code, h = s && s.error && s.error.error_msg ? s.error.error_msg : "Ошибка VK API";
+      console.error("❌ VK API Error " + d + ":", h, s), n ? console.warn("⚠️ VK silent send failed (code " + d + "):", h) : toast("❌ VK API: " + h, "error");
     }
   };
-  var d = "https://api.vk.com/method/messages.send?access_token=" + encodeURIComponent(e) + "&peer_id=" + encodeURIComponent(a) + "&message=" + encodeURIComponent(r) + "&random_id=" + s + "&v=5.199&callback=" + o;
-  _ = document.createElement("script"), _.src = d, _.onerror = function() {
+  var c = "https://api.vk.com/method/messages.send?access_token=" + encodeURIComponent(e) + "&peer_id=" + encodeURIComponent(a) + "&message=" + encodeURIComponent(r) + "&random_id=" + l + "&v=5.199&callback=" + o;
+  _ = document.createElement("script"), _.src = c, _.onerror = function() {
     u(), n ? console.warn("⚠️ VK JSONP network error (suppressed)") : toast("❌ Ошибка сети при отправке в VK (JSONP)", "error");
   }, i = setTimeout(function() {
     u(), n ? console.warn("⚠️ VK JSONP timeout (suppressed)") : toast("❌ Таймаут соединения с VK (10 сек)", "error");
@@ -1726,39 +1728,39 @@ function H(e, a, r, n) {
 function F(e, a, r, n) {
   return D(e, a, r, n, !1);
 }
-function Te(e, a, r, n, o, s) {
+function Te(e, a, r, n, o, l) {
   if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
     toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error");
     return;
   }
-  var i = F(r, n, o, s);
+  var i = F(r, n, o, l);
   H(e, a, i, !1);
 }
-function M(e, a, r, n, o, s) {
+function M(e, a, r, n, o, l) {
   if (e = (e || "").trim(), a = (a || "").trim(), !(!e || !a)) {
-    var i = F(r, n, o, s);
+    var i = F(r, n, o, l);
     H(e, a, i, !0);
   }
 }
 function Pe(e, a, r, n) {
-  var o = (localStorage.getItem("pestovo_vk_token") || "").trim(), s = (localStorage.getItem("pestovo_vk_peer_id") || "").trim();
-  o && s ? M(o, s, e, a, r, n) : typeof db < "u" && db.ref("settings/vk").once("value").then(function(i) {
-    var _ = i.val() || {}, u = (_.token || "").trim(), d = (_.peerId || "").trim();
-    u && d && M(u, d, e, a, r, n);
+  var o = (localStorage.getItem("pestovo_vk_token") || "").trim(), l = (localStorage.getItem("pestovo_vk_peer_id") || "").trim();
+  o && l ? M(o, l, e, a, r, n) : typeof db < "u" && db.ref("settings/vk").once("value").then(function(i) {
+    var _ = i.val() || {}, u = (_.token || "").trim(), c = (_.peerId || "").trim();
+    u && c && M(u, c, e, a, r, n);
   }).catch(function(i) {
     console.warn("⚠️ VK: не удалось загрузить настройки из Firebase:", i);
   });
 }
 typeof window < "u" && Object.assign(window, { buildOfficialCallText: D, sendTelegramDirectAlert: Se, sendTelegramSilentAlert: k, sendTelegramOfficialAlert: ke, vkSendMessageJsonp: H, vkBuildAlertText: F, sendVKDirectAlert: Te, sendVKSilentAlert: M, sendVKOfficialAlert: Pe });
 export {
-  z as ADDR,
-  $ as CLUB,
-  Z as COURSE_RATINGS,
+  Q as ADDR,
+  z as CLUB,
+  ee as COURSE_RATINGS,
   R as DATE_RANGE_PRESETS,
   v as HOLES,
   f as I18N,
-  Q as TEES,
-  X as TEE_ORDER,
+  X as TEES,
+  Z as TEE_ORDER,
   O as TIMINGS,
   L as TOAST_DURATION_MS,
   Re as TOTAL_PAR,
@@ -1771,45 +1773,45 @@ export {
   P as dateRangeFilters,
   K as ensureToastRoot,
   q as esc,
-  ve as escapeHtml,
-  ue as filterEntriesByDateRange,
-  ie as fmtDate,
-  ne as fmtScore,
-  _e as fmtTime,
-  me as getDateRangeFilter,
+  W as escapeHtml,
+  pe as filterEntriesByDateRange,
+  _e as fmtDate,
+  oe as fmtScore,
+  de as fmtTime,
+  fe as getDateRangeFilter,
   V as getRoundFilterTs,
-  te as holeDist,
-  ae as holeHcp,
-  ee as holePar,
-  se as holeResClass,
-  le as holeResName,
-  re as holeTiming,
-  he as html,
-  pe as initDateRangeFilter,
+  ae as holeDist,
+  re as holeHcp,
+  te as holePar,
+  le as holeResClass,
+  ie as holeResName,
+  ne as holeTiming,
+  be as html,
+  me as initDateRangeFilter,
   Y as isPlayerModeEnabled,
-  ce as isTodayTimestamp,
+  ue as isTodayTimestamp,
   T as normalizeTimestampMs,
   A as readDateRange,
-  fe as refreshDateRangeFilters,
+  he as refreshDateRangeFilters,
   j as renderRoundsPeriodSummary,
-  oe as scoreClass,
+  se as scoreClass,
   Se as sendTelegramDirectAlert,
   ke as sendTelegramOfficialAlert,
   k as sendTelegramSilentAlert,
   Te as sendVKDirectAlert,
   Pe as sendVKOfficialAlert,
   M as sendVKSilentAlert,
-  be as setSafeHtml,
-  W as t,
-  de as tnDateTs,
+  ge as setSafeHtml,
+  J as t,
+  ce as tnDateTs,
   I as toast,
   U as toastIconFor,
-  ge as toastSequence,
+  ye as toastSequence,
   we as toggleLang,
   x as tsToDateInputValue,
   N as updateFooterYear,
-  J as updateLangButtons,
-  ye as vib,
+  $ as updateLangButtons,
+  ve as vib,
   F as vkBuildAlertText,
   H as vkSendMessageJsonp
 };

@@ -44,8 +44,13 @@ export function toast(m, toastType, opts){
         var e = document.createElement('div');
         e.className = 'toast t-' + toastType + (opts.clubNotification ? ' t-club' : '');
         e.setAttribute('role', 'status');
+        // Тост — общий сток: в него попадают и имена игроков, и тексты
+        // рассылок из Firebase. Поэтому экранируем по умолчанию, а разметку
+        // разрешаем только явно через opts.html — иначе каждый новый вызов
+        // с данными молча получал бы дыру (XSS в сессии администратора).
+        var msgHtml = opts.html ? (m == null ? '' : String(m)) : escapeHtml(m);
         e.innerHTML = '<span class="toast-ico">' + toastIconFor(toastType) + '</span>' +
-            '<span class="toast-msg">' + m + '</span>' +
+            '<span class="toast-msg">' + msgHtml + '</span>' +
             '<button type="button" class="toast-x" aria-label="×">×</button>' +
             '<span class="toast-bar"><span style="animation-duration:' + duration + 'ms"></span></span>';
         var dismissed = false;

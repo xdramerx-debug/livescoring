@@ -246,13 +246,13 @@ function saveMk() {
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ps >= 1 && ps === mkScore) {
 
-            if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + savedHole + ' confirmed:</b> ' + mkScore) : ('✅ <b>Лунка ' + savedHole + ' подтверждена:</b> ' + mkScore + ' уд.'));
+            if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + escapeHtml(savedHole) + ' confirmed:</b> ' + escapeHtml(mkScore)) : ('✅ <b>Лунка ' + escapeHtml(savedHole) + ' подтверждена:</b> ' + escapeHtml(mkScore) + ' уд.'), 'success', { html: true });
             if (typeof vib === 'function') vib([50, 50]);
         } else if (ps >= 1) {
 
-            if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + savedHole + '!</b><br>Player: <b>' + ps + '</b>, marker (you): <b>' + mkScore + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + savedHole + '!</b><br>Игрок: <b>' + ps + '</b>, маркер (вы): <b>' + mkScore + '</b>'), 'error');
+            if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + escapeHtml(savedHole) + '!</b><br>Player: <b>' + escapeHtml(ps) + '</b>, marker (you): <b>' + escapeHtml(mkScore) + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + escapeHtml(savedHole) + '!</b><br>Игрок: <b>' + escapeHtml(ps) + '</b>, маркер (вы): <b>' + escapeHtml(mkScore) + '</b>'), 'error', { html: true });
         } else {
-            if (typeof toast === 'function') toast(langIsEn ? ('👁️ <b>Hole ' + savedHole + ':</b> marker score <b>' + mkScore + '</b> saved. Waiting for player.') : ('👁️ <b>Лунка ' + savedHole + ':</b> счёт маркера <b>' + mkScore + '</b> сохранён. Ждём игрока.'), 'info');
+            if (typeof toast === 'function') toast(langIsEn ? ('👁️ <b>Hole ' + escapeHtml(savedHole) + ':</b> marker score <b>' + escapeHtml(mkScore) + '</b> saved. Waiting for player.') : ('👁️ <b>Лунка ' + escapeHtml(savedHole) + ':</b> счёт маркера <b>' + escapeHtml(mkScore) + '</b> сохранён. Ждём игрока.'), 'info', { html: true });
             if (typeof vib === 'function') vib();
         }
         var order = (typeof getRoundOrder === 'function' ? getRoundOrder(mkRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);

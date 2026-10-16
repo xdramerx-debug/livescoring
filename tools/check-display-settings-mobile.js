@@ -54,7 +54,10 @@ const fragments = ['tab-tournamentsview', 'tab-data', 'tab-tncards', 'tab-scoree
             currentLang = 'ru'; window.db = null; window.toast = function() {}; window.vib = function() {};
             localStorage.clear();
         }, fragments);
-        for (const file of ['course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'admin-display']) {
+        // js/ui-events.js обязателен: inline-обработчиков в разметке больше нет,
+        // клики по [data-act] ловит его слушатель на document. Без него кнопка
+        // предпросмотра ничего не меняет, а фичевый скрипт падает на pestovoOnAction.
+        for (const file of ['ui-events', 'course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'admin-display']) {
             await page.addScriptTag({ path: path.join(root, 'js', file + '.js') });
         }
         await page.evaluate(() => {

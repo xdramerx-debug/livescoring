@@ -3,6 +3,9 @@
 const fs = require('fs');
 const vm = require('vm');
 
+// js/qr-url.js — общий построитель URL QR; на странице он грузится до
+// qr-start.js тем же тегом <script>, поэтому и в песочнице идёт первым.
+const qrUrlCode = fs.readFileSync(__dirname + '/../js/qr-url.js', 'utf8');
 const code = fs.readFileSync(__dirname + '/../js/qr-start.js', 'utf8');
 
 function fakeEl(id) {
@@ -38,6 +41,7 @@ const sandbox = {
 };
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
+vm.runInContext(qrUrlCode, sandbox);
 vm.runInContext(code, sandbox);
 
 let failures = 0;
@@ -103,7 +107,8 @@ check(html.indexOf('10:00') !== -1 || html.indexOf('09:00') !== -1, 'время 
 check(html.indexOf('Полевой HCP: <b>13.0</b>') !== -1, 'полевой hcp');
 // Надёжная загрузка QR: eager + цепочка провайдеров через onerror
 check(html.indexOf('loading="eager"') !== -1, 'QR грузятся сразу (eager, не lazy)');
-check(html.indexOf('onerror="qrImgFail(this)"') !== -1, 'QR: повтор через запасной провайдер');
+// Ошибку загрузки ловит делегат из js/ui-events.js по data-img-fail.
+check(html.indexOf('data-img-fail="qrImgFail"') !== -1, 'QR: повтор через запасной провайдер');
 check(html.indexOf('data-qr=') !== -1, 'QR: данные для повтора в data-qr');
 const provs = sandbox.qrProviders('https://club.example/x', 420);
 check(provs.length === 3 && provs[0].indexOf('qrserver.com') !== -1 && provs[1].indexOf('quickchart.io') !== -1, 'цепочка QR-провайдеров: qrserver → quickchart → повтор');

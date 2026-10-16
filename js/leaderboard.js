@@ -275,7 +275,7 @@ function renderRound(id, r) {
         var teeCode = pestovoNormalizeTeeCode(p.tee);
         var pTeeBadge = '<span class="tee-pill tee-' + teeCode + '" style="font-size:9px;padding:0 6px;margin-left:6px;vertical-align:middle;line-height:16px;">' + escapeHtml(pestovoTeeLabel(teeCode)) + '</span>';
 
-        return '<div class="rlb-row" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(p.pid) + '\',\'' + pestovoInlineJsArg(id) + '\')">' +
+        return '<div class="rlb-row" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(p.pid) + '" data-arg2="' + escapeHtml(id) + '">' +
             '<span class="rlb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</span>' +
             '<div class="rlb-player">' + fmtUserAvatar(p, 28) +
             '<div class="rlb-pcol"><div style="display:flex;align-items:center;min-width:0;"><span class="rlb-name">' + escapeHtml(privacyDisplayName(p, p.pid)) + '</span>' + pTeeBadge + '</div>' +
@@ -298,10 +298,10 @@ function renderRound(id, r) {
 
     var panelId = 'lb-sc-' + id;
     var actions = '<div class="lwl-actions">' +
-        '<button class="btn btn-og btn-sm" onclick="toggleLbScorecard(\'' + pestovoInlineJsArg(panelId) + '\',\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-chevron-down" id="' + escapeHtml(panelId) + '-icon"></i> <span id="' + escapeHtml(panelId) + '-txt">' + t('expand_scorecard') + '</span></button>' +
+        '<button class="btn btn-og btn-sm" data-act="toggleLbScorecard" data-arg="' + escapeHtml(panelId) + '" data-arg2="' + escapeHtml(id) + '"><i class="fas fa-chevron-down" id="' + escapeHtml(panelId) + '-icon"></i> <span id="' + escapeHtml(panelId) + '-txt">' + t('expand_scorecard') + '</span></button>' +
         (r.status === 'completed'
-            ? '<button class="btn btn-og btn-sm" onclick="downloadScorecard(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-download"></i> ' + (isEn ? 'Scorecard' : 'Счётная карточка') + '</button>' +
-              '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>'
+            ? '<button class="btn btn-og btn-sm" data-act="downloadScorecard" data-arg="' + escapeHtml(id) + '"><i class="fas fa-download"></i> ' + (isEn ? 'Scorecard' : 'Счётная карточка') + '</button>' +
+              '<button class="btn btn-g btn-sm" data-act="exportRoundPNG" data-arg="' + escapeHtml(id) + '"><i class="fas fa-image"></i> ' + t('share_card') + '</button>'
             : '') +
         '</div>';
 
@@ -332,7 +332,7 @@ function renderRound(id, r) {
 
     return '<div class="lwl-row lb-row' + (open ? ' is-open' : '') + (isLive ? ' lb-row-live' : '') + '" data-round-id="' + escapeHtml(id) + '">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" ' +
-        'onclick="toggleLbRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="lbRowKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
+        'data-act="toggleLbRound" data-arg="' + escapeHtml(id) + '" data-kd-act="lbRowKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
         '<span class="lwl-name"><i class="fas ' + (isLive ? 'fa-flag' : 'fa-flag-checkered') + '"></i><span class="lwl-name-txt">' + fmtDate(ts) + '</span></span>' +
         '<span class="lwl-hole lb-names"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-score">' + badge + '</span>' +

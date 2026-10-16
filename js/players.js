@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 function playerOpenAttrs(id) {
-    return ' role="button" tabindex="0" data-player-id="' + escapeHtml(String(id || '')) + '" onclick="showPlayer(this.dataset.playerId)"';
+    return ' role="button" tabindex="0" data-player-id="' + escapeHtml(String(id || '')) + '" data-act="showPlayer" data-arg="' + escapeHtml(String(id || '')) + '"';
 }
 
 // Полное ФИО для списка игроков: «Имя Отчество Фамилия»

@@ -42,7 +42,10 @@ const fixture = [
                 });
             });
         }, fixture);
-        for (const file of ['course-config', 'format', 'dom', 'i18n', 'utils', 'live']) {
+        // js/ui-events.js обязателен: inline-обработчиков в разметке больше нет,
+        // клики по [data-act] ловит его слушатель на document. Без него кнопка
+        // предпросмотра ничего не меняет, а фичевый скрипт падает на pestovoOnAction.
+        for (const file of ['ui-events', 'course-config', 'format', 'dom', 'i18n', 'utils', 'live']) {
             await page.addScriptTag({ path: path.join(root, 'js', file + '.js') });
         }
         await page.evaluate(() => {

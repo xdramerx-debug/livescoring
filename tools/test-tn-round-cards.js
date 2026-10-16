@@ -31,7 +31,7 @@ function check(condition, message) { assert.ok(condition, message); passed.push(
         on(event, callback) { listeners[pathName] = callback; },
         once() { return Promise.resolve({ val: () => null }); }
     }) };
-    ['course-config', 'format', 'dom', 'i18n', 'utils', 'admin-display'].forEach(file => win.eval(read('js/' + file + '.js')));
+    ['ui-events', 'course-config', 'format', 'dom', 'i18n', 'utils', 'admin-display'].forEach(file => win.eval(read('js/' + file + '.js')));
 
     const settings = win.normalizePestovoDisplaySettings('tournamentScoring', {
         order: ['input', 'holes'], visible: { qr: false, par: false, input: false, myScore: false }

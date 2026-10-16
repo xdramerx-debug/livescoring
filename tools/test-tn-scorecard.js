@@ -209,6 +209,7 @@ function load(file) { vm.runInContext(fs.readFileSync(path.join(ROOT, file), 'ut
 
 // Базовые либы (баг теста: course-config/format/date-range не грузились,
 // хотя utils.js и tournaments.js используют их глобальные функции).
+load('js/ui-events.js');
 load('js/course-config.js');
 load('js/date-range.js');
 load('js/dom.js');
@@ -362,13 +363,17 @@ has('вкладка «Все» со счётчиком', /Все<span class="tn-
 has('вкладка «Мужчины»', lbHtml.indexOf('Мужчины') !== -1, true);
 has('вкладка «Гости»', lbHtml.indexOf('Гости') !== -1, true);
 has('вкладка «Девушки» отсутствует (нет таких заявок)', /Гости/.test(lbHtml) && lbHtml.indexOf('tn-tab-count">0') === -1, true);
-has('лидерборд открывается на вкладке «Все» (один блок, без групп)', lbHtml.indexOf("tnSetTab('tn_demo','all')") !== -1, true);
+// Обработчики ушли из onclick= в data-атрибуты (делегирование, п.2 плана).
+has('лидерборд открывается на вкладке «Все» (один блок, без групп)',
+    /data-act="tnSetTab"[^>]*data-arg="tn_demo"[^>]*data-arg2="all"/.test(lbHtml), true);
 has('название группы в заголовке', lbHtml.indexOf('tn-group-title') !== -1, true);
-has('строка лидерборда кликабельна', lbHtml.indexOf('tnScOpen(') !== -1, true);
+has('строка лидерборда кликабельна', lbHtml.indexOf('data-act="tnScOpen"') !== -1, true);
 // Ключ строки — идентификатор игрока (uid), а не ФИО: однофамильцы в разных
 // группах больше не склеиваются в одну строку и не открывают чужую карточку.
-has('клик передаёт ключ игрока (uid)', lbHtml.indexOf("tnScOpen('" + TN + "','u1')") !== -1, true);
-has('клик по второму игроку — свой ключ', lbHtml.indexOf("tnScOpen('" + TN + "','u2')") !== -1, true);
+has('клик передаёт ключ игрока (uid)',
+    lbHtml.indexOf('data-act="tnScOpen" data-arg="' + TN + '" data-arg2="u1"') !== -1, true);
+has('клик по второму игроку — свой ключ',
+    lbHtml.indexOf('data-act="tnScOpen" data-arg="' + TN + '" data-arg2="u2"') !== -1, true);
 // v1.63.0: бейдж «гость» убран везде — в таблице лидерборда его нет.
 has('бейдж «гость» убран из таблицы', lbHtml.indexOf('tn-guest-chip') === -1, true);
 

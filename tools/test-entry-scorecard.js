@@ -95,7 +95,7 @@ var ctx = vm.createContext(sandbox);
 function load(file) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, file), 'utf8'), ctx, { filename: file });
 }
-['js/course-config.js', 'js/date-range.js', 'js/dom.js', 'js/format.js', 'js/i18n.js', 'js/utils.js',
+['js/ui-events.js', 'js/course-config.js', 'js/date-range.js', 'js/dom.js', 'js/format.js', 'js/i18n.js', 'js/utils.js',
     'js/entry-scorecard.js', 'js/admin-entry-scorecard.js'].forEach(load);
 
 var run = function(code) { return vm.runInContext(code, ctx); };

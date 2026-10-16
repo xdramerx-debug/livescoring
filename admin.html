@@ -13,19 +13,19 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=07ac5eab">
+    <link rel="stylesheet" href="css/style.css?v=a5317bf8">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=3f88226b">
     <link rel="stylesheet" href="css/tn-manager.css?v=6d129f32">
     <link rel="stylesheet" href="css/tn-mgr-printcards.css?v=e9c466ab">
     <link rel="stylesheet" href="css/entry-scorecard.css?v=a34f8c94">
-    <script src="js/design-system.js?v=5a11adfa"></script>
+    <script src="js/ui-events.js?v=5ba225a1"></script>
+    <script src="js/design-system.js?v=394cc00f"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=c8871e34">
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
@@ -52,7 +52,7 @@
 <div class="page-head">
     <div class="container" style="display:flex;justify-content:space-between;align-items:center;">
         <h1 class="page-title" style="margin:0;"><i class="fas fa-shield-halved"></i> <span data-i18n="admin_panel">Админ-панель</span></h1>
-        <button id="admin-logout-btn" class="btn btn-og btn-sm hidden" onclick="adminLogout()"><i class="fas fa-right-from-bracket"></i> <span data-i18n="admin_logout">Выйти</span></button>
+        <button id="admin-logout-btn" class="btn btn-og btn-sm hidden" data-act="adminLogout"><i class="fas fa-right-from-bracket"></i> <span data-i18n="admin_logout">Выйти</span></button>
     </div>
 </div>
 
@@ -63,7 +63,7 @@
         <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="admin_desc">
             Войдите с мастер-паролем или авторизуйтесь через аккаунт с правами администратора.
         </p>
-        <form onsubmit="adminLogin(event)">
+        <form data-sub-act="adminLogin" data-sub-ev="1" data-prevent="1">
             <div class="form-group">
                 <label data-i18n="password"><i class="fas fa-key"></i> Пароль</label>
                 <input type="password" id="adm-master-pass" class="form-input" autocomplete="current-password" placeholder="••••••••">
@@ -89,28 +89,28 @@
                     <div id="global-notifications-status" role="status" aria-live="polite">Проверка настройки…</div>
                 </div>
             </div>
-            <button type="button" class="btn btn-g btn-sm" id="global-notifications-toggle" onclick="toggleGlobalNotifications()" aria-pressed="true" disabled>Загрузка…</button>
+            <button type="button" class="btn btn-g btn-sm" id="global-notifications-toggle" data-act="toggleGlobalNotifications" aria-pressed="true" disabled>Загрузка…</button>
         </section>
 
         <div class="admin-tabs">
-            <button class="admin-tab active" onclick="switchTab('alerts',this)" data-i18n="tab_alerts">Вызовы 🚨</button>
-            <button class="admin-tab" onclick="switchTab('rounds',this)" data-i18n="tab_rounds">Раунды</button>
-            <button class="admin-tab" onclick="switchTab('scores',this)" data-i18n="tab_scores">Счёт ⛳</button>
-            <button class="admin-tab" onclick="switchTab('scoreaudit',this)">Журнал счёта 🕒</button>
-            <button class="admin-tab" onclick="switchTab('hcplog',this)">Журнал гандикапов 📈</button>
-            <button class="admin-tab" onclick="switchTab('groups',this)" data-i18n="tab_groups">Группы сейчас ⏱️</button>
-            <button class="admin-tab" id="tnm-tab-btn" onclick="switchTab('tnmanager',this)" data-i18n="tab_tn_manager">Турниры 🏆</button>
-            <button class="admin-tab" onclick="switchTab('tournamentsview',this)" data-i18n="tab_tournaments_view">Турниры: вид 👁</button>
-            <button class="admin-tab" onclick="switchTab('broadcasts',this)" data-i18n="tab_broadcasts">Анонсы 📢</button>
-            <button class="admin-tab" onclick="switchTab('players',this)" data-i18n="tab_players">Игроки и роли</button>
-            <button class="admin-tab" onclick="switchTab('importexport',this)" data-i18n="tab_importexport">Импорт/Экспорт 📊</button>
-            <button class="admin-tab" onclick="switchTab('rusgolf',this)" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
-            <button class="admin-tab" onclick="switchTab('data',this)" data-i18n="tab_data">Данные</button>
-            <button class="admin-tab" onclick="switchTab('scorecards',this)">Отображения счётных карточек</button>
-            <button class="admin-tab" onclick="switchTab('entrycards',this)">Карточки на вводе 🃏</button>
-            <button class="admin-tab" onclick="switchTab('tncards',this)">Турнирный ввод счёта</button>
-            <button class="admin-tab" onclick="switchTab('scoreentry',this)">Ввод счёта ⛳</button>
-            <button class="admin-tab" onclick="switchTab('design',this)" data-i18n="tab_design">Дизайн 🎨</button>
+            <button class="admin-tab active" data-act="switchTab" data-arg="alerts" data-i18n="tab_alerts">Вызовы 🚨</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="rounds" data-i18n="tab_rounds">Раунды</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="scores" data-i18n="tab_scores">Счёт ⛳</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="scoreaudit">Журнал счёта 🕒</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="hcplog">Журнал гандикапов 📈</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="groups" data-i18n="tab_groups">Группы сейчас ⏱️</button>
+            <button class="admin-tab" id="tnm-tab-btn" data-act="switchTab" data-arg="tnmanager" data-i18n="tab_tn_manager">Турниры 🏆</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="tournamentsview" data-i18n="tab_tournaments_view">Турниры: вид 👁</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="broadcasts" data-i18n="tab_broadcasts">Анонсы 📢</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="players" data-i18n="tab_players">Игроки и роли</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="importexport" data-i18n="tab_importexport">Импорт/Экспорт 📊</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="rusgolf" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="data" data-i18n="tab_data">Данные</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="scorecards">Отображения счётных карточек</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="entrycards">Карточки на вводе 🃏</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="tncards">Турнирный ввод счёта</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="scoreentry">Ввод счёта ⛳</button>
+            <button class="admin-tab" data-act="switchTab" data-arg="design" data-i18n="tab_design">Дизайн 🎨</button>
         </div>
 
         <div id="tab-scorecards" class="admin-section hidden">
@@ -127,34 +127,34 @@
                 <div class="sev-sec-title">Общий вид карточки</div>
                 <p class="sev-sec-sub">Пять видов одной карточки. Выберите — пример ниже обновится сразу.</p>
                 <div class="club-sc-options sev-variants">
-                    <button type="button" id="v5-scorecard-1" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('1')">
+                    <button type="button" id="v5-scorecard-1" class="btn btn-og sev-card" aria-pressed="false" data-act="previewClubScorecardView" data-arg="1">
                         <span class="sev-card-top"><span class="sev-card-num">1</span><span class="sev-card-name">Бланк клуба</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span></span><span class="st-row"><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span></span>
                         <span class="sev-card-desc">Две девятки, как в «Поле клуба».</span>
                     </button>
-                    <button type="button" id="v5-scorecard-2" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('2')">
+                    <button type="button" id="v5-scorecard-2" class="btn btn-og sev-card" aria-pressed="false" data-act="previewClubScorecardView" data-arg="2">
                         <span class="sev-card-top"><span class="sev-card-num">2</span><span class="sev-card-name">Блоки по 3 лунки</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-frame"></span><span class="st-frame"></span><span class="st-frame"></span></span><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span></span>
                         <span class="sev-card-desc">Крупнее, без горизонтальной прокрутки.</span>
                     </button>
-                    <button type="button" id="v5-scorecard-3" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('3')">
+                    <button type="button" id="v5-scorecard-3" class="btn btn-og sev-card" aria-pressed="false" data-act="previewClubScorecardView" data-arg="3">
                         <span class="sev-card-top"><span class="sev-card-num">3</span><span class="sev-card-name">Крупная лента</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-sq st-gold"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span><span class="st-sq st-green"></span><span class="st-sq"></span></span><span class="st-row"><span class="st-plate st-white"></span><span class="st-plate"></span><span class="st-plate st-white"></span></span></span>
                         <span class="sev-card-desc">Крупные цифры, прокрутка внутри карточки.</span>
                     </button>
-                    <button type="button" id="v5-scorecard-4" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('4')">
+                    <button type="button" id="v5-scorecard-4" class="btn btn-og sev-card" aria-pressed="false" data-act="previewClubScorecardView" data-arg="4">
                         <span class="sev-card-top"><span class="sev-card-num">4</span><span class="sev-card-name">Вертикальный список</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-plate st-white" style="flex:0 0 26px;"></span><span class="st-plate"></span><span class="st-sq st-gold" style="max-width:22px;"></span></span><span class="st-row"><span class="st-plate st-white" style="flex:0 0 26px;"></span><span class="st-plate"></span><span class="st-sq" style="max-width:22px;"></span></span></span>
                         <span class="sev-card-desc">Одна лунка на строку, всё по порядку.</span>
                     </button>
-                    <button type="button" id="v5-scorecard-5" class="btn btn-og sev-card" aria-pressed="false" onclick="previewClubScorecardView('5')">
+                    <button type="button" id="v5-scorecard-5" class="btn btn-og sev-card" aria-pressed="false" data-act="previewClubScorecardView" data-arg="5">
                         <span class="sev-card-top"><span class="sev-card-num">5</span><span class="sev-card-name">Плитки</span><span class="sev-card-check" aria-hidden="true"><i class="fas fa-check"></i></span></span>
                         <span class="sev-thumb" aria-hidden="true"><span class="st-row"><span class="st-frame"></span><span class="st-frame"></span><span class="st-frame"></span></span><span class="st-row"><span class="st-sq st-gold" style="max-width:26px;"></span><span class="st-sq st-gold" style="max-width:26px;"></span><span class="st-sq st-gold" style="max-width:26px;"></span></span></span>
                         <span class="sev-card-desc">Акцент на счёте каждой лунки.</span>
                     </button>
                 </div>
                 <label class="sc-completed-setting" for="club-sc-completed-view">Вид завершённых раундов
-                    <select id="club-sc-completed-view" class="form-input" onchange="previewCompletedScorecardView(this.value)">
+                    <select id="club-sc-completed-view" class="form-input" data-act="previewCompletedScorecardView">
                         <option value="inherit">Как общий вид</option>
                         <option value="1">1 · Бланк клуба</option><option value="2">2 · Блоки по 3 лунки</option>
                         <option value="3">3 · Крупная лента</option><option value="4">4 · Вертикальный список</option><option value="5">5 · Плитки</option>
@@ -162,8 +162,8 @@
                     <small>Отдельное оформление не меняет карточки активных раундов. Итоги завершённых раундов всегда видны сверху, лунки раскрываются по нажатию.</small>
                 </label>
                 <div class="sev-apply">
-                    <button type="button" id="club-sc-apply" class="btn btn-g" onclick="saveClubScorecardView(clubScorecardPreviewView)"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех</button>
-                    <button type="button" id="club-sc-undo" class="btn btn-og" onclick="restoreClubScorecardView()" disabled>Вернуть предыдущий</button>
+                    <button type="button" id="club-sc-apply" class="btn btn-g" data-act="pestovoSaveClubScorecardView"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех</button>
+                    <button type="button" id="club-sc-undo" class="btn btn-og" data-act="restoreClubScorecardView" disabled>Вернуть предыдущий</button>
                     <div class="sev-apply-text">
                         <p class="sev-apply-hint">Оба вида сохраняются вместе. «Вернуть предыдущий» восстановит предыдущую пару настроек для всех игроков.</p>
                         <p id="club-sc-save-status" role="status" aria-live="polite"></p>
@@ -172,9 +172,9 @@
                 <div class="sev-sec-title">Предпросмотр для телефона</div>
                 <p class="sev-sec-sub">Демонстрационные данные · ширина до 390 px. Палочки — удары форы; красные — отдаваемые удары. «—» означает, что счёт ещё не введён. Несовпадение с маркером подсвечивается.</p>
                 <fieldset class="sc-preview-controls"><legend>Демонстрационный раунд</legend>
-                    <label>Игроки<select id="club-sc-preview-players" class="form-input" onchange="renderClubScorecardPreview()"><option value="1">1 игрок</option><option value="2">2 игрока</option><option value="4">4 игрока</option></select></label>
-                    <label>Лунки<select id="club-sc-preview-holes" class="form-input" onchange="renderClubScorecardPreview()"><option value="18">18 лунок</option><option value="9">9 лунок</option></select></label>
-                    <label>Состояние<select id="club-sc-preview-status" class="form-input" onchange="renderClubScorecardPreview()"><option value="active">Активный</option><option value="completed">Завершённый</option></select></label>
+                    <label>Игроки<select id="club-sc-preview-players" class="form-input" data-act="renderClubScorecardPreview"><option value="1">1 игрок</option><option value="2">2 игрока</option><option value="4">4 игрока</option></select></label>
+                    <label>Лунки<select id="club-sc-preview-holes" class="form-input" data-act="renderClubScorecardPreview"><option value="18">18 лунок</option><option value="9">9 лунок</option></select></label>
+                    <label>Состояние<select id="club-sc-preview-status" class="form-input" data-act="renderClubScorecardPreview"><option value="active">Активный</option><option value="completed">Завершённый</option></select></label>
                 </fieldset>
                 <p id="club-sc-preview-caption" class="sev-sec-sub" aria-live="polite"></p>
                 <div class="sev-device"><div id="club-sc-preview" class="club-sc-phone"></div></div>
@@ -214,8 +214,8 @@
                 <p class="sev-sec-sub">Меняйте последовательность информации, навигации по лункам и панели ввода.</p>
                 <div id="tn-score-display-order" class="screen-display-order"></div>
                 <div class="sev-apply">
-                    <button type="button" class="btn btn-g" data-display-save="tournamentScoring" onclick="savePestovoDisplaySettings('tournamentScoring')"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех турниров</button>
-                    <button type="button" class="btn btn-ol" data-display-reset="tournamentScoring" onclick="resetPestovoDisplaySettings('tournamentScoring')"><i class="fas fa-rotate-left" aria-hidden="true"></i> Использовать настройки обычного раунда</button>
+                    <button type="button" class="btn btn-g" data-display-save="tournamentScoring" data-act="savePestovoDisplaySettings" data-arg="tournamentScoring"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех турниров</button>
+                    <button type="button" class="btn btn-ol" data-display-reset="tournamentScoring" data-act="resetPestovoDisplaySettings" data-arg="tournamentScoring"><i class="fas fa-rotate-left" aria-hidden="true"></i> Использовать настройки обычного раунда</button>
                     <div class="sev-apply-text">
                         <p class="sev-apply-hint">Турнирные настройки сохраняются отдельно и применяются сразу на всех устройствах.</p>
                         <p id="tn-score-display-status" role="status" aria-live="polite"></p>
@@ -243,8 +243,8 @@
                 <p class="sev-sec-sub">Порядок сверху вниз. Кнопки перемещения доступны для нажатия на телефоне.</p>
                 <div id="score-entry-display-order" class="screen-display-order"></div>
                 <div class="sev-apply">
-                    <button type="button" class="btn btn-g" data-display-save="scoring" onclick="savePestovoDisplaySettings('scoring')"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех игроков</button>
-                    <button type="button" class="btn btn-ol" data-display-reset="scoring" onclick="resetPestovoDisplaySettings('scoring')"><i class="fas fa-rotate-left" aria-hidden="true"></i> Сбросить к настройкам по умолчанию</button>
+                    <button type="button" class="btn btn-g" data-display-save="scoring" data-act="savePestovoDisplaySettings" data-arg="scoring"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить для всех игроков</button>
+                    <button type="button" class="btn btn-ol" data-display-reset="scoring" data-act="resetPestovoDisplaySettings" data-arg="scoring"><i class="fas fa-rotate-left" aria-hidden="true"></i> Сбросить к настройкам по умолчанию</button>
                     <div class="sev-apply-text">
                         <p class="sev-apply-hint">Изменения сохраняются глобально. Уже открытые экраны обновятся автоматически.</p>
                         <p id="score-entry-display-status" role="status" aria-live="polite"></p>
@@ -269,8 +269,8 @@
                 <p class="date-filter-hint hidden" id="adm-date-hint" role="alert"></p>
                 <div class="rounds-summary" id="adm-rounds-summary"></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-                    <button type="button" class="btn btn-ol btn-sm" onclick="admRoundsExpandAll(true)"><i class="fas fa-angles-down"></i> Развернуть все</button>
-                    <button type="button" class="btn btn-ol btn-sm" onclick="admRoundsExpandAll(false)"><i class="fas fa-angles-up"></i> Свернуть все</button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admRoundsExpandAll" data-arg2="true"><i class="fas fa-angles-down"></i> Развернуть все</button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admRoundsExpandAll" data-arg2="false"><i class="fas fa-angles-up"></i> Свернуть все</button>
                 </div>
                 <div id="adm-rounds"></div>
             </div>
@@ -284,15 +284,15 @@
                 <div class="se-editor-toolbar">
                     <div class="form-group" style="flex:1 1 220px;">
                         <label data-i18n="scores_search_fio">Поиск по ФИО игрока</label>
-                        <input type="text" id="se-q-fio" class="form-input" placeholder="Иванов Пётр" oninput="seRender()">
+                        <input type="text" id="se-q-fio" class="form-input" placeholder="Иванов Пётр" data-act="seRender">
                     </div>
                     <div class="form-group" style="flex:0 1 150px;">
                         <label data-i18n="scores_search_date">Дата раунда</label>
-                        <input type="date" id="se-q-date" class="form-input" onchange="seRender()">
+                        <input type="date" id="se-q-date" class="form-input" data-act="seRender">
                     </div>
                     <div class="form-group" style="flex:0 1 170px;">
                         <label data-i18n="scores_search_status">Статус раунда</label>
-                        <select id="se-q-status" class="form-input" onchange="seRender()">
+                        <select id="se-q-status" class="form-input" data-act="seRender">
                             <option value="">— все —</option>
                             <option value="active">🔴 Активный</option>
                             <option value="scheduled">⏳ Запланированный</option>
@@ -301,7 +301,7 @@
                     </div>
                     <div class="form-group" style="flex:0 0 auto;">
                         <label>&nbsp;</label>
-                        <button class="btn btn-og btn-sm" onclick="seRender()"><i class="fas fa-rotate"></i> Обновить</button>
+                        <button class="btn btn-og btn-sm" data-act="seRender"><i class="fas fa-rotate"></i> Обновить</button>
                     </div>
                 </div>
                 <div id="se-list"><p style="color:var(--muted);text-align:center;padding:20px;">Загрузка раундов…</p></div>
@@ -313,12 +313,21 @@
                 <h2><i class="fas fa-clock-rotate-left"></i> Журнал действий со счётом</h2>
                 <p style="color:var(--muted);font-size:13px;">Сохранённые сервером действия за последние 30 дней. QR-доступ без входа отмечается отдельно: личность оператора не подтверждена. Время показано в часовом поясе устройства.</p>
                 <div class="form-row" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
-                    <label class="form-group" style="flex:1;min-width:190px;">ФИО или ID игрока<input id="sa-search" class="form-input" type="search" placeholder="Фамилия Имя" oninput="saFilter()"></label>
-                    <label class="form-group">Дата подтверждения<input id="sa-date" class="form-input" type="date" onchange="saLoad()"></label>
-                    <button type="button" class="btn btn-og btn-sm" onclick="document.getElementById('sa-date').value='';saLoad()">Все 30 дней</button>
-                    <button type="button" class="btn btn-ol btn-sm" onclick="saRefresh()">Обновить</button>
+                    <label class="form-group" style="flex:1;min-width:190px;">ФИО или ID игрока<input id="sa-search" class="form-input" type="search" placeholder="Фамилия Имя" data-act="saFilter"></label>
+                    <label class="form-group">Дата подтверждения<input id="sa-date" class="form-input" type="date" data-act="saLoad"></label>
+                    <button type="button" class="btn btn-og btn-sm" data-act="pestovoClearValue" data-arg="sa-date" data-then="saLoad">Все 30 дней</button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="saRefresh">Обновить</button>
                 </div>
                 <div id="sa-results" aria-live="polite"></div>
+            </div>
+            <div class="card">
+                <h2><i class="fas fa-triangle-exclamation"></i> Ошибки клиентов</h2>
+                <p style="color:var(--muted);font-size:13px;">Сбои, которые приложение само отправило с устройств игроков (<code>reportError()</code> → узел <code>errorReports</code>). Не более 20 сообщений за сессию и 3 повтора одной ошибки с устройства — список группируется по тексту. Требует правил БД с узлом <code>errorReports</code>.</p>
+                <div class="form-row" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-ol btn-sm" data-act="erLoad">Обновить</button>
+                    <button type="button" class="btn btn-danger btn-sm" data-act="erClear">Очистить</button>
+                </div>
+                <div id="er-results" aria-live="polite"></div>
             </div>
         </div>
 
@@ -327,8 +336,8 @@
                 <h2><i class="fas fa-chart-line"></i> Журнал гандикапов</h2>
                 <p style="color:var(--muted);font-size:13px;">Кто и когда обновил гандикап игрока: из RUSGOLF при создании раунда (ФИО, которое ввёл создатель), вручную в админке, синхронизация АГР и импорт Excel. Видно старое и новое значение.</p>
                 <div class="form-row" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
-                    <label class="form-group" style="flex:1;min-width:190px;">Игрок или кто обновил<input id="hcp-log-search" class="form-input" type="search" placeholder="Фамилия Имя" oninput="hcpLogFilter()"></label>
-                    <button type="button" class="btn btn-ol btn-sm" onclick="hcpLogLoad()"><i class="fas fa-rotate"></i> Обновить</button>
+                    <label class="form-group" style="flex:1;min-width:190px;">Игрок или кто обновил<input id="hcp-log-search" class="form-input" type="search" placeholder="Фамилия Имя" data-act="hcpLogFilter"></label>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="hcpLogLoad"><i class="fas fa-rotate"></i> Обновить</button>
                 </div>
                 <div id="hcp-log-results" aria-live="polite"></div>
             </div>
@@ -341,14 +350,14 @@
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
                     <div class="form-group" style="flex:1;min-width:170px;max-width:260px;margin:0;">
                         <label style="font-size:11px;">Сортировка</label>
-                        <select id="adm-groups-sort" class="form-input" style="padding:7px 10px;font-size:12.5px;" onchange="admGroupsSort(this.value)">
+                        <select id="adm-groups-sort" class="form-input" style="padding:7px 10px;font-size:12.5px;" data-act="admGroupsSort">
                             <option value="delay" selected>Сначала отстающие</option>
                             <option value="start">По времени старта</option>
                             <option value="hole">По текущей лунке</option>
                         </select>
                     </div>
-                    <button type="button" class="btn btn-ol btn-sm" onclick="admGroupsExpandAll(true)"><i class="fas fa-angles-down"></i> Развернуть все</button>
-                    <button type="button" class="btn btn-ol btn-sm" onclick="admGroupsExpandAll(false)"><i class="fas fa-angles-up"></i> Свернуть все</button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admGroupsExpandAll" data-arg2="true"><i class="fas fa-angles-down"></i> Развернуть все</button>
+                    <button type="button" class="btn btn-ol btn-sm" data-act="pestovoRunBool" data-arg="admGroupsExpandAll" data-arg2="false"><i class="fas fa-angles-up"></i> Свернуть все</button>
                 </div>
                 <div id="adm-groups"></div>
             </div>
@@ -358,7 +367,7 @@
             <div class="card">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
                     <h2 style="margin:0;"><i class="fas fa-bell"></i> <span data-i18n="referee_marshal_calls">Вызовы судей и маршалов</span></h2>
-                    <button class="btn btn-og btn-sm" id="btn-enable-notif" onclick="enableAdminNotifications()">
+                    <button class="btn btn-og btn-sm" id="btn-enable-notif" data-act="enableAdminNotifications">
                         <i class="fas fa-bell"></i> <span data-i18n="enable_push_notifications">Включить Push-уведомления</span>
                     </button>
                 </div>
@@ -390,8 +399,8 @@
                         </div>
                     </div>
                     <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
-                        <button class="btn btn-g btn-sm" onclick="saveTelegramSettings('group')"><i class="fas fa-save"></i> <span data-i18n="save_group">Сохранить Группу</span></button>
-                        <button class="btn btn-og btn-sm" onclick="testTelegramGroupAlert()"><i class="fab fa-telegram-plane"></i> <span data-i18n="test_group">Проверить Группу</span></button>
+                        <button class="btn btn-g btn-sm" data-act="saveTelegramSettings" data-arg="group"><i class="fas fa-save"></i> <span data-i18n="save_group">Сохранить Группу</span></button>
+                        <button class="btn btn-og btn-sm" data-act="testTelegramGroupAlert"><i class="fab fa-telegram-plane"></i> <span data-i18n="test_group">Проверить Группу</span></button>
                     </div>
                 </div>
 
@@ -412,8 +421,8 @@
                         </div>
                     </div>
                     <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
-                        <button class="btn btn-g btn-sm" onclick="saveTelegramSettings('channel')"><i class="fas fa-save"></i> <span data-i18n="save_channel">Сохранить Канал</span></button>
-                        <button class="btn btn-og btn-sm" onclick="testTelegramChannelAlert()"><i class="fab fa-telegram-plane"></i> <span data-i18n="test_channel">Проверить Канал</span></button>
+                        <button class="btn btn-g btn-sm" data-act="saveTelegramSettings" data-arg="channel"><i class="fas fa-save"></i> <span data-i18n="save_channel">Сохранить Канал</span></button>
+                        <button class="btn btn-og btn-sm" data-act="testTelegramChannelAlert"><i class="fab fa-telegram-plane"></i> <span data-i18n="test_channel">Проверить Канал</span></button>
                     </div>
                 </div>
             </div>
@@ -450,8 +459,8 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
-                    <button class="btn btn-g" onclick="saveVKSettings()"><i class="fas fa-save"></i> <span data-i18n="save_vk">Сохранить настройки ВК</span></button>
-                    <button class="btn btn-og" onclick="testVKAlert()"><i class="fab fa-vk"></i> <span data-i18n="test_vk">Проверить отправку в ВК</span></button>
+                    <button class="btn btn-g" data-act="saveVKSettings"><i class="fas fa-save"></i> <span data-i18n="save_vk">Сохранить настройки ВК</span></button>
+                    <button class="btn btn-og" data-act="testVKAlert"><i class="fab fa-vk"></i> <span data-i18n="test_vk">Проверить отправку в ВК</span></button>
                 </div>
                 <p style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:0;">
                     <i class="fas fa-shield-halved"></i> Отправка выполняется напрямую через VK API (JSONP) без сторонних серверов. Версия API: 5.199.
@@ -483,7 +492,7 @@
                 </div>
                 <div class="form-group">
                     <label data-i18n="bc_audience_lbl">Кому отправить</label>
-                    <select id="bc-audience" class="form-input" onchange="bcAudienceTypeChange()">
+                    <select id="bc-audience" class="form-input" data-act="bcAudienceTypeChange">
                         <option value="all" data-i18n="bc_aud_all">Всем игрокам клуба</option>
                         <option value="all_pwa" data-i18n="bc_aud_all_pwa">Всем + PWA-уведомления (включая гостей)</option>
                         <option value="roster" data-i18n="bc_aud_tournament">Турниру (его registrations)</option>
@@ -493,20 +502,20 @@
                 <div class="form-row hidden" id="bc-aud-pick">
                     <div class="form-group" style="flex:1 1 220px;">
                         <label data-i18n="bc_aud_tn_lbl">Турнир</label>
-                        <select id="bc-aud-tn" class="form-input" onchange="bcAudienceSourceChange()">
+                        <select id="bc-aud-tn" class="form-input" data-act="bcAudienceSourceChange">
                             <option value="">&mdash;</option>
                         </select>
                     </div>
                     <div class="form-group hidden" id="bc-aud-proto-group" style="flex:1 1 220px;">
                         <label data-i18n="bc_aud_proto_lbl">Стартовый протокол</label>
-                        <select id="bc-aud-proto" class="form-input" onchange="bcAudienceSourceChange()">
+                        <select id="bc-aud-proto" class="form-input" data-act="bcAudienceSourceChange">
                             <option value="">&mdash;</option>
                         </select>
                     </div>
                 </div>
                 <p style="font-size:12px;color:var(--muted);margin:0 0 10px;" data-i18n="bc_aud_hint">Адресный анонс увидят только адресаты: страница игрока проверяет, есть ли он в списке получателей, и лишнего не показывает.</p>
                 <div id="bc-aud-count" class="hcp-chip" style="display:inline-block;font-size:12px;margin-bottom:12px;color:var(--muted);">Получателей: все игроки клуба</div>
-                <button class="btn btn-g" onclick="sendClubBroadcast()"><i class="fas fa-paper-plane"></i> <span data-i18n="send_broadcast_btn">Отправить анонс всем игрокам</span></button>
+                <button class="btn btn-g" data-act="sendClubBroadcast"><i class="fas fa-paper-plane"></i> <span data-i18n="send_broadcast_btn">Отправить анонс всем игрокам</span></button>
             </div>
 
             <div class="card">
@@ -522,8 +531,8 @@
                     <input type="text" id="push-fn-url" class="form-input" placeholder="https://us-central1-livescore-b77e4.cloudfunctions.net/vapidSetup">
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn btn-g" onclick="pushAdminInit()"><i class="fas fa-key"></i> Создать/проверить VAPID-ключи</button>
-                    <button class="btn btn-ol" onclick="pushAdminRefreshStatus()"><i class="fas fa-rotate"></i> Обновить статус</button>
+                    <button class="btn btn-g" data-act="pushAdminInit"><i class="fas fa-key"></i> Создать/проверить VAPID-ключи</button>
+                    <button class="btn btn-ol" data-act="pushAdminRefreshStatus"><i class="fas fa-rotate"></i> Обновить статус</button>
                 </div>
             </div>
 
@@ -541,7 +550,7 @@
                 <p class="display-config-note"><i class="fas fa-globe" aria-hidden="true"></i> Компоновка, порядок и видимость элементов сохраняются для всех пользователей. Старые числовые варианты удалены; по умолчанию используются адаптивные карточки.</p>
                 <div class="form-group display-layout-field">
                     <label for="tournaments-display-layout">Компоновка страницы</label>
-                    <select id="tournaments-display-layout" class="form-input" onchange="setPestovoDisplayDraftLayout(this.value)">
+                    <select id="tournaments-display-layout" class="form-input" data-act="setPestovoDisplayDraftLayout">
                         <option value="cards">Карточки клуба — по умолчанию</option>
                         <option value="timeline">Лента стартов</option>
                         <option value="compact">Компактный обзор</option>
@@ -553,14 +562,14 @@
                 <p class="sev-sec-sub">Меняйте расположение активного турнира, предстоящих стартов и архива.</p>
                 <div id="tournaments-display-order" class="screen-display-order"></div>
                 <div class="sev-apply">
-                    <button type="button" class="btn btn-g" data-display-save="tournaments" onclick="savePestovoDisplaySettings('tournaments')"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить страницу для всех</button>
-                    <button type="button" class="btn btn-ol" data-display-reset="tournaments" onclick="resetPestovoDisplaySettings('tournaments')"><i class="fas fa-rotate-left" aria-hidden="true"></i> Сбросить к умолчанию</button>
+                    <button type="button" class="btn btn-g" data-display-save="tournaments" data-act="savePestovoDisplaySettings" data-arg="tournaments"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Применить страницу для всех</button>
+                    <button type="button" class="btn btn-ol" data-display-reset="tournaments" data-act="resetPestovoDisplaySettings" data-arg="tournaments"><i class="fas fa-rotate-left" aria-hidden="true"></i> Сбросить к умолчанию</button>
                     <div class="sev-apply-text">
                         <p class="sev-apply-hint">Сохранённые настройки применяются к каталогу и подробной странице турнира.</p>
                         <p id="tournaments-display-status" role="status" aria-live="polite"></p>
                     </div>
                 </div>
-                <button type="button" class="btn btn-ol" onclick="openTournamentsPagePreview()" style="margin-top:14px;min-height:44px;"><i class="fas fa-arrow-up-right-from-square"></i> Открыть страницу турниров</button>
+                <button type="button" class="btn btn-ol" data-act="openTournamentsPagePreview" style="margin-top:14px;min-height:44px;"><i class="fas fa-arrow-up-right-from-square"></i> Открыть страницу турниров</button>
                 <div class="sev-sec-title">Краткий предпросмотр</div>
                 <div id="tournaments-display-preview" class="screen-display-preview" aria-live="polite"></div>
             </div>
@@ -578,7 +587,7 @@
                     Скрывать полные имена игроков (имя, фамилия, отчество) от других игроков и гостей. Вместо ФИО показываются инициалы или маска, а гандикап и история раундов остаются видны. Админ и сам игрок всегда видят своё имя.
                 </p>
 
-                <div class="list-item" onclick="togglePrivacyGlobalCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:12px;touch-action:manipulation;">
+                <div class="list-item" data-act="togglePrivacyGlobalCheckbox" data-ev="1" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:12px;touch-action:manipulation;">
                     <div>
                         <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-eye-slash"></i> <span data-i18n="privacy_global_lbl">Скрывать ФИО всех игроков от других (глобально)</span></span>
                         <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="privacy_global_sub">Включите, чтобы скрыть полные имена сразу для всех игроков. Для отдельных игроков можно задать исключение ниже.</div>
@@ -594,7 +603,7 @@
                     </select>
                 </div>
 
-                <button type="button" class="btn btn-g btn-block" onclick="savePrivacySettings()" style="min-height:44px;margin-top:12px;">
+                <button type="button" class="btn btn-g btn-block" data-act="savePrivacySettings" style="min-height:44px;margin-top:12px;">
                     <i class="fas fa-save"></i> <span data-i18n="privacy_save_btn">Сохранить настройки приватности</span>
                 </button>
             </div>
@@ -639,7 +648,7 @@
                         </select>
                     </div>
                 </div>
-                <button type="button" class="btn btn-g btn-block" onclick="createPlayerInAdmin()" style="margin-top:8px;">
+                <button type="button" class="btn btn-g btn-block" data-act="createPlayerInAdmin" style="margin-top:8px;">
                     <i class="fas fa-plus-circle"></i> <span>Создать игрока</span>
                 </button>
             </div>
@@ -653,13 +662,13 @@
                     <p style="color:var(--muted);font-size:12px;margin:0;flex:1;min-width:220px;">
                         <i class="fas fa-triangle-exclamation" style="color:var(--red);"></i> Полное удаление всех игроков: список станет пустым (также удалятся их раунды, история и регистрации на турниры).
                     </p>
-                    <button type="button" class="btn btn-r imp-big-btn" onclick="clearAllData()">
+                    <button type="button" class="btn btn-r imp-big-btn" data-act="clearAllData">
                         <i class="fas fa-user-minus"></i> <span>Удалить всех игроков</span>
                     </button>
                 </div>
                 <div style="position:relative;margin-bottom:12px;">
                     <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;"></i>
-                    <input type="text" id="adm-players-search" class="form-input" style="padding-left:34px;" placeholder="🔍 Поиск: имя, email, телефон… / Search…" oninput="admPlayersSearch(this.value)">
+                    <input type="text" id="adm-players-search" class="form-input" style="padding-left:34px;" placeholder="🔍 Поиск: имя, email, телефон… / Search…" data-act="admPlayersSearch">
                 </div>
                 <div id="adm-players"></div>
             </div>
@@ -673,10 +682,10 @@
                     Выгружайте список игроков в таблицу Excel и импортируйте игроков обратно: имя, фамилия и точный гандикап.
                 </p>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                    <button type="button" class="btn btn-g imp-big-btn" onclick="exportPlayersExcel()">
+                    <button type="button" class="btn btn-g imp-big-btn" data-act="exportPlayersExcel">
                         <i class="fas fa-download"></i> <span>Экспорт игроков в Excel</span>
                     </button>
-                    <button type="button" class="btn btn-og imp-big-btn" onclick="downloadPlayersTemplate()">
+                    <button type="button" class="btn btn-og imp-big-btn" data-act="downloadPlayersTemplate">
                         <i class="fas fa-file-arrow-down"></i> <span>Скачать шаблон таблицы</span>
                     </button>
                 </div>
@@ -694,7 +703,7 @@
                 <label class="imp-file-label" for="imp-file-input">
                     <i class="fas fa-cloud-arrow-up"></i>
                     <span><b>Выберите файл Excel</b><br><small style="color:var(--muted);">.xlsx, .xls или .csv · столбцы: Имя, Фамилия, Точный гандикап</small></span>
-                    <input type="file" id="imp-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handlePlayersFileSelect(this)">
+                    <input type="file" id="imp-file-input" accept=".xlsx,.xls,.csv" style="display:none;" data-act="handlePlayersFileSelect" data-self="1">
                 </label>
                 <div id="imp-status"></div>
                 <div id="imp-preview"></div>
@@ -708,7 +717,7 @@
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="rg_sub">
                     Поиск точного гандикапа (HI) игрока в официальной базе Ассоциации гольфа России (hcp.rusgolf.ru) с возможностью добавить игрока к себе на сайт.
                 </p>
-                <form id="rg-search-form" onsubmit="rgDoSearch(event)">
+                <form id="rg-search-form" data-sub-act="rgDoSearch" data-sub-ev="1" data-prevent="1">
                     <div class="rg-search-row">
                         <input type="search" id="rg-search-input" class="form-input" placeholder="Например: Тестов Иван или RU000732" autocomplete="off">
                         <button type="submit" class="btn btn-g rg-search-btn" id="rg-search-btn"><i class="fas fa-magnifying-glass"></i> <span>Найти</span></button>
@@ -729,9 +738,9 @@
                     <label class="imp-file-label" for="rg-batch-file-input" style="margin:0;flex:1 1 280px;">
                         <i class="fas fa-cloud-arrow-up"></i>
                         <span><b>Выберите файл Excel</b><br><small style="color:var(--muted);">.xlsx, .xls или .csv · столбцы: Имя, Фамилия</small></span>
-                        <input type="file" id="rg-batch-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="rgBatchHandleFile(this)">
+                        <input type="file" id="rg-batch-file-input" accept=".xlsx,.xls,.csv" style="display:none;" data-act="rgBatchHandleFile" data-self="1">
                     </label>
-                    <button type="button" class="btn btn-og imp-big-btn" onclick="rgBatchDownloadTemplate()">
+                    <button type="button" class="btn btn-og imp-big-btn" data-act="rgBatchDownloadTemplate">
                         <i class="fas fa-file-arrow-down"></i> <span>Скачать шаблон</span>
                     </button>
                 </div>
@@ -764,8 +773,8 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                    <button type="button" class="btn btn-g" onclick="nmSaveSettings()"><i class="fas fa-save"></i> <span>Сохранить</span></button>
-                    <button type="button" class="btn btn-og" onclick="nmAnalyzeNames()"><i class="fas fa-magnifying-glass-chart"></i> <span>Проверить имена игроков</span></button>
+                    <button type="button" class="btn btn-g" data-act="nmSaveSettings"><i class="fas fa-save"></i> <span>Сохранить</span></button>
+                    <button type="button" class="btn btn-og" data-act="nmAnalyzeNames"><i class="fas fa-magnifying-glass-chart"></i> <span>Проверить имена игроков</span></button>
                 </div>
                 <div id="nm-analyze-results"></div>
             </div>
@@ -781,7 +790,7 @@
                 </p>
                 <div class="form-group" style="max-width:340px;">
                     <label>Кого синхронизировать</label>
-                    <select id="rg-sync-scope" class="form-input" onchange="rgRefreshSyncScopeHint()">
+                    <select id="rg-sync-scope" class="form-input" data-act="rgRefreshSyncScopeHint">
                         <option value="all" selected>Всех игроков</option>
                         <option value="notfound">Не найденных в прошлый раз</option>
                         <option value="new">Новых (без HCP / без прошлой синхронизации)</option>
@@ -791,10 +800,10 @@
                 </div>
                 <div id="rg-sync-scope-hint" style="margin:-6px 0 12px;"></div>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                    <button type="button" class="btn btn-g imp-big-btn" id="rg-sync-btn" onclick="rgSyncAll()">
+                    <button type="button" class="btn btn-g imp-big-btn" id="rg-sync-btn" data-act="rgSyncAll">
                         <i class="fas fa-rotate"></i> <span>Синхронизировать гандикапы</span>
                     </button>
-                    <button type="button" class="btn btn-r imp-big-btn hidden" id="rg-sync-stop" onclick="rgSyncStop()">
+                    <button type="button" class="btn btn-r imp-big-btn hidden" id="rg-sync-stop" data-act="rgSyncStop">
                         <i class="fas fa-stop"></i> <span>Остановить</span>
                     </button>
                 </div>
@@ -816,7 +825,7 @@
                         <label>Свой прокси (необязательно)</label>
                         <input type="text" id="rg-proxy-input" class="form-input" placeholder="https://my-proxy.example.com/?target={url}">
                     </div>
-                    <button type="button" class="btn btn-og btn-sm" onclick="saveRusgolfProxySettings()"><i class="fas fa-save"></i> <span>Сохранить</span></button>
+                    <button type="button" class="btn btn-og btn-sm" data-act="saveRusgolfProxySettings"><i class="fas fa-save"></i> <span>Сохранить</span></button>
                     <span id="rg-proxy-status" style="font-size:12px;color:var(--muted);margin-left:10px;"></span>
                 </details>
             </div>
@@ -830,14 +839,14 @@
                 </p>
 
                 <!-- Клубный дефолт отображения Stableford. Личный выбор игрока имеет приоритет. -->
-                <div class="list-item" onclick="toggleStablefordDefaultCheckbox(event)" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:10px;touch-action:manipulation;">
+                <div class="list-item" data-act="toggleStablefordDefaultCheckbox" data-ev="1" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold);border-radius:10px;margin-bottom:10px;touch-action:manipulation;">
                     <div>
                         <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-star"></i> <span data-i18n="stableford_default">Stableford по умолчанию</span></span>
                         <div style="font-size:12px;color:var(--muted);margin-top:4px;" data-i18n="stableford_default_hint">Показывать очки Stableford рядом со счётом всем игрокам, которые ещё не выбрали личную настройку.</div>
                     </div>
                     <input type="checkbox" id="pv-stableford-default" style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
                 </div>
-                <button type="button" class="btn btn-og btn-sm" onclick="saveStablefordDisplayDefault()" style="margin:0 0 16px;">
+                <button type="button" class="btn btn-og btn-sm" data-act="saveStablefordDisplayDefault" style="margin:0 0 16px;">
                     <i class="fas fa-save"></i> <span data-i18n="save_stableford_default">Сохранить настройку Stableford</span>
                 </button>
 
@@ -850,9 +859,9 @@
                         Зелёная галочка «гандикап синхронизирован» и дата обновления показаны во вкладке «Игроки», личном профиле и в списке админки. Выбор действует для всех игроков.
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="hcp-badge-opt-1" class="btn btn-og btn-sm hcp-variant-btn" onclick="saveHcpBadgeVariant('1')"><i class="fas fa-circle-check"></i> <span data-i18n="hcp_variant_1">1 · Компактная галочка</span></button>
-                        <button type="button" id="hcp-badge-opt-2" class="btn btn-og btn-sm hcp-variant-btn" onclick="saveHcpBadgeVariant('2')"><i class="fas fa-capsules"></i> <span data-i18n="hcp_variant_2">2 · Пилюля «обновлён»</span></button>
-                        <button type="button" id="hcp-badge-opt-3" class="btn btn-og btn-sm hcp-variant-btn" onclick="saveHcpBadgeVariant('3')"><i class="fas fa-user-check"></i> <span data-i18n="hcp_variant_3">3 · Галочка на аватаре</span></button>
+                        <button type="button" id="hcp-badge-opt-1" class="btn btn-og btn-sm hcp-variant-btn" data-act="saveHcpBadgeVariant" data-arg="1"><i class="fas fa-circle-check"></i> <span data-i18n="hcp_variant_1">1 · Компактная галочка</span></button>
+                        <button type="button" id="hcp-badge-opt-2" class="btn btn-og btn-sm hcp-variant-btn" data-act="saveHcpBadgeVariant" data-arg="2"><i class="fas fa-capsules"></i> <span data-i18n="hcp_variant_2">2 · Пилюля «обновлён»</span></button>
+                        <button type="button" id="hcp-badge-opt-3" class="btn btn-og btn-sm hcp-variant-btn" data-act="saveHcpBadgeVariant" data-arg="3"><i class="fas fa-user-check"></i> <span data-i18n="hcp_variant_3">3 · Галочка на аватаре</span></button>
                     </div>
                 </div>
                 <!-- Глобальный стиль PNG-карточек для социальных сетей -->
@@ -862,9 +871,9 @@
                         Выберите один из трёх вариантов. Выбранное оформление применится ко всем новым PNG-карточкам при экспорте.
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="social-card-opt-1" class="btn btn-og btn-sm social-card-variant-btn" onclick="saveSocialCardVariant('1')" aria-pressed="true"><i class="fas fa-table-cells-large"></i> <span data-i18n="social_card_variant_1">1 · Классика</span></button>
-                        <button type="button" id="social-card-opt-2" class="btn btn-og btn-sm social-card-variant-btn" onclick="saveSocialCardVariant('2')" aria-pressed="false"><i class="fas fa-trophy"></i> <span data-i18n="social_card_variant_2">2 · Акцент на результате</span></button>
-                        <button type="button" id="social-card-opt-3" class="btn btn-og btn-sm social-card-variant-btn" onclick="saveSocialCardVariant('3')" aria-pressed="false"><i class="fas fa-flag"></i> <span data-i18n="social_card_variant_3">3 · Турнирная</span></button>
+                        <button type="button" id="social-card-opt-1" class="btn btn-og btn-sm social-card-variant-btn" data-act="saveSocialCardVariant" data-arg="1" aria-pressed="true"><i class="fas fa-table-cells-large"></i> <span data-i18n="social_card_variant_1">1 · Классика</span></button>
+                        <button type="button" id="social-card-opt-2" class="btn btn-og btn-sm social-card-variant-btn" data-act="saveSocialCardVariant" data-arg="2" aria-pressed="false"><i class="fas fa-trophy"></i> <span data-i18n="social_card_variant_2">2 · Акцент на результате</span></button>
+                        <button type="button" id="social-card-opt-3" class="btn btn-og btn-sm social-card-variant-btn" data-act="saveSocialCardVariant" data-arg="3" aria-pressed="false"><i class="fas fa-flag"></i> <span data-i18n="social_card_variant_3">3 · Турнирная</span></button>
                     </div>
                 </div>
                 <!-- Групповые и персональные экранные карточки используют общий набор видов. -->
@@ -876,11 +885,11 @@
                         Выберите один из 5 вариантов отображения live-лидерборда турнира. Настройка выбирается только админом и применяется для всех участников на странице «Турниры».
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="tn-lb-opt-1" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('1')" aria-pressed="true"><i class="fas fa-table-list"></i> <span>1 · Классика (таблица)</span></button>
-                        <button type="button" id="tn-lb-opt-2" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('2')" aria-pressed="false"><i class="fas fa-compress"></i> <span>2 · Компактный</span></button>
-                        <button type="button" id="tn-lb-opt-3" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('3')" aria-pressed="false"><i class="fas fa-id-card"></i> <span>3 · Карточки</span></button>
-                        <button type="button" id="tn-lb-opt-4" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('4')" aria-pressed="false"><i class="fas fa-table-cells-large"></i> <span>4 · Детальный</span></button>
-                        <button type="button" id="tn-lb-opt-5" class="btn btn-og btn-sm tn-lb-variant-btn" onclick="saveTnLbVariant('5')" aria-pressed="false"><i class="fas fa-bolt"></i> <span>5 · Live-лента</span></button>
+                        <button type="button" id="tn-lb-opt-1" class="btn btn-og btn-sm tn-lb-variant-btn" data-act="saveTnLbVariant" data-arg="1" aria-pressed="true"><i class="fas fa-table-list"></i> <span data-i18n="tn_lb_variant_1">1 · Классика (таблица)</span></button>
+                        <button type="button" id="tn-lb-opt-2" class="btn btn-og btn-sm tn-lb-variant-btn" data-act="saveTnLbVariant" data-arg="2" aria-pressed="false"><i class="fas fa-compress"></i> <span data-i18n="tn_lb_variant_2">2 · Компактный</span></button>
+                        <button type="button" id="tn-lb-opt-3" class="btn btn-og btn-sm tn-lb-variant-btn" data-act="saveTnLbVariant" data-arg="3" aria-pressed="false"><i class="fas fa-id-card"></i> <span data-i18n="tn_lb_variant_3">3 · Карточки</span></button>
+                        <button type="button" id="tn-lb-opt-4" class="btn btn-og btn-sm tn-lb-variant-btn" data-act="saveTnLbVariant" data-arg="4" aria-pressed="false"><i class="fas fa-table-cells-large"></i> <span data-i18n="tn_lb_variant_4">4 · Детальный</span></button>
+                        <button type="button" id="tn-lb-opt-5" class="btn btn-og btn-sm tn-lb-variant-btn" data-act="saveTnLbVariant" data-arg="5" aria-pressed="false"><i class="fas fa-bolt"></i> <span data-i18n="tn_lb_variant_5">5 · Live-лента</span></button>
                     </div>
                     <div style="margin-top:10px;padding:10px 12px;border:1px dashed rgba(201,168,76,.5);border-radius:10px;background:rgba(201,168,76,.05);">
                         <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> Предпросмотр:</div>
@@ -900,9 +909,9 @@
                         Мужчины и девушки могут вести зачёт отдельно. Выберите один из 3 видов отображения — настройка выбирается только админом и применяется для всех.
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="tn-gs-opt-1" class="btn btn-og btn-sm tn-gs-variant-btn" onclick="saveTnGenderSplit('1')" aria-pressed="true"><i class="fas fa-layer-group"></i> <span>1 · Смешанный (все вместе)</span></button>
-                        <button type="button" id="tn-gs-opt-2" class="btn btn-og btn-sm tn-gs-variant-btn" onclick="saveTnGenderSplit('2')" aria-pressed="false"><i class="fas fa-venus-mars"></i> <span>2 · По полу (вкладки)</span></button>
-                        <button type="button" id="tn-gs-opt-3" class="btn btn-og btn-sm tn-gs-variant-btn" onclick="saveTnGenderSplit('3')" aria-pressed="false"><i class="fas fa-table-columns"></i> <span>3 · Раздельные таблицы</span></button>
+                        <button type="button" id="tn-gs-opt-1" class="btn btn-og btn-sm tn-gs-variant-btn" data-act="saveTnGenderSplit" data-arg="1" aria-pressed="true"><i class="fas fa-layer-group"></i> <span>1 · Смешанный (все вместе)</span></button>
+                        <button type="button" id="tn-gs-opt-2" class="btn btn-og btn-sm tn-gs-variant-btn" data-act="saveTnGenderSplit" data-arg="2" aria-pressed="false"><i class="fas fa-venus-mars"></i> <span>2 · По полу (вкладки)</span></button>
+                        <button type="button" id="tn-gs-opt-3" class="btn btn-og btn-sm tn-gs-variant-btn" data-act="saveTnGenderSplit" data-arg="3" aria-pressed="false"><i class="fas fa-table-columns"></i> <span>3 · Раздельные таблицы</span></button>
                     </div>
                     <div style="margin-top:10px;padding:10px 12px;border:1px dashed rgba(90,173,224,.5);border-radius:10px;background:rgba(90,173,224,.05);">
                         <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> Предпросмотр:</div>
@@ -920,14 +929,14 @@
                         Активный турнир всегда открывается на live-лидерборде. Группы (дивизионы) по умолчанию видны всем — здесь их можно скрыть. Ниже — 4 варианта оформления списка участников и групп. Настройки применяются для всех.
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;">
-                        <button type="button" id="tn-groups-visible-btn" class="btn btn-g btn-sm" onclick="saveTnGroupsVisible()" aria-pressed="true"><i class="fas fa-eye"></i> <span id="tn-groups-visible-label">Показывать группы: включено</span></button>
+                        <button type="button" id="tn-groups-visible-btn" class="btn btn-g btn-sm" data-act="saveTnGroupsVisible" aria-pressed="true"><i class="fas fa-eye"></i> <span id="tn-groups-visible-label">Показывать группы: включено</span></button>
                     </div>
                     <div style="margin-top:12px;font-size:12px;color:var(--muted);font-weight:700;"><i class="fas fa-list-ul"></i> Вид списка участников:</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-                        <button type="button" id="tn-roster-opt-1" class="btn btn-og btn-sm tn-roster-variant-btn" onclick="saveTnRosterVariant('1')" aria-pressed="true"><i class="fas fa-table-list"></i> <span>1 · Классика (таблица)</span></button>
-                        <button type="button" id="tn-roster-opt-2" class="btn btn-og btn-sm tn-roster-variant-btn" onclick="saveTnRosterVariant('2')" aria-pressed="false"><i class="fas fa-grip"></i> <span>2 · Карточки</span></button>
-                        <button type="button" id="tn-roster-opt-3" class="btn btn-og btn-sm tn-roster-variant-btn" onclick="saveTnRosterVariant('3')" aria-pressed="false"><i class="fas fa-bars-staggered"></i> <span>3 · Компактные строки</span></button>
-                        <button type="button" id="tn-roster-opt-4" class="btn btn-og btn-sm tn-roster-variant-btn" onclick="saveTnRosterVariant('4')" aria-pressed="false"><i class="fas fa-table"></i> <span>4 · Короткая таблица</span></button>
+                        <button type="button" id="tn-roster-opt-1" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="1" aria-pressed="true"><i class="fas fa-table-list"></i> <span>1 · Классика (таблица)</span></button>
+                        <button type="button" id="tn-roster-opt-2" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="2" aria-pressed="false"><i class="fas fa-grip"></i> <span>2 · Карточки</span></button>
+                        <button type="button" id="tn-roster-opt-3" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="3" aria-pressed="false"><i class="fas fa-bars-staggered"></i> <span>3 · Компактные строки</span></button>
+                        <button type="button" id="tn-roster-opt-4" class="btn btn-og btn-sm tn-roster-variant-btn" data-act="saveTnRosterVariant" data-arg="4" aria-pressed="false"><i class="fas fa-table"></i> <span>4 · Короткая таблица</span></button>
                     </div>
                 </div>
                 <!-- Вид блока «Активный турнир» на главной — 5 вариантов -->
@@ -937,11 +946,11 @@
                         Выберите один из 5 видов блока активного турнира на главной странице — с топ-3 в разных форматах. Выбирает только админ, применяется для всех пользователей. Виды удобно смотреть и с телефона, и с компьютера.
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="v5-homeTournament-1" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','1')" aria-pressed="true"><i class="fas fa-table-cells"></i> 1 · Подиум</button>
-                        <button type="button" id="v5-homeTournament-2" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','2')" aria-pressed="false"><i class="fas fa-list"></i> 2 · Витрина</button>
-                        <button type="button" id="v5-homeTournament-3" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','3')" aria-pressed="false"><i class="fas fa-align-left"></i> 3 · Строки</button>
-                        <button type="button" id="v5-homeTournament-4" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','4')" aria-pressed="false"><i class="fas fa-moon"></i> 4 · Тёмный</button>
-                        <button type="button" id="v5-homeTournament-5" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('homeTournament','5')" aria-pressed="false"><i class="fas fa-feather"></i> 5 · Мини</button>
+                        <button type="button" id="v5-homeTournament-1" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="1" aria-pressed="true"><i class="fas fa-table-cells"></i> 1 · Подиум</button>
+                        <button type="button" id="v5-homeTournament-2" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="2" aria-pressed="false"><i class="fas fa-list"></i> 2 · Витрина</button>
+                        <button type="button" id="v5-homeTournament-3" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="3" aria-pressed="false"><i class="fas fa-align-left"></i> 3 · Строки</button>
+                        <button type="button" id="v5-homeTournament-4" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="4" aria-pressed="false"><i class="fas fa-moon"></i> 4 · Тёмный</button>
+                        <button type="button" id="v5-homeTournament-5" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="5" aria-pressed="false"><i class="fas fa-feather"></i> 5 · Мини</button>
                     </div>
                 </div>
                 <!-- Блок «Создание раунда» — 5 вариантов -->
@@ -951,11 +960,11 @@
                         Единый блок вместо вкладок «Одиночный»/«Групповой»: кнопка «Добавить игрока» добавляет участников (1–6 человек). 1 игрок — одиночный раунд, 2 и более — групповой с маркерами. Выбирает только админ, применяется для всех пользователей.
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="v5-roundsetup-1" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('roundsetup','1')" aria-pressed="true"><i class="fas fa-layer-group"></i> 1 · Классика</button>
-                        <button type="button" id="v5-roundsetup-2" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('roundsetup','2')" aria-pressed="false"><i class="fas fa-table-columns"></i> 2 · Всё открыто</button>
-                        <button type="button" id="v5-roundsetup-3" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('roundsetup','3')" aria-pressed="false"><i class="fas fa-list"></i> 3 · Список</button>
-                        <button type="button" id="v5-roundsetup-4" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('roundsetup','4')" aria-pressed="false"><i class="fas fa-gem"></i> 4 · Витрина</button>
-                        <button type="button" id="v5-roundsetup-5" class="btn btn-og btn-sm v5-variant-btn" onclick="saveView5Setting('roundsetup','5')" aria-pressed="false"><i class="fas fa-route"></i> 5 · По шагам</button>
+                        <button type="button" id="v5-roundsetup-1" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="roundsetup" data-arg2="1" aria-pressed="true"><i class="fas fa-layer-group"></i> 1 · Классика</button>
+                        <button type="button" id="v5-roundsetup-2" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="roundsetup" data-arg2="2" aria-pressed="false"><i class="fas fa-table-columns"></i> 2 · Всё открыто</button>
+                        <button type="button" id="v5-roundsetup-3" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="roundsetup" data-arg2="3" aria-pressed="false"><i class="fas fa-list"></i> 3 · Список</button>
+                        <button type="button" id="v5-roundsetup-4" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="roundsetup" data-arg2="4" aria-pressed="false"><i class="fas fa-gem"></i> 4 · Витрина</button>
+                        <button type="button" id="v5-roundsetup-5" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="roundsetup" data-arg2="5" aria-pressed="false"><i class="fas fa-route"></i> 5 · По шагам</button>
                     </div>
                     <div style="margin-top:10px;padding:10px 12px;border:1px dashed rgba(155,89,182,.5);border-radius:10px;background:rgba(155,89,182,.05);">
                         <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> Предпросмотр:</div>
@@ -972,24 +981,24 @@
                 <div class="page-display-settings-grid">
                 </div>
                 <div id="page-visibility-grid" class="form-row" style="gap:10px;margin-bottom:16px;">
-                    <div class="list-item" onclick="togglePVCheckbox('pv-players', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
+                    <div class="list-item" data-act="togglePVCheckbox" data-arg="pv-players" data-ev="1" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
                         <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">👥 <span data-i18n="nav_players">Игроки</span></span>
                         <input type="checkbox" id="pv-players" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
                     </div>
-                    <div class="list-item" onclick="togglePVCheckbox('pv-tournaments', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
+                    <div class="list-item" data-act="togglePVCheckbox" data-arg="pv-tournaments" data-ev="1" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
                         <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">📋 <span data-i18n="nav_tournaments">Турниры</span></span>
                         <input type="checkbox" id="pv-tournaments" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
                     </div>
-                    <div class="list-item" onclick="togglePVCheckbox('pv-stats', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
+                    <div class="list-item" data-act="togglePVCheckbox" data-arg="pv-stats" data-ev="1" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
                         <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">📊 <span data-i18n="nav_stats">Статистика клуба</span></span>
                         <input type="checkbox" id="pv-stats" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
                     </div>
-                    <div class="list-item" onclick="togglePVCheckbox('pv-handicap', event)" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
+                    <div class="list-item" data-act="togglePVCheckbox" data-arg="pv-handicap" data-ev="1" style="padding:14px 16px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;touch-action:manipulation;">
                         <span style="font-weight:700;font-size:14px;color:var(--white);pointer-events:none;">📐 <span data-i18n="nav_handicaps">Таблица гандикапов</span></span>
                         <input type="checkbox" id="pv-handicap" checked style="width:24px;height:24px;cursor:pointer;pointer-events:none;">
                     </div>
                 </div>
-                <button type="button" class="btn btn-g btn-block" onclick="savePageVisibilitySettings()" style="min-height:48px;font-size:15px;margin-top:10px;">
+                <button type="button" class="btn btn-g btn-block" data-act="savePageVisibilitySettings" style="min-height:48px;font-size:15px;margin-top:10px;">
                     <i class="fas fa-save"></i> <span data-i18n="save_visibility_btn">Сохранить видимость страниц</span>
                 </button>
             </div>
@@ -997,18 +1006,18 @@
             <div class="card"><h2><i class="fas fa-database"></i> <span data-i18n="data_management">Управление данными</span></h2>
                 <p style="color:var(--muted);font-size:13px;margin-bottom:16px;" data-i18n="data_danger_sub">Экспорт отчётов и резервное копирование.</p>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-                    <button class="btn btn-g" onclick="exportAllRoundsCSV()"><i class="fas fa-file-csv"></i> <span data-i18n="export_csv_btn">Экспортировать все раунды в CSV</span></button>
-                    <button class="btn btn-og" onclick="downloadJSONBackup()"><i class="fas fa-download"></i> <span data-i18n="download_backup_btn">Скачать бэкап базы (JSON)</span></button>
+                    <button class="btn btn-g" data-act="exportAllRoundsCSV"><i class="fas fa-file-csv"></i> <span data-i18n="export_csv_btn">Экспортировать все раунды в CSV</span></button>
+                    <button class="btn btn-og" data-act="downloadJSONBackup"><i class="fas fa-download"></i> <span data-i18n="download_backup_btn">Скачать бэкап базы (JSON)</span></button>
                 </div>
                 <hr style="border-color:var(--border);margin:20px 0;">
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                    <button class="btn btn-r" onclick="clearRounds()"><i class="fas fa-trash"></i> <span data-i18n="delete_all_rounds">Удалить все раунды</span></button>
-                    <button class="btn btn-r" onclick="clearAllData()"><i class="fas fa-radiation"></i> <span data-i18n="delete_all_data">Удалить всех игроков и раунды</span></button>
+                    <button class="btn btn-r" data-act="clearRounds"><i class="fas fa-trash"></i> <span data-i18n="delete_all_rounds">Удалить все раунды</span></button>
+                    <button class="btn btn-r" data-act="clearAllData"><i class="fas fa-radiation"></i> <span data-i18n="delete_all_data">Удалить всех игроков и раунды</span></button>
                 </div>
                 <p style="color:var(--red);font-size:12px;margin-top:10px;" data-i18n="delete_all_data_sub">Полностью удаляет всех игроков и все раунды. Данные исчезнут из всех списков, статистики и автоподбора и не появятся снова.</p>
                 <hr style="border-color:var(--border);margin:20px 0;">
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                    <button class="btn btn-r" style="border:2px solid var(--red);font-weight:700;" onclick="wipeEverything()"><i class="fas fa-bomb"></i> <span data-i18n="wipe_everything">Удалить все данные</span></button>
+                    <button class="btn btn-r" style="border:2px solid var(--red);font-weight:700;" data-act="wipeEverything"><i class="fas fa-bomb"></i> <span data-i18n="wipe_everything">Удалить все данные</span></button>
                 </div>
                 <p style="color:var(--red);font-size:12px;margin-top:10px;" data-i18n="wipe_everything_sub">Удаляет абсолютно всё: турниры, игроков, раунды, историю, маркеры, протоколы, трансляции, реакции, демо-имена и все локальные кэши. Настройки дизайна и доступа в админку сохраняются.</p>
             </div>
@@ -1038,8 +1047,8 @@
                 <div class="dsp-preview-wrap" id="dsp-preview-wrap"></div>
 
                 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;">
-                    <button type="button" class="btn btn-g" onclick="dspAdminSave()"><i class="fas fa-save"></i> <span data-i18n="design_save_btn">Сохранить оформление для всех</span></button>
-                    <button type="button" class="btn btn-danger" onclick="dspAdminResetAll()"><i class="fas fa-rotate-left"></i> <span data-i18n="design_reset_btn">Вернуть текущий дизайн</span></button>
+                    <button type="button" class="btn btn-g" data-act="dspAdminSave"><i class="fas fa-save"></i> <span data-i18n="design_save_btn">Сохранить оформление для всех</span></button>
+                    <button type="button" class="btn btn-danger" data-act="dspAdminResetAll"><i class="fas fa-rotate-left"></i> <span data-i18n="design_reset_btn">Вернуть текущий дизайн</span></button>
                 </div>
                 <p class="dsp-note" id="dsp-status" style="margin-top:12px;"></p>
             </div>
@@ -1065,46 +1074,46 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.115.0</span></p></div></div></footer>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<script src="js/firebase-config.js?v=57564a0d"></script>
-<script type="module" src="dist/livescoring-modules.js?v=c78a87bf"></script>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.117.0</span></p></div></div></footer>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
+<script src="js/firebase-config.js?v=032a2499"></script>
+<script type="module" src="dist/livescoring-modules.js?v=8f43c231"></script>
     <script src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
 <script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script src="js/qr-code.js?v=2a26e819"></script>
 <script src="js/rusgolf-client.js?v=f37608e7"></script>
-<script src="js/utils.js?v=fa3015ac"></script>
+<script src="js/qr-url.js?v=fb4a1649"></script>
+<script src="js/utils.js?v=9de9c355"></script>
 <script src="js/entry-scorecard.js?v=9b8c4167"></script>
-<script src="js/tn-mgr-core.js?v=dc621917"></script>
+<script src="js/tn-mgr-core.js?v=44a79b06"></script>
 <script src="js/tn-mgr-data.js?v=9df4ae94"></script>
 <script src="js/tn-mgr-io.js?v=a9001ebb"></script>
-<script src="js/tn-mgr-ui.js?v=aabefd67"></script>
+<script src="js/tn-mgr-ui.js?v=98404959"></script>
 <script src="js/tn-mgr-sheet.js?v=184c2ba1"></script>
 <script src="js/tn-mgr-printcards.js?v=0cfeab6c"></script>
 <script src="js/tn-mgr-round.js?v=a180a2a2"></script>
 <script src="js/tn-mgr.js?v=59cc04f5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/name-variants.js?v=2b58f796"></script>
-<script src="js/admin.js?v=29072162"></script>
-<script src="js/admin-groups.js?v=33268873"></script>
+<script src="js/admin.js?v=bf92850a"></script>
+<script src="js/admin-groups.js?v=b9da83e4"></script>
 <script src="js/admin-exports.js?v=5ff1702b"></script>
-<script src="js/admin-players.js?v=4a1d7d19"></script>
+<script src="js/admin-players.js?v=0f9276bb"></script>
 <script src="js/admin-hcp-log.js?v=1262d7c2"></script>
-<script src="js/admin-score-audit.js?v=2fb81262"></script>
-<script src="js/admin-scoreedit.js?v=fb3e1c97"></script>
-<script src="js/admin-broadcasts.js?v=56823762"></script>
+<script src="js/admin-score-audit.js?v=006f6f0e"></script>
+<script src="js/admin-scoreedit.js?v=703b7abe"></script>
+<script src="js/admin-broadcasts.js?v=f76a4469"></script>
 <script src="js/admin-channels.js?v=0d6fb513"></script>
-<script src="js/admin-alerts.js?v=c11cd532"></script>
-<script src="js/admin-players-excel.js?v=b46ee68a"></script>
-<script src="js/admin-agr.js?v=342bd9b3"></script>
-<script src="js/admin-name-forms.js?v=b6f269e8"></script>
-<script src="js/admin-display.js?v=423fb284"></script>
-<script src="js/admin-entry-scorecard.js?v=74578afa"></script>
-<script src="js/design-admin.js?v=70a7c0c4"></script>
-<script src="js/score-write.js?v=7117f8ef"></script>
-<script src="js/pwa.js?v=56b54da4"></script>
+<script src="js/admin-alerts.js?v=40166c94"></script>
+<script src="js/admin-players-excel.js?v=e52b0739"></script>
+<script src="js/admin-agr.js?v=9a96fde3"></script>
+<script src="js/admin-name-forms.js?v=c8aa11f8"></script>
+<script src="js/admin-display.js?v=580c71f2"></script>
+<script src="js/admin-entry-scorecard.js?v=9e8944c5"></script>
+<script src="js/design-admin.js?v=92d8e512"></script>
+<script src="js/score-write.js?v=92dca237"></script>
+<script src="js/pwa.js?v=82acd039"></script>
 </body>
 </html>

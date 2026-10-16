@@ -1,6 +1,23 @@
-const CACHE_NAME = 'pestovo-v1.115.0-afa2488d';
+const CACHE_NAME = 'pestovo-v1.117.0-b45fe5f5';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
+// Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
+// приходят без CORS-заголовков и кладутся как opaque — в Cache Storage они
+// учитываются с существенным overhead (реально занятое место браузер не
+// сообщает), а activate() этот кэш намеренно сохраняет между версиями. Без
+// ограничения он рос бы всю жизнь PWA. Держим LRU-окно (аудит 2026-10, п.19).
+const CDN_CACHE_LIMIT = 60;
+
+// Cache Storage отдаёт ключи в порядке добавления, поэтому slice(0, -limit) —
+// это ровно старейшие записи.
+function trimCache(cache, limit) {
+    return cache.keys().then(function(keys) {
+        if (keys.length <= limit) return null;
+        return keys.slice(0, keys.length - limit).reduce(function(chain, key) {
+            return chain.then(function() { return cache.delete(key); });
+        }, Promise.resolve());
+    });
+}
 
 // Stale-while-revalidate для immutable-ресурсов: отдаём из кэша мгновенно
 // и обновляем в фоне. Подходит для шрифтов/иконок, у которых URL содержит версию.
@@ -9,7 +26,9 @@ function staleWhileRevalidate(request, cacheName) {
         return cache.match(request).then(function(cached) {
             var network = fetch(request).then(function(response) {
                 if (response && (response.ok || response.type === 'opaque')) {
-                    cache.put(request, response.clone());
+                    cache.put(request, response.clone()).then(function() {
+                        return cacheName === CDN_CACHE ? trimCache(cache, CDN_CACHE_LIMIT) : null;
+                    }).catch(function() { /* кэш не критичен для ответа */ });
                 }
                 return response;
             }).catch(function() { return null; });
@@ -41,39 +60,48 @@ const STATIC_ASSETS = [
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
     'css/design-presets.css?v=77ff3916',
     'css/entry-scorecard.css?v=a34f8c94',
-    'css/style.css?v=07ac5eab',
+    'css/fontawesome-subset.css?v=c8871e34',
+    'css/style.css?v=a5317bf8',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=3f88226b',
-    'dist/livescoring-modules.js?v=c78a87bf',
-    'js/app.js?v=8f4b2d14',
+    'dist/livescoring-modules.js?v=8f43c231',
+    'js/app.js?v=a8e231ad',
     'js/auth.js?v=3a96f309',
-    'js/design-preview.js?v=eb236661',
-    'js/design-system.js?v=5a11adfa',
+    'js/design-preview.js?v=eea0009d',
+    'js/design-system.js?v=394cc00f',
     'js/entry-scorecard.js?v=9b8c4167',
-    'js/firebase-config.js?v=57564a0d',
-    'js/handicap.js?v=ad1e9c00',
-    'js/leaderboard.js?v=9cf88be2',
-    'js/live.js?v=3bc463db',
-    'js/marker.js?v=5408d53e',
+    'js/firebase-config.js?v=032a2499',
+    'js/handicap.js?v=97cd8ae3',
+    'js/hcp-badge-preview.js?v=38324d2f',
+    'js/kiosk-mode-detect.js?v=b6405ebe',
+    'js/leaderboard.js?v=d2f09a48',
+    'js/live.js?v=ad765377',
+    'js/marker.js?v=bb5d6bbe',
     'js/name-variants.js?v=2b58f796',
-    'js/players.js?v=4a812e43',
-    'js/protocol.js?v=6bc9d5ed',
-    'js/pwa.js?v=56b54da4',
+    'js/official-call.js?v=baef2c9c',
+    'js/players.js?v=e5973d18',
+    'js/protocol.js?v=404b09d0',
+    'js/pwa.js?v=82acd039',
     'js/qr-code.js?v=2a26e819',
-    'js/qr-start.js?v=8deb89a4',
-    'js/round-setup.js?v=694cb5e4',
+    'js/qr-start.js?v=2b4fe58a',
+    'js/qr-url.js?v=fb4a1649',
+    'js/round-setup.js?v=162710b2',
     'js/rusgolf-client.js?v=f37608e7',
-    'js/score-write.js?v=7117f8ef',
-    'js/scorer.js?v=647ba4dd',
-    'js/solo.js?v=71d4daee',
-    'js/stats.js?v=aaab451a',
-    'js/tn-scorecard.js?v=7c9a112d',
+    'js/score-display.js?v=7425cc7d',
+    'js/score-kiosk.js?v=fda399fb',
+    'js/score-write.js?v=92dca237',
+    'js/scorer.js?v=1d39d318',
+    'js/setup-round-fio.js?v=662ab87b',
+    'js/solo.js?v=71b3c94a',
+    'js/stats.js?v=3f31aabb',
+    'js/tn-scorecard.js?v=484451e6',
     'js/tn-studio-core.js?v=59388560',
     'js/tn-studio-public.js?v=86e38d13',
     'js/tournament-core.js?v=e9119580',
-    'js/tournament-public.js?v=894c9ead',
-    'js/tournaments.js?v=f1b4efe0',
-    'js/utils.js?v=fa3015ac',
+    'js/tournament-public.js?v=c10d8d83',
+    'js/tournaments.js?v=0b5653af',
+    'js/ui-events.js?v=5ba225a1',
+    'js/utils.js?v=9de9c355',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
     'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 
@@ -83,6 +111,9 @@ const STATIC_ASSETS = [
     'img/icon-192.png',
     'img/icon-512.png',
     'img/logo.png',
+    'fonts/fa-brands-400-subset-d97c8617.woff2',
+    'fonts/fa-regular-400-subset-7e155715.woff2',
+    'fonts/fa-solid-900-subset-8dd96bb3.woff2',
 ];
 // END PRECACHE
 
@@ -106,6 +137,13 @@ self.addEventListener('activate', function(event) {
             return Promise.all(names.filter(function(name) {
                 return name !== CACHE_NAME && name !== CDN_CACHE;
             }).map(function(name) { return caches.delete(name); }));
+        }).then(function() {
+            // Подрезаем унаследованный CDN-кэш: до этой версии он рос без предела.
+            // Сам кэш не создаём — иначе у новой установки появился бы пустой.
+            return caches.has(CDN_CACHE).then(function(has) {
+                if (!has) return null;
+                return caches.open(CDN_CACHE).then(function(cache) { return trimCache(cache, CDN_CACHE_LIMIT); });
+            });
         }).then(function() { return self.clients.claim(); })
     );
 });
@@ -116,8 +154,9 @@ self.addEventListener('fetch', function(event) {
     var requestUrl = new URL(event.request.url);
     var isSameOrigin = requestUrl.origin === self.location.origin;
 
-    // Шрифты Google и Font Awesome с cdnjs кэшируем, чтобы офлайн-PWA
-    // не оставался без иконок и фирменного шрифта на поле без сети.
+    // Шрифты Google и xlsx с cdnjs кэшируем, чтобы офлайн-PWA не оставался без
+    // фирменного шрифта. Иконки Font Awesome теперь свои (css/fontawesome-subset.css
+    // + fonts/*.woff2) и попадают в precache — CDN для них больше не нужен.
     var cdnHost = requestUrl.hostname;
     if (!isSameOrigin &&
         (cdnHost.indexOf('fonts.gstatic.com') !== -1 ||

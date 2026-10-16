@@ -38,7 +38,10 @@ const shots = '/tmp/entry-sc-shots';
         await page.goto('http://entry-scorecards.test');
         await page.addStyleTag({ path: path.join(root, 'css/style.css') });
         await page.addStyleTag({ path: path.join(root, 'css/entry-scorecard.css') });
-        for (const file of ['course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'entry-scorecard', 'admin-entry-scorecard']) {
+        // js/ui-events.js обязателен: inline-обработчиков в разметке больше нет,
+        // клики по [data-act] ловит его слушатель на document. Без него кнопка
+        // предпросмотра ничего не меняет, а фичевый скрипт падает на pestovoOnAction.
+        for (const file of ['ui-events', 'course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'entry-scorecard', 'admin-entry-scorecard']) {
             await page.addScriptTag({ path: path.join(root, 'js', file + '.js') });
         }
         const admin = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');

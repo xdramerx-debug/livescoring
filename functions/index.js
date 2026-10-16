@@ -16,10 +16,14 @@
 // ============================================================
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+// Admin SDK 14 — модульный: пространств имён больше нет, база и авторизация
+// берутся именованными импортами. `admin` остался для initializeApp().
+const { getDatabase } = require('firebase-admin/database');
+const { getAuth } = require('firebase-admin/auth');
 const webpush = require('web-push');
 
 admin.initializeApp();
-const db = admin.database();
+const db = getDatabase();
 
 Object.assign(exports, require('./score-audit')(functions, admin, db));
 
@@ -27,17 +31,31 @@ Object.assign(exports, require('./score-audit')(functions, admin, db));
 // settings: этот узел публичен (RTDB не позволяет сузить доступ потомку).
 const crypto = require('crypto');
 const MASTER_UID = 'tournament-master';
-// Мастер-пароль администратора — 55555 (SHA-256, UTF-8). Необязательный секрет
-// TOURNAMENT_MASTER_PASSWORD_HASH (Firebase Secret Manager), если он установлен,
-// имеет приоритет над этим значением.
-// ВАЖНО: секрет НЕ привязан жёстко через runWith({secrets}) — такая привязка
-// требует обязательного секрета в Secret Manager и без него функция не
-// деплоится/не стартует (браузер получает сетевую ошибку callable —
-// «Ошибка входа: internal»). Секрет читается из env (если привязан) или
-// используется дефолтный пароль 55555. Чтение через Secret Manager REST
-// убрано для надёжности — оно давало сбои и приводило к internal.
+// Пароль мастер-сессии задаётся СЕКРЕТОМ TOURNAMENT_MASTER_PASSWORD_HASH
+// (Firebase Secret Manager / env функции) — SHA-256 (UTF-8, hex) пароля.
+//
+// Fail closed (аудит 2026-10, docs/IMPROVEMENTS-2026-10.md п.1). Раньше при
+// отсутствующем секрете действовал зашитый в код DEFAULT_MASTER_PASSWORD_HASH
+// = sha256("55555"): пароль из 5 цифр, лежащий в публичном репозитории,
+// открывал uid `tournament-master`, который по database.rules.json пишет в
+// rounds/tournaments/protocols и вызывает wipeAllData (полное удаление данных
+// клуба). Единственной защитой был лимит 5 попыток/15 минут на IP.
+// Теперь без секрета вход отказывает с failed-precondition — и деплой при
+// этом НЕ падает: секрет по-прежнему не привязан жёстко через
+// runWith({secrets}), потому что такая привязка требует обязательного секрета
+// в Secret Manager, и без него функция не стартует (браузер видит
+// «Ошибка входа: internal» вместо внятной причины). Клиент уже показывает
+// локализованное сообщение для failed-precondition (js/admin.js).
+//
+// Исключение — Firebase Emulator (FUNCTIONS_EMULATOR): там дефолтный пароль
+// остаётся, чтобы локальная разработка и тесты не требовали секретов.
 const DEFAULT_MASTER_PASSWORD_HASH = 'c507a68f3093e885765257ed3f176c757aaf62bb4cbc2ef94b2e7da3406d9676';
 const MASTER_PASSWORD_HASH_SECRET = 'TOURNAMENT_MASTER_PASSWORD_HASH';
+function isEmulatorRuntime() {
+    try {
+        return String(process.env.FUNCTIONS_EMULATOR || '').toLowerCase() === 'true';
+    } catch (e) { return false; }
+}
 function readConfiguredMasterPasswordHash() {
     try {
         const fromEnv = process.env[MASTER_PASSWORD_HASH_SECRET];
@@ -47,14 +65,29 @@ function readConfiguredMasterPasswordHash() {
     } catch (e) {
         // ignore env read errors
     }
-    // Без секрета действует дефолтный пароль 55555 — это штатный режим.
-    return DEFAULT_MASTER_PASSWORD_HASH;
+    return null; // секрета нет — решение принимает вызывающий код (fail closed)
 }
 exports.tournamentMasterSignIn = functions.runWith({}).https.onCall(async function (data, context) {
     try {
-        const configured = readConfiguredMasterPasswordHash();
+        let configured = readConfiguredMasterPasswordHash();
+        if (!configured) {
+            if (isEmulatorRuntime()) {
+                // Только эмулятор: локальная разработка без Secret Manager.
+                if (functions.logger) functions.logger.warn('tournamentMasterSignIn: secret is not set, using the development default password (emulator only)');
+                configured = DEFAULT_MASTER_PASSWORD_HASH;
+            } else {
+                if (functions.logger) functions.logger.error('tournamentMasterSignIn: ' + MASTER_PASSWORD_HASH_SECRET + ' is not set — master sign-in is disabled. Set it with: firebase functions:secrets:set ' + MASTER_PASSWORD_HASH_SECRET + ' --project livescore-b77e4');
+                throw new functions.https.HttpsError('failed-precondition', 'Master password is not configured on the server.');
+            }
+        }
         if (!/^[a-f0-9]{64}$/i.test(configured)) {
             throw new functions.https.HttpsError('failed-precondition', 'Master password is not configured on the server.');
+        }
+        // Секрет не должен быть выставлен в общеизвестный дефолт: такой хэш
+        // эквивалентен отсутствию пароля, а формально проверку проходит.
+        if (configured.toLowerCase() === DEFAULT_MASTER_PASSWORD_HASH && !isEmulatorRuntime()) {
+            if (functions.logger) functions.logger.error('tournamentMasterSignIn: ' + MASTER_PASSWORD_HASH_SECRET + ' equals the well-known default — refusing. Choose a long random password.');
+            throw new functions.https.HttpsError('failed-precondition', 'Master password must not be the well-known default.');
         }
         const password = data && data.password;
         if (typeof password !== 'string' || !password || password.length > 256) {
@@ -62,9 +95,18 @@ exports.tournamentMasterSignIn = functions.runWith({}).https.onCall(async functi
         }
         // Постоянный лимит попыток на IP, общий для всех инстансов функции.
         // Защищён от падения rawRequest.
+        // Если rawRequest.ip не отдан, берём ПЕРВЫЙ хоп x-forwarded-for: без
+        // него все попытки падали в одно ведро 'unknown', и атакующий мог
+        // исчерпать лимит вместо легитимного мастера (отказ в обслуживании).
         let ip = 'unknown';
         try {
-            ip = (context && context.rawRequest && context.rawRequest.ip) || 'unknown';
+            const raw = context && context.rawRequest;
+            if (raw && raw.ip) {
+                ip = String(raw.ip);
+            } else if (raw && raw.headers) {
+                const xff = raw.headers['x-forwarded-for'] || raw.headers['X-Forwarded-For'];
+                if (xff) ip = String(xff).split(',')[0].trim() || 'unknown';
+            }
         } catch (e) { ip = 'unknown'; }
         const key = crypto.createHash('sha256').update(ip).digest('hex');
         const attempts = db.ref('masterLoginAttempts/' + key);
@@ -94,7 +136,7 @@ exports.tournamentMasterSignIn = functions.runWith({}).https.onCall(async functi
         } catch (e) {
             if (functions.logger) functions.logger.warn('masterLoginAttempts remove failed', e && e.message);
         }
-        const token = await admin.auth().createCustomToken(MASTER_UID, { tournamentMaster: true, tournamentMasterUntil: Date.now() + 8 * 60 * 60 * 1000 });
+        const token = await getAuth().createCustomToken(MASTER_UID, { tournamentMaster: true, tournamentMasterUntil: Date.now() + 8 * 60 * 60 * 1000 });
         return { token };
     } catch (err) {
         // Все известные ошибки уже HttpsError — пробрасываем как есть

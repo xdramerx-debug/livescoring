@@ -6,14 +6,14 @@
     <meta name="theme-color" content="#0b1a0e">
     <title>Гандикап: зелёная галочка — выбор варианта</title>
     <link rel="icon" type="image/png" href="img/logo.png">
-    <link rel="stylesheet" href="css/style.css?v=07ac5eab">
+    <link rel="stylesheet" href="css/style.css?v=a5317bf8">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <script src="js/design-system.js?v=5a11adfa"></script>
+    <script src="js/ui-events.js?v=5ba225a1"></script>
+    <script src="js/design-system.js?v=394cc00f"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=c8871e34">
     <style>
         .hcp-preview-main{padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:60px;max-width:1100px;margin:0 auto;}
         .hcp-preview-note{font-size:13px;color:var(--muted);line-height:1.7;}
@@ -69,7 +69,7 @@
             <div><div class="variant-col-title"><i class="fas fa-users"></i> Вкладка «Игроки»</div><div class="mock-cards"></div></div>
             <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> Личный профиль игрока</div><div class="mock-profile"></div></div>
         </div>
-        <button type="button" class="btn btn-g btn-sm choose-btn" onclick="chooseVariant('1')"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
+        <button type="button" class="btn btn-g btn-sm choose-btn" data-act="chooseVariant" data-arg="1"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
     </div>
 
     <div class="variant-section" data-variant="2">
@@ -79,7 +79,7 @@
             <div><div class="variant-col-title"><i class="fas fa-users"></i> Вкладка «Игроки»</div><div class="mock-cards"></div></div>
             <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> Личный профиль игрока</div><div class="mock-profile"></div></div>
         </div>
-        <button type="button" class="btn btn-g btn-sm choose-btn" onclick="chooseVariant('2')"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
+        <button type="button" class="btn btn-g btn-sm choose-btn" data-act="chooseVariant" data-arg="2"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
     </div>
 
     <div class="variant-section" data-variant="3">
@@ -89,7 +89,7 @@
             <div><div class="variant-col-title"><i class="fas fa-users"></i> Вкладка «Игроки»</div><div class="mock-cards"></div></div>
             <div><div class="variant-col-title"><i class="fas fa-user-circle"></i> Личный профиль игрока</div><div class="mock-profile"></div></div>
         </div>
-        <button type="button" class="btn btn-g btn-sm choose-btn" onclick="chooseVariant('3')"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
+        <button type="button" class="btn btn-g btn-sm choose-btn" data-act="chooseVariant" data-arg="3"><i class="fas fa-hand-pointer"></i> Выбрать этот вариант</button>
     </div>
 
     <div class="card" style="text-align:center;">
@@ -100,91 +100,9 @@
 
 <footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; Пестово — подбор варианта отображения гандикапа</p></div></div></footer>
 
-<script type="module" src="dist/livescoring-modules.js?v=c78a87bf"></script>
-    <script src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
-<script src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
-<script src="js/qr-code.js?v=2a26e819"></script>
-<script src="js/utils.js?v=fa3015ac"></script>
-<script>
-(function() {
-    'use strict';
-
-    // Демо-игроки: два синхронизированных (RUSGOLF и Excel) + один без даты обновления
-    var MO = function(y, m, d, h, mi) { return new Date(y, m - 1, d, h || 10, mi || 0).getTime(); };
-    var MOCK_PLAYERS = [
-        { id: 'demo-1', name: 'Александр Петров', gender: 'men', handicap: 12.4, roundsPlayed: 18, hcpUpdatedAt: MO(2026, 9, 5, 10, 30), hcpSource: 'rusgolf' },
-        { id: 'demo-2', name: 'Мария Смирнова', gender: 'women', handicap: 8.1, roundsPlayed: 12, hcpUpdatedAt: MO(2026, 8, 12, 18, 5), hcpSource: 'excel' },
-        { id: 'demo-3', name: 'Иван Кузнецов', gender: 'men', handicap: 15.2, roundsPlayed: 4 }
-    ];
-
-    // Точная копия разметки карточки из js/players.js
-    function renderMockCard(u) {
-        var hcpInfo = getHcpSyncInfo(u);
-        var avatarHtml = fmtUserAvatar(u, 52);
-        if (hcpInfo.ok && getHcpBadgeVariant() === '3') {
-            avatarHtml = hcpAvatarWrapHtml(avatarHtml, hcpInfo);
-        }
-        var gIcon = u.gender === 'women' ? '👩' : '👨';
-        return '<div class="card">' +
-            '<div style="display:flex;align-items:center;gap:14px;">' + avatarHtml +
-            '<div style="flex:1;"><div style="font-weight:700;color:var(--white);font-size:15px;">' + gIcon + ' ' + escapeHtml(u.name) + '</div>' +
-            '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-            'HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + hcpSyncBadgeHtml(u) +
-            ' · Раундов: ' + (u.roundsPlayed || 0) + '</div></div></div></div>';
-    }
-
-    // Точная копия шапки профиля из openPlayerProfileModal (js/utils.js)
-    function renderMockProfile(u) {
-        var hcpSync = buildHcpProfileSyncHtml(u);
-        var avatarHtml = fmtUserAvatar(u, 80);
-        if (hcpSync.meta !== null && getHcpBadgeVariant() === '3') {
-            avatarHtml = hcpAvatarWrapHtml(avatarHtml, getHcpSyncInfo(u));
-        }
-        var gIcon = u.gender === 'women' ? '👩' : '👨';
-        return '<div class="card">' +
-            '<div class="profile-head">' + avatarHtml +
-            '<div style="flex:1;"><div class="profile-name">' + gIcon + ' ' + escapeHtml(u.name) + '</div>' +
-            '<div class="profile-meta">' +
-            (hcpSync.meta !== null ? hcpSync.meta : '<span><i class="fas fa-golf-ball"></i> HCP: ' + (u.handicap != null ? fmtExactHcp(u.handicap) : '—') + '</span>') +
-            '<span><i class="fas fa-flag"></i> ' + (u.roundsPlayed || 0) + ' раундов</span>' +
-            '</div>' + (hcpSync.banner || '') + '</div></div></div>';
-    }
-
-    function markSelected() {
-        var cur = getHcpBadgeVariant();
-        document.querySelectorAll('.variant-section').forEach(function(sec) {
-            var isCur = sec.getAttribute('data-variant') === cur;
-            sec.classList.toggle('variant-selected', isCur);
-            var btn = sec.querySelector('.choose-btn');
-            if (btn) {
-                btn.classList.toggle('chosen', isCur);
-                btn.innerHTML = isCur
-                    ? '<i class="fas fa-check-circle"></i> Выбран (текущий)'
-                    : '<i class="fas fa-hand-pointer"></i> Выбрать этот вариант';
-            }
-        });
-    }
-
-    window.chooseVariant = function(v) {
-        setHcpBadgeVariant(v);
-        markSelected();
-        toast('✅ Вариант ' + v + ' выбран — применён на сайте (вкладка «Игроки», профиль, админка)', 'success');
-    };
-
-    document.addEventListener('DOMContentLoaded', function() {
-        var saved = getHcpBadgeVariant();
-        document.querySelectorAll('.variant-section').forEach(function(sec) {
-            var v = sec.getAttribute('data-variant');
-            setHcpBadgeVariant(v);
-            var cardsEl = sec.querySelector('.mock-cards');
-            var profileEl = sec.querySelector('.mock-profile');
-            if (cardsEl) cardsEl.innerHTML = MOCK_PLAYERS.map(renderMockCard).join('');
-            if (profileEl) profileEl.innerHTML = renderMockProfile(MOCK_PLAYERS[0]);
-        });
-        setHcpBadgeVariant(saved);
-        markSelected();
-    });
-})();
-</script>
+<script type="module" src="dist/livescoring-modules.js?v=8f43c231"></script>
+<script src="js/qr-url.js?v=fb4a1649"></script>
+<script src="js/utils.js?v=9de9c355"></script>
+<script src="js/hcp-badge-preview.js?v=38324d2f"></script>
 </body>
 </html>

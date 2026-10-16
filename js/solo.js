@@ -113,7 +113,7 @@ function updateSoloPauseUI() {
         '<span style="font-size:12px;color:rgba(255,255,255,0.85);">' +
         (isEn ? 'Timings frozen · Duration: ' : 'Тайминги остановлены · Длительность: ') +
         '<b>' + durStr + '</b>' + reasonStr + '</span></div></div>' +
-        '<button type="button" class="btn btn-g btn-sm" onclick="handleSoloPauseToggle()" style="font-weight:700;">' +
+        '<button type="button" class="btn btn-g btn-sm" data-act="handleSoloPauseToggle" style="font-weight:700;">' +
         '<i class="fas fa-play"></i> ' + (isEn ? 'Resume Play' : 'Возобновить игру') + '</button>' +
         '</div>';
 }
@@ -705,33 +705,34 @@ function renderRoundInfo(targetId) {
 
     var pTee = (p && p.tee) || soloRound.tee || 'wh';
     el.innerHTML =
-        '<div style="cursor:pointer;" onclick="openPlayerProfileModal(\'' + pestovoInlineJsArg(uid) + '\',\'' + pestovoInlineJsArg(soloRid) + '\')"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, uid)) + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
+        '<div style="cursor:pointer;" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(uid) + '" data-arg2="' + escapeHtml(soloRid) + '"><b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(playerDisplayName(p, uid)) + '</b>' + guestBadge + ' · <b>HCP:</b> ' + fmtExactHcp(p.exactHcp) + ' (' + courseHcpLbl + ' ' + fmtFieldHcp(p.fieldHcp) + ')</div>' +
         '<div><b>' + startLbl + ':</b> ' + fmtTime(soloRound.startTime) + ' · <b>' + holeLbl + ':</b> ' + soloRound.startHole + ' · <b>' + t('tee_select') + ':</b> ' + fmtTeePill(pTee) + ' · <b>' + t('format_select') + ':</b> ' + soloRound.format + '</div>';
 }
 
+// Разметка кнопок — общая (pestovoBuildHoles в js/score-display.js). Маркера в
+// одиночном раунде нет, поэтому вместо verified/mismatch/pending одна метка
+// done; markerScore не передаём вовсе.
 function buildHoles() {
-    var el = document.getElementById('g-holes');
-    if (!el) return;
     var uid = getPlayerId();
     if (!uid || !soloRound || !soloRound.players) return;
     var p = soloRound.players[uid];
     var scores = (p && p.scores) || {};
-    var fieldHcp = (p && (p.fieldHcp !== undefined ? p.fieldHcp : soloRound.fieldHcp)) || 0;
-
-    var html = '';
-    var order = getRoundOrder(soloRound);
-    order.forEach(function(h) {
-        var cls = h === curHole ? 'active' : '';
-        var s = parseInt(scores[h]) || 0;
-        if (s >= 1 && h !== curHole) cls += ' done';
-        // Текущая лунка, на которой счёт ещё НЕ записан, мигает серым —
-        // сразу видно, где игрок сейчас находится (вместо цветовой подсветки).
-        if (h === curHole && !(s >= 1) && canEditSolo) cls += ' cur-blink';
-
-        html += '<button type="button" class="hole-btn ' + cls + '" onclick="goHole(' + h + ')" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === curHole ? 'true' : 'false') + '">' +
-            entryHoleContentHTML(s, null, h, fieldHcp) + '</button>';
+    pestovoBuildHoles({
+        el: document.getElementById('g-holes'),
+        round: soloRound,
+        currentHole: curHole,
+        fieldHcp: (p && (p.fieldHcp !== undefined ? p.fieldHcp : soloRound.fieldHcp)) || 0,
+        go: 'goHole',
+        playerScore: function(h) { return scores[h]; },
+        stateClass: function(h, s) {
+            var cls = '';
+            if (s >= 1 && h !== curHole) cls += ' done';
+            // Текущая лунка, на которой счёт ещё НЕ записан, мигает серым —
+            // сразу видно, где игрок сейчас находится (вместо цветовой подсветки).
+            if (h === curHole && !(s >= 1) && canEditSolo) cls += ' cur-blink';
+            return cls;
+        }
     });
-    el.innerHTML = html;
 }
 
 function doGoHole(h) {
@@ -799,7 +800,14 @@ function renderCurrentHole() {
     updateSoloPaceAssistant();
 }
 
+// Кнопка «завершить принудительно» передавала объект раунда прямо в onclick=.
+// Теперь вызов собран здесь, а разметка ссылается на имя действия.
+pestovoOnAction('pestovoSoloForceFinish', function () {
+    openForceFinishModal(soloRid, soloRound, { playerId: getPlayerId(), isGroup: false });
+});
+
 function adjSolo(delta) {
+    delta = parseInt(delta, 10);
     if (!canEditSolo) return;
     curScore = Math.max(1, Math.min(15, curScore + delta));
     vib();
@@ -1005,19 +1013,19 @@ function updateSoloActionButton() {
     var icon = btn.querySelector('i');
 
     if (playedCount >= holeCount && !hasUnsaved) {
-        btn.onclick = function() { finishSolo(); };
+        pestovoSetButtonAction(btn, 'finishSolo');
         btn.className = 'btn btn-g btn-block btn-lg';
         if (txt) txt.innerHTML = currentLang === 'en' ? '🏆 Finish Round' : '🏆 Завершить раунд';
         if (icon) icon.className = 'fas fa-flag-checkered';
     } else if (hasUnsaved) {
         // Изменения ещё не записаны — кнопка всегда сохраняет результат,
         // даже на последней лунке (иначе ввод потерялся бы при завершении).
-        btn.onclick = function() { saveSolo(); };
+        pestovoSetButtonAction(btn, 'saveSolo');
         btn.className = 'btn btn-g btn-block btn-lg has-unsaved';
         if (txt) txt.innerHTML = t('solo_save_result_btn');
         if (icon) icon.className = 'fas fa-check';
     } else {
-        btn.onclick = function() { saveSolo(); };
+        pestovoSetButtonAction(btn, 'saveSolo');
         btn.className = 'btn btn-g btn-block';
         if (txt) txt.innerHTML = t('solo_next_keep_btn');
         if (icon) icon.className = 'fas fa-arrow-right';
@@ -1220,10 +1228,19 @@ function listenForCallResponsesSolo() {
     var uid = getPlayerId();
     if (!uid) return;
     if (window._pestovoCallResponsesListening && window._pestovoCallResponsesUid === uid) return;
+    // Смена игрока (выход → вход под другим аккаунтом): прежняя подписка на
+    // users/<старый uid>/notifications оставалась жить до конца страницы и
+    // продолжала показывать тосты за предыдущего игрока. Снимаем её явно
+    // (аудит 2026-10, п.10 — утечка RTDB-слушателей).
+    if (window._pestovoCallResponsesRef && window._pestovoCallResponsesUid && window._pestovoCallResponsesUid !== uid) {
+        try { window._pestovoCallResponsesRef.off('child_added'); } catch (e) { console.warn("[silent]", e); }
+    }
     window._pestovoCallResponsesListening = true;
     window._pestovoCallResponsesUid = uid;
 
-    db.ref('users/' + uid + '/notifications').orderByChild('type').equalTo('call_response').on('child_added', function(sn) {
+    var callResponsesRef = db.ref('users/' + uid + '/notifications').orderByChild('type').equalTo('call_response');
+    window._pestovoCallResponsesRef = callResponsesRef;
+    callResponsesRef.on('child_added', function(sn) {
         var n = sn.val();
         if (!n || n.read) return;
 

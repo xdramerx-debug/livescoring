@@ -227,7 +227,7 @@ function pushAdminInit() {
         toast('✅ VAPID готов: фоновые пуши включены', 'success');
         setTimeout(pushAdminRefreshStatus, 1500);
     }).catch(function(err) {
-        if (box) box.innerHTML = '⚠️ Не удалось вызвать функцию: ' + (err && err.message ? err.message : err) +
+        if (box) box.innerHTML = '⚠️ Не удалось вызвать функцию: ' + escapeHtml(err && err.message ? err.message : err) +
             '<br>Проверьте деплой: <code>cd functions && npm i && firebase deploy --only functions</code>';
     });
 }
@@ -378,7 +378,7 @@ function loadClubBroadcastsHistory() {
             html += '<div style="font-size:11px;color:var(--muted);">' + fmtDate(b.time) + ' · ' + fmtTime(b.time) + ' · Link: ' + escapeHtml(b.link || 'tournaments.html') +
                 (audTxt ? ' · <span style="color:var(--gold);">' + escapeHtml(audTxt) + '</span>' : '') + '</div>';
             html += '</div>';
-            html += '<button class="btn btn-r btn-sm" onclick="deleteBroadcast(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-trash"></i></button>';
+            html += '<button class="btn btn-r btn-sm" data-act="deleteBroadcast" data-arg="' + escapeHtml(id) + '"><i class="fas fa-trash"></i></button>';
             html += '</div>';
         });
 

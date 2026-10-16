@@ -26,7 +26,14 @@
 </main>
 
 <script src="/tools/harness/printcards-stub.js"></script>
-<script src="/js/tn-mgr-core.js"></script>
+    <!-- js/qr-url.js: построитель URL картинки QR. Раньше он был продублирован
+         в utils.js / qr-start.js / tn-mgr-core.js / tn-mgr-io.js; после
+         дедупликации tn-mgr-core.js вызывает общую pestovoQrImageUrl(), и без
+         этого тега вкладка печатных карточек падает на ReferenceError.
+         Локального генератора (js/qr-code.js) здесь нет — QR деградирует до
+         внешнего URL, а он в проверке и так заблокирован. -->
+    <script src="/js/qr-url.js"></script>
+    <script src="/js/tn-mgr-core.js"></script>
 <script src="/js/tn-mgr-data.js"></script>
 <script src="/js/tn-mgr-io.js"></script>
 <script src="/js/tn-mgr-ui.js"></script>

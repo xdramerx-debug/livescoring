@@ -75,7 +75,11 @@ var sandbox = {
     fmtExactHcp: function(v) { return String(v); },
     hasAdminPanelAccess: function() { return true; },
     getKnownPlayersSync: function() { return {}; },
-    isPlayerDeleted: function() { return false; }
+    isPlayerDeleted: function() { return false; },
+    // admin.js при вычислении регистрирует хук готовности авторизации
+    // (аудит 2026-10, п.13); utils.js в песочницу не загружается.
+    pestovoOnAuthReady: function(fn) { if (typeof fn === 'function') sandbox.__authHooks.push(fn); },
+    __authHooks: []
 };
 sandbox.window = sandbox;
 sandbox.self = sandbox;
@@ -94,7 +98,6 @@ load('js/admin-players-excel.js');
 load('js/admin-agr.js');
 load('js/admin-name-forms.js');
 
-var NV = sandbox.NameVariants;
 var fails = 0, total = 0;
 
 function check(title, got, want) {

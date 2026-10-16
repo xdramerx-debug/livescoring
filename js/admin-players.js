@@ -107,7 +107,7 @@ function renderAdmPlayersList(remoteData) {
         var selfMark = (typeof currentUser !== 'undefined' && currentUser && id === currentUser.uid)
             ? ' <span style="color:var(--gold);font-size:11px;">(' + (en ? 'You' : 'Это вы') + ')</span>' : '';
 
-        html += '<div class="adm-player-row" onclick="admTogglePlayerRow(\'' + admJsStr(id) + '\')">' +
+        html += '<div class="adm-player-row" data-act="admTogglePlayerRow" data-arg="' + escapeHtml(id) + '">' +
             '<span class="adm-player-ava">' + escapeHtml(initials) + '</span>' +
             '<span class="adm-player-main"><span class="adm-player-name">' + escapeHtml(name) + selfMark + '</span>' +
             '<span class="adm-player-meta">HCP ' + escapeHtml(String(hcpTxt)) +
@@ -128,13 +128,13 @@ function renderAdmPlayersList(remoteData) {
         // исторический игрок/ghost из кэша не создавал неполную запись в БД.
         var hasRemoteProfile = !!(admPlayersLastData && Object.prototype.hasOwnProperty.call(admPlayersLastData, id));
         if (hasRemoteProfile) {
-            html += '<button type="button" class="btn btn-og btn-sm adm-player-edit-btn" onclick="openAdmPlayerEditor(\'' + admJsStr(id) + '\')" title="' +
+            html += '<button type="button" class="btn btn-og btn-sm adm-player-edit-btn" data-act="openAdmPlayerEditor" data-arg="' + escapeHtml(id) + '" title="' +
                 (en ? 'Edit player profile' : 'Редактировать данные игрока') + '"><i class="fas fa-user-pen"></i> ' +
                 (en ? 'Edit data' : 'Изменить данные') + '</button>';
         }
 
         if (typeof currentUser === 'undefined' || !currentUser || id !== currentUser.uid) {
-            html += '<select class="form-input" style="padding:5px 8px;font-size:11.5px;width:auto;" onchange="changeRole(\'' + admJsStr(id) + '\', this.value, \'' + nameJs + '\')">';
+            html += '<select class="form-input" style="padding:5px 8px;font-size:11.5px;width:auto;" data-act="pestovoChangeRole" data-arg="' + escapeHtml(id) + '" data-arg2="' + nameJs + '">';
             html += '<option value="player" ' + (curRole === 'player' ? 'selected' : '') + '>' + t('role_player') + '</option>';
             html += '<option value="referee" ' + (curRole === 'referee' ? 'selected' : '') + '>' + t('role_referee') + '</option>';
             html += '<option value="marshal" ' + (curRole === 'marshal' ? 'selected' : '') + '>' + t('role_marshal') + '</option>';
@@ -143,17 +143,17 @@ function renderAdmPlayersList(remoteData) {
 
             var privInd = (typeof pestovoPrivacy !== 'undefined' && pestovoPrivacy.players) ? pestovoPrivacy.players[id] : undefined;
             var privHidden = (privInd === true) || (privInd !== false && (typeof pestovoPrivacy === 'undefined' ? false : pestovoPrivacy.enabled === true));
-            html += '<button class="btn ' + (privHidden ? 'btn-r' : 'btn-og') + ' btn-sm" onclick="togglePlayerPrivacy(\'' + admJsStr(id) + '\')" title="' +
+            html += '<button class="btn ' + (privHidden ? 'btn-r' : 'btn-og') + ' btn-sm" data-act="togglePlayerPrivacy" data-arg="' + escapeHtml(id) + '" title="' +
                 (en ? 'Hide/show full name from others' : 'Скрыть/показывать ФИО от других') + '">' +
                 '<i class="fas fa-' + (privHidden ? 'eye' : 'eye-slash') + '"></i> ' + t(privHidden ? 'privacy_show_btn' : 'privacy_hide_btn') + '</button>';
 
-            html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + admJsStr(id) + '\',\'' + nameJs + '\')" title="' +
+            html += '<button class="btn btn-og btn-sm" data-act="clearPlayerHistory" data-arg="' + escapeHtml(id) + '" data-arg2="' + nameJs + '" title="' +
                 (en ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
 
-            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + admJsStr(id) + '\',\'' + nameJs + '\')" title="Delete">' +
+            html += '<button class="btn btn-r btn-sm" data-act="deletePlayer" data-arg="' + escapeHtml(id) + '" data-arg2="' + nameJs + '" title="Delete">' +
                 '<i class="fas fa-trash"></i></button>';
         } else {
-            html += '<button class="btn btn-og btn-sm" onclick="clearPlayerHistory(\'' + admJsStr(id) + '\',\'' + nameJs + '\')" title="' +
+            html += '<button class="btn btn-og btn-sm" data-act="clearPlayerHistory" data-arg="' + escapeHtml(id) + '" data-arg2="' + nameJs + '" title="' +
                 (en ? 'Clear History' : 'Очистить историю раундов') + '"><i class="fas fa-eraser"></i></button>';
         }
 
@@ -389,6 +389,12 @@ function syncPublicProfilesMirror(usersVal) {
         }).catch(function (err) { console.warn('[mirror] usersPublic read failed', err); });
     }, 1500);
 }
+
+// Выбор роли в списке игроков: значение select приходит последним аргументом
+// (change добавляет value в конец), поэтому порядок восстанавливаем здесь.
+pestovoOnAction('pestovoChangeRole', function (id, name, newRole) {
+    changeRole(id, newRole, name);
+});
 
 function changeRole(id, newRole, name) {
     var roleText = t('role_' + newRole);

@@ -113,6 +113,16 @@ const imgDir = path.join(ROOT, 'img');
 if (fs.existsSync(imgDir)) {
     fs.readdirSync(imgDir).sort().forEach(function (f) { extras.push('img/' + f); });
 }
+// Шрифты сабсета Font Awesome кладём в предкэш: иконки должны быть и без сети.
+// Имя файла уже несёт хеш содержимого (tools/build-fontawesome.js), поэтому
+// ?v= им не нужен — при смене подмножества меняется сам URL, а значит и
+// CACHE_NAME (он считается по составу манифеста).
+const fontsDir = path.join(ROOT, 'fonts');
+if (fs.existsSync(fontsDir)) {
+    fs.readdirSync(fontsDir).sort().forEach(function (f) {
+        if (f.endsWith('.woff2')) extras.push('fonts/' + f);
+    });
+}
 
 for (const url of [].concat(pages, assets, extras)) {
     if (!exists(url.split('?')[0])) fail('манифест ссылается на отсутствующий файл: ' + url);
@@ -145,7 +155,7 @@ const lines = [];
 lines.push(BEGIN);
 lines.push('const STATIC_ASSETS = [');
 lines.push('    // Страницы');
-pages.forEach(function (u, i) { lines.push('    \'' + u + '\','); });
+pages.forEach(function (u) { lines.push('    \'' + u + '\','); });
 lines.push('');
 lines.push('    // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)');
 assets.forEach(function (u) { lines.push('    \'' + u + '\','); });

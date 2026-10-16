@@ -3,10 +3,14 @@ name: Browser check
 # Живая браузерная проверка страниц: сравнение классических <script> и
 # ESM-бандла (docs/MODULES-MIGRATION.md). Нужна при любой правке порядка
 # загрузки скриптов, состава src/ или страниц.
+#
+# Триггеры — как в ci.yml (любой push и любой PR) плюс ручной запуск.
+# Раньше здесь было `branches: [main, master]`, но веток main/master в
+# репозитории нет (default-ветка — arena/…): после мержа проверка не
+# выполнялась никогда, работала только на PR.
 on:
   pull_request:
   push:
-    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -20,10 +24,10 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          package-manager-cache: false
+          cache: npm
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm ci
 
       - name: Install chromium for playwright
         run: npx playwright install --with-deps chromium
@@ -34,17 +38,52 @@ jobs:
       - name: Syntax check (cheap lint)
         run: npm run lint:syntax
 
+      - name: Lint (ESLint)
+        run: npm run lint -- --max-warnings=0
+
+      - name: Dead globals check
+        run: npm run check:globals
+
       - name: Unit tests
         run: npm test
 
       - name: Browser check (classic vs bundle)
         run: npm run check:browser -- --require
 
-      - name: Mobile scorecards and score entry
-        run: npm run check:scorecards
+      # Отдельные шаги вместо `npm run check:scorecards` (цепочка из пяти
+      # скриптов через &&): в таком виде по прогону видно, какой именно скрипт
+      # упал, а не только «что-то в браузерных проверках».
+      - name: Scorecard mobile (layout)
+        run: node tools/check-scorecard-mobile.js
+
+      - name: Score entry mobile (touch targets)
+        run: node tools/check-score-entry-mobile.js
+
+      - name: Scoring header mobile (QR)
+        run: node tools/check-scoring-header-mobile.js
+
+      - name: Printcards preview
+        run: node tools/check-printcards-preview.js
+
+      - name: Entry scorecards
+        run: node tools/check-entry-scorecards.js
 
       - name: Scorecard realtime and offline PWA regression
         run: npm run check:scorecard-pwa
 
       - name: Mobile navigation header
         run: npm run check:nav
+
+      # Три проверки из `npm run check:display-mobile` раньше не запускались в
+      # CI вообще: в репозитории не было ни одного workflow с ними. Из-за этого
+      # поломки того же класса, что сломали check:scorecards (список скриптов
+      # без js/ui-events.js), здесь никто не видел. Шаги отдельные — по имени
+      # сразу понятно, какой сценарий упал.
+      - name: Round setup mobile
+        run: node tools/check-round-setup-mobile.js
+
+      - name: Tournaments display mobile
+        run: node tools/check-tournaments-display-mobile.js
+
+      - name: Admin display settings mobile
+        run: node tools/check-display-settings-mobile.js

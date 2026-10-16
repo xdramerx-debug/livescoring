@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() { initNav(); loadTournaments(); });
-function onAuthReady(u, d) { navAuth(u, d); loadTournaments(); }
+// onAuthReady здесь больше не объявляется: на tournaments.html это объявление
+// было мёртвым — его перекрывал root.onAuthReady из tournament-public.js,
+// который подключён позже. Загрузку списка делает init() на DOMContentLoaded
+// и хук V2 (аудит 2026-10, п.13).
 
 function tGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 
@@ -88,7 +91,7 @@ function tnDivsCollapsedHtml(tnId, divisions) {
     var en = currentLang === 'en';
     var open = !!tnDivsOpen[tnId];
     var html = '<div class="tn-divs-wrap">';
-    html += '<button type="button" class="tn-divs-toggle' + (open ? ' open' : '') + '" onclick="toggleTnDivs(\'' + tnJsStr(tnId) + '\')">' +
+    html += '<button type="button" class="tn-divs-toggle' + (open ? ' open' : '') + '" data-act="toggleTnDivs" data-arg="' + escapeHtml(tnId) + '">' +
         '<i class="fas fa-chevron-down"></i> ' +
         (open ? (en ? 'Hide groups' : 'Скрыть группы') : (en ? 'Show groups' : 'Показать группы')) +
         ' · ' + divisions.length + '</button>';
@@ -132,7 +135,7 @@ function tnTabsHtml(tnId, tabs) {
         var active = (t.key === cur) || (cur === 'all' && t.key === 'all');
         html += '<button type="button" role="tab" class="tn-tab' + (active ? ' active' : '') + '"' +
             ' aria-selected="' + (active ? 'true' : 'false') + '"' +
-            ' onclick="tnSetTab(\'' + tnJsStr(tnId) + '\',\'' + tnJsStr(t.key) + '\')">' +
+            ' data-act="tnSetTab" data-arg="' + escapeHtml(tnId) + '" data-arg2="' + escapeHtml(t.key) + '">' +
             (t.icon ? '<i class="fas ' + t.icon + '"></i> ' : '') +
             escapeHtml(t.label) + '<span class="tn-tab-count">' + t.count + '</span></button>';
     });
@@ -218,6 +221,8 @@ function toggleTnGroupEl(btn) {
     tnGroupSetOpen(tnId, ctx, div || '', nowOpen);
 }
 function toggleTnAllGroups(tnId, ctx, open) {
+    // Аргументы приходят из data-атрибутов, поэтому 'false' — это строка.
+    open = open === true || open === 'true';
     var panelId = ctx === 'lb' ? 'tnlb-' + tnId : 'roster-' + tnId;
     var panel = tGet(panelId);
     if (!panel || !panel.querySelectorAll) return;
@@ -328,9 +333,9 @@ function tnRenderList() {
                 // игрока снимает только администратор.
                 regBtn = '<span style="font-size:12px;font-weight:700;color:#2ecc71;"><i class="fas fa-check-circle"></i> ' + t('registered_badge') + '</span>';
             } else if (isWaitlisted) {
-                regBtn = '<button class="btn btn-og btn-sm" onclick="cancelTournamentRegistration(\'' + tnJsStr(tnId) + '\')" title="' + escapeHtml(en ? 'Remove from waitlist' : 'Убрать из списка ожидания') + '"><i class="fas fa-hourglass-half"></i> ' + (en ? 'On waitlist' : 'В списке ожидания') + '</button>';
+                regBtn = '<button class="btn btn-og btn-sm" data-act="cancelTournamentRegistration" data-arg="' + escapeHtml(tnId) + '" title="' + escapeHtml(en ? 'Remove from waitlist' : 'Убрать из списка ожидания') + '"><i class="fas fa-hourglass-half"></i> ' + (en ? 'On waitlist' : 'В списке ожидания') + '</button>';
             } else {
-                regBtn = '<button class="btn btn-g btn-sm" onclick="openTournamentRegModal(\'' + tnJsStr(tnId) + '\')"><i class="fas fa-user-plus"></i> ' + t('register_tournament_btn') + '</button>';
+                regBtn = '<button class="btn btn-g btn-sm" data-act="openTournamentRegModal" data-arg="' + escapeHtml(tnId) + '"><i class="fas fa-user-plus"></i> ' + t('register_tournament_btn') + '</button>';
             }
 
             html += '<div class="tn-card">';
@@ -355,14 +360,14 @@ function tnRenderList() {
             // Кнопка списка участников — теперь с текстом, чтобы было понятно (фикс #6).
             // На АКТИВНОМ турнире список участников скрыт для всех (#10).
             if (tnStatus !== 'active') {
-                html += '<button class="btn btn-og btn-sm tn-roster-toggle" title="' + escapeHtml(en ? 'Participants' : 'Список участников') + '" onclick="toggleRosterPanel(\'' + tnJsStr(tnId) + '\')"><i class="fas fa-list-ul"></i> ' + (en ? 'Participants' : 'Участники') + ' (' + regCount + ')</button>';
+                html += '<button class="btn btn-og btn-sm tn-roster-toggle" title="' + escapeHtml(en ? 'Participants' : 'Список участников') + '" data-act="toggleRosterPanel" data-arg="' + escapeHtml(tnId) + '"><i class="fas fa-list-ul"></i> ' + (en ? 'Participants' : 'Участники') + ' (' + regCount + ')</button>';
             }
-            html += '<button class="btn btn-og btn-sm" onclick="toggleTnLb(\'' + tnJsStr(tnId) + '\')"><i class="fas fa-ranking-star"></i> ' + (en ? 'Live leaderboard' : 'Live-лидерборд') + '</button>';
+            html += '<button class="btn btn-og btn-sm" data-act="toggleTnLb" data-arg="' + escapeHtml(tnId) + '"><i class="fas fa-ranking-star"></i> ' + (en ? 'Live leaderboard' : 'Live-лидерборд') + '</button>';
             if (tnStatus === 'completed' && tnCanSeeProtocol()) {
                 // Протокол завершения турнира — только для администратора:
                 // уведомление о его доступности и кнопка игрокам не показываются,
                 // итоговые результаты они видят в лидерборде.
-                html += '<button class="btn btn-g btn-sm" onclick="tnOpenProtocolModal(\'' + tnJsStr(tnId) + '\')"><i class="fas fa-file-pdf"></i> ' + (en ? 'Results protocol (PDF)' : 'Протокол результатов (PDF)') + '</button>';
+                html += '<button class="btn btn-g btn-sm" data-act="tnOpenProtocolModal" data-arg="' + escapeHtml(tnId) + '"><i class="fas fa-file-pdf"></i> ' + (en ? 'Results protocol (PDF)' : 'Протокол результатов (PDF)') + '</button>';
             }
             html += '</div>';
 
@@ -683,15 +688,15 @@ function tnRosterGroupedHtml(tnId, tVal, regPlayers, regCount) {
     html += tnTabsHtml(tnId, tabs);
     if (shown.length > 1) {
         html += '<div class="tn-groups-toggle">' +
-            '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnJsStr(tnId) + '\',\'roster\',true)"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
-            '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnJsStr(tnId) + '\',\'roster\',false)"><i class="fas fa-angles-up"></i> ' + (en ? 'Collapse all' : 'Свернуть все') + '</button>' +
+            '<button type="button" class="btn btn-og btn-sm" data-act="toggleTnAllGroups" data-arg="' + escapeHtml(tnId) + '" data-arg2="roster" data-arg3="true"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
+            '<button type="button" class="btn btn-og btn-sm" data-act="toggleTnAllGroups" data-arg="' + escapeHtml(tnId) + '" data-arg2="roster" data-arg3="false"><i class="fas fa-angles-up"></i> ' + (en ? 'Collapse all' : 'Свернуть все') + '</button>' +
             '</div>';
     }
     shown.forEach(function(b) {
         var divId = b.guestTab ? '__guests' : (b.div ? (b.div.id || '') : '__none');
         var isOpen = tnGroupIsOpen(tnId, 'roster', divId, true);
         html += '<div class="tn-group' + (isOpen ? ' open' : '') + '">';
-        html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="roster" data-div="' + escapeHtml(divId) + '" onclick="toggleTnGroupEl(this)">' + tnGroupHeadHtml(b, en) + '</button>';
+        html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="roster" data-div="' + escapeHtml(divId) + '" data-act="toggleTnGroupEl" data-self="1">' + tnGroupHeadHtml(b, en) + '</button>';
         html += '<div class="tn-group-body' + (isOpen ? '' : ' tn-collapsed') + '">';
         html += tnRosterBucketHtml(b.list, variant, en);
         html += '</div></div>';
@@ -777,7 +782,7 @@ function tnGenderTabsHtml(tnId, allCount, menCount, womenCount) {
         var active = (t.key === cur);
         html += '<button type="button" role="tab" class="tn-tab' + (active ? ' active' : '') + '"' +
             ' aria-selected="' + (active ? 'true' : 'false') + '"' +
-            ' onclick="tnSetGenderSel(\'' + tnJsStr(tnId) + '\',\'' + tnJsStr(t.key) + '\')">' +
+            ' data-act="tnSetGenderSel" data-arg="' + escapeHtml(tnId) + '" data-arg2="' + escapeHtml(t.key) + '">' +
             '<i class="fas ' + t.icon + '"></i> ' + escapeHtml(t.label) +
             '<span class="tn-tab-count">' + t.count + '</span></button>';
     });
@@ -824,7 +829,7 @@ function tnGenderBoardHtml(tnId, en, title, icon, list) {
 function tnMatchBoardHtml(matchRounds, en) {
     if (typeof pestovoRoundMatches !== 'function') return '';
     var html = '<div style="margin-top:12px;padding:12px;border:1px solid rgba(201,168,76,.45);border-radius:10px;background:rgba(201,168,76,.06);">';
-    html += '<div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:4px;"><i class="fas fa-swords"></i> ' +
+    html += '<div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:4px;"><i class="fas fa-users"></i> ' +
         (en ? 'Match Play — match results' : 'Match Play — результаты матчей') + '</div>';
     html += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">' +
         (en ? 'A hole is won by the side with fewer strokes (team — best ball of the pair).' : 'Лунку выигрывает сторона с меньшим числом ударов (команда — лучший удар пары).') + '</div>';
@@ -1178,8 +1183,8 @@ function renderTnLeaderboard(tnId) {
 
     if (groupsVisibleLB && lbShown.length > 1 && curLbTab !== 'all') {
         html += '<div class="tn-groups-toggle">' +
-            '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnJsStr(tnId) + '\',\'lb\',true)"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
-            '<button type="button" class="btn btn-og btn-sm" onclick="toggleTnAllGroups(\'' + tnJsStr(tnId) + '\',\'lb\',false)"><i class="fas fa-angles-up"></i> ' + (en ? 'Collapse all' : 'Свернуть все') + '</button>' +
+            '<button type="button" class="btn btn-og btn-sm" data-act="toggleTnAllGroups" data-arg="' + escapeHtml(tnId) + '" data-arg2="lb" data-arg3="true"><i class="fas fa-angles-down"></i> ' + (en ? 'Expand all' : 'Развернуть все') + '</button>' +
+            '<button type="button" class="btn btn-og btn-sm" data-act="toggleTnAllGroups" data-arg="' + escapeHtml(tnId) + '" data-arg2="lb" data-arg3="false"><i class="fas fa-angles-up"></i> ' + (en ? 'Collapse all' : 'Свернуть все') + '</button>' +
             '</div>';
     }
     html += '<div class="tn-lb-variant tn-lb-v' + lbVariant + '"' + (curLbTab === 'all' ? ' data-single="1"' : '') + '>';
@@ -1192,7 +1197,7 @@ function renderTnLeaderboard(tnId) {
         var showHead = groupsVisibleLB;
         html += '<div class="tn-group' + (lbOpen || !showHead ? ' open' : '') + '">';
         if (showHead) {
-            html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="lb" data-div="' + escapeHtml(lbDivId) + '" onclick="toggleTnGroupEl(this)">' + tnGroupHeadHtml(b, en) + '</button>';
+            html += '<button type="button" class="tn-group-head" data-tn="' + escapeHtml(tnId) + '" data-ctx="lb" data-div="' + escapeHtml(lbDivId) + '" data-act="toggleTnGroupEl" data-self="1">' + tnGroupHeadHtml(b, en) + '</button>';
         }
         html += '<div class="tn-group-body' + ((lbOpen || !showHead) ? '' : ' tn-collapsed') + '">';
 
@@ -1202,7 +1207,7 @@ function renderTnLeaderboard(tnId) {
                 var posHtml = tnLbPosHtml(en2, true);
                 var fioKey = tnJsStr(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 var thru = en2.holes > 0 ? en2.holes + '/18' : '—';
-                html += '<div class="tn-lb-card" onclick="tnScOpen(\'' + tnJsStr(tnId) + '\',\'' + fioKey + '\')">';
+                html += '<div class="tn-lb-card" data-act="tnScOpen" data-arg="' + escapeHtml(tnId) + '" data-arg2="' + escapeHtml(fioKey) + '">';
                 html += '<div class="tn-lb-card-top"><span class="tn-lb-card-pos">' + posHtml + '</span>' +
                     (en2.live ? '<span class="tn-lb-live"><span class="tn-lb-dot"></span>LIVE</span>' : '') +
                     '<span class="tn-lb-card-thru">' + thru + '</span></div>';
@@ -1224,7 +1229,7 @@ function renderTnLeaderboard(tnId) {
                 var fioKey = tnJsStr(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 var progress = Math.min(100, Math.round((en2.holes/18)*100));
                 var toParCls = scoreClass(en2.toPar);
-                html += '<div class="tn-lb-live-row' + (en2.live ? ' is-live' : '') + '" onclick="tnScOpen(\'' + tnJsStr(tnId) + '\',\'' + fioKey + '\')">';
+                html += '<div class="tn-lb-live-row' + (en2.live ? ' is-live' : '') + '" data-act="tnScOpen" data-arg="' + escapeHtml(tnId) + '" data-arg2="' + escapeHtml(fioKey) + '">';
                 html += '<div class="tn-lb-live-pos">' + (en2.position ? '<b>' + en2.position + '</b><span>' + tnLbPosMedal(en2) + '</span>' : '<b class="tn-no-rank">—</b>') + '</div>';
                 html += '<div class="tn-lb-live-main">';
                 html += '<div class="tn-lb-live-name">' + escapeHtml(en2.dispName) + '</div>';
@@ -1245,7 +1250,7 @@ function renderTnLeaderboard(tnId) {
                 var posHtml = tnLbPosHtml(en2, true);
                 var thru = en2.holes > 0 ? en2.holes : '—';
                 var fioKey = tnJsStr(en2.key || tnFioKey({ name: en2.name }, en2.pid));
-                html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + tnJsStr(tnId) + '\',\'' + fioKey + '\')" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
+                html += '<tr class="tn-lb-row" data-act="tnScOpen" data-arg="' + escapeHtml(tnId) + '" data-arg2="' + escapeHtml(fioKey) + '" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
                 html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
                 html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' + (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + '</td>';
                 html += '<td>' + thru + '</td>';
@@ -1261,7 +1266,7 @@ function renderTnLeaderboard(tnId) {
                 var fioKey = tnJsStr(en2.key || tnFioKey({ name: en2.name }, en2.pid));
                 var hcpTxt = (en2.rp && en2.rp.handicap!=null && en2.rp.handicap!=='') ? fmtExactHcp(en2.rp.handicap) : (en2.hcpRaw!=null ? fmtExactHcp(en2.hcpRaw) : '—');
                 var groupTxt = en2.div ? (en2.div.name || '') : '—';
-                html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + tnJsStr(tnId) + '\',\'' + fioKey + '\')" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
+                html += '<tr class="tn-lb-row" data-act="tnScOpen" data-arg="' + escapeHtml(tnId) + '" data-arg2="' + escapeHtml(fioKey) + '" title="' + (en ? 'Scorecard' : 'Счётная карточка') + '">';
                 html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
                 html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' + (en2.live ? ' <span class="tn-lb-live" style="font-size:10px;">●</span>' : '') + '</td>';
                 html += '<td>' + hcpTxt + '</td>';
@@ -1282,7 +1287,7 @@ function renderTnLeaderboard(tnId) {
                 var posHtml = tnLbPosHtml(en2, true);
                 var thru = en2.holes > 0 ? en2.holes : '—';
                 var fioKey = tnJsStr(en2.key || tnFioKey({ name: en2.name }, en2.pid));
-                html += '<tr class="tn-lb-row" onclick="tnScOpen(\'' + tnJsStr(tnId) + '\',\'' + fioKey + '\')" title="' +
+                html += '<tr class="tn-lb-row" data-act="tnScOpen" data-arg="' + escapeHtml(tnId) + '" data-arg2="' + escapeHtml(fioKey) + '" title="' +
                     (en ? 'Scorecard' : 'Счётная карточка') + '">';
                 html += '<td><strong style="color:var(--gold);">' + posHtml + '</strong></td>';
                 html += '<td class="lb-card-main"><strong style="color:var(--white);">' + escapeHtml(en2.dispName) + '</strong>' +
@@ -1457,11 +1462,11 @@ function openTournamentRegModal(tnId) {
                 modalEl.className = 'modal hidden';
                 var backTxt = (typeof t === 'function') ? t('back_btn') : 'Back';
                 modalEl.innerHTML =
-                    '<div class="modal-bg" onclick="closeRegTnModal()"></div>' +
+                    '<div class="modal-bg" data-act="closeRegTnModal"></div>' +
                     '<div class="modal-body" style="max-width:520px;text-align:center;">' +
                     '<div class="modal-top-bar">' +
-                    '<button type="button" class="btn btn-og btn-sm modal-back-btn" onclick="closeRegTnModal()"><i class="fas fa-arrow-left"></i> <span>' + backTxt + '</span></button>' +
-                    '<button type="button" class="modal-close-btn" onclick="closeRegTnModal()">&times;</button>' +
+                    '<button type="button" class="btn btn-og btn-sm modal-back-btn" data-act="closeRegTnModal"><i class="fas fa-arrow-left"></i> <span>' + backTxt + '</span></button>' +
+                    '<button type="button" class="modal-close-btn" data-act="closeRegTnModal">&times;</button>' +
                     '</div>' +
                     '<div id="reg-tn-modal-body"></div>' +
                     '</div>';
@@ -1511,8 +1516,8 @@ function openTournamentRegModal(tnId) {
         }
 
         html += '<div style="display:flex;gap:12px;">';
-        html += '<button class="btn btn-og" style="flex:1;" onclick="closeRegTnModal()">' + t('cancel_btn') + '</button>';
-        html += '<button class="btn btn-g" style="flex:1;" onclick="submitTournamentRegistration(\'' + tnJsStr(tnId) + '\')"><i class="fas fa-check"></i> ' + (en ? 'Register' : 'Записаться') + '</button>';
+        html += '<button class="btn btn-og" style="flex:1;" data-act="closeRegTnModal">' + t('cancel_btn') + '</button>';
+        html += '<button class="btn btn-g" style="flex:1;" data-act="submitTournamentRegistration" data-arg="' + escapeHtml(tnId) + '"><i class="fas fa-check"></i> ' + (en ? 'Register' : 'Записаться') + '</button>';
         html += '</div>';
 
         bodyEl.innerHTML = html;

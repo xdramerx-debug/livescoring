@@ -1,3 +1,9 @@
+// Версия Firebase Web SDK. Одна на все страницы: тег со старой версией рядом
+// с новой дал бы два экземпляра SDK в одном приложении. Меняется здесь и
+// больше нигде — tools/test-firebase-sdk.js сравнивает с этой константой все
+// ссылки на CDN в HTML и в js/*.js.
+var PESTOVO_FIREBASE_SDK_VERSION = '13.0.0';
+
 const firebaseConfig = {
     apiKey: "AIzaSyDPlUXzNvvhb-Lxd_1lw0sX1hNXnzvlGPM",
     authDomain: "livescore-b77e4.firebaseapp.com",
@@ -20,6 +26,43 @@ firebase.initializeApp(firebaseConfig);
 // сохраняет связь при последующих переприсваиваниях (currentUser).
 var db = firebase.database();
 var auth = firebase.auth();
+
+// ── Cloud Functions — по требованию ──────────────────────────────────────
+// Раньше firebase-functions-compat.js грузился тегом <script> на 12 страницах,
+// хотя callable-вызов нужен в трёх сценариях: запись счёта (score-write.js,
+// с фолбэком прямо в RTDB), вход мастера турнира (admin.js) и полная очистка
+// данных (admin-groups.js). Остальные страницы платили за бандл, который не
+// вызывали. Теперь он подгружается при первом вызове; если CDN недоступен,
+// запись счёта уходит прямым путём в базу — тот же фолбэк, что и раньше.
+var pestovoFnPromise = null;
+function pestovoFunctions() {
+    if (typeof firebase !== 'undefined' && firebase.functions) {
+        return Promise.resolve(firebase.functions());
+    }
+    if (!pestovoFnPromise) {
+        pestovoFnPromise = new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = 'https://www.gstatic.com/firebasejs/' + PESTOVO_FIREBASE_SDK_VERSION +
+                '/firebase-functions-compat.js';
+            s.async = true;
+            s.onload = function () {
+                if (typeof firebase !== 'undefined' && firebase.functions) {
+                    resolve(firebase.functions());
+                } else {
+                    pestovoFnPromise = null;
+                    reject(new Error('functions SDK загрузился, но firebase.functions недоступен'));
+                }
+            };
+            s.onerror = function () {
+                // Позволяем повторить попытку следующим вызовом.
+                pestovoFnPromise = null;
+                reject(new Error('functions SDK не загрузился'));
+            };
+            document.head.appendChild(s);
+        });
+    }
+    return pestovoFnPromise;
+}
 
 try { firebase.database().goOnline(); } catch (e) { console.warn("[silent]", e); }
 
@@ -65,18 +108,94 @@ auth.onAuthStateChanged(function(user) {
 });
 
 // ── Глобальный перехват ошибок ──
-// Единая точка для будущего репортинга (Sentry / аналитика). Сейчас только
-// логирует; подключить внешний сервис можно внутри reportError.
+// Единая точка репортинга. До аудита 2026-10 здесь был только console.error,
+// то есть полевые сбои (плохой мобильный интернет на курсе, гонки подписок,
+// отказ правил БД) не были видны никому: разработчик узнавал о проблеме со слов
+// игрока. Теперь сообщение дублируется в узел RTDB `errorReports`, который
+// читается в админке (вкладка «Журнал действий со счётом» → блок «Ошибки
+// клиентов»). Правила доступа — в database.rules.json; узел доступен на запись
+// любому аутентифицированному, на чтение — только админу.
+//
+// Ограничения обязательны: без них одна циклическая ошибка засыпала бы базу
+// (RTDB тарифицирует записи и скачанный объём).
+var pestovoErrRep = { sent: 0, seen: {}, last: 0, inFlight: false };
+var PESTOVO_ERR_MAX_PER_SESSION = 20;   // не больше N сообщений за жизнь страницы
+var PESTOVO_ERR_MIN_INTERVAL_MS = 2000; // не чаще раза в N мс
+var PESTOVO_ERR_MAX_PER_KEY = 3;        // одна и та же ошибка — не больше N раз
+
+function pestovoErrClip(v, max) {
+    var s = v == null ? '' : String(v);
+    return s.length > max ? s.slice(0, max) + '…' : s;
+}
+
 function reportError(err, context) {
+    var detail = '';
     try {
-        var detail = err && (err.stack || err.message || String(err));
+        detail = err && (err.stack || err.message || String(err));
+    } catch (_) { detail = ''; }
+    try {
         console.error('[reportError]', context || '', detail);
     } catch (_) { /* никогда не падаем в обработчике ошибок */ }
+
+    try {
+        // Рекурсия запрещена: отказ записи не должен порождать новый репорт.
+        if (pestovoErrRep.inFlight) return;
+        if (typeof db === 'undefined' || !db || typeof db.ref !== 'function') return;
+        if (pestovoErrRep.sent >= PESTOVO_ERR_MAX_PER_SESSION) return;
+
+        var now = Date.now();
+        if (now - pestovoErrRep.last < PESTOVO_ERR_MIN_INTERVAL_MS) return;
+
+        var msg = pestovoErrClip((err && (err.message || err.code)) || detail || 'unknown', 500);
+        var key = (context || '') + '|' + msg;
+        var times = pestovoErrRep.seen[key] || 0;
+        if (times >= PESTOVO_ERR_MAX_PER_KEY) return;
+        pestovoErrRep.seen[key] = times + 1;
+
+        var page = '';
+        try { page = pestovoErrClip(location.pathname.split('/').pop() + location.search, 120); } catch (_) { page = ''; }
+        var ver = '';
+        try {
+            var vEl = document.querySelector('.version-number');
+            ver = pestovoErrClip(vEl && vEl.textContent, 20);
+        } catch (_) { ver = ''; }
+        var uid = '';
+        try { uid = (currentUser && currentUser.uid) ? pestovoErrClip(currentUser.uid, 64) : ''; } catch (_) { uid = ''; }
+        var lang = '';
+        try { lang = (typeof currentLang !== 'undefined' && currentLang) ? pestovoErrClip(currentLang, 2) : ''; } catch (_) { lang = ''; }
+
+        pestovoErrRep.last = now;
+        pestovoErrRep.inFlight = true;
+        db.ref('errorReports').push({
+            ts: now,
+            page: page,
+            ctx: pestovoErrClip(context || '', 200),
+            msg: msg,
+            stack: pestovoErrClip((err && err.stack) || '', 2000),
+            ver: ver,
+            lang: lang,
+            uid: uid,
+            n: times + 1
+        }).then(function () {
+            pestovoErrRep.sent++;
+            pestovoErrRep.inFlight = false;
+        }).catch(function (e) {
+            // Узел может быть закрыт правилами (например, правила ещё не
+            // задеплоены) или сеть недоступна — репортинг не должен ломать UI.
+            pestovoErrRep.inFlight = false;
+            try { console.warn('[reportError] upload skipped', e && e.code || e); } catch (_) {}
+        });
+    } catch (_) { /* репортинг никогда не роняет приложение */ }
 }
+
 if (typeof window !== 'undefined') {
     window.reportError = reportError;
+    // Контекст — стабильный идентификатор источника. Текст ошибки в него не
+    // входит: он и так попадает в msg, а ключ группировки в админке — ctx|msg,
+    // поэтому дубль сообщения размывал бы группы. Позиция в файле полезнее.
     window.addEventListener('error', function (e) {
-        reportError(e.error || e.message, 'window.error:' + (e.filename || '') + ':' + (e.lineno || ''));
+        var where = (e.filename || '') + ':' + (e.lineno || 0) + ':' + (e.colno || 0);
+        reportError(e.error || e.message, 'window.onerror ' + where);
     });
     window.addEventListener('unhandledrejection', function (e) {
         reportError(e.reason, 'unhandledrejection');

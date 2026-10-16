@@ -73,4 +73,80 @@
     root.saFilter = function() { render(last); };
     // Reload clears stale cache so recent events appear without a hard reload.
     root.saRefresh = function() { cache = {}; root.saLoad(); };
+
+    // ── Ошибки клиентов (узел errorReports) ──
+    // reportError() в js/firebase-config.js пишет сюда сбои с устройств игроков;
+    // до этого они оседали только в консоли браузера и до разработчика не
+    // доходили. Чтение разрешено правилами только админу/мастер-сессии.
+    var erSeq = 0;
+    function erGroup(list) {
+        // Одна и та же ошибка с разных устройств — одна строка со счётчиком,
+        // иначе список тонет в повторах.
+        var map = {}, order = [];
+        list.forEach(function(e) {
+            var key = (e.ctx || '') + '|' + (e.msg || '');
+            if (!map[key]) { map[key] = { ctx: e.ctx || '', msg: e.msg || '', stack: e.stack || '', n: 0, last: 0, first: Infinity, pages: {}, vers: {}, uids: {} }; order.push(key); }
+            var g = map[key];
+            g.n++;
+            if (e.ts > g.last) { g.last = e.ts; if (e.stack) g.stack = e.stack; }
+            if (e.ts < g.first) g.first = e.ts;
+            if (e.page) g.pages[e.page] = (g.pages[e.page] || 0) + 1;
+            if (e.ver) g.vers[e.ver] = (g.vers[e.ver] || 0) + 1;
+            if (e.uid) g.uids[e.uid] = (g.uids[e.uid] || 0) + 1;
+        });
+        return order.map(function(k) { return map[k]; }).sort(function(a, b) { return b.last - a.last; });
+    }
+    function erRender(list) {
+        var target = el('er-results'); if (!target) return;
+        if (!list.length) {
+            target.innerHTML = '<p class="empty">' + (en() ? 'No client errors reported.' : 'Сообщений об ошибках нет.') + '</p>';
+            return;
+        }
+        var groups = erGroup(list);
+        target.innerHTML = '<p style="color:var(--muted);font-size:12px;">' +
+            (en() ? groups.length + ' unique errors, ' + list.length + ' reports (last 200)'
+                  : groups.length + ' уникальных ошибок, ' + list.length + ' сообщений (последние 200)') + '</p>' +
+            groups.slice(0, 100).map(function(g, i) {
+                var when = new Date(g.last).toLocaleString(en() ? 'en-GB' : 'ru-RU');
+                var pages = Object.keys(g.pages).map(function(p) { return esc(p) + '×' + g.pages[p]; }).join(', ');
+                var vers = Object.keys(g.vers).map(function(v) { return esc(v); }).join(', ');
+                var ids = 'er-stack-' + i;
+                return '<div class="card" style="padding:12px;margin:8px 0;border-left:3px solid var(--danger,#c0392b);">' +
+                    '<b>×' + g.n + '</b> ' + esc(g.msg) + '<br><small style="color:var(--muted);">' + when +
+                    (g.ctx ? ' · ' + esc(g.ctx) : '') +
+                    (pages ? ' · ' + (en() ? 'pages' : 'страницы') + ': ' + pages : '') +
+                    (vers ? ' · v' + vers : '') +
+                    ' · uid: ' + Object.keys(g.uids).length +
+                    '</small>' +
+                    (g.stack ? '<br><button type="button" class="btn btn-ol btn-sm" style="margin-top:6px;" data-act="pestovoToggleHidden" data-arg="' + escapeHtml(ids) + '">' + (en() ? 'Stack' : 'Стек') + '</button>' +
+                        '<pre id="' + ids + '" class="hidden" style="white-space:pre-wrap;font-size:11px;margin-top:6px;max-height:220px;overflow:auto;">' + esc(g.stack) + '</pre>' : '') +
+                    '</div>';
+            }).join('');
+    }
+    root.erLoad = function() {
+        var result = el('er-results');
+        if (!result) return;
+        if (typeof root.db === 'undefined' || !root.db) { result.textContent = en() ? 'Database not available.' : 'База недоступна.'; return; }
+        var token = ++erSeq;
+        result.textContent = en() ? 'Loading errors…' : 'Загрузка ошибок…';
+        root.db.ref('errorReports').orderByChild('ts').limitToLast(200).once('value').then(function(sn) {
+            if (token !== erSeq) return;
+            var val = sn.val() || {};
+            var list = Object.keys(val).map(function(k) { return val[k]; }).filter(function(e) { return e && typeof e.ts === 'number'; });
+            erRender(list);
+        }).catch(function(err) {
+            if (token !== erSeq) return;
+            // permission-denied означает, что правила с узлом errorReports ещё
+            // не задеплоены (root .read: false) — объясняем, а не пугаем кодом.
+            result.innerHTML = '<p class="empty">❌ ' + esc(err && err.message || err) + '</p>' +
+                (err && /permission/i.test(String(err.code || err.message))
+                    ? '<p style="color:var(--muted);font-size:12px;">' + (en() ? 'Deploy database rules: firebase deploy --only database' : 'Задеплойте правила БД: firebase deploy --only database') + '</p>'
+                    : '');
+        });
+    };
+    root.erClear = function() {
+        if (!root.confirm((en() ? 'Delete all client error reports?' : 'Удалить все сообщения об ошибках клиентов?'))) return;
+        root.db.ref('errorReports').remove().then(function() { root.erLoad(); })
+            .catch(function(err) { root.toast('❌ ' + (err && err.message || err), 'error'); });
+    };
 })(typeof window !== 'undefined' ? window : this);

@@ -427,11 +427,11 @@
     function sampleHTML() {
         return '' +
         '<nav class="nav"><div class="container nav-c">' +
-            '<a href="#" class="nav-brand" onclick="return false"><span class="nav-brand-text">Пестово</span></a>' +
+            '<a href="#" class="nav-brand" data-act="noop" data-prevent="1"><span class="nav-brand-text">Пестово</span></a>' +
             '<div class="nav-menu">' +
-                '<a href="#" class="nav-link active" onclick="return false">Главная</a>' +
-                '<a href="#" class="nav-link" onclick="return false">Раунды</a>' +
-                '<a href="#" class="nav-link" onclick="return false">Статистика</a>' +
+                '<a href="#" class="nav-link active" data-act="noop" data-prevent="1">Главная</a>' +
+                '<a href="#" class="nav-link" data-act="noop" data-prevent="1">Раунды</a>' +
+                '<a href="#" class="nav-link" data-act="noop" data-prevent="1">Статистика</a>' +
             '</div>' +
             '<div class="nav-auth"><span class="nav-uname">Иван Петров</span></div>' +
         '</div></nav>' +
@@ -440,8 +440,8 @@
             '<div class="hero-sub">Пестово</div>' +
             '<h1 class="hero-title">Лайв-скоринг сезона 2026</h1>' +
             '<p class="hero-desc">18 лунок · Пар 72 · Гандикап WHS</p>' +
-            '<div class="hero-btns"><a href="#" class="btn btn-g" onclick="return false">Начать раунд</a>' +
-            '<a href="#" class="btn btn-og" onclick="return false">Все раунды</a></div>' +
+            '<div class="hero-btns"><a href="#" class="btn btn-g" data-act="noop" data-prevent="1">Начать раунд</a>' +
+            '<a href="#" class="btn btn-og" data-act="noop" data-prevent="1">Все раунды</a></div>' +
         '</div></div>' +
 
         '<div class="page-head"><div class="container">' +
@@ -501,8 +501,8 @@
                 '<div><div class="footer-title">Пестово</div>' +
                 '<p class="footer-desc">Официальная система лайв-скоринга гольф-клуба.</p></div>' +
                 '<div><div class="footer-sub">Разделы</div>' +
-                '<a href="#" class="footer-link" onclick="return false">Все раунды</a>' +
-                '<a href="#" class="footer-link" onclick="return false">Статистика</a></div>' +
+                '<a href="#" class="footer-link" data-act="noop" data-prevent="1">Все раунды</a>' +
+                '<a href="#" class="footer-link" data-act="noop" data-prevent="1">Статистика</a></div>' +
             '</div>' +
             '<div class="footer-bottom">© 2024 Пестово</div>' +
             '<p class="site-version">Версия сайта: <span class="version-number">—</span></p>' +

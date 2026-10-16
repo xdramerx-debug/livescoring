@@ -84,7 +84,10 @@ const round = {
         await page.addStyleTag({ path: path.join(root, 'css/tournament-redesign.css') });
         await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important;}' });
         await page.evaluate(html => { document.body.innerHTML = html; }, publicMain());
-        for (const file of ['course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'tournament-core', 'tournaments', 'tournament-public']) {
+        // js/ui-events.js обязателен: inline-обработчиков в разметке больше нет,
+        // клики по [data-act] ловит его слушатель на document. Без него кнопка
+        // предпросмотра ничего не меняет, а фичевый скрипт падает на pestovoOnAction.
+        for (const file of ['ui-events', 'course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'tournament-core', 'tournaments', 'tournament-public']) {
             await page.addScriptTag({ path: path.join(root, 'js', file + '.js') });
         }
         await page.evaluate(({ tournament, players, round }) => {
@@ -280,7 +283,10 @@ const round = {
                         cardCount: panel.querySelectorAll('.tn-lb-card').length,
                         liveRows: panel.querySelectorAll('.tn-lb-live-row').length,
                         rows: panel.querySelectorAll('tbody tr').length,
-                        scorecardOpens: (panel.querySelector('[onclick*="tnScOpen"]') || {}).getAttribute?.('onclick') || '',
+                        // Обработчики ушли из onclick= в data-атрибуты
+                        // (делегирование): действие ищем по data-act, иначе
+                        // проверка просто не находит то, что есть.
+                        scorecardOpens: (panel.querySelector('[data-act="tnScOpen"]') || {}).getAttribute?.('data-act') || '',
                         hasHorizontalScroll: scrolls.some(el => el.scrollWidth > el.clientWidth + 1),
                         scrollWrapperCount: scrolls.length
                     };

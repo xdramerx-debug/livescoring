@@ -1,3 +1,5 @@
+// isScoreKioskUrl()/applyScoreKiosk() вынесены в js/score-kiosk.js —
+// общая реализация для scorer.html и setup-round.html (аудит 2026-10, п.13).
 var scRid = null, scPid = null, scRound = null;
 var scHole = 1, scScore = 0, scMarker = {};
 var scChanging = false;
@@ -6,34 +8,6 @@ var scPaceTimer = null;
 
 function scGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
 
-function isScoreKioskUrl() {
-    try {
-        var q = new URLSearchParams(window.location.search);
-        return !!(q.get('round') && (q.get('as') || q.get('player')));
-    } catch (e) { return false; }
-}
-function applyScoreKiosk() {
-    if (!isScoreKioskUrl()) return false;
-    try {
-        document.documentElement.classList.add('score-kiosk');
-        var nav = document.getElementById('main-nav');
-        if (nav) nav.classList.remove('hidden');
-        if (typeof applyNavHeight === 'function') applyNavHeight();
-        ['my-active-rounds-container'].forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.classList.add('hidden');
-        });
-        // Шапка остаётся видимой компактной
-        var ph = document.querySelector('.page-head');
-        if (ph) {
-            ph.classList.remove('hidden');
-            ph.classList.add('scoring-compact');
-        }
-        var hideSel = document.querySelectorAll('footer, .footer');
-        for (var i = 0; i < hideSel.length; i++) hideSel[i].classList.add('hidden');
-    } catch (e) { console.warn("[silent]", e); }
-    return true;
-}
 
 document.addEventListener('pestovo-stableford-default-change', function() {
     if (!scRound) return;
@@ -66,10 +40,11 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
     });
 }
 
-function onAuthReady(user, data) {
-    if (typeof navAuth === 'function') navAuth(user, data);
+// Хук готовности авторизации: navAuth вызывается базовой onAuthReady (js/utils.js),
+// здесь только загрузка данных раунда игрока (аудит 2026-10, п.13).
+pestovoOnAuthReady(function (user, data) {
     if (user && scRid && scPid && !(typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) loadSc();
-}
+});
 
 var scLoadStarted = false;
 function loadSc() {
@@ -206,28 +181,32 @@ function toggleScStablefordDisplay(enabled) {
     }
 }
 
+// Разметка кнопок — общая (pestovoBuildHoles в js/score-display.js), состояния
+// считает страница: у игрока «ввёл / не ввёл» — это его собственный счёт,
+// дальше он ждёт подтверждения маркера.
 function buildHoles() {
-    var el = scGet('sc-holes');
-    if (!el) return;
     if (!scRound || !scRound.players || !scRound.players[scPid]) return;
-    var order = (typeof getRoundOrder === 'function' ? getRoundOrder(scRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);
     var scPlayer = scRound.players[scPid] || {};
     var scores = scPlayer.scores || {};
-    var scFieldHcp = scPlayer.fieldHcp !== undefined ? scPlayer.fieldHcp : ((scRound && scRound.fieldHcp) || 0);
-    var html = '';
-    order.forEach(function(h) {
-        var s = parseInt(scores[h]) || 0, ms = parseInt(scMarker[h]) || 0;
-        var cls = h === scHole ? 'active' : '';
-        // confirmed — зелёная, mismatch — мигает красным, счёт введён без подтверждения — мигает серым
-        if (s >= 1 && ms >= 1 && s === ms) cls += ' verified';
-        else if (s >= 1 && ms >= 1) cls += ' mismatch';
-        else if (s >= 1) cls += ' pending';
-        // Текущая лунка без введённого счёта мигает серым (как в основном вводе).
-        if (h === scHole && !(s >= 1)) cls += ' cur-blink';
-        html += '<button type="button" class="hole-btn ' + cls + '" onclick="goSc(' + h + ')" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === scHole ? 'true' : 'false') + '">' +
-            entryHoleContentHTML(s, ms, h, scFieldHcp) + '</button>';
+    pestovoBuildHoles({
+        el: scGet('sc-holes'),
+        round: scRound,
+        currentHole: scHole,
+        fieldHcp: scPlayer.fieldHcp !== undefined ? scPlayer.fieldHcp : ((scRound && scRound.fieldHcp) || 0),
+        go: 'goSc',
+        playerScore: function(h) { return scores[h]; },
+        markerScore: function(h) { return scMarker[h]; },
+        stateClass: function(h, s, ms) {
+            // confirmed — зелёная, mismatch — мигает красным, счёт введён без подтверждения — мигает серым
+            var cls = '';
+            if (s >= 1 && ms >= 1 && s === ms) cls += ' verified';
+            else if (s >= 1 && ms >= 1) cls += ' mismatch';
+            else if (s >= 1) cls += ' pending';
+            // Текущая лунка без введённого счёта мигает серым (как в основном вводе).
+            if (h === scHole && !(s >= 1)) cls += ' cur-blink';
+            return cls;
+        }
     });
-    el.innerHTML = html;
 }
 
 function goSc(h) {
@@ -240,62 +219,64 @@ function goSc(h) {
     setTimeout(function() { scChanging = false; }, 100);
 }
 
+// Реализация — js/score-display.js (общая с marker.js); здесь подстановка
+// глобалов страницы игрока: в шапке ещё дальность до лунки (по чашке игрока)
+// и дедлайн, а без игрока в раунде счёт не выставляется (strict).
 function renderHole() {
-    var par = (typeof holePar === 'function' ? holePar(scHole) : 4);
     var pl = scRound && scRound.players && scRound.players[scPid];
-    var playerTee = (pl && pl.tee) || (scRound && scRound.tee) || 'wh';
-    var holeEl = scGet('sc-hole'); if (holeEl) holeEl.textContent = scHole;
-    var parEl = scGet('sc-par'); if (parEl) parEl.textContent = par;
-    var distEl = scGet('sc-dist'); if (distEl) distEl.textContent = (typeof holeDist === 'function' ? holeDist(scHole, playerTee) : '—') || '—';
-    var dlEl = scGet('sc-dl');
-    if (dlEl && typeof fmtTime === 'function') {
-        // Дедлайн с учётом пауз раунда (пауза продлевает план, а не «съедается»)
-        var dlTs = (typeof roundHoleDeadlineTs === 'function')
-            ? roundHoleDeadlineTs(scRound, scHole)
-            : (typeof holeDeadline === 'function' ? holeDeadline(scRound.startTime, scRound.startHole, scHole) : null);
-        dlEl.textContent = dlTs ? fmtTime(dlTs) : '—';
-    }
-    if (!scRound || !scRound.players || !scRound.players[scPid]) return;
-    var scores = scRound.players[scPid].scores || {};
-    var saved = parseInt(scores[scHole]) || 0;
-    scScore = saved >= 1 ? saved : par;
-    if (typeof updDisp === 'function') updDisp();
+    pestovoRenderHole({
+        hole: scHole,
+        round: scRound,
+        pid: scPid,
+        get: scGet,
+        ids: { hole: 'sc-hole', par: 'sc-par', dist: 'sc-dist', dl: 'sc-dl' },
+        tee: (pl && pl.tee) || (scRound && scRound.tee) || 'wh',
+        strict: true,
+        setScore: function (v) { scScore = v; },
+        update: updDisp
+    });
 }
 
 function adjSc(d) {
+    d = parseInt(d, 10);
     scScore = Math.max(1, Math.min(15, scScore + d));
     if (typeof vib === 'function') vib();
     if (typeof updDisp === 'function') updDisp();
     if (typeof animateScoreElement === 'function') animateScoreElement('sc-disp');
 }
 
+// Реализация — js/score-display.js (общая с marker.js); здесь только
+// подстановка глобалов страницы игрока.
 function updDisp() {
-    var par = (typeof holePar === 'function' ? holePar(scHole) : 4);
-    var player = scRound && scRound.players ? scRound.players[scPid] : null;
-    var fieldHcp = player && player.fieldHcp !== undefined
-        ? player.fieldHcp : ((scRound && scRound.fieldHcp) || 0);
-    var disp = scGet('sc-disp');
-    if (disp && typeof scoreWithStablefordHTML === 'function' && typeof isPlayerStablefordDisplayEnabled === 'function') {
-        disp.innerHTML = scoreWithStablefordHTML(scScore, scHole, fieldHcp, isPlayerStablefordDisplayEnabled(player));
-    }
-    var r = scGet('sc-result');
-    if (r) {
-        if (typeof holeResName === 'function') r.textContent = holeResName(scScore, par);
-        if (typeof holeResClass === 'function') r.className = 'score-result ' + holeResClass(scScore, par);
-    }
+    if (typeof pestovoUpdScoreDisplay !== 'function') return;
+    pestovoUpdScoreDisplay({
+        hole: scHole,
+        round: scRound,
+        pid: scPid,
+        score: scScore,
+        get: scGet,
+        dispId: 'sc-disp',
+        resultId: 'sc-result'
+    });
 }
 
+// Состояния сверки общие с marker.js (pestovoCheckVerify в js/score-display.js);
+// здесь — подписи игрока. Ожидание маркера отдельным блоком НЕ показываем —
+// только уведомление 3 сек при сохранении, поэтому waiting не передаём.
 function checkVerify() {
     var box = scGet('sc-verify');
     if (!box) return;
     if (!scRound || !scRound.players || !scRound.players[scPid]) return;
     var scores = scRound.players[scPid].scores || {};
-    var ps = parseInt(scores[scHole]) || 0, ms = parseInt(scMarker[scHole]) || 0;
     var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-    if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (langIsEn ? 'Confirmed by marker: ' + ps : 'Подтверждено маркером: ' + ps + ' уд.') + '</div>';
-    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (langIsEn ? 'You: ' : 'Вы: ') + ps + ' | ' + (langIsEn ? 'Marker: ' : 'Маркер: ') + ms + '</div>';
-    // Ожидание маркера отдельным блоком НЕ показываем — только уведомление 3 сек при сохранении.
-    else box.innerHTML = '';
+    pestovoCheckVerify({
+        box: box,
+        playerScore: scores[scHole],
+        markerScore: scMarker[scHole],
+        matched: function (n) { return langIsEn ? 'Confirmed by marker: ' + n : 'Подтверждено маркером: ' + n + ' уд.'; },
+        playerLabel: function (n) { return (langIsEn ? 'You: ' : 'Вы: ') + n; },
+        markerLabel: function (n) { return (langIsEn ? 'Marker: ' : 'Маркер: ') + n; }
+    });
 }
 
 function scSetSaving(on) {
@@ -371,13 +352,13 @@ function saveSc() {
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ms >= 1 && ms === scScore) {
 
-            if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + savedHole + ' confirmed:</b> ' + scScore) : ('✅ <b>Лунка ' + savedHole + ' подтверждена:</b> ' + scScore + ' уд.'));
+            if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + escapeHtml(savedHole) + ' confirmed:</b> ' + escapeHtml(scScore)) : ('✅ <b>Лунка ' + escapeHtml(savedHole) + ' подтверждена:</b> ' + escapeHtml(scScore) + ' уд.'), 'success', { html: true });
             if (typeof vib === 'function') vib([50, 50]);
         } else if (ms >= 1 && ms !== scScore) {
 
-            if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + savedHole + '!</b><br>You: <b>' + scScore + '</b>, marker: <b>' + ms + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + savedHole + '!</b><br>Вы: <b>' + scScore + '</b>, маркер: <b>' + ms + '</b>'), 'error');
+            if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + escapeHtml(savedHole) + '!</b><br>You: <b>' + escapeHtml(scScore) + '</b>, marker: <b>' + escapeHtml(ms) + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + escapeHtml(savedHole) + '!</b><br>Вы: <b>' + escapeHtml(scScore) + '</b>, маркер: <b>' + escapeHtml(ms) + '</b>'), 'error', { html: true });
         } else {
-            if (typeof toast === 'function') toast(langIsEn ? ('⏳ <b>Hole ' + savedHole + ':</b> your score <b>' + scScore + '</b> is saved. Waiting for marker.') : ('⏳ <b>Лунка ' + savedHole + ':</b> ваш счёт <b>' + scScore + '</b> сохранён. Ждём маркера.'), 'info');
+            if (typeof toast === 'function') toast(langIsEn ? ('⏳ <b>Hole ' + escapeHtml(savedHole) + ':</b> your score <b>' + escapeHtml(scScore) + '</b> is saved. Waiting for marker.') : ('⏳ <b>Лунка ' + escapeHtml(savedHole) + ':</b> ваш счёт <b>' + escapeHtml(scScore) + '</b> сохранён. Ждём маркера.'), 'info', { html: true });
             if (typeof vib === 'function') vib();
         }
         var par = (typeof holePar === 'function' ? holePar(savedHole) : 4);
@@ -411,24 +392,18 @@ function renderCard() {
     el.innerHTML = renderClubScorecard(scRound.players[scPid], scRound, { playerId: scPid, showMarker: true });
 }
 
+// Общая часть — pestovoCallOfficial() в js/official-call.js. Здесь только
+// данные игрока: в оповещение он уходит под своим именем.
 function callOfficial(type) {
     if (!scRound || !scPid) return;
     var pName = (scRound.players[scPid] && scRound.players[scPid].name) || 'Player';
-    if (typeof requestOfficialCall !== 'function') return;
-    requestOfficialCall({
+    return pestovoCallOfficial({
+        type: type,
         roundId: scRid,
         playerId: scPid,
         prefix: 'sc',
-        type: type,
         hole: function() { return scHole; },
         playerName: pName,
-        flightMembers: [],
-        canEdit: true,
-        onSent: function(call) {
-            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, pName, []);
-            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, pName, []);
-            if (typeof toast === 'function' && typeof getOfficialRoleName === 'function') toast('🚨 ' + getOfficialRoleName(type) + ((typeof currentLang !== 'undefined' && currentLang === 'en') ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
-            if (typeof vib === 'function') vib([100, 50, 100]);
-        }
+        canEdit: true
     });
 }

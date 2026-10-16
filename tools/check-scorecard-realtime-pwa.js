@@ -91,7 +91,7 @@ const root = path.join(__dirname, '..');
     const fixture = `<!doctype html><html lang="ru"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="css/style.css"></head><body>
         <div id="admin-fixture">${fragment}</div><div id="active-card"></div><div id="finished-card"></div>
         <script>${transport}</script>
-        ${['course-config','format','dom','i18n','utils','admin-display','pwa'].map(f => '<script src="js/' + f + '.js"></script>').join('')}
+        ${['ui-events','course-config','format','dom','i18n','utils','admin-display','pwa'].map(f => '<script src="js/' + f + '.js"></script>').join('')}
         <script>
         window.fixtureRound = { status: 'completed', holeRange: '1-9', players: {
             a: { name: 'Анна Тестовая', tee: 'rd', fieldHcp: 12, scores: { 1: 4, 2: 5 } },

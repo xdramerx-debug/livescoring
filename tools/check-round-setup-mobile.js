@@ -57,7 +57,10 @@ function extractPage() {
             window.toast = function() {};
             window.vib = function() {};
         }, pageMarkup.setup);
-        for (const file of ['course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'live', 'round-setup']) {
+        // js/ui-events.js обязателен: inline-обработчиков в разметке больше нет,
+        // клики по [data-act] ловит его слушатель на document. Без него кнопка
+        // предпросмотра ничего не меняет, а фичевый скрипт падает на pestovoOnAction.
+        for (const file of ['ui-events', 'course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'live', 'round-setup']) {
             await page.addScriptTag({ path: path.join(root, 'js', file + '.js') });
         }
         await page.evaluate(() => {
@@ -99,7 +102,7 @@ function extractPage() {
                 await page.locator('#pl-hcp-3').fill('7.1');
                 await page.waitForTimeout(20);
 
-                const state = await page.evaluate(v => {
+                const state = await page.evaluate(() => {
                     const slots = document.getElementById('player-slots');
                     const rect = el => {
                         if (!el) return null;

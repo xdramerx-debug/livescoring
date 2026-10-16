@@ -82,6 +82,13 @@ function run(win, file) {
     win.eval(read(file));
 }
 
+// design-preview.js раскладывает имена в data-атрибуты через escapeHtml —
+// он живёт в js/dom.js, который на странице подключён до остальных скриптов.
+function runWithDom(win, file) {
+    run(win, 'js/dom.js');
+    run(win, file);
+}
+
 // jsdom оставляет readyState === 'loading', поэтому дожидаемся DOMContentLoaded
 // и нескольких тиков — столько же, сколько нужно промисам мока Firebase.
 function settle(win) {
@@ -192,7 +199,7 @@ async function testAdminTab() {
 async function testPreviewPage() {
     var win = makeWindow('design-preview.html');
     run(win, 'js/design-system.js');
-    run(win, 'js/design-preview.js');
+    runWithDom(win, 'js/design-preview.js');
     await settle(win);
     var doc = win.document;
 

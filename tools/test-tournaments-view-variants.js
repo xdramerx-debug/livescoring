@@ -34,6 +34,9 @@ function check(condition, message) { assert.ok(condition, message); passed.push(
         on(event, callback) { listeners[pathName] = callback; },
         once() { return Promise.resolve({ val: () => null }); }
     }) };
+    // Реестр обработчиков живёт в js/ui-events.js; здесь подключается только
+    // часть страницы, поэтому регистрация — заглушка.
+    win.pestovoOnAction = function () {};
     ['course-config', 'format', 'dom', 'i18n', 'utils', 'admin-display'].forEach(file => win.eval(read('js/' + file + '.js')));
 
     const defaults = win.getPestovoDisplaySettings('tournaments');

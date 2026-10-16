@@ -205,7 +205,7 @@ function handlePlayersFileSelect(input) {
         } catch (err) {
             console.warn('Import parse error:', err);
             if (statusEl) statusEl.innerHTML = '<div class="imp-note imp-note-err"><i class="fas fa-triangle-exclamation"></i> ' +
-                (currentLang === 'en' ? 'Failed to read file: ' : 'Не удалось прочитать файл: ') + (err.message || err) + '</div>';
+                (currentLang === 'en' ? 'Failed to read file: ' : 'Не удалось прочитать файл: ') + escapeHtml(err.message || err) + '</div>';
         }
         input.value = '';
     };
@@ -332,7 +332,7 @@ function impRenderPreview(validRows, invalidRows) {
 
         html += '<div class="imp-list">';
         html += '<label class="imp-row imp-row-head">' +
-            '<input type="checkbox" id="imp-check-all" checked onchange="impToggleAll(this)">' +
+            '<input type="checkbox" id="imp-check-all" checked data-act="impToggleAll" data-self="1">' +
             '<span style="font-weight:700;color:var(--gold);">' + (currentLang === 'en' ? 'Choose all' : 'Выбрать все') + '</span></label>';
 
         var renderRow = function(r, i, invalid) {
@@ -347,7 +347,7 @@ function impRenderPreview(validRows, invalidRows) {
             }
             var genderIcon = r.gender === 'women' ? '👩' : '👨';
             return '<label class="imp-row">' +
-                '<input type="checkbox" ' + (invalid ? 'disabled' : (r.checked ? 'checked' : '')) + ' data-imp-idx="' + r.idx + '" onchange="impRowToggle(this)">' +
+                '<input type="checkbox" ' + (invalid ? 'disabled' : (r.checked ? 'checked' : '')) + ' data-imp-idx="' + r.idx + '" data-act="impRowToggle" data-self="1">' +
                 '<span class="imp-info"><span class="imp-name">' + genderIcon + ' ' + escapeHtml((r.firstName || '') + ' ' + (r.lastName || '')) + '</span>' +
                 '<span class="imp-sub">HCP: ' + (r.hcp != null ? fmtExactHcp(r.hcp) : '—') + '</span></span>' +
                 badge + '</label>';
@@ -358,9 +358,9 @@ function impRenderPreview(validRows, invalidRows) {
         html += '</div>';
 
         html += '<div class="rg-actions" style="margin-top:14px;">' +
-            '<button type="button" class="btn btn-g imp-big-btn" onclick="confirmPlayersImport()"><i class="fas fa-file-import"></i> <span>' +
+            '<button type="button" class="btn btn-g imp-big-btn" data-act="confirmPlayersImport"><i class="fas fa-file-import"></i> <span>' +
             (currentLang === 'en' ? 'Import selected' : 'Импортировать выбранное') + ' (<span id="imp-count-label">' + validRows.length + '</span>)</span></button>' +
-            '<button type="button" class="btn btn-og imp-big-btn" onclick="impCancelPreview()"><i class="fas fa-xmark"></i> <span>' + (currentLang === 'en' ? 'Cancel' : 'Отмена') + '</span></button>' +
+            '<button type="button" class="btn btn-og imp-big-btn" data-act="impCancelPreview"><i class="fas fa-xmark"></i> <span>' + (currentLang === 'en' ? 'Cancel' : 'Отмена') + '</span></button>' +
             '</div>';
 
         previewEl.innerHTML = html;

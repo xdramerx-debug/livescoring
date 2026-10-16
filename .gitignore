@@ -1,4 +1,6 @@
 node_modules/
-package-lock.json
 .bundle-check/
 tools/.browser-stub/
+# Артефакт деплоя: минифицированное зеркало сайта (npm run build:public).
+# Не коммитится — собирается в CI перед `firebase deploy --only hosting`.
+public/

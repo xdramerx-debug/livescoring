@@ -434,7 +434,7 @@ function renderPageDisplaySettingsGrid() {
             var labelKey = pageDisplayLabelKey(page, v);
             var label = (typeof t === 'function') ? t(labelKey) : labelKey;
             return '<button type="button" class="btn btn-og btn-sm page-display-variant-btn" id="' +
-                page + '-display-opt-' + v + '" onclick="savePageDisplayVariant(\'' + page + '\',\'' + v + '\')" data-i18n="' +
+                page + '-display-opt-' + v + '" data-act="savePageDisplayVariant" data-arg="' + escapeHtml(page) + '" data-arg2="' + escapeHtml(v) + '" data-i18n="' +
                 labelKey + '">' + label + '</button>';
         }).join('');
         return '<div class="page-display-setting-card">' +
@@ -808,6 +808,11 @@ function renderClubScorecardPreview() {
 // A single transaction preserves the actual preceding server values, including
 // when another administrator saves concurrently. Local events are suppressed:
 // only the acknowledged snapshot is presented as successfully saved.
+// Кнопка сохранения передавала текущий предпросмотр прямо в onclick=.
+pestovoOnAction('pestovoSaveClubScorecardView', function () {
+    saveClubScorecardView(clubScorecardPreviewView);
+});
+
 function saveClubScorecardView(value) {
     return persistClubScorecardDisplay(false, {
         view: normalizeView5(value || clubScorecardPreviewView || getRoundScorecardView()),
@@ -920,7 +925,7 @@ function renderPestovoDisplayAdmin(scope, force) {
             return '<label class="screen-display-option' + (checked ? ' is-on' : '') + (required ? ' is-required' : '') + '">' +
                 '<input type="checkbox" data-screen-display-toggle="' + escapeHtml(scope) + '" data-display-key="' + escapeHtml(key) + '"' +
                 (checked ? ' checked' : '') + (required ? ' disabled aria-disabled="true"' : '') +
-                ' onchange="setPestovoDisplayDraftVisible(\'' + pestovoInlineJsArg(scope) + '\',\'' + pestovoInlineJsArg(key) + '\',this.checked)">' +
+                ' data-act="setPestovoDisplayDraftVisible" data-arg="' + escapeHtml(scope) + '" data-arg2="' + escapeHtml(key) + '" data-checked="1">' +
                 '<span>' + escapeHtml(pestovoDisplayLabel(item)) + (required ? '<small>' + (currentLang === 'en' ? 'Required to save scores' : 'Нужен для сохранения счёта') + '</small>' : '') + '</span></label>';
         }).join('');
     }
@@ -932,9 +937,9 @@ function renderPestovoDisplayAdmin(scope, force) {
             var label = pestovoDisplayLabel(orderLabels[key]);
             return '<div class="screen-display-order-row"><span><b>' + (index + 1) + '</b> ' + escapeHtml(label || key) + '</span>' +
                 '<div><button type="button" class="btn btn-ol btn-sm" data-display-order-move="up" aria-label="' + (currentLang === 'en' ? 'Move up' : 'Переместить выше') + '"' +
-                (index === 0 ? ' disabled' : '') + ' onclick="movePestovoDisplayDraftOrder(\'' + pestovoInlineJsArg(scope) + '\',' + index + ',-1)"><i class="fas fa-arrow-up"></i></button>' +
+                (index === 0 ? ' disabled' : '') + ' data-act="movePestovoDisplayDraftOrder" data-arg="' + escapeHtml(scope) + '" data-arg2="' + index + '" data-arg3="-1"><i class="fas fa-arrow-up"></i></button>' +
                 '<button type="button" class="btn btn-ol btn-sm" data-display-order-move="down" aria-label="' + (currentLang === 'en' ? 'Move down' : 'Переместить ниже') + '"' +
-                (index === draft.order.length - 1 ? ' disabled' : '') + ' onclick="movePestovoDisplayDraftOrder(\'' + pestovoInlineJsArg(scope) + '\',' + index + ',1)"><i class="fas fa-arrow-down"></i></button></div></div>';
+                (index === draft.order.length - 1 ? ' disabled' : '') + ' data-act="movePestovoDisplayDraftOrder" data-arg="' + escapeHtml(scope) + '" data-arg2="' + index + '" data-arg3="1"><i class="fas fa-arrow-down"></i></button></div></div>';
         }).join('');
     }
     if (isTournamentPage) {
@@ -982,6 +987,9 @@ function setPestovoDisplayDraftLayout(value) {
     renderPestovoDisplayAdmin('tournaments');
 }
 function movePestovoDisplayDraftOrder(scope, index, delta) {
+    // Аргументы приходят из data-атрибутов, то есть строками.
+    index = parseInt(index, 10);
+    delta = parseInt(delta, 10);
     if (pestovoDisplayEditorSaving[scope]) return;
     var draft = pestovoDisplayEditorDraft(scope);
     var next = index + delta;

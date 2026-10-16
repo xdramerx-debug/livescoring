@@ -80,7 +80,7 @@ function nmLoadSettings(fromRemote) {
             'background:rgba(255,255,255,0.03);border:1px solid ' + (m.id === mode ? 'var(--gold)' : 'var(--border)') +
             ';border-radius:10px;cursor:pointer;">' +
             '<input type="radio" name="nm-mode" value="' + m.id + '" ' + (m.id === mode ? 'checked' : '') +
-            ' onchange="nmToggleCustomBlock()" style="width:18px;height:18px;margin-top:3px;cursor:pointer;">' +
+            ' data-act="nmToggleCustomBlock" style="width:18px;height:18px;margin-top:3px;cursor:pointer;">' +
             '<span><b style="color:' + (m.id === mode ? 'var(--gold)' : 'var(--white)') + ';font-size:13px;">' +
             escapeHtml(en ? m.title.en : m.title.ru) + '</b>' +
             '<br><span style="color:var(--muted);font-size:12px;">' + escapeHtml(en ? m.text.en : m.text.ru) + '</span></span></label>';

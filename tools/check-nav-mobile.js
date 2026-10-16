@@ -39,7 +39,10 @@ const LONG_NAME = 'Александра Владимировна Смирнов�
         // Меряем геометрию, а не анимацию: выезжающее меню живёт за краем
         // экрана и «доезжает» за 0.3s — с транзишенами замеры плавали бы.
         await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important;animation:none!important;}' });
-        for (const script of ['course-config', 'date-range', 'dom', 'format', 'i18n', 'utils']) {
+        // js/ui-events.js обязателен: inline-обработчиков в разметке больше нет,
+        // клики по [data-act] ловит его слушатель на document. Без него кнопка
+        // предпросмотра ничего не меняет, а фичевый скрипт падает на pestovoOnAction.
+        for (const script of ['ui-events', 'course-config', 'date-range', 'dom', 'format', 'i18n', 'utils']) {
             await page.addScriptTag({ path: path.join(root, 'js', script + '.js') });
         }
         await page.evaluate(longName => {

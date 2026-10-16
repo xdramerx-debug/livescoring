@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // погодный виджет инициализируется в initNav() с правильным контейнером
 });
 
-
 // Чипы с гандикапами игрока — показываются рядом с именем
 // в списках на главной странице: точный и полевой.
 // Отображение: ТИ, точный гандикап, полевой гандикап
@@ -353,7 +352,7 @@ function buildStartHintHTML(nine, isEn) {
         : 'Подсказка учитывает всех, кто сейчас в поле: загруженность каждой девятки и средний гандикап играющих (чем выше гандикап, тем медленнее темп). Стартовую лунку можно выбрать при создании раунда.';
 
     var html = '<div class="chs-hint">' +
-        '<button type="button" class="chs-hint-toggle" id="chs-hint-toggle" onclick="toggleStartHint()" aria-expanded="' + ariaExp + '">' +
+        '<button type="button" class="chs-hint-toggle" id="chs-hint-toggle" data-act="toggleStartHint" aria-expanded="' + ariaExp + '">' +
         '<span class="chs-hint-title"><i class="fas fa-lightbulb"></i> ' + t('start_hint_title') + '</span>' +
         '<i class="' + iconCls + '" id="chs-hint-icon"></i>' +
         '</button>' +
@@ -391,41 +390,9 @@ function buildStartHintHTML(nine, isEn) {
 
 // Блок перерисовывается в реальном времени, поэтому состояние раскрытия
 // строк храним отдельно от DOM и дублируем в localStorage.
-// liveWho* — состояние строки ОТДЕЛЬНОГО игрока (наследие режима «строка на
-// игрока»). С версии 1.61 и соло-, и групповые раунды сворачиваются общим
-// состоянием liveRoundOpen; эти функции оставлены для совместимости.
-var liveWhoOpen = {};
 // Последние данные раундов из подписки: перерисовка списка и открытие счётной
 // карточки не должны делать повторных запросов к БД.
 var cachedRoundsById = {};
-
-function liveWhoStoreKey(roundId, pid) { return 'pestovo_live_who_open_' + roundId + '_' + pid; }
-
-function getLiveWhoOpen(roundId, pid) {
-    var k = roundId + ':' + pid;
-    if (Object.prototype.hasOwnProperty.call(liveWhoOpen, k)) return liveWhoOpen[k];
-    var saved = null;
-    try { saved = localStorage.getItem(liveWhoStoreKey(roundId, pid)); } catch (e) { console.warn("[silent]", e); }
-    // По умолчанию строка свёрнута: постоянно виден только «кто на поле»
-    liveWhoOpen[k] = (saved === '1');
-    return liveWhoOpen[k];
-}
-
-function setLiveWhoOpen(roundId, pid, open, persist) {
-    liveWhoOpen[roundId + ':' + pid] = !!open;
-    if (persist !== false) {
-        try { localStorage.setItem(liveWhoStoreKey(roundId, pid), open ? '1' : '0'); } catch (e) { console.warn("[silent]", e); }
-    }
-}
-
-function applyLiveWhoOpenUI(row, open) {
-    if (!row) return;
-    row.classList.toggle('is-open', !!open);
-    var chev = row.querySelector('.lwl-chev');
-    if (chev) chev.className = 'fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down');
-    var tg = row.querySelector('.lwl-toggle');
-    if (tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
-}
 
 // Состояние свёрнутой строки РАУНДА (групповой раунд = один блок на группу).
 // Игроки группы больше не рисуются отдельными строками: на главной один
@@ -474,19 +441,6 @@ function liveRoundKey(ev, id) {
         ev.preventDefault();
         toggleLiveRound(id);
     }
-}
-
-function toggleLiveWho(roundId, pid) {
-    var rows = document.querySelectorAll('.lwl-row[data-round-id][data-pid]');
-    var row = null;
-    for (var i = 0; i < rows.length; i++) {
-        if (rows[i].getAttribute('data-round-id') === String(roundId) &&
-            rows[i].getAttribute('data-pid') === String(pid)) { row = rows[i]; break; }
-    }
-    var open = row ? !row.classList.contains('is-open') : !getLiveWhoOpen(roundId, pid);
-    setLiveWhoOpen(roundId, pid, open);
-    applyLiveWhoOpenUI(row, open);
-    if (typeof vib === 'function') vib(15);
 }
 
 // Строка доступна с клавиатуры: Enter и Space работают как клик
@@ -568,7 +522,7 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
     var rowHtml = '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
         'data-round-id="' + escapeHtml(id) + '" data-pid="' + escapeHtml(pid) + '" data-round-row="1">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + escapeHtml(panelId) + '" ' +
-        'onclick="toggleLiveRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="liveRoundKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
+        'data-act="toggleLiveRound" data-arg="' + escapeHtml(id) + '" data-kd-act="liveRoundKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
         '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
         (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
         '</span>' +
@@ -650,7 +604,7 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
     return '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
         'data-round-id="' + escapeHtml(id) + '" data-round-row="1">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + escapeHtml(panelId) + '" ' +
-        'onclick="toggleLiveRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="liveRoundKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
+        'data-act="toggleLiveRound" data-arg="' + escapeHtml(id) + '" data-kd-act="liveRoundKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
         '<span class="lwl-name">' + modeIcon + '<span class="lwl-name-txt">' + modeLabel + ' · ' + namesStr + '</span>' +
         (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
         '</span>' +
@@ -1136,15 +1090,15 @@ function buildRecentRowHTML(id, r) {
         '<div class="lwl-details">' +
         '<div class="lwl-recent-players">' + pHtml + '</div>' +
         '<div class="lwl-actions">' +
-        '<button class="btn btn-og btn-sm" onclick="toggleCardScorecard(\'' + pestovoInlineJsArg(panelId) + '\',\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-chevron-down" id="' + escapeHtml(panelId) + '-icon"></i> <span id="' + escapeHtml(panelId) + '-txt">' + t('expand_scorecard') + '</span></button>' +
-        (r.status === 'completed' ? '<button class="btn btn-g btn-sm" onclick="exportRoundPNG(\'' + pestovoInlineJsArg(id) + '\')"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' : '') +
+        '<button class="btn btn-og btn-sm" data-act="toggleCardScorecard" data-arg="' + escapeHtml(panelId) + '" data-arg2="' + escapeHtml(id) + '"><i class="fas fa-chevron-down" id="' + escapeHtml(panelId) + '-icon"></i> <span id="' + escapeHtml(panelId) + '-txt">' + t('expand_scorecard') + '</span></button>' +
+        (r.status === 'completed' ? '<button class="btn btn-g btn-sm" data-act="exportRoundPNG" data-arg="' + escapeHtml(id) + '"><i class="fas fa-image"></i> ' + t('share_card') + '</button>' : '') +
         '</div>' +
         '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel hidden" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"></div>' +
         '</div>';
 
     return '<div class="lwl-row recent-row' + (open ? ' is-open' : '') + '" data-round-id="' + escapeHtml(id) + '" data-panel-id="' + escapeHtml(panelId) + '">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" ' +
-        'onclick="toggleRecentRound(\'' + pestovoInlineJsArg(id) + '\')" onkeydown="recentKey(event,\'' + pestovoInlineJsArg(id) + '\')">' +
+        'data-act="toggleRecentRound" data-arg="' + escapeHtml(id) + '" data-kd-act="recentKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
         '<span class="lwl-name"><i class="fas fa-flag-checkered"></i><span class="lwl-name-txt">' + dateStr + '</span></span>' +
         '<span class="lwl-hole"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-score">' + completedBadge + '</span>' +

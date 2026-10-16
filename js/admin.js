@@ -103,8 +103,9 @@ function initAdminAutoLogin() {
 // ==========================================
 // АВТОРИЗАЦИЯ АДМИНКИ
 // ==========================================
-function onAuthReady(user, userData) {
-    navAuth(user, userData);
+// Хук готовности авторизации: navAuth вызывается базовой onAuthReady (js/utils.js),
+// здесь только логика страницы (аудит 2026-10, п.13).
+pestovoOnAuthReady(function (user, userData) {
     if (user && user.uid === 'tournament-master') {
         // Сессия может пережить срок действия серверного claim. Не открываем
         // админку до проверки подписанного токена, даже при старых UI-флагах.
@@ -140,7 +141,8 @@ function onAuthReady(user, userData) {
         return;
     }
     if (document.getElementById('admin-login') && hasAdminPanelAccess()) openAdminPanel();
-}
+});
+
 
 function adminLogin(evt) {
     if (evt && evt.preventDefault) evt.preventDefault();
@@ -166,12 +168,15 @@ function adminLogin(evt) {
     setAdminLoginLoading(true);
     // Не выдаём серверные права по локальной проверке/флагу. Callable
     // сверяет секрет на сервере и выдаёт Firebase сессию с ограниченным claim.
-    if (typeof firebase === 'undefined' || !firebase.functions || typeof auth === 'undefined') {
+    if (typeof pestovoFunctions !== 'function' || typeof auth === 'undefined') {
         setAdminLoginLoading(false);
         showAdminLoginError(currentLang === 'en' ? 'Server authentication is unavailable.' : 'Серверная авторизация недоступна.');
         return;
     }
-    firebase.functions().httpsCallable('tournamentMasterSignIn')({ password: pass }).then(function(result) {
+    // Бандл Cloud Functions подгружается по требованию.
+    pestovoFunctions().then(function(functions) {
+        return functions.httpsCallable('tournamentMasterSignIn')({ password: pass });
+    }).then(function(result) {
         if (!result.data || !result.data.token) throw new Error('Missing authentication token');
         // Мастер-сессия заканчивается с закрытием вкладки/браузера; даже если
         // пользователь поставил галочку «запомнить», права не хранятся локально.
@@ -239,9 +244,13 @@ function adminLogin(evt) {
                 return;
             }
         }
+        // failed-precondition теперь означает «секрет TOURNAMENT_MASTER_PASSWORD_HASH
+        // не выставлен (или выставлен в общеизвестный дефолт)» — функция fail closed,
+        // см. functions/index.js и docs/tournament-master-access.md. Показываем
+        // причину с сервера и что делать, а не только код ошибки.
         var messages = currentLang === 'en'
-            ? { 'functions/failed-precondition': 'Master password is not configured on the server.', 'functions/permission-denied': 'Incorrect master password.', 'functions/resource-exhausted': 'Too many attempts. Try again in 15 minutes.', 'functions/internal': 'Server error (internal). Try again or deploy functions. Password 55555 opens a local fallback without server rights.' }
-            : { 'functions/failed-precondition': 'Мастер-пароль не настроен на сервере.', 'functions/permission-denied': 'Неверный мастер-пароль.', 'functions/resource-exhausted': 'Слишком много попыток. Повторите через 15 минут.', 'functions/internal': 'Ошибка сервера (internal). Попробуйте ещё раз или задеплойте функции. Пароль 55555 откроет локальный fallback без серверных прав.' };
+            ? { 'functions/failed-precondition': (msg || 'Master password is not configured on the server.') + ' Set the secret TOURNAMENT_MASTER_PASSWORD_HASH and redeploy functions.', 'functions/permission-denied': 'Incorrect master password.', 'functions/resource-exhausted': 'Too many attempts. Try again in 15 minutes.', 'functions/internal': 'Server error (internal). Try again or deploy functions. Password 55555 opens a local fallback without server rights.' }
+            : { 'functions/failed-precondition': (msg || 'Мастер-пароль не настроен на сервере.') + ' Установите секрет TOURNAMENT_MASTER_PASSWORD_HASH и задеплойте функции заново.', 'functions/permission-denied': 'Неверный мастер-пароль.', 'functions/resource-exhausted': 'Слишком много попыток. Повторите через 15 минут.', 'functions/internal': 'Ошибка сервера (internal). Попробуйте ещё раз или задеплойте функции. Пароль 55555 откроет локальный fallback без серверных прав.' };
         showAdminLoginError(messages[code] || (currentLang === 'en' ? 'Login error: ' : 'Ошибка входа: ') + msg);
     });
 }
@@ -368,6 +377,10 @@ function updateNotifButton() {
 }
 
 function switchTab(t, b) {
+    // При делегировании кнопка приходит как this (data-act="switchTab").
+    // Прямые вызовы switchTab('rusgolf') передают только имя — тогда this не
+    // элемент, и подсветку активной вкладки просто не трогаем.
+    if (!b && this && this.classList) b = this;
     document.querySelectorAll('.admin-section').forEach(function(s) { s.classList.add('hidden'); });
     document.querySelectorAll('.admin-tab').forEach(function(x) { x.classList.remove('active'); });
     var tabEl = document.getElementById('tab-' + t);
@@ -404,6 +417,8 @@ function switchTab(t, b) {
         seRender();
     }
     if (t === 'scoreaudit' && typeof saLoad === 'function') saLoad();
+    // Ошибки клиентов живут в той же вкладке диагностики (узел errorReports).
+    if (t === 'scoreaudit' && typeof erLoad === 'function') erLoad();
     if (t === 'hcplog' && typeof hcpLogLoad === 'function') hcpLogLoad();
     // Менеджер турниров (js/tn-mgr*.js): монтируем лениво, когда вкладка
     // открыта впервые, далее просто перерисовываем текущий вид.

@@ -17,6 +17,9 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0));
         hasPendingScoreActions: () => queued.length > 0,
         firebase: { functions: () => ({ httpsCallable: () => a => { sent.push(a); return Promise.resolve({ data: {ok:true} }); } }) }
     };
+    // Бандл Cloud Functions грузится по требованию: pestovoFunctions() — та
+    // точка, через которую score-write.js теперь получает клиент.
+    window.pestovoFunctions = () => Promise.resolve(window.firebase.functions());
     const navigator = { onLine: false };
     vm.runInNewContext(code, { window, navigator, URLSearchParams, Uint8Array, Array, Promise, setTimeout });
     const first = await window.pestovoScoreWrite('r1', [{kind:'score',playerId:'p2',hole:1,score:4}], 'p2');
@@ -52,7 +55,7 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0));
     // Прямой RTDB fallback при недоступности Cloud Functions (не задеплоена, internal, unavailable)
     const dbUpdates = [];
     window.db = {
-        ref: path => ({
+        ref: _path => ({
             once: () => Promise.resolve({ val: () => ({ players: { p2: { name: 'Player 2', scores: {} } } }) }),
             update: updates => { dbUpdates.push(updates); return Promise.resolve(); }
         })

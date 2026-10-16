@@ -329,7 +329,7 @@ function rgDoSearch(evt) {
         rgLastResults = res.rows;
         if (!res.rows.length) {
             rgShowStatus('<i class="fas fa-circle-question"></i> ' +
-                (currentLang === 'en' ? 'Nothing found for «' : 'По запросу «') + q + (currentLang === 'en' ? '». Try surname only.' : '» ничего не найдено. Попробуйте только фамилию.'), 'imp-note-warn');
+                (currentLang === 'en' ? 'Nothing found for «' : 'По запросу «') + escapeHtml(q) + (currentLang === 'en' ? '». Try surname only.' : '» ничего не найдено. Попробуйте только фамилию.'), 'imp-note-warn');
             return;
         }
         rgShowStatus('<i class="fas fa-check"></i> ' +
@@ -338,7 +338,7 @@ function rgDoSearch(evt) {
         rgRenderResults(res.rows);
     }).catch(function(err) {
         if (btn) btn.disabled = false;
-        rgShowStatus('<i class="fas fa-triangle-exclamation"></i> ' + err.message, 'imp-note-err');
+        rgShowStatus('<i class="fas fa-triangle-exclamation"></i> ' + escapeHtml(err.message), 'imp-note-err');
     });
 }
 
@@ -354,11 +354,11 @@ function rgRenderResults(rows) {
         if (rows.length) {
             html += '<div class="rg-bulk-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:12px;">';
             html += '<label class="list-item" style="cursor:pointer;padding:8px 14px;display:flex;align-items:center;gap:10px;margin:0;background:rgba(255,255,255,0.03);border-radius:10px;user-select:none;">';
-            html += '<input type="checkbox" id="rg-check-all" onchange="rgToggleAllResults(this)" style="width:20px;height:20px;cursor:pointer;">';
+            html += '<input type="checkbox" id="rg-check-all" data-act="rgToggleAllResults" data-self="1" style="width:20px;height:20px;cursor:pointer;">';
             html += '<span style="font-weight:700;font-size:13px;color:var(--white);">' + (currentLang === 'en' ? 'Select all' : 'Выбрать все') + '</span>';
             html += '</label>';
-            html += '<button type="button" class="btn btn-g imp-big-btn" onclick="rgBulkAddSelected()" ' + (hasValid ? '' : 'disabled') + ' style="min-height:42px;">';
-            html += '<i class="fas fa-users-plus"></i> <span>' + (currentLang === 'en' ? 'Add selected' : 'Добавить выбранных') + ' (<span id="rg-bulk-count">0</span>)</span>';
+            html += '<button type="button" class="btn btn-g imp-big-btn" data-act="rgBulkAddSelected" ' + (hasValid ? '' : 'disabled') + ' style="min-height:42px;">';
+            html += '<i class="fas fa-user-plus"></i> <span>' + (currentLang === 'en' ? 'Add selected' : 'Добавить выбранных') + ' (<span id="rg-bulk-count">0</span>)</span>';
             html += '</button>';
             html += '</div>';
         }
@@ -374,7 +374,7 @@ function rgRenderResults(rows) {
             var teeLabel = r.gender === 'women' ? '🟥 ' + (currentLang === 'en' ? 'Red tees' : 'Красные ти') : '🟦 ' + (currentLang === 'en' ? 'Blue tees' : 'Синие ти');
 
             html += '<div class="rg-card" style="display:flex;align-items:flex-start;gap:10px;">';
-            html += '<input type="checkbox" class="rg-result-check" data-rg-idx="' + i + '" ' + (isDisabled ? 'disabled' : '') + ' onchange="rgUpdateBulkCount()" style="width:20px;height:20px;cursor:pointer;margin-top:6px;flex-shrink:0;">';
+            html += '<input type="checkbox" class="rg-result-check" data-rg-idx="' + i + '" ' + (isDisabled ? 'disabled' : '') + ' data-act="rgUpdateBulkCount" style="width:20px;height:20px;cursor:pointer;margin-top:6px;flex-shrink:0;">';
             html += '<div style="flex:1;min-width:0;">';
             html += '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;">';
             html += '<div class="rg-main" style="flex:1;min-width:160px;">';
@@ -400,14 +400,14 @@ function rgRenderResults(rows) {
                     var dIdAttr = admJsStr(d.id);
                     var oldH = d.data.handicap != null ? fmtExactHcp(d.data.handicap) : '—';
                     var dChanged = d.data.handicap != null && Math.abs((parseFloat(d.data.handicap) || 0) - r.hcp) > 0.049;
-                    html += '<button type="button" class="btn btn-og btn-sm" onclick="rgUpdateLocalFromResults(' + i + ', \'' + dIdAttr + '\')"><i class="fas fa-rotate"></i> ' +
+                    html += '<button type="button" class="btn btn-og btn-sm" data-act="rgUpdateLocalFromResults" data-arg="' + i + '" data-arg2="' + dIdAttr + '"><i class="fas fa-rotate"></i> ' +
                         (dChanged
                             ? (currentLang === 'en' ? 'Update existing ' + escapeHtml(rgPlayerDisplayName(d)) + ': HCP ' + oldH + ' → ' + fmtExactHcp(r.hcp)
                                 : 'Обновить существующего ' + escapeHtml(rgPlayerDisplayName(d)) + ': HCP ' + oldH + ' → ' + fmtExactHcp(r.hcp))
                             : (currentLang === 'en' ? 'Up to date: ' : 'HCP актуален: ') + escapeHtml(rgPlayerDisplayName(d))) + '</button>';
                 });
                 if (!dups.length) {
-                    html += '<button type="button" class="btn btn-g btn-sm" onclick="rgAddFromResults(' + i + ')"><i class="fas fa-plus"></i> ' +
+                    html += '<button type="button" class="btn btn-g btn-sm" data-act="rgAddFromResults" data-arg="' + i + '"><i class="fas fa-plus"></i> ' +
                         (currentLang === 'en' ? 'Add to site' : 'Добавить на сайт') + '</button>';
                 } else {
                     // Дубликат предотвращён: одинаковое ФИО уже есть, предлагаем только обновить HCP и добавить отчество
@@ -873,8 +873,8 @@ function rgRenderDuplicateGroups(groups) {
             html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
             html += '<span style="font-size:12px;color:var(--muted);">' + (en ? 'Current HCP' : 'Текущий HCP') + ': <b>' + curHcp + '</b></span>';
             html += '<input type="text" id="' + inputId + '" class="form-input" style="width:90px;padding:6px 8px;font-size:13px;" placeholder="' + curHcp + '" value="' + (u.handicap!=null? String(u.handicap).replace('+','') : '') + '">';
-            html += '<button class="btn btn-g btn-sm" onclick="rgChangeDuplicateHcp(\'' + safeId + '\', \'' + inputId + '\')"><i class="fas fa-rotate"></i> ' + (en ? 'Change HCP' : 'Изменить гандикап') + '</button>';
-            html += '<button class="btn btn-r btn-sm" onclick="deletePlayer(\'' + safeId + '\', \'' + admJsStr(u.name) + '\')"><i class="fas fa-trash"></i></button>';
+            html += '<button class="btn btn-g btn-sm" data-act="rgChangeDuplicateHcp" data-arg="' + safeId + '" data-arg2="' + inputId + '"><i class="fas fa-rotate"></i> ' + (en ? 'Change HCP' : 'Изменить гандикап') + '</button>';
+            html += '<button class="btn btn-r btn-sm" data-act="deletePlayer" data-arg="' + safeId + '" data-arg2="' + escapeHtml(u.name) + '"><i class="fas fa-trash"></i></button>';
             html += '</div></div>';
         });
         html += '</div>';
@@ -1366,7 +1366,7 @@ function rgSyncAll() {
                     html += '<div class="rg-cand">';
                     html += '<div class="rg-cand-info"><b>' + escapeHtml(r.fio) + '</b><span class="rg-meta">💳 ' + escapeHtml(r.number) + ' · ' + (r.gender === 'women' ? 'Жен.' : 'Муж.') + (r.hcpDate ? ' · ' + escapeHtml(r.hcpDate) : '') + '</span></div>';
                     html += '<div class="rg-hcp">' + (r.hcp != null ? fmtExactHcp(r.hcp) : '—') + '<span class="rg-hcp-label">HI</span></div>';
-                    html += '<button type="button" class="btn btn-g btn-sm" ' + (r.hcp == null ? 'disabled' : '') + ' onclick="rgResolveConflict(' + ci + ',' + ri + ')"><i class="fas fa-check"></i> ' + (currentLang === 'en' ? 'This one' : 'Это он') + '</button>';
+                    html += '<button type="button" class="btn btn-g btn-sm" ' + (r.hcp == null ? 'disabled' : '') + ' data-act="rgResolveConflict" data-arg="' + ci + '" data-arg2="' + ri + '"><i class="fas fa-check"></i> ' + (currentLang === 'en' ? 'This one' : 'Это он') + '</button>';
                     html += '</div>';
                 });
                 // 2) Несколько ЛОКАЛЬНЫХ игроков с таким именем — выбрать, кого обновить
@@ -1374,7 +1374,7 @@ function rgSyncAll() {
                     html += '<div class="rg-cand" style="border-left:3px solid var(--gold);">';
                     html += '<div class="rg-cand-info"><b>' + escapeHtml(rgPlayerDisplayName(lc)) + '</b><span class="rg-meta">' + (currentLang === 'en' ? 'on site' : 'на сайте') + (lc.data.rusgolfNumber ? ' · 💳 ' + escapeHtml(lc.data.rusgolfNumber) : '') + '</span></div>';
                     html += '<div class="rg-hcp">' + (lc.data.handicap != null ? fmtExactHcp(lc.data.handicap) : '—') + '<span class="rg-hcp-label">HCP</span></div>';
-                    html += '<button type="button" class="btn btn-g btn-sm" onclick="rgResolveLocalConflict(' + ci + ',' + li + ')"><i class="fas fa-rotate"></i> ' + (currentLang === 'en' ? 'Update this one' : 'Обновить этого') + '</button>';
+                    html += '<button type="button" class="btn btn-g btn-sm" data-act="rgResolveLocalConflict" data-arg="' + ci + '" data-arg2="' + li + '"><i class="fas fa-rotate"></i> ' + (currentLang === 'en' ? 'Update this one' : 'Обновить этого') + '</button>';
                     html += '</div>';
                 });
                 // 3) Добавить как НОВОГО игрока (по найденной записи АГР)
@@ -1383,7 +1383,7 @@ function rgSyncAll() {
                     html += '<div class="rg-cand" style="border-left:3px solid #2ecc71;">';
                     html += '<div class="rg-cand-info"><b>' + (currentLang === 'en' ? 'Add as a NEW player' : 'Добавить как нового игрока') + '</b><span class="rg-meta">' + escapeHtml(remoteForNew.fio || '') + (remoteForNew.number ? ' · 💳 ' + escapeHtml(remoteForNew.number) : '') + '</span></div>';
                     html += '<div class="rg-hcp">' + fmtExactHcp(remoteForNew.hcp) + '<span class="rg-hcp-label">HI</span></div>';
-                    html += '<button type="button" class="btn btn-g btn-sm" onclick="rgResolveAddNew(' + ci + ')"><i class="fas fa-user-plus"></i> ' + (currentLang === 'en' ? 'Add new' : 'Добавить нового') + '</button>';
+                    html += '<button type="button" class="btn btn-g btn-sm" data-act="rgResolveAddNew" data-arg="' + ci + '"><i class="fas fa-user-plus"></i> ' + (currentLang === 'en' ? 'Add new' : 'Добавить нового') + '</button>';
                     html += '</div>';
                 }
                 html += '</div>';
@@ -1762,7 +1762,7 @@ function rgBatchHandleFile(input) {
         } catch (err) {
             console.warn('RGA batch parse error:', err);
             if (statusEl) statusEl.innerHTML = '<div class="imp-note imp-note-err"><i class="fas fa-triangle-exclamation"></i> ' +
-                (currentLang === 'en' ? 'Failed to read file: ' : 'Не удалось прочитать файл: ') + (err.message || err) + '</div>';
+                (currentLang === 'en' ? 'Failed to read file: ' : 'Не удалось прочитать файл: ') + escapeHtml(err.message || err) + '</div>';
         }
         input.value = '';
     };
@@ -1870,12 +1870,12 @@ function rgBatchRender(processed, total) {
         var selectable = rgBatchRows.some(function(r) { return r.results.some(function(x) { return x.hcp != null; }); });
         html += '<div class="rg-bulk-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0;padding:12px 14px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:12px;">';
         html += '<label class="list-item" style="cursor:pointer;padding:8px 14px;display:flex;align-items:center;gap:10px;margin:0;background:rgba(255,255,255,0.03);border-radius:10px;user-select:none;">' +
-            '<input type="checkbox" id="rg-batch-check-all" onchange="rgBatchToggleAll(this)" style="width:20px;height:20px;cursor:pointer;">' +
+            '<input type="checkbox" id="rg-batch-check-all" data-act="rgBatchToggleAll" data-self="1" style="width:20px;height:20px;cursor:pointer;">' +
             '<span style="font-weight:700;font-size:13px;color:var(--white);">' + (currentLang === 'en' ? 'Select all found' : 'Выбрать всех найденных') + '</span></label>';
         html += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
-        html += '<button type="button" class="btn btn-g imp-big-btn" onclick="rgBatchAddSelected()" ' + (selectable ? '' : 'disabled') + ' style="min-height:42px;">' +
-            '<i class="fas fa-users-plus"></i> <span>' + (currentLang === 'en' ? 'Add selected' : 'Добавить выбранных') + ' (<span id="rg-batch-bulk-count">0</span>)</span></button>';
-        html += '<button type="button" class="btn btn-r imp-big-btn ' + (rgBatchState.running ? '' : 'hidden') + '" onclick="rgBatchStop()" style="min-height:42px;">' +
+        html += '<button type="button" class="btn btn-g imp-big-btn" data-act="rgBatchAddSelected" ' + (selectable ? '' : 'disabled') + ' style="min-height:42px;">' +
+            '<i class="fas fa-user-plus"></i> <span>' + (currentLang === 'en' ? 'Add selected' : 'Добавить выбранных') + ' (<span id="rg-batch-bulk-count">0</span>)</span></button>';
+        html += '<button type="button" class="btn btn-r imp-big-btn ' + (rgBatchState.running ? '' : 'hidden') + '" data-act="rgBatchStop" style="min-height:42px;">' +
             '<i class="fas fa-stop"></i> <span>' + (currentLang === 'en' ? 'Stop' : 'Остановить') + '</span></button>';
         html += '</div></div>';
 
@@ -1913,7 +1913,7 @@ function rgBatchRender(processed, total) {
                 var hcpChanged = dup && r.hcp != null && dup.data.handicap != null && Math.abs((parseFloat(dup.data.handicap) || 0) - r.hcp) > 0.049;
                 var isDisabled = r.hcp == null;
                 html += '<div style="display:flex;align-items:flex-start;gap:10px;border-top:1px solid var(--border);padding-top:10px;margin-top:2px;">';
-                html += '<input type="checkbox" class="rg-batch-check" data-ri="' + ri + '" data-ii="' + ii + '" ' + (isDisabled ? 'disabled' : (r.selected ? 'checked' : '')) + ' onchange="rgBatchRowToggle(this)" style="width:20px;height:20px;cursor:pointer;margin-top:6px;flex-shrink:0;">';
+                html += '<input type="checkbox" class="rg-batch-check" data-ri="' + ri + '" data-ii="' + ii + '" ' + (isDisabled ? 'disabled' : (r.selected ? 'checked' : '')) + ' data-act="rgBatchRowToggle" data-self="1" style="width:20px;height:20px;cursor:pointer;margin-top:6px;flex-shrink:0;">';
                 html += '<div style="flex:1;min-width:0;">';
                 html += '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;">';
                 html += '<div class="rg-main" style="flex:1;min-width:160px;">';
@@ -1928,13 +1928,13 @@ function rgBatchRender(processed, total) {
                 if (r.hcp == null) {
                     html += '<span class="imp-badge imp-badge-err">⚠ ' + (currentLang === 'en' ? 'No HI in RGA base' : 'Нет HI в базе АГР') + '</span>';
                 } else if (dup) {
-                    html += '<button type="button" class="btn btn-og btn-sm" onclick="rgBatchUpdateOne(' + ri + ',' + ii + ')"><i class="fas fa-rotate"></i> ' +
+                    html += '<button type="button" class="btn btn-og btn-sm" data-act="rgBatchUpdateOne" data-arg="' + ri + '" data-arg2="' + ii + '"><i class="fas fa-rotate"></i> ' +
                         (hcpChanged
                             ? (currentLang === 'en' ? 'Update HCP ' + fmtExactHcp(dup.data.handicap) + ' → ' + fmtExactHcp(r.hcp)
                                 : 'Обновить HCP ' + fmtExactHcp(dup.data.handicap) + ' → ' + fmtExactHcp(r.hcp))
                             : (currentLang === 'en' ? 'HCP is up to date' : 'HCP актуален')) + '</button>';
                 } else {
-                    html += '<button type="button" class="btn btn-g btn-sm" onclick="rgBatchAddOne(' + ri + ',' + ii + ')"><i class="fas fa-plus"></i> ' +
+                    html += '<button type="button" class="btn btn-g btn-sm" data-act="rgBatchAddOne" data-arg="' + ri + '" data-arg2="' + ii + '"><i class="fas fa-plus"></i> ' +
                         (currentLang === 'en' ? 'Add to site' : 'Добавить на сайт') + '</button>';
                 }
                 html += '</div>';

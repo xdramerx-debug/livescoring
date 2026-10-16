@@ -83,9 +83,9 @@ function setupPlayerCardHtml(idx, opts) {
             '<span class="spc-title"><i class="fas fa-user"></i> ' + t('player') + ' #' + idx + (you ? ' <em class="spc-you">(' + t('you') + ')</em>' : '') + '</span>' +
             '<span class="spc-meta" id="spc-meta-' + idx + '"></span>' +
             (!opts.first
-                ? '<button type="button" class="spc-remove" title="' + t('remove_player_btn') + '" aria-label="' + t('remove_player_btn') + '" onclick="removeSetupPlayer(' + idx + ')"><i class="fas fa-user-minus"></i></button>'
+                ? '<button type="button" class="spc-remove" title="' + t('remove_player_btn') + '" aria-label="' + t('remove_player_btn') + '" data-act="removeSetupPlayer" data-arg="' + idx + '"><i class="fas fa-user-minus"></i></button>'
                 : '') +
-            '<button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh setup-hcp-refresh-head hidden" onclick="event.stopPropagation();refreshSetupPlayerHandicap(' + idx + ')" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i><span class="setup-hcp-refresh-text">RUSGOLF</span></button>' +
+            '<button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh setup-hcp-refresh-head hidden" data-act="refreshSetupPlayerHandicap" data-stop="1" data-arg="' + idx + '" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i><span class="setup-hcp-refresh-text">RUSGOLF</span></button>' +
             '<i class="fas fa-chevron-down" aria-hidden="true"></i>' +
         '</div>';
 
@@ -96,11 +96,11 @@ function setupPlayerCardHtml(idx, opts) {
                 '<input type="hidden" id="pl-uid-' + idx + '" value="">' +
             '</div>' +
             '<div class="form-group" style="flex:1 1 90px;"><label>' + t('middle_name') + '</label><input type="text" id="pl-mid-' + idx + '" class="form-input" placeholder="' + (isEn ? 'Jr.' : 'Отчество') + '"></div>' +
-            '<div class="form-group" style="flex:1 1 80px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + idx + '" class="form-input" onchange="onPlayerGenderOrTeeChange(' + idx + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>' +
+            '<div class="form-group" style="flex:1 1 80px;"><label>' + t('gender_label') + '</label><select id="pl-gender-' + idx + '" class="form-input" data-act="onPlayerGenderOrTeeChange" data-arg="' + idx + '"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>' +
         '</div>' +
         '<div class="form-row form-row-3">' +
-            '<div class="form-group" style="flex:1 1 80px;"><label>' + t('tee_select') + '</label><select id="pl-tee-' + idx + '" class="form-input" onchange="calcPlayerFieldHcp(' + idx + ')"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>' +
-            '<div class="form-group" style="flex:1 1 90px;"><label class="setup-hcp-label"><span>' + t('exact_hcp') + '</span></label><input type="text" inputmode="decimal" id="pl-hcp-' + idx + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + idx + ')"></div>' +
+            '<div class="form-group" style="flex:1 1 80px;"><label>' + t('tee_select') + '</label><select id="pl-tee-' + idx + '" class="form-input" data-act="calcPlayerFieldHcp" data-arg="' + idx + '"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>' +
+            '<div class="form-group" style="flex:1 1 90px;"><label class="setup-hcp-label"><span>' + t('exact_hcp') + '</span></label><input type="text" inputmode="decimal" id="pl-hcp-' + idx + '" class="form-input" placeholder="+2.4 / 12.4" data-act="calcPlayerFieldHcp" data-arg="' + idx + '"></div>' +
             '<div class="form-group" style="flex:1 1 90px;"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + idx + '" class="form-input" readonly placeholder="—"></div>' +
         '</div>';
 
@@ -119,16 +119,16 @@ function setupPlayerRowHtml(idx, opts) {
             '<input type="hidden" id="pl-uid-' + idx + '" value="">' +
         '</div>' +
         '<div class="form-group"><label>' + t('middle_name') + '</label><input type="text" id="pl-mid-' + idx + '" class="form-input" placeholder="' + (isEn ? 'Jr.' : 'Отчество') + '"></div>' +
-        '<div class="form-group"><label>' + t('gender_label') + '</label><select id="pl-gender-' + idx + '" class="form-input" onchange="onPlayerGenderOrTeeChange(' + idx + ')"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>' +
-        '<div class="form-group"><label>' + t('tee_select') + '</label><select id="pl-tee-' + idx + '" class="form-input" onchange="calcPlayerFieldHcp(' + idx + ')"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>' +
-            '<div class="form-group"><label class="setup-hcp-label"><span>' + t('exact_hcp') + '</span><button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh hidden" onclick="refreshSetupPlayerHandicap(' + idx + ')" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i></button></label><input type="text" inputmode="decimal" id="pl-hcp-' + idx + '" class="form-input" placeholder="+2.4 / 12.4" oninput="calcPlayerFieldHcp(' + idx + ')"></div>' +
+        '<div class="form-group"><label>' + t('gender_label') + '</label><select id="pl-gender-' + idx + '" class="form-input" data-act="onPlayerGenderOrTeeChange" data-arg="' + idx + '"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>' +
+        '<div class="form-group"><label>' + t('tee_select') + '</label><select id="pl-tee-' + idx + '" class="form-input" data-act="calcPlayerFieldHcp" data-arg="' + idx + '"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>' +
+            '<div class="form-group"><label class="setup-hcp-label"><span>' + t('exact_hcp') + '</span><button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh hidden" data-act="refreshSetupPlayerHandicap" data-arg="' + idx + '" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i></button></label><input type="text" inputmode="decimal" id="pl-hcp-' + idx + '" class="form-input" placeholder="+2.4 / 12.4" data-act="calcPlayerFieldHcp" data-arg="' + idx + '"></div>' +
         '<div class="form-group"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + idx + '" class="form-input" readonly placeholder="—"></div>';
 
     return '<div class="setup-player-card spc spc-row open" data-pidx="' + idx + '">' +
         '<span class="spc-avatar" id="spc-avatar-' + idx + '">' + escapeHtml(spcAvatarText(opts.name || '', idx)) + '</span>' +
         '<div class="form-row spc-row-fields">' + fields + '</div>' +
         (!opts.first
-            ? '<button type="button" class="spc-remove" title="' + t('remove_player_btn') + '" aria-label="' + t('remove_player_btn') + '" onclick="removeSetupPlayer(' + idx + ')"><i class="fas fa-user-minus"></i></button>'
+            ? '<button type="button" class="spc-remove" title="' + t('remove_player_btn') + '" aria-label="' + t('remove_player_btn') + '" data-act="removeSetupPlayer" data-arg="' + idx + '"><i class="fas fa-user-minus"></i></button>'
             : '') +
         '</div>';
 }
@@ -351,10 +351,6 @@ var setupHcpRefreshRunning = {};
 var setupHcpCandidates = {};
 // Общий дедлайн поиска в RUSGOLF: кнопка не может «висеть» дольше этого срока.
 var SETUP_HCP_LOOKUP_DEADLINE_MS = 20000;
-function setupHcpNameTokens(idx) {
-    var nameEl = document.getElementById('pl-name-' + idx);
-    return String(nameEl && nameEl.value || '').trim().split(/\s+/).filter(Boolean);
-}
 function setupHcpNameValue(idx) {
     var nameEl = document.getElementById('pl-name-' + idx);
     return String(nameEl && nameEl.value || '').trim();
@@ -494,18 +490,18 @@ function setupHcpPickerHtml(idx, rows) {
         if (row.number) details.push(row.number);
         details.push(row.gender === 'women' ? (isEn ? 'Female' : 'Жен.') : (isEn ? 'Male' : 'Муж.'));
         if (row.hcpDate) details.push((isEn ? 'updated ' : 'обновлён ') + row.hcpDate);
-        return '<button type="button" class="setup-hcp-choice" title="' + escapeHtml(setupRusgolfRowLabel(row)) + '" onclick="pickSetupHcpCandidate(' + idx + ',' + i + ')">' +
+        return '<button type="button" class="setup-hcp-choice" title="' + escapeHtml(setupRusgolfRowLabel(row)) + '" data-act="pickSetupHcpCandidate" data-arg="' + idx + '" data-arg2="' + i + '">' +
             '<span class="setup-hcp-choice__name">' + escapeHtml(row.fio || '') + '</span>' +
             '<span class="setup-hcp-choice__meta">' + escapeHtml(details.join(' · ')) + '</span>' +
             '<span class="setup-hcp-choice__hcp">' + escapeHtml(row.hcp != null ? fmtExactHcp(row.hcp) : '—') + '</span>' +
             '</button>';
     }).join('');
-    return '<div class="setup-hcp-picker" id="setup-hcp-picker" role="dialog" aria-modal="true" onclick="if(event.target===this){closeSetupHcpPicker()}" aria-label="' + (isEn ? 'Choose the player from RUSGOLF' : 'Выберите игрока из RUSGOLF') + '">' +
+    return '<div class="setup-hcp-picker" id="setup-hcp-picker" role="dialog" aria-modal="true" data-act="pestovoBackdrop" data-ev="1" data-arg="closeSetupHcpPicker" aria-label="' + (isEn ? 'Choose the player from RUSGOLF' : 'Выберите игрока из RUSGOLF') + '">' +
         '<div class="setup-hcp-picker__card">' +
         '<h3>' + (isEn ? 'Several players found' : 'Найдено несколько игроков') + '</h3>' +
         '<p>' + (isEn ? 'Choose the right one — the handicap will be filled in automatically.' : 'Выберите нужного — гандикап подставится автоматически.') + '</p>' +
         '<div class="setup-hcp-picker__list">' + items + '</div>' +
-        '<button type="button" class="btn btn-ol btn-block" onclick="closeSetupHcpPicker()">' + (isEn ? 'Cancel' : 'Отмена') + '</button>' +
+        '<button type="button" class="btn btn-ol btn-block" data-act="closeSetupHcpPicker">' + (isEn ? 'Cancel' : 'Отмена') + '</button>' +
         '</div></div>';
 }
 
@@ -738,7 +734,7 @@ function applyUnifiedStep() {
         var labels = [t('wiz_step_1'), t('wiz_step_2'), t('wiz_step_3')];
         stepsEl.innerHTML = labels.map(function(lb, i) {
             var cls = 'unified-step' + (i + 1 === setupWizardStep ? ' active' : (i + 1 < setupWizardStep ? ' done' : ''));
-            return '<button type="button" class="' + cls + '" onclick="unifiedStepGo(' + (i + 1) + ')"><span>' + (i + 1) + '</span>' + lb + '</button>';
+            return '<button type="button" class="' + cls + '" data-act="unifiedStepGo" data-arg="' + (i + 1) + '"><span>' + (i + 1) + '</span>' + lb + '</button>';
         }).join('');
     }
     var back = document.getElementById('unified-back-btn');
@@ -791,11 +787,13 @@ function renderUnifiedSummary() {
             '</div>';
     });
 
+    // Значения формы (time/select) приходят из собственных полей страницы,
+    // но сводка собирается конкатенацией — экранируем одинаково со всем остальным.
     var meta = (timeEl && timeEl.value)
-        ? '<i class="fas fa-clock"></i> ' + timeEl.value +
-          ' · <i class="fas fa-flag"></i> ' + t('start_hole') + ': ' + (holeEl ? holeEl.value : '—') +
-          ' · ' + (rangeEl ? rangeEl.value : '1-18') +
-          ' · ' + (fmtEl ? fmtEl.value : '')
+        ? '<i class="fas fa-clock"></i> ' + escapeHtml(timeEl.value) +
+          ' · <i class="fas fa-flag"></i> ' + t('start_hole') + ': ' + (holeEl ? escapeHtml(holeEl.value) : '—') +
+          ' · ' + (rangeEl ? escapeHtml(rangeEl.value) : '1-18') +
+          ' · ' + (fmtEl ? escapeHtml(fmtEl.value) : '')
         : '';
 
     el.innerHTML = '<div class="us-title"><i class="fas fa-circle-check"></i> ' + t('unified_summary_title') +

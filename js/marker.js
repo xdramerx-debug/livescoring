@@ -33,10 +33,11 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
     });
 }
 
-function onAuthReady(user, data) {
-    if (typeof navAuth === 'function') navAuth(user, data);
+// Хук готовности авторизации: navAuth вызывается базовой onAuthReady (js/utils.js),
+// здесь только загрузка данных раунда маркера (аудит 2026-10, п.13).
+pestovoOnAuthReady(function (user, data) {
     if (user && mkRid && mkPid && !(typeof pestovoQrAuthPending !== 'undefined' && pestovoQrAuthPending)) loadMk();
-}
+});
 
 var mkLoadStarted = false;
 function loadMk() {
@@ -111,27 +112,31 @@ function loadMk() {
     }catch (e) { console.warn("[silent]", e); }
 }
 
+// Разметка кнопок — общая (pestovoBuildHoles в js/score-display.js), состояния
+// считает страница: у маркера «ввёл / не ввёл» — это его собственный счёт,
+// потому что именно он подтверждает счёт игрока.
 function buildHoles() {
-    var el = mkGet('mk-holes');
-    if (!el) return;
     if (!mkRound) return;
-    var order = (typeof getRoundOrder === 'function' ? getRoundOrder(mkRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);
     var mkPlayer = (mkRound && mkRound.players && mkRound.players[mkPid]) || {};
-    var mkFieldHcp = mkPlayer.fieldHcp !== undefined ? mkPlayer.fieldHcp : ((mkRound && mkRound.fieldHcp) || 0);
-    var html = '';
-    order.forEach(function(h) {
-        var ps = parseInt(mkPScores[h]) || 0, ms = parseInt(mkScores[h]) || 0;
-        var cls = h === mkHole ? 'active' : '';
-        // confirmed — зелёная, mismatch — мигает красным, введён один счёт — мигает серым
-        if (ps >= 1 && ms >= 1 && ps === ms) cls += ' verified';
-        else if (ps >= 1 && ms >= 1) cls += ' mismatch';
-        else if (ms >= 1 || ps >= 1) cls += ' pending';
-        // Текущая лунка, где маркер ещё не ввёл счёт, мигает серым.
-        if (h === mkHole && !(ms >= 1)) cls += ' cur-blink';
-        html += '<button type="button" class="hole-btn ' + cls + '" onclick="goMk(' + h + ')" aria-label="' + (currentLang === 'en' ? 'Hole ' : 'Лунка ') + h + '" aria-pressed="' + (h === mkHole ? 'true' : 'false') + '">' +
-            entryHoleContentHTML(ps, ms, h, mkFieldHcp) + '</button>';
+    pestovoBuildHoles({
+        el: mkGet('mk-holes'),
+        round: mkRound,
+        currentHole: mkHole,
+        fieldHcp: mkPlayer.fieldHcp !== undefined ? mkPlayer.fieldHcp : ((mkRound && mkRound.fieldHcp) || 0),
+        go: 'goMk',
+        playerScore: function(h) { return mkPScores[h]; },
+        markerScore: function(h) { return mkScores[h]; },
+        stateClass: function(h, ps, ms) {
+            // confirmed — зелёная, mismatch — мигает красным, введён один счёт — мигает серым
+            var cls = '';
+            if (ps >= 1 && ms >= 1 && ps === ms) cls += ' verified';
+            else if (ps >= 1 && ms >= 1) cls += ' mismatch';
+            else if (ms >= 1 || ps >= 1) cls += ' pending';
+            // Текущая лунка, где маркер ещё не ввёл счёт, мигает серым.
+            if (h === mkHole && !(ms >= 1)) cls += ' cur-blink';
+            return cls;
+        }
     });
-    el.innerHTML = html;
 }
 
 function goMk(h) {
@@ -143,47 +148,60 @@ function goMk(h) {
     setTimeout(function() { mkChanging = false; }, 100);
 }
 
+// Реализация — js/score-display.js (общая со scorer.js); здесь только
+// подстановка глобалов страницы маркера: у маркера в шапке только номер
+// лунки и пар, ни дальности, ни дедлайна нет.
 function renderHole() {
-    var par = (typeof holePar === 'function' ? holePar(mkHole) : 4);
-    var holeEl = mkGet('mk-hole'); if (holeEl) holeEl.textContent = mkHole;
-    var parEl = mkGet('mk-par'); if (parEl) parEl.textContent = par;
-    var saved = parseInt(mkScores[mkHole]) || 0;
-    mkScore = saved >= 1 ? saved : par;
-    if (typeof updDisp === 'function') updDisp();
+    pestovoRenderHole({
+        hole: mkHole,
+        round: mkRound,
+        pid: mkPid,
+        get: mkGet,
+        ids: { hole: 'mk-hole', par: 'mk-par' },
+        setScore: function (v) { mkScore = v; },
+        update: updDisp
+    });
 }
 
 function adjMk(d) {
+    d = parseInt(d, 10);
     mkScore = Math.max(1, Math.min(15, mkScore + d));
     if (typeof vib === 'function') vib();
     if (typeof updDisp === 'function') updDisp();
     if (typeof animateScoreElement === 'function') animateScoreElement('mk-disp');
 }
 
+// Реализация — js/score-display.js (общая со scorer.js); здесь только
+// подстановка глобалов страницы маркера.
 function updDisp() {
-    var par = (typeof holePar === 'function' ? holePar(mkHole) : 4);
-    var player = mkRound && mkRound.players ? mkRound.players[mkPid] : null;
-    var fieldHcp = player && player.fieldHcp !== undefined
-        ? player.fieldHcp : ((mkRound && mkRound.fieldHcp) || 0);
-    var disp = mkGet('mk-disp');
-    if (disp && typeof scoreWithStablefordHTML === 'function' && typeof isPlayerStablefordDisplayEnabled === 'function') {
-        disp.innerHTML = scoreWithStablefordHTML(mkScore, mkHole, fieldHcp, isPlayerStablefordDisplayEnabled(player));
-    }
-    var r = mkGet('mk-result');
-    if (r) {
-        if (typeof holeResName === 'function') r.textContent = holeResName(mkScore, par);
-        if (typeof holeResClass === 'function') r.className = 'score-result ' + holeResClass(mkScore, par);
-    }
+    if (typeof pestovoUpdScoreDisplay !== 'function') return;
+    pestovoUpdScoreDisplay({
+        hole: mkHole,
+        round: mkRound,
+        pid: mkPid,
+        score: mkScore,
+        get: mkGet,
+        dispId: 'mk-disp',
+        resultId: 'mk-result'
+    });
 }
 
+// Состояния сверки общие с scorer.js (pestovoCheckVerify в js/score-display.js);
+// здесь — подписи маркера и третье состояние «игрок ввёл, ждём подтверждения».
 function checkVerify() {
-    var box = mkGet('mk-verify');
-    if (!box) return;
-    var ps = parseInt(mkPScores[mkHole]) || 0, ms = parseInt(mkScores[mkHole]) || 0;
     var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-    if (ps >= 1 && ms >= 1 && ps === ms) box.innerHTML = '<div class="verify-ok">✅ ' + (langIsEn ? 'Matched: ' + ps : 'Совпадает: ' + ps + ' уд.') + '</div>';
-    else if (ps >= 1 && ms >= 1) box.innerHTML = '<div class="verify-fail">⚠️ MISMATCH! ' + (langIsEn ? 'Player: ' : 'Игрок: ') + esc(ps) + ' | ' + (langIsEn ? 'Marker: ' : 'Маркер: ') + esc(ms) + '</div>';
-    else if (ps >= 1) box.innerHTML = '<div class="verify-wait">🏌️ ' + (langIsEn ? 'Player entered: ' + esc(ps) + '. Awaiting confirmation.' : 'Игрок ввёл: ' + esc(ps) + '. Ожидает подтверждения') + '</div>';
-    else box.innerHTML = '';
+    pestovoCheckVerify({
+        box: mkGet('mk-verify'),
+        playerScore: mkPScores[mkHole],
+        markerScore: mkScores[mkHole],
+        matched: function (n) { return langIsEn ? 'Matched: ' + n : 'Совпадает: ' + n + ' уд.'; },
+        playerLabel: function (n) { return (langIsEn ? 'Player: ' : 'Игрок: ') + esc(n); },
+        markerLabel: function (n) { return (langIsEn ? 'Marker: ' : 'Маркер: ') + esc(n); },
+        waiting: function (n) {
+            return langIsEn ? 'Player entered: ' + esc(n) + '. Awaiting confirmation.'
+                : 'Игрок ввёл: ' + esc(n) + '. Ожидает подтверждения';
+        }
+    });
 }
 
 function mkSetSaving(on) {
@@ -245,13 +263,13 @@ function saveMk() {
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ps >= 1 && ps === mkScore) {
 
-            if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + savedHole + ' confirmed:</b> ' + mkScore) : ('✅ <b>Лунка ' + savedHole + ' подтверждена:</b> ' + mkScore + ' уд.'));
+            if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + escapeHtml(savedHole) + ' confirmed:</b> ' + escapeHtml(mkScore)) : ('✅ <b>Лунка ' + escapeHtml(savedHole) + ' подтверждена:</b> ' + escapeHtml(mkScore) + ' уд.'), 'success', { html: true });
             if (typeof vib === 'function') vib([50, 50]);
         } else if (ps >= 1) {
 
-            if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + savedHole + '!</b><br>Player: <b>' + ps + '</b>, marker (you): <b>' + mkScore + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + savedHole + '!</b><br>Игрок: <b>' + ps + '</b>, маркер (вы): <b>' + mkScore + '</b>'), 'error');
+            if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + escapeHtml(savedHole) + '!</b><br>Player: <b>' + escapeHtml(ps) + '</b>, marker (you): <b>' + escapeHtml(mkScore) + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + escapeHtml(savedHole) + '!</b><br>Игрок: <b>' + escapeHtml(ps) + '</b>, маркер (вы): <b>' + escapeHtml(mkScore) + '</b>'), 'error', { html: true });
         } else {
-            if (typeof toast === 'function') toast(langIsEn ? ('👁️ <b>Hole ' + savedHole + ':</b> marker score <b>' + mkScore + '</b> saved. Waiting for player.') : ('👁️ <b>Лунка ' + savedHole + ':</b> счёт маркера <b>' + mkScore + '</b> сохранён. Ждём игрока.'), 'info');
+            if (typeof toast === 'function') toast(langIsEn ? ('👁️ <b>Hole ' + escapeHtml(savedHole) + ':</b> marker score <b>' + escapeHtml(mkScore) + '</b> saved. Waiting for player.') : ('👁️ <b>Лунка ' + escapeHtml(savedHole) + ':</b> счёт маркера <b>' + escapeHtml(mkScore) + '</b> сохранён. Ждём игрока.'), 'info', { html: true });
             if (typeof vib === 'function') vib();
         }
         var order = (typeof getRoundOrder === 'function' ? getRoundOrder(mkRound) : [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]);
@@ -286,24 +304,19 @@ function renderSum() {
         '<div style="display:flex;gap:16px;padding:12px;font-size:13px;">✅ ' + match + ' · ⚠️ ' + mis + ' · ⏳ ' + pend + '</div>';
 }
 
+// Общая часть — pestovoCallOfficial() в js/official-call.js: рассылка, тост и
+// вибрация были одинаковыми во всех трёх копиях. Здесь только данные маркера:
+// в оповещение он уходит с подписью «Marker (Имя)».
 function callOfficial(type) {
     if (!mkRound || !mkPid) return;
-    if (typeof requestOfficialCall !== 'function') return;
     var pName = (mkRound.players[mkPid] && mkRound.players[mkPid].name) || 'Player';
-    requestOfficialCall({
+    return pestovoCallOfficial({
+        type: type,
         roundId: mkRid,
         playerId: mkPid,
         prefix: 'mk',
-        type: type,
         hole: function() { return mkHole; },
         playerName: 'Marker (' + pName + ')',
-        flightMembers: [],
-        canEdit: true,
-        onSent: function(call) {
-            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, call.playerName, []);
-            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, call.playerName, []);
-            if (typeof toast === 'function' && typeof getOfficialRoleName === 'function') toast('🚨 ' + getOfficialRoleName(type) + ((typeof currentLang !== 'undefined' && currentLang === 'en') ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
-            if (typeof vib === 'function') vib([100, 50, 100]);
-        }
+        canEdit: true
     });
 }

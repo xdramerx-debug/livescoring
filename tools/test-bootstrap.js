@@ -30,7 +30,7 @@ function isUtilsJs(p) {
     return String(p).replace(/\\/g, '/').endsWith('js/utils.js');
 }
 
-fs.readFileSync = function (p, opts) {
+fs.readFileSync = function (p, _opts) {
     if (isUtilsJs(p)) {
         const content = readFileSyncOrig.apply(this, arguments);
         return PREFIX + content;

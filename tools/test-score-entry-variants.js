@@ -39,7 +39,7 @@ function section(html, id) {
         once: () => Promise.resolve({ val: () => null })
     }) };
 
-    ['course-config', 'format', 'dom', 'i18n', 'utils', 'admin-display'].forEach(file => {
+    ['ui-events', 'course-config', 'format', 'dom', 'i18n', 'utils', 'admin-display'].forEach(file => {
         win.eval(read('js/' + file + '.js'));
     });
 

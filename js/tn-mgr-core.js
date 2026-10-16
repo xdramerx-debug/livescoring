@@ -2223,14 +2223,10 @@
         return prefix + 'setup-round.html?round=' + encodeURIComponent(roundId) + '&as=' + encodeURIComponent(playerId);
     }
 
+    // Общий построитель — js/qr-url.js; у печатных карточек свой размер (320)
+    // и своё поле (2), поэтому они передаются параметрами.
     function qrImageUrl(payload, size) {
-        var px = intOf(size, 320) || 320;
-        if (typeof PestovoQr !== 'undefined' && PestovoQr && typeof PestovoQr.dataUrl === 'function') {
-            var local = PestovoQr.dataUrl(payload, px);
-            if (local) return local;
-        }
-        return 'https://api.qrserver.com/v1/create-qr-code/?size=' + px + 'x' + px +
-            '&margin=2&data=' + encodeURIComponent(payload);
+        return pestovoQrImageUrl(payload, intOf(size, 320) || 320, 2);
     }
 
     function defaultScorecardLayout() {

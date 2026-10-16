@@ -31,7 +31,7 @@ function showUpdateBanner() {
     b.setAttribute('role', 'status');
     var txt = currentLang === 'en' ? '<b>New version available.</b> Reload the page to update.' : '<b>Доступна новая версия.</b> Перезагрузите страницу, чтобы обновиться.';
     var btnTxt = currentLang === 'en' ? 'Reload' : 'Обновить';
-    b.innerHTML = '<div class="ub-text">' + txt + '</div><button class="btn btn-g btn-sm" onclick="applyPWAUpdate()"><i class="fas fa-rotate-right"></i> ' + btnTxt + '</button>';
+    b.innerHTML = '<div class="ub-text">' + txt + '</div><button class="btn btn-g btn-sm" data-act="applyPWAUpdate"><i class="fas fa-rotate-right"></i> ' + btnTxt + '</button>';
     if (document.body) document.body.appendChild(b);
     setTimeout(function(){ b.classList.add('show'); }, 50);
 }
@@ -61,7 +61,7 @@ function updateOnlineStatus(){
         setTimeout(function(){try{ if(indicator)indicator.classList.add('hide'); }catch (e) { console.warn("[silent]", e); }},3000);
     }else{
         indicator.className='online-indicator offline';
-        indicator.innerHTML='<i class="fas fa-wifi-slash"></i> ' + (langIsEn ? 'Offline' : 'Оффлайн');
+        indicator.innerHTML='<i class="fas fa-plug-circle-xmark"></i> ' + (langIsEn ? 'Offline' : 'Оффлайн');
         if(wasOnline) try{ if(typeof toast==='function')toast(langIsEn ? '📡 Connection lost' : '📡 Нет соединения','warn'); }catch (e) { console.warn("[silent]", e); }
     }
 }
@@ -98,22 +98,6 @@ function queueOfflineScoreAction(action) {
     catch(e) { console.error('[PWA] Cannot queue score action',e); return false; }
     updateOfflineQueueBadge();
     return true;
-}
-
-// Универсальная офлайн-запись по произвольному пути БД (verified, markers, holeTimes и т.п.).
-// Для одного пути храним только последнее значение.
-function queueOfflineWrite(path,value){
-    if(!path)return;
-    var pending=readOfflineScores();
-    pending=pending.filter(function(item){
-        return !(item.type==='set'&&item.path===path);
-    });
-    pending.push({type:'set',path:path,value:value,timestamp:Date.now()});
-    try { localStorage.setItem(OFFLINE_KEY,JSON.stringify(pending)); } catch (error) {
-        console.error('[PWA] Cannot queue offline write', error);
-        if(typeof toast==='function')toast(currentLang === 'en' ? 'Cannot save data offline' : 'Не удалось сохранить данные офлайн','error');
-    }
-    updateOfflineQueueBadge();
 }
 
 // Серверные отказы «навсегда» (не сеть): такое действие никогда не пройдёт,
@@ -547,7 +531,7 @@ function initBackgroundBroadcastListener() {
                         if (typeof toast === 'function') {
                             // t-club: такие уведомления снимаются с экрана сразу,
                             // как только уведомления выключили (см. ниже).
-                            toast('📢 <b>' + title + '</b><br>' + body, 'info', { clubNotification: true, duration: 6000 });
+                            toast('📢 <b>' + escapeHtml(title) + '</b><br>' + escapeHtml(body), 'info', { clubNotification: true, duration: 6000, html: true });
                         }
                         if (typeof vib === 'function') vib([150, 50, 150]);
                     };

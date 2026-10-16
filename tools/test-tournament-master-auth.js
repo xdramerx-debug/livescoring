@@ -20,21 +20,29 @@ assert.match(rules.protocols.$id['.write'], /tournamentId/);
 
 let counter = null, tokenCalls = 0;
 const expectedPassword = 'test-password-with-enough-entropy';
-const defaultPassword = '55555'; // мастер-пароль по умолчанию (functions/index.js)
+const defaultPassword = '55555'; // дефолт только для эмулятора (functions/index.js, fail closed на проде)
 const config = { TOURNAMENT_MASTER_PASSWORD_HASH: crypto.createHash('sha256').update(expectedPassword).digest('hex') };
 class HttpsError extends Error { constructor(code, message) { super(message); this.code = code; } }
-const sandbox = {
-    require: name => { assert.strictEqual(name, 'crypto'); return crypto; },
-    process: { env: config }, Buffer, Date,
-    exports: {},
-    functions: { runWith: () => ({ https: { onCall: callback => callback } }), https: { HttpsError } },
-    admin: { auth: () => ({ createCustomToken: (uid, claims) => {
+// Admin SDK 14 — модульный: functions/index.js вызывает getAuth() из
+// firebase-admin/auth, а не admin.auth(). Тест про мастер-пароль, а не про
+// форму импорта (её стережёт tools/test-functions-deps.js), поэтому в
+// песочнице доступны оба варианта.
+function getAuth() {
+    return { createCustomToken: (uid, claims) => {
         tokenCalls++;
         assert.strictEqual(uid, 'tournament-master');
         assert.strictEqual(claims.tournamentMaster, true);
         assert.ok(claims.tournamentMasterUntil > Date.now());
         return Promise.resolve('signed-token');
-    } }) },
+    } };
+}
+const sandbox = {
+    require: name => { assert.strictEqual(name, 'crypto'); return crypto; },
+    process: { env: config }, Buffer, Date,
+    exports: {},
+    functions: { runWith: () => ({ https: { onCall: callback => callback } }), https: { HttpsError } },
+    admin: { auth: getAuth },
+    getAuth: getAuth,
     db: { ref: () => ({
         transaction: async function (fn) {
             const value = fn(counter);
@@ -54,13 +62,18 @@ const request = { rawRequest: { ip: '192.0.2.1' } };
     const result = await signIn({ password: expectedPassword }, request);
     assert.strictEqual(result.token, 'signed-token');
     assert.strictEqual(tokenCalls, 1);
-    // Без секрета действует мастер-пароль по умолчанию (55555):
-    // секретный пароль перестает работать, дефолтный — принимается.
+    // Без секрета — FAIL CLOSED (аудит 2026-10): на проде мастер-вход
+    // отключён, дефолтный 55555 больше не принимается.
     config.TOURNAMENT_MASTER_PASSWORD_HASH = '';
-    await assert.rejects(signIn({ password: expectedPassword }, request), e => e.code === 'permission-denied');
+    await assert.rejects(signIn({ password: expectedPassword }, request), e => e.code === 'failed-precondition');
+    await assert.rejects(signIn({ password: defaultPassword }, request), e => e.code === 'failed-precondition');
+    assert.strictEqual(tokenCalls, 1, 'без секрета токены не чеканятся вообще');
+    // Исключение — Firebase Emulator: локальная разработка без Secret Manager.
+    config.FUNCTIONS_EMULATOR = 'true';
     const defaultResult = await signIn({ password: defaultPassword }, request);
     assert.strictEqual(defaultResult.token, 'signed-token');
     assert.strictEqual(tokenCalls, 2);
+    delete config.FUNCTIONS_EMULATOR;
     config.TOURNAMENT_MASTER_PASSWORD_HASH = crypto.createHash('sha256').update(expectedPassword).digest('hex');
     counter = { since: Date.now(), count: 5 };
     await assert.rejects(signIn({ password: expectedPassword }, request), e => e.code === 'resource-exhausted');
@@ -104,6 +117,15 @@ const request = { rawRequest: { ip: '192.0.2.1' } };
         }
     };
     clientSandbox.window = clientSandbox;
+    // Cloud Functions подгружаются по требованию — в стенде они «уже загружены».
+    clientSandbox.pestovoFunctions = () => Promise.resolve(clientSandbox.firebase.functions());
+// js/utils.js в этой песочнице не загружается, а скрипт страницы при
+// вычислении регистрирует хук готовности авторизации через
+// pestovoOnAuthReady() (аудит 2026-10, п.13). Минимальный реестр повторяет
+// поведение utils.js: navAuth здесь не нужен, тесты проверяют не навигацию.
+clientSandbox.__authHooks = [];
+clientSandbox.pestovoOnAuthReady = function (fn) { if (typeof fn === 'function') clientSandbox.__authHooks.push(fn); };
+clientSandbox.onAuthReady = function (u, d) { clientSandbox.__authHooks.forEach(function (f) { f(u, d); }); };
     vm.runInNewContext(client, clientSandbox);
     clientSandbox.openAdminPanel = () => { opened++; };
     clientSandbox.adminLogin({ preventDefault: () => {} });
@@ -154,7 +176,16 @@ const request = { rawRequest: { ip: '192.0.2.1' } };
                 signOut: () => Promise.resolve()
             }
         };
+// js/utils.js в этой песочнице не загружается, а скрипт страницы при
+// вычислении регистрирует хук готовности авторизации через
+// pestovoOnAuthReady() (аудит 2026-10, п.13). Минимальный реестр повторяет
+// поведение utils.js: navAuth здесь не нужен, тесты проверяют не навигацию.
+sandbox.__authHooks = [];
+sandbox.pestovoOnAuthReady = function (fn) { if (typeof fn === 'function') sandbox.__authHooks.push(fn); };
+sandbox.onAuthReady = function (u, d) { sandbox.__authHooks.forEach(function (f) { f(u, d); }); };
         sandbox.window = sandbox;
+        // Cloud Functions подгружаются по требованию — в стенде они «уже загружены».
+        sandbox.pestovoFunctions = () => Promise.resolve(sandbox.firebase.functions());
         return { sandbox, flags, getCustomTokenCalls: () => customTokenCalls };
     }
 

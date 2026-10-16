@@ -209,6 +209,47 @@
     "scoreAudit": {
       ".read": "auth != null && (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now))",
       ".write": false
+    },
+    "errorReports":
+    {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now))",
+      ".write": "auth != null",
+      ".indexOn": [
+        "ts"
+      ],
+      "$id": {
+        ".validate": "newData.hasChildren(['ts', 'page', 'msg'])",
+        "ts": {
+          ".validate": "newData.isNumber() && newData.val() > 1700000000000 && newData.val() < now + 3600000"
+        },
+        "page": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "ctx": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "msg": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 501"
+        },
+        "stack": {
+          ".validate": "newData.isString() && newData.val().length <= 2001"
+        },
+        "ver": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "lang": {
+          ".validate": "newData.isString() && newData.val().length <= 2"
+        },
+        "uid": {
+          ".validate": "newData.isString() && newData.val().length <= 64"
+        },
+        "n": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

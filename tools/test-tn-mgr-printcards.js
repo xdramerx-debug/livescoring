@@ -24,6 +24,10 @@ function check(title, cond, extra) {
 }
 
 global.window = global;
+// Общий построитель URL QR (js/qr-url.js) — классический скрипт, поэтому
+// объявляем его в глобальной области так же, как это делает тег <script>.
+require('vm').runInThisContext(
+    require('fs').readFileSync(path.join(ROOT, 'js', 'qr-url.js'), 'utf8'));
 global.TnMgrCore = require(path.join(ROOT, 'js/tn-mgr-core.js'));
 
 var TOURNAMENT = {

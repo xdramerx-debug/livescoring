@@ -114,10 +114,17 @@ const KNOWN_CROSS_PAGE_DUPES = {
         files: ['marker.js', 'scorer.js'],
         why: 'разные источники данных (mkPScores/mkHole против scRound.players[scPid].scores) и разный текст подписи («Matched:» против «Confirmed by marker:») — расхождение намеренное по смыслу экрана.'
     },
-    // ⚠ Самое опасное расхождение в списке: разная СИГНАТУРА.
     qrUrl: {
         files: ['qr-start.js', 'utils.js'],
-        why: 'НЕ копии: utils.js объявляет qrUrl(data) с откатом на api.qrserver.com, qr-start.js — qrUrl(data, size) с откатом на qrProviders(). СегодняCollision исключён (qr-start.html не грузит utils.js), но если utils.js когда-нибудь подключат на qr-start.html, второй аргумент молча потеряется. Правильное решение — переименовать версию qr-start.js (например, qrStartUrl) или вынести обе в общий модуль.'
+        // Было самое опасное расхождение в списке — разная СИГНАТУРА: utils.js
+        // объявлял qrUrl(data) с откатом на api.qrserver.com, qr-start.js —
+        // qrUrl(data, size) с откатом на qrProviders(). Подключи кто-нибудь
+        // utils.js на qr-start.html — второй аргумент молча потерялся бы.
+        // Теперь обе (вместе с qrImageUrl из tn-mgr-core.js) строят URL через
+        // общий pestovoQrImageUrl() в js/qr-url.js, а размер и поле —
+        // настройка места вызова (200 / 420+4 / 320+2), как и было.
+        delegatesTo: 'pestovoQrImageUrl',
+        why: 'общая реализация в js/qr-url.js (pestovoQrImageUrl); qr-start.js и utils.js остались адаптерами со своими размерами по умолчанию (420/поле 4 и 200/без поля).'
     }
 };
 const cross = new Map();
@@ -159,7 +166,7 @@ for (const d of dupes) {
             const body = src.slice(i, end);
             assert.ok(body.indexOf(known.delegatesTo + '(') !== -1,
                 f + ': ' + d.name + ' должна вызывать общую ' + known.delegatesTo +
-                '() из js/score-display.js, а не держать свою копию логики');
+                '() из общего модуля, а не держать свою копию логики');
             // Адаптер — это подстановка аргументов, а не пересчёт: держать в нём
             // разметку или вычисления нельзя, иначе дубль вернулся бы под другим именем.
             assert.ok(!/innerHTML|\.textContent\s*=/.test(body),

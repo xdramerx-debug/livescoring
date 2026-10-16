@@ -2,6 +2,12 @@
 // Запуск: node tools/test-tn-mgr-core.js (входит в npm test).
 'use strict';
 
+// js/qr-url.js — общий построитель URL QR (копий было четыре, одна из них —
+// qrImageUrl() внутри ядра). Это классический скрипт, поэтому require() не
+// вынесет функцию наружу: объявляем её в глобальной области, как <script>.
+require('vm').runInThisContext(
+    require('fs').readFileSync(require('path').join(__dirname, '..', 'js', 'qr-url.js'), 'utf8'));
+
 var C = require('../js/tn-mgr-core.js');
 
 var failures = 0, total = 0;

@@ -199,6 +199,7 @@ win.XLSX = {
 // Модули — в том же порядке, что в admin.html
 // ----------------------------------------------------------
 var MODULES = [
+    'js/qr-url.js',   // общий построитель QR — на admin.html грузится до utils.js
     'js/tn-mgr-core.js',
     'js/tn-mgr-data.js',
     'js/tn-mgr-io.js',

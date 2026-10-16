@@ -4,7 +4,9 @@
 // escapeHtml). Do not re-add them here.
 
 function baseUrl(){var loc=window.location,path=loc.pathname,dir=path.substring(0,path.lastIndexOf('/')+1);return loc.origin+dir;}
-function qrUrl(data){if(window.PestovoQr&&typeof window.PestovoQr.dataUrl==='function'){var local=window.PestovoQr.dataUrl(data,200);if(local)return local;}return'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(data); }
+// Общий построитель URL QR — js/qr-url.js: было четыре копии, они различались
+// только размером и полем. Здесь сохранён прежний размер по умолчанию (200).
+function qrUrl(data) { return pestovoQrImageUrl(data, 200); }
 // NOTE: escapeHtml() now lives in js/dom.js (loaded before utils.js).
 
 // Одна Firebase-подписка на логический виджет. Повторный рендер (например, при

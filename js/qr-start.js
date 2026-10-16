@@ -21,21 +21,13 @@ function qrEsc(str) {
 // (троттлинг/таймаут одного провайдера, ленивая загрузка), используем цепочку:
 // основной → запасной провайдер → повтор основного, плюс статус загрузки
 // и ожидание всех кодов перед печатью (см. qrPrintMode).
+// Оба построителя живут в js/qr-url.js: те же три провайдера и тот же
+// приоритет локального генератора, что и в остальных копиях.
 function qrProviders(data, size) {
-    size = size || 420;
-    var e = encodeURIComponent(data);
-    return [
-        'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size + '&margin=4&data=' + e,
-        'https://quickchart.io/qr?size=' + size + '&margin=1&text=' + e,
-        'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size + '&margin=2&color=111111&bgcolor=ffffff&data=' + e
-    ];
+    return pestovoQrProviders(data, size || 420);
 }
 function qrUrl(data, size) {
-    if (window.PestovoQr && typeof window.PestovoQr.dataUrl === 'function') {
-        var local = window.PestovoQr.dataUrl(data, size || 420);
-        if (local) return local;
-    }
-    return qrProviders(data, size)[0];
+    return pestovoQrImageUrl(data, size || 420, 4);
 }
 function qrImgOk(img) {
     try { img.setAttribute('data-qr-done', '1'); } catch (e) { console.warn("[silent]", e); }

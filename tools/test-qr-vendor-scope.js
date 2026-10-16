@@ -16,11 +16,12 @@ const assert = require('assert');
 const root = path.join(__dirname, '..');
 
 // ── 1. Кто вызывает QR-API ──
-// utils.js — ПРОВАЙДЕР обёрток qrUrl()/pestovoQrImgHtml(): он объявляет их и
-// обращается к window.PestovoQr только под проверкой, с откатом на внешний
-// сервис. Наличие utils.js на странице само по себе не требует QR-стека,
-// поэтому в список потребителей он не входит.
-const PROVIDER = 'utils.js';
+// ПРОВАЙДЕРЫ — обёртки над QR-API: они обращаются к window.PestovoQr только
+// под проверкой и имеют откат на внешний сервис. Наличие провайдера на странице
+// само по себе не требует QR-стека, поэтому в список потребителей они не входят.
+// utils.js держит qrUrl()/pestovoQrImgHtml(), js/qr-url.js — общую реализацию
+// pestovoQrImageUrl(), которую вызывают utils.js, qr-start.js и tn-mgr-core.js.
+const PROVIDERS = ['utils.js', 'qr-url.js'];
 const QR_CALLS = [
     /PestovoQr/,
     /\bqrUrl\s*\(/,
@@ -31,7 +32,7 @@ const jsDir = path.join(root, 'js');
 const jsFiles = fs.readdirSync(jsDir).filter(f => f.endsWith('.js') && !f.startsWith('vendor'));
 const callers = new Set();
 for (const f of jsFiles) {
-    if (f === PROVIDER || f === 'qr-code.js') continue;   // провайдер и сам QR-движок
+    if (PROVIDERS.includes(f) || f === 'qr-code.js') continue;   // провайдеры и сам QR-движок
     const src = fs.readFileSync(path.join(jsDir, f), 'utf8');
     if (QR_CALLS.some(re => re.test(src))) callers.add(f);
 }
@@ -42,7 +43,7 @@ assert.ok(callers.size > 0, 'найден хотя бы один потреби�
 // окну в 6 строк, потому что типичный паттерн — guard в условии, обращение в
 // теле блока на следующей строке (js/qr-start.js:34-35).
 const GUARD = /typeof PestovoQr !== 'undefined'|typeof pestovoQrImgHtml === 'function'|(window|root)\.PestovoQr\s*&&|PestovoQr\s*&&/;
-for (const f of [...callers, PROVIDER]) {
+for (const f of [...callers, ...PROVIDERS]) {
     const lines = fs.readFileSync(path.join(jsDir, f), 'utf8').split('\n');
     lines.forEach(function (line, i) {
         if (!/PestovoQr|pestovoQrImgHtml\s*\(/.test(line)) return;
@@ -103,9 +104,15 @@ console.log('QR-стек: ' + total + ' байт × ' + clean.length + ' стр�
 // ── 4. fallback qrUrl остаётся доступным ──
 // Если QR-API всё же понадобится на «чистой» странице, qrUrl() из utils.js
 // откатится на внешний сервис — это деградация, а не падение.
+const provider = fs.readFileSync(path.join(jsDir, 'qr-url.js'), 'utf8');
+assert.match(provider, /api\.qrserver\.com/,
+    'pestovoQrImageUrl() сохраняет внешний fallback при отсутствии PestovoQr');
+assert.match(provider, /window\.PestovoQr\s*&&\s*typeof window\.PestovoQr\.dataUrl === 'function'/,
+    'pestovoQrImageUrl() проверяет наличие PestovoQr, а не обращается к нему вслепую');
+// qrUrl() из utils.js — тонкий адаптер общей реализации: вызывать её можно
+// и без QR-стека, откат на внешний сервис остаётся (было 4 копии построителя).
 const utils = fs.readFileSync(path.join(jsDir, 'utils.js'), 'utf8');
-assert.match(utils, /api\.qrserver\.com/, 'qrUrl() сохраняет внешний fallback при отсутствии PestovoQr');
-assert.match(utils, /window\.PestovoQr\s*&&\s*typeof window\.PestovoQr\.dataUrl === 'function'/,
-    'qrUrl() проверяет наличие PestovoQr, а не обращается к нему вслепую');
+assert.match(utils, /return pestovoQrImageUrl\(data, 200\);/,
+    'qrUrl() в utils.js делегирует общей реализации, а не держит вторую копию');
 
 console.log('QR vendor scope tests passed');

@@ -3,6 +3,9 @@
 const fs = require('fs');
 const vm = require('vm');
 
+// js/qr-url.js — общий построитель URL QR; на странице он грузится до
+// qr-start.js тем же тегом <script>, поэтому и в песочнице идёт первым.
+const qrUrlCode = fs.readFileSync(__dirname + '/../js/qr-url.js', 'utf8');
 const code = fs.readFileSync(__dirname + '/../js/qr-start.js', 'utf8');
 
 function fakeEl(id) {
@@ -38,6 +41,7 @@ const sandbox = {
 };
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
+vm.runInContext(qrUrlCode, sandbox);
 vm.runInContext(code, sandbox);
 
 let failures = 0;

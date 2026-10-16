@@ -77,10 +77,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          npm run check:scorecards > /tmp/chain.log 2>&1
+          node tools/check-scorecard-realtime-pwa.js > /tmp/chain.log 2>&1
           code=$?
           {
-            echo "chain exit=$code"
+            echo "scorecard-realtime-pwa exit=$code"
             echo "---- tail ----"
             tail -c 2500 /tmp/chain.log
           } > /tmp/chain.tail

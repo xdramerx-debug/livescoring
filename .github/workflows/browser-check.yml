@@ -68,26 +68,6 @@ jobs:
       - name: Entry scorecards
         run: node tools/check-entry-scorecards.js
 
-      # ВРЕМЕННО: диагностика `npm run check:scorecards` — под npm цепочка
-      # падает, а те же скрипты по отдельности проходят. Вывод уходит
-      # комментарием в PR (логи джобы из песочницы недоступны).
-      - name: Chain probe (temporary)
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set +e
-          node tools/check-scorecard-realtime-pwa.js > /tmp/chain.log 2>&1
-          code=$?
-          {
-            echo "scorecard-realtime-pwa exit=$code"
-            echo "---- tail ----"
-            tail -c 2500 /tmp/chain.log
-          } > /tmp/chain.tail
-          pr=$(gh pr view --json number --jq .number 2>/dev/null || true)
-          if [ -n "$pr" ]; then gh pr comment "$pr" --body-file /tmp/chain.tail; fi
-          exit 0
-
       - name: Scorecard realtime and offline PWA regression
         run: npm run check:scorecard-pwa
 

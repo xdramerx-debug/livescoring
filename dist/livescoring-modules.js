@@ -1,4 +1,4 @@
-const z = "Пестово", Re = 72, Q = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
+const J = "Пестово", Re = 72, $ = "МО, г. Мытищи, Никольская ул., 1, Румянцево", g = {
   1: { p: 4, hcp: 5, bk: 373, bl: 339, wh: 328, rd: 317 },
   2: { p: 4, hcp: 13, bk: 272, bl: 257, wh: 257, rd: 250 },
   3: { p: 5, hcp: 9, bk: 486, bl: 475, wh: 464, rd: 423 },
@@ -17,52 +17,52 @@ const z = "Пестово", Re = 72, Q = "МО, г. Мытищи, Никольс
   16: { p: 4, hcp: 14, bk: 423, bl: 391, wh: 368, rd: 312 },
   17: { p: 3, hcp: 10, bk: 199, bl: 188, wh: 174, rd: 151 },
   18: { p: 4, hcp: 6, bk: 375, bl: 349, wh: 335, rd: 302 }
-}, O = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, X = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, Z = ["bk", "bl", "wh", "rd"], ee = {
+}, I = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, z = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, Q = ["bk", "bl", "wh", "rd"], X = {
   men: { bk: { cr: 76, sr: 144 }, bl: { cr: 73.8, sr: 137 }, wh: { cr: 72, sr: 135 }, rd: { cr: 69.2, sr: 134 } },
   women: { bl: { cr: 80.8, sr: 153 }, wh: { cr: 78.6, sr: 143 }, rd: { cr: 75.2, sr: 136 } }
 };
+function Z(e) {
+  return g[e] ? g[e].p : 4;
+}
+function ee(e, a) {
+  return a = a || "wh", g[e] && g[e][a] || 0;
+}
 function te(e) {
-  return v[e] ? v[e].p : 4;
+  return g[e] ? g[e].hcp : e;
 }
-function ae(e, a) {
-  return a = a || "wh", v[e] && v[e][a] || 0;
+function ae(e) {
+  return I[e] || 15;
 }
+typeof window < "u" && Object.assign(window, { CLUB: J, TOTAL_PAR: 72, ADDR: $, HOLES: g, TIMINGS: I, TEES: z, TEE_ORDER: Q, COURSE_RATINGS: X, holePar: Z, holeDist: ee, holeHcp: te, holeTiming: ae });
 function re(e) {
-  return v[e] ? v[e].hcp : e;
-}
-function ne(e) {
-  return O[e] || 15;
-}
-typeof window < "u" && Object.assign(window, { CLUB: z, TOTAL_PAR: 72, ADDR: Q, HOLES: v, TIMINGS: O, TEES: X, TEE_ORDER: Z, COURSE_RATINGS: ee, holePar: te, holeDist: ae, holeHcp: re, holeTiming: ne });
-function oe(e) {
   return e == null || isNaN(e) ? "—" : e === 0 ? "E" : e > 0 ? "+" + e : "" + e;
 }
-function se(e) {
+function ne(e) {
   return e == null ? "" : e < 0 ? "s-un" : e > 0 ? "s-ov" : "s-ev";
 }
-function le(e, a) {
+function oe(e, a) {
   if (!e || e < 1 || !a) return "";
   var r = e - a;
   return r <= -2 ? "r-eag" : r === -1 ? "r-bir" : r === 0 ? "r-par" : r === 1 ? "r-bog" : "r-dbl";
 }
-function ie(e, a) {
+function se(e, a) {
   if (!e || !a) return "";
   if (e === 1) return t("res_hio");
   var r = e - a;
   return r <= -3 ? t("res_albatross") : r === -2 ? t("res_eagle") : r === -1 ? t("res_birdie") : r === 0 ? t("res_par") : r === 1 ? t("res_bogey") : r === 2 ? t("res_double") : "+" + r;
 }
 typeof window < "u" && Object.assign(window, {
-  fmtScore: oe,
-  scoreClass: se,
-  holeResClass: le,
-  holeResName: ie,
-  fmtDate: _e,
-  fmtTime: de,
-  tnDateTs: ce,
+  fmtScore: re,
+  scoreClass: ne,
+  holeResClass: oe,
+  holeResName: se,
+  fmtDate: le,
+  fmtTime: ie,
+  tnDateTs: _e,
   normalizeTimestampMs: T,
-  isTodayTimestamp: ue
+  isTodayTimestamp: de
 });
-function _e(e) {
+function le(e) {
   if (!e) return "—";
   var a = typeof currentLang < "u" && currentLang ? currentLang : "ru";
   try {
@@ -72,7 +72,7 @@ function _e(e) {
     return (r.getDate() < 10 ? "0" : "") + r.getDate() + "." + (r.getMonth() + 1 < 10 ? "0" : "") + (r.getMonth() + 1) + "." + r.getFullYear();
   }
 }
-function de(e) {
+function ie(e) {
   if (e == null || e === "") return "—";
   var a = /^(\d{1,2}):(\d{2})(:\d{2})?$/.exec(String(e).trim());
   if (a) {
@@ -82,13 +82,13 @@ function de(e) {
   var o = typeof T == "function" ? T(e) : Number(e);
   if (!o || !isFinite(o)) return "—";
   try {
-    var l = new Date(o), i = l.getHours(), _ = l.getMinutes();
-    return isNaN(i) || isNaN(_) ? "—" : (i < 10 ? "0" : "") + i + ":" + (_ < 10 ? "0" : "") + _;
+    var l = new Date(o), i = l.getHours(), d = l.getMinutes();
+    return isNaN(i) || isNaN(d) ? "—" : (i < 10 ? "0" : "") + i + ":" + (d < 10 ? "0" : "") + d;
   } catch {
     return "—";
   }
 }
-function ce(e) {
+function _e(e) {
   if (typeof e == "number" && isFinite(e)) return e;
   var a = String(e ?? "").trim();
   if (!a) return NaN;
@@ -105,39 +105,39 @@ function T(e) {
   var a = Number(e);
   return (!isFinite(a) || a <= 0) && (a = typeof e == "string" ? Date.parse(e) : 0), a > 0 && a < 1e11 && (a *= 1e3), isFinite(a) && a > 0 ? a : 0;
 }
-function ue(e, a) {
+function de(e, a) {
   var r = T(e);
   if (!r) return !1;
   var n = new Date(T(a || Date.now())), o = new Date(r);
   return !isNaN(o.getTime()) && !isNaN(n.getTime()) && o.getFullYear() === n.getFullYear() && o.getMonth() === n.getMonth() && o.getDate() === n.getDate();
 }
-var R = ["today", "7d", "30d", "month", "year", "all"];
-function G(e) {
+var P = ["today", "7d", "30d", "month", "year", "all"];
+function F(e) {
   var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
   if (!a) return null;
   var r = new Date(Number(a[1]), Number(a[2]) - 1, Number(a[3]), 0, 0, 0, 0).getTime();
   return isNaN(r) ? null : r;
 }
-function B(e) {
+function O(e) {
   var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
   if (!a) return null;
   var r = new Date(Number(a[1]), Number(a[2]) - 1, Number(a[3]), 23, 59, 59, 999).getTime();
   return isNaN(r) ? null : r;
 }
-function x(e) {
+function D(e) {
   if (!e) return "";
   var a = new Date(e), r = a.getMonth() + 1, n = a.getDate();
   return a.getFullYear() + "-" + (r < 10 ? "0" : "") + r + "-" + (n < 10 ? "0" : "") + n;
 }
-function V(e) {
+function G(e) {
   return !e || typeof e != "object" ? 0 : Number(e.startTime) || Number(e.createdAt) || 0;
 }
-function E(e) {
+function x(e) {
   var a = /* @__PURE__ */ new Date(), r = new Date(a.getFullYear(), a.getMonth(), a.getDate()), n = null;
-  return e === "today" ? n = r : e === "7d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 6) : e === "30d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 29) : e === "month" ? n = new Date(r.getFullYear(), r.getMonth(), 1) : e === "year" && (n = new Date(r.getFullYear(), 0, 1)), n ? { from: x(n.getTime()), to: x(r.getTime()) } : { from: "", to: "" };
+  return e === "today" ? n = r : e === "7d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 6) : e === "30d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 29) : e === "month" ? n = new Date(r.getFullYear(), r.getMonth(), 1) : e === "year" && (n = new Date(r.getFullYear(), 0, 1)), n ? { from: D(n.getTime()), to: D(r.getTime()) } : { from: "", to: "" };
 }
-function A(e, a) {
-  var r = e && e.value || "", n = a && a.value || "", o = r ? G(r) : null, l = n ? B(n) : null, i = o !== null && l !== null && o > l;
+function R(e, a) {
+  var r = e && e.value || "", n = a && a.value || "", o = r ? F(r) : null, l = n ? O(n) : null, i = o !== null && l !== null && o > l;
   return {
     from: o,
     to: l,
@@ -147,30 +147,30 @@ function A(e, a) {
     active: !i && (o !== null || l !== null)
   };
 }
-function pe(e, a) {
+function ce(e, a) {
   return !a || !a.active ? e.slice() : e.filter(function(r) {
-    var n = V(r && r[1]);
+    var n = G(r && r[1]);
     return !(!n || a.from !== null && n < a.from || a.to !== null && n > a.to);
   });
 }
-function j(e, a, r, n) {
+function B(e, a, r, n) {
   if (e) {
     var o = typeof currentLang < "u" && currentLang === "en", l = '<i class="fas fa-calendar-check"></i> ';
     if (a && a.active) {
-      var i = a.from !== null ? fmtDate(a.from) : o ? "the beginning" : "с начала", _ = a.to !== null ? fmtDate(a.to) : o ? "today" : "сегодня";
-      l += '<span class="rs-period">' + escapeHtml(i + " — " + _) + '</span><span class="rs-sep">·</span>' + t("rounds_found_label") + ": <b>" + r + "</b>", typeof n == "number" && n !== r && (l += ' <span class="rs-dim">' + (o ? "of" : "из") + " " + n + "</span>");
+      var i = a.from !== null ? fmtDate(a.from) : o ? "the beginning" : "с начала", d = a.to !== null ? fmtDate(a.to) : o ? "today" : "сегодня";
+      l += '<span class="rs-period">' + escapeHtml(i + " — " + d) + '</span><span class="rs-sep">·</span>' + t("rounds_found_label") + ": <b>" + r + "</b>", typeof n == "number" && n !== r && (l += ' <span class="rs-dim">' + (o ? "of" : "из") + " " + n + "</span>");
     } else
       l += t("rounds_total_label") + ": <b>" + r + "</b>";
     e.innerHTML = l;
   }
 }
-var P = /* @__PURE__ */ Object.create(null);
-function me(e) {
+var k = /* @__PURE__ */ Object.create(null);
+function ue(e) {
   if (!e) return null;
   var a = document.getElementById(e.fromId), r = document.getElementById(e.toId);
   if (!a || !r) return null;
   var n = e.presetsId ? document.getElementById(e.presetsId) : null, o = e.resetId ? document.getElementById(e.resetId) : null, l = e.hintId ? document.getElementById(e.hintId) : null, i = "pestovo_date_filter_" + e.key;
-  function _() {
+  function d() {
     try {
       localStorage.setItem(i, JSON.stringify({ from: a.value || "", to: r.value || "" }));
     } catch (p) {
@@ -178,12 +178,12 @@ function me(e) {
     }
   }
   function u() {
-    var p = A(a, r);
+    var p = R(a, r);
     if (!p.fromValue && !p.toValue) return "all";
-    for (var g = 0; g < R.length; g++) {
-      var w = R[g];
+    for (var y = 0; y < P.length; y++) {
+      var w = P[y];
       if (w !== "all") {
-        var S = E(w);
+        var S = x(w);
         if (S.from === p.fromValue && S.to === p.toValue) return w;
       }
     }
@@ -192,94 +192,94 @@ function me(e) {
   function c() {
     if (n) {
       var p = u();
-      n.innerHTML = R.map(function(g) {
-        return '<button type="button" class="date-chip' + (p === g ? " active" : "") + '" data-preset="' + g + '">' + t("date_preset_" + g) + "</button>";
+      n.innerHTML = P.map(function(y) {
+        return '<button type="button" class="date-chip' + (p === y ? " active" : "") + '" data-preset="' + y + '">' + t("date_preset_" + y) + "</button>";
       }).join("");
     }
   }
   function s() {
     r.value ? a.setAttribute("max", r.value) : a.removeAttribute("max"), a.value ? r.setAttribute("min", a.value) : r.removeAttribute("min");
   }
-  function d() {
-    var p = A(a, r).invalid;
+  function _() {
+    var p = R(a, r).invalid;
     a.classList.toggle("is-invalid", p), r.classList.toggle("is-invalid", p), l && (l.textContent = p ? t("date_filter_invalid") : "", l.classList.toggle("hidden", !p));
   }
   function h() {
-    d(), typeof e.onChange == "function" && e.onChange(b.getRange());
+    _(), typeof e.onChange == "function" && e.onChange(b.getRange());
   }
   var b = {
     key: e.key,
     getRange: function() {
-      return A(a, r);
+      return R(a, r);
     },
     renderPresets: c,
     lastSummary: null,
-    renderSummary: function(p, g) {
-      b.lastSummary = { count: p, total: g }, j(e.summaryId ? document.getElementById(e.summaryId) : null, b.getRange(), p, g);
+    renderSummary: function(p, y) {
+      b.lastSummary = { count: p, total: y }, B(e.summaryId ? document.getElementById(e.summaryId) : null, b.getRange(), p, y);
     },
     rerenderSummary: function() {
       b.lastSummary && b.renderSummary(b.lastSummary.count, b.lastSummary.total);
     }
   };
   try {
-    var y = JSON.parse(localStorage.getItem(i) || "null");
-    y && typeof y == "object" && (y.from && (a.value = y.from), y.to && (r.value = y.to));
+    var v = JSON.parse(localStorage.getItem(i) || "null");
+    v && typeof v == "object" && (v.from && (a.value = v.from), v.to && (r.value = v.to));
   } catch (p) {
     console.warn("[silent]", p);
   }
   return a.addEventListener("change", function() {
-    s(), _(), c(), h();
+    s(), d(), c(), h();
   }), r.addEventListener("change", function() {
-    s(), _(), c(), h();
+    s(), d(), c(), h();
   }), n && n.addEventListener("click", function(p) {
-    var g = p.target && p.target.closest ? p.target.closest(".date-chip") : null, w = g && g.getAttribute("data-preset");
+    var y = p.target && p.target.closest ? p.target.closest(".date-chip") : null, w = y && y.getAttribute("data-preset");
     if (w) {
-      var S = E(w);
-      a.value = S.from, r.value = S.to, s(), _(), c(), h();
+      var S = x(w);
+      a.value = S.from, r.value = S.to, s(), d(), c(), h();
     }
   }), o && o.addEventListener("click", function() {
-    a.value = "", r.value = "", s(), _(), c(), h();
-  }), s(), c(), d(), P[b.key] = b, b;
+    a.value = "", r.value = "", s(), d(), c(), h();
+  }), s(), c(), _(), k[b.key] = b, b;
 }
-function fe(e) {
-  return P[e] || null;
+function pe(e) {
+  return k[e] || null;
 }
-function he() {
-  Object.keys(P).forEach(function(e) {
-    var a = P[e];
+function fe() {
+  Object.keys(k).forEach(function(e) {
+    var a = k[e];
     a && (a.renderPresets(), a.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: R, dateInputToStartTs: G, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: V, datePresetRange: E, readDateRange: A, filterEntriesByDateRange: pe, renderRoundsPeriodSummary: j, dateRangeFilters: P, initDateRangeFilter: me, getDateRangeFilter: fe, refreshDateRangeFilters: he });
-function q(e) {
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: P, dateInputToStartTs: F, dateInputToEndTs: O, tsToDateInputValue: D, getRoundFilterTs: G, datePresetRange: x, readDateRange: R, filterEntriesByDateRange: ce, renderRoundsPeriodSummary: B, dateRangeFilters: k, initDateRangeFilter: ue, getDateRangeFilter: pe, refreshDateRangeFilters: fe });
+function V(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-function be() {
+function me() {
   for (var e = arguments[0], a = Array.prototype.slice.call(arguments, 1), r = "", n = 0; n < e.length; n++)
-    r += e[n], n < a.length && (r += q(a[n]));
+    r += e[n], n < a.length && (r += V(a[n]));
   return r;
 }
-function ge(e, a) {
+function he(e, a) {
   e && (e.innerHTML = a == null ? "" : String(a));
 }
-typeof window < "u" && Object.assign(window, { esc: q, html: be, setSafeHtml: ge });
-var L = 3e3;
-function K() {
+typeof window < "u" && Object.assign(window, { esc: V, html: me, setSafeHtml: he });
+var M = 3e3;
+function j() {
   if (typeof document > "u" || !document.body) return null;
   var e = document.getElementById("toast-root");
   return e || (e = document.createElement("div"), e.id = "toast-root", e.className = "toast-root", e.setAttribute("aria-live", "polite"), document.body.appendChild(e)), e;
 }
-function U(e) {
+function q(e) {
   return e === "error" ? '<i class="fas fa-triangle-exclamation"></i>' : e === "warn" ? '<i class="fas fa-bell"></i>' : e === "info" ? '<i class="fas fa-circle-info"></i>' : '<i class="fas fa-circle-check"></i>';
 }
-function I(e, a, r) {
+function E(e, a, r) {
   a = a || "success", r = r || {};
-  var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : L;
+  var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : M;
   try {
     if (typeof document > "u" || !document.body) return null;
-    var o = K();
+    var o = j();
     if (!o) return null;
     for (; o.children.length >= 3; )
       try {
@@ -291,8 +291,8 @@ function I(e, a, r) {
       }
     var i = document.createElement("div");
     i.className = "toast t-" + a + (r.clubNotification ? " t-club" : ""), i.setAttribute("role", "status");
-    var _ = r.html ? e == null ? "" : String(e) : W(e);
-    i.innerHTML = '<span class="toast-ico">' + U(a) + '</span><span class="toast-msg">' + _ + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
+    var d = r.html ? e == null ? "" : String(e) : U(e);
+    i.innerHTML = '<span class="toast-ico">' + q(a) + '</span><span class="toast-msg">' + d + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
     var u = !1, c = function(s) {
       if (!u) {
         u = !0;
@@ -332,29 +332,29 @@ function I(e, a, r) {
     return null;
   }
 }
-function ye(e, a) {
+function be(e, a) {
   a = a || {};
   var r = (e || []).slice();
   if (r.length) {
-    var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, o = L + n;
+    var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, o = M + n;
     r.forEach(function(l, i) {
       setTimeout(function() {
-        typeof l == "string" ? I(l, a.type || "warn", a.toastOpts || {}) : I(l.msg || l.html || "", l.type || a.type || "warn", l.opts || a.toastOpts || {});
+        typeof l == "string" ? E(l, a.type || "warn", a.toastOpts || {}) : E(l.msg || l.html || "", l.type || a.type || "warn", l.opts || a.toastOpts || {});
       }, i * o);
     });
   }
 }
-function Y(e) {
+function K(e) {
   try {
     return localStorage.getItem(e) === "1";
   } catch {
     return !1;
   }
 }
-function ve(e) {
+function ye(e) {
   if (navigator.vibrate) {
     var a = e ?? 50;
-    Y("pestovo_strong_vibration") && (Array.isArray(a) ? a = a.map(function(r, n) {
+    K("pestovo_strong_vibration") && (Array.isArray(a) ? a = a.map(function(r, n) {
       return n % 2 === 0 ? Math.min(650, Math.max(35, Math.round((parseInt(r) || 0) * 1.45))) : Math.min(260, Math.max(20, Math.round((parseInt(r) || 0) * 0.9)));
     }) : a = Math.min(650, Math.max(70, Math.round((parseInt(a) || 50) * 1.5))));
     try {
@@ -363,13 +363,13 @@ function ve(e) {
     }
   }
 }
-function W(e) {
+function U(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: K, toastIconFor: U, toast: I, toastSequence: ye, isPlayerModeEnabled: Y, vib: ve, escapeHtml: W });
-var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", f = {
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: M, ensureToastRoot: j, toastIconFor: q, toast: E, toastSequence: be, isPlayerModeEnabled: K, vib: ye, escapeHtml: U });
+var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", m = {
   ru: {
     brand_name: "Пестово",
     nav_home: "Главная",
@@ -1537,28 +1537,28 @@ var m = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
 };
 (function() {
   var e = (/* @__PURE__ */ new Date()).getFullYear();
-  f.ru && (f.ru.footer_club = "© " + e + " Пестово"), f.en && (f.en.footer_club = "© " + e + " Pestovo");
+  m.ru && (m.ru.footer_club = "© " + e + " Пестово"), m.en && (m.en.footer_club = "© " + e + " Pestovo");
 })();
-function J(e) {
-  var a = typeof m < "u" && m ? m : "ru";
+function Y(e) {
+  var a = typeof f < "u" && f ? f : "ru";
   try {
-    if (f[a] && f[a][e] !== void 0)
-      return f[a][e];
-    if (f.ru && f.ru[e] !== void 0)
-      return f.ru[e];
+    if (m[a] && m[a][e] !== void 0)
+      return m[a][e];
+    if (m.ru && m.ru[e] !== void 0)
+      return m.ru[e];
   } catch (r) {
     console.warn("[silent]", r);
   }
   return e;
 }
-function we() {
-  m = m === "ru" ? "en" : "ru", typeof localStorage < "u" && localStorage.setItem("pestovo_lang", m);
+function ge() {
+  f = f === "ru" ? "en" : "ru", typeof localStorage < "u" && localStorage.setItem("pestovo_lang", f);
   try {
-    document.documentElement.setAttribute("lang", m);
+    document.documentElement.setAttribute("lang", f);
   } catch (o) {
     console.warn("[silent]", o);
   }
-  if (C(), $(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
+  if (A(), W(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
     var e = document.getElementById("admin-content");
     e && !e.classList.contains("hidden") && loadAdmRounds();
   }
@@ -1571,41 +1571,41 @@ function we() {
   } catch (o) {
     console.warn("[silent]", o);
   }
-  if (typeof toast == "function" && toast(m === "en" ? "🇬🇧 English language enabled" : "🇷🇺 Выбран русский язык", "info"), typeof loadLiveRounds == "function" && loadLiveRounds(), typeof loadRecentResults == "function" && loadRecentResults(), typeof loadLB == "function" && loadLB(), typeof loadPlayers == "function" && loadPlayers(), typeof loadStats == "function" && loadStats(), typeof loadPestovoWeather == "function" && loadPestovoWeather("nav-weather-container"), typeof showGroupSetup == "function") {
+  if (typeof toast == "function" && toast(f === "en" ? "🇬🇧 English language enabled" : "🇷🇺 Выбран русский язык", "info"), typeof loadLiveRounds == "function" && loadLiveRounds(), typeof loadRecentResults == "function" && loadRecentResults(), typeof loadLB == "function" && loadLB(), typeof loadPlayers == "function" && loadPlayers(), typeof loadStats == "function" && loadStats(), typeof loadPestovoWeather == "function" && loadPestovoWeather("nav-weather-container"), typeof showGroupSetup == "function") {
     var n = document.getElementById("group-setup") || document.getElementById("setup");
     n && !n.classList.contains("hidden") && showGroupSetup();
   }
   typeof initRoundView == "function" && typeof curRid < "u" && curRid && initRoundView(), typeof initSoloView == "function" && initSoloView(), typeof updateHcpTable == "function" && updateHcpTable(), typeof loadClubStats == "function" && loadClubStats(), typeof loadMyActiveRounds == "function" && loadMyActiveRounds("my-active-rounds-container");
 }
-function $() {
+function W() {
   typeof document > "u" || document.querySelectorAll(".lang-btn").forEach(function(e) {
-    e.innerHTML = m === "en" ? "🇬🇧 EN" : "🇷🇺 RU";
+    e.innerHTML = f === "en" ? "🇬🇧 EN" : "🇷🇺 RU";
   });
 }
-function C() {
+function A() {
   typeof document > "u" || (document.querySelectorAll("[data-i18n]").forEach(function(e) {
     var a = e.getAttribute("data-i18n");
-    a && f[m] && f[m][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = f[m][a] + " — " + J("brand_name") : e.innerHTML = f[m][a]);
+    a && m[f] && m[f][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = m[f][a] + " — " + Y("brand_name") : e.innerHTML = m[f][a]);
   }), document.querySelectorAll("[data-i18n-placeholder]").forEach(function(e) {
     var a = e.getAttribute("data-i18n-placeholder");
-    a && f[m] && f[m][a] !== void 0 && e.setAttribute("placeholder", f[m][a]);
+    a && m[f] && m[f][a] !== void 0 && e.setAttribute("placeholder", m[f][a]);
   }), document.querySelectorAll("[data-i18n-title]").forEach(function(e) {
     var a = e.getAttribute("data-i18n-title");
-    a && f[m] && f[m][a] !== void 0 && e.setAttribute("title", f[m][a]);
+    a && m[f] && m[f][a] !== void 0 && e.setAttribute("title", m[f][a]);
   }), typeof refreshDateRangeFilters == "function" && refreshDateRangeFilters());
 }
 try {
-  document.documentElement && typeof document.documentElement.setAttribute == "function" && document.documentElement.setAttribute("lang", m);
+  document.documentElement && typeof document.documentElement.setAttribute == "function" && document.documentElement.setAttribute("lang", f);
 } catch (e) {
   console.warn("[silent]", e);
 }
 try {
-  C();
+  A();
 } catch (e) {
   console.warn("[silent]", e);
 }
 document.addEventListener("DOMContentLoaded", function() {
-  C(), N();
+  A(), N();
 });
 function N() {
   if (!(typeof document > "u")) {
@@ -1616,58 +1616,58 @@ function N() {
   }
 }
 N();
-typeof window < "u" && Object.assign(window, { currentLang: m, I18N: f, t: J, toggleLang: we, updateLangButtons: $, applyTranslations: C, updateFooterYear: N });
-function D(e, a, r, n, o) {
+typeof window < "u" && Object.assign(window, { currentLang: f, I18N: m, t: Y, toggleLang: ge, updateLangButtons: W, applyTranslations: A, updateFooterYear: N });
+function C(e, a, r, n, o) {
   var l = !!o, i = l ? escapeHtml : function(b) {
     return String(b);
-  }, _ = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), u = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", c = l ? "<b>" : "", s = l ? "</b>" : "", d = [];
-  d.push(l ? "<b>" + u + "</b>" : u), d.push(c + "Кто вызвал:" + s + " " + i(r || "Игрок")), d.push(c + "Лунка:" + s + " №" + a), d.push(c + "Время:" + s + " " + _);
+  }, d = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), u = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", c = l ? "<b>" : "", s = l ? "</b>" : "", _ = [];
+  _.push(l ? "<b>" + u + "</b>" : u), _.push(c + "Кто вызвал:" + s + " " + i(r || "Игрок")), _.push(c + "Лунка:" + s + " №" + a), _.push(c + "Время:" + s + " " + d);
   var h = (n || []).map(function(b) {
     return String(b || "").trim();
   }).filter(Boolean);
-  return h.length && d.push(c + "Состав флайта:" + s + " " + i(h.join(", "))), d.join(`
+  return h.length && _.push(c + "Состав флайта:" + s + " " + i(h.join(", "))), _.join(`
 `);
 }
-function Se(e, a, r, n, o, l, i) {
+function ve(e, a, r, n, o, l, i) {
   if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
     toast("⚠️ Укажите Bot Token и Chat ID / Username для " + (r || "Telegram"), "error");
     return;
   }
-  var _ = D(n, o, l, i, !0), u = typeof AbortController < "u" ? new AbortController() : null, c = u ? setTimeout(function() {
+  var d = C(n, o, l, i, !0), u = typeof AbortController < "u" ? new AbortController() : null, c = u ? setTimeout(function() {
     try {
       u.abort();
-    } catch (d) {
-      console.warn("[silent]", d);
+    } catch (_) {
+      console.warn("[silent]", _);
     }
   }, 6e3) : null, s = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: a,
-      text: _,
+      text: d,
       parse_mode: "HTML"
     })
   };
-  u && (s.signal = u.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", s).then(function(d) {
-    return c && clearTimeout(c), d.json();
-  }).then(function(d) {
-    if (d && d.ok)
-      console.log("✅ Telegram alert delivered to " + r + ":", d.result), toast("✅ Telegram сообщение доставлено в " + (r || "чат") + "!", "success");
+  u && (s.signal = u.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", s).then(function(_) {
+    return c && clearTimeout(c), _.json();
+  }).then(function(_) {
+    if (_ && _.ok)
+      console.log("✅ Telegram alert delivered to " + r + ":", _.result), toast("✅ Telegram сообщение доставлено в " + (r || "чат") + "!", "success");
     else {
-      var h = d && d.description ? d.description : "Ошибка Telegram API";
+      var h = _ && _.description ? _.description : "Ошибка Telegram API";
       console.error("❌ Telegram Bot API Error (" + r + "):", h), toast("❌ Ошибка Telegram (" + (r || "чат") + "): " + h, "error");
     }
-  }).catch(function(d) {
+  }).catch(function(_) {
     c && clearTimeout(c);
-    var h = d && d.name === "AbortError", b = h ? "Таймаут соединения (6 сек)" : d ? d.message : "Ошибка сети";
-    console.error("❌ Telegram Fetch Error (" + r + "):", d), toast("❌ Ошибка сети / Таймаут Telegram: " + b, "error");
+    var h = _ && _.name === "AbortError", b = h ? "Таймаут соединения (6 сек)" : _ ? _.message : "Ошибка сети";
+    console.error("❌ Telegram Fetch Error (" + r + "):", _), toast("❌ Ошибка сети / Таймаут Telegram: " + b, "error");
   });
 }
-function k(e, a, r, n, o, l) {
+function we(e, a, r, n, o, l) {
   if (e = (e || "").trim(), a = (a || "").trim(), !(!e || !a)) {
-    var i = D(r, n, o, l, !0), _ = typeof AbortController < "u" ? new AbortController() : null, u = _ ? setTimeout(function() {
+    var i = C(r, n, o, l, !0), d = typeof AbortController < "u" ? new AbortController() : null, u = d ? setTimeout(function() {
       try {
-        _.abort();
+        d.abort();
       } catch (s) {
         console.warn("[silent]", s);
       }
@@ -1676,7 +1676,7 @@ function k(e, a, r, n, o, l) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: a, text: i, parse_mode: "HTML" })
     };
-    _ && (c.signal = _.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", c).then(function(s) {
+    d && (c.signal = d.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", c).then(function(s) {
       return u && clearTimeout(u), s.json();
     }).then(function(s) {
       (!s || !s.ok) && console.warn("⚠️ Telegram silent send failed:", s && s.description);
@@ -1685,21 +1685,23 @@ function k(e, a, r, n, o, l) {
     });
   }
 }
-function ke(e, a, r, n, o) {
-  var l = (localStorage.getItem("pestovo_tg_group_token") || localStorage.getItem("pestovo_tg_bot_token") || "").trim(), i = (localStorage.getItem("pestovo_tg_group_id") || localStorage.getItem("pestovo_tg_chat_id") || "").trim(), _ = (localStorage.getItem("pestovo_tg_channel_token") || l || "").trim(), u = (localStorage.getItem("pestovo_tg_channel_id") || "").trim();
-  l && i && (o === "group" || !o) && k(l, i, e, a, r, n), _ && u && (o === "channel" || !o) && k(_, u, e, a, r, n), !l && !_ && typeof db < "u" && db.ref("settings/telegram").once("value").then(function(c) {
-    var s = c.val() || {}, d = (s.groupToken || s.botToken || "").trim(), h = (s.groupId || s.chatId || "").trim(), b = (s.channelToken || d || "").trim(), y = (s.channelId || "").trim();
-    d && h && (o === "group" || !o) && k(d, h, e, a, r, n), b && y && (o === "channel" || !o) && k(b, y, e, a, r, n);
+function Se(e, a, r, n, o) {
+  typeof console < "u" && typeof console.debug == "function" && console.debug("[alerts] telegram delivery delegated to server", {
+    type: e,
+    hole: a,
+    player: r,
+    flight: (n || []).length,
+    target: o || "all"
   });
 }
-function H(e, a, r, n) {
+function L(e, a, r, n) {
   if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
     n || toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error");
     return;
   }
-  var o = "_vkCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6), l = Math.floor(Math.random() * 2e9), i = null, _ = null, u = function() {
+  var o = "_vkCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6), l = Math.floor(Math.random() * 2e9), i = null, d = null, u = function() {
     try {
-      _ && _.parentNode && _.parentNode.removeChild(_);
+      d && d.parentNode && d.parentNode.removeChild(d);
     } catch (s) {
       console.warn("[silent]", s);
     }
@@ -1714,104 +1716,103 @@ function H(e, a, r, n) {
     if (u(), s && s.response !== void 0 && s.response)
       n || (console.log("✅ VK message sent, id:", s.response), toast("✅ Сообщение ВКонтакте доставлено!", "success"));
     else {
-      var d = s && s.error && s.error.error_code, h = s && s.error && s.error.error_msg ? s.error.error_msg : "Ошибка VK API";
-      console.error("❌ VK API Error " + d + ":", h, s), n ? console.warn("⚠️ VK silent send failed (code " + d + "):", h) : toast("❌ VK API: " + h, "error");
+      var _ = s && s.error && s.error.error_code, h = s && s.error && s.error.error_msg ? s.error.error_msg : "Ошибка VK API";
+      console.error("❌ VK API Error " + _ + ":", h, s), n ? console.warn("⚠️ VK silent send failed (code " + _ + "):", h) : toast("❌ VK API: " + h, "error");
     }
   };
   var c = "https://api.vk.com/method/messages.send?access_token=" + encodeURIComponent(e) + "&peer_id=" + encodeURIComponent(a) + "&message=" + encodeURIComponent(r) + "&random_id=" + l + "&v=5.199&callback=" + o;
-  _ = document.createElement("script"), _.src = c, _.onerror = function() {
+  d = document.createElement("script"), d.src = c, d.onerror = function() {
     u(), n ? console.warn("⚠️ VK JSONP network error (suppressed)") : toast("❌ Ошибка сети при отправке в VK (JSONP)", "error");
   }, i = setTimeout(function() {
     u(), n ? console.warn("⚠️ VK JSONP timeout (suppressed)") : toast("❌ Таймаут соединения с VK (10 сек)", "error");
-  }, 1e4), (document.head || document.body).appendChild(_);
+  }, 1e4), (document.head || document.body).appendChild(d);
 }
-function F(e, a, r, n) {
-  return D(e, a, r, n, !1);
+function H(e, a, r, n) {
+  return C(e, a, r, n, !1);
 }
 function Te(e, a, r, n, o, l) {
   if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
     toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error");
     return;
   }
-  var i = F(r, n, o, l);
-  H(e, a, i, !1);
+  var i = H(r, n, o, l);
+  L(e, a, i, !1);
 }
-function M(e, a, r, n, o, l) {
+function ke(e, a, r, n, o, l) {
   if (e = (e || "").trim(), a = (a || "").trim(), !(!e || !a)) {
-    var i = F(r, n, o, l);
-    H(e, a, i, !0);
+    var i = H(r, n, o, l);
+    L(e, a, i, !0);
   }
 }
 function Pe(e, a, r, n) {
-  var o = (localStorage.getItem("pestovo_vk_token") || "").trim(), l = (localStorage.getItem("pestovo_vk_peer_id") || "").trim();
-  o && l ? M(o, l, e, a, r, n) : typeof db < "u" && db.ref("settings/vk").once("value").then(function(i) {
-    var _ = i.val() || {}, u = (_.token || "").trim(), c = (_.peerId || "").trim();
-    u && c && M(u, c, e, a, r, n);
-  }).catch(function(i) {
-    console.warn("⚠️ VK: не удалось загрузить настройки из Firebase:", i);
+  typeof console < "u" && typeof console.debug == "function" && console.debug("[alerts] vk delivery delegated to server", {
+    type: e,
+    hole: a,
+    player: r,
+    flight: (n || []).length
   });
 }
-typeof window < "u" && Object.assign(window, { buildOfficialCallText: D, sendTelegramDirectAlert: Se, sendTelegramSilentAlert: k, sendTelegramOfficialAlert: ke, vkSendMessageJsonp: H, vkBuildAlertText: F, sendVKDirectAlert: Te, sendVKSilentAlert: M, sendVKOfficialAlert: Pe });
+typeof window < "u" && Object.assign(window, { buildOfficialCallText: C, sendTelegramDirectAlert: ve, sendTelegramSilentAlert: we, sendTelegramOfficialAlert: Se, vkSendMessageJsonp: L, vkBuildAlertText: H, sendVKDirectAlert: Te, sendVKSilentAlert: ke, sendVKOfficialAlert: Pe });
 export {
-  Q as ADDR,
-  z as CLUB,
-  ee as COURSE_RATINGS,
-  R as DATE_RANGE_PRESETS,
-  v as HOLES,
-  f as I18N,
-  X as TEES,
-  Z as TEE_ORDER,
-  O as TIMINGS,
-  L as TOAST_DURATION_MS,
+  $ as ADDR,
+  J as CLUB,
+  X as COURSE_RATINGS,
+  P as DATE_RANGE_PRESETS,
+  g as HOLES,
+  m as I18N,
+  z as TEES,
+  Q as TEE_ORDER,
+  I as TIMINGS,
+  M as TOAST_DURATION_MS,
   Re as TOTAL_PAR,
-  C as applyTranslations,
-  D as buildOfficialCallText,
-  m as currentLang,
-  B as dateInputToEndTs,
-  G as dateInputToStartTs,
-  E as datePresetRange,
-  P as dateRangeFilters,
-  K as ensureToastRoot,
-  q as esc,
-  W as escapeHtml,
-  pe as filterEntriesByDateRange,
-  _e as fmtDate,
-  oe as fmtScore,
-  de as fmtTime,
-  fe as getDateRangeFilter,
-  V as getRoundFilterTs,
-  ae as holeDist,
-  re as holeHcp,
-  te as holePar,
-  le as holeResClass,
-  ie as holeResName,
-  ne as holeTiming,
-  be as html,
-  me as initDateRangeFilter,
-  Y as isPlayerModeEnabled,
-  ue as isTodayTimestamp,
+  A as applyTranslations,
+  C as buildOfficialCallText,
+  f as currentLang,
+  O as dateInputToEndTs,
+  F as dateInputToStartTs,
+  x as datePresetRange,
+  k as dateRangeFilters,
+  j as ensureToastRoot,
+  V as esc,
+  U as escapeHtml,
+  ce as filterEntriesByDateRange,
+  le as fmtDate,
+  re as fmtScore,
+  ie as fmtTime,
+  pe as getDateRangeFilter,
+  G as getRoundFilterTs,
+  ee as holeDist,
+  te as holeHcp,
+  Z as holePar,
+  oe as holeResClass,
+  se as holeResName,
+  ae as holeTiming,
+  me as html,
+  ue as initDateRangeFilter,
+  K as isPlayerModeEnabled,
+  de as isTodayTimestamp,
   T as normalizeTimestampMs,
-  A as readDateRange,
-  he as refreshDateRangeFilters,
-  j as renderRoundsPeriodSummary,
-  se as scoreClass,
-  Se as sendTelegramDirectAlert,
-  ke as sendTelegramOfficialAlert,
-  k as sendTelegramSilentAlert,
+  R as readDateRange,
+  fe as refreshDateRangeFilters,
+  B as renderRoundsPeriodSummary,
+  ne as scoreClass,
+  ve as sendTelegramDirectAlert,
+  Se as sendTelegramOfficialAlert,
+  we as sendTelegramSilentAlert,
   Te as sendVKDirectAlert,
   Pe as sendVKOfficialAlert,
-  M as sendVKSilentAlert,
-  ge as setSafeHtml,
-  J as t,
-  ce as tnDateTs,
-  I as toast,
-  U as toastIconFor,
-  ye as toastSequence,
-  we as toggleLang,
-  x as tsToDateInputValue,
+  ke as sendVKSilentAlert,
+  he as setSafeHtml,
+  Y as t,
+  _e as tnDateTs,
+  E as toast,
+  q as toastIconFor,
+  be as toastSequence,
+  ge as toggleLang,
+  D as tsToDateInputValue,
   N as updateFooterYear,
-  $ as updateLangButtons,
-  ve as vib,
-  F as vkBuildAlertText,
-  H as vkSendMessageJsonp
+  W as updateLangButtons,
+  ye as vib,
+  H as vkBuildAlertText,
+  L as vkSendMessageJsonp
 };

@@ -45,12 +45,43 @@ function makeDb(store) {
         };
         return ref;
     }
+    // Плоский store по полным путям + сборка поддерева: клиент подписан не на
+    // каждый ключ, а на корень ветки (шина настроек в js/utils.js), и ему нужен
+    // снимок всего /settings сразу.
+    function valueFor(p) {
+        if (store[p] !== undefined) return store[p];
+        const prefix = p ? p + '/' : '';
+        const sub = {};
+        let found = false;
+        Object.keys(store).forEach((k) => {
+            if (prefix && k.indexOf(prefix) !== 0) return;
+            found = true;
+            const rest = k.slice(prefix.length);
+            const parts = rest.split('/');
+            let node = sub;
+            for (let i = 0; i < parts.length - 1; i++) {
+                if (typeof node[parts[i]] !== 'object' || node[parts[i]] === null) node[parts[i]] = {};
+                node = node[parts[i]];
+            }
+            node[parts[parts.length - 1]] = store[k];
+        });
+        return found ? sub : null;
+    }
     function snapFor(p) {
-        return { val: () => (store[p] === undefined ? null : store[p]), exists: () => store[p] !== undefined };
+        return { val: () => valueFor(p), exists: () => valueFor(p) !== null };
+    }
+    // Изменение потомка в RTDB уведомляет и слушателей предков.
+    function notifyAncestors(p) {
+        const parts = String(p).split('/');
+        for (let i = parts.length; i >= 0; i--) {
+            const ancestor = parts.slice(0, i).join('/');
+            const cb = (subs.value || {})[ancestor];
+            if (cb) cb(snapFor(ancestor));
+        }
     }
     return {
         ref: makeRef,
-        _emitValue(p, v) { store[p] = v; const cb = (subs.value || {})[p]; if (cb) cb(snapFor(p)); },
+        _emitValue(p, v) { store[p] = v; notifyAncestors(p); },
         _emitChildAdded(p, v) { const cb = (subs.child_added || {})[p]; if (cb) cb({ val: () => v, key: 'n1' }); }
     };
 }

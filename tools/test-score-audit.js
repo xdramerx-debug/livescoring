@@ -16,14 +16,39 @@ function set(key, value) {
     parts.forEach(p => { curr[p] = curr[p] || {}; curr = curr[p]; });
     if (value == null) delete curr[last]; else curr[last] = clone(value);
 }
+// Заглушка ссылки: кроме once/set/update поддерживает orderByKey().startAfter()
+// .limitToFirst().get() — на ней же работает постраничный обход из
+// functions/paging.js, который инжектится в createScoreAudit.
 function ref(key) {
     key = key || '';
+    const snap = () => ({ val: () => clone(get(key)), exists: () => get(key) != null });
+    function query(opts) {
+        const state = Object.assign({ after: null, limit: Infinity }, opts);
+        const q = {
+            orderByKey: () => q,
+            startAfter: value => { state.after = value; return q; },
+            limitToFirst: n => { state.limit = n; return q; },
+            get: async () => {
+                const value = get(key) || {};
+                const keys = Object.keys(value)
+                    .filter(k => state.after === null || k > state.after)
+                    .sort()
+                    .slice(0, state.limit);
+                const out = {};
+                keys.forEach(k => { out[k] = clone(value[k]); });
+                return { val: () => out };
+            }
+        };
+        return q;
+    }
     return {
         child: child => ref(key + '/' + child),
-        once: async () => ({ val: () => clone(get(key)), exists: () => get(key) != null }),
+        once: async () => snap(),
+        get: async () => snap(),
         set: async value => set(key, value),
         remove: async () => set(key, null),
         update: async paths => { for (const [p, v] of Object.entries(paths)) set(p, v); },
+        orderByKey: () => query(),
         transaction: async callback => {
             const val = callback(clone(get(key)));
             if (val === undefined) return { committed: false };
@@ -38,7 +63,8 @@ const functions = {
     database: { ref: () => ({ onCreate: f => f, onWrite: f => f }) },
     pubsub: { schedule: () => ({ timeZone: () => ({ onRun: f => f }) }) }
 };
-const api = create(functions, {}, { ref });
+const { createChildPager } = require('../functions/paging');
+const api = create(functions, {}, { ref }, createChildPager({ ref }));
 const now = Date.now();
 const call = (id, operations, uid, acting, qrAccess) => api.scoreWrite({ roundId: 'r1', requestId: id,
     queuedAt: now, actorPlayerId: acting, operations, qrAccess: !!qrAccess }, { auth: uid ? { uid } : null });

@@ -75,6 +75,34 @@ for (const dir of ['css', 'js', 'dist', 'img', 'fonts']) {
     if (fs.existsSync(path.join(ROOT, dir))) collect(path.join(ROOT, dir), sources);
 }
 
+// ── Классические копии ESM-модулей на прод не едут ────────────────────────
+// js/course-config.js, js/format.js, js/dom.js, js/i18n.js, js/safe-html.js,
+// js/date-range.js и js/official-alerts.js — классические двойники модулей из
+// src/. Страницы грузят собранный dist/livescoring-modules.js, а эти копии
+// нужны только тестам (tools/test-bootstrap.js подмешивает их перед utils.js)
+// и варианту classic в tools/browser-check.js. Раньше каталог js/ копировался
+// целиком, и 120.6 КБ (37.1 КБ gzip) мёртвого кода уезжало на прод
+// (docs/CODE-AUDIT-2026-10-2.md, находка 9).
+//
+// Правило: в public/ попадает только тот js-файл, который запрашивает
+// какая-нибудь страница. Динамической подгрузки локальных скриптов в проекте
+// нет (createElement('script') используется только для gstatic и VK JSONP),
+// поэтому проверка по <script src> полна.
+const htmlBundle = sources
+    .filter((rel) => rel.endsWith('.html'))
+    .map((rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8'))
+    .join('\n');
+const excluded = [];
+const filtered = sources.filter((rel) => {
+    if (!rel.startsWith('js/') || !rel.endsWith('.js')) return true;
+    const base = path.basename(rel);
+    if (htmlBundle.includes(base)) return true;
+    excluded.push(rel);
+    return false;
+});
+sources.length = 0;
+sources.push(...filtered);
+
 // ── Очистка вывода ────────────────────────────────────────────────────────
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
@@ -175,6 +203,10 @@ for (const r of report.slice(0, 8)) {
 console.log('  ИТОГО raw: ' + (sum.raw / 1048576).toFixed(2) + ' МБ → ' + (sum.out / 1048576).toFixed(2) + ' МБ');
 console.log('  ИТОГО gzip: ' + (sum.gzBefore / 1024).toFixed(0) + 'K → ' + (sum.gzAfter / 1024).toFixed(0) + 'K  (-' +
     Math.round(100 * (1 - sum.gzAfter / sum.gzBefore)) + '%)');
+if (excluded.length) {
+    console.log('  не копируется (тестовые копии ESM-модулей, ни одна страница их не грузит):');
+    excluded.forEach((rel) => console.log('    - ' + rel));
+}
 
 if (failed) {
     console.error('\nbuild-public: провалов ' + failed + ' — деплоить такой public/ нельзя');

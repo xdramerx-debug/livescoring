@@ -88,13 +88,37 @@ function loadLB() {
             try { el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + emptyText + '</p></div>'; } catch (e) { console.warn("[silent]", e); }
             return;
         }
+        // Смена фильтра/фокуса сбрасывает окно отрисовки: «Показать ещё»
+        // относится к конкретному срезу, а не к списку вообще.
+        var lbSignature = [lbFocusRoundId, status, query, range.active, range.from, range.to].join('|');
+        if (lbSignature !== lbRenderSignature) {
+            lbRenderSignature = lbSignature;
+            lbRenderLimit = LB_PAGE_SIZE;
+        }
+
         var html = '';
+        var visibleEntries = entries.slice(0, lbRenderLimit);
         try {
-            entries.forEach(function(e) { try { html += renderRound(e[0], e[1]); } catch (err) { console.warn("[silent]", err); } });
+            visibleEntries.forEach(function(e) { try { html += renderRound(e[0], e[1]); } catch (err) { console.warn("[silent]", err); } });
         } catch (e) { console.warn("[silent]", e); }
+        var lbHidden = entries.length - visibleEntries.length;
+        if (lbHidden > 0) {
+            var lbIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+            html += '<div style="display:flex;justify-content:center;padding:14px 0;">' +
+                '<button type="button" class="btn btn-o btn-sm" id="lb-show-more">' +
+                escapeHtml(lbIsEn ? 'Show more' : 'Показать ещё') + ' (' + lbHidden + ')' +
+                '</button></div>';
+        }
         var displayVariant = (typeof getAllRoundsDisplayVariant === 'function') ? getAllRoundsDisplayVariant() : '1';
         displayVariant = (displayVariant === '2' || displayVariant === '3') ? displayVariant : '1';
         try { el.innerHTML = '<div class="live-who-list rounds-layout-' + displayVariant + '" data-display-variant="' + displayVariant + '">' + html + '</div>'; } catch (e) { console.warn("[silent]", e); }
+        var lbMoreBtn = el.querySelector('#lb-show-more');
+        if (lbMoreBtn) {
+            lbMoreBtn.addEventListener('click', function() {
+                lbRenderLimit += LB_PAGE_SIZE;
+                loadLB();
+            });
+        }
         try { restoreLbPanels(); } catch (e) { console.warn("[silent]", e); }
         if (lbFocusScrollPending && lbFocusRoundId) {
             var focusRows = el.querySelectorAll('.lb-row[data-round-id]');
@@ -125,6 +149,15 @@ var lbRoundsById = {};
 var lbPanelOpen = {};
 var lbFocusRoundId = '';
 var lbFocusScrollPending = false;
+
+// Постраничная отрисовка. Замер 2026-10 (docs/CODE-AUDIT-2026-10-2.md,
+// находка 5): 300 раундов = 26 638 DOM-узлов, 191 мс на первый рендер и 105 мс
+// на КАЖДОЕ обновление /rounds — то есть на каждое сохранение лунки любым
+// игроком у каждого открытого табло. Полный список физически не нужен: экран
+// показывает первые строки, остальное открывается кнопкой.
+var LB_PAGE_SIZE = 50;
+var lbRenderLimit = LB_PAGE_SIZE;
+var lbRenderSignature = '';
 
 function lbStoreKey(id) { return 'pestovo_lb_open_' + id; }
 

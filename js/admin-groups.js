@@ -471,9 +471,15 @@ function deleteRound(id) {
 //      на что прав у администратора/мастера достаточно;
 //   3) всё, что удалить не удалось, честно перечисляется в тосте — никаких
 //      «Все данные удалены» при живых игроках.
+// Зеркало WIPE_ALL_BRANCHES из functions/index.js — держим синхронно
+// (tools/test-functions-wipe.js сверяет списки).
+// Намеренно не удаляются settings (конфигурация), vapid (пара ключей, иначе
+// отвалятся все push-подписки) и channels (настроенные токены Telegram/VK).
 var WIPE_ALL_DB_BRANCHES = [
     'users', 'usersPublic', 'rounds', 'tournaments', 'markers',
-    'markerAssignments', 'alerts', 'protocols', 'broadcasts', 'reactions'
+    'markerAssignments', 'alerts', 'protocols', 'broadcasts', 'reactions',
+    'scoreAudit', 'hcpLog', 'leaderboard', 'push_subscriptions', 'errorReports',
+    'tnDrafts', 'tnTemplates'
 ];
 
 // «Удалить все раунды» — раунды и всё, что к ним привязано, без игроков.
@@ -489,7 +495,14 @@ var WIPE_PATH_LABELS = {
     alerts: { ru: 'вызовы', en: 'alerts' },
     protocols: { ru: 'протоколы', en: 'protocols' },
     broadcasts: { ru: 'анонсы', en: 'broadcasts' },
-    reactions: { ru: 'реакции', en: 'reactions' }
+    reactions: { ru: 'реакции', en: 'reactions' },
+    scoreAudit: { ru: 'аудит счёта', en: 'score audit' },
+    hcpLog: { ru: 'журнал гандикапов', en: 'handicap log' },
+    leaderboard: { ru: 'таблица результатов', en: 'leaderboard' },
+    push_subscriptions: { ru: 'push-подписки', en: 'push subscriptions' },
+    errorReports: { ru: 'отчёты об ошибках', en: 'error reports' },
+    tnDrafts: { ru: 'черновики турниров', en: 'tournament drafts' },
+    tnTemplates: { ru: 'шаблоны турниров', en: 'tournament templates' }
 };
 
 function wipeIsEn() {

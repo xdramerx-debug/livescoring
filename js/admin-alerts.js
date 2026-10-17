@@ -78,7 +78,7 @@ function loadGlobalNotificationsSetting() {
     if (typeof bindRealtimeValue === 'function') {
         bindRealtimeValue('admin-notifications-global', db.ref('settings/notifications_enabled'), apply);
     } else {
-        db.ref('settings/notifications_enabled').on('value', apply, function () { renderGlobalNotificationsSetting(); });
+        bindSettingsValue('settings/notifications_enabled', apply, function () { renderGlobalNotificationsSetting(); });
     }
 }
 function toggleGlobalNotifications() {

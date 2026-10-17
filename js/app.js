@@ -739,6 +739,8 @@ function homeTnRowsHtml(tnEntries, forceOpen) {
 var homeActiveTournaments = {};
 var homeTournamentsLoaded = false;
 var homeLastRoundsData = null;
+// Два точных запроса вместо одного на всё дерево /rounds — см. loadHomeData().
+var homeLiveRoundsByStatus = { active: {}, scheduled: {} };
 // Та же настройка видимости, что и в каталоге турниров. Раунд без
 // связанного турнира остаётся обычным раундом и не пропадает с главной.
 function homeRoundIsPublic(r) {
@@ -802,11 +804,24 @@ function loadLiveRounds() {
         if (homeLastRecentData) renderHomeRecentResults(homeLastRecentData);
     });
 
-    bindRealtimeValue('home-live-rounds', db.ref('rounds'), function(snap) {
-        var data = snap.val() || {};
-        homeLastRoundsData = data;
-        renderHomeLiveRounds(data);
+    // «Сейчас на поле» = раунды со статусом active ПЛЮС scheduled, у которых
+    // наступило время старта (их поднимает roundsDueForStart). Подписываемся
+    // двумя точными запросами вместо всего дерева /rounds: истории завершённых
+    // раундов этому блоку не нужно, а весила она столько же, сколько вся база
+    // (docs/CODE-AUDIT-2026-10-2.md, находка 4).
+    homeLiveRoundsByStatus = { active: {}, scheduled: {} };
+    ['active', 'scheduled'].forEach(function(status) {
+        bindRealtimeValue('home-live-rounds-' + status,
+            db.ref('rounds').orderByChild('status').equalTo(status), function(snap) {
+            homeLiveRoundsByStatus[status] = (snap && snap.val && snap.val()) || {};
+            homeLastRoundsData = homeMergeLiveRounds();
+            renderHomeLiveRounds(homeLastRoundsData);
+        });
     });
+}
+
+function homeMergeLiveRounds() {
+    return Object.assign({}, homeLiveRoundsByStatus.scheduled, homeLiveRoundsByStatus.active);
 }
 
 function renderHomeLiveRounds(data) {
@@ -1114,7 +1129,10 @@ function loadRecentResults() {
     var el = document.getElementById('recent-results');
     if (!el || typeof db === 'undefined') return;
 
-    bindRealtimeValue('home-recent-results', db.ref('rounds'), function(snap) {
+    // Блок показывает только завершённые раунды — им и ограничиваем запрос
+    // (находка 4): раньше страница качала всю историю клуба ради последних N.
+    bindRealtimeValue('home-recent-results',
+        db.ref('rounds').orderByChild('status').equalTo('completed'), function(snap) {
         homeLastRecentData = snap.val() || {};
         renderHomeRecentResults(homeLastRecentData);
     });

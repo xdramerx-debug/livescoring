@@ -349,7 +349,7 @@ function pestovoCheckGlobalNotificationsEnabled() {
 function pestovoBindGlobalNotificationsSetting() {
     if (typeof db === 'undefined' || !db || pestovoGlobalNotificationsBound) return;
     pestovoGlobalNotificationsBound = true;
-    db.ref('settings/notifications_enabled').on('value', function(snapshot) {
+    bindSettingsValue('settings/notifications_enabled', function(snapshot) {
         pestovoGlobalNotificationsEnabled = !snapshot || snapshot.val() !== false;
         pestovoGlobalNotificationsLoaded = true;
         if (!pestovoGlobalNotificationsEnabled) {

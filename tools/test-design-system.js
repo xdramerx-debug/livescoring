@@ -309,7 +309,10 @@ function loadDesign(ctx) {
     ok(adminJs.indexOf("t === 'design'") !== -1, 'switchTab не обрабатывает вкладку design');
 
     var utils = fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8');
-    ok(utils.indexOf("db.ref('settings/design')") !== -1, 'В utils.js нет listener-а settings/design');
+    // Подписка на settings/design идёт через общую шину настроек (один Listen
+    // на всю ветку вместо отдельного на каждый ключ) — см. bindSettingsValue.
+    ok(/bindSettingsValue\('settings\/design'/.test(utils) || /db\.ref\('settings\/design'\)/.test(utils),
+        'В utils.js нет listener-а settings/design');
     var i18n = fs.readFileSync(path.join(ROOT, 'js', 'i18n.js'), 'utf8');
     ok(i18n.indexOf('tab_design:') !== -1, 'В i18n нет ключа tab_design');
     ok(i18n.indexOf("tab_design: 'Design") !== -1, 'В i18n нет английского перевода tab_design');
@@ -318,7 +321,15 @@ function loadDesign(ctx) {
     ok(sw.indexOf('pestovo-v' + siteVersion) !== -1, 'sw.js: CACHE_NAME не соответствует версии ' + siteVersion);
     ok(sw.indexOf('css/design-presets.css?v=') !== -1, 'sw.js: не кэшируется design-presets.css');
     ok(sw.indexOf('js/design-system.js?v=') !== -1, 'sw.js: не кэшируется design-system.js');
-    ok(sw.indexOf('design-preview.html') !== -1, 'sw.js: не кэшируется design-preview.html');
+    // Страницы-инструменты (админка и превью) в предкэш не кладутся: ими
+    // пользуются с сети, а при первом заходе их всё равно кэширует
+    // fetch-хендлер sw.js (cache.put для документов), так что офлайн-доступ
+    // после первого визита сохраняется. Экономия — на каждой установке SW.
+    ok(sw.indexOf("'design-preview.html'") === -1, 'sw.js: design-preview.html не должна быть в предкэше');
+    ok(sw.indexOf("'admin.html'") === -1, 'sw.js: admin.html не должна быть в предкэше');
+    ok(sw.indexOf("'offline.html'") !== -1, 'sw.js: offline.html обязана быть в предкэше');
+    ok(sw.indexOf('caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, copy); })') !== -1,
+        'sw.js: документы кэшируются при обращении (офлайн после первого визита)');
 
     ok(fs.existsSync(path.join(ROOT, 'design-preview.html')), 'Нет страницы сравнения design-preview.html');
     ok(fs.existsSync(path.join(ROOT, 'js', 'design-preview.js')), 'Нет js/design-preview.js');

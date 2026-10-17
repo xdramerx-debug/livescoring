@@ -2,7 +2,13 @@
 // Server-owned score mutations. RTDB transaction keeps the before/after values
 // and an outbox item in the SAME round commit. The protected day index is
 // delivered from that outbox (also on retry), never written by the browser.
-module.exports = function createScoreAudit(functions, admin, db) {
+// forEachChildPage(path, pageSize, handler) инжектится из functions/index.js:
+// обход детей узла страницами, чтобы не тянуть целые ветки (rounds, tournaments,
+// scoreAudit) в память одной функции — docs/CODE-AUDIT-2026-10-2.md, находка 8.
+module.exports = function createScoreAudit(functions, admin, db, forEachChildPage) {
+    if (typeof forEachChildPage !== 'function') {
+        throw new TypeError('createScoreAudit requires forEachChildPage(path, pageSize, handler)');
+    }
     const DAY_MS = 86400000;
     const KEEP_MS = 30 * DAY_MS;
     const validKey = v => {
@@ -139,8 +145,17 @@ module.exports = function createScoreAudit(functions, admin, db) {
         }
         return { ok: true, duplicate: !tx.committed, confirmedAt: now };
     });
+    // Триггер — страховка, а не основной путь доставки: scoreWrite доставляет
+    // outbox сам, сразу после транзакции. Раньше триггер брал значение из
+    // snapshot и писал все события повторно — каждое сохранение лунки стоило
+    // вдвое больше записей в scoreAudit/ (docs/CODE-AUDIT-2026-10-2.md,
+    // находка 7). Теперь он перечитывает outbox и выходит, если тот уже
+    // доставлен и удалён.
     const onScoreAuditOutbox = functions.database.ref('/rounds/{roundId}/_scoreAuditOutbox/{requestId}').onCreate(async (snapshot, context) => {
-        await deliver('rounds/' + context.params.roundId, context.params.requestId, snapshot.val());
+        const ownerPath = 'rounds/' + context.params.roundId;
+        const pending = (await db.ref(ownerPath + '/_scoreAuditOutbox/' + context.params.requestId).once('value')).val();
+        if (!pending) return null;
+        await deliver(ownerPath, context.params.requestId, pending);
     });
     const studioScoreWrite = functions.https.onCall(async (data, context) => {
         const now = Date.now();
@@ -181,7 +196,10 @@ module.exports = function createScoreAudit(functions, admin, db) {
         return { ok: true, duplicate: !tx.committed, confirmedAt: now };
     });
     const onStudioScoreOutbox = functions.database.ref('/tournaments/{tournamentId}/_scoreAuditOutbox/{requestId}').onCreate(async (snapshot, context) => {
-        await deliver('tournaments/' + context.params.tournamentId, context.params.requestId, snapshot.val());
+        const ownerPath = 'tournaments/' + context.params.tournamentId;
+        const pending = (await db.ref(ownerPath + '/_scoreAuditOutbox/' + context.params.requestId).once('value')).val();
+        if (!pending) return null;
+        await deliver(ownerPath, context.params.requestId, pending);
     });
     // Best-effort transition safety net for older direct clients. It runs AFTER
     // a direct write, not atomically with it. Cloud Functions use ADMIN authType; browser
@@ -218,18 +236,20 @@ module.exports = function createScoreAudit(functions, admin, db) {
     const purgeScoreAudit = functions.pubsub.schedule('every day 03:00').timeZone('UTC').onRun(async () => {
         const cutoffMs = Date.now() - KEEP_MS;
         const cutoff = dateKey(cutoffMs);
+        // Обход страницами: прежнее once('value') по rounds/tournaments/scoreAudit
+        // грузило всё дерево в память одной функции (находка 8).
         for (const collection of ['rounds', 'tournaments']) {
-            const owners = (await db.ref(collection).once('value')).val() || {};
-            for (const id of Object.keys(owners)) {
-                const outbox = owners[id] && owners[id]._scoreAuditOutbox || {};
-                for (const requestId of Object.keys(outbox)) await deliver(collection + '/' + id, requestId, outbox[requestId]);
-            }
+            await forEachChildPage(collection, 50, async (id, owner) => {
+                const outbox = (owner && owner._scoreAuditOutbox) || {};
+                for (const requestId of Object.keys(outbox)) {
+                    await deliver(collection + '/' + id, requestId, outbox[requestId]);
+                }
+            });
         }
-        const days = (await db.ref('scoreAudit').once('value')).val() || {};
-        for (const day of Object.keys(days)) {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > cutoff) continue;
+        await forEachChildPage('scoreAudit', 10, async (day, entries) => {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > cutoff) return;
             const updates = {};
-            Object.values(days[day] || {}).forEach(evt => {
+            Object.values(entries || {}).forEach(evt => {
                 if (day === cutoff && evt && Number.isFinite(evt.at) && evt.at >= cutoffMs) return;
                 if (evt && validKey(evt.roundId) && validKey(evt.id)) {
                     const reqId = evt.id.replace(/_\d+$/, '');
@@ -241,7 +261,7 @@ module.exports = function createScoreAudit(functions, admin, db) {
             });
             if (day < cutoff) updates['scoreAudit/' + day] = null;
             if (Object.keys(updates).length) await db.ref().update(updates);
-        }
+        });
         return null;
     });
     return { scoreWrite, studioScoreWrite, onScoreAuditOutbox, onStudioScoreOutbox, onDirectPlayerScore, onDirectMarkerScore, onDirectMarkerMirror, onDirectStudioScore, purgeScoreAudit };

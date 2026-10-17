@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.117.0-b45fe5f5';
+const CACHE_NAME = 'pestovo-v1.118.0-d9a7220c';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -41,11 +41,8 @@ function staleWhileRevalidate(request, cacheName) {
 const STATIC_ASSETS = [
     // Страницы
     './',
-    'admin.html',
     'auth.html',
-    'design-preview.html',
     'handicap.html',
-    'hcp-badge-preview.html',
     'index.html',
     'leaderboard.html',
     'marker.html',
@@ -64,24 +61,22 @@ const STATIC_ASSETS = [
     'css/style.css?v=a5317bf8',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=3f88226b',
-    'dist/livescoring-modules.js?v=8f43c231',
-    'js/app.js?v=a8e231ad',
+    'dist/livescoring-modules.js?v=4b640eff',
+    'js/app.js?v=9271a1db',
     'js/auth.js?v=3a96f309',
-    'js/design-preview.js?v=eea0009d',
     'js/design-system.js?v=394cc00f',
     'js/entry-scorecard.js?v=9b8c4167',
     'js/firebase-config.js?v=032a2499',
     'js/handicap.js?v=97cd8ae3',
-    'js/hcp-badge-preview.js?v=38324d2f',
     'js/kiosk-mode-detect.js?v=b6405ebe',
-    'js/leaderboard.js?v=d2f09a48',
+    'js/leaderboard.js?v=0c3b1686',
     'js/live.js?v=ad765377',
     'js/marker.js?v=bb5d6bbe',
     'js/name-variants.js?v=2b58f796',
     'js/official-call.js?v=baef2c9c',
     'js/players.js?v=e5973d18',
     'js/protocol.js?v=404b09d0',
-    'js/pwa.js?v=82acd039',
+    'js/pwa.js?v=493ac6b1',
     'js/qr-code.js?v=2a26e819',
     'js/qr-start.js?v=2b4fe58a',
     'js/qr-url.js?v=fb4a1649',
@@ -101,7 +96,7 @@ const STATIC_ASSETS = [
     'js/tournament-public.js?v=c10d8d83',
     'js/tournaments.js?v=0b5653af',
     'js/ui-events.js?v=5ba225a1',
-    'js/utils.js?v=9de9c355',
+    'js/utils.js?v=d9ed8b51',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
     'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 

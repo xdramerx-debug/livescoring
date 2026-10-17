@@ -1,8 +1,8 @@
 // js/official-alerts.js — отправка алертов о вызове судьи/маршала в
 // Telegram и VK; вынесено из js/utils.js (docs/CODE-REVIEW.md, п.1/п.3).
 // Формирование текста (buildOfficialCallText), JSONP-отправка в VK,
-// Bot API Telegram; настройки берутся из settings/telegram* и settings/vk*
-// в момент отправки. Потребители (live/marker/scorer/solo и utils.js)
+// Bot API Telegram; боевую отправку вызова судьи делает сервер
+// (functions/index.js, onAlertCreated) — см. sendTelegramOfficialAlert. Потребители (live/marker/scorer/solo и utils.js)
 // зовут функции typeof-guarded, порядок загрузки не критичен; грузится
 // рядом с utils.js. Load-time кода нет.
 
@@ -143,37 +143,27 @@ function sendTelegramSilentAlert(token, chat, type, holeNum, playerName, flightN
 }
 
 function sendTelegramOfficialAlert(type, holeNum, playerName, flightNames, targetMode) {
-    // ВАЖНО: этот вызов делает ИГРОК. Никаких тостов об ошибках сети / таймаутах
-    // Telegram ему показывать нельзя — он уже видит «🚨 Судья вызван». Если Telegram
-    // настроен и отвечает — это плюс. Если нет — вызов всё равно лежит в Firebase
-    // и админ увидит его в панели «Вызовы».
-    var groupToken = (localStorage.getItem('pestovo_tg_group_token') || localStorage.getItem('pestovo_tg_bot_token') || '').trim();
-    var groupId = (localStorage.getItem('pestovo_tg_group_id') || localStorage.getItem('pestovo_tg_chat_id') || '').trim();
-
-    var channelToken = (localStorage.getItem('pestovo_tg_channel_token') || groupToken || '').trim();
-    var channelId = (localStorage.getItem('pestovo_tg_channel_id') || '').trim();
-
-    if (groupToken && groupId && (targetMode === 'group' || !targetMode)) {
-        sendTelegramSilentAlert(groupToken, groupId, type, holeNum, playerName, flightNames);
-    }
-    if (channelToken && channelId && (targetMode === 'channel' || !targetMode)) {
-        sendTelegramSilentAlert(channelToken, channelId, type, holeNum, playerName, flightNames);
-    }
-
-    if (!groupToken && !channelToken && typeof db !== 'undefined') {
-        db.ref('settings/telegram').once('value').then(function(sn) {
-            var tg = sn.val() || {};
-            var gTok = (tg.groupToken || tg.botToken || '').trim();
-            var gId = (tg.groupId || tg.chatId || '').trim();
-            var cTok = (tg.channelToken || gTok || '').trim();
-            var cId = (tg.channelId || '').trim();
-
-            if (gTok && gId && (targetMode === 'group' || !targetMode)) {
-                sendTelegramSilentAlert(gTok, gId, type, holeNum, playerName, flightNames);
-            }
-            if (cTok && cId && (targetMode === 'channel' || !targetMode)) {
-                sendTelegramSilentAlert(cTok, cId, type, holeNum, playerName, flightNames);
-            }
+    // Доставка выполняется НА СЕРВЕРЕ, не в браузере игрока.
+    //
+    // Раньше эта функция брала токен бота из localStorage, а при его отсутствии —
+    // из settings/telegram, и сама дёргала Bot API. Узел /settings читается без
+    // авторизации (database.rules.json: ".read": true), то есть живой токен бота
+    // был доступен любому из интернета (docs/CODE-AUDIT-2026-10-2.md, находка 1).
+    // Секреты переехали в ветку channels/ с ".read" только для админа/мастера, и
+    // браузер игрока их больше не видит ни в базе, ни в localStorage.
+    //
+    // Вызов судьи/маршала к этому моменту уже записан в alerts/<id> вызывающим
+    // кодом (js/official-call.js, js/solo.js); Cloud Function onAlertCreated
+    // (functions/index.js) читает channels/telegram через Admin SDK и рассылает
+    // сообщение в группу и канал. Если функции не задеплоены — вызов остаётся
+    // в панели «Вызовы» в админке, но в Telegram не уходит: это осознанная плата
+    // за то, что токен больше не публичный.
+    //
+    // Сигнатура сохранена: потребители зовут функцию typeof-guarded.
+    if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+        console.debug('[alerts] telegram delivery delegated to server', {
+            type: type, hole: holeNum, player: playerName,
+            flight: (flightNames || []).length, target: targetMode || 'all'
         });
     }
 }
@@ -316,24 +306,15 @@ function sendVKSilentAlert(token, peerId, type, holeNum, playerName, flightNames
 
 /**
  * Точка входа при вызове судьи/маршала ИГРОКОМ.
- * Читает настройки из localStorage → Firebase, отправляет молча.
+ * Ничего не отправляет сама: доставку делает сервер (см. выше).
  */
 function sendVKOfficialAlert(type, holeNum, playerName, flightNames) {
-    var vkToken  = (localStorage.getItem('pestovo_vk_token')   || '').trim();
-    var vkPeerId = (localStorage.getItem('pestovo_vk_peer_id') || '').trim();
-
-    if (vkToken && vkPeerId) {
-        sendVKSilentAlert(vkToken, vkPeerId, type, holeNum, playerName, flightNames);
-    } else if (typeof db !== 'undefined') {
-        db.ref('settings/vk').once('value').then(function(sn) {
-            var vk = sn.val() || {};
-            var token = (vk.token  || '').trim();
-            var peer  = (vk.peerId || '').trim();
-            if (token && peer) {
-                sendVKSilentAlert(token, peer, type, holeNum, playerName, flightNames);
-            }
-        }).catch(function(e) {
-            console.warn('⚠️ VK: не удалось загрузить настройки из Firebase:', e);
+    // См. sendTelegramOfficialAlert: VK access token больше не читается ни из
+    // localStorage, ни из settings/vk (узел был публичным). Доставку делает
+    // onAlertCreated на сервере, читая channels/vk через Admin SDK.
+    if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+        console.debug('[alerts] vk delivery delegated to server', {
+            type: type, hole: holeNum, player: playerName, flight: (flightNames || []).length
         });
     }
 }

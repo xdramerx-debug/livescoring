@@ -24,8 +24,12 @@ const webpush = require('web-push');
 
 admin.initializeApp();
 const db = getDatabase();
+// Постраничный обход детей узла — вместо once('value') по целым веткам
+// (см. functions/paging.js и docs/CODE-AUDIT-2026-10-2.md, находка 8).
+const { createChildPager } = require('./paging');
+const forEachChildPage = createChildPager(db);
 
-Object.assign(exports, require('./score-audit')(functions, admin, db));
+Object.assign(exports, require('./score-audit')(functions, admin, db, forEachChildPage));
 
 // Мастер-пароль проверяется только на сервере. НЕ использовать пароль/хэш из
 // settings: этот узел публичен (RTDB не позволяет сузить доступ потомку).
@@ -160,8 +164,22 @@ exports.tournamentMasterSignIn = functions.runWith({}).https.onCall(async functi
 // результат в админку. Если функция не развёрнута, клиент чистит базу сам —
 // по доступным ему путям (users/<uid>, usersPublic/<uid>, …).
 const WIPE_ROUND_BRANCHES = ['rounds', 'markers', 'markerAssignments', 'alerts', 'protocols'];
+// «Удалить все данные» обязано вычищать ВСЕ ветки с игровыми и персональными
+// данными. Прежний список из 10 веток оставлял в базе 9 из 19 — в том числе
+// scoreAudit (30 дней истории каждого изменения счёта с playerName) и hcpLog
+// (docs/CODE-AUDIT-2026-10-2.md, находка 3).
+//
+// Намеренно НЕ удаляются:
+//   settings — конфигурация клуба (оформление, варианты экранов, privacy);
+//   vapid    — пара VAPID-ключей; её потеря инвалидирует все существующие
+//              push-подписки, а секретом она не является (публичная половина
+//              и так лежит в settings/vapid_public_key).
+//   channels — токены Telegram/VK: удалять их вместе с данными означало бы,
+//              что после «очистки» клуб теряет настроенные интеграции.
 const WIPE_ALL_BRANCHES = ['rounds', 'users', 'usersPublic', 'tournaments', 'markers',
-    'markerAssignments', 'alerts', 'protocols', 'broadcasts', 'reactions'];
+    'markerAssignments', 'alerts', 'protocols', 'broadcasts', 'reactions',
+    'scoreAudit', 'hcpLog', 'leaderboard', 'push_subscriptions', 'errorReports',
+    'tnDrafts', 'tnTemplates'];
 
 exports.wipeAllData = functions.runWith({}).https.onCall(async function (data, context) {
     const scope = data && data.scope === 'rounds' ? 'rounds' : 'all';
@@ -212,6 +230,16 @@ exports.wipeAllData = functions.runWith({}).https.onCall(async function (data, c
             updates['users/' + key + '/roundsPlayed'] = 0;
             updates['users/' + key + '/bestGross'] = null;
             updates['users/' + key + '/bestStableford'] = null;
+        });
+        // Аудит счёта удалённых раундов — те же персональные данные (playerName,
+        // oldScore/newScore), и он пережил бы удаление раундов ещё 30 дней.
+        // Удаляем только записи, привязанные к раундам: турнирный аудит остаётся,
+        // потому что турниры в этом режиме не удаляются.
+        await forEachChildPage('scoreAudit', 25, async function (dayKey, dayValue) {
+            Object.keys(dayValue || {}).forEach(function (id) {
+                const evt = dayValue[id] || {};
+                if (evt && evt.roundId) updates['scoreAudit/' + dayKey + '/' + id] = null;
+            });
         });
     }
     // Сброс игровых сессий на всех устройствах (клиенты слушают этот ключ).
@@ -377,6 +405,110 @@ exports.onBroadcastCreated = functions.database.ref('/broadcasts/{id}').onCreate
 });
 
 // Вызов судьи/маршала: пушим админам (роль admin в users/<uid>).
+// ── Доставка вызова судьи/маршала в Telegram и ВКонтакте ─────────────────
+// Токены лежат в ветке channels/ (database.rules.json: .read только для
+// админа/мастера) и читаются исключительно Admin SDK — браузер игрока секрет
+// не видит. Раньше отправку делал браузер, читая токен из /settings, а у
+// /settings ".read": true, то есть живой токен бота был доступен любому из
+// интернета (docs/CODE-AUDIT-2026-10-2.md, находка 1).
+const CHANNEL_FETCH_TIMEOUT_MS = 6000;
+const VK_API_VERSION = '5.131';
+
+function channelEscHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+}
+
+// Зеркало клиентского buildOfficialCallText (js/official-alerts.js).
+function officialCallHtml(a) {
+    const title = a.type === 'referee' ? '🚨 Вызов Судьи' : '🚨 Вызов Маршала';
+    const time = a.time
+        ? new Date(a.time).toLocaleTimeString('ru-RU', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit' })
+        : '';
+    const flight = (Array.isArray(a.flightMembers) ? a.flightMembers : [])
+        .map(function (n) { return String(n || '').trim(); }).filter(Boolean);
+    const lines = [
+        '<b>' + title + '</b>',
+        '<b>Кто вызвал:</b> ' + channelEscHtml(a.playerName || 'Игрок'),
+        '<b>Лунка:</b> №' + channelEscHtml(a.hole == null ? '?' : a.hole)
+    ];
+    if (time) lines.push('<b>Время:</b> ' + channelEscHtml(time));
+    if (flight.length) lines.push('<b>Состав флайта:</b> ' + channelEscHtml(flight.join(', ')));
+    return lines.join('\n');
+}
+
+async function channelPostJson(url, body) {
+    const controller = new AbortController();
+    const timer = setTimeout(function () { controller.abort(); }, CHANNEL_FETCH_TIMEOUT_MS);
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: controller.signal
+        });
+        return await res.json();
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function readChannelSettings() {
+    try {
+        const snap = await db.ref('channels').get();
+        const v = snap.val() || {};
+        return { telegram: v.telegram || {}, vk: v.vk || {} };
+    } catch (err) {
+        functions.logger.warn('channels settings unavailable', err && err.message);
+        return { telegram: {}, vk: {} };
+    }
+}
+
+// Возвращает список успешно отработавших приёмников ('telegram:group', 'vk').
+// Ошибка одного приёмника не отменяет остальные: вызов в любом случае лежит
+// в alerts/ и виден в админке.
+async function deliverOfficialCall(a) {
+    const cfg = await readChannelSettings();
+    const sent = [];
+    const text = officialCallHtml(a);
+
+    const tgTargets = [];
+    const tg = cfg.telegram || {};
+    if (tg.groupToken && tg.groupId) tgTargets.push(['group', tg.groupToken, tg.groupId]);
+    if (tg.channelToken && tg.channelId) tgTargets.push(['channel', tg.channelToken, tg.channelId]);
+    for (const target of tgTargets) {
+        try {
+            const r = await channelPostJson(
+                'https://api.telegram.org/bot' + encodeURIComponent(target[1]) + '/sendMessage',
+                { chat_id: target[2], text: text, parse_mode: 'HTML' }
+            );
+            if (r && r.ok) sent.push('telegram:' + target[0]);
+            else functions.logger.warn('telegram send failed (' + target[0] + ')', r && r.description);
+        } catch (err) {
+            functions.logger.warn('telegram send error (' + target[0] + ')', err && err.message);
+        }
+    }
+
+    const vk = cfg.vk || {};
+    if (vk.token && vk.peerId) {
+        try {
+            const r = await channelPostJson('https://api.vk.com/method/messages.send', {
+                peer_id: vk.peerId,
+                message: text.replace(/<[^>]+>/g, ''),
+                access_token: vk.token,
+                v: VK_API_VERSION,
+                random_id: Date.now()
+            });
+            if (r && !r.error) sent.push('vk');
+            else functions.logger.warn('vk send failed', r && r.error && r.error.error_msg);
+        } catch (err) {
+            functions.logger.warn('vk send error', err && err.message);
+        }
+    }
+    return sent;
+}
+
 exports.onAlertCreated = functions.database.ref('/alerts/{id}').onCreate(async function (snap) {
     try {
         if (!(await globalNotificationsEnabled())) {
@@ -387,6 +519,12 @@ exports.onAlertCreated = functions.database.ref('/alerts/{id}').onCreate(async f
         if (a.status && a.status !== 'active') return;
         if (a.type !== 'referee' && a.type !== 'marshal') { functions.logger.warn('onAlertCreated: invalid type, skip'); return; }
         if (rateLimited('alert:' + (a.roundId || a.hole || 'anon'), 2000)) { functions.logger.warn('onAlertCreated: rate-limited'); return; }
+
+        // Telegram/VK не зависят от Web Push: раньше при пустом списке
+        // админских подписок функция выходила до всякой рассылки.
+        const channels = await deliverOfficialCall(a);
+        if (channels.length) functions.logger.info('onAlertCreated: delivered via ' + channels.join(', '));
+
         const keys = await ensureVapidKeys();
         configureWebPush(keys);
 

@@ -61,30 +61,45 @@ rounds[GROUP_ID] = {
 
 // ── Фейковая база: подписка 'value' сразу отдаёт текущие данные ──
 var listeners = {};
+// Заглушка понимает orderByChild(...).equalTo(...): страница подписывается на
+// отдельные статусы вместо всего дерева /rounds (находка 4).
+function stubValue(p, query) {
+    if (p !== 'rounds') return null;
+    if (!query) return rounds;
+    var out = {};
+    Object.keys(rounds).forEach(function(k) {
+        var item = rounds[k] || {};
+        if (item[query.child] === query.value) out[k] = rounds[k];
+    });
+    return out;
+}
 function makeRef(p) {
+    var query = null;
     var ref = {
         _p: p || '',
+        orderByChild: function(child) { query = { child: child, value: undefined }; return ref; },
+        equalTo: function(v) { if (query) query.value = v; return ref; },
         on: function(ev, cb) {
             if (ev !== 'value') return;
-            (listeners[ref._p] = listeners[ref._p] || []).push(cb);
-            cb({ val: function() { return ref._p === 'rounds' ? rounds : null; } });
+            (listeners[ref._p] = listeners[ref._p] || []).push({ cb: cb, query: query });
+            cb({ val: function() { return stubValue(ref._p, query); } });
         },
         off: function() {},
-        once: function() { return Promise.resolve({ val: function() { return ref._p === 'rounds' ? rounds : null; } }); },
+        once: function() { return Promise.resolve({ val: function() { return stubValue(ref._p, query); } }); },
         update: function() { return Promise.resolve(); },
         set: function() { return Promise.resolve(); },
         remove: function() { return Promise.resolve(); },
         child: function() { return makeRef(ref._p); },
         push: function() { return makeRef(ref._p); },
         ref: function() { return ref; },
-        toString: function() { return ref._p; }
+        toString: function() { return 'stub://' + (ref._p || ''); }
     };
     return ref;
 }
 function rerender() {
     Object.keys(listeners).forEach(function(p) {
-        listeners[p].forEach(function(cb) {
-            cb({ val: function() { return p === 'rounds' ? rounds : null; } });
+        listeners[p].forEach(function(entry) {
+            entry.cb({ val: function() { return stubValue(p, entry.query); } });
         });
     });
 }

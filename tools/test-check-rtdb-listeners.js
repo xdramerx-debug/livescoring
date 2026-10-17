@@ -119,10 +119,17 @@ assert.strictEqual(functionBody(guarded, 'нетТакой'), '', 'для неи
 const { stats, problems } = checker.scanDir(path.join(__dirname, '..', 'js'));
 assert.deepStrictEqual(problems.map(p => p.file + ':' + p.line + ' ' + p.fn), [],
     'в js/ остались незащищённые RTDB-подписки');
-assert.ok(stats.total >= 30, 'анализатор видит подписки: ' + stats.total);
+// Было 39; шина настроек (js/utils.js) сняла 15 одиночных подписок на ключи
+// settings/* — вместо них один Listen на корень ветки на страницу.
+assert.ok(stats.total >= 20, 'анализатор видит подписки: ' + stats.total);
+assert.strictEqual(
+    checker.scanDir(path.join(__dirname, '..', 'js')).stats.total, stats.total,
+    'повторное сканирование js/ детерминировано');
 assert.strictEqual(stats.inFunction, stats.protected,
     'все подписки внутри функций защищены (' + stats.protected + '/' + stats.inFunction + ')');
-assert.ok(stats.topLevel >= 10, 'подписки верхнего уровня учитываются отдельно: ' + stats.topLevel);
+// Было 14: 12 из них — одиночные ключи settings/* верхнего уровня в utils.js,
+// их забрала шина настроек.
+assert.ok(stats.topLevel >= 2, 'подписки верхнего уровня учитываются отдельно: ' + stats.topLevel);
 
 // ── 9. Конкретные исправления этой волны зафиксированы ──
 const readRaw = checker.readRaw;

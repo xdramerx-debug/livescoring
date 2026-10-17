@@ -52,6 +52,9 @@ jobs:
           npm run lint:syntax
           npm run lint -- --max-warnings=0
           npm run check:globals
+          npm run check:listeners
+          npm run check:fonts
+          node tools/rev-assets.js --check
           npm test
           npm run check:bundle
 

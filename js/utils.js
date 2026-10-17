@@ -12,8 +12,115 @@ function qrUrl(data) { return pestovoQrImageUrl(data, 200); }
 // Одна Firebase-подписка на логический виджет. Повторный рендер (например, при
 // смене языка или фильтра) переиспользует последний снимок, не создавая дублей.
 var realtimeValueBindings = Object.create(null);
+
+// Путь ссылки/запроса из её toString(). Боевой SDK отдаёт полный URL
+// ('https://<db>.firebaseio.com/settings/design'), тестовые заглушки —
+// 'stub://settings/design' без хоста. Хост вырезаем только у http(s): иначе
+// регулярка принимает первый сегмент пути за хост и шина settings молча не
+// включается. Query.toString() не содержит параметров запроса, поэтому способ
+// годится и для db.ref('x').orderByChild(...).
+function pestovoRefPath(ref) {
+    try {
+        var url = String(ref && typeof ref.toString === 'function' ? ref.toString() : '');
+        var scheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(url);
+        var rest = url;
+        if (scheme) {
+            rest = url.slice(scheme[0].length);
+            if (/^https?$/i.test(scheme[1])) {
+                var slash = rest.indexOf('/');
+                rest = slash === -1 ? '' : rest.slice(slash + 1);
+            }
+        }
+        return rest.split('?')[0].replace(/^\/+|\/+$/g, '');
+    } catch (e) { return ''; }
+}
+
+// ── Одна подписка на /settings вместо десятка ─────────────────────────────
+// Замер 2026-10 (docs/CODE-AUDIT-2026-10-2.md, находка 6): 327 RTDB-подписок
+// на 15 страницах, из них 281 — на одиночные ключи settings/* (23–25 на
+// страницу: settings/design, settings/privacy, settings/tn_gender_split, …).
+// Каждая — отдельный Listen-запрос и отдельный снимок. Ветка /settings
+// маленькая и читается всеми (".read": true), поэтому одна подписка на корень
+// ветки с раздачей значений подписчикам даёт то же поведение одним запросом.
+//
+// ВАЖНО: это работает только пока в /settings нет секретов. Токены Telegram/VK
+// оттуда убраны в ветку channels/ (находка 1) — возвращать их сюда нельзя.
+var SETTINGS_BUS_ROOT = 'settings';
+var settingsBus = null;
+
+function pestovoSettingsSnapshot(path, rootValue) {
+    var value = rootValue;
+    var parts = String(path || '').split('/').filter(Boolean);
+    for (var i = 0; i < parts.length; i++) {
+        value = (value && typeof value === 'object') ? value[parts[i]] : null;
+    }
+    if (value === undefined) value = null;
+    function childSnap(childPath) { return pestovoSettingsSnapshot(childPath, rootValue); }
+    return {
+        key: parts.length ? parts[parts.length - 1] : null,
+        val: function() { return value; },
+        exists: function() { return value !== null; },
+        hasChildren: function() { return !!value && typeof value === 'object' && Object.keys(value).length > 0; },
+        numChildren: function() { return value && typeof value === 'object' ? Object.keys(value).length : 0; },
+        forEach: function(cb) {
+            if (!value || typeof value !== 'object') return false;
+            var keys = Object.keys(value);
+            for (var k = 0; k < keys.length; k++) {
+                if (cb(childSnap((path ? path + '/' : '') + keys[k])) === true) return true;
+            }
+            return false;
+        },
+        child: function(child) { return childSnap((path ? path + '/' : '') + child); },
+        exportVal: function() { return value; },
+        toString: function() { return 'settings://' + (path || ''); }
+    };
+}
+
+function bindSettingsBusValue(path, render) {
+    if (!settingsBus) {
+        settingsBus = { loaded: false, value: null, subs: Object.create(null) };
+        db.ref(SETTINGS_BUS_ROOT).on('value', function(snapshot) {
+            settingsBus.value = (snapshot && typeof snapshot.val === 'function' ? snapshot.val() : null) || {};
+            settingsBus.loaded = true;
+            Object.keys(settingsBus.subs).forEach(function(subPath) {
+                var entry = settingsBus.subs[subPath];
+                try {
+                    entry.render(pestovoSettingsSnapshot(subPath, settingsBus.value));
+                } catch (e) { console.error('[Firebase] settings:' + subPath + ':', e); }
+            });
+        }, function(error) {
+            console.error('[Firebase] settings bus:', error);
+        });
+    }
+    var existing = settingsBus.subs[path];
+    if (!existing) existing = settingsBus.subs[path] = { render: render };
+    else existing.render = render;
+    if (settingsBus.loaded) {
+        try { existing.render(pestovoSettingsSnapshot(path, settingsBus.value)); }
+        catch (e) { console.error('[Firebase] settings:' + path + ':', e); }
+    }
+}
+
+// Публичный вход в шину: подписка на ключ настроек без отдельного Listen-а.
+// Путь принимается и полный ('settings/design'), и относительный ('design').
+function bindSettingsValue(path, render) {
+    if (!path || typeof render !== 'function') return;
+    var rel = String(path).indexOf(SETTINGS_BUS_ROOT + '/') === 0
+        ? String(path).slice(SETTINGS_BUS_ROOT.length + 1)
+        : String(path).replace(/^\/+/, '');
+    if (rel === SETTINGS_BUS_ROOT) rel = '';
+    if (typeof db === 'undefined' || !db) return;
+    bindSettingsBusValue(rel, render);
+}
+
 function bindRealtimeValue(key, firebaseRef, render) {
     if (!key || !firebaseRef || typeof render !== 'function') return;
+    var refPath = pestovoRefPath(firebaseRef);
+    if (typeof db !== 'undefined' && db &&
+        (refPath === SETTINGS_BUS_ROOT || refPath.indexOf(SETTINGS_BUS_ROOT + '/') === 0)) {
+        bindSettingsBusValue(refPath === SETTINGS_BUS_ROOT ? '' : refPath.slice(SETTINGS_BUS_ROOT.length + 1), render);
+        return;
+    }
     var binding = realtimeValueBindings[key];
     if (!binding) {
         binding = realtimeValueBindings[key] = { render: render, snapshot: null };
@@ -54,7 +161,13 @@ function loadMyActiveRounds(targetId) {
     var el = document.getElementById(targetId);
     if (!el || typeof db === 'undefined') return;
 
-    bindRealtimeValue('my-active-rounds:' + targetId, db.ref('rounds'), function(snap) {
+    // Только активные раунды: блоку «Мои активные раунды» остальная история
+    // не нужна, а подписка на всё дерево /rounds качала её на каждой странице
+    // (docs/CODE-AUDIT-2026-10-2.md, находка 4). Индекс — .indexOn ["status"]
+    // в database.rules.json; без задеплоенного индекса запрос тоже работает,
+    // просто сканированием на сервере.
+    bindRealtimeValue('my-active-rounds:' + targetId,
+        db.ref('rounds').orderByChild('status').equalTo('active'), function(snap) {
         var data = snap.val() || {};
         if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
         var myActive = [];
@@ -7771,7 +7884,7 @@ function getFlightPlayerNames(roundData, excludeUid) {
 // и поэтому не перезаписывается этой настройкой.
 if (typeof db !== 'undefined') {
     try {
-        db.ref('settings/stableford_display_default').on('value', function(sn) {
+        bindSettingsValue('settings/stableford_display_default', function(sn) {
             syncStablefordDisplayDefault(sn.val());
         });
     } catch (e) { console.warn("[silent]", e); }
@@ -7859,34 +7972,34 @@ function applyPageVisibilitySettings() {
 
 if (typeof db !== 'undefined') {
     try {
-        db.ref('settings/hidden_pages').on('value', function(sn) {
+        bindSettingsValue('settings/hidden_pages', function(sn) {
             var hp = sn.val() || {};
             localStorage.setItem('pestovo_hidden_pages', JSON.stringify(hp));
             applyPageVisibilitySettings();
         });
         // Глобальный выбор стиля галочки гандикапа (админ-панель → «Данные»)
-        db.ref('settings/hcp_badge_variant').on('value', function(sn) {
+        bindSettingsValue('settings/hcp_badge_variant', function(sn) {
             var v = sn.val();
             if ((v === '1' || v === '2' || v === '3') && v !== pestovoHcpBadgeVariant) {
                 applyHcpBadgeVariant(v);
             }
         });
         // Глобальный выбор оформления PNG-карточки для социальных сетей.
-        db.ref('settings/social_card_variant').on('value', function(sn) {
+        bindSettingsValue('settings/social_card_variant', function(sn) {
             var v = sn.val();
             if (SOCIAL_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoSocialCardVariant) {
                 applySocialCardVariant(String(v));
             }
         });
         // Глобальный выбор оформления счётной карточки игрока в лидерборде турнира.
-        db.ref('settings/tn_scorecard_variant').on('value', function(sn) {
+        bindSettingsValue('settings/tn_scorecard_variant', function(sn) {
             var v = sn.val();
             if (TN_CARD_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnCardVariant) {
                 applyTnCardVariant(String(v));
             }
         });
         // Глобальный выбор вида лидерборда турнира — 5 вариантов (требование #7).
-        db.ref('settings/tournament_leaderboard_variant').on('value', function(sn) {
+        bindSettingsValue('settings/tournament_leaderboard_variant', function(sn) {
             var v = sn.val();
             if (TN_LB_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnLbVariant) {
                 applyTnLbVariant(String(v));
@@ -7895,27 +8008,27 @@ if (typeof db !== 'undefined') {
         // Видимость гандикапных групп/дивизионов на странице турниров.
         // Нет настройки в базе → дефолт «показывать» (группы скрывает
         // только явный false/0 из админки).
-        db.ref('settings/tn_groups_visible').on('value', function(sn) {
+        bindSettingsValue('settings/tn_groups_visible', function(sn) {
             var v = sn.val();
             if (v === null || typeof v === 'undefined') v = true;
             applyTnGroupsVisible(v === true || v === '1' || v === 1);
         });
         // 4 варианта списка участников/групп.
-        db.ref('settings/tn_roster_variant').on('value', function(sn) {
+        bindSettingsValue('settings/tn_roster_variant', function(sn) {
             var v = sn.val();
             if (TN_ROSTER_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnRosterVariant) {
                 applyTnRosterVariant(String(v));
             }
         });
         // Разделение лидерборда турнира по полу — 3 вида (выбирает админ).
-        db.ref('settings/tn_gender_split').on('value', function(sn) {
+        bindSettingsValue('settings/tn_gender_split', function(sn) {
             var v = sn.val();
             if (TN_GENDER_SPLIT_VARIANTS.indexOf(String(v)) !== -1 && String(v) !== pestovoTnGenderSplit) {
                 applyTnGenderSplit(String(v));
             }
         });
         // Сброс ВСЕХ локальных сессий после очистки данных в админке.
-        db.ref('settings/sessions_reset_ts').on('value', function(sn) {
+        bindSettingsValue('settings/sessions_reset_ts', function(sn) {
             var ts = parseInt(sn.val(), 10) || 0;
             if (!ts) return;
             var known = 0;
@@ -7928,7 +8041,7 @@ if (typeof db !== 'undefined') {
         // Шаблоны оформления сайта (админ-панель → «Дизайн 🎨»).
         // Ключа settings/design может не быть — тогда работает текущий дизайн,
         // ничего не переопределяется.
-        db.ref('settings/design').on('value', function(sn) {
+        bindSettingsValue('settings/design', function(sn) {
             var val = sn.val();
             if (typeof PestovoDesign === 'undefined') return;
             if (val && typeof val === 'object') {
@@ -7942,7 +8055,7 @@ if (typeof db !== 'undefined') {
         // поэтому отсутствие ключа в старой базе ничего не меняет.
         Object.keys(PAGE_DISPLAY_VARIANT_CONFIG).forEach(function(page) {
             var cfg = PAGE_DISPLAY_VARIANT_CONFIG[page];
-            db.ref(cfg.firebase).on('value', function(sn) {
+            bindSettingsValue(cfg.firebase, function(sn) {
                 var value = sn.val();
                 if (pageDisplayVariantKeys(page).indexOf(String(value)) !== -1 && String(value) !== getPageDisplayVariant(page)) {
                     applyPageDisplayVariant(page, String(value));
@@ -9117,7 +9230,7 @@ function initPrivacySettings() {
     if (pestovoPrivacySettingsBound) return;
     pestovoPrivacySettingsBound = true;
     try {
-        db.ref('settings/privacy').on('value', function(sn) {
+        bindSettingsValue('settings/privacy', function(sn) {
             var v = sn.val() || {};
             pestovoPrivacy.enabled = v.enabled === true;
             pestovoPrivacy.maskMode = v.maskMode === 'masked' ? 'masked' : 'initials';

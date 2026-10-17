@@ -98,12 +98,21 @@ for (const page of htmlFiles) {
 }
 
 // ── 4. Precache-манифест ──────────────────────────────────────────────────
-const pages = ['./'].concat(htmlFiles);
-// Файл, нужный только админке, игрокам в предкэше не нужен (см. шапку, п.2).
+// В предкэш кладём только то, что нужно игроку без сети. Админка и страницы
+// превью (дизайна и бейджа гандикапа) — рабочие инструменты, ими пользуются
+// с сети; их файлы всё равно доезжают по stale-while-revalidate из fetch-
+// хендлера и кэшируются при первом обращении, поэтому офлайн-режим они не
+// ломают — просто не грузятся в кэш заранее (docs/CODE-AUDIT-2026-10-2.md,
+// находка 11: 70 записей / 1.85 МБ raw / 637 КБ gzip на каждую установку SW).
+const PRECACHE_SKIP_PAGES = ['admin.html', 'design-preview.html', 'hcp-badge-preview.html'];
+const skipped = new Set(htmlFiles.filter(function (f) { return PRECACHE_SKIP_PAGES.indexOf(f) !== -1; }));
+
+const pages = ['./'].concat(htmlFiles.filter(function (f) { return !skipped.has(f); }));
 const assets = Array.from(refs.keys()).sort()
     .filter(function (f) {
         var owners = refs.get(f);
-        return !(owners.size === 1 && owners.has('admin.html'));
+        for (var owner of owners) if (!skipped.has(owner)) return true;
+        return false;
     })
     .map(function (f) { return f + '?v=' + versions.get(f); });
 
@@ -171,19 +180,36 @@ const nextSw = swReplaced.slice(0, beginIdx) + newBlock + swReplaced.slice(endId
 const swChanged = nextSw !== sw;
 if (swChanged && !CHECK) fs.writeFileSync(swPath, nextSw);
 
+// ── 7. Версия в package.json = версия сайта ───────────────────────────────
+// Источник истины — <span class="version-number"> в index.html (из него же
+// считается CACHE_NAME). package.json жил своей жизнью: на 1.117.0 в нём
+// стояло 1.0.0 (docs/CODE-AUDIT-2026-10-2.md, находка 13). Синхронизируем
+// здесь, чтобы версия не разъезжалась молча.
+const pkgPath = path.join(ROOT, 'package.json');
+const pkgRaw = fs.readFileSync(pkgPath, 'utf8');
+const pkgVersionRe = /^(\s*"version":\s*")([^"]*)(")/m;
+if (!pkgVersionRe.test(pkgRaw)) fail('package.json: не найдено поле "version"');
+const pkgVersion = pkgVersionRe.exec(pkgRaw)[2];
+const pkgChanged = pkgVersion !== siteVersion;
+if (pkgChanged && !CHECK) {
+    fs.writeFileSync(pkgPath, pkgRaw.replace(pkgVersionRe, '$1' + siteVersion + '$3'));
+}
+
 // ── Отчёт ─────────────────────────────────────────────────────────────────
 const summary = 'ассетов: ' + manifest.length + ' (страниц: ' + pages.length +
     ', js+css: ' + assets.length + ', прочее: ' + extras.length + '), CACHE_NAME: ' + cacheName;
 
 if (CHECK) {
-    if (changedHtml.length || swChanged) {
+    if (changedHtml.length || swChanged || pkgChanged) {
         console.error('rev-assets --check: устарело. HTML: ' +
-            (changedHtml.join(', ') || '—') + '; sw.js: ' + (swChanged ? 'манифест/CACHE_NAME' : 'актуален'));
+            (changedHtml.join(', ') || '—') + '; sw.js: ' + (swChanged ? 'манифест/CACHE_NAME' : 'актуален') +
+            '; package.json: ' + (pkgChanged ? pkgVersion + ' → ' + siteVersion : 'актуален'));
         console.error('Запустите: npm run assets');
         process.exit(1);
     }
-    console.log('rev-assets --check: OK. ' + summary);
+    console.log('rev-assets --check: OK. ' + summary + ', версия ' + siteVersion);
 } else {
     console.log('rev-assets: обновлено HTML: ' + (changedHtml.length ? changedHtml.join(', ') : 'нет') +
-        '; sw.js: ' + (swChanged ? 'да' : 'нет') + '. ' + summary);
+        '; sw.js: ' + (swChanged ? 'да' : 'нет') +
+        '; package.json: ' + (pkgChanged ? pkgVersion + ' → ' + siteVersion : 'без изменений') + '. ' + summary);
 }

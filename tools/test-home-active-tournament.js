@@ -87,23 +87,37 @@ function makeSandbox(store) {
         .forEach(function(id) { els[id] = fakeEl(id); });
     els['active-tournament-section'].classList.add('hidden');
 
+    // Заглушка понимает orderByChild(...).equalTo(...) — страница подписывается
+    // на отдельные статусы вместо всего дерева /rounds (находка 4).
+    function valueFor(p, query) {
+        var val = p === 'rounds' ? store.rounds : (p === 'tournaments' ? store.tournaments : null);
+        if (!query || !val || typeof val !== 'object') return val;
+        var out = {};
+        Object.keys(val).forEach(function(k) {
+            var item = val[k] || {};
+            if (item[query.child] === query.value) out[k] = val[k];
+        });
+        return out;
+    }
     function makeRef(p) {
+        var query = null;
         var ref = {
             _p: p || '',
+            orderByChild: function(child) { query = { child: child, value: undefined }; return ref; },
+            equalTo: function(v) { if (query) query.value = v; return ref; },
             on: function(ev, cb) {
                 if (ev !== 'value') return;
-                var val = p === 'rounds' ? store.rounds : (p === 'tournaments' ? store.tournaments : null);
-                cb({ val: function() { return val; } });
+                cb({ val: function() { return valueFor(p, query); } });
             },
             off: function() {},
             once: function() {
-                var val = p === 'rounds' ? store.rounds : (p === 'tournaments' ? store.tournaments : null);
-                return Promise.resolve({ val: function() { return val; } });
+                return Promise.resolve({ val: function() { return valueFor(p, query); } });
             },
             update: function() { return Promise.resolve(); },
             set: function() { return Promise.resolve(); },
             remove: function() { return Promise.resolve(); },
-            child: function() { return makeRef(p); }
+            child: function() { return makeRef(p); },
+            toString: function() { return 'stub://' + (p || ''); }
         };
         return ref;
     }

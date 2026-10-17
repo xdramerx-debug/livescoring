@@ -82,9 +82,15 @@ function downloadJSONBackup() {
     // permission_denied: в RTDB чтение не «объединяет» права потомков.
     // Раньше кнопка бэкапа молча ничего не делала. Читаем только те узлы,
     // которые правила явно дают админу.
+    // Список обязан покрывать все ветки с данными, которые удаляет wipeAllData
+    // (functions/index.js): бэкап, из которого нельзя восстановить удалённое,
+    // — не бэкап. Секреты намеренно не выгружаются: channels/ (токены
+    // Telegram/VK) и vapid/ (приватный VAPID-ключ) не должны попадать в файл,
+    // который скачивается на устройство.
     var nodes = ['users', 'settings', 'rounds', 'tournaments', 'protocols', 'markers',
                  'markerAssignments', 'alerts', 'broadcasts', 'leaderboard', 'reactions',
-                 'tnTemplates', 'push_subscriptions', 'scoreAudit'];
+                 'tnTemplates', 'tnDrafts', 'push_subscriptions', 'scoreAudit',
+                 'hcpLog', 'errorReports'];
     var result = {};
     var failed = [];
     var chain = Promise.resolve();

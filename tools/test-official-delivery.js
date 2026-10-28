@@ -5,10 +5,16 @@
  *
  * Зачем. Жалоба с поля: «тестовые уведомления приходят и в ВК, и в Telegram,
  * а когда игрок жмёт «Вызвать судью» — нет». Кнопки «Проверить Группу/Канал/ВК»
- * в админке отправляют сообщение ИЗ БРАУЗЕРА значением из поля ввода, поэтому
- * они проходят даже тогда, когда боевой путь сломан. Боевой путь другой:
- *   игрок → alerts/<id> → Cloud Function onAlertCreated → Telegram/VK,
- * и токены он берёт из ветки channels/ через Admin SDK.
+ * в админке отправляют сообщение значением из поля ввода, поэтому они проходят
+ * даже тогда, когда боевой путь сломан. Боевой путь другой: игрок → alerts/<id>
+ * → рассылка по токенам из ветки channels/.
+ *
+ * Кто именно рассылает, задаёт settings/alert_delivery_mode:
+ *   'client' (по умолчанию) — браузер того, кто нажал кнопку. Cloud Functions
+ *            не нужны вообще; токены читаются из channels/ (database.rules.json:
+ *            ".read": "auth != null") и живут только в памяти страницы;
+ *   'server' — Cloud Function onAlertCreated через Admin SDK, браузер молчит.
+ * Второй отправитель молчит всегда, поэтому дублей нет ни в одном из режимов.
  *
  * Что проверяем (реальные причины расхождения теста и боя):
  *  1. VK: сервер обязан слать application/x-www-form-urlencoded. VK API не
@@ -29,7 +35,15 @@
  *     в channels/ больше не проглатывается, есть кнопка серверной проверки.
  *  8. Поведение новых кусков админки в jsdom: слияние при сохранении, отчёт
  *     серверной проверки, инструкция при незадеплоенной функции, строка
- *     доставки в панели «Вызовы» и экранирование причины отказа.
+ *     доставки в панели «Вызовы», экранирование причины отказа и переключатель
+ *     режима доставки (подпись, предупреждение о токенах, запись в базу).
+ *  9. Клиентская доставка в vm-песочнице: реальные запросы в Telegram и VK
+ *     JSONP, дедупликация двух точек входа, режимы client/server, глобальный
+ *     выключатель, старые имена полей, один бот на группу и канал, пустые
+ *     настройки, отказ одного канала, незадеплоенные правила и запрещённая
+ *     запись отчёта.
+ * 10. Проводка: вызов приносит alertId, запись в alerts/ приносит createdBy,
+ *     в админке есть селектор режима и обработчики.
  *
  * Запуск: node tools/test-official-delivery.js
  */
@@ -422,6 +436,10 @@ function checkUiBehaviour() {
     }
     const tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
 
+    // Записи режима доставки проверяются в следующих звеньях цепочки, поэтому
+    // переменная обязана жить в области видимости функции, а не одного .then().
+    let modeWrites = [];
+
     // 4.1 Пустое поле токена не затирает сохранённый токен.
     let writes = mockDb({ 'channels/telegram': { groupToken: 'SAVED_TG', groupId: '-1001', channelToken: 'SAVED_CH', channelId: '@club' } });
     win.document.getElementById('tg-group-bot-token').value = '';
@@ -514,8 +532,26 @@ function checkUiBehaviour() {
             'незадеплоенная функция: показана команда деплоя');
 
         // 4.6 Отчёт доставки в панели «Вызовы» + экранирование причины.
+        // Кто виноват в отсутствии отчёта, зависит от режима доставки: в
+        // браузерном (по умолчанию) — незадеплоенные правила базы, в серверном
+        // — Cloud Function. Подсказка обязана называть свою причину.
+        win.alertDeliveryMode = 'client';
+        const noneClient = win.renderAlertDeliveryStatus(undefined);
+        ok(/Нет отчёта о доставке/.test(noneClient) && /firebase deploy --only database/.test(noneClient),
+            'без delivery в режиме «Браузер» — подсказка про деплой правил базы');
+        win.alertDeliveryMode = 'server';
         const none = win.renderAlertDeliveryStatus(undefined);
-        ok(/Нет отчёта серверной доставки/.test(none), 'без delivery — явная подсказка, а не тишина');
+        ok(/Нет отчёта серверной доставки/.test(none),
+            'без delivery в режиме «Сервер» — явная подсказка, а не тишина');
+        win.alertDeliveryMode = 'client';
+        const byClient = win.renderAlertDeliveryStatus({
+            by: 'client', channels: { 'telegram:group': 'sent', vk: 'sent' }, sent: 2, at: Date.now()
+        });
+        ok(/Доставка из браузера/.test(byClient) && /is-ok/.test(byClient),
+            'отчёт браузера игрока подписан как браузерный, а не серверный');
+        const serverSkip = win.renderAlertDeliveryStatus({ skipped: 'server_mode' });
+        ok(/режим доставки «Сервер»/.test(serverSkip),
+            'молчание браузера в серверном режиме объясняется в панели');
         const bad = win.renderAlertDeliveryStatus({
             channels: { 'telegram:group': 'sent', vk: 'error: code 100: <img src=x onerror=alert(1)>' },
             configured: { 'telegram:group': true, vk: true }, sent: 1, push: 2, at: Date.now()
@@ -526,12 +562,371 @@ function checkUiBehaviour() {
             'причина отказа экранирована (строка приходит с сервера)');
         const off = win.renderAlertDeliveryStatus({ skipped: 'notifications_disabled' });
         ok(/выключены для всех/.test(off), 'глобальный выключатель объясняется в панели');
+
+        // 4.7 Переключатель режима доставки: чтение из базы, подпись режима,
+        // предупреждение о видимости токенов и запись settings/alert_delivery_mode.
+        win.t = function (k) { return k; }; // словарь не нужен — проверяем ключи
+        win.document.body.insertAdjacentHTML('beforeend',
+            '<select id="alert-delivery-mode"><option value="client"></option><option value="server"></option></select>' +
+            '<small id="alert-delivery-mode-note"></small>' +
+            '<p id="alert-delivery-warn" class="hidden"></p>');
+        modeWrites = mockDb({ 'settings/alert_delivery_mode': 'server' });
+        win.loadAlertDeliveryMode();
+        return tick().then(tick);
+    }).then(function () {
+        const sel = win.document.getElementById('alert-delivery-mode');
+        const note = win.document.getElementById('alert-delivery-mode-note');
+        const warn = win.document.getElementById('alert-delivery-warn');
+        eq(win.alertDeliveryMode, 'server', 'loadAlertDeliveryMode прочитал режим из базы');
+        eq(sel.value, 'server', 'селектор показывает сохранённый режим');
+        eq(note.getAttribute('data-i18n'), 'srv_delivery_mode_server_note',
+            'подпись режима живёт в data-i18n — смена языка её перезаполнит');
+        ok(/hidden/.test(warn.className),
+            'в серверном режиме предупреждение о токенах скрыто (браузер их не читает)');
+
+        win.saveAlertDeliveryMode('client');
+        return tick().then(tick);
+    }).then(function () {
+        const warn = win.document.getElementById('alert-delivery-warn');
+        const note = win.document.getElementById('alert-delivery-mode-note');
+        const w = modeWrites.filter(function (x) { return x.path === 'settings/alert_delivery_mode'; })[0];
+        ok(!!w && w.op === 'set' && w.value === 'client',
+            'saveAlertDeliveryMode пишет settings/alert_delivery_mode = client');
+        eq(win.alertDeliveryMode, 'client', 'режим переключён на браузерный');
+        eq(note.getAttribute('data-i18n'), 'srv_delivery_mode_client_note', 'подпись режима обновлена');
+        ok(!/hidden/.test(warn.className) && warn.getAttribute('data-i18n') === 'srv_delivery_client_warn',
+            'в браузерном режиме показано предупреждение о видимости токенов вошедшим');
+        ok(toasts.some(function (x) { return /srv_delivery_mode_saved/.test(x.m); }),
+            'админ получает подтверждение сохранения режима');
     });
+}
+
+// ── 5. Клиентская доставка: браузер игрока (режим по умолчанию) ───────────
+// Cloud Functions для вызова судьи больше не обязательны: сообщение отправляет
+// тот, кто нажал кнопку. Проверяем реальные запросы — иначе «не работает» и
+// «работает» снова неотличимы друг от друга.
+const clientSrc = read('js/official-alerts.js');
+const CLIENT_NEEDED = ['buildOfficialCallText', 'pestovoOfficialChannels',
+    'sendTelegramSilentAlert', 'vkBuildAlertText', 'vkSendMessageJsonp',
+    'sendVKSilentAlert', 'pestovoRecordClientDelivery', 'pestovoDeliverOfficialCall',
+    'sendTelegramOfficialAlert', 'sendVKOfficialAlert'];
+const clientParts = [];
+CLIENT_NEEDED.forEach(function (name) {
+    const body = fnBody(clientSrc, name);
+    ok(!!body, 'клиент: извлечена функция ' + name);
+    // fnBody возвращает тело вместе со скобками, но без сигнатуры. Песочница
+    // исполняется в нестрогом режиме, где объявление функции внутри блока
+    // всплывает в глобальную область — ровно так работает и серверная часть.
+    if (body) clientParts.push(body);
+});
+const CLIENT_EXPOSE = CLIENT_NEEDED.map(function (n) {
+    return '\nthis.' + n + ' = ' + n + ';';
+}).join('');
+
+function makeClientSandbox(channelsValue, mode, opts) {
+    opts = opts || {};
+    const calls = [], scripts = [], writes = [], toasts = [];
+    const sandbox = {
+        console: console, setTimeout: setTimeout, clearTimeout: clearTimeout,
+        Date: Date, Math: Math, JSON: JSON, Object: Object, String: String,
+        encodeURIComponent: encodeURIComponent, AbortController: AbortController,
+        calls: calls, scripts: scripts, writes: writes, toasts: toasts,
+        toast: function (m, k) { toasts.push({ m: String(m), k: k }); },
+        escapeHtml: function (v) {
+            return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+            });
+        },
+        fmtTime: function () { return '12:00'; },
+        db: {
+            ref: function (p) {
+                return {
+                    once: function () {
+                        if (opts.dbError) return Promise.reject(new Error(opts.dbError));
+                        let v = null;
+                        if (p === 'channels') v = channelsValue;
+                        else if (p === 'settings/alert_delivery_mode') v = mode;
+                        return Promise.resolve({ val: function () { return v; } });
+                    },
+                    update: function (payload) { writes.push({ path: p, op: 'update', payload: payload }); return Promise.resolve(); },
+                    set: function (payload) { writes.push({ path: p, op: 'set', payload: payload }); return Promise.resolve(); }
+                };
+            }
+        },
+        fetch: function (url, init) {
+            calls.push({ url: String(url), init: init || {} });
+            const body = opts.telegramResponse;
+            if (body instanceof Error) return Promise.reject(body);
+            const payload = body === undefined ? { ok: true, result: { message_id: 1 } } : body;
+            return Promise.resolve({ json: function () { return Promise.resolve(payload); } });
+        },
+        document: {
+            // cleanup() в vkSendMessageJsonp вынимает <script> из DOM, поэтому
+            // узлам нужен removeChild — иначе в вывод летит пойманный TypeError.
+            head: {
+                appendChild: function (el) { el.parentNode = sandbox.document.head; scripts.push(el); },
+                removeChild: function (el) { el.parentNode = null; }
+            },
+            body: {
+                appendChild: function (el) { el.parentNode = sandbox.document.body; scripts.push(el); },
+                removeChild: function (el) { el.parentNode = null; }
+            },
+            createElement: function (tag) {
+                return { tagName: String(tag).toUpperCase(), src: '', parentNode: null, onerror: null };
+            }
+        }
+    };
+    sandbox.window = sandbox;
+    if (opts.notificationsEnabled !== undefined) {
+        sandbox.pestovoCheckGlobalNotificationsEnabled = function () {
+            return Promise.resolve(opts.notificationsEnabled);
+        };
+    }
+    vm.createContext(sandbox);
+    vm.runInContext(clientParts.join('\n\n') + CLIENT_EXPOSE, sandbox);
+    return sandbox;
+}
+
+// VK отвечает JSONP-коллбэком: пока его не вызвать, промис не разрешится.
+function flushJsonp(sandbox, payload) {
+    sandbox.scripts.forEach(function (sc) {
+        const m = /callback=([^&]+)/.exec(sc.src || '');
+        if (m && typeof sandbox[m[1]] === 'function') sandbox[m[1]](payload || { response: 42 });
+    });
+}
+function pump(sandbox, rounds) {
+    let chain = Promise.resolve();
+    for (let i = 0; i < (rounds || 8); i++) {
+        chain = chain.then(function () {
+            return new Promise(function (r) { setTimeout(r, 0); });
+        }).then(function () { flushJsonp(sandbox); });
+    }
+    return chain;
+}
+function tgBody(call) {
+    try { return JSON.parse(call.init.body || '{}'); } catch (e) { return {}; }
+}
+
+const FULL_CLIENT = {
+    telegram: { groupToken: 'TG_GROUP', groupId: '-1001', channelToken: 'TG_CHAN', channelId: '@club' },
+    vk: { token: 'VK_TOKEN', peerId: '2000000001' }
+};
+
+function runClientChecks() {
+    // 5.1 Режим 'client': уходят и Telegram (группа + канал), и ВКонтакте.
+    let sb = makeClientSandbox(FULL_CLIENT, 'client');
+    let report = sb.sendTelegramOfficialAlert('referee', 7, 'Иван Петров',
+        ['Иван Петров', 'Пётр Иванов'], null, 'AID1');
+    return pump(sb).then(function () { return report; }).then(function (r) {
+        const tg = sb.calls.filter(function (c) { return /api\.telegram\.org/.test(c.url); });
+        eq(tg.length, 2, 'клиент: два запроса в Telegram — группа и канал');
+        ok(tg.every(function (c) { return c.init.method === 'POST'; }), 'клиент: Telegram — POST');
+        const groupCall = tg.filter(function (c) { return /botTG_GROUP\//.test(c.url); })[0];
+        const chanCall = tg.filter(function (c) { return /botTG_CHAN\//.test(c.url); })[0];
+        ok(!!groupCall && !!chanCall, 'клиент: токен подставлен в URL обоих ботов');
+        if (groupCall) {
+            eq(tgBody(groupCall).chat_id, '-1001', 'клиент: chat_id группы');
+            eq(tgBody(groupCall).parse_mode, 'HTML', 'клиент: группа получает HTML-разметку');
+            ok(/Вызов Судьи/.test(tgBody(groupCall).text) && /Состав флайта/.test(tgBody(groupCall).text),
+                'клиент: в тексте вызова есть заголовок и состав флайта');
+        }
+        if (chanCall) eq(tgBody(chanCall).chat_id, '@club', 'клиент: chat_id канала клуба');
+
+        eq(sb.scripts.length, 1, 'клиент: один JSONP-запрос в ВКонтакте');
+        const vkSrc = sb.scripts[0] ? sb.scripts[0].src : '';
+        ok(/^https:\/\/api\.vk\.com\/method\/messages\.send\?/.test(vkSrc),
+            'клиент: VK — messages.send на api.vk.com');
+        ok(/access_token=VK_TOKEN/.test(vkSrc) && /peer_id=2000000001/.test(vkSrc),
+            'клиент: токен и peer_id подставлены в VK-запрос');
+        ok(/callback=/.test(vkSrc) && /random_id=\d+/.test(vkSrc) && /v=5\.199/.test(vkSrc),
+            'клиент: VK-запрос с callback, random_id и версией API');
+        ok(!/<b>/.test(decodeURIComponent(vkSrc)), 'клиент: в VK уходит обычный текст, без HTML-тегов');
+
+        eq(r.channels, { 'telegram:group': 'sent', 'telegram:channel': 'sent', vk: 'sent' },
+            'клиент: отчёт — все три приёмника доставлены');
+        eq(r.sent, 3, 'клиент: счётчик доставленных равен трём');
+        eq(sb.toasts.length, 0, 'клиент: игрок не видит ни одного тоста о доставке');
+
+        eq(sb.writes.length, 1, 'клиент: отчёт о доставке записан один раз');
+        const w = sb.writes[0] || {};
+        eq(w.path, 'alerts/AID1/delivery', 'клиент: отчёт пишется в alerts/<id>/delivery');
+        eq(w.op, 'update', 'клиент: отчёт пишется update(), а не set() — leaf push от сервера выживает');
+        ok(w.payload && w.payload.by === 'client', 'клиент: отчёт помечен by: "client"');
+        ok(w.payload && w.payload.channels && w.payload.channels.vk === 'sent',
+            'клиент: в отчёте видно статус каждого приёмника');
+    }).then(function () {
+        // 5.2 Дедупликация: onSent зовёт обе точки входа подряд.
+        sb = makeClientSandbox(FULL_CLIENT, 'client');
+        report = sb.sendTelegramOfficialAlert('marshal', 3, 'Анна Смирнова', [], null, 'AID2')
+            .then(function () {
+                return sb.sendVKOfficialAlert('marshal', 3, 'Анна Смирнова', [], 'AID2');
+            });
+        return pump(sb).then(function () { return report; });
+    }).then(function (r) {
+        eq(sb.calls.filter(function (c) { return /api\.telegram\.org/.test(c.url); }).length, 2,
+            'дедупликация: второй вход не удвоил Telegram (группа + канал, а не четыре)');
+        eq(sb.scripts.length, 1, 'дедупликация: второй вход не удвоил ВКонтакте');
+        eq(sb.writes.length, 1, 'дедупликация: отчёт о доставке записан один раз');
+        ok(r && r.channels && r.channels.vk === 'sent', 'дедупликация: второй вход получил тот же отчёт');
+    }).then(function () {
+        // 5.3 Режим 'server': браузер молчит, иначе судейский чат получит дубль.
+        sb = makeClientSandbox(FULL_CLIENT, 'server');
+        report = sb.sendTelegramOfficialAlert('referee', 7, 'Иван Петров', [], null, 'AID3');
+        return pump(sb).then(function () { return report; });
+    }).then(function (r) {
+        eq(sb.calls.length, 0, 'режим server: браузер не ходит в Telegram');
+        eq(sb.scripts.length, 0, 'режим server: браузер не ходит в ВКонтакте');
+        eq(r.skipped, 'server_mode', 'режим server: отчёт помечен server_mode');
+        eq(sb.writes.length, 0, 'режим server: браузер не пишет отчёт — его напишет функция');
+    }).then(function () {
+        // 5.4 Глобальный выключатель уведомлений клуба.
+        sb = makeClientSandbox(FULL_CLIENT, 'client', { notificationsEnabled: false });
+        report = sb.sendTelegramOfficialAlert('referee', 7, 'Иван Петров', [], null, 'AID4');
+        return pump(sb).then(function () { return report; });
+    }).then(function (r) {
+        eq(sb.calls.length, 0, 'уведомления выключены: браузер ничего не отправляет');
+        eq(sb.scripts.length, 0, 'уведомления выключены: ВКонтакте тоже молчит');
+        eq(r.skipped, 'notifications_disabled', 'уведомления выключены: причина записана в отчёт');
+    }).then(function () {
+        // 5.5 Старые имена полей (их оставляет migrateLegacyChannelSecrets).
+        sb = makeClientSandbox({
+            telegram: { botToken: 'LEGACY_TG', chatId: '-1002' },
+            vk: { token: 'VK_TOKEN', peerId: 2000000002 }
+        }, 'client');
+        report = sb.sendTelegramOfficialAlert('referee', 5, 'Ольга Кузнецова', [], null, 'AID5');
+        return pump(sb).then(function () { return report; });
+    }).then(function (r) {
+        ok(/botLEGACY_TG\//.test((sb.calls[0] || {}).url || ''),
+            'клиент: понимает старые botToken/chatId');
+        eq(tgBody(sb.calls[0] || { init: {} }).chat_id, '-1002', 'клиент: старый chatId принят');
+        ok(/peer_id=2000000002/.test((sb.scripts[0] || {}).src || ''),
+            'клиент: числовой peer_id приводится к строке');
+        eq(r.channels['telegram:group'], 'sent', 'клиент: старый формат доставлен');
+        eq(r.channels['telegram:channel'], 'not_configured', 'клиент: канала нет — статус not_configured');
+    }).then(function () {
+        // 5.6 Один бот на группу и канал (подсказка «или использовать один и тот же бот»).
+        sb = makeClientSandbox({
+            telegram: { groupToken: 'TG_GROUP', groupId: '-1001', channelId: '@club' },
+            vk: {}
+        }, 'client');
+        report = sb.sendTelegramOfficialAlert('referee', 9, 'Иван Петров', [], null, 'AID6');
+        return pump(sb).then(function () { return report; });
+    }).then(function (r) {
+        const tg = sb.calls.filter(function (c) { return /api\.telegram\.org/.test(c.url); });
+        eq(tg.length, 2, 'один бот: ушли и группа, и канал');
+        ok(tg.every(function (c) { return /botTG_GROUP\//.test(c.url); }),
+            'один бот: для канала взят токен группы');
+        eq(r.channels['telegram:channel'], 'sent', 'один бот: канал доставлен');
+        eq(r.channels.vk, 'not_configured', 'без токена ВК статус not_configured, а не ошибка');
+        eq(sb.scripts.length, 0, 'без токена ВК запрос в ВКонтакте не создаётся');
+    }).then(function () {
+        // 5.7 Ничего не настроено: запросов нет, но отчёт обязан появиться —
+        // иначе админ снова увидит «тишину» вместо причины.
+        sb = makeClientSandbox({}, 'client');
+        report = sb.sendTelegramOfficialAlert('referee', 1, 'Иван Петров', [], null, 'AID7');
+        return pump(sb).then(function () { return report; });
+    }).then(function (r) {
+        eq(sb.calls.length, 0, 'пустые channels/: ни одного запроса');
+        eq(sb.scripts.length, 0, 'пустые channels/: ВКонтакте не трогается');
+        eq(r.channels, { 'telegram:group': 'not_configured', 'telegram:channel': 'not_configured', vk: 'not_configured' },
+            'пустые channels/: все приёмники помечены not_configured');
+        eq(r.sent, 0, 'пустые channels/: доставлено ноль');
+        eq((sb.writes[0] || {}).path, 'alerts/AID7/delivery', 'пустые channels/: отчёт всё равно записан');
+    }).then(function () {
+        // 5.8 Отказ Telegram не отменяет ВКонтакте и не показывается игроку.
+        sb = makeClientSandbox(FULL_CLIENT, 'client', {
+            telegramResponse: { ok: false, description: 'Bad Request: chat not found' }
+        });
+        report = sb.sendTelegramOfficialAlert('referee', 2, 'Иван Петров', [], null, 'AID8');
+        return pump(sb).then(function () { return report; });
+    }).then(function (r) {
+        ok(/^error: /.test(r.channels['telegram:group']) && /chat not found/.test(r.channels['telegram:group']),
+            'отказ Telegram: причина попала в отчёт');
+        eq(r.channels.vk, 'sent', 'отказ Telegram не отменил доставку в ВКонтакте');
+        eq(r.sent, 1, 'отказ Telegram: счётчик доставленных честный');
+        eq(sb.toasts.length, 0, 'отказ Telegram: игрок не видит ошибку (только «Судья вызван»)');
+        const w = sb.writes[0] || {};
+        ok(w.payload && w.payload.channels && /chat not found/.test(w.payload.channels['telegram:group']),
+            'отказ Telegram: причина сохранена в alerts/<id>/delivery для админа');
+    }).then(function () {
+        // 5.9 Правила не задеплоены (чтение channels/ запрещено): страница жива.
+        sb = makeClientSandbox(null, 'client', { dbError: 'permission_denied' });
+        report = sb.sendTelegramOfficialAlert('referee', 4, 'Иван Петров', [], null, 'AID9');
+        return pump(sb).then(function () { return report; }).then(function (r) {
+            eq(sb.calls.length, 0, 'чтение channels/ запрещено: запросов нет');
+            ok(r && r.channels && r.channels['telegram:group'] === 'not_configured',
+                'чтение channels/ запрещено: отчёт объясняет, что настройки недоступны');
+        });
+    }).then(function () {
+        // 5.10 Запись отчёта запрещена (старые правила): доставка не страдает.
+        sb = makeClientSandbox(FULL_CLIENT, 'client');
+        sb.db.ref = function (p) {
+            return {
+                once: function () {
+                    let v = null;
+                    if (p === 'channels') v = FULL_CLIENT;
+                    else if (p === 'settings/alert_delivery_mode') v = 'client';
+                    return Promise.resolve({ val: function () { return v; } });
+                },
+                update: function () { return Promise.reject(new Error('permission_denied')); }
+            };
+        };
+        report = sb.sendTelegramOfficialAlert('referee', 6, 'Иван Петров', [], null, 'AID10');
+        return pump(sb).then(function () { return report; });
+    }).then(function (r) {
+        eq(r.channels['telegram:group'], 'sent',
+            'запись отчёта запрещена: доставка всё равно выполнена');
+        eq(r.channels.vk, 'sent', 'запись отчёта запрещена: ВКонтакте тоже доставлен');
+    });
+}
+
+// ── 6. Статика: вызов обязан приносить alertId, а запись — createdBy ──────
+function checkClientWiring() {
+    const call = read('js/official-call.js');
+    const solo = read('js/solo.js');
+    const utils = read('js/utils.js');
+    const admin = read('admin.html');
+    const ch = read('js/admin-channels.js');
+    const adminJs = read('js/admin.js');
+
+    ok(/sendTelegramOfficialAlert\(ctx\.type, call\.hole, pName, members, null, call\.alertId\)/.test(call),
+        'official-call.js передаёт alertId в Telegram-точку входа');
+    ok(/sendVKOfficialAlert\(ctx\.type, call\.hole, pName, members, call\.alertId\)/.test(call),
+        'official-call.js передаёт alertId в VK-точку входа');
+    ok(/sendTelegramOfficialAlert\(type, call\.hole, call\.playerName, \[\], null, call\.alertId\)/.test(solo),
+        'solo.js передаёт alertId в Telegram-точку входа');
+    ok(/sendVKOfficialAlert\(type, call\.hole, call\.playerName, \[\], call\.alertId\)/.test(solo),
+        'solo.js передаёт alertId в VK-точку входа');
+
+    const req = fnBody(utils, 'requestOfficialCall') || '';
+    ok(/createdBy: myAuth && myAuth\.uid \? myAuth\.uid : ''/.test(req),
+        'requestOfficialCall пишет createdBy — по нему правила разрешают отчёт о доставке');
+    ok(/call\.alertId = ref\.key/.test(req), 'requestOfficialCall возвращает alertId вызывающему коду');
+
+    ok(/id="alert-delivery-mode"[^>]*data-act="saveAlertDeliveryMode"/.test(admin),
+        'admin.html: селектор режима доставки связан с обработчиком');
+    ok(/<option value="client"/.test(admin) && /<option value="server"/.test(admin),
+        'admin.html: у режима два значения — client и server');
+    ok(/id="alert-delivery-warn"/.test(admin) && /id="alert-delivery-mode-note"/.test(admin),
+        'admin.html: есть место для подписи режима и предупреждения о токенах');
+    ok(/data-act="testServerDelivery"/.test(admin), 'admin.html: кнопка серверной проверки сохранена');
+
+    ok(/function loadAlertDeliveryMode/.test(ch) && /function saveAlertDeliveryMode/.test(ch),
+        'admin-channels.js: режим доставки читается и сохраняется');
+    ok(/db\.ref\('settings\/alert_delivery_mode'\)\.set\(mode\)/.test(ch),
+        'admin-channels.js: режим пишется в settings/alert_delivery_mode');
+    ok(/srv_delivery_client_warn/.test(ch),
+        'admin-channels.js: в браузерном режиме показывается предупреждение о видимости токенов');
+    ok(/typeof loadAlertDeliveryMode === 'function'/.test(adminJs) && /loadAlertDeliveryMode\(\)/.test(adminJs),
+        'admin.js загружает режим доставки вместе с остальными настройками');
 }
 
 runChecks().then(function () {
     checkAdminSide();
+    checkClientWiring();
     return checkUiBehaviour();
+}).then(function () {
+    return runClientChecks();
 }).then(function () {
     console.log('');
     console.log(failures ? ('ПРОВАЛЕНО: ' + failures + ' из ' + checks) : ('ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ (' + checks + ')'));

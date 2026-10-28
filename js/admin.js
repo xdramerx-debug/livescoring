@@ -341,6 +341,7 @@ function openAdminPanel() {
     if (typeof listenForAlerts === 'function') listenForAlerts();
     if (typeof loadTelegramSettings === 'function') loadTelegramSettings();
     if (typeof loadVKSettings === 'function') loadVKSettings();
+    if (typeof loadAlertDeliveryMode === 'function') loadAlertDeliveryMode(); // js/admin-channels.js
     if (typeof loadPageVisibilitySettings === 'function') loadPageVisibilitySettings(); // js/admin-display.js
     if (typeof loadStablefordDisplaySettings === 'function') loadStablefordDisplaySettings(); // js/admin-display.js
     if (typeof loadSocialCardDisplaySettings === 'function') loadSocialCardDisplaySettings(); // js/admin-display.js

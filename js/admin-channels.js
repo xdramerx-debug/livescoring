@@ -486,9 +486,19 @@ function testServerDelivery() {
         var msg = String((err && err.message) || '');
         var text;
         if (/unimplemented|not[-_ ]?found|NOT_FOUND|Requested entity/i.test(code + ' ' + msg)) {
+            // Режим доставки решает, авария это или нет: в режиме «Браузер»
+            // (по умолчанию) Cloud Functions не нужны вообще, и пугать админа
+            // отсутствием функции — значит увести его чинить то, что не сломано.
             text = isEn
-                ? '❌ Cloud Function testOfficialCallDelivery is not deployed (or is outdated). Run: cd functions && npm i && firebase deploy --only functions. Until then calls from the course are NOT sent to Telegram/VK — only the browser test works.'
-                : '❌ Cloud Function testOfficialCallDelivery не задеплоена (или устарела). Выполните: cd functions && npm i && firebase deploy --only functions. Пока этого нет, вызовы с поля в Telegram/VK НЕ уходят — работает только проверка из браузера.';
+                ? '❌ Cloud Function testOfficialCallDelivery is not deployed (or is outdated). Run: cd functions && npm i && firebase deploy --only functions.'
+                : '❌ Cloud Function testOfficialCallDelivery не задеплоена (или устарела). Выполните: cd functions && npm i && firebase deploy --only functions.';
+            text += alertDeliveryMode === 'server'
+                ? (isEn
+                    ? ' Until then calls from the course are NOT sent to Telegram/VK — only the browser test works. Or switch the mode above to “Player browser”.'
+                    : ' Пока этого нет, вызовы с поля в Telegram/VK НЕ уходят — работает только проверка из браузера. Либо переключите режим выше на «Браузер игрока».')
+                : (isEn
+                    ? ' This does not affect the club: in “Player browser” mode calls are sent by the browser of whoever pressed the button — use the Test Group / Test Channel / Test VK Message buttons below.'
+                    : ' На работу клуба это не влияет: в режиме «Браузер игрока» вызовы отправляет браузер того, кто нажал кнопку, — проверяйте их кнопками «Проверить Группу», «Проверить Канал» и «Проверить отправку в ВК» ниже.');
         } else if (/permission-denied|unauthenticated/i.test(code + ' ' + msg)) {
             text = isEn
                 ? '❌ Administrator rights are required (users/<uid>: admin: true or role: "admin").'
@@ -503,5 +513,77 @@ function testServerDelivery() {
             text = '❌ ' + (msg || code || (isEn ? 'unknown error' : 'неизвестная ошибка'));
         }
         renderServerDeliveryStatus(escapeHtml(text), 'bad');
+    });
+}
+
+// ==========================================
+// РЕЖИМ ДОСТАВКИ ВЫЗОВОВ: браузер игрока / сервер
+// ==========================================
+// settings/alert_delivery_mode — публичный узел без секретов:
+//   'client' (по умолчанию, узел может отсутствовать) — вызов судьи/маршала
+//            отправляет браузер того, кто нажал кнопку
+//            (js/official-alerts.js, pestovoDeliverOfficialCall); Cloud
+//            Functions не нужны вообще;
+//   'server' — отправляет Cloud Function onAlertCreated (functions/index.js),
+//            а браузер молчит.
+// Режим читает и браузер игрока, и сервер, и каждый отправляет только в своём
+// режиме, поэтому переключение не даёт дублей в судейском чате.
+var alertDeliveryMode = 'client';
+
+function renderAlertDeliveryMode(mode) {
+    alertDeliveryMode = mode === 'server' ? 'server' : 'client';
+    var sel = document.getElementById('alert-delivery-mode');
+    if (sel) sel.value = alertDeliveryMode;
+
+    var note = document.getElementById('alert-delivery-mode-note');
+    if (note) {
+        var noteKey = alertDeliveryMode === 'server'
+            ? 'srv_delivery_mode_server_note' : 'srv_delivery_mode_client_note';
+        // data-i18n оставляет подпись живой при смене языка: applyTranslations()
+        // (js/i18n.js) перезаполнит её сама, без повторного вызова рендера.
+        note.setAttribute('data-i18n', noteKey);
+        note.innerHTML = t(noteKey);
+    }
+
+    var warn = document.getElementById('alert-delivery-warn');
+    if (warn) {
+        // Предупреждение о видимости токенов касается только браузерного
+        // режима: в серверном браузер игрока их не читает вовсе.
+        if (alertDeliveryMode === 'client') {
+            warn.setAttribute('data-i18n', 'srv_delivery_client_warn');
+            warn.innerHTML = t('srv_delivery_client_warn');
+            warn.classList.remove('hidden');
+        } else {
+            warn.removeAttribute('data-i18n');
+            warn.innerHTML = '';
+            warn.classList.add('hidden');
+        }
+    }
+}
+
+function loadAlertDeliveryMode() {
+    if (typeof db === 'undefined' || !db) { renderAlertDeliveryMode('client'); return; }
+    db.ref('settings/alert_delivery_mode').once('value').then(function (snap) {
+        renderAlertDeliveryMode(snap ? snap.val() : 'client');
+    }).catch(function (err) {
+        console.warn('[channels] delivery mode read failed', err && err.message);
+        renderAlertDeliveryMode('client');
+    });
+}
+
+// data-act="saveAlertDeliveryMode" на <select>: js/ui-events.js передаёт
+// значение поля последним аргументом.
+function saveAlertDeliveryMode(value) {
+    var mode = value === 'server' ? 'server' : 'client';
+    if (typeof db === 'undefined' || !db) { toast(t('srv_delivery_mode_failed'), 'error'); return; }
+    db.ref('settings/alert_delivery_mode').set(mode).then(function () {
+        renderAlertDeliveryMode(mode);
+        toast('✅ ' + t('srv_delivery_mode_saved') + ': ' +
+            t(mode === 'server' ? 'srv_delivery_mode_server' : 'srv_delivery_mode_client'), 'success');
+    }).catch(function (err) {
+        // Запись в settings/ разрешена только админу — возвращаем прежнее
+        // значение, чтобы селектор не обещал того, чего нет в базе.
+        renderAlertDeliveryMode(alertDeliveryMode);
+        toast('❌ ' + t('srv_delivery_mode_failed') + ': ' + ((err && err.message) || err), 'error');
     });
 }

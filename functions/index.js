@@ -666,6 +666,24 @@ async function deliverOfficialCall(a) {
 // Запись отчёта о доставке в сам вызов: alerts/<id>/delivery.
 // Правила RTDB клиентам обновлять alerts/<id> не разрешают, а Admin SDK
 // правилами не ограничен — статус пишет только функция.
+// Режим доставки вызовов судьи/маршала: settings/alert_delivery_mode
+//   'client' (по умолчанию, узел может отсутствовать) — Telegram и ВКонтакте
+//            отправляет браузер игрока (js/official-alerts.js), функция молчит;
+//   'server' — отправляет эта функция (нужен тариф с Cloud Functions).
+// Web Push в любом случае отправляет сервер: браузер игрока не может будить
+// телефон судьи, когда страница уже свёрнута.
+// Узел публичный и секретов не содержит — в отличие от channels/, где живут
+// токены бота и VK-ключа.
+async function deliveryMode() {
+    try {
+        const snap = await db.ref('settings/alert_delivery_mode').get();
+        return snap && snap.val() === 'server' ? 'server' : 'client';
+    } catch (err) {
+        functions.logger.warn('deliveryMode read failed; assuming client', err && err.message);
+        return 'client';
+    }
+}
+
 async function recordDelivery(alertId, report, extra) {
     if (!alertId) return;
     const payload = Object.assign({
@@ -684,40 +702,54 @@ async function recordDelivery(alertId, report, extra) {
 
 exports.onAlertCreated = functions.database.ref('/alerts/{id}').onCreate(async function (snap) {
     try {
+        const mode = await deliveryMode();
+        const serverChannels = mode === 'server';
         if (!(await globalNotificationsEnabled())) {
             functions.logger.info('onAlertCreated: global notifications disabled, skip');
-            await recordDelivery(snap.key, null, { skipped: 'notifications_disabled' });
+            if (serverChannels) await recordDelivery(snap.key, null, { skipped: 'notifications_disabled' });
             return;
         }
         const a = snap.val() || {};
         if (a.status && a.status !== 'active') return;
         if (a.type !== 'referee' && a.type !== 'marshal') { functions.logger.warn('onAlertCreated: invalid type, skip'); return; }
-        // Ключ антиспама — игрок + тип вызова, а не раунд: с прежним ключом
-        // 'alert:<roundId>' второй вызов из того же флайта (маршал у соседа
-        // или судья у другого игрока) в течение 2 секунд отбрасывался целиком,
-        // и в Telegram/VK не уходил вообще.
-        const rateKey = 'alert:' + [a.roundId || 'noround', a.playerId || 'anon', a.type].join(':');
-        if (rateLimited(rateKey, 2000)) {
-            functions.logger.warn('onAlertCreated: rate-limited', rateKey);
-            await recordDelivery(snap.key, null, { skipped: 'rate_limited' });
-            return;
-        }
 
-        // Telegram/VK не зависят от Web Push: раньше при пустом списке
-        // админских подписок функция выходила до всякой рассылки.
-        // Сбой Telegram/VK не должен отменять Web Push: раньше исключение
-        // внутри доставки перепрыгивало в общий catch, и телефон админа
-        // не получал вызов вообще.
-        let report = { sent: [], results: {}, configured: {} };
-        try {
-            report = await deliverOfficialCall(a);
-        } catch (err) {
-            functions.logger.warn('onAlertCreated: channels failed', err && err.message);
-            report.results.error = 'error: ' + channelStr(err && err.message, 200);
+        if (serverChannels) {
+            // Ключ антиспама — игрок + тип вызова, а не раунд: с прежним ключом
+            // 'alert:<roundId>' второй вызов из того же флайта (маршал у соседа
+            // или судья у другого игрока) в течение 2 секунд отбрасывался целиком,
+            // и в Telegram/VK не уходил вообще.
+            const rateKey = 'alert:' + [a.roundId || 'noround', a.playerId || 'anon', a.type].join(':');
+            if (rateLimited(rateKey, 2000)) {
+                functions.logger.warn('onAlertCreated: rate-limited', rateKey);
+                await recordDelivery(snap.key, null, { skipped: 'rate_limited' });
+                return;
+            }
+
+            // Telegram/VK не зависят от Web Push: раньше при пустом списке
+            // админских подписок функция выходила до всякой рассылки.
+            // Сбой Telegram/VK не должен отменять Web Push: раньше исключение
+            // внутри доставки перепрыгивало в общий catch, и телефон админа
+            // не получал вызов вообще.
+            let report = { sent: [], results: {}, configured: {} };
+            try {
+                report = await deliverOfficialCall(a);
+            } catch (err) {
+                functions.logger.warn('onAlertCreated: channels failed', err && err.message);
+                report.results.error = 'error: ' + channelStr(err && err.message, 200);
+            }
+            await recordDelivery(snap.key, report);
+            if (report.sent.length) functions.logger.info('onAlertCreated: delivered via ' + report.sent.join(', '));
+            else functions.logger.warn('onAlertCreated: nothing delivered', JSON.stringify(report.results));
+        } else {
+            // Режим 'client' (по умолчанию): в Telegram и ВКонтакте пишет
+            // браузер игрока, поэтому сервер обязан молчать — иначе судейский
+            // чат получил бы два одинаковых сообщения. Отчёт о доставке
+            // (alerts/<id>/delivery, by: 'client') тоже пишет браузер, и его
+            // нельзя затирать: ниже обновляется только вложенный leaf push.
+            // Антиспам не применяется — браузер игрока сам подтвердил вызов,
+            // а ранний return лишил бы админов Web Push.
+            functions.logger.info('onAlertCreated: delivery mode = client, channels skipped');
         }
-        await recordDelivery(snap.key, report);
-        if (report.sent.length) functions.logger.info('onAlertCreated: delivered via ' + report.sent.join(', '));
-        else functions.logger.warn('onAlertCreated: nothing delivered', JSON.stringify(report.results));
 
         const keys = await ensureVapidKeys();
         configureWebPush(keys);

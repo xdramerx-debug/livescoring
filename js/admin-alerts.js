@@ -140,10 +140,27 @@ function alertDeliveryChannelLabel(label) {
 
 function renderAlertDeliveryStatus(d) {
     var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    // Кто обязан был отправить вызов. alertDeliveryMode живёт в
+    // js/admin-channels.js и грузится вместе с админкой; страховка typeof —
+    // чтобы панель не падала, если файл ещё не исполнен (тесты, старый кэш).
+    var mode = (typeof alertDeliveryMode !== 'undefined' && alertDeliveryMode === 'server')
+        ? 'server' : 'client';
     if (!d) {
+        return '<div class="alert-delivery-status">📡 ' + escapeHtml(mode === 'server'
+            ? (isEn
+                ? 'No server delivery report: Cloud Function onAlertCreated did not process this call (not deployed / outdated, or the call predates the update). Telegram and VK got nothing.'
+                : 'Нет отчёта серверной доставки: Cloud Function onAlertCreated не обработала вызов (не задеплоена/устарела или вызов создан до обновления). В Telegram и ВК ничего не ушло.')
+            : (isEn
+                ? 'No delivery report: the call was to be sent by the player browser, but no status was recorded. Most often the database rules are not deployed (run firebase deploy --only database), or the call predates the update. Check the judges chat.'
+                : 'Нет отчёта о доставке: вызов должен был отправить браузер игрока, но статус не записан. Чаще всего не задеплоены правила базы (выполните firebase deploy --only database) или вызов создан до обновления. Проверьте судейский чат.')) + '</div>';
+    }
+    if (d.skipped === 'server_mode') {
         return '<div class="alert-delivery-status">📡 ' + escapeHtml(isEn
-            ? 'No server delivery report: Cloud Function onAlertCreated did not process this call (not deployed / outdated, or the call predates the update). Telegram and VK got nothing.'
-            : 'Нет отчёта серверной доставки: Cloud Function onAlertCreated не обработала вызов (не задеплоена/устарела или вызов создан до обновления). В Telegram и ВК ничего не ушло.') + '</div>';
+            ? 'The browser did not send anything: delivery mode is “Server”, so Cloud Function onAlertCreated is responsible.'
+            : 'Браузер ничего не отправлял: режим доставки «Сервер», за доставку отвечает Cloud Function onAlertCreated.') + '</div>';
+    }
+    if (d.skipped === 'error') {
+        return '<div class="alert-delivery-status is-bad">📡 ❌ ' + escapeHtml(String(d.error || (isEn ? 'delivery failed' : 'сбой доставки'))) + '</div>';
     }
     if (d.skipped === 'notifications_disabled') {
         return '<div class="alert-delivery-status is-bad">📡 ' + escapeHtml(isEn
@@ -177,8 +194,14 @@ function renderAlertDeliveryStatus(d) {
         parts.push(escapeHtml(isEn ? 'no channels configured' : 'каналы не настроены'));
     }
     var kind = hasError ? ' is-bad' : (hasSent ? ' is-ok' : '');
+    // by: 'client' пишет браузер игрока (js/official-alerts.js), by: 'server' —
+    // Cloud Function. У старых отчётов поля нет: их делал только сервер.
+    var byClient = d.by === 'client';
+    var prefix = byClient
+        ? (isEn ? 'Browser delivery: ' : 'Доставка из браузера: ')
+        : (isEn ? 'Server delivery: ' : 'Серверная доставка: ');
     return '<div class="alert-delivery-status' + kind + '">📡 ' +
-        escapeHtml(isEn ? 'Server delivery: ' : 'Серверная доставка: ') + parts.join(' · ') +
+        escapeHtml(prefix) + parts.join(' · ') +
         (d.at ? ' <span style="opacity:0.7">(' + escapeHtml(typeof fmtTime === 'function' ? fmtTime(d.at) : '') + ')</span>' : '') +
         '</div>';
 }

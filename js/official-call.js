@@ -44,11 +44,14 @@ function pestovoCallOfficial(ctx) {
         onSent: function (call) {
             var pName = call.playerName || 'Player';
             var members = call.flightMembers || [];
+            // alertId — последним аргументом: по нему доставка дедуплицируется
+            // (onSent зовёт обе точки входа подряд) и к вызову привязывается
+            // отчёт о доставке alerts/<id>/delivery.
             if (typeof sendTelegramOfficialAlert === 'function') {
-                sendTelegramOfficialAlert(ctx.type, call.hole, pName, members);
+                sendTelegramOfficialAlert(ctx.type, call.hole, pName, members, null, call.alertId);
             }
             if (typeof sendVKOfficialAlert === 'function') {
-                sendVKOfficialAlert(ctx.type, call.hole, pName, members);
+                sendVKOfficialAlert(ctx.type, call.hole, pName, members, call.alertId);
             }
             if (typeof toast === 'function' && typeof getOfficialRoleName === 'function') {
                 toast('🚨 ' + getOfficialRoleName(ctx.type) +

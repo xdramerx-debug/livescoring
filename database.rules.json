@@ -66,10 +66,14 @@
       },
       "vk": {
         ".validate": "!newData.exists()"
+      },
+      "alert_delivery_mode": {
+        ".read": true,
+        ".validate": "newData.isString() && (newData.val() === 'client' || newData.val() === 'server')"
       }
     },
     "channels": {
-      ".read": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth.uid === 'tournament-master' && auth.token.tournamentMaster === true && auth.token.tournamentMasterUntil > now)",
+      ".read": "auth != null",
       ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin')",
       "telegram": {
         ".validate": "newData.hasChildren() && (!newData.child('groupToken').exists() || newData.child('groupToken').isString()) && (!newData.child('channelToken').exists() || newData.child('channelToken').isString())"
@@ -99,7 +103,10 @@
       ],
       "$id": {
         ".write": "(root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth != null && !data.exists() && newData.exists())",
-        ".validate": "newData.hasChild('type') && (newData.child('type').val() == 'referee' || newData.child('type').val() == 'marshal')"
+        ".validate": "newData.hasChild('type') && (newData.child('type').val() == 'referee' || newData.child('type').val() == 'marshal')",
+        "delivery": {
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('alerts').child($id).child('createdBy').val() === auth.uid || root.child('alerts').child($id).child('playerId').val() === auth.uid)"
+        }
       }
     },
     "rounds": {

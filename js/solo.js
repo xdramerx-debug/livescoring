@@ -1212,8 +1212,10 @@ function callOfficialSolo(type) {
         flightMembers: [],
         canEdit: function() { return canEditSolo; },
         onSent: function(call) {
-            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, call.playerName, []);
-            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, call.playerName, []);
+            // alertId — дедупликация доставки и привязка отчёта
+            // alerts/<id>/delivery (см. js/official-alerts.js).
+            if (typeof sendTelegramOfficialAlert === 'function') sendTelegramOfficialAlert(type, call.hole, call.playerName, [], null, call.alertId);
+            if (typeof sendVKOfficialAlert === 'function') sendVKOfficialAlert(type, call.hole, call.playerName, [], call.alertId);
             toast('🚨 ' + getOfficialRoleName(type) + (currentLang === 'en' ? ' called to hole ' : ' вызван на лунку ') + call.hole + '!', 'warn');
             vib([100, 50, 100]);
         }

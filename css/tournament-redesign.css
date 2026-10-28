@@ -5,7 +5,7 @@
 .tn-public-head:after { content:""; position:absolute; inset:auto -8% -72px 42%; height:190px; background:radial-gradient(ellipse,rgba(201,168,76,.22),transparent 68%); pointer-events:none; }
 .tn-public-head .container { text-align:center; }
 .tn-public-head .page-title { justify-content:center; }
-.tn-public-kicker,.tn-public-eyebrow { color:var(--gold); font-size:10px; font-weight:800; letter-spacing:1.8px; text-transform:uppercase; }
+.tn-public-kicker,.tn-public-eyebrow { color:var(--gold); font-size:11.5px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; }
 .tn-public-lead { max-width:620px; margin:10px auto 0; color:var(--muted); font-size:14px; line-height:1.6; text-align:center; }
 .tn-public-main { padding:34px 20px 72px; min-height:500px; }
 .tn-public-view.hidden { display:none; }

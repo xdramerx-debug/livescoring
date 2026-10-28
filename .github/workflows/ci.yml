@@ -40,6 +40,11 @@ jobs:
       - name: Font Awesome subset freshness
         run: npm run check:fonts
 
+      # Визуальный слой (css/theme-v2.css): контраст пар токенов по WCAG,
+      # наличие токенов светлой темы, подключение слоя на всех страницах.
+      - name: Design tokens and contrast
+        run: npm run check:design
+
       - name: Run tests
         run: npm test
 

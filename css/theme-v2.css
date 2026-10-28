@@ -1,0 +1,1839 @@
+/* ============================================================
+   ВИЗУАЛЬНЫЙ СЛОЙ 2026 · css/theme-v2.css
+   ============================================================
+   Подключается сразу после css/style.css, ДО css/design-presets.css:
+
+       <link rel="stylesheet" href="css/style.css?v=…">
+       <link rel="stylesheet" href="css/theme-v2.css?v=…">   ← этот файл
+       <link rel="stylesheet" href="css/design-presets.css?v=…">
+
+   Зачем отдельный файл. style.css — 6 700 строк с 1 027 `!important`:
+   правка «в глубине» одного компонента тянет за собой пять соседних
+   медиа-запросов. Здесь собран один слой оформления поверх базы:
+   палитра (глубокий зелёный + латунь), поверхности с видимыми границами,
+   шкала отступов/радиусов/теней, типографика и состояния компонентов,
+   которые видит игрок: шапка, hero, карточки, плитки цифр, кнопки, формы,
+   таблицы, бейджи, статусы, подвал, светлая тема.
+
+   Порядок загрузки важен: правила ниже перебивают базу за счёт порядка
+   (равная специфичность) — поэтому все адаптивные правки собраны в блоке
+   «RESPONSIVE» в конце файла, после базовых. `!important` оставлен только
+   там, где он уже стоит в style.css (размеры логотипов, состояния лунок,
+   бейджи, светлая тема), и каждый такой случай подписан.
+
+   Пресеты оформления (css/design-presets.css) грузятся после этого файла
+   и по-прежнему перебивают его — шаблоны из админки работают как раньше.
+   ============================================================ */
+
+/* ============================================================
+   1. ТОКЕНЫ
+   ============================================================ */
+
+:root {
+    /* Поверхности: были почти одного цвета (#0b1a0e / #101f13 / #132218 —
+       1.05–1.09:1 между собой). Теперь у каждой ступени свой шаг. */
+    --bg: #07110a;
+    --bg2: #0a1710;
+    --card: #0f2015;
+    --card-h: #15291c;
+    --input: #0b1811;
+    --green: #17331f;
+    --gr-l: #3f7d54;
+    --gr-d: #081209;
+
+    /* Границы: --line — декоративная (карточки), --line-strong — опорная
+       (поля ввода, активные рамки). 3.1:1 на --card — норма WCAG 1.4.11. */
+    --line: #1f3a29;
+    --line-soft: rgba(216, 178, 99, 0.10);
+    --line-strong: #4a7a56;
+
+    /* Латунь вместо «жёлтого золота»: спокойнее на тёмном, теплее на светлом */
+    --gold: #d8b263;
+    --gold-l: #f1d79c;
+    --gold-d: #a8853c;
+
+    --white: #f3f8f4;
+    --text: #dfe8e1;
+    --muted: #a2b7a8;
+
+    --red: #ef6a58;
+    --blue: #6bb7e8;
+    --yellow: #f0a53c;
+
+    /* Форма */
+    --r: 18px;
+    --rs: 12px;
+    --r-pill: 999px;
+
+    /* Тени: три ступени вместо 124 разных значений */
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.28);
+    --shadow-2: 0 10px 26px rgba(0, 0, 0, 0.30);
+    --shadow-3: 0 22px 52px rgba(0, 0, 0, 0.42);
+    --shd: var(--shadow-2);
+    --shl: var(--shadow-3);
+
+    /* Ритм: 4 px сетка */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 24px;
+    --sp-6: 32px;
+    --sp-7: 48px;
+    --sp-8: 64px;
+
+    /* Типографика */
+    --fs-micro: 12px;
+    --fs-sm: 13.5px;
+    --fs-md: 15px;
+    --fs-lg: 18px;
+    --fs-xl: clamp(22px, 4.4vw, 28px);
+    --fs-2xl: clamp(26px, 5vw, 34px);
+    --lh-tight: 1.22;
+    --lh-body: 1.58;
+
+    /* Кольцо фокуса */
+    --ring: 0 0 0 3px rgba(216, 178, 99, 0.28);
+}
+
+html {
+    color-scheme: dark;
+}
+
+body {
+    font-family: var(--fb);
+    font-size: var(--fs-md);
+    line-height: var(--lh-body);
+    color: var(--text);
+    background:
+        radial-gradient(1100px 560px at 12% -12%, rgba(216, 178, 99, 0.06), transparent 62%),
+        radial-gradient(900px 520px at 104% 2%, rgba(63, 125, 84, 0.18), transparent 64%),
+        var(--bg);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+::selection {
+    background: rgba(216, 178, 99, 0.28);
+    color: var(--white);
+}
+
+/* Заголовки: латунь ушла из h2 — она нужна кнопке и живому счёту */
+h1, h2, h3, h4 {
+    color: var(--white);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   2. ШАПКА
+   ============================================================ */
+
+.nav {
+    padding: 12px 0;
+    background: rgba(7, 17, 10, 0.72);
+    -webkit-backdrop-filter: saturate(150%) blur(18px);
+    backdrop-filter: saturate(150%) blur(18px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.nav-scrolled {
+    padding: 8px 0;
+    background: rgba(7, 17, 10, 0.94);
+    border-bottom-color: var(--line);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.34);
+}
+
+.nav-logo {
+    width: 34px !important;   /* в style.css размер задан через !important */
+    height: 34px !important;
+    max-width: 34px !important;
+    max-height: 34px !important;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(216, 178, 99, 0.28);
+}
+
+.nav-brand {
+    color: var(--white);
+    gap: 12px;
+}
+
+.nav-brand-text {
+    font-family: var(--ff);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+}
+
+.nav-menu {
+    gap: 2px;
+}
+
+.nav-link {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.005em;
+}
+
+.nav-link:hover {
+    color: var(--white);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-link.active {
+    color: var(--gold-l);
+    background: rgba(216, 178, 99, 0.10);
+    box-shadow: inset 0 0 0 1px rgba(216, 178, 99, 0.18);
+}
+
+.nav-uname {
+    color: var(--white);
+    font-weight: 500;
+}
+
+.sun-mode-btn,
+.lang-btn {
+    padding: 6px 11px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.sun-mode-btn:hover,
+.lang-btn:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--line-strong);
+    color: var(--white);
+}
+
+.weather-widget {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    padding: 4px 11px;
+    font-size: 11.5px;
+    color: var(--text);
+    gap: 7px;
+}
+
+.weather-divider {
+    background: var(--line);
+}
+
+.wind-arrow {
+    color: var(--gold);
+}
+
+/* ============================================================
+   3. ГЛАВНЫЙ ЭКРАН
+   ============================================================ */
+
+.hero {
+    min-height: clamp(400px, 62svh, 560px);
+    padding: clamp(84px, 12vh, 120px) 20px clamp(48px, 7vh, 72px);
+    background:
+        radial-gradient(720px 420px at 50% -10%, rgba(216, 178, 99, 0.16), transparent 68%),
+        linear-gradient(158deg, #08150c 0%, #12331f 42%, #0a1c10 72%, #07110a 100%);
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+}
+
+.hero::before {
+    background:
+        radial-gradient(520px 320px at 18% 28%, rgba(216, 178, 99, 0.10), transparent 70%),
+        radial-gradient(680px 420px at 84% 78%, rgba(63, 125, 84, 0.30), transparent 72%);
+}
+
+/* Тонкая световая линия по низу — «рамка кадра», а не заливка */
+.hero::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(216, 178, 99, 0.45), transparent);
+}
+
+.hero-content {
+    max-width: 720px;
+}
+
+.hero-logo {
+    width: 116px !important;      /* размеры в style.css — с !important */
+    height: auto !important;
+    max-width: 116px !important;
+    max-height: 116px !important;
+    margin: 0 auto 24px !important;
+    filter: drop-shadow(0 8px 28px rgba(0, 0, 0, 0.45));
+}
+
+.hero-sub {
+    font-size: 11.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+.hero-title {
+    font-size: clamp(30px, 4.6vw, 52px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--white);
+    margin-bottom: 16px;
+    text-wrap: balance;
+}
+
+.hero-desc {
+    font-size: 15px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    margin-bottom: 30px;
+}
+
+.hero-btns {
+    gap: 12px;
+}
+
+/* ============================================================
+   4. ЗАГОЛОВОК СТРАНИЦЫ И СЕКЦИИ
+   ============================================================ */
+
+.page-head {
+    padding-bottom: 28px;
+    background:
+        radial-gradient(900px 300px at 50% -40%, rgba(216, 178, 99, 0.08), transparent 70%),
+        linear-gradient(180deg, var(--bg2), var(--bg));
+    border-bottom: 1px solid var(--line);
+}
+
+.page-title {
+    font-size: var(--fs-2xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+}
+
+.page-sub {
+    font-size: var(--fs-sm);
+    color: var(--muted);
+    letter-spacing: 0.01em;
+}
+
+.section {
+    padding: var(--sp-8) 0;
+}
+
+.section-alt {
+    background: linear-gradient(180deg, var(--bg2), rgba(10, 23, 16, 0.55));
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.sec-hdr {
+    margin-bottom: var(--sp-5);
+    gap: var(--sp-3);
+}
+
+.sec-t {
+    font-size: var(--fs-xl);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    gap: 10px;
+}
+
+.sec-l {
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    color: var(--gold);
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: var(--r-pill);
+    transition: background var(--t), color var(--t);
+}
+
+.sec-l:hover {
+    background: rgba(216, 178, 99, 0.10);
+    color: var(--gold-l);
+}
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--red);
+    box-shadow: 0 0 0 3px rgba(239, 106, 88, 0.18);
+}
+
+.live-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 5px 11px;
+    border-radius: var(--r-pill);
+    background: rgba(239, 106, 88, 0.12);
+    color: var(--red);
+    box-shadow: inset 0 0 0 1px rgba(239, 106, 88, 0.28);
+}
+
+/* ============================================================
+   5. КАРТОЧКИ И ПЛИТКИ ЦИФР
+   ============================================================ */
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    padding: var(--sp-5);
+    margin-bottom: var(--sp-4);
+    box-shadow: var(--shadow-1);
+    -webkit-backdrop-filter: none;   /* блюр под каждой карточкой — дорого и не виден */
+    backdrop-filter: none;
+}
+
+.card h2 {
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.01em;
+    margin-bottom: var(--sp-3);
+    gap: 10px;
+}
+
+.card h2 i {
+    color: var(--gold);
+    font-size: 0.9em;
+}
+
+.card h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: var(--sp-2);
+}
+
+.round-card,
+.rl-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    box-shadow: var(--shadow-1);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    transition: border-color var(--t), transform var(--t), box-shadow var(--t);
+}
+
+.round-card:hover,
+.rl-card:hover {
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-2);
+}
+
+.rl-card {
+    padding: var(--sp-4);
+}
+
+.rl-head {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: var(--sp-3);
+}
+
+.rl-title {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.01em;
+}
+
+.rl-title i {
+    color: var(--gold);
+    font-size: 12px;
+}
+
+.rl-sub {
+    font-size: var(--fs-micro);
+    color: var(--muted);
+    margin-top: 3px;
+}
+
+.rl-actions {
+    gap: var(--sp-2);
+    margin-top: var(--sp-4);
+}
+
+.stats-grid {
+    gap: var(--sp-4);
+}
+
+.stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    padding: var(--sp-5) var(--sp-4);
+    text-align: center;
+    box-shadow: var(--shadow-1);
+    transition: border-color var(--t), transform var(--t), box-shadow var(--t);
+}
+
+.stat:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-2);
+}
+
+.stat i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    margin-bottom: var(--sp-3);
+    font-size: 16px;
+    color: var(--gold);
+    background: rgba(216, 178, 99, 0.10);
+    border-radius: var(--rs);
+}
+
+.stat-n {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--white);
+    line-height: 1.1;
+}
+
+.stat-l {
+    font-size: var(--fs-micro);
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-top: 6px;
+}
+
+/* ============================================================
+   6. КНОПКИ
+   ============================================================ */
+
+.btn {
+    height: 42px;
+    padding: 0 20px;
+    border-radius: var(--rs);
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-transform: none;              /* капс на всех кнопках — лишний «крик» */
+    gap: 8px;
+    box-shadow: none;
+    transition: background var(--t), border-color var(--t), color var(--t),
+                transform var(--t), box-shadow var(--t);
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn i {
+    font-size: 0.95em;
+}
+
+.btn-sm {
+    height: 34px;
+    padding: 0 14px;
+    font-size: 12.5px;
+    border-radius: 10px;
+}
+
+.btn-lg {
+    height: 50px;
+    padding: 0 28px;
+    font-size: 15px;
+    border-radius: 14px;
+}
+
+.btn-block {
+    height: 48px;
+}
+
+/* Главная кнопка: один непрозрачный акцент вместо трёхстопового градиента */
+.btn-g {
+    background: linear-gradient(180deg, #e8c67e, #d3aa55);
+    color: #14210f;
+    font-weight: 700;
+    box-shadow: 0 6px 18px rgba(216, 178, 99, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.btn-g:hover {
+    background: linear-gradient(180deg, #f2d391, #dcb463);
+    box-shadow: 0 10px 26px rgba(216, 178, 99, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.btn-og {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--line-strong);
+    color: var(--white);
+}
+
+.btn-og:hover {
+    background: rgba(216, 178, 99, 0.10);
+    border-color: var(--gold);
+    color: var(--gold-l);
+}
+
+.btn-ol {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: var(--white);
+}
+
+.btn-ol:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.26);
+    color: var(--white);
+}
+
+.btn-r {
+    background: var(--red);
+    color: #1a0b08;
+    font-weight: 700;
+}
+
+.btn-danger {
+    background: rgba(239, 106, 88, 0.10);
+    border: 1px solid rgba(239, 106, 88, 0.45);
+    color: #ff9d90;
+    font-weight: 600;
+}
+
+.btn-danger:hover {
+    background: rgba(239, 106, 88, 0.18);
+    border-color: var(--red);
+    color: #ffb4aa;
+    box-shadow: none;
+}
+
+.btn-warning {
+    background: rgba(240, 165, 60, 0.10);
+    border: 1px solid rgba(240, 165, 60, 0.45);
+    color: #f6bf7c;
+    font-weight: 600;
+}
+
+.btn-warning:hover {
+    background: rgba(240, 165, 60, 0.18);
+    border-color: var(--yellow);
+    color: #ffd0a0;
+    box-shadow: none;
+}
+
+/* ============================================================
+   7. ФОРМЫ
+   ============================================================ */
+
+.form-group {
+    margin-bottom: var(--sp-4);
+}
+
+.form-group label,
+.form-label {
+    display: block;
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 7px;
+}
+
+.form-input {
+    padding: 11px 14px;
+    border-radius: var(--rs);
+    border: 1px solid var(--line);
+    background: var(--input);
+    color: var(--white);
+    font-size: 14.5px;
+    transition: border-color var(--t), box-shadow var(--t), background var(--t);
+}
+
+.form-input::placeholder {
+    color: rgba(162, 183, 168, 0.6);
+}
+
+.form-input:hover {
+    border-color: var(--line-strong);
+}
+
+.form-input:focus,
+.form-input:focus-visible {
+    border-color: var(--gold);
+    box-shadow: var(--ring);
+    outline: none !important;
+}
+
+select.form-input {
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+        linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 34px;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+/* ============================================================
+   8. ТАБЛИЦЫ
+   ============================================================ */
+
+.lb-table th {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    padding: 10px;
+}
+
+.lb-table td {
+    font-size: var(--fs-sm);
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text);
+}
+
+.lb-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.018);
+}
+
+.lb-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.lb-table tbody tr:hover {
+    background: rgba(216, 178, 99, 0.05);
+}
+
+.lb-score {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--white);
+}
+
+.scorecard {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+.scorecard th {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+}
+
+.scorecard th,
+.scorecard td {
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+.scorecard .row-par td {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--muted);
+}
+
+/* ============================================================
+   9. БЕЙДЖИ, ПИЛЮЛИ, СТАТУСЫ
+   ============================================================ */
+
+.tee-pill,
+.hcp-chip,
+.tn-status,
+.badge-finished,
+.badge-eag,
+.badge-bir,
+.badge-par,
+.badge-bog,
+.badge-dbl {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.5;
+    border: 1px solid transparent;
+}
+
+/* Цвета бейджей в base-файле заданы через color:…!important — перекрываем так же */
+.badge-eag {
+    background: rgba(240, 165, 60, 0.16);
+    color: #f6c078 !important;
+    border-color: rgba(240, 165, 60, 0.35);
+    box-shadow: none;
+}
+
+.badge-bir {
+    background: rgba(63, 125, 84, 0.22);
+    color: #8ed6a8 !important;
+    border-color: rgba(63, 125, 84, 0.5);
+}
+
+.badge-par {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text) !important;
+    border-color: var(--line);
+}
+
+.badge-bog {
+    background: rgba(107, 183, 232, 0.14);
+    color: #9cd0f2 !important;
+    border-color: rgba(107, 183, 232, 0.34);
+}
+
+.badge-dbl {
+    background: rgba(239, 106, 88, 0.14);
+    color: #ffa79c !important;
+    border-color: rgba(239, 106, 88, 0.4);
+}
+
+.badge-finished {
+    background: rgba(63, 125, 84, 0.16);
+    color: #8ed6a8;
+    border-color: rgba(63, 125, 84, 0.4);
+}
+
+.tee-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--line);
+    color: var(--text);
+    font-size: 11px;
+}
+
+.hcp-chip {
+    background: rgba(216, 178, 99, 0.10);
+    border-color: rgba(216, 178, 99, 0.28);
+    color: var(--gold-l);
+}
+
+.rl-sub .tee-pill {
+    font-size: 11px;
+    padding: 2px 8px;
+}
+
+/* Сверка счёта: иконка + форма рамки в дополнение к цвету */
+.verify-ok,
+.verify-wait,
+.verify-fail {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 14px;
+    border-radius: var(--rs);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    margin: 10px 0;
+    animation: none;
+}
+
+.verify-ok {
+    background: rgba(63, 125, 84, 0.12);
+    border: 1px solid rgba(63, 125, 84, 0.42);
+    color: #8ed6a8;
+}
+
+.verify-wait {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--line);
+    color: var(--text);
+}
+
+.verify-fail {
+    background: rgba(239, 106, 88, 0.10);
+    border: 1px dashed rgba(239, 106, 88, 0.6);
+    color: #ffa79c;
+    font-weight: 600;
+    animation: none;                   /* мигание фона — худший тип анимации */
+}
+
+.verify-ok i,
+.verify-wait i,
+.verify-fail i {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+/* ============================================================
+   10. ЛУНКИ (состояния ячеек)
+   ============================================================ */
+
+.hole-nav {
+    gap: 6px;
+}
+
+.hole-btn {
+    min-height: 42px;
+    padding: 9px 4px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--input);
+    color: var(--text);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    transition: background var(--t), border-color var(--t), color var(--t), box-shadow var(--t);
+}
+
+.hole-btn:hover {
+    border-color: var(--line-strong);
+    background: var(--card-h);
+}
+
+.hole-btn.active {
+    background: linear-gradient(180deg, #e8c67e, #d3aa55);
+    border-color: #e8c67e;
+    color: #14210f;
+    font-weight: 800;
+    box-shadow: 0 6px 16px rgba(216, 178, 99, 0.26);
+}
+
+.hole-btn.done {
+    background: rgba(63, 125, 84, 0.14);
+    border-color: rgba(63, 125, 84, 0.5);
+    color: #9adcb4;
+}
+
+/* Состояния ниже заданы в style.css с !important — перекрываем так же */
+.hole-btn.verified {
+    background: rgba(63, 125, 84, 0.20) !important;
+    border-color: #4f9268 !important;
+    color: #a5e6bd !important;
+    box-shadow: inset 0 0 0 1px rgba(63, 125, 84, 0.35) !important;
+}
+
+.hole-btn.pending {
+    background: rgba(174, 180, 186, 0.07) !important;
+    border-color: rgba(174, 180, 186, 0.42) !important;
+    color: #cdd6d0 !important;
+    animation: hole-pending-pulse 2.4s ease-in-out infinite;
+}
+
+.hole-btn.mismatch {
+    background: rgba(239, 106, 88, 0.10) !important;
+    border: 1px dashed rgba(239, 106, 88, 0.75) !important;
+    color: #ffa79c !important;
+    animation: none;
+}
+
+/* Пульсирует только рамка/свечение, фон и цифра остаются читаемыми */
+@keyframes hole-pending-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(174, 180, 186, 0.0); }
+    50% { box-shadow: 0 0 0 3px rgba(174, 180, 186, 0.16); }
+}
+
+.cell-pending {
+    animation: cell-pending-soft 2.4s ease-in-out infinite;
+}
+
+@keyframes cell-pending-soft {
+    0%, 100% { box-shadow: inset 0 0 0 1px rgba(174, 180, 186, 0.30); }
+    50% { box-shadow: inset 0 0 0 2px rgba(174, 180, 186, 0.75); }
+}
+
+.cell-mismatch {
+    animation: cell-mismatch-soft 2s ease-in-out infinite;
+}
+
+@keyframes cell-mismatch-soft {
+    0%, 100% { box-shadow: inset 0 0 0 1px rgba(239, 106, 88, 0.45); }
+    50% { box-shadow: inset 0 0 0 3px rgba(239, 106, 88, 0.9); }
+}
+
+/* ============================================================
+   11. МОДАЛКИ, ТОСТЫ, МЕЛОЧИ
+   ============================================================ */
+
+.modal-bg {
+    background: rgba(4, 9, 6, 0.78);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+}
+
+.modal-body,
+.modal-content {
+    background: var(--card-h);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    box-shadow: var(--shadow-3);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+.modal-top-bar {
+    background: rgba(9, 20, 12, 0.98) !important;
+    border-bottom: 1px solid var(--line) !important;
+    border-top-left-radius: calc(var(--r) - 3px) !important;
+    border-top-right-radius: calc(var(--r) - 3px) !important;
+}
+
+.modal-back-btn {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid var(--line-strong) !important;
+    color: var(--white) !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+}
+
+.modal-back-btn:hover,
+.modal-back-btn:active {
+    background: var(--gold) !important;
+    border-color: var(--gold) !important;
+    color: #14210f !important;
+}
+
+.toast {
+    border-radius: var(--rs);
+    background: var(--card-h);
+    border-color: var(--line);
+    box-shadow: var(--shadow-2);
+    font-size: 12.5px;
+    padding: 9px 32px 10px 11px;
+}
+
+.admin-tab {
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    padding: 9px 15px;
+    transition: background var(--t), color var(--t), border-color var(--t);
+}
+
+.admin-tab:hover {
+    color: var(--white);
+    border-color: var(--line-strong);
+}
+
+.admin-tab.active {
+    background: rgba(216, 178, 99, 0.14);
+    border-color: rgba(216, 178, 99, 0.5);
+    color: var(--gold-l);
+}
+
+.update-banner {
+    background: var(--card-h);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r);
+    box-shadow: var(--shadow-3);
+}
+
+/* ============================================================
+   12. ПОДВАЛ
+   ============================================================ */
+
+.footer {
+    background: var(--gr-d);
+    border-top: 1px solid var(--line);
+    padding: var(--sp-7) 0 var(--sp-5);
+}
+
+.footer-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--white);
+    gap: 9px;
+    margin-bottom: 10px;
+}
+
+.footer-title i {
+    color: var(--gold);
+    font-size: 15px;
+}
+
+.footer-sub {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: var(--sp-3);
+}
+
+.footer-link {
+    font-size: var(--fs-sm);
+    color: var(--muted);
+    padding: 4px 0;
+    transition: color var(--t);
+}
+
+.footer-link:hover {
+    color: var(--gold-l);
+}
+
+.footer-desc {
+    font-size: var(--fs-sm);
+    color: var(--muted);
+}
+
+.footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: var(--sp-4);
+    font-size: var(--fs-micro);
+    color: rgba(162, 183, 168, 0.8);
+}
+
+.site-version {
+    font-size: var(--fs-micro);
+}
+
+/* ============================================================
+   13. МИКРОТИПОГРАФИКА: подписи не мельче 12 px
+   ============================================================ */
+
+.stat-l,
+.rl-sub,
+.footer-desc,
+.footer-link,
+.footer-bottom,
+.site-version,
+.page-sub,
+.sec-l,
+.tee-pill,
+.hcp-chip,
+.tn-status,
+.lb-table th,
+.p-stat-l,
+.toast,
+.field-err-msg,
+.hcp-profile-sync .hcp-source,
+.rlb-sub,
+.rlb-head span,
+.timing-total-badge {
+    font-size: var(--fs-micro);
+}
+
+.rl-sub .tee-pill,
+.rl-sub .hcp-chip {
+    font-size: 11px;
+}
+
+/* Карточка поля (Поле клуба): на телефоне матрица 11 колонок ужималась до
+   8 px — цифры длин и пар не читались. 10.5–11 px помещаются в 28 px ячейку
+   без горизонтального скролла, плитки стали выше. */
+.msc-tile {
+    border-radius: 6px;
+    border-color: rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--text);
+}
+
+.msc-hdr-lbl,
+.msc-hdr-num,
+.msc-hdr-tot {
+    background: rgba(216, 178, 99, 0.14);
+    color: var(--gold);
+    font-weight: 700;
+}
+
+.msc-tile-top,
+.msc-tile-bot {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.msc-hole-num {
+    color: var(--gold);
+}
+
+.msc-hole-stbl {
+    color: #7fd3a1;
+}
+
+.msc-totals-strip,
+.msc-grand-strip {
+    border-radius: 10px;
+    font-size: 12px;
+}
+
+.msc-grand-strip {
+    background: rgba(216, 178, 99, 0.12);
+    border-color: rgba(216, 178, 99, 0.28);
+}
+
+/* На телефоне матрица 11 колонок ужималась до 8 px: трёхзначные длины не
+   читались, четырёхзначный итог обрезался. Держим 10 px и делим ширину
+   карточки так, чтобы 360 px хватало: узкая колонка ТИ с переносом
+   («Чёрный»/«Красный»), компактные итоги, ровно по цифре в ячейку. */
+@media (max-width: 600px) {
+    .msc-grid-9 {
+        grid-template-columns: 58px repeat(9, minmax(0, 1fr)) 30px !important;
+    }
+
+    .msc-grid-10 {
+        grid-template-columns: 58px repeat(9, minmax(0, 1fr)) 26px 34px !important;
+    }
+
+    .msc-tile {
+        font-size: 10px !important;
+        padding: 5px 0 !important;
+        border-radius: 5px;
+        letter-spacing: -0.02em;
+    }
+
+    .msc-lbl-bk,
+    .msc-lbl-bl,
+    .msc-lbl-wh,
+    .msc-lbl-rd,
+    .msc-lbl-par,
+    .msc-lbl-idx {
+        font-size: 10px !important;
+        padding-left: 5px;
+        letter-spacing: -0.01em;
+        white-space: normal;
+        line-height: 1.15;
+    }
+
+    .msc-tot-bk,
+    .msc-tot-bl,
+    .msc-tot-wh,
+    .msc-tot-rd,
+    .msc-tot-par,
+    .msc-tot-idx,
+    .msc-hdr-tot {
+        font-size: 10px !important;
+        letter-spacing: -0.04em;
+    }
+}
+
+/* Совсем узкие экраны (320–340 px): 11 колонок в 10 px физически не встают.
+   Вместо кегля 8 px — прокрутка самой карточки: цифры остаются читаемыми,
+   как на бумажной счётной карточке, которую тоже не «сжимают». */
+@media (max-width: 340px) {
+    .pestovo-modern-scorecard {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .msc-tile-grid {
+        min-width: 400px;
+    }
+}
+
+/* Мобильная ветка style.css намеренно ставит подписи полей 11 px с
+   `!important` (там же nowrap + ellipsis). Возвращаем 12 px тем же способом:
+   без `!important` правило не перебить, а подпись поля — не тот текст,
+   который стоит экономить. */
+@media (max-width: 768px) {
+    .form-group label,
+    .form-label {
+        font-size: var(--fs-micro) !important;
+    }
+}
+
+/* Свёрнутая полоса занятости лунок на главной: была прозрачной «рамкой» */
+#course-holes-strip {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+}
+
+.chs-toggle {
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+}
+
+.chs-toggle:hover {
+    color: var(--white);
+}
+
+/* ============================================================
+   14. ФОКУС
+   ============================================================ */
+
+:focus-visible {
+    outline: 2px solid var(--gold) !important;
+    outline-offset: 3px !important;
+    border-radius: 6px;
+}
+
+/* ============================================================
+   15. СВЕТЛАЯ ТЕМА («Солнце»)
+   ------------------------------------------------------------
+   В style.css она собрана из 349 правил с !important: чёрный текст,
+   чёрные рамки, чистый белый фон. Здесь — та же идея, но спокойнее:
+   тёплый белый, серо-зелёные hairline, тёмная латунь как акцент
+   (#8a6a1f на белом — 4.9:1).
+   ============================================================ */
+
+body.sun-mode {
+    --bg: #f6f8f5;
+    --bg2: #eef2ed;
+    --card: #ffffff;
+    --card-h: #f3f6f2;
+    --input: #ffffff;
+    --green: #e7efe8;
+    --gr-l: #2f7a4b;
+    --gr-d: #eef2ed;
+    --line: #d8e1da;
+    --line-strong: #7d9385;
+    --gold: #8a6a1f;
+    --gold-l: #6f5417;
+    --white: #101a13;
+    --text: #1b2a20;
+    --muted: #54685b;
+    --red: #c0392b;
+    --blue: #1769aa;
+    --yellow: #a86f0d;
+    background: var(--bg) !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .card,
+body.sun-mode .stat,
+body.sun-mode .round-card,
+body.sun-mode .rl-card,
+body.sun-mode .setup-card,
+body.sun-mode .mode-card,
+body.sun-mode .auth-card,
+body.sun-mode .scorecard,
+body.sun-mode .modal-body,
+body.sun-mode .modal-content {
+    background: var(--card) !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: 0 1px 2px rgba(16, 26, 19, 0.04), 0 10px 24px rgba(16, 26, 19, 0.06) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .card h2,
+body.sun-mode .card h3,
+body.sun-mode .stat-n,
+body.sun-mode .page-title,
+body.sun-mode .sec-t,
+body.sun-mode .footer-title,
+body.sun-mode .rl-title {
+    color: var(--text) !important;
+}
+
+body.sun-mode .card h2 i {
+    color: var(--gold) !important;
+}
+
+body.sun-mode .nav,
+body.sun-mode .nav-scrolled {
+    background: rgba(255, 255, 255, 0.92) !important;
+    border-bottom: 1px solid var(--line) !important;
+    box-shadow: 0 1px 0 rgba(16, 26, 19, 0.04) !important;
+}
+
+body.sun-mode .nav-brand-text,
+body.sun-mode .nav-link,
+body.sun-mode .nav-uname {
+    color: var(--text) !important;
+    font-weight: 500 !important;
+}
+
+body.sun-mode .nav-link.active {
+    color: var(--gold) !important;
+    background: rgba(138, 106, 31, 0.10) !important;
+    border-bottom: 0 !important;
+    box-shadow: inset 0 0 0 1px rgba(138, 106, 31, 0.22) !important;
+}
+
+body.sun-mode .nav-link:hover {
+    background: rgba(16, 26, 19, 0.05) !important;
+    border-bottom: 0 !important;
+}
+
+body.sun-mode .hero {
+    background:
+        radial-gradient(720px 420px at 50% -10%, rgba(138, 106, 31, 0.12), transparent 68%),
+        linear-gradient(160deg, #f7faf7, #e6efe8 55%, #f2f6f2) !important;
+    border-bottom: 1px solid var(--line) !important;
+}
+
+body.sun-mode .hero::before,
+body.sun-mode .hero::after {
+    display: none !important;
+}
+
+body.sun-mode .hero-sub {
+    color: var(--gold) !important;
+}
+
+body.sun-mode .hero-desc,
+body.sun-mode .page-sub,
+body.sun-mode .rl-sub,
+body.sun-mode .stat-l,
+body.sun-mode .footer-desc,
+body.sun-mode .footer-link,
+body.sun-mode .footer-bottom {
+    color: var(--muted) !important;
+}
+
+body.sun-mode .page-head {
+    background: linear-gradient(180deg, #ffffff, #f4f7f4) !important;
+    border-bottom: 1px solid var(--line) !important;
+}
+
+body.sun-mode .section-alt {
+    background: var(--bg2) !important;
+    border-color: var(--line) !important;
+}
+
+body.sun-mode .footer {
+    background: #eef2ed !important;
+    border-top: 1px solid var(--line) !important;
+}
+
+body.sun-mode .form-input,
+body.sun-mode select.form-input,
+body.sun-mode .form-group label {
+    background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .form-group label {
+    border: 0 !important;
+    color: var(--muted) !important;
+}
+
+body.sun-mode .lb-table th {
+    color: var(--muted) !important;
+    border-bottom: 1px solid var(--line) !important;
+}
+
+body.sun-mode .lb-table td {
+    color: var(--text) !important;
+    border-bottom: 1px solid rgba(16, 26, 19, 0.07) !important;
+}
+
+body.sun-mode .lb-table tbody tr:nth-child(even) {
+    background: rgba(16, 26, 19, 0.025) !important;
+}
+
+body.sun-mode .hole-btn {
+    background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .hole-btn.active {
+    background: #8a6a1f !important;
+    border-color: #8a6a1f !important;
+    color: #ffffff !important;
+}
+
+body.sun-mode .btn-g {
+    background: #8a6a1f !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(138, 106, 31, 0.24) !important;
+}
+
+body.sun-mode .btn-og,
+body.sun-mode .btn-ol {
+    background: #ffffff !important;
+    border: 1px solid var(--line-strong) !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .badge-par,
+body.sun-mode .tee-pill {
+    background: rgba(16, 26, 19, 0.05) !important;
+    border-color: var(--line) !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .verify-ok {
+    background: rgba(47, 122, 75, 0.08) !important;
+    border: 1px solid rgba(47, 122, 75, 0.4) !important;
+    color: #1f6b41 !important;
+}
+
+body.sun-mode .verify-wait {
+    background: #f4f7f4 !important;
+    border: 1px solid var(--line) !important;
+    color: var(--muted) !important;
+}
+
+body.sun-mode .verify-fail {
+    background: rgba(192, 57, 43, 0.07) !important;
+    border: 1px dashed rgba(192, 57, 43, 0.55) !important;
+    color: #a5281c !important;
+}
+
+body.sun-mode .modal-bg {
+    background: rgba(16, 26, 19, 0.42) !important;
+}
+
+body.sun-mode .modal-top-bar {
+    background: #ffffff !important;
+    border-bottom: 1px solid var(--line) !important;
+}
+
+body.sun-mode .admin-tab {
+    background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+    color: var(--muted) !important;
+}
+
+body.sun-mode .admin-tab.active {
+    background: rgba(138, 106, 31, 0.12) !important;
+    border-color: rgba(138, 106, 31, 0.45) !important;
+    color: var(--gold) !important;
+}
+
+body.sun-mode :focus-visible {
+    outline-color: var(--gold) !important;
+}
+
+/* В style.css светлая тема обводит почти всё 2 px чёрным: на белом листе это
+   читается как «черновик в рамке», а не как светлая тема. Оставляем ту же
+   непробиваемую контрастность текста, но рамки — тонкие и серо-зелёные. */
+body.sun-mode .nav,
+body.sun-mode .nav-scrolled {
+    border-bottom: 1px solid var(--line) !important;
+}
+
+body.sun-mode .nav-link:hover,
+body.sun-mode .nav-link.active {
+    border-bottom: 0 !important;
+}
+
+body.sun-mode .card,
+body.sun-mode .setup-card,
+body.sun-mode .round-card,
+body.sun-mode .setup-player-card,
+body.sun-mode .mode-card,
+body.sun-mode .auth-card,
+body.sun-mode .tn-card,
+body.sun-mode .list-item,
+body.sun-mode .stat,
+body.sun-mode .pestovo-modern-scorecard,
+body.sun-mode .noscroll-player-block,
+body.sun-mode .trophy-cabinet,
+body.sun-mode .timing-info,
+body.sun-mode .timing-summary-card,
+body.sun-mode .timing-pill,
+body.sun-mode .scoring-dual-block,
+body.sun-mode .my-score-block,
+body.sun-mode .marker-score-block,
+body.sun-mode #course-card,
+body.sun-mode #club-stats {
+    background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: 0 1px 2px rgba(16, 26, 19, 0.05), 0 10px 24px rgba(16, 26, 19, 0.06) !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .msc-tile,
+body.sun-mode .noscroll-tile {
+    background: #f7faf7 !important;
+    border: 1px solid var(--line) !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .msc-hdr-lbl,
+body.sun-mode .msc-hdr-num,
+body.sun-mode .msc-hdr-tot {
+    background: rgba(138, 106, 31, 0.12) !important;
+    border-color: rgba(138, 106, 31, 0.28) !important;
+    color: var(--gold) !important;
+}
+
+body.sun-mode .msc-tile-score,
+body.sun-mode .noscroll-score {
+    color: var(--text) !important;
+    font-weight: 800 !important;
+}
+
+body.sun-mode .msc-totals-strip,
+body.sun-mode .msc-grand-strip,
+body.sun-mode .noscroll-totals,
+body.sun-mode .msc-sec-hdr,
+body.sun-mode .timing-total-badge {
+    background: #f1f6f2 !important;
+    border: 1px solid var(--line) !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .msc-totals-strip b,
+body.sun-mode .msc-grand-strip b,
+body.sun-mode .noscroll-totals b,
+body.sun-mode .timing-total-badge b {
+    color: var(--text) !important;
+}
+
+body.sun-mode .lwl-row {
+    background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+}
+
+body.sun-mode .lwl-row-mine {
+    border-color: #2f7a4b !important;
+    box-shadow: inset 3px 0 0 #2f7a4b !important;
+}
+
+body.sun-mode .live-rounds-toolbar,
+body.sun-mode .sc-to-cur-btn {
+    background: #f1f6f2 !important;
+    border: 1px solid var(--line) !important;
+}
+
+body.sun-mode .sc-topar-cell {
+    background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .live-round-tag {
+    background: #fdf8ee !important;
+    border: 1px solid rgba(138, 106, 31, 0.34) !important;
+    color: var(--muted) !important;
+}
+
+body.sun-mode .update-banner {
+    background: #ffffff !important;
+    border: 1px solid var(--line-strong) !important;
+    color: var(--text) !important;
+}
+
+body.sun-mode .score-entry,
+body.sun-mode .score-entry .hole-display {
+    background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: 0 1px 2px rgba(16, 26, 19, 0.05) !important;
+}
+
+body.sun-mode .lb-table.lb-cards tr {
+    background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+}
+
+body.sun-mode th {
+    border-color: var(--line) !important;
+}
+
+body.sun-mode #course-holes-strip {
+    background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+}
+
+/* ============================================================
+   16. RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+    .hero {
+        min-height: auto;
+        padding: 92px 16px 42px;
+    }
+
+    .hero-logo {
+        width: clamp(104px, 30vw, 140px) !important;
+        max-width: clamp(104px, 30vw, 140px) !important;
+        max-height: 140px !important;
+        margin-bottom: 18px !important;
+    }
+
+    .hero-title {
+        font-size: clamp(26px, 7.4vw, 34px);
+    }
+
+    .hero-sub {
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        margin-bottom: 12px;
+    }
+
+    .hero-desc {
+        font-size: 14px;
+        margin-bottom: 24px;
+    }
+
+    .hero-btns .btn {
+        width: 100%;
+        height: 48px;
+    }
+
+    .section {
+        padding: 44px 0;
+    }
+
+    .section-alt {
+        padding: 40px 0;
+    }
+
+    .card,
+    .rl-card {
+        padding: 18px 16px;
+        border-radius: 16px;
+    }
+
+    .sec-t {
+        font-size: 21px;
+    }
+
+    .page-head {
+        padding-bottom: 24px;
+    }
+
+    .page-title {
+        font-size: 24px;
+    }
+
+    .stat {
+        padding: 18px 12px;
+    }
+
+    .stat i {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+    .stat-n {
+        font-size: 24px;
+    }
+
+    .stat-l {
+        font-size: 11.5px;
+        letter-spacing: 0.04em;
+    }
+
+    .lb-table th,
+    .lb-table td {
+        padding: 10px 7px;
+        font-size: 12.5px;
+    }
+
+    .lb-table th {
+        font-size: 11px;
+    }
+
+    .nav-logo {
+        width: 32px !important;
+        height: 32px !important;
+        max-width: 32px !important;
+        max-height: 32px !important;
+    }
+
+    .nav-link {
+        font-size: 15px;
+        padding: 12px 14px;
+        border-bottom: 0;
+        border-radius: 10px;
+    }
+
+    .btn {
+        height: 44px;
+    }
+
+    .hole-btn {
+        min-height: 40px;
+        font-size: 12.5px;
+        padding: 8px 2px;
+    }
+
+    .hole-nav {
+        gap: 4px;
+    }
+
+    .footer {
+        padding-top: 36px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .hero {
+        padding: 84px 16px 36px;
+    }
+
+    .stat {
+        padding: 16px 10px;
+    }
+
+    .stat-n {
+        font-size: 22px;
+    }
+
+    .verify-ok,
+    .verify-wait,
+    .verify-fail {
+        font-size: 12.5px;
+        padding: 10px 12px;
+    }
+}
+
+@media (min-width: 1100px) {
+    .container {
+        max-width: 1180px;
+    }
+}
+
+/* Пониженная анимация: пульсации лунок и переходы не нужны */
+@media (prefers-reduced-motion: reduce) {
+    .hole-btn.pending,
+    .cell-pending,
+    .cell-mismatch {
+        animation: none !important;
+    }
+
+    .btn:hover,
+    .stat:hover,
+    .round-card:hover,
+    .rl-card:hover {
+        transform: none;
+    }
+}
+
+/* Печать: слой не должен менять бумагу — возвращаем белый лист */
+@media print {
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    .card,
+    .stat,
+    .round-card,
+    .rl-card {
+        background: #fff !important;
+        border-color: #ccc !important;
+        box-shadow: none !important;
+    }
+}

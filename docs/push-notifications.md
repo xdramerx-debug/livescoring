@@ -14,7 +14,8 @@
    - `/broadcasts/{id}` → `onBroadcastCreated` — анонс по аудитории
      (`all` — вошедшим игрокам; `all + includePwa` — всем, включая
      гостей; `roster`/`protocol` — только указанным uid);
-   - `/alerts/{id}` → `onAlertCreated` — вызов судьи/маршала админам.
+   - `/alerts/{id}` → `onAlertCreated` — вызов судьи/маршала админам
+     (`users/<uid>`: `admin: true` **или** `role: 'admin'`).
 3. Функция (`functions/index.js`, библиотека `web-push`) шифрует payload
    и отправляет его в push-сервис браузера. `sw.js` показывает
    уведомление в обработчике `push`, `notificationclick` открывает нужную
@@ -67,6 +68,30 @@ VAPID-ключи**. Кнопка вызовет `vapidSetup`, статус по�
 так и есть; при переходе на строгие правила разрешите авторизованным
 пользователям запись собственной подписки.
 
+## Кому уходят вызовы судьи/маршала
+
+Признак админа в профиле бывает двух видов, и оба равноправны (так же его
+понимают правила базы, `hasAdminPanelAccess` и серверная `wipeAllData`):
+
+```json
+{ "users": { "<uid>": { "admin": true } } }
+{ "users": { "<uid>": { "role": "admin" } } }
+```
+
+`onAlertCreated` собирает подписки через `getAdminSubscriptions()`: профили
+`users/<uid>` читаются Admin SDK (правила не мешают), клиентский флаг
+`isAdmin` в `/push_subscriptions` — только запасной вариант для записей без
+`uid` и для случая, когда профиль прочитать не удалось. Поэтому устаревший
+или незаполненный флаг больше не «глушит» вызовы.
+
+Флаг в подписке ставит браузер (`js/pwa.js` → `pestovoPushPatchProfile`) и
+явно сбрасывает его у обычного игрока — запись в базе не копит мусор.
+
+Запись подписки создаётся без чтения ветки `/push_subscriptions`: правила
+разрешают её читать только админу, поэтому игрок пишет напрямую под ключ
+`sub_<хвост endpoint>`. Иначе `PERMISSION_DENIED` на запросе по `endpoint`
+отменял сохранение, и фоновых пушей у игрока не было вообще.
+
 ## Мастер-выключатель (админка → «Вызовы 🚨»)
 
 `settings/notifications_enabled = false` гасит уведомления у ВСЕХ игроков:
@@ -89,5 +114,8 @@ Cloud Function не отправляет пуши, а клиент (`js/pwa.js`)
   вкладка Application → Service Workers → Push (тестовая отправка в
   Chrome DevTools);
 - подписка видна в базе `/push_subscriptions`;
-- логи функции: `firebase functions:log -n onBroadcastCreated`;
+- логи функции: `firebase functions:log -n onBroadcastCreated` /
+  `-n onAlertCreated` — строка `alert push: N admin subs of M` показывает,
+  сколько подписок админов найдено из общего числа; N = 0 означает, что у
+  аккаунта, открывшего админку, нет ни `admin: true`, ни `role: 'admin'`;
 - мёртвые подписки (404/410) функция удаляет автоматически.

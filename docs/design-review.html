@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дизайн-ревью · до / после — Пестово</title>
+<style>
+/* ============================================================
+   Макет для дизайн-ревью 2026-10. Не боевая страница.
+   Слева — значения токенов из css/style.css (как сейчас),
+   справа — предлагаемые. Содержимое одинаковое, меняются
+   только переменные, чтобы разница была видна без «на глазок».
+
+   Шрифты здесь системные: макет не тянет Font Awesome и Google
+   Fonts, чтобы открываться офлайн и не влиять на гейт шрифтов.
+   ============================================================ */
+
+:root{
+    --mock-bg:#0b1a0e;
+    --mock-text:#dde5df;
+    --mock-muted:#9eb5a5;
+    --mock-line:#1e3525;
+    --mock-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mock-serif:Georgia,"Times New Roman",serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+    background:#080d09;
+    color:#dde5df;
+    font:15px/1.55 var(--mock-font);
+    -webkit-font-smoothing:antialiased;
+    padding:40px 20px 80px;
+}
+
+.wrap{max-width:1120px;margin:0 auto;}
+
+/* ---------- заголовок страницы ---------- */
+.review-head{border-bottom:1px solid #1e3525;padding-bottom:24px;margin-bottom:36px;}
+.review-kicker{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:#c9a84c;font-weight:700;margin-bottom:10px;
+}
+.review-title{
+    font:700 clamp(26px,4vw,38px)/1.15 var(--mock-serif);
+    color:#fff;margin-bottom:10px;letter-spacing:-.01em;
+}
+.review-lead{color:#9eb5a5;max-width:70ch;}
+.review-lead b{color:#dde5df;font-weight:600;}
+.review-meta{
+    display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;
+}
+.chip{
+    font-size:11px;padding:5px 10px;border:1px solid #1e3525;
+    border-radius:999px;color:#9eb5a5;background:#101f13;
+}
+.chip b{color:#c9a84c;font-weight:700;}
+
+/* ---------- секция ---------- */
+.case{margin-bottom:56px;}
+.case-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px;}
+.case-num{
+    font:700 12px var(--mock-font);color:#0b1a0e;background:#c9a84c;
+    border-radius:6px;padding:2px 8px;letter-spacing:.04em;
+}
+.case-title{font:700 20px/1.2 var(--mock-serif);color:#fff;}
+.case-sub{color:#9eb5a5;font-size:13px;max-width:80ch;margin-bottom:18px;}
+.case-sub code{
+    font:12px ui-monospace,SFMono-Regular,Menlo,monospace;
+    background:#101f13;border:1px solid #1e3525;border-radius:5px;
+    padding:1px 5px;color:#cfd9d2;
+}
+
+/* ---------- сравнение ---------- */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:760px){.compare{grid-template-columns:1fr;}}
+
+.pane{border:1px solid #1e3525;border-radius:14px;overflow:hidden;background:#0d160f;}
+.pane-label{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    padding:9px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    font-weight:700;border-bottom:1px solid #1e3525;
+}
+.pane-label span:last-child{font-weight:500;letter-spacing:0;text-transform:none;color:#7f9488;font-size:11px;}
+.pane-old .pane-label{color:#e05a4a;background:rgba(224,90,74,.06);}
+.pane-new .pane-label{color:#3ddc84;background:rgba(61,220,132,.06);}
+.pane-body{padding:20px;}
+
+/* ---------- ДЕМО: поверхности ---------- */
+/* старое: фон #0b1a0e, карточка #132218 (1.09:1),
+   граница карточки rgba(201,168,76,.22) — 1.51:1, поле ввода #1e3525 — 1.36:1 */
+.surface-old{--m-bg:#0b1a0e;--m-card:#132218;--m-line:rgba(201,168,76,.22);--m-input:#0e1a10;}
+/* новое: шкала поверхностей + граница 3:1 */
+.surface-new{--m-bg:#0b1a0e;--m-card:#14261a;--m-line:#2d4a35;--m-input:#14261a;--m-control:#4a7a56;}
+
+.surface-demo{background:var(--m-bg);border-radius:10px;padding:16px;}
+.mock-card{
+    background:var(--m-card);
+    border:1px solid var(--m-line);
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:12px;
+}
+.mock-card h4{font:700 15px/1.3 var(--mock-serif);color:#c9a84c;margin-bottom:8px;}
+.surface-new .mock-card h4{color:#fff;}
+.mock-card p{font-size:13px;color:#9eb5a5;}
+.mock-row{display:flex;gap:10px;align-items:center;margin-top:12px;}
+.mock-input{
+    flex:1;background:var(--m-input);
+    border:1px solid #1e3525;
+    border-radius:8px;padding:9px 12px;font-size:14px;color:#fff;
+}
+.surface-new .mock-input{border-color:var(--m-control);}
+.contrast-note{font:11px ui-monospace,Menlo,monospace;color:#7f9488;margin-top:4px;}
+.pane-old .contrast-note b{color:#e05a4a;}
+.pane-new .contrast-note b{color:#3ddc84;}
+
+/* ---------- ДЕМО: типографика ---------- */
+.type-demo{padding:16px;background:#0b1a0e;border-radius:10px;}
+.type-label{
+    font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+    color:#9eb5a5;margin-bottom:6px;
+}
+.type-value{font:800 28px var(--mock-font);color:#fff;}
+.type-note{font-size:10px;color:#7f9488;margin:4px 0 16px;}
+.type-demo-new .type-label{font-size:12px;letter-spacing:.06em;}
+.type-demo-new .type-note{font-size:12px;}
+.tap-demo{
+    display:flex;align-items:center;gap:8px;margin-top:14px;
+    font-size:11px;color:#9eb5a5;
+}
+.tap-bar{height:10px;border-radius:3px;background:#2d4a35;}
+.type-demo .tap-bar{width:31px;background:#e05a4a;}
+.type-demo-new .tap-bar{width:44px;background:#3ddc84;}
+
+/* ---------- ДЕМО: акцент ---------- */
+.accent-demo{background:#0b1a0e;border-radius:10px;padding:16px;}
+.accent-demo h5{font:700 18px var(--mock-serif);margin-bottom:4px;}
+.accent-demo-old h5{color:#c9a84c;}
+.accent-demo-new h5{color:#fff;}
+.accent-demo p{font-size:12px;margin-bottom:14px;}
+.accent-demo-old p{color:#c9a84c;}
+.accent-demo-new p{color:#9eb5a5;}
+.btn-mock{
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:11px 20px;border-radius:8px;font-size:12px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.06em;border:none;
+}
+.accent-demo-old .btn-mock{
+    background:linear-gradient(135deg,#c9a84c,#e0c76a 50%,#b89228);
+    color:#0b1a0e;box-shadow:0 4px 18px rgba(201,168,76,.35);
+}
+.accent-demo-new .btn-mock{background:#c9a84c;color:#0b1a0e;}
+.accent-demo .ghost{
+    margin-left:8px;background:transparent;border:1px solid #2d4a35;color:#9eb5a5;
+}
+.gold-count{display:flex;gap:4px;margin-top:14px;flex-wrap:wrap;}
+.dot{width:14px;height:14px;border-radius:4px;border:1px solid #1e3525;}
+.accent-demo-old .dot{background:#c9a84c;}
+.accent-demo-new .dot{background:#2d4a35;}
+.accent-demo-new .dot.hot{background:#c9a84c;}
+
+/* ---------- ДЕМО: статусы ---------- */
+.status-demo{display:flex;flex-direction:column;gap:8px;padding:16px;background:#0b1a0e;border-radius:10px;}
+.st-row{display:flex;gap:8px;align-items:center;}
+.st{
+    flex:1;display:flex;align-items:center;gap:7px;justify-content:center;
+    font:700 12px var(--mock-font);padding:9px 6px;border-radius:8px;
+    border:1px solid transparent;
+}
+.st-old-ok{background:#0d2815;border-color:#2d6b3f;color:#2d6b3f;}
+.st-old-bad{background:rgba(224,90,74,.1);border-color:#e05a4a;color:#e05a4a;}
+.st-old-wait{background:rgba(174,180,186,.08);border-color:#8a939b;color:#c9d2d9;}
+.st-new-ok{background:rgba(61,220,132,.1);border-color:#3ddc84;color:#3ddc84;}
+.st-new-bad{background:rgba(244,105,92,.12);border:1px dashed #f4695c;color:#f4695c;}
+.st-new-wait{background:rgba(174,180,186,.08);border:1px solid #8a939b;color:#e6ede8;}
+.st-icon{font-size:11px;line-height:1;opacity:.9;}
+
+/* ---------- ДЕМО: первый экран ---------- */
+.hero-demo{display:flex;gap:14px;align-items:flex-start;padding:16px;background:#0b1a0e;border-radius:10px;}
+.phone{
+    width:86px;height:186px;border:2px solid #2d4a35;border-radius:12px;
+    overflow:hidden;display:flex;flex-direction:column;background:#0b1a0e;flex:0 0 auto;
+}
+.phone-hero{background:linear-gradient(135deg,#0b1a0e,#1a472a 40%,#0d2815);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;}
+.phone-logo{width:26px;height:26px;border-radius:50%;background:#1a472a;border:1px solid #c9a84c;}
+.phone-line{height:4px;border-radius:2px;background:#c9a84c;width:56%;}
+.phone-line.small{background:#2d4a35;width:40%;}
+.phone-body{flex:1;padding:5px;display:flex;flex-direction:column;gap:4px;}
+.phone-block{background:#14261a;border:1px solid #2d4a35;border-radius:4px;height:20px;}
+.phone-block.live{border-color:#3ddc84;}
+.hero-note{font-size:12px;color:#9eb5a5;}
+.hero-note b{color:#fff;}
+.hero-note span{display:block;color:#7f9488;font-size:11px;margin-top:3px;}
+
+/* ---------- вывод ---------- */
+.summary{
+    margin-top:48px;border:1px solid #1e3525;border-radius:14px;
+    background:#0d160f;padding:22px;
+}
+.summary h3{font:700 18px var(--mock-serif);color:#fff;margin-bottom:14px;}
+.summary ul{list-style:none;display:grid;gap:8px;}
+.summary li{display:flex;gap:10px;font-size:13px;color:#9eb5a5;}
+.summary li b{color:#dde5df;font-weight:600;}
+.summary li::before{content:"→";color:#c9a84c;flex:0 0 auto;}
+.review-foot{margin-top:28px;font-size:12px;color:#7f9488;}
+.review-foot a{color:#c9a84c;text-decoration:none;}
+.review-foot a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="review-head">
+    <div class="review-kicker">Дизайн-ревью · макет, не боевая страница</div>
+    <h1 class="review-title">Десять правок: что именно меняется на экране</h1>
+    <p class="review-lead">
+        Слева — как сейчас, справа — как предлагается. Разметка и контент в обеих
+        половинах одинаковые, отличаются только значения переменных, поэтому вся
+        разница на картинке — это ровно та разница, которую дадут правки из
+        <b>docs/DESIGN-REVIEW-2026-10.md</b>. Шрифты здесь системные: макет не
+        подключает Google Fonts и Font Awesome, чтобы открываться офлайн.
+    </p>
+    <div class="review-meta">
+        <span class="chip">контраст карточки <b>1.09:1</b></span>
+        <span class="chip">граница карточки <b>1.25–1.51:1</b></span>
+        <span class="chip">кеглей <b>40</b></span>
+        <span class="chip">значений &lt; 12px <b>43 %</b></span>
+        <span class="chip">употреблений золота <b>262</b></span>
+        <span class="chip"><b>0</b> тегов table</span>
+    </div>
+</header>
+
+<!-- 1 -->
+<section class="case">
+    <div class="case-head">
+        <span class="case-num">01</span>
+        <h2 class="case-title">Поверхности и границы</h2>
+    </div>
+    <p class="case-sub">
+        Сейчас карточка отличается от фона на <b>1.09:1</b>, а её рамка — на
+        <b>1.25–1.51:1</b>. Норма WCAG для границ полей ввода и других
+        опорных элементов — <b>3:1</b>. В тёмной теме карточка «держится» только
+        рамкой, и на телефоне при дневном свете секции сливаются.
+    </p>
+    <div class="compare">
+        <div class="pane pane-old">
+            <div class="pane-label"><span>Сейчас</span><span>#132218 / #1e3525</span></div>
+            <div class="pane-body">
+                <div class="surface-demo surface-old">
+                    <div class="mock-card">
+                        <h4>Сейчас на поле</h4>
+                        <p>Три группы на лунке 7, лидер −2.</p>
+                        <div class="mock-row"><div class="mock-input">12</div></div>
+                    </div>
+                    <div class="contrast-note">карточка/фон <b>1.09</b> · рамка <b>1.51</b> · поле <b>1.36</b></div>
+                </div>
+            </div>
+        </div>
+        <div class="pane pane-new">
+            <div class="pane-label"><span>Предлагается</span><span>#14261a / #2d4a35</span></div>
+            <div class="pane-body">
+                <div class="surface-demo surface-new">
+                    <div class="mock-card">
+                        <h4>Сейчас на поле</h4>
+                        <p>Три группы на лунке 7, лидер −2.</p>
+                        <div class="mock-row"><div class="mock-input">12</div></div>
+                    </div>
+                    <div class="contrast-note">карточка/фон <b>1.13</b> · рамка <b>1.62</b> · поле <b>3.18</b></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 2 -->
+<section class="case">
+    <div class="case-head">
+        <span class="case-num">02</span>
+        <h2 class="case-title">Подписи вместо мелкого шрифта</h2>
+    </div>
+    <p class="case-sub">
+        303 из 708 объявлений <code>font-size</code> меньше 12 px, минимум — 9 px.
+        Приложение открывают на поле: экран 6", солнце, одна рука. Ниже — подпись
+        метрики в текущем размере (9 px) и в предлагаемом (12 px), и высота
+        типового тап-таргета.
+    </p>
+    <div class="compare">
+        <div class="pane pane-old">
+            <div class="pane-label"><span>Сейчас</span><span>9 / 10 / 11 px</span></div>
+            <div class="pane-body">
+                <div class="type-demo">
+                    <div class="type-label">Через пар</div>
+                    <div class="type-value">−2</div>
+                    <div class="type-note">последний раунд · 14:32 · поле 12</div>
+                    <div class="tap-demo"><span class="tap-bar"></span> тап-таргет 31 px</div>
+                </div>
+            </div>
+        </div>
+        <div class="pane pane-new">
+            <div class="pane-label"><span>Предлагается</span><span>12 / 13 / 15 px</span></div>
+            <div class="pane-body">
+                <div class="type-demo type-demo-new">
+                    <div class="type-label">Через пар</div>
+                    <div class="type-value">−2</div>
+                    <div class="type-note">последний раунд · 14:32 · поле 12</div>
+                    <div class="tap-demo"><span class="tap-bar"></span> тап-таргет 44 px</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 3 -->
+<section class="case">
+    <div class="case-head">
+        <span class="case-num">03</span>
+        <h2 class="case-title">Один акцент вместо золота на всём</h2>
+    </div>
+    <p class="case-sub">
+        <code>var(--gold)</code> встречается 262 раза: заголовки, иконки, ссылки,
+        номера лунок, рамки, фокус, кнопки. Акцент перестаёт быть акцентом —
+        главное действие весит столько же, сколько подзаголовок.
+    </p>
+    <div class="compare">
+        <div class="pane pane-old">
+            <div class="pane-label"><span>Сейчас</span><span>золото везде</span></div>
+            <div class="pane-body">
+                <div class="accent-demo accent-demo-old">
+                    <h5>Турниры клуба</h5>
+                    <p>Кубок Пестово · 12 участников</p>
+                    <button class="btn-mock">Начать игру</button>
+                    <button class="btn-mock ghost" style="border-color:#c9a84c;color:#c9a84c">Все раунды</button>
+                    <div class="gold-count">
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="pane pane-new">
+            <div class="pane-label"><span>Предлагается</span><span>1–2 акцента на экран</span></div>
+            <div class="pane-body">
+                <div class="accent-demo accent-demo-new">
+                    <h5>Турниры клуба</h5>
+                    <p>Кубок Пестово · 12 участников</p>
+                    <button class="btn-mock">Начать игру</button>
+                    <button class="btn-mock ghost">Все раунды</button>
+                    <div class="gold-count">
+                        <span class="dot hot"></span><span class="dot"></span><span class="dot"></span>
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 4 -->
+<section class="case">
+    <div class="case-head">
+        <span class="case-num">04</span>
+        <h2 class="case-title">Статус не только цветом</h2>
+    </div>
+    <p class="case-sub">
+        Сверка счёта и ожидание маркера различаются цветом и миганием фона.
+        Для 8 % мужчин красно-зелёная пара не различима; постоянное мигание
+        мешает читать число. Второй канал — иконка и подпись, третий — рамка.
+    </p>
+    <div class="compare">
+        <div class="pane pane-old">
+            <div class="pane-label"><span>Сейчас</span><span>цвет + blink</span></div>
+            <div class="pane-body">
+                <div class="status-demo">
+                    <div class="st-row"><div class="st st-old-ok">Сверено</div></div>
+                    <div class="st-row"><div class="st st-old-wait">Ожидание маркера</div></div>
+                    <div class="st-row"><div class="st st-old-bad">Не совпало</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="pane pane-new">
+            <div class="pane-label"><span>Предлагается</span><span>цвет + иконка + форма</span></div>
+            <div class="pane-body">
+                <div class="status-demo">
+                    <div class="st-row"><div class="st st-new-ok"><span class="st-icon">✓</span> Сверено</div></div>
+                    <div class="st-row"><div class="st st-new-wait"><span class="st-icon">◷</span> Ожидание маркера</div></div>
+                    <div class="st-row"><div class="st st-new-bad"><span class="st-icon">!</span> Не совпало · проверьте</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 5 -->
+<section class="case">
+    <div class="case-head">
+        <span class="case-num">05</span>
+        <h2 class="case-title">Первый экран: табло, а не баннер</h2>
+    </div>
+    <p class="case-sub">
+        <code>.hero</code> занимает <code>100svh</code>, логотип на мобильной — до
+        272 px. На iPhone 390×844 живой счёт («Сейчас на поле») начинается только
+        после скролла, хотя это главный сценарий открытия приложения.
+    </p>
+    <div class="compare">
+        <div class="pane pane-old">
+            <div class="pane-label"><span>Сейчас</span><span>hero 100svh</span></div>
+            <div class="pane-body">
+                <div class="hero-demo">
+                    <div class="phone">
+                        <div class="phone-hero" style="min-height:150px">
+                            <div class="phone-logo"></div>
+                            <div class="phone-line"></div>
+                            <div class="phone-line small"></div>
+                        </div>
+                        <div class="phone-body">
+                            <div class="phone-block live"></div>
+                        </div>
+                    </div>
+                    <p class="hero-note"><b>150 px</b> на логотип и слоган<span>live-блок уезжает за фолд</span></p>
+                </div>
+            </div>
+        </div>
+        <div class="pane pane-new">
+            <div class="pane-label"><span>Предлагается</span><span>hero 62svh + строка Live</span></div>
+            <div class="pane-body">
+                <div class="hero-demo">
+                    <div class="phone">
+                        <div class="phone-hero" style="min-height:96px">
+                            <div class="phone-logo" style="width:18px;height:18px"></div>
+                            <div class="phone-line" style="width:64%"></div>
+                        </div>
+                        <div class="phone-body">
+                            <div class="phone-block live"></div>
+                            <div class="phone-block"></div>
+                            <div class="phone-block"></div>
+                        </div>
+                    </div>
+                    <p class="hero-note"><b>96 px</b> + строка «сейчас на поле»<span>живой счёт виден сразу</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="summary">
+    <h3>Что видно на этом макете</h3>
+    <ul>
+        <li><b>Границы.</b> Одна и та же карточка: слева она «призрак», справа — объект. Правка стоит один токен.</li>
+        <li><b>Кегль.</b> Подпись 9 → 12 px и тап-таргет 31 → 44 px читаются на телефоне без прищура.</li>
+        <li><b>Акцент.</b> Золото перестаёт спорить с самим собой: одна кнопка и один показатель.</li>
+        <li><b>Статус.</b> Красный/зелёный остаются, но дублируются иконкой и формой рамки.</li>
+        <li><b>Первый экран.</b> Живой счёт попадает в первый экран без скролла.</li>
+    </ul>
+</section>
+
+<p class="review-foot">
+    Макет собран для <a href="docs/DESIGN-REVIEW-2026-10.md">docs/DESIGN-REVIEW-2026-10.md</a> · дата 2026-10-28 ·
+    цифры замерены по текущему дереву (CSS + HTML), контраст — по формуле WCAG 2.x
+</p>
+
+</div>
+</body>
+</html>

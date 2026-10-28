@@ -1,6 +1,6 @@
 {
     "name": "pestovo-livescoring",
-    "version": "1.119.0",
+    "version": "1.121.0",
     "private": true,
     "description": "Pestovo Live Scoring — static web app + Firebase Cloud Functions",
     "scripts": {
@@ -10,12 +10,13 @@
         "lint": "eslint js src tools functions sw.js --ext .js",
         "check:globals": "node tools/check-unused-globals.js",
         "check:listeners": "node tools/check-rtdb-listeners.js",
-    "check:fonts": "node tools/build-fontawesome.js --check",
+        "check:fonts": "node tools/build-fontawesome.js --check",
+        "check:design": "node tools/test-design-tokens.js",
         "assets": "node tools/rev-assets.js",
         "dev": "vite",
         "build": "vite build",
         "build:public": "node tools/build-public.js",
-    "build:fonts": "node tools/build-fontawesome.js",
+        "build:fonts": "node tools/build-fontawesome.js",
         "preview": "vite preview",
         "check:bundle": "node tools/check-bundle.js",
         "check:browser": "node tools/browser-check.js",

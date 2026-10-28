@@ -362,13 +362,16 @@ function setupIsOwnRow(idx) {
     var myUid = user ? String(user.uid || '') : '';
     var uidEl = document.getElementById('pl-uid-' + idx);
     if (!myUid || !uidEl) return false;
-    if (uidEl.value === myUid) return true;
-    if (uidEl.value) return false;
     var profile = typeof currentUserData !== 'undefined' && currentUserData ? currentUserData : null;
     if (!profile) return false;
     var ownFio = [profile.lastName, profile.firstName, profile.middleName].filter(Boolean).join(' ');
+    // A uid can remain in the hidden field after the user edits a selected
+    // player's name. Never treat that row as the signed-in user unless its
+    // current name still matches the profile; otherwise a lookup for someone
+    // else could overwrite the account's handicap.
     if (setupHcpNameTokensCount(setupHcpNameValue(idx)) < 2 || !setupRusgolfNameMatches(setupHcpNameValue(idx), { fio: ownFio })) return false;
-    uidEl.value = myUid;
+    if (uidEl.value && uidEl.value !== myUid) return false;
+    if (uidEl.value !== myUid) uidEl.value = myUid;
     return true;
 }
 function setupHcpNameTokensCount(value) {

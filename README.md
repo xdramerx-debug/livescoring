@@ -28,9 +28,9 @@ i18n, алерты) отдаётся одним **ESM-бандлом** `dist/liv
 | `js/safe-html.js` | Безопасный HTML-билдер (`esc`, `` html`…` ``) — защита от XSS |
 | `js/dom.js` | DOM-хелперы: toast-уведомления, вибрация, `escapeHtml` |
 | `js/i18n.js` | Языковой словарь RU/EN, `t()`, `toggleLang()` |
-| `js/official-alerts.js` | Отправка алертов судья/маршал в Telegram/VK |
+| `js/official-alerts.js` | Текст и отправка алертов судья/маршал в Telegram/VK для админских «проверить соединение»; боевую доставку во время раунда делает сервер (`functions/`, `onAlertCreated`) |
 | `js/utils.js` | Общая логика (навигация, раунды, лидерборд, Firebase-обёртки) |
-| `functions/` | Cloud Functions (push-уведомления) |
+| `functions/` | Cloud Functions: фоновые push-уведомления, доставка вызовов судьи/маршала в Telegram/VK (`onAlertCreated`, отчёт — в `alerts/<id>/delivery`), аудит счёта, очистка данных |
 | `tools/` | Тесты (`test-*.js`) и утилиты сборки/проверок |
 | `database.rules.json` | Security Rules для Realtime Database (см. `docs/SECURITY-RULES.md`); на прод не отдаётся |
 | `firebase.json` | Hosting (`public/`, `predeploy`, `Cache-Control`, CSP) и точки деплоя functions/database |

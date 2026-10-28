@@ -108,6 +108,46 @@ Cloud Function не отправляет пуши, а клиент (`js/pwa.js`)
 Настройка применяется в реальном времени: перезагрузка страницы не нужна.
 Проверяется тестом `tools/test-notifications-off.js`.
 
+## Telegram и ВКонтакте (вызовы судьи/маршала)
+
+Web Push и рассылка в Telegram/VK — две независимые доставки одного вызова:
+сбой одной не отменяет другую (`onAlertCreated` сначала рассылает по каналам,
+потом пушит админам).
+
+Секреты лежат в ветке `channels/` (`channels/telegram`: `groupToken`,
+`groupId`, `channelToken`, `channelId`; `channels/vk`: `token`, `peerId`).
+Читает их **только сервер** через Admin SDK: у ветки `.read` лишь для
+админа/мастера, а браузер игрока токенов не видит
+(docs/CODE-AUDIT-2026-10-2.md, находка 1). Из публичного `/settings`
+значения переносит `migrateLegacyChannelSecrets()` в админке; сервер
+понимает и старые имена полей (`botToken`/`chatId`).
+
+Форматы запросов разные, и это важно:
+
+- Telegram Bot API — `POST` с `Content-Type: application/json`
+  (`chat_id`, `text`, `parse_mode: HTML`);
+- VK API — `POST` с `Content-Type: application/x-www-form-urlencoded`.
+  JSON в теле VK **не поддерживает**
+  (<https://dev.vk.com/ru/api/api-requests>), ответом будет ошибка
+  `100: One of the parameters specified was missing or invalid`.
+  Браузерная «проверка соединения» в админке ходит в VK JSONP-ом
+  с параметрами в URL — это другой формат, и она проходит даже тогда,
+  когда серверная отправка сломана.
+
+Отчёт о доставке каждого вызова функция пишет в `alerts/<id>/delivery`
+(`channels` — `sent` / `not_configured` / `error: …` по каждому приёмнику,
+`configured`, `sent`, `push` — число подписок админов, `at`). Панель
+«Вызовы 🚨» показывает его под каждым вызовом; пропущенные вызовы получают
+`skipped: 'notifications_disabled'` или `'rate_limited'`. Отсутствие отчёта
+означает, что функция не сработала вовсе (не задеплоена или устарела).
+
+Проверить боевой путь, не выходя на поле: админка → **Вызовы 🚨 →
+«Проверить серверную доставку»**. Кнопка вызывает callable
+`testOfficialCallDelivery` (только админ/мастер), который прогоняет тот же
+`deliverOfficialCall()` и возвращает отчёт по каналам. Кнопки «Проверить
+Группу / Канал / ВК» рядом подтверждают лишь токен и chat ID — они шлют
+из браузера.
+
 ## Диагностика
 
 - На клиенте: `Notification.permission === 'granted'`,
@@ -118,4 +158,9 @@ Cloud Function не отправляет пуши, а клиент (`js/pwa.js`)
   `-n onAlertCreated` — строка `alert push: N admin subs of M` показывает,
   сколько подписок админов найдено из общего числа; N = 0 означает, что у
   аккаунта, открывшего админку, нет ни `admin: true`, ни `role: 'admin'`;
+- Telegram/VK: `firebase functions:log -n onAlertCreated` — строка
+  `onAlertCreated: delivered via telegram:group, vk` при успехе и
+  `nothing delivered` с JSON-ом причин при отказе; то же видно в админке
+  в строке `📡 Серверная доставка` у вызова и в кнопке «Проверить
+  серверную доставку»;
 - мёртвые подписки (404/410) функция удаляет автоматически.

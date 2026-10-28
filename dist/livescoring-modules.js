@@ -1,4 +1,4 @@
-const J = "Пестово", Re = 72, $ = "МО, г. Мытищи, Никольская ул., 1, Румянцево", g = {
+const W = "Пестово", Re = 72, $ = "МО, г. Мытищи, Никольская ул., 1, Румянцево", g = {
   1: { p: 4, hcp: 5, bk: 373, bl: 339, wh: 328, rd: 317 },
   2: { p: 4, hcp: 13, bk: 272, bl: 257, wh: 257, rd: 250 },
   3: { p: 5, hcp: 9, bk: 486, bl: 475, wh: 464, rd: 423 },
@@ -17,7 +17,7 @@ const J = "Пестово", Re = 72, $ = "МО, г. Мытищи, Никольс
   16: { p: 4, hcp: 14, bk: 423, bl: 391, wh: 368, rd: 312 },
   17: { p: 3, hcp: 10, bk: 199, bl: 188, wh: 174, rd: 151 },
   18: { p: 4, hcp: 6, bk: 375, bl: 349, wh: 335, rd: 302 }
-}, I = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, z = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, Q = ["bk", "bl", "wh", "rd"], X = {
+}, F = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, z = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, Q = ["bk", "bl", "wh", "rd"], X = {
   men: { bk: { cr: 76, sr: 144 }, bl: { cr: 73.8, sr: 137 }, wh: { cr: 72, sr: 135 }, rd: { cr: 69.2, sr: 134 } },
   women: { bl: { cr: 80.8, sr: 153 }, wh: { cr: 78.6, sr: 143 }, rd: { cr: 75.2, sr: 136 } }
 };
@@ -31,9 +31,9 @@ function te(e) {
   return g[e] ? g[e].hcp : e;
 }
 function ae(e) {
-  return I[e] || 15;
+  return F[e] || 15;
 }
-typeof window < "u" && Object.assign(window, { CLUB: J, TOTAL_PAR: 72, ADDR: $, HOLES: g, TIMINGS: I, TEES: z, TEE_ORDER: Q, COURSE_RATINGS: X, holePar: Z, holeDist: ee, holeHcp: te, holeTiming: ae });
+typeof window < "u" && Object.assign(window, { CLUB: W, TOTAL_PAR: 72, ADDR: $, HOLES: g, TIMINGS: F, TEES: z, TEE_ORDER: Q, COURSE_RATINGS: X, holePar: Z, holeDist: ee, holeHcp: te, holeTiming: ae });
 function re(e) {
   return e == null || isNaN(e) ? "—" : e === 0 ? "E" : e > 0 ? "+" + e : "" + e;
 }
@@ -112,7 +112,7 @@ function de(e, a) {
   return !isNaN(o.getTime()) && !isNaN(n.getTime()) && o.getFullYear() === n.getFullYear() && o.getMonth() === n.getMonth() && o.getDate() === n.getDate();
 }
 var P = ["today", "7d", "30d", "month", "year", "all"];
-function F(e) {
+function H(e) {
   var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
   if (!a) return null;
   var r = new Date(Number(a[1]), Number(a[2]) - 1, Number(a[3]), 0, 0, 0, 0).getTime();
@@ -129,7 +129,7 @@ function D(e) {
   var a = new Date(e), r = a.getMonth() + 1, n = a.getDate();
   return a.getFullYear() + "-" + (r < 10 ? "0" : "") + r + "-" + (n < 10 ? "0" : "") + n;
 }
-function G(e) {
+function V(e) {
   return !e || typeof e != "object" ? 0 : Number(e.startTime) || Number(e.createdAt) || 0;
 }
 function x(e) {
@@ -137,7 +137,7 @@ function x(e) {
   return e === "today" ? n = r : e === "7d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 6) : e === "30d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 29) : e === "month" ? n = new Date(r.getFullYear(), r.getMonth(), 1) : e === "year" && (n = new Date(r.getFullYear(), 0, 1)), n ? { from: D(n.getTime()), to: D(r.getTime()) } : { from: "", to: "" };
 }
 function R(e, a) {
-  var r = e && e.value || "", n = a && a.value || "", o = r ? F(r) : null, l = n ? O(n) : null, i = o !== null && l !== null && o > l;
+  var r = e && e.value || "", n = a && a.value || "", o = r ? H(r) : null, l = n ? O(n) : null, i = o !== null && l !== null && o > l;
   return {
     from: o,
     to: l,
@@ -149,11 +149,11 @@ function R(e, a) {
 }
 function ce(e, a) {
   return !a || !a.active ? e.slice() : e.filter(function(r) {
-    var n = G(r && r[1]);
+    var n = V(r && r[1]);
     return !(!n || a.from !== null && n < a.from || a.to !== null && n > a.to);
   });
 }
-function B(e, a, r, n) {
+function G(e, a, r, n) {
   if (e) {
     var o = typeof currentLang < "u" && currentLang === "en", l = '<i class="fas fa-calendar-check"></i> ';
     if (a && a.active) {
@@ -215,7 +215,7 @@ function ue(e) {
     renderPresets: c,
     lastSummary: null,
     renderSummary: function(p, y) {
-      b.lastSummary = { count: p, total: y }, B(e.summaryId ? document.getElementById(e.summaryId) : null, b.getRange(), p, y);
+      b.lastSummary = { count: p, total: y }, G(e.summaryId ? document.getElementById(e.summaryId) : null, b.getRange(), p, y);
     },
     rerenderSummary: function() {
       b.lastSummary && b.renderSummary(b.lastSummary.count, b.lastSummary.total);
@@ -250,22 +250,22 @@ function fe() {
     a && (a.renderPresets(), a.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: P, dateInputToStartTs: F, dateInputToEndTs: O, tsToDateInputValue: D, getRoundFilterTs: G, datePresetRange: x, readDateRange: R, filterEntriesByDateRange: ce, renderRoundsPeriodSummary: B, dateRangeFilters: k, initDateRangeFilter: ue, getDateRangeFilter: pe, refreshDateRangeFilters: fe });
-function V(e) {
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: P, dateInputToStartTs: H, dateInputToEndTs: O, tsToDateInputValue: D, getRoundFilterTs: V, datePresetRange: x, readDateRange: R, filterEntriesByDateRange: ce, renderRoundsPeriodSummary: G, dateRangeFilters: k, initDateRangeFilter: ue, getDateRangeFilter: pe, refreshDateRangeFilters: fe });
+function B(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
 function me() {
   for (var e = arguments[0], a = Array.prototype.slice.call(arguments, 1), r = "", n = 0; n < e.length; n++)
-    r += e[n], n < a.length && (r += V(a[n]));
+    r += e[n], n < a.length && (r += B(a[n]));
   return r;
 }
 function he(e, a) {
   e && (e.innerHTML = a == null ? "" : String(a));
 }
-typeof window < "u" && Object.assign(window, { esc: V, html: me, setSafeHtml: he });
-var M = 3e3;
+typeof window < "u" && Object.assign(window, { esc: B, html: me, setSafeHtml: he });
+var E = 3e3;
 function j() {
   if (typeof document > "u" || !document.body) return null;
   var e = document.getElementById("toast-root");
@@ -274,9 +274,9 @@ function j() {
 function q(e) {
   return e === "error" ? '<i class="fas fa-triangle-exclamation"></i>' : e === "warn" ? '<i class="fas fa-bell"></i>' : e === "info" ? '<i class="fas fa-circle-info"></i>' : '<i class="fas fa-circle-check"></i>';
 }
-function E(e, a, r) {
+function M(e, a, r) {
   a = a || "success", r = r || {};
-  var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : M;
+  var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : E;
   try {
     if (typeof document > "u" || !document.body) return null;
     var o = j();
@@ -336,10 +336,10 @@ function be(e, a) {
   a = a || {};
   var r = (e || []).slice();
   if (r.length) {
-    var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, o = M + n;
+    var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, o = E + n;
     r.forEach(function(l, i) {
       setTimeout(function() {
-        typeof l == "string" ? E(l, a.type || "warn", a.toastOpts || {}) : E(l.msg || l.html || "", l.type || a.type || "warn", l.opts || a.toastOpts || {});
+        typeof l == "string" ? M(l, a.type || "warn", a.toastOpts || {}) : M(l.msg || l.html || "", l.type || a.type || "warn", l.opts || a.toastOpts || {});
       }, i * o);
     });
   }
@@ -368,7 +368,7 @@ function U(e) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: M, ensureToastRoot: j, toastIconFor: q, toast: E, toastSequence: be, isPlayerModeEnabled: K, vib: ye, escapeHtml: U });
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: E, ensureToastRoot: j, toastIconFor: q, toast: M, toastSequence: be, isPlayerModeEnabled: K, vib: ye, escapeHtml: U });
 var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", m = {
   ru: {
     brand_name: "Пестово",
@@ -460,6 +460,11 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     test_channel: "Проверить Канал",
     save_vk: "Сохранить настройки ВКонтакте",
     test_vk: "Проверить отправку в ВКонтакте",
+    srv_delivery_title: "Доставка вызовов во время раунда (сервер)",
+    srv_delivery_sub: "Кнопки «Проверить Группу», «Проверить Канал» и «Проверить отправку в ВК» ниже отправляют сообщение из браузера: они подтверждают токен и ID чата, но НЕ подтверждают доставку настоящего вызова. Во время раунда сообщение идёт другим путём: игрок → запись в alerts → Cloud Function onAlertCreated → Telegram/VK. Эта проверка прогоняет именно серверный путь.",
+    srv_delivery_test: "Проверить серверную доставку",
+    srv_delivery_hint: "Статус доставки каждого настоящего вызова виден в списке выше.",
+    vk_delivery_note: '<i class="fas fa-shield-halved"></i> Кнопка «Проверить отправку в ВК» шлёт сообщение из браузера (JSONP, VK API 5.199). Вызовы судьи и маршала во время раунда отправляет сервер — Cloud Function onAlertCreated (VK API 5.131, параметры в теле запроса в формате x-www-form-urlencoded), поэтому токен сообщества не виден браузеру игрока.',
     tg_integration_title: "Интеграция Telegram: Группа Судей & Канал Клуба",
     tg_integration_sub: "Вы можете настроить отправку уведомлений отдельно для Группы Судей/Маршалов и для Канала Клуба.",
     tg_group_title: "1. Telegram Группа (Вызовы Судей и Маршалов)",
@@ -1043,6 +1048,11 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     test_channel: "Test Channel",
     save_vk: "Save VKontakte Settings",
     test_vk: "Test VK Message",
+    srv_delivery_title: "Round-time delivery (server)",
+    srv_delivery_sub: "The “Test Group”, “Test Channel” and “Test VK Message” buttons below send a message from the browser: they confirm the token and the chat ID, but they do NOT confirm that a real call is delivered. During a round the message takes another path: player → alerts record → Cloud Function onAlertCreated → Telegram/VK. This check runs exactly that server path.",
+    srv_delivery_test: "Test server delivery",
+    srv_delivery_hint: "The delivery status of every real call is shown in the list above.",
+    vk_delivery_note: '<i class="fas fa-shield-halved"></i> “Test VK Message” sends from the browser (JSONP, VK API 5.199). Calls made during a round are sent by the server — Cloud Function onAlertCreated (VK API 5.131, parameters as x-www-form-urlencoded in the request body) — so the community token is never exposed to a player browser.',
     tg_integration_title: "Telegram Integration: Referee Group & Club Channel",
     tg_integration_sub: "Configure notification settings for Referee/Marshal Group and Club Channel.",
     tg_group_title: "1. Telegram Group (Referee/Marshal Calls)",
@@ -1558,7 +1568,7 @@ function ge() {
   } catch (o) {
     console.warn("[silent]", o);
   }
-  if (A(), W(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
+  if (C(), J(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
     var e = document.getElementById("admin-content");
     e && !e.classList.contains("hidden") && loadAdmRounds();
   }
@@ -1577,12 +1587,12 @@ function ge() {
   }
   typeof initRoundView == "function" && typeof curRid < "u" && curRid && initRoundView(), typeof initSoloView == "function" && initSoloView(), typeof updateHcpTable == "function" && updateHcpTable(), typeof loadClubStats == "function" && loadClubStats(), typeof loadMyActiveRounds == "function" && loadMyActiveRounds("my-active-rounds-container");
 }
-function W() {
+function J() {
   typeof document > "u" || document.querySelectorAll(".lang-btn").forEach(function(e) {
     e.innerHTML = f === "en" ? "🇬🇧 EN" : "🇷🇺 RU";
   });
 }
-function A() {
+function C() {
   typeof document > "u" || (document.querySelectorAll("[data-i18n]").forEach(function(e) {
     var a = e.getAttribute("data-i18n");
     a && m[f] && m[f][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = m[f][a] + " — " + Y("brand_name") : e.innerHTML = m[f][a]);
@@ -1600,12 +1610,12 @@ try {
   console.warn("[silent]", e);
 }
 try {
-  A();
+  C();
 } catch (e) {
   console.warn("[silent]", e);
 }
 document.addEventListener("DOMContentLoaded", function() {
-  A(), N();
+  C(), N();
 });
 function N() {
   if (!(typeof document > "u")) {
@@ -1616,8 +1626,8 @@ function N() {
   }
 }
 N();
-typeof window < "u" && Object.assign(window, { currentLang: f, I18N: m, t: Y, toggleLang: ge, updateLangButtons: W, applyTranslations: A, updateFooterYear: N });
-function C(e, a, r, n, o) {
+typeof window < "u" && Object.assign(window, { currentLang: f, I18N: m, t: Y, toggleLang: ge, updateLangButtons: J, applyTranslations: C, updateFooterYear: N });
+function A(e, a, r, n, o) {
   var l = !!o, i = l ? escapeHtml : function(b) {
     return String(b);
   }, d = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), u = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", c = l ? "<b>" : "", s = l ? "</b>" : "", _ = [];
@@ -1633,7 +1643,7 @@ function ve(e, a, r, n, o, l, i) {
     toast("⚠️ Укажите Bot Token и Chat ID / Username для " + (r || "Telegram"), "error");
     return;
   }
-  var d = C(n, o, l, i, !0), u = typeof AbortController < "u" ? new AbortController() : null, c = u ? setTimeout(function() {
+  var d = A(n, o, l, i, !0), u = typeof AbortController < "u" ? new AbortController() : null, c = u ? setTimeout(function() {
     try {
       u.abort();
     } catch (_) {
@@ -1665,7 +1675,7 @@ function ve(e, a, r, n, o, l, i) {
 }
 function we(e, a, r, n, o, l) {
   if (e = (e || "").trim(), a = (a || "").trim(), !(!e || !a)) {
-    var i = C(r, n, o, l, !0), d = typeof AbortController < "u" ? new AbortController() : null, u = d ? setTimeout(function() {
+    var i = A(r, n, o, l, !0), d = typeof AbortController < "u" ? new AbortController() : null, u = d ? setTimeout(function() {
       try {
         d.abort();
       } catch (s) {
@@ -1727,20 +1737,20 @@ function L(e, a, r, n) {
     u(), n ? console.warn("⚠️ VK JSONP timeout (suppressed)") : toast("❌ Таймаут соединения с VK (10 сек)", "error");
   }, 1e4), (document.head || document.body).appendChild(d);
 }
-function H(e, a, r, n) {
-  return C(e, a, r, n, !1);
+function I(e, a, r, n) {
+  return A(e, a, r, n, !1);
 }
 function Te(e, a, r, n, o, l) {
   if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
     toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error");
     return;
   }
-  var i = H(r, n, o, l);
+  var i = I(r, n, o, l);
   L(e, a, i, !1);
 }
 function ke(e, a, r, n, o, l) {
   if (e = (e || "").trim(), a = (a || "").trim(), !(!e || !a)) {
-    var i = H(r, n, o, l);
+    var i = I(r, n, o, l);
     L(e, a, i, !0);
   }
 }
@@ -1752,35 +1762,35 @@ function Pe(e, a, r, n) {
     flight: (n || []).length
   });
 }
-typeof window < "u" && Object.assign(window, { buildOfficialCallText: C, sendTelegramDirectAlert: ve, sendTelegramSilentAlert: we, sendTelegramOfficialAlert: Se, vkSendMessageJsonp: L, vkBuildAlertText: H, sendVKDirectAlert: Te, sendVKSilentAlert: ke, sendVKOfficialAlert: Pe });
+typeof window < "u" && Object.assign(window, { buildOfficialCallText: A, sendTelegramDirectAlert: ve, sendTelegramSilentAlert: we, sendTelegramOfficialAlert: Se, vkSendMessageJsonp: L, vkBuildAlertText: I, sendVKDirectAlert: Te, sendVKSilentAlert: ke, sendVKOfficialAlert: Pe });
 export {
   $ as ADDR,
-  J as CLUB,
+  W as CLUB,
   X as COURSE_RATINGS,
   P as DATE_RANGE_PRESETS,
   g as HOLES,
   m as I18N,
   z as TEES,
   Q as TEE_ORDER,
-  I as TIMINGS,
-  M as TOAST_DURATION_MS,
+  F as TIMINGS,
+  E as TOAST_DURATION_MS,
   Re as TOTAL_PAR,
-  A as applyTranslations,
-  C as buildOfficialCallText,
+  C as applyTranslations,
+  A as buildOfficialCallText,
   f as currentLang,
   O as dateInputToEndTs,
-  F as dateInputToStartTs,
+  H as dateInputToStartTs,
   x as datePresetRange,
   k as dateRangeFilters,
   j as ensureToastRoot,
-  V as esc,
+  B as esc,
   U as escapeHtml,
   ce as filterEntriesByDateRange,
   le as fmtDate,
   re as fmtScore,
   ie as fmtTime,
   pe as getDateRangeFilter,
-  G as getRoundFilterTs,
+  V as getRoundFilterTs,
   ee as holeDist,
   te as holeHcp,
   Z as holePar,
@@ -1794,7 +1804,7 @@ export {
   T as normalizeTimestampMs,
   R as readDateRange,
   fe as refreshDateRangeFilters,
-  B as renderRoundsPeriodSummary,
+  G as renderRoundsPeriodSummary,
   ne as scoreClass,
   ve as sendTelegramDirectAlert,
   Se as sendTelegramOfficialAlert,
@@ -1805,14 +1815,14 @@ export {
   he as setSafeHtml,
   Y as t,
   _e as tnDateTs,
-  E as toast,
+  M as toast,
   q as toastIconFor,
   be as toastSequence,
   ge as toggleLang,
   D as tsToDateInputValue,
   N as updateFooterYear,
-  W as updateLangButtons,
+  J as updateLangButtons,
   ye as vib,
-  H as vkBuildAlertText,
+  I as vkBuildAlertText,
   L as vkSendMessageJsonp
 };

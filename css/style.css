@@ -6736,3 +6736,17 @@ body.sun-mode .score-entry .hole-val { color:#111!important; text-shadow:none!im
 .sc-preview-controls label { display:grid; gap:6px; font-size:12px; min-width:0; }
 .sc-preview-controls select { min-width:0; width:100%; min-height:44px; padding:8px; }
 @media(max-width:420px) { .sc-preview-controls { grid-template-columns:1fr; } }
+
+/* Отчёт «Проверить серверную доставку» (admin-channels.js: testServerDelivery).
+   Показывает результат ТОГО ЖЕ пути, которым уходит вызов во время раунда
+   (alerts/<id> → Cloud Function onAlertCreated → Telegram/VK), в отличие от
+   кнопок «Проверить Группу/Канал/ВК» — те шлют из браузера. */
+.srv-delivery-status { margin-top:12px; padding:12px 14px; border-radius:10px; font-size:12.5px; line-height:1.6; border:1px solid var(--border); color:var(--muted); }
+.srv-delivery-status.is-pending { border-color:rgba(201,168,76,0.45); color:var(--gold); }
+.srv-delivery-status.is-ok { border-color:rgba(46,204,113,0.5); background:rgba(46,204,113,0.08); color:#2ecc71; }
+.srv-delivery-status.is-warn { border-color:rgba(255,193,7,0.5); background:rgba(255,193,7,0.08); color:#ffc107; }
+.srv-delivery-status.is-bad { border-color:rgba(224,90,74,0.55); background:rgba(224,90,74,0.1); color:var(--red); }
+/* Статус доставки отдельного вызова в панели «Вызовы» (admin-alerts.js). */
+.alert-delivery-status { font-size:11.5px; margin-top:6px; padding:6px 8px; border-radius:8px; border:1px solid var(--border); color:var(--muted); line-height:1.5; }
+.alert-delivery-status.is-ok { border-color:rgba(46,204,113,0.4); color:#2ecc71; }
+.alert-delivery-status.is-bad { border-color:rgba(224,90,74,0.45); color:var(--red); }

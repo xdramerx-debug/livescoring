@@ -2762,10 +2762,18 @@ function requestOfficialCall(config) {
         var now = Date.now();
         var playerName = typeof config.playerName === 'function' ? config.playerName() : config.playerName;
         var flightMembers = typeof config.flightMembers === 'function' ? config.flightMembers() : config.flightMembers;
+        // Кто создал запись. В QR-сессии playerId — это игрок, а auth.uid —
+        // анонимная сессия устройства, поэтому правила
+        // alerts/$id/delivery/.write проверяют и createdBy тоже: создатель
+        // пишет отчёт о доставке (js/official-alerts.js,
+        // pestovoRecordClientDelivery) — иначе в админке не видно, ушло ли
+        // сообщение в Telegram/ВК.
+        var myAuth = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : null;
         var call = {
             roundId: config.roundId,
             type: type,
             hole: hole,
+            createdBy: myAuth && myAuth.uid ? myAuth.uid : '',
             playerId: config.playerId,
             playerName: playerName || (currentLang === 'en' ? 'Player' : 'Игрок'),
             flightMembers: flightMembers || [],

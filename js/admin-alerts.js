@@ -117,6 +117,95 @@ function admAlertsScheduleRender() {
     }, 300);
 }
 
+// ============================================================
+// СТАТУС СЕРВЕРНОЙ ДОСТАВКИ ВЫЗОВА
+// ------------------------------------------------------------
+// Боевую отправку вызова в Telegram/VK делает сервер (functions/index.js,
+// onAlertCreated) и пишет отчёт в alerts/<id>/delivery. Без этого отчёта
+// «сообщение не пришло» было неотличимо от «функция не задеплоена» или
+// «токен не сохранился в channels/»: вызов просто висел в панели, а куда и
+// кем он отправлялся — не было видно нигде. Кнопки «Проверить Группу/ВК»
+// в таких случаях продолжают работать, потому что шлют из браузера.
+// ============================================================
+function alertDeliveryChannelLabel(label) {
+    // Единый словарь названий приёмников — в js/admin-channels.js (там же
+    // кнопка «Проверить серверную доставку»); на вкладке «Вызовы» он загружен.
+    if (typeof serverDeliveryStatusLabel === 'function') return serverDeliveryStatusLabel(label);
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    if (label === 'telegram:group') return isEn ? 'Telegram (referees group)' : 'Telegram (группа судей)';
+    if (label === 'telegram:channel') return isEn ? 'Telegram (club channel)' : 'Telegram (канал клуба)';
+    if (label === 'vk') return isEn ? 'VK' : 'ВКонтакте';
+    return label;
+}
+
+function renderAlertDeliveryStatus(d) {
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    // Кто обязан был отправить вызов. alertDeliveryMode живёт в
+    // js/admin-channels.js и грузится вместе с админкой; страховка typeof —
+    // чтобы панель не падала, если файл ещё не исполнен (тесты, старый кэш).
+    var mode = (typeof alertDeliveryMode !== 'undefined' && alertDeliveryMode === 'server')
+        ? 'server' : 'client';
+    if (!d) {
+        return '<div class="alert-delivery-status">📡 ' + escapeHtml(mode === 'server'
+            ? (isEn
+                ? 'No server delivery report: Cloud Function onAlertCreated did not process this call (not deployed / outdated, or the call predates the update). Telegram and VK got nothing.'
+                : 'Нет отчёта серверной доставки: Cloud Function onAlertCreated не обработала вызов (не задеплоена/устарела или вызов создан до обновления). В Telegram и ВК ничего не ушло.')
+            : (isEn
+                ? 'No delivery report: the call was to be sent by the player browser, but no status was recorded. Most often the database rules are not deployed (run firebase deploy --only database), or the call predates the update. Check the judges chat.'
+                : 'Нет отчёта о доставке: вызов должен был отправить браузер игрока, но статус не записан. Чаще всего не задеплоены правила базы (выполните firebase deploy --only database) или вызов создан до обновления. Проверьте судейский чат.')) + '</div>';
+    }
+    if (d.skipped === 'server_mode') {
+        return '<div class="alert-delivery-status">📡 ' + escapeHtml(isEn
+            ? 'The browser did not send anything: delivery mode is “Server”, so Cloud Function onAlertCreated is responsible.'
+            : 'Браузер ничего не отправлял: режим доставки «Сервер», за доставку отвечает Cloud Function onAlertCreated.') + '</div>';
+    }
+    if (d.skipped === 'error') {
+        return '<div class="alert-delivery-status is-bad">📡 ❌ ' + escapeHtml(String(d.error || (isEn ? 'delivery failed' : 'сбой доставки'))) + '</div>';
+    }
+    if (d.skipped === 'notifications_disabled') {
+        return '<div class="alert-delivery-status is-bad">📡 ' + escapeHtml(isEn
+            ? 'Skipped: club notifications are turned OFF for everyone.'
+            : 'Пропущено: уведомления клуба выключены для всех.') + '</div>';
+    }
+    if (d.skipped === 'rate_limited') {
+        return '<div class="alert-delivery-status">📡 ' + escapeHtml(isEn
+            ? 'Skipped: duplicate call from the same player (anti-spam).'
+            : 'Пропущено: повторный вызов того же игрока (защита от спама).') + '</div>';
+    }
+
+    var parts = [];
+    var hasError = false;
+    var hasSent = false;
+    var channels = d.channels || {};
+    ['telegram:group', 'telegram:channel', 'vk'].forEach(function (label) {
+        var state = channels[label];
+        if (!state) return;
+        var name = escapeHtml(alertDeliveryChannelLabel(label));
+        if (state === 'sent') { hasSent = true; parts.push(name + ' ✅'); }
+        else if (state === 'not_configured') { parts.push(name + ' ⚪ ' + escapeHtml(isEn ? 'not configured' : 'не настроен')); }
+        else { hasError = true; parts.push(name + ' ❌ ' + escapeHtml(String(state).replace(/^error:\s*/, ''))); }
+    });
+    if (channels.error) { hasError = true; parts.push('❌ ' + escapeHtml(String(channels.error).replace(/^error:\s*/, ''))); }
+    if (typeof d.push === 'number') {
+        parts.push('push: ' + d.push + (isEn ? ' admin(s)' : ' админ.'));
+        if (d.push > 0) hasSent = true;
+    }
+    if (!parts.length) {
+        parts.push(escapeHtml(isEn ? 'no channels configured' : 'каналы не настроены'));
+    }
+    var kind = hasError ? ' is-bad' : (hasSent ? ' is-ok' : '');
+    // by: 'client' пишет браузер игрока (js/official-alerts.js), by: 'server' —
+    // Cloud Function. У старых отчётов поля нет: их делал только сервер.
+    var byClient = d.by === 'client';
+    var prefix = byClient
+        ? (isEn ? 'Browser delivery: ' : 'Доставка из браузера: ')
+        : (isEn ? 'Server delivery: ' : 'Серверная доставка: ');
+    return '<div class="alert-delivery-status' + kind + '">📡 ' +
+        escapeHtml(prefix) + parts.join(' · ') +
+        (d.at ? ' <span style="opacity:0.7">(' + escapeHtml(typeof fmtTime === 'function' ? fmtTime(d.at) : '') + ')</span>' : '') +
+        '</div>';
+}
+
 function admAlertsRenderPanel(p) {
     var entries = p.entries;
     // p.allEntries — уже массив пар [id, alert] (Object.entries из admAlertsPending).
@@ -221,6 +310,7 @@ function admAlertsRenderPanel(p) {
                     html += '<div style="font-size:12px;color:var(--blue);margin-top:2px;">' + flightLblStr + ': ' + a.flightMembers.map(function(n) { return escapeHtml(n); }).join(', ') + '</div>';
                 }
                 html += '<div style="font-size:11px;color:var(--muted);">' + fmtTime(a.time) + '</div>';
+                html += renderAlertDeliveryStatus(a.delivery);
                 if (alreadyResponded) {
                     var who = a.response.responderRole === 'marshal'
                         ? (currentLang === 'en' ? 'Marshal' : 'Маршал')

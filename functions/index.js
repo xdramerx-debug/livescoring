@@ -484,100 +484,272 @@ function officialCallHtml(a) {
     return lines.join('\n');
 }
 
-async function channelPostJson(url, body) {
+// VK принимает только обычный текст — HTML-разметку Telegram вырезаем.
+function officialCallPlain(a) {
+    return officialCallHtml(a).replace(/<[^>]+>/g, '');
+}
+
+async function channelPost(url, init) {
     const controller = new AbortController();
     const timer = setTimeout(function () { controller.abort(); }, CHANNEL_FETCH_TIMEOUT_MS);
     try {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal: controller.signal
-        });
-        return await res.json();
+        const res = await fetch(url, Object.assign({ signal: controller.signal }, init));
+        // Ответ может быть не-JSON (страница ошибки прокси, 502 от Telegram).
+        // Раньше res.json() бросал исключение, и в логе оставалось
+        // «Unexpected token <» вместо реальной причины отказа.
+        const raw = await res.text();
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            return { __httpStatus: res.status, __rawBody: String(raw).slice(0, 300) };
+        }
     } finally {
         clearTimeout(timer);
     }
 }
 
+async function channelPostJson(url, body) {
+    return channelPost(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(body)
+    });
+}
+
+// VK API НЕ принимает application/json в теле запроса — только
+// x-www-form-urlencoded (dev.vk.com/ru/api/api-requests: «Значение
+// application/json в настоящее время не поддерживается»). Отправка JSON-тела
+// в messages.send возвращала ошибку 100 «One of the parameters specified was
+// missing or invalid», поэтому вызов судьи/маршала во время раунда в ВК не
+// уходил, хотя «Проверить отправку в ВК» в админке работал: тест идёт из
+// браузера JSONP-ом с параметрами в URL.
+async function channelPostForm(url, params) {
+    return channelPost(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'Accept': 'application/json'
+        },
+        body: new URLSearchParams(params).toString()
+    });
+}
+
+// Поля каналов — строки, но peer_id админка могла сохранить и числом
+// (input type="number"). str() из валидации входных данных числа отбрасывал.
+function channelStr(v, max) {
+    if (v === null || v === undefined) return '';
+    const s = String(v).trim();
+    return s.length > max ? s.slice(0, max) : s;
+}
+
+// Приводит ветку channels/ к рабочему виду: { telegram: { group, channel }, vk }.
+// Заодно понимает старые имена полей (botToken/chatId) — их пишет
+// migrateLegacyChannelSecrets() в админке при переносе из публичного /settings,
+// и только они могли остаться в базе, если перенос прошёл частично.
+// Клиентская загрузка настроек делает то же самое (js/admin-channels.js:
+// `tg.groupToken || tg.botToken`) — сервер обязан не быть строже.
+function normalizeChannelSettings(v) {
+    v = v || {};
+    const tg = v.telegram || {};
+    const vk = v.vk || {};
+    const groupToken = channelStr(tg.groupToken, 200) || channelStr(tg.botToken, 200);
+    const groupId = channelStr(tg.groupId, 100) || channelStr(tg.chatId, 100);
+    const channelId = channelStr(tg.channelId, 100);
+    // «Или использовать один и тот же бот» (подсказка в админке): для канала
+    // достаточно ID, токен берём у группы, если отдельного не сохранили.
+    const channelToken = channelStr(tg.channelToken, 200) || (channelId ? groupToken : '');
+    const vkToken = channelStr(vk.token, 300);
+    const vkPeerId = channelStr(vk.peerId, 50);
+    return {
+        telegram: {
+            group: (groupToken && groupId) ? { token: groupToken, chat: groupId } : null,
+            channel: (channelToken && channelId) ? { token: channelToken, chat: channelId } : null
+        },
+        vk: (vkToken && vkPeerId) ? { token: vkToken, peerId: vkPeerId } : null
+    };
+}
+
 async function readChannelSettings() {
     try {
         const snap = await db.ref('channels').get();
-        const v = snap.val() || {};
-        return { telegram: v.telegram || {}, vk: v.vk || {} };
+        return normalizeChannelSettings(snap.val() || {});
     } catch (err) {
         functions.logger.warn('channels settings unavailable', err && err.message);
-        return { telegram: {}, vk: {} };
+        return normalizeChannelSettings({});
     }
 }
 
-// Возвращает список успешно отработавших приёмников ('telegram:group', 'vk').
+// Рассылает вызов по настроенным каналам и возвращает ОТЧЁТ:
+//   { sent: ['telegram:group', 'vk'], results: { 'telegram:group': 'sent', … },
+//     configured: { 'telegram:group': true, … } }
+// Отчёт пишется в alerts/<id>/delivery и показывается в панели «Вызовы»,
+// потому что молчаливая доставка неразличима с незадеплоенной функцией:
+// «Проверить Группу» в админке шлёт из браузера и всегда проходит, а настоящий
+// вызов во время раунда идёт только отсюда.
 // Ошибка одного приёмника не отменяет остальные: вызов в любом случае лежит
 // в alerts/ и виден в админке.
 async function deliverOfficialCall(a) {
     const cfg = await readChannelSettings();
-    const sent = [];
-    const text = officialCallHtml(a);
+    const report = { sent: [], results: {}, configured: {} };
+    const html = officialCallHtml(a);
 
-    const tgTargets = [];
-    const tg = cfg.telegram || {};
-    if (tg.groupToken && tg.groupId) tgTargets.push(['group', tg.groupToken, tg.groupId]);
-    if (tg.channelToken && tg.channelId) tgTargets.push(['channel', tg.channelToken, tg.channelId]);
+    const tgTargets = [
+        ['telegram:group', cfg.telegram.group],
+        ['telegram:channel', cfg.telegram.channel]
+    ];
     for (const target of tgTargets) {
+        const label = target[0];
+        const conf = target[1];
+        report.configured[label] = !!conf;
+        if (!conf) {
+            report.results[label] = 'not_configured';
+            functions.logger.warn(label + ': token/chat id are not set in channels/telegram');
+            continue;
+        }
         try {
             const r = await channelPostJson(
-                'https://api.telegram.org/bot' + encodeURIComponent(target[1]) + '/sendMessage',
-                { chat_id: target[2], text: text, parse_mode: 'HTML' }
+                'https://api.telegram.org/bot' + encodeURIComponent(conf.token) + '/sendMessage',
+                { chat_id: conf.chat, text: html, parse_mode: 'HTML', disable_web_page_preview: true }
             );
-            if (r && r.ok) sent.push('telegram:' + target[0]);
-            else functions.logger.warn('telegram send failed (' + target[0] + ')', r && r.description);
+            if (r && r.ok) {
+                report.sent.push(label);
+                report.results[label] = 'sent';
+            } else {
+                const reason = r
+                    ? (r.description || (r.error_code ? 'code ' + r.error_code : '') ||
+                       (r.__rawBody ? 'HTTP ' + r.__httpStatus : '') || 'empty response')
+                    : 'empty response';
+                report.results[label] = 'error: ' + channelStr(reason, 200);
+                functions.logger.warn(label + ' send failed', reason);
+            }
         } catch (err) {
-            functions.logger.warn('telegram send error (' + target[0] + ')', err && err.message);
+            const name = err && err.name === 'AbortError' ? 'timeout' : (err && err.message);
+            report.results[label] = 'error: ' + channelStr(name, 200);
+            functions.logger.warn(label + ' send error', err && err.message);
         }
     }
 
-    const vk = cfg.vk || {};
-    if (vk.token && vk.peerId) {
+    report.configured.vk = !!cfg.vk;
+    if (!cfg.vk) {
+        report.results.vk = 'not_configured';
+        functions.logger.warn('vk: token/peer id are not set in channels/vk');
+    } else {
         try {
-            const r = await channelPostJson('https://api.vk.com/method/messages.send', {
-                peer_id: vk.peerId,
-                message: text.replace(/<[^>]+>/g, ''),
-                access_token: vk.token,
-                v: VK_API_VERSION,
-                random_id: Date.now()
+            // Только form-urlencoded: см. комментарий к channelPostForm.
+            const r = await channelPostForm('https://api.vk.com/method/messages.send', {
+                peer_id: cfg.vk.peerId,
+                message: officialCallPlain(a),
+                random_id: Date.now(),
+                access_token: cfg.vk.token,
+                v: VK_API_VERSION
             });
-            if (r && !r.error) sent.push('vk');
-            else functions.logger.warn('vk send failed', r && r.error && r.error.error_msg);
+            if (r && !r.error && r.response !== undefined) {
+                report.sent.push('vk');
+                report.results.vk = 'sent';
+            } else {
+                const e = (r && r.error) || {};
+                const reason = e.error_msg
+                    ? ('code ' + (e.error_code || '?') + ': ' + e.error_msg)
+                    : (r && r.__rawBody ? 'HTTP ' + r.__httpStatus : 'empty response');
+                report.results.vk = 'error: ' + channelStr(reason, 200);
+                functions.logger.warn('vk send failed', reason);
+            }
         } catch (err) {
+            const name = err && err.name === 'AbortError' ? 'timeout' : (err && err.message);
+            report.results.vk = 'error: ' + channelStr(name, 200);
             functions.logger.warn('vk send error', err && err.message);
         }
     }
-    return sent;
+    return report;
+}
+
+// Запись отчёта о доставке в сам вызов: alerts/<id>/delivery.
+// Правила RTDB клиентам обновлять alerts/<id> не разрешают, а Admin SDK
+// правилами не ограничен — статус пишет только функция.
+// Режим доставки вызовов судьи/маршала: settings/alert_delivery_mode
+//   'client' (по умолчанию, узел может отсутствовать) — Telegram и ВКонтакте
+//            отправляет браузер игрока (js/official-alerts.js), функция молчит;
+//   'server' — отправляет эта функция (нужен тариф с Cloud Functions).
+// Web Push в любом случае отправляет сервер: браузер игрока не может будить
+// телефон судьи, когда страница уже свёрнута.
+// Узел публичный и секретов не содержит — в отличие от channels/, где живут
+// токены бота и VK-ключа.
+async function deliveryMode() {
+    try {
+        const snap = await db.ref('settings/alert_delivery_mode').get();
+        return snap && snap.val() === 'server' ? 'server' : 'client';
+    } catch (err) {
+        functions.logger.warn('deliveryMode read failed; assuming client', err && err.message);
+        return 'client';
+    }
+}
+
+async function recordDelivery(alertId, report, extra) {
+    if (!alertId) return;
+    const payload = Object.assign({
+        at: Date.now(),
+        sent: report && report.sent ? report.sent.length : 0,
+        channels: (report && report.results) || {},
+        configured: (report && report.configured) || {}
+    }, extra || {});
+    try {
+        await db.ref('alerts/' + alertId + '/delivery').set(payload);
+    } catch (err) {
+        // Отчёт — не часть вызова: его сбой не должен ронять доставку/push.
+        functions.logger.warn('recordDelivery failed', err && err.message);
+    }
 }
 
 exports.onAlertCreated = functions.database.ref('/alerts/{id}').onCreate(async function (snap) {
     try {
+        const mode = await deliveryMode();
+        const serverChannels = mode === 'server';
         if (!(await globalNotificationsEnabled())) {
             functions.logger.info('onAlertCreated: global notifications disabled, skip');
+            if (serverChannels) await recordDelivery(snap.key, null, { skipped: 'notifications_disabled' });
             return;
         }
         const a = snap.val() || {};
         if (a.status && a.status !== 'active') return;
         if (a.type !== 'referee' && a.type !== 'marshal') { functions.logger.warn('onAlertCreated: invalid type, skip'); return; }
-        if (rateLimited('alert:' + (a.roundId || a.hole || 'anon'), 2000)) { functions.logger.warn('onAlertCreated: rate-limited'); return; }
 
-        // Telegram/VK не зависят от Web Push: раньше при пустом списке
-        // админских подписок функция выходила до всякой рассылки.
-        // Сбой Telegram/VK не должен отменять Web Push: раньше исключение
-        // внутри доставки перепрыгивало в общий catch, и телефон админа
-        // не получал вызов вообще.
-        let channels = [];
-        try {
-            channels = await deliverOfficialCall(a);
-        } catch (err) {
-            functions.logger.warn('onAlertCreated: channels failed', err && err.message);
+        if (serverChannels) {
+            // Ключ антиспама — игрок + тип вызова, а не раунд: с прежним ключом
+            // 'alert:<roundId>' второй вызов из того же флайта (маршал у соседа
+            // или судья у другого игрока) в течение 2 секунд отбрасывался целиком,
+            // и в Telegram/VK не уходил вообще.
+            const rateKey = 'alert:' + [a.roundId || 'noround', a.playerId || 'anon', a.type].join(':');
+            if (rateLimited(rateKey, 2000)) {
+                functions.logger.warn('onAlertCreated: rate-limited', rateKey);
+                await recordDelivery(snap.key, null, { skipped: 'rate_limited' });
+                return;
+            }
+
+            // Telegram/VK не зависят от Web Push: раньше при пустом списке
+            // админских подписок функция выходила до всякой рассылки.
+            // Сбой Telegram/VK не должен отменять Web Push: раньше исключение
+            // внутри доставки перепрыгивало в общий catch, и телефон админа
+            // не получал вызов вообще.
+            let report = { sent: [], results: {}, configured: {} };
+            try {
+                report = await deliverOfficialCall(a);
+            } catch (err) {
+                functions.logger.warn('onAlertCreated: channels failed', err && err.message);
+                report.results.error = 'error: ' + channelStr(err && err.message, 200);
+            }
+            await recordDelivery(snap.key, report);
+            if (report.sent.length) functions.logger.info('onAlertCreated: delivered via ' + report.sent.join(', '));
+            else functions.logger.warn('onAlertCreated: nothing delivered', JSON.stringify(report.results));
+        } else {
+            // Режим 'client' (по умолчанию): в Telegram и ВКонтакте пишет
+            // браузер игрока, поэтому сервер обязан молчать — иначе судейский
+            // чат получил бы два одинаковых сообщения. Отчёт о доставке
+            // (alerts/<id>/delivery, by: 'client') тоже пишет браузер, и его
+            // нельзя затирать: ниже обновляется только вложенный leaf push.
+            // Антиспам не применяется — браузер игрока сам подтвердил вызов,
+            // а ранний return лишил бы админов Web Push.
+            functions.logger.info('onAlertCreated: delivery mode = client, channels skipped');
         }
-        if (channels.length) functions.logger.info('onAlertCreated: delivered via ' + channels.join(', '));
 
         const keys = await ensureVapidKeys();
         configureWebPush(keys);
@@ -585,6 +757,11 @@ exports.onAlertCreated = functions.database.ref('/alerts/{id}').onCreate(async f
         const allSubs = await getAllSubscriptions();
         const subs = await getAdminSubscriptions(allSubs);
         functions.logger.info('alert push: ' + subs.length + ' admin subs of ' + allSubs.length);
+        try {
+            await db.ref('alerts/' + snap.key + '/delivery/push').set(subs.length);
+        } catch (err) {
+            functions.logger.warn('delivery/push write failed', err && err.message);
+        }
         if (!subs.length) {
             functions.logger.warn('onAlertCreated: нет подписок админов — push не отправлен');
             return;
@@ -601,4 +778,71 @@ exports.onAlertCreated = functions.database.ref('/alerts/{id}').onCreate(async f
     } catch (err) {
         functions.logger.error('onAlertCreated failed', err);
     }
+});
+
+// ── Проверка СЕРВЕРНОЙ доставки из админки ────────────────────────────────
+// Кнопки «Проверить Группу / Канал / ВК» отправляют сообщение из браузера:
+// они подтверждают токен и chat_id, но не подтверждают, что вызов судьи во
+// время раунда дойдёт — боевую отправку делает onAlertCreated, читая channels/
+// через Admin SDK. Эта функция прогоняет тот же серверный путь и возвращает
+// отчёт по каждому каналу, поэтому админ видит причину («не настроено»,
+// «ошибка 100 от VK», «таймаут»), а не догадывается по отсутствию сообщения.
+exports.testOfficialCallDelivery = functions.runWith({}).https.onCall(async function (data, context) {
+    const authCtx = context && context.auth;
+    const uid = authCtx && authCtx.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    const token = authCtx.token || {};
+    const isMaster = uid === MASTER_UID && token.tournamentMaster === true && token.tournamentMasterUntil > Date.now();
+    let profile = null;
+    try {
+        profile = (await db.ref('users/' + uid).get()).val();
+    } catch (e) { profile = null; }
+    if (!isMaster && !isAdminProfile(profile)) {
+        throw new functions.https.HttpsError('permission-denied', 'Administrator rights required.');
+    }
+    if (rateLimited('testDelivery:' + uid, 5000)) {
+        throw new functions.https.HttpsError('resource-exhausted', 'Too many attempts. Try again later.');
+    }
+
+    const enabled = await globalNotificationsEnabled();
+    const cfg = await readChannelSettings();
+    const configured = {
+        'telegram:group': !!cfg.telegram.group,
+        'telegram:channel': !!cfg.telegram.channel,
+        vk: !!cfg.vk
+    };
+    // Глобальный выключатель проверяется так же, как в onAlertCreated: тест
+    // обязан показывать реальное поведение, а не «всё работает».
+    if (!enabled) {
+        return { ok: false, reason: 'notifications_disabled', enabled: false, configured: configured, results: {}, sent: [], at: Date.now() };
+    }
+    if (!configured['telegram:group'] && !configured['telegram:channel'] && !configured.vk) {
+        return { ok: false, reason: 'not_configured', enabled: true, configured: configured, results: {}, sent: [], at: Date.now() };
+    }
+
+    const a = {
+        type: (data && data.type === 'marshal') ? 'marshal' : 'referee',
+        hole: 1,
+        playerName: 'Тест серверной доставки (админка)',
+        flightMembers: [],
+        time: Date.now(),
+        test: true
+    };
+    let report = { sent: [], results: {}, configured: {} };
+    try {
+        report = await deliverOfficialCall(a);
+    } catch (err) {
+        functions.logger.warn('testOfficialCallDelivery: delivery failed', err && err.message);
+        report.results.error = 'error: ' + channelStr(err && err.message, 200);
+    }
+    functions.logger.info('testOfficialCallDelivery by ' + uid + ': ' + JSON.stringify(report.results));
+    return {
+        ok: report.sent.length > 0,
+        reason: report.sent.length ? '' : 'nothing_delivered',
+        enabled: true,
+        configured: configured,
+        results: report.results,
+        sent: report.sent,
+        at: Date.now()
+    };
 });

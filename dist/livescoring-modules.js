@@ -1,4 +1,4 @@
-const J = "Пестово", Re = 72, $ = "МО, г. Мытищи, Никольская ул., 1, Румянцево", g = {
+const Z = "Пестово", De = 72, ee = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
   1: { p: 4, hcp: 5, bk: 373, bl: 339, wh: 328, rd: 317 },
   2: { p: 4, hcp: 13, bk: 272, bl: 257, wh: 257, rd: 250 },
   3: { p: 5, hcp: 9, bk: 486, bl: 475, wh: 464, rd: 423 },
@@ -17,359 +17,359 @@ const J = "Пестово", Re = 72, $ = "МО, г. Мытищи, Никольс
   16: { p: 4, hcp: 14, bk: 423, bl: 391, wh: 368, rd: 312 },
   17: { p: 3, hcp: 10, bk: 199, bl: 188, wh: 174, rd: 151 },
   18: { p: 4, hcp: 6, bk: 375, bl: 349, wh: 335, rd: 302 }
-}, I = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, z = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, Q = ["bk", "bl", "wh", "rd"], X = {
+}, G = { 1: 15, 2: 15, 3: 20, 4: 12, 5: 15, 6: 15, 7: 15, 8: 12, 9: 20, 10: 20, 11: 15, 12: 15, 13: 12, 14: 15, 15: 20, 16: 15, 17: 12, 18: 15 }, te = { bk: "Чёрный", bl: "Синий", wh: "Белый", rd: "Красный" }, re = ["bk", "bl", "wh", "rd"], ae = {
   men: { bk: { cr: 76, sr: 144 }, bl: { cr: 73.8, sr: 137 }, wh: { cr: 72, sr: 135 }, rd: { cr: 69.2, sr: 134 } },
   women: { bl: { cr: 80.8, sr: 153 }, wh: { cr: 78.6, sr: 143 }, rd: { cr: 75.2, sr: 136 } }
 };
-function Z(e) {
-  return g[e] ? g[e].p : 4;
+function ne(e) {
+  return v[e] ? v[e].p : 4;
 }
-function ee(e, a) {
-  return a = a || "wh", g[e] && g[e][a] || 0;
+function oe(e, r) {
+  return r = r || "wh", v[e] && v[e][r] || 0;
 }
-function te(e) {
-  return g[e] ? g[e].hcp : e;
+function se(e) {
+  return v[e] ? v[e].hcp : e;
 }
-function ae(e) {
-  return I[e] || 15;
+function le(e) {
+  return G[e] || 15;
 }
-typeof window < "u" && Object.assign(window, { CLUB: J, TOTAL_PAR: 72, ADDR: $, HOLES: g, TIMINGS: I, TEES: z, TEE_ORDER: Q, COURSE_RATINGS: X, holePar: Z, holeDist: ee, holeHcp: te, holeTiming: ae });
-function re(e) {
+typeof window < "u" && Object.assign(window, { CLUB: Z, TOTAL_PAR: 72, ADDR: ee, HOLES: v, TIMINGS: G, TEES: te, TEE_ORDER: re, COURSE_RATINGS: ae, holePar: ne, holeDist: oe, holeHcp: se, holeTiming: le });
+function ie(e) {
   return e == null || isNaN(e) ? "—" : e === 0 ? "E" : e > 0 ? "+" + e : "" + e;
 }
-function ne(e) {
+function _e(e) {
   return e == null ? "" : e < 0 ? "s-un" : e > 0 ? "s-ov" : "s-ev";
 }
-function oe(e, a) {
-  if (!e || e < 1 || !a) return "";
-  var r = e - a;
-  return r <= -2 ? "r-eag" : r === -1 ? "r-bir" : r === 0 ? "r-par" : r === 1 ? "r-bog" : "r-dbl";
+function de(e, r) {
+  if (!e || e < 1 || !r) return "";
+  var a = e - r;
+  return a <= -2 ? "r-eag" : a === -1 ? "r-bir" : a === 0 ? "r-par" : a === 1 ? "r-bog" : "r-dbl";
 }
-function se(e, a) {
-  if (!e || !a) return "";
+function ce(e, r) {
+  if (!e || !r) return "";
   if (e === 1) return t("res_hio");
-  var r = e - a;
-  return r <= -3 ? t("res_albatross") : r === -2 ? t("res_eagle") : r === -1 ? t("res_birdie") : r === 0 ? t("res_par") : r === 1 ? t("res_bogey") : r === 2 ? t("res_double") : "+" + r;
+  var a = e - r;
+  return a <= -3 ? t("res_albatross") : a === -2 ? t("res_eagle") : a === -1 ? t("res_birdie") : a === 0 ? t("res_par") : a === 1 ? t("res_bogey") : a === 2 ? t("res_double") : "+" + a;
 }
 typeof window < "u" && Object.assign(window, {
-  fmtScore: re,
-  scoreClass: ne,
-  holeResClass: oe,
-  holeResName: se,
-  fmtDate: le,
-  fmtTime: ie,
-  tnDateTs: _e,
-  normalizeTimestampMs: T,
-  isTodayTimestamp: de
+  fmtScore: ie,
+  scoreClass: _e,
+  holeResClass: de,
+  holeResName: ce,
+  fmtDate: ue,
+  fmtTime: pe,
+  tnDateTs: me,
+  normalizeTimestampMs: k,
+  isTodayTimestamp: fe
 });
-function le(e) {
+function ue(e) {
   if (!e) return "—";
-  var a = typeof currentLang < "u" && currentLang ? currentLang : "ru";
+  var r = typeof currentLang < "u" && currentLang ? currentLang : "ru";
   try {
-    return new Date(e).toLocaleDateString(a === "en" ? "en-US" : "ru-RU", { day: "2-digit", month: "short", year: "numeric" });
+    return new Date(e).toLocaleDateString(r === "en" ? "en-US" : "ru-RU", { day: "2-digit", month: "short", year: "numeric" });
   } catch {
-    var r = new Date(e);
-    return (r.getDate() < 10 ? "0" : "") + r.getDate() + "." + (r.getMonth() + 1 < 10 ? "0" : "") + (r.getMonth() + 1) + "." + r.getFullYear();
+    var a = new Date(e);
+    return (a.getDate() < 10 ? "0" : "") + a.getDate() + "." + (a.getMonth() + 1 < 10 ? "0" : "") + (a.getMonth() + 1) + "." + a.getFullYear();
   }
 }
-function ie(e) {
+function pe(e) {
   if (e == null || e === "") return "—";
-  var a = /^(\d{1,2}):(\d{2})(:\d{2})?$/.exec(String(e).trim());
-  if (a) {
-    var r = parseInt(a[1], 10), n = parseInt(a[2], 10);
-    if (r >= 0 && r < 24 && n >= 0 && n < 60) return (r < 10 ? "0" : "") + r + ":" + (n < 10 ? "0" : "") + n;
+  var r = /^(\d{1,2}):(\d{2})(:\d{2})?$/.exec(String(e).trim());
+  if (r) {
+    var a = parseInt(r[1], 10), n = parseInt(r[2], 10);
+    if (a >= 0 && a < 24 && n >= 0 && n < 60) return (a < 10 ? "0" : "") + a + ":" + (n < 10 ? "0" : "") + n;
   }
-  var o = typeof T == "function" ? T(e) : Number(e);
+  var o = typeof k == "function" ? k(e) : Number(e);
   if (!o || !isFinite(o)) return "—";
   try {
-    var l = new Date(o), i = l.getHours(), d = l.getMinutes();
-    return isNaN(i) || isNaN(d) ? "—" : (i < 10 ? "0" : "") + i + ":" + (d < 10 ? "0" : "") + d;
+    var s = new Date(o), _ = s.getHours(), m = s.getMinutes();
+    return isNaN(_) || isNaN(m) ? "—" : (_ < 10 ? "0" : "") + _ + ":" + (m < 10 ? "0" : "") + m;
   } catch {
     return "—";
   }
 }
-function _e(e) {
+function me(e) {
   if (typeof e == "number" && isFinite(e)) return e;
-  var a = String(e ?? "").trim();
-  if (!a) return NaN;
-  var r = /^(\d{4})-(\d{2})-(\d{2})$/.exec(a);
-  if (r) {
-    var n = new Date(Number(r[1]), Number(r[2]) - 1, Number(r[3]), 12, 0, 0, 0).getTime();
+  var r = String(e ?? "").trim();
+  if (!r) return NaN;
+  var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(r);
+  if (a) {
+    var n = new Date(Number(a[1]), Number(a[2]) - 1, Number(a[3]), 12, 0, 0, 0).getTime();
     return isNaN(n) ? NaN : n;
   }
-  var o = Date.parse(a);
+  var o = Date.parse(r);
   return isNaN(o) ? NaN : o;
 }
-function T(e) {
+function k(e) {
   if (e instanceof Date) return e.getTime() || 0;
-  var a = Number(e);
-  return (!isFinite(a) || a <= 0) && (a = typeof e == "string" ? Date.parse(e) : 0), a > 0 && a < 1e11 && (a *= 1e3), isFinite(a) && a > 0 ? a : 0;
+  var r = Number(e);
+  return (!isFinite(r) || r <= 0) && (r = typeof e == "string" ? Date.parse(e) : 0), r > 0 && r < 1e11 && (r *= 1e3), isFinite(r) && r > 0 ? r : 0;
 }
-function de(e, a) {
-  var r = T(e);
-  if (!r) return !1;
-  var n = new Date(T(a || Date.now())), o = new Date(r);
+function fe(e, r) {
+  var a = k(e);
+  if (!a) return !1;
+  var n = new Date(k(r || Date.now())), o = new Date(a);
   return !isNaN(o.getTime()) && !isNaN(n.getTime()) && o.getFullYear() === n.getFullYear() && o.getMonth() === n.getMonth() && o.getDate() === n.getDate();
 }
-var P = ["today", "7d", "30d", "month", "year", "all"];
-function F(e) {
-  var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
-  if (!a) return null;
-  var r = new Date(Number(a[1]), Number(a[2]) - 1, Number(a[3]), 0, 0, 0, 0).getTime();
-  return isNaN(r) ? null : r;
+var C = ["today", "7d", "30d", "month", "year", "all"];
+function V(e) {
+  var r = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
+  if (!r) return null;
+  var a = new Date(Number(r[1]), Number(r[2]) - 1, Number(r[3]), 0, 0, 0, 0).getTime();
+  return isNaN(a) ? null : a;
 }
-function O(e) {
-  var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
-  if (!a) return null;
-  var r = new Date(Number(a[1]), Number(a[2]) - 1, Number(a[3]), 23, 59, 59, 999).getTime();
-  return isNaN(r) ? null : r;
+function B(e) {
+  var r = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
+  if (!r) return null;
+  var a = new Date(Number(r[1]), Number(r[2]) - 1, Number(r[3]), 23, 59, 59, 999).getTime();
+  return isNaN(a) ? null : a;
 }
-function D(e) {
+function E(e) {
   if (!e) return "";
-  var a = new Date(e), r = a.getMonth() + 1, n = a.getDate();
-  return a.getFullYear() + "-" + (r < 10 ? "0" : "") + r + "-" + (n < 10 ? "0" : "") + n;
+  var r = new Date(e), a = r.getMonth() + 1, n = r.getDate();
+  return r.getFullYear() + "-" + (a < 10 ? "0" : "") + a + "-" + (n < 10 ? "0" : "") + n;
 }
-function G(e) {
+function j(e) {
   return !e || typeof e != "object" ? 0 : Number(e.startTime) || Number(e.createdAt) || 0;
 }
-function x(e) {
-  var a = /* @__PURE__ */ new Date(), r = new Date(a.getFullYear(), a.getMonth(), a.getDate()), n = null;
-  return e === "today" ? n = r : e === "7d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 6) : e === "30d" ? n = new Date(r.getFullYear(), r.getMonth(), r.getDate() - 29) : e === "month" ? n = new Date(r.getFullYear(), r.getMonth(), 1) : e === "year" && (n = new Date(r.getFullYear(), 0, 1)), n ? { from: D(n.getTime()), to: D(r.getTime()) } : { from: "", to: "" };
+function M(e) {
+  var r = /* @__PURE__ */ new Date(), a = new Date(r.getFullYear(), r.getMonth(), r.getDate()), n = null;
+  return e === "today" ? n = a : e === "7d" ? n = new Date(a.getFullYear(), a.getMonth(), a.getDate() - 6) : e === "30d" ? n = new Date(a.getFullYear(), a.getMonth(), a.getDate() - 29) : e === "month" ? n = new Date(a.getFullYear(), a.getMonth(), 1) : e === "year" && (n = new Date(a.getFullYear(), 0, 1)), n ? { from: E(n.getTime()), to: E(a.getTime()) } : { from: "", to: "" };
 }
-function R(e, a) {
-  var r = e && e.value || "", n = a && a.value || "", o = r ? F(r) : null, l = n ? O(n) : null, i = o !== null && l !== null && o > l;
+function R(e, r) {
+  var a = e && e.value || "", n = r && r.value || "", o = a ? V(a) : null, s = n ? B(n) : null, _ = o !== null && s !== null && o > s;
   return {
     from: o,
-    to: l,
-    fromValue: r,
+    to: s,
+    fromValue: a,
     toValue: n,
-    invalid: i,
-    active: !i && (o !== null || l !== null)
+    invalid: _,
+    active: !_ && (o !== null || s !== null)
   };
 }
-function ce(e, a) {
-  return !a || !a.active ? e.slice() : e.filter(function(r) {
-    var n = G(r && r[1]);
-    return !(!n || a.from !== null && n < a.from || a.to !== null && n > a.to);
+function he(e, r) {
+  return !r || !r.active ? e.slice() : e.filter(function(a) {
+    var n = j(a && a[1]);
+    return !(!n || r.from !== null && n < r.from || r.to !== null && n > r.to);
   });
 }
-function B(e, a, r, n) {
+function q(e, r, a, n) {
   if (e) {
-    var o = typeof currentLang < "u" && currentLang === "en", l = '<i class="fas fa-calendar-check"></i> ';
-    if (a && a.active) {
-      var i = a.from !== null ? fmtDate(a.from) : o ? "the beginning" : "с начала", d = a.to !== null ? fmtDate(a.to) : o ? "today" : "сегодня";
-      l += '<span class="rs-period">' + escapeHtml(i + " — " + d) + '</span><span class="rs-sep">·</span>' + t("rounds_found_label") + ": <b>" + r + "</b>", typeof n == "number" && n !== r && (l += ' <span class="rs-dim">' + (o ? "of" : "из") + " " + n + "</span>");
+    var o = typeof currentLang < "u" && currentLang === "en", s = '<i class="fas fa-calendar-check"></i> ';
+    if (r && r.active) {
+      var _ = r.from !== null ? fmtDate(r.from) : o ? "the beginning" : "с начала", m = r.to !== null ? fmtDate(r.to) : o ? "today" : "сегодня";
+      s += '<span class="rs-period">' + escapeHtml(_ + " — " + m) + '</span><span class="rs-sep">·</span>' + t("rounds_found_label") + ": <b>" + a + "</b>", typeof n == "number" && n !== a && (s += ' <span class="rs-dim">' + (o ? "of" : "из") + " " + n + "</span>");
     } else
-      l += t("rounds_total_label") + ": <b>" + r + "</b>";
-    e.innerHTML = l;
+      s += t("rounds_total_label") + ": <b>" + a + "</b>";
+    e.innerHTML = s;
   }
 }
-var k = /* @__PURE__ */ Object.create(null);
-function ue(e) {
+var T = /* @__PURE__ */ Object.create(null);
+function be(e) {
   if (!e) return null;
-  var a = document.getElementById(e.fromId), r = document.getElementById(e.toId);
-  if (!a || !r) return null;
-  var n = e.presetsId ? document.getElementById(e.presetsId) : null, o = e.resetId ? document.getElementById(e.resetId) : null, l = e.hintId ? document.getElementById(e.hintId) : null, i = "pestovo_date_filter_" + e.key;
-  function d() {
+  var r = document.getElementById(e.fromId), a = document.getElementById(e.toId);
+  if (!r || !a) return null;
+  var n = e.presetsId ? document.getElementById(e.presetsId) : null, o = e.resetId ? document.getElementById(e.resetId) : null, s = e.hintId ? document.getElementById(e.hintId) : null, _ = "pestovo_date_filter_" + e.key;
+  function m() {
     try {
-      localStorage.setItem(i, JSON.stringify({ from: a.value || "", to: r.value || "" }));
+      localStorage.setItem(_, JSON.stringify({ from: r.value || "", to: a.value || "" }));
     } catch (p) {
       console.warn("[silent]", p);
     }
   }
   function u() {
-    var p = R(a, r);
+    var p = R(r, a);
     if (!p.fromValue && !p.toValue) return "all";
-    for (var y = 0; y < P.length; y++) {
-      var w = P[y];
+    for (var y = 0; y < C.length; y++) {
+      var w = C[y];
       if (w !== "all") {
-        var S = x(w);
+        var S = M(w);
         if (S.from === p.fromValue && S.to === p.toValue) return w;
       }
     }
     return "";
   }
-  function c() {
+  function d() {
     if (n) {
       var p = u();
-      n.innerHTML = P.map(function(y) {
+      n.innerHTML = C.map(function(y) {
         return '<button type="button" class="date-chip' + (p === y ? " active" : "") + '" data-preset="' + y + '">' + t("date_preset_" + y) + "</button>";
       }).join("");
     }
   }
-  function s() {
-    r.value ? a.setAttribute("max", r.value) : a.removeAttribute("max"), a.value ? r.setAttribute("min", a.value) : r.removeAttribute("min");
+  function l() {
+    a.value ? r.setAttribute("max", a.value) : r.removeAttribute("max"), r.value ? a.setAttribute("min", r.value) : a.removeAttribute("min");
   }
-  function _() {
-    var p = R(a, r).invalid;
-    a.classList.toggle("is-invalid", p), r.classList.toggle("is-invalid", p), l && (l.textContent = p ? t("date_filter_invalid") : "", l.classList.toggle("hidden", !p));
+  function i() {
+    var p = R(r, a).invalid;
+    r.classList.toggle("is-invalid", p), a.classList.toggle("is-invalid", p), s && (s.textContent = p ? t("date_filter_invalid") : "", s.classList.toggle("hidden", !p));
   }
-  function h() {
-    _(), typeof e.onChange == "function" && e.onChange(b.getRange());
+  function b() {
+    i(), typeof e.onChange == "function" && e.onChange(c.getRange());
   }
-  var b = {
+  var c = {
     key: e.key,
     getRange: function() {
-      return R(a, r);
+      return R(r, a);
     },
-    renderPresets: c,
+    renderPresets: d,
     lastSummary: null,
     renderSummary: function(p, y) {
-      b.lastSummary = { count: p, total: y }, B(e.summaryId ? document.getElementById(e.summaryId) : null, b.getRange(), p, y);
+      c.lastSummary = { count: p, total: y }, q(e.summaryId ? document.getElementById(e.summaryId) : null, c.getRange(), p, y);
     },
     rerenderSummary: function() {
-      b.lastSummary && b.renderSummary(b.lastSummary.count, b.lastSummary.total);
+      c.lastSummary && c.renderSummary(c.lastSummary.count, c.lastSummary.total);
     }
   };
   try {
-    var v = JSON.parse(localStorage.getItem(i) || "null");
-    v && typeof v == "object" && (v.from && (a.value = v.from), v.to && (r.value = v.to));
+    var g = JSON.parse(localStorage.getItem(_) || "null");
+    g && typeof g == "object" && (g.from && (r.value = g.from), g.to && (a.value = g.to));
   } catch (p) {
     console.warn("[silent]", p);
   }
-  return a.addEventListener("change", function() {
-    s(), d(), c(), h();
-  }), r.addEventListener("change", function() {
-    s(), d(), c(), h();
+  return r.addEventListener("change", function() {
+    l(), m(), d(), b();
+  }), a.addEventListener("change", function() {
+    l(), m(), d(), b();
   }), n && n.addEventListener("click", function(p) {
     var y = p.target && p.target.closest ? p.target.closest(".date-chip") : null, w = y && y.getAttribute("data-preset");
     if (w) {
-      var S = x(w);
-      a.value = S.from, r.value = S.to, s(), d(), c(), h();
+      var S = M(w);
+      r.value = S.from, a.value = S.to, l(), m(), d(), b();
     }
   }), o && o.addEventListener("click", function() {
-    a.value = "", r.value = "", s(), d(), c(), h();
-  }), s(), c(), _(), k[b.key] = b, b;
+    r.value = "", a.value = "", l(), m(), d(), b();
+  }), l(), d(), i(), T[c.key] = c, c;
 }
-function pe(e) {
-  return k[e] || null;
+function ye(e) {
+  return T[e] || null;
 }
-function fe() {
-  Object.keys(k).forEach(function(e) {
-    var a = k[e];
-    a && (a.renderPresets(), a.rerenderSummary());
+function ge() {
+  Object.keys(T).forEach(function(e) {
+    var r = T[e];
+    r && (r.renderPresets(), r.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: P, dateInputToStartTs: F, dateInputToEndTs: O, tsToDateInputValue: D, getRoundFilterTs: G, datePresetRange: x, readDateRange: R, filterEntriesByDateRange: ce, renderRoundsPeriodSummary: B, dateRangeFilters: k, initDateRangeFilter: ue, getDateRangeFilter: pe, refreshDateRangeFilters: fe });
-function V(e) {
-  return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
-    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: C, dateInputToStartTs: V, dateInputToEndTs: B, tsToDateInputValue: E, getRoundFilterTs: j, datePresetRange: M, readDateRange: R, filterEntriesByDateRange: he, renderRoundsPeriodSummary: q, dateRangeFilters: T, initDateRangeFilter: be, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
+function K(e) {
+  return e == null ? "" : String(e).replace(/[&<>"']/g, function(r) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[r];
   });
 }
-function me() {
-  for (var e = arguments[0], a = Array.prototype.slice.call(arguments, 1), r = "", n = 0; n < e.length; n++)
-    r += e[n], n < a.length && (r += V(a[n]));
-  return r;
+function ve() {
+  for (var e = arguments[0], r = Array.prototype.slice.call(arguments, 1), a = "", n = 0; n < e.length; n++)
+    a += e[n], n < r.length && (a += K(r[n]));
+  return a;
 }
-function he(e, a) {
-  e && (e.innerHTML = a == null ? "" : String(a));
+function we(e, r) {
+  e && (e.innerHTML = r == null ? "" : String(r));
 }
-typeof window < "u" && Object.assign(window, { esc: V, html: me, setSafeHtml: he });
-var M = 3e3;
-function j() {
+typeof window < "u" && Object.assign(window, { esc: K, html: ve, setSafeHtml: we });
+var F = 3e3;
+function U() {
   if (typeof document > "u" || !document.body) return null;
   var e = document.getElementById("toast-root");
   return e || (e = document.createElement("div"), e.id = "toast-root", e.className = "toast-root", e.setAttribute("aria-live", "polite"), document.body.appendChild(e)), e;
 }
-function q(e) {
+function Y(e) {
   return e === "error" ? '<i class="fas fa-triangle-exclamation"></i>' : e === "warn" ? '<i class="fas fa-bell"></i>' : e === "info" ? '<i class="fas fa-circle-info"></i>' : '<i class="fas fa-circle-check"></i>';
 }
-function E(e, a, r) {
-  a = a || "success", r = r || {};
-  var n = parseInt(r.duration) > 0 ? parseInt(r.duration) : M;
+function I(e, r, a) {
+  r = r || "success", a = a || {};
+  var n = parseInt(a.duration) > 0 ? parseInt(a.duration) : F;
   try {
     if (typeof document > "u" || !document.body) return null;
-    var o = j();
+    var o = U();
     if (!o) return null;
     for (; o.children.length >= 3; )
       try {
-        var l = o.firstChild;
-        if (!l) break;
-        l._pestovoDismiss && l._pestovoDismiss(!0), o.removeChild(l);
+        var s = o.firstChild;
+        if (!s) break;
+        s._pestovoDismiss && s._pestovoDismiss(!0), o.removeChild(s);
       } catch {
         break;
       }
-    var i = document.createElement("div");
-    i.className = "toast t-" + a + (r.clubNotification ? " t-club" : ""), i.setAttribute("role", "status");
-    var d = r.html ? e == null ? "" : String(e) : U(e);
-    i.innerHTML = '<span class="toast-ico">' + q(a) + '</span><span class="toast-msg">' + d + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
-    var u = !1, c = function(s) {
+    var _ = document.createElement("div");
+    _.className = "toast t-" + r + (a.clubNotification ? " t-club" : ""), _.setAttribute("role", "status");
+    var m = a.html ? e == null ? "" : String(e) : J(e);
+    _.innerHTML = '<span class="toast-ico">' + Y(r) + '</span><span class="toast-msg">' + m + '</span><button type="button" class="toast-x" aria-label="×">×</button><span class="toast-bar"><span style="animation-duration:' + n + 'ms"></span></span>';
+    var u = !1, d = function(l) {
       if (!u) {
         u = !0;
         try {
-          i.classList.remove("t-show"), i.classList.add("t-hide"), setTimeout(function() {
+          _.classList.remove("t-show"), _.classList.add("t-hide"), setTimeout(function() {
             try {
-              i.remove();
+              _.remove();
             } catch {
             }
-          }, s ? 0 : 320);
+          }, l ? 0 : 320);
         } catch {
         }
       }
     };
-    return i._pestovoDismiss = c, i.addEventListener("click", function(s) {
-      if (s && s.target && s.target.classList && s.target.classList.contains("toast-x")) {
-        s.stopPropagation(), c(!1);
+    return _._pestovoDismiss = d, _.addEventListener("click", function(l) {
+      if (l && l.target && l.target.classList && l.target.classList.contains("toast-x")) {
+        l.stopPropagation(), d(!1);
         return;
       }
-      if (typeof r.onClick == "function") {
+      if (typeof a.onClick == "function") {
         try {
-          r.onClick();
+          a.onClick();
         } catch {
         }
-        c(!1);
+        d(!1);
       } else
-        c(!1);
-    }), o.appendChild(i), setTimeout(function() {
+        d(!1);
+    }), o.appendChild(_), setTimeout(function() {
       try {
-        i.classList.add("t-show");
+        _.classList.add("t-show");
       } catch {
       }
     }, 10), setTimeout(function() {
-      c(!1);
-    }, n), i;
+      d(!1);
+    }, n), _;
   } catch {
     return null;
   }
 }
-function be(e, a) {
-  a = a || {};
-  var r = (e || []).slice();
-  if (r.length) {
-    var n = parseInt(a.gap) > 0 ? parseInt(a.gap) : 350, o = M + n;
-    r.forEach(function(l, i) {
+function Se(e, r) {
+  r = r || {};
+  var a = (e || []).slice();
+  if (a.length) {
+    var n = parseInt(r.gap) > 0 ? parseInt(r.gap) : 350, o = F + n;
+    a.forEach(function(s, _) {
       setTimeout(function() {
-        typeof l == "string" ? E(l, a.type || "warn", a.toastOpts || {}) : E(l.msg || l.html || "", l.type || a.type || "warn", l.opts || a.toastOpts || {});
-      }, i * o);
+        typeof s == "string" ? I(s, r.type || "warn", r.toastOpts || {}) : I(s.msg || s.html || "", s.type || r.type || "warn", s.opts || r.toastOpts || {});
+      }, _ * o);
     });
   }
 }
-function K(e) {
+function W(e) {
   try {
     return localStorage.getItem(e) === "1";
   } catch {
     return !1;
   }
 }
-function ye(e) {
+function ke(e) {
   if (navigator.vibrate) {
-    var a = e ?? 50;
-    K("pestovo_strong_vibration") && (Array.isArray(a) ? a = a.map(function(r, n) {
-      return n % 2 === 0 ? Math.min(650, Math.max(35, Math.round((parseInt(r) || 0) * 1.45))) : Math.min(260, Math.max(20, Math.round((parseInt(r) || 0) * 0.9)));
-    }) : a = Math.min(650, Math.max(70, Math.round((parseInt(a) || 50) * 1.5))));
+    var r = e ?? 50;
+    W("pestovo_strong_vibration") && (Array.isArray(r) ? r = r.map(function(a, n) {
+      return n % 2 === 0 ? Math.min(650, Math.max(35, Math.round((parseInt(a) || 0) * 1.45))) : Math.min(260, Math.max(20, Math.round((parseInt(a) || 0) * 0.9)));
+    }) : r = Math.min(650, Math.max(70, Math.round((parseInt(r) || 50) * 1.5))));
     try {
-      navigator.vibrate(a);
+      navigator.vibrate(r);
     } catch {
     }
   }
 }
-function U(e) {
-  return e == null ? "" : String(e).replace(/[&<>"']/g, function(a) {
-    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[a];
+function J(e) {
+  return e == null ? "" : String(e).replace(/[&<>"']/g, function(r) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[r];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: M, ensureToastRoot: j, toastIconFor: q, toast: E, toastSequence: be, isPlayerModeEnabled: K, vib: ye, escapeHtml: U });
-var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", m = {
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: F, ensureToastRoot: U, toastIconFor: Y, toast: I, toastSequence: Se, isPlayerModeEnabled: W, vib: ke, escapeHtml: J });
+var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", h = {
   ru: {
     brand_name: "Пестово",
     nav_home: "Главная",
@@ -460,6 +460,20 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     test_channel: "Проверить Канал",
     save_vk: "Сохранить настройки ВКонтакте",
     test_vk: "Проверить отправку в ВКонтакте",
+    srv_delivery_title: "Доставка вызовов во время раунда",
+    srv_delivery_sub: "Во время раунда вызов судьи или маршала уходит в Telegram и ВКонтакте. Кто именно его отправляет, выбирается ниже: браузер игрока (Cloud Functions не нужны) или сервер. Дублей не будет ни в одном из режимов: второй отправитель молчит.",
+    srv_delivery_mode_label: "Кто отправляет вызовы",
+    srv_delivery_mode_client: "Браузер игрока — Cloud Functions не нужны",
+    srv_delivery_mode_server: "Сервер — Cloud Function onAlertCreated",
+    srv_delivery_mode_client_note: "Сообщение отправляет тот, кто нажал кнопку: вызов уходит сразу, без ожидания сервера и без тарифа Blaze. Нужен один деплой правил базы: <code>firebase deploy --only database</code>.",
+    srv_delivery_mode_server_note: "Сообщение отправляет Cloud Function <code>onAlertCreated</code>: нужны задеплоенные функции (<code>cd functions &amp;&amp; npm i &amp;&amp; firebase deploy --only functions</code>) и тариф с Cloud Functions. Браузер игрока при этом молчит.",
+    srv_delivery_mode_saved: "Режим доставки сохранён",
+    srv_delivery_mode_failed: "Не удалось сохранить режим доставки",
+    srv_delivery_client_warn: '<i class="fas fa-triangle-exclamation"></i> В режиме «Браузер» токен бота и ключ ВКонтакте читаются из базы любым вошедшим, включая анонимную сессию по QR-коду: иначе браузер не смог бы отправить сообщение. Компенсация — отдельный бот только для уведомлений, добавленный лишь в группу судей, и ключ сообщества с правом «Сообщения». Такой токен не даёт доступа к данным клуба, но написать в судейский чат с его помощью можно. Токены не сохраняются на устройстве и не выводятся в консоль; режим «Сервер» полностью убирает их из браузера.',
+    srv_delivery_test: "Проверить серверную доставку",
+    srv_delivery_test_hint: "Кнопка нужна только в режиме «Сервер»: она прогоняет путь Cloud Function. В режиме «Браузер» настоящий вызов отправляют кнопки «Проверить Группу», «Проверить Канал» и «Проверить отправку в ВК» ниже — они идут тем же путём.",
+    srv_delivery_hint: "Статус доставки каждого настоящего вызова виден в списке выше.",
+    vk_delivery_note: '<i class="fas fa-shield-halved"></i> В режиме «Браузер» (по умолчанию) вызовы судьи и маршала во время раунда отправляет браузер игрока тем же способом, что и кнопка «Проверить отправку в ВК» — JSONP, VK API 5.199. Поэтому в CSP хостинга разрешён <code>script-src https://api.vk.com</code>. В режиме «Сервер» токен сообщества браузеру не виден: отправляет Cloud Function (VK API 5.131, параметры в теле запроса в формате x-www-form-urlencoded).',
     tg_integration_title: "Интеграция Telegram: Группа Судей & Канал Клуба",
     tg_integration_sub: "Вы можете настроить отправку уведомлений отдельно для Группы Судей/Маршалов и для Канала Клуба.",
     tg_group_title: "1. Telegram Группа (Вызовы Судей и Маршалов)",
@@ -1043,6 +1057,20 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     test_channel: "Test Channel",
     save_vk: "Save VKontakte Settings",
     test_vk: "Test VK Message",
+    srv_delivery_title: "Round-time delivery",
+    srv_delivery_sub: "During a round a referee or marshal call goes out to Telegram and VKontakte. Who sends it is chosen below: the player browser (no Cloud Functions required) or the server. Neither mode produces duplicates, because the other sender stays silent.",
+    srv_delivery_mode_label: "Who sends the calls",
+    srv_delivery_mode_client: "Player browser - no Cloud Functions required",
+    srv_delivery_mode_server: "Server - Cloud Function onAlertCreated",
+    srv_delivery_mode_client_note: "The person who pressed the button sends the message: the call goes out immediately, with no wait for a server and no Blaze plan. It needs one deploy of the database rules: <code>firebase deploy --only database</code>.",
+    srv_delivery_mode_server_note: "The Cloud Function <code>onAlertCreated</code> sends the message: deployed functions are required (<code>cd functions &amp;&amp; npm i &amp;&amp; firebase deploy --only functions</code>) plus a plan that includes Cloud Functions. The player browser stays silent in this mode.",
+    srv_delivery_mode_saved: "Delivery mode saved",
+    srv_delivery_mode_failed: "Could not save the delivery mode",
+    srv_delivery_client_warn: '<i class="fas fa-triangle-exclamation"></i> In Browser mode the bot token and the VK community key are readable from the database by any signed-in user, including an anonymous QR session: otherwise the browser could not send the message. The mitigation is a dedicated notification bot added only to the judges group, and a community key with the Messages permission. Such a token gives no access to club data, but it can be used to post into the judges chat. Tokens are never stored on the device and never printed to the console; Server mode removes them from the browser entirely.',
+    srv_delivery_test: "Test server delivery",
+    srv_delivery_test_hint: "This button is only needed in Server mode: it exercises the Cloud Function path. In Browser mode a real call is sent by the Test Group, Test Channel and Test VK Message buttons below - they follow the same path.",
+    srv_delivery_hint: "The delivery status of every real call is shown in the list above.",
+    vk_delivery_note: '<i class="fas fa-shield-halved"></i> In Browser mode (the default) referee and marshal calls during a round are sent by the player browser the same way as the Test VK Message button - JSONP, VK API 5.199. That is why the hosting CSP allows <code>script-src https://api.vk.com</code>. In Server mode the community token is never visible to the browser: the Cloud Function sends it (VK API 5.131, parameters as x-www-form-urlencoded in the request body).',
     tg_integration_title: "Telegram Integration: Referee Group & Club Channel",
     tg_integration_sub: "Configure notification settings for Referee/Marshal Group and Club Channel.",
     tg_group_title: "1. Telegram Group (Referee/Marshal Calls)",
@@ -1537,34 +1565,34 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
 };
 (function() {
   var e = (/* @__PURE__ */ new Date()).getFullYear();
-  m.ru && (m.ru.footer_club = "© " + e + " Пестово"), m.en && (m.en.footer_club = "© " + e + " Pestovo");
+  h.ru && (h.ru.footer_club = "© " + e + " Пестово"), h.en && (h.en.footer_club = "© " + e + " Pestovo");
 })();
-function Y(e) {
-  var a = typeof f < "u" && f ? f : "ru";
+function z(e) {
+  var r = typeof f < "u" && f ? f : "ru";
   try {
-    if (m[a] && m[a][e] !== void 0)
-      return m[a][e];
-    if (m.ru && m.ru[e] !== void 0)
-      return m.ru[e];
-  } catch (r) {
-    console.warn("[silent]", r);
+    if (h[r] && h[r][e] !== void 0)
+      return h[r][e];
+    if (h.ru && h.ru[e] !== void 0)
+      return h.ru[e];
+  } catch (a) {
+    console.warn("[silent]", a);
   }
   return e;
 }
-function ge() {
+function Te() {
   f = f === "ru" ? "en" : "ru", typeof localStorage < "u" && localStorage.setItem("pestovo_lang", f);
   try {
     document.documentElement.setAttribute("lang", f);
   } catch (o) {
     console.warn("[silent]", o);
   }
-  if (A(), W(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
+  if (D(), Q(), typeof applyPlayerModes == "function" && applyPlayerModes(), typeof refreshOfficialCallBindings == "function" && refreshOfficialCallBindings(), typeof renderAdmGroups == "function" && renderAdmGroups(), typeof loadAdmRounds == "function" && typeof hasAdminPanelAccess == "function" && hasAdminPanelAccess()) {
     var e = document.getElementById("admin-content");
     e && !e.classList.contains("hidden") && loadAdmRounds();
   }
   if (typeof buildMobileDrawer == "function") {
-    var a = document.getElementById("mobile-drawer-root"), r = a && a.classList.contains("open");
-    buildMobileDrawer(), r && a && a.classList.add("open");
+    var r = document.getElementById("mobile-drawer-root"), a = r && r.classList.contains("open");
+    buildMobileDrawer(), a && r && r.classList.add("open");
   }
   if (typeof initP0MobileEnhancements == "function") try {
     initP0MobileEnhancements();
@@ -1577,21 +1605,21 @@ function ge() {
   }
   typeof initRoundView == "function" && typeof curRid < "u" && curRid && initRoundView(), typeof initSoloView == "function" && initSoloView(), typeof updateHcpTable == "function" && updateHcpTable(), typeof loadClubStats == "function" && loadClubStats(), typeof loadMyActiveRounds == "function" && loadMyActiveRounds("my-active-rounds-container");
 }
-function W() {
+function Q() {
   typeof document > "u" || document.querySelectorAll(".lang-btn").forEach(function(e) {
     e.innerHTML = f === "en" ? "🇬🇧 EN" : "🇷🇺 RU";
   });
 }
-function A() {
+function D() {
   typeof document > "u" || (document.querySelectorAll("[data-i18n]").forEach(function(e) {
-    var a = e.getAttribute("data-i18n");
-    a && m[f] && m[f][a] !== void 0 && (e.tagName === "TITLE" && a !== "brand_name" ? e.textContent = m[f][a] + " — " + Y("brand_name") : e.innerHTML = m[f][a]);
+    var r = e.getAttribute("data-i18n");
+    r && h[f] && h[f][r] !== void 0 && (e.tagName === "TITLE" && r !== "brand_name" ? e.textContent = h[f][r] + " — " + z("brand_name") : e.innerHTML = h[f][r]);
   }), document.querySelectorAll("[data-i18n-placeholder]").forEach(function(e) {
-    var a = e.getAttribute("data-i18n-placeholder");
-    a && m[f] && m[f][a] !== void 0 && e.setAttribute("placeholder", m[f][a]);
+    var r = e.getAttribute("data-i18n-placeholder");
+    r && h[f] && h[f][r] !== void 0 && e.setAttribute("placeholder", h[f][r]);
   }), document.querySelectorAll("[data-i18n-title]").forEach(function(e) {
-    var a = e.getAttribute("data-i18n-title");
-    a && m[f] && m[f][a] !== void 0 && e.setAttribute("title", m[f][a]);
+    var r = e.getAttribute("data-i18n-title");
+    r && h[f] && h[f][r] !== void 0 && e.setAttribute("title", h[f][r]);
   }), typeof refreshDateRangeFilters == "function" && refreshDateRangeFilters());
 }
 try {
@@ -1600,219 +1628,290 @@ try {
   console.warn("[silent]", e);
 }
 try {
-  A();
+  D();
 } catch (e) {
   console.warn("[silent]", e);
 }
 document.addEventListener("DOMContentLoaded", function() {
-  A(), N();
+  D(), L();
 });
-function N() {
+function L() {
   if (!(typeof document > "u")) {
     var e = (/* @__PURE__ */ new Date()).getFullYear();
-    document.querySelectorAll(".footer-bottom p").forEach(function(a) {
-      a.innerHTML = a.innerHTML.replace(/(©|&copy;)\s*\d{4}/g, "$1 " + e).replace(/&copy;\s*\d{4}/g, "&copy; " + e);
+    document.querySelectorAll(".footer-bottom p").forEach(function(r) {
+      r.innerHTML = r.innerHTML.replace(/(©|&copy;)\s*\d{4}/g, "$1 " + e).replace(/&copy;\s*\d{4}/g, "&copy; " + e);
     });
   }
 }
-N();
-typeof window < "u" && Object.assign(window, { currentLang: f, I18N: m, t: Y, toggleLang: ge, updateLangButtons: W, applyTranslations: A, updateFooterYear: N });
-function C(e, a, r, n, o) {
-  var l = !!o, i = l ? escapeHtml : function(b) {
-    return String(b);
-  }, d = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), u = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", c = l ? "<b>" : "", s = l ? "</b>" : "", _ = [];
-  _.push(l ? "<b>" + u + "</b>" : u), _.push(c + "Кто вызвал:" + s + " " + i(r || "Игрок")), _.push(c + "Лунка:" + s + " №" + a), _.push(c + "Время:" + s + " " + d);
-  var h = (n || []).map(function(b) {
-    return String(b || "").trim();
+L();
+typeof window < "u" && Object.assign(window, { currentLang: f, I18N: h, t: z, toggleLang: Te, updateLangButtons: Q, applyTranslations: D, updateFooterYear: L });
+function x(e, r, a, n, o) {
+  var s = !!o, _ = s ? escapeHtml : function(c) {
+    return String(c);
+  }, m = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), u = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", d = s ? "<b>" : "", l = s ? "</b>" : "", i = [];
+  i.push(s ? "<b>" + u + "</b>" : u), i.push(d + "Кто вызвал:" + l + " " + _(a || "Игрок")), i.push(d + "Лунка:" + l + " №" + r), i.push(d + "Время:" + l + " " + m);
+  var b = (n || []).map(function(c) {
+    return String(c || "").trim();
   }).filter(Boolean);
-  return h.length && _.push(c + "Состав флайта:" + s + " " + i(h.join(", "))), _.join(`
+  return b.length && i.push(d + "Состав флайта:" + l + " " + _(b.join(", "))), i.join(`
 `);
 }
-function ve(e, a, r, n, o, l, i) {
-  if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
-    toast("⚠️ Укажите Bot Token и Chat ID / Username для " + (r || "Telegram"), "error");
+function A(e) {
+  var r = A._state || (A._state = { at: 0, cfg: null, promise: null }), a = 5 * 60 * 1e3, n = { telegram: {}, vk: {}, mode: "client", readAt: 0 };
+  return !e && r.cfg && Date.now() - r.at < a ? Promise.resolve(r.cfg) : !e && r.promise ? r.promise : typeof db > "u" || !db ? Promise.resolve(n) : (r.promise = Promise.all([
+    db.ref("channels").once("value").catch(function(o) {
+      return console.warn("[alerts] channels read failed", o && o.message), null;
+    }),
+    db.ref("settings/alert_delivery_mode").once("value").catch(function() {
+      return null;
+    })
+  ]).then(function(o) {
+    var s = o[0] && o[0].val() || {}, _ = s.telegram || {}, m = s.vk || {}, u = String(o[1] && o[1].val() || "client"), d = String(_.groupToken || _.botToken || "").trim(), l = String(_.groupId || _.chatId || "").trim(), i = String(_.channelId || "").trim();
+    return r.cfg = {
+      telegram: {
+        groupToken: d,
+        groupId: l,
+        // «Или использовать один и тот же бот» (подсказка в админке):
+        // для канала достаточно ID, токен берём у группы.
+        channelToken: String(_.channelToken || "").trim() || (i ? d : ""),
+        channelId: i
+      },
+      vk: {
+        token: String(m.token || "").trim(),
+        peerId: String(m.peerId == null ? "" : m.peerId).trim()
+      },
+      mode: u === "server" ? "server" : "client",
+      readAt: Date.now()
+    }, r.at = Date.now(), r.promise = null, r.cfg;
+  }).catch(function(o) {
+    return r.promise = null, console.warn("[alerts] channels unavailable", o && o.message), n;
+  }), r.promise);
+}
+function Pe(e, r, a, n, o, s, _) {
+  if (e = (e || "").trim(), r = (r || "").trim(), !e || !r) {
+    toast("⚠️ Укажите Bot Token и Chat ID / Username для " + (a || "Telegram"), "error");
     return;
   }
-  var d = C(n, o, l, i, !0), u = typeof AbortController < "u" ? new AbortController() : null, c = u ? setTimeout(function() {
+  var m = x(n, o, s, _, !0), u = typeof AbortController < "u" ? new AbortController() : null, d = u ? setTimeout(function() {
     try {
       u.abort();
-    } catch (_) {
-      console.warn("[silent]", _);
+    } catch (i) {
+      console.warn("[silent]", i);
     }
-  }, 6e3) : null, s = {
+  }, 6e3) : null, l = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      chat_id: a,
-      text: d,
+      chat_id: r,
+      text: m,
       parse_mode: "HTML"
     })
   };
-  u && (s.signal = u.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", s).then(function(_) {
-    return c && clearTimeout(c), _.json();
-  }).then(function(_) {
-    if (_ && _.ok)
-      console.log("✅ Telegram alert delivered to " + r + ":", _.result), toast("✅ Telegram сообщение доставлено в " + (r || "чат") + "!", "success");
+  u && (l.signal = u.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", l).then(function(i) {
+    return d && clearTimeout(d), i.json();
+  }).then(function(i) {
+    if (i && i.ok)
+      console.log("✅ Telegram alert delivered to " + a + ":", i.result), toast("✅ Telegram сообщение доставлено в " + (a || "чат") + "!", "success");
     else {
-      var h = _ && _.description ? _.description : "Ошибка Telegram API";
-      console.error("❌ Telegram Bot API Error (" + r + "):", h), toast("❌ Ошибка Telegram (" + (r || "чат") + "): " + h, "error");
+      var b = i && i.description ? i.description : "Ошибка Telegram API";
+      console.error("❌ Telegram Bot API Error (" + a + "):", b), toast("❌ Ошибка Telegram (" + (a || "чат") + "): " + b, "error");
     }
-  }).catch(function(_) {
-    c && clearTimeout(c);
-    var h = _ && _.name === "AbortError", b = h ? "Таймаут соединения (6 сек)" : _ ? _.message : "Ошибка сети";
-    console.error("❌ Telegram Fetch Error (" + r + "):", _), toast("❌ Ошибка сети / Таймаут Telegram: " + b, "error");
+  }).catch(function(i) {
+    d && clearTimeout(d);
+    var b = i && i.name === "AbortError", c = b ? "Таймаут соединения (6 сек)" : i ? i.message : "Ошибка сети";
+    console.error("❌ Telegram Fetch Error (" + a + "):", i), toast("❌ Ошибка сети / Таймаут Telegram: " + c, "error");
   });
 }
-function we(e, a, r, n, o, l) {
-  if (e = (e || "").trim(), a = (a || "").trim(), !(!e || !a)) {
-    var i = C(r, n, o, l, !0), d = typeof AbortController < "u" ? new AbortController() : null, u = d ? setTimeout(function() {
+function N(e, r, a, n, o, s) {
+  if (e = (e || "").trim(), r = (r || "").trim(), !e || !r) return Promise.resolve("not_configured");
+  var _ = x(a, n, o, s, !0), m = typeof AbortController < "u" ? new AbortController() : null, u = m ? setTimeout(function() {
+    try {
+      m.abort();
+    } catch (l) {
+      console.warn("[silent]", l);
+    }
+  }, 6e3) : null, d = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: r, text: _, parse_mode: "HTML" })
+  };
+  return m && (d.signal = m.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", d).then(function(l) {
+    return u && clearTimeout(u), l.json();
+  }).then(function(l) {
+    if (l && l.ok) return "sent";
+    var i = l && l.description ? l.description : "Ошибка Telegram API";
+    return console.warn("⚠️ Telegram silent send failed:", i), "error: " + i;
+  }).catch(function(l) {
+    u && clearTimeout(u);
+    var i = l && l.name === "AbortError";
+    return console.warn("⚠️ Telegram silent send error (suppressed):", l && l.message), "error: " + (i ? "таймаут (6 сек)" : l && l.message ? l.message : "ошибка сети");
+  });
+}
+function Ce(e, r, a, n, o, s) {
+  return P(e, r, a, n, s);
+}
+function H(e, r, a, n) {
+  return e = (e || "").trim(), r = (r || "").trim(), !e || !r ? (n || toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error"), Promise.resolve("not_configured")) : new Promise(function(o) {
+    var s = "_vkCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6), _ = Math.floor(Math.random() * 2e9), m = null, u = null, d = !1, l = function(c) {
+      d || (d = !0, o(c));
+    }, i = function() {
       try {
-        d.abort();
-      } catch (s) {
-        console.warn("[silent]", s);
+        u && u.parentNode && u.parentNode.removeChild(u);
+      } catch (c) {
+        console.warn("[silent]", c);
       }
-    }, 6e3) : null, c = {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: a, text: i, parse_mode: "HTML" })
+      try {
+        delete window[s];
+      } catch {
+        window[s] = void 0;
+      }
+      m && clearTimeout(m);
     };
-    d && (c.signal = d.signal), fetch("https://api.telegram.org/bot" + e + "/sendMessage", c).then(function(s) {
-      return u && clearTimeout(u), s.json();
-    }).then(function(s) {
-      (!s || !s.ok) && console.warn("⚠️ Telegram silent send failed:", s && s.description);
-    }).catch(function(s) {
-      u && clearTimeout(u), console.warn("⚠️ Telegram silent send error (suppressed):", s && s.message);
-    });
-  }
-}
-function Se(e, a, r, n, o) {
-  typeof console < "u" && typeof console.debug == "function" && console.debug("[alerts] telegram delivery delegated to server", {
-    type: e,
-    hole: a,
-    player: r,
-    flight: (n || []).length,
-    target: o || "all"
+    window[s] = function(c) {
+      if (i(), c && c.response !== void 0 && c.response)
+        n || (console.log("✅ VK message sent, id:", c.response), toast("✅ Сообщение ВКонтакте доставлено!", "success")), l("sent");
+      else {
+        var g = c && c.error && c.error.error_code, p = c && c.error && c.error.error_msg ? c.error.error_msg : "Ошибка VK API";
+        console.error("❌ VK API Error " + g + ":", p, c), n ? console.warn("⚠️ VK silent send failed (code " + g + "):", p) : toast("❌ VK API: " + p, "error"), l("error: code " + (g || "?") + ": " + p);
+      }
+    };
+    var b = "https://api.vk.com/method/messages.send?access_token=" + encodeURIComponent(e) + "&peer_id=" + encodeURIComponent(r) + "&message=" + encodeURIComponent(a) + "&random_id=" + _ + "&v=5.199&callback=" + s;
+    u = document.createElement("script"), u.src = b, u.onerror = function() {
+      i(), n ? console.warn("⚠️ VK JSONP network error (suppressed)") : toast("❌ Ошибка сети при отправке в VK (JSONP)", "error"), l("error: сеть/CSP (JSONP не загрузился)");
+    }, m = setTimeout(function() {
+      i(), n ? console.warn("⚠️ VK JSONP timeout (suppressed)") : toast("❌ Таймаут соединения с VK (10 сек)", "error"), l("error: таймаут (10 сек)");
+    }, 1e4), (document.head || document.body).appendChild(u);
   });
 }
-function L(e, a, r, n) {
-  if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
-    n || toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error");
-    return;
-  }
-  var o = "_vkCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6), l = Math.floor(Math.random() * 2e9), i = null, d = null, u = function() {
-    try {
-      d && d.parentNode && d.parentNode.removeChild(d);
-    } catch (s) {
-      console.warn("[silent]", s);
-    }
-    try {
-      delete window[o];
-    } catch {
-      window[o] = void 0;
-    }
-    i && clearTimeout(i);
-  };
-  window[o] = function(s) {
-    if (u(), s && s.response !== void 0 && s.response)
-      n || (console.log("✅ VK message sent, id:", s.response), toast("✅ Сообщение ВКонтакте доставлено!", "success"));
-    else {
-      var _ = s && s.error && s.error.error_code, h = s && s.error && s.error.error_msg ? s.error.error_msg : "Ошибка VK API";
-      console.error("❌ VK API Error " + _ + ":", h, s), n ? console.warn("⚠️ VK silent send failed (code " + _ + "):", h) : toast("❌ VK API: " + h, "error");
-    }
-  };
-  var c = "https://api.vk.com/method/messages.send?access_token=" + encodeURIComponent(e) + "&peer_id=" + encodeURIComponent(a) + "&message=" + encodeURIComponent(r) + "&random_id=" + l + "&v=5.199&callback=" + o;
-  d = document.createElement("script"), d.src = c, d.onerror = function() {
-    u(), n ? console.warn("⚠️ VK JSONP network error (suppressed)") : toast("❌ Ошибка сети при отправке в VK (JSONP)", "error");
-  }, i = setTimeout(function() {
-    u(), n ? console.warn("⚠️ VK JSONP timeout (suppressed)") : toast("❌ Таймаут соединения с VK (10 сек)", "error");
-  }, 1e4), (document.head || document.body).appendChild(d);
+function O(e, r, a, n) {
+  return x(e, r, a, n, !1);
 }
-function H(e, a, r, n) {
-  return C(e, a, r, n, !1);
-}
-function Te(e, a, r, n, o, l) {
-  if (e = (e || "").trim(), a = (a || "").trim(), !e || !a) {
+function Re(e, r, a, n, o, s) {
+  if (e = (e || "").trim(), r = (r || "").trim(), !e || !r) {
     toast("⚠️ Укажите VK Access Token и Peer ID в настройках", "error");
     return;
   }
-  var i = H(r, n, o, l);
-  L(e, a, i, !1);
+  var _ = O(a, n, o, s);
+  H(e, r, _, !1);
 }
-function ke(e, a, r, n, o, l) {
-  if (e = (e || "").trim(), a = (a || "").trim(), !(!e || !a)) {
-    var i = H(r, n, o, l);
-    L(e, a, i, !0);
-  }
+function $(e, r, a, n, o, s) {
+  if (e = (e || "").trim(), r = (r || "").trim(), !e || !r) return Promise.resolve("not_configured");
+  var _ = O(a, n, o, s);
+  return H(e, r, _, !0);
 }
-function Pe(e, a, r, n) {
-  typeof console < "u" && typeof console.debug == "function" && console.debug("[alerts] vk delivery delegated to server", {
-    type: e,
-    hole: a,
-    player: r,
-    flight: (n || []).length
+function Ae(e, r, a, n, o) {
+  return P(e, r, a, n, o);
+}
+function P(e, r, a, n, o) {
+  var s = P._state || (P._state = { done: {} }), _ = o ? "id:" + o : "k:" + [e, r, a, Math.floor(Date.now() / 5e3)].join("|");
+  if (s.done[_]) return s.done[_].promise;
+  var m = typeof pestovoCheckGlobalNotificationsEnabled == "function" ? pestovoCheckGlobalNotificationsEnabled().catch(function() {
+    return !0;
+  }) : Promise.resolve(!0), u = m.then(function(d) {
+    return d === !1 ? { skipped: "notifications_disabled" } : A().then(function(l) {
+      if (l.mode === "server")
+        return typeof console < "u" && console.debug && console.debug("[alerts] delivery mode = server, browser stays silent"), { skipped: "server_mode" };
+      var i = l.telegram || {}, b = l.vk || {}, c = {}, g = {
+        "telegram:group": !!(i.groupToken && i.groupId),
+        "telegram:channel": !!(i.channelToken && i.channelId),
+        vk: !!(b.token && b.peerId)
+      }, p = [];
+      return g["telegram:group"] ? p.push(N(i.groupToken, i.groupId, e, r, a, n).then(function(y) {
+        c["telegram:group"] = y;
+      })) : c["telegram:group"] = "not_configured", g["telegram:channel"] ? p.push(N(i.channelToken, i.channelId, e, r, a, n).then(function(y) {
+        c["telegram:channel"] = y;
+      })) : c["telegram:channel"] = "not_configured", g.vk ? p.push($(b.token, b.peerId, e, r, a, n).then(function(y) {
+        c.vk = y;
+      })) : c.vk = "not_configured", !g["telegram:group"] && !g["telegram:channel"] && !g.vk && console.warn("[alerts] в channels/ ничего не настроено — вызов никуда не отправлен"), Promise.all(p).then(function() {
+        return X(o, c, g);
+      });
+    });
+  }).catch(function(d) {
+    return console.warn("[alerts] delivery failed", d && d.message), { skipped: "error", error: String(d && d.message || d).slice(0, 200) };
+  });
+  return s.done[_] = { promise: u, at: Date.now() }, Object.keys(s.done).forEach(function(d) {
+    Date.now() - s.done[d].at > 6e4 && delete s.done[d];
+  }), u;
+}
+function X(e, r, a) {
+  var n = {
+    by: "client",
+    at: Date.now(),
+    channels: r || {},
+    configured: a || {}
+  }, o = 0;
+  return Object.keys(r || {}).forEach(function(s) {
+    r[s] === "sent" && o++;
+  }), n.sent = o, !e || typeof db > "u" || !db ? Promise.resolve(n) : db.ref("alerts/" + e + "/delivery").update(n).then(function() {
+    return n;
+  }).catch(function(s) {
+    return console.warn("[alerts] delivery report not saved", s && s.message), n;
   });
 }
-typeof window < "u" && Object.assign(window, { buildOfficialCallText: C, sendTelegramDirectAlert: ve, sendTelegramSilentAlert: we, sendTelegramOfficialAlert: Se, vkSendMessageJsonp: L, vkBuildAlertText: H, sendVKDirectAlert: Te, sendVKSilentAlert: ke, sendVKOfficialAlert: Pe });
+typeof window < "u" && Object.assign(window, { buildOfficialCallText: x, pestovoOfficialChannels: A, sendTelegramDirectAlert: Pe, sendTelegramSilentAlert: N, sendTelegramOfficialAlert: Ce, vkSendMessageJsonp: H, vkBuildAlertText: O, sendVKDirectAlert: Re, sendVKSilentAlert: $, sendVKOfficialAlert: Ae, pestovoDeliverOfficialCall: P, pestovoRecordClientDelivery: X });
 export {
-  $ as ADDR,
-  J as CLUB,
-  X as COURSE_RATINGS,
-  P as DATE_RANGE_PRESETS,
-  g as HOLES,
-  m as I18N,
-  z as TEES,
-  Q as TEE_ORDER,
-  I as TIMINGS,
-  M as TOAST_DURATION_MS,
-  Re as TOTAL_PAR,
-  A as applyTranslations,
-  C as buildOfficialCallText,
+  ee as ADDR,
+  Z as CLUB,
+  ae as COURSE_RATINGS,
+  C as DATE_RANGE_PRESETS,
+  v as HOLES,
+  h as I18N,
+  te as TEES,
+  re as TEE_ORDER,
+  G as TIMINGS,
+  F as TOAST_DURATION_MS,
+  De as TOTAL_PAR,
+  D as applyTranslations,
+  x as buildOfficialCallText,
   f as currentLang,
-  O as dateInputToEndTs,
-  F as dateInputToStartTs,
-  x as datePresetRange,
-  k as dateRangeFilters,
-  j as ensureToastRoot,
-  V as esc,
-  U as escapeHtml,
-  ce as filterEntriesByDateRange,
-  le as fmtDate,
-  re as fmtScore,
-  ie as fmtTime,
-  pe as getDateRangeFilter,
-  G as getRoundFilterTs,
-  ee as holeDist,
-  te as holeHcp,
-  Z as holePar,
-  oe as holeResClass,
-  se as holeResName,
-  ae as holeTiming,
-  me as html,
-  ue as initDateRangeFilter,
-  K as isPlayerModeEnabled,
-  de as isTodayTimestamp,
-  T as normalizeTimestampMs,
+  B as dateInputToEndTs,
+  V as dateInputToStartTs,
+  M as datePresetRange,
+  T as dateRangeFilters,
+  U as ensureToastRoot,
+  K as esc,
+  J as escapeHtml,
+  he as filterEntriesByDateRange,
+  ue as fmtDate,
+  ie as fmtScore,
+  pe as fmtTime,
+  ye as getDateRangeFilter,
+  j as getRoundFilterTs,
+  oe as holeDist,
+  se as holeHcp,
+  ne as holePar,
+  de as holeResClass,
+  ce as holeResName,
+  le as holeTiming,
+  ve as html,
+  be as initDateRangeFilter,
+  W as isPlayerModeEnabled,
+  fe as isTodayTimestamp,
+  k as normalizeTimestampMs,
+  P as pestovoDeliverOfficialCall,
+  A as pestovoOfficialChannels,
+  X as pestovoRecordClientDelivery,
   R as readDateRange,
-  fe as refreshDateRangeFilters,
-  B as renderRoundsPeriodSummary,
-  ne as scoreClass,
-  ve as sendTelegramDirectAlert,
-  Se as sendTelegramOfficialAlert,
-  we as sendTelegramSilentAlert,
-  Te as sendVKDirectAlert,
-  Pe as sendVKOfficialAlert,
-  ke as sendVKSilentAlert,
-  he as setSafeHtml,
-  Y as t,
-  _e as tnDateTs,
-  E as toast,
-  q as toastIconFor,
-  be as toastSequence,
-  ge as toggleLang,
-  D as tsToDateInputValue,
-  N as updateFooterYear,
-  W as updateLangButtons,
-  ye as vib,
-  H as vkBuildAlertText,
-  L as vkSendMessageJsonp
+  ge as refreshDateRangeFilters,
+  q as renderRoundsPeriodSummary,
+  _e as scoreClass,
+  Pe as sendTelegramDirectAlert,
+  Ce as sendTelegramOfficialAlert,
+  N as sendTelegramSilentAlert,
+  Re as sendVKDirectAlert,
+  Ae as sendVKOfficialAlert,
+  $ as sendVKSilentAlert,
+  we as setSafeHtml,
+  z as t,
+  me as tnDateTs,
+  I as toast,
+  Y as toastIconFor,
+  Se as toastSequence,
+  Te as toggleLang,
+  E as tsToDateInputValue,
+  L as updateFooterYear,
+  Q as updateLangButtons,
+  ke as vib,
+  O as vkBuildAlertText,
+  H as vkSendMessageJsonp
 };

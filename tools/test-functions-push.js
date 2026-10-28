@@ -64,6 +64,59 @@ eq(box.audienceOf({ audience: { includePwa: 'yes' } }).includePwa, false, 'audie
 eq(Object.keys(box.audienceOf({ audience: { type: 'roster', uids: { a: true, b: false, c: null } } }).uids).sort(),
     ['a'], 'audience: false/null uid отсекаются');
 
+// ── Кому уходят вызовы судьи/маршала ─────────────────────────────────────
+// Подписка помечается isAdmin браузером, но признак админа в клубе бывает
+// двух видов: флаг users/<uid>/admin = true и роль users/<uid>/role = 'admin'.
+// Сервер обязан принимать оба, иначе вызовы уходят в пустой список подписок.
+var adminProfileM = src.match(/function isAdminProfile\(profile\) \{[\s\S]*?\n\}/);
+ok(!!adminProfileM, 'isAdminProfile извлечена для юнит-теста');
+var adminSubsM = src.match(/async function getAdminSubscriptions\(subs\) \{[\s\S]*?\n\}/);
+ok(!!adminSubsM, 'getAdminSubscriptions извлечена для юнит-теста');
+
+function checkAdminSubscriptions() {
+    if (!adminProfileM || !adminSubsM) return Promise.resolve();
+    var profiles = {
+        flagAdmin: { admin: true },
+        roleAdmin: { role: 'admin' },
+        player: { role: 'player' }
+    };
+    var box2 = {
+        console: console,
+        db: {
+            ref: function (p) {
+                var uid = String(p).replace(/^users\//, '');
+                return {
+                    get: function () {
+                        return Promise.resolve({
+                            val: function () {
+                                return Object.prototype.hasOwnProperty.call(profiles, uid) ? profiles[uid] : null;
+                            }
+                        });
+                    }
+                };
+            }
+        }
+    };
+    vm.createContext(box2);
+    vm.runInContext(adminProfileM[0] + '\nthis.isAdminProfile = isAdminProfile;', box2);
+    vm.runInContext(adminSubsM[0] + '\nthis.getAdminSubscriptions = getAdminSubscriptions;', box2);
+    ok(box2.isAdminProfile({ admin: true }), 'админ по флагу admin: true');
+    ok(box2.isAdminProfile({ role: 'admin' }), 'админ по роли role: admin');
+    ok(!box2.isAdminProfile({ role: 'player' }), 'не админ: обычная роль');
+    ok(!box2.isAdminProfile(null), 'не админ: пустой профиль');
+
+    return box2.getAdminSubscriptions([
+        { uid: 'flagAdmin', endpoint: 'flag', isAdmin: false },
+        { uid: 'roleAdmin', endpoint: 'role' },
+        { uid: 'player', endpoint: 'stale', isAdmin: true },
+        { uid: '', endpoint: 'nokey', isAdmin: true },
+        { endpoint: 'plain' }
+    ]).then(function (res) {
+        eq(res.map(function (s) { return s.endpoint; }), ['flag', 'role', 'nokey'],
+            'вызовы: админы по профилю (оба признака) + запись с флагом без uid');
+    });
+}
+
 function pickTargets(aud, allSubs) {
     if (aud.type === 'all') return allSubs.filter(function(s) { return aud.includePwa || !!s.uid; });
     return allSubs.filter(function(s) { return s.uid && aud.uids[String(s.uid)]; });
@@ -80,6 +133,11 @@ eq(pickTargets(box.audienceOf({ audience: { type: 'all', includePwa: true } }), 
 eq(pickTargets(box.audienceOf({ audience: { type: 'roster', uids: { u2: true } } }), subs).map(function(s) { return s.endpoint; }),
     ['e2'], 'roster: только uid из снимка');
 
-console.log('');
-console.log(failures ? ('ПРОВАЛЕНО: ' + failures + ' из ' + checks) : ('ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ (' + checks + ')'));
-process.exit(failures ? 1 : 0);
+checkAdminSubscriptions().then(function () {
+    console.log('');
+    console.log(failures ? ('ПРОВАЛЕНО: ' + failures + ' из ' + checks) : ('ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ (' + checks + ')'));
+    process.exit(failures ? 1 : 0);
+}).catch(function (err) {
+    console.error(err);
+    process.exit(1);
+});

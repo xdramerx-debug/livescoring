@@ -317,6 +317,51 @@ async function removeSubscription(key) {
     try { await db.ref('push_subscriptions/' + key).remove(); } catch (_) {}
 }
 
+// Признак админа в профиле: database.rules.json и вся клиентская проверка
+// (hasAdminPanelAccess, wipeAllData) допускают ДВА варианта — флаг `admin: true`
+// и роль `role: 'admin'`. Раньше пуши вызовов сверялись только с ролью.
+function isAdminProfile(profile) {
+    return !!(profile && (profile.admin === true || profile.role === 'admin'));
+}
+
+// Подписки админов для вызовов судьи/маршала.
+//
+// Флаг isAdmin в /push_subscriptions ставит браузер, и он ненадёжен: подписка
+// могла быть создана до входа, профиль мог быть прочитан с отказом правил
+// (не-админу чтение users/<uid> запрещено), роль могла смениться, а признаком
+// админа в клубе бывает и флаг `admin: true`. Из-за этого вызовы уходили в
+// пустой список подписок — в админке «админов: 0», а на телефоне тишина при
+// работающем локальном тесте.
+//
+// Источник истины — профили users/<uid> (Admin SDK читает их в обход правил);
+// клиентский флаг остаётся запасным вариантом, если профиль прочитать не удалось.
+async function getAdminSubscriptions(subs) {
+    const uids = [];
+    subs.forEach(function (s) {
+        const uid = s && s.uid ? String(s.uid) : '';
+        if (uid && uids.indexOf(uid) === -1) uids.push(uid);
+    });
+    const admins = {};
+    await Promise.all(uids.map(async function (uid) {
+        try {
+            const snap = await db.ref('users/' + uid).get();
+            admins[uid] = isAdminProfile(snap.val());
+        } catch (err) {
+            admins[uid] = null; // неизвестно — решает клиентский флаг
+        }
+    }));
+    return subs.filter(function (s) {
+        if (!s) return false;
+        // Запись без uid, но с флагом админа: uid не проставился (вход позже,
+        // отказ правил) — доверяем флагу, иначе админ молча терял вызовы.
+        if (!s.uid) return s.isAdmin === true;
+        const known = admins[String(s.uid)];
+        if (known === true) return true;
+        if (known === false) return false; // устаревший флаг у обычного игрока
+        return s.isAdmin === true;
+    });
+}
+
 // Master switch maintained by the admin UI. Missing setting preserves the
 // existing behaviour (enabled); only an explicit false suppresses delivery.
 async function globalNotificationsEnabled() {
@@ -404,7 +449,8 @@ exports.onBroadcastCreated = functions.database.ref('/broadcasts/{id}').onCreate
     }
 });
 
-// Вызов судьи/маршала: пушим админам (роль admin в users/<uid>).
+// Вызов судьи/маршала: пушим админам (users/<uid>: `admin: true` или
+// `role: 'admin'` — их разбирает getAdminSubscriptions).
 // ── Доставка вызова судьи/маршала в Telegram и ВКонтакте ─────────────────
 // Токены лежат в ветке channels/ (database.rules.json: .read только для
 // админа/мастера) и читаются исключительно Admin SDK — браузер игрока секрет
@@ -522,14 +568,27 @@ exports.onAlertCreated = functions.database.ref('/alerts/{id}').onCreate(async f
 
         // Telegram/VK не зависят от Web Push: раньше при пустом списке
         // админских подписок функция выходила до всякой рассылки.
-        const channels = await deliverOfficialCall(a);
+        // Сбой Telegram/VK не должен отменять Web Push: раньше исключение
+        // внутри доставки перепрыгивало в общий catch, и телефон админа
+        // не получал вызов вообще.
+        let channels = [];
+        try {
+            channels = await deliverOfficialCall(a);
+        } catch (err) {
+            functions.logger.warn('onAlertCreated: channels failed', err && err.message);
+        }
         if (channels.length) functions.logger.info('onAlertCreated: delivered via ' + channels.join(', '));
 
         const keys = await ensureVapidKeys();
         configureWebPush(keys);
 
-        const subs = (await getAllSubscriptions()).filter(function (s) { return !!s.isAdmin; });
-        if (!subs.length) return;
+        const allSubs = await getAllSubscriptions();
+        const subs = await getAdminSubscriptions(allSubs);
+        functions.logger.info('alert push: ' + subs.length + ' admin subs of ' + allSubs.length);
+        if (!subs.length) {
+            functions.logger.warn('onAlertCreated: нет подписок админов — push не отправлен');
+            return;
+        }
         const referee = a.type === 'referee';
         const payload = {
             title: referee ? '🚨 ВЫЗОВ СУДЬИ!' : '🚨 ВЫЗОВ МАРШАЛА!',

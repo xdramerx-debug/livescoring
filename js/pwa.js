@@ -622,6 +622,30 @@ function pestovoPushSave(sub) {
     var uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) ? currentUser.uid : null;
     if (uid) rec.uid = uid;
 
+    var localKey = null;
+    try { localKey = localStorage.getItem('pestovo_push_key'); } catch (e) { console.warn("[silent]", e); }
+
+    function remember(key) {
+        try { localStorage.setItem('pestovo_push_key', key); } catch (e) { console.warn("[silent]", e); }
+        if (uid) return pestovoPushPatchProfile(key, uid);
+        return key;
+    }
+
+    // Обычная запись под предсказуемым ключом sub_<хвост endpoint>: хвост
+    // уникален для подписки, поэтому повторная подписка перезаписывает ту же
+    // запись, а не плодит дубли.
+    function writeDirect() {
+        var key = localKey || pestovoPushKeyForEndpoint(endpoint);
+        var updates = {};
+        updates['/push_subscriptions/' + key] = rec;
+        return db.ref().update(updates).then(function() { return remember(key); });
+    }
+
+    // Дедупликация по endpoint через запрос к /push_subscriptions. Чтение этой
+    // ветки разрешено ТОЛЬКО админам (database.rules.json). Для игрока запрос
+    // отклонялся правилами, промис падал — и подписка не сохранялась вообще:
+    // фоновых пушей у игроков не было ни по анонсам, ни по вызовам. Поэтому
+    // отказ чтения — не ошибка, а штатный путь: пишем напрямую.
     return db.ref('push_subscriptions').orderByChild('endpoint').equalTo(endpoint).once('value').then(function(sn) {
         var val = sn.val() || {};
         var keys = Object.keys(val);
@@ -636,25 +660,30 @@ function pestovoPushSave(sub) {
             updates['/push_subscriptions/' + key] = merged;
             keys.slice(1).forEach(function(k2) { updates['/push_subscriptions/' + k2] = null; });
         } else {
-            var localKey = null;
-            try { localKey = localStorage.getItem('pestovo_push_key'); } catch (e) { console.warn("[silent]", e); }
             key = localKey || pestovoPushKeyForEndpoint(endpoint);
             updates['/push_subscriptions/' + key] = rec;
         }
-        try { localStorage.setItem('pestovo_push_key', key); } catch (e) { console.warn("[silent]", e); }
-        return db.ref().update(updates).then(function() {
-            if (uid) return pestovoPushPatchProfile(key, uid);
-            return key;
-        });
+        return db.ref().update(updates).then(function() { return remember(key); });
+    }, function() {
+        return writeDirect();
     });
 }
 
 // Привязка подписки к вошедшему игроку + флаг админа (для пушей вызовов).
+// Признак админа в клубе — ЛИБО role === 'admin', ЛИБО admin === true
+// (так же считают hasAdminPanelAccess и серверная wipeAllData). Раньше здесь
+// проверялась только роль, поэтому подписка админа с флагом admin: true не
+// получала isAdmin и вызовы судьи/маршала уходили в пустой список.
+// Профиль users/<uid> читается по правилам не всем: при отказе всё равно
+// проставляем uid (без него подписка не попадает и в анонсы), а isAdmin
+// оставляем как есть — сервер сверяет админов по профилям сам.
 function pestovoPushPatchProfile(key, uid) {
     if (!key || !uid || typeof db === 'undefined' || !db) return Promise.resolve(key);
     var patch = { uid: uid, updatedAt: Date.now() };
-    return db.ref('users/' + uid + '/role').once('value').then(function(sn) {
-        if (sn.val() === 'admin') patch.isAdmin = true;
+    return db.ref('users/' + uid).once('value').then(function(sn) {
+        var profile = sn.val() || {};
+        patch.isAdmin = !!(profile.admin === true || profile.role === 'admin');
+    }).catch(function() {}).then(function() {
         return db.ref('push_subscriptions/' + key).update(patch).catch(function() {});
     }).then(function() { return key; }).catch(function() { return key; });
 }

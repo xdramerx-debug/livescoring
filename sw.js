@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.119.0-c1d7ef3a';
+const CACHE_NAME = 'pestovo-v1.120.0-1ce27537';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -59,8 +59,9 @@ const STATIC_ASSETS = [
     'css/entry-scorecard.css?v=a34f8c94',
     'css/fontawesome-subset.css?v=c8871e34',
     'css/style.css?v=a5317bf8',
+    'css/theme-v2.css?v=9ade76d5',
     'css/tn-studio.css?v=2e8b755f',
-    'css/tournament-redesign.css?v=3f88226b',
+    'css/tournament-redesign.css?v=794da0d9',
     'dist/livescoring-modules.js?v=4b640eff',
     'js/app.js?v=9271a1db',
     'js/auth.js?v=3a96f309',

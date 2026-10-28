@@ -21,6 +21,7 @@ i18n, алерты) отдаётся одним **ESM-бандлом** `dist/liv
 | `src/` | Исходники ESM-модулей бандла (Vite) + мост глобалов на `window` |
 | `fonts/` | Подмножество Font Awesome: только используемые иконки (`npm run build:fonts`) |
 | `css/fontawesome-subset.css` | Стиль сабсета и `@font-face` на `fonts/*.woff2` (генерируется) |
+| `css/theme-v2.css` | Визуальный слой: палитра, шкала поверхностей, типографика, светлая тема (см. `docs/DESIGN.md`) |
 | `js/course-config.js` | Конфигурация курса (классическая копия модуля из `src/`) |
 | `js/format.js` | Форматирование счёта и дат (классическая копия) |
 | `js/date-range.js` | Фильтр по датам для списков раундов (классическая копия) |
@@ -67,6 +68,7 @@ npm run check:globals# мёртвые глобалы: объявлено в js/,
 npm run check:listeners # RTDB-подписка без защиты от повторного вызова (.off/guard/реестр)
 npm run build:fonts   # подмножество Font Awesome по классам fa-* в разметке (коммитить результат)
 npm run check:fonts   # сабсет иконок не разошёлся с разметкой (в CI)
+npm run check:design  # контраст токенов темы по WCAG, кегли, подключение слоя (в CI)
 npm run assets        # ?v=<hash> в HTML + precache-манифест sw.js (после правок js/css)
 npm run build         # ESM-бандл dist/livescoring-modules.js (Vite) — коммитить результат
 npm run build:public  # каталог деплоя public/ (минификация js/css) — НЕ коммитится

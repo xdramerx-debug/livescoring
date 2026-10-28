@@ -104,7 +104,7 @@ for (const page of htmlFiles) {
 // хендлера и кэшируются при первом обращении, поэтому офлайн-режим они не
 // ломают — просто не грузятся в кэш заранее (docs/CODE-AUDIT-2026-10-2.md,
 // находка 11: 70 записей / 1.85 МБ raw / 637 КБ gzip на каждую установку SW).
-const PRECACHE_SKIP_PAGES = ['admin.html', 'design-preview.html', 'hcp-badge-preview.html'];
+const PRECACHE_SKIP_PAGES = ['admin.html', 'design-preview.html', 'hcp-badge-preview.html', 'design-review.html'];
 const skipped = new Set(htmlFiles.filter(function (f) { return PRECACHE_SKIP_PAGES.indexOf(f) !== -1; }));
 
 const pages = ['./'].concat(htmlFiles.filter(function (f) { return !skipped.has(f); }));

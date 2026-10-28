@@ -192,6 +192,8 @@ max-age=31536000, immutable`, а HTML, `sw.js` и `manifest.json` — с `no-cac
 
 ## Документация
 
+- `docs/DESIGN-REVIEW-2026-10.md` — дизайн-ревью: контраст, кегли, акцент, темы,
+  с замерами и макетом «до/после» (`design-review.html`).
 - `docs/IMPROVEMENTS-2026-10.md` — текущий аудит: что улучшать дальше, с замерами.
 - `docs/CODE-REVIEW.md` — первый аудит (2026-09) и приоритеты улучшений.
 - `docs/IMPROVEMENTS-IMPL.md` — что уже сделано по аудиту.

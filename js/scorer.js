@@ -312,6 +312,12 @@ function scClosedMessage() {
         : '🔒 Игрок уже завершил раунд — карточка закрыта.', 'info');
 }
 
+// Сообщаем результат последней операции отдельно от временных toast-уведомлений.
+function scSaveStatus(ru, en) {
+    var el = scGet('sc-save-status');
+    if (el) el.textContent = (typeof currentLang !== 'undefined' && currentLang === 'en') ? en : ru;
+}
+
 function saveSc() {
     if (scScore < 1) { if (typeof toast === 'function' && typeof t === 'function') toast(t('msg_score_min'), 'error'); return; }
     if (scTargetClosed()) { scClosedMessage(); return; }
@@ -321,6 +327,7 @@ function saveSc() {
     if (scSaving) return;
     scSaving = true;
     scSetSaving(true);
+    scSaveStatus('Отправляем счёт…', 'Sending score…');
     scChanging = true;
     var savedHole = scHole;
     var scQueued = false;
@@ -332,6 +339,7 @@ function saveSc() {
         return null;
     }).then(function() {
         if (scQueued) {
+            scSaveStatus('Лунка ' + savedHole + ': счёт сохранён на устройстве и поставлен в очередь отправки.', 'Hole ' + savedHole + ': score saved on this device and queued for sending.');
             var pendingOrder = getRoundOrder(scRound);
             var pendingIdx = pendingOrder.indexOf(savedHole);
             if (pendingIdx >= 0 && pendingIdx < pendingOrder.length - 1) { scHole = pendingOrder[pendingIdx + 1]; scScore = 0; }
@@ -340,6 +348,7 @@ function saveSc() {
             scChanging = false; scSetSaving(false);
             return;
         }
+        scSaveStatus('Лунка ' + savedHole + ': счёт принят сервером.', 'Hole ' + savedHole + ': score accepted by the server.');
         if (scRound && scRound.players && scRound.players[scPid]) {
             scRound.players[scPid].scores = scRound.players[scPid].scores || {};
             scRound.players[scPid].scores[savedHole] = scScore;
@@ -381,7 +390,8 @@ function saveSc() {
         console.error('[scorer] save failed', err);
         scChanging = false;
         scSetSaving(false);
-        if (typeof toast === 'function') toast('Ошибка сохранения', 'error');
+        scSaveStatus('Не удалось подтвердить сохранение. Проверьте счёт перед повторной отправкой.', 'Could not confirm saving. Check the score before sending again.');
+        if (typeof toast === 'function') toast(typeof currentLang !== 'undefined' && currentLang === 'en' ? 'Could not save score' : 'Ошибка сохранения', 'error');
     });
 }
 

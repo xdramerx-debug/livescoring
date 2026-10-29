@@ -58,7 +58,7 @@ function updateOnlineStatus(){
         indicator.className='online-indicator online';
         indicator.innerHTML='<i class="fas fa-wifi"></i> ' + (langIsEn ? 'Online' : 'Онлайн');
         if(!wasOnline){try{ if(typeof toast==='function')toast(langIsEn ? '🌐 Connection restored' : '🌐 Соединение восстановлено','success'); }catch (e) { console.warn("[silent]", e); } try{ syncOfflineScores(); }catch (e) { console.warn("[silent]", e); } }
-        setTimeout(function(){try{ if(indicator)indicator.classList.add('hide'); }catch (e) { console.warn("[silent]", e); }},3000);
+        setTimeout(function(){try{ if(indicator && navigator.onLine)indicator.classList.add('hide'); }catch (e) { console.warn("[silent]", e); }},3000);
     }else{
         indicator.className='online-indicator offline';
         indicator.innerHTML='<i class="fas fa-plug-circle-xmark"></i> ' + (langIsEn ? 'Offline' : 'Оффлайн');

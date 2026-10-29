@@ -100,6 +100,10 @@ function buildSandbox(scriptName, _domIds) {
 function runScorer() {
     const t = buildSandbox('scorer', []);
     const { sandbox, getEl, dbWrites } = t;
+    // Страница подключает score-display.js; в этой песочнице рендеринг не тестируем.
+    sandbox.renderHole = function () {};
+    sandbox.buildHoles = function () {};
+    sandbox.renderCard = function () {};
     sandbox.scRid = 'R1';
     sandbox.scPid = 'me';
     sandbox.scRound = {
@@ -123,6 +127,7 @@ function runScorer() {
     const scoreWrites = dbWrites.filter(w => w.via === 'scoreWrite' && w.operations[0].kind === 'score');
     eq(scoreWrites.length, 1, 'scorer: быстрые нажатия дают ровно одну запись счёта');
     ok(sandbox.scSaving === true, 'scorer: флаг занятости записи установлен');
+    ok(getEl('sc-save-status').textContent.includes('Отправляем'), 'scorer: статус отправки виден');
     ok(getEl('sc-save-btn').disabled === true, 'scorer: кнопка заблокирована на время записи');
     sandbox.saveSc();
     eq(dbWrites.filter(w => w.via === 'scoreWrite' && w.operations[0].kind === 'score').length, 1, 'scorer: повторный вызов ничего не пишет');
@@ -133,6 +138,7 @@ function runScorer() {
             ok(sandbox.scSaving === false, 'scorer: после записи блокировка снята');
             ok(getEl('sc-save-btn').disabled === false, 'scorer: после записи кнопка снова доступна');
             eq(sandbox.scHole, 2, 'scorer: после сохранения перешли на следующую лунку');
+            ok(getEl('sc-save-status').textContent.includes('принят сервером'), 'scorer: статус подтверждения сервера виден');
             done();
         }, 30);
     });

@@ -737,7 +737,7 @@ function applyUnifiedStep() {
         var labels = [t('wiz_step_1'), t('wiz_step_2'), t('wiz_step_3')];
         stepsEl.innerHTML = labels.map(function(lb, i) {
             var cls = 'unified-step' + (i + 1 === setupWizardStep ? ' active' : (i + 1 < setupWizardStep ? ' done' : ''));
-            return '<button type="button" class="' + cls + '" data-act="unifiedStepGo" data-arg="' + (i + 1) + '"><span>' + (i + 1) + '</span>' + lb + '</button>';
+            return '<button type="button" class="' + cls + '"' + (i + 1 === setupWizardStep ? ' aria-current="step"' : '') + ' data-act="unifiedStepGo" data-arg="' + (i + 1) + '"><span>' + (i + 1) + '</span>' + lb + '</button>';
         }).join('');
     }
     var back = document.getElementById('unified-back-btn');

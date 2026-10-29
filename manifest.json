@@ -2,9 +2,9 @@
     "name": "Пестово",
     "short_name": "Пестово",
     "description": "Система лайв-скоринга клуба Пестово",
-    "id": "/",
-    "start_url": "/index.html",
-    "scope": "/",
+    "id": "./",
+    "start_url": "./index.html",
+    "scope": "./",
     "display": "standalone",
     "display_override": [
         "standalone",
@@ -44,19 +44,19 @@
             "name": "Табло",
             "short_name": "Табло",
             "description": "Текущие результаты раундов",
-            "url": "/leaderboard.html"
+            "url": "./leaderboard.html"
         },
         {
             "name": "Начать раунд",
             "short_name": "Раунд",
             "description": "Настройка и запуск раунда",
-            "url": "/setup-round.html"
+            "url": "./setup-round.html"
         },
         {
             "name": "Турниры",
             "short_name": "Турниры",
             "description": "Турниры клуба и стартовые листы",
-            "url": "/tournaments.html"
+            "url": "./tournaments.html"
         }
     ],
     "lang": "ru"

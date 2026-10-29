@@ -1,7 +1,10 @@
 name: GitHub Pages
 
-# github.io отставал от Firebase: Pages стоял на GitHub Actions,
-# а workflow не было. Собираем public/ с той же ветки, что прод.
+# github.io живёт в подкаталоге /livescoring/, а public/ собирается как
+# корень Firebase (минификация + выкинутые js/*-двойники ESM). После #169
+# Pages отдавал public/ — манифест /index.html уезжал на xdramerx-debug.github.io/,
+# часть скриптов 404. Снова выкладываем исходники сайта (как старый
+# «Deploy from a branch»), с дефолтной ветки.
 
 on:
   push:
@@ -31,11 +34,17 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm run build:public
+      - run: npm run build
+      - name: Stage GitHub Pages tree
+        run: |
+          mkdir -p _pages
+          cp -a *.html sw.js manifest.json _pages/
+          cp -a css js dist img fonts _pages/
+          touch _pages/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: _pages
 
   deploy:
     needs: build

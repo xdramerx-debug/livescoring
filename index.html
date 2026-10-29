@@ -43,8 +43,21 @@
     </div>
 </div></nav>
 
-<!-- Сначала живая игра, hero — ниже: на телефоне не закрывать поле логотипом -->
-<section class="section" style="padding-top:calc(var(--nav-h,70px) + 12px);padding-bottom:10px;">
+<section class="hero">
+    <div class="hero-content">
+        <img src="img/logo.png" alt="Pestovo" class="hero-logo">
+        <p class="hero-sub" data-i18n="hero_sub">Цифровая счётная карточка Пестово</p>
+        <h1 class="hero-title" data-i18n="hero_title">Лайв-скоринг и электронные карточки Пестово</h1>
+        <p class="hero-desc" data-i18n="hero_desc">18 лунок · Пар 72</p>
+        <div class="hero-btns">
+            <a href="setup-round.html" class="btn btn-g btn-lg"><i class="fas fa-play"></i> <span data-i18n="btn_start_game">Начать игру</span></a>
+            <a href="leaderboard.html" class="btn btn-ol btn-lg"><i class="fas fa-trophy"></i> <span data-i18n="btn_view_scores">Все раунды</span></a>
+        </div>
+    </div>
+</section>
+
+<!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" (УРОВЕНЬ 1 ИЕРАРХИИ) -->
+<section class="section" style="padding-bottom:10px;">
     <div class="container">
         <div id="my-active-rounds-container" class="hidden"></div>
     </div>
@@ -66,19 +79,6 @@
         <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все раунды</span> <i class="fas fa-arrow-right"></i></a></div>
         <div id="course-holes-strip"></div>
         <div id="live-rounds"><div class="skeleton" style="height:120px;margin-bottom:12px;"></div></div>
-    </div>
-</section>
-
-<section class="hero">
-    <div class="hero-content">
-        <img src="img/logo.png" alt="Pestovo" class="hero-logo">
-        <p class="hero-sub" data-i18n="hero_sub">Цифровая счётная карточка Пестово</p>
-        <h1 class="hero-title" data-i18n="hero_title">Лайв-скоринг и электронные карточки Пестово</h1>
-        <p class="hero-desc" data-i18n="hero_desc">18 лунок · Пар 72</p>
-        <div class="hero-btns">
-            <a href="setup-round.html" class="btn btn-g btn-lg"><i class="fas fa-play"></i> <span data-i18n="btn_start_game">Начать игру</span></a>
-            <a href="leaderboard.html" class="btn btn-ol btn-lg"><i class="fas fa-trophy"></i> <span data-i18n="btn_view_scores">Все раунды</span></a>
-        </div>
     </div>
 </section>
 
@@ -123,7 +123,7 @@
     </div>
     <div class="footer-bottom">
                 <p data-i18n="footer_club">&copy; 2024 Пестово</p>
-                <p class="site-version">Версия сайта: <span class="version-number">1.125.1</span></p>
+                <p class="site-version">Версия сайта: <span class="version-number">1.125.2</span></p>
             </div>
 </div></footer>
 
@@ -133,7 +133,7 @@
 <script defer src="js/firebase-config.js?v=032a2499"></script>
 <script type="module" src="dist/livescoring-modules.js?v=be23611a"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=facb0d69"></script>
+<script defer src="js/utils.js?v=a9fceaac"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/app.js?v=9271a1db"></script>
 <script defer src="js/score-write.js?v=92dca237"></script>

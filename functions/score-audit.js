@@ -118,7 +118,12 @@ module.exports = function createScoreAudit(functions, admin, db, forEachChildPag
                 if (!p.holeTimes[hole]) p.holeTimes[hole] = now;
                 const mark = p.markedBy && p.markerScores && p.markerScores[p.markedBy] && p.markerScores[p.markedBy][hole];
                 p.verified = p.verified || {};
-                p.verified[hole] = mark ? (mark === p.scores[hole] ? true : p.scores[hole] ? false : 'pending') : 'pending';
+                // Единый раунд (v1.126.0): у игрока нет маркера (одиночный
+                // раунд) — сверять не с кем, введённый счёт финальный.
+                // Иначе — как раньше: ждём отметку маркера ('pending').
+                p.verified[hole] = mark
+                    ? (mark === p.scores[hole] ? true : p.scores[hole] ? false : 'pending')
+                    : (p.markedBy ? 'pending' : (p.scores[hole] ? true : 'pending'));
                 const id = requestId + '_' + i;
                 events[id] = { id, day: dateKey(now), at: now, queuedAt: data.queuedAt, roundId: rid,
                     tournamentId: round.tournamentId || null, playerId: op.playerId,

@@ -81,6 +81,9 @@
                     var markerVal = markedBy && pMarkerScores[markedBy] && pMarkerScores[markedBy][hole];
                     if (markerVal !== undefined && markerVal !== null && op.score !== null) {
                         updates['rounds/' + rid + '/players/' + pid + '/verified/' + hole] = (markerVal === op.score);
+                    } else if (!markedBy && op.score !== null) {
+                        // Маркера нет (одиночный раунд): счёт финальный сразу.
+                        updates['rounds/' + rid + '/players/' + pid + '/verified/' + hole] = true;
                     }
                 }
                 if (!(p.holeTimes && p.holeTimes[hole])) {

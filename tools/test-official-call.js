@@ -148,9 +148,11 @@ function eq(actual, expected, label) {
     const pages = { 'marker.html': 'marker.js', 'scorer.html': 'scorer.js', 'setup-round.html': 'live.js' };
     for (const [page, feature] of Object.entries(pages)) {
         const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
-        const shared = html.indexOf('js/official-call.js');
+        // Ищем именно тег подключения: упоминание пути в комментарии не
+        // должно ломать проверку порядка.
+        const shared = html.indexOf('src="js/official-call.js');
         assert.ok(shared !== -1, page + ': не подключён js/official-call.js');
-        assert.ok(shared < html.indexOf('js/' + feature),
+        assert.ok(shared < html.indexOf('src="js/' + feature),
             page + ': js/official-call.js обязан идти ДО js/' + feature);
     }
 }

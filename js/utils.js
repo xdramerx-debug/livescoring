@@ -456,9 +456,9 @@ function pestovoShowFioConflictModal(conflicts, onContinueAnyway) {
             // Колбэк — только функция. Раньше здесь был запасной путь
             // `new Function(str)`: CSP приложения не содержит 'unsafe-eval'
             // (firebase.json), поэтому на проде такая ветка падала в catch и
-            // кнопка «Начать всё равно» молча не работала. Оба вызывающих места
-            // (js/live.js:885, js/solo.js:475) передают функцию, строковой
-            // контракт удалён вместе с мёртвой веткой.
+            // кнопка «Начать всё равно» молча не работала. Единственное
+            // вызывающее место (единое создание раунда в js/live.js) передаёт
+            // функцию, строковой контракт удалён вместе с мёртвой веткой.
             try {
                 if (typeof onContinueAnyway === 'function') onContinueAnyway();
                 else if (onContinueAnyway) console.warn('[fio-conflict] onContinueAnyway must be a function');
@@ -904,11 +904,6 @@ function initHoleSwipeNav() {
         if (typeof canEditGroup !== 'undefined' && !canEditGroup) return;
         shiftHoleInOrder(getRoundOrder(curRoundData), playHole, dir, goPlayHole);
     });
-    bind('g-holes', function(dir) {
-        if (typeof goHole !== 'function' || typeof soloRound === 'undefined' || !soloRound) return;
-        if (typeof canEditSolo !== 'undefined' && !canEditSolo) return;
-        shiftHoleInOrder(getRoundOrder(soloRound), curHole, dir, goHole);
-    });
     bind('sc-holes', function(dir) {
         if (typeof goSc !== 'function' || typeof scRound === 'undefined' || !scRound) return;
         shiftHoleInOrder(getRoundOrder(scRound), scHole, dir, goSc);
@@ -923,19 +918,16 @@ function initHoleSwipeNav() {
     });
     var head = document.getElementById('page-head');
     if (head) {
+        // Единый экран ввода счёта (v1.126.0): одиночный и групповой раунд
+        // используют одну полосу лунок #play-holes-nav, поэтому свайп по
+        // шапке работает через тот же обработчик live.js.
         bindHoleNavSwipe(head, function(dir) {
             if (!document.body.classList.contains('round-active')) return;
-            var group = document.getElementById('active-scoring-view');
-            var solo = document.getElementById('game');
-            if (group && !group.classList.contains('hidden')) {
-                if (typeof goPlayHole !== 'function' || typeof curRoundData === 'undefined' || !curRoundData) return;
-                if (typeof canEditGroup !== 'undefined' && !canEditGroup) return;
-                shiftHoleInOrder(getRoundOrder(curRoundData), playHole, dir, goPlayHole);
-            } else if (solo && !solo.classList.contains('hidden')) {
-                if (typeof goHole !== 'function' || typeof soloRound === 'undefined' || !soloRound) return;
-                if (typeof canEditSolo !== 'undefined' && !canEditSolo) return;
-                shiftHoleInOrder(getRoundOrder(soloRound), curHole, dir, goHole);
-            }
+            var view = document.getElementById('active-scoring-view');
+            if (!view || view.classList.contains('hidden')) return;
+            if (typeof goPlayHole !== 'function' || typeof curRoundData === 'undefined' || !curRoundData) return;
+            if (typeof canEditGroup !== 'undefined' && !canEditGroup) return;
+            shiftHoleInOrder(getRoundOrder(curRoundData), playHole, dir, goPlayHole);
         });
     }
 }
@@ -944,7 +936,8 @@ function syncScoreConfirmBar() {
     var bar = document.getElementById('score-confirm-bar');
     if (!bar) return;
     var any = false;
-    [['save-hole-btn', 'active-scoring-view'], ['btn-solo-action', 'game']].forEach(function(pair) {
+    // Единый экран ввода счёта: кнопка «Подтвердить» одна (save-hole-btn).
+    [['save-hole-btn', 'active-scoring-view']].forEach(function(pair) {
         var sticky = document.getElementById(pair[0] + '-sticky');
         var view = document.getElementById(pair[1]);
         var on = !!(view && !view.classList.contains('hidden') && document.body.classList.contains('round-active'));
@@ -1007,12 +1000,11 @@ function pinScoreConfirmButton(id) {
 
 function initScoreConfirmBar() {
     // «Подтвердить результат» на странице раунда не содержит слова «сохранить»,
-    // поэтому старый #p0-sticky-actions её не подхватывает. Закрепляем обе:
-    // групповую и одиночную. Видна только кнопка открытого экрана.
+    // поэтому старый #p0-sticky-actions её не подхватывает. Экран ввода счёта
+    // один для соло и группы (v1.126.0), поэтому закрепляем одну кнопку.
     pinScoreConfirmButton('save-hole-btn');
-    pinScoreConfirmButton('btn-solo-action');
     if (typeof MutationObserver === 'function') {
-        ['active-scoring-view', 'game'].forEach(function(id) {
+        ['active-scoring-view'].forEach(function(id) {
             var el = document.getElementById(id);
             if (!el || el.getAttribute('data-confirm-watch') === '1') return;
             el.setAttribute('data-confirm-watch', '1');
@@ -1044,7 +1036,7 @@ function initP0MobileEnhancements(){
 
     // Long-press на кнопках ± : держи, чтобы повторять.
     // Делегирование на document — работает и для блоков, дорисованных позже
-    // (js/live.js, js/solo.js рисуют кнопки после загрузки данных).
+    // (единый экран ввода счёта рисует кнопки после загрузки данных).
     try{
         if(!window._p0HoldBound){
             window._p0HoldBound=true;
@@ -1539,7 +1531,7 @@ function onAuthReady(u, d) {
     pestovoAuthReadyFired = true;
     pestovoAuthReadyArgs = [u, d];
     // Ошибка одного хука не должна отменять остальные: на setup-round.html их
-    // два (live.js и solo.js через soloAuthReady), на tournaments.html — V2.
+    // два (live.js и слоя совместимости solo.js), на tournaments.html — V2.
     for (var i = 0; i < pestovoAuthReadyHooks.length; i++) {
         pestovoRunAuthHook(pestovoAuthReadyHooks[i], u, d, String(i));
     }
@@ -1591,12 +1583,29 @@ function buildStartHoleOptions(holeEl, holeRange) {
 //                например внешним маркером через marker.html, чьих данных в раунде нет)
 //  'pending'   — счёт игрока введён, но маркер ещё не подтвердил
 //  'none'      — счёт ещё не введён
+
+// Единый раунд (v1.126.0): одиночный и групповой раунд обслуживает один
+// экран ввода счёта. Признак «играет один игрок» — mode='solo' (так пишут и
+// старые сохранённые раунды) либо в карточке раунда фактически один игрок.
+function isSinglePlayerRound(r) {
+    if (!r || typeof r !== 'object') return false;
+    if (r.mode === 'solo') return true;
+    var players = r.players || {};
+    return Object.keys(players).length <= 1;
+}
+
 function getHoleVerifyState(p, h) {
     p = p || {};
     var ps = parseInt(p.scores && p.scores[h]) || 0;
     var markerId = p.markedBy;
     var ms = markerId ? (parseInt(p.markerScores && p.markerScores[markerId] && p.markerScores[markerId][h]) || 0) : 0;
     var v = p.verified && p.verified[h];
+
+    // Единый экран ввода счёта: у игрока нет маркера (одиночный раунд или
+    // карточка без назначенного маркера) — сверять не с кем, введённый счёт
+    // считается подтверждённым. Без этого лунки одиночного раунда навсегда
+    // оставались «серыми» (pending) и раунд нельзя было завершить.
+    if (!markerId) return ps >= 1 ? 'confirmed' : 'none';
 
     // Фактические данные приоритетнее флага: флаг мог не обновиться,
     // если маркер ввёл счёт позже игрока или счёт исправили

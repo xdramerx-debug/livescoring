@@ -893,10 +893,13 @@ function checkClientWiring() {
         'official-call.js передаёт alertId в Telegram-точку входа');
     ok(/sendVKOfficialAlert\(ctx\.type, call\.hole, pName, members, call\.alertId\)/.test(call),
         'official-call.js передаёт alertId в VK-точку входа');
-    ok(/sendTelegramOfficialAlert\(type, call\.hole, call\.playerName, \[\], null, call\.alertId\)/.test(solo),
-        'solo.js передаёт alertId в Telegram-точку входа');
-    ok(/sendVKOfficialAlert\(type, call\.hole, call\.playerName, \[\], call\.alertId\)/.test(solo),
-        'solo.js передаёт alertId в VK-точку входа');
+    // v1.126.0: собственной рассылки в solo.js больше нет — и одиночный, и
+    // групповой раунд идут через общий pestovoCallOfficial (js/official-call.js),
+    // который передаёт call.alertId (проверено двумя строками выше).
+    ok(/pestovoCallOfficial\(\{/.test(read('js/live.js')),
+        'live.js: вызов судьи/маршала идёт через общий pestovoCallOfficial');
+    ok(!/sendTelegramOfficialAlert/.test(solo) && !/sendVKOfficialAlert/.test(solo),
+        'solo.js: собственная рассылка удалена (одна реализация — official-call.js)');
 
     const req = fnBody(utils, 'requestOfficialCall') || '';
     ok(/createdBy: myAuth && myAuth\.uid \? myAuth\.uid : ''/.test(req),

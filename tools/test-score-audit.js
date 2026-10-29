@@ -4,7 +4,11 @@ const create = require('../functions/score-audit');
 const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
 const state = {
     users: { u1: { name: 'Иванов Иван', role: 'player' }, adm: { name: 'Судья', role: 'admin' } },
-    rounds: { r1: { status: 'active', players: { u1: { name: 'Иванов Иван', scores: {}, markedBy: 'u2' }, u2: { name: 'Петров Пётр', scores: {} } }, markerAssignments: { u2: { targetId: 'u1' } } } },
+    rounds: {
+        r1: { status: 'active', players: { u1: { name: 'Иванов Иван', scores: {}, markedBy: 'u2' }, u2: { name: 'Петров Пётр', scores: {} } }, markerAssignments: { u2: { targetId: 'u1' } } },
+        // Одиночный раунд единой системы (v1.126.0): маркера нет.
+        r_solo: { mode: 'solo', status: 'active', players: { u1: { name: 'Иванов Иван', scores: {} } }, markerAssignments: {} }
+    },
     tournaments: { tn1: { registeredPlayers: { u1: { name: 'Иванов Иван' } }, days: { d1: { date: '2026-09-23' } } } }
 };
 function get(key) { return key.split('/').filter(Boolean).reduce((o, p) => o && o[p], state); }
@@ -118,6 +122,15 @@ const call = (id, operations, uid, acting, qrAccess) => api.scoreWrite({ roundId
     assert.strictEqual(legacyEvent.actorType, 'unverified-direct');
     assert.strictEqual(legacyEvent.oldScore, 5);
     assert.strictEqual(legacyEvent.newScore, 6);
+    // Одиночный раунд: введённый счёт финальный — verified=true сразу,
+    // без ожидания маркера (иначе лента лунок навсегда оставалась «серой»).
+    await api.scoreWrite({ roundId: 'r_solo', requestId: 'solo_request_1234567890', queuedAt: now,
+        actorPlayerId: 'u1', operations: [{kind:'score',playerId:'u1',hole:1,score:4}] }, { auth: { uid: 'u1' } });
+    assert.strictEqual(state.rounds.r_solo.players.u1.scores[1], 4);
+    assert.strictEqual(state.rounds.r_solo.players.u1.verified[1], true,
+        'одиночный раунд: счёт подтверждён сразу (маркера нет)');
+    assert.strictEqual(state.rounds.r1.players.u1.verified[1], 'pending',
+        'групповой раунд: пока маркер не ввёл счёт — pending');
     const cutoffMs = Date.now() - 30 * 86400000;
     const cutoffDay = new Date(cutoffMs).toISOString().slice(0, 10);
     state.scoreAudit[cutoffDay] = state.scoreAudit[cutoffDay] || {};

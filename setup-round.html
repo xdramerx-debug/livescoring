@@ -13,14 +13,14 @@
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <title data-i18n="nav_round">Раунд — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=76e17ae7">
+    <link rel="stylesheet" href="css/style.css?v=e3db1e95">
     <link rel="stylesheet" href="css/theme-v2.css?v=a9604786">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/entry-scorecard.css?v=a34f8c94">
     <script src="js/ui-events.js?v=5ba225a1"></script>
     <script src="js/design-system.js?v=394cc00f"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
-    <link rel="stylesheet" href="css/fontawesome-subset.css?v=c8871e34">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=aa41e310">
     <style>
         /* ═══════════════════════════════════════════════════════════
            ЕДИНЫЙ БЛОК «СОЗДАНИЕ РАУНДА» (v1.69.0)
@@ -313,11 +313,11 @@
 
     </div><!-- /#setup -->
 
-    <!-- ===== ГРУППОВОЙ РАУНД: ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ / ГОСТЕЙ) ===== -->
+    <!-- ===== ТОЛЬКО ПРОСМОТР (ЗРИТЕЛИ / ГОСТИ) — общий для соло и группы ===== -->
     <div id="group-view" class="hidden">
         <div class="card" style="background:rgba(90,173,224,0.1);border-color:var(--blue);">
             <p style="color:var(--blue);text-align:center;font-size:14px;margin:0;" data-i18n="view_only_group_desc">
-                <i class="fas fa-eye"></i> Режим просмотра. Ввод счёта доступен только участникам раунда.
+                <i class="fas fa-eye"></i> Режим просмотра. Ввод счёта доступен только участникам раунда (соло или группы).
             </p>
         </div>
 
@@ -340,7 +340,12 @@
         </div>
     </div>
 
-    <!-- ===== ГРУППОВОЙ РАУНД: АКТИВНЫЙ ВВОД (ТОЛЬКО УЧАСТНИКИ) ===== -->
+    <!-- ===== ЕДИНЫЙ ЭКРАН ВВОДА СЧЁТА (v1.126.0) =====
+         Один и тот же экран обслуживает одиночный и групповой раунд:
+         • 1 игрок — панель маркера скрыта, счёт вводится один раз;
+         • 2+ игроков — двойной ввод (свой счёт + счёт игрока, за которого
+           игрок маркирует) и подтверждение обеими сторонами.
+         Логика: js/live.js (applyRoundState → renderPlayHole → saveHoleScores). -->
     <div id="active-scoring-view" class="hidden">
 
         <div class="score-entry card">
@@ -348,6 +353,7 @@
                 <div class="hole-box h-hole" data-screen-display="scoring" data-display-key="holeNumber"><div class="hole-lbl" data-i18n="hole_lbl">Лунка</div><div class="hole-val" id="play-hole">1</div></div>
                 <div class="hole-box h-par" data-screen-display="scoring" data-display-key="par"><div class="hole-lbl" data-i18n="par_lbl">Пар</div><div class="hole-val" id="play-par">4</div></div>
                 <div class="hole-box h-dist" data-screen-display="scoring" data-display-key="distance"><div class="hole-lbl" data-i18n="dist_lbl">Метры</div><div class="hole-val" id="play-dist" style="font-size:24px;">—</div></div>
+                <div class="hole-box h-dl" data-screen-display="scoring" data-display-key="deadline"><div class="hole-lbl" data-i18n="deadline_lbl">Дедлайн</div><div class="hole-val" id="play-deadline" style="font-size:20px;color:var(--gold-l);">—</div></div>
             </div>
 
             <div data-entry-block="holes" data-screen-display="scoring" data-display-key="holes" id="play-holes-block">
@@ -357,6 +363,8 @@
                 <div class="hole-nav" id="play-holes-nav"></div>
             </div>
             <div data-entry-block="input" data-screen-display="scoring" data-display-key="input">
+            <!-- Кто играет, с какого ТИ и во сколько (раньше — только в соло) -->
+            <div class="timing-info" id="play-round-info" data-screen-display="scoring" data-display-key="timing" style="margin:4px 0 10px;"></div>
             <div id="match-play-tracker-container" style="margin-top:12px;"></div>
             <div id="play-verify-status" data-screen-display="scoring" data-display-key="verification" style="margin-top:12px;"></div>
             <div id="play-verify-status-mark" data-screen-display="scoring" data-display-key="verification" style="margin-top:6px;"></div>
@@ -486,113 +494,6 @@
         </label>
     </div>
 
-    <!-- ===== ОДИНОЧНЫЙ РАУНД: ИГРА И ВВОД СЧЁТА (ТОЛЬКО ДЛЯ ИГРОКА) ===== -->
-    <div id="game" class="hidden">
-
-        <!-- БЛОК 1: ВВОД СЧЁТА И ЛУНКИ 1-18 (2 СТРОКИ ПО 9 ЛУНОК - 100% БЕЗ СКРОЛЛА) -->
-        <div class="score-entry card setup-card" id="play-hole-card" style="padding:16px;margin-bottom:16px;">
-            <div class="hole-display" data-entry-block="info" data-screen-display="scoring" data-display-key="holeInfo">
-                <div class="hole-box h-hole" data-screen-display="scoring" data-display-key="holeNumber"><div class="hole-lbl" data-i18n="hole_lbl">Лунка</div><div class="hole-val" id="g-hole">1</div></div>
-                <div class="hole-box h-par" data-screen-display="scoring" data-display-key="par"><div class="hole-lbl" data-i18n="par_lbl">Пар</div><div class="hole-val" id="g-par">4</div></div>
-                <div class="hole-box h-dist" data-screen-display="scoring" data-display-key="distance"><div class="hole-lbl" data-i18n="dist_lbl">Метры</div><div class="hole-val" id="g-dist" style="font-size:24px;">—</div></div>
-                <div class="hole-box h-dl" data-screen-display="scoring" data-display-key="deadline"><div class="hole-lbl" data-i18n="deadline_lbl">Дедлайн</div><div class="hole-val" id="g-deadline" style="font-size:20px;color:var(--gold-l);">—</div></div>
-            </div>
-
-            <!-- HOLE NAVIGATION (2 ROWS OF 9 HOLES - 100% NO-SCROLL GRID MATRIX) -->
-            <div class="hole-nav" data-entry-block="holes" data-screen-display="scoring" data-display-key="holes" id="g-holes" style="margin-bottom:16px;"></div>
-            <div data-entry-block="input" data-screen-display="scoring" data-display-key="input">
-            <!-- ПРЕДУПРЕЖДЕНИЕ: ПРОПУЩЕННЫЕ ЛУНКИ (счёт не введён) -->
-            <div id="solo-skipped-box" data-screen-display="scoring" data-display-key="notice"></div>
-
-            <div class="score-area">
-                <div class="score-result" id="g-result"></div>
-                <div class="score-disp" id="g-disp">—</div>
-                <div class="score-btns">
-                    <button class="score-minus" data-act="adjSolo" data-arg="-1">−</button>
-                    <button class="score-plus" data-act="adjSolo" data-arg="1">+</button>
-                </div>
-
-                <!-- MAIN ACTION BUTTON (ПОДТВЕРДИТЬ РЕЗУЛЬТАТ / ЗАВЕРШИТЬ РАУНД) -->
-                <button class="btn btn-g btn-block" id="btn-solo-action" data-act="saveSolo" style="padding:16px;font-size:16px;min-height:52px;margin-top:14px;">
-                    <i class="fas fa-arrow-right"></i> <span id="btn-solo-action-txt" data-i18n="solo_next_hole_btn">Следующая лунка</span>
-                </button>
-            </div>
-            </div>
-        </div>
-
-        <div id="solo-pace-assistant" data-screen-display="scoring" data-display-key="pace" style="margin-top:12px;"></div>
-
-        <!-- БЛОК 2: КНОПКИ ВЫЗОВА СУДЬИ / МАРШАЛА -->
-        <details class="field-more" id="solo-officials" data-screen-display="scoring" data-display-key="officials">
-            <summary data-i18n="field_more">Вызов судьи и маршала</summary>
-            <div style="display:flex;gap:10px;margin:8px 0 6px;">
-            <button id="solo-referee-call-btn" class="btn btn-danger official-call-btn" style="flex:1;padding:12px 8px;min-height:48px;" data-act="callOfficialSolo" data-arg="referee">
-                <i class="fas fa-gavel"></i> <span data-i18n="call_referee">Вызвать судью</span>
-            </button>
-            <button id="solo-marshal-call-btn" class="btn btn-warning official-call-btn" style="flex:1;padding:12px 8px;min-height:48px;" data-act="callOfficialSolo" data-arg="marshal">
-                <i class="fas fa-shield-halved"></i> <span data-i18n="call_marshal">Вызвать маршала</span>
-            </button>
-            </div>
-        </details>
-        <div id="solo-referee-call-status" data-screen-display="scoring" data-display-key="officials" class="official-call-status hidden" aria-live="polite"></div>
-        <div id="solo-marshal-call-status" data-screen-display="scoring" data-display-key="officials" class="official-call-status hidden" aria-live="polite"></div>
-
-        <!-- БЛОК 3: ИНФОРМАЦИЯ О СТАРТОВОМ ВРЕМЕНИ, ТИ И ТАЙМИНГАХ -->
-        <div class="timing-info" id="round-info" data-screen-display="scoring" data-display-key="timing" style="margin-bottom:12px;"></div>
-        <div id="timing-notice" style="margin-bottom:16px;"></div>
-
-        <!-- БЛОК 4: СВОРАЧИВАЕМАЯ СЧЁТНАЯ КАРТОЧКА ПО ЛУНКАМ -->
-        <div class="round-card scorecard-fold" data-screen-display="scoring" data-display-key="scorecard" style="margin:16px 0;">
-            <button type="button" class="scorecard-fold-btn" data-act="toggleActiveScorecard" data-arg="solo-sc-panel" aria-controls="solo-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
-                <i class="fas fa-chevron-down" id="solo-sc-panel-icon" aria-hidden="true"></i>
-                <span id="solo-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
-            </button>
-            <div id="solo-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
-                <div class="card" style="padding:12px;max-width:100%;overflow-x:hidden;">
-                    <h2><i class="fas fa-table"></i> <span data-i18n="hole_scorecard">Счётная карточка по лункам</span></h2>
-                    <div id="mini-card"></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="solo-finish-row" data-screen-display="scoring" data-display-key="finish" style="display:flex;gap:10px;margin-bottom:8px;">
-            <button class="btn btn-og" data-act="finishSolo" style="flex:1;min-height:48px;">
-                <i class="fas fa-flag-checkered"></i> <span data-i18n="finish_round">Завершить раунд</span>
-            </button>
-            <button class="btn btn-ol" type="button" data-act="handleSoloPauseToggle" id="solo-pause-btn" style="white-space:nowrap;padding:12px 14px;min-height:48px;" title="Пауза / Возобновление">
-                <i class="fas fa-pause" id="solo-pause-btn-icon"></i> <span id="solo-pause-btn-text">Пауза</span>
-            </button>
-        </div>
-        <div id="solo-pause-banner" data-screen-display="scoring" data-display-key="finish" class="hidden" style="margin-bottom:12px;"></div>
-        <button id="solo-force-finish-btn" data-screen-display="scoring" data-display-key="finish" class="btn btn-ol btn-sm btn-block hidden" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" data-act="pestovoSoloForceFinish">
-            <i class="fas fa-forward"></i> <span data-i18n="force_finish_btn">Завершить раунд принудительно (сохранить счёт)</span>
-        </button>
-        <label class="stableford-display-control" id="solo-stableford-control" data-screen-display="scoring" data-display-key="stableford">
-            <input type="checkbox" id="solo-stableford-toggle" data-act="toggleSoloStablefordDisplay" data-checked="1">
-            <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
-        </label>
-    </div>
-
-    <!-- ===== ОДИНОЧНЫЙ РАУНД: ТОЛЬКО ПРОСМОТР (ДЛЯ ЗРИТЕЛЕЙ / ГОСТЕЙ) ===== -->
-    <div id="read-only-view" class="hidden">
-        <div class="card" style="background:rgba(90,173,224,0.1);border-color:var(--blue);">
-            <p style="color:var(--blue);text-align:center;font-size:14px;margin:0;">
-                <i class="fas fa-eye"></i> <span data-i18n="view_mode_notice">Режим просмотра.</span>
-            </p>
-        </div>
-        <div class="timing-info" id="ro-round-info"></div>
-
-        <div class="round-card scorecard-fold" style="margin:12px 0;">
-            <button type="button" class="scorecard-fold-btn" data-act="toggleActiveScorecard" data-arg="ro-solo-sc-panel" aria-controls="ro-solo-sc-panel" aria-expanded="false" title="Развернуть счётную карточку">
-                <i class="fas fa-chevron-down" id="ro-solo-sc-panel-icon" aria-hidden="true"></i>
-                <span id="ro-solo-sc-panel-txt" class="scorecard-fold-label" data-i18n="expand_scorecard">Карточка</span>
-            </button>
-            <div id="ro-solo-sc-panel" class="card-scorecard-panel hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
-                <div class="card" style="margin-bottom:10px;"><h2><i class="fas fa-trophy"></i> <span data-i18n="round_score">Счёт раунда</span></h2><div id="ro-live-stats"></div></div>
-                <div class="card"><h2><i class="fas fa-table"></i> <span data-i18n="hole_scorecard">Счётная карточка по лункам</span></h2><div id="ro-mini-card"></div></div>
-            </div>
-        </div>
-    </div>
 
     <!-- БЛОК "ПРОДОЛЖИТЬ ПО ФИО" — в самом низу страницы -->
     <div class="card" id="fio-resume-card" style="margin-top:24px;">
@@ -611,7 +512,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.125.2</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.126.0</span></p>
         </div>
     </div>
 </footer>
@@ -620,24 +521,24 @@
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=be23611a"></script>
+<script type="module" src="dist/livescoring-modules.js?v=338a0efc"></script>
     <script defer src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
 <script defer src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script defer src="js/qr-code.js?v=2a26e819"></script>
 <script defer src="js/rusgolf-client.js?v=f37608e7"></script>
 <script defer src="js/name-variants.js?v=2b58f796"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=a9fceaac"></script>
+<script defer src="js/utils.js?v=3baefc22"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script defer src="js/score-kiosk.js?v=fda399fb"></script>
 <script defer src="js/score-pad.js?v=03df3958"></script>
 <script defer src="js/official-call.js?v=7ae05fbc"></script>
-<script defer src="js/live.js?v=1d08f3f2"></script>
-<script defer src="js/score-display.js?v=7425cc7d"></script>
-<script defer src="js/solo.js?v=e9a91d4e"></script>
-<script defer src="js/round-setup.js?v=bb529713"></script>
-<script defer src="js/score-write.js?v=92dca237"></script>
+<script defer src="js/score-display.js?v=8c8f213a"></script>
+<script defer src="js/live.js?v=1b102fb9"></script>
+<script defer src="js/solo.js?v=8ebc1f83"></script>
+<script defer src="js/round-setup.js?v=81fc61fa"></script>
+<script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
 <script defer src="js/setup-round-fio.js?v=662ab87b"></script>
 </body>

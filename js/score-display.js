@@ -90,7 +90,7 @@ const PESTOVO_DEFAULT_HOLE_ORDER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 1
  * страница (ctx.stateClass), а разметка кнопки общая.
  *
  * @param {Object} ctx
- * @param {Element} ctx.el          контейнер ленты (mk-holes / sc-holes / g-holes)
+ * @param {Element} ctx.el          контейнер ленты (mk-holes / sc-holes / play-holes-nav)
  * @param {Object} ctx.round        объект раунда — по нему считается порядок лунок
  * @param {number} ctx.currentHole  открытая лунка
  * @param {number} ctx.fieldHcp     гандикап поля игрока — уходит в квадрат счёта

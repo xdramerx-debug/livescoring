@@ -110,9 +110,10 @@ SI, Stbl и отдельная строка «Фора» не выводятся
 
 Код: `js/entry-scorecard.js` (рендер, настройки, `pestovoEntryRoundCardHTML`),
 `js/admin-entry-scorecard.js` (вкладка), `css/entry-scorecard.css` (стили,
-темизация через переменные темы, включая светлый режим). Точки вызова:
-`renderMiniCard` в `js/solo.js`, `renderPlaySummary` и `renderGVPlayers` в
-`js/live.js`. Остальные страницы (главная, лидерборды, история, печать,
+темизация через переменные темы, включая светлый режим). Точки вызова —
+единый экран раунда (`renderPlaySummary` и `renderGVPlayers` в `js/live.js`):
+он обслуживает и одиночный, и групповой раунд (v1.126.0), отдельного
+одиночного вызова `renderMiniCard` больше нет. Остальные страницы (главная, лидерборды, история, печать,
 `scorer.html`, `marker.html`) этими настройками **не** управляются: они по-прежнему
 используют `renderClubScorecard` / `generateGroupHoleTableHTML` из `js/utils.js`
 и вкладку «Отображения счётных карточек».

@@ -16,13 +16,13 @@ const m = JSON.parse(raw);
 const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
 const cfg = fs.readFileSync(path.join(root, 'js/firebase-config.js'), 'utf8');
 
-// ── 1. Манифест: абсолютные URL и обязательные поля ──
-// "./" и "index.html" резолвятся относительно расположения манифеста, то есть
-// при размещении в корне дают ровно те же значения. Абсолютная запись убирает
-// зависимость от пути, по которому Hosting отдал манифест.
-assert.strictEqual(m.id, '/', 'id должен быть абсолютным');
-assert.strictEqual(m.start_url, '/index.html', 'start_url должен быть абсолютным');
-assert.strictEqual(m.scope, '/', 'scope должен быть абсолютным');
+// ── 1. Манифест: относительные URL (Firebase в корне и GitHub Pages в /livescoring/) ──
+// Абсолютные "/index.html" на github.io уезжают на xdramerx-debug.github.io/index.html
+// (404) — половина ярлыков PWA и «Открыть» ломаются. "./" резолвится от
+// расположения manifest.json: на web.app это корень, на Pages — /livescoring/.
+assert.strictEqual(m.id, './', 'id относительный к каталогу сайта');
+assert.strictEqual(m.start_url, './index.html', 'start_url относительный');
+assert.strictEqual(m.scope, './', 'scope относительный');
 assert.ok(m.start_url.startsWith(m.scope), 'start_url обязан лежать внутри scope');
 assert.strictEqual(m.display, 'standalone');
 assert.deepStrictEqual(m.display_override, ['standalone', 'browser']);
@@ -164,9 +164,9 @@ for (const sc of m.shortcuts) {
     assert.ok(sc.name && sc.name.length <= 40, 'shortcut name заполнен и ≤ 40 символов');
     assert.ok(sc.short_name && sc.short_name.length <= 12,
         'short_name ≤ 12 символов (иначе обрезается в меню): ' + sc.short_name);
-    assert.ok(sc.url.startsWith('/'), 'url шортката абсолютен: ' + sc.url);
+    assert.ok(sc.url.startsWith('./'), 'url шортката относительный: ' + sc.url);
     assert.ok(sc.url.startsWith(m.scope), 'url шортката внутри scope');
-    const target = path.join(root, sc.url.slice(1));
+    const target = path.join(root, sc.url.replace(/^\.\//, ''));
     assert.ok(fs.existsSync(target), 'страница шортката существует: ' + sc.url);
     if (sc.icons) {
         for (const ic of sc.icons) {

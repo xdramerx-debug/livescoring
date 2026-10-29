@@ -1706,7 +1706,14 @@ var TnMgrPrintCards = (function (root) {
         var entry = entries.filter(function (item) { return item.playerId === pid; })[0];
         if (!entry || !entry.groupRoundId) return ov.payload || '';
         var groupSize = startGroupEntries(entry, entries).length || 1;
-        var base = ui().baseUrl ? ui().baseUrl() : (root.location ? (root.location.origin + '/') : '');
+        var base = '';
+        if (ui().baseUrl) base = ui().baseUrl();
+        if (!base && typeof root.baseUrl === 'function') base = root.baseUrl();
+        if (!base && root.location) {
+            var pathName = root.location.pathname || '/';
+            var dir = pathName.substring(0, pathName.lastIndexOf('/') + 1);
+            base = root.location.origin + dir;
+        }
         return core().scoreUrl(base, entry.groupRoundId, pid, groupSize);
     }
 

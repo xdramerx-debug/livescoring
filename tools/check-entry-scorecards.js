@@ -41,7 +41,7 @@ const shots = '/tmp/entry-sc-shots';
         // js/ui-events.js обязателен: inline-обработчиков в разметке больше нет,
         // клики по [data-act] ловит его слушатель на document. Без него кнопка
         // предпросмотра ничего не меняет, а фичевый скрипт падает на pestovoOnAction.
-        for (const file of ['ui-events', 'course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'entry-scorecard', 'admin-entry-scorecard']) {
+        for (const file of ['ui-events', 'course-config', 'date-range', 'dom', 'format', 'i18n', 'utils', 'utils-scorecards', 'entry-scorecard', 'admin-entry-scorecard']) {
             await page.addScriptTag({ path: path.join(root, 'js', file + '.js') });
         }
         const admin = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');

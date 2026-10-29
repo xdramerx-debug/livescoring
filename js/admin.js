@@ -377,11 +377,25 @@ function updateNotifButton() {
     }
 }
 
-function switchTab(t, b) {
-    // При делегировании кнопка приходит как this (data-act="switchTab").
-    // Прямые вызовы switchTab('rusgolf') передают только имя — тогда this не
-    // элемент, и подсветку активной вкладки просто не трогаем.
-    if (!b && this && this.classList) b = this;
+function switchAdminGroup(group, btn) {
+    if (!btn && this && this.classList) btn = this;
+    var name = group || (btn && btn.getAttribute('data-arg')) || 'ops';
+    document.querySelectorAll('.admin-nav-group').forEach(function (el) {
+        el.classList.toggle('active', el.getAttribute('data-arg') === name);
+    });
+    document.querySelectorAll('.admin-tabs[data-admin-group]').forEach(function (el) {
+        el.classList.toggle('hidden', el.getAttribute('data-admin-group') !== name);
+    });
+    var strip = document.querySelector('.admin-tabs[data-admin-group="' + name + '"]');
+    var current = document.querySelector('.admin-tab.active');
+    var inGroup = strip && current && strip.contains(current);
+    if (!inGroup && strip) {
+        var first = strip.querySelector('.admin-tab');
+        if (first) switchTab(first.getAttribute('data-arg'), first);
+    }
+}
+
+function switchTabApply(t, b) {
     document.querySelectorAll('.admin-section').forEach(function(s) { s.classList.add('hidden'); });
     document.querySelectorAll('.admin-tab').forEach(function(x) { x.classList.remove('active'); });
     var tabEl = document.getElementById('tab-' + t);
@@ -394,8 +408,10 @@ function switchTab(t, b) {
     }
 
     if (t === 'scorecards') {
-        renderClubScorecardPreview();
-        pestovoBindView5('scorecard', function() { renderClubScorecardPreview(); });
+        if (typeof renderClubScorecardPreview === 'function') renderClubScorecardPreview();
+        if (typeof pestovoBindView5 === 'function') pestovoBindView5('scorecard', function() {
+            if (typeof renderClubScorecardPreview === 'function') renderClubScorecardPreview();
+        });
     }
     // Карточки на экранах ввода счёта (js/admin-entry-scorecard.js).
     if (t === 'entrycards' && typeof renderEntryScorecardAdmin === 'function') {
@@ -452,5 +468,30 @@ function switchTab(t, b) {
         // Вкладка «Дизайн 🎨»: шаблоны оформления сайта (js/design-admin.js)
         if (typeof dspAdminLoad === 'function') dspAdminLoad();
     }
+    var strip = b && b.closest ? b.closest('.admin-tabs[data-admin-group]') : null;
+    var groupName = strip ? strip.getAttribute('data-admin-group') : '';
+    if (groupName) {
+        document.querySelectorAll('.admin-nav-group').forEach(function (el) {
+            el.classList.toggle('active', el.getAttribute('data-arg') === groupName);
+        });
+        document.querySelectorAll('.admin-tabs[data-admin-group]').forEach(function (el) {
+            el.classList.toggle('hidden', el.getAttribute('data-admin-group') !== groupName);
+        });
+    }
+}
+
+function switchTab(t, b) {
+    // При делегировании кнопка приходит как this (data-act="switchTab").
+    // Прямые вызовы switchTab('rusgolf') передают только имя — тогда this не
+    // элемент, и подсветку активной вкладки просто не трогаем.
+    if (!b && this && this.classList) b = this;
+    var proceed = function () { switchTabApply(t, b); };
+    if (typeof pestovoEnsureAdminTab === 'function') {
+        return pestovoEnsureAdminTab(t).then(proceed).catch(function (err) {
+            console.warn('[admin-lazy]', err);
+            proceed();
+        });
+    }
+    proceed();
 }
 

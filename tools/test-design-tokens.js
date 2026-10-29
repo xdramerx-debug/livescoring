@@ -189,18 +189,17 @@ const presetsWrong = withCss.filter(function (p) {
 });
 ok(presetsWrong.length === 0, 'шаблоны оформления грузятся после слоя (перебивают его)', presetsWrong.join(', '));
 
-// ── Шрифты: вес 800 у Inter реально запрашивается ─────────────────────────
-// В CSS ~140 объявлений font-weight: 800/900, а Google Fonts отдавал только
-// 300–700: цифры рисовались синтетическим болдом. Ловим регресс ссылки.
-
-const fontLink = /fonts\.googleapis\.com\/css2\?[^"']+/.exec(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
-ok(!!fontLink, 'на главной есть ссылка на Google Fonts');
-if (fontLink) {
-    const weight800 = /Inter:wght@([0-9;]+)/.exec(fontLink[0]);
-    ok(!!weight800 && weight800[1].split(';').indexOf('800') !== -1,
-        'Inter 800 запрашивается (иначе цифры — синтетический болд)',
-        weight800 ? weight800[1] : 'нет параметра wght');
-}
+// ── Шрифты: Inter 800 локально, без Google Fonts ──────────────────────────
+const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+ok(indexHtml.indexOf('css/fonts-local.css') !== -1, 'на главной подключён css/fonts-local.css');
+ok(indexHtml.indexOf('fonts.googleapis.com') === -1, 'на главной нет Google Fonts');
+const fontsCss = fs.readFileSync(path.join(ROOT, 'css/fonts-local.css'), 'utf8');
+ok(/font-weight:\s*800/.test(fontsCss) && /font-family:\s*Inter/.test(fontsCss),
+    'Inter 800 объявлен локально (иначе цифры — синтетический болд)');
+ok(fs.existsSync(path.join(ROOT, 'fonts/inter-latin-800-normal.woff2')),
+    'файл Inter 800 latin лежит в fonts/');
+ok(fs.existsSync(path.join(ROOT, 'fonts/inter-cyrillic-800-normal.woff2')),
+    'файл Inter 800 cyrillic лежит в fonts/');
 
 // ── Итог ──────────────────────────────────────────────────────────────────
 

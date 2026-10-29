@@ -22,8 +22,10 @@ const formatHelpers = readFileSyncOrig(path.join(ROOT, 'js/format.js'), 'utf8');
 const domHelpers = readFileSyncOrig(path.join(ROOT, 'js/dom.js'), 'utf8');
 const i18nHelpers = readFileSyncOrig(path.join(ROOT, 'js/i18n.js'), 'utf8');
 const officialAlerts = readFileSyncOrig(path.join(ROOT, 'js/official-alerts.js'), 'utf8');
+const scorecards = readFileSyncOrig(path.join(ROOT, 'js/utils-scorecards.js'), 'utf8');
 
 const PREFIX = courseConfig + '\n' + formatHelpers + '\n' + domHelpers + '\n' + i18nHelpers + '\n' + officialAlerts + '\n';
+const SUFFIX = '\n' + scorecards;
 
 function isUtilsJs(p) {
     if (p == null) return false;
@@ -33,7 +35,7 @@ function isUtilsJs(p) {
 fs.readFileSync = function (p, _opts) {
     if (isUtilsJs(p)) {
         const content = readFileSyncOrig.apply(this, arguments);
-        return PREFIX + content;
+        return PREFIX + content + SUFFIX;
     }
     return readFileSyncOrig.apply(this, arguments);
 };

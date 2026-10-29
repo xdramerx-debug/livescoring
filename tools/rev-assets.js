@@ -55,7 +55,7 @@ function exists(p) { return fs.existsSync(path.join(ROOT, p)); }
 const htmlFiles = fs.readdirSync(ROOT).filter(function (f) { return f.endsWith('.html'); }).sort();
 
 // Локальные ассеты: js/, css/ и собираемый ESM-бандл dist/ (см. docs/MODULES-MIGRATION.md).
-const REF_RE = /(?:src|href)=("|')((?:js|css|dist)\/[^"'?#]+)(?:\?v=[0-9a-zA-Z]+)?\1/g;
+const REF_RE = /(?:src|href|data-admin-src)=("|')((?:js|css|dist)\/[^"'?#]+)(?:\?v=[0-9a-zA-Z]+)?\1/g;
 
 const refs = new Map(); // 'js/utils.js' -> Set<page>
 let brokenRefs = 0;
@@ -82,7 +82,7 @@ const versions = new Map(); // 'js/utils.js' -> 'hash8'
 for (const file of refs.keys()) versions.set(file, sha8(fs.readFileSync(path.join(ROOT, file))));
 
 // ── 3. Переписывание ?v= в HTML ───────────────────────────────────────────
-const ATTR_RE = /((?:src|href)=("|'))((?:js|css|dist)\/[^"'?#]+)(\?v=[0-9a-zA-Z]+)?(\2)/g;
+const ATTR_RE = /((?:src|href|data-admin-src)=("|'))((?:js|css|dist)\/[^"'?#]+)(\?v=[0-9a-zA-Z]+)?(\2)/g;
 const changedHtml = [];
 for (const page of htmlFiles) {
     const html = readUtf8(page);

@@ -1,6 +1,6 @@
 {
     "name": "pestovo-livescoring",
-    "version": "1.123.0",
+    "version": "1.124.0",
     "private": true,
     "description": "Pestovo Live Scoring — static web app + Firebase Cloud Functions",
     "scripts": {
@@ -34,6 +34,8 @@
         "node": ">=18"
     },
     "devDependencies": {
+        "@fontsource/inter": "^5.2.8",
+        "@fontsource/playfair-display": "^5.2.8",
         "@fortawesome/fontawesome-free": "6.5.0",
         "@sparticuz/chromium": "^131.0.0",
         "esbuild": "0.21.5",

@@ -393,7 +393,7 @@ body.sun-mode td {
 .nav-toggle.active span:nth-child(2){opacity:0;}
 .nav-toggle.active span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px);}
 
-.hero{min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:center;position:relative;text-align:center;padding:100px 20px 60px;background:linear-gradient(135deg,#0b1a0e 0%,#1a472a 40%,#0d2815 70%,#0b1a0e 100%);overflow:hidden;}
+.hero{min-height:0;display:flex;align-items:center;justify-content:center;position:relative;text-align:center;padding:100px 20px 60px;background:linear-gradient(135deg,#0b1a0e 0%,#1a472a 40%,#0d2815 70%,#0b1a0e 100%);overflow:hidden;}
 .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(201,168,76,.06) 0%,transparent 60%);}
 .hero-content{position:relative;z-index:1;max-width:640px;}
 .hero-logo{width:144px!important;height:auto!important;max-width:224px!important;max-height:176px!important;margin:0 auto 20px!important;object-fit:contain!important;filter:drop-shadow(0 4px 20px rgba(201,168,76,.3));}
@@ -1242,11 +1242,11 @@ html.score-kiosk .hole-display {
     .hero-btns{flex-direction:column;align-items:center;}
     .hero-btns .btn{width:100%;justify-content:center;}
     .hero-logo{
-        width: clamp(176px, 66vw, 272px) !important;
+        width: 96px !important;
         height: auto !important;
-        max-width: calc(100vw - 48px) !important;
-        max-height: 208px !important;
-        margin: 0 auto 20px !important;
+        max-width: 96px !important;
+        max-height: 96px !important;
+        margin: 0 auto 16px !important;
         object-fit: contain !important;
     }
     .section{padding:44px 0;}
@@ -5335,16 +5335,39 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
 
 /* Админ-вкладки на телефоне: одна строка со скроллом, закреплена под шапкой.
    Раньше 14 вкладок переносились в 4–5 рядов (~180px) и уезжали при скролле. */
+.admin-nav { margin-bottom: 16px; }
+.admin-nav-groups {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.admin-nav-group {
+    min-height: 44px; padding: 8px 14px; border-radius: var(--rs);
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    font-family: var(--fb); font-size: 13px; font-weight: 700; cursor: pointer;
+    letter-spacing: .02em;
+}
+.admin-nav-group.active {
+    background: var(--gold); color: var(--bg); border-color: var(--gold);
+}
+.tnm-pager {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    flex-wrap: wrap; margin: 10px 0 4px;
+}
 @media (max-width:768px) {
+    .admin-nav {
+        position: sticky; top: var(--nav-h, 70px); z-index: 60;
+        background: var(--bg); padding: 8px 0 4px; margin-bottom: 10px;
+    }
     .admin-tabs {
         flex-wrap: nowrap;
         overflow-x: auto; -webkit-overflow-scrolling: touch;
-        position: sticky; top: var(--nav-h, 70px); z-index: 60;
-        background: var(--bg); padding: 8px 0;
+        position: static;
+        background: transparent; padding: 4px 0 8px;
         scroll-snap-type: x proximity;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
     .admin-tab { scroll-snap-align: center; min-height: 40px; flex: 0 0 auto; }
+    .admin-nav-groups { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .admin-nav-group { flex: 0 0 auto; }
 }
 
 /* ── uiConfirm: bottom-sheet на телефоне, центр на десктопе ── */

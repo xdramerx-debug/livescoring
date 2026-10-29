@@ -90,10 +90,6 @@ function setScorePadPar() {
     pestovoPadApply(pestovoPadCurrentPar());
 }
 
-function setPadTarget(who) {
-    if (who === 'mark' || who === 'my') window.pestovoPadTarget = who;
-}
-
 function pestovoLastSavedHole(scores, order) {
     var last = null;
     (order || []).forEach(function (h) {

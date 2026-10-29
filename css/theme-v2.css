@@ -1821,6 +1821,23 @@ body.sun-mode #course-holes-strip {
     }
 }
 
+/* Телефон: живые раунды видны без скролла героя; текст не мельче 12 px. */
+@media (max-width: 768px) {
+    .hero {
+        min-height: 0;
+        padding-bottom: 28px;
+    }
+    .hero-sub,
+    .stat-l,
+    .tn-group-kind,
+    .admin-tab,
+    .mobile-tabbar span,
+    .nav-weather,
+    .page-sub {
+        font-size: 12px !important;
+    }
+}
+
 /* Печать: слой не должен менять бумагу — возвращаем белый лист */
 @media print {
     body {

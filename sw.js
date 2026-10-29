@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.123.0-43c092ed';
+const CACHE_NAME = 'pestovo-v1.124.0-18ccd44d';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -58,11 +58,12 @@ const STATIC_ASSETS = [
     'css/design-presets.css?v=77ff3916',
     'css/entry-scorecard.css?v=a34f8c94',
     'css/fontawesome-subset.css?v=c8871e34',
-    'css/style.css?v=e8cf64c8',
-    'css/theme-v2.css?v=9ade76d5',
+    'css/fonts-local.css?v=8523462a',
+    'css/style.css?v=203800ad',
+    'css/theme-v2.css?v=a9604786',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=794da0d9',
-    'dist/livescoring-modules.js?v=9b9ea732',
+    'dist/livescoring-modules.js?v=40808982',
     'js/app.js?v=9271a1db',
     'js/auth.js?v=3a96f309',
     'js/design-system.js?v=394cc00f',
@@ -98,7 +99,8 @@ const STATIC_ASSETS = [
     'js/tournament-public.js?v=c10d8d83',
     'js/tournaments.js?v=0b5653af',
     'js/ui-events.js?v=5ba225a1',
-    'js/utils.js?v=c3905bdd',
+    'js/utils-scorecards.js?v=9f6de5ad',
+    'js/utils.js?v=a9fceaac',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
     'js/vendor/qrcode-generator-utf8.js?v=cc538413',
 
@@ -111,6 +113,18 @@ const STATIC_ASSETS = [
     'fonts/fa-brands-400-subset-d97c8617.woff2',
     'fonts/fa-regular-400-subset-7e155715.woff2',
     'fonts/fa-solid-900-subset-8dd96bb3.woff2',
+    'fonts/inter-cyrillic-400-normal.woff2',
+    'fonts/inter-cyrillic-600-normal.woff2',
+    'fonts/inter-cyrillic-700-normal.woff2',
+    'fonts/inter-cyrillic-800-normal.woff2',
+    'fonts/inter-latin-400-normal.woff2',
+    'fonts/inter-latin-600-normal.woff2',
+    'fonts/inter-latin-700-normal.woff2',
+    'fonts/inter-latin-800-normal.woff2',
+    'fonts/playfair-display-cyrillic-600-normal.woff2',
+    'fonts/playfair-display-cyrillic-700-normal.woff2',
+    'fonts/playfair-display-latin-600-normal.woff2',
+    'fonts/playfair-display-latin-700-normal.woff2',
 ];
 // END PRECACHE
 

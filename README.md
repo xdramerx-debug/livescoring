@@ -171,10 +171,10 @@ max-age=31536000, immutable`, а HTML, `sw.js` и `manifest.json` — с `no-cac
 (в них живут `?v=` и precache-манифест; долгий кэш оставил бы пользователя без
 новых версий и без нового Service Worker).
 
-Есть и ручной деплой из GitHub Actions: `.github/workflows/deploy.yml`
-(`workflow_dispatch`, цель `hosting` / `functions` / обе). Нужен секрет
-`FIREBASE_SERVICE_ACCOUNT`. Правила БД из него **не** деплоятся — только
-вручную и осознанно, см. `docs/SECURITY-RULES.md`.
+Прод деплоится **только** с ветки `arena/01a02acd-livescoring`: push в неё
+запускает Hosting, ручной запуск (Actions → Deploy) тоже всегда чекаутит
+эту ветку. Нужен секрет `FIREBASE_SERVICE_ACCOUNT`. Правила БД из него
+**не** деплоятся — только вручную и осознанно, см. `docs/SECURITY-RULES.md`.
 
 ## Безопасность
 

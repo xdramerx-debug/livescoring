@@ -13,8 +13,8 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=e8cf64c8">
-    <link rel="stylesheet" href="css/theme-v2.css?v=9ade76d5">
+    <link rel="stylesheet" href="css/style.css?v=203800ad">
+    <link rel="stylesheet" href="css/theme-v2.css?v=a9604786">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=794da0d9">
     <link rel="stylesheet" href="css/tn-manager.css?v=6d129f32">
@@ -22,9 +22,7 @@
     <link rel="stylesheet" href="css/entry-scorecard.css?v=a34f8c94">
     <script src="js/ui-events.js?v=5ba225a1"></script>
     <script src="js/design-system.js?v=394cc00f"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="stylesheet" href="css/fontawesome-subset.css?v=c8871e34">
 </head>
@@ -93,25 +91,42 @@
             <button type="button" class="btn btn-g btn-sm" id="global-notifications-toggle" data-act="toggleGlobalNotifications" aria-pressed="true" disabled>Загрузка…</button>
         </section>
 
-        <div class="admin-tabs">
-            <button class="admin-tab active" data-act="switchTab" data-arg="alerts" data-i18n="tab_alerts">Вызовы 🚨</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="rounds" data-i18n="tab_rounds">Раунды</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="scores" data-i18n="tab_scores">Счёт ⛳</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="scoreaudit">Журнал счёта 🕒</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="hcplog">Журнал гандикапов 📈</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="groups" data-i18n="tab_groups">Группы сейчас ⏱️</button>
-            <button class="admin-tab" id="tnm-tab-btn" data-act="switchTab" data-arg="tnmanager" data-i18n="tab_tn_manager">Турниры 🏆</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="tournamentsview" data-i18n="tab_tournaments_view">Турниры: вид 👁</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="broadcasts" data-i18n="tab_broadcasts">Анонсы 📢</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="players" data-i18n="tab_players">Игроки и роли</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="importexport" data-i18n="tab_importexport">Импорт/Экспорт 📊</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="rusgolf" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="data" data-i18n="tab_data">Данные</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="scorecards">Отображения счётных карточек</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="entrycards">Карточки на вводе 🃏</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="tncards">Турнирный ввод счёта</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="scoreentry">Ввод счёта ⛳</button>
-            <button class="admin-tab" data-act="switchTab" data-arg="design" data-i18n="tab_design">Дизайн 🎨</button>
+        <div class="admin-nav">
+            <div class="admin-nav-groups" role="tablist" aria-label="Разделы админки">
+                <button type="button" class="admin-nav-group active" data-act="switchAdminGroup" data-arg="ops" data-i18n="admin_group_ops">Смена</button>
+                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="tournaments" data-i18n="admin_group_tn">Турниры</button>
+                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="people" data-i18n="admin_group_people">Игроки</button>
+                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="look" data-i18n="admin_group_look">Оформление</button>
+                <button type="button" class="admin-nav-group" data-act="switchAdminGroup" data-arg="system" data-i18n="admin_group_system">Система</button>
+            </div>
+            <div class="admin-tabs" data-admin-group="ops">
+                <button class="admin-tab active" data-act="switchTab" data-arg="alerts" data-i18n="tab_alerts">Вызовы 🚨</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="groups" data-i18n="tab_groups">Группы сейчас ⏱️</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="scores" data-i18n="tab_scores_edit">Правка счёта</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="rounds" data-i18n="tab_rounds">Раунды</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="scoreaudit" data-i18n="tab_scoreaudit">Журнал счёта 🕒</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="hcplog" data-i18n="tab_hcplog">Журнал гандикапов 📈</button>
+            </div>
+            <div class="admin-tabs hidden" data-admin-group="tournaments">
+                <button class="admin-tab" id="tnm-tab-btn" data-act="switchTab" data-arg="tnmanager" data-i18n="tab_tn_manager">Турниры 🏆</button>
+            </div>
+            <div class="admin-tabs hidden" data-admin-group="people">
+                <button class="admin-tab" data-act="switchTab" data-arg="players" data-i18n="tab_players">Игроки и роли</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="importexport" data-i18n="tab_importexport">Импорт/Экспорт 📊</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="rusgolf" data-i18n="tab_rusgolf">RUSGOLF 🇷🇺</button>
+            </div>
+            <div class="admin-tabs hidden" data-admin-group="look">
+                <button class="admin-tab" data-act="switchTab" data-arg="scorecards" data-i18n="tab_scorecards">Карточки на сайте</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="entrycards" data-i18n="tab_entrycards">Карточки на вводе</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="scoreentry" data-i18n="tab_scoreentry_screen">Экран игрока</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="tncards" data-i18n="tab_tncards">Турнирный ввод</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="tournamentsview" data-i18n="tab_tournaments_view">Турниры: вид</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="design" data-i18n="tab_design">Дизайн 🎨</button>
+            </div>
+            <div class="admin-tabs hidden" data-admin-group="system">
+                <button class="admin-tab" data-act="switchTab" data-arg="broadcasts" data-i18n="tab_broadcasts">Анонсы 📢</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="data" data-i18n="tab_data">Данные</button>
+            </div>
         </div>
 
         <div id="tab-scorecards" class="admin-section hidden">
@@ -1101,46 +1116,48 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.123.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.124.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=9b9ea732"></script>
-    <script defer src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
-<script defer src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
-<script defer src="js/qr-code.js?v=2a26e819"></script>
-<script defer src="js/rusgolf-client.js?v=f37608e7"></script>
+<script type="module" src="dist/livescoring-modules.js?v=40808982"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=c3905bdd"></script>
-<script defer src="js/entry-scorecard.js?v=9b8c4167"></script>
-<script defer src="js/tn-mgr-core.js?v=44a79b06"></script>
-<script defer src="js/tn-mgr-data.js?v=9df4ae94"></script>
-<script defer src="js/tn-mgr-io.js?v=a9001ebb"></script>
-<script defer src="js/tn-mgr-ui.js?v=98404959"></script>
-<script defer src="js/tn-mgr-sheet.js?v=184c2ba1"></script>
-<script defer src="js/tn-mgr-printcards.js?v=0cfeab6c"></script>
-<script defer src="js/tn-mgr-round.js?v=a180a2a2"></script>
-<script defer src="js/tn-mgr.js?v=59cc04f5"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script defer src="js/name-variants.js?v=2b58f796"></script>
-<script defer src="js/admin.js?v=0c786d4a"></script>
-<script defer src="js/admin-groups.js?v=f338735a"></script>
-<script defer src="js/admin-exports.js?v=089f4c04"></script>
-<script defer src="js/admin-players.js?v=0f9276bb"></script>
-<script defer src="js/admin-hcp-log.js?v=1262d7c2"></script>
-<script defer src="js/admin-score-audit.js?v=006f6f0e"></script>
-<script defer src="js/admin-scoreedit.js?v=703b7abe"></script>
-<script defer src="js/admin-broadcasts.js?v=f76a4469"></script>
+<script defer src="js/utils.js?v=a9fceaac"></script>
+<script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
+<script defer src="js/admin-lazy.js?v=befd193d"></script>
+<script defer src="js/admin.js?v=e3107965"></script>
 <script defer src="js/admin-channels.js?v=e1c74f92"></script>
 <script defer src="js/admin-alerts.js?v=1511fb5f"></script>
-<script defer src="js/admin-players-excel.js?v=e52b0739"></script>
-<script defer src="js/admin-agr.js?v=9a96fde3"></script>
-<script defer src="js/admin-name-forms.js?v=c8aa11f8"></script>
-<script defer src="js/admin-display.js?v=580c71f2"></script>
-<script defer src="js/admin-entry-scorecard.js?v=9e8944c5"></script>
-<script defer src="js/design-admin.js?v=92d8e512"></script>
 <script defer src="js/score-write.js?v=92dca237"></script>
 <script defer src="js/pwa.js?v=fc535770"></script>
+<script type="text/plain" data-admin-lazy="xlsx" data-admin-src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="text/plain" data-admin-lazy="rgclient" data-admin-src="js/rusgolf-client.js?v=f37608e7"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/qr-code.js?v=2a26e819"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-core.js?v=44a79b06"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-data.js?v=5318cc75"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-io.js?v=a9001ebb"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-ui.js?v=05378dbe"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-sheet.js?v=184c2ba1"></script>
+<script type="text/plain" data-admin-lazy="tnm-print" data-admin-src="js/tn-mgr-printcards.js?v=0cfeab6c"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-round.js?v=a180a2a2"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr.js?v=59cc04f5"></script>
+<script type="text/plain" data-admin-lazy="scoreedit" data-admin-src="js/admin-scoreedit.js?v=703b7abe"></script>
+<script type="text/plain" data-admin-lazy="scoreaudit" data-admin-src="js/admin-score-audit.js?v=006f6f0e"></script>
+<script type="text/plain" data-admin-lazy="hcplog" data-admin-src="js/admin-hcp-log.js?v=1262d7c2"></script>
+<script type="text/plain" data-admin-lazy="groups" data-admin-src="js/admin-groups.js?v=f338735a"></script>
+<script type="text/plain" data-admin-lazy="players" data-admin-src="js/name-variants.js?v=2b58f796"></script>
+<script type="text/plain" data-admin-lazy="players" data-admin-src="js/admin-players.js?v=0f9276bb"></script>
+<script type="text/plain" data-admin-lazy="players" data-admin-src="js/admin-name-forms.js?v=c8aa11f8"></script>
+<script type="text/plain" data-admin-lazy="importexport" data-admin-src="js/admin-exports.js?v=089f4c04"></script>
+<script type="text/plain" data-admin-lazy="importexport" data-admin-src="js/admin-players-excel.js?v=b1441d0a"></script>
+<script type="text/plain" data-admin-lazy="rusgolf" data-admin-src="js/admin-agr.js?v=9a96fde3"></script>
+<script type="text/plain" data-admin-lazy="display" data-admin-src="js/admin-display.js?v=580c71f2"></script>
+<script type="text/plain" data-admin-lazy="entry" data-admin-src="js/entry-scorecard.js?v=9b8c4167"></script>
+<script type="text/plain" data-admin-lazy="entry" data-admin-src="js/admin-entry-scorecard.js?v=9e8944c5"></script>
+<script type="text/plain" data-admin-lazy="design" data-admin-src="js/design-admin.js?v=92d8e512"></script>
+<script type="text/plain" data-admin-lazy="broadcasts" data-admin-src="js/admin-broadcasts.js?v=f76a4469"></script>
 </body>
 </html>

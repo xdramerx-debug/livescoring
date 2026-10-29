@@ -88,6 +88,12 @@ function impCollectPlayers(callback) {
 }
 
 function exportPlayersExcel() {
+    if (typeof XLSX === 'undefined' && typeof pestovoEnsureAdminGroup === 'function') {
+        pestovoEnsureAdminGroup('xlsx').then(exportPlayersExcel).catch(function () {
+            toast(currentLang === 'en' ? '❌ Excel library not loaded (check internet)' : '❌ Библиотека Excel не загрузилась (проверьте интернет)', 'error');
+        });
+        return;
+    }
     if (typeof XLSX === 'undefined') {
         toast(currentLang === 'en' ? '❌ Excel library not loaded (check internet)' : '❌ Библиотека Excel не загрузилась (проверьте интернет)', 'error');
         return;
@@ -123,6 +129,12 @@ function exportPlayersExcel() {
 }
 
 function downloadPlayersTemplate() {
+    if (typeof XLSX === 'undefined' && typeof pestovoEnsureAdminGroup === 'function') {
+        pestovoEnsureAdminGroup('xlsx').then(downloadPlayersTemplate).catch(function () {
+            toast(currentLang === 'en' ? '❌ Excel library not loaded (check internet)' : '❌ Библиотека Excel не загрузилась (проверьте интернет)', 'error');
+        });
+        return;
+    }
     if (typeof XLSX === 'undefined') {
         toast(currentLang === 'en' ? '❌ Excel library not loaded (check internet)' : '❌ Библиотека Excel не загрузилась (проверьте интернет)', 'error');
         return;

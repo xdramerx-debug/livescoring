@@ -865,20 +865,57 @@ var TnMgrData = (function (root) {
         return multi(updates).then(function () { return (Array.isArray(ids) ? ids : []).length; });
     }
 
-    /** Массовое добавление (Excel / справочник / ручной ввод). */    function addPlayers(tid, list, tournament) {
+    /**
+     * Массовое добавление (Excel / справочник / ручной ввод).
+     * Один проход по списку + writeInChunks: раньше каждый игрок был
+     * отдельным update + повторным чтением всего состава, и импорт
+     * 5000 человек подвешивал вкладку.
+     */
+    function addPlayers(tid, list, tournament) {
         var created = [];
-        return (list || []).reduce(function (chain, input) {
-            return chain.then(function () {
-                return addPlayer(tid, input, tournament).then(function (pid) {
-                    var record = core().newPlayer(input || {});
-                    created.push({ id: pid, fio: record.fio, hi: record.hi, gender: record.gender });
-                    // Догружаем турнир, чтобы не перезаписывать ключи друг друга.
-                    return read('tournaments/' + tid + '/players').then(function (players) {
-                        tournament = Object.assign({}, tournament || {}, { players: players || {} });
-                    });
-                });
+        var items = list || [];
+        if (!items.length) return Promise.resolve(created);
+        var existing = asMap(tournament && tournament.players);
+        var used = {};
+        Object.keys(existing).forEach(function (key) { used[key] = true; });
+        var stamp = now().toString(36);
+        var seq = 0;
+        var updates = {};
+        var addedBy = currentUid();
+        var createdAt = now();
+        items.forEach(function (input) {
+            var record = core().newPlayer(input || {});
+            var pid = playerIdFor(input, existing);
+            while (used[pid]) {
+                pid = 'guest_' + stamp + '_' + (seq++).toString(36);
+            }
+            used[pid] = true;
+            record.id = pid;
+            record.createdAt = createdAt;
+            record.addedBy = addedBy;
+            existing[pid] = record;
+            var registered = clean({
+                name: record.fio,
+                handicap: record.hi,
+                gender: record.gender,
+                tee: record.tee,
+                groupId: record.groupId,
+                hi: record.hi,
+                ch: record.ch,
+                source: record.source,
+                uid: record.uid,
+                status: 'active',
+                addedAt: createdAt
             });
-        }, Promise.resolve()).then(function () { return created; });
+            updates['tournaments/' + tid + '/players/' + pid] = clean(record);
+            updates['tournaments/' + tid + '/registeredPlayers/' + pid] = registered;
+            if (record.groupId) {
+                updates['tournaments/' + tid + '/groups/' + record.groupId + '/members/' + pid] = record.fio;
+                updates['tournaments/' + tid + '/divisions/' + record.groupId + '/members/' + pid] = record.fio;
+            }
+            created.push({ id: pid, fio: record.fio, hi: record.hi, gender: record.gender });
+        });
+        return writeInChunks(updates, 200).then(function () { return created; });
     }
 
     // ----------------------------------------------------------
@@ -1028,7 +1065,8 @@ var TnMgrData = (function (root) {
         return record;
     }
 
-    /** Пишем порциями: на крупном турнире путей много (users + usersPublic). */
+    /** Пишем порциями: на крупном турнире путей много (users + usersPublic).
+     *  Между порциями отдаём кадр UI, иначе импорт 5000+ игроков «замораживает» вкладку. */
     function writeInChunks(updates, size) {
         var keys = Object.keys(updates || {});
         if (!keys.length) return Promise.resolve();
@@ -1036,11 +1074,22 @@ var TnMgrData = (function (root) {
         if (!db) return Promise.reject(new Error('Нет соединения с базой'));
         var limit = size || 200;
         var chain = Promise.resolve();
+        var yieldUi = keys.length > 200;
+        function yieldFrame() {
+            return new Promise(function (resolve) {
+                var later = root.requestAnimationFrame || function (cb) { root.setTimeout(cb, 0); };
+                later(function () { resolve(); });
+            });
+        }
         for (var i = 0; i < keys.length; i += limit) {
             (function (chunkKeys) {
                 var chunk = {};
                 chunkKeys.forEach(function (key) { chunk[key] = updates[key]; });
-                chain = chain.then(function () { return db.ref().update(chunk); });
+                chain = chain.then(function () {
+                    return (yieldUi ? yieldFrame() : Promise.resolve()).then(function () {
+                        return db.ref().update(chunk);
+                    });
+                });
             })(keys.slice(i, i + limit));
         }
         return chain;

@@ -216,6 +216,7 @@ load('js/dom.js');
 load('js/format.js');
 load('js/i18n.js');
 load('js/utils.js');
+load('js/utils-scorecards.js');
 load('js/tournaments.js');
 load('js/tn-scorecard.js');
 load('js/admin.js');

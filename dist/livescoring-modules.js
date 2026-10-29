@@ -124,7 +124,7 @@ function B(e) {
   var a = new Date(Number(r[1]), Number(r[2]) - 1, Number(r[3]), 23, 59, 59, 999).getTime();
   return isNaN(a) ? null : a;
 }
-function E(e) {
+function x(e) {
   if (!e) return "";
   var r = new Date(e), a = r.getMonth() + 1, n = r.getDate();
   return r.getFullYear() + "-" + (a < 10 ? "0" : "") + a + "-" + (n < 10 ? "0" : "") + n;
@@ -134,7 +134,7 @@ function j(e) {
 }
 function M(e) {
   var r = /* @__PURE__ */ new Date(), a = new Date(r.getFullYear(), r.getMonth(), r.getDate()), n = null;
-  return e === "today" ? n = a : e === "7d" ? n = new Date(a.getFullYear(), a.getMonth(), a.getDate() - 6) : e === "30d" ? n = new Date(a.getFullYear(), a.getMonth(), a.getDate() - 29) : e === "month" ? n = new Date(a.getFullYear(), a.getMonth(), 1) : e === "year" && (n = new Date(a.getFullYear(), 0, 1)), n ? { from: E(n.getTime()), to: E(a.getTime()) } : { from: "", to: "" };
+  return e === "today" ? n = a : e === "7d" ? n = new Date(a.getFullYear(), a.getMonth(), a.getDate() - 6) : e === "30d" ? n = new Date(a.getFullYear(), a.getMonth(), a.getDate() - 29) : e === "month" ? n = new Date(a.getFullYear(), a.getMonth(), 1) : e === "year" && (n = new Date(a.getFullYear(), 0, 1)), n ? { from: x(n.getTime()), to: x(a.getTime()) } : { from: "", to: "" };
 }
 function R(e, r) {
   var a = e && e.value || "", n = r && r.value || "", o = a ? V(a) : null, s = n ? B(n) : null, _ = o !== null && s !== null && o > s;
@@ -250,7 +250,7 @@ function ge() {
     r && (r.renderPresets(), r.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: C, dateInputToStartTs: V, dateInputToEndTs: B, tsToDateInputValue: E, getRoundFilterTs: j, datePresetRange: M, readDateRange: R, filterEntriesByDateRange: he, renderRoundsPeriodSummary: q, dateRangeFilters: T, initDateRangeFilter: be, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: C, dateInputToStartTs: V, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: j, datePresetRange: M, readDateRange: R, filterEntriesByDateRange: he, renderRoundsPeriodSummary: q, dateRangeFilters: T, initDateRangeFilter: be, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
 function K(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(r) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[r];
@@ -826,6 +826,18 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     tab_rounds: "Раунды",
     tab_alerts: "Вызовы 🚨",
     tab_groups: "Группы сейчас ⏱️",
+    admin_group_ops: "Смена",
+    admin_group_tn: "Турниры",
+    admin_group_people: "Игроки",
+    admin_group_look: "Оформление",
+    admin_group_system: "Система",
+    tab_scores_edit: "Правка счёта",
+    tab_scoreaudit: "Журнал счёта 🕒",
+    tab_hcplog: "Журнал гандикапов 📈",
+    tab_scorecards: "Карточки на сайте",
+    tab_entrycards: "Карточки на вводе",
+    tab_scoreentry_screen: "Экран игрока",
+    tab_tncards: "Турнирный ввод",
     tab_players: "Игроки и роли",
     tab_data: "Данные",
     tab_importexport: "Импорт/Экспорт 📊",
@@ -1421,6 +1433,18 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     tab_rounds: "Rounds",
     tab_alerts: "Alerts 🚨",
     tab_groups: "Groups now ⏱️",
+    admin_group_ops: "On course",
+    admin_group_tn: "Tournaments",
+    admin_group_people: "Players",
+    admin_group_look: "Appearance",
+    admin_group_system: "System",
+    tab_scores_edit: "Edit scores",
+    tab_scoreaudit: "Score log 🕒",
+    tab_hcplog: "Handicap log 📈",
+    tab_scorecards: "Site scorecards",
+    tab_entrycards: "Entry scorecards",
+    tab_scoreentry_screen: "Player screen",
+    tab_tncards: "Tournament entry",
     tab_players: "Players & Roles",
     tab_data: "Data",
     tab_importexport: "Import/Export 📊",
@@ -1645,7 +1669,7 @@ function L() {
 }
 L();
 typeof window < "u" && Object.assign(window, { currentLang: f, I18N: h, t: z, toggleLang: Te, updateLangButtons: Q, applyTranslations: D, updateFooterYear: L });
-function x(e, r, a, n, o) {
+function E(e, r, a, n, o) {
   var s = !!o, _ = s ? escapeHtml : function(c) {
     return String(c);
   }, m = typeof fmtTime == "function" ? fmtTime(Date.now()) : (/* @__PURE__ */ new Date()).toLocaleTimeString("ru-RU"), u = e === "referee" ? "🚨 Вызов Судьи" : "🚨 Вызов Маршала", d = s ? "<b>" : "", l = s ? "</b>" : "", i = [];
@@ -1692,7 +1716,7 @@ function Pe(e, r, a, n, o, s, _) {
     toast("⚠️ Укажите Bot Token и Chat ID / Username для " + (a || "Telegram"), "error");
     return;
   }
-  var m = x(n, o, s, _, !0), u = typeof AbortController < "u" ? new AbortController() : null, d = u ? setTimeout(function() {
+  var m = E(n, o, s, _, !0), u = typeof AbortController < "u" ? new AbortController() : null, d = u ? setTimeout(function() {
     try {
       u.abort();
     } catch (i) {
@@ -1724,7 +1748,7 @@ function Pe(e, r, a, n, o, s, _) {
 }
 function N(e, r, a, n, o, s) {
   if (e = (e || "").trim(), r = (r || "").trim(), !e || !r) return Promise.resolve("not_configured");
-  var _ = x(a, n, o, s, !0), m = typeof AbortController < "u" ? new AbortController() : null, u = m ? setTimeout(function() {
+  var _ = E(a, n, o, s, !0), m = typeof AbortController < "u" ? new AbortController() : null, u = m ? setTimeout(function() {
     try {
       m.abort();
     } catch (l) {
@@ -1784,7 +1808,7 @@ function H(e, r, a, n) {
   });
 }
 function O(e, r, a, n) {
-  return x(e, r, a, n, !1);
+  return E(e, r, a, n, !1);
 }
 function Re(e, r, a, n, o, s) {
   if (e = (e || "").trim(), r = (r || "").trim(), !e || !r) {
@@ -1848,7 +1872,7 @@ function X(e, r, a) {
     return console.warn("[alerts] delivery report not saved", s && s.message), n;
   });
 }
-typeof window < "u" && Object.assign(window, { buildOfficialCallText: x, pestovoOfficialChannels: A, sendTelegramDirectAlert: Pe, sendTelegramSilentAlert: N, sendTelegramOfficialAlert: Ce, vkSendMessageJsonp: H, vkBuildAlertText: O, sendVKDirectAlert: Re, sendVKSilentAlert: $, sendVKOfficialAlert: Ae, pestovoDeliverOfficialCall: P, pestovoRecordClientDelivery: X });
+typeof window < "u" && Object.assign(window, { buildOfficialCallText: E, pestovoOfficialChannels: A, sendTelegramDirectAlert: Pe, sendTelegramSilentAlert: N, sendTelegramOfficialAlert: Ce, vkSendMessageJsonp: H, vkBuildAlertText: O, sendVKDirectAlert: Re, sendVKSilentAlert: $, sendVKOfficialAlert: Ae, pestovoDeliverOfficialCall: P, pestovoRecordClientDelivery: X });
 export {
   ee as ADDR,
   Z as CLUB,
@@ -1862,7 +1886,7 @@ export {
   F as TOAST_DURATION_MS,
   De as TOTAL_PAR,
   D as applyTranslations,
-  x as buildOfficialCallText,
+  E as buildOfficialCallText,
   f as currentLang,
   B as dateInputToEndTs,
   V as dateInputToStartTs,
@@ -1908,7 +1932,7 @@ export {
   Y as toastIconFor,
   Se as toastSequence,
   Te as toggleLang,
-  E as tsToDateInputValue,
+  x as tsToDateInputValue,
   L as updateFooterYear,
   Q as updateLangButtons,
   ke as vib,

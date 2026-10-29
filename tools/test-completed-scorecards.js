@@ -12,7 +12,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
     const dom = new JSDOM(read('index.html'), { runScripts: 'outside-only', url: 'https://example.test/livescoring/index.html' });
     const w = dom.window, doc = w.document;
     await new Promise(resolve => w.addEventListener('load', resolve, { once: true }));
-    for (const file of ['ui-events', 'course-config', 'format', 'dom', 'i18n', 'utils', 'app', 'leaderboard', 'admin-display']) {
+    for (const file of ['ui-events', 'course-config', 'format', 'dom', 'i18n', 'utils', 'utils-scorecards', 'app', 'leaderboard', 'admin-display']) {
         w.eval(read('js/' + file + '.js'));
     }
     w.currentLang = 'ru';

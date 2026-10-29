@@ -1692,6 +1692,19 @@ function saveHoleScores() {
     var targetIsFinished = myTargetUid && typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(curRoundData, myTargetUid);
     if (myScore < 1 || (myTargetUid && !targetIsFinished && targetScore < 1)) { toast(t('msg_score_min'), 'error'); return; }
 
+    var parForGuard = typeof holePar === 'function' ? holePar(playHole) : 4;
+    var worst = myScore;
+    if (myTargetUid && !targetIsFinished && targetScore > worst) worst = targetScore;
+    if (typeof pestovoConfirmUnusualScore === 'function' && !saveHoleScores._confirmed &&
+        typeof pestovoScoreIsUnusual === 'function' && pestovoScoreIsUnusual(worst, parForGuard)) {
+        pestovoConfirmUnusualScore(worst, parForGuard, playHole).then(function (ok) {
+            if (!ok) return;
+            saveHoleScores._confirmed = true;
+            try { saveHoleScores(); } finally { saveHoleScores._confirmed = false; }
+        });
+        return;
+    }
+
     saveHoleInFlight = true;
     setSaveBtnBusy(true);
     // Страховка: если сеть «зависла» и обещание не разрешится, кнопка

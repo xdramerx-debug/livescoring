@@ -6803,3 +6803,98 @@ body.sun-mode .score-entry .hole-val { color:#111!important; text-shadow:none!im
     .tn-public-main .tn-search:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
 }
 .page-filters-details > summary > .page-filters-active[hidden] { display: none; }
+
+/* ── 1.125.0 field scoring: keypad, kiosk, landscape, TV, offline ── */
+.score-pad {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+    margin: 10px 0 12px;
+}
+.score-pad-key {
+    min-height: 48px;
+    border-radius: 12px;
+    border: 1px solid var(--line-strong, rgba(201,168,76,.4));
+    background: rgba(19,34,24,.92);
+    color: var(--white, #fff);
+    font-family: var(--fb);
+    font-size: 18px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.score-pad-key:active { transform: scale(.96); }
+.score-pad-par { grid-column: span 2; color: var(--gold); font-size: 15px; }
+.score-toolbar {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0 4px;
+}
+.score-toolbar .btn { flex: 1; min-height: 44px; font-size: 13px; }
+.field-more { margin: 8px 0 12px; }
+.field-more > summary {
+    list-style: none;
+    cursor: pointer;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--muted);
+    border: 1px dashed var(--line-strong, rgba(201,168,76,.35));
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+.field-more > summary::-webkit-details-marker { display: none; }
+.field-more[open] > summary { margin-bottom: 8px; color: var(--gold); }
+.field-more .official-call-btn { font-size: 14px !important; min-height: 48px; }
+.score-entry.card,
+.score-entry {
+    border: 1px solid var(--line-strong, #4a7a56) !important;
+}
+.hole-lbl, .score-save-status, .official-call-btn span { font-size: 12px !important; }
+html.score-kiosk #main-nav .nav-menu { display: none !important; }
+html.score-kiosk .score-disp { font-size: 64px !important; min-height: 72px !important; }
+html.score-kiosk .score-minus,
+html.score-kiosk .score-plus {
+    min-width: 64px !important;
+    min-height: 64px !important;
+    font-size: 28px !important;
+}
+.offline-queue-badge {
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    padding: 12px 18px !important;
+    left: 12px;
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    justify-content: center;
+}
+@media (orientation: landscape) and (max-height: 520px) {
+    html.score-kiosk .score-entry {
+        display: grid;
+        grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+        gap: 8px;
+        align-items: start;
+    }
+    html.score-kiosk .hole-nav { grid-column: 1; }
+    html.score-kiosk .score-area, html.score-kiosk [data-entry-block="input"] { grid-column: 2; grid-row: 1 / span 3; }
+    html.score-kiosk .page-head { display: none !important; }
+    html.score-kiosk main { padding-top: 8px !important; }
+}
+body.lb-tv #main-nav,
+body.lb-tv .page-filters-card,
+body.lb-tv .footer { display: none !important; }
+body.lb-tv .page-head { margin-top: 0 !important; }
+body.lb-tv .lwl-name, body.lb-tv .lb-names { font-size: 22px !important; }
+body.lb-tv .lwl-score { font-size: 28px !important; font-weight: 800; }
+body.lb-tv main { padding-top: 12px !important; }
+@media (max-width: 768px) {
+    .hero { padding: 72px 16px 28px !important; }
+    .hero-logo { width: 72px !important; max-height: 72px !important; margin-bottom: 10px !important; }
+    .hero-title { font-size: 22px !important; margin-bottom: 8px !important; }
+    .hero-desc, .hero-sub { font-size: 12px !important; margin-bottom: 10px !important; }
+}

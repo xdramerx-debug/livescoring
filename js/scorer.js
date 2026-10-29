@@ -325,6 +325,16 @@ function saveSc() {
     // повторные вызовы игнорируем. Раньше каждый тап запускал свой saveSc →
     // несколько параллельных set() и перерисовок, что вешало страницу на телефоне.
     if (scSaving) return;
+    var parForGuard = typeof holePar === 'function' ? holePar(scHole) : 4;
+    if (typeof pestovoConfirmUnusualScore === 'function' && !saveSc._confirmed &&
+        typeof pestovoScoreIsUnusual === 'function' && pestovoScoreIsUnusual(scScore, parForGuard)) {
+        pestovoConfirmUnusualScore(scScore, parForGuard, scHole).then(function (ok) {
+            if (!ok) return;
+            saveSc._confirmed = true;
+            try { saveSc(); } finally { saveSc._confirmed = false; }
+        });
+        return;
+    }
     scSaving = true;
     scSetSaving(true);
     scSaveStatus('Отправляем счёт…', 'Sending score…');

@@ -606,9 +606,17 @@ function pestovoLogHcpChange(entry) {
 // ==========================================
 function initThemeMode() {
     var savedTheme = localStorage.getItem('pestovo_theme');
-    if (savedTheme === 'sun' && document.body) {
+    if (!document.body) return;
+    if (savedTheme === 'sun') {
         document.body.classList.add('sun-mode');
+        return;
     }
+    if (savedTheme === 'dark') {
+        document.body.classList.remove('sun-mode');
+        return;
+    }
+    var hour = new Date().getHours();
+    if (hour >= 8 && hour < 19) document.body.classList.add('sun-mode');
 }
 
 function toggleSunMode(event) {

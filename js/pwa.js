@@ -221,8 +221,8 @@ function updateOfflineQueueBadge() {
         } catch(e){ return; }
     }
     var badgeText = langIsEn
-        ? pending.length + ' pending scores waiting for sync'
-        : pending.length + ' записей ожидают отправки';
+        ? pending.length + (pending.length === 1 ? ' score waiting for network' : ' scores waiting for network')
+        : pending.length + ' ударов ждут сеть';
     try {
         badgeEl.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> ⏳ ' + badgeText;
         badgeEl.classList.remove('hide');

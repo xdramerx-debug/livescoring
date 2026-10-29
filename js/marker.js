@@ -242,6 +242,16 @@ function saveMk() {
     // Защита от «пулемётного» нажатия кнопки (см. scorer.js).
     if (mkSaving) return;
     if (mkTargetClosed()) { mkClosedMessage(); return; }
+    var parForGuard = typeof holePar === 'function' ? holePar(mkHole) : 4;
+    if (typeof pestovoConfirmUnusualScore === 'function' && !saveMk._confirmed &&
+        typeof pestovoScoreIsUnusual === 'function' && pestovoScoreIsUnusual(mkScore, parForGuard)) {
+        pestovoConfirmUnusualScore(mkScore, parForGuard, mkHole).then(function (ok) {
+            if (!ok) return;
+            saveMk._confirmed = true;
+            try { saveMk(); } finally { saveMk._confirmed = false; }
+        });
+        return;
+    }
     mkSaving = true;
     mkSetSaving(true);
     mkChanging = true;

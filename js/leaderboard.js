@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (routeParams.get('scorecard') === '1') lbPanelOpen['lb-sc-' + lbFocusRoundId] = true;
         lbFocusScrollPending = true;
     }
-    initNav(); 
+    initNav();
+    if (typeof applyLbTvMode === 'function') applyLbTvMode(); 
     // Фильтр по датам: «Дата с / Дата по» + быстрые пресеты периода.
     initDateRangeFilter({
         key: 'leaderboard',

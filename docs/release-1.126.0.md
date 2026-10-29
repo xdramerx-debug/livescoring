@@ -28,3 +28,13 @@
    (соло-раунд в общем экране: одна операция записи, `verified=true`, переход на
    следующую лунку, отсутствие «ждём маркера», незаблокированное завершение),
    плюс соло-кейс в `tools/test-score-audit.js`.
+8. **Проверено в реальном Chromium** (headless, через `@sparticuz/chromium` +
+   заглушки NSS: `bash tools/build-stub-libs.sh`, `CHROMIUM_EXTRA_LIBS=$PWD/tools/.browser-stub`):
+   `tools/check-round-setup-mobile.js` — 798 проверок единой формы на 7 ширинах;
+   `tools/check-score-entry-mobile.js` — единый ввод счёта на 320–768 px в трёх
+   режимах (группа, соло-копия того же экрана, QR-турнир);
+   `tools/check-scoring-header-mobile.js` — компактные заголовки и QR;
+   `tools/browser-check.js` — все 13 страниц, варианты classic и bundle идентичны.
+   `check-score-entry-mobile.js` обновлён: в `setup-round.html` остался один
+   `.score-entry` (второй — на `scorer.html`), поэтому «соло» в проверке —
+   клон единого экрана.

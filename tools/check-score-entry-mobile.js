@@ -32,8 +32,16 @@ const fixture = [
             document.body.innerHTML = html;
             document.body.style.cssText = 'margin:0;padding:8px;';
             currentLang = 'ru'; window.db = null;
-            document.querySelectorAll('.score-entry').forEach((entry, index) => {
-                entry.setAttribute('data-test-mode', index < 2 ? (index === 0 ? 'group' : 'solo') : 'qr');
+            // setup-round.html (v1.126.0) содержит ОДИН экран ввода счёта —
+            // его же использует одиночный раунд, поэтому «соло» здесь это
+            // клон единого экрана. Второй блок — scorer.html (QR/турнир).
+            const entries = Array.from(document.querySelectorAll('.score-entry'));
+            entries[0].setAttribute('data-test-mode', 'group');
+            const soloClone = entries[0].cloneNode(true);
+            soloClone.setAttribute('data-test-mode', 'solo');
+            entries[0].after(soloClone);
+            if (entries[1]) entries[1].setAttribute('data-test-mode', 'qr');
+            document.querySelectorAll('.score-entry').forEach(entry => {
                 entry.querySelectorAll('.hole-nav').forEach(nav => {
                     nav.innerHTML = Array.from({ length: 18 }, (_, i) => '<button type="button" class="hole-btn" data-hole="' + (i + 1) + '" onclick="window.holeTapped=(window.holeTapped||0)+1">' + (i + 1) + '</button>').join('');
                 });

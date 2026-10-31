@@ -137,6 +137,17 @@ nextFrame(function () {
     const dualPanel = doc.getElementById('dual-score-panel');
     ok(markerBox.classList.contains('hidden'), 'соло-раунд: панель «счёт игрока» (маркер) скрыта');
     ok(dualPanel.classList.contains('single'), 'соло-раунд: счёт вводится в одной панели');
+    // Регрессия v1.128.0: класс .hidden на панели маркера не работал, потому
+    // что .dual-half{display:flex!important} стоял в CSS ниже .hidden при
+    // равной специфичности — второй блок ввода счёта всё равно показывался.
+    const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
+    ok(/\.dual-half\.hidden\s*\{[^}]*display\s*:\s*none\s*!important/.test(css),
+        'соло-раунд: .dual-half.hidden действительно скрывает второй блок ввода');
+    ok(css.indexOf('.dual-half.hidden') > css.indexOf('.dual-half{'),
+        'соло-раунд: правило скрытия идёт после flex-правила панели');
+    const stylesheetHidesMark = /\.dual-score-split-panel[^{]*:has\(\.dual-half--mark\.hidden\)[^{]*\{[^}]*display\s*:\s*none\s*!important/.test(css) ||
+        /\.dual-score-split-panel\.single[^{]*\.dual-half--mark[^{]*\{[^}]*display\s*:\s*none\s*!important/.test(css);
+    ok(stylesheetHidesMark, 'соло-раунд: маркерная панель скрыта и в компоновках (single/…:has)');
 
     const invite = doc.getElementById('invite-qrs-card');
     ok(invite.classList.contains('hidden'), 'соло-раунд: QR-подключения скрыты (подключать некого)');

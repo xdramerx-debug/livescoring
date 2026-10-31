@@ -1,6 +1,6 @@
 {
     "name": "pestovo-livescoring",
-    "version": "1.127.0",
+    "version": "1.128.0",
     "private": true,
     "description": "Pestovo Live Scoring — static web app + Firebase Cloud Functions",
     "scripts": {
@@ -28,7 +28,8 @@
         "check:display-mobile": "node tools/check-round-setup-mobile.js && node tools/check-tournaments-display-mobile.js && node tools/check-display-settings-mobile.js",
         "check:printcards": "node tools/check-printcards-preview.js",
         "check:entry-scorecards": "node tools/check-entry-scorecards.js",
-        "check:scorecard-pwa": "node tools/check-scorecard-realtime-pwa.js"
+        "check:scorecard-pwa": "node tools/check-scorecard-realtime-pwa.js",
+        "check:score-entry-layouts": "node tools/check-score-entry-layouts.js"
     },
     "engines": {
         "node": ">=18"

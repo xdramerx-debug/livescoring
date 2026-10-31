@@ -50,6 +50,24 @@ function section(html, id) {
         'score input and My score panel remain required');
     check(scoreDefaults.visible.par === false && scoreDefaults.order.join(',') === 'holes,info,input',
         'score display visibility and order are normalized');
+    // v1.128.0: вид экрана, акцент и размер цифр — часть тех же настроек.
+    check(scoreDefaults.layout === 'classic' && scoreDefaults.accent === 'gold' && scoreDefaults.scoreSize === 'normal',
+        'score-entry view falls back to classic/gold/normal when nothing is saved');
+    const scoreLayout = win.normalizePestovoDisplaySettings('scoring', {
+        layout: 'neon', accent: 'azure', scoreSize: 'xl', order: ['input', 'holes', 'info'], visible: {}
+    });
+    check(scoreLayout.layout === 'neon' && scoreLayout.accent === 'azure' && scoreLayout.scoreSize === 'xl',
+        'valid view, accent and digit size survive normalization');
+    const brokenLayout = win.normalizePestovoDisplaySettings('scoring', {
+        layout: 'st-scoring-v5', accent: 'pink', scoreSize: 'huge', order: ['info'], visible: {}
+    });
+    check(brokenLayout.layout === 'classic' && brokenLayout.accent === 'gold' && brokenLayout.scoreSize === 'normal',
+        'unknown layout, accent or size fall back to defaults instead of breaking the screen');
+    check(win.PESTOVO_SCORE_DISPLAY_LAYOUTS.length === 10,
+        'ten score-entry layouts are declared for the admin panel');
+    check(JSON.stringify(win.PESTOVO_SCORE_DISPLAY_LAYOUTS) ===
+        JSON.stringify(['classic', 'compact', 'large', 'zen', 'glass', 'neon', 'sand', 'scoreboard', 'cards', 'split']),
+        'layout keys stay stable (admins and stored settings rely on them)');
     const tournamentDefaults = win.normalizePestovoDisplaySettings('tournaments', {
         layout: 'old-five-style', order: ['archive', 'archive', 'invalid'], visible: { search: false }
     });
@@ -69,14 +87,38 @@ function section(html, id) {
         'required score-entry blocks are visibly locked in the editor');
     check(!doc.getElementById('score-entry-list') && !doc.getElementById('score-entry-show') &&
         !doc.querySelector('[id^="v5-scoring-"]'), 'old numbered score-entry controls are removed');
+    check(doc.querySelectorAll('#score-entry-display-layouts .score-layout-tile').length === 10,
+        'admin renders ten layout tiles with live mini-previews');
+    check(doc.querySelectorAll('#score-entry-display-accent .score-accent-swatch').length === 5,
+        'admin renders five accent swatches');
+    check(doc.querySelectorAll('#score-entry-display-size .score-size-btn').length === 3,
+        'admin renders three digit-size options');
+    check(doc.querySelectorAll('#score-entry-display-layouts .score-layout-tile[aria-pressed="true"]').length === 1,
+        'exactly one layout tile is pressed');
+    win.setPestovoScoreLayout('scoring', 'sand');
+    win.setPestovoScoreAccent('scoring', 'crimson');
+    win.setPestovoScoreSize('scoring', 'large');
+    check(doc.querySelector('#score-entry-display-layouts .is-active').getAttribute('data-score-layout') === 'sand' &&
+        doc.querySelector('#score-entry-display-accent .is-active').getAttribute('data-score-accent') === 'crimson' &&
+        doc.querySelector('#score-entry-display-size .is-active').getAttribute('data-score-size') === 'large',
+        'layout, accent and size pickers update the draft');
+    check(doc.querySelector('.score-entry[data-entry-preview]').getAttribute('data-entry-layout') === 'sand',
+        'admin preview mock follows the chosen layout');
+    win.setPestovoScoreLayout('scoring', 'nonsense');
+    check(doc.querySelector('#score-entry-display-layouts .is-active').getAttribute('data-score-layout') === 'sand',
+        'unknown layout values are rejected by the picker');
 
     win.setPestovoDisplaySettings('scoring', {
         order: ['holes', 'input', 'info'], visible: { par: false, distance: false, markerScore: false, input: false, myScore: false }
     });
     // v1.126.0: на странице раунда один экран ввода счёта (соло и группа
     // вместе) + отдельный скорерский на scorer.html.
-    const roots = Array.from(doc.querySelectorAll('.score-entry'));
+    // Живой макет в админ-панели тоже несёт класс .score-entry — реальные
+    // экраны помечаем отдельно: у макета есть data-entry-preview.
+    const roots = Array.from(doc.querySelectorAll('.score-entry:not([data-entry-preview])'));
     check(roots.length === 2, 'real unified round and QR score-entry markup is included');
+    check(doc.querySelectorAll('.score-entry[data-entry-preview]').length === 1,
+        'admin shows a live preview mock of the chosen score-entry view');
     roots.forEach(root => {
         check(root.querySelector('[data-entry-block="holes"]') === root.children[0],
             'shared block order is applied to a live score-entry screen');
@@ -121,6 +163,43 @@ function section(html, id) {
     const resetSave = writes.find(item => item.path === 'settings/tournament_scoring_display');
     check(!!resetSave && resetSave.value.order === null && Object.keys(resetSave.value.visible).length === 0,
         'tournament QR settings can be reset to inherit the global score-entry display');
+
+    // Сохранённый вид применяется к реальным экранам и уходит в общий путь.
+    win.setPestovoDisplaySettings('scoring', {
+        layout: 'scoreboard', accent: 'violet', scoreSize: 'xl', order: ['info', 'holes', 'input'], visible: {}
+    });
+    doc.querySelectorAll('.score-entry:not([data-entry-preview])').forEach(root => {
+        check(root.getAttribute('data-entry-layout') === 'scoreboard' &&
+            root.getAttribute('data-entry-accent') === 'violet' &&
+            root.getAttribute('data-entry-size') === 'xl',
+            'saved view, accent and size land on the live score-entry root');
+    });
+    win.setPestovoScoreLayout('scoring', 'glass');
+    win.setPestovoScoreAccent('scoring', 'emerald');
+    win.setPestovoScoreSize('scoring', 'large');
+    win.savePestovoDisplaySettings('scoring');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const viewSave = writes.filter(item => item.path === 'settings/scoring_display').pop();
+    check(!!viewSave && viewSave.value.layout === 'glass' && viewSave.value.accent === 'emerald' &&
+        viewSave.value.scoreSize === 'large',
+        'view settings are saved together with visibility and order in settings/scoring_display');
+
+    // Регрессия: в одиночном раунде панель маркера не должна показываться.
+    // Причина прошлого бага — .dual-half{display:flex} ниже .hidden в файле.
+    const styles = read('css/style.css');
+    const halfRule = styles.indexOf('.dual-half{');
+    const halfHiddenRule = styles.indexOf('.dual-half.hidden');
+    check(halfRule !== -1 && halfHiddenRule !== -1 && halfHiddenRule > halfRule,
+        'a .dual-half.hidden rule exists and comes after .dual-half{display:flex}');
+    check(/\.dual-half\.hidden\s*\{[^}]*display\s*:\s*none\s*!important/.test(styles),
+        'the hidden marker panel is really display:none (not overridden by flex)');
+    check(styles.includes('.dual-score-split-panel.single') && styles.includes(':has(.dual-half--mark.hidden)'),
+        'single-player panels collapse to one column in every layout');
+    // classic — базовый вид без переопределений, у него своего блока нет.
+    ['compact', 'large', 'zen', 'glass', 'neon', 'sand', 'scoreboard', 'cards', 'split'].forEach(key => {
+        check(styles.includes('.score-entry[data-entry-layout="' + key + '"]'),
+            'CSS ships the "' + key + '" layout');
+    });
 
     const pageAttrs = ['setup-round.html', 'scorer.html'].map(file => new JSDOM(read(file)).window.document);
     pageAttrs.forEach(page => {

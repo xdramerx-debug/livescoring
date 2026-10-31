@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=e3db1e95">
+    <link rel="stylesheet" href="css/style.css?v=ca1cd0cd">
     <link rel="stylesheet" href="css/theme-v2.css?v=a9604786">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <link rel="stylesheet" href="css/tournament-redesign.css?v=794da0d9">
@@ -253,6 +253,15 @@
                     <span class="sev-head-badge"><i class="fas fa-globe" aria-hidden="true"></i> для всех</span>
                 </header>
                 <div class="display-config-note"><i class="fas fa-circle-info" aria-hidden="true"></i> Блок ввода и сохранения счёта, а также панель «Мой счёт» обязательны и не могут быть скрыты. Вкладка «Турнирный ввод счёта» задаёт отдельные переопределения для QR-раундов.</div>
+                <div class="sev-sec-title">Вид экрана ввода — 10 вариантов</div>
+                <p class="sev-sec-sub">Выберите компоновку: она действует для всех игроков — в одиночном и групповом раунде, на телефоне и на большом экране. Вид применяется сразу после сохранения.</p>
+                <div id="score-entry-display-layouts" class="score-layout-grid"></div>
+                <div class="sev-sec-title">Акцент</div>
+                <p class="sev-sec-sub">Цвет активной лунки, рамки счёта, кнопки «+» и кнопки подтверждения. Работает с любым видом.</p>
+                <div id="score-entry-display-accent" class="score-accent-row"></div>
+                <div class="sev-sec-title">Размер цифр счёта</div>
+                <p class="sev-sec-sub">Насколько крупно показывать введённый счёт. «Очень крупный» удобен на ярком солнце.</p>
+                <div id="score-entry-display-size" class="score-size-row"></div>
                 <div class="sev-sec-title">Элементы экрана ввода</div>
                 <div id="score-entry-display-elements" class="screen-display-grid"></div>
                 <div class="sev-sec-title">Порядок основных блоков</div>
@@ -1116,14 +1125,14 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.127.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.128.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
 <script type="module" src="dist/livescoring-modules.js?v=338a0efc"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=3baefc22"></script>
+<script defer src="js/utils.js?v=a5e99f2e"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/admin-lazy.js?v=befd193d"></script>
 <script defer src="js/admin.js?v=e3107965"></script>
@@ -1154,7 +1163,7 @@
 <script type="text/plain" data-admin-lazy="importexport" data-admin-src="js/admin-exports.js?v=089f4c04"></script>
 <script type="text/plain" data-admin-lazy="importexport" data-admin-src="js/admin-players-excel.js?v=b1441d0a"></script>
 <script type="text/plain" data-admin-lazy="rusgolf" data-admin-src="js/admin-agr.js?v=9a96fde3"></script>
-<script type="text/plain" data-admin-lazy="display" data-admin-src="js/admin-display.js?v=580c71f2"></script>
+<script type="text/plain" data-admin-lazy="display" data-admin-src="js/admin-display.js?v=6da21c66"></script>
 <script type="text/plain" data-admin-lazy="entry" data-admin-src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script type="text/plain" data-admin-lazy="entry" data-admin-src="js/admin-entry-scorecard.js?v=9e8944c5"></script>
 <script type="text/plain" data-admin-lazy="design" data-admin-src="js/design-admin.js?v=92d8e512"></script>

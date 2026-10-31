@@ -907,6 +907,133 @@ function pestovoDisplayLabel(meta) {
     if (!meta) return '';
     return currentLang === 'en' ? (meta.en || meta.ru || '') : (meta.ru || meta.en || '');
 }
+// ── Вид экрана ввода счёта: 10 компоновок, акцент и размер цифр ──────────
+// Значения живут в том же объекте settings/scoring_display, что и видимость
+// элементов, и применяются для всех игроков сразу (css/style.css, 1.128.0).
+function pestovoScoreMetaLabel(meta) {
+    if (!meta) return '';
+    return currentLang === 'en' ? (meta.en || meta.ru || '') : (meta.ru || meta.en || '');
+}
+function pestovoScoreMetaHint(meta) {
+    if (!meta) return '';
+    return currentLang === 'en' ? (meta.enHint || '') : (meta.ruHint || '');
+}
+function renderPestovoScoreVariantTiles(scope, draft) {
+    if (scope !== 'scoring' || !draft) return;
+    var layoutHost = document.getElementById('score-entry-display-layouts');
+    if (layoutHost) {
+        layoutHost.innerHTML = (PESTOVO_SCORE_DISPLAY_LAYOUTS || []).map(function(key) {
+            var meta = PESTOVO_SCORE_DISPLAY_LAYOUT_META[key];
+            var active = (draft.layout || 'classic') === key;
+            return '<button type="button" class="score-layout-tile' + (active ? ' is-active' : '') + '"' +
+                ' aria-pressed="' + (active ? 'true' : 'false') + '"' +
+                ' data-score-layout="' + escapeHtml(key) + '"' +
+                ' data-act="setPestovoScoreLayout" data-arg="' + escapeHtml(scope) + '" data-arg2="' + escapeHtml(key) + '">' +
+                '<span class="score-layout-tile__preview score-layout-tile__preview--' + escapeHtml(key) + '" aria-hidden="true">' +
+                    '<i class="slp-row"></i><i class="slp-grid"></i><i class="slp-dual"><b></b><b></b></i>' +
+                '</span>' +
+                '<span class="score-layout-tile__name">' + escapeHtml(pestovoScoreMetaLabel(meta)) + '</span>' +
+                '<small>' + escapeHtml(pestovoScoreMetaHint(meta)) + '</small>' +
+            '</button>';
+        }).join('');
+    }
+    var accentHost = document.getElementById('score-entry-display-accent');
+    if (accentHost) {
+        accentHost.innerHTML = (PESTOVO_SCORE_DISPLAY_ACCENTS || []).map(function(key) {
+            var meta = PESTOVO_SCORE_DISPLAY_ACCENT_META[key] || {};
+            var active = (draft.accent || 'gold') === key;
+            return '<button type="button" class="score-accent-swatch' + (active ? ' is-active' : '') + '"' +
+                ' style="--swatch:' + escapeHtml(meta.css || '#c9a84c') + '"' +
+                ' aria-pressed="' + (active ? 'true' : 'false') + '"' +
+                ' data-score-accent="' + escapeHtml(key) + '"' +
+                ' data-act="setPestovoScoreAccent" data-arg="' + escapeHtml(scope) + '" data-arg2="' + escapeHtml(key) + '">' +
+                '<i aria-hidden="true"></i>' + escapeHtml(pestovoScoreMetaLabel(meta)) +
+            '</button>';
+        }).join('');
+    }
+    var sizeHost = document.getElementById('score-entry-display-size');
+    if (sizeHost) {
+        sizeHost.innerHTML = (PESTOVO_SCORE_DISPLAY_SIZES || []).map(function(key) {
+            var meta = PESTOVO_SCORE_DISPLAY_SIZE_META[key] || {};
+            var active = (draft.scoreSize || 'normal') === key;
+            return '<button type="button" class="score-size-btn' + (active ? ' is-active' : '') + '"' +
+                ' aria-pressed="' + (active ? 'true' : 'false') + '"' +
+                ' data-score-size="' + escapeHtml(key) + '"' +
+                ' data-act="setPestovoScoreSize" data-arg="' + escapeHtml(scope) + '" data-arg2="' + escapeHtml(key) + '">' +
+                '<span class="score-size-btn__sample score-size-btn__sample--' + escapeHtml(key) + '" aria-hidden="true">8</span>' +
+                escapeHtml(pestovoScoreMetaLabel(meta)) +
+            '</button>';
+        }).join('');
+    }
+}
+function setPestovoScoreLayout(scope, value) {
+    if (pestovoDisplayEditorSaving[scope]) return;
+    if ((PESTOVO_SCORE_DISPLAY_LAYOUTS || []).indexOf(String(value)) === -1) return;
+    var draft = pestovoDisplayEditorDraft(scope);
+    draft.layout = String(value);
+    pestovoDisplayEditorDirty[scope] = true;
+    if (typeof vib === 'function') vib(20);
+    renderPestovoDisplayAdmin(scope);
+}
+function setPestovoScoreAccent(scope, value) {
+    if (pestovoDisplayEditorSaving[scope]) return;
+    if ((PESTOVO_SCORE_DISPLAY_ACCENTS || []).indexOf(String(value)) === -1) return;
+    var draft = pestovoDisplayEditorDraft(scope);
+    draft.accent = String(value);
+    pestovoDisplayEditorDirty[scope] = true;
+    if (typeof vib === 'function') vib(20);
+    renderPestovoDisplayAdmin(scope);
+}
+function setPestovoScoreSize(scope, value) {
+    if (pestovoDisplayEditorSaving[scope]) return;
+    if ((PESTOVO_SCORE_DISPLAY_SIZES || []).indexOf(String(value)) === -1) return;
+    var draft = pestovoDisplayEditorDraft(scope);
+    draft.scoreSize = String(value);
+    pestovoDisplayEditorDirty[scope] = true;
+    if (typeof vib === 'function') vib(20);
+    renderPestovoDisplayAdmin(scope);
+}
+// Живой макет выбранного вида: та же разметка и CSS, что на телефоне игрока.
+function pestovoScoreEntryMockHTML(draft) {
+    var lang = currentLang === 'en';
+    var layout = escapeHtml(draft.layout || 'classic');
+    var accent = escapeHtml(draft.accent || 'gold');
+    var size = escapeHtml(draft.scoreSize || 'normal');
+    var holeBtn = function(n, active, done) {
+        return '<span class="hole-btn' + (active ? ' active' : '') + (done ? ' done' : '') + '">' +
+            '<span class="entry-hole-number">' + n + '</span>' +
+            '<span class="entry-score-square"><span class="score-gross">' + (n === 7 ? '4' : '·') + '</span></span>' +
+        '</span>';
+    };
+    var holes = [4, 5, 6, 7, 8, 9].map(function(n) { return holeBtn(n, n === 7, n < 7); }).join('');
+    return '<div class="score-entry score-entry-mock" data-entry-preview="1" data-entry-layout="' + layout + '"' +
+        ' data-entry-accent="' + accent + '" data-entry-size="' + size + '">' +
+        '<div class="hole-display">' +
+            '<div class="hole-box h-hole"><div class="hole-lbl">' + (lang ? 'Hole' : 'Лунка') + '</div><div class="hole-val">7</div></div>' +
+            '<div class="hole-box h-par"><div class="hole-lbl">' + (lang ? 'Par' : 'Пар') + '</div><div class="hole-val">4</div></div>' +
+            '<div class="hole-box h-dist"><div class="hole-lbl">' + (lang ? 'Meters' : 'Метры') + '</div><div class="hole-val">356</div></div>' +
+        '</div>' +
+        '<div class="hole-nav">' + holes + '</div>' +
+        '<div class="dual-score-split-panel">' +
+            '<div class="dual-half dual-half--my">' +
+                '<div class="dual-half__head"><span class="dual-half__name">' + (lang ? 'My score: Ivan Petrov' : 'Мой счёт: Иван Петров') + '</span></div>' +
+                '<div class="dual-half__score"><div class="score-disp"><span class="entry-score-square"><span class="score-gross">5</span></span></div></div>' +
+                '<div class="dual-half__controls"><span class="dual-btn dual-btn--minus">−</span><span class="dual-btn dual-btn--plus">+</span></div>' +
+            '</div>' +
+            '<div class="dual-split-divider"><span></span></div>' +
+            '<div class="dual-half dual-half--mark">' +
+                '<div class="dual-half__head"><span class="dual-half__name">' + (lang ? 'Score: Anna Petrova' : 'Счёт игрока: Анна Петрова') + '</span></div>' +
+                '<div class="dual-half__score"><div class="score-disp"><span class="entry-score-square"><span class="score-gross">4</span></span></div></div>' +
+                '<div class="dual-half__controls"><span class="dual-btn dual-btn--minus">−</span><span class="dual-btn dual-btn--plus">+</span></div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="score-pad">' +
+            ['1','2','3','4','5'].map(function(n) { return '<span class="score-pad-key">' + n + '</span>'; }).join('') +
+        '</div>' +
+        '<span class="btn btn-g btn-block score-entry-mock__save">' + (lang ? 'Confirm ✓' : 'Подтвердить ✓') + '</span>' +
+    '</div>';
+}
+
 function renderPestovoDisplayAdmin(scope, force) {
     scope = scope || 'scoring';
     if (!PESTOVO_DISPLAY_CONFIGS || !PESTOVO_DISPLAY_CONFIGS[scope]) return;
@@ -946,6 +1073,7 @@ function renderPestovoDisplayAdmin(scope, force) {
         var layout = document.getElementById('tournaments-display-layout');
         if (layout) layout.value = draft.layout;
     }
+    renderPestovoScoreVariantTiles(scope, draft);
     var saveButton = document.querySelector('[data-display-save="' + scope + '"]');
     if (saveButton) saveButton.disabled = !!pestovoDisplayEditorSaving[scope];
     var resetButton = document.querySelector('[data-display-reset="' + scope + '"]');
@@ -963,11 +1091,15 @@ function renderPestovoDisplayPreview(scope, draft) {
     var shown = Object.keys(draft.visible).filter(function(key) { return draft.visible[key] !== false; });
     var labels = shown.map(function(key) { return pestovoDisplayLabel(meta[key]); }).filter(Boolean);
     var order = draft.order.map(function(key) { return pestovoDisplayLabel(orderLabels[key]) || key; });
+    var layoutMeta = !isTournament && PESTOVO_SCORE_DISPLAY_LAYOUT_META[draft.layout || 'classic'];
     host.innerHTML = '<div class="screen-display-preview-head"><i class="fas ' + (isTournament ? 'fa-trophy' : 'fa-golf-ball-tee') + '"></i> ' +
         (isTournament ? (currentLang === 'en' ? 'Tournament page' : 'Страница турниров') : (currentLang === 'en' ? 'Score entry' : 'Экран ввода счёта')) +
-        (isTournament ? '<span>' + escapeHtml(draft.layout) + '</span>' : '') + '</div>' +
+        (isTournament
+            ? '<span>' + escapeHtml(draft.layout) + '</span>'
+            : '<span>' + escapeHtml(pestovoScoreMetaLabel(layoutMeta)) + ' · ' + escapeHtml(pestovoScoreMetaLabel(PESTOVO_SCORE_DISPLAY_ACCENT_META[draft.accent || 'gold'])) + '</span>') + '</div>' +
         '<div class="screen-display-preview-order">' + order.map(function(label, index) { return '<span><b>' + (index + 1) + '</b>' + escapeHtml(label) + '</span>'; }).join('') + '</div>' +
-        '<p>' + (currentLang === 'en' ? 'Visible elements' : 'Показываются') + ': <strong>' + labels.length + '</strong></p>';
+        '<p>' + (currentLang === 'en' ? 'Visible elements' : 'Показываются') + ': <strong>' + labels.length + '</strong></p>' +
+        (scope === 'scoring' ? pestovoScoreEntryMockHTML(draft) : '');
 }
 function setPestovoDisplayDraftVisible(scope, key, checked) {
     if (pestovoDisplayEditorSaving[scope]) return;

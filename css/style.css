@@ -6346,7 +6346,7 @@ body.sun-mode .hcp-caption{color:#000;}
 body.sun-mode .hcp-caption.neg{color:#c0392b;}
 
 /* Свайп по цифрам лунок не отдаём горизонтальному скроллу полосы. */
-#play-holes-nav,#g-holes,#sc-holes,#mk-holes,#page-head.scoring-compact{touch-action:pan-y;}
+#play-holes-nav,#sc-holes,#mk-holes,#page-head.scoring-compact{touch-action:pan-y;}
 
 /* Подтвердить результат всегда у большого пальца. Оригинал остаётся в DOM
    (его жмёт live.js), на телефоне виден только клон внизу экрана. */

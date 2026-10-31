@@ -124,7 +124,9 @@ async function testPwaDismiss() {
     return win;
 }
 
-async function testSoloCallResponse() {
+// Единый экран ввода счёта (v1.126.0): ответы на вызовы судьи/маршала
+// слушает один обработчик live.js — и для соло, и для группы.
+async function testRoundCallResponse() {
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
         runScripts: 'outside-only', url: 'https://t.test/setup-round.html?round=r1&as=p1'
     });
@@ -142,12 +144,13 @@ async function testSoloCallResponse() {
     win.eval(fs.readFileSync(path.join(ROOT, 'js/utils.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/ui-events.js'), 'utf8'));
     win.eval(fs.readFileSync(path.join(ROOT, 'js/pwa.js'), 'utf8'));
-    win.eval(fs.readFileSync(path.join(ROOT, 'js/solo.js'), 'utf8'));
+    win.eval(fs.readFileSync(path.join(ROOT, 'js/score-kiosk.js'), 'utf8'));
+    win.eval(fs.readFileSync(path.join(ROOT, 'js/live.js'), 'utf8'));
     // Перехватываем toast после загрузки скриптов: dom.js создаёт настоящий toast.
     win.toast = (message, kind, opts) => { toasts.push({ message, kind, opts }); };
-    win.eval("soloRound = { players: { p1: { name: 'Пётр' } } };");
+    win.eval("curRid = 'r1'; myUid = 'p1'; curRoundData = { mode: 'solo', players: { p1: { name: 'Пётр' } } };");
 
-    win.eval('listenForCallResponsesSolo()');
+    win.eval('listenForCallResponses()');
     await wait(20);
     // Уведомления включены: ответ «судья едет» показан.
     db._emitChildAdded('users/p1/notifications', { type: 'call_response', read: false, responderRole: 'referee' });
@@ -168,7 +171,7 @@ async function testSoloCallResponse() {
 
 (async function run() {
     await testPwaDismiss();
-    await testSoloCallResponse();
+    await testRoundCallResponse();
     console.log('\n' + (failures ? 'FAILED ' + failures + ' / ' + checks : 'Passed ' + checks + ' checks'));
     process.exit(failures ? 1 : 0);
 })().catch(error => { console.error(error); process.exit(1); });

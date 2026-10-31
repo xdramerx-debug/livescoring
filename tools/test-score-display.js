@@ -284,12 +284,14 @@ const eq = function (actual, expected, label) {
 
 // ── 7. Модуль подключён на всех трёх страницах до фичевого скрипта ────────
 {
-    const pages = { 'marker.html': 'marker.js', 'scorer.html': 'scorer.js', 'setup-round.html': 'solo.js' };
+    // Единый экран ввода счёта (v1.126.0): на setup-round.html ленту лунок
+    // строит live.js, поэтому порядок проверяем относительно него.
+    const pages = { 'marker.html': 'marker.js', 'scorer.html': 'scorer.js', 'setup-round.html': 'live.js' };
     for (const [page, feature] of Object.entries(pages)) {
         const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
-        const shared = html.indexOf('js/score-display.js');
+        const shared = html.indexOf('src="js/score-display.js');
         assert.ok(shared !== -1, page + ': не подключён js/score-display.js');
-        assert.ok(shared < html.indexOf('js/' + feature),
+        assert.ok(shared < html.indexOf('src="js/' + feature),
             page + ': js/score-display.js обязан идти ДО js/' + feature);
     }
 }

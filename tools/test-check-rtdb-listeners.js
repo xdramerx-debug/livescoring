@@ -133,11 +133,13 @@ assert.ok(stats.topLevel >= 2, 'подписки верхнего уровня �
 
 // ── 9. Конкретные исправления этой волны зафиксированы ──
 const readRaw = checker.readRaw;
-const solo = readRaw(path.join(__dirname, '..', 'js/solo.js'));
-assert.match(solo, /_pestovoCallResponsesRef\.off\('child_added'\)/,
-    'solo.js снимает прежнюю подписку при смене игрока');
-assert.match(solo, /window\._pestovoCallResponsesRef = callResponsesRef/,
-    'solo.js запоминает ref, чтобы его можно было снять');
+// Единый экран ввода счёта (v1.126.0): ответы на вызовы слушает один
+// обработчик live.js — он и обязан снимать прежнюю подписку при смене игрока.
+const live = readRaw(path.join(__dirname, '..', 'js/live.js'));
+assert.match(live, /_pestovoCallResponsesRef\.off\('child_added'\)/,
+    'live.js снимает прежнюю подписку при смене игрока');
+assert.match(live, /window\._pestovoCallResponsesRef = callResponsesRef/,
+    'live.js запоминает ref, чтобы его можно было снять');
 const utils = readRaw(path.join(__dirname, '..', 'js/utils.js'));
 assert.match(utils, /var pestovoPrivacySettingsBound = false;/,
     'utils.js: guard-флаг для initPrivacySettings объявлен');

@@ -73,8 +73,10 @@ function section(html, id) {
     win.setPestovoDisplaySettings('scoring', {
         order: ['holes', 'input', 'info'], visible: { par: false, distance: false, markerScore: false, input: false, myScore: false }
     });
+    // v1.126.0: на странице раунда один экран ввода счёта (соло и группа
+    // вместе) + отдельный скорерский на scorer.html.
     const roots = Array.from(doc.querySelectorAll('.score-entry'));
-    check(roots.length === 3, 'real group, solo and QR score-entry markup is included');
+    check(roots.length === 2, 'real unified round and QR score-entry markup is included');
     roots.forEach(root => {
         check(root.querySelector('[data-entry-block="holes"]') === root.children[0],
             'shared block order is applied to a live score-entry screen');
@@ -124,7 +126,7 @@ function section(html, id) {
     pageAttrs.forEach(page => {
         check(page.querySelectorAll('.score-entry [data-screen-display="scoring"]').length > 0,
             'display settings are attached to real elements in ' + (page.querySelector('#dual-score-panel') ? 'setup-round.html' : 'scorer.html'));
-        check(page.querySelectorAll('.score-entry [data-entry-block]').length === (page.querySelector('#dual-score-panel') ? 6 : 3),
+        check(page.querySelectorAll('.score-entry [data-entry-block]').length === 3,
             'all score-entry screens expose the three reorderable blocks');
     });
     check(!/data-entry-view|data-entry-hide|st-scoring-v[2-5]/.test(read('css/style.css')),

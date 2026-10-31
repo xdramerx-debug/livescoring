@@ -1,6 +1,6 @@
 {
     "name": "pestovo-livescoring",
-    "version": "1.125.2",
+    "version": "1.127.0",
     "private": true,
     "description": "Pestovo Live Scoring — static web app + Firebase Cloud Functions",
     "scripts": {

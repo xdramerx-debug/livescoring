@@ -12,7 +12,11 @@ var myTargetUid = null;
 var myScore = 0;
 var targetScore = 0;
 var isChanging = false;
+// canEditGroup — можно ли вводить счёт в текущем раунде (единый флаг для
+// одиночного и группового состава). canEditSolo — исторический алиас:
+// его читали прежние общие помощники, значение всегда равно canEditGroup.
 var canEditGroup = false;
+var canEditSolo = false;
 var groupPaceTimer = null;
 
 // Если администратор меняет клубный дефолт в процессе игры, его получают
@@ -615,8 +619,6 @@ document.addEventListener('change', function(e) {
 // ==========================================
 // СТАРТ И АВТО-МАРКЕРЫ
 // ==========================================
-var groupStarting = false;
-
 // Предзагрузка QR-кодов подключения: вызывается сразу после создания раунда,
 // чтобы к моменту открытия панели «Подключение игроков» коды были в кэше
 // браузера и открывались мгновенно (иногда внешний сервис отвечал медленно).
@@ -631,7 +633,23 @@ function prewarmInviteQrImages(roundId, players) {
     pestovoPrewarmQrImages(urls);
 }
 
-function startGroup() {
+// Защита от повторного нажатия «Начать раунд» (двойной тап).
+var groupStarting = false;
+
+// ═════════════════════════════════════════════════════════════════
+// ЕДИНАЯ СИСТЕМА СОЗДАНИЯ РАУНДА (v1.126.0)
+// ─────────────────────────────────────────────────────────────────
+// Раньше раунд создавали две разные функции: startSolo (js/solo.js) для
+// одного игрока и startGroup (здесь) для группы — с разным набором полей,
+// разными проверками и разными ключами доступа. Теперь точка входа одна:
+// состав берётся из единой формы (js/round-setup.js, карточки pl-*),
+// а режим выводится из числа игроков:
+//   • 1 игрок  → mode='solo'  (ввод счёта без маркера);
+//   • 2+ игроков → mode='group' (двойной ввод, маркеры по кругу).
+// Структура карточки игрока в обоих режимах одинаковая — это позволяет
+// обслуживать любой раунд одним экраном ввода счёта.
+// ═════════════════════════════════════════════════════════════════
+function pestovoCreateRound() {
     if (groupStarting) return;
 
     var timeStr = document.getElementById('grp-time').value;
@@ -692,6 +710,15 @@ function startGroup() {
             parsedHcp: parseExactHcp(hcpStr),
             fieldHcp: hcpStr ? getFieldHcp(parseExactHcp(hcpStr), playerTee, gender) : 0
         });
+    }
+
+    // Одиночный раунд исторически требовал точный гандикап (от него зависят
+    // полевые очки Stableford) — правило сохранено в единой форме.
+    if (inputs.length === 1 && !inputs[0].hcpStr) {
+        var oneHcpInput = document.getElementById('pl-hcp-' + inputs[0].idx);
+        if (oneHcpInput) oneHcpInput.classList.add('is-invalid');
+        toast(t('msg_exact_hcp_req'), 'error');
+        return;
     }
 
     function proceedWithGroupStart() {
@@ -778,16 +805,20 @@ function startGroup() {
             pOrder.push(pid);
         }
 
+        // Маркеры по кругу — только когда игроков двое и больше. В одиночном
+        // раунде маркера нет: игрок вводит счёт сам за себя.
         var markerAssignments = {};
-        for (var m = 0; m < pOrder.length; m++) {
-            var markerId = pOrder[m];
-            var targetId = pOrder[(m + 1) % pOrder.length];
+        if (pOrder.length > 1) {
+            for (var m = 0; m < pOrder.length; m++) {
+                var markerId = pOrder[m];
+                var targetId = pOrder[(m + 1) % pOrder.length];
 
-            players[targetId].markedBy = markerId;
-            markerAssignments[markerId] = {
-                targetId: targetId,
-                targetName: players[targetId].name
-            };
+                players[targetId].markedBy = markerId;
+                markerAssignments[markerId] = {
+                    targetId: targetId,
+                    targetName: players[targetId].name
+                };
+            }
         }
 
         var parts = timeStr.split(':');
@@ -806,8 +837,10 @@ function startGroup() {
             players[pOrder[0]].joinedAt = Date.now();
         }
 
+        var isSoloRound = pOrder.length === 1;
         var data = {
-            mode: 'group',
+            // Режим выводится из состава: 1 игрок — соло, 2+ — группа.
+            mode: isSoloRound ? 'solo' : 'group',
             tee: flightTee,
             format: format,
             holeRange: holeRange,
@@ -821,20 +854,31 @@ function startGroup() {
             createdAt: Date.now(),
             createdBy: creatorId,
             creatorPlayerId: pOrder[0],
+            isGuest: !!(players[pOrder[0]] && players[pOrder[0]].isGuest),
             accessKey: accessKey
         };
 
         var ref = db.ref('rounds').push();
         var newRoundId = ref.key;
 
-        localStorage.setItem('pestovo_group_key_' + newRoundId, accessKey);
+        // Ключ доступа пишем под обоими историческими именами: старые
+        // одиночные раунды и общие помощники читают pestovo_solo_key_,
+        // групповые — pestovo_group_key_ (js/utils.js, getActingUid).
+        try {
+            localStorage.setItem('pestovo_group_key_' + newRoundId, accessKey);
+            localStorage.setItem('pestovo_solo_key_' + newRoundId, accessKey);
+        } catch (e) { console.warn('[silent]', e); }
         localStorage.setItem('pestovo_acting_as_' + newRoundId, pOrder[0]);
 
         // QR-коды подключения начинаем генерировать СРАЗУ после нажатия
         // «Начать раунд» — к моменту открытия панели они уже в кэше браузера.
-        prewarmInviteQrImages(newRoundId, players);
+        // В одиночном раунде подключать некого.
+        if (pOrder.length > 1) prewarmInviteQrImages(newRoundId, players);
         ref.set(data).then(function() {
             toast(t('msg_round_started'));
+            // Флаг снимаем до перехода: страница может не уйти (jsdom/тест,
+            // блокировка навигации), и повторный старт должен работать.
+            groupStarting = false;
             window.location.href = 'setup-round.html?round=' + newRoundId;
         }).catch(function(err) {
             groupStarting = false;
@@ -861,8 +905,8 @@ function startGroup() {
                 if (tnRounds.length) {
                     groupStarting = false;
                     toast(currentLang === 'en'
-                        ? '⛔ A player is in a tournament round — group rounds are not available.'
-                        : '⛔ Игрок участвует в турнирном раунде — новый групповой раунд недоступен.', 'error');
+                        ? '⛔ A player is in a tournament round — a new round is not available.'
+                        : '⛔ Игрок участвует в турнирном раунде — новый раунд недоступен.', 'error');
                     return;
                 }
                 if (typeof pestovoShowFioConflictModal === 'function') {
@@ -882,8 +926,12 @@ function startGroup() {
     }
 }
 
+// Историческое имя точки создания: на него ссылаются старые страницы/скрипты
+// (js/round-setup.js, старые QR-ссылки). Соло и группа создаются одинаково.
+function startGroup() { return pestovoCreateRound(); }
+
 // ==========================================
-// ЛИЧНОЕ ОТОБРАЖЕНИЕ STABLEFORD В ГРУППОВОМ РАУНДЕ
+// ЛИЧНОЕ ОТОБРАЖЕНИЕ STABLEFORD В ЕДИНОМ РАУНДЕ
 // ==========================================
 function updateGroupStablefordToggle() {
     var toggle = document.getElementById('group-stableford-toggle');
@@ -937,8 +985,14 @@ function getActingUid() {
         return currentUser.uid;
     }
 
+    // Ключ доступа: единая система записи сохраняет его под обоими именами
+    // (group/solo), старые одиночные раунды — только под pestovo_solo_key_.
     var localKey = localStorage.getItem('pestovo_group_key_' + curRid);
     if (localKey && curRoundData.accessKey === localKey) {
+        return Object.keys(curRoundData.players)[0];
+    }
+    var soloKey = localStorage.getItem('pestovo_solo_key_' + curRid);
+    if (soloKey && curRoundData.accessKey === soloKey) {
         return Object.keys(curRoundData.players)[0];
     }
 
@@ -1032,15 +1086,6 @@ function applyRoundState(data) {
         if (typeof pestovoApplyScreenDisplaySettings === 'function') pestovoApplyScreenDisplaySettings(curRoundData);
     } catch (e) { console.warn("[silent]", e); }
 
-    // Раунд с mode='solo' обслуживает solo.js — делегируем ему
-    if (curRoundData.mode === 'solo') {
-        try { db.ref('rounds/' + curRid).off('value', roundViewHandler); } catch (e) { console.warn("[silent]", e); }
-        roundViewHandler = null;
-        roundViewListening = false;
-        if (typeof bootSoloRoundView === 'function') bootSoloRoundView(curRid);
-        return;
-    }
-
     var setupEl = document.getElementById('setup');
     if (setupEl) setupEl.classList.add('hidden');
     var modeView = document.getElementById('mode-view');
@@ -1064,6 +1109,10 @@ function applyRoundState(data) {
     // созданные протоколом заранее раунды имеют status='scheduled' и ждут
     // времени старта (или кнопки «Старт» в админ-меню).
     canEditGroup = (myUid !== null) && isRoundOpenForScoring(curRoundData, Date.now(), myUid);
+    // Единый экран ввода счёта (v1.126.0): одиночный и групповой раунд
+    // обслуживает один и тот же движок. canEditSolo оставлен как алиас —
+    // его читают общие помощники (js/utils.js, js/score-display.js).
+    try { canEditSolo = canEditGroup; } catch (e) { console.warn("[silent]", e); }
 
     // Если текущий игрок подключился/вошёл в раунд — отмечаем его в базе.
     // До старта турнира не отмечаем: игрок ещё не в игре.
@@ -1091,7 +1140,11 @@ function applyRoundState(data) {
 
         var markContainer = lGet('marker-input-container');
         var dualPanel = lGet('dual-score-panel');
-        if (curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]) {
+        // Одиночный раунд: маркера нет, ввод только за себя — вторая половина
+        // карточки скрыта, счёт вводится в единственной панели.
+        var hasMarkerTarget = !isSinglePlayerRound(curRoundData) &&
+            !!(curRoundData.markerAssignments && curRoundData.markerAssignments[myUid]);
+        if (hasMarkerTarget) {
             myTargetUid = curRoundData.markerAssignments[myUid].targetId;
             var targetPlayer = curRoundData.players && curRoundData.players[myTargetUid];
             var markTitle = lGet('mark-player-name');
@@ -1362,6 +1415,21 @@ function renderPlayHole() {
     if (playParEl) playParEl.textContent = par;
     if (playDistEl) playDistEl.textContent = dist > 0 ? dist : '—';
 
+    // Дедлайн лунки (раньше был только в одиночном раунде) — теперь на общем
+    // экране ввода счёта: план игры и пауза считаются одинаково.
+    var playDlEl = lGet('play-deadline');
+    if (playDlEl) {
+        var deadlineTs = 0;
+        try {
+            deadlineTs = (typeof roundHoleDeadlineTs === 'function')
+                ? roundHoleDeadlineTs(curRoundData, playHole)
+                : (typeof holeDeadline === 'function'
+                    ? holeDeadline(curRoundData.startTime, curRoundData.startHole, playHole) : 0);
+        } catch (e) { console.warn('[silent]', e); }
+        playDlEl.textContent = deadlineTs ? fmtTime(deadlineTs) : '—';
+    }
+    renderPlayRoundInfo(myPlayer);
+
     var order = getRoundOrder(curRoundData);
     var isLastHole = (playHole === order[order.length - 1]);
 
@@ -1463,6 +1531,33 @@ function renderPlayHole() {
         var activeBtn = document.querySelector('#play-holes-nav .hole-btn.active');
         if (activeBtn) activeBtn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
     } catch (e) { console.warn("[silent]", e); }
+}
+
+// Строка «кто играет, с какого ТИ, во сколько и в каком формате» — раньше
+// была только на одиночном экране, теперь одна на весь экран ввода счёта.
+function renderPlayRoundInfo(myPlayer) {
+    var el = lGet('play-round-info');
+    if (!el || !curRoundData) return;
+    var p = myPlayer || {};
+    var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    var teeCode = p.tee || curRoundData.tee || 'wh';
+    var teeHtml = (typeof fmtTeePill === 'function') ? fmtTeePill(teeCode) : escapeHtml(teeCode);
+    var start = (typeof fmtTime === 'function') ? fmtTime(curRoundData.startTime) : '—';
+    var name = (typeof playerDisplayName === 'function') ? playerDisplayName(p, myUid) : (p.name || '');
+    var exact = (typeof fmtExactHcp === 'function') ? fmtExactHcp(p.exactHcp) : '—';
+    var field = (typeof fmtFieldHcp === 'function') ? fmtFieldHcp(p.fieldHcp) : '—';
+    var format = curRoundData.format || 'Stroke Play';
+    var courseLbl = isEn ? 'course' : 'пол.';
+    var startLbl = (typeof t === 'function') ? t('start') : (isEn ? 'Start' : 'Старт');
+    var teeLbl = (typeof t === 'function') ? t('tee_select') : (isEn ? 'Tee' : 'ТИ');
+    var formatLbl = (typeof t === 'function') ? t('format_select') : (isEn ? 'Format' : 'Формат');
+    el.innerHTML =
+        '<div data-act="openPlayerProfileModal" data-arg="' + escapeHtml(myUid || '') + '" data-arg2="' + escapeHtml(curRid || '') + '" style="cursor:pointer;">' +
+            '<b><i class="fas fa-user-circle" style="color:var(--gold);"></i> ' + escapeHtml(name) + '</b>' +
+            ' · <b>HCP:</b> ' + escapeHtml(exact) + ' (' + courseLbl + ' ' + escapeHtml(field) + ')</div>' +
+        '<div><b>' + startLbl + ':</b> ' + escapeHtml(start) +
+            ' · <b>' + teeLbl + ':</b> ' + teeHtml +
+            ' · <b>' + formatLbl + ':</b> ' + escapeHtml(format) + '</div>';
 }
 
 function adjScore(who, delta) {
@@ -1600,6 +1695,16 @@ function checkPlayVerification() {
 
     var myPlayer = curRoundData.players[myUid];
     if (!myPlayer) return;
+
+    // Одиночный раунд (или карточка без маркера): сверять счёт не с кем,
+    // блок «ждём подтверждения маркера» не показываем вообще.
+    if (!myPlayer.markedBy) {
+        box.innerHTML = '';
+        var boxMarkNone = lGet('play-verify-status-mark');
+        if (boxMarkNone) boxMarkNone.innerHTML = '';
+        if (typeof updateDualCompare === 'function') updateDualCompare();
+        return;
+    }
 
     var myS = parseInt(myPlayer.scores && myPlayer.scores[playHole]) || 0;
     var mySub = myPlayer.submitted && myPlayer.submitted[playHole] === true;
@@ -1781,6 +1886,9 @@ function saveHoleScores() {
     // флаг на false/'pending', и табло мигало противоречием.
     if (markerS > 0) {
         updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = (markerS === myScore);
+    } else if (!myMarkerId) {
+        // Маркера нет (одиночный раунд): введённый счёт финальный.
+        updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = true;
     } else {
         updates['rounds/' + curRid + '/players/' + myUid + '/verified/' + h] = 'pending';
     }
@@ -1820,6 +1928,7 @@ function saveHoleScores() {
                 myPlayerLocal.holeTimes = myPlayerLocal.holeTimes || {};
                 if (!(parseInt(myPlayerLocal.holeTimes[h]) > 0)) myPlayerLocal.holeTimes[h] = savedAt;
                 if (markerS > 0) myPlayerLocal.verified = Object.assign({}, myPlayerLocal.verified, (function(){ var o={}; o[h]=(markerS === myScore); return o; })());
+                else if (!myMarkerId) myPlayerLocal.verified = Object.assign({}, myPlayerLocal.verified, (function(){ var o={}; o[h]=true; return o; })());
                 else myPlayerLocal.verified = Object.assign({}, myPlayerLocal.verified, (function(){ var o={}; o[h]='pending'; return o; })());
             }
             if (myTargetUid) {
@@ -1867,6 +1976,22 @@ function saveHoleScores() {
             var par = holePar(h);
             var d = myScore - par;
             if (myScore === 1 || d <= -1) {
+                triggerVictoryConfetti();
+            }
+            if (idx >= 0 && idx < order.length - 1) {
+                playHole = order[idx + 1];
+                myScore = 0;
+                targetScore = 0;
+            }
+        } else if (!myMarkerId) {
+            // Одиночный раунд: сверять счёт не с кем — сохранение финальное,
+            // показываем результат лунки и сразу переходим дальше.
+            var soloPar = (typeof holePar === 'function') ? holePar(h) : 4;
+            var soloRes = (typeof holeResName === 'function') ? holeResName(myScore, soloPar) : '';
+            toast(currentLang === 'en'
+                ? ('✅ <b>Hole ' + escapeHtml(h) + ':</b> <b>' + escapeHtml(myScore) + '</b> saved' + (soloRes ? ' · ' + escapeHtml(soloRes) : ''))
+                : ('✅ <b>Лунка ' + escapeHtml(h) + ':</b> <b>' + escapeHtml(myScore) + '</b> сохранено' + (soloRes ? ' · ' + escapeHtml(soloRes) : '')), 'success', { html: true });
+            if (myScore === 1 || (myScore - soloPar) <= -1) {
                 triggerVictoryConfetti();
             }
             if (idx >= 0 && idx < order.length - 1) {
@@ -2249,6 +2374,11 @@ function toggleInviteQRs() {
 function renderInviteQRs() {
     var cardEl = lGet('invite-qrs-card');
     var activeEl = lGet('invite-qrs-grid');
+    // Одиночный раунд: подключать некого — блок QR-кодов скрыт.
+    if (curRoundData && isSinglePlayerRound(curRoundData)) {
+        if (cardEl) { try { cardEl.classList.add('hidden'); } catch (e) { console.warn('[silent]', e); } }
+        return;
+    }
     if (!canEditGroup || !curRoundData || !activeEl) {
         if (cardEl) { try { cardEl.classList.add('hidden'); } catch (e) { console.warn("[silent]", e); } }
         return;
@@ -2317,7 +2447,12 @@ function renderInviteQRs() {
 // Кнопка «завершить принудительно» передавала в обработчик объект раунда
 // прямо в onclick=. Теперь вызов собран здесь, а разметка ссылается на имя.
 pestovoOnAction('pestovoGroupForceFinish', function () {
-    openForceFinishModal(curRid, curRoundData, { playerId: myUid, isGroup: true });
+    // Единый экран ввода счёта: кнопка принудительного завершения работает
+    // и для одиночного раунда (текст модалки зависит от состава).
+    openForceFinishModal(curRid, curRoundData, {
+        playerId: myUid,
+        isGroup: !isSinglePlayerRound(curRoundData)
+    });
 });
 
 // Общая часть — pestovoCallOfficial() в js/official-call.js. Групповой раунд
@@ -2349,10 +2484,20 @@ function callOfficial(type) {
 // «Судья/маршал едет» и сразу помечаем как прочитанное.
 function listenForCallResponses() {
     if (typeof db === 'undefined' || !myUid) return;
-    if (window._pestovoCallResponsesListening) return;
+    if (window._pestovoCallResponsesListening && window._pestovoCallResponsesUid === myUid) return;
+    // Смена игрока (выход → вход под другим аккаунтом): прежняя подписка на
+    // users/<старый uid>/notifications жила до конца страницы и продолжала
+    // показывать тосты за предыдущего игрока. Снимаем её явно
+    // (аудит 2026-10, п.10 — утечка RTDB-слушателей).
+    if (window._pestovoCallResponsesRef && window._pestovoCallResponsesUid && window._pestovoCallResponsesUid !== myUid) {
+        try { window._pestovoCallResponsesRef.off('child_added'); } catch (e) { console.warn('[silent]', e); }
+    }
     window._pestovoCallResponsesListening = true;
+    window._pestovoCallResponsesUid = myUid;
 
-    db.ref('users/' + myUid + '/notifications').orderByChild('type').equalTo('call_response').on('child_added', function(sn) {
+    var callResponsesRef = db.ref('users/' + myUid + '/notifications').orderByChild('type').equalTo('call_response');
+    window._pestovoCallResponsesRef = callResponsesRef;
+    callResponsesRef.on('child_added', function(sn) {
         var n = sn.val();
         if (!n || n.read) return;
         var markRead = function () {

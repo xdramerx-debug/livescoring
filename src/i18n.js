@@ -106,7 +106,7 @@ export var I18N = {
         share_native: 'Поделиться в приложении',
 
         page_title_live: 'Начать раунд',
-        page_sub_live: 'Одна форма для одиночного и группового раунда — игроков добавляет кнопка «Добавить игрока»',
+        page_sub_live: 'Одна форма создания и один экран ввода счёта для одиночного и группового раунда — игроков добавляет кнопка «Добавить игрока»',
         round_setup: 'Настройки раунда',
         group_setup_title: 'Настройка группы',
         solo_round: 'Одиночный раунд', group_round: 'Групповой раунд',
@@ -638,7 +638,7 @@ export var I18N = {
         share_native: 'Share to Apps',
 
         page_title_live: 'Start Round',
-        page_sub_live: 'One form for solo and group rounds — add players with the "Add Player" button',
+        page_sub_live: 'One setup form and one score-entry screen for solo and group rounds — add players with the “Add Player” button',
         round_setup: 'Round Settings',
         group_setup_title: 'Group Setup',
         solo_round: 'Solo Round', group_round: 'Group Round',

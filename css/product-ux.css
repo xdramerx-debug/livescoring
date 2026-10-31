@@ -1,0 +1,1316 @@
+/* ============================================================
+   ПРОДУКТОВЫЙ UX-СЛОЙ · css/product-ux.css  (v1.129.0)
+   ============================================================
+   Подключается сразу после css/theme-v2.css и ДО
+   css/design-presets.css:
+
+       <link rel="stylesheet" href="css/style.css">
+       <link rel="stylesheet" href="css/theme-v2.css">
+       <link rel="stylesheet" href="css/product-ux.css">   ← этот файл
+       <link rel="stylesheet" href="css/design-presets.css">
+
+   Зачем. theme-v2 задаёт палитру и типографику, style.css — базовые
+   компоненты. Здесь собраны экранные паттерны продукта, которых раньше не
+   было: карточка live-раунда, статус-бейджи, полоса прогресса, чипы
+   фильтров, шаги создания раунда, нижняя навигация, состояния сети и
+   загрузки. Всё опирается на СЕМАНТИЧЕСКИЕ ТОКЕНЫ из theme-v2.css
+   (--status-*, --score-*, --fs-*, --tap, --safe-*), поэтому светлая тема и
+   пресеты оформления подхватывают новые блоки без отдельных правил.
+
+   Правила адресуются через body.pv-ux (класс стоит в разметке), чтобы не
+   конкурировать с базой за счёт !important: (0,2,1) перебивает (0,1,0)
+   style.css. !important — только там, где он уже стоит в базе.
+
+   Порядок разделов:
+     1. База: числа, фокус, тач-таргеты, safe-area
+     2. Статусы и счёт
+     3. Карточка live-раунда
+     4. Полоса прогресса, мини-таблица, аватары
+     5. Скелетоны, пустые состояния, сеть, демо-пометка
+     6. Чипы фильтров, полоса статистики, погодный чип
+     7. Таблица лидеров
+     8. Экран создания раунда
+     9. Нижняя навигация и онбординг
+    10. Микровзаимодействия, reduced-motion, светлая тема
+   ============================================================ */
+
+/* ============================================================
+   1. БАЗА
+   ============================================================ */
+
+/* Числа всегда табличные: счёт не «прыгает» при обновлении. */
+body.pv-ux .pv-num,
+body.pv-ux .lwl-score,
+body.pv-ux .rlb-par,
+body.pv-ux .rlb-num,
+body.pv-ux .rlb-pos,
+body.pv-ux .stat-n,
+body.pv-ux .score-disp,
+body.pv-ux .score-result,
+body.pv-ux .hole-val,
+body.pv-ux .entry-score-square,
+body.pv-ux .score-gross,
+body.pv-ux .pv-live-score,
+body.pv-ux .pv-mini-par,
+body.pv-ux .pv-progress-label,
+body.pv-ux .start-gate-timer {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+}
+
+/* Типографическая шкала: экран → игрок → счёт → подпись. */
+body.pv-ux .page-title { font-size: var(--fs-screen); line-height: 1.16; }
+body.pv-ux .lwl-name { font-size: var(--fs-player); }
+body.pv-ux .lwl-score,
+body.pv-ux .pv-live-score { font-size: clamp(26px, 6.4vw, 32px); line-height: 1; }
+body.pv-ux .lwl-start,
+body.pv-ux .lwl-hole { font-size: var(--fs-note); }
+body.pv-ux .sec-t { font-size: clamp(19px, 4.6vw, 22px); }
+
+/* Видимый фокус у всего, что можно нажать. */
+body.pv-ux a:focus-visible,
+body.pv-ux button:focus-visible,
+body.pv-ux [role="button"]:focus-visible,
+body.pv-ux input:focus-visible,
+body.pv-ux select:focus-visible,
+body.pv-ux textarea:focus-visible,
+body.pv-ux summary:focus-visible,
+body.pv-ux [tabindex]:focus-visible {
+    outline: 3px solid var(--gold-l);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+/* Тач-таргеты: минимум 48 px у действий, 44 px у вторичных чипов. */
+body.pv-ux .pv-chip,
+body.pv-ux .pv-opt,
+body.pv-ux .pv-recent-chip { min-height: 44px; }
+body.pv-ux .pv-cta,
+body.pv-ux .pv-bottomnav a,
+body.pv-ux .pv-onb-action { min-height: var(--tap); }
+
+/* Нижняя навигация не должна закрывать контент. Правило намеренно
+   адресует только <main>: раньше padding-bottom доставался и .nav-c
+   (у шапки тоже класс .container), из-за чего шапка «вырастала» до 169 px,
+   а --nav-h тянул за собой отступы всех страниц. */
+body.pv-ux.pv-has-bottomnav main {
+    padding-bottom: calc(96px + var(--safe-b)) !important;
+}
+body.pv-ux.pv-has-bottomnav main .pv-cta-dock ~ * { margin-bottom: 0; }
+
+/* Главная: герой-блок стал компактнее — первый экран должен показать
+   live-раунды, а не логотип. */
+body.pv-ux .hero {
+    min-height: 0;
+    padding: 84px 18px 28px;
+}
+body.pv-ux .hero-logo {
+    width: 88px !important;
+    max-width: 120px !important;
+    max-height: 96px !important;
+    margin-bottom: 12px !important;
+}
+body.pv-ux .hero-sub { font-size: 11.5px; letter-spacing: 2px; margin-bottom: 8px; }
+body.pv-ux .hero-title { font-size: clamp(24px, 6.4vw, 34px); margin-bottom: 8px; }
+body.pv-ux .hero-desc { font-size: 14px; margin-bottom: 18px; }
+body.pv-ux .hero-demo { margin: 0 0 18px; }
+body.pv-ux .hero-btns .btn { min-height: var(--tap); }
+
+/* ============================================================
+   2. СТАТУСЫ И СЧЁТ
+   ============================================================ */
+
+body.pv-ux .pv-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--r-pill);
+    border: 1px solid transparent;
+    font-size: var(--fs-micro-cap);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.25;
+}
+body.pv-ux .pv-status i { font-size: 11px; }
+
+body.pv-ux .pv-status--live {
+    color: var(--status-live);
+    background: var(--status-live-soft);
+    border-color: var(--status-live-line);
+}
+body.pv-ux .pv-status--done {
+    color: var(--status-done);
+    background: var(--status-done-soft);
+    border-color: var(--status-done-line);
+}
+body.pv-ux .pv-status--pending {
+    color: var(--status-pending);
+    background: var(--status-pending-soft);
+    border-color: var(--status-pending-line);
+}
+body.pv-ux .pv-status--scheduled {
+    color: var(--status-scheduled);
+    background: var(--status-scheduled-soft);
+    border-color: var(--status-scheduled-line);
+}
+
+/* Точка LIVE пульсирует только у активного статуса и молчит при
+   prefers-reduced-motion (см. раздел 10). */
+body.pv-ux .pv-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: none;
+    background: currentColor;
+    box-shadow: 0 0 0 0 currentColor;
+    animation: pv-live-pulse 2.4s ease-out infinite;
+}
+@keyframes pv-live-pulse {
+    0%   { box-shadow: 0 0 0 0 var(--status-live-line); }
+    70%  { box-shadow: 0 0 0 7px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Счёт относительно пара: цвет + всегда знак (−/E/+). */
+body.pv-ux .s-un { color: var(--score-under); }
+body.pv-ux .s-ov { color: var(--score-over); }
+body.pv-ux .s-ev { color: var(--score-par); }
+
+body.pv-ux .pv-score-pill {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    min-width: 2.6em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-weight: 800;
+}
+body.pv-ux .pv-score-pill.s-un { background: var(--score-under-soft); border-color: var(--score-under-soft); }
+body.pv-ux .pv-score-pill.s-ov { background: var(--score-over-soft); border-color: var(--score-over-soft); }
+body.pv-ux .pv-score-pill.s-ev { background: var(--score-par-soft); border-color: var(--score-par-soft); }
+
+/* ============================================================
+   3. КАРТОЧКА LIVE-РАУНДА
+   Порядок чтения: статус и лунка сверху → игроки и счёт в центре →
+   старт и действие снизу. Разметку собирает js/app.js.
+   ============================================================ */
+
+body.pv-ux .live-who-list { display: grid; gap: 12px; }
+
+body.pv-ux .lwl-row {
+    background:
+        radial-gradient(120% 90% at 12% 0%, rgba(216, 178, 99, 0.10), transparent 58%),
+        linear-gradient(168deg, var(--card-h) 0%, var(--card) 58%, var(--bg2) 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    box-shadow: var(--shadow-2);
+    margin-bottom: 0;
+    overflow: hidden;
+}
+body.pv-ux .lwl-row:hover { border-color: var(--line-strong); }
+body.pv-ux .lwl-row.is-open { border-color: var(--gold); }
+body.pv-ux .lwl-row-mine {
+    border-color: var(--status-live-line);
+    box-shadow: var(--shadow-2), inset 3px 0 0 var(--status-live);
+}
+
+body.pv-ux .live-round-row .lwl-toggle {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "top    top"
+        "main   score"
+        "mini   mini"
+        "bar    bar"
+        "meta   meta";
+    gap: 8px 12px;
+    padding: 14px 14px 12px;
+    align-items: center;
+    min-height: var(--tap-lg);
+}
+
+body.pv-ux .pv-live-top {
+    grid-area: top;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+body.pv-ux .pv-live-main {
+    grid-area: main;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+body.pv-ux .pv-live-score-wrap {
+    grid-area: score;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+body.pv-ux .pv-live-score-wrap small {
+    font-size: var(--fs-micro-cap);
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+body.pv-ux .lwl-name {
+    font-size: var(--fs-player);
+    font-weight: 800;
+    color: var(--white);
+    letter-spacing: 0.01em;
+    min-width: 0;
+}
+body.pv-ux .lwl-name > i { color: var(--gold); }
+body.pv-ux .lwl-hole {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 26px;
+    padding: 3px 9px;
+    border-radius: var(--r-pill);
+    background: var(--status-done-soft);
+    border: 1px solid var(--status-done-line);
+    color: var(--text);
+    font-weight: 700;
+}
+body.pv-ux .lwl-hole i { color: var(--gold); }
+body.pv-ux .lwl-hole-done {
+    background: var(--status-live-soft);
+    border-color: var(--status-live-line);
+    color: var(--status-live);
+}
+body.pv-ux .lwl-hole-done i { color: var(--status-live); }
+
+body.pv-ux .lwl-score {
+    font-family: var(--font-num);
+    font-weight: 800;
+    text-align: right;
+    min-width: auto;
+}
+body.pv-ux .lwl-start {
+    grid-area: meta;
+    color: var(--muted);
+    font-size: 12px;
+}
+body.pv-ux .lwl-chev {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--gold);
+}
+body.pv-ux .lwl-my {
+    background: var(--status-live-soft);
+    border-color: var(--status-live-line);
+    color: var(--status-live);
+    min-height: 22px;
+}
+
+/* Мини-таблица игроков группового раунда (в свёрнутой карточке). */
+body.pv-ux .pv-live-mini {
+    grid-area: mini;
+    display: grid;
+    gap: 2px;
+    padding: 8px 0 2px;
+    border-top: 1px dashed var(--line);
+}
+body.pv-ux .pv-mini-row {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto 48px;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: var(--fs-note);
+}
+body.pv-ux .pv-mini-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+    font-weight: 600;
+}
+body.pv-ux .pv-mini-thru { color: var(--muted); font-size: 12px; text-align: right; }
+body.pv-ux .pv-mini-par {
+    text-align: right;
+    font-weight: 800;
+    font-family: var(--font-num);
+    font-size: 16px;
+}
+body.pv-ux .pv-mini-row--me .pv-mini-name { color: var(--status-live); }
+
+/* Аватары-инициалы. */
+body.pv-ux .pv-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--green);
+    color: var(--gold-l);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+body.pv-ux .pv-avatar--lg { width: 32px; height: 32px; flex-basis: 32px; font-size: 13px; }
+
+/* ============================================================
+   4. ПРОГРЕСС РАУНДА
+   ============================================================ */
+
+body.pv-ux .pv-progress {
+    grid-area: bar;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+body.pv-ux .pv-progress-track {
+    position: relative;
+    flex: 1;
+    height: 6px;
+    border-radius: var(--r-pill);
+    background: var(--status-done-soft);
+    overflow: hidden;
+}
+body.pv-ux .pv-progress-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--gold-d), var(--gold-l));
+    transition: width 0.35s ease;
+}
+body.pv-ux .pv-progress-label {
+    flex: none;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+}
+body.pv-ux .pv-progress--done .pv-progress-fill {
+    background: linear-gradient(90deg, var(--status-live), var(--status-live));
+}
+
+/* ============================================================
+   5. СКЕЛЕТОНЫ, ПУСТЫЕ СОСТОЯНИЯ, СЕТЬ, ДЕМО
+   ============================================================ */
+
+body.pv-ux .pv-skel {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--card);
+    margin-bottom: 12px;
+}
+body.pv-ux .pv-skel-line {
+    height: 14px;
+    border-radius: 7px;
+    background: linear-gradient(90deg, var(--card-h) 0%, var(--green) 40%, var(--card-h) 80%);
+    background-size: 220% 100%;
+    animation: pv-skel 1.4s ease-in-out infinite;
+}
+body.pv-ux .pv-skel-line--sm { width: 40%; height: 10px; }
+body.pv-ux .pv-skel-line--lg { height: 34px; width: 55%; }
+@keyframes pv-skel {
+    0%   { background-position: 120% 0; }
+    100% { background-position: -40% 0; }
+}
+
+body.pv-ux .empty {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    padding: 28px 18px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r);
+    background: var(--card);
+    text-align: center;
+}
+body.pv-ux .empty > i { font-size: 26px; color: var(--gold); }
+body.pv-ux .empty p { margin: 0; color: var(--text); font-size: var(--fs-note); }
+
+/* Состояние сети: честное «нет связи», а не «сохранено».
+   Баннер фиксированный под шапкой: он должен быть виден на любом экране,
+   а не только когда пользователь доскроллил до <main>. */
+body.pv-ux .pv-net {
+    position: fixed;
+    /* Внизу, над нижней навигацией: сверху живут тосты (z-index выше любого
+       нашего слоя), и два сообщения накладывались бы друг на друга. */
+    bottom: calc(var(--bottomnav-h, 0px) + var(--safe-b) + 8px);
+    left: 12px;
+    right: 12px;
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 10px 14px;
+    box-shadow: var(--shadow-2);
+    border-radius: var(--rs);
+    border: 1px solid var(--status-pending-line);
+    background: var(--status-pending-soft);
+    color: var(--status-pending);
+    font-size: var(--fs-note);
+    font-weight: 600;
+}
+body.pv-ux .pv-net[hidden] { display: none; }
+body.pv-ux .pv-net > i { flex: 0 0 auto; font-size: 14px; }
+body.pv-ux .pv-net-text { flex: 1 1 auto; min-width: 0; line-height: 1.3; }
+body.pv-ux .pv-net-btn {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    border: 1px solid currentColor;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+body.pv-ux .pv-net-btn:hover { background: rgba(0, 0, 0, 0.16); }
+@media (max-width: 380px) {
+    body.pv-ux .pv-net { font-size: 12px; padding: 8px 10px; gap: 8px; }
+    body.pv-ux .pv-net-btn { font-size: 11px; padding: 4px 8px; }
+}
+
+/* Индикатор сети из js/pwa.js на этих страницах заменён встроенным
+   баннером: он объясняет, что происходит со счётом, а не только «оффлайн». */
+body.pv-ux #online-indicator { display: none !important; }
+
+/* Пометка демо-версии. */
+body.pv-ux .pv-demo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 26px;
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
+    border: 1px dashed var(--status-pending-line);
+    background: var(--status-pending-soft);
+    color: var(--status-pending);
+    font-size: var(--fs-micro-cap);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+body.pv-ux .pv-demo i { font-size: 11px; }
+
+/* ============================================================
+   6. ЧИПЫ, СТАТИСТИКА, ПОГОДА
+   ============================================================ */
+
+body.pv-ux .pv-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0 14px;
+}
+body.pv-ux .pv-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--line-strong);
+    background: var(--card);
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--fs-note);
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+body.pv-ux .pv-chip:hover { border-color: var(--gold); }
+body.pv-ux .pv-chip[aria-pressed="true"] {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #142017;
+}
+body.pv-ux .pv-chip[aria-pressed="true"] i { color: #142017; }
+body.pv-ux .pv-chip-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: var(--r-pill);
+    background: rgba(0, 0, 0, 0.22);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+body.pv-ux .pv-chip[aria-pressed="true"] .pv-chip-count { background: rgba(20, 32, 23, 0.18); }
+
+/* Компактная полоса статистики клуба вместо девяти больших плиток. */
+body.pv-ux .pv-stats-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 18px;
+    padding: 10px 14px;
+    border-radius: var(--rs);
+    border: 1px solid var(--line);
+    background: var(--card);
+    font-size: var(--fs-note);
+    color: var(--muted);
+}
+body.pv-ux .pv-stats-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    white-space: nowrap;
+}
+body.pv-ux .pv-stats-item b {
+    color: var(--white);
+    font-size: 16px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+body.pv-ux .pv-stats-sep { color: var(--line-strong); }
+
+/* Полоса главных цифр — над плитками, во всю ширину сетки. */
+body.pv-ux #club-stats .pv-stats-strip,
+body.pv-ux .stats-grid > .pv-stats-strip {
+    grid-column: 1 / -1;
+}
+
+/* «Клуб в цифрах» — сворачиваем в компактную сетку. */
+body.pv-ux .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+}
+body.pv-ux .stat {
+    padding: 12px 10px;
+    border-radius: var(--rs);
+    background: var(--card);
+    border: 1px solid var(--line);
+    text-align: left;
+}
+body.pv-ux .stat:hover { transform: none; box-shadow: none; border-color: var(--line-strong); }
+body.pv-ux .stat i { font-size: 14px; margin-bottom: 4px; }
+body.pv-ux .stat-n { font-size: 22px; line-height: 1.1; }
+body.pv-ux .stat-l { font-size: 11px; letter-spacing: 0.02em; text-transform: none; }
+
+/* Погода — маленький чип рядом с заголовком. */
+body.pv-ux #nav-weather-container { display: inline-flex; align-items: center; min-height: 32px; }
+body.pv-ux #nav-weather-container > * {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+body.pv-ux #nav-weather-container img,
+body.pv-ux #nav-weather-container svg { width: 16px; height: 16px; }
+
+/* ============================================================
+   7. ТАБЛИЦА ЛИДЕРОВ
+   ============================================================ */
+
+body.pv-ux .pv-lb-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+body.pv-ux .pv-lb-hint {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* Сортировка: на десктопе — клик по заголовку столбца, на телефоне —
+   компактный выбор, потому что шапка таблицы там скрыта. */
+body.pv-ux .pv-lb-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 4px 10px;
+    min-height: 44px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--line-strong);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 12px;
+}
+body.pv-ux .pv-lb-sort-select {
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    min-height: 32px;
+    max-width: 11em;
+}
+body.pv-ux .pv-lb-sort-select:focus-visible { outline: 2px solid var(--gold-l); border-radius: 6px; }
+body.pv-ux #lb-chips { align-items: center; }
+@media (min-width: 721px) {
+    /* На широком экране сортировка живёт в шапке таблицы — селект не нужен. */
+    body.pv-ux .pv-lb-sort { display: none; }
+}
+
+/* Карточка раунда в списке: строку оставляем флекс-строкой (её собирает
+   js/leaderboard.js), но делаем читаемой: дата крупнее, статус справа,
+   «Игроки: N» — без пилюли-растяжки. */
+body.pv-ux .lb-row .lwl-toggle {
+    gap: 10px;
+    padding: 12px 14px;
+    min-height: var(--tap-lg);
+    flex-wrap: wrap;
+}
+body.pv-ux .lb-row .lwl-name { font-size: 15px; flex: 1 1 100%; color: var(--white); }
+body.pv-ux .lb-row .lwl-hole {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+body.pv-ux .lb-row .lwl-score { display: inline-flex; align-items: center; }
+body.pv-ux .lb-row .lwl-start { flex: 0 0 auto; font-size: 12px; }
+body.pv-ux .lb-row .lwl-chev { margin-left: auto; }
+body.pv-ux .lb-row-live { border-color: var(--status-live-line); }
+
+/* «Последние результаты»: строка вторична, поэтому на телефоне она
+   переносится, а не обрезает статус справа. */
+body.pv-ux .recent-row .lwl-toggle {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 12px 14px;
+    min-height: var(--tap);
+}
+body.pv-ux .recent-row .lwl-name { flex: 1 1 auto; min-width: 0; }
+body.pv-ux .recent-row .lwl-hole {
+    flex: 1 1 100%;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body.pv-ux .recent-row .lwl-score { margin-left: auto; }
+body.pv-ux .recent-row .lwl-start { display: none; }
+@media (min-width: 721px) {
+    body.pv-ux .recent-row .lwl-toggle { flex-wrap: nowrap; }
+    body.pv-ux .recent-row .lwl-hole { flex: 0 1 auto; }
+    body.pv-ux .recent-row .lwl-start { display: inline-flex; font-size: 12px; color: var(--muted); }
+}
+
+/* Подробные цифры клуба спрятаны под раскрытие: полоса выше отвечает
+   на главный вопрос, плитки — для тех, кто смотрит глубже. */
+body.pv-ux .pv-stats-more {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+}
+body.pv-ux .pv-stats-more > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: var(--tap);
+    padding: 6px 4px;
+    color: var(--muted);
+    font-size: var(--fs-note);
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+}
+body.pv-ux .pv-stats-more > summary::-webkit-details-marker { display: none; }
+body.pv-ux .pv-stats-more > summary::after {
+    content: "▾";
+    margin-left: auto;
+    color: var(--gold);
+    transition: transform 0.2s ease;
+}
+body.pv-ux .pv-stats-more[open] > summary::after { transform: rotate(180deg); }
+body.pv-ux .pv-stats-more[open] > summary { color: var(--text); }
+body.pv-ux .pv-stats-more > .pv-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* Внутренняя таблица игроков раунда. */
+body.pv-ux .rlb { margin-top: 10px; }
+body.pv-ux .rlb-head {
+    position: sticky;
+    top: calc(var(--nav-h, 64px) + 2px);
+    z-index: 5;
+    background: var(--card-h);
+    border-radius: 8px;
+    border-bottom: 1px solid var(--line-strong);
+    box-shadow: var(--shadow-1);
+}
+body.pv-ux .rlb-head > span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 34px;
+    padding: 4px 2px;
+    font-size: var(--fs-micro-cap);
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    user-select: none;
+}
+body.pv-ux .rlb-sort-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    min-height: 34px;
+    padding: 4px 2px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+}
+body.pv-ux .rlb-sort-btn::after {
+    content: "↕";
+    font-size: 11px;
+    opacity: 0.5;
+}
+body.pv-ux .rlb-head > span[aria-sort="ascending"] .rlb-sort-btn::after { content: "↑"; opacity: 1; color: var(--gold-l); }
+body.pv-ux .rlb-head > span[aria-sort="descending"] .rlb-sort-btn::after { content: "↓"; opacity: 1; color: var(--gold-l); }
+/* Заголовок столбца игрока выровнен по имени в строках, а не по центру:
+   иначе «Игрок» висит над серединой пустой колонки. */
+body.pv-ux .rlb-head > span.rlb-hpl .rlb-sort-btn { justify-content: flex-start; padding-left: 6px; }
+body.pv-ux .rlb-sort-btn:hover { color: var(--gold-l); }
+body.pv-ux .rlb-sort-btn:focus-visible { outline: 2px solid var(--gold-l); outline-offset: -2px; border-radius: 6px; }
+
+body.pv-ux .rlb-row {
+    min-height: 44px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--line-soft);
+    grid-template-columns: 30px minmax(0, 1fr) 52px 52px;
+    gap: 2px 10px;
+}
+body.pv-ux .rlb-row:nth-child(odd) { background: transparent; }
+body.pv-ux .rlb-row:nth-child(even) { background: rgba(255, 255, 255, 0.015); }
+body.pv-ux .rlb-row:focus-visible { outline: 2px solid var(--gold-l); outline-offset: -2px; }
+body.pv-ux .rlb-pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 12px;
+}
+body.pv-ux .rlb-pos.lb-1,
+body.pv-ux .rlb-pos.lb-2,
+body.pv-ux .rlb-pos.lb-3 { color: var(--gold-l); background: rgba(216, 178, 99, 0.12); }
+body.pv-ux .rlb-name { font-size: 14px; font-weight: 700; color: var(--white); }
+body.pv-ux .rlb-thru { display: block; font-size: 11.5px; color: var(--muted); }
+body.pv-ux .rlb-par {
+    font-size: clamp(18px, 5vw, 22px);
+    font-weight: 800;
+}
+body.pv-ux .rlb-num { display: block; text-align: center; font-size: 13px; color: var(--text); }
+body.pv-ux .rlb-sub { display: none; }
+body.pv-ux .rlb-head .rlb-num { display: flex; }
+
+/* На десктопе — все колонки, «липкая» колонка игрока, мягкая зебра. */
+@media (min-width: 721px) {
+    body.pv-ux .rlb-row {
+        grid-template-columns: 34px minmax(160px, 1fr) 58px 54px 58px 58px;
+        gap: 2px 12px;
+    }
+    body.pv-ux .rlb-player,
+    body.pv-ux .rlb-head .rlb-hpl {
+        position: sticky;
+        left: 0;
+        z-index: 4;
+        background: var(--card);
+    }
+    body.pv-ux .rlb-row:nth-child(even) .rlb-player { background: var(--card-h); }
+    body.pv-ux .rlb-row:hover .rlb-player { background: var(--green); }
+    body.pv-ux .rlb-head .rlb-hpl { background: var(--card-h); }
+    body.pv-ux .rlb-num.rlb-dim { color: var(--muted); }
+}
+
+/* Мобильная карточка: только игрок, счёт и статус — остальное в раскрытии. */
+@media (max-width: 720px) {
+    body.pv-ux .rlb-row {
+        grid-template-columns: 30px minmax(0, 1fr) 58px;
+        grid-template-areas:
+            "pos player par"
+            "sub sub    sub";
+        padding: 10px 6px;
+    }
+    body.pv-ux .rlb-pos { grid-area: pos; }
+    body.pv-ux .rlb-player { grid-area: player; }
+    body.pv-ux .rlb-par { grid-area: par; }
+    body.pv-ux .rlb-num { display: none !important; }
+    body.pv-ux .rlb-sub { grid-area: sub; display: block; white-space: normal; line-height: 1.35; }
+    body.pv-ux .rlb-head { display: none; }
+}
+
+/* Бейджи берди/игл/пар — маленькие, не перегружают строку. */
+body.pv-ux .pv-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 20px;
+    padding: 1px 7px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--line);
+    background: var(--card-h);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+body.pv-ux .pv-badge--birdie { color: var(--status-live); border-color: var(--status-live-line); background: var(--status-live-soft); }
+body.pv-ux .pv-badge--eagle { color: var(--status-pending); border-color: var(--status-pending-line); background: var(--status-pending-soft); }
+
+/* ============================================================
+   8. ЭКРАН СОЗДАНИЯ РАУНДА
+   ============================================================ */
+
+body.pv-ux .pv-steps {
+    display: grid;
+    gap: 8px;
+    margin: 4px 0 16px;
+}
+body.pv-ux .pv-steps-track {
+    display: flex;
+    gap: 6px;
+}
+body.pv-ux .pv-steps-seg {
+    flex: 1;
+    height: 6px;
+    border-radius: var(--r-pill);
+    background: var(--status-done-soft);
+    overflow: hidden;
+}
+body.pv-ux .pv-steps-seg.is-done { background: var(--gold); }
+body.pv-ux .pv-steps-seg.is-current { background: linear-gradient(90deg, var(--gold), var(--gold-l)); }
+body.pv-ux .pv-steps-labels {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+}
+body.pv-ux .pv-steps-labels b { color: var(--white); }
+
+/* Шаги мастера «Параметры → Игроки → Старт» (вариант 5). */
+body.pv-ux .unified-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+body.pv-ux .unified-step {
+    min-height: var(--tap);
+    padding: 10px 8px;
+    border-radius: var(--rs);
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+}
+body.pv-ux .unified-step.active {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #142017;
+}
+body.pv-ux .unified-step.active span { background: rgba(20, 32, 23, 0.18); color: #142017; }
+body.pv-ux .unified-step.done { border-color: var(--status-live-line); color: var(--status-live); }
+body.pv-ux .unified-step span {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+body.pv-ux .pv-steps { margin: 0 0 12px; }
+body.pv-ux #unified-setup-card + .pv-steps { margin-top: 12px; }
+body.pv-ux .pv-cta.is-not-ready {
+    background: var(--card-h);
+    border-color: var(--line-strong);
+    color: var(--text);
+    box-shadow: none;
+}
+
+/* Крупные карточки выбора формата и числа лунок. */
+body.pv-ux .pv-opt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    gap: 8px;
+    margin: 8px 0 4px;
+}
+body.pv-ux .pv-opt {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    min-height: var(--tap-lg);
+    padding: 10px 12px;
+    border-radius: var(--rs);
+    border: 1px solid var(--line-strong);
+    background: var(--card);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+body.pv-ux .pv-opt small { font-size: 11px; font-weight: 600; color: var(--muted); }
+body.pv-ux .pv-opt:hover { border-color: var(--gold); }
+body.pv-ux .pv-opt[aria-pressed="true"] {
+    border-color: var(--gold);
+    background: linear-gradient(180deg, rgba(216, 178, 99, 0.18), rgba(216, 178, 99, 0.06));
+    box-shadow: inset 0 0 0 1px var(--gold);
+}
+body.pv-ux .pv-opt[aria-pressed="true"] small { color: var(--gold-l); }
+
+/* Нативный select, из которого читает логика, остаётся в DOM, но скрыт. */
+body.pv-ux .pv-visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Недавние игроки. */
+body.pv-ux .pv-recent {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 10px;
+}
+body.pv-ux .pv-recent-label {
+    flex: 1 1 100%;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+body.pv-ux .pv-recent-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--line-strong);
+    background: var(--card);
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--fs-note);
+    font-weight: 700;
+    cursor: pointer;
+}
+body.pv-ux .pv-recent-chip:hover { border-color: var(--gold); }
+
+/* Inline-валидация. */
+body.pv-ux .pv-field-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    color: var(--status-pending);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+body.pv-ux .pv-field-error[hidden] { display: none; }
+body.pv-ux .form-input.is-invalid,
+body.pv-ux input.is-invalid,
+body.pv-ux select.is-invalid {
+    border-color: var(--status-pending) !important;
+    box-shadow: 0 0 0 2px var(--status-pending-soft);
+}
+
+/* Sticky-CTA в зоне большого пальца. */
+body.pv-ux .pv-cta-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 80;
+    display: none;
+    gap: 10px;
+    padding: 10px 14px calc(10px + var(--safe-b));
+    background: linear-gradient(180deg, rgba(7, 17, 10, 0), rgba(7, 17, 10, 0.92) 42%);
+    backdrop-filter: blur(8px);
+}
+body.pv-ux .pv-cta-dock.is-visible { display: flex; }
+body.pv-ux .pv-cta {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: var(--tap-lg);
+    border-radius: 14px;
+    border: 1px solid var(--gold);
+    background: linear-gradient(160deg, var(--gold-l), var(--gold) 60%, var(--gold-d));
+    color: #142017;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: var(--shadow-2);
+}
+body.pv-ux .pv-cta:disabled { opacity: 0.55; cursor: not-allowed; }
+body.pv-ux .pv-cta-note {
+    flex: 0 0 auto;
+    align-self: center;
+    font-size: 11.5px;
+    color: var(--muted);
+    max-width: 96px;
+    line-height: 1.25;
+}
+body.pv-ux.pv-has-bottomnav .pv-cta-dock { bottom: calc(var(--bottomnav-h) + 0px); }
+body.pv-ux.pv-has-bottomnav .pv-cta-dock { padding-bottom: 10px; }
+
+@media (max-width: 720px) {
+    body.pv-ux.pv-setup-active .pv-cta-dock { display: flex; }
+}
+
+/* ============================================================
+   9. НИЖНЯЯ НАВИГАЦИЯ И ОНБОРДИНГ
+   ============================================================ */
+
+body.pv-ux .pv-bottomnav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    display: none;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 6px 6px calc(6px + var(--safe-b));
+    background: rgba(7, 17, 10, 0.96);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(10px);
+}
+body.pv-ux .pv-bottomnav a,
+body.pv-ux .pv-bottomnav button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: var(--tap);
+    padding: 6px 4px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: 12px;
+    cursor: pointer;
+}
+body.pv-ux .pv-bottomnav i { font-size: 17px; }
+body.pv-ux .pv-bottomnav a[aria-current="page"] { color: var(--gold-l); }
+body.pv-ux .pv-bottomnav a[aria-current="page"] i { color: var(--gold); }
+body.pv-ux .pv-bottomnav a:active,
+body.pv-ux .pv-bottomnav button:active { background: rgba(216, 178, 99, 0.12); }
+body.pv-ux .pv-bottomnav .pv-bn-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0;
+}
+body.pv-ux .pv-bottomnav a[aria-current="page"] .pv-bn-dot { opacity: 1; }
+
+@media (max-width: 720px) {
+    body.pv-ux .pv-bottomnav { display: grid; }
+    /* Гамбургер остаётся доступен, но дублирующее меню не мешает. */
+    body.pv-ux .nav-toggle { min-width: var(--tap); min-height: var(--tap); }
+}
+
+/* Онбординг на один экран. */
+body.pv-ux .pv-onb {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: grid;
+    place-items: center;
+    padding: calc(16px + var(--safe-t)) 16px calc(16px + var(--safe-b));
+    background: rgba(4, 10, 6, 0.72);
+    backdrop-filter: blur(4px);
+}
+body.pv-ux .pv-onb[hidden] { display: none; }
+body.pv-ux .pv-onb-card {
+    width: min(420px, 100%);
+    max-height: 100%;
+    overflow: auto;
+    padding: 22px 20px 18px;
+    border-radius: 20px;
+    border: 1px solid var(--line-strong);
+    background: linear-gradient(168deg, var(--card-h), var(--card) 60%, var(--bg2));
+    box-shadow: var(--shadow-3);
+    text-align: center;
+}
+body.pv-ux .pv-onb-card h2 {
+    margin: 10px 0 6px;
+    font-size: var(--fs-screen);
+    color: var(--white);
+}
+body.pv-ux .pv-onb-card p { margin: 0 0 16px; color: var(--muted); font-size: var(--fs-note); }
+body.pv-ux .pv-onb-logo { width: 64px; height: 64px; object-fit: contain; }
+body.pv-ux .pv-onb-actions { display: grid; gap: 10px; }
+body.pv-ux .pv-onb-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--line-strong);
+    background: var(--card);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+body.pv-ux .pv-onb-action i { color: var(--gold); font-size: 18px; }
+body.pv-ux .pv-onb-action--primary {
+    border-color: var(--gold);
+    background: linear-gradient(160deg, var(--gold-l), var(--gold) 62%, var(--gold-d));
+    color: #142017;
+}
+body.pv-ux .pv-onb-action--primary i { color: #142017; }
+body.pv-ux .pv-onb-skip {
+    margin-top: 10px;
+    min-height: var(--tap);
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: var(--fs-note);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* ============================================================
+   10. МИКРОВЗАИМОДЕЙСТВИЯ, ТЕМЫ, ДОСТУПНОСТЬ
+   ============================================================ */
+
+/* Краткая подсветка изменившейся цифры счёта. */
+body.pv-ux .pv-flash {
+    animation: pv-flash 700ms ease-out;
+}
+@keyframes pv-flash {
+    0%   { background-color: rgba(216, 178, 99, 0.42); box-shadow: 0 0 0 4px rgba(216, 178, 99, 0.28); }
+    100% { background-color: transparent; box-shadow: none; }
+}
+
+/* Ссылка «к началу» для клавиатуры. */
+body.pv-ux .pv-skip-link {
+    position: absolute;
+    left: 8px;
+    top: -60px;
+    z-index: 200;
+    padding: 10px 14px;
+    border-radius: var(--rs);
+    background: var(--gold);
+    color: #142017;
+    font-weight: 800;
+    transition: top 0.15s ease;
+}
+body.pv-ux .pv-skip-link:focus { top: calc(8px + var(--safe-t)); }
+
+/* Светлая тема: поверхности, границы и текст из токенов. */
+body.pv-ux.sun-mode .lwl-row,
+body.pv-ux.sun-mode .pv-skel,
+body.pv-ux.sun-mode .pv-onb-card {
+    background: var(--card) !important;
+    border-color: var(--line) !important;
+    box-shadow: var(--shadow-1) !important;
+}
+body.pv-ux.sun-mode .lwl-name { color: var(--text); }
+body.pv-ux.sun-mode .lwl-row-mine { box-shadow: inset 3px 0 0 var(--status-live); }
+body.pv-ux.sun-mode .pv-bottomnav {
+    background: rgba(255, 255, 255, 0.97) !important;
+    border-top-color: var(--line) !important;
+}
+body.pv-ux.sun-mode .pv-cta-dock {
+    background: linear-gradient(180deg, rgba(246, 248, 245, 0), rgba(246, 248, 245, 0.96) 45%);
+}
+body.pv-ux.sun-mode .pv-onb { background: rgba(16, 26, 19, 0.45); }
+body.pv-ux.sun-mode .pv-chip[aria-pressed="true"],
+body.pv-ux.sun-mode .pv-cta,
+body.pv-ux.sun-mode .pv-onb-action--primary {
+    color: #fffdf5;
+}
+body.pv-ux.sun-mode .pv-chip[aria-pressed="true"] {
+    background: #1f3d2a;
+    border-color: #1f3d2a;
+    color: #fffdf5;
+}
+body.pv-ux.sun-mode .pv-stats-item b { color: var(--text); }
+body.pv-ux.sun-mode .rlb-row:nth-child(even) { background: rgba(16, 26, 19, 0.03); }
+
+/* Предпочтение «меньше движения»: гасим пульсацию, скелетоны и переходы. */
+@media (prefers-reduced-motion: reduce) {
+    body.pv-ux *,
+    body.pv-ux *::before,
+    body.pv-ux *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+    body.pv-ux .pv-status-dot { animation: none; }
+    body.pv-ux .pv-skel-line { animation: none; background: var(--card-h); }
+    body.pv-ux .pv-flash { animation: none; outline: 2px solid var(--gold); }
+}
+
+/* Крупные экраны: карточки live-раундов в две колонки. */
+@media (min-width: 900px) {
+    body.pv-ux .live-who-list--grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

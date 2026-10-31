@@ -14,14 +14,16 @@
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_leaderboard">Все раунды — Пестово</title>
     <link rel="stylesheet" href="css/style.css?v=ca1cd0cd">
-    <link rel="stylesheet" href="css/theme-v2.css?v=a9604786">
+    <link rel="stylesheet" href="css/theme-v2.css?v=84a0a0ea">
+    <link rel="stylesheet" href="css/product-ux.css?v=25f60696">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/ui-events.js?v=5ba225a1"></script>
     <script src="js/design-system.js?v=394cc00f"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
-    <link rel="stylesheet" href="css/fontawesome-subset.css?v=aa41e310">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=132a6b88">
 </head>
-<body>
+<body class="pv-ux pv-board pv-has-bottomnav">
+<a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
@@ -45,7 +47,31 @@
 
 <div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-trophy"></i> <span data-i18n="nav_leaderboard">Все раунды</span></h1></div></div>
 
-<main class="container" style="padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:60px;">
+<main class="container" id="pv-main" tabindex="-1" style="padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:60px;">
+    <div class="pv-chips" role="group" id="lb-chips">
+        <button type="button" class="pv-chip" id="lb-chip-all" data-act="lbSetChip" data-arg="all" aria-pressed="true">
+            <i class="fas fa-layer-group" aria-hidden="true"></i> <span data-i18n="pv_filter_all">Все</span>
+        </button>
+        <button type="button" class="pv-chip" id="lb-chip-live" data-act="lbSetChip" data-arg="active" aria-pressed="false">
+            <span class="pv-status-dot" aria-hidden="true"></span> <span data-i18n="pv_lb_live">Live</span>
+        </button>
+        <button type="button" class="pv-chip" id="lb-chip-done" data-act="lbSetChip" data-arg="completed" aria-pressed="false">
+            <i class="fas fa-flag-checkered" aria-hidden="true"></i> <span data-i18n="pv_lb_done">Завершённые</span>
+        </button>
+        <button type="button" class="pv-chip" id="lb-chip-mine" data-act="lbSetChip" data-arg="mine" aria-pressed="false">
+            <i class="fas fa-user" aria-hidden="true"></i> <span data-i18n="pv_lb_mine">Мой раунд</span>
+        </button>
+        <label class="pv-lb-sort" for="lb-sort">
+            <i class="fas fa-arrow-down-wide-short" aria-hidden="true"></i>
+            <span class="pv-visually-hidden" data-i18n="pv_lb_sort">Сортировка по столбцу</span>
+            <select id="lb-sort" class="pv-lb-sort-select">
+                <option value="toPar:asc" data-i18n="lb_sort_topar">Счёт к пару</option>
+                <option value="gross:asc" data-i18n="lb_sort_gross">Gross</option>
+                <option value="stblField:desc" data-i18n="lb_sort_stbl">Stableford</option>
+                <option value="name:asc" data-i18n="lb_sort_name">Имя</option>
+            </select>
+        </label>
+    </div>
     <div class="card page-filters-card">
         <details class="page-filters-details">
             <summary><span><i class="fas fa-magnifying-glass"></i> <span data-i18n="filters_search_toggle">Поиск и фильтры</span></span><span class="page-filters-active" hidden></span><i class="fas fa-chevron-down page-filters-chevron" aria-hidden="true"></i></summary>
@@ -73,19 +99,20 @@
     <div id="lb-container"><div class="loading"><div class="spinner"></div></div></div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.128.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.129.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
 <script defer src="js/score-pad.js?v=03df3958"></script>
-<script type="module" src="dist/livescoring-modules.js?v=338a0efc"></script>
+<script type="module" src="dist/livescoring-modules.js?v=049453e9"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
 <script defer src="js/utils.js?v=a5e99f2e"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
-<script defer src="js/leaderboard.js?v=2ddbe92f"></script>
+<script defer src="js/leaderboard.js?v=4e04db16"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/page-filter-summary.js?v=a1d71c2b"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
+<script defer src="js/product-ux.js?v=ecc8daa1"></script>
 </body>
 </html>

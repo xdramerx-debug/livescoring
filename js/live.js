@@ -328,7 +328,14 @@ function showGroupSetup() {
     var now = new Date();
     var timeInput = document.getElementById('grp-time');
     if (timeInput && !timeInput.value) {
-        timeInput.value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        // v1.129.0: дефолт — «ближайшее время», а не текущая минута.
+        // Игрок обычно стартует через несколько минут, и значение 14:37
+        // приходилось поправлять вручную. Округляем вверх до 5 минут.
+        var startAt = new Date(now.getTime());
+        var rest = startAt.getMinutes() % 5;
+        if (rest !== 0) startAt.setMinutes(startAt.getMinutes() + (5 - rest));
+        startAt.setSeconds(0, 0);
+        timeInput.value = String(startAt.getHours()).padStart(2, '0') + ':' + String(startAt.getMinutes()).padStart(2, '0');
     }
 
     var teeSel = document.getElementById('grp-tee');

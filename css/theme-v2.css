@@ -94,6 +94,57 @@
 
     /* Кольцо фокуса */
     --ring: 0 0 0 3px rgba(216, 178, 99, 0.28);
+
+    /* ── СЕМАНТИЧЕСКИЕ ТОКЕНЫ (v1.129.0) ──────────────────────────
+       Смысл вместо цвета: «live», «завершён», «ожидание», «недобор/
+       перебор/ровно». Компоненты ссылаются на эти имена, а не на
+       конкретные оттенки, поэтому светлая тема меняет только значения.
+       Контраст каждой пары проверен на своих поверхностях (WCAG AA,
+       см. tools/test-design-tokens.js). */
+    --status-live: #7ff0ad;
+    --status-live-ink: #05230f;
+    --status-live-soft: rgba(127, 240, 173, 0.14);
+    --status-live-line: rgba(127, 240, 173, 0.46);
+
+    --status-done: #c3d3c8;
+    --status-done-ink: #14231a;
+    --status-done-soft: rgba(195, 211, 200, 0.12);
+    --status-done-line: rgba(195, 211, 200, 0.34);
+
+    --status-pending: #ffd479;
+    --status-pending-ink: #2a1c00;
+    --status-pending-soft: rgba(255, 212, 121, 0.14);
+    --status-pending-line: rgba(255, 212, 121, 0.44);
+
+    --status-scheduled: #8fcdf6;
+    --status-scheduled-ink: #052235;
+    --status-scheduled-soft: rgba(143, 205, 246, 0.14);
+    --status-scheduled-line: rgba(143, 205, 246, 0.42);
+
+    /* Счёт относительно пара. Форма (знак −/E/+) всегда дублирует цвет. */
+    --score-under: #ff9c8c;
+    --score-under-soft: rgba(255, 156, 140, 0.14);
+    --score-over: #96cdf2;
+    --score-over-soft: rgba(150, 205, 242, 0.14);
+    --score-par: #dfe8e1;
+    --score-par-soft: rgba(223, 232, 225, 0.10);
+
+    /* Типографическая шкала продукта (а не «на глаз»). */
+    --fs-screen: clamp(24px, 5.6vw, 28px);
+    --fs-player: clamp(16px, 4.2vw, 18px);
+    --fs-score: clamp(28px, 7.4vw, 36px);
+    --fs-note: 13px;
+    --fs-micro-cap: 11px;
+    --font-num: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+    /* Тач-таргеты и безопасные зоны iPhone. */
+    --tap: 48px;
+    --tap-lg: 56px;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-l: env(safe-area-inset-left, 0px);
+    --safe-r: env(safe-area-inset-right, 0px);
+    --bottomnav-h: 0px;
 }
 
 html {
@@ -1310,6 +1361,36 @@ body.sun-mode {
     --red: #c0392b;
     --blue: #1769aa;
     --yellow: #a86f0d;
+
+    /* Семантика в светлой теме: те же имена, другие значения.
+       Тёмную тему не инвертируем механически — подбираем контраст. */
+    --status-live: #0f6b3a;
+    --status-live-ink: #ffffff;
+    --status-live-soft: rgba(15, 107, 58, 0.10);
+    --status-live-line: rgba(15, 107, 58, 0.42);
+
+    --status-done: #42544a;
+    --status-done-ink: #ffffff;
+    --status-done-soft: rgba(66, 84, 74, 0.08);
+    --status-done-line: rgba(66, 84, 74, 0.32);
+
+    --status-pending: #8a5a00;
+    --status-pending-ink: #ffffff;
+    --status-pending-soft: rgba(138, 90, 0, 0.10);
+    --status-pending-line: rgba(138, 90, 0, 0.40);
+
+    --status-scheduled: #12588a;
+    --status-scheduled-ink: #ffffff;
+    --status-scheduled-soft: rgba(18, 88, 138, 0.10);
+    --status-scheduled-line: rgba(18, 88, 138, 0.36);
+
+    --score-under: #a3231a;
+    --score-under-soft: rgba(163, 35, 26, 0.09);
+    --score-over: #11577f;
+    --score-over-soft: rgba(17, 87, 127, 0.09);
+    --score-par: #2c3a31;
+    --score-par-soft: rgba(44, 58, 49, 0.07);
+
     background: var(--bg) !important;
     color: var(--text) !important;
 }

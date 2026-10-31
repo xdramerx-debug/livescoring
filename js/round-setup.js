@@ -745,7 +745,10 @@ function setupValidateInline() {
         var hcpEl = document.getElementById('pl-hcp-' + p.idx);
         if (nameEl) nameEl.removeAttribute('aria-invalid');
         if (hcpEl) hcpEl.removeAttribute('aria-invalid');
-        if (!String(p.name || '').trim()) {
+        // «12345» — не имя: требуем хотя бы одну нецифру. Иначе раунд
+        // создавался с игроком «12345» (находка аудита 2026-10).
+        var nameStr = String(p.name || '').trim();
+        if (!nameStr || !/[^\d\s.,+-]/.test(nameStr)) {
             hasNameError = true;
             setupMarkFieldError(nameEl, t('pv_err_name'));
             if (!firstInvalid) firstInvalid = nameEl;

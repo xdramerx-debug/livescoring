@@ -211,3 +211,67 @@ if (typeof window !== 'undefined') {
     window.pestovoOnAction = pestovoOnAction;
     window.PESTOVO_ACTIONS = PESTOVO_ACTIONS;
 }
+
+/* ─────────────────────── ПОДПИСИ ПОЛЕЙ ───────────────────────
+   <label> без for рядом с полем — не подпись, а просто текст: скринридер
+   не назовёт поле, а тап по подписи не поставит в него курсор. В разметке
+   таких пар было больше шестидесяти (форма входа, гандикап, слоты игроков
+   в раунде — часть рисуется из шаблонов JS, часть руками в HTML).
+   Связываем сами: label ищет первый контрол правее себя в том же блоке и
+   получает for=его id. Работает и для разметки, появившейся после загрузки,
+   поэтому наблюдаем за добавленными узлами (без записи в DOM, если связь
+   уже есть, — иначе получился бы цикл, как у #setup в v1.129.0). */
+var PESTOVO_FIELD_SEQ = 0;
+function pestovoLinkLabels(root) {
+    var scope = root || (typeof document !== 'undefined' ? document : null);
+    if (!scope || !scope.querySelectorAll) return 0;
+    var labels = scope.querySelectorAll('label:not([for])');
+    var linked = 0;
+    for (var i = 0; i < labels.length; i++) {
+        var label = labels[i];
+        if (label.control) continue;                       // label уже обёртка поля
+        if (label.querySelector('input,select,textarea')) continue;
+        var node = label.nextElementSibling;
+        var control = null;
+        while (node && !control) {
+            if (/^(INPUT|SELECT|TEXTAREA)$/.test(node.tagName)) control = node;
+            else control = node.querySelector('input,select,textarea');
+            node = node.nextElementSibling;
+        }
+        if (!control) continue;
+        if (!control.id) control.id = 'pv-field-' + (++PESTOVO_FIELD_SEQ);
+        label.setAttribute('for', control.id);
+        linked++;
+    }
+    return linked;
+}
+if (typeof document !== 'undefined') {
+    pestovoLinkLabels(document);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { pestovoLinkLabels(document); });
+    }
+    if (typeof MutationObserver === 'function') {
+        var labelPending = false;
+        var observer = new MutationObserver(function (list) {
+            for (var i = 0; i < list.length; i++) {
+                var added = list[i].addedNodes;
+                for (var j = 0; j < added.length; j++) {
+                    var node = added[j];
+                    if (node.nodeType !== 1) continue;
+                    if (node.tagName === 'LABEL' || (node.querySelector && node.querySelector('label:not([for])'))) {
+                        if (!labelPending) {
+                            labelPending = true;
+                            (window.requestAnimationFrame || window.setTimeout)(function () {
+                                labelPending = false;
+                                pestovoLinkLabels(document);
+                            }, 16);
+                        }
+                        break;
+                    }
+                }
+            }
+        });
+        observer.observe(document.documentElement || document, { childList: true, subtree: true });
+    }
+    if (typeof window !== 'undefined') window.pestovoLinkLabels = pestovoLinkLabels;
+}

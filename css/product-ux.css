@@ -640,8 +640,12 @@ body.pv-ux .pv-lb-sort-select {
     font-family: inherit;
     font-size: 13px;
     font-weight: 700;
-    min-height: 32px;
+    min-height: 40px;
     max-width: 11em;
+}
+/* Палец, а не курсор: селектор сортировки должен попадать под большой палец. */
+@media (pointer: coarse) {
+    body.pv-ux .pv-lb-sort-select { min-height: 44px; }
 }
 body.pv-ux .pv-lb-sort-select:focus-visible { outline: 2px solid var(--gold-l); border-radius: 6px; }
 body.pv-ux #lb-chips { align-items: center; }

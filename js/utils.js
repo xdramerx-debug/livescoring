@@ -9916,6 +9916,46 @@ var PESTOVO_TOURNAMENT_DISPLAY_KEYS = [
     'cardBanner', 'cardMeta', 'cardFormats', 'cardDescription',
     'detailHero', 'detailDescription', 'detailMetrics', 'detailTabs'
 ];
+// 10 компоновок экрана ввода счёта. Выбираются в админ-панели
+// («Ввод счёта» → «Вид экрана ввода») и действуют для всех игроков:
+// settings/scoring_display.layout. Стили — css/style.css, блок 1.128.0.
+var PESTOVO_SCORE_DISPLAY_LAYOUTS = [
+    'classic', 'compact', 'large', 'zen', 'glass',
+    'neon', 'sand', 'scoreboard', 'cards', 'split'
+];
+// Акцент интерфейса ввода: меняет цвет активной лунки, рамки счёта,
+// кнопки «+» и кнопки сохранения (CSS-переменные --entry-accent*).
+var PESTOVO_SCORE_DISPLAY_ACCENTS = ['gold', 'emerald', 'azure', 'violet', 'crimson'];
+// Размер цифр счёта: обычный, крупный, очень крупный.
+var PESTOVO_SCORE_DISPLAY_SIZES = ['normal', 'large', 'xl'];
+var PESTOVO_SCORE_DISPLAY_LAYOUT_META = {
+    classic: { ru: 'Классика', en: 'Classic', ruHint: 'Текущий премиум-вид клуба', enHint: 'The club premium look' },
+    compact: { ru: 'Компактная', en: 'Compact', ruHint: 'Больше блоков на экране телефона', enHint: 'Fits more on a phone screen' },
+    large: { ru: 'Крупная', en: 'Large', ruHint: 'Максимальные цифры и кнопки', enHint: 'Biggest digits and buttons' },
+    zen: { ru: 'Дзен', en: 'Zen', ruHint: 'Плоские панели без свечения', enHint: 'Flat panels, no glow' },
+    glass: { ru: 'Стекло', en: 'Glass', ruHint: 'Полупрозрачные панели с размытием', enHint: 'Translucent blurred panels' },
+    neon: { ru: 'Неон', en: 'Neon', ruHint: 'Тёмное табло со свечением', enHint: 'Dark glowing scoreboard' },
+    sand: { ru: 'Песок', en: 'Sand', ruHint: 'Светлая карточка для игры на солнце', enHint: 'Light card for sunny days' },
+    scoreboard: { ru: 'Табло', en: 'Scoreboard', ruHint: 'Моноширинные цифры, плотная шапка', enHint: 'Tabular digits, dense header' },
+    cards: { ru: 'Карточки', en: 'Cards', ruHint: 'Панели как отдельные карточки', enHint: 'Panels as separate cards' },
+    split: { ru: 'Разделённая', en: 'Split', ruHint: 'Сильный акцент на двух колонках', enHint: 'Strong two-column separation' }
+};
+var PESTOVO_SCORE_DISPLAY_ACCENT_META = {
+    gold: { ru: 'Золото', en: 'Gold', css: '#c9a84c' },
+    emerald: { ru: 'Изумруд', en: 'Emerald', css: '#2ecc71' },
+    azure: { ru: 'Лазурь', en: 'Azure', css: '#4aa8ff' },
+    violet: { ru: 'Фиалка', en: 'Violet', css: '#a06bff' },
+    crimson: { ru: 'Багрянец', en: 'Crimson', css: '#ff6b6b' }
+};
+var PESTOVO_SCORE_DISPLAY_SIZE_META = {
+    normal: { ru: 'Обычный', en: 'Normal' },
+    large: { ru: 'Крупный', en: 'Large' },
+    xl: { ru: 'Очень крупный', en: 'Extra large' }
+};
+function pestovoScoreDisplayChoice(value, allowed, fallback) {
+    var text = String(value == null ? '' : value);
+    return allowed.indexOf(text) !== -1 ? text : fallback;
+}
 var PESTOVO_SCORE_DISPLAY_KEYS = [
     'holeInfo', 'holeNumber', 'par', 'distance', 'deadline', 'holes', 'input',
     'myScore', 'markerScore', 'scoreComparison', 'verification', 'pace',
@@ -10009,6 +10049,9 @@ function normalizePestovoDisplaySettings(name, value) {
             visible[key] = key === 'input' || key === 'myScore' ? true : pestovoDisplayBool(visibleSource[key], true);
         });
         return {
+            layout: pestovoScoreDisplayChoice(source.layout, PESTOVO_SCORE_DISPLAY_LAYOUTS, 'classic'),
+            accent: pestovoScoreDisplayChoice(source.accent, PESTOVO_SCORE_DISPLAY_ACCENTS, 'gold'),
+            scoreSize: pestovoScoreDisplayChoice(source.scoreSize, PESTOVO_SCORE_DISPLAY_SIZES, 'normal'),
             order: pestovoDisplayOrder(source.order, PESTOVO_SCORE_DISPLAY_ORDER, PESTOVO_SCORE_DISPLAY_ORDER),
             visible: visible
         };
@@ -10099,6 +10142,12 @@ function pestovoApplyScoringDisplay(round) {
     if (typeof document === 'undefined' || !document.querySelectorAll) return;
     var config = pestovoEffectiveScoringDisplay(round);
     document.querySelectorAll('.score-entry:not([data-entry-preview])').forEach(function(root) {
+        // Вид, акцент и размер цифр — атрибутами на корне карточки, поэтому
+        // один и тот же экран (setup-round.html и scorer.html) обслуживают
+        // все 10 компоновок без отдельной разметки.
+        root.setAttribute('data-entry-layout', config.layout || 'classic');
+        root.setAttribute('data-entry-accent', config.accent || 'gold');
+        root.setAttribute('data-entry-size', config.scoreSize || 'normal');
         var blocks = Array.prototype.slice.call(root.children).filter(function(element) { return element.hasAttribute('data-entry-block'); });
         var sorted = config.order.map(function(key) {
             return blocks.find(function(element) { return element.getAttribute('data-entry-block') === key; });
@@ -10162,6 +10211,13 @@ if (typeof window !== 'undefined') {
     window.PESTOVO_TOURNAMENT_DISPLAY_ORDER = PESTOVO_TOURNAMENT_DISPLAY_ORDER;
     window.PESTOVO_TOURNAMENT_DISPLAY_KEYS = PESTOVO_TOURNAMENT_DISPLAY_KEYS;
     window.PESTOVO_SCORE_DISPLAY_KEYS = PESTOVO_SCORE_DISPLAY_KEYS;
+    window.PESTOVO_SCORE_DISPLAY_LAYOUTS = PESTOVO_SCORE_DISPLAY_LAYOUTS;
+    window.PESTOVO_SCORE_DISPLAY_ACCENTS = PESTOVO_SCORE_DISPLAY_ACCENTS;
+    window.PESTOVO_SCORE_DISPLAY_SIZES = PESTOVO_SCORE_DISPLAY_SIZES;
+    window.PESTOVO_SCORE_DISPLAY_LAYOUT_META = PESTOVO_SCORE_DISPLAY_LAYOUT_META;
+    window.PESTOVO_SCORE_DISPLAY_ACCENT_META = PESTOVO_SCORE_DISPLAY_ACCENT_META;
+    window.PESTOVO_SCORE_DISPLAY_SIZE_META = PESTOVO_SCORE_DISPLAY_SIZE_META;
+    window.pestovoScoreDisplayChoice = pestovoScoreDisplayChoice;
     window.PESTOVO_TOURNAMENT_DISPLAY_META = PESTOVO_TOURNAMENT_DISPLAY_META;
     window.PESTOVO_SCORE_DISPLAY_META = PESTOVO_SCORE_DISPLAY_META;
     window.getPestovoDisplaySettings = getPestovoDisplaySettings;

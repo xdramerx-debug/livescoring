@@ -14,6 +14,9 @@ const selectorGroups = [
     ['tournament layout selector', '#tournaments-display-layout', 1],
     ['tournament elements', '#tournaments-display-elements .screen-display-option', 13],
     ['score-entry elements', '#score-entry-display-elements .screen-display-option', 19],
+    ['score-entry layout tiles', '#score-entry-display-layouts .score-layout-tile', 10],
+    ['score-entry accents', '#score-entry-display-accent .score-accent-swatch', 5],
+    ['score-entry digit sizes', '#score-entry-display-size .score-size-btn', 3],
     ['tournament QR elements', '#tn-score-display-elements .screen-display-option', 19],
     ['tournament section order', '#tournaments-display-order [data-display-order-move]', 6],
     ['score-entry block order', '#score-entry-display-order [data-display-order-move]', 6],
@@ -100,6 +103,11 @@ const fragments = ['tab-tournamentsview', 'tab-data', 'tab-tncards', 'tab-scoree
         await page.locator('#tournaments-display-elements input[data-display-key="search"]').check();
         await page.locator('#score-entry-display-elements input[data-display-key="par"]').check();
         await page.locator('#tn-score-display-elements input[data-display-key="qr"]').check();
+        await page.locator('#score-entry-display-layouts [data-score-layout="split"]').click();
+        assert.strictEqual(await page.evaluate(() => document.querySelector('#score-entry-display-layouts .is-active').getAttribute('data-score-layout')),
+            'split', 'layout tile is tappable at 390px');
+        await page.locator('#score-entry-display-accent [data-score-accent="emerald"]').click();
+        await page.locator('#score-entry-display-size [data-score-size="xl"]').click();
         await page.locator('#tournaments-display-order [data-display-order-move="down"]').first().click();
         await page.locator('#score-entry-display-order [data-display-order-move="down"]').first().click();
         assert.strictEqual(await page.locator('[data-display-save]').count(), 3, 'all shared settings have a save/apply action');

@@ -6898,3 +6898,506 @@ body.lb-tv main { padding-top: 12px !important; }
     .hero-title { font-size: 22px !important; margin-bottom: 8px !important; }
     .hero-desc, .hero-sub { font-size: 12px !important; margin-bottom: 10px !important; }
 }
+
+/* ==========================================================
+   1.128.0 — ВАРИАНТЫ ЭКРАНА ВВОДА СЧЁТА (10 компоновок)
+   Админ выбирает компоновку, акцент и размер цифр один раз
+   для всех (settings/scoring_display); атрибуты ставит
+   pestovoApplyScoringDisplay() на корень .score-entry:
+     data-entry-layout  — classic|compact|large|zen|glass|
+                          neon|sand|scoreboard|cards|split
+     data-entry-accent  — gold|emerald|azure|violet|crimson
+     data-entry-size    — normal|large|xl
+   Ниже — только визуальный слой: разметка, порядок блоков и
+   видимость элементов остаются общими.
+   ========================================================== */
+
+/* Одиночная панель не должна «съедаться» правилом .dual-half{display:flex}
+   (оно идёт позже .hidden в файле и перебивало его при равной
+   специфичности): в одиночном раунде маркера нет, второй панели быть не
+   должно. */
+.dual-half.hidden{ display:none!important; }
+
+/* ── Акцент и размер цифр: общие переменные ── */
+.score-entry{
+    --entry-accent:#c9a84c;
+    --entry-accent-2:#e6cd77;
+    --entry-accent-ink:#142017;
+    --entry-accent-soft:rgba(201,168,76,.18);
+    --entry-dual-sq:68px;
+    --entry-dual-fs:42px;
+    --entry-solo-sq:clamp(72px,20vw,96px);
+    --entry-solo-fs:clamp(40px,11vw,56px);
+}
+.score-entry[data-entry-accent="emerald"]{
+    --entry-accent:#2ecc71;--entry-accent-2:#7df0ab;--entry-accent-ink:#06240f;--entry-accent-soft:rgba(46,204,113,.20);
+}
+.score-entry[data-entry-accent="azure"]{
+    --entry-accent:#4aa8ff;--entry-accent-2:#9ed2ff;--entry-accent-ink:#04203a;--entry-accent-soft:rgba(74,168,255,.20);
+}
+.score-entry[data-entry-accent="violet"]{
+    --entry-accent:#a06bff;--entry-accent-2:#cbb0ff;--entry-accent-ink:#1c0b38;--entry-accent-soft:rgba(160,107,255,.20);
+}
+.score-entry[data-entry-accent="crimson"]{
+    --entry-accent:#ff6b6b;--entry-accent-2:#ffb0b0;--entry-accent-ink:#3a0a0a;--entry-accent-soft:rgba(255,107,107,.20);
+}
+.score-entry .dual-half__score .score-disp .entry-score-square{
+    width:var(--entry-dual-sq)!important;font-size:var(--entry-dual-fs)!important;
+    border-color:var(--entry-accent)!important;
+    background:linear-gradient(180deg,var(--entry-accent-soft),rgba(255,255,255,.02))!important;
+}
+.score-entry .score-disp .entry-score-square{
+    width:var(--entry-solo-sq)!important;font-size:var(--entry-solo-fs)!important;
+    border-color:var(--entry-accent)!important;
+    background:linear-gradient(180deg,var(--entry-accent-soft),rgba(255,255,255,.02))!important;
+}
+.score-entry .dual-half--my{
+    border-top-color:var(--entry-accent)!important;
+    background:linear-gradient(180deg,var(--entry-accent-soft),transparent)!important;
+}
+.score-entry .dual-btn--plus{border-color:var(--entry-accent)!important;color:var(--entry-accent-2)!important;}
+.score-entry .hole-btn.active{
+    background:linear-gradient(160deg,var(--entry-accent-2) 0%,var(--entry-accent) 56%,var(--entry-accent) 100%)!important;
+    border-color:rgba(255,255,255,.35)!important;
+}
+.score-entry .hole-btn.active .entry-hole-number,
+.score-entry .hole-btn.active .entry-hole-number small,
+.score-entry .hole-btn.active .entry-marker,
+.score-entry .hole-btn.active .score-gross{color:var(--entry-accent-ink)!important;}
+.score-entry .score-disp .score-gross{color:var(--entry-accent-2)!important;}
+.score-entry .score-result{color:var(--entry-accent-2)!important;border-color:var(--entry-accent)!important;}
+.score-entry .btn-g{
+    background:linear-gradient(160deg,var(--entry-accent-2) 0%,var(--entry-accent) 55%,var(--entry-accent) 100%)!important;
+    color:var(--entry-accent-ink)!important;
+}
+.score-entry[data-entry-size="large"]{--entry-dual-sq:80px;--entry-dual-fs:50px;--entry-solo-sq:clamp(82px,23vw,112px);--entry-solo-fs:clamp(46px,13vw,64px);}
+.score-entry[data-entry-size="xl"]{--entry-dual-sq:92px;--entry-dual-fs:58px;--entry-solo-sq:clamp(94px,27vw,128px);--entry-solo-fs:clamp(52px,15vw,74px);}
+
+/* ── 1. Классика: базовый премиум-вид (без переопределений) ── */
+
+/* ── 2. Компактная: больше информации на экране телефона ── */
+.score-entry[data-entry-layout="compact"]{padding:10px!important;border-radius:16px!important;}
+.score-entry[data-entry-layout="compact"] .hole-display{margin-bottom:8px!important;border-radius:12px!important;}
+.score-entry[data-entry-layout="compact"] .hole-box{padding:7px 3px 6px!important;}
+.score-entry[data-entry-layout="compact"] .hole-lbl{font-size:8px!important;letter-spacing:.8px!important;}
+.score-entry[data-entry-layout="compact"] .hole-val{font-size:clamp(17px,4.6vw,24px)!important;}
+.score-entry[data-entry-layout="compact"] .hole-nav{grid-template-columns:repeat(9,minmax(0,1fr))!important;gap:3px!important;}
+.score-entry[data-entry-layout="compact"] .hole-btn:not(.active):not(.done){min-height:50px!important;border-radius:9px!important;padding:2px 0!important;}
+.score-entry[data-entry-layout="compact"] .entry-hole-number{font-size:10.5px!important;}
+.score-entry[data-entry-layout="compact"] .holes-toggle{min-height:36px!important;font-size:12px!important;}
+.score-entry[data-entry-layout="compact"] .dual-half{padding:8px 5px!important;gap:5px!important;--entry-dual-sq:56px;--entry-dual-fs:34px;}
+.score-entry[data-entry-layout="compact"] .dual-btn{height:46px;font-size:22px;max-width:54px;min-width:44px;}
+.score-entry[data-entry-layout="compact"] .score-pad{gap:4px;margin:8px 0;}
+.score-entry[data-entry-layout="compact"] .score-pad-key{min-height:44px;font-size:16px;border-radius:10px;}
+.score-entry[data-entry-layout="compact"] #save-hole-btn{padding:12px!important;font-size:14px!important;margin-top:12px!important;}
+
+/* ── 3. Крупная: максимум размера для ввода одной рукой ── */
+.score-entry[data-entry-layout="large"]{padding:14px!important;}
+.score-entry[data-entry-layout="large"] .hole-val{font-size:clamp(26px,7vw,40px)!important;}
+.score-entry[data-entry-layout="large"] .hole-lbl{font-size:10.5px!important;}
+.score-entry[data-entry-layout="large"] .hole-btn:not(.active):not(.done){min-height:80px!important;}
+.score-entry[data-entry-layout="large"] .dual-half{padding:18px 9px 16px!important;gap:10px!important;}
+.score-entry[data-entry-layout="large"] .dual-half__name{font-size:14px!important;}
+.score-entry[data-entry-layout="large"] .dual-btn{height:64px;font-size:30px;max-width:76px;}
+.score-entry[data-entry-layout="large"] #dual-divider span{width:36px;height:36px;font-size:11px;}
+.score-entry[data-entry-layout="large"] .score-pad{gap:8px;}
+.score-entry[data-entry-layout="large"] .score-pad-key{min-height:60px;font-size:22px;}
+.score-entry[data-entry-layout="large"] #save-hole-btn{padding:20px!important;font-size:17px!important;}
+
+/* ── 4. Дзен: плоские поверхности, без свечений ── */
+.score-entry[data-entry-layout="zen"]{
+    background:#101a13!important;border-radius:14px!important;
+    border-color:rgba(255,255,255,.14)!important;box-shadow:none!important;
+}
+.score-entry[data-entry-layout="zen"]::before{display:none;}
+.score-entry[data-entry-layout="zen"] .hole-display{
+    background:transparent!important;border-color:rgba(255,255,255,.12)!important;
+    border-radius:10px!important;box-shadow:none!important;
+}
+.score-entry[data-entry-layout="zen"] .hole-box{border-left-color:rgba(255,255,255,.08)!important;}
+.score-entry[data-entry-layout="zen"] .hole-val{text-shadow:none!important;color:var(--entry-accent-2)!important;}
+.score-entry[data-entry-layout="zen"] .hole-btn:not(.active):not(.done){
+    background:transparent!important;border-color:rgba(255,255,255,.14)!important;
+    box-shadow:none!important;border-radius:9px!important;
+}
+.score-entry[data-entry-layout="zen"] .dual-score-split-panel{
+    background:transparent!important;border-color:rgba(255,255,255,.14)!important;
+    box-shadow:none!important;border-radius:12px!important;
+}
+.score-entry[data-entry-layout="zen"] .dual-half,
+.score-entry[data-entry-layout="zen"] .dual-half--my,
+.score-entry[data-entry-layout="zen"] .dual-half--mark{background:transparent!important;}
+.score-entry[data-entry-layout="zen"] .dual-btn{background:transparent!important;box-shadow:none!important;}
+.score-entry[data-entry-layout="zen"] .score-pad-key{background:transparent;border-color:rgba(255,255,255,.16);}
+.score-entry[data-entry-layout="zen"] .entry-score-square{box-shadow:none!important;background:transparent!important;}
+.score-entry[data-entry-layout="zen"] .btn-g{box-shadow:none!important;}
+
+/* ── 5. Стекло: полупрозрачные панели с размытием ── */
+.score-entry[data-entry-layout="glass"]{
+    background:linear-gradient(160deg,rgba(28,54,36,.60),rgba(9,20,13,.74))!important;
+    -webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);
+}
+.score-entry[data-entry-layout="glass"] .hole-display{
+    background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.18)!important;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+}
+.score-entry[data-entry-layout="glass"] .hole-box{border-left-color:rgba(255,255,255,.12)!important;}
+.score-entry[data-entry-layout="glass"] .hole-btn:not(.active):not(.done){
+    background:rgba(255,255,255,.07)!important;border-color:rgba(255,255,255,.18)!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12)!important;
+}
+.score-entry[data-entry-layout="glass"] .dual-score-split-panel{
+    background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.20)!important;
+    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+}
+.score-entry[data-entry-layout="glass"] .dual-half,
+.score-entry[data-entry-layout="glass"] .dual-half--my,
+.score-entry[data-entry-layout="glass"] .dual-half--mark{background:rgba(255,255,255,.03)!important;}
+.score-entry[data-entry-layout="glass"] .dual-btn{background:rgba(255,255,255,.08)!important;}
+.score-entry[data-entry-layout="glass"] .score-pad-key{background:rgba(255,255,255,.07);}
+
+/* ── 6. Неон: тёмное табло со свечением ── */
+.score-entry[data-entry-layout="neon"]{
+    background:linear-gradient(170deg,#070f14,#04090d)!important;
+    border-color:rgba(90,220,255,.34)!important;
+}
+.score-entry[data-entry-layout="neon"]::before{background:linear-gradient(90deg,transparent,#5adcff,transparent);}
+.score-entry[data-entry-layout="neon"] .hole-display{
+    background:rgba(90,220,255,.06)!important;border-color:rgba(90,220,255,.26)!important;
+}
+.score-entry[data-entry-layout="neon"] .hole-lbl{color:#8fd8ef!important;}
+.score-entry[data-entry-layout="neon"] .hole-val{
+    color:#7ef0ff!important;text-shadow:0 0 18px rgba(90,220,255,.55)!important;
+}
+.score-entry[data-entry-layout="neon"] .hole-btn:not(.active):not(.done){
+    background:rgba(9,26,34,.85)!important;border-color:rgba(90,220,255,.24)!important;
+}
+.score-entry[data-entry-layout="neon"] .dual-score-split-panel{
+    background:linear-gradient(170deg,#08131a,#050b10)!important;
+    border-color:rgba(120,255,220,.26)!important;
+    box-shadow:0 0 0 1px rgba(90,220,255,.10),0 20px 60px rgba(0,0,0,.6)!important;
+}
+.score-entry[data-entry-layout="neon"] .dual-half--my{
+    background:linear-gradient(180deg,rgba(90,220,255,.10),transparent)!important;
+    border-top-color:#5adcff!important;
+}
+.score-entry[data-entry-layout="neon"] .dual-half--mark{
+    background:linear-gradient(180deg,rgba(197,107,255,.10),transparent)!important;
+    border-top-color:#c56bff!important;
+}
+.score-entry[data-entry-layout="neon"] .dual-half__name{
+    text-transform:uppercase;letter-spacing:.9px;font-size:11.5px;
+}
+.score-entry[data-entry-layout="neon"] .score-disp .entry-score-square{
+    box-shadow:0 0 24px var(--entry-accent-soft),inset 0 1px 0 rgba(255,255,255,.15)!important;
+}
+.score-entry[data-entry-layout="neon"] .score-pad-key{background:rgba(9,26,34,.9);border-color:rgba(90,220,255,.24);color:#bff3ff;}
+
+/* ── 7. Песок: светлая карточка для игры на солнце ── */
+.score-entry[data-entry-layout="sand"]{
+    background:linear-gradient(170deg,#fbf3e2,#f2e6cd)!important;
+    border-color:#d9c39a!important;box-shadow:0 16px 40px rgba(0,0,0,.18)!important;
+}
+.score-entry[data-entry-layout="sand"]::before{display:none;}
+.score-entry[data-entry-layout="sand"] .hole-display{
+    background:#fffdf8!important;border-color:#e2d2b0!important;box-shadow:none!important;
+}
+.score-entry[data-entry-layout="sand"] .hole-lbl{color:#8a7452!important;}
+.score-entry[data-entry-layout="sand"] .hole-lbl::before{background:#b8975a!important;box-shadow:none!important;}
+.score-entry[data-entry-layout="sand"] .hole-val{color:#3d2f18!important;text-shadow:none!important;}
+.score-entry[data-entry-layout="sand"] .hole-box.h-par .hole-val,
+.score-entry[data-entry-layout="sand"] .hole-box.h-dist .hole-val{color:#2f2415!important;}
+.score-entry[data-entry-layout="sand"] .hole-btn:not(.active):not(.done){
+    background:#fffdf8!important;border-color:#e2d2b0!important;color:#3d2f18!important;
+}
+.score-entry[data-entry-layout="sand"] .hole-btn .entry-hole-number,
+.score-entry[data-entry-layout="sand"] .hole-btn .entry-hole-number small,
+.score-entry[data-entry-layout="sand"] .hole-btn .entry-marker{color:#4a3a22!important;}
+.score-entry[data-entry-layout="sand"] .hole-btn.done{background:#eef7ee!important;border-color:#b6d3b6!important;}
+.score-entry[data-entry-layout="sand"] .hole-btn.active{color:var(--entry-accent-ink)!important;}
+.score-entry[data-entry-layout="sand"] .dual-score-split-panel{
+    background:linear-gradient(170deg,#fffdf8,#f7eddb)!important;
+    border-color:#e2d2b0!important;box-shadow:none!important;
+}
+.score-entry[data-entry-layout="sand"] .dual-half,
+.score-entry[data-entry-layout="sand"] .dual-half--my,
+.score-entry[data-entry-layout="sand"] .dual-half--mark{background:transparent!important;}
+.score-entry[data-entry-layout="sand"] .dual-half__name{color:#2c2417!important;}
+.score-entry[data-entry-layout="sand"] .dual-split-divider{background:#e2d2b0!important;}
+.score-entry[data-entry-layout="sand"] .dual-split-divider span{
+    background:#fffdf8!important;border-color:#e2d2b0!important;color:#6b5836!important;box-shadow:none!important;
+}
+.score-entry[data-entry-layout="sand"] .dual-btn{
+    background:#fffdf8!important;border-color:#d9c39a!important;color:#3d2f18!important;box-shadow:none!important;
+}
+.score-entry[data-entry-layout="sand"] .dual-btn--minus,
+.score-entry[data-entry-layout="sand"] .dual-btn--plus,
+.score-entry[data-entry-layout="sand"] .dual-btn--mark{color:#3d2f18!important;border-color:#d9c39a!important;}
+.score-entry[data-entry-layout="sand"] .score-pad-key{
+    background:#fffdf8;border-color:#e2d2b0;color:#3d2f18;
+}
+.score-entry[data-entry-layout="sand"] .score-pad-par{color:#8a6a1f;}
+.score-entry[data-entry-layout="sand"] .entry-score-square{
+    background:#fffdf8!important;border-color:#d9c39a!important;
+}
+.score-entry[data-entry-layout="sand"] .score-disp .score-gross{color:#3d2f18!important;text-shadow:none!important;}
+.score-entry[data-entry-layout="sand"] .score-result{color:#5a4622!important;background:rgba(201,168,76,.16)!important;border-color:#d9c39a!important;}
+
+/* ── 8. Табло: моноширинные цифры и плотная шапка ── */
+.score-entry[data-entry-layout="scoreboard"]{
+    background:linear-gradient(180deg,#101d14,#0a130d)!important;border-radius:12px!important;
+}
+.score-entry[data-entry-layout="scoreboard"] .hole-display{
+    background:#050a07!important;border-color:rgba(255,255,255,.14)!important;border-radius:8px!important;
+}
+.score-entry[data-entry-layout="scoreboard"] .hole-lbl{letter-spacing:2px!important;}
+.score-entry[data-entry-layout="scoreboard"] .hole-val{
+    font-family:var(--fb);font-variant-numeric:tabular-nums;letter-spacing:1px;
+}
+.score-entry[data-entry-layout="scoreboard"] .hole-nav{grid-template-columns:repeat(9,minmax(0,1fr))!important;}
+.score-entry[data-entry-layout="scoreboard"] .hole-btn:not(.active):not(.done){border-radius:6px!important;}
+.score-entry[data-entry-layout="scoreboard"] .dual-score-split-panel{border-radius:10px!important;}
+.score-entry[data-entry-layout="scoreboard"] .dual-half__score .score-disp .entry-score-square{
+    font-family:var(--fb);font-variant-numeric:tabular-nums;border-radius:4px!important;
+}
+.score-entry[data-entry-layout="scoreboard"] .score-pad-key{
+    font-family:var(--fb);font-variant-numeric:tabular-nums;border-radius:8px!important;
+}
+
+/* ── 9. Карточки: панели как отдельные карточки, круглые ± ── */
+.score-entry[data-entry-layout="cards"] .dual-score-split-panel{
+    background:transparent!important;border:0!important;box-shadow:none!important;
+    grid-template-columns:1fr 12px 1fr!important;
+}
+.score-entry[data-entry-layout="cards"] .dual-half{
+    background:linear-gradient(180deg,#1a2f21,#122017)!important;
+    border:1px solid rgba(255,255,255,.10)!important;border-radius:18px!important;
+    box-shadow:0 14px 30px rgba(0,0,0,.40)!important;
+}
+.score-entry[data-entry-layout="cards"] .dual-half--my{border-top:3px solid var(--entry-accent)!important;}
+.score-entry[data-entry-layout="cards"] .dual-half--mark{border-top:3px solid #9b59b6!important;}
+.score-entry[data-entry-layout="cards"] .dual-split-divider{background:transparent!important;}
+.score-entry[data-entry-layout="cards"] .dual-split-divider span{
+    width:30px;height:30px;background:#0d1a12!important;
+}
+.score-entry[data-entry-layout="cards"] .dual-btn{border-radius:999px!important;box-shadow:0 8px 18px rgba(0,0,0,.45)!important;}
+.score-entry[data-entry-layout="cards"] .hole-btn:not(.active):not(.done){border-radius:14px!important;}
+.score-entry[data-entry-layout="cards"] .score-pad-key{border-radius:16px!important;}
+
+/* ── 10. Разделённая: акцент на двух колонках и разделителе ── */
+.score-entry[data-entry-layout="split"] .dual-score-split-panel{
+    grid-template-columns:1fr 22px 1fr!important;
+    background:rgba(10,22,14,.62)!important;border-radius:14px!important;
+}
+.score-entry[data-entry-layout="split"] .dual-split-divider{
+    width:2px!important;min-width:2px!important;
+    background:repeating-linear-gradient(180deg,var(--entry-accent) 0 6px,transparent 6px 12px)!important;
+}
+.score-entry[data-entry-layout="split"] .dual-split-divider span{
+    width:34px;height:34px;font-size:11px;
+}
+.score-entry[data-entry-layout="split"] .dual-half--my{
+    border-top:0!important;border-left:3px solid var(--entry-accent)!important;
+    border-radius:0 12px 12px 0!important;background:transparent!important;
+}
+.score-entry[data-entry-layout="split"] .dual-half--mark{
+    border-top:0!important;border-right:3px solid #9b59b6!important;
+    border-radius:12px 0 0 12px!important;background:transparent!important;
+}
+.score-entry[data-entry-layout="split"] .dual-half__name{
+    text-transform:uppercase;letter-spacing:.7px;font-size:11px;
+}
+.score-entry[data-entry-layout="split"] .hole-display{border-radius:10px!important;}
+.score-entry[data-entry-layout="split"] .score-pad-key{border-radius:10px!important;}
+
+/* Одиночный раунд во всех вариантах: одна колонка без разделителя. */
+.score-entry .dual-score-split-panel.single,
+.score-entry .dual-score-split-panel:has(.dual-half--mark.hidden){
+    grid-template-columns:minmax(0,1fr)!important;
+}
+.score-entry .dual-score-split-panel.single .dual-split-divider,
+.score-entry .dual-score-split-panel:has(.dual-half--mark.hidden) .dual-split-divider{display:none!important;}
+.score-entry .dual-score-split-panel.single .dual-half--my,
+.score-entry .dual-score-split-panel:has(.dual-half--mark.hidden) .dual-half--my{
+    border-left:0!important;border-top:2px solid var(--entry-accent)!important;
+    border-radius:0 0 0 0!important;max-width:none!important;
+}
+
+/* ==========================================================
+   1.128.0 — АДМИН: выбор вида экрана ввода счёта
+   Плитки 10 компоновок, палитра акцентов, размер цифр и
+   живой макет выбранного вида.
+   ========================================================== */
+.score-layout-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+    gap:10px;margin:10px 0 18px;
+}
+.score-layout-tile{
+    display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+    min-height:132px;padding:10px;text-align:left;cursor:pointer;
+    border:1px solid rgba(201,168,76,.22);border-radius:14px;
+    background:linear-gradient(180deg,rgba(26,46,31,.62),rgba(15,29,18,.86));
+    color:var(--white);font-family:var(--fb);
+    transition:border-color .15s ease,box-shadow .15s ease,transform .12s ease;
+    -webkit-tap-highlight-color:transparent;
+}
+.score-layout-tile:hover{border-color:rgba(201,168,76,.5);}
+.score-layout-tile:active{transform:scale(.985);}
+.score-layout-tile.is-active{
+    border-color:var(--gold);box-shadow:0 0 0 1px rgba(201,168,76,.55),0 10px 26px rgba(0,0,0,.35);
+    background:linear-gradient(180deg,rgba(201,168,76,.16),rgba(15,29,18,.9));
+}
+.score-layout-tile__name{font-size:13px;font-weight:800;letter-spacing:.2px;}
+.score-layout-tile small{color:var(--muted);font-size:10.5px;line-height:1.35;}
+.score-layout-tile__preview{
+    display:flex;flex-direction:column;gap:3px;width:100%;height:52px;
+    padding:5px;border-radius:9px;overflow:hidden;
+    background:rgba(6,14,9,.75);border:1px solid rgba(255,255,255,.07);
+}
+.score-layout-tile__preview .slp-row{display:block;height:9px;border-radius:3px;background:rgba(201,168,76,.55);}
+.score-layout-tile__preview .slp-grid{
+    display:block;height:12px;border-radius:3px;
+    background:repeating-linear-gradient(90deg,rgba(201,168,76,.42) 0 8px,transparent 8px 11px);
+}
+.score-layout-tile__preview .slp-dual{display:flex;gap:3px;flex:1;}
+.score-layout-tile__preview .slp-dual b{
+    flex:1;border-radius:3px;background:rgba(201,168,76,.30);border-top:1px solid var(--gold);
+}
+.score-layout-tile__preview .slp-dual b:last-child{background:rgba(155,89,182,.28);border-top-color:#9b59b6;}
+/* миниатюры повторяют характер компоновки */
+.score-layout-tile__preview--compact .slp-row{height:6px;}
+.score-layout-tile__preview--compact .slp-grid{height:16px;background:repeating-linear-gradient(90deg,rgba(201,168,76,.42) 0 5px,transparent 5px 7px);}
+.score-layout-tile__preview--large .slp-row{height:13px;}
+.score-layout-tile__preview--large .slp-grid{height:8px;}
+.score-layout-tile__preview--zen{background:#101a13;border-color:rgba(255,255,255,.16);}
+.score-layout-tile__preview--zen .slp-row,
+.score-layout-tile__preview--zen .slp-grid,
+.score-layout-tile__preview--zen .slp-dual b{background:transparent;border:1px solid rgba(255,255,255,.2);}
+.score-layout-tile__preview--glass{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2);}
+.score-layout-tile__preview--neon{background:#050b10;border-color:rgba(90,220,255,.35);}
+.score-layout-tile__preview--neon .slp-row{background:#5adcff;box-shadow:0 0 8px #5adcff;}
+.score-layout-tile__preview--neon .slp-dual b:last-child{background:rgba(197,107,255,.35);}
+.score-layout-tile__preview--sand{background:#f7eddb;border-color:#d9c39a;}
+.score-layout-tile__preview--sand .slp-row{background:#c9a84c;}
+.score-layout-tile__preview--sand .slp-grid{background:repeating-linear-gradient(90deg,#e2d2b0 0 8px,transparent 8px 11px);}
+.score-layout-tile__preview--sand .slp-dual b{background:#fffdf8;border-top:1px solid #d9c39a;}
+.score-layout-tile__preview--scoreboard{background:#050a07;border-color:rgba(255,255,255,.16);}
+.score-layout-tile__preview--scoreboard .slp-grid{background:repeating-linear-gradient(90deg,rgba(255,255,255,.28) 0 6px,transparent 6px 8px);}
+.score-layout-tile__preview--cards{background:transparent;border:0;padding:2px;gap:4px;}
+.score-layout-tile__preview--cards .slp-dual b{background:rgba(26,47,33,.95);border:1px solid rgba(255,255,255,.16);border-radius:7px;}
+.score-layout-tile__preview--split .slp-dual{gap:6px;}
+.score-layout-tile__preview--split .slp-dual b{border-radius:4px;border-left:2px solid var(--gold);border-top:0;}
+.score-layout-tile__preview--split .slp-dual b:last-child{border-left-color:#9b59b6;border-right:2px solid #9b59b6;}
+
+.score-accent-row,.score-size-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px;}
+.score-accent-swatch,.score-size-btn{
+    display:inline-flex;align-items:center;gap:8px;
+    min-height:44px;padding:8px 14px;cursor:pointer;
+    border:1px solid rgba(201,168,76,.22);border-radius:12px;
+    background:rgba(19,34,24,.85);color:var(--white);
+    font-family:var(--fb);font-size:12.5px;font-weight:700;
+    -webkit-tap-highlight-color:transparent;
+}
+.score-accent-swatch i{
+    width:16px;height:16px;border-radius:50%;flex:none;
+    background:var(--swatch,#c9a84c);box-shadow:0 0 10px rgba(0,0,0,.35) inset;
+}
+.score-accent-swatch.is-active,.score-size-btn.is-active{
+    border-color:var(--gold);box-shadow:0 0 0 1px rgba(201,168,76,.5);
+    background:rgba(201,168,76,.16);
+}
+.score-size-btn__sample{font-weight:900;line-height:1;color:var(--gold-l);}
+.score-size-btn__sample--normal{font-size:14px;}
+.score-size-btn__sample--large{font-size:19px;}
+.score-size-btn__sample--xl{font-size:24px;}
+
+/* Живой макет выбранного вида внутри админки */
+.score-entry-mock{
+    margin-top:12px;padding:12px!important;border-radius:14px!important;
+    max-width:420px;pointer-events:none;
+}
+.score-entry-mock .hole-nav{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:4px!important;}
+.score-entry-mock .hole-btn{
+    display:flex!important;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;min-height:44px!important;padding:2px 0!important;border-radius:8px!important;
+    background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+    border:1px solid rgba(201,168,76,.20);
+}
+.score-entry-mock .dual-score-split-panel{margin-bottom:8px!important;}
+.score-entry-mock .dual-half{padding:8px 4px!important;gap:4px!important;--entry-dual-sq:54px;--entry-dual-fs:32px;}
+.score-entry-mock .dual-btn{height:38px;font-size:20px;max-width:48px;}
+.score-entry-mock .dual-half__name{font-size:10.5px!important;}
+.score-entry-mock .score-pad{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin:6px 0;}
+.score-entry-mock .score-pad-key{min-height:36px;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.score-entry-mock__save{
+    display:block;text-align:center;padding:9px;border-radius:10px;font-size:12px;font-weight:800;
+    margin-top:6px;
+}
+
+/* Размер цифр задаётся поверх компоновки: «Крупная» + «Очень крупный»
+   должны увеличивать счёт, а не спорить с компактными отступами. */
+.score-entry[data-entry-size="large"] .dual-half{--entry-dual-sq:80px;--entry-dual-fs:50px;}
+.score-entry[data-entry-size="xl"] .dual-half{--entry-dual-sq:92px;--entry-dual-fs:58px;}
+.score-entry[data-entry-size="large"] .dual-half__score .score-disp{min-height:62px!important;}
+.score-entry[data-entry-size="xl"] .dual-half__score .score-disp{min-height:72px!important;}
+
+/* ── Финальные гарантии для вариантов (идут последними) ──
+   Активная лунка всегда акцентная и читаемая, даже если компоновка
+   перекрашивает спокойные плитки. */
+.score-entry[data-entry-layout] .hole-btn.active{
+    background:linear-gradient(160deg,var(--entry-accent-2) 0%,var(--entry-accent) 58%,var(--entry-accent) 100%)!important;
+    border-color:rgba(255,255,255,.38)!important;color:var(--entry-accent-ink)!important;
+    box-shadow:0 8px 22px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.4)!important;
+}
+.score-entry[data-entry-layout] .hole-btn.active .entry-hole-number,
+.score-entry[data-entry-layout] .hole-btn.active .entry-hole-number small,
+.score-entry[data-entry-layout] .hole-btn.active .entry-marker,
+.score-entry[data-entry-layout] .hole-btn.active .score-gross{color:var(--entry-accent-ink)!important;}
+.score-entry[data-entry-layout] .hole-btn.done:not(.active){
+    background:linear-gradient(180deg,rgba(46,204,113,.17),rgba(46,204,113,.05))!important;
+    border-color:rgba(46,204,113,.38)!important;
+}
+/* Одиночный раунд: маркерной панели нет ни в одной компоновке. */
+.score-entry[data-entry-layout] .dual-score-split-panel.single .dual-half--mark,
+.score-entry[data-entry-layout] .dual-score-split-panel:has(.dual-half--mark.hidden) .dual-half--mark{
+    display:none!important;
+}
+#dual-score-panel.single .dual-half--mark,
+#dual-score-panel:has(.dual-half--mark.hidden) .dual-half--mark{display:none!important;}
+.score-entry[data-entry-layout] .dual-score-split-panel.single .dual-half--my,
+.score-entry[data-entry-layout] .dual-score-split-panel:has(.dual-half--mark.hidden) .dual-half--my{
+    border-left:0!important;border-right:0!important;border-top:2px solid var(--entry-accent)!important;
+    border-radius:14px!important;background:linear-gradient(180deg,var(--entry-accent-soft),transparent)!important;
+}
+.score-entry[data-entry-layout] .dual-score-split-panel.single .dual-split-divider,
+.score-entry[data-entry-layout] .dual-score-split-panel:has(.dual-half--mark.hidden) .dual-split-divider{
+    display:none!important;
+}
+
+/* Мобильное правило скрывает разделитель VS и делает одну колонку — в
+   компоновках «Карточки» и «Разделённая» это сжимало панель маркера в
+   12-пиксельный столбец. На телефоне оставляем две равные колонки. */
+@media(max-width:560px){
+    .score-entry[data-entry-layout="cards"] .dual-score-split-panel,
+    .score-entry[data-entry-layout="split"] .dual-score-split-panel{
+        grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+        gap:8px!important;
+    }
+    .score-entry[data-entry-layout="cards"] .dual-score-split-panel.single,
+    .score-entry[data-entry-layout="split"] .dual-score-split-panel.single{
+        grid-template-columns:minmax(0,1fr)!important;
+    }
+    .score-entry[data-entry-layout="cards"] .dual-half__name,
+    .score-entry[data-entry-layout="split"] .dual-half__name{
+        white-space:normal;overflow-wrap:anywhere;
+    }
+}
+/* «Песок»: вторичные кнопки на светлом фоне должны оставаться читаемыми. */
+.score-entry[data-entry-layout="sand"] .score-toolbar .btn,
+.score-entry[data-entry-layout="sand"] .score-toolbar .btn span,
+.score-entry[data-entry-layout="sand"] .btn-ol{
+    color:#3d2f18!important;border-color:#d9c39a!important;background:#fffdf8!important;
+}
+.score-entry[data-entry-layout="sand"] .holes-toggle{
+    background:#fffdf8!important;border-color:#e2d2b0!important;color:#4a3a22!important;
+}

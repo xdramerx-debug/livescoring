@@ -19,8 +19,107 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryId: 'lb-summary',
         onChange: function() { loadLB(); }
     });
+    initLbChips();
     loadLB(); 
 });
+
+// ─────────────────────────────────────────────────────────────────
+// v1.129.0 · ЧИПЫ БЫСТРЫХ ФИЛЬТРОВ И СОРТИРОВКА ТАБЛИЦЫ
+// Чипы не вводят второй источник истины: «Live/Завершённые/Все» просто
+// переставляют #lb-status (тот же фильтр, что и в форме), «Мой раунд» —
+// дополнительное условие. Сортировка — только порядок строк на экране,
+// места в таблице всегда считаются по счёту к пару.
+// ─────────────────────────────────────────────────────────────────
+var lbMineOnly = false;
+var lbSortKey = 'toPar';
+var lbSortDir = 'asc';
+
+// Участвую ли я в раунде. Копия правила с главной (js/app.js), но без
+// зависимости от app.js: страница «Все раунды» его не подключает.
+function lbRoundIsMine(r) {
+    if (!r) return false;
+    try {
+        if (typeof currentUser !== 'undefined' && currentUser) {
+            if (r.createdBy === currentUser.uid) return true;
+            if (r.players && r.players[currentUser.uid]) return true;
+        }
+    } catch (e) { console.warn('[silent]', e); }
+    return false;
+}
+
+function initLbChips() {
+    syncLbChips();
+    var sortSel = lbGet('lb-sort');
+    if (sortSel) sortSel.addEventListener('change', function () { lbSetSort(sortSel.value); });
+    // Смена статуса в форме тоже должна сбрасывать «Мой раунд»: иначе два
+    // фильтра складывались бы и список пустел без объяснения.
+    var statusSel = lbGet('lb-status');
+    if (statusSel) statusSel.addEventListener('change', function () {
+        lbMineOnly = false;
+        syncLbChips();
+    });
+}
+
+function lbSetChip(value) {
+    var sel = lbGet('lb-status');
+    if (value === 'mine') {
+        lbMineOnly = !lbMineOnly;
+    } else {
+        lbMineOnly = false;
+        if (sel) sel.value = (value === 'all' || value === 'active' || value === 'completed') ? value : 'all';
+    }
+    try { if (typeof vib === 'function') vib(8); } catch (e) { console.warn('[silent]', e); }
+    syncLbChips();
+    loadLB();
+}
+
+function syncLbChips() {
+    var sel = lbGet('lb-status');
+    var status = sel ? sel.value : 'all';
+    [['lb-chip-all', 'all'], ['lb-chip-live', 'active'], ['lb-chip-done', 'completed']].forEach(function (pair) {
+        var btn = lbGet(pair[0]);
+        if (btn) btn.setAttribute('aria-pressed', (!lbMineOnly && status === pair[1]) ? 'true' : 'false');
+    });
+    var mineBtn = lbGet('lb-chip-mine');
+    if (mineBtn) mineBtn.setAttribute('aria-pressed', lbMineOnly ? 'true' : 'false');
+    var sortSel = lbGet('lb-sort');
+    if (sortSel) sortSel.value = lbSortKey + ':' + lbSortDir;
+}
+
+function lbSetSort(value) {
+    var parts = String(value || '').split(':');
+    if (!parts[0]) return;
+    lbSortKey = parts[0];
+    lbSortDir = parts[1] === 'desc' ? 'desc' : 'asc';
+    syncLbChips();
+    loadLB();
+}
+
+// Клик по заголовку столбца: первый клик — по возрастанию, повторный
+// переключает направление. null-значения всегда внизу.
+function lbSortBy(key) {
+    if (!key) return;
+    if (lbSortKey === key) lbSortDir = (lbSortDir === 'asc' ? 'desc' : 'asc');
+    else { lbSortKey = key; lbSortDir = (key === 'stblField' || key === 'stblExact') ? 'desc' : 'asc'; }
+    try { if (typeof vib === 'function') vib(8); } catch (e) { console.warn('[silent]', e); }
+    syncLbChips();
+    loadLB();
+}
+
+// Порядок строк. name — по алфавиту, остальные — по числу; пустые значения
+// не всплывают наверх ни в одном направлении.
+function lbCompareRows(a, b) {
+    if (lbSortKey === 'name') {
+        var an = String(a.name || '').toLowerCase();
+        var bn = String(b.name || '').toLowerCase();
+        return lbSortDir === 'desc' ? bn.localeCompare(an) : an.localeCompare(bn);
+    }
+    var av = a[lbSortKey];
+    var bv = b[lbSortKey];
+    if (av === null || av === undefined) return 1;
+    if (bv === null || bv === undefined) return -1;
+    return lbSortDir === 'desc' ? (bv - av) : (av - bv);
+}
 
 
 function lbGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
@@ -71,6 +170,9 @@ function loadLB() {
                     return players.some(function(pe) { return (playerDisplayName(pe[1], pe[0]) || '').toLowerCase().includes(query); });
                 });
             }
+            if (lbMineOnly) {
+                entries = entries.filter(function(e) { return lbRoundIsMine(e[1]); });
+            }
         }
 
         entries.sort(function(a, b) { 
@@ -91,7 +193,7 @@ function loadLB() {
         }
         // Смена фильтра/фокуса сбрасывает окно отрисовки: «Показать ещё»
         // относится к конкретному срезу, а не к списку вообще.
-        var lbSignature = [lbFocusRoundId, status, query, range.active, range.from, range.to].join('|');
+        var lbSignature = [lbFocusRoundId, status, query, range.active, range.from, range.to, lbMineOnly, lbSortKey, lbSortDir].join('|');
         if (lbSignature !== lbRenderSignature) {
             lbRenderSignature = lbSignature;
             lbRenderLimit = LB_PAGE_SIZE;
@@ -121,6 +223,7 @@ function loadLB() {
             });
         }
         try { restoreLbPanels(); } catch (e) { console.warn("[silent]", e); }
+        try { syncLbChips(); } catch (e) { console.warn("[silent]", e); }
         if (lbFocusScrollPending && lbFocusRoundId) {
             var focusRows = el.querySelectorAll('.lb-row[data-round-id]');
             var focusNode = null;
@@ -277,7 +380,9 @@ function renderRound(id, r) {
         };
     });
 
-    list.sort(function(a, b) {
+    // Места считаются по счёту к пару — это правило игры, а не настройка
+    // экрана. Сортировка меняет только порядок строк ниже.
+    var placeList = list.slice().sort(function(a, b) {
         if (a.toPar === null && b.toPar === null) return 0;
         if (a.toPar === null) return 1;
         if (b.toPar === null) return -1;
@@ -285,9 +390,9 @@ function renderRound(id, r) {
     });
 
     var pos = 1;
-    list.forEach(function(p, i) {
-        if (i > 0 && p.toPar === list[i - 1].toPar) { 
-            p.position = list[i - 1].position; 
+    placeList.forEach(function(p, i) {
+        if (i > 0 && p.toPar === placeList[i - 1].toPar) { 
+            p.position = placeList[i - 1].position; 
             p.tied = true; 
         } else { 
             p.position = pos; 
@@ -296,10 +401,15 @@ function renderRound(id, r) {
         pos++;
     });
 
+    // Порядок строк на экране: по выбранному столбцу (по умолчанию — как
+    // раньше, по счёту к пару).
+    list.sort(lbCompareRows);
+
     var isEn = currentLang === 'en';
     var stblShort = isEn ? 'Pts' : 'Стб';
-    var stblF = isEn ? 'Stb (fld)' : 'Стб (пол)';
-    var stblE = isEn ? 'Stb (exc)' : 'Стб (игр)';
+    // Заголовки столбцов короткие: длинные подписи переносились по буквам.
+    var stblF = isEn ? 'Stb fld' : 'Стб пол';
+    var stblE = isEn ? 'Stb exc' : 'Стб игр';
 
     var rows = list.map(function(p) {
         var posCls = p.position <= 3 ? 'lb-' + p.position : '';
@@ -309,16 +419,18 @@ function renderRound(id, r) {
         var teeCode = pestovoNormalizeTeeCode(p.tee);
         var pTeeBadge = '<span class="tee-pill tee-' + teeCode + '" style="font-size:9px;padding:0 6px;margin-left:6px;vertical-align:middle;line-height:16px;">' + escapeHtml(pestovoTeeLabel(teeCode)) + '</span>';
 
-        return '<div class="rlb-row" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(p.pid) + '" data-arg2="' + escapeHtml(id) + '">' +
-            '<span class="rlb-pos ' + posCls + '">' + (p.tied ? 'T' : '') + p.position + '</span>' +
-            '<div class="rlb-player">' + fmtUserAvatar(p, 28) +
+        // role="row"/"cell" — чтобы таблица читалась скринридером по строкам
+        // и столбцам, хотя собрана на div'ах (таблицы <table> тут нет).
+        return '<div class="rlb-row" role="row" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(p.pid) + '" data-arg2="' + escapeHtml(id) + '">' +
+            '<span class="rlb-pos ' + posCls + '" role="cell">' + (p.tied ? 'T' : '') + p.position + '</span>' +
+            '<div class="rlb-player" role="cell">' + fmtUserAvatar(p, 28) +
             '<div class="rlb-pcol"><div style="display:flex;align-items:center;min-width:0;"><span class="rlb-name">' + escapeHtml(privacyDisplayName(p, p.pid)) + '</span>' + pTeeBadge + '</div>' +
             '<span class="rlb-thru">' + holeInfo + '</span></div></div>' +
-            '<span class="rlb-par ' + scoreClass(p.toPar) + '">' + fmtScore(p.toPar) + '</span>' +
-            '<span class="rlb-num">' + gross + '</span>' +
-            '<span class="rlb-num rlb-stbl">' + p.stblField + '</span>' +
-            '<span class="rlb-num rlb-dim">' + p.stblExact + '</span>' +
-            '<div class="rlb-sub">' + holeInfo + ' · Gross ' + gross + ' · ' + stblShort + ' ' + p.stblField + '/' + p.stblExact + '</div>' +
+            '<span class="rlb-par ' + scoreClass(p.toPar) + '" role="cell">' + fmtScore(p.toPar) + '</span>' +
+            '<span class="rlb-num" role="cell">' + gross + '</span>' +
+            '<span class="rlb-num rlb-stbl" role="cell">' + p.stblField + '</span>' +
+            '<span class="rlb-num rlb-dim" role="cell">' + p.stblExact + '</span>' +
+            '<div class="rlb-sub" role="cell">' + holeInfo + ' · Gross ' + gross + ' · ' + stblShort + ' ' + p.stblField + '/' + p.stblExact + '</div>' +
             '</div>';
     }).join('');
 
@@ -339,13 +451,22 @@ function renderRound(id, r) {
             : '') +
         '</div>';
 
-    var head = '<div class="rlb-row rlb-head">' +
-        '<span class="rlb-pos">#</span>' +
-        '<span class="rlb-hpl">' + t('player') + '</span>' +
-        '<span class="rlb-par">±Par</span>' +
-        '<span class="rlb-num">' + t('gross') + '</span>' +
-        '<span class="rlb-num">' + stblF + '</span>' +
-        '<span class="rlb-num">' + stblE + '</span></div>';
+    // Заголовок — это кнопки сортировки: aria-sort сообщает текущее
+    // направление, а не только стрелка в CSS.
+    function lbHeadCell(key, label, cls) {
+        var active = lbSortKey === key;
+        var ariaSort = active ? (lbSortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+        return '<span class="' + cls + '" role="columnheader" aria-sort="' + ariaSort + '">' +
+            '<button type="button" class="rlb-sort-btn" data-act="lbSortBy" data-arg="' + key + '" ' +
+            'aria-label="' + escapeHtml(label + ' — ' + t('pv_lb_sort')) + '">' + label + '</button></span>';
+    }
+    var head = '<div class="rlb-row rlb-head" role="row">' +
+        '<span class="rlb-pos" role="columnheader">#</span>' +
+        lbHeadCell('name', t('player'), 'rlb-hpl') +
+        lbHeadCell('toPar', '±Par', 'rlb-par') +
+        lbHeadCell('gross', t('gross'), 'rlb-num') +
+        lbHeadCell('stblField', stblF, 'rlb-num') +
+        lbHeadCell('stblExact', stblE, 'rlb-num') + '</div>';
 
     var ts = r.startTime || r.createdAt;
     var soloWord = isEn ? ' · Solo' : ' · Одиночный';
@@ -359,7 +480,7 @@ function renderRound(id, r) {
         '<span class="lwl-extra">' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + (r.mode === 'solo' ? soloWord : '') + ' · ' + fmtTime(ts) + '</span>' +
         '<span class="lwl-extra">' + t('tee_select') + ': ' + fmtRoundTeePills(r) + '</span>' +
         '</div>' +
-        '<div class="rlb lb-rlb">' + head + rows + '</div>' +
+        '<div class="rlb lb-rlb" role="table" aria-label="' + escapeHtml(t('players_label')) + '">' + head + rows + '</div>' +
         actions +
         '<div id="' + escapeHtml(panelId) + '" class="card-scorecard-panel hidden"></div>' +
         '</div>';

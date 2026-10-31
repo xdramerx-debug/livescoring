@@ -14,14 +14,16 @@
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="brand_name">Пестово</title>
     <link rel="stylesheet" href="css/style.css?v=ca1cd0cd">
-    <link rel="stylesheet" href="css/theme-v2.css?v=a9604786">
+    <link rel="stylesheet" href="css/theme-v2.css?v=84a0a0ea">
+    <link rel="stylesheet" href="css/product-ux.css?v=25f60696">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/ui-events.js?v=5ba225a1"></script>
     <script src="js/design-system.js?v=394cc00f"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
-    <link rel="stylesheet" href="css/fontawesome-subset.css?v=aa41e310">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=132a6b88">
 </head>
-<body>
+<body class="pv-ux pv-home pv-has-bottomnav">
+<a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
@@ -49,6 +51,7 @@
         <p class="hero-sub" data-i18n="hero_sub">Цифровая счётная карточка Пестово</p>
         <h1 class="hero-title" data-i18n="hero_title">Лайв-скоринг и электронные карточки Пестово</h1>
         <p class="hero-desc" data-i18n="hero_desc">18 лунок · Пар 72</p>
+        <p class="hero-demo"><span class="pv-demo"><i class="fas fa-flask" aria-hidden="true"></i> <span data-i18n="pv_demo_badge">Тестовая версия · демо-данные</span></span></p>
         <div class="hero-btns">
             <a href="setup-round.html" class="btn btn-g btn-lg"><i class="fas fa-play"></i> <span data-i18n="btn_start_game">Начать игру</span></a>
             <a href="leaderboard.html" class="btn btn-ol btn-lg"><i class="fas fa-trophy"></i> <span data-i18n="btn_view_scores">Все раунды</span></a>
@@ -56,6 +59,49 @@
     </div>
 </section>
 
+<!-- УРОВЕНЬ 2 ИЕРАРХИИ: СЕЙЧАС НА ПОЛЕ -->
+<section class="section">
+    <div class="container">
+        <div class="sec-hdr"><h2 class="sec-t"><span class="live-dot"></span> <span data-i18n="sec_now_playing">Сейчас на поле</span></h2>
+        <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все раунды</span> <i class="fas fa-arrow-right"></i></a></div>
+        <div class="pv-chips" role="group">
+            <button type="button" class="pv-chip" id="pv-chip-live" data-act="setHomeLiveFilter" data-arg="live" aria-pressed="true">
+                <i class="fas fa-tower-broadcast" aria-hidden="true"></i> <span data-i18n="pv_filter_live">Live</span>
+                <span class="pv-chip-count" id="pv-chip-live-count">0</span>
+            </button>
+            <button type="button" class="pv-chip" id="pv-chip-all" data-act="setHomeLiveFilter" data-arg="all" aria-pressed="false">
+                <i class="fas fa-layer-group" aria-hidden="true"></i> <span data-i18n="pv_filter_all">Все</span>
+                <span class="pv-chip-count" id="pv-chip-all-count">0</span>
+            </button>
+            <button type="button" class="pv-chip" id="pv-chip-mine" data-act="setHomeLiveFilter" data-arg="mine" aria-pressed="false">
+                <i class="fas fa-user" aria-hidden="true"></i> <span data-i18n="pv_filter_mine">Мои раунды</span>
+                <span class="pv-chip-count" id="pv-chip-mine-count">0</span>
+            </button>
+        </div>
+        <div id="live-rounds">
+            <!-- Скелетон повторяет геометрию будущей карточки: статус, имя,
+                 счёт, прогресс. Так загрузка не «прыгает» по высоте. -->
+            <div class="pv-skel" aria-hidden="true">
+                <div class="pv-skel-line pv-skel-line--sm"></div>
+                <div class="pv-skel-line pv-skel-line--lg"></div>
+                <div class="pv-skel-line"></div>
+                <div class="pv-skel-line pv-skel-line--sm"></div>
+            </div>
+            <div class="pv-skel" aria-hidden="true">
+                <div class="pv-skel-line pv-skel-line--sm"></div>
+                <div class="pv-skel-line pv-skel-line--lg"></div>
+                <div class="pv-skel-line"></div>
+            </div>
+        </div>
+        <!-- Карта лунок и старты — вторичная информация: она идёт после
+             живых карточек, а не перед ними. -->
+        <div id="course-holes-strip"></div>
+    </div>
+</section>
+
+
+
+<main id="pv-main" tabindex="-1">
 <!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" (УРОВЕНЬ 1 ИЕРАРХИИ) -->
 <section class="section" style="padding-bottom:10px;">
     <div class="container">
@@ -72,22 +118,17 @@
     </div>
 </section>
 
-<!-- УРОВЕНЬ 2 ИЕРАРХИИ: СЕЙЧАС НА ПОЛЕ -->
-<section class="section">
-    <div class="container">
-        <div class="sec-hdr"><h2 class="sec-t"><span class="live-dot"></span> <span data-i18n="sec_now_playing">Сейчас на поле</span></h2>
-        <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все раунды</span> <i class="fas fa-arrow-right"></i></a></div>
-        <div id="course-holes-strip"></div>
-        <div id="live-rounds"><div class="skeleton" style="height:120px;margin-bottom:12px;"></div></div>
-    </div>
-</section>
-
 <!-- УРОВЕНЬ 3 ИЕРАРХИИ: ПОСЛЕДНИЕ РЕЗУЛЬТАТЫ -->
 <section class="section section-alt">
     <div class="container">
         <div class="sec-hdr"><h2 class="sec-t" data-i18n="sec_recent_results">Последние результаты</h2>
         <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все</span> <i class="fas fa-arrow-right"></i></a></div>
-        <div id="recent-results"><div class="skeleton" style="height:60px;margin-bottom:8px;"></div></div>
+        <div id="recent-results">
+            <div class="pv-skel" aria-hidden="true">
+                <div class="pv-skel-line"></div>
+                <div class="pv-skel-line pv-skel-line--sm"></div>
+            </div>
+        </div>
     </div>
 </section>
 
@@ -108,6 +149,8 @@
     </div>
 </section>
 
+</main>
+
 <footer class="footer"><div class="container">
     <div class="footer-grid">
         <div><h3 class="footer-title"><i class="fas fa-golf-ball-tee"></i> <span data-i18n="footer_club">Пестово</span></h3>
@@ -123,7 +166,7 @@
     </div>
     <div class="footer-bottom">
                 <p data-i18n="footer_club">&copy; 2024 Пестово</p>
-                <p class="site-version">Версия сайта: <span class="version-number">1.128.0</span></p>
+                <p class="site-version">Версия сайта: <span class="version-number">1.129.0</span></p>
             </div>
 </div></footer>
 
@@ -131,12 +174,13 @@
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=338a0efc"></script>
+<script type="module" src="dist/livescoring-modules.js?v=049453e9"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
 <script defer src="js/utils.js?v=a5e99f2e"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
-<script defer src="js/app.js?v=9271a1db"></script>
+<script defer src="js/app.js?v=e429c658"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
+<script defer src="js/product-ux.js?v=ecc8daa1"></script>
 </body>
 </html>

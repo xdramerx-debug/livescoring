@@ -706,7 +706,69 @@ function updateUnifiedChrome() {
 // ──────────────────────── СТАРТ ────────────────────────
 // Одна кнопка для любого состава: режим (соло/группа) выводит сама
 // функция создания по числу заполненных карточек игроков.
+// ── v1.129.0 · INLINE-ВАЛИДАЦИЯ ──
+// Ошибка появляется рядом с полем и снимается, как только игрок начал
+// исправлять: тост улетает, а подсветка остаётся на месте.
+function setupClearFieldErrors() {
+    var slots = document.getElementById('player-slots');
+    if (!slots) return;
+    var invalid = slots.querySelectorAll('.is-invalid');
+    for (var i = 0; i < invalid.length; i++) invalid[i].classList.remove('is-invalid');
+    var notes = slots.querySelectorAll('.pv-field-error');
+    for (var j = 0; j < notes.length; j++) {
+        if (notes[j].parentNode) notes[j].parentNode.removeChild(notes[j]);
+    }
+}
+
+function setupMarkFieldError(input, message) {
+    if (!input) return;
+    input.classList.add('is-invalid');
+    input.setAttribute('aria-invalid', 'true');
+    var note = document.createElement('p');
+    note.className = 'pv-field-error';
+    note.setAttribute('role', 'alert');
+    note.innerHTML = '<i class="fas fa-circle-exclamation" aria-hidden="true"></i> ' + escapeHtml(message);
+    if (input.parentNode) input.parentNode.appendChild(note);
+}
+
+// Возвращает true, если можно стартовать. Правила те же, что в
+// pestovoCreateRound (имя обязательно; соло требует точный гандикап), но
+// показаны у полей, а не только тостом.
+function setupValidateInline() {
+    setupClearFieldErrors();
+    var players = getSetupPlayers();
+    var hasNameError = false;
+    var hasHcpError = false;
+    var firstInvalid = null;
+    players.forEach(function (p) {
+        var nameEl = document.getElementById('pl-name-' + p.idx);
+        var hcpEl = document.getElementById('pl-hcp-' + p.idx);
+        if (nameEl) nameEl.removeAttribute('aria-invalid');
+        if (hcpEl) hcpEl.removeAttribute('aria-invalid');
+        if (!String(p.name || '').trim()) {
+            hasNameError = true;
+            setupMarkFieldError(nameEl, t('pv_err_name'));
+            if (!firstInvalid) firstInvalid = nameEl;
+        }
+        if (players.length === 1 && !String(p.hcpStr || '').trim()) {
+            hasHcpError = true;
+            setupMarkFieldError(hcpEl, t('pv_err_hcp'));
+            if (!firstInvalid) firstInvalid = hcpEl;
+        }
+    });
+    if (hasNameError || hasHcpError) {
+        if (firstInvalid) {
+            try { firstInvalid.focus({ preventScroll: true }); } catch (e) { console.warn('[silent]', e); }
+            try { firstInvalid.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { console.warn('[silent]', e); }
+        }
+        if (typeof vib === 'function') vib(20);
+        return false;
+    }
+    return true;
+}
+
 function startUnifiedRound() {
+    if (!setupValidateInline()) return;
     if (typeof pestovoCreateRound === 'function') {
         pestovoCreateRound();
         return;
@@ -834,6 +896,21 @@ function initUnifiedSetup() {
     renderSetupPlayers(true);
     if (typeof showGroupSetup === 'function') showGroupSetup();
 }
+
+// Ошибка снимается сразу при вводе — не нужно жать «Начать раунд» повторно.
+document.addEventListener('input', function (event) {
+    var el = event.target;
+    if (!el || !el.id) return;
+    if (el.id.indexOf('pl-name-') !== 0 && el.id.indexOf('pl-hcp-') !== 0) return;
+    if (!el.classList.contains('is-invalid')) return;
+    var group = el.closest ? el.closest('.form-group') : null;
+    if (group) {
+        var note = group.querySelector('.pv-field-error');
+        if (note && note.parentNode) note.parentNode.removeChild(note);
+    }
+    el.classList.remove('is-invalid');
+    el.removeAttribute('aria-invalid');
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     // Админский вариант блока «Создание раунда» (5 видов) — живая подписка.

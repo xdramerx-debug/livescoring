@@ -1,4 +1,4 @@
-const Z = "Пестово", De = 72, ee = "МО, г. Мытищи, Никольская ул., 1, Румянцево", v = {
+const Z = "Пестово", De = 72, ee = "МО, г. Мытищи, Никольская ул., 1, Румянцево", g = {
   1: { p: 4, hcp: 5, bk: 373, bl: 339, wh: 328, rd: 317 },
   2: { p: 4, hcp: 13, bk: 272, bl: 257, wh: 257, rd: 250 },
   3: { p: 5, hcp: 9, bk: 486, bl: 475, wh: 464, rd: 423 },
@@ -22,18 +22,18 @@ const Z = "Пестово", De = 72, ee = "МО, г. Мытищи, Николь�
   women: { bl: { cr: 80.8, sr: 153 }, wh: { cr: 78.6, sr: 143 }, rd: { cr: 75.2, sr: 136 } }
 };
 function ne(e) {
-  return v[e] ? v[e].p : 4;
+  return g[e] ? g[e].p : 4;
 }
 function oe(e, r) {
-  return r = r || "wh", v[e] && v[e][r] || 0;
+  return r = r || "wh", g[e] && g[e][r] || 0;
 }
 function se(e) {
-  return v[e] ? v[e].hcp : e;
+  return g[e] ? g[e].hcp : e;
 }
 function le(e) {
   return G[e] || 15;
 }
-typeof window < "u" && Object.assign(window, { CLUB: Z, TOTAL_PAR: 72, ADDR: ee, HOLES: v, TIMINGS: G, TEES: te, TEE_ORDER: re, COURSE_RATINGS: ae, holePar: ne, holeDist: oe, holeHcp: se, holeTiming: le });
+typeof window < "u" && Object.assign(window, { CLUB: Z, TOTAL_PAR: 72, ADDR: ee, HOLES: g, TIMINGS: G, TEES: te, TEE_ORDER: re, COURSE_RATINGS: ae, holePar: ne, holeDist: oe, holeHcp: se, holeTiming: le });
 function ie(e) {
   return e == null || isNaN(e) ? "—" : e === 0 ? "E" : e > 0 ? "+" + e : "" + e;
 }
@@ -222,8 +222,8 @@ function be(e) {
     }
   };
   try {
-    var g = JSON.parse(localStorage.getItem(_) || "null");
-    g && typeof g == "object" && (g.from && (r.value = g.from), g.to && (a.value = g.to));
+    var v = JSON.parse(localStorage.getItem(_) || "null");
+    v && typeof v == "object" && (v.from && (r.value = v.from), v.to && (a.value = v.to));
   } catch (p) {
     console.warn("[silent]", p);
   }
@@ -244,19 +244,19 @@ function be(e) {
 function ye(e) {
   return T[e] || null;
 }
-function ge() {
+function ve() {
   Object.keys(T).forEach(function(e) {
     var r = T[e];
     r && (r.renderPresets(), r.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: C, dateInputToStartTs: V, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: j, datePresetRange: M, readDateRange: R, filterEntriesByDateRange: he, renderRoundsPeriodSummary: q, dateRangeFilters: T, initDateRangeFilter: be, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: C, dateInputToStartTs: V, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: j, datePresetRange: M, readDateRange: R, filterEntriesByDateRange: he, renderRoundsPeriodSummary: q, dateRangeFilters: T, initDateRangeFilter: be, getDateRangeFilter: ye, refreshDateRangeFilters: ve });
 function K(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(r) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[r];
   });
 }
-function ve() {
+function ge() {
   for (var e = arguments[0], r = Array.prototype.slice.call(arguments, 1), a = "", n = 0; n < e.length; n++)
     a += e[n], n < r.length && (a += K(r[n]));
   return a;
@@ -264,8 +264,8 @@ function ve() {
 function we(e, r) {
   e && (e.innerHTML = r == null ? "" : String(r));
 }
-typeof window < "u" && Object.assign(window, { esc: K, html: ve, setSafeHtml: we });
-var F = 3e3;
+typeof window < "u" && Object.assign(window, { esc: K, html: ge, setSafeHtml: we });
+var L = 3e3;
 function U() {
   if (typeof document > "u" || !document.body) return null;
   var e = document.getElementById("toast-root");
@@ -276,7 +276,7 @@ function Y(e) {
 }
 function I(e, r, a) {
   r = r || "success", a = a || {};
-  var n = parseInt(a.duration) > 0 ? parseInt(a.duration) : F;
+  var n = parseInt(a.duration) > 0 ? parseInt(a.duration) : L;
   try {
     if (typeof document > "u" || !document.body) return null;
     var o = U();
@@ -336,7 +336,7 @@ function Se(e, r) {
   r = r || {};
   var a = (e || []).slice();
   if (a.length) {
-    var n = parseInt(r.gap) > 0 ? parseInt(r.gap) : 350, o = F + n;
+    var n = parseInt(r.gap) > 0 ? parseInt(r.gap) : 350, o = L + n;
     a.forEach(function(s, _) {
       setTimeout(function() {
         typeof s == "string" ? I(s, r.type || "warn", r.toastOpts || {}) : I(s.msg || s.html || "", s.type || r.type || "warn", s.opts || r.toastOpts || {});
@@ -368,7 +368,7 @@ function J(e) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[r];
   });
 }
-typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: F, ensureToastRoot: U, toastIconFor: Y, toast: I, toastSequence: Se, isPlayerModeEnabled: W, vib: ke, escapeHtml: J });
+typeof window < "u" && Object.assign(window, { TOAST_DURATION_MS: L, ensureToastRoot: U, toastIconFor: Y, toast: I, toastSequence: Se, isPlayerModeEnabled: W, vib: ke, escapeHtml: J });
 var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru", h = {
   ru: {
     brand_name: "Пестово",
@@ -415,6 +415,57 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     sec_recent_results: "Последние результаты",
     all_rounds: "Все раунды",
     no_active_players: "Сейчас никто не играет",
+    // v1.129.0 — продуктовый UX-слой: карточки live, фильтры, шаги, сеть
+    pv_live_now: "LIVE",
+    pv_st_scheduled: "Скоро",
+    pv_st_finishing: "Финиш",
+    pv_st_done: "Завершён",
+    pv_to_par: "к пару",
+    pv_to_par_aria: "Счёт относительно пара",
+    pv_progress_aria: "Пройдено лунок",
+    pv_filter_all: "Все",
+    pv_filter_mine: "Мои раунды",
+    pv_filter_live: "Live",
+    pv_filter_empty: "По этому фильтру сейчас никого нет.",
+    pv_filter_reset: "Показать все",
+    pv_player_one: "игрок",
+    pv_player_few: "игрока",
+    pv_player_many: "игроков",
+    pv_round_one: "раунд",
+    pv_round_few: "раунда",
+    pv_round_many: "раундов",
+    pv_birdies: "берди",
+    pv_stats_more: "Подробные цифры",
+    pv_demo_badge: "Тестовая версия · демо-данные",
+    pv_lb_sort: "Сортировка по столбцу",
+    pv_lb_mine: "Мой раунд",
+    pv_lb_live: "Live",
+    pv_lb_done: "Завершённые",
+    pv_filter_group: "Фильтр раундов",
+    lb_sort_topar: "Счёт к пару",
+    lb_sort_gross: "Gross",
+    lb_sort_stbl: "Stableford",
+    lb_sort_name: "Имя",
+    pv_steps_aria: "Шаги создания раунда",
+    pv_recent_players: "Недавние игроки",
+    pv_err_name: "Укажите имя игрока",
+    pv_err_hcp: "Укажите точный гандикап",
+    pv_ready: "Готово к старту",
+    pv_not_ready: "Заполните имена игроков",
+    pv_players_count: "Игроков",
+    pv_main_nav: "Основная навигация",
+    pv_skip_content: "К содержимому",
+    pv_onb_title: "Пестово — live-скоринг",
+    pv_onb_sub: "Живые раунды, счёт и таблица лидеров. Тестовая версия: данные демонстрационные.",
+    pv_onb_watch: "Смотреть live",
+    pv_onb_start: "Начать раунд",
+    pv_onb_board: "Таблица лидеров",
+    pv_onb_skip: "Пропустить",
+    pv_onb_close: "Закрыть",
+    pv_offline_title: "Нет сети",
+    pv_offline_text: "Нет сети. Счёт сохранится на этом устройстве и отправится, когда связь вернётся.",
+    pv_offline_retry: "Повторить",
+    pv_synced: "Счёт отправлен",
     course_card_sub: "18 лунок · Пар 72 · Все ТИ (метры)",
     address_str: "📍 МО, г. Мытищи, Никольская ул., 1, Румянцево",
     nav_header: "Навигация",
@@ -1028,6 +1079,57 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     sec_recent_results: "Recent Results",
     all_rounds: "All Rounds",
     no_active_players: "No active players on course",
+    // v1.129.0 — product UX layer: live cards, filters, steps, network
+    pv_live_now: "LIVE",
+    pv_st_scheduled: "Soon",
+    pv_st_finishing: "Finishing",
+    pv_st_done: "Completed",
+    pv_to_par: "to par",
+    pv_to_par_aria: "Score to par",
+    pv_progress_aria: "Holes completed",
+    pv_filter_all: "All",
+    pv_filter_mine: "My rounds",
+    pv_filter_live: "Live",
+    pv_filter_empty: "No rounds match this filter.",
+    pv_filter_reset: "Show all",
+    pv_player_one: "player",
+    pv_player_few: "players",
+    pv_player_many: "players",
+    pv_round_one: "round",
+    pv_round_few: "rounds",
+    pv_round_many: "rounds",
+    pv_birdies: "birdies",
+    pv_stats_more: "Detailed numbers",
+    pv_demo_badge: "Test build · demo data",
+    pv_lb_sort: "Sort by column",
+    pv_lb_mine: "My round",
+    pv_lb_live: "Live",
+    pv_lb_done: "Completed",
+    pv_filter_group: "Round filter",
+    lb_sort_topar: "Score to par",
+    lb_sort_gross: "Gross",
+    lb_sort_stbl: "Stableford",
+    lb_sort_name: "Name",
+    pv_steps_aria: "Round setup steps",
+    pv_recent_players: "Recent players",
+    pv_err_name: "Enter the player name",
+    pv_err_hcp: "Enter the exact handicap",
+    pv_ready: "Ready to start",
+    pv_not_ready: "Fill in the player names",
+    pv_players_count: "Players",
+    pv_main_nav: "Main navigation",
+    pv_skip_content: "Skip to content",
+    pv_onb_title: "Pestovo live scoring",
+    pv_onb_sub: "Live rounds, scores and the leaderboard. Test build with demo data.",
+    pv_onb_watch: "Watch live",
+    pv_onb_start: "Start a round",
+    pv_onb_board: "Leaderboard",
+    pv_onb_skip: "Skip",
+    pv_onb_close: "Close",
+    pv_offline_title: "Offline",
+    pv_offline_text: "Offline. Scores are kept on this device and sent when the connection returns.",
+    pv_offline_retry: "Retry",
+    pv_synced: "Scores sent",
     course_card_sub: "18 Holes · Par 72 · All Tees (meters)",
     address_str: "📍 Pestovo, Mytishchi, Moscow Region",
     nav_header: "Navigation",
@@ -1665,9 +1767,9 @@ try {
   console.warn("[silent]", e);
 }
 document.addEventListener("DOMContentLoaded", function() {
-  D(), L();
+  D(), F();
 });
-function L() {
+function F() {
   if (!(typeof document > "u")) {
     var e = (/* @__PURE__ */ new Date()).getFullYear();
     document.querySelectorAll(".footer-bottom p").forEach(function(r) {
@@ -1675,8 +1777,8 @@ function L() {
     });
   }
 }
-L();
-typeof window < "u" && Object.assign(window, { currentLang: f, I18N: h, t: z, toggleLang: Te, updateLangButtons: Q, applyTranslations: D, updateFooterYear: L });
+F();
+typeof window < "u" && Object.assign(window, { currentLang: f, I18N: h, t: z, toggleLang: Te, updateLangButtons: Q, applyTranslations: D, updateFooterYear: F });
 function E(e, r, a, n, o) {
   var s = !!o, _ = s ? escapeHtml : function(c) {
     return String(c);
@@ -1803,8 +1905,8 @@ function H(e, r, a, n) {
       if (i(), c && c.response !== void 0 && c.response)
         n || (console.log("✅ VK message sent, id:", c.response), toast("✅ Сообщение ВКонтакте доставлено!", "success")), l("sent");
       else {
-        var g = c && c.error && c.error.error_code, p = c && c.error && c.error.error_msg ? c.error.error_msg : "Ошибка VK API";
-        console.error("❌ VK API Error " + g + ":", p, c), n ? console.warn("⚠️ VK silent send failed (code " + g + "):", p) : toast("❌ VK API: " + p, "error"), l("error: code " + (g || "?") + ": " + p);
+        var v = c && c.error && c.error.error_code, p = c && c.error && c.error.error_msg ? c.error.error_msg : "Ошибка VK API";
+        console.error("❌ VK API Error " + v + ":", p, c), n ? console.warn("⚠️ VK silent send failed (code " + v + "):", p) : toast("❌ VK API: " + p, "error"), l("error: code " + (v || "?") + ": " + p);
       }
     };
     var b = "https://api.vk.com/method/messages.send?access_token=" + encodeURIComponent(e) + "&peer_id=" + encodeURIComponent(r) + "&message=" + encodeURIComponent(a) + "&random_id=" + _ + "&v=5.199&callback=" + s;
@@ -1843,19 +1945,19 @@ function P(e, r, a, n, o) {
     return d === !1 ? { skipped: "notifications_disabled" } : A().then(function(l) {
       if (l.mode === "server")
         return typeof console < "u" && console.debug && console.debug("[alerts] delivery mode = server, browser stays silent"), { skipped: "server_mode" };
-      var i = l.telegram || {}, b = l.vk || {}, c = {}, g = {
+      var i = l.telegram || {}, b = l.vk || {}, c = {}, v = {
         "telegram:group": !!(i.groupToken && i.groupId),
         "telegram:channel": !!(i.channelToken && i.channelId),
         vk: !!(b.token && b.peerId)
       }, p = [];
-      return g["telegram:group"] ? p.push(N(i.groupToken, i.groupId, e, r, a, n).then(function(y) {
+      return v["telegram:group"] ? p.push(N(i.groupToken, i.groupId, e, r, a, n).then(function(y) {
         c["telegram:group"] = y;
-      })) : c["telegram:group"] = "not_configured", g["telegram:channel"] ? p.push(N(i.channelToken, i.channelId, e, r, a, n).then(function(y) {
+      })) : c["telegram:group"] = "not_configured", v["telegram:channel"] ? p.push(N(i.channelToken, i.channelId, e, r, a, n).then(function(y) {
         c["telegram:channel"] = y;
-      })) : c["telegram:channel"] = "not_configured", g.vk ? p.push($(b.token, b.peerId, e, r, a, n).then(function(y) {
+      })) : c["telegram:channel"] = "not_configured", v.vk ? p.push($(b.token, b.peerId, e, r, a, n).then(function(y) {
         c.vk = y;
-      })) : c.vk = "not_configured", !g["telegram:group"] && !g["telegram:channel"] && !g.vk && console.warn("[alerts] в channels/ ничего не настроено — вызов никуда не отправлен"), Promise.all(p).then(function() {
-        return X(o, c, g);
+      })) : c.vk = "not_configured", !v["telegram:group"] && !v["telegram:channel"] && !v.vk && console.warn("[alerts] в channels/ ничего не настроено — вызов никуда не отправлен"), Promise.all(p).then(function() {
+        return X(o, c, v);
       });
     });
   }).catch(function(d) {
@@ -1886,12 +1988,12 @@ export {
   Z as CLUB,
   ae as COURSE_RATINGS,
   C as DATE_RANGE_PRESETS,
-  v as HOLES,
+  g as HOLES,
   h as I18N,
   te as TEES,
   re as TEE_ORDER,
   G as TIMINGS,
-  F as TOAST_DURATION_MS,
+  L as TOAST_DURATION_MS,
   De as TOTAL_PAR,
   D as applyTranslations,
   E as buildOfficialCallText,
@@ -1915,7 +2017,7 @@ export {
   de as holeResClass,
   ce as holeResName,
   le as holeTiming,
-  ve as html,
+  ge as html,
   be as initDateRangeFilter,
   W as isPlayerModeEnabled,
   fe as isTodayTimestamp,
@@ -1924,7 +2026,7 @@ export {
   A as pestovoOfficialChannels,
   X as pestovoRecordClientDelivery,
   R as readDateRange,
-  ge as refreshDateRangeFilters,
+  ve as refreshDateRangeFilters,
   q as renderRoundsPeriodSummary,
   _e as scoreClass,
   Pe as sendTelegramDirectAlert,
@@ -1941,7 +2043,7 @@ export {
   Se as toastSequence,
   Te as toggleLang,
   x as tsToDateInputValue,
-  L as updateFooterYear,
+  F as updateFooterYear,
   Q as updateLangButtons,
   ke as vib,
   O as vkBuildAlertText,

@@ -457,6 +457,80 @@ function isMyLiveRound(id, r) {
     return false;
 }
 
+// ═════════════════════════════════════════════════════════════════
+// v1.129.0 · ПРОДУКТОВЫЕ ЭЛЕМЕНТЫ КАРТОЧКИ LIVE-РАУНДА
+// Карточка читается сверху вниз: статус и лунка → игрок и счёт к пару →
+// прогресс и действие. Счёт к пару — главный акцент, gross уходит в
+// раскрытые детали. Всё опирается на семантические токены
+// (css/product-ux.css), поэтому светлая тема подхватывает автоматически.
+// ═════════════════════════════════════════════════════════════════
+
+function pvInitials(name, fallback) {
+    var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return String(fallback || '•');
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+}
+
+// Статус не только цветом: у каждого состояния есть точка/иконка и слово.
+function pvLiveStatusHtml(state) {
+    var conf = {
+        live: { cls: 'pv-status--live', icon: '<span class="pv-status-dot" aria-hidden="true"></span>', key: 'pv_live_now' },
+        scheduled: { cls: 'pv-status--scheduled', icon: '<i class="fas fa-clock" aria-hidden="true"></i>', key: 'pv_st_scheduled' },
+        finishing: { cls: 'pv-status--pending', icon: '<i class="fas fa-flag-checkered" aria-hidden="true"></i>', key: 'pv_st_finishing' },
+        done: { cls: 'pv-status--done', icon: '<i class="fas fa-check" aria-hidden="true"></i>', key: 'pv_st_done' }
+    }[state] || null;
+    if (!conf) conf = { cls: 'pv-status--live', icon: '<span class="pv-status-dot" aria-hidden="true"></span>', key: 'pv_live_now' };
+    return '<span class="pv-status ' + conf.cls + '">' + conf.icon + t(conf.key) + '</span>';
+}
+
+// Прогресс раунда: «7/18» + полоса. Число дублирует полосу для скринридеров
+// и для тех, кому цвет/длина полосы ничего не говорят.
+function pvRoundProgressHtml(played, total) {
+    total = parseInt(total, 10) || 18;
+    played = parseInt(played, 10) || 0;
+    if (played < 0) played = 0;
+    if (played > total) played = total;
+    var pct = Math.round((played / total) * 100);
+    return '<span class="pv-progress' + (played >= total ? ' pv-progress--done' : '') + '" role="img" ' +
+        'aria-label="' + escapeHtml(t('pv_progress_aria')) + ': ' + played + ' из ' + total + '">' +
+        '<span class="pv-progress-track"><span class="pv-progress-fill" style="width:' + pct + '%"></span></span>' +
+        '<span class="pv-progress-label">' + played + '/' + total + '</span></span>';
+}
+
+// Мини-таблица игроков группового раунда прямо в свёрнутой карточке:
+// имя и текущая лунка слева, счёт к пару справа. Никаких тапов внутри —
+// вся карточка остаётся одной зоной раскрытия.
+function pvMiniTableHtml(r, players, order) {
+    var total = getRoundHoleCount(r);
+    var entries = Object.entries(players || {}).filter(function(pe) {
+        return !(typeof isPlayerDeleted === 'function' && isPlayerDeleted(pe[0], pe[1] && pe[1].name));
+    });
+    if (!entries.length) return '';
+    var mePid = '';
+    try {
+        if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid && players[currentUser.uid]) mePid = currentUser.uid;
+    } catch (e) { console.warn('[silent]', e); }
+    var html = entries.slice(0, 6).map(function(pe) {
+        var pid = pe[0], p = pe[1] || {};
+        var st = calcRoundStats(p.scores || {}, p.fieldHcp || 0, p.exactHcp || 0, order);
+        var closed = (typeof isPlayerRoundClosed === 'function') && isPlayerRoundClosed(r, pid, st, order);
+        // «Лунка №5» — с неразрывным пробелом после №, чтобы номер не
+        // отрывался от знака при переносе.
+        var thru = closed || st.holesPlayed >= total
+            ? t('finished_f')
+            : (st.currentHole ? t('hole') + '&nbsp;№' + st.currentHole : '—');
+        var name = privacyDisplayName(p, pid) || '—';
+        return '<span class="pv-mini-row' + (pid === mePid ? ' pv-mini-row--me' : '') + '">' +
+            '<span class="pv-avatar" aria-hidden="true">' + escapeHtml(pvInitials(name, '?')) + '</span>' +
+            '<span class="pv-mini-name">' + escapeHtml(name) + '</span>' +
+            '<span class="pv-mini-thru">' + thru + '</span>' +
+            '<span class="pv-mini-par ' + scoreClass(st.toPar) + '">' + fmtScore(st.toPar) + '</span>' +
+            '</span>';
+    }).join('');
+    return '<span class="pv-live-mini">' + html + '</span>';
+}
+
 // Строка СОЛО-раунда в списке «Сейчас на поле»: имя, текущая лунка, счёт и
 // время старта раунда. Как и групповой раунд, по умолчанию свёрнута —
 // детали (бейджи, gross, кнопка «Продолжить») и счётная карточка
@@ -516,20 +590,30 @@ function buildLiveWhoRowHTML(id, r, pid, p, players, isMyRound, forceOpen) {
         '<div class="live-group-unified-card">' + generateGroupHoleTableHTML(r, { compact: true }) + '</div>' +
         '</div>';
 
-    // Свёрнутая строка соло-раунда: имя · лунка · счёт · старт · шеврон.
-    // Класс live-round-row и data-round-id — те же, что у группового блока,
-    // поэтому сворачивание/разворачивание работает общей функцией toggleLiveRound.
+    // Свёрнутая карточка соло-раунда: статус+лунка → имя+счёт к пару →
+    // прогресс и время старта. Классы live-round-row / lwl-* / data-round-id
+    // сохранены: сворачивание идёт общей функцией toggleLiveRound.
+    var soloTotal = getRoundHoleCount(r);
+    var soloPlayed = stats.holesPlayed || 0;
+    var soloState = r.status === 'scheduled' ? 'scheduled' : (isClosed ? 'finishing' : 'live');
     var rowHtml = '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
-        'data-round-id="' + escapeHtml(id) + '" data-pid="' + escapeHtml(pid) + '" data-round-row="1">' +
+        'data-round-id="' + escapeHtml(id) + '" data-pid="' + escapeHtml(pid) + '" data-round-row="1" ' +
+        'data-mine="' + (isMyRound ? '1' : '0') + '" data-live-state="' + soloState + '">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + escapeHtml(panelId) + '" ' +
         'data-act="toggleLiveRound" data-arg="' + escapeHtml(id) + '" data-kd-act="liveRoundKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
-        '<span class="lwl-name"><i class="fas fa-user"></i><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span>' +
-        (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
-        '</span>' +
+        '<span class="pv-live-top">' +
+        pvLiveStatusHtml(soloState) +
         '<span class="lwl-hole' + (isClosed ? ' lwl-hole-done' : '') + '"><i class="fas ' + (isClosed ? 'fa-flag-checkered' : 'fa-location-dot') + '"></i> ' + thruText + '</span>' +
-        '<span class="lwl-score ' + scoreClass(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
+        (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
+        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '" aria-hidden="true"></i>' +
+        '</span>' +
+        '<span class="pv-live-main"><span class="pv-avatar pv-avatar--lg" aria-hidden="true">' + escapeHtml(pvInitials(privacyDisplayName(p, pid), pid)) + '</span>' +
+        '<span class="lwl-name"><span class="lwl-name-txt">' + escapeHtml(privacyDisplayName(p, pid)) + '</span></span>' +
+        '</span>' +
+        '<span class="pv-live-score-wrap"><span class="lwl-score pv-live-score ' + scoreClass(stats.toPar) + '" aria-label="' + escapeHtml(t('pv_to_par_aria')) + ' ' + fmtScore(stats.toPar) + '">' + fmtScore(stats.toPar) + '</span>' +
+        '<small>' + t('pv_to_par') + '</small></span>' +
+        pvRoundProgressHtml(soloPlayed, soloTotal) +
         '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
-        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
         '</div>' +
         details +
         '</div>';
@@ -576,17 +660,18 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
         : pluralN(playerEntries.length, 'игрок', 'игрока', 'игроков'));
     // Кто-то уже сдал карточку — честно показываем, сколько людей ещё в игре:
     // иначе строка «3 игрока» вводит в заблуждение, когда на поле осталось двое.
+    var groupStillPlaying = playerEntries.length;
     if (typeof isPlayerRoundClosed === 'function') {
-        var stillPlaying = 0;
+        groupStillPlaying = 0;
         playerEntries.forEach(function(pe) {
             var pp = pe[1] || {};
             var st = calcRoundStats(pp.scores || {}, pp.fieldHcp || 0, pp.exactHcp || 0, order);
-            if (!isPlayerRoundClosed(r, pe[0], st, order)) stillPlaying++;
+            if (!isPlayerRoundClosed(r, pe[0], st, order)) groupStillPlaying++;
         });
-        if (stillPlaying < playerEntries.length) {
+        if (groupStillPlaying < playerEntries.length) {
             countLabel = (currentLang === 'en'
-                ? stillPlaying + ' of ' + playerEntries.length + ' playing'
-                : stillPlaying + ' из ' + playerEntries.length + ' в игре');
+                ? groupStillPlaying + ' of ' + playerEntries.length + ' playing'
+                : groupStillPlaying + ' из ' + playerEntries.length + ' в игре');
         }
     }
     var namesStr = escapeHtml(names.join(', '));
@@ -595,23 +680,38 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
     var link = 'setup-round.html?round=' + encodeURIComponent(id);
 
     var scoreHtml = bestToPar !== null
-        ? '<span class="lwl-score ' + scoreClass(bestToPar) + '">' + fmtScore(bestToPar) + '</span>'
-        : '<span class="lwl-score">—</span>';
+        ? '<span class="lwl-score pv-live-score ' + scoreClass(bestToPar) + '" aria-label="' + escapeHtml(t('pv_to_par_aria')) + ' ' + fmtScore(bestToPar) + '">' + fmtScore(bestToPar) + '</span>'
+        : '<span class="lwl-score pv-live-score">—</span>';
 
     // Единая карточка на всех участников группового раунда (вариант 1, 2 или 3)
     var groupScorecardHtml = generateGroupHoleTableHTML(r, { compact: true });
 
+    // Прогресс группы — по самому «продвинутому» игроку: карточка отвечает
+    // на вопрос «докуда дошла группа», а не «где средний игрок».
+    var groupTotal = getRoundHoleCount(r);
+    var groupPlayed = 0;
+    playerEntries.forEach(function(pe) {
+        var st = calcRoundStats((pe[1] || {}).scores || {}, (pe[1] || {}).fieldHcp || 0, (pe[1] || {}).exactHcp || 0, order);
+        if ((st.holesPlayed || 0) > groupPlayed) groupPlayed = st.holesPlayed || 0;
+    });
+    var groupState = r.status === 'scheduled' ? 'scheduled' : (groupStillPlaying === 0 ? 'finishing' : 'live');
+
     return '<div class="lwl-row live-round-row' + (open ? ' is-open' : '') + (isMyRound ? ' lwl-row-mine' : '') + '" ' +
-        'data-round-id="' + escapeHtml(id) + '" data-round-row="1">' +
+        'data-round-id="' + escapeHtml(id) + '" data-round-row="1" ' +
+        'data-mine="' + (isMyRound ? '1' : '0') + '" data-live-state="' + groupState + '">' +
         '<div class="lwl-toggle" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + escapeHtml(panelId) + '" ' +
         'data-act="toggleLiveRound" data-arg="' + escapeHtml(id) + '" data-kd-act="liveRoundKey" data-kd-ev="1" data-kd-arg="' + escapeHtml(id) + '">' +
-        '<span class="lwl-name">' + modeIcon + '<span class="lwl-name-txt">' + modeLabel + ' · ' + namesStr + '</span>' +
-        (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
-        '</span>' +
+        '<span class="pv-live-top">' +
+        pvLiveStatusHtml(groupState) +
         '<span class="lwl-hole"><i class="fas fa-user-group"></i> ' + countLabel + '</span>' +
-        scoreHtml +
+        (isMyRound ? '<span class="lwl-my"><i class="fas fa-user"></i> ' + t('my_round_tag') + '</span>' : '') +
+        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '" aria-hidden="true"></i>' +
+        '</span>' +
+        '<span class="pv-live-main"><span class="lwl-name">' + modeIcon + '<span class="lwl-name-txt">' + modeLabel + ' · ' + namesStr + '</span></span></span>' +
+        '<span class="pv-live-score-wrap">' + scoreHtml + '<small>' + t('pv_to_par') + '</small></span>' +
+        pvMiniTableHtml(r, players, order) +
+        pvRoundProgressHtml(groupPlayed, groupTotal) +
         '<span class="lwl-start" title="' + (currentLang === 'en' ? 'Round start' : 'Старт раунда') + ' ' + fmtTime(r.startTime) + '"><i class="fas fa-clock"></i> ' + fmtTime(r.startTime) + '</span>' +
-        '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
         '</div>' +
         '<div class="lwl-details" id="' + escapeHtml(panelId) + '">' +
         '<div class="lwl-actions" style="margin-bottom:10px;">' +
@@ -621,6 +721,7 @@ function buildLiveRoundRowHTML(id, r, players, isMyRound, forceOpen) {
         '</div>' +
         '</div>';
 }
+
 
 // ── БЛОК «АКТИВНЫЙ ТУРНИР» НА ГЛАВНОЙ ──
 // Турнирная сводка: топ-3 каждого формата турнира (Gross / Net / Stableford),
@@ -786,6 +887,44 @@ function homeTnPlaceholderHtml(tnId, tVal) {
     return html;
 }
 
+// ─────────────────────────────────────────────────────────────────
+// v1.129.0 · ФИЛЬТР «ВСЕ / МОИ РАУНДЫ / LIVE»
+// Фильтр применяется к уже загруженным данным (подписка та же), поэтому
+// переключение мгновенное и не создаёт новых запросов к базе.
+// ─────────────────────────────────────────────────────────────────
+var homeLiveFilter = 'live';   // по умолчанию — только те раунды, что идут сейчас
+var homeLiveFilterCounts = { all: 0, mine: 0, live: 0 };
+
+function homeLiveFilterMatch(id, r, filter) {
+    if (!filter || filter === 'all') return true;
+    if (filter === 'mine') return isMyLiveRound(id, r);
+    if (filter === 'live') return (r && r.status === 'active');
+    return true;
+}
+
+// Переключение фильтра: применяем к кэшу последнего снапшота.
+function setHomeLiveFilter(value) {
+    homeLiveFilter = (value === 'mine' || value === 'live') ? value : 'all';
+    try { if (typeof vib === 'function') vib(8); } catch (e) { console.warn('[silent]', e); }
+    renderHomeLiveRounds(homeLastRoundsData || {});
+    syncHomeLiveChips();
+    return homeLiveFilter;
+}
+
+// Счётчики на чипах: сколько раундов попадёт в каждый срез. Так фильтр
+// не бывает «пустым сюрпризом» — цифра видна до нажатия.
+function syncHomeLiveChips() {
+    if (typeof document === 'undefined' || !document.getElementById) return;
+    var map = { all: 'pv-chip-all', mine: 'pv-chip-mine', live: 'pv-chip-live' };
+    Object.keys(map).forEach(function(key) {
+        var btn = document.getElementById(map[key]);
+        if (!btn) return;
+        btn.setAttribute('aria-pressed', homeLiveFilter === key ? 'true' : 'false');
+        var countEl = document.getElementById(map[key] + '-count');
+        if (countEl) countEl.textContent = String(homeLiveFilterCounts[key] || 0);
+    });
+}
+
 function loadLiveRounds() {
     var el = document.getElementById('live-rounds');
     if (typeof db === 'undefined') return;
@@ -842,9 +981,29 @@ function renderHomeLiveRounds(data) {
                 }
             }
         }
-        var entries = Object.entries(data).filter(function(e) { return e && e[1] && typeof e[1] === 'object' && e[1].status === 'active' && homeRoundIsPublic(e[1]); });
+        // «Live» — раунды, где счёт уже вводится (status active).
+        // «Все» — они же плюс раунды, созданные протоколом заранее и ещё не
+        // стартовавшие (status scheduled): карточка честно показывает «Скоро».
+        // Раунды без игроков в список не попадают — карточка из них не
+        // собирается, и цифра на чипе не должна обещать пустоту.
+        var homeVisibleRounds = Object.entries(data).filter(function(e) {
+            if (!e || !e[1] || typeof e[1] !== 'object') return false;
+            var st = e[1].status;
+            if (st !== 'active' && st !== 'scheduled') return false;
+            if (!homeRoundIsPublic(e[1])) return false;
+            return Object.keys(e[1].players || {}).length > 0;
+        });
+        var liveEntries = homeVisibleRounds.filter(function(e) { return e[1].status === 'active'; });
+        var entries = homeLiveFilter === 'all' ? homeVisibleRounds : liveEntries;
 
-        renderCourseHolesStrip(entries);
+        renderCourseHolesStrip(liveEntries);
+
+        homeLiveFilterCounts = {
+            all: homeVisibleRounds.length,
+            mine: homeVisibleRounds.filter(function(e) { return isMyLiveRound(e[0], e[1]); }).length,
+            live: liveEntries.length
+        };
+        syncHomeLiveChips();
 
         var tnEl = document.getElementById('live-tournament-rounds');
         var tnSec = document.getElementById('active-tournament-section');
@@ -855,10 +1014,21 @@ function renderHomeLiveRounds(data) {
         // статусу, даже если активных раундов/счётов пока нет.
         var activeTnNow = homeActiveTnList();
 
+        // Фильтр «Мои раунды» применяется и к списку, и к турнирной сводке —
+        // иначе в «Моих» показывались бы чужие турнирные карточки.
+        if (homeLiveFilter === 'mine') {
+            entries = entries.filter(function(e) { return homeLiveFilterMatch(e[0], e[1], 'mine'); });
+        }
+
         if (entries.length === 0) {
-            el.innerHTML = '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
+            el.innerHTML = homeLiveFilter !== 'all'
+                ? '<div class="empty"><i class="fas fa-filter"></i><p>' + t('pv_filter_empty') + '</p>' +
+                  '<button type="button" class="btn btn-ol btn-sm" style="margin-top:12px;" data-act="setHomeLiveFilter" data-arg="all"><i class="fas fa-list"></i> ' + t('pv_filter_reset') + '</button></div>'
+                : '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
             if (tnEl) {
                 // Турнир стартует, а счётов ещё нет — не прячем его.
+                // Фильтр «Сейчас на поле» на турнирный блок не влияет: это
+                // отдельная единица информации, а не срез списка раундов.
                 tnEl.innerHTML = activeTnNow.map(function(e) { return homeTnPlaceholderHtml(e[0], e[1]); }).join('');
             }
             if (tnSec) tnSec.classList.toggle('hidden', activeTnNow.length === 0);
@@ -920,7 +1090,9 @@ function renderHomeLiveRounds(data) {
                 ? ''
                 : '<div class="empty"><i class="fas fa-golf-ball-tee"></i><p>' + t('no_active_players') + '</p><a href="setup-round.html" class="btn btn-g btn-sm" style="margin-top:12px;"><i class="fas fa-play"></i> ' + t('btn_start_game') + '</a></div>';
         } else {
-            el.innerHTML = '<div class="live-who-list">' + rowHtml(casualEntries) + '</div>';
+            // На широком экране карточки встают в две колонки
+            // (css/product-ux.css → .live-who-list--grid), на телефоне — в одну.
+            el.innerHTML = '<div class="live-who-list live-who-list--grid">' + rowHtml(casualEntries) + '</div>';
         }
 
         // Перерисовка не должна сворачивать уже открытую счётную карточку
@@ -1217,7 +1389,30 @@ function loadClubStats() {
         var lBestGross = currentLang === 'en' ? 'Best Gross (18h)' : 'Лучший Gross (18л)';
         var lHolesPlayed = currentLang === 'en' ? 'Holes Played' : 'Лунок сыграно';
 
-        el.innerHTML =
+        // Компактная полоса главных цифр — то, что видно без прокрутки.
+        // Подробные плитки остаются ниже: полоса отвечает «сколько всего»,
+        // плитки — «из чего это состоит».
+        // NBSP (&nbsp;) между числом и словом: «3 раунда» не должно
+        // разрываться переносом строки на узком экране.
+        var NB = '&nbsp;';
+        var stripHtml = '<div class="pv-stats-strip" role="list">' +
+            '<span class="pv-stats-item" role="listitem"><b>' + totalRounds + '</b>' + NB +
+                pluralN(totalRounds, t('pv_round_one'), t('pv_round_few'), t('pv_round_many')) + '</span>' +
+            '<span class="pv-stats-sep" aria-hidden="true">·</span>' +
+            '<span class="pv-stats-item" role="listitem"><b>' + totalPlayers + '</b>' + NB +
+                pluralN(totalPlayers, t('pv_player_one'), t('pv_player_few'), t('pv_player_many')) + '</span>' +
+            '<span class="pv-stats-sep" aria-hidden="true">·</span>' +
+            '<span class="pv-stats-item" role="listitem"><b>' + birdies + '</b>' + NB + t('pv_birdies') + '</span>' +
+            '<span class="pv-stats-sep" aria-hidden="true">·</span>' +
+            '<span class="pv-stats-item" role="listitem"><b>' + activeRounds + '</b>' + NB + lActiveRounds + '</span>' +
+            '</div>';
+
+        // Подробные плитки — в раскрытии: на первый экран выходит полоса,
+        // десяток плиток больше не растягивает «Клуб в цифрах» на три экрана.
+        el.innerHTML = stripHtml +
+            '<details class="pv-stats-more">' +
+            '<summary><i class="fas fa-chart-simple" aria-hidden="true"></i> ' + t('pv_stats_more') + '</summary>' +
+            '<div class="pv-stats-grid">' +
             '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + totalRounds + '</div><div class="stat-l">' + lTotalRounds + '</div></div>' +
             '<div class="stat"><i class="fas fa-circle-play"></i><div class="stat-n">' + activeRounds + '</div><div class="stat-l">' + lActiveRounds + '</div></div>' +
             '<div class="stat"><i class="fas fa-check-circle"></i><div class="stat-n">' + completedRounds + '</div><div class="stat-l">' + lCompletedRounds + '</div></div>' +
@@ -1227,7 +1422,8 @@ function loadClubStats() {
             '<div class="stat"><i class="fas fa-bolt"></i><div class="stat-n">' + eagles + '</div><div class="stat-l">Eagles</div></div>' +
             '<div class="stat"><i class="fas fa-circle-check"></i><div class="stat-n">' + pars + '</div><div class="stat-l">Pars</div></div>' +
             '<div class="stat"><i class="fas fa-circle-xmark"></i><div class="stat-n">' + bogeys + '</div><div class="stat-l">Bogeys</div></div>' +
-            '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHolesPlayed + '</div><div class="stat-l">' + lHolesPlayed + '</div></div>';
+            '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHolesPlayed + '</div><div class="stat-l">' + lHolesPlayed + '</div></div>' +
+            '</div></details>';
     });
 }
 

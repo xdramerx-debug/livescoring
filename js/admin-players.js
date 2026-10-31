@@ -308,6 +308,9 @@ function saveAdmPlayerEditor(event) {
         profileUpdatedAt: Date.now()
     };
     if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) patch.profileUpdatedBy = currentUser.uid;
+    // Прежний гандикап — для журнала: правка профиля в админке была главным
+    // способом поменять гандикап, но в hcpLog о ней ничего не попадало.
+    var prevHcpForLog = current.handicap == null || current.handicap === '' ? null : Number(current.handicap);
     var next = Object.assign({}, current, patch);
     var updates = {};
     Object.keys(patch).forEach(function(key) { updates['users/' + id + '/' + key] = patch[key]; });
@@ -323,6 +326,16 @@ function saveAdmPlayerEditor(event) {
         renderAdmPlayersList(admPlayersLastData);
         closeAdmPlayerEditor();
         if (typeof toast === 'function') toast(currentLang === 'en' ? '✅ Player profile updated.' : '✅ Данные игрока обновлены.', 'success');
+        var hcpChanged = prevHcpForLog == null || !isFinite(prevHcpForLog) || Math.abs(prevHcpForLog - Number(hcp.value)) > 0.0001;
+        if (hcpChanged && typeof pestovoLogHcpChange === 'function') {
+            pestovoLogHcpChange({
+                playerUid: id,
+                playerName: name,
+                oldHcp: prevHcpForLog,
+                newHcp: Number(hcp.value),
+                source: 'manual-admin'
+            });
+        }
     }).catch(function(error) {
         if (saveButton) saveButton.disabled = false;
         if (status) status.textContent = (currentLang === 'en' ? 'Could not save player data: ' : 'Не удалось сохранить данные игрока: ') + (error && error.message ? error.message : error || 'error');

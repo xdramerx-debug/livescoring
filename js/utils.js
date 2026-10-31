@@ -572,6 +572,9 @@ function pestovoLogHcpChange(entry) {
     try {
         if (typeof db === 'undefined' || !db || !entry) return Promise.resolve(false);
         var user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : null;
+        // Мастер-сессия и ранняя загрузка страницы: currentUser ещё пуст, но
+        // Firebase-сессия уже есть — иначе запись в журнал молча пропадала.
+        if ((!user || !user.uid) && typeof auth !== 'undefined' && auth && auth.currentUser) user = auth.currentUser;
         var actorUid = user && user.uid ? String(user.uid) : '';
         if (!actorUid) return Promise.resolve(false);
         var profile = (typeof currentUserData !== 'undefined' && currentUserData) ? currentUserData : {};

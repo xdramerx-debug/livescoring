@@ -46,12 +46,44 @@
             return q.split(' ').every(function (part) { return hay.indexOf(part) !== -1; });
         });
     }
+    // Понятная причина вместо сырого PERMISSION_DENIED от Firebase.
+    function errorText(err) {
+        var raw = String((err && (err.message || err.code)) || err || '');
+        if (/index/i.test(raw)) {
+            return en()
+                ? 'The handicap log has no index for the query. Deploy database.rules.json (".indexOn": ["at"] for hcpLog).'
+                : 'В правилах БД нет индекса для журнала. Разверните database.rules.json (узел hcpLog, ".indexOn": ["at"]).';
+        }
+        if (/permission|denied/i.test(raw)) {
+            return en()
+                ? 'No access to the handicap log: administrator rights and the deployed database rules are required.'
+                : 'Нет доступа к журналу: нужны права администратора и развёрнутые правила БД (узел hcpLog).';
+        }
+        return raw || (en() ? 'Unknown error' : 'Неизвестная ошибка');
+    }
+    function showError(target, err) {
+        target.innerHTML = '<p class="empty" style="color:var(--red);">❌ ' + esc(errorText(err)) + '</p>';
+    }
+    function emptyHtml() {
+        return '<p class="empty">' +
+            (en() ? 'No handicap updates yet.' : 'Записей пока нет.') +
+            '</p><p style="color:var(--muted);font-size:12px;margin:0;">' +
+            (en()
+                ? 'The log is filled when a handicap changes: RUSGOLF lookup in round setup, manual edit in the admin panel, AGR sync or Excel import.'
+                : 'Журнал заполняется при изменении гандикапа: запрос RUSGOLF в создании раунда, правка в админке, синхронизация АГР или импорт Excel.') +
+            '</p>';
+    }
     function render() {
         var target = el('hcp-log-results');
         if (!target) return;
         var list = filtered().sort(function (a, b) { return b.at - a.at; });
         if (!list.length) {
-            target.innerHTML = '<p class="empty">' + (en() ? 'No handicap updates found.' : 'Обновлений гандикапа не найдено.') + '</p>';
+            // «Журнал пуст» и «по фильтру ничего» — разные состояния, и лечатся
+            // они по-разному: в первом случае нужно изменить гандикап, во втором
+            // — стереть запрос в поиске.
+            target.innerHTML = entries.length
+                ? '<p class="empty">' + (en() ? 'No records match the search.' : 'По запросу ничего не найдено.') + '</p>'
+                : emptyHtml();
             return;
         }
         // Последнее обновление по каждому игроку (по ФИО; при наличии uid — по uid).
@@ -82,18 +114,46 @@
             '<p style="color:var(--muted);font-size:12px;margin:0 0 4px;">' + list.length + (en() ? ' updates (last 500 stored)' : ' записей (хранятся последние 500)') + '</p>' +
             history;
     }
+    function applyValue(target, val) {
+        entries = Object.keys(val || {}).map(function (k) { return val[k]; })
+            .filter(function (e) { return e && typeof e.at === 'number'; });
+        render();
+        return entries.length;
+    }
+    // Честное состояние вместо тишины: раньше без соединения с базой вкладка
+    // оставалась пустой и выглядела «сломанной».
     root.hcpLogLoad = function () {
         var target = el('hcp-log-results');
-        if (!target || !root.db) return;
+        if (!target) return Promise.resolve(0);
+        if (!root.db) {
+            target.innerHTML = '<p class="empty">' +
+                (en() ? 'No database connection: the log cannot be loaded.' : 'Нет соединения с базой: журнал не загрузить.') +
+                '</p>';
+            return Promise.resolve(0);
+        }
         target.textContent = en() ? 'Loading…' : 'Загрузка…';
-        root.db.ref('hcpLog').orderByChild('at').limitToLast(500).once('value').then(function (sn) {
-            var val = sn.val() || {};
-            entries = Object.keys(val).map(function (k) { return val[k]; })
-                .filter(function (e) { return e && typeof e.at === 'number'; });
-            render();
-        }).catch(function (err) {
-            target.textContent = '❌ ' + (err && err.message || err);
-        });
+        var plain = function () {
+            return root.db.ref('hcpLog').once('value').then(function (sn) { return sn.val() || {}; });
+        };
+        return root.db.ref('hcpLog').orderByChild('at').limitToLast(500).once('value')
+            .then(function (sn) { return sn.val() || {}; })
+            .catch(function (err) {
+                // Нет индекса ".indexOn": ["at"] (правила не развёрнуты) — читаем
+                // узел целиком и сортируем на клиенте: журнал важнее скорости.
+                try { console.warn('[hcp log] ordered read failed, plain read fallback', err); } catch (e) { console.warn('[silent]', e); }
+                return plain().catch(function (err2) {
+                    showError(target, err2 || err);
+                    return null;
+                });
+            })
+            .then(function (val) {
+                if (val == null) return 0;
+                return applyValue(target, val);
+            })
+            .catch(function (err) {
+                showError(target, err);
+                return 0;
+            });
     };
     root.hcpLogFilter = render;
 })(typeof window !== 'undefined' ? window : this);

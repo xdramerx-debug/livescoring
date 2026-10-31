@@ -4,8 +4,9 @@
 // Внешние зависимости: runtime-глобалы (db, toast, t, currentLang,
 // escapeHtml) и safeStorageRemove из admin.js (загружен раньше — вызов
 // происходит только из UI-событий). Вызовы loadAdmGroups/loadAdmRounds/
-// renderAdmGroups из admin.js — typeof-guarded. Грузится в admin.html
-// рядом с admin.js.
+// renderAdmGroups из admin.js — typeof-guarded. Грузится лениво
+// (data-admin-lazy="groups" в admin.html) для вкладок «Группы»,
+// «Игроки и роли» и «Управление данными» — см. TAB_GROUPS в admin-lazy.js.
 
 // ==========================================
 // ГРУППЫ, КОТОРЫЕ СЕЙЧАС ИГРАЮТ / КОНТРОЛЬ ТЕМПА
@@ -679,9 +680,12 @@ function wipeResultToast(res, opts) {
         return;
     }
     var names = wipeFailureNames(res.failures || []);
+    // Без серверной функции часть веток (scoreAudit, hcpLog, markers) клиент
+    // удалить не может — правила разрешают только точечные записи. Говорим
+    // это прямо, а не «нужны права администратора»: права есть, нет деплоя.
     toast(en
-        ? '⚠️ Partially deleted. Not deleted: ' + names + '. Administrator rights (or deployed rules/functions) are required.'
-        : '⚠️ Удалено частично. Не удалось удалить: ' + names + '. Нужны права администратора (или развёрнутые правила/функции).', 'error');
+        ? '⚠️ Partially deleted. Not deleted: ' + names + '. Deploy the server function and rules: firebase deploy --only functions,database.'
+        : '⚠️ Удалено частично. Не удалось удалить: ' + names + '. Полное удаление делает серверная функция — разверните: firebase deploy --only functions,database.', 'error');
 }
 
 // ── Кнопки админки ─────────────────────────────────────────────────────────

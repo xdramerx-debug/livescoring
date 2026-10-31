@@ -15,10 +15,15 @@
         hcplog: ['hcplog'],
         groups: ['groups'],
         tnmanager: ['xlsx', 'rgclient', 'tnm'],
-        players: ['players', 'display'],
+        // В карточке «Игроки и роли» есть кнопка «Удалить всех игроков» —
+        // она живёт в js/admin-groups.js, поэтому группа грузится и здесь.
+        players: ['players', 'display', 'groups'],
         importexport: ['xlsx', 'importexport'],
         rusgolf: ['xlsx', 'players', 'rgclient', 'rusgolf'],
-        data: ['display'],
+        // «Управление данными»: удаление (js/admin-groups.js) и бэкап/CSV
+        // (js/admin-exports.js) раньше не грузились вовсе — кнопки были
+        // мёртвыми: клик писал «нет обработчика» и ничего не происходил.
+        data: ['display', 'groups', 'importexport'],
         scorecards: ['display'],
         entrycards: ['display', 'entry'],
         tncards: ['display'],

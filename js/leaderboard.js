@@ -363,6 +363,18 @@ function renderRound(id, r) {
         var pid = pe[0], p = pe[1], sc = p.scores || {};
         var pTee = (p && p.tee) || r.tee || 'wh';
         var stats = calcRoundStats(sc, p.fieldHcp || 0, p.exactHcp || 0, order);
+        // Берди и иглы считаем из сохранённых счётов: это то, что игрок
+        // хочет видеть в строке сразу, без раскрытия карточки.
+        var birdies = 0, eagles = 0;
+        // holePar приходит из бандла-модуля, поэтому на всякий случай
+        // проверяем тип: если данных о лунках ещё нет, считаем пар = 4.
+        var parOf = (typeof holePar === 'function') ? holePar : function () { return 4; };
+        Object.keys(sc || {}).forEach(function (h) {
+            var v = parseInt(sc[h], 10);
+            if (!v || v < 1) return;
+            var d = v - parOf(h);
+            if (d <= -2) eagles++; else if (d === -1) birdies++;
+        });
         return {
             pid: pid,
             name: p.name,
@@ -376,7 +388,9 @@ function renderRound(id, r) {
             stblExact: stats.stablefordExact,
             holesPlayed: stats.holesPlayed, 
             holeCount: getRoundHoleCount(r),
-            currentHole: stats.currentHole
+            currentHole: stats.currentHole,
+            birdies: birdies,
+            eagles: eagles
         };
     });
 
@@ -411,20 +425,35 @@ function renderRound(id, r) {
     var stblF = isEn ? 'Stb fld' : 'Стб пол';
     var stblE = isEn ? 'Stb exc' : 'Стб игр';
 
+    // Сводка лучших результатов по раунду — для свёрнутой строки: в неё
+    // игроки со своими бейджами не видны, пока раунд не раскрыт.
+    var roundBirdies = 0, roundEagles = 0;
+
     var rows = list.map(function(p) {
+        roundBirdies += p.birdies || 0;
+        roundEagles += p.eagles || 0;
         var posCls = p.position <= 3 ? 'lb-' + p.position : '';
         var isFin = typeof isPlayerFinishedRound === 'function' && isPlayerFinishedRound(r, p.pid);
         var holeInfo = (isFin || p.holesPlayed >= (p.holeCount || 18)) ? 'F' : (p.currentHole ? (isEn ? 'Hole #' : 'лунка №') + p.currentHole : '—');
         var gross = p.gross || '—';
         var teeCode = pestovoNormalizeTeeCode(p.tee);
         var pTeeBadge = '<span class="tee-pill tee-' + teeCode + '" style="font-size:9px;padding:0 6px;margin-left:6px;vertical-align:middle;line-height:16px;">' + escapeHtml(pestovoTeeLabel(teeCode)) + '</span>';
+        // Бейдж лучшего результата: игл важнее берди, поэтому он вытесняет
+        // берди, а не выводится рядом (иначе строка превращается в свалку).
+        // Текст дублируется в title и aria-label: цвет — не единственный носитель.
+        var bestBadge = '';
+        if (p.eagles) {
+            bestBadge = '<span class="pv-badge pv-badge--eagle" title="' + escapeHtml(t('res_eagle')) + ': ' + p.eagles + '" aria-label="' + escapeHtml(t('res_eagle')) + ': ' + p.eagles + '"><i class="fas fa-bolt" aria-hidden="true"></i> ' + p.eagles + '</span>';
+        } else if (p.birdies) {
+            bestBadge = '<span class="pv-badge pv-badge--birdie" title="' + escapeHtml(t('res_birdie')) + ': ' + p.birdies + '" aria-label="' + escapeHtml(t('res_birdie')) + ': ' + p.birdies + '"><i class="fas fa-fire" aria-hidden="true"></i> ' + p.birdies + '</span>';
+        }
 
         // role="row"/"cell" — чтобы таблица читалась скринридером по строкам
         // и столбцам, хотя собрана на div'ах (таблицы <table> тут нет).
         return '<div class="rlb-row" role="row" data-act="openPlayerProfileModal" data-arg="' + escapeHtml(p.pid) + '" data-arg2="' + escapeHtml(id) + '">' +
             '<span class="rlb-pos ' + posCls + '" role="cell">' + (p.tied ? 'T' : '') + p.position + '</span>' +
             '<div class="rlb-player" role="cell">' + fmtUserAvatar(p, 28) +
-            '<div class="rlb-pcol"><div style="display:flex;align-items:center;min-width:0;"><span class="rlb-name">' + escapeHtml(privacyDisplayName(p, p.pid)) + '</span>' + pTeeBadge + '</div>' +
+            '<div class="rlb-pcol"><div style="display:flex;align-items:center;min-width:0;"><span class="rlb-name">' + escapeHtml(privacyDisplayName(p, p.pid)) + '</span>' + pTeeBadge + bestBadge + '</div>' +
             '<span class="rlb-thru">' + holeInfo + '</span></div></div>' +
             '<span class="rlb-par ' + scoreClass(p.toPar) + '" role="cell">' + fmtScore(p.toPar) + '</span>' +
             '<span class="rlb-num" role="cell">' + gross + '</span>' +
@@ -468,6 +497,15 @@ function renderRound(id, r) {
         lbHeadCell('stblField', stblF, 'rlb-num') +
         lbHeadCell('stblExact', stblE, 'rlb-num') + '</div>';
 
+    // В свёрнутой строке раунда: сколько берди/игл набрали все игроки.
+    // Игл важнее берди, поэтому выводится один бейдж, а не два.
+    var roundBadge = '';
+    if (roundEagles) {
+        roundBadge = '<span class="pv-badge pv-badge--eagle" title="' + escapeHtml(t('pv_round_eagles')) + ': ' + roundEagles + '" aria-label="' + escapeHtml(t('pv_round_eagles')) + ': ' + roundEagles + '"><i class="fas fa-bolt" aria-hidden="true"></i> ' + roundEagles + '</span>';
+    } else if (roundBirdies) {
+        roundBadge = '<span class="pv-badge pv-badge--birdie" title="' + escapeHtml(t('pv_round_birdies')) + ': ' + roundBirdies + '" aria-label="' + escapeHtml(t('pv_round_birdies')) + ': ' + roundBirdies + '"><i class="fas fa-fire" aria-hidden="true"></i> ' + roundBirdies + '</span>';
+    }
+
     var ts = r.startTime || r.createdAt;
     var soloWord = isEn ? ' · Solo' : ' · Одиночный';
     // Имена игроков показываем в развёрнутой таблице, чтобы не дублировать
@@ -491,7 +529,7 @@ function renderRound(id, r) {
         '<span class="lwl-name"><i class="fas ' + (isLive ? 'fa-flag' : 'fa-flag-checkered') + '"></i><span class="lwl-name-txt">' + fmtDate(ts) + '</span></span>' +
         '<span class="lwl-hole lb-names"><i class="fas fa-user"></i> ' + escapeHtml(namesStr) + '</span>' +
         '<span class="lwl-score">' + badge + '</span>' +
-        '<span class="lwl-start">' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + '</span>' +
+        '<span class="lwl-start">' + ((typeof pestovoRoundFormatBadge === 'function') ? pestovoRoundFormatBadge(r, 'Stroke Play') : (r.format || 'Stroke Play')) + roundBadge + '</span>' +
         '<i class="fas lwl-chev ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i>' +
         '</div>' +
         details +

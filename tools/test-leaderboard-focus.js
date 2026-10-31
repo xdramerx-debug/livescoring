@@ -26,7 +26,8 @@ function check(condition, message) {
 const rounds = {};
 rounds[ROUND_ID] = {
     status: 'completed', createdAt: Date.now(), completedAt: Date.now(), format: 'Stroke Play', tee: 'wh',
-    players: { p1: { name: 'Тестов Игрок', tee: 'wh', scores: { 1: 4 }, fieldHcp: 0, exactHcp: 0 } }
+    // Лунка 1 (пар 4) сыграна за 3 — берди: на нём проверяем бейдж.
+    players: { p1: { name: 'Тестов Игрок', tee: 'wh', scores: { 1: 3 }, fieldHcp: 0, exactHcp: 0 } }
 };
 rounds['another-round'] = {
     status: 'completed', createdAt: Date.now() - 1000, format: 'Stroke Play', tee: 'wh',
@@ -64,7 +65,9 @@ win.escapeHtml = function (value) { return String(value == null ? '' : value).re
 win.t = function (key) {
     return ({
         tee_wh: 'White', player: 'Игрок', gross: 'Gross', players_label: 'Игроков', tee_select: 'Ти',
-        expand_scorecard: 'Развернуть счётную карточку', collapse_scorecard: 'Свернуть счётную карточку'
+        expand_scorecard: 'Развернуть счётную карточку', collapse_scorecard: 'Свернуть счётную карточку',
+        res_birdie: 'Birdie', res_eagle: 'Eagle',
+        pv_round_birdies: 'Берди в раунде', pv_round_eagles: 'Иглы в раунде'
     })[key] || key;
 };
 win.generateGroupHoleTableHTML = function () { return '<div class="test-scorecard">Saved scores</div>'; };
@@ -83,6 +86,22 @@ check(row && row.classList.contains('is-open'), 'фокусная карточк
 check(row && row.querySelector('.lwl-toggle').getAttribute('aria-expanded') === 'true', 'состояние раскрытия доступно скринридерам');
 check(!!panel && !panel.classList.contains('hidden'), 'счётная карточка раскрыта автоматически по scorecard=1');
 check(panel && panel.textContent.indexOf('Saved scores') !== -1, 'в открытой счётной карточке отображаются сохранённые результаты');
+
+// Бейдж лучшего результата: цвет не единственный носитель смысла —
+// у бейджа есть title/aria-label словом и число.
+const badge = row && row.querySelector('.rlb-pcol .pv-badge--birdie');
+check(!!badge, 'берди в раунде помечено бейджем в строке игрока');
+check(badge && badge.textContent.indexOf('1') !== -1, 'на бейдже стоит число берди');
+check(badge && /Birdie/.test(badge.getAttribute('title') || ''),
+    'у бейджа есть текстовая подпись для скринридера и тултипа');
+check(badge && /Birdie/.test(badge.getAttribute('aria-label') || ''),
+    'бейдж озвучивается словами, а не только цветом');
+
+// В свёрнутой строке раунда видно, что в нём были берди — без раскрытия.
+const headBadge = row && row.querySelector('.lwl-toggle .pv-badge--birdie');
+check(!!headBadge, 'бейдж берди виден в свёрнутой строке раунда');
+check(headBadge && headBadge.textContent.indexOf('1') !== -1 && /Берди/.test(headBadge.getAttribute('title') || ''),
+    'сводный бейдж раунда считает берди и подписан словами');
 
 if (checks.some(function (item) { return !item.condition; })) process.exit(1);
 console.log('OK:', checks.length, 'checks');

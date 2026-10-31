@@ -13,15 +13,15 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_admin">Админ — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=5096ec16">
+    <link rel="stylesheet" href="css/style.css?v=bb98fab2">
     <link rel="stylesheet" href="css/theme-v2.css?v=915c2133">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <link rel="stylesheet" href="css/tournament-redesign.css?v=794da0d9">
+    <link rel="stylesheet" href="css/tournament-redesign.css?v=dc2bdd18">
     <link rel="stylesheet" href="css/tn-manager.css?v=6d129f32">
     <link rel="stylesheet" href="css/tn-mgr-printcards.css?v=e9c466ab">
     <link rel="stylesheet" href="css/entry-scorecard.css?v=a34f8c94">
-    <script src="js/ui-events.js?v=5ba225a1"></script>
-    <script src="js/design-system.js?v=394cc00f"></script>
+    <script src="js/ui-events.js?v=cff4fd10"></script>
+    <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="stylesheet" href="css/fontawesome-subset.css?v=132a6b88">
@@ -64,7 +64,7 @@
         </p>
         <form data-sub-act="adminLogin" data-sub-ev="1" data-prevent="1">
             <div class="form-group">
-                <label data-i18n="password"><i class="fas fa-key"></i> Пароль</label>
+                <label data-i18n="password" for="adm-master-pass"><i class="fas fa-key"></i> Пароль</label>
                 <input type="password" id="adm-master-pass" class="form-input" autocomplete="current-password" placeholder="••••••••">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
@@ -283,8 +283,8 @@
         <div id="tab-rounds" class="admin-section hidden">
             <div class="card"><h2><i class="fas fa-flag"></i> <span data-i18n="all_rounds">Все раунды</span></h2>
                 <div class="form-row">
-                    <div class="form-group" style="flex:1;min-width:150px;max-width:220px;"><label data-i18n="date_from_label">Дата с</label><input type="date" id="adm-date-from" class="form-input"></div>
-                    <div class="form-group" style="flex:1;min-width:150px;max-width:220px;"><label data-i18n="date_to_label">Дата по</label><input type="date" id="adm-date-to" class="form-input"></div>
+                    <div class="form-group" style="flex:1;min-width:150px;max-width:220px;"><label data-i18n="date_from_label" for="adm-date-from">Дата с</label><input type="date" id="adm-date-from" class="form-input"></div>
+                    <div class="form-group" style="flex:1;min-width:150px;max-width:220px;"><label data-i18n="date_to_label" for="adm-date-to">Дата по</label><input type="date" id="adm-date-to" class="form-input"></div>
                     <div class="form-group date-reset-group" style="flex:0 0 auto;">
                         <label aria-hidden="true">&nbsp;</label>
                         <button type="button" id="adm-date-reset" class="btn btn-ol btn-sm"><i class="fas fa-rotate-left"></i> <span data-i18n="date_filter_reset">Сбросить</span></button>
@@ -308,15 +308,15 @@
                 </p>
                 <div class="se-editor-toolbar">
                     <div class="form-group" style="flex:1 1 220px;">
-                        <label data-i18n="scores_search_fio">Поиск по ФИО игрока</label>
+                        <label data-i18n="scores_search_fio" for="se-q-fio">Поиск по ФИО игрока</label>
                         <input type="text" id="se-q-fio" class="form-input" placeholder="Иванов Пётр" data-act="seRender">
                     </div>
                     <div class="form-group" style="flex:0 1 150px;">
-                        <label data-i18n="scores_search_date">Дата раунда</label>
+                        <label data-i18n="scores_search_date" for="se-q-date">Дата раунда</label>
                         <input type="date" id="se-q-date" class="form-input" data-act="seRender">
                     </div>
                     <div class="form-group" style="flex:0 1 170px;">
-                        <label data-i18n="scores_search_status">Статус раунда</label>
+                        <label data-i18n="scores_search_status" for="se-q-status">Статус раунда</label>
                         <select id="se-q-status" class="form-input" data-act="seRender">
                             <option value="">— все —</option>
                             <option value="active">🔴 Активный</option>
@@ -374,7 +374,7 @@
                 <p style="color:var(--muted);font-size:13px;margin-bottom:12px;" data-i18n="admin_groups_sub">Контроль темпа игры по активным групповым раундам</p>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
                     <div class="form-group" style="flex:1;min-width:170px;max-width:260px;margin:0;">
-                        <label style="font-size:11px;">Сортировка</label>
+                        <label style="font-size:11px;" for="adm-groups-sort">Сортировка</label>
                         <select id="adm-groups-sort" class="form-input" style="padding:7px 10px;font-size:12.5px;" data-act="admGroupsSort">
                             <option value="delay" selected>Сначала отстающие</option>
                             <option value="start">По времени старта</option>
@@ -441,11 +441,11 @@
                     </p>
                     <div class="form-row">
                         <div class="form-group">
-                            <label><i class="fas fa-key"></i> Group Bot Token</label>
+                            <label for="tg-group-bot-token"><i class="fas fa-key"></i> Group Bot Token</label>
                             <input type="text" id="tg-group-bot-token" class="form-input" placeholder="7891234567:AAExampleGroupToken">
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-users"></i> Group Chat ID</label>
+                            <label for="tg-group-chat-id"><i class="fas fa-users"></i> Group Chat ID</label>
                             <input type="text" id="tg-group-chat-id" class="form-input" placeholder="-1001234567890">
                         </div>
                     </div>
@@ -463,11 +463,11 @@
                     </p>
                     <div class="form-row">
                         <div class="form-group">
-                            <label><i class="fas fa-key"></i> Channel Bot Token</label>
+                            <label for="tg-channel-bot-token"><i class="fas fa-key"></i> Channel Bot Token</label>
                             <input type="text" id="tg-channel-bot-token" class="form-input" placeholder="7891234567:AAExampleChannelToken">
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-bullhorn"></i> Channel ID / Username</label>
+                            <label for="tg-channel-id"><i class="fas fa-bullhorn"></i> Channel ID / Username</label>
                             <input type="text" id="tg-channel-id" class="form-input" data-i18n-placeholder="placeholder_tg_channel_id" placeholder="@pestovo_golf или -1001987654321">
                         </div>
                     </div>
@@ -500,11 +500,11 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label data-i18n="vk_token_lbl"><i class="fas fa-key"></i> VK Access Token Сообщества</label>
+                        <label data-i18n="vk_token_lbl" for="vk-access-token"><i class="fas fa-key"></i> VK Access Token Сообщества</label>
                         <input type="text" id="vk-access-token" class="form-input" placeholder="vk1.a.ExampleAccessToken..." autocomplete="off" spellcheck="false">
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-comments"></i> VK Peer ID / Chat ID</label>
+                        <label for="vk-peer-id"><i class="fas fa-comments"></i> VK Peer ID / Chat ID</label>
                         <input type="number" id="vk-peer-id" class="form-input" data-i18n-placeholder="placeholder_vk_peer_id" placeholder="2000000001 (беседа) или 123456789">
                         <div style="font-size:11px;color:var(--muted);margin-top:4px;">Для беседы: 2000000000 + номер чата. Для личных сообщений: ID пользователя.</div>
                     </div>
@@ -526,15 +526,15 @@
                     Сообщение будет отправлено на смартфоны всех зарегистрированных игроков клуба.
                 </p>
                 <div class="form-group">
-                    <label data-i18n="broadcast_title_lbl">Заголовок анонса</label>
+                    <label data-i18n="broadcast_title_lbl" for="bc-title">Заголовок анонса</label>
                     <input type="text" id="bc-title" class="form-input" maxlength="200" data-i18n-placeholder="placeholder_bc_title" placeholder="🏆 Чемпионат Пестово 2024">
                 </div>
                 <div class="form-group">
-                    <label data-i18n="broadcast_body_lbl">Текст сообщения</label>
+                    <label data-i18n="broadcast_body_lbl" for="bc-body">Текст сообщения</label>
                     <textarea id="bc-body" class="form-input" style="min-height:90px;" maxlength="1000" data-i18n-placeholder="placeholder_bc_body" placeholder="Регистрация на турнир открыта! Старт в субботу в 10:00."></textarea>
                 </div>
                 <div class="form-group">
-                    <label data-i18n="broadcast_link_lbl">Ссылка (опционально)</label>
+                    <label data-i18n="broadcast_link_lbl" for="bc-link">Ссылка (опционально)</label>
                     <select id="bc-link" class="form-input">
                         <option value="tournaments.html" data-i18n="nav_tournaments">Турниры</option>
                         <option value="index.html" data-i18n="nav_home">Главная</option>
@@ -542,7 +542,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label data-i18n="bc_audience_lbl">Кому отправить</label>
+                    <label data-i18n="bc_audience_lbl" for="bc-audience">Кому отправить</label>
                     <select id="bc-audience" class="form-input" data-act="bcAudienceTypeChange">
                         <option value="all" data-i18n="bc_aud_all">Всем игрокам клуба</option>
                         <option value="all_pwa" data-i18n="bc_aud_all_pwa">Всем + PWA-уведомления (включая гостей)</option>
@@ -552,13 +552,13 @@
                 </div>
                 <div class="form-row hidden" id="bc-aud-pick">
                     <div class="form-group" style="flex:1 1 220px;">
-                        <label data-i18n="bc_aud_tn_lbl">Турнир</label>
+                        <label data-i18n="bc_aud_tn_lbl" for="bc-aud-tn">Турнир</label>
                         <select id="bc-aud-tn" class="form-input" data-act="bcAudienceSourceChange">
                             <option value="">&mdash;</option>
                         </select>
                     </div>
                     <div class="form-group hidden" id="bc-aud-proto-group" style="flex:1 1 220px;">
-                        <label data-i18n="bc_aud_proto_lbl">Стартовый протокол</label>
+                        <label data-i18n="bc_aud_proto_lbl" for="bc-aud-proto">Стартовый протокол</label>
                         <select id="bc-aud-proto" class="form-input" data-act="bcAudienceSourceChange">
                             <option value="">&mdash;</option>
                         </select>
@@ -578,7 +578,7 @@
                 </p>
                 <div id="push-status" style="font-size:13px;margin-bottom:10px;">Проверка…</div>
                 <div class="form-group">
-                    <label>URL функции vapidSetup (если регион не us-central1)</label>
+                    <label for="push-fn-url">URL функции vapidSetup (если регион не us-central1)</label>
                     <input type="text" id="push-fn-url" class="form-input" placeholder="https://us-central1-livescore-b77e4.cloudfunctions.net/vapidSetup">
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -647,7 +647,7 @@
                 </div>
 
                 <div class="form-group" style="max-width:360px;">
-                    <label data-i18n="privacy_mask_lbl"><i class="fas fa-user-secret"></i> Формат скрытия имени</label>
+                    <label data-i18n="privacy_mask_lbl" for="pv-privacy-mask"><i class="fas fa-user-secret"></i> Формат скрытия имени</label>
                     <select id="pv-privacy-mask" class="form-input">
                         <option value="initials" data-i18n="privacy_opt_initials">Инициалы (И. Т.)</option>
                         <option value="masked" data-i18n="privacy_opt_masked">Полная маскировка (Игрок №N)</option>
@@ -667,21 +667,21 @@
                 </p>
                 <div class="form-row">
                     <div class="form-group" style="flex:1.4 1 140px;">
-                        <label>Имя и фамилия</label>
+                        <label for="adm-new-name">Имя и фамилия</label>
                         <input type="text" autocomplete="name" id="adm-new-name" class="form-input" placeholder="например: Иван Тестов">
                     </div>
                     <div class="form-group" style="flex:1 1 100px;">
-                        <label>Email (опционально)</label>
+                        <label for="adm-new-email">Email (опционально)</label>
                         <input type="email" autocomplete="email" id="adm-new-email" class="form-input" placeholder="player@pestovo.ru">
                     </div>
                 </div>
                 <div class="form-row form-row-3">
                     <div class="form-group">
-                        <label>Точный HCP</label>
+                        <label for="adm-new-hcp">Точный HCP</label>
                         <input type="text" inputmode="decimal" id="adm-new-hcp" class="form-input" placeholder="13.0 или +2.4">
                     </div>
                     <div class="form-group">
-                        <label>Пол</label>
+                        <label for="adm-new-gender">Пол</label>
                         <select id="adm-new-gender" class="form-input">
                             <option value="men">👨 Мужчина</option>
                             <option value="women">👩 Девушка</option>
@@ -690,7 +690,7 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group" style="flex:1 1 120px;">
-                        <label>Роль</label>
+                        <label for="adm-new-role">Роль</label>
                         <select id="adm-new-role" class="form-input">
                             <option value="player">Игрок</option>
                             <option value="referee">Судья</option>
@@ -840,7 +840,7 @@
                     в профиле, раундах, истории и турнирах. В конце показываются списки: обновлено / актуально / не найдено / на выбор.
                 </p>
                 <div class="form-group" style="max-width:340px;">
-                    <label>Кого синхронизировать</label>
+                    <label for="rg-sync-scope">Кого синхронизировать</label>
                     <select id="rg-sync-scope" class="form-input" data-act="rgRefreshSyncScopeHint">
                         <option value="all" selected>Всех игроков</option>
                         <option value="notfound">Не найденных в прошлый раз</option>
@@ -873,7 +873,7 @@
                         Пример: <code style="color:var(--gold);">https://my-proxy.example.com/?target={url}</code>
                     </p>
                     <div class="form-group">
-                        <label>Свой прокси (необязательно)</label>
+                        <label for="rg-proxy-input">Свой прокси (необязательно)</label>
                         <input type="text" id="rg-proxy-input" class="form-input" placeholder="https://my-proxy.example.com/?target={url}">
                     </div>
                     <button type="button" class="btn btn-og btn-sm" data-act="saveRusgolfProxySettings"><i class="fas fa-save"></i> <span>Сохранить</span></button>
@@ -1125,7 +1125,7 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.129.1</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.130.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
@@ -1137,7 +1137,7 @@
 <script defer src="js/admin-lazy.js?v=befd193d"></script>
 <script defer src="js/admin.js?v=e3107965"></script>
 <script defer src="js/admin-channels.js?v=e1c74f92"></script>
-<script defer src="js/admin-alerts.js?v=1511fb5f"></script>
+<script defer src="js/admin-alerts.js?v=47469903"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
 <script type="text/plain" data-admin-lazy="xlsx" data-admin-src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>

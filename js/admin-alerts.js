@@ -488,3 +488,22 @@ function respondToAlert(alertId, alertType, playerId) {
         toast((currentLang === 'en' ? '❌ Response failed: ' : '❌ Ошибка отправки ответа: ') + (err && err.message ? err.message : err), 'error');
     });
 }
+
+// Баннер «ВНИМАНИЕ: N активных вызовов» кликабелен целиком, но обработчика
+// для его data-act не было: клик по «Посмотреть вызовы →» молча ничего не
+// делал и писал в консоль «[ui-events] нет обработчика». Открываем вкладку
+// «Вызовы» — ту же, что и кнопка в шапке админки.
+// Регистрация под guard: файл подключается и там, где ui-events.js ещё
+// не загружен (статические тесты собирают страницу по частям).
+if (typeof pestovoOnAction === 'function') {
+    pestovoOnAction('pestovoOpenAlertsTab', function () {
+        var tabBtn = document.querySelector('.admin-tab[data-arg="alerts"]');
+        if (typeof switchTab === 'function') {
+            switchTab('alerts', tabBtn || undefined);
+        }
+        var panel = document.getElementById('tab-alerts');
+        if (panel && typeof panel.scrollIntoView === 'function') {
+            try { panel.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { panel.scrollIntoView(); }
+        }
+    });
+}

@@ -702,7 +702,8 @@ function pestovoCreateRound() {
             selectedUids.push(uid);
         }
 
-        if (!name) { toast(t('msg_name_req') + ' #' + i, 'error'); return; }
+        // Тот же контракт, что в setupValidateInline(): «12345» — не имя.
+        if (!name || !/[^\d\s.,+-]/.test(name)) { toast(t('msg_name_req') + ' #' + i, 'error'); return; }
 
         inputs.push({
             idx: i,

@@ -13,11 +13,11 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_handicaps">Гандикапы — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=5096ec16">
+    <link rel="stylesheet" href="css/style.css?v=bb98fab2">
     <link rel="stylesheet" href="css/theme-v2.css?v=915c2133">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <script src="js/ui-events.js?v=5ba225a1"></script>
-    <script src="js/design-system.js?v=394cc00f"></script>
+    <script src="js/ui-events.js?v=cff4fd10"></script>
+    <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
     <link rel="stylesheet" href="css/fontawesome-subset.css?v=132a6b88">
     <style>
@@ -61,9 +61,9 @@
     <div class="card" style="max-width:520px;margin:0 auto 24px;">
         <h2><i class="fas fa-bolt"></i> <span data-i18n="quick_calc">Быстрый расчёт</span></h2>
         <div class="form-row">
-            <div class="form-group"><label data-i18n="exact_hcp">Точный HCP</label><input type="text" inputmode="decimal" id="calc-hcp" class="form-input" data-i18n-placeholder="placeholder_hcp_calc" placeholder="+2.4 или 12.4" data-act="calcField"></div>
-            <div class="form-group"><label data-i18n="gender_label">Пол</label><select id="calc-gender" class="form-input" data-act="calcField"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Девушка</option></select></div>
-            <div class="form-group"><label data-i18n="tee_select">ТИ</label><select id="calc-tee" class="form-input" data-act="calcField"><option value="bk" data-i18n="tee_opt_bk">⬛ Чёрный</option><option value="bl" data-i18n="tee_opt_bl">🟦 Синий</option><option value="wh" selected data-i18n="tee_opt_wh">⬜ Белый</option><option value="rd" data-i18n="tee_opt_rd">🟥 Красный</option></select></div>
+            <div class="form-group"><label data-i18n="exact_hcp" for="calc-hcp">Точный HCP</label><input type="text" inputmode="decimal" id="calc-hcp" class="form-input" data-i18n-placeholder="placeholder_hcp_calc" placeholder="+2.4 или 12.4" data-act="calcField"></div>
+            <div class="form-group"><label data-i18n="gender_label" for="calc-gender">Пол</label><select id="calc-gender" class="form-input" data-act="calcField"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Девушка</option></select></div>
+            <div class="form-group"><label data-i18n="tee_select" for="calc-tee">ТИ</label><select id="calc-tee" class="form-input" data-act="calcField"><option value="bk" data-i18n="tee_opt_bk">⬛ Чёрный</option><option value="bl" data-i18n="tee_opt_bl">🟦 Синий</option><option value="wh" selected data-i18n="tee_opt_wh">⬜ Белый</option><option value="rd" data-i18n="tee_opt_rd">🟥 Красный</option></select></div>
         </div>
         <div id="calc-result" class="hcp-result hidden">
             <div class="hcp-result-val" id="calc-val">—</div>
@@ -75,14 +75,14 @@
         <h2 style="text-align:center;"><i class="fas fa-table"></i> <span data-i18n="full_table_title">Посмотреть полную таблицу</span></h2>
         <p style="color:var(--muted);text-align:center;font-size:13px;margin-bottom:20px;" data-i18n="full_table_sub">Выберите пол и ТИ — таблица появится ниже</p>
         <div class="form-row">
-            <div class="form-group"><label data-i18n="tbl_gender">Пол игрока</label>
+            <div class="form-group"><label data-i18n="tbl_gender" for="tbl-gender">Пол игрока</label>
                 <select id="tbl-gender" class="form-input" data-act="onGenderChange">
                     <option value="" data-i18n="tbl_select_gender">— Выберите пол —</option>
                     <option value="men" data-i18n="men">👨 Мужчина</option>
                     <option value="women" data-i18n="women">👩 Девушка</option>
                 </select>
             </div>
-            <div class="form-group"><label data-i18n="tee_select">ТИ</label>
+            <div class="form-group"><label data-i18n="tee_select" for="tbl-tee">ТИ</label>
                 <select id="tbl-tee" class="form-input" data-act="showTable" disabled>
                     <option value="" data-i18n="select_gender_first">— Сначала выберите пол —</option>
                 </select>
@@ -93,7 +93,7 @@
     <div id="hcp-tables"></div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.129.1</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.130.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>

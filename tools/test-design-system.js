@@ -328,8 +328,11 @@ function loadDesign(ctx) {
     ok(sw.indexOf("'design-preview.html'") === -1, 'sw.js: design-preview.html не должна быть в предкэше');
     ok(sw.indexOf("'admin.html'") === -1, 'sw.js: admin.html не должна быть в предкэше');
     ok(sw.indexOf("'offline.html'") !== -1, 'sw.js: offline.html обязана быть в предкэше');
-    ok(sw.indexOf('caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, copy); })') !== -1,
-        'sw.js: документы кэшируются при обращении (офлайн после первого визита)');
+    // Запись обязана жить внутри event.waitUntil: иначе браузер вправе убить
+    // воркер сразу после ответа и cache.put теряется молча (аудит 2026-10).
+    ok(sw.indexOf('event.waitUntil(caches.open(CACHE_NAME)') !== -1 &&
+        sw.indexOf('.then(function(cache) { return cache.put(event.request, copy); })') !== -1,
+        'sw.js: документы кэшируются при обращении внутри waitUntil (офлайн после первого визита)');
 
     ok(fs.existsSync(path.join(ROOT, 'design-preview.html')), 'Нет страницы сравнения design-preview.html');
     ok(fs.existsSync(path.join(ROOT, 'js', 'design-preview.js')), 'Нет js/design-preview.js');

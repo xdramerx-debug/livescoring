@@ -6,8 +6,8 @@
     <title>Стартовый протокол · QR-карточки — Пестово</title>
     <link rel="icon" type="image/png" href="img/logo.png">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <script src="js/ui-events.js?v=5ba225a1"></script>
-    <script src="js/design-system.js?v=394cc00f"></script>
+    <script src="js/ui-events.js?v=cff4fd10"></script>
+    <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
     <style>
         :root { --gold:#c9a84c; --dark:#0b1a0e; --gray:#5a6b5c; --line:#d8d4c8; }
@@ -22,6 +22,10 @@
         .btn-og { background:var(--gold); color:#1a1a12; }
         .btn-ol { background:transparent; border:1px solid rgba(255,255,255,.4) !important; color:#fff; }
         .btn-r { background:#b03a2e; color:#fff; }
+        /* Печать и настройка с телефона: цели не меньше 44 px по высоте. */
+        @media (pointer: coarse) {
+            .toolbar .btn, .toolbar select { min-height: 44px; }
+        }
         .sheet-wrap, .cards-wrap { max-width:210mm; margin:0 auto; padding:14px; }
         h1.qr-h { font-family:'Playfair Display',Georgia,serif; font-size:26px; margin:6px 0 2px; }
         .sub { color:var(--gray); font-size:13px; margin:0 0 12px; }

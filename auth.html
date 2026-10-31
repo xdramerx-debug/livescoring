@@ -13,11 +13,11 @@
     <link rel="apple-touch-icon" href="img/icon-180.png">
     <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png">
     <title data-i18n="nav_login">Вход — Пестово</title>
-    <link rel="stylesheet" href="css/style.css?v=5096ec16">
+    <link rel="stylesheet" href="css/style.css?v=bb98fab2">
     <link rel="stylesheet" href="css/theme-v2.css?v=915c2133">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <script src="js/ui-events.js?v=5ba225a1"></script>
-    <script src="js/design-system.js?v=394cc00f"></script>
+    <script src="js/ui-events.js?v=cff4fd10"></script>
+    <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
     <link rel="stylesheet" href="css/fontawesome-subset.css?v=132a6b88">
 </head>
@@ -33,16 +33,16 @@
 
         <div id="form-login" class="auth-form">
             <form id="login-form">
-                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="login-email" class="form-input" autocomplete="username email" required></div>
-                <div class="form-group"><label data-i18n="password"><i class="fas fa-lock"></i> Пароль</label><input type="password" id="login-pass" class="form-input" autocomplete="current-password" required></div>
+                <div class="form-group"><label for="login-email"><i class="fas fa-envelope"></i> Email</label><input type="email" id="login-email" class="form-input" autocomplete="username email" required></div>
+                <div class="form-group"><label data-i18n="password" for="login-pass"><i class="fas fa-lock"></i> Пароль</label><input type="password" id="login-pass" class="form-input" autocomplete="current-password" required></div>
                 <div class="form-group" style="margin-bottom:12px;">
-                    <label for="login-remember" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;font-size:13px;color:var(--white);">
-                        <input type="checkbox" id="login-remember" checked style="width:18px;height:18px;cursor:pointer;">
+                    <label for="login-remember" class="auth-remember">
+                        <input type="checkbox" id="login-remember" checked>
                         <span data-i18n="remember_me">Запомнить меня</span>
                     </label>
                 </div>
                 <div style="text-align:right;margin-top:-6px;margin-bottom:14px;">
-                    <a href="javascript:void(0)" data-act="forgotPassword" style="font-size:12px;color:var(--gold);text-decoration:none;" data-i18n="forgot_password">Забыли пароль?</a>
+                    <a href="#" data-prevent="1" data-act="forgotPassword" style="font-size:12px;color:var(--gold);text-decoration:none;" data-i18n="forgot_password">Забыли пароль?</a>
                 </div>
                 <div id="login-error" class="form-err hidden"></div>
                 <button type="submit" id="login-btn" class="btn btn-g btn-block" data-i18n="login_btn">Войти</button>
@@ -52,19 +52,19 @@
 
         <div id="form-register" class="auth-form hidden">
             <form id="register-form">
-                <div class="form-group"><label data-i18n="full_name"><i class="fas fa-user"></i> Имя и фамилия</label><input type="text" id="reg-name" class="form-input" autocomplete="name" required></div>
-                <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="reg-email" class="form-input" autocomplete="username email" required></div>
+                <div class="form-group"><label data-i18n="full_name" for="reg-name"><i class="fas fa-user"></i> Имя и фамилия</label><input type="text" id="reg-name" class="form-input" autocomplete="name" required></div>
+                <div class="form-group"><label for="reg-email"><i class="fas fa-envelope"></i> Email</label><input type="email" id="reg-email" class="form-input" autocomplete="username email" required></div>
                 <div class="form-row">
-                    <div class="form-group"><label data-i18n="gender_label"><i class="fas fa-venus-mars"></i> Пол</label><select id="reg-gender" class="form-input"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Девушка</option></select></div>
-                    <div class="form-group"><label data-i18n="exact_hcp"><i class="fas fa-golf-ball"></i> Точный HCP</label><input type="number" id="reg-hcp" class="form-input" step="0.1" placeholder="12.4"></div>
+                    <div class="form-group"><label data-i18n="gender_label" for="reg-gender"><i class="fas fa-venus-mars"></i> Пол</label><select id="reg-gender" class="form-input"><option value="men" data-i18n="men">Мужчина</option><option value="women" data-i18n="women">Девушка</option></select></div>
+                    <div class="form-group"><label data-i18n="exact_hcp" for="reg-hcp"><i class="fas fa-golf-ball"></i> Точный HCP</label><input type="number" id="reg-hcp" class="form-input" step="0.1" placeholder="12.4"></div>
                 </div>
-                <div class="form-group"><label data-i18n="password"><i class="fas fa-lock"></i> Пароль (мин. 6)</label><input type="password" id="reg-pass" class="form-input" autocomplete="new-password" required></div>
-                <div class="form-group"><label data-i18n="repeat_password"><i class="fas fa-lock"></i> Повторите пароль</label><input type="password" id="reg-pass2" class="form-input" autocomplete="new-password" required></div>
+                <div class="form-group"><label data-i18n="password" for="reg-pass"><i class="fas fa-lock"></i> Пароль (мин. 6)</label><input type="password" id="reg-pass" class="form-input" autocomplete="new-password" required></div>
+                <div class="form-group"><label data-i18n="repeat_password" for="reg-pass2"><i class="fas fa-lock"></i> Повторите пароль</label><input type="password" id="reg-pass2" class="form-input" autocomplete="new-password" required></div>
                 <div id="register-error" class="form-err hidden"></div>
                 <button type="submit" id="register-btn" class="btn btn-g btn-block" data-i18n="create_account">Создать аккаунт</button>
             </form>
         </div>
-        <p class="site-version" style="margin-top:16px;text-align:center;">Версия сайта: <span class="version-number">1.129.1</span></p>
+        <p class="site-version" style="margin-top:16px;text-align:center;">Версия сайта: <span class="version-number">1.130.0</span></p>
     </div>
 </div>
 

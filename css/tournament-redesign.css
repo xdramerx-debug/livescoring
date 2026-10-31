@@ -41,7 +41,7 @@
 .tn-public-meta span { display:inline-flex; align-items:center; gap:6px; }
 .tn-public-meta i { color:var(--gold); font-size:11px; }
 .tn-public-format { display:flex; flex-wrap:wrap; gap:6px; margin-top:13px; }
-.tn-public-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; border:1px solid rgba(255,255,255,.13); border-radius:7px; color:#d7dfd5; background:rgba(255,255,255,.04); font-size:10.5px; }
+.tn-public-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; border:1px solid rgba(255,255,255,.13); border-radius:7px; color:#d7dfd5; background:rgba(255,255,255,.04); font-size:11px; }
 .tn-public-card-desc { min-height:36px; margin:13px 0 0; color:var(--muted); font-size:12px; line-height:1.45; }
 .tn-public-card-actions { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:auto; padding-top:16px; }
 .tn-public-card-actions .btn { min-height:37px; }

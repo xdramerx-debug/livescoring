@@ -757,7 +757,8 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 }
 .tp-lbl {
     display: block;
-    font-size: 10px;
+    /* было 10px: подписи «Старт / Финиш» под полосами времени мелкие */
+    font-size: 11px;
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -819,7 +820,8 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 }
 .tg-hole small {
     color: var(--muted);
-    font-size: 9px;
+    /* было 9px: пар и метры под лункой не читались на телефоне */
+    font-size: 11px;
 }
 .tg-time {
     font-weight: 700;
@@ -849,6 +851,10 @@ body.sun-mode .rlb-row:hover{background:rgba(0,0,0,.03);}
 .auth-tabs{display:flex;margin-bottom:24px;background:var(--bg);border-radius:var(--rs);padding:3px;}
 .auth-tab{flex:1;padding:9px;text-align:center;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;border-radius:6px;transition:var(--t);font-family:var(--fb);}
 .auth-tab.active{background:var(--gold);color:var(--bg);}
+/* «Запомнить меня»: кликается вся строка (44px), а не квадратик 18×18.
+   Инлайн-размеры 18px сняты — на телефоне в чекбокс было не попасть. */
+.auth-remember{display:flex;align-items:center;gap:10px;cursor:pointer;margin:0;font-size:13px;color:var(--white);min-height:44px;}
+.auth-remember input[type="checkbox"]{width:20px;height:20px;margin:0;flex:0 0 auto;cursor:pointer;accent-color:var(--gold);}
 .auth-guest{text-align:center;margin-top:16px;}
 .auth-guest a{color:var(--muted);text-decoration:none;font-size:13px;}
 .auth-guest a:hover{color:var(--gold);}
@@ -1547,16 +1553,19 @@ html.score-kiosk .hole-display {
 }
 .msc-hdr-lbl, .msc-hdr-num, .msc-hdr-tot {
     font-weight: 800;
-    font-size: 10px;
+    /* было 10px: номера лунок в шапке карточки читались только с лупой */
+    font-size: 11px;
     color: var(--gold);
     background: rgba(201, 168, 76, 0.15);
 }
-.msc-lbl-bk { color: #000000; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
-.msc-lbl-bl { color: #3498db; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
-.msc-lbl-wh { color: #ecf0f1; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
-.msc-lbl-rd { color: #e74c3c; font-weight: 700; text-align: left; padding-left: 3px; font-size: 9px; }
-.msc-lbl-par { color: var(--gold); font-weight: 800; text-align: left; padding-left: 3px; font-size: 9px; }
-.msc-lbl-idx { color: var(--muted); font-weight: 600; text-align: left; padding-left: 3px; font-size: 9px; }
+/* Чёрные ти: чёрный текст на тёмной карточке был невидим (аудит 2026-10).
+   Оставляем цвет ти как фон плашки, текст — светлый. */
+.msc-lbl-bk { color: #f2f2f2; background: #101010; font-weight: 700; text-align: left; padding-left: 3px; font-size: 11px; }
+.msc-lbl-bl { color: #3498db; font-weight: 700; text-align: left; padding-left: 3px; font-size: 11px; }
+.msc-lbl-wh { color: #ecf0f1; font-weight: 700; text-align: left; padding-left: 3px; font-size: 11px; }
+.msc-lbl-rd { color: #e74c3c; font-weight: 700; text-align: left; padding-left: 3px; font-size: 11px; }
+.msc-lbl-par { color: var(--gold); font-weight: 800; text-align: left; padding-left: 3px; font-size: 11px; }
+.msc-lbl-idx { color: var(--muted); font-weight: 600; text-align: left; padding-left: 3px; font-size: 11px; }
 .msc-tot-bk, .msc-tot-bl, .msc-tot-wh, .msc-tot-rd, .msc-tot-par, .msc-tot-idx {
     font-weight: 800;
     background: rgba(255, 255, 255, 0.08);
@@ -2283,8 +2292,18 @@ button, .btn, a { -webkit-tap-highlight-color: transparent; }
     .btn { min-height: 44px; }
     .btn-sm { min-height: 38px; }
     .nav-toggle { min-width: 44px; min-height: 44px; align-items: center; justify-content: center; }
-    .auth-tab { min-height: 40px; }
+    .auth-tab { min-height: 44px; }
     .form-input, select.form-input { min-height: 44px; }
+    /* Аудит 2026-10: остальные частые цели были ниже 44 px — логотип в шапке,
+       чипы дат, сортировка табло и ссылки подвала. На сенсорном экране они
+       растягиваются до нормы, на десктопе остаются компактными. */
+    .nav-brand { min-height: 44px; display: inline-flex; align-items: center; }
+    .date-chip { min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
+    .pv-lb-sort-select { min-height: 44px; }
+    .sec-l { min-height: 44px; display: inline-flex; align-items: center; }
+    .footer-link { min-height: 44px; display: inline-flex; align-items: center; }
+    .tn-search input { min-height: 44px; font-size: 16px; }
+    /* Инлайн-ссылки в предложении — исключение WCAG 2.5.8: не растягиваем. */
 }
 
 @media (max-width: 480px) {
@@ -2604,16 +2623,22 @@ body.high-contrast-status .cell-mismatch {
         gap: 2px !important;
     }
     .msc-tile {
-        font-size: 8px !important;
+        /* было 8px !important: на телефоне шапка карточки и счёт читались
+           только с лупой. 10px — минимум читаемости при 11 колонках. */
+        font-size: 10px !important;
         padding: 3px 0 !important;
         border-radius: 3px;
     }
-    .msc-tile-top { font-size: 8px; }
-    .msc-tile-bot { font-size: 8px; }
+    .msc-tile-top { font-size: 10px; }
+    .msc-tile-bot { font-size: 10px; }
+    /* Шапка (номера лунок, OUT/IN) и строки ти/пара/индекса — 11px:
+       двойной класс перебивает `.msc-tile{font-size:10px!important}`. */
+    .msc-tile.msc-hdr-lbl, .msc-tile.msc-hdr-num, .msc-tile.msc-hdr-tot,
+    .msc-tile.msc-lbl-bk, .msc-tile.msc-lbl-bl, .msc-tile.msc-lbl-wh,
+    .msc-tile.msc-lbl-rd, .msc-tile.msc-lbl-par, .msc-tile.msc-lbl-idx { font-size: 11px !important; }
     .msc-total-long { display: none; }
     .msc-total-short { display: inline; }
 }
-
 /* --- Полоса занятости лунок «Сейчас на поле» (18 лунок) --- */
 /* По умолчанию свёрнута: «кто сейчас на поле» видно в карточках раундов,
    карта/старты/подсказка раскрываются кнопкой */
@@ -5391,7 +5416,7 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
 .club-sc-caption { font-size:12px; color:var(--muted); margin:6px 0; }
 .club-sc-scroll { overflow-x:auto; max-width:100%; border-radius:8px; }
 .club-sc-scroll:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
-.club-sc-grid { display:grid; grid-template-columns:48px repeat(var(--sc-holes),minmax(0,1fr)); gap:2px; }
+.club-sc-grid { display:grid; grid-template-columns:48px repeat(var(--sc-holes, 18),minmax(0,1fr)); gap:2px; }
 .club-sc-labels, .club-sc-hole { display:grid; grid-auto-rows:minmax(32px,auto); gap:2px; min-width:0; }
 .club-sc-labels>div, .club-sc-cell { display:flex; align-items:center; justify-content:center; min-width:0; font-size:12px; padding:3px 1px; background:rgba(255,255,255,.04); }
 .club-sc-labels>div { justify-content:flex-start; font-size:10px; color:var(--muted); }
@@ -5424,7 +5449,7 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
 .club-sc[data-sc-view="2"] .club-sc-cell { justify-content:space-between; gap:3px; padding:4px 6px; }
 .club-sc[data-sc-view="2"] .club-sc-hole { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
 /* 3: Large club form, horizontal scroll stays inside the card. */
-.club-sc[data-sc-view="3"] .club-sc-grid { grid-template-columns:60px repeat(var(--sc-holes),56px); }
+.club-sc[data-sc-view="3"] .club-sc-grid { grid-template-columns:60px repeat(var(--sc-holes, 18),56px); }
 .club-sc[data-sc-view="3"] .club-sc-labels { position:sticky; left:0; z-index:1; background:var(--card, #112519); }
 .club-sc[data-sc-view="3"] .club-sc-cell, .club-sc[data-sc-view="3"] .club-sc-labels>div { min-height:44px; font-size:14px; }
 .club-sc[data-sc-view="3"] .club-sc-score { font-size:24px; }
@@ -5447,7 +5472,7 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
 .club-sc-phone .club-sc { margin:0; padding:8px; }
 @media(max-width:380px) {
     .club-sc { padding:6px; }
-    .club-sc-grid { grid-template-columns:40px repeat(var(--sc-holes),minmax(0,1fr)); gap:1px; }
+    .club-sc-grid { grid-template-columns:40px repeat(var(--sc-holes, 18),minmax(0,1fr)); gap:1px; }
     .club-sc-cell { font-size:11px; }
     .club-sc-score { font-size:15px; }
     .club-sc[data-sc-view="2"] .club-sc-cell { padding:4px 3px; }
@@ -5460,8 +5485,8 @@ body.large-ui{--score-btn:76px;--score-btn-fs:34px;}
 .club-sc-group .club-sc-labels, .club-sc-group .club-sc-hole { grid-template-rows:32px 32px; grid-auto-rows:minmax(52px,auto); }
 .club-sc-group .gsg-grid-name { flex-direction:column; gap:2px; text-align:center; overflow-wrap:anywhere; }
 .club-sc-group .gsg-grid-name .gsg-pname { font-size:10px; }
-.club-sc-group[data-sc-view="1"] .club-sc-grid { grid-template-columns:80px repeat(var(--sc-holes),minmax(38px,1fr)); }
-.club-sc-group[data-sc-view="3"] .club-sc-grid { grid-template-columns:100px repeat(var(--sc-holes),72px); }
+.club-sc-group[data-sc-view="1"] .club-sc-grid { grid-template-columns:80px repeat(var(--sc-holes, 18),minmax(38px,1fr)); }
+.club-sc-group[data-sc-view="3"] .club-sc-grid { grid-template-columns:100px repeat(var(--sc-holes, 18),72px); }
 .club-sc-group[data-sc-view="3"] .gsg-grid-score .gsg-score { font-size:24px; }
 .club-sc-group .gsg-grid-score { flex-direction:column; gap:8px; min-width:0; }
 .club-sc-group .gsg-grid-score .club-sc-cell-label { overflow-wrap:anywhere; text-align:center; }
@@ -6797,7 +6822,9 @@ body.sun-mode .score-entry .hole-val { color:#111!important; text-shadow:none!im
     .page-filters-details > summary { min-height: 44px; }
     .page-filters-content .form-row > .form-group { min-width: 0 !important; width: 100%; }
     .tn-public-main .tn-search { min-width: 0; max-width: none; flex-basis: 100%; min-height: 48px; }
-    .tn-public-main .tn-search input { font-size: 16px; }
+    /* 16px — чтобы iOS не зумил поле при фокусе; 44px — чтобы попасть пальцем. */
+    .tn-public-main .tn-search input { font-size: 16px; min-height: 44px; }
+    .tn-search input { min-height: 44px; }
     .tn-public-main .tn-search:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
 }
 .page-filters-details > summary > .page-filters-active[hidden] { display: none; }

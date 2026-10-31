@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.129.1-04a13c09';
+const CACHE_NAME = 'pestovo-v1.130.0-fd72f495';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -59,21 +59,21 @@ const STATIC_ASSETS = [
     'css/entry-scorecard.css?v=a34f8c94',
     'css/fontawesome-subset.css?v=132a6b88',
     'css/fonts-local.css?v=8523462a',
-    'css/product-ux.css?v=3677012a',
-    'css/style.css?v=5096ec16',
+    'css/product-ux.css?v=ca841439',
+    'css/style.css?v=bb98fab2',
     'css/theme-v2.css?v=915c2133',
     'css/tn-studio.css?v=2e8b755f',
-    'css/tournament-redesign.css?v=794da0d9',
+    'css/tournament-redesign.css?v=dc2bdd18',
     'dist/livescoring-modules.js?v=0e8a44a3',
     'js/app.js?v=e429c658',
     'js/auth.js?v=3a96f309',
-    'js/design-system.js?v=394cc00f',
+    'js/design-system.js?v=b78132a0',
     'js/entry-scorecard.js?v=9b8c4167',
     'js/firebase-config.js?v=032a2499',
     'js/handicap.js?v=97cd8ae3',
     'js/kiosk-mode-detect.js?v=b6405ebe',
     'js/leaderboard.js?v=ce0cbdf2',
-    'js/live.js?v=741db7a0',
+    'js/live.js?v=97951fa1',
     'js/marker.js?v=018ae54b',
     'js/name-variants.js?v=2b58f796',
     'js/official-call.js?v=7ae05fbc',
@@ -85,7 +85,7 @@ const STATIC_ASSETS = [
     'js/qr-code.js?v=2a26e819',
     'js/qr-start.js?v=2b4fe58a',
     'js/qr-url.js?v=fb4a1649',
-    'js/round-setup.js?v=ca903f27',
+    'js/round-setup.js?v=d098fe10',
     'js/rusgolf-client.js?v=f37608e7',
     'js/score-display.js?v=8c8f213a',
     'js/score-kiosk.js?v=fda399fb',
@@ -101,7 +101,7 @@ const STATIC_ASSETS = [
     'js/tournament-core.js?v=e9119580',
     'js/tournament-public.js?v=c10d8d83',
     'js/tournaments.js?v=0b5653af',
-    'js/ui-events.js?v=5ba225a1',
+    'js/ui-events.js?v=cff4fd10',
     'js/utils-scorecards.js?v=9f6de5ad',
     'js/utils.js?v=a5e99f2e',
     'js/vendor/qrcode-generator-1.4.4.js?v=4c79be16',
@@ -195,7 +195,11 @@ self.addEventListener('fetch', function(event) {
             fetch(event.request).then(function(response) {
                 if (response && response.ok) {
                     var copy = response.clone();
-                    caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, copy); });
+                    // waitUntil обязателен: без него браузер вправе убить воркер
+                    // сразу после ответа, и запись в кэш теряется молча.
+                    event.waitUntil(caches.open(CACHE_NAME)
+                        .then(function(cache) { return cache.put(event.request, copy); })
+                        .catch(function() { /* кэш не критичен для ответа */ }));
                 }
                 return response;
             }).catch(function() {
@@ -213,7 +217,9 @@ self.addEventListener('fetch', function(event) {
             var network = fetch(event.request).then(function(response) {
                 if (response && response.ok) {
                     var copy = response.clone();
-                    caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, copy); });
+                    event.waitUntil(caches.open(CACHE_NAME)
+                        .then(function(cache) { return cache.put(event.request, copy); })
+                        .catch(function() { /* кэш не критичен для ответа */ }));
                 }
                 return response;
             });

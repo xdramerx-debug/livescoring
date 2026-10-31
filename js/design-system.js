@@ -270,9 +270,12 @@
             mode: settings.mode,
             pageKey: currentPageKey()
         });
-        try {
+        // Скрипт подключён в <head> и вызывает applyDesignSystem() сразу —
+        // на части страниц document.body в этот момент ещё null (TypeError
+        // на каждой загрузке). Ставим флаг, когда body уже есть.
+        if (document.body) {
             document.body.setAttribute('data-dsp-ready', '1');
-        } catch (e) { console.warn("[silent]", e); }
+        }
     }
 
     function persistLocal() {

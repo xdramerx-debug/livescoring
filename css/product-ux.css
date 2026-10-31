@@ -39,7 +39,6 @@
    ============================================================ */
 
 /* Числа всегда табличные: счёт не «прыгает» при обновлении. */
-body.pv-ux .pv-num,
 body.pv-ux .lwl-score,
 body.pv-ux .rlb-par,
 body.pv-ux .rlb-num,
@@ -60,7 +59,8 @@ body.pv-ux .start-gate-timer {
 
 /* Типографическая шкала: экран → игрок → счёт → подпись. */
 body.pv-ux .page-title { font-size: var(--fs-screen); line-height: 1.16; }
-body.pv-ux .lwl-name { font-size: var(--fs-player); }
+/* Кегль имени игрока — в правиле .lwl-name раздела 3: не дублируем его здесь,
+   иначе одно и то же значение объявлено дважды. */
 body.pv-ux .lwl-score,
 body.pv-ux .pv-live-score { font-size: clamp(26px, 6.4vw, 32px); line-height: 1; }
 body.pv-ux .lwl-start,
@@ -83,7 +83,6 @@ body.pv-ux [tabindex]:focus-visible {
 
 /* Тач-таргеты: минимум 48 px у действий, 44 px у вторичных чипов. */
 body.pv-ux .pv-chip,
-body.pv-ux .pv-opt,
 body.pv-ux .pv-recent-chip { min-height: 44px; }
 body.pv-ux .pv-cta,
 body.pv-ux .pv-bottomnav a,
@@ -93,8 +92,10 @@ body.pv-ux .pv-onb-action { min-height: var(--tap); }
    адресует только <main>: раньше padding-bottom доставался и .nav-c
    (у шапки тоже класс .container), из-за чего шапка «вырастала» до 169 px,
    а --nav-h тянул за собой отступы всех страниц. */
+/* Отступ равен реальной высоте панели (её меряет js/product-ux.js):
+   на десктопе, где панель скрыта, он равен нулю, а не «на всякий случай 96 px». */
 body.pv-ux.pv-has-bottomnav main {
-    padding-bottom: calc(96px + var(--safe-b)) !important;
+    padding-bottom: calc(var(--bottomnav-h, 0px) + var(--safe-b) + 16px) !important;
 }
 body.pv-ux.pv-has-bottomnav main .pv-cta-dock ~ * { margin-bottom: 0; }
 
@@ -179,19 +180,6 @@ body.pv-ux .s-un { color: var(--score-under); }
 body.pv-ux .s-ov { color: var(--score-over); }
 body.pv-ux .s-ev { color: var(--score-par); }
 
-body.pv-ux .pv-score-pill {
-    display: inline-flex;
-    align-items: baseline;
-    justify-content: center;
-    min-width: 2.6em;
-    padding: 2px 8px;
-    border-radius: 10px;
-    border: 1px solid transparent;
-    font-weight: 800;
-}
-body.pv-ux .pv-score-pill.s-un { background: var(--score-under-soft); border-color: var(--score-under-soft); }
-body.pv-ux .pv-score-pill.s-ov { background: var(--score-over-soft); border-color: var(--score-over-soft); }
-body.pv-ux .pv-score-pill.s-ev { background: var(--score-par-soft); border-color: var(--score-par-soft); }
 
 /* ============================================================
    3. КАРТОЧКА LIVE-РАУНДА
@@ -629,18 +617,6 @@ body.pv-ux #nav-weather-container svg { width: 16px; height: 16px; }
    7. ТАБЛИЦА ЛИДЕРОВ
    ============================================================ */
 
-body.pv-ux .pv-lb-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 12px;
-}
-body.pv-ux .pv-lb-hint {
-    margin-left: auto;
-    font-size: 12px;
-    color: var(--muted);
-}
 
 /* Сортировка: на десктопе — клик по заголовку столбца, на телефоне —
    компактный выбор, потому что шапка таблицы там скрыта. */
@@ -898,8 +874,20 @@ body.pv-ux .pv-badge {
     font-weight: 700;
     line-height: 1.2;
 }
-body.pv-ux .pv-badge--birdie { color: var(--status-live); border-color: var(--status-live-line); background: var(--status-live-soft); }
-body.pv-ux .pv-badge--eagle { color: var(--status-pending); border-color: var(--status-pending-line); background: var(--status-pending-soft); }
+body.pv-ux .pv-badge--birdie { color: var(--score-under); border-color: var(--score-under-line); background: var(--score-under-soft); }
+body.pv-ux .pv-badge--eagle { color: var(--status-pending-ink); border-color: var(--status-pending-line); background: var(--status-pending-soft); }
+
+/* В свёрнутой строке раунда бейдж стоит после формата: нужен зазор,
+   иначе число «прилипает» к тексту. */
+body.pv-ux .lwl-start .pv-badge { margin-left: 8px; vertical-align: middle; }
+
+/* В таблице лидерборда бейдж — часть строки игрока, поэтому на узких
+   экранах он не переносится на вторую строку и не растягивает ячейку. */
+body.pv-ux .rlb-pcol .pv-badge { flex: 0 0 auto; margin-left: 6px; white-space: nowrap; vertical-align: middle; }
+@media (max-width: 480px) {
+    body.pv-ux .rlb-pcol .pv-badge { font-size: 11px; padding: 0 5px; }
+    body.pv-ux .rlb-pcol .pv-badge i { display: none; }
+}
 
 /* ============================================================
    8. ЭКРАН СОЗДАНИЯ РАУНДА
@@ -908,7 +896,7 @@ body.pv-ux .pv-badge--eagle { color: var(--status-pending); border-color: var(--
 body.pv-ux .pv-steps {
     display: grid;
     gap: 8px;
-    margin: 4px 0 16px;
+    margin: 0 0 12px;
 }
 body.pv-ux .pv-steps-track {
     display: flex;
@@ -959,7 +947,7 @@ body.pv-ux .unified-step span {
     font-weight: 800;
 }
 
-body.pv-ux .pv-steps { margin: 0 0 12px; }
+/* Второго правила для .pv-steps нет: базовый отступ задан выше. */
 body.pv-ux #unified-setup-card + .pv-steps { margin-top: 12px; }
 body.pv-ux .pv-cta.is-not-ready {
     background: var(--card-h);
@@ -969,39 +957,6 @@ body.pv-ux .pv-cta.is-not-ready {
 }
 
 /* Крупные карточки выбора формата и числа лунок. */
-body.pv-ux .pv-opt-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-    gap: 8px;
-    margin: 8px 0 4px;
-}
-body.pv-ux .pv-opt {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 2px;
-    min-height: var(--tap-lg);
-    padding: 10px 12px;
-    border-radius: var(--rs);
-    border: 1px solid var(--line-strong);
-    background: var(--card);
-    color: var(--text);
-    font-family: inherit;
-    font-size: 13.5px;
-    font-weight: 700;
-    text-align: left;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-}
-body.pv-ux .pv-opt small { font-size: 11px; font-weight: 600; color: var(--muted); }
-body.pv-ux .pv-opt:hover { border-color: var(--gold); }
-body.pv-ux .pv-opt[aria-pressed="true"] {
-    border-color: var(--gold);
-    background: linear-gradient(180deg, rgba(216, 178, 99, 0.18), rgba(216, 178, 99, 0.06));
-    box-shadow: inset 0 0 0 1px var(--gold);
-}
-body.pv-ux .pv-opt[aria-pressed="true"] small { color: var(--gold-l); }
 
 /* Нативный select, из которого читает логика, остаётся в DOM, но скрыт. */
 body.pv-ux .pv-visually-hidden {
@@ -1107,8 +1062,10 @@ body.pv-ux .pv-cta-note {
     max-width: 96px;
     line-height: 1.25;
 }
-body.pv-ux.pv-has-bottomnav .pv-cta-dock { bottom: calc(var(--bottomnav-h) + 0px); }
-body.pv-ux.pv-has-bottomnav .pv-cta-dock { padding-bottom: 10px; }
+body.pv-ux.pv-has-bottomnav .pv-cta-dock {
+    bottom: var(--bottomnav-h, 0px);
+    padding-bottom: 10px;
+}
 
 @media (max-width: 720px) {
     body.pv-ux.pv-setup-active .pv-cta-dock { display: flex; }

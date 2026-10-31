@@ -20,6 +20,7 @@
 //   7. Экран раунда: inline-валидация и sticky-CTA существуют и связаны
 //      с реальным действием старта (data-act), а не с пустышкой.
 //   8. Доступность: уважается prefers-reduced-motion, есть видимый focus.
+//   9. Экран раунда не уходит в мутационный цикл (регрессия v1.129.0).
 'use strict';
 
 var fs = require('fs');
@@ -218,9 +219,92 @@ if (!JSDOM) {
     ok(!!countAll && countAll.textContent === '2', 'jsdom: счётчик на чипе показывает число раундов');
 }
 
-console.log('');
-if (failures) {
-    console.error('ПРОВАЛЕНО: ' + failures + ' из ' + checks);
-    process.exit(1);
+// ── 10. Экран раунда не уходит в мутационный цикл ───────────────────────
+// Регрессия v1.129.0: MutationObserver на #setup перерисовывал свои же
+// шаги, ловил собственную запись и крутился бесконечно (16 541 мутация
+// за 2 секунды простоя — телефон грелся, батарея уходила на пустом месте).
+// Проверяем и защиту в коде, и фактическое число мутаций.
+ok(JS.indexOf('var pending = false') !== -1,
+    'product-ux.js: refresh() дедуплицирован (pending), а не копит таймеры');
+ok(JS.indexOf('if (signature === stepsState) return;') !== -1,
+    'product-ux.js: шаги пишутся только при смене состояния');
+ok(/target\.closest\(own\)/.test(JS),
+    'product-ux.js: наблюдатель игнорирует собственные поддеревья');
+
+function finish() {
+    console.log('');
+    if (failures) {
+        console.error('ПРОВАЛЕНО: ' + failures + ' из ' + checks);
+        process.exit(1);
+    }
+    console.log('Продуктовый UX-слой в порядке ✔ (' + checks + ')');
 }
-console.log('Продуктовый UX-слой в порядке ✔ (' + checks + ')');
+
+if (!JSDOM) {
+    console.log(' ·    | jsdom не установлен — проверка мутационного цикла пропущена');
+    finish();
+} else {
+    var setupHtml = '<!doctype html><html lang="ru"><head><title>setup</title></head><body class="pv-ux pv-has-bottomnav">' +
+        '<main><section id="setup">' +
+        '<div class="card setup-card" id="unified-setup-card">' +
+        '<select id="grp-format"><option value="stroke" selected>Stroke Play</option></select>' +
+        '<input id="grp-time" value="10:00">' +
+        '<div id="player-slots"><div data-pidx="0"><input id="pl-name-0" value="Иванов Иван"></div></div>' +
+        '<button data-act="startUnifiedRound">Старт</button>' +
+        '</div></section></main></body></html>';
+    var d2 = new JSDOM(setupHtml, {
+        runScripts: 'dangerously',
+        url: 'https://example.test/setup-round.html',
+        pretendToBeVisual: true
+    });
+    var w2 = d2.window;
+    var doc2 = w2.document;
+    w2.eval(JS);
+
+    // Ждём реального запуска слоя, а не фиксированный таймаут: jsdom
+    // разбирает документ асинхронно, а refresh() намеренно отложен на
+    // setTimeout(0) — на загруженной машине «40 мс» превращаются в лотерею.
+    var whenBooted = function (fn) {
+        var tries = 0;
+        var poll = function () {
+            if (doc2.getElementById('pv-steps') || tries++ > 150) { fn(); return; }
+            w2.setTimeout(poll, 20);
+        };
+        poll();
+    };
+
+    whenBooted(function () {
+        var setup = doc2.getElementById('setup');
+        ok(!!setup, 'jsdom: экран раунда собран');
+        // Шаги рисуются один раз: второй индикатор на экране не появляется.
+        ok(doc2.querySelectorAll('#pv-steps').length === 1, 'jsdom: индикатор шагов один');
+        var mutations = 0;
+        var observer = new w2.MutationObserver(function (list) { mutations += list.length; });
+        observer.observe(setup, { childList: true, subtree: true, attributes: true, characterData: true });
+
+        w2.setTimeout(function () {
+            observer.disconnect();
+            // Ноль — идеал. Допускаем единичные записи от ленивой отрисовки,
+            // но не сотни: именно столько давал цикл.
+            ok(mutations <= 2, 'jsdom: простой экрана раунда не вызывает мутаций',
+                mutations + ' мутаций за 150 мс');
+
+            // Ввод имени двигает шаги — и тоже без лавины мутаций.
+            var input = doc2.getElementById('pl-name-0');
+            input.value = 'Петров Пётр';
+            input.dispatchEvent(new w2.Event('input', { bubbles: true }));
+            var afterInput = 0;
+            var obs2 = new w2.MutationObserver(function (list) { afterInput += list.length; });
+            obs2.observe(setup, { childList: true, subtree: true, attributes: true, characterData: true });
+            w2.setTimeout(function () {
+                obs2.disconnect();
+                ok(afterInput <= 4, 'jsdom: правка одного поля даёт единичные мутации',
+                    afterInput + ' мутаций');
+                var segs = doc2.querySelectorAll('#pv-steps .pv-steps-seg.is-done');
+                ok(segs.length >= 1, 'jsdom: шаги отражают заполненность формы',
+                    segs.length + ' из 3');
+                finish();
+            }, 120);
+        }, 150);
+    });
+}

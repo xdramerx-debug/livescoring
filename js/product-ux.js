@@ -82,7 +82,26 @@
             nav.appendChild(a);
         });
         document.body.appendChild(nav);
-        document.body.style.setProperty('--bottomnav-h', nav.offsetHeight ? nav.offsetHeight + 'px' : '58px');
+        syncBottomNavHeight();
+        // Высота панели меняется при повороте экрана и смене размера шрифта:
+        // без пересчёта контент либо уезжает под панель, либо получает
+        // пустой отступ внизу. Считаем по факту, без «магических» 58 px.
+        if (!window.__pvUxNavResize) {
+            window.__pvUxNavResize = true;
+            var onResize = function () {
+                if (window.requestAnimationFrame) window.requestAnimationFrame(syncBottomNavHeight);
+                else syncBottomNavHeight();
+            };
+            window.addEventListener('resize', onResize);
+            window.addEventListener('orientationchange', onResize);
+        }
+    }
+
+    // display:none (десктоп) даёт offsetHeight = 0 — это и есть «панели нет».
+    function syncBottomNavHeight() {
+        var nav = document.getElementById('pv-bottomnav');
+        var height = (nav && nav.offsetHeight) ? nav.offsetHeight : 0;
+        document.body.style.setProperty('--bottomnav-h', height + 'px');
     }
 
     // ─────────────────────────── ОНБОРДИНГ (1 экран) ───────────────────────────
@@ -298,6 +317,11 @@
         return steps;
     }
 
+    // Пишем в DOM только изменившееся: иначе MutationObserver на #setup
+    // срабатывает на собственную запись и уходит в бесконечный цикл
+    // (замерено: 16 541 мутация за 2 секунды простоя).
+    var stepsState = '';
+
     function updateSteps() {
         var steps = document.getElementById('pv-steps');
         if (!steps) return;
@@ -306,6 +330,9 @@
         var formatEl = document.getElementById('grp-format');
         var done1 = !!(timeEl && timeEl.value && formatEl && formatEl.value);
         var done2 = names.total > 0 && names.filled === names.total;
+        var signature = (done1 ? '1' : '0') + (done2 ? '1' : '0') + '|' + currentLangTag();
+        if (signature === stepsState) return;
+        stepsState = signature;
         var states = [done1, done2, done1 && done2];
         states.forEach(function (done, i) {
             var seg = steps.querySelector('[data-pv-seg="' + (i + 1) + '"]');
@@ -316,10 +343,20 @@
             var lbl = steps.querySelector('[data-pv-lbl="' + (i + 1) + '"]');
             if (lbl) {
                 var current = !done && states.slice(0, i).every(Boolean);
-                lbl.innerHTML = '<b>' + (i + 1) + '</b> · ' + tr(['wiz_step_1', 'wiz_step_2', 'wiz_step_3'][i], '');
+                var html = '<b>' + (i + 1) + '</b> · ' + tr(['wiz_step_1', 'wiz_step_2', 'wiz_step_3'][i], '');
+                if (lbl.innerHTML !== html) lbl.innerHTML = html;
                 lbl.style.opacity = current ? '1' : (done ? '0.85' : '0.6');
             }
         });
+    }
+
+    // Язык в подписи шага: часть сигнатуры, чтобы смена языка перерисовала шаги.
+    function currentLangTag() {
+        try { return String(document.documentElement.getAttribute('lang') || currentLangTagFallback()); }
+        catch (e) { return 'ru'; }
+    }
+    function currentLangTagFallback() {
+        try { return (typeof currentLang !== 'undefined' && currentLang) || 'ru'; } catch (e) { return 'ru'; }
     }
 
     function buildCtaDock() {
@@ -360,12 +397,32 @@
     function bindSetupListeners() {
         var setup = document.getElementById('setup');
         if (!setup) return;
-        var refresh = function () { window.setTimeout(function () { updateCta(); buildSteps(); updateSteps(); }, 0); };
+        var pending = false;
+        var refresh = function () {
+            if (pending) return;
+            pending = true;
+            window.setTimeout(function () {
+                pending = false;
+                updateCta();
+                buildSteps();
+                updateSteps();
+            }, 0);
+        };
         setup.addEventListener('input', refresh);
         setup.addEventListener('change', refresh);
         if (typeof MutationObserver === 'function') {
             try {
-                new MutationObserver(refresh).observe(setup, { childList: true, subtree: true });
+                // Свои блоки (шаги, CTA, чипы недавних) живут внутри #setup:
+                // их перерисовка — не повод пересчитывать состояние формы.
+                var own = '#pv-steps, #pv-cta-dock, #pv-recent';
+                new MutationObserver(function (list) {
+                    for (var i = 0; i < list.length; i++) {
+                        var target = list[i].target;
+                        if (target && target.closest && target.closest(own)) continue;
+                        refresh();
+                        return;
+                    }
+                }).observe(setup, { childList: true, subtree: true });
             } catch (e) { console.warn('[pv-ux] observe setup', e); }
         }
         refresh();
@@ -384,6 +441,9 @@
             if (recent && recent.parentNode) recent.parentNode.removeChild(recent);
             buildRecentPlayers();
             updateCta();
+            // Подписи шагов тоже свои: после смены языка их надо обновить,
+            // но updateSteps пишет в DOM только при изменении состояния.
+            updateSteps();
             var banner = document.getElementById('pv-net-banner');
             if (banner && banner.parentNode) banner.parentNode.removeChild(banner);
             buildNetBanner();

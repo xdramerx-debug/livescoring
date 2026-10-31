@@ -5525,7 +5525,6 @@ body.sun-mode th.gsg-hole, body.sun-mode td.gsg-hole { background:#fff; }
 body.sun-mode .gsg-table thead th { background:rgba(201,168,76,.28); }
 body.sun-mode .gsg-chunk td, body.sun-mode .gsg-subtotal td { background:#f4f4f4; }
 body.sun-mode .gsg-total td { background:rgba(201,168,76,.3); }
-body.sun-mode .gsg-marker.mk-mismatch { color:#c0392b; }
 body.sun-mode .gsg-thru b { color:#000; }
 
 
@@ -6552,9 +6551,8 @@ body.sun-mode .gsg-marker.mk-mismatch{color:#c0392b;}
 
 /* Настройки элементов экранов применяются по data-display-hidden. */
 [data-display-hidden="true"] { display:none !important; }
-#dual-score-panel[data-display-marker-hidden="true"] { grid-template-columns:minmax(0,1fr)!important; }
-#dual-score-panel[data-display-marker-hidden="true"] #dual-divider,
-#dual-score-panel[data-display-my-hidden="true"] #dual-divider { display:none!important; }
+/* Скрытие маркера/моего столбца в #dual-score-panel объявлено один раз —
+   ниже, вместе с data-display-my-hidden. */
 
 /* Tournament QR overrides use the same element attributes as regular scoring. */
 /* Round-setup touch controls: keep visible rows and icon buttons finger-sized. */

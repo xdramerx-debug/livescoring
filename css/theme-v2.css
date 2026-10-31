@@ -124,10 +124,13 @@
     /* Счёт относительно пара. Форма (знак −/E/+) всегда дублирует цвет. */
     --score-under: #ff9c8c;
     --score-under-soft: rgba(255, 156, 140, 0.14);
+    --score-under-line: rgba(255, 156, 140, 0.46);
     --score-over: #96cdf2;
     --score-over-soft: rgba(150, 205, 242, 0.14);
+    --score-over-line: rgba(150, 205, 242, 0.46);
     --score-par: #dfe8e1;
     --score-par-soft: rgba(223, 232, 225, 0.10);
+    --score-par-line: rgba(223, 232, 225, 0.30);
 
     /* Типографическая шкала продукта (а не «на глаз»). */
     --fs-screen: clamp(24px, 5.6vw, 28px);
@@ -1386,10 +1389,13 @@ body.sun-mode {
 
     --score-under: #a3231a;
     --score-under-soft: rgba(163, 35, 26, 0.09);
+    --score-under-line: rgba(163, 35, 26, 0.34);
     --score-over: #11577f;
     --score-over-soft: rgba(17, 87, 127, 0.09);
+    --score-over-line: rgba(17, 87, 127, 0.34);
     --score-par: #2c3a31;
     --score-par-soft: rgba(44, 58, 49, 0.07);
+    --score-par-line: rgba(44, 58, 49, 0.24);
 
     background: var(--bg) !important;
     color: var(--text) !important;

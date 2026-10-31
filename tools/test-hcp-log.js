@@ -173,10 +173,69 @@ function makeWindow(extraHtml) {
     const filtered = win.document.getElementById('hcp-log-results').innerHTML;
     check(filtered.indexOf('Сидоров Сидор') !== -1 && filtered.indexOf('Иванов Иван') === -1, 'search narrows the log to the matching player');
 
-    // Пустой журнал не падает.
+    // Пустой результат поиска — отдельное сообщение, не «журнал пуст».
     win.document.getElementById('hcp-log-search').value = 'никто';
     win.hcpLogFilter();
-    check(win.document.getElementById('hcp-log-results').innerHTML.indexOf('не найдено') !== -1, 'empty result renders a message');
+    check(win.document.getElementById('hcp-log-results').innerHTML.indexOf('ничего не найдено') !== -1, 'empty search result renders its own message');
+
+    // ── 4. Устойчивость загрузки вкладки ────────────────────────────────────
+    // 4a. Нет индекса (правила не развёрнуты): orderByChild падает → читаем узел целиком.
+    win = makeWindow('<div id="hcp-log-results"></div>');
+    win.currentLang = 'ru';
+    let plainReads = 0;
+    win.db = {
+        ref: p => ({
+            orderByChild: () => ({
+                limitToLast: () => ({
+                    once: () => Promise.reject(new Error('Index not defined, add ".indexOn": "at", for query'))
+                })
+            }),
+            once: () => { plainReads++; return Promise.resolve({ val: () => (p === 'hcpLog' ? entries : null) }); }
+        })
+    };
+    win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-hcp-log.js'), 'utf8'));
+    const counted = await win.hcpLogLoad();
+    check(plainReads === 1, 'missing index falls back to a plain read');
+    check(counted === 3, 'fallback still renders every entry (' + counted + ')');
+    check(win.document.getElementById('hcp-log-results').innerHTML.indexOf('Иванов Иван') !== -1, 'fallback read renders the history');
+
+    // 4b. Совсем нет доступа: вместо сырого текста Firebase — объяснение.
+    win = makeWindow('<div id="hcp-log-results"></div>');
+    win.currentLang = 'ru';
+    win.db = {
+        ref: () => ({
+            orderByChild: () => ({ limitToLast: () => ({ once: () => Promise.reject(new Error('PERMISSION_DENIED: Permission denied')) }) }),
+            once: () => Promise.reject(new Error('PERMISSION_DENIED: Permission denied'))
+        })
+    };
+    win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-hcp-log.js'), 'utf8'));
+    await win.hcpLogLoad();
+    const denied = win.document.getElementById('hcp-log-results').innerHTML;
+    check(denied.indexOf('Нет доступа к журналу') !== -1, 'permission error is explained in human terms');
+    check(denied.indexOf('PERMISSION_DENIED') === -1, 'raw Firebase message is not shown to the admin');
+
+    // 4c. Нет соединения с базой: вкладка говорит об этом, а не молчит.
+    win = makeWindow('<div id="hcp-log-results"></div>');
+    win.currentLang = 'ru';
+    win.db = null;
+    win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-hcp-log.js'), 'utf8'));
+    await win.hcpLogLoad();
+    check(win.document.getElementById('hcp-log-results').innerHTML.indexOf('Нет соединения с базой') !== -1, 'missing database connection is reported');
+
+    // 4d. Совсем пустой журнал: объясняем, чем он заполняется.
+    win = makeWindow('<div id="hcp-log-results"></div>');
+    win.currentLang = 'ru';
+    win.db = {
+        ref: () => ({
+            orderByChild: () => ({ limitToLast: () => ({ once: () => Promise.resolve({ val: () => null }) }) }),
+            once: () => Promise.resolve({ val: () => null })
+        })
+    };
+    win.eval(fs.readFileSync(path.join(ROOT, 'js/admin-hcp-log.js'), 'utf8'));
+    await win.hcpLogLoad();
+    const emptyText = win.document.getElementById('hcp-log-results').innerHTML;
+    check(emptyText.indexOf('Записей пока нет') !== -1, 'empty log says it is empty');
+    check(emptyText.indexOf('Журнал заполняется при изменении гандикапа') !== -1, 'empty log explains how entries appear');
 
     console.log('\n' + (failures ? 'FAILED ' + failures + ' / ' + checks : 'Passed ' + checks + ' checks'));
     process.exit(failures ? 1 : 0);

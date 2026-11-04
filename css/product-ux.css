@@ -1057,9 +1057,8 @@ body.pv-ux.pv-has-bottomnav .pv-cta-dock {
     padding-bottom: 10px;
 }
 
-@media (max-width: 720px) {
-    body.pv-ux.pv-setup-active .pv-cta-dock { display: flex; }
-}
+/* Видимостью дока управляет только .is-visible (js/product-ux.js решает,
+   нужен ли он: пока кнопка старта в форме видна, второй такой же не нужно). */
 
 /* ============================================================
    9. НИЖНЯЯ НАВИГАЦИЯ И ОНБОРДИНГ

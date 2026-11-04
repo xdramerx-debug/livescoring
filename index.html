@@ -15,7 +15,7 @@
     <title data-i18n="brand_name">Пестово</title>
     <link rel="stylesheet" href="css/style.css?v=bb98fab2">
     <link rel="stylesheet" href="css/theme-v2.css?v=915c2133">
-    <link rel="stylesheet" href="css/product-ux.css?v=5988d14c">
+    <link rel="stylesheet" href="css/product-ux.css?v=319fd93c">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
     <script src="js/ui-events.js?v=cff4fd10"></script>
     <script src="js/design-system.js?v=b78132a0"></script>
@@ -51,9 +51,12 @@
         <p class="hero-sub" data-i18n="hero_sub">Цифровая счётная карточка Пестово</p>
         <h1 class="hero-title" data-i18n="hero_title">Лайв-скоринг и электронные карточки Пестово</h1>
         <p class="hero-desc" data-i18n="hero_desc">18 лунок · Пар 72</p>
+        <!-- Один главный CTA: «Все раунды» уже есть в меню, в нижней
+             навигации и в шапке блока «Сейчас на поле» сразу под героем.
+             Вторая кнопка здесь дублировала одну и ту же ссылку трижды на
+             одном экране (аудит 2026-11). -->
         <div class="hero-btns">
             <a href="setup-round.html" class="btn btn-g btn-lg"><i class="fas fa-play"></i> <span data-i18n="btn_start_game">Начать игру</span></a>
-            <a href="leaderboard.html" class="btn btn-ol btn-lg"><i class="fas fa-trophy"></i> <span data-i18n="btn_view_scores">Все раунды</span></a>
         </div>
     </div>
 </section>
@@ -62,7 +65,7 @@
 <section class="section">
     <div class="container">
         <div class="sec-hdr"><h2 class="sec-t"><span class="live-dot"></span> <span data-i18n="sec_now_playing">Сейчас на поле</span></h2>
-        <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все раунды</span> <i class="fas fa-arrow-right"></i></a></div>
+        <a href="leaderboard.html" class="sec-l"><span data-i18n="all_view">Смотреть все</span> <i class="fas fa-arrow-right"></i></a></div>
         <div class="pv-chips" role="group">
             <button type="button" class="pv-chip" id="pv-chip-live" data-act="setHomeLiveFilter" data-arg="live" aria-pressed="true">
                 <i class="fas fa-tower-broadcast" aria-hidden="true"></i> <span data-i18n="pv_filter_live">Live</span>
@@ -112,7 +115,7 @@
 <section class="section hidden" id="active-tournament-section" style="padding-bottom:10px;">
     <div class="container">
         <div class="sec-hdr"><h2 class="sec-t"><span class="live-dot"></span> <span data-i18n="sec_active_tournament">Активный турнир</span></h2>
-        <a href="tournaments.html" class="sec-l"><span data-i18n="nav_tournaments">Турниры</span> <i class="fas fa-arrow-right"></i></a></div>
+        <a href="tournaments.html" class="sec-l"><span data-i18n="all_tournaments">Все турниры</span> <i class="fas fa-arrow-right"></i></a></div>
         <div id="live-tournament-rounds"></div>
     </div>
 </section>
@@ -120,8 +123,9 @@
 <!-- УРОВЕНЬ 3 ИЕРАРХИИ: ПОСЛЕДНИЕ РЕЗУЛЬТАТЫ -->
 <section class="section section-alt">
     <div class="container">
-        <div class="sec-hdr"><h2 class="sec-t" data-i18n="sec_recent_results">Последние результаты</h2>
-        <a href="leaderboard.html" class="sec-l"><span data-i18n="all_rounds">Все</span> <i class="fas fa-arrow-right"></i></a></div>
+        <!-- Ссылки «все раунды» здесь нет: тот же лидерборд уже в кадре выше
+             (в меню и в шапке «Сейчас на поле»). -->
+        <div class="sec-hdr"><h2 class="sec-t" data-i18n="sec_recent_results">Последние результаты</h2></div>
         <div id="recent-results">
             <div class="pv-skel" aria-hidden="true">
                 <div class="pv-skel-line"></div>
@@ -165,7 +169,7 @@
     </div>
     <div class="footer-bottom">
                 <p data-i18n="footer_club">&copy; 2024 Пестово</p>
-                <p class="site-version">Версия сайта: <span class="version-number">1.130.3</span></p>
+                <p class="site-version">Версия сайта: <span class="version-number">1.130.4</span></p>
             </div>
 </div></footer>
 
@@ -173,13 +177,13 @@
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=d5792d97"></script>
+<script type="module" src="dist/livescoring-modules.js?v=340881ec"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
 <script defer src="js/utils.js?v=38906235"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/app.js?v=e429c658"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
-<script defer src="js/product-ux.js?v=9ff9f649"></script>
+<script defer src="js/product-ux.js?v=77bbfc21"></script>
 </body>
 </html>

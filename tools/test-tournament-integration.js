@@ -108,8 +108,10 @@ check(!/start-admin|psParseExcelGrid/.test(liveTest),
 ].forEach(function (asset) {
     check(!sw.includes(asset), 'Service Worker не кэширует ' + asset);
 });
+// all_tournaments снова в деле (v1.130.4): так подписана ссылка «Все турниры»
+// в шапке блока активного турнира на главной, чтобы не совпадать с меню.
 [
-    'tab_studio:', 'tab_start:', 'all_tournaments:', 'create_tournament:',
+    'tab_studio:', 'tab_start:', 'create_tournament:',
     'available_formats:', 'available_tees:', 'generate_flights_btn:', 'admin_only_tournaments:'
 ].forEach(function (key) {
     check(!i18n.includes(key), 'удалён мёртвый перевод ' + key);

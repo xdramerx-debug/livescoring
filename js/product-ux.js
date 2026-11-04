@@ -305,16 +305,70 @@
             tr('start_round_btn', 'Начать раунд') + '</span></button>' +
             '<span class="pv-cta-note" id="pv-cta-note"></span>';
         document.body.appendChild(dock);
-        document.body.classList.add('pv-setup-active');
         return dock;
+    }
+
+    // ── Один «Начать раунд» на экране ──────────────────────────────────────
+    // В форме уже есть своя кнопка старта (#unified-start-btn). Плавающий
+    // док нужен только пока она за пределами экрана: иначе на странице
+    // оказывались две одинаковые кнопки одновременно (аудит 2026-11).
+    var inlineCtaVisible = false;
+    var ctaObserver = null;
+    var ctaScrollBound = false;
+
+    function watchInlineCta() {
+        var inline = document.getElementById('unified-start-btn');
+        if (!inline) return;
+        if (ctaObserver) { try { ctaObserver.disconnect(); } catch (e) { console.warn('[silent]', e); } ctaObserver = null; }
+        if (typeof IntersectionObserver !== 'function') return; // jsdom и старые браузеры: док остаётся видимым
+        try {
+            ctaObserver = new IntersectionObserver(function (entries) {
+                for (var i = 0; i < entries.length; i++) {
+                    inlineCtaVisible = entries[i].isIntersecting;
+                }
+                updateCta();
+            // Порог 0: док прячется, как только кнопка формы показалась на
+            // экране хотя бы краем. С порогом 0.5 кнопка была видна на 40%,
+            // док ещё показывался — и «Начать раунд» оказывался дважды.
+            }, { threshold: 0 });
+            ctaObserver.observe(inline);
+        } catch (e) { console.warn('[pv-ux] cta observer', e); }
+        // Наблюдатель срабатывает через кадр, а при плавной прокрутке этого
+        // кадра не хватает: док и кнопка на миг оказываются на экране вместе.
+        // Поэтому прокрутка пересчитывает состояние по фактическому прямоугольнику.
+        if (!ctaScrollBound) {
+            ctaScrollBound = true;
+            var ticking = false;
+            window.addEventListener('scroll', function () {
+                if (ticking) return;
+                ticking = true;
+                var run = function () { ticking = false; updateCta(); };
+                if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+                else setTimeout(run, 16);
+            }, { passive: true });
+        }
+    }
+
+    // Сколько кнопке старта осталось до видимости — без наблюдателя (фолбэк).
+    function inlineCtaInView() {
+        var inline = document.getElementById('unified-start-btn');
+        if (!inline || typeof inline.getBoundingClientRect !== 'function') return false;
+        var rect = inline.getBoundingClientRect();
+        if (!rect.height) return false; // кнопка скрыта (режим просмотра)
+        var viewport = window.innerHeight || document.documentElement.clientHeight || 0;
+        // Считаем «в кадре» даже частичное перекрытие — как и IntersectionObserver
+        // с порогом 0, иначе два пути расчёта дают разный ответ на краю экрана.
+        return rect.bottom > 0 && rect.top < viewport;
     }
 
     function updateCta() {
         var dock = document.getElementById('pv-cta-dock') || buildCtaDock();
         if (!dock) return;
-        var visible = setupIsVisible();
+        // Решает прямоугольник: он всегда актуален, тогда как запись наблюдателя
+        // отстаёт на кадр. Наблюдатель остаётся триггером пересчёта.
+        inlineCtaVisible = inlineCtaInView();
+        var visible = setupIsVisible() && !inlineCtaVisible;
         dock.classList.toggle('is-visible', visible);
-        document.body.classList.toggle('pv-setup-active', visible);
         if (!visible) return;
         var names = filledPlayerNames();
         var note = document.getElementById('pv-cta-note');
@@ -372,6 +426,7 @@
             var dock = document.getElementById('pv-cta-dock');
             if (dock && dock.parentNode) dock.parentNode.removeChild(dock);
             if (setupIsVisible()) buildCtaDock();
+            watchInlineCta();
             var recent = document.getElementById('pv-recent');
             if (recent && recent.parentNode) recent.parentNode.removeChild(recent);
             buildRecentPlayers();
@@ -482,7 +537,7 @@
         try { buildNetBanner(); syncNetState(); } catch (e) { console.warn('[pv-ux] net', e); }
         try { observeScores(); flashChangedScores(); } catch (e) { console.warn('[pv-ux] flash', e); }
         try { bindHaptics(); } catch (e) { console.warn('[pv-ux] haptics', e); }
-        try { buildCtaDock(); bindSetupListeners(); updateCta(); } catch (e) { console.warn('[pv-ux] setup', e); }
+        try { buildCtaDock(); bindSetupListeners(); watchInlineCta(); updateCta(); } catch (e) { console.warn('[pv-ux] setup', e); }
         try { buildRecentPlayers(); } catch (e) { console.warn('[pv-ux] recent', e); }
 
         window.addEventListener('online', syncNetState);

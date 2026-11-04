@@ -57,6 +57,9 @@ var RS = read('js/round-setup.js');
 var i18nText = read('js/i18n.js');
 var i18nSrc = read('src/i18n.js');
 var THEME = read('css/theme-v2.css');
+var AUTH = read('auth.html');
+var SCORER = read('scorer.html');
+var OFFLINE = read('offline.html');
 
 // ── 1. Подключение и порядок ────────────────────────────────────────────
 [['index.html', HOME], ['leaderboard.html', BOARD], ['setup-round.html', SETUP]].forEach(function (pair) {
@@ -136,6 +139,45 @@ ok(JS.indexOf('pv-steps') !== -1, 'product-ux.js: индикатор шагов 
 ok(JS.indexOf('pv-bottomnav') !== -1, 'product-ux.js: нижняя навигация');
 ok(JS.indexOf('pv-net-banner') !== -1 && /нет сети|pv_offline_text/.test(JS),
     'product-ux.js: честное состояние сети вместо «всё сохранено»');
+
+// ── 7b. Один старт раунда на экране ─────────────────────────────────────
+// Док — запасной CTA: он появляется только когда кнопка в форме ушла за
+// пределы экрана. Иначе на странице оказывались две «Начать раунд» сразу.
+ok(JS.indexOf('function watchInlineCta') !== -1 && JS.indexOf('function inlineCtaInView') !== -1,
+    'product-ux.js: видимость кнопки в форме отслеживается');
+ok(JS.indexOf('inlineCtaVisible = inlineCtaInView();') !== -1,
+    'product-ux.js: состояние дока считается по прямоугольнику кнопки');
+ok(JS.indexOf("threshold: 0") !== -1, 'product-ux.js: наблюдатель срабатывает на первый же пиксель');
+ok(/addEventListener\('scroll'/.test(JS), 'product-ux.js: прокрутка пересчитывает состояние дока');
+ok(/var visible = setupIsVisible\(\) && !inlineCtaVisible/.test(JS),
+    'product-ux.js: док и кнопка в форме не показываются вместе');
+ok(JS.indexOf('pv-setup-active') === -1, 'product-ux.js: класс pv-setup-active больше не ставится');
+ok(CSS.indexOf('pv-setup-active') === -1,
+    'product-ux.css: нет правила, включавшего док поверх кнопки формы');
+
+// ── 7c. Дубли действий и подписей на остальных страницах ────────────────
+// Герой главной: один CTA. «Все раунды» уже есть в меню, в нижней навигации
+// и в шапке первого блока — вторая кнопка в герое была тем же действием.
+var heroBtns = (HOME.match(/<div class="hero-btns">([\s\S]*?)<\/div>/) || [])[1] || '';
+ok((heroBtns.match(/<a /g) || []).length === 1, 'index.html: в герое одна кнопка действия');
+ok(HOME.indexOf('btn_view_scores') === -1, 'index.html: второй кнопки «Все раунды» в герое нет');
+ok(i18nText.indexOf('btn_view_scores') === -1 && i18nSrc.indexOf('btn_view_scores') === -1,
+    'i18n: ключ btn_view_scores удалён из ru/en');
+// Ссылки «ко всем раундам» внутри секций не совпадают по подписи с меню.
+ok(HOME.indexOf('data-i18n="all_view"') !== -1 && HOME.indexOf('data-i18n="all_tournaments"') !== -1,
+    'index.html: ссылки секций подписаны иначе, чем пункты меню');
+// Вход: вкладка «Вход» и кнопка отправки «Войти» — разные подписи.
+ok(AUTH.indexOf('data-i18n="auth_tab_login"') !== -1 && AUTH.indexOf('data-i18n="login_btn"') !== -1,
+    'auth.html: вкладка и кнопка входа подписаны по-разному');
+// Возврат на главную на экране ошибки не называется «Главная», как пункт меню.
+ok(SCORER.indexOf('data-i18n="go_home"') !== -1, 'scorer.html: кнопка возврата подписана «На главную»');
+ok(OFFLINE.indexOf('data-i18n="go_home"') !== -1, 'offline.html: кнопка возврата подписана «На главную»');
+[['all_view', 'Смотреть все'], ['all_tournaments', 'Все турниры'], ['go_home', 'На главную'], ['auth_tab_login', 'Вход']]
+    .forEach(function (pair) {
+        ok(i18nText.indexOf(pair[0] + ": '" + pair[1] + "'") !== -1 &&
+            i18nSrc.indexOf(pair[0] + ": '" + pair[1] + "'") !== -1,
+            'i18n: ключ ' + pair[0] + ' есть в ru и src/');
+    });
 
 // ── 8. Доступность и движение ───────────────────────────────────────────
 ok(CSS.indexOf('prefers-reduced-motion') !== -1, 'product-ux.css: prefers-reduced-motion учтён');

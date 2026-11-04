@@ -1360,70 +1360,94 @@ function loadClubStats() {
             return !(u && typeof isPlayerDeleted === 'function' && isPlayerDeleted(uid, u.name));
         }).length;
         var completedRounds = 0, activeRounds = 0;
-        var birdies = 0, eagles = 0, pars = 0, bogeys = 0;
-        var best = Infinity, totalHolesPlayed = 0;
+        var birdies = 0, eagles = 0, pars = 0, bogeys = 0, doubles = 0;
+        var totalHolesPlayed = 0, totalStrokes = 0;
+        // Раунды «на 18 лунок» считаем отдельно: только по ним честно
+        // сравнивать Gross и счёт к пару между собой.
+        var bestGross = Infinity, sumGross18 = 0, countGross18 = 0, bestToPar = Infinity;
+        var playerEntries = 0, roundsLast30 = 0;
+        var monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
         countedRounds.forEach(function(r) {
             if (r.status === 'completed') completedRounds++;
             if (r.status === 'active') activeRounds++;
+            var created = Number(r.createdAt || r.startTime || 0);
+            if (!created && r.createdAt) {
+                var parsed = Date.parse(r.createdAt);
+                created = isNaN(parsed) ? 0 : parsed;
+            }
+            if (created && created >= monthAgo) roundsLast30++;
+
             Object.values(r.players || {}).forEach(function(p) {
                 // Удалённые и навсегда заблокированные демо-игроки не учитываются
                 if (typeof isPlayerDeleted === 'function' && isPlayerDeleted(null, p && p.name)) return;
+                playerEntries++;
                 var scores = p.scores || {};
-                var gross = 0, holesPlayed = 0;
+                var gross = 0, holesPlayed = 0, parPlayed = 0;
                 Object.entries(scores).forEach(function(se) {
                     var h = se[0], s = parseInt(se[1]) || 0;
                     if (s <= 0) return;
                     gross += s; holesPlayed++; totalHolesPlayed++;
+                    parPlayed += holePar(h);
                     var d = s - holePar(h);
-                    if (d <= -2) eagles++; else if (d === -1) birdies++; else if (d === 0) pars++; else if (d === 1) bogeys++;
+                    if (d <= -2) eagles++;
+                    else if (d === -1) birdies++;
+                    else if (d === 0) pars++;
+                    else if (d === 1) bogeys++;
+                    else doubles++;
                 });
-                if (holesPlayed === 18 && gross > 0 && gross < best) best = gross;
+                totalStrokes += gross;
+                if (holesPlayed === 18 && gross > 0) {
+                    if (gross < bestGross) bestGross = gross;
+                    sumGross18 += gross; countGross18++;
+                    var toPar = gross - parPlayed;
+                    if (toPar < bestToPar) bestToPar = toPar;
+                }
             });
         });
 
-        var lTotalRounds = currentLang === 'en' ? 'Total Rounds' : 'Всего раундов';
-        var lActiveRounds = currentLang === 'en' ? 'Currently Playing' : 'Сейчас играют';
-        var lCompletedRounds = currentLang === 'en' ? 'Completed Rounds' : 'Завершено';
-        var lPlayers = currentLang === 'en' ? 'Total Players' : 'Игроков';
-        var lBestGross = currentLang === 'en' ? 'Best Gross (18h)' : 'Лучший Gross (18л)';
-        var lHolesPlayed = currentLang === 'en' ? 'Holes Played' : 'Лунок сыграно';
+        // Числа с дробью: в русской версии разделитель — запятая.
+        function fmtAvg(value, digits) {
+            if (value === null || !isFinite(value)) return '—';
+            var text = value.toFixed(digits);
+            return currentLang === 'en' ? text : text.replace('.', ',');
+        }
+        // Счёт к пару: 0 — «E» (even), плюс пишем явно, минус — знаком.
+        function fmtToPar(value) {
+            if (!isFinite(value)) return '—';
+            if (value === 0) return 'E';
+            return value > 0 ? '+' + value : String(value);
+        }
+        function tile(icon, value, label) {
+            return '<div class="stat"><i class="fas ' + icon + '" aria-hidden="true"></i>' +
+                '<div class="stat-n">' + value + '</div>' +
+                '<div class="stat-l">' + label + '</div></div>';
+        }
 
-        // Компактная полоса главных цифр — то, что видно без прокрутки.
-        // Подробные плитки остаются ниже: полоса отвечает «сколько всего»,
-        // плитки — «из чего это состоит».
-        // NBSP (&nbsp;) между числом и словом: «3 раунда» не должно
-        // разрываться переносом строки на узком экране.
-        var NB = '&nbsp;';
-        var stripHtml = '<div class="pv-stats-strip" role="list">' +
-            '<span class="pv-stats-item" role="listitem"><b>' + totalRounds + '</b>' + NB +
-                pluralN(totalRounds, t('pv_round_one'), t('pv_round_few'), t('pv_round_many')) + '</span>' +
-            '<span class="pv-stats-sep" aria-hidden="true">·</span>' +
-            '<span class="pv-stats-item" role="listitem"><b>' + totalPlayers + '</b>' + NB +
-                pluralN(totalPlayers, t('pv_player_one'), t('pv_player_few'), t('pv_player_many')) + '</span>' +
-            '<span class="pv-stats-sep" aria-hidden="true">·</span>' +
-            '<span class="pv-stats-item" role="listitem"><b>' + birdies + '</b>' + NB + t('pv_birdies') + '</span>' +
-            '<span class="pv-stats-sep" aria-hidden="true">·</span>' +
-            '<span class="pv-stats-item" role="listitem"><b>' + activeRounds + '</b>' + NB + lActiveRounds + '</span>' +
-            '</div>';
+        // 16 плиток сразу, без сводки сверху и без «Подробных цифр» под
+        // раскрытием: полоса повторяла те же четыре числа второй раз, а
+        // раскрытие прятало статистику за лишний клик (аудит 2026-11).
+        var avgPerHole = totalHolesPlayed ? totalStrokes / totalHolesPlayed : null;
+        var avgGross = countGross18 ? sumGross18 / countGross18 : null;
+        var avgField = totalRounds ? playerEntries / totalRounds : null;
 
-        // Подробные плитки — в раскрытии: на первый экран выходит полоса,
-        // десяток плиток больше не растягивает «Клуб в цифрах» на три экрана.
-        el.innerHTML = stripHtml +
-            '<details class="pv-stats-more">' +
-            '<summary><i class="fas fa-chart-simple" aria-hidden="true"></i> ' + t('pv_stats_more') + '</summary>' +
-            '<div class="pv-stats-grid">' +
-            '<div class="stat"><i class="fas fa-flag"></i><div class="stat-n">' + totalRounds + '</div><div class="stat-l">' + lTotalRounds + '</div></div>' +
-            '<div class="stat"><i class="fas fa-circle-play"></i><div class="stat-n">' + activeRounds + '</div><div class="stat-l">' + lActiveRounds + '</div></div>' +
-            '<div class="stat"><i class="fas fa-check-circle"></i><div class="stat-n">' + completedRounds + '</div><div class="stat-l">' + lCompletedRounds + '</div></div>' +
-            '<div class="stat"><i class="fas fa-users"></i><div class="stat-n">' + totalPlayers + '</div><div class="stat-l">' + lPlayers + '</div></div>' +
-            '<div class="stat"><i class="fas fa-star"></i><div class="stat-n">' + (best < Infinity ? best : '—') + '</div><div class="stat-l">' + lBestGross + '</div></div>' +
-            '<div class="stat"><i class="fas fa-fire"></i><div class="stat-n">' + birdies + '</div><div class="stat-l">Birdies</div></div>' +
-            '<div class="stat"><i class="fas fa-bolt"></i><div class="stat-n">' + eagles + '</div><div class="stat-l">Eagles</div></div>' +
-            '<div class="stat"><i class="fas fa-circle-check"></i><div class="stat-n">' + pars + '</div><div class="stat-l">Pars</div></div>' +
-            '<div class="stat"><i class="fas fa-circle-xmark"></i><div class="stat-n">' + bogeys + '</div><div class="stat-l">Bogeys</div></div>' +
-            '<div class="stat"><i class="fas fa-golf-ball-tee"></i><div class="stat-n">' + totalHolesPlayed + '</div><div class="stat-l">' + lHolesPlayed + '</div></div>' +
-            '</div></details>';
+        el.innerHTML =
+            tile('fa-flag', totalRounds, t('st_total_rounds')) +
+            tile('fa-circle-play', activeRounds, t('st_active_rounds')) +
+            tile('fa-circle-check', completedRounds, t('st_completed_rounds')) +
+            tile('fa-users', totalPlayers, t('st_players')) +
+            tile('fa-star', bestGross < Infinity ? bestGross : '—', t('st_best_gross')) +
+            tile('fa-gauge-high', fmtAvg(avgGross, 1), t('st_avg_gross')) +
+            tile('fa-trophy', fmtToPar(bestToPar), t('st_best_topar')) +
+            tile('fa-chart-line', fmtAvg(avgPerHole, 2), t('st_avg_hole')) +
+            tile('fa-fire', birdies, t('st_birdies')) +
+            tile('fa-bolt', eagles, t('st_eagles')) +
+            tile('fa-bullseye', pars, t('st_pars')) +
+            tile('fa-circle-xmark', bogeys, t('st_bogeys')) +
+            tile('fa-triangle-exclamation', doubles, t('st_doubles')) +
+            tile('fa-golf-ball-tee', totalHolesPlayed, t('st_holes_played')) +
+            tile('fa-user-group', fmtAvg(avgField, 1), t('st_players_per_round')) +
+            tile('fa-calendar-days', roundsLast30, t('st_rounds_30d'));
     });
 }
 

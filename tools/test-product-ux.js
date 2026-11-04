@@ -113,8 +113,30 @@ ok(APP.indexOf('function pvMiniTableHtml') !== -1, 'app.js: мини-табли�
 ok(APP.indexOf('function setHomeLiveFilter') !== -1, 'app.js: переключение фильтра');
 ok(/var homeLiveFilter = 'live'/.test(APP), 'app.js: по умолчанию фильтр «Live»');
 ok(APP.indexOf('pv-live-score') !== -1, 'app.js: счёт к пару получил свой класс');
-ok(APP.indexOf('pv-stats-strip') !== -1, 'app.js: компактная полоса статистики клуба');
-ok(APP.indexOf('pv-stats-more') !== -1, 'app.js: подробные плитки спрятаны под раскрытие');
+// «Клуб в цифрах» (1.130.5): полоса-сводка и раскрытие «Подробные цифры»
+// убраны — 16 плиток видны сразу.
+ok(APP.indexOf('pv-stats-strip') === -1 && APP.indexOf('pv-stats-item') === -1,
+    'app.js: полосы-сводки над статистикой нет');
+ok(APP.indexOf('pv-stats-more') === -1 && APP.indexOf('pv-stats-grid') === -1,
+    'app.js: раскрытия «Подробные цифры» нет');
+ok((APP.match(/tile\('fa-/g) || []).length === 16, 'app.js: в статистике клуба ровно 16 плиток',
+    String((APP.match(/tile\('fa-/g) || []).length));
+ok(APP.indexOf("t('st_best_gross')") !== -1 && APP.indexOf("t('st_rounds_30d')") !== -1,
+    'app.js: подписи плиток берутся из словаря');
+ok(CSS.indexOf('pv-stats-strip') === -1 && CSS.indexOf('pv-stats-more') === -1,
+    'product-ux.css: стилей сводки и раскрытия не осталось');
+ok(/#club-stats \{[^}]*repeat\(4, minmax\(0, 1fr\)\)/.test(CSS),
+    'product-ux.css: 16 плиток сеткой 4 колонки');
+ok(CSS.indexOf('pv_stats_more') === -1, 'product-ux.css: нет ссылок на удалённый ключ');
+var ST_KEYS = ['st_total_rounds', 'st_active_rounds', 'st_completed_rounds', 'st_players',
+    'st_best_gross', 'st_avg_gross', 'st_best_topar', 'st_avg_hole', 'st_birdies', 'st_eagles',
+    'st_pars', 'st_bogeys', 'st_doubles', 'st_holes_played', 'st_players_per_round', 'st_rounds_30d'];
+var stMissing = ST_KEYS.filter(function (k) {
+    return i18nText.indexOf(k + ':') === -1 || i18nSrc.indexOf(k + ':') === -1;
+});
+ok(stMissing.length === 0, 'i18n: все 16 ключей плиток есть в ru и src/', stMissing.join(', '));
+ok(i18nText.indexOf('pv_stats_more') === -1 && i18nSrc.indexOf('pv_stats_more') === -1,
+    'i18n: ключ pv_stats_more удалён из обоих словарей');
 // Статус не только цветом: у бейджа всегда есть слово и иконка/точка.
 ok(/pv-status-dot/.test(APP) && /pv_st_done|pv_live_now/.test(APP),
     'app.js: статус передаётся словом и иконкой, не только цветом');

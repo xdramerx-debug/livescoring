@@ -112,13 +112,13 @@ function fe(e, r) {
   return !isNaN(o.getTime()) && !isNaN(n.getTime()) && o.getFullYear() === n.getFullYear() && o.getMonth() === n.getMonth() && o.getDate() === n.getDate();
 }
 var C = ["today", "7d", "30d", "month", "year", "all"];
-function V(e) {
+function B(e) {
   var r = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
   if (!r) return null;
   var a = new Date(Number(r[1]), Number(r[2]) - 1, Number(r[3]), 0, 0, 0, 0).getTime();
   return isNaN(a) ? null : a;
 }
-function B(e) {
+function V(e) {
   var r = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e ?? "").trim());
   if (!r) return null;
   var a = new Date(Number(r[1]), Number(r[2]) - 1, Number(r[3]), 23, 59, 59, 999).getTime();
@@ -137,7 +137,7 @@ function M(e) {
   return e === "today" ? n = a : e === "7d" ? n = new Date(a.getFullYear(), a.getMonth(), a.getDate() - 6) : e === "30d" ? n = new Date(a.getFullYear(), a.getMonth(), a.getDate() - 29) : e === "month" ? n = new Date(a.getFullYear(), a.getMonth(), 1) : e === "year" && (n = new Date(a.getFullYear(), 0, 1)), n ? { from: x(n.getTime()), to: x(a.getTime()) } : { from: "", to: "" };
 }
 function R(e, r) {
-  var a = e && e.value || "", n = r && r.value || "", o = a ? V(a) : null, s = n ? B(n) : null, _ = o !== null && s !== null && o > s;
+  var a = e && e.value || "", n = r && r.value || "", o = a ? B(a) : null, s = n ? V(n) : null, _ = o !== null && s !== null && o > s;
   return {
     from: o,
     to: s,
@@ -250,7 +250,7 @@ function ge() {
     r && (r.renderPresets(), r.rerenderSummary());
   });
 }
-typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: C, dateInputToStartTs: V, dateInputToEndTs: B, tsToDateInputValue: x, getRoundFilterTs: j, datePresetRange: M, readDateRange: R, filterEntriesByDateRange: he, renderRoundsPeriodSummary: q, dateRangeFilters: T, initDateRangeFilter: be, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
+typeof window < "u" && Object.assign(window, { DATE_RANGE_PRESETS: C, dateInputToStartTs: B, dateInputToEndTs: V, tsToDateInputValue: x, getRoundFilterTs: j, datePresetRange: M, readDateRange: R, filterEntriesByDateRange: he, renderRoundsPeriodSummary: q, dateRangeFilters: T, initDateRangeFilter: be, getDateRangeFilter: ye, refreshDateRangeFilters: ge });
 function K(e) {
   return e == null ? "" : String(e).replace(/[&<>"']/g, function(r) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[r];
@@ -430,16 +430,25 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     pv_filter_live: "Live",
     pv_filter_empty: "По этому фильтру сейчас никого нет.",
     pv_filter_reset: "Показать все",
-    pv_player_one: "игрок",
-    pv_player_few: "игрока",
-    pv_player_many: "игроков",
-    pv_round_one: "раунд",
-    pv_round_few: "раунда",
-    pv_round_many: "раундов",
-    pv_birdies: "берди",
     pv_round_birdies: "Берди в раунде",
     pv_round_eagles: "Иглы в раунде",
-    pv_stats_more: "Подробные цифры",
+    // Плитки «Клуб в цифрах» (16 штук, без сводки и раскрытия).
+    st_total_rounds: "Всего раундов",
+    st_active_rounds: "Сейчас играют",
+    st_completed_rounds: "Завершено",
+    st_players: "Игроков",
+    st_best_gross: "Лучший Gross (18 лунок)",
+    st_avg_gross: "Средний Gross (18 лунок)",
+    st_best_topar: "Лучший счёт к пару",
+    st_avg_hole: "Средний счёт на лунку",
+    st_birdies: "Birdies",
+    st_eagles: "Eagles",
+    st_pars: "Pars",
+    st_bogeys: "Bogeys",
+    st_doubles: "Двойной боги и хуже",
+    st_holes_played: "Лунок сыграно",
+    st_players_per_round: "Игроков в раунде",
+    st_rounds_30d: "Раундов за 30 дней",
     pv_lb_sort: "Сортировка по столбцу",
     pv_lb_mine: "Мой раунд",
     pv_lb_live: "Live",
@@ -1091,16 +1100,24 @@ var f = typeof localStorage < "u" && localStorage.getItem("pestovo_lang") || "ru
     pv_filter_live: "Live",
     pv_filter_empty: "No rounds match this filter.",
     pv_filter_reset: "Show all",
-    pv_player_one: "player",
-    pv_player_few: "players",
-    pv_player_many: "players",
-    pv_round_one: "round",
-    pv_round_few: "rounds",
-    pv_round_many: "rounds",
-    pv_birdies: "birdies",
     pv_round_birdies: "Birdies in round",
     pv_round_eagles: "Eagles in round",
-    pv_stats_more: "Detailed numbers",
+    st_total_rounds: "Total rounds",
+    st_active_rounds: "Playing now",
+    st_completed_rounds: "Completed",
+    st_players: "Players",
+    st_best_gross: "Best gross (18 holes)",
+    st_avg_gross: "Average gross (18 holes)",
+    st_best_topar: "Best score to par",
+    st_avg_hole: "Average strokes per hole",
+    st_birdies: "Birdies",
+    st_eagles: "Eagles",
+    st_pars: "Pars",
+    st_bogeys: "Bogeys",
+    st_doubles: "Double bogey or worse",
+    st_holes_played: "Holes played",
+    st_players_per_round: "Players per round",
+    st_rounds_30d: "Rounds in 30 days",
     pv_lb_sort: "Sort by column",
     pv_lb_mine: "My round",
     pv_lb_live: "Live",
@@ -1992,8 +2009,8 @@ export {
   D as applyTranslations,
   E as buildOfficialCallText,
   f as currentLang,
-  B as dateInputToEndTs,
-  V as dateInputToStartTs,
+  V as dateInputToEndTs,
+  B as dateInputToStartTs,
   M as datePresetRange,
   T as dateRangeFilters,
   U as ensureToastRoot,

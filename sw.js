@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.130.4-be49187d';
+const CACHE_NAME = 'pestovo-v1.130.5-998d8ac0';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -57,15 +57,15 @@ const STATIC_ASSETS = [
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
     'css/design-presets.css?v=77ff3916',
     'css/entry-scorecard.css?v=a34f8c94',
-    'css/fontawesome-subset.css?v=47282c09',
+    'css/fontawesome-subset.css?v=79fafe3c',
     'css/fonts-local.css?v=8523462a',
-    'css/product-ux.css?v=319fd93c',
+    'css/product-ux.css?v=4522a80b',
     'css/style.css?v=bb98fab2',
     'css/theme-v2.css?v=915c2133',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=dc2bdd18',
-    'dist/livescoring-modules.js?v=340881ec',
-    'js/app.js?v=e429c658',
+    'dist/livescoring-modules.js?v=b04c85ec',
+    'js/app.js?v=3a477470',
     'js/auth.js?v=3a96f309',
     'js/design-system.js?v=b78132a0',
     'js/entry-scorecard.js?v=9b8c4167',
@@ -114,8 +114,8 @@ const STATIC_ASSETS = [
     'img/icon-512.png',
     'img/logo.png',
     'fonts/fa-brands-400-subset-d97c8617.woff2',
-    'fonts/fa-regular-400-subset-bb284588.woff2',
-    'fonts/fa-solid-900-subset-18469f6a.woff2',
+    'fonts/fa-regular-400-subset-3ca9a5b8.woff2',
+    'fonts/fa-solid-900-subset-ce62ac58.woff2',
     'fonts/inter-cyrillic-400-normal.woff2',
     'fonts/inter-cyrillic-600-normal.woff2',
     'fonts/inter-cyrillic-700-normal.woff2',

@@ -530,44 +530,19 @@ body.pv-ux .pv-chip-count {
 }
 body.pv-ux .pv-chip[aria-pressed="true"] .pv-chip-count { background: rgba(20, 32, 23, 0.18); }
 
-/* Компактная полоса статистики клуба вместо девяти больших плиток. */
-body.pv-ux .pv-stats-strip {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px 18px;
-    padding: 10px 14px;
-    border-radius: var(--rs);
-    border: 1px solid var(--line);
-    background: var(--card);
-    font-size: var(--fs-note);
-    color: var(--muted);
-}
-body.pv-ux .pv-stats-item {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-    white-space: nowrap;
-}
-body.pv-ux .pv-stats-item b {
-    color: var(--white);
-    font-size: 16px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-}
-body.pv-ux .pv-stats-sep { color: var(--line-strong); }
-
-/* Полоса главных цифр — над плитками, во всю ширину сетки. */
-body.pv-ux #club-stats .pv-stats-strip,
-body.pv-ux .stats-grid > .pv-stats-strip {
-    grid-column: 1 / -1;
-}
-
-/* «Клуб в цифрах» — сворачиваем в компактную сетку. */
+/* «Клуб в цифрах» — сетка плиток. Раньше здесь была ещё полоса-сводка
+   (4 числа) и раскрытие «Подробные цифры» с плитками: полоса повторяла те
+   же числа второй раз, а раскрытие прятало статистику за лишний клик.
+   Теперь все 16 плиток видны сразу, без сводки и без заголовка (аудит 2026-11). */
 body.pv-ux .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 8px;
+}
+/* 16 плиток = ровные 4×4 на широком экране, 2×8 на телефоне. */
+body.pv-ux #club-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
 }
 body.pv-ux .stat {
     padding: 12px 10px;
@@ -580,6 +555,49 @@ body.pv-ux .stat:hover { transform: none; box-shadow: none; border-color: var(--
 body.pv-ux .stat i { font-size: 14px; margin-bottom: 4px; }
 body.pv-ux .stat-n { font-size: 22px; line-height: 1.1; }
 body.pv-ux .stat-l { font-size: 11px; letter-spacing: 0.02em; text-transform: none; }
+
+/* Плитка клуба: иконка в золотом квадрате, крупное число, подпись до двух
+   строк. Высота строки общая — числа соседних плиток стоят на одной линии. */
+body.pv-ux #club-stats .stat {
+    padding: 14px 14px 13px;
+    border-radius: 14px;
+    background:
+        linear-gradient(155deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 62%),
+        var(--card);
+}
+body.pv-ux #club-stats .stat i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-bottom: 8px;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--gold) 16%, transparent);
+    color: var(--gold);
+    font-size: 13px;
+}
+body.pv-ux #club-stats .stat-n {
+    color: var(--white);
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+}
+body.pv-ux #club-stats .stat-l {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11.5px;
+    line-height: 1.25;
+    letter-spacing: 0;
+    text-transform: none;
+}
+@media (max-width: 720px) {
+    body.pv-ux #club-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    body.pv-ux #club-stats .stat { padding: 12px 12px 11px; border-radius: 12px; }
+    body.pv-ux #club-stats .stat i { width: 26px; height: 26px; margin-bottom: 6px; }
+    body.pv-ux #club-stats .stat-n { font-size: 22px; }
+}
 
 /* Погода — маленький чип рядом с заголовком. */
 body.pv-ux #nav-weather-container { display: inline-flex; align-items: center; min-height: 32px; }
@@ -693,39 +711,6 @@ body.pv-ux .recent-row .lwl-start { display: none; }
     body.pv-ux .recent-row .lwl-start { display: inline-flex; font-size: 12px; color: var(--muted); }
 }
 
-/* Подробные цифры клуба спрятаны под раскрытие: полоса выше отвечает
-   на главный вопрос, плитки — для тех, кто смотрит глубже. */
-body.pv-ux .pv-stats-more {
-    grid-column: 1 / -1;
-    margin-top: 2px;
-}
-body.pv-ux .pv-stats-more > summary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: var(--tap);
-    padding: 6px 4px;
-    color: var(--muted);
-    font-size: var(--fs-note);
-    font-weight: 600;
-    cursor: pointer;
-    list-style: none;
-}
-body.pv-ux .pv-stats-more > summary::-webkit-details-marker { display: none; }
-body.pv-ux .pv-stats-more > summary::after {
-    content: "▾";
-    margin-left: auto;
-    color: var(--gold);
-    transition: transform 0.2s ease;
-}
-body.pv-ux .pv-stats-more[open] > summary::after { transform: rotate(180deg); }
-body.pv-ux .pv-stats-more[open] > summary { color: var(--text); }
-body.pv-ux .pv-stats-more > .pv-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 8px;
-    margin-top: 8px;
-}
 
 /* Внутренняя таблица игроков раунда. */
 body.pv-ux .rlb { margin-top: 10px; }
@@ -1169,7 +1154,6 @@ body.pv-ux.sun-mode .pv-chip[aria-pressed="true"] {
     border-color: #1f3d2a;
     color: #fffdf5;
 }
-body.pv-ux.sun-mode .pv-stats-item b { color: var(--text); }
 body.pv-ux.sun-mode .rlb-row:nth-child(even) { background: rgba(16, 26, 19, 0.03); }
 
 /* Предпочтение «меньше движения»: гасим пульсацию, скелетоны и переходы. */

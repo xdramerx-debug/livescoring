@@ -82,7 +82,7 @@ function filterEntriesByDateRange(entries, range) {
 }
 
 // Сводка «сколько раундов за период» над списком.
-function renderRoundsPeriodSummary(el, range, count, total) {
+function renderRoundsPeriodSummary(el, range, count, total, opts) {
     if (!el) return;
     var isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     var html = '<i class="fas fa-calendar-check"></i> ';
@@ -96,6 +96,14 @@ function renderRoundsPeriodSummary(el, range, count, total) {
         }
     } else {
         html += t('rounds_total_label') + ': <b>' + count + '</b>';
+    }
+    // Окно чтения (js/leaderboard.js читает не всю базу, а последние N
+    // раундов + активные): если предел достигнут, пишем это прямо, иначе
+    // счётчик выглядел бы как «столько раундов всего в клубе».
+    if (opts && opts.windowed && opts.limit) {
+        html += ' <span class="rs-dim">' + escapeHtml(isEn
+            ? ('· latest ' + opts.limit + ' loaded')
+            : ('· загружены последние ' + opts.limit)) + '</span>';
     }
     el.innerHTML = html;
 }
@@ -168,12 +176,12 @@ function initDateRangeFilter(cfg) {
         getRange: function() { return readDateRange(fromEl, toEl); },
         renderPresets: renderPresets,
         lastSummary: null,
-        renderSummary: function(count, total) {
-            api.lastSummary = { count: count, total: total };
-            renderRoundsPeriodSummary(cfg.summaryId ? document.getElementById(cfg.summaryId) : null, api.getRange(), count, total);
+        renderSummary: function(count, total, opts) {
+            api.lastSummary = { count: count, total: total, opts: opts || null };
+            renderRoundsPeriodSummary(cfg.summaryId ? document.getElementById(cfg.summaryId) : null, api.getRange(), count, total, opts);
         },
         rerenderSummary: function() {
-            if (api.lastSummary) api.renderSummary(api.lastSummary.count, api.lastSummary.total);
+            if (api.lastSummary) api.renderSummary(api.lastSummary.count, api.lastSummary.total, api.lastSummary.opts);
         }
     };
 

@@ -133,6 +133,39 @@
             }
           }
         },
+        "finishedPlayers": {
+          "$pid": {
+            ".write": "auth != null && auth.uid == $pid && root.child('rounds').child($rid).child('players').child($pid).exists()",
+            ".validate": "!newData.exists() || newData.hasChild('at')"
+          }
+        },
+        "status": {
+          ".write": "auth != null && root.child('rounds').child($rid).child('players').child(auth.uid).exists() && root.child('rounds').child($rid).child('finishedPlayers').numChildren() === root.child('rounds').child($rid).child('players').numChildren() && newData.val() === 'completed'"
+        },
+        "completedAt": {
+          ".write": "auth != null && root.child('rounds').child($rid).child('players').child(auth.uid).exists() && root.child('rounds').child($rid).child('finishedPlayers').numChildren() === root.child('rounds').child($rid).child('players').numChildren()"
+        },
+        "completedBy": {
+          ".write": "auth != null && root.child('rounds').child($rid).child('players').child(auth.uid).exists() && root.child('rounds').child($rid).child('finishedPlayers').numChildren() === root.child('rounds').child($rid).child('players').numChildren() && newData.val() === auth.uid"
+        },
+        "completedByName": {
+          ".write": "auth != null && root.child('rounds').child($rid).child('players').child(auth.uid).exists() && root.child('rounds').child($rid).child('finishedPlayers').numChildren() === root.child('rounds').child($rid).child('players').numChildren() && newData.isString() && newData.val().length <= 120"
+        },
+        "historyRecorded": {
+          ".write": "auth != null && root.child('rounds').child($rid).child('players').child(auth.uid).exists() && root.child('rounds').child($rid).child('finishedPlayers').numChildren() === root.child('rounds').child($rid).child('players').numChildren()"
+        },
+        "partialFinish": {
+          ".write": "auth != null && root.child('rounds').child($rid).child('players').child(auth.uid).exists() && newData.val() === true"
+        },
+        "forcedFinish": {
+          ".write": "auth != null && root.child('rounds').child($rid).child('players').child(auth.uid).exists() && newData.val() === true"
+        },
+        "forcedReason": {
+          ".write": "auth != null && root.child('rounds').child($rid).child('players').child(auth.uid).exists() && newData.isString() && newData.val().length <= 200"
+        },
+        "autoCompleted": {
+          ".write": "auth != null && root.child('rounds').child($rid).child('players').child(auth.uid).exists() && newData.val() === false"
+        },
         "_scoreAuditOutbox": {
           ".validate": "newData.val() === data.val() || auth != null"
         },

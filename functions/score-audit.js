@@ -200,6 +200,59 @@ module.exports = function createScoreAudit(functions, admin, db, forEachChildPag
         if (events) await deliver('tournaments/' + tid, requestId, events);
         return { ok: true, duplicate: !tx.committed, confirmedAt: now };
     });
+    // Завершение СВОЕЙ карточки участником. Правила базы пускают личный
+    // аккаунт (finishedPlayers/<uid> + статус раунда только когда сдали все),
+    // но карточка гостя (guest_*) не совпадает с auth.uid: её владелец
+    // доказывает доступ карточкой QR, как и при вводе счёта. Поэтому общий
+    // путь — серверная операция: она атомарно ставит отметку в
+    // finishedPlayers и, если сдали все, закрывает раунд.
+    const roundFinishCard = functions.https.onCall(async function (data, context) {
+        const now = Date.now();
+        const rid = data && data.roundId, pid = data && data.playerId;
+        if (!validKey(rid) || !validKey(pid)) fail('invalid-argument', 'Invalid round or player');
+        const who = await actor(context.auth, now);
+        const qrAccess = data.qrAccess === true;
+        const ref = db.ref('rounds/' + rid);
+        const original = (await ref.once('value')).val();
+        if (!original || !original.players) fail('not-found', 'Round not found');
+        if (!original.players[pid]) fail('not-found', 'Player not found');
+        const authPlayer = who.uid && original.players[who.uid] ? who.uid : null;
+        // Свою карточку закрывает владелец аккаунта; чужую — только админ или
+        // QR-доступ по карте (личность при этом не подтверждается, как и в
+        // scoreWrite: ссылка доказывает владение карточкой, не личность).
+        if (!who.admin && !qrAccess && authPlayer !== pid) fail('permission-denied', 'Not your scorecard');
+        const player = original.players[pid] || {};
+        const name = String(player.name || [player.lastName, player.firstName, player.middleName].filter(Boolean).join(' ') || '').slice(0, 120);
+        const tx = await ref.transaction(function (round) {
+            if (!round || !round.players || !round.players[pid]) return;
+            round.finishedPlayers = round.finishedPlayers || {};
+            // Идемпотентность: повторный вызов (ретрай, двойной тап) не меняет
+            // ни отметку, ни автора завершения.
+            if (round.finishedPlayers[pid]) return;
+            round.finishedPlayers[pid] = { at: now, name: name };
+            const ids = Object.keys(round.players);
+            const allDone = ids.every(function (id) { return !!round.finishedPlayers[id]; });
+            if (allDone) {
+                round.status = 'completed';
+                round.completedAt = now;
+                round.completedBy = who.uid || pid;
+                if (name) round.completedByName = name;
+                round.autoCompleted = false;
+            } else {
+                round.partialFinish = true;
+            }
+            return round;
+        }, undefined, false);
+        const fresh = (await ref.once('value')).val() || {};
+        if (!(fresh.finishedPlayers && fresh.finishedPlayers[pid])) fail('aborted', 'Card finish was not saved');
+        return {
+            ok: true,
+            duplicate: !tx.committed,
+            status: fresh.status || 'active',
+            finished: Object.keys(fresh.finishedPlayers || {}).length,
+            players: Object.keys(fresh.players || {}).length
+        };
+    });
     const onStudioScoreOutbox = functions.database.ref('/tournaments/{tournamentId}/_scoreAuditOutbox/{requestId}').onCreate(async (snapshot, context) => {
         const ownerPath = 'tournaments/' + context.params.tournamentId;
         const pending = (await db.ref(ownerPath + '/_scoreAuditOutbox/' + context.params.requestId).once('value')).val();
@@ -269,5 +322,5 @@ module.exports = function createScoreAudit(functions, admin, db, forEachChildPag
         });
         return null;
     });
-    return { scoreWrite, studioScoreWrite, onScoreAuditOutbox, onStudioScoreOutbox, onDirectPlayerScore, onDirectMarkerScore, onDirectMarkerMirror, onDirectStudioScore, purgeScoreAudit };
+    return { scoreWrite, studioScoreWrite, roundFinishCard, onScoreAuditOutbox, onStudioScoreOutbox, onDirectPlayerScore, onDirectMarkerScore, onDirectMarkerMirror, onDirectStudioScore, purgeScoreAudit };
 };

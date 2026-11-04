@@ -136,6 +136,20 @@ var tiny = (CSS.match(/font-size:\s*\d+(\.\d+)?px/g) || [])
     .filter(function (v) { return v < 11; });
 ok(tiny.length === 0, 'product-ux.css: нет кегля меньше 11 px', tiny.join(', '));
 
+// Приветственный оверлей убран (1.130.2): он закрывал главную ровно тем
+// экраном, который показывает её карточки. Возвращать его не надо —
+// ни разметкой, ни стилями, ни ключами i18n.
+ok(JS.indexOf('pv-onb') === -1 && JS.indexOf('buildOnboarding') === -1,
+    'js/product-ux.js: нет приветственного оверлея');
+ok(CSS.indexOf('pv-onb') === -1, 'product-ux.css: нет стилей оверлея');
+// Ключи i18n оверлея удалены из обоих словарей (классического и src/).
+var i18nText = read('js/i18n.js');
+var i18nSrc = read('src/i18n.js');
+ok(i18nText.indexOf('pv_onb_') === -1 && i18nSrc.indexOf('pv_onb_') === -1,
+    'i18n: ключи pv_onb_* удалены из ru/en');
+ok(APP.indexOf('pv-onboarding') === -1, 'js/app.js: не создаёт #pv-onboarding');
+ok(read('index.html').indexOf('pv-onboarding') === -1, 'index.html: разметки оверлея нет');
+
 // ── 9. Поведение карточки в jsdom (если библиотека есть) ────────────────
 var JSDOM;
 try { JSDOM = require('jsdom').JSDOM; } catch (e) { JSDOM = null; }
@@ -181,11 +195,26 @@ if (!JSDOM) {
         return ref;
     };
     win.db = { ref: makeRef };
+    // i18n-слой в этом тесте не грузится, а app.js читает currentLang
+    // (renderCourseHolesStrip и др.) — без него тест падал на ReferenceError.
+    win.currentLang = 'ru';
+    win.t = function (key) { return key; };
+    win.escapeHtml = function (value) {
+        return String(value === undefined || value === null ? '' : value)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    };
+    win.fmtExactHcp = function (value) { return String(value); };
     win.currentUser = { uid: 'u2' };
     win.toast = function () {};
     win.vib = function () {};
     win.eval(read('js/ui-events.js'));
+    // Поле клуба: holePar/holeHcp/getFieldHcp нужны calcRoundStats и карточке.
+    win.eval(read('js/course-config.js'));
+    win.eval(read('js/format.js'));
     win.eval(read('js/utils.js'));
+    // Карточки поля вынесены в отдельный файл (js/utils-scorecards.js).
+    win.eval(read('js/utils-scorecards.js'));
     win.eval(read('js/app.js'));
     win.loadLiveRounds();
 

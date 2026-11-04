@@ -89,12 +89,39 @@
         .spc-row .spc-row-fields { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 0; }
         .spc-row .spc-row-fields .form-group { flex: 1 1 110px; min-width: 0; margin: 0; }
         .spc-row .spc-row-fields .form-group.spx-name { flex: 2 1 180px; }
+        /* «Отчество (необязательно)» — самая длинная подпись во всей форме:
+           колонке нужно чуть больше ширины, чтобы подпись осталась в одну
+           строку на десктопе. */
+        .spc-row .spc-row-fields .form-group.spx-mid { flex: 1.5 1 150px; }
         .spc-row .spc-row-fields label { font-size: 10.5px; margin-bottom: 3px; }
         .spc-row .spc-row-fields .form-input { padding: 8px 10px; font-size: 13px; }
         @media (max-width: 520px) {
             .spc-row { flex-wrap: wrap; }
             .spc-row .spc-row-fields { flex-basis: 100%; }
             .spc-row .spc-remove { margin-left: auto; }
+        }
+
+        /* ── Выравнивание полей игрока по одной линии ─────────────────────
+           Подписи полей разной длины: «Отчество (необязательно)» занимает
+           две строки, «Пол» — одну. Пока поля шли от верхнего края колонки,
+           поле отчества уезжало вниз на 16 px относительно соседних, и ряд
+           выглядел рваным (аудит 2026-11). Тянем контрол к нижнему краю
+           колонки: поля стоят на одной линии при любой длине подписи,
+           при любом числе колонок и на любой ширине экрана. */
+        #player-slots .form-group { display: flex; flex-direction: column; }
+        #player-slots .form-group > .form-input { margin-top: auto; }
+        #player-slots .form-group > .field-err-msg { margin-top: 4px; }
+        /* На телефоне подписи полей в style.css сжаты в одну строку с
+           многоточием — «Отчество (необязательно)» обрезалось до
+           «ОТЧЕСТВО (НЕОБЯЗ…». Разрешаем перенос: подпись занимает две
+           строки, поле всё равно стоит на общей линии. */
+        @media (max-width: 720px) {
+            #player-slots .form-group label {
+                white-space: normal !important;
+                overflow: visible !important;
+                text-overflow: clip !important;
+                line-height: 1.25;
+            }
         }
 
         /* ── Вариант 4: витрина — крупные наглядные карточки ── */
@@ -514,7 +541,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.130.5</span></p>
+            <p class="site-version">Версия сайта: <span class="version-number">1.130.6</span></p>
         </div>
     </div>
 </footer>
@@ -539,7 +566,7 @@
 <script defer src="js/score-display.js?v=8c8f213a"></script>
 <script defer src="js/live.js?v=97951fa1"></script>
 <script defer src="js/solo.js?v=8ebc1f83"></script>
-<script defer src="js/round-setup.js?v=d098fe10"></script>
+<script defer src="js/round-setup.js?v=9630777f"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
 <script defer src="js/product-ux.js?v=77bbfc21"></script>

@@ -177,6 +177,21 @@ ok(JS.indexOf('pv-setup-active') === -1, 'product-ux.js: класс pv-setup-act
 ok(CSS.indexOf('pv-setup-active') === -1,
     'product-ux.css: нет правила, включавшего док поверх кнопки формы');
 
+// ── 7b2. Выравнивание полей в карточке игрока ───────────────────────────
+// Подпись «Отчество (необязательно)» занимает две строки, поле отчества
+// уезжало вниз относительно соседних (аудит 2026-11). Тянем контролы к низу
+// колонки — поля стоят на одной линии при любой длине подписи.
+ok(SETUP.indexOf('body.st-roundsetup-v2') !== -1 && SETUP.indexOf('#player-slots .form-group > .form-input { margin-top: auto; }') !== -1,
+    'setup-round.html: поля игрока выровнены по низу колонки');
+ok(/#player-slots \.form-group \{ display: flex; flex-direction: column; \}/.test(SETUP),
+    'setup-round.html: колонка поля игрока — flex-колонка');
+ok(SETUP.indexOf('white-space: normal !important') !== -1,
+    'setup-round.html: подписи полей игрока переносятся, а не обрезаются многоточием');
+ok(RS.indexOf('spx-mid') !== -1 && SETUP.indexOf('.spx-mid') !== -1,
+    'round-setup.js: у колонки отчества своя ширина (spx-mid)');
+ok(read('tools/check-round-setup-mobile.js').indexOf('misalignedFields') !== -1,
+    'check-round-setup-mobile.js: браузерный гейт выравнивания полей');
+
 // ── 7c. Дубли действий и подписей на остальных страницах ────────────────
 // Герой главной: один CTA. «Все раунды» уже есть в меню, в нижней навигации
 // и в шапке первого блока — вторая кнопка в герое была тем же действием.

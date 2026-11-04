@@ -150,6 +150,31 @@ function extractPage() {
                             return r.width > 0 && r.height > 0 && getComputedStyle(el).display !== 'none';
                         }).map(el => el.getBoundingClientRect().height),
                         stepHeights: Array.from(document.querySelectorAll('.unified-step')).map(el => el.getBoundingClientRect().height),
+                        // Поля игрока должны стоять на одной линии: подпись
+                        // «Отчество (необязательно)» занимает две строки, и без
+                        // выравнивания по низу колонки поле отчества уезжало
+                        // вниз относительно соседних (аудит 2026-11).
+                        // Инвариант — общий нижний край у полей одной линии.
+                        misalignedFields: (function () {
+                            let bad = 0;
+                            slots.querySelectorAll('.form-row').forEach(row => {
+                                const controls = Array.from(row.querySelectorAll('.form-input')).filter(el => {
+                                    const r = el.getBoundingClientRect();
+                                    const s = getComputedStyle(el);
+                                    return r.width > 1 && r.height > 1 && s.display !== 'none' && s.visibility !== 'hidden';
+                                });
+                                for (let i = 0; i < controls.length; i++) {
+                                    for (let j = i + 1; j < controls.length; j++) {
+                                        const a = controls[i].getBoundingClientRect();
+                                        const b = controls[j].getBoundingClientRect();
+                                        const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+                                        if (overlap < Math.min(a.height, b.height) * 0.5) continue; // разные линии
+                                        if (Math.abs(a.bottom - b.bottom) > 1) bad++;
+                                    }
+                                }
+                            });
+                            return bad;
+                        })(),
                         next: rect(document.getElementById('unified-next-btn'))
                     };
                 }, variant);
@@ -166,6 +191,7 @@ function extractPage() {
                     assert(state.header.height >= 44, width + 'px / view ' + variant + ' accordion header target is >=44px (' + state.header.height + 'px)');
                 }
                 assert(state.inputHeights.every(height => height >= 44), width + 'px / view ' + variant + ' visible inputs are >=44px high');
+                assert.strictEqual(state.misalignedFields, 0, width + 'px / view ' + variant + ' поля игрока стоят на одной линии (' + state.misalignedFields + ' «уехавших»)');
                 assert(state.refresh && state.refresh.visible, width + 'px / view ' + variant + ' exposes HCP lookup after a full name');
                 assert(state.refresh.height >= 44 && state.refresh.width >= 44, width + 'px / view ' + variant + ' HCP lookup target is >=44px (' + JSON.stringify(state.refresh) + ')');
                 assert.strictEqual(state.variantClass, variant === '1' ? '1' : 'st-roundsetup-v' + variant, width + 'px / view ' + variant + ' applies its CSS preset');
@@ -179,7 +205,7 @@ function extractPage() {
                     assert(state.stepHeights.every(height => height >= 44), width + 'px / v5 step tabs are >=44px (' + state.stepHeights.join(',') + ')');
                     assert(state.next.height >= 44, width + 'px / v5 next-step target is >=44px');
                 }
-                checks += 15;
+                checks += 16;
 
                 // Removing/re-adding a player is an actual touch click, not only a string test.
                 await page.locator('#player-slots [data-pidx="3"] .spc-remove').click();

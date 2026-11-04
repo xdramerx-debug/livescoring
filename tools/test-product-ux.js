@@ -52,6 +52,10 @@ var SETUP = read('setup-round.html');
 var APP = read('js/app.js');
 var LB = read('js/leaderboard.js');
 var RS = read('js/round-setup.js');
+// Словари i18n: классический (js/) и канонический ESM (src/) — правки
+// должны попадать в оба, иначе английская версия разъезжается.
+var i18nText = read('js/i18n.js');
+var i18nSrc = read('src/i18n.js');
 var THEME = read('css/theme-v2.css');
 
 // ── 1. Подключение и порядок ────────────────────────────────────────────
@@ -89,7 +93,15 @@ ok(posLive !== -1 && posRecent !== -1 && posLive < posRecent,
 ok(HOME.indexOf('id="pv-chip-live"') !== -1 && HOME.indexOf('id="pv-chip-all"') !== -1 &&
     HOME.indexOf('id="pv-chip-mine"') !== -1, 'index.html: три чипа фильтра на месте');
 ok((HOME.match(/aria-pressed="/g) || []).length >= 3, 'index.html: у чипов есть aria-pressed');
-ok(HOME.indexOf('pv_demo_badge') !== -1, 'index.html: пометка тестовой версии видна');
+// Пометку демо-версии с главной убрали (1.130.3): на первом экране она
+// стояла между «18 лунок · Пар 72» и кнопками и читалась как часть оффера.
+// Демо-данные по-прежнему видны на самих карточках (статус «Тестовый раунд»),
+// поэтому напоминание здесь не нужно.
+ok(HOME.indexOf('pv_demo_badge') === -1 && HOME.indexOf('pv-demo') === -1,
+    'index.html: приветственной пометки «Тестовая версия» нет');
+ok(CSS.indexOf('pv-demo') === -1, 'product-ux.css: стилей .pv-demo не осталось');
+ok(i18nText.indexOf('pv_demo_badge') === -1 && i18nSrc.indexOf('pv_demo_badge') === -1,
+    'i18n: ключ pv_demo_badge удалён из ru/en');
 
 // ── 5. Карточка live-раунда ─────────────────────────────────────────────
 ok(APP.indexOf('function pvLiveStatusHtml') !== -1, 'app.js: статус-бейдж карточки');
@@ -143,8 +155,6 @@ ok(JS.indexOf('pv-onb') === -1 && JS.indexOf('buildOnboarding') === -1,
     'js/product-ux.js: нет приветственного оверлея');
 ok(CSS.indexOf('pv-onb') === -1, 'product-ux.css: нет стилей оверлея');
 // Ключи i18n оверлея удалены из обоих словарей (классического и src/).
-var i18nText = read('js/i18n.js');
-var i18nSrc = read('src/i18n.js');
 ok(i18nText.indexOf('pv_onb_') === -1 && i18nSrc.indexOf('pv_onb_') === -1,
     'i18n: ключи pv_onb_* удалены из ru/en');
 ok(APP.indexOf('pv-onboarding') === -1, 'js/app.js: не создаёт #pv-onboarding');

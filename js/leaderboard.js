@@ -123,124 +123,257 @@ function lbCompareRows(a, b) {
 
 
 function lbGet(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
+
+// ─────────────────────────────────────────────────────────────────
+// ОГРАНИЧЕНИЕ ЧТЕНИЯ, А НЕ ТОЛЬКО ОТРИСОВКИ
+// ─────────────────────────────────────────────────────────────────
+// Раньше страница подписывалась на db.ref('rounds') целиком, а предел жил
+// только в отрисовке: первые 50 строк и кнопка «Показать ещё». Каждое
+// открытое табло выкачивало всю историю клуба и перерисовывалось на КАЖДОЕ
+// сохранение лунки любым игроком (замер: 300 раундов → 26 638 DOM-узлов и
+// 105 мс на обновление, docs/CODE-AUDIT-2026-10-2.md). Теперь предел — в
+// самом запросе к Firebase:
+//   • окно последних LB_WINDOW_SIZE раундов по createdAt (orderByChild +
+//     limitToLast; индекс .indexOn["createdAt"] уже объявлен в правилах);
+//   • плюс раунды в статусе active (их единицы) — живое табло не должно
+//     терять идущую игру, даже если она старше окна;
+//   • плюс точечная дочитка одного раунда для ссылки ?round=<id>.
+var LB_WINDOW_SIZE = 100;
+var LB_WINDOW_STEP = 100;
+var lbWindowLimit = LB_WINDOW_SIZE;
+var lbWindowCount = 0;        // сколько раундов пришло в окне чтения
+var lbWindowData = {};        // окно: последние раунды по createdAt
+var lbActiveData = {};        // раунды в статусе active
+var lbRemoteRounds = {};      // точечно дочитанные (?round= вне окна)
+var lbSubs = [];              // активные подписки [{ ref, handler }]
+var lbFocusFetched = '';      // id раунда, для которого уже была дочитка
+var lbLastData = {};          // последние данные для перерисовки без запроса
+
+function lbUnsubscribeRounds() {
+    lbSubs.forEach(function (sub) {
+        try {
+            if (sub && sub.ref && typeof sub.ref.off === 'function') sub.ref.off('value', sub.handler);
+        } catch (e) { console.warn('[silent]', e); }
+    });
+    lbSubs = [];
+}
+
+// Склейка выборок: окно + активные + дочитанный фокусный раунд.
+function lbMergedRounds() {
+    var out = {};
+    var merge = function (obj) {
+        if (!obj || typeof obj !== 'object') return;
+        Object.keys(obj).forEach(function (id) { out[id] = obj[id]; });
+    };
+    merge(lbWindowData);
+    merge(lbActiveData);
+    merge(lbRemoteRounds);
+    return out;
+}
+
+// Отдельные on('value') вместо bindRealtimeValue: у окна меняется предел
+// (кнопка «Показать ещё из архива»), а шина кеширует подписку по ключу и
+// второй предел уже не применила бы.
+function lbSubscribeRounds() {
+    lbUnsubscribeRounds();
+    if (typeof db === 'undefined' || !db || typeof db.ref !== 'function') return;
+    var base = db.ref('rounds');
+    if (!base) return;
+    var listen = function (ref, onData) {
+        if (!ref || typeof ref.on !== 'function') return;
+        var handler = function (sn) { onData((sn && sn.val) ? (sn.val() || {}) : {}); };
+        ref.on('value', handler, function (error) { console.error('[Firebase] leaderboard-rounds:', error); });
+        lbSubs.push({ ref: ref, handler: handler });
+    };
+    // Заглушки Firebase в тестах умеют не всё — тогда читаем как раньше
+    // (тест на фокус подаёт готовые данные через bindRealtimeValue).
+    if (typeof base.orderByChild !== 'function' || typeof base.limitToLast !== 'function') {
+        if (typeof bindRealtimeValue === 'function') {
+            bindRealtimeValue('leaderboard-rounds', base, function (sn) {
+                lbHandleData((sn && sn.val) ? (sn.val() || {}) : {});
+            });
+        }
+        return;
+    }
+    listen(base.orderByChild('createdAt').limitToLast(lbWindowLimit), function (data) {
+        lbWindowData = data;
+        lbWindowCount = Object.keys(data).length;
+        lbHandleData(lbMergedRounds());
+    });
+    if (typeof base.equalTo === 'function') {
+        listen(base.orderByChild('status').equalTo('active'), function (data) {
+            lbActiveData = data;
+            lbHandleData(lbMergedRounds());
+        });
+    }
+}
+
+// Расширение окна чтения: «Показать ещё» дошло до края загруженного.
+function lbGrowWindow() {
+    lbWindowLimit += LB_WINDOW_STEP;
+    lbSubscribeRounds();
+}
+
+// ?round=<id> должен работать и для раунда вне окна: дочитываем ровно один
+// узел. Возвращает true, если дочитка запущена (перерисуемся по её приходу).
+function lbFetchFocusRound() {
+    if (!lbFocusRoundId || lbFocusFetched === lbFocusRoundId) return false;
+    if (typeof db === 'undefined' || !db || typeof db.ref !== 'function') return false;
+    var ref = db.ref('rounds/' + lbFocusRoundId);
+    if (!ref || typeof ref.once !== 'function') return false;
+    lbFocusFetched = lbFocusRoundId;
+    ref.once('value').then(function (sn) {
+        var round = (sn && sn.val) ? sn.val() : null;
+        if (round && typeof round === 'object') lbRemoteRounds[lbFocusRoundId] = round;
+        lbHandleData(lbMergedRounds());
+    }).catch(function (error) {
+        console.error('[Firebase] leaderboard-round:', error);
+        lbHandleData(lbMergedRounds());
+    });
+    return true;
+}
+
 function loadLB() {
-    if (typeof db === 'undefined' || !db) return;
-    if (typeof bindRealtimeValue !== 'function') return;
+    if (typeof db === 'undefined' || !db || typeof db.ref !== 'function') return;
+    if (!lbSubs.length) {
+        // Первая подписка: рендер придёт вместе со снапшотом. Заглушка
+        // bindRealtimeValue (тесты) отрисует сохранённый снапшот сразу.
+        lbSubscribeRounds();
+        return;
+    }
+    // Фильтр/поиск/сортировка меняются без нового запроса: перерисовываем
+    // уже загруженное окно.
+    lbHandleData(lbLastData);
+}
+
+function lbHandleData(data) {
+    lbLastData = data || {};
     var statusSelect = lbGet('lb-status');
     var status = statusSelect ? statusSelect.value : 'all';
     var searchInput = lbGet('lb-search');
     var query = searchInput ? (searchInput.value || '').trim().toLowerCase() : '';
-    if (typeof db === 'undefined' || !db.ref) return;
-    bindRealtimeValue('leaderboard-rounds', db.ref('rounds'), function(sn) {
-        var data = sn.val() || {};
-        // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
-        if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
-        // Раунды 'scheduled' — это будущие раунды ЕЩЁ НЕ СТАРТОВАВШЕГО
-        // турнира (созданы из стартового протокола заранее). До начала
-        // турнира на «Все раунды» их не показываем: раньше они виделись
-        // со статусом «Завершён», хотя по сути ещё не существуют.
-        var allEntries = Object.entries(data).filter(function(e) {
-            if (!e || !e[1] || typeof e[1] !== 'object') return false;
-            return String((e[1] || {}).status || 'active') !== 'scheduled';
-        });
-        var totalRounds = allEntries.length;
+    // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
+    if (typeof sweepStaleRounds === 'function') data = sweepStaleRounds(data) || {};
+    // Раунды 'scheduled' — это будущие раунды ЕЩЁ НЕ СТАРТОВАВШЕГО
+    // турнира (созданы из стартового протокола заранее). До начала
+    // турнира на «Все раунды» их не показываем: раньше они виделись
+    // со статусом «Завершён», хотя по сути ещё не существуют.
+    var allEntries = Object.entries(data).filter(function(e) {
+        if (!e || !e[1] || typeof e[1] !== 'object') return false;
+        return String((e[1] || {}).status || 'active') !== 'scheduled';
+    });
+    var totalRounds = allEntries.length;
 
-        var dateFilter = (typeof getDateRangeFilter === 'function') ? getDateRangeFilter('leaderboard') : null;
-        var range = dateFilter ? dateFilter.getRange() : { active: false, from: null, to: null, invalid: false };
+    var dateFilter = (typeof getDateRangeFilter === 'function') ? getDateRangeFilter('leaderboard') : null;
+    var range = dateFilter ? dateFilter.getRange() : { active: false, from: null, to: null, invalid: false };
 
-        var entries;
-        if (lbFocusRoundId) {
-            // Завершив раунд, игрок должен увидеть именно его сохранённую карточку,
-            // а не общий список. Фокусный ID имеет приоритет над старыми фильтрами
-            // по датам, статусу и имени, оставшимися в браузере.
-            var focusEntry = null;
-            for (var fi = 0; fi < allEntries.length; fi++) {
-                if (String(allEntries[fi][0]) === String(lbFocusRoundId)) { focusEntry = allEntries[fi]; break; }
-            }
-            entries = focusEntry ? [focusEntry] : [];
-        } else {
-            entries = filterEntriesByDateRange(allEntries, range);
-            if (status !== 'all') {
-                entries = entries.filter(function(e) { return e[1].status === status; });
-            }
-            if (query) {
-                entries = entries.filter(function(e) {
-                    var r = e[1];
-                    var players = Object.entries(r.players || {});
-                    return players.some(function(pe) { return (playerDisplayName(pe[1], pe[0]) || '').toLowerCase().includes(query); });
-                });
-            }
-            if (lbMineOnly) {
-                entries = entries.filter(function(e) { return lbRoundIsMine(e[1]); });
-            }
+    var entries;
+    if (lbFocusRoundId) {
+        // Завершив раунд, игрок должен увидеть именно его сохранённую карточку,
+        // а не общий список. Фокусный ID имеет приоритет над старыми фильтрами
+        // по датам, статусу и имени, оставшимися в браузере.
+        var focusEntry = null;
+        for (var fi = 0; fi < allEntries.length; fi++) {
+            if (String(allEntries[fi][0]) === String(lbFocusRoundId)) { focusEntry = allEntries[fi]; break; }
         }
-
-        entries.sort(function(a, b) { 
-            return (b[1].createdAt || 0) - (a[1].createdAt || 0); 
-        });
-
-        if (dateFilter) dateFilter.renderSummary(entries.length, totalRounds);
-
-        var el = lbGet('lb-container');
-        if (!el) return;
-        if (!entries.length) {
-            var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-            var emptyText = range.active
-                ? (langIsEn ? 'No rounds in the selected period' : 'Нет раундов за выбранный период')
-                : (langIsEn ? 'No rounds found' : 'Нет раундов');
-            try { el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + emptyText + '</p></div>'; } catch (e) { console.warn("[silent]", e); }
-            return;
+        entries = focusEntry ? [focusEntry] : [];
+        // Раунда нет в окне (старая ссылка) — дочитываем ровно его один и
+        // перерисовываемся, не показывая «Нет раундов» на полсекунды.
+        if (!focusEntry && lbFetchFocusRound()) return;
+    } else {
+        entries = filterEntriesByDateRange(allEntries, range);
+        if (status !== 'all') {
+            entries = entries.filter(function(e) { return e[1].status === status; });
         }
-        // Смена фильтра/фокуса сбрасывает окно отрисовки: «Показать ещё»
-        // относится к конкретному срезу, а не к списку вообще.
-        var lbSignature = [lbFocusRoundId, status, query, range.active, range.from, range.to, lbMineOnly, lbSortKey, lbSortDir].join('|');
-        if (lbSignature !== lbRenderSignature) {
-            lbRenderSignature = lbSignature;
-            lbRenderLimit = LB_PAGE_SIZE;
-        }
-
-        var html = '';
-        var visibleEntries = entries.slice(0, lbRenderLimit);
-        try {
-            visibleEntries.forEach(function(e) { try { html += renderRound(e[0], e[1]); } catch (err) { console.warn("[silent]", err); } });
-        } catch (e) { console.warn("[silent]", e); }
-        var lbHidden = entries.length - visibleEntries.length;
-        if (lbHidden > 0) {
-            var lbIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
-            html += '<div style="display:flex;justify-content:center;padding:14px 0;">' +
-                '<button type="button" class="btn btn-o btn-sm" id="lb-show-more">' +
-                escapeHtml(lbIsEn ? 'Show more' : 'Показать ещё') + ' (' + lbHidden + ')' +
-                '</button></div>';
-        }
-        var displayVariant = (typeof getAllRoundsDisplayVariant === 'function') ? getAllRoundsDisplayVariant() : '1';
-        displayVariant = (displayVariant === '2' || displayVariant === '3') ? displayVariant : '1';
-        try { el.innerHTML = '<div class="live-who-list rounds-layout-' + displayVariant + '" data-display-variant="' + displayVariant + '">' + html + '</div>'; } catch (e) { console.warn("[silent]", e); }
-        var lbMoreBtn = el.querySelector('#lb-show-more');
-        if (lbMoreBtn) {
-            lbMoreBtn.addEventListener('click', function() {
-                lbRenderLimit += LB_PAGE_SIZE;
-                loadLB();
+        if (query) {
+            entries = entries.filter(function(e) {
+                var r = e[1];
+                var players = Object.entries(r.players || {});
+                return players.some(function(pe) { return (playerDisplayName(pe[1], pe[0]) || '').toLowerCase().includes(query); });
             });
         }
-        try { restoreLbPanels(); } catch (e) { console.warn("[silent]", e); }
-        try { syncLbChips(); } catch (e) { console.warn("[silent]", e); }
-        if (lbFocusScrollPending && lbFocusRoundId) {
-            var focusRows = el.querySelectorAll('.lb-row[data-round-id]');
-            var focusNode = null;
-            for (var focusIndex = 0; focusIndex < focusRows.length; focusIndex++) {
-                if (focusRows[focusIndex].getAttribute('data-round-id') === String(lbFocusRoundId)) {
-                    focusNode = focusRows[focusIndex];
-                    break;
-                }
-            }
-            if (focusNode) {
-                lbFocusScrollPending = false;
-                setTimeout(function () {
-                    if (focusNode && typeof focusNode.scrollIntoView === 'function') focusNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 80);
+        if (lbMineOnly) {
+            entries = entries.filter(function(e) { return lbRoundIsMine(e[1]); });
+        }
+    }
+
+    entries.sort(function(a, b) { 
+        return (b[1].createdAt || 0) - (a[1].createdAt || 0); 
+    });
+
+    // Сводка: totalRounds — это загруженное окно, а не вся база. Если окно
+    // упёрлось в предел, виджет пишет об этом прямым текстом.
+    var lbWindowed = lbWindowCount > 0 && lbWindowCount >= lbWindowLimit;
+    if (dateFilter) {
+        dateFilter.renderSummary(entries.length, totalRounds,
+            lbWindowed ? { windowed: true, limit: lbWindowLimit } : null);
+    }
+
+    var el = lbGet('lb-container');
+    if (!el) return;
+    if (!entries.length) {
+        var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+        var emptyText = range.active
+            ? (langIsEn ? 'No rounds in the selected period' : 'Нет раундов за выбранный период')
+            : (langIsEn ? 'No rounds found' : 'Нет раундов');
+        try { el.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i><p>' + emptyText + '</p></div>'; } catch (e) { console.warn("[silent]", e); }
+        return;
+    }
+    // Смена фильтра/фокуса сбрасывает окно отрисовки: «Показать ещё»
+    // относится к конкретному срезу, а не к списку вообще.
+    var lbSignature = [lbFocusRoundId, status, query, range.active, range.from, range.to, lbMineOnly, lbSortKey, lbSortDir].join('|');
+    if (lbSignature !== lbRenderSignature) {
+        lbRenderSignature = lbSignature;
+        lbRenderLimit = LB_PAGE_SIZE;
+    }
+
+    var html = '';
+    var visibleEntries = entries.slice(0, lbRenderLimit);
+    try {
+        visibleEntries.forEach(function(e) { try { html += renderRound(e[0], e[1]); } catch (err) { console.warn("[silent]", err); } });
+    } catch (e) { console.warn("[silent]", e); }
+    var lbHidden = entries.length - visibleEntries.length;
+    // Кнопка нужна и тогда, когда всё загруженное уже на экране, но окно
+    // чтения упёрлось в предел: иначе архив был бы недоступен вообще.
+    if (lbHidden > 0 || lbWindowed) {
+        var lbIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+        html += '<div style="display:flex;justify-content:center;padding:14px 0;">' +
+            '<button type="button" class="btn btn-o btn-sm" id="lb-show-more">' +
+            escapeHtml(lbIsEn ? 'Show more' : 'Показать ещё') +
+            (lbHidden > 0 ? ' (' + lbHidden + ')' : '') +
+            '</button></div>';
+    }
+    var displayVariant = (typeof getAllRoundsDisplayVariant === 'function') ? getAllRoundsDisplayVariant() : '1';
+    displayVariant = (displayVariant === '2' || displayVariant === '3') ? displayVariant : '1';
+    try { el.innerHTML = '<div class="live-who-list rounds-layout-' + displayVariant + '" data-display-variant="' + displayVariant + '">' + html + '</div>'; } catch (e) { console.warn("[silent]", e); }
+    var lbMoreBtn = el.querySelector('#lb-show-more');
+    if (lbMoreBtn) {
+        lbMoreBtn.addEventListener('click', function() {
+            lbRenderLimit += LB_PAGE_SIZE;
+            // На экране ещё есть непоказанные строки — просто рисуем их.
+            // Строк больше нет, а окно полно — значит, тянем архив.
+            if (lbHidden > 0) loadLB();
+            else lbGrowWindow();
+        });
+    }
+    try { restoreLbPanels(); } catch (e) { console.warn("[silent]", e); }
+    try { syncLbChips(); } catch (e) { console.warn("[silent]", e); }
+    if (lbFocusScrollPending && lbFocusRoundId) {
+        var focusRows = el.querySelectorAll('.lb-row[data-round-id]');
+        var focusNode = null;
+        for (var focusIndex = 0; focusIndex < focusRows.length; focusIndex++) {
+            if (focusRows[focusIndex].getAttribute('data-round-id') === String(lbFocusRoundId)) {
+                focusNode = focusRows[focusIndex];
+                break;
             }
         }
-    });
+        if (focusNode) {
+            lbFocusScrollPending = false;
+            setTimeout(function () {
+                if (focusNode && typeof focusNode.scrollIntoView === 'function') focusNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 80);
+        }
+    }
 }
 
 // ==========================================

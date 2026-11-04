@@ -131,6 +131,34 @@ const call = (id, operations, uid, acting, qrAccess) => api.scoreWrite({ roundId
         'одиночный раунд: счёт подтверждён сразу (маркера нет)');
     assert.strictEqual(state.rounds.r1.players.u1.verified[1], 'pending',
         'групповой раунд: пока маркер не ввёл счёт — pending');
+    // ── Завершение карточки участником (roundFinishCard) ─────────────────
+    // Раунд из двух игроков: первая карточка закрывается частично, вторая
+    // закрывает раунд целиком. Проверяем и права, и идемпотентность.
+    state.rounds.r_fin = { status: 'active', players: { u1: { name: 'Иванов Иван' }, guest_пётр: { name: 'Пётр Гость' } } };
+    const fin = (playerId, uid, qr) => api.roundFinishCard({ roundId: 'r_fin', playerId, qrAccess: !!qr },
+        { auth: uid ? { uid } : null });
+    await assert.rejects(fin('guest_пётр', 'u1'), e => e.code === 'permission-denied',
+        'чужую карточку нельзя закрыть со своего аккаунта без QR-доступа');
+    await assert.rejects(fin('u1', 'u3'), e => e.code === 'permission-denied',
+        'посторонний аккаунт не закрывает чужую карточку');
+    const first = await fin('u1', 'u1');
+    assert.strictEqual(first.ok, true);
+    assert.strictEqual(first.status, 'active', 'пока сдали не все — раунд остаётся активным');
+    assert.strictEqual(state.rounds.r_fin.partialFinish, true, 'частичное завершение помечено');
+    assert.strictEqual(first.finished, 1);
+    const again = await fin('u1', 'u1');
+    assert.strictEqual(again.duplicate, true, 'повторное завершение своей карточки идемпотентно');
+    assert.strictEqual(state.rounds.r_fin.completedBy, undefined, 'автора завершения пишем только при полном закрытии');
+    const last = await fin('guest_пётр', null, true);
+    assert.strictEqual(last.ok, true);
+    assert.strictEqual(last.status, 'completed', 'гостевая карточка закрывает раунд, когда сдали все');
+    assert.strictEqual(last.finished, 2);
+    assert.strictEqual(state.rounds.r_fin.completedByName, 'Пётр Гость', 'completedByName — имя завершившего');
+    assert.strictEqual(state.rounds.r_fin.autoCompleted, false, 'ручное завершение не выдаёт себя за автозакрытие');
+    await assert.rejects(api.roundFinishCard({ roundId: 'r_fin', playerId: '' }, { auth: { uid: 'u1' } }),
+        e => e.code === 'invalid-argument');
+    await assert.rejects(api.roundFinishCard({ roundId: 'r_fin', playerId: 'нет_такого' }, { auth: { uid: 'adm' } }),
+        e => e.code === 'not-found', 'несуществующую карточку не закрыть даже админу');
     const cutoffMs = Date.now() - 30 * 86400000;
     const cutoffDay = new Date(cutoffMs).toISOString().slice(0, 10);
     state.scoreAudit[cutoffDay] = state.scoreAudit[cutoffDay] || {};

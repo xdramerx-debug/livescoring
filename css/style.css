@@ -13,6 +13,11 @@
 /* Component display rules must not reveal inactive UI or duplicate actions. */
 [hidden]{display:none!important;}
 html{
+    /* Запрет масштабирования страницы (v1.130.7). Двойной тап на кнопках
+       ввода счёта случайно приближал страницу и «съезжала» вёрстка карточки:
+       manipulation оставляет прокрутку, но убирает зум по двойному тапу.
+       Пинч-зум дополнительно снимают meta viewport и js/ui-events.js. */
+    touch-action:manipulation;
     scroll-behavior:smooth;
     /* При якорной прокрутке учитываем высоту фиксированной шапки,
        чтобы заголовки секций не прятались под навбаром. */

@@ -2679,27 +2679,80 @@ function doFinishGroupRound() {
         var finisherUid = myUid;
         var finisherName = (finisherUid && curRoundData && curRoundData.players && curRoundData.players[finisherUid])
             ? (curRoundData.players[finisherUid].name || '') : '';
-        var finishUpdate = { autoCompleted: false };
-        if (finisherUid) {
-            finishUpdate['finishedPlayers/' + finisherUid] = { at: Date.now(), name: finisherName || '' };
-            finishUpdate.completedBy = finisherUid;
-        }
-        if (finisherName) finishUpdate.completedByName = finisherName;
+        var nowTs = Date.now();
 
         // Раунд закрывается только когда ВСЕ участники сдали карточки.
         var finMap = {};
         Object.keys(curRoundData.finishedPlayers || {}).forEach(function(k) { finMap[k] = true; });
         if (finisherUid) finMap[finisherUid] = true;
         var pending = Object.keys(curRoundData.players || {}).filter(function(id) { return !finMap[id]; });
+
+        // Своя карточка и закрытие раунда — ДВЕ записи, и вот почему.
+        // Правило базы на finishedPlayers/<uid> пускает любого игрока раунда, а
+        // status/completedAt/completedBy/completedByName — только когда сдали
+        // все (условие считается по уже сохранённому состоянию). В одном
+        // update() эти пути проверяются вместе, поэтому участник, сдающий
+        // карточку последним, получал отказ на status — и не мог закрыть свою
+        // карточку вообще (docs/SECURITY-RULES.md, финализация участником).
+        var closeUpdate = { autoCompleted: false };
         if (!pending.length) {
-            finishUpdate.status = 'completed';
-            finishUpdate.completedAt = Date.now();
+            closeUpdate.status = 'completed';
+            closeUpdate.completedAt = nowTs;
+            if (finisherUid) closeUpdate.completedBy = finisherUid;
+            if (finisherName) closeUpdate.completedByName = finisherName;
         } else {
-            finishUpdate.partialFinish = true;
+            closeUpdate.partialFinish = true;
         }
 
         // Не уходим на общее табло, пока запись не подтвердилась повторным чтением.
-        return db.ref('rounds/' + curRid).update(finishUpdate).then(function() {
+        // Два пути к одной цели:
+        //   1) серверная операция roundFinishCard — единственный путь для
+        //      гостевой карточки (ключ guest_* не совпадает с auth.uid, и
+        //      правило базы такую запись не пропустит);
+        //   2) прямой двухшаговый путь по правилам базы — когда облачные
+        //      функции недоступны (офлайн, функции не задеплоены).
+        // Отказ по правам НЕ подменяем прямым путём: иначе ошибка вернулась бы
+        // как «Не удалось завершить раунд» после второй попытки.
+        var isGuestCard = function(id) {
+            var key = String(id || '');
+            return key.indexOf('guest_') === 0 || key.indexOf('gst_') === 0;
+        };
+        var writeOwnCardDirect = function() {
+            if (!finisherUid) return Promise.resolve();
+            return db.ref('rounds/' + curRid + '/finishedPlayers/' + finisherUid)
+                .set({ at: nowTs, name: finisherName || '' })
+                .then(function() {
+                    return db.ref('rounds/' + curRid).update(closeUpdate);
+                });
+        };
+        var writeOwnCardOnServer = function() {
+            if (typeof pestovoFunctions !== 'function') {
+                return Promise.reject(new Error('Score server is unavailable'));
+            }
+            var qrAccess = false;
+            try {
+                var qs = new URLSearchParams(window.location.search || '');
+                qrAccess = qs.get('round') === curRid && (qs.has('as') || qs.has('player'));
+            } catch (e) { console.warn('[silent]', e); }
+            if (!qrAccess) qrAccess = isGuestCard(finisherUid);
+            return pestovoFunctions().then(function(functions) {
+                return functions.httpsCallable('roundFinishCard')({
+                    roundId: curRid,
+                    playerId: finisherUid,
+                    qrAccess: qrAccess
+                });
+            });
+        };
+        var writeOwnCard = function() {
+            if (!finisherUid) return writeOwnCardDirect();
+            return writeOwnCardOnServer().catch(function(err) {
+                var code = String((err && err.code) || '').replace(/^functions\//, '').toLowerCase().replace(/_/g, '-');
+                var serverDown = !code || ['unavailable', 'internal', 'unknown', 'deadline-exceeded', 'unimplemented', 'not-found'].indexOf(code) >= 0;
+                if (!serverDown) throw err;
+                return writeOwnCardDirect();
+            });
+        };
+        return writeOwnCard().then(function() {
             try {
                 var pObj = curRoundData && curRoundData.players && curRoundData.players[finisherUid];
                 if (pObj && typeof saveHistoryEntry === 'function') {

@@ -20,7 +20,6 @@
     if (window.__pvUxLoaded) return;
     window.__pvUxLoaded = true;
 
-    var ONBOARDING_KEY = 'pestovo_onb_seen_v1';
     var REDUCED_MOTION = false;
     try {
         REDUCED_MOTION = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -102,70 +101,6 @@
         var nav = document.getElementById('pv-bottomnav');
         var height = (nav && nav.offsetHeight) ? nav.offsetHeight : 0;
         document.body.style.setProperty('--bottomnav-h', height + 'px');
-    }
-
-    // ─────────────────────────── ОНБОРДИНГ (1 экран) ───────────────────────────
-    function onboardingSeen() {
-        try { return localStorage.getItem(ONBOARDING_KEY) === '1'; } catch (e) { return true; }
-    }
-    function markOnboardingSeen() {
-        try { localStorage.setItem(ONBOARDING_KEY, '1'); } catch (e) { /* приватный режим */ }
-    }
-
-    function buildOnboarding() {
-        if (currentPage() !== 'index.html' || onboardingSeen()) return;
-        if (document.getElementById('pv-onboarding')) return;
-        var wrap = el('div', 'pv-onb');
-        wrap.id = 'pv-onboarding';
-        wrap.setAttribute('role', 'dialog');
-        wrap.setAttribute('aria-modal', 'true');
-        wrap.setAttribute('aria-labelledby', 'pv-onb-title');
-        wrap.innerHTML =
-            '<div class="pv-onb-card">' +
-            '<img class="pv-onb-logo" src="img/logo.png" alt="">' +
-            '<h2 id="pv-onb-title">' + tr('pv_onb_title', 'Пестово — live-скоринг') + '</h2>' +
-            '<p>' + tr('pv_onb_sub', 'Живые раунды, счёт и таблица лидеров.') + '</p>' +
-            '<div class="pv-onb-actions">' +
-            '<button type="button" class="pv-onb-action pv-onb-action--primary" data-pv-onb="watch">' +
-            '<i class="fas fa-tower-broadcast" aria-hidden="true"></i>' + tr('pv_onb_watch', 'Смотреть live') + '</button>' +
-            '<a class="pv-onb-action" href="setup-round.html">' +
-            '<i class="fas fa-flag" aria-hidden="true"></i>' + tr('pv_onb_start', 'Начать раунд') + '</a>' +
-            '<a class="pv-onb-action" href="leaderboard.html">' +
-            '<i class="fas fa-trophy" aria-hidden="true"></i>' + tr('pv_onb_board', 'Таблица лидеров') + '</a>' +
-            '</div>' +
-            '<button type="button" class="pv-onb-skip" data-pv-onb="skip">' + tr('pv_onb_skip', 'Пропустить') + '</button>' +
-            '</div>';
-        document.body.appendChild(wrap);
-
-        function close() {
-            markOnboardingSeen();
-            if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
-            document.removeEventListener('keydown', onKey);
-        }
-        function onKey(event) {
-            if (event.key === 'Escape') close();
-        }
-        wrap.addEventListener('click', function (event) {
-            var action = event.target.closest ? event.target.closest('[data-pv-onb]') : null;
-            if (!action) {
-                if (event.target === wrap) close();
-                return;
-            }
-            if (action.getAttribute('data-pv-onb') === 'watch') {
-                close();
-                var live = document.getElementById('live-rounds') || document.getElementById('pv-main');
-                if (live && live.scrollIntoView) {
-                    try { live.scrollIntoView({ behavior: REDUCED_MOTION ? 'auto' : 'smooth', block: 'start' }); } catch (e) { live.scrollIntoView(); }
-                }
-                return;
-            }
-            close();
-        });
-        document.addEventListener('keydown', onKey);
-        var first = wrap.querySelector('.pv-onb-action');
-        if (first && typeof first.focus === 'function') {
-            try { first.focus({ preventScroll: true }); } catch (e) { /* игнорируем */ }
-        }
     }
 
     // ─────────────────────────── СОСТОЯНИЕ СЕТИ ───────────────────────────
@@ -544,7 +479,6 @@
     // ─────────────────────────── СБОРКА ───────────────────────────
     function boot() {
         try { buildBottomNav(); } catch (e) { console.warn('[pv-ux] nav', e); }
-        try { buildOnboarding(); } catch (e) { console.warn('[pv-ux] onboarding', e); }
         try { buildNetBanner(); syncNetState(); } catch (e) { console.warn('[pv-ux] net', e); }
         try { observeScores(); flashChangedScores(); } catch (e) { console.warn('[pv-ux] flash', e); }
         try { bindHaptics(); } catch (e) { console.warn('[pv-ux] haptics', e); }
@@ -594,7 +528,6 @@
         buildBottomNav: buildBottomNav,
         syncNetState: syncNetState,
         updateCta: updateCta,
-        setupReady: setupReady,
-        onboardingKey: ONBOARDING_KEY
+        setupReady: setupReady
     };
 })();

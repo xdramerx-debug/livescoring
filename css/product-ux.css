@@ -85,8 +85,7 @@ body.pv-ux [tabindex]:focus-visible {
 body.pv-ux .pv-chip,
 body.pv-ux .pv-recent-chip { min-height: 44px; }
 body.pv-ux .pv-cta,
-body.pv-ux .pv-bottomnav a,
-body.pv-ux .pv-onb-action { min-height: var(--tap); }
+body.pv-ux .pv-bottomnav a { min-height: var(--tap); }
 
 /* Нижняя навигация не должна закрывать контент. Правило намеренно
    адресует только <main>: раньше padding-bottom доставался и .nav-c
@@ -1131,72 +1130,6 @@ body.pv-ux .pv-bottomnav a[aria-current="page"] .pv-bn-dot { opacity: 1; }
     body.pv-ux .nav-toggle { min-width: var(--tap); min-height: var(--tap); }
 }
 
-/* Онбординг на один экран. */
-body.pv-ux .pv-onb {
-    position: fixed;
-    inset: 0;
-    z-index: 120;
-    display: grid;
-    place-items: center;
-    padding: calc(16px + var(--safe-t)) 16px calc(16px + var(--safe-b));
-    background: rgba(4, 10, 6, 0.72);
-    backdrop-filter: blur(4px);
-}
-body.pv-ux .pv-onb[hidden] { display: none; }
-body.pv-ux .pv-onb-card {
-    width: min(420px, 100%);
-    max-height: 100%;
-    overflow: auto;
-    padding: 22px 20px 18px;
-    border-radius: 20px;
-    border: 1px solid var(--line-strong);
-    background: linear-gradient(168deg, var(--card-h), var(--card) 60%, var(--bg2));
-    box-shadow: var(--shadow-3);
-    text-align: center;
-}
-body.pv-ux .pv-onb-card h2 {
-    margin: 10px 0 6px;
-    font-size: var(--fs-screen);
-    color: var(--white);
-}
-body.pv-ux .pv-onb-card p { margin: 0 0 16px; color: var(--muted); font-size: var(--fs-note); }
-body.pv-ux .pv-onb-logo { width: 64px; height: 64px; object-fit: contain; }
-body.pv-ux .pv-onb-actions { display: grid; gap: 10px; }
-body.pv-ux .pv-onb-action {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    border-radius: 14px;
-    border: 1px solid var(--line-strong);
-    background: var(--card);
-    color: var(--text);
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 700;
-    text-align: left;
-    text-decoration: none;
-    cursor: pointer;
-}
-body.pv-ux .pv-onb-action i { color: var(--gold); font-size: 18px; }
-body.pv-ux .pv-onb-action--primary {
-    border-color: var(--gold);
-    background: linear-gradient(160deg, var(--gold-l), var(--gold) 62%, var(--gold-d));
-    color: #142017;
-}
-body.pv-ux .pv-onb-action--primary i { color: #142017; }
-body.pv-ux .pv-onb-skip {
-    margin-top: 10px;
-    min-height: var(--tap);
-    border: 0;
-    background: transparent;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: var(--fs-note);
-    text-decoration: underline;
-    cursor: pointer;
-}
-
 /* ============================================================
    10. МИКРОВЗАИМОДЕЙСТВИЯ, ТЕМЫ, ДОСТУПНОСТЬ
    ============================================================ */
@@ -1227,8 +1160,7 @@ body.pv-ux .pv-skip-link:focus { top: calc(8px + var(--safe-t)); }
 
 /* Светлая тема: поверхности, границы и текст из токенов. */
 body.pv-ux.sun-mode .lwl-row,
-body.pv-ux.sun-mode .pv-skel,
-body.pv-ux.sun-mode .pv-onb-card {
+body.pv-ux.sun-mode .pv-skel {
     background: var(--card) !important;
     border-color: var(--line) !important;
     box-shadow: var(--shadow-1) !important;
@@ -1242,10 +1174,8 @@ body.pv-ux.sun-mode .pv-bottomnav {
 body.pv-ux.sun-mode .pv-cta-dock {
     background: linear-gradient(180deg, rgba(246, 248, 245, 0), rgba(246, 248, 245, 0.96) 45%);
 }
-body.pv-ux.sun-mode .pv-onb { background: rgba(16, 26, 19, 0.45); }
 body.pv-ux.sun-mode .pv-chip[aria-pressed="true"],
-body.pv-ux.sun-mode .pv-cta,
-body.pv-ux.sun-mode .pv-onb-action--primary {
+body.pv-ux.sun-mode .pv-cta {
     color: #fffdf5;
 }
 body.pv-ux.sun-mode .pv-chip[aria-pressed="true"] {

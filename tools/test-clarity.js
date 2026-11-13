@@ -13,6 +13,12 @@ const code = fs.readFileSync(path.join(root, 'js/clarity.js'), 'utf8');
         w.eval(code);
         await new Promise(resolve => w.document.addEventListener('DOMContentLoaded', resolve));
         assert.strictEqual(w.document.documentElement.dataset.clarityReady, 'true', page + ': boots');
+        const more = w.document.querySelector('.clarity-nav-more');
+        if (more) {
+            assert.deepStrictEqual(Array.from(more.querySelectorAll('.clarity-nav-panel > a')).map(a => a.getAttribute('href')).sort(), ['handicap.html', 'players.html', 'stats.html', 'tournaments.html'], page + ': consistent secondary routes');
+            const active = more.querySelector('a.active');
+            if (active) assert.strictEqual(active.getAttribute('aria-current'), 'page');
+        }
         if (['players.html', 'leaderboard.html'].includes(page)) {
             const search = w.document.querySelector('.clarity-search input');
             assert(search && !search.closest('details'), page + ': search is visible');

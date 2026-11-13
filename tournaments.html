@@ -23,9 +23,10 @@
     <link rel="stylesheet" href="css/fontawesome-subset.css?v=f83958d8">
     <script defer src="js/clarity.js?v=a99465f1"></script>
 <link rel="stylesheet" href="css/product-ux.css?v=4522a80b">
-    <link rel="stylesheet" href="css/clarity.css?v=cb84b3ee">
+    <link rel="stylesheet" href="css/clarity.css?v=7ac50d96">
 </head>
 <body class="pv-ux pv-has-bottomnav">
+<a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
@@ -39,10 +40,10 @@
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
         <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
-        <details class="clarity-nav-more active"><summary data-clarity-ru="Ещё" data-clarity-en="More">Ещё</summary><div class="clarity-nav-panel"><a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a></div></details>
-        <a href="tournaments.html" class="nav-link active" data-i18n="nav_tournaments">Турниры</a>
+        <details class="clarity-nav-more active"><summary data-clarity-ru="Ещё" data-clarity-en="More">Ещё</summary><div class="clarity-nav-panel"><a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
+        <a href="tournaments.html" class="nav-link active" aria-current="page" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
-        <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
+        <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a></div></details>
         <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
@@ -53,7 +54,7 @@
     </div>
 </div>
 
-<main class="container tn-public-main">
+<main id="pv-main" tabindex="-1" class="container tn-public-main">
     <section id="tn-public-catalog" class="tn-public-view" aria-labelledby="tn-catalog-title">
         <div class="tn-public-toolbar" data-screen-display="tournaments" data-display-key="toolbar">
             <div>
@@ -103,12 +104,12 @@
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.132.0</span></p></details></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.133.0</span></p></details></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=2b6fd436"></script>
+<script type="module" src="dist/livescoring-modules.js?v=d079085c"></script>
     <script defer src="js/vendor/qrcode-generator-1.4.4.js?v=4c79be16"></script>
 <script defer src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script defer src="js/qr-code.js?v=2a26e819"></script>

@@ -22,9 +22,10 @@
     <link rel="stylesheet" href="css/fontawesome-subset.css?v=f83958d8">
     <script defer src="js/clarity.js?v=a99465f1"></script>
 <link rel="stylesheet" href="css/product-ux.css?v=4522a80b">
-    <link rel="stylesheet" href="css/clarity.css?v=cb84b3ee">
+    <link rel="stylesheet" href="css/clarity.css?v=7ac50d96">
 </head>
 <body class="pv-ux pv-has-bottomnav">
+<a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
@@ -38,23 +39,23 @@
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
         <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
-        <details class="clarity-nav-more active"><summary data-clarity-ru="Ещё" data-clarity-en="More">Ещё</summary><div class="clarity-nav-panel"><a href="players.html" class="nav-link active" data-i18n="nav_players">Игроки</a></div></details>
+        <details class="clarity-nav-more active"><summary data-clarity-ru="Ещё" data-clarity-en="More">Ещё</summary><div class="clarity-nav-panel"><a href="players.html" class="nav-link active" aria-current="page" data-i18n="nav_players">Игроки</a>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
-<a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
+<a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a></div></details>
         <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
 
 <div class="page-head"><div class="container"><h1 class="page-title"><i class="fas fa-users"></i> <span data-i18n="nav_players">Игроки</span></h1></div></div>
 
-<main class="container" style="padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:60px;">
+<main id="pv-main" tabindex="-1" class="container clarity-page-main" style="padding-top:24px;padding-left:20px;padding-right:20px;padding-bottom:60px;">
 <div class="form-group clarity-search" style="flex:2;min-width:200px;"><label for="players-search" data-i18n="search_label">Поиск игрока</label>
-                        <input type="text" id="players-search" data-filter-default="" class="form-input" data-i18n-placeholder="search_placeholder" placeholder="Поиск по имени..." data-act="loadPlayers">
+                        <input type="text" id="players-search" autocomplete="off" enterkeyhint="search" data-filter-default="" class="form-input" data-i18n-placeholder="search_placeholder" placeholder="Поиск по имени..." data-act="loadPlayers">
                     </div>
     <div class="card page-filters-card">
         <details class="page-filters-details">
-            <summary><span><i class="fas fa-magnifying-glass"></i> <span data-i18n="filters_search_toggle">Поиск и фильтры</span></span><span class="page-filters-active" hidden></span><i class="fas fa-chevron-down page-filters-chevron" aria-hidden="true"></i></summary>
+            <summary><span><i class="fas fa-magnifying-glass"></i> <span data-i18n="filters_only">Фильтры и сортировка</span></span><span class="page-filters-active" hidden></span><i class="fas fa-chevron-down page-filters-chevron" aria-hidden="true"></i></summary>
             <div class="page-filters-content">
                 <div class="form-row">
 
@@ -100,12 +101,12 @@
     </div>
 </div>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.132.0</span></p></details></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.133.0</span></p></details></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=2b6fd436"></script>
+<script type="module" src="dist/livescoring-modules.js?v=d079085c"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
 <script defer src="js/utils.js?v=15c1d142"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>

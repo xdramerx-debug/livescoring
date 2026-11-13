@@ -263,6 +263,20 @@ function lbHandleData(data) {
         return String((e[1] || {}).status || 'active') !== 'scheduled';
     });
     var totalRounds = allEntries.length;
+    var formatSelect = lbGet('lb-format');
+    var selectedFormat = formatSelect ? formatSelect.value : '';
+    var formats = Array.from(new Set(allEntries.map(function (entry) { return String(entry[1].format || 'Stroke Play'); }))).sort();
+    if (formatSelect) {
+        while (formatSelect.options.length > 1) formatSelect.remove(1);
+        formatSelect.options[0].textContent = typeof currentLang !== 'undefined' && currentLang === 'en' ? 'All formats' : 'Все форматы';
+        formats.forEach(function (format) { var option = document.createElement('option'); option.value = format; option.textContent = format; formatSelect.appendChild(option); });
+        // Retain an active filter even when the realtime window no longer contains that format.
+        if (selectedFormat && formats.indexOf(selectedFormat) === -1) {
+            var activeOption = document.createElement('option'); activeOption.value = selectedFormat; activeOption.textContent = selectedFormat; formatSelect.appendChild(activeOption);
+        }
+        formatSelect.value = selectedFormat;
+    }
+
 
     var dateFilter = (typeof getDateRangeFilter === 'function') ? getDateRangeFilter('leaderboard') : null;
     var range = dateFilter ? dateFilter.getRange() : { active: false, from: null, to: null, invalid: false };
@@ -282,6 +296,7 @@ function lbHandleData(data) {
         if (!focusEntry && lbFetchFocusRound()) return;
     } else {
         entries = filterEntriesByDateRange(allEntries, range);
+        if (selectedFormat) entries = entries.filter(function (entry) { return String(entry[1].format || 'Stroke Play') === selectedFormat; });
         if (status !== 'all') {
             entries = entries.filter(function(e) { return e[1].status === status; });
         }
@@ -295,6 +310,15 @@ function lbHandleData(data) {
         if (lbMineOnly) {
             entries = entries.filter(function(e) { return lbRoundIsMine(e[1]); });
         }
+    }
+
+    var formatNote = lbGet('lb-format-note');
+    if (formatNote) {
+        var mixed = new Set(entries.map(function (entry) { return String(entry[1].format || 'Stroke Play'); })).size > 1;
+        formatNote.hidden = !mixed;
+        formatNote.textContent = typeof currentLang !== 'undefined' && currentLang === 'en'
+            ? 'Different game formats are shown. Select a format in filters to compare like-for-like; this is not a combined ranking.'
+            : 'Показаны разные форматы игры. Для сопоставимых результатов выберите формат в фильтрах; это не общий спортивный рейтинг.';
     }
 
     entries.sort(function(a, b) { 

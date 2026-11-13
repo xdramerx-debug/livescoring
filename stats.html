@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
     <meta name="description" content="Официальная система лайв-скоринга клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
@@ -16,12 +16,15 @@
     <link rel="stylesheet" href="css/style.css?v=0d2ca11f">
     <link rel="stylesheet" href="css/theme-v2.css?v=915c2133">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <script src="js/ui-events.js?v=4051df1c"></script>
+    <script src="js/ui-events.js?v=3d524484"></script>
     <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
-    <link rel="stylesheet" href="css/fontawesome-subset.css?v=79fafe3c">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=f83958d8">
+    <script defer src="js/clarity.js?v=f11af877"></script>
+<link rel="stylesheet" href="css/product-ux.css?v=4522a80b">
+    <link rel="stylesheet" href="css/clarity.css?v=c2790cf3">
 </head>
-<body>
+<body class="pv-ux pv-has-bottomnav">
 <nav class="nav" id="main-nav"><div class="container nav-c">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap;">
         <a href="index.html" class="nav-brand">
@@ -45,10 +48,23 @@
 
 <div class="page-head"><div class="container">
     <h1 class="page-title"><i class="fas fa-chart-bar"></i> <span data-i18n="page_title_stats">Статистика клуба</span></h1>
-    <p class="page-sub" data-i18n="page_sub_stats">Аналитика по всем раундам</p>
+    <p class="page-sub" >Обзор результатов клуба. Для отдельных показателей учитываются только завершённые раунды на 18 лунок.</p>
 </div></div>
 
 <main class="container" style="padding-top:var(--nav-h,70px);padding-left:20px;padding-right:20px;padding-bottom:60px;">
+    <div class="card page-filters-card">
+        <div class="form-row">
+            <div class="form-group"><label for="stats-date-from" data-i18n="date_from_label">Дата с</label><input type="date" id="stats-date-from" class="form-input"></div>
+            <div class="form-group"><label for="stats-date-to" data-i18n="date_to_label">Дата по</label><input type="date" id="stats-date-to" class="form-input"></div>
+            <div class="form-group"><label for="stats-format" data-clarity-ru="Формат" data-clarity-en="Format">Формат</label><select id="stats-format" class="form-input"><option value="" data-clarity-ru="Все форматы" data-clarity-en="All formats">Все форматы</option></select></div>
+            <div class="form-group"><label for="stats-min-rounds" data-clarity-ru="Минимум полных раундов для списка игроков" data-clarity-en="Minimum full rounds per player">Минимум полных раундов для списка игроков</label><select id="stats-min-rounds" class="form-input"><option value="1">1</option><option value="3" selected>3</option><option value="5">5</option></select></div>
+            <button type="button" id="stats-date-reset" class="btn btn-ol" data-i18n="date_filter_reset">Сбросить</button>
+        </div>
+        <div class="date-presets" id="stats-date-presets"></div>
+        <p id="stats-date-hint" role="alert" class="hidden"></p>
+        <p id="stats-filter-summary" role="status"></p>
+        <p class="clarity-help" data-clarity-ru="Список игроков: средний gross завершённых раундов на 18 лунок за период, не официальный рейтинг. ТИ и форы могут различаться. Число раундов показано у каждого игрока." data-clarity-en="Players: average gross of completed 18-hole rounds in the period, not an official ranking. Tees and handicaps may differ. Sample size is shown for each player.">Список игроков: средний gross завершённых раундов на 18 лунок за период, не официальный рейтинг. ТИ и форы могут различаться. Число раундов показано у каждого игрока.</p>
+    </div>
     <div class="card"><h2><i class="fas fa-chart-pie"></i> <span data-i18n="total_stats">Общая статистика</span></h2>
     <div class="stats-grid" id="general-stats"><div class="loading"><div class="spinner"></div></div></div></div>
     <div class="card"><h2><i class="fas fa-ranking-star"></i> <span data-i18n="top_players">Топ игроков</span></h2><div id="top-players"></div></div>
@@ -56,17 +72,18 @@
     <div class="card"><h2><i class="fas fa-flag"></i> <span data-i18n="hole_difficulty">Сложность лунок</span></h2><div id="hole-difficulty"></div></div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.130.7</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.131.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=80ed9814"></script>
+<script type="module" src="dist/livescoring-modules.js?v=2b6fd436"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=38906235"></script>
+<script defer src="js/utils.js?v=07c25cb7"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
-<script defer src="js/stats.js?v=3f31aabb"></script>
+<script defer src="js/stats.js?v=b4054365"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
+<script defer src="js/product-ux.js?v=6525e431"></script>
 </body>
 </html>

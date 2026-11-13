@@ -279,22 +279,4 @@ if (typeof document !== 'undefined') {
 // ─────────────────────────────────────────────────────────────────
 // ЗАПРЕТ МАСШТАБИРОВАНИЯ ЖЕСТАМИ (v1.130.7)
 // ─────────────────────────────────────────────────────────────────
-// Ввод счёта идёт большим пальцем, стоя на поле: случайный пинч или двойной
-// тап увеличивал страницу, и карточка лунки уезжала за экран. Три уровня:
-//   • meta viewport `maximum-scale=1.0, user-scalable=no` — Chrome/Android;
-//   • CSS `touch-action: manipulation` на html — двойной тап везде;
-//   • здесь — пинч в iOS Safari, который с iOS 10 игнорирует user-scalable
-//     и присылает жест отдельными событиями gesture*.
-// Один палец и прокрутка не затрагиваются: правила срабатывают только на
-// отменяемых событиях масштабирования. Скрипт подключён на всех страницах.
-(function pestovoLockPageZoom() {
-    if (typeof document === 'undefined') return;
-    var stopZoom = function (event) {
-        if (event && event.cancelable !== false && typeof event.preventDefault === 'function') {
-            event.preventDefault();
-        }
-    };
-    ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (name) {
-        document.addEventListener(name, stopZoom, { passive: false });
-    });
-})();
+// Pinch zoom is intentionally left to the browser for accessibility.

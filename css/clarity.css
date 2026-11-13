@@ -1,0 +1,59 @@
+/* Shared quiet hierarchy, applied after the existing themes. */
+.clarity-disclosure, .clarity-reference { margin-block: 12px; border: 1px solid var(--border, #ccd4ce); border-radius: 12px; padding: 0 14px; }
+.clarity-disclosure > summary, .clarity-reference > summary { cursor: pointer; min-height: 48px; padding-block: 14px; font: 600 14px/1.4 var(--fb, sans-serif); color: var(--text, inherit); }
+.clarity-disclosure[open] > summary { margin-bottom: 8px; }
+.clarity-disclosure .card { margin-top: 8px; }
+.clarity-search { margin: 0 0 12px !important; min-width: 0 !important; }
+.clarity-search input { width: 100%; }
+.clarity-password { display: block; margin: 4px 0 0 auto; min-height: 44px; padding: 8px; border: 0; background: transparent; color: var(--gold, #765b19); font: inherit; cursor: pointer; }
+.clarity-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+body.pv-ux .hero { min-height: 0; padding-block: 32px; }
+body.pv-ux .hero-logo, body.pv-ux .hero-sub { display: none; }
+body.pv-ux .hero-title { font-size: clamp(24px, 4vw, 36px); line-height: 1.2; }
+body.pv-ux .hero-desc { margin-block: 10px; }
+body.pv-ux .hero-content { padding-block: 0; }
+.section:has(> .container > #my-active-rounds-container.hidden) { display: none; }
+.section:has(> .container > #my-active-rounds-container:not(.hidden)) { padding-block: 20px; }
+.clarity-reference .section { padding-block: 12px; }
+.footer .clarity-disclosure { display: inline-block; margin: 0; border: 0; }
+.footer .clarity-disclosure > summary { font-size: 12px; }
+.score-toolbar .clarity-disclosure { flex: 1; margin: 0; }
+.score-toolbar .clarity-disclosure > summary { text-align: center; }
+body .score-disp, body .hole-val { font-variant-numeric: tabular-nums; }
+button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--gold, #c9a84c); outline-offset: 3px; }
+[hidden] { display: none !important; }
+@media (max-width: 600px) {
+    body.pv-ux .hero { padding-block: 22px; }
+    .tn-detail-tabs { flex-wrap: wrap; }
+    .tn-detail-tabs button { min-height: 44px; }
+    .clarity-disclosure { padding-inline: 10px; }
+}
+@media print { .clarity-password, .footer .clarity-disclosure { display: none !important; } }
+.clarity-print-choice { display: flex; align-items: center; gap: 8px; }
+.clarity-print-choice select { min-height: 44px; border-radius: 8px; padding: 8px; font: inherit; }
+@media screen {
+    .clarity-preview-sheet .cards-wrap, .clarity-preview-cards .sheet-wrap { display: none; }
+}
+
+body.pv-home { padding-top: var(--nav-h, 70px); }
+.clarity-nav-more { position: relative; }
+.clarity-nav-more > summary { cursor: pointer; padding: 10px 14px; min-height: 44px; color: var(--muted); list-style: none; }
+.clarity-nav-more[open] { background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+.clarity-nav-more[open] > .nav-link { display: block; white-space: nowrap; }
+.clarity-nav-more.active > summary { color: var(--gold); }
+.clarity-admin-more > summary { cursor: pointer; min-height: 44px; padding: 12px; white-space: nowrap; }
+.clarity-admin-more[open] { display: flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 10px; }
+.clarity-admin-more .admin-tab { min-height: 44px; }
+.clarity-help { color: var(--muted); font-size: 13px; line-height: 1.5; }
+#player-slots input[readonly] { background: transparent; border-color: transparent; box-shadow: none; font-weight: 700; color: var(--text); }
+.tnm-preparation { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-block: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
+.tnm-add-sources { position: relative; display: inline-block; }
+.tnm-add-sources > summary { min-height: 44px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.tnm-add-sources[open] > div { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 8px; }
+@media (max-width: 720px) {
+    .clarity-admin-more { flex-shrink: 0; }
+    .tnm-preparation > button { width: 100%; min-height: 44px; }
+}
+.clarity-nav-more[open] { border-color: transparent; background: transparent; }
+.clarity-nav-panel { position: absolute; top: 100%; right: 0; z-index: 1010; min-width: 210px; padding: 8px; background: var(--card, #132218); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 28px rgba(0, 0, 0, .25); }
+.clarity-nav-panel > .nav-link { display: block; min-height: 44px; white-space: nowrap; }

@@ -62,7 +62,7 @@
         { href: 'index.html', icon: 'fa-house', key: 'nav_home', fallback: 'Главная' },
         { href: 'setup-round.html', icon: 'fa-flag', key: 'nav_round', fallback: 'Раунд' },
         { href: 'leaderboard.html', icon: 'fa-trophy', key: 'nav_leaderboard', fallback: 'Все раунды' },
-        { href: 'players.html', icon: 'fa-users', key: 'nav_players', fallback: 'Игроки' }
+        { href: '#more', icon: 'fa-bars', key: 'more_header', fallback: 'Ещё', more: true }
     ];
 
     function buildBottomNav() {
@@ -72,8 +72,15 @@
         nav.setAttribute('aria-label', tr('pv_main_nav', 'Основная навигация'));
         var page = currentPage();
         NAV_ITEMS.forEach(function (item) {
-            var a = document.createElement('a');
-            a.href = item.href;
+            var a = document.createElement(item.more ? 'button' : 'a');
+            if (item.more) {
+                a.type = 'button';
+                a.setAttribute('aria-controls', 'mobile-drawer-root');
+                a.addEventListener('click', function () {
+                    if (typeof window.openMobileDrawer === 'function') window.openMobileDrawer();
+                    else { var toggle = document.getElementById('nav-toggle'); if (toggle) toggle.click(); }
+                });
+            } else a.href = item.href;
             if (page === item.href) a.setAttribute('aria-current', 'page');
             a.innerHTML = '<i class="fas ' + item.icon + '" aria-hidden="true"></i>' +
                 '<span>' + (tr(item.key, item.fallback)) + '</span>' +

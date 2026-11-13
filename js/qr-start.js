@@ -101,6 +101,8 @@ function qrUpdateStatus() {
         if (st === 'failed') failed++;
         else if (st) done++;
     }
+    var retryButton = document.getElementById('qr-retry-btn');
+    if (retryButton) retryButton.hidden = failed === 0;
     var total = imgs.length;
     var txt = '';
     if (!total) txt = '';

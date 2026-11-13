@@ -400,7 +400,11 @@ function switchTabApply(t, b) {
     document.querySelectorAll('.admin-tab').forEach(function(x) { x.classList.remove('active'); });
     var tabEl = document.getElementById('tab-' + t);
     if (tabEl) tabEl.classList.remove('hidden');
-    if (b) b.classList.add('active');
+    if (b) {
+        b.classList.add('active');
+        var advancedPanel = b.closest('details');
+        if (advancedPanel) advancedPanel.open = true;
+    }
     // На телефоне вкладки — горизонтальная липкая полоса: активную
     // прокручиваем в центр, чтобы её не приходилось искать.
     if (b && typeof b.scrollIntoView === 'function') {

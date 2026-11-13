@@ -73,14 +73,15 @@ function extractPage() {
         let checks = 0;
         for (const width of widths) {
             await page.setViewportSize({ width, height: 844 });
-            for (const variant of ['1', '2', '3', '4', '5']) {
+            for (const legacyVariant of ['1', '2', '3', '4', '5']) {
+                const variant = '1';
                 await page.evaluate(v => {
                     setupPlayerOrder = [1];
                     setupPlayerSeq = 1;
                     setupWizardStep = 1;
                     applyView5('roundsetup', v);
                     renderSetupPlayers(false);
-                }, variant);
+                }, legacyVariant);
                 if (variant === '5') {
                     await page.locator('#unified-next-btn').click();
                     assert.strictEqual(await page.locator('#unif-sec-2').isVisible(), true, width + 'px / v5 enters the players step');
@@ -245,7 +246,7 @@ function extractPage() {
             }
         }
         assert.deepStrictEqual(errors, [], 'No uncaught browser errors');
-        console.log('PASS (' + checks + ' checks): round setup views 1–5; player fields and interactions; 44px touch targets; ' + widths.join('/') + 'px');
+        console.log('PASS (' + checks + ' checks): canonical round setup migrated from stored views 1–5; player fields and interactions; 44px touch targets; ' + widths.join('/') + 'px');
     } finally {
         await browser.close();
     }

@@ -169,10 +169,10 @@ const round = {
                 assert(catalog.actionInViewport, 'Catalog action is within viewport: ' + width + 'px / variant ' + variant + ' ' + JSON.stringify(catalog));
                 assert(catalog.actionHeight >= 44, 'Catalog action has 44px touch target: ' + width + 'px / variant ' + variant + ' (' + catalog.actionHeight + 'px)');
 
-                // Open actual detail view and exercise all five tab actions.
+                // Open actual detail view and exercise the four primary tab actions and protocol disclosure.
                 await page.evaluate(() => window.tnPublicOpenDetail('future', 'overview'));
                 const tabs = await page.locator('#tn-detail-content .tn-detail-tab').count();
-                assert(tabs >= 5, 'All detail tabs rendered: ' + width + 'px / variant ' + variant);
+                assert(tabs >= 4, 'All detail tabs rendered: ' + width + 'px / variant ' + variant);
                 const tabReport = await page.evaluate(() => {
                     const wrap = document.querySelector('.tn-detail-tabs');
                     const rect = el => { const r = el.getBoundingClientRect(); return { height: r.height, top: r.top, bottom: r.bottom }; };
@@ -188,10 +188,12 @@ const round = {
                 assert.strictEqual(tabReport.pageOverflow, false, 'Detail fits viewport: ' + width + 'px / variant ' + variant);
                 assert(tabReport.stripOverflow || tabReport.tabsFit, 'Detail tabs are visible or available by horizontal touch scroll: ' + width + 'px / variant ' + variant);
                 assert(tabReport.heights.every(height => height >= 44), 'Detail tab targets are >=44px: ' + width + 'px / variant ' + variant + ' (' + tabReport.heights.join(',') + ')');
-                for (const tab of ['start', 'participants', 'leaderboard', 'protocol', 'overview']) {
+                for (const tab of ['start', 'participants', 'leaderboard', 'overview']) {
                     await page.locator('[data-tn-detail-tab="' + tab + '"]').click();
                     assert.strictEqual(await page.locator('.tn-detail-panel').count(), 1, 'Detail tab ' + tab + ' renders: ' + width + 'px / variant ' + variant);
                 }
+                await page.locator('[data-tn-detail-tab="leaderboard"]').click();
+                assert.strictEqual(await page.locator('.tn-detail-panel .clarity-disclosure').count(), 1, 'Protocol available within results');
                 await page.evaluate(() => {
                     TournamentPublicState.detailId = null;
                     TournamentPublicState.detailTab = 'overview';

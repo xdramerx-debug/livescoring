@@ -878,11 +878,11 @@ var TnMgrUI = (function (root) {
         var startDate = t.startDate || t.date || '';
         var meta = [core().dateRu(startDate), core().timeText(t.startTime, '')].filter(Boolean).join(' · ');
         var tabs = [
-            { key: 'rounds', ru: 'Раунды', en: 'Rounds', icon: 'fas fa-flag' },
-            { key: 'groups', ru: 'Группы', en: 'Groups', icon: 'fas fa-layer-group' },
             { key: 'participants', ru: 'Участники', en: 'Participants', icon: 'fas fa-users' },
+            { key: 'groups', ru: 'Группы', en: 'Groups', icon: 'fas fa-layer-group' },
+            { key: 'rounds', ru: 'Раунды', en: 'Rounds', icon: 'fas fa-flag' },
             { key: 'sheet', ru: 'Стартовый лист', en: 'Tee sheet', icon: 'fas fa-table-list' },
-            { key: 'printcards', ru: '🎴 Счетные карточки', en: 'Score cards', icon: 'fas fa-id-card' }
+            { key: 'printcards', ru: 'Печать карточек', en: 'Score cards', icon: 'fas fa-id-card' }
         ].map(function (tab) {
             return '<button type="button" class="tnm-tab' + (state.route.tab === tab.key ? ' active' : '') +
                 '" data-tnm-act="tab" data-tab="' + tab.key + '"><i class="' + tab.icon + '"></i> ' + esc(bi(tab.ru, tab.en)) + '</button>';
@@ -904,9 +904,21 @@ var TnMgrUI = (function (root) {
             '<div class="tnm-view-head-actions">' + tournamentActionsHtml(t) +
             btn('edit-tournament', esc(bi('Изменить', 'Edit')), { icon: 'fas fa-pen', variant: 'ghost' }) + '</div>' +
             '</div>' +
+            preparationHintHtml(t) +
             '<div class="tnm-tabs">' + tabs + '</div>' +
             (t.paused && String(t.lifecycleStatus || t.status || '') !== 'completed' ? pauseBannerHtml(t) : '') +
             body + '</div>';
+    }
+
+    function preparationHintHtml(t) {
+        var status = String(t.lifecycleStatus || t.status || 'draft');
+        if (status === 'completed' || status === 'active') return '';
+        var count = playersOf(t).length;
+        var roundCount = roundsOf(t).length;
+        var next = !count ? 'participants' : !roundCount ? 'rounds' : 'sheet';
+        var label = !count ? bi('Добавьте участников', 'Add participants') : !roundCount ? bi('Добавьте раунд', 'Add a round') : bi('Проверьте стартовый лист', 'Review the tee sheet');
+        return '<div class="tnm-preparation" role="status"><span>' + esc(bi('Участников: ', 'Players: ') + count + ' · ' + bi('Раундов: ', 'Rounds: ') + roundCount) + '</span>' +
+            '<button type="button" class="tnm-btn tnm-btn-primary" data-tnm-act="tab" data-tab="' + next + '">' + esc(label) + '</button></div>';
     }
 
     function tournamentActionsHtml(t) {
@@ -1269,10 +1281,11 @@ var TnMgrUI = (function (root) {
                 esc(bi('Поиск по фамилии на русском или английском языке, импорт из Excel и добавление из базы данных клуба.',
                     'Search by surname in Russian or English, import from Excel or add from the club database.')),
                 btn('export-participants', esc(bi('Экспорт', 'Export')), { icon: 'fas fa-file-pdf' }) + ' ' +
+                '<details class="tnm-add-sources"><summary>' + esc(bi('Добавить участников', 'Add participants')) + '</summary><div>' +
                 btn('import-excel', esc(bi('Импорт Excel', 'Import Excel')), { icon: 'fas fa-file-excel', variant: 'ghost' }) + ' ' +
                 btn('paste-table', esc(bi('Вставить таблицу', 'Paste table')), { icon: 'fas fa-table', variant: 'ghost' }) + ' ' +
                 btn('open-directory', esc(bi('Из базы данных клуба', 'From club database')), { icon: 'fas fa-address-book', variant: 'ghost' }) + ' ' +
-                btn('directory-sync', esc(bi('Гости и гандикапы', 'Guests & handicaps')), { icon: 'fas fa-user-plus', variant: 'ghost' })) +
+                btn('directory-sync', esc(bi('Гости и гандикапы', 'Guests & handicaps')), { icon: 'fas fa-user-plus', variant: 'ghost' }) + '</div></details>') +
             '<div class="tnm-search-wrap">' +
             '<i class="fas fa-search"></i>' +
             '<input type="text" id="tnm-participant-search" data-tnm-live="participant-search" data-tnm-focus="participant-search" autocomplete="off" ' +

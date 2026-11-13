@@ -300,3 +300,20 @@
 Полевые интервью, реальная потеря сети с Firebase и считывание QR с бумаги остаются эксплуатационной проверкой, а не заявленным результатом автоматических тестов.
 
 Проверки текущего этапа: 100 наборов тестов; lint; globals; listeners; design tokens; classic/bundle для 15 страниц; 840 мобильных проверок единого создания раунда при всех старых настройках; мобильные турниры/настройки/навигация; новый слой на 9 страницах × 3 ширины. Новый мобильный регрессионный тест добавлен в GitHub Actions.
+
+## Follow-up implementation after the fresh v1.131.0 review
+
+Implemented on `arena/e09d2c12-livescoring` (not deployed):
+
+- Score pad is visible by default, with direct 1–15 selection and no implicit par. The alternative stepper is remembered locally; large-number mode is a direct action. Less frequent round controls are grouped.
+- Mobile profile action uses delegated action arguments and closes the drawer after opening the profile. Secondary mobile routes mark More as current.
+- Handicap calculator derives available tees from course ratings, switches away from unsupported gender/tee pairs, and hides invalid/empty results. The expanded reference table follows calculator selections. Core round calculations were not replaced.
+- Scorer and marker keep persistent sending, local-queue, server-accepted and confirmation/mismatch/wait statuses. These describe the save outcome; live Firebase delivery and offline replay have not been field-verified.
+- Statistics reuse fetched snapshots for filter changes, provide explicit refresh, and ignore outdated successes/errors. Selected conditions remain visible; secondary metrics are expandable.
+- Navigation/footer/password controls and page-specific disclosures live in HTML instead of post-load DOM restructuring. Removed unused setup row renderer, alternate CSS and wizard summary renderer; retained compatibility handling for stored view choices.
+
+Validation: 100/100 test suites; ESLint and build; asset generation; global and RTDB-listener checks; font and design checks. Mocked-browser checks passed on 10 routes at 320/390/768 px; round setup passed 840 checks at 320–820 px, including migration from stored views 1–5. These checks do not establish production Firebase, real role permissions, physical printing or on-course usability.
+
+### Release 1.132.0
+
+Prepared 2026-11-13: site version, package/lock and service-worker cache updated together. Release gate passed: 100/100 suites, syntax, zero-warning ESLint, globals, listeners, fonts, asset freshness, bundle parity, Vite and Firebase public artifact builds. Repeated mobile gates passed (10 routes × 3 widths and 840 setup checks). Production deployment is tracked by the release PR and its Deploy workflow run.

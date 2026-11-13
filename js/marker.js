@@ -238,6 +238,11 @@ function mkClosedMessage() {
         : '🔒 Игрок уже завершил раунд — карточка закрыта.', 'info');
 }
 
+function mkSaveStatus(ru, en) {
+    var el = mkGet('mk-save-status');
+    if (el) el.textContent = typeof currentLang !== 'undefined' && currentLang === 'en' ? en : ru;
+}
+
 function saveMk() {
     // Защита от «пулемётного» нажатия кнопки (см. scorer.js).
     if (mkSaving) return;
@@ -254,6 +259,7 @@ function saveMk() {
     }
     mkSaving = true;
     mkSetSaving(true);
+    mkSaveStatus('Отправляем счёт…', 'Sending score…');
     mkChanging = true;
     var savedHole = mkHole;
     var markerActor = (mkRound.players[mkPid] && mkRound.players[mkPid].markedBy) ||
@@ -261,6 +267,7 @@ function saveMk() {
     var p = pestovoScoreWrite(mkRid, [{kind:'marker',playerId:mkPid,hole:savedHole,score:mkScore}], markerActor);
     p.then(function(res) {
         if (res && res.offline) {
+            mkSaveStatus('Лунка ' + savedHole + ': сохранено на устройстве, ожидает отправки.', 'Hole ' + savedHole + ': saved on this device, waiting to send.');
             var pendingOrder = getRoundOrder(mkRound);
             var pendingIdx = pendingOrder.indexOf(savedHole);
             if (pendingIdx >= 0 && pendingIdx < pendingOrder.length - 1) { mkHole = pendingOrder[pendingIdx + 1]; mkScore = 0; }
@@ -272,13 +279,16 @@ function saveMk() {
         var ps = parseInt(mkPScores[savedHole]) || 0;
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ps >= 1 && ps === mkScore) {
+            mkSaveStatus('Лунка ' + savedHole + ': сохранено на сервере, счёт совпадает с игроком.', 'Hole ' + savedHole + ': saved on server, matches the player.');
 
             if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + escapeHtml(savedHole) + ' confirmed:</b> ' + escapeHtml(mkScore)) : ('✅ <b>Лунка ' + escapeHtml(savedHole) + ' подтверждена:</b> ' + escapeHtml(mkScore) + ' уд.'), 'success', { html: true });
             if (typeof vib === 'function') vib([50, 50]);
         } else if (ps >= 1) {
+            mkSaveStatus('Лунка ' + savedHole + ': сохранено на сервере, счёт не совпадает — проверьте.', 'Hole ' + savedHole + ': saved on server, mismatch — please check.');
 
             if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + escapeHtml(savedHole) + '!</b><br>Player: <b>' + escapeHtml(ps) + '</b>, marker (you): <b>' + escapeHtml(mkScore) + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + escapeHtml(savedHole) + '!</b><br>Игрок: <b>' + escapeHtml(ps) + '</b>, маркер (вы): <b>' + escapeHtml(mkScore) + '</b>'), 'error', { html: true });
         } else {
+            mkSaveStatus('Лунка ' + savedHole + ': сохранено на сервере, ждём игрока.', 'Hole ' + savedHole + ': saved on server, waiting for player.');
             if (typeof toast === 'function') toast(langIsEn ? ('👁️ <b>Hole ' + escapeHtml(savedHole) + ':</b> marker score <b>' + escapeHtml(mkScore) + '</b> saved. Waiting for player.') : ('👁️ <b>Лунка ' + escapeHtml(savedHole) + ':</b> счёт маркера <b>' + escapeHtml(mkScore) + '</b> сохранён. Ждём игрока.'), 'info', { html: true });
             if (typeof vib === 'function') vib();
         }
@@ -293,6 +303,7 @@ function saveMk() {
         mkSetSaving(false);
     }).catch(function(err){
         console.error('[marker] save failed', err);
+        mkSaveStatus('Не удалось подтвердить сохранение. Проверьте счёт перед повторной отправкой.', 'Could not confirm saving. Check the score before sending again.');
         mkChanging = false;
         mkSetSaving(false);
         if (typeof toast === 'function') toast('Ошибка сохранения', 'error');

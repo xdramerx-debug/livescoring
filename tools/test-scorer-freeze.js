@@ -138,7 +138,7 @@ function runScorer() {
             ok(sandbox.scSaving === false, 'scorer: после записи блокировка снята');
             ok(getEl('sc-save-btn').disabled === false, 'scorer: после записи кнопка снова доступна');
             eq(sandbox.scHole, 2, 'scorer: после сохранения перешли на следующую лунку');
-            ok(getEl('sc-save-status').textContent.includes('принят сервером'), 'scorer: статус подтверждения сервера виден');
+            ok(getEl('sc-save-status').textContent.includes('сохранено на сервере, ждём маркера'), 'scorer: статус подтверждения сервера виден');
             done();
         }, 30);
     });
@@ -147,6 +147,9 @@ function runScorer() {
 function runMarker() {
     const t = buildSandbox('marker', []);
     const { sandbox, getEl, dbWrites } = t;
+    sandbox.renderHole = function () {};
+    sandbox.buildHoles = function () {};
+    sandbox.renderSum = function () {};
     sandbox.mkRid = 'R1';
     sandbox.mkPid = 'me';
     sandbox.mkRound = {

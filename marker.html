@@ -20,8 +20,8 @@
     <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
     <link rel="stylesheet" href="css/fontawesome-subset.css?v=f83958d8">
-    <script defer src="js/clarity.js?v=f11af877"></script>
-    <link rel="stylesheet" href="css/clarity.css?v=c2790cf3">
+    <script defer src="js/clarity.js?v=a99465f1"></script>
+    <link rel="stylesheet" href="css/clarity.css?v=cb84b3ee">
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
@@ -37,7 +37,7 @@
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
         <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
-        <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
+        <details class="clarity-nav-more"><summary data-clarity-ru="Ещё" data-clarity-en="More">Ещё</summary><div class="clarity-nav-panel"><a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a></div></details>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
 <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
@@ -80,7 +80,7 @@
             <div class="hole-nav" data-entry-block="holes" id="mk-holes"></div>
             <div data-entry-block="input">
             <div class="score-area">
-                <div class="score-result" id="mk-result"></div>
+                <div class="score-result" id="mk-result"></div><p id="mk-save-status" class="score-save-status" role="status" aria-live="polite"></p>
                 <div class="score-disp" id="mk-disp">—</div>
                 <div class="score-btns">
                     <button class="score-minus" aria-label="Уменьшить счёт" data-act="adjMk" data-arg="-1">−</button>
@@ -98,7 +98,7 @@
                     <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="9">9</button>
                     <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="10">10</button>
                     <button type="button" class="score-pad-key score-pad-par" data-act="setScorePadPar" data-i18n="score_pad_par">Пар</button>
-                </div>
+                <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="11">11</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="12">12</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="13">13</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="14">14</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="15">15</button></div>
                 <div class="score-toolbar">
                     <button type="button" class="btn btn-ol" data-act="undoLastHole"><i class="fas fa-rotate-left"></i> <span data-i18n="undo_last_hole">Отменить лунку</span></button>
                     <button type="button" class="btn btn-ol" data-act="toggleLargeUi"><i class="fas fa-expand"></i> <span data-i18n="large_ui_btn">Крупно</span></button>
@@ -107,24 +107,24 @@
             </div>
             </div>
         </div>
-        <div id="mk-pace-assistant" style="margin-top:12px;"></div>
+        <details class="clarity-disclosure" ><summary data-clarity-ru="Параметры раунда" data-clarity-en="Round preferences">Параметры раунда</summary><label>Ввод счёта<select class="form-input" data-score-input-method><option value="pad">Выбор числа</option><option value="stepper">Плюс / минус</option></select></label></details><div id="mk-pace-assistant" style="margin-top:12px;"></div>
         <div class="card"><h2><i class="fas fa-list-check"></i> <span data-i18n="group_summary">Сводка</span></h2><div id="mk-sum"></div></div>
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.131.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.132.0</span></p></details></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
 <script type="module" src="dist/livescoring-modules.js?v=2b6fd436"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=07c25cb7"></script>
+<script defer src="js/utils.js?v=15c1d142"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/score-display.js?v=8c8f213a"></script>
 <script defer src="js/score-pad.js?v=03df3958"></script>
 <script defer src="js/official-call.js?v=7ae05fbc"></script>
-<script defer src="js/marker.js?v=018ae54b"></script>
+<script defer src="js/marker.js?v=1bad804f"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
 </body>

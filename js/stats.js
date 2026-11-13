@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var field = document.getElementById(id);
         if (field) field.addEventListener('change', loadStats);
     });
+    var refresh = document.getElementById('stats-refresh');
+    if (refresh) refresh.addEventListener('click', function () { loadStats(true); });
     loadStats();
 });
 
@@ -182,14 +184,10 @@ function statsSyncFormats(rounds) {
     return select.value;
 }
 
-var statsLoadGeneration = 0;
-function loadStats() {
-    var generation = ++statsLoadGeneration;
-    if (typeof db === 'undefined') {
-        safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-plug-circle-xmark"></i><p>' + (typeof t === 'function' ? t('offline_title') : 'Нет соединения') + '</p></div>');
-        return Promise.resolve();
-    }
-    return Promise.all([
+var statsSnapshotPromise = null;
+function statsReadSnapshots(refresh) {
+    if (statsSnapshotPromise && !refresh) return statsSnapshotPromise;
+    var pending = Promise.all([
         db.ref('rounds').once('value').then(function(sn) {
             // Автозакрытие вчерашних незавершённых раундов («завершён автоматически»)
             if (typeof sweepStaleRounds === 'function') {
@@ -199,7 +197,22 @@ function loadStats() {
             return sn;
         }),
         db.ref('usersPublic').once('value')
-    ]).then(function(snaps) {
+    ]).catch(function (error) {
+        if (statsSnapshotPromise === pending) statsSnapshotPromise = null;
+        throw error;
+    });
+    statsSnapshotPromise = pending;
+    return pending;
+}
+
+var statsLoadGeneration = 0;
+function loadStats(refresh) {
+    var generation = ++statsLoadGeneration;
+    if (typeof db === 'undefined') {
+        safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-plug-circle-xmark"></i><p>' + (typeof t === 'function' ? t('offline_title') : 'Нет соединения') + '</p></div>');
+        return Promise.resolve();
+    }
+    return statsReadSnapshots(refresh === true).then(function(snaps) {
         if (generation !== statsLoadGeneration) return;
         var allRounds = snaps[0].val() || {};
         var format = statsSyncFormats(allRounds);
@@ -360,10 +373,12 @@ function loadStats() {
             { icon: 'fa-circle-dot', value: hio, label: 'Hole-in-One' },
             { icon: 'fa-golf-ball-tee', value: totalHoles, label: lHoles }
         ];
-        safeSetHTML('general-stats', renderGeneralStatsDisplay(generalItems, variant));
+        safeSetHTML('general-stats', renderGeneralStatsDisplay(generalItems.slice(0, 4), variant) + '<details class="clarity-disclosure stats-more"><summary>' + (langIsEn ? 'More metrics' : 'Другие показатели') + '</summary><div class="stats-grid">' + renderGeneralStatsDisplay(generalItems.slice(4), '1') + '</div></details>');
 
         var minimumField = document.getElementById('stats-min-rounds');
         var minimum = minimumField ? Number(minimumField.value) || 3 : 1;
+        var extra = document.getElementById('stats-filter-extra');
+        if (extra) extra.textContent = (format || (langIsEn ? 'All formats' : 'Все форматы')) + ' · ' + (langIsEn ? 'Min full rounds per player: ' : 'Минимум полных раундов на игрока: ') + minimum;
         var sortedByAvg = Object.values(playerRounds).filter(function (p) { return p.count >= minimum; }).map(function(p) {
             return {
                 pid: p.pid, name: p.name,
@@ -498,6 +513,7 @@ function loadStats() {
         safeSetHTML('hole-difficulty', hHtml);
         }
     }).catch(function(err){
+        if (generation !== statsLoadGeneration) return;
         console.error('[stats] load failed', err);
         safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-triangle-exclamation"></i><p>Ошибка загрузки статистики</p></div>');
     });

@@ -661,3 +661,19 @@ function qrInit() {
 }
 
 document.addEventListener('DOMContentLoaded', qrInit);
+
+// Static print controls: preserve the selected preview and use existing guarded print path.
+document.addEventListener('DOMContentLoaded', function () {
+    var select = document.getElementById('qr-document');
+    var print = document.getElementById('qr-print-selected');
+    if (!select || !print) return;
+    function preview() {
+        document.body.classList.toggle('clarity-preview-sheet', select.value === 'sheet');
+        document.body.classList.toggle('clarity-preview-cards', select.value !== 'sheet');
+        var layout = document.getElementById('qr-layout');
+        if (layout) layout.closest('label').hidden = select.value === 'sheet';
+    }
+    select.addEventListener('change', preview);
+    print.addEventListener('click', function () { qrPrintMode(select.value); });
+    preview();
+});

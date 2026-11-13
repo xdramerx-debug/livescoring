@@ -87,3 +87,6 @@ jobs:
 
       - name: Admin display settings mobile
         run: node tools/check-display-settings-mobile.js
+
+      - name: Simplified interface mobile regression
+        run: node tools/check-clarity-mobile.js

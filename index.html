@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
     <meta name="description" content="Официальная система лайв-скоринга клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
@@ -17,10 +17,12 @@
     <link rel="stylesheet" href="css/theme-v2.css?v=915c2133">
     <link rel="stylesheet" href="css/product-ux.css?v=4522a80b">
     <link rel="stylesheet" href="css/design-presets.css?v=77ff3916">
-    <script src="js/ui-events.js?v=4051df1c"></script>
+    <script src="js/ui-events.js?v=3d524484"></script>
     <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
-    <link rel="stylesheet" href="css/fontawesome-subset.css?v=79fafe3c">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=f83958d8">
+    <script defer src="js/clarity.js?v=f11af877"></script>
+    <link rel="stylesheet" href="css/clarity.css?v=c2790cf3">
 </head>
 <body class="pv-ux pv-home pv-has-bottomnav">
 <a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
@@ -44,7 +46,13 @@
         <div class="nav-auth" id="nav-auth"></div>
     </div>
 </div></nav>
+<main id="pv-main" tabindex="-1">
 
+<section class="section" style="padding-bottom:10px;">
+    <div class="container">
+        <div id="my-active-rounds-container" class="hidden"></div>
+    </div>
+</section>
 <section class="hero">
     <div class="hero-content">
         <img src="img/logo.png" alt="Pestovo" class="hero-logo">
@@ -103,13 +111,9 @@
 
 
 
-<main id="pv-main" tabindex="-1">
+
 <!-- БЛОК "МОИ АКТИВНЫЕ РАУНДЫ" (УРОВЕНЬ 1 ИЕРАРХИИ) -->
-<section class="section" style="padding-bottom:10px;">
-    <div class="container">
-        <div id="my-active-rounds-container" class="hidden"></div>
-    </div>
-</section>
+
 
 <!-- УРОВЕНЬ 1.5: АКТИВНЫЙ ТУРНИР (скрыт, если нет турнирных раундов) -->
 <section class="section hidden" id="active-tournament-section" style="padding-bottom:10px;">
@@ -136,21 +140,21 @@
 </section>
 
 <!-- УРОВЕНЬ 4 ИЕРАРХИИ: ПОЛЕ КЛУБА -->
-<section class="section">
+<details class="clarity-reference container"><summary>Поле клуба</summary><section class="section">
     <div class="container">
         <h2 class="sec-t text-center" style="justify-content:center;margin-bottom:8px;"><i class="fas fa-flag"></i> <span data-i18n="sec_course_card">Поле клуба</span></h2>
         <p class="text-center" style="color:var(--muted);margin-bottom:24px;" data-i18n="course_card_sub">18 лунок · Пар 72 · Все ТИ (метры)</p>
         <div id="course-card"></div>
     </div>
-</section>
+</section></details>
 
 <!-- УРОВЕНЬ 5 ИЕРАРХИИ: КЛУБ В ЦИФРАХ -->
-<section class="section section-alt">
+<details class="clarity-reference container"><summary>Клуб в цифрах</summary><section class="section section-alt">
     <div class="container">
         <h2 class="sec-t text-center" style="justify-content:center;margin-bottom:28px;" data-i18n="sec_club_stats">Клуб в цифрах</h2>
         <div class="stats-grid" id="club-stats"></div>
     </div>
-</section>
+</section></details>
 
 </main>
 
@@ -169,7 +173,7 @@
     </div>
     <div class="footer-bottom">
                 <p data-i18n="footer_club">&copy; 2024 Пестово</p>
-                <p class="site-version">Версия сайта: <span class="version-number">1.130.7</span></p>
+                <p class="site-version">Версия сайта: <span class="version-number">1.131.0</span></p>
             </div>
 </div></footer>
 
@@ -177,13 +181,13 @@
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=80ed9814"></script>
+<script type="module" src="dist/livescoring-modules.js?v=2b6fd436"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=38906235"></script>
+<script defer src="js/utils.js?v=07c25cb7"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/app.js?v=3a477470"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
-<script defer src="js/product-ux.js?v=77bbfc21"></script>
+<script defer src="js/product-ux.js?v=6525e431"></script>
 </body>
 </html>

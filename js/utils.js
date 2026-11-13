@@ -3765,13 +3765,13 @@ function openPlayerProfileModal(playerId, roundId) {
             allRounds.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
 
             if (allRounds.length > 0) {
-                html += renderTrophyCabinet(u, allRounds);
-                html += renderScoringDistributionBar(allRounds);
+                var profileStatistics = renderTrophyCabinet(u, allRounds) + renderScoringDistributionBar(allRounds);
 
                 html += '<h3 style="color:var(--gold);margin:24px 0 12px;font-family:var(--ff);font-size:18px;"><i class="fas fa-history"></i> ' + t('round_history') + ' (' + allRounds.length + ')</h3>';
                 // Вкладки «Клубные раунды» / «Турнирные раунды» и фильтры
                 // рисуются отдельным рендером (pestovoInitProfileHistory).
                 html += '<div id="pr-history-root" data-player-id="' + escapeHtml(playerId) + '"></div>';
+                html += '<details class="clarity-disclosure"><summary>' + (currentLang === 'en' ? 'Achievements and statistics' : 'Достижения и статистика') + '</summary>' + profileStatistics + '</details>';
             }
 
             if (bodyEl) bodyEl.innerHTML = html;
@@ -6510,7 +6510,7 @@ function syncView5BodyClasses() {
     if (typeof document === 'undefined' || !document.body) return;
     try {
         Object.keys(PESTOVO_VIEW5_CONFIG).forEach(function(name) {
-            var cur = getView5(name);
+            var cur = name === 'roundsetup' ? getRoundSetupView() : getView5(name);
             PESTOVO_VIEW5_KEYS.forEach(function(v) {
                 if (v === '1') return;
                 document.body.classList.toggle('st-' + name + '-v' + v, cur === v);
@@ -6584,7 +6584,9 @@ function getRoundScorecardView(round) {
     var settings = getScorecardDisplaySettings();
     return isCompletedScorecard(round) && settings.completedView !== 'inherit' ? settings.completedView : getView5('scorecard');
 }
-function getRoundSetupView() { return getView5('roundsetup'); }
+// All legacy setup preferences now resolve to the single compact accordion.
+// Keep the original stored value for rollback; never rewrite live-round data.
+function getRoundSetupView() { return '1'; }
 
 if (typeof window !== 'undefined') {
     window.uiConfirm = uiConfirm;

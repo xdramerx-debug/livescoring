@@ -127,6 +127,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!nm) { nmInp.classList.add('is-invalid'); er.textContent = currentLang === 'en' ? 'Enter full name' : 'Заполните имя'; er.classList.remove('hidden'); return; }
         if (!em) { emInp.classList.add('is-invalid'); er.textContent = currentLang === 'en' ? 'Enter email' : 'Заполните email'; er.classList.remove('hidden'); return; }
+        if (gd !== 'men' && gd !== 'women') {
+            var genderControl = document.getElementById('reg-gender');
+            var golfDetails = genderControl.closest('details');
+            if (golfDetails) golfDetails.open = true;
+            genderControl.focus();
+            er.textContent = currentLang === 'en' ? 'Select your gender for handicap calculation' : 'Укажите пол для расчёта гандикапа';
+            er.classList.remove('hidden'); return;
+        }
         if (pw.length < 6) { pwInp.classList.add('is-invalid'); er.textContent = currentLang === 'en' ? 'Password minimum 6 characters' : 'Пароль минимум 6 символов'; er.classList.remove('hidden'); return; }
         if (pw !== pw2) { pw2Inp.classList.add('is-invalid'); er.textContent = currentLang === 'en' ? 'Passwords do not match' : 'Пароли не совпадают'; er.classList.remove('hidden'); return; }
 

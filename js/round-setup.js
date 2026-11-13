@@ -163,6 +163,12 @@ function setupPlayerOnSelect(idx) {
         if (hEl) hEl.value = fmtExactHcp(matchedUser.handicap);
         if (typeof calcPlayerFieldHcp === 'function') calcPlayerFieldHcp(idx);
         if (typeof markSetupPlayerMeta === 'function') markSetupPlayerMeta(idx);
+        var selectedCard = nEl && nEl.closest('.setup-player-card');
+        if (selectedCard && setupIsAccordion()) {
+            selectedCard.classList.remove('open');
+            var selectedHead = selectedCard.querySelector('.setup-player-head');
+            if (selectedHead) selectedHead.setAttribute('aria-expanded', 'false');
+        }
         if (typeof toast === 'function') toast('👤 ' + (currentLang === 'en' ? 'Selected player: ' : 'Выбран игрок: ') + matchedUser.name + ' (' + fmtExactHcp(matchedUser.handicap) + ' HCP)', 'info');
     };
 }
@@ -264,6 +270,11 @@ function renderSetupPlayers(preserve) {
         if (typeof calcPlayerFieldHcp === 'function') calcPlayerFieldHcp(idx);
     });
 
+    el.querySelectorAll('.form-group').forEach(function (group) {
+        var label = group.querySelector('label');
+        var input = group.querySelector('input:not([type="hidden"]), select');
+        if (label && input && input.id) label.setAttribute('for', input.id);
+    });
     bindSetupSlotsMeta();
     if (typeof bindPlayerSlotsAccordion === 'function') bindPlayerSlotsAccordion();
     updateUnifiedChrome();
@@ -334,12 +345,15 @@ function markSetupPlayerMeta(idx) {
     var av = document.getElementById('spc-avatar-' + idx);
     if (av) av.textContent = spcAvatarText(name, idx);
 
+    var title = card.querySelector('.spc-title');
+    if (title && name.trim()) title.textContent = name.trim();
     var meta = document.getElementById('spc-meta-' + idx);
     if (meta) {
         var hEl = document.getElementById('pl-hcp-' + idx);
         var fEl = document.getElementById('pl-field-' + idx);
         var parts = [];
         if (tee && typeof t === 'function') parts.push(t('tee_' + tee));
+        if (hEl && hEl.value) parts.push('HCP ' + hEl.value);
         if (hEl && hEl.value && typeof fmtFieldHcp === 'function' && fEl && fEl.value) parts.push(fEl.value + ' ' + (currentLang === 'en' ? 'field' : 'поля'));
         meta.textContent = parts.join(' · ');
     }

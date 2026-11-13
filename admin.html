@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1a0e">
     <meta name="description" content="Официальная система лайв-скоринга клуба Пестово: счётные карточки, табло, гандикапы WHS, турниры. 18 лунок · Пар 72.">
     <link rel="manifest" href="manifest.json">
@@ -20,11 +20,13 @@
     <link rel="stylesheet" href="css/tn-manager.css?v=6d129f32">
     <link rel="stylesheet" href="css/tn-mgr-printcards.css?v=e9c466ab">
     <link rel="stylesheet" href="css/entry-scorecard.css?v=a34f8c94">
-    <script src="js/ui-events.js?v=4051df1c"></script>
+    <script src="js/ui-events.js?v=3d524484"></script>
     <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="stylesheet" href="css/fontawesome-subset.css?v=79fafe3c">
+    <link rel="stylesheet" href="css/fontawesome-subset.css?v=f83958d8">
+    <script defer src="js/clarity.js?v=f11af877"></script>
+    <link rel="stylesheet" href="css/clarity.css?v=c2790cf3">
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
@@ -104,8 +106,6 @@
                 <button class="admin-tab" data-act="switchTab" data-arg="groups" data-i18n="tab_groups">Группы сейчас ⏱️</button>
                 <button class="admin-tab" data-act="switchTab" data-arg="scores" data-i18n="tab_scores_edit">Правка счёта</button>
                 <button class="admin-tab" data-act="switchTab" data-arg="rounds" data-i18n="tab_rounds">Раунды</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="scoreaudit" data-i18n="tab_scoreaudit">Журнал счёта 🕒</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="hcplog" data-i18n="tab_hcplog">Журнал гандикапов 📈</button>
             </div>
             <div class="admin-tabs hidden" data-admin-group="tournaments">
                 <button class="admin-tab" id="tnm-tab-btn" data-act="switchTab" data-arg="tnmanager" data-i18n="tab_tn_manager">Турниры 🏆</button>
@@ -117,13 +117,15 @@
             </div>
             <div class="admin-tabs hidden" data-admin-group="look">
                 <button class="admin-tab" data-act="switchTab" data-arg="scorecards" data-i18n="tab_scorecards">Карточки на сайте</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="entrycards" data-i18n="tab_entrycards">Карточки на вводе</button>
                 <button class="admin-tab" data-act="switchTab" data-arg="scoreentry" data-i18n="tab_scoreentry_screen">Экран игрока</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="tncards" data-i18n="tab_tncards">Турнирный ввод</button>
-                <button class="admin-tab" data-act="switchTab" data-arg="tournamentsview" data-i18n="tab_tournaments_view">Турниры: вид</button>
                 <button class="admin-tab" data-act="switchTab" data-arg="design" data-i18n="tab_design">Дизайн 🎨</button>
-            </div>
+            <details class="clarity-admin-more"><summary>Дополнительно</summary><button class="admin-tab" data-act="switchTab" data-arg="entrycards" data-i18n="tab_entrycards">Карточки на вводе</button>
+<button class="admin-tab" data-act="switchTab" data-arg="tncards" data-i18n="tab_tncards">Турнирный ввод</button>
+<button class="admin-tab" data-act="switchTab" data-arg="tournamentsview" data-i18n="tab_tournaments_view">Турниры: вид</button></details></div>
             <div class="admin-tabs hidden" data-admin-group="system">
+                <button class="admin-tab" data-act="switchTab" data-arg="integrations">Интеграции</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="scoreaudit" data-i18n="tab_scoreaudit">Журнал счёта 🕒</button>
+                <button class="admin-tab" data-act="switchTab" data-arg="hcplog" data-i18n="tab_hcplog">Журнал гандикапов 📈</button>
                 <button class="admin-tab" data-act="switchTab" data-arg="broadcasts" data-i18n="tab_broadcasts">Анонсы 📢</button>
                 <button class="admin-tab" data-act="switchTab" data-arg="data" data-i18n="tab_data">Данные</button>
             </div>
@@ -389,7 +391,7 @@
         </div>
 
         <div id="tab-alerts" class="admin-section">
-            <div class="card">
+<div class="card">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
                     <h2 style="margin:0;"><i class="fas fa-bell"></i> <span data-i18n="referee_marshal_calls">Вызовы судей и маршалов</span></h2>
                     <button class="btn btn-og btn-sm" id="btn-enable-notif" data-act="enableAdminNotifications">
@@ -399,6 +401,9 @@
                 <div id="admin-alerts-stats" style="margin-bottom:16px;"></div>
                 <div id="admin-alerts-list"></div>
             </div>
+        </div>
+        <div id="tab-integrations" class="admin-section hidden">
+
 
             <!-- ДОСТАВКА ВЫЗОВОВ: кто отправляет сообщение во время раунда -->
             <div class="card">
@@ -517,6 +522,7 @@
                     <i class="fas fa-shield-halved"></i> В режиме «Браузер» (по умолчанию) вызовы судьи и маршала во время раунда отправляет браузер игрока тем же способом, что и кнопка «Проверить отправку в ВК» — JSONP, VK API 5.199. Поэтому в CSP хостинга разрешён <code>script-src https://api.vk.com</code>. В режиме «Сервер» токен сообщества браузеру не виден: отправляет Cloud Function (VK API 5.131, параметры в теле запроса в формате x-www-form-urlencoded).
                 </p>
             </div>
+
         </div>
 
         <div id="tab-broadcasts" class="admin-section hidden">
@@ -1004,30 +1010,8 @@
                         <button type="button" id="v5-homeTournament-5" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="homeTournament" data-arg2="5" aria-pressed="false"><i class="fas fa-feather"></i> 5 · Мини</button>
                     </div>
                 </div>
-                <!-- Блок «Создание раунда» — 5 вариантов -->
-                <div class="list-item display-variant-setting" style="padding:14px 16px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.45);border-radius:10px;margin-bottom:16px;">
-                    <span style="font-weight:700;font-size:14px;color:var(--white);"><i class="fas fa-user-plus" style="color:#9b59b6;"></i> <span>Создание раунда: 1 игрок или группа (5 видов)</span></span>
-                    <div style="font-size:12px;color:var(--muted);margin-top:4px;">
-                        Единый блок вместо вкладок «Одиночный»/«Групповой»: кнопка «Добавить игрока» добавляет участников (1–6 человек). 1 игрок — одиночный раунд, 2 и более — групповой с маркерами. Выбирает только админ, применяется для всех пользователей.
-                    </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                        <button type="button" id="v5-roundsetup-1" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="roundsetup" data-arg2="1" aria-pressed="true"><i class="fas fa-layer-group"></i> 1 · Классика</button>
-                        <button type="button" id="v5-roundsetup-2" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="roundsetup" data-arg2="2" aria-pressed="false"><i class="fas fa-table-columns"></i> 2 · Всё открыто</button>
-                        <button type="button" id="v5-roundsetup-3" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="roundsetup" data-arg2="3" aria-pressed="false"><i class="fas fa-list"></i> 3 · Список</button>
-                        <button type="button" id="v5-roundsetup-4" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="roundsetup" data-arg2="4" aria-pressed="false"><i class="fas fa-gem"></i> 4 · Витрина</button>
-                        <button type="button" id="v5-roundsetup-5" class="btn btn-og btn-sm v5-variant-btn" data-act="saveView5Setting" data-arg="roundsetup" data-arg2="5" aria-pressed="false"><i class="fas fa-route"></i> 5 · По шагам</button>
-                    </div>
-                    <div style="margin-top:10px;padding:10px 12px;border:1px dashed rgba(155,89,182,.5);border-radius:10px;background:rgba(155,89,182,.05);">
-                        <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;"><i class="fas fa-eye"></i> Предпросмотр:</div>
-                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:11px;color:var(--muted);">
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">1 · Классика</b><br>Аккордеон: карточка раскрыта одна, остальные — по клику</div>
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">2 · Всё открыто</b><br>Все карточки игроков сразу, в 2 колонки на широком экране</div>
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">3 · Список</b><br>Компактно: один игрок — одна строка с полями</div>
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">4 · Витрина</b><br>Крупные карточки с аватарами и цветовой меткой ТИ</div>
-                            <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;border:1px solid var(--border);"><b style="color:var(--gold);">5 · По шагам</b><br>Мастер: Параметры → Игроки → Старт (со сводкой состава)</div>
-                        </div>
-                    </div>
-                </div>
+                <div class="display-config-note">Создание раунда использует один компактный сценарий для всех игроков. Прежние настройки 1–5 совместимы и автоматически открывают этот сценарий; данные раундов не меняются.</div>
+
                 <!-- Глобальные варианты отображения основных страниц -->
                 <div class="page-display-settings-grid">
                 </div>
@@ -1121,21 +1105,21 @@
             </div>
         </div>
 
-        
+
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.130.7</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.131.0</span></p></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
-<script type="module" src="dist/livescoring-modules.js?v=80ed9814"></script>
+<script type="module" src="dist/livescoring-modules.js?v=2b6fd436"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=38906235"></script>
+<script defer src="js/utils.js?v=07c25cb7"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/admin-lazy.js?v=f7dee202"></script>
-<script defer src="js/admin.js?v=e3107965"></script>
+<script defer src="js/admin.js?v=c796ee9c"></script>
 <script defer src="js/admin-channels.js?v=e1c74f92"></script>
 <script defer src="js/admin-alerts.js?v=47469903"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
@@ -1148,7 +1132,7 @@
 <script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-core.js?v=44a79b06"></script>
 <script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-data.js?v=5318cc75"></script>
 <script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-io.js?v=a9001ebb"></script>
-<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-ui.js?v=05378dbe"></script>
+<script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-ui.js?v=d1d0beda"></script>
 <script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-sheet.js?v=184c2ba1"></script>
 <script type="text/plain" data-admin-lazy="tnm-print" data-admin-src="js/tn-mgr-printcards.js?v=105509f2"></script>
 <script type="text/plain" data-admin-lazy="tnm" data-admin-src="js/tn-mgr-round.js?v=a180a2a2"></script>

@@ -1,5 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
     initNav();
+    if (typeof initDateRangeFilter === 'function') initDateRangeFilter({
+        key: 'stats', fromId: 'stats-date-from', toId: 'stats-date-to',
+        presetsId: 'stats-date-presets', resetId: 'stats-date-reset', hintId: 'stats-date-hint',
+        summaryId: 'stats-filter-summary', onChange: function () { loadStats(); }
+    });
+    ['stats-format', 'stats-min-rounds'].forEach(function (id) {
+        var field = document.getElementById(id);
+        if (field) field.addEventListener('change', loadStats);
+    });
     loadStats();
 });
 
@@ -50,7 +59,7 @@ function renderGeneralStatsDisplay(items, variant) {
 
 function renderTopPlayersDisplay(players, langIsEn, variant) {
     if (!players.length) {
-        return '<div class="empty"><i class="fas fa-users"></i><p>' + (langIsEn ? 'No completed 18-hole rounds yet' : 'Нет завершённых раундов (18 лунок)') + '</p></div>';
+        return '<div class="empty"><i class="fas fa-users"></i><p>' + (langIsEn ? 'Not enough completed 18-hole rounds for the selected sample' : 'Недостаточно завершённых раундов на 18 лунок для выбранной выборки') + '</p></div>';
     }
     function fullRoundsLabel(n) {
         if (langIsEn) return n === 1 ? 'full round' : 'full rounds';
@@ -152,7 +161,30 @@ function renderHoleDifficultyVariant(holeScores, variant, langIsEn) {
     return html2 + '</div>';
 }
 
+function statsFilterRounds(rounds, range, format) {
+    var entries = Object.entries(rounds || {}).filter(function (entry) {
+        var r = entry[1];
+        return r && typeof r === 'object' && r.status !== 'scheduled' && (!format || String(r.format || 'Stroke Play') === format);
+    });
+    if (range && range.invalid) return {};
+    if (typeof filterEntriesByDateRange === 'function') entries = filterEntriesByDateRange(entries, range);
+    return Object.fromEntries(entries);
+}
+
+function statsSyncFormats(rounds) {
+    var select = document.getElementById('stats-format');
+    if (!select) return '';
+    var current = select.value;
+    var formats = Array.from(new Set(Object.values(rounds || {}).filter(function (r) { return r && r.status !== 'scheduled'; }).map(function (r) { return String(r.format || 'Stroke Play'); }))).sort();
+    while (select.options.length > 1) select.remove(1);
+    formats.forEach(function (format) { var option = document.createElement('option'); option.value = format; option.textContent = format; select.appendChild(option); });
+    select.value = formats.indexOf(current) !== -1 ? current : '';
+    return select.value;
+}
+
+var statsLoadGeneration = 0;
 function loadStats() {
+    var generation = ++statsLoadGeneration;
     if (typeof db === 'undefined') {
         safeSetHTML('general-stats', '<div class="empty"><i class="fas fa-plug-circle-xmark"></i><p>' + (typeof t === 'function' ? t('offline_title') : 'Нет соединения') + '</p></div>');
         return Promise.resolve();
@@ -168,7 +200,13 @@ function loadStats() {
         }),
         db.ref('usersPublic').once('value')
     ]).then(function(snaps) {
-        var rounds = snaps[0].val() || {};
+        if (generation !== statsLoadGeneration) return;
+        var allRounds = snaps[0].val() || {};
+        var format = statsSyncFormats(allRounds);
+        var dateFilter = typeof getDateRangeFilter === 'function' ? getDateRangeFilter('stats') : null;
+        var range = dateFilter ? dateFilter.getRange() : null;
+        var rounds = statsFilterRounds(allRounds, range, format);
+        if (dateFilter) dateFilter.renderSummary(Object.keys(rounds).length, Object.keys(allRounds).filter(function (id) { return allRounds[id] && allRounds[id].status !== 'scheduled'; }).length);
         var users = snaps[1].val() || {};
 
         var totalRounds = 0, completed = 0, active = 0;
@@ -303,7 +341,7 @@ function loadStats() {
         var lTotalRounds = langIsEn ? 'Total Rounds' : 'Всего раундов';
         var lActiveRounds = langIsEn ? 'Active Rounds' : 'Активных';
         var lCompletedRounds = langIsEn ? 'Completed' : 'Завершено';
-        var lPlayers = langIsEn ? 'Players' : 'Игроков';
+        var lPlayers = langIsEn ? 'Club players (all time)' : 'Игроков клуба (всего)';
         var lSolo = langIsEn ? 'Solo Rounds' : 'Одиночных';
         var lGroup = langIsEn ? 'Group Rounds' : 'Групповых';
         var lHoles = langIsEn ? 'Holes Played' : 'Лунок сыграно';
@@ -324,7 +362,9 @@ function loadStats() {
         ];
         safeSetHTML('general-stats', renderGeneralStatsDisplay(generalItems, variant));
 
-        var sortedByAvg = Object.values(playerRounds).map(function(p) {
+        var minimumField = document.getElementById('stats-min-rounds');
+        var minimum = minimumField ? Number(minimumField.value) || 3 : 1;
+        var sortedByAvg = Object.values(playerRounds).filter(function (p) { return p.count >= minimum; }).map(function(p) {
             return {
                 pid: p.pid, name: p.name,
                 count: p.count,

@@ -21,8 +21,8 @@
     <script src="js/design-system.js?v=b78132a0"></script>
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
     <link rel="stylesheet" href="css/fontawesome-subset.css?v=f83958d8">
-    <script defer src="js/clarity.js?v=f11af877"></script>
-    <link rel="stylesheet" href="css/clarity.css?v=c2790cf3">
+    <script defer src="js/clarity.js?v=a99465f1"></script>
+    <link rel="stylesheet" href="css/clarity.css?v=cb84b3ee">
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
@@ -38,7 +38,7 @@
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
         <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
-        <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
+        <details class="clarity-nav-more"><summary data-clarity-ru="Ещё" data-clarity-en="More">Ещё</summary><div class="clarity-nav-panel"><a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a></div></details>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
 <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
@@ -82,7 +82,7 @@
                     <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="9">9</button>
                     <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="10">10</button>
                     <button type="button" class="score-pad-key score-pad-par" data-act="setScorePadPar" data-i18n="score_pad_par">Пар</button>
-                </div>
+                <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="11">11</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="12">12</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="13">13</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="14">14</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="15">15</button></div>
                 <div class="score-toolbar">
                     <button type="button" class="btn btn-ol" data-act="undoLastHole"><i class="fas fa-rotate-left"></i> <span data-i18n="undo_last_hole">Отменить лунку</span></button>
                     <button type="button" class="btn btn-ol" data-act="toggleLargeUi"><i class="fas fa-expand"></i> <span data-i18n="large_ui_btn">Крупно</span></button>
@@ -111,27 +111,27 @@
         <div id="sc-notice" data-screen-display="scoring" data-display-key="notice"></div>
         <div id="sc-pace-assistant" data-screen-display="scoring" data-display-key="pace" style="margin-top:12px;"></div>
         <div class="card" data-screen-display="scoring" data-display-key="scorecard"><h2><i class="fas fa-table"></i> <span data-i18n="my_score">Мой счёт</span></h2><div id="sc-card"></div></div>
-        <label class="stableford-display-control" id="sc-stableford-control" data-screen-display="scoring" data-display-key="stableford">
+        <details class="clarity-disclosure" ><summary data-clarity-ru="Параметры раунда" data-clarity-en="Round preferences">Параметры раунда</summary><label class="clarity-input-choice"><span data-clarity-ru="Ввод счёта" data-clarity-en="Score input">Ввод счёта</span><select class="form-input" data-score-input-method><option value="pad" data-clarity-ru="Выбор числа" data-clarity-en="Number pad">Выбор числа</option><option value="stepper" data-clarity-ru="Плюс / минус" data-clarity-en="Plus / minus">Плюс / минус</option></select></label><label class="stableford-display-control" id="sc-stableford-control" data-screen-display="scoring" data-display-key="stableford">
             <input type="checkbox" id="sc-stableford-toggle" data-act="toggleScStablefordDisplay" data-checked="1">
             <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
-        </label>
+        </label></details>
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.131.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.132.0</span></p></details></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
 <script type="module" src="dist/livescoring-modules.js?v=2b6fd436"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=07c25cb7"></script>
+<script defer src="js/utils.js?v=15c1d142"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/score-display.js?v=8c8f213a"></script>
 <script defer src="js/score-pad.js?v=03df3958"></script>
 <script defer src="js/score-kiosk.js?v=fda399fb"></script>
 <script defer src="js/official-call.js?v=7ae05fbc"></script>
-<script defer src="js/scorer.js?v=6a8f68b4"></script>
+<script defer src="js/scorer.js?v=a3178c76"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
 </body>

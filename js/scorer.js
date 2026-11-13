@@ -370,13 +370,16 @@ function saveSc() {
         var ms = parseInt(scMarker[savedHole]) || 0;
         var langIsEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (ms >= 1 && ms === scScore) {
+            scSaveStatus('Лунка ' + savedHole + ': сохранено на сервере, подтверждено маркером.', 'Hole ' + savedHole + ': saved on server, confirmed by marker.');
 
             if (typeof toast === 'function') toast(langIsEn ? ('✅ <b>Hole ' + escapeHtml(savedHole) + ' confirmed:</b> ' + escapeHtml(scScore)) : ('✅ <b>Лунка ' + escapeHtml(savedHole) + ' подтверждена:</b> ' + escapeHtml(scScore) + ' уд.'), 'success', { html: true });
             if (typeof vib === 'function') vib([50, 50]);
         } else if (ms >= 1 && ms !== scScore) {
+            scSaveStatus('Лунка ' + savedHole + ': сохранено на сервере, счёт не совпадает — проверьте.', 'Hole ' + savedHole + ': saved on server, mismatch — please check.');
 
             if (typeof toast === 'function') toast(langIsEn ? ('⚠️ <b>Mismatch on hole ' + escapeHtml(savedHole) + '!</b><br>You: <b>' + escapeHtml(scScore) + '</b>, marker: <b>' + escapeHtml(ms) + '</b>') : ('⚠️ <b>Несовпадение на лунке ' + escapeHtml(savedHole) + '!</b><br>Вы: <b>' + escapeHtml(scScore) + '</b>, маркер: <b>' + escapeHtml(ms) + '</b>'), 'error', { html: true });
         } else {
+            scSaveStatus('Лунка ' + savedHole + ': сохранено на сервере, ждём маркера.', 'Hole ' + savedHole + ': saved on server, waiting for marker.');
             if (typeof toast === 'function') toast(langIsEn ? ('⏳ <b>Hole ' + escapeHtml(savedHole) + ':</b> your score <b>' + escapeHtml(scScore) + '</b> is saved. Waiting for marker.') : ('⏳ <b>Лунка ' + escapeHtml(savedHole) + ':</b> ваш счёт <b>' + escapeHtml(scScore) + '</b> сохранён. Ждём маркера.'), 'info', { html: true });
             if (typeof vib === 'function') vib();
         }

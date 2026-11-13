@@ -1,4 +1,34 @@
-document.addEventListener('DOMContentLoaded', function() { initNav(); });
+document.addEventListener('DOMContentLoaded', function() {
+    initNav();
+    syncCalcTees();
+    var disclosure = document.getElementById('hcp-table-disclosure');
+    if (disclosure) disclosure.addEventListener('toggle', syncCalculatorTable);
+});
+
+function syncCalcTees() {
+    var gender = document.getElementById('calc-gender');
+    var tees = document.getElementById('calc-tee');
+    if (!gender || !tees) return;
+    Array.from(tees.options).forEach(function (option) {
+        var valid = !!(COURSE_RATINGS[gender.value] && COURSE_RATINGS[gender.value][option.value]);
+        option.disabled = !valid;
+        option.hidden = !valid;
+    });
+    if (!tees.selectedOptions.length || tees.selectedOptions[0].disabled) {
+        var first = Array.from(tees.options).find(function (option) { return !option.disabled; });
+        tees.value = first ? first.value : '';
+    }
+}
+
+function syncCalculatorTable() {
+    var disclosure = document.getElementById('hcp-table-disclosure');
+    if (!disclosure || !disclosure.open) return;
+    document.getElementById('tbl-gender').value = document.getElementById('calc-gender').value;
+    onGenderChange();
+    document.getElementById('tbl-tee').value = document.getElementById('calc-tee').value;
+    showTable();
+}
+
 
 function updateHcpTable() {
     onGenderChange();
@@ -7,6 +37,8 @@ function updateHcpTable() {
 function calcField() {
     var hcpInp = document.getElementById('calc-hcp');
     if (!hcpInp) return;
+    syncCalcTees();
+    syncCalculatorTable();
     var hcp = hcpInp.value;
     var genderSelect = document.getElementById('calc-gender');
     var teeSelect = document.getElementById('calc-tee');
@@ -15,7 +47,15 @@ function calcField() {
     var res = document.getElementById('calc-result');
     if (!res) return;
 
-    if (!hcp && hcp !== '0') { res.classList.add('hidden'); return; }
+    if (!hcp && hcp !== '0') { res.classList.add('hidden'); var emptyError = document.getElementById('calc-error'); if (emptyError) emptyError.hidden = true; return; }
+    var error = document.getElementById('calc-error');
+    var rating = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][tee];
+    var valid = !!rating && Number.isFinite(Number(String(hcp).replace(',', '.')));
+    if (error) {
+        error.hidden = valid;
+        error.textContent = typeof currentLang !== 'undefined' && currentLang === 'en' ? 'Enter a valid handicap and select rated tees.' : 'Введите корректный HCP и выберите ТИ с рейтингом.';
+    }
+    if (!valid) { res.classList.add('hidden'); return; }
     var field = getFieldHcp(hcp, tee, gender);
     var valEl = document.getElementById('calc-val');
     if (valEl) valEl.textContent = fmtFieldHcp(field);
@@ -43,7 +83,7 @@ function onGenderChange() {
     // CR/SR берём из COURSE_RATINGS (js/course-config.js): раньше значения
     // дублировались ручными строками и молча устаревали при правке рейтингов.
     var teeEmoji = { bk: '⬛', bl: '🟦', wh: '⬜', rd: '🟥' };
-    var teeCodes = (gender === 'men') ? ['bk', 'bl', 'wh', 'rd'] : ['bl', 'wh', 'rd'];
+    var teeCodes = Object.keys(COURSE_RATINGS[gender] || {});
     teeSel.innerHTML += teeCodes.map(function(code) {
         var r = COURSE_RATINGS[gender] && COURSE_RATINGS[gender][code];
         var label = t('tee_' + code) + (r ? ' (CR ' + Number(r.cr).toFixed(1) + ' / SR ' + r.sr + ')' : '');

@@ -1237,7 +1237,7 @@ function buildMobileDrawer() {
 
     if (isUserLoggedIn) {
         var avatarMarkup = fmtUserAvatar(currentUserData, 32);
-        authBtnMarkup = '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--input);padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;" data-act="closeMobileDrawer";openPlayerProfileModal(\'' + pestovoInlineJsArg(currentUser.uid) + '\')">' +
+        authBtnMarkup = '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--input);padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;" data-act="openPlayerProfileModal" data-then="closeMobileDrawer" data-arg="' + escapeHtml(currentUser.uid) + '">' +
             '<div style="display:flex;align-items:center;gap:10px;">' + avatarMarkup + '<strong style="color:var(--gold);font-size:14px;">' + escapeHtml(navShortUserName(currentUserData)) + '</strong></div>' +
             '<button class="btn btn-og btn-sm" data-act="doLogout" data-stop="1"><i class="fas fa-sign-out-alt"></i></button>' +
             '</div>';
@@ -7548,7 +7548,7 @@ function applyPageVisibilitySettings() {
         });
     });
 
-    var groups = document.querySelectorAll('.mobile-drawer-group, .nav-group, .menu-group, .footer-group');
+    var groups = document.querySelectorAll('.mobile-drawer-group, .nav-group, .menu-group, .footer-group, .clarity-nav-more');
     groups.forEach(function(group) {
         var links = group.querySelectorAll('a');
         if (links.length > 0) {

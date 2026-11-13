@@ -181,14 +181,14 @@ ok(CSS.indexOf('pv-setup-active') === -1,
 // Подпись «Отчество (необязательно)» занимает две строки, поле отчества
 // уезжало вниз относительно соседних (аудит 2026-11). Тянем контролы к низу
 // колонки — поля стоят на одной линии при любой длине подписи.
-ok(SETUP.indexOf('body.st-roundsetup-v2') !== -1 && SETUP.indexOf('#player-slots .form-group > .form-input { margin-top: auto; }') !== -1,
+ok(SETUP.indexOf('#player-slots .form-group > .form-input { margin-top: auto; }') !== -1,
     'setup-round.html: поля игрока выровнены по низу колонки');
 ok(/#player-slots \.form-group \{ display: flex; flex-direction: column; \}/.test(SETUP),
     'setup-round.html: колонка поля игрока — flex-колонка');
 ok(SETUP.indexOf('white-space: normal !important') !== -1,
     'setup-round.html: подписи полей игрока переносятся, а не обрезаются многоточием');
-ok(RS.indexOf('spx-mid') !== -1 && SETUP.indexOf('.spx-mid') !== -1,
-    'round-setup.js: у колонки отчества своя ширина (spx-mid)');
+ok(RS.indexOf('function setupPlayerRowHtml') === -1 && SETUP.indexOf('body.st-roundsetup-v2') === -1,
+    'round-setup: retired row renderer and alternate layout CSS removed');
 ok(read('tools/check-round-setup-mobile.js').indexOf('misalignedFields') !== -1,
     'check-round-setup-mobile.js: браузерный гейт выравнивания полей');
 

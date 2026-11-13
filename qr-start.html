@@ -169,8 +169,8 @@
             body.print-cards .div-inline { font-size:9px; }
         }
     </style>
-    <script defer src="js/clarity.js?v=f11af877"></script>
-    <link rel="stylesheet" href="css/clarity.css?v=c2790cf3">
+    <script defer src="js/clarity.js?v=a99465f1"></script>
+    <link rel="stylesheet" href="css/clarity.css?v=cb84b3ee">
 </head>
 <body>
     <div class="toolbar no-print" id="qr-toolbar">
@@ -184,10 +184,10 @@
                 <option value="quad">4 игрока — 1 карточка (2×2)</option>
             </select>
         </label>
-        <button class="btn btn-g" data-act="qrPrintMode" data-arg="cards"><i>🖨</i> Печать QR-карточек</button>
-        <button class="btn btn-og" data-act="qrPrintMode" data-arg="sheet"><i>📋</i> Печать стартового листа</button>
+
+
         <button class="btn btn-ol" id="qr-retry-btn" hidden data-act="qrRetryFailed"><i>🔄</i> QR заново</button>
-        <span id="qr-status" style="font-size:12px;color:#ffe9a8;margin-left:auto;"></span>
+        <label class="clarity-print-choice">Документ: <select id="qr-document"><option value="cards">QR-карточки</option><option value="sheet">Стартовый лист</option></select></label><button type="button" class="btn btn-g" id="qr-print-selected">Печать</button><span id="qr-status" style="font-size:12px;color:#ffe9a8;margin-left:auto;"></span>
     </div>
     <div id="qr-body">
         <div class="spinner" id="qr-loading">Загрузка протокола…</div>
@@ -203,6 +203,6 @@
 <script defer src="js/vendor/qrcode-generator-utf8.js?v=cc538413"></script>
 <script defer src="js/qr-code.js?v=2a26e819"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/qr-start.js?v=caeea9eb"></script>
+<script defer src="js/qr-start.js?v=c875a34b"></script>
 </body>
 </html>

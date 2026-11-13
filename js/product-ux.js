@@ -75,6 +75,7 @@
             var a = document.createElement(item.more ? 'button' : 'a');
             if (item.more) {
                 a.type = 'button';
+                if (['players.html', 'tournaments.html', 'stats.html', 'handicap.html'].indexOf(page) !== -1) a.setAttribute('aria-current', 'true');
                 a.setAttribute('aria-controls', 'mobile-drawer-root');
                 a.addEventListener('click', function () {
                     if (typeof window.openMobileDrawer === 'function') window.openMobileDrawer();

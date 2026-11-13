@@ -25,8 +25,8 @@
     <link rel="stylesheet" href="css/fonts-local.css?v=8523462a">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="stylesheet" href="css/fontawesome-subset.css?v=f83958d8">
-    <script defer src="js/clarity.js?v=f11af877"></script>
-    <link rel="stylesheet" href="css/clarity.css?v=c2790cf3">
+    <script defer src="js/clarity.js?v=a99465f1"></script>
+    <link rel="stylesheet" href="css/clarity.css?v=cb84b3ee">
 </head>
 <body>
 <nav class="nav" id="main-nav"><div class="container nav-c">
@@ -42,7 +42,7 @@
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
         <a href="setup-round.html" class="nav-link" data-i18n="nav_round">Раунд</a>
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
-        <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
+        <details class="clarity-nav-more"><summary data-clarity-ru="Ещё" data-clarity-en="More">Ещё</summary><div class="clarity-nav-panel"><a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a></div></details>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
 <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
@@ -67,7 +67,7 @@
         <form data-sub-act="adminLogin" data-sub-ev="1" data-prevent="1">
             <div class="form-group">
                 <label data-i18n="password" for="adm-master-pass"><i class="fas fa-key"></i> Пароль</label>
-                <input type="password" id="adm-master-pass" class="form-input" autocomplete="current-password" placeholder="••••••••">
+                <input type="password" id="adm-master-pass" class="form-input" autocomplete="current-password" placeholder="••••••••"><button type="button" class="clarity-password" aria-controls="adm-master-pass" aria-pressed="false" data-password-toggle="adm-master-pass">Показать пароль</button>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
                 <small style="color:var(--muted);" data-i18n="admin_master_session_hint">Сессия по мастер-паролю действует до закрытия браузера</small>
@@ -1086,7 +1086,7 @@
                     <button type="button" class="btn btn-danger" data-act="dspAdminResetAll"><i class="fas fa-rotate-left"></i> <span data-i18n="design_reset_btn">Вернуть текущий дизайн</span></button>
                 </div>
                 <p class="dsp-note" id="dsp-status" style="margin-top:12px;"></p>
-            </div>
+            </div><details class="clarity-disclosure" ><summary data-clarity-ru="Расширенное оформление страниц и блоков" data-clarity-en="Advanced page and block styles">Расширенное оформление страниц и блоков</summary>
 
             <div class="card" style="margin-bottom:20px;">
                 <h2><i class="fas fa-file-lines"></i> <span data-i18n="design_pages_title">Шаблон для каждой страницы</span></h2>
@@ -1103,20 +1103,20 @@
                 </p>
                 <div id="dsp-blocks-wrap"></div>
             </div>
-        </div>
+        </details></div>
 
 
     </div>
 </main>
 
-<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><p class="site-version">Версия сайта: <span class="version-number">1.131.0</span></p></div></div></footer>
+<footer class="footer"><div class="container"><div class="footer-bottom"><p data-i18n="footer_club">&copy; 2024 Пестово</p><details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.132.0</span></p></details></div></div></footer>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="js/firebase-config.js?v=032a2499"></script>
 <script type="module" src="dist/livescoring-modules.js?v=2b6fd436"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=07c25cb7"></script>
+<script defer src="js/utils.js?v=15c1d142"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/admin-lazy.js?v=f7dee202"></script>
 <script defer src="js/admin.js?v=c796ee9c"></script>

@@ -11,15 +11,7 @@
 //   • 2+ игроков → mode='group' (двойной ввод, маркеры по кругу).
 // Экран ввода счёта после старта тоже один (setup-round.html).
 //
-// 5 вариантов отображения блока выбирает ТОЛЬКО админ (админ-панель →
-// «Создание раунда (5 видов)»), сохраняется в settings/round_setup_view
-// и применяется для всех (механизм view5 из js/utils.js):
-//   1 · Классика   — аккордеон, по одной карточке раскрыта;
-//   2 · Всё открыто — все карточки раскрыты, 2 колонки на широких экранах;
-//   3 · Список     — компактные строки (один игрок — одна строка);
-//   4 · Витрина    — наглядные карточки с аватарами и цветом ТИ;
-//   5 · По шагам   — мастер «Параметры → Игроки → Старт».
-// ═════════════════════════════════════════════════════════════════
+// Один аккордеон для всех. Совместимость сохранённых настроек — getRoundSetupView().
 var SETUP_MAX_PLAYERS = 6;
 var setupPlayerOrder = [1];  // индексы карточек игроков, в порядке формы
 var setupPlayerSeq = 1;      // счётчик следующего индекса
@@ -110,32 +102,6 @@ function setupPlayerCardHtml(idx, opts) {
     return '<div class="' + cls + '" data-pidx="' + idx + '">' + head + body + '</div>';
 }
 
-// Компактная строка игрока (вариант «Список»).
-function setupPlayerRowHtml(idx, opts) {
-    opts = opts || {};
-    var isEn = false;
-    try { isEn = currentLang === 'en'; } catch (e) { isEn = false; }
-
-    var fields =
-        '<div class="form-group spx-name" style="position:relative;"><label>' + t('first_name') + ' & ' + t('last_name') + '</label>' +
-            '<input type="text" id="pl-name-' + idx + '" class="form-input" placeholder="' + (isEn ? 'John Doe' : 'Имя Фамилия') + '">' +
-            '<input type="hidden" id="pl-uid-' + idx + '" value="">' +
-        '</div>' +
-        '<div class="form-group spx-mid"><label>' + t('middle_name') + '</label><input type="text" id="pl-mid-' + idx + '" class="form-input" placeholder="' + (isEn ? 'Jr.' : 'Отчество') + '"></div>' +
-        '<div class="form-group"><label>' + t('gender_label') + '</label><select id="pl-gender-' + idx + '" class="form-input" data-act="onPlayerGenderOrTeeChange" data-arg="' + idx + '"><option value="men">' + t('men') + '</option><option value="women">' + t('women') + '</option></select></div>' +
-        '<div class="form-group"><label>' + t('tee_select') + '</label><select id="pl-tee-' + idx + '" class="form-input" data-act="calcPlayerFieldHcp" data-arg="' + idx + '"><option value="bk">' + t('tee_opt_bk') + '</option><option value="bl" selected>' + t('tee_opt_bl') + '</option><option value="wh">' + t('tee_opt_wh') + '</option><option value="rd">' + t('tee_opt_rd') + '</option></select></div>' +
-            '<div class="form-group"><label class="setup-hcp-label"><span>' + t('exact_hcp') + '</span><button type="button" id="pl-hcp-refresh-' + idx + '" class="setup-hcp-refresh hidden" data-act="refreshSetupPlayerHandicap" data-arg="' + idx + '" title="' + t('refresh_hcp_from_rusgolf') + '" aria-label="' + t('refresh_hcp_from_rusgolf') + '" aria-hidden="true"><i class="fas fa-rotate"></i></button></label><input type="text" inputmode="decimal" id="pl-hcp-' + idx + '" class="form-input" placeholder="+2.4 / 12.4" data-act="calcPlayerFieldHcp" data-arg="' + idx + '"></div>' +
-        '<div class="form-group"><label>' + t('field_auto') + '</label><input type="text" id="pl-field-' + idx + '" class="form-input" readonly placeholder="—"></div>';
-
-    return '<div class="setup-player-card spc spc-row open" data-pidx="' + idx + '">' +
-        '<span class="spc-avatar" id="spc-avatar-' + idx + '">' + escapeHtml(spcAvatarText(opts.name || '', idx)) + '</span>' +
-        '<div class="form-row spc-row-fields">' + fields + '</div>' +
-        (!opts.first
-            ? '<button type="button" class="spc-remove" title="' + t('remove_player_btn') + '" aria-label="' + t('remove_player_btn') + '" data-act="removeSetupPlayer" data-arg="' + idx + '"><i class="fas fa-user-minus"></i></button>'
-            : '') +
-        '</div>';
-}
-
 // ──────────────────────── РЕНДЕР СЛОТОВ ────────────────────────
 
 // Автозаполнение из списка зарегистрированных (как в прежней вкладке группы).
@@ -191,7 +157,6 @@ function setupPlayerOnClear(idx) {
 function renderSetupPlayers(preserve) {
     var el = document.getElementById('player-slots');
     if (!el) return;
-    var variant = setupVariant();
 
     var saved = {};
     if (preserve) {
@@ -215,24 +180,10 @@ function renderSetupPlayers(preserve) {
     var html = '';
     setupPlayerIndices().forEach(function(idx, pos) {
         var s = saved[idx] || {};
-        if (variant === '3') {
-            html += setupPlayerRowHtml(idx, { first: pos === 0, name: s.name });
-        } else {
-            var open;
-            if (variant === '2' || variant === '4') open = true;
-            // null = карточки ещё не было (первый рендер) — первая раскрыта
-            else open = (s.open !== null && s.open !== undefined) ? s.open : (pos === 0);
-            html += setupPlayerCardHtml(idx, {
-                open: open,
-                rich: variant === '4',
-                first: pos === 0,
-                you: pos === 0 && isYou,
-                name: s.name
-            });
-        }
+        var open = (s.open !== null && s.open !== undefined) ? s.open : (pos === 0);
+        html += setupPlayerCardHtml(idx, { open: open, first: pos === 0, you: pos === 0 && isYou, name: s.name });
     });
     el.innerHTML = html;
-    el.classList.toggle('unified-slots-grid', variant === '2');
 
     // Поиск/автозаполнение зарегистрированных игроков по имени
     setupPlayerIndices().forEach(function(idx) {
@@ -315,7 +266,7 @@ function addSetupPlayer() {
         try { inp.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* игнорируем */ }
     }
     // Мастер: новый игрок виден на шаге 2
-    if (setupVariant() === '5') { setupWizardStep = 2; applyUnifiedStep(); }
+
     if (typeof vib === 'function') vib(15);
 }
 
@@ -801,99 +752,16 @@ function startUnifiedRound() {
 // ──────────────── МАСТЕР «ПО ШАГАМ» (вариант 5) ────────────────
 
 function applyUnifiedStep() {
-    var secs = document.querySelectorAll('.unified-sec');
-    var bar = document.getElementById('unified-wizard');
-    var sum = document.getElementById('unified-summary');
-    if (setupVariant() !== '5') {
-        // Не-мастерские варианты: все секции сразу
-        for (var i = 0; i < secs.length; i++) secs[i].classList.remove('hidden');
-        if (bar) bar.classList.add('hidden');
-        if (sum) sum.classList.add('hidden');
-        return;
-    }
-    if (bar) bar.classList.remove('hidden');
-    // Убираем статический мобильный степпер — у мастера свой
-    var p0 = document.getElementById('p0-wizard-steps');
-    if (p0 && p0.parentNode) p0.parentNode.removeChild(p0);
-    for (var k = 0; k < secs.length; k++) {
-        var n = parseInt(secs[k].getAttribute('data-unif-sec'), 10) || 0;
-        secs[k].classList.toggle('hidden', n !== setupWizardStep);
-    }
-    var stepsEl = document.getElementById('unified-steps');
-    if (stepsEl) {
-        var labels = [t('wiz_step_1'), t('wiz_step_2'), t('wiz_step_3')];
-        stepsEl.innerHTML = labels.map(function(lb, i) {
-            var cls = 'unified-step' + (i + 1 === setupWizardStep ? ' active' : (i + 1 < setupWizardStep ? ' done' : ''));
-            return '<button type="button" class="' + cls + '"' + (i + 1 === setupWizardStep ? ' aria-current="step"' : '') + ' data-act="unifiedStepGo" data-arg="' + (i + 1) + '"><span>' + (i + 1) + '</span>' + lb + '</button>';
-        }).join('');
-    }
-    var back = document.getElementById('unified-back-btn');
-    var next = document.getElementById('unified-next-btn');
-    if (back) back.classList.toggle('hidden', setupWizardStep === 1);
-    if (next) next.classList.toggle('hidden', setupWizardStep === 3);
-    if (setupWizardStep === 3) renderUnifiedSummary();
-    else if (sum) sum.classList.add('hidden');
+    document.querySelectorAll('.unified-sec').forEach(function (section) { section.classList.remove('hidden'); });
+    var wizard = document.getElementById('unified-wizard');
+    if (wizard) wizard.classList.add('hidden');
+    var summary = document.getElementById('unified-summary');
+    if (summary) summary.classList.add('hidden');
 }
 
-function unifiedStepNext() {
-    if (setupVariant() !== '5' || setupWizardStep >= 3) return;
-    setupWizardStep += 1;
-    applyUnifiedStep();
-}
-
-function unifiedStepPrev() {
-    if (setupVariant() !== '5' || setupWizardStep <= 1) return;
-    setupWizardStep -= 1;
-    applyUnifiedStep();
-}
-
-function unifiedStepGo(n) {
-    n = parseInt(n, 10);
-    if (setupVariant() !== '5' || !(n >= 1 && n <= 3)) return;
-    setupWizardStep = n;
-    applyUnifiedStep();
-}
-
-function renderUnifiedSummary() {
-    var el = document.getElementById('unified-summary');
-    if (!el) return;
-    var ps = getSetupPlayers();
-    var timeEl = document.getElementById('grp-time');
-    var holeEl = document.getElementById('grp-hole');
-    var rangeEl = document.getElementById('grp-range');
-    var fmtEl = document.getElementById('grp-format');
-
-    var rows = '';
-    ps.forEach(function(p, i) {
-        var ini = spcAvatarText(p.name, i + 1);
-        var fEl = document.getElementById('pl-field-' + p.idx);
-        var teeCode = typeof pestovoNormalizeTeeCode === 'function' ? pestovoNormalizeTeeCode(p.tee) : 'wh';
-        var teeName = typeof pestovoTeeLabel === 'function' ? pestovoTeeLabel(teeCode) : 'Белый';
-        rows += '<div class="us-row">' +
-            '<span class="spc-avatar">' + escapeHtml(ini) + '</span>' +
-            '<span class="us-name">' + (p.name ? escapeHtml(p.name) : (t('player') + ' #' + p.idx)) + '</span>' +
-            '<span class="tee-pill tee-' + teeCode + '" style="font-size:9.5px;padding:1px 7px;">' + escapeHtml(teeName) + '</span>' +
-            '<span style="color:var(--muted);font-size:12px;">' + (fEl && fEl.value ? escapeHtml(fEl.value) : '—') + '</span>' +
-            '</div>';
-    });
-
-    // Значения формы (time/select) приходят из собственных полей страницы,
-    // но сводка собирается конкатенацией — экранируем одинаково со всем остальным.
-    var meta = (timeEl && timeEl.value)
-        ? '<i class="fas fa-clock"></i> ' + escapeHtml(timeEl.value) +
-          ' · <i class="fas fa-flag"></i> ' + t('start_hole') + ': ' + (holeEl ? escapeHtml(holeEl.value) : '—') +
-          ' · ' + (rangeEl ? escapeHtml(rangeEl.value) : '1-18') +
-          ' · ' + (fmtEl ? escapeHtml(fmtEl.value) : '')
-        : '';
-
-    el.innerHTML = '<div class="us-title"><i class="fas fa-circle-check"></i> ' + t('unified_summary_title') +
-        ' · ' + ps.length + ' ' + (currentLang === 'en' ? 'player(s)' : 'игроков') + '</div>' +
-        rows + (meta ? '<div class="us-meta">' + meta + '</div>' : '');
-    el.classList.remove('hidden');
-}
-
-// ──────────────────────── ИНИЦИАЛИЗАЦИЯ ────────────────────────
-
+// Compatibility for previously cached setup pages; there are no wizard steps now.
+function unifiedStepNext() { applyUnifiedStep(); }
+function unifiedStepPrev() { applyUnifiedStep(); }
 function initUnifiedSetup() {
     var el = document.getElementById('setup');
     if (!el || el.classList.contains('hidden')) return;

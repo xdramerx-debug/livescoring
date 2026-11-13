@@ -25,8 +25,7 @@
     <style>
         /* ═══════════════════════════════════════════════════════════
            ЕДИНЫЙ БЛОК «СОЗДАНИЕ РАУНДА» (v1.69.0)
-           Одна форма для соло и группы. 5 вариантов вида выбирает
-           только админ (body.st-roundsetup-v2 … v5). Логика —
+           Одна форма для соло и группы. Единый аккордеон. Логика —
            js/round-setup.js.
            ═══════════════════════════════════════════════════════════ */
         .unified-hint { color: var(--muted); font-size: 13px; margin: 6px 0 18px; line-height: 1.5; }
@@ -67,40 +66,6 @@
 
         /* ── Вариант 1 (по умолчанию): аккордеон, одна раскрыта ── */
 
-        /* ── Вариант 2: всё открыто, 2 колонки на широком экране ── */
-        /* minmax(0, 1fr), а не 1fr: иначе колонка не сжимается ниже
-           min-content содержимого (шапка карточки с кнопками) и на узком
-           экране вылезает за viewport вместе с полями ввода. */
-        body.st-roundsetup-v2 #player-slots.unified-slots-grid {
-            display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px;
-        }
-        @media (min-width: 760px) {
-            body.st-roundsetup-v2 #player-slots.unified-slots-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-            body.st-roundsetup-v2 #player-slots.unified-slots-grid .setup-player-card { margin-bottom: 0; }
-        }
-        body.st-roundsetup-v2 #player-slots .setup-player-card:not(.open) > .form-row { display: flex !important; }
-        body.st-roundsetup-v2 #player-slots .setup-player-card:not(.open) .form-row .form-group { display: block !important; }
-        body.st-roundsetup-v2 #player-slots .setup-player-head .fa-chevron-down { display: none; }
-
-        /* ── Вариант 3: компактный список (игрок = одна строка) ── */
-        .spc-row { display: flex; align-items: flex-end; gap: 10px; padding: 10px 12px; }
-        .spc-row .spc-avatar { width: 32px; height: 32px; margin-bottom: 2px; }
-        .spc-row .spc-remove { margin-bottom: 2px; }
-        .spc-row .spc-row-fields { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 0; }
-        .spc-row .spc-row-fields .form-group { flex: 1 1 110px; min-width: 0; margin: 0; }
-        .spc-row .spc-row-fields .form-group.spx-name { flex: 2 1 180px; }
-        /* «Отчество (необязательно)» — самая длинная подпись во всей форме:
-           колонке нужно чуть больше ширины, чтобы подпись осталась в одну
-           строку на десктопе. */
-        .spc-row .spc-row-fields .form-group.spx-mid { flex: 1.5 1 150px; }
-        .spc-row .spc-row-fields label { font-size: 10.5px; margin-bottom: 3px; }
-        .spc-row .spc-row-fields .form-input { padding: 8px 10px; font-size: 13px; }
-        @media (max-width: 520px) {
-            .spc-row { flex-wrap: wrap; }
-            .spc-row .spc-row-fields { flex-basis: 100%; }
-            .spc-row .spc-remove { margin-left: auto; }
-        }
-
         /* ── Выравнивание полей игрока по одной линии ─────────────────────
            Подписи полей разной длины: «Отчество (необязательно)» занимает
            две строки, «Пол» — одну. Пока поля шли от верхнего края колонки,
@@ -123,40 +88,6 @@
                 line-height: 1.25;
             }
         }
-
-        /* ── Вариант 4: витрина — крупные наглядные карточки ── */
-        body.st-roundsetup-v4 #player-slots .setup-player-card { padding: 14px 16px; }
-        body.st-roundsetup-v4 #player-slots .spc-rich .spc-avatar {
-            width: 40px; height: 40px; font-size: 15px;
-            background: rgba(201,168,76,0.18);
-        }
-        body.st-roundsetup-v4 #player-slots .spc-rich .setup-player-head { font-size: 14px; }
-        body.st-roundsetup-v4 #player-slots .setup-player-card:not(.open) > .form-row { display: flex !important; }
-        body.st-roundsetup-v4 #player-slots .setup-player-card:not(.open) .form-row .form-group { display: block !important; }
-        body.st-roundsetup-v4 #player-slots .setup-player-head .fa-chevron-down { display: none; }
-
-        /* ── Вариант 5: мастер «По шагам» ── */
-        .unified-wizard { margin-bottom: 16px; }
-        .unified-steps { display: flex; gap: 6px; }
-        .unified-step {
-            flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
-            padding: 9px 6px; border-radius: 10px; background: rgba(255,255,255,0.04);
-            border: 1px solid var(--border); color: var(--muted); font-size: 12px;
-            font-weight: 700; cursor: pointer; transition: all 0.18s ease;
-            font-family: inherit;
-        }
-        .unified-step span {
-            width: 20px; height: 20px; border-radius: 50%; flex: 0 0 auto;
-            display: inline-flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.08); font-size: 11px;
-        }
-        .unified-step.active { background: rgba(201,168,76,0.16); border-color: var(--gold); color: var(--gold); }
-        .unified-step.active span { background: var(--gold); color: #0b1a0e; }
-        .unified-step.done { color: var(--text); }
-        .unified-step.done span { background: rgba(46,204,113,0.2); color: #2ecc71; }
-        .unified-wizard-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; }
-        .unified-wizard-nav-btn { flex: 0 1 auto; min-height: 44px; }
-        @media (max-width: 420px) { .unified-step { font-size: 11px; padding: 8px 4px; } }
 
         /* Сводка на шаге «Старт» (мастер) */
         .unified-summary {
@@ -209,8 +140,8 @@
         }
         body.round-active .round-event-banner:not(.hidden) { display: block; }
     </style>
-    <script defer src="js/clarity.js?v=f11af877"></script>
-    <link rel="stylesheet" href="css/clarity.css?v=c2790cf3">
+    <script defer src="js/clarity.js?v=a99465f1"></script>
+    <link rel="stylesheet" href="css/clarity.css?v=cb84b3ee">
 </head>
 <body class="score-compact pv-ux pv-setup pv-has-bottomnav">
 <a class="pv-skip-link" href="#pv-main" data-i18n="pv_skip_content">К содержимому</a>
@@ -229,7 +160,7 @@
         <a href="index.html" class="nav-link" data-i18n="nav_home">Главная</a>
         <a href="setup-round.html" class="nav-link active" data-i18n="nav_round">Раунд</a>
         <a href="leaderboard.html" class="nav-link" data-i18n="nav_leaderboard">Все раунды</a>
-        <a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a>
+        <details class="clarity-nav-more"><summary data-clarity-ru="Ещё" data-clarity-en="More">Ещё</summary><div class="clarity-nav-panel"><a href="players.html" class="nav-link" data-i18n="nav_players">Игроки</a></div></details>
         <a href="tournaments.html" class="nav-link" data-i18n="nav_tournaments">Турниры</a>
         <a href="stats.html" class="nav-link" data-i18n="nav_stats">Статистика</a>
 <a href="handicap.html" class="nav-link" data-i18n="nav_handicaps">Гандикапы</a>
@@ -278,7 +209,15 @@
          Игроков добавляет кнопка «Добавить игрока». 5 вариантов вида блока
          выбирает только админ (админ-панель → «Создание раунда (5 видов)»).
          Логика: js/round-setup.js (карточки pl-*, параметры grp-*). -->
-    <div id="setup">
+    <div id="setup"><details class="clarity-disclosure" ><summary data-clarity-ru="Найти незавершённый раунд" data-clarity-en="Find an unfinished round">Найти незавершённый раунд</summary><div class="card" id="fio-resume-card" style="margin-top:24px;">
+        <h2 style="margin-top:0;"><i class="fas fa-rotate-left"></i> <span data-i18n="fio_resume_title">Продолжить игру по ФИО</span></h2>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px;" data-i18n="fio_resume_desc">Если телефон разрядился — введите имя и фамилию, чтобы найти незавершённый раунд и продолжить (дата/время старта, текущая лунка).</p>
+        <div class="form-row" style="align-items:flex-end;">
+            <div class="form-group" style="flex:1 1 200px;"><label data-i18n="fio_label" for="fio-resume-input">Имя Фамилия</label><input type="text" id="fio-resume-input" class="form-input" placeholder="Иван Петров"></div>
+            <div class="form-group" style="flex:0 0 auto;"><label>&nbsp;</label><button class="btn btn-g" data-act="searchFioResume" style="min-height:40px;"><i class="fas fa-search"></i> <span data-i18n="search_btn">Найти</span></button></div>
+        </div>
+        <div id="fio-resume-results" style="margin-top:12px;"></div>
+    </div></details>
 
         <!-- Мастер «По шагам» — вариант 5 (остальные видны сразу) -->
         <div id="unified-wizard" class="unified-wizard hidden">
@@ -333,8 +272,8 @@
 
             <!-- ШАГ 3: ТАЙМИНГИ + СТАРТ -->
             <div class="unified-sec" data-unif-sec="3" id="unif-sec-3">
-                <h3 class="setup-section-title"><i class="fas fa-info-circle"></i> <span data-i18n="timings_title">Тайминги</span></h3>
-                <div id="grp-timing-preview"></div>
+                <details class="clarity-disclosure" ><summary data-clarity-ru="План прохождения" data-clarity-en="Pace plan">План прохождения</summary><h3 class="setup-section-title"><i class="fas fa-info-circle"></i> <span data-i18n="timings_title">Тайминги</span></h3>
+                <div id="grp-timing-preview"></div></details>
                 <div class="unified-summary hidden" id="unified-summary"></div>
                 <button class="btn btn-g btn-block" id="unified-start-btn" data-act="startUnifiedRound" style="margin-top:12px;min-height:52px;padding:16px;font-size:16px;">
                     <i class="fas fa-play"></i> <span data-i18n="start_round_btn">Начать раунд</span>
@@ -451,7 +390,7 @@
                 <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="9">9</button>
                 <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="10">10</button>
                 <button type="button" class="score-pad-key score-pad-par" data-act="setScorePadPar" data-i18n="score_pad_par">Пар</button>
-            </div>
+            <button type="button" class="score-pad-key" data-act="setScorePad" data-arg="11">11</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="12">12</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="13">13</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="14">14</button><button type="button" class="score-pad-key" data-act="setScorePad" data-arg="15">15</button></div>
             <div class="score-toolbar">
                 <button type="button" class="btn btn-ol" data-act="undoLastHole"><i class="fas fa-rotate-left"></i> <span data-i18n="undo_last_hole">Отменить лунку</span></button>
                 <button type="button" class="btn btn-ol" data-act="toggleLargeUi"><i class="fas fa-expand"></i> <span data-i18n="large_ui_btn">Крупно</span></button>
@@ -519,23 +458,15 @@
         <button id="group-force-finish-btn" data-screen-display="scoring" data-display-key="finish" class="btn btn-ol btn-sm btn-block hidden" style="margin-bottom:12px;font-size:12px;opacity:0.9;" type="button" data-act="pestovoGroupForceFinish">
             <i class="fas fa-forward"></i> <span data-i18n="force_finish_btn">Завершить раунд принудительно (сохранить счёт)</span>
         </button>
-        <label class="stableford-display-control" id="group-stableford-control" data-screen-display="scoring" data-display-key="stableford">
+        <details class="clarity-disclosure" ><summary data-clarity-ru="Параметры раунда" data-clarity-en="Round preferences">Параметры раунда</summary><label class="clarity-input-choice"><span data-clarity-ru="Ввод счёта" data-clarity-en="Score input">Ввод счёта</span><select class="form-input" data-score-input-method><option value="pad" data-clarity-ru="Выбор числа" data-clarity-en="Number pad">Выбор числа</option><option value="stepper" data-clarity-ru="Плюс / минус" data-clarity-en="Plus / minus">Плюс / минус</option></select></label><label class="stableford-display-control" id="group-stableford-control" data-screen-display="scoring" data-display-key="stableford">
             <input type="checkbox" id="group-stableford-toggle" data-act="toggleGroupStablefordDisplay" data-checked="1">
             <span><strong><i class="fas fa-star"></i> <span data-i18n="show_stableford_points">Показывать очки Stableford</span></strong><small data-i18n="show_stableford_points_hint">Очки с учётом полевой форы будут показаны рядом с введённым счётом. Эта настройка сохраняется только для вас.</small></span>
-        </label>
+        </label></details>
     </div>
 
 
     <!-- БЛОК "ПРОДОЛЖИТЬ ПО ФИО" — в самом низу страницы -->
-    <div class="card" id="fio-resume-card" style="margin-top:24px;">
-        <h2 style="margin-top:0;"><i class="fas fa-rotate-left"></i> <span data-i18n="fio_resume_title">Продолжить игру по ФИО</span></h2>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:10px;" data-i18n="fio_resume_desc">Если телефон разрядился — введите имя и фамилию, чтобы найти незавершённый раунд и продолжить (дата/время старта, текущая лунка).</p>
-        <div class="form-row" style="align-items:flex-end;">
-            <div class="form-group" style="flex:1 1 200px;"><label data-i18n="fio_label" for="fio-resume-input">Имя Фамилия</label><input type="text" id="fio-resume-input" class="form-input" placeholder="Иван Петров"></div>
-            <div class="form-group" style="flex:0 0 auto;"><label>&nbsp;</label><button class="btn btn-g" data-act="searchFioResume" style="min-height:40px;"><i class="fas fa-search"></i> <span data-i18n="search_btn">Найти</span></button></div>
-        </div>
-        <div id="fio-resume-results" style="margin-top:12px;"></div>
-    </div>
+
 
 </main>
 
@@ -543,7 +474,7 @@
     <div class="container">
         <div class="footer-bottom">
             <p data-i18n="footer_club">&copy; 2024 Пестово</p>
-            <p class="site-version">Версия сайта: <span class="version-number">1.131.0</span></p>
+            <details class="clarity-disclosure" ><summary data-clarity-ru="О приложении" data-clarity-en="About this app">О приложении</summary><p class="site-version">Версия сайта: <span class="version-number">1.132.0</span></p></details>
         </div>
     </div>
 </footer>
@@ -559,7 +490,7 @@
 <script defer src="js/rusgolf-client.js?v=f37608e7"></script>
 <script defer src="js/name-variants.js?v=2b58f796"></script>
 <script defer src="js/qr-url.js?v=fb4a1649"></script>
-<script defer src="js/utils.js?v=07c25cb7"></script>
+<script defer src="js/utils.js?v=15c1d142"></script>
 <script defer src="js/utils-scorecards.js?v=9f6de5ad"></script>
 <script defer src="js/entry-scorecard.js?v=9b8c4167"></script>
 <script defer src="js/score-kiosk.js?v=fda399fb"></script>
@@ -568,10 +499,10 @@
 <script defer src="js/score-display.js?v=8c8f213a"></script>
 <script defer src="js/live.js?v=4174105b"></script>
 <script defer src="js/solo.js?v=8ebc1f83"></script>
-<script defer src="js/round-setup.js?v=af66b14f"></script>
+<script defer src="js/round-setup.js?v=3a46402a"></script>
 <script defer src="js/score-write.js?v=568de45f"></script>
 <script defer src="js/pwa.js?v=ac9c44fd"></script>
-<script defer src="js/product-ux.js?v=6525e431"></script>
+<script defer src="js/product-ux.js?v=ba65f386"></script>
 <script defer src="js/setup-round-fio.js?v=662ab87b"></script>
 </body>
 </html>

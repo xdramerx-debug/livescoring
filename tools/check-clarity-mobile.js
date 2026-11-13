@@ -12,7 +12,7 @@ const root = path.join(__dirname, '..');
         env: process.env.CHROMIUM_EXTRA_LIBS ? { ...process.env, LD_LIBRARY_PATH: process.env.CHROMIUM_EXTRA_LIBS } : undefined });
     try {
         for (const width of [320, 390, 768]) {
-            for (const name of ['index.html', 'players.html', 'leaderboard.html', 'setup-round.html', 'scorer.html', 'marker.html', 'auth.html', 'handicap.html', 'qr-start.html']) {
+            for (const name of ['index.html', 'players.html', 'leaderboard.html', 'setup-round.html', 'scorer.html', 'marker.html', 'auth.html', 'stats.html', 'handicap.html', 'qr-start.html']) {
                 const page = await browser.newPage({ viewport: { width, height: 844 } });
                 const errors = [];
                 page.on('pageerror', error => errors.push(error.message));
@@ -37,9 +37,18 @@ const root = path.join(__dirname, '..');
                 }
                 if (['scorer.html', 'marker.html', 'setup-round.html'].includes(name)) {
                     const pad = page.locator('.score-pad').first();
-                    assert(!await pad.isVisible(), 'Quick input starts collapsed');
-                    await pad.locator('..').locator('summary').click();
-                    assert(await pad.isVisible(), 'Quick input remains available');
+                    assert(await pad.isVisible(), 'Number input is visible by default');
+                    assert.strictEqual(await page.locator('[data-act="toggleLargeUi"]').first().evaluate(el => el.closest('details')), null, 'large mode is not nested');
+                    await page.evaluate(() => {
+                        window.scScore = 0; window.mkScore = 0; window.myScore = 0;
+                        window.updDisp = function () {}; window.updScoreDisplay = function () {};
+                    });
+                    await page.addScriptTag({ path: path.join(root, 'js/ui-events.js') });
+                    await page.addScriptTag({ path: path.join(root, 'js/score-pad.js') });
+                    assert.strictEqual(await page.evaluate(() => scScore + mkScore + myScore), 0, 'no implicit score');
+                    await pad.locator('[data-arg="5"]').click();
+                    assert.strictEqual(await page.evaluate(() => scScore + mkScore + myScore), 5, 'score 5 entered with one tap');
+
                 }
                 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
                 assert(!overflow, name + ' fits ' + width + 'px');
@@ -47,6 +56,6 @@ const root = path.join(__dirname, '..');
                 await page.close();
             }
         }
-        console.log('PASS: clarity layer on 9 routes × 3 widths, search, score input, home offset and no overflow');
+        console.log('PASS: clarity layer on 10 routes × 3 widths, search, score input, home offset and no overflow');
     } finally { await browser.close(); }
 }()).catch(error => { console.error(error); process.exit(1); });

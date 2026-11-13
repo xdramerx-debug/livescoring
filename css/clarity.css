@@ -57,3 +57,10 @@ body.pv-home { padding-top: var(--nav-h, 70px); }
 .clarity-nav-more[open] { border-color: transparent; background: transparent; }
 .clarity-nav-panel { position: absolute; top: 100%; right: 0; z-index: 1010; min-width: 210px; padding: 8px; background: var(--card, #132218); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 28px rgba(0, 0, 0, .25); }
 .clarity-nav-panel > .nav-link { display: block; min-height: 44px; white-space: nowrap; }
+/* Fast input is primary, without inserting a result before a deliberate tap. */
+body[data-score-input="pad"] .score-entry .score-btns { display: none !important; }
+body[data-score-input="stepper"] .score-entry .score-pad { display: none !important; }
+.clarity-input-choice { display: grid; gap: 8px; padding-block: 8px; }
+.stats-more { grid-column: 1 / -1; }
+body.pv-ux .pv-bottomnav button[aria-current] { color: var(--gold-l); }
+body.pv-ux .pv-bottomnav button[aria-current] .pv-bn-dot { opacity: 1; }

@@ -64,3 +64,47 @@ body[data-score-input="stepper"] .score-entry .score-pad { display: none !import
 .stats-more { grid-column: 1 / -1; }
 body.pv-ux .pv-bottomnav button[aria-current] { color: var(--gold-l); }
 body.pv-ux .pv-bottomnav button[aria-current] .pv-bn-dot { opacity: 1; }
+
+/* Shared page rhythm: the fixed-header offset belongs to .page-head only. */
+body.pv-ux .page-head { text-align: start; padding-bottom: 24px; }
+body.pv-ux .page-head .page-title { display: flex; align-items: center; gap: 12px; margin-bottom: 0; }
+body.pv-ux .page-head .page-title > .fas { color: var(--gold); font-size: .72em; flex-shrink: 0; }
+body.pv-ux .page-head .page-sub { margin-top: 10px; max-width: 68ch; line-height: 1.6; }
+/* Base main uses !important for header clearance; these pages already clear it in the heading. */
+body.pv-ux .clarity-page-main { padding-top: 24px !important; }
+body.pv-ux .clarity-search { margin-bottom: 16px !important; }
+body.pv-ux .clarity-search > label { display: block; margin-bottom: 8px; font-weight: 600; }
+body.pv-ux .clarity-search > input { min-height: 48px; font-size: 16px; }
+body.pv-ux .page-filters-details > summary { min-height: 44px; font-size: 14px; }
+body.pv-ux .page-filters-content { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 16px; }
+body.pv-ux .page-filters-content .form-group { min-width: 0; }
+.clarity-filter-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.clarity-toolbar-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.clarity-filter-toolbar .btn { min-height: 44px; }
+body.pv-ux .clarity-help { max-width: 75ch; line-height: 1.65; }
+body.pv-ux .clarity-nav-panel { min-width: 224px; padding: 6px; }
+body.pv-ux .clarity-nav-panel .nav-link { display: flex; align-items: center; min-height: 44px; border-radius: 8px; }
+body.pv-ux .clarity-nav-panel .nav-link[aria-current="page"] { background: var(--input); font-weight: 700; }
+body.pv-ux .clarity-nav-more > summary::after { content: '⌄'; display: inline-block; margin-inline-start: 8px; }
+body.pv-ux .clarity-nav-more[open] > summary::after { transform: rotate(180deg); }
+body.pv-ux .clarity-disclosure > summary { overflow-wrap: anywhere; }
+body.pv-ux #stats-filter-summary, body.pv-ux #stats-filter-extra { line-height: 1.6; margin-block: 8px; }
+body.pv-ux #calc-error { color: var(--text); padding: 12px; border-inline-start: 3px solid var(--gold); background: var(--input); border-radius: 6px; line-height: 1.5; }
+@media (max-width: 600px) {
+    body.pv-ux .page-head { padding-bottom: 18px; }
+    body.pv-ux .clarity-page-main { padding-top: 18px !important; }
+    body.pv-ux .clarity-page-main > .card { padding: 16px; }
+    body.pv-ux .page-head .page-title { gap: 10px; }
+    body.pv-ux .page-filters-content .form-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    body.pv-ux .page-filters-content .form-group { margin-bottom: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+    body.pv-ux .clarity-nav-more > summary::after { transition: transform .15s ease; }
+}
+@media print {
+    .pv-skip-link, .clarity-filter-toolbar { display: none !important; }
+}
+/* Hints must remain legible in both themes; do not compound alpha and opacity. */
+body.pv-ux .form-input::placeholder { color: var(--muted); opacity: 1; }
+body.pv-ux.sun-mode .form-group label { background: transparent !important; }
+body.pv-ux .clarity-search > label { text-transform: none; letter-spacing: normal; font-size: 14px; }

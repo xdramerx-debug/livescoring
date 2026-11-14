@@ -1,0 +1,29 @@
+/* Visual-only bridges for controls introduced after PR #164 (1.119.0).
+   The immutable pr164.css snapshot defines shared colors, type, cards and scoring.
+   Current event handlers, validation, queueing and admin tools are retained. */
+body.pv-home { padding-top: 0; }
+body.pv-home > main { padding-top: 0 !important; }
+body.pv-ux .hero-logo, body.pv-ux .hero-sub { display: block; }
+body.pv-ux .hero-content { padding-block: 0; }
+body.pv-ux .pv-bottomnav { display: none !important; }
+body.pv-ux.pv-has-bottomnav main { padding-bottom: 60px; }
+body.pv-ux .clarity-page-main { padding-top: 24px; }
+body .field-more > summary { display: none; }
+body .field-more { border: 0; padding: 0; background: transparent; margin-block: 10px; }
+body .page-title { display: block; }
+body .page-head { text-align: center; }
+body .page-head .page-sub { margin-inline: auto; }
+/* The new pad remains available from round preferences; stepper is the legacy default. */
+body .score-pad-key { background: var(--input); color: var(--text); border: 1px solid var(--border); border-radius: var(--rs); font-family: var(--fb); }
+body .score-pad-key.selected { border-color: var(--gold); color: var(--gold-l); }
+body .score-save-status { color: var(--muted); font-size: 13px; line-height: 1.5; }
+body .pv-chip { background: var(--input); color: var(--text); border-color: var(--border); border-radius: var(--rs); box-shadow: none; }
+body .pv-chip[aria-pressed="true"] { color: var(--bg); background: var(--gold); border-color: var(--gold); }
+body .pv-skip-link { position: fixed; top: -120px; left: 12px; z-index: 99999; }
+body .pv-skip-link:focus { top: 12px; background: var(--card); padding: 12px; color: var(--gold); }
+/* New archive and filters use the same original card vocabulary. */
+body .dh-card { border-radius: var(--r); background: var(--card); box-shadow: var(--shd); }
+body .clarity-disclosure { border-radius: var(--rs); }
+@media print {
+    .pv-skip-link, .score-toolbar, .clarity-input-choice { display: none !important; }
+}

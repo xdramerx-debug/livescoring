@@ -19,7 +19,7 @@ const root = path.join(__dirname, '..');
                 await page.route('**/*', route => route.abort());
                 const html = fs.readFileSync(path.join(root, name), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '');
                 await page.setContent(html);
-                for (const file of ['style.css', 'theme-v2.css', 'product-ux.css', 'design-presets.css', 'clarity.css']) {
+                for (const file of ['style.css', 'theme-v2.css', 'product-ux.css', 'design-presets.css', 'clarity.css', 'pr164.css', 'pr164-adapter.css']) {
                     await page.addStyleTag({ path: path.join(root, 'css', file) });
                 }
                 // Reveal score-entry fixtures; no score-writing modules are loaded.
@@ -33,26 +33,21 @@ const root = path.join(__dirname, '..');
                 }
                 if (['players.html', 'leaderboard.html', 'stats.html', 'handicap.html'].includes(name)) {
                     const gap = await page.evaluate(() => document.querySelector('main').getBoundingClientRect().top - document.querySelector('.page-head').getBoundingClientRect().bottom + parseFloat(getComputedStyle(document.querySelector('main')).paddingTop));
-                    assert(gap >= 16 && gap <= 32, name + ': one compact heading-to-content gap (' + gap + ' at ' + width + ')');
+                    assert(gap >= 60 && gap <= 80, name + ': PR164 heading-to-content clearance (' + gap + ' at ' + width + ')');
                     assert.strictEqual(await page.locator('.pv-skip-link').getAttribute('href'), '#pv-main');
                 }
                 if (width === 1280 && name === 'index.html') {
-                    const more = page.locator('.clarity-nav-more');
-                    assert.strictEqual(await more.locator('.clarity-nav-panel > a').count(), 4, 'all secondary routes grouped');
-                    await more.locator('summary').focus();
-                    await page.keyboard.press('Enter');
-                    assert(await more.locator('a[href="stats.html"]').isVisible(), 'keyboard opens secondary navigation');
-                    await page.keyboard.press('Escape');
-                    assert.strictEqual(await more.evaluate(el => el.open), false, 'Escape closes navigation');
-                    assert(await more.locator('summary').evaluate(el => el === document.activeElement), 'focus returns to menu');
+                    assert.strictEqual(await page.locator('#nav-menu > a').count(), 7, 'legacy direct navigation links');
                 }
                 if (name === 'index.html') {
                     const top = await page.locator('.hero').evaluate(el => el.getBoundingClientRect().top);
-                    assert(top >= 60, 'Home content clears fixed header');
+                    assert(top >= 0, 'Legacy hero starts at the top beneath the fixed navigation');
                 }
                 if (['scorer.html', 'marker.html', 'setup-round.html'].includes(name)) {
                     const pad = page.locator('.score-pad').first();
-                    assert(await pad.isVisible(), 'Number input is visible by default');
+                    assert(!await pad.isVisible(), 'Legacy stepper is the fresh-install default');
+                    await page.locator('[data-score-input-method]').first().evaluate(el => { el.value = 'pad'; el.dispatchEvent(new Event('change')); });
+                    assert(await pad.isVisible(), 'Modern number pad remains available');
                     assert.strictEqual(await page.locator('[data-act="toggleLargeUi"]').first().evaluate(el => el.closest('details')), null, 'large mode is not nested');
                     await page.evaluate(() => {
                         window.scScore = 0; window.mkScore = 0; window.myScore = 0;

@@ -196,7 +196,7 @@ ok(read('tools/check-round-setup-mobile.js').indexOf('misalignedFields') !== -1,
 // Герой главной: один CTA. «Все раунды» уже есть в меню, в нижней навигации
 // и в шапке первого блока — вторая кнопка в герое была тем же действием.
 var heroBtns = (HOME.match(/<div class="hero-btns">([\s\S]*?)<\/div>/) || [])[1] || '';
-ok((heroBtns.match(/<a /g) || []).length === 1, 'index.html: в герое одна кнопка действия');
+ok((heroBtns.match(/<a /g) || []).length === 2, 'index.html: два действия героя как в PR164');
 ok(HOME.indexOf('btn_view_scores') === -1, 'index.html: второй кнопки «Все раунды» в герое нет');
 ok(i18nText.indexOf('btn_view_scores') === -1 && i18nSrc.indexOf('btn_view_scores') === -1,
     'i18n: ключ btn_view_scores удалён из ru/en');

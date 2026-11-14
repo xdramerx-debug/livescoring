@@ -1,9 +1,11 @@
+/* Newer UI compatibility; the unlayered PR #164 snapshot defines the appearance. */
+@layer post164-compat {
 /* Shared quiet hierarchy, applied after the existing themes. */
 .clarity-disclosure, .clarity-reference { margin-block: 12px; border: 1px solid var(--border, #ccd4ce); border-radius: 12px; padding: 0 14px; }
 .clarity-disclosure > summary, .clarity-reference > summary { cursor: pointer; min-height: 48px; padding-block: 14px; font: 600 14px/1.4 var(--fb, sans-serif); color: var(--text, inherit); }
 .clarity-disclosure[open] > summary { margin-bottom: 8px; }
 .clarity-disclosure .card { margin-top: 8px; }
-.clarity-search { margin: 0 0 12px !important; min-width: 0 !important; }
+.clarity-search { margin: 0 0 12px; min-width: 0; }
 .clarity-search input { width: 100%; }
 .clarity-password { display: block; margin: 4px 0 0 auto; min-height: 44px; padding: 8px; border: 0; background: transparent; color: var(--gold, #765b19); font: inherit; cursor: pointer; }
 .clarity-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -71,8 +73,8 @@ body.pv-ux .page-head .page-title { display: flex; align-items: center; gap: 12p
 body.pv-ux .page-head .page-title > .fas { color: var(--gold); font-size: .72em; flex-shrink: 0; }
 body.pv-ux .page-head .page-sub { margin-top: 10px; max-width: 68ch; line-height: 1.6; }
 /* Base main uses !important for header clearance; these pages already clear it in the heading. */
-body.pv-ux .clarity-page-main { padding-top: 24px !important; }
-body.pv-ux .clarity-search { margin-bottom: 16px !important; }
+body.pv-ux .clarity-page-main { padding-top: 24px; }
+body.pv-ux .clarity-search { margin-bottom: 16px; }
 body.pv-ux .clarity-search > label { display: block; margin-bottom: 8px; font-weight: 600; }
 body.pv-ux .clarity-search > input { min-height: 48px; font-size: 16px; }
 body.pv-ux .page-filters-details > summary { min-height: 44px; font-size: 14px; }
@@ -92,7 +94,7 @@ body.pv-ux #stats-filter-summary, body.pv-ux #stats-filter-extra { line-height: 
 body.pv-ux #calc-error { color: var(--text); padding: 12px; border-inline-start: 3px solid var(--gold); background: var(--input); border-radius: 6px; line-height: 1.5; }
 @media (max-width: 600px) {
     body.pv-ux .page-head { padding-bottom: 18px; }
-    body.pv-ux .clarity-page-main { padding-top: 18px !important; }
+    body.pv-ux .clarity-page-main { padding-top: 18px; }
     body.pv-ux .clarity-page-main > .card { padding: 16px; }
     body.pv-ux .page-head .page-title { gap: 10px; }
     body.pv-ux .page-filters-content .form-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
@@ -106,5 +108,7 @@ body.pv-ux #calc-error { color: var(--text); padding: 12px; border-inline-start:
 }
 /* Hints must remain legible in both themes; do not compound alpha and opacity. */
 body.pv-ux .form-input::placeholder { color: var(--muted); opacity: 1; }
-body.pv-ux.sun-mode .form-group label { background: transparent !important; }
+body.pv-ux.sun-mode .form-group label { background: transparent; }
 body.pv-ux .clarity-search > label { text-transform: none; letter-spacing: normal; font-size: 14px; }
+
+}

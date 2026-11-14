@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pestovo-v1.135.0-b0b6ba52';
+const CACHE_NAME = 'pestovo-v1.136.0-34183cdf';
 const CDN_CACHE = 'pestovo-cdn-v1';
 const OFFLINE_URL = 'offline.html';
 // Предел CDN-кэша (шрифты Google + Font Awesome с cdnjs). Ответы cross-origin
@@ -55,20 +55,22 @@ const STATIC_ASSETS = [
     'tournaments.html',
 
     // Стили и скрипты (?v= — hash содержимого, генерируется tools/rev-assets.js)
-    'css/clarity.css?v=7ac50d96',
+    'css/clarity.css?v=e5b0c97a',
     'css/design-presets.css?v=77ff3916',
     'css/entry-scorecard.css?v=a34f8c94',
     'css/fontawesome-subset.css?v=f83958d8',
     'css/fonts-local.css?v=8523462a',
-    'css/product-ux.css?v=4522a80b',
-    'css/style.css?v=0d2ca11f',
-    'css/theme-v2.css?v=915c2133',
+    'css/pr164-adapter.css?v=e8f59bf4',
+    'css/pr164.css?v=a5317bf8',
+    'css/product-ux.css?v=ad3d977a',
+    'css/style.css?v=89e1e982',
+    'css/theme-v2.css?v=265c7b83',
     'css/tn-studio.css?v=2e8b755f',
     'css/tournament-redesign.css?v=dc2bdd18',
     'dist/livescoring-modules.js?v=d079085c',
     'js/app.js?v=3a477470',
     'js/auth.js?v=d568c5fb',
-    'js/clarity.js?v=a99465f1',
+    'js/clarity.js?v=2804c967',
     'js/design-system.js?v=b78132a0',
     'js/entry-scorecard.js?v=9b8c4167',
     'js/firebase-config.js?v=032a2499',

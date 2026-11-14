@@ -26,7 +26,7 @@ const root = path.join(__dirname, '..');
             await page.goto('about:blank');
             const html = fs.readFileSync(path.join(root, 'admin.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '').replace('<head>', '<head><base href="http://history.test/">');
             await page.setContent(html);
-            for (const file of ['style.css', 'theme-v2.css', 'clarity.css', 'design-history.css']) await page.addStyleTag({ path: path.join(root, 'css', file) });
+            for (const file of ['style.css', 'theme-v2.css', 'clarity.css', 'design-history.css', 'pr164.css', 'pr164-adapter.css']) await page.addStyleTag({ path: path.join(root, 'css', file) });
             await page.evaluate(() => {
                 document.getElementById('admin-login').classList.add('hidden');
                 document.getElementById('admin-content').classList.remove('hidden');

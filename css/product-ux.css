@@ -1,3 +1,5 @@
+/* Newer UI compatibility; the unlayered PR #164 snapshot defines the appearance. */
+@layer post164-compat {
 /* ============================================================
    ПРОДУКТОВЫЙ UX-СЛОЙ · css/product-ux.css  (v1.129.0)
    ============================================================
@@ -94,7 +96,7 @@ body.pv-ux .pv-bottomnav a { min-height: var(--tap); }
 /* Отступ равен реальной высоте панели (её меряет js/product-ux.js):
    на десктопе, где панель скрыта, он равен нулю, а не «на всякий случай 96 px». */
 body.pv-ux.pv-has-bottomnav main {
-    padding-bottom: calc(var(--bottomnav-h, 0px) + var(--safe-b) + 16px) !important;
+    padding-bottom: calc(var(--bottomnav-h, 0px) + var(--safe-b) + 16px);
 }
 body.pv-ux.pv-has-bottomnav main .pv-cta-dock ~ * { margin-bottom: 0; }
 
@@ -105,10 +107,10 @@ body.pv-ux .hero {
     padding: 84px 18px 28px;
 }
 body.pv-ux .hero-logo {
-    width: 88px !important;
-    max-width: 120px !important;
-    max-height: 96px !important;
-    margin-bottom: 12px !important;
+    width: 88px;
+    max-width: 120px;
+    max-height: 96px;
+    margin-bottom: 12px;
 }
 body.pv-ux .hero-sub { font-size: 11.5px; letter-spacing: 2px; margin-bottom: 8px; }
 body.pv-ux .hero-title { font-size: clamp(24px, 6.4vw, 34px); margin-bottom: 8px; }
@@ -935,7 +937,7 @@ body.pv-ux .pv-cta.is-not-ready {
 
 /* Нативный select, из которого читает логика, остаётся в DOM, но скрыт. */
 body.pv-ux .pv-visually-hidden {
-    position: absolute !important;
+    position: absolute;
     width: 1px;
     height: 1px;
     margin: -1px;
@@ -993,7 +995,7 @@ body.pv-ux .pv-field-error[hidden] { display: none; }
 body.pv-ux .form-input.is-invalid,
 body.pv-ux input.is-invalid,
 body.pv-ux select.is-invalid {
-    border-color: var(--status-pending) !important;
+    border-color: var(--status-pending);
     box-shadow: 0 0 0 2px var(--status-pending-soft);
 }
 
@@ -1132,15 +1134,15 @@ body.pv-ux .pv-skip-link:focus { top: calc(8px + var(--safe-t)); }
 /* Светлая тема: поверхности, границы и текст из токенов. */
 body.pv-ux.sun-mode .lwl-row,
 body.pv-ux.sun-mode .pv-skel {
-    background: var(--card) !important;
-    border-color: var(--line) !important;
-    box-shadow: var(--shadow-1) !important;
+    background: var(--card);
+    border-color: var(--line);
+    box-shadow: var(--shadow-1);
 }
 body.pv-ux.sun-mode .lwl-name { color: var(--text); }
 body.pv-ux.sun-mode .lwl-row-mine { box-shadow: inset 3px 0 0 var(--status-live); }
 body.pv-ux.sun-mode .pv-bottomnav {
-    background: rgba(255, 255, 255, 0.97) !important;
-    border-top-color: var(--line) !important;
+    background: rgba(255, 255, 255, 0.97);
+    border-top-color: var(--line);
 }
 body.pv-ux.sun-mode .pv-cta-dock {
     background: linear-gradient(180deg, rgba(246, 248, 245, 0), rgba(246, 248, 245, 0.96) 45%);
@@ -1161,10 +1163,10 @@ body.pv-ux.sun-mode .rlb-row:nth-child(even) { background: rgba(16, 26, 19, 0.03
     body.pv-ux *,
     body.pv-ux *::before,
     body.pv-ux *::after {
-        animation-duration: 0.001ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.001ms !important;
-        scroll-behavior: auto !important;
+        animation-duration: 0.001ms;
+        animation-iteration-count: 1;
+        transition-duration: 0.001ms;
+        scroll-behavior: auto;
     }
     body.pv-ux .pv-status-dot { animation: none; }
     body.pv-ux .pv-skel-line { animation: none; background: var(--card-h); }
@@ -1174,4 +1176,6 @@ body.pv-ux.sun-mode .rlb-row:nth-child(even) { background: rgba(16, 26, 19, 0.03
 /* Крупные экраны: карточки live-раундов в две колонки. */
 @media (min-width: 900px) {
     body.pv-ux .live-who-list--grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 }

@@ -31,8 +31,8 @@
                 labels();
             });
         });
-        var method = 'pad';
-        try { method = localStorage.getItem('pestovo_score_input') === 'stepper' ? 'stepper' : 'pad'; } catch (e) { /* private browsing */ }
+        var method = 'stepper';
+        try { method = localStorage.getItem('pestovo_score_input') === 'pad' ? 'pad' : 'stepper'; } catch (e) { /* private browsing */ }
         function applyMethod(value) {
             document.body.dataset.scoreInput = value;
             document.querySelectorAll('[data-score-input-method]').forEach(function (select) { select.value = value; });
